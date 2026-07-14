@@ -90,14 +90,16 @@ export default function Home() {
           </div>
         </div>
         <div className="hero-visual" aria-label="Example MetaForge diagnosis">
+          <div className="forge-aperture"><span>LIVE FORGE SIGNAL</span><i /></div>
           <div className="scan-line" />
-          <div className="report-top">
-            <div><small>FORGE DIAGNOSIS</small><strong>Temur Prowess</strong></div>
-            <div className="score"><span>82</span><small>DECK<br />HEALTH</small></div>
+          <div className="floating-report">
+            <div className="report-top">
+              <div><small>FORGE DIAGNOSIS</small><strong>Temur Prowess</strong></div>
+              <div className="score"><span>82</span><small>DECK<br />HEALTH</small></div>
+            </div>
+            <div className="signal critical"><i>01</i><div><small>PRIMARY PRESSURE POINT</small><b>Turn-two color access is inconsistent</b><p>Your opening seven finds both colors in only 61% of measured hands.</p></div></div>
+            <div className="confidence"><span>CONFIDENCE</span><div><i /></div><b>HIGH</b></div>
           </div>
-          <div className="signal critical"><i>01</i><div><small>PRIMARY PRESSURE POINT</small><b>Turn-two color access is inconsistent</b><p>Your opening seven finds both colors in only 61% of measured hands.</p></div></div>
-          <div className="signal"><i>02</i><div><small>OPPORTUNITY</small><b>Eight flex slots dilute your core plan</b><p>Successful shells concentrate more heavily on early pressure.</p></div></div>
-          <div className="confidence"><span>CONFIDENCE</span><div><i /></div><b>HIGH</b></div>
         </div>
       </section>
 
@@ -112,6 +114,9 @@ export default function Home() {
 
       <section className="process shell" id="how-it-works">
         <div className="section-heading"><div><span>THE METAFORGE METHOD</span><h2>From decklist to direction.</h2></div><p>Useful intelligence in minutes, with the reasoning left intact.</p></div>
+        <div className="forge-architecture" aria-label="The three chambers of the MetaForge analysis process">
+          <div><span>01</span> INTAKE</div><div><span>02</span> DIAGNOSIS</div><div><span>03</span> COMPARISON</div>
+        </div>
         <div className="steps">
           <article><i>01</i><div className="step-icon">＋</div><h3>Add your deck</h3><p>Paste a list from Arena, MTGO, Moxfield, or your notes. No account required.</p></article>
           <article><i>02</i><div className="step-icon">⌁</div><h3>See the pressure points</h3><p>Forge measures composition, consistency, curve, mana, and strategic focus.</p></article>
