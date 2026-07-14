@@ -9,6 +9,7 @@ import { evaluateExperiment } from "./experiment-evidence.mjs";
 import { classifyRevealedOpponent } from "./opponent-classifier.mjs";
 import { evaluateMatchupEvidence } from "./adaptive-recommendation.mjs";
 import { simulateDeck } from "./forge-simulation.mjs";
+import { deckFingerprint } from "./deck-fingerprint.mjs";
 
 const SAMPLE_DECK = `4 Monastery Swiftspear
 4 Slickshot Show-Off
@@ -30,6 +31,7 @@ export default function Home() {
   const [proposedDeck, setProposedDeck] = useState("");
   const [comparisonReady, setComparisonReady] = useState(false);
   const [candidateCopyStatus, setCandidateCopyStatus] = useState("Start founder trial →");
+  const [arenaTracking, setArenaTracking] = useState<"idle" | "waiting" | "registered">("idle");
   const [deckLegality, setDeckLegality] = useState<{ legal: boolean; total: number; issues: Array<{ message: string }>; pending?: boolean }>({ legal: false, total: 0, issues: [], pending: true });
   const [arenaStatus, setArenaStatus] = useState<"idle" | "connecting" | "connected" | "needs-logs" | "offline">("idle");
   const [arenaMatches, setArenaMatches] = useState<Array<{ id: string; completedAt: string; gamesWon: number; gamesLost: number; result: "win" | "loss"; mulligans: number; revealedOpponentCards?: string[]; experimentVariant?: "original" | "proposed" | "unmatched" }>>([]);
@@ -102,7 +104,9 @@ export default function Home() {
         };
         window.localStorage.setItem("metaforge.activeExperiment", JSON.stringify(upgraded));
         setExperiment(upgraded);
-        await registerExperiment(upgraded);
+        const registered = await registerExperiment(upgraded);
+        setArenaTracking(registered ? "registered" : "waiting");
+        if (registered) setCandidateCopyStatus("Copied · Arena tracking live");
       }
     } catch {
       setArenaStatus("offline");
@@ -131,7 +135,8 @@ export default function Home() {
   async function startForgeCandidate(candidate = FORGE_CANDIDATE) {
     loadForgeCandidate(candidate);
     const arenaDeck = `Deck\n${candidate.deckText}\n\nSideboard\n${candidate.sideboardText}`;
-    try { await navigator.clipboard.writeText(arenaDeck); setCandidateCopyStatus("Copied · Trial registered"); } catch { setCandidateCopyStatus("Trial registered · Copy from Forge"); }
+    let copied = false;
+    try { await navigator.clipboard.writeText(arenaDeck); copied = true; } catch { /* The loaded Forge text remains available to copy manually. */ }
     const candidateRows = parseDeck(candidate.deckText);
     const candidateFingerprint = await fingerprint(candidateRows);
     const trial = {
@@ -146,7 +151,9 @@ export default function Home() {
     };
     window.localStorage.setItem("metaforge.activeExperiment", JSON.stringify(trial));
     setExperiment(trial);
-    await registerExperiment(trial);
+    const registered = await registerExperiment(trial);
+    setArenaTracking(registered ? "registered" : "waiting");
+    setCandidateCopyStatus(registered ? `${copied ? "Copied" : "Loaded"} · Arena tracking live` : `${copied ? "Copied" : "Loaded"} · Connect Arena to track`);
   }
 
   function analyze() {
@@ -162,18 +169,16 @@ export default function Home() {
   }
 
   async function fingerprint(deckRows: Array<{ name: string; quantity: number }>) {
-    const totals = new Map<string, number>();
-    deckRows.forEach((row) => totals.set(row.name.trim().toLowerCase(), (totals.get(row.name.trim().toLowerCase()) || 0) + row.quantity));
-    const canonical = [...totals.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([name, quantity]) => `${quantity} ${name}`).join("\n");
-    const digest = await window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
-    return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("").slice(0, 24);
+    return deckFingerprint(deckRows);
   }
 
   async function registerExperiment(nextExperiment: NonNullable<typeof experiment>) {
     try {
-      await fetch("http://127.0.0.1:17831/experiment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(nextExperiment) });
+      const response = await fetch("http://127.0.0.1:17831/experiment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(nextExperiment) });
+      return response.ok;
     } catch {
       // The local experiment remains saved and can be paired when the companion reconnects.
+      return false;
     }
   }
 
@@ -192,7 +197,8 @@ export default function Home() {
     };
     window.localStorage.setItem("metaforge.activeExperiment", JSON.stringify(nextExperiment));
     setExperiment(nextExperiment);
-    await registerExperiment(nextExperiment);
+    const registered = await registerExperiment(nextExperiment);
+    setArenaTracking(registered ? "registered" : "waiting");
   }
 
   function decideExperiment(status: "testing" | "kept" | "reverted") {
@@ -335,7 +341,7 @@ export default function Home() {
             <div>
               <small>ARENA COMPANION · PRIVATE ALPHA</small>
               <h3>Let Arena report the test results.</h3>
-              <p>{arenaStatus === "connected" ? "Connected. Completed matches will appear here automatically." : arenaStatus === "needs-logs" ? "Companion found. Enable Detailed Logs in Arena, then restart Arena." : arenaStatus === "offline" ? "Companion is not running yet. Start the local MetaForge companion, then reconnect." : "Connect the read-only local companion to track completed Arena matches without manual entry."}</p>
+              <p>{arenaStatus === "connected" ? arenaTracking === "registered" ? "Connected and tracking this exact deck revision. Completed matches will appear automatically." : "Connected. Start or reopen a Forge trial to register its exact deck revision." : arenaStatus === "needs-logs" ? "Companion found. Enable Detailed Logs in Arena, then restart Arena." : arenaStatus === "offline" ? "Companion is not running yet. Start the local MetaForge companion, then reconnect." : "Connect the read-only local companion to track completed Arena matches without manual entry."}</p>
             </div>
             <button onClick={connectArena} disabled={arenaStatus === "connecting"}>{arenaStatus === "connected" ? "Arena connected" : arenaStatus === "connecting" ? "Connecting…" : "Connect Arena"}</button>
           </aside>
