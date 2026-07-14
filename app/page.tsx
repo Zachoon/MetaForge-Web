@@ -304,6 +304,10 @@ export default function Home() {
           </div>
           <p className="meta-method">GENERATOR GATE · {meta.generatorGate.replaceAll("-", " ")} · {meta.method}</p>
           <article className="forge-prototype"><div><small>FORGE RECOMMENDED · FOUNDER PROTOTYPE</small><h3>{FORGE_CANDIDATE.name}</h3><p>{FORGE_CANDIDATE.reasoning}</p></div><div className="prototype-facts"><span><b>{FORGE_CANDIDATE.strategy}</b>STRATEGY</span><span><b>{FORGE_CANDIDATE.target}</b>TARGET</span><span><b>{(FORGE_CANDIDATE.coherence * 100).toFixed(0)}%</b>COHERENCE</span><span><b>{FORGE_CANDIDATE.rankScore.toFixed(1)}</b>RANK SCORE</span></div><button onClick={() => startForgeCandidate(FORGE_CANDIDATE)}>{candidateCopyStatus}</button></article>
+          <section className="strategy-proof" aria-label="Generated strategy support proof">
+            <div><small>STRATEGY GRAPH · VERIFIED</small><h3>Every payoff has enough support.</h3><p>Forge reads Oracle text, identifies what each payoff demands, counts its enabling cards, and rejects or repairs unsupported packages before ranking the deck.</p></div>
+            <div className="strategy-proof-list">{FORGE_CANDIDATE.requirements.map((requirement) => <article key={`${requirement.card}-${requirement.requirement}`}><span>{requirement.card}</span><b>{requirement.requirement}</b><em>{requirement.supportCount}/{requirement.minimum} copies</em><small>{requirement.enablers.slice(0, 3).join(" · ")}</small></article>)}</div>
+          </section>
           <div className="candidate-rankings">{CANDIDATES.map((candidate) => <article key={candidate.name}><span>0{candidate.rank}</span><div><small>{candidate.strategy} · VS {candidate.target}</small><h4>{candidate.name}</h4><p>{candidate.averageSpellCmc.toFixed(2)} average spell mana · 15-card sideboard · {(candidate.novelty * 100).toFixed(0)}% novelty · {(candidate.coherence * 100).toFixed(0)}% coherence</p></div><b>{candidate.rankScore.toFixed(1)}</b><button onClick={() => startForgeCandidate(candidate)}>Test</button></article>)}</div>
         </div>
       </section>
