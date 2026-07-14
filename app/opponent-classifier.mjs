@@ -1,4 +1,4 @@
-import CARD_FACTS from "./format-legality.mjs";
+import CARD_FACTS from "./standard-card-facts.mjs";
 
 const COLORS = ["W", "U", "B", "R", "G"];
 
@@ -10,8 +10,8 @@ export function classifyRevealedOpponent(cardNames = []) {
     const facts = CARD_FACTS[name.toLocaleLowerCase()];
     if (!facts) continue;
     known.push(facts[0]);
-    colorMask |= facts[5] || 0;
-    const strategy = facts[6] || 0;
+    colorMask |= facts[1] || 0;
+    const strategy = facts[2] || 0;
     signals.aggro += Number(Boolean(strategy & 1));
     signals.interaction += Number(Boolean(strategy & 2));
     signals.draw += Number(Boolean(strategy & 4));

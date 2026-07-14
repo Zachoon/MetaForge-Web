@@ -28,6 +28,7 @@ export default function Home() {
   const [comparisonOpen, setComparisonOpen] = useState(false);
   const [proposedDeck, setProposedDeck] = useState("");
   const [comparisonReady, setComparisonReady] = useState(false);
+  const [deckLegality, setDeckLegality] = useState<{ legal: boolean; total: number; issues: Array<{ message: string }>; pending?: boolean }>({ legal: false, total: 0, issues: [], pending: true });
   const [arenaStatus, setArenaStatus] = useState<"idle" | "connecting" | "connected" | "needs-logs" | "offline">("idle");
   const [arenaMatches, setArenaMatches] = useState<Array<{ id: string; completedAt: string; gamesWon: number; gamesLost: number; result: "win" | "loss"; mulligans: number; revealedOpponentCards?: string[]; experimentVariant?: "original" | "proposed" | "unmatched" }>>([]);
   const [experiment, setExperiment] = useState<null | {
@@ -47,7 +48,6 @@ export default function Home() {
   const uniqueCount = rows.length;
   const health = Math.max(42, Math.min(94, 78 - Math.abs(24 - landCount) * 2 - Math.abs(60 - cardCount)));
   const recommendation = useMemo(() => createRecommendation(rows, format), [rows, format]);
-  const deckLegality = useMemo(() => validateDeckLegality(rows, format), [rows, format]);
   const proposedRows = useMemo(() => parseDeck(proposedDeck), [proposedDeck]);
   const originalMetrics = useMemo(() => comparisonReady ? simulateDeck(rows) : null, [comparisonReady, rows]);
   const proposedMetrics = useMemo(() => comparisonReady ? simulateDeck(proposedRows, 2500, 19411) : null, [comparisonReady, proposedRows]);
@@ -61,6 +61,13 @@ export default function Home() {
       window.localStorage.removeItem("metaforge.activeExperiment");
     }
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    setDeckLegality((current) => ({ ...current, legal: false, pending: true }));
+    validateDeckLegality(rows, format).then((result) => { if (active) setDeckLegality({ ...result, pending: false }); });
+    return () => { active = false; };
+  }, [rows, format]);
 
   useEffect(() => {
     if (arenaStatus !== "connected") return;
@@ -345,7 +352,7 @@ export default function Home() {
                 <div className="analysis-result">
                   <div className="result-header"><div><small>INITIAL DIAGNOSIS · {format.toUpperCase()}</small><h3>{deckName || "Untitled deck"}</h3></div><div className="health"><b>{health}</b><span>/100<br />HEALTH</span></div></div>
                   <div className="metric-row"><div><span>TOTAL CARDS</span><b>{cardCount}</b></div><div><span>LANDS DETECTED</span><b>{landCount}</b></div><div><span>UNIQUE ENTRIES</span><b>{uniqueCount}</b></div></div>
-                  <div className={`legality-gate ${deckLegality.legal ? "legal" : "illegal"}`}><span>{deckLegality.legal ? "FORMAT LEGAL" : "LEGALITY GATE FAILED"}</span><b>{deckLegality.legal ? `${format} · ${deckLegality.total} cards` : deckLegality.issues[0]?.message}</b></div>
+                  <div className={`legality-gate ${deckLegality.legal ? "legal" : "illegal"}`}><span>{deckLegality.pending ? "CHECKING FORMAT" : deckLegality.legal ? "FORMAT LEGAL" : "LEGALITY GATE FAILED"}</span><b>{deckLegality.pending ? "Loading the selected format’s legality catalog…" : deckLegality.legal ? `${format} · ${deckLegality.total} cards` : deckLegality.issues[0]?.message}</b></div>
                   <article className="finding"><small>01 · FORGE RECOMMENDATION</small><h4>{recommendation.title}</h4><p>{recommendation.summary}</p><p className="recommendation-reasoning">{recommendation.reasoning}</p></article>
                   {recommendation.mechanics?.landfall_payoff > 0 && <div className="mechanic-tradeoff"><span>LANDFALL TRADEOFF</span><div><b>{recommendation.mechanics.payoffCount}</b><small>PAYOFF CARDS</small></div><div><b>{recommendation.mechanics.fetchCount}</b><small>FETCH LANDS</small></div><div><b>{recommendation.mechanics.slowFetchCount}</b><small>ALWAYS TAPPED</small></div><div><b>{recommendation.mechanics.posture.replaceAll("-", " ")}</b><small>FORGE POSTURE</small></div></div>}
                   {recommendation.changes.length > 0 && <div className="change-set"><span>PROPOSED CHANGE</span>{recommendation.changes.map((change) => <b key={`${change.card}-${change.quantity}`} className={change.quantity > 0 ? "add" : "remove"}>{change.quantity > 0 ? "+" : ""}{change.quantity} {change.card}</b>)}</div>}

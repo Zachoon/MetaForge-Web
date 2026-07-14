@@ -5,10 +5,10 @@ import { parseDeck } from "../app/deck-analysis.mjs";
 import { validateDeckLegality } from "../app/deck-legality.mjs";
 import { simulateDeck } from "../app/forge-simulation.mjs";
 
-test("generated Forge candidate is exactly 60 cards and Standard legal", () => {
+test("generated Forge candidate is exactly 60 cards and Standard legal", async () => {
   const rows = parseDeck(CANDIDATE.deckText);
   assert.equal(rows.reduce((sum, row) => sum + row.quantity, 0), 60);
-  assert.deepEqual(validateDeckLegality(rows, CANDIDATE.format).issues, []);
+  assert.deepEqual((await validateDeckLegality(rows, CANDIDATE.format)).issues, []);
 });
 
 test("generated candidate contains required strategic roles", () => {
@@ -25,7 +25,7 @@ test("generated candidate passes the opening-hand consistency gate", () => {
   assert.ok(metrics.averageOpeningLands >= 2.6 && metrics.averageOpeningLands <= 3.0, metrics.averageOpeningLands);
 });
 
-test("candidate tournament ranks three distinct legal decks with legal sideboards", () => {
+test("candidate tournament ranks three distinct legal decks with legal sideboards", async () => {
   assert.equal(CANDIDATES.length, 3);
   assert.deepEqual(CANDIDATES.map((candidate) => candidate.rank), [1, 2, 3]);
   assert.equal(new Set(CANDIDATES.map((candidate) => candidate.name)).size, 3);
@@ -34,7 +34,7 @@ test("candidate tournament ranks three distinct legal decks with legal sideboard
     assert.equal(candidate.coherence, 1);
     assert.equal(candidate.sideboard.reduce((sum, entry) => sum + entry.quantity, 0), 15);
     const sideRows = candidate.sideboard.map((entry) => ({ name: entry.card, quantity: entry.quantity }));
-    assert.deepEqual(validateDeckLegality([...sideRows, { name: "Island", quantity: 60 }], candidate.format).issues, []);
+    assert.deepEqual((await validateDeckLegality([...sideRows, { name: "Island", quantity: 60 }], candidate.format)).issues, []);
     const mainNames = new Set(candidate.deck.map((entry) => entry.card));
     assert.ok(candidate.sideboard.every((entry) => !mainNames.has(entry.card)));
   }

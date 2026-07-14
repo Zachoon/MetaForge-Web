@@ -3,7 +3,7 @@ import test from "node:test";
 import { classifyRevealedOpponent } from "../app/opponent-classifier.mjs";
 
 test("labels partial opponent observations with explicit confidence", () => {
-  const result = classifyRevealedOpponent(["Monastery Swiftspear", "Hired Claw", "Lightning Strike", "Mountain"]);
+  const result = classifyRevealedOpponent(["Hired Claw", "Emberheart Challenger", "Slickshot Show-Off", "Lightning Strike", "Mountain"]);
   assert.equal(result.strategy, "Aggro");
   assert.equal(result.confidence, "developing");
   assert.ok(result.colors.includes("R"));
