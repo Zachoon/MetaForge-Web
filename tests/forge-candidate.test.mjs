@@ -14,7 +14,7 @@ test("generated Forge candidate is exactly 60 cards and Standard legal", async (
 test("generated candidate contains required strategic roles", () => {
   const roles = new Set(CANDIDATE.deck.map((entry) => entry.role));
   for (const role of ["removal", "counter", "draw", "sweeper", "finisher", "land", "dual-land"]) assert.ok(roles.has(role), role);
-  assert.equal(CANDIDATE.target, "Aggro");
+  assert.equal(CANDIDATE.target, "Midrange");
   assert.equal(CANDIDATE.strategy, "Control");
   assert.equal(CANDIDATE.confidence, "experimental");
 });

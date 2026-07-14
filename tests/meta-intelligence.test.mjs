@@ -2,12 +2,17 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { getMetaIntelligence } from "../app/meta-intelligence.mjs";
 
-test("refuses to infer a current majority from an insufficient sample", () => {
+test("uses a fresh high-coverage field without inventing a majority", () => {
   const result = getMetaIntelligence();
-  assert.equal(result.current.sampleSize, 3);
+  assert.equal(result.current.sampleSize, 999);
+  assert.equal(result.current.confidence, "high");
+  assert.ok(result.current.classificationCoverage >= 0.75);
   assert.equal(result.majority, null);
-  assert.equal(result.generatorGate, "historical-only");
-  assert.match(result.warning, /not enough/i);
+  assert.equal(result.leadingStrategy, "Midrange");
+  assert.equal(result.generatorGate, "fresh-field-open");
+  assert.match(result.warning, /plurality/i);
+  assert.equal(result.generatorTargetBasis, "fresh-current-plurality");
+  assert.match(result.current.provenance.url, /^https:/);
 });
 
 test("exposes the high-confidence historical strategic prior", () => {
