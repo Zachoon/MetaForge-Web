@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { isLand, normalizeCardName, parseDeck } from "../app/deck-analysis.mjs";
+import { createRecommendation, isLand, normalizeCardName, parseDeck } from "../app/deck-analysis.mjs";
 
 const arenaDeck = `Deck
 4 Mossborn Hydra (FDN) 107
@@ -26,4 +26,20 @@ test("counts fetch-style utility lands as lands", () => {
 test("does not include sideboard cards in main-deck composition", () => {
   const rows = parseDeck("Deck\n20 Forest\nSideboard\n4 Evolving Wilds");
   assert.equal(rows.reduce((total, row) => total + row.quantity, 0), 20);
+});
+
+test("creates a different explicit proposal for a mono-basic fetch package", () => {
+  const deck = "16 Forest\n4 Fabled Passage\n4 Evolving Wilds\n4 Llanowar Elves\n32 Spell";
+  const recommendation = createRecommendation(parseDeck(deck));
+  assert.notEqual(recommendation.proposedDeck, deck);
+  assert.deepEqual(recommendation.changes, [
+    { card: "Evolving Wilds", quantity: -2 },
+    { card: "Forest", quantity: 2 },
+  ]);
+});
+
+test("creates a mana experiment instead of copying a low-land deck", () => {
+  const recommendation = createRecommendation(parseDeck("22 Mountain\n2 Expensive Spell\n36 Core Spell"));
+  assert.match(recommendation.title, /mana/i);
+  assert.notEqual(recommendation.proposedDeck, "22 Mountain\n2 Expensive Spell\n36 Core Spell");
 });

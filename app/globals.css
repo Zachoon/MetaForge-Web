@@ -119,6 +119,12 @@ input:focus,select:focus,textarea:focus { border-color:var(--mint); box-shadow:0
 .finding small { color:var(--amber); }
 .finding h4 { margin:9px 0; font:500 22px Georgia,serif; }
 .finding p { color:#9bb0ad; line-height:1.55; font-size:13px; }
+.finding .recommendation-reasoning { margin-bottom:0; color:#718986; font-size:11px; }
+.change-set { margin-top:14px; padding:14px 16px; display:flex; flex-wrap:wrap; align-items:center; gap:9px; background:#0b1719; border:1px solid #304b4e; }
+.change-set>span { width:100%; color:#718986; font-size:8px; letter-spacing:.16em; }
+.change-set b { padding:7px 10px; font-size:11px; border:1px solid #3e5658; font-weight:700; }
+.change-set b.add { color:var(--mint); border-color:#3e6d66; background:#102522; }
+.change-set b.remove { color:#e9b474; border-color:#6b5134; background:#251b12; }
 .next-test { margin-top:16px; padding:18px; border:1px solid #2f4c4e; }
 .next-test p { margin:9px 0 14px; font-size:13px; }
 .next-test button { width:100%; border:1px solid var(--mint); background:transparent; color:var(--mint); padding:11px; font-size:12px; font-weight:750; }

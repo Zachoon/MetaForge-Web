@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { isLand, parseDeck } from "./deck-analysis.mjs";
+import { createRecommendation, isLand, parseDeck } from "./deck-analysis.mjs";
 import { simulateDeck } from "./forge-simulation.mjs";
 
 const SAMPLE_DECK = `4 Monastery Swiftspear
@@ -36,6 +36,7 @@ export default function Home() {
   const landCount = rows.filter((row) => isLand(row.name)).reduce((sum, row) => sum + row.quantity, 0);
   const uniqueCount = rows.length;
   const health = Math.max(42, Math.min(94, 78 - Math.abs(24 - landCount) * 2 - Math.abs(60 - cardCount)));
+  const recommendation = useMemo(() => createRecommendation(rows, format), [rows, format]);
   const proposedRows = useMemo(() => parseDeck(proposedDeck), [proposedDeck]);
   const originalMetrics = useMemo(() => comparisonReady ? simulateDeck(rows) : null, [comparisonReady, rows]);
   const proposedMetrics = useMemo(() => comparisonReady ? simulateDeck(proposedRows, 2500, 19411) : null, [comparisonReady, proposedRows]);
@@ -50,11 +51,14 @@ export default function Home() {
     }
   }, []);
 
-  function loadSample() {
+  function loadSample(moveToForge = false) {
     setDeckName("Red Prowess");
     setFormat("Standard");
     setDeckText(SAMPLE_DECK);
-    setAnalyzed(false);
+    setAnalyzed(moveToForge);
+    if (moveToForge) {
+      window.setTimeout(() => document.querySelector("#forge")?.scrollIntoView({ behavior: "smooth" }), 0);
+    }
   }
 
   function analyze() {
@@ -62,7 +66,7 @@ export default function Home() {
   }
 
   function prepareComparison() {
-    setProposedDeck(deckText);
+    setProposedDeck(recommendation.proposedDeck);
     setComparisonReady(false);
     setComparisonOpen(true);
     window.setTimeout(() => document.querySelector("#test-bench")?.scrollIntoView({ behavior: "smooth" }), 0);
@@ -120,7 +124,7 @@ export default function Home() {
             <button className="primary" onClick={() => document.querySelector("#forge")?.scrollIntoView({ behavior: "smooth" })}>
               Analyze my deck <span>→</span>
             </button>
-            <button className="text-button" onClick={loadSample}>See a sample analysis</button>
+            <button className="text-button" onClick={() => loadSample(true)}>See a sample analysis</button>
           </div>
           <div className="trust-row">
             <span><b>◇</b> Explainable findings</span>
@@ -188,7 +192,7 @@ export default function Home() {
                 <label>DECK NAME<input value={deckName} onChange={(e) => { setDeckName(e.target.value); setAnalyzed(false); }} /></label>
                 <label>FORMAT<select value={format} onChange={(e) => { setFormat(e.target.value); setAnalyzed(false); }}><option>Standard</option><option>Pioneer</option><option>Modern</option><option>Legacy</option><option>Pauper</option><option>Vintage</option><option>Commander</option></select></label>
               </div>
-              <label className="deck-label">DECKLIST <button onClick={loadSample}>Load sample</button></label>
+              <label className="deck-label">DECKLIST <button onClick={() => loadSample(false)}>Load sample</button></label>
               <textarea value={deckText} onChange={(e) => { setDeckText(e.target.value); setAnalyzed(false); }} placeholder={"4 Lightning Bolt\n4 Monastery Swiftspear\n20 Mountain"} aria-label="Decklist" />
               <div className="input-footer"><span>{cardCount ? `${cardCount} cards · ${uniqueCount} unique entries` : "Use one card entry per line"}</span><span>TXT</span></div>
               <button className="analyze" disabled={!cardCount} onClick={analyze}>Forge my analysis <span>→</span></button>
@@ -201,8 +205,9 @@ export default function Home() {
                 <div className="analysis-result">
                   <div className="result-header"><div><small>INITIAL DIAGNOSIS · {format.toUpperCase()}</small><h3>{deckName || "Untitled deck"}</h3></div><div className="health"><b>{health}</b><span>/100<br />HEALTH</span></div></div>
                   <div className="metric-row"><div><span>TOTAL CARDS</span><b>{cardCount}</b></div><div><span>LANDS DETECTED</span><b>{landCount}</b></div><div><span>UNIQUE ENTRIES</span><b>{uniqueCount}</b></div></div>
-                  <article className="finding"><small>01 · HIGHEST PRIORITY</small><h4>{landCount < 20 ? "Your mana base needs immediate attention" : cardCount !== 60 ? "Your deck size is costing you consistency" : "Your foundation is ready for deeper testing"}</h4><p>{landCount < 20 ? `Only ${landCount} lands were detected. That increases the risk that your strongest cards arrive without the mana to cast them.` : cardCount !== 60 ? `This list contains ${cardCount} cards. In most constructed formats, staying at the minimum improves access to your best draws.` : "The list clears the first composition checks. Next, Forge will measure curve pressure, colored sources, and strategic concentration."}</p></article>
-                  <div className="next-test"><span>NEXT SAFE TEST</span><p>{landCount < 20 ? "Add lands toward the format baseline, then compare opening hands." : cardCount !== 60 ? "Trim toward 60 cards while preserving your core game plan." : "Run opening hands and inspect fetch-aware draw consistency."}</p><button onClick={prepareComparison}>Prepare comparison <b>→</b></button></div>
+                  <article className="finding"><small>01 · FORGE RECOMMENDATION</small><h4>{recommendation.title}</h4><p>{recommendation.summary}</p><p className="recommendation-reasoning">{recommendation.reasoning}</p></article>
+                  {recommendation.changes.length > 0 && <div className="change-set"><span>PROPOSED CHANGE</span>{recommendation.changes.map((change) => <b key={`${change.card}-${change.quantity}`} className={change.quantity > 0 ? "add" : "remove"}>{change.quantity > 0 ? "+" : ""}{change.quantity} {change.card}</b>)}</div>}
+                  <div className="next-test"><span>NEXT SAFE TEST</span><p>{recommendation.changes.length ? "Compare Forge’s proposed version against your original, then edit it before saving anything." : "Choose one flex-slot change in the editable proposed version and measure it against the original."}</p><button onClick={prepareComparison}>{recommendation.changes.length ? "Test this recommendation" : "Build a manual experiment"} <b>→</b></button></div>
                   <p className="result-note">This early web preview uses composition evidence. Deeper Forge intelligence will connect as the hosted API comes online.</p>
                 </div>
               )}
