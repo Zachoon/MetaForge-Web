@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createRecommendation, isLand, parseDeck } from "./deck-analysis.mjs";
+import { validateDeckLegality } from "./deck-legality.mjs";
 import { simulateDeck } from "./forge-simulation.mjs";
 
 const SAMPLE_DECK = `4 Monastery Swiftspear
@@ -9,11 +10,10 @@ const SAMPLE_DECK = `4 Monastery Swiftspear
 4 Emberheart Challenger
 4 Lightning Strike
 4 Burst Lightning
-4 Monstrous Rage
 4 Torch the Tower
 4 Boltwave
 2 Witchstalker Frenzy
-22 Mountain`;
+26 Mountain`;
 
 export default function Home() {
   const [deckName, setDeckName] = useState("My deck");
@@ -42,6 +42,7 @@ export default function Home() {
   const uniqueCount = rows.length;
   const health = Math.max(42, Math.min(94, 78 - Math.abs(24 - landCount) * 2 - Math.abs(60 - cardCount)));
   const recommendation = useMemo(() => createRecommendation(rows, format), [rows, format]);
+  const deckLegality = useMemo(() => validateDeckLegality(rows, format), [rows, format]);
   const proposedRows = useMemo(() => parseDeck(proposedDeck), [proposedDeck]);
   const originalMetrics = useMemo(() => comparisonReady ? simulateDeck(rows) : null, [comparisonReady, rows]);
   const proposedMetrics = useMemo(() => comparisonReady ? simulateDeck(proposedRows, 2500, 19411) : null, [comparisonReady, proposedRows]);
@@ -109,6 +110,7 @@ export default function Home() {
   }
 
   function prepareComparison() {
+    if (!deckLegality.legal) return;
     setProposedDeck(recommendation.proposedDeck);
     setComparisonReady(false);
     setComparisonOpen(true);
@@ -132,7 +134,7 @@ export default function Home() {
   }
 
   async function saveExperiment() {
-    if (!proposedRows.length || proposedDeck.trim() === deckText.trim()) return;
+    if (!deckLegality.legal || !proposedRows.length || proposedDeck.trim() === deckText.trim()) return;
     const [originalFingerprint, proposedFingerprint] = await Promise.all([fingerprint(rows), fingerprint(proposedRows)]);
     const nextExperiment = {
       id: window.crypto.randomUUID(),
@@ -296,6 +298,7 @@ export default function Home() {
                 <div className="analysis-result">
                   <div className="result-header"><div><small>INITIAL DIAGNOSIS · {format.toUpperCase()}</small><h3>{deckName || "Untitled deck"}</h3></div><div className="health"><b>{health}</b><span>/100<br />HEALTH</span></div></div>
                   <div className="metric-row"><div><span>TOTAL CARDS</span><b>{cardCount}</b></div><div><span>LANDS DETECTED</span><b>{landCount}</b></div><div><span>UNIQUE ENTRIES</span><b>{uniqueCount}</b></div></div>
+                  <div className={`legality-gate ${deckLegality.legal ? "legal" : "illegal"}`}><span>{deckLegality.legal ? "FORMAT LEGAL" : "LEGALITY GATE FAILED"}</span><b>{deckLegality.legal ? `${format} · ${deckLegality.total} cards` : deckLegality.issues[0]?.message}</b></div>
                   <article className="finding"><small>01 · FORGE RECOMMENDATION</small><h4>{recommendation.title}</h4><p>{recommendation.summary}</p><p className="recommendation-reasoning">{recommendation.reasoning}</p></article>
                   {recommendation.mechanics?.landfall_payoff > 0 && <div className="mechanic-tradeoff"><span>LANDFALL TRADEOFF</span><div><b>{recommendation.mechanics.payoffCount}</b><small>PAYOFF CARDS</small></div><div><b>{recommendation.mechanics.fetchCount}</b><small>FETCH LANDS</small></div><div><b>{recommendation.mechanics.slowFetchCount}</b><small>ALWAYS TAPPED</small></div><div><b>{recommendation.mechanics.posture.replaceAll("-", " ")}</b><small>FORGE POSTURE</small></div></div>}
                   {recommendation.changes.length > 0 && <div className="change-set"><span>PROPOSED CHANGE</span>{recommendation.changes.map((change) => <b key={`${change.card}-${change.quantity}`} className={change.quantity > 0 ? "add" : "remove"}>{change.quantity > 0 ? "+" : ""}{change.quantity} {change.card}</b>)}</div>}
