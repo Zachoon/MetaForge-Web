@@ -23,6 +23,11 @@ test("counts fetch-style utility lands as lands", () => {
   assert.equal(landCount, 24);
 });
 
+test("uses catalog types for generated dual lands instead of name suffixes", () => {
+  assert.equal(isLand("Spirebluff Canal"), true);
+  assert.equal(isLand("Riverpyre Verge"), true);
+});
+
 test("does not include sideboard cards in main-deck composition", () => {
   const rows = parseDeck("Deck\n20 Forest\nSideboard\n4 Evolving Wilds");
   assert.equal(rows.reduce((total, row) => total + row.quantity, 0), 20);

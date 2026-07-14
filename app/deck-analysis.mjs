@@ -1,4 +1,5 @@
 import CARD_MECHANICS from "./card-mechanics.mjs";
+import CARD_LEGALITY from "./format-legality.mjs";
 
 /** Lands needed by the offline preview before the hosted card catalog is connected. */
 const KNOWN_NONBASIC_LANDS = new Set([
@@ -54,6 +55,7 @@ export function parseDeck(value) {
 
 export function isLand(name) {
   const normalized = normalizeCardName(name).toLocaleLowerCase();
+  if (CARD_LEGALITY[normalized]) return CARD_LEGALITY[normalized][4] === 1;
   return (
     KNOWN_NONBASIC_LANDS.has(normalized) ||
     /(^|\s)(mountain|island|swamp|forest|plains|wastes)(\s|$)/i.test(normalized) ||

@@ -16,3 +16,10 @@ test("exposes the high-confidence historical strategic prior", () => {
   assert.equal(result.historicalPrior.sampleSize, 1331);
   assert.ok(result.historicalPrior.strategies.length >= 3);
 });
+
+test("derives a response from measured historical transitions", () => {
+  const result = getMetaIntelligence();
+  assert.equal(result.historicalTransitions.analogCount, 4);
+  assert.equal(result.historicalTransitions.favoredResponse, "Control");
+  assert.equal(result.historicalTransitions.confidence, "moderate");
+});

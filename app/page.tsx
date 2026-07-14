@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createRecommendation, isLand, parseDeck } from "./deck-analysis.mjs";
 import { validateDeckLegality } from "./deck-legality.mjs";
 import { getMetaIntelligence } from "./meta-intelligence.mjs";
+import FORGE_CANDIDATE from "./forge-candidate.mjs";
 import { simulateDeck } from "./forge-simulation.mjs";
 
 const SAMPLE_DECK = `4 Monastery Swiftspear
@@ -105,6 +106,14 @@ export default function Home() {
     if (moveToForge) {
       window.setTimeout(() => document.querySelector("#forge")?.scrollIntoView({ behavior: "smooth" }), 0);
     }
+  }
+
+  function loadForgeCandidate() {
+    setDeckName(FORGE_CANDIDATE.name);
+    setFormat(FORGE_CANDIDATE.format);
+    setDeckText(FORGE_CANDIDATE.deckText);
+    setAnalyzed(true);
+    window.setTimeout(() => document.querySelector("#forge")?.scrollIntoView({ behavior: "smooth" }), 0);
   }
 
   function analyze() {
@@ -248,6 +257,7 @@ export default function Home() {
             <article className="meta-historical"><small>HISTORICAL PRIOR · {meta.historicalPrior.start}—{meta.historicalPrior.end}</small><h3>{meta.historicalMajority}-leaning field</h3><p>{meta.historicalPrior.sampleSize} decks provide a high-confidence comparison state—not permission to call it today’s meta.</p><div className="meta-bars">{meta.historicalPrior.strategies.slice(0, 4).map((strategy) => <div key={strategy.name}><span>{strategy.name}</span><i><b style={{ width: `${strategy.share * 100}%` }} /></i><strong>{(strategy.share * 100).toFixed(1)}%</strong></div>)}</div></article>
           </div>
           <p className="meta-method">GENERATOR GATE · {meta.generatorGate.replaceAll("-", " ")} · {meta.method}</p>
+          <article className="forge-prototype"><div><small>FORGE RECOMMENDED · FOUNDER PROTOTYPE</small><h3>{FORGE_CANDIDATE.name}</h3><p>{FORGE_CANDIDATE.reasoning}</p></div><div className="prototype-facts"><span><b>{FORGE_CANDIDATE.strategy}</b>STRATEGY</span><span><b>{FORGE_CANDIDATE.target}</b>TARGET</span><span><b>{FORGE_CANDIDATE.evidence.analogCount}</b>ANALOGS</span><span><b>{FORGE_CANDIDATE.confidence}</b>CONFIDENCE</span></div><button onClick={loadForgeCandidate}>Load generated deck →</button></article>
         </div>
       </section>
 
