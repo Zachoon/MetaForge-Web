@@ -117,6 +117,25 @@ export default function Home() {
     window.setTimeout(() => document.querySelector("#forge")?.scrollIntoView({ behavior: "smooth" }), 0);
   }
 
+  async function startForgeCandidate(candidate = FORGE_CANDIDATE) {
+    loadForgeCandidate(candidate);
+    const candidateRows = parseDeck(candidate.deckText);
+    const candidateFingerprint = await fingerprint(candidateRows);
+    const trial = {
+      id: window.crypto.randomUUID(),
+      deckName: candidate.name,
+      originalDeck: candidate.deckText,
+      proposedDeck: candidate.deckText,
+      status: "testing" as const,
+      startedAt: new Date().toISOString(),
+      originalFingerprint: candidateFingerprint,
+      proposedFingerprint: candidateFingerprint,
+    };
+    window.localStorage.setItem("metaforge.activeExperiment", JSON.stringify(trial));
+    setExperiment(trial);
+    await registerExperiment(trial);
+  }
+
   function analyze() {
     if (cardCount > 0) setAnalyzed(true);
   }
@@ -257,8 +276,8 @@ export default function Home() {
             <article className="meta-historical"><small>HISTORICAL PRIOR · {meta.historicalPrior.start}—{meta.historicalPrior.end}</small><h3>{meta.historicalMajority}-leaning field</h3><p>{meta.historicalPrior.sampleSize} decks provide a high-confidence comparison state—not permission to call it today’s meta.</p><div className="meta-bars">{meta.historicalPrior.strategies.slice(0, 4).map((strategy) => <div key={strategy.name}><span>{strategy.name}</span><i><b style={{ width: `${strategy.share * 100}%` }} /></i><strong>{(strategy.share * 100).toFixed(1)}%</strong></div>)}</div></article>
           </div>
           <p className="meta-method">GENERATOR GATE · {meta.generatorGate.replaceAll("-", " ")} · {meta.method}</p>
-          <article className="forge-prototype"><div><small>FORGE RECOMMENDED · FOUNDER PROTOTYPE</small><h3>{FORGE_CANDIDATE.name}</h3><p>{FORGE_CANDIDATE.reasoning}</p></div><div className="prototype-facts"><span><b>{FORGE_CANDIDATE.strategy}</b>STRATEGY</span><span><b>{FORGE_CANDIDATE.target}</b>TARGET</span><span><b>{(FORGE_CANDIDATE.novelty * 100).toFixed(0)}%</b>NOVELTY</span><span><b>{FORGE_CANDIDATE.rankScore.toFixed(1)}</b>RANK SCORE</span></div><button onClick={() => loadForgeCandidate(FORGE_CANDIDATE)}>Load winner →</button></article>
-          <div className="candidate-rankings">{CANDIDATES.map((candidate) => <article key={candidate.name}><span>0{candidate.rank}</span><div><small>{candidate.strategy} · VS {candidate.target}</small><h4>{candidate.name}</h4><p>{candidate.averageSpellCmc.toFixed(2)} average spell mana · 15-card sideboard · {(candidate.novelty * 100).toFixed(0)}% novelty</p></div><b>{candidate.rankScore.toFixed(1)}</b><button onClick={() => loadForgeCandidate(candidate)}>Load</button></article>)}</div>
+          <article className="forge-prototype"><div><small>FORGE RECOMMENDED · FOUNDER PROTOTYPE</small><h3>{FORGE_CANDIDATE.name}</h3><p>{FORGE_CANDIDATE.reasoning}</p></div><div className="prototype-facts"><span><b>{FORGE_CANDIDATE.strategy}</b>STRATEGY</span><span><b>{FORGE_CANDIDATE.target}</b>TARGET</span><span><b>{(FORGE_CANDIDATE.novelty * 100).toFixed(0)}%</b>NOVELTY</span><span><b>{FORGE_CANDIDATE.rankScore.toFixed(1)}</b>RANK SCORE</span></div><button onClick={() => startForgeCandidate(FORGE_CANDIDATE)}>Start founder trial →</button></article>
+          <div className="candidate-rankings">{CANDIDATES.map((candidate) => <article key={candidate.name}><span>0{candidate.rank}</span><div><small>{candidate.strategy} · VS {candidate.target}</small><h4>{candidate.name}</h4><p>{candidate.averageSpellCmc.toFixed(2)} average spell mana · 15-card sideboard · {(candidate.novelty * 100).toFixed(0)}% novelty</p></div><b>{candidate.rankScore.toFixed(1)}</b><button onClick={() => startForgeCandidate(candidate)}>Test</button></article>)}</div>
         </div>
       </section>
 
