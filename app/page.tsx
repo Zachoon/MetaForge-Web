@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createRecommendation, isLand, parseDeck } from "./deck-analysis.mjs";
 import { validateDeckLegality } from "./deck-legality.mjs";
+import { getMetaIntelligence } from "./meta-intelligence.mjs";
 import { simulateDeck } from "./forge-simulation.mjs";
 
 const SAMPLE_DECK = `4 Monastery Swiftspear
@@ -16,6 +17,7 @@ const SAMPLE_DECK = `4 Monastery Swiftspear
 26 Mountain`;
 
 export default function Home() {
+  const meta = getMetaIntelligence();
   const [deckName, setDeckName] = useState("My deck");
   const [format, setFormat] = useState("Standard");
   const [deckText, setDeckText] = useState("");
@@ -235,6 +237,17 @@ export default function Home() {
           <article><i>01</i><div className="step-icon">＋</div><h3>Add your deck</h3><p>Paste a list from Arena, MTGO, Moxfield, or your notes. No account required.</p></article>
           <article><i>02</i><div className="step-icon">⌁</div><h3>See the pressure points</h3><p>Forge measures composition, consistency, curve, mana, and strategic focus.</p></article>
           <article><i>03</i><div className="step-icon">↗</div><h3>Test a stronger version</h3><p>Compare changes against your original deck and understand every tradeoff.</p></article>
+        </div>
+      </section>
+
+      <section className="meta-section">
+        <div className="shell">
+          <div className="section-heading"><div><span>LIVE FIELD INTELLIGENCE</span><h2>What does the field actually support?</h2></div><p>MetaForge separates fresh observation from historical precedent before it generates a counter-strategy.</p></div>
+          <div className="meta-grid">
+            <article className="meta-current"><small>NEWEST OBSERVED FIELD · {meta.current.end}</small><h3>{meta.majority ? `${meta.majority} is the current majority` : "Current majority not established"}</h3><p>{meta.warning || meta.recommendation}</p><div className="confidence-line"><span>CONFIDENCE</span><b>{meta.current.confidence}</b><i>{meta.current.sampleSize} decks</i></div></article>
+            <article className="meta-historical"><small>HISTORICAL PRIOR · {meta.historicalPrior.start}—{meta.historicalPrior.end}</small><h3>{meta.historicalMajority}-leaning field</h3><p>{meta.historicalPrior.sampleSize} decks provide a high-confidence comparison state—not permission to call it today’s meta.</p><div className="meta-bars">{meta.historicalPrior.strategies.slice(0, 4).map((strategy) => <div key={strategy.name}><span>{strategy.name}</span><i><b style={{ width: `${strategy.share * 100}%` }} /></i><strong>{(strategy.share * 100).toFixed(1)}%</strong></div>)}</div></article>
+          </div>
+          <p className="meta-method">GENERATOR GATE · {meta.generatorGate.replaceAll("-", " ")} · {meta.method}</p>
         </div>
       </section>
 
