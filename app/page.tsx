@@ -24,13 +24,16 @@ export default function Home() {
   const [proposedDeck, setProposedDeck] = useState("");
   const [comparisonReady, setComparisonReady] = useState(false);
   const [arenaStatus, setArenaStatus] = useState<"idle" | "connecting" | "connected" | "needs-logs" | "offline">("idle");
-  const [arenaMatches, setArenaMatches] = useState<Array<{ id: string; completedAt: string; gamesWon: number; gamesLost: number; result: "win" | "loss"; mulligans: number }>>([]);
+  const [arenaMatches, setArenaMatches] = useState<Array<{ id: string; completedAt: string; gamesWon: number; gamesLost: number; result: "win" | "loss"; mulligans: number; experimentVariant?: "original" | "proposed" | "unmatched" }>>([]);
   const [experiment, setExperiment] = useState<null | {
+    id?: string;
     deckName: string;
     originalDeck: string;
     proposedDeck: string;
     status: "testing" | "kept" | "reverted";
     startedAt: string;
+    originalFingerprint?: string;
+    proposedFingerprint?: string;
   }>(null);
 
   const rows = useMemo(() => parseDeck(deckText), [deckText]);
@@ -75,6 +78,17 @@ export default function Home() {
       const response = await fetch("http://127.0.0.1:17831/health", { cache: "no-store" });
       const data = await response.json();
       setArenaStatus(data.logFound ? "connected" : "needs-logs");
+      if (data.logFound && experiment) {
+        const upgraded = experiment.originalFingerprint && experiment.proposedFingerprint ? experiment : {
+          ...experiment,
+          id: experiment.id || window.crypto.randomUUID(),
+          originalFingerprint: await fingerprint(parseDeck(experiment.originalDeck)),
+          proposedFingerprint: await fingerprint(parseDeck(experiment.proposedDeck)),
+        };
+        window.localStorage.setItem("metaforge.activeExperiment", JSON.stringify(upgraded));
+        setExperiment(upgraded);
+        await registerExperiment(upgraded);
+      }
     } catch {
       setArenaStatus("offline");
     }
@@ -101,17 +115,38 @@ export default function Home() {
     window.setTimeout(() => document.querySelector("#test-bench")?.scrollIntoView({ behavior: "smooth" }), 0);
   }
 
-  function saveExperiment() {
+  async function fingerprint(deckRows: Array<{ name: string; quantity: number }>) {
+    const totals = new Map<string, number>();
+    deckRows.forEach((row) => totals.set(row.name.trim().toLowerCase(), (totals.get(row.name.trim().toLowerCase()) || 0) + row.quantity));
+    const canonical = [...totals.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([name, quantity]) => `${quantity} ${name}`).join("\n");
+    const digest = await window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
+    return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("").slice(0, 24);
+  }
+
+  async function registerExperiment(nextExperiment: NonNullable<typeof experiment>) {
+    try {
+      await fetch("http://127.0.0.1:17831/experiment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(nextExperiment) });
+    } catch {
+      // The local experiment remains saved and can be paired when the companion reconnects.
+    }
+  }
+
+  async function saveExperiment() {
     if (!proposedRows.length || proposedDeck.trim() === deckText.trim()) return;
+    const [originalFingerprint, proposedFingerprint] = await Promise.all([fingerprint(rows), fingerprint(proposedRows)]);
     const nextExperiment = {
+      id: window.crypto.randomUUID(),
       deckName: deckName || "Untitled deck",
       originalDeck: deckText,
       proposedDeck,
       status: "testing" as const,
       startedAt: new Date().toISOString(),
+      originalFingerprint,
+      proposedFingerprint,
     };
     window.localStorage.setItem("metaforge.activeExperiment", JSON.stringify(nextExperiment));
     setExperiment(nextExperiment);
+    await registerExperiment(nextExperiment);
   }
 
   function decideExperiment(status: "testing" | "kept" | "reverted") {
@@ -124,6 +159,11 @@ export default function Home() {
     window.localStorage.setItem("metaforge.activeExperiment", JSON.stringify(updated));
     setExperiment(updated);
   }
+
+  const proposedEvidence = arenaMatches.filter((match) => (match as typeof match & { experimentVariant?: string }).experimentVariant === "proposed");
+  const proposedWins = proposedEvidence.filter((match) => match.result === "win").length;
+  const evidenceConfidence = proposedEvidence.length < 5 ? "EARLY SIGNAL" : proposedEvidence.length < 12 ? "DEVELOPING" : "MEANINGFUL SAMPLE";
+  const evidenceVerdict = proposedEvidence.length === 0 ? "No Arena matches have been matched to this proposed build yet." : proposedEvidence.length < 5 ? `MetaForge has matched ${proposedEvidence.length} game${proposedEvidence.length === 1 ? "" : "s"} to the proposed build. This is enough to observe, not enough to judge.` : proposedWins / proposedEvidence.length < .4 ? "The proposed build is underperforming so far. The Forge will treat the original recommendation as challenged while gathering matchup and gameplay context." : "The proposed build is holding up in live play. Continue testing while the Forge checks whether the result survives a larger matchup spread.";
 
   return (
     <main>
@@ -228,6 +268,13 @@ export default function Home() {
               <div className="arena-history-heading"><div><small>PERSONAL PLAY EVIDENCE</small><h3>Recent Arena matches</h3></div><span>{arenaMatches.filter((match) => match.result === "win").length}–{arenaMatches.filter((match) => match.result === "loss").length}</span></div>
               <div className="arena-match-list">{arenaMatches.slice(0, 8).map((match) => <article key={match.id} className={match.result}><b>{match.result === "win" ? "WIN" : "LOSS"}</b><span>{match.gamesWon}–{match.gamesLost} games</span><span>{match.mulligans} mulligans</span><time>{new Date(match.completedAt).toLocaleString()}</time></article>)}</div>
               <p>This evidence belongs to your testing history. It does not alter MetaForge’s global intelligence.</p>
+            </section>
+          )}
+          {experiment && (
+            <section className="forge-evidence">
+              <div><small>FORGE EXPERIMENT EVIDENCE</small><h3>{evidenceConfidence}</h3></div>
+              <div><b>{proposedWins}–{proposedEvidence.length - proposedWins}</b><span>MATCHED PROPOSED BUILD</span></div>
+              <p>{evidenceVerdict}</p>
             </section>
           )}
           <div className="workspace">

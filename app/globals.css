@@ -153,6 +153,14 @@ input:focus,select:focus,textarea:focus { border-color:var(--mint); box-shadow:0
 .arena-match-list article b { color:var(--mint); letter-spacing:.1em; }
 .arena-match-list article.loss b { color:var(--amber); }
 .arena-match-list time { text-align:right; }
+.forge-evidence { margin-top:18px; padding:20px 26px; display:grid; grid-template-columns:1fr auto 2fr; align-items:center; gap:28px; border:1px solid #6b5134; background:linear-gradient(110deg,#21170f,#101b1b); }
+.forge-evidence small { color:var(--amber); font-size:9px; letter-spacing:.16em; font-weight:800; }
+.forge-evidence h3 { margin:6px 0 0; font:500 22px Georgia,serif; }
+.forge-evidence>div:nth-child(2) { text-align:center; }
+.forge-evidence b,.forge-evidence span { display:block; }
+.forge-evidence b { color:var(--mint); font:500 27px Georgia,serif; }
+.forge-evidence span { margin-top:4px; color:#718986; font-size:8px; letter-spacing:.12em; }
+.forge-evidence p { margin:0; color:#a7b6b2; font-size:12px; line-height:1.55; }
 .test-bench-web { margin-top:28px; padding:30px; background:#081315; border:1px solid #355155; box-shadow:0 28px 60px #0007; }
 .bench-heading { display:flex; align-items:end; justify-content:space-between; gap:30px; margin-bottom:24px; }
 .bench-heading h3 { margin:8px 0 0; font:500 30px Georgia,serif; }
@@ -173,6 +181,6 @@ input:focus,select:focus,textarea:focus { border-color:var(--mint); box-shadow:0
 .comparison-results .save-experiment { margin:0; border-radius:0; }
 footer { min-height:120px; display:flex; align-items:center; justify-content:space-between; color:#667b79; font-size:11px; }
 footer p { font-family:Georgia,serif; font-style:italic; }
-@media (max-width:900px) { .nav-links{display:none}.hero{grid-template-columns:1fr;padding-top:45px}.hero-visual{max-width:720px;width:100%}.proof-inner{grid-template-columns:1fr 1fr;padding-block:22px;gap:18px}.steps,.workspace{grid-template-columns:1fr}.steps article{border-right:0;border-bottom:1px solid var(--line)}.input-panel{border-right:0;border-bottom:1px solid var(--line)}.section-heading,.forge-heading,.bench-heading,.experiment-return,.arena-bridge{align-items:start;flex-direction:column}.arena-bridge button{width:100%}.arena-match-list article{grid-template-columns:60px 1fr}.arena-match-list time{text-align:left}.bench-grid{grid-template-columns:1fr}.result-panel{min-height:520px} }
+@media (max-width:900px) { .nav-links{display:none}.hero{grid-template-columns:1fr;padding-top:45px}.hero-visual{max-width:720px;width:100%}.proof-inner{grid-template-columns:1fr 1fr;padding-block:22px;gap:18px}.steps,.workspace{grid-template-columns:1fr}.steps article{border-right:0;border-bottom:1px solid var(--line)}.input-panel{border-right:0;border-bottom:1px solid var(--line)}.section-heading,.forge-heading,.bench-heading,.experiment-return,.arena-bridge{align-items:start;flex-direction:column}.arena-bridge button{width:100%}.arena-match-list article{grid-template-columns:60px 1fr}.arena-match-list time{text-align:left}.forge-evidence{grid-template-columns:1fr}.forge-evidence>div:nth-child(2){text-align:left}.bench-grid{grid-template-columns:1fr}.result-panel{min-height:520px} }
 @media (max-width:600px) { .shell{width:min(100% - 28px,1180px)}.nav{height:68px}.nav-cta{padding:10px 12px}.hero{gap:48px;padding-bottom:70px}h1{font-size:48px}.hero-actions{align-items:stretch;flex-direction:column}.trust-row{gap:10px}.hero-visual{min-height:500px;padding:14px;background-position:64% center}.floating-report{left:14px;right:14px;bottom:14px}.proof-inner{grid-template-columns:1fr}.proof-inner div{padding:10px 0;border-left:0;border-top:1px solid #243a3d}.process,.forge-section{padding-block:70px}.forge-architecture{height:270px;grid-template-columns:1fr;background-position:44% center}.forge-architecture div{display:none}.steps{margin-top:14px}.field-row{grid-template-columns:1fr}.input-panel,.result-panel{padding:18px}.metric-row{grid-template-columns:1fr}.metric-row div{border-right:0;border-bottom:1px solid var(--line)}footer{padding-block:32px;gap:22px;align-items:flex-start;flex-direction:column} }
 @media (prefers-reduced-motion:reduce) { html{scroll-behavior:auto}.scan-line,.analysis-result{animation:none} }
