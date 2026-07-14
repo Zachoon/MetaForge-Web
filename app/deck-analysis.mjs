@@ -70,6 +70,27 @@ export function mechanicProfile(rows) {
   return Object.fromEntries(counts);
 }
 
+export function evaluateLandEngine(rows) {
+  const profile = mechanicProfile(rows);
+  const lands = rows.filter((row) => isLand(row.name));
+  const basics = lands.filter((row) => /^(plains|island|swamp|mountain|forest|wastes)$/i.test(row.name));
+  const fetchNames = new Set(["evolving wilds", "fabled passage", "terramorphic expanse", "escape tunnel"]);
+  const slowFetchNames = new Set(["evolving wilds", "terramorphic expanse", "escape tunnel"]);
+  const fetches = lands.filter((row) => fetchNames.has(row.name.toLocaleLowerCase()));
+  const slowFetches = fetches.filter((row) => slowFetchNames.has(row.name.toLocaleLowerCase()));
+  const landCount = lands.reduce((sum, row) => sum + row.quantity, 0);
+  const basicCount = basics.reduce((sum, row) => sum + row.quantity, 0);
+  const fetchCount = fetches.reduce((sum, row) => sum + row.quantity, 0);
+  const slowFetchCount = slowFetches.reduce((sum, row) => sum + row.quantity, 0);
+  const payoffCount = profile.landfall_payoff || 0;
+  const supportScore = payoffCount * 2 + (profile.land_recursion || 0) * 2 + (profile.land_count_payoff || 0) + (profile.earthbend || 0);
+  const excessLands = Math.max(0, landCount - 26);
+  const targetExhaustion = Math.max(0, fetchCount - basicCount);
+  const tempoPressure = slowFetchCount + excessLands * 2 + targetExhaustion;
+  const posture = excessLands >= 2 ? "excess-land-risk" : payoffCount >= 4 && supportScore > tempoPressure ? "preserve" : payoffCount > 0 && slowFetchCount >= 4 ? "trim-test" : payoffCount > 0 ? "balanced" : "no-landfall-engine";
+  return { ...profile, landCount, basicCount, fetchCount, slowFetchCount, payoffCount, supportScore, tempoPressure, excessLands, targetExhaustion, posture };
+}
+
 export function createRecommendation(rows, format = "Standard") {
   const total = rows.reduce((sum, row) => sum + row.quantity, 0);
   const lands = rows.filter((row) => isLand(row.name));
@@ -80,7 +101,7 @@ export function createRecommendation(rows, format = "Standard") {
   const dominantBasic = [...basics].sort((left, right) => right.quantity - left.quantity)[0];
   const proposed = rows.map((row) => ({ ...row }));
   const changes = [];
-  const mechanics = mechanicProfile(rows);
+  const mechanics = evaluateLandEngine(rows);
 
   if (total > 60 && nonlands.length) {
     let remaining = total - 60;
@@ -124,6 +145,31 @@ export function createRecommendation(rows, format = "Standard") {
   const fetchNames = new Set(["evolving wilds", "fabled passage", "terramorphic expanse", "escape tunnel"]);
   const fetches = lands.filter((row) => fetchNames.has(row.name.toLocaleLowerCase()));
   const fetchCount = fetches.reduce((sum, row) => sum + row.quantity, 0);
+  if (fetchCount && mechanics.posture === "excess-land-risk") {
+    return {
+      title: "Landfall value does not erase flood risk",
+      summary: `Forge found ${landCount} lands and ${mechanics.payoffCount} Landfall payoff card(s). The trigger engine matters, but this list is carrying ${mechanics.excessLands} land(s) above the conservative 26-land ceiling used by this early model.`,
+      reasoning: "Do not replace fetches blindly: first identify which land slots create the least trigger, color, recursion, and curve value. Arena evidence should confirm flooding before a cut is committed.",
+      proposedDeck: formatDeck(rows),
+      changes: [],
+      mechanics,
+    };
+  }
+  if (fetchCount && mechanics.posture === "trim-test" && dominantBasic) {
+    const slowFetch = fetches.find((row) => ["evolving wilds", "terramorphic expanse", "escape tunnel"].includes(row.name.toLocaleLowerCase())) ?? fetches[0];
+    const swap = Math.min(2, slowFetch.quantity);
+    adjustQuantity(proposed, slowFetch.name, -swap);
+    adjustQuantity(proposed, dominantBasic.name, swap);
+    changes.push({ card: slowFetch.name, quantity: -swap }, { card: dominantBasic.name, quantity: swap });
+    return recommendation(
+      "Test a smaller Landfall tempo tax",
+      `Landfall is present, but ${mechanics.slowFetchCount} always-tapped fetch land(s) currently support only ${mechanics.payoffCount} payoff card(s). Test trimming ${swap}, not deleting the engine.`,
+      "This preserves most double-trigger access while measuring whether more untapped early mana improves real games. Keep the original if trigger loss matters more than sequencing speed.",
+      proposed,
+      changes,
+      mechanics,
+    );
+  }
   if (fetchCount && mechanics.landfall_payoff) {
     return {
       title: "Preserve the landfall engine",
@@ -183,6 +229,6 @@ function adjustQuantity(rows, name, delta) {
   else if (delta > 0) rows.push({ name, quantity: delta });
 }
 
-function recommendation(title, summary, reasoning, proposed, changes) {
-  return { title, summary, reasoning, proposedDeck: formatDeck(proposed), changes };
+function recommendation(title, summary, reasoning, proposed, changes, mechanics) {
+  return { title, summary, reasoning, proposedDeck: formatDeck(proposed), changes, ...(mechanics ? { mechanics } : {}) };
 }

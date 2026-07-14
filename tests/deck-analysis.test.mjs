@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createRecommendation, isLand, mechanicProfile, normalizeCardName, parseDeck } from "../app/deck-analysis.mjs";
+import { createRecommendation, evaluateLandEngine, isLand, mechanicProfile, normalizeCardName, parseDeck } from "../app/deck-analysis.mjs";
 
 const arenaDeck = `Deck
 4 Mossborn Hydra (FDN) 107
@@ -52,4 +52,22 @@ test("preserves fetch lands when the deck contains landfall payoffs", () => {
   assert.equal(result.title, "Preserve the landfall engine");
   assert.deepEqual(result.changes, []);
   assert.match(result.reasoning, /two separate land-entering events/i);
+});
+
+test("trims rather than blindly preserves an oversized slow fetch package with weak landfall density", () => {
+  const rows = parseDeck("1 Mossborn Hydra\n16 Forest\n4 Fabled Passage\n4 Evolving Wilds\n35 Core Spell");
+  const evaluation = evaluateLandEngine(rows);
+  const result = createRecommendation(rows, "Standard");
+  assert.equal(evaluation.posture, "trim-test");
+  assert.match(result.title, /tempo tax/i);
+  assert.deepEqual(result.changes, [{ card: "Evolving Wilds", quantity: -2 }, { card: "Forest", quantity: 2 }]);
+});
+
+test("flags excessive land count even when landfall synergy is strong", () => {
+  const rows = parseDeck("4 Mossborn Hydra\n4 Earthbender Ascension\n20 Forest\n4 Fabled Passage\n4 Evolving Wilds\n24 Core Spell");
+  const evaluation = evaluateLandEngine(rows);
+  const result = createRecommendation(rows, "Standard");
+  assert.equal(evaluation.posture, "excess-land-risk");
+  assert.match(result.title, /flood risk/i);
+  assert.deepEqual(result.changes, []);
 });

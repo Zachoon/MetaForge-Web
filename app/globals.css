@@ -125,6 +125,11 @@ input:focus,select:focus,textarea:focus { border-color:var(--mint); box-shadow:0
 .change-set b { padding:7px 10px; font-size:11px; border:1px solid #3e5658; font-weight:700; }
 .change-set b.add { color:var(--mint); border-color:#3e6d66; background:#102522; }
 .change-set b.remove { color:#e9b474; border-color:#6b5134; background:#251b12; }
+.mechanic-tradeoff { margin-top:14px; padding:13px 15px; display:grid; grid-template-columns:1.4fr repeat(3,1fr) 1.5fr; align-items:center; gap:12px; border:1px solid #31514d; background:#0a1717; }
+.mechanic-tradeoff>span { color:var(--mint); font-size:8px; letter-spacing:.15em; }
+.mechanic-tradeoff b,.mechanic-tradeoff small { display:block; }
+.mechanic-tradeoff b { color:#e5eeeb; font-size:13px; text-transform:capitalize; }
+.mechanic-tradeoff small { margin-top:3px; color:#687f7c; font-size:7px; letter-spacing:.1em; }
 .next-test { margin-top:16px; padding:18px; border:1px solid #2f4c4e; }
 .next-test p { margin:9px 0 14px; font-size:13px; }
 .next-test button { width:100%; border:1px solid var(--mint); background:transparent; color:var(--mint); padding:11px; font-size:12px; font-weight:750; }
