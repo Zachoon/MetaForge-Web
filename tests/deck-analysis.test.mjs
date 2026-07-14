@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createRecommendation, isLand, normalizeCardName, parseDeck } from "../app/deck-analysis.mjs";
+import { createRecommendation, isLand, mechanicProfile, normalizeCardName, parseDeck } from "../app/deck-analysis.mjs";
 
 const arenaDeck = `Deck
 4 Mossborn Hydra (FDN) 107
@@ -42,4 +42,14 @@ test("creates a mana experiment instead of copying a low-land deck", () => {
   const recommendation = createRecommendation(parseDeck("22 Mountain\n2 Expensive Spell\n36 Core Spell"));
   assert.match(recommendation.title, /mana/i);
   assert.notEqual(recommendation.proposedDeck, "22 Mountain\n2 Expensive Spell\n36 Core Spell");
+});
+
+test("preserves fetch lands when the deck contains landfall payoffs", () => {
+  const rows = parseDeck("4 Mossborn Hydra\n4 Earthbender Ascension\n16 Forest\n4 Fabled Passage\n4 Evolving Wilds\n28 Llanowar Elves");
+  const profile = mechanicProfile(rows);
+  const result = createRecommendation(rows, "Standard");
+  assert.equal(profile.landfall_payoff, 8);
+  assert.equal(result.title, "Preserve the landfall engine");
+  assert.deepEqual(result.changes, []);
+  assert.match(result.reasoning, /two separate land-entering events/i);
 });

@@ -1,3 +1,5 @@
+import CARD_MECHANICS from "./card-mechanics.mjs";
+
 /** Lands needed by the offline preview before the hosted card catalog is connected. */
 const KNOWN_NONBASIC_LANDS = new Set([
   "evolving wilds",
@@ -59,6 +61,15 @@ export function isLand(name) {
   );
 }
 
+export function mechanicProfile(rows) {
+  const counts = new Map();
+  for (const row of rows) {
+    const tags = CARD_MECHANICS[normalizeCardName(row.name).toLocaleLowerCase()] || [];
+    for (const tag of tags) counts.set(tag, (counts.get(tag) || 0) + row.quantity);
+  }
+  return Object.fromEntries(counts);
+}
+
 export function createRecommendation(rows, format = "Standard") {
   const total = rows.reduce((sum, row) => sum + row.quantity, 0);
   const lands = rows.filter((row) => isLand(row.name));
@@ -69,6 +80,7 @@ export function createRecommendation(rows, format = "Standard") {
   const dominantBasic = [...basics].sort((left, right) => right.quantity - left.quantity)[0];
   const proposed = rows.map((row) => ({ ...row }));
   const changes = [];
+  const mechanics = mechanicProfile(rows);
 
   if (total > 60 && nonlands.length) {
     let remaining = total - 60;
@@ -112,6 +124,16 @@ export function createRecommendation(rows, format = "Standard") {
   const fetchNames = new Set(["evolving wilds", "fabled passage", "terramorphic expanse", "escape tunnel"]);
   const fetches = lands.filter((row) => fetchNames.has(row.name.toLocaleLowerCase()));
   const fetchCount = fetches.reduce((sum, row) => sum + row.quantity, 0);
+  if (fetchCount && mechanics.landfall_payoff) {
+    return {
+      title: "Preserve the landfall engine",
+      summary: `Forge found ${mechanics.landfall_payoff} landfall payoff card(s) supported by ${fetchCount} fetch-style lands. It will not recommend replacing those fetches with basics from composition alone.`,
+      reasoning: "A fetch land can create two separate land-entering events from one land play: the fetch itself, then the land it finds. That interaction can outweigh tapped-land tempo and makes the fetch package a synergy component, not merely mana fixing.",
+      proposedDeck: formatDeck(rows),
+      changes: [],
+      mechanics,
+    };
+  }
   if (dominantBasic && basics.length === 1 && fetchCount >= 4) {
     const slowFetch = fetches.find((row) => ["evolving wilds", "terramorphic expanse"].includes(row.name.toLocaleLowerCase())) ?? fetches[0];
     const swap = Math.min(2, slowFetch.quantity);
