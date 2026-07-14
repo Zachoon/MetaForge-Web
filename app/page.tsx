@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { isLand, parseDeck } from "./deck-analysis.mjs";
 
 const SAMPLE_DECK = `4 Monastery Swiftspear
 4 Slickshot Show-Off
@@ -12,23 +13,6 @@ const SAMPLE_DECK = `4 Monastery Swiftspear
 4 Boltwave
 2 Witchstalker Frenzy
 22 Mountain`;
-
-type CardRow = { quantity: number; name: string };
-
-function parseDeck(value: string): CardRow[] {
-  return value
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .flatMap((line) => {
-      const match = line.match(/^(\d+)\s+(.+)$/);
-      return match ? [{ quantity: Number(match[1]), name: match[2].trim() }] : [];
-    });
-}
-
-function isLand(name: string) {
-  return /(mountain|island|swamp|forest|plains|wastes|land|sanctum|tower|garden|pool|coast|falls|pathway|courtyard|cavern|foundry|vents|tomb)/i.test(name);
-}
 
 export default function Home() {
   const [deckName, setDeckName] = useState("My deck");
