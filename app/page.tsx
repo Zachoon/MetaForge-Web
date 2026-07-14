@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { createRecommendation, isLand, parseDeck } from "./deck-analysis.mjs";
 import { validateDeckLegality } from "./deck-legality.mjs";
 import { getMetaIntelligence } from "./meta-intelligence.mjs";
-import FORGE_CANDIDATE from "./forge-candidate.mjs";
+import FORGE_CANDIDATE, { CANDIDATES } from "./forge-candidate.mjs";
+import { evaluateExperiment } from "./experiment-evidence.mjs";
 import { simulateDeck } from "./forge-simulation.mjs";
 
 const SAMPLE_DECK = `4 Monastery Swiftspear
@@ -108,10 +109,10 @@ export default function Home() {
     }
   }
 
-  function loadForgeCandidate() {
-    setDeckName(FORGE_CANDIDATE.name);
-    setFormat(FORGE_CANDIDATE.format);
-    setDeckText(FORGE_CANDIDATE.deckText);
+  function loadForgeCandidate(candidate = FORGE_CANDIDATE) {
+    setDeckName(candidate.name);
+    setFormat(candidate.format);
+    setDeckText(`${candidate.deckText}\n\nSideboard\n${candidate.sideboardText}`);
     setAnalyzed(true);
     window.setTimeout(() => document.querySelector("#forge")?.scrollIntoView({ behavior: "smooth" }), 0);
   }
@@ -174,9 +175,8 @@ export default function Home() {
   }
 
   const proposedEvidence = arenaMatches.filter((match) => (match as typeof match & { experimentVariant?: string }).experimentVariant === "proposed");
-  const proposedWins = proposedEvidence.filter((match) => match.result === "win").length;
-  const evidenceConfidence = proposedEvidence.length < 5 ? "EARLY SIGNAL" : proposedEvidence.length < 12 ? "DEVELOPING" : "MEANINGFUL SAMPLE";
-  const evidenceVerdict = proposedEvidence.length === 0 ? "No Arena matches have been matched to this proposed build yet." : proposedEvidence.length < 5 ? `MetaForge has matched ${proposedEvidence.length} game${proposedEvidence.length === 1 ? "" : "s"} to the proposed build. This is enough to observe, not enough to judge.` : proposedWins / proposedEvidence.length < .4 ? "The proposed build is underperforming so far. The Forge will treat the original recommendation as challenged while gathering matchup and gameplay context." : "The proposed build is holding up in live play. Continue testing while the Forge checks whether the result survives a larger matchup spread.";
+  const experimentEvidence = evaluateExperiment(proposedEvidence);
+  const nextCandidate = experiment ? CANDIDATES[(CANDIDATES.findIndex((candidate) => candidate.name === experiment.deckName) + 1) % CANDIDATES.length] : null;
 
   return (
     <main>
@@ -257,7 +257,8 @@ export default function Home() {
             <article className="meta-historical"><small>HISTORICAL PRIOR · {meta.historicalPrior.start}—{meta.historicalPrior.end}</small><h3>{meta.historicalMajority}-leaning field</h3><p>{meta.historicalPrior.sampleSize} decks provide a high-confidence comparison state—not permission to call it today’s meta.</p><div className="meta-bars">{meta.historicalPrior.strategies.slice(0, 4).map((strategy) => <div key={strategy.name}><span>{strategy.name}</span><i><b style={{ width: `${strategy.share * 100}%` }} /></i><strong>{(strategy.share * 100).toFixed(1)}%</strong></div>)}</div></article>
           </div>
           <p className="meta-method">GENERATOR GATE · {meta.generatorGate.replaceAll("-", " ")} · {meta.method}</p>
-          <article className="forge-prototype"><div><small>FORGE RECOMMENDED · FOUNDER PROTOTYPE</small><h3>{FORGE_CANDIDATE.name}</h3><p>{FORGE_CANDIDATE.reasoning}</p></div><div className="prototype-facts"><span><b>{FORGE_CANDIDATE.strategy}</b>STRATEGY</span><span><b>{FORGE_CANDIDATE.target}</b>TARGET</span><span><b>{FORGE_CANDIDATE.evidence.analogCount}</b>ANALOGS</span><span><b>{FORGE_CANDIDATE.confidence}</b>CONFIDENCE</span></div><button onClick={loadForgeCandidate}>Load generated deck →</button></article>
+          <article className="forge-prototype"><div><small>FORGE RECOMMENDED · FOUNDER PROTOTYPE</small><h3>{FORGE_CANDIDATE.name}</h3><p>{FORGE_CANDIDATE.reasoning}</p></div><div className="prototype-facts"><span><b>{FORGE_CANDIDATE.strategy}</b>STRATEGY</span><span><b>{FORGE_CANDIDATE.target}</b>TARGET</span><span><b>{(FORGE_CANDIDATE.novelty * 100).toFixed(0)}%</b>NOVELTY</span><span><b>{FORGE_CANDIDATE.rankScore.toFixed(1)}</b>RANK SCORE</span></div><button onClick={() => loadForgeCandidate(FORGE_CANDIDATE)}>Load winner →</button></article>
+          <div className="candidate-rankings">{CANDIDATES.map((candidate) => <article key={candidate.name}><span>0{candidate.rank}</span><div><small>{candidate.strategy} · VS {candidate.target}</small><h4>{candidate.name}</h4><p>{candidate.averageSpellCmc.toFixed(2)} average spell mana · 15-card sideboard · {(candidate.novelty * 100).toFixed(0)}% novelty</p></div><b>{candidate.rankScore.toFixed(1)}</b><button onClick={() => loadForgeCandidate(candidate)}>Load</button></article>)}</div>
         </div>
       </section>
 
@@ -297,9 +298,10 @@ export default function Home() {
           )}
           {experiment && (
             <section className="forge-evidence">
-              <div><small>FORGE EXPERIMENT EVIDENCE</small><h3>{evidenceConfidence}</h3></div>
-              <div><b>{proposedWins}–{proposedEvidence.length - proposedWins}</b><span>MATCHED PROPOSED BUILD</span></div>
-              <p>{evidenceVerdict}</p>
+              <div><small>FORGE EXPERIMENT EVIDENCE</small><h3>{experimentEvidence.confidence.toUpperCase()}</h3></div>
+              <div><b>{experimentEvidence.wins}–{experimentEvidence.losses}</b><span>{experimentEvidence.decision.toUpperCase()}</span></div>
+              <p>{experimentEvidence.narrative}{experimentEvidence.sampleSize > 0 && ` Estimated strength ${(experimentEvidence.posteriorMean * 100).toFixed(0)}%; 95% interval ${(experimentEvidence.interval[0] * 100).toFixed(0)}–${(experimentEvidence.interval[1] * 100).toFixed(0)}%.`}</p>
+              {nextCandidate && ["challenge", "retire"].includes(experimentEvidence.decision) && <button onClick={() => loadForgeCandidate(nextCandidate)}>Promote next candidate →</button>}
             </section>
           )}
           <div className="workspace">

@@ -94,6 +94,7 @@ h1 em { color:var(--mint); font-weight:500; }
 .forge-prototype { margin-top:26px; padding:28px; display:grid; grid-template-columns:1.4fr 1fr auto; align-items:center; gap:28px; border:1px solid #7b5732; border-left:4px solid var(--amber); background:linear-gradient(110deg,#20160e,#0d1b1b); }
 .forge-prototype small { color:var(--amber); font-size:9px; letter-spacing:.16em; }.forge-prototype h3 { margin:8px 0; font:500 27px Georgia,serif; }.forge-prototype p { margin:0; color:#91a5a1; font-size:12px; line-height:1.5; }
 .prototype-facts { display:grid; grid-template-columns:1fr 1fr; gap:13px; }.prototype-facts span,.prototype-facts b { display:block; }.prototype-facts span { color:#667d79; font-size:7px; letter-spacing:.12em; }.prototype-facts b { margin-bottom:3px; color:#e6eeeb; font-size:12px; text-transform:capitalize; }.forge-prototype button { padding:14px 18px; border:1px solid var(--amber); background:var(--amber); color:#101819; font-weight:800; white-space:nowrap; }
+.candidate-rankings { border:1px solid #2b4444; border-top:0; }.candidate-rankings article { display:grid; grid-template-columns:45px 1fr 60px 70px; gap:15px; align-items:center; padding:14px 18px; border-bottom:1px solid #243a3a; background:#0a1718; }.candidate-rankings article:last-child { border-bottom:0; }.candidate-rankings>article>span { color:var(--amber); font:500 20px Georgia,serif; }.candidate-rankings small { color:#6b827e; font-size:7px; letter-spacing:.13em; }.candidate-rankings h4 { margin:3px 0; font:500 16px Georgia,serif; }.candidate-rankings p { margin:0; color:#708682; font-size:9px; }.candidate-rankings>article>b { color:var(--mint); text-align:right; }.candidate-rankings button { padding:8px; border:1px solid #3a5d58; background:transparent; color:var(--mint); }
 .workspace { margin-top:44px; display:grid; grid-template-columns:1fr 1fr; border:1px solid #355155; background:#091214; box-shadow:0 35px 80px #0005; }
 .input-panel,.result-panel { min-height:610px; padding:28px; }
 .input-panel { border-right:1px solid #355155; }
@@ -185,6 +186,7 @@ input:focus,select:focus,textarea:focus { border-color:var(--mint); box-shadow:0
 .forge-evidence b { color:var(--mint); font:500 27px Georgia,serif; }
 .forge-evidence span { margin-top:4px; color:#718986; font-size:8px; letter-spacing:.12em; }
 .forge-evidence p { margin:0; color:#a7b6b2; font-size:12px; line-height:1.55; }
+.forge-evidence>button { padding:10px 12px; border:1px solid var(--amber); background:transparent; color:var(--amber); font-weight:750; }
 .test-bench-web { margin-top:28px; padding:30px; background:#081315; border:1px solid #355155; box-shadow:0 28px 60px #0007; }
 .bench-heading { display:flex; align-items:end; justify-content:space-between; gap:30px; margin-bottom:24px; }
 .bench-heading h3 { margin:8px 0 0; font:500 30px Georgia,serif; }
