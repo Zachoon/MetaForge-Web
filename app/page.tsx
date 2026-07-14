@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { isLand, parseDeck } from "./deck-analysis.mjs";
+import { simulateDeck } from "./forge-simulation.mjs";
 
 const SAMPLE_DECK = `4 Monastery Swiftspear
 4 Slickshot Show-Off
@@ -19,12 +20,35 @@ export default function Home() {
   const [format, setFormat] = useState("Standard");
   const [deckText, setDeckText] = useState("");
   const [analyzed, setAnalyzed] = useState(false);
+  const [comparisonOpen, setComparisonOpen] = useState(false);
+  const [proposedDeck, setProposedDeck] = useState("");
+  const [comparisonReady, setComparisonReady] = useState(false);
+  const [experiment, setExperiment] = useState<null | {
+    deckName: string;
+    originalDeck: string;
+    proposedDeck: string;
+    status: "testing" | "kept" | "reverted";
+    startedAt: string;
+  }>(null);
 
   const rows = useMemo(() => parseDeck(deckText), [deckText]);
   const cardCount = rows.reduce((sum, row) => sum + row.quantity, 0);
   const landCount = rows.filter((row) => isLand(row.name)).reduce((sum, row) => sum + row.quantity, 0);
   const uniqueCount = rows.length;
   const health = Math.max(42, Math.min(94, 78 - Math.abs(24 - landCount) * 2 - Math.abs(60 - cardCount)));
+  const proposedRows = useMemo(() => parseDeck(proposedDeck), [proposedDeck]);
+  const originalMetrics = useMemo(() => comparisonReady ? simulateDeck(rows) : null, [comparisonReady, rows]);
+  const proposedMetrics = useMemo(() => comparisonReady ? simulateDeck(proposedRows, 2500, 19411) : null, [comparisonReady, proposedRows]);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem("metaforge.activeExperiment");
+    if (!stored) return;
+    try {
+      setExperiment(JSON.parse(stored));
+    } catch {
+      window.localStorage.removeItem("metaforge.activeExperiment");
+    }
+  }, []);
 
   function loadSample() {
     setDeckName("Red Prowess");
@@ -35,6 +59,37 @@ export default function Home() {
 
   function analyze() {
     if (cardCount > 0) setAnalyzed(true);
+  }
+
+  function prepareComparison() {
+    setProposedDeck(deckText);
+    setComparisonReady(false);
+    setComparisonOpen(true);
+    window.setTimeout(() => document.querySelector("#test-bench")?.scrollIntoView({ behavior: "smooth" }), 0);
+  }
+
+  function saveExperiment() {
+    if (!proposedRows.length || proposedDeck.trim() === deckText.trim()) return;
+    const nextExperiment = {
+      deckName: deckName || "Untitled deck",
+      originalDeck: deckText,
+      proposedDeck,
+      status: "testing" as const,
+      startedAt: new Date().toISOString(),
+    };
+    window.localStorage.setItem("metaforge.activeExperiment", JSON.stringify(nextExperiment));
+    setExperiment(nextExperiment);
+  }
+
+  function decideExperiment(status: "testing" | "kept" | "reverted") {
+    if (!experiment) return;
+    const updated = { ...experiment, status };
+    if (status === "kept") {
+      setDeckText(experiment.proposedDeck);
+      setAnalyzed(false);
+    }
+    window.localStorage.setItem("metaforge.activeExperiment", JSON.stringify(updated));
+    setExperiment(updated);
   }
 
   return (
@@ -111,6 +166,22 @@ export default function Home() {
       <section className="forge-section" id="forge">
         <div className="shell forge-shell">
           <div className="forge-heading"><div><span>ENTER THE FORGE</span><h2>What are you working on?</h2></div><p>Paste a quantity-based decklist. Your first diagnosis appears instantly.</p></div>
+          {experiment && (
+            <aside className={`experiment-return ${experiment.status}`}>
+              <div>
+                <small>SAVED FORGE EXPERIMENT</small>
+                <h3>{experiment.deckName}</h3>
+                <p>{experiment.status === "testing" ? "Did this change earn a place in your deck?" : experiment.status === "kept" ? "Change kept. This version is now loaded into the Forge." : "Change reverted. Your original version remains intact."}</p>
+              </div>
+              {experiment.status === "testing" && (
+                <div className="experiment-actions">
+                  <button onClick={() => decideExperiment("kept")}>Keep the change</button>
+                  <button onClick={() => decideExperiment("reverted")}>Revert</button>
+                  <button onClick={() => decideExperiment("testing")}>Still testing</button>
+                </div>
+              )}
+            </aside>
+          )}
           <div className="workspace">
             <div className="input-panel">
               <div className="field-row">
@@ -131,12 +202,36 @@ export default function Home() {
                   <div className="result-header"><div><small>INITIAL DIAGNOSIS · {format.toUpperCase()}</small><h3>{deckName || "Untitled deck"}</h3></div><div className="health"><b>{health}</b><span>/100<br />HEALTH</span></div></div>
                   <div className="metric-row"><div><span>TOTAL CARDS</span><b>{cardCount}</b></div><div><span>LANDS DETECTED</span><b>{landCount}</b></div><div><span>UNIQUE ENTRIES</span><b>{uniqueCount}</b></div></div>
                   <article className="finding"><small>01 · HIGHEST PRIORITY</small><h4>{landCount < 20 ? "Your mana base needs immediate attention" : cardCount !== 60 ? "Your deck size is costing you consistency" : "Your foundation is ready for deeper testing"}</h4><p>{landCount < 20 ? `Only ${landCount} lands were detected. That increases the risk that your strongest cards arrive without the mana to cast them.` : cardCount !== 60 ? `This list contains ${cardCount} cards. In most constructed formats, staying at the minimum improves access to your best draws.` : "The list clears the first composition checks. Next, Forge will measure curve pressure, colored sources, and strategic concentration."}</p></article>
-                  <div className="next-test"><span>NEXT SAFE TEST</span><p>{landCount < 20 ? "Add lands toward the format baseline, then compare opening hands." : cardCount !== 60 ? "Trim toward 60 cards while preserving your core game plan." : "Run 100 opening hands and inspect turn-two color access."}</p><button>Prepare comparison <b>→</b></button></div>
+                  <div className="next-test"><span>NEXT SAFE TEST</span><p>{landCount < 20 ? "Add lands toward the format baseline, then compare opening hands." : cardCount !== 60 ? "Trim toward 60 cards while preserving your core game plan." : "Run opening hands and inspect fetch-aware draw consistency."}</p><button onClick={prepareComparison}>Prepare comparison <b>→</b></button></div>
                   <p className="result-note">This early web preview uses composition evidence. Deeper Forge intelligence will connect as the hosted API comes online.</p>
                 </div>
               )}
             </div>
           </div>
+          {comparisonOpen && (
+            <section className="test-bench-web" id="test-bench">
+              <div className="bench-heading">
+                <div><small>WORKSHOP TEST BENCH</small><h3>Original versus proposed</h3></div>
+                <p>Edit the proposed version, then run the same seeded simulation against both lists.</p>
+              </div>
+              <div className="bench-grid">
+                <div><label>ORIGINAL VERSION</label><textarea value={deckText} readOnly aria-label="Original deck version" /></div>
+                <div><label>PROPOSED VERSION</label><textarea value={proposedDeck} onChange={(event) => { setProposedDeck(event.target.value); setComparisonReady(false); }} aria-label="Proposed deck version" /></div>
+              </div>
+              <button className="run-comparison" disabled={!proposedRows.length} onClick={() => setComparisonReady(true)}>Run 2,500 opening hands <span>→</span></button>
+              {comparisonReady && originalMetrics && proposedMetrics && (
+                <div className="comparison-results">
+                  <div className="comparison-labels"><span>MEASURE</span><span>ORIGINAL</span><span>PROPOSED</span></div>
+                  <div><span>Keepable opening hands (2–4 lands)</span><b>{(originalMetrics.keepableRate * 100).toFixed(1)}%</b><b>{(proposedMetrics.keepableRate * 100).toFixed(1)}%</b></div>
+                  <div><span>Average lands in opening seven</span><b>{originalMetrics.averageOpeningLands.toFixed(2)}</b><b>{proposedMetrics.averageOpeningLands.toFixed(2)}</b></div>
+                  <div><span>Next draw is a spell after available fetches</span><b>{(originalMetrics.nextSpellRate * 100).toFixed(1)}%</b><b>{(proposedMetrics.nextSpellRate * 100).toFixed(1)}%</b></div>
+                  <div><span>Hands able to activate a modeled fetch</span><b>{(originalMetrics.fetchActivationRate * 100).toFixed(1)}%</b><b>{(proposedMetrics.fetchActivationRate * 100).toFixed(1)}%</b></div>
+                  <p>Fetch simulations remove one eligible basic from the library, shuffle, and continue drawing. Random mill or exile is not treated as an automatic consistency benefit.</p>
+                  <button className="save-experiment" disabled={proposedDeck.trim() === deckText.trim()} onClick={saveExperiment}>{proposedDeck.trim() === deckText.trim() ? "Edit the proposed deck to begin" : "Start this experiment"}</button>
+                </div>
+              )}
+            </section>
+          )}
         </div>
       </section>
 
