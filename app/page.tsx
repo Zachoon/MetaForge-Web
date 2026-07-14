@@ -23,6 +23,8 @@ export default function Home() {
   const [comparisonOpen, setComparisonOpen] = useState(false);
   const [proposedDeck, setProposedDeck] = useState("");
   const [comparisonReady, setComparisonReady] = useState(false);
+  const [arenaStatus, setArenaStatus] = useState<"idle" | "connecting" | "connected" | "needs-logs" | "offline">("idle");
+  const [arenaMatches, setArenaMatches] = useState<Array<{ id: string; completedAt: string; gamesWon: number; gamesLost: number; result: "win" | "loss"; mulligans: number }>>([]);
   const [experiment, setExperiment] = useState<null | {
     deckName: string;
     originalDeck: string;
@@ -50,6 +52,33 @@ export default function Home() {
       window.localStorage.removeItem("metaforge.activeExperiment");
     }
   }, []);
+
+  useEffect(() => {
+    if (arenaStatus !== "connected") return;
+    const refresh = async () => {
+      try {
+        const response = await fetch("http://127.0.0.1:17831/matches", { cache: "no-store" });
+        const data = await response.json();
+        setArenaMatches(Array.isArray(data.matches) ? data.matches.slice().reverse() : []);
+      } catch {
+        setArenaStatus("offline");
+      }
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 5000);
+    return () => window.clearInterval(timer);
+  }, [arenaStatus]);
+
+  async function connectArena() {
+    setArenaStatus("connecting");
+    try {
+      const response = await fetch("http://127.0.0.1:17831/health", { cache: "no-store" });
+      const data = await response.json();
+      setArenaStatus(data.logFound ? "connected" : "needs-logs");
+    } catch {
+      setArenaStatus("offline");
+    }
+  }
 
   function loadSample(moveToForge = false) {
     setDeckName("Red Prowess");
@@ -185,6 +214,21 @@ export default function Home() {
                 </div>
               )}
             </aside>
+          )}
+          <aside className="arena-bridge">
+            <div>
+              <small>ARENA COMPANION · PRIVATE ALPHA</small>
+              <h3>Let Arena report the test results.</h3>
+              <p>{arenaStatus === "connected" ? "Connected. Completed matches will appear here automatically." : arenaStatus === "needs-logs" ? "Companion found. Enable Detailed Logs in Arena, then restart Arena." : arenaStatus === "offline" ? "Companion is not running yet. Start the local MetaForge companion, then reconnect." : "Connect the read-only local companion to track completed Arena matches without manual entry."}</p>
+            </div>
+            <button onClick={connectArena} disabled={arenaStatus === "connecting"}>{arenaStatus === "connected" ? "Arena connected" : arenaStatus === "connecting" ? "Connecting…" : "Connect Arena"}</button>
+          </aside>
+          {arenaMatches.length > 0 && (
+            <section className="arena-history" aria-label="Arena match history">
+              <div className="arena-history-heading"><div><small>PERSONAL PLAY EVIDENCE</small><h3>Recent Arena matches</h3></div><span>{arenaMatches.filter((match) => match.result === "win").length}–{arenaMatches.filter((match) => match.result === "loss").length}</span></div>
+              <div className="arena-match-list">{arenaMatches.slice(0, 8).map((match) => <article key={match.id} className={match.result}><b>{match.result === "win" ? "WIN" : "LOSS"}</b><span>{match.gamesWon}–{match.gamesLost} games</span><span>{match.mulligans} mulligans</span><time>{new Date(match.completedAt).toLocaleString()}</time></article>)}</div>
+              <p>This evidence belongs to your testing history. It does not alter MetaForge’s global intelligence.</p>
+            </section>
           )}
           <div className="workspace">
             <div className="input-panel">
