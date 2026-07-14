@@ -7,6 +7,7 @@ import { getMetaIntelligence } from "./meta-intelligence.mjs";
 import FORGE_CANDIDATE, { CANDIDATES } from "./forge-candidate.mjs";
 import { evaluateExperiment } from "./experiment-evidence.mjs";
 import { classifyRevealedOpponent } from "./opponent-classifier.mjs";
+import { evaluateMatchupEvidence } from "./adaptive-recommendation.mjs";
 import { simulateDeck } from "./forge-simulation.mjs";
 
 const SAMPLE_DECK = `4 Monastery Swiftspear
@@ -210,6 +211,18 @@ export default function Home() {
   const matchupCounts = proposedEvidence.reduce<Record<string, number>>((counts, match) => { const label = classifyRevealedOpponent(match.revealedOpponentCards).strategy; counts[label] = (counts[label] || 0) + 1; return counts; }, {});
   const matchupSummary = Object.entries(matchupCounts).sort((a, b) => b[1] - a[1]).map(([name, count]) => `${name} ${count}`).join(" · ");
   const nextCandidate = experiment ? CANDIDATES[(CANDIDATES.findIndex((candidate) => candidate.name === experiment.deckName) + 1) % CANDIDATES.length] : null;
+  const activeCandidate = experiment ? CANDIDATES.find((candidate) => candidate.name === experiment.deckName) : undefined;
+  const adaptiveRecommendation = evaluateMatchupEvidence(proposedEvidence, activeCandidate);
+
+  async function startAdaptiveRepair() {
+    if (!experiment || adaptiveRecommendation.status !== "repair-ready" || !adaptiveRecommendation.proposedDeck) return;
+    const repaired = adaptiveRecommendation.proposedDeck;
+    setDeckText(experiment.proposedDeck);
+    setProposedDeck(repaired);
+    setComparisonOpen(true);
+    setComparisonReady(false);
+    window.setTimeout(() => document.querySelector("#test-bench")?.scrollIntoView({ behavior: "smooth" }), 0);
+  }
 
   return (
     <main>
@@ -335,6 +348,14 @@ export default function Home() {
               <div><b>{experimentEvidence.wins}–{experimentEvidence.losses}</b><span>{experimentEvidence.decision.toUpperCase()}</span></div>
               <p>{experimentEvidence.narrative}{experimentEvidence.sampleSize > 0 && ` Estimated strength ${(experimentEvidence.posteriorMean * 100).toFixed(0)}%; 95% interval ${(experimentEvidence.interval[0] * 100).toFixed(0)}–${(experimentEvidence.interval[1] * 100).toFixed(0)}%. Matchup signals: ${matchupSummary || "unknown"}.`}</p>
               {nextCandidate && ["challenge", "retire"].includes(experimentEvidence.decision) && <button onClick={() => loadForgeCandidate(nextCandidate)}>Promote next candidate →</button>}
+            </section>
+          )}
+          {experiment && (
+            <section className={`adaptive-repair ${adaptiveRecommendation.status}`}>
+              <div><small>REAL-TIME MATCHUP ADAPTATION</small><h3>{adaptiveRecommendation.status === "repair-ready" ? `${adaptiveRecommendation.weakness.strategy} weakness detected` : "Watching for a repeatable weakness"}</h3></div>
+              <p>{adaptiveRecommendation.narrative}{adaptiveRecommendation.purpose && ` The repair is designed to ${adaptiveRecommendation.purpose}.`}</p>
+              {adaptiveRecommendation.status === "repair-ready" && <div className="adaptive-changes">{adaptiveRecommendation.changes.map((change) => <b key={change.card} className={change.quantity > 0 ? "add" : "remove"}>{change.quantity > 0 ? "+" : ""}{change.quantity} {change.card}</b>)}</div>}
+              {adaptiveRecommendation.status === "repair-ready" && <button onClick={startAdaptiveRepair}>Test matchup repair →</button>}
             </section>
           )}
           <div className="workspace">
