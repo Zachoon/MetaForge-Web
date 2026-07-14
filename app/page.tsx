@@ -6,6 +6,7 @@ import { validateDeckLegality } from "./deck-legality.mjs";
 import { getMetaIntelligence } from "./meta-intelligence.mjs";
 import FORGE_CANDIDATE, { CANDIDATES } from "./forge-candidate.mjs";
 import { evaluateExperiment } from "./experiment-evidence.mjs";
+import { classifyRevealedOpponent } from "./opponent-classifier.mjs";
 import { simulateDeck } from "./forge-simulation.mjs";
 
 const SAMPLE_DECK = `4 Monastery Swiftspear
@@ -28,7 +29,7 @@ export default function Home() {
   const [proposedDeck, setProposedDeck] = useState("");
   const [comparisonReady, setComparisonReady] = useState(false);
   const [arenaStatus, setArenaStatus] = useState<"idle" | "connecting" | "connected" | "needs-logs" | "offline">("idle");
-  const [arenaMatches, setArenaMatches] = useState<Array<{ id: string; completedAt: string; gamesWon: number; gamesLost: number; result: "win" | "loss"; mulligans: number; experimentVariant?: "original" | "proposed" | "unmatched" }>>([]);
+  const [arenaMatches, setArenaMatches] = useState<Array<{ id: string; completedAt: string; gamesWon: number; gamesLost: number; result: "win" | "loss"; mulligans: number; revealedOpponentCards?: string[]; experimentVariant?: "original" | "proposed" | "unmatched" }>>([]);
   const [experiment, setExperiment] = useState<null | {
     id?: string;
     deckName: string;
@@ -195,6 +196,8 @@ export default function Home() {
 
   const proposedEvidence = arenaMatches.filter((match) => (match as typeof match & { experimentVariant?: string }).experimentVariant === "proposed");
   const experimentEvidence = evaluateExperiment(proposedEvidence);
+  const matchupCounts = proposedEvidence.reduce<Record<string, number>>((counts, match) => { const label = classifyRevealedOpponent(match.revealedOpponentCards).strategy; counts[label] = (counts[label] || 0) + 1; return counts; }, {});
+  const matchupSummary = Object.entries(matchupCounts).sort((a, b) => b[1] - a[1]).map(([name, count]) => `${name} ${count}`).join(" · ");
   const nextCandidate = experiment ? CANDIDATES[(CANDIDATES.findIndex((candidate) => candidate.name === experiment.deckName) + 1) % CANDIDATES.length] : null;
 
   return (
@@ -311,7 +314,7 @@ export default function Home() {
           {arenaMatches.length > 0 && (
             <section className="arena-history" aria-label="Arena match history">
               <div className="arena-history-heading"><div><small>PERSONAL PLAY EVIDENCE</small><h3>Recent Arena matches</h3></div><span>{arenaMatches.filter((match) => match.result === "win").length}–{arenaMatches.filter((match) => match.result === "loss").length}</span></div>
-              <div className="arena-match-list">{arenaMatches.slice(0, 8).map((match) => <article key={match.id} className={match.result}><b>{match.result === "win" ? "WIN" : "LOSS"}</b><span>{match.gamesWon}–{match.gamesLost} games</span><span>{match.mulligans} mulligans</span><time>{new Date(match.completedAt).toLocaleString()}</time></article>)}</div>
+              <div className="arena-match-list">{arenaMatches.slice(0, 8).map((match) => { const opponent = classifyRevealedOpponent(match.revealedOpponentCards); return <article key={match.id} className={match.result}><b>{match.result === "win" ? "WIN" : "LOSS"}</b><span>{match.gamesWon}–{match.gamesLost} games</span><span>{opponent.strategy} · {opponent.confidence}</span><time>{new Date(match.completedAt).toLocaleString()}</time></article>; })}</div>
               <p>This evidence belongs to your testing history. It does not alter MetaForge’s global intelligence.</p>
             </section>
           )}
@@ -319,7 +322,7 @@ export default function Home() {
             <section className="forge-evidence">
               <div><small>FORGE EXPERIMENT EVIDENCE</small><h3>{experimentEvidence.confidence.toUpperCase()}</h3></div>
               <div><b>{experimentEvidence.wins}–{experimentEvidence.losses}</b><span>{experimentEvidence.decision.toUpperCase()}</span></div>
-              <p>{experimentEvidence.narrative}{experimentEvidence.sampleSize > 0 && ` Estimated strength ${(experimentEvidence.posteriorMean * 100).toFixed(0)}%; 95% interval ${(experimentEvidence.interval[0] * 100).toFixed(0)}–${(experimentEvidence.interval[1] * 100).toFixed(0)}%.`}</p>
+              <p>{experimentEvidence.narrative}{experimentEvidence.sampleSize > 0 && ` Estimated strength ${(experimentEvidence.posteriorMean * 100).toFixed(0)}%; 95% interval ${(experimentEvidence.interval[0] * 100).toFixed(0)}–${(experimentEvidence.interval[1] * 100).toFixed(0)}%. Matchup signals: ${matchupSummary || "unknown"}.`}</p>
               {nextCandidate && ["challenge", "retire"].includes(experimentEvidence.decision) && <button onClick={() => loadForgeCandidate(nextCandidate)}>Promote next candidate →</button>}
             </section>
           )}
