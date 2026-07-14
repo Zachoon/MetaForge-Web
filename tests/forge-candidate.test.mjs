@@ -30,6 +30,8 @@ test("candidate tournament ranks three distinct legal decks with legal sideboard
   assert.deepEqual(CANDIDATES.map((candidate) => candidate.rank), [1, 2, 3]);
   assert.equal(new Set(CANDIDATES.map((candidate) => candidate.name)).size, 3);
   for (const candidate of CANDIDATES) {
+    assert.deepEqual(candidate.unsupportedRequirements, []);
+    assert.equal(candidate.coherence, 1);
     assert.equal(candidate.sideboard.reduce((sum, entry) => sum + entry.quantity, 0), 15);
     const sideRows = candidate.sideboard.map((entry) => ({ name: entry.card, quantity: entry.quantity }));
     assert.deepEqual(validateDeckLegality([...sideRows, { name: "Island", quantity: 60 }], candidate.format).issues, []);
