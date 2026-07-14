@@ -29,9 +29,13 @@ test("candidate tournament ranks three distinct legal decks with legal sideboard
   assert.equal(CANDIDATES.length, 3);
   assert.deepEqual(CANDIDATES.map((candidate) => candidate.rank), [1, 2, 3]);
   assert.equal(new Set(CANDIDATES.map((candidate) => candidate.name)).size, 3);
+  assert.deepEqual(new Set(CANDIDATES.map((candidate) => candidate.strategy)), new Set(["Control", "Midrange", "Tempo"]));
   for (const candidate of CANDIDATES) {
     assert.deepEqual(candidate.unsupportedRequirements, []);
     assert.equal(candidate.coherence, 1);
+    assert.ok(candidate.strategyPlan.length > 20);
+    assert.equal(candidate.scoreBreakdown.matchupFit > 0, true);
+    assert.equal(candidate.rankScore, Number((candidate.scoreBreakdown.roleQuality + candidate.scoreBreakdown.novelty + candidate.scoreBreakdown.coherence + candidate.scoreBreakdown.matchupFit + candidate.scoreBreakdown.historicalFit - candidate.scoreBreakdown.curvePenalty).toFixed(3)));
     for (const requirement of candidate.requirements) {
       assert.ok(requirement.supportCount >= requirement.minimum, `${requirement.card} lacks ${requirement.requirement}`);
       assert.ok(requirement.enablers.length > 0, `${requirement.card} has no named enablers`);
