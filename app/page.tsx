@@ -160,9 +160,9 @@ export default function Home() {
     if (cardCount > 0) setAnalyzed(true);
   }
 
-  function prepareComparison() {
+  function prepareComparison(mode: "forge" | "manual" = "forge") {
     if (!deckLegality.legal) return;
-    setProposedDeck(recommendation.proposedDeck);
+    setProposedDeck(mode === "forge" ? recommendation.proposedDeck : deckText);
     setComparisonReady(false);
     setComparisonOpen(true);
     window.setTimeout(() => document.querySelector("#test-bench")?.scrollIntoView({ behavior: "smooth" }), 0);
@@ -309,7 +309,7 @@ export default function Home() {
             <article className="meta-historical"><small>HISTORICAL PRIOR · {meta.historicalPrior.start}—{meta.historicalPrior.end}</small><h3>{meta.historicalMajority}-leaning field</h3><p>{meta.historicalPrior.sampleSize} decks provide a high-confidence comparison state—not permission to call it today’s meta.</p><div className="meta-bars">{meta.historicalPrior.strategies.slice(0, 4).map((strategy) => <div key={strategy.name}><span>{strategy.name}</span><i><b style={{ width: `${strategy.share * 100}%` }} /></i><strong>{(strategy.share * 100).toFixed(1)}%</strong></div>)}</div></article>
           </div>
           <p className="meta-method">GENERATOR GATE · {meta.generatorGate.replaceAll("-", " ")} · {meta.method}</p>
-          <article className="forge-prototype"><div><small>FORGE RECOMMENDED · FOUNDER PROTOTYPE</small><h3>{FORGE_CANDIDATE.name}</h3><p>{FORGE_CANDIDATE.reasoning}</p></div><div className="prototype-facts"><span><b>{FORGE_CANDIDATE.strategy}</b>STRATEGY</span><span><b>{FORGE_CANDIDATE.target}</b>TARGET</span><span><b>{(FORGE_CANDIDATE.coherence * 100).toFixed(0)}%</b>COHERENCE</span><span><b>{FORGE_CANDIDATE.rankScore.toFixed(1)}</b>RANK SCORE</span></div><button onClick={() => startForgeCandidate(FORGE_CANDIDATE)}>{candidateCopyStatus}</button></article>
+          <article className="forge-prototype"><div><small>FORGE RECOMMENDED · META BREAKER</small><h3>{FORGE_CANDIDATE.name}</h3><p>{FORGE_CANDIDATE.reasoning}</p><em>Not a popularity pick: Forge generated this list to attack the measured field, then required format legality, a complete sideboard, supported synergies, and opening-hand consistency before offering it for testing.</em></div><div className="prototype-facts"><span><b>{FORGE_CANDIDATE.strategy}</b>STRATEGY</span><span><b>{FORGE_CANDIDATE.target}</b>FIELD TARGET</span><span><b>{((1 - FORGE_CANDIDATE.novelty) * 100).toFixed(0)}%</b>EST. FIELD OVERLAP</span><span><b>{(FORGE_CANDIDATE.coherence * 100).toFixed(0)}%</b>SYNERGY SUPPORT</span><span><b>FOUNDER TEST</b>VIABILITY GATE</span><span><b>{FORGE_CANDIDATE.rankScore.toFixed(1)}</b>RANK SCORE</span></div><button onClick={() => startForgeCandidate(FORGE_CANDIDATE)}>{candidateCopyStatus}</button></article>
           <section className="strategy-proof" aria-label="Generated strategy support proof">
             <div><small>STRATEGY GRAPH · VERIFIED</small><h3>Every payoff has enough support.</h3><p>Forge reads Oracle text, identifies what each payoff demands, counts its enabling cards, and rejects or repairs unsupported packages before ranking the deck.</p></div>
             <div className="strategy-proof-list">{FORGE_CANDIDATE.requirements.map((requirement) => <article key={`${requirement.card}-${requirement.requirement}`}><span>{requirement.card}</span><b>{requirement.requirement}</b><em>{requirement.supportCount}/{requirement.minimum} copies</em><small>{requirement.enablers.slice(0, 3).join(" · ")}</small></article>)}</div>
@@ -391,7 +391,7 @@ export default function Home() {
                   <article className="finding"><small>01 · FORGE RECOMMENDATION</small><h4>{recommendation.title}</h4><p>{recommendation.summary}</p><p className="recommendation-reasoning">{recommendation.reasoning}</p></article>
                   {recommendation.mechanics?.landfall_payoff > 0 && <div className="mechanic-tradeoff"><span>LANDFALL TRADEOFF</span><div><b>{recommendation.mechanics.payoffCount}</b><small>PAYOFF CARDS</small></div><div><b>{recommendation.mechanics.fetchCount}</b><small>FETCH LANDS</small></div><div><b>{recommendation.mechanics.slowFetchCount}</b><small>ALWAYS TAPPED</small></div><div><b>{recommendation.mechanics.posture.replaceAll("-", " ")}</b><small>FORGE POSTURE</small></div></div>}
                   {recommendation.changes.length > 0 && <div className="change-set"><span>PROPOSED CHANGE</span>{recommendation.changes.map((change) => <b key={`${change.card}-${change.quantity}`} className={change.quantity > 0 ? "add" : "remove"}>{change.quantity > 0 ? "+" : ""}{change.quantity} {change.card}</b>)}</div>}
-                  <div className="next-test"><span>NEXT SAFE TEST</span><p>{recommendation.changes.length ? "Compare Forge’s proposed version against your original, then edit it before saving anything." : "Choose one flex-slot change in the editable proposed version and measure it against the original."}</p><button onClick={prepareComparison}>{recommendation.changes.length ? "Test this recommendation" : "Build a manual experiment"} <b>→</b></button></div>
+                  <div className="next-test"><span>CHOOSE YOUR EXPERIMENT</span><p>Use Forge’s named recommendation as-is, or make your own cut and let the same Test Bench measure it. Nothing changes your original deck until you choose to keep the result.</p><div className="experiment-choice"><button onClick={() => prepareComparison("forge")} disabled={!recommendation.changes.length}>Use Forge recommendation <b>→</b></button><button onClick={() => prepareComparison("manual")}>Make my own cut <b>→</b></button></div></div>
                   <p className="result-note">This early web preview uses composition evidence. Deeper Forge intelligence will connect as the hosted API comes online.</p>
                 </div>
               )}
@@ -405,7 +405,7 @@ export default function Home() {
               </div>
               <div className="bench-grid">
                 <div><label>ORIGINAL VERSION</label><textarea value={deckText} readOnly aria-label="Original deck version" /></div>
-                <div><label>PROPOSED VERSION</label><textarea value={proposedDeck} onChange={(event) => { setProposedDeck(event.target.value); setComparisonReady(false); }} aria-label="Proposed deck version" /></div>
+                <div><label>TEST VERSION · EDITABLE</label><textarea value={proposedDeck} onChange={(event) => { setProposedDeck(event.target.value); setComparisonReady(false); }} aria-label="Proposed deck version" /></div>
               </div>
               <button className="run-comparison" disabled={!proposedRows.length} onClick={() => setComparisonReady(true)}>Run 2,500 opening hands <span>→</span></button>
               {comparisonReady && originalMetrics && proposedMetrics && (
