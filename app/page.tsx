@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createRecommendation, isLand, parseDeck } from "./deck-analysis.mjs";
 import { validateDeckLegality } from "./deck-legality.mjs";
 import { getMetaIntelligence } from "./meta-intelligence.mjs";
@@ -10,7 +10,7 @@ import { classifyRevealedOpponent } from "./opponent-classifier.mjs";
 import { evaluateLastMatchSignal, evaluateMatchupEvidence } from "./adaptive-recommendation.mjs";
 import { simulateDeck } from "./forge-simulation.mjs";
 import { deckFingerprint } from "./deck-fingerprint.mjs";
-import { attachMatches, DECK_BENCH_STORAGE_KEY, emptyDeckBench, rankedFamilies, readDeckBench, recordExperiment, updateFamily } from "./deck-bench.mjs";
+import { attachMatches, DECK_BENCH_STORAGE_KEY, emptyDeckBench, mergeDeckBenches, rankedFamilies, readDeckBench, recordExperiment, updateFamily } from "./deck-bench.mjs";
 
 const SAMPLE_DECK = `4 Monastery Swiftspear
 4 Slickshot Show-Off
@@ -37,6 +37,9 @@ export default function Home() {
   const [arenaStatus, setArenaStatus] = useState<"idle" | "connecting" | "connected" | "needs-logs" | "offline">("idle");
   const [arenaMatches, setArenaMatches] = useState<Array<{ id: string; completedAt: string; gamesWon: number; gamesLost: number; result: "win" | "loss"; mulligans: number; deckFingerprint?: string; revealedOpponentCards?: string[]; experimentVariant?: "original" | "proposed" | "unmatched" }>>([]);
   const [deckBench, setDeckBench] = useState<any>(emptyDeckBench());
+  const [accountStatus, setAccountStatus] = useState<"loading" | "synced" | "saving" | "local" | "error">("loading");
+  const [accountReady, setAccountReady] = useState(false);
+  const accountRevision = useRef(0);
   const [experiment, setExperiment] = useState<null | {
     id?: string;
     deckName: string;
@@ -69,8 +72,53 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    setDeckBench(readDeckBench(window.localStorage.getItem(DECK_BENCH_STORAGE_KEY)));
+    let active = true;
+    const hydrateAccount = async () => {
+      const local = readDeckBench(window.localStorage.getItem(DECK_BENCH_STORAGE_KEY));
+      setDeckBench(local);
+      try {
+        const response = await fetch("/api/account/deck-bench", { cache: "no-store" });
+        if (!response.ok) throw new Error("account unavailable");
+        const data = await response.json();
+        if (!active) return;
+        accountRevision.current = Number(data.revision || 0);
+        const merged = mergeDeckBenches(local, data.bench || emptyDeckBench());
+        window.localStorage.setItem(DECK_BENCH_STORAGE_KEY, JSON.stringify(merged));
+        setDeckBench(merged);
+        setAccountStatus("synced");
+      } catch {
+        if (active) setAccountStatus("local");
+      } finally {
+        if (active) setAccountReady(true);
+      }
+    };
+    hydrateAccount();
+    return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    if (!accountReady || accountStatus === "local") return;
+    const timer = window.setTimeout(async () => {
+      setAccountStatus("saving");
+      try {
+        let nextBench = deckBench;
+        let response = await fetch("/api/account/deck-bench", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bench: nextBench, baseRevision: accountRevision.current }) });
+        if (response.status === 409) {
+          const conflict = await response.json();
+          accountRevision.current = Number(conflict.revision || 0);
+          nextBench = mergeDeckBenches(deckBench, conflict.bench || emptyDeckBench());
+          window.localStorage.setItem(DECK_BENCH_STORAGE_KEY, JSON.stringify(nextBench));
+          setDeckBench(nextBench);
+          response = await fetch("/api/account/deck-bench", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bench: nextBench, baseRevision: accountRevision.current }) });
+        }
+        if (!response.ok) throw new Error("save failed");
+        const saved = await response.json();
+        accountRevision.current = Number(saved.revision || accountRevision.current);
+        setAccountStatus("synced");
+      } catch { setAccountStatus("error"); }
+    }, 650);
+    return () => window.clearTimeout(timer);
+  }, [deckBench, accountReady]);
 
   useEffect(() => {
     if (!experiment?.originalFingerprint || !experiment?.proposedFingerprint) return;
@@ -405,7 +453,7 @@ export default function Home() {
           )}
           <section className="deck-bench" aria-label="My Deck Bench">
             <div className="deck-bench-heading">
-              <div><small>PRIVATE PERFORMANCE LAB</small><h3>My Deck Bench</h3><p>Every exact list keeps its own evidence. One card changed means a new revision—never contaminated history.</p></div>
+              <div><small>PRIVATE PERFORMANCE LAB · {accountStatus === "synced" ? "ACCOUNT SYNCED" : accountStatus === "saving" ? "SAVING…" : accountStatus === "loading" ? "LOADING ACCOUNT…" : accountStatus === "local" ? "LOCAL BACKUP" : "SYNC RETRY NEEDED"}</small><h3>My Deck Bench</h3><p>Every exact list keeps its own evidence. One card changed means a new revision—never contaminated history.</p></div>
               <b>{benchRankings.length}<span>ACTIVE DECKS</span></b>
             </div>
             {benchRankings.length === 0 ? <div className="bench-empty"><b>Your first revision is waiting.</b><span>Start a Forge experiment and this bench will preserve the baseline, the proposed list, and every Arena result attached to the exact version played.</span></div> : (

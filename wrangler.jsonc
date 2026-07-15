@@ -11,5 +11,13 @@
   "preview_urls": false,
   "vars": {
     "METAFORGE_BOOTSTRAP_LOCK": "unlocked"
-  }
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "metaforge-private-alpha-accounts",
+      "database_id": "a16911c8-9a3a-4c97-bfe2-0ad68b19edf0",
+      "migrations_dir": "migrations"
+    }
+  ]
 }

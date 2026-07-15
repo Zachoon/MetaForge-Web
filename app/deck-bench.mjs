@@ -16,6 +16,33 @@ export function readDeckBench(value) {
   }
 }
 
+export function mergeDeckBenches(localValue, remoteValue) {
+  const local = readDeckBench(localValue);
+  const next = structuredClone(readDeckBench(remoteValue));
+  for (const localFamily of local.families) {
+    let family = next.families.find((item) => item.id === localFamily.id || (item.name.toLowerCase() === localFamily.name.toLowerCase() && item.format === localFamily.format));
+    if (!family) {
+      next.families.push(structuredClone(localFamily));
+      continue;
+    }
+    family.archived = Boolean(family.archived && localFamily.archived);
+    family.promotedFingerprint = localFamily.promotedFingerprint || family.promotedFingerprint;
+    for (const localRevision of localFamily.revisions || []) {
+      const remoteRevision = family.revisions.find((revision) => revision.fingerprint === localRevision.fingerprint);
+      if (!remoteRevision) {
+        family.revisions.push(structuredClone(localRevision));
+        continue;
+      }
+      const matches = new Map((remoteRevision.matches || []).map((match) => [match.id, match]));
+      for (const match of localRevision.matches || []) matches.set(match.id, match);
+      remoteRevision.matches = [...matches.values()];
+      remoteRevision.decision = localRevision.decision || remoteRevision.decision;
+    }
+    family.revisions.sort((a, b) => (a.version || 0) - (b.version || 0));
+  }
+  return next;
+}
+
 export function recordExperiment(bench, experiment, format = "Standard") {
   const next = structuredClone(bench);
   let family = next.families.find((item) => item.name.toLowerCase() === experiment.deckName.toLowerCase() && item.format === format);
