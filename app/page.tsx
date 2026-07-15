@@ -27,7 +27,7 @@ const SAMPLE_DECK = `4 Monastery Swiftspear
 4 Boltwave
 2 Witchstalker Frenzy
 26 Mountain`;
-const REQUIRED_COMPANION_VERSION = "0.2.1";
+const REQUIRED_COMPANION_VERSION = "0.3.0";
 const SAMPLE_DRAFT_PACK = `Shieldwall Recruit | 3.4 | W | 2 | Creature
 Molten Rebuke | 3.7 | R | 2 | Instant
 Archive Visionary | 3.5 | U | 3 | Creature
@@ -44,6 +44,7 @@ export default function Home() {
   const [deckText, setDeckText] = useState("");
   const [draftPack, setDraftPack] = useState(SAMPLE_DRAFT_PACK);
   const [draftPool, setDraftPool] = useState("");
+  const [liveDraft, setLiveDraft] = useState<null | { active: boolean; draftId?: string; eventId?: string; packNumber: number; pickNumber: number; packCards: string[]; pickedCards: string[]; updatedAt?: string; source: string }>(null);
   const [showMetaLab, setShowMetaLab] = useState(false);
   const [showDraftBuddy, setShowDraftBuddy] = useState(false);
   const [analyzed, setAnalyzed] = useState(false);
@@ -194,13 +195,17 @@ export default function Home() {
     if (arenaStatus !== "connected") return;
     const refresh = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:17831/matches", { cache: "no-store" });
-        const data = await response.json();
+        const [matchResponse, draftResponse] = await Promise.all([
+          fetch("http://127.0.0.1:17831/matches", { cache: "no-store" }),
+          fetch("http://127.0.0.1:17831/draft/current", { cache: "no-store" }),
+        ]);
+        const [data, draftData] = await Promise.all([matchResponse.json(), draftResponse.json()]);
         setArenaMatches((current) => {
           const mobile = current.filter((match) => match.source === "self-reported-mobile");
           const desktop = Array.isArray(data.matches) ? data.matches.slice().reverse() : [];
           return [...mobile, ...desktop.filter((match: { id: string }) => !mobile.some((saved) => saved.id === match.id))];
         });
+        if (draftData?.draft) setLiveDraft(draftData.draft);
       } catch {
         setArenaStatus("offline");
       }
@@ -209,6 +214,14 @@ export default function Home() {
     const timer = window.setInterval(refresh, 5000);
     return () => window.clearInterval(timer);
   }, [arenaStatus]);
+
+  useEffect(() => {
+    if (!liveDraft?.active) return;
+    const asLimitedRows = (cards: string[]) => cards.map((name) => `${name} | 0 | C | 0 | Unknown`).join("\n");
+    setDraftPack(asLimitedRows(liveDraft.packCards));
+    setDraftPool(asLimitedRows(liveDraft.pickedCards));
+    setShowDraftBuddy(true);
+  }, [liveDraft?.updatedAt]);
 
   async function connectArena() {
     setArenaStatus("connecting");
@@ -546,12 +559,13 @@ export default function Home() {
         <div className="shell">
           <div className="section-heading lab-heading"><div><span>OPTIONAL · LIMITED LAB</span><h2>Draft Buddy ranks the pick—and shows its work.</h2></div><div><p>Open this workspace only when you are drafting.</p><button className="lab-toggle" onClick={() => setShowDraftBuddy((value) => !value)}>{showDraftBuddy ? "Close Draft Buddy" : "Open Draft Buddy"} <span>{showDraftBuddy ? "↑" : "↓"}</span></button></div></div>
           {showDraftBuddy && <>
+          <aside className={`draft-sensor ${liveDraft?.active ? "active" : "waiting"}`}><div><small>ARENA COMPANION · AUTOMATIC DRAFT SENSOR</small><h3>{liveDraft?.active ? `Pack ${liveDraft.packNumber || "?"} · Pick ${liveDraft.pickNumber || "?"} detected` : arenaStatus === "connected" ? "Watching Arena for a draft pack…" : "Connect Arena to enable automatic pack reading."}</h3></div><b>{liveDraft?.active ? `${liveDraft.packCards.length} CARDS READ` : arenaStatus === "connected" ? "ARMED" : "OFFLINE"}</b></aside>
           <div className="draft-buddy-grid">
             <label>PACK<textarea value={draftPack} onChange={(event) => setDraftPack(event.target.value)} /></label>
             <label>CURRENT POOL<textarea value={draftPool} onChange={(event) => setDraftPool(event.target.value)} placeholder="Add previous picks here, one card per line…" /></label>
             <aside><small>LIVE PICK ORDER · PICK {draftPoolRows.length + 1}</small>{draftRanking.slice(0, 5).map((card, index) => <article key={`${card.name}-${index}`}><i>0{index + 1}</i><div><b>{card.name}</b><span>{card.colors?.join("") || "C"} · {card.cmc} mana · {card.type}</span><em>{card.reasons.join(" · ")}</em></div><strong>{card.score.toFixed(1)}</strong></article>)}<footer><b>{draftHealth.creatures} creatures · {draftHealth.early} early plays</b><span>{draftHealth.warnings.length ? draftHealth.warnings.join(" ") : "Pool fundamentals are currently on track."}</span></footer></aside>
           </div>
-          <p className="draft-disclaimer">Founder preview: Draft Buddy does not read the Arena draft screen yet and does not pretend ratings are facts. Card recognition, set-specific archetypes, signals, and pick-history capture remain gated work.</p>
+          <p className="draft-disclaimer">Private development preview: Companion v0.3 reads pack and pick events from Arena Detailed Logs automatically. Unknown card metadata is never invented; set-specific ratings, visual fallback, and live recommendations remain gated until validated and authorized.</p>
           </>}
         </div>
       </section>
@@ -594,7 +608,7 @@ export default function Home() {
               <p>{arenaStatus === "connected" ? arenaTracking === "registered" ? "Connected and tracking this exact deck revision. Completed matches will appear automatically." : "Connected. Start or reopen a Forge trial to register its exact deck revision." : arenaStatus === "outdated" ? `An older Companion answered (${companionVersion}). Close it, download v${REQUIRED_COMPANION_VERSION}, and reconnect.` : arenaStatus === "needs-logs" ? "Companion found. In Arena, open Options → Account, enable Detailed Logs, then restart Arena." : arenaStatus === "offline" ? "Nothing answered on the local bridge. Extract and run the Companion, allow Windows if prompted, then reconnect." : "Connect the read-only local companion to track completed Arena matches without manual entry."}</p>
             </div>
             <div className="arena-actions">
-              <a href="/downloads/MetaForge-Arena-Companion-Windows-v0.2.1.zip" download>Download companion v0.2.1 · Windows</a>
+              <a href="/downloads/MetaForge-Arena-Companion-Windows-v0.3.0.zip" download>Download companion v0.3.0 · Windows</a>
               <button onClick={connectArena} disabled={arenaStatus === "connecting"}>{arenaStatus === "connected" ? "Arena connected" : arenaStatus === "connecting" ? "Connecting…" : "Connect Arena"}</button>
               <button className="mobile-report-trigger" onClick={() => setMobileReportOpen((value) => !value)} disabled={!experiment?.proposedFingerprint}>{mobileReportOpen ? "Close mobile check-in" : "Record a mobile match"}</button>
               <small>Founder build · local-only data · Windows may ask you to confirm the unsigned app.</small>
