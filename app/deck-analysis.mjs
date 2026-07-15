@@ -168,12 +168,23 @@ export function createRecommendation(rows, format = "Standard") {
     );
   }
   if (fetchCount && mechanics.landfall_payoff) {
+    const flex = [...nonlands].sort((left, right) => left.quantity - right.quantity)[0];
+    const core = [...nonlands]
+      .filter((row) => row.quantity < 4 && row.name !== flex?.name)
+      .sort((left, right) => right.quantity - left.quantity)[0];
+    if (flex && core) {
+      adjustQuantity(proposed, flex.name, -1);
+      adjustQuantity(proposed, core.name, 1);
+      changes.push({ card: flex.name, quantity: -1 }, { card: core.name, quantity: 1 });
+    }
     return {
       title: "Preserve the landfall engine",
-      summary: `Forge found ${mechanics.landfall_payoff} landfall payoff card(s) supported by ${fetchCount} fetch-style lands. It will not recommend replacing those fetches with basics from composition alone.`,
-      reasoning: "A fetch land can create two separate land-entering events from one land play: the fetch itself, then the land it finds. That interaction can outweigh tapped-land tempo and makes the fetch package a synergy component, not merely mana fixing.",
-      proposedDeck: formatDeck(rows),
-      changes: [],
+      summary: `Forge found ${mechanics.landfall_payoff} landfall payoff card(s) supported by ${fetchCount} fetch-style lands. It will preserve those fetches${changes.length ? ` while testing one fewer ${flex.name} and one additional ${core.name}` : " rather than replacing them from composition alone"}.`,
+      reasoning: changes.length
+        ? `A fetch land can create two land-entering events, so the test protects that engine. ${flex.name} is the lowest-count flex slot and ${core.name} is a three-copy core slot; the proposed swap tests draw consistency without weakening Landfall. This is a hypothesis to compare, not a declaration that ${flex.name} is a bad card.`
+        : "A fetch land can create two separate land-entering events from one land play: the fetch itself, then the land it finds. That interaction can outweigh tapped-land tempo and makes the fetch package a synergy component, not merely mana fixing.",
+      proposedDeck: formatDeck(proposed),
+      changes,
       mechanics,
     };
   }

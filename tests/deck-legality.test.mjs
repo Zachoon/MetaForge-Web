@@ -8,6 +8,12 @@ test("accepts a format-legal Standard shell", async () => {
   assert.equal(result.legal, true);
 });
 
+test("accepts newly released Studious First-Year in Standard", async () => {
+  const result = await validateDeckLegality(parseDeck("4 Studious First-Year (SOS) 162\n56 Forest"), "Standard");
+  assert.equal(result.legal, true);
+  assert.deepEqual(result.issues, []);
+});
+
 test("rejects banned Standard cards", async () => {
   const result = await validateDeckLegality(parseDeck("4 Monstrous Rage\n56 Mountain"), "Standard");
   assert.equal(result.legal, false);

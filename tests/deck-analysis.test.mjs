@@ -59,6 +59,17 @@ test("preserves fetch lands when the deck contains landfall payoffs", () => {
   assert.match(result.reasoning, /two separate land-entering events/i);
 });
 
+test("preserves landfall while proposing a concrete flex-slot experiment", () => {
+  const rows = parseDeck("16 Forest\n4 Fabled Passage\n4 Evolving Wilds\n4 Mossborn Hydra\n4 Icetill Explorer\n4 Earthbender Ascension\n1 Lumra, Bellow of the Woods\n4 Sapling Nursery\n4 Badgermole Cub\n4 Llanowar Elves\n3 Terrasymbiosis\n4 Studious First-Year");
+  const result = createRecommendation(rows, "Standard");
+  assert.equal(result.title, "Preserve the landfall engine");
+  assert.deepEqual(result.changes, [
+    { card: "Lumra, Bellow of the Woods", quantity: -1 },
+    { card: "Terrasymbiosis", quantity: 1 },
+  ]);
+  assert.match(result.reasoning, /hypothesis to compare/i);
+});
+
 test("trims rather than blindly preserves an oversized slow fetch package with weak landfall density", () => {
   const rows = parseDeck("1 Mossborn Hydra\n16 Forest\n4 Fabled Passage\n4 Evolving Wilds\n35 Core Spell");
   const evaluation = evaluateLandEngine(rows);
