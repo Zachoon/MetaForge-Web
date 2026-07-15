@@ -10,6 +10,7 @@ import { classifyRevealedOpponent } from "./opponent-classifier.mjs";
 import { evaluateLastMatchSignal, evaluateMatchupEvidence } from "./adaptive-recommendation.mjs";
 import { simulateDeck } from "./forge-simulation.mjs";
 import { deckFingerprint } from "./deck-fingerprint.mjs";
+import { attachMatches, DECK_BENCH_STORAGE_KEY, emptyDeckBench, rankedFamilies, readDeckBench, recordExperiment, updateFamily } from "./deck-bench.mjs";
 
 const SAMPLE_DECK = `4 Monastery Swiftspear
 4 Slickshot Show-Off
@@ -34,7 +35,8 @@ export default function Home() {
   const [arenaTracking, setArenaTracking] = useState<"idle" | "waiting" | "registered">("idle");
   const [deckLegality, setDeckLegality] = useState<{ legal: boolean; total: number; issues: Array<{ message: string }>; pending?: boolean }>({ legal: false, total: 0, issues: [], pending: true });
   const [arenaStatus, setArenaStatus] = useState<"idle" | "connecting" | "connected" | "needs-logs" | "offline">("idle");
-  const [arenaMatches, setArenaMatches] = useState<Array<{ id: string; completedAt: string; gamesWon: number; gamesLost: number; result: "win" | "loss"; mulligans: number; revealedOpponentCards?: string[]; experimentVariant?: "original" | "proposed" | "unmatched" }>>([]);
+  const [arenaMatches, setArenaMatches] = useState<Array<{ id: string; completedAt: string; gamesWon: number; gamesLost: number; result: "win" | "loss"; mulligans: number; deckFingerprint?: string; revealedOpponentCards?: string[]; experimentVariant?: "original" | "proposed" | "unmatched" }>>([]);
+  const [deckBench, setDeckBench] = useState<any>(emptyDeckBench());
   const [experiment, setExperiment] = useState<null | {
     id?: string;
     deckName: string;
@@ -65,6 +67,24 @@ export default function Home() {
       window.localStorage.removeItem("metaforge.activeExperiment");
     }
   }, []);
+
+  useEffect(() => {
+    setDeckBench(readDeckBench(window.localStorage.getItem(DECK_BENCH_STORAGE_KEY)));
+  }, []);
+
+  useEffect(() => {
+    if (!experiment?.originalFingerprint || !experiment?.proposedFingerprint) return;
+    saveBenchExperiment(experiment);
+  }, [experiment?.id, experiment?.status]);
+
+  useEffect(() => {
+    if (!arenaMatches.length) return;
+    setDeckBench((current: any) => {
+      const next = attachMatches(current, arenaMatches);
+      window.localStorage.setItem(DECK_BENCH_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, [arenaMatches]);
 
   useEffect(() => {
     let active = true;
@@ -151,6 +171,7 @@ export default function Home() {
     };
     window.localStorage.setItem("metaforge.activeExperiment", JSON.stringify(trial));
     setExperiment(trial);
+    saveBenchExperiment(trial);
     const registered = await registerExperiment(trial);
     setArenaTracking(registered ? "registered" : "waiting");
     setCandidateCopyStatus(registered ? `${copied ? "Copied" : "Loaded"} · Arena tracking live` : `${copied ? "Copied" : "Loaded"} · Connect Arena to track`);
@@ -196,6 +217,7 @@ export default function Home() {
       proposedFingerprint,
     };
     window.localStorage.setItem("metaforge.activeExperiment", JSON.stringify(nextExperiment));
+    saveBenchExperiment(nextExperiment);
     setExperiment(nextExperiment);
     const registered = await registerExperiment(nextExperiment);
     setArenaTracking(registered ? "registered" : "waiting");
@@ -209,7 +231,29 @@ export default function Home() {
       setAnalyzed(false);
     }
     window.localStorage.setItem("metaforge.activeExperiment", JSON.stringify(updated));
+    saveBenchExperiment(updated);
     setExperiment(updated);
+  }
+
+  function saveBenchExperiment(nextExperiment: NonNullable<typeof experiment>) {
+    setDeckBench((current: any) => {
+      const next = recordExperiment(current, nextExperiment, format);
+      window.localStorage.setItem(DECK_BENCH_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
+
+  function changeBenchFamily(familyId: string, action: "archive" | "restore" | "promote", revision?: any) {
+    setDeckBench((current: any) => {
+      const next = updateFamily(current, familyId, action, revision?.fingerprint);
+      window.localStorage.setItem(DECK_BENCH_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+    if (action === "promote" && revision) {
+      setDeckName(deckBench.families.find((family: any) => family.id === familyId)?.name || "My deck");
+      setDeckText(revision.deckText);
+      setAnalyzed(true);
+    }
   }
 
   const proposedEvidence = arenaMatches.filter((match) => (match as typeof match & { experimentVariant?: string }).experimentVariant === "proposed");
@@ -220,6 +264,7 @@ export default function Home() {
   const activeCandidate = experiment ? CANDIDATES.find((candidate) => candidate.name === experiment.deckName) : undefined;
   const adaptiveRecommendation = evaluateMatchupEvidence(proposedEvidence, activeCandidate);
   const lastMatchSignal = evaluateLastMatchSignal(proposedEvidence[0], activeCandidate);
+  const benchRankings = rankedFamilies(deckBench);
 
   async function startAdaptiveRepair() {
     if (!experiment || adaptiveRecommendation.status !== "repair-ready" || !adaptiveRecommendation.proposedDeck) return;
@@ -358,6 +403,29 @@ export default function Home() {
               <p>This evidence belongs to your testing history. It does not alter MetaForge’s global intelligence.</p>
             </section>
           )}
+          <section className="deck-bench" aria-label="My Deck Bench">
+            <div className="deck-bench-heading">
+              <div><small>PRIVATE PERFORMANCE LAB</small><h3>My Deck Bench</h3><p>Every exact list keeps its own evidence. One card changed means a new revision—never contaminated history.</p></div>
+              <b>{benchRankings.length}<span>ACTIVE DECKS</span></b>
+            </div>
+            {benchRankings.length === 0 ? <div className="bench-empty"><b>Your first revision is waiting.</b><span>Start a Forge experiment and this bench will preserve the baseline, the proposed list, and every Arena result attached to the exact version played.</span></div> : (
+              <div className="bench-families">{benchRankings.map((family: any, familyIndex: number) => <article className="bench-family" key={family.id}>
+                <header><span>#{familyIndex + 1}</span><div><small>{family.format} · {family.revisions.length} VERSION{family.revisions.length === 1 ? "" : "S"}</small><h4>{family.name}</h4></div><button onClick={() => changeBenchFamily(family.id, "archive")}>Archive</button></header>
+                <div className="bench-revisions">{family.revisions.map((revision: any, revisionIndex: number) => {
+                  const evidence = revision.evidence;
+                  const matchups = Object.entries(evidence.matchups).map(([name, result]: any) => `${name} ${result.wins}–${result.losses}`).join(" · ");
+                  const promoted = family.promotedFingerprint === revision.fingerprint;
+                  return <div className={`bench-revision ${promoted ? "promoted" : ""}`} key={revision.fingerprint}>
+                    <div className="revision-title"><b>V{revision.version || family.revisions.length - revisionIndex}</b><span>{revision.source === "original" ? "Baseline" : "Forge revision"}{promoted ? " · CURRENT" : ""}</span></div>
+                    <div className="revision-record"><b>{evidence.wins}–{evidence.losses}</b><span>{evidence.sampleSize ? `${Math.round(evidence.posteriorMean * 100)}% adjusted strength` : "Awaiting matches"}</span></div>
+                    <div className="revision-confidence"><b>{evidence.confidence}</b><span>{matchups || "No matchup evidence yet"}</span></div>
+                    <button disabled={promoted} onClick={() => changeBenchFamily(family.id, "promote", revision)}>{promoted ? "Promoted" : "Promote & load"}</button>
+                  </div>;
+                })}</div>
+              </article>)}</div>
+            )}
+            {deckBench.families.some((family: any) => family.archived) && <details className="archived-decks"><summary>Archived decks ({deckBench.families.filter((family: any) => family.archived).length})</summary>{deckBench.families.filter((family: any) => family.archived).map((family: any) => <button key={family.id} onClick={() => changeBenchFamily(family.id, "restore")}>Restore {family.name}</button>)}</details>}
+          </section>
           {experiment && (
             <section className="forge-evidence">
               <div><small>FORGE EXPERIMENT EVIDENCE</small><h3>{experimentEvidence.confidence.toUpperCase()}</h3></div>
