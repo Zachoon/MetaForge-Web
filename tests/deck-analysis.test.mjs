@@ -87,3 +87,21 @@ test("flags excessive land count even when landfall synergy is strong", () => {
   assert.match(result.title, /flood risk/i);
   assert.deepEqual(result.changes, []);
 });
+
+test("every recommendation explains gain, risk, and a measurable test contract", () => {
+  const result = createRecommendation(parseDeck("24 Mountain\n4 Core Threat\n3 Support Spell\n2 Flex Spell\n27 Other Spell"));
+  assert.ok(result.expectedGain.length > 20);
+  assert.ok(result.risk.length > 20);
+  assert.equal(result.testPlan.openingHands, 2500);
+  assert.equal(result.testPlan.earlyMatches, 5);
+  assert.equal(result.testPlan.reviewMatches, 12);
+});
+
+test("offers named runner-up experiments with complete same-size decklists", () => {
+  const rows = parseDeck("24 Mountain\n4 Core Threat\n3 Support Spell\n2 Flex Spell\n27 Other Spell");
+  const result = createRecommendation(rows);
+  const option = result.manualChallenges.find((candidate) => candidate.proposedDeck);
+  assert.ok(option);
+  assert.match(option.reason, /one fewer/i);
+  assert.equal(parseDeck(option.proposedDeck).reduce((sum, row) => sum + row.quantity, 0), 60);
+});

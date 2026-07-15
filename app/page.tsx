@@ -248,6 +248,13 @@ export default function Home() {
     window.setTimeout(() => document.querySelector("#test-bench")?.scrollIntoView({ behavior: "smooth" }), 0);
   }
 
+  function prepareNamedAlternative(option: { proposedDeck?: string }) {
+    setProposedDeck(option.proposedDeck || deckText);
+    setComparisonReady(false);
+    setComparisonOpen(true);
+    window.setTimeout(() => document.querySelector("#test-bench")?.scrollIntoView({ behavior: "smooth" }), 0);
+  }
+
   async function fingerprint(deckRows: Array<{ name: string; quantity: number }>) {
     return deckFingerprint(deckRows);
   }
@@ -558,8 +565,10 @@ export default function Home() {
                   <div className="metric-row"><div><span>TOTAL CARDS</span><b>{cardCount}</b></div><div><span>LANDS DETECTED</span><b>{landCount}</b></div><div><span>UNIQUE ENTRIES</span><b>{uniqueCount}</b></div></div>
                   <div className={`legality-gate ${deckLegality.legal ? "legal" : "illegal"}`}><span>{deckLegality.pending ? "CHECKING FORMAT" : deckLegality.legal ? "FORMAT LEGAL" : "LEGALITY GATE FAILED"}</span><b>{deckLegality.pending ? "Loading the selected format’s legality catalog…" : deckLegality.legal ? `${format} · ${deckLegality.total} cards` : deckLegality.issues[0]?.message}</b></div>
                   <article className="finding"><small>01 · FORGE RECOMMENDATION</small><h4>{recommendation.title}</h4><p>{recommendation.summary}</p><p className="recommendation-reasoning">{recommendation.reasoning}</p></article>
+                  <div className="strategy-contract"><div><span>EXPECTED GAIN</span><p>{recommendation.expectedGain}</p></div><div><span>TRADEOFF TO WATCH</span><p>{recommendation.risk}</p></div><div><span>TEST CONTRACT</span><p>{recommendation.testPlan.instruction}</p></div></div>
                   {recommendation.mechanics?.landfall_payoff > 0 && <div className="mechanic-tradeoff"><span>LANDFALL TRADEOFF</span><div><b>{recommendation.mechanics.payoffCount}</b><small>PAYOFF CARDS</small></div><div><b>{recommendation.mechanics.fetchCount}</b><small>FETCH LANDS</small></div><div><b>{recommendation.mechanics.slowFetchCount}</b><small>ALWAYS TAPPED</small></div><div><b>{recommendation.mechanics.posture.replaceAll("-", " ")}</b><small>FORGE POSTURE</small></div></div>}
                   {recommendation.changes.length > 0 && <div className="change-set"><span>PROPOSED CHANGE</span>{recommendation.changes.map((change) => <b key={`${change.card}-${change.quantity}`} className={change.quantity > 0 ? "add" : "remove"}>{change.quantity > 0 ? "+" : ""}{change.quantity} {change.card}</b>)}</div>}
+                  <div className="named-alternatives"><span>RUNNER-UP TESTS</span>{recommendation.manualChallenges.map((option) => <button key={option.card} disabled={!option.proposedDeck} onClick={() => prepareNamedAlternative(option)}><b>{option.add ? `−1 ${option.card} · +1 ${option.add}` : `Challenge ${option.card}`}</b><small>{option.reason}</small></button>)}</div>
                   <div className="next-test"><span>CHOOSE YOUR EXPERIMENT</span><p>Use Forge’s named recommendation as-is, or make your own cut and let the same Test Bench measure it. Nothing changes your original deck until you choose to keep the result.</p><div className="experiment-choice"><button onClick={() => prepareComparison("forge")} disabled={!recommendation.changes.length}>Use Forge recommendation <b>→</b></button><button onClick={() => prepareComparison("manual")}>Make my own cut <b>→</b></button></div></div>
                   <p className="result-note">This early web preview uses composition evidence. Deeper Forge intelligence will connect as the hosted API comes online.</p>
                 </div>

@@ -88,7 +88,7 @@ export function evaluateLandEngine(rows) {
   return { ...profile, landCount, basicCount, fetchCount, slowFetchCount, payoffCount, supportScore, tempoPressure, excessLands, targetExhaustion, posture };
 }
 
-export function createRecommendation(rows, format = "Standard") {
+function createBaseRecommendation(rows, format = "Standard") {
   const total = rows.reduce((sum, row) => sum + row.quantity, 0);
   const lands = rows.filter((row) => isLand(row.name));
   const nonlands = rows.filter((row) => !isLand(row.name));
@@ -224,6 +224,52 @@ export function createRecommendation(rows, format = "Standard") {
     reasoning: "Forge will not invent a confident cut without card-role evidence. Start with an editable copy and define the change you want measured.",
     proposedDeck: formatDeck(rows),
     changes: [],
+  };
+}
+
+export function createRecommendation(rows, format = "Standard") {
+  return enrichRecommendation(createBaseRecommendation(rows, format), rows);
+}
+
+function enrichRecommendation(result, rows) {
+  const nonlands = rows.filter((row) => !isLand(row.name));
+  const removals = result.changes.filter((change) => change.quantity < 0);
+  const additions = result.changes.filter((change) => change.quantity > 0);
+  const manualChallenges = [...nonlands]
+    .sort((left, right) => left.quantity - right.quantity || left.name.localeCompare(right.name))
+    .slice(0, 3)
+    .map((row) => {
+      const reinforce = [...nonlands].filter((candidate) => candidate.name !== row.name && candidate.quantity < 4).sort((left, right) => right.quantity - left.quantity)[0];
+      if (!reinforce) return { card: row.name, quantity: row.quantity, reason: "Challenge this slot manually only if you can name the missing role; Forge has no safe one-for-one reinforcement." };
+      const alternative = rows.map((candidate) => ({ ...candidate }));
+      adjustQuantity(alternative, row.name, -1);
+      adjustQuantity(alternative, reinforce.name, 1);
+      return { card: row.name, quantity: row.quantity, add: reinforce.name, proposedDeck: formatDeck(alternative), reason: `Test one fewer ${row.name} and one additional ${reinforce.name} to measure concentration without changing deck size.` };
+    });
+  const manaChange = additions.some((change) => /^(plains|island|swamp|mountain|forest|wastes)$/i.test(change.card));
+  const expectedGain = manaChange
+    ? "More keepable opening hands and fewer games constrained by early mana access."
+    : result.mechanics?.landfall_payoff
+      ? "Preserve landfall trigger density while testing whether the surrounding flex slots can become more consistent."
+      : additions.length
+        ? `Draw the reinforced ${additions.map((change) => change.card).join(" / ")} role more consistently.`
+        : "Establish which flexible slot can change without weakening the deck’s core plan.";
+  const risk = manaChange
+    ? "A higher land count can increase late-game flood; the opening-hand gain must outweigh that cost."
+    : removals.length
+      ? `The deck may miss the unique role supplied by ${removals.map((change) => change.card).join(" / ")}.`
+      : "No automatic substitution passed the current evidence gate; a manual test may expose an interaction the composition model cannot see.";
+  return {
+    ...result,
+    expectedGain,
+    risk,
+    manualChallenges,
+    testPlan: {
+      openingHands: 2500,
+      earlyMatches: 5,
+      reviewMatches: 12,
+      instruction: "Compare the exact original and proposed fingerprints. Review after 5 matched games; treat 12 as the first developing decision point, not proof.",
+    },
   };
 }
 
