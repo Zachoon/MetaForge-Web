@@ -346,7 +346,7 @@ export default function Home() {
               <p>{arenaStatus === "connected" ? arenaTracking === "registered" ? "Connected and tracking this exact deck revision. Completed matches will appear automatically." : "Connected. Start or reopen a Forge trial to register its exact deck revision." : arenaStatus === "needs-logs" ? "Companion found. Enable Detailed Logs in Arena, then restart Arena." : arenaStatus === "offline" ? "Companion is not running yet. Start the local MetaForge companion, then reconnect." : "Connect the read-only local companion to track completed Arena matches without manual entry."}</p>
             </div>
             <div className="arena-actions">
-              <a href="/downloads/MetaForge-Arena-Companion-Windows.zip" download>Download companion · Windows</a>
+              <a href="/downloads/MetaForge-Arena-Companion-Windows-v0.2.1.zip" download>Download companion v0.2.1 · Windows</a>
               <button onClick={connectArena} disabled={arenaStatus === "connecting"}>{arenaStatus === "connected" ? "Arena connected" : arenaStatus === "connecting" ? "Connecting…" : "Connect Arena"}</button>
               <small>Founder build · local-only data · Windows may ask you to confirm the unsigned app.</small>
             </div>
