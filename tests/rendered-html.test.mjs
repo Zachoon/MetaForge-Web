@@ -29,5 +29,6 @@ test("server-renders the MetaForge product experience", async () => {
   assert.match(html, /not a predicted match win rate/i);
   assert.match(html, /ARCHETYPE STRESS MATRIX/);
   assert.match(html, /Draft Buddy ranks the pick/);
+  assert.match(html, /RELEASE GATE · LIVE ACCEPTANCE/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
 });

@@ -49,6 +49,10 @@ export default function Home() {
   const [deckLegality, setDeckLegality] = useState<{ legal: boolean; total: number; issues: Array<{ message: string }>; pending?: boolean }>({ legal: false, total: 0, issues: [], pending: true });
   const [arenaStatus, setArenaStatus] = useState<"idle" | "connecting" | "connected" | "needs-logs" | "outdated" | "offline">("idle");
   const [companionVersion, setCompanionVersion] = useState<string | null>(null);
+  const [companionLastCheck, setCompanionLastCheck] = useState<string | null>(null);
+  const [backupExported, setBackupExported] = useState(false);
+  const [feedbackVerified, setFeedbackVerified] = useState(false);
+  const [secondBrowserVerified, setSecondBrowserVerified] = useState(false);
   const [arenaMatches, setArenaMatches] = useState<Array<{ id: string; completedAt: string; gamesWon: number; gamesLost: number; result: "win" | "loss"; mulligans: number; deckFingerprint?: string; revealedOpponentCards?: string[]; experimentVariant?: "original" | "proposed" | "unmatched" }>>([]);
   const [deckBench, setDeckBench] = useState<any>(emptyDeckBench());
   const [accountStatus, setAccountStatus] = useState<"loading" | "synced" | "saving" | "local" | "error">("loading");
@@ -187,6 +191,7 @@ export default function Home() {
       const response = await fetch("http://127.0.0.1:17831/health", { cache: "no-store" });
       const data = await response.json();
       setCompanionVersion(data.version || "legacy");
+      setCompanionLastCheck(new Date().toISOString());
       if (data.version !== REQUIRED_COMPANION_VERSION) {
         setArenaStatus("outdated");
         return;
@@ -348,6 +353,7 @@ export default function Home() {
     link.download = `metaforge-deck-bench-${new Date().toISOString().slice(0, 10)}.json`;
     link.click();
     URL.revokeObjectURL(url);
+    setBackupExported(true);
   }
 
   async function submitFeedback() {
@@ -362,6 +368,7 @@ export default function Home() {
       if (!response.ok) throw new Error("feedback failed");
       setFeedbackMessage("");
       setFeedbackStatus("saved");
+      setFeedbackVerified(true);
       window.setTimeout(() => { setFeedbackOpen(false); setFeedbackStatus("idle"); }, 1200);
     } catch { setFeedbackStatus("error"); }
   }
@@ -381,6 +388,15 @@ export default function Home() {
     { label: "Arena Companion", detail: arenaStatus === "connected" ? `v${companionVersion} connected.` : arenaStatus === "outdated" ? `Update legacy Companion to v${REQUIRED_COMPANION_VERSION}.` : arenaStatus === "needs-logs" ? "Enable Detailed Logs and restart Arena." : "Download, run, then connect the Companion.", done: arenaStatus === "connected", action: connectArena },
     { label: "Deck imported", detail: cardCount ? `${cardCount} cards ready for diagnosis.` : "Paste an Arena decklist or load the sample.", done: cardCount > 0, action: () => document.querySelector(".workspace")?.scrollIntoView({ behavior: "smooth" }) },
     { label: "First experiment", detail: experiment ? `${experiment.deckName} is preserved in your Bench.` : "Choose a Forge or manual change to test.", done: Boolean(experiment), action: () => document.querySelector("#test-bench")?.scrollIntoView({ behavior: "smooth" }) },
+  ];
+  const acceptanceChecks = [
+    { label: "Account backup online", detail: accountStatus === "synced" ? `Last synchronized ${lastAccountSync ? new Date(lastAccountSync).toLocaleString() : "this session"}.` : "Waiting for an authenticated Deck Bench sync.", done: accountStatus === "synced", automatic: true },
+    { label: "Companion + Detailed Logs", detail: arenaStatus === "connected" ? `Companion v${companionVersion} answered${companionLastCheck ? ` at ${new Date(companionLastCheck).toLocaleTimeString()}` : ""}.` : "Run Connect Arena until the Companion and Player.log both answer.", done: arenaStatus === "connected", automatic: true },
+    { label: "Exact revision registered", detail: arenaTracking === "registered" ? "The active experiment fingerprint is registered locally." : "Start an experiment and register it with the Companion.", done: arenaTracking === "registered", automatic: true },
+    { label: "Real Arena evidence arrived", detail: proposedEvidence.length ? `${proposedEvidence.length} exact-revision match${proposedEvidence.length === 1 ? "" : "es"} received.` : "Play a completed Arena match with the registered revision.", done: proposedEvidence.length > 0, automatic: true },
+    { label: "Recovery backup exported", detail: backupExported ? "A human-readable Deck Bench backup was downloaded." : "Export a backup from My Deck Bench.", done: backupExported, automatic: true },
+    { label: "Second-browser recovery inspected", detail: secondBrowserVerified ? "Founder manually confirmed restoration." : "Open a second browser, sign in, inspect the restored Bench, then confirm here.", done: secondBrowserVerified, automatic: false },
+    { label: "Founder feedback received", detail: feedbackVerified ? "The feedback endpoint accepted a real report." : "Send one contextual report from the feedback dock.", done: feedbackVerified, automatic: true },
   ];
 
   async function startAdaptiveRepair() {
@@ -507,6 +523,10 @@ export default function Home() {
           <section className="founder-onboarding" aria-label="Founder setup guide">
             <header><div><small>FOUNDER FLIGHT CHECK</small><h3>{onboardingSteps.every((step) => step.done) ? "The Forge is fully armed." : "Four steps to your first measured evolution."}</h3></div><b>{onboardingSteps.filter((step) => step.done).length}/4<span>READY</span></b></header>
             <div>{onboardingSteps.map((step, index) => <button key={step.label} className={step.done ? "done" : ""} onClick={step.action}><i>{step.done ? "✓" : `0${index + 1}`}</i><span><b>{step.label}</b><small>{step.detail}</small></span></button>)}</div>
+          </section>
+          <section className="acceptance-console" aria-label="Founder acceptance console">
+            <header><div><small>RELEASE GATE · LIVE ACCEPTANCE</small><h3>{acceptanceChecks.every((check) => check.done) ? "Founder flight cleared." : "Prove the full loop before widening access."}</h3><p>This console combines signals the Forge can verify with the one recovery check that requires your eyes.</p></div><b>{acceptanceChecks.filter((check) => check.done).length}/{acceptanceChecks.length}<span>GATES</span></b></header>
+            <div>{acceptanceChecks.map((check) => <article key={check.label} className={check.done ? "done" : "pending"}><i>{check.done ? "✓" : "○"}</i><span><b>{check.label}</b><small>{check.detail}</small></span>{!check.automatic && <button onClick={() => setSecondBrowserVerified((value) => !value)}>{check.done ? "Undo" : "I verified this"}</button>}</article>)}</div>
           </section>
           {experiment && (
             <aside className={`experiment-return ${experiment.status}`}>
