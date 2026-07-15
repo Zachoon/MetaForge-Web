@@ -4,6 +4,7 @@ type StoredBench = { bench_json: string; revision: number; updated_at: string };
 
 const EMAIL_HEADER = "cf-access-authenticated-user-email";
 const MAX_BENCH_BYTES = 2_000_000;
+const FEEDBACK_CATEGORIES = new Set(["broken", "confusing", "missed-interaction", "helped", "idea"]);
 
 function json(value: unknown, status = 200, headers: Record<string, string> = {}) {
   return Response.json(value, { status, headers: { "Cache-Control": "no-store", ...headers } });
@@ -58,4 +59,18 @@ export async function handleAccountBench(request: Request, env: AccountEnv): Pro
     ON CONFLICT(user_key) DO UPDATE SET bench_json = excluded.bench_json, revision = excluded.revision, updated_at = CURRENT_TIMESTAMP`)
     .bind(key, serialized, nextRevision).run();
   return json({ saved: true, revision: nextRevision });
+}
+
+export async function handleFounderFeedback(request: Request, env: AccountEnv): Promise<Response> {
+  const key = await userKey(request);
+  if (!key) return json({ error: "Authenticated account required" }, 401);
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
+  let payload: { category?: unknown; message?: unknown; context?: unknown };
+  try { payload = await request.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
+  const category = String(payload.category || "");
+  const message = String(payload.message || "").trim();
+  if (!FEEDBACK_CATEGORIES.has(category) || message.length < 3 || message.length > 5000) return json({ error: "Valid category and message required" }, 400);
+  const context = payload.context && typeof payload.context === "object" ? JSON.stringify(payload.context).slice(0, 20_000) : "{}";
+  await env.DB.prepare("INSERT INTO founder_feedback (user_key, category, message, context_json) VALUES (?, ?, ?, ?)").bind(key, category, message, context).run();
+  return json({ saved: true }, 201);
 }

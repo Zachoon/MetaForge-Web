@@ -1,7 +1,7 @@
 /** Cloudflare Worker entry point for the vinext-starter template. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
-import { handleAccountBench } from "./account-bench";
+import { handleAccountBench, handleFounderFeedback } from "./account-bench";
 
 interface Env {
   ASSETS: Fetcher;
@@ -39,6 +39,9 @@ const worker = {
 
     if (url.pathname === "/api/account/deck-bench") {
       return handleAccountBench(request, env);
+    }
+    if (url.pathname === "/api/account/feedback") {
+      return handleFounderFeedback(request, env);
     }
 
     if (url.pathname === "/_vinext/image") {

@@ -21,6 +21,7 @@ const SAMPLE_DECK = `4 Monastery Swiftspear
 4 Boltwave
 2 Witchstalker Frenzy
 26 Mountain`;
+const REQUIRED_COMPANION_VERSION = "0.2.1";
 
 export default function Home() {
   const meta = getMetaIntelligence();
@@ -34,12 +35,17 @@ export default function Home() {
   const [candidateCopyStatus, setCandidateCopyStatus] = useState("Start founder trial →");
   const [arenaTracking, setArenaTracking] = useState<"idle" | "waiting" | "registered">("idle");
   const [deckLegality, setDeckLegality] = useState<{ legal: boolean; total: number; issues: Array<{ message: string }>; pending?: boolean }>({ legal: false, total: 0, issues: [], pending: true });
-  const [arenaStatus, setArenaStatus] = useState<"idle" | "connecting" | "connected" | "needs-logs" | "offline">("idle");
+  const [arenaStatus, setArenaStatus] = useState<"idle" | "connecting" | "connected" | "needs-logs" | "outdated" | "offline">("idle");
+  const [companionVersion, setCompanionVersion] = useState<string | null>(null);
   const [arenaMatches, setArenaMatches] = useState<Array<{ id: string; completedAt: string; gamesWon: number; gamesLost: number; result: "win" | "loss"; mulligans: number; deckFingerprint?: string; revealedOpponentCards?: string[]; experimentVariant?: "original" | "proposed" | "unmatched" }>>([]);
   const [deckBench, setDeckBench] = useState<any>(emptyDeckBench());
   const [accountStatus, setAccountStatus] = useState<"loading" | "synced" | "saving" | "local" | "error">("loading");
   const [accountReady, setAccountReady] = useState(false);
   const accountRevision = useRef(0);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackCategory, setFeedbackCategory] = useState("broken");
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [feedbackStatus, setFeedbackStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [experiment, setExperiment] = useState<null | {
     id?: string;
     deckName: string;
@@ -162,6 +168,11 @@ export default function Home() {
     try {
       const response = await fetch("http://127.0.0.1:17831/health", { cache: "no-store" });
       const data = await response.json();
+      setCompanionVersion(data.version || "legacy");
+      if (data.version !== REQUIRED_COMPANION_VERSION) {
+        setArenaStatus("outdated");
+        return;
+      }
       setArenaStatus(data.logFound ? "connected" : "needs-logs");
       if (data.logFound && experiment) {
         const upgraded = experiment.originalFingerprint && experiment.proposedFingerprint ? experiment : {
@@ -304,6 +315,22 @@ export default function Home() {
     }
   }
 
+  async function submitFeedback() {
+    if (feedbackMessage.trim().length < 3) return;
+    setFeedbackStatus("saving");
+    try {
+      const response = await fetch("/api/account/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+        category: feedbackCategory,
+        message: feedbackMessage,
+        context: { page: "forge", deckName, format, experimentId: experiment?.id || null, proposedFingerprint: experiment?.proposedFingerprint || null, arenaStatus, arenaTracking, companionVersion, accountStatus, recordedMatches: arenaMatches.length },
+      }) });
+      if (!response.ok) throw new Error("feedback failed");
+      setFeedbackMessage("");
+      setFeedbackStatus("saved");
+      window.setTimeout(() => { setFeedbackOpen(false); setFeedbackStatus("idle"); }, 1200);
+    } catch { setFeedbackStatus("error"); }
+  }
+
   const proposedEvidence = arenaMatches.filter((match) => (match as typeof match & { experimentVariant?: string }).experimentVariant === "proposed");
   const experimentEvidence = evaluateExperiment(proposedEvidence);
   const matchupCounts = proposedEvidence.reduce<Record<string, number>>((counts, match) => { const label = classifyRevealedOpponent(match.revealedOpponentCards).strategy; counts[label] = (counts[label] || 0) + 1; return counts; }, {});
@@ -313,6 +340,13 @@ export default function Home() {
   const adaptiveRecommendation = evaluateMatchupEvidence(proposedEvidence, activeCandidate);
   const lastMatchSignal = evaluateLastMatchSignal(proposedEvidence[0], activeCandidate);
   const benchRankings = rankedFamilies(deckBench);
+  const experimentStage = !experiment ? "proposed" : experiment.status !== "testing" ? experiment.status : arenaTracking !== "registered" ? "ready" : experimentEvidence.sampleSize === 0 ? "testing" : ["support", "challenge", "retire"].includes(experimentEvidence.decision) ? "decision" : "evidence";
+  const onboardingSteps = [
+    { label: "Account protected", detail: accountStatus === "synced" ? "Deck Bench is backed up." : "Signing in and preparing your backup.", done: accountStatus === "synced", action: () => document.querySelector("#deck-bench")?.scrollIntoView({ behavior: "smooth" }) },
+    { label: "Arena Companion", detail: arenaStatus === "connected" ? `v${companionVersion} connected.` : arenaStatus === "outdated" ? `Update legacy Companion to v${REQUIRED_COMPANION_VERSION}.` : arenaStatus === "needs-logs" ? "Enable Detailed Logs and restart Arena." : "Download, run, then connect the Companion.", done: arenaStatus === "connected", action: connectArena },
+    { label: "Deck imported", detail: cardCount ? `${cardCount} cards ready for diagnosis.` : "Paste an Arena decklist or load the sample.", done: cardCount > 0, action: () => document.querySelector(".workspace")?.scrollIntoView({ behavior: "smooth" }) },
+    { label: "First experiment", detail: experiment ? `${experiment.deckName} is preserved in your Bench.` : "Choose a Forge or manual change to test.", done: Boolean(experiment), action: () => document.querySelector("#test-bench")?.scrollIntoView({ behavior: "smooth" }) },
+  ];
 
   async function startAdaptiveRepair() {
     if (!experiment || adaptiveRecommendation.status !== "repair-ready" || !adaptiveRecommendation.proposedDeck) return;
@@ -334,6 +368,7 @@ export default function Home() {
         <div className="nav-links">
           <a href="#how-it-works">How it works</a>
           <a href="#forge">The Forge</a>
+          <a href="#deck-bench">My Bench</a>
         </div>
         <button className="nav-cta" onClick={() => document.querySelector("#forge")?.scrollIntoView({ behavior: "smooth" })}>
           Analyze a deck
@@ -416,12 +451,17 @@ export default function Home() {
       <section className="forge-section" id="forge">
         <div className="shell forge-shell">
           <div className="forge-heading"><div><span>ENTER THE FORGE</span><h2>What are you working on?</h2></div><p>Paste a quantity-based decklist. Your first diagnosis appears instantly.</p></div>
+          <section className="founder-onboarding" aria-label="Founder setup guide">
+            <header><div><small>FOUNDER FLIGHT CHECK</small><h3>{onboardingSteps.every((step) => step.done) ? "The Forge is fully armed." : "Four steps to your first measured evolution."}</h3></div><b>{onboardingSteps.filter((step) => step.done).length}/4<span>READY</span></b></header>
+            <div>{onboardingSteps.map((step, index) => <button key={step.label} className={step.done ? "done" : ""} onClick={step.action}><i>{step.done ? "✓" : `0${index + 1}`}</i><span><b>{step.label}</b><small>{step.detail}</small></span></button>)}</div>
+          </section>
           {experiment && (
             <aside className={`experiment-return ${experiment.status}`}>
               <div>
                 <small>SAVED FORGE EXPERIMENT</small>
                 <h3>{experiment.deckName}</h3>
                 <p>{experiment.status === "testing" ? "Did this change earn a place in your deck?" : experiment.status === "kept" ? "Change kept. This version is now loaded into the Forge." : "Change reverted. Your original version remains intact."}</p>
+                <div className="experiment-progress" aria-label={`Experiment stage: ${experimentStage}`}><span className="complete">PROPOSED</span><span className={["ready","testing","evidence","decision","kept","reverted"].includes(experimentStage) ? "complete" : ""}>READY</span><span className={["testing","evidence","decision","kept","reverted"].includes(experimentStage) ? "complete" : ""}>TESTING</span><span className={["evidence","decision","kept","reverted"].includes(experimentStage) ? "complete" : ""}>EVIDENCE {experimentEvidence.sampleSize ? `${experimentEvidence.sampleSize}/5+` : ""}</span><span className={["decision","kept","reverted"].includes(experimentStage) ? "complete" : ""}>DECIDE</span></div>
               </div>
               {experiment.status === "testing" && (
                 <div className="experiment-actions">
@@ -436,7 +476,7 @@ export default function Home() {
             <div>
               <small>ARENA COMPANION · PRIVATE ALPHA</small>
               <h3>Let Arena report the test results.</h3>
-              <p>{arenaStatus === "connected" ? arenaTracking === "registered" ? "Connected and tracking this exact deck revision. Completed matches will appear automatically." : "Connected. Start or reopen a Forge trial to register its exact deck revision." : arenaStatus === "needs-logs" ? "Companion found. Enable Detailed Logs in Arena, then restart Arena." : arenaStatus === "offline" ? "Companion is not running yet. Start the local MetaForge companion, then reconnect." : "Connect the read-only local companion to track completed Arena matches without manual entry."}</p>
+              <p>{arenaStatus === "connected" ? arenaTracking === "registered" ? "Connected and tracking this exact deck revision. Completed matches will appear automatically." : "Connected. Start or reopen a Forge trial to register its exact deck revision." : arenaStatus === "outdated" ? `An older Companion answered (${companionVersion}). Close it, download v${REQUIRED_COMPANION_VERSION}, and reconnect.` : arenaStatus === "needs-logs" ? "Companion found. In Arena, open Options → Account, enable Detailed Logs, then restart Arena." : arenaStatus === "offline" ? "Nothing answered on the local bridge. Extract and run the Companion, allow Windows if prompted, then reconnect." : "Connect the read-only local companion to track completed Arena matches without manual entry."}</p>
             </div>
             <div className="arena-actions">
               <a href="/downloads/MetaForge-Arena-Companion-Windows-v0.2.1.zip" download>Download companion v0.2.1 · Windows</a>
@@ -451,7 +491,7 @@ export default function Home() {
               <p>This evidence belongs to your testing history. It does not alter MetaForge’s global intelligence.</p>
             </section>
           )}
-          <section className="deck-bench" aria-label="My Deck Bench">
+          <section className="deck-bench" id="deck-bench" aria-label="My Deck Bench">
             <div className="deck-bench-heading">
               <div><small>PRIVATE PERFORMANCE LAB · {accountStatus === "synced" ? "ACCOUNT SYNCED" : accountStatus === "saving" ? "SAVING…" : accountStatus === "loading" ? "LOADING ACCOUNT…" : accountStatus === "local" ? "LOCAL BACKUP" : "SYNC RETRY NEEDED"}</small><h3>My Deck Bench</h3><p>Every exact list keeps its own evidence. One card changed means a new revision—never contaminated history.</p></div>
               <b>{benchRankings.length}<span>ACTIVE DECKS</span></b>
@@ -552,6 +592,16 @@ export default function Home() {
           )}
         </div>
       </section>
+
+      <div className={`feedback-dock ${feedbackOpen ? "open" : ""}`}>
+        {!feedbackOpen ? <button onClick={() => setFeedbackOpen(true)}>Send founder feedback</button> : <section aria-label="Send founder feedback">
+          <header><div><small>HELP SHAPE THE FORGE</small><h3>Tell Aura what happened.</h3></div><button aria-label="Close feedback" onClick={() => setFeedbackOpen(false)}>×</button></header>
+          <label>WHAT KIND OF SIGNAL?<select value={feedbackCategory} onChange={(event) => setFeedbackCategory(event.target.value)}><option value="broken">Something broke</option><option value="confusing">Recommendation was confusing</option><option value="missed-interaction">Forge missed an interaction</option><option value="helped">This recommendation helped</option><option value="idea">General idea</option></select></label>
+          <label>WHAT SHOULD WE KNOW?<textarea value={feedbackMessage} onChange={(event) => setFeedbackMessage(event.target.value)} placeholder="Tell us what you expected and what happened…" /></label>
+          <p>Deck revision, experiment, Companion version, and non-sensitive connection diagnostics are attached automatically.</p>
+          <button className="submit-feedback" disabled={feedbackStatus === "saving" || feedbackMessage.trim().length < 3} onClick={submitFeedback}>{feedbackStatus === "saving" ? "Sending…" : feedbackStatus === "saved" ? "Signal received ✓" : feedbackStatus === "error" ? "Retry feedback" : "Send to the Forge"}</button>
+        </section>}
+      </div>
 
       <footer className="shell"><a className="brand" href="#top"><span className="brand-mark">MF</span><span>METAFORGE</span></a><p>Understand the deck. Respect the evidence. Test the change.</p><span>© 2026 MetaForge</span></footer>
     </main>
