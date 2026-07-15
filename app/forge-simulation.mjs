@@ -68,6 +68,28 @@ export function simulateDeck(rows, samples = 2500, seed = 9173) {
   };
 }
 
+export function evaluateOpeningHandComparison(original, proposed) {
+  const deltas = {
+    keepableRate: proposed.keepableRate - original.keepableRate,
+    averageOpeningLands: proposed.averageOpeningLands - original.averageOpeningLands,
+    nextSpellRate: proposed.nextSpellRate - original.nextSpellRate,
+    fetchActivationRate: proposed.fetchActivationRate - original.fetchActivationRate,
+  };
+  const regressions = [];
+  if (deltas.keepableRate < -.015) regressions.push(`keepable opening hands fell by ${Math.abs(deltas.keepableRate * 100).toFixed(1)} points`);
+  if (deltas.nextSpellRate < -.02) regressions.push(`next-spell access fell by ${Math.abs(deltas.nextSpellRate * 100).toFixed(1)} points`);
+  if (original.fetchActivationRate > .1 && deltas.fetchActivationRate < -.04) regressions.push(`fetch activation fell by ${Math.abs(deltas.fetchActivationRate * 100).toFixed(1)} points`);
+  const improvements = [];
+  if (deltas.keepableRate > .01) improvements.push(`keepable opening hands improved by ${(deltas.keepableRate * 100).toFixed(1)} points`);
+  if (deltas.nextSpellRate > .015) improvements.push(`next-spell access improved by ${(deltas.nextSpellRate * 100).toFixed(1)} points`);
+  const verdict = regressions.length ? "reject" : improvements.length ? "advance" : "inconclusive";
+  return {
+    verdict, deltas, regressions, improvements,
+    headline: verdict === "reject" ? "This version failed the opening-hand gate." : verdict === "advance" ? "This version earned an Arena trial." : "The opening-hand result is effectively tied.",
+    guidance: verdict === "reject" ? "Do not start this Forge experiment. Edit the proposal or try another candidate, then rerun the same paired simulation." : verdict === "advance" ? "The proposal improved at least one primary consistency measure without a material modeled regression. It may advance to real-game testing." : "The simulation found no meaningful consistency advantage. Only test this version if its strategic role change is worth measuring in real games.",
+  };
+}
+
 function shuffle(cards, rng) {
   for (let index = cards.length - 1; index > 0; index -= 1) {
     const swap = Math.floor(rng() * (index + 1));

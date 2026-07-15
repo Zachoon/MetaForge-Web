@@ -8,7 +8,7 @@ import FORGE_CANDIDATE, { CANDIDATES } from "./forge-candidate.mjs";
 import { evaluateExperiment } from "./experiment-evidence.mjs";
 import { classifyRevealedOpponent } from "./opponent-classifier.mjs";
 import { evaluateLastMatchSignal, evaluateMatchupEvidence } from "./adaptive-recommendation.mjs";
-import { simulateDeck } from "./forge-simulation.mjs";
+import { evaluateOpeningHandComparison, simulateDeck } from "./forge-simulation.mjs";
 import { evaluateSimulationGate } from "./goldfish-simulation.mjs";
 import { evaluateMatchupMatrix } from "./matchup-simulation.mjs";
 import { evaluateDraftPick, limitedDeckHealth } from "./limited-buddy.mjs";
@@ -84,8 +84,9 @@ export default function Home() {
   const health = Math.max(42, Math.min(94, 78 - Math.abs(24 - landCount) * 2 - Math.abs(60 - cardCount)));
   const recommendation = useMemo(() => createRecommendation(rows, format), [rows, format]);
   const proposedRows = useMemo(() => parseDeck(proposedDeck), [proposedDeck]);
-  const originalMetrics = useMemo(() => comparisonReady ? simulateDeck(rows) : null, [comparisonReady, rows]);
-  const proposedMetrics = useMemo(() => comparisonReady ? simulateDeck(proposedRows, 2500, 19411) : null, [comparisonReady, proposedRows]);
+  const originalMetrics = useMemo(() => comparisonReady ? simulateDeck(rows, 2500, 9173) : null, [comparisonReady, rows]);
+  const proposedMetrics = useMemo(() => comparisonReady ? simulateDeck(proposedRows, 2500, 9173) : null, [comparisonReady, proposedRows]);
+  const comparisonVerdict = useMemo(() => originalMetrics && proposedMetrics ? evaluateOpeningHandComparison(originalMetrics, proposedMetrics) : null, [originalMetrics, proposedMetrics]);
 
   useEffect(() => {
     const stored = window.localStorage.getItem("metaforge.activeExperiment");
@@ -656,13 +657,15 @@ export default function Home() {
               <button className="run-comparison" disabled={!proposedRows.length} onClick={() => setComparisonReady(true)}>Run 2,500 opening hands <span>→</span></button>
               {comparisonReady && originalMetrics && proposedMetrics && (
                 <div className="comparison-results">
+                  {comparisonVerdict && <aside className={`simulation-verdict ${comparisonVerdict.verdict}`}><small>OPENING-HAND GATE · {comparisonVerdict.verdict.toUpperCase()}</small><h4>{comparisonVerdict.headline}</h4><p>{comparisonVerdict.guidance}</p>{comparisonVerdict.regressions.map((item) => <b key={item}>↓ {item}</b>)}{comparisonVerdict.improvements.map((item) => <b key={item}>↑ {item}</b>)}</aside>}
                   <div className="comparison-labels"><span>MEASURE</span><span>ORIGINAL</span><span>PROPOSED</span></div>
                   <div><span>Keepable opening hands (2–4 lands)</span><b>{(originalMetrics.keepableRate * 100).toFixed(1)}%</b><b>{(proposedMetrics.keepableRate * 100).toFixed(1)}%</b></div>
                   <div><span>Average lands in opening seven</span><b>{originalMetrics.averageOpeningLands.toFixed(2)}</b><b>{proposedMetrics.averageOpeningLands.toFixed(2)}</b></div>
                   <div><span>Next draw is a spell after available fetches</span><b>{(originalMetrics.nextSpellRate * 100).toFixed(1)}%</b><b>{(proposedMetrics.nextSpellRate * 100).toFixed(1)}%</b></div>
                   <div><span>Hands able to activate a modeled fetch</span><b>{(originalMetrics.fetchActivationRate * 100).toFixed(1)}%</b><b>{(proposedMetrics.fetchActivationRate * 100).toFixed(1)}%</b></div>
                   <p>Fetch simulations remove one eligible basic from the library, shuffle, and continue drawing. Random mill or exile is not treated as an automatic consistency benefit.</p>
-                  <button className="save-experiment" disabled={proposedDeck.trim() === deckText.trim()} onClick={saveExperiment}>{proposedDeck.trim() === deckText.trim() ? "Edit the proposed deck to begin" : "Start this experiment"}</button>
+                  {comparisonVerdict?.verdict === "reject" && recommendation.manualChallenges.some((option) => option.proposedDeck && option.proposedDeck !== proposedDeck) && <button className="try-another" onClick={() => { const next = recommendation.manualChallenges.find((option) => option.proposedDeck && option.proposedDeck !== proposedDeck); if (next?.proposedDeck) { setProposedDeck(next.proposedDeck); setComparisonReady(false); } }}>Try another candidate and rerun <span>→</span></button>}
+                  <button className="save-experiment" disabled={proposedDeck.trim() === deckText.trim() || comparisonVerdict?.verdict === "reject"} onClick={saveExperiment}>{comparisonVerdict?.verdict === "reject" ? "Rejected · choose another version" : proposedDeck.trim() === deckText.trim() ? "Edit the proposed deck to begin" : comparisonVerdict?.verdict === "inconclusive" ? "Start strategic test anyway" : "Start this experiment"}</button>
                 </div>
               )}
             </section>
