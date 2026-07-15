@@ -6,6 +6,7 @@ import { validateDeckLegality } from "./deck-legality.mjs";
 import { getMetaIntelligence } from "./meta-intelligence.mjs";
 import FORGE_CANDIDATE, { CANDIDATES } from "./forge-candidate.mjs";
 import { FORGE_THEORY } from "./forge-theory.mjs";
+import { buildFormatContext, evaluateTheoryEvidence } from "./format-intelligence.mjs";
 import { evaluateExperiment } from "./experiment-evidence.mjs";
 import { classifyRevealedOpponent } from "./opponent-classifier.mjs";
 import { evaluateLastMatchSignal, evaluateMatchupEvidence } from "./adaptive-recommendation.mjs";
@@ -37,6 +38,8 @@ export default function Home() {
   const matchupMatrix = useMemo(() => evaluateMatchupMatrix(FORGE_CANDIDATE.deck, ["Aggro", "Midrange", "Control", "Tempo"], 2000, 991), []);
   const [deckName, setDeckName] = useState("My deck");
   const [format, setFormat] = useState("Standard");
+  const [commanderPower, setCommanderPower] = useState("unknown");
+  const [commanderBudget, setCommanderBudget] = useState("unspecified");
   const [deckText, setDeckText] = useState("");
   const [draftPack, setDraftPack] = useState(SAMPLE_DRAFT_PACK);
   const [draftPool, setDraftPool] = useState("");
@@ -89,6 +92,8 @@ export default function Home() {
   const originalMetrics = useMemo(() => comparisonReady ? simulateDeck(rows, 2500, 9173) : null, [comparisonReady, rows]);
   const proposedMetrics = useMemo(() => comparisonReady ? simulateDeck(proposedRows, 2500, 9173) : null, [comparisonReady, proposedRows]);
   const comparisonVerdict = useMemo(() => originalMetrics && proposedMetrics ? evaluateOpeningHandComparison(originalMetrics, proposedMetrics) : null, [originalMetrics, proposedMetrics]);
+  const formatContext = useMemo(() => buildFormatContext(format, { power: commanderPower, budget: commanderBudget }), [format, commanderPower, commanderBudget]);
+  const theoryEvidence = useMemo(() => evaluateTheoryEvidence({ legal: true, copyLimitsPass: true, roleFit: true, supportCount: 16, minimumSupport: 8, earlyInteraction: true }, buildFormatContext("Standard"), {}), []);
 
   useEffect(() => {
     const stored = window.localStorage.getItem("metaforge.activeExperiment");
@@ -494,7 +499,7 @@ export default function Home() {
           </div>
           <p className="meta-method">GENERATOR GATE · {meta.generatorGate.replaceAll("-", " ")} · {meta.method}</p>
           <article className="forge-prototype"><div><small>FORGE RECOMMENDED · META BREAKER</small><h3>{FORGE_CANDIDATE.name}</h3><p>{FORGE_CANDIDATE.reasoning}</p><em>Not a popularity pick: Forge generated this list to attack the measured field, then required format legality, a complete sideboard, supported synergies, and opening-hand consistency before offering it for testing.</em></div><div className="prototype-facts"><span><b>{FORGE_CANDIDATE.strategy}</b>STRATEGY</span><span><b>{FORGE_CANDIDATE.target}</b>FIELD TARGET</span><span><b>{((1 - FORGE_CANDIDATE.novelty) * 100).toFixed(0)}%</b>EST. FIELD OVERLAP</span><span><b>{(FORGE_CANDIDATE.coherence * 100).toFixed(0)}%</b>SYNERGY SUPPORT</span><span><b>FOUNDER TEST</b>VIABILITY GATE</span><span><b>{FORGE_CANDIDATE.rankScore.toFixed(1)}</b>RANK SCORE</span></div><button onClick={() => startForgeCandidate(FORGE_CANDIDATE)}>{candidateCopyStatus}</button></article>
-          <article className="forge-theory"><header><div><small>FORGE THEORY · ZERO TOURNAMENT CREDIT ASSUMED</small><h3>{FORGE_THEORY.name}</h3></div><b>SPECULATIVE</b></header><p><strong>THE THEORY</strong> Mjölnir may convert the Izzet shell’s cheap interaction and flexible threats into repeatable pressure without abandoning its tempo plan. Card design and role fit justify a trial; tournament results do not yet justify confidence.</p><div><span><b>−2 Fire Magic</b>CONTROL VARIABLE</span><span><b>+2 Mjölnir</b>NEW-CARD HYPOTHESIS</span><span><b>Fail if pressure slows</b>REJECTION CONDITION</span><span><b>5 exact matches</b>FIRST REVIEW</span></div><footer><em>Legality, deck size, copy limits, and opening hands must still pass. A theory can graduate only through simulation and matched Arena evidence.</em><button onClick={() => startForgeCandidate(FORGE_THEORY)}>Load theory experiment →</button></footer></article>
+          <article className="forge-theory"><header><div><small>FORGE THEORY · ZERO TOURNAMENT CREDIT ASSUMED</small><h3>{FORGE_THEORY.name}</h3></div><b>{theoryEvidence.stage.replaceAll("-", " ")}</b></header><p><strong>THE THEORY</strong> Mjölnir may convert the Izzet shell’s cheap interaction and flexible threats into repeatable pressure without abandoning its tempo plan. Card design and role fit justify a trial; tournament results do not yet justify confidence.</p><div><span><b>−2 Fire Magic</b>CONTROL VARIABLE</span><span><b>+2 Mjölnir</b>NEW-CARD HYPOTHESIS</span><span><b>Fail if pressure slows</b>REJECTION CONDITION</span><span><b>5 exact matches</b>FIRST REVIEW</span></div><footer><em>{theoryEvidence.warning} Legality, deck size, copy limits, and opening hands must still pass before Arena testing.</em><button onClick={() => startForgeCandidate(FORGE_THEORY)}>Load theory experiment →</button></footer></article>
           <section className="simulation-ladder" aria-label="Simulation ladder results">
             <header><div><small>SIMULATION LADDER · 2,000 DETERMINISTIC RUNS</small><h3>{simulationGate.gate === "goldfish-pass" ? "Sequencing gate passed." : "More structural work required."}</h3><p>{simulationGate.warning}</p></div><b className={simulationGate.gate === "goldfish-pass" ? "pass" : "hold"}>{simulationGate.gate.replaceAll("-", " ")}</b></header>
             <div className="simulation-metrics"><span><b>{(simulationGate.expert.keepableRate * 100).toFixed(1)}%</b>KEEPABLE OPENERS</span><span><b>{(simulationGate.expert.planRealizationRate * 100).toFixed(1)}%</b>PLAN REALIZATION</span><span><b>{simulationGate.expert.averageRealizationTurn?.toFixed(1) || "—"}</b>AVG. REALIZATION TURN</span><span><b>{(simulationGate.expert.modelCoverage * 100).toFixed(0)}%</b>MODEL COVERAGE</span><span><b>{simulationGate.sensitivityLabel}</b>PILOT SENSITIVITY</span></div>
@@ -628,6 +633,7 @@ export default function Home() {
                 <label>DECK NAME<input value={deckName} onChange={(e) => { setDeckName(e.target.value); setAnalyzed(false); }} /></label>
                 <label>FORMAT<select value={format} onChange={(e) => { setFormat(e.target.value); setAnalyzed(false); }}><option>Standard</option><option>Pioneer</option><option>Modern</option><option>Legacy</option><option>Pauper</option><option>Vintage</option><option>Commander</option></select></label>
               </div>
+              <section className={`format-context ${format.toLowerCase()}`}><header><span>{format.toUpperCase()} INTELLIGENCE PROFILE</span><small>{formatContext.priorities.join(" · ")}</small></header>{format === "Commander" && <div><label>POD POWER<select value={commanderPower} onChange={(event) => setCommanderPower(event.target.value)}><option value="unknown">Choose a target</option><option value="casual">Casual</option><option value="upgraded">Upgraded</option><option value="high-power">High power</option><option value="cedh">cEDH</option></select></label><label>BUDGET TARGET<input value={commanderBudget} onChange={(event) => setCommanderBudget(event.target.value)} placeholder="Example: $150 or no limit" /></label></div>}{formatContext.warning && <p>{formatContext.warning}</p>}</section>
               <label className="deck-label">DECKLIST <button onClick={() => loadSample(false)}>Load sample</button></label>
               <textarea value={deckText} onChange={(e) => { setDeckText(e.target.value); setAnalyzed(false); }} placeholder={"4 Lightning Bolt\n4 Monastery Swiftspear\n20 Mountain"} aria-label="Decklist" />
               <div className="input-footer"><span>{cardCount ? `${cardCount} cards · ${uniqueCount} unique entries` : "Use one card entry per line"}</span><span>TXT</span></div>
