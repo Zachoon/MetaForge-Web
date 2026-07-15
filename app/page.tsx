@@ -5,6 +5,7 @@ import { createRecommendation, isLand, parseDeck } from "./deck-analysis.mjs";
 import { validateDeckLegality } from "./deck-legality.mjs";
 import { getMetaIntelligence } from "./meta-intelligence.mjs";
 import FORGE_CANDIDATE, { CANDIDATES } from "./forge-candidate.mjs";
+import { FORGE_THEORY } from "./forge-theory.mjs";
 import { evaluateExperiment } from "./experiment-evidence.mjs";
 import { classifyRevealedOpponent } from "./opponent-classifier.mjs";
 import { evaluateLastMatchSignal, evaluateMatchupEvidence } from "./adaptive-recommendation.mjs";
@@ -30,7 +31,6 @@ Molten Rebuke | 3.7 | R | 2 | Instant
 Archive Visionary | 3.5 | U | 3 | Creature
 Verdant Colossus | 3.2 | G | 6 | Creature
 Grave Bargain | 3.3 | B | 3 | Sorcery`;
-
 export default function Home() {
   const meta = getMetaIntelligence();
   const simulationGate = useMemo(() => evaluateSimulationGate(FORGE_CANDIDATE.deck, FORGE_CANDIDATE.strategy, 2000, 8128), []);
@@ -40,6 +40,8 @@ export default function Home() {
   const [deckText, setDeckText] = useState("");
   const [draftPack, setDraftPack] = useState(SAMPLE_DRAFT_PACK);
   const [draftPool, setDraftPool] = useState("");
+  const [showMetaLab, setShowMetaLab] = useState(false);
+  const [showDraftBuddy, setShowDraftBuddy] = useState(false);
   const [analyzed, setAnalyzed] = useState(false);
   const [comparisonOpen, setComparisonOpen] = useState(false);
   const [proposedDeck, setProposedDeck] = useState("");
@@ -476,7 +478,7 @@ export default function Home() {
           <div><span>01</span> INTAKE</div><div><span>02</span> DIAGNOSIS</div><div><span>03</span> COMPARISON</div>
         </div>
         <div className="steps">
-          <article><i>01</i><div className="step-icon">＋</div><h3>Add your deck</h3><p>Paste a list from Arena, MTGO, Moxfield, or your notes. No account required.</p></article>
+          <article><i>01</i><div className="step-icon">＋</div><h3>Add your deck</h3><p>Sign in through the private access page, then paste a list from Arena, MTGO, Moxfield, or your notes. Your Forge account is created automatically.</p></article>
           <article><i>02</i><div className="step-icon">⌁</div><h3>See the pressure points</h3><p>Forge measures composition, consistency, curve, mana, and strategic focus.</p></article>
           <article><i>03</i><div className="step-icon">↗</div><h3>Test a stronger version</h3><p>Compare changes against your original deck and understand every tradeoff.</p></article>
         </div>
@@ -484,13 +486,15 @@ export default function Home() {
 
       <section className="meta-section">
         <div className="shell">
-          <div className="section-heading"><div><span>LIVE FIELD INTELLIGENCE</span><h2>What does the field actually support?</h2></div><p>MetaForge separates fresh observation from historical precedent before it generates a counter-strategy.</p></div>
+          <div className="section-heading lab-heading"><div><span>OPTIONAL · META LAB</span><h2>Meta breakers, simulations, and Forge Theory.</h2></div><div><p>Advanced research is tucked away so it never blocks the main deck-testing flow.</p><button className="lab-toggle" onClick={() => setShowMetaLab((value) => !value)}>{showMetaLab ? "Close Meta Lab" : "Explore Meta Lab"} <span>{showMetaLab ? "↑" : "↓"}</span></button></div></div>
+          {showMetaLab && <>
           <div className="meta-grid">
             <article className="meta-current"><small>NEWEST OBSERVED FIELD · {meta.current.end}</small><h3>{meta.majority ? `${meta.majority} is the current majority` : meta.leadingStrategy ? `${meta.leadingStrategy} leads a mixed field` : "Current majority not established"}</h3><p>{meta.warning || meta.recommendation}</p><div className="confidence-line"><span>CONFIDENCE</span><b>{meta.current.confidence}</b><i>{meta.current.sampleSize} decks · {meta.current.classificationCoverage ? `${(meta.current.classificationCoverage * 100).toFixed(0)}% classified` : "local corpus"}</i></div>{meta.current.provenance && <a className="meta-source" href={meta.current.provenance.url} target="_blank" rel="noreferrer">SOURCE · {meta.current.provenance.name} · observed {meta.current.provenance.observedAt}</a>}</article>
             <article className="meta-historical"><small>HISTORICAL PRIOR · {meta.historicalPrior.start}—{meta.historicalPrior.end}</small><h3>{meta.historicalMajority}-leaning field</h3><p>{meta.historicalPrior.sampleSize} decks provide a high-confidence comparison state—not permission to call it today’s meta.</p><div className="meta-bars">{meta.historicalPrior.strategies.slice(0, 4).map((strategy) => <div key={strategy.name}><span>{strategy.name}</span><i><b style={{ width: `${strategy.share * 100}%` }} /></i><strong>{(strategy.share * 100).toFixed(1)}%</strong></div>)}</div></article>
           </div>
           <p className="meta-method">GENERATOR GATE · {meta.generatorGate.replaceAll("-", " ")} · {meta.method}</p>
           <article className="forge-prototype"><div><small>FORGE RECOMMENDED · META BREAKER</small><h3>{FORGE_CANDIDATE.name}</h3><p>{FORGE_CANDIDATE.reasoning}</p><em>Not a popularity pick: Forge generated this list to attack the measured field, then required format legality, a complete sideboard, supported synergies, and opening-hand consistency before offering it for testing.</em></div><div className="prototype-facts"><span><b>{FORGE_CANDIDATE.strategy}</b>STRATEGY</span><span><b>{FORGE_CANDIDATE.target}</b>FIELD TARGET</span><span><b>{((1 - FORGE_CANDIDATE.novelty) * 100).toFixed(0)}%</b>EST. FIELD OVERLAP</span><span><b>{(FORGE_CANDIDATE.coherence * 100).toFixed(0)}%</b>SYNERGY SUPPORT</span><span><b>FOUNDER TEST</b>VIABILITY GATE</span><span><b>{FORGE_CANDIDATE.rankScore.toFixed(1)}</b>RANK SCORE</span></div><button onClick={() => startForgeCandidate(FORGE_CANDIDATE)}>{candidateCopyStatus}</button></article>
+          <article className="forge-theory"><header><div><small>FORGE THEORY · ZERO TOURNAMENT CREDIT ASSUMED</small><h3>{FORGE_THEORY.name}</h3></div><b>SPECULATIVE</b></header><p><strong>THE THEORY</strong> Mjölnir may convert the Izzet shell’s cheap interaction and flexible threats into repeatable pressure without abandoning its tempo plan. Card design and role fit justify a trial; tournament results do not yet justify confidence.</p><div><span><b>−2 Fire Magic</b>CONTROL VARIABLE</span><span><b>+2 Mjölnir</b>NEW-CARD HYPOTHESIS</span><span><b>Fail if pressure slows</b>REJECTION CONDITION</span><span><b>5 exact matches</b>FIRST REVIEW</span></div><footer><em>Legality, deck size, copy limits, and opening hands must still pass. A theory can graduate only through simulation and matched Arena evidence.</em><button onClick={() => startForgeCandidate(FORGE_THEORY)}>Load theory experiment →</button></footer></article>
           <section className="simulation-ladder" aria-label="Simulation ladder results">
             <header><div><small>SIMULATION LADDER · 2,000 DETERMINISTIC RUNS</small><h3>{simulationGate.gate === "goldfish-pass" ? "Sequencing gate passed." : "More structural work required."}</h3><p>{simulationGate.warning}</p></div><b className={simulationGate.gate === "goldfish-pass" ? "pass" : "hold"}>{simulationGate.gate.replaceAll("-", " ")}</b></header>
             <div className="simulation-metrics"><span><b>{(simulationGate.expert.keepableRate * 100).toFixed(1)}%</b>KEEPABLE OPENERS</span><span><b>{(simulationGate.expert.planRealizationRate * 100).toFixed(1)}%</b>PLAN REALIZATION</span><span><b>{simulationGate.expert.averageRealizationTurn?.toFixed(1) || "—"}</b>AVG. REALIZATION TURN</span><span><b>{(simulationGate.expert.modelCoverage * 100).toFixed(0)}%</b>MODEL COVERAGE</span><span><b>{simulationGate.sensitivityLabel}</b>PILOT SENSITIVITY</span></div>
@@ -503,24 +507,30 @@ export default function Home() {
           </section>
           <div className="runner-up-heading"><small>RUNNER-UP FORGE IDEAS</small><h3>Different answers to the same field.</h3><p>The top build is not the only viable hypothesis. Compare the alternate strategies, inspect every card, and test the one that fits how you want to attack the field.</p></div>
           <div className="candidate-rankings">{CANDIDATES.slice(1).map((candidate) => <article key={candidate.name}><span>0{candidate.rank}</span><div><small>{candidate.strategy} · VS {candidate.target}</small><h4>{candidate.name}</h4><p>{candidate.strategyPlan}. {candidate.averageSpellCmc.toFixed(2)} average spell mana · {(candidate.novelty * 100).toFixed(0)}% novelty · {(candidate.coherence * 100).toFixed(0)}% coherence</p><em>FIELD FIT +{candidate.scoreBreakdown.matchupFit} · HISTORY +{candidate.scoreBreakdown.historicalFit} · CURVE −{candidate.scoreBreakdown.curvePenalty}</em><details><summary>View full 75-card idea</summary><pre>{candidate.deckText}{"\n\nSIDEBOARD\n"}{candidate.sideboardText}</pre></details></div><b>{candidate.rankScore.toFixed(1)}</b><button onClick={() => startForgeCandidate(candidate)}>Test</button></article>)}</div>
+          </>}
         </div>
       </section>
 
       <section className="draft-buddy-section" id="draft-buddy">
         <div className="shell">
-          <div className="section-heading"><div><span>LIMITED LAB · FOUNDER PREVIEW</span><h2>Draft Buddy ranks the pick—and shows its work.</h2></div><p>Enter cards as Name | rating | colors | mana value | type. Ratings remain an input prior; pool fit and curve needs can move the pick.</p></div>
+          <div className="section-heading lab-heading"><div><span>OPTIONAL · LIMITED LAB</span><h2>Draft Buddy ranks the pick—and shows its work.</h2></div><div><p>Open this workspace only when you are drafting.</p><button className="lab-toggle" onClick={() => setShowDraftBuddy((value) => !value)}>{showDraftBuddy ? "Close Draft Buddy" : "Open Draft Buddy"} <span>{showDraftBuddy ? "↑" : "↓"}</span></button></div></div>
+          {showDraftBuddy && <>
           <div className="draft-buddy-grid">
             <label>PACK<textarea value={draftPack} onChange={(event) => setDraftPack(event.target.value)} /></label>
             <label>CURRENT POOL<textarea value={draftPool} onChange={(event) => setDraftPool(event.target.value)} placeholder="Add previous picks here, one card per line…" /></label>
             <aside><small>LIVE PICK ORDER · PICK {draftPoolRows.length + 1}</small>{draftRanking.slice(0, 5).map((card, index) => <article key={`${card.name}-${index}`}><i>0{index + 1}</i><div><b>{card.name}</b><span>{card.colors?.join("") || "C"} · {card.cmc} mana · {card.type}</span><em>{card.reasons.join(" · ")}</em></div><strong>{card.score.toFixed(1)}</strong></article>)}<footer><b>{draftHealth.creatures} creatures · {draftHealth.early} early plays</b><span>{draftHealth.warnings.length ? draftHealth.warnings.join(" ") : "Pool fundamentals are currently on track."}</span></footer></aside>
           </div>
           <p className="draft-disclaimer">Founder preview: Draft Buddy does not read the Arena draft screen yet and does not pretend ratings are facts. Card recognition, set-specific archetypes, signals, and pick-history capture remain gated work.</p>
+          </>}
         </div>
       </section>
 
       <section className="forge-section" id="forge">
         <div className="shell forge-shell">
           <div className="forge-heading"><div><span>ENTER THE FORGE</span><h2>What are you working on?</h2></div><p>Paste a quantity-based decklist. Your first diagnosis appears instantly.</p></div>
+          <section className={`account-center ${accountStatus}`} aria-label="Your Forge account">
+            <div><small>YOUR FORGE ACCOUNT · CREATED THROUGH PRIVATE SIGN-IN</small><h3>{accountStatus === "synced" ? "Account active and synchronized." : accountStatus === "loading" || accountStatus === "saving" ? "Connecting your protected account…" : "Local safety copy active."}</h3><p>{accountStatus === "synced" ? `Your Deck Bench, versions, and match evidence are attached to this signed-in identity${lastAccountSync ? ` · last synchronized ${new Date(lastAccountSync).toLocaleString()}` : ""}.` : "MetaForge always keeps a browser copy. Account synchronization will retry without deleting local work."}</p></div><div><b>{accountStatus === "synced" ? "SYNCED" : accountStatus.toUpperCase()}</b><button onClick={() => document.querySelector("#deck-bench")?.scrollIntoView({ behavior: "smooth" })}>Open my saved decks</button></div>
+          </section>
           <section className="founder-onboarding" aria-label="Founder setup guide">
             <header><div><small>FOUNDER FLIGHT CHECK</small><h3>{onboardingSteps.every((step) => step.done) ? "The Forge is fully armed." : "Four steps to your first measured evolution."}</h3></div><b>{onboardingSteps.filter((step) => step.done).length}/4<span>READY</span></b></header>
             <div>{onboardingSteps.map((step, index) => <button key={step.label} className={step.done ? "done" : ""} onClick={step.action}><i>{step.done ? "✓" : `0${index + 1}`}</i><span><b>{step.label}</b><small>{step.detail}</small></span></button>)}</div>
