@@ -9,6 +9,7 @@ import { evaluateExperiment } from "./experiment-evidence.mjs";
 import { classifyRevealedOpponent } from "./opponent-classifier.mjs";
 import { evaluateLastMatchSignal, evaluateMatchupEvidence } from "./adaptive-recommendation.mjs";
 import { simulateDeck } from "./forge-simulation.mjs";
+import { evaluateSimulationGate } from "./goldfish-simulation.mjs";
 import { deckFingerprint } from "./deck-fingerprint.mjs";
 import { attachMatches, DECK_BENCH_STORAGE_KEY, emptyDeckBench, mergeDeckBenches, rankedFamilies, readDeckBench, recordExperiment, updateFamily } from "./deck-bench.mjs";
 
@@ -25,6 +26,7 @@ const REQUIRED_COMPANION_VERSION = "0.2.1";
 
 export default function Home() {
   const meta = getMetaIntelligence();
+  const simulationGate = useMemo(() => evaluateSimulationGate(FORGE_CANDIDATE.deck, FORGE_CANDIDATE.strategy, 2000, 8128), []);
   const [deckName, setDeckName] = useState("My deck");
   const [format, setFormat] = useState("Standard");
   const [deckText, setDeckText] = useState("");
@@ -459,6 +461,11 @@ export default function Home() {
           </div>
           <p className="meta-method">GENERATOR GATE · {meta.generatorGate.replaceAll("-", " ")} · {meta.method}</p>
           <article className="forge-prototype"><div><small>FORGE RECOMMENDED · META BREAKER</small><h3>{FORGE_CANDIDATE.name}</h3><p>{FORGE_CANDIDATE.reasoning}</p><em>Not a popularity pick: Forge generated this list to attack the measured field, then required format legality, a complete sideboard, supported synergies, and opening-hand consistency before offering it for testing.</em></div><div className="prototype-facts"><span><b>{FORGE_CANDIDATE.strategy}</b>STRATEGY</span><span><b>{FORGE_CANDIDATE.target}</b>FIELD TARGET</span><span><b>{((1 - FORGE_CANDIDATE.novelty) * 100).toFixed(0)}%</b>EST. FIELD OVERLAP</span><span><b>{(FORGE_CANDIDATE.coherence * 100).toFixed(0)}%</b>SYNERGY SUPPORT</span><span><b>FOUNDER TEST</b>VIABILITY GATE</span><span><b>{FORGE_CANDIDATE.rankScore.toFixed(1)}</b>RANK SCORE</span></div><button onClick={() => startForgeCandidate(FORGE_CANDIDATE)}>{candidateCopyStatus}</button></article>
+          <section className="simulation-ladder" aria-label="Simulation ladder results">
+            <header><div><small>SIMULATION LADDER · 2,000 DETERMINISTIC RUNS</small><h3>{simulationGate.gate === "goldfish-pass" ? "Sequencing gate passed." : "More structural work required."}</h3><p>{simulationGate.warning}</p></div><b className={simulationGate.gate === "goldfish-pass" ? "pass" : "hold"}>{simulationGate.gate.replaceAll("-", " ")}</b></header>
+            <div className="simulation-metrics"><span><b>{(simulationGate.expert.keepableRate * 100).toFixed(1)}%</b>KEEPABLE OPENERS</span><span><b>{(simulationGate.expert.planRealizationRate * 100).toFixed(1)}%</b>PLAN REALIZATION</span><span><b>{simulationGate.expert.averageRealizationTurn?.toFixed(1) || "—"}</b>AVG. REALIZATION TURN</span><span><b>{(simulationGate.expert.modelCoverage * 100).toFixed(0)}%</b>MODEL COVERAGE</span><span><b>{simulationGate.sensitivityLabel}</b>PILOT SENSITIVITY</span></div>
+            <ol><li className="complete">Structure + legality</li><li className={simulationGate.gate === "goldfish-pass" ? "complete" : "hold"}>Goldfish sequencing</li><li>Scenario interaction</li><li>Matchup simulation</li><li>Arena validation</li></ol>
+          </section>
           <section className="strategy-proof" aria-label="Generated strategy support proof">
             <div><small>STRATEGY GRAPH · VERIFIED</small><h3>Every payoff has enough support.</h3><p>Forge reads Oracle text, identifies what each payoff demands, counts its enabling cards, and rejects or repairs unsupported packages before ranking the deck.</p></div>
             <div className="strategy-proof-list">{FORGE_CANDIDATE.requirements.map((requirement) => <article key={`${requirement.card}-${requirement.requirement}`}><span>{requirement.card}</span><b>{requirement.requirement}</b><em>{requirement.supportCount}/{requirement.minimum} copies</em><small>{requirement.enablers.slice(0, 3).join(" · ")}</small></article>)}</div>
