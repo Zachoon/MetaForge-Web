@@ -14,7 +14,7 @@ import { evaluateLastMatchSignal, evaluateMatchupEvidence } from "./adaptive-rec
 import { evaluateOpeningHandComparison, simulateDeck } from "./forge-simulation.mjs";
 import { evaluateSimulationGate } from "./goldfish-simulation.mjs";
 import { evaluateMatchupMatrix } from "./matchup-simulation.mjs";
-import { evaluateDraftPick, limitedDeckHealth } from "./limited-buddy.mjs";
+import { evaluateDraftPairs, evaluateDraftPick, limitedDeckHealth } from "./limited-buddy.mjs";
 import { deckFingerprint } from "./deck-fingerprint.mjs";
 import { attachMatches, DECK_BENCH_STORAGE_KEY, emptyDeckBench, mergeDeckBenches, rankedFamilies, readDeckBench, recordExperiment, updateFamily } from "./deck-bench.mjs";
 
@@ -27,7 +27,7 @@ const SAMPLE_DECK = `4 Monastery Swiftspear
 4 Boltwave
 2 Witchstalker Frenzy
 26 Mountain`;
-const REQUIRED_COMPANION_VERSION = "0.3.0";
+const REQUIRED_COMPANION_VERSION = "0.3.1";
 const SAMPLE_DRAFT_PACK = `Shieldwall Recruit | 3.4 | W | 2 | Creature
 Molten Rebuke | 3.7 | R | 2 | Instant
 Archive Visionary | 3.5 | U | 3 | Creature
@@ -44,7 +44,7 @@ export default function Home() {
   const [deckText, setDeckText] = useState("");
   const [draftPack, setDraftPack] = useState(SAMPLE_DRAFT_PACK);
   const [draftPool, setDraftPool] = useState("");
-  const [liveDraft, setLiveDraft] = useState<null | { active: boolean; draftId?: string; eventId?: string; packNumber: number; pickNumber: number; packCards: string[]; pickedCards: string[]; updatedAt?: string; source: string }>(null);
+  const [liveDraft, setLiveDraft] = useState<null | { active: boolean; draftId?: string; eventId?: string; packNumber: number; pickNumber: number; picksPerTurn: number; packCards: string[]; pickedCards: string[]; updatedAt?: string; source: string }>(null);
   const [showMetaLab, setShowMetaLab] = useState(false);
   const [showDraftBuddy, setShowDraftBuddy] = useState(false);
   const [analyzed, setAnalyzed] = useState(false);
@@ -89,6 +89,7 @@ export default function Home() {
   const rows = useMemo(() => parseDeck(deckText), [deckText]);
   const draftPoolRows = useMemo(() => parseLimitedRows(draftPool), [draftPool]);
   const draftRanking = useMemo(() => evaluateDraftPick(parseLimitedRows(draftPack), draftPoolRows, { pick: draftPoolRows.length + 1 }), [draftPack, draftPoolRows]);
+  const draftPairRanking = useMemo(() => evaluateDraftPairs(parseLimitedRows(draftPack), draftPoolRows, { pick: draftPoolRows.length + 1 }), [draftPack, draftPoolRows]);
   const draftHealth = useMemo(() => limitedDeckHealth(draftPoolRows), [draftPoolRows]);
   const cardCount = rows.reduce((sum, row) => sum + row.quantity, 0);
   const landCount = rows.filter((row) => isLand(row.name)).reduce((sum, row) => sum + row.quantity, 0);
@@ -563,7 +564,7 @@ export default function Home() {
           <div className="draft-buddy-grid">
             <label>PACK<textarea value={draftPack} onChange={(event) => setDraftPack(event.target.value)} /></label>
             <label>CURRENT POOL<textarea value={draftPool} onChange={(event) => setDraftPool(event.target.value)} placeholder="Add previous picks here, one card per line…" /></label>
-            <aside><small>LIVE PICK ORDER · PICK {draftPoolRows.length + 1}</small>{draftRanking.slice(0, 5).map((card, index) => <article key={`${card.name}-${index}`}><i>0{index + 1}</i><div><b>{card.name}</b><span>{card.colors?.join("") || "C"} · {card.cmc} mana · {card.type}</span><em>{card.reasons.join(" · ")}</em></div><strong>{card.score.toFixed(1)}</strong></article>)}<footer><b>{draftHealth.creatures} creatures · {draftHealth.early} early plays</b><span>{draftHealth.warnings.length ? draftHealth.warnings.join(" ") : "Pool fundamentals are currently on track."}</span></footer></aside>
+            <aside><small>{liveDraft?.picksPerTurn === 2 ? "LIVE PAIR ORDER" : "LIVE PICK ORDER"} · PICK {liveDraft?.pickNumber || draftPoolRows.length + 1}</small>{liveDraft?.picksPerTurn === 2 ? draftPairRanking.slice(0, 5).map((pair, index) => <article key={`${pair.cards[0].name}-${pair.cards[1].name}`}><i>0{index + 1}</i><div><b>{pair.cards.map((card) => card.name).join(" + ")}</b><span>TWO-CARD PACKAGE</span><em>{pair.reasons.join(" · ")}</em></div><strong>{pair.score.toFixed(1)}</strong></article>) : draftRanking.slice(0, 5).map((card, index) => <article key={`${card.name}-${index}`}><i>0{index + 1}</i><div><b>{card.name}</b><span>{card.colors?.join("") || "C"} · {card.cmc} mana · {card.type}</span><em>{card.reasons.join(" · ")}</em></div><strong>{card.score.toFixed(1)}</strong></article>)}<footer><b>{liveDraft?.picksPerTurn === 2 ? "Pick-Two mode · combinations evaluated" : "Pick-One mode"} · {draftHealth.creatures} creatures · {draftHealth.early} early plays</b><span>{draftHealth.warnings.length ? draftHealth.warnings.join(" ") : "Pool fundamentals are currently on track."}</span></footer></aside>
           </div>
           <p className="draft-disclaimer">Private development preview: Companion v0.3 reads pack and pick events from Arena Detailed Logs automatically. Unknown card metadata is never invented; set-specific ratings, visual fallback, and live recommendations remain gated until validated and authorized.</p>
           </>}
@@ -608,7 +609,7 @@ export default function Home() {
               <p>{arenaStatus === "connected" ? arenaTracking === "registered" ? "Connected and tracking this exact deck revision. Completed matches will appear automatically." : "Connected. Start or reopen a Forge trial to register its exact deck revision." : arenaStatus === "outdated" ? `An older Companion answered (${companionVersion}). Close it, download v${REQUIRED_COMPANION_VERSION}, and reconnect.` : arenaStatus === "needs-logs" ? "Companion found. In Arena, open Options → Account, enable Detailed Logs, then restart Arena." : arenaStatus === "offline" ? "Nothing answered on the local bridge. Extract and run the Companion, allow Windows if prompted, then reconnect." : "Connect the read-only local companion to track completed Arena matches without manual entry."}</p>
             </div>
             <div className="arena-actions">
-              <a href="/downloads/MetaForge-Arena-Companion-Windows-v0.3.0.zip" download>Download companion v0.3.0 · Windows</a>
+              <a href="/downloads/MetaForge-Arena-Companion-Windows-v0.3.1.zip" download>Download companion v0.3.1 · Windows</a>
               <button onClick={connectArena} disabled={arenaStatus === "connecting"}>{arenaStatus === "connected" ? "Arena connected" : arenaStatus === "connecting" ? "Connecting…" : "Connect Arena"}</button>
               <button className="mobile-report-trigger" onClick={() => setMobileReportOpen((value) => !value)} disabled={!experiment?.proposedFingerprint}>{mobileReportOpen ? "Close mobile check-in" : "Record a mobile match"}</button>
               <small>Founder build · local-only data · Windows may ask you to confirm the unsigned app.</small>
