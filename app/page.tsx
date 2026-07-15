@@ -7,7 +7,7 @@ import { getMetaIntelligence } from "./meta-intelligence.mjs";
 import FORGE_CANDIDATE, { CANDIDATES } from "./forge-candidate.mjs";
 import { evaluateExperiment } from "./experiment-evidence.mjs";
 import { classifyRevealedOpponent } from "./opponent-classifier.mjs";
-import { evaluateMatchupEvidence } from "./adaptive-recommendation.mjs";
+import { evaluateLastMatchSignal, evaluateMatchupEvidence } from "./adaptive-recommendation.mjs";
 import { simulateDeck } from "./forge-simulation.mjs";
 import { deckFingerprint } from "./deck-fingerprint.mjs";
 
@@ -219,6 +219,7 @@ export default function Home() {
   const nextCandidate = experiment ? CANDIDATES[(CANDIDATES.findIndex((candidate) => candidate.name === experiment.deckName) + 1) % CANDIDATES.length] : null;
   const activeCandidate = experiment ? CANDIDATES.find((candidate) => candidate.name === experiment.deckName) : undefined;
   const adaptiveRecommendation = evaluateMatchupEvidence(proposedEvidence, activeCandidate);
+  const lastMatchSignal = evaluateLastMatchSignal(proposedEvidence[0], activeCandidate);
 
   async function startAdaptiveRepair() {
     if (!experiment || adaptiveRecommendation.status !== "repair-ready" || !adaptiveRecommendation.proposedDeck) return;
@@ -314,7 +315,8 @@ export default function Home() {
             <div><small>STRATEGY GRAPH · VERIFIED</small><h3>Every payoff has enough support.</h3><p>Forge reads Oracle text, identifies what each payoff demands, counts its enabling cards, and rejects or repairs unsupported packages before ranking the deck.</p></div>
             <div className="strategy-proof-list">{FORGE_CANDIDATE.requirements.map((requirement) => <article key={`${requirement.card}-${requirement.requirement}`}><span>{requirement.card}</span><b>{requirement.requirement}</b><em>{requirement.supportCount}/{requirement.minimum} copies</em><small>{requirement.enablers.slice(0, 3).join(" · ")}</small></article>)}</div>
           </section>
-          <div className="candidate-rankings">{CANDIDATES.map((candidate) => <article key={candidate.name}><span>0{candidate.rank}</span><div><small>{candidate.strategy} · VS {candidate.target}</small><h4>{candidate.name}</h4><p>{candidate.strategyPlan}. {candidate.averageSpellCmc.toFixed(2)} average spell mana · {(candidate.novelty * 100).toFixed(0)}% novelty · {(candidate.coherence * 100).toFixed(0)}% coherence</p><em>FIELD FIT +{candidate.scoreBreakdown.matchupFit} · HISTORY +{candidate.scoreBreakdown.historicalFit} · CURVE −{candidate.scoreBreakdown.curvePenalty}</em></div><b>{candidate.rankScore.toFixed(1)}</b><button onClick={() => startForgeCandidate(candidate)}>Test</button></article>)}</div>
+          <div className="runner-up-heading"><small>RUNNER-UP FORGE IDEAS</small><h3>Different answers to the same field.</h3><p>The top build is not the only viable hypothesis. Compare the alternate strategies, inspect every card, and test the one that fits how you want to attack the field.</p></div>
+          <div className="candidate-rankings">{CANDIDATES.slice(1).map((candidate) => <article key={candidate.name}><span>0{candidate.rank}</span><div><small>{candidate.strategy} · VS {candidate.target}</small><h4>{candidate.name}</h4><p>{candidate.strategyPlan}. {candidate.averageSpellCmc.toFixed(2)} average spell mana · {(candidate.novelty * 100).toFixed(0)}% novelty · {(candidate.coherence * 100).toFixed(0)}% coherence</p><em>FIELD FIT +{candidate.scoreBreakdown.matchupFit} · HISTORY +{candidate.scoreBreakdown.historicalFit} · CURVE −{candidate.scoreBreakdown.curvePenalty}</em><details><summary>View full 75-card idea</summary><pre>{candidate.deckText}{"\n\nSIDEBOARD\n"}{candidate.sideboardText}</pre></details></div><b>{candidate.rankScore.toFixed(1)}</b><button onClick={() => startForgeCandidate(candidate)}>Test</button></article>)}</div>
         </div>
       </section>
 
@@ -366,6 +368,13 @@ export default function Home() {
               <p>{adaptiveRecommendation.narrative}{adaptiveRecommendation.purpose && ` The repair is designed to ${adaptiveRecommendation.purpose}.`}</p>
               {adaptiveRecommendation.status === "repair-ready" && <div className="adaptive-changes">{adaptiveRecommendation.changes.map((change) => <b key={change.card} className={change.quantity > 0 ? "add" : "remove"}>{change.quantity > 0 ? "+" : ""}{change.quantity} {change.card}</b>)}</div>}
               {adaptiveRecommendation.status === "repair-ready" && <button onClick={startAdaptiveRepair}>Test matchup repair →</button>}
+            </section>
+          )}
+          {experiment && (
+            <section className={`last-match-coach ${lastMatchSignal.status}`}>
+              <div><small>LAST MATCH · LIVE FORGE COACH</small><h3>{lastMatchSignal.strategy ? `${lastMatchSignal.strategy} signal detected` : "Waiting for a readable matchup"}</h3></div>
+              <p>{lastMatchSignal.narrative}</p>
+              {lastMatchSignal.candidateOption && <div><b>WATCH OPTION · {lastMatchSignal.candidateOption.card}</b><span>{lastMatchSignal.purpose}</span></div>}
             </section>
           )}
           <div className="workspace">

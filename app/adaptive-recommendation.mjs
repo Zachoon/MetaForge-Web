@@ -7,6 +7,31 @@ const PLANS = {
   Midrange: { add: ["sideboard-finisher", "sideboard-removal"], cut: ["counter", "draw"], purpose: "match its threat quality without surrendering card economy" },
 };
 
+export function evaluateLastMatchSignal(match, candidate) {
+  if (!match) return { status: "waiting", narrative: "Complete an Arena match with this test version and Forge will update its coaching signal here." };
+  const opponent = classifyRevealedOpponent(match.revealedOpponentCards);
+  if (opponent.strategy === "Unknown") return {
+    status: "low-information",
+    result: match.result,
+    narrative: `Latest match recorded as a ${match.result}, but too few opposing cards were revealed to make a strategy claim. Forge will keep watching without inventing a matchup.`,
+  };
+  const plan = PLANS[opponent.strategy];
+  const candidateOption = plan && candidate
+    ? plan.add.map((role) => candidate.sideboard.find((card) => card.role === role)).find(Boolean)
+    : undefined;
+  return {
+    status: "watch",
+    result: match.result,
+    strategy: opponent.strategy,
+    confidence: opponent.confidence,
+    candidateOption,
+    purpose: plan?.purpose,
+    narrative: match.result === "loss"
+      ? `Latest result: loss against a ${opponent.strategy} signal (${opponent.confidence} classification). ${candidateOption ? `${candidateOption.card} is the first validated sideboard option Forge will monitor` : "Forge has identified the strategic pressure but not a validated card swap"}. One match updates the watchlist, not the deck.`
+      : `Latest result: win against a ${opponent.strategy} signal (${opponent.confidence} classification). Forge will watch whether the cards that supported this plan continue to perform before recommending more of them.`,
+  };
+}
+
 export function evaluateMatchupEvidence(matches = [], candidate) {
   const groups = new Map();
   for (const match of matches) {

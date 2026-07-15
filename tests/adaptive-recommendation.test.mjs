@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import CANDIDATE from "../app/forge-candidate.mjs";
-import { evaluateMatchupEvidence } from "../app/adaptive-recommendation.mjs";
+import { evaluateLastMatchSignal, evaluateMatchupEvidence } from "../app/adaptive-recommendation.mjs";
 
 const aggroCards = ["Hired Claw", "Emberheart Challenger", "Slickshot Show-Off", "Lightning Strike", "Mountain"];
 const match = (id, result, cards = aggroCards) => ({ id, result, revealedOpponentCards: cards });
@@ -9,6 +9,15 @@ const match = (id, result, cards = aggroCards) => ({ id, result, revealedOpponen
 test("does not rewrite a deck from one noisy matchup result", () => {
   const result = evaluateMatchupEvidence([match("1", "loss")], CANDIDATE);
   assert.equal(result.status, "observe");
+  assert.equal(result.proposedDeck, undefined);
+});
+
+test("turns the latest match into immediate coaching without rewriting the deck", () => {
+  const result = evaluateLastMatchSignal(match("latest", "loss"), CANDIDATE);
+  assert.equal(result.status, "watch");
+  assert.equal(result.strategy, "Aggro");
+  assert.equal(result.candidateOption.card, "Floodpits Drowner");
+  assert.match(result.narrative, /One match updates the watchlist, not the deck/i);
   assert.equal(result.proposedDeck, undefined);
 });
 
