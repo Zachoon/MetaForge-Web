@@ -10,8 +10,9 @@ class FakeD1 {
       return {
         async first() { return db.rows.get(values[0]) || null; },
         async run() { if (sql.includes("founder_feedback")) db.feedback.push(values); else db.rows.set(values[0], { bench_json: values[1], revision: values[2], updated_at: "now" }); return { success: true }; },
+        async all() { return { results: [] }; },
       };
-    } };
+    }, async all() { return { results: [] }; } };
   }
 }
 
@@ -25,6 +26,7 @@ const env = (DB) => ({ DB, ASSETS: { fetch: async () => new Response("Not found"
 const ctx = { waitUntil() {}, passThroughOnException() {} };
 const request = (method, email, body) => new Request("https://example.test/api/account/deck-bench", { method, headers: { ...(email ? { "cf-access-authenticated-user-email": email } : {}), ...(body ? { "content-type": "application/json" } : {}) }, body: body ? JSON.stringify(body) : undefined });
 const feedbackRequest = (email, body) => new Request("https://example.test/api/account/feedback", { method: "POST", headers: { ...(email ? { "cf-access-authenticated-user-email": email } : {}), "content-type": "application/json" }, body: JSON.stringify(body) });
+const founderRequest = (email) => new Request("https://example.test/api/founder/overview", { headers: email ? { "cf-access-authenticated-user-email": email } : {} });
 
 test("account API rejects anonymous access and isolates users", async () => {
   const worker = await loadWorker();
@@ -59,4 +61,14 @@ test("feedback API requires an account and stores contextual founder signals", a
   assert.equal(response.status, 201);
   assert.equal(DB.feedback.length, 1);
   assert.equal(DB.feedback[0][1], "missed-interaction");
+});
+
+test("founder command center rejects buddies even when they know the API route", async () => {
+  const worker = await loadWorker();
+  const DB = new FakeD1();
+  const founderEnv = { ...env(DB), METAFORGE_FOUNDER_USER_KEY: "f45237c471be9524242fb124700a61b6916cbbff9967c8ba74e43af0617bea90" };
+  assert.equal((await worker.fetch(founderRequest("buddy@example.com"), founderEnv, ctx)).status, 403);
+  const accepted = await worker.fetch(founderRequest("ZACH@DUKECITY.GAMES"), founderEnv, ctx);
+  assert.equal(accepted.status, 200);
+  assert.equal((await accepted.json()).totals.testers, 0);
 });

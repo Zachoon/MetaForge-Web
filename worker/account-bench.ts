@@ -10,7 +10,7 @@ function json(value: unknown, status = 200, headers: Record<string, string> = {}
   return Response.json(value, { status, headers: { "Cache-Control": "no-store", ...headers } });
 }
 
-async function userKey(request: Request) {
+export async function userKey(request: Request) {
   const email = request.headers.get(EMAIL_HEADER)?.trim().toLowerCase();
   if (!email || !email.includes("@")) return null;
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`metaforge-account:${email}`));
