@@ -183,6 +183,9 @@ input:focus,select:focus,textarea:focus { border-color:var(--mint); box-shadow:0
 .arena-bridge p,.arena-history p { margin:0; color:#91a7a5; max-width:730px; line-height:1.55; font-size:13px; }
 .arena-bridge button { min-width:170px; padding:14px 18px; border:1px solid var(--mint); color:var(--mint); background:transparent; font-weight:750; }
 .arena-bridge button:disabled { opacity:.65; cursor:wait; }
+.arena-actions { min-width:230px; display:flex; flex-direction:column; gap:8px; }
+.arena-actions a { padding:14px 18px; border:1px solid var(--amber); color:#11191a; background:var(--amber); font-weight:800; text-align:center; text-decoration:none; }
+.arena-actions small { max-width:230px; color:#718986; letter-spacing:0; line-height:1.35; text-align:center; }
 .arena-history { margin-top:18px; padding:24px 26px; border:1px solid #294542; background:#0a1717; }
 .arena-history-heading { display:flex; justify-content:space-between; align-items:center; }
 .arena-history-heading>span { font:500 32px Georgia,serif; }
