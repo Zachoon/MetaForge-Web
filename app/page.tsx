@@ -41,6 +41,7 @@ export default function Home() {
   const [deckBench, setDeckBench] = useState<any>(emptyDeckBench());
   const [accountStatus, setAccountStatus] = useState<"loading" | "synced" | "saving" | "local" | "error">("loading");
   const [accountReady, setAccountReady] = useState(false);
+  const [lastAccountSync, setLastAccountSync] = useState<string | null>(null);
   const accountRevision = useRef(0);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackCategory, setFeedbackCategory] = useState("broken");
@@ -88,6 +89,7 @@ export default function Home() {
         const data = await response.json();
         if (!active) return;
         accountRevision.current = Number(data.revision || 0);
+        setLastAccountSync(data.updatedAt || new Date().toISOString());
         const merged = mergeDeckBenches(local, data.bench || emptyDeckBench());
         window.localStorage.setItem(DECK_BENCH_STORAGE_KEY, JSON.stringify(merged));
         setDeckBench(merged);
@@ -120,6 +122,7 @@ export default function Home() {
         if (!response.ok) throw new Error("save failed");
         const saved = await response.json();
         accountRevision.current = Number(saved.revision || accountRevision.current);
+        setLastAccountSync(new Date().toISOString());
         setAccountStatus("synced");
       } catch { setAccountStatus("error"); }
     }, 650);
@@ -322,6 +325,16 @@ export default function Home() {
     }
   }
 
+  function exportDeckBench() {
+    const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), product: "MetaForge", deckBench }, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `metaforge-deck-bench-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function submitFeedback() {
     if (feedbackMessage.trim().length < 3) return;
     setFeedbackStatus("saving");
@@ -500,8 +513,8 @@ export default function Home() {
           )}
           <section className="deck-bench" id="deck-bench" aria-label="My Deck Bench">
             <div className="deck-bench-heading">
-              <div><small>PRIVATE PERFORMANCE LAB · {accountStatus === "synced" ? "ACCOUNT SYNCED" : accountStatus === "saving" ? "SAVING…" : accountStatus === "loading" ? "LOADING ACCOUNT…" : accountStatus === "local" ? "LOCAL BACKUP" : "SYNC RETRY NEEDED"}</small><h3>My Deck Bench</h3><p>Every exact list keeps its own evidence. One card changed means a new revision—never contaminated history.</p></div>
-              <b>{benchRankings.length}<span>ACTIVE DECKS</span></b>
+              <div><small>PRIVATE PERFORMANCE LAB · {accountStatus === "synced" ? "ACCOUNT SYNCED" : accountStatus === "saving" ? "SAVING…" : accountStatus === "loading" ? "LOADING ACCOUNT…" : accountStatus === "local" ? "LOCAL BACKUP" : "SYNC RETRY NEEDED"}</small><h3>My Deck Bench</h3><p>Every exact list keeps its own evidence. One card changed means a new revision—never contaminated history.</p><em>{lastAccountSync ? `Last cloud backup ${new Date(lastAccountSync).toLocaleString()}` : "Local recovery copy active; cloud backup is being established."}</em></div>
+              <div className="bench-account-tools"><b>{benchRankings.length}<span>ACTIVE DECKS</span></b><button onClick={exportDeckBench}>Export my backup</button></div>
             </div>
             {benchRankings.length === 0 ? <div className="bench-empty"><b>Your first revision is waiting.</b><span>Start a Forge experiment and this bench will preserve the baseline, the proposed list, and every Arena result attached to the exact version played.</span></div> : (
               <div className="bench-families">{benchRankings.map((family: any, familyIndex: number) => <article className="bench-family" key={family.id}>
@@ -520,6 +533,7 @@ export default function Home() {
               </article>)}</div>
             )}
             {deckBench.families.some((family: any) => family.archived) && <details className="archived-decks"><summary>Archived decks ({deckBench.families.filter((family: any) => family.archived).length})</summary>{deckBench.families.filter((family: any) => family.archived).map((family: any) => <button key={family.id} onClick={() => changeBenchFamily(family.id, "restore")}>Restore {family.name}</button>)}</details>}
+            <details className="privacy-contract"><summary>What MetaForge saves and why</summary><p>Your account saves deck revisions and privacy-safe match evidence so your Bench survives browser changes. The Companion reads Arena’s local log; MetaForge does not store the raw log. Founder feedback attaches identifiers and connection diagnostics, not full deck contents. Personal results do not automatically train or alter the global Forge model.</p></details>
           </section>
           {experiment && (
             <section className="forge-evidence">

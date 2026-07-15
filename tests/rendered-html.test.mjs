@@ -23,5 +23,7 @@ test("server-renders the MetaForge product experience", async () => {
   assert.match(html, /FOUNDER FLIGHT CHECK/);
   assert.match(html, /My Deck Bench/);
   assert.match(html, /Send founder feedback/);
+  assert.match(html, /Export my backup/);
+  assert.match(html, /What MetaForge saves and why/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
 });
