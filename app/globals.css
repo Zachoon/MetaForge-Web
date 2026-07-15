@@ -202,6 +202,8 @@ input:focus,select:focus,textarea:focus { border-color:var(--mint); box-shadow:0
 .arena-actions { min-width:230px; display:flex; flex-direction:column; gap:8px; }
 .arena-actions a { padding:14px 18px; border:1px solid var(--amber); color:#11191a; background:var(--amber); font-weight:800; text-align:center; text-decoration:none; }
 .arena-actions small { max-width:230px; color:#718986; letter-spacing:0; line-height:1.35; text-align:center; }
+.arena-actions .mobile-report-trigger { border:1px solid #b0763f; background:transparent; color:var(--amber); }
+.mobile-match-report { padding:22px 24px; border:1px solid #775433; border-top:0; background:#17130f; }.mobile-match-report header { display:flex; justify-content:space-between; gap:20px; }.mobile-match-report header small { color:var(--amber); font-size:8px; letter-spacing:.15em; }.mobile-match-report h3 { margin:6px 0; font:500 21px Georgia,serif; }.mobile-match-report header p { margin:0; color:#887968; font-size:9px; }.mobile-match-report header>button { border:0; background:transparent; color:#bca68c; font-size:20px; }.mobile-match-report>div { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:16px; }.mobile-match-report input,.mobile-match-report select { height:39px; }.mobile-match-report>p { color:#807466; font-size:8px; line-height:1.5; }.submit-mobile-match { width:100%; padding:12px; border:0; background:var(--amber); color:#111817; font-weight:800; }
 .arena-history { margin-top:18px; padding:24px 26px; border:1px solid #294542; background:#0a1717; }
 .arena-history-heading { display:flex; justify-content:space-between; align-items:center; }
 .arena-history-heading>span { font:500 32px Georgia,serif; }
@@ -270,6 +272,7 @@ footer p { font-family:Georgia,serif; font-style:italic; }
 @media (max-width:900px) { .meta-grid{grid-template-columns:1fr}.forge-prototype,.strategy-proof{grid-template-columns:1fr}.forge-prototype button{width:100%}.simulation-metrics,.simulation-ladder ol{grid-template-columns:1fr 1fr}.simulation-metrics span{border-bottom:1px solid #29423f}.simulation-ladder header{display:block}.simulation-ladder header>b{display:inline-block;margin-top:14px}.matchup-matrix>header{display:block}.matchup-matrix>header em{display:block;margin-top:8px;text-align:left}.matchup-matrix>span{grid-template-columns:60px 1fr 90px}.matchup-matrix>span>small{grid-column:1/-1;text-align:left} }
 @media (max-width:900px) { .lab-heading>div:last-child{text-align:left}.forge-theory>div{grid-template-columns:1fr 1fr}.forge-theory header,.forge-theory footer,.account-center{align-items:flex-start;flex-direction:column}.account-center>div:last-child{text-align:left} }
 @media (max-width:900px) { .draft-buddy-grid{grid-template-columns:1fr}.draft-buddy-grid textarea{height:190px} }
+@media (max-width:600px) { .mobile-match-report>div{grid-template-columns:1fr 1fr} }
 @media (max-width:600px) { .experiment-choice{grid-template-columns:1fr} }
 @media (max-width:600px) { .strategy-proof-list{grid-template-columns:1fr} }
 @media (max-width:900px) { .deck-bench-heading{flex-direction:column}.bench-revision{grid-template-columns:1fr 1fr}.bench-revision button{width:100%} }

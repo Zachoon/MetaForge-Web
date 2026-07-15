@@ -7,6 +7,7 @@ import { getMetaIntelligence } from "./meta-intelligence.mjs";
 import FORGE_CANDIDATE, { CANDIDATES } from "./forge-candidate.mjs";
 import { FORGE_THEORY } from "./forge-theory.mjs";
 import { buildFormatContext, evaluateTheoryEvidence } from "./format-intelligence.mjs";
+import { createMobileMatchReport } from "./mobile-match-report.mjs";
 import { evaluateExperiment } from "./experiment-evidence.mjs";
 import { classifyRevealedOpponent } from "./opponent-classifier.mjs";
 import { evaluateLastMatchSignal, evaluateMatchupEvidence } from "./adaptive-recommendation.mjs";
@@ -58,7 +59,12 @@ export default function Home() {
   const [backupExported, setBackupExported] = useState(false);
   const [feedbackVerified, setFeedbackVerified] = useState(false);
   const [secondBrowserVerified, setSecondBrowserVerified] = useState(false);
-  const [arenaMatches, setArenaMatches] = useState<Array<{ id: string; completedAt: string; gamesWon: number; gamesLost: number; result: "win" | "loss"; mulligans: number; deckFingerprint?: string; revealedOpponentCards?: string[]; experimentVariant?: "original" | "proposed" | "unmatched" }>>([]);
+  const [mobileReportOpen, setMobileReportOpen] = useState(false);
+  const [mobileResult, setMobileResult] = useState<"win" | "loss">("win");
+  const [mobilePlayDraw, setMobilePlayDraw] = useState("unknown");
+  const [mobileMulligans, setMobileMulligans] = useState(0);
+  const [mobileOpponent, setMobileOpponent] = useState("Unknown");
+  const [arenaMatches, setArenaMatches] = useState<Array<{ id: string; completedAt: string; gamesWon: number; gamesLost: number; result: "win" | "loss"; mulligans: number; deckFingerprint?: string; revealedOpponentCards?: string[]; experimentVariant?: "original" | "proposed" | "unmatched"; source?: string; opponentStrategy?: string; evidenceConfidence?: string }>>([]);
   const [deckBench, setDeckBench] = useState<any>(emptyDeckBench());
   const [accountStatus, setAccountStatus] = useState<"loading" | "synced" | "saving" | "local" | "error">("loading");
   const [accountReady, setAccountReady] = useState(false);
@@ -171,6 +177,13 @@ export default function Home() {
   }, [arenaMatches]);
 
   useEffect(() => {
+    if (arenaMatches.length || !accountReady) return;
+    const saved = (deckBench.families || []).flatMap((family: any) => (family.revisions || []).flatMap((revision: any) => revision.matches || []));
+    const unique = [...new Map(saved.map((match: any) => [match.id, match])).values()] as typeof arenaMatches;
+    if (unique.length) setArenaMatches(unique.sort((left, right) => right.completedAt.localeCompare(left.completedAt)));
+  }, [accountReady, deckBench, arenaMatches.length]);
+
+  useEffect(() => {
     let active = true;
     setDeckLegality((current) => ({ ...current, legal: false, pending: true }));
     validateDeckLegality(rows, format).then((result) => { if (active) setDeckLegality({ ...result, pending: false }); });
@@ -183,7 +196,11 @@ export default function Home() {
       try {
         const response = await fetch("http://127.0.0.1:17831/matches", { cache: "no-store" });
         const data = await response.json();
-        setArenaMatches(Array.isArray(data.matches) ? data.matches.slice().reverse() : []);
+        setArenaMatches((current) => {
+          const mobile = current.filter((match) => match.source === "self-reported-mobile");
+          const desktop = Array.isArray(data.matches) ? data.matches.slice().reverse() : [];
+          return [...mobile, ...desktop.filter((match: { id: string }) => !mobile.some((saved) => saved.id === match.id))];
+        });
       } catch {
         setArenaStatus("offline");
       }
@@ -221,6 +238,15 @@ export default function Home() {
     } catch {
       setArenaStatus("offline");
     }
+  }
+
+  function recordMobileMatch() {
+    if (!experiment?.proposedFingerprint) return;
+    const record = createMobileMatchReport({ result: mobileResult, deckFingerprint: experiment.proposedFingerprint, experimentId: experiment.id, opponentStrategy: mobileOpponent, playDraw: mobilePlayDraw, mulligans: mobileMulligans });
+    setArenaMatches((current) => [record, ...current.filter((match) => match.id !== record.id)]);
+    setMobileReportOpen(false);
+    setMobileMulligans(0);
+    setMobileOpponent("Unknown");
   }
 
   function loadSample(moveToForge = false) {
@@ -383,7 +409,7 @@ export default function Home() {
 
   const proposedEvidence = arenaMatches.filter((match) => (match as typeof match & { experimentVariant?: string }).experimentVariant === "proposed");
   const experimentEvidence = evaluateExperiment(proposedEvidence);
-  const matchupCounts = proposedEvidence.reduce<Record<string, number>>((counts, match) => { const label = classifyRevealedOpponent(match.revealedOpponentCards).strategy; counts[label] = (counts[label] || 0) + 1; return counts; }, {});
+  const matchupCounts = proposedEvidence.reduce<Record<string, number>>((counts, match) => { const label = match.opponentStrategy || classifyRevealedOpponent(match.revealedOpponentCards).strategy; counts[label] = (counts[label] || 0) + 1; return counts; }, {});
   const matchupSummary = Object.entries(matchupCounts).sort((a, b) => b[1] - a[1]).map(([name, count]) => `${name} ${count}`).join(" · ");
   const nextCandidate = experiment ? CANDIDATES[(CANDIDATES.findIndex((candidate) => candidate.name === experiment.deckName) + 1) % CANDIDATES.length] : null;
   const activeCandidate = experiment ? CANDIDATES.find((candidate) => candidate.name === experiment.deckName) : undefined;
@@ -570,13 +596,15 @@ export default function Home() {
             <div className="arena-actions">
               <a href="/downloads/MetaForge-Arena-Companion-Windows-v0.2.1.zip" download>Download companion v0.2.1 · Windows</a>
               <button onClick={connectArena} disabled={arenaStatus === "connecting"}>{arenaStatus === "connected" ? "Arena connected" : arenaStatus === "connecting" ? "Connecting…" : "Connect Arena"}</button>
+              <button className="mobile-report-trigger" onClick={() => setMobileReportOpen((value) => !value)} disabled={!experiment?.proposedFingerprint}>{mobileReportOpen ? "Close mobile check-in" : "Record a mobile match"}</button>
               <small>Founder build · local-only data · Windows may ask you to confirm the unsigned app.</small>
             </div>
           </aside>
+          {mobileReportOpen && experiment?.proposedFingerprint && <section className="mobile-match-report" aria-label="Record a mobile Arena match"><header><div><small>MOBILE ARENA · SELF-REPORTED EVIDENCE</small><h3>How did this exact deck version perform?</h3><p>{experiment.deckName} · revision {experiment.proposedFingerprint.slice(0, 8)}</p></div><button onClick={() => setMobileReportOpen(false)}>×</button></header><div><label>RESULT<select value={mobileResult} onChange={(event) => setMobileResult(event.target.value as "win" | "loss")}><option value="win">Win</option><option value="loss">Loss</option></select></label><label>PLAY / DRAW<select value={mobilePlayDraw} onChange={(event) => setMobilePlayDraw(event.target.value)}><option value="unknown">Not sure</option><option value="play">On the play</option><option value="draw">On the draw</option></select></label><label>MULLIGANS<input type="number" min="0" max="9" value={mobileMulligans} onChange={(event) => setMobileMulligans(Number(event.target.value))} /></label><label>OPPONENT STYLE<select value={mobileOpponent} onChange={(event) => setMobileOpponent(event.target.value)}><option>Unknown</option><option>Aggro</option><option>Midrange</option><option>Control</option><option>Tempo</option><option>Ramp</option><option>Combo</option></select></label></div><p>This check-in is attached only to the selected revision and labeled self-reported. Missing mobile games are never counted as losses.</p><button className="submit-mobile-match" onClick={recordMobileMatch}>Save mobile match →</button></section>}
           {arenaMatches.length > 0 && (
             <section className="arena-history" aria-label="Arena match history">
               <div className="arena-history-heading"><div><small>PERSONAL PLAY EVIDENCE</small><h3>Recent Arena matches</h3></div><span>{arenaMatches.filter((match) => match.result === "win").length}–{arenaMatches.filter((match) => match.result === "loss").length}</span></div>
-              <div className="arena-match-list">{arenaMatches.slice(0, 8).map((match) => { const opponent = classifyRevealedOpponent(match.revealedOpponentCards); return <article key={match.id} className={match.result}><b>{match.result === "win" ? "WIN" : "LOSS"}</b><span>{match.gamesWon}–{match.gamesLost} games</span><span>{opponent.strategy} · {opponent.confidence}</span><time>{new Date(match.completedAt).toLocaleString()}</time></article>; })}</div>
+              <div className="arena-match-list">{arenaMatches.slice(0, 8).map((match) => { const opponent = match.opponentStrategy ? { strategy: match.opponentStrategy, confidence: "self-reported" } : classifyRevealedOpponent(match.revealedOpponentCards); return <article key={match.id} className={match.result}><b>{match.result === "win" ? "WIN" : "LOSS"}</b><span>{match.gamesWon}–{match.gamesLost} games</span><span>{opponent.strategy} · {opponent.confidence}</span><time>{new Date(match.completedAt).toLocaleString()}</time></article>; })}</div>
               <p>This evidence belongs to your testing history. It does not alter MetaForge’s global intelligence.</p>
             </section>
           )}
