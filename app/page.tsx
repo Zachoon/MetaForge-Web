@@ -10,6 +10,8 @@ import { classifyRevealedOpponent } from "./opponent-classifier.mjs";
 import { evaluateLastMatchSignal, evaluateMatchupEvidence } from "./adaptive-recommendation.mjs";
 import { simulateDeck } from "./forge-simulation.mjs";
 import { evaluateSimulationGate } from "./goldfish-simulation.mjs";
+import { evaluateMatchupMatrix } from "./matchup-simulation.mjs";
+import { evaluateDraftPick, limitedDeckHealth } from "./limited-buddy.mjs";
 import { deckFingerprint } from "./deck-fingerprint.mjs";
 import { attachMatches, DECK_BENCH_STORAGE_KEY, emptyDeckBench, mergeDeckBenches, rankedFamilies, readDeckBench, recordExperiment, updateFamily } from "./deck-bench.mjs";
 
@@ -23,13 +25,21 @@ const SAMPLE_DECK = `4 Monastery Swiftspear
 2 Witchstalker Frenzy
 26 Mountain`;
 const REQUIRED_COMPANION_VERSION = "0.2.1";
+const SAMPLE_DRAFT_PACK = `Shieldwall Recruit | 3.4 | W | 2 | Creature
+Molten Rebuke | 3.7 | R | 2 | Instant
+Archive Visionary | 3.5 | U | 3 | Creature
+Verdant Colossus | 3.2 | G | 6 | Creature
+Grave Bargain | 3.3 | B | 3 | Sorcery`;
 
 export default function Home() {
   const meta = getMetaIntelligence();
   const simulationGate = useMemo(() => evaluateSimulationGate(FORGE_CANDIDATE.deck, FORGE_CANDIDATE.strategy, 2000, 8128), []);
+  const matchupMatrix = useMemo(() => evaluateMatchupMatrix(FORGE_CANDIDATE.deck, ["Aggro", "Midrange", "Control", "Tempo"], 2000, 991), []);
   const [deckName, setDeckName] = useState("My deck");
   const [format, setFormat] = useState("Standard");
   const [deckText, setDeckText] = useState("");
+  const [draftPack, setDraftPack] = useState(SAMPLE_DRAFT_PACK);
+  const [draftPool, setDraftPool] = useState("");
   const [analyzed, setAnalyzed] = useState(false);
   const [comparisonOpen, setComparisonOpen] = useState(false);
   const [proposedDeck, setProposedDeck] = useState("");
@@ -61,6 +71,9 @@ export default function Home() {
   }>(null);
 
   const rows = useMemo(() => parseDeck(deckText), [deckText]);
+  const draftPoolRows = useMemo(() => parseLimitedRows(draftPool), [draftPool]);
+  const draftRanking = useMemo(() => evaluateDraftPick(parseLimitedRows(draftPack), draftPoolRows, { pick: draftPoolRows.length + 1 }), [draftPack, draftPoolRows]);
+  const draftHealth = useMemo(() => limitedDeckHealth(draftPoolRows), [draftPoolRows]);
   const cardCount = rows.reduce((sum, row) => sum + row.quantity, 0);
   const landCount = rows.filter((row) => isLand(row.name)).reduce((sum, row) => sum + row.quantity, 0);
   const uniqueCount = rows.length;
@@ -464,7 +477,8 @@ export default function Home() {
           <section className="simulation-ladder" aria-label="Simulation ladder results">
             <header><div><small>SIMULATION LADDER · 2,000 DETERMINISTIC RUNS</small><h3>{simulationGate.gate === "goldfish-pass" ? "Sequencing gate passed." : "More structural work required."}</h3><p>{simulationGate.warning}</p></div><b className={simulationGate.gate === "goldfish-pass" ? "pass" : "hold"}>{simulationGate.gate.replaceAll("-", " ")}</b></header>
             <div className="simulation-metrics"><span><b>{(simulationGate.expert.keepableRate * 100).toFixed(1)}%</b>KEEPABLE OPENERS</span><span><b>{(simulationGate.expert.planRealizationRate * 100).toFixed(1)}%</b>PLAN REALIZATION</span><span><b>{simulationGate.expert.averageRealizationTurn?.toFixed(1) || "—"}</b>AVG. REALIZATION TURN</span><span><b>{(simulationGate.expert.modelCoverage * 100).toFixed(0)}%</b>MODEL COVERAGE</span><span><b>{simulationGate.sensitivityLabel}</b>PILOT SENSITIVITY</span></div>
-            <ol><li className="complete">Structure + legality</li><li className={simulationGate.gate === "goldfish-pass" ? "complete" : "hold"}>Goldfish sequencing</li><li>Scenario interaction</li><li>Matchup simulation</li><li>Arena validation</li></ol>
+            <ol><li className="complete">Structure + legality</li><li className={simulationGate.gate === "goldfish-pass" ? "complete" : "hold"}>Goldfish sequencing</li><li className={matchupMatrix.gate === "matrix-pass" ? "complete" : "hold"}>Scenario interaction</li><li>Rules-complete matchups</li><li>Arena validation</li></ol>
+            <div className="matchup-matrix"><header><small>ARCHETYPE STRESS MATRIX · 2,000 TRIALS EACH</small><em>{matchupMatrix.warning}</em></header>{matchupMatrix.rows.map((row) => <span key={row.opponent}><b>{row.opponent}</b><i><strong style={{ width: `${row.scenarioPassRate * 100}%` }} /></i><em>{(row.scenarioPassRate * 100).toFixed(0)}% scenario pass</em><small>{(row.stabilizationRate * 100).toFixed(0)}% stabilizes · {(row.pilotSensitivity * 100).toFixed(1)} pts pilot-sensitive</small></span>)}</div>
           </section>
           <section className="strategy-proof" aria-label="Generated strategy support proof">
             <div><small>STRATEGY GRAPH · VERIFIED</small><h3>Every payoff has enough support.</h3><p>Forge reads Oracle text, identifies what each payoff demands, counts its enabling cards, and rejects or repairs unsupported packages before ranking the deck.</p></div>
@@ -472,6 +486,18 @@ export default function Home() {
           </section>
           <div className="runner-up-heading"><small>RUNNER-UP FORGE IDEAS</small><h3>Different answers to the same field.</h3><p>The top build is not the only viable hypothesis. Compare the alternate strategies, inspect every card, and test the one that fits how you want to attack the field.</p></div>
           <div className="candidate-rankings">{CANDIDATES.slice(1).map((candidate) => <article key={candidate.name}><span>0{candidate.rank}</span><div><small>{candidate.strategy} · VS {candidate.target}</small><h4>{candidate.name}</h4><p>{candidate.strategyPlan}. {candidate.averageSpellCmc.toFixed(2)} average spell mana · {(candidate.novelty * 100).toFixed(0)}% novelty · {(candidate.coherence * 100).toFixed(0)}% coherence</p><em>FIELD FIT +{candidate.scoreBreakdown.matchupFit} · HISTORY +{candidate.scoreBreakdown.historicalFit} · CURVE −{candidate.scoreBreakdown.curvePenalty}</em><details><summary>View full 75-card idea</summary><pre>{candidate.deckText}{"\n\nSIDEBOARD\n"}{candidate.sideboardText}</pre></details></div><b>{candidate.rankScore.toFixed(1)}</b><button onClick={() => startForgeCandidate(candidate)}>Test</button></article>)}</div>
+        </div>
+      </section>
+
+      <section className="draft-buddy-section" id="draft-buddy">
+        <div className="shell">
+          <div className="section-heading"><div><span>LIMITED LAB · FOUNDER PREVIEW</span><h2>Draft Buddy ranks the pick—and shows its work.</h2></div><p>Enter cards as Name | rating | colors | mana value | type. Ratings remain an input prior; pool fit and curve needs can move the pick.</p></div>
+          <div className="draft-buddy-grid">
+            <label>PACK<textarea value={draftPack} onChange={(event) => setDraftPack(event.target.value)} /></label>
+            <label>CURRENT POOL<textarea value={draftPool} onChange={(event) => setDraftPool(event.target.value)} placeholder="Add previous picks here, one card per line…" /></label>
+            <aside><small>LIVE PICK ORDER · PICK {draftPoolRows.length + 1}</small>{draftRanking.slice(0, 5).map((card, index) => <article key={`${card.name}-${index}`}><i>0{index + 1}</i><div><b>{card.name}</b><span>{card.colors?.join("") || "C"} · {card.cmc} mana · {card.type}</span><em>{card.reasons.join(" · ")}</em></div><strong>{card.score.toFixed(1)}</strong></article>)}<footer><b>{draftHealth.creatures} creatures · {draftHealth.early} early plays</b><span>{draftHealth.warnings.length ? draftHealth.warnings.join(" ") : "Pool fundamentals are currently on track."}</span></footer></aside>
+          </div>
+          <p className="draft-disclaimer">Founder preview: Draft Buddy does not read the Arena draft screen yet and does not pretend ratings are facts. Card recognition, set-specific archetypes, signals, and pick-history capture remain gated work.</p>
         </div>
       </section>
 
@@ -636,4 +662,11 @@ export default function Home() {
       <footer className="shell"><a className="brand" href="#top"><span className="brand-mark">MF</span><span>METAFORGE</span></a><p>Understand the deck. Respect the evidence. Test the change.</p><span>© 2026 MetaForge</span></footer>
     </main>
   );
+}
+
+function parseLimitedRows(text: string) {
+  return text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).map((line) => {
+    const [name, rating, colors, cmc, type] = line.split("|").map((part) => part.trim());
+    return { name, rating: Number(rating) || 0, colors: colors && colors !== "C" ? colors.split("").filter((color) => "WUBRG".includes(color)) : [], cmc: Number(cmc) || 0, type: type || "Unknown" };
+  }).filter((card) => card.name);
 }

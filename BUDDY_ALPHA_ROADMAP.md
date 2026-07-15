@@ -57,7 +57,15 @@ Buddy alpha is ready when a newly invited player can sign in, connect Arena, imp
 
 ## Explicitly after buddy-alpha readiness
 
-- Broader card-role and interaction graph.
-- Current-field ingestion with source provenance and freshness controls.
-- Calibrated pilot/matchup modeling for aggregate learning.
-- Draft Buddy.
+- Broader card-role and interaction graph. **In progress:** land/fetch/landfall and generated-deck role coverage are active; rules-complete interaction coverage remains gated.
+- Current-field ingestion with source provenance and freshness controls. **Foundation active:** freshness and provenance labels exist; automated multi-source ingestion remains gated.
+- Calibrated pilot/matchup modeling for aggregate learning. **Scenario rung active:** deterministic archetype stress models and pilot sensitivity are visible; rules-complete matches and Arena calibration remain gated.
+- Draft Buddy. **Founder preview active:** editable pack/pool ranking and deck-health guidance are available; Arena draft-screen recognition, signals, set archetypes, and pick-history capture remain gated.
+
+## Intelligence ladder
+
+1. Structural legality and synergy support — active.
+2. Opening-hand and goldfish sequencing — active.
+3. Archetype role-pressure scenarios — active, explicitly not match-win prediction.
+4. Rules-complete card interactions, mulligans, sideboarding, and matchup agents — next major engine milestone.
+5. Arena-calibrated recommendations with minimum samples and uncertainty bounds — requires founder/buddy evidence.

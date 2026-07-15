@@ -5,7 +5,7 @@ Date: 2026-07-15
 ## Automated status
 
 - Production build: PASS
-- Regression suite: 43/43 PASS
+- Regression suite: 52/52 PASS
 - Access-protected account and feedback endpoints: PASS
 - Account isolation and stale-device conflict protection: PASS
 - Exact deck fingerprint and revision evidence isolation: PASS
@@ -19,6 +19,8 @@ Date: 2026-07-15
 - Immutable deck versions, exact Arena match attribution, progression, promotion, revert, archive, and restore.
 - Strategic recommendation contracts and named runner-up experiments.
 - Contextual private founder feedback.
+- Deterministic goldfish and archetype stress ladders with model-coverage and pilot-sensitivity gates.
+- Draft Buddy founder preview with editable pack/pool ranking and Limited deck-health warnings.
 
 ## Manual founder gates still required before sending invitations
 
