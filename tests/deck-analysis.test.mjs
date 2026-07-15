@@ -54,20 +54,21 @@ test("preserves fetch lands when the deck contains landfall payoffs", () => {
   const profile = mechanicProfile(rows);
   const result = createRecommendation(rows, "Standard");
   assert.equal(profile.landfall_payoff, 8);
-  assert.equal(result.title, "Preserve the landfall engine");
+  assert.equal(result.title, "No evidence-backed cut yet");
   assert.deepEqual(result.changes, []);
-  assert.match(result.reasoning, /two separate land-entering events/i);
+  assert.match(result.reasoning, /engine constraint/i);
+  assert.match(result.guardrail, /second land-entry trigger/i);
 });
 
 test("preserves landfall while proposing a concrete flex-slot experiment", () => {
   const rows = parseDeck("16 Forest\n4 Fabled Passage\n4 Evolving Wilds\n4 Mossborn Hydra\n4 Icetill Explorer\n4 Earthbender Ascension\n1 Lumra, Bellow of the Woods\n4 Sapling Nursery\n4 Badgermole Cub\n4 Llanowar Elves\n3 Terrasymbiosis\n4 Studious First-Year");
   const result = createRecommendation(rows, "Standard");
-  assert.equal(result.title, "Preserve the landfall engine");
+  assert.equal(result.title, "Test −1 Lumra, Bellow of the Woods, +1 Terrasymbiosis");
   assert.deepEqual(result.changes, [
     { card: "Lumra, Bellow of the Woods", quantity: -1 },
     { card: "Terrasymbiosis", quantity: 1 },
   ]);
-  assert.match(result.reasoning, /hypothesis to compare/i);
+  assert.match(result.reasoning, /hypothesis/i);
 });
 
 test("trims rather than blindly preserves an oversized slow fetch package with weak landfall density", () => {

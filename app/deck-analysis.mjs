@@ -178,14 +178,17 @@ function createBaseRecommendation(rows, format = "Standard") {
       changes.push({ card: flex.name, quantity: -1 }, { card: core.name, quantity: 1 });
     }
     return {
-      title: "Preserve the landfall engine",
-      summary: `Forge found ${mechanics.landfall_payoff} landfall payoff card(s) supported by ${fetchCount} fetch-style lands. It will preserve those fetches${changes.length ? ` while testing one fewer ${flex.name} and one additional ${core.name}` : " rather than replacing them from composition alone"}.`,
+      title: changes.length ? `Test −1 ${flex.name}, +1 ${core.name}` : "No evidence-backed cut yet",
+      summary: changes.length
+        ? `Forge proposes a one-card consistency test: remove one ${flex.name} and add one ${core.name}. The fetch-land package stays intact because it actively powers this deck’s Landfall plan.`
+        : "Forge recognizes the Landfall plan and will not pretend that preserving it is a new strategy recommendation. The current composition evidence does not justify a specific card-for-card change yet.",
       reasoning: changes.length
-        ? `A fetch land can create two land-entering events, so the test protects that engine. ${flex.name} is the lowest-count flex slot and ${core.name} is a three-copy core slot; the proposed swap tests draw consistency without weakening Landfall. This is a hypothesis to compare, not a declaration that ${flex.name} is a bad card.`
-        : "A fetch land can create two separate land-entering events from one land play: the fetch itself, then the land it finds. That interaction can outweigh tapped-land tempo and makes the fetch package a synergy component, not merely mana fixing.",
+        ? `${flex.name} is the lowest-count flex slot and ${core.name} is a three-copy core slot. The swap tests draw consistency without weakening the deck’s primary mechanic; it is a hypothesis, not a declaration that ${flex.name} is bad.`
+        : "Landfall preservation is recorded as an engine constraint, not promoted as the headline advice. Choose a manual experiment only if you can identify a role the deck is missing, or gather match evidence so Forge can diagnose a repeatable weakness.",
       proposedDeck: formatDeck(proposed),
       changes,
       mechanics,
+      guardrail: `Keep the Landfall engine intact: ${mechanics.payoffCount} payoff cards are supported by ${fetchCount} fetch-style lands, and each fetch can create a second land-entry trigger.`,
     };
   }
   if (dominantBasic && basics.length === 1 && fetchCount >= 4) {
@@ -268,7 +271,9 @@ function enrichRecommendation(result, rows) {
       openingHands: 2500,
       earlyMatches: 5,
       reviewMatches: 12,
-      instruction: "Compare the exact original and proposed fingerprints. Review after 5 matched games; treat 12 as the first developing decision point, not proof.",
+      instruction: result.changes.length
+        ? "Click Review Forge’s exact change, inspect the add/cut, then start the experiment. Play at least 5 Arena matches with that exact version before reviewing; 12 matched games is the first developing signal, not proof."
+        : "Forge has not earned a specific automatic cut. Choose a runner-up or create your own experiment, name the role you are testing, then play at least 5 Arena matches with that exact version before reviewing.",
     },
   };
 }
