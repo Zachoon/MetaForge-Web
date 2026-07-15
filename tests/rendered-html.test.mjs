@@ -7,7 +7,7 @@ async function render() {
   const { default: worker } = await import(workerUrl.href);
   return worker.fetch(
     new Request("http://localhost/", { headers: { accept: "text/html" } }),
-    { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
+    { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) }, METAFORGE_BOOTSTRAP_LOCK: "unlocked" },
     { waitUntil() {}, passThroughOnException() {} },
   );
 }

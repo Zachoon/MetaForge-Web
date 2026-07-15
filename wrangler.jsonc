@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "metaforge-private-alpha",
+  "main": "dist/server/index.js",
+  "compatibility_date": "2026-07-14",
+  "assets": {
+    "directory": "dist/client",
+    "binding": "ASSETS"
+  },
+  "workers_dev": true,
+  "preview_urls": false,
+  "vars": {
+    "METAFORGE_BOOTSTRAP_LOCK": "unlocked"
+  }
+}

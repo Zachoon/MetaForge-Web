@@ -4,6 +4,7 @@ import handler from "vinext/server/app-router-entry";
 
 interface Env {
   ASSETS: Fetcher;
+  METAFORGE_BOOTSTRAP_LOCK?: string;
   DB: D1Database;
   IMAGES: {
     input(stream: ReadableStream): {
@@ -27,6 +28,12 @@ interface ExecutionContext {
 
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    if (env.METAFORGE_BOOTSTRAP_LOCK !== "unlocked") {
+      return new Response("MetaForge private alpha is locked while access controls are configured.", {
+        status: 403,
+        headers: { "Cache-Control": "no-store", "Content-Type": "text/plain; charset=utf-8" },
+      });
+    }
     const url = new URL(request.url);
 
     if (url.pathname === "/_vinext/image") {
