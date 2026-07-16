@@ -57,6 +57,9 @@ export default function Home() {
   const [showMetaLab, setShowMetaLab] = useState(false);
   const [showDraftBuddy, setShowDraftBuddy] = useState(false);
   const [analyzed, setAnalyzed] = useState(false);
+  const [analysisActivity,setAnalysisActivity]=useState<"idle"|"analyzing"|"ready">("idle");
+  const [recordsPulse,setRecordsPulse]=useState(false);
+  const previousMatchCount=useRef(0);
   const [comparisonOpen, setComparisonOpen] = useState(false);
   const [proposedDeck, setProposedDeck] = useState("");
   const [comparisonReady, setComparisonReady] = useState(false);
@@ -234,6 +237,7 @@ export default function Home() {
       return next;
     });
   }, [arenaMatches]);
+  useEffect(()=>{if(arenaMatches.length>previousMatchCount.current){setRecordsPulse(true);const timer=window.setTimeout(()=>setRecordsPulse(false),3200);previousMatchCount.current=arenaMatches.length;return()=>window.clearTimeout(timer)}previousMatchCount.current=arenaMatches.length},[arenaMatches.length]);
 
   useEffect(() => {
     const synced = arenaMatches.flatMap((match: any) => match.coachDebrief ? [{ matchId: match.id, ...match.coachDebrief, deckFingerprint: match.deckFingerprint }] : []);
@@ -443,7 +447,9 @@ export default function Home() {
   }
 
   function analyze() {
-    if (cardCount > 0) setAnalyzed(true);
+    if (cardCount <= 0||analysisActivity==="analyzing")return;
+    setAnalysisActivity("analyzing");
+    window.setTimeout(()=>{setAnalyzed(true);setAnalysisActivity("ready");window.setTimeout(()=>setAnalysisActivity("idle"),2200)},850);
   }
 
   function prepareComparison(mode: "forge" | "manual" = "forge") {
@@ -614,6 +620,8 @@ export default function Home() {
           Analyze a deck
         </button>
       </nav>
+
+      {(analysisActivity!=="idle"||arenaStatus==="connecting"||recordsPulse||accountStatus==="saving"||forgeChatStatus==="thinking")&&<section className={`forge-activity shell ${analysisActivity==="ready"||recordsPulse?"complete":"working"}`} role="status" aria-live="polite"><div className="activity-core"><i aria-hidden="true"><b/><b/><b/></i><span><small>{analysisActivity==="analyzing"?"DECK ANALYSIS":analysisActivity==="ready"?"ANALYSIS COMPLETE":arenaStatus==="connecting"?"ARENA BRIDGE":recordsPulse?"MATCH RECORD RECEIVED":accountStatus==="saving"?"PRIVATE ACCOUNT":"FORGE COACH"}</small><strong>{analysisActivity==="analyzing"?"Reading roles, mana, legality, and synergy…":analysisActivity==="ready"?"Your recommendation is ready.":arenaStatus==="connecting"?"Looking for the Arena Companion…":recordsPulse?"Attaching the match to its exact deck revision…":accountStatus==="saving"?"Saving your Deck Bench safely…":"Reasoning through your question…"}</strong></span></div><div className="activity-track" aria-hidden="true"><b/><b/><b/><b/></div><details><summary>What is Forge doing?</summary><p>{analysisActivity==="analyzing"?"Checking deck structure first, then preserving proven engines while ranking measurable changes.":arenaStatus==="connecting"||recordsPulse?"The local Companion sends completed MTG Arena evidence. MetaForge keeps results attached to the exact list and never treats one match as proof.":accountStatus==="saving"?"Updating the private account copy while preserving the browser recovery copy.":"Comparing verified facts, relevant evidence, alternatives, and uncertainty before answering."}</p></details></section>}
 
       <section className="return-cockpit shell" id="cockpit" aria-label="Your MetaForge home">
         <header><div><small>START HERE · YOUR NEXT MOVE</small><h1>{experiment ? `Continue ${experiment.deckName}` : cardCount ? `Improve ${deckName}` : "Forge your first deck test"}</h1><p>{experiment ? `${experimentEvidence.sampleSize}/5 matches complete. Keep playing this exact revision.` : analyzed ? "Choose one proposed change, compare it, then start the experiment." : cardCount ? "Your deck is entered. Press Forge my analysis next." : "Click Forge a deck, paste your list, then press Forge my analysis."}</p></div><b>{experiment ? experimentStage.toUpperCase() : analyzed ? "CHOOSE" : cardCount ? "ANALYZE" : "STEP 1"}<span>STATUS</span></b></header>
@@ -829,7 +837,7 @@ export default function Home() {
               <label className="deck-label">DECKLIST <button onClick={() => loadSample(false)}>Load sample</button></label>
               <textarea value={deckText} onChange={(e) => { setDeckText(e.target.value); setAnalyzed(false); }} placeholder={"4 Lightning Bolt\n4 Monastery Swiftspear\n20 Mountain"} aria-label="Decklist" />
               <div className="input-footer"><span>{cardCount ? `${cardCount} cards · ${uniqueCount} unique entries` : "Use one card entry per line"}</span><span>TXT</span></div>
-              <button className="analyze" title={!cardCount?"Paste a decklist above to unlock analysis.":"Analyze this deck"} disabled={!cardCount} onClick={analyze}>{cardCount?"Forge my analysis":"Paste a deck to unlock analysis"} <span>→</span></button>
+              <button className="analyze" title={!cardCount?"Paste a decklist above to unlock analysis.":"Analyze this deck"} disabled={!cardCount||analysisActivity==="analyzing"} onClick={analyze}>{analysisActivity==="analyzing"?"Forging your analysis…":cardCount?"Forge my analysis":"Paste a deck to unlock analysis"} <span>{analysisActivity==="analyzing"?"◆":"→"}</span></button>
             </div>
 
             <div className={`result-panel ${analyzed ? "ready" : ""}`} aria-live="polite">
