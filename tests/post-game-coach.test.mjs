@@ -5,12 +5,19 @@ import { buildPostGameCoach,POST_GAME_READS } from "../app/post-game-coach.mjs";
 test("treats one post-game read as a clue", () => {
   const pulse = buildPostGameCoach({ id:"1", deckFingerprint:"a" }, "My mana", []);
   assert.equal(pulse.urgency, "clue"); assert.match(pulse.pattern, /not a deck verdict/i);
+  assert.equal(pulse.decision.status, "continue");
 });
 
 test("promotes a repeated same-revision read into a pattern", () => {
   const history = [{ read:"My mana", deckFingerprint:"a" }, { read:"My mana", deckFingerprint:"a" }];
   const pulse = buildPostGameCoach({ id:"3", deckFingerprint:"a" }, "My mana", history);
   assert.equal(pulse.urgency, "pattern"); assert.equal(pulse.repeats, 3);
+  assert.equal(pulse.decision.status, "reforge");
+});
+
+test("holds the deck steady when repeated evidence points to play decisions",()=>{
+  const pulse=buildPostGameCoach({id:"3",deckFingerprint:"a"},"I misplayed",[{read:"I misplayed",deckFingerprint:"a"},{read:"I misplayed",deckFingerprint:"a"}]);
+  assert.equal(pulse.decision.status,"continue"); assert.match(pulse.decision.detail,/sequencing practice/i);
 });
 
 test("does not contaminate one deck revision with another", () => {

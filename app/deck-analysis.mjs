@@ -236,8 +236,8 @@ export function createRecommendation(rows, format = "Standard") {
 
 function enrichRecommendation(result, rows) {
   const nonlands = rows.filter((row) => !isLand(row.name));
-  const removals = result.changes.filter((change) => change.quantity < 0);
-  const additions = result.changes.filter((change) => change.quantity > 0);
+  let removals = result.changes.filter((change) => change.quantity < 0);
+  let additions = result.changes.filter((change) => change.quantity > 0);
   const manualChallenges = [...nonlands]
     .sort((left, right) => left.quantity - right.quantity || left.name.localeCompare(right.name))
     .slice(0, 3)
@@ -249,6 +249,19 @@ function enrichRecommendation(result, rows) {
       adjustQuantity(alternative, reinforce.name, 1);
       return { card: row.name, quantity: row.quantity, add: reinforce.name, proposedDeck: formatDeck(alternative), reason: `Test one fewer ${row.name} and one additional ${reinforce.name} to measure concentration without changing deck size.` };
     });
+  const promoted = !result.changes.length && manualChallenges.find((option) => option.proposedDeck && option.add);
+  if (promoted) {
+    result = {
+      ...result,
+      title: `Controlled test: −1 ${promoted.card}, +1 ${promoted.add}`,
+      summary: `Forge does not have enough role evidence to call this an upgrade, but it can still offer a concrete experiment: exchange one ${promoted.card} for one ${promoted.add} and measure whether concentrating the established effect improves the deck.`,
+      reasoning: `${promoted.card} is one of the lowest-count flexible slots and ${promoted.add} is an existing sub-four-copy card. This is a composition-based Forge Theory test, not a claim that either card is universally stronger.`,
+      proposedDeck: promoted.proposedDeck,
+      changes: [{ card: promoted.card, quantity: -1 }, { card: promoted.add, quantity: 1 }],
+    };
+    removals = result.changes.filter((change) => change.quantity < 0);
+    additions = result.changes.filter((change) => change.quantity > 0);
+  }
   const manaChange = additions.some((change) => /^(plains|island|swamp|mountain|forest|wastes)$/i.test(change.card));
   const expectedGain = manaChange
     ? "More keepable opening hands and fewer games constrained by early mana access."
@@ -264,6 +277,10 @@ function enrichRecommendation(result, rows) {
       : "No automatic substitution passed the current evidence gate; a manual test may expose an interaction the composition model cannot see.";
   return {
     ...result,
+    evidence: {
+      label: promoted ? "FORGE THEORY · LOW CONFIDENCE" : result.changes.length ? "COMPOSITION EVIDENCE · TESTABLE" : "INSUFFICIENT EVIDENCE",
+      basis: promoted ? "Existing-card concentration hypothesis" : result.changes.length ? "Deck composition and verified card roles" : "No safe automatic substitution",
+    },
     expectedGain,
     risk,
     manualChallenges,

@@ -27,8 +27,20 @@ export function buildPostGameCoach(match, read, history = []) {
   const [headline, action] = RESPONSES[read] || ["A useful signal was captured.", "Keep the next test focused on the same observation."];
   const pattern = repeats >= 3 ? `This is now a pattern: ${repeats} recent games carried the same tag.` : repeats === 2 ? "This is the second recent game with the same tag. Watch it closely." : "One game is a clue, not a deck verdict.";
   const urgency = repeats >= 3 ? "pattern" : repeats === 2 ? "watch" : "clue";
+  const constructionSignals = new Set(["My mana", "Their speed", "I ran out of cards", "I lacked an answer", "My plan never started"]);
+  const playSignals = new Set(["I misplayed", "I kept a risky hand"]);
+  const positiveSignals = new Set(["My plan worked", "I found the turning point", "I stayed ahead on cards"]);
+  const decision = repeats >= 3 && constructionSignals.has(read)
+    ? { status:"reforge", label:"REFORGE", title:"A controlled deck change is now justified.", detail:"The same construction pressure appeared in three recent games with this exact revision. Preserve the original, create one narrow replacement, and compare the next five matched games." }
+    : playSignals.has(read)
+      ? { status:"continue", label:"CONTINUE", title:"Hold the deck steady; coach the decision.", detail:"This signal points first to mulligan or sequencing practice. Changing cards now would blur whether the next result came from the list or the decision." }
+      : repeats >= 2
+        ? { status:"watch", label:"WATCH", title:"Repeat the test before changing cards.", detail:"The same signal has appeared twice. Give the current list one focused observation window; a third same-version occurrence can justify a narrow reforge." }
+        : positiveSignals.has(read)
+          ? { status:"continue", label:"CONTINUE", title:"Keep the version and verify the strength.", detail:"The plan worked once. Hold the list steady and watch whether the same leverage appears against another opponent." }
+          : { status:"continue", label:"CONTINUE", title:"Keep collecting clean evidence.", detail:"One match changes the watchlist, not the deck. Play the exact version again with the stated observation in mind." };
   const turns = match.turnTelemetry?.landPlayTurns || [];
   const decisionMoment = buildDecisionMoment(match);
   const observedFact = decisionMoment?.detail || (turns.length ? `Companion confirmed land plays on turn${turns.length === 1 ? "" : "s"} ${turns.join(", ")}. Partial coverage is not enough to label other turns as misses.` : null);
-  return { headline, action, pattern, observedFact, decisionMoment, urgency, repeats, reviewed: history.length + 1, nextReviewIn: Math.max(0, 5 - ((history.length + 1) % 5)) };
+  return { headline, action, pattern, observedFact, decisionMoment, decision, urgency, repeats, reviewed: history.length + 1, nextReviewIn: Math.max(0, 5 - ((history.length + 1) % 5)) };
 }

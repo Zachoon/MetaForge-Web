@@ -55,6 +55,8 @@ test("preserves fetch lands when the deck contains landfall payoffs", () => {
   const result = createRecommendation(rows, "Standard");
   assert.equal(profile.landfall_payoff, 8);
   assert.equal(result.title, "No evidence-backed cut yet");
+  assert.equal(result.changes.length, 0);
+  assert.match(result.evidence.label, /INSUFFICIENT/);
   assert.deepEqual(result.changes, []);
   assert.match(result.reasoning, /engine constraint/i);
   assert.match(result.guardrail, /second land-entry trigger/i);
