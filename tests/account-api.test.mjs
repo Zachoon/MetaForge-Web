@@ -27,6 +27,7 @@ const ctx = { waitUntil() {}, passThroughOnException() {} };
 const request = (method, email, body) => new Request("https://example.test/api/account/deck-bench", { method, headers: { ...(email ? { "cf-access-authenticated-user-email": email } : {}), ...(body ? { "content-type": "application/json" } : {}) }, body: body ? JSON.stringify(body) : undefined });
 const feedbackRequest = (email, body) => new Request("https://example.test/api/account/feedback", { method: "POST", headers: { ...(email ? { "cf-access-authenticated-user-email": email } : {}), "content-type": "application/json" }, body: JSON.stringify(body) });
 const founderRequest = (email) => new Request("https://example.test/api/founder/overview", { headers: email ? { "cf-access-authenticated-user-email": email } : {} });
+const chatRequest = (email) => new Request("https://example.test/api/forge/chat", { method:"POST", headers:{ ...(email ? {"cf-access-authenticated-user-email":email}:{}), "content-type":"application/json" }, body:JSON.stringify({messages:[{role:"user",content:"Help me build a deck"}],context:{format:"Standard"}}) });
 
 test("account API rejects anonymous access and isolates users", async () => {
   const worker = await loadWorker();
@@ -71,4 +72,10 @@ test("founder command center rejects buddies even when they know the API route",
   const accepted = await worker.fetch(founderRequest("ZACH@DUKECITY.GAMES"), founderEnv, ctx);
   assert.equal(accepted.status, 200);
   assert.equal((await accepted.json()).totals.testers, 0);
+});
+
+test("Forge conversation requires an account and a server-side model key", async () => {
+  const worker=await loadWorker(); const DB=new FakeD1();
+  assert.equal((await worker.fetch(chatRequest(null),env(DB),ctx)).status,401);
+  assert.equal((await worker.fetch(chatRequest("one@example.com"),env(DB),ctx)).status,503);
 });

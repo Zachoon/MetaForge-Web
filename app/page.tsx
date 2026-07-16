@@ -75,6 +75,11 @@ export default function Home() {
   const [feedbackCategory, setFeedbackCategory] = useState("broken");
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackStatus, setFeedbackStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [forgeChatOpen, setForgeChatOpen] = useState(false);
+  const [forgeChatInput, setForgeChatInput] = useState("");
+  const [forgeChatStatus, setForgeChatStatus] = useState<"idle" | "thinking" | "error">("idle");
+  const [forgeMessages, setForgeMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([{ role: "assistant", content: "Bring me a deck idea, a confusing pick, or a strategy you want to understand. We’ll forge through it together." }]);
+  const [coachingProfile, setCoachingProfile] = useState("");
   const [experiment, setExperiment] = useState<null | {
     id?: string;
     deckName: string;
@@ -253,6 +258,20 @@ export default function Home() {
       setArenaStatus("offline");
     }
   }
+
+  useEffect(() => { setCoachingProfile(window.localStorage.getItem("metaforge.coachingProfile") || ""); }, []);
+
+  async function sendForgeMessage() {
+    const content = forgeChatInput.trim(); if (!content || forgeChatStatus === "thinking") return;
+    const next = [...forgeMessages, { role: "user" as const, content }]; setForgeMessages(next); setForgeChatInput(""); setForgeChatStatus("thinking");
+    try {
+      const response = await fetch("/api/forge/chat", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ messages:next, context:{ deckName, format, deckText, coachingProfile } }) });
+      const result = await response.json(); if (!response.ok) throw new Error(result.error || "Forge unavailable");
+      setForgeMessages((current) => [...current, { role:"assistant", content:result.answer }]); setForgeChatStatus("idle");
+    } catch (error) { setForgeMessages((current) => [...current, { role:"assistant", content:error instanceof Error ? error.message : "The Forge could not answer yet." }]); setForgeChatStatus("error"); }
+  }
+
+  function saveCoachingProfile(value: string) { setCoachingProfile(value); window.localStorage.setItem("metaforge.coachingProfile", value.slice(0,1000)); }
 
   function recordMobileMatch() {
     if (!experiment?.proposedFingerprint) return;
@@ -739,6 +758,16 @@ export default function Home() {
           <label>WHAT SHOULD WE KNOW?<textarea value={feedbackMessage} onChange={(event) => setFeedbackMessage(event.target.value)} placeholder="Tell us what you expected and what happened…" /></label>
           <p>Deck revision, experiment, Companion version, and non-sensitive connection diagnostics are attached automatically.</p>
           <button className="submit-feedback" disabled={feedbackStatus === "saving" || feedbackMessage.trim().length < 3} onClick={submitFeedback}>{feedbackStatus === "saving" ? "Sending…" : feedbackStatus === "saved" ? "Signal received ✓" : feedbackStatus === "error" ? "Retry feedback" : "Send to the Forge"}</button>
+        </section>}
+      </div>
+
+      <div className={`forge-chat-dock ${forgeChatOpen ? "open" : ""}`}>
+        {!forgeChatOpen ? <button onClick={() => setForgeChatOpen(true)}><span>✦</span> Talk to the Forge</button> : <section aria-label="Talk to the Forge">
+          <header><div><small>METAFORGE COACH · PERSONAL WORKSHOP</small><h3>Ask deeper. Build stranger. Learn faster.</h3></div><button aria-label="Close Forge conversation" onClick={() => setForgeChatOpen(false)}>×</button></header>
+          <details className="coach-profile"><summary>How should Forge coach me?</summary><textarea value={coachingProfile} onChange={(event) => saveCoachingProfile(event.target.value)} placeholder="Competitive, prefers proactive midrange, explain the math, $150 budget…" /><small>Saved in this browser and sent only with your questions.</small></details>
+          <div className="forge-conversation">{forgeMessages.map((message,index) => <article key={index} className={message.role}><b>{message.role === "assistant" ? "FORGE" : "YOU"}</b><p>{message.content}</p></article>)}{forgeChatStatus === "thinking" && <article className="assistant thinking"><b>FORGE</b><p>Reading the grain of the deck…</p></article>}</div>
+          <div className="forge-prompts"><button onClick={() => setForgeChatInput("Build me a fun deck around this idea, then explain the weak points.")}>Build an idea</button><button onClick={() => setForgeChatInput("Explain this recommendation and its runner-up in more depth.")}>Explain the why</button><button onClick={() => setForgeChatInput("What does my current deck say about my preferred play style?")}>Read my style</button></div>
+          <footer><textarea value={forgeChatInput} onChange={(event) => setForgeChatInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); sendForgeMessage(); } }} placeholder="Ask about a deck, pick, matchup, mechanic, or wild theory…" /><button disabled={!forgeChatInput.trim() || forgeChatStatus === "thinking"} onClick={sendForgeMessage}>Forge answer →</button><small>Personalized guidance · not automatic global training · verify current facts</small></footer>
         </section>}
       </div>
 
