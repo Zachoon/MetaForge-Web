@@ -23,6 +23,7 @@ import { coachingProgress, evaluateIntervention, inferCoachingTarget } from "./c
 import APPROVED_PRO_COACHING from "./pro-coaching-knowledge.mjs";
 import { professionalCoachLens } from "./professional-coach.mjs";
 import RiftboundForge from "./riftbound-forge";
+import { buildPlayerCharacterSheet } from "./player-character-sheet.mjs";
 
 const SAMPLE_DECK = `4 Monastery Swiftspear
 4 Slickshot Show-Off
@@ -91,6 +92,7 @@ export default function Home() {
   const [forgeQuestionsRemaining, setForgeQuestionsRemaining] = useState<number | null>(null);
   const [forgeQuestionsReset, setForgeQuestionsReset] = useState<string | null>(null);
   const [passportOpen, setPassportOpen] = useState(false);
+  const [characterSheetOpen, setCharacterSheetOpen] = useState(false);
   const [passportShared, setPassportShared] = useState(false);
   const [failureOpen, setFailureOpen] = useState(false);
   const [failureReason, setFailureReason] = useState("");
@@ -127,6 +129,7 @@ export default function Home() {
   const comparisonVerdict = useMemo(() => originalMetrics && proposedMetrics ? evaluateOpeningHandComparison(originalMetrics, proposedMetrics) : null, [originalMetrics, proposedMetrics]);
   const formatContext = useMemo(() => buildFormatContext(format, { power: commanderPower, budget: commanderBudget }), [format, commanderPower, commanderBudget]);
   const theoryEvidence = useMemo(() => evaluateTheoryEvidence({ legal: true, copyLimitsPass: true, roleFit: true, supportCount: 16, minimumSupport: 8, earlyInteraction: true }, buildFormatContext("Standard"), {}), []);
+  const playerSheet=useMemo(()=>buildPlayerCharacterSheet({matches:arenaMatches as any[],debriefs:debriefHistory}),[arenaMatches,debriefHistory]);
 
   useEffect(() => {
     const savedGame=window.localStorage.getItem("metaforge.activeGame");
@@ -613,7 +616,7 @@ export default function Home() {
           <button className="primary-path" onClick={() => goTo(experiment ? "#forge-evidence-anchor" : "#forge")}><i>01</i><span><b>{experiment ? "Continue test" : "Forge a deck"}</b><small>{experiment ? `${Math.max(0,5-experimentEvidence.sampleSize)} matches left` : "Get one clear improvement"}</small></span><strong>→</strong></button>
           <button onClick={() => setForgeChatOpen(true)}><i>02</i><span><b>Ask Coach</b><small>Build a deck or ask why</small></span><strong>✦</strong></button>
           <button onClick={() => goTo("#deck-bench")}><i>03</i><span><b>My decks</b><small>{benchRankings.length} decks · {arenaMatches.length} matches</small></span><strong>→</strong></button>
-          <button onClick={() => setPassportOpen(true)}><i>04</i><span><b>Deck Passport</b><small>View or share</small></span><strong>◇</strong></button>
+          <button onClick={() => setCharacterSheetOpen(true)}><i>04</i><span><b>Player Character</b><small>{playerSheet.ready?"View your current build":`${Math.max(playerSheet.gamesRemaining,playerSheet.decisionsRemaining)} observations to go`}</small></span><strong>◆</strong></button>
         </div>
         <aside className="mastery-strip"><div><small>FORGE MASTERY</small><b>{mastery.level}</b><span>{mastery.reviewed} games reflected on</span></div><div className="mastery-progress"><i><b style={{width:`${mastery.progress*100}%`}} /></i><span>{mastery.nextAt ? `${mastery.remaining} reflections to ${mastery.level === "Apprentice" ? "Observer" : "the next rank"}` : "Highest mastery rank reached"}</span></div><div><b>{mastery.patternsCaught}</b><span>PATTERNS CAUGHT</span></div><div><b>{mastery.plansConfirmed}</b><span>PLANS CONFIRMED</span></div>{experiment && <div className={`intervention-pulse ${interventionStatus.status}`}><small>ACTIVE COACHING TARGET</small><b>{interventionStatus.label}</b><span>{interventionStatus.detail}</span></div>}</aside>
       </section>
@@ -896,6 +899,8 @@ export default function Home() {
         <p>{experiment ? `Currently testing ${experiment.deckName}. Every exact match adds evidence to this deck's story.` : "Bring this deck into the Forge to discover its next measurable evolution."}</p>
         <footer><button onClick={shareDeckPassport}>{passportShared ? "Passport copied ✓" : "Share Passport"}</button><button onClick={() => setPassportOpen(false)}>Back to Forge</button></footer>
       </article></div>}
+
+      {characterSheetOpen&&<div className="passport-backdrop" role="dialog" aria-modal="true" aria-label="Player Character Sheet"><article className="player-character-sheet"><header><div><small>METAFORGE · PLAYER DNA</small><h2>Your Character Sheet</h2><p>One player across every forge. Traits move only when observed decisions earn the evidence.</p></div><button onClick={()=>setCharacterSheetOpen(false)} aria-label="Close character sheet">×</button></header>{!playerSheet.ready&&<aside><b>CHARACTER STILL FORMING</b><p>Forge needs {playerSheet.gamesRemaining} more tracked game{playerSheet.gamesRemaining===1?"":"s"} and {playerSheet.decisionsRemaining} more observable decision{playerSheet.decisionsRemaining===1?"":"s"}. Wins and losses alone never become personality traits.</p></aside>}<section>{playerSheet.traits.map(trait=><div key={trait.key} className={trait.confidence}><header><b>{trait.label}</b><small>{trait.confidence} · {trait.evidence} signals</small></header><i><span style={{width:`${trait.value}%`}}/></i><footer><em>{trait.low}</em><strong>{trait.confidence==="unobserved"?"?":trait.value}</strong><em>{trait.high}</em></footer></div>)}</section><footer><span><b>{playerSheet.games}</b>TRACKED GAMES</span><span><b>{playerSheet.decisionEvidence}</b>DECISION SIGNALS</span><button onClick={()=>setCharacterSheetOpen(false)}>Return to Forge</button></footer></article></div>}
 
       <div className="workspace-mode-rail" aria-label="Workspace shortcuts"><button onClick={() => goTo("#cockpit")}><b>⌂</b>Home</button><button onClick={() => goTo("#forge")}><b>◇</b>Forge</button><button onClick={() => goTo("#test-bench")}><b>△</b>Test</button><button onClick={() => setForgeChatOpen(true)}><b>✦</b>Coach</button><button onClick={() => goTo("#deck-bench")}><b>▤</b>Bench</button></div>
 
