@@ -24,6 +24,7 @@ import APPROVED_PRO_COACHING from "./pro-coaching-knowledge.mjs";
 import { professionalCoachLens } from "./professional-coach.mjs";
 import RiftboundForge from "./riftbound-forge";
 import { buildPlayerCharacterSheet } from "./player-character-sheet.mjs";
+import { buildDecisionMoment } from "./decision-moment.mjs";
 
 const SAMPLE_DECK = `4 Monastery Swiftspear
 4 Slickshot Show-Off
@@ -34,7 +35,7 @@ const SAMPLE_DECK = `4 Monastery Swiftspear
 4 Boltwave
 2 Witchstalker Frenzy
 26 Mountain`;
-const REQUIRED_COMPANION_VERSION = "0.3.2";
+const REQUIRED_COMPANION_VERSION = "0.3.3";
 const SAMPLE_DRAFT_PACK = `Shieldwall Recruit | 3.4 | W | 2 | Creature
 Molten Rebuke | 3.7 | R | 2 | Instant
 Archive Visionary | 3.5 | U | 3 | Creature
@@ -554,6 +555,7 @@ export default function Home() {
   const benchRankings = rankedFamilies(deckBench);
   const experimentStage = !experiment ? "proposed" : experiment.status !== "testing" ? experiment.status : arenaTracking !== "registered" ? "ready" : experimentEvidence.sampleSize === 0 ? "testing" : ["support", "challenge", "retire"].includes(experimentEvidence.decision) ? "decision" : "evidence";
   const postGameInsight = postGameRead && postGame ? buildPostGameCoach({ ...postGame, deckFingerprint: experiment?.proposedFingerprint }, postGameRead, debriefHistory) : null;
+  const decisionMoment = postGame ? buildDecisionMoment(postGame) : null;
   const mastery = coachingProgress(debriefHistory);
   const interventionStatus = evaluateIntervention((experiment as any)?.intervention, debriefHistory);
   const professionalLens = postGameRead ? professionalCoachLens({ format, read:postGameRead, cards:rows.map((row)=>row.name) }, professionalKnowledge) : null;
