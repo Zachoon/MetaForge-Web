@@ -37,6 +37,7 @@ export function mergeDeckBenches(localValue, remoteValue) {
       for (const match of localRevision.matches || []) matches.set(match.id, { ...(matches.get(match.id) || {}), ...match, coachDebrief: match.coachDebrief || matches.get(match.id)?.coachDebrief });
       remoteRevision.matches = [...matches.values()];
       remoteRevision.decision = localRevision.decision || remoteRevision.decision;
+      remoteRevision.intervention = localRevision.intervention || remoteRevision.intervention;
     }
     family.revisions.sort((a, b) => (a.version || 0) - (b.version || 0));
   }
@@ -52,7 +53,7 @@ export function recordExperiment(bench, experiment, format = "Standard") {
   }
   const addRevision = (fingerprint, deckText, source, parentFingerprint) => {
     if (!fingerprint || family.revisions.some((revision) => revision.fingerprint === fingerprint)) return;
-    family.revisions.push({ id: crypto.randomUUID(), version: family.revisions.length + 1, fingerprint, deckText, source, parentFingerprint, experimentId: experiment.id, createdAt: experiment.startedAt, decision: source === "original" ? "baseline" : experiment.status, matches: [] });
+    family.revisions.push({ id: crypto.randomUUID(), version: family.revisions.length + 1, fingerprint, deckText, source, parentFingerprint, experimentId: experiment.id, createdAt: experiment.startedAt, decision: source === "original" ? "baseline" : experiment.status, intervention: source === "forge" ? experiment.intervention : null, matches: [] });
   };
   addRevision(experiment.originalFingerprint, experiment.originalDeck, "original", null);
   addRevision(experiment.proposedFingerprint, experiment.proposedDeck, "forge", experiment.originalFingerprint);

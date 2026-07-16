@@ -19,6 +19,7 @@ import { deckFingerprint } from "./deck-fingerprint.mjs";
 import { attachMatches, DECK_BENCH_STORAGE_KEY, emptyDeckBench, mergeDeckBenches, rankedFamilies, readDeckBench, recordExperiment, updateFamily } from "./deck-bench.mjs";
 import { extractCoachDeck } from "./coach-actions.mjs";
 import { buildPostGameCoach } from "./post-game-coach.mjs";
+import { coachingProgress, evaluateIntervention, inferCoachingTarget } from "./coaching-progress.mjs";
 
 const SAMPLE_DECK = `4 Monastery Swiftspear
 4 Slickshot Show-Off
@@ -101,6 +102,7 @@ export default function Home() {
     startedAt: string;
     originalFingerprint?: string;
     proposedFingerprint?: string;
+    intervention?: { title: string; targetTag: string | null; expectedGain: string; originalFingerprint: string; proposedFingerprint: string; createdAt: string };
   }>(null);
 
   const rows = useMemo(() => parseDeck(deckText), [deckText]);
@@ -445,6 +447,7 @@ export default function Home() {
       startedAt: new Date().toISOString(),
       originalFingerprint,
       proposedFingerprint,
+      intervention: { title: recommendation.title, targetTag: inferCoachingTarget(recommendation), expectedGain: recommendation.expectedGain, originalFingerprint, proposedFingerprint, createdAt: new Date().toISOString() },
     };
     window.localStorage.setItem("metaforge.activeExperiment", JSON.stringify(nextExperiment));
     saveBenchExperiment(nextExperiment);
@@ -525,6 +528,8 @@ export default function Home() {
   const benchRankings = rankedFamilies(deckBench);
   const experimentStage = !experiment ? "proposed" : experiment.status !== "testing" ? experiment.status : arenaTracking !== "registered" ? "ready" : experimentEvidence.sampleSize === 0 ? "testing" : ["support", "challenge", "retire"].includes(experimentEvidence.decision) ? "decision" : "evidence";
   const postGameInsight = postGameRead && postGame ? buildPostGameCoach({ ...postGame, deckFingerprint: experiment?.proposedFingerprint }, postGameRead, debriefHistory) : null;
+  const mastery = coachingProgress(debriefHistory);
+  const interventionStatus = evaluateIntervention((experiment as any)?.intervention, debriefHistory);
   const onboardingSteps = [
     { label: "Account protected", detail: accountStatus === "synced" ? "Deck Bench is backed up." : "Signing in and preparing your backup.", done: accountStatus === "synced", action: () => document.querySelector("#deck-bench")?.scrollIntoView({ behavior: "smooth" }) },
     { label: "Arena Companion", detail: arenaStatus === "connected" ? `v${companionVersion} connected.` : arenaStatus === "outdated" ? `Update legacy Companion to v${REQUIRED_COMPANION_VERSION}.` : arenaStatus === "needs-logs" ? "Enable Detailed Logs and restart Arena." : "Download, run, then connect the Companion.", done: arenaStatus === "connected", action: connectArena },
@@ -578,6 +583,7 @@ export default function Home() {
           <button onClick={() => goTo("#deck-bench")}><i>03</i><span><b>My decks</b><small>{benchRankings.length} decks · {arenaMatches.length} matches</small></span><strong>→</strong></button>
           <button onClick={() => setPassportOpen(true)}><i>04</i><span><b>Deck Passport</b><small>View or share</small></span><strong>◇</strong></button>
         </div>
+        <aside className="mastery-strip"><div><small>FORGE MASTERY</small><b>{mastery.level}</b><span>{mastery.reviewed} games reflected on</span></div><div className="mastery-progress"><i><b style={{width:`${mastery.progress*100}%`}} /></i><span>{mastery.nextAt ? `${mastery.remaining} reflections to ${mastery.level === "Apprentice" ? "Observer" : "the next rank"}` : "Highest mastery rank reached"}</span></div><div><b>{mastery.patternsCaught}</b><span>PATTERNS CAUGHT</span></div><div><b>{mastery.plansConfirmed}</b><span>PLANS CONFIRMED</span></div>{experiment && <div className={`intervention-pulse ${interventionStatus.status}`}><small>ACTIVE COACHING TARGET</small><b>{interventionStatus.label}</b><span>{interventionStatus.detail}</span></div>}</aside>
       </section>
 
       <section className={`hero shell ${accountReady ? "returning" : ""}`} id="top">
