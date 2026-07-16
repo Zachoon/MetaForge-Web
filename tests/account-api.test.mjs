@@ -27,6 +27,7 @@ const ctx = { waitUntil() {}, passThroughOnException() {} };
 const request = (method, email, body) => new Request("https://example.test/api/account/deck-bench", { method, headers: { ...(email ? { "cf-access-authenticated-user-email": email } : {}), ...(body ? { "content-type": "application/json" } : {}) }, body: body ? JSON.stringify(body) : undefined });
 const feedbackRequest = (email, body) => new Request("https://example.test/api/account/feedback", { method: "POST", headers: { ...(email ? { "cf-access-authenticated-user-email": email } : {}), "content-type": "application/json" }, body: JSON.stringify(body) });
 const founderRequest = (email) => new Request("https://example.test/api/founder/overview", { headers: email ? { "cf-access-authenticated-user-email": email } : {} });
+const goblinRequest = (email) => new Request("https://example.test/api/founder/goblins", { headers: email ? { "cf-access-authenticated-user-email": email } : {} });
 const chatRequest = (email) => new Request("https://example.test/api/forge/chat", { method:"POST", headers:{ ...(email ? {"cf-access-authenticated-user-email":email}:{}), "content-type":"application/json" }, body:JSON.stringify({messages:[{role:"user",content:"Help me build a deck"}],context:{format:"Standard"}}) });
 
 test("account API rejects anonymous access and isolates users", async () => {
@@ -78,4 +79,13 @@ test("Forge conversation requires an account and a server-side model key", async
   const worker=await loadWorker(); const DB=new FakeD1();
   assert.equal((await worker.fetch(chatRequest(null),env(DB),ctx)).status,401);
   assert.equal((await worker.fetch(chatRequest("one@example.com"),env(DB),ctx)).status,503);
+});
+
+test("founder operations expose runtime readiness without exposing secrets",async()=>{
+  const worker=await loadWorker();const DB=new FakeD1();const founderEnv={...env(DB),METAFORGE_FOUNDER_USER_KEY:"f45237c471be9524242fb124700a61b6916cbbff9967c8ba74e43af0617bea90"};
+  assert.equal((await worker.fetch(goblinRequest("buddy@example.com"),founderEnv,ctx)).status,403);
+  const missing=await (await worker.fetch(goblinRequest("zach@dukecity.games"),founderEnv,ctx)).json();
+  assert.equal(missing.readiness.coach,false);assert.equal(missing.readiness.officialSourceIndexing,true);assert.equal("OPENAI_API_KEY" in missing,false);
+  const ready=await (await worker.fetch(goblinRequest("zach@dukecity.games"),{...founderEnv,OPENAI_API_KEY:"test-secret"},ctx)).json();
+  assert.equal(ready.readiness.coach,true);
 });

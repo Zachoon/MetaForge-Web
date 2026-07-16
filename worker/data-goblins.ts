@@ -41,4 +41,11 @@ export async function runDataGoblins(env:Env,fetcher:typeof fetch=fetch){
     }
   }
 }
-export async function handleGoblinOperations(request:Request,env:Env){const key=await userKey(request);if(!key||key!==env.METAFORGE_FOUNDER_USER_KEY)return Response.json({error:"Founder access required"},{status:403});if(request.method==="POST"){await runDataGoblins(env);return Response.json({started:true})}const runs=await env.DB.prepare("SELECT * FROM data_goblin_runs ORDER BY started_at DESC LIMIT 20").all();const totals=await env.DB.prepare("SELECT game,COUNT(*) sources,MAX(last_seen_at) last_seen FROM data_goblin_sources GROUP BY game").all();return Response.json({runs:runs.results||[],totals:totals.results||[]},{headers:{"Cache-Control":"no-store"}})}
+export async function handleGoblinOperations(request:Request,env:Env){
+  const key=await userKey(request);
+  if(!key||key!==env.METAFORGE_FOUNDER_USER_KEY)return Response.json({error:"Founder access required"},{status:403});
+  if(request.method==="POST"){await runDataGoblins(env);return Response.json({started:true});}
+  const runs=await env.DB.prepare("SELECT * FROM data_goblin_runs ORDER BY started_at DESC LIMIT 20").all();
+  const totals=await env.DB.prepare("SELECT game,COUNT(*) sources,SUM(CASE WHEN extracted_at IS NOT NULL THEN 1 ELSE 0 END) extracted,MAX(last_seen_at) last_seen FROM data_goblin_sources GROUP BY game").all();
+  return Response.json({runs:runs.results||[],totals:totals.results||[],readiness:{coach:Boolean(env.OPENAI_API_KEY),strategicExtraction:Boolean(env.OPENAI_API_KEY),officialSourceIndexing:true,schedule:"Daily at 10:00 UTC"}},{headers:{"Cache-Control":"no-store"}});
+}
