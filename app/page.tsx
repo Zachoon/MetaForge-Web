@@ -85,6 +85,8 @@ export default function Home() {
   const [forgeQuestionsReset, setForgeQuestionsReset] = useState<string | null>(null);
   const [passportOpen, setPassportOpen] = useState(false);
   const [passportShared, setPassportShared] = useState(false);
+  const [failureOpen, setFailureOpen] = useState(false);
+  const [failureReason, setFailureReason] = useState("");
   const [experiment, setExperiment] = useState<null | {
     id?: string;
     deckName: string;
@@ -266,14 +268,25 @@ export default function Home() {
 
   useEffect(() => { setCoachingProfile(window.localStorage.getItem("metaforge.coachingProfile") || ""); }, []);
 
-  async function sendForgeMessage() {
-    const content = forgeChatInput.trim(); if (!content || forgeChatStatus === "thinking") return;
+  async function sendForgeMessage(contentOverride?: string) {
+    const content = (contentOverride ?? forgeChatInput).trim(); if (!content || forgeChatStatus === "thinking") return;
     const next = [...forgeMessages, { role: "user" as const, content }]; setForgeMessages(next); setForgeChatInput(""); setForgeChatStatus("thinking");
     try {
       const response = await fetch("/api/forge/chat", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ messages:next, context:{ deckName, format, deckText, coachingProfile } }) });
       const result = await response.json(); if (!response.ok) throw new Error(result.error || "Forge unavailable");
       setForgeMessages((current) => [...current, { role:"assistant", content:result.answer }]); setForgeQuestionsRemaining(result.remaining ?? null); setForgeQuestionsReset(result.resetAt || null); setForgeChatStatus("idle");
     } catch (error) { setForgeMessages((current) => [...current, { role:"assistant", content:error instanceof Error ? error.message : "The Forge could not answer yet." }]); setForgeChatStatus("error"); }
+  }
+
+  async function rejectExperimentNow() {
+    if (!experiment || !failureReason.trim()) return;
+    const failedDeck = experiment.proposedDeck;
+    const prompt = `I tested the current revision and it failed immediately. What failed: ${failureReason.trim()}\n\nDo not repeat the previous recommendation. Diagnose the likely cause, explain it briefly, and give me a materially different next experiment with an exact Arena-ready decklist. Failed revision:\n${failedDeck}`;
+    decideExperiment("reverted");
+    setFailureOpen(false);
+    setFailureReason("");
+    setForgeChatOpen(true);
+    await sendForgeMessage(prompt);
   }
 
   function saveCoachingProfile(value: string) { setCoachingProfile(value); window.localStorage.setItem("metaforge.coachingProfile", value.slice(0,1000)); }
@@ -652,6 +665,7 @@ export default function Home() {
                   <button onClick={() => decideExperiment("kept")}>Keep the change</button>
                   <button onClick={() => decideExperiment("reverted")}>Revert</button>
                   <button onClick={() => decideExperiment("testing")}>Still testing</button>
+                  <button className="failed-now" onClick={() => setFailureOpen(true)}>This failed. Try something else.</button>
                 </div>
               )}
             </aside>
@@ -794,6 +808,8 @@ export default function Home() {
         </section>}
       </div>
 
+      {failureOpen && experiment && <div className="failure-backdrop" role="dialog" aria-modal="true" aria-label="Report a failed experiment"><article className="failure-dialog"><header><div><small>QUICK COURSE CORRECTION</small><h2>What failed?</h2><p>One sentence is enough. Forge will retire this version and build a different test.</p></div><button onClick={() => setFailureOpen(false)} aria-label="Close">×</button></header><div className="failure-chips">{["Too slow", "Could not cast my cards", "Ran out of cards", "Could not stop their threats", "My combo never came together", "The matchup exposed a weakness"].map((reason) => <button key={reason} className={failureReason === reason ? "selected" : ""} onClick={() => setFailureReason(reason)}>{reason}</button>)}</div><label>TELL FORGE WHAT YOU SAW<textarea autoFocus value={failureReason} onChange={(event) => setFailureReason(event.target.value)} placeholder="Example: I was dead before the new card mattered, and my hand had no early interaction." /></label><footer><button onClick={rejectExperimentNow} disabled={!failureReason.trim()}>Retire it and forge another →</button><small>Uses one Coach question. Your failed version stays in its deck history.</small></footer></article></div>}
+
       {passportOpen && <div className="passport-backdrop" role="dialog" aria-modal="true" aria-label="Deck Passport"><article className="deck-passport">
         <header><div><small>METAFORGE · DECK PASSPORT</small><h2>{benchRankings[0]?.name || deckName || "Untitled deck"}</h2><p>{benchRankings[0]?.format || format} · forged identity</p></div><button onClick={() => setPassportOpen(false)} aria-label="Close passport">×</button></header>
         <div className="passport-seal"><span>MF</span><b>{benchRankings[0]?.leader?.evidence?.sampleSize ? `${benchRankings[0].leader.evidence.wins}–${benchRankings[0].leader.evidence.losses}` : "NEW"}</b><small>{benchRankings[0]?.leader?.evidence?.sampleSize ? "MEASURED RECORD" : "AWAITING MATCHES"}</small></div>
@@ -810,7 +826,7 @@ export default function Home() {
           <details className="coach-profile"><summary>How should Forge coach me?</summary><textarea value={coachingProfile} onChange={(event) => saveCoachingProfile(event.target.value)} placeholder="Competitive, prefers proactive midrange, explain the math, $150 budget…" /><small>Saved in this browser and sent only with your questions.</small></details>
           <div className="forge-conversation">{forgeMessages.map((message,index) => { const proposal = message.role === "assistant" ? extractCoachDeck(message.content) : null; return <article key={index} className={message.role}><b>{message.role === "assistant" ? "FORGE" : "YOU"}</b><p>{message.content}</p>{proposal && <div className="coach-deck-actions"><button onClick={() => loadCoachDeck(message.content)}>Load into Forge</button>{cardCount > 0 && <button onClick={() => loadCoachDeck(message.content, true)}>Compare with my deck</button>}</div>}</article>})}{forgeChatStatus === "thinking" && <article className="assistant thinking"><b>FORGE</b><p>Reading the grain of the deck…</p></article>}</div>
           <div className="forge-prompts"><button onClick={() => setForgeChatInput("Build me a fun deck around this idea, then explain the weak points.")}>Build an idea</button><button onClick={() => setForgeChatInput("Explain this recommendation and its runner-up in more depth.")}>Explain the why</button><button onClick={() => setForgeChatInput("What does my current deck say about my preferred play style?")}>Read my style</button></div>
-          <footer><textarea value={forgeChatInput} onChange={(event) => setForgeChatInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); sendForgeMessage(); } }} placeholder="Ask about a deck, pick, matchup, mechanic, or wild theory…" /><button disabled={!forgeChatInput.trim() || forgeChatStatus === "thinking" || forgeQuestionsRemaining === 0} onClick={sendForgeMessage}>Forge answer →</button><small>{forgeQuestionsRemaining === null ? "Founder unlimited · buddies receive 10 questions weekly" : `${forgeQuestionsRemaining} of 10 questions remaining${forgeQuestionsReset ? ` · resets ${new Date(forgeQuestionsReset).toLocaleDateString()}` : ""}`} · not automatic global training</small></footer>
+          <footer><textarea value={forgeChatInput} onChange={(event) => setForgeChatInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); sendForgeMessage(); } }} placeholder="Ask about a deck, pick, matchup, mechanic, or wild theory…" /><button disabled={!forgeChatInput.trim() || forgeChatStatus === "thinking" || forgeQuestionsRemaining === 0} onClick={() => sendForgeMessage()}>Forge answer →</button><small>{forgeQuestionsRemaining === null ? "Founder unlimited · buddies receive 10 questions weekly" : `${forgeQuestionsRemaining} of 10 questions remaining${forgeQuestionsReset ? ` · resets ${new Date(forgeQuestionsReset).toLocaleDateString()}` : ""}`} · not automatic global training</small></footer>
         </section>}
       </div>
 
