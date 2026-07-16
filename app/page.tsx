@@ -18,6 +18,7 @@ import { evaluateDraftPairs, evaluateDraftPick, limitedDeckHealth } from "./limi
 import { deckFingerprint } from "./deck-fingerprint.mjs";
 import { attachMatches, DECK_BENCH_STORAGE_KEY, emptyDeckBench, mergeDeckBenches, rankedFamilies, readDeckBench, recordExperiment, updateFamily } from "./deck-bench.mjs";
 import { extractCoachDeck } from "./coach-actions.mjs";
+import { buildPostGameCoach } from "./post-game-coach.mjs";
 
 const SAMPLE_DECK = `4 Monastery Swiftspear
 4 Slickshot Show-Off
@@ -89,6 +90,7 @@ export default function Home() {
   const [failureReason, setFailureReason] = useState("");
   const [postGame, setPostGame] = useState<null | { id: string; result: "win" | "loss"; gamesWon: number; gamesLost: number; mulligans: number; revealedOpponentCards?: string[] }>(null);
   const [postGameRead, setPostGameRead] = useState("");
+  const [debriefHistory, setDebriefHistory] = useState<Array<{ matchId: string; read: string; recordedAt: string; deckFingerprint?: string }>>([]);
   const seenMatch = useRef<string | null>(null);
   const [experiment, setExperiment] = useState<null | {
     id?: string;
@@ -279,7 +281,7 @@ export default function Home() {
     }
   }
 
-  useEffect(() => { setCoachingProfile(window.localStorage.getItem("metaforge.coachingProfile") || ""); }, []);
+  useEffect(() => { setCoachingProfile(window.localStorage.getItem("metaforge.coachingProfile") || ""); setDebriefHistory(JSON.parse(window.localStorage.getItem("metaforge.debriefs") || "[]")); }, []);
 
   async function sendForgeMessage(contentOverride?: string) {
     const content = (contentOverride ?? forgeChatInput).trim(); if (!content || forgeChatStatus === "thinking") return;
@@ -324,8 +326,9 @@ export default function Home() {
 
   function finishPostGame() {
     if (!postGame || !postGameRead) return;
-    const stored = JSON.parse(window.localStorage.getItem("metaforge.debriefs") || "[]");
-    window.localStorage.setItem("metaforge.debriefs", JSON.stringify([{ matchId: postGame.id, read: postGameRead, recordedAt: new Date().toISOString() }, ...stored].slice(0, 100)));
+    const record = { matchId: postGame.id, read: postGameRead, recordedAt: new Date().toISOString(), deckFingerprint: experiment?.proposedFingerprint };
+    const next = [record, ...debriefHistory].slice(0, 100); setDebriefHistory(next);
+    window.localStorage.setItem("metaforge.debriefs", JSON.stringify(next));
     setPostGame(null);
   }
 
@@ -514,6 +517,7 @@ export default function Home() {
   const lastMatchSignal = evaluateLastMatchSignal(proposedEvidence[0], activeCandidate);
   const benchRankings = rankedFamilies(deckBench);
   const experimentStage = !experiment ? "proposed" : experiment.status !== "testing" ? experiment.status : arenaTracking !== "registered" ? "ready" : experimentEvidence.sampleSize === 0 ? "testing" : ["support", "challenge", "retire"].includes(experimentEvidence.decision) ? "decision" : "evidence";
+  const postGameInsight = postGameRead && postGame ? buildPostGameCoach({ ...postGame, deckFingerprint: experiment?.proposedFingerprint }, postGameRead, debriefHistory) : null;
   const onboardingSteps = [
     { label: "Account protected", detail: accountStatus === "synced" ? "Deck Bench is backed up." : "Signing in and preparing your backup.", done: accountStatus === "synced", action: () => document.querySelector("#deck-bench")?.scrollIntoView({ behavior: "smooth" }) },
     { label: "Arena Companion", detail: arenaStatus === "connected" ? `v${companionVersion} connected.` : arenaStatus === "outdated" ? `Update legacy Companion to v${REQUIRED_COMPANION_VERSION}.` : arenaStatus === "needs-logs" ? "Enable Detailed Logs and restart Arena." : "Download, run, then connect the Companion.", done: arenaStatus === "connected", action: connectArena },
@@ -836,7 +840,7 @@ export default function Home() {
         </section>}
       </div>
 
-      {postGame && <div className="postgame-backdrop" role="dialog" aria-modal="true" aria-label="Post-game debrief"><article className={`postgame-card ${postGame.result}`}><header><div><small>MATCH COMPLETE · {postGame.result.toUpperCase()}</small><h2>{postGame.result === "win" ? "Lock in what worked." : "Catch the lesson while it's fresh."}</h2><p>{postGame.gamesWon}–{postGame.gamesLost} · {postGame.mulligans ? `${postGame.mulligans} mulligan${postGame.mulligans === 1 ? "" : "s"}` : "kept the opener"}. One game is a clue, not a verdict.</p></div><button onClick={() => setPostGame(null)} aria-label="Skip debrief">×</button></header><span>WHAT DEFINED THAT GAME?</span><div className="postgame-reads">{["My mana", "Their speed", "I ran out of cards", "I lacked an answer", "My plan worked", "I misplayed", "I'm not sure"].map((read) => <button key={read} className={postGameRead === read ? "selected" : ""} onClick={() => setPostGameRead(read)}>{read}</button>)}</div>{postGameRead && <aside><b>{postGameRead === "I'm not sure" ? "That is useful too." : `${postGameRead} is now tagged for this match.`}</b><p>{postGameRead === "My plan worked" ? "Keep testing before changing what succeeded." : postGameRead === "I misplayed" ? "Separate the deck from the decision. Replay the spot before changing cards." : "If this repeats, Forge will have a real pattern to act on."}</p></aside>}<footer><button disabled={!postGameRead} onClick={finishPostGame}>Save and keep testing</button><button disabled={!postGameRead} onClick={takePostGameToCoach}>Talk it through with Coach</button>{experiment && <button onClick={() => { setPostGame(null); setFailureOpen(true); }}>This version failed</button>}</footer></article></div>}
+      {postGame && <div className="postgame-backdrop" role="dialog" aria-modal="true" aria-label="Post-game debrief"><article className={`postgame-card ${postGame.result}`}><header><div><small>MATCH COMPLETE · {postGame.result.toUpperCase()}</small><h2>{postGame.result === "win" ? "Lock in what worked." : "Catch the lesson while it's fresh."}</h2><p>{postGame.gamesWon}–{postGame.gamesLost} · {postGame.mulligans ? `${postGame.mulligans} mulligan${postGame.mulligans === 1 ? "" : "s"}` : "kept the opener"}. One game is a clue, not a verdict.</p></div><button onClick={() => setPostGame(null)} aria-label="Skip debrief">×</button></header><span>WHAT DEFINED THAT GAME?</span><div className="postgame-reads">{["My mana", "Their speed", "I ran out of cards", "I lacked an answer", "My plan worked", "I misplayed", "I'm not sure"].map((read) => <button key={read} className={postGameRead === read ? "selected" : ""} onClick={() => setPostGameRead(read)}>{read}</button>)}</div>{postGameInsight && <aside className={postGameInsight.urgency}><b>{postGameInsight.headline}</b><p>{postGameInsight.pattern} {postGameInsight.action}</p><small>{postGameInsight.reviewed} games debriefed · {postGameInsight.nextReviewIn || 5} until the next coaching review</small></aside>}<footer><button disabled={!postGameRead} onClick={finishPostGame}>Save and keep testing</button><button disabled={!postGameRead} onClick={takePostGameToCoach}>Talk it through with Coach</button>{experiment && <button onClick={() => { setPostGame(null); setFailureOpen(true); }}>This version failed</button>}</footer></article></div>}
 
       {failureOpen && experiment && <div className="failure-backdrop" role="dialog" aria-modal="true" aria-label="Report a failed experiment"><article className="failure-dialog"><header><div><small>QUICK COURSE CORRECTION</small><h2>What failed?</h2><p>One sentence is enough. Forge will retire this version and build a different test.</p></div><button onClick={() => setFailureOpen(false)} aria-label="Close">×</button></header><div className="failure-chips">{["Too slow", "Could not cast my cards", "Ran out of cards", "Could not stop their threats", "My combo never came together", "The matchup exposed a weakness"].map((reason) => <button key={reason} className={failureReason === reason ? "selected" : ""} onClick={() => setFailureReason(reason)}>{reason}</button>)}</div><label>TELL FORGE WHAT YOU SAW<textarea autoFocus value={failureReason} onChange={(event) => setFailureReason(event.target.value)} placeholder="Example: I was dead before the new card mattered, and my hand had no early interaction." /></label><footer><button onClick={rejectExperimentNow} disabled={!failureReason.trim()}>Retire it and forge another →</button><small>Uses one Coach question. Your failed version stays in its deck history.</small></footer></article></div>}
 
