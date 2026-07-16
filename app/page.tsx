@@ -315,7 +315,7 @@ export default function Home() {
   }
 
   useEffect(() => { setCoachingProfile(window.localStorage.getItem("metaforge.coachingProfile") || ""); setDebriefHistory(JSON.parse(window.localStorage.getItem("metaforge.debriefs") || "[]")); }, []);
-  useEffect(() => { fetch(`/api/coach/knowledge?format=${encodeURIComponent(format)}`, { cache:"no-store" }).then((response)=>response.ok?response.json():null).then((data)=>{if(data?.claims)setProfessionalKnowledge(data.claims)}).catch(()=>{}); }, [format]);
+  useEffect(() => { fetch(`/api/coach/knowledge?game=mtg&format=${encodeURIComponent(format)}`, { cache:"no-store" }).then((response)=>response.ok?response.json():null).then((data)=>{if(data?.claims)setProfessionalKnowledge(data.claims)}).catch(()=>{}); }, [format]);
 
   async function sendForgeMessage(contentOverride?: string) {
     const content = (contentOverride ?? forgeChatInput).trim(); if (!content || forgeChatStatus === "thinking") return;
