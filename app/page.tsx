@@ -35,7 +35,7 @@ const SAMPLE_DECK = `4 Monastery Swiftspear
 2 Witchstalker Frenzy
 26 Mountain`;
 const REQUIRED_COMPANION_VERSION = "0.3.4";
-const BUILD_ID = "2026.07.16-ef9976f";
+const BUILD_ID = "2026.07.16-legality1";
 const SAMPLE_DRAFT_PACK = `Shieldwall Recruit | 3.4 | W | 2 | Creature
 Molten Rebuke | 3.7 | R | 2 | Instant
 Archive Visionary | 3.5 | U | 3 | Creature
@@ -536,6 +536,18 @@ export default function Home() {
     }
   }
 
+  function loadBenchRevision(family: any, revision: any, coach = false) {
+    setDeckName(family.name || "My deck");
+    setFormat(family.format || "Standard");
+    setDeckText(revision.deckText || "");
+    setAnalyzed(true);
+    if (coach) {
+      setForgeChatInput(`Review this saved ${family.format || "Magic"} deck revision. Start with its clearest current weakness, then give me one exact change worth testing and explain what evidence would show that it worked.`);
+      setForgeChatOpen(true);
+    }
+    window.setTimeout(() => goTo(coach ? "#cockpit" : "#forge"), 0);
+  }
+
   function exportDeckBench() {
     const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), product: "MetaForge", deckBench }, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -800,7 +812,7 @@ export default function Home() {
                     <div className="revision-title"><b>V{revision.version || family.revisions.length - revisionIndex}</b><span>{revision.source === "original" ? "Baseline" : "Forge revision"}{promoted ? " · CURRENT" : ""}</span></div>
                     <div className="revision-record"><b>{evidence.wins}–{evidence.losses}</b><span>{evidence.sampleSize ? `${Math.round(evidence.posteriorMean * 100)}% adjusted strength` : "Awaiting matches"}</span></div>
                     <div className="revision-confidence"><b>{evidence.confidence}</b><span>{matchups || "No matchup evidence yet"}</span></div>
-                    <button disabled={promoted} onClick={() => changeBenchFamily(family.id, "promote", revision)}>{promoted ? "Promoted" : "Promote & load"}</button>
+                    <div className="revision-actions"><button onClick={() => loadBenchRevision(family, revision)}>Open in Forge</button><button disabled={coachReady!==true} onClick={() => loadBenchRevision(family, revision, true)}>Coach this deck</button><button disabled={promoted} onClick={() => changeBenchFamily(family.id, "promote", revision)}>{promoted ? "Current build" : "Make current"}</button></div>
                   </div>;
                 })}</div>
               </article>)}</div>
