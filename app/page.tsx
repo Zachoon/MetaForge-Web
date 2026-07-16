@@ -35,7 +35,7 @@ const SAMPLE_DECK = `4 Monastery Swiftspear
 2 Witchstalker Frenzy
 26 Mountain`;
 const REQUIRED_COMPANION_VERSION = "0.3.4";
-const BUILD_ID = "2026.07.16-legality1";
+const BUILD_ID = "2026.07.16-riftpool1";
 const SAMPLE_DRAFT_PACK = `Shieldwall Recruit | 3.4 | W | 2 | Creature
 Molten Rebuke | 3.7 | R | 2 | Instant
 Archive Visionary | 3.5 | U | 3 | Creature
