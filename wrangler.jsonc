@@ -9,6 +9,7 @@
   },
   "workers_dev": true,
   "preview_urls": false,
+  "triggers": { "crons": ["0 10 * * *"] },
   "vars": {
     "METAFORGE_BOOTSTRAP_LOCK": "unlocked",
     "METAFORGE_FOUNDER_USER_KEY": "f45237c471be9524242fb124700a61b6916cbbff9967c8ba74e43af0617bea90",

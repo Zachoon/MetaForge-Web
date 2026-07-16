@@ -17,6 +17,7 @@ export default function FounderCommandCenter() {
   const [status, setStatus] = useState<"loading" | "ready" | "denied" | "error">("loading");
   const [knowledge, setKnowledge] = useState<KnowledgeClaim[]>([]);
   const [knowledgeStatus, setKnowledgeStatus] = useState("loading");
+  const [goblins,setGoblins]=useState<any>({runs:[],totals:[]});
   const load = async () => {
     setStatus("loading");
     try {
@@ -25,6 +26,7 @@ export default function FounderCommandCenter() {
       if (!response.ok) throw new Error("overview unavailable");
       setData(await response.json()); setStatus("ready");
       const knowledgeResponse=await fetch("/api/founder/knowledge",{cache:"no-store"});if(knowledgeResponse.ok){setKnowledge((await knowledgeResponse.json()).claims);setKnowledgeStatus("ready")}else setKnowledgeStatus("error");
+      const goblinResponse=await fetch("/api/founder/goblins",{cache:"no-store"});if(goblinResponse.ok)setGoblins(await goblinResponse.json());
     } catch { setStatus("error"); }
   };
   useEffect(() => { load(); const timer = window.setInterval(load, 60_000); return () => window.clearInterval(timer); }, []);
@@ -48,6 +50,8 @@ export default function FounderCommandCenter() {
     </section>
     <section className="founder-panel"><header><div><small>PROFESSIONAL KNOWLEDGE · AUTOMATED TRIAGE</small><h2>Exception queue</h2></div><b>{knowledge.filter((claim)=>claim.status==="quarantined").length} TO REVIEW</b></header>
       <div className="knowledge-queue">{knowledge.map((claim)=><article key={claim.id} className={claim.status}><div><span>{claim.game?.toUpperCase() || "MTG"} · {claim.status} · {claim.format} · {claim.sourceType}</span><time>{claim.publishedAt}</time></div><h3>{claim.principle}</h3><p>{claim.summary}</p><small>{claim.author} · <a href={claim.sourceUrl} target="_blank" rel="noreferrer">{claim.sourceTitle}</a></small><em>{claim.tags.join(" · ")}</em>{claim.status==="quarantined"&&<footer><button onClick={async()=>{await fetch("/api/founder/knowledge",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:claim.id,status:"approved"})});load()}}>Approve</button><button onClick={async()=>{await fetch("/api/founder/knowledge",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:claim.id,status:"rejected"})});load()}}>Reject</button></footer>}</article>)}{knowledgeStatus==="loading"&&<p className="empty">Running automated provenance checks…</p>}{knowledgeStatus==="ready"&&!knowledge.length&&<p className="empty">No exceptions. Automated collectors have not submitted professional claims yet.</p>}</div>
+    </section>
+    <section className="founder-panel"><header><div><small>DATA GOBLIN OPERATIONS · DAILY</small><h2>Collector health</h2></div><button onClick={async()=>{await fetch("/api/founder/goblins",{method:"POST"});load()}}>Run goblins now</button></header><div className="founder-metrics">{["mtg","riftbound"].map(game=>{const total=goblins.totals.find((item:any)=>item.game===game),run=goblins.runs.find((item:any)=>item.game===game);return <article key={game}><span>{game.toUpperCase()} SOURCES</span><b>{total?.sources||0}</b><em>{run?`${run.status} · ${run.sources_discovered||0} newly discovered`:"Awaiting first daily run"}</em></article>})}</div>
     </section>
     <footer><span>Privacy-safe alpha operations</span><a href="/">Return to the Forge</a></footer>
   </main>;

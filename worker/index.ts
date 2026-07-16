@@ -5,6 +5,7 @@ import { handleAccountBench, handleFounderFeedback, handlePlayerProfile } from "
 import { handleFounderOverview } from "./founder-dashboard";
 import { handleForgeChat } from "./forge-chat";
 import { handleCoachingKnowledge } from "./coaching-knowledge";
+import { handleGoblinOperations, runDataGoblins } from "./data-goblins";
 
 interface Env {
   ASSETS: Fetcher;
@@ -56,6 +57,7 @@ const worker = {
     if (url.pathname === "/api/forge/chat") return handleForgeChat(request, env);
     if (url.pathname === "/api/founder/knowledge") return handleCoachingKnowledge(request, env, true);
     if (url.pathname === "/api/coach/knowledge") return handleCoachingKnowledge(request, env, false);
+    if (url.pathname === "/api/founder/goblins") return handleGoblinOperations(request, env);
 
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
@@ -70,6 +72,7 @@ const worker = {
 
     return handler.fetch(request, env, ctx);
   },
+  async scheduled(_controller:ScheduledController,env:Env,ctx:ExecutionContext){ctx.waitUntil(runDataGoblins(env));},
 };
 
 export default worker;
