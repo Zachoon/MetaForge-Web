@@ -4,6 +4,7 @@ import handler from "vinext/server/app-router-entry";
 import { handleAccountBench, handleFounderFeedback } from "./account-bench";
 import { handleFounderOverview } from "./founder-dashboard";
 import { handleForgeChat } from "./forge-chat";
+import { handleCoachingKnowledge } from "./coaching-knowledge";
 
 interface Env {
   ASSETS: Fetcher;
@@ -52,6 +53,8 @@ const worker = {
       return handleFounderOverview(request, env);
     }
     if (url.pathname === "/api/forge/chat") return handleForgeChat(request, env);
+    if (url.pathname === "/api/founder/knowledge") return handleCoachingKnowledge(request, env, true);
+    if (url.pathname === "/api/coach/knowledge") return handleCoachingKnowledge(request, env, false);
 
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];

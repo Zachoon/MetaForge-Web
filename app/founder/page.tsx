@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import "./founder.css";
+import "./knowledge.css";
 
 type Overview = {
   generatedAt: string;
@@ -9,10 +10,13 @@ type Overview = {
   testers: Array<{ id: string; firstSeen: string; lastSeen: string; syncRevision: number; decks: number; revisions: number; matches: number; wins: number; losses: number; validData: boolean }>;
   feedback: Array<{ id: number; testerId: string; category: string; message: string; status: string; createdAt: string; context: Record<string, unknown> }>;
 };
+type KnowledgeClaim = { id:string; sourceUrl:string; sourceTitle:string; author:string; publishedAt:string; sourceType:string; summary:string; principle:string; format:string; stance:string; tags:string[]; cards:string[]; status:string; createdAt:string };
 
 export default function FounderCommandCenter() {
   const [data, setData] = useState<Overview | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "denied" | "error">("loading");
+  const [knowledge, setKnowledge] = useState<KnowledgeClaim[]>([]);
+  const [knowledgeStatus, setKnowledgeStatus] = useState("loading");
   const load = async () => {
     setStatus("loading");
     try {
@@ -20,6 +24,7 @@ export default function FounderCommandCenter() {
       if (response.status === 403) { setStatus("denied"); return; }
       if (!response.ok) throw new Error("overview unavailable");
       setData(await response.json()); setStatus("ready");
+      const knowledgeResponse=await fetch("/api/founder/knowledge",{cache:"no-store"});if(knowledgeResponse.ok){setKnowledge((await knowledgeResponse.json()).claims);setKnowledgeStatus("ready")}else setKnowledgeStatus("error");
     } catch { setStatus("error"); }
   };
   useEffect(() => { load(); const timer = window.setInterval(load, 60_000); return () => window.clearInterval(timer); }, []);
@@ -40,6 +45,9 @@ export default function FounderCommandCenter() {
     </section>
     <section className="founder-panel"><header><div><small>DIRECT SIGNALS</small><h2>Feedback inbox</h2></div><b>{data.feedback.length} REPORTS</b></header>
       <div className="feedback-inbox">{data.feedback.map((item) => <article key={item.id}><div><span>{item.category.replaceAll("-", " ")}</span><time>{new Date(item.createdAt).toLocaleString()} · Tester {item.testerId}</time></div><p>{item.message}</p><details><summary>Attached diagnostics</summary><pre>{JSON.stringify(item.context, null, 2)}</pre></details></article>)}{!data.feedback.length && <p className="empty">No founder feedback has arrived yet.</p>}</div>
+    </section>
+    <section className="founder-panel"><header><div><small>PROFESSIONAL KNOWLEDGE · AUTOMATED TRIAGE</small><h2>Exception queue</h2></div><b>{knowledge.filter((claim)=>claim.status==="quarantined").length} TO REVIEW</b></header>
+      <div className="knowledge-queue">{knowledge.map((claim)=><article key={claim.id} className={claim.status}><div><span>{claim.status} · {claim.format} · {claim.sourceType}</span><time>{claim.publishedAt}</time></div><h3>{claim.principle}</h3><p>{claim.summary}</p><small>{claim.author} · <a href={claim.sourceUrl} target="_blank" rel="noreferrer">{claim.sourceTitle}</a></small><em>{claim.tags.join(" · ")}</em>{claim.status==="quarantined"&&<footer><button onClick={async()=>{await fetch("/api/founder/knowledge",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:claim.id,status:"approved"})});load()}}>Approve</button><button onClick={async()=>{await fetch("/api/founder/knowledge",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:claim.id,status:"rejected"})});load()}}>Reject</button></footer>}</article>)}{knowledgeStatus==="loading"&&<p className="empty">Running automated provenance checks…</p>}{knowledgeStatus==="ready"&&!knowledge.length&&<p className="empty">No exceptions. Automated collectors have not submitted professional claims yet.</p>}</div>
     </section>
     <footer><span>Privacy-safe alpha operations</span><a href="/">Return to the Forge</a></footer>
   </main>;

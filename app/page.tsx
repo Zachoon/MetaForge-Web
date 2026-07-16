@@ -94,6 +94,7 @@ export default function Home() {
   const [postGame, setPostGame] = useState<null | { id: string; result: "win" | "loss"; gamesWon: number; gamesLost: number; mulligans: number; deckFingerprint?: string; revealedOpponentCards?: string[]; turnTelemetry?: { observed: boolean; landPlayTurns: number[]; spellCastTurns: number[]; eventCount: number; coverage: string } }>(null);
   const [postGameRead, setPostGameRead] = useState("");
   const [debriefHistory, setDebriefHistory] = useState<Array<{ matchId: string; read: string; recordedAt: string; deckFingerprint?: string }>>([]);
+  const [professionalKnowledge, setProfessionalKnowledge] = useState<any[]>(APPROVED_PRO_COACHING);
   const seenMatch = useRef<string | null>(null);
   const [experiment, setExperiment] = useState<null | {
     id?: string;
@@ -292,6 +293,7 @@ export default function Home() {
   }
 
   useEffect(() => { setCoachingProfile(window.localStorage.getItem("metaforge.coachingProfile") || ""); setDebriefHistory(JSON.parse(window.localStorage.getItem("metaforge.debriefs") || "[]")); }, []);
+  useEffect(() => { fetch(`/api/coach/knowledge?format=${encodeURIComponent(format)}`, { cache:"no-store" }).then((response)=>response.ok?response.json():null).then((data)=>{if(data?.claims)setProfessionalKnowledge(data.claims)}).catch(()=>{}); }, [format]);
 
   async function sendForgeMessage(contentOverride?: string) {
     const content = (contentOverride ?? forgeChatInput).trim(); if (!content || forgeChatStatus === "thinking") return;
@@ -532,7 +534,7 @@ export default function Home() {
   const postGameInsight = postGameRead && postGame ? buildPostGameCoach({ ...postGame, deckFingerprint: experiment?.proposedFingerprint }, postGameRead, debriefHistory) : null;
   const mastery = coachingProgress(debriefHistory);
   const interventionStatus = evaluateIntervention((experiment as any)?.intervention, debriefHistory);
-  const professionalLens = postGameRead ? professionalCoachLens({ format, read:postGameRead, cards:rows.map((row)=>row.name) }, APPROVED_PRO_COACHING) : null;
+  const professionalLens = postGameRead ? professionalCoachLens({ format, read:postGameRead, cards:rows.map((row)=>row.name) }, professionalKnowledge) : null;
   const onboardingSteps = [
     { label: "Account protected", detail: accountStatus === "synced" ? "Deck Bench is backed up." : "Signing in and preparing your backup.", done: accountStatus === "synced", action: () => document.querySelector("#deck-bench")?.scrollIntoView({ behavior: "smooth" }) },
     { label: "Arena Companion", detail: arenaStatus === "connected" ? `v${companionVersion} connected.` : arenaStatus === "outdated" ? `Update legacy Companion to v${REQUIRED_COMPANION_VERSION}.` : arenaStatus === "needs-logs" ? "Enable Detailed Logs and restart Arena." : "Download, run, then connect the Companion.", done: arenaStatus === "connected", action: connectArena },
