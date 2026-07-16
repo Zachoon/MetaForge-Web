@@ -47,5 +47,8 @@ export async function handleGoblinOperations(request:Request,env:Env){
   if(request.method==="POST"){await runDataGoblins(env);return Response.json({started:true});}
   const runs=await env.DB.prepare("SELECT * FROM data_goblin_runs ORDER BY started_at DESC LIMIT 20").all();
   const totals=await env.DB.prepare("SELECT game,COUNT(*) sources,SUM(CASE WHEN extracted_at IS NOT NULL THEN 1 ELSE 0 END) extracted,MAX(last_seen_at) last_seen FROM data_goblin_sources GROUP BY game").all();
-  return Response.json({runs:runs.results||[],totals:totals.results||[],readiness:{coach:Boolean(env.OPENAI_API_KEY),strategicExtraction:Boolean(env.OPENAI_API_KEY),officialSourceIndexing:true,schedule:"Daily at 10:00 UTC"}},{headers:{"Cache-Control":"no-store"}});
+  const latest=(runs.results||[])[0] as any;
+  const latestTime=latest?.finished_at||latest?.started_at||null;
+  const ageHours=latestTime?(Date.now()-Date.parse(String(latestTime)+(/Z|[+-]\d\d:?\d\d$/.test(String(latestTime))?"":"Z")))/3_600_000:null;
+  return Response.json({runs:runs.results||[],totals:totals.results||[],readiness:{coach:Boolean(env.OPENAI_API_KEY),strategicExtraction:Boolean(env.OPENAI_API_KEY),officialSourceIndexing:true,schedule:"Hourly at minute 0 UTC",collectorHealth:!latest?"awaiting-first-run":latest.status==="failed"?"failed":ageHours!==null&&ageHours>3?"stale":"healthy",lastRunAt:latestTime}},{headers:{"Cache-Control":"no-store"}});
 }

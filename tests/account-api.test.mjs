@@ -105,7 +105,7 @@ test("founder operations expose runtime readiness without exposing secrets",asyn
   const worker=await loadWorker();const DB=new FakeD1();const founderEnv={...env(DB),METAFORGE_FOUNDER_USER_KEY:"f45237c471be9524242fb124700a61b6916cbbff9967c8ba74e43af0617bea90"};
   assert.equal((await worker.fetch(goblinRequest("buddy@example.com"),founderEnv,ctx)).status,403);
   const missing=await (await worker.fetch(goblinRequest("zach@dukecity.games"),founderEnv,ctx)).json();
-  assert.equal(missing.readiness.coach,false);assert.equal(missing.readiness.officialSourceIndexing,true);assert.equal("OPENAI_API_KEY" in missing,false);
+  assert.equal(missing.readiness.coach,false);assert.equal(missing.readiness.officialSourceIndexing,true);assert.equal(missing.readiness.collectorHealth,"awaiting-first-run");assert.match(missing.readiness.schedule,/Hourly/);assert.equal("OPENAI_API_KEY" in missing,false);
   const ready=await (await worker.fetch(goblinRequest("zach@dukecity.games"),{...founderEnv,OPENAI_API_KEY:"test-secret"},ctx)).json();
   assert.equal(ready.readiness.coach,true);
 });
