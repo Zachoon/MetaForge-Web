@@ -6,7 +6,7 @@ import { handleFounderOverview } from "./founder-dashboard";
 import { handleForgeChat } from "./forge-chat";
 import { handleCoachingKnowledge } from "./coaching-knowledge";
 import { ensureDataGoblinsStarted, handleGoblinOperations, runDataGoblins } from "./data-goblins";
-const BUILD_ID = "2026.07.16-coachloop1";
+const BUILD_ID = "2026.07.16-riftmeta1";
 
 interface Env {
   ASSETS: Fetcher;
