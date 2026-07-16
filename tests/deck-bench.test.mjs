@@ -32,3 +32,11 @@ test("merges account and local histories without losing unique revisions or matc
   assert.equal(merged.families[0].revisions.length, 3);
   assert.equal(merged.families[0].revisions.find((revision) => revision.fingerprint === "b".repeat(24)).matches.length, 2);
 });
+
+test("syncs a Coach Pulse debrief onto its exact match", () => {
+  const experiment = { id:"trial", deckName:"Tempo", originalDeck:"old", proposedDeck:"new", originalFingerprint:"a".repeat(24), proposedFingerprint:"b".repeat(24), status:"testing", startedAt:"2026-07-15T00:00:00Z" };
+  const remote = attachMatches(recordExperiment(emptyDeckBench(), experiment, "Standard"), [{ id:"same", deckFingerprint:"b".repeat(24), result:"loss" }]);
+  const local = attachMatches(recordExperiment(emptyDeckBench(), experiment, "Standard"), [{ id:"same", deckFingerprint:"b".repeat(24), result:"loss", coachDebrief:{ read:"Their speed", recordedAt:"now" } }]);
+  const match = mergeDeckBenches(local, remote).families[0].revisions[1].matches[0];
+  assert.equal(match.coachDebrief.read, "Their speed");
+});

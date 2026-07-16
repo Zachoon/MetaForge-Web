@@ -15,5 +15,7 @@ export function buildPostGameCoach(match, read, history = []) {
   const [headline, action] = RESPONSES[read] || ["A useful signal was captured.", "Keep the next test focused on the same observation."];
   const pattern = repeats >= 3 ? `This is now a pattern: ${repeats} recent games carried the same tag.` : repeats === 2 ? "This is the second recent game with the same tag. Watch it closely." : "One game is a clue, not a deck verdict.";
   const urgency = repeats >= 3 ? "pattern" : repeats === 2 ? "watch" : "clue";
-  return { headline, action, pattern, urgency, repeats, reviewed: history.length + 1, nextReviewIn: Math.max(0, 5 - ((history.length + 1) % 5)) };
+  const turns = match.turnTelemetry?.landPlayTurns || [];
+  const observedFact = turns.length ? `Companion confirmed land plays on turn${turns.length === 1 ? "" : "s"} ${turns.join(", ")}. Partial coverage is not enough to label other turns as misses.` : null;
+  return { headline, action, pattern, observedFact, urgency, repeats, reviewed: history.length + 1, nextReviewIn: Math.max(0, 5 - ((history.length + 1) % 5)) };
 }

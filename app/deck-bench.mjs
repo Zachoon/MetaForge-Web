@@ -34,7 +34,7 @@ export function mergeDeckBenches(localValue, remoteValue) {
         continue;
       }
       const matches = new Map((remoteRevision.matches || []).map((match) => [match.id, match]));
-      for (const match of localRevision.matches || []) matches.set(match.id, match);
+      for (const match of localRevision.matches || []) matches.set(match.id, { ...(matches.get(match.id) || {}), ...match, coachDebrief: match.coachDebrief || matches.get(match.id)?.coachDebrief });
       remoteRevision.matches = [...matches.values()];
       remoteRevision.decision = localRevision.decision || remoteRevision.decision;
     }

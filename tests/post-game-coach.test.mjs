@@ -17,3 +17,8 @@ test("does not contaminate one deck revision with another", () => {
   const history = [{ read:"Their speed", deckFingerprint:"old" }, { read:"Their speed", deckFingerprint:"old" }];
   assert.equal(buildPostGameCoach({ id:"3", deckFingerprint:"new" }, "Their speed", history).urgency, "clue");
 });
+
+test("uses explicit turn telemetry without inventing missed land drops", () => {
+  const pulse = buildPostGameCoach({ id:"1", turnTelemetry:{ landPlayTurns:[1,3], coverage:"explicit-events-only" } }, "My mana", []);
+  assert.match(pulse.observedFact, /turns 1, 3/); assert.match(pulse.observedFact, /not enough to label/i);
+});
