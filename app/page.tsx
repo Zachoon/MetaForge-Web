@@ -35,7 +35,9 @@ const SAMPLE_DECK = `4 Monastery Swiftspear
 2 Witchstalker Frenzy
 26 Mountain`;
 const REQUIRED_COMPANION_VERSION = "0.3.4";
-const BUILD_ID = "2026.07.16-riftmeta1";
+const BUILD_ID = "2026.07.16-workspace1";
+const FORGE_STAGES = ["home","build","recommend","test","bench","labs"] as const;
+type ForgeStage = typeof FORGE_STAGES[number];
 const SAMPLE_DRAFT_PACK = `Shieldwall Recruit | 3.4 | W | 2 | Creature
 Molten Rebuke | 3.7 | R | 2 | Instant
 Archive Visionary | 3.5 | U | 3 | Creature
@@ -45,6 +47,7 @@ export default function Home() {
   const [game, setGame] = useState<"mtg" | "riftbound">("mtg");
   const [reforging, setReforging] = useState(false);
   const [forgeStirring, setForgeStirring] = useState(false);
+  const [workspaceStage, setWorkspaceStage] = useState<ForgeStage>("home");
   const meta = getMetaIntelligence();
   const simulationGate = useMemo(() => evaluateSimulationGate(FORGE_CANDIDATE.deck, FORGE_CANDIDATE.strategy, 2000, 8128), []);
   const matchupMatrix = useMemo(() => evaluateMatchupMatrix(FORGE_CANDIDATE.deck, ["Aggro", "Midrange", "Control", "Tempo"], 2000, 991), []);
@@ -373,11 +376,17 @@ export default function Home() {
 
   function saveCoachingProfile(value: string) { setCoachingProfile(value); window.localStorage.setItem("metaforge.coachingProfile", value.slice(0,1000)); }
 
-  function goTo(selector: string) {
+  function openStage(stage: ForgeStage) {
+    setWorkspaceStage(stage);
     setForgeStirring(false);
     window.requestAnimationFrame(() => setForgeStirring(true));
     window.setTimeout(() => setForgeStirring(false), 900);
-    document.querySelector(selector)?.scrollIntoView({ behavior:"smooth", block:"start" });
+    window.setTimeout(() => document.querySelector("#forge-app-window")?.scrollIntoView({ behavior:"smooth", block:"start" }), 0);
+  }
+
+  function goTo(selector: string) {
+    const stage: ForgeStage = selector.includes("deck-bench") ? "bench" : selector.includes("test-bench") || selector.includes("forge-evidence") ? "test" : selector.includes("cockpit") ? "home" : "build";
+    openStage(stage);
   }
 
   async function shareDeckPassport() {
@@ -469,7 +478,7 @@ export default function Home() {
   function analyze() {
     if (cardCount <= 0||analysisActivity==="analyzing")return;
     setAnalysisActivity("analyzing");
-    window.setTimeout(()=>{setAnalyzed(true);setAnalysisActivity("ready");window.setTimeout(()=>setAnalysisActivity("idle"),2200)},850);
+    window.setTimeout(()=>{setAnalyzed(true);setWorkspaceStage("recommend");setAnalysisActivity("ready");window.setTimeout(()=>setAnalysisActivity("idle"),2200)},850);
   }
 
   function prepareComparison(mode: "forge" | "manual" = "forge") {
@@ -477,14 +486,16 @@ export default function Home() {
     setProposedDeck(mode === "forge" ? recommendation.proposedDeck : deckText);
     setComparisonReady(false);
     setComparisonOpen(true);
-    window.setTimeout(() => document.querySelector("#test-bench")?.scrollIntoView({ behavior: "smooth" }), 0);
+    setWorkspaceStage("test");
+    window.setTimeout(() => document.querySelector("#forge-app-window")?.scrollIntoView({ behavior: "smooth" }), 0);
   }
 
   function prepareNamedAlternative(option: { proposedDeck?: string }) {
     setProposedDeck(option.proposedDeck || deckText);
     setComparisonReady(false);
     setComparisonOpen(true);
-    window.setTimeout(() => document.querySelector("#test-bench")?.scrollIntoView({ behavior: "smooth" }), 0);
+    setWorkspaceStage("test");
+    window.setTimeout(() => document.querySelector("#forge-app-window")?.scrollIntoView({ behavior: "smooth" }), 0);
   }
 
   async function fingerprint(deckRows: Array<{ name: string; quantity: number }>) {
@@ -518,6 +529,7 @@ export default function Home() {
     window.localStorage.setItem("metaforge.activeExperiment", JSON.stringify(nextExperiment));
     saveBenchExperiment(nextExperiment);
     setExperiment(nextExperiment);
+    setWorkspaceStage("test");
     const registered = await registerExperiment(nextExperiment);
     setArenaTracking(registered ? "registered" : "waiting");
   }
@@ -560,6 +572,7 @@ export default function Home() {
     setFormat(family.format || "Standard");
     setDeckText(revision.deckText || "");
     setAnalyzed(true);
+    setWorkspaceStage("recommend");
     if (coach) {
       setForgeChatInput(`Review this saved ${family.format || "Magic"} deck revision. Start with its clearest current weakness, then give me one exact change worth testing and explain what evidence would show that it worked.`);
       setForgeChatOpen(true);
@@ -634,7 +647,7 @@ export default function Home() {
   </main>;
 
   return (
-    <main className={`game-shell mtg-mode ${analysisActivity==="analyzing"||arenaStatus==="connecting"||forgeChatStatus==="thinking"?"forge-awake":""} ${forgeStirring?"forge-stirring":""}`}>
+    <main className={`game-shell mtg-mode stage-${workspaceStage} ${analysisActivity==="analyzing"||arenaStatus==="connecting"||forgeChatStatus==="thinking"?"forge-awake":""} ${forgeStirring?"forge-stirring":""}`}>
       <div className={`reforge-transition ${reforging?"active":""}`}><span>RECALIBRATING THE FORGE</span></div>
       <div className="forge-atmosphere" aria-hidden="true"><i/>{Array.from({length:12},(_,index)=><b key={index}/>)}</div>
       <nav className="nav shell" aria-label="Main navigation">
@@ -657,6 +670,11 @@ export default function Home() {
       </nav>
 
       {(analysisActivity!=="idle"||arenaStatus==="connecting"||recordsPulse||accountStatus==="saving"||forgeChatStatus==="thinking")&&<section className={`forge-activity shell ${analysisActivity==="ready"||recordsPulse?"complete":"working"}`} role="status" aria-live="polite"><div className="activity-core"><i aria-hidden="true"><b/><b/><b/></i><span><small>{analysisActivity==="analyzing"?"DECK ANALYSIS":analysisActivity==="ready"?"ANALYSIS COMPLETE":arenaStatus==="connecting"?"ARENA BRIDGE":recordsPulse?"MATCH RECORD RECEIVED":accountStatus==="saving"?"PRIVATE ACCOUNT":"FORGE COACH"}</small><strong>{analysisActivity==="analyzing"?"Reading roles, mana, legality, and synergy…":analysisActivity==="ready"?"Your recommendation is ready.":arenaStatus==="connecting"?"Looking for the Arena Companion…":recordsPulse?"Attaching the match to its exact deck revision…":accountStatus==="saving"?"Saving your Deck Bench safely…":"Reasoning through your question…"}</strong></span></div><div className="activity-track" aria-hidden="true"><b/><b/><b/><b/></div><details><summary>What is Forge doing?</summary><p>{analysisActivity==="analyzing"?"Checking deck structure first, then preserving proven engines while ranking measurable changes.":arenaStatus==="connecting"||recordsPulse?"The local Companion sends completed MTG Arena evidence. MetaForge keeps results attached to the exact list and never treats one match as proof.":accountStatus==="saving"?"Updating the private account copy while preserving the browser recovery copy.":"Comparing verified facts, relevant evidence, alternatives, and uncertainty before answering."}</p></details></section>}
+
+      <section className="forge-app-frame shell" id="forge-app-window" aria-label="Forge workspace">
+        <header><div><small>METAFORGE WORKSPACE</small><b>{workspaceStage === "home" ? "Command Center" : workspaceStage === "build" ? "Build Your Deck" : workspaceStage === "recommend" ? "Forge Recommendation" : workspaceStage === "test" ? "Test & Learn" : workspaceStage === "bench" ? "Deck Bench" : "Research Labs"}</b></div><span>{workspaceStage === "home" ? "OVERVIEW" : workspaceStage === "labs" ? "OPTIONAL" : `STEP ${FORGE_STAGES.indexOf(workspaceStage)} / 4`}</span></header>
+        <nav aria-label="Forge stages">{FORGE_STAGES.map(stage=>{const locked=stage==="recommend"&&!analyzed||stage==="test"&&!comparisonOpen&&!experiment;return <button key={stage} disabled={locked} title={locked?stage==="recommend"?"Analyze a deck first":"Choose a recommendation first":undefined} className={workspaceStage===stage?"active":""} aria-current={workspaceStage===stage?"page":undefined} onClick={()=>openStage(stage)}>{stage === "recommend" ? "Recommendation" : stage[0].toUpperCase()+stage.slice(1)}</button>})}</nav>
+      </section>
 
       <section className="return-cockpit shell" id="cockpit" aria-label="Your MetaForge home">
         <header><div><small>START HERE · YOUR NEXT MOVE</small><h1>{experiment ? `Continue ${experiment.deckName}` : cardCount ? `Improve ${deckName}` : "Forge your first deck test"}</h1><p>{experiment ? `${experimentEvidence.sampleSize}/5 matches complete. Keep playing this exact revision.` : analyzed ? "Choose one proposed change, compare it, then start the experiment." : cardCount ? "Your deck is entered. Press Forge my analysis next." : "Click Forge a deck, paste your list, then press Forge my analysis."}</p></div><b>{experiment ? experimentStage.toUpperCase() : analyzed ? "CHOOSE" : cardCount ? "ANALYZE" : "STEP 1"}<span>STATUS</span></b></header>
@@ -768,9 +786,9 @@ export default function Home() {
 
       <section className="forge-section" id="forge">
         <div className="shell forge-shell">
-          <div className="forge-heading"><div><span>THE FORGE</span><h2>Paste your deck.</h2></div><p>Get one change worth testing.</p></div>
+          <div className="forge-heading"><div><span>THE FORGE · {workspaceStage.toUpperCase()}</span><h2>{workspaceStage==="build"?"Build your deck.":workspaceStage==="recommend"?"Choose the change worth testing.":workspaceStage==="test"?"Test, play, and learn.":"Your saved deck history."}</h2></div><p>{workspaceStage==="build"?"Paste or load one list, then Forge it.":workspaceStage==="recommend"?"One primary recommendation, clear alternatives, and the evidence behind them.":workspaceStage==="test"?"Keep every result attached to the exact version played.":"Reopen any version without losing its record."}</p></div>
           <section className={`account-center ${accountStatus}`} aria-label="Your Forge account">
-            <div><small>YOUR FORGE ACCOUNT · CREATED THROUGH PRIVATE SIGN-IN</small><h3>{accountStatus === "synced" ? "Account active and synchronized." : accountStatus === "loading" || accountStatus === "saving" ? "Connecting your protected account…" : "Local safety copy active."}</h3><p>{accountStatus === "synced" ? `Your Deck Bench, versions, and match evidence are attached to this signed-in identity${lastAccountSync ? ` · last synchronized ${new Date(lastAccountSync).toLocaleString()}` : ""}.` : "MetaForge always keeps a browser copy. Account synchronization will retry without deleting local work."}</p></div><div><b>{accountStatus === "synced" ? "SYNCED" : accountStatus.toUpperCase()}</b><button onClick={() => document.querySelector("#deck-bench")?.scrollIntoView({ behavior: "smooth" })}>Open my saved decks</button></div>
+            <div><small>YOUR FORGE ACCOUNT · CREATED THROUGH PRIVATE SIGN-IN</small><h3>{accountStatus === "synced" ? "Account active and synchronized." : accountStatus === "loading" || accountStatus === "saving" ? "Connecting your protected account…" : "Local safety copy active."}</h3><p>{accountStatus === "synced" ? `Your Deck Bench, versions, and match evidence are attached to this signed-in identity${lastAccountSync ? ` · last synchronized ${new Date(lastAccountSync).toLocaleString()}` : ""}.` : "MetaForge always keeps a browser copy. Account synchronization will retry without deleting local work."}</p></div><div><b>{accountStatus === "synced" ? "SYNCED" : accountStatus.toUpperCase()}</b><button onClick={() => openStage("bench")}>Open my saved decks</button></div>
           </section>
           <section className="founder-onboarding" aria-label="Quick start guide">
             <header><div><small>QUICK START · FOLLOW THESE IN ORDER</small><h3>{onboardingSteps.every((step) => step.done) ? "Your testing loop is running." : "Four clear steps to your first measured deck test."}</h3></div><b>{onboardingSteps.filter((step) => step.done).length}/4<span>COMPLETE</span></b></header>
@@ -921,6 +939,8 @@ export default function Home() {
           )}
         </div>
       </section>
+
+      <div className="forge-stage-controls" aria-label="Stage navigation"><button disabled={FORGE_STAGES.indexOf(workspaceStage)===0} onClick={()=>openStage(FORGE_STAGES[Math.max(0,FORGE_STAGES.indexOf(workspaceStage)-1)])}>← Previous</button><span>{workspaceStage === "home" ? "Start with a deck" : workspaceStage === "build" ? cardCount ? "Ready to analyze" : "Paste a deck to continue" : workspaceStage === "recommend" ? "Choose a test" : workspaceStage === "test" ? "Review saved versions" : workspaceStage === "bench" ? "Your history is safe" : "Optional research"}</span><button disabled={(workspaceStage==="build"&&!cardCount)||(workspaceStage==="recommend"&&!analyzed)||workspaceStage==="labs"} onClick={()=>workspaceStage==="build"?analyze():openStage(FORGE_STAGES[Math.min(FORGE_STAGES.length-1,FORGE_STAGES.indexOf(workspaceStage)+1)])}>{workspaceStage==="build"?"Forge deck →":"Next →"}</button></div>
 
       <div className={`feedback-dock ${feedbackOpen ? "open" : ""}`}>
         {!feedbackOpen ? <button onClick={() => setFeedbackOpen(true)}>Send founder feedback</button> : <section aria-label="Send founder feedback">
