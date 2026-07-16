@@ -12,7 +12,7 @@ class FakeD1 {
         async run() { if (sql.includes("founder_feedback")) db.feedback.push(values); else db.rows.set(values[0], { bench_json: values[1], revision: values[2], updated_at: "now" }); return { success: true }; },
         async all() { return { results: [] }; },
       };
-    }, async all() { return { results: [] }; } };
+    }, async all() { return { results: [] }; }, async run(){ return { meta:{ changes:0 } }; } };
   }
 }
 
@@ -87,7 +87,7 @@ test("Forge conversation requires an account and falls back to native coaching w
   assert.equal((await worker.fetch(chatRequest(null),env(DB),ctx)).status,401);
   const native=await worker.fetch(chatRequest("one@example.com"),env(DB),ctx);assert.equal(native.status,200);const body=await native.json();assert.equal(body.model,"metaforge-native-v1");assert.match(body.answer,/Paste the decklist/);
 });
-test("Coach readiness distinguishes native and model modes before a tester composes",async()=>{const worker=await loadWorker(),DB=new FakeD1();const offline=await (await worker.fetch(coachStatusRequest(),env(DB),ctx)).json();assert.equal(offline.ready,true);assert.equal(offline.modelReady,false);assert.equal(offline.mode,"native");assert.match(offline.fallback,/Native Coach/i);const online=await (await worker.fetch(coachStatusRequest(),{...env(DB),OPENAI_API_KEY:"test"},ctx)).json();assert.equal(online.ready,true);assert.equal(online.modelReady,true);assert.equal(online.mode,"model")});
+test("Coach readiness distinguishes native and model modes before a tester composes",async()=>{const worker=await loadWorker(),DB=new FakeD1(),pending=[];const awaitedCtx={...ctx,waitUntil(promise){pending.push(promise)}};const offline=await (await worker.fetch(coachStatusRequest(),env(DB),awaitedCtx)).json();assert.equal(offline.ready,true);assert.equal(offline.modelReady,false);assert.equal(offline.mode,"native");assert.match(offline.fallback,/Native Coach/i);const online=await (await worker.fetch(coachStatusRequest(),{...env(DB),OPENAI_API_KEY:"test"},awaitedCtx)).json();assert.equal(online.ready,true);assert.equal(online.modelReady,true);assert.equal(online.mode,"model");await Promise.all(pending)});
 
 test("Player DNA coaching preferences restore across devices without stale overwrites",async()=>{
   const worker=await loadWorker(),DB=new ProfileD1();

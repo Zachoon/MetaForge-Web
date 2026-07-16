@@ -1,5 +1,6 @@
 import { userKey } from "./account-bench";
 import { discoverOfficialLinks, extractSourceMetadata } from "../app/data-goblin-discovery.mjs";
+import { claimCollectorBootstrap } from "../app/collector-bootstrap.mjs";
 interface Env{DB:D1Database;METAFORGE_FOUNDER_USER_KEY?:string;OPENAI_API_KEY?:string;OPENAI_MODEL?:string}
 const TARGETS=[
   {game:"mtg",url:"https://magic.wizards.com/en/news",host:"magic.wizards.com",sourceClass:"official-news"},
@@ -40,6 +41,9 @@ export async function runDataGoblins(env:Env,fetcher:typeof fetch=fetch){
       await env.DB.prepare("UPDATE data_goblin_runs SET status='failed',finished_at=CURRENT_TIMESTAMP,error=? WHERE id=?").bind(String(error).slice(0,500),runId).run();
     }
   }
+}
+export async function ensureDataGoblinsStarted(env:Env,fetcher:typeof fetch=fetch){
+  return claimCollectorBootstrap(env.DB,()=>runDataGoblins(env,fetcher));
 }
 export async function handleGoblinOperations(request:Request,env:Env){
   const key=await userKey(request);
