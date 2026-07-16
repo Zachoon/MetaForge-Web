@@ -596,13 +596,15 @@ export default function Home() {
 
   if(game==="riftbound")return <main className={`game-shell rift-mode ${reforging?"reforging":""}`}>
     <div className="reforge-transition"><span>RECALIBRATING THE FORGE</span></div>
+    <div className="forge-atmosphere rift-atmosphere" aria-hidden="true"><i/>{Array.from({length:12},(_,index)=><b key={index}/>)}</div>
     <nav className="nav shell" aria-label="Main navigation"><a className="brand" href="#top"><span className="brand-mark">MF</span><span>METAFORGE</span></a><div className="game-switcher" aria-label="Choose game"><button onClick={()=>switchGame("mtg")}>MTG</button><button className="active rift" aria-pressed="true">RIFTBOUND <i>ALPHA</i></button></div><button className="nav-cta rift" onClick={()=>document.querySelector(".rift-workspace")?.scrollIntoView({behavior:"smooth"})}>Enter Riftbound Forge</button></nav>
     <RiftboundForge coachingProfile={coachingProfile} setCoachingProfile={setCoachingProfile} coachDepth={coachDepth} setCoachDepth={(depth)=>{setCoachDepth(depth);window.localStorage.setItem("metaforge.coachDepth",depth)}}/>
   </main>;
 
   return (
-    <main>
+    <main className={`game-shell mtg-mode ${analysisActivity==="analyzing"||arenaStatus==="connecting"||forgeChatStatus==="thinking"?"forge-awake":""}`}>
       <div className={`reforge-transition ${reforging?"active":""}`}><span>RECALIBRATING THE FORGE</span></div>
+      <div className="forge-atmosphere" aria-hidden="true"><i/>{Array.from({length:12},(_,index)=><b key={index}/>)}</div>
       <nav className="nav shell" aria-label="Main navigation">
         <a className="brand" href="#top" aria-label="MetaForge home">
           <span className="brand-mark">MF</span>
