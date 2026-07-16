@@ -80,6 +80,8 @@ export default function Home() {
   const [forgeChatStatus, setForgeChatStatus] = useState<"idle" | "thinking" | "error">("idle");
   const [forgeMessages, setForgeMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([{ role: "assistant", content: "Bring me a deck idea, a confusing pick, or a strategy you want to understand. We’ll forge through it together." }]);
   const [coachingProfile, setCoachingProfile] = useState("");
+  const [forgeQuestionsRemaining, setForgeQuestionsRemaining] = useState<number | null>(null);
+  const [forgeQuestionsReset, setForgeQuestionsReset] = useState<string | null>(null);
   const [experiment, setExperiment] = useState<null | {
     id?: string;
     deckName: string;
@@ -267,7 +269,7 @@ export default function Home() {
     try {
       const response = await fetch("/api/forge/chat", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ messages:next, context:{ deckName, format, deckText, coachingProfile } }) });
       const result = await response.json(); if (!response.ok) throw new Error(result.error || "Forge unavailable");
-      setForgeMessages((current) => [...current, { role:"assistant", content:result.answer }]); setForgeChatStatus("idle");
+      setForgeMessages((current) => [...current, { role:"assistant", content:result.answer }]); setForgeQuestionsRemaining(result.remaining ?? null); setForgeQuestionsReset(result.resetAt || null); setForgeChatStatus("idle");
     } catch (error) { setForgeMessages((current) => [...current, { role:"assistant", content:error instanceof Error ? error.message : "The Forge could not answer yet." }]); setForgeChatStatus("error"); }
   }
 
@@ -767,7 +769,7 @@ export default function Home() {
           <details className="coach-profile"><summary>How should Forge coach me?</summary><textarea value={coachingProfile} onChange={(event) => saveCoachingProfile(event.target.value)} placeholder="Competitive, prefers proactive midrange, explain the math, $150 budget…" /><small>Saved in this browser and sent only with your questions.</small></details>
           <div className="forge-conversation">{forgeMessages.map((message,index) => <article key={index} className={message.role}><b>{message.role === "assistant" ? "FORGE" : "YOU"}</b><p>{message.content}</p></article>)}{forgeChatStatus === "thinking" && <article className="assistant thinking"><b>FORGE</b><p>Reading the grain of the deck…</p></article>}</div>
           <div className="forge-prompts"><button onClick={() => setForgeChatInput("Build me a fun deck around this idea, then explain the weak points.")}>Build an idea</button><button onClick={() => setForgeChatInput("Explain this recommendation and its runner-up in more depth.")}>Explain the why</button><button onClick={() => setForgeChatInput("What does my current deck say about my preferred play style?")}>Read my style</button></div>
-          <footer><textarea value={forgeChatInput} onChange={(event) => setForgeChatInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); sendForgeMessage(); } }} placeholder="Ask about a deck, pick, matchup, mechanic, or wild theory…" /><button disabled={!forgeChatInput.trim() || forgeChatStatus === "thinking"} onClick={sendForgeMessage}>Forge answer →</button><small>Personalized guidance · not automatic global training · verify current facts</small></footer>
+          <footer><textarea value={forgeChatInput} onChange={(event) => setForgeChatInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); sendForgeMessage(); } }} placeholder="Ask about a deck, pick, matchup, mechanic, or wild theory…" /><button disabled={!forgeChatInput.trim() || forgeChatStatus === "thinking" || forgeQuestionsRemaining === 0} onClick={sendForgeMessage}>Forge answer →</button><small>{forgeQuestionsRemaining === null ? "Founder unlimited · buddies receive 10 questions weekly" : `${forgeQuestionsRemaining} of 10 questions remaining${forgeQuestionsReset ? ` · resets ${new Date(forgeQuestionsReset).toLocaleDateString()}` : ""}`} · not automatic global training</small></footer>
         </section>}
       </div>
 
