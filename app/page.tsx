@@ -333,7 +333,7 @@ export default function Home() {
     const content = (contentOverride ?? forgeChatInput).trim(); if (!content || forgeChatStatus === "thinking" || coachReady!==true) return;
     const next = [...forgeMessages, { role: "user" as const, content }]; setForgeMessages(next); setForgeChatInput(""); setForgeChatStatus("thinking");
     try {
-      const response = await fetch("/api/forge/chat", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ messages:next, context:{ deckName, format, deckText, coachingProfile } }) });
+      const response = await fetch("/api/forge/chat", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ messages:next, context:{ game:"mtg", deckName, format, deckText, coachingProfile } }) });
       const result = await response.json(); if (!response.ok) throw new Error(result.error || "Forge unavailable");
       setForgeMessages((current) => [...current, { role:"assistant", content:result.answer }]); setForgeQuestionsRemaining(result.remaining ?? null); setForgeQuestionsReset(result.resetAt || null); setForgeChatStatus("idle");
     } catch (error) { setForgeMessages((current) => [...current, { role:"assistant", content:error instanceof Error ? error.message : "The Forge could not answer yet." }]); setForgeChatStatus("error"); }
