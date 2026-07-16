@@ -160,6 +160,8 @@ export default function Home() {
   useEffect(() => {
     const savedGame=window.localStorage.getItem("metaforge.activeGame");
     if(savedGame==="riftbound")setGame("riftbound");
+    const savedStage=window.localStorage.getItem("metaforge.workspaceStage");
+    if(FORGE_STAGES.includes(savedStage as ForgeStage))setWorkspaceStage(savedStage as ForgeStage);
     const localNotes=window.localStorage.getItem("metaforge.coachingProfile")||"";
     fetch("/api/account/player-profile",{cache:"no-store"}).then(async response=>response.ok?response.json():null).then(data=>{
       playerProfileRevision.current=Number(data?.revision||0);
@@ -378,10 +380,14 @@ export default function Home() {
 
   function openStage(stage: ForgeStage) {
     setWorkspaceStage(stage);
+    window.localStorage.setItem("metaforge.workspaceStage", stage);
     setForgeStirring(false);
     window.requestAnimationFrame(() => setForgeStirring(true));
     window.setTimeout(() => setForgeStirring(false), 900);
-    window.setTimeout(() => document.querySelector("#forge-app-window")?.scrollIntoView({ behavior:"smooth", block:"start" }), 0);
+    window.setTimeout(() => {
+      document.querySelector("#forge-app-window")?.scrollIntoView({ behavior:"smooth", block:"start" });
+      document.querySelector<HTMLElement>(".stage-focus-title")?.focus({ preventScroll: true });
+    }, 0);
   }
 
   function goTo(selector: string) {
@@ -478,7 +484,7 @@ export default function Home() {
   function analyze() {
     if (cardCount <= 0||analysisActivity==="analyzing")return;
     setAnalysisActivity("analyzing");
-    window.setTimeout(()=>{setAnalyzed(true);setWorkspaceStage("recommend");setAnalysisActivity("ready");window.setTimeout(()=>setAnalysisActivity("idle"),2200)},850);
+    window.setTimeout(()=>{setAnalyzed(true);openStage("recommend");setAnalysisActivity("ready");window.setTimeout(()=>setAnalysisActivity("idle"),2200)},850);
   }
 
   function prepareComparison(mode: "forge" | "manual" = "forge") {
@@ -486,16 +492,14 @@ export default function Home() {
     setProposedDeck(mode === "forge" ? recommendation.proposedDeck : deckText);
     setComparisonReady(false);
     setComparisonOpen(true);
-    setWorkspaceStage("test");
-    window.setTimeout(() => document.querySelector("#forge-app-window")?.scrollIntoView({ behavior: "smooth" }), 0);
+    openStage("test");
   }
 
   function prepareNamedAlternative(option: { proposedDeck?: string }) {
     setProposedDeck(option.proposedDeck || deckText);
     setComparisonReady(false);
     setComparisonOpen(true);
-    setWorkspaceStage("test");
-    window.setTimeout(() => document.querySelector("#forge-app-window")?.scrollIntoView({ behavior: "smooth" }), 0);
+    openStage("test");
   }
 
   async function fingerprint(deckRows: Array<{ name: string; quantity: number }>) {
@@ -529,7 +533,7 @@ export default function Home() {
     window.localStorage.setItem("metaforge.activeExperiment", JSON.stringify(nextExperiment));
     saveBenchExperiment(nextExperiment);
     setExperiment(nextExperiment);
-    setWorkspaceStage("test");
+    openStage("test");
     const registered = await registerExperiment(nextExperiment);
     setArenaTracking(registered ? "registered" : "waiting");
   }
@@ -572,7 +576,7 @@ export default function Home() {
     setFormat(family.format || "Standard");
     setDeckText(revision.deckText || "");
     setAnalyzed(true);
-    setWorkspaceStage("recommend");
+    openStage("recommend");
     if (coach) {
       setForgeChatInput(`Review this saved ${family.format || "Magic"} deck revision. Start with its clearest current weakness, then give me one exact change worth testing and explain what evidence would show that it worked.`);
       setForgeChatOpen(true);
@@ -664,7 +668,7 @@ export default function Home() {
           <button disabled={coachReady!==true} title={coachReady===false?"Coach is temporarily offline; deck analysis still works.":"Open Coach"} onClick={() => setForgeChatOpen(true)}>Coach</button>
           <button onClick={() => goTo("#deck-bench")}>Bench</button>
         </div>
-        <button className="nav-cta" onClick={() => document.querySelector("#forge")?.scrollIntoView({ behavior: "smooth" })}>
+        <button className="nav-cta" onClick={() => openStage("build")}>
           Analyze a deck
         </button>
       </nav>
@@ -672,7 +676,7 @@ export default function Home() {
       {(analysisActivity!=="idle"||arenaStatus==="connecting"||recordsPulse||accountStatus==="saving"||forgeChatStatus==="thinking")&&<section className={`forge-activity shell ${analysisActivity==="ready"||recordsPulse?"complete":"working"}`} role="status" aria-live="polite"><div className="activity-core"><i aria-hidden="true"><b/><b/><b/></i><span><small>{analysisActivity==="analyzing"?"DECK ANALYSIS":analysisActivity==="ready"?"ANALYSIS COMPLETE":arenaStatus==="connecting"?"ARENA BRIDGE":recordsPulse?"MATCH RECORD RECEIVED":accountStatus==="saving"?"PRIVATE ACCOUNT":"FORGE COACH"}</small><strong>{analysisActivity==="analyzing"?"Reading roles, mana, legality, and synergy…":analysisActivity==="ready"?"Your recommendation is ready.":arenaStatus==="connecting"?"Looking for the Arena Companion…":recordsPulse?"Attaching the match to its exact deck revision…":accountStatus==="saving"?"Saving your Deck Bench safely…":"Reasoning through your question…"}</strong></span></div><div className="activity-track" aria-hidden="true"><b/><b/><b/><b/></div><details><summary>What is Forge doing?</summary><p>{analysisActivity==="analyzing"?"Checking deck structure first, then preserving proven engines while ranking measurable changes.":arenaStatus==="connecting"||recordsPulse?"The local Companion sends completed MTG Arena evidence. MetaForge keeps results attached to the exact list and never treats one match as proof.":accountStatus==="saving"?"Updating the private account copy while preserving the browser recovery copy.":"Comparing verified facts, relevant evidence, alternatives, and uncertainty before answering."}</p></details></section>}
 
       <section className="forge-app-frame shell" id="forge-app-window" aria-label="Forge workspace">
-        <header><div><small>METAFORGE WORKSPACE</small><b>{workspaceStage === "home" ? "Command Center" : workspaceStage === "build" ? "Build Your Deck" : workspaceStage === "recommend" ? "Forge Recommendation" : workspaceStage === "test" ? "Test & Learn" : workspaceStage === "bench" ? "Deck Bench" : "Research Labs"}</b></div><span>{workspaceStage === "home" ? "OVERVIEW" : workspaceStage === "labs" ? "OPTIONAL" : `STEP ${FORGE_STAGES.indexOf(workspaceStage)} / 4`}</span></header>
+        <header aria-live="polite"><div><small>METAFORGE WORKSPACE</small><b className="stage-focus-title" tabIndex={-1}>{workspaceStage === "home" ? "Command Center" : workspaceStage === "build" ? "Build Your Deck" : workspaceStage === "recommend" ? "Forge Recommendation" : workspaceStage === "test" ? "Test & Learn" : workspaceStage === "bench" ? "Deck Bench" : "Research Labs"}</b><em>{workspaceStage === "home" ? "Your next best move, in one place." : workspaceStage === "build" ? "One list in. One clear diagnosis out." : workspaceStage === "recommend" ? "Pick a change you can actually test." : workspaceStage === "test" ? "Keep results tied to the exact deck played." : workspaceStage === "bench" ? "Every version, saved and comparable." : "Optional research when you want to go deeper."}</em></div><span>{workspaceStage === "home" ? "OVERVIEW" : workspaceStage === "labs" ? "OPTIONAL" : `STEP ${FORGE_STAGES.indexOf(workspaceStage)} / 4`}</span></header>
         <nav aria-label="Forge stages">{FORGE_STAGES.map(stage=>{const locked=stage==="recommend"&&!analyzed||stage==="test"&&!comparisonOpen&&!experiment;return <button key={stage} disabled={locked} title={locked?stage==="recommend"?"Analyze a deck first":"Choose a recommendation first":undefined} className={workspaceStage===stage?"active":""} aria-current={workspaceStage===stage?"page":undefined} onClick={()=>openStage(stage)}>{stage === "recommend" ? "Recommendation" : stage[0].toUpperCase()+stage.slice(1)}</button>})}</nav>
       </section>
 
