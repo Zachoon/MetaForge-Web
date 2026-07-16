@@ -1,3 +1,5 @@
+import { buildDecisionMoment } from "./decision-moment.mjs";
+
 const RESPONSES = {
   "My mana": ["Mana was the pressure point.", "Check whether this was variance, a mulligan decision, or a repeatable construction issue before changing lands."],
   "Their speed": ["The game was decided early.", "Watch whether your first meaningful play consistently arrives after the opponent is already ahead."],
@@ -16,6 +18,7 @@ export function buildPostGameCoach(match, read, history = []) {
   const pattern = repeats >= 3 ? `This is now a pattern: ${repeats} recent games carried the same tag.` : repeats === 2 ? "This is the second recent game with the same tag. Watch it closely." : "One game is a clue, not a deck verdict.";
   const urgency = repeats >= 3 ? "pattern" : repeats === 2 ? "watch" : "clue";
   const turns = match.turnTelemetry?.landPlayTurns || [];
-  const observedFact = turns.length ? `Companion confirmed land plays on turn${turns.length === 1 ? "" : "s"} ${turns.join(", ")}. Partial coverage is not enough to label other turns as misses.` : null;
-  return { headline, action, pattern, observedFact, urgency, repeats, reviewed: history.length + 1, nextReviewIn: Math.max(0, 5 - ((history.length + 1) % 5)) };
+  const decisionMoment = buildDecisionMoment(match);
+  const observedFact = decisionMoment?.detail || (turns.length ? `Companion confirmed land plays on turn${turns.length === 1 ? "" : "s"} ${turns.join(", ")}. Partial coverage is not enough to label other turns as misses.` : null);
+  return { headline, action, pattern, observedFact, decisionMoment, urgency, repeats, reviewed: history.length + 1, nextReviewIn: Math.max(0, 5 - ((history.length + 1) % 5)) };
 }

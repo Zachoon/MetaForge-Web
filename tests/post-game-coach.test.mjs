@@ -22,3 +22,9 @@ test("uses explicit turn telemetry without inventing missed land drops", () => {
   const pulse = buildPostGameCoach({ id:"1", turnTelemetry:{ landPlayTurns:[1,3], coverage:"explicit-events-only" } }, "My mana", []);
   assert.match(pulse.observedFact, /turns 1, 3/); assert.match(pulse.observedFact, /not enough to label/i);
 });
+
+test("surfaces one bounded decision moment when Companion observed it",()=>{
+  const insight=buildPostGameCoach({id:"decision",playerDecisions:[{kind:"attack-window",turn:4,tookPressureLine:true,actors:2}]},"My plan worked",[]);
+  assert.equal(insight.decisionMoment.title,"You chose pressure.");
+  assert.match(insight.observedFact,/not proof/);
+});
