@@ -35,7 +35,7 @@ const SAMPLE_DECK = `4 Monastery Swiftspear
 2 Witchstalker Frenzy
 26 Mountain`;
 const REQUIRED_COMPANION_VERSION = "0.3.4";
-const BUILD_ID = "2026.07.16-coachdock1";
+const BUILD_ID = "2026.07.16-livingforge1";
 const SAMPLE_DRAFT_PACK = `Shieldwall Recruit | 3.4 | W | 2 | Creature
 Molten Rebuke | 3.7 | R | 2 | Instant
 Archive Visionary | 3.5 | U | 3 | Creature
@@ -44,6 +44,7 @@ Grave Bargain | 3.3 | B | 3 | Sorcery`;
 export default function Home() {
   const [game, setGame] = useState<"mtg" | "riftbound">("mtg");
   const [reforging, setReforging] = useState(false);
+  const [forgeStirring, setForgeStirring] = useState(false);
   const meta = getMetaIntelligence();
   const simulationGate = useMemo(() => evaluateSimulationGate(FORGE_CANDIDATE.deck, FORGE_CANDIDATE.strategy, 2000, 8128), []);
   const matchupMatrix = useMemo(() => evaluateMatchupMatrix(FORGE_CANDIDATE.deck, ["Aggro", "Midrange", "Control", "Tempo"], 2000, 991), []);
@@ -372,7 +373,12 @@ export default function Home() {
 
   function saveCoachingProfile(value: string) { setCoachingProfile(value); window.localStorage.setItem("metaforge.coachingProfile", value.slice(0,1000)); }
 
-  function goTo(selector: string) { document.querySelector(selector)?.scrollIntoView({ behavior:"smooth", block:"start" }); }
+  function goTo(selector: string) {
+    setForgeStirring(false);
+    window.requestAnimationFrame(() => setForgeStirring(true));
+    window.setTimeout(() => setForgeStirring(false), 900);
+    document.querySelector(selector)?.scrollIntoView({ behavior:"smooth", block:"start" });
+  }
 
   async function shareDeckPassport() {
     const leader = benchRankings[0];
@@ -620,7 +626,7 @@ export default function Home() {
     window.setTimeout(() => document.querySelector("#test-bench")?.scrollIntoView({ behavior: "smooth" }), 0);
   }
 
-  if(game==="riftbound")return <main className={`game-shell rift-mode ${reforging?"reforging":""}`}>
+  if(game==="riftbound")return <main className={`game-shell rift-mode ${reforging?"reforging":""} ${forgeStirring?"forge-stirring":""}`}>
     <div className="reforge-transition"><span>RECALIBRATING THE FORGE</span></div>
     <div className="forge-atmosphere rift-atmosphere" aria-hidden="true"><i/>{Array.from({length:12},(_,index)=><b key={index}/>)}</div>
     <nav className="nav shell" aria-label="Main navigation"><a className="brand" href="#top"><span className="brand-mark">MF</span><span>METAFORGE</span></a><span className="live-build" title={`Live build ${BUILD_ID}`}><i/>FORGE LIVE</span><div className="game-switcher" aria-label="Choose game"><button onClick={()=>switchGame("mtg")}>MTG</button><button className="active rift" aria-pressed="true">RIFTBOUND <i>ALPHA</i></button></div><button className="nav-cta rift" onClick={()=>document.querySelector(".rift-workspace")?.scrollIntoView({behavior:"smooth"})}>Enter Riftbound Forge</button></nav>
@@ -628,7 +634,7 @@ export default function Home() {
   </main>;
 
   return (
-    <main className={`game-shell mtg-mode ${analysisActivity==="analyzing"||arenaStatus==="connecting"||forgeChatStatus==="thinking"?"forge-awake":""}`}>
+    <main className={`game-shell mtg-mode ${analysisActivity==="analyzing"||arenaStatus==="connecting"||forgeChatStatus==="thinking"?"forge-awake":""} ${forgeStirring?"forge-stirring":""}`}>
       <div className={`reforge-transition ${reforging?"active":""}`}><span>RECALIBRATING THE FORGE</span></div>
       <div className="forge-atmosphere" aria-hidden="true"><i/>{Array.from({length:12},(_,index)=><b key={index}/>)}</div>
       <nav className="nav shell" aria-label="Main navigation">
