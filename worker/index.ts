@@ -55,7 +55,7 @@ const worker = {
       return handleFounderOverview(request, env);
     }
     if (url.pathname === "/api/forge/chat") return handleForgeChat(request, env);
-    if (url.pathname === "/api/forge/status") return Response.json({ready:Boolean(env.OPENAI_API_KEY),mode:env.OPENAI_API_KEY?"online":"offline",fallback:"Deterministic deck analysis remains available"},{headers:{"Cache-Control":"no-store"}});
+    if (url.pathname === "/api/forge/status") return Response.json({ready:true,modelReady:Boolean(env.OPENAI_API_KEY),mode:env.OPENAI_API_KEY?"model":"native",fallback:"MetaForge Native Coach remains available without a model call"},{headers:{"Cache-Control":"no-store"}});
     if (url.pathname === "/api/founder/knowledge") return handleCoachingKnowledge(request, env, true);
     if (url.pathname === "/api/coach/knowledge") return handleCoachingKnowledge(request, env, false);
     if (url.pathname === "/api/founder/goblins") return handleGoblinOperations(request, env);
