@@ -17,6 +17,7 @@ import { evaluateMatchupMatrix } from "./matchup-simulation.mjs";
 import { evaluateDraftPairs, evaluateDraftPick, limitedDeckHealth } from "./limited-buddy.mjs";
 import { deckFingerprint } from "./deck-fingerprint.mjs";
 import { attachMatches, DECK_BENCH_STORAGE_KEY, emptyDeckBench, mergeDeckBenches, rankedFamilies, readDeckBench, recordExperiment, updateFamily } from "./deck-bench.mjs";
+import { extractCoachDeck } from "./coach-actions.mjs";
 
 const SAMPLE_DECK = `4 Monastery Swiftspear
 4 Slickshot Show-Off
@@ -82,6 +83,8 @@ export default function Home() {
   const [coachingProfile, setCoachingProfile] = useState("");
   const [forgeQuestionsRemaining, setForgeQuestionsRemaining] = useState<number | null>(null);
   const [forgeQuestionsReset, setForgeQuestionsReset] = useState<string | null>(null);
+  const [passportOpen, setPassportOpen] = useState(false);
+  const [passportShared, setPassportShared] = useState(false);
   const [experiment, setExperiment] = useState<null | {
     id?: string;
     deckName: string;
@@ -274,6 +277,24 @@ export default function Home() {
   }
 
   function saveCoachingProfile(value: string) { setCoachingProfile(value); window.localStorage.setItem("metaforge.coachingProfile", value.slice(0,1000)); }
+
+  function goTo(selector: string) { document.querySelector(selector)?.scrollIntoView({ behavior:"smooth", block:"start" }); }
+
+  async function shareDeckPassport() {
+    const leader = benchRankings[0];
+    const record = leader?.leader?.evidence;
+    const text = `METAFORGE DECK PASSPORT\n${leader?.name || deckName || "Untitled deck"} · ${leader?.format || format}\n${record?.sampleSize ? `${record.wins}–${record.losses} observed record` : "Awaiting measured matches"}\n${experiment ? `Current experiment: ${experiment.deckName} · ${experimentStage}` : "Ready for its next evolution"}\nForged with MetaForge`;
+    try { if (navigator.share) await navigator.share({ title:"My MetaForge Deck Passport", text, url:window.location.origin }); else await navigator.clipboard.writeText(`${text}\n${window.location.origin}`); setPassportShared(true); window.setTimeout(()=>setPassportShared(false),1800); } catch { /* Share cancellation leaves the passport open. */ }
+  }
+
+  function loadCoachDeck(content: string, compare = false) {
+    const proposal = extractCoachDeck(content);
+    if (!proposal) return;
+    if (compare && cardCount) { setProposedDeck(proposal); setComparisonOpen(true); setComparisonReady(false); }
+    else { setDeckText(proposal); setAnalyzed(true); }
+    setForgeChatOpen(false);
+    window.setTimeout(() => goTo(compare && cardCount ? "#test-bench" : "#forge"), 0);
+  }
 
   function recordMobileMatch() {
     if (!experiment?.proposedFingerprint) return;
@@ -486,16 +507,28 @@ export default function Home() {
           <span>METAFORGE</span>
         </a>
         <div className="nav-links">
-          <a href="#how-it-works">How it works</a>
-          <a href="#forge">The Forge</a>
-          <a href="#deck-bench">My Bench</a>
+          <button onClick={() => goTo("#cockpit")}>Home</button>
+          <button onClick={() => goTo("#forge")}>Forge</button>
+          <button onClick={() => goTo("#test-bench")}>Test</button>
+          <button onClick={() => setForgeChatOpen(true)}>Coach</button>
+          <button onClick={() => goTo("#deck-bench")}>Bench</button>
         </div>
         <button className="nav-cta" onClick={() => document.querySelector("#forge")?.scrollIntoView({ behavior: "smooth" })}>
           Analyze a deck
         </button>
       </nav>
 
-      <section className="hero shell" id="top">
+      <section className="return-cockpit shell" id="cockpit" aria-label="Your MetaForge home">
+        <header><div><small>YOUR NEXT MOVE</small><h1>{experiment ? `Continue forging ${experiment.deckName}` : cardCount ? `Finish shaping ${deckName}` : "What will you forge today?"}</h1><p>{experiment ? experimentStage === "testing" ? `${experimentEvidence.sampleSize}/5 measured matches · keep testing this exact revision.` : `Your experiment is at the ${experimentStage} stage.` : cardCount ? "Your deck is loaded and ready for a focused recommendation." : "Import a deck, explore a Forge theory, or ask Coach to build something wild."}</p></div><b>{experiment ? experimentStage.toUpperCase() : cardCount ? "DECK READY" : "FORGE OPEN"}<span>ACTIVE STATE</span></b></header>
+        <div className="cockpit-actions">
+          <button className="primary-path" onClick={() => goTo(experiment ? "#forge-evidence-anchor" : "#forge")}><i>01</i><span><b>{experiment ? "Continue active experiment" : "Forge a deck"}</b><small>{experiment ? `${Math.max(0,5-experimentEvidence.sampleSize)} more matches to the first review` : "Import, diagnose, and choose one change"}</small></span><strong>→</strong></button>
+          <button onClick={() => setForgeChatOpen(true)}><i>02</i><span><b>Talk to Coach</b><small>Build, challenge, or understand the why</small></span><strong>✦</strong></button>
+          <button onClick={() => goTo("#deck-bench")}><i>03</i><span><b>Open my Bench</b><small>{benchRankings.length} active deck{benchRankings.length === 1 ? "" : "s"} · {arenaMatches.length} recorded matches</small></span><strong>→</strong></button>
+          <button onClick={() => setPassportOpen(true)}><i>04</i><span><b>Show Deck Passport</b><small>A shareable snapshot of your forged deck</small></span><strong>◇</strong></button>
+        </div>
+      </section>
+
+      <section className={`hero shell ${accountReady ? "returning" : ""}`} id="top">
         <div className="hero-copy">
           <div className="eyebrow"><span /> YOUR DECK, EXPLAINED</div>
           <h1>Stop guessing.<br /><em>Forge a better deck.</em></h1>
@@ -763,11 +796,21 @@ export default function Home() {
         </section>}
       </div>
 
+      {passportOpen && <div className="passport-backdrop" role="dialog" aria-modal="true" aria-label="Deck Passport"><article className="deck-passport">
+        <header><div><small>METAFORGE · DECK PASSPORT</small><h2>{benchRankings[0]?.name || deckName || "Untitled deck"}</h2><p>{benchRankings[0]?.format || format} · forged identity</p></div><button onClick={() => setPassportOpen(false)} aria-label="Close passport">×</button></header>
+        <div className="passport-seal"><span>MF</span><b>{benchRankings[0]?.leader?.evidence?.sampleSize ? `${benchRankings[0].leader.evidence.wins}–${benchRankings[0].leader.evidence.losses}` : "NEW"}</b><small>{benchRankings[0]?.leader?.evidence?.sampleSize ? "MEASURED RECORD" : "AWAITING MATCHES"}</small></div>
+        <section><div><small>STRATEGY IDENTITY</small><b>{recommendation?.title || "Identity developing"}</b></div><div><small>VERSIONS FORGED</small><b>{benchRankings[0]?.revisions?.length || (experiment ? 1 : 0)}</b></div><div><small>CURRENT PHASE</small><b>{experiment ? experimentStage.replaceAll("-", " ") : "Ready to forge"}</b></div></section>
+        <p>{experiment ? `Currently testing ${experiment.deckName}. Every exact match adds evidence to this deck's story.` : "Bring this deck into the Forge to discover its next measurable evolution."}</p>
+        <footer><button onClick={shareDeckPassport}>{passportShared ? "Passport copied ✓" : "Share Passport"}</button><button onClick={() => setPassportOpen(false)}>Back to Forge</button></footer>
+      </article></div>}
+
+      <div className="workspace-mode-rail" aria-label="Workspace shortcuts"><button onClick={() => goTo("#cockpit")}><b>⌂</b>Home</button><button onClick={() => goTo("#forge")}><b>◇</b>Forge</button><button onClick={() => goTo("#test-bench")}><b>△</b>Test</button><button onClick={() => setForgeChatOpen(true)}><b>✦</b>Coach</button><button onClick={() => goTo("#deck-bench")}><b>▤</b>Bench</button></div>
+
       <div className={`forge-chat-dock ${forgeChatOpen ? "open" : ""}`}>
         {!forgeChatOpen ? <button onClick={() => setForgeChatOpen(true)}><span>✦</span> Talk to the Forge</button> : <section aria-label="Talk to the Forge">
           <header><div><small>METAFORGE COACH · PERSONAL WORKSHOP</small><h3>Ask deeper. Build stranger. Learn faster.</h3></div><button aria-label="Close Forge conversation" onClick={() => setForgeChatOpen(false)}>×</button></header>
           <details className="coach-profile"><summary>How should Forge coach me?</summary><textarea value={coachingProfile} onChange={(event) => saveCoachingProfile(event.target.value)} placeholder="Competitive, prefers proactive midrange, explain the math, $150 budget…" /><small>Saved in this browser and sent only with your questions.</small></details>
-          <div className="forge-conversation">{forgeMessages.map((message,index) => <article key={index} className={message.role}><b>{message.role === "assistant" ? "FORGE" : "YOU"}</b><p>{message.content}</p></article>)}{forgeChatStatus === "thinking" && <article className="assistant thinking"><b>FORGE</b><p>Reading the grain of the deck…</p></article>}</div>
+          <div className="forge-conversation">{forgeMessages.map((message,index) => { const proposal = message.role === "assistant" ? extractCoachDeck(message.content) : null; return <article key={index} className={message.role}><b>{message.role === "assistant" ? "FORGE" : "YOU"}</b><p>{message.content}</p>{proposal && <div className="coach-deck-actions"><button onClick={() => loadCoachDeck(message.content)}>Load into Forge</button>{cardCount > 0 && <button onClick={() => loadCoachDeck(message.content, true)}>Compare with my deck</button>}</div>}</article>})}{forgeChatStatus === "thinking" && <article className="assistant thinking"><b>FORGE</b><p>Reading the grain of the deck…</p></article>}</div>
           <div className="forge-prompts"><button onClick={() => setForgeChatInput("Build me a fun deck around this idea, then explain the weak points.")}>Build an idea</button><button onClick={() => setForgeChatInput("Explain this recommendation and its runner-up in more depth.")}>Explain the why</button><button onClick={() => setForgeChatInput("What does my current deck say about my preferred play style?")}>Read my style</button></div>
           <footer><textarea value={forgeChatInput} onChange={(event) => setForgeChatInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); sendForgeMessage(); } }} placeholder="Ask about a deck, pick, matchup, mechanic, or wild theory…" /><button disabled={!forgeChatInput.trim() || forgeChatStatus === "thinking" || forgeQuestionsRemaining === 0} onClick={sendForgeMessage}>Forge answer →</button><small>{forgeQuestionsRemaining === null ? "Founder unlimited · buddies receive 10 questions weekly" : `${forgeQuestionsRemaining} of 10 questions remaining${forgeQuestionsReset ? ` · resets ${new Date(forgeQuestionsReset).toLocaleDateString()}` : ""}`} · not automatic global training</small></footer>
         </section>}
