@@ -6,6 +6,7 @@ test("mobile evidence requires an exact revision and remains self-reported", () 
   assert.throws(() => createMobileMatchReport({ result: "win" }), /exact active deck revision/i);
   const record = createMobileMatchReport({ result: "win", deckFingerprint: "a".repeat(24), opponentStrategy: "Aggro", playDraw: "draw", mulligans: 1 }, { id: "mobile-1", now: "2026-07-15T00:00:00Z" });
   assert.equal(record.source, "self-reported-mobile");
+  assert.equal(record.game, "mtg");
   assert.equal(record.evidenceConfidence, "self-reported");
   assert.equal(record.experimentVariant, "proposed");
   assert.deepEqual(record.playDraw, ["draw"]);

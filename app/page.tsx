@@ -74,7 +74,7 @@ export default function Home() {
   const [mobilePlayDraw, setMobilePlayDraw] = useState("unknown");
   const [mobileMulligans, setMobileMulligans] = useState(0);
   const [mobileOpponent, setMobileOpponent] = useState("Unknown");
-  const [arenaMatches, setArenaMatches] = useState<Array<{ id: string; completedAt: string; gamesWon: number; gamesLost: number; result: "win" | "loss"; mulligans: number; deckFingerprint?: string; revealedOpponentCards?: string[]; experimentVariant?: "original" | "proposed" | "unmatched"; source?: string; opponentStrategy?: string; evidenceConfidence?: string }>>([]);
+  const [arenaMatches, setArenaMatches] = useState<Array<{ id: string; game?: "mtg"; completedAt: string; gamesWon: number; gamesLost: number; result: "win" | "loss"; mulligans: number; deckFingerprint?: string; revealedOpponentCards?: string[]; experimentVariant?: "original" | "proposed" | "unmatched"; source?: string; opponentStrategy?: string; evidenceConfidence?: string }>>([]);
   const [deckBench, setDeckBench] = useState<any>(emptyDeckBench());
   const [accountStatus, setAccountStatus] = useState<"loading" | "synced" | "saving" | "local" | "error">("loading");
   const [accountReady, setAccountReady] = useState(false);
@@ -263,7 +263,7 @@ export default function Home() {
         const [data, draftData] = await Promise.all([matchResponse.json(), draftResponse.json()]);
         setArenaMatches((current) => {
           const mobile = current.filter((match) => match.source === "self-reported-mobile");
-          const desktop = Array.isArray(data.matches) ? data.matches.slice().reverse() : [];
+          const desktop = Array.isArray(data.matches) ? data.matches.filter((match:any)=>(match.game||"mtg")==="mtg").map((match:any)=>({...match,game:"mtg"})).slice().reverse() : [];
           return [...mobile, ...desktop.filter((match: { id: string }) => !mobile.some((saved) => saved.id === match.id))];
         });
         if (draftData?.draft) setLiveDraft(draftData.draft);

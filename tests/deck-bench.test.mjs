@@ -40,3 +40,10 @@ test("syncs a Coach Pulse debrief onto its exact match", () => {
   const match = mergeDeckBenches(local, remote).families[0].revisions[1].matches[0];
   assert.equal(match.coachDebrief.read, "Their speed");
 });
+
+test("never attaches MTG Arena evidence to a Riftbound family",()=>{
+  const experiment={id:"rift",deckName:"Lanes",originalDeck:"old",proposedDeck:"new",originalFingerprint:"a".repeat(24),proposedFingerprint:"b".repeat(24),status:"testing",startedAt:"2026-07-16T00:00:00Z"};
+  const bench=recordExperiment(emptyDeckBench(),experiment,"Constructed","riftbound");
+  const attached=attachMatches(bench,[{id:"arena",game:"mtg",source:"arena-player-log",deckFingerprint:"b".repeat(24),result:"win"},{id:"rift",game:"riftbound",source:"riftbound-native",deckFingerprint:"b".repeat(24),result:"loss"}]);
+  const matches=attached.families[0].revisions[1].matches;assert.equal(matches.length,1);assert.equal(matches[0].id,"rift");
+});

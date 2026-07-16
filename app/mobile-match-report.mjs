@@ -8,6 +8,7 @@ export function createMobileMatchReport(input, options = {}) {
   const gamesLost = Math.max(0, Math.min(9, Number(input.gamesLost) || (input.result === "loss" ? 1 : 0)));
   return {
     id: options.id || crypto.randomUUID(),
+    game: "mtg",
     completedAt: options.now || new Date().toISOString(),
     gamesWon,
     gamesLost,

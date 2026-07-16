@@ -20,7 +20,7 @@ export function mergeDeckBenches(localValue, remoteValue) {
   const local = readDeckBench(localValue);
   const next = structuredClone(readDeckBench(remoteValue));
   for (const localFamily of local.families) {
-    let family = next.families.find((item) => item.id === localFamily.id || (item.name.toLowerCase() === localFamily.name.toLowerCase() && item.format === localFamily.format));
+    let family = next.families.find((item) => item.id === localFamily.id || ((item.game||"mtg")===(localFamily.game||"mtg") && item.name.toLowerCase() === localFamily.name.toLowerCase() && item.format === localFamily.format));
     if (!family) {
       next.families.push(structuredClone(localFamily));
       continue;
@@ -44,11 +44,11 @@ export function mergeDeckBenches(localValue, remoteValue) {
   return next;
 }
 
-export function recordExperiment(bench, experiment, format = "Standard") {
+export function recordExperiment(bench, experiment, format = "Standard", game = "mtg") {
   const next = structuredClone(bench);
-  let family = next.families.find((item) => item.name.toLowerCase() === experiment.deckName.toLowerCase() && item.format === format);
+  let family = next.families.find((item) => (item.game||"mtg")===game && item.name.toLowerCase() === experiment.deckName.toLowerCase() && item.format === format);
   if (!family) {
-    family = { id: crypto.randomUUID(), name: experiment.deckName, format, createdAt: experiment.startedAt, archived: false, promotedFingerprint: experiment.originalFingerprint, revisions: [] };
+    family = { id: crypto.randomUUID(), game, name: experiment.deckName, format, createdAt: experiment.startedAt, archived: false, promotedFingerprint: experiment.originalFingerprint, revisions: [] };
     next.families.push(family);
   }
   const addRevision = (fingerprint, deckText, source, parentFingerprint) => {
@@ -68,7 +68,8 @@ export function attachMatches(bench, matches) {
   const next = structuredClone(bench);
   for (const family of next.families) {
     for (const revision of family.revisions) {
-      revision.matches = matches.filter((match) => match.deckFingerprint === revision.fingerprint).map((match) => ({ ...match }));
+      const game=family.game||"mtg";
+      revision.matches = matches.filter((match) => (match.game||"mtg")===game && match.deckFingerprint === revision.fingerprint).map((match) => ({ ...match,game }));
     }
   }
   return next;
