@@ -30,6 +30,12 @@ const founderRequest = (email) => new Request("https://example.test/api/founder/
 const goblinRequest = (email) => new Request("https://example.test/api/founder/goblins", { headers: email ? { "cf-access-authenticated-user-email": email } : {} });
 const chatRequest = (email) => new Request("https://example.test/api/forge/chat", { method:"POST", headers:{ ...(email ? {"cf-access-authenticated-user-email":email}:{}), "content-type":"application/json" }, body:JSON.stringify({messages:[{role:"user",content:"Help me build a deck"}],context:{format:"Standard"}}) });
 const coachStatusRequest=()=>new Request("https://example.test/api/forge/status");
+const profileRequest=(method,email,body)=>new Request("https://example.test/api/account/player-profile",{method,headers:{...(email?{"cf-access-authenticated-user-email":email}:{}),...(body?{"content-type":"application/json"}:{})},body:body?JSON.stringify(body):undefined});
+
+class ProfileD1 {
+  rows=new Map();
+  prepare(sql){const db=this;return{bind(...values){return{async first(){return db.rows.get(values[0])||null},async run(){db.rows.set(values[0],{profile_json:values[1],revision:values[2],updated_at:"now"});return{success:true}}}}}}
+}
 
 test("account API rejects anonymous access and isolates users", async () => {
   const worker = await loadWorker();
@@ -82,6 +88,18 @@ test("Forge conversation requires an account and a server-side model key", async
   assert.equal((await worker.fetch(chatRequest("one@example.com"),env(DB),ctx)).status,503);
 });
 test("Coach readiness is visible before a tester composes a question",async()=>{const worker=await loadWorker(),DB=new FakeD1();const offline=await (await worker.fetch(coachStatusRequest(),env(DB),ctx)).json();assert.equal(offline.ready,false);assert.match(offline.fallback,/analysis/i);const online=await (await worker.fetch(coachStatusRequest(),{...env(DB),OPENAI_API_KEY:"test"},ctx)).json();assert.equal(online.ready,true)});
+
+test("Player DNA coaching preferences restore across devices without stale overwrites",async()=>{
+  const worker=await loadWorker(),DB=new ProfileD1();
+  assert.equal((await worker.fetch(profileRequest("GET",null),env(DB),ctx)).status,401);
+  const first=await worker.fetch(profileRequest("PUT","one@example.com",{profile:{coachingNotes:"Explain the math and challenge greedy keeps",learningStyle:"adaptive"},baseRevision:0}),env(DB),ctx);
+  assert.equal(first.status,200);assert.equal((await first.json()).revision,1);
+  const restored=await (await worker.fetch(profileRequest("GET","ONE@example.com"),env(DB),ctx)).json();
+  assert.equal(restored.profile.coachingNotes,"Explain the math and challenge greedy keeps");assert.equal(restored.revision,1);
+  const stale=await worker.fetch(profileRequest("PUT","one@example.com",{profile:{coachingNotes:"Overwrite it"},baseRevision:0}),env(DB),ctx);
+  assert.equal(stale.status,409);assert.equal((await stale.json()).profile.coachingNotes,"Explain the math and challenge greedy keeps");
+  const other=await (await worker.fetch(profileRequest("GET","two@example.com"),env(DB),ctx)).json();assert.deepEqual(other.profile,{});
+});
 
 test("founder operations expose runtime readiness without exposing secrets",async()=>{
   const worker=await loadWorker();const DB=new FakeD1();const founderEnv={...env(DB),METAFORGE_FOUNDER_USER_KEY:"f45237c471be9524242fb124700a61b6916cbbff9967c8ba74e43af0617bea90"};

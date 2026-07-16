@@ -90,6 +90,9 @@ export default function Home() {
   const [coachReady,setCoachReady]=useState<boolean|null>(null);
   const [forgeMessages, setForgeMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([{ role: "assistant", content: "Bring me a deck idea, a confusing pick, or a strategy you want to understand. We’ll forge through it together." }]);
   const [coachingProfile, setCoachingProfile] = useState("");
+  const [playerProfileStatus,setPlayerProfileStatus]=useState<"loading"|"synced"|"local"|"saving">("loading");
+  const playerProfileRevision=useRef(0);
+  const playerProfileHydrated=useRef(false);
   const [forgeQuestionsRemaining, setForgeQuestionsRemaining] = useState<number | null>(null);
   const [forgeQuestionsReset, setForgeQuestionsReset] = useState<string | null>(null);
   const [passportOpen, setPassportOpen] = useState(false);
@@ -135,14 +138,20 @@ export default function Home() {
   useEffect(() => {
     const savedGame=window.localStorage.getItem("metaforge.activeGame");
     if(savedGame==="riftbound")setGame("riftbound");
-    fetch("/api/account/player-profile",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(data=>{if(data?.profile?.coachingNotes)setCoachingProfile(data.profile.coachingNotes)}).catch(()=>{});
+    const localNotes=window.localStorage.getItem("metaforge.coachingProfile")||"";
+    fetch("/api/account/player-profile",{cache:"no-store"}).then(async response=>response.ok?response.json():null).then(data=>{
+      playerProfileRevision.current=Number(data?.revision||0);
+      const notes=String(data?.profile?.coachingNotes||localNotes);
+      setCoachingProfile(notes);if(notes)window.localStorage.setItem("metaforge.coachingProfile",notes);
+      setPlayerProfileStatus("synced");playerProfileHydrated.current=true;
+    }).catch(()=>{setCoachingProfile(localNotes);setPlayerProfileStatus("local");playerProfileHydrated.current=true});
   }, []);
 
   useEffect(()=>{fetch("/api/forge/status",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(data=>setCoachReady(Boolean(data?.ready))).catch(()=>setCoachReady(false))},[]);
 
   useEffect(() => {
-    if(!coachingProfile)return;
-    const timer=window.setTimeout(()=>fetch("/api/account/player-profile",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({profile:{coachingNotes:coachingProfile,learningStyle:"adaptive"}})}).catch(()=>{}),700);
+    if(!playerProfileHydrated.current)return;
+    const timer=window.setTimeout(async()=>{setPlayerProfileStatus("saving");try{const response=await fetch("/api/account/player-profile",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({profile:{coachingNotes:coachingProfile,learningStyle:"adaptive"},baseRevision:playerProfileRevision.current})});const data=await response.json();if(response.status===409){playerProfileRevision.current=Number(data.revision||0);const remote=String(data?.profile?.coachingNotes||"");if(remote&&remote!==coachingProfile){setCoachingProfile(remote);window.localStorage.setItem("metaforge.coachingProfile",remote)}}else if(response.ok)playerProfileRevision.current=Number(data.revision||playerProfileRevision.current+1);setPlayerProfileStatus(response.ok||response.status===409?"synced":"local")}catch{setPlayerProfileStatus("local")}},700);
     return()=>window.clearTimeout(timer);
   },[coachingProfile]);
 
@@ -898,7 +907,7 @@ export default function Home() {
       <div className={`forge-chat-dock ${forgeChatOpen ? "open" : ""}`}>
         {!forgeChatOpen ? <button disabled={coachReady!==true} title={coachReady===false?"Coach temporarily offline; deck analysis still works.":"Talk to the Forge"} onClick={() => setForgeChatOpen(true)}><span>✦</span> {coachReady===false?"Coach temporarily offline":"Talk to the Forge"}</button> : <section aria-label="Talk to the Forge">
           <header><div><small>METAFORGE COACH · PERSONAL WORKSHOP</small><h3>Ask deeper. Build stranger. Learn faster.</h3></div><button aria-label="Close Forge conversation" onClick={() => setForgeChatOpen(false)}>×</button></header>
-          <details className="coach-profile"><summary>How should Forge coach me?</summary><textarea value={coachingProfile} onChange={(event) => saveCoachingProfile(event.target.value)} placeholder="Competitive, prefers proactive midrange, explain the math, $150 budget…" /><small>Saved in this browser and sent only with your questions.</small></details>
+          <details className="coach-profile"><summary>How should Forge coach me?</summary><textarea value={coachingProfile} onChange={(event) => saveCoachingProfile(event.target.value)} placeholder="Competitive, prefers proactive midrange, explain the math, $150 budget…" /><small>{playerProfileStatus==="synced"?"Synced to your private account across MTG and Riftbound.":playerProfileStatus==="saving"?"Saving your coaching profile…":playerProfileStatus==="loading"?"Loading your private coaching profile…":"Saved in this browser; private account sync will retry."}</small></details>
           <div className="forge-conversation">{forgeMessages.map((message,index) => { const proposal = message.role === "assistant" ? extractCoachDeck(message.content) : null; return <article key={index} className={message.role}><b>{message.role === "assistant" ? "FORGE" : "YOU"}</b><p>{message.content}</p>{proposal && <div className="coach-deck-actions"><button onClick={() => loadCoachDeck(message.content)}>Load into Forge</button>{cardCount > 0 && <button onClick={() => loadCoachDeck(message.content, true)}>Compare with my deck</button>}</div>}</article>})}{forgeChatStatus === "thinking" && <article className="assistant thinking"><b>FORGE</b><p>Reading the grain of the deck…</p></article>}</div>
           <div className="forge-prompts"><button onClick={() => setForgeChatInput("Build me a fun deck around this idea, then explain the weak points.")}>Build an idea</button><button onClick={() => setForgeChatInput("Explain this recommendation and its runner-up in more depth.")}>Explain the why</button><button onClick={() => setForgeChatInput("What does my current deck say about my preferred play style?")}>Read my style</button></div>
           <footer><textarea disabled={coachReady!==true} value={forgeChatInput} onChange={(event) => setForgeChatInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); sendForgeMessage(); } }} placeholder={coachReady===false?"Coach is temporarily offline. Forge deck analysis remains available.":"Ask about a deck, pick, matchup, mechanic, or wild theory…"} /><button disabled={coachReady!==true||!forgeChatInput.trim() || forgeChatStatus === "thinking" || forgeQuestionsRemaining === 0} onClick={() => sendForgeMessage()}>Forge answer →</button><small>{coachReady===false?"Coach is offline while its secure model connection is configured. No question was charged.":forgeQuestionsRemaining === null ? "Founder unlimited · buddies receive 10 questions weekly" : `${forgeQuestionsRemaining} of 10 questions remaining${forgeQuestionsReset ? ` · resets ${new Date(forgeQuestionsReset).toLocaleDateString()}` : ""}`} · not automatic global training</small></footer>
