@@ -3,6 +3,9 @@ const READ_TAGS = {
   "I ran out of cards":["card-advantage","resources","attrition"], "I lacked an answer":["interaction","removal","answers"],
   "My plan worked":["game-plan","synergy","sequencing"], "I misplayed":["decision-making","sequencing","technical-play"],
   "I'm not sure":["review","learning"],
+  "I found the turning point":["sequencing","decision-making","tempo"], "I stayed ahead on cards":["card-advantage","resources"],
+  "They nearly stabilized":["pressure","tempo","closing"], "I kept a risky hand":["mulligan","risk","opening-hand"],
+  "My plan never started":["game-plan","setup","consistency"],
 };
 
 export function professionalCoachLens({ format="General", read="", cards=[] }={}, knowledge=[]) {

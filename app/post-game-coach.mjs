@@ -8,6 +8,16 @@ const RESPONSES = {
   "My plan worked": ["Your plan showed up.", "Record which card or sequence made it work, then protect that signal through the next games."],
   "I misplayed": ["This may be a decision problem, not a deck problem.", "Replay the decision point before changing cards. A cleaner test comes from holding the list steady."],
   "I'm not sure": ["Uncertainty is honest evidence.", "On the next game, watch one thing only: the turn your deck first does what it was built to do."],
+  "I found the turning point": ["One sequence changed the game.", "Name the decision or card that shifted the game so Forge can watch for repeatable leverage."],
+  "I stayed ahead on cards": ["Your resource advantage held.", "Record what created the extra cards and whether that advantage arrived early enough to matter."],
+  "They nearly stabilized": ["Your win still exposed a pressure point.", "Identify when their position almost turned the corner; winning does not erase that useful warning."],
+  "I kept a risky hand": ["The opening decision shaped the loss.", "Separate the keep decision from later draw variance before changing the deck."],
+  "My plan never started": ["The deck did not establish its intended game plan.", "Track the first missing enabler, payoff, or setup turn before replacing cards."],
+};
+
+export const POST_GAME_READS={
+  win:["My plan worked","I found the turning point","I stayed ahead on cards","My mana","They nearly stabilized","I misplayed","I'm not sure"],
+  loss:["Their speed","I ran out of cards","I lacked an answer","My mana","I kept a risky hand","My plan never started","I misplayed","I'm not sure"],
 };
 
 export function buildPostGameCoach(match, read, history = []) {

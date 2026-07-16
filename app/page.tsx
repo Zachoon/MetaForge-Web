@@ -18,7 +18,7 @@ import { evaluateDraftPairs, evaluateDraftPick, limitedDeckHealth } from "./limi
 import { deckFingerprint } from "./deck-fingerprint.mjs";
 import { attachMatches, DECK_BENCH_STORAGE_KEY, emptyDeckBench, mergeDeckBenches, rankedFamilies, readDeckBench, recordExperiment, updateFamily } from "./deck-bench.mjs";
 import { extractCoachDeck } from "./coach-actions.mjs";
-import { buildPostGameCoach } from "./post-game-coach.mjs";
+import { buildPostGameCoach, POST_GAME_READS } from "./post-game-coach.mjs";
 import { coachingProgress, evaluateIntervention, inferCoachingTarget } from "./coaching-progress.mjs";
 import APPROVED_PRO_COACHING from "./pro-coaching-knowledge.mjs";
 import { professionalCoachLens } from "./professional-coach.mjs";
@@ -87,6 +87,7 @@ export default function Home() {
   const [forgeChatOpen, setForgeChatOpen] = useState(false);
   const [forgeChatInput, setForgeChatInput] = useState("");
   const [forgeChatStatus, setForgeChatStatus] = useState<"idle" | "thinking" | "error">("idle");
+  const [coachReady,setCoachReady]=useState<boolean|null>(null);
   const [forgeMessages, setForgeMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([{ role: "assistant", content: "Bring me a deck idea, a confusing pick, or a strategy you want to understand. We’ll forge through it together." }]);
   const [coachingProfile, setCoachingProfile] = useState("");
   const [forgeQuestionsRemaining, setForgeQuestionsRemaining] = useState<number | null>(null);
@@ -136,6 +137,8 @@ export default function Home() {
     if(savedGame==="riftbound")setGame("riftbound");
     fetch("/api/account/player-profile",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(data=>{if(data?.profile?.coachingNotes)setCoachingProfile(data.profile.coachingNotes)}).catch(()=>{});
   }, []);
+
+  useEffect(()=>{fetch("/api/forge/status",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(data=>setCoachReady(Boolean(data?.ready))).catch(()=>setCoachReady(false))},[]);
 
   useEffect(() => {
     if(!coachingProfile)return;
@@ -318,7 +321,7 @@ export default function Home() {
   useEffect(() => { fetch(`/api/coach/knowledge?game=mtg&format=${encodeURIComponent(format)}`, { cache:"no-store" }).then((response)=>response.ok?response.json():null).then((data)=>{if(data?.claims)setProfessionalKnowledge(data.claims)}).catch(()=>{}); }, [format]);
 
   async function sendForgeMessage(contentOverride?: string) {
-    const content = (contentOverride ?? forgeChatInput).trim(); if (!content || forgeChatStatus === "thinking") return;
+    const content = (contentOverride ?? forgeChatInput).trim(); if (!content || forgeChatStatus === "thinking" || coachReady!==true) return;
     const next = [...forgeMessages, { role: "user" as const, content }]; setForgeMessages(next); setForgeChatInput(""); setForgeChatStatus("thinking");
     try {
       const response = await fetch("/api/forge/chat", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ messages:next, context:{ deckName, format, deckText, coachingProfile } }) });
@@ -334,8 +337,9 @@ export default function Home() {
     decideExperiment("reverted");
     setFailureOpen(false);
     setFailureReason("");
-    setForgeChatOpen(true);
-    await sendForgeMessage(prompt);
+    if(coachReady===true){setForgeChatOpen(true);await sendForgeMessage(prompt);return;}
+    const next=recommendation.manualChallenges.find((option)=>option.proposedDeck&&option.proposedDeck!==failedDeck);
+    if(next?.proposedDeck){setProposedDeck(next.proposedDeck);setComparisonOpen(true);setComparisonReady(false);window.setTimeout(()=>goTo("#test-bench"),0)}else goTo("#forge");
   }
 
   function saveCoachingProfile(value: string) { setCoachingProfile(value); window.localStorage.setItem("metaforge.coachingProfile", value.slice(0,1000)); }
@@ -368,7 +372,7 @@ export default function Home() {
   }
 
   function takePostGameToCoach() {
-    if (!postGame || !postGameRead) return;
+    if (!postGame || !postGameRead || coachReady!==true) return;
     const opponent = classifyRevealedOpponent(postGame.revealedOpponentCards).strategy;
     setForgeChatInput(`My last match was ${postGame.gamesWon}–${postGame.gamesLost}${opponent !== "Unknown" ? ` against ${opponent}` : ""}. My immediate read was: ${postGameRead}. Ask me one sharp follow-up question before suggesting anything.`);
     finishPostGame();
@@ -558,19 +562,10 @@ export default function Home() {
   const interventionStatus = evaluateIntervention((experiment as any)?.intervention, debriefHistory);
   const professionalLens = postGameRead ? professionalCoachLens({ format, read:postGameRead, cards:rows.map((row)=>row.name) }, professionalKnowledge) : null;
   const onboardingSteps = [
-    { label: "Account protected", detail: accountStatus === "synced" ? "Deck Bench is backed up." : "Signing in and preparing your backup.", done: accountStatus === "synced", action: () => document.querySelector("#deck-bench")?.scrollIntoView({ behavior: "smooth" }) },
-    { label: "Arena Companion", detail: arenaStatus === "connected" ? `v${companionVersion} connected.` : arenaStatus === "outdated" ? `Update legacy Companion to v${REQUIRED_COMPANION_VERSION}.` : arenaStatus === "needs-logs" ? "Enable Detailed Logs and restart Arena." : "Download, run, then connect the Companion.", done: arenaStatus === "connected", action: connectArena },
-    { label: "Deck imported", detail: cardCount ? `${cardCount} cards ready for diagnosis.` : "Paste an Arena decklist or load the sample.", done: cardCount > 0, action: () => document.querySelector(".workspace")?.scrollIntoView({ behavior: "smooth" }) },
-    { label: "First experiment", detail: experiment ? `${experiment.deckName} is preserved in your Bench.` : "Choose a Forge or manual change to test.", done: Boolean(experiment), action: () => document.querySelector("#test-bench")?.scrollIntoView({ behavior: "smooth" }) },
-  ];
-  const acceptanceChecks = [
-    { label: "Account backup online", detail: accountStatus === "synced" ? `Last synchronized ${lastAccountSync ? new Date(lastAccountSync).toLocaleString() : "this session"}.` : "Waiting for an authenticated Deck Bench sync.", done: accountStatus === "synced", automatic: true },
-    { label: "Companion + Detailed Logs", detail: arenaStatus === "connected" ? `Companion v${companionVersion} answered${companionLastCheck ? ` at ${new Date(companionLastCheck).toLocaleTimeString()}` : ""}.` : "Run Connect Arena until the Companion and Player.log both answer.", done: arenaStatus === "connected", automatic: true },
-    { label: "Exact revision registered", detail: arenaTracking === "registered" ? "The active experiment fingerprint is registered locally." : "Start an experiment and register it with the Companion.", done: arenaTracking === "registered", automatic: true },
-    { label: "Real Arena evidence arrived", detail: proposedEvidence.length ? `${proposedEvidence.length} exact-revision match${proposedEvidence.length === 1 ? "" : "es"} received.` : "Play a completed Arena match with the registered revision.", done: proposedEvidence.length > 0, automatic: true },
-    { label: "Recovery backup exported", detail: backupExported ? "A human-readable Deck Bench backup was downloaded." : "Export a backup from My Deck Bench.", done: backupExported, automatic: true },
-    { label: "Second-browser recovery inspected", detail: secondBrowserVerified ? "Founder manually confirmed restoration." : "Open a second browser, sign in, inspect the restored Bench, then confirm here.", done: secondBrowserVerified, automatic: false },
-    { label: "Founder feedback received", detail: feedbackVerified ? "The feedback endpoint accepted a real report." : "Send one contextual report from the feedback dock.", done: feedbackVerified, automatic: true },
+    { label: "Paste a deck", detail: cardCount ? `${cardCount} cards ready.` : "Paste an Arena decklist or load the sample.", done: cardCount > 0, action: () => goTo("#forge") },
+    { label: "Get one recommendation", detail: analyzed ? "Your diagnosis is ready below." : cardCount ? "Press Forge my analysis." : "Deck entry unlocks analysis.", done: analyzed, action: () => cardCount ? analyze() : goTo("#forge") },
+    { label: "Choose a test", detail: experiment ? `${experiment.deckName} is saved.` : analyzed ? "Use Forge's change or make your own." : "Analysis unlocks a testable change.", done: Boolean(experiment), action: () => goTo(analyzed?"#test-bench":"#forge") },
+    { label: "Track MTG Arena", detail: arenaStatus === "connected" ? `Companion v${companionVersion} connected.` : experiment ? "Download, run, and connect Companion 0.3.4." : "Optional until your test deck is ready.", done: arenaStatus === "connected", action: experiment?connectArena:()=>goTo("#forge") },
   ];
 
   async function startAdaptiveRepair() {
@@ -602,7 +597,7 @@ export default function Home() {
           <button onClick={() => goTo("#cockpit")}>Home</button>
           <button onClick={() => goTo("#forge")}>Forge</button>
           <button onClick={() => goTo("#test-bench")}>Test</button>
-          <button onClick={() => setForgeChatOpen(true)}>Coach</button>
+          <button disabled={coachReady!==true} title={coachReady===false?"Coach is temporarily offline; deck analysis still works.":"Open Coach"} onClick={() => setForgeChatOpen(true)}>Coach</button>
           <button onClick={() => goTo("#deck-bench")}>Bench</button>
         </div>
         <button className="nav-cta" onClick={() => document.querySelector("#forge")?.scrollIntoView({ behavior: "smooth" })}>
@@ -611,10 +606,10 @@ export default function Home() {
       </nav>
 
       <section className="return-cockpit shell" id="cockpit" aria-label="Your MetaForge home">
-        <header><div><small>YOUR NEXT MOVE</small><h1>{experiment ? `Continue ${experiment.deckName}` : cardCount ? `Improve ${deckName}` : "What will you forge today?"}</h1><p>{experiment ? `${experimentEvidence.sampleSize}/5 matches complete.` : cardCount ? "Your deck is ready." : "Bring a deck or ask Coach to build one."}</p></div><b>{experiment ? experimentStage.toUpperCase() : cardCount ? "READY" : "OPEN"}<span>STATUS</span></b></header>
+        <header><div><small>START HERE · YOUR NEXT MOVE</small><h1>{experiment ? `Continue ${experiment.deckName}` : cardCount ? `Improve ${deckName}` : "Forge your first deck test"}</h1><p>{experiment ? `${experimentEvidence.sampleSize}/5 matches complete. Keep playing this exact revision.` : analyzed ? "Choose one proposed change, compare it, then start the experiment." : cardCount ? "Your deck is entered. Press Forge my analysis next." : "Click Forge a deck, paste your list, then press Forge my analysis."}</p></div><b>{experiment ? experimentStage.toUpperCase() : analyzed ? "CHOOSE" : cardCount ? "ANALYZE" : "STEP 1"}<span>STATUS</span></b></header>
         <div className="cockpit-actions">
           <button className="primary-path" onClick={() => goTo(experiment ? "#forge-evidence-anchor" : "#forge")}><i>01</i><span><b>{experiment ? "Continue test" : "Forge a deck"}</b><small>{experiment ? `${Math.max(0,5-experimentEvidence.sampleSize)} matches left` : "Get one clear improvement"}</small></span><strong>→</strong></button>
-          <button onClick={() => setForgeChatOpen(true)}><i>02</i><span><b>Ask Coach</b><small>Build a deck or ask why</small></span><strong>✦</strong></button>
+          <button disabled={coachReady!==true} title={coachReady===false?"Coach is temporarily offline; Forge deck analysis is available.":"Checking Coach readiness"} onClick={() => setForgeChatOpen(true)}><i>02</i><span><b>{coachReady===false?"Coach temporarily offline":"Ask Coach"}</b><small>{coachReady===false?"Use Forge analysis while Aura reconnects it":"Build a deck or ask why"}</small></span><strong>✦</strong></button>
           <button onClick={() => goTo("#deck-bench")}><i>03</i><span><b>My decks</b><small>{benchRankings.length} decks · {arenaMatches.length} matches</small></span><strong>→</strong></button>
           <button onClick={() => setCharacterSheetOpen(true)}><i>04</i><span><b>Player Character</b><small>{playerSheet.ready?"View your current build":`${Math.max(playerSheet.gamesRemaining,playerSheet.decisionsRemaining)} observations to go`}</small></span><strong>◆</strong></button>
         </div>
@@ -724,13 +719,9 @@ export default function Home() {
           <section className={`account-center ${accountStatus}`} aria-label="Your Forge account">
             <div><small>YOUR FORGE ACCOUNT · CREATED THROUGH PRIVATE SIGN-IN</small><h3>{accountStatus === "synced" ? "Account active and synchronized." : accountStatus === "loading" || accountStatus === "saving" ? "Connecting your protected account…" : "Local safety copy active."}</h3><p>{accountStatus === "synced" ? `Your Deck Bench, versions, and match evidence are attached to this signed-in identity${lastAccountSync ? ` · last synchronized ${new Date(lastAccountSync).toLocaleString()}` : ""}.` : "MetaForge always keeps a browser copy. Account synchronization will retry without deleting local work."}</p></div><div><b>{accountStatus === "synced" ? "SYNCED" : accountStatus.toUpperCase()}</b><button onClick={() => document.querySelector("#deck-bench")?.scrollIntoView({ behavior: "smooth" })}>Open my saved decks</button></div>
           </section>
-          <section className="founder-onboarding" aria-label="Founder setup guide">
-            <header><div><small>FOUNDER FLIGHT CHECK</small><h3>{onboardingSteps.every((step) => step.done) ? "The Forge is fully armed." : "Four steps to your first measured evolution."}</h3></div><b>{onboardingSteps.filter((step) => step.done).length}/4<span>READY</span></b></header>
+          <section className="founder-onboarding" aria-label="Quick start guide">
+            <header><div><small>QUICK START · FOLLOW THESE IN ORDER</small><h3>{onboardingSteps.every((step) => step.done) ? "Your testing loop is running." : "Four clear steps to your first measured deck test."}</h3></div><b>{onboardingSteps.filter((step) => step.done).length}/4<span>COMPLETE</span></b></header>
             <div>{onboardingSteps.map((step, index) => <button key={step.label} className={step.done ? "done" : ""} onClick={step.action}><i>{step.done ? "✓" : `0${index + 1}`}</i><span><b>{step.label}</b><small>{step.detail}</small></span></button>)}</div>
-          </section>
-          <section className="acceptance-console" aria-label="Founder acceptance console">
-            <header><div><small>RELEASE GATE · LIVE ACCEPTANCE</small><h3>{acceptanceChecks.every((check) => check.done) ? "Founder flight cleared." : "Prove the full loop before widening access."}</h3><p>This console combines signals the Forge can verify with the one recovery check that requires your eyes.</p></div><b>{acceptanceChecks.filter((check) => check.done).length}/{acceptanceChecks.length}<span>GATES</span></b></header>
-            <div>{acceptanceChecks.map((check) => <article key={check.label} className={check.done ? "done" : "pending"}><i>{check.done ? "✓" : "○"}</i><span><b>{check.label}</b><small>{check.detail}</small></span>{!check.automatic && <button onClick={() => setSecondBrowserVerified((value) => !value)}>{check.done ? "Undo" : "I verified this"}</button>}</article>)}</div>
           </section>
           {experiment && (
             <aside className={`experiment-return ${experiment.status}`}>
@@ -759,7 +750,7 @@ export default function Home() {
             <div className="arena-actions">
               <a href="/downloads/MetaForge-Arena-Companion-Windows-v0.3.4.zip" download>Download companion v0.3.4 · Windows</a>
               <button onClick={connectArena} disabled={arenaStatus === "connecting"}>{arenaStatus === "connected" ? "Arena connected" : arenaStatus === "connecting" ? "Connecting…" : "Connect Arena"}</button>
-              <button className="mobile-report-trigger" onClick={() => setMobileReportOpen((value) => !value)} disabled={!experiment?.proposedFingerprint}>{mobileReportOpen ? "Close mobile check-in" : "Record a mobile match"}</button>
+              <button className="mobile-report-trigger" title={!experiment?.proposedFingerprint?"Start a deck experiment before recording its matches.":"Record an MTG Arena mobile result"} onClick={() => setMobileReportOpen((value) => !value)} disabled={!experiment?.proposedFingerprint}>{mobileReportOpen ? "Close mobile check-in" : experiment?.proposedFingerprint?"Record a mobile match":"Start an experiment first"}</button>
               <small>Founder build · local-only data · Windows may ask you to confirm the unsigned app.</small>
             </div>
           </aside>
@@ -828,7 +819,7 @@ export default function Home() {
               <label className="deck-label">DECKLIST <button onClick={() => loadSample(false)}>Load sample</button></label>
               <textarea value={deckText} onChange={(e) => { setDeckText(e.target.value); setAnalyzed(false); }} placeholder={"4 Lightning Bolt\n4 Monastery Swiftspear\n20 Mountain"} aria-label="Decklist" />
               <div className="input-footer"><span>{cardCount ? `${cardCount} cards · ${uniqueCount} unique entries` : "Use one card entry per line"}</span><span>TXT</span></div>
-              <button className="analyze" disabled={!cardCount} onClick={analyze}>Forge my analysis <span>→</span></button>
+              <button className="analyze" title={!cardCount?"Paste a decklist above to unlock analysis.":"Analyze this deck"} disabled={!cardCount} onClick={analyze}>{cardCount?"Forge my analysis":"Paste a deck to unlock analysis"} <span>→</span></button>
             </div>
 
             <div className={`result-panel ${analyzed ? "ready" : ""}`} aria-live="polite">
@@ -888,9 +879,9 @@ export default function Home() {
         </section>}
       </div>
 
-      {postGame && <div className="postgame-backdrop" role="dialog" aria-modal="true" aria-label="Post-game debrief"><article className={`postgame-card ${postGame.result}`}><header><div><small>MATCH COMPLETE · {postGame.result.toUpperCase()}</small><h2>{postGame.result === "win" ? "Lock in what worked." : "Catch the lesson while it's fresh."}</h2><p>{postGame.gamesWon}–{postGame.gamesLost} · {postGame.mulligans ? `${postGame.mulligans} mulligan${postGame.mulligans === 1 ? "" : "s"}` : "kept the opener"}. One game is a clue, not a verdict.</p></div><button onClick={() => setPostGame(null)} aria-label="Skip debrief">×</button></header><span>WHAT DEFINED THAT GAME?</span><div className="postgame-reads">{["My mana", "Their speed", "I ran out of cards", "I lacked an answer", "My plan worked", "I misplayed", "I'm not sure"].map((read) => <button key={read} className={postGameRead === read ? "selected" : ""} onClick={() => setPostGameRead(read)}>{read}</button>)}</div>{postGameInsight && <aside className={postGameInsight.urgency}><b>{postGameInsight.headline}</b>{postGameInsight.observedFact && <em>{postGameInsight.observedFact}</em>}<p>{postGameInsight.pattern} {postGameInsight.action}</p><small>{postGameInsight.reviewed} games debriefed · {postGameInsight.nextReviewIn || 5} until the next coaching review</small></aside>}{professionalLens && <details className="pro-lens"><summary>Professional coaching lens · {professionalLens.confidence}</summary><b>{professionalLens.principle}</b><p>{professionalLens.summary}{professionalLens.disagreement ? " Professionals disagree on when this applies." : ""}</p>{professionalLens.sources.map((source)=><a key={source.sourceUrl} href={source.sourceUrl} target="_blank" rel="noreferrer">{source.author} · {source.sourceTitle}</a>)}</details>}<footer><button disabled={!postGameRead} onClick={finishPostGame}>Save and keep testing</button><button disabled={!postGameRead} onClick={takePostGameToCoach}>Talk it through with Coach</button>{experiment && <button onClick={() => { setPostGame(null); setFailureOpen(true); }}>This version failed</button>}</footer></article></div>}
+      {postGame && <div className="postgame-backdrop" role="dialog" aria-modal="true" aria-label="Post-game debrief"><article className={`postgame-card ${postGame.result}`}><header><div><small>MATCH COMPLETE · {postGame.result.toUpperCase()}</small><h2>{postGame.result === "win" ? "Lock in why you won." : "Catch what broke down."}</h2><p>{postGame.gamesWon}–{postGame.gamesLost} · {postGame.mulligans ? `${postGame.mulligans} mulligan${postGame.mulligans === 1 ? "" : "s"}` : "kept the opener"}. One game is a clue, not a verdict.</p></div><button onClick={() => setPostGame(null)} aria-label="Skip debrief">×</button></header><span>{postGame.result==="win"?"WHAT HELPED YOU WIN?":"WHAT MOST DROVE THE LOSS?"}</span><div className="postgame-reads">{POST_GAME_READS[postGame.result].map((read) => <button key={read} className={postGameRead === read ? "selected" : ""} onClick={() => setPostGameRead(read)}>{read}</button>)}</div>{postGameInsight && <aside className={postGameInsight.urgency}><b>{postGameInsight.headline}</b>{postGameInsight.observedFact && <em>{postGameInsight.observedFact}</em>}<p>{postGameInsight.pattern} {postGameInsight.action}</p><small>{postGameInsight.reviewed} games debriefed · {postGameInsight.nextReviewIn || 5} until the next coaching review</small></aside>}{professionalLens && <details className="pro-lens"><summary>Professional coaching lens · {professionalLens.confidence}</summary><b>{professionalLens.principle}</b><p>{professionalLens.summary}{professionalLens.disagreement ? " Professionals disagree on when this applies." : ""}</p>{professionalLens.sources.map((source)=><a key={source.sourceUrl} href={source.sourceUrl} target="_blank" rel="noreferrer">{source.author} · {source.sourceTitle}</a>)}</details>}<footer><button disabled={!postGameRead} onClick={finishPostGame}>Save and keep testing</button><button title={coachReady===false?"Coach is temporarily offline. Save this reflection and continue testing.":"Discuss this match"} disabled={!postGameRead||coachReady!==true} onClick={takePostGameToCoach}>{coachReady===false?"Coach offline · save reflection":"Talk it through with Coach"}</button>{experiment&&postGame.result==="loss"&&<button onClick={() => { setPostGame(null); setFailureOpen(true); }}>This version failed</button>}</footer></article></div>}
 
-      {failureOpen && experiment && <div className="failure-backdrop" role="dialog" aria-modal="true" aria-label="Report a failed experiment"><article className="failure-dialog"><header><div><small>QUICK COURSE CORRECTION</small><h2>What failed?</h2><p>One sentence is enough. Forge will retire this version and build a different test.</p></div><button onClick={() => setFailureOpen(false)} aria-label="Close">×</button></header><div className="failure-chips">{["Too slow", "Could not cast my cards", "Ran out of cards", "Could not stop their threats", "My combo never came together", "The matchup exposed a weakness"].map((reason) => <button key={reason} className={failureReason === reason ? "selected" : ""} onClick={() => setFailureReason(reason)}>{reason}</button>)}</div><label>TELL FORGE WHAT YOU SAW<textarea autoFocus value={failureReason} onChange={(event) => setFailureReason(event.target.value)} placeholder="Example: I was dead before the new card mattered, and my hand had no early interaction." /></label><footer><button onClick={rejectExperimentNow} disabled={!failureReason.trim()}>Retire it and forge another →</button><small>Uses one Coach question. Your failed version stays in its deck history.</small></footer></article></div>}
+      {failureOpen && experiment && <div className="failure-backdrop" role="dialog" aria-modal="true" aria-label="Report a failed experiment"><article className="failure-dialog"><header><div><small>QUICK COURSE CORRECTION</small><h2>What failed?</h2><p>One sentence is enough. Forge will retire this version and prepare a different test.</p></div><button onClick={() => setFailureOpen(false)} aria-label="Close">×</button></header><div className="failure-chips">{["Too slow", "Could not cast my cards", "Ran out of cards", "Could not stop their threats", "My combo never came together", "The matchup exposed a weakness"].map((reason) => <button key={reason} className={failureReason === reason ? "selected" : ""} onClick={() => setFailureReason(reason)}>{reason}</button>)}</div><label>TELL FORGE WHAT YOU SAW<textarea autoFocus value={failureReason} onChange={(event) => setFailureReason(event.target.value)} placeholder="Example: I was dead before the new card mattered, and my hand had no early interaction." /></label><footer><button onClick={rejectExperimentNow} disabled={!failureReason.trim()}>{coachReady===true?"Retire it and ask Coach for another →":"Retire it and load another test →"}</button><small>{coachReady===true?"Uses one Coach question.":"Uses Forge's deterministic runner-up; no Coach question required."} Your failed version stays in its deck history.</small></footer></article></div>}
 
       {passportOpen && <div className="passport-backdrop" role="dialog" aria-modal="true" aria-label="Deck Passport"><article className="deck-passport">
         <header><div><small>METAFORGE · DECK PASSPORT</small><h2>{benchRankings[0]?.name || deckName || "Untitled deck"}</h2><p>{benchRankings[0]?.format || format} · forged identity</p></div><button onClick={() => setPassportOpen(false)} aria-label="Close passport">×</button></header>
@@ -902,15 +893,15 @@ export default function Home() {
 
       {characterSheetOpen&&<div className="passport-backdrop" role="dialog" aria-modal="true" aria-label="Player Character Sheet"><article className="player-character-sheet"><header><div><small>METAFORGE · PLAYER DNA</small><h2>Your Character Sheet</h2><p>One player across every forge. Traits move only when observed decisions earn the evidence.</p></div><button onClick={()=>setCharacterSheetOpen(false)} aria-label="Close character sheet">×</button></header>{!playerSheet.ready&&<aside><b>CHARACTER STILL FORMING</b><p>Forge needs {playerSheet.gamesRemaining} more tracked game{playerSheet.gamesRemaining===1?"":"s"} and {playerSheet.decisionsRemaining} more observable decision{playerSheet.decisionsRemaining===1?"":"s"}. Wins and losses alone never become personality traits.</p></aside>}<section>{playerSheet.traits.map(trait=><div key={trait.key} className={trait.confidence}><header><b>{trait.label}</b><small>{trait.confidence} · {trait.evidence} signals</small></header><i><span style={{width:`${trait.value}%`}}/></i><footer><em>{trait.low}</em><strong>{trait.confidence==="unobserved"?"?":trait.value}</strong><em>{trait.high}</em></footer></div>)}</section><footer><span><b>{playerSheet.games}</b>TRACKED GAMES</span><span><b>{playerSheet.decisionEvidence}</b>DECISION SIGNALS</span><button onClick={()=>setCharacterSheetOpen(false)}>Return to Forge</button></footer></article></div>}
 
-      <div className="workspace-mode-rail" aria-label="Workspace shortcuts"><button onClick={() => goTo("#cockpit")}><b>⌂</b>Home</button><button onClick={() => goTo("#forge")}><b>◇</b>Forge</button><button onClick={() => goTo("#test-bench")}><b>△</b>Test</button><button onClick={() => setForgeChatOpen(true)}><b>✦</b>Coach</button><button onClick={() => goTo("#deck-bench")}><b>▤</b>Bench</button></div>
+      <div className="workspace-mode-rail" aria-label="Workspace shortcuts"><button onClick={() => goTo("#cockpit")}><b>⌂</b>Home</button><button onClick={() => goTo("#forge")}><b>◇</b>Forge</button><button onClick={() => goTo("#test-bench")}><b>△</b>Test</button><button disabled={coachReady!==true} title={coachReady===false?"Coach temporarily offline":"Open Coach"} onClick={() => setForgeChatOpen(true)}><b>✦</b>{coachReady===false?"Offline":"Coach"}</button><button onClick={() => goTo("#deck-bench")}><b>▤</b>Bench</button></div>
 
       <div className={`forge-chat-dock ${forgeChatOpen ? "open" : ""}`}>
-        {!forgeChatOpen ? <button onClick={() => setForgeChatOpen(true)}><span>✦</span> Talk to the Forge</button> : <section aria-label="Talk to the Forge">
+        {!forgeChatOpen ? <button disabled={coachReady!==true} title={coachReady===false?"Coach temporarily offline; deck analysis still works.":"Talk to the Forge"} onClick={() => setForgeChatOpen(true)}><span>✦</span> {coachReady===false?"Coach temporarily offline":"Talk to the Forge"}</button> : <section aria-label="Talk to the Forge">
           <header><div><small>METAFORGE COACH · PERSONAL WORKSHOP</small><h3>Ask deeper. Build stranger. Learn faster.</h3></div><button aria-label="Close Forge conversation" onClick={() => setForgeChatOpen(false)}>×</button></header>
           <details className="coach-profile"><summary>How should Forge coach me?</summary><textarea value={coachingProfile} onChange={(event) => saveCoachingProfile(event.target.value)} placeholder="Competitive, prefers proactive midrange, explain the math, $150 budget…" /><small>Saved in this browser and sent only with your questions.</small></details>
           <div className="forge-conversation">{forgeMessages.map((message,index) => { const proposal = message.role === "assistant" ? extractCoachDeck(message.content) : null; return <article key={index} className={message.role}><b>{message.role === "assistant" ? "FORGE" : "YOU"}</b><p>{message.content}</p>{proposal && <div className="coach-deck-actions"><button onClick={() => loadCoachDeck(message.content)}>Load into Forge</button>{cardCount > 0 && <button onClick={() => loadCoachDeck(message.content, true)}>Compare with my deck</button>}</div>}</article>})}{forgeChatStatus === "thinking" && <article className="assistant thinking"><b>FORGE</b><p>Reading the grain of the deck…</p></article>}</div>
           <div className="forge-prompts"><button onClick={() => setForgeChatInput("Build me a fun deck around this idea, then explain the weak points.")}>Build an idea</button><button onClick={() => setForgeChatInput("Explain this recommendation and its runner-up in more depth.")}>Explain the why</button><button onClick={() => setForgeChatInput("What does my current deck say about my preferred play style?")}>Read my style</button></div>
-          <footer><textarea value={forgeChatInput} onChange={(event) => setForgeChatInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); sendForgeMessage(); } }} placeholder="Ask about a deck, pick, matchup, mechanic, or wild theory…" /><button disabled={!forgeChatInput.trim() || forgeChatStatus === "thinking" || forgeQuestionsRemaining === 0} onClick={() => sendForgeMessage()}>Forge answer →</button><small>{forgeQuestionsRemaining === null ? "Founder unlimited · buddies receive 10 questions weekly" : `${forgeQuestionsRemaining} of 10 questions remaining${forgeQuestionsReset ? ` · resets ${new Date(forgeQuestionsReset).toLocaleDateString()}` : ""}`} · not automatic global training</small></footer>
+          <footer><textarea disabled={coachReady!==true} value={forgeChatInput} onChange={(event) => setForgeChatInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); sendForgeMessage(); } }} placeholder={coachReady===false?"Coach is temporarily offline. Forge deck analysis remains available.":"Ask about a deck, pick, matchup, mechanic, or wild theory…"} /><button disabled={coachReady!==true||!forgeChatInput.trim() || forgeChatStatus === "thinking" || forgeQuestionsRemaining === 0} onClick={() => sendForgeMessage()}>Forge answer →</button><small>{coachReady===false?"Coach is offline while its secure model connection is configured. No question was charged.":forgeQuestionsRemaining === null ? "Founder unlimited · buddies receive 10 questions weekly" : `${forgeQuestionsRemaining} of 10 questions remaining${forgeQuestionsReset ? ` · resets ${new Date(forgeQuestionsReset).toLocaleDateString()}` : ""}`} · not automatic global training</small></footer>
         </section>}
       </div>
 

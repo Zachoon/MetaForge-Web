@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildPostGameCoach } from "../app/post-game-coach.mjs";
+import { buildPostGameCoach,POST_GAME_READS } from "../app/post-game-coach.mjs";
 
 test("treats one post-game read as a clue", () => {
   const pulse = buildPostGameCoach({ id:"1", deckFingerprint:"a" }, "My mana", []);
@@ -28,3 +28,4 @@ test("surfaces one bounded decision moment when Companion observed it",()=>{
   assert.equal(insight.decisionMoment.title,"You chose pressure.");
   assert.match(insight.observedFact,/not proof/);
 });
+test("asks winners and losers different useful reflection questions",()=>{assert.notDeepEqual(POST_GAME_READS.win,POST_GAME_READS.loss);assert.ok(POST_GAME_READS.win.includes("My plan worked"));assert.ok(!POST_GAME_READS.loss.includes("My plan worked"));assert.ok(POST_GAME_READS.loss.includes("My plan never started"));for(const read of [...POST_GAME_READS.win,...POST_GAME_READS.loss])assert.ok(buildPostGameCoach({id:"x"},read,[]).headline)});

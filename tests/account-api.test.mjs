@@ -29,6 +29,7 @@ const feedbackRequest = (email, body) => new Request("https://example.test/api/a
 const founderRequest = (email) => new Request("https://example.test/api/founder/overview", { headers: email ? { "cf-access-authenticated-user-email": email } : {} });
 const goblinRequest = (email) => new Request("https://example.test/api/founder/goblins", { headers: email ? { "cf-access-authenticated-user-email": email } : {} });
 const chatRequest = (email) => new Request("https://example.test/api/forge/chat", { method:"POST", headers:{ ...(email ? {"cf-access-authenticated-user-email":email}:{}), "content-type":"application/json" }, body:JSON.stringify({messages:[{role:"user",content:"Help me build a deck"}],context:{format:"Standard"}}) });
+const coachStatusRequest=()=>new Request("https://example.test/api/forge/status");
 
 test("account API rejects anonymous access and isolates users", async () => {
   const worker = await loadWorker();
@@ -80,6 +81,7 @@ test("Forge conversation requires an account and a server-side model key", async
   assert.equal((await worker.fetch(chatRequest(null),env(DB),ctx)).status,401);
   assert.equal((await worker.fetch(chatRequest("one@example.com"),env(DB),ctx)).status,503);
 });
+test("Coach readiness is visible before a tester composes a question",async()=>{const worker=await loadWorker(),DB=new FakeD1();const offline=await (await worker.fetch(coachStatusRequest(),env(DB),ctx)).json();assert.equal(offline.ready,false);assert.match(offline.fallback,/analysis/i);const online=await (await worker.fetch(coachStatusRequest(),{...env(DB),OPENAI_API_KEY:"test"},ctx)).json();assert.equal(online.ready,true)});
 
 test("founder operations expose runtime readiness without exposing secrets",async()=>{
   const worker=await loadWorker();const DB=new FakeD1();const founderEnv={...env(DB),METAFORGE_FOUNDER_USER_KEY:"f45237c471be9524242fb124700a61b6916cbbff9967c8ba74e43af0617bea90"};
