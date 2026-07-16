@@ -35,6 +35,7 @@ const SAMPLE_DECK = `4 Monastery Swiftspear
 2 Witchstalker Frenzy
 26 Mountain`;
 const REQUIRED_COMPANION_VERSION = "0.3.4";
+const BUILD_ID = "2026.07.16-ef9976f";
 const SAMPLE_DRAFT_PACK = `Shieldwall Recruit | 3.4 | W | 2 | Creature
 Molten Rebuke | 3.7 | R | 2 | Instant
 Archive Visionary | 3.5 | U | 3 | Creature
@@ -597,7 +598,7 @@ export default function Home() {
   if(game==="riftbound")return <main className={`game-shell rift-mode ${reforging?"reforging":""}`}>
     <div className="reforge-transition"><span>RECALIBRATING THE FORGE</span></div>
     <div className="forge-atmosphere rift-atmosphere" aria-hidden="true"><i/>{Array.from({length:12},(_,index)=><b key={index}/>)}</div>
-    <nav className="nav shell" aria-label="Main navigation"><a className="brand" href="#top"><span className="brand-mark">MF</span><span>METAFORGE</span></a><div className="game-switcher" aria-label="Choose game"><button onClick={()=>switchGame("mtg")}>MTG</button><button className="active rift" aria-pressed="true">RIFTBOUND <i>ALPHA</i></button></div><button className="nav-cta rift" onClick={()=>document.querySelector(".rift-workspace")?.scrollIntoView({behavior:"smooth"})}>Enter Riftbound Forge</button></nav>
+    <nav className="nav shell" aria-label="Main navigation"><a className="brand" href="#top"><span className="brand-mark">MF</span><span>METAFORGE</span></a><span className="live-build" title={`Live build ${BUILD_ID}`}><i/>FORGE LIVE</span><div className="game-switcher" aria-label="Choose game"><button onClick={()=>switchGame("mtg")}>MTG</button><button className="active rift" aria-pressed="true">RIFTBOUND <i>ALPHA</i></button></div><button className="nav-cta rift" onClick={()=>document.querySelector(".rift-workspace")?.scrollIntoView({behavior:"smooth"})}>Enter Riftbound Forge</button></nav>
     <RiftboundForge coachingProfile={coachingProfile} setCoachingProfile={setCoachingProfile} coachDepth={coachDepth} setCoachDepth={(depth)=>{setCoachDepth(depth);window.localStorage.setItem("metaforge.coachDepth",depth)}}/>
   </main>;
 
@@ -610,6 +611,7 @@ export default function Home() {
           <span className="brand-mark">MF</span>
           <span>METAFORGE</span>
         </a>
+        <span className="live-build" title={`Live build ${BUILD_ID}`}><i/>FORGE LIVE</span>
         <div className="game-switcher" aria-label="Choose game"><button className="active" aria-pressed="true">MTG</button><button onClick={()=>switchGame("riftbound")}>RIFTBOUND <i>ALPHA</i></button></div>
         <div className="nav-links">
           <button onClick={() => goTo("#cockpit")}>Home</button>
@@ -926,7 +928,7 @@ export default function Home() {
         </section>}
       </div>
 
-      <footer className="shell"><a className="brand" href="#top"><span className="brand-mark">MF</span><span>METAFORGE</span></a><p>Understand the deck. Respect the evidence. Test the change.</p><span>© 2026 MetaForge</span></footer>
+      <footer className="shell"><a className="brand" href="#top"><span className="brand-mark">MF</span><span>METAFORGE</span></a><p>Understand the deck. Respect the evidence. Test the change.</p><span>© 2026 MetaForge · {BUILD_ID}</span></footer>
     </main>
   );
 }
