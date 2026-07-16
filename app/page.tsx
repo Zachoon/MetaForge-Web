@@ -34,7 +34,7 @@ const SAMPLE_DECK = `4 Monastery Swiftspear
 4 Boltwave
 2 Witchstalker Frenzy
 26 Mountain`;
-const REQUIRED_COMPANION_VERSION = "0.3.3";
+const REQUIRED_COMPANION_VERSION = "0.3.4";
 const SAMPLE_DRAFT_PACK = `Shieldwall Recruit | 3.4 | W | 2 | Creature
 Molten Rebuke | 3.7 | R | 2 | Instant
 Archive Visionary | 3.5 | U | 3 | Creature
@@ -757,7 +757,7 @@ export default function Home() {
               <p>{arenaStatus === "connected" ? arenaTracking === "registered" ? "Connected and tracking this exact deck revision. Completed matches will appear automatically." : "Connected. Start or reopen a Forge trial to register its exact deck revision." : arenaStatus === "outdated" ? `An older Companion answered (${companionVersion}). Close it, download v${REQUIRED_COMPANION_VERSION}, and reconnect.` : arenaStatus === "needs-logs" ? "Companion found. In Arena, open Options → Account, enable Detailed Logs, then restart Arena." : arenaStatus === "offline" ? "Nothing answered on the local bridge. Extract and run the Companion, allow Windows if prompted, then reconnect." : "Connect the read-only local companion to track completed Arena matches without manual entry."}</p>
             </div>
             <div className="arena-actions">
-              <a href="/downloads/MetaForge-Arena-Companion-Windows-v0.3.2.zip" download>Download companion v0.3.2 · Windows</a>
+              <a href="/downloads/MetaForge-Arena-Companion-Windows-v0.3.4.zip" download>Download companion v0.3.4 · Windows</a>
               <button onClick={connectArena} disabled={arenaStatus === "connecting"}>{arenaStatus === "connected" ? "Arena connected" : arenaStatus === "connecting" ? "Connecting…" : "Connect Arena"}</button>
               <button className="mobile-report-trigger" onClick={() => setMobileReportOpen((value) => !value)} disabled={!experiment?.proposedFingerprint}>{mobileReportOpen ? "Close mobile check-in" : "Record a mobile match"}</button>
               <small>Founder build · local-only data · Windows may ask you to confirm the unsigned app.</small>
