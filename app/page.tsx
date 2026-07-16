@@ -35,7 +35,7 @@ const SAMPLE_DECK = `4 Monastery Swiftspear
 2 Witchstalker Frenzy
 26 Mountain`;
 const REQUIRED_COMPANION_VERSION = "0.3.4";
-const BUILD_ID = "2026.07.16-riftpool1";
+const BUILD_ID = "2026.07.16-coachdock1";
 const SAMPLE_DRAFT_PACK = `Shieldwall Recruit | 3.4 | W | 2 | Creature
 Molten Rebuke | 3.7 | R | 2 | Instant
 Archive Visionary | 3.5 | U | 3 | Creature
@@ -89,6 +89,8 @@ export default function Home() {
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackStatus, setFeedbackStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [forgeChatOpen, setForgeChatOpen] = useState(false);
+  const [coachUndocked, setCoachUndocked] = useState(false);
+  const [coachPosition, setCoachPosition] = useState({ x: 36, y: 36 });
   const [forgeChatInput, setForgeChatInput] = useState("");
   const [forgeChatStatus, setForgeChatStatus] = useState<"idle" | "thinking" | "error">("idle");
   const [coachReady,setCoachReady]=useState<boolean|null>(null);
@@ -110,6 +112,17 @@ export default function Home() {
   const [debriefHistory, setDebriefHistory] = useState<Array<{ matchId: string; read: string; recordedAt: string; deckFingerprint?: string }>>([]);
   const [professionalKnowledge, setProfessionalKnowledge] = useState<any[]>(APPROVED_PRO_COACHING);
   const seenMatch = useRef<string | null>(null);
+  function beginCoachDrag(event: React.PointerEvent<HTMLElement>) {
+    if (!coachUndocked || event.button !== 0 || (event.target as HTMLElement).closest("button")) return;
+    const start = { x: event.clientX, y: event.clientY, left: coachPosition.x, top: coachPosition.y };
+    const move = (next: PointerEvent) => setCoachPosition({
+      x: Math.max(8, Math.min(window.innerWidth - 280, start.left + next.clientX - start.x)),
+      y: Math.max(8, Math.min(window.innerHeight - 100, start.top + next.clientY - start.y)),
+    });
+    const stop = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", stop); };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", stop, { once: true });
+  }
   const [experiment, setExperiment] = useState<null | {
     id?: string;
     deckName: string;
@@ -929,9 +942,9 @@ export default function Home() {
 
       <div className="workspace-mode-rail" aria-label="Workspace shortcuts"><button onClick={() => goTo("#cockpit")}><b>⌂</b>Home</button><button onClick={() => goTo("#forge")}><b>◇</b>Forge</button><button onClick={() => goTo("#test-bench")}><b>△</b>Test</button><button disabled={coachReady!==true} title={coachReady===false?"Coach temporarily offline":"Open Coach"} onClick={() => setForgeChatOpen(true)}><b>✦</b>{coachReady===false?"Offline":"Coach"}</button><button onClick={() => goTo("#deck-bench")}><b>▤</b>Bench</button></div>
 
-      <div className={`forge-chat-dock ${forgeChatOpen ? "open" : ""}`}>
+      <div className={`forge-chat-dock ${forgeChatOpen ? "open" : ""} ${coachUndocked ? "undocked" : "docked"}`} style={forgeChatOpen && coachUndocked ? { left: coachPosition.x, top: coachPosition.y } : undefined}>
         {!forgeChatOpen ? <button disabled={coachReady!==true} title={coachReady===false?"Coach temporarily offline; deck analysis still works.":"Talk to the Forge"} onClick={() => setForgeChatOpen(true)}><span>✦</span> {coachReady===false?"Coach temporarily offline":"Talk to the Forge"}</button> : <section aria-label="Talk to the Forge">
-          <header><div><small>METAFORGE COACH · PERSONAL WORKSHOP</small><h3>Ask deeper. Build stranger. Learn faster.</h3></div><button aria-label="Close Forge conversation" onClick={() => setForgeChatOpen(false)}>×</button></header>
+          <header className="coach-window-bar" onPointerDown={beginCoachDrag}><div><small>METAFORGE COACH · PERSONAL WORKSHOP</small><h3>Ask deeper. Build stranger. Learn faster.</h3></div><nav><button className="coach-dock-toggle" onClick={() => { setCoachUndocked(value => !value); setCoachPosition({x:36,y:36}); }}>{coachUndocked ? "Dock" : "Undock"}</button><button aria-label="Close Forge conversation" onClick={() => setForgeChatOpen(false)}>×</button></nav></header>
           <details className="coach-profile"><summary>How should Forge coach me?</summary><textarea value={coachingProfile} onChange={(event) => saveCoachingProfile(event.target.value)} placeholder="Competitive, prefers proactive midrange, explain the math, $150 budget…" /><small>{playerProfileStatus==="synced"?"Synced to your private account across MTG and Riftbound.":playerProfileStatus==="saving"?"Saving your coaching profile…":playerProfileStatus==="loading"?"Loading your private coaching profile…":"Saved in this browser; private account sync will retry."}</small></details>
           <div className="coach-depth" aria-label="Answer depth"><span>ANSWER DEPTH</span>{(["quick","balanced","deep"] as const).map(depth=><button key={depth} className={coachDepth===depth?"active":""} aria-pressed={coachDepth===depth} onClick={()=>{setCoachDepth(depth);window.localStorage.setItem("metaforge.coachDepth",depth)}}>{depth==="quick"?"Quick":depth==="balanced"?"Balanced":"Deep dive"}</button>)}</div>
           <div className="forge-conversation">{forgeMessages.map((message,index) => { const proposal = message.role === "assistant" ? extractCoachDeck(message.content) : null; return <article key={index} className={message.role}><b>{message.role === "assistant" ? "FORGE" : "YOU"}</b><p>{message.content}</p>{proposal && <div className="coach-deck-actions"><button onClick={() => loadCoachDeck(message.content)}>Load into Forge</button>{cardCount > 0 && <button onClick={() => loadCoachDeck(message.content, true)}>Compare with my deck</button>}</div>}</article>})}{forgeChatStatus === "thinking" && <article className="assistant thinking" role="status" aria-live="polite"><b>FORGE IS THINKING</b><p><span className="thinking-spark" aria-hidden="true">◆</span> Studying your question and forging an answer<span className="thinking-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></p><small>This can take a few moments for deeper strategy questions.</small></article>}</div>

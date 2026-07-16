@@ -317,3 +317,13 @@ footer p { font-family:Georgia,serif; font-style:italic; }
 .forge-activity{position:relative}
 .live-build{display:flex;align-items:center;gap:6px;padding:5px 7px;border:1px solid #31534d;background:#0b1b1a;color:#82b8aa;font-size:6px;font-weight:900;letter-spacing:.13em;white-space:nowrap}.live-build i{width:5px;height:5px;border-radius:50%;background:var(--mint);box-shadow:0 0 9px var(--mint);animation:live-beacon 1.8s ease-in-out infinite}@keyframes live-beacon{50%{opacity:.35;box-shadow:0 0 2px var(--mint)}}@media(max-width:800px){.nav>.live-build{display:none}}@media(prefers-reduced-motion:reduce){.live-build i{animation:none}}
 .revision-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.revision-actions button{padding:7px 9px;font-size:8px}.revision-actions button:first-child{border-color:var(--mint);color:var(--mint)}@media(max-width:900px){.revision-actions{grid-column:1/-1;justify-content:stretch}.revision-actions button{flex:1}}@media(max-width:600px){.revision-actions{flex-direction:column}}
+
+/* Viewport-safe utility windows. These selectors intentionally outrank the atmospheric content layer. */
+.game-shell>.feedback-dock,.game-shell>.forge-chat-dock,.game-shell>.workspace-mode-rail,.game-shell>.passport-backdrop,.game-shell>.failure-backdrop,.game-shell>.postgame-backdrop{position:fixed}
+.feedback-dock{right:18px;bottom:84px;left:auto;top:auto}.feedback-dock>button{padding:9px 12px;font-size:9px}
+.forge-chat-dock:not(.open)>button{display:none}
+.forge-chat-dock.open.docked{z-index:70;inset:0;display:grid;place-items:center;padding:18px;background:#020808b8;backdrop-filter:blur(5px)}
+.forge-chat-dock.open>section{width:min(680px,calc(100vw - 36px));height:auto;max-height:calc(100dvh - 36px)}
+.forge-chat-dock.open .forge-conversation{flex:0 1 auto;min-height:120px;max-height:min(330px,35dvh)}
+.coach-window-bar nav{display:flex;align-items:center;gap:8px}.coach-window-bar{touch-action:none}.coach-window-bar .coach-dock-toggle{padding:7px 9px;border:1px solid #3a5b55;color:var(--mint);font-size:8px}.forge-chat-dock.undocked{z-index:70;right:auto;bottom:auto}.forge-chat-dock.undocked>section{width:min(620px,calc(100vw - 16px));max-height:calc(100dvh - 16px);resize:both;overflow:auto}.forge-chat-dock.undocked .coach-window-bar{cursor:move}
+@media(max-width:700px){.feedback-dock{right:10px;bottom:70px}.forge-chat-dock.open.docked{padding:8px}.forge-chat-dock.open>section{width:calc(100vw - 16px);max-height:calc(100dvh - 16px)}.forge-chat-dock.undocked{left:8px!important;top:8px!important}.forge-chat-dock.undocked>section{resize:none}.forge-chat-dock.open .forge-conversation{max-height:28dvh}}
