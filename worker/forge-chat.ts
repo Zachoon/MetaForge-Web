@@ -1,7 +1,7 @@
 import { userKey } from "./account-bench";
 interface ChatEnv { DB: D1Database; OPENAI_API_KEY?: string; OPENAI_MODEL?: string; METAFORGE_FOUNDER_USER_KEY?: string }
 type ChatMessage = { role: "user" | "assistant"; content: string };
-const SYSTEM = `You are the MetaForge Coach, an expert Magic: The Gathering deck-building teacher. Help users explore competitive and fun deck ideas, understand draft picks, and reason through card choices. Teach rather than dictate. Separate verified card or match evidence from hypotheses. Never invent card text, legality, tournament results, prices, or win rates. If current facts are missing, say what must be verified. Respect the requested format, budget, collection, goals, and play style. Give concrete card-for-card proposals only when the supplied context supports them. Explain tradeoffs and a safe test plan. Personal match results are evidence about this player and revision, not proof of universal deck strength.`;
+const SYSTEM = `You are the MetaForge Coach, a rigorous trading-card-game strategy teacher. The current game is supplied in context. Never transfer one game's rules, cards, terminology, legality, or match evidence into another. Teach rather than dictate. Separate verified facts and match evidence from hypotheses. Never invent card text, legality, tournament results, prices, rules, or win rates. If current facts are missing, say what must be verified. Respect the requested format, goals, and play style. Personal match results are evidence about this player and revision, not proof of universal strength.`;
 const json = (value: unknown, status = 200) => Response.json(value, { status, headers: { "Cache-Control": "no-store" } });
 export async function handleForgeChat(request: Request, env: ChatEnv) {
   const key = await userKey(request);
@@ -25,7 +25,7 @@ export async function handleForgeChat(request: Request, env: ChatEnv) {
     used += 1;
   }
   const c = payload.context && typeof payload.context === "object" ? payload.context : {};
-  const context = `CURRENT USER CONTEXT\nDeck name: ${String(c.deckName || "Untitled").slice(0,120)}\nFormat: ${String(c.format || "Unknown").slice(0,60)}\nCoaching preferences: ${String(c.coachingProfile || "Not specified").slice(0,1000)}\nCurrent deck or pool:\n${String(c.deckText || "Not supplied").slice(0,14000)}`;
+  const context = `CURRENT USER CONTEXT\nGame: ${String(c.game || "Magic: The Gathering").slice(0,80)}\nDeck name: ${String(c.deckName || "Untitled").slice(0,120)}\nFormat: ${String(c.format || "Unknown").slice(0,60)}\nCoaching preferences: ${String(c.coachingProfile || "Not specified").slice(0,1000)}\nCurrent deck or pool:\n${String(c.deckText || "Not supplied").slice(0,14000)}`;
   const upstream = await fetch("https://api.openai.com/v1/responses", { method:"POST", headers:{ Authorization:`Bearer ${env.OPENAI_API_KEY}`, "Content-Type":"application/json" }, body:JSON.stringify({ model:env.OPENAI_MODEL || "gpt-5.6-luna", input:[{role:"system",content:SYSTEM},{role:"system",content:context},...messages], reasoning:{effort:"low"}, max_output_tokens:1800, store:false }) });
   const result:any = await upstream.json().catch(()=>({}));
   if (!upstream.ok) { if (!founder) await env.DB.prepare("UPDATE forge_chat_usage SET questions = MAX(0, questions - 1) WHERE user_key = ? AND week_start = ?").bind(key, week).run(); return json({ error:"The Forge brain could not answer", detail:result?.error?.message || "Model request failed" },502); }

@@ -1,7 +1,7 @@
 /** Cloudflare Worker entry point for the vinext-starter template. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
-import { handleAccountBench, handleFounderFeedback } from "./account-bench";
+import { handleAccountBench, handleFounderFeedback, handlePlayerProfile } from "./account-bench";
 import { handleFounderOverview } from "./founder-dashboard";
 import { handleForgeChat } from "./forge-chat";
 import { handleCoachingKnowledge } from "./coaching-knowledge";
@@ -49,6 +49,7 @@ const worker = {
     if (url.pathname === "/api/account/feedback") {
       return handleFounderFeedback(request, env);
     }
+    if (url.pathname === "/api/account/player-profile") return handlePlayerProfile(request, env);
     if (url.pathname === "/api/founder/overview") {
       return handleFounderOverview(request, env);
     }

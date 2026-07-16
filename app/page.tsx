@@ -22,6 +22,7 @@ import { buildPostGameCoach } from "./post-game-coach.mjs";
 import { coachingProgress, evaluateIntervention, inferCoachingTarget } from "./coaching-progress.mjs";
 import APPROVED_PRO_COACHING from "./pro-coaching-knowledge.mjs";
 import { professionalCoachLens } from "./professional-coach.mjs";
+import RiftboundForge from "./riftbound-forge";
 
 const SAMPLE_DECK = `4 Monastery Swiftspear
 4 Slickshot Show-Off
@@ -39,6 +40,8 @@ Archive Visionary | 3.5 | U | 3 | Creature
 Verdant Colossus | 3.2 | G | 6 | Creature
 Grave Bargain | 3.3 | B | 3 | Sorcery`;
 export default function Home() {
+  const [game, setGame] = useState<"mtg" | "riftbound">("mtg");
+  const [reforging, setReforging] = useState(false);
   const meta = getMetaIntelligence();
   const simulationGate = useMemo(() => evaluateSimulationGate(FORGE_CANDIDATE.deck, FORGE_CANDIDATE.strategy, 2000, 8128), []);
   const matchupMatrix = useMemo(() => evaluateMatchupMatrix(FORGE_CANDIDATE.deck, ["Aggro", "Midrange", "Control", "Tempo"], 2000, 991), []);
@@ -124,6 +127,22 @@ export default function Home() {
   const comparisonVerdict = useMemo(() => originalMetrics && proposedMetrics ? evaluateOpeningHandComparison(originalMetrics, proposedMetrics) : null, [originalMetrics, proposedMetrics]);
   const formatContext = useMemo(() => buildFormatContext(format, { power: commanderPower, budget: commanderBudget }), [format, commanderPower, commanderBudget]);
   const theoryEvidence = useMemo(() => evaluateTheoryEvidence({ legal: true, copyLimitsPass: true, roleFit: true, supportCount: 16, minimumSupport: 8, earlyInteraction: true }, buildFormatContext("Standard"), {}), []);
+
+  useEffect(() => {
+    const savedGame=window.localStorage.getItem("metaforge.activeGame");
+    if(savedGame==="riftbound")setGame("riftbound");
+    fetch("/api/account/player-profile",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(data=>{if(data?.profile?.coachingNotes)setCoachingProfile(data.profile.coachingNotes)}).catch(()=>{});
+  }, []);
+
+  useEffect(() => {
+    if(!coachingProfile)return;
+    const timer=window.setTimeout(()=>fetch("/api/account/player-profile",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({profile:{coachingNotes:coachingProfile,learningStyle:"adaptive"}})}).catch(()=>{}),700);
+    return()=>window.clearTimeout(timer);
+  },[coachingProfile]);
+
+  function switchGame(next:"mtg"|"riftbound"){
+    if(next===game)return;setReforging(true);window.setTimeout(()=>{setGame(next);window.localStorage.setItem("metaforge.activeGame",next);window.scrollTo({top:0,behavior:"smooth"});window.setTimeout(()=>setReforging(false),360)},260);
+  }
 
   useEffect(() => {
     const stored = window.localStorage.getItem("metaforge.activeExperiment");
@@ -561,13 +580,21 @@ export default function Home() {
     window.setTimeout(() => document.querySelector("#test-bench")?.scrollIntoView({ behavior: "smooth" }), 0);
   }
 
+  if(game==="riftbound")return <main className={`game-shell rift-mode ${reforging?"reforging":""}`}>
+    <div className="reforge-transition"><span>RECALIBRATING THE FORGE</span></div>
+    <nav className="nav shell" aria-label="Main navigation"><a className="brand" href="#top"><span className="brand-mark">MF</span><span>METAFORGE</span></a><div className="game-switcher" aria-label="Choose game"><button onClick={()=>switchGame("mtg")}>MTG</button><button className="active rift" aria-pressed="true">RIFTBOUND <i>ALPHA</i></button></div><button className="nav-cta rift" onClick={()=>document.querySelector(".rift-workspace")?.scrollIntoView({behavior:"smooth"})}>Enter Riftbound Forge</button></nav>
+    <RiftboundForge coachingProfile={coachingProfile} setCoachingProfile={setCoachingProfile}/>
+  </main>;
+
   return (
     <main>
+      <div className={`reforge-transition ${reforging?"active":""}`}><span>RECALIBRATING THE FORGE</span></div>
       <nav className="nav shell" aria-label="Main navigation">
         <a className="brand" href="#top" aria-label="MetaForge home">
           <span className="brand-mark">MF</span>
           <span>METAFORGE</span>
         </a>
+        <div className="game-switcher" aria-label="Choose game"><button className="active" aria-pressed="true">MTG</button><button onClick={()=>switchGame("riftbound")}>RIFTBOUND <i>ALPHA</i></button></div>
         <div className="nav-links">
           <button onClick={() => goTo("#cockpit")}>Home</button>
           <button onClick={() => goTo("#forge")}>Forge</button>

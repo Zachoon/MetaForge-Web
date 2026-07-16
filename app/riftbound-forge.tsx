@@ -1,0 +1,20 @@
+"use client";
+import { useEffect, useMemo, useState } from "react";
+
+function parse(text:string){return text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean).map(line=>{const match=line.match(/^(\d+)\s+(.+)$/);return match?{quantity:Number(match[1]),name:match[2]}:{quantity:1,name:line};});}
+
+export default function RiftboundForge({coachingProfile,setCoachingProfile}:{coachingProfile:string;setCoachingProfile:(value:string)=>void}){
+  const [deckText,setDeckText]=useState("");
+  const [messages,setMessages]=useState<Array<{role:"user"|"assistant";content:string}>>([{role:"assistant",content:"Welcome to the Riftbound Forge alpha. Bring me a deck concept or strategic question. I will separate verified rules from hypotheses while this forge learns its own game."}]);
+  const [input,setInput]=useState(""); const [thinking,setThinking]=useState(false);
+  useEffect(()=>{const saved=localStorage.getItem("metaforge.riftbound.deck");if(saved)setDeckText(saved)},[]);
+  useEffect(()=>{localStorage.setItem("metaforge.riftbound.deck",deckText)},[deckText]);
+  const rows=useMemo(()=>parse(deckText),[deckText]); const count=rows.reduce((sum,row)=>sum+row.quantity,0);
+  async function ask(){const content=input.trim();if(!content||thinking)return;const next=[...messages,{role:"user" as const,content}];setMessages(next);setInput("");setThinking(true);try{const response=await fetch("/api/forge/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:next,context:{game:"Riftbound",deckName:"Riftbound alpha deck",format:"Riftbound constructed",deckText,coachingProfile}})});const result=await response.json();setMessages([...next,{role:"assistant",content:response.ok?result.answer:result.error}]);}catch{setMessages([...next,{role:"assistant",content:"The Riftbound coach could not answer yet."}]);}finally{setThinking(false)}}
+  return <div className="riftbound-surface">
+    <section className="rift-hero shell"><div><small>RIFTBOUND FORGE · ALPHA</small><h1>A new battlefield.<br/><em>The same player.</em></h1><p>Build, question, and test Riftbound ideas with the same Coach and Player DNA that learns how you think across MetaForge.</p></div><aside><b>R</b><span>RULES-SAFE ALPHA</span><small>Unverified mechanics are labeled—not invented.</small></aside></section>
+    <section className="rift-workspace shell"><article><header><div><small>01 · DECK INTAKE</small><h2>Shape a Riftbound list</h2></div><button onClick={()=>setDeckText("")}>Clear workspace</button></header><textarea value={deckText} onChange={e=>setDeckText(e.target.value)} placeholder="Paste a Riftbound deck list here…"/><footer><span><b>{count}</b> cards entered</span><span><b>{rows.length}</b> unique entries</span><span><b>Saved</b> to your Riftbound workspace</span></footer></article>
+    <article className="rift-coach"><header><div><small>02 · RIFTBOUND COACH</small><h2>Interrogate the strategy</h2></div><i>SHARED PLAYER DNA</i></header><details><summary>How should Coach teach me?</summary><textarea value={coachingProfile} onChange={e=>setCoachingProfile(e.target.value)} placeholder="Your play style, goals, and how you like feedback…"/></details><div className="rift-messages">{messages.map((m,i)=><p className={m.role} key={i}><b>{m.role==="user"?"YOU":"FORGE"}</b>{m.content}</p>)}{thinking&&<p className="assistant"><b>FORGE</b>Reading the line…</p>}</div><div className="rift-compose"><textarea value={input} onChange={e=>setInput(e.target.value)} placeholder="Ask about a deck concept, matchup plan, sequencing choice, or card role…"/><button onClick={ask}>Ask Riftbound Forge →</button></div></article></section>
+    <section className="rift-boundary shell"><small>INTELLIGENCE BOUNDARY</small><h2>One player profile. Two independent game brains.</h2><div><span><b>Shared</b>Learning style, risk posture, coaching preferences, strategic habits</span><span><b>Riftbound only</b>Cards, rules, legality, decks, match evidence, metagame</span><span><b>Magic only</b>Cards, formats, Arena history, mana and MTG mechanics</span></div></section>
+  </div>;
+}

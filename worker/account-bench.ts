@@ -74,3 +74,17 @@ export async function handleFounderFeedback(request: Request, env: AccountEnv): 
   await env.DB.prepare("INSERT INTO founder_feedback (user_key, category, message, context_json) VALUES (?, ?, ?, ?)").bind(key, category, message, context).run();
   return json({ saved: true }, 201);
 }
+
+export async function handlePlayerProfile(request: Request, env: AccountEnv): Promise<Response> {
+  const key=await userKey(request); if(!key)return json({error:"Authenticated account required"},401);
+  if(request.method==="GET"){
+    const row=await env.DB.prepare("SELECT profile_json, revision, updated_at FROM account_player_profiles WHERE user_key=?").bind(key).first<any>();
+    return json(row?{profile:JSON.parse(row.profile_json),revision:row.revision,updatedAt:row.updated_at}:{profile:{},revision:0,updatedAt:null});
+  }
+  if(request.method!=="PUT")return json({error:"Method not allowed"},405);
+  let body:any;try{body=await request.json()}catch{return json({error:"Invalid JSON"},400)}
+  const profile=body.profile&&typeof body.profile==="object"?body.profile:null;if(!profile)return json({error:"Valid profile required"},400);
+  const serialized=JSON.stringify(profile).slice(0,12000);
+  await env.DB.prepare("INSERT INTO account_player_profiles (user_key,profile_json,revision,updated_at) VALUES (?,?,1,CURRENT_TIMESTAMP) ON CONFLICT(user_key) DO UPDATE SET profile_json=excluded.profile_json,revision=account_player_profiles.revision+1,updated_at=CURRENT_TIMESTAMP").bind(key,serialized).run();
+  return json({saved:true});
+}
