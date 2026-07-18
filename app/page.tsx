@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type Chamber = "entrance" | "commission" | "refine" | "forging" | "masterworks";
+type Chamber = "entrance" | "commission" | "refine" | "forging" | "masterworks" | "workbench";
 
 const FORGING_STAGES = [
   ["The blueprint is sealed", "Reading the commission marks…", "642"],
@@ -69,6 +69,13 @@ export default function Home() {
   const [format, setFormat] = useState("Standard");
   const [strategy, setStrategy] = useState("Balanced midrange");
   const [deck, setDeck] = useState("");
+  const [selectedWork, setSelectedWork] = useState(0);
+  const [forgedDeck, setForgedDeck] = useState("");
+  const [forgeReply, setForgeReply] = useState("");
+  const [playerSignal, setPlayerSignal] = useState("");
+  const [benchStatus, setBenchStatus] = useState<"idle" | "forging" | "testing" | "thinking">("idle");
+  const [record, setRecord] = useState({ wins: 0, losses: 0 });
+  const [revisions, setRevisions] = useState<Array<{ deck: string; note: string; createdAt: string }>>([]);
 
   useEffect(() => {
     if (chamber !== "forging") return;
@@ -83,6 +90,63 @@ export default function Home() {
   const progress = useMemo(() => ((stage + 1) / FORGING_STAGES.length) * 100, [stage]);
   const awaken = () => { setStage(0); setChamber("forging"); };
   const chapter = chamber === "entrance" ? 0 : chamber === "commission" || chamber === "refine" ? 1 : chamber === "forging" ? 2 : 3;
+  const chosenPreview = (FORMAT_PREVIEWS[format] ?? FORMAT_PREVIEWS.Standard)[selectedWork];
+  const chosenWork = MASTERWORKS[selectedWork];
+
+  async function inspectMasterwork(index: number) {
+    const work = MASTERWORKS[index];
+    const preview = (FORMAT_PREVIEWS[format] ?? FORMAT_PREVIEWS.Standard)[index];
+    setSelectedWork(index); setChamber("workbench"); setBenchStatus("forging"); setForgeReply("");
+    const prompt = `Forge the complete ${format} deck represented by ${work.name}. Its identity is ${work.path}; featured ${format === "Commander" || format === "Brawl" ? "commander" : "lynchpin"}: ${preview.card}; requested play style: ${strategy}. Return a concise pilot brief followed by one complete import-ready decklist. This is a founder-test candidate: never claim legality or performance that has not been verified, and explicitly identify any uncertainty.`;
+    try {
+      const response = await fetch("/api/forge/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ depth: "deep", messages: [{ role: "user", content: prompt }], context: { game: "mtg", deckName: work.name, format, deckText: "", coachingProfile: "Prefers concise, testable deck guidance." } }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || "Forge unavailable");
+      const answer = String(data.answer || ""); setForgedDeck(answer); setRevisions([{ deck: answer, note: "Original Forge candidate", createdAt: new Date().toISOString() }]);
+    } catch {
+      setForgedDeck(`FOUNDER-TEST CANDIDATE\n\n${work.name} · ${format}\nFeatured ${format === "Commander" || format === "Brawl" ? "commander" : "lynchpin"}: ${preview.card}\n\nThe Forge brain could not complete the list on this attempt. Your commission is preserved; retry forging before beginning a legality-sensitive test.`);
+    } finally { setBenchStatus("idle"); }
+  }
+
+  async function persistStoryBench(nextRevisions = revisions, nextRecord = record) {
+    const snapshot = { format, strategy, selectedWork, forgedDeck, revisions: nextRevisions, record: nextRecord, updatedAt: new Date().toISOString() };
+    window.localStorage.setItem("metaforge.storyBench", JSON.stringify(snapshot));
+    try {
+      const response = await fetch("/api/account/deck-bench", { cache: "no-store" }); if (!response.ok) return;
+      const current = await response.json(); const bench = current.bench || { schemaVersion: 1, families: [] };
+      const id = `story-${format.toLowerCase()}-${selectedWork}`;
+      const family = { id, name: chosenWork.name, format, archived: false, promotedFingerprint: `story-${nextRevisions.length}`, revisions: nextRevisions.map((revision, index) => ({ fingerprint: `story-${index + 1}-${revision.createdAt}`, version: index + 1, source: index ? "forge" : "original", deckText: revision.deck, note: revision.note, createdAt: revision.createdAt, evidence: { wins: nextRecord.wins, losses: nextRecord.losses, sampleSize: nextRecord.wins + nextRecord.losses, confidence: nextRecord.wins + nextRecord.losses < 3 ? "early signal" : "developing" } })) };
+      const families = [...(bench.families || []).filter((item: { id?: string }) => item.id !== id), family];
+      await fetch("/api/account/deck-bench", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bench: { schemaVersion: 1, families }, baseRevision: current.revision || 0 }) });
+    } catch { /* Browser recovery remains available if account sync is interrupted. */ }
+  }
+
+  function beginTesting() {
+    setBenchStatus("testing");
+    void persistStoryBench();
+  }
+
+  function recordMatch(result: "win" | "loss") {
+    const next = result === "win" ? { ...record, wins: record.wins + 1 } : { ...record, losses: record.losses + 1 };
+    setRecord(next); void persistStoryBench(revisions, next);
+  }
+
+  async function consultForge() {
+    if (!playerSignal.trim() || benchStatus === "thinking") return;
+    setBenchStatus("thinking"); setForgeReply("");
+    const prompt = `I tested revision ${revisions.length || 1} of ${chosenWork.name}. My signal: ${playerSignal.trim()}\n\nDiagnose the most likely issue without overreacting to one result. Give 2-3 precise replacement packages or alternatives with what comes out, what comes in, the tradeoff, and the smallest next test. Preserve the deck's ${chosenWork.path} identity and my ${strategy} preference.`;
+    try {
+      const response = await fetch("/api/forge/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ depth: "balanced", messages: [{ role: "user", content: prompt }], context: { game: "mtg", deckName: chosenWork.name, format, deckText: forgedDeck, coachingProfile: "Prefers concise alternatives and testable changes." } }) });
+      const data = await response.json(); if (!response.ok) throw new Error(data?.error || "Forge unavailable"); setForgeReply(String(data.answer || ""));
+    } catch { setForgeReply("The Forge could not complete this refinement. Your feedback is still preserved locally; retry when the furnace reconnects."); }
+    finally { setBenchStatus("testing"); }
+  }
+
+  function preserveRevision() {
+    if (!forgeReply.trim()) return;
+    const next = [...revisions, { deck: forgedDeck, note: forgeReply, createdAt: new Date().toISOString() }]; setRevisions(next);
+    void persistStoryBench(next, record); setPlayerSignal(""); setForgeReply("");
+  }
 
   return <main className={`great-forge chamber-${chamber}`}>
     <div className="forge-textures" aria-hidden="true"><i /><b /></div>
@@ -128,8 +192,15 @@ export default function Home() {
 
     {chamber === "masterworks" && <section className="masterwork-reveal">
       <header><span className="forge-eyebrow"><i /> THE GREAT FORGE ANSWERS <i /></span><h1>Steel bends. Runes awaken.<br /><em>Three designs endure.</em></h1><p>The Forge honored your {format} commission and shaped three paths around <strong>{strategy.toLowerCase()}</strong>. Choose the one that feels like yours.</p></header>
-      <div className="masterwork-grid">{MASTERWORKS.map((work, index) => { const preview = (FORMAT_PREVIEWS[format] ?? FORMAT_PREVIEWS.Standard)[index]; return <article className={`masterwork-card ${work.tone}`} key={work.name} style={{ "--delay": `${index * 140}ms` } as React.CSSProperties}><span>MASTERWORK 0{index + 1}</span><div className="masterwork-title"><i>{work.rune}</i><div><small>{work.path} · {format}</small><h2>{work.name}</h2></div></div><div className="masterwork-glimpse"><img src={cardImage(preview.card)} alt={`${preview.card} card`} loading="lazy" /><div><small>{preview.role}</small><strong>{preview.card}</strong><p>{preview.theme}</p><em><b>WIN CONDITION</b>{preview.win}</em></div></div><div className="masterwork-stats">{["Aggression", "Interaction", "Synergy", "Complexity"].map((label, statIndex) => <span key={label}><small>{label}</small><b>{MASTERWORK_STATS[index][statIndex]}</b></span>)}</div><p className="masterwork-verdict">{work.verdict}</p><button>Inspect this Masterwork <b>→</b></button></article>; })}</div>
+      <div className="masterwork-grid">{MASTERWORKS.map((work, index) => { const preview = (FORMAT_PREVIEWS[format] ?? FORMAT_PREVIEWS.Standard)[index]; return <article className={`masterwork-card ${work.tone}`} key={work.name} style={{ "--delay": `${index * 140}ms` } as React.CSSProperties}><span>MASTERWORK 0{index + 1}</span><div className="masterwork-title"><i>{work.rune}</i><div><small>{work.path} · {format}</small><h2>{work.name}</h2></div></div><div className="masterwork-glimpse"><img src={cardImage(preview.card)} alt={`${preview.card} card`} loading="lazy" /><div><small>{preview.role}</small><strong>{preview.card}</strong><p>{preview.theme}</p><em><b>WIN CONDITION</b>{preview.win}</em></div></div><div className="masterwork-stats">{["Aggression", "Interaction", "Synergy", "Complexity"].map((label, statIndex) => <span key={label}><small>{label}</small><b>{MASTERWORK_STATS[index][statIndex]}</b></span>)}</div><p className="masterwork-verdict">{work.verdict}</p><button onClick={() => inspectMasterwork(index)}>Inspect this Masterwork <b>→</b></button></article>; })}</div>
       <footer><button onClick={() => setChamber("entrance")}>Begin a new commission</button><span>THREE OF 642 DESIGNS SURVIVED</span></footer>
+    </section>}
+
+    {chamber === "workbench" && <section className="testing-anvil">
+      <button className="back-link" onClick={() => setChamber("masterworks")}>← Return to the three Masterworks</button>
+      <header><span className="forge-eyebrow"><i /> MASTERWORK CHOSEN · THE TESTING ANVIL</span><h1>{chosenWork.name}</h1><p>{chosenWork.path} · {format} · Revision {Math.max(1, revisions.length)}</p></header>
+      <div className="testing-layout"><article className="deck-manuscript"><header><div><small>THE FORGED LIST</small><h2>{benchStatus === "forging" ? "The Forge is producing your deck…" : "Your founder-test candidate"}</h2></div><button disabled={!forgedDeck || benchStatus === "forging"} onClick={() => navigator.clipboard.writeText(forgedDeck)}>Copy deck</button></header><pre>{benchStatus === "forging" ? "Tempering curve, roles, interaction, and the mana lattice…" : forgedDeck}</pre><footer><span>Featured {format === "Commander" || format === "Brawl" ? "commander" : "lynchpin"}: <b>{chosenPreview.card}</b></span><button disabled={benchStatus === "forging" || !forgedDeck} onClick={beginTesting}>{benchStatus === "testing" ? "Testing is active ✓" : "Choose this deck & begin testing"}</button></footer></article>
+      <aside className="testing-loop"><header><small>THE FORGE LEARNS WITH YOU</small><h2>Test. Signal. Reforge.</h2><p>One match is a signal—not proof. Tell the Forge what felt strong, awkward, missing, or simply unlike you.</p></header><div className="test-record"><button onClick={() => recordMatch("win")}>Record a win <b>{record.wins}</b></button><button onClick={() => recordMatch("loss")}>Record a loss <b>{record.losses}</b></button></div><label><span>WHAT WORKED OR FELT WRONG?</span><textarea value={playerSignal} onChange={event => setPlayerSignal(event.target.value)} placeholder="Example: I keep running out of threats after the first board wipe, but the early pressure feels exactly right…" /></label><button className="consult-forge" disabled={!playerSignal.trim() || benchStatus === "thinking"} onClick={consultForge}>{benchStatus === "thinking" ? "The Forge is studying your signal…" : "Ask the Forge for alternatives →"}</button>{forgeReply && <section className="forge-refinement"><small>REFINEMENT OPTIONS · FORGE THEORY</small><pre>{forgeReply}</pre><button onClick={preserveRevision}>Preserve as revision {revisions.length + 1}</button></section>}<footer><b>{revisions.length || 1}</b><span>REVISION{revisions.length === 1 ? "" : "S"} PRESERVED · PRIVATE BENCH SYNC</span></footer></aside></div>
     </section>}
   </main>;
 }
