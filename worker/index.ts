@@ -6,6 +6,7 @@ import { handleFounderOverview } from "./founder-dashboard";
 import { handleForgeChat } from "./forge-chat";
 import { handleCoachingKnowledge } from "./coaching-knowledge";
 import { ensureDataGoblinsStarted, handleGoblinOperations, runDataGoblins } from "./data-goblins";
+import { handleEdhrecEvidence } from "./edhrec-evidence";
 const BUILD_ID = "2026.07.16-workspace1";
 
 interface Env {
@@ -56,6 +57,7 @@ const worker = {
       return handleFounderOverview(request, env);
     }
     if (url.pathname === "/api/forge/chat") return handleForgeChat(request, env);
+    if (url.pathname === "/api/forge/edhrec") return handleEdhrecEvidence(request, env);
     if (url.pathname === "/api/forge/status") {ctx.waitUntil(ensureDataGoblinsStarted(env));return Response.json({ready:true,build:BUILD_ID,modelReady:Boolean(env.OPENAI_API_KEY),mode:env.OPENAI_API_KEY?"model":"native",fallback:"MetaForge Native Coach remains available without a model call"},{headers:{"Cache-Control":"no-store"}})}
     if (url.pathname === "/api/founder/knowledge") return handleCoachingKnowledge(request, env, true);
     if (url.pathname === "/api/coach/knowledge") return handleCoachingKnowledge(request, env, false);

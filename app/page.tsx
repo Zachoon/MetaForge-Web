@@ -35,6 +35,8 @@ type DeckPreview = { card: string; role: string; theme: string; win: string };
 type DeckRow = { quantity: number; name: string };
 type CardFact = { name: string; mana_cost?: string; oracle_text?: string; type_line?: string; set_name?: string; games?: string[]; legalities?: Record<string, string>; image_uris?: { normal?: string; art_crop?: string }; card_faces?: Array<{ name?: string; mana_cost?: string; oracle_text?: string; type_line?: string; image_uris?: { normal?: string; art_crop?: string } }> };
 type CommanderOption = { name: string; colors: string[]; typeLine: string; image: string; verifiedFacts: string };
+type EdhrecSignal = { name: string; category: string; decks: number; eligibleDecks: number; inclusion: number; synergy: number; confidence: string; newCardPotential: boolean };
+type EdhrecEvidence = { available: boolean; source?: string; methodology?: string; reason?: string; cards: EdhrecSignal[] };
 
 const MASTERWORK_STATS = [[94, 46, 70, 48], [72, 78, 76, 68], [28, 96, 64, 86], [76, 88, 72, 78], [62, 54, 94, 72], [44, 82, 88, 76], [86, 48, 90, 58], [38, 68, 98, 96], [42, 58, 82, 66]] as const;
 const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
@@ -75,6 +77,11 @@ const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
   ],
 };
 const cardImage = (name: string) => `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=normal`;
+const formatEdhrecEvidence = (evidence: EdhrecEvidence | null, format: string) => {
+  if (!evidence?.available || !evidence.cards.length) return "EDHREC has no usable commander evidence for this commission yet. Do not penalize new or sparsely indexed cards; evaluate them from verified rules text and the Blueprint.";
+  const signals = evidence.cards.slice(0, 45).map(card => `${card.name} | ${card.category} | adoption ${(card.inclusion * 100).toFixed(1)}% (${card.decks}/${card.eligibleDecks || "?"} eligible decks) | commander-relative synergy ${(card.synergy * 100).toFixed(1)}% | confidence ${card.confidence}${card.newCardPotential ? " | PROMISING NEW CARD" : ""}`).join("\n");
+  return `EDHREC COMMANDER EVIDENCE (descriptive, not a legality source)\n${evidence.methodology || "Adoption and commander-relative synergy evidence."}\n${format === "Brawl" ? "This is cross-format Commander evidence only. Every candidate must still pass current Arena Brawl legality and color-identity checks in Scryfall." : "Every candidate must still pass current Commander legality and color-identity checks in Scryfall."}\nDo not treat popularity as proof of quality. Weight low-sample signals cautiously, but do not suppress a new card merely because adoption is young when its mechanics and synergy fit are strong.\n${signals}`;
+};
 const parseDeckRows = (text: string): DeckRow[] => text.split(/\r?\n/).flatMap(line => { const match = line.trim().match(/^(\d+)\s+(.+?)(?:\s+\([A-Z0-9]{2,6}\)\s+\d+\w*)?$/); return match ? [{ quantity: Number(match[1]), name: match[2].trim() }] : []; });
 const cardGroup = (fact?: CardFact, isCommander = false) => { const type = fact?.type_line || ""; if (isCommander) return "Commander"; if (/Land/i.test(type)) return "Lands"; if (/Creature/i.test(type)) return "Creatures"; if (/Planeswalker/i.test(type)) return "Planeswalkers"; if (/Instant/i.test(type)) return "Instants"; if (/Sorcery/i.test(type)) return "Sorceries"; if (/Artifact/i.test(type)) return "Artifacts"; if (/Enchantment/i.test(type)) return "Enchantments"; if (/Battle/i.test(type)) return "Battles"; return "Other"; };
 
@@ -100,6 +107,7 @@ export default function Home() {
   const [cardFacts, setCardFacts] = useState<Record<string, CardFact>>({});
   const [hoveredCard, setHoveredCard] = useState("");
   const [cardOrder, setCardOrder] = useState<string[]>([]);
+  const [edhrecEvidence, setEdhrecEvidence] = useState<EdhrecEvidence | null>(null);
 
   useEffect(() => {
     if (chamber !== "forging") return;
@@ -162,9 +170,15 @@ export default function Home() {
     const work = MASTERWORK_POOL[index];
     const preview = previewFor(index);
     setSelectedWork(index); setChamber("workbench"); setBenchStatus("forging"); setForgeReply("");
-    const prompt = `Forge the complete ${format} deck represented by ${work.name}. Its identity is ${work.path}; required ${format === "Commander" || format === "Brawl" ? "commander" : "lynchpin"}: ${preview.card}; requested play style: ${strategy}. The player's Blueprint note is: ${commissionNote.trim() || "No additional note"}. ${format === "Brawl" ? "MetaForge Brawl means current Arena Brawl: 60-card singleton, using the live Scryfall brawl legality and Arena availability supplied in verified facts. Do not ask whether this means Standard or Historic Brawl." : ""} Return a concise pilot brief followed by one complete import-ready decklist. The chosen commander, oracle text, legality, Arena availability, and color identity in verified facts are binding constraints. Do not claim this commander is unverified when its live record is supplied. This is a founder-test candidate: never claim performance that has not been verified, and explicitly identify any remaining uncertainty.`;
+    let evidence: EdhrecEvidence | null = null;
+    if (selectedCommander && (format === "Commander" || format === "Brawl")) {
+      try { const evidenceResponse = await fetch(`/api/forge/edhrec?commander=${encodeURIComponent(selectedCommander.name)}`); if (evidenceResponse.ok) evidence = await evidenceResponse.json(); } catch { /* The Forge can proceed from verified card facts alone. */ }
+    }
+    setEdhrecEvidence(evidence);
+    const evidenceFacts = formatEdhrecEvidence(evidence, format);
+    const prompt = `Forge the complete ${format} deck represented by ${work.name}. Its identity is ${work.path}; required ${format === "Commander" || format === "Brawl" ? "commander" : "lynchpin"}: ${preview.card}; requested play style: ${strategy}. The player's Blueprint note is: ${commissionNote.trim() || "No additional note"}. ${format === "Brawl" ? "MetaForge Brawl means current Arena Brawl: 60-card singleton, using the live Scryfall brawl legality and Arena availability supplied in verified facts. Do not ask whether this means Standard or Historic Brawl." : ""} Return a concise pilot brief followed by one complete import-ready decklist. The chosen commander, oracle text, legality, Arena availability, and color identity in verified facts are binding constraints. Use the EDHREC evidence as a prior for card adoption and co-occurrence, not as proof or a legality source. Do not claim this commander is unverified when its live record is supplied. This is a founder-test candidate: never claim performance that has not been verified, and explicitly identify any remaining uncertainty.`;
     try {
-      const response = await fetch("/api/forge/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ depth: "deep", messages: [{ role: "user", content: prompt }], context: { game: "mtg", deckName: work.name, format, deckText: "", verifiedFacts: selectedCommander?.verifiedFacts || "No commander record required for this format.", coachingProfile: "Prefers concise, testable deck guidance." } }) });
+      const response = await fetch("/api/forge/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ depth: "deep", messages: [{ role: "user", content: prompt }], context: { game: "mtg", deckName: work.name, format, deckText: "", verifiedFacts: `${selectedCommander?.verifiedFacts || "No commander record required for this format."}\n\n${evidenceFacts}`, coachingProfile: "Prefers concise, testable deck guidance." } }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || "Forge unavailable");
       const answer = String(data.answer || ""); setForgedDeck(answer); setRevisions([{ deck: answer, note: "Original Forge candidate", createdAt: new Date().toISOString() }]);
@@ -201,7 +215,7 @@ export default function Home() {
     setBenchStatus("thinking"); setForgeReply("");
     const prompt = `I tested revision ${revisions.length || 1} of ${chosenWork.name}. My signal: ${playerSignal.trim()}\n\nDiagnose the most likely issue without overreacting to one result. Give 2-3 precise replacement packages or alternatives with what comes out, what comes in, the tradeoff, and the smallest next test. Preserve the deck's ${chosenWork.path} identity and my ${strategy} preference.`;
     try {
-      const response = await fetch("/api/forge/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ depth: "balanced", messages: [{ role: "user", content: prompt }], context: { game: "mtg", deckName: chosenWork.name, format, deckText: forgedDeck, verifiedFacts: verifiedDeckFacts || selectedCommander?.verifiedFacts || "Live card facts are still loading.", coachingProfile: "Prefers concise alternatives and testable changes." } }) });
+      const response = await fetch("/api/forge/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ depth: "balanced", messages: [{ role: "user", content: prompt }], context: { game: "mtg", deckName: chosenWork.name, format, deckText: forgedDeck, verifiedFacts: `${verifiedDeckFacts || selectedCommander?.verifiedFacts || "Live card facts are still loading."}\n\n${formatEdhrecEvidence(edhrecEvidence, format)}`, coachingProfile: "Prefers concise alternatives and testable changes." } }) });
       const data = await response.json(); if (!response.ok) throw new Error(data?.error || "Forge unavailable"); setForgeReply(String(data.answer || ""));
     } catch { setForgeReply("The Forge could not complete this refinement. Your feedback is still preserved locally; retry when the furnace reconnects."); }
     finally { setBenchStatus("testing"); }
