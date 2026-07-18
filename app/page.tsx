@@ -35,6 +35,8 @@ type DeckPreview = { card: string; role: string; theme: string; win: string };
 type DeckRow = { quantity: number; name: string };
 type CardFact = { name: string; mana_cost?: string; oracle_text?: string; type_line?: string; set_name?: string; games?: string[]; legalities?: Record<string, string>; image_uris?: { normal?: string; art_crop?: string }; card_faces?: Array<{ name?: string; mana_cost?: string; oracle_text?: string; type_line?: string; image_uris?: { normal?: string; art_crop?: string } }> };
 type CommanderOption = { name: string; colors: string[]; typeLine: string; image: string; verifiedFacts: string };
+type Masterwork = { rune: string; name: string; path: string; tone: string; verdict: string };
+type SavedFamily = { id: string; name: string; format: string; strategy?: string; commander?: CommanderOption | null; selectedWork?: number; path?: string; record?: { wins: number; losses: number }; updatedAt?: string; revisions: Array<{ deckText: string; note: string; createdAt: string; evidence?: { wins?: number; losses?: number } }> };
 type EdhrecSignal = { name: string; category: string; decks: number; eligibleDecks: number; inclusion: number; synergy: number; confidence: string; newCardPotential: boolean };
 type EdhrecEvidence = { available: boolean; source?: string; methodology?: string; reason?: string; cards: EdhrecSignal[] };
 
@@ -77,6 +79,11 @@ const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
   ],
 };
 const cardImage = (name: string) => `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=normal`;
+const NAME_CORES = ["Ashen Crown", "Verdant Pulse", "Glass Horizon", "Thunder Loom", "Moonlit Engine", "Gilded Tempest", "Hollow Star", "Wildwood Oath", "Crimson Archive", "Aetherwake", "Iron Bloom", "Silent Constellation"];
+const PATHS = ["Relentless Momentum", "Layered Synergy", "Reactive Precision", "Resource Alchemy", "Creature-Engine Growth", "Graveyard Recursion", "Tempo Conversion", "Board-State Dominion", "Patient Inevitability", "Explosive Convergence", "Adaptive Value", "Protected Combo"];
+const VERDICTS = ["Its lines overlap naturally, letting ordinary draws become meaningful decisions instead of scripted sequences.", "This design turns the commander's most unusual clause into a repeatable source of leverage.", "The shell bends between pressure and recovery without abandoning the commission's central promise.", "Redundant enablers support several distinct finishes, so interaction does not erase the deck's identity.", "Its resource plan rewards careful sequencing and creates an endgame that feels earned rather than automatic.", "The design attacks from an unexpected angle while preserving enough interaction to survive a changing table.", "Every major package serves two roles, reducing dead draws while keeping the deck expressive.", "The strongest version was the one that made the commander matter without making the entire deck collapse around it."];
+const hashText = (value: string) => Array.from(value).reduce((hash, char) => (hash * 31 + char.charCodeAt(0)) >>> 0, 2166136261);
+const createMasterworks = (seed: number, commander = ""): Masterwork[] => { const base = hashText(`${seed}-${commander}`); return Array.from({ length: 9 }, (_, index) => { const n = (base + index * 7919) >>> 0, core = NAME_CORES[(base + index * 5) % NAME_CORES.length]; const identity = commander.split(/[ ,]+/)[0] || "Forge"; return { rune: ["ᛋ", "ᛉ", "ᛟ", "ᚷ", "ᚱ", "ᛇ", "ᚾ", "ᛞ", "ᛜ"][index], name: index % 3 === 0 ? `The ${identity} ${core}` : `The ${core}`, path: PATHS[(base + index * 7) % PATHS.length], tone: ["ember", "steel", "rune"][index % 3], verdict: VERDICTS[(n >>> 7) % VERDICTS.length] }; }); };
 const commanderOption = (card: any): CommanderOption => { const faceFacts = (card.card_faces || []).map((face: any) => `${face.name} ${face.mana_cost || ""}\n${face.type_line || ""}\n${face.oracle_text || ""}`).join("\nTRANSFORMS TO\n"); return { name: card.name, colors: card.color_identity || [], typeLine: card.type_line || "Legendary card", image: card.image_uris?.small || card.card_faces?.[0]?.image_uris?.small || "", verifiedFacts: `LIVE SCRYFALL RECORD\nName: ${card.name}\nMana cost: ${card.mana_cost || card.card_faces?.[0]?.mana_cost || "None"}\nType: ${card.type_line || ""}\nColor identity: ${(card.color_identity || []).join("") || "Colorless"}\nSet: ${card.set_name || ""} (${card.set || ""})\nAvailable games: ${(card.games || []).join(", ")}\nBrawl legality: ${card.legalities?.brawl || "unknown"}\nCommander legality: ${card.legalities?.commander || "unknown"}\nOracle text:\n${faceFacts || card.oracle_text || ""}` }; };
 const formatEdhrecEvidence = (evidence: EdhrecEvidence | null, format: string) => {
   if (!evidence?.available || !evidence.cards.length) return "EDHREC has no usable commander evidence for this commission yet. Do not penalize new or sparsely indexed cards; evaluate them from verified rules text and the Blueprint.";
@@ -113,6 +120,10 @@ export default function Home() {
   const [hoveredCard, setHoveredCard] = useState("");
   const [cardOrder, setCardOrder] = useState<string[]>([]);
   const [edhrecEvidence, setEdhrecEvidence] = useState<EdhrecEvidence | null>(null);
+  const [commissionSeed, setCommissionSeed] = useState(() => Date.now());
+  const [deckId, setDeckId] = useState("");
+  const [savedMasterworks, setSavedMasterworks] = useState<SavedFamily[]>([]);
+  const [restoredWork, setRestoredWork] = useState<Masterwork | null>(null);
 
   useEffect(() => {
     if (chamber !== "forging") return;
@@ -125,14 +136,15 @@ export default function Home() {
   }, [chamber, stage]);
 
   const progress = useMemo(() => ((stage + 1) / FORGING_STAGES.length) * 100, [stage]);
-  const awaken = () => { setStage(0); setMasterworkPage(0); setSelectedWork(0); setChamber("forging"); };
+  const awaken = () => { setCommissionSeed(Date.now()); setStage(0); setMasterworkPage(0); setSelectedWork(0); setChamber("forging"); };
   const chapter = chamber === "entrance" ? 0 : chamber === "commission" || chamber === "refine" ? 1 : chamber === "forging" ? 2 : 3;
-  const visibleMasterworks = useMemo(() => MASTERWORK_POOL.slice(masterworkPage * 3, masterworkPage * 3 + 3), [masterworkPage]);
+  const masterworks = useMemo(() => createMasterworks(commissionSeed, selectedCommander?.name), [commissionSeed, selectedCommander?.name]);
+  const visibleMasterworks = useMemo(() => masterworks.slice(masterworkPage * 3, masterworkPage * 3 + 3), [masterworkPage, masterworks]);
   const randomCommission = randomCommanderMode && Boolean(selectedCommander && seenRandomCommanders.includes(selectedCommander.name));
   const commanderFor = (index: number) => randomCommission && randomCommanderOptions.length === 3 ? randomCommanderOptions[index % 3] : selectedCommander;
   const previewFor = (index: number) => { const base = (FORMAT_PREVIEWS[format] ?? FORMAT_PREVIEWS.Standard)[index % 3]; const commander = commanderFor(index); return commander && (format === "Commander" || format === "Brawl") ? { ...base, card: commander.name, role: randomCommission ? "Commander · discovered by the Forge" : "Commander · chosen in your Blueprint", theme: commissionNote.trim() || `A ${commander.colors.join("")} identity commission built around this commander.` } : base; };
   const chosenPreview = previewFor(selectedWork);
-  const chosenWork = MASTERWORK_POOL[selectedWork];
+  const chosenWork = restoredWork || masterworks[selectedWork];
   const deckRows = useMemo(() => parseDeckRows(forgedDeck), [forgedDeck]);
   const orderedDeckRows = useMemo(() => [...deckRows].sort((a, b) => { const ai = cardOrder.indexOf(a.name), bi = cardOrder.indexOf(b.name); return (ai < 0 ? 9999 : ai) - (bi < 0 ? 9999 : bi); }), [deckRows, cardOrder]);
   const groupedDeck = useMemo(() => { const groups: Record<string, DeckRow[]> = {}; for (const row of orderedDeckRows) { const group = cardGroup(cardFacts[row.name.toLowerCase()], (format === "Commander" || format === "Brawl") && row.name.toLowerCase() === chosenPreview.card.toLowerCase()); (groups[group] ||= []).push(row); } return groups; }, [orderedDeckRows, cardFacts, format, chosenPreview.card]);
@@ -149,6 +161,8 @@ export default function Home() {
   }, [forgedDeck]);
 
   useEffect(() => { setCardOrder(deckRows.map(row => row.name)); }, [forgedDeck]);
+
+  useEffect(() => { (async () => { try { const response = await fetch("/api/account/deck-bench", { cache: "no-store" }); if (!response.ok) return; const data = await response.json(); setSavedMasterworks((data.bench?.families || []).filter((family: SavedFamily) => family.id && family.revisions?.length).sort((a: SavedFamily, b: SavedFamily) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")))); } catch { /* History remains available after the account reconnects. */ } })(); }, []);
 
   useEffect(() => {
     if (!(["Commander", "Brawl"].includes(format)) || commanderQuery.trim().length < 2 || selectedCommander?.name === commanderQuery.trim()) { setCommanderResults([]); return; }
@@ -193,10 +207,10 @@ export default function Home() {
   }
 
   async function inspectMasterwork(index: number) {
-    const work = MASTERWORK_POOL[index];
+    const work = masterworks[index];
     const preview = previewFor(index);
     const commander = commanderFor(index);
-    setSelectedWork(index); if (commander) setSelectedCommander(commander); setChamber("workbench"); setBenchStatus("forging"); setForgeReply("");
+    const generationId = crypto.randomUUID(); setRestoredWork(null); setDeckId(generationId); setSelectedWork(index); if (commander) setSelectedCommander(commander); setChamber("workbench"); setBenchStatus("forging"); setForgeReply("");
     let evidence: EdhrecEvidence | null = null;
     if (commander && (format === "Commander" || format === "Brawl")) {
       try { const evidenceResponse = await fetch(`/api/forge/edhrec?commander=${encodeURIComponent(commander.name)}`); if (evidenceResponse.ok) evidence = await evidenceResponse.json(); } catch { /* The Forge can proceed from verified card facts alone. */ }
@@ -208,22 +222,33 @@ export default function Home() {
       const response = await fetch("/api/forge/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ task: "deck_generation", depth: "deep", messages: [{ role: "user", content: prompt }], context: { game: "mtg", deckName: work.name, format, deckText: "", verifiedFacts: `${commander?.verifiedFacts || "No commander record required for this format."}\n\n${evidenceFacts}`, coachingProfile: "Prefers concise, testable deck guidance." } }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || "Forge unavailable");
-      const answer = String(data.answer || ""); const total = parseDeckRows(answer).reduce((sum, row) => sum + row.quantity, 0); const minimum = format === "Commander" ? 100 : format === "Brawl" ? 60 : 40; if (total < minimum) throw new Error("Incomplete Forge list"); setForgedDeck(answer); setRevisions([{ deck: answer, note: "Original Forge candidate", createdAt: new Date().toISOString() }]);
+      const answer = String(data.answer || ""); const total = parseDeckRows(answer).reduce((sum, row) => sum + row.quantity, 0); const minimum = format === "Commander" ? 100 : format === "Brawl" ? 60 : 40; if (total < minimum) throw new Error("Incomplete Forge list"); const firstRevision = [{ deck: answer, note: "Original Forge candidate", createdAt: new Date().toISOString() }]; setForgedDeck(answer); setRevisions(firstRevision); void persistStoryBench(firstRevision, { wins: 0, losses: 0 }, generationId, { work, commander, index });
     } catch {
       setForgedDeck(`FOUNDER-TEST CANDIDATE\n\n${work.name} · ${format}\nFeatured ${format === "Commander" || format === "Brawl" ? "commander" : "lynchpin"}: ${preview.card}\n\nThe Forge brain could not complete the list on this attempt. Your commission is preserved; retry forging before beginning a legality-sensitive test.`);
     } finally { setBenchStatus("idle"); }
   }
 
-  async function persistStoryBench(nextRevisions = revisions, nextRecord = record) {
-    const snapshot = { format, strategy, selectedWork, forgedDeck, revisions: nextRevisions, record: nextRecord, updatedAt: new Date().toISOString() };
+  function openSavedMasterwork(family: SavedFamily) {
+    const restoredRevisions = family.revisions.map(revision => ({ deck: revision.deckText, note: revision.note, createdAt: revision.createdAt })); const latest = restoredRevisions.at(-1);
+    setDeckId(family.id); setFormat(family.format); setStrategy(family.strategy || "Balanced midrange"); setSelectedWork(family.selectedWork || 0); setSelectedCommander(family.commander || null); setRestoredWork({ rune: "ᛞ", name: family.name, path: family.path || "Preserved Masterwork", tone: "steel", verdict: "A preserved commission, reopened with its complete testing history." }); setForgedDeck(latest?.deck || ""); setRevisions(restoredRevisions); setRecord(family.record || { wins: Number(family.revisions.at(-1)?.evidence?.wins || 0), losses: Number(family.revisions.at(-1)?.evidence?.losses || 0) }); setPlayerSignal(""); setForgeReply(""); setBenchStatus("testing"); setChamber("workbench");
+  }
+
+  async function deleteSavedMasterwork(id: string) {
+    try { const response = await fetch("/api/account/deck-bench", { cache: "no-store" }); if (!response.ok) return; const data = await response.json(); const families = (data.bench?.families || []).filter((family: SavedFamily) => family.id !== id); const saved = await fetch("/api/account/deck-bench", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bench: { schemaVersion: 1, families }, baseRevision: data.revision || 0 }) }); if (saved.ok) setSavedMasterworks(families); } catch { /* A failed delete leaves the preserved deck untouched. */ }
+  }
+
+  async function persistStoryBench(nextRevisions = revisions, nextRecord = record, idOverride = "", meta?: { work: Masterwork; commander: CommanderOption | null; index: number }) {
+    const activeId = idOverride || deckId || crypto.randomUUID(); if (!deckId) setDeckId(activeId);
+    const activeWork = meta?.work || chosenWork, activeCommander = meta?.commander ?? selectedCommander, activeIndex = meta?.index ?? selectedWork;
+    const snapshot = { id: activeId, format, strategy, selectedWork, forgedDeck, revisions: nextRevisions, record: nextRecord, updatedAt: new Date().toISOString() };
     window.localStorage.setItem("metaforge.storyBench", JSON.stringify(snapshot));
     try {
       const response = await fetch("/api/account/deck-bench", { cache: "no-store" }); if (!response.ok) return;
       const current = await response.json(); const bench = current.bench || { schemaVersion: 1, families: [] };
-      const id = `story-${format.toLowerCase()}-${selectedWork}`;
-      const family = { id, name: chosenWork.name, format, archived: false, promotedFingerprint: `story-${nextRevisions.length}`, revisions: nextRevisions.map((revision, index) => ({ fingerprint: `story-${index + 1}-${revision.createdAt}`, version: index + 1, source: index ? "forge" : "original", deckText: revision.deck, note: revision.note, createdAt: revision.createdAt, evidence: { wins: nextRecord.wins, losses: nextRecord.losses, sampleSize: nextRecord.wins + nextRecord.losses, confidence: nextRecord.wins + nextRecord.losses < 3 ? "early signal" : "developing" } })) };
-      const families = [...(bench.families || []).filter((item: { id?: string }) => item.id !== id), family];
+      const family = { id: activeId, name: activeWork.name, format, strategy, commander: activeCommander, selectedWork: activeIndex, path: activeWork.path, record: nextRecord, updatedAt: new Date().toISOString(), archived: false, promotedFingerprint: `story-${nextRevisions.length}`, revisions: nextRevisions.map((revision, index) => ({ fingerprint: `story-${index + 1}-${revision.createdAt}`, version: index + 1, source: index ? "forge" : "original", deckText: revision.deck, note: revision.note, createdAt: revision.createdAt, evidence: { wins: nextRecord.wins, losses: nextRecord.losses, sampleSize: nextRecord.wins + nextRecord.losses, confidence: nextRecord.wins + nextRecord.losses < 3 ? "early signal" : "developing" } })) };
+      const families = [...(bench.families || []).filter((item: { id?: string }) => item.id !== activeId), family];
       await fetch("/api/account/deck-bench", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bench: { schemaVersion: 1, families }, baseRevision: current.revision || 0 }) });
+      setSavedMasterworks(families as SavedFamily[]);
     } catch { /* Browser recovery remains available if account sync is interrupted. */ }
   }
 
@@ -273,6 +298,7 @@ export default function Home() {
         </div>
       </div>
       <div className="entrance-visual" aria-label="The blue rune archive"><div className="forge-sigil"><i>ᛟ</i><span /><b /></div><p>THE ARCHIVE IS LISTENING<small>Every lesson. Every failure. Every masterwork.</small></p></div>
+      {savedMasterworks.length > 0 && <section className="masterwork-history"><header><div><small>YOUR PRIVATE ARCHIVE</small><h2>Return to a Masterwork</h2></div><span>{savedMasterworks.length} PRESERVED</span></header><div>{savedMasterworks.map(family => { const evidence = family.record || family.revisions.at(-1)?.evidence || {}; return <article key={family.id}><button className="history-open" onClick={() => openSavedMasterwork(family)}><small>{family.format} · {family.path || "FORGED DECK"}</small><strong>{family.name}</strong><span>{family.commander?.name || "No commander"}</span><em>{Number(evidence.wins || 0)}W · {Number(evidence.losses || 0)}L · {family.revisions.length} revision{family.revisions.length === 1 ? "" : "s"}</em></button><button className="history-delete" onClick={() => deleteSavedMasterwork(family.id)} aria-label={`Delete ${family.name}`}>Delete</button></article>; })}</div></section>}
     </section>}
 
     {(chamber === "commission" || chamber === "refine") && <section className="commission-chamber">
@@ -299,9 +325,9 @@ export default function Home() {
 
     {chamber === "masterworks" && <section className="masterwork-reveal">
       <header><span className="forge-eyebrow"><i /> THE GREAT FORGE ANSWERS <i /></span><h1>Steel bends. Runes awaken.<br /><em>Three designs endure.</em></h1><p>The Forge honored your {format} commission and shaped three paths around <strong>{strategy.toLowerCase()}</strong>. Choose the one that feels like yours.</p></header>
-      <div className="masterwork-actions"><span>REVEAL {masterworkPage + 1} · {masterworkPage * 3 + 1}–{masterworkPage * 3 + visibleMasterworks.length} SEEN THIS COMMISSION</span><button className="masterwork-recycle" disabled={randomizingCommander || (masterworkPage + 1) * 3 >= MASTERWORK_POOL.length} onClick={recycleMasterworks}>{randomizingCommander ? "Drawing three unseen commanders…" : (masterworkPage + 1) * 3 >= MASTERWORK_POOL.length ? "All unseen Masterworks revealed" : randomCommission ? "None feel right? Draw three new commanders →" : "None feel right? Forge three different Masterworks →"}</button></div>
+      <div className="masterwork-actions"><span>REVEAL {masterworkPage + 1} · {masterworkPage * 3 + 1}–{masterworkPage * 3 + visibleMasterworks.length} SEEN THIS COMMISSION</span><button className="masterwork-recycle" disabled={randomizingCommander || (masterworkPage + 1) * 3 >= masterworks.length} onClick={recycleMasterworks}>{randomizingCommander ? "Drawing three unseen commanders…" : (masterworkPage + 1) * 3 >= masterworks.length ? "All unseen Masterworks revealed" : randomCommission ? "None feel right? Draw three new commanders →" : "None feel right? Forge three different Masterworks →"}</button></div>
       <div className="masterwork-grid">{visibleMasterworks.map((work, index) => { const poolIndex = masterworkPage * 3 + index; const preview = previewFor(poolIndex); return <article className={`masterwork-card ${work.tone}`} key={work.name} style={{ "--delay": `${index * 140}ms` } as React.CSSProperties}><span>MASTERWORK {String(poolIndex + 1).padStart(2, "0")}</span><div className="masterwork-title"><i>{work.rune}</i><div><small>{work.path} · {format}</small><h2>{work.name}</h2></div></div><div className="masterwork-glimpse"><img src={cardImage(preview.card)} alt={`${preview.card} card`} loading="lazy" /><div><small>{preview.role}</small><strong>{preview.card}</strong><p>{preview.theme}</p><em><b>WIN CONDITION</b>{preview.win}</em></div></div><div className="masterwork-stats">{["Aggression", "Interaction", "Synergy", "Complexity"].map((label, statIndex) => <span key={label}><small>{label}</small><b>{MASTERWORK_STATS[poolIndex][statIndex]}</b></span>)}</div><p className="masterwork-verdict">{work.verdict}</p><button onClick={() => inspectMasterwork(poolIndex)}>Inspect this Masterwork <b>→</b></button></article>; })}</div>
-      <footer><button onClick={() => { setMasterworkPage(0); setChamber("entrance"); }}>Begin a new commission</button><span>THREE OF 642 DESIGNS SURVIVED</span><button className="masterwork-recycle" disabled={randomizingCommander || (masterworkPage + 1) * 3 >= MASTERWORK_POOL.length} onClick={recycleMasterworks}>{randomizingCommander ? "Drawing three unseen commanders…" : (masterworkPage + 1) * 3 >= MASTERWORK_POOL.length ? "All unseen Masterworks revealed" : randomCommission ? "Recycle these · Draw three new commanders →" : "Recycle these · Forge three new Masterworks →"}</button></footer>
+      <footer><button onClick={() => { setMasterworkPage(0); setChamber("entrance"); }}>Begin a new commission</button><span>THREE OF 642 DESIGNS SURVIVED</span><button className="masterwork-recycle" disabled={randomizingCommander || (masterworkPage + 1) * 3 >= masterworks.length} onClick={recycleMasterworks}>{randomizingCommander ? "Drawing three unseen commanders…" : (masterworkPage + 1) * 3 >= masterworks.length ? "All unseen Masterworks revealed" : randomCommission ? "Recycle these · Draw three new commanders →" : "Recycle these · Forge three new Masterworks →"}</button></footer>
     </section>}
 
     {chamber === "workbench" && <section className="testing-anvil">
