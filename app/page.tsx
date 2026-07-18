@@ -23,6 +23,7 @@ import { coachingProgress, evaluateIntervention, inferCoachingTarget } from "./c
 import APPROVED_PRO_COACHING from "./pro-coaching-knowledge.mjs";
 import { professionalCoachLens } from "./professional-coach.mjs";
 import RiftboundForge from "./riftbound-forge";
+import MasterworkForge from "./masterwork-forge";
 import { buildPlayerCharacterSheet } from "./player-character-sheet.mjs";
 
 const SAMPLE_DECK = `4 Monastery Swiftspear
@@ -38,6 +39,12 @@ const REQUIRED_COMPANION_VERSION = "0.3.4";
 const BUILD_ID = "2026.07.16-workspace1";
 const FORGE_STAGES = ["home","build","recommend","test","bench","labs"] as const;
 type ForgeStage = typeof FORGE_STAGES[number];
+const STORY_CHAPTERS: Array<{ stage: ForgeStage; chapter: string; title: string; promise: string }> = [
+  { stage: "build", chapter: "I", title: "Bring the raw steel", promise: "Give Forge the deck as it exists today." },
+  { stage: "recommend", chapter: "II", title: "Read the fault lines", promise: "See one pressure point and the evidence behind it." },
+  { stage: "test", chapter: "III", title: "Temper one change", promise: "Compare a stronger version, then test it honestly." },
+  { stage: "bench", chapter: "IV", title: "Keep the legend", promise: "Let every match become part of the deck's history." },
+];
 const SAMPLE_DRAFT_PACK = `Shieldwall Recruit | 3.4 | W | 2 | Creature
 Molten Rebuke | 3.7 | R | 2 | Instant
 Archive Visionary | 3.5 | U | 3 | Creature
@@ -66,6 +73,7 @@ export default function Home() {
   const [recordsPulse,setRecordsPulse]=useState(false);
   const previousMatchCount=useRef(0);
   const [comparisonOpen, setComparisonOpen] = useState(false);
+  const [inspectedMasterwork, setInspectedMasterwork] = useState<any>(null);
   const [proposedDeck, setProposedDeck] = useState("");
   const [comparisonReady, setComparisonReady] = useState(false);
   const [candidateCopyStatus, setCandidateCopyStatus] = useState("Start founder trial →");
@@ -680,6 +688,30 @@ export default function Home() {
         <nav aria-label="Forge stages">{FORGE_STAGES.map(stage=>{const locked=stage==="recommend"&&!analyzed||stage==="test"&&!comparisonOpen&&!experiment;return <button key={stage} disabled={locked} title={locked?stage==="recommend"?"Analyze a deck first":"Choose a recommendation first":undefined} className={workspaceStage===stage?"active":""} aria-current={workspaceStage===stage?"page":undefined} onClick={()=>openStage(stage)}>{stage === "recommend" ? "Recommendation" : stage[0].toUpperCase()+stage.slice(1)}</button>})}</nav>
       </section>
 
+      <section className="forge-story shell" aria-labelledby="forge-story-title">
+        <header>
+          <div><small>YOUR DECK'S STORY</small><h2 id="forge-story-title">Every deck enters unfinished.</h2></div>
+          <p>Forge does not hand you a verdict. It carries one idea through diagnosis, change, play, and memory.</p>
+        </header>
+        <ol>
+          {STORY_CHAPTERS.map((item, index) => {
+            const stageIndex = FORGE_STAGES.indexOf(item.stage);
+            const currentIndex = FORGE_STAGES.indexOf(workspaceStage);
+            const unlocked = item.stage === "build" || (item.stage === "recommend" && analyzed) || (item.stage === "test" && (comparisonOpen || Boolean(experiment))) || item.stage === "bench";
+            const complete = item.stage === "build" ? analyzed : item.stage === "recommend" ? Boolean(comparisonOpen || experiment) : item.stage === "test" ? Boolean(experimentEvidence.sampleSize) : arenaMatches.length > 0;
+            const active = workspaceStage === item.stage || (workspaceStage === "home" && index === 0);
+            return <li key={item.stage} className={`${active ? "active" : ""} ${complete ? "complete" : ""}`}>
+              <button disabled={!unlocked} onClick={() => openStage(item.stage)} aria-current={active ? "step" : undefined}>
+                <span><i>{complete ? "✓" : item.chapter}</i><small>CHAPTER {item.chapter}</small></span>
+                <strong>{item.title}</strong>
+                <em>{item.promise}</em>
+                <b aria-hidden="true">{active ? "YOU ARE HERE" : complete ? "FORGED" : currentIndex > stageIndex ? "REVISIT" : "CONTINUE"}</b>
+              </button>
+            </li>;
+          })}
+        </ol>
+      </section>
+
       <section className="return-cockpit shell" id="cockpit" aria-label="Your MetaForge home">
         <header><div><small>START HERE · YOUR NEXT MOVE</small><h1>{experiment ? `Continue ${experiment.deckName}` : cardCount ? `Improve ${deckName}` : "Forge your first deck test"}</h1><p>{experiment ? `${experimentEvidence.sampleSize}/5 matches complete. Keep playing this exact revision.` : analyzed ? "Choose one proposed change, compare it, then start the experiment." : cardCount ? "Your deck is entered. Press Forge my analysis next." : "Click Forge a deck, paste your list, then press Forge my analysis."}</p></div><b>{experiment ? experimentStage.toUpperCase() : analyzed ? "CHOOSE" : cardCount ? "ANALYZE" : "STEP 1"}<span>STATUS</span></b></header>
         <div className="cockpit-actions">
@@ -755,6 +787,57 @@ export default function Home() {
             <article className="meta-historical"><small>HISTORICAL PRIOR · {meta.historicalPrior.start}—{meta.historicalPrior.end}</small><h3>{meta.historicalMajority}-leaning field</h3><p>{meta.historicalPrior.sampleSize} decks provide a high-confidence comparison state—not permission to call it today’s meta.</p><div className="meta-bars">{meta.historicalPrior.strategies.slice(0, 4).map((strategy) => <div key={strategy.name}><span>{strategy.name}</span><i><b style={{ width: `${strategy.share * 100}%` }} /></i><strong>{(strategy.share * 100).toFixed(1)}%</strong></div>)}</div></article>
           </div>
           <p className="meta-method">GENERATOR GATE · {meta.generatorGate.replaceAll("-", " ")} · {meta.method}</p>
+          <MasterworkForge
+            candidates={CANDIDATES}
+            evaluatedCandidates={642}
+            busy={arenaTracking === "registered"}
+            onInspect={(candidate) => {
+              setInspectedMasterwork(candidate);
+
+              const arenaDeck = `Deck
+${candidate.deckText}
+
+Sideboard
+${candidate.sideboardText}`;
+
+              setDeckName(
+                candidate.name.replace(
+                  /^Forge Prototype\s*·\s*/i,
+                  "",
+                ),
+              );
+              setFormat(candidate.format);
+              setProposedDeck(arenaDeck);
+              setComparisonReady(false);
+              setComparisonOpen(true);
+              openStage("test");
+            }}
+            onChoose={async (candidate) => {
+              setInspectedMasterwork(candidate);
+              await startForgeCandidate(candidate);
+              openStage("test");
+            }}
+            onDecline={(candidate) => {
+              if (
+                inspectedMasterwork?.name === candidate.name
+              ) {
+                setInspectedMasterwork(null);
+              }
+            }}
+            onNewCommission={() => {
+              setInspectedMasterwork(null);
+              setProposedDeck("");
+              setComparisonReady(false);
+              setComparisonOpen(false);
+              setAnalyzed(false);
+              openStage("build");
+            }}
+            onReturnEntrance={() => {
+              setInspectedMasterwork(null);
+              openStage("home");
+            }}
+          />
+
           <article className="forge-prototype"><div><small>FORGE RECOMMENDED · META BREAKER</small><h3>{FORGE_CANDIDATE.name}</h3><p>{FORGE_CANDIDATE.reasoning}</p><em>Not a popularity pick: Forge generated this list to attack the measured field, then required format legality, a complete sideboard, supported synergies, and opening-hand consistency before offering it for testing.</em></div><div className="prototype-facts"><span><b>{FORGE_CANDIDATE.strategy}</b>STRATEGY</span><span><b>{FORGE_CANDIDATE.target}</b>FIELD TARGET</span><span><b>{((1 - FORGE_CANDIDATE.novelty) * 100).toFixed(0)}%</b>EST. FIELD OVERLAP</span><span><b>{(FORGE_CANDIDATE.coherence * 100).toFixed(0)}%</b>SYNERGY SUPPORT</span><span><b>FOUNDER TEST</b>VIABILITY GATE</span><span><b>{FORGE_CANDIDATE.rankScore.toFixed(1)}</b>RANK SCORE</span></div><button onClick={() => startForgeCandidate(FORGE_CANDIDATE)}>{candidateCopyStatus}</button></article>
           <article className="forge-theory"><header><div><small>FORGE THEORY · ZERO TOURNAMENT CREDIT ASSUMED</small><h3>{FORGE_THEORY.name}</h3></div><b>{theoryEvidence.stage.replaceAll("-", " ")}</b></header><p><strong>THE THEORY</strong> Mjölnir may convert the Izzet shell’s cheap interaction and flexible threats into repeatable pressure without abandoning its tempo plan. Card design and role fit justify a trial; tournament results do not yet justify confidence.</p><div><span><b>−2 Fire Magic</b>CONTROL VARIABLE</span><span><b>+2 Mjölnir</b>NEW-CARD HYPOTHESIS</span><span><b>Fail if pressure slows</b>REJECTION CONDITION</span><span><b>5 exact matches</b>FIRST REVIEW</span></div><footer><em>{theoryEvidence.warning} Legality, deck size, copy limits, and opening hands must still pass before Arena testing.</em><button onClick={() => startForgeCandidate(FORGE_THEORY)}>Load theory experiment →</button></footer></article>
           <section className="simulation-ladder" aria-label="Simulation ladder results">

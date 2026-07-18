@@ -37,5 +37,8 @@
     "vite": "8.0.13",
     "wrangler": "4.92.0"
   },
-  "type": "module"
+  "type": "module",
+  "overrides": {
+    "miniflare": "4.20260714.0"
+  }
 }

@@ -87,6 +87,11 @@ test("Forge conversation requires an account and falls back to native coaching w
   assert.equal((await worker.fetch(chatRequest(null),env(DB),ctx)).status,401);
   const native=await worker.fetch(chatRequest("one@example.com"),env(DB),ctx);assert.equal(native.status,200);const body=await native.json();assert.equal(body.model,"metaforge-native-v1");assert.match(body.answer,/Paste the decklist/);
 });
+test("Riftbound native coaching supplies the field snapshot instead of asking players to provide the meta", async () => {
+  const worker=await loadWorker(); const DB=new FakeD1();
+  const request=new Request("https://example.test/api/forge/chat",{method:"POST",headers:{"cf-access-authenticated-user-email":"one@example.com","content-type":"application/json"},body:JSON.stringify({messages:[{role:"user",content:"Build me a counter-meta Riftbound deck"}],context:{game:"riftbound",format:"Riftbound constructed"}})});
+  const response=await worker.fetch(request,env(DB),ctx);assert.equal(response.status,200);const body=await response.json();assert.match(body.answer,/Current Riftbound field/);assert.match(body.answer,/Tier 1/);
+});
 test("Coach readiness distinguishes native and model modes before a tester composes",async()=>{const worker=await loadWorker(),DB=new FakeD1(),pending=[];const awaitedCtx={...ctx,waitUntil(promise){pending.push(promise)}};const offline=await (await worker.fetch(coachStatusRequest(),env(DB),awaitedCtx)).json();assert.equal(offline.ready,true);assert.equal(offline.modelReady,false);assert.equal(offline.mode,"native");assert.match(offline.fallback,/Native Coach/i);const online=await (await worker.fetch(coachStatusRequest(),{...env(DB),OPENAI_API_KEY:"test"},awaitedCtx)).json();assert.equal(online.ready,true);assert.equal(online.modelReady,true);assert.equal(online.mode,"model");await Promise.all(pending)});
 
 test("Player DNA coaching preferences restore across devices without stale overwrites",async()=>{
