@@ -1,8 +1,13 @@
-# vinext-starter
+# MetaForge Web Forge
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+This directory contains the player-facing MetaForge private alpha. Start with
+the repository-level [Project Manifest](../PROJECT_MANIFEST.md) for the current
+journey, live environments, architecture map, and handoff notes.
+
+## Runtime
+
+The application runs on [vinext](https://github.com/cloudflare/vinext) with
+Cloudflare Workers, optional D1, and Drizzle support.
 
 ## Prerequisites
 
