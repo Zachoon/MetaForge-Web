@@ -33,8 +33,8 @@ const MASTERWORK_POOL = [...MASTERWORKS, ...ADDITIONAL_MASTERWORKS] as const;
 
 type DeckPreview = { card: string; role: string; theme: string; win: string };
 type DeckRow = { quantity: number; name: string };
-type CardFact = { name: string; type_line?: string; image_uris?: { normal?: string; art_crop?: string }; card_faces?: Array<{ image_uris?: { normal?: string; art_crop?: string } }> };
-type CommanderOption = { name: string; colors: string[]; typeLine: string; image: string };
+type CardFact = { name: string; mana_cost?: string; oracle_text?: string; type_line?: string; set_name?: string; games?: string[]; legalities?: Record<string, string>; image_uris?: { normal?: string; art_crop?: string }; card_faces?: Array<{ name?: string; mana_cost?: string; oracle_text?: string; type_line?: string; image_uris?: { normal?: string; art_crop?: string } }> };
+type CommanderOption = { name: string; colors: string[]; typeLine: string; image: string; verifiedFacts: string };
 
 const MASTERWORK_STATS = [[94, 46, 70, 48], [72, 78, 76, 68], [28, 96, 64, 86], [76, 88, 72, 78], [62, 54, 94, 72], [44, 82, 88, 76], [86, 48, 90, 58], [38, 68, 98, 96], [42, 58, 82, 66]] as const;
 const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
@@ -124,6 +124,7 @@ export default function Home() {
   const activeCard = hoveredCard || chosenPreview.card || deckRows[0]?.name || "";
   const activeFact = cardFacts[activeCard.toLowerCase()];
   const activeImage = activeFact?.image_uris?.normal || activeFact?.card_faces?.[0]?.image_uris?.normal || (activeCard ? cardImage(activeCard) : "");
+  const verifiedDeckFacts = useMemo(() => Object.values(cardFacts).map(fact => { const faces = fact.card_faces?.map(face => `${face.name || fact.name} ${face.mana_cost || ""} · ${face.type_line || ""}\n${face.oracle_text || ""}`).join("\nTRANSFORMS TO\n"); return `${fact.name} · ${fact.mana_cost || ""} · ${fact.type_line || ""} · Set: ${fact.set_name || "Unknown"} · Games: ${(fact.games || []).join(", ")} · ${format} legality: ${fact.legalities?.[format.toLowerCase()] || "ruleset review required"}\n${faces || fact.oracle_text || ""}`; }).join("\n\n").slice(0, 10000), [cardFacts, format]);
 
   useEffect(() => {
     const names = [...new Set(parseDeckRows(forgedDeck).map(row => row.name))]; if (!names.length) { setCardFacts({}); return; }
@@ -136,7 +137,7 @@ export default function Home() {
 
   useEffect(() => {
     if (!(["Commander", "Brawl"].includes(format)) || commanderQuery.trim().length < 2 || selectedCommander?.name === commanderQuery.trim()) { setCommanderResults([]); return; }
-    const timer = window.setTimeout(async () => { setCommanderSearching(true); try { const query = encodeURIComponent(`legal:${format.toLowerCase()} is:commander name:${commanderQuery.trim()}`); const response = await fetch(`https://api.scryfall.com/cards/search?q=${query}&order=name`); const data = await response.json(); setCommanderResults((data.data || []).slice(0, 8).map((card: any) => ({ name: card.name, colors: card.color_identity || [], typeLine: card.type_line || "Legendary card", image: card.image_uris?.small || card.card_faces?.[0]?.image_uris?.small || "" }))); } catch { setCommanderResults([]); } finally { setCommanderSearching(false); } }, 320);
+    const timer = window.setTimeout(async () => { setCommanderSearching(true); try { const query = encodeURIComponent(`game:arena legal:${format.toLowerCase()} is:commander name:${commanderQuery.trim()}`); const response = await fetch(`https://api.scryfall.com/cards/search?q=${query}&order=name`); const data = await response.json(); setCommanderResults((data.data || []).slice(0, 8).map((card: any) => { const faceFacts = (card.card_faces || []).map((face: any) => `${face.name} ${face.mana_cost || ""}\n${face.type_line || ""}\n${face.oracle_text || ""}`).join("\nTRANSFORMS TO\n"); return { name: card.name, colors: card.color_identity || [], typeLine: card.type_line || "Legendary card", image: card.image_uris?.small || card.card_faces?.[0]?.image_uris?.small || "", verifiedFacts: `LIVE SCRYFALL RECORD\nName: ${card.name}\nMana cost: ${card.mana_cost || card.card_faces?.[0]?.mana_cost || "None"}\nType: ${card.type_line || ""}\nColor identity: ${(card.color_identity || []).join("") || "Colorless"}\nSet: ${card.set_name || ""} (${card.set || ""})\nAvailable games: ${(card.games || []).join(", ")}\nBrawl legality: ${card.legalities?.brawl || "unknown"}\nCommander legality: ${card.legalities?.commander || "unknown"}\nOracle text:\n${faceFacts || card.oracle_text || ""}` }; })); } catch { setCommanderResults([]); } finally { setCommanderSearching(false); } }, 320);
     return () => window.clearTimeout(timer);
   }, [commanderQuery, format, selectedCommander?.name]);
 
@@ -161,9 +162,9 @@ export default function Home() {
     const work = MASTERWORK_POOL[index];
     const preview = previewFor(index);
     setSelectedWork(index); setChamber("workbench"); setBenchStatus("forging"); setForgeReply("");
-    const prompt = `Forge the complete ${format} deck represented by ${work.name}. Its identity is ${work.path}; required ${format === "Commander" || format === "Brawl" ? "commander" : "lynchpin"}: ${preview.card}; requested play style: ${strategy}. The player's Blueprint note is: ${commissionNote.trim() || "No additional note"}. Return a concise pilot brief followed by one complete import-ready decklist. The chosen commander and its color identity are binding constraints. This is a founder-test candidate: never claim legality or performance that has not been verified, and explicitly identify any uncertainty.`;
+    const prompt = `Forge the complete ${format} deck represented by ${work.name}. Its identity is ${work.path}; required ${format === "Commander" || format === "Brawl" ? "commander" : "lynchpin"}: ${preview.card}; requested play style: ${strategy}. The player's Blueprint note is: ${commissionNote.trim() || "No additional note"}. ${format === "Brawl" ? "MetaForge Brawl means current Arena Brawl: 60-card singleton, using the live Scryfall brawl legality and Arena availability supplied in verified facts. Do not ask whether this means Standard or Historic Brawl." : ""} Return a concise pilot brief followed by one complete import-ready decklist. The chosen commander, oracle text, legality, Arena availability, and color identity in verified facts are binding constraints. Do not claim this commander is unverified when its live record is supplied. This is a founder-test candidate: never claim performance that has not been verified, and explicitly identify any remaining uncertainty.`;
     try {
-      const response = await fetch("/api/forge/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ depth: "deep", messages: [{ role: "user", content: prompt }], context: { game: "mtg", deckName: work.name, format, deckText: "", coachingProfile: "Prefers concise, testable deck guidance." } }) });
+      const response = await fetch("/api/forge/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ depth: "deep", messages: [{ role: "user", content: prompt }], context: { game: "mtg", deckName: work.name, format, deckText: "", verifiedFacts: selectedCommander?.verifiedFacts || "No commander record required for this format.", coachingProfile: "Prefers concise, testable deck guidance." } }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || "Forge unavailable");
       const answer = String(data.answer || ""); setForgedDeck(answer); setRevisions([{ deck: answer, note: "Original Forge candidate", createdAt: new Date().toISOString() }]);
@@ -200,7 +201,7 @@ export default function Home() {
     setBenchStatus("thinking"); setForgeReply("");
     const prompt = `I tested revision ${revisions.length || 1} of ${chosenWork.name}. My signal: ${playerSignal.trim()}\n\nDiagnose the most likely issue without overreacting to one result. Give 2-3 precise replacement packages or alternatives with what comes out, what comes in, the tradeoff, and the smallest next test. Preserve the deck's ${chosenWork.path} identity and my ${strategy} preference.`;
     try {
-      const response = await fetch("/api/forge/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ depth: "balanced", messages: [{ role: "user", content: prompt }], context: { game: "mtg", deckName: chosenWork.name, format, deckText: forgedDeck, coachingProfile: "Prefers concise alternatives and testable changes." } }) });
+      const response = await fetch("/api/forge/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ depth: "balanced", messages: [{ role: "user", content: prompt }], context: { game: "mtg", deckName: chosenWork.name, format, deckText: forgedDeck, verifiedFacts: verifiedDeckFacts || selectedCommander?.verifiedFacts || "Live card facts are still loading.", coachingProfile: "Prefers concise alternatives and testable changes." } }) });
       const data = await response.json(); if (!response.ok) throw new Error(data?.error || "Forge unavailable"); setForgeReply(String(data.answer || ""));
     } catch { setForgeReply("The Forge could not complete this refinement. Your feedback is still preserved locally; retry when the furnace reconnects."); }
     finally { setBenchStatus("testing"); }
