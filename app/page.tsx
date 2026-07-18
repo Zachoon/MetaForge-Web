@@ -351,7 +351,7 @@ const targetDeckSize = (format: string) =>
     ? 100
     : format === "Standard Brawl"
       ? 60
-      : 40;
+      : 60;
 const scryfallLegality = (format: string) =>
   format === "Commander"
     ? "commander"
@@ -530,6 +530,8 @@ export default function Home() {
   >([]);
   const [consideringCards, setConsideringCards] = useState<DeckRow[]>([]);
   const [removedCards, setRemovedCards] = useState<DeckRow[]>([]);
+  const [editAnvilOpen, setEditAnvilOpen] = useState(true);
+  const [forgeGenerationError, setForgeGenerationError] = useState("");
   const [replacementRecommendations, setReplacementRecommendations] = useState<
     CardSearchResult[]
   >([]);
@@ -1030,6 +1032,11 @@ export default function Home() {
     setChamber("workbench");
     setBenchStatus("forging");
     setForgeReply("");
+    setForgeGenerationError("");
+    setConsideringCards([]);
+    setRemovedCards([]);
+    setReplacementRecommendations([]);
+    setLastCutCard("");
     let evidence: EdhrecEvidence | null = null;
     if (commander && isCommanderFormat(format)) {
       try {
@@ -1044,34 +1051,41 @@ export default function Home() {
     setEdhrecEvidence(evidence);
     const evidenceFacts = formatEdhrecEvidence(evidence, format);
     const prompt = `Forge the complete ${format} deck represented by ${work.name}. Its identity is ${work.path}; required ${isCommanderFormat(format) ? "commander" : "lynchpin"}: ${preview.card}; requested play style: ${strategy}. The player's Blueprint note is: ${commissionNote.trim() || "No additional note"}. ${format === "Brawl" ? "MetaForge Brawl means current Arena Brawl: exactly 100 cards total, one commander plus 99 main-deck cards, using live Brawl legality and Arena availability." : format === "Standard Brawl" ? "MetaForge Standard Brawl means exactly 60 cards total, one commander plus 59 Standard-legal Arena cards." : ""} Return a concise pilot brief followed by one complete import-ready decklist. The chosen commander, oracle text, legality, Arena availability, and color identity in verified facts are binding constraints. Use the EDHREC evidence as a prior for card adoption and co-occurrence, not as proof or a legality source. Do not claim this commander is unverified when its live record is supplied. This is a founder-test candidate: never claim performance that has not been verified, and explicitly identify any remaining uncertainty.`;
+    const target = targetDeckSize(format);
     try {
-      const response = await fetch("/api/forge/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          task: "deck_generation",
-          depth: "deep",
-          messages: [{ role: "user", content: prompt }],
-          context: {
-            game: "mtg",
-            deckName: work.name,
-            format,
-            deckText: "",
-            verifiedFacts: `${commander?.verifiedFacts || "No commander record required for this format."}\n\n${evidenceFacts}`,
-            coachingProfile: "Prefers concise, testable deck guidance.",
-          },
-        }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data?.error || "Forge unavailable");
-      const answer = String(data.answer || "");
-      const total = parseDeckRows(answer).reduce(
-        (sum, row) => sum + row.quantity,
-        0,
-      );
-      const target = targetDeckSize(format);
-      if (isCommanderFormat(format) ? total !== target : total < target)
-        throw new Error("Incomplete Forge list");
+      let answer = "";
+      let total = 0;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const repairInstruction = attempt
+          ? `Your previous response parsed as ${total} cards, but this format requires exactly ${target}. Rewrite the entire import-ready list now. Do not explain the error. Every decklist line must begin with a numeric quantity.`
+          : prompt;
+        const response = await fetch("/api/forge/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            task: "deck_generation",
+            depth: "deep",
+            messages: [{ role: "user", content: repairInstruction }],
+            context: {
+              game: "mtg",
+              deckName: work.name,
+              format,
+              deckText: attempt ? answer : "",
+              verifiedFacts: `${commander?.verifiedFacts || "No commander record required for this format."}\n\n${evidenceFacts}`,
+              coachingProfile: "Prefers concise, testable deck guidance.",
+            },
+          }),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data?.error || "Forge unavailable");
+        answer = String(data.answer || "");
+        total = parseDeckRows(answer).reduce(
+          (sum, row) => sum + row.quantity,
+          0,
+        );
+        if (total === target) break;
+      }
+      if (total !== target) throw new Error("Incomplete Forge list");
       const firstRevision = [
         {
           deck: answer,
@@ -1088,8 +1102,9 @@ export default function Home() {
         { work, commander, index },
       );
     } catch {
-      setForgedDeck(
-        `FOUNDER-TEST CANDIDATE\n\n${work.name} · ${format}\nFeatured ${isCommanderFormat(format) ? "commander" : "lynchpin"}: ${preview.card}\n\nThe Forge brain could not complete the list on this attempt. Your commission is preserved; retry forging before beginning a legality-sensitive test.`,
+      setForgedDeck("");
+      setForgeGenerationError(
+        "The Forge did not finish a valid list. Your commission is safe—strike the anvil again to retry.",
       );
     } finally {
       setBenchStatus("idle");
@@ -1860,7 +1875,7 @@ export default function Home() {
                   </h2>
                 </div>
                 <button
-                  disabled={!forgedDeck || benchStatus === "forging"}
+                  disabled={!deckRows.length || benchStatus === "forging"}
                   onClick={() => navigator.clipboard.writeText(forgedDeck)}
                 >
                   Copy deck
@@ -1917,6 +1932,13 @@ export default function Home() {
                             <button
                               type="button"
                               key={row.name}
+                              draggable
+                              onDragStart={(event) => {
+                                event.dataTransfer.setData(
+                                  "text/plain",
+                                  row.name,
+                                );
+                              }}
                               onMouseEnter={() => setHoveredCard(row.name)}
                               onFocus={() => setHoveredCard(row.name)}
                               className={
@@ -1931,8 +1953,17 @@ export default function Home() {
                       ))}
                   </div>
                 </div>
+              ) : forgeGenerationError ? (
+                <div className="forge-generation-failure" role="alert">
+                  <small>THE METAL DID NOT SET</small>
+                  <h3>No incomplete deck was saved.</h3>
+                  <p>{forgeGenerationError}</p>
+                  <button onClick={() => inspectMasterwork(selectedWork)}>
+                    Strike the Anvil Again
+                  </button>
+                </div>
               ) : (
-                <pre>{forgedDeck}</pre>
+                <pre>The Forge is waiting for a valid commission.</pre>
               )}
               <details className="raw-decklist">
                 <summary>View complete Forge response / import text</summary>
@@ -1947,7 +1978,7 @@ export default function Home() {
                   : <b>{chosenPreview.card}</b>
                 </span>
                 <button
-                  disabled={benchStatus === "forging" || !forgedDeck}
+                  disabled={benchStatus === "forging" || !deckRows.length}
                   onClick={beginTesting}
                 >
                   {benchStatus === "testing"
@@ -2094,8 +2125,23 @@ export default function Home() {
         </div>
       </aside>
       )}
-      {chamber === "workbench" && (
-        <section className="forge-edit-workbench">
+      {chamber === "workbench" && deckRows.length > 0 && (
+        <section
+          className={`forge-edit-workbench ${editAnvilOpen ? "open" : ""}`}
+          style={
+            editAnvilOpen
+              ? undefined
+              : { transform: "translateX(calc(100% - 42px))" }
+          }
+        >
+          <button
+            className="edit-anvil-toggle"
+            onClick={() => setEditAnvilOpen((open) => !open)}
+            aria-expanded={editAnvilOpen}
+          >
+            <i>⚒</i>
+            {editAnvilOpen ? "Lower Editing Anvil" : "Raise Editing Anvil"}
+          </button>
           <header>
             <div>
               <small>THE EDITING ANVIL</small>
