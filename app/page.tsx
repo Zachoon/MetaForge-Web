@@ -21,9 +21,19 @@ const MASTERWORKS = [
   { rune: "ᛟ", name: "The Rune Bastion", path: "Measured Control", tone: "rune", verdict: "The most defensible design. It survived by answering the widest range of opposing plans." },
 ] as const;
 
+const ADDITIONAL_MASTERWORKS = [
+  { rune: "ᛏ", name: "The Stormbrand Edge", path: "Tempo and Disruption", tone: "rune", verdict: "A precise design that turns small timing advantages into a lead the opponent cannot recover from." },
+  { rune: "ᛃ", name: "The Verdant Engine", path: "Synergy and Growth", tone: "steel", verdict: "A connected design whose pieces become more powerful together without depending on a single fragile line." },
+  { rune: "ᛇ", name: "The Gravebound Accord", path: "Resilient Attrition", tone: "ember", verdict: "A patient design that treats every exchange as fuel and continues producing value after the first plan is broken." },
+  { rune: "ᛋ", name: "The Sunforged Legion", path: "Go-Wide Pressure", tone: "ember", verdict: "A widening battlefield converts modest resources into an attack that demands several answers at once." },
+  { rune: "ᛞ", name: "The Mirror Crucible", path: "Engine and Combo", tone: "rune", verdict: "An intricate design that hides a decisive finish inside individually useful cards and overlapping lines." },
+  { rune: "ᛉ", name: "The Warden's Oath", path: "Ramp and Inevitability", tone: "steel", verdict: "A grounded design that survives the opening, accelerates past fair exchanges, and ends with overwhelming threats." },
+] as const;
+const MASTERWORK_POOL = [...MASTERWORKS, ...ADDITIONAL_MASTERWORKS] as const;
+
 type DeckPreview = { card: string; role: string; theme: string; win: string };
 
-const MASTERWORK_STATS = [[94, 46, 70, 48], [72, 78, 76, 68], [28, 96, 64, 86]] as const;
+const MASTERWORK_STATS = [[94, 46, 70, 48], [72, 78, 76, 68], [28, 96, 64, 86], [76, 88, 72, 78], [62, 54, 94, 72], [44, 82, 88, 76], [86, 48, 90, 58], [38, 68, 98, 96], [42, 58, 82, 66]] as const;
 const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
   Standard: [
     { card: "Emberheart Challenger", role: "Lynchpin · pressure engine", theme: "Efficient threats turn every combat step into leverage.", win: "Build an early lead, then convert prowess and reach into the final points." },
@@ -70,6 +80,7 @@ export default function Home() {
   const [strategy, setStrategy] = useState("Balanced midrange");
   const [deck, setDeck] = useState("");
   const [selectedWork, setSelectedWork] = useState(0);
+  const [masterworkPage, setMasterworkPage] = useState(0);
   const [forgedDeck, setForgedDeck] = useState("");
   const [forgeReply, setForgeReply] = useState("");
   const [playerSignal, setPlayerSignal] = useState("");
@@ -88,14 +99,15 @@ export default function Home() {
   }, [chamber, stage]);
 
   const progress = useMemo(() => ((stage + 1) / FORGING_STAGES.length) * 100, [stage]);
-  const awaken = () => { setStage(0); setChamber("forging"); };
+  const awaken = () => { setStage(0); setMasterworkPage(0); setSelectedWork(0); setChamber("forging"); };
   const chapter = chamber === "entrance" ? 0 : chamber === "commission" || chamber === "refine" ? 1 : chamber === "forging" ? 2 : 3;
-  const chosenPreview = (FORMAT_PREVIEWS[format] ?? FORMAT_PREVIEWS.Standard)[selectedWork];
-  const chosenWork = MASTERWORKS[selectedWork];
+  const visibleMasterworks = useMemo(() => MASTERWORK_POOL.slice(masterworkPage * 3, masterworkPage * 3 + 3), [masterworkPage]);
+  const chosenPreview = (FORMAT_PREVIEWS[format] ?? FORMAT_PREVIEWS.Standard)[selectedWork % 3];
+  const chosenWork = MASTERWORK_POOL[selectedWork];
 
   async function inspectMasterwork(index: number) {
-    const work = MASTERWORKS[index];
-    const preview = (FORMAT_PREVIEWS[format] ?? FORMAT_PREVIEWS.Standard)[index];
+    const work = MASTERWORK_POOL[index];
+    const preview = (FORMAT_PREVIEWS[format] ?? FORMAT_PREVIEWS.Standard)[index % 3];
     setSelectedWork(index); setChamber("workbench"); setBenchStatus("forging"); setForgeReply("");
     const prompt = `Forge the complete ${format} deck represented by ${work.name}. Its identity is ${work.path}; featured ${format === "Commander" || format === "Brawl" ? "commander" : "lynchpin"}: ${preview.card}; requested play style: ${strategy}. Return a concise pilot brief followed by one complete import-ready decklist. This is a founder-test candidate: never claim legality or performance that has not been verified, and explicitly identify any uncertainty.`;
     try {
@@ -192,8 +204,8 @@ export default function Home() {
 
     {chamber === "masterworks" && <section className="masterwork-reveal">
       <header><span className="forge-eyebrow"><i /> THE GREAT FORGE ANSWERS <i /></span><h1>Steel bends. Runes awaken.<br /><em>Three designs endure.</em></h1><p>The Forge honored your {format} commission and shaped three paths around <strong>{strategy.toLowerCase()}</strong>. Choose the one that feels like yours.</p></header>
-      <div className="masterwork-grid">{MASTERWORKS.map((work, index) => { const preview = (FORMAT_PREVIEWS[format] ?? FORMAT_PREVIEWS.Standard)[index]; return <article className={`masterwork-card ${work.tone}`} key={work.name} style={{ "--delay": `${index * 140}ms` } as React.CSSProperties}><span>MASTERWORK 0{index + 1}</span><div className="masterwork-title"><i>{work.rune}</i><div><small>{work.path} · {format}</small><h2>{work.name}</h2></div></div><div className="masterwork-glimpse"><img src={cardImage(preview.card)} alt={`${preview.card} card`} loading="lazy" /><div><small>{preview.role}</small><strong>{preview.card}</strong><p>{preview.theme}</p><em><b>WIN CONDITION</b>{preview.win}</em></div></div><div className="masterwork-stats">{["Aggression", "Interaction", "Synergy", "Complexity"].map((label, statIndex) => <span key={label}><small>{label}</small><b>{MASTERWORK_STATS[index][statIndex]}</b></span>)}</div><p className="masterwork-verdict">{work.verdict}</p><button onClick={() => inspectMasterwork(index)}>Inspect this Masterwork <b>→</b></button></article>; })}</div>
-      <footer><button onClick={() => setChamber("entrance")}>Begin a new commission</button><span>THREE OF 642 DESIGNS SURVIVED</span></footer>
+      <div className="masterwork-grid">{visibleMasterworks.map((work, index) => { const poolIndex = masterworkPage * 3 + index; const preview = (FORMAT_PREVIEWS[format] ?? FORMAT_PREVIEWS.Standard)[poolIndex % 3]; return <article className={`masterwork-card ${work.tone}`} key={work.name} style={{ "--delay": `${index * 140}ms` } as React.CSSProperties}><span>MASTERWORK {String(poolIndex + 1).padStart(2, "0")}</span><div className="masterwork-title"><i>{work.rune}</i><div><small>{work.path} · {format}</small><h2>{work.name}</h2></div></div><div className="masterwork-glimpse"><img src={cardImage(preview.card)} alt={`${preview.card} card`} loading="lazy" /><div><small>{preview.role}</small><strong>{preview.card}</strong><p>{preview.theme}</p><em><b>WIN CONDITION</b>{preview.win}</em></div></div><div className="masterwork-stats">{["Aggression", "Interaction", "Synergy", "Complexity"].map((label, statIndex) => <span key={label}><small>{label}</small><b>{MASTERWORK_STATS[poolIndex][statIndex]}</b></span>)}</div><p className="masterwork-verdict">{work.verdict}</p><button onClick={() => inspectMasterwork(poolIndex)}>Inspect this Masterwork <b>→</b></button></article>; })}</div>
+      <footer><button onClick={() => { setMasterworkPage(0); setChamber("entrance"); }}>Begin a new commission</button><span>THREE OF 642 DESIGNS SURVIVED</span><button className="masterwork-recycle" disabled={(masterworkPage + 1) * 3 >= MASTERWORK_POOL.length} onClick={() => setMasterworkPage(page => page + 1)}>{(masterworkPage + 1) * 3 >= MASTERWORK_POOL.length ? "All unseen Masterworks revealed" : "Recycle these · Forge three new Masterworks →"}</button></footer>
     </section>}
 
     {chamber === "workbench" && <section className="testing-anvil">
