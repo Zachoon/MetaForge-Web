@@ -1,0 +1,61 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <filter id="stoneNoise">
+      <feTurbulence
+        type="fractalNoise"
+        baseFrequency="0.018"
+        numOctaves="4"
+        seed="17"
+      />
+      <feColorMatrix
+        type="matrix"
+        values="
+          0.16 0 0 0 0.03
+          0 0.19 0 0 0.04
+          0 0 0.20 0 0.05
+          0 0 0 0.34 0
+        "
+      />
+    </filter>
+
+    <linearGradient id="stoneShade" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#172126"/>
+      <stop offset="0.55" stop-color="#0d1418"/>
+      <stop offset="1" stop-color="#080c0f"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#stoneShade)"/>
+  <rect width="512" height="512" filter="url(#stoneNoise)" opacity="0.55"/>
+
+  <g
+    fill="none"
+    stroke="#26343a"
+    stroke-width="2"
+    opacity="0.26"
+  >
+    <path d="M0 104 H512"/>
+    <path d="M0 242 H512"/>
+    <path d="M0 390 H512"/>
+
+    <path d="M116 0 L98 104"/>
+    <path d="M358 0 L377 104"/>
+
+    <path d="M42 104 L57 242"/>
+    <path d="M258 104 L242 242"/>
+    <path d="M466 104 L450 242"/>
+
+    <path d="M141 242 L126 390"/>
+    <path d="M371 242 L389 390"/>
+
+    <path d="M68 390 L54 512"/>
+    <path d="M290 390 L276 512"/>
+    <path d="M470 390 L488 512"/>
+  </g>
+
+  <g fill="#000000" opacity="0.18">
+    <path d="M0 108 H512 V117 H0 Z"/>
+    <path d="M0 246 H512 V255 H0 Z"/>
+    <path d="M0 394 H512 V403 H0 Z"/>
+  </g>
+</svg>

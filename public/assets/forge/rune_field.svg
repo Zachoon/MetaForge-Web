@@ -1,0 +1,37 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <filter id="runeGlow">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <g
+    fill="none"
+    stroke="#72dbc4"
+    stroke-width="2"
+    opacity="0.10"
+    filter="url(#runeGlow)"
+  >
+    <path d="M74 86 L94 56 L114 86 L94 116 Z"/>
+    <path d="M392 80 L432 80 L412 112 Z"/>
+    <path d="M72 394 L108 358 L108 430 Z"/>
+    <path d="M390 384 L432 426 M432 384 L390 426"/>
+    <circle cx="258" cy="70" r="22"/>
+    <path d="M258 48 V92 M236 70 H280"/>
+    <path d="M238 428 L258 392 L278 428 L258 458 Z"/>
+  </g>
+
+  <g
+    fill="#72dbc4"
+    opacity="0.07"
+  >
+    <circle cx="144" cy="218" r="3"/>
+    <circle cx="364" cy="262" r="3"/>
+    <circle cx="304" cy="166" r="2"/>
+    <circle cx="198" cy="344" r="2"/>
+  </g>
+</svg>

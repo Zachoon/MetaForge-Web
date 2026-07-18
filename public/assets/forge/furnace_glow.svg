@@ -1,0 +1,19 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="63%" r="58%">
+      <stop offset="0" stop-color="#ffb15a" stop-opacity="0.48"/>
+      <stop offset="0.24" stop-color="#d8682d" stop-opacity="0.30"/>
+      <stop offset="0.55" stop-color="#6f2917" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#120907" stop-opacity="0"/>
+    </radialGradient>
+
+    <linearGradient id="vignette" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#050708" stop-opacity="0.36"/>
+      <stop offset="0.45" stop-color="#050708" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.44"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#glow)"/>
+  <rect width="512" height="512" fill="url(#vignette)"/>
+</svg>
