@@ -21,6 +21,48 @@ const MASTERWORKS = [
   { rune: "ᛟ", name: "The Rune Bastion", path: "Measured Control", tone: "rune", verdict: "The most defensible design. It survived by answering the widest range of opposing plans." },
 ] as const;
 
+type DeckPreview = { card: string; role: string; theme: string; win: string };
+
+const MASTERWORK_STATS = [[94, 46, 70, 48], [72, 78, 76, 68], [28, 96, 64, 86]] as const;
+const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
+  Standard: [
+    { card: "Emberheart Challenger", role: "Lynchpin · pressure engine", theme: "Efficient threats turn every combat step into leverage.", win: "Build an early lead, then convert prowess and reach into the final points." },
+    { card: "Overlord of the Hauntwoods", role: "Lynchpin · value engine", theme: "Durable threats keep mana and pressure moving together.", win: "Outscale fair decks with resilient bodies and compounding card quality." },
+    { card: "Stock Up", role: "Lynchpin · selection engine", theme: "Card selection finds the right answer for each stage of the game.", win: "Stabilize, exhaust opposing resources, and close behind protected threats." },
+  ],
+  Modern: [
+    { card: "Ragavan, Nimble Pilferer", role: "Lynchpin · tempo engine", theme: "Cheap threats create mana, information, and immediate pressure.", win: "Force awkward answers early, then finish through efficient disruption." },
+    { card: "Orcish Bowmasters", role: "Lynchpin · value engine", theme: "Flexible threats punish excess cards while controlling small creatures.", win: "Trade efficiently until incremental advantages become overwhelming." },
+    { card: "Counterspell", role: "Lynchpin · permission", theme: "Broad answers protect a compact, inevitable endgame.", win: "Deny the opponent's pivotal turn and win once their resources are thin." },
+  ],
+  Premodern: [
+    { card: "Goblin Lackey", role: "Lynchpin · deployment engine", theme: "One opening connects and turns the battlefield into an avalanche.", win: "Overwhelm defenses before slower engines can establish control." },
+    { card: "Survival of the Fittest", role: "Lynchpin · toolbox engine", theme: "Every creature can become the exact answer the position demands.", win: "Assemble an adaptable creature chain that opponents cannot trade through." },
+    { card: "Counterspell", role: "Lynchpin · permission", theme: "Efficient interaction protects a patient, resource-rich endgame.", win: "Neutralize the few spells that matter and take over with superior cards." },
+  ],
+  Pioneer: [
+    { card: "Monastery Swiftspear", role: "Lynchpin · pressure engine", theme: "Low-cost spells become both interaction and additional damage.", win: "Compress the game until every draw threatens lethal." },
+    { card: "Fable of the Mirror-Breaker", role: "Lynchpin · value engine", theme: "Filtering, mana, and copied threats make every stage productive.", win: "Accumulate flexible advantages, then copy the deck's best threat." },
+    { card: "Supreme Verdict", role: "Lynchpin · reset", theme: "Unconditional resets buy time for a powerful late game.", win: "Clear committed boards and close once the opponent is out of rebuilds." },
+  ],
+  Historic: [
+    { card: "Ragavan, Nimble Pilferer", role: "Lynchpin · tempo engine", theme: "Early pressure snowballs into mana and stolen resources.", win: "Stay ahead on tempo while disruption protects the attack." },
+    { card: "Jarsyl, Dark Age Scion", role: "Lynchpin · recursion engine", theme: "The graveyard turns past exchanges into future value.", win: "Replay efficient spells until one-for-one trades stop being fair." },
+    { card: "Mana Drain", role: "Lynchpin · permission", theme: "Premium interaction turns defense into a burst of development.", win: "Counter the pivotal spell and use the mana swing to seize control." },
+  ],
+  Brawl: [
+    { card: "Ragavan, Nimble Pilferer", role: "Commander · treasure tempo", theme: "A compact red raid built around cheap interaction and stolen cards.", win: "Connect early, compound Treasure advantages, and burn through the last defenses." },
+    { card: "Kutzil, Malamet Exemplar", role: "Commander · modified creatures", theme: "Counters and combat tricks turn a creature team into a draw engine.", win: "Grow multiple threats, deny combat tricks, and snowball every clean hit." },
+    { card: "Braids, Arisen Nightmare", role: "Commander · sacrifice control", theme: "Disposable permanents become cards while opponents face painful choices.", win: "Drain resources turn by turn until sacrifice pressure becomes inevitable." },
+  ],
+  Commander: [
+    { card: "Isshin, Two Heavens as One", role: "Commander · attack triggers", theme: "Every attack trigger fires twice, rewarding a relentless combat plan.", win: "Build one explosive combat step that multiplies tokens, damage, and value." },
+    { card: "Muldrotha, the Gravetide", role: "Commander · graveyard value", theme: "The graveyard acts as a second hand full of reusable permanents.", win: "Outlast removal, rebuild repeatedly, and lock in an overwhelming resource edge." },
+    { card: "Shorikai, Genesis Engine", role: "Commander · artifact control", theme: "Vehicles, tokens, and card selection support a patient control shell.", win: "Filter into answers, stabilize behind Pilots, then win through inevitability." },
+  ],
+};
+const cardImage = (name: string) => `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=normal`;
+
 export default function Home() {
   const [chamber, setChamber] = useState<Chamber>("entrance");
   const [stage, setStage] = useState(0);
@@ -86,7 +128,7 @@ export default function Home() {
 
     {chamber === "masterworks" && <section className="masterwork-reveal">
       <header><span className="forge-eyebrow"><i /> THE GREAT FORGE ANSWERS <i /></span><h1>Steel bends. Runes awaken.<br /><em>Three designs endure.</em></h1><p>The Forge honored your {format} commission and shaped three paths around <strong>{strategy.toLowerCase()}</strong>. Choose the one that feels like yours.</p></header>
-      <div className="masterwork-grid">{MASTERWORKS.map((work, index) => <article className={`masterwork-card ${work.tone}`} key={work.name} style={{ "--delay": `${index * 140}ms` } as React.CSSProperties}><span>MASTERWORK 0{index + 1}</span><i>{work.rune}</i><small>{work.path}</small><h2>{work.name}</h2><p>{work.verdict}</p><button>Inspect this Masterwork <b>→</b></button></article>)}</div>
+      <div className="masterwork-grid">{MASTERWORKS.map((work, index) => { const preview = (FORMAT_PREVIEWS[format] ?? FORMAT_PREVIEWS.Standard)[index]; return <article className={`masterwork-card ${work.tone}`} key={work.name} style={{ "--delay": `${index * 140}ms` } as React.CSSProperties}><span>MASTERWORK 0{index + 1}</span><div className="masterwork-title"><i>{work.rune}</i><div><small>{work.path} · {format}</small><h2>{work.name}</h2></div></div><div className="masterwork-glimpse"><img src={cardImage(preview.card)} alt={`${preview.card} card`} loading="lazy" /><div><small>{preview.role}</small><strong>{preview.card}</strong><p>{preview.theme}</p><em><b>WIN CONDITION</b>{preview.win}</em></div></div><div className="masterwork-stats">{["Aggression", "Interaction", "Synergy", "Complexity"].map((label, statIndex) => <span key={label}><small>{label}</small><b>{MASTERWORK_STATS[index][statIndex]}</b></span>)}</div><p className="masterwork-verdict">{work.verdict}</p><button>Inspect this Masterwork <b>→</b></button></article>; })}</div>
       <footer><button onClick={() => setChamber("entrance")}>Begin a new commission</button><span>THREE OF 642 DESIGNS SURVIVED</span></footer>
     </section>}
   </main>;
