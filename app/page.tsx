@@ -98,6 +98,9 @@ export default function Home() {
   const [selectedCommander, setSelectedCommander] = useState<CommanderOption | null>(null);
   const [commanderSearching, setCommanderSearching] = useState(false);
   const [randomizingCommander, setRandomizingCommander] = useState(false);
+  const [randomCommanderMode, setRandomCommanderMode] = useState(false);
+  const [randomCommanderOptions, setRandomCommanderOptions] = useState<CommanderOption[]>([]);
+  const [seenRandomCommanders, setSeenRandomCommanders] = useState<string[]>([]);
   const [selectedWork, setSelectedWork] = useState(0);
   const [masterworkPage, setMasterworkPage] = useState(0);
   const [forgedDeck, setForgedDeck] = useState("");
@@ -125,7 +128,9 @@ export default function Home() {
   const awaken = () => { setStage(0); setMasterworkPage(0); setSelectedWork(0); setChamber("forging"); };
   const chapter = chamber === "entrance" ? 0 : chamber === "commission" || chamber === "refine" ? 1 : chamber === "forging" ? 2 : 3;
   const visibleMasterworks = useMemo(() => MASTERWORK_POOL.slice(masterworkPage * 3, masterworkPage * 3 + 3), [masterworkPage]);
-  const previewFor = (index: number) => { const base = (FORMAT_PREVIEWS[format] ?? FORMAT_PREVIEWS.Standard)[index % 3]; return selectedCommander && (format === "Commander" || format === "Brawl") ? { ...base, card: selectedCommander.name, role: "Commander · chosen in your Blueprint", theme: commissionNote.trim() || `A ${selectedCommander.colors.join("")} identity commission built around the commander you selected.` } : base; };
+  const randomCommission = randomCommanderMode && Boolean(selectedCommander && seenRandomCommanders.includes(selectedCommander.name));
+  const commanderFor = (index: number) => randomCommission && randomCommanderOptions.length === 3 ? randomCommanderOptions[index % 3] : selectedCommander;
+  const previewFor = (index: number) => { const base = (FORMAT_PREVIEWS[format] ?? FORMAT_PREVIEWS.Standard)[index % 3]; const commander = commanderFor(index); return commander && (format === "Commander" || format === "Brawl") ? { ...base, card: commander.name, role: randomCommission ? "Commander · discovered by the Forge" : "Commander · chosen in your Blueprint", theme: commissionNote.trim() || `A ${commander.colors.join("")} identity commission built around this commander.` } : base; };
   const chosenPreview = previewFor(selectedWork);
   const chosenWork = MASTERWORK_POOL[selectedWork];
   const deckRows = useMemo(() => parseDeckRows(forgedDeck), [forgedDeck]);
@@ -170,24 +175,37 @@ export default function Home() {
 
   async function chooseRandomCommander() {
     setRandomizingCommander(true); setCommanderResults([]);
-    try { const query = encodeURIComponent(`${format === "Brawl" ? "game:arena " : ""}legal:${format.toLowerCase()} is:commander`); const response = await fetch(`https://api.scryfall.com/cards/random?q=${query}`); if (!response.ok) throw new Error(); const option = commanderOption(await response.json()); setSelectedCommander(option); setCommanderQuery(option.name); }
+    try { const query = encodeURIComponent(`${format === "Brawl" ? "game:arena " : ""}legal:${format.toLowerCase()} is:commander`); const response = await fetch(`https://api.scryfall.com/cards/random?q=${query}`); if (!response.ok) throw new Error(); const option = commanderOption(await response.json()); setSelectedCommander(option); setCommanderQuery(option.name); setRandomCommanderMode(true); setRandomCommanderOptions([]); setSeenRandomCommanders([option.name]); }
     catch { setCommanderQuery(""); }
     finally { setRandomizingCommander(false); }
+  }
+
+  async function recycleMasterworks() {
+    if (randomizingCommander) return;
+    if (!randomCommission) { setMasterworkPage(page => page + 1); return; }
+    setRandomizingCommander(true);
+    try {
+      const query = encodeURIComponent(`${format === "Brawl" ? "game:arena " : ""}legal:${format.toLowerCase()} is:commander`), exclusions = new Set(seenRandomCommanders), next: CommanderOption[] = [];
+      for (let attempts = 0; next.length < 3 && attempts < 18; attempts += 1) { const response = await fetch(`https://api.scryfall.com/cards/random?q=${query}`); if (!response.ok) continue; const option = commanderOption(await response.json()); if (!exclusions.has(option.name)) { exclusions.add(option.name); next.push(option); } }
+      if (next.length !== 3) throw new Error("Could not draw three unique commanders");
+      setRandomCommanderOptions(next); setSeenRandomCommanders([...exclusions]); setMasterworkPage(page => page + 1);
+    } finally { setRandomizingCommander(false); }
   }
 
   async function inspectMasterwork(index: number) {
     const work = MASTERWORK_POOL[index];
     const preview = previewFor(index);
-    setSelectedWork(index); setChamber("workbench"); setBenchStatus("forging"); setForgeReply("");
+    const commander = commanderFor(index);
+    setSelectedWork(index); if (commander) setSelectedCommander(commander); setChamber("workbench"); setBenchStatus("forging"); setForgeReply("");
     let evidence: EdhrecEvidence | null = null;
-    if (selectedCommander && (format === "Commander" || format === "Brawl")) {
-      try { const evidenceResponse = await fetch(`/api/forge/edhrec?commander=${encodeURIComponent(selectedCommander.name)}`); if (evidenceResponse.ok) evidence = await evidenceResponse.json(); } catch { /* The Forge can proceed from verified card facts alone. */ }
+    if (commander && (format === "Commander" || format === "Brawl")) {
+      try { const evidenceResponse = await fetch(`/api/forge/edhrec?commander=${encodeURIComponent(commander.name)}`); if (evidenceResponse.ok) evidence = await evidenceResponse.json(); } catch { /* The Forge can proceed from verified card facts alone. */ }
     }
     setEdhrecEvidence(evidence);
     const evidenceFacts = formatEdhrecEvidence(evidence, format);
     const prompt = `Forge the complete ${format} deck represented by ${work.name}. Its identity is ${work.path}; required ${format === "Commander" || format === "Brawl" ? "commander" : "lynchpin"}: ${preview.card}; requested play style: ${strategy}. The player's Blueprint note is: ${commissionNote.trim() || "No additional note"}. ${format === "Brawl" ? "MetaForge Brawl means current Arena Brawl: 60-card singleton, using the live Scryfall brawl legality and Arena availability supplied in verified facts. Do not ask whether this means Standard or Historic Brawl." : ""} Return a concise pilot brief followed by one complete import-ready decklist. The chosen commander, oracle text, legality, Arena availability, and color identity in verified facts are binding constraints. Use the EDHREC evidence as a prior for card adoption and co-occurrence, not as proof or a legality source. Do not claim this commander is unverified when its live record is supplied. This is a founder-test candidate: never claim performance that has not been verified, and explicitly identify any remaining uncertainty.`;
     try {
-      const response = await fetch("/api/forge/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ task: "deck_generation", depth: "deep", messages: [{ role: "user", content: prompt }], context: { game: "mtg", deckName: work.name, format, deckText: "", verifiedFacts: `${selectedCommander?.verifiedFacts || "No commander record required for this format."}\n\n${evidenceFacts}`, coachingProfile: "Prefers concise, testable deck guidance." } }) });
+      const response = await fetch("/api/forge/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ task: "deck_generation", depth: "deep", messages: [{ role: "user", content: prompt }], context: { game: "mtg", deckName: work.name, format, deckText: "", verifiedFacts: `${commander?.verifiedFacts || "No commander record required for this format."}\n\n${evidenceFacts}`, coachingProfile: "Prefers concise, testable deck guidance." } }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || "Forge unavailable");
       const answer = String(data.answer || ""); const total = parseDeckRows(answer).reduce((sum, row) => sum + row.quantity, 0); const minimum = format === "Commander" ? 100 : format === "Brawl" ? 60 : 40; if (total < minimum) throw new Error("Incomplete Forge list"); setForgedDeck(answer); setRevisions([{ deck: answer, note: "Original Forge candidate", createdAt: new Date().toISOString() }]);
@@ -281,9 +299,9 @@ export default function Home() {
 
     {chamber === "masterworks" && <section className="masterwork-reveal">
       <header><span className="forge-eyebrow"><i /> THE GREAT FORGE ANSWERS <i /></span><h1>Steel bends. Runes awaken.<br /><em>Three designs endure.</em></h1><p>The Forge honored your {format} commission and shaped three paths around <strong>{strategy.toLowerCase()}</strong>. Choose the one that feels like yours.</p></header>
-      <div className="masterwork-actions"><span>REVEAL {masterworkPage + 1} · {masterworkPage * 3 + 1}–{masterworkPage * 3 + visibleMasterworks.length} SEEN THIS COMMISSION</span><button className="masterwork-recycle" disabled={(masterworkPage + 1) * 3 >= MASTERWORK_POOL.length} onClick={() => setMasterworkPage(page => page + 1)}>{(masterworkPage + 1) * 3 >= MASTERWORK_POOL.length ? "All unseen Masterworks revealed" : "None feel right? Forge three different Masterworks →"}</button></div>
+      <div className="masterwork-actions"><span>REVEAL {masterworkPage + 1} · {masterworkPage * 3 + 1}–{masterworkPage * 3 + visibleMasterworks.length} SEEN THIS COMMISSION</span><button className="masterwork-recycle" disabled={randomizingCommander || (masterworkPage + 1) * 3 >= MASTERWORK_POOL.length} onClick={recycleMasterworks}>{randomizingCommander ? "Drawing three unseen commanders…" : (masterworkPage + 1) * 3 >= MASTERWORK_POOL.length ? "All unseen Masterworks revealed" : randomCommission ? "None feel right? Draw three new commanders →" : "None feel right? Forge three different Masterworks →"}</button></div>
       <div className="masterwork-grid">{visibleMasterworks.map((work, index) => { const poolIndex = masterworkPage * 3 + index; const preview = previewFor(poolIndex); return <article className={`masterwork-card ${work.tone}`} key={work.name} style={{ "--delay": `${index * 140}ms` } as React.CSSProperties}><span>MASTERWORK {String(poolIndex + 1).padStart(2, "0")}</span><div className="masterwork-title"><i>{work.rune}</i><div><small>{work.path} · {format}</small><h2>{work.name}</h2></div></div><div className="masterwork-glimpse"><img src={cardImage(preview.card)} alt={`${preview.card} card`} loading="lazy" /><div><small>{preview.role}</small><strong>{preview.card}</strong><p>{preview.theme}</p><em><b>WIN CONDITION</b>{preview.win}</em></div></div><div className="masterwork-stats">{["Aggression", "Interaction", "Synergy", "Complexity"].map((label, statIndex) => <span key={label}><small>{label}</small><b>{MASTERWORK_STATS[poolIndex][statIndex]}</b></span>)}</div><p className="masterwork-verdict">{work.verdict}</p><button onClick={() => inspectMasterwork(poolIndex)}>Inspect this Masterwork <b>→</b></button></article>; })}</div>
-      <footer><button onClick={() => { setMasterworkPage(0); setChamber("entrance"); }}>Begin a new commission</button><span>THREE OF 642 DESIGNS SURVIVED</span><button className="masterwork-recycle" disabled={(masterworkPage + 1) * 3 >= MASTERWORK_POOL.length} onClick={() => setMasterworkPage(page => page + 1)}>{(masterworkPage + 1) * 3 >= MASTERWORK_POOL.length ? "All unseen Masterworks revealed" : "Recycle these · Forge three new Masterworks →"}</button></footer>
+      <footer><button onClick={() => { setMasterworkPage(0); setChamber("entrance"); }}>Begin a new commission</button><span>THREE OF 642 DESIGNS SURVIVED</span><button className="masterwork-recycle" disabled={randomizingCommander || (masterworkPage + 1) * 3 >= MASTERWORK_POOL.length} onClick={recycleMasterworks}>{randomizingCommander ? "Drawing three unseen commanders…" : (masterworkPage + 1) * 3 >= MASTERWORK_POOL.length ? "All unseen Masterworks revealed" : randomCommission ? "Recycle these · Draw three new commanders →" : "Recycle these · Forge three new Masterworks →"}</button></footer>
     </section>}
 
     {chamber === "workbench" && <section className="testing-anvil">
