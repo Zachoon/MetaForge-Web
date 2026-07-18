@@ -69,7 +69,7 @@ export default function Home() {
       <div className="commission-scroll">
         {chamber === "refine" && <label className="deck-offering"><span>YOUR CURRENT DECKLIST</span><textarea value={deck} onChange={(event) => setDeck(event.target.value)} placeholder="Paste your Arena, MTGO, or Moxfield list here…" /></label>}
         <div className="mark-grid">
-          <label><span>FORMAT</span><select value={format} onChange={(event) => setFormat(event.target.value)}><option>Standard</option><option>Commander</option><option>Modern</option><option>Pioneer</option><option>Historic</option></select></label>
+          <label><span>FORMAT</span><select value={format} onChange={(event) => setFormat(event.target.value)}><option>Standard</option><option>Brawl</option><option>Commander</option><option>Modern</option><option>Premodern</option><option>Pioneer</option><option>Historic</option></select></label>
           <label><span>HOW SHOULD IT FIGHT?</span><select value={strategy} onChange={(event) => setStrategy(event.target.value)}><option>Aggressive pressure</option><option>Balanced midrange</option><option>Reactive control</option><option>Synergy and combo</option><option>Tempo and disruption</option></select></label>
           <label><span>COMPLEXITY</span><select><option>Accessible</option><option>Balanced</option><option>Technical</option><option>Maximum depth</option></select></label>
           <label><span>BUDGET</span><select><option>No strict limit</option><option>Budget conscious</option><option>Moderate investment</option><option>Competitive optimization</option></select></label>
