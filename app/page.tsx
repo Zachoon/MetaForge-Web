@@ -34,6 +34,7 @@ const MASTERWORK_POOL = [...MASTERWORKS, ...ADDITIONAL_MASTERWORKS] as const;
 type DeckPreview = { card: string; role: string; theme: string; win: string };
 type DeckRow = { quantity: number; name: string };
 type CardFact = { name: string; type_line?: string; image_uris?: { normal?: string; art_crop?: string }; card_faces?: Array<{ image_uris?: { normal?: string; art_crop?: string } }> };
+type CommanderOption = { name: string; colors: string[]; typeLine: string; image: string };
 
 const MASTERWORK_STATS = [[94, 46, 70, 48], [72, 78, 76, 68], [28, 96, 64, 86], [76, 88, 72, 78], [62, 54, 94, 72], [44, 82, 88, 76], [86, 48, 90, 58], [38, 68, 98, 96], [42, 58, 82, 66]] as const;
 const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
@@ -83,6 +84,11 @@ export default function Home() {
   const [format, setFormat] = useState("Standard");
   const [strategy, setStrategy] = useState("Balanced midrange");
   const [deck, setDeck] = useState("");
+  const [commissionNote, setCommissionNote] = useState("");
+  const [commanderQuery, setCommanderQuery] = useState("");
+  const [commanderResults, setCommanderResults] = useState<CommanderOption[]>([]);
+  const [selectedCommander, setSelectedCommander] = useState<CommanderOption | null>(null);
+  const [commanderSearching, setCommanderSearching] = useState(false);
   const [selectedWork, setSelectedWork] = useState(0);
   const [masterworkPage, setMasterworkPage] = useState(0);
   const [forgedDeck, setForgedDeck] = useState("");
@@ -93,6 +99,7 @@ export default function Home() {
   const [revisions, setRevisions] = useState<Array<{ deck: string; note: string; createdAt: string }>>([]);
   const [cardFacts, setCardFacts] = useState<Record<string, CardFact>>({});
   const [hoveredCard, setHoveredCard] = useState("");
+  const [cardOrder, setCardOrder] = useState<string[]>([]);
 
   useEffect(() => {
     if (chamber !== "forging") return;
@@ -108,10 +115,12 @@ export default function Home() {
   const awaken = () => { setStage(0); setMasterworkPage(0); setSelectedWork(0); setChamber("forging"); };
   const chapter = chamber === "entrance" ? 0 : chamber === "commission" || chamber === "refine" ? 1 : chamber === "forging" ? 2 : 3;
   const visibleMasterworks = useMemo(() => MASTERWORK_POOL.slice(masterworkPage * 3, masterworkPage * 3 + 3), [masterworkPage]);
-  const chosenPreview = (FORMAT_PREVIEWS[format] ?? FORMAT_PREVIEWS.Standard)[selectedWork % 3];
+  const previewFor = (index: number) => { const base = (FORMAT_PREVIEWS[format] ?? FORMAT_PREVIEWS.Standard)[index % 3]; return selectedCommander && (format === "Commander" || format === "Brawl") ? { ...base, card: selectedCommander.name, role: "Commander · chosen in your Blueprint", theme: commissionNote.trim() || `A ${selectedCommander.colors.join("")} identity commission built around the commander you selected.` } : base; };
+  const chosenPreview = previewFor(selectedWork);
   const chosenWork = MASTERWORK_POOL[selectedWork];
   const deckRows = useMemo(() => parseDeckRows(forgedDeck), [forgedDeck]);
-  const groupedDeck = useMemo(() => { const groups: Record<string, DeckRow[]> = {}; for (const row of deckRows) { const group = cardGroup(cardFacts[row.name.toLowerCase()], (format === "Commander" || format === "Brawl") && row.name.toLowerCase() === chosenPreview.card.toLowerCase()); (groups[group] ||= []).push(row); } return groups; }, [deckRows, cardFacts, format, chosenPreview.card]);
+  const orderedDeckRows = useMemo(() => [...deckRows].sort((a, b) => { const ai = cardOrder.indexOf(a.name), bi = cardOrder.indexOf(b.name); return (ai < 0 ? 9999 : ai) - (bi < 0 ? 9999 : bi); }), [deckRows, cardOrder]);
+  const groupedDeck = useMemo(() => { const groups: Record<string, DeckRow[]> = {}; for (const row of orderedDeckRows) { const group = cardGroup(cardFacts[row.name.toLowerCase()], (format === "Commander" || format === "Brawl") && row.name.toLowerCase() === chosenPreview.card.toLowerCase()); (groups[group] ||= []).push(row); } return groups; }, [orderedDeckRows, cardFacts, format, chosenPreview.card]);
   const activeCard = hoveredCard || chosenPreview.card || deckRows[0]?.name || "";
   const activeFact = cardFacts[activeCard.toLowerCase()];
   const activeImage = activeFact?.image_uris?.normal || activeFact?.card_faces?.[0]?.image_uris?.normal || (activeCard ? cardImage(activeCard) : "");
@@ -123,11 +132,36 @@ export default function Home() {
     return () => { cancelled = true; };
   }, [forgedDeck]);
 
+  useEffect(() => { setCardOrder(deckRows.map(row => row.name)); }, [forgedDeck]);
+
+  useEffect(() => {
+    if (!(["Commander", "Brawl"].includes(format)) || commanderQuery.trim().length < 2 || selectedCommander?.name === commanderQuery.trim()) { setCommanderResults([]); return; }
+    const timer = window.setTimeout(async () => { setCommanderSearching(true); try { const query = encodeURIComponent(`legal:${format.toLowerCase()} is:commander name:${commanderQuery.trim()}`); const response = await fetch(`https://api.scryfall.com/cards/search?q=${query}&order=name`); const data = await response.json(); setCommanderResults((data.data || []).slice(0, 8).map((card: any) => ({ name: card.name, colors: card.color_identity || [], typeLine: card.type_line || "Legendary card", image: card.image_uris?.small || card.card_faces?.[0]?.image_uris?.small || "" }))); } catch { setCommanderResults([]); } finally { setCommanderSearching(false); } }, 320);
+    return () => window.clearTimeout(timer);
+  }, [commanderQuery, format, selectedCommander?.name]);
+
+  useEffect(() => {
+    if (chamber !== "workbench") return;
+    const frame = window.requestAnimationFrame(() => {
+      document.querySelectorAll<HTMLButtonElement>(".type-column>button").forEach(button => {
+        button.draggable = true;
+        button.title = "Drag to reorder this card within the deck gallery";
+        button.ondragstart = event => { const name = button.querySelector("strong")?.textContent || ""; event.dataTransfer?.setData("text/plain", name); button.classList.add("dragging"); };
+        button.ondragend = () => button.classList.remove("dragging");
+        button.ondragover = event => event.preventDefault();
+        button.ondrop = event => { event.preventDefault(); const source = event.dataTransfer?.getData("text/plain") || ""; const target = button.querySelector("strong")?.textContent || ""; moveCard(source, target); };
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [chamber, groupedDeck]);
+
+  function moveCard(source: string, target: string) { if (!source || source === target) return; setCardOrder(current => { const next = current.filter(name => name !== source); const targetIndex = next.indexOf(target); next.splice(targetIndex < 0 ? next.length : targetIndex, 0, source); return next; }); }
+
   async function inspectMasterwork(index: number) {
     const work = MASTERWORK_POOL[index];
-    const preview = (FORMAT_PREVIEWS[format] ?? FORMAT_PREVIEWS.Standard)[index % 3];
+    const preview = previewFor(index);
     setSelectedWork(index); setChamber("workbench"); setBenchStatus("forging"); setForgeReply("");
-    const prompt = `Forge the complete ${format} deck represented by ${work.name}. Its identity is ${work.path}; featured ${format === "Commander" || format === "Brawl" ? "commander" : "lynchpin"}: ${preview.card}; requested play style: ${strategy}. Return a concise pilot brief followed by one complete import-ready decklist. This is a founder-test candidate: never claim legality or performance that has not been verified, and explicitly identify any uncertainty.`;
+    const prompt = `Forge the complete ${format} deck represented by ${work.name}. Its identity is ${work.path}; required ${format === "Commander" || format === "Brawl" ? "commander" : "lynchpin"}: ${preview.card}; requested play style: ${strategy}. The player's Blueprint note is: ${commissionNote.trim() || "No additional note"}. Return a concise pilot brief followed by one complete import-ready decklist. The chosen commander and its color identity are binding constraints. This is a founder-test candidate: never claim legality or performance that has not been verified, and explicitly identify any uncertainty.`;
     try {
       const response = await fetch("/api/forge/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ depth: "deep", messages: [{ role: "user", content: prompt }], context: { game: "mtg", deckName: work.name, format, deckText: "", coachingProfile: "Prefers concise, testable deck guidance." } }) });
       const data = await response.json();
@@ -205,13 +239,14 @@ export default function Home() {
       <div className="commission-scroll">
         {chamber === "refine" && <label className="deck-offering"><span>YOUR CURRENT DECKLIST</span><textarea value={deck} onChange={(event) => setDeck(event.target.value)} placeholder="Paste your Arena, MTGO, or Moxfield list here…" /></label>}
         <div className="mark-grid">
-          <label><span>FORMAT</span><select value={format} onChange={(event) => setFormat(event.target.value)}><option>Standard</option><option>Brawl</option><option>Commander</option><option>Modern</option><option>Premodern</option><option>Pioneer</option><option>Historic</option></select></label>
+          <label><span>FORMAT</span><select value={format} onChange={(event) => { setFormat(event.target.value); setSelectedCommander(null); setCommanderQuery(""); }}><option>Standard</option><option>Brawl</option><option>Commander</option><option>Modern</option><option>Premodern</option><option>Pioneer</option><option>Historic</option></select></label>
           <label><span>HOW SHOULD IT FIGHT?</span><select value={strategy} onChange={(event) => setStrategy(event.target.value)}><option>Aggressive pressure</option><option>Balanced midrange</option><option>Reactive control</option><option>Synergy and combo</option><option>Tempo and disruption</option></select></label>
           <label><span>COMPLEXITY</span><select><option>Accessible</option><option>Balanced</option><option>Technical</option><option>Maximum depth</option></select></label>
           <label><span>BUDGET</span><select><option>No strict limit</option><option>Budget conscious</option><option>Moderate investment</option><option>Competitive optimization</option></select></label>
         </div>
-        <label className="commission-note"><span>THE ONE THING THE FORGE MUST UNDERSTAND</span><textarea placeholder="Favorite cards, play patterns you love, or anything this deck must never become…" /></label>
-        <button className="awaken-button" disabled={chamber === "refine" && !deck.trim()} onClick={awaken}><span>Seal the commission</span><strong>AWAKEN THE GREAT FORGE</strong><b>→</b></button>
+        {(format === "Commander" || format === "Brawl") && <section className="commander-blueprint"><header><div><span>COMMANDER · LEGAL {format.toUpperCase()} INDEX</span><strong>{selectedCommander ? "Commander bound to this Blueprint" : "Choose the legend this deck must serve"}</strong></div>{selectedCommander && <button type="button" onClick={() => { setSelectedCommander(null); setCommanderQuery(""); }}>Change</button>}</header>{selectedCommander ? <article><img src={selectedCommander.image} alt="" /><div><b>{selectedCommander.name}</b><span>{selectedCommander.typeLine}</span><em>{selectedCommander.colors.length ? selectedCommander.colors.join(" · ") : "COLORLESS"} IDENTITY</em></div></article> : <div className="commander-search"><input value={commanderQuery} onChange={event => setCommanderQuery(event.target.value)} placeholder={`Search legal ${format} commanders…`} aria-label={`Search legal ${format} commanders`} />{(commanderSearching || commanderResults.length > 0 || commanderQuery.trim().length > 1) && <div role="listbox">{commanderSearching ? <p>The Archive is searching…</p> : commanderResults.length ? commanderResults.map(option => <button type="button" role="option" key={option.name} onClick={() => { setSelectedCommander(option); setCommanderQuery(option.name); setCommanderResults([]); }}><span>{option.image ? <img src={option.image} alt="" /> : "◆"}</span><b>{option.name}<small>{option.typeLine}</small></b><em>{option.colors.join("") || "C"}</em></button>) : <p>No legal {format} commander matches that search.</p>}</div>}</div>}</section>}
+        <label className="commission-note"><span>THE ONE THING THE FORGE MUST UNDERSTAND</span><textarea value={commissionNote} onChange={event => setCommissionNote(event.target.value)} placeholder="Favorite cards, play patterns you love, or anything this deck must never become…" /></label>
+        <button className="awaken-button" disabled={(chamber === "refine" && !deck.trim()) || ((format === "Commander" || format === "Brawl") && !selectedCommander)} onClick={awaken}><span>{(format === "Commander" || format === "Brawl") && !selectedCommander ? "Choose a legal commander to seal the Blueprint" : "Seal the commission"}</span><strong>AWAKEN THE GREAT FORGE</strong><b>→</b></button>
       </div>
     </section>}
 
@@ -222,7 +257,8 @@ export default function Home() {
 
     {chamber === "masterworks" && <section className="masterwork-reveal">
       <header><span className="forge-eyebrow"><i /> THE GREAT FORGE ANSWERS <i /></span><h1>Steel bends. Runes awaken.<br /><em>Three designs endure.</em></h1><p>The Forge honored your {format} commission and shaped three paths around <strong>{strategy.toLowerCase()}</strong>. Choose the one that feels like yours.</p></header>
-      <div className="masterwork-grid">{visibleMasterworks.map((work, index) => { const poolIndex = masterworkPage * 3 + index; const preview = (FORMAT_PREVIEWS[format] ?? FORMAT_PREVIEWS.Standard)[poolIndex % 3]; return <article className={`masterwork-card ${work.tone}`} key={work.name} style={{ "--delay": `${index * 140}ms` } as React.CSSProperties}><span>MASTERWORK {String(poolIndex + 1).padStart(2, "0")}</span><div className="masterwork-title"><i>{work.rune}</i><div><small>{work.path} · {format}</small><h2>{work.name}</h2></div></div><div className="masterwork-glimpse"><img src={cardImage(preview.card)} alt={`${preview.card} card`} loading="lazy" /><div><small>{preview.role}</small><strong>{preview.card}</strong><p>{preview.theme}</p><em><b>WIN CONDITION</b>{preview.win}</em></div></div><div className="masterwork-stats">{["Aggression", "Interaction", "Synergy", "Complexity"].map((label, statIndex) => <span key={label}><small>{label}</small><b>{MASTERWORK_STATS[poolIndex][statIndex]}</b></span>)}</div><p className="masterwork-verdict">{work.verdict}</p><button onClick={() => inspectMasterwork(poolIndex)}>Inspect this Masterwork <b>→</b></button></article>; })}</div>
+      <div className="masterwork-actions"><span>REVEAL {masterworkPage + 1} · {masterworkPage * 3 + 1}–{masterworkPage * 3 + visibleMasterworks.length} SEEN THIS COMMISSION</span><button className="masterwork-recycle" disabled={(masterworkPage + 1) * 3 >= MASTERWORK_POOL.length} onClick={() => setMasterworkPage(page => page + 1)}>{(masterworkPage + 1) * 3 >= MASTERWORK_POOL.length ? "All unseen Masterworks revealed" : "None feel right? Forge three different Masterworks →"}</button></div>
+      <div className="masterwork-grid">{visibleMasterworks.map((work, index) => { const poolIndex = masterworkPage * 3 + index; const preview = previewFor(poolIndex); return <article className={`masterwork-card ${work.tone}`} key={work.name} style={{ "--delay": `${index * 140}ms` } as React.CSSProperties}><span>MASTERWORK {String(poolIndex + 1).padStart(2, "0")}</span><div className="masterwork-title"><i>{work.rune}</i><div><small>{work.path} · {format}</small><h2>{work.name}</h2></div></div><div className="masterwork-glimpse"><img src={cardImage(preview.card)} alt={`${preview.card} card`} loading="lazy" /><div><small>{preview.role}</small><strong>{preview.card}</strong><p>{preview.theme}</p><em><b>WIN CONDITION</b>{preview.win}</em></div></div><div className="masterwork-stats">{["Aggression", "Interaction", "Synergy", "Complexity"].map((label, statIndex) => <span key={label}><small>{label}</small><b>{MASTERWORK_STATS[poolIndex][statIndex]}</b></span>)}</div><p className="masterwork-verdict">{work.verdict}</p><button onClick={() => inspectMasterwork(poolIndex)}>Inspect this Masterwork <b>→</b></button></article>; })}</div>
       <footer><button onClick={() => { setMasterworkPage(0); setChamber("entrance"); }}>Begin a new commission</button><span>THREE OF 642 DESIGNS SURVIVED</span><button className="masterwork-recycle" disabled={(masterworkPage + 1) * 3 >= MASTERWORK_POOL.length} onClick={() => setMasterworkPage(page => page + 1)}>{(masterworkPage + 1) * 3 >= MASTERWORK_POOL.length ? "All unseen Masterworks revealed" : "Recycle these · Forge three new Masterworks →"}</button></footer>
     </section>}
 
