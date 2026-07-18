@@ -3,6 +3,7 @@
 @import "./masterwork-summary.css";
 @import "./testing-anvil.css";
 @import "./blueprint-commander.css";
+@import "./deck-bench-dock.css";
 
 :root { --ink:#071012; --panel:#0d1a1c; --panel2:#102326; --line:#294246; --mint:#75dbc4; --mint2:#b9f5e6; --amber:#e39a48; --paper:#edf5f1; --muted:#91a7a5; }
 * { box-sizing:border-box; }
