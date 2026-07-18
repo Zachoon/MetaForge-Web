@@ -32,6 +32,8 @@ const ADDITIONAL_MASTERWORKS = [
 const MASTERWORK_POOL = [...MASTERWORKS, ...ADDITIONAL_MASTERWORKS] as const;
 
 type DeckPreview = { card: string; role: string; theme: string; win: string };
+type DeckRow = { quantity: number; name: string };
+type CardFact = { name: string; type_line?: string; image_uris?: { normal?: string; art_crop?: string }; card_faces?: Array<{ image_uris?: { normal?: string; art_crop?: string } }> };
 
 const MASTERWORK_STATS = [[94, 46, 70, 48], [72, 78, 76, 68], [28, 96, 64, 86], [76, 88, 72, 78], [62, 54, 94, 72], [44, 82, 88, 76], [86, 48, 90, 58], [38, 68, 98, 96], [42, 58, 82, 66]] as const;
 const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
@@ -72,6 +74,8 @@ const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
   ],
 };
 const cardImage = (name: string) => `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=normal`;
+const parseDeckRows = (text: string): DeckRow[] => text.split(/\r?\n/).flatMap(line => { const match = line.trim().match(/^(\d+)\s+(.+?)(?:\s+\([A-Z0-9]{2,6}\)\s+\d+\w*)?$/); return match ? [{ quantity: Number(match[1]), name: match[2].trim() }] : []; });
+const cardGroup = (fact?: CardFact, isCommander = false) => { const type = fact?.type_line || ""; if (isCommander) return "Commander"; if (/Land/i.test(type)) return "Lands"; if (/Creature/i.test(type)) return "Creatures"; if (/Planeswalker/i.test(type)) return "Planeswalkers"; if (/Instant/i.test(type)) return "Instants"; if (/Sorcery/i.test(type)) return "Sorceries"; if (/Artifact/i.test(type)) return "Artifacts"; if (/Enchantment/i.test(type)) return "Enchantments"; if (/Battle/i.test(type)) return "Battles"; return "Other"; };
 
 export default function Home() {
   const [chamber, setChamber] = useState<Chamber>("entrance");
@@ -87,6 +91,8 @@ export default function Home() {
   const [benchStatus, setBenchStatus] = useState<"idle" | "forging" | "testing" | "thinking">("idle");
   const [record, setRecord] = useState({ wins: 0, losses: 0 });
   const [revisions, setRevisions] = useState<Array<{ deck: string; note: string; createdAt: string }>>([]);
+  const [cardFacts, setCardFacts] = useState<Record<string, CardFact>>({});
+  const [hoveredCard, setHoveredCard] = useState("");
 
   useEffect(() => {
     if (chamber !== "forging") return;
@@ -104,6 +110,18 @@ export default function Home() {
   const visibleMasterworks = useMemo(() => MASTERWORK_POOL.slice(masterworkPage * 3, masterworkPage * 3 + 3), [masterworkPage]);
   const chosenPreview = (FORMAT_PREVIEWS[format] ?? FORMAT_PREVIEWS.Standard)[selectedWork % 3];
   const chosenWork = MASTERWORK_POOL[selectedWork];
+  const deckRows = useMemo(() => parseDeckRows(forgedDeck), [forgedDeck]);
+  const groupedDeck = useMemo(() => { const groups: Record<string, DeckRow[]> = {}; for (const row of deckRows) { const group = cardGroup(cardFacts[row.name.toLowerCase()], (format === "Commander" || format === "Brawl") && row.name.toLowerCase() === chosenPreview.card.toLowerCase()); (groups[group] ||= []).push(row); } return groups; }, [deckRows, cardFacts, format, chosenPreview.card]);
+  const activeCard = hoveredCard || chosenPreview.card || deckRows[0]?.name || "";
+  const activeFact = cardFacts[activeCard.toLowerCase()];
+  const activeImage = activeFact?.image_uris?.normal || activeFact?.card_faces?.[0]?.image_uris?.normal || (activeCard ? cardImage(activeCard) : "");
+
+  useEffect(() => {
+    const names = [...new Set(parseDeckRows(forgedDeck).map(row => row.name))]; if (!names.length) { setCardFacts({}); return; }
+    let cancelled = false;
+    (async () => { const next: Record<string, CardFact> = {}; for (let index = 0; index < names.length; index += 75) { try { const response = await fetch("https://api.scryfall.com/cards/collection", { method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" }, body: JSON.stringify({ identifiers: names.slice(index, index + 75).map(name => ({ name })) }) }); const data = await response.json(); for (const fact of data.data || []) next[String(fact.name).toLowerCase()] = fact; } catch { /* Named image fallback remains available. */ } if (index + 75 < names.length) await new Promise(resolve => window.setTimeout(resolve, 120)); } if (!cancelled) setCardFacts(next); })();
+    return () => { cancelled = true; };
+  }, [forgedDeck]);
 
   async function inspectMasterwork(index: number) {
     const work = MASTERWORK_POOL[index];
@@ -211,7 +229,7 @@ export default function Home() {
     {chamber === "workbench" && <section className="testing-anvil">
       <button className="back-link" onClick={() => setChamber("masterworks")}>← Return to the three Masterworks</button>
       <header><span className="forge-eyebrow"><i /> MASTERWORK CHOSEN · THE TESTING ANVIL</span><h1>{chosenWork.name}</h1><p>{chosenWork.path} · {format} · Revision {Math.max(1, revisions.length)}</p></header>
-      <div className="testing-layout"><article className="deck-manuscript"><header><div><small>THE FORGED LIST</small><h2>{benchStatus === "forging" ? "The Forge is producing your deck…" : "Your founder-test candidate"}</h2></div><button disabled={!forgedDeck || benchStatus === "forging"} onClick={() => navigator.clipboard.writeText(forgedDeck)}>Copy deck</button></header><pre>{benchStatus === "forging" ? "Tempering curve, roles, interaction, and the mana lattice…" : forgedDeck}</pre><footer><span>Featured {format === "Commander" || format === "Brawl" ? "commander" : "lynchpin"}: <b>{chosenPreview.card}</b></span><button disabled={benchStatus === "forging" || !forgedDeck} onClick={beginTesting}>{benchStatus === "testing" ? "Testing is active ✓" : "Choose this deck & begin testing"}</button></footer></article>
+      <div className="testing-layout"><article className="deck-manuscript"><header><div><small>THE FORGED LIST · TYPE GALLERY</small><h2>{benchStatus === "forging" ? "The Forge is producing your deck…" : `${deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards · ${Object.keys(groupedDeck).length} sections`}</h2></div><button disabled={!forgedDeck || benchStatus === "forging"} onClick={() => navigator.clipboard.writeText(forgedDeck)}>Copy deck</button></header>{benchStatus === "forging" ? <pre>Tempering curve, roles, interaction, and the mana lattice…</pre> : deckRows.length ? <div className="deck-gallery"><aside className="card-preview-stage"><div>{activeImage && <img src={activeImage} alt={`${activeCard} card preview`} />}</div><small>HOVER OR FOCUS A CARD</small><strong>{activeCard}</strong><span>{activeFact?.type_line || "Card details awaken on inspection"}</span></aside><div className="type-columns">{["Commander", "Creatures", "Planeswalkers", "Instants", "Sorceries", "Artifacts", "Enchantments", "Battles", "Lands", "Other"].filter(group => groupedDeck[group]?.length).map(group => <section className="type-column" key={group}><header><b>{group}</b><span>{groupedDeck[group].reduce((sum, row) => sum + row.quantity, 0)}</span></header>{groupedDeck[group].map(row => <button type="button" key={row.name} onMouseEnter={() => setHoveredCard(row.name)} onFocus={() => setHoveredCard(row.name)} className={activeCard === row.name ? "active" : ""}><span>{row.quantity}</span><strong>{row.name}</strong></button>)}</section>)}</div></div> : <pre>{forgedDeck}</pre>}<details className="raw-decklist"><summary>View complete Forge response / import text</summary><pre>{forgedDeck}</pre></details><footer><span>Featured {format === "Commander" || format === "Brawl" ? "commander" : "lynchpin"}: <b>{chosenPreview.card}</b></span><button disabled={benchStatus === "forging" || !forgedDeck} onClick={beginTesting}>{benchStatus === "testing" ? "Testing is active ✓" : "Choose this deck & begin testing"}</button></footer></article>
       <aside className="testing-loop"><header><small>THE FORGE LEARNS WITH YOU</small><h2>Test. Signal. Reforge.</h2><p>One match is a signal—not proof. Tell the Forge what felt strong, awkward, missing, or simply unlike you.</p></header><div className="test-record"><button onClick={() => recordMatch("win")}>Record a win <b>{record.wins}</b></button><button onClick={() => recordMatch("loss")}>Record a loss <b>{record.losses}</b></button></div><label><span>WHAT WORKED OR FELT WRONG?</span><textarea value={playerSignal} onChange={event => setPlayerSignal(event.target.value)} placeholder="Example: I keep running out of threats after the first board wipe, but the early pressure feels exactly right…" /></label><button className="consult-forge" disabled={!playerSignal.trim() || benchStatus === "thinking"} onClick={consultForge}>{benchStatus === "thinking" ? "The Forge is studying your signal…" : "Ask the Forge for alternatives →"}</button>{forgeReply && <section className="forge-refinement"><small>REFINEMENT OPTIONS · FORGE THEORY</small><pre>{forgeReply}</pre><button onClick={preserveRevision}>Preserve as revision {revisions.length + 1}</button></section>}<footer><b>{revisions.length || 1}</b><span>REVISION{revisions.length === 1 ? "" : "S"} PRESERVED · PRIVATE BENCH SYNC</span></footer></aside></div>
     </section>}
   </main>;
