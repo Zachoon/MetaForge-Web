@@ -2126,14 +2126,21 @@ export default function Home() {
       </aside>
       )}
       {chamber === "workbench" && deckRows.length > 0 && (
-        <section
-          className={`forge-edit-workbench ${editAnvilOpen ? "open" : ""}`}
-          style={
-            editAnvilOpen
-              ? undefined
-              : { transform: "translateX(calc(100% - 42px))" }
-          }
-        >
+        <>
+          {!editAnvilOpen && (
+            <button
+              className="edit-anvil-launcher"
+              onClick={() => setEditAnvilOpen(true)}
+              aria-label="Raise the Editing Anvil"
+            >
+              <i>⚒</i>
+              <span>Raise Editing Anvil</span>
+            </button>
+          )}
+          <section
+            className={`forge-edit-workbench ${editAnvilOpen ? "open" : ""}`}
+            hidden={!editAnvilOpen}
+          >
           <button
             className="edit-anvil-toggle"
             onClick={() => setEditAnvilOpen((open) => !open)}
@@ -2285,7 +2292,8 @@ export default function Home() {
               )}
             </section>
           </div>
-        </section>
+          </section>
+        </>
       )}
       {chamber === "workbench" &&
         (replacementLoading ||
