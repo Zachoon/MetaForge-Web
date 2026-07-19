@@ -1,4 +1,4 @@
-﻿/* ==========================================================
+/* ==========================================================
    METAFORGE MASTERWORK REVEAL CHAMBER
    Desktop Forge language translated for responsive web.
 ========================================================== */
@@ -483,7 +483,7 @@
 }
 
 .masterwork-identity span::before {
-  content: "◆";
+  content: "?";
   margin-right: 7px;
   color: #6d7f7f;
   font-size: 7px;
