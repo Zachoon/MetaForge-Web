@@ -536,6 +536,75 @@ const cardFactKey = (name: string) =>
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
+const BASIC_LANDS: Record<string, string> = {
+  W: "Plains",
+  U: "Island",
+  B: "Swamp",
+  R: "Mountain",
+  G: "Forest",
+};
+const BASIC_LAND_KEYS = new Set(
+  [...Object.values(BASIC_LANDS), "Wastes"].map(cardFactKey),
+);
+const normalizeCommanderDeck = (
+  text: string,
+  commander: CommanderOption | null,
+  format: string,
+) => {
+  if (!commander || !isCommanderFormat(format)) return null;
+  const target = targetDeckSize(format);
+  const parsed = parseDeckRows(text).filter(
+    (row) => Number.isFinite(row.quantity) && row.quantity > 0 && row.name,
+  );
+  const commanderKeys = new Set(
+    [commander.name, commander.name.split(" // ")[0]].map(cardFactKey),
+  );
+  const merged = new Map<string, DeckRow>();
+  for (const row of parsed) {
+    const key = cardFactKey(row.name);
+    if (commanderKeys.has(key)) continue;
+    const basic = BASIC_LAND_KEYS.has(key);
+    const existing = merged.get(key);
+    if (existing) {
+      if (basic) existing.quantity += row.quantity;
+      continue;
+    }
+    merged.set(key, {
+      name: row.name,
+      quantity: basic ? row.quantity : 1,
+    });
+  }
+  const rows: DeckRow[] = [
+    { quantity: 1, name: commander.name },
+    ...merged.values(),
+  ];
+  let total = rows.reduce((sum, row) => sum + row.quantity, 0);
+
+  // A near-complete list is repairable deterministically. A genuinely empty or
+  // abbreviated answer should still retry instead of becoming a pile of basics.
+  if (total < target - 20) return null;
+
+  for (let index = rows.length - 1; total > target && index > 0; index -= 1) {
+    const row = rows[index];
+    const removable = BASIC_LAND_KEYS.has(cardFactKey(row.name))
+      ? row.quantity
+      : 1;
+    const cut = Math.min(removable, total - target);
+    row.quantity -= cut;
+    total -= cut;
+    if (row.quantity === 0) rows.splice(index, 1);
+  }
+
+  const colors = commander.colors.length ? commander.colors : ["C"];
+  for (let index = 0; total < target; index += 1) {
+    const land = BASIC_LANDS[colors[index % colors.length]] || "Wastes";
+    const existing = rows.find((row) => cardFactKey(row.name) === cardFactKey(land));
+    if (existing) existing.quantity += 1;
+    else rows.push({ quantity: 1, name: land });
+    total += 1;
+  }
+  return rows.map((row) => `${row.quantity} ${row.name}`).join("\n");
+};
 const indexCardFact = (
   target: Record<string, CardFact>,
   fact: CardFact,
@@ -1190,6 +1259,8 @@ export default function Home() {
         const data = await response.json();
         if (!response.ok) throw new Error(data?.error || "Forge unavailable");
         answer = String(data.answer || "");
+        const normalized = normalizeCommanderDeck(answer, commander, format);
+        if (normalized) answer = normalized;
         total = parseDeckRows(answer).reduce(
           (sum, row) => sum + row.quantity,
           0,
