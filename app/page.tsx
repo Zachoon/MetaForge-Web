@@ -192,6 +192,73 @@ const MASTERWORK_STATS = [
   [38, 68, 98, 96],
   [42, 58, 82, 66],
 ] as const;
+const commanderOracleText = (commander?: CommanderOption | null) =>
+  String(commander?.verifiedFacts || "")
+    .split("Oracle text:\n")
+    .slice(1)
+    .join("Oracle text:\n")
+    .trim();
+const masterworkInsight = (
+  work: Masterwork,
+  preview: DeckPreview,
+  commander: CommanderOption | null,
+) => {
+  const oracle = commanderOracleText(commander);
+  const mechanics = [
+    [/sacrifice|dies|graveyard/i, "graveyard and sacrifice value"],
+    [/\bcounter|proliferate/i, "counter-based scaling"],
+    [/draw|look at|exile.+play/i, "repeatable card selection"],
+    [/token|create/i, "token production"],
+    [/attack|combat|damage/i, "combat conversion"],
+    [/artifact|vehicle|equipment/i, "artifact synergies"],
+    [/instant|sorcery|\bcast\b/i, "spell sequencing"],
+    [/\bland|mana/i, "mana and land development"],
+  ]
+    .filter(([pattern]) => (pattern as RegExp).test(oracle))
+    .map(([, label]) => String(label))
+    .slice(0, 2);
+  const identity = mechanics.length
+    ? mechanics.join(" plus ")
+    : commander
+      ? "the commander's verified rules text"
+      : preview.theme.toLowerCase();
+  const path = work.path.toLowerCase();
+  const pressure = /aggress|pressure|tempo|go-wide/.test(path);
+  const control = /control|reactive|bastion|precision/.test(path);
+  const engine = /synergy|engine|combo|alchemy|growth/.test(path);
+  const attrition = /attrition|graveyard|inevitability|resource|ramp/.test(path);
+  const opening = pressure
+    ? "Deploy an early threat, then protect the tempo lead instead of spending turns assembling a fragile engine."
+    : control
+      ? "Develop mana while trading selectively; the commander enters after the first wave of pressure is contained."
+      : engine
+        ? "Lead with low-cost enablers, then use the commander to turn several modest pieces into one compounding engine."
+        : "Establish mana and flexible interaction first, then pivot between pressure and recovery as the table reveals itself.";
+  const win = pressure
+    ? `Convert ${identity} into repeated combat pressure, then finish before slower decks rebuild.`
+    : control
+      ? `Use ${identity} to pull ahead after one-for-one trades, then close behind a protected threat.`
+      : engine
+        ? `Assemble overlapping payoffs around ${identity}; each piece remains useful while the combined engine creates the winning turn.`
+        : attrition
+          ? `Make every exchange improve the next one until ${identity} produces an advantage opponents can no longer match.`
+          : preview.win;
+  const packages = pressure
+    ? ["Cheap pressure", "Protection + disruption", "Reach after a stalled board"]
+    : control
+      ? ["Early interaction", "Repeatable advantage", "Protected closing threats"]
+      : engine
+        ? ["Redundant enablers", "Commander payoff layer", "Backup finishers"]
+        : ["Mana development", "Flexible two-for-ones", "Inevitable endgame"];
+  const weakness = pressure
+    ? "Most exposed to efficient sweepers and lifegain; mulligans must preserve a second wave."
+    : control
+      ? "Can lose to threats that slip under its answers; sequencing and untapped mana matter."
+      : engine
+        ? "Disruption aimed at the payoff turn can slow the deck; redundant engines are essential."
+        : "Fast combo or snowballing starts can punish the setup turns before the value plan stabilizes.";
+  return { opening, win, packages, weakness, oracle };
+};
 const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
   Standard: [
     {
@@ -1786,6 +1853,8 @@ export default function Home() {
             {visibleMasterworks.map((work, index) => {
               const poolIndex = masterworkPage * 3 + index;
               const preview = previewFor(poolIndex);
+              const commander = commanderFor(poolIndex);
+              const insight = masterworkInsight(work, preview, commander);
               return (
                 <article
                   className={`masterwork-card ${work.tone}`}
@@ -1807,26 +1876,56 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="masterwork-glimpse">
-                    <img
-                      src={cardImage(preview.card)}
-                      alt={`${preview.card} card`}
-                      loading="lazy"
-                    />
+                    <span
+                      className="commander-inspector"
+                      tabIndex={0}
+                      aria-label={`Inspect ${preview.card} rules`}
+                    >
+                      <img
+                        src={commander?.image || cardImage(preview.card)}
+                        alt={`${preview.card} card`}
+                        loading="lazy"
+                      />
+                      <span className="commander-zoom" role="tooltip">
+                        <img
+                          src={cardImage(preview.card)}
+                          alt={`${preview.card} enlarged card`}
+                        />
+                        <span>
+                          <b>{preview.card}</b>
+                          <small>{commander?.typeLine || preview.role}</small>
+                          <em>
+                            {insight.oracle ||
+                              "The full card image contains the verified rules text."}
+                          </em>
+                        </span>
+                      </span>
+                    </span>
                     <div>
                       <small>{preview.role}</small>
                       <strong>{preview.card}</strong>
-                      <p>{preview.theme}</p>
+                      <p>{insight.opening}</p>
                       <em>
                         <b>WIN CONDITION</b>
-                        {preview.win}
+                        {insight.win}
                       </em>
                     </div>
+                  </div>
+                  <div className="masterwork-plan">
+                    <span>
+                      <small>KEY PACKAGES</small>
+                      <b>{insight.packages.join(" · ")}</b>
+                    </span>
+                    <span>
+                      <small>WATCH FOR</small>
+                      <b>{insight.weakness}</b>
+                    </span>
                   </div>
                   <div className="masterwork-stats">
                     {["Aggression", "Interaction", "Synergy", "Complexity"].map(
                       (label, statIndex) => (
                         <span key={label}>
-                          <small>{label}</small>
+                          <small>{label} · estimate</small>
                           <b>{MASTERWORK_STATS[poolIndex][statIndex]}</b>
                         </span>
                       ),
