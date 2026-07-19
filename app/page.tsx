@@ -460,6 +460,28 @@ const parseDeckRows = (text: string): DeckRow[] =>
       .match(/^(\d+)\s+(.+?)(?:\s+\([A-Z0-9]{2,6}\)\s+\d+\w*)?$/);
     return match ? [{ quantity: Number(match[1]), name: match[2].trim() }] : [];
   });
+const cardFactKey = (name: string) =>
+  name
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[‘’`]/g, "'")
+    .replace(/\s*\/\/\s*/g, " // ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+const indexCardFact = (
+  target: Record<string, CardFact>,
+  fact: CardFact,
+  requestedName = "",
+) => {
+  const aliases = [
+    requestedName,
+    String(fact.name || ""),
+    String(fact.name || "").split(" // ")[0],
+    ...(fact.card_faces || []).map((face) => String(face.name || "")),
+  ];
+  for (const alias of aliases) if (alias) target[cardFactKey(alias)] = fact;
+};
 const cardGroup = (fact?: CardFact, isCommander = false) => {
   const type = [
     fact?.type_line,
@@ -619,9 +641,9 @@ export default function Home() {
     const groups: Record<string, DeckRow[]> = {};
     for (const row of orderedDeckRows) {
       const group = cardGroup(
-        cardFacts[row.name.toLowerCase()],
+        cardFacts[cardFactKey(row.name)],
         isCommanderFormat(format) &&
-          row.name.toLowerCase() === chosenPreview.card.toLowerCase(),
+          cardFactKey(row.name) === cardFactKey(chosenPreview.card),
       );
       (groups[group] ||= []).push(row);
     }
@@ -629,7 +651,7 @@ export default function Home() {
   }, [orderedDeckRows, cardFacts, format, chosenPreview.card]);
   const activeCard =
     hoveredCard || chosenPreview.card || deckRows[0]?.name || "";
-  const activeFact = cardFacts[activeCard.toLowerCase()];
+  const activeFact = cardFacts[cardFactKey(activeCard)];
   const activeImage =
     activeFact?.image_uris?.normal ||
     activeFact?.card_faces?.[0]?.image_uris?.normal ||
@@ -684,16 +706,19 @@ export default function Home() {
             },
           );
           const data = await response.json();
-          for (const fact of data.data || []) {
-            const aliases = [
-              String(fact.name),
-              String(fact.name).split(" // ")[0],
-              ...(fact.card_faces || []).map((face: CardFact) =>
-                String(face.name || ""),
-              ),
-            ];
-            for (const alias of aliases)
-              if (alias) next[alias.toLowerCase()] = fact;
+          for (const fact of data.data || []) indexCardFact(next, fact);
+          for (const requestedName of names.slice(index, index + 75)) {
+            if (next[cardFactKey(requestedName)]) continue;
+            try {
+              const fallback = await fetch(
+                `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(requestedName)}`,
+              );
+              if (fallback.ok)
+                indexCardFact(next, await fallback.json(), requestedName);
+            } catch {
+              /* A later deck refresh can retry this individual card. */
+            }
+            await new Promise((resolve) => window.setTimeout(resolve, 80));
           }
         } catch {
           /* Named image fallback remains available. */
