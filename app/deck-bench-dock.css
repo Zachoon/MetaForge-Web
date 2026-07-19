@@ -54,7 +54,7 @@
   border: 1px solid #6a877f;
   background: #0d1b1a;
   color: #e7a24d;
-  font: normal 19px Georgia;
+  font: normal 25px Georgia;
 }
 .bench-toggle span {
   min-width: 0;
@@ -80,7 +80,7 @@
   margin-left: auto;
   color: #70cdb9;
   font:
-    normal 10px Inter,
+    normal 16px Inter,
     sans-serif;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -134,7 +134,7 @@
 .bench-tray header strong {
   margin-top: 4px;
   font:
-    500 22px Georgia,
+    500 28px Georgia,
     serif;
 }
 .bench-tray header button,
@@ -186,7 +186,7 @@
 }
 .bench-decks i {
   color: #d68a3a;
-  font: normal 42px Georgia;
+  font: normal 48px Georgia;
   text-shadow: 0 0 22px #e79943;
 }
 .bench-decks b,
@@ -199,7 +199,7 @@
   margin-top: 9px;
   overflow: hidden;
   font:
-    600 15px Georgia,
+    600 21px Georgia,
     serif;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -216,7 +216,7 @@
   margin-top: 7px;
   color: #879a95;
   font:
-    normal 10px Inter,
+    normal 16px Inter,
     sans-serif;
 }
 .bench-tray > footer {
