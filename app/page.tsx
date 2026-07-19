@@ -1059,18 +1059,37 @@ export default function Home() {
     setCommanderResults([]);
     try {
       const query = encodeURIComponent(
-        `${scryfallFormatTerms(format)} is:commander`,
-      );
-      const response = await fetch(
-        `https://api.scryfall.com/cards/random?q=${query}`,
-      );
-      if (!response.ok) throw new Error();
-      const option = commanderOption(await response.json());
-      setSelectedCommander(option);
-      setCommanderQuery(option.name);
+          `${scryfallFormatTerms(format)} is:commander`,
+        ),
+        exclusions = new Set(seenRandomCommanders),
+        starters: CommanderOption[] = [];
+      for (
+        let attempts = 0;
+        starters.length < 3 && attempts < 18;
+        attempts += 1
+      ) {
+        const response = await fetch(
+          `https://api.scryfall.com/cards/random?q=${query}`,
+        );
+        if (!response.ok) continue;
+        const option = commanderOption(await response.json());
+        if (!exclusions.has(option.name)) {
+          exclusions.add(option.name);
+          starters.push(option);
+        }
+      }
+      if (starters.length !== 3)
+        throw new Error("Could not draw three unique commanders");
+      setSelectedCommander(starters[0]);
+      setCommanderQuery("");
       setRandomCommanderMode(true);
-      setRandomCommanderOptions([]);
-      setSeenRandomCommanders([option.name]);
+      setRandomCommanderOptions(starters);
+      setSeenRandomCommanders([...exclusions]);
+      setCommissionSeed(Date.now());
+      setStage(0);
+      setMasterworkPage(0);
+      setSelectedWork(0);
+      setChamber("forging");
     } catch {
       setCommanderQuery("");
     } finally {
@@ -1701,8 +1720,8 @@ export default function Home() {
                         onClick={chooseRandomCommander}
                       >
                         {randomizingCommander
-                          ? "Consulting the Archive…"
-                          : "Surprise me · random commander"}
+                          ? "Drawing three starter legends…"
+                          : "Surprise me · reveal three commanders"}
                       </button>
                     </div>
                     {(commanderSearching ||
