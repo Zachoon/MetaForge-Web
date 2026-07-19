@@ -28,6 +28,10 @@ not justify a confident claim.
    structural pressure point, and smallest honest counter-field experiment.
 10. Match results are tied to the exact revision, opponent archetype, player
     signal, and timestamp in the private Deck Bench.
+11. An Oracle-derived interaction graph connects enablers to payoffs, groups
+    mechanical packages, exposes isolated nonland slots, and conservatively
+    detects symmetrical rules-text conflicts. Hovered cards show their strongest
+    live relationships rather than only a generic role label.
 
 ## Core modules
 
@@ -36,6 +40,9 @@ not justify a confident claim.
 - `app/deck-analysis.mjs`: deck parsing, card mechanics, land-engine analysis,
   and controlled composition recommendations.
 - `app/card-mechanics.mjs`: offline mechanic tags used by structural reasoning.
+- `app/forge-interaction-graph.mjs`: deterministic producer/payoff edges,
+  package clustering, commander links, isolation auditing, and conservative
+  nonbo detection from current card facts.
 - `app/forge-simulation.mjs`: deterministic library and opening-hand trials.
 - `app/goldfish-simulation.mjs`: plan-realization and pilot-sensitivity gates.
 - `app/matchup-simulation.mjs`: bounded archetype pressure scenarios and
@@ -67,7 +74,9 @@ invented metagame claim.
 
 ## Active program
 
-The persistent implementation goal tracks deeper package-level interaction
-graphs, broader live metagame ingestion, sample-aware personalization, and
-continued Meta Breaker refinement. New work should extend these modules rather
-than creating disconnected duplicate logic.
+The persistent implementation goal tracks broader live metagame ingestion,
+sample-aware personalization, and continued Meta Breaker refinement. The first
+live interaction graph now ships in the Testing Anvil; future graph work should
+add richer mechanic vocabularies and observed pair/package evidence without
+relabeling inference as proof. New work should extend these modules rather than
+creating disconnected duplicate logic.

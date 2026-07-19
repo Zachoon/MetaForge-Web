@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { evaluateSimulationGate } from "./goldfish-simulation.mjs";
 import { evaluateMatchupMatrix } from "./matchup-simulation.mjs";
 import { getMetaIntelligence } from "./meta-intelligence.mjs";
+import { buildInteractionGraph } from "./forge-interaction-graph.mjs";
 
 type Chamber =
   | "entrance"
@@ -1060,6 +1061,23 @@ export default function Home() {
     };
   }, [deckRows, cardFacts, format, chosenPreview.card, selectedCommander]);
   const activeRole = cardRole(activeFact);
+  const interactionGraph = useMemo(() => buildInteractionGraph(
+    deckRows.map((row) => {
+      const fact = cardFacts[cardFactKey(row.name)];
+      return {
+        name: row.name,
+        quantity: row.quantity,
+        typeLine: [fact?.type_line, ...(fact?.card_faces || []).map((face) => face.type_line)].filter(Boolean).join(" // "),
+        oracleText: [fact?.oracle_text, ...(fact?.card_faces || []).map((face) => face.oracle_text)].filter(Boolean).join(" // "),
+        cmc: Number(fact?.cmc || 0),
+        isCommander: isCommanderFormat(format) && cardFactKey(row.name) === cardFactKey(chosenPreview.card),
+      };
+    }),
+    { commanderName: chosenPreview.card },
+  ), [deckRows, cardFacts, format, chosenPreview.card]);
+  const activeGraphEdges = interactionGraph.edges
+    .filter((edge) => edge.from === activeCard || edge.to === activeCard)
+    .slice(0, 2);
   const activeSlotReason =
     activeRole === "Mana source"
       ? "Supports the deck's colored-mana and land-count requirements."
@@ -2581,6 +2599,37 @@ export default function Home() {
                       <p>Modeled Forge trials test mana, role density, and sequencing under pressure. They are viability gates—not predicted match win rates.</p>
                     </section>
                   )}
+                  {!deckIntegrity.checking && (
+                    <section className="interaction-graph-dossier">
+                      <header>
+                        <span><small>INTERACTION GRAPH · ORACLE REASONING</small><b>{interactionGraph.confidence}</b></span>
+                        <strong>{Math.round(interactionGraph.coverage * 100)}% connected</strong>
+                      </header>
+                      <div>
+                        <article>
+                          <small>STRONGEST PACKAGES</small>
+                          {interactionGraph.packages.slice(0, 4).map((group) => (
+                            <p key={group.signal}><b>{group.signal.toUpperCase()}</b><span>{group.members.slice(0, 4).join(" · ")}{group.members.length > 4 ? ` +${group.members.length - 4}` : ""}</span></p>
+                          ))}
+                          {!interactionGraph.packages.length && <em>No multi-card package is verified yet.</em>}
+                        </article>
+                        <article>
+                          <small>STRONGEST RELATIONSHIPS</small>
+                          {interactionGraph.edges.slice(0, 3).map((edge) => (
+                            <p key={`${edge.from}-${edge.to}`}><b>{edge.strength}% · {edge.signals.join(" + ")}</b><span>{edge.from} ↔ {edge.to}</span></p>
+                          ))}
+                          {!interactionGraph.edges.length && <em>No oracle-derived relationship is strong enough to claim.</em>}
+                        </article>
+                        <article className={interactionGraph.nonbos.length ? "graph-warning" : ""}>
+                          <small>CONFLICT + ISOLATION AUDIT</small>
+                          {interactionGraph.nonbos.slice(0, 2).map((conflict) => <p key={`${conflict.source}-${conflict.signal}`}><b>NONBO · {conflict.source}</b><span>{conflict.reason}</span></p>)}
+                          {!interactionGraph.nonbos.length && <p><b>NO VERIFIED NONBO</b><span>No symmetrical oracle-text conflict was detected.</span></p>}
+                          <em>{interactionGraph.isolated.length ? `${interactionGraph.isolated.length} isolated slot${interactionGraph.isolated.length === 1 ? "" : "s"}: ${interactionGraph.isolated.slice(0, 4).join(" · ")}` : "Every nonland slot has at least one modeled relationship."}</em>
+                        </article>
+                      </div>
+                      <footer>{interactionGraph.methodology}</footer>
+                    </section>
+                  )}
                   {!deckIntegrity.checking && deckIntegrity.issues.length > 0 && (
                     <footer>
                       <ul>{deckIntegrity.issues.map((issue) => <li key={issue}>{issue}</li>)}</ul>
@@ -2628,6 +2677,9 @@ export default function Home() {
                     <span className="slot-justification">
                       <small>SLOT DUTY · {activeRole.toUpperCase()}</small>
                       {activeSlotReason}
+                      {activeGraphEdges.map((edge) => (
+                        <em key={`${edge.from}-${edge.to}`}>{edge.signals.join(" + ")} · {edge.from === activeCard ? edge.to : edge.from}</em>
+                      ))}
                     </span>
                   </aside>
                   <div className="type-columns">
