@@ -198,6 +198,58 @@ const commanderOracleText = (commander?: CommanderOption | null) =>
     .slice(1)
     .join("Oracle text:\n")
     .trim();
+type ForgeLane = "pressure" | "engine" | "inevitability";
+const FORGE_LANES: ForgeLane[] = ["pressure", "engine", "inevitability"];
+const commanderLaneScores = (commander: CommanderOption) => {
+  const text = `${commander.typeLine} ${commanderOracleText(commander)}`;
+  const count = (pattern: RegExp) => (text.match(pattern) || []).length;
+  return {
+    pressure:
+      count(/attack|attacking|combat|haste|power|double strike|first strike|deals? damage|firebend/gi) * 3 +
+      count(/creature|counter on|can(?:not|'t) block/gi),
+    engine:
+      count(/create|token|copy|cast|sacrifice|whenever|trigger|draw|counter on|proliferate|food|treasure/gi) * 2 +
+      count(/artifact|enchantment|graveyard|exile.+play/gi),
+    inevitability:
+      count(/counter target|destroy|exile target|return target|tap target|opponent|each player|life|ward|prevent/gi) * 2 +
+      count(/draw|graveyard|end step|upkeep/gi),
+  };
+};
+const arrangeCommanderStarters = (candidates: CommanderOption[]) => {
+  const available = [...candidates];
+  return FORGE_LANES.flatMap((lane) => {
+    if (!available.length) return [];
+    let bestIndex = 0;
+    for (let index = 1; index < available.length; index += 1)
+      if (commanderLaneScores(available[index])[lane] > commanderLaneScores(available[bestIndex])[lane])
+        bestIndex = index;
+    return available.splice(bestIndex, 1);
+  });
+};
+const alignRandomMasterwork = (work: Masterwork, commander: CommanderOption | null, index: number) => {
+  if (!commander) return work;
+  const paths: Record<ForgeLane, string> = {
+    pressure: "Commander-Led Pressure",
+    engine: "Synergy Engine",
+    inevitability: "Reactive Inevitability",
+  };
+  return { ...work, path: paths[FORGE_LANES[index % 3]] };
+};
+const masterworkStats = (commander: CommanderOption | null, index: number) => {
+  if (!commander) return MASTERWORK_STATS[index];
+  const lane = FORGE_LANES[index % 3];
+  const scores = commanderLaneScores(commander);
+  const base: Record<ForgeLane, [number, number, number, number]> = {
+    pressure: [82, 54, 72, 54],
+    engine: [54, 66, 90, 78],
+    inevitability: [34, 88, 76, 82],
+  };
+  const result = [...base[lane]] as [number, number, number, number];
+  result[0] = Math.min(98, result[0] + Math.min(12, scores.pressure));
+  result[1] = Math.min(98, result[1] + Math.min(10, scores.inevitability));
+  result[2] = Math.min(98, result[2] + Math.min(8, scores.engine));
+  return result;
+};
 const masterworkInsight = (
   work: Masterwork,
   preview: DeckPreview,
@@ -743,6 +795,12 @@ export default function Home() {
     randomCommission && randomCommanderOptions.length === 3
       ? randomCommanderOptions[index % 3]
       : selectedCommander;
+  const workFor = (index: number) => {
+    const work = masterworks[index];
+    return randomCommission
+      ? alignRandomMasterwork(work, commanderFor(index), index)
+      : work;
+  };
   const previewFor = (index: number) => {
     const base = (FORMAT_PREVIEWS[
       format === "Standard Brawl" ? "Brawl" : format
@@ -762,7 +820,7 @@ export default function Home() {
       : base;
   };
   const chosenPreview = previewFor(selectedWork);
-  const chosenWork = restoredWork || masterworks[selectedWork];
+  const chosenWork = restoredWork || workFor(selectedWork);
   const deckRows = useMemo(() => parseDeckRows(forgedDeck), [forgedDeck]);
   const orderedDeckRows = useMemo(
     () =>
@@ -1131,10 +1189,10 @@ export default function Home() {
           `${scryfallFormatTerms(format)} is:commander`,
         ),
         exclusions = new Set(seenRandomCommanders),
-        starters: CommanderOption[] = [];
+        candidates: CommanderOption[] = [];
       for (
         let attempts = 0;
-        starters.length < 3 && attempts < 18;
+        candidates.length < 9 && attempts < 30;
         attempts += 1
       ) {
         const response = await fetch(
@@ -1144,9 +1202,10 @@ export default function Home() {
         const option = commanderOption(await response.json());
         if (!exclusions.has(option.name)) {
           exclusions.add(option.name);
-          starters.push(option);
+          candidates.push(option);
         }
       }
+      const starters = arrangeCommanderStarters(candidates).slice(0, 3);
       if (starters.length !== 3)
         throw new Error("Could not draw three unique commanders");
       setSelectedCommander(starters[0]);
@@ -1178,8 +1237,8 @@ export default function Home() {
           `${scryfallFormatTerms(format)} is:commander`,
         ),
         exclusions = new Set(seenRandomCommanders),
-        next: CommanderOption[] = [];
-      for (let attempts = 0; next.length < 3 && attempts < 18; attempts += 1) {
+        candidates: CommanderOption[] = [];
+      for (let attempts = 0; candidates.length < 9 && attempts < 30; attempts += 1) {
         const response = await fetch(
           `https://api.scryfall.com/cards/random?q=${query}`,
         );
@@ -1187,9 +1246,10 @@ export default function Home() {
         const option = commanderOption(await response.json());
         if (!exclusions.has(option.name)) {
           exclusions.add(option.name);
-          next.push(option);
+          candidates.push(option);
         }
       }
+      const next = arrangeCommanderStarters(candidates).slice(0, 3);
       if (next.length !== 3)
         throw new Error("Could not draw three unique commanders");
       setRandomCommanderOptions(next);
@@ -1201,7 +1261,7 @@ export default function Home() {
   }
 
   async function inspectMasterwork(index: number) {
-    const work = masterworks[index];
+    const work = workFor(index);
     const preview = previewFor(index);
     const commander = commanderFor(index);
     const generationId = crypto.randomUUID();
@@ -1944,11 +2004,14 @@ export default function Home() {
               const poolIndex = masterworkPage * 3 + index;
               const preview = previewFor(poolIndex);
               const commander = commanderFor(poolIndex);
-              const insight = masterworkInsight(work, preview, commander);
+              const alignedWork = randomCommission
+                ? alignRandomMasterwork(work, commander, poolIndex)
+                : work;
+              const insight = masterworkInsight(alignedWork, preview, commander);
               return (
                 <article
-                  className={`masterwork-card ${work.tone}`}
-                  key={work.name}
+                  className={`masterwork-card ${alignedWork.tone}`}
+                  key={alignedWork.name}
                   style={
                     { "--delay": `${index * 140}ms` } as React.CSSProperties
                   }
@@ -1957,12 +2020,12 @@ export default function Home() {
                     MASTERWORK {String(poolIndex + 1).padStart(2, "0")}
                   </span>
                   <div className="masterwork-title">
-                    <i>{work.rune}</i>
+                    <i>{alignedWork.rune}</i>
                     <div>
                       <small>
-                        {work.path} · {format}
+                        {alignedWork.path} · {format}
                       </small>
-                      <h2>{work.name}</h2>
+                      <h2>{alignedWork.name}</h2>
                     </div>
                   </div>
                   <div className="masterwork-glimpse">
@@ -2016,12 +2079,12 @@ export default function Home() {
                       (label, statIndex) => (
                         <span key={label}>
                           <small>{label} · estimate</small>
-                          <b>{MASTERWORK_STATS[poolIndex][statIndex]}</b>
+                          <b>{masterworkStats(commander, poolIndex)[statIndex]}</b>
                         </span>
                       ),
                     )}
                   </div>
-                  <p className="masterwork-verdict">{work.verdict}</p>
+                  <p className="masterwork-verdict">{alignedWork.verdict}</p>
                   <button onClick={() => inspectMasterwork(poolIndex)}>
                     Inspect this Masterwork <b>→</b>
                   </button>
