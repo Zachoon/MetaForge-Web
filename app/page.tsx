@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { evaluateSimulationGate } from "./goldfish-simulation.mjs";
+import { evaluateMatchupMatrix } from "./matchup-simulation.mjs";
+import { getMetaIntelligence } from "./meta-intelligence.mjs";
 
 type Chamber =
   | "entrance"
@@ -116,6 +119,8 @@ type DeckPreview = { card: string; role: string; theme: string; win: string };
 type DeckRow = { quantity: number; name: string };
 type CardFact = {
   name: string;
+  cmc?: number;
+  color_identity?: string[];
   mana_cost?: string;
   oracle_text?: string;
   type_line?: string;
@@ -161,6 +166,13 @@ type SavedFamily = {
     note: string;
     createdAt: string;
     evidence?: { wins?: number; losses?: number };
+    matches?: Array<{
+      id: string;
+      result: "win" | "loss";
+      opponent: string;
+      signal: string;
+      playedAt: string;
+    }>;
   }>;
 };
 type EdhrecSignal = {
@@ -787,6 +799,25 @@ const cardGroup = (fact?: CardFact, isCommander = false) => {
   if (/Battle/i.test(type)) return "Battles";
   return "Other";
 };
+const cardRole = (fact?: CardFact) => {
+  const text = [
+    fact?.type_line,
+    fact?.oracle_text,
+    ...(fact?.card_faces || []).flatMap((face) => [face.type_line, face.oracle_text]),
+  ]
+    .filter(Boolean)
+    .join(" ");
+  if (/Land/i.test(text)) return "Mana source";
+  if (/destroy all|exile all|all creatures|get -\d+\/-\d+/i.test(text)) return "Board reset";
+  if (/counter target spell|destroy target|exile target|deals? \d+ damage/i.test(text)) return "Interaction";
+  if (/add .+ mana|search your library for .+ land|treasure token/i.test(text)) return "Acceleration";
+  if (/draw (?:a|one|two|three|\d+)|look at the top|exile .+ you may play/i.test(text)) return "Card advantage";
+  if (/hexproof|indestructible|protection from|phase out|regenerate/i.test(text)) return "Protection";
+  if (/create .+ token|whenever|for each|double|copy/i.test(text)) return "Engine piece";
+  if (/Creature|Planeswalker/i.test(text)) return "Threat";
+  return "Flexible support";
+};
+const BASIC_CARD_NAMES = new Set(["plains", "island", "swamp", "mountain", "forest", "wastes"]);
 
 export default function Home() {
   const [chamber, setChamber] = useState<Chamber>("entrance");
@@ -819,6 +850,14 @@ export default function Home() {
     "idle" | "forging" | "testing" | "thinking"
   >("idle");
   const [record, setRecord] = useState({ wins: 0, losses: 0 });
+  const [opponentArchetype, setOpponentArchetype] = useState("Unknown / not sure");
+  const [matchLog, setMatchLog] = useState<Array<{
+    id: string;
+    result: "win" | "loss";
+    opponent: string;
+    signal: string;
+    playedAt: string;
+  }>>([]);
   const [revisions, setRevisions] = useState<
     Array<{ deck: string; note: string; createdAt: string }>
   >([]);
@@ -949,6 +988,173 @@ export default function Home() {
     activeFact?.image_uris?.normal ||
     activeFact?.card_faces?.[0]?.image_uris?.normal ||
     (activeCard ? cardImage(activeCard) : "");
+  const deckIntegrity = useMemo(() => {
+    const target = targetDeckSize(format);
+    const total = deckRows.reduce((sum, row) => sum + row.quantity, 0);
+    const unresolved = deckRows.filter((row) => !cardFacts[cardFactKey(row.name)]);
+    const illegal = deckRows.filter((row) => {
+      const fact = cardFacts[cardFactKey(row.name)];
+      if (!fact) return false;
+      const legality = fact.legalities?.[scryfallLegality(format)];
+      const arenaRequired = format === "Brawl" || format === "Standard Brawl";
+      return (
+        legality !== "legal" ||
+        (arenaRequired && !fact.games?.includes("arena")) ||
+        (format === "Standard Brawl" && fact.legalities?.standard !== "legal")
+      );
+    });
+    const commanderKey = cardFactKey(chosenPreview.card);
+    const commanderQuantity = deckRows
+      .filter((row) => cardFactKey(row.name) === commanderKey)
+      .reduce((sum, row) => sum + row.quantity, 0);
+    const commanderColors = new Set(selectedCommander?.colors || []);
+    const identityBreaks = isCommanderFormat(format)
+      ? deckRows.filter((row) => {
+          const colors = cardFacts[cardFactKey(row.name)]?.color_identity || [];
+          return colors.some((color) => !commanderColors.has(color));
+        })
+      : [];
+    const copyBreaks = isCommanderFormat(format)
+      ? deckRows.filter(
+          (row) =>
+            row.quantity > 1 && !BASIC_CARD_NAMES.has(cardFactKey(row.name)),
+        )
+      : deckRows.filter(
+          (row) =>
+            row.quantity > 4 && !BASIC_CARD_NAMES.has(cardFactKey(row.name)),
+        );
+    const issues: string[] = [];
+    if (total !== target) issues.push(`Deck contains ${total} cards; ${format} requires exactly ${target}.`);
+    if (isCommanderFormat(format) && commanderQuantity !== 1)
+      issues.push(`The selected commander must appear exactly once; found ${commanderQuantity}.`);
+    if (illegal.length)
+      issues.push(`${illegal.length} card${illegal.length === 1 ? " is" : "s are"} not currently legal and available for ${format}.`);
+    if (identityBreaks.length)
+      issues.push(`${identityBreaks.length} card${identityBreaks.length === 1 ? " breaks" : "s break"} the commander's color identity.`);
+    if (copyBreaks.length)
+      issues.push(`${copyBreaks.length} nonbasic card${copyBreaks.length === 1 ? " exceeds" : "s exceed"} the format copy limit.`);
+    const roles: Record<string, number> = {};
+    let cmcTotal = 0;
+    let spellCount = 0;
+    for (const row of deckRows) {
+      const fact = cardFacts[cardFactKey(row.name)];
+      const role = cardRole(fact);
+      roles[role] = (roles[role] || 0) + row.quantity;
+      if (role !== "Mana source") {
+        cmcTotal += Number(fact?.cmc || 0) * row.quantity;
+        spellCount += row.quantity;
+      }
+    }
+    return {
+      target,
+      total,
+      checking: Boolean(deckRows.length && unresolved.length),
+      unresolved,
+      illegal,
+      identityBreaks,
+      copyBreaks,
+      issues,
+      roles,
+      averageCmc: spellCount ? cmcTotal / spellCount : 0,
+      passed: Boolean(deckRows.length && !unresolved.length && !issues.length),
+    };
+  }, [deckRows, cardFacts, format, chosenPreview.card, selectedCommander]);
+  const activeRole = cardRole(activeFact);
+  const activeSlotReason =
+    activeRole === "Mana source"
+      ? "Supports the deck's colored-mana and land-count requirements."
+      : activeRole === "Interaction" || activeRole === "Board reset"
+        ? "Protects the Masterwork's plan by answering opposing development."
+        : activeRole === "Acceleration"
+          ? "Moves the commander and expensive payoff turns ahead of schedule."
+          : activeRole === "Card advantage"
+            ? "Keeps the Forge supplied after early resources are exchanged."
+            : activeRole === "Engine piece"
+              ? "Connects multiple cards so the deck produces compounding value."
+              : activeRole === "Protection"
+                ? "Preserves a commander, engine, or decisive threat through interaction."
+              : "Advances the primary plan while maintaining useful battlefield presence.";
+  const simulationDossier = useMemo(() => {
+    if (!deckIntegrity.passed) return null;
+    const roleMap: Record<string, string> = {
+      "Mana source": "land",
+      "Board reset": "sweeper",
+      Interaction: "removal",
+      Acceleration: "stabilizer",
+      "Card advantage": "draw",
+      Protection: "counter",
+      "Engine piece": "finisher",
+      Threat: "finisher",
+      "Flexible support": "stabilizer",
+    };
+    const model = deckRows.map((row) => {
+      const fact = cardFacts[cardFactKey(row.name)];
+      return {
+        quantity: row.quantity,
+        card: row.name,
+        role: roleMap[cardRole(fact)] || "stabilizer",
+        cmc: Number(fact?.cmc || 0),
+      };
+    });
+    const strategyName = /aggro|pressure/i.test(strategy)
+      ? "Aggro"
+      : /control/i.test(strategy)
+        ? "Control"
+        : /tempo/i.test(strategy)
+          ? "Tempo"
+          : "Midrange";
+    return {
+      goldfish: evaluateSimulationGate(model, strategyName, 1200, 8128),
+      matrix: evaluateMatchupMatrix(model, undefined, 900, 991),
+    };
+  }, [deckIntegrity.passed, deckRows, cardFacts, strategy]);
+  const metaBreakerDossier = useMemo(() => {
+    if (!simulationDossier) return null;
+    const weakest = simulationDossier.matrix.weakest?.opponent || "Unknown";
+    const repairs: Record<string, { pressure: string; test: string }> = {
+      Aggro: {
+        pressure: "The build is most vulnerable before its engine stabilizes.",
+        test: "Challenge two expensive flex slots with early interaction or stabilizers, then rerun the same opening-hand and Aggro stress gates.",
+      },
+      Control: {
+        pressure: "The build needs threats that remain valuable through one-for-one exchanges.",
+        test: "Test a resilient engine or protected threat package without lowering proactive threat density.",
+      },
+      Midrange: {
+        pressure: "The build can be outclassed when both decks exchange resources fairly.",
+        test: "Add a repeatable advantage engine or an asymmetric answer and measure whether the weakest scenario improves.",
+      },
+      Tempo: {
+        pressure: "The build is losing initiative while its more expensive cards wait in hand.",
+        test: "Lower the interaction curve in two slots and test whether plan realization improves without sacrificing the late game.",
+      },
+    };
+    const repair = repairs[weakest] || {
+      pressure: "The current model has not isolated a reliable structural pressure point.",
+      test: "Collect classified match evidence before changing the list.",
+    };
+    if (format === "Standard") {
+      const meta = getMetaIntelligence();
+      return {
+        source: `${meta.current.provenance.name} · observed ${meta.current.provenance.observedAt}`,
+        field: `${meta.current.leadingStrategy} is the largest measured strategic family at ${(meta.current.strategies[0].share * 100).toFixed(1)}%; it is a plurality, not a majority.`,
+        confidence: `${meta.current.confidence} · ${meta.current.sampleSize} lists · ${(meta.current.classificationCoverage * 100).toFixed(1)}% classified`,
+        hypothesis: repair.pressure,
+        test: repair.test,
+      };
+    }
+    return {
+      source: edhrecEvidence?.available
+        ? `Commander adoption evidence · ${edhrecEvidence.cards.length} signals`
+        : "No format-wide tournament field is connected for this format yet",
+      field: edhrecEvidence?.available
+        ? "Commander-relative adoption informs card discovery, while legality and mechanical fit remain binding."
+        : "The Forge will not invent a current metagame claim from missing coverage.",
+      confidence: edhrecEvidence?.available ? "descriptive evidence · not a win-rate source" : "insufficient field evidence",
+      hypothesis: repair.pressure,
+      test: repair.test,
+    };
+  }, [simulationDossier, format, edhrecEvidence]);
   const verifiedDeckFacts = useMemo(
     () =>
       [
@@ -1480,6 +1686,7 @@ export default function Home() {
         losses: Number(family.revisions.at(-1)?.evidence?.losses || 0),
       },
     );
+    setMatchLog(family.revisions.at(-1)?.matches || []);
     setPlayerSignal("");
     setForgeReply("");
     setBenchStatus("testing");
@@ -1518,6 +1725,8 @@ export default function Home() {
     setCommissionNote("");
     setDeck("");
     setRecord({ wins: 0, losses: 0 });
+    setMatchLog([]);
+    setOpponentArchetype("Unknown / not sure");
     setRevisions([]);
     setForgedDeck("");
     setDeckId("");
@@ -1544,6 +1753,7 @@ export default function Home() {
       commander: CommanderOption | null;
       index: number;
     },
+    nextMatches = matchLog,
   ) {
     const activeId = idOverride || deckId || crypto.randomUUID();
     if (!deckId) setDeckId(activeId);
@@ -1599,6 +1809,7 @@ export default function Home() {
                 ? "early signal"
                 : "developing",
           },
+          matches: index === nextRevisions.length - 1 ? nextMatches : [],
         })),
       };
       const families = [
@@ -1626,13 +1837,74 @@ export default function Home() {
     void persistStoryBench();
   }
 
+  async function repairDeckIntegrity() {
+    if (benchStatus === "forging" || deckIntegrity.checking || !deckRows.length) return;
+    setBenchStatus("forging");
+    setForgeGenerationError("");
+    const failedCards = [
+      ...deckIntegrity.illegal,
+      ...deckIntegrity.identityBreaks,
+      ...deckIntegrity.copyBreaks,
+      ...deckIntegrity.unresolved,
+    ].map((row) => row.name);
+    const prompt = `Repair this ${format} deck so every hard constraint passes. Preserve ${chosenWork.name}, its ${chosenWork.path} plan, and ${selectedCommander?.name || chosenPreview.card}. Problems detected by the deterministic validator: ${deckIntegrity.issues.join(" ")} Failed or unresolved card names: ${[...new Set(failedCards)].join(", ") || "none"}. Return the entire corrected import-ready list. Every decklist line must begin with a numeric quantity. Use exactly ${deckIntegrity.target} total cards. Do not include an incomplete alternative.`;
+    try {
+      const response = await fetch("/api/forge/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          task: "deck_generation",
+          depth: "deep",
+          messages: [{ role: "user", content: prompt }],
+          context: {
+            game: "mtg",
+            deckName: chosenWork.name,
+            format,
+            deckText: forgedDeck,
+            verifiedFacts: `${selectedCommander?.verifiedFacts || ""}\n\n${verifiedDeckFacts}\n\n${formatEdhrecEvidence(edhrecEvidence, format)}`,
+            coachingProfile: `Repair only failed constraints; preserve the player's ${strategy} intent.`,
+          },
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || "Repair unavailable");
+      let repaired = String(data.answer || "");
+      const normalized = normalizeCommanderDeck(repaired, selectedCommander, format);
+      if (normalized) repaired = normalized;
+      const total = parseDeckRows(repaired).reduce((sum, row) => sum + row.quantity, 0);
+      if (total !== deckIntegrity.target) throw new Error("Repair remained incomplete");
+      const next = [
+        ...revisions,
+        { deck: repaired, note: `Deterministic integrity repair after revision ${revisions.length || 1}`, createdAt: new Date().toISOString() },
+      ];
+      setForgedDeck(repaired);
+      setRevisions(next);
+      void persistStoryBench(next, record);
+    } catch {
+      setForgeGenerationError("The repair did not clear every hard constraint. The current revision is preserved; strike the repair again or edit the flagged slots manually.");
+    } finally {
+      setBenchStatus("idle");
+    }
+  }
+
   function recordMatch(result: "win" | "loss") {
     const next =
       result === "win"
         ? { ...record, wins: record.wins + 1 }
         : { ...record, losses: record.losses + 1 };
     setRecord(next);
-    void persistStoryBench(revisions, next);
+    const nextMatches = [
+      ...matchLog,
+      {
+        id: crypto.randomUUID(),
+        result,
+        opponent: opponentArchetype,
+        signal: playerSignal.trim(),
+        playedAt: new Date().toISOString(),
+      },
+    ];
+    setMatchLog(nextMatches);
+    void persistStoryBench(revisions, next, "", undefined, nextMatches);
   }
 
   async function consultForge() {
@@ -2262,6 +2534,76 @@ export default function Home() {
                   Copy deck
                 </button>
               </header>
+              {deckRows.length > 0 && (
+                <section className={`integrity-dossier ${deckIntegrity.passed ? "passed" : deckIntegrity.checking ? "checking" : "held"}`}>
+                  <header>
+                    <span>
+                      <small>STRUCTURAL INTEGRITY GATE</small>
+                      <b>
+                        {deckIntegrity.checking
+                          ? `Verifying ${deckIntegrity.unresolved.length} card record${deckIntegrity.unresolved.length === 1 ? "" : "s"}…`
+                          : deckIntegrity.passed
+                            ? "This Masterwork is cleared for testing."
+                            : "Testing is held until every hard constraint passes."}
+                      </b>
+                    </span>
+                    <strong>{deckIntegrity.passed ? "VERIFIED" : deckIntegrity.checking ? "CHECKING" : "REPAIR REQUIRED"}</strong>
+                  </header>
+                  <div>
+                    <span><small>DECK SIZE</small><b>{deckIntegrity.total} / {deckIntegrity.target}</b></span>
+                    <span><small>AVG. SPELL VALUE</small><b>{deckIntegrity.averageCmc.toFixed(2)}</b></span>
+                    <span><small>MANA SOURCES</small><b>{deckIntegrity.roles["Mana source"] || 0}</b></span>
+                    <span><small>INTERACTION</small><b>{(deckIntegrity.roles.Interaction || 0) + (deckIntegrity.roles["Board reset"] || 0)}</b></span>
+                    <span><small>ADVANTAGE + ENGINES</small><b>{(deckIntegrity.roles["Card advantage"] || 0) + (deckIntegrity.roles["Engine piece"] || 0)}</b></span>
+                  </div>
+                  {simulationDossier && (
+                    <section className="stress-dossier">
+                      <span>
+                        <small>OPENING-HAND GATE</small>
+                        <b>{(simulationDossier.goldfish.expert.keepableRate * 100).toFixed(1)}% keepable</b>
+                        <em>{simulationDossier.goldfish.gate.replaceAll("-", " ")}</em>
+                      </span>
+                      <span>
+                        <small>PLAN REALIZATION</small>
+                        <b>{(simulationDossier.goldfish.expert.planRealizationRate * 100).toFixed(1)}%</b>
+                        <em>Average turn {simulationDossier.goldfish.expert.averageRealizationTurn?.toFixed(1) || "—"}</em>
+                      </span>
+                      <span>
+                        <small>PILOT SENSITIVITY</small>
+                        <b>{simulationDossier.goldfish.sensitivityLabel}</b>
+                        <em>Sequencing impact, not player rating</em>
+                      </span>
+                      <span>
+                        <small>HARDEST STRESS PROFILE</small>
+                        <b>{simulationDossier.matrix.weakest?.opponent || "Unresolved"}</b>
+                        <em>{((simulationDossier.matrix.weakest?.scenarioPassRate || 0) * 100).toFixed(1)}% scenario pass</em>
+                      </span>
+                      <p>Modeled Forge trials test mana, role density, and sequencing under pressure. They are viability gates—not predicted match win rates.</p>
+                    </section>
+                  )}
+                  {!deckIntegrity.checking && deckIntegrity.issues.length > 0 && (
+                    <footer>
+                      <ul>{deckIntegrity.issues.map((issue) => <li key={issue}>{issue}</li>)}</ul>
+                      <button onClick={repairDeckIntegrity} disabled={benchStatus === "forging"}>
+                        {benchStatus === "forging" ? "Reforging failed slots…" : "Reforge failed constraints"}
+                      </button>
+                    </footer>
+                  )}
+                </section>
+              )}
+              {metaBreakerDossier && (
+                <section className="meta-breaker-dossier">
+                  <header>
+                    <span><small>META BREAKER LAB · FOUNDER TEST</small><b>A counter-field hypothesis, never a guaranteed result.</b></span>
+                    <strong>{metaBreakerDossier.confidence}</strong>
+                  </header>
+                  <div>
+                    <span><small>FIELD READ</small><b>{metaBreakerDossier.field}</b><em>{metaBreakerDossier.source}</em></span>
+                    <span><small>STRUCTURAL PRESSURE POINT</small><b>{metaBreakerDossier.hypothesis}</b></span>
+                    <span><small>SMALLEST HONEST TEST</small><b>{metaBreakerDossier.test}</b></span>
+                  </div>
+                </section>
+              )}
               {benchStatus === "forging" ? (
                 <pre>
                   Tempering curve, roles, interaction, and the mana lattice…
@@ -2282,6 +2624,10 @@ export default function Home() {
                     <span>
                       {activeFact?.type_line ||
                         "Card details awaken on inspection"}
+                    </span>
+                    <span className="slot-justification">
+                      <small>SLOT DUTY · {activeRole.toUpperCase()}</small>
+                      {activeSlotReason}
                     </span>
                   </aside>
                   <div className="type-columns">
@@ -2359,7 +2705,8 @@ export default function Home() {
                   : <b>{chosenPreview.card}</b>
                 </span>
                 <button
-                  disabled={benchStatus === "forging" || !deckRows.length}
+                  disabled={benchStatus === "forging" || !deckIntegrity.passed}
+                  title={deckIntegrity.passed ? "Begin a recorded test with this verified revision" : "Every legality and structural check must pass before testing"}
                   onClick={beginTesting}
                 >
                   {benchStatus === "testing"
@@ -2377,6 +2724,15 @@ export default function Home() {
                   strong, awkward, missing, or simply unlike you.
                 </p>
               </header>
+              <label className="opponent-signal">
+                <span>OPPONENT ARCHETYPE · OPTIONAL BUT VALUABLE</span>
+                <select value={opponentArchetype} onChange={(event) => setOpponentArchetype(event.target.value)}>
+                  {["Unknown / not sure", "Aggro", "Tempo", "Midrange", "Control", "Ramp", "Combo", "Tokens", "Graveyard", "Other / rogue"].map((option) => (
+                    <option key={option}>{option}</option>
+                  ))}
+                </select>
+                <small>Every result is tied to this exact revision. Unknown is honest evidence; one match never rewrites the deck.</small>
+              </label>
               <div className="test-record">
                 <button onClick={() => recordMatch("win")}>
                   Record a win <b>{record.wins}</b>
