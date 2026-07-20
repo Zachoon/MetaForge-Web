@@ -5,6 +5,8 @@ import { evaluateSimulationGate } from "./goldfish-simulation.mjs";
 import { evaluateMatchupMatrix } from "./matchup-simulation.mjs";
 import { getMetaIntelligence } from "./meta-intelligence.mjs";
 import { buildInteractionGraph } from "./forge-interaction-graph.mjs";
+import { learnRevisionPreferences } from "./revision-learning.mjs";
+import { applyControlledSwap, rankExperimentCuts } from "./meta-breaker-experiment.mjs";
 
 type Chamber =
   | "entrance"
@@ -138,6 +140,7 @@ type CardFact = {
   }>;
 };
 type CardSearchResult = { name: string; typeLine: string; image: string };
+type MetaBreakerExperiment = { cut: string; add: CardSearchResult; reason: string; confidence: string };
 type CommanderOption = {
   name: string;
   colors: string[];
@@ -173,6 +176,7 @@ type SavedFamily = {
       opponent: string;
       signal: string;
       playedAt: string;
+      revision?: number;
     }>;
   }>;
 };
@@ -185,12 +189,19 @@ type EdhrecSignal = {
   synergy: number;
   confidence: string;
   newCardPotential: boolean;
+  reliability?: number;
+  shrunkSynergy?: number;
+  adoptionFloor?: number;
+  evidenceScore?: number;
+  evidenceClass?: string;
 };
 type EdhrecEvidence = {
   available: boolean;
   source?: string;
   methodology?: string;
   reason?: string;
+  retrievedAt?: string;
+  sourceWindowKnown?: boolean;
   cards: EdhrecSignal[];
 };
 
@@ -679,10 +690,17 @@ const formatEdhrecEvidence = (
     .slice(0, 45)
     .map(
       (card) =>
-        `${card.name} | ${card.category} | adoption ${(card.inclusion * 100).toFixed(1)}% (${card.decks}/${card.eligibleDecks || "?"} eligible decks) | commander-relative synergy ${(card.synergy * 100).toFixed(1)}% | confidence ${card.confidence}${card.newCardPotential ? " | PROMISING NEW CARD" : ""}`,
+        `${card.name} | ${card.category} | conservative evidence score ${((card.evidenceScore || 0) * 100).toFixed(0)}/100 | adoption ${(card.inclusion * 100).toFixed(1)}% (lower bound ${((card.adoptionFloor || 0) * 100).toFixed(1)}%; ${card.decks}/${card.eligibleDecks || "?"} eligible decks) | raw synergy ${(card.synergy * 100).toFixed(1)}% | sample-adjusted synergy ${((card.shrunkSynergy || 0) * 100).toFixed(1)}% | ${card.evidenceClass || "descriptive signal"} | confidence ${card.confidence}${card.newCardPotential ? " | PROMISING NEW-CARD HYPOTHESIS" : ""}`,
     )
     .join("\n");
   return `EDHREC COMMANDER EVIDENCE (descriptive, not a legality source)\n${evidence.methodology || "Adoption and commander-relative synergy evidence."}\n${format.includes("Brawl") ? `This is cross-format Commander evidence only. Every candidate must still pass current Arena ${format} legality and color-identity checks in Scryfall.` : "Every candidate must still pass current Commander legality and color-identity checks in Scryfall."}\nDo not treat popularity as proof of quality. Weight low-sample signals cautiously, but do not suppress a new card merely because adoption is young when its mechanics and synergy fit are strong.\n${signals}`;
+};
+const formatMetaEvidence = (format: string) => {
+  if (format !== "Standard") return "No verified format-wide tournament snapshot is connected for this format. Do not invent a field claim.";
+  const meta = getMetaIntelligence();
+  if (!meta.readyForCurrentFieldUse)
+    return `STANDARD FIELD EVIDENCE CLOSED\n${meta.warning}\n${meta.recommendation}`;
+  return `STANDARD FIELD EVIDENCE (${meta.current.freshness}; observed ${meta.current.provenance.observedAt}; ${meta.current.ageDays} days old)\nSample: ${meta.current.sampleSize} lists; ${(meta.current.classificationCoverage * 100).toFixed(1)}% classified; confidence ${meta.current.confidence}.\nLargest measured family: ${meta.leadingStrategy} at ${(meta.current.strategies[0].share * 100).toFixed(1)}%, a plurality rather than a majority.\n${meta.recommendation}\nDo not overfit all three candidates to one matchup: every candidate must retain a legal, coherent proactive plan against the mixed field.`;
 };
 const parseDeckRows = (text: string): DeckRow[] =>
   text.split(/\r?\n/).flatMap((line) => {
@@ -858,6 +876,7 @@ export default function Home() {
     opponent: string;
     signal: string;
     playedAt: string;
+    revision?: number;
   }>>([]);
   const [revisions, setRevisions] = useState<
     Array<{ deck: string; note: string; createdAt: string }>
@@ -886,6 +905,8 @@ export default function Home() {
   >([]);
   const [replacementLoading, setReplacementLoading] = useState(false);
   const [lastCutCard, setLastCutCard] = useState("");
+  const [metaBreakerExperiments, setMetaBreakerExperiments] = useState<MetaBreakerExperiment[]>([]);
+  const [metaBreakerLoading, setMetaBreakerLoading] = useState(false);
 
   useEffect(() => {
     if (chamber !== "forging") return;
@@ -1153,14 +1174,23 @@ export default function Home() {
     };
     if (format === "Standard") {
       const meta = getMetaIntelligence();
+      if (!meta.readyForCurrentFieldUse) return {
+        source: `${meta.current.provenance.name} · last observed ${meta.current.provenance.observedAt}`,
+        field: meta.warning,
+        confidence: `FIELD GATE CLOSED · ${meta.current.freshness} · ${meta.current.ageDays} days old`,
+        hypothesis: repair.pressure,
+        test: "Refresh the field collector before calling any candidate a current counter-meta design; structural stress testing may continue meanwhile.",
+      };
       return {
         source: `${meta.current.provenance.name} · observed ${meta.current.provenance.observedAt}`,
         field: `${meta.current.leadingStrategy} is the largest measured strategic family at ${(meta.current.strategies[0].share * 100).toFixed(1)}%; it is a plurality, not a majority.`,
-        confidence: `${meta.current.confidence} · ${meta.current.sampleSize} lists · ${(meta.current.classificationCoverage * 100).toFixed(1)}% classified`,
+        confidence: `${meta.current.confidence} · ${meta.current.freshness} (${meta.current.ageDays}d) · ${meta.current.sampleSize} lists · ${(meta.current.classificationCoverage * 100).toFixed(1)}% classified`,
         hypothesis: repair.pressure,
         test: repair.test,
       };
     }
+    const observedSignals = edhrecEvidence?.cards.filter((card) => ["high", "moderate"].includes(card.confidence)).length || 0;
+    const discoverySignals = edhrecEvidence?.cards.filter((card) => card.newCardPotential).length || 0;
     return {
       source: edhrecEvidence?.available
         ? `Commander adoption evidence · ${edhrecEvidence.cards.length} signals`
@@ -1168,11 +1198,15 @@ export default function Home() {
       field: edhrecEvidence?.available
         ? "Commander-relative adoption informs card discovery, while legality and mechanical fit remain binding."
         : "The Forge will not invent a current metagame claim from missing coverage.",
-      confidence: edhrecEvidence?.available ? "descriptive evidence · not a win-rate source" : "insufficient field evidence",
+      confidence: edhrecEvidence?.available ? `${observedSignals} stronger-sample signals · ${discoverySignals} new-card hypotheses · not a win-rate source` : "insufficient field evidence",
       hypothesis: repair.pressure,
       test: repair.test,
     };
   }, [simulationDossier, format, edhrecEvidence]);
+  const revisionLearning = useMemo(
+    () => learnRevisionPreferences(matchLog, Math.max(1, revisions.length)),
+    [matchLog, revisions.length],
+  );
   const verifiedDeckFacts = useMemo(
     () =>
       [
@@ -1613,7 +1647,8 @@ export default function Home() {
     }
     setEdhrecEvidence(evidence);
     const evidenceFacts = formatEdhrecEvidence(evidence, format);
-    const prompt = `Forge the complete ${format} deck represented by ${work.name}. Its identity is ${work.path}; required ${isCommanderFormat(format) ? "commander" : "lynchpin"}: ${preview.card}; requested play style: ${strategy}. The player's Blueprint note is: ${commissionNote.trim() || "No additional note"}. ${format === "Brawl" ? "MetaForge Brawl means current Arena Brawl: exactly 100 cards total, one commander plus 99 main-deck cards, using live Brawl legality and Arena availability." : format === "Standard Brawl" ? "MetaForge Standard Brawl means exactly 60 cards total, one commander plus 59 Standard-legal Arena cards." : ""} Return a concise pilot brief followed by one complete import-ready decklist. The chosen commander, oracle text, legality, Arena availability, and color identity in verified facts are binding constraints. Use the EDHREC evidence as a prior for card adoption and co-occurrence, not as proof or a legality source. Do not claim this commander is unverified when its live record is supplied. This is a founder-test candidate: never claim performance that has not been verified, and explicitly identify any remaining uncertainty.`;
+    const fieldFacts = formatMetaEvidence(format);
+    const prompt = `Forge the complete ${format} deck represented by ${work.name}. Its identity is ${work.path}; required ${isCommanderFormat(format) ? "commander" : "lynchpin"}: ${preview.card}; requested play style: ${strategy}. The player's Blueprint note is: ${commissionNote.trim() || "No additional note"}. ${format === "Brawl" ? "MetaForge Brawl means current Arena Brawl: exactly 100 cards total, one commander plus 99 main-deck cards, using live Brawl legality and Arena availability." : format === "Standard Brawl" ? "MetaForge Standard Brawl means exactly 60 cards total, one commander plus 59 Standard-legal Arena cards." : ""} Return a concise pilot brief followed by one complete import-ready decklist. The chosen commander, oracle text, legality, Arena availability, and color identity in verified facts are binding constraints. Build coherent packages, not a pile of individually popular cards: each nonland flex slot should be an enabler, payoff, interaction, protection, acceleration, advantage, or explicit metagame answer. Prefer redundant effects for essential packages and avoid symmetrical rules-text conflicts with the deck's own plan. Use sample-adjusted EDHREC signals only as commander-relative discovery evidence. Use tournament field evidence only while its freshness gate is open. Do not claim this commander is unverified when its live record is supplied. This is a founder-test candidate: never claim performance that has not been verified, and explicitly identify any remaining uncertainty.`;
     const target = targetDeckSize(format);
     try {
       let answer = "";
@@ -1634,7 +1669,7 @@ export default function Home() {
               deckName: work.name,
               format,
               deckText: attempt ? answer : "",
-              verifiedFacts: `${commander?.verifiedFacts || "No commander record required for this format."}\n\n${evidenceFacts}`,
+              verifiedFacts: `${commander?.verifiedFacts || "No commander record required for this format."}\n\n${evidenceFacts}\n\n${fieldFacts}`,
               coachingProfile: "Prefers concise, testable deck guidance.",
             },
           }),
@@ -1905,6 +1940,77 @@ export default function Home() {
     }
   }
 
+  async function forgeMetaBreakerExperiments() {
+    if (!metaBreakerDossier || metaBreakerLoading || !deckIntegrity.passed) return;
+    setMetaBreakerLoading(true);
+    setMetaBreakerExperiments([]);
+    try {
+      const currentNames = new Set(deckRows.map((row) => cardFactKey(row.name)));
+      const commanderColors = new Set(selectedCommander?.colors || []);
+      let candidates: Array<any> = [];
+      if (isCommanderFormat(format) && edhrecEvidence?.available) {
+        const names = edhrecEvidence.cards
+          .filter((signal) => !currentNames.has(cardFactKey(signal.name)))
+          .slice(0, 20)
+          .map((signal) => signal.name);
+        if (names.length) {
+          const response = await fetch("https://api.scryfall.com/cards/collection", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({ identifiers: names.map((name) => ({ name })) }),
+          });
+          const data = await response.json();
+          candidates = data.data || [];
+        }
+      } else {
+        const weakest = simulationDossier?.matrix.weakest?.opponent || "Midrange";
+        const pressureQuery: Record<string, string> = {
+          Aggro: "(o:\"gain life\" or o:\"destroy target creature\") cmc<=3",
+          Control: "(o:ward or o:hexproof or o:\"can't be countered\")",
+          Midrange: "(o:\"draw a card\" or o:\"exile target\")",
+          Tempo: "(o:\"counter target\" or o:\"return target\") cmc<=2",
+        };
+        const query = `${scryfallFormatTerms(format)} ${pressureQuery[weakest] || pressureQuery.Midrange}`;
+        const response = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(query)}&order=edhrec`);
+        const data = await response.json();
+        candidates = data.data || [];
+      }
+      const legal = candidates.filter((card) => {
+        if (currentNames.has(cardFactKey(card.name))) return false;
+        if (card.legalities?.[scryfallLegality(format)] !== "legal") return false;
+        if ((format === "Brawl" || format === "Standard Brawl") && !card.games?.includes("arena")) return false;
+        return !isCommanderFormat(format) || (card.color_identity || []).every((color: string) => commanderColors.has(color));
+      });
+      const cuts = rankExperimentCuts(deckRows, interactionGraph, {
+        commanderName: chosenPreview.card,
+        roleOf: (name: string) => cardRole(cardFacts[cardFactKey(name)]),
+      }).slice(0, 3);
+      const experiments = legal.slice(0, 3).map((card, index) => {
+        const evidence = edhrecEvidence?.cards.find((signal) => cardFactKey(signal.name) === cardFactKey(card.name));
+        return {
+          cut: cuts[index % Math.max(1, cuts.length)]?.name || "Unresolved flex slot",
+          add: { name: card.name, typeLine: card.type_line || "Card", image: card.image_uris?.small || card.card_faces?.[0]?.image_uris?.small || cardImage(card.name) },
+          reason: `${metaBreakerDossier.hypothesis} This one-slot Forge Theory test challenges a weakly connected flex slot without rewriting the deck's core package.`,
+          confidence: evidence ? `${evidence.confidence} commander signal · score ${Math.round((evidence.evidenceScore || 0) * 100)}/100` : "legal card discovery · mechanical fit still requires testing",
+        };
+      });
+      setMetaBreakerExperiments(experiments);
+    } catch {
+      setMetaBreakerExperiments([]);
+    } finally {
+      setMetaBreakerLoading(false);
+    }
+  }
+
+  function applyMetaBreakerExperiment(experiment: MetaBreakerExperiment) {
+    if (experiment.cut === "Unresolved flex slot") return;
+    const rows = applyControlledSwap(deckRows, experiment.cut, experiment.add.name);
+    if (!rows) return;
+    const nextDeck = rows.map((row) => `${row.quantity} ${row.name}`).join("\n");
+    preserveDeckEdit(nextDeck, `Meta Breaker experiment: −1 ${experiment.cut}, +1 ${experiment.add.name}`);
+    setMetaBreakerExperiments([]);
+  }
+
   function recordMatch(result: "win" | "loss") {
     const next =
       result === "win"
@@ -1919,6 +2025,7 @@ export default function Home() {
         opponent: opponentArchetype,
         signal: playerSignal.trim(),
         playedAt: new Date().toISOString(),
+        revision: Math.max(1, revisions.length),
       },
     ];
     setMatchLog(nextMatches);
@@ -1929,7 +2036,7 @@ export default function Home() {
     if (!playerSignal.trim() || benchStatus === "thinking") return;
     setBenchStatus("thinking");
     setForgeReply("");
-    const prompt = `I tested revision ${revisions.length || 1} of ${chosenWork.name}. My signal: ${playerSignal.trim()}\n\nDiagnose the most likely issue without overreacting to one result. Give 2-3 precise replacement packages or alternatives with what comes out, what comes in, the tradeoff, and the smallest next test. Preserve the deck's ${chosenWork.path} identity and my ${strategy} preference.`;
+    const prompt = `I tested revision ${revisions.length || 1} of ${chosenWork.name}. My newest signal: ${playerSignal.trim()}\n\nREVISION LEARNING BOUNDARY: ${revisionLearning.guidance}\nThere are ${revisionLearning.sampleSize} recorded matches on this revision. Only preferences marked as repeated may guide a persistent change; single clues may justify a test but not a permanent player-profile conclusion.\n\nDiagnose the most likely issue without overreacting to one result. Give 2-3 precise replacement packages or alternatives with what comes out, what comes in, the tradeoff, and the smallest next test. Preserve the deck's ${chosenWork.path} identity and my ${strategy} preference.`;
     try {
       const response = await fetch("/api/forge/chat", {
         method: "POST",
@@ -2651,6 +2758,21 @@ export default function Home() {
                     <span><small>STRUCTURAL PRESSURE POINT</small><b>{metaBreakerDossier.hypothesis}</b></span>
                     <span><small>SMALLEST HONEST TEST</small><b>{metaBreakerDossier.test}</b></span>
                   </div>
+                  <footer className="meta-breaker-workflow">
+                    <button onClick={forgeMetaBreakerExperiments} disabled={metaBreakerLoading || !deckIntegrity.passed}>
+                      {metaBreakerLoading ? "Searching the legal card pool…" : "Forge three controlled experiments"}
+                    </button>
+                    {metaBreakerExperiments.length > 0 && <div>
+                      {metaBreakerExperiments.map((experiment) => (
+                        <article key={`${experiment.cut}-${experiment.add.name}`}>
+                          <img src={experiment.add.image} alt="" />
+                          <span><small>FORGE THEORY · ONE-SLOT TEST</small><b>−1 {experiment.cut}<br />+1 {experiment.add.name}</b><p>{experiment.reason}</p><em>{experiment.confidence}</em></span>
+                          <button onClick={() => applyMetaBreakerExperiment(experiment)}>Create revision</button>
+                        </article>
+                      ))}
+                    </div>}
+                    {!metaBreakerLoading && metaBreakerExperiments.length === 0 && <small>Every proposed add is checked against live format legality, Arena availability when required, and commander color identity before it appears here.</small>}
+                  </footer>
                 </section>
               )}
               {benchStatus === "forging" ? (
@@ -2793,6 +2915,15 @@ export default function Home() {
                   Record a loss <b>{record.losses}</b>
                 </button>
               </div>
+              <section className="revision-learning-dossier">
+                <header><small>REVISION {Math.max(1, revisions.length)} LEARNING</small><b>{revisionLearning.sampleSize} recorded match{revisionLearning.sampleSize === 1 ? "" : "es"}</b></header>
+                {revisionLearning.actionable.length ? revisionLearning.actionable.slice(0, 3).map((pattern) => (
+                  <p key={pattern.preference}><b>{pattern.preference}</b><span>{pattern.confidence} · {pattern.count} matching signals</span></p>
+                )) : <p><b>NO PERSISTENT PREFERENCE YET</b><span>Two matching signals are required before the Forge treats a feeling as a revision pattern.</span></p>}
+                {revisionLearning.matchups.filter((matchup) => matchup.actionable).slice(0, 2).map((matchup) => (
+                  <p key={matchup.opponent}><b>{matchup.opponent} matchup</b><span>{matchup.wins}–{matchup.losses} observed · {matchup.confidence}, not a predicted win rate</span></p>
+                ))}
+              </section>
               <label>
                 <span>WHAT WORKED OR FELT WRONG?</span>
                 <textarea

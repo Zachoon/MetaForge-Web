@@ -3,7 +3,7 @@ import test from "node:test";
 import { getMetaIntelligence } from "../app/meta-intelligence.mjs";
 
 test("uses a fresh high-coverage field without inventing a majority", () => {
-  const result = getMetaIntelligence();
+  const result = getMetaIntelligence({ now: "2026-07-18T12:00:00Z" });
   assert.equal(result.current.sampleSize, 999);
   assert.equal(result.current.confidence, "high");
   assert.ok(result.current.classificationCoverage >= 0.75);
@@ -13,6 +13,14 @@ test("uses a fresh high-coverage field without inventing a majority", () => {
   assert.match(result.warning, /plurality/i);
   assert.equal(result.generatorTargetBasis, "fresh-current-plurality");
   assert.match(result.current.provenance.url, /^https:/);
+});
+
+test("closes current-field generation when the observed snapshot becomes stale", () => {
+  const result = getMetaIntelligence({ now: "2026-08-20T12:00:00Z" });
+  assert.equal(result.readyForCurrentFieldUse, false);
+  assert.equal(result.generatorGate, "historical-only");
+  assert.equal(result.leadingStrategy, null);
+  assert.equal(result.current.freshness, "stale");
 });
 
 test("exposes the high-confidence historical strategic prior", () => {

@@ -32,6 +32,18 @@ not justify a confident claim.
     mechanical packages, exposes isolated nonland slots, and conservatively
     detects symmetrical rules-text conflicts. Hovered cards show their strongest
     live relationships rather than only a generic role label.
+12. Commander adoption evidence is ranked with sample-size shrinkage, a
+    conservative adoption lower bound, and separate discovery treatment for
+    new cards. Raw synergy remains visible but no longer outranks established
+    evidence merely because its sample is tiny.
+13. Tournament snapshots calculate their age at runtime. A stale snapshot
+    automatically loses permission to drive current-field generation or a
+    current Meta Breaker claim.
+14. Match feedback is learned per revision. One comment remains a clue; two
+    matching signals create a repeated preference; matchup conclusions require
+    at least four classified games.
+15. The Meta Breaker Lab can generate three legal one-slot experiments, rank
+    weakly connected cuts, and preserve the chosen swap as a new revision.
 
 ## Core modules
 
@@ -43,6 +55,12 @@ not justify a confident claim.
 - `app/forge-interaction-graph.mjs`: deterministic producer/payoff edges,
   package clustering, commander links, isolation auditing, and conservative
   nonbo detection from current card facts.
+- `app/evidence-scoring.mjs`: conservative EDHREC adoption bounds, synergy
+  shrinkage, new-card discovery classification, and evidence ranking.
+- `app/revision-learning.mjs`: revision-scoped signal thresholds and bounded
+  matchup learning.
+- `app/meta-breaker-experiment.mjs`: weak-connection cut ranking and exact
+  deck-size-preserving controlled swaps.
 - `app/forge-simulation.mjs`: deterministic library and opening-hand trials.
 - `app/goldfish-simulation.mjs`: plan-realization and pilot-sensitivity gates.
 - `app/matchup-simulation.mjs`: bounded archetype pressure scenarios and

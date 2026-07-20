@@ -1,4 +1,5 @@
 import { userKey } from "./account-bench";
+import { rankEdhrecSignals } from "../app/evidence-scoring.mjs";
 
 type Env = { DB: D1Database };
 type EdhrecCard = { name?: string; synergy?: number; num_decks?: number; potential_decks?: number };
@@ -18,11 +19,9 @@ export async function handleEdhrecEvidence(request: Request, env: Env) {
   const payload: any = await upstream.json();
   const lists = Array.isArray(payload?.container?.json_dict?.cardlists) ? payload.container.json_dict.cardlists : [];
   const useful = new Set(["New Cards", "High Synergy Cards", "Top Cards", "Game Changers"]);
-  const cards = lists.filter((list: any) => useful.has(String(list?.header || ""))).flatMap((list: any) => (list.cardviews || []).map((card: EdhrecCard) => {
-    const decks = Number(card.num_decks || 0), eligibleDecks = Number(card.potential_decks || 0), synergy = Number(card.synergy || 0), inclusion = eligibleDecks > 0 ? decks / eligibleDecks : 0;
-    const confidence = decks >= 100 ? "established" : decks >= 25 ? "developing" : decks >= 5 ? "early" : "sparse";
-    const newCardPotential = list.header === "New Cards" && (synergy >= .15 || inclusion >= .1);
-    return { name: String(card.name || ""), category: String(list.header), decks, eligibleDecks, inclusion, synergy, confidence, newCardPotential };
-  })).filter((card: any) => card.name).sort((a: any, b: any) => Number(b.newCardPotential) - Number(a.newCardPotential) || b.synergy - a.synergy || b.inclusion - a.inclusion).slice(0, 60);
-  return json({ commander, slug, available: true, source: `https://edhrec.com/commanders/${slug}`, methodology: "EDHREC adoption and commander-relative synergy. Popularity is descriptive, not proof of optimality. Sparse and new-card signals retain their raw synergy with lower confidence rather than being discarded.", cards });
+  const rawCards = lists.filter((list: any) => useful.has(String(list?.header || ""))).flatMap((list: any) => (list.cardviews || []).map((card: EdhrecCard) => ({
+    name: String(card.name || ""), category: String(list.header), decks: Number(card.num_decks || 0), eligibleDecks: Number(card.potential_decks || 0), synergy: Number(card.synergy || 0),
+  }))).filter((card: any) => card.name);
+  const cards = rankEdhrecSignals(rawCards).slice(0, 60);
+  return json({ commander, slug, available: true, source: `https://edhrec.com/commanders/${slug}`, retrievedAt: new Date().toISOString(), sourceWindowKnown: false, methodology: "EDHREC adoption and commander-relative synergy are ranked with sample-size shrinkage and a conservative adoption lower bound. Popularity is descriptive, not proof of optimality. New cards remain discovery hypotheses even when their play sample is young.", cards });
 }

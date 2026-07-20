@@ -43,3 +43,7 @@ next-env.d.ts
 dev-server.log
 dev-server-error.log
 dev-server.pid
+
+# Local MetaForge safety snapshots
+backups/
+batch-backups/
