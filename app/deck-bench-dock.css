@@ -54,7 +54,7 @@
   border: 1px solid #6a877f;
   background: #0d1b1a;
   color: #e7a24d;
-  font: normal 21px Georgia;
+  font: normal 19px Georgia;
 }
 .bench-toggle span {
   min-width: 0;
@@ -134,7 +134,7 @@
 .bench-tray header strong {
   margin-top: 4px;
   font:
-    500 24px Georgia,
+    500 22px Georgia,
     serif;
 }
 .bench-tray header button,
@@ -186,7 +186,7 @@
 }
 .bench-decks i {
   color: #d68a3a;
-  font: normal 44px Georgia;
+  font: normal 42px Georgia;
   text-shadow: 0 0 22px #e79943;
 }
 .bench-decks b,
@@ -199,7 +199,7 @@
   margin-top: 9px;
   overflow: hidden;
   font:
-    600 17px Georgia,
+    600 15px Georgia,
     serif;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -270,7 +270,7 @@
 
 /* Bench launcher minimum readable type */
 .bench-toggle small{font-size:11px;line-height:1.2}
-.bench-toggle b{font-size:13px;line-height:1.25}
+.bench-toggle b{font-size:11px;line-height:1.25}
 .bench-toggle em{font-size:12px}
 .bench-tray header small{font-size:10px}
 .bench-tray header button,.bench-tray footer button{font-size:11px}
