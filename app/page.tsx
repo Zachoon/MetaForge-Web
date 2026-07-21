@@ -11,6 +11,7 @@ import {
 } from "./forge-systems-intelligence.mjs";
 import { buildForgeCausalityReport } from "./forge-causality-engine.mjs";
 import { learnRevisionPreferences } from "./revision-learning.mjs";
+import { learnFromForgeInterventions } from "./forge-intervention-learning.mjs";
 import { applyControlledSwap, rankExperimentCuts } from "./meta-breaker-experiment.mjs";
 import { forgeNativeMasterwork } from "./native-masterwork-engine.mjs";
 
@@ -147,6 +148,14 @@ type CardFact = {
 };
 type CardSearchResult = { name: string; typeLine: string; image: string };
 type MetaBreakerExperiment = { cut: string; add: CardSearchResult; reason: string; confidence: string };
+type ForgeIntervention = {
+  id: string;
+  kind: string;
+  summary: string;
+  decision: "accepted" | "dismissed";
+  revision: number;
+  createdAt: string;
+};
 type CommanderOption = {
   name: string;
   colors: string[];
@@ -991,6 +1000,40 @@ export default function Home() {
   const [metaBreakerExperiments, setMetaBreakerExperiments] = useState<MetaBreakerExperiment[]>([]);
   const [metaBreakerLoading, setMetaBreakerLoading] = useState(false);
   const [selectedSystemId, setSelectedSystemId] = useState("");
+  const [resultViewMode, setResultViewMode] = useState<"guided" | "full">("guided");
+  const [intelligenceOpen, setIntelligenceOpen] = useState(false);
+  const [forgeInterventions, setForgeInterventions] = useState<ForgeIntervention[]>([]);
+  const [interventionLearningReady, setInterventionLearningReady] = useState(false);
+
+  useEffect(() => {
+    try {
+      const preferredView = window.localStorage.getItem("metaforge.resultViewMode");
+      if (preferredView === "full" || preferredView === "guided") {
+        setResultViewMode(preferredView);
+      }
+      const savedLearning = JSON.parse(
+        window.localStorage.getItem("metaforge.interventionLearning") || "[]",
+      );
+      if (Array.isArray(savedLearning)) setForgeInterventions(savedLearning);
+    } catch {
+      /* A private browsing boundary should never block the Forge. */
+    } finally {
+      setInterventionLearningReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("metaforge.resultViewMode", resultViewMode);
+    if (resultViewMode === "full") setIntelligenceOpen(true);
+  }, [resultViewMode]);
+
+  useEffect(() => {
+    if (!interventionLearningReady) return;
+    window.localStorage.setItem(
+      "metaforge.interventionLearning",
+      JSON.stringify(forgeInterventions.slice(-80)),
+    );
+  }, [forgeInterventions, interventionLearningReady]);
 
   useEffect(() => {
     if (chamber !== "forging") return;
@@ -1394,6 +1437,10 @@ export default function Home() {
   const revisionLearning = useMemo(
     () => learnRevisionPreferences(matchLog, Math.max(1, revisions.length)),
     [matchLog, revisions.length],
+  );
+  const interventionLearning = useMemo(
+    () => learnFromForgeInterventions(forgeInterventions, matchLog),
+    [forgeInterventions, matchLog],
   );
   const verifiedDeckFacts = useMemo(
     () =>
@@ -1845,7 +1892,7 @@ export default function Home() {
         target: targetDeckSize(format),
         strategy,
         path: work.path,
-        note: commissionNote,
+        note: `${commissionNote}\n${interventionLearning.reusableGuidance}`.trim(),
         seed: hashText(`${commissionSeed}|${index}|${work.name}`),
         colors: pool.colors,
         commander: commander
@@ -1922,7 +1969,9 @@ export default function Home() {
         losses: Number(family.revisions.at(-1)?.evidence?.losses || 0),
       },
     );
-    setMatchLog(family.revisions.at(-1)?.matches || []);
+    setMatchLog(
+      family.revisions.flatMap((revision) => revision.matches || []),
+    );
     setPlayerSignal("");
     setForgeReply("");
     setBenchStatus("testing");
@@ -2045,7 +2094,10 @@ export default function Home() {
                 ? "early signal"
                 : "developing",
           },
-          matches: index === nextRevisions.length - 1 ? nextMatches : [],
+          matches: nextMatches.filter(
+            (match) =>
+              Number(match.revision || nextRevisions.length) === index + 1,
+          ),
         })),
       };
       const families = [
@@ -2190,8 +2242,33 @@ export default function Home() {
     const rows = applyControlledSwap(deckRows, experiment.cut, experiment.add.name);
     if (!rows) return;
     const nextDeck = rows.map((row) => `${row.quantity} ${row.name}`).join("\n");
+    recordForgeIntervention(
+      "controlled one-slot experiment",
+      `−1 ${experiment.cut}; +1 ${experiment.add.name}`,
+      "accepted",
+      revisions.length + 1,
+    );
     preserveDeckEdit(nextDeck, `Meta Breaker experiment: −1 ${experiment.cut}, +1 ${experiment.add.name}`);
     setMetaBreakerExperiments([]);
+  }
+
+  function recordForgeIntervention(
+    kind: string,
+    summary: string,
+    decision: "accepted" | "dismissed",
+    revision = Math.max(1, revisions.length),
+  ) {
+    setForgeInterventions((current) => [
+      ...current,
+      {
+        id: crypto.randomUUID(),
+        kind,
+        summary,
+        decision,
+        revision,
+        createdAt: new Date().toISOString(),
+      },
+    ]);
   }
 
   function recordMatch(result: "win" | "loss") {
@@ -2260,9 +2337,25 @@ export default function Home() {
         createdAt: new Date().toISOString(),
       },
     ];
+    recordForgeIntervention(
+      "player-requested refinement",
+      playerSignal.trim() || "Refinement accepted from the Testing Anvil",
+      "accepted",
+      next.length,
+    );
     setRevisions(next);
     void persistStoryBench(next, record);
     setPlayerSignal("");
+    setForgeReply("");
+  }
+
+  function dismissForgeRefinement() {
+    if (!forgeReply.trim()) return;
+    recordForgeIntervention(
+      "player-requested refinement",
+      playerSignal.trim() || "Refinement declined at the Testing Anvil",
+      "dismissed",
+    );
     setForgeReply("");
   }
 
@@ -2807,7 +2900,7 @@ export default function Home() {
       )}
 
       {chamber === "workbench" && (
-        <section className="testing-anvil">
+        <section className={`testing-anvil progressive-results ${resultViewMode}-results`}>
           <button
             className="back-link"
             onClick={() => setChamber("masterworks")}
@@ -2824,6 +2917,34 @@ export default function Home() {
               {Math.max(1, revisions.length)}
             </p>
           </header>
+          <nav className="result-view-controls" aria-label="Forge result detail level">
+            <span>
+              <small>RESULT VIEW</small>
+              <b>
+                {resultViewMode === "guided"
+                  ? "Deck first. Deeper intelligence opens when you ask."
+                  : "Every Forge instrument is awake."}
+              </b>
+            </span>
+            <div>
+              <button
+                type="button"
+                className={resultViewMode === "guided" ? "active" : ""}
+                aria-pressed={resultViewMode === "guided"}
+                onClick={() => setResultViewMode("guided")}
+              >
+                Guided View
+              </button>
+              <button
+                type="button"
+                className={resultViewMode === "full" ? "active" : ""}
+                aria-pressed={resultViewMode === "full"}
+                onClick={() => setResultViewMode("full")}
+              >
+                Full Forge
+              </button>
+            </div>
+          </nav>
           <div className="testing-layout">
             <article className="deck-manuscript">
               <header>
@@ -2842,6 +2963,44 @@ export default function Home() {
                   Copy deck
                 </button>
               </header>
+              <section className="forge-quick-read" aria-label="Why the Forge built this deck">
+                <span>
+                  <small>WHY THIS MASTERWORK</small>
+                  <b>{chosenWork.verdict}</b>
+                </span>
+                <span>
+                  <small>PLAN</small>
+                  <b>{chosenWork.path}</b>
+                </span>
+                <span>
+                  <small>PLAYER INTENT</small>
+                  <b>{strategy}</b>
+                </span>
+              </section>
+              <details
+                className="forge-intelligence-vault"
+                open={
+                  resultViewMode === "full" ||
+                  intelligenceOpen ||
+                  (!deckIntegrity.checking && !deckIntegrity.passed)
+                }
+                onToggle={(event) =>
+                  setIntelligenceOpen(event.currentTarget.open)
+                }
+              >
+                <summary>
+                  <span>
+                    <small>DEEP FORGE INTELLIGENCE</small>
+                    <b>Deck health, systems, causality, field pressure, and experiments</b>
+                  </span>
+                  <strong>
+                    {!deckIntegrity.checking && !deckIntegrity.passed
+                      ? "ATTENTION REQUIRED"
+                      : resultViewMode === "full" || intelligenceOpen
+                        ? "HIDE DETAILS"
+                        : "EXPLORE DETAILS"}
+                  </strong>
+                </summary>
               {deckRows.length > 0 && (
                 <section className={`integrity-dossier ${deckIntegrity.passed ? "passed" : deckIntegrity.checking ? "checking" : "held"}`}>
                   <header>
@@ -3653,6 +3812,7 @@ export default function Home() {
                   </footer>
                 </section>
               )}
+              </details>
               {benchStatus === "forging" ? (
                 <section
                   className="masterwork-forging-progress"
@@ -3829,6 +3989,16 @@ export default function Home() {
                 {revisionLearning.matchups.filter((matchup) => matchup.actionable).slice(0, 2).map((matchup) => (
                   <p key={matchup.opponent}><b>{matchup.opponent} matchup</b><span>{matchup.wins}–{matchup.losses} observed · {matchup.confidence}, not a predicted win rate</span></p>
                 ))}
+                <details className="intervention-learning-readout">
+                  <summary>
+                    CONTINUAL FORGE LEARNING · {interventionLearning.experiments.length} EXPERIMENT{interventionLearning.experiments.length === 1 ? "" : "S"}
+                  </summary>
+                  <p>
+                    <b>{interventionLearning.reusable.length ? `${interventionLearning.reusable.length} reusable player pattern${interventionLearning.reusable.length === 1 ? "" : "s"}` : "NO INTERVENTION PROMOTED YET"}</b>
+                    <span>{interventionLearning.reusableGuidance}</span>
+                  </p>
+                  <small>{interventionLearning.evidenceBoundary}</small>
+                </details>
               </section>
               <label>
                 <span>WHAT WORKED OR FELT WRONG?</span>
@@ -3851,9 +4021,14 @@ export default function Home() {
                 <section className="forge-refinement">
                   <small>REFINEMENT OPTIONS · FORGE THEORY</small>
                   <pre>{forgeReply}</pre>
-                  <button onClick={preserveRevision}>
-                    Preserve as revision {revisions.length + 1}
-                  </button>
+                  <div className="refinement-decision-row">
+                    <button onClick={preserveRevision}>
+                      Preserve as revision {revisions.length + 1}
+                    </button>
+                    <button className="dismiss-refinement" onClick={dismissForgeRefinement}>
+                      Not for this deck
+                    </button>
+                  </div>
                 </section>
               )}
               <footer>

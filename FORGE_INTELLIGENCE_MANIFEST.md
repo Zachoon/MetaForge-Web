@@ -69,6 +69,9 @@ not justify a confident claim.
   shrinkage, new-card discovery classification, and evidence ranking.
 - `app/revision-learning.mjs`: revision-scoped signal thresholds and bounded
   matchup learning.
+- `app/forge-intervention-learning.mjs`: accepted/dismissed refinement history,
+  exact-revision before/after comparisons, and repeated-evidence gates before
+  an intervention can become a reusable player-specific prior.
 - `app/meta-breaker-experiment.mjs`: weak-connection cut ranking and exact
   deck-size-preserving controlled swaps.
 - `app/forge-systems-intelligence.mjs`: deterministic system construction,
@@ -126,11 +129,15 @@ candidates to hard gates, runs a nondominated tradeoff tournament, and tests
 every bounded one-slot rival exchange before preserving the selected list as
 revision one.
 
-The persistent implementation goal tracks broader live metagame ingestion,
-sample-aware personalization, and continued Meta Breaker refinement. The live
-Interaction Graph, Systems Chamber, and Structural Intelligence chamber now ship
-as one Testing Anvil pipeline. The next intelligence batch should compare a
-legal one-slot before/after experiment across system structure, deterministic
-simulation gates, and exact revision history without relabeling modeled change
-as proof. New work should extend these modules rather than creating disconnected
-duplicate logic.
+The Testing Anvil now defaults to a deck-first Guided View: the complete list and
+refinement loop arrive before deeper analysis, while Full Forge preserves instant
+access to every instrument. Hard integrity failures still open automatically.
+
+Continual learning is bounded rather than self-modifying. MetaForge preserves
+accepted and dismissed interventions, keeps matches attached to exact revisions,
+requires four games before and after a change, and requires two promising
+controlled comparisons before reusing an intervention kind as a player-specific
+prior. The persistent implementation goal tracks broader live metagame ingestion,
+sample-aware personalization, and continued Meta Breaker refinement without
+relabeling modeled or early evidence as proof. New work should extend these
+modules rather than creating disconnected duplicate logic.
