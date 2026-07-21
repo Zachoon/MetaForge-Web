@@ -132,6 +132,10 @@ revision one.
 The Testing Anvil now defaults to a deck-first Guided View: the complete list and
 refinement loop arrive before deeper analysis, while Full Forge preserves instant
 access to every instrument. Hard integrity failures still open automatically.
+The Organic Forge Flow divides that workbench into four paced chapters: the
+Masterwork, three plain-language shaping paths, an essential four-signal reading,
+and the Deep Forge archive. Match evidence, the Editing Anvil, additional systems,
+and the full Bench remain available on demand instead of competing with the deck.
 
 Continual learning is bounded rather than self-modifying. MetaForge preserves
 accepted and dismissed interventions, keeps matches attached to exact revisions,

@@ -275,3 +275,6 @@
 .bench-tray header small{font-size:10px}
 .bench-tray header button,.bench-tray footer button{font-size:11px}
 .bench-decks small{font-size:10px}
+
+/* Organic flow: the closed Bench is a quiet tool, not a permanent chapter. */
+.bench-dock:not(.open){right:22px;left:auto;width:min(330px,calc(100% - 44px));margin:0}.bench-dock:not(.open) .bench-handle{min-height:44px;border-radius:8px 8px 0 0}.bench-dock:not(.open) .bench-toggle{padding:6px 10px;gap:9px}.bench-dock:not(.open) .bench-toggle>i{width:28px;height:28px;font-size:16px}.bench-dock:not(.open) .bench-toggle small{font-size:9px}.bench-dock:not(.open) .bench-toggle b{font-size:10px}.bench-dock:not(.open) .bench-toggle em{font-size:9px}.bench-dock:not(.open) .bench-handle>img{width:32px;height:38px}.bench-dock.open{max-width:1040px}.great-forge{padding-bottom:54px}@media(max-width:650px){.bench-dock:not(.open){right:10px;width:min(290px,calc(100% - 20px))}.bench-dock:not(.open) .bench-toggle em{display:none}}

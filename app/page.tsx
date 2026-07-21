@@ -988,7 +988,7 @@ export default function Home() {
   >([]);
   const [consideringCards, setConsideringCards] = useState<DeckRow[]>([]);
   const [removedCards, setRemovedCards] = useState<DeckRow[]>([]);
-  const [editAnvilOpen, setEditAnvilOpen] = useState(true);
+  const [editAnvilOpen, setEditAnvilOpen] = useState(false);
   const [forgeGenerationError, setForgeGenerationError] = useState("");
   const [forgeStartedAt, setForgeStartedAt] = useState<number | null>(null);
   const [forgeElapsedSeconds, setForgeElapsedSeconds] = useState(0);
@@ -1004,6 +1004,8 @@ export default function Home() {
   const [intelligenceOpen, setIntelligenceOpen] = useState(false);
   const [forgeInterventions, setForgeInterventions] = useState<ForgeIntervention[]>([]);
   const [interventionLearningReady, setInterventionLearningReady] = useState(false);
+  const [showAllSystems, setShowAllSystems] = useState(false);
+  const [matchEvidenceOpen, setMatchEvidenceOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -1024,7 +1026,8 @@ export default function Home() {
 
   useEffect(() => {
     window.localStorage.setItem("metaforge.resultViewMode", resultViewMode);
-    if (resultViewMode === "full") setIntelligenceOpen(true);
+    setIntelligenceOpen(resultViewMode === "full");
+    setMatchEvidenceOpen(resultViewMode === "full");
   }, [resultViewMode]);
 
   useEffect(() => {
@@ -1238,6 +1241,14 @@ export default function Home() {
       ) || null,
     [forgeSystemsReport.systems, selectedSystemId],
   );
+  const visibleForgeSystems = useMemo(() => {
+    if (showAllSystems) return forgeSystemsReport.systems;
+    const strongest = forgeSystemsReport.systems.slice(0, 3);
+    if (activeSystem && !strongest.some((system) => system.id === activeSystem.id)) {
+      return [activeSystem, ...strongest.slice(0, 2)];
+    }
+    return strongest;
+  }, [activeSystem, forgeSystemsReport.systems, showAllSystems]);
 
   const focusedInteractionGraph = useMemo(() => {
     if (!activeSystem) {
@@ -2949,7 +2960,7 @@ export default function Home() {
             <article className="deck-manuscript">
               <header>
                 <div>
-                  <small>THE FORGED LIST · TYPE GALLERY</small>
+                  <small>CHAPTER I · THE MASTERWORK</small>
                   <h2>
                     {benchStatus === "forging"
                       ? "The Forge is producing your deck…"
@@ -2977,6 +2988,18 @@ export default function Home() {
                   <b>{strategy}</b>
                 </span>
               </section>
+              <section className="forge-understanding-bridge" aria-label="Essential deck understanding">
+                <header>
+                  <small>CHAPTER III · UNDERSTAND THE MASTERWORK</small>
+                  <h2>The essential reading, without the instrument panel.</h2>
+                </header>
+                <div>
+                  <span><small>LEGALITY</small><b>{deckIntegrity.passed ? "Verified" : deckIntegrity.checking ? "Checking" : "Attention required"}</b></span>
+                  <span><small>OPENING HANDS</small><b>{simulationDossier ? `${(simulationDossier.goldfish.expert.keepableRate * 100).toFixed(0)}% keepable` : "Awaiting trials"}</b></span>
+                  <span><small>STRONGEST MACHINE</small><b>{forgeSystemsReport.strongestSystem?.name || "Still resolving"}</b></span>
+                  <span><small>WATCH FIRST</small><b>{forgeSystemsReport.weakestSystem?.name || simulationDossier?.matrix.weakest?.opponent || "Collect match evidence"}</b></span>
+                </div>
+              </section>
               <details
                 className="forge-intelligence-vault"
                 open={
@@ -2990,7 +3013,7 @@ export default function Home() {
               >
                 <summary>
                   <span>
-                    <small>DEEP FORGE INTELLIGENCE</small>
+                    <small>CHAPTER IV · ENTER THE DEEP FORGE</small>
                     <b>Deck health, systems, causality, field pressure, and experiments</b>
                   </span>
                   <strong>
@@ -3132,7 +3155,7 @@ export default function Home() {
                           </section>
 
                           <div className="systems-blueprint-grid">
-                            {forgeSystemsReport.systems.map(
+                            {visibleForgeSystems.map(
                               (system, systemIndex) => {
                                 const gauges = [
                                   [
@@ -3175,14 +3198,12 @@ export default function Home() {
                                         : ""
                                     }`}
                                     key={system.id}
-                                    open={
-                                      activeSystem
-                                        ? activeSystem.id === system.id
-                                        : systemIndex === 0
-                                    }
+                                    open={activeSystem?.id === system.id}
                                     onToggle={(event) => {
                                       if (event.currentTarget.open) {
                                         setSelectedSystemId(system.id);
+                                      } else if (activeSystem?.id === system.id) {
+                                        setSelectedSystemId("");
                                       }
                                     }}
                                     style={
@@ -3449,6 +3470,17 @@ export default function Home() {
                               },
                             )}
                           </div>
+                          {forgeSystemsReport.systems.length > 3 && (
+                            <button
+                              type="button"
+                              className="system-disclosure-toggle"
+                              onClick={() => setShowAllSystems((visible) => !visible)}
+                            >
+                              {showAllSystems
+                                ? "Return to the three strongest systems"
+                                : `Reveal all ${forgeSystemsReport.systems.length} detected systems`}
+                            </button>
+                          )}
 
                           <section className="systems-bridge-foundry">
                             <header>
@@ -3957,13 +3989,40 @@ export default function Home() {
             </article>
             <aside className="testing-loop">
               <header>
-                <small>THE FORGE LEARNS WITH YOU</small>
-                <h2>Test. Signal. Reforge.</h2>
+                <small>CHAPTER II · SHAPE THE MASTERWORK</small>
+                <h2>Choose one useful question.</h2>
                 <p>
-                  One match is a signal—not proof. Tell the Forge what felt
-                  strong, awkward, missing, or simply unlike you.
+                  Start with a direction, then tell the Forge what felt strong,
+                  awkward, missing, or simply unlike you.
                 </p>
               </header>
+              <section className="refinement-starters" aria-label="Three refinement starting points">
+                {[
+                  ["Protect the plan", "Test more resilience and protection without weakening the deck's central engine."],
+                  ["Tighten the opening", "Test a lower curve and earlier interaction while preserving the deck's identity."],
+                  ["Improve card flow", "Test more selection and card advantage without adding unnecessary complexity."],
+                ].map(([label, prompt], index) => (
+                  <button
+                    type="button"
+                    key={label}
+                    className={playerSignal === prompt ? "active" : ""}
+                    onClick={() => setPlayerSignal(prompt)}
+                  >
+                    <small>PATH {index + 1}</small>
+                    <b>{label}</b>
+                    <span>{prompt}</span>
+                  </button>
+                ))}
+              </section>
+              <details
+                className="match-evidence-drawer"
+                open={matchEvidenceOpen}
+                onToggle={(event) => setMatchEvidenceOpen(event.currentTarget.open)}
+              >
+                <summary>
+                  <span><small>MATCH EVIDENCE · OPTIONAL</small><b>Record games and inspect what the Forge has learned</b></span>
+                  <strong>{matchEvidenceOpen ? "HIDE" : `${revisionLearning.sampleSize} RECORDED`}</strong>
+                </summary>
               <label className="opponent-signal">
                 <span>OPPONENT ARCHETYPE · OPTIONAL BUT VALUABLE</span>
                 <select value={opponentArchetype} onChange={(event) => setOpponentArchetype(event.target.value)}>
@@ -4000,6 +4059,7 @@ export default function Home() {
                   <small>{interventionLearning.evidenceBoundary}</small>
                 </details>
               </section>
+              </details>
               <label>
                 <span>WHAT WORKED OR FELT WRONG?</span>
                 <textarea

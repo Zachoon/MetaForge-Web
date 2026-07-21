@@ -15,8 +15,28 @@ test("defaults the workbench to a remembered Guided View", () => {
 test("places deck and refinement surfaces before the intelligence vault", () => {
   assert.match(css, /\.progressive-results \.deck-gallery[^}]*order:2/);
   assert.match(css, /\.progressive-results \.testing-loop\{order:4/);
-  assert.match(css, /\.progressive-results \.forge-intelligence-vault\{order:5/);
+  assert.match(css, /\.progressive-results \.forge-understanding-bridge\{order:5/);
+  assert.match(css, /\.progressive-results \.forge-intelligence-vault\{order:6/);
   assert.match(page, /className="forge-intelligence-vault"/);
+});
+
+test("offers three simple refinement paths before optional match evidence", () => {
+  assert.match(page, /Three refinement starting points/i);
+  assert.match(page, /Protect the plan/);
+  assert.match(page, /Tighten the opening/);
+  assert.match(page, /Improve card flow/);
+  assert.match(page, /className="match-evidence-drawer"/);
+});
+
+test("keeps the Editing Anvil closed until the player asks for it", () => {
+  assert.match(page, /useState\(false\);[\s\S]*?forgeGenerationError/);
+  assert.match(page, /Raise the Editing Anvil/);
+});
+
+test("reveals only the strongest systems before the player requests the archive", () => {
+  assert.match(page, /const visibleForgeSystems = useMemo/);
+  assert.match(page, /forgeSystemsReport\.systems\.slice\(0, 3\)/);
+  assert.match(page, /Reveal all \$\{forgeSystemsReport\.systems\.length\} detected systems/);
 });
 
 test("automatically exposes intelligence when a hard deck gate fails", () => {
