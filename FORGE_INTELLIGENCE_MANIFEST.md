@@ -44,6 +44,16 @@ not justify a confident claim.
     at least four classified games.
 15. The Meta Breaker Lab can generate three legal one-slot experiments, rank
     weakly connected cuts, and preserve the chosen swap as a new revision.
+16. Forge Systems Intelligence interprets the Oracle-derived interaction graph
+    as named machines with core/support roles, redundancy, structural health,
+    bridge cards, and bounded failure hypotheses.
+17. The Systems Chamber synchronizes a selected machine with the Interaction
+    Graph so players can inspect its cards and relationships without creating a
+    second analysis path.
+18. The Forge Causality Engine measures modeled resilience, collapse risk,
+    recovery potential, critical nodes, amplifiers, bottlenecks, and one
+    controlled highest-value experiment. These are structural hypotheses, not
+    claims that a card caused a real match result.
 
 ## Core modules
 
@@ -61,6 +71,11 @@ not justify a confident claim.
   matchup learning.
 - `app/meta-breaker-experiment.mjs`: weak-connection cut ranking and exact
   deck-size-preserving controlled swaps.
+- `app/forge-systems-intelligence.mjs`: deterministic system construction,
+  health dimensions, bridge detection, and bounded structural failure analysis.
+- `app/forge-causality-engine.mjs`: immutable structural-impact profiles,
+  critical-node and amplifier detection, collapse/recovery scoring, and a
+  controlled one-slot upgrade contract.
 - `app/forge-simulation.mjs`: deterministic library and opening-hand trials.
 - `app/goldfish-simulation.mjs`: plan-realization and pilot-sensitivity gates.
 - `app/matchup-simulation.mjs`: bounded archetype pressure scenarios and
@@ -93,8 +108,10 @@ invented metagame claim.
 ## Active program
 
 The persistent implementation goal tracks broader live metagame ingestion,
-sample-aware personalization, and continued Meta Breaker refinement. The first
-live interaction graph now ships in the Testing Anvil; future graph work should
-add richer mechanic vocabularies and observed pair/package evidence without
-relabeling inference as proof. New work should extend these modules rather than
-creating disconnected duplicate logic.
+sample-aware personalization, and continued Meta Breaker refinement. The live
+Interaction Graph, Systems Chamber, and Structural Intelligence chamber now ship
+as one Testing Anvil pipeline. The next intelligence batch should compare a
+legal one-slot before/after experiment across system structure, deterministic
+simulation gates, and exact revision history without relabeling modeled change
+as proof. New work should extend these modules rather than creating disconnected
+duplicate logic.

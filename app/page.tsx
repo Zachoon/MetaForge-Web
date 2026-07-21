@@ -1,10 +1,15 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { evaluateSimulationGate } from "./goldfish-simulation.mjs";
 import { evaluateMatchupMatrix } from "./matchup-simulation.mjs";
 import { getMetaIntelligence } from "./meta-intelligence.mjs";
 import { buildInteractionGraph } from "./forge-interaction-graph.mjs";
+import {
+  buildBoundedFailureAnalysis,
+  buildForgeSystemsReport,
+} from "./forge-systems-intelligence.mjs";
+import { buildForgeCausalityReport } from "./forge-causality-engine.mjs";
 import { learnRevisionPreferences } from "./revision-learning.mjs";
 import { applyControlledSwap, rankExperimentCuts } from "./meta-breaker-experiment.mjs";
 
@@ -17,31 +22,31 @@ type Chamber =
   | "workbench";
 
 const FORGING_STAGES = [
-  ["The blueprint is sealed", "Reading the commission marks…", "642"],
+  ["The blueprint is sealed", "Reading the commission marksâ€¦", "642"],
   ["Awakening the Great Furnace", "Ancient channels fill with light.", "642"],
   [
     "Consulting the Archive",
-    "Rejecting designs with repeated structural failures…",
+    "Rejecting designs with repeated structural failuresâ€¦",
     "318",
   ],
   [
     "Shaping the strategic core",
-    "Aligning every card with the requested strategy…",
+    "Aligning every card with the requested strategyâ€¦",
     "141",
   ],
-  ["Tempering the mana lattice", "Discarding unstable foundations…", "47"],
+  ["Tempering the mana lattice", "Discarding unstable foundationsâ€¦", "47"],
   [
     "Testing structural integrity",
-    "Pressing each design against hostile plans…",
+    "Pressing each design against hostile plansâ€¦",
     "9",
   ],
-  ["Inspecting imperfections", "Recording every honest weakness…", "3"],
-  ["Three designs survived", "Cooling the surviving masterworks…", "3"],
+  ["Inspecting imperfections", "Recording every honest weaknessâ€¦", "3"],
+  ["Three designs survived", "Cooling the surviving masterworksâ€¦", "3"],
 ] as const;
 
 const MASTERWORKS = [
   {
-    rune: "ᛋ",
+    rune: "á›‹",
     name: "The Ember Vanguard",
     path: "Aggressive Pressure",
     tone: "ember",
@@ -49,7 +54,7 @@ const MASTERWORKS = [
       "The fastest surviving design. Its edge was preserved without sacrificing its ability to recover.",
   },
   {
-    rune: "ᛉ",
+    rune: "á›‰",
     name: "The Iron Covenant",
     path: "Adaptive Midrange",
     tone: "steel",
@@ -57,7 +62,7 @@ const MASTERWORKS = [
       "The most balanced masterwork. Its strength is refusing to become irrelevant as the battle changes.",
   },
   {
-    rune: "ᛟ",
+    rune: "á›Ÿ",
     name: "The Rune Bastion",
     path: "Measured Control",
     tone: "rune",
@@ -68,7 +73,7 @@ const MASTERWORKS = [
 
 const ADDITIONAL_MASTERWORKS = [
   {
-    rune: "ᛏ",
+    rune: "á›",
     name: "The Stormbrand Edge",
     path: "Tempo and Disruption",
     tone: "rune",
@@ -76,7 +81,7 @@ const ADDITIONAL_MASTERWORKS = [
       "A precise design that turns small timing advantages into a lead the opponent cannot recover from.",
   },
   {
-    rune: "ᛃ",
+    rune: "á›ƒ",
     name: "The Verdant Engine",
     path: "Synergy and Growth",
     tone: "steel",
@@ -84,7 +89,7 @@ const ADDITIONAL_MASTERWORKS = [
       "A connected design whose pieces become more powerful together without depending on a single fragile line.",
   },
   {
-    rune: "ᛇ",
+    rune: "á›‡",
     name: "The Gravebound Accord",
     path: "Resilient Attrition",
     tone: "ember",
@@ -92,7 +97,7 @@ const ADDITIONAL_MASTERWORKS = [
       "A patient design that treats every exchange as fuel and continues producing value after the first plan is broken.",
   },
   {
-    rune: "ᛋ",
+    rune: "á›‹",
     name: "The Sunforged Legion",
     path: "Go-Wide Pressure",
     tone: "ember",
@@ -100,7 +105,7 @@ const ADDITIONAL_MASTERWORKS = [
       "A widening battlefield converts modest resources into an attack that demands several answers at once.",
   },
   {
-    rune: "ᛞ",
+    rune: "á›ž",
     name: "The Mirror Crucible",
     path: "Engine and Combo",
     tone: "rune",
@@ -108,7 +113,7 @@ const ADDITIONAL_MASTERWORKS = [
       "An intricate design that hides a decisive finish inside individually useful cards and overlapping lines.",
   },
   {
-    rune: "ᛉ",
+    rune: "á›‰",
     name: "The Warden's Oath",
     path: "Ramp and Inevitability",
     tone: "steel",
@@ -438,19 +443,19 @@ const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
   Standard: [
     {
       card: "Emberheart Challenger",
-      role: "Lynchpin · pressure engine",
+      role: "Lynchpin Â· pressure engine",
       theme: "Efficient threats turn every combat step into leverage.",
       win: "Build an early lead, then convert prowess and reach into the final points.",
     },
     {
       card: "Overlord of the Hauntwoods",
-      role: "Lynchpin · value engine",
+      role: "Lynchpin Â· value engine",
       theme: "Durable threats keep mana and pressure moving together.",
       win: "Outscale fair decks with resilient bodies and compounding card quality.",
     },
     {
       card: "Stock Up",
-      role: "Lynchpin · selection engine",
+      role: "Lynchpin Â· selection engine",
       theme:
         "Card selection finds the right answer for each stage of the game.",
       win: "Stabilize, exhaust opposing resources, and close behind protected threats.",
@@ -459,20 +464,20 @@ const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
   Modern: [
     {
       card: "Ragavan, Nimble Pilferer",
-      role: "Lynchpin · tempo engine",
+      role: "Lynchpin Â· tempo engine",
       theme: "Cheap threats create mana, information, and immediate pressure.",
       win: "Force awkward answers early, then finish through efficient disruption.",
     },
     {
       card: "Orcish Bowmasters",
-      role: "Lynchpin · value engine",
+      role: "Lynchpin Â· value engine",
       theme:
         "Flexible threats punish excess cards while controlling small creatures.",
       win: "Trade efficiently until incremental advantages become overwhelming.",
     },
     {
       card: "Counterspell",
-      role: "Lynchpin · permission",
+      role: "Lynchpin Â· permission",
       theme: "Broad answers protect a compact, inevitable endgame.",
       win: "Deny the opponent's pivotal turn and win once their resources are thin.",
     },
@@ -480,20 +485,20 @@ const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
   Premodern: [
     {
       card: "Goblin Lackey",
-      role: "Lynchpin · deployment engine",
+      role: "Lynchpin Â· deployment engine",
       theme:
         "One opening connects and turns the battlefield into an avalanche.",
       win: "Overwhelm defenses before slower engines can establish control.",
     },
     {
       card: "Survival of the Fittest",
-      role: "Lynchpin · toolbox engine",
+      role: "Lynchpin Â· toolbox engine",
       theme: "Every creature can become the exact answer the position demands.",
       win: "Assemble an adaptable creature chain that opponents cannot trade through.",
     },
     {
       card: "Counterspell",
-      role: "Lynchpin · permission",
+      role: "Lynchpin Â· permission",
       theme: "Efficient interaction protects a patient, resource-rich endgame.",
       win: "Neutralize the few spells that matter and take over with superior cards.",
     },
@@ -501,19 +506,19 @@ const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
   Pioneer: [
     {
       card: "Monastery Swiftspear",
-      role: "Lynchpin · pressure engine",
+      role: "Lynchpin Â· pressure engine",
       theme: "Low-cost spells become both interaction and additional damage.",
       win: "Compress the game until every draw threatens lethal.",
     },
     {
       card: "Fable of the Mirror-Breaker",
-      role: "Lynchpin · value engine",
+      role: "Lynchpin Â· value engine",
       theme: "Filtering, mana, and copied threats make every stage productive.",
       win: "Accumulate flexible advantages, then copy the deck's best threat.",
     },
     {
       card: "Supreme Verdict",
-      role: "Lynchpin · reset",
+      role: "Lynchpin Â· reset",
       theme: "Unconditional resets buy time for a powerful late game.",
       win: "Clear committed boards and close once the opponent is out of rebuilds.",
     },
@@ -521,19 +526,19 @@ const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
   Historic: [
     {
       card: "Ragavan, Nimble Pilferer",
-      role: "Lynchpin · tempo engine",
+      role: "Lynchpin Â· tempo engine",
       theme: "Early pressure snowballs into mana and stolen resources.",
       win: "Stay ahead on tempo while disruption protects the attack.",
     },
     {
       card: "Jarsyl, Dark Age Scion",
-      role: "Lynchpin · recursion engine",
+      role: "Lynchpin Â· recursion engine",
       theme: "The graveyard turns past exchanges into future value.",
       win: "Replay efficient spells until one-for-one trades stop being fair.",
     },
     {
       card: "Mana Drain",
-      role: "Lynchpin · permission",
+      role: "Lynchpin Â· permission",
       theme: "Premium interaction turns defense into a burst of development.",
       win: "Counter the pivotal spell and use the mana swing to seize control.",
     },
@@ -541,21 +546,21 @@ const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
   Brawl: [
     {
       card: "Ragavan, Nimble Pilferer",
-      role: "Commander · treasure tempo",
+      role: "Commander Â· treasure tempo",
       theme:
         "A compact red raid built around cheap interaction and stolen cards.",
       win: "Connect early, compound Treasure advantages, and burn through the last defenses.",
     },
     {
       card: "Kutzil, Malamet Exemplar",
-      role: "Commander · modified creatures",
+      role: "Commander Â· modified creatures",
       theme:
         "Counters and combat tricks turn a creature team into a draw engine.",
       win: "Grow multiple threats, deny combat tricks, and snowball every clean hit.",
     },
     {
       card: "Braids, Arisen Nightmare",
-      role: "Commander · sacrifice control",
+      role: "Commander Â· sacrifice control",
       theme:
         "Disposable permanents become cards while opponents face painful choices.",
       win: "Drain resources turn by turn until sacrifice pressure becomes inevitable.",
@@ -564,20 +569,20 @@ const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
   Commander: [
     {
       card: "Isshin, Two Heavens as One",
-      role: "Commander · attack triggers",
+      role: "Commander Â· attack triggers",
       theme:
         "Every attack trigger fires twice, rewarding a relentless combat plan.",
       win: "Build one explosive combat step that multiplies tokens, damage, and value.",
     },
     {
       card: "Muldrotha, the Gravetide",
-      role: "Commander · graveyard value",
+      role: "Commander Â· graveyard value",
       theme: "The graveyard acts as a second hand full of reusable permanents.",
       win: "Outlast removal, rebuild repeatedly, and lock in an overwhelming resource edge.",
     },
     {
       card: "Shorikai, Genesis Engine",
-      role: "Commander · artifact control",
+      role: "Commander Â· artifact control",
       theme:
         "Vehicles, tokens, and card selection support a patient control shell.",
       win: "Filter into answers, stabilize behind Pilots, then win through inevitability.",
@@ -656,7 +661,7 @@ const createMasterworks = (seed: number, commander = ""): Masterwork[] => {
       core = NAME_CORES[(base + index * 5) % NAME_CORES.length];
     const identity = commander.split(/[ ,]+/)[0] || "Forge";
     return {
-      rune: ["ᛋ", "ᛉ", "ᛟ", "ᚷ", "ᚱ", "ᛇ", "ᚾ", "ᛞ", "ᛜ"][index],
+      rune: ["á›‹", "á›‰", "á›Ÿ", "áš·", "áš±", "á›‡", "áš¾", "á›ž", "á›œ"][index],
       name: index % 3 === 0 ? `The ${identity} ${core}` : `The ${core}`,
       path: PATHS[(base + index * 7) % PATHS.length],
       tone: ["ember", "steel", "rune"][index % 3],
@@ -713,7 +718,7 @@ const cardFactKey = (name: string) =>
   name
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[‘’`]/g, "'")
+    .replace(/[â€˜â€™`]/g, "'")
     .replace(/\s*\/\/\s*/g, " // ")
     .replace(/\s+/g, " ")
     .trim()
@@ -907,6 +912,7 @@ export default function Home() {
   const [lastCutCard, setLastCutCard] = useState("");
   const [metaBreakerExperiments, setMetaBreakerExperiments] = useState<MetaBreakerExperiment[]>([]);
   const [metaBreakerLoading, setMetaBreakerLoading] = useState(false);
+  const [selectedSystemId, setSelectedSystemId] = useState("");
 
   useEffect(() => {
     if (chamber !== "forging") return;
@@ -971,8 +977,8 @@ export default function Home() {
           ...base,
           card: commander.name,
           role: randomCommission
-            ? "Commander · discovered by the Forge"
-            : "Commander · chosen in your Blueprint",
+            ? "Commander Â· discovered by the Forge"
+            : "Commander Â· chosen in your Blueprint",
           theme:
             commissionNote.trim() ||
             `A ${commander.colors.join("")} identity commission built around this commander.`,
@@ -1096,6 +1102,82 @@ export default function Home() {
     }),
     { commanderName: chosenPreview.card },
   ), [deckRows, cardFacts, format, chosenPreview.card]);
+  const forgeSystemsReport = useMemo(
+    () =>
+      buildForgeSystemsReport(interactionGraph, {
+        commanderName: chosenPreview.card,
+      }),
+    [interactionGraph, chosenPreview.card],
+  );
+
+  const activeSystem = useMemo(
+    () =>
+      forgeSystemsReport.systems.find(
+        (system) => system.id === selectedSystemId,
+      ) || null,
+    [forgeSystemsReport.systems, selectedSystemId],
+  );
+
+  const focusedInteractionGraph = useMemo(() => {
+    if (!activeSystem) {
+      return {
+        packages: interactionGraph.packages,
+        edges: interactionGraph.edges,
+        nonbos: interactionGraph.nonbos,
+        isolated: interactionGraph.isolated,
+      };
+    }
+
+    const members = new Set(activeSystem.members);
+
+    return {
+      packages: interactionGraph.packages.filter((group) =>
+        group.members.some((name) => members.has(name)),
+      ),
+      edges: interactionGraph.edges.filter(
+        (edge) => members.has(edge.from) || members.has(edge.to),
+      ),
+      nonbos: interactionGraph.nonbos.filter(
+        (conflict) =>
+          members.has(conflict.source) ||
+          ("target" in conflict &&
+            typeof conflict.target === "string" &&
+            members.has(conflict.target)),
+      ),
+      isolated: interactionGraph.isolated.filter((name) =>
+        members.has(name),
+      ),
+    };
+  }, [activeSystem, interactionGraph]);
+
+  useEffect(() => {
+    if (
+      selectedSystemId &&
+      !forgeSystemsReport.systems.some(
+        (system) => system.id === selectedSystemId,
+      )
+    ) {
+      setSelectedSystemId("");
+    }
+  }, [forgeSystemsReport.systems, selectedSystemId]);
+
+  const inspectSystem = (systemId: string, firstCard = "") => {
+    setSelectedSystemId(systemId);
+
+    if (firstCard) {
+      setHoveredCard(firstCard);
+    }
+
+    window.requestAnimationFrame(() => {
+      document
+        .getElementById("interaction-graph-dossier")
+        ?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+    });
+  };
+
   const activeGraphEdges = interactionGraph.edges
     .filter((edge) => edge.from === activeCard || edge.to === activeCard)
     .slice(0, 2);
@@ -1147,6 +1229,34 @@ export default function Home() {
       matrix: evaluateMatchupMatrix(model, undefined, 900, 991),
     };
   }, [deckIntegrity.passed, deckRows, cardFacts, strategy]);
+
+  const forgeFailureAnalysis = useMemo(
+    () =>
+      buildBoundedFailureAnalysis(
+        forgeSystemsReport,
+        simulationDossier,
+      ),
+    [forgeSystemsReport, simulationDossier],
+  );
+
+  const forgeCausalityReport = useMemo(
+    () =>
+      buildForgeCausalityReport(
+        interactionGraph,
+        forgeSystemsReport,
+        simulationDossier,
+      ),
+    [interactionGraph, forgeSystemsReport, simulationDossier],
+  );
+
+  const activeCausalitySystem = useMemo(
+    () =>
+      forgeCausalityReport.systems.find(
+        (system) => system.id === activeSystem?.id,
+      ) || forgeCausalityReport.mostFragileSystem || null,
+    [forgeCausalityReport, activeSystem],
+  );
+
   const metaBreakerDossier = useMemo(() => {
     if (!simulationDossier) return null;
     const weakest = simulationDossier.matrix.weakest?.opponent || "Unknown";
@@ -1175,16 +1285,16 @@ export default function Home() {
     if (format === "Standard") {
       const meta = getMetaIntelligence();
       if (!meta.readyForCurrentFieldUse) return {
-        source: `${meta.current.provenance.name} · last observed ${meta.current.provenance.observedAt}`,
+        source: `${meta.current.provenance.name} Â· last observed ${meta.current.provenance.observedAt}`,
         field: meta.warning,
-        confidence: `FIELD GATE CLOSED · ${meta.current.freshness} · ${meta.current.ageDays} days old`,
+        confidence: `FIELD GATE CLOSED Â· ${meta.current.freshness} Â· ${meta.current.ageDays} days old`,
         hypothesis: repair.pressure,
         test: "Refresh the field collector before calling any candidate a current counter-meta design; structural stress testing may continue meanwhile.",
       };
       return {
-        source: `${meta.current.provenance.name} · observed ${meta.current.provenance.observedAt}`,
+        source: `${meta.current.provenance.name} Â· observed ${meta.current.provenance.observedAt}`,
         field: `${meta.current.leadingStrategy} is the largest measured strategic family at ${(meta.current.strategies[0].share * 100).toFixed(1)}%; it is a plurality, not a majority.`,
-        confidence: `${meta.current.confidence} · ${meta.current.freshness} (${meta.current.ageDays}d) · ${meta.current.sampleSize} lists · ${(meta.current.classificationCoverage * 100).toFixed(1)}% classified`,
+        confidence: `${meta.current.confidence} Â· ${meta.current.freshness} (${meta.current.ageDays}d) Â· ${meta.current.sampleSize} lists Â· ${(meta.current.classificationCoverage * 100).toFixed(1)}% classified`,
         hypothesis: repair.pressure,
         test: repair.test,
       };
@@ -1193,12 +1303,12 @@ export default function Home() {
     const discoverySignals = edhrecEvidence?.cards.filter((card) => card.newCardPotential).length || 0;
     return {
       source: edhrecEvidence?.available
-        ? `Commander adoption evidence · ${edhrecEvidence.cards.length} signals`
+        ? `Commander adoption evidence Â· ${edhrecEvidence.cards.length} signals`
         : "No format-wide tournament field is connected for this format yet",
       field: edhrecEvidence?.available
         ? "Commander-relative adoption informs card discovery, while legality and mechanical fit remain binding."
         : "The Forge will not invent a current metagame claim from missing coverage.",
-      confidence: edhrecEvidence?.available ? `${observedSignals} stronger-sample signals · ${discoverySignals} new-card hypotheses · not a win-rate source` : "insufficient field evidence",
+      confidence: edhrecEvidence?.available ? `${observedSignals} stronger-sample signals Â· ${discoverySignals} new-card hypotheses Â· not a win-rate source` : "insufficient field evidence",
       hypothesis: repair.pressure,
       test: repair.test,
     };
@@ -1218,10 +1328,10 @@ export default function Home() {
           const faces = fact.card_faces
             ?.map(
               (face) =>
-                `${face.name || fact.name} ${face.mana_cost || ""} · ${face.type_line || ""}\n${face.oracle_text || ""}`,
+                `${face.name || fact.name} ${face.mana_cost || ""} Â· ${face.type_line || ""}\n${face.oracle_text || ""}`,
             )
             .join("\nTRANSFORMS TO\n");
-          return `${fact.name} · ${fact.mana_cost || ""} · ${fact.type_line || ""} · Set: ${fact.set_name || "Unknown"} · Games: ${(fact.games || []).join(", ")} · ${format} legality: ${fact.legalities?.[scryfallLegality(format)] || "ruleset review required"}\n${faces || fact.oracle_text || ""}`;
+          return `${fact.name} Â· ${fact.mana_cost || ""} Â· ${fact.type_line || ""} Â· Set: ${fact.set_name || "Unknown"} Â· Games: ${(fact.games || []).join(", ")} Â· ${format} legality: ${fact.legalities?.[scryfallLegality(format)] || "ruleset review required"}\n${faces || fact.oracle_text || ""}`;
         })
         .join("\n\n")
         .slice(0, 10000),
@@ -1704,7 +1814,7 @@ export default function Home() {
     } catch {
       setForgedDeck("");
       setForgeGenerationError(
-        "The Forge did not finish a valid list. Your commission is safe—strike the anvil again to retry.",
+        "The Forge did not finish a valid list. Your commission is safeâ€”strike the anvil again to retry.",
       );
     } finally {
       setBenchStatus("idle");
@@ -1724,7 +1834,7 @@ export default function Home() {
     setSelectedWork(family.selectedWork || 0);
     setSelectedCommander(family.commander || null);
     setRestoredWork({
-      rune: "ᛞ",
+      rune: "á›ž",
       name: family.name,
       path: family.path || "Preserved Masterwork",
       tone: "steel",
@@ -1991,7 +2101,7 @@ export default function Home() {
           cut: cuts[index % Math.max(1, cuts.length)]?.name || "Unresolved flex slot",
           add: { name: card.name, typeLine: card.type_line || "Card", image: card.image_uris?.small || card.card_faces?.[0]?.image_uris?.small || cardImage(card.name) },
           reason: `${metaBreakerDossier.hypothesis} This one-slot Forge Theory test challenges a weakly connected flex slot without rewriting the deck's core package.`,
-          confidence: evidence ? `${evidence.confidence} commander signal · score ${Math.round((evidence.evidenceScore || 0) * 100)}/100` : "legal card discovery · mechanical fit still requires testing",
+          confidence: evidence ? `${evidence.confidence} commander signal Â· score ${Math.round((evidence.evidenceScore || 0) * 100)}/100` : "legal card discovery Â· mechanical fit still requires testing",
         };
       });
       setMetaBreakerExperiments(experiments);
@@ -2007,7 +2117,7 @@ export default function Home() {
     const rows = applyControlledSwap(deckRows, experiment.cut, experiment.add.name);
     if (!rows) return;
     const nextDeck = rows.map((row) => `${row.quantity} ${row.name}`).join("\n");
-    preserveDeckEdit(nextDeck, `Meta Breaker experiment: −1 ${experiment.cut}, +1 ${experiment.add.name}`);
+    preserveDeckEdit(nextDeck, `Meta Breaker experiment: âˆ’1 ${experiment.cut}, +1 ${experiment.add.name}`);
     setMetaBreakerExperiments([]);
   }
 
@@ -2138,19 +2248,19 @@ export default function Home() {
                 <small>COMMISSION I</small>
                 <strong>Forge a new deck</strong>
                 <span>Shape a masterwork from a fresh blueprint.</span>
-                <b>Enter the drafting chamber →</b>
+                <b>Enter the drafting chamber â†’</b>
               </button>
               <button onClick={() => setChamber("refine")}>
                 <small>COMMISSION II</small>
                 <strong>Refine a current build</strong>
                 <span>Bring an existing deck to the anvil.</span>
-                <b>Enter the refinement chamber →</b>
+                <b>Enter the refinement chamber â†’</b>
               </button>
             </div>
           </div>
           <div className="entrance-visual" aria-label="The blue rune archive">
             <div className="forge-sigil">
-              <i>ᛟ</i>
+              <i>á›Ÿ</i>
               <span />
               <b />
             </div>
@@ -2179,13 +2289,13 @@ export default function Home() {
                         onClick={() => openSavedMasterwork(family)}
                       >
                         <small>
-                          {family.format} · {family.path || "FORGED DECK"}
+                          {family.format} Â· {family.path || "FORGED DECK"}
                         </small>
                         <strong>{family.name}</strong>
                         <span>{family.commander?.name || "No commander"}</span>
                         <em>
-                          {Number(evidence.wins || 0)}W ·{" "}
-                          {Number(evidence.losses || 0)}L ·{" "}
+                          {Number(evidence.wins || 0)}W Â·{" "}
+                          {Number(evidence.losses || 0)}L Â·{" "}
                           {family.revisions.length} revision
                           {family.revisions.length === 1 ? "" : "s"}
                         </em>
@@ -2209,14 +2319,14 @@ export default function Home() {
       {(chamber === "commission" || chamber === "refine") && (
         <section className="commission-chamber">
           <button className="back-link" onClick={() => setChamber("entrance")}>
-            ← Return to the Forge Entrance
+            â† Return to the Forge Entrance
           </button>
           <div className="commission-heading">
             <span className="forge-eyebrow">
               <i />{" "}
               {chamber === "commission"
-                ? "COMMISSION I · THE BLUEPRINT"
-                : "COMMISSION II · THE ANVIL"}
+                ? "COMMISSION I Â· THE BLUEPRINT"
+                : "COMMISSION II Â· THE ANVIL"}
             </span>
             <h1>
               {chamber === "commission"
@@ -2225,7 +2335,7 @@ export default function Home() {
             </h1>
             <p>
               {chamber === "commission"
-                ? "These marks become constraints—not decoration. The Forge will honor how you want to play."
+                ? "These marks become constraintsâ€”not decoration. The Forge will honor how you want to play."
                 : "The Forge will preserve what works, expose the fracture, and temper one deliberate change."}
             </p>
           </div>
@@ -2236,7 +2346,7 @@ export default function Home() {
                 <textarea
                   value={deck}
                   onChange={(event) => setDeck(event.target.value)}
-                  placeholder="Paste your Arena, MTGO, or Moxfield list here…"
+                  placeholder="Paste your Arena, MTGO, or Moxfield list hereâ€¦"
                 />
               </label>
             )}
@@ -2297,11 +2407,11 @@ export default function Home() {
               <section className="commander-blueprint">
                 <header>
                   <div>
-                    <span>COMMANDER · LEGAL {format.toUpperCase()} INDEX</span>
+                    <span>COMMANDER Â· LEGAL {format.toUpperCase()} INDEX</span>
                     <strong>
                       {selectedCommander
                         ? "Commander bound to this Blueprint"
-                        : "Choose a legend—or let the Forge discover one"}
+                        : "Choose a legendâ€”or let the Forge discover one"}
                     </strong>
                   </div>
                   {selectedCommander && (
@@ -2324,7 +2434,7 @@ export default function Home() {
                       <span>{selectedCommander.typeLine}</span>
                       <em>
                         {selectedCommander.colors.length
-                          ? selectedCommander.colors.join(" · ")
+                          ? selectedCommander.colors.join(" Â· ")
                           : "COLORLESS"}{" "}
                         IDENTITY
                       </em>
@@ -2338,7 +2448,7 @@ export default function Home() {
                         onChange={(event) =>
                           setCommanderQuery(event.target.value)
                         }
-                        placeholder={`Search legal ${format} commanders…`}
+                        placeholder={`Search legal ${format} commandersâ€¦`}
                         aria-label={`Search legal ${format} commanders`}
                       />
                       <button
@@ -2347,8 +2457,8 @@ export default function Home() {
                         onClick={chooseRandomCommander}
                       >
                         {randomizingCommander
-                          ? "Drawing three starter legends…"
-                          : "Surprise me · reveal three commanders"}
+                          ? "Drawing three starter legendsâ€¦"
+                          : "Surprise me Â· reveal three commanders"}
                       </button>
                     </div>
                     {(commanderSearching ||
@@ -2356,7 +2466,7 @@ export default function Home() {
                       commanderQuery.trim().length > 1) && (
                       <div role="listbox">
                         {commanderSearching ? (
-                          <p>The Archive is searching…</p>
+                          <p>The Archive is searchingâ€¦</p>
                         ) : commanderResults.length ? (
                           commanderResults.map((option) => (
                             <button
@@ -2373,7 +2483,7 @@ export default function Home() {
                                 {option.image ? (
                                   <img src={option.image} alt="" />
                                 ) : (
-                                  "◆"
+                                  "â—†"
                                 )}
                               </span>
                               <b>
@@ -2399,7 +2509,7 @@ export default function Home() {
               <textarea
                 value={commissionNote}
                 onChange={(event) => setCommissionNote(event.target.value)}
-                placeholder="Favorite cards, play patterns you love, or anything this deck must never become…"
+                placeholder="Favorite cards, play patterns you love, or anything this deck must never becomeâ€¦"
               />
             </label>
             <button
@@ -2416,7 +2526,7 @@ export default function Home() {
                   : "Seal the commission"}
               </span>
               <strong>AWAKEN THE GREAT FORGE</strong>
-              <b>→</b>
+              <b>â†’</b>
             </button>
           </div>
         </section>
@@ -2426,7 +2536,7 @@ export default function Home() {
         <section className="forging-ceremony" aria-live="polite">
           <div className="furnace-core" aria-hidden="true">
             <div>
-              <span>ᛟ</span>
+              <span>á›Ÿ</span>
             </div>
           </div>
           <div className="ceremony-copy">
@@ -2474,7 +2584,7 @@ export default function Home() {
           </header>
           <div className="masterwork-actions">
             <span>
-              REVEAL {masterworkPage + 1} · {masterworkPage * 3 + 1}–
+              REVEAL {masterworkPage + 1} Â· {masterworkPage * 3 + 1}â€“
               {masterworkPage * 3 + visibleMasterworks.length} SEEN THIS
               COMMISSION
             </span>
@@ -2487,12 +2597,12 @@ export default function Home() {
               onClick={recycleMasterworks}
             >
               {randomizingCommander
-                ? "Drawing three unseen commanders…"
+                ? "Drawing three unseen commandersâ€¦"
                 : (masterworkPage + 1) * 3 >= masterworks.length
                   ? "All unseen Masterworks revealed"
                   : randomCommission
-                    ? "None feel right? Draw three new commanders →"
-                    : "None feel right? Forge three different Masterworks →"}
+                    ? "None feel right? Draw three new commanders â†’"
+                    : "None feel right? Forge three different Masterworks â†’"}
             </button>
           </div>
           <div className="masterwork-grid">
@@ -2519,7 +2629,7 @@ export default function Home() {
                     <i>{alignedWork.rune}</i>
                     <div>
                       <small>
-                        <GlossaryText text={alignedWork.path} /> · {format}
+                        <GlossaryText text={alignedWork.path} /> Â· {format}
                       </small>
                       <h2>{alignedWork.name}</h2>
                     </div>
@@ -2555,7 +2665,7 @@ export default function Home() {
                       <strong>{preview.card}</strong>
                       {commander && (
                         <small className="identity-name">
-                          <GlossaryText text={colorIdentityName(commander.colors)} /> · {commander.colors.join("") || "C"}
+                          <GlossaryText text={colorIdentityName(commander.colors)} /> Â· {commander.colors.join("") || "C"}
                         </small>
                       )}
                       <p><GlossaryText text={insight.opening} /></p>
@@ -2568,7 +2678,7 @@ export default function Home() {
                   <div className="masterwork-plan">
                     <span>
                       <small>KEY PACKAGES</small>
-                      <b><GlossaryText text={insight.packages.join(" · ")} /></b>
+                      <b><GlossaryText text={insight.packages.join(" Â· ")} /></b>
                     </span>
                     <span>
                       <small>WATCH FOR</small>
@@ -2579,7 +2689,7 @@ export default function Home() {
                     {["Aggression", "Interaction", "Synergy", "Complexity"].map(
                       (label, statIndex) => (
                         <span key={label}>
-                          <small><GlossaryText text={label} /> · estimate</small>
+                          <small><GlossaryText text={label} /> Â· estimate</small>
                           <b>{masterworkStats(commander, poolIndex)[statIndex]}</b>
                         </span>
                       ),
@@ -2587,7 +2697,7 @@ export default function Home() {
                   </div>
                   <p className="masterwork-verdict"><GlossaryText text={alignedWork.verdict} /></p>
                   <button onClick={() => inspectMasterwork(poolIndex)}>
-                    Inspect this Masterwork <b>→</b>
+                    Inspect this Masterwork <b>â†’</b>
                   </button>
                 </article>
               );
@@ -2612,12 +2722,12 @@ export default function Home() {
               onClick={recycleMasterworks}
             >
               {randomizingCommander
-                ? "Drawing three unseen commanders…"
+                ? "Drawing three unseen commandersâ€¦"
                 : (masterworkPage + 1) * 3 >= masterworks.length
                   ? "All unseen Masterworks revealed"
                   : randomCommission
-                    ? "Recycle these · Draw three new commanders →"
-                    : "Recycle these · Forge three new Masterworks →"}
+                    ? "Recycle these Â· Draw three new commanders â†’"
+                    : "Recycle these Â· Forge three new Masterworks â†’"}
             </button>
           </footer>
         </section>
@@ -2629,15 +2739,15 @@ export default function Home() {
             className="back-link"
             onClick={() => setChamber("masterworks")}
           >
-            ← Return to the three Masterworks
+            â† Return to the three Masterworks
           </button>
           <header>
             <span className="forge-eyebrow">
-              <i /> MASTERWORK CHOSEN · THE TESTING ANVIL
+              <i /> MASTERWORK CHOSEN Â· THE TESTING ANVIL
             </span>
             <h1>{chosenWork.name}</h1>
             <p>
-              {chosenWork.path} · {format} · Revision{" "}
+              {chosenWork.path} Â· {format} Â· Revision{" "}
               {Math.max(1, revisions.length)}
             </p>
           </header>
@@ -2645,11 +2755,11 @@ export default function Home() {
             <article className="deck-manuscript">
               <header>
                 <div>
-                  <small>THE FORGED LIST · TYPE GALLERY</small>
+                  <small>THE FORGED LIST Â· TYPE GALLERY</small>
                   <h2>
                     {benchStatus === "forging"
-                      ? "The Forge is producing your deck…"
-                      : `${deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards · ${Object.keys(groupedDeck).length} sections`}
+                      ? "The Forge is producing your deckâ€¦"
+                      : `${deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards Â· ${Object.keys(groupedDeck).length} sections`}
                   </h2>
                 </div>
                 <button
@@ -2666,7 +2776,7 @@ export default function Home() {
                       <small>STRUCTURAL INTEGRITY GATE</small>
                       <b>
                         {deckIntegrity.checking
-                          ? `Verifying ${deckIntegrity.unresolved.length} card record${deckIntegrity.unresolved.length === 1 ? "" : "s"}…`
+                          ? `Verifying ${deckIntegrity.unresolved.length} card record${deckIntegrity.unresolved.length === 1 ? "" : "s"}â€¦`
                           : deckIntegrity.passed
                             ? "This Masterwork is cleared for testing."
                             : "Testing is held until every hard constraint passes."}
@@ -2691,7 +2801,7 @@ export default function Home() {
                       <span>
                         <small>PLAN REALIZATION</small>
                         <b>{(simulationDossier.goldfish.expert.planRealizationRate * 100).toFixed(1)}%</b>
-                        <em>Average turn {simulationDossier.goldfish.expert.averageRealizationTurn?.toFixed(1) || "—"}</em>
+                        <em>Average turn {simulationDossier.goldfish.expert.averageRealizationTurn?.toFixed(1) || "â€”"}</em>
                       </span>
                       <span>
                         <small>PILOT SENSITIVITY</small>
@@ -2703,35 +2813,730 @@ export default function Home() {
                         <b>{simulationDossier.matrix.weakest?.opponent || "Unresolved"}</b>
                         <em>{((simulationDossier.matrix.weakest?.scenarioPassRate || 0) * 100).toFixed(1)}% scenario pass</em>
                       </span>
-                      <p>Modeled Forge trials test mana, role density, and sequencing under pressure. They are viability gates—not predicted match win rates.</p>
+                      <p>Modeled Forge trials test mana, role density, and sequencing under pressure. They are viability gatesâ€”not predicted match win rates.</p>
                     </section>
                   )}
                   {!deckIntegrity.checking && (
-                    <section className="interaction-graph-dossier">
-                      <header>
-                        <span><small>INTERACTION GRAPH · ORACLE REASONING</small><b>{interactionGraph.confidence}</b></span>
-                        <strong>{Math.round(interactionGraph.coverage * 100)}% connected</strong>
+                    <section
+                      className={`forge-systems-chamber ${
+                        forgeSystemsReport.systems.length
+                          ? "systems-awakened"
+                          : "systems-dormant"
+                      } ${activeSystem ? "has-active-system" : ""}`}
+                    >
+                      <header className="systems-chamber-heading">
+                        <div>
+                          <small>SYSTEMS OF THE FORGE</small>
+                          <h2>
+                            {forgeSystemsReport.systems.length
+                              ? "The deck's internal machinery is awake."
+                              : "The machinery has not connected yet."}
+                          </h2>
+                          <p>
+                            {forgeSystemsReport.systems.length
+                              ? `${forgeSystemsReport.systems.length} repeatable system${
+                                  forgeSystemsReport.systems.length === 1
+                                    ? ""
+                                    : "s"
+                                } detected across ${Math.round(
+                                  forgeSystemsReport.systemCoverage * 100,
+                                )}% of nonland cards.`
+                              : "Resolve more card records or strengthen connected packages before the Forge names an engine."}
+                          </p>
+                        </div>
+
+                        <div className="systems-chamber-seal">
+                          <i>á›ž</i>
+                          <span>
+                            <small>STRUCTURAL CONFIDENCE</small>
+                            <strong>{forgeSystemsReport.confidence}</strong>
+                          </span>
+                        </div>
                       </header>
+
+                      {forgeSystemsReport.systems.length > 0 ? (
+                        <>
+                          <section className="systems-overview">
+                            <article>
+                              <small>STRONGEST MACHINE</small>
+                              <strong>
+                                {forgeSystemsReport.strongestSystem?.name ||
+                                  "Unresolved"}
+                              </strong>
+                              <span>
+                                {forgeSystemsReport.strongestSystem?.health
+                                  ?.overall || 0}
+                                /100 structural health
+                              </span>
+                            </article>
+
+                            <article>
+                              <small>CLEAREST PRESSURE POINT</small>
+                              <strong>
+                                {forgeSystemsReport.weakestSystem?.name ||
+                                  "Unresolved"}
+                              </strong>
+                              <span>
+                                {forgeSystemsReport.weakestSystem?.health
+                                  ?.dependencyRisk || 0}
+                                /100 dependency risk
+                              </span>
+                            </article>
+
+                            <article>
+                              <small>BRIDGE NETWORK</small>
+                              <strong>
+                                {forgeSystemsReport.bridgeCards.length}
+                                {" "}
+                                bridge card
+                                {forgeSystemsReport.bridgeCards.length === 1
+                                  ? ""
+                                  : "s"}
+                              </strong>
+                              <span>
+                                Cards serving more than one detected system
+                              </span>
+                            </article>
+                          </section>
+
+                          <div className="systems-blueprint-grid">
+                            {forgeSystemsReport.systems.map(
+                              (system, systemIndex) => {
+                                const gauges = [
+                                  [
+                                    "Overall Health",
+                                    system.health.overall,
+                                    false,
+                                  ],
+                                  [
+                                    "Consistency",
+                                    system.health.consistency,
+                                    false,
+                                  ],
+                                  [
+                                    "Resilience",
+                                    system.health.resilience,
+                                    false,
+                                  ],
+                                  [
+                                    "Leverage",
+                                    system.health.leverage,
+                                    false,
+                                  ],
+                                  [
+                                    "Cohesion",
+                                    system.health.cohesion,
+                                    false,
+                                  ],
+                                  [
+                                    "Dependency Risk",
+                                    system.health.dependencyRisk,
+                                    true,
+                                  ],
+                                ] as const;
+
+                                return (
+                                  <details
+                                    className={`system-blueprint ${
+                                      activeSystem?.id === system.id
+                                        ? "active-system-blueprint"
+                                        : ""
+                                    }`}
+                                    key={system.id}
+                                    open={
+                                      activeSystem
+                                        ? activeSystem.id === system.id
+                                        : systemIndex === 0
+                                    }
+                                    onToggle={(event) => {
+                                      if (event.currentTarget.open) {
+                                        setSelectedSystemId(system.id);
+                                      }
+                                    }}
+                                    style={
+                                      {
+                                        "--system-order": systemIndex,
+                                      } as React.CSSProperties
+                                    }
+                                  >
+                                    <summary>
+                                      <span className="system-rune">
+                                        {["á›Ÿ", "á›‰", "á›ž", "áš±", "á›‡"][
+                                          systemIndex % 5
+                                        ]}
+                                      </span>
+
+                                      <span className="system-identity">
+                                        <small>
+                                          SYSTEM {String(systemIndex + 1).padStart(2, "0")}
+                                        </small>
+                                        <strong>{system.name}</strong>
+                                        <em>
+                                          {system.members.length} components Â·{" "}
+                                          {system.edges.length} internal links
+                                        </em>
+                                      </span>
+
+                                      <span className="system-health-medallion">
+                                        <b>{system.health.overall}</b>
+                                        <small>HEALTH</small>
+                                      </span>
+
+                                      <span
+                                        className="blueprint-toggle"
+                                        aria-current={
+                                          activeSystem?.id === system.id
+                                            ? "true"
+                                            : undefined
+                                        }
+                                      >
+                                        {activeSystem?.id === system.id
+                                          ? "Machine selected"
+                                          : "Open blueprint"}
+                                      </span>
+                                    </summary>
+
+                                    <div className="system-blueprint-body">
+                                      <section className="system-health-board">
+                                        <header>
+                                          <small>STRUCTURAL HEALTH</small>
+                                          <span>{system.confidence}</span>
+                                        </header>
+
+                                        {gauges.map(
+                                          ([label, value, danger]) => (
+                                            <div
+                                              className={`system-gauge ${
+                                                danger ? "risk-gauge" : ""
+                                              }`}
+                                              key={label}
+                                            >
+                                              <span>
+                                                <small>{label}</small>
+                                                <b>{value}</b>
+                                              </span>
+                                              <i>
+                                                <b
+                                                  style={{
+                                                    width: `${Math.max(
+                                                      0,
+                                                      Math.min(100, value),
+                                                    )}%`,
+                                                  }}
+                                                />
+                                              </i>
+                                            </div>
+                                          ),
+                                        )}
+                                      </section>
+
+                                      <section className="system-component-board">
+                                        <article>
+                                          <small>CORE COMPONENTS</small>
+                                          <div>
+                                            {system.core.map((name) => (
+                                              <button
+                                                type="button"
+                                                key={name}
+                                                className={
+                                                  forgeSystemsReport.bridgeCards.some(
+                                                    (bridge) =>
+                                                      bridge.name === name,
+                                                  )
+                                                    ? "bridge-component"
+                                                    : ""
+                                                }
+                                                aria-label={`Inspect ${name}`}
+                                                onClick={() =>
+                                                  setHoveredCard(name)
+                                                }
+                                              >
+                                                {name}
+                                              </button>
+                                            ))}
+                                          </div>
+                                        </article>
+
+                                        <article>
+                                          <small>SUPPORT COMPONENTS</small>
+                                          <div>
+                                            {system.support.length ? (
+                                              system.support.map((name) => (
+                                                <button
+                                                  type="button"
+                                                  key={name}
+                                                  onClick={() =>
+                                                    setHoveredCard(name)
+                                                  }
+                                                >
+                                                  {name}
+                                                </button>
+                                              ))
+                                            ) : (
+                                              <em>
+                                                No separate support layer detected.
+                                              </em>
+                                            )}
+                                          </div>
+                                        </article>
+
+                                        <article>
+                                          <small>PRODUCERS</small>
+                                          <div>
+                                            {system.producers.length ? (
+                                              system.producers.map((name) => (
+                                                <button
+                                                  type="button"
+                                                  key={name}
+                                                  onClick={() =>
+                                                    setHoveredCard(name)
+                                                  }
+                                                >
+                                                  {name}
+                                                </button>
+                                              ))
+                                            ) : (
+                                              <em>
+                                                Producer role remains distributed.
+                                              </em>
+                                            )}
+                                          </div>
+                                        </article>
+
+                                        <article>
+                                          <small>PAYOFFS</small>
+                                          <div>
+                                            {system.payoffs.length ? (
+                                              system.payoffs.map((name) => (
+                                                <button
+                                                  type="button"
+                                                  key={name}
+                                                  onClick={() =>
+                                                    setHoveredCard(name)
+                                                  }
+                                                >
+                                                  {name}
+                                                </button>
+                                              ))
+                                            ) : (
+                                              <em>
+                                                Payoff role remains distributed.
+                                              </em>
+                                            )}
+                                          </div>
+                                        </article>
+                                      </section>
+
+                                      <section className="system-engineering-notes">
+                                        <article>
+                                          <small>REDUNDANCY</small>
+                                          <strong>
+                                            {system.redundancy.repeatedCards
+                                              .length
+                                              ? `${system.redundancy.repeatedCards.length} repeated component${
+                                                  system.redundancy
+                                                    .repeatedCards.length === 1
+                                                    ? ""
+                                                    : "s"
+                                                }`
+                                              : "Singleton structure"}
+                                          </strong>
+                                          <p>
+                                            {system.redundancy.producerCount}{" "}
+                                            producers Â·{" "}
+                                            {system.redundancy.payoffCount}{" "}
+                                            payoffs
+                                          </p>
+                                        </article>
+
+                                        <article
+                                          className={
+                                            system.criticalFailures.length
+                                              ? "engineering-warning"
+                                              : ""
+                                          }
+                                        >
+                                          <small>CRITICAL FAILURE AUDIT</small>
+                                          {system.criticalFailures.length ? (
+                                            system.criticalFailures.map(
+                                              (failure) => (
+                                                <p key={failure.name}>
+                                                  <b>{failure.name}</b>
+                                                  <span>
+                                                    Removing this component breaks{" "}
+                                                    {Math.round(
+                                                      failure.impact * 100,
+                                                    )}
+                                                    % of measured internal links.
+                                                  </span>
+                                                </p>
+                                              ),
+                                            )
+                                          ) : (
+                                            <p>
+                                              <b>NO SINGLE COLLAPSE POINT</b>
+                                              <span>
+                                                The current graph does not isolate
+                                                one component carrying a critical
+                                                share of internal connections.
+                                              </span>
+                                            </p>
+                                          )}
+                                        </article>
+                                      </section>
+
+                                      <footer>
+                                        <span>{system.evidence}</span>
+
+                                        <div className="system-blueprint-actions">
+                                          <b>
+                                            {system.health.dependencyRisk >= 55
+                                              ? "DEPENDENCY WATCH"
+                                              : "STRUCTURE TEMPERED"}
+                                          </b>
+
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              inspectSystem(
+                                                system.id,
+                                                system.core[0] ||
+                                                  system.members[0] ||
+                                                  "",
+                                              )
+                                            }
+                                          >
+                                            Inspect machine in graph
+                                            <span aria-hidden="true">â†’</span>
+                                          </button>
+                                        </div>
+                                      </footer>
+                                    </div>
+                                  </details>
+                                );
+                              },
+                            )}
+                          </div>
+
+                          <section className="systems-bridge-foundry">
+                            <header>
+                              <div>
+                                <small>BRIDGE CARDS</small>
+                                <h3>
+                                  Components carrying more than one machine
+                                </h3>
+                              </div>
+                              <span>
+                                {forgeSystemsReport.bridgeCards.length} FOUND
+                              </span>
+                            </header>
+
+                            {forgeSystemsReport.bridgeCards.length ? (
+                              <div>
+                                {forgeSystemsReport.bridgeCards.map(
+                                  (bridge) => (
+                                    <button
+                                      type="button"
+                                      key={bridge.name}
+                                      className={
+                                        activeSystem &&
+                                        bridge.systems.includes(
+                                          activeSystem.name,
+                                        )
+                                          ? "active-bridge-card"
+                                          : ""
+                                      }
+                                      aria-label={`Inspect bridge card ${bridge.name}`}
+                                      onClick={() =>
+                                        setHoveredCard(bridge.name)
+                                      }
+                                    >
+                                      <i>â—‡</i>
+                                      <span>
+                                        <strong>{bridge.name}</strong>
+                                        <small>
+                                          {bridge.systems.join(" Â· ")}
+                                        </small>
+                                      </span>
+                                      <b>{bridge.score}</b>
+                                    </button>
+                                  ),
+                                )}
+                              </div>
+                            ) : (
+                              <p>
+                                No card currently bridges two named systems.
+                                That is not inherently a flaw, but it reduces
+                                cross-engine leverage.
+                              </p>
+                            )}
+                          </section>
+
+                          <section className="structural-intelligence-chamber">
+                            <header className="structural-intelligence-heading">
+                              <div>
+                                <small>STRUCTURAL INTELLIGENCE · BOUNDED MODEL</small>
+                                <h3>
+                                  {activeCausalitySystem
+                                    ? `${activeCausalitySystem.name} under load`
+                                    : "The Forge is mapping structural consequences."}
+                                </h3>
+                                <p>{forgeCausalityReport.headline}</p>
+                              </div>
+                              <span className="causality-confidence-seal">
+                                <b>{forgeCausalityReport.structuralResilience}</b>
+                                <small>DECK RESILIENCE</small>
+                              </span>
+                            </header>
+
+                            <div className="causality-vitals">
+                              {[
+                                ["Structural Resilience", forgeCausalityReport.structuralResilience, false],
+                                ["Collapse Risk", forgeCausalityReport.collapseRisk, true],
+                                ["Recovery Potential", forgeCausalityReport.recoveryPotential, false],
+                                ["System Redundancy", activeCausalitySystem?.redundancy || 0, false],
+                              ].map(([label, value, risk]) => (
+                                <article className={risk ? "causality-risk" : ""} key={String(label)}>
+                                  <span><small>{label}</small><b>{Number(value)}</b></span>
+                                  <i><b style={{ width: `${Math.max(0, Math.min(100, Number(value)))}%` }} /></i>
+                                </article>
+                              ))}
+                            </div>
+
+                            {activeCausalitySystem && (
+                              <div className="causality-machine-summary">
+                                <span>
+                                  <small>ACTIVE MACHINE</small>
+                                  <strong>{activeCausalitySystem.name}</strong>
+                                  <em>{activeCausalitySystem.status.toUpperCase()} · {activeCausalitySystem.confidence}</em>
+                                </span>
+                                <span><small>RESILIENCE</small><b>{activeCausalitySystem.structuralResilience}</b></span>
+                                <span><small>COLLAPSE RISK</small><b>{activeCausalitySystem.collapseRisk}</b></span>
+                                <span><small>RECOVERY</small><b>{activeCausalitySystem.recoveryPotential}</b></span>
+                              </div>
+                            )}
+
+                            <div className="causality-panels">
+                              <article className="causality-panel critical-nodes-panel">
+                                <header><span>⚒</span><div><small>CRITICAL NODES</small><strong>Components carrying structural load</strong></div></header>
+                                <div>
+                                  {(activeCausalitySystem?.criticalNodes || []).length ? (
+                                    activeCausalitySystem?.criticalNodes.map((card) => (
+                                      <button type="button" key={card.name} onClick={() => setHoveredCard(card.name)}>
+                                        <span><b>{card.name}</b><small>{card.primaryRole}</small></span>
+                                        <em>{card.collapseRisk}<small> RISK</small></em>
+                                      </button>
+                                    ))
+                                  ) : <p>No card in this machine crosses the critical-node threshold.</p>}
+                                </div>
+                              </article>
+
+                              <article className="causality-panel amplifier-panel">
+                                <header><span>✦</span><div><small>AMPLIFIERS</small><strong>Cards strengthening multiple roles</strong></div></header>
+                                <div>
+                                  {(activeCausalitySystem?.amplifiers || []).length ? (
+                                    activeCausalitySystem?.amplifiers.map((card) => (
+                                      <button type="button" key={card.name} onClick={() => setHoveredCard(card.name)}>
+                                        <span><b>{card.name}</b><small>{card.systems.join(" · ")}</small></span>
+                                        <em>{card.amplifierScore}<small> AMP</small></em>
+                                      </button>
+                                    ))
+                                  ) : <p>No concentrated amplifier is currently supported by this model.</p>}
+                                </div>
+                              </article>
+
+                              <article className="causality-panel bottleneck-panel">
+                                <header><span>⛓</span><div><small>BOTTLENECKS</small><strong>Responsibility concentrated in one slot</strong></div></header>
+                                <div>
+                                  {(activeCausalitySystem?.bottlenecks || []).length ? (
+                                    activeCausalitySystem?.bottlenecks.map((card) => (
+                                      <button type="button" key={card.name} onClick={() => setHoveredCard(card.name)}>
+                                        <span><b>{card.name}</b><small>{card.alternatives.length} modeled alternative{card.alternatives.length === 1 ? "" : "s"}</small></span>
+                                        <em>{card.bottleneckScore}<small> LOAD</small></em>
+                                      </button>
+                                    ))
+                                  ) : <p>No responsibility bottleneck crosses the current threshold.</p>}
+                                </div>
+                              </article>
+                            </div>
+
+                            {forgeCausalityReport.highestValueUpgrade && (
+                              <article className="highest-value-upgrade">
+                                <header><span>◇</span><div><small>HIGHEST-VALUE UPGRADE</small><h3>{forgeCausalityReport.highestValueUpgrade.systemName}</h3></div><b>{forgeCausalityReport.highestValueUpgrade.priority}</b></header>
+                                <p>{forgeCausalityReport.highestValueUpgrade.recommendation}</p>
+                                <footer>
+                                  <span><small>CONTROLLED TEST CONTRACT</small>{forgeCausalityReport.highestValueUpgrade.contract}</span>
+                                  <button type="button" onClick={() => {
+                                    setSelectedSystemId(forgeCausalityReport.highestValueUpgrade?.systemId || "");
+                                    if (forgeCausalityReport.highestValueUpgrade?.targetCard) setHoveredCard(forgeCausalityReport.highestValueUpgrade.targetCard);
+                                  }}>Inspect upgrade target</button>
+                                </footer>
+                              </article>
+                            )}
+
+                            <footer className="causality-methodology">
+                              <span>{forgeCausalityReport.confidence}</span>
+                              <p>{forgeCausalityReport.methodology}</p>
+                            </footer>
+                          </section>
+
+                          <section
+                            className={`systems-failure-reading ${
+                              forgeFailureAnalysis.status ===
+                              "bounded-hypothesis"
+                                ? "has-hypothesis"
+                                : ""
+                            }`}
+                          >
+                            <header>
+                              <span>âš’</span>
+                              <div>
+                                <small>BOUNDED FAILURE ANALYSIS</small>
+                                <h3>{forgeFailureAnalysis.headline}</h3>
+                              </div>
+                            </header>
+
+                            {forgeFailureAnalysis.chain.length > 0 && (
+                              <ol>
+                                {forgeFailureAnalysis.chain.map(
+                                  (step, index) => (
+                                    <li key={`${index}-${step}`}>
+                                      <span>{index + 1}</span>
+                                      <p>{step}</p>
+                                    </li>
+                                  ),
+                                )}
+                              </ol>
+                            )}
+
+                            <footer>
+                              <span>
+                                <small>NEXT HONEST TEST</small>
+                                <b>{forgeFailureAnalysis.nextTest}</b>
+                              </span>
+                              <em>{forgeFailureAnalysis.evidence}</em>
+                            </footer>
+                          </section>
+
+                          <footer className="systems-masterwork-reveal">
+                            <i />
+                            <span>
+                              <small>THE SYSTEM MAP IS COMPLETE</small>
+                              <strong>Masterwork Intelligence Awakened</strong>
+                            </span>
+                            <i />
+                          </footer>
+                        </>
+                      ) : (
+                        <div className="systems-empty-state">
+                          <i>á›ž</i>
+                          <strong>No repeatable system can be named honestly.</strong>
+                          <p>
+                            The Forge will not manufacture an engine claim from
+                            isolated cards. Complete the card record and strengthen
+                            producer-to-payoff relationships first.
+                          </p>
+                        </div>
+                      )}
+
+                      <footer className="systems-methodology">
+                        {forgeSystemsReport.methodology}
+                      </footer>
+                    </section>
+                  )}
+
+                  {!deckIntegrity.checking && (
+                    <section
+                      id="interaction-graph-dossier"
+                      className={`interaction-graph-dossier ${
+                        activeSystem ? "system-graph-focus" : ""
+                      }`}
+                      aria-label={
+                        activeSystem
+                          ? `Interaction graph focused on ${activeSystem.name}`
+                          : "Complete interaction graph"
+                      }
+                    >
+                      <header>
+                        <span>
+                          <small>
+                            {activeSystem
+                              ? "FOCUSED MACHINE GRAPH Â· ORACLE REASONING"
+                              : "INTERACTION GRAPH Â· ORACLE REASONING"}
+                          </small>
+                          <b>{interactionGraph.confidence}</b>
+                        </span>
+
+                        <div className="interaction-graph-focus-heading">
+                          <strong>
+                            {activeSystem
+                              ? activeSystem.name
+                              : `${Math.round(
+                                  interactionGraph.coverage * 100,
+                                )}% connected`}
+                          </strong>
+
+                          {activeSystem && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedSystemId("")}
+                            >
+                              Show complete graph
+                            </button>
+                          )}
+                        </div>
+                      </header>
+
+                      {activeSystem && (
+                        <div className="active-system-graph-banner">
+                          <span className="system-rune" aria-hidden="true">
+                            á›ž
+                          </span>
+
+                          <span>
+                            <small>INSPECTING MACHINE</small>
+                            <strong>{activeSystem.name}</strong>
+                            <em>
+                              {activeSystem.members.length} components Â·{" "}
+                              {focusedInteractionGraph.edges.length} visible
+                              relationships
+                            </em>
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setHoveredCard(
+                                activeSystem.core[0] ||
+                                  activeSystem.members[0] ||
+                                  "",
+                              )
+                            }
+                          >
+                            Inspect core card
+                          </button>
+                        </div>
+                      )}
                       <div>
                         <article>
                           <small>STRONGEST PACKAGES</small>
-                          {interactionGraph.packages.slice(0, 4).map((group) => (
-                            <p key={group.signal}><b>{group.signal.toUpperCase()}</b><span>{group.members.slice(0, 4).join(" · ")}{group.members.length > 4 ? ` +${group.members.length - 4}` : ""}</span></p>
+                          {focusedInteractionGraph.packages.slice(0, 4).map((group) => (
+                            <p key={group.signal}><b>{group.signal.toUpperCase()}</b><span>{group.members.slice(0, 4).join(" Â· ")}{group.members.length > 4 ? ` +${group.members.length - 4}` : ""}</span></p>
                           ))}
-                          {!interactionGraph.packages.length && <em>No multi-card package is verified yet.</em>}
+                          {!focusedInteractionGraph.packages.length && <em>No multi-card package is verified yet.</em>}
                         </article>
                         <article>
                           <small>STRONGEST RELATIONSHIPS</small>
-                          {interactionGraph.edges.slice(0, 3).map((edge) => (
-                            <p key={`${edge.from}-${edge.to}`}><b>{edge.strength}% · {edge.signals.join(" + ")}</b><span>{edge.from} ↔ {edge.to}</span></p>
+                          {focusedInteractionGraph.edges.slice(0, 3).map((edge) => (
+                            <p key={`${edge.from}-${edge.to}`}><b>{edge.strength}% Â· {edge.signals.join(" + ")}</b><span>{edge.from} â†” {edge.to}</span></p>
                           ))}
-                          {!interactionGraph.edges.length && <em>No oracle-derived relationship is strong enough to claim.</em>}
+                          {!focusedInteractionGraph.edges.length && <em>No oracle-derived relationship is strong enough to claim.</em>}
                         </article>
-                        <article className={interactionGraph.nonbos.length ? "graph-warning" : ""}>
+                        <article className={focusedInteractionGraph.nonbos.length ? "graph-warning" : ""}>
                           <small>CONFLICT + ISOLATION AUDIT</small>
-                          {interactionGraph.nonbos.slice(0, 2).map((conflict) => <p key={`${conflict.source}-${conflict.signal}`}><b>NONBO · {conflict.source}</b><span>{conflict.reason}</span></p>)}
-                          {!interactionGraph.nonbos.length && <p><b>NO VERIFIED NONBO</b><span>No symmetrical oracle-text conflict was detected.</span></p>}
-                          <em>{interactionGraph.isolated.length ? `${interactionGraph.isolated.length} isolated slot${interactionGraph.isolated.length === 1 ? "" : "s"}: ${interactionGraph.isolated.slice(0, 4).join(" · ")}` : "Every nonland slot has at least one modeled relationship."}</em>
+                          {focusedInteractionGraph.nonbos.slice(0, 2).map((conflict) => <p key={`${conflict.source}-${conflict.signal}`}><b>NONBO Â· {conflict.source}</b><span>{conflict.reason}</span></p>)}
+                          {!focusedInteractionGraph.nonbos.length && <p><b>NO VERIFIED NONBO</b><span>No symmetrical oracle-text conflict was detected.</span></p>}
+                          <em>{focusedInteractionGraph.isolated.length ? `${focusedInteractionGraph.isolated.length} isolated slot${focusedInteractionGraph.isolated.length === 1 ? "" : "s"}: ${focusedInteractionGraph.isolated.slice(0, 4).join(" Â· ")}` : activeSystem ? "Every card in this machine has at least one modeled relationship." : "Every nonland slot has at least one modeled relationship."}</em>
                         </article>
                       </div>
                       <footer>{interactionGraph.methodology}</footer>
@@ -2741,7 +3546,7 @@ export default function Home() {
                     <footer>
                       <ul>{deckIntegrity.issues.map((issue) => <li key={issue}>{issue}</li>)}</ul>
                       <button onClick={repairDeckIntegrity} disabled={benchStatus === "forging"}>
-                        {benchStatus === "forging" ? "Reforging failed slots…" : "Reforge failed constraints"}
+                        {benchStatus === "forging" ? "Reforging failed slotsâ€¦" : "Reforge failed constraints"}
                       </button>
                     </footer>
                   )}
@@ -2750,7 +3555,7 @@ export default function Home() {
               {metaBreakerDossier && (
                 <section className="meta-breaker-dossier">
                   <header>
-                    <span><small>META BREAKER LAB · FOUNDER TEST</small><b>A counter-field hypothesis, never a guaranteed result.</b></span>
+                    <span><small>META BREAKER LAB Â· FOUNDER TEST</small><b>A counter-field hypothesis, never a guaranteed result.</b></span>
                     <strong>{metaBreakerDossier.confidence}</strong>
                   </header>
                   <div>
@@ -2760,13 +3565,13 @@ export default function Home() {
                   </div>
                   <footer className="meta-breaker-workflow">
                     <button onClick={forgeMetaBreakerExperiments} disabled={metaBreakerLoading || !deckIntegrity.passed}>
-                      {metaBreakerLoading ? "Searching the legal card pool…" : "Forge three controlled experiments"}
+                      {metaBreakerLoading ? "Searching the legal card poolâ€¦" : "Forge three controlled experiments"}
                     </button>
                     {metaBreakerExperiments.length > 0 && <div>
                       {metaBreakerExperiments.map((experiment) => (
                         <article key={`${experiment.cut}-${experiment.add.name}`}>
                           <img src={experiment.add.image} alt="" />
-                          <span><small>FORGE THEORY · ONE-SLOT TEST</small><b>−1 {experiment.cut}<br />+1 {experiment.add.name}</b><p>{experiment.reason}</p><em>{experiment.confidence}</em></span>
+                          <span><small>FORGE THEORY Â· ONE-SLOT TEST</small><b>âˆ’1 {experiment.cut}<br />+1 {experiment.add.name}</b><p>{experiment.reason}</p><em>{experiment.confidence}</em></span>
                           <button onClick={() => applyMetaBreakerExperiment(experiment)}>Create revision</button>
                         </article>
                       ))}
@@ -2777,7 +3582,7 @@ export default function Home() {
               )}
               {benchStatus === "forging" ? (
                 <pre>
-                  Tempering curve, roles, interaction, and the mana lattice…
+                  Tempering curve, roles, interaction, and the mana latticeâ€¦
                 </pre>
               ) : deckRows.length ? (
                 <div className="deck-gallery">
@@ -2797,10 +3602,10 @@ export default function Home() {
                         "Card details awaken on inspection"}
                     </span>
                     <span className="slot-justification">
-                      <small>SLOT DUTY · {activeRole.toUpperCase()}</small>
+                      <small>SLOT DUTY Â· {activeRole.toUpperCase()}</small>
                       {activeSlotReason}
                       {activeGraphEdges.map((edge) => (
-                        <em key={`${edge.from}-${edge.to}`}>{edge.signals.join(" + ")} · {edge.from === activeCard ? edge.to : edge.from}</em>
+                        <em key={`${edge.from}-${edge.to}`}>{edge.signals.join(" + ")} Â· {edge.from === activeCard ? edge.to : edge.from}</em>
                       ))}
                     </span>
                   </aside>
@@ -2884,7 +3689,7 @@ export default function Home() {
                   onClick={beginTesting}
                 >
                   {benchStatus === "testing"
-                    ? "Testing is active ✓"
+                    ? "Testing is active âœ“"
                     : "Choose this deck & begin testing"}
                 </button>
               </footer>
@@ -2894,12 +3699,12 @@ export default function Home() {
                 <small>THE FORGE LEARNS WITH YOU</small>
                 <h2>Test. Signal. Reforge.</h2>
                 <p>
-                  One match is a signal—not proof. Tell the Forge what felt
+                  One match is a signalâ€”not proof. Tell the Forge what felt
                   strong, awkward, missing, or simply unlike you.
                 </p>
               </header>
               <label className="opponent-signal">
-                <span>OPPONENT ARCHETYPE · OPTIONAL BUT VALUABLE</span>
+                <span>OPPONENT ARCHETYPE Â· OPTIONAL BUT VALUABLE</span>
                 <select value={opponentArchetype} onChange={(event) => setOpponentArchetype(event.target.value)}>
                   {["Unknown / not sure", "Aggro", "Tempo", "Midrange", "Control", "Ramp", "Combo", "Tokens", "Graveyard", "Other / rogue"].map((option) => (
                     <option key={option}>{option}</option>
@@ -2918,10 +3723,10 @@ export default function Home() {
               <section className="revision-learning-dossier">
                 <header><small>REVISION {Math.max(1, revisions.length)} LEARNING</small><b>{revisionLearning.sampleSize} recorded match{revisionLearning.sampleSize === 1 ? "" : "es"}</b></header>
                 {revisionLearning.actionable.length ? revisionLearning.actionable.slice(0, 3).map((pattern) => (
-                  <p key={pattern.preference}><b>{pattern.preference}</b><span>{pattern.confidence} · {pattern.count} matching signals</span></p>
+                  <p key={pattern.preference}><b>{pattern.preference}</b><span>{pattern.confidence} Â· {pattern.count} matching signals</span></p>
                 )) : <p><b>NO PERSISTENT PREFERENCE YET</b><span>Two matching signals are required before the Forge treats a feeling as a revision pattern.</span></p>}
                 {revisionLearning.matchups.filter((matchup) => matchup.actionable).slice(0, 2).map((matchup) => (
-                  <p key={matchup.opponent}><b>{matchup.opponent} matchup</b><span>{matchup.wins}–{matchup.losses} observed · {matchup.confidence}, not a predicted win rate</span></p>
+                  <p key={matchup.opponent}><b>{matchup.opponent} matchup</b><span>{matchup.wins}â€“{matchup.losses} observed Â· {matchup.confidence}, not a predicted win rate</span></p>
                 ))}
               </section>
               <label>
@@ -2929,7 +3734,7 @@ export default function Home() {
                 <textarea
                   value={playerSignal}
                   onChange={(event) => setPlayerSignal(event.target.value)}
-                  placeholder="Example: I keep running out of threats after the first board wipe, but the early pressure feels exactly right…"
+                  placeholder="Example: I keep running out of threats after the first board wipe, but the early pressure feels exactly rightâ€¦"
                 />
               </label>
               <button
@@ -2938,12 +3743,12 @@ export default function Home() {
                 onClick={consultForge}
               >
                 {benchStatus === "thinking"
-                  ? "The Forge is studying your signal…"
-                  : "Ask the Forge for alternatives →"}
+                  ? "The Forge is studying your signalâ€¦"
+                  : "Ask the Forge for alternatives â†’"}
               </button>
               {forgeReply && (
                 <section className="forge-refinement">
-                  <small>REFINEMENT OPTIONS · FORGE THEORY</small>
+                  <small>REFINEMENT OPTIONS Â· FORGE THEORY</small>
                   <pre>{forgeReply}</pre>
                   <button onClick={preserveRevision}>
                     Preserve as revision {revisions.length + 1}
@@ -2953,7 +3758,7 @@ export default function Home() {
               <footer>
                 <b>{revisions.length || 1}</b>
                 <span>
-                  REVISION{revisions.length === 1 ? "" : "S"} PRESERVED ·
+                  REVISION{revisions.length === 1 ? "" : "S"} PRESERVED Â·
                   PRIVATE BENCH SYNC
                 </span>
               </footer>
@@ -2997,13 +3802,13 @@ export default function Home() {
                         {family.commander?.image ? (
                           <img src={family.commander.image} alt="" />
                         ) : (
-                          <i>ᛞ</i>
+                          <i>á›ž</i>
                         )}
                       </span>
                       <b>{family.name}</b>
                       <small>{family.commander?.name || family.format}</small>
                       <em>
-                        {Number(evidence.wins || 0)}W ·{" "}
+                        {Number(evidence.wins || 0)}W Â·{" "}
                         {Number(evidence.losses || 0)}L
                       </em>
                     </button>
@@ -3018,7 +3823,7 @@ export default function Home() {
             <footer>
               <button onClick={showFullArchive}>View full Archive</button>
               <button className="new-forge" onClick={startNewForge}>
-                ＋ Start a New Forge
+                ï¼‹ Start a New Forge
               </button>
             </footer>
           </div>
@@ -3028,7 +3833,7 @@ export default function Home() {
               onClick={() => setBenchOpen((value) => !value)}
               aria-expanded={benchOpen}
             >
-              <i>ᛞ</i>
+              <i>á›ž</i>
               <span>
                 <small>YOUR BENCH</small>
                 <b>
@@ -3053,7 +3858,7 @@ export default function Home() {
               onClick={() => setEditAnvilOpen(true)}
               aria-label="Raise the Editing Anvil"
             >
-              <i>⚒</i>
+              <i>âš’</i>
               <span>Raise Editing Anvil</span>
             </button>
           )}
@@ -3066,7 +3871,7 @@ export default function Home() {
             onClick={() => setEditAnvilOpen((open) => !open)}
             aria-expanded={editAnvilOpen}
           >
-            <i>⚒</i>
+            <i>âš’</i>
             {editAnvilOpen ? "Lower Editing Anvil" : "Raise Editing Anvil"}
           </button>
           <header>
@@ -3089,14 +3894,14 @@ export default function Home() {
                 <input
                   value={cardSearch}
                   onChange={(event) => setCardSearch(event.target.value)}
-                  placeholder="Try Opt, Lightning Bolt, Sol Ring…"
+                  placeholder="Try Opt, Lightning Bolt, Sol Ringâ€¦"
                 />
               </label>
               {cardSearchResults.length > 0 && (
                 <div>
                   {cardSearchResults.map((card) => (
                     <article key={card.name}>
-                      {card.image ? <img src={card.image} alt="" /> : <i>◆</i>}
+                      {card.image ? <img src={card.image} alt="" /> : <i>â—†</i>}
                       <span>
                         <b>{card.name}</b>
                         <small>{card.typeLine}</small>
@@ -3137,7 +3942,7 @@ export default function Home() {
               }}
             >
               <header>
-                <span>◇</span>
+                <span>â—‡</span>
                 <div>
                   <small>CONSIDERING</small>
                   <b>Possible cuts and replacements</b>
@@ -3182,7 +3987,7 @@ export default function Home() {
               }}
             >
               <header>
-                <span>×</span>
+                <span>Ã—</span>
                 <div>
                   <small>THE QUENCH</small>
                   <b>Removed from this revision</b>
@@ -3225,7 +4030,7 @@ export default function Home() {
                 <small>THE FORGE ANSWERS THE CUT</small>
                 <h2>
                   {replacementLoading
-                    ? `Studying what ${lastCutCard} was doing…`
+                    ? `Studying what ${lastCutCard} was doingâ€¦`
                     : replacementRecommendations.length
                       ? `Three paths can fill ${lastCutCard}'s place.`
                       : `Search the Archive for ${lastCutCard}'s successor.`}
@@ -3262,7 +4067,7 @@ export default function Home() {
                     }}
                   >
                     <span>
-                      {card.image ? <img src={card.image} alt="" /> : <i>◆</i>}
+                      {card.image ? <img src={card.image} alt="" /> : <i>â—†</i>}
                       <em>FORGE OPTION {index + 1}</em>
                     </span>
                     <div>
@@ -3298,7 +4103,7 @@ export default function Home() {
                       );
                   }}
                 >
-                  <i>＋</i>
+                  <i>ï¼‹</i>
                   <b>DROP INTO THE DECK</b>
                   <span>The candidate becomes part of this revision.</span>
                 </aside>
@@ -3314,3 +4119,5 @@ export default function Home() {
     </main>
   );
 }
+
+
