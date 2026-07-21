@@ -30,3 +30,9 @@ test("native forging exposes bounded counterfactual reasoning", () => {
   assert.match(generation, /nativeReport\.reasoning\.summary/);
   assert.match(generation, /nativeReport\.reasoning\.boundary/);
 });
+
+test("native forging exposes the exact one-slot laboratory verdict", () => {
+  assert.match(generation, /nativeReport\.laboratory\.summary/);
+  assert.match(generation, /nativeReport\.laboratory\.contract/);
+  assert.match(generation, /nativeReport\.laboratory\.boundary/);
+});

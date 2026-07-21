@@ -76,6 +76,9 @@ not justify a confident claim.
 - `app/forge-causality-engine.mjs`: immutable structural-impact profiles,
   critical-node and amplifier detection, collapse/recovery scoring, and a
   controlled one-slot upgrade contract.
+- `app/native-one-slot-lab.mjs`: exhaustive exact cut/add comparisons, deck-size
+  and copy-limit enforcement, preserved opening-hand land distribution, structural
+  regression gates, and observed-evidence test contracts.
 - `app/native-masterwork-reasoning.mjs`: bounded winner-versus-rival
   counterfactuals, changed-card sets, measured gains, and explicit tradeoffs.
 - `app/native-masterwork-tournament.mjs`: exact-size, copy-limit, mana-share,
@@ -119,8 +122,9 @@ invented metagame claim.
 The native Masterwork constructor now owns deck generation without an external
 model dependency. It consumes verified card facts and optional adoption evidence,
 then analyzes every verified card once, submits three personalized structural
-candidates to hard gates, and runs a nondominated tradeoff tournament before
-preserving the selected list as revision one.
+candidates to hard gates, runs a nondominated tradeoff tournament, and tests
+every bounded one-slot rival exchange before preserving the selected list as
+revision one.
 
 The persistent implementation goal tracks broader live metagame ingestion,
 sample-aware personalization, and continued Meta Breaker refinement. The live

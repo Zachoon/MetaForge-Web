@@ -1,5 +1,6 @@
 ﻿import { runNativeMasterworkTournament } from "./native-masterwork-tournament.mjs";
 import { explainNativeMasterworkDecision } from "./native-masterwork-reasoning.mjs";
+import { runOneSlotCounterfactualLab } from "./native-one-slot-lab.mjs";
 
 // MetaForge Native Masterwork Engine
 // Card facts may come from verified catalogs; every construction and ranking
@@ -255,13 +256,19 @@ export function forgeNativeMasterwork(input) {
     .sort((left, right) => right.tournament.tournamentScore - left.tournament.tournamentScore || left.id.localeCompare(right.id));
   const selected = ranked.find((candidate) => candidate.id === tournament.selectedId);
   const reasoning = explainNativeMasterworkDecision(ranked, tournament);
+  const laboratory = runOneSlotCounterfactualLab(selected, ranked, reasoning, {
+    format: input.format,
+    strategy: input.strategy,
+    target: input.target,
+  });
   return Object.freeze({
-    engine: "metaforge-native-masterwork-v3",
+    engine: "metaforge-native-masterwork-v4",
     selected,
     candidates: ranked,
     tournament,
     reasoning,
+    laboratory,
     diagnostics: Object.freeze({ analysisPasses: 1, cardsAnalyzed: analysis.cards.length, candidatesBuilt: ranked.length }),
-    methodology: "MetaForge analyzed each verified card once, filled explicit role requirements, assembled three complete structural tempers, applied hard rejection gates, advanced a nondominated Blueprint tradeoff, and compared it with the closest viable rival.",
+    methodology: "MetaForge analyzed each verified card once, filled explicit role requirements, assembled three complete structural tempers, applied hard rejection gates, advanced a nondominated Blueprint tradeoff, compared it with the closest viable rival, and exhaustively gated exact one-slot experiments.",
   });
 }
