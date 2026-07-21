@@ -106,7 +106,7 @@ function normalizedGraph(graph) {
     nonbos: safeArray(source.nonbos),
     commanderLinks: safeArray(source.commanderLinks),
     coverage: clamp(Number(source.coverage || 0) * 100) / 100,
-    confidence: String(source.confidence || "LOW Â· INSUFFICIENT GRAPH"),
+    confidence: String(source.confidence || "LOW · INSUFFICIENT GRAPH"),
     commanderName: String(source.commanderName || ""),
   };
 }
@@ -125,7 +125,7 @@ function normalizedSystemsReport(report) {
       clamp(Number(source.graphCoverage || 0) * 100) / 100,
     confidence: String(
       source.confidence ||
-      "LOW Â· INSUFFICIENT SYSTEM COVERAGE",
+      "LOW · INSUFFICIENT SYSTEM COVERAGE",
     ),
   };
 }
@@ -804,7 +804,7 @@ function describeReportConfidence(
   systemProfiles,
 ) {
   if (!systemProfiles.length) {
-    return "INSUFFICIENT Â· NO DETECTED SYSTEMS";
+    return "INSUFFICIENT · NO DETECTED SYSTEMS";
   }
 
   const coverage =
@@ -814,14 +814,14 @@ function describeReportConfidence(
     coverage >= 0.7 &&
     systemProfiles.length >= 2
   ) {
-    return "HIGH Â· MULTI-SYSTEM STRUCTURAL MODEL";
+    return "HIGH · MULTI-SYSTEM STRUCTURAL MODEL";
   }
 
   if (coverage >= 0.45) {
-    return "MEDIUM Â· PARTIAL STRUCTURAL MODEL";
+    return "MEDIUM · PARTIAL STRUCTURAL MODEL";
   }
 
-  return "LOW Â· LIMITED SYSTEM COVERAGE";
+  return "LOW · LIMITED SYSTEM COVERAGE";
 }
 
 export function buildForgeCausalityReport(
@@ -853,7 +853,7 @@ export function buildForgeCausalityReport(
       recoveryPotential: 0,
       highestValueUpgrade: null,
       confidence:
-        "INSUFFICIENT Â· NO DETECTED SYSTEMS",
+        "INSUFFICIENT · NO DETECTED SYSTEMS",
       headline:
         "The Forge cannot form a causal hypothesis without a detected multi-card system.",
       evidence: EVIDENCE.insufficient,

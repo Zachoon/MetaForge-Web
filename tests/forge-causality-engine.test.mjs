@@ -44,7 +44,7 @@ const graph = {
   nonbos: [],
   commanderLinks: [],
   coverage: 0.8,
-  confidence: "HIGH Â· ORACLE-DERIVED",
+  confidence: "HIGH · ORACLE-DERIVED",
   commanderName: "",
 };
 

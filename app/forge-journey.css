@@ -739,7 +739,7 @@
 }
 
 /* ==========================================================================
-   Mission 24 Â· Systems Chamber Interaction Pass
+   Mission 24 · Systems Chamber Interaction Pass
    ========================================================================== */
 
 .forge-systems-chamber.has-active-system {
@@ -817,7 +817,7 @@
 .system-component-board button.bridge-component::after {
   margin-left: 0.38rem;
   color: #d6a25e;
-  content: "â—‡";
+  content: "◇";
 }
 
 .system-blueprint-actions {

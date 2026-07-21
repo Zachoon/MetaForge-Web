@@ -2,7 +2,7 @@
 import test from "node:test";
 import { classifyNativeCard, forgeNativeMasterwork } from "../app/native-masterwork-engine.mjs";
 
-const card = (name, oracleText, typeLine = "Creature â€” Test", manaCost = "{2}{U}", colorIdentity = ["U"]) => ({ name, oracleText, typeLine, manaCost, colorIdentity });
+const card = (name, oracleText, typeLine = "Creature — Test", manaCost = "{2}{U}", colorIdentity = ["U"]) => ({ name, oracleText, typeLine, manaCost, colorIdentity });
 const pool = [
   ...Array.from({ length: 28 }, (_, i) => card(`Flow ${i}`, "When this enters, draw a card. Scry 1.")),
   ...Array.from({ length: 24 }, (_, i) => card(`Answer ${i}`, "Exile target nonland permanent.")),

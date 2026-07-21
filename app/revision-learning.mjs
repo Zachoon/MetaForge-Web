@@ -1,7 +1,7 @@
 const SIGNAL_RULES = [
   [
     "more early interaction",
-    /couldn(?:'|’|â€™)t answer|need(?:ed)? (?:more )?(?:early )?(?:removal|interaction|answers)|too fast for me|died before/i,
+    /couldn(?:'|’|’)t answer|need(?:ed)? (?:more )?(?:early )?(?:removal|interaction|answers)|too fast for me|died before/i,
   ],
   [
     "lower curve / faster deployment",
@@ -13,15 +13,15 @@ const SIGNAL_RULES = [
   ],
   [
     "more resilience",
-    /board wipe|sweeper|couldn(?:'|’|â€™)t rebuild|all my creatures died|folded to removal/i,
+    /board wipe|sweeper|couldn(?:'|’|’)t rebuild|all my creatures died|folded to removal/i,
   ],
   [
     "mana repair",
-    /mana screw|mana flood|missed land|too many lands|wrong colors?|couldn(?:'|’|â€™)t cast/i,
+    /mana screw|mana flood|missed land|too many lands|wrong colors?|couldn(?:'|’|’)t cast/i,
   ],
   [
     "more protection",
-    /commander (?:kept dying|was removed)|protect|countered every|couldn(?:'|’|â€™)t keep/i,
+    /commander (?:kept dying|was removed)|protect|countered every|couldn(?:'|’|’)t keep/i,
   ],
   [
     "preserve pressure",

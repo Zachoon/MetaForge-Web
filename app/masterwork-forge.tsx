@@ -68,7 +68,7 @@ const STRATEGY_IDENTITIES: Record<string, MasterworkIdentity> = {
       "You like setting the pace and making the opponent prove they can survive the opening assault.",
     verdict:
       "The fastest surviving design. Its edge was preserved without sacrificing the ability to recover.",
-    rune: "áš ",
+    rune: "ᚠ",
     tone: "ember",
   },
   aggressive: {
@@ -80,7 +80,7 @@ const STRATEGY_IDENTITIES: Record<string, MasterworkIdentity> = {
       "You like setting the pace and making the opponent prove they can survive the opening assault.",
     verdict:
       "The fastest surviving design. Its edge was preserved without sacrificing the ability to recover.",
-    rune: "áš ",
+    rune: "ᚠ",
     tone: "ember",
   },
   tempo: {
@@ -92,7 +92,7 @@ const STRATEGY_IDENTITIES: Record<string, MasterworkIdentity> = {
       "You enjoy sequencing, flexible interaction, and turning tiny advantages into an impossible chase.",
     verdict:
       "The sharpest masterwork. It rewards timing and punishes every stumble without becoming reckless.",
-    rune: "áš±",
+    rune: "ᚱ",
     tone: "rune",
   },
   midrange: {
@@ -104,19 +104,19 @@ const STRATEGY_IDENTITIES: Record<string, MasterworkIdentity> = {
       "You want flexibility, meaningful decisions, and a plan that can change shape as the game develops.",
     verdict:
       "The most balanced masterwork. No single edge defines it; its strength is refusing to become irrelevant.",
-    rune: "á›‰",
+    rune: "ᛉ",
     tone: "steel",
   },
   control: {
     title: "The Rune Bastion",
     subtitle: "Measured Control",
     playstyle:
-      "Absorb the opponentâ€™s strongest turns, dismantle their resources, and take command once their momentum is broken.",
+      "Absorb the opponent’s strongest turns, dismantle their resources, and take command once their momentum is broken.",
     enjoyIf:
       "You enjoy patience, permission, precise answers, and winning after the opponent has exhausted their best ideas.",
     verdict:
       "The most defensible design. It survived by answering the widest range of opposing plans.",
-    rune: "á›",
+    rune: "ᛏ",
     tone: "rune",
   },
   combo: {
@@ -128,7 +128,7 @@ const STRATEGY_IDENTITIES: Record<string, MasterworkIdentity> = {
       "You like discovering hidden lines, planning several turns ahead, and winning through a machine you assembled yourself.",
     verdict:
       "The most intricate masterwork. Every retained piece serves the engine, and every cut protects its purpose.",
-    rune: "á›ž",
+    rune: "ᛞ",
     tone: "rune",
   },
 };
@@ -142,7 +142,7 @@ function candidateIdentity(candidate: ForgeMasterworkCandidate) {
 
   return (
     STRATEGY_IDENTITIES[key] ?? {
-      title: candidate.name.replace(/^Forge Prototype\s*Â·\s*/i, ""),
+      title: candidate.name.replace(/^Forge Prototype\s*·\s*/i, ""),
       subtitle: candidate.strategy,
       playstyle:
         candidate.strategyPlan ??
@@ -151,8 +151,8 @@ function candidateIdentity(candidate: ForgeMasterworkCandidate) {
         "You enjoy a focused deck with clear decisions, meaningful tradeoffs, and room to master its lines.",
       verdict:
         candidate.reasoning ??
-        "This design survived the Forgeâ€™s strategic, structural, and experiential inspection.",
-      rune: "á›Ÿ",
+        "This design survived the Forge’s strategic, structural, and experiential inspection.",
+      rune: "ᛟ",
       tone: "steel" as const,
     }
   );
@@ -208,7 +208,7 @@ function candidateMetrics(candidate: ForgeMasterworkCandidate) {
 }
 
 function displayCandidateName(candidate: ForgeMasterworkCandidate) {
-  return candidate.name.replace(/^Forge Prototype\s*Â·\s*/i, "");
+  return candidate.name.replace(/^Forge Prototype\s*·\s*/i, "");
 }
 
 export default function MasterworkForge({
@@ -308,8 +308,8 @@ export default function MasterworkForge({
     >
       <div className="masterwork-furnace-sky" aria-hidden="true">
         <span className="masterwork-halo" />
-        <span className="masterwork-rune-ring rune-ring-one">áš  áš± á›‰ á›</span>
-        <span className="masterwork-rune-ring rune-ring-two">á›ž á›Ÿ áš¢ áš¦</span>
+        <span className="masterwork-rune-ring rune-ring-one">ᚠ ᚱ ᛉ ᛏ</span>
+        <span className="masterwork-rune-ring rune-ring-two">ᛞ ᛟ ᚢ ᚦ</span>
         <span className="masterwork-anvil-spark spark-one" />
         <span className="masterwork-anvil-spark spark-two" />
         <span className="masterwork-anvil-spark spark-three" />
@@ -337,7 +337,7 @@ export default function MasterworkForge({
 
       <div className="masterwork-forging-veil" aria-live="polite">
         <div className="masterwork-anvil">
-          <span className="anvil-rune">á›Ÿ</span>
+          <span className="anvil-rune">ᛟ</span>
           <i className="anvil-strike" />
           <b>FORGING THE NEXT THREE</b>
           <small>
@@ -439,7 +439,7 @@ export default function MasterworkForge({
                     }}
                   >
                     <span>Inspect Masterwork</span>
-                    <b aria-hidden="true">âŒ</b>
+                    <b aria-hidden="true">⌁</b>
                   </button>
 
                   <button
@@ -450,10 +450,10 @@ export default function MasterworkForge({
                   >
                     <span>
                       {busy && selected
-                        ? "Preparing Masterworkâ€¦"
+                        ? "Preparing Masterwork…"
                         : "Choose This Masterwork"}
                     </span>
-                    <b aria-hidden="true">â†’</b>
+                    <b aria-hidden="true">→</b>
                   </button>
 
                   <button
@@ -470,7 +470,7 @@ export default function MasterworkForge({
         </div>
       ) : (
         <div className="masterwork-empty">
-          <span>á›Ÿ</span>
+          <span>ᛟ</span>
           <h3>No surviving designs remain in this commission.</h3>
           <p>
             Begin a fresh commission to restore the candidate pool and forge
@@ -489,7 +489,7 @@ export default function MasterworkForge({
             disabled={pageIndex === 0 || forging}
             onClick={() => changePage(pageIndex - 1)}
           >
-            <span aria-hidden="true">â†</span>
+            <span aria-hidden="true">←</span>
             Previous Three
           </button>
 
@@ -499,7 +499,7 @@ export default function MasterworkForge({
         </div>
 
         <div className="masterwork-page-status">
-          <span>Masterworks {firstRank}â€“{Math.max(firstRank, lastRank)}</span>
+          <span>Masterworks {firstRank}–{Math.max(firstRank, lastRank)}</span>
           <i />
           <span>Set {pageIndex + 1} of {pageCount}</span>
         </div>
@@ -512,7 +512,7 @@ export default function MasterworkForge({
             onClick={() => changePage(pageIndex + 1)}
           >
             Reveal the Next Three
-            <span aria-hidden="true">â†’</span>
+            <span aria-hidden="true">→</span>
           </button>
 
           <button type="button" onClick={beginAgain}>

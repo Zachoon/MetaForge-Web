@@ -41,7 +41,7 @@ function hardGate(candidate, options) {
   if (illegalCopies.length) reasons.push(`Copy limit failed for ${illegalCopies.map((row) => row.name).join(", ")}.`);
   if (candidate.evaluation.roleCoverage < 0.45) reasons.push("Role coverage is below the 45% structural floor.");
   if (candidate.evaluation.curveHealth < 45) reasons.push("Curve health is below the 45/100 floor.");
-  if (landShare < 0.28 || landShare > 0.5) reasons.push(`Mana-base share ${(landShare * 100).toFixed(0)}% is outside the bounded 28â€“50% gate.`);
+  if (landShare < 0.28 || landShare > 0.5) reasons.push(`Mana-base share ${(landShare * 100).toFixed(0)}% is outside the bounded 28–50% gate.`);
   return { passed: reasons.length === 0, reasons, total, landCount, landShare: round(landShare) };
 }
 

@@ -23,31 +23,31 @@ type Chamber =
   | "workbench";
 
 const FORGING_STAGES = [
-  ["The blueprint is sealed", "Reading the commission marksâ€¦", "642"],
+  ["The blueprint is sealed", "Reading the commission marks…", "642"],
   ["Awakening the Great Furnace", "Ancient channels fill with light.", "642"],
   [
     "Consulting the Archive",
-    "Rejecting designs with repeated structural failuresâ€¦",
+    "Rejecting designs with repeated structural failures…",
     "318",
   ],
   [
     "Shaping the strategic core",
-    "Aligning every card with the requested strategyâ€¦",
+    "Aligning every card with the requested strategy…",
     "141",
   ],
-  ["Tempering the mana lattice", "Discarding unstable foundationsâ€¦", "47"],
+  ["Tempering the mana lattice", "Discarding unstable foundations…", "47"],
   [
     "Testing structural integrity",
-    "Pressing each design against hostile plansâ€¦",
+    "Pressing each design against hostile plans…",
     "9",
   ],
-  ["Inspecting imperfections", "Recording every honest weaknessâ€¦", "3"],
-  ["Three designs survived", "Cooling the surviving masterworksâ€¦", "3"],
+  ["Inspecting imperfections", "Recording every honest weakness…", "3"],
+  ["Three designs survived", "Cooling the surviving masterworks…", "3"],
 ] as const;
 
 const MASTERWORKS = [
   {
-    rune: "á›‹",
+    rune: "ᛋ",
     name: "The Ember Vanguard",
     path: "Aggressive Pressure",
     tone: "ember",
@@ -55,7 +55,7 @@ const MASTERWORKS = [
       "The fastest surviving design. Its edge was preserved without sacrificing its ability to recover.",
   },
   {
-    rune: "á›‰",
+    rune: "ᛉ",
     name: "The Iron Covenant",
     path: "Adaptive Midrange",
     tone: "steel",
@@ -63,7 +63,7 @@ const MASTERWORKS = [
       "The most balanced masterwork. Its strength is refusing to become irrelevant as the battle changes.",
   },
   {
-    rune: "á›Ÿ",
+    rune: "ᛟ",
     name: "The Rune Bastion",
     path: "Measured Control",
     tone: "rune",
@@ -74,7 +74,7 @@ const MASTERWORKS = [
 
 const ADDITIONAL_MASTERWORKS = [
   {
-    rune: "á›",
+    rune: "ᛏ",
     name: "The Stormbrand Edge",
     path: "Tempo and Disruption",
     tone: "rune",
@@ -82,7 +82,7 @@ const ADDITIONAL_MASTERWORKS = [
       "A precise design that turns small timing advantages into a lead the opponent cannot recover from.",
   },
   {
-    rune: "á›ƒ",
+    rune: "ᛃ",
     name: "The Verdant Engine",
     path: "Synergy and Growth",
     tone: "steel",
@@ -90,7 +90,7 @@ const ADDITIONAL_MASTERWORKS = [
       "A connected design whose pieces become more powerful together without depending on a single fragile line.",
   },
   {
-    rune: "á›‡",
+    rune: "ᛇ",
     name: "The Gravebound Accord",
     path: "Resilient Attrition",
     tone: "ember",
@@ -98,7 +98,7 @@ const ADDITIONAL_MASTERWORKS = [
       "A patient design that treats every exchange as fuel and continues producing value after the first plan is broken.",
   },
   {
-    rune: "á›‹",
+    rune: "ᛋ",
     name: "The Sunforged Legion",
     path: "Go-Wide Pressure",
     tone: "ember",
@@ -106,7 +106,7 @@ const ADDITIONAL_MASTERWORKS = [
       "A widening battlefield converts modest resources into an attack that demands several answers at once.",
   },
   {
-    rune: "á›ž",
+    rune: "ᛞ",
     name: "The Mirror Crucible",
     path: "Engine and Combo",
     tone: "rune",
@@ -114,7 +114,7 @@ const ADDITIONAL_MASTERWORKS = [
       "An intricate design that hides a decisive finish inside individually useful cards and overlapping lines.",
   },
   {
-    rune: "á›‰",
+    rune: "ᛉ",
     name: "The Warden's Oath",
     path: "Ramp and Inevitability",
     tone: "steel",
@@ -444,19 +444,19 @@ const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
   Standard: [
     {
       card: "Emberheart Challenger",
-      role: "Lynchpin Â· pressure engine",
+      role: "Lynchpin · pressure engine",
       theme: "Efficient threats turn every combat step into leverage.",
       win: "Build an early lead, then convert prowess and reach into the final points.",
     },
     {
       card: "Overlord of the Hauntwoods",
-      role: "Lynchpin Â· value engine",
+      role: "Lynchpin · value engine",
       theme: "Durable threats keep mana and pressure moving together.",
       win: "Outscale fair decks with resilient bodies and compounding card quality.",
     },
     {
       card: "Stock Up",
-      role: "Lynchpin Â· selection engine",
+      role: "Lynchpin · selection engine",
       theme:
         "Card selection finds the right answer for each stage of the game.",
       win: "Stabilize, exhaust opposing resources, and close behind protected threats.",
@@ -465,20 +465,20 @@ const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
   Modern: [
     {
       card: "Ragavan, Nimble Pilferer",
-      role: "Lynchpin Â· tempo engine",
+      role: "Lynchpin · tempo engine",
       theme: "Cheap threats create mana, information, and immediate pressure.",
       win: "Force awkward answers early, then finish through efficient disruption.",
     },
     {
       card: "Orcish Bowmasters",
-      role: "Lynchpin Â· value engine",
+      role: "Lynchpin · value engine",
       theme:
         "Flexible threats punish excess cards while controlling small creatures.",
       win: "Trade efficiently until incremental advantages become overwhelming.",
     },
     {
       card: "Counterspell",
-      role: "Lynchpin Â· permission",
+      role: "Lynchpin · permission",
       theme: "Broad answers protect a compact, inevitable endgame.",
       win: "Deny the opponent's pivotal turn and win once their resources are thin.",
     },
@@ -486,20 +486,20 @@ const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
   Premodern: [
     {
       card: "Goblin Lackey",
-      role: "Lynchpin Â· deployment engine",
+      role: "Lynchpin · deployment engine",
       theme:
         "One opening connects and turns the battlefield into an avalanche.",
       win: "Overwhelm defenses before slower engines can establish control.",
     },
     {
       card: "Survival of the Fittest",
-      role: "Lynchpin Â· toolbox engine",
+      role: "Lynchpin · toolbox engine",
       theme: "Every creature can become the exact answer the position demands.",
       win: "Assemble an adaptable creature chain that opponents cannot trade through.",
     },
     {
       card: "Counterspell",
-      role: "Lynchpin Â· permission",
+      role: "Lynchpin · permission",
       theme: "Efficient interaction protects a patient, resource-rich endgame.",
       win: "Neutralize the few spells that matter and take over with superior cards.",
     },
@@ -507,19 +507,19 @@ const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
   Pioneer: [
     {
       card: "Monastery Swiftspear",
-      role: "Lynchpin Â· pressure engine",
+      role: "Lynchpin · pressure engine",
       theme: "Low-cost spells become both interaction and additional damage.",
       win: "Compress the game until every draw threatens lethal.",
     },
     {
       card: "Fable of the Mirror-Breaker",
-      role: "Lynchpin Â· value engine",
+      role: "Lynchpin · value engine",
       theme: "Filtering, mana, and copied threats make every stage productive.",
       win: "Accumulate flexible advantages, then copy the deck's best threat.",
     },
     {
       card: "Supreme Verdict",
-      role: "Lynchpin Â· reset",
+      role: "Lynchpin · reset",
       theme: "Unconditional resets buy time for a powerful late game.",
       win: "Clear committed boards and close once the opponent is out of rebuilds.",
     },
@@ -527,19 +527,19 @@ const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
   Historic: [
     {
       card: "Ragavan, Nimble Pilferer",
-      role: "Lynchpin Â· tempo engine",
+      role: "Lynchpin · tempo engine",
       theme: "Early pressure snowballs into mana and stolen resources.",
       win: "Stay ahead on tempo while disruption protects the attack.",
     },
     {
       card: "Jarsyl, Dark Age Scion",
-      role: "Lynchpin Â· recursion engine",
+      role: "Lynchpin · recursion engine",
       theme: "The graveyard turns past exchanges into future value.",
       win: "Replay efficient spells until one-for-one trades stop being fair.",
     },
     {
       card: "Mana Drain",
-      role: "Lynchpin Â· permission",
+      role: "Lynchpin · permission",
       theme: "Premium interaction turns defense into a burst of development.",
       win: "Counter the pivotal spell and use the mana swing to seize control.",
     },
@@ -547,21 +547,21 @@ const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
   Brawl: [
     {
       card: "Ragavan, Nimble Pilferer",
-      role: "Commander Â· treasure tempo",
+      role: "Commander · treasure tempo",
       theme:
         "A compact red raid built around cheap interaction and stolen cards.",
       win: "Connect early, compound Treasure advantages, and burn through the last defenses.",
     },
     {
       card: "Kutzil, Malamet Exemplar",
-      role: "Commander Â· modified creatures",
+      role: "Commander · modified creatures",
       theme:
         "Counters and combat tricks turn a creature team into a draw engine.",
       win: "Grow multiple threats, deny combat tricks, and snowball every clean hit.",
     },
     {
       card: "Braids, Arisen Nightmare",
-      role: "Commander Â· sacrifice control",
+      role: "Commander · sacrifice control",
       theme:
         "Disposable permanents become cards while opponents face painful choices.",
       win: "Drain resources turn by turn until sacrifice pressure becomes inevitable.",
@@ -570,20 +570,20 @@ const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
   Commander: [
     {
       card: "Isshin, Two Heavens as One",
-      role: "Commander Â· attack triggers",
+      role: "Commander · attack triggers",
       theme:
         "Every attack trigger fires twice, rewarding a relentless combat plan.",
       win: "Build one explosive combat step that multiplies tokens, damage, and value.",
     },
     {
       card: "Muldrotha, the Gravetide",
-      role: "Commander Â· graveyard value",
+      role: "Commander · graveyard value",
       theme: "The graveyard acts as a second hand full of reusable permanents.",
       win: "Outlast removal, rebuild repeatedly, and lock in an overwhelming resource edge.",
     },
     {
       card: "Shorikai, Genesis Engine",
-      role: "Commander Â· artifact control",
+      role: "Commander · artifact control",
       theme:
         "Vehicles, tokens, and card selection support a patient control shell.",
       win: "Filter into answers, stabilize behind Pilots, then win through inevitability.",
@@ -662,7 +662,7 @@ const createMasterworks = (seed: number, commander = ""): Masterwork[] => {
       core = NAME_CORES[(base + index * 5) % NAME_CORES.length];
     const identity = commander.split(/[ ,]+/)[0] || "Forge";
     return {
-      rune: ["á›‹", "á›‰", "á›Ÿ", "áš·", "áš±", "á›‡", "áš¾", "á›ž", "á›œ"][index],
+      rune: ["ᛋ", "ᛉ", "ᛟ", "ᚷ", "ᚱ", "ᛇ", "ᚾ", "ᛞ", "ᛜ"][index],
       name: index % 3 === 0 ? `The ${identity} ${core}` : `The ${core}`,
       path: PATHS[(base + index * 7) % PATHS.length],
       tone: ["ember", "steel", "rune"][index % 3],
@@ -719,7 +719,7 @@ const cardFactKey = (name: string) =>
   name
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[â€˜â€™`]/g, "'")
+    .replace(/[‘’`]/g, "'")
     .replace(/\s*\/\/\s*/g, " // ")
     .replace(/\s+/g, " ")
     .trim()
@@ -1055,8 +1055,8 @@ export default function Home() {
           ...base,
           card: commander.name,
           role: randomCommission
-            ? "Commander Â· discovered by the Forge"
-            : "Commander Â· chosen in your Blueprint",
+            ? "Commander · discovered by the Forge"
+            : "Commander · chosen in your Blueprint",
           theme:
             commissionNote.trim() ||
             `A ${commander.colors.join("")} identity commission built around this commander.`,
@@ -1363,16 +1363,16 @@ export default function Home() {
     if (format === "Standard") {
       const meta = getMetaIntelligence();
       if (!meta.readyForCurrentFieldUse) return {
-        source: `${meta.current.provenance.name} Â· last observed ${meta.current.provenance.observedAt}`,
+        source: `${meta.current.provenance.name} · last observed ${meta.current.provenance.observedAt}`,
         field: meta.warning,
-        confidence: `FIELD GATE CLOSED Â· ${meta.current.freshness} Â· ${meta.current.ageDays} days old`,
+        confidence: `FIELD GATE CLOSED · ${meta.current.freshness} · ${meta.current.ageDays} days old`,
         hypothesis: repair.pressure,
         test: "Refresh the field collector before calling any candidate a current counter-meta design; structural stress testing may continue meanwhile.",
       };
       return {
-        source: `${meta.current.provenance.name} Â· observed ${meta.current.provenance.observedAt}`,
+        source: `${meta.current.provenance.name} · observed ${meta.current.provenance.observedAt}`,
         field: `${meta.current.leadingStrategy} is the largest measured strategic family at ${(meta.current.strategies[0].share * 100).toFixed(1)}%; it is a plurality, not a majority.`,
-        confidence: `${meta.current.confidence} Â· ${meta.current.freshness} (${meta.current.ageDays}d) Â· ${meta.current.sampleSize} lists Â· ${(meta.current.classificationCoverage * 100).toFixed(1)}% classified`,
+        confidence: `${meta.current.confidence} · ${meta.current.freshness} (${meta.current.ageDays}d) · ${meta.current.sampleSize} lists · ${(meta.current.classificationCoverage * 100).toFixed(1)}% classified`,
         hypothesis: repair.pressure,
         test: repair.test,
       };
@@ -1381,12 +1381,12 @@ export default function Home() {
     const discoverySignals = edhrecEvidence?.cards.filter((card) => card.newCardPotential).length || 0;
     return {
       source: edhrecEvidence?.available
-        ? `Commander adoption evidence Â· ${edhrecEvidence.cards.length} signals`
+        ? `Commander adoption evidence · ${edhrecEvidence.cards.length} signals`
         : "No format-wide tournament field is connected for this format yet",
       field: edhrecEvidence?.available
         ? "Commander-relative adoption informs card discovery, while legality and mechanical fit remain binding."
         : "The Forge will not invent a current metagame claim from missing coverage.",
-      confidence: edhrecEvidence?.available ? `${observedSignals} stronger-sample signals Â· ${discoverySignals} new-card hypotheses Â· not a win-rate source` : "insufficient field evidence",
+      confidence: edhrecEvidence?.available ? `${observedSignals} stronger-sample signals · ${discoverySignals} new-card hypotheses · not a win-rate source` : "insufficient field evidence",
       hypothesis: repair.pressure,
       test: repair.test,
     };
@@ -1406,10 +1406,10 @@ export default function Home() {
           const faces = fact.card_faces
             ?.map(
               (face) =>
-                `${face.name || fact.name} ${face.mana_cost || ""} Â· ${face.type_line || ""}\n${face.oracle_text || ""}`,
+                `${face.name || fact.name} ${face.mana_cost || ""} · ${face.type_line || ""}\n${face.oracle_text || ""}`,
             )
             .join("\nTRANSFORMS TO\n");
-          return `${fact.name} Â· ${fact.mana_cost || ""} Â· ${fact.type_line || ""} Â· Set: ${fact.set_name || "Unknown"} Â· Games: ${(fact.games || []).join(", ")} Â· ${format} legality: ${fact.legalities?.[scryfallLegality(format)] || "ruleset review required"}\n${faces || fact.oracle_text || ""}`;
+          return `${fact.name} · ${fact.mana_cost || ""} · ${fact.type_line || ""} · Set: ${fact.set_name || "Unknown"} · Games: ${(fact.games || []).join(", ")} · ${format} legality: ${fact.legalities?.[scryfallLegality(format)] || "ruleset review required"}\n${faces || fact.oracle_text || ""}`;
         })
         .join("\n\n")
         .slice(0, 10000),
@@ -1867,7 +1867,7 @@ export default function Home() {
       const firstRevision = [
         {
           deck: answer,
-          note: `Original native Forge candidate Â· ${nativeReport.selected.label}`,
+          note: `Original native Forge candidate · ${nativeReport.selected.label}`,
           createdAt: new Date().toISOString(),
         },
       ];
@@ -1886,8 +1886,8 @@ export default function Home() {
       setForgedDeck("");
       setForgeGenerationError(
         error instanceof Error
-          ? `${error.message}. Your commission is safeâ€”strike the anvil again when verified card data is available.`
-          : "The native Forge could not complete this candidate. Your commission is safeâ€”strike the anvil again.",
+          ? `${error.message}. Your commission is safe—strike the anvil again when verified card data is available.`
+          : "The native Forge could not complete this candidate. Your commission is safe—strike the anvil again.",
       );
     } finally {
       setBenchStatus("idle");
@@ -1907,7 +1907,7 @@ export default function Home() {
     setSelectedWork(family.selectedWork || 0);
     setSelectedCommander(family.commander || null);
     setRestoredWork({
-      rune: "á›ž",
+      rune: "ᛞ",
       name: family.name,
       path: family.path || "Preserved Masterwork",
       tone: "steel",
@@ -2174,7 +2174,7 @@ export default function Home() {
           cut: cuts[index % Math.max(1, cuts.length)]?.name || "Unresolved flex slot",
           add: { name: card.name, typeLine: card.type_line || "Card", image: card.image_uris?.small || card.card_faces?.[0]?.image_uris?.small || cardImage(card.name) },
           reason: `${metaBreakerDossier.hypothesis} This one-slot Forge Theory test challenges a weakly connected flex slot without rewriting the deck's core package.`,
-          confidence: evidence ? `${evidence.confidence} commander signal Â· score ${Math.round((evidence.evidenceScore || 0) * 100)}/100` : "legal card discovery Â· mechanical fit still requires testing",
+          confidence: evidence ? `${evidence.confidence} commander signal · score ${Math.round((evidence.evidenceScore || 0) * 100)}/100` : "legal card discovery · mechanical fit still requires testing",
         };
       });
       setMetaBreakerExperiments(experiments);
@@ -2190,7 +2190,7 @@ export default function Home() {
     const rows = applyControlledSwap(deckRows, experiment.cut, experiment.add.name);
     if (!rows) return;
     const nextDeck = rows.map((row) => `${row.quantity} ${row.name}`).join("\n");
-    preserveDeckEdit(nextDeck, `Meta Breaker experiment: âˆ’1 ${experiment.cut}, +1 ${experiment.add.name}`);
+    preserveDeckEdit(nextDeck, `Meta Breaker experiment: −1 ${experiment.cut}, +1 ${experiment.add.name}`);
     setMetaBreakerExperiments([]);
   }
 
@@ -2321,19 +2321,19 @@ export default function Home() {
                 <small>COMMISSION I</small>
                 <strong>Forge a new deck</strong>
                 <span>Shape a masterwork from a fresh blueprint.</span>
-                <b>Enter the drafting chamber â†’</b>
+                <b>Enter the drafting chamber →</b>
               </button>
               <button onClick={() => setChamber("refine")}>
                 <small>COMMISSION II</small>
                 <strong>Refine a current build</strong>
                 <span>Bring an existing deck to the anvil.</span>
-                <b>Enter the refinement chamber â†’</b>
+                <b>Enter the refinement chamber →</b>
               </button>
             </div>
           </div>
           <div className="entrance-visual" aria-label="The blue rune archive">
             <div className="forge-sigil">
-              <i>á›Ÿ</i>
+              <i>ᛟ</i>
               <span />
               <b />
             </div>
@@ -2362,13 +2362,13 @@ export default function Home() {
                         onClick={() => openSavedMasterwork(family)}
                       >
                         <small>
-                          {family.format} Â· {family.path || "FORGED DECK"}
+                          {family.format} · {family.path || "FORGED DECK"}
                         </small>
                         <strong>{family.name}</strong>
                         <span>{family.commander?.name || "No commander"}</span>
                         <em>
-                          {Number(evidence.wins || 0)}W Â·{" "}
-                          {Number(evidence.losses || 0)}L Â·{" "}
+                          {Number(evidence.wins || 0)}W ·{" "}
+                          {Number(evidence.losses || 0)}L ·{" "}
                           {family.revisions.length} revision
                           {family.revisions.length === 1 ? "" : "s"}
                         </em>
@@ -2392,14 +2392,14 @@ export default function Home() {
       {(chamber === "commission" || chamber === "refine") && (
         <section className="commission-chamber">
           <button className="back-link" onClick={() => setChamber("entrance")}>
-            â† Return to the Forge Entrance
+            ← Return to the Forge Entrance
           </button>
           <div className="commission-heading">
             <span className="forge-eyebrow">
               <i />{" "}
               {chamber === "commission"
-                ? "COMMISSION I Â· THE BLUEPRINT"
-                : "COMMISSION II Â· THE ANVIL"}
+                ? "COMMISSION I · THE BLUEPRINT"
+                : "COMMISSION II · THE ANVIL"}
             </span>
             <h1>
               {chamber === "commission"
@@ -2408,7 +2408,7 @@ export default function Home() {
             </h1>
             <p>
               {chamber === "commission"
-                ? "These marks become constraintsâ€”not decoration. The Forge will honor how you want to play."
+                ? "These marks become constraints—not decoration. The Forge will honor how you want to play."
                 : "The Forge will preserve what works, expose the fracture, and temper one deliberate change."}
             </p>
           </div>
@@ -2419,7 +2419,7 @@ export default function Home() {
                 <textarea
                   value={deck}
                   onChange={(event) => setDeck(event.target.value)}
-                  placeholder="Paste your Arena, MTGO, or Moxfield list hereâ€¦"
+                  placeholder="Paste your Arena, MTGO, or Moxfield list here…"
                 />
               </label>
             )}
@@ -2480,11 +2480,11 @@ export default function Home() {
               <section className="commander-blueprint">
                 <header>
                   <div>
-                    <span>COMMANDER Â· LEGAL {format.toUpperCase()} INDEX</span>
+                    <span>COMMANDER · LEGAL {format.toUpperCase()} INDEX</span>
                     <strong>
                       {selectedCommander
                         ? "Commander bound to this Blueprint"
-                        : "Choose a legendâ€”or let the Forge discover one"}
+                        : "Choose a legend—or let the Forge discover one"}
                     </strong>
                   </div>
                   {selectedCommander && (
@@ -2507,7 +2507,7 @@ export default function Home() {
                       <span>{selectedCommander.typeLine}</span>
                       <em>
                         {selectedCommander.colors.length
-                          ? selectedCommander.colors.join(" Â· ")
+                          ? selectedCommander.colors.join(" · ")
                           : "COLORLESS"}{" "}
                         IDENTITY
                       </em>
@@ -2521,7 +2521,7 @@ export default function Home() {
                         onChange={(event) =>
                           setCommanderQuery(event.target.value)
                         }
-                        placeholder={`Search legal ${format} commandersâ€¦`}
+                        placeholder={`Search legal ${format} commanders…`}
                         aria-label={`Search legal ${format} commanders`}
                       />
                       <button
@@ -2530,8 +2530,8 @@ export default function Home() {
                         onClick={chooseRandomCommander}
                       >
                         {randomizingCommander
-                          ? "Drawing three starter legendsâ€¦"
-                          : "Surprise me Â· reveal three commanders"}
+                          ? "Drawing three starter legends…"
+                          : "Surprise me · reveal three commanders"}
                       </button>
                     </div>
                     {(commanderSearching ||
@@ -2539,7 +2539,7 @@ export default function Home() {
                       commanderQuery.trim().length > 1) && (
                       <div role="listbox">
                         {commanderSearching ? (
-                          <p>The Archive is searchingâ€¦</p>
+                          <p>The Archive is searching…</p>
                         ) : commanderResults.length ? (
                           commanderResults.map((option) => (
                             <button
@@ -2556,7 +2556,7 @@ export default function Home() {
                                 {option.image ? (
                                   <img src={option.image} alt="" />
                                 ) : (
-                                  "â—†"
+                                  "◆"
                                 )}
                               </span>
                               <b>
@@ -2582,7 +2582,7 @@ export default function Home() {
               <textarea
                 value={commissionNote}
                 onChange={(event) => setCommissionNote(event.target.value)}
-                placeholder="Favorite cards, play patterns you love, or anything this deck must never becomeâ€¦"
+                placeholder="Favorite cards, play patterns you love, or anything this deck must never become…"
               />
             </label>
             <button
@@ -2599,7 +2599,7 @@ export default function Home() {
                   : "Seal the commission"}
               </span>
               <strong>AWAKEN THE GREAT FORGE</strong>
-              <b>â†’</b>
+              <b>→</b>
             </button>
           </div>
         </section>
@@ -2609,7 +2609,7 @@ export default function Home() {
         <section className="forging-ceremony" aria-live="polite">
           <div className="furnace-core" aria-hidden="true">
             <div>
-              <span>á›Ÿ</span>
+              <span>ᛟ</span>
             </div>
           </div>
           <div className="ceremony-copy">
@@ -2657,7 +2657,7 @@ export default function Home() {
           </header>
           <div className="masterwork-actions">
             <span>
-              REVEAL {masterworkPage + 1} Â· {masterworkPage * 3 + 1}â€“
+              REVEAL {masterworkPage + 1} · {masterworkPage * 3 + 1}–
               {masterworkPage * 3 + visibleMasterworks.length} SEEN THIS
               COMMISSION
             </span>
@@ -2670,12 +2670,12 @@ export default function Home() {
               onClick={recycleMasterworks}
             >
               {randomizingCommander
-                ? "Drawing three unseen commandersâ€¦"
+                ? "Drawing three unseen commanders…"
                 : (masterworkPage + 1) * 3 >= masterworks.length
                   ? "All unseen Masterworks revealed"
                   : randomCommission
-                    ? "None feel right? Draw three new commanders â†’"
-                    : "None feel right? Forge three different Masterworks â†’"}
+                    ? "None feel right? Draw three new commanders →"
+                    : "None feel right? Forge three different Masterworks →"}
             </button>
           </div>
           <div className="masterwork-grid">
@@ -2702,7 +2702,7 @@ export default function Home() {
                     <i>{alignedWork.rune}</i>
                     <div>
                       <small>
-                        <GlossaryText text={alignedWork.path} /> Â· {format}
+                        <GlossaryText text={alignedWork.path} /> · {format}
                       </small>
                       <h2>{alignedWork.name}</h2>
                     </div>
@@ -2738,7 +2738,7 @@ export default function Home() {
                       <strong>{preview.card}</strong>
                       {commander && (
                         <small className="identity-name">
-                          <GlossaryText text={colorIdentityName(commander.colors)} /> Â· {commander.colors.join("") || "C"}
+                          <GlossaryText text={colorIdentityName(commander.colors)} /> · {commander.colors.join("") || "C"}
                         </small>
                       )}
                       <p><GlossaryText text={insight.opening} /></p>
@@ -2751,7 +2751,7 @@ export default function Home() {
                   <div className="masterwork-plan">
                     <span>
                       <small>KEY PACKAGES</small>
-                      <b><GlossaryText text={insight.packages.join(" Â· ")} /></b>
+                      <b><GlossaryText text={insight.packages.join(" · ")} /></b>
                     </span>
                     <span>
                       <small>WATCH FOR</small>
@@ -2762,7 +2762,7 @@ export default function Home() {
                     {["Aggression", "Interaction", "Synergy", "Complexity"].map(
                       (label, statIndex) => (
                         <span key={label}>
-                          <small><GlossaryText text={label} /> Â· estimate</small>
+                          <small><GlossaryText text={label} /> · estimate</small>
                           <b>{masterworkStats(commander, poolIndex)[statIndex]}</b>
                         </span>
                       ),
@@ -2770,7 +2770,7 @@ export default function Home() {
                   </div>
                   <p className="masterwork-verdict"><GlossaryText text={alignedWork.verdict} /></p>
                   <button onClick={() => inspectMasterwork(poolIndex)}>
-                    Inspect this Masterwork <b>â†’</b>
+                    Inspect this Masterwork <b>→</b>
                   </button>
                 </article>
               );
@@ -2795,12 +2795,12 @@ export default function Home() {
               onClick={recycleMasterworks}
             >
               {randomizingCommander
-                ? "Drawing three unseen commandersâ€¦"
+                ? "Drawing three unseen commanders…"
                 : (masterworkPage + 1) * 3 >= masterworks.length
                   ? "All unseen Masterworks revealed"
                   : randomCommission
-                    ? "Recycle these Â· Draw three new commanders â†’"
-                    : "Recycle these Â· Forge three new Masterworks â†’"}
+                    ? "Recycle these · Draw three new commanders →"
+                    : "Recycle these · Forge three new Masterworks →"}
             </button>
           </footer>
         </section>
@@ -2812,15 +2812,15 @@ export default function Home() {
             className="back-link"
             onClick={() => setChamber("masterworks")}
           >
-            â† Return to the three Masterworks
+            ← Return to the three Masterworks
           </button>
           <header>
             <span className="forge-eyebrow">
-              <i /> MASTERWORK CHOSEN Â· THE TESTING ANVIL
+              <i /> MASTERWORK CHOSEN · THE TESTING ANVIL
             </span>
             <h1>{chosenWork.name}</h1>
             <p>
-              {chosenWork.path} Â· {format} Â· Revision{" "}
+              {chosenWork.path} · {format} · Revision{" "}
               {Math.max(1, revisions.length)}
             </p>
           </header>
@@ -2828,11 +2828,11 @@ export default function Home() {
             <article className="deck-manuscript">
               <header>
                 <div>
-                  <small>THE FORGED LIST Â· TYPE GALLERY</small>
+                  <small>THE FORGED LIST · TYPE GALLERY</small>
                   <h2>
                     {benchStatus === "forging"
-                      ? "The Forge is producing your deckâ€¦"
-                      : `${deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards Â· ${Object.keys(groupedDeck).length} sections`}
+                      ? "The Forge is producing your deck…"
+                      : `${deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards · ${Object.keys(groupedDeck).length} sections`}
                   </h2>
                 </div>
                 <button
@@ -2849,7 +2849,7 @@ export default function Home() {
                       <small>STRUCTURAL INTEGRITY GATE</small>
                       <b>
                         {deckIntegrity.checking
-                          ? `Verifying ${deckIntegrity.unresolved.length} card record${deckIntegrity.unresolved.length === 1 ? "" : "s"}â€¦`
+                          ? `Verifying ${deckIntegrity.unresolved.length} card record${deckIntegrity.unresolved.length === 1 ? "" : "s"}…`
                           : deckIntegrity.passed
                             ? "This Masterwork is cleared for testing."
                             : "Testing is held until every hard constraint passes."}
@@ -2874,7 +2874,7 @@ export default function Home() {
                       <span>
                         <small>PLAN REALIZATION</small>
                         <b>{(simulationDossier.goldfish.expert.planRealizationRate * 100).toFixed(1)}%</b>
-                        <em>Average turn {simulationDossier.goldfish.expert.averageRealizationTurn?.toFixed(1) || "â€”"}</em>
+                        <em>Average turn {simulationDossier.goldfish.expert.averageRealizationTurn?.toFixed(1) || "—"}</em>
                       </span>
                       <span>
                         <small>PILOT SENSITIVITY</small>
@@ -2886,7 +2886,7 @@ export default function Home() {
                         <b>{simulationDossier.matrix.weakest?.opponent || "Unresolved"}</b>
                         <em>{((simulationDossier.matrix.weakest?.scenarioPassRate || 0) * 100).toFixed(1)}% scenario pass</em>
                       </span>
-                      <p>Modeled Forge trials test mana, role density, and sequencing under pressure. They are viability gatesâ€”not predicted match win rates.</p>
+                      <p>Modeled Forge trials test mana, role density, and sequencing under pressure. They are viability gates—not predicted match win rates.</p>
                     </section>
                   )}
                   {!deckIntegrity.checking && (
@@ -2919,7 +2919,7 @@ export default function Home() {
                         </div>
 
                         <div className="systems-chamber-seal">
-                          <i>á›ž</i>
+                          <i>ᛞ</i>
                           <span>
                             <small>STRUCTURAL CONFIDENCE</small>
                             <strong>{forgeSystemsReport.confidence}</strong>
@@ -3034,7 +3034,7 @@ export default function Home() {
                                   >
                                     <summary>
                                       <span className="system-rune">
-                                        {["á›Ÿ", "á›‰", "á›ž", "áš±", "á›‡"][
+                                        {["ᛟ", "ᛉ", "ᛞ", "ᚱ", "ᛇ"][
                                           systemIndex % 5
                                         ]}
                                       </span>
@@ -3045,7 +3045,7 @@ export default function Home() {
                                         </small>
                                         <strong>{system.name}</strong>
                                         <em>
-                                          {system.members.length} components Â·{" "}
+                                          {system.members.length} components ·{" "}
                                           {system.edges.length} internal links
                                         </em>
                                       </span>
@@ -3216,7 +3216,7 @@ export default function Home() {
                                           </strong>
                                           <p>
                                             {system.redundancy.producerCount}{" "}
-                                            producers Â·{" "}
+                                            producers ·{" "}
                                             {system.redundancy.payoffCount}{" "}
                                             payoffs
                                           </p>
@@ -3280,7 +3280,7 @@ export default function Home() {
                                             }
                                           >
                                             Inspect machine in graph
-                                            <span aria-hidden="true">â†’</span>
+                                            <span aria-hidden="true">→</span>
                                           </button>
                                         </div>
                                       </footer>
@@ -3324,11 +3324,11 @@ export default function Home() {
                                         setHoveredCard(bridge.name)
                                       }
                                     >
-                                      <i>â—‡</i>
+                                      <i>◇</i>
                                       <span>
                                         <strong>{bridge.name}</strong>
                                         <small>
-                                          {bridge.systems.join(" Â· ")}
+                                          {bridge.systems.join(" · ")}
                                         </small>
                                       </span>
                                       <b>{bridge.score}</b>
@@ -3462,7 +3462,7 @@ export default function Home() {
                             }`}
                           >
                             <header>
-                              <span>âš’</span>
+                              <span>⚒</span>
                               <div>
                                 <small>BOUNDED FAILURE ANALYSIS</small>
                                 <h3>{forgeFailureAnalysis.headline}</h3>
@@ -3502,7 +3502,7 @@ export default function Home() {
                         </>
                       ) : (
                         <div className="systems-empty-state">
-                          <i>á›ž</i>
+                          <i>ᛞ</i>
                           <strong>No repeatable system can be named honestly.</strong>
                           <p>
                             The Forge will not manufacture an engine claim from
@@ -3534,8 +3534,8 @@ export default function Home() {
                         <span>
                           <small>
                             {activeSystem
-                              ? "FOCUSED MACHINE GRAPH Â· ORACLE REASONING"
-                              : "INTERACTION GRAPH Â· ORACLE REASONING"}
+                              ? "FOCUSED MACHINE GRAPH · ORACLE REASONING"
+                              : "INTERACTION GRAPH · ORACLE REASONING"}
                           </small>
                           <b>{interactionGraph.confidence}</b>
                         </span>
@@ -3563,14 +3563,14 @@ export default function Home() {
                       {activeSystem && (
                         <div className="active-system-graph-banner">
                           <span className="system-rune" aria-hidden="true">
-                            á›ž
+                            ᛞ
                           </span>
 
                           <span>
                             <small>INSPECTING MACHINE</small>
                             <strong>{activeSystem.name}</strong>
                             <em>
-                              {activeSystem.members.length} components Â·{" "}
+                              {activeSystem.members.length} components ·{" "}
                               {focusedInteractionGraph.edges.length} visible
                               relationships
                             </em>
@@ -3594,22 +3594,22 @@ export default function Home() {
                         <article>
                           <small>STRONGEST PACKAGES</small>
                           {focusedInteractionGraph.packages.slice(0, 4).map((group) => (
-                            <p key={group.signal}><b>{group.signal.toUpperCase()}</b><span>{group.members.slice(0, 4).join(" Â· ")}{group.members.length > 4 ? ` +${group.members.length - 4}` : ""}</span></p>
+                            <p key={group.signal}><b>{group.signal.toUpperCase()}</b><span>{group.members.slice(0, 4).join(" · ")}{group.members.length > 4 ? ` +${group.members.length - 4}` : ""}</span></p>
                           ))}
                           {!focusedInteractionGraph.packages.length && <em>No multi-card package is verified yet.</em>}
                         </article>
                         <article>
                           <small>STRONGEST RELATIONSHIPS</small>
                           {focusedInteractionGraph.edges.slice(0, 3).map((edge) => (
-                            <p key={`${edge.from}-${edge.to}`}><b>{edge.strength}% Â· {edge.signals.join(" + ")}</b><span>{edge.from} â†” {edge.to}</span></p>
+                            <p key={`${edge.from}-${edge.to}`}><b>{edge.strength}% · {edge.signals.join(" + ")}</b><span>{edge.from} ↔ {edge.to}</span></p>
                           ))}
                           {!focusedInteractionGraph.edges.length && <em>No oracle-derived relationship is strong enough to claim.</em>}
                         </article>
                         <article className={focusedInteractionGraph.nonbos.length ? "graph-warning" : ""}>
                           <small>CONFLICT + ISOLATION AUDIT</small>
-                          {focusedInteractionGraph.nonbos.slice(0, 2).map((conflict) => <p key={`${conflict.source}-${conflict.signal}`}><b>NONBO Â· {conflict.source}</b><span>{conflict.reason}</span></p>)}
+                          {focusedInteractionGraph.nonbos.slice(0, 2).map((conflict) => <p key={`${conflict.source}-${conflict.signal}`}><b>NONBO · {conflict.source}</b><span>{conflict.reason}</span></p>)}
                           {!focusedInteractionGraph.nonbos.length && <p><b>NO VERIFIED NONBO</b><span>No symmetrical oracle-text conflict was detected.</span></p>}
-                          <em>{focusedInteractionGraph.isolated.length ? `${focusedInteractionGraph.isolated.length} isolated slot${focusedInteractionGraph.isolated.length === 1 ? "" : "s"}: ${focusedInteractionGraph.isolated.slice(0, 4).join(" Â· ")}` : activeSystem ? "Every card in this machine has at least one modeled relationship." : "Every nonland slot has at least one modeled relationship."}</em>
+                          <em>{focusedInteractionGraph.isolated.length ? `${focusedInteractionGraph.isolated.length} isolated slot${focusedInteractionGraph.isolated.length === 1 ? "" : "s"}: ${focusedInteractionGraph.isolated.slice(0, 4).join(" · ")}` : activeSystem ? "Every card in this machine has at least one modeled relationship." : "Every nonland slot has at least one modeled relationship."}</em>
                         </article>
                       </div>
                       <footer>{interactionGraph.methodology}</footer>
@@ -3619,7 +3619,7 @@ export default function Home() {
                     <footer>
                       <ul>{deckIntegrity.issues.map((issue) => <li key={issue}>{issue}</li>)}</ul>
                       <button onClick={repairDeckIntegrity} disabled={benchStatus === "forging"}>
-                        {benchStatus === "forging" ? "Reforging failed slotsâ€¦" : "Reforge failed constraints"}
+                        {benchStatus === "forging" ? "Reforging failed slots…" : "Reforge failed constraints"}
                       </button>
                     </footer>
                   )}
@@ -3628,7 +3628,7 @@ export default function Home() {
               {metaBreakerDossier && (
                 <section className="meta-breaker-dossier">
                   <header>
-                    <span><small>META BREAKER LAB Â· FOUNDER TEST</small><b>A counter-field hypothesis, never a guaranteed result.</b></span>
+                    <span><small>META BREAKER LAB · FOUNDER TEST</small><b>A counter-field hypothesis, never a guaranteed result.</b></span>
                     <strong>{metaBreakerDossier.confidence}</strong>
                   </header>
                   <div>
@@ -3638,13 +3638,13 @@ export default function Home() {
                   </div>
                   <footer className="meta-breaker-workflow">
                     <button onClick={forgeMetaBreakerExperiments} disabled={metaBreakerLoading || !deckIntegrity.passed}>
-                      {metaBreakerLoading ? "Searching the legal card poolâ€¦" : "Forge three controlled experiments"}
+                      {metaBreakerLoading ? "Searching the legal card pool…" : "Forge three controlled experiments"}
                     </button>
                     {metaBreakerExperiments.length > 0 && <div>
                       {metaBreakerExperiments.map((experiment) => (
                         <article key={`${experiment.cut}-${experiment.add.name}`}>
                           <img src={experiment.add.image} alt="" />
-                          <span><small>FORGE THEORY Â· ONE-SLOT TEST</small><b>âˆ’1 {experiment.cut}<br />+1 {experiment.add.name}</b><p>{experiment.reason}</p><em>{experiment.confidence}</em></span>
+                          <span><small>FORGE THEORY · ONE-SLOT TEST</small><b>−1 {experiment.cut}<br />+1 {experiment.add.name}</b><p>{experiment.reason}</p><em>{experiment.confidence}</em></span>
                           <button onClick={() => applyMetaBreakerExperiment(experiment)}>Create revision</button>
                         </article>
                       ))}
@@ -3661,9 +3661,9 @@ export default function Home() {
                   aria-label="The native Forge is building your complete deck"
                 >
                   <div className="forging-motion" aria-hidden="true">
-                    <i>á›Ÿ</i><b /><span />
+                    <i>ᛟ</i><b /><span />
                   </div>
-                  <small>METAFORGE NATIVE ENGINE Â· MASTERWORK IN PROGRESS</small>
+                  <small>METAFORGE NATIVE ENGINE · MASTERWORK IN PROGRESS</small>
                   <strong>
                     {forgeElapsedSeconds < 5
                       ? "Reading your Blueprint"
@@ -3703,10 +3703,10 @@ export default function Home() {
                         "Card details awaken on inspection"}
                     </span>
                     <span className="slot-justification">
-                      <small>SLOT DUTY Â· {activeRole.toUpperCase()}</small>
+                      <small>SLOT DUTY · {activeRole.toUpperCase()}</small>
                       {activeSlotReason}
                       {activeGraphEdges.map((edge) => (
-                        <em key={`${edge.from}-${edge.to}`}>{edge.signals.join(" + ")} Â· {edge.from === activeCard ? edge.to : edge.from}</em>
+                        <em key={`${edge.from}-${edge.to}`}>{edge.signals.join(" + ")} · {edge.from === activeCard ? edge.to : edge.from}</em>
                       ))}
                     </span>
                   </aside>
@@ -3790,7 +3790,7 @@ export default function Home() {
                   onClick={beginTesting}
                 >
                   {benchStatus === "testing"
-                    ? "Testing is active âœ“"
+                    ? "Testing is active ✓"
                     : "Choose this deck & begin testing"}
                 </button>
               </footer>
@@ -3800,12 +3800,12 @@ export default function Home() {
                 <small>THE FORGE LEARNS WITH YOU</small>
                 <h2>Test. Signal. Reforge.</h2>
                 <p>
-                  One match is a signalâ€”not proof. Tell the Forge what felt
+                  One match is a signal—not proof. Tell the Forge what felt
                   strong, awkward, missing, or simply unlike you.
                 </p>
               </header>
               <label className="opponent-signal">
-                <span>OPPONENT ARCHETYPE Â· OPTIONAL BUT VALUABLE</span>
+                <span>OPPONENT ARCHETYPE · OPTIONAL BUT VALUABLE</span>
                 <select value={opponentArchetype} onChange={(event) => setOpponentArchetype(event.target.value)}>
                   {["Unknown / not sure", "Aggro", "Tempo", "Midrange", "Control", "Ramp", "Combo", "Tokens", "Graveyard", "Other / rogue"].map((option) => (
                     <option key={option}>{option}</option>
@@ -3824,10 +3824,10 @@ export default function Home() {
               <section className="revision-learning-dossier">
                 <header><small>REVISION {Math.max(1, revisions.length)} LEARNING</small><b>{revisionLearning.sampleSize} recorded match{revisionLearning.sampleSize === 1 ? "" : "es"}</b></header>
                 {revisionLearning.actionable.length ? revisionLearning.actionable.slice(0, 3).map((pattern) => (
-                  <p key={pattern.preference}><b>{pattern.preference}</b><span>{pattern.confidence} Â· {pattern.count} matching signals</span></p>
+                  <p key={pattern.preference}><b>{pattern.preference}</b><span>{pattern.confidence} · {pattern.count} matching signals</span></p>
                 )) : <p><b>NO PERSISTENT PREFERENCE YET</b><span>Two matching signals are required before the Forge treats a feeling as a revision pattern.</span></p>}
                 {revisionLearning.matchups.filter((matchup) => matchup.actionable).slice(0, 2).map((matchup) => (
-                  <p key={matchup.opponent}><b>{matchup.opponent} matchup</b><span>{matchup.wins}â€“{matchup.losses} observed Â· {matchup.confidence}, not a predicted win rate</span></p>
+                  <p key={matchup.opponent}><b>{matchup.opponent} matchup</b><span>{matchup.wins}–{matchup.losses} observed · {matchup.confidence}, not a predicted win rate</span></p>
                 ))}
               </section>
               <label>
@@ -3835,7 +3835,7 @@ export default function Home() {
                 <textarea
                   value={playerSignal}
                   onChange={(event) => setPlayerSignal(event.target.value)}
-                  placeholder="Example: I keep running out of threats after the first board wipe, but the early pressure feels exactly rightâ€¦"
+                  placeholder="Example: I keep running out of threats after the first board wipe, but the early pressure feels exactly right…"
                 />
               </label>
               <button
@@ -3844,12 +3844,12 @@ export default function Home() {
                 onClick={consultForge}
               >
                 {benchStatus === "thinking"
-                  ? "The Forge is studying your signalâ€¦"
-                  : "Ask the Forge for alternatives â†’"}
+                  ? "The Forge is studying your signal…"
+                  : "Ask the Forge for alternatives →"}
               </button>
               {forgeReply && (
                 <section className="forge-refinement">
-                  <small>REFINEMENT OPTIONS Â· FORGE THEORY</small>
+                  <small>REFINEMENT OPTIONS · FORGE THEORY</small>
                   <pre>{forgeReply}</pre>
                   <button onClick={preserveRevision}>
                     Preserve as revision {revisions.length + 1}
@@ -3859,7 +3859,7 @@ export default function Home() {
               <footer>
                 <b>{revisions.length || 1}</b>
                 <span>
-                  REVISION{revisions.length === 1 ? "" : "S"} PRESERVED Â·
+                  REVISION{revisions.length === 1 ? "" : "S"} PRESERVED ·
                   PRIVATE BENCH SYNC
                 </span>
               </footer>
@@ -3903,13 +3903,13 @@ export default function Home() {
                         {family.commander?.image ? (
                           <img src={family.commander.image} alt="" />
                         ) : (
-                          <i>á›ž</i>
+                          <i>ᛞ</i>
                         )}
                       </span>
                       <b>{family.name}</b>
                       <small>{family.commander?.name || family.format}</small>
                       <em>
-                        {Number(evidence.wins || 0)}W Â·{" "}
+                        {Number(evidence.wins || 0)}W ·{" "}
                         {Number(evidence.losses || 0)}L
                       </em>
                     </button>
@@ -3924,7 +3924,7 @@ export default function Home() {
             <footer>
               <button onClick={showFullArchive}>View full Archive</button>
               <button className="new-forge" onClick={startNewForge}>
-                ï¼‹ Start a New Forge
+                ＋ Start a New Forge
               </button>
             </footer>
           </div>
@@ -3934,7 +3934,7 @@ export default function Home() {
               onClick={() => setBenchOpen((value) => !value)}
               aria-expanded={benchOpen}
             >
-              <i>á›ž</i>
+              <i>ᛞ</i>
               <span>
                 <small>YOUR BENCH</small>
                 <b>
@@ -3959,7 +3959,7 @@ export default function Home() {
               onClick={() => setEditAnvilOpen(true)}
               aria-label="Raise the Editing Anvil"
             >
-              <i>âš’</i>
+              <i>⚒</i>
               <span>Raise Editing Anvil</span>
             </button>
           )}
@@ -3972,7 +3972,7 @@ export default function Home() {
             onClick={() => setEditAnvilOpen((open) => !open)}
             aria-expanded={editAnvilOpen}
           >
-            <i>âš’</i>
+            <i>⚒</i>
             {editAnvilOpen ? "Lower Editing Anvil" : "Raise Editing Anvil"}
           </button>
           <header>
@@ -3995,14 +3995,14 @@ export default function Home() {
                 <input
                   value={cardSearch}
                   onChange={(event) => setCardSearch(event.target.value)}
-                  placeholder="Try Opt, Lightning Bolt, Sol Ringâ€¦"
+                  placeholder="Try Opt, Lightning Bolt, Sol Ring…"
                 />
               </label>
               {cardSearchResults.length > 0 && (
                 <div>
                   {cardSearchResults.map((card) => (
                     <article key={card.name}>
-                      {card.image ? <img src={card.image} alt="" /> : <i>â—†</i>}
+                      {card.image ? <img src={card.image} alt="" /> : <i>◆</i>}
                       <span>
                         <b>{card.name}</b>
                         <small>{card.typeLine}</small>
@@ -4043,7 +4043,7 @@ export default function Home() {
               }}
             >
               <header>
-                <span>â—‡</span>
+                <span>◇</span>
                 <div>
                   <small>CONSIDERING</small>
                   <b>Possible cuts and replacements</b>
@@ -4088,7 +4088,7 @@ export default function Home() {
               }}
             >
               <header>
-                <span>Ã—</span>
+                <span>×</span>
                 <div>
                   <small>THE QUENCH</small>
                   <b>Removed from this revision</b>
@@ -4131,7 +4131,7 @@ export default function Home() {
                 <small>THE FORGE ANSWERS THE CUT</small>
                 <h2>
                   {replacementLoading
-                    ? `Studying what ${lastCutCard} was doingâ€¦`
+                    ? `Studying what ${lastCutCard} was doing…`
                     : replacementRecommendations.length
                       ? `Three paths can fill ${lastCutCard}'s place.`
                       : `Search the Archive for ${lastCutCard}'s successor.`}
@@ -4168,7 +4168,7 @@ export default function Home() {
                     }}
                   >
                     <span>
-                      {card.image ? <img src={card.image} alt="" /> : <i>â—†</i>}
+                      {card.image ? <img src={card.image} alt="" /> : <i>◆</i>}
                       <em>FORGE OPTION {index + 1}</em>
                     </span>
                     <div>
@@ -4204,7 +4204,7 @@ export default function Home() {
                       );
                   }}
                 >
-                  <i>ï¼‹</i>
+                  <i>＋</i>
                   <b>DROP INTO THE DECK</b>
                   <span>The candidate becomes part of this revision.</span>
                 </aside>
