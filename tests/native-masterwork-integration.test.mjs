@@ -23,5 +23,10 @@ test("native forging exposes visible elapsed progress and moving stages", () => 
 test("native forging explains the tournament verdict and bounded tradeoff", () => {
   assert.match(generation, /selected\.tournament\.reason/);
   assert.match(generation, /tradeoff frontier/);
-  assert.match(generation, /not a performance claim/);
+  assert.match(generation, /reasoning\.boundary/);
+});
+
+test("native forging exposes bounded counterfactual reasoning", () => {
+  assert.match(generation, /nativeReport\.reasoning\.summary/);
+  assert.match(generation, /nativeReport\.reasoning\.boundary/);
 });

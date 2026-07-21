@@ -1,4 +1,5 @@
 ﻿import { runNativeMasterworkTournament } from "./native-masterwork-tournament.mjs";
+import { explainNativeMasterworkDecision } from "./native-masterwork-reasoning.mjs";
 
 // MetaForge Native Masterwork Engine
 // Card facts may come from verified catalogs; every construction and ranking
@@ -79,30 +80,51 @@ function preferenceTerms(input) {
     .split(/[^a-z0-9+'-]+/).filter((term) => term.length >= 4 && !ignored.has(term)));
 }
 
-function scoreCard(card, input, variant, evidenceByName) {
+function analyzeCard(card, context, evidenceByName) {
   const roles = classifyNativeCard(card);
   const text = normalized(cardText(card));
-  const weights = STRATEGY_WEIGHTS[input.strategy] || STRATEGY_WEIGHTS["Balanced midrange"];
-  const roleScore = roles.reduce((sum, role) => sum + (weights[role] || (role === "threat" ? 7 : 2)), 0);
-  const commanderSignals = conceptSignals(input.commander?.oracleText || "");
-  const synergyHits = roles.filter((role) => commanderSignals.includes(role)).length;
-  const terms = preferenceTerms(input);
-  const preferenceHits = terms.filter((term) => text.includes(term)).length;
-  const cmc = manaValueFromCost(card.manaCost || card.mana_cost, card.cmc);
-  const ideal = /Aggressive|Tempo/i.test(input.strategy) ? 2.4 : /Control/i.test(input.strategy) ? 3.2 : 2.9;
-  const curveScore = Math.max(0, 10 - Math.abs(cmc - ideal) * 3.2) * variant.curve;
-  const resilienceRoles = roles.filter((role) => ["draw", "protection", "recursion", "interaction"].includes(role)).length;
   const evidence = evidenceByName.get(normalized(card.name)) || {};
-  const evidenceScore = clamp(Number(evidence.evidenceScore || 0) * 100) * 0.12;
-  const discovery = evidence.newCardPotential ? 2 : 0;
-  const deterministicTieBreak = (hash(`${input.seed}|${variant.id}|${card.name}`) % 1000) / 100000;
   return {
     card,
     roles,
-    cmc,
-    score: roleScore + synergyHits * 7 * variant.synergy + preferenceHits * 3.5 + curveScore + resilienceRoles * 3 * variant.resilience + evidenceScore + discovery + deterministicTieBreak,
-    synergyHits,
-    preferenceHits,
+    text,
+    cmc: manaValueFromCost(card.manaCost || card.mana_cost, card.cmc),
+    roleScore: roles.reduce((sum, role) => sum + (context.weights[role] || (role === "threat" ? 7 : 2)), 0),
+    synergyHits: roles.filter((role) => context.commanderSignals.includes(role)).length,
+    preferenceHits: context.terms.filter((term) => text.includes(term)).length,
+    resilienceRoles: roles.filter((role) => ["draw", "protection", "recursion", "interaction"].includes(role)).length,
+    evidenceScore: clamp(Number(evidence.evidenceScore || 0) * 100) * 0.12,
+    discovery: evidence.newCardPotential ? 2 : 0,
+  };
+}
+
+function prepareForgeAnalysis(input, evidenceByName) {
+  const context = {
+    weights: STRATEGY_WEIGHTS[input.strategy] || STRATEGY_WEIGHTS["Balanced midrange"],
+    commanderSignals: conceptSignals(input.commander?.oracleText || ""),
+    terms: preferenceTerms(input),
+    ideal: /Aggressive|Tempo/i.test(input.strategy) ? 2.4 : /Control/i.test(input.strategy) ? 3.2 : 2.9,
+  };
+  const commanderName = normalized(input.commander?.name);
+  const cards = input.cards.map((card) => analyzeCard(card, context, evidenceByName));
+  return {
+    context,
+    cards,
+    spells: cards.filter((entry) => !entry.roles.includes("land") && normalized(entry.card.name) !== commanderName),
+    lands: cards.filter((entry) => entry.roles.includes("land")).map((entry) => entry.card),
+  };
+}
+
+function scoreCard(entry, input, variant, context) {
+  const curveScore = Math.max(0, 10 - Math.abs(entry.cmc - context.ideal) * 3.2) * variant.curve;
+  const deterministicTieBreak = (hash(`${input.seed}|${variant.id}|${entry.card.name}`) % 1000) / 100000;
+  return {
+    card: entry.card,
+    roles: entry.roles,
+    cmc: entry.cmc,
+    score: entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.preferenceHits * 3.5 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + deterministicTieBreak,
+    synergyHits: entry.synergyHits,
+    preferenceHits: entry.preferenceHits,
   };
 }
 
@@ -127,13 +149,17 @@ function chooseSpells(scored, slots, singleton, targets) {
   const copies = singleton ? 1 : 4;
   let remaining = slots;
   while (remaining > 0) {
-    const candidate = scored
-      .filter((entry) => !selectedNames.has(normalized(entry.card.name)))
-      .map((entry) => {
-        const deficit = entry.roles.reduce((sum, role) => sum + Math.max(0, (targets[role] || 0) - (roleCounts.get(role) || 0)) * 4, 0);
-        return { ...entry, adjusted: entry.score + deficit };
-      })
-      .sort((left, right) => right.adjusted - left.adjusted || left.card.name.localeCompare(right.card.name))[0];
+    let candidate = null;
+    let bestAdjusted = Number.NEGATIVE_INFINITY;
+    for (const entry of scored) {
+      if (selectedNames.has(normalized(entry.card.name))) continue;
+      const deficit = entry.roles.reduce((sum, role) => sum + Math.max(0, (targets[role] || 0) - (roleCounts.get(role) || 0)) * 4, 0);
+      const adjusted = entry.score + deficit;
+      if (adjusted > bestAdjusted || (adjusted === bestAdjusted && candidate && entry.card.name.localeCompare(candidate.card.name) < 0)) {
+        candidate = entry;
+        bestAdjusted = adjusted;
+      }
+    }
     if (!candidate) break;
     const quantity = Math.min(copies, remaining);
     selected.push({ quantity, name: candidate.card.name, roles: candidate.roles, score: Number(candidate.score.toFixed(3)), cmc: candidate.cmc });
@@ -190,14 +216,14 @@ function evaluateCandidate(rows, roleCounts, input, variant) {
   return { score: Number(score.toFixed(3)), roleCoverage: Number(roleCoverage.toFixed(3)), multiRoleDensity: Number(multiRole.toFixed(3)), averageCmc: Number(averageCmc.toFixed(2)), curveHealth: Math.round(curveHealth), cohesion: Math.round(cohesion), resilience: Math.round(resilience) };
 }
 
-function buildCandidate(input, variant, evidenceByName) {
+function buildCandidate(input, variant, analysis) {
   const target = input.target || (["Commander", "Brawl"].includes(input.format) ? 100 : 60);
   const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
   const commanderSlots = input.commander ? 1 : 0;
   const landSlots = singleton ? Math.round(target * 0.37) : Math.round(target * 0.4);
-  const spells = input.cards.filter((card) => !classifyNativeCard(card).includes("land") && normalized(card.name) !== normalized(input.commander?.name));
-  const lands = input.cards.filter((card) => classifyNativeCard(card).includes("land"));
-  const scored = spells.map((card) => scoreCard(card, input, variant, evidenceByName));
+  const spells = analysis.spells;
+  const lands = analysis.lands;
+  const scored = spells.map((entry) => scoreCard(entry, input, variant, analysis.context));
   const { selected, roleCounts } = chooseSpells(scored, target - landSlots - commanderSlots, singleton, roleTargets(input.format, input.strategy));
   const mana = buildManaBase(input, landSlots, lands, variant);
   const rows = [
@@ -220,18 +246,22 @@ function buildCandidate(input, variant, evidenceByName) {
 export function forgeNativeMasterwork(input) {
   if (!input || !Array.isArray(input.cards) || !input.cards.length) throw new Error("Native Forge requires a verified card pool");
   const evidenceByName = new Map((input.evidence || []).map((entry) => [normalized(entry.name), entry]));
-  const candidates = VARIANTS.map((variant) => buildCandidate(input, variant, evidenceByName));
+  const analysis = prepareForgeAnalysis(input, evidenceByName);
+  const candidates = VARIANTS.map((variant) => buildCandidate(input, variant, analysis));
   const tournament = runNativeMasterworkTournament(candidates, { format: input.format, target: input.target });
   const verdictById = new Map(tournament.results.map((result) => [result.id, result]));
   const ranked = candidates
     .map((candidate) => ({ ...candidate, tournament: verdictById.get(candidate.id) }))
     .sort((left, right) => right.tournament.tournamentScore - left.tournament.tournamentScore || left.id.localeCompare(right.id));
   const selected = ranked.find((candidate) => candidate.id === tournament.selectedId);
+  const reasoning = explainNativeMasterworkDecision(ranked, tournament);
   return Object.freeze({
-    engine: "metaforge-native-masterwork-v2",
+    engine: "metaforge-native-masterwork-v3",
     selected,
     candidates: ranked,
     tournament,
-    methodology: "MetaForge classified verified card text, filled explicit role requirements, assembled three complete structural tempers, applied hard rejection gates, and advanced a nondominated Blueprint tradeoff.",
+    reasoning,
+    diagnostics: Object.freeze({ analysisPasses: 1, cardsAnalyzed: analysis.cards.length, candidatesBuilt: ranked.length }),
+    methodology: "MetaForge analyzed each verified card once, filled explicit role requirements, assembled three complete structural tempers, applied hard rejection gates, advanced a nondominated Blueprint tradeoff, and compared it with the closest viable rival.",
   });
 }
