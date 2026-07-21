@@ -12,6 +12,7 @@ import {
 import { buildForgeCausalityReport } from "./forge-causality-engine.mjs";
 import { learnRevisionPreferences } from "./revision-learning.mjs";
 import { applyControlledSwap, rankExperimentCuts } from "./meta-breaker-experiment.mjs";
+import { forgeNativeMasterwork } from "./native-masterwork-engine.mjs";
 
 type Chamber =
   | "entrance"
@@ -733,6 +734,81 @@ const BASIC_LANDS: Record<string, string> = {
 const BASIC_LAND_KEYS = new Set(
   [...Object.values(BASIC_LANDS), "Wastes"].map(cardFactKey),
 );
+type NativeForgeCard = {
+  name: string;
+  manaCost: string;
+  cmc: number;
+  typeLine: string;
+  oracleText: string;
+  colorIdentity: string[];
+  keywords: string[];
+};
+
+const nativeCardFact = (card: any): NativeForgeCard => ({
+  name: String(card.name || ""),
+  manaCost: String(card.mana_cost || card.card_faces?.[0]?.mana_cost || ""),
+  cmc: Number(card.cmc || 0),
+  typeLine: String(card.type_line || ""),
+  oracleText: String(
+    card.oracle_text ||
+      (card.card_faces || []).map((face: any) => face.oracle_text || "").join("\n"),
+  ),
+  colorIdentity: card.color_identity || [],
+  keywords: card.keywords || [],
+});
+
+const loadNativeForgePool = async (
+  format: string,
+  commander: CommanderOption | null,
+  lynchpin: string,
+) => {
+  let anchor: any = null;
+  if (!commander && lynchpin) {
+    const anchorResponse = await fetch(
+      `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(lynchpin)}`,
+      { headers: { Accept: "application/json" } },
+    );
+    if (anchorResponse.ok) anchor = await anchorResponse.json();
+  }
+  const colors = commander?.colors?.length
+    ? commander.colors
+    : anchor?.color_identity?.length
+      ? anchor.color_identity
+      : [];
+  const colorQuery = colors.length
+    ? ` id<=${colors.join("").toLowerCase()}`
+    : commander
+      ? " id:c"
+      : "";
+  const query = encodeURIComponent(
+    `${scryfallFormatTerms(format)}${colorQuery} -is:funny`,
+  );
+  const cards: NativeForgeCard[] = [];
+  const seen = new Set<string>();
+  let nextUrl = `https://api.scryfall.com/cards/search?q=${query}&order=edhrec&unique=cards`;
+
+  for (let page = 0; nextUrl && page < 4; page += 1) {
+    const response = await fetch(nextUrl, {
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) throw new Error("The verified card catalog is unavailable");
+    const result = await response.json();
+    for (const rawCard of result.data || []) {
+      const card = nativeCardFact(rawCard);
+      const key = cardFactKey(card.name);
+      if (!card.name || seen.has(key)) continue;
+      seen.add(key);
+      cards.push(card);
+    }
+    nextUrl = result.has_more ? String(result.next_page || "") : "";
+  }
+
+  if (anchor) {
+    const fact = nativeCardFact(anchor);
+    if (!seen.has(cardFactKey(fact.name))) cards.unshift(fact);
+  }
+  return { cards, colors };
+};
 const normalizeCommanderDeck = (
   text: string,
   commander: CommanderOption | null,
@@ -905,6 +981,8 @@ export default function Home() {
   const [removedCards, setRemovedCards] = useState<DeckRow[]>([]);
   const [editAnvilOpen, setEditAnvilOpen] = useState(true);
   const [forgeGenerationError, setForgeGenerationError] = useState("");
+  const [forgeStartedAt, setForgeStartedAt] = useState<number | null>(null);
+  const [forgeElapsedSeconds, setForgeElapsedSeconds] = useState(0);
   const [replacementRecommendations, setReplacementRecommendations] = useState<
     CardSearchResult[]
   >([]);
@@ -1738,12 +1816,15 @@ export default function Home() {
     if (commander) setSelectedCommander(commander);
     setChamber("workbench");
     setBenchStatus("forging");
+    setForgeStartedAt(Date.now());
+    setForgeElapsedSeconds(0);
     setForgeReply("");
     setForgeGenerationError("");
     setConsideringCards([]);
     setRemovedCards([]);
     setReplacementRecommendations([]);
     setLastCutCard("");
+
     let evidence: EdhrecEvidence | null = null;
     if (commander && isCommanderFormat(format)) {
       try {
@@ -1752,58 +1833,48 @@ export default function Home() {
         );
         if (evidenceResponse.ok) evidence = await evidenceResponse.json();
       } catch {
-        /* The Forge can proceed from verified card facts alone. */
+        /* Adoption evidence is optional; native construction remains available. */
       }
     }
     setEdhrecEvidence(evidence);
-    const evidenceFacts = formatEdhrecEvidence(evidence, format);
-    const fieldFacts = formatMetaEvidence(format);
-    const prompt = `Forge the complete ${format} deck represented by ${work.name}. Its identity is ${work.path}; required ${isCommanderFormat(format) ? "commander" : "lynchpin"}: ${preview.card}; requested play style: ${strategy}. The player's Blueprint note is: ${commissionNote.trim() || "No additional note"}. ${format === "Brawl" ? "MetaForge Brawl means current Arena Brawl: exactly 100 cards total, one commander plus 99 main-deck cards, using live Brawl legality and Arena availability." : format === "Standard Brawl" ? "MetaForge Standard Brawl means exactly 60 cards total, one commander plus 59 Standard-legal Arena cards." : ""} Return a concise pilot brief followed by one complete import-ready decklist. The chosen commander, oracle text, legality, Arena availability, and color identity in verified facts are binding constraints. Build coherent packages, not a pile of individually popular cards: each nonland flex slot should be an enabler, payoff, interaction, protection, acceleration, advantage, or explicit metagame answer. Prefer redundant effects for essential packages and avoid symmetrical rules-text conflicts with the deck's own plan. Use sample-adjusted EDHREC signals only as commander-relative discovery evidence. Use tournament field evidence only while its freshness gate is open. Do not claim this commander is unverified when its live record is supplied. This is a founder-test candidate: never claim performance that has not been verified, and explicitly identify any remaining uncertainty.`;
-    const target = targetDeckSize(format);
+
     try {
-      let answer = "";
-      let total = 0;
-      for (let attempt = 0; attempt < 2; attempt += 1) {
-        const repairInstruction = attempt
-          ? `Your previous response parsed as ${total} cards, but this format requires exactly ${target}. Rewrite the entire import-ready list now. Do not explain the error. Every decklist line must begin with a numeric quantity.`
-          : prompt;
-        const response = await fetch("/api/forge/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            task: "deck_generation",
-            depth: "deep",
-            messages: [{ role: "user", content: repairInstruction }],
-            context: {
-              game: "mtg",
-              deckName: work.name,
-              format,
-              deckText: attempt ? answer : "",
-              verifiedFacts: `${commander?.verifiedFacts || "No commander record required for this format."}\n\n${evidenceFacts}\n\n${fieldFacts}`,
-              coachingProfile: "Prefers concise, testable deck guidance.",
-            },
-          }),
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data?.error || "Forge unavailable");
-        answer = String(data.answer || "");
-        const normalized = normalizeCommanderDeck(answer, commander, format);
-        if (normalized) answer = normalized;
-        total = parseDeckRows(answer).reduce(
-          (sum, row) => sum + row.quantity,
-          0,
-        );
-        if (total === target) break;
+      const pool = await loadNativeForgePool(format, commander, preview.card);
+      const nativeReport = forgeNativeMasterwork({
+        format,
+        target: targetDeckSize(format),
+        strategy,
+        path: work.path,
+        note: commissionNote,
+        seed: hashText(`${commissionSeed}|${index}|${work.name}`),
+        colors: pool.colors,
+        commander: commander
+          ? {
+              name: commander.name,
+              colors: commander.colors,
+              oracleText: commander.verifiedFacts,
+            }
+          : null,
+        cards: pool.cards,
+        evidence: evidence?.cards || [],
+      });
+      const answer = nativeReport.selected.deckText;
+      const rows = parseDeckRows(answer);
+      const total = rows.reduce((sum, row) => sum + row.quantity, 0);
+      if (total !== targetDeckSize(format)) {
+        throw new Error("Native Forge produced an incomplete candidate");
       }
-      if (total !== target) throw new Error("Incomplete Forge list");
       const firstRevision = [
         {
           deck: answer,
-          note: "Original Forge candidate",
+          note: `Original native Forge candidate Â· ${nativeReport.selected.label}`,
           createdAt: new Date().toISOString(),
         },
       ];
       setForgedDeck(answer);
+      setForgeReply(
+        `${nativeReport.methodology}\n\nSelected ${nativeReport.selected.label}: ${(nativeReport.selected.evaluation.roleCoverage * 100).toFixed(0)}% role coverage, ${nativeReport.selected.evaluation.curveHealth}/100 curve health. This is a testable structural hypothesis, not a performance claim.`,
+      );
       setRevisions(firstRevision);
       void persistStoryBench(
         firstRevision,
@@ -1811,16 +1882,18 @@ export default function Home() {
         generationId,
         { work, commander, index },
       );
-    } catch {
+    } catch (error) {
       setForgedDeck("");
       setForgeGenerationError(
-        "The Forge did not finish a valid list. Your commission is safeâ€”strike the anvil again to retry.",
+        error instanceof Error
+          ? `${error.message}. Your commission is safeâ€”strike the anvil again when verified card data is available.`
+          : "The native Forge could not complete this candidate. Your commission is safeâ€”strike the anvil again.",
       );
     } finally {
       setBenchStatus("idle");
+      setForgeStartedAt(null);
     }
   }
-
   function openSavedMasterwork(family: SavedFamily) {
     const restoredRevisions = family.revisions.map((revision) => ({
       deck: revision.deckText,
@@ -3581,9 +3654,37 @@ export default function Home() {
                 </section>
               )}
               {benchStatus === "forging" ? (
-                <pre>
-                  Tempering curve, roles, interaction, and the mana latticeâ€¦
-                </pre>
+                <section
+                  className="masterwork-forging-progress"
+                  role="status"
+                  aria-live="polite"
+                  aria-label="The native Forge is building your complete deck"
+                >
+                  <div className="forging-motion" aria-hidden="true">
+                    <i>á›Ÿ</i><b /><span />
+                  </div>
+                  <small>METAFORGE NATIVE ENGINE Â· MASTERWORK IN PROGRESS</small>
+                  <strong>
+                    {forgeElapsedSeconds < 5
+                      ? "Reading your Blueprint"
+                      : forgeElapsedSeconds < 12
+                        ? "Classifying roles and synergy packages"
+                        : forgeElapsedSeconds < 22
+                          ? "Forging three competing candidates"
+                          : forgeElapsedSeconds < 35
+                            ? "Testing curve, resilience, and legality"
+                            : "Selecting the strongest complete Masterwork"}
+                  </strong>
+                  <p>
+                    MetaForge is building locally from verified card evidence.
+                    The chamber will open automatically when every slot is set.
+                  </p>
+                  <time>
+                    {String(Math.floor(forgeElapsedSeconds / 60)).padStart(2, "0")}:
+                    {String(forgeElapsedSeconds % 60).padStart(2, "0")}
+                  </time>
+                  <div className="forging-progress-rail" aria-hidden="true"><span /></div>
+                </section>
               ) : deckRows.length ? (
                 <div className="deck-gallery">
                   <aside className="card-preview-stage">

@@ -267,3 +267,11 @@
     width: 100%;
   }
 }
+
+/* Bench launcher minimum readable type */
+.bench-toggle small{font-size:11px;line-height:1.2}
+.bench-toggle b{font-size:13px;line-height:1.25}
+.bench-toggle em{font-size:12px}
+.bench-tray header small{font-size:10px}
+.bench-tray header button,.bench-tray footer button{font-size:11px}
+.bench-decks small{font-size:10px}

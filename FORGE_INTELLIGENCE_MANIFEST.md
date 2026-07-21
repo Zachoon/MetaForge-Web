@@ -76,6 +76,10 @@ not justify a confident claim.
 - `app/forge-causality-engine.mjs`: immutable structural-impact profiles,
   critical-node and amplifier detection, collapse/recovery scoring, and a
   controlled one-slot upgrade contract.
+- `app/native-masterwork-engine.mjs`: model-independent rules-text
+  classification, Blueprint personalization, role-targeted construction,
+  deterministic three-candidate tournaments, mana-base assembly, and bounded
+  structural ranking for complete Masterwork decks.
 - `app/forge-simulation.mjs`: deterministic library and opening-hand trials.
 - `app/goldfish-simulation.mjs`: plan-realization and pilot-sensitivity gates.
 - `app/matchup-simulation.mjs`: bounded archetype pressure scenarios and
@@ -106,6 +110,11 @@ is never treated as proof of quality. Missing field coverage never becomes an
 invented metagame claim.
 
 ## Active program
+
+The native Masterwork constructor now owns deck generation without an external
+model dependency. It consumes verified card facts and optional adoption evidence,
+then ranks three personalized structural candidates before preserving the selected
+list as revision one.
 
 The persistent implementation goal tracks broader live metagame ingestion,
 sample-aware personalization, and continued Meta Breaker refinement. The live

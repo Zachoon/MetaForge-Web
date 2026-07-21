@@ -1,0 +1,227 @@
+﻿// MetaForge Native Masterwork Engine
+// Card facts may come from verified catalogs; every construction and ranking
+// decision in this module is deterministic and owned by MetaForge.
+
+const BASIC_BY_COLOR = Object.freeze({
+  W: "Plains", U: "Island", B: "Swamp", R: "Mountain", G: "Forest", C: "Wastes",
+});
+
+const ROLE_PATTERNS = Object.freeze({
+  ramp: [/add .{0,18}mana/i, /create .{0,18}treasure/i, /search your library for .{0,30}land/i, /land card.{0,30}battlefield/i],
+  draw: [/draw (?:a|one|two|three|x|that many|cards?)/i, /look at the top .{0,40}(?:hand|exile)/i, /impulse/i],
+  interaction: [/destroy target/i, /exile target/i, /counter target/i, /deals? \d+ damage to/i, /return target .{0,25}owner'?s hand/i, /-\d+\/-\d+/i],
+  protection: [/hexproof/i, /indestructible/i, /phase out/i, /protection from/i, /counter target spell or ability/i],
+  recursion: [/return target .{0,35}(?:graveyard|battlefield|hand)/i, /cast .{0,30}from your graveyard/i, /reanimate/i],
+  sweeper: [/destroy all/i, /exile all/i, /all creatures get -/i, /deals? \d+ damage to each/i],
+  selection: [/scry/i, /surveil/i, /discard .{0,20}draw/i, /draw .{0,20}discard/i],
+  tokens: [/create (?:a|one|two|three|x|that many|\d+) .{0,45}token/i],
+  sacrifice: [/sacrifice (?:a|another|one|target)/i, /whenever .{0,25} dies/i],
+  counters: [/[+\-]\d+\/[+\-]\d+ counter/i, /one or more counters/i, /proliferate/i],
+  graveyard: [/graveyard/i, /mill /i, /surveil/i, /flashback/i, /escape/i],
+  artifacts: [/artifact/i, /equipment/i, /treasure/i],
+  spells: [/instant or sorcery/i, /noncreature spell/i, /whenever you cast/i, /prowess/i],
+  lifegain: [/you gain .{0,12}life/i, /whenever you gain life/i, /lifelink/i],
+  combat: [/whenever .{0,25} attacks/i, /combat damage/i, /double strike/i, /extra combat/i],
+});
+
+const STRATEGY_WEIGHTS = Object.freeze({
+  Aggressive: { ramp: 4, draw: 7, interaction: 8, protection: 7, threat: 14, combat: 10 },
+  Control: { ramp: 7, draw: 13, interaction: 15, protection: 6, sweeper: 12, threat: 5 },
+  Combo: { ramp: 10, draw: 13, interaction: 7, protection: 10, selection: 10, threat: 5 },
+  "Balanced midrange": { ramp: 10, draw: 10, interaction: 11, protection: 6, recursion: 6, threat: 10 },
+  Midrange: { ramp: 9, draw: 10, interaction: 10, protection: 6, recursion: 7, threat: 11 },
+  Tempo: { ramp: 4, draw: 9, interaction: 12, protection: 9, threat: 10, combat: 7 },
+});
+
+const VARIANTS = Object.freeze([
+  { id: "cohesion", label: "Synergy Temper", synergy: 1.35, resilience: 0.8, curve: 0.9 },
+  { id: "resilience", label: "Resilient Temper", synergy: 0.9, resilience: 1.4, curve: 0.9 },
+  { id: "precision", label: "Precision Temper", synergy: 1.0, resilience: 1.0, curve: 1.35 },
+]);
+
+const clamp = (value, min = 0, max = 100) => Math.min(max, Math.max(min, Number(value) || 0));
+const normalized = (value = "") => String(value).normalize("NFKC").trim().toLocaleLowerCase("en");
+const hash = (value = "") => Array.from(String(value)).reduce((total, character) => ((total * 33) ^ character.charCodeAt(0)) >>> 0, 5381);
+const unique = (values) => [...new Set(values.filter(Boolean))];
+
+function manaValueFromCost(cost = "", fallback = 0) {
+  const symbols = [...String(cost).matchAll(/\{([^}]+)\}/g)].map((match) => match[1]);
+  if (!symbols.length) return Number(fallback) || 0;
+  return symbols.reduce((sum, symbol) => sum + (/^\d+$/.test(symbol) ? Number(symbol) : /^(X|Y|Z)$/.test(symbol) ? 0 : 1), 0);
+}
+
+function cardText(card) {
+  return `${card.name || ""}\n${card.typeLine || card.type_line || ""}\n${card.oracleText || card.oracle_text || ""}\n${(card.keywords || []).join(" ")}`;
+}
+
+export function classifyNativeCard(card) {
+  const typeLine = String(card.typeLine || card.type_line || "");
+  const text = cardText(card);
+  const roles = [];
+  if (/\bLand\b/i.test(typeLine)) roles.push("land");
+  for (const [role, patterns] of Object.entries(ROLE_PATTERNS)) {
+    if (patterns.some((pattern) => pattern.test(text))) roles.push(role);
+  }
+  if (!roles.includes("land") && (/\bCreature\b|Planeswalker/i.test(typeLine) || /you win the game/i.test(text))) roles.push("threat");
+  return unique(roles);
+}
+
+function conceptSignals(text = "") {
+  const source = normalized(text);
+  return Object.keys(ROLE_PATTERNS).filter((role) => ROLE_PATTERNS[role].some((pattern) => pattern.test(source)));
+}
+
+function preferenceTerms(input) {
+  const ignored = new Set(["this", "that", "with", "from", "your", "deck", "cards", "card", "want", "play", "forge", "must", "never", "should"]);
+  return unique(normalized(`${input.strategy} ${input.path} ${input.note} ${input.commander?.oracleText || ""}`)
+    .split(/[^a-z0-9+'-]+/).filter((term) => term.length >= 4 && !ignored.has(term)));
+}
+
+function scoreCard(card, input, variant, evidenceByName) {
+  const roles = classifyNativeCard(card);
+  const text = normalized(cardText(card));
+  const weights = STRATEGY_WEIGHTS[input.strategy] || STRATEGY_WEIGHTS["Balanced midrange"];
+  const roleScore = roles.reduce((sum, role) => sum + (weights[role] || (role === "threat" ? 7 : 2)), 0);
+  const commanderSignals = conceptSignals(input.commander?.oracleText || "");
+  const synergyHits = roles.filter((role) => commanderSignals.includes(role)).length;
+  const terms = preferenceTerms(input);
+  const preferenceHits = terms.filter((term) => text.includes(term)).length;
+  const cmc = manaValueFromCost(card.manaCost || card.mana_cost, card.cmc);
+  const ideal = /Aggressive|Tempo/i.test(input.strategy) ? 2.4 : /Control/i.test(input.strategy) ? 3.2 : 2.9;
+  const curveScore = Math.max(0, 10 - Math.abs(cmc - ideal) * 3.2) * variant.curve;
+  const resilienceRoles = roles.filter((role) => ["draw", "protection", "recursion", "interaction"].includes(role)).length;
+  const evidence = evidenceByName.get(normalized(card.name)) || {};
+  const evidenceScore = clamp(Number(evidence.evidenceScore || 0) * 100) * 0.12;
+  const discovery = evidence.newCardPotential ? 2 : 0;
+  const deterministicTieBreak = (hash(`${input.seed}|${variant.id}|${card.name}`) % 1000) / 100000;
+  return {
+    card,
+    roles,
+    cmc,
+    score: roleScore + synergyHits * 7 * variant.synergy + preferenceHits * 3.5 + curveScore + resilienceRoles * 3 * variant.resilience + evidenceScore + discovery + deterministicTieBreak,
+    synergyHits,
+    preferenceHits,
+  };
+}
+
+function roleTargets(format, strategy) {
+  const commander = format === "Commander" || format === "Brawl";
+  const scale = commander ? 1 : 0.55;
+  const control = /Control/i.test(strategy);
+  return {
+    ramp: Math.round(10 * scale),
+    draw: Math.round(10 * scale),
+    interaction: Math.round((control ? 13 : 10) * scale),
+    protection: Math.round(5 * scale),
+    recursion: Math.round(4 * scale),
+    sweeper: Math.round((control ? 4 : 2) * scale),
+  };
+}
+
+function chooseSpells(scored, slots, singleton, targets) {
+  const selected = [];
+  const selectedNames = new Set();
+  const roleCounts = new Map();
+  const copies = singleton ? 1 : 4;
+  let remaining = slots;
+  while (remaining > 0) {
+    const candidate = scored
+      .filter((entry) => !selectedNames.has(normalized(entry.card.name)))
+      .map((entry) => {
+        const deficit = entry.roles.reduce((sum, role) => sum + Math.max(0, (targets[role] || 0) - (roleCounts.get(role) || 0)) * 4, 0);
+        return { ...entry, adjusted: entry.score + deficit };
+      })
+      .sort((left, right) => right.adjusted - left.adjusted || left.card.name.localeCompare(right.card.name))[0];
+    if (!candidate) break;
+    const quantity = Math.min(copies, remaining);
+    selected.push({ quantity, name: candidate.card.name, roles: candidate.roles, score: Number(candidate.score.toFixed(3)), cmc: candidate.cmc });
+    selectedNames.add(normalized(candidate.card.name));
+    for (const role of candidate.roles) roleCounts.set(role, (roleCounts.get(role) || 0) + quantity);
+    remaining -= quantity;
+  }
+  if (remaining) throw new Error(`Native Forge could not fill ${remaining} spell slot(s)`);
+  return { selected, roleCounts };
+}
+
+function buildManaBase(input, landSlots, lands, variant) {
+  const colors = input.commander?.colors?.length ? input.commander.colors : input.colors?.length ? input.colors : ["W", "U", "B", "R", "G"];
+  const rankedLands = lands
+    .filter((card) => {
+      const identity = card.colorIdentity || card.color_identity || [];
+      return identity.every((color) => colors.includes(color));
+    })
+    .sort((left, right) => {
+      const leftText = normalized(cardText(left));
+      const rightText = normalized(cardText(right));
+      const leftScore = (leftText.includes("enters the battlefield tapped") ? -4 : 2) + (leftText.includes("add") ? 2 : 0) + (hash(`${input.seed}|${variant.id}|${left.name}`) % 100) / 10000;
+      const rightScore = (rightText.includes("enters the battlefield tapped") ? -4 : 2) + (rightText.includes("add") ? 2 : 0) + (hash(`${input.seed}|${variant.id}|${right.name}`) % 100) / 10000;
+      return rightScore - leftScore || left.name.localeCompare(right.name);
+    });
+  const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
+  const rows = [];
+  const nonbasicLimit = Math.min(lands.length, singleton ? Math.min(landSlots - 18, 18) : 6);
+  for (const land of rankedLands.slice(0, nonbasicLimit)) rows.push({ quantity: singleton ? 1 : Math.min(4, landSlots - rows.reduce((sum, row) => sum + row.quantity, 0)), name: land.name, roles: ["land"], score: 0, cmc: 0 });
+  let remaining = landSlots - rows.reduce((sum, row) => sum + row.quantity, 0);
+  for (let index = 0; remaining > 0; index += 1) {
+    const name = BASIC_BY_COLOR[colors[index % colors.length]] || "Wastes";
+    const existing = rows.find((row) => row.name === name);
+    if (existing) existing.quantity += 1;
+    else rows.push({ quantity: 1, name, roles: ["land"], score: 0, cmc: 0 });
+    remaining -= 1;
+  }
+  return rows;
+}
+
+function evaluateCandidate(rows, roleCounts, input, variant) {
+  const total = rows.reduce((sum, row) => sum + row.quantity, 0);
+  const lands = rows.filter((row) => row.roles.includes("land")).reduce((sum, row) => sum + row.quantity, 0);
+  const nonlands = Math.max(1, total - lands);
+  const averageCmc = rows.filter((row) => !row.roles.includes("land")).reduce((sum, row) => sum + row.cmc * row.quantity, 0) / nonlands;
+  const targets = roleTargets(input.format, input.strategy);
+  const roleCoverage = Object.entries(targets).reduce((sum, [role, target]) => sum + Math.min(1, (roleCounts.get(role) || 0) / Math.max(1, target)), 0) / Object.keys(targets).length;
+  const multiRole = rows.filter((row) => row.roles.length >= 2).reduce((sum, row) => sum + row.quantity, 0) / nonlands;
+  const curveIdeal = /Aggressive|Tempo/i.test(input.strategy) ? 2.5 : /Control/i.test(input.strategy) ? 3.3 : 3;
+  const curveHealth = clamp(100 - Math.abs(averageCmc - curveIdeal) * 24);
+  const score = roleCoverage * 45 + multiRole * 22 + curveHealth * 0.25 + variant.synergy * 4 + variant.resilience * 4;
+  return { score: Number(score.toFixed(3)), roleCoverage: Number(roleCoverage.toFixed(3)), multiRoleDensity: Number(multiRole.toFixed(3)), averageCmc: Number(averageCmc.toFixed(2)), curveHealth: Math.round(curveHealth) };
+}
+
+function buildCandidate(input, variant, evidenceByName) {
+  const target = input.target || (["Commander", "Brawl"].includes(input.format) ? 100 : 60);
+  const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
+  const commanderSlots = input.commander ? 1 : 0;
+  const landSlots = singleton ? Math.round(target * 0.37) : Math.round(target * 0.4);
+  const spells = input.cards.filter((card) => !classifyNativeCard(card).includes("land") && normalized(card.name) !== normalized(input.commander?.name));
+  const lands = input.cards.filter((card) => classifyNativeCard(card).includes("land"));
+  const scored = spells.map((card) => scoreCard(card, input, variant, evidenceByName));
+  const { selected, roleCounts } = chooseSpells(scored, target - landSlots - commanderSlots, singleton, roleTargets(input.format, input.strategy));
+  const mana = buildManaBase(input, landSlots, lands, variant);
+  const rows = [
+    ...(input.commander ? [{ quantity: 1, name: input.commander.name, roles: ["commander"], score: 100, cmc: manaValueFromCost(input.commander.manaCost, input.commander.cmc) }] : []),
+    ...selected,
+    ...mana,
+  ];
+  const evaluation = evaluateCandidate(rows, roleCounts, input, variant);
+  return {
+    id: variant.id,
+    label: variant.label,
+    rows,
+    deckText: rows.map((row) => `${row.quantity} ${row.name}`).join("\n"),
+    evaluation,
+    score: evaluation.score,
+    boundary: "Native structural candidate. Legality and simulations are hard gates; real match performance remains unproven.",
+  };
+}
+
+export function forgeNativeMasterwork(input) {
+  if (!input || !Array.isArray(input.cards) || !input.cards.length) throw new Error("Native Forge requires a verified card pool");
+  const evidenceByName = new Map((input.evidence || []).map((entry) => [normalized(entry.name), entry]));
+  const candidates = VARIANTS.map((variant) => buildCandidate(input, variant, evidenceByName))
+    .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id));
+  return Object.freeze({
+    engine: "metaforge-native-masterwork-v1",
+    selected: candidates[0],
+    candidates,
+    methodology: "MetaForge classified verified card text, filled explicit role requirements, assembled a legal-size mana base, and ranked three deterministic structural tempers against the player's Blueprint.",
+  });
+}

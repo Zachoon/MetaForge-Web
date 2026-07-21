@@ -1198,3 +1198,21 @@
   .highest-value-upgrade button { width: 100%; }
 }
 
+
+/* Masterwork native generation progress */
+.commission-heading h1{font-size:clamp(31px,4vw,54px)}
+.commission-heading p{font-size:16px}
+.masterwork-forging-progress{position:relative;display:grid;justify-items:center;max-width:720px;margin:34px auto;padding:42px 30px;overflow:hidden;border:1px solid #5e756e;background:radial-gradient(circle at 50% 40%,#17675d33,transparent 44%),#081110e8;text-align:center;box-shadow:inset 0 0 70px #2fbdae0d,0 24px 70px #0009}
+.masterwork-forging-progress small{color:#e8a04e;font-size:11px;font-weight:800;letter-spacing:.18em}
+.masterwork-forging-progress strong{margin-top:14px;color:#e9f2ee;font:500 24px Georgia,serif}
+.masterwork-forging-progress p{max-width:540px;margin:10px 0;color:#91a49e;font:15px/1.6 Georgia,serif}
+.masterwork-forging-progress time{color:#78ded0;font:700 18px/1 Inter,sans-serif;letter-spacing:.12em}
+.forging-motion{position:relative;display:grid;width:92px;height:92px;margin-bottom:22px;place-items:center}
+.forging-motion i{z-index:2;color:#f1ad60;font:normal 38px Georgia,serif;text-shadow:0 0 22px #ec8d42}
+.forging-motion b,.forging-motion span{position:absolute;inset:3px;border:1px dashed #73ded0;border-radius:50%;animation:masterwork-orbit 3.2s linear infinite}
+.forging-motion span{inset:14px;border-color:#e99548;animation-direction:reverse;animation-duration:2.2s}
+.forging-progress-rail{width:min(100%,520px);height:3px;margin-top:24px;overflow:hidden;background:#21312d}
+.forging-progress-rail span{display:block;width:42%;height:100%;background:linear-gradient(90deg,transparent,#f09a4b,#72ded0,transparent);animation:masterwork-progress 1.55s ease-in-out infinite}
+@keyframes masterwork-orbit{to{transform:rotate(360deg)}}
+@keyframes masterwork-progress{from{transform:translateX(-110%)}to{transform:translateX(260%)}}
+@media(prefers-reduced-motion:reduce){.forging-motion b,.forging-motion span,.forging-progress-rail span{animation:none}.forging-progress-rail span{width:100%;opacity:.7}}
