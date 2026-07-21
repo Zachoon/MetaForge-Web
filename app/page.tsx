@@ -1873,7 +1873,7 @@ export default function Home() {
       ];
       setForgedDeck(answer);
       setForgeReply(
-        `${nativeReport.methodology}\n\nSelected ${nativeReport.selected.label}: ${(nativeReport.selected.evaluation.roleCoverage * 100).toFixed(0)}% role coverage, ${nativeReport.selected.evaluation.curveHealth}/100 curve health. This is a testable structural hypothesis, not a performance claim.`,
+        `${nativeReport.methodology}\n\n${nativeReport.selected.tournament.reason}\nStructural read: ${nativeReport.selected.evaluation.cohesion}/100 cohesion, ${nativeReport.selected.evaluation.resilience}/100 resilience. ${nativeReport.tournament.frontier.length} of 3 candidates reached the tradeoff frontier. This is a testable structural hypothesis, not a performance claim.`,
       );
       setRevisions(firstRevision);
       void persistStoryBench(

@@ -19,3 +19,9 @@ test("native forging exposes visible elapsed progress and moving stages", () => 
   assert.match(page, /Forging three competing candidates/);
   assert.match(page, /role="status"/);
 });
+
+test("native forging explains the tournament verdict and bounded tradeoff", () => {
+  assert.match(generation, /selected\.tournament\.reason/);
+  assert.match(generation, /tradeoff frontier/);
+  assert.match(generation, /not a performance claim/);
+});

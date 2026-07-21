@@ -1,4 +1,6 @@
-﻿// MetaForge Native Masterwork Engine
+﻿import { runNativeMasterworkTournament } from "./native-masterwork-tournament.mjs";
+
+// MetaForge Native Masterwork Engine
 // Card facts may come from verified catalogs; every construction and ranking
 // decision in this module is deterministic and owned by MetaForge.
 
@@ -182,8 +184,10 @@ function evaluateCandidate(rows, roleCounts, input, variant) {
   const multiRole = rows.filter((row) => row.roles.length >= 2).reduce((sum, row) => sum + row.quantity, 0) / nonlands;
   const curveIdeal = /Aggressive|Tempo/i.test(input.strategy) ? 2.5 : /Control/i.test(input.strategy) ? 3.3 : 3;
   const curveHealth = clamp(100 - Math.abs(averageCmc - curveIdeal) * 24);
-  const score = roleCoverage * 45 + multiRole * 22 + curveHealth * 0.25 + variant.synergy * 4 + variant.resilience * 4;
-  return { score: Number(score.toFixed(3)), roleCoverage: Number(roleCoverage.toFixed(3)), multiRoleDensity: Number(multiRole.toFixed(3)), averageCmc: Number(averageCmc.toFixed(2)), curveHealth: Math.round(curveHealth) };
+  const cohesion = clamp(roleCoverage * 70 + multiRole * 30 + variant.synergy * 4);
+  const resilience = clamp((roleCounts.get("interaction") || 0) * 2.5 + (roleCounts.get("protection") || 0) * 3 + (roleCounts.get("recursion") || 0) * 2 + variant.resilience * 12);
+  const score = roleCoverage * 39 + multiRole * 18 + curveHealth * 0.19 + cohesion * 0.13 + resilience * 0.11;
+  return { score: Number(score.toFixed(3)), roleCoverage: Number(roleCoverage.toFixed(3)), multiRoleDensity: Number(multiRole.toFixed(3)), averageCmc: Number(averageCmc.toFixed(2)), curveHealth: Math.round(curveHealth), cohesion: Math.round(cohesion), resilience: Math.round(resilience) };
 }
 
 function buildCandidate(input, variant, evidenceByName) {
@@ -216,12 +220,18 @@ function buildCandidate(input, variant, evidenceByName) {
 export function forgeNativeMasterwork(input) {
   if (!input || !Array.isArray(input.cards) || !input.cards.length) throw new Error("Native Forge requires a verified card pool");
   const evidenceByName = new Map((input.evidence || []).map((entry) => [normalized(entry.name), entry]));
-  const candidates = VARIANTS.map((variant) => buildCandidate(input, variant, evidenceByName))
-    .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id));
+  const candidates = VARIANTS.map((variant) => buildCandidate(input, variant, evidenceByName));
+  const tournament = runNativeMasterworkTournament(candidates, { format: input.format, target: input.target });
+  const verdictById = new Map(tournament.results.map((result) => [result.id, result]));
+  const ranked = candidates
+    .map((candidate) => ({ ...candidate, tournament: verdictById.get(candidate.id) }))
+    .sort((left, right) => right.tournament.tournamentScore - left.tournament.tournamentScore || left.id.localeCompare(right.id));
+  const selected = ranked.find((candidate) => candidate.id === tournament.selectedId);
   return Object.freeze({
-    engine: "metaforge-native-masterwork-v1",
-    selected: candidates[0],
-    candidates,
-    methodology: "MetaForge classified verified card text, filled explicit role requirements, assembled a legal-size mana base, and ranked three deterministic structural tempers against the player's Blueprint.",
+    engine: "metaforge-native-masterwork-v2",
+    selected,
+    candidates: ranked,
+    tournament,
+    methodology: "MetaForge classified verified card text, filled explicit role requirements, assembled three complete structural tempers, applied hard rejection gates, and advanced a nondominated Blueprint tradeoff.",
   });
 }
