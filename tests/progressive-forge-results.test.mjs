@@ -20,12 +20,32 @@ test("places deck and refinement surfaces before the intelligence vault", () => 
   assert.match(page, /className="forge-intelligence-vault"/);
 });
 
+test("turns the result into one active chapter instead of a continuous instrument wall", () => {
+  assert.match(page, /activeForgeChapter.*useState<1 \| 2 \| 3 \| 4>\(1\)/);
+  assert.match(page, /id="forge-chapter-rail"/);
+  assert.match(page, /chapter-\$\{activeForgeChapter\}-active/);
+  assert.match(css, /\.chapter-1-active \.deck-manuscript>header\{display:flex\}/);
+  assert.match(css, /\.chapter-2-active>\.testing-loop\{display:block/);
+  assert.match(css, /\.chapter-3-active \.forge-understanding-bridge\{display:block/);
+  assert.match(css, /\.chapter-4-active \.forge-intelligence-vault\{display:block/);
+});
+
+test("offers a contained Workbench and an unrestricted full ledger", () => {
+  assert.match(page, /useState<"workbench" \| "ledger">\("workbench"\)/);
+  assert.match(page, />\s*Workbench\s*</);
+  assert.match(page, />\s*Full ledger\s*</);
+  assert.match(css, /\.workbench-deck-view \.deck-gallery\{[^}]*max-height/);
+  assert.match(css, /\.ledger-deck-view \.deck-gallery\{max-height:none/);
+});
+
 test("offers three simple refinement paths before optional match evidence", () => {
   assert.match(page, /Three refinement starting points/i);
   assert.match(page, /Protect the plan/);
   assert.match(page, /Tighten the opening/);
   assert.match(page, /Improve card flow/);
   assert.match(page, /className="match-evidence-drawer"/);
+  assert.match(page, /className="custom-refinement-trigger"/);
+  assert.match(page, /refinementComposerOpen && !forgeReply/);
 });
 
 test("keeps the Editing Anvil closed until the player asks for it", () => {

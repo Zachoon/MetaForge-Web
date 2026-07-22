@@ -1006,6 +1006,9 @@ export default function Home() {
   const [interventionLearningReady, setInterventionLearningReady] = useState(false);
   const [showAllSystems, setShowAllSystems] = useState(false);
   const [matchEvidenceOpen, setMatchEvidenceOpen] = useState(false);
+  const [activeForgeChapter, setActiveForgeChapter] = useState<1 | 2 | 3 | 4>(1);
+  const [deckViewMode, setDeckViewMode] = useState<"workbench" | "ledger">("workbench");
+  const [refinementComposerOpen, setRefinementComposerOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -1882,6 +1885,9 @@ export default function Home() {
     setRemovedCards([]);
     setReplacementRecommendations([]);
     setLastCutCard("");
+    setActiveForgeChapter(1);
+    setDeckViewMode("workbench");
+    setRefinementComposerOpen(false);
 
     let evidence: EdhrecEvidence | null = null;
     if (commander && isCommanderFormat(format)) {
@@ -2133,7 +2139,14 @@ export default function Home() {
 
   function beginTesting() {
     setBenchStatus("testing");
+    setActiveForgeChapter(2);
     void persistStoryBench();
+    window.requestAnimationFrame(() => {
+      document.getElementById("forge-chapter-rail")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
   }
 
   async function repairDeckIntegrity() {
@@ -2358,6 +2371,7 @@ export default function Home() {
     void persistStoryBench(next, record);
     setPlayerSignal("");
     setForgeReply("");
+    setRefinementComposerOpen(false);
   }
 
   function dismissForgeRefinement() {
@@ -2368,6 +2382,7 @@ export default function Home() {
       "dismissed",
     );
     setForgeReply("");
+    setRefinementComposerOpen(false);
   }
 
   return (
@@ -2956,7 +2971,31 @@ export default function Home() {
               </button>
             </div>
           </nav>
-          <div className="testing-layout">
+          <nav
+            id="forge-chapter-rail"
+            className="forge-chapter-rail"
+            aria-label="Masterwork journey chapters"
+          >
+            {[
+              [1, "The Masterwork", `${deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards`],
+              [2, "Shape", forgeReply ? "Options ready" : benchStatus === "testing" ? "Testing active" : "Choose a question"],
+              [3, "Understand", forgeSystemsReport.strongestSystem?.name || "Essential reading"],
+              [4, "Deep Forge", deckIntegrity.passed ? "Evidence ready" : "Review integrity"],
+            ].map(([chapterNumber, label, status]) => (
+              <button
+                type="button"
+                key={chapterNumber}
+                className={activeForgeChapter === chapterNumber ? "active" : ""}
+                aria-current={activeForgeChapter === chapterNumber ? "step" : undefined}
+                onClick={() => setActiveForgeChapter(chapterNumber as 1 | 2 | 3 | 4)}
+              >
+                <small>CHAPTER {chapterNumber}</small>
+                <b>{label}</b>
+                <span>{status}</span>
+              </button>
+            ))}
+          </nav>
+          <div className={`testing-layout chapter-${activeForgeChapter}-active ${deckViewMode}-deck-view`}>
             <article className="deck-manuscript">
               <header>
                 <div>
@@ -2967,12 +3006,32 @@ export default function Home() {
                       : `${deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards · ${Object.keys(groupedDeck).length} sections`}
                   </h2>
                 </div>
-                <button
-                  disabled={!deckRows.length || benchStatus === "forging"}
-                  onClick={() => navigator.clipboard.writeText(forgedDeck)}
-                >
-                  Copy deck
-                </button>
+                <div className="deck-header-actions">
+                  <span className="deck-view-toggle" aria-label="Deck presentation">
+                    <button
+                      type="button"
+                      className={deckViewMode === "workbench" ? "active" : ""}
+                      aria-pressed={deckViewMode === "workbench"}
+                      onClick={() => setDeckViewMode("workbench")}
+                    >
+                      Workbench
+                    </button>
+                    <button
+                      type="button"
+                      className={deckViewMode === "ledger" ? "active" : ""}
+                      aria-pressed={deckViewMode === "ledger"}
+                      onClick={() => setDeckViewMode("ledger")}
+                    >
+                      Full ledger
+                    </button>
+                  </span>
+                  <button
+                    disabled={!deckRows.length || benchStatus === "forging"}
+                    onClick={() => navigator.clipboard.writeText(forgedDeck)}
+                  >
+                    Copy deck
+                  </button>
+                </div>
               </header>
               <section className="forge-quick-read" aria-label="Why the Forge built this deck">
                 <span>
@@ -4006,7 +4065,11 @@ export default function Home() {
                     type="button"
                     key={label}
                     className={playerSignal === prompt ? "active" : ""}
-                    onClick={() => setPlayerSignal(prompt)}
+                    onClick={() => {
+                      setPlayerSignal(prompt);
+                      setForgeReply("");
+                      setRefinementComposerOpen(true);
+                    }}
                   >
                     <small>PATH {index + 1}</small>
                     <b>{label}</b>
@@ -4014,6 +4077,19 @@ export default function Home() {
                   </button>
                 ))}
               </section>
+              {!refinementComposerOpen && !forgeReply && (
+                <button
+                  type="button"
+                  className="custom-refinement-trigger"
+                  onClick={() => {
+                    setPlayerSignal("");
+                    setRefinementComposerOpen(true);
+                  }}
+                >
+                  <span>Something else feels wrong</span>
+                  <small>Describe it in your own words only when you need to</small>
+                </button>
+              )}
               <details
                 className="match-evidence-drawer"
                 open={matchEvidenceOpen}
@@ -4060,26 +4136,59 @@ export default function Home() {
                 </details>
               </section>
               </details>
-              <label>
-                <span>WHAT WORKED OR FELT WRONG?</span>
-                <textarea
-                  value={playerSignal}
-                  onChange={(event) => setPlayerSignal(event.target.value)}
-                  placeholder="Example: I keep running out of threats after the first board wipe, but the early pressure feels exactly right…"
-                />
-              </label>
-              <button
-                className="consult-forge"
-                disabled={!playerSignal.trim() || benchStatus === "thinking"}
-                onClick={consultForge}
-              >
-                {benchStatus === "thinking"
-                  ? "The Forge is studying your signal…"
-                  : "Ask the Forge for alternatives →"}
-              </button>
+              {refinementComposerOpen && !forgeReply && (
+                <section className="refinement-composer">
+                  <label>
+                    <span>WHAT WORKED OR FELT WRONG?</span>
+                    <textarea
+                      autoFocus
+                      rows={3}
+                      value={playerSignal}
+                      onChange={(event) => setPlayerSignal(event.target.value)}
+                      placeholder="Example: I keep running out of threats after the first board wipe, but the early pressure feels exactly right…"
+                    />
+                  </label>
+                  <div>
+                    <button
+                      type="button"
+                      className="cancel-refinement"
+                      onClick={() => {
+                        setPlayerSignal("");
+                        setRefinementComposerOpen(false);
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="consult-forge"
+                      disabled={!playerSignal.trim() || benchStatus === "thinking"}
+                      onClick={consultForge}
+                    >
+                      {benchStatus === "thinking"
+                        ? "The Forge is studying your signal…"
+                        : "Ask the Forge for alternatives →"}
+                    </button>
+                  </div>
+                </section>
+              )}
               {forgeReply && (
                 <section className="forge-refinement">
-                  <small>REFINEMENT OPTIONS · FORGE THEORY</small>
+                  <header>
+                    <span>
+                      <small>REFINEMENT OPTIONS · FORGE THEORY</small>
+                      <b>Your question became a controlled experiment.</b>
+                    </span>
+                    <button
+                      type="button"
+                      className="change-refinement"
+                      onClick={() => {
+                        setForgeReply("");
+                        setRefinementComposerOpen(true);
+                      }}
+                    >
+                      Change question
+                    </button>
+                  </header>
                   <pre>{forgeReply}</pre>
                   <div className="refinement-decision-row">
                     <button onClick={preserveRevision}>

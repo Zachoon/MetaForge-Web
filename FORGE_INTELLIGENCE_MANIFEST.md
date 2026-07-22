@@ -136,6 +136,12 @@ The Organic Forge Flow divides that workbench into four paced chapters: the
 Masterwork, three plain-language shaping paths, an essential four-signal reading,
 and the Deep Forge archive. Match evidence, the Editing Anvil, additional systems,
 and the full Bench remain available on demand instead of competing with the deck.
+The Living Workbench makes those chapters genuinely progressive: only one chapter
+occupies the work surface at a time, the deck defaults to a contained Workbench
+with an optional full Ledger, and refinement prompts reveal a compact composer
+only after the player chooses a direction. Results replace their input instead
+of accumulating below it, keeping every evidence layer available without making
+the player carry the whole Forge through every interaction.
 
 Continual learning is bounded rather than self-modifying. MetaForge preserves
 accepted and dismissed interventions, keeps matches attached to exact revisions,
