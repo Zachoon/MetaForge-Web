@@ -928,11 +928,53 @@ const cardRole = (fact?: CardFact) => {
 };
 const BASIC_CARD_NAMES = new Set(["plains", "island", "swamp", "mountain", "forest", "wastes"]);
 
+type ReadingSize = "compact" | "comfortable" | "large";
+
+const BLUEPRINT_DEFINITIONS = {
+  format: {
+    Standard: "A rotating 60-card format using recent Magic sets.",
+    Brawl: "A 100-card singleton Arena format led by a commander.",
+    "Standard Brawl": "A rotating 60-card singleton format led by a commander.",
+    Commander: "A 100-card singleton multiplayer format led by a legendary commander.",
+    Modern: "A nonrotating 60-card format using cards from Eighth Edition forward.",
+    Premodern: "A community format using Fourth Edition through Scourge-era cards.",
+    Pioneer: "A nonrotating 60-card format using Return to Ravnica forward.",
+    Historic: "A broad, nonrotating digital format played on MTG Arena.",
+  },
+  strategy: {
+    "Aggressive pressure": "Deploy threats quickly and shorten the game before slower plans stabilize.",
+    "Balanced midrange": "Blend efficient threats, interaction, and staying power so the deck can adapt.",
+    "Reactive control": "Trade resources, answer key threats, and win after taking control of the game.",
+    "Synergy and combo": "Assemble cards whose combined effect is substantially stronger than each card alone.",
+    "Tempo and disruption": "Advance an efficient threat while delaying the opponent just long enough to win.",
+  },
+  complexity: {
+    Accessible: "Favor clear play patterns, forgiving sequencing, and fewer hidden dependencies.",
+    Balanced: "Allow meaningful decisions without making every turn mechanically demanding.",
+    Technical: "Welcome precise sequencing, layered interactions, and more matchup-dependent choices.",
+    "Maximum depth": "Prioritize intricate lines and high decision density, even when they require more practice.",
+  },
+  budget: {
+    "No strict limit": "Choose the strongest fitting cards without a price ceiling.",
+    "Budget conscious": "Prefer affordable substitutes while preserving the deck's central promise.",
+    "Moderate investment": "Allow selective premium cards when they materially improve the deck.",
+    "Competitive optimization": "Prioritize performance and consistency over card cost.",
+  },
+} as const;
+
+const blueprintDefinition = (
+  category: keyof typeof BLUEPRINT_DEFINITIONS,
+  value: string,
+) => (BLUEPRINT_DEFINITIONS[category] as Record<string, string>)[value] || "The Forge will explain this choice as its card pool and rules are verified.";
+
 export default function Home() {
   const [chamber, setChamber] = useState<Chamber>("entrance");
   const [stage, setStage] = useState(0);
   const [format, setFormat] = useState("Standard");
   const [strategy, setStrategy] = useState("Balanced midrange");
+  const [complexity, setComplexity] = useState("Balanced");
+  const [budget, setBudget] = useState("No strict limit");
+  const [readingSize, setReadingSize] = useState<ReadingSize>("comfortable");
   const [deck, setDeck] = useState("");
   const [commissionNote, setCommissionNote] = useState("");
   const [commanderQuery, setCommanderQuery] = useState("");
@@ -1016,6 +1058,10 @@ export default function Home() {
       if (preferredView === "full" || preferredView === "guided") {
         setResultViewMode(preferredView);
       }
+      const preferredReadingSize = window.localStorage.getItem("metaforge.readingSize");
+      if (["compact", "comfortable", "large"].includes(preferredReadingSize || "")) {
+        setReadingSize(preferredReadingSize as ReadingSize);
+      }
       const savedLearning = JSON.parse(
         window.localStorage.getItem("metaforge.interventionLearning") || "[]",
       );
@@ -1026,6 +1072,10 @@ export default function Home() {
       setInterventionLearningReady(true);
     }
   }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("metaforge.readingSize", readingSize);
+  }, [readingSize]);
 
   useEffect(() => {
     window.localStorage.setItem("metaforge.resultViewMode", resultViewMode);
@@ -2386,7 +2436,7 @@ export default function Home() {
   }
 
   return (
-    <main className={`great-forge chamber-${chamber}`}>
+    <main className={`great-forge chamber-${chamber} reading-${readingSize}`}>
       <div className="forge-textures" aria-hidden="true">
         <i />
         <b />
@@ -2415,9 +2465,24 @@ export default function Home() {
             </span>
           ))}
         </nav>
-        <button className="quiet-action" onClick={() => setChamber("entrance")}>
-          New commission
-        </button>
+        <div className="forge-reading-tools">
+          <span>TEXT</span>
+          {(["compact", "comfortable", "large"] as ReadingSize[]).map((size, index) => (
+            <button
+              type="button"
+              key={size}
+              className={readingSize === size ? "active" : ""}
+              aria-label={`Use ${size} text`}
+              aria-pressed={readingSize === size}
+              onClick={() => setReadingSize(size)}
+            >
+              A{index === 0 ? "−" : index === 2 ? "+" : ""}
+            </button>
+          ))}
+          <button className="quiet-action" onClick={() => setChamber("entrance")}>
+            New commission
+          </button>
+        </div>
       </header>
 
       {chamber === "entrance" && (
@@ -2544,8 +2609,12 @@ export default function Home() {
             )}
             <div className="mark-grid">
               <label>
-                <span>FORMAT</span>
+                <span>
+                  FORMAT
+                  <button type="button" className="blueprint-glossary-tip" data-definition={blueprintDefinition("format", format)} aria-label={`Explain ${format}`}>?</button>
+                </span>
                 <select
+                  aria-describedby="format-definition"
                   value={format}
                   onChange={(event) => {
                     setFormat(event.target.value);
@@ -2562,10 +2631,15 @@ export default function Home() {
                   <option>Pioneer</option>
                   <option>Historic</option>
                 </select>
+                <small id="format-definition" className="blueprint-choice-definition">{blueprintDefinition("format", format)}</small>
               </label>
               <label>
-                <span>HOW SHOULD IT FIGHT?</span>
+                <span>
+                  HOW SHOULD IT FIGHT?
+                  <button type="button" className="blueprint-glossary-tip" data-definition={blueprintDefinition("strategy", strategy)} aria-label={`Explain ${strategy}`}>?</button>
+                </span>
                 <select
+                  aria-describedby="strategy-definition"
                   value={strategy}
                   onChange={(event) => setStrategy(event.target.value)}
                 >
@@ -2575,24 +2649,33 @@ export default function Home() {
                   <option>Synergy and combo</option>
                   <option>Tempo and disruption</option>
                 </select>
+                <small id="strategy-definition" className="blueprint-choice-definition">{blueprintDefinition("strategy", strategy)}</small>
               </label>
               <label>
-                <span>COMPLEXITY</span>
-                <select>
+                <span>
+                  COMPLEXITY
+                  <button type="button" className="blueprint-glossary-tip" data-definition={blueprintDefinition("complexity", complexity)} aria-label={`Explain ${complexity} complexity`}>?</button>
+                </span>
+                <select aria-describedby="complexity-definition" value={complexity} onChange={(event) => setComplexity(event.target.value)}>
                   <option>Accessible</option>
                   <option>Balanced</option>
                   <option>Technical</option>
                   <option>Maximum depth</option>
                 </select>
+                <small id="complexity-definition" className="blueprint-choice-definition">{blueprintDefinition("complexity", complexity)}</small>
               </label>
               <label>
-                <span>BUDGET</span>
-                <select>
+                <span>
+                  BUDGET
+                  <button type="button" className="blueprint-glossary-tip" data-definition={blueprintDefinition("budget", budget)} aria-label={`Explain ${budget}`}>?</button>
+                </span>
+                <select aria-describedby="budget-definition" value={budget} onChange={(event) => setBudget(event.target.value)}>
                   <option>No strict limit</option>
                   <option>Budget conscious</option>
                   <option>Moderate investment</option>
                   <option>Competitive optimization</option>
                 </select>
+                <small id="budget-definition" className="blueprint-choice-definition">{blueprintDefinition("budget", budget)}</small>
               </label>
             </div>
             {isCommanderFormat(format) && (

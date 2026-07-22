@@ -36,3 +36,17 @@ test("native forging exposes the exact one-slot laboratory verdict", () => {
   assert.match(generation, /nativeReport\.laboratory\.contract/);
   assert.match(generation, /nativeReport\.laboratory\.boundary/);
 });
+
+test("Blueprint offers a persistent player-controlled reading size", () => {
+  assert.match(page, /metaforge\.readingSize/);
+  assert.match(page, /reading-\$\{readingSize\}/);
+  assert.match(page, /Use \$\{size\} text/);
+});
+
+test("initial Blueprint choices explain game terms before submission", () => {
+  assert.match(page, /BLUEPRINT_DEFINITIONS/);
+  assert.match(page, /blueprint-glossary-tip/);
+  assert.match(page, /blueprint-choice-definition/);
+  assert.match(page, /aria-describedby="strategy-definition"/);
+  assert.match(page, /Trade resources, answer key threats/i);
+});
