@@ -15,7 +15,7 @@ test("Masterwork selection uses the native engine instead of a model endpoint", 
 
 test("Blueprint identity shapes previews and targeted verified-pool retrieval", () => {
   assert.match(page, /parseNativeBlueprintIntent/);
-  assert.match(page, /Begin with \$\{blueprintPromise\} as a construction anchor/);
+  assert.match(page, /This version puts \$\{blueprintPromise\} first/);
   assert.match(page, /Popularity pages are intentionally broad/);
   assert.match(page, /loadNativeForgePool\(format, commander, preview\.card, commissionNote\)/);
 });

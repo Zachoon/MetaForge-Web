@@ -30,6 +30,21 @@ test("turns the result into one active chapter instead of a continuous instrumen
   assert.match(css, /\.chapter-4-active \.forge-intelligence-vault\{display:block/);
 });
 
+test("lets players revisit every commission step they have already reached", () => {
+  assert.match(page, /furthestCommissionStep/);
+  assert.match(page, /visitCommissionStep/);
+  assert.match(page, /disabled=\{index > furthestCommissionStep\}/);
+  assert.match(page, /aria-current=\{chapter === index \? "step" : undefined\}/);
+});
+
+test("turns deck stress experiments into concrete player insights", () => {
+  assert.match(page, /WHAT THE MODEL SAW/);
+  assert.match(page, /WHY THIS SWAP/);
+  assert.match(page, /EXPECTED CHANGE/);
+  assert.match(page, /HOW TO JUDGE IT/);
+  assert.match(page, /scenarioPassRate/);
+});
+
 test("offers a contained Workbench and an unrestricted full ledger", () => {
   assert.match(page, /useState<"workbench" \| "ledger">\("workbench"\)/);
   assert.match(page, />\s*Workbench\s*</);

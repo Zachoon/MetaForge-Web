@@ -46,85 +46,6 @@ const FORGING_STAGES = [
   ["Three designs survived", "Cooling the surviving masterworks…", "3"],
 ] as const;
 
-const MASTERWORKS = [
-  {
-    rune: "ᛋ",
-    name: "The Ember Vanguard",
-    path: "Aggressive Pressure",
-    tone: "ember",
-    verdict:
-      "The fastest surviving design. Its edge was preserved without sacrificing its ability to recover.",
-  },
-  {
-    rune: "ᛉ",
-    name: "The Iron Covenant",
-    path: "Adaptive Midrange",
-    tone: "steel",
-    verdict:
-      "The most balanced masterwork. Its strength is refusing to become irrelevant as the battle changes.",
-  },
-  {
-    rune: "ᛟ",
-    name: "The Rune Bastion",
-    path: "Measured Control",
-    tone: "rune",
-    verdict:
-      "The most defensible design. It survived by answering the widest range of opposing plans.",
-  },
-] as const;
-
-const ADDITIONAL_MASTERWORKS = [
-  {
-    rune: "ᛏ",
-    name: "The Stormbrand Edge",
-    path: "Tempo and Disruption",
-    tone: "rune",
-    verdict:
-      "A precise design that turns small timing advantages into a lead the opponent cannot recover from.",
-  },
-  {
-    rune: "ᛃ",
-    name: "The Verdant Engine",
-    path: "Synergy and Growth",
-    tone: "steel",
-    verdict:
-      "A connected design whose pieces become more powerful together without depending on a single fragile line.",
-  },
-  {
-    rune: "ᛇ",
-    name: "The Gravebound Accord",
-    path: "Resilient Attrition",
-    tone: "ember",
-    verdict:
-      "A patient design that treats every exchange as fuel and continues producing value after the first plan is broken.",
-  },
-  {
-    rune: "ᛋ",
-    name: "The Sunforged Legion",
-    path: "Go-Wide Pressure",
-    tone: "ember",
-    verdict:
-      "A widening battlefield converts modest resources into an attack that demands several answers at once.",
-  },
-  {
-    rune: "ᛞ",
-    name: "The Mirror Crucible",
-    path: "Engine and Combo",
-    tone: "rune",
-    verdict:
-      "An intricate design that hides a decisive finish inside individually useful cards and overlapping lines.",
-  },
-  {
-    rune: "ᛉ",
-    name: "The Warden's Oath",
-    path: "Ramp and Inevitability",
-    tone: "steel",
-    verdict:
-      "A grounded design that survives the opening, accelerates past fair exchanges, and ends with overwhelming threats.",
-  },
-] as const;
-const MASTERWORK_POOL = [...MASTERWORKS, ...ADDITIONAL_MASTERWORKS] as const;
-
 type DeckPreview = { card: string; role: string; theme: string; win: string };
 type DeckRow = { quantity: number; name: string };
 type CardFact = {
@@ -147,7 +68,14 @@ type CardFact = {
   }>;
 };
 type CardSearchResult = { name: string; typeLine: string; image: string };
-type MetaBreakerExperiment = { cut: string; add: CardSearchResult; reason: string; confidence: string };
+type MetaBreakerExperiment = {
+  cut: string;
+  add: CardSearchResult;
+  reason: string;
+  confidence: string;
+  expectedChange: string;
+  measurement: string;
+};
 type ForgeIntervention = {
   id: string;
   kind: string;
@@ -366,12 +294,16 @@ const arrangeCommanderStarters = (candidates: CommanderOption[]) => {
 };
 const alignRandomMasterwork = (work: Masterwork, commander: CommanderOption | null, index: number) => {
   if (!commander) return work;
-  const paths: Record<ForgeLane, string> = {
-    pressure: "Commander-Led Pressure",
-    engine: "Synergy Engine",
-    inevitability: "Reactive Inevitability",
+  const lane = MASTERWORK_LANES[index % MASTERWORK_LANES.length];
+  const identity = commander.name.split(/[ ,/]+/)[0] || "Forge";
+  const noun = lane.nouns[Math.floor(index / 3) % lane.nouns.length];
+  return {
+    ...work,
+    name: `The ${identity} ${noun}`,
+    path: lane.path,
+    tone: lane.tone,
+    verdict: lane.verdict,
   };
-  return { ...work, path: paths[FORGE_LANES[index % 3]] };
 };
 const masterworkStats = (commander: CommanderOption | null, index: number) => {
   if (!commander) return MASTERWORK_STATS[index];
@@ -421,42 +353,42 @@ const masterworkInsight = (
   const engine = /synergy|engine|combo|alchemy|growth/.test(path);
   const attrition = /attrition|graveyard|inevitability|resource|ramp/.test(path);
   const baseOpening = pressure
-    ? "Deploy an early threat, then protect the tempo lead instead of spending turns assembling a fragile engine."
+    ? "Play useful threats early, then protect the lead and keep attacking."
     : control
-      ? "Develop mana while trading selectively; the commander enters after the first wave of pressure is contained."
+      ? "Build your mana, answer the most dangerous cards, and play the commander when it is safer."
       : engine
-        ? "Lead with low-cost enablers, then use the commander to turn several modest pieces into one compounding engine."
-        : "Establish mana and flexible interaction first, then pivot between pressure and recovery as the table reveals itself.";
+        ? "Play the smaller cards that support your theme, then let the commander connect them into a stronger whole."
+        : "Build your mana, keep a useful answer ready, and choose between attacking or rebuilding as the game changes.";
   const baseWin = pressure
-    ? `Convert ${identity} into repeated combat pressure, then finish before slower decks rebuild.`
-    : control
-      ? `Use ${identity} to pull ahead after one-for-one trades, then close behind a protected threat.`
+      ? `Use ${identity} to keep dealing damage and finish before slower decks recover.`
+      : control
+      ? `Use ${identity} to gain an advantage after trading cards, then win with a threat you can protect.`
       : engine
-        ? `Assemble overlapping payoffs around ${identity}; each piece remains useful while the combined engine creates the winning turn.`
+        ? `Combine several cards that reward ${identity}; each card should still do something useful on its own.`
         : attrition
-          ? `Make every exchange improve the next one until ${identity} produces an advantage opponents can no longer match.`
+          ? `Trade resources carefully until ${identity} gives you more useful cards and choices than your opponents.`
           : preview.win;
   const opening = blueprintPromise
-    ? `Begin with ${blueprintPromise} as a construction anchor. ${baseOpening}`
+    ? `This version puts ${blueprintPromise} first. ${baseOpening}`
     : baseOpening;
   const win = blueprintPromise
-    ? `${baseWin} The final list must retain a measurable ${blueprintPromise} package.`
+    ? `${baseWin} The finished deck must include enough ${blueprintPromise} cards for that request to matter in normal games.`
     : baseWin;
   const packages = (pressure
-    ? ["Cheap pressure", "Protection + disruption", "Reach after a stalled board"]
+    ? ["Early attackers", "Ways to protect them", "Damage after combat stalls"]
     : control
-      ? ["Early interaction", "Repeatable advantage", "Protected closing threats"]
+      ? ["Early answers", "Ways to draw more cards", "Reliable finishers"]
       : engine
-        ? ["Redundant enablers", "Commander payoff layer", "Backup finishers"]
-        : ["Mana development", "Flexible two-for-ones", "Inevitable endgame"]);
-  if (blueprintPromise) packages.unshift(`Blueprint · ${blueprintPromise}`);
+        ? ["Theme starters", "Cards that reward the theme", "Backup ways to win"]
+        : ["Reliable mana", "Flexible answers", "A strong late game"]);
+  if (blueprintPromise) packages.unshift(`Your request · ${blueprintPromise}`);
   const weakness = pressure
-    ? "Most exposed to efficient sweepers and lifegain; mulligans must preserve a second wave."
+    ? "A board wipe can undo the early lead, so keep some threats back when possible."
     : control
-      ? "Can lose to threats that slip under its answers; sequencing and untapped mana matter."
+      ? "Very fast threats can arrive before the deck has the right answer."
       : engine
-        ? "Disruption aimed at the payoff turn can slow the deck; redundant engines are essential."
-        : "Fast combo or snowballing starts can punish the setup turns before the value plan stabilizes.";
+        ? "Removing the key reward cards can slow the theme, so the deck needs more than one card that fills each important job."
+        : "Very fast starts can punish the turns spent building mana and preparing for a longer game.";
   return { opening, win, packages, weakness, oracle };
 };
 const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
@@ -631,61 +563,48 @@ const scryfallFormatTerms = (format: string) =>
     : format === "Brawl"
       ? "legal:brawl game:arena"
       : `legal:${format.toLowerCase()}`;
-const NAME_CORES = [
-  "Ashen Crown",
-  "Verdant Pulse",
-  "Glass Horizon",
-  "Thunder Loom",
-  "Moonlit Engine",
-  "Gilded Tempest",
-  "Hollow Star",
-  "Wildwood Oath",
-  "Crimson Archive",
-  "Aetherwake",
-  "Iron Bloom",
-  "Silent Constellation",
-];
-const PATHS = [
-  "Relentless Momentum",
-  "Layered Synergy",
-  "Reactive Precision",
-  "Resource Alchemy",
-  "Creature-Engine Growth",
-  "Graveyard Recursion",
-  "Tempo Conversion",
-  "Board-State Dominion",
-  "Patient Inevitability",
-  "Explosive Convergence",
-  "Adaptive Value",
-  "Protected Combo",
-];
-const VERDICTS = [
-  "Its lines overlap naturally, letting ordinary draws become meaningful decisions instead of scripted sequences.",
-  "This design turns the commander's most unusual clause into a repeatable source of leverage.",
-  "The shell bends between pressure and recovery without abandoning the commission's central promise.",
-  "Redundant enablers support several distinct finishes, so interaction does not erase the deck's identity.",
-  "Its resource plan rewards careful sequencing and creates an endgame that feels earned rather than automatic.",
-  "The design attacks from an unexpected angle while preserving enough interaction to survive a changing table.",
-  "Every major package serves two roles, reducing dead draws while keeping the deck expressive.",
-  "The strongest version was the one that made the commander matter without making the entire deck collapse around it.",
-];
+const MASTERWORK_LANES = [
+  {
+    path: "Fast Start · Focused Pressure",
+    tone: "ember",
+    nouns: ["Vanguard", "Breakthrough", "Charge"],
+    verdict: "Best for players who want to act early, keep attacking, and make opponents answer them.",
+  },
+  {
+    path: "Theme Engine · Compounding Growth",
+    tone: "rune",
+    nouns: ["Engine", "Confluence", "Workshop"],
+    verdict: "Best for players who enjoy combining related cards so each new piece makes the others stronger.",
+  },
+  {
+    path: "Patient Defense · Reliable Finish",
+    tone: "steel",
+    nouns: ["Bastion", "Bulwark", "Long Game"],
+    verdict: "Best for players who prefer to survive the early fight, protect key cards, and win once the table slows down.",
+  },
+] as const;
 const hashText = (value: string) =>
   Array.from(value).reduce(
     (hash, char) => (hash * 31 + char.charCodeAt(0)) >>> 0,
     2166136261,
   );
-const createMasterworks = (seed: number, commander = ""): Masterwork[] => {
-  const base = hashText(`${seed}-${commander}`);
+const masterworkIdentityWord = (commander = "", note = "") => {
+  const promise = parseNativeBlueprintIntent({ note }).tribalTypes[0];
+  if (promise) return promise.charAt(0).toUpperCase() + promise.slice(1);
+  return commander.split(/[ ,/]+/)[0] || "Forge";
+};
+const createMasterworks = (seed: number, commander = "", note = ""): Masterwork[] => {
+  const base = hashText(`${seed}-${commander}-${note}`);
+  const identity = masterworkIdentityWord(commander, note);
   return Array.from({ length: 9 }, (_, index) => {
-    const n = (base + index * 7919) >>> 0,
-      core = NAME_CORES[(base + index * 5) % NAME_CORES.length];
-    const identity = commander.split(/[ ,]+/)[0] || "Forge";
+    const lane = MASTERWORK_LANES[index % MASTERWORK_LANES.length];
+    const noun = lane.nouns[(Math.floor(index / 3) + base) % lane.nouns.length];
     return {
       rune: ["ᛋ", "ᛉ", "ᛟ", "ᚷ", "ᚱ", "ᛇ", "ᚾ", "ᛞ", "ᛜ"][index],
-      name: index % 3 === 0 ? `The ${identity} ${core}` : `The ${core}`,
-      path: PATHS[(base + index * 7) % PATHS.length],
-      tone: ["ember", "steel", "rune"][index % 3],
-      verdict: VERDICTS[(n >>> 7) % VERDICTS.length],
+      name: `The ${identity} ${noun}`,
+      path: lane.path,
+      tone: lane.tone,
+      verdict: lane.verdict,
     };
   });
 };
@@ -1090,6 +1009,7 @@ export default function Home() {
   const [activeForgeChapter, setActiveForgeChapter] = useState<1 | 2 | 3 | 4>(1);
   const [deckViewMode, setDeckViewMode] = useState<"workbench" | "ledger">("workbench");
   const [refinementComposerOpen, setRefinementComposerOpen] = useState(false);
+  const [furthestCommissionStep, setFurthestCommissionStep] = useState(0);
 
   useEffect(() => {
     try {
@@ -1159,9 +1079,22 @@ export default function Home() {
         : chamber === "forging"
           ? 2
           : 3;
+  useEffect(() => {
+    setFurthestCommissionStep((current) => Math.max(current, chapter));
+  }, [chapter]);
+  const visitCommissionStep = (step: number) => {
+    if (step > furthestCommissionStep) return;
+    if (step === 0) setChamber("entrance");
+    if (step === 1) setChamber(deck.trim() ? "refine" : "commission");
+    if (step === 2) {
+      setStage(Math.max(0, FORGING_STAGES.length - 1));
+      setChamber("forging");
+    }
+    if (step === 3) setChamber("masterworks");
+  };
   const masterworks = useMemo(
-    () => createMasterworks(commissionSeed, selectedCommander?.name),
-    [commissionSeed, selectedCommander?.name],
+    () => createMasterworks(commissionSeed, selectedCommander?.name, commissionNote),
+    [commissionSeed, selectedCommander?.name, commissionNote],
   );
   const visibleMasterworks = useMemo(
     () => masterworks.slice(masterworkPage * 3, masterworkPage * 3 + 3),
@@ -1483,7 +1416,11 @@ export default function Home() {
 
   const metaBreakerDossier = useMemo(() => {
     if (!simulationDossier) return null;
-    const weakest = simulationDossier.matrix.weakest?.opponent || "Unknown";
+    const weakestRow = simulationDossier.matrix.weakest;
+    const weakest = weakestRow?.opponent || "Unknown";
+    const weakestRate = Math.round((weakestRow?.scenarioPassRate || 0) * 100);
+    const stabilizationRate = Math.round((weakestRow?.stabilizationRate || 0) * 100);
+    const coverage = Math.round((weakestRow?.modelCoverage || 0) * 100);
     const repairs: Record<string, { pressure: string; test: string }> = {
       Aggro: {
         pressure: "The build is most vulnerable before its engine stabilizes.",
@@ -1510,10 +1447,10 @@ export default function Home() {
       const meta = getMetaIntelligence();
       if (!meta.readyForCurrentFieldUse) return {
         source: `${meta.current.provenance.name} · last observed ${meta.current.provenance.observedAt}`,
-        field: meta.warning,
+        field: `${weakest} was this deck's hardest modeled stress test: ${weakestRate}% of trials cleared the full pressure test and ${stabilizationRate}% stabilized.`,
         confidence: `FIELD GATE CLOSED · ${meta.current.freshness} · ${meta.current.ageDays} days old`,
         hypothesis: repair.pressure,
-        test: "Refresh the field collector before calling any candidate a current counter-meta design; structural stress testing may continue meanwhile.",
+        test: `${repair.test} Compare against the current ${weakestRate}% stress-test baseline; do not call it a metagame improvement until field data is refreshed.`,
       };
       return {
         source: `${meta.current.provenance.name} · observed ${meta.current.provenance.observedAt}`,
@@ -1530,11 +1467,11 @@ export default function Home() {
         ? `Commander adoption evidence · ${edhrecEvidence.cards.length} signals`
         : "No format-wide tournament field is connected for this format yet",
       field: edhrecEvidence?.available
-        ? "Commander-relative adoption informs card discovery, while legality and mechanical fit remain binding."
-        : "The Forge will not invent a current metagame claim from missing coverage.",
+        ? `${weakest} was this deck's hardest modeled stress test: ${weakestRate}% cleared the full pressure test and ${stabilizationRate}% stabilized.`
+        : `${weakest} was this deck's hardest modeled stress test: ${weakestRate}% cleared it with ${coverage}% of the deck represented by supported roles. This is deck-specific—not a claim about today's metagame.`,
       confidence: edhrecEvidence?.available ? `${observedSignals} stronger-sample signals · ${discoverySignals} new-card hypotheses · not a win-rate source` : "insufficient field evidence",
       hypothesis: repair.pressure,
-      test: repair.test,
+      test: `${repair.test} The next revision must beat the ${weakestRate}% baseline without lowering opening-hand consistency.`,
     };
   }, [simulationDossier, format, edhrecEvidence]);
   const revisionLearning = useMemo(
@@ -2335,10 +2272,26 @@ export default function Home() {
       }).slice(0, 3);
       const experiments = legal.slice(0, 3).map((card, index) => {
         const evidence = edhrecEvidence?.cards.find((signal) => cardFactKey(signal.name) === cardFactKey(card.name));
+        const cut = cuts[index % Math.max(1, cuts.length)]?.name || "Unresolved flex slot";
+        const cutLinks = interactionGraph.edges.filter((edge) => edge.from === cut || edge.to === cut).length;
+        const oracle = String(card.oracle_text || (card.card_faces || []).map((face: any) => face.oracle_text || "").join(" "));
+        const addJob = /gain life|lifelink/i.test(oracle)
+          ? "help the deck recover life"
+          : /destroy|exile|damage to target/i.test(oracle)
+            ? "answer an opposing threat"
+            : /counter target|return target/i.test(oracle)
+              ? "interact earlier"
+              : /draw|look at the top/i.test(oracle)
+                ? "keep useful cards flowing"
+                : "test a different role in the weakest matchup";
+        const weakest = simulationDossier?.matrix.weakest?.opponent || "modeled matchup";
+        const baseline = Math.round((simulationDossier?.matrix.weakest?.scenarioPassRate || 0) * 100);
         return {
-          cut: cuts[index % Math.max(1, cuts.length)]?.name || "Unresolved flex slot",
+          cut,
           add: { name: card.name, typeLine: card.type_line || "Card", image: card.image_uris?.small || card.card_faces?.[0]?.image_uris?.small || cardImage(card.name) },
-          reason: `${metaBreakerDossier.hypothesis} This one-slot Forge Theory test challenges a weakly connected flex slot without rewriting the deck's core package.`,
+          reason: `${cut} has ${cutLinks} modeled deck connection${cutLinks === 1 ? "" : "s"}, making it a lower-risk card to challenge. ${card.name}'s verified text may ${addJob}.`,
+          expectedChange: `Keep the deck at the same size while testing whether ${card.name} improves the ${weakest} pressure point.`,
+          measurement: `Rerun the same opening-hand and ${weakest} trials. Advance only if the ${baseline}% baseline improves without damaging the deck's central plan.`,
           confidence: evidence ? `${evidence.confidence} commander signal · score ${Math.round((evidence.evidenceScore || 0) * 100)}/100` : "legal card discovery · mechanical fit still requires testing",
         };
       });
@@ -2498,10 +2451,17 @@ export default function Home() {
             ["03", "The Forge"],
             ["04", "Masterworks"],
           ].map(([number, label], index) => (
-            <span className={chapter >= index ? "lit" : ""} key={label}>
+            <button
+              type="button"
+              className={`${chapter >= index ? "lit" : ""} ${chapter === index ? "current" : ""}`}
+              key={label}
+              disabled={index > furthestCommissionStep}
+              aria-current={chapter === index ? "step" : undefined}
+              onClick={() => visitCommissionStep(index)}
+            >
               <b>{number}</b>
               {label}
-            </span>
+            </button>
           ))}
         </nav>
         <div className="forge-reading-tools">
@@ -2944,10 +2904,7 @@ export default function Home() {
               return (
                 <article
                   className={`masterwork-card ${alignedWork.tone}`}
-                  key={alignedWork.name}
-                  style={
-                    { "--delay": `${index * 140}ms` } as React.CSSProperties
-                  }
+                  key={`masterwork-${poolIndex}`}
                 >
                   <span>
                     MASTERWORK {String(poolIndex + 1).padStart(2, "0")}
@@ -2995,20 +2952,20 @@ export default function Home() {
                           <GlossaryText text={colorIdentityName(commander.colors)} /> · {commander.colors.join("") || "C"}
                         </small>
                       )}
-                      <p><GlossaryText text={insight.opening} /></p>
+                      <p><b>HOW IT STARTS</b><GlossaryText text={insight.opening} /></p>
                       <em>
-                        <b>WIN CONDITION</b>
+                        <b>HOW IT WINS</b>
                         <GlossaryText text={insight.win} />
                       </em>
                     </div>
                   </div>
                   <div className="masterwork-plan">
                     <span>
-                      <small>KEY PACKAGES</small>
+                      <small>IMPORTANT PIECES</small>
                       <b><GlossaryText text={insight.packages.join(" · ")} /></b>
                     </span>
                     <span>
-                      <small>WATCH FOR</small>
+                      <small>MAIN TRADEOFF</small>
                       <b><GlossaryText text={insight.weakness} /></b>
                     </span>
                   </div>
@@ -4013,23 +3970,30 @@ export default function Home() {
               {metaBreakerDossier && (
                 <section className="meta-breaker-dossier">
                   <header>
-                    <span><small>META BREAKER LAB · FOUNDER TEST</small><b>A counter-field hypothesis, never a guaranteed result.</b></span>
+                    <span><small>DECK STRESS LAB · CONTROLLED TEST</small><b>What this deck struggled with, why it matters, and one safe change to compare.</b></span>
                     <strong>{metaBreakerDossier.confidence}</strong>
                   </header>
                   <div>
-                    <span><small>FIELD READ</small><b>{metaBreakerDossier.field}</b><em>{metaBreakerDossier.source}</em></span>
-                    <span><small>STRUCTURAL PRESSURE POINT</small><b>{metaBreakerDossier.hypothesis}</b></span>
-                    <span><small>SMALLEST HONEST TEST</small><b>{metaBreakerDossier.test}</b></span>
+                    <span><small>WHAT THE MODEL SAW</small><b>{metaBreakerDossier.field}</b><em>{metaBreakerDossier.source}</em></span>
+                    <span><small>WHY IT MATTERS</small><b>{metaBreakerDossier.hypothesis}</b></span>
+                    <span><small>ONE CHANGE TO TEST</small><b>{metaBreakerDossier.test}</b></span>
                   </div>
                   <footer className="meta-breaker-workflow">
                     <button onClick={forgeMetaBreakerExperiments} disabled={metaBreakerLoading || !deckIntegrity.passed}>
-                      {metaBreakerLoading ? "Searching the legal card pool…" : "Forge three controlled experiments"}
+                      {metaBreakerLoading ? "Searching the legal card pool…" : "Show three one-card tests"}
                     </button>
                     {metaBreakerExperiments.length > 0 && <div>
                       {metaBreakerExperiments.map((experiment) => (
                         <article key={`${experiment.cut}-${experiment.add.name}`}>
                           <img src={experiment.add.image} alt="" />
-                          <span><small>FORGE THEORY · ONE-SLOT TEST</small><b>−1 {experiment.cut}<br />+1 {experiment.add.name}</b><p>{experiment.reason}</p><em>{experiment.confidence}</em></span>
+                          <span>
+                            <small>ONE-CARD TEST</small>
+                            <b>−1 {experiment.cut}<br />+1 {experiment.add.name}</b>
+                            <p><strong>WHY THIS SWAP</strong>{experiment.reason}</p>
+                            <p><strong>EXPECTED CHANGE</strong>{experiment.expectedChange}</p>
+                            <p><strong>HOW TO JUDGE IT</strong>{experiment.measurement}</p>
+                            <em>{experiment.confidence}</em>
+                          </span>
                           <button onClick={() => applyMetaBreakerExperiment(experiment)}>Create revision</button>
                         </article>
                       ))}

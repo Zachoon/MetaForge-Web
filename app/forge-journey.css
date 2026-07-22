@@ -1244,3 +1244,14 @@
 
 @media(max-width:900px){.forge-reading-tools>span{display:none}.forge-reading-tools .quiet-action{display:none}}
 @media(max-width:560px){.forge-reading-tools{gap:3px}.forge-reading-tools>button:not(.quiet-action){width:28px;height:28px}.blueprint-glossary-tip:after{position:fixed;right:16px;bottom:18px;left:16px;width:auto;transform:translateY(5px)}.blueprint-glossary-tip:hover:after,.blueprint-glossary-tip:focus-visible:after{transform:none}}
+
+/* Stable Masterwork reveal and revisitable commission steps */
+.forge-steps button{display:flex;align-items:center;gap:7px;min-width:105px;padding:0;border:0;background:transparent;color:#4f5c59;font-size:12px;letter-spacing:.12em;cursor:pointer}
+.forge-steps button:after{content:"";width:28px;height:1px;margin-left:auto;background:#2d3836}
+.forge-steps button:last-child:after{display:none}
+.forge-steps button:disabled{cursor:not-allowed;opacity:.42}
+.forge-steps button.lit{color:#aab9b4}
+.forge-steps button.current{color:#f0f7f4}
+.forge-steps button:not(:disabled):hover,.forge-steps button:not(:disabled):focus-visible{color:var(--teal);outline:none}
+.masterwork-card{animation:none!important;contain:layout}
+.masterwork-glimpse p>b{display:block;margin-bottom:4px;color:#d9a263;font:800 10px Inter,sans-serif;letter-spacing:.12em}
