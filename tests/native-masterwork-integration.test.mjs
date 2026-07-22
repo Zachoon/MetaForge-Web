@@ -57,3 +57,40 @@ test("initial Blueprint choices explain game terms before submission", () => {
   assert.match(page, /aria-describedby="strategy-definition"/);
   assert.match(page, /Trade resources, answer key threats/i);
 });
+
+test("Workbench structural intelligence uses the shared Forge pipeline", () => {
+  assert.match(
+    page,
+    /buildForgeStructuralAnalysis/,
+  );
+
+  assert.doesNotMatch(
+    page,
+    /import\s+\{\s*buildInteractionGraph\s*\}\s+from\s+["']\.\/forge-interaction-graph\.mjs["']/,
+  );
+
+  assert.doesNotMatch(
+    page,
+    /buildForgeSystemsReport/,
+  );
+
+  assert.doesNotMatch(
+    page,
+    /buildForgeCausalityReport/,
+  );
+
+  assert.match(
+    page,
+    /baseStructuralAnalysis\.graph/,
+  );
+
+  assert.match(
+    page,
+    /baseStructuralAnalysis\.systems/,
+  );
+
+  assert.match(
+    page,
+    /structuralAnalysis\.causality/,
+  );
+});

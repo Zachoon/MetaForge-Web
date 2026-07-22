@@ -4,12 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { evaluateSimulationGate } from "./goldfish-simulation.mjs";
 import { evaluateMatchupMatrix } from "./matchup-simulation.mjs";
 import { getMetaIntelligence } from "./meta-intelligence.mjs";
-import { buildInteractionGraph } from "./forge-interaction-graph.mjs";
 import {
   buildBoundedFailureAnalysis,
-  buildForgeSystemsReport,
 } from "./forge-systems-intelligence.mjs";
-import { buildForgeCausalityReport } from "./forge-causality-engine.mjs";
+import {
+  buildForgeStructuralAnalysis,
+} from "./forge-structural-pipeline.mjs";
 import { learnRevisionPreferences } from "./revision-learning.mjs";
 import { learnFromForgeInterventions } from "./forge-intervention-learning.mjs";
 import { applyControlledSwap, rankExperimentCuts } from "./meta-breaker-experiment.mjs";
@@ -1237,27 +1237,65 @@ export default function Home() {
     };
   }, [deckRows, cardFacts, format, chosenPreview.card, selectedCommander]);
   const activeRole = cardRole(activeFact);
-  const interactionGraph = useMemo(() => buildInteractionGraph(
-    deckRows.map((row) => {
-      const fact = cardFacts[cardFactKey(row.name)];
-      return {
-        name: row.name,
-        quantity: row.quantity,
-        typeLine: [fact?.type_line, ...(fact?.card_faces || []).map((face) => face.type_line)].filter(Boolean).join(" // "),
-        oracleText: [fact?.oracle_text, ...(fact?.card_faces || []).map((face) => face.oracle_text)].filter(Boolean).join(" // "),
-        cmc: Number(fact?.cmc || 0),
-        isCommander: isCommanderFormat(format) && cardFactKey(row.name) === cardFactKey(chosenPreview.card),
-      };
-    }),
-    { commanderName: chosenPreview.card },
-  ), [deckRows, cardFacts, format, chosenPreview.card]);
-  const forgeSystemsReport = useMemo(
+  const structuralCards = useMemo(
     () =>
-      buildForgeSystemsReport(interactionGraph, {
-        commanderName: chosenPreview.card,
+      deckRows.map((row) => {
+        const fact = cardFacts[cardFactKey(row.name)];
+
+        return {
+          name: row.name,
+          quantity: row.quantity,
+          typeLine: [
+            fact?.type_line,
+            ...(fact?.card_faces || []).map(
+              (face) => face.type_line,
+            ),
+          ]
+            .filter(Boolean)
+            .join(" // "),
+          oracleText: [
+            fact?.oracle_text,
+            ...(fact?.card_faces || []).map(
+              (face) => face.oracle_text,
+            ),
+          ]
+            .filter(Boolean)
+            .join(" // "),
+          cmc: Number(fact?.cmc || 0),
+          isCommander:
+            isCommanderFormat(format) &&
+            cardFactKey(row.name) ===
+              cardFactKey(chosenPreview.card),
+        };
       }),
-    [interactionGraph, chosenPreview.card],
+    [
+      deckRows,
+      cardFacts,
+      format,
+      chosenPreview.card,
+    ],
   );
+
+  const baseStructuralAnalysis = useMemo(
+    () =>
+      buildForgeStructuralAnalysis(
+        structuralCards,
+        {
+          commanderName: chosenPreview.card,
+        },
+      ),
+    [
+      structuralCards,
+      chosenPreview.card,
+    ],
+  );
+
+  const interactionGraph =
+    baseStructuralAnalysis.graph;
+
+  const forgeSystemsReport =
+    baseStructuralAnalysis.systems;
+
 
   const activeSystem = useMemo(
     () =>
@@ -1396,15 +1434,25 @@ export default function Home() {
     [forgeSystemsReport, simulationDossier],
   );
 
-  const forgeCausalityReport = useMemo(
+  const structuralAnalysis = useMemo(
     () =>
-      buildForgeCausalityReport(
-        interactionGraph,
-        forgeSystemsReport,
-        simulationDossier,
+      buildForgeStructuralAnalysis(
+        structuralCards,
+        {
+          commanderName:
+            chosenPreview.card,
+          simulationDossier,
+        },
       ),
-    [interactionGraph, forgeSystemsReport, simulationDossier],
+    [
+      structuralCards,
+      chosenPreview.card,
+      simulationDossier,
+    ],
   );
+
+  const forgeCausalityReport =
+    structuralAnalysis.causality;
 
   const activeCausalitySystem = useMemo(
     () =>
