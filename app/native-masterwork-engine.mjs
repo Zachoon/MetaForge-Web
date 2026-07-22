@@ -2,6 +2,10 @@
 import { explainNativeMasterworkDecision } from "./native-masterwork-reasoning.mjs";
 import { runOneSlotCounterfactualLab } from "./native-one-slot-lab.mjs";
 
+import {
+  buildForgeStructuralAnalysis,
+} from "./forge-structural-pipeline.mjs";
+
 // MetaForge Native Masterwork Engine
 // Card facts may come from verified catalogs; every construction and ranking
 // decision in this module is deterministic and owned by MetaForge.
@@ -47,6 +51,137 @@ const clamp = (value, min = 0, max = 100) => Math.min(max, Math.max(min, Number(
 const normalized = (value = "") => String(value).normalize("NFKC").trim().toLocaleLowerCase("en");
 const hash = (value = "") => Array.from(String(value)).reduce((total, character) => ((total * 33) ^ character.charCodeAt(0)) >>> 0, 5381);
 const unique = (values) => [...new Set(values.filter(Boolean))];
+const BASIC_LAND_FACTS = Object.freeze({
+  Plains: {
+    typeLine: "Basic Land — Plains",
+    oracleText: "{T}: Add {W}.",
+  },
+  Island: {
+    typeLine: "Basic Land — Island",
+    oracleText: "{T}: Add {U}.",
+  },
+  Swamp: {
+    typeLine: "Basic Land — Swamp",
+    oracleText: "{T}: Add {B}.",
+  },
+  Mountain: {
+    typeLine: "Basic Land — Mountain",
+    oracleText: "{T}: Add {R}.",
+  },
+  Forest: {
+    typeLine: "Basic Land — Forest",
+    oracleText: "{T}: Add {G}.",
+  },
+  Wastes: {
+    typeLine: "Basic Land — Wastes",
+    oracleText: "{T}: Add {C}.",
+  },
+});
+
+
+function createVerifiedCardIndex(input) {
+  const entries = [
+    ...(Array.isArray(input.cards)
+      ? input.cards
+      : []),
+    ...(input.commander
+      ? [input.commander]
+      : []),
+  ];
+
+  return new Map(
+    entries
+      .filter((card) => card?.name)
+      .map((card) => [
+        normalized(card.name),
+        card,
+      ]),
+  );
+}
+
+
+function createBasicLandRecord(name) {
+  const facts =
+    BASIC_LAND_FACTS[name];
+
+  if (!facts) {
+    return null;
+  }
+
+  return {
+    name,
+    typeLine: facts.typeLine,
+    oracleText: facts.oracleText,
+    colorIdentity:
+      name === "Wastes"
+        ? []
+        : [
+            {
+              Plains: "W",
+              Island: "U",
+              Swamp: "B",
+              Mountain: "R",
+              Forest: "G",
+            }[name],
+          ],
+  };
+}
+
+
+function buildSelectedStructuralCards(
+  selected,
+  input,
+) {
+  const verifiedByName =
+    createVerifiedCardIndex(input);
+
+  const commanderName =
+    normalized(
+      input.commander?.name,
+    );
+
+  return selected.rows.map((row) => {
+    const verified =
+      verifiedByName.get(
+        normalized(row.name),
+      );
+
+    const source =
+      verified ||
+      createBasicLandRecord(
+        row.name,
+      ) ||
+      {
+        name: row.name,
+        typeLine:
+          row.roles.includes("land")
+            ? "Land"
+            : "",
+        oracleText: "",
+      };
+
+    return {
+      ...source,
+      name: row.name,
+      typeLine:
+        source.typeLine ||
+        source.type_line ||
+        "",
+      oracleText:
+        source.oracleText ||
+        source.oracle_text ||
+        "",
+      quantity:
+        Math.max(
+          1,
+          Number(row.quantity || 1),
+        ),
+      isCommander:
+        normalized(row.name) ===
+        commanderName,
+    };
+  });
+}
 
 const BLUEPRINT_FILLER_WORDS = new Set([
   "tribal", "typal", "synergy", "synergies", "theme", "themed", "archetype",
@@ -378,20 +513,57 @@ export function forgeNativeMasterwork(input) {
     .sort((left, right) => right.tournament.tournamentScore - left.tournament.tournamentScore || left.id.localeCompare(right.id));
   const selected = ranked.find((candidate) => candidate.id === tournament.selectedId);
   const reasoning = explainNativeMasterworkDecision(ranked, tournament);
-  const laboratory = runOneSlotCounterfactualLab(selected, ranked, reasoning, {
-    format: input.format,
-    strategy: input.strategy,
-    target: input.target,
-  });
+  const laboratory = runOneSlotCounterfactualLab(
+    selected,
+    ranked,
+    reasoning,
+    {
+      format: input.format,
+      strategy: input.strategy,
+      target: input.target,
+    },
+  );
+
+  const structuralCards =
+    buildSelectedStructuralCards(
+      selected,
+      input,
+    );
+
+  const structuralAnalysis =
+    buildForgeStructuralAnalysis(
+      structuralCards,
+      {
+        commanderName:
+          input.commander?.name || "",
+      },
+    );
+
   return Object.freeze({
-    engine: "metaforge-native-masterwork-v5",
+    engine: "metaforge-native-masterwork-v6",
     selected,
     candidates: ranked,
     tournament,
     reasoning,
     laboratory,
+    structuralAnalysis,
     blueprintIntent: analysis.context.blueprint,
-    diagnostics: Object.freeze({ analysisPasses: 1, cardsAnalyzed: analysis.cards.length, candidatesBuilt: ranked.length }),
+  diagnostics: Object.freeze({
+    analysisPasses: 1,
+    cardsAnalyzed:
+      analysis.cards.length,
+    candidatesBuilt:
+      ranked.length,
+    structuralCardsAnalyzed:
+      structuralAnalysis
+        .uniqueCardCount,
+    detectedSystems:
+      structuralAnalysis
+        .systems
+        .systems
+        .length,
+}),
+
     methodology: `MetaForge analyzed each verified card once, reserved explicit Blueprint identity before general optimization, filled minimum deck-function requirements, assembled three complete structural tempers, applied hard rejection gates, advanced a nondominated Blueprint tradeoff, compared it with the closest viable rival, and exhaustively gated exact one-slot experiments.${selected.blueprintAlignment.requested.length ? ` Blueprint promise: ${selected.blueprintAlignment.requested.join(", ")} — ${selected.blueprintAlignment.status.replaceAll("-", " ")}.` : ""}`,
   });
 }

@@ -20,13 +20,90 @@ test("forges three deterministic personalized candidates without a model", () =>
   const first = forgeNativeMasterwork(input);
   const second = forgeNativeMasterwork(input);
   assert.deepEqual(first, second);
-  assert.equal(first.engine, "metaforge-native-masterwork-v5");
+  assert.equal(
+    first.engine,
+    "metaforge-native-masterwork-v6",
+  );
   assert.equal(first.candidates.length, 3);
   assert.equal(first.selected.rows.reduce((sum, row) => sum + row.quantity, 0), 100);
   assert.equal(first.selected.rows[0].name, "Scholar of Tests");
   assert.equal(first.selected.tournament.verdict, "advance");
   assert.equal(first.candidates.every((candidate) => candidate.tournament), true);
-  assert.deepEqual(first.diagnostics, { analysisPasses: 1, cardsAnalyzed: pool.length, candidatesBuilt: 3 });
+  assert.equal(
+    first.diagnostics.analysisPasses,
+    1,
+  );
+
+  assert.equal(
+    first.diagnostics.cardsAnalyzed,
+    pool.length,
+  );
+
+  assert.equal(
+    first.diagnostics.candidatesBuilt,
+    3,
+  );
+
+  assert.equal(
+    first.diagnostics
+      .structuralCardsAnalyzed,
+    first.selected.rows.length,
+  );
+
+  assert.equal(
+    first.diagnostics.detectedSystems,
+    first.structuralAnalysis
+      .systems
+      .systems
+      .length,
+  );
+  assert.equal(
+    first.structuralAnalysis.engine,
+    "metaforge-structural-pipeline-v1",
+  );
+
+  assert.equal(
+    first.structuralAnalysis.cardCount,
+    100,
+  );
+
+  assert.equal(
+    first.structuralAnalysis
+      .commanderName,
+    "Scholar of Tests",
+  );
+
+  assert.ok(
+    Array.isArray(
+      first.structuralAnalysis
+        .graph
+        .nodes,
+    ),
+  );
+
+  assert.ok(
+    Array.isArray(
+      first.structuralAnalysis
+        .systems
+        .systems,
+    ),
+  );
+
+  assert.ok(
+    Array.isArray(
+      first.structuralAnalysis
+        .causality
+        .criticalNodes,
+    ),
+  );
+
+  assert.equal(
+    Object.isFrozen(
+      first.structuralAnalysis,
+    ),
+    true,
+  );
+
   assert.match(first.reasoning.summary, /advanced over|only complete candidate/i);
   assert.ok(["advance", "inconclusive"].includes(first.laboratory.verdict));
   assert.ok(first.laboratory.experimentsTested >= 0);
