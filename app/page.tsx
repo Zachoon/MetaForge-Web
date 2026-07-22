@@ -2774,6 +2774,19 @@ export default function Home() {
               that feels like yours.
             </p>
           </header>
+          {commissionNote.trim() && (
+            <section className="blueprint-promise" aria-label="Blueprint promise">
+              <span>
+                <small>THE FORGE HEARD YOU</small>
+                <b>{commissionNote.trim()}</b>
+              </span>
+              <p>
+                Every Masterwork below must honor this identity before general
+                optimization. If the verified legal pool cannot support part of
+                it, the Forge will say so instead of silently replacing it.
+              </p>
+            </section>
+          )}
           <div className="masterwork-actions">
             <span>
               REVEAL {masterworkPage + 1} · {masterworkPage * 3 + 1}–

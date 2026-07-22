@@ -48,6 +48,36 @@ const normalized = (value = "") => String(value).normalize("NFKC").trim().toLoca
 const hash = (value = "") => Array.from(String(value)).reduce((total, character) => ((total * 33) ^ character.charCodeAt(0)) >>> 0, 5381);
 const unique = (values) => [...new Set(values.filter(Boolean))];
 
+const BLUEPRINT_FILLER_WORDS = new Set([
+  "tribal", "typal", "synergy", "synergies", "theme", "themed", "archetype",
+  "build", "around", "plus", "counters", "counter", "and", "or", "with",
+]);
+
+function normalizeBlueprintText(value = "") {
+  return normalized(value)
+    .replace(/\+\s*1\s*(?:\+|\/)\s*1\s*counters?/g, "+1/+1 counter")
+    .replace(/\bplus one plus one counters?\b/g, "+1/+1 counter");
+}
+
+export function parseNativeBlueprintIntent(input = {}) {
+  const source = normalizeBlueprintText(input.note || "");
+  const tribalTypes = unique([
+    ...[...source.matchAll(/\b([a-z][a-z0-9'-]{2,})\s+(?:tribal|typal)\b/g)].map((match) => match[1]),
+    ...[...source.matchAll(/\b(?:tribal|typal)\s+([a-z][a-z0-9'-]{2,})\b/g)].map((match) => match[1]),
+  ]).filter((term) => !BLUEPRINT_FILLER_WORDS.has(term));
+  const desiredRoles = conceptSignals(source);
+  const requestedTerms = unique(
+    source
+      .split(/[^a-z0-9+'/-]+/)
+      .filter((term) => term.length >= 4 && !BLUEPRINT_FILLER_WORDS.has(term)),
+  );
+  const promises = [
+    ...tribalTypes.map((type) => `${type} typal`),
+    ...desiredRoles.map((role) => role === "counters" ? "+1/+1 counter growth" : role),
+  ];
+  return Object.freeze({ source, tribalTypes, desiredRoles, requestedTerms, promises: unique(promises) });
+}
+
 function manaValueFromCost(cost = "", fallback = 0) {
   const symbols = [...String(cost).matchAll(/\{([^}]+)\}/g)].map((match) => match[1]);
   if (!symbols.length) return Number(fallback) || 0;
@@ -85,6 +115,15 @@ function analyzeCard(card, context, evidenceByName) {
   const roles = classifyNativeCard(card);
   const text = normalized(cardText(card));
   const evidence = evidenceByName.get(normalized(card.name)) || {};
+  const typeLine = normalized(card.typeLine || card.type_line || "");
+  const directTribes = context.blueprint.tribalTypes.filter((tribe) =>
+    new RegExp(`(?:^|[^a-z])${tribe}(?:$|[^a-z])`, "i").test(typeLine),
+  );
+  const tribalSupport = context.blueprint.tribalTypes.filter((tribe) =>
+    text.includes(tribe) ||
+    /choose a creature type|creature type of your choice|creatures? you control of the chosen type|changeling|kindred/i.test(text),
+  );
+  const blueprintRoleHits = roles.filter((role) => context.blueprint.desiredRoles.includes(role));
   return {
     card,
     roles,
@@ -96,15 +135,20 @@ function analyzeCard(card, context, evidenceByName) {
     resilienceRoles: roles.filter((role) => ["draw", "protection", "recursion", "interaction"].includes(role)).length,
     evidenceScore: clamp(Number(evidence.evidenceScore || 0) * 100) * 0.12,
     discovery: evidence.newCardPotential ? 2 : 0,
+    directTribes,
+    tribalSupport,
+    blueprintRoleHits,
   };
 }
 
 function prepareForgeAnalysis(input, evidenceByName) {
+  const blueprint = parseNativeBlueprintIntent(input);
   const context = {
     weights: STRATEGY_WEIGHTS[input.strategy] || STRATEGY_WEIGHTS["Balanced midrange"],
     commanderSignals: conceptSignals(input.commander?.oracleText || ""),
     terms: preferenceTerms(input),
     ideal: /Aggressive|Tempo/i.test(input.strategy) ? 2.4 : /Control/i.test(input.strategy) ? 3.2 : 2.9,
+    blueprint,
   };
   const commanderName = normalized(input.commander?.name);
   const cards = input.cards.map((card) => analyzeCard(card, context, evidenceByName));
@@ -123,9 +167,12 @@ function scoreCard(entry, input, variant, context) {
     card: entry.card,
     roles: entry.roles,
     cmc: entry.cmc,
-    score: entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.preferenceHits * 3.5 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + deterministicTieBreak,
+    score: entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + deterministicTieBreak,
     synergyHits: entry.synergyHits,
     preferenceHits: entry.preferenceHits,
+    directTribes: entry.directTribes,
+    tribalSupport: entry.tribalSupport,
+    blueprintRoleHits: entry.blueprintRoleHits,
   };
 }
 
@@ -143,12 +190,44 @@ function roleTargets(format, strategy) {
   };
 }
 
-function chooseSpells(scored, slots, singleton, targets) {
+function chooseSpells(scored, slots, singleton, targets, blueprint) {
   const selected = [];
   const selectedNames = new Set();
   const roleCounts = new Map();
   const copies = singleton ? 1 : 4;
   let remaining = slots;
+  const addCandidate = (candidate) => {
+    if (!candidate || remaining <= 0 || selectedNames.has(normalized(candidate.card.name))) return false;
+    const quantity = Math.min(copies, remaining);
+    selected.push({
+      quantity,
+      name: candidate.card.name,
+      roles: candidate.roles,
+      score: Number(candidate.score.toFixed(3)),
+      cmc: candidate.cmc,
+      directTribes: candidate.directTribes,
+      tribalSupport: candidate.tribalSupport,
+      blueprintRoleHits: candidate.blueprintRoleHits,
+    });
+    selectedNames.add(normalized(candidate.card.name));
+    for (const role of candidate.roles) roleCounts.set(role, (roleCounts.get(role) || 0) + quantity);
+    remaining -= quantity;
+    return true;
+  };
+  const ranked = [...scored].sort((left, right) => right.score - left.score || left.card.name.localeCompare(right.card.name));
+
+  // Explicit identity requests are construction anchors, not flavor text.
+  // Direct tribe members are reserved first, then cards that support that tribe,
+  // then a meaningful floor for each requested mechanical package.
+  const tribeAnchorLimit = singleton ? 18 : 8;
+  for (const candidate of ranked.filter((entry) => entry.directTribes.length).slice(0, tribeAnchorLimit)) addCandidate(candidate);
+  const supportLimit = singleton ? 6 : 3;
+  for (const candidate of ranked.filter((entry) => entry.tribalSupport.length && !entry.directTribes.length).slice(0, supportLimit)) addCandidate(candidate);
+  const roleAnchorLimit = singleton ? 10 : 4;
+  for (const role of blueprint.desiredRoles) {
+    for (const candidate of ranked.filter((entry) => entry.blueprintRoleHits.includes(role)).slice(0, roleAnchorLimit)) addCandidate(candidate);
+  }
+
   while (remaining > 0) {
     let candidate = null;
     let bestAdjusted = Number.NEGATIVE_INFINITY;
@@ -162,11 +241,7 @@ function chooseSpells(scored, slots, singleton, targets) {
       }
     }
     if (!candidate) break;
-    const quantity = Math.min(copies, remaining);
-    selected.push({ quantity, name: candidate.card.name, roles: candidate.roles, score: Number(candidate.score.toFixed(3)), cmc: candidate.cmc });
-    selectedNames.add(normalized(candidate.card.name));
-    for (const role of candidate.roles) roleCounts.set(role, (roleCounts.get(role) || 0) + quantity);
-    remaining -= quantity;
+    addCandidate(candidate);
   }
   if (remaining) throw new Error(`Native Forge could not fill ${remaining} spell slot(s)`);
   return { selected, roleCounts };
@@ -225,7 +300,7 @@ function buildCandidate(input, variant, analysis) {
   const spells = analysis.spells;
   const lands = analysis.lands;
   const scored = spells.map((entry) => scoreCard(entry, input, variant, analysis.context));
-  const { selected, roleCounts } = chooseSpells(scored, target - landSlots - commanderSlots, singleton, roleTargets(input.format, input.strategy));
+  const { selected, roleCounts } = chooseSpells(scored, target - landSlots - commanderSlots, singleton, roleTargets(input.format, input.strategy), analysis.context.blueprint);
   const mana = buildManaBase(input, landSlots, lands, variant);
   const rows = [
     ...(input.commander ? [{ quantity: 1, name: input.commander.name, roles: ["commander"], score: 100, cmc: manaValueFromCost(input.commander.manaCost, input.commander.cmc) }] : []),
@@ -233,12 +308,36 @@ function buildCandidate(input, variant, analysis) {
     ...mana,
   ];
   const evaluation = evaluateCandidate(rows, roleCounts, input, variant);
+  const availableTribeCards = analysis.spells.filter((entry) => entry.directTribes.length).length;
+  const selectedTribeCards = selected.filter((entry) => entry.directTribes.length).length;
+  const requestedRoleCoverage = Object.fromEntries(
+    analysis.context.blueprint.desiredRoles.map((role) => [
+      role,
+      selected.filter((entry) => entry.blueprintRoleHits.includes(role)).reduce((sum, entry) => sum + entry.quantity, 0),
+    ]),
+  );
+  const blueprintAlignment = Object.freeze({
+    requested: analysis.context.blueprint.promises,
+    tribalTypes: analysis.context.blueprint.tribalTypes,
+    availableTribeCards,
+    selectedTribeCards,
+    requestedRoleCoverage,
+    status: !analysis.context.blueprint.promises.length
+      ? "no-explicit-theme"
+      : analysis.context.blueprint.tribalTypes.length && !availableTribeCards
+        ? "unsupported-tribe-in-verified-pool"
+        : "honored-best-effort",
+    boundary: analysis.context.blueprint.tribalTypes.length && !availableTribeCards
+      ? `No legal ${analysis.context.blueprint.tribalTypes.join("/")} creature was present in the verified pool; the Forge preserved legality and must say so instead of inventing support.`
+      : "Explicit Blueprint identity was reserved before general optimization; legality and minimum deck function remained binding.",
+  });
   return {
     id: variant.id,
     label: variant.label,
     rows,
     deckText: rows.map((row) => `${row.quantity} ${row.name}`).join("\n"),
     evaluation,
+    blueprintAlignment,
     score: evaluation.score,
     boundary: "Native structural candidate. Legality and simulations are hard gates; real match performance remains unproven.",
   };
@@ -262,13 +361,14 @@ export function forgeNativeMasterwork(input) {
     target: input.target,
   });
   return Object.freeze({
-    engine: "metaforge-native-masterwork-v4",
+    engine: "metaforge-native-masterwork-v5",
     selected,
     candidates: ranked,
     tournament,
     reasoning,
     laboratory,
+    blueprintIntent: analysis.context.blueprint,
     diagnostics: Object.freeze({ analysisPasses: 1, cardsAnalyzed: analysis.cards.length, candidatesBuilt: ranked.length }),
-    methodology: "MetaForge analyzed each verified card once, filled explicit role requirements, assembled three complete structural tempers, applied hard rejection gates, advanced a nondominated Blueprint tradeoff, compared it with the closest viable rival, and exhaustively gated exact one-slot experiments.",
+    methodology: `MetaForge analyzed each verified card once, reserved explicit Blueprint identity before general optimization, filled minimum deck-function requirements, assembled three complete structural tempers, applied hard rejection gates, advanced a nondominated Blueprint tradeoff, compared it with the closest viable rival, and exhaustively gated exact one-slot experiments.${selected.blueprintAlignment.requested.length ? ` Blueprint promise: ${selected.blueprintAlignment.requested.join(", ")} — ${selected.blueprintAlignment.status.replaceAll("-", " ")}.` : ""}`,
   });
 }

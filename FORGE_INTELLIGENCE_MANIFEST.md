@@ -88,7 +88,9 @@ not justify a confident claim.
   role-coverage, and curve gates followed by deterministic Pareto-style tradeoff
   selection and bounded advance/hold/reject verdicts.
 - `app/native-masterwork-engine.mjs`: model-independent rules-text
-  classification, Blueprint personalization, role-targeted construction,
+  classification, explicit Blueprint-promise parsing, typal and mechanical
+  package reservation before general optimization, honest unsupported-theme
+  boundaries, role-targeted construction,
   deterministic three-candidate tournaments, mana-base assembly, and bounded
   structural ranking for complete Masterwork decks.
 - `app/forge-simulation.mjs`: deterministic library and opening-hand trials.

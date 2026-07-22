@@ -66,3 +66,27 @@
     grid-template-columns: 1fr;
   }
 }
+
+.blueprint-promise {
+  display: grid;
+  width: min(1380px, 100%);
+  grid-template-columns: minmax(0, 1fr) minmax(280px, .8fr);
+  gap: 24px;
+  align-items: center;
+  margin: 22px auto 0;
+  padding: 14px 18px;
+  border: 1px solid #526b62;
+  background: linear-gradient(90deg, #0b1a18e8, #101715e8);
+  box-shadow: inset 3px 0 #54cdb7, 0 14px 36px #0006;
+}
+
+.blueprint-promise span,
+.blueprint-promise small,
+.blueprint-promise b { display: block; }
+.blueprint-promise small { color: var(--teal); font-size: 10px; font-weight: 900; letter-spacing: .16em; }
+.blueprint-promise b { margin-top: 5px; color: #f0eadc; font: 600 17px/1.25 Georgia, serif; }
+.blueprint-promise p { margin: 0; color: #aebbb6; font-size: 12px; font-weight: 600; line-height: 1.5; }
+
+@media (max-width: 700px) {
+  .blueprint-promise { grid-template-columns: 1fr; gap: 8px; }
+}
