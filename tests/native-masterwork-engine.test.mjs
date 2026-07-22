@@ -70,8 +70,24 @@ test("reports an unsupported requested tribe instead of pretending it was honore
     cards: pool,
   });
 
-  assert.equal(report.selected.blueprintAlignment.status, "unsupported-tribe-in-verified-pool");
-  assert.match(report.selected.blueprintAlignment.boundary, /No legal muppet creature/i);
+  assert.equal(report.selected.blueprintAlignment.status, "unsupported-identity-in-verified-pool");
+  assert.match(report.selected.blueprintAlignment.boundary, /No legal card naming or carrying the muppet identity/i);
+});
+
+test("honors a lore identity found in card text even when it is not a creature type", () => {
+  const gammaTheme = Array.from({ length: 12 }, (_, i) =>
+    card(`Experiment ${i}`, `Gamma radiation puts a +1/+1 counter on this creature.`, "Creature — Human Scientist", "{2}{G}", ["G"]),
+  );
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange",
+    note: "Gamma Tribal", seed: 617,
+    commander: { name: "Bruce Banner // The Incredible Hulk", colors: ["G", "R"], oracleText: "Transform Bruce Banner." },
+    cards: [...pool, ...gammaTheme],
+  });
+  assert.equal(report.selected.blueprintAlignment.availableTribeCards, 0);
+  assert.equal(report.selected.blueprintAlignment.availableIdentityCards, 12);
+  assert.equal(report.selected.blueprintAlignment.selectedIdentityCards, 12);
+  assert.equal(report.selected.blueprintAlignment.status, "honored-best-effort");
 });
 
 test("normalizes ordinary-language counter requests", () => {

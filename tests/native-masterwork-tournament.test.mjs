@@ -47,3 +47,21 @@ test("rejects a cosmetic near-duplicate instead of presenting it as a choice", (
   assert.equal(verdict.verdict, "reject");
   assert.match(verdict.reason, /materially different design/i);
 });
+
+test("rejects a candidate that misses a supported Blueprint contract", () => {
+  const missed = {
+    ...candidate("missed", {}),
+    blueprintAlignment: { status: "missed-supported-blueprint" },
+  };
+  const honored = {
+    ...candidate("honored", {}),
+    blueprintAlignment: { status: "honored-best-effort" },
+  };
+  const report = runNativeMasterworkTournament([missed, honored], {
+    format: "Standard",
+    target: 60,
+  });
+  const verdict = report.results.find((entry) => entry.id === "missed");
+  assert.equal(verdict.verdict, "reject");
+  assert.match(verdict.reason, /Blueprint promise/i);
+});

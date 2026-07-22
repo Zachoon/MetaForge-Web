@@ -13,7 +13,7 @@ import { buildForgeCausalityReport } from "./forge-causality-engine.mjs";
 import { learnRevisionPreferences } from "./revision-learning.mjs";
 import { learnFromForgeInterventions } from "./forge-intervention-learning.mjs";
 import { applyControlledSwap, rankExperimentCuts } from "./meta-breaker-experiment.mjs";
-import { forgeNativeMasterwork } from "./native-masterwork-engine.mjs";
+import { forgeNativeMasterwork, parseNativeBlueprintIntent } from "./native-masterwork-engine.mjs";
 
 type Chamber =
   | "entrance"
@@ -392,7 +392,10 @@ const masterworkInsight = (
   work: Masterwork,
   preview: DeckPreview,
   commander: CommanderOption | null,
+  note = "",
 ) => {
+  const blueprint = parseNativeBlueprintIntent({ note });
+  const blueprintPromise = blueprint.promises.join(" plus ");
   const oracle = commanderOracleText(commander);
   const mechanics = [
     [/sacrifice|dies|graveyard/i, "graveyard and sacrifice value"],
@@ -417,14 +420,14 @@ const masterworkInsight = (
   const control = /control|reactive|bastion|precision/.test(path);
   const engine = /synergy|engine|combo|alchemy|growth/.test(path);
   const attrition = /attrition|graveyard|inevitability|resource|ramp/.test(path);
-  const opening = pressure
+  const baseOpening = pressure
     ? "Deploy an early threat, then protect the tempo lead instead of spending turns assembling a fragile engine."
     : control
       ? "Develop mana while trading selectively; the commander enters after the first wave of pressure is contained."
       : engine
         ? "Lead with low-cost enablers, then use the commander to turn several modest pieces into one compounding engine."
         : "Establish mana and flexible interaction first, then pivot between pressure and recovery as the table reveals itself.";
-  const win = pressure
+  const baseWin = pressure
     ? `Convert ${identity} into repeated combat pressure, then finish before slower decks rebuild.`
     : control
       ? `Use ${identity} to pull ahead after one-for-one trades, then close behind a protected threat.`
@@ -433,13 +436,20 @@ const masterworkInsight = (
         : attrition
           ? `Make every exchange improve the next one until ${identity} produces an advantage opponents can no longer match.`
           : preview.win;
-  const packages = pressure
+  const opening = blueprintPromise
+    ? `Begin with ${blueprintPromise} as a construction anchor. ${baseOpening}`
+    : baseOpening;
+  const win = blueprintPromise
+    ? `${baseWin} The final list must retain a measurable ${blueprintPromise} package.`
+    : baseWin;
+  const packages = (pressure
     ? ["Cheap pressure", "Protection + disruption", "Reach after a stalled board"]
     : control
       ? ["Early interaction", "Repeatable advantage", "Protected closing threats"]
       : engine
         ? ["Redundant enablers", "Commander payoff layer", "Backup finishers"]
-        : ["Mana development", "Flexible two-for-ones", "Inevitable endgame"];
+        : ["Mana development", "Flexible two-for-ones", "Inevitable endgame"]);
+  if (blueprintPromise) packages.unshift(`Blueprint · ${blueprintPromise}`);
   const weakness = pressure
     ? "Most exposed to efficient sweepers and lifegain; mulligans must preserve a second wave."
     : control
@@ -770,6 +780,7 @@ const loadNativeForgePool = async (
   format: string,
   commander: CommanderOption | null,
   lynchpin: string,
+  note = "",
 ) => {
   let anchor: any = null;
   if (!commander && lynchpin) {
@@ -794,6 +805,13 @@ const loadNativeForgePool = async (
   );
   const cards: NativeForgeCard[] = [];
   const seen = new Set<string>();
+  const addRawCard = (rawCard: any) => {
+    const card = nativeCardFact(rawCard);
+    const key = cardFactKey(card.name);
+    if (!card.name || seen.has(key)) return;
+    seen.add(key);
+    cards.push(card);
+  };
   let nextUrl = `https://api.scryfall.com/cards/search?q=${query}&order=edhrec&unique=cards`;
 
   for (let page = 0; nextUrl && page < 4; page += 1) {
@@ -803,13 +821,34 @@ const loadNativeForgePool = async (
     if (!response.ok) throw new Error("The verified card catalog is unavailable");
     const result = await response.json();
     for (const rawCard of result.data || []) {
-      const card = nativeCardFact(rawCard);
-      const key = cardFactKey(card.name);
-      if (!card.name || seen.has(key)) continue;
-      seen.add(key);
-      cards.push(card);
+      addRawCard(rawCard);
     }
     nextUrl = result.has_more ? String(result.next_page || "") : "";
+  }
+
+  // Popularity pages are intentionally broad, but explicit player identity is
+  // fetched directly so niche/lore themes cannot disappear before scoring.
+  const blueprint = parseNativeBlueprintIntent({ note });
+  const roleQueries: Record<string, string> = {
+    counters: 'o:"+1/+1 counter"',
+    tokens: "o:create o:token",
+    sacrifice: "o:sacrifice",
+    graveyard: "o:graveyard",
+    artifacts: "(t:artifact OR o:artifact)",
+    spells: '(o:"instant or sorcery" OR o:"noncreature spell")',
+    lifegain: '(o:"gain life" OR kw:lifelink)',
+    combat: "(o:combat OR o:attack)",
+  };
+  const identityQueries = [
+    ...blueprint.tribalTypes.map((term: string) => `(t:"${term}" OR o:"${term}" OR name:"${term}")`),
+    ...blueprint.desiredRoles.map((role: string) => roleQueries[role]).filter(Boolean),
+  ].slice(0, 6);
+  for (const identityQuery of identityQueries) {
+    const targetedUrl = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`${scryfallFormatTerms(format)}${colorQuery} ${identityQuery} -is:funny`)}&order=name&unique=cards`;
+    const response = await fetch(targetedUrl, { headers: { Accept: "application/json" } });
+    if (!response.ok) continue;
+    const result = await response.json();
+    for (const rawCard of result.data || []) addRawCard(rawCard);
   }
 
   if (anchor) {
@@ -1953,7 +1992,7 @@ export default function Home() {
     setEdhrecEvidence(evidence);
 
     try {
-      const pool = await loadNativeForgePool(format, commander, preview.card);
+      const pool = await loadNativeForgePool(format, commander, preview.card, commissionNote);
       const nativeReport = forgeNativeMasterwork({
         format,
         target: targetDeckSize(format),
@@ -2901,7 +2940,7 @@ export default function Home() {
               const alignedWork = randomCommission
                 ? alignRandomMasterwork(work, commander, poolIndex)
                 : work;
-              const insight = masterworkInsight(alignedWork, preview, commander);
+              const insight = masterworkInsight(alignedWork, preview, commander, commissionNote);
               return (
                 <article
                   className={`masterwork-card ${alignedWork.tone}`}

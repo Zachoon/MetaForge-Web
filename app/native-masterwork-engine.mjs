@@ -120,9 +120,10 @@ function analyzeCard(card, context, evidenceByName) {
     new RegExp(`(?:^|[^a-z])${tribe}(?:$|[^a-z])`, "i").test(typeLine),
   );
   const tribalSupport = context.blueprint.tribalTypes.filter((tribe) =>
-    text.includes(tribe) ||
+    (!directTribes.includes(tribe) && text.includes(tribe)) ||
     /choose a creature type|creature type of your choice|creatures? you control of the chosen type|changeling|kindred/i.test(text),
   );
+  const identityHits = unique([...directTribes, ...tribalSupport]);
   const blueprintRoleHits = roles.filter((role) => context.blueprint.desiredRoles.includes(role));
   return {
     card,
@@ -137,6 +138,7 @@ function analyzeCard(card, context, evidenceByName) {
     discovery: evidence.newCardPotential ? 2 : 0,
     directTribes,
     tribalSupport,
+    identityHits,
     blueprintRoleHits,
   };
 }
@@ -172,6 +174,7 @@ function scoreCard(entry, input, variant, context) {
     preferenceHits: entry.preferenceHits,
     directTribes: entry.directTribes,
     tribalSupport: entry.tribalSupport,
+    identityHits: entry.identityHits,
     blueprintRoleHits: entry.blueprintRoleHits,
   };
 }
@@ -207,6 +210,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint) {
       cmc: candidate.cmc,
       directTribes: candidate.directTribes,
       tribalSupport: candidate.tribalSupport,
+      identityHits: candidate.identityHits,
       blueprintRoleHits: candidate.blueprintRoleHits,
     });
     selectedNames.add(normalized(candidate.card.name));
@@ -219,9 +223,9 @@ function chooseSpells(scored, slots, singleton, targets, blueprint) {
   // Explicit identity requests are construction anchors, not flavor text.
   // Direct tribe members are reserved first, then cards that support that tribe,
   // then a meaningful floor for each requested mechanical package.
-  const tribeAnchorLimit = singleton ? 18 : 8;
+  const tribeAnchorLimit = singleton ? 24 : 8;
   for (const candidate of ranked.filter((entry) => entry.directTribes.length).slice(0, tribeAnchorLimit)) addCandidate(candidate);
-  const supportLimit = singleton ? 6 : 3;
+  const supportLimit = singleton ? 12 : 4;
   for (const candidate of ranked.filter((entry) => entry.tribalSupport.length && !entry.directTribes.length).slice(0, supportLimit)) addCandidate(candidate);
   const roleAnchorLimit = singleton ? 10 : 4;
   for (const role of blueprint.desiredRoles) {
@@ -310,6 +314,17 @@ function buildCandidate(input, variant, analysis) {
   const evaluation = evaluateCandidate(rows, roleCounts, input, variant);
   const availableTribeCards = analysis.spells.filter((entry) => entry.directTribes.length).length;
   const selectedTribeCards = selected.filter((entry) => entry.directTribes.length).length;
+  const availableIdentityCards = analysis.spells.filter((entry) => entry.identityHits.length).length;
+  const selectedIdentityCards = selected.filter((entry) => entry.identityHits.length).length;
+  const requiredIdentityCards = analysis.context.blueprint.tribalTypes.length
+    ? Math.min(availableIdentityCards, singleton ? 12 : 4)
+    : 0;
+  const availableRoleCoverage = Object.fromEntries(
+    analysis.context.blueprint.desiredRoles.map((role) => [
+      role,
+      analysis.spells.filter((entry) => entry.blueprintRoleHits.includes(role)).length,
+    ]),
+  );
   const requestedRoleCoverage = Object.fromEntries(
     analysis.context.blueprint.desiredRoles.map((role) => [
       role,
@@ -321,15 +336,23 @@ function buildCandidate(input, variant, analysis) {
     tribalTypes: analysis.context.blueprint.tribalTypes,
     availableTribeCards,
     selectedTribeCards,
+    availableIdentityCards,
+    selectedIdentityCards,
+    requiredIdentityCards,
+    availableRoleCoverage,
     requestedRoleCoverage,
     status: !analysis.context.blueprint.promises.length
       ? "no-explicit-theme"
-      : analysis.context.blueprint.tribalTypes.length && !availableTribeCards
-        ? "unsupported-tribe-in-verified-pool"
-        : "honored-best-effort",
-    boundary: analysis.context.blueprint.tribalTypes.length && !availableTribeCards
-      ? `No legal ${analysis.context.blueprint.tribalTypes.join("/")} creature was present in the verified pool; the Forge preserved legality and must say so instead of inventing support.`
-      : "Explicit Blueprint identity was reserved before general optimization; legality and minimum deck function remained binding.",
+      : analysis.context.blueprint.tribalTypes.length && !availableIdentityCards
+        ? "unsupported-identity-in-verified-pool"
+        : selectedIdentityCards < requiredIdentityCards || analysis.context.blueprint.desiredRoles.some(
+          (role) => requestedRoleCoverage[role] < Math.min(availableRoleCoverage[role], singleton ? 8 : 4),
+        )
+          ? "missed-supported-blueprint"
+          : "honored-best-effort",
+    boundary: analysis.context.blueprint.tribalTypes.length && !availableIdentityCards
+      ? `No legal card naming or carrying the ${analysis.context.blueprint.tribalTypes.join("/")} identity was present in the verified pool; the Forge preserved legality and must say so instead of inventing support.`
+      : `Blueprint contract reserved ${selectedIdentityCards}/${requiredIdentityCards} required identity cards before general optimization; legality and minimum deck function remained binding.`,
   });
   return {
     id: variant.id,

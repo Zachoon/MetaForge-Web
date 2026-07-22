@@ -13,6 +13,13 @@ test("Masterwork selection uses the native engine instead of a model endpoint", 
   assert.doesNotMatch(generation, /task:\s*["']deck_generation/);
 });
 
+test("Blueprint identity shapes previews and targeted verified-pool retrieval", () => {
+  assert.match(page, /parseNativeBlueprintIntent/);
+  assert.match(page, /Begin with \$\{blueprintPromise\} as a construction anchor/);
+  assert.match(page, /Popularity pages are intentionally broad/);
+  assert.match(page, /loadNativeForgePool\(format, commander, preview\.card, commissionNote\)/);
+});
+
 test("native forging exposes visible elapsed progress and moving stages", () => {
   assert.match(page, /forgeElapsedSeconds/);
   assert.match(page, /METAFORGE NATIVE ENGINE/);
