@@ -3,6 +3,7 @@ import fs from "node:fs";
 import test from "node:test";
 
 const page = fs.readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+const nativeEngine = fs.readFileSync(new URL("../app/native-masterwork-engine.mjs", import.meta.url), "utf8");
 const start = page.indexOf("async function inspectMasterwork");
 const end = page.indexOf("function openSavedMasterwork", start);
 const generation = page.slice(start, end);
@@ -94,3 +95,38 @@ test("Workbench structural intelligence uses the shared Forge pipeline", () => {
     /structuralAnalysis\.causality/,
   );
 });
+
+test(
+  "native engine creates and exposes an inspectable recommendation ledger record",
+  () => {
+    assert.match(
+      nativeEngine,
+      /createForgeRecommendationRecord/,
+    );
+
+    assert.match(
+      nativeEngine,
+      /const recommendationRecord\s*=/,
+    );
+
+    assert.match(
+      nativeEngine,
+      /deckRows:\s*selected\.rows/,
+    );
+
+    assert.match(
+      nativeEngine,
+      /structuralAnalysis,/,
+    );
+
+    assert.match(
+      nativeEngine,
+      /blueprintIntent:\s*analysis\.context\s*\.blueprint/,
+    );
+
+    assert.match(
+      nativeEngine,
+      /recommendationRecord,/,
+    );
+  },
+);

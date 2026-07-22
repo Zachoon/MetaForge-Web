@@ -6,6 +6,10 @@ import {
   buildForgeStructuralAnalysis,
 } from "./forge-structural-pipeline.mjs";
 
+import {
+  createForgeRecommendationRecord,
+} from "./forge-recommendation-ledger.mjs";
+
 // MetaForge Native Masterwork Engine
 // Card facts may come from verified catalogs; every construction and ranking
 // decision in this module is deterministic and owned by MetaForge.
@@ -539,6 +543,69 @@ export function forgeNativeMasterwork(input) {
       },
     );
 
+  const recommendationRecord =
+    createForgeRecommendationRecord({
+      engineVersion:
+        "metaforge-native-masterwork-v6",
+      format:
+        input.format,
+      strategy:
+        input.strategy,
+      commanderName:
+        input.commander?.name ||
+        "",
+      deckRows:
+        selected.rows,
+      recommendation: {
+        candidateId:
+          selected.id,
+        label:
+          selected.label,
+        score:
+          selected.score,
+        tournamentScore:
+          selected.tournament
+            ?.tournamentScore ||
+          0,
+        reason:
+          selected.tournament
+            ?.reason ||
+          "",
+      },
+      alternatives:
+        ranked
+          .filter(
+            (candidate) =>
+              candidate.id !==
+              selected.id,
+          )
+          .map(
+            (candidate) => ({
+              id:
+                candidate.id,
+              label:
+                candidate.label,
+              score:
+                candidate.score,
+              tournamentScore:
+                candidate
+                  .tournament
+                  ?.tournamentScore ||
+                0,
+              reason:
+                candidate
+                  .tournament
+                  ?.reason ||
+                "",
+            }),
+          ),
+      reasoning,
+      structuralAnalysis,
+      blueprintIntent:
+        analysis.context
+          .blueprint,
+    });
+
   return Object.freeze({
     engine: "metaforge-native-masterwork-v6",
     selected,
@@ -547,6 +614,7 @@ export function forgeNativeMasterwork(input) {
     reasoning,
     laboratory,
     structuralAnalysis,
+    recommendationRecord,
     blueprintIntent: analysis.context.blueprint,
   diagnostics: Object.freeze({
     analysisPasses: 1,
