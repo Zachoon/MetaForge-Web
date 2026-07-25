@@ -4,6 +4,7 @@ import test from "node:test";
 
 const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
 const css = await readFile(new URL("../app/testing-anvil.css", import.meta.url), "utf8");
+const motifCss = await readFile(new URL("../app/masterwork-motifs.css", import.meta.url), "utf8");
 
 test("defaults the workbench to a remembered Guided View", () => {
   assert.match(page, /useState<"guided" \| "full">\("guided"\)/);
@@ -70,6 +71,42 @@ test("offers three evidence-led experiment tablets before optional match evidenc
   assert.doesNotMatch(page, /className="custom-refinement-trigger"/);
   assert.doesNotMatch(page, /className="refinement-composer"/);
   assert.doesNotMatch(page, /async function consultForge/);
+});
+
+test("accepting an experiment tablet plays out where the player can actually see it", () => {
+  // The deck list that receives the cut/materialize animation classes only
+  // renders while Chapter I is active — the accept handler must jump there
+  // itself instead of leaving the swap to happen behind the tablets screen.
+  assert.match(page, /function applyExperimentTablet[\s\S]*?setActiveForgeChapter\(1\)/);
+  // The tablet engine's own view of the deck must advance too, or the same
+  // three tablets (some now stale) just keep reappearing after every accept.
+  assert.match(page, /function applyExperimentTablet[\s\S]*?setNativeMasterworkContext\(/);
+  // A forced, visible decision after the swap settles — not a silent return
+  // to a screen that looks identical to before the click.
+  assert.match(page, /const \[postAcceptChoice, setPostAcceptChoice\] = useState\(false\)/);
+  assert.match(page, /className="post-accept-choice"/);
+  assert.match(page, /Test Another Experiment/);
+  assert.match(page, /This Is The One — Preserve as Finished Masterwork/);
+  // Growth in the Forge Mastery record should be visible at the moment it
+  // happens, not only on a separate /profile visit.
+  assert.match(page, /Revision \{lastAcceptedRevisionCount\} recorded to your/);
+  assert.match(page, /href="\/profile"/);
+});
+
+test("accepts a two-sided flip and shockwave burst on the tablet being applied, not a brief pulse", () => {
+  assert.match(page, /className="tablet-flip-inner"/);
+  assert.match(page, /className="tablet-face tablet-face-front"/);
+  assert.match(page, /className="tablet-face tablet-face-back"/);
+  assert.match(page, /EXPERIMENT ACCEPTED/);
+  assert.match(motifCss, /\.experiment-tablet-card\.applying \.tablet-flip-inner\{transform:rotateY\(180deg\)/);
+  assert.match(motifCss, /@keyframes tablet-shockwave/);
+});
+
+test("offers a confidence tablet in place of a missing third experiment slot", () => {
+  assert.match(page, /tablet\.type === "confidence"/);
+  assert.match(page, /className="experiment-tablet-card confidence-tablet"/);
+  assert.match(page, /Seal it as a Finished Masterwork/);
+  assert.match(motifCss, /\.confidence-tablet\{/);
 });
 
 test("keeps the Editing Anvil closed until the player asks for it", () => {

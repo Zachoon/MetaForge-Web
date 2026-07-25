@@ -1185,6 +1185,18 @@ export default function Home() {
     motif: string | null;
     stage: "out" | "in";
   } | null>(null);
+  // Plays once, screen-blended over black, when a Masterwork is sealed as
+  // finished. Real footage reserved for this one rare climax so it never
+  // wears out from repetition the way a per-action effect would.
+  const [sealBurst, setSealBurst] = useState(false);
+  // Surfaced right after an experiment finishes applying, in the same
+  // chapter as the deck list that just changed — a forced decision instead
+  // of silently sitting on the tablets screen with nothing to do next.
+  const [postAcceptChoice, setPostAcceptChoice] = useState(false);
+  // The real, persisted revision count at the moment an experiment was
+  // accepted — shown to close the loop with the Forge Mastery record on
+  // /profile instead of leaving that growth invisible until a separate visit.
+  const [lastAcceptedRevisionCount, setLastAcceptedRevisionCount] = useState<number | null>(null);
   const [benchStatus, setBenchStatus] = useState<
     "idle" | "forging" | "testing" | "thinking"
   >("idle");
@@ -2876,7 +2888,12 @@ export default function Home() {
     expectedBenefit: string;
     tradeoff: string;
   }) {
-    if (swapFlourish) return;
+    if (swapFlourish || !nativeMasterworkContext) return;
+    // Jump to the deck-list chapter first: the cut/materialize animation
+    // below writes into the actual card rows there, and that chapter is
+    // display:none while the tablets chapter is active. Without this the
+    // swap happens entirely off-screen.
+    setActiveForgeChapter(1);
     setSwapFlourish({ cut: tablet.change.cut, add: tablet.change.add, motif: tablet.motif, stage: "out" });
     await new Promise((resolve) => window.setTimeout(resolve, 650));
 
@@ -2895,6 +2912,26 @@ export default function Home() {
       { deck: nextDeck, note, createdAt: new Date().toISOString(), recommendationRecord: null },
     ];
 
+    // Advance the tablet engine's own view of the deck too. Without this,
+    // buildExperimentTablets keeps re-diffing the ORIGINAL forged deck on
+    // every render, so the same three tablets (some now stale or already
+    // applied) just kept reappearing after every accept.
+    const knownRows = new Map<string, { roles?: string[]; cmc?: number }>();
+    for (const row of nativeMasterworkContext.selected?.rows || []) knownRows.set(row.name, row);
+    for (const candidate of nativeMasterworkContext.candidates || []) {
+      for (const row of candidate.rows || []) {
+        if (!knownRows.has(row.name)) knownRows.set(row.name, row);
+      }
+    }
+    const nextSelectedRows = remaining.map((row) => {
+      const known = knownRows.get(row.name);
+      return { quantity: row.quantity, name: row.name, roles: known?.roles || [], cmc: known?.cmc ?? 0 };
+    });
+    setNativeMasterworkContext({
+      ...nativeMasterworkContext,
+      selected: { ...nativeMasterworkContext.selected, rows: nextSelectedRows, deckText: nextDeck },
+    });
+
     setForgedDeck(nextDeck);
     setRevisions(nextRevisions);
     setSwapFlourish({ cut: tablet.change.cut, add: tablet.change.add, motif: tablet.motif, stage: "in" });
@@ -2905,7 +2942,11 @@ export default function Home() {
       nextRevisions.length,
     );
     void persistStoryBench(nextRevisions, record);
-    window.setTimeout(() => setSwapFlourish(null), 1800);
+    window.setTimeout(() => {
+      setSwapFlourish(null);
+      setLastAcceptedRevisionCount(nextRevisions.length);
+      setPostAcceptChoice(true);
+    }, 1800);
   }
 
   return (
@@ -3580,6 +3621,46 @@ export default function Home() {
                   </button>
                 </div>
               </header>
+              {postAcceptChoice && (
+                <div className="post-accept-choice" role="status">
+                  <span>
+                    <strong>Change applied.</strong> What's next for this Masterwork?
+                    {lastAcceptedRevisionCount != null && (
+                      <>
+                        {" "}
+                        Revision {lastAcceptedRevisionCount} recorded to your{" "}
+                        <a href="/profile">Forge Mastery →</a>
+                      </>
+                    )}
+                  </span>
+                  <div>
+                    <button
+                      type="button"
+                      className="keep-testing"
+                      onClick={() => {
+                        setPostAcceptChoice(false);
+                        setActiveForgeChapter(2);
+                      }}
+                    >
+                      Test Another Experiment →
+                    </button>
+                    {deckId && !currentFamilyArchived && (
+                      <button
+                        type="button"
+                        className="finish-masterwork"
+                        onClick={() => {
+                          setPostAcceptChoice(false);
+                          setSealBurst(true);
+                          setFamilyArchived(deckId, true);
+                          window.setTimeout(() => setSealBurst(false), 2200);
+                        }}
+                      >
+                        This Is The One — Preserve as Finished Masterwork
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
               <section className="forge-quick-read" aria-label="Why the Forge built this deck">
                 <span>
                   <small>WHY THIS MASTERWORK</small>
@@ -4645,6 +4726,36 @@ export default function Home() {
               <section className="refinement-starters experiment-tablets" aria-label="Three evidence-led controlled experiments">
                 {experimentTablets && experimentTablets.status === "advance" ? (
                   experimentTablets.tablets.map((tablet: any, index: number) => {
+                    if (tablet.type === "confidence") {
+                      return (
+                        <article
+                          key={tablet.id}
+                          className="experiment-tablet-card confidence-tablet"
+                          style={{ "--motif-accent": masterworkVisualProfile.accent } as React.CSSProperties}
+                        >
+                          <header>
+                            <small>EXPERIMENT {index + 1} · THE FORGE'S READ</small>
+                          </header>
+                          <div className="confidence-tablet-body">
+                            <strong>{tablet.headline}</strong>
+                            <p>{tablet.detail}</p>
+                          </div>
+                          {deckId && !currentFamilyArchived && (
+                            <button
+                              type="button"
+                              className="tablet-accept confidence-seal"
+                              onClick={() => {
+                                setSealBurst(true);
+                                setFamilyArchived(deckId, true);
+                                window.setTimeout(() => setSealBurst(false), 2200);
+                              }}
+                            >
+                              Seal it as a Finished Masterwork →
+                            </button>
+                          )}
+                        </article>
+                      );
+                    }
                     const Icon = tablet.motif ? MOTIF_ICONS[tablet.motif as keyof typeof MOTIF_ICONS] : null;
                     const applying =
                       swapFlourish?.cut === tablet.change.cut &&
@@ -4655,59 +4766,72 @@ export default function Home() {
                         className={`experiment-tablet-card ${applying ? "applying" : ""}`}
                         style={{ "--motif-accent": masterworkVisualProfile.accent } as React.CSSProperties}
                       >
-                        <header>
-                          <small>EXPERIMENT {index + 1}</small>
-                          {Icon && (
-                            <span className="tablet-motif-icon">
-                              <Icon size={30} />
-                            </span>
-                          )}
-                        </header>
-                        <div className="tablet-swap-art">
-                          <figure>
-                            <img src={cardImage(tablet.change.cut)} alt={tablet.change.cut} loading="lazy" />
-                            <figcaption>CUT · {tablet.change.cut}</figcaption>
-                          </figure>
-                          <span className="tablet-swap-arrow">→</span>
-                          <figure>
-                            <img src={cardImage(tablet.change.add)} alt={tablet.change.add} loading="lazy" />
-                            <figcaption>ADD · {tablet.change.add}</figcaption>
-                          </figure>
+                        <div className="tablet-flip-inner">
+                          <div className="tablet-face tablet-face-front">
+                            <header>
+                              <small>EXPERIMENT {index + 1}</small>
+                              {Icon && (
+                                <span className="tablet-motif-icon">
+                                  <Icon size={30} />
+                                </span>
+                              )}
+                            </header>
+                            <div className="tablet-swap-art">
+                              <figure>
+                                <img src={cardImage(tablet.change.cut)} alt={tablet.change.cut} loading="lazy" />
+                                <figcaption>CUT · {tablet.change.cut}</figcaption>
+                              </figure>
+                              <span className="tablet-swap-arrow">→</span>
+                              <figure>
+                                <img src={cardImage(tablet.change.add)} alt={tablet.change.add} loading="lazy" />
+                                <figcaption>ADD · {tablet.change.add}</figcaption>
+                              </figure>
+                            </div>
+                            <dl>
+                              <div>
+                                <dt>Field observation</dt>
+                                <dd>{tablet.fieldObservation}</dd>
+                              </div>
+                              <div>
+                                <dt>Structural pressure point</dt>
+                                <dd>{tablet.pressurePoint}</dd>
+                              </div>
+                              <div>
+                                <dt>Smallest honest test</dt>
+                                <dd>{tablet.testContract}</dd>
+                              </div>
+                              <div>
+                                <dt>Expected benefit</dt>
+                                <dd>{tablet.expectedBenefit}</dd>
+                              </div>
+                              <div>
+                                <dt>Tradeoff</dt>
+                                <dd>{tablet.tradeoff}</dd>
+                              </div>
+                              <div>
+                                <dt>Evidence status</dt>
+                                <dd>{tablet.evidenceStatus}</dd>
+                              </div>
+                            </dl>
+                            <button
+                              type="button"
+                              className="tablet-accept"
+                              disabled={!!swapFlourish}
+                              onClick={() => applyExperimentTablet(tablet)}
+                            >
+                              {applying ? "Applying…" : "Accept this experiment →"}
+                            </button>
+                          </div>
+                          <div className="tablet-face tablet-face-back">
+                            {Icon && (
+                              <span className="tablet-motif-icon">
+                                <Icon size={54} />
+                              </span>
+                            )}
+                            <strong>EXPERIMENT ACCEPTED</strong>
+                            <span>{tablet.change.add} enters the Masterwork</span>
+                          </div>
                         </div>
-                        <dl>
-                          <div>
-                            <dt>Field observation</dt>
-                            <dd>{tablet.fieldObservation}</dd>
-                          </div>
-                          <div>
-                            <dt>Structural pressure point</dt>
-                            <dd>{tablet.pressurePoint}</dd>
-                          </div>
-                          <div>
-                            <dt>Smallest honest test</dt>
-                            <dd>{tablet.testContract}</dd>
-                          </div>
-                          <div>
-                            <dt>Expected benefit</dt>
-                            <dd>{tablet.expectedBenefit}</dd>
-                          </div>
-                          <div>
-                            <dt>Tradeoff</dt>
-                            <dd>{tablet.tradeoff}</dd>
-                          </div>
-                          <div>
-                            <dt>Evidence status</dt>
-                            <dd>{tablet.evidenceStatus}</dd>
-                          </div>
-                        </dl>
-                        <button
-                          type="button"
-                          className="tablet-accept"
-                          disabled={!!swapFlourish}
-                          onClick={() => applyExperimentTablet(tablet)}
-                        >
-                          {applying ? "Applying…" : "Accept this experiment →"}
-                        </button>
                       </article>
                     );
                   })
@@ -4804,13 +4928,30 @@ export default function Home() {
                     <button
                       type="button"
                       className="finish-masterwork"
-                      onClick={() => setFamilyArchived(deckId, true)}
+                      onClick={() => {
+                        setSealBurst(true);
+                        setFamilyArchived(deckId, true);
+                        window.setTimeout(() => setSealBurst(false), 2200);
+                      }}
                     >
                       Preserve as Finished Masterwork
                     </button>
                   )
                 )}
               </footer>
+              {sealBurst && (
+                <div className="masterwork-seal-burst" role="status" aria-live="polite">
+                  <video
+                    className="seal-burst-video"
+                    src="/assets/forge/vfx/ring-seal.mp4"
+                    autoPlay
+                    muted
+                    playsInline
+                    preload="auto"
+                  />
+                  <strong>MASTERWORK SEALED</strong>
+                </div>
+              )}
             </aside>
           </div>
         </section>

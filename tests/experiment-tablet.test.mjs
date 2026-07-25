@@ -102,9 +102,32 @@ test("summarizes real recorded match evidence without a premature verdict", () =
   }
 });
 
-test("returns no tablets when no experiment clears the structural gates", () => {
+test("offers an honest confidence tablet instead of an empty slot when no experiment clears the gates", () => {
   const identicalRival = { id: "rival", rows: base.map((row) => ({ ...row, roles: [...row.roles] })) };
   const report = buildExperimentTablets({ selected, candidates: [selected, identicalRival], matchLog: [], options });
-  assert.equal(report.status, "inconclusive");
-  assert.deepEqual(report.tablets, []);
+  assert.equal(report.status, "advance");
+  assert.equal(report.tablets.length, 1);
+  assert.equal(report.tablets[0].type, "confidence");
+  assert.match(report.tablets[0].headline, /no structural swap clears the bar/i);
+  assert.ok(report.tablets[0].detail);
+});
+
+test("pads a partial set of real experiments with exactly one confidence tablet, never more", () => {
+  // Two of the three "Body"/"Second Body" style rows are identical between
+  // base and rival, but Slow Threat/Weak Draw/Weak Interaction differ and a
+  // brand-new Flexible Draw row exists — expect fewer than three real swaps
+  // to clear the gate here, padded to a stable, non-duplicated shape.
+  const partialRival = base.map((row) => ({ ...row, roles: [...row.roles] }));
+  partialRival.find((row) => row.name === "Slow Threat").quantity = 3;
+  partialRival.push({ quantity: 1, name: "Flexible Draw", roles: ["draw", "interaction"], cmc: 2 });
+  const report = buildExperimentTablets({
+    selected,
+    candidates: [selected, { id: "partial-rival", rows: partialRival }],
+    matchLog: [],
+    options,
+  });
+  assert.equal(report.status, "advance");
+  const confidenceTablets = report.tablets.filter((tablet) => tablet.type === "confidence");
+  assert.ok(confidenceTablets.length <= 1);
+  assert.equal(report.tablets.length, report.tablets.filter((t) => t.type === "experiment").length + confidenceTablets.length);
 });

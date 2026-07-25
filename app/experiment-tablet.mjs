@@ -51,12 +51,11 @@ export function buildExperimentTablets({ selected, candidates, causalityReport =
     ? `${observation.wins}-${observation.losses} across ${observation.sampleSize} recorded match${observation.sampleSize === 1 ? "" : "es"} with this build: ${observation.narrative}`
     : "No Arena matches recorded against this build yet.";
 
-  if (ranked.verdict !== "advance" || !ranked.experiments.length) {
-    return { status: "inconclusive", summary: ranked.summary, boundary: ranked.boundary, tablets: [] };
-  }
+  const passed = ranked.verdict === "advance" ? ranked.experiments : [];
 
-  const tablets = ranked.experiments.map((experiment, index) => ({
+  const tablets = passed.map((experiment, index) => ({
     id: `experiment-${index + 1}`,
+    type: "experiment",
     fieldObservation,
     pressurePoint: pressurePointFor(experiment.cut, causalityReport)
       || "No structural-risk hypothesis currently isolates this card; the case rests on modeled role coverage and curve.",
@@ -70,6 +69,22 @@ export function buildExperimentTablets({ selected, candidates, causalityReport =
     evidenceStatus: observation.confidence,
     summary: experiment.summary,
   }));
+
+  // Fewer than three swaps clearing every structural gate isn't a dead end —
+  // it's itself a signal. Rather than an empty slot (or none at all), the
+  // last position becomes an honest, non-experiment statement: the Forge has
+  // no confident case left to make, so sealing the build is the reasonable
+  // next move. Never more than one of these — it isn't a real option to pad.
+  if (tablets.length < 3) {
+    tablets.push({
+      id: "confidence",
+      type: "confidence",
+      headline: tablets.length
+        ? "No further structural swap clears the bar."
+        : "No structural swap clears the bar right now.",
+      detail: `${ranked.summary} That silence is itself a signal: the Forge has no confident case left to make against this build.`,
+    });
+  }
 
   return { status: "advance", summary: ranked.summary, boundary: ranked.boundary, tablets };
 }
