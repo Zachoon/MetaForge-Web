@@ -103,11 +103,7 @@ function gateSwap(rows, before, after, delta, options) {
   };
 }
 
-export function runOneSlotCounterfactualLab(selected, candidates, reasoning, options = {}) {
-  if (!selected?.rows?.length) throw new Error("One-slot laboratory requires a selected Masterwork");
-  const rival = candidates.find((candidate) => candidate.id === reasoning?.rivalId);
-  if (!rival) return deepFreeze({ verdict: "inconclusive", experimentsTested: 0, experiment: null, summary: "No viable rival supplied a bounded one-slot experiment.", boundary: "The Forge preserved the selected list instead of inventing an upgrade." });
-
+function buildExperiments(selected, rival, options) {
   const selectedQuantities = new Map(selected.rows.map((row) => [normalized(row.name), row.quantity]));
   const rivalQuantities = new Map(rival.rows.map((row) => [normalized(row.name), row.quantity]));
   const cuts = selected.rows.filter((row) =>
@@ -127,6 +123,15 @@ export function runOneSlotCounterfactualLab(selected, candidates, reasoning, opt
     experiments.push({ cut: cut.name, add: addition.name, rows, before, after, delta, gate });
   }
   experiments.sort((left, right) => Number(right.gate.passed) - Number(left.gate.passed) || right.delta.score - left.delta.score || left.cut.localeCompare(right.cut) || left.add.localeCompare(right.add));
+  return experiments;
+}
+
+export function runOneSlotCounterfactualLab(selected, candidates, reasoning, options = {}) {
+  if (!selected?.rows?.length) throw new Error("One-slot laboratory requires a selected Masterwork");
+  const rival = candidates.find((candidate) => candidate.id === reasoning?.rivalId);
+  if (!rival) return deepFreeze({ verdict: "inconclusive", experimentsTested: 0, experiment: null, summary: "No viable rival supplied a bounded one-slot experiment.", boundary: "The Forge preserved the selected list instead of inventing an upgrade." });
+
+  const experiments = buildExperiments(selected, rival, options);
   const best = experiments[0] || null;
   if (!best || !best.gate.passed) {
     return deepFreeze({
@@ -140,5 +145,56 @@ export function runOneSlotCounterfactualLab(selected, candidates, reasoning, opt
     summary: `Controlled experiment: replace ${best.cut} with ${best.add}. The modeled structural score improves by ${best.delta.score.toFixed(1)} while required-role coverage, curve health, resilience density, deck size, copy limits, and opening-hand land distribution remain inside their gates.`,
     contract: "Create exactly one revision, play it as a separate test, and require observed match evidence before calling the change successful.",
     boundary: "This is a deterministic structural experiment, not proof of better match performance.",
+  });
+}
+
+// Returns up to `options.limit` (default 3) passing one-slot experiments, each
+// naming a distinct card to cut, so the player sees different structural
+// pressure points rather than several additions competing for the same cut.
+// Diffs against every other candidate in the pool (not just one designated
+// rival) since real tournament candidates often differ from their single
+// closest rival by only one card, which otherwise starves this of options.
+export function rankOneSlotCounterfactuals(selected, candidates, options = {}) {
+  if (!selected?.rows?.length) throw new Error("One-slot laboratory requires a selected Masterwork");
+  const rivals = candidates.filter((candidate) => candidate.id !== selected.id);
+  if (!rivals.length) {
+    return deepFreeze({
+      verdict: "inconclusive", experimentsTested: 0, experiments: [],
+      summary: "No viable rival supplied a bounded one-slot experiment.",
+      boundary: "The Forge preserved the selected list instead of inventing an upgrade.",
+    });
+  }
+
+  const experiments = rivals.flatMap((rival) => buildExperiments(selected, rival, options));
+  experiments.sort((left, right) => Number(right.gate.passed) - Number(left.gate.passed) || right.delta.score - left.delta.score || left.cut.localeCompare(right.cut) || left.add.localeCompare(right.add));
+  const limit = options.limit || 3;
+  const seenCuts = new Set();
+  const distinct = [];
+  for (const experiment of experiments) {
+    if (!experiment.gate.passed || seenCuts.has(experiment.cut)) continue;
+    seenCuts.add(experiment.cut);
+    distinct.push(experiment);
+    if (distinct.length >= limit) break;
+  }
+
+  if (!distinct.length) {
+    return deepFreeze({
+      verdict: "inconclusive", experimentsTested: experiments.length, experiments: [],
+      summary: experiments.length ? `The Forge tested ${experiments.length} exact one-slot changes; none cleared every structural gate, so the selected Masterwork remains unchanged.` : "The rival contains no distinct nonland pair suitable for a one-slot test.",
+      boundary: "No revision is created without a measurable gain and preserved structural floors.",
+    });
+  }
+
+  return deepFreeze({
+    verdict: "advance", experimentsTested: experiments.length,
+    experiments: distinct.map((experiment) => ({
+      cut: experiment.cut,
+      add: experiment.add,
+      delta: experiment.delta,
+      gate: experiment.gate,
+      summary: `Controlled experiment: replace ${experiment.cut} with ${experiment.add}. The modeled structural score improves by ${experiment.delta.score.toFixed(1)} while required-role coverage, curve health, resilience density, deck size, copy limits, and opening-hand land distribution remain inside their gates.`,
+      contract: "Create exactly one revision, play it as a separate test, and require observed match evidence before calling the change successful.",
+    })),
+    boundary: "These are deterministic structural experiments, not proof of better match performance.",
   });
 }

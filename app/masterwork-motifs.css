@@ -1,0 +1,76 @@
+/* Living Masterwork visual system: sealed -> revealed card ceremony. */
+
+.masterwork-card{position:relative;isolation:isolate}
+.masterwork-card[data-state="sealed"]{display:grid;place-items:stretch;padding:0;overflow:hidden}
+.masterwork-seal{position:relative;display:grid;width:100%;min-height:410px;place-items:center;gap:16px;padding:24px;border:0;background:transparent;color:#dfe8e2;text-align:center;cursor:pointer}
+.masterwork-seal small{color:#74817d;font-size:11px;letter-spacing:.16em}
+.masterwork-seal i{display:block;font:normal 72px Georgia;color:var(--motif-accent,var(--teal,#6dddf0));text-shadow:0 0 30px var(--motif-accent,var(--teal,#6dddf0));transition:text-shadow .3s ease,transform .3s ease}
+.masterwork-seal b{padding:11px 18px;border:1px solid #53655f;background:#13231f;color:#b5d7cd;font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;transition:border-color .3s ease,color .3s ease}
+.masterwork-seal:before{content:"";position:absolute;inset:0;z-index:-1;background:radial-gradient(circle at 50% 65%,#e39a4822,transparent 45%),url('/assets/forge/furnace_glow.svg') center/cover;opacity:.5;animation:seal-breathe 5s ease-in-out infinite}
+.masterwork-card[data-state="sealed"]:hover .masterwork-seal i,
+.masterwork-card[data-state="sealed"]:focus-within .masterwork-seal i{
+  transform:scale(1.08);
+  text-shadow:0 0 46px color-mix(in srgb,var(--motif-accent,var(--teal,#6dddf0)) 80%,transparent),0 0 90px color-mix(in srgb,var(--motif-accent,var(--teal,#6dddf0)) 40%,transparent);
+}
+.masterwork-card[data-state="sealed"]:hover .masterwork-seal b,
+.masterwork-card[data-state="sealed"]:focus-within .masterwork-seal b{border-color:var(--motif-accent,var(--teal,#6dddf0));color:#eafffa}
+.masterwork-card[data-state="sealed"]:hover .masterwork-seal:before,
+.masterwork-card[data-state="sealed"]:focus-within .masterwork-seal:before{opacity:.82}
+.masterwork-seal:focus-visible{outline:2px solid var(--motif-accent,var(--teal,#6dddf0));outline-offset:-4px}
+
+.masterwork-card[data-state="revealed"]{animation:masterwork-settle .85s ease-out}
+.masterwork-card[data-state="revealed"]:after{
+  content:"";position:absolute;inset:0;z-index:5;pointer-events:none;border-radius:inherit;
+  background:radial-gradient(circle at 50% 45%,#f4feff 0,#a9f1ffcc 10%,var(--motif-accent,var(--teal,#6dddf0)) 24%,transparent 56%);
+  opacity:0;animation:masterwork-nova .85s ease-out;
+}
+.masterwork-card[data-state="revealed"]:hover,
+.masterwork-card[data-state="revealed"]:focus-within{
+  border-color:var(--motif-accent,var(--teal,#6dddf0));
+  box-shadow:0 0 55px color-mix(in srgb,var(--motif-accent,var(--teal,#6dddf0)) 25%,transparent),0 25px 80px #000c;
+}
+
+@keyframes seal-breathe{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:.7;transform:scale(1.03)}}
+@keyframes masterwork-settle{0%{transform:scale(.97)}45%{transform:scale(1.015)}100%{transform:scale(1)}}
+@keyframes masterwork-nova{0%{opacity:0;transform:scale(.3)}35%{opacity:1}100%{opacity:0;transform:scale(1.7)}}
+
+@media(prefers-reduced-motion:reduce){
+  .masterwork-seal i,
+  .masterwork-seal:before,
+  .masterwork-card[data-state="revealed"],
+  .masterwork-card[data-state="revealed"]:after{animation:none}
+  .masterwork-card[data-state="sealed"]:hover .masterwork-seal i,
+  .masterwork-card[data-state="sealed"]:focus-within .masterwork-seal i{transform:none}
+}
+
+/* The workbench identity sigil: a living badge that reflects the deck's
+   real structural composition and grows a second ring once the player has
+   accepted at least one real revision — the same throughline the reveal
+   ceremony and the profile's evolving record both draw from. */
+.masterwork-heading{display:flex;align-items:center;gap:18px}
+.masterwork-sigil{position:relative;display:grid;flex-shrink:0;place-items:center;width:70px;height:70px;border:1px solid color-mix(in srgb,var(--motif-accent,var(--teal,#6dddf0)) 55%,#3a4642);border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--motif-accent,var(--teal,#6dddf0)) 14%,#0d1614) 0,#0a1210 72%);box-shadow:0 0 24px color-mix(in srgb,var(--motif-accent,var(--teal,#6dddf0)) 22%,transparent);transition:box-shadow .3s ease}
+.masterwork-sigil:hover,.masterwork-sigil:focus-within{box-shadow:0 0 38px color-mix(in srgb,var(--motif-accent,var(--teal,#6dddf0)) 40%,transparent)}
+.masterwork-sigil[data-evolved="true"]:after{content:"";position:absolute;inset:-6px;border:1px dashed color-mix(in srgb,var(--motif-accent,var(--teal,#6dddf0)) 60%,transparent);border-radius:50%;animation:sigil-evolved-ring 16s linear infinite}
+.motif-svg{overflow:visible}
+
+.motif-idle-glint{stroke-dasharray:10 44;animation:motif-blade-glint 2.4s linear infinite}
+.motif-idle-rim{animation:motif-shield-pulse 3s ease-in-out infinite}
+.motif-idle-ring{animation:motif-rune-rotate 22s linear infinite}
+.motif-idle-gear{animation:motif-gear-spin 16s linear infinite}
+.motif-idle-node{animation:motif-root-glow 3.2s ease-in-out infinite}
+.motif-idle-node-2{animation-delay:.5s}
+.motif-idle-node-3{animation-delay:1s}
+.motif-idle-node-4{animation-delay:1.5s}
+
+@keyframes sigil-evolved-ring{to{transform:rotate(360deg)}}
+@keyframes motif-blade-glint{to{stroke-dashoffset:-108}}
+@keyframes motif-shield-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes motif-rune-rotate{to{transform:rotate(360deg)}}
+@keyframes motif-gear-spin{to{transform:rotate(360deg)}}
+@keyframes motif-root-glow{0%,100%{opacity:.4;r:3.5}50%{opacity:1;r:4.5}}
+
+@media(prefers-reduced-motion:reduce){
+  .masterwork-sigil[data-evolved="true"]:after,
+  .motif-idle-glint,.motif-idle-rim,.motif-idle-ring,.motif-idle-gear,.motif-idle-node{animation:none}
+}
+@media(max-width:600px){.masterwork-heading{gap:12px}.masterwork-sigil{width:52px;height:52px}}

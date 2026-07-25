@@ -22,6 +22,17 @@ test("promotes and archives without deleting history", () => {
   assert.equal(rankedFamilies(bench).length, 0);
 });
 
+test("restores an archived family back to the ranked list", () => {
+  const experiment = { id: "trial", deckName: "Landfall", originalDeck: "old", proposedDeck: "new", originalFingerprint: "a".repeat(24), proposedFingerprint: "b".repeat(24), status: "kept", startedAt: "2026-07-15T00:00:00Z" };
+  let bench = recordExperiment(emptyDeckBench(), experiment, "Standard");
+  const family = bench.families[0];
+  bench = updateFamily(bench, family.id, "archive");
+  assert.equal(rankedFamilies(bench).length, 0);
+  bench = updateFamily(bench, family.id, "restore");
+  assert.equal(bench.families[0].archived, false);
+  assert.equal(rankedFamilies(bench).length, 1);
+});
+
 test("merges account and local histories without losing unique revisions or matches", () => {
   const base = { id: "trial", deckName: "Landfall", originalDeck: "old", proposedDeck: "new", originalFingerprint: "a".repeat(24), proposedFingerprint: "b".repeat(24), status: "testing", startedAt: "2026-07-15T00:00:00Z" };
   const remote = attachMatches(recordExperiment(emptyDeckBench(), base, "Standard"), [{ id: "remote-match", deckFingerprint: "b".repeat(24), result: "win" }]);

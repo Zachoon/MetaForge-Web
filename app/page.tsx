@@ -13,7 +13,12 @@ import {
 import { learnRevisionPreferences } from "./revision-learning.mjs";
 import { learnFromForgeInterventions } from "./forge-intervention-learning.mjs";
 import { applyControlledSwap, rankExperimentCuts } from "./meta-breaker-experiment.mjs";
-import { forgeNativeMasterwork, parseNativeBlueprintIntent } from "./native-masterwork-engine.mjs";
+import { forgeNativeMasterwork, forgeImportedMasterwork, parseNativeBlueprintIntent } from "./native-masterwork-engine.mjs";
+import { updateFamily } from "./deck-bench.mjs";
+import { prepareStoryBenchRevisions, serializeStoryBenchRevision, restoreStoryBenchRevisions } from "./story-bench-recommendation-ledger.mjs";
+import { buildExperimentTablets } from "./experiment-tablet.mjs";
+import { resolveMasterworkVisualProfile } from "./masterwork-visual-profile.mjs";
+import { MOTIF_ICONS } from "./masterwork-motif-icons";
 
 type Chamber =
   | "entrance"
@@ -108,6 +113,11 @@ type SavedFamily = {
   path?: string;
   record?: { wins: number; losses: number };
   updatedAt?: string;
+  // Written by persistStoryBench on every save; toggled by setFamilyArchived.
+  // An archived family is a player-declared "finished" Masterwork — kept
+  // visible, just visually distinct, and always reversible.
+  archived?: boolean;
+  promotedFingerprint?: string;
   revisions: Array<{
     deckText: string;
     note: string;
@@ -835,6 +845,102 @@ const normalizeCommanderDeck = (
   }
   return rows.map((row) => `${row.quantity} ${row.name}`).join("\n");
 };
+// Resolves a player's pasted decklist against the already-fetched pool plus
+// one bulk Scryfall lookup for names not already present, honoring the
+// project's "never fabricate" rule: unresolved or illegal-in-format names
+// are excluded from construction and returned separately for disclosure,
+// never silently dropped or auto-corrected.
+const resolveImportedDecklist = async (
+  text: string,
+  poolCards: NativeForgeCard[],
+  format: string,
+  commander: CommanderOption | null,
+): Promise<{
+  importedRows: DeckRow[];
+  pool: NativeForgeCard[];
+  unresolvedNames: string[];
+  illegalNames: string[];
+}> => {
+  const parsed = parseDeckRows(text).filter(
+    (row) => Number.isFinite(row.quantity) && row.quantity > 0 && row.name,
+  );
+  const commanderKeys = commander
+    ? new Set([commander.name, commander.name.split(" // ")[0]].map(cardFactKey))
+    : new Set<string>();
+  const merged = new Map<string, DeckRow>();
+  for (const row of parsed) {
+    const key = cardFactKey(row.name);
+    if (commanderKeys.has(key)) continue;
+    const existing = merged.get(key);
+    if (existing) existing.quantity += row.quantity;
+    else merged.set(key, { name: row.name, quantity: row.quantity });
+  }
+  const rows = [...merged.values()];
+
+  const poolByKey = new Map(poolCards.map((card) => [cardFactKey(card.name), card]));
+  const needsLookup = rows.filter((row) => {
+    const key = cardFactKey(row.name);
+    return !BASIC_LAND_KEYS.has(key) && !poolByKey.has(key);
+  });
+
+  const rawByKey = new Map<string, any>();
+  const notFoundKeys = new Set<string>();
+  for (let index = 0; index < needsLookup.length; index += 75) {
+    const chunk = needsLookup.slice(index, index + 75);
+    try {
+      const response = await fetch("https://api.scryfall.com/cards/collection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ identifiers: chunk.map((row) => ({ name: row.name })) }),
+      });
+      const data = await response.json();
+      for (const rawCard of data.data || []) rawByKey.set(cardFactKey(rawCard.name), rawCard);
+      for (const entry of data.not_found || []) if (entry?.name) notFoundKeys.add(cardFactKey(entry.name));
+    } catch {
+      for (const row of chunk) notFoundKeys.add(cardFactKey(row.name));
+    }
+  }
+
+  const legalityKey = scryfallLegality(format);
+  const arenaRequired = format === "Brawl" || format === "Standard Brawl";
+  const importedRows: DeckRow[] = [];
+  const additionalPoolCards: NativeForgeCard[] = [];
+  const unresolvedNames: string[] = [];
+  const illegalNames: string[] = [];
+  for (const row of rows) {
+    const key = cardFactKey(row.name);
+    if (BASIC_LAND_KEYS.has(key)) {
+      importedRows.push(row);
+      continue;
+    }
+    if (poolByKey.has(key)) {
+      // Already present in the verified, format-filtered pool — legal by
+      // construction of the pool's own search query.
+      importedRows.push({ name: poolByKey.get(key)!.name, quantity: row.quantity });
+      continue;
+    }
+    const raw = rawByKey.get(key);
+    if (!raw) {
+      unresolvedNames.push(row.name);
+      continue;
+    }
+    const legality = raw.legalities?.[legalityKey];
+    if (legality !== "legal" || (arenaRequired && !raw.games?.includes("arena"))) {
+      illegalNames.push(row.name);
+      continue;
+    }
+    importedRows.push({ name: raw.name, quantity: row.quantity });
+    additionalPoolCards.push(nativeCardFact(raw));
+  }
+
+  return {
+    importedRows,
+    pool: [...poolCards, ...additionalPoolCards],
+    unresolvedNames,
+    illegalNames,
+  };
+};
+
 const indexCardFact = (
   target: Record<string, CardFact>,
   fact: CardFact,
@@ -925,6 +1031,122 @@ const blueprintDefinition = (
   value: string,
 ) => (BLUEPRINT_DEFINITIONS[category] as Record<string, string>)[value] || "The Forge will explain this choice as its card pool and rules are verified.";
 
+// Sealed -> revealed ceremony for one Masterwork in the three-reveal chamber.
+// Kept at module level (not nested inside Home) so it mounts once per card
+// instead of being redefined — and its local `revealed` state — every render.
+type MasterworkCardProps = {
+  poolIndex: number;
+  alignedWork: Masterwork;
+  preview: DeckPreview;
+  commander: CommanderOption | null;
+  insight: ReturnType<typeof masterworkInsight>;
+  format: string;
+  onInspect: () => void;
+};
+
+function MasterworkCard({ poolIndex, alignedWork, preview, commander, insight, format, onInspect }: MasterworkCardProps) {
+  const [revealed, setRevealed] = useState(false);
+  return (
+    <article
+      className={`masterwork-card ${alignedWork.tone}`}
+      data-state={revealed ? "revealed" : "sealed"}
+    >
+      {revealed ? (
+        <>
+          <span>
+            MASTERWORK {String(poolIndex + 1).padStart(2, "0")}
+          </span>
+          <div className="masterwork-title">
+            <i>{alignedWork.rune}</i>
+            <div>
+              <small>
+                <GlossaryText text={alignedWork.path} /> · {format}
+              </small>
+              <h2>{alignedWork.name}</h2>
+            </div>
+          </div>
+          <div className="masterwork-glimpse">
+            <span
+              className="commander-inspector"
+              tabIndex={0}
+              aria-label={`Inspect ${preview.card} rules`}
+            >
+              <img
+                src={commander?.image || cardImage(preview.card)}
+                alt={`${preview.card} card`}
+                loading="lazy"
+              />
+              <span className="commander-zoom" role="tooltip">
+                <img
+                  src={cardImage(preview.card)}
+                  alt={`${preview.card} enlarged card`}
+                />
+                <span>
+                  <b>{preview.card}</b>
+                  <small>{commander?.typeLine || preview.role}</small>
+                  <em>
+                    {insight.oracle ||
+                      "The full card image contains the verified rules text."}
+                  </em>
+                </span>
+              </span>
+            </span>
+            <div>
+              <small>{preview.role}</small>
+              <strong>{preview.card}</strong>
+              {commander && (
+                <small className="identity-name">
+                  <GlossaryText text={colorIdentityName(commander.colors)} /> · {commander.colors.join("") || "C"}
+                </small>
+              )}
+              <p><b>HOW IT STARTS</b><GlossaryText text={insight.opening} /></p>
+              <em>
+                <b>HOW IT WINS</b>
+                <GlossaryText text={insight.win} />
+              </em>
+            </div>
+          </div>
+          <div className="masterwork-plan">
+            <span>
+              <small>IMPORTANT PIECES</small>
+              <b><GlossaryText text={insight.packages.join(" · ")} /></b>
+            </span>
+            <span>
+              <small>MAIN TRADEOFF</small>
+              <b><GlossaryText text={insight.weakness} /></b>
+            </span>
+          </div>
+          <div className="masterwork-stats">
+            {["Aggression", "Interaction", "Synergy", "Complexity"].map(
+              (label, statIndex) => (
+                <span key={label}>
+                  <small><GlossaryText text={label} /> · estimate</small>
+                  <b>{masterworkStats(commander, poolIndex)[statIndex]}</b>
+                </span>
+              ),
+            )}
+          </div>
+          <p className="masterwork-verdict"><GlossaryText text={alignedWork.verdict} /></p>
+          <button onClick={onInspect}>
+            Inspect this Masterwork <b>→</b>
+          </button>
+        </>
+      ) : (
+        <button
+          type="button"
+          className="masterwork-seal"
+          onClick={() => setRevealed(true)}
+          aria-label={`Reveal Masterwork ${poolIndex + 1}`}
+        >
+          <small>MASTERWORK {String(poolIndex + 1).padStart(2, "0")}</small>
+          <i>{alignedWork.rune}</i>
+          <b>Reveal this Masterwork</b>
+        </button>
+      )}
+    </article>
+  );
+}
+
 export default function Home() {
   const [chamber, setChamber] = useState<Chamber>("entrance");
   const [stage, setStage] = useState(0);
@@ -969,8 +1191,23 @@ export default function Home() {
     revision?: number;
   }>>([]);
   const [revisions, setRevisions] = useState<
-    Array<{ deck: string; note: string; createdAt: string }>
+    Array<{ deck: string; note: string; createdAt: string; recommendationRecord?: any }>
   >([]);
+  // Holds the current native engine pass (selected candidate and all ranked
+  // candidates) so the experiment tablets can run the one-slot laboratory
+  // against every candidate without recomputing the Forge. Only available
+  // after a fresh inspectMasterwork() call; null for restored saved decks,
+  // which carry no live engine context.
+  const [nativeMasterworkContext, setNativeMasterworkContext] = useState<{
+    selected: any;
+    candidates: any[];
+    options: { format: string; strategy: string; target: number };
+  } | null>(null);
+  // Non-fatal disclosure for the decklist-import path: names the Forge could
+  // not verify or that aren't legal in this format, left out rather than
+  // silently dropped or auto-corrected. Distinct from forgeGenerationError,
+  // which means generation failed entirely.
+  const [importWarnings, setImportWarnings] = useState<string[]>([]);
   const [cardFacts, setCardFacts] = useState<Record<string, CardFact>>({});
   const [hoveredCard, setHoveredCard] = useState("");
   const [cardOrder, setCardOrder] = useState<string[]>([]);
@@ -1050,15 +1287,35 @@ export default function Home() {
     );
   }, [forgeInterventions, interventionLearningReady]);
 
+  const randomCommission =
+    randomCommanderMode &&
+    Boolean(
+      selectedCommander &&
+      seenRandomCommanders.includes(selectedCommander.name),
+    );
   useEffect(() => {
     if (chamber !== "forging") return;
     if (stage >= FORGING_STAGES.length - 1) {
-      const reveal = window.setTimeout(() => setChamber("masterworks"), 1500);
+      const reveal = window.setTimeout(() => {
+        // A pasted decklist or a commander already locked in (outside the
+        // "surprise me" flow, where the reveal is three different
+        // commanders) means there's no real ambiguity to resolve with three
+        // alternates — build the one deck the player actually asked for.
+        if (deck.trim()) {
+          void commitDirectForge("decklist");
+          return;
+        }
+        if (isCommanderFormat(format) && selectedCommander && !randomCommission) {
+          void commitDirectForge("commander");
+          return;
+        }
+        setChamber("masterworks");
+      }, 1500);
       return () => window.clearTimeout(reveal);
     }
     const timer = window.setTimeout(() => setStage((value) => value + 1), 1150);
     return () => window.clearTimeout(timer);
-  }, [chamber, stage]);
+  }, [chamber, stage, deck, format, selectedCommander, randomCommission]);
 
   const progress = useMemo(
     () => ((stage + 1) / FORGING_STAGES.length) * 100,
@@ -1100,12 +1357,6 @@ export default function Home() {
     () => masterworks.slice(masterworkPage * 3, masterworkPage * 3 + 3),
     [masterworkPage, masterworks],
   );
-  const randomCommission =
-    randomCommanderMode &&
-    Boolean(
-      selectedCommander &&
-      seenRandomCommanders.includes(selectedCommander.name),
-    );
   const commanderFor = (index: number) =>
     randomCommission && randomCommanderOptions.length === 3
       ? randomCommanderOptions[index % 3]
@@ -1136,6 +1387,9 @@ export default function Home() {
   };
   const chosenPreview = previewFor(selectedWork);
   const chosenWork = restoredWork || workFor(selectedWork);
+  const currentFamilyArchived = Boolean(
+    savedMasterworks.find((family) => family.id === deckId)?.archived,
+  );
   const deckRows = useMemo(() => parseDeckRows(forgedDeck), [forgedDeck]);
   const orderedDeckRows = useMemo(
     () =>
@@ -1453,6 +1707,27 @@ export default function Home() {
 
   const forgeCausalityReport =
     structuralAnalysis.causality;
+
+  const experimentTablets = useMemo(() => {
+    if (!nativeMasterworkContext) return null;
+    return buildExperimentTablets({
+      selected: nativeMasterworkContext.selected,
+      candidates: nativeMasterworkContext.candidates,
+      causalityReport: forgeCausalityReport,
+      matchLog,
+      options: nativeMasterworkContext.options,
+    });
+  }, [nativeMasterworkContext, forgeCausalityReport, matchLog]);
+
+  const masterworkVisualProfile = useMemo(
+    () =>
+      resolveMasterworkVisualProfile({
+        selectedRows: nativeMasterworkContext?.selected?.rows || [],
+        colors: selectedCommander?.colors || [],
+        revisionCount: revisions.length,
+      }),
+    [nativeMasterworkContext, selectedCommander, revisions.length],
+  );
 
   const activeCausalitySystem = useMemo(
     () =>
@@ -1940,6 +2215,51 @@ export default function Home() {
     }
   }
 
+  // Shared tail for every "one deck is ready" path (the classic three-reveal
+  // selection, the pasted-decklist import, and the commander-direct build):
+  // validate size, populate revision/tablet state, and persist. Only the
+  // reply copy and revision note differ per caller.
+  async function applyForgeResult(
+    nativeReport: any,
+    opts: {
+      generationId: string;
+      work: Masterwork;
+      commander: CommanderOption | null;
+      index: number;
+      replyText: string;
+      revisionNote: string;
+    },
+  ) {
+    const answer = nativeReport.selected.deckText;
+    const rows = parseDeckRows(answer);
+    const total = rows.reduce((sum, row) => sum + row.quantity, 0);
+    if (total !== targetDeckSize(format)) {
+      throw new Error("Native Forge produced an incomplete candidate");
+    }
+    const firstRevision = [
+      {
+        deck: answer,
+        note: opts.revisionNote,
+        createdAt: new Date().toISOString(),
+        recommendationRecord: nativeReport.recommendationRecord || null,
+      },
+    ];
+    setForgedDeck(answer);
+    setForgeReply(opts.replyText);
+    setRevisions(firstRevision);
+    setNativeMasterworkContext({
+      selected: nativeReport.selected,
+      candidates: nativeReport.candidates,
+      options: { format, strategy, target: targetDeckSize(format) },
+    });
+    void persistStoryBench(
+      firstRevision,
+      { wins: 0, losses: 0 },
+      opts.generationId,
+      { work: opts.work, commander: opts.commander, index: opts.index },
+    );
+  }
+
   async function inspectMasterwork(index: number) {
     const work = workFor(index);
     const preview = previewFor(index);
@@ -1955,6 +2275,7 @@ export default function Home() {
     setForgeElapsedSeconds(0);
     setForgeReply("");
     setForgeGenerationError("");
+    setImportWarnings([]);
     setConsideringCards([]);
     setRemovedCards([]);
     setReplacementRecommendations([]);
@@ -1996,32 +2317,133 @@ export default function Home() {
         cards: pool.cards,
         evidence: evidence?.cards || [],
       });
-      const answer = nativeReport.selected.deckText;
-      const rows = parseDeckRows(answer);
-      const total = rows.reduce((sum, row) => sum + row.quantity, 0);
-      if (total !== targetDeckSize(format)) {
-        throw new Error("Native Forge produced an incomplete candidate");
-      }
-      const firstRevision = [
-        {
-          deck: answer,
-          note: `Original native Forge candidate · ${nativeReport.selected.label}`,
-          createdAt: new Date().toISOString(),
-        },
-      ];
-      setForgedDeck(answer);
-      setForgeReply(
-        `${nativeReport.methodology}\n\n${nativeReport.selected.tournament.reason}\n${nativeReport.reasoning.summary}\n${nativeReport.laboratory.summary}${nativeReport.laboratory.verdict === "advance" ? `\nTest contract: ${nativeReport.laboratory.contract}` : ""}\nStructural read: ${nativeReport.selected.evaluation.cohesion}/100 cohesion, ${nativeReport.selected.evaluation.resilience}/100 resilience. ${nativeReport.tournament.frontier.length} of 3 candidates reached the tradeoff frontier. ${nativeReport.reasoning.boundary} ${nativeReport.laboratory.boundary}`,
-      );
-      setRevisions(firstRevision);
-      void persistStoryBench(
-        firstRevision,
-        { wins: 0, losses: 0 },
+      await applyForgeResult(nativeReport, {
         generationId,
-        { work, commander, index },
-      );
+        work,
+        commander,
+        index,
+        replyText: `${nativeReport.methodology}\n\n${nativeReport.selected.tournament.reason}\n${nativeReport.reasoning.summary}\n${nativeReport.laboratory.summary}${nativeReport.laboratory.verdict === "advance" ? `\nTest contract: ${nativeReport.laboratory.contract}` : ""}\nStructural read: ${nativeReport.selected.evaluation.cohesion}/100 cohesion, ${nativeReport.selected.evaluation.resilience}/100 resilience. ${nativeReport.tournament.frontier.length} of 3 candidates reached the tradeoff frontier. ${nativeReport.reasoning.boundary} ${nativeReport.laboratory.boundary}`,
+        revisionNote: `Original native Forge candidate · ${nativeReport.selected.label}`,
+      });
     } catch (error) {
       setForgedDeck("");
+      setNativeMasterworkContext(null);
+      setForgeGenerationError(
+        error instanceof Error
+          ? `${error.message}. Your commission is safe—strike the anvil again when verified card data is available.`
+          : "The native Forge could not complete this candidate. Your commission is safe—strike the anvil again.",
+      );
+    } finally {
+      setBenchStatus("idle");
+      setForgeStartedAt(null);
+    }
+  }
+
+  // Skips the three-masterwork reveal entirely: a pasted decklist or a
+  // commander already locked in gives the Forge one clear thing to build,
+  // so there's no real ambiguity to resolve with three alternates.
+  async function commitDirectForge(mode: "decklist" | "commander") {
+    const commander = selectedCommander;
+    const generationId = crypto.randomUUID();
+    const directWork: Masterwork = {
+      rune: "ᛞ",
+      name: mode === "decklist" ? "Your List, Forged" : `${commander?.name || "Your Commander"}, Forged`,
+      path: mode === "decklist" ? "Adapted From Your List" : "Built For Your Commander",
+      tone: "steel",
+      verdict:
+        mode === "decklist"
+          ? "Adapted directly from the list you submitted, gaps filled to complete a legal deck."
+          : "Built directly around the commander you chose, no alternates to sort through.",
+    };
+    setRestoredWork(directWork);
+    setDeckId(generationId);
+    setSelectedWork(0);
+    setChamber("workbench");
+    setBenchStatus("forging");
+    setForgeStartedAt(Date.now());
+    setForgeElapsedSeconds(0);
+    setForgeReply("");
+    setForgeGenerationError("");
+    setImportWarnings([]);
+    setConsideringCards([]);
+    setRemovedCards([]);
+    setReplacementRecommendations([]);
+    setLastCutCard("");
+    setActiveForgeChapter(1);
+    setDeckViewMode("workbench");
+    setRefinementComposerOpen(false);
+
+    let evidence: EdhrecEvidence | null = null;
+    if (commander && isCommanderFormat(format)) {
+      try {
+        const evidenceResponse = await fetch(
+          `/api/forge/edhrec?commander=${encodeURIComponent(commander.name)}`,
+        );
+        if (evidenceResponse.ok) evidence = await evidenceResponse.json();
+      } catch {
+        /* Adoption evidence is optional; native construction remains available. */
+      }
+    }
+    setEdhrecEvidence(evidence);
+
+    try {
+      const pool = await loadNativeForgePool(format, commander, "", commissionNote);
+      const commanderInput = commander
+        ? { name: commander.name, colors: commander.colors, oracleText: commander.verifiedFacts }
+        : null;
+
+      if (mode === "decklist") {
+        const resolution = await resolveImportedDecklist(deck, pool.cards, format, commander);
+        setImportWarnings([
+          ...resolution.unresolvedNames.map((name) => `"${name}" could not be verified and was left out.`),
+          ...resolution.illegalNames.map((name) => `"${name}" is not legal in ${format} and was left out.`),
+        ]);
+        const nativeReport = forgeImportedMasterwork({
+          format,
+          target: targetDeckSize(format),
+          strategy,
+          path: "",
+          note: `${commissionNote}\n${interventionLearning.reusableGuidance}`.trim(),
+          seed: hashText(`${commissionSeed}|import|${deck.length}`),
+          colors: pool.colors,
+          commander: commanderInput,
+          cards: resolution.pool,
+          importedRows: resolution.importedRows,
+          evidence: evidence?.cards || [],
+        });
+        await applyForgeResult(nativeReport, {
+          generationId,
+          work: directWork,
+          commander,
+          index: 0,
+          replyText: `${nativeReport.methodology}\n\n${nativeReport.reasoning.summary}\n${nativeReport.laboratory.summary}${nativeReport.laboratory.verdict === "advance" ? `\nTest contract: ${nativeReport.laboratory.contract}` : ""}\n${nativeReport.reasoning.boundary} ${nativeReport.laboratory.boundary}`,
+          revisionNote: "Adapted directly from your submitted list",
+        });
+      } else {
+        const nativeReport = forgeNativeMasterwork({
+          format,
+          target: targetDeckSize(format),
+          strategy,
+          path: "",
+          note: `${commissionNote}\n${interventionLearning.reusableGuidance}`.trim(),
+          seed: hashText(`${commissionSeed}|commander|${commander?.name || ""}`),
+          colors: pool.colors,
+          commander: commanderInput,
+          cards: pool.cards,
+          evidence: evidence?.cards || [],
+        });
+        await applyForgeResult(nativeReport, {
+          generationId,
+          work: directWork,
+          commander,
+          index: 0,
+          replyText: `${nativeReport.methodology}\n\n${nativeReport.selected.tournament.reason}\n${nativeReport.reasoning.summary}\n${nativeReport.laboratory.summary}${nativeReport.laboratory.verdict === "advance" ? `\nTest contract: ${nativeReport.laboratory.contract}` : ""}\nStructural read: ${nativeReport.selected.evaluation.cohesion}/100 cohesion, ${nativeReport.selected.evaluation.resilience}/100 resilience. ${nativeReport.reasoning.boundary} ${nativeReport.laboratory.boundary}`,
+          revisionNote: `Built directly for ${commander?.name || "your commander"} · ${nativeReport.selected.label}`,
+        });
+      }
+    } catch (error) {
+      setForgedDeck("");
+      setNativeMasterworkContext(null);
       setForgeGenerationError(
         error instanceof Error
           ? `${error.message}. Your commission is safe—strike the anvil again when verified card data is available.`
@@ -2033,10 +2455,11 @@ export default function Home() {
     }
   }
   function openSavedMasterwork(family: SavedFamily) {
-    const restoredRevisions = family.revisions.map((revision) => ({
-      deck: revision.deckText,
+    const restoredRevisions = restoreStoryBenchRevisions(family.revisions).map((revision: any) => ({
+      deck: revision.deck,
       note: revision.note,
       createdAt: revision.createdAt,
+      recommendationRecord: revision.recommendationRecord,
     }));
     const latest = restoredRevisions.at(-1);
     setDeckId(family.id);
@@ -2054,6 +2477,7 @@ export default function Home() {
     });
     setForgedDeck(latest?.deck || "");
     setRevisions(restoredRevisions);
+    setNativeMasterworkContext(null);
     setRecord(
       family.record || {
         wins: Number(family.revisions.at(-1)?.evidence?.wins || 0),
@@ -2065,6 +2489,7 @@ export default function Home() {
     );
     setPlayerSignal("");
     setForgeReply("");
+    setImportWarnings([]);
     setBenchStatus("testing");
     setChamber("workbench");
   }
@@ -2090,6 +2515,35 @@ export default function Home() {
       if (saved.ok) setSavedMasterworks(families);
     } catch {
       /* A failed delete leaves the preserved deck untouched. */
+    }
+  }
+
+  // Distinct from delete: marks a Masterwork "finished" (or returns it to
+  // in-progress) without ever removing it. Reuses the archive/restore state
+  // machine already implemented and tested in deck-bench.mjs.
+  async function setFamilyArchived(id: string, archived: boolean) {
+    try {
+      const response = await fetch("/api/account/deck-bench", {
+        cache: "no-store",
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      const bench = updateFamily(
+        { schemaVersion: 1, families: data.bench?.families || [] },
+        id,
+        archived ? "archive" : "restore",
+      );
+      const saved = await fetch("/api/account/deck-bench", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bench,
+          baseRevision: data.revision || 0,
+        }),
+      });
+      if (saved.ok) setSavedMasterworks(bench.families as SavedFamily[]);
+    } catch {
+      /* A failed archive/restore leaves the preserved deck untouched. */
     }
   }
 
@@ -2157,6 +2611,21 @@ export default function Home() {
       if (!response.ok) return;
       const current = await response.json();
       const bench = current.bench || { schemaVersion: 1, families: [] };
+      const existingFamily = (bench.families || []).find(
+        (item: { id?: string }) => item.id === activeId,
+      );
+      // prepareStoryBenchRevisions computes comparisonToPrevious between
+      // consecutive revisions that both carry a real engine
+      // recommendationRecord — it never invents one for a manual refinement.
+      const preparedRevisions = prepareStoryBenchRevisions(nextRevisions);
+      const serializedRevisions = preparedRevisions.map((revision: any, index: number) =>
+        serializeStoryBenchRevision(revision, {
+          index,
+          record: nextRecord,
+          matches: nextMatches,
+          revisionCount: nextRevisions.length,
+        }),
+      );
       const family = {
         id: activeId,
         name: activeWork.name,
@@ -2167,29 +2636,14 @@ export default function Home() {
         path: activeWork.path,
         record: nextRecord,
         updatedAt: new Date().toISOString(),
-        archived: false,
-        promotedFingerprint: `story-${nextRevisions.length}`,
-        revisions: nextRevisions.map((revision, index) => ({
-          fingerprint: `story-${index + 1}-${revision.createdAt}`,
-          version: index + 1,
-          source: index ? "forge" : "original",
-          deckText: revision.deck,
-          note: revision.note,
-          createdAt: revision.createdAt,
-          evidence: {
-            wins: nextRecord.wins,
-            losses: nextRecord.losses,
-            sampleSize: nextRecord.wins + nextRecord.losses,
-            confidence:
-              nextRecord.wins + nextRecord.losses < 3
-                ? "early signal"
-                : "developing",
-          },
-          matches: nextMatches.filter(
-            (match) =>
-              Number(match.revision || nextRevisions.length) === index + 1,
-          ),
-        })),
+        // A save must never silently un-finish a Masterwork the player
+        // already marked archived from a different action.
+        archived: existingFamily?.archived ?? false,
+        promotedFingerprint:
+          serializedRevisions.at(-1)?.fingerprint ||
+          existingFamily?.promotedFingerprint ||
+          "",
+        revisions: serializedRevisions,
       };
       const families = [
         ...(bench.families || []).filter(
@@ -2526,6 +2980,9 @@ export default function Home() {
               A{index === 0 ? "−" : index === 2 ? "+" : ""}
             </button>
           ))}
+          <a className="quiet-action" href="/profile">
+            Your Forge Mastery
+          </a>
           <button className="quiet-action" onClick={() => setChamber("entrance")}>
             New commission
           </button>
@@ -2548,7 +3005,15 @@ export default function Home() {
               design or bring an existing build to the anvil for refinement.
             </p>
             <div className="entrance-actions">
-              <button onClick={() => setChamber("commission")}>
+              <button
+                onClick={() => {
+                  // A blank commission must actually be blank — a decklist
+                  // pasted in an earlier refinement session should never
+                  // silently carry over and skip the three-reveal here.
+                  setDeck("");
+                  setChamber("commission");
+                }}
+              >
                 <small>COMMISSION I</small>
                 <strong>Forge a new deck</strong>
                 <span>Shape a masterwork from a fresh blueprint.</span>
@@ -2587,12 +3052,13 @@ export default function Home() {
                   const evidence =
                     family.record || family.revisions.at(-1)?.evidence || {};
                   return (
-                    <article key={family.id}>
+                    <article key={family.id} className={family.archived ? "finished" : ""}>
                       <button
                         className="history-open"
                         onClick={() => openSavedMasterwork(family)}
                       >
                         <small>
+                          {family.archived ? "FINISHED MASTERWORK · " : ""}
                           {family.format} · {family.path || "FORGED DECK"}
                         </small>
                         <strong>{family.name}</strong>
@@ -2604,6 +3070,23 @@ export default function Home() {
                           {family.revisions.length === 1 ? "" : "s"}
                         </em>
                       </button>
+                      {family.archived ? (
+                        <button
+                          className="history-restore"
+                          onClick={() => setFamilyArchived(family.id, false)}
+                          aria-label={`Return ${family.name} to the Forge`}
+                        >
+                          Return to the Forge
+                        </button>
+                      ) : (
+                        <button
+                          className="history-finish"
+                          onClick={() => setFamilyArchived(family.id, true)}
+                          aria-label={`Preserve ${family.name} as finished`}
+                        >
+                          Preserve as Finished
+                        </button>
+                      )}
                       <button
                         className="history-delete"
                         onClick={() => deleteSavedMasterwork(family.id)}
@@ -2950,88 +3433,16 @@ export default function Home() {
                 : work;
               const insight = masterworkInsight(alignedWork, preview, commander, commissionNote);
               return (
-                <article
-                  className={`masterwork-card ${alignedWork.tone}`}
+                <MasterworkCard
                   key={`masterwork-${poolIndex}`}
-                >
-                  <span>
-                    MASTERWORK {String(poolIndex + 1).padStart(2, "0")}
-                  </span>
-                  <div className="masterwork-title">
-                    <i>{alignedWork.rune}</i>
-                    <div>
-                      <small>
-                        <GlossaryText text={alignedWork.path} /> · {format}
-                      </small>
-                      <h2>{alignedWork.name}</h2>
-                    </div>
-                  </div>
-                  <div className="masterwork-glimpse">
-                    <span
-                      className="commander-inspector"
-                      tabIndex={0}
-                      aria-label={`Inspect ${preview.card} rules`}
-                    >
-                      <img
-                        src={commander?.image || cardImage(preview.card)}
-                        alt={`${preview.card} card`}
-                        loading="lazy"
-                      />
-                      <span className="commander-zoom" role="tooltip">
-                        <img
-                          src={cardImage(preview.card)}
-                          alt={`${preview.card} enlarged card`}
-                        />
-                        <span>
-                          <b>{preview.card}</b>
-                          <small>{commander?.typeLine || preview.role}</small>
-                          <em>
-                            {insight.oracle ||
-                              "The full card image contains the verified rules text."}
-                          </em>
-                        </span>
-                      </span>
-                    </span>
-                    <div>
-                      <small>{preview.role}</small>
-                      <strong>{preview.card}</strong>
-                      {commander && (
-                        <small className="identity-name">
-                          <GlossaryText text={colorIdentityName(commander.colors)} /> · {commander.colors.join("") || "C"}
-                        </small>
-                      )}
-                      <p><b>HOW IT STARTS</b><GlossaryText text={insight.opening} /></p>
-                      <em>
-                        <b>HOW IT WINS</b>
-                        <GlossaryText text={insight.win} />
-                      </em>
-                    </div>
-                  </div>
-                  <div className="masterwork-plan">
-                    <span>
-                      <small>IMPORTANT PIECES</small>
-                      <b><GlossaryText text={insight.packages.join(" · ")} /></b>
-                    </span>
-                    <span>
-                      <small>MAIN TRADEOFF</small>
-                      <b><GlossaryText text={insight.weakness} /></b>
-                    </span>
-                  </div>
-                  <div className="masterwork-stats">
-                    {["Aggression", "Interaction", "Synergy", "Complexity"].map(
-                      (label, statIndex) => (
-                        <span key={label}>
-                          <small><GlossaryText text={label} /> · estimate</small>
-                          <b>{masterworkStats(commander, poolIndex)[statIndex]}</b>
-                        </span>
-                      ),
-                    )}
-                  </div>
-                  <p className="masterwork-verdict"><GlossaryText text={alignedWork.verdict} /></p>
-                  <button onClick={() => inspectMasterwork(poolIndex)}>
-                    Inspect this Masterwork <b>→</b>
-                  </button>
-                </article>
+                  poolIndex={poolIndex}
+                  alignedWork={alignedWork}
+                  preview={preview}
+                  commander={commander}
+                  insight={insight}
+                  format={format}
+                  onInspect={() => inspectMasterwork(poolIndex)}
+                />
               );
             })}
           </div>
@@ -3077,11 +3488,28 @@ export default function Home() {
             <span className="forge-eyebrow">
               <i /> MASTERWORK CHOSEN · THE TESTING ANVIL
             </span>
-            <h1>{chosenWork.name}</h1>
-            <p>
-              {chosenWork.path} · {format} · Revision{" "}
-              {Math.max(1, revisions.length)}
-            </p>
+            <div className="masterwork-heading">
+              {masterworkVisualProfile.primaryMotif && (
+                <span
+                  className="masterwork-sigil"
+                  data-evolved={masterworkVisualProfile.evolved}
+                  style={{ "--motif-accent": masterworkVisualProfile.accent } as React.CSSProperties}
+                  title={`${masterworkVisualProfile.primaryMotif} identity, from this deck's real structure`}
+                >
+                  {(() => {
+                    const Icon = MOTIF_ICONS[masterworkVisualProfile.primaryMotif as keyof typeof MOTIF_ICONS];
+                    return <Icon size={54} />;
+                  })()}
+                </span>
+              )}
+              <div>
+                <h1>{chosenWork.name}</h1>
+                <p>
+                  {chosenWork.path} · {format} · Revision{" "}
+                  {Math.max(1, revisions.length)}
+                </p>
+              </div>
+            </div>
           </header>
           <nav className="result-view-controls" aria-label="Forge result detail level">
             <span>
@@ -4163,12 +4591,34 @@ export default function Home() {
                   <small>THE METAL DID NOT SET</small>
                   <h3>No incomplete deck was saved.</h3>
                   <p>{forgeGenerationError}</p>
-                  <button onClick={() => inspectMasterwork(selectedWork)}>
+                  <button
+                    onClick={() => {
+                      if (deck.trim()) {
+                        void commitDirectForge("decklist");
+                        return;
+                      }
+                      if (isCommanderFormat(format) && selectedCommander && !randomCommission) {
+                        void commitDirectForge("commander");
+                        return;
+                      }
+                      void inspectMasterwork(selectedWork);
+                    }}
+                  >
                     Strike the Anvil Again
                   </button>
                 </div>
               ) : (
                 <pre>The Forge is waiting for a valid commission.</pre>
+              )}
+              {importWarnings.length > 0 && (
+                <div className="import-warnings" role="status">
+                  <small>SOME CARDS WERE LEFT OUT</small>
+                  <ul>
+                    {importWarnings.map((warning) => (
+                      <li key={warning}>{warning}</li>
+                    ))}
+                  </ul>
+                </div>
               )}
               <details className="raw-decklist">
                 <summary>View complete Forge response / import text</summary>
@@ -4202,27 +4652,59 @@ export default function Home() {
                   awkward, missing, or simply unlike you.
                 </p>
               </header>
-              <section className="refinement-starters" aria-label="Three refinement starting points">
-                {[
-                  ["Protect the plan", "Test more resilience and protection without weakening the deck's central engine."],
-                  ["Tighten the opening", "Test a lower curve and earlier interaction while preserving the deck's identity."],
-                  ["Improve card flow", "Test more selection and card advantage without adding unnecessary complexity."],
-                ].map(([label, prompt], index) => (
-                  <button
-                    type="button"
-                    key={label}
-                    className={playerSignal === prompt ? "active" : ""}
-                    onClick={() => {
-                      setPlayerSignal(prompt);
-                      setForgeReply("");
-                      setRefinementComposerOpen(true);
-                    }}
-                  >
-                    <small>PATH {index + 1}</small>
-                    <b>{label}</b>
-                    <span>{prompt}</span>
-                  </button>
-                ))}
+              <section className="refinement-starters experiment-tablets" aria-label="Three evidence-led controlled experiments">
+                {experimentTablets && experimentTablets.status === "advance" ? (
+                  experimentTablets.tablets.map((tablet: any, index: number) => {
+                    const prompt = `Test replacing ${tablet.change.cut} with ${tablet.change.add}. ${tablet.testContract}`;
+                    return (
+                      <button
+                        type="button"
+                        key={tablet.id}
+                        className={playerSignal === prompt ? "active" : ""}
+                        onClick={() => {
+                          setPlayerSignal(prompt);
+                          setForgeReply("");
+                          setRefinementComposerOpen(true);
+                        }}
+                      >
+                        <small>EXPERIMENT {index + 1}</small>
+                        <b>Cut {tablet.change.cut} → Add {tablet.change.add}</b>
+                        <dl>
+                          <div>
+                            <dt>Field observation</dt>
+                            <dd>{tablet.fieldObservation}</dd>
+                          </div>
+                          <div>
+                            <dt>Structural pressure point</dt>
+                            <dd>{tablet.pressurePoint}</dd>
+                          </div>
+                          <div>
+                            <dt>Smallest honest test</dt>
+                            <dd>{tablet.testContract}</dd>
+                          </div>
+                          <div>
+                            <dt>Expected benefit</dt>
+                            <dd>{tablet.expectedBenefit}</dd>
+                          </div>
+                          <div>
+                            <dt>Tradeoff</dt>
+                            <dd>{tablet.tradeoff}</dd>
+                          </div>
+                          <div>
+                            <dt>Evidence status</dt>
+                            <dd>{tablet.evidenceStatus}</dd>
+                          </div>
+                        </dl>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <p className="experiment-tablets-empty">
+                    {experimentTablets
+                      ? experimentTablets.summary
+                      : "Re-forge this Masterwork to generate fresh evidence-led experiments."}
+                  </p>
+                )}
               </section>
               {!refinementComposerOpen && !forgeReply && (
                 <button
@@ -4353,6 +4835,25 @@ export default function Home() {
                   REVISION{revisions.length === 1 ? "" : "S"} PRESERVED ·
                   PRIVATE BENCH SYNC
                 </span>
+                {deckId && (
+                  currentFamilyArchived ? (
+                    <button
+                      type="button"
+                      className="unfinish-masterwork"
+                      onClick={() => setFamilyArchived(deckId, false)}
+                    >
+                      Return to the Forge
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="finish-masterwork"
+                      onClick={() => setFamilyArchived(deckId, true)}
+                    >
+                      Preserve as Finished Masterwork
+                    </button>
+                  )
+                )}
               </footer>
             </aside>
           </div>
@@ -4384,7 +4885,7 @@ export default function Home() {
                   return (
                     <button
                       key={family.id}
-                      className={family.id === deckId ? "active" : ""}
+                      className={[family.id === deckId ? "active" : "", family.archived ? "finished" : ""].filter(Boolean).join(" ")}
                       onClick={() => {
                         openSavedMasterwork(family);
                         setBenchOpen(false);

@@ -53,11 +53,15 @@ test("offers a contained Workbench and an unrestricted full ledger", () => {
   assert.match(css, /\.ledger-deck-view \.deck-gallery\{max-height:none/);
 });
 
-test("offers three simple refinement paths before optional match evidence", () => {
-  assert.match(page, /Three refinement starting points/i);
-  assert.match(page, /Protect the plan/);
-  assert.match(page, /Tighten the opening/);
-  assert.match(page, /Improve card flow/);
+test("offers three evidence-led experiment tablets before optional match evidence", () => {
+  assert.match(page, /Three evidence-led controlled experiments/i);
+  assert.match(page, /buildExperimentTablets/);
+  assert.match(page, /Field observation/);
+  assert.match(page, /Structural pressure point/);
+  assert.match(page, /Smallest honest test/);
+  assert.match(page, /Expected benefit/);
+  assert.match(page, /<dt>Tradeoff<\/dt>/);
+  assert.match(page, /Evidence status/);
   assert.match(page, /className="match-evidence-drawer"/);
   assert.match(page, /className="custom-refinement-trigger"/);
   assert.match(page, /refinementComposerOpen && !forgeReply/);
@@ -83,9 +87,10 @@ test("automatically exposes intelligence when a hard deck gate fails", () => {
 });
 
 test("preserves match evidence on its exact revision", () => {
+  assert.match(page, /prepareStoryBenchRevisions\(nextRevisions\)/);
   assert.match(
     page,
-    /matches:\s*nextMatches\.filter\([\s\S]*?match\.revision[\s\S]*?index \+ 1/,
+    /serializeStoryBenchRevision\(revision,\s*\{[\s\S]*?index[\s\S]*?record: nextRecord[\s\S]*?matches: nextMatches[\s\S]*?revisionCount: nextRevisions\.length/,
   );
   assert.match(page, /family\.revisions\.flatMap/);
 });

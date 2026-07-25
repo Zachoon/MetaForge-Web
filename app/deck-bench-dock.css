@@ -172,6 +172,15 @@
   background: #153029;
   box-shadow: 0 0 18px #75dbc422;
 }
+.bench-decks > button.finished {
+  border-color: #a1802f;
+  background: linear-gradient(160deg, #1c1509, #12100a);
+}
+.bench-decks > button.finished:hover,
+.bench-decks > button.finished.active {
+  border-color: #d2b06a;
+  box-shadow: 0 0 18px #d2b06a33;
+}
 .bench-decks > button > span {
   display: grid;
   place-items: center;

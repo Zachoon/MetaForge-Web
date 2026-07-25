@@ -17,6 +17,8 @@ import {
 const BASIC_BY_COLOR = Object.freeze({
   W: "Plains", U: "Island", B: "Swamp", R: "Mountain", G: "Forest", C: "Wastes",
 });
+const BASIC_LAND_NAMES = Object.freeze(["Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes"]);
+const isBasicLandName = (name = "") => BASIC_LAND_NAMES.some((basic) => basic.toLowerCase() === String(name).trim().toLowerCase());
 
 const ROLE_PATTERNS = Object.freeze({
   ramp: [/add .{0,18}mana/i, /create .{0,18}treasure/i, /search your library for .{0,30}land/i, /land card.{0,30}battlefield/i],
@@ -332,12 +334,26 @@ function roleTargets(format, strategy) {
   };
 }
 
-function chooseSpells(scored, slots, singleton, targets, blueprint) {
+function chooseSpells(scored, slots, singleton, targets, blueprint, preset = []) {
   const selected = [];
   const selectedNames = new Set();
   const roleCounts = new Map();
   const copies = singleton ? 1 : 4;
   let remaining = slots;
+
+  // Preset rows (e.g. a player's own imported decklist) are reserved first,
+  // capped at the copy limit and remaining slots, before any competitive
+  // scoring runs — this is what guarantees the imported path stays legal.
+  for (const row of preset) {
+    if (remaining <= 0 || selectedNames.has(normalized(row.name))) continue;
+    const quantity = Math.min(copies, row.quantity, remaining);
+    if (quantity <= 0) continue;
+    selected.push({ ...row, quantity });
+    selectedNames.add(normalized(row.name));
+    for (const role of row.roles) roleCounts.set(role, (roleCounts.get(role) || 0) + quantity);
+    remaining -= quantity;
+  }
+
   const addCandidate = (candidate) => {
     if (!candidate || remaining <= 0 || selectedNames.has(normalized(candidate.card.name))) return false;
     const quantity = Math.min(copies, remaining);
@@ -390,12 +406,33 @@ function chooseSpells(scored, slots, singleton, targets, blueprint) {
   return { selected, roleCounts };
 }
 
-function buildManaBase(input, landSlots, lands, variant) {
+function buildManaBase(input, landSlots, lands, variant, presetLands = []) {
   const colors = input.commander?.colors?.length ? input.commander.colors : input.colors?.length ? input.colors : ["W", "U", "B", "R", "G"];
+  const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
+  const rows = [];
+
+  // A player's own land rows (imported path) are reserved first, capped at
+  // the remaining land slots and (for nonbasics) the copy limit, before the
+  // ranked nonbasic fill runs below. Basics are exempt from the copy limit,
+  // same as real deckbuilding rules.
+  const landCopyLimit = singleton ? 1 : 4;
+  for (const land of presetLands) {
+    const used = rows.reduce((sum, row) => sum + row.quantity, 0);
+    if (used >= landSlots) break;
+    const existing = rows.find((row) => row.name === land.name);
+    const limit = isBasicLandName(land.name) ? Infinity : landCopyLimit;
+    const already = existing?.quantity || 0;
+    const quantity = Math.min(land.quantity, limit - already, landSlots - used);
+    if (quantity <= 0) continue;
+    if (existing) existing.quantity += quantity;
+    else rows.push({ quantity, name: land.name, roles: ["land"], score: 0, cmc: 0 });
+  }
+  const presetLandNames = new Set(rows.map((row) => normalized(row.name)));
+
   const rankedLands = lands
     .filter((card) => {
       const identity = card.colorIdentity || card.color_identity || [];
-      return identity.every((color) => colors.includes(color));
+      return identity.every((color) => colors.includes(color)) && !presetLandNames.has(normalized(card.name));
     })
     .sort((left, right) => {
       const leftText = normalized(cardText(left));
@@ -404,10 +441,12 @@ function buildManaBase(input, landSlots, lands, variant) {
       const rightScore = (rightText.includes("enters the battlefield tapped") ? -4 : 2) + (rightText.includes("add") ? 2 : 0) + (hash(`${input.seed}|${variant.id}|${right.name}`) % 100) / 10000;
       return rightScore - leftScore || left.name.localeCompare(right.name);
     });
-  const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
-  const rows = [];
   const nonbasicLimit = Math.min(lands.length, singleton ? Math.min(landSlots - 18, 18) : 6);
-  for (const land of rankedLands.slice(0, nonbasicLimit)) rows.push({ quantity: singleton ? 1 : Math.min(4, landSlots - rows.reduce((sum, row) => sum + row.quantity, 0)), name: land.name, roles: ["land"], score: 0, cmc: 0 });
+  for (const land of rankedLands.slice(0, nonbasicLimit)) {
+    const used = rows.reduce((sum, row) => sum + row.quantity, 0);
+    if (used >= landSlots) break;
+    rows.push({ quantity: singleton ? 1 : Math.min(4, landSlots - used), name: land.name, roles: ["land"], score: 0, cmc: 0 });
+  }
   let remaining = landSlots - rows.reduce((sum, row) => sum + row.quantity, 0);
   for (let index = 0; remaining > 0; index += 1) {
     const name = BASIC_BY_COLOR[colors[index % colors.length]] || "Wastes";
@@ -435,22 +474,7 @@ function evaluateCandidate(rows, roleCounts, input, variant) {
   return { score: Number(score.toFixed(3)), roleCoverage: Number(roleCoverage.toFixed(3)), multiRoleDensity: Number(multiRole.toFixed(3)), averageCmc: Number(averageCmc.toFixed(2)), curveHealth: Math.round(curveHealth), cohesion: Math.round(cohesion), resilience: Math.round(resilience) };
 }
 
-function buildCandidate(input, variant, analysis) {
-  const target = input.target || (["Commander", "Brawl"].includes(input.format) ? 100 : 60);
-  const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
-  const commanderSlots = input.commander ? 1 : 0;
-  const landSlots = singleton ? Math.round(target * 0.37) : Math.round(target * 0.4);
-  const spells = analysis.spells;
-  const lands = analysis.lands;
-  const scored = spells.map((entry) => scoreCard(entry, input, variant, analysis.context));
-  const { selected, roleCounts } = chooseSpells(scored, target - landSlots - commanderSlots, singleton, roleTargets(input.format, input.strategy), analysis.context.blueprint);
-  const mana = buildManaBase(input, landSlots, lands, variant);
-  const rows = [
-    ...(input.commander ? [{ quantity: 1, name: input.commander.name, roles: ["commander"], score: 100, cmc: manaValueFromCost(input.commander.manaCost, input.commander.cmc) }] : []),
-    ...selected,
-    ...mana,
-  ];
-  const evaluation = evaluateCandidate(rows, roleCounts, input, variant);
+function computeBlueprintAlignment(analysis, selected, singleton) {
   const availableTribeCards = analysis.spells.filter((entry) => entry.directTribes.length).length;
   const selectedTribeCards = selected.filter((entry) => entry.directTribes.length).length;
   const availableIdentityCards = analysis.spells.filter((entry) => entry.identityHits.length).length;
@@ -470,7 +494,7 @@ function buildCandidate(input, variant, analysis) {
       selected.filter((entry) => entry.blueprintRoleHits.includes(role)).reduce((sum, entry) => sum + entry.quantity, 0),
     ]),
   );
-  const blueprintAlignment = Object.freeze({
+  return Object.freeze({
     requested: analysis.context.blueprint.promises,
     tribalTypes: analysis.context.blueprint.tribalTypes,
     availableTribeCards,
@@ -493,6 +517,25 @@ function buildCandidate(input, variant, analysis) {
       ? `No legal card naming or carrying the ${analysis.context.blueprint.tribalTypes.join("/")} identity was present in the verified pool; the Forge preserved legality and must say so instead of inventing support.`
       : `Blueprint contract reserved ${selectedIdentityCards}/${requiredIdentityCards} required identity cards before general optimization; legality and minimum deck function remained binding.`,
   });
+}
+
+function buildCandidate(input, variant, analysis) {
+  const target = input.target || (["Commander", "Brawl"].includes(input.format) ? 100 : 60);
+  const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
+  const commanderSlots = input.commander ? 1 : 0;
+  const landSlots = singleton ? Math.round(target * 0.37) : Math.round(target * 0.4);
+  const spells = analysis.spells;
+  const lands = analysis.lands;
+  const scored = spells.map((entry) => scoreCard(entry, input, variant, analysis.context));
+  const { selected, roleCounts } = chooseSpells(scored, target - landSlots - commanderSlots, singleton, roleTargets(input.format, input.strategy), analysis.context.blueprint);
+  const mana = buildManaBase(input, landSlots, lands, variant);
+  const rows = [
+    ...(input.commander ? [{ quantity: 1, name: input.commander.name, roles: ["commander"], score: 100, cmc: manaValueFromCost(input.commander.manaCost, input.commander.cmc) }] : []),
+    ...selected,
+    ...mana,
+  ];
+  const evaluation = evaluateCandidate(rows, roleCounts, input, variant);
+  const blueprintAlignment = computeBlueprintAlignment(analysis, selected, singleton);
   return {
     id: variant.id,
     label: variant.label,
@@ -503,6 +546,95 @@ function buildCandidate(input, variant, analysis) {
     score: evaluation.score,
     boundary: "Native structural candidate. Legality and simulations are hard gates; real match performance remains unproven.",
   };
+}
+
+// Reserves the player's own imported card names first (capped at the copy
+// limit and exact deck size), then fills any remaining gaps with the same
+// scoring/anchoring logic buildCandidate uses. Guarantees a legal, complete
+// deck by construction rather than hoping the pasted list happens to work.
+function buildImportedCandidate(input, analysis) {
+  const target = input.target || (["Commander", "Brawl"].includes(input.format) ? 100 : 60);
+  const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
+  const commanderSlots = input.commander ? 1 : 0;
+  const landSlots = singleton ? Math.round(target * 0.37) : Math.round(target * 0.4);
+  const commanderName = normalized(input.commander?.name);
+
+  const spellByName = new Map(analysis.spells.map((entry) => [normalized(entry.card.name), entry]));
+  const landByName = new Map(analysis.lands.map((card) => [normalized(card.name), card]));
+  const presetSpellRows = [];
+  const presetLandRows = [];
+  for (const row of input.importedRows) {
+    const key = normalized(row.name);
+    if (key === commanderName) continue;
+    const landCard = landByName.get(key);
+    if (landCard) {
+      presetLandRows.push({ quantity: row.quantity, name: landCard.name });
+      continue;
+    }
+    if (isBasicLandName(row.name)) {
+      // Basic lands are always legal and don't need to appear in the
+      // verified pool — the Forge already synthesizes them on demand.
+      presetLandRows.push({ quantity: row.quantity, name: BASIC_LAND_NAMES.find((basic) => basic.toLowerCase() === row.name.trim().toLowerCase()) });
+      continue;
+    }
+    const spellEntry = spellByName.get(key);
+    if (!spellEntry) continue; // never reached in practice: the caller only ever supplies rows already verified against this same analyzed pool
+    presetSpellRows.push({
+      quantity: row.quantity,
+      name: spellEntry.card.name,
+      roles: spellEntry.roles,
+      score: Number((spellEntry.roleScore || 0).toFixed(3)),
+      cmc: spellEntry.cmc,
+      directTribes: spellEntry.directTribes,
+      tribalSupport: spellEntry.tribalSupport,
+      identityHits: spellEntry.identityHits,
+      blueprintRoleHits: spellEntry.blueprintRoleHits,
+    });
+  }
+  if (!presetSpellRows.length && !presetLandRows.length) {
+    throw new Error("None of the submitted cards could be matched to the verified pool");
+  }
+
+  // Preset rows are reserved unconditionally, so this variant only shapes
+  // which cards fill any slots the player's list didn't already occupy.
+  const variant = { id: "imported", label: "Your List", synergy: 1, resilience: 1, curve: 1 };
+  const scored = analysis.spells.map((entry) => scoreCard(entry, input, variant, analysis.context));
+  const { selected, roleCounts } = chooseSpells(scored, target - landSlots - commanderSlots, singleton, roleTargets(input.format, input.strategy), analysis.context.blueprint, presetSpellRows);
+  const mana = buildManaBase(input, landSlots, analysis.lands, variant, presetLandRows);
+  const rows = [
+    ...(input.commander ? [{ quantity: 1, name: input.commander.name, roles: ["commander"], score: 100, cmc: manaValueFromCost(input.commander.manaCost, input.commander.cmc) }] : []),
+    ...selected,
+    ...mana,
+  ];
+  const evaluation = evaluateCandidate(rows, roleCounts, input, variant);
+  const blueprintAlignment = computeBlueprintAlignment(analysis, selected, singleton);
+  return {
+    id: variant.id,
+    label: variant.label,
+    rows,
+    deckText: rows.map((row) => `${row.quantity} ${row.name}`).join("\n"),
+    evaluation,
+    blueprintAlignment,
+    score: evaluation.score,
+    boundary: "Adapted directly from your submitted list. Legality and simulations are hard gates; real match performance remains unproven.",
+  };
+}
+
+// Enumerates every deviation from the player's original pasted list so
+// nothing is silently rewritten: cards the Forge added to fill role/size
+// gaps, and copies trimmed to respect the format's copy limit or exact size.
+function diffImportedChanges(importedRows, selectedRows) {
+  const selectedByName = new Map(
+    selectedRows.filter((row) => !row.roles.includes("commander")).map((row) => [normalized(row.name), row.quantity]),
+  );
+  const importedNames = new Set(importedRows.map((row) => normalized(row.name)));
+  const added = selectedRows
+    .filter((row) => !row.roles.includes("commander") && !importedNames.has(normalized(row.name)))
+    .map((row) => row.name);
+  const trimmed = importedRows
+    .map((row) => ({ name: row.name, cut: Math.max(0, row.quantity - (selectedByName.get(normalized(row.name)) || 0)) }))
+    .filter((entry) => entry.cut > 0);
+  return { added, trimmed };
 }
 
 export function forgeNativeMasterwork(input) {
@@ -633,5 +765,98 @@ export function forgeNativeMasterwork(input) {
 }),
 
     methodology: `MetaForge analyzed each verified card once, reserved explicit Blueprint identity before general optimization, filled minimum deck-function requirements, assembled three complete structural tempers, applied hard rejection gates, advanced a nondominated Blueprint tradeoff, compared it with the closest viable rival, and exhaustively gated exact one-slot experiments.${selected.blueprintAlignment.requested.length ? ` Blueprint promise: ${selected.blueprintAlignment.requested.join(", ")} — ${selected.blueprintAlignment.status.replaceAll("-", " ")}.` : ""}`,
+  });
+}
+
+// Adapts a player's own decklist (or a locked-in commander with no random
+// reveal) directly into one legal, complete deck instead of generating three
+// alternates. The imported candidate is compared against a hidden internal
+// baseline for real structural axes, but is always kept as the selected
+// build as long as it clears the hard gates — the Forge never silently
+// substitutes its own optimization for what the player actually submitted.
+export function forgeImportedMasterwork(input) {
+  if (!input || !Array.isArray(input.cards) || !input.cards.length) throw new Error("Native Forge requires a verified card pool");
+  if (!Array.isArray(input.importedRows) || !input.importedRows.length) throw new Error("Native Forge requires at least one verified card from your decklist");
+  const evidenceByName = new Map((input.evidence || []).map((entry) => [normalized(entry.name), entry]));
+  const analysis = prepareForgeAnalysis(input, evidenceByName);
+  const imported = buildImportedCandidate(input, analysis);
+  const baseline = buildCandidate(input, VARIANTS[0], analysis);
+
+  const tournament = runNativeMasterworkTournament([imported, baseline], { format: input.format, target: input.target });
+  const importedResult = tournament.results.find((result) => result.id === imported.id);
+  if (!importedResult?.gate.passed) {
+    throw new Error(`Native Forge could not adapt your list into a legal ${input.format} deck: ${importedResult?.gate.reasons.join(" ") || "an unexpected structural gate failure"}`);
+  }
+
+  const forcedTournament = tournament.selectedId === imported.id ? tournament : Object.freeze({
+    ...tournament,
+    selectedId: imported.id,
+    results: tournament.results.map((result) => result.id === imported.id
+      ? { ...result, verdict: "advance", reason: `${imported.label} is adapted directly from your submitted list; the Forge preserves it rather than substituting its own optimization.` }
+      : { ...result, verdict: "hold" }),
+  });
+
+  const ranked = [imported, baseline].map((candidate) => ({
+    ...candidate,
+    tournament: forcedTournament.results.find((result) => result.id === candidate.id),
+  }));
+  const selected = ranked.find((candidate) => candidate.id === imported.id);
+  const reasoning = explainNativeMasterworkDecision(ranked, forcedTournament);
+  const laboratory = runOneSlotCounterfactualLab(selected, ranked, reasoning, {
+    format: input.format,
+    strategy: input.strategy,
+    target: input.target,
+  });
+
+  const structuralCards = buildSelectedStructuralCards(selected, input);
+  const structuralAnalysis = buildForgeStructuralAnalysis(structuralCards, { commanderName: input.commander?.name || "" });
+  const recommendationRecord = createForgeRecommendationRecord({
+    engineVersion: "metaforge-native-import-v1",
+    format: input.format,
+    strategy: input.strategy,
+    commanderName: input.commander?.name || "",
+    deckRows: selected.rows,
+    recommendation: {
+      candidateId: selected.id,
+      label: selected.label,
+      score: selected.score,
+      tournamentScore: selected.tournament?.tournamentScore || 0,
+      reason: selected.tournament?.reason || "",
+    },
+    alternatives: ranked
+      .filter((candidate) => candidate.id !== selected.id)
+      .map((candidate) => ({
+        id: candidate.id,
+        label: candidate.label,
+        score: candidate.score,
+        tournamentScore: candidate.tournament?.tournamentScore || 0,
+        reason: candidate.tournament?.reason || "",
+      })),
+    reasoning,
+    structuralAnalysis,
+    blueprintIntent: analysis.context.blueprint,
+  });
+
+  const changes = diffImportedChanges(input.importedRows, selected.rows);
+
+  return Object.freeze({
+    engine: "metaforge-native-import-v1",
+    selected,
+    candidates: ranked,
+    tournament: forcedTournament,
+    reasoning,
+    laboratory,
+    structuralAnalysis,
+    recommendationRecord,
+    blueprintIntent: analysis.context.blueprint,
+    changes: Object.freeze(changes),
+    diagnostics: Object.freeze({
+      analysisPasses: 1,
+      cardsAnalyzed: analysis.cards.length,
+      candidatesBuilt: ranked.length,
+      structuralCardsAnalyzed: structuralAnalysis.uniqueCardCount,
+      detectedSystems: structuralAnalysis.systems.systems.length,
+    }),
+    methodology: `Your submitted list was reserved first, then the Forge filled the remaining slots to reach a complete, legal ${input.format} deck.${changes.added.length ? ` ${changes.added.length} card${changes.added.length === 1 ? "" : "s"} added to fill role or size gaps.` : " No cards needed to be added."}${changes.trimmed.length ? ` ${changes.trimmed.reduce((sum, entry) => sum + entry.cut, 0)} cop${changes.trimmed.reduce((sum, entry) => sum + entry.cut, 0) === 1 ? "y" : "ies"} trimmed to respect the format's copy limit or exact deck size.` : ""}`,
   });
 }
