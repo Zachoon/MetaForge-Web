@@ -24,7 +24,7 @@ export function motifForRoles(roles = []) {
   return null;
 }
 
-const COLOR_ACCENT = Object.freeze({
+export const COLOR_ACCENT = Object.freeze({
   W: "#e8d9a8",
   U: "#6dddf0",
   B: "#a98fd6",

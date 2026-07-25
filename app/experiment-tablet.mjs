@@ -56,6 +56,11 @@ export function buildExperimentTablets({ selected, candidates, causalityReport =
   const tablets = passed.map((experiment, index) => ({
     id: `experiment-${index + 1}`,
     type: "experiment",
+    // False once the engine has run out of swaps that clear its own quality
+    // gate — still a real, distinct candidate, just not a confident one.
+    // Surfaced honestly rather than hidden, so players never hit a wall of
+    // silence just because nothing left is a slam dunk.
+    confident: experiment.confident,
     fieldObservation,
     pressurePoint: pressurePointFor(experiment.cut, causalityReport)
       || "No structural-risk hypothesis currently isolates this card; the case rests on modeled role coverage and curve.",
@@ -65,8 +70,10 @@ export function buildExperimentTablets({ selected, candidates, causalityReport =
     motif: motifForRoles(experiment.addRoles),
     testContract: experiment.contract,
     expectedBenefit: describeBenefit(experiment.delta),
-    tradeoff: describeTradeoff(experiment.delta),
-    evidenceStatus: observation.confidence,
+    tradeoff: experiment.confident
+      ? describeTradeoff(experiment.delta)
+      : `${describeTradeoff(experiment.delta)} Below the Forge's gain threshold: ${experiment.gate.reasons.join(" ")}`,
+    evidenceStatus: experiment.confident ? observation.confidence : "speculative",
     summary: experiment.summary,
   }));
 

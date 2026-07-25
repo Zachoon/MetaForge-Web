@@ -175,6 +175,14 @@ export function rankOneSlotCounterfactuals(selected, candidates, options = {}) {
   const experiments = rivals.flatMap((rival) => buildExperiments(selected, rival, options));
   experiments.sort((left, right) => Number(right.gate.passed) - Number(left.gate.passed) || right.delta.score - left.delta.score || left.cut.localeCompare(right.cut) || left.add.localeCompare(right.add));
   const limit = options.limit || 3;
+
+  // Fill with every gate-passed swap first (a distinct cut each), then, if
+  // that runs out, keep going down the same ranked list into swaps that
+  // didn't clear the gate. A build with no more confident upgrades left
+  // should still offer its next-best considered changes — marked as
+  // speculative, not hidden — rather than going silent once nothing is a
+  // slam dunk. Only a genuine absence of distinct candidate pairs (checked
+  // below) means there is truly nothing left to test.
   const seenCuts = new Set();
   const distinct = [];
   for (const experiment of experiments) {
@@ -183,11 +191,19 @@ export function rankOneSlotCounterfactuals(selected, candidates, options = {}) {
     distinct.push(experiment);
     if (distinct.length >= limit) break;
   }
+  if (distinct.length < limit) {
+    for (const experiment of experiments) {
+      if (experiment.gate.passed || seenCuts.has(experiment.cut)) continue;
+      seenCuts.add(experiment.cut);
+      distinct.push(experiment);
+      if (distinct.length >= limit) break;
+    }
+  }
 
   if (!distinct.length) {
     return deepFreeze({
       verdict: "inconclusive", experimentsTested: experiments.length, experiments: [],
-      summary: experiments.length ? `The Forge tested ${experiments.length} exact one-slot changes; none cleared every structural gate, so the selected Masterwork remains unchanged.` : "The rival contains no distinct nonland pair suitable for a one-slot test.",
+      summary: experiments.length ? `The Forge tested ${experiments.length} exact one-slot changes; none named a distinct card to cut.` : "The rival contains no distinct nonland pair suitable for a one-slot test.",
       boundary: "No revision is created without a measurable gain and preserved structural floors.",
     });
   }
@@ -201,7 +217,10 @@ export function rankOneSlotCounterfactuals(selected, candidates, options = {}) {
       addRoles: experiment.addRoles,
       delta: experiment.delta,
       gate: experiment.gate,
-      summary: `Controlled experiment: replace ${experiment.cut} with ${experiment.add}. The modeled structural score improves by ${experiment.delta.score.toFixed(1)} while required-role coverage, curve health, resilience density, deck size, copy limits, and opening-hand land distribution remain inside their gates.`,
+      confident: experiment.gate.passed,
+      summary: experiment.gate.passed
+        ? `Controlled experiment: replace ${experiment.cut} with ${experiment.add}. The modeled structural score improves by ${experiment.delta.score.toFixed(1)} while required-role coverage, curve health, resilience density, deck size, copy limits, and opening-hand land distribution remain inside their gates.`
+        : `Speculative experiment: replace ${experiment.cut} with ${experiment.add}. This did not clear the Forge's structural gate (${experiment.gate.reasons.join(" ")}) — it's the next-best considered change, not a confident recommendation.`,
       contract: "Create exactly one revision, play it as a separate test, and require observed match evidence before calling the change successful.",
     })),
     boundary: "These are deterministic structural experiments, not proof of better match performance.",

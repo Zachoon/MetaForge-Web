@@ -4763,13 +4763,16 @@ export default function Home() {
                     return (
                       <article
                         key={tablet.id}
-                        className={`experiment-tablet-card ${applying ? "applying" : ""}`}
+                        className={`experiment-tablet-card ${applying ? "applying" : ""} ${tablet.confident === false ? "speculative" : ""}`}
                         style={{ "--motif-accent": masterworkVisualProfile.accent } as React.CSSProperties}
                       >
                         <div className="tablet-flip-inner">
                           <div className="tablet-face tablet-face-front">
                             <header>
-                              <small>EXPERIMENT {index + 1}</small>
+                              <small>
+                                EXPERIMENT {index + 1}
+                                {tablet.confident === false && <em className="speculative-badge">SPECULATIVE</em>}
+                              </small>
                               {Icon && (
                                 <span className="tablet-motif-icon">
                                   <Icon size={30} />

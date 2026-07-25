@@ -85,11 +85,24 @@ test("rankOneSlotCounterfactuals refuses to invent an experiment without a viabl
   assert.match(report.boundary, /instead of inventing/i);
 });
 
-test("rankOneSlotCounterfactuals holds the list when nothing clears the structural gates", () => {
+test("rankOneSlotCounterfactuals backfills with the next-best speculative swap instead of going silent", () => {
+  // A build that has run out of confident upgrades should still offer its
+  // next-best considered change, honestly marked as not having cleared the
+  // gate — never a wall of silence just because nothing is a slam dunk.
   const bad = base.map((row) => ({ ...row, roles: [...row.roles] }));
   bad.find((row) => row.name === "Answer").quantity = 3;
   bad.push({ quantity: 1, name: "Vanilla Giant", roles: ["threat"], cmc: 8 });
   const report = rankOneSlotCounterfactuals(selected, [selected, { id: "bad", rows: bad }], options);
+  assert.equal(report.verdict, "advance");
+  assert.equal(report.experiments.length, 1);
+  assert.equal(report.experiments[0].confident, false);
+  assert.equal(report.experiments[0].cut, "Answer");
+  assert.match(report.experiments[0].summary, /speculative/i);
+});
+
+test("rankOneSlotCounterfactuals reports truly nothing only when no distinct candidate pair exists at all", () => {
+  const identicalRival = { id: "identical", rows: base.map((row) => ({ ...row, roles: [...row.roles] })) };
+  const report = rankOneSlotCounterfactuals(selected, [selected, identicalRival], options);
   assert.equal(report.verdict, "inconclusive");
   assert.deepEqual(report.experiments, []);
 });

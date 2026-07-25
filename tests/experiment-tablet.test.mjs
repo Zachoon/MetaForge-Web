@@ -112,6 +112,24 @@ test("offers an honest confidence tablet instead of an empty slot when no experi
   assert.ok(report.tablets[0].detail);
 });
 
+test("surfaces a speculative experiment tablet instead of only a confidence card when the only candidate misses the gate", () => {
+  const badRival = base.map((row) => ({ ...row, roles: [...row.roles] }));
+  badRival.find((row) => row.name === "Weak Interaction").quantity = 3;
+  badRival.push({ quantity: 1, name: "Vanilla Giant", roles: ["threat"], cmc: 8 });
+  const report = buildExperimentTablets({
+    selected,
+    candidates: [selected, { id: "bad-rival", rows: badRival }],
+    matchLog: [],
+    options,
+  });
+  assert.equal(report.status, "advance");
+  const experimentTablets = report.tablets.filter((tablet) => tablet.type === "experiment");
+  assert.equal(experimentTablets.length, 1);
+  assert.equal(experimentTablets[0].confident, false);
+  assert.equal(experimentTablets[0].evidenceStatus, "speculative");
+  assert.match(experimentTablets[0].tradeoff, /below the forge's gain threshold/i);
+});
+
 test("pads a partial set of real experiments with exactly one confidence tablet, never more", () => {
   // Two of the three "Body"/"Second Body" style rows are identical between
   // base and rival, but Slow Threat/Weak Draw/Weak Interaction differ and a

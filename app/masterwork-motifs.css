@@ -96,6 +96,8 @@
 @keyframes tablet-flash{0%{filter:brightness(2.4) saturate(1.5)}100%{filter:brightness(1) saturate(1)}}
 .tablet-face-front>header{display:flex;align-items:center;justify-content:space-between}
 .tablet-face-front>header small{color:#d28b45;font-size:10px;font-weight:900;letter-spacing:.1em}
+.experiment-tablet-card.speculative{border-style:dashed}
+.speculative-badge{margin-left:8px;padding:2px 6px;border:1px solid #8a7452;color:#c9ac74;font-style:normal;font-size:8px;font-weight:900;letter-spacing:.08em}
 .confidence-tablet{display:grid;grid-template-rows:auto 1fr auto;gap:12px;padding:18px;border-color:#6b5a30;background:radial-gradient(circle at 50% 0%,#3a2c1244,transparent 60%),linear-gradient(160deg,#181209,#0d0a06)}
 .confidence-tablet>header small{color:#d2b06a;font-size:10px;font-weight:900;letter-spacing:.1em}
 .confidence-tablet-body{display:grid;align-content:center;gap:8px}
