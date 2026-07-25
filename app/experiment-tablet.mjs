@@ -8,6 +8,7 @@
 
 import { rankOneSlotCounterfactuals } from "./native-one-slot-lab.mjs";
 import { evaluateExperiment } from "./experiment-evidence.mjs";
+import { motifForRoles } from "./masterwork-visual-profile.mjs";
 
 const normalized = (value = "") => String(value).normalize("NFKC").trim().toLocaleLowerCase("en");
 
@@ -60,6 +61,9 @@ export function buildExperimentTablets({ selected, candidates, causalityReport =
     pressurePoint: pressurePointFor(experiment.cut, causalityReport)
       || "No structural-risk hypothesis currently isolates this card; the case rests on modeled role coverage and curve.",
     change: { cut: experiment.cut, add: experiment.add },
+    // The motif the card being added belongs to (same vocabulary as the deck
+    // identity badge) — real, from the engine's own role classification.
+    motif: motifForRoles(experiment.addRoles),
     testContract: experiment.contract,
     expectedBenefit: describeBenefit(experiment.delta),
     tradeoff: describeTradeoff(experiment.delta),

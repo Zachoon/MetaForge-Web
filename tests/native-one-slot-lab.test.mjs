@@ -103,6 +103,46 @@ rivalBRows.push({ quantity: 1, name: "Flexible Card Draw", roles: ["draw", "inte
 const rivalA = { id: "rivalA", rows: rivalARows };
 const rivalB = { id: "rivalB", rows: rivalBRows };
 
+test("scales the minimum meaningful score gain to the deck's real size instead of a flat bar", () => {
+  const makeDeck = (nonlandCount, landCount) => {
+    const rows = [{ quantity: landCount, name: "Island", roles: ["land"], cmc: 0 }];
+    for (let i = 0; i < nonlandCount; i++) rows.push({ quantity: 1, name: `Card ${i}`, roles: ["threat"], cmc: 3 });
+    return rows;
+  };
+  const upgrade = (rows) => {
+    const next = rows.map((row) => ({ ...row, roles: [...row.roles] }));
+    next.find((row) => row.name === "Card 0").quantity = 0;
+    next.push({ quantity: 1, name: "Better Interaction", roles: ["interaction", "protection"], cmc: 3 });
+    return next.filter((row) => row.quantity > 0);
+  };
+  const standardBase = makeDeck(36, 24);
+  const standardRival = upgrade(standardBase);
+  const standardReport = runOneSlotCounterfactualLab(
+    { id: "selected", rows: standardBase },
+    [{ id: "selected", rows: standardBase }, { id: "rival", rows: standardRival }],
+    { rivalId: "rival" },
+    { format: "Standard", strategy: "Balanced midrange", target: 60 },
+  );
+
+  const commanderBase = makeDeck(63, 36).concat([{ quantity: 1, name: "Cmdr", roles: ["commander"], cmc: 3 }]);
+  const commanderRival = upgrade(commanderBase);
+  const commanderReport = runOneSlotCounterfactualLab(
+    { id: "selected", rows: commanderBase },
+    [{ id: "selected", rows: commanderBase }, { id: "rival", rows: commanderRival }],
+    { rivalId: "rival" },
+    { format: "Commander", strategy: "Balanced midrange", target: 100 },
+  );
+
+  // The identical relative upgrade scores meaningfully lower in the larger
+  // deck (the score formula is normalized by nonland count) — proving the
+  // dilution effect this fix compensates for is real.
+  assert.ok(commanderReport.experiment.delta.score < standardReport.experiment.delta.score * 0.75);
+  // Both still clear their (now deck-size-scaled) gate — the fix widens the
+  // floor for large decks without inventing a pass where nothing real exists.
+  assert.equal(standardReport.verdict, "advance");
+  assert.equal(commanderReport.verdict, "advance");
+});
+
 test("pools distinct experiments across every candidate, not just one designated rival", () => {
   const singleRival = rankOneSlotCounterfactuals(selected, [selected, rivalA], options);
   assert.equal(singleRival.experiments.length, 1, "a single close rival only ever offers one honest swap here");

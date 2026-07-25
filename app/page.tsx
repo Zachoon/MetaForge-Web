@@ -1176,7 +1176,15 @@ export default function Home() {
   const [masterworkPage, setMasterworkPage] = useState(0);
   const [forgedDeck, setForgedDeck] = useState("");
   const [forgeReply, setForgeReply] = useState("");
-  const [playerSignal, setPlayerSignal] = useState("");
+  // Populated once, informationally, when a Masterwork is forged — the
+  // "why this build" rationale. No longer a two-way refinement composer:
+  // accepting an experiment tablet applies its exact change directly.
+  const [swapFlourish, setSwapFlourish] = useState<{
+    cut: string;
+    add: string;
+    motif: string | null;
+    stage: "out" | "in";
+  } | null>(null);
   const [benchStatus, setBenchStatus] = useState<
     "idle" | "forging" | "testing" | "thinking"
   >("idle");
@@ -1245,7 +1253,6 @@ export default function Home() {
   const [matchEvidenceOpen, setMatchEvidenceOpen] = useState(false);
   const [activeForgeChapter, setActiveForgeChapter] = useState<1 | 2 | 3 | 4>(1);
   const [deckViewMode, setDeckViewMode] = useState<"workbench" | "ledger">("workbench");
-  const [refinementComposerOpen, setRefinementComposerOpen] = useState(false);
   const [furthestCommissionStep, setFurthestCommissionStep] = useState(0);
 
   useEffect(() => {
@@ -2282,7 +2289,6 @@ export default function Home() {
     setLastCutCard("");
     setActiveForgeChapter(1);
     setDeckViewMode("workbench");
-    setRefinementComposerOpen(false);
 
     let evidence: EdhrecEvidence | null = null;
     if (commander && isCommanderFormat(format)) {
@@ -2371,7 +2377,6 @@ export default function Home() {
     setLastCutCard("");
     setActiveForgeChapter(1);
     setDeckViewMode("workbench");
-    setRefinementComposerOpen(false);
 
     let evidence: EdhrecEvidence | null = null;
     if (commander && isCommanderFormat(format)) {
@@ -2487,8 +2492,8 @@ export default function Home() {
     setMatchLog(
       family.revisions.flatMap((revision) => revision.matches || []),
     );
-    setPlayerSignal("");
     setForgeReply("");
+    setSwapFlourish(null);
     setImportWarnings([]);
     setBenchStatus("testing");
     setChamber("workbench");
@@ -2851,7 +2856,7 @@ export default function Home() {
         id: crypto.randomUUID(),
         result,
         opponent: opponentArchetype,
-        signal: playerSignal.trim(),
+        signal: "",
         playedAt: new Date().toISOString(),
         revision: Math.max(1, revisions.length),
       },
@@ -2860,73 +2865,47 @@ export default function Home() {
     void persistStoryBench(revisions, next, "", undefined, nextMatches);
   }
 
-  async function consultForge() {
-    if (!playerSignal.trim() || benchStatus === "thinking") return;
-    setBenchStatus("thinking");
-    setForgeReply("");
-    const prompt = `I tested revision ${revisions.length || 1} of ${chosenWork.name}. My newest signal: ${playerSignal.trim()}\n\nREVISION LEARNING BOUNDARY: ${revisionLearning.guidance}\nThere are ${revisionLearning.sampleSize} recorded matches on this revision. Only preferences marked as repeated may guide a persistent change; single clues may justify a test but not a permanent player-profile conclusion.\n\nDiagnose the most likely issue without overreacting to one result. Give 2-3 precise replacement packages or alternatives with what comes out, what comes in, the tradeoff, and the smallest next test. Preserve the deck's ${chosenWork.path} identity and my ${strategy} preference.`;
-    try {
-      const response = await fetch("/api/forge/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          depth: "balanced",
-          messages: [{ role: "user", content: prompt }],
-          context: {
-            game: "mtg",
-            deckName: chosenWork.name,
-            format,
-            deckText: forgedDeck,
-            verifiedFacts: `${verifiedDeckFacts || selectedCommander?.verifiedFacts || "Live card facts are still loading."}\n\n${formatEdhrecEvidence(edhrecEvidence, format)}`,
-            coachingProfile:
-              "Prefers concise alternatives and testable changes.",
-          },
-        }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data?.error || "Forge unavailable");
-      setForgeReply(String(data.answer || ""));
-    } catch {
-      setForgeReply(
-        "The Forge could not complete this refinement. Your feedback is still preserved locally; retry when the furnace reconnects.",
-      );
-    } finally {
-      setBenchStatus("testing");
-    }
-  }
+  // Accepting an experiment tablet applies the exact card-for-card swap it
+  // already named directly to the deck — no free-text/LLM round-trip, since
+  // the change is already fully specified and evidence-gated. A brief
+  // two-stage flourish (fade the outgoing card, then materialize the
+  // incoming one) makes the change visible, not just logged.
+  async function applyExperimentTablet(tablet: {
+    change: { cut: string; add: string };
+    motif: string | null;
+    expectedBenefit: string;
+    tradeoff: string;
+  }) {
+    if (swapFlourish) return;
+    setSwapFlourish({ cut: tablet.change.cut, add: tablet.change.add, motif: tablet.motif, stage: "out" });
+    await new Promise((resolve) => window.setTimeout(resolve, 650));
 
-  function preserveRevision() {
-    if (!forgeReply.trim()) return;
-    const next = [
+    const rows = parseDeckRows(forgedDeck).map((row) => ({ ...row }));
+    const cutRow = rows.find((row) => row.name === tablet.change.cut);
+    if (cutRow) cutRow.quantity -= 1;
+    const remaining = rows.filter((row) => row.quantity > 0);
+    const addRow = remaining.find((row) => row.name === tablet.change.add);
+    if (addRow) addRow.quantity += 1;
+    else remaining.push({ quantity: 1, name: tablet.change.add });
+    const nextDeck = remaining.map((row) => `${row.quantity} ${row.name}`).join("\n");
+
+    const note = `Accepted evidence-led experiment: cut ${tablet.change.cut}, add ${tablet.change.add}. ${tablet.expectedBenefit} ${tablet.tradeoff}`;
+    const nextRevisions = [
       ...revisions,
-      {
-        deck: forgedDeck,
-        note: forgeReply,
-        createdAt: new Date().toISOString(),
-      },
+      { deck: nextDeck, note, createdAt: new Date().toISOString(), recommendationRecord: null },
     ];
-    recordForgeIntervention(
-      "player-requested refinement",
-      playerSignal.trim() || "Refinement accepted from the Testing Anvil",
-      "accepted",
-      next.length,
-    );
-    setRevisions(next);
-    void persistStoryBench(next, record);
-    setPlayerSignal("");
-    setForgeReply("");
-    setRefinementComposerOpen(false);
-  }
 
-  function dismissForgeRefinement() {
-    if (!forgeReply.trim()) return;
+    setForgedDeck(nextDeck);
+    setRevisions(nextRevisions);
+    setSwapFlourish({ cut: tablet.change.cut, add: tablet.change.add, motif: tablet.motif, stage: "in" });
     recordForgeIntervention(
-      "player-requested refinement",
-      playerSignal.trim() || "Refinement declined at the Testing Anvil",
-      "dismissed",
+      "evidence-led experiment",
+      `−1 ${tablet.change.cut}; +1 ${tablet.change.add}`,
+      "accepted",
+      nextRevisions.length,
     );
-    setForgeReply("");
-    setRefinementComposerOpen(false);
+    void persistStoryBench(nextRevisions, record);
+    window.setTimeout(() => setSwapFlourish(null), 1800);
   }
 
   return (
@@ -4252,17 +4231,15 @@ export default function Home() {
                             </div>
 
                             {forgeCausalityReport.highestValueUpgrade && (
-                              <article className="highest-value-upgrade">
-                                <header><span>◇</span><div><small>HIGHEST-VALUE UPGRADE</small><h3>{forgeCausalityReport.highestValueUpgrade.systemName}</h3></div><b>{forgeCausalityReport.highestValueUpgrade.priority}</b></header>
-                                <p>{forgeCausalityReport.highestValueUpgrade.recommendation}</p>
-                                <footer>
-                                  <span><small>CONTROLLED TEST CONTRACT</small>{forgeCausalityReport.highestValueUpgrade.contract}</span>
-                                  <button type="button" onClick={() => {
-                                    setSelectedSystemId(forgeCausalityReport.highestValueUpgrade?.systemId || "");
-                                    if (forgeCausalityReport.highestValueUpgrade?.targetCard) setHoveredCard(forgeCausalityReport.highestValueUpgrade.targetCard);
-                                  }}>Inspect upgrade target</button>
-                                </footer>
-                              </article>
+                              <p className="deep-forge-redirect">
+                                The Forge's single highest-value read on this
+                                system: <b>{forgeCausalityReport.highestValueUpgrade.recommendation}</b> This is
+                                structural-only context — for an exact, gated
+                                one-card experiment, use the tablets in{" "}
+                                <button type="button" className="deep-forge-redirect-link" onClick={() => setActiveForgeChapter(2)}>
+                                  Chapter II · Shape
+                                </button>.
+                              </p>
                             )}
 
                             <footer className="causality-methodology">
@@ -4574,9 +4551,12 @@ export default function Home() {
                               }}
                               onMouseEnter={() => setHoveredCard(row.name)}
                               onFocus={() => setHoveredCard(row.name)}
-                              className={
-                                activeCard === row.name ? "active" : ""
-                              }
+                              style={swapFlourish ? ({ "--motif-accent": masterworkVisualProfile.accent } as React.CSSProperties) : undefined}
+                              className={[
+                                activeCard === row.name ? "active" : "",
+                                swapFlourish?.stage === "out" && row.name === swapFlourish.cut ? "card-row-cutting" : "",
+                                swapFlourish?.stage === "in" && row.name === swapFlourish.add ? "card-row-materializing" : "",
+                              ].filter(Boolean).join(" ")}
                             >
                               <span>{row.quantity}</span>
                               <strong>{row.name}</strong>
@@ -4646,29 +4626,54 @@ export default function Home() {
             <aside className="testing-loop">
               <header>
                 <small>CHAPTER II · SHAPE THE MASTERWORK</small>
-                <h2>Choose one useful question.</h2>
+                <h2>Three real experiments, ready to test.</h2>
                 <p>
-                  Start with a direction, then tell the Forge what felt strong,
-                  awkward, missing, or simply unlike you.
+                  Each one is an exact card swap the Forge already gated
+                  against this deck's real structure. Accept one and watch
+                  it happen — no guesswork, no typing required.
                 </p>
               </header>
+              {forgeReply && (
+                <details className="why-this-masterwork">
+                  <summary>
+                    <small>WHY THIS MASTERWORK</small>
+                    <b>The Forge's reasoning at generation</b>
+                  </summary>
+                  <pre>{forgeReply}</pre>
+                </details>
+              )}
               <section className="refinement-starters experiment-tablets" aria-label="Three evidence-led controlled experiments">
                 {experimentTablets && experimentTablets.status === "advance" ? (
                   experimentTablets.tablets.map((tablet: any, index: number) => {
-                    const prompt = `Test replacing ${tablet.change.cut} with ${tablet.change.add}. ${tablet.testContract}`;
+                    const Icon = tablet.motif ? MOTIF_ICONS[tablet.motif as keyof typeof MOTIF_ICONS] : null;
+                    const applying =
+                      swapFlourish?.cut === tablet.change.cut &&
+                      swapFlourish?.add === tablet.change.add;
                     return (
-                      <button
-                        type="button"
+                      <article
                         key={tablet.id}
-                        className={playerSignal === prompt ? "active" : ""}
-                        onClick={() => {
-                          setPlayerSignal(prompt);
-                          setForgeReply("");
-                          setRefinementComposerOpen(true);
-                        }}
+                        className={`experiment-tablet-card ${applying ? "applying" : ""}`}
+                        style={{ "--motif-accent": masterworkVisualProfile.accent } as React.CSSProperties}
                       >
-                        <small>EXPERIMENT {index + 1}</small>
-                        <b>Cut {tablet.change.cut} → Add {tablet.change.add}</b>
+                        <header>
+                          <small>EXPERIMENT {index + 1}</small>
+                          {Icon && (
+                            <span className="tablet-motif-icon">
+                              <Icon size={30} />
+                            </span>
+                          )}
+                        </header>
+                        <div className="tablet-swap-art">
+                          <figure>
+                            <img src={cardImage(tablet.change.cut)} alt={tablet.change.cut} loading="lazy" />
+                            <figcaption>CUT · {tablet.change.cut}</figcaption>
+                          </figure>
+                          <span className="tablet-swap-arrow">→</span>
+                          <figure>
+                            <img src={cardImage(tablet.change.add)} alt={tablet.change.add} loading="lazy" />
+                            <figcaption>ADD · {tablet.change.add}</figcaption>
+                          </figure>
+                        </div>
                         <dl>
                           <div>
                             <dt>Field observation</dt>
@@ -4695,7 +4700,15 @@ export default function Home() {
                             <dd>{tablet.evidenceStatus}</dd>
                           </div>
                         </dl>
-                      </button>
+                        <button
+                          type="button"
+                          className="tablet-accept"
+                          disabled={!!swapFlourish}
+                          onClick={() => applyExperimentTablet(tablet)}
+                        >
+                          {applying ? "Applying…" : "Accept this experiment →"}
+                        </button>
+                      </article>
                     );
                   })
                 ) : (
@@ -4706,19 +4719,6 @@ export default function Home() {
                   </p>
                 )}
               </section>
-              {!refinementComposerOpen && !forgeReply && (
-                <button
-                  type="button"
-                  className="custom-refinement-trigger"
-                  onClick={() => {
-                    setPlayerSignal("");
-                    setRefinementComposerOpen(true);
-                  }}
-                >
-                  <span>Something else feels wrong</span>
-                  <small>Describe it in your own words only when you need to</small>
-                </button>
-              )}
               <details
                 className="match-evidence-drawer"
                 open={matchEvidenceOpen}
@@ -4765,69 +4765,25 @@ export default function Home() {
                 </details>
               </section>
               </details>
-              {refinementComposerOpen && !forgeReply && (
-                <section className="refinement-composer">
-                  <label>
-                    <span>WHAT WORKED OR FELT WRONG?</span>
-                    <textarea
-                      autoFocus
-                      rows={3}
-                      value={playerSignal}
-                      onChange={(event) => setPlayerSignal(event.target.value)}
-                      placeholder="Example: I keep running out of threats after the first board wipe, but the early pressure feels exactly right…"
-                    />
-                  </label>
-                  <div>
-                    <button
-                      type="button"
-                      className="cancel-refinement"
-                      onClick={() => {
-                        setPlayerSignal("");
-                        setRefinementComposerOpen(false);
-                      }}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      className="consult-forge"
-                      disabled={!playerSignal.trim() || benchStatus === "thinking"}
-                      onClick={consultForge}
-                    >
-                      {benchStatus === "thinking"
-                        ? "The Forge is studying your signal…"
-                        : "Ask the Forge for alternatives →"}
-                    </button>
-                  </div>
-                </section>
-              )}
-              {forgeReply && (
-                <section className="forge-refinement">
-                  <header>
-                    <span>
-                      <small>REFINEMENT OPTIONS · FORGE THEORY</small>
-                      <b>Your question became a controlled experiment.</b>
-                    </span>
-                    <button
-                      type="button"
-                      className="change-refinement"
-                      onClick={() => {
-                        setForgeReply("");
-                        setRefinementComposerOpen(true);
-                      }}
-                    >
-                      Change question
-                    </button>
-                  </header>
-                  <pre>{forgeReply}</pre>
-                  <div className="refinement-decision-row">
-                    <button onClick={preserveRevision}>
-                      Preserve as revision {revisions.length + 1}
-                    </button>
-                    <button className="dismiss-refinement" onClick={dismissForgeRefinement}>
-                      Not for this deck
-                    </button>
-                  </div>
-                </section>
+              {swapFlourish && (
+                <div
+                  className={`swap-flourish-banner stage-${swapFlourish.stage}`}
+                  role="status"
+                  style={{ "--motif-accent": masterworkVisualProfile.accent } as React.CSSProperties}
+                >
+                  {swapFlourish.stage === "out" ? (
+                    <>
+                      <span>PULLING</span>
+                      <b>{swapFlourish.cut}</b>
+                    </>
+                  ) : (
+                    <>
+                      <span>FORGED IN</span>
+                      <b>{swapFlourish.add}</b>
+                      <em>Revision {revisions.length} preserved · private bench sync</em>
+                    </>
+                  )}
+                </div>
               )}
               <footer>
                 <b>{revisions.length || 1}</b>

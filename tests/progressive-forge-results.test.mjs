@@ -63,8 +63,13 @@ test("offers three evidence-led experiment tablets before optional match evidenc
   assert.match(page, /<dt>Tradeoff<\/dt>/);
   assert.match(page, /Evidence status/);
   assert.match(page, /className="match-evidence-drawer"/);
-  assert.match(page, /className="custom-refinement-trigger"/);
-  assert.match(page, /refinementComposerOpen && !forgeReply/);
+  // Accepting a tablet must apply the exact swap directly — no free-text or
+  // LLM round-trip composer standing between the evidence and the deck.
+  assert.match(page, /function applyExperimentTablet/);
+  assert.match(page, /className="tablet-accept"/);
+  assert.doesNotMatch(page, /className="custom-refinement-trigger"/);
+  assert.doesNotMatch(page, /className="refinement-composer"/);
+  assert.doesNotMatch(page, /async function consultForge/);
 });
 
 test("keeps the Editing Anvil closed until the player asks for it", () => {

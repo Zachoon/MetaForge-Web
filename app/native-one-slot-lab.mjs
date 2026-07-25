@@ -90,7 +90,14 @@ function gateSwap(rows, before, after, delta, options) {
   if (delta.roleCoverage < -0.005) reasons.push("The swap reduces required-role coverage.");
   if (delta.curveHealth < -2) reasons.push("The swap materially worsens curve health.");
   if (delta.resilienceDensity < -0.015) reasons.push("The swap materially reduces interaction, protection, or recursion density.");
-  if (delta.score < 0.35) reasons.push("The modeled structural gain is too small to justify a new revision.");
+  // score's components (roleCoverage, multiRoleDensity, resilienceDensity) are
+  // all normalized by nonland count, so one card moves the needle far less in
+  // a ~90-nonland Commander deck than a ~36-nonland 60-card deck. Scale the
+  // minimum meaningful gain to the deck's real size instead of holding every
+  // format to the same flat bar calibrated for 60-card decks.
+  const nonlandCount = rows.filter((row) => !isLand(row) && !isCommander(row)).reduce((sum, row) => sum + Number(row.quantity || 0), 0);
+  const scoreFloor = 0.35 * (36 / Math.max(1, nonlandCount));
+  if (delta.score < scoreFloor) reasons.push("The modeled structural gain is too small to justify a new revision.");
   return {
     passed: reasons.length === 0,
     reasons,
@@ -120,7 +127,7 @@ function buildExperiments(selected, rival, options) {
     const after = evaluate(rows, options);
     const delta = compare(before, after);
     const gate = gateSwap(rows, before, after, delta, options);
-    experiments.push({ cut: cut.name, add: addition.name, rows, before, after, delta, gate });
+    experiments.push({ cut: cut.name, add: addition.name, cutRoles: cut.roles, addRoles: addition.roles, rows, before, after, delta, gate });
   }
   experiments.sort((left, right) => Number(right.gate.passed) - Number(left.gate.passed) || right.delta.score - left.delta.score || left.cut.localeCompare(right.cut) || left.add.localeCompare(right.add));
   return experiments;
@@ -190,6 +197,8 @@ export function rankOneSlotCounterfactuals(selected, candidates, options = {}) {
     experiments: distinct.map((experiment) => ({
       cut: experiment.cut,
       add: experiment.add,
+      cutRoles: experiment.cutRoles,
+      addRoles: experiment.addRoles,
       delta: experiment.delta,
       gate: experiment.gate,
       summary: `Controlled experiment: replace ${experiment.cut} with ${experiment.add}. The modeled structural score improves by ${experiment.delta.score.toFixed(1)} while required-role coverage, curve health, resilience density, deck size, copy limits, and opening-hand land distribution remain inside their gates.`,

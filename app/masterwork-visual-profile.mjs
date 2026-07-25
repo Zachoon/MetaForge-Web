@@ -6,13 +6,23 @@
 // tokens/spell-velocity/innovation are deliberately deferred until there's a
 // real signal to key them off rather than inventing one.
 
-const MOTIF_ROLE_MAP = Object.freeze({
+export const MOTIF_ROLE_MAP = Object.freeze({
   blade: ["combat", "threat", "sacrifice"],
   shield: ["protection", "lifegain"],
   rune: ["interaction", "sweeper", "selection"],
   gear: ["artifacts", "ramp"],
   root: ["recursion", "graveyard"],
 });
+
+// Single-card version of the same real-role mapping the deck-level resolver
+// uses, so a card's motif badge (e.g. on an experiment tablet) is always
+// consistent with the deck identity badge — one motif vocabulary, not two.
+export function motifForRoles(roles = []) {
+  for (const [motif, motifRoles] of Object.entries(MOTIF_ROLE_MAP)) {
+    if (roles.some((role) => motifRoles.includes(role))) return motif;
+  }
+  return null;
+}
 
 const COLOR_ACCENT = Object.freeze({
   W: "#e8d9a8",

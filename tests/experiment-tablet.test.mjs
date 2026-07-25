@@ -34,6 +34,13 @@ test("produces up to three tablets naming distinct cards", () => {
   assert.equal(new Set(cuts).size, 3);
 });
 
+test("every tablet names a real motif from the added card's own roles", () => {
+  const report = buildExperimentTablets({ selected, candidates, matchLog: [], options });
+  for (const tablet of report.tablets) {
+    assert.ok(["blade", "shield", "rune", "gear", "root"].includes(tablet.motif));
+  }
+});
+
 test("every tablet carries all seven required fields", () => {
   const report = buildExperimentTablets({ selected, candidates, matchLog: matches(2, 1), options });
   for (const tablet of report.tablets) {
