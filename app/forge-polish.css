@@ -1,0 +1,198 @@
+/* Premium restraint pass. Atmosphere supports the work; it never becomes the UI. */
+.great-forge {
+  background:
+    radial-gradient(ellipse at 78% 100%, rgba(144, 72, 34, .1), transparent 34%),
+    linear-gradient(180deg, #090d0f 0%, #070a0c 100%);
+}
+
+/* Curated VFX are reserved for authored ceremonies, not persistent wallpaper. */
+.forge-textures > u,
+.forge-textures > s,
+.forge-textures > em,
+.forge-textures > mark,
+.forge-textures > q,
+.great-forge:not(.chamber-forging) .forge-energy-rails,
+.great-forge:not(.chamber-forging) .forge-rune-current,
+.great-forge:not(.chamber-forging) .forge-impact-wave {
+  display: none !important;
+}
+
+.forge-textures::before {
+  opacity: .08 !important;
+  filter: none !important;
+}
+
+.forge-textures::after {
+  opacity: .5 !important;
+  background:
+    radial-gradient(ellipse at 50% 112%, rgba(181, 82, 32, .14), transparent 38%),
+    linear-gradient(90deg, rgba(0, 0, 0, .52), transparent 24%, transparent 76%, rgba(0, 0, 0, .52)) !important;
+}
+
+.chamber-commission .forge-motion-layer {
+  display: none;
+}
+
+.commission-chamber {
+  min-height: calc(100vh - 82px);
+  padding: 38px max(24px, 7vw) 104px;
+  background:
+    radial-gradient(ellipse at 82% 96%, rgba(144, 69, 31, .11), transparent 32%),
+    radial-gradient(ellipse at 12% 18%, rgba(63, 106, 102, .07), transparent 28%),
+    linear-gradient(180deg, #0a0f11 0%, #080b0d 100%);
+}
+
+.commission-chamber::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent 0 49.96%, rgba(255,255,255,.025) 50%, transparent 50.04%);
+}
+
+.commission-chamber::after {
+  display: none !important;
+}
+
+.commission-heading {
+  max-width: 760px;
+  margin: 34px auto 34px;
+}
+
+.commission-heading h1 {
+  margin: 13px 0 12px;
+  color: #f0eee8;
+  font-size: clamp(34px, 4.6vw, 56px);
+  font-weight: 400;
+  letter-spacing: -.035em;
+}
+
+.commission-heading p {
+  max-width: 610px;
+  color: #8d9a96;
+  font: 15px/1.7 Inter, "Segoe UI", sans-serif;
+}
+
+.commission-scroll {
+  max-width: 1000px;
+  padding: clamp(24px, 3vw, 38px);
+  border: 1px solid #303a37;
+  border-top-color: #59605a;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.018), transparent 36%),
+    #101517;
+  box-shadow: 0 28px 80px rgba(0,0,0,.42);
+}
+
+.mark-grid {
+  gap: 24px 18px;
+}
+
+.commission-scroll label > span {
+  margin-bottom: 9px;
+  color: #b7895e;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .13em;
+}
+
+.commission-scroll select,
+.commission-scroll textarea {
+  border: 1px solid #394440;
+  border-radius: 2px;
+  background: #0a1011;
+  color: #e0e6e3;
+  box-shadow: inset 0 1px rgba(255,255,255,.018);
+  transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+}
+
+.commission-scroll select:hover,
+.commission-scroll textarea:hover {
+  border-color: #52605b;
+  background: #0c1314;
+}
+
+.commission-scroll select:focus,
+.commission-scroll textarea:focus {
+  outline: none;
+  border-color: #6b8d84;
+  box-shadow: 0 0 0 3px rgba(107, 141, 132, .11);
+}
+
+.commission-scroll textarea::placeholder {
+  color: #59635f;
+  font-weight: 500;
+}
+
+.blueprint-choice-definition {
+  color: #7e8b87;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.commission-note {
+  margin-top: 26px;
+}
+
+.commission-note textarea {
+  min-height: 150px;
+}
+
+.awaken-button {
+  position: relative;
+  margin-top: 26px;
+  padding: 18px 20px 18px 22px;
+  overflow: hidden;
+  border: 1px solid #654326;
+  border-left: 3px solid #bd7138;
+  background: linear-gradient(90deg, #211711, #151413 68%, #111516);
+  color: #f1ede5;
+  box-shadow: none;
+  transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+}
+
+.awaken-button::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  opacity: 0;
+  background: linear-gradient(90deg, rgba(202, 111, 50, .12), transparent 55%);
+  transition: opacity 160ms ease;
+}
+
+.awaken-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: #a66738;
+}
+
+.awaken-button:hover:not(:disabled)::before {
+  opacity: 1;
+}
+
+.awaken-button span,
+.awaken-button strong,
+.awaken-button b {
+  position: relative;
+}
+
+.awaken-button span {
+  color: #9c8d82;
+}
+
+.awaken-button strong {
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: .055em;
+}
+
+.awaken-button b {
+  color: #d9b28f;
+  font-size: 21px;
+  font-weight: 400;
+}
+
+@media (max-width: 700px) {
+  .commission-chamber { padding: 24px 14px 80px; }
+  .commission-scroll { padding: 20px 16px; }
+  .mark-grid { grid-template-columns: 1fr; }
+}
