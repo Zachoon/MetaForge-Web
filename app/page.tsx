@@ -3285,7 +3285,12 @@ export default function Home() {
               </button>
             </div>
           </div>
-          <div className="entrance-visual" aria-label="The blue rune archive">
+          <div className="entrance-visual" aria-label="The Great Forge, ever-burning">
+            <div className="entrance-hearth-cycle" aria-hidden="true">
+              {Array.from({ length: 13 }, (_, index) => (
+                <i key={index} />
+              ))}
+            </div>
             <div className="forge-sigil">
               <i>ᛟ</i>
               <span />

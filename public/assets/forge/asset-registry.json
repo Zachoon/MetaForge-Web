@@ -84,6 +84,20 @@
       "variantCount": 8,
       "load": "scene",
       "fallback": "embers.svg"
+    },
+    {
+      "id": "mf-entrance-hearth-cycle-01",
+      "role": "entrance-hero-crossfade",
+      "path": "/assets/forge/hearth/hearth-01.webp",
+      "sourceRelativePath": "BalrogPack/Balrog00.jpg .. Balrog12.jpg (13 photos, hearth-01..13.webp)",
+      "license": "owner-provided",
+      "licenseEvidence": "Owner confirmed licensing/usage rights for this asset pack on 2026-07-26; no bundled license file accompanied the source pack. Note: source folder is misleadingly named \"BalrogPack\" but contains real wood-fire/ember photography, not Balrog artwork.",
+      "status": "approved",
+      "variantCount": 13,
+      "width": 1280,
+      "height": 854,
+      "load": "scene",
+      "fallback": "Last frame (hearth-13.webp) shown static for prefers-reduced-motion and quiet-motion mode"
     }
   ]
 }

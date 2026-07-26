@@ -368,6 +368,14 @@
   animation: none !important;
 }
 
+.great-forge[data-motion="quiet"] .entrance-hearth-cycle i {
+  animation: none !important;
+  opacity: 0;
+}
+.great-forge[data-motion="quiet"] .entrance-hearth-cycle i:last-child {
+  opacity: 1;
+}
+
 .commission-chamber,.masterwork-reveal,.testing-anvil{overflow:hidden}
 .commission-chamber::after,.masterwork-reveal::after,.testing-anvil::after{position:absolute;z-index:0;inset:0;pointer-events:none;content:""}
 .commission-chamber::after{opacity:.34;background:linear-gradient(108deg,transparent 0 46%,rgba(93,224,214,.07) 49%,transparent 52%),radial-gradient(ellipse at 82% 88%,rgba(238,123,49,.13),transparent 28%);animation:mf-blueprint-sweep 11s ease-in-out infinite}
