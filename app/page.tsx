@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { evaluateSimulationGate } from "./goldfish-simulation.mjs";
 import { evaluateMatchupMatrix } from "./matchup-simulation.mjs";
 import { getMetaIntelligence } from "./meta-intelligence.mjs";
@@ -1161,6 +1161,7 @@ export default function Home() {
   const [motionMode, setMotionMode] = useState<MotionMode>("full");
   const [forgeAction, setForgeAction] = useState<ForgeAction>("none");
   const [actionPulse, setActionPulse] = useState(0);
+  const [actionPoint, setActionPoint] = useState({ x: 50, y: 52 });
   const [deck, setDeck] = useState("");
   const [commissionNote, setCommissionNote] = useState("");
   const [commanderQuery, setCommanderQuery] = useState("");
@@ -1395,6 +1396,11 @@ export default function Home() {
   const captureForgeAction = (event: React.MouseEvent<HTMLElement>) => {
     const button = (event.target as HTMLElement).closest("button");
     if (!button || button.disabled) return;
+    const bounds = button.getBoundingClientRect();
+    setActionPoint({
+      x: ((bounds.left + bounds.width / 2) / window.innerWidth) * 100,
+      y: ((bounds.top + bounds.height / 2) / window.innerHeight) * 100,
+    });
     if (button.closest(".masterwork-seal")) wakeForge("reveal");
     else if (button.closest(".masterwork-card")) wakeForge("select");
     else if (button.closest(".experiment-tablets, .testing-anvil")) wakeForge("refine");
@@ -3002,6 +3008,7 @@ export default function Home() {
       data-motion={motionMode}
       data-forge-action={forgeAction}
       onClickCapture={captureForgeAction}
+      style={{ "--mf-action-x": `${actionPoint.x}%`, "--mf-action-y": `${actionPoint.y}%` } as CSSProperties}
     >
       <div className="forge-textures" aria-hidden="true">
         <i />
