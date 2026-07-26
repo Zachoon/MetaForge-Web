@@ -29,6 +29,7 @@ type Chamber =
   | "workbench";
 
 type MotionMode = "full" | "quiet";
+type ForgeAction = "none" | "forge" | "reveal" | "select" | "refine";
 
 const FORGING_STAGES = [
   ["The blueprint is sealed", "Reading the commission marks…", "642"],
@@ -1158,6 +1159,8 @@ export default function Home() {
   const [budget, setBudget] = useState("No strict limit");
   const [readingSize, setReadingSize] = useState<ReadingSize>("comfortable");
   const [motionMode, setMotionMode] = useState<MotionMode>("full");
+  const [forgeAction, setForgeAction] = useState<ForgeAction>("none");
+  const [actionPulse, setActionPulse] = useState(0);
   const [deck, setDeck] = useState("");
   const [commissionNote, setCommissionNote] = useState("");
   const [commanderQuery, setCommanderQuery] = useState("");
@@ -1306,6 +1309,12 @@ export default function Home() {
   }, [motionMode]);
 
   useEffect(() => {
+    if (forgeAction === "none") return;
+    const reset = window.setTimeout(() => setForgeAction("none"), 950);
+    return () => window.clearTimeout(reset);
+  }, [forgeAction, actionPulse]);
+
+  useEffect(() => {
     window.localStorage.setItem("metaforge.resultViewMode", resultViewMode);
     setIntelligenceOpen(resultViewMode === "full");
     setMatchEvidenceOpen(resultViewMode === "full");
@@ -1378,6 +1387,19 @@ export default function Home() {
           : chamber === "entrance"
             ? "dormant"
             : "idle";
+  const wakeForge = (action: Exclude<ForgeAction, "none">) => {
+    if (motionMode === "quiet") return;
+    setForgeAction(action);
+    setActionPulse((current) => current + 1);
+  };
+  const captureForgeAction = (event: React.MouseEvent<HTMLElement>) => {
+    const button = (event.target as HTMLElement).closest("button");
+    if (!button || button.disabled) return;
+    if (button.closest(".masterwork-seal")) wakeForge("reveal");
+    else if (button.closest(".masterwork-card")) wakeForge("select");
+    else if (button.closest(".experiment-tablets, .testing-anvil")) wakeForge("refine");
+    else if (button.closest(".awaken-button")) wakeForge("forge");
+  };
   useEffect(() => {
     setFurthestCommissionStep((current) => Math.max(current, chapter));
   }, [chapter]);
@@ -2978,12 +3000,14 @@ export default function Home() {
       data-forge-state={forgeState}
       data-forge-stage={chamber === "forging" ? stage + 1 : undefined}
       data-motion={motionMode}
+      data-forge-action={forgeAction}
+      onClickCapture={captureForgeAction}
     >
       <div className="forge-textures" aria-hidden="true">
         <i />
         <b />
       </div>
-      <div className="forge-motion-layer" aria-hidden="true" key={`${chamber}-${stage}`}>
+      <div className="forge-motion-layer" aria-hidden="true" key={`${chamber}-${stage}-${actionPulse}`}>
         <div className="forge-heat-haze" />
         <div className="forge-ash-field">
           {Array.from({ length: 14 }, (_, index) => <i key={index} />)}
@@ -2993,6 +3017,9 @@ export default function Home() {
         </div>
         <div className="forge-energy-rails"><i /><i /><i /></div>
         <div className="forge-impact-wave" />
+        <div className="forge-action-burst">
+          <i /><i /><i /><i /><i /><i /><b />
+        </div>
         <div className="forge-vignette" />
       </div>
       <header className="forge-bar">

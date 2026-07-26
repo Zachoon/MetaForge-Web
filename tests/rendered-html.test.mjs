@@ -20,8 +20,10 @@ test("server-renders the MetaForge product experience", async () => {
   assert.match(html, /<title>MetaForge — Forge a Better Deck<\/title>/i);
   assert.match(html, /THE GREAT FORGE AWAITS/);
   assert.match(html, /data-forge-state="dormant"/);
+  assert.match(html, /data-forge-action="none"/);
   assert.match(html, /data-motion="full"/);
   assert.match(html, /class="forge-motion-layer"/);
+  assert.match(html, /class="forge-action-burst"/);
   assert.match(html, /Use quiet Forge motion/);
   assert.match(html, /Forge a new deck/);
   assert.match(html, /Refine a current build/);

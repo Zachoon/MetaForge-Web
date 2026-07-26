@@ -60,7 +60,7 @@
    to the parent; the layers themselves remain decorative and inert. */
 .forge-motion-layer {
   position: fixed;
-  z-index: 0;
+  z-index: 14;
   inset: 82px 0 0;
   overflow: hidden;
   pointer-events: none;
@@ -69,12 +69,15 @@
 
 .great-forge > :not(.forge-textures, .forge-motion-layer) {
   position: relative;
-  z-index: 1;
+  z-index: 13;
 }
+
+.great-forge > .forge-bar { z-index: 20; }
 
 .forge-vignette,
 .forge-heat-haze,
 .forge-impact-wave,
+.forge-action-burst,
 .forge-energy-rails,
 .forge-rune-current,
 .forge-ash-field {
@@ -83,9 +86,22 @@
 }
 
 .forge-vignette {
+  opacity: 0.5;
   background:
     linear-gradient(90deg, rgba(0, 0, 0, 0.74), transparent 14%, transparent 86%, rgba(0, 0, 0, 0.74)),
     linear-gradient(180deg, rgba(0, 0, 0, 0.3), transparent 22%, transparent 72%, rgba(0, 0, 0, 0.72));
+}
+
+.great-forge[data-forge-state="thinking"] .forge-vignette {
+  background: radial-gradient(circle at 76% 42%, rgba(63,217,211,.16), transparent 28%), linear-gradient(90deg,rgba(0,0,0,.58),transparent 17%,transparent 83%,rgba(0,0,0,.58));
+}
+.great-forge[data-forge-state="forging"] .forge-vignette {
+  opacity: .76;
+  background: radial-gradient(circle at 30% 60%,rgba(255,136,52,.32),transparent 24%), radial-gradient(circle at 52% 105%,rgba(224,68,22,.24),transparent 42%), linear-gradient(90deg,rgba(0,0,0,.66),transparent 24%,transparent 76%,rgba(0,0,0,.62));
+}
+.great-forge[data-forge-state="reveal"] .forge-vignette {
+  opacity: .86;
+  background: radial-gradient(circle at 50% 32%,rgba(92,223,229,.24),transparent 24%), radial-gradient(circle at 50% 90%,rgba(239,111,38,.26),transparent 34%), linear-gradient(90deg,rgba(0,0,0,.7),transparent 19%,transparent 81%,rgba(0,0,0,.7));
 }
 
 .forge-heat-haze {
@@ -219,6 +235,33 @@
   box-shadow: 0 0 30px var(--mf-forge-energy);
 }
 
+.forge-action-burst {
+  display: none;
+  left: 50%;
+  top: 52%;
+  width: 24px;
+  height: 24px;
+  transform: translate(-50%, -50%);
+}
+.great-forge[data-forge-action]:not([data-forge-action="none"]) .forge-action-burst { display: block; }
+.forge-action-burst > i {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: clamp(90px,18vw,260px); height: 2px;
+  transform-origin: left center;
+  background: linear-gradient(90deg,#fff7d2,var(--mf-active-energy) 22%,transparent 78%);
+  filter: drop-shadow(0 0 8px var(--mf-active-energy));
+  animation: mf-spark-flight 780ms cubic-bezier(.16,.8,.22,1) both;
+}
+.forge-action-burst > i:nth-child(2){transform:rotate(38deg);animation-delay:35ms}.forge-action-burst > i:nth-child(3){transform:rotate(84deg);animation-delay:70ms}.forge-action-burst > i:nth-child(4){transform:rotate(151deg);animation-delay:20ms}.forge-action-burst > i:nth-child(5){transform:rotate(212deg);animation-delay:95ms}.forge-action-burst > i:nth-child(6){transform:rotate(318deg);animation-delay:50ms}
+.forge-action-burst > b {
+  position:absolute;inset:-46px;border:2px solid var(--mf-active-energy);border-radius:50%;
+  box-shadow:0 0 28px var(--mf-active-energy),inset 0 0 32px var(--mf-active-energy);
+  animation:mf-action-ring 900ms ease-out both;
+}
+.great-forge[data-forge-action="reveal"] .forge-action-burst,.great-forge[data-forge-action="select"] .forge-action-burst{--mf-active-energy:var(--mf-thought-energy)}
+.great-forge[data-forge-action="refine"] .forge-action-burst{--mf-active-energy:#c99b61;left:67%;top:64%}
+
 .great-forge[data-forge-state="reveal"] .forge-rune-current {
   opacity: 0.23;
   animation: mf-reveal-settle 1.2s ease-out both;
@@ -244,8 +287,19 @@
 
 .great-forge[data-motion="quiet"] .forge-rune-current { opacity: 0.08; }
 .great-forge[data-motion="quiet"] .forge-heat-haze { opacity: 0.1; }
+.great-forge[data-motion="quiet"] .forge-action-burst { display:none!important; }
 
 .motion-toggle { margin-left: 5px; }
+
+.commission-chamber,.masterwork-reveal,.testing-anvil{overflow:hidden}
+.commission-chamber::after,.masterwork-reveal::after,.testing-anvil::after{position:absolute;z-index:0;inset:0;pointer-events:none;content:""}
+.commission-chamber::after{opacity:.56;background:linear-gradient(108deg,transparent 0 42%,rgba(93,224,214,.12) 48%,transparent 55%),radial-gradient(circle at 82% 54%,rgba(238,123,49,.22),transparent 20%);animation:mf-blueprint-sweep 6s ease-in-out infinite}
+.masterwork-reveal::after{opacity:.78;background:repeating-linear-gradient(104deg,transparent 0 84px,rgba(116,231,224,.045) 85px 86px,transparent 87px 168px),radial-gradient(circle at 50% 28%,rgba(85,215,224,.22),transparent 26%);animation:mf-masterwork-room 7s ease-in-out infinite alternate}
+.commission-chamber>*,.masterwork-reveal>*,.testing-anvil>*{position:relative;z-index:1}
+.masterwork-card[data-state="sealed"]{border-color:color-mix(in srgb,var(--motif-accent,var(--mf-thought-energy)) 58%,#25312f);box-shadow:0 30px 90px rgba(0,0,0,.82),inset 0 0 45px rgba(56,210,205,.08)}
+.masterwork-card[data-state="sealed"] .masterwork-seal::after{position:absolute;inset:9%;border:1px solid color-mix(in srgb,var(--motif-accent,var(--mf-thought-energy)) 45%,transparent);border-radius:50%;content:"";box-shadow:0 0 45px color-mix(in srgb,var(--motif-accent,var(--mf-thought-energy)) 24%,transparent);animation:mf-seal-orbit 9s linear infinite;mask-image:repeating-conic-gradient(#000 0 10deg,transparent 11deg 31deg)}
+.masterwork-card[data-state="revealed"]{animation:mf-card-forged 880ms cubic-bezier(.16,.8,.22,1) both!important}
+.experiment-tablets button:not(:disabled):active,.testing-anvil button:not(:disabled):active{transform:translateY(1px) scale(.985);box-shadow:0 0 0 1px var(--mf-forge-energy),0 0 34px rgba(227,154,72,.3),inset 0 0 25px rgba(227,154,72,.12)}
 
 @keyframes mf-ash-rise {
   0% { opacity: 0; transform: translate3d(0, 0, 0) scale(0.7); }
@@ -266,6 +320,12 @@
 @keyframes mf-impact-wave { from { opacity: 0.8; transform: translate(-50%, -50%) scale(0.2); } to { opacity: 0; transform: translate(-50%, -50%) scale(34); } }
 @keyframes mf-reveal-settle { from { transform: scale(1.12); filter: brightness(2.3); } to { transform: scale(1); filter: none; } }
 @keyframes mf-heat-cool { from { opacity: 0.48; filter: blur(4px) brightness(1.8); } to { opacity: 0.14; filter: blur(10px); } }
+@keyframes mf-spark-flight{from{opacity:1;scale:.12 1}70%{opacity:.75}to{opacity:0;scale:1 1}}
+@keyframes mf-action-ring{from{opacity:.9;transform:scale(.2)}to{opacity:0;transform:scale(5.4)}}
+@keyframes mf-blueprint-sweep{0%,100%{transform:translateX(-18%);opacity:.28}50%{transform:translateX(18%);opacity:.68}}
+@keyframes mf-masterwork-room{from{transform:scale(1);filter:brightness(.9)}to{transform:scale(1.04);filter:brightness(1.18)}}
+@keyframes mf-seal-orbit{to{transform:rotate(360deg)}}
+@keyframes mf-card-forged{0%{opacity:.1;transform:perspective(900px) rotateX(7deg) scale(.93);filter:brightness(2.4)}55%{opacity:1;transform:perspective(900px) rotateX(0) scale(1.025)}100%{transform:none;filter:none}}
 
 @media (max-width: 760px) {
   .forge-motion-layer { top: 72px; }
@@ -288,11 +348,17 @@
   .forge-ash-field,
   .forge-energy-rails,
   .forge-impact-wave,
+  .forge-action-burst,
+  .commission-chamber::after,
+  .masterwork-reveal::after,
+  .masterwork-card[data-state="sealed"] .masterwork-seal::after,
+  .masterwork-card[data-state="revealed"],
   .forge-rune-current::after {
     animation: none !important;
   }
   .forge-ash-field,
   .forge-energy-rails,
   .forge-impact-wave { display: none; }
+  .forge-action-burst { display:none!important; }
   .forge-rune-current { opacity: 0.06 !important; animation: none !important; }
 }
