@@ -1,0 +1,69 @@
+/* MetaForge motion primitives: semantic states, ambient intensity, and accessibility. */
+:root {
+  --mf-motion-fast: 160ms;
+  --mf-motion-medium: 640ms;
+  --mf-motion-slow: 8s;
+  --mf-atmosphere-opacity: 0.22;
+  --mf-forge-energy: #e39a48;
+  --mf-thought-energy: #75dbc4;
+  --mf-completion-energy: #edf5f1;
+}
+
+.great-forge {
+  --mf-active-energy: var(--mf-forge-energy);
+  --mf-active-intensity: 0.18;
+}
+
+.great-forge:is(.chamber-entrance, .chamber-commission, .chamber-refine, .chamber-workbench) {
+  --mf-active-energy: var(--mf-thought-energy);
+  --mf-active-intensity: 0.12;
+}
+
+.great-forge:is(.chamber-forging, .chamber-masterworks) {
+  --mf-active-intensity: 0.36;
+}
+
+.forge-textures::after {
+  opacity: calc(0.72 + var(--mf-active-intensity));
+  transition: opacity var(--mf-motion-medium) ease;
+}
+
+.forge-textures i {
+  opacity: var(--mf-atmosphere-opacity);
+  mix-blend-mode: screen;
+  will-change: transform, opacity;
+}
+
+.forge-textures b {
+  opacity: calc(0.45 + var(--mf-active-intensity));
+  filter: saturate(calc(0.8 + var(--mf-active-intensity))) blur(0.2px);
+  transition: opacity var(--mf-motion-medium) ease, filter var(--mf-motion-medium) ease;
+}
+
+.great-forge:is(.chamber-forging, .chamber-masterworks) .forge-textures i {
+  animation-duration: 4.8s;
+}
+
+.great-forge:is(.chamber-forging, .chamber-masterworks) .forge-textures::before {
+  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--mf-active-energy) 42%, transparent));
+}
+
+.great-forge button:focus-visible,
+.great-forge a:focus-visible,
+.great-forge select:focus-visible,
+.great-forge textarea:focus-visible {
+  outline: 2px solid var(--mf-thought-energy);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .great-forge { --mf-atmosphere-opacity: 0.1; }
+  .forge-textures i,
+  .forge-textures b,
+  .forge-textures::before,
+  .forge-textures::after {
+    animation: none !important;
+    transition: none !important;
+    will-change: auto;
+  }
+}

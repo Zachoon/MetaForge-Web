@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "policy": {
+    "unknownLicense": "blocked",
+    "reducedMotionRequired": true,
+    "sourceLibrary": "immutable"
+  },
+  "assets": [
+    {
+      "id": "mf-rune-lowpoly-overview-01",
+      "role": "intelligence-rune-reference",
+      "path": "/assets/forge/runes/cc0-lowpoly/overview.png",
+      "sourceRelativePath": "lowpoly_runes/lowpoly_runes.png",
+      "license": "CC0-1.0",
+      "licenseEvidence": "/assets/forge/runes/cc0-lowpoly/LICENSE.txt",
+      "status": "approved",
+      "width": 1950,
+      "height": 1300,
+      "load": "scene",
+      "fallback": "CSS rune geometry"
+    }
+  ]
+}
