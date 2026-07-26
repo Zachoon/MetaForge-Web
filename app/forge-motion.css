@@ -116,7 +116,7 @@
   contain: strict;
 }
 
-.great-forge > :not(.forge-textures, .forge-motion-layer) {
+.great-forge > :not(.forge-textures, .forge-motion-layer, .bench-dock, .edit-anvil-launcher, .forge-edit-workbench) {
   position: relative;
   z-index: 13;
 }
