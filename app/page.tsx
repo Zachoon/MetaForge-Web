@@ -3142,9 +3142,26 @@ export default function Home() {
       onClickCapture={captureForgeAction}
       style={{ "--mf-action-x": `${actionPoint.x}%`, "--mf-action-y": `${actionPoint.y}%` } as CSSProperties}
     >
+      {/*
+        Ambient background layer, shared across every chamber (this div is
+        rendered once, outside the chamber-specific JSX below). Real curated
+        textures/animations — see public/assets/forge/asset-registry.json:
+          i    embers.svg drift (existing)
+          b    furnace_glow.svg base glow (existing)
+          u    molten-iron.png floor band
+          s    flare-strip.webp flame licks (+::before/::after for two more)
+          em   steam-drift.png wisps (+::before/::after for two more)
+          mark spark-01.jpg periodic ember burst
+          q    rune-medallion.png (cropped, CC0) ambient glow accent
+      */}
       <div className="forge-textures" aria-hidden="true">
         <i />
         <b />
+        <u />
+        <s />
+        <em />
+        <mark />
+        <q />
       </div>
       <div className="forge-motion-layer" aria-hidden="true" key={`${chamber}-${stage}-${actionPulse}`}>
         <div className="forge-heat-haze" />

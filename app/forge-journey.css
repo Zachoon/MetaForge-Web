@@ -1314,3 +1314,86 @@
   pointer-events: none;
   z-index: 1;
 }
+
+/* ==========================================================================
+   Real curated textures/animations layered into .forge-textures
+   (see public/assets/forge/asset-registry.json for provenance/licensing)
+   ========================================================================== */
+
+.forge-textures u {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: min(22vh, 170px);
+  background: repeat-x bottom / 256px url('/assets/forge/molten-iron.png');
+}
+
+.forge-textures s {
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  width: 119px;
+  height: 180px;
+  transform: translateX(-50%);
+  background-image: url('/assets/forge/flare-strip.webp');
+  background-repeat: no-repeat;
+  background-size: 4760px 180px;
+}
+.forge-textures s::before,
+.forge-textures s::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  width: 119px;
+  height: 180px;
+  background-image: inherit;
+  background-repeat: no-repeat;
+  background-size: 4760px 180px;
+  transform: scale(0.82);
+}
+.forge-textures s::before { left: -230px; }
+.forge-textures s::after { left: 111px; }
+
+.forge-textures em {
+  position: absolute;
+  top: -14px;
+  left: 22%;
+  width: 64px;
+  height: 64px;
+  background-image: url('/assets/forge/steam-drift.png');
+  background-repeat: no-repeat;
+  background-size: 3200px 64px;
+}
+.forge-textures em::before,
+.forge-textures em::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 64px;
+  height: 64px;
+  background-image: inherit;
+  background-repeat: no-repeat;
+  background-size: 3200px 64px;
+}
+.forge-textures em::before { left: 34vw; }
+.forge-textures em::after { left: 66vw; }
+
+.forge-textures mark {
+  position: absolute;
+  right: 6vw;
+  top: 18vh;
+  width: 220px;
+  height: 220px;
+  background: no-repeat center / contain url('/assets/forge/sparks/spark-01.jpg');
+  mix-blend-mode: screen;
+}
+
+.forge-textures q {
+  position: absolute;
+  left: 8vw;
+  top: 58vh;
+  width: 230px;
+  height: 230px;
+  background: no-repeat center / contain url('/assets/forge/runes/cc0-lowpoly/rune-medallion.png');
+}

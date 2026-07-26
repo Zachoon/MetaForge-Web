@@ -48,6 +48,55 @@
   filter: drop-shadow(0 0 7px color-mix(in srgb, var(--mf-active-energy) 42%, transparent));
 }
 
+.forge-textures u {
+  opacity: calc(0.4 + var(--mf-active-intensity) * 1.1);
+  mix-blend-mode: screen;
+  transition: opacity var(--mf-motion-medium) ease;
+}
+
+.forge-textures s {
+  opacity: calc(0.55 + var(--mf-active-intensity) * 0.9);
+  mix-blend-mode: screen;
+  animation: mf-flare-cycle 1.3s steps(40) infinite;
+}
+.forge-textures s::before,
+.forge-textures s::after {
+  opacity: 0.75;
+  animation: mf-flare-cycle 1.3s steps(40) infinite;
+}
+.forge-textures s::before { animation-delay: -0.45s; }
+.forge-textures s::after { animation-delay: -0.9s; }
+
+.forge-textures em {
+  opacity: calc(0.1 + var(--mf-active-intensity) * 0.35);
+  mix-blend-mode: screen;
+  animation: mf-steam-cycle 5s steps(50) infinite;
+}
+.forge-textures em::before,
+.forge-textures em::after {
+  opacity: inherit;
+  animation: mf-steam-cycle 5s steps(50) infinite;
+}
+.forge-textures em::before { animation-delay: -1.7s; }
+.forge-textures em::after { animation-delay: -3.3s; }
+
+.forge-textures mark {
+  opacity: 0;
+  mix-blend-mode: screen;
+  animation: mf-spark-pop 9s ease-in-out infinite;
+}
+
+.forge-textures q {
+  animation: mf-rune-medallion-breathe 6s ease-in-out infinite;
+}
+
+.great-forge:is(.chamber-forging, .chamber-masterworks) .forge-textures u {
+  filter: saturate(1.15) brightness(1.08);
+}
+.great-forge:is(.chamber-forging, .chamber-masterworks) .forge-textures s {
+  animation-duration: 0.95s;
+}
+
 .great-forge button:focus-visible,
 .great-forge a:focus-visible,
 .great-forge select:focus-visible,
@@ -286,6 +335,18 @@
 .great-forge[data-motion="quiet"] .forge-heat-haze { opacity: 0.1; }
 .great-forge[data-motion="quiet"] .forge-action-burst { display:none!important; }
 
+.great-forge[data-motion="quiet"] .forge-textures s,
+.great-forge[data-motion="quiet"] .forge-textures s::before,
+.great-forge[data-motion="quiet"] .forge-textures s::after,
+.great-forge[data-motion="quiet"] .forge-textures em,
+.great-forge[data-motion="quiet"] .forge-textures em::before,
+.great-forge[data-motion="quiet"] .forge-textures em::after,
+.great-forge[data-motion="quiet"] .forge-textures mark,
+.great-forge[data-motion="quiet"] .forge-textures q {
+  animation: none !important;
+}
+.great-forge[data-motion="quiet"] .forge-textures mark { display: none; }
+
 .motion-toggle { margin-left: 5px; }
 
 /* Identity badge: the routine "grow" pulse (every mastery-affecting action)
@@ -342,6 +403,18 @@
 @keyframes mf-masterwork-room{from{transform:scale(1);filter:brightness(.9)}to{transform:scale(1.04);filter:brightness(1.18)}}
 @keyframes mf-seal-breathe{0%,100%{opacity:.22;transform:scale(.97)}50%{opacity:.6;transform:scale(1.025)}}
 @keyframes mf-card-forged{0%{opacity:.1;transform:perspective(900px) rotateX(7deg) scale(.93);filter:brightness(2.4)}55%{opacity:1;transform:perspective(900px) rotateX(0) scale(1.025)}100%{transform:none;filter:none}}
+@keyframes mf-flare-cycle { from { background-position-x: 0; } to { background-position-x: -4760px; } }
+@keyframes mf-steam-cycle { from { background-position-x: 0; } to { background-position-x: -3200px; } }
+@keyframes mf-spark-pop {
+  0%, 82% { opacity: 0; transform: scale(0.7); }
+  88% { opacity: 0.7; transform: scale(1.05); }
+  94% { opacity: 0.3; transform: scale(0.95); }
+  100% { opacity: 0; transform: scale(0.7); }
+}
+@keyframes mf-rune-medallion-breathe {
+  0%, 100% { opacity: calc(0.1 + var(--mf-active-intensity) * 0.3); transform: scale(0.97); }
+  50% { opacity: calc(0.22 + var(--mf-active-intensity) * 0.4); transform: scale(1.03); }
+}
 @keyframes mf-identity-grow{0%,100%{transform:scale(1)}40%{transform:scale(1.18)}}
 @keyframes mf-identity-celebrate{0%{transform:scale(1)}30%{transform:scale(1.3)}60%{transform:scale(1.05)}100%{transform:scale(1)}}
 @keyframes mf-identity-flash-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
@@ -375,7 +448,15 @@
   .masterwork-card[data-state="revealed"],
   .forge-rune-current::after,
   .identity-badge-sigil,
-  .identity-badge-flash {
+  .identity-badge-flash,
+  .forge-textures s,
+  .forge-textures s::before,
+  .forge-textures s::after,
+  .forge-textures em,
+  .forge-textures em::before,
+  .forge-textures em::after,
+  .forge-textures mark,
+  .forge-textures q {
     animation: none !important;
   }
   .forge-ash-field,
@@ -383,4 +464,6 @@
   .forge-impact-wave { display: none; }
   .forge-action-burst { display:none!important; }
   .forge-rune-current { opacity: 0.06 !important; animation: none !important; }
+  .forge-textures mark { display: none; }
+  .forge-textures q { opacity: 0.16 !important; }
 }

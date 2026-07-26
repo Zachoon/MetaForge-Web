@@ -18,6 +18,72 @@
       "height": 1300,
       "load": "scene",
       "fallback": "CSS rune geometry"
+    },
+    {
+      "id": "mf-rune-medallion-01",
+      "role": "rune-accent",
+      "path": "/assets/forge/runes/cc0-lowpoly/rune-medallion.png",
+      "sourceRelativePath": "lowpoly_runes/lowpoly_runes.png",
+      "license": "CC0-1.0",
+      "licenseEvidence": "/assets/forge/runes/cc0-lowpoly/LICENSE.txt",
+      "status": "approved",
+      "width": 230,
+      "height": 230,
+      "load": "scene",
+      "fallback": "CSS rune geometry",
+      "notes": "Cropped derivative of mf-rune-lowpoly-overview-01 with a soft radial alpha mask so it blends into the dark scene instead of showing a hard rectangle."
+    },
+    {
+      "id": "mf-flare-strip-01",
+      "role": "forge-flame-lick",
+      "path": "/assets/forge/flare-strip.webp",
+      "sourceRelativePath": "fire_1_40/fire_1b_40_*.png (40 frames)",
+      "license": "owner-provided",
+      "licenseEvidence": "Owner confirmed licensing/usage rights for this asset pack on 2026-07-26; no bundled license file accompanied the source pack.",
+      "status": "approved",
+      "frameCount": 40,
+      "frameWidth": 119,
+      "frameHeight": 180,
+      "load": "scene",
+      "fallback": "CSS gradient glow (furnace_glow.svg)"
+    },
+    {
+      "id": "mf-molten-iron-01",
+      "role": "forge-floor-texture",
+      "path": "/assets/forge/molten-iron.png",
+      "sourceRelativePath": "tex_molten_iron_a_256.png",
+      "license": "owner-provided",
+      "licenseEvidence": "Owner confirmed licensing/usage rights for this asset pack on 2026-07-26; no bundled license file accompanied the source pack.",
+      "status": "approved",
+      "width": 256,
+      "height": 256,
+      "load": "scene",
+      "fallback": "CSS gradient glow (furnace_glow.svg)"
+    },
+    {
+      "id": "mf-steam-drift-01",
+      "role": "forge-atmosphere",
+      "path": "/assets/forge/steam-drift.png",
+      "sourceRelativePath": "steam_wall_sheet.png",
+      "license": "owner-provided",
+      "licenseEvidence": "Owner confirmed licensing/usage rights for this asset pack on 2026-07-26; no bundled license file accompanied the source pack.",
+      "status": "approved",
+      "frameCount": 50,
+      "frameSize": 64,
+      "load": "scene",
+      "fallback": "none (omitted)"
+    },
+    {
+      "id": "mf-spark-burst-01",
+      "role": "forge-spark-accent",
+      "path": "/assets/forge/sparks/spark-01.jpg",
+      "sourceRelativePath": "Spark1_I.jpg .. Spark8_I.jpg (8 variants, spark-01..08.jpg)",
+      "license": "owner-provided",
+      "licenseEvidence": "Owner confirmed licensing/usage rights for this asset pack on 2026-07-26; no bundled license file accompanied the source pack.",
+      "status": "approved",
+      "variantCount": 8,
+      "load": "scene",
+      "fallback": "embers.svg"
     }
   ]
 }
