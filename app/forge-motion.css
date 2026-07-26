@@ -56,6 +56,224 @@
   outline-offset: 3px;
 }
 
+/* One reusable atmosphere surface serves every Forge chamber. State belongs
+   to the parent; the layers themselves remain decorative and inert. */
+.forge-motion-layer {
+  position: fixed;
+  z-index: 0;
+  inset: 82px 0 0;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+
+.great-forge > :not(.forge-textures, .forge-motion-layer) {
+  position: relative;
+  z-index: 1;
+}
+
+.forge-vignette,
+.forge-heat-haze,
+.forge-impact-wave,
+.forge-energy-rails,
+.forge-rune-current,
+.forge-ash-field {
+  position: absolute;
+  inset: 0;
+}
+
+.forge-vignette {
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.74), transparent 14%, transparent 86%, rgba(0, 0, 0, 0.74)),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.3), transparent 22%, transparent 72%, rgba(0, 0, 0, 0.72));
+}
+
+.forge-heat-haze {
+  top: auto;
+  left: 50%;
+  bottom: -18%;
+  width: min(94vw, 1120px);
+  height: 54%;
+  transform: translateX(-50%);
+  opacity: calc(var(--mf-active-intensity) * 0.8);
+  background:
+    repeating-radial-gradient(ellipse at 50% 100%, transparent 0 25px, rgba(236, 138, 64, 0.055) 27px 29px, transparent 31px 52px),
+    radial-gradient(ellipse at 50% 100%, rgba(236, 105, 35, 0.3), transparent 63%);
+  filter: blur(8px);
+  animation: mf-heat-breathe var(--mf-motion-slow) ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.forge-ash-field i {
+  position: absolute;
+  left: calc((var(--ash-index, 1) * 7.1%) - 4%);
+  bottom: -4%;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  opacity: 0;
+  background: color-mix(in srgb, var(--mf-active-energy) 68%, #d8c7ae);
+  box-shadow: 0 0 7px color-mix(in srgb, var(--mf-active-energy) 70%, transparent);
+  animation: mf-ash-rise calc(7s + var(--ash-index, 1) * 0.37s) linear infinite;
+  animation-delay: calc(var(--ash-index, 1) * -0.63s);
+  will-change: transform, opacity;
+}
+
+.forge-ash-field i:nth-child(1) { --ash-index: 1; }
+.forge-ash-field i:nth-child(2) { --ash-index: 2; }
+.forge-ash-field i:nth-child(3) { --ash-index: 3; }
+.forge-ash-field i:nth-child(4) { --ash-index: 4; }
+.forge-ash-field i:nth-child(5) { --ash-index: 5; }
+.forge-ash-field i:nth-child(6) { --ash-index: 6; }
+.forge-ash-field i:nth-child(7) { --ash-index: 7; }
+.forge-ash-field i:nth-child(8) { --ash-index: 8; }
+.forge-ash-field i:nth-child(9) { --ash-index: 9; }
+.forge-ash-field i:nth-child(10) { --ash-index: 10; }
+.forge-ash-field i:nth-child(11) { --ash-index: 11; }
+.forge-ash-field i:nth-child(12) { --ash-index: 12; }
+.forge-ash-field i:nth-child(13) { --ash-index: 13; }
+.forge-ash-field i:nth-child(14) { --ash-index: 14; }
+
+.forge-rune-current {
+  display: grid;
+  width: min(72vw, 820px);
+  height: min(72vw, 820px);
+  margin: auto;
+  place-items: center;
+  opacity: 0;
+  animation: mf-rune-field-in 1.1s ease-out both;
+}
+
+.forge-rune-current::before,
+.forge-rune-current::after {
+  position: absolute;
+  inset: 18%;
+  border: 1px solid color-mix(in srgb, var(--mf-active-energy) 26%, transparent);
+  border-radius: 50%;
+  content: "";
+  mask-image: repeating-conic-gradient(#000 0 7deg, transparent 8deg 29deg);
+}
+
+.forge-rune-current::after {
+  inset: 30%;
+  animation: mf-rune-turn 36s linear infinite reverse;
+}
+
+.forge-rune-current > i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  color: color-mix(in srgb, var(--mf-active-energy) 60%, white);
+  font: normal clamp(16px, 2vw, 25px) Georgia, serif;
+  text-shadow: 0 0 14px var(--mf-active-energy);
+}
+
+.forge-rune-current > i:nth-child(1) { transform: translate(-50%, -50%) rotate(0deg) translateY(-240px) rotate(0deg); }
+.forge-rune-current > i:nth-child(2) { transform: translate(-50%, -50%) rotate(60deg) translateY(-240px) rotate(-60deg); }
+.forge-rune-current > i:nth-child(3) { transform: translate(-50%, -50%) rotate(120deg) translateY(-240px) rotate(-120deg); }
+.forge-rune-current > i:nth-child(4) { transform: translate(-50%, -50%) rotate(180deg) translateY(-240px) rotate(-180deg); }
+.forge-rune-current > i:nth-child(5) { transform: translate(-50%, -50%) rotate(240deg) translateY(-240px) rotate(-240deg); }
+.forge-rune-current > i:nth-child(6) { transform: translate(-50%, -50%) rotate(300deg) translateY(-240px) rotate(-300deg); }
+
+.forge-energy-rails {
+  opacity: 0;
+}
+
+.forge-energy-rails i {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(70vw, 900px);
+  height: 1px;
+  transform-origin: left center;
+  background: linear-gradient(90deg, transparent, var(--mf-active-energy), transparent 74%);
+  filter: drop-shadow(0 0 7px var(--mf-active-energy));
+}
+
+.forge-energy-rails i:nth-child(1) { transform: rotate(-12deg) translateX(-8%); }
+.forge-energy-rails i:nth-child(2) { transform: rotate(4deg) translateX(-14%); }
+.forge-energy-rails i:nth-child(3) { transform: rotate(19deg) translateX(-5%); }
+
+.great-forge[data-forge-state="thinking"] .forge-energy-rails {
+  opacity: 0.24;
+  animation: mf-intelligence-scan 2.8s ease-in-out infinite;
+}
+
+.great-forge[data-forge-state="thinking"] .forge-rune-current {
+  opacity: 0.19;
+}
+
+.great-forge[data-forge-state="forging"] .forge-energy-rails {
+  opacity: 0.28;
+  animation: mf-forge-charge 1.15s ease-out both;
+}
+
+.great-forge[data-forge-state="forging"] .forge-impact-wave {
+  left: 30%;
+  top: 55%;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--mf-forge-energy);
+  border-radius: 50%;
+  animation: mf-impact-wave 1.15s ease-out both;
+  box-shadow: 0 0 30px var(--mf-forge-energy);
+}
+
+.great-forge[data-forge-state="reveal"] .forge-rune-current {
+  opacity: 0.23;
+  animation: mf-reveal-settle 1.2s ease-out both;
+}
+
+.great-forge[data-forge-state="reveal"] .forge-heat-haze {
+  animation: mf-heat-cool 1.4s ease-out both;
+}
+
+.great-forge[data-motion="quiet"] .forge-heat-haze,
+.great-forge[data-motion="quiet"] .forge-ash-field,
+.great-forge[data-motion="quiet"] .forge-rune-current::after,
+.great-forge[data-motion="quiet"] .forge-energy-rails,
+.great-forge[data-motion="quiet"] .forge-impact-wave {
+  animation: none !important;
+}
+
+.great-forge[data-motion="quiet"] .forge-ash-field,
+.great-forge[data-motion="quiet"] .forge-energy-rails,
+.great-forge[data-motion="quiet"] .forge-impact-wave {
+  display: none;
+}
+
+.great-forge[data-motion="quiet"] .forge-rune-current { opacity: 0.08; }
+.great-forge[data-motion="quiet"] .forge-heat-haze { opacity: 0.1; }
+
+.motion-toggle { margin-left: 5px; }
+
+@keyframes mf-ash-rise {
+  0% { opacity: 0; transform: translate3d(0, 0, 0) scale(0.7); }
+  14% { opacity: calc(var(--mf-active-intensity) * 1.45); }
+  72% { opacity: calc(var(--mf-active-intensity) * 0.7); }
+  100% { opacity: 0; transform: translate3d(calc((var(--ash-index) - 7) * 7px), -94vh, 0) scale(1.4); }
+}
+
+@keyframes mf-heat-breathe {
+  0%, 100% { transform: translateX(-50%) scaleX(0.94) translateY(2%); opacity: calc(var(--mf-active-intensity) * 0.55); }
+  50% { transform: translateX(-50%) scaleX(1.06) translateY(-2%); opacity: var(--mf-active-intensity); }
+}
+
+@keyframes mf-rune-turn { to { transform: rotate(360deg); } }
+@keyframes mf-rune-field-in { from { transform: scale(0.96); opacity: 0; } }
+@keyframes mf-intelligence-scan { 0%, 100% { transform: translateX(-12%); opacity: 0.08; } 50% { transform: translateX(12%); opacity: 0.32; } }
+@keyframes mf-forge-charge { from { transform: scaleX(0.08); opacity: 0; } 65% { opacity: 0.45; } to { transform: scaleX(1); opacity: 0.12; } }
+@keyframes mf-impact-wave { from { opacity: 0.8; transform: translate(-50%, -50%) scale(0.2); } to { opacity: 0; transform: translate(-50%, -50%) scale(34); } }
+@keyframes mf-reveal-settle { from { transform: scale(1.12); filter: brightness(2.3); } to { transform: scale(1); filter: none; } }
+@keyframes mf-heat-cool { from { opacity: 0.48; filter: blur(4px) brightness(1.8); } to { opacity: 0.14; filter: blur(10px); } }
+
+@media (max-width: 760px) {
+  .forge-motion-layer { top: 72px; }
+  .forge-rune-current { width: 96vw; height: 96vw; }
+  .forge-rune-current > i { display: none; }
+  .forge-ash-field i:nth-child(even) { display: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .great-forge { --mf-atmosphere-opacity: 0.1; }
   .forge-textures i,
@@ -66,4 +284,15 @@
     transition: none !important;
     will-change: auto;
   }
+  .forge-heat-haze,
+  .forge-ash-field,
+  .forge-energy-rails,
+  .forge-impact-wave,
+  .forge-rune-current::after {
+    animation: none !important;
+  }
+  .forge-ash-field,
+  .forge-energy-rails,
+  .forge-impact-wave { display: none; }
+  .forge-rune-current { opacity: 0.06 !important; animation: none !important; }
 }

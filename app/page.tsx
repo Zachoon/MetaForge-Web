@@ -28,6 +28,8 @@ type Chamber =
   | "masterworks"
   | "workbench";
 
+type MotionMode = "full" | "quiet";
+
 const FORGING_STAGES = [
   ["The blueprint is sealed", "Reading the commission marks…", "642"],
   ["Awakening the Great Furnace", "Ancient channels fill with light.", "642"],
@@ -1155,6 +1157,7 @@ export default function Home() {
   const [complexity, setComplexity] = useState("Balanced");
   const [budget, setBudget] = useState("No strict limit");
   const [readingSize, setReadingSize] = useState<ReadingSize>("comfortable");
+  const [motionMode, setMotionMode] = useState<MotionMode>("full");
   const [deck, setDeck] = useState("");
   const [commissionNote, setCommissionNote] = useState("");
   const [commanderQuery, setCommanderQuery] = useState("");
@@ -1277,6 +1280,12 @@ export default function Home() {
       if (["compact", "comfortable", "large"].includes(preferredReadingSize || "")) {
         setReadingSize(preferredReadingSize as ReadingSize);
       }
+      const preferredMotion = window.localStorage.getItem("metaforge.motionMode");
+      if (preferredMotion === "quiet" || preferredMotion === "full") {
+        setMotionMode(preferredMotion);
+      } else if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        setMotionMode("quiet");
+      }
       const savedLearning = JSON.parse(
         window.localStorage.getItem("metaforge.interventionLearning") || "[]",
       );
@@ -1291,6 +1300,10 @@ export default function Home() {
   useEffect(() => {
     window.localStorage.setItem("metaforge.readingSize", readingSize);
   }, [readingSize]);
+
+  useEffect(() => {
+    window.localStorage.setItem("metaforge.motionMode", motionMode);
+  }, [motionMode]);
 
   useEffect(() => {
     window.localStorage.setItem("metaforge.resultViewMode", resultViewMode);
@@ -1355,6 +1368,16 @@ export default function Home() {
         : chamber === "forging"
           ? 2
           : 3;
+  const forgeState =
+    chamber === "forging"
+      ? "forging"
+      : chamber === "masterworks"
+        ? "reveal"
+        : chamber === "commission" || chamber === "refine"
+          ? "thinking"
+          : chamber === "entrance"
+            ? "dormant"
+            : "idle";
   useEffect(() => {
     setFurthestCommissionStep((current) => Math.max(current, chapter));
   }, [chapter]);
@@ -2950,10 +2973,27 @@ export default function Home() {
   }
 
   return (
-    <main className={`great-forge chamber-${chamber} reading-${readingSize}`}>
+    <main
+      className={`great-forge chamber-${chamber} reading-${readingSize}`}
+      data-forge-state={forgeState}
+      data-forge-stage={chamber === "forging" ? stage + 1 : undefined}
+      data-motion={motionMode}
+    >
       <div className="forge-textures" aria-hidden="true">
         <i />
         <b />
+      </div>
+      <div className="forge-motion-layer" aria-hidden="true" key={`${chamber}-${stage}`}>
+        <div className="forge-heat-haze" />
+        <div className="forge-ash-field">
+          {Array.from({ length: 14 }, (_, index) => <i key={index} />)}
+        </div>
+        <div className="forge-rune-current">
+          <i>ᛟ</i><i>ᚱ</i><i>ᛞ</i><i>ᚷ</i><i>ᛏ</i><i>ᚲ</i>
+        </div>
+        <div className="forge-energy-rails"><i /><i /><i /></div>
+        <div className="forge-impact-wave" />
+        <div className="forge-vignette" />
       </div>
       <header className="forge-bar">
         <button
@@ -3000,6 +3040,16 @@ export default function Home() {
               A{index === 0 ? "−" : index === 2 ? "+" : ""}
             </button>
           ))}
+          <button
+            type="button"
+            className={`motion-toggle ${motionMode === "full" ? "active" : ""}`}
+            aria-label={motionMode === "full" ? "Use quiet Forge motion" : "Use full Forge motion"}
+            aria-pressed={motionMode === "full"}
+            title={motionMode === "full" ? "Quiet Forge motion" : "Full Forge motion"}
+            onClick={() => setMotionMode((current) => current === "full" ? "quiet" : "full")}
+          >
+            FX
+          </button>
           <a className="quiet-action" href="/profile">
             Your Forge Mastery
           </a>
