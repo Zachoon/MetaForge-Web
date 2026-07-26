@@ -78,6 +78,53 @@ function resolveTemper(mastery) {
   return "hard-fought";
 }
 
+// Pure change-detector between two computePlayerIdentity results — lets a
+// caller notice the exact moment identity genuinely grew (a new milestone,
+// a temper/style transition, or a motif reveal/change) instead of silently
+// re-rendering a new number. Milestones only ever report as a *gain*: a
+// milestone that regresses (e.g. un-finishing a Masterwork drops `finished`
+// back to 0) isn't reported, since a lost achievement shouldn't read as one.
+export function diffPlayerIdentity(previous, next) {
+  if (!previous) {
+    return {
+      changed: false,
+      newMilestones: [],
+      temperChanged: false,
+      styleChanged: false,
+      motifRevealed: false,
+      motifChanged: false,
+    };
+  }
+
+  const previousMilestoneIds = new Set(
+    previous.milestonesReached.map((milestone) => milestone.id),
+  );
+  const newMilestones = next.milestonesReached.filter(
+    (milestone) => !previousMilestoneIds.has(milestone.id),
+  );
+  const temperChanged = previous.temper !== next.temper;
+  const styleChanged = Boolean(next.style) && previous.style !== next.style;
+  const motifRevealed = !previous.dominantMotif && Boolean(next.dominantMotif);
+  const motifChanged =
+    Boolean(previous.dominantMotif) &&
+    Boolean(next.dominantMotif) &&
+    previous.dominantMotif !== next.dominantMotif;
+
+  return {
+    changed:
+      newMilestones.length > 0 ||
+      temperChanged ||
+      styleChanged ||
+      motifRevealed ||
+      motifChanged,
+    newMilestones,
+    temperChanged,
+    styleChanged,
+    motifRevealed,
+    motifChanged,
+  };
+}
+
 export function computePlayerIdentity({ families = [], motifWeightsByFamily = {} } = {}) {
   const mastery = computeMastery(families);
   const dominantColors = resolveDominantColors(families);

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { computePlayerIdentity } from "../app/player-identity.mjs";
+import { computePlayerIdentity, diffPlayerIdentity } from "../app/player-identity.mjs";
 
 const family = (overrides = {}) => ({
   id: overrides.id || "f1",
@@ -99,4 +99,97 @@ test("counts milestones as real, ordered, already-true facts rather than an arbi
   assert.ok(identity.depth >= 3);
   assert.ok(identity.milestonesReached.some((m) => m.id === "first-masterwork"));
   assert.ok(identity.milestonesReached.some((m) => m.id === "five-experiments"));
+});
+
+test("diffPlayerIdentity: reports no change with no previous baseline", () => {
+  const diff = diffPlayerIdentity(null, computePlayerIdentity({ families: [] }));
+  assert.equal(diff.changed, false);
+  assert.deepEqual(diff.newMilestones, []);
+});
+
+test("diffPlayerIdentity: reports no change between identical identities", () => {
+  const identity = computePlayerIdentity({ families: [family()] });
+  const diff = diffPlayerIdentity(identity, identity);
+  assert.equal(diff.changed, false);
+});
+
+test("diffPlayerIdentity: reports a newly reached milestone as a gain", () => {
+  const before = computePlayerIdentity({ families: [] });
+  const after = computePlayerIdentity({
+    families: [
+      family({
+        revisions: [
+          { deck: "1 Island", note: "", matches: [{ id: "w0", result: "win" }] },
+        ],
+      }),
+    ],
+  });
+  const diff = diffPlayerIdentity(before, after);
+  assert.equal(diff.changed, true);
+  assert.ok(diff.newMilestones.some((milestone) => milestone.id === "first-spark"));
+});
+
+test("diffPlayerIdentity: does not report a milestone that regresses", () => {
+  const withMilestone = computePlayerIdentity({
+    families: [family({ archived: true })],
+  });
+  const withoutMilestone = computePlayerIdentity({
+    families: [family({ archived: false })],
+  });
+  const diff = diffPlayerIdentity(withMilestone, withoutMilestone);
+  assert.equal(diff.newMilestones.length, 0);
+});
+
+test("diffPlayerIdentity: reports a temper transition in either direction", () => {
+  const matches = (wins, losses) =>
+    [...Array(wins)].map((_, i) => ({ id: `w${i}`, result: "win" })).concat([...Array(losses)].map((_, i) => ({ id: `l${i}`, result: "loss" })));
+  const unproven = computePlayerIdentity({
+    families: [family({ revisions: [{ deck: "1 Island", note: "", matches: matches(2, 0) }] })],
+  });
+  const tempered = computePlayerIdentity({
+    families: [family({ revisions: [{ deck: "1 Island", note: "", matches: matches(4, 1) }] })],
+  });
+  const up = diffPlayerIdentity(unproven, tempered);
+  assert.equal(up.temperChanged, true);
+  const down = diffPlayerIdentity(tempered, unproven);
+  assert.equal(down.temperChanged, true);
+});
+
+test("diffPlayerIdentity: reports a motif reveal and a later motif change", () => {
+  const hidden = computePlayerIdentity({ families: [family()], motifWeightsByFamily: {} });
+  const revealed = computePlayerIdentity({
+    families: [family()],
+    motifWeightsByFamily: { f1: { rune: 1 } },
+  });
+  const revealDiff = diffPlayerIdentity(hidden, revealed);
+  assert.equal(revealDiff.motifRevealed, true);
+  assert.equal(revealDiff.motifChanged, false);
+
+  const changed = computePlayerIdentity({
+    families: [family()],
+    motifWeightsByFamily: { f1: { blade: 1 } },
+  });
+  const changeDiff = diffPlayerIdentity(revealed, changed);
+  assert.equal(changeDiff.motifRevealed, false);
+  assert.equal(changeDiff.motifChanged, true);
+});
+
+test("diffPlayerIdentity: reports a style change", () => {
+  const curator = computePlayerIdentity({
+    families: [family({ revisions: [{ deck: "1 Island", note: "", matches: [] }] })],
+  });
+  const tinkerer = computePlayerIdentity({
+    families: [
+      family({
+        revisions: [
+          { deck: "1 Island", note: "", matches: [] },
+          { deck: "1 Island", note: "", matches: [] },
+          { deck: "1 Island", note: "", matches: [] },
+          { deck: "1 Island", note: "", matches: [] },
+        ],
+      }),
+    ],
+  });
+  const diff = diffPlayerIdentity(curator, tinkerer);
+  assert.equal(diff.styleChanged, true);
 });

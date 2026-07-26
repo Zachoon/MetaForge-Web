@@ -85,6 +85,13 @@ export function updateFamily(bench, familyId, action, fingerprint) {
   return next;
 }
 
+export function setFamilyMotifWeights(bench, familyId, motifWeights) {
+  const next = structuredClone(bench);
+  const family = next.families.find((item) => item.id === familyId);
+  if (family) family.motifWeights = motifWeights;
+  return next;
+}
+
 export function revisionEvidence(revision) {
   const matches = revision.matches || [];
   const evidence = evaluateExperiment(matches);

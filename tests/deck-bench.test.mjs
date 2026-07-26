@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { attachMatches, emptyDeckBench, mergeDeckBenches, rankedFamilies, recordExperiment, updateFamily } from "../app/deck-bench.mjs";
+import { attachMatches, emptyDeckBench, mergeDeckBenches, rankedFamilies, recordExperiment, setFamilyMotifWeights, updateFamily } from "../app/deck-bench.mjs";
 
 test("keeps immutable revisions and attaches matches by exact fingerprint", () => {
   const experiment = { id: "trial", deckName: "Landfall", originalDeck: "60 original", proposedDeck: "60 proposed", originalFingerprint: "a".repeat(24), proposedFingerprint: "b".repeat(24), status: "testing", startedAt: "2026-07-15T00:00:00Z" };
@@ -57,4 +57,24 @@ test("never attaches MTG Arena evidence to a Riftbound family",()=>{
   const bench=recordExperiment(emptyDeckBench(),experiment,"Constructed","riftbound");
   const attached=attachMatches(bench,[{id:"arena",game:"mtg",source:"arena-player-log",deckFingerprint:"b".repeat(24),result:"win"},{id:"rift",game:"riftbound",source:"riftbound-native",deckFingerprint:"b".repeat(24),result:"loss"}]);
   const matches=attached.families[0].revisions[1].matches;assert.equal(matches.length,1);assert.equal(matches[0].id,"rift");
+});
+
+test("setFamilyMotifWeights sets the field on the matching family only", () => {
+  const experiment = { id: "trial", deckName: "Landfall", originalDeck: "60 original", proposedDeck: "60 proposed", originalFingerprint: "a".repeat(24), proposedFingerprint: "b".repeat(24), status: "testing", startedAt: "2026-07-15T00:00:00Z" };
+  let bench = recordExperiment(emptyDeckBench(), experiment, "Standard");
+  const otherExperiment = { ...experiment, id: "trial-2", deckName: "Tempo", originalFingerprint: "c".repeat(24), proposedFingerprint: "d".repeat(24) };
+  bench = recordExperiment(bench, otherExperiment, "Standard");
+  const targetId = bench.families.find((family) => family.name === "Landfall").id;
+  const untouchedId = bench.families.find((family) => family.name === "Tempo").id;
+
+  bench = setFamilyMotifWeights(bench, targetId, { rune: 1 });
+
+  assert.deepEqual(bench.families.find((family) => family.id === targetId).motifWeights, { rune: 1 });
+  assert.equal(bench.families.find((family) => family.id === untouchedId).motifWeights, undefined);
+});
+
+test("setFamilyMotifWeights no-ops for an unknown family id", () => {
+  const bench = emptyDeckBench();
+  const result = setFamilyMotifWeights(bench, "does-not-exist", { rune: 1 });
+  assert.deepEqual(result, bench);
 });

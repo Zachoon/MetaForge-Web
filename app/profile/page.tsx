@@ -5,8 +5,10 @@ import "./profile.css";
 import { buildForgeStructuralAnalysis } from "../forge-structural-pipeline.mjs";
 import { computeMastery } from "../forge-mastery.mjs";
 import { computePlayerIdentity } from "../player-identity.mjs";
-import { classifyNativeCard } from "../native-masterwork-engine.mjs";
-import { motifForRoles } from "../masterwork-visual-profile.mjs";
+import {
+  resolveDeckStructuralCards,
+  motifWeightsFromStructuralCards,
+} from "../deck-motif-scan.mjs";
 import { MOTIF_ICONS, type MotifId } from "../masterwork-motif-icons.tsx";
 
 const MOTIF_IDENTITY_COPY: Record<string, { name: string; line: string }> = {
@@ -62,59 +64,25 @@ type SavedFamily = {
   commander?: { name: string; colors: string[] } | null;
   record?: { wins: number; losses: number };
   archived?: boolean;
+  // Written by the main app's refreshMasterworkMotif when a Masterwork is
+  // finished — read here so the sigil reflects every already-finished
+  // deck's motif on first load, with zero Scryfall calls.
+  motifWeights?: Record<string, number>;
   revisions: SavedRevision[];
 };
-
-const parseDeckRows = (text: string) =>
-  text.split(/\r?\n/).flatMap((line) => {
-    const match = line.trim().match(/^(\d+)\s+(.+?)(?:\s+\([A-Z0-9]{2,6}\)\s+\d+\w*)?$/);
-    return match ? [{ quantity: Number(match[1]), name: match[2].trim() }] : [];
-  });
 
 async function fetchStructuralAnalysis(family: SavedFamily) {
   const latest = family.revisions.at(-1);
   if (!latest) throw new Error("This Masterwork has no recorded deck text");
-  const rows = parseDeckRows(latest.deckText);
-  const commanderKey = family.commander?.name?.trim().toLowerCase();
-  const names = [...new Set(rows.map((row) => row.name))];
-  const cardsByName = new Map<string, any>();
-  for (let index = 0; index < names.length; index += 75) {
-    const chunk = names.slice(index, index + 75);
-    const response = await fetch("https://api.scryfall.com/cards/collection", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ identifiers: chunk.map((name) => ({ name })) }),
-    });
-    const data = await response.json();
-    for (const card of data.data || []) cardsByName.set(card.name.trim().toLowerCase(), card);
-  }
-  const structuralCards = rows.map((row) => {
-    const card = cardsByName.get(row.name.trim().toLowerCase());
-    return {
-      name: row.name,
-      typeLine: card?.type_line || (row.name.trim().toLowerCase() === commanderKey ? "" : "Card"),
-      oracleText: card?.oracle_text || (card?.card_faces || []).map((face: any) => face.oracle_text || "").join("\n"),
-      quantity: row.quantity,
-      isCommander: row.name.trim().toLowerCase() === commanderKey,
-    };
+  const structuralCards = await resolveDeckStructuralCards({
+    deckText: latest.deckText,
+    commanderName: family.commander?.name || "",
   });
-  const analysis = buildForgeStructuralAnalysis(structuralCards, { commanderName: family.commander?.name || "" });
-  // Reuses the exact same role classifier the Forge already applies to every
-  // card when building experiment tablets — a card reads as the same motif
-  // here as it would on a tablet, and this rides the Scryfall fetch already
-  // happening for the structural read instead of a second one.
-  const motifWeights: Record<string, number> = {};
-  let totalQuantity = 0;
-  for (const card of structuralCards) {
-    if (card.isCommander) continue;
-    const roles = classifyNativeCard(card);
-    const motif = motifForRoles(roles);
-    totalQuantity += card.quantity;
-    if (motif) motifWeights[motif] = (motifWeights[motif] || 0) + card.quantity;
-  }
-  for (const motif of Object.keys(motifWeights)) {
-    motifWeights[motif] = totalQuantity ? motifWeights[motif] / totalQuantity : 0;
-  }
+  const analysis = buildForgeStructuralAnalysis(structuralCards, {
+    commanderName: family.commander?.name || "",
+  });
+  const motifWeights =
+    family.motifWeights || motifWeightsFromStructuralCards(structuralCards);
   return { analysis, motifWeights };
 }
 
@@ -146,9 +114,28 @@ export default function PlayerProfile() {
   }, []);
 
   const mastery = useMemo(() => computeMastery(families || []), [families]);
+  // Seed from every family's cached motifWeights (written when a Masterwork
+  // is finished) so the sigil reflects real identity on first load with zero
+  // Scryfall calls — motifWeightsByFamily (session-local, from a manual
+  // "inspect" click below) is spread second so a fresh inspect can override
+  // a stale cache within the same session.
+  const cachedMotifWeightsByFamily = useMemo(() => {
+    const map: Record<string, Record<string, number>> = {};
+    for (const family of families || []) {
+      if (family.motifWeights) map[family.id] = family.motifWeights;
+    }
+    return map;
+  }, [families]);
   const identity = useMemo(
-    () => computePlayerIdentity({ families: families || [], motifWeightsByFamily }),
-    [families, motifWeightsByFamily],
+    () =>
+      computePlayerIdentity({
+        families: families || [],
+        motifWeightsByFamily: {
+          ...cachedMotifWeightsByFamily,
+          ...motifWeightsByFamily,
+        },
+      }),
+    [families, cachedMotifWeightsByFamily, motifWeightsByFamily],
   );
   const selectedFamily = families?.find((family) => family.id === selectedId) || null;
   const IdentityMotifIcon = identity.dominantMotif ? MOTIF_ICONS[identity.dominantMotif as MotifId] : null;

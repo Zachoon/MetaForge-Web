@@ -5,7 +5,7 @@ import test from "node:test";
 const page = fs.readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
 
 test("finishing a Masterwork is a distinct, reversible action from delete", () => {
-  assert.match(page, /import \{ updateFamily \} from "\.\/deck-bench\.mjs";/);
+  assert.match(page, /import \{ updateFamily, [^}]*\} from "\.\/deck-bench\.mjs";/);
   assert.match(page, /async function setFamilyArchived/);
   assert.match(page, /updateFamily\(\s*\{ schemaVersion: 1, families: data\.bench\?\.families \|\| \[\] \},\s*id,\s*archived \? "archive" : "restore"/);
   // deleteSavedMasterwork must remain a real, separate hard delete.

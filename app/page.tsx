@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { evaluateSimulationGate } from "./goldfish-simulation.mjs";
 import { evaluateMatchupMatrix } from "./matchup-simulation.mjs";
 import { getMetaIntelligence } from "./meta-intelligence.mjs";
@@ -14,7 +14,16 @@ import { learnRevisionPreferences } from "./revision-learning.mjs";
 import { learnFromForgeInterventions } from "./forge-intervention-learning.mjs";
 import { applyControlledSwap, rankExperimentCuts } from "./meta-breaker-experiment.mjs";
 import { forgeNativeMasterwork, forgeImportedMasterwork, parseNativeBlueprintIntent } from "./native-masterwork-engine.mjs";
-import { updateFamily } from "./deck-bench.mjs";
+import { updateFamily, setFamilyMotifWeights } from "./deck-bench.mjs";
+import {
+  resolveDeckStructuralCards,
+  motifWeightsFromStructuralCards,
+} from "./deck-motif-scan.mjs";
+import {
+  computePlayerIdentity,
+  diffPlayerIdentity,
+} from "./player-identity.mjs";
+import { IdentityBadge } from "./identity-badge";
 import { prepareStoryBenchRevisions, serializeStoryBenchRevision, restoreStoryBenchRevisions } from "./story-bench-recommendation-ledger.mjs";
 import { buildExperimentTablets } from "./experiment-tablet.mjs";
 import { resolveMasterworkVisualProfile } from "./masterwork-visual-profile.mjs";
@@ -29,7 +38,7 @@ type Chamber =
   | "workbench";
 
 type MotionMode = "full" | "quiet";
-type ForgeAction = "none" | "forge" | "reveal" | "select" | "refine";
+type ForgeAction = "none" | "forge" | "reveal" | "select" | "refine" | "grow";
 
 const FORGING_STAGES = [
   ["The blueprint is sealed", "Reading the commission marks…", "642"],
@@ -121,6 +130,10 @@ type SavedFamily = {
   // visible, just visually distinct, and always reversible.
   archived?: boolean;
   promotedFingerprint?: string;
+  // Written by refreshMasterworkMotif whenever a Masterwork is finished;
+  // cached so identity reads (here and on /profile) never have to re-run
+  // the Scryfall fetch + classification just to know the dominant motif.
+  motifWeights?: Record<string, number>;
   revisions: Array<{
     deckText: string;
     note: string;
@@ -1244,6 +1257,30 @@ export default function Home() {
   const [commissionSeed, setCommissionSeed] = useState(() => Date.now());
   const [deckId, setDeckId] = useState("");
   const [savedMasterworks, setSavedMasterworks] = useState<SavedFamily[]>([]);
+  // motifWeightsByFamily/playerIdentity are computed straight from the
+  // already-loaded savedMasterworks state — no extra fetch. This mirrors
+  // /profile's own computation exactly, so the two never disagree.
+  const motifWeightsByFamily = useMemo(() => {
+    const map: Record<string, Record<string, number>> = {};
+    for (const family of savedMasterworks) {
+      if (family.motifWeights) map[family.id] = family.motifWeights;
+    }
+    return map;
+  }, [savedMasterworks]);
+  const playerIdentity = useMemo(
+    () =>
+      computePlayerIdentity({
+        families: savedMasterworks,
+        motifWeightsByFamily,
+      }),
+    [savedMasterworks, motifWeightsByFamily],
+  );
+  const previousIdentityRef = useRef<ReturnType<
+    typeof computePlayerIdentity
+  > | null>(null);
+  const [identityCelebration, setIdentityCelebration] = useState<{
+    label: string;
+  } | null>(null);
   const [restoredWork, setRestoredWork] = useState<Masterwork | null>(null);
   const [benchOpen, setBenchOpen] = useState(false);
   const [cardSearch, setCardSearch] = useState("");
@@ -1393,6 +1430,36 @@ export default function Home() {
     setForgeAction(action);
     setActionPulse((current) => current + 1);
   };
+  // Reactive by design: this watches the *computed* identity result rather
+  // than being called from inside each mastery-affecting handler, so it
+  // correctly fires no matter which code path actually crossed a threshold
+  // (including a milestone reached via a plain manual deck edit, which
+  // intentionally doesn't fire its own "grow" pulse — see
+  // applyExperimentTablet/applyMetaBreakerExperiment/recordMatch/
+  // setFamilyArchived).
+  useEffect(() => {
+    const previous = previousIdentityRef.current;
+    previousIdentityRef.current = playerIdentity;
+    if (!previous) return;
+    const diff = diffPlayerIdentity(previous, playerIdentity);
+    if (!diff.changed) return;
+    const label =
+      diff.motifRevealed || diff.motifChanged
+        ? `Identity revealed: ${playerIdentity.dominantMotif}`
+        : diff.newMilestones.length
+          ? diff.newMilestones[0].label
+          : diff.styleChanged
+            ? `Style: ${playerIdentity.style}`
+            : `Temper: ${playerIdentity.temper}`;
+    setIdentityCelebration({ label });
+    wakeForge("grow");
+    const timeout = window.setTimeout(
+      () => setIdentityCelebration(null),
+      2600,
+    );
+    return () => window.clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playerIdentity]);
   const captureForgeAction = (event: React.MouseEvent<HTMLElement>) => {
     const button = (event.target as HTMLElement).closest("button");
     if (!button || button.disabled) return;
@@ -2609,9 +2676,71 @@ export default function Home() {
           baseRevision: data.revision || 0,
         }),
       });
-      if (saved.ok) setSavedMasterworks(bench.families as SavedFamily[]);
+      if (saved.ok) {
+        setSavedMasterworks(bench.families as SavedFamily[]);
+        if (archived) {
+          wakeForge("grow");
+          const family = (bench.families as SavedFamily[]).find(
+            (item) => item.id === id,
+          );
+          const latest = family?.revisions?.at(-1);
+          if (latest) {
+            void refreshMasterworkMotif(
+              id,
+              latest.deckText,
+              family?.commander?.name || "",
+            );
+          }
+        }
+      }
     } catch {
       /* A failed archive/restore leaves the preserved deck untouched. */
+    }
+  }
+
+  // Fire-and-forget: finishing a Masterwork silently reveals its dominant
+  // motif using the same Scryfall-backed read /profile's manual "inspect"
+  // already does, caching the result onto the family so no page ever has to
+  // redo this fetch. Always recomputes on a finish (not only when missing) —
+  // a re-finished deck may have changed since it was last preserved.
+  // nativeMasterworkContext can't be reused here: it's nulled out whenever a
+  // saved deck is reopened, so a freshly-finished deck may not have one.
+  // Best-effort — a network failure or a concurrent edit elsewhere simply
+  // leaves the deck uncached until the next finish, or a manual /profile
+  // inspect.
+  async function refreshMasterworkMotif(
+    id: string,
+    deckText: string,
+    commanderName: string,
+  ) {
+    try {
+      const structuralCards = await resolveDeckStructuralCards({
+        deckText,
+        commanderName,
+      });
+      const motifWeights = motifWeightsFromStructuralCards(structuralCards);
+      if (!Object.keys(motifWeights).length) return;
+      const response = await fetch("/api/account/deck-bench", {
+        cache: "no-store",
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      const bench = setFamilyMotifWeights(
+        { schemaVersion: 1, families: data.bench?.families || [] },
+        id,
+        motifWeights,
+      );
+      const saved = await fetch("/api/account/deck-bench", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bench,
+          baseRevision: data.revision || 0,
+        }),
+      });
+      if (saved.ok) setSavedMasterworks(bench.families as SavedFamily[]);
+    } catch {
+      /* Best-effort cache — see comment above. */
     }
   }
 
@@ -2884,6 +3013,7 @@ export default function Home() {
       "accepted",
       revisions.length + 1,
     );
+    wakeForge("grow");
     preserveDeckEdit(nextDeck, `Meta Breaker experiment: −1 ${experiment.cut}, +1 ${experiment.add.name}`);
     setMetaBreakerExperiments([]);
   }
@@ -2913,6 +3043,7 @@ export default function Home() {
         ? { ...record, wins: record.wins + 1 }
         : { ...record, losses: record.losses + 1 };
     setRecord(next);
+    wakeForge("grow");
     const nextMatches = [
       ...matchLog,
       {
@@ -2992,6 +3123,7 @@ export default function Home() {
       "accepted",
       nextRevisions.length,
     );
+    wakeForge("grow");
     void persistStoryBench(nextRevisions, record);
     window.setTimeout(() => {
       setSwapFlourish(null);
@@ -3084,9 +3216,14 @@ export default function Home() {
           >
             FX
           </button>
-          <a className="quiet-action" href="/profile">
-            Your Forge Mastery
-          </a>
+          <IdentityBadge
+            depth={playerIdentity.depth}
+            totalMilestones={playerIdentity.allMilestones.length}
+            dominantMotif={playerIdentity.dominantMotif}
+            accent={playerIdentity.accent}
+            celebrating={Boolean(identityCelebration)}
+            celebrationLabel={identityCelebration?.label ?? null}
+          />
           <button className="quiet-action" onClick={() => setChamber("entrance")}>
             New commission
           </button>
