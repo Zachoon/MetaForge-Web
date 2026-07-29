@@ -41,6 +41,27 @@ test("holds the list when a swap damages a structural floor", () => {
   assert.match(report.summary, /none cleared every structural gate/i);
 });
 
+const cohesionBase = base.map((row) => ({ ...row, roles: [...row.roles] }));
+cohesionBase.find((row) => row.name === "Answer").mechanics = { produces: ["tokens"], rewards: [] };
+const cohesionRival = cohesionBase.map((row) => ({ ...row, roles: [...row.roles] }));
+cohesionRival.find((row) => row.name === "Slow Threat").quantity = 3;
+cohesionRival.push({ quantity: 1, name: "Token Payoff", roles: ["draw"], cmc: 2, mechanics: { produces: [], rewards: ["tokens"] } });
+
+test("credits a swap that connects to an existing producer with a cohesion gain", () => {
+  const report = runOneSlotCounterfactualLab(
+    { id: "selected", rows: cohesionBase },
+    [{ id: "selected", rows: cohesionBase }, { id: "rival", rows: cohesionRival }],
+    { rivalId: "rival" },
+    options,
+  );
+  assert.equal(report.verdict, "advance");
+  assert.equal(report.experiment.add, "Token Payoff");
+  // Both the new payoff and the pre-existing producer it connects to should
+  // flip to "connected", not just the one card that was added.
+  assert.ok(report.experiment.after.cohesion > report.experiment.before.cohesion);
+  assert.equal(report.experiment.before.cohesion, 0);
+});
+
 test("refuses to invent an experiment without a viable rival", () => {
   const report = runOneSlotCounterfactualLab(selected, [selected], { rivalId: null }, options);
   assert.equal(report.experimentsTested, 0);

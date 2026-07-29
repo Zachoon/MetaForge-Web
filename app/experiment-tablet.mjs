@@ -32,7 +32,8 @@ function pressurePointFor(cardName, causalityReport) {
 function describeBenefit(delta) {
   const roleCoveragePct = (delta.roleCoverage * 100).toFixed(1);
   const curveSign = delta.curveHealth >= 0 ? "+" : "";
-  return `Modeled structural score improves by ${delta.score.toFixed(1)} (role coverage ${delta.roleCoverage >= 0 ? "+" : ""}${roleCoveragePct}%, curve health ${curveSign}${delta.curveHealth.toFixed(1)}).`;
+  const cohesionNote = delta.cohesion > 0 ? ` Deck cohesion improves by ${(delta.cohesion * 100).toFixed(1)}%.` : "";
+  return `Modeled structural score improves by ${delta.score.toFixed(1)} (role coverage ${delta.roleCoverage >= 0 ? "+" : ""}${roleCoveragePct}%, curve health ${curveSign}${delta.curveHealth.toFixed(1)}).${cohesionNote}`;
 }
 
 function describeTradeoff(delta) {

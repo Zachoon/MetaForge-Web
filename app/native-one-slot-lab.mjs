@@ -35,6 +35,31 @@ function copyLimit(format) {
   return ["Commander", "Brawl", "Standard Brawl"].includes(format) ? 1 : 4;
 }
 
+// What fraction of the deck (by card count) mechanically connects to
+// something else in the same list - a producer feeding another card's
+// payoff, or a payoff for something else here produces. Counted once per
+// unique row (not quantity-weighted) so a card isn't credited for
+// "connecting" only to its own other copies, then applied as a share of
+// total card count. Cards built before this field existed carry no
+// `mechanics` and are treated as unconnected rather than crashing.
+function connectivityShare(nonlands, nonlandCount) {
+  const producerCounts = new Map();
+  const payoffCounts = new Map();
+  for (const row of nonlands) {
+    const mechanics = row.mechanics || { produces: [], rewards: [] };
+    for (const signal of mechanics.produces) producerCounts.set(signal, (producerCounts.get(signal) || 0) + 1);
+    for (const signal of mechanics.rewards) payoffCounts.set(signal, (payoffCounts.get(signal) || 0) + 1);
+  }
+  let connectedQuantity = 0;
+  for (const row of nonlands) {
+    const mechanics = row.mechanics || { produces: [], rewards: [] };
+    const rewardConnected = mechanics.rewards.some((signal) => (producerCounts.get(signal) || 0) - (mechanics.produces.includes(signal) ? 1 : 0) > 0);
+    const produceConnected = mechanics.produces.some((signal) => (payoffCounts.get(signal) || 0) - (mechanics.rewards.includes(signal) ? 1 : 0) > 0);
+    if (rewardConnected || produceConnected) connectedQuantity += row.quantity;
+  }
+  return connectedQuantity / nonlandCount;
+}
+
 function evaluate(rows, options) {
   const nonlands = rows.filter((row) => !isLand(row) && !isCommander(row));
   const nonlandCount = Math.max(1, nonlands.reduce((sum, row) => sum + row.quantity, 0));
@@ -50,10 +75,11 @@ function evaluate(rows, options) {
   const curveIdeal = /Aggressive|Tempo/i.test(options.strategy) ? 2.5 : /Control/i.test(options.strategy) ? 3.3 : 3;
   const curveHealth = clamp(100 - Math.abs(averageCmc - curveIdeal) * 24);
   const resilienceDensity = (counts.interaction + counts.protection + counts.recursion) / nonlandCount;
-  const score = roleCoverage * 50 + multiRoleDensity * 18 + curveHealth * 0.2 + clamp(resilienceDensity * 100) * 0.12;
+  const cohesion = connectivityShare(nonlands, nonlandCount);
+  const score = roleCoverage * 50 + multiRoleDensity * 18 + curveHealth * 0.2 + clamp(resilienceDensity * 100) * 0.12 + clamp(cohesion * 100) * 0.1;
   return {
     score: round(score), roleCoverage: round(roleCoverage), multiRoleDensity: round(multiRoleDensity),
-    averageCmc: round(averageCmc, 2), curveHealth: round(curveHealth), resilienceDensity: round(resilienceDensity), roles: counts,
+    averageCmc: round(averageCmc, 2), curveHealth: round(curveHealth), resilienceDensity: round(resilienceDensity), cohesion: round(cohesion), roles: counts,
   };
 }
 
@@ -76,6 +102,7 @@ function compare(before, after) {
     multiRoleDensity: round(after.multiRoleDensity - before.multiRoleDensity),
     curveHealth: round(after.curveHealth - before.curveHealth),
     resilienceDensity: round(after.resilienceDensity - before.resilienceDensity),
+    cohesion: round(after.cohesion - before.cohesion),
     roles: roleDeltas,
   };
 }
@@ -90,6 +117,9 @@ function gateSwap(rows, before, after, delta, options) {
   if (delta.roleCoverage < -0.005) reasons.push("The swap reduces required-role coverage.");
   if (delta.curveHealth < -2) reasons.push("The swap materially worsens curve health.");
   if (delta.resilienceDensity < -0.015) reasons.push("The swap materially reduces interaction, protection, or recursion density.");
+  // Looser than the established floors above - cohesion is a newer signal
+  // and a swap shouldn't get blocked over a small, ordinary shift in it.
+  if (delta.cohesion < -0.03) reasons.push("The swap materially reduces how connected the deck's cards are to each other.");
   // score's components (roleCoverage, multiRoleDensity, resilienceDensity) are
   // all normalized by nonland count, so one card moves the needle far less in
   // a ~90-nonland Commander deck than a ~36-nonland 60-card deck. Scale the

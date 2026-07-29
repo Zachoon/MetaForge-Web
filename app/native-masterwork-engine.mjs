@@ -544,6 +544,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       tribalSupport: candidate.tribalSupport,
       identityHits: candidate.identityHits,
       blueprintRoleHits: candidate.blueprintRoleHits,
+      mechanics: candidate.mechanics,
     });
     selectedNames.add(normalized(candidate.card.name));
     for (const role of candidate.roles) roleCounts.set(role, (roleCounts.get(role) || 0) + quantity);
