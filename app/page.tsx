@@ -239,6 +239,261 @@ const GlossaryText = ({ text }: { text: string }) => (
     })}
   </>
 );
+
+const ForgeRune = ({ motionMode }: { motionMode: MotionMode }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const hoverPropertyRef = useRef<{ value: boolean } | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    let disposed = false;
+    let rive: {
+      cleanup: () => void;
+      resizeDrawingSurfaceToCanvas: () => void;
+      viewModelInstance: { boolean: (name: string) => { value: boolean } | null } | null;
+    } | null = null;
+    let resizeObserver: ResizeObserver | null = null;
+    let hovering = false;
+
+    const setHovering = (value: boolean) => {
+      const nextValue = motionMode === "full" && value;
+      if (hovering === nextValue) return;
+      hovering = nextValue;
+      if (hoverPropertyRef.current) hoverPropertyRef.current.value = nextValue;
+    };
+
+    const trackPointer = (event: PointerEvent) => {
+      const bounds = canvas.getBoundingClientRect();
+      const radius = Math.min(bounds.width, bounds.height) / 2;
+      const centerX = bounds.left + bounds.width / 2;
+      const centerY = bounds.top + bounds.height / 2;
+      setHovering(Math.hypot(event.clientX - centerX, event.clientY - centerY) <= radius);
+    };
+
+    const clearHover = () => setHovering(false);
+
+    window.addEventListener("pointermove", trackPointer, { passive: true });
+    window.addEventListener("blur", clearHover);
+    document.addEventListener("mouseleave", clearHover);
+
+    void import("@rive-app/canvas").then(({ Alignment, Fit, Layout, Rive }) => {
+      if (disposed) return;
+
+      rive = new Rive({
+        src: "/assets/forge/animations/metaforge-rune.riv",
+        canvas,
+        stateMachines: "State Machine 1",
+        autoBind: true,
+        autoplay: motionMode === "full",
+        layout: new Layout({ fit: Fit.Contain, alignment: Alignment.Center }),
+        onLoad: () => {
+          if (disposed) return;
+          rive?.resizeDrawingSurfaceToCanvas();
+          hoverPropertyRef.current = rive?.viewModelInstance?.boolean("isHovering") ?? null;
+          setLoaded(true);
+        },
+      });
+
+      resizeObserver = new ResizeObserver(() => rive?.resizeDrawingSurfaceToCanvas());
+      resizeObserver.observe(canvas);
+    });
+
+    return () => {
+      disposed = true;
+      clearHover();
+      hoverPropertyRef.current = null;
+      window.removeEventListener("pointermove", trackPointer);
+      window.removeEventListener("blur", clearHover);
+      document.removeEventListener("mouseleave", clearHover);
+      resizeObserver?.disconnect();
+      rive?.cleanup();
+    };
+  }, [motionMode]);
+
+  return (
+    <>
+      <canvas
+        ref={canvasRef}
+        className="forge-rive-rune"
+        aria-hidden="true"
+      />
+      <i className={loaded ? "rive-loaded" : undefined}>ᛟ</i>
+    </>
+  );
+};
+
+const ForgeCommissionCard = ({
+  eyebrow,
+  title,
+  description,
+  cta,
+  tone,
+  motionMode,
+  onActivate,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  cta: string;
+  tone: "teal" | "ember";
+  motionMode: MotionMode;
+  onActivate: () => void;
+}) => {
+  const cardRef = useRef<HTMLButtonElement>(null);
+  const sheenRef = useRef<HTMLSpanElement>(null);
+  const emberRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const card = cardRef.current;
+    const sheen = sheenRef.current;
+    const ember = emberRef.current;
+    if (!card || !sheen || !ember || motionMode !== "full") return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    let disposed = false;
+    let removeListeners: (() => void) | undefined;
+
+    void import("gsap").then(({ gsap }) => {
+      if (disposed) return;
+
+      gsap.set(card, { transformPerspective: 850, transformOrigin: "50% 50%" });
+      gsap.set(sheen, { xPercent: -85, opacity: 0 });
+      gsap.set(ember, { xPercent: -50, yPercent: -50, opacity: 0 });
+
+      const move = (event: PointerEvent) => {
+        const bounds = card.getBoundingClientRect();
+        const x = event.clientX - bounds.left;
+        const y = event.clientY - bounds.top;
+        const horizontal = x / bounds.width - 0.5;
+        const vertical = y / bounds.height - 0.5;
+
+        gsap.to(card, {
+          rotationY: horizontal * 8,
+          rotationX: vertical * -6,
+          x: horizontal * 3,
+          y: -5 + vertical * 2,
+          duration: 0.28,
+          ease: "power2.out",
+          overwrite: "auto",
+        });
+        gsap.to(sheen, {
+          xPercent: horizontal * 65,
+          opacity: 0.72,
+          duration: 0.25,
+          overwrite: "auto",
+        });
+        gsap.to(ember, {
+          x,
+          y,
+          opacity: 0.9,
+          scale: 1,
+          duration: 0.18,
+          overwrite: "auto",
+        });
+      };
+
+      const enter = () => {
+        gsap.to(card, {
+          y: -5,
+          borderColor: tone === "ember" ? "#f49a45" : "#6dddf0",
+          boxShadow:
+            tone === "ember"
+              ? "0 24px 65px #000c, inset 0 0 58px #d66f2038"
+              : "0 24px 65px #000c, inset 0 0 58px #2acde02b",
+          duration: 0.28,
+          ease: "power2.out",
+        });
+      };
+
+      const leave = () => {
+        gsap.to(card, {
+          rotationX: 0,
+          rotationY: 0,
+          x: 0,
+          y: 0,
+          scale: 1,
+          borderColor: "#3c4743",
+          boxShadow: "0 0 0 transparent, inset 0 0 0 transparent",
+          duration: 0.48,
+          ease: "power3.out",
+          overwrite: "auto",
+        });
+        gsap.to(sheen, { opacity: 0, xPercent: -85, duration: 0.35, overwrite: "auto" });
+        gsap.to(ember, { opacity: 0, scale: 0.35, duration: 0.3, overwrite: "auto" });
+      };
+
+      const press = () => gsap.to(card, { scale: 0.975, duration: 0.08, overwrite: "auto" });
+      const release = () => gsap.to(card, { scale: 1, duration: 0.2, ease: "back.out(2)" });
+      let active = false;
+
+      const track = (event: PointerEvent) => {
+        const bounds = card.getBoundingClientRect();
+        const inside =
+          event.clientX >= bounds.left &&
+          event.clientX <= bounds.right &&
+          event.clientY >= bounds.top &&
+          event.clientY <= bounds.bottom;
+
+        if (!inside) {
+          if (active) {
+            active = false;
+            leave();
+          }
+          return;
+        }
+
+        if (!active) {
+          active = true;
+          enter();
+        }
+        move(event);
+      };
+
+      const clear = () => {
+        if (!active) return;
+        active = false;
+        leave();
+      };
+
+      window.addEventListener("pointermove", track, { passive: true });
+      window.addEventListener("blur", clear);
+      document.addEventListener("mouseleave", clear);
+      card.addEventListener("pointerdown", press);
+      card.addEventListener("pointerup", release);
+      card.addEventListener("pointercancel", clear);
+
+      removeListeners = () => {
+        window.removeEventListener("pointermove", track);
+        window.removeEventListener("blur", clear);
+        document.removeEventListener("mouseleave", clear);
+        card.removeEventListener("pointerdown", press);
+        card.removeEventListener("pointerup", release);
+        card.removeEventListener("pointercancel", clear);
+        gsap.killTweensOf([card, sheen, ember]);
+      };
+    });
+
+    return () => {
+      disposed = true;
+      removeListeners?.();
+    };
+  }, [motionMode, tone]);
+
+  return (
+    <button ref={cardRef} className={`forge-commission-card ${tone}`} onClick={onActivate}>
+      <span ref={sheenRef} className="forge-card-sheen" aria-hidden="true" />
+      <span ref={emberRef} className="forge-card-ember" aria-hidden="true" />
+      <small>{eyebrow}</small>
+      <strong>{title}</strong>
+      <span className="forge-card-description">{description}</span>
+      <b>{cta}</b>
+    </button>
+  );
+};
+
 const colorIdentityName = (colors: string[]) => {
   const order = "WUBRG";
   const key = [...colors].sort((a, b) => order.indexOf(a) - order.indexOf(b)).join("");
@@ -271,6 +526,20 @@ const colorIdentityName = (colors: string[]) => {
     URG: "Temur",
   };
   return names[key] || `${key} color identity`;
+};
+const NOTE_COLOR_NAMES: Record<string, string[]> = {
+  white: ["W"], blue: ["U"], black: ["B"], red: ["R"], green: ["G"],
+  azorius: ["W", "U"], dimir: ["U", "B"], rakdos: ["B", "R"], gruul: ["R", "G"], selesnya: ["G", "W"],
+  orzhov: ["W", "B"], izzet: ["U", "R"], golgari: ["B", "G"], boros: ["R", "W"], simic: ["G", "U"],
+  bant: ["W", "U", "G"], esper: ["W", "U", "B"], grixis: ["U", "B", "R"], jund: ["B", "R", "G"], naya: ["R", "G", "W"],
+  abzan: ["W", "B", "G"], jeskai: ["U", "R", "W"], sultai: ["B", "G", "U"], mardu: ["R", "W", "B"], temur: ["G", "U", "R"],
+};
+const colorsFromNote = (note = ""): string[] => {
+  for (const word of note.toLowerCase().match(/[a-z]+/g) || []) {
+    const colors = NOTE_COLOR_NAMES[word];
+    if (colors) return colors;
+  }
+  return [];
 };
 
 const MASTERWORK_STATS = [
@@ -617,6 +886,8 @@ const hashText = (value: string) =>
 const masterworkIdentityWord = (commander = "", note = "") => {
   const promise = parseNativeBlueprintIntent({ note }).tribalTypes[0];
   if (promise) return promise.charAt(0).toUpperCase() + promise.slice(1);
+  const colors = colorsFromNote(note);
+  if (colors.length) return colorIdentityName(colors);
   return commander.split(/[ ,/]+/)[0] || "Forge";
 };
 const createMasterworks = (seed: number, commander = "", note = ""): Masterwork[] => {
@@ -735,11 +1006,14 @@ const loadNativeForgePool = async (
     );
     if (anchorResponse.ok) anchor = await anchorResponse.json();
   }
+  const noteColors = colorsFromNote(note);
   const colors = commander?.colors?.length
     ? commander.colors
-    : anchor?.color_identity?.length
-      ? anchor.color_identity
-      : [];
+    : noteColors.length
+      ? noteColors
+      : anchor?.color_identity?.length
+        ? anchor.color_identity
+        : [];
   const colorQuery = colors.length
     ? ` id<=${colors.join("").toLowerCase()}`
     : commander
@@ -796,7 +1070,11 @@ const loadNativeForgePool = async (
     for (const rawCard of result.data || []) addRawCard(rawCard);
   }
 
-  if (anchor) {
+  const anchorFitsColors =
+    !anchor ||
+    !colors.length ||
+    (anchor.color_identity || []).every((color: string) => colors.includes(color));
+  if (anchor && anchorFitsColors) {
     const fact = nativeCardFact(anchor);
     if (!seen.has(cardFactKey(fact.name))) cards.unshift(fact);
   }
@@ -3263,26 +3541,30 @@ export default function Home() {
               design or bring an existing build to the anvil for refinement.
             </p>
             <div className="entrance-actions">
-              <button
-                onClick={() => {
+              <ForgeCommissionCard
+                eyebrow="COMMISSION I"
+                title="Forge a new deck"
+                description="Shape a masterwork from a fresh blueprint."
+                cta="Enter the drafting chamber →"
+                tone="ember"
+                motionMode={motionMode}
+                onActivate={() => {
                   // A blank commission must actually be blank — a decklist
                   // pasted in an earlier refinement session should never
                   // silently carry over and skip the three-reveal here.
                   setDeck("");
                   setChamber("commission");
                 }}
-              >
-                <small>COMMISSION I</small>
-                <strong>Forge a new deck</strong>
-                <span>Shape a masterwork from a fresh blueprint.</span>
-                <b>Enter the drafting chamber →</b>
-              </button>
-              <button onClick={() => setChamber("refine")}>
-                <small>COMMISSION II</small>
-                <strong>Refine a current build</strong>
-                <span>Bring an existing deck to the anvil.</span>
-                <b>Enter the refinement chamber →</b>
-              </button>
+              />
+              <ForgeCommissionCard
+                eyebrow="COMMISSION II"
+                title="Refine a current build"
+                description="Bring an existing deck to the anvil."
+                cta="Enter the refinement chamber →"
+                tone="teal"
+                motionMode={motionMode}
+                onActivate={() => setChamber("refine")}
+              />
             </div>
           </div>
           <div className="entrance-visual" aria-label="The Great Forge, ever-burning">
@@ -3292,7 +3574,7 @@ export default function Home() {
               ))}
             </div>
             <div className="forge-sigil">
-              <i>ᛟ</i>
+              <ForgeRune motionMode={motionMode} />
               <span />
               <b />
             </div>

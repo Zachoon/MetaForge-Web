@@ -98,6 +98,18 @@
       "height": 854,
       "load": "scene",
       "fallback": "Last frame (hearth-13.webp) shown static for prefers-reduced-motion and quiet-motion mode"
+    },
+    {
+      "id": "mf-rive-rune-01",
+      "role": "entrance-interactive-rune",
+      "path": "/assets/forge/animations/metaforge-rune.riv",
+      "sourceRelativePath": "Rive Animations/metaforge-rune.riv",
+      "license": "owner-created",
+      "licenseEvidence": "Created and exported by the project owner in Rive on 2026-07-27.",
+      "status": "approved",
+      "load": "entrance",
+      "fallback": "Static CSS rune glyph; state-machine animation is paused in quiet-motion mode",
+      "notes": "Owner-created Rive medallion with embedded artwork. State Machine 1 maps the website cursor to the isHovering Boolean in full-motion mode."
     }
   ]
 }
