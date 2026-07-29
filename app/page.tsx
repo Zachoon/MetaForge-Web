@@ -12,7 +12,7 @@ import {
 } from "./forge-structural-pipeline.mjs";
 import { learnRevisionPreferences } from "./revision-learning.mjs";
 import { learnFromForgeInterventions } from "./forge-intervention-learning.mjs";
-import { applyControlledSwap, rankExperimentCuts } from "./meta-breaker-experiment.mjs";
+import { applyControlledSwap, experimentAdditionSynergy, rankExperimentAdditions, rankExperimentCuts } from "./meta-breaker-experiment.mjs";
 import { forgeNativeMasterwork, forgeImportedMasterwork, parseNativeBlueprintIntent } from "./native-masterwork-engine.mjs";
 import { updateFamily, setFamilyMotifWeights } from "./deck-bench.mjs";
 import {
@@ -3418,10 +3418,17 @@ export default function Home() {
         commanderName: chosenPreview.card,
         roleOf: (name: string) => cardRole(cardFacts[cardFactKey(name)]),
       }).slice(0, 3);
-      const experiments = legal.slice(0, 3).map((card, index) => {
+      // Scryfall's own order is popularity only — it has no idea what's
+      // actually in this deck. Re-rank by how well each legal candidate
+      // mechanically connects to the cards already here before taking the
+      // top 3, so a one-card test proposes something that plugs into the
+      // deck's existing plan rather than just whatever is broadly popular.
+      const ranked = rankExperimentAdditions(legal, interactionGraph).slice(0, 3);
+      const experiments = ranked.map((card, index) => {
         const evidence = edhrecEvidence?.cards.find((signal) => cardFactKey(signal.name) === cardFactKey(card.name));
         const cut = cuts[index % Math.max(1, cuts.length)]?.name || "Unresolved flex slot";
         const cutLinks = interactionGraph.edges.filter((edge) => edge.from === cut || edge.to === cut).length;
+        const addLinks = experimentAdditionSynergy(card, interactionGraph);
         const oracle = String(card.oracle_text || (card.card_faces || []).map((face: any) => face.oracle_text || "").join(" "));
         const addJob = /gain life|lifelink/i.test(oracle)
           ? "help the deck recover life"
@@ -3434,10 +3441,13 @@ export default function Home() {
                 : "test a different role in the weakest matchup";
         const weakest = simulationDossier?.matrix.weakest?.opponent || "modeled matchup";
         const baseline = Math.round((simulationDossier?.matrix.weakest?.scenarioPassRate || 0) * 100);
+        const connectionNote = addLinks
+          ? ` ${card.name} also mechanically connects to ${addLinks} card${addLinks === 1 ? "" : "s"} already in the deck.`
+          : "";
         return {
           cut,
           add: { name: card.name, typeLine: card.type_line || "Card", image: card.image_uris?.small || card.card_faces?.[0]?.image_uris?.small || cardImage(card.name) },
-          reason: `${cut} has ${cutLinks} modeled deck connection${cutLinks === 1 ? "" : "s"}, making it a lower-risk card to challenge. ${card.name}'s verified text may ${addJob}.`,
+          reason: `${cut} has ${cutLinks} modeled deck connection${cutLinks === 1 ? "" : "s"}, making it a lower-risk card to challenge. ${card.name}'s verified text may ${addJob}.${connectionNote}`,
           expectedChange: `Keep the deck at the same size while testing whether ${card.name} improves the ${weakest} pressure point.`,
           measurement: `Rerun the same opening-hand and ${weakest} trials. Advance only if the ${baseline}% baseline improves without damaging the deck's central plan.`,
           confidence: evidence ? `${evidence.confidence} commander signal · score ${Math.round((evidence.evidenceScore || 0) * 100)}/100` : "legal card discovery · mechanical fit still requires testing",
