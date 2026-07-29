@@ -1,0 +1,24 @@
+# Normalize text files to LF in the repository and on checkout. core.autocrlf
+# is unset/false here, so nothing was normalizing line endings on its own —
+# different editors and tools writing to the same files (CRLF from Windows
+# editors, LF from other tooling) had been accumulating as mixed endings
+# inside individual committed files, which turns even small logical diffs
+# into noisy whole-file diffs. This only affects files as they're next
+# written through git (add/commit); it does not retroactively touch content
+# already in history.
+* text=auto eol=lf
+
+# Known binary types: never attempt text conversion on these regardless of
+# git's own content-sniffing.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.riv binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.eot binary
