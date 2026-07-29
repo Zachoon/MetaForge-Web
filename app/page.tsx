@@ -1757,6 +1757,46 @@ export default function Home() {
     () => ((stage + 1) / FORGING_STAGES.length) * 100,
     [stage],
   );
+
+  useEffect(() => {
+    const root = document.querySelector<HTMLElement>(".great-forge");
+    if (!root) return;
+
+    let frame = 0;
+    const trackPointer = (event: PointerEvent) => {
+      if (motionMode === "quiet") return;
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        root.style.setProperty("--mf-pointer-x", `${event.clientX}px`);
+        root.style.setProperty("--mf-pointer-y", `${event.clientY}px`);
+      });
+    };
+
+    const revealTargets = Array.from(
+      root.querySelectorAll<HTMLElement>(
+        ".entrance-copy, .entrance-visual, .masterwork-history, .commission-panel, .forging-ceremony > *, .masterwork-reveal > header, .masterwork-reveal > section, .masterwork-reveal > div",
+      ),
+    );
+    revealTargets.forEach((target, index) => {
+      target.classList.add("mf-living-reveal");
+      target.style.setProperty("--mf-reveal-delay", `${Math.min(index * 70, 280)}ms`);
+    });
+    const revealFrame = window.requestAnimationFrame(() => {
+      revealTargets.forEach((target) => target.classList.add("is-visible"));
+    });
+
+    window.addEventListener("pointermove", trackPointer, { passive: true });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.cancelAnimationFrame(revealFrame);
+      window.removeEventListener("pointermove", trackPointer);
+      revealTargets.forEach((target) => {
+        target.classList.remove("mf-living-reveal", "is-visible");
+        target.style.removeProperty("--mf-reveal-delay");
+      });
+    };
+  }, [chamber, stage, motionMode]);
+
   const awaken = () => {
     setCommissionSeed(Date.now());
     setStage(0);
