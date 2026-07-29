@@ -464,7 +464,35 @@ function roleTargets(format, strategy) {
   };
 }
 
-function chooseSpells(scored, slots, singleton, targets, blueprint, preset = []) {
+// A single "ideal CMC" scored per card (below, in scoreCard) pulls every
+// candidate toward the same point - which fights against a deck actually
+// having a curve, since a real curve wants a spread of costs, not every
+// card sitting near the average. This is a real distribution of buckets
+// instead, scaled to how many spell slots this deck actually has (so a
+// 100-card Commander deck gets room for a taller top end than a 60-card
+// Standard deck), used as a fill-time nudge rather than replacing the
+// existing per-card pull, which still gives the mana curve a baseline
+// even before enough of the deck is built to make bucket targets useful.
+const CURVE_SHAPES = Object.freeze({
+  aggro: { "1": 0.22, "2": 0.32, "3": 0.24, "4": 0.14, "5+": 0.08 },
+  control: { "1": 0.06, "2": 0.16, "3": 0.22, "4": 0.24, "5+": 0.32 },
+  default: { "1": 0.12, "2": 0.24, "3": 0.26, "4": 0.20, "5+": 0.18 },
+});
+function curveBucket(cmc) {
+  if (cmc <= 1) return "1";
+  if (cmc >= 5) return "5+";
+  return String(Math.round(cmc));
+}
+export function curveTargets(strategy, slots) {
+  const shape = /Aggressive|Tempo/i.test(strategy)
+    ? CURVE_SHAPES.aggro
+    : /Control/i.test(strategy)
+      ? CURVE_SHAPES.control
+      : CURVE_SHAPES.default;
+  return Object.fromEntries(Object.entries(shape).map(([bucket, ratio]) => [bucket, Math.round(ratio * slots)]));
+}
+
+function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [], curveGoals = {}) {
   const selected = [];
   const selectedNames = new Set();
   const roleCounts = new Map();
@@ -475,12 +503,17 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [])
   // existed somewhere in the candidate pool.
   const producedSoFar = new Map();
   const rewardedSoFar = new Map();
+  const cmcCounts = new Map();
   const copies = singleton ? 1 : 4;
   let remaining = slots;
 
   const trackMechanics = (mechanics) => {
     for (const signal of mechanics?.produces || []) producedSoFar.set(signal, (producedSoFar.get(signal) || 0) + 1);
     for (const signal of mechanics?.rewards || []) rewardedSoFar.set(signal, (rewardedSoFar.get(signal) || 0) + 1);
+  };
+  const trackCmc = (cmc, quantity) => {
+    const bucket = curveBucket(cmc);
+    cmcCounts.set(bucket, (cmcCounts.get(bucket) || 0) + quantity);
   };
 
   // Preset rows (e.g. a player's own imported decklist) are reserved first,
@@ -494,6 +527,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [])
     selectedNames.add(normalized(row.name));
     for (const role of row.roles) roleCounts.set(role, (roleCounts.get(role) || 0) + quantity);
     trackMechanics(row.mechanics);
+    trackCmc(row.cmc, quantity);
     remaining -= quantity;
   }
 
@@ -514,6 +548,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [])
     selectedNames.add(normalized(candidate.card.name));
     for (const role of candidate.roles) roleCounts.set(role, (roleCounts.get(role) || 0) + quantity);
     trackMechanics(candidate.mechanics);
+    trackCmc(candidate.cmc, quantity);
     remaining -= quantity;
     return true;
   };
@@ -551,7 +586,14 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [])
       // signal so one prolific pairing can't dominate every remaining pick.
       const inDeckSynergy = entry.mechanics.rewards.reduce((sum, signal) => sum + Math.min(4, producedSoFar.get(signal) || 0), 0)
         + entry.mechanics.produces.reduce((sum, signal) => sum + Math.min(4, rewardedSoFar.get(signal) || 0), 0);
-      const adjusted = entry.score + deficit + inDeckSynergy * 2;
+      // Same fair-fill idea as the role deficit above, applied to mana cost:
+      // a bucket already past its share stops competing for more (but never
+      // goes punitive the way the role deficit can — a spread that's merely
+      // a little heavy somewhere shouldn't get treated like a broken promise
+      // the way an excluded role would).
+      const bucket = curveBucket(entry.cmc);
+      const curveDeficit = Math.max(0, (curveGoals[bucket] || 0) - (cmcCounts.get(bucket) || 0)) * 3;
+      const adjusted = entry.score + deficit + inDeckSynergy * 2 + curveDeficit;
       if (adjusted > bestAdjusted || (adjusted === bestAdjusted && candidate && entry.card.name.localeCompare(candidate.card.name) < 0)) {
         candidate = entry;
         bestAdjusted = adjusted;
@@ -685,7 +727,8 @@ function buildCandidate(input, variant, analysis) {
   const spells = analysis.spells;
   const lands = analysis.lands;
   const scored = spells.map((entry) => scoreCard(entry, input, variant, analysis.context));
-  const { selected, roleCounts } = chooseSpells(scored, target - landSlots - commanderSlots, singleton, roleTargets(input.format, input.strategy), analysis.context.blueprint);
+  const spellSlots = target - landSlots - commanderSlots;
+  const { selected, roleCounts } = chooseSpells(scored, spellSlots, singleton, roleTargets(input.format, input.strategy), analysis.context.blueprint, [], curveTargets(input.strategy, spellSlots));
   const mana = buildManaBase(input, landSlots, lands, variant);
   const rows = [
     ...(input.commander ? [{ quantity: 1, name: input.commander.name, roles: ["commander"], score: 100, cmc: manaValueFromCost(input.commander.manaCost, input.commander.cmc) }] : []),
@@ -758,7 +801,8 @@ function buildImportedCandidate(input, analysis) {
   // which cards fill any slots the player's list didn't already occupy.
   const variant = { id: "imported", label: "Your List", synergy: 1, resilience: 1, curve: 1 };
   const scored = analysis.spells.map((entry) => scoreCard(entry, input, variant, analysis.context));
-  const { selected, roleCounts } = chooseSpells(scored, target - landSlots - commanderSlots, singleton, roleTargets(input.format, input.strategy), analysis.context.blueprint, presetSpellRows);
+  const spellSlots = target - landSlots - commanderSlots;
+  const { selected, roleCounts } = chooseSpells(scored, spellSlots, singleton, roleTargets(input.format, input.strategy), analysis.context.blueprint, presetSpellRows, curveTargets(input.strategy, spellSlots));
   const mana = buildManaBase(input, landSlots, analysis.lands, variant, presetLandRows);
   const rows = [
     ...(input.commander ? [{ quantity: 1, name: input.commander.name, roles: ["commander"], score: 100, cmc: manaValueFromCost(input.commander.manaCost, input.commander.cmc) }] : []),

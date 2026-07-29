@@ -1,6 +1,6 @@
 ﻿import assert from "node:assert/strict";
 import test from "node:test";
-import { classifyNativeCard, fieldCounterRolesFor, forgeNativeMasterwork, parseNativeBlueprintIntent, poolMechanicalSignals, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
+import { classifyNativeCard, curveTargets, fieldCounterRolesFor, forgeNativeMasterwork, parseNativeBlueprintIntent, poolMechanicalSignals, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
 
 const card = (name, oracleText, typeLine = "Creature — Test", manaCost = "{2}{U}", colorIdentity = ["U"]) => ({ name, oracleText, typeLine, manaCost, colorIdentity });
 const pool = [
@@ -251,6 +251,42 @@ test("prefers a connected producer/payoff pair over blank filler once slots are 
   assert.ok(names.has("Chain Maker"));
   assert.ok(names.has("Chain Reward"));
   assert.equal([...names].filter((name) => name.startsWith("Vanilla")).length, 0);
+});
+
+test("shapes curve targets by strategy and scales them to the deck's own spell count", () => {
+  const aggro = curveTargets("Aggressive pressure", 36);
+  const control = curveTargets("Reactive control", 36);
+  assert.ok(aggro["1"] + aggro["2"] > control["1"] + control["2"]);
+  assert.ok(control["4"] + control["5+"] > aggro["4"] + aggro["5+"]);
+  const smaller = curveTargets("Balanced midrange", 36);
+  const larger = curveTargets("Balanced midrange", 63);
+  assert.ok(larger["5+"] > smaller["5+"]);
+});
+
+test("spreads picks across the mana curve instead of collapsing to one cost", () => {
+  // Ten unique cards at each cost 1-6, mixing four different roles evenly so
+  // nothing about role weighting favors one cost over another - only curve
+  // targeting explains the deck not clustering around a single value.
+  const texts = [
+    "Add one mana. Create a Treasure token.",
+    "Draw a card. Scry 1.",
+    "Exile target nonland permanent.",
+    "Target creature gains hexproof and indestructible until end of turn.",
+  ];
+  const curveCard = (name, cmc, text) => card(name, text, text.includes("mana") ? "Artifact" : "Creature — Test", `{${cmc}}`);
+  const spread = [];
+  for (let cmc = 1; cmc <= 6; cmc += 1) {
+    for (let i = 0; i < 10; i += 1) spread.push(curveCard(`CMC${cmc}_${i}`, cmc, texts[i % texts.length]));
+  }
+  const lands = Array.from({ length: 10 }, (_, i) => card(`Island Utility ${i}`, "{T}: Add {U}.", "Land", "", ["U"]));
+  const report = forgeNativeMasterwork({ format: "Standard", target: 60, strategy: "Balanced midrange", seed: 5, colors: ["U"], cards: [...spread, ...lands] });
+  const buckets = { "1": 0, "2": 0, "3": 0, "4": 0, "5+": 0 };
+  for (const row of report.selected.rows) {
+    if (row.roles.includes("land")) continue;
+    buckets[row.cmc <= 1 ? "1" : row.cmc >= 5 ? "5+" : String(row.cmc)] += row.quantity;
+  }
+  assert.ok(Object.values(buckets).every((count) => count > 0));
+  assert.ok(Math.max(...Object.values(buckets)) <= 16);
 });
 
 test("keeps singleton nonbasic spells at one copy", () => {
