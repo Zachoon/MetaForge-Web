@@ -325,6 +325,51 @@ const ForgeRune = ({ motionMode }: { motionMode: MotionMode }) => {
   );
 };
 
+const ForgeConfirmationSeal = ({ motionMode }: { motionMode: MotionMode }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    let disposed = false;
+    let rive: { cleanup: () => void; resizeDrawingSurfaceToCanvas: () => void } | null = null;
+    let resizeObserver: ResizeObserver | null = null;
+
+    void import("@rive-app/canvas").then(({ Alignment, Fit, Layout, Rive }) => {
+      if (disposed) return;
+      rive = new Rive({
+        src: "/assets/forge/animations/forge-confirmation-seal.riv",
+        canvas,
+        animations: "Confirm",
+        autoplay: motionMode === "full",
+        layout: new Layout({ fit: Fit.Contain, alignment: Alignment.Center }),
+        onLoad: () => {
+          if (disposed) return;
+          rive?.resizeDrawingSurfaceToCanvas();
+          setLoaded(true);
+        },
+      });
+      resizeObserver = new ResizeObserver(() => rive?.resizeDrawingSurfaceToCanvas());
+      resizeObserver.observe(canvas);
+    });
+
+    return () => {
+      disposed = true;
+      resizeObserver?.disconnect();
+      rive?.cleanup();
+    };
+  }, [motionMode]);
+
+  return (
+    <div className={`forge-confirmation-seal${loaded ? " is-loaded" : ""}`} aria-hidden="true">
+      <canvas ref={canvasRef} />
+      <span>ᛟ</span>
+    </div>
+  );
+};
+
 const ForgeCommissionCard = ({
   eyebrow,
   title,
@@ -3884,11 +3929,15 @@ export default function Home() {
 
       {chamber === "forging" && (
         <section className="forging-ceremony" aria-live="polite">
-          <div className="furnace-core" aria-hidden="true">
-            <div>
-              <span>ᛟ</span>
+          {stage === 0 ? (
+            <ForgeConfirmationSeal motionMode={motionMode} />
+          ) : (
+            <div className="furnace-core" aria-hidden="true">
+              <div>
+                <span>ᛟ</span>
+              </div>
             </div>
-          </div>
+          )}
           <div className="ceremony-copy">
             <span className="forge-eyebrow">
               <i /> COMMISSION ACCEPTED
