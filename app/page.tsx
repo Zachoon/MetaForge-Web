@@ -370,6 +370,40 @@ const ForgeConfirmationSeal = ({ motionMode }: { motionMode: MotionMode }) => {
   );
 };
 
+const CEREMONY_MOTION_ASSETS = [
+  null,
+  "furnace-analysis",
+  "archive-confirmation",
+  "blueprint-reveal",
+  "warning-fracture",
+  "anvil-impact",
+  "recommendation-reveal",
+  "masterwork-unlock",
+] as const;
+
+const ForgeCeremonyMotion = ({
+  stage,
+  motionMode,
+}: {
+  stage: number;
+  motionMode: MotionMode;
+}) => {
+  if (stage === 0) return <ForgeConfirmationSeal motionMode={motionMode} />;
+  const asset = CEREMONY_MOTION_ASSETS[stage] ?? "furnace-analysis";
+  return (
+    <div
+      key={`${asset}-${stage}`}
+      className={`forge-ceremony-motion forge-ceremony-motion--${asset}${motionMode === "quiet" ? " is-quiet" : ""}`}
+      aria-hidden="true"
+    >
+      <span className="forge-motion-aura" />
+      <img src={`/assets/forge/animations/${asset}.png`} alt="" />
+      <span className="forge-motion-scan" />
+      <span className="forge-motion-embers"><i /><i /><i /><i /></span>
+    </div>
+  );
+};
+
 const ForgeCommissionCard = ({
   eyebrow,
   title,
@@ -3929,15 +3963,7 @@ export default function Home() {
 
       {chamber === "forging" && (
         <section className="forging-ceremony" aria-live="polite">
-          {stage === 0 ? (
-            <ForgeConfirmationSeal motionMode={motionMode} />
-          ) : (
-            <div className="furnace-core" aria-hidden="true">
-              <div>
-                <span>ᛟ</span>
-              </div>
-            </div>
-          )}
+          <ForgeCeremonyMotion stage={stage} motionMode={motionMode} />
           <div className="ceremony-copy">
             <span className="forge-eyebrow">
               <i /> COMMISSION ACCEPTED
