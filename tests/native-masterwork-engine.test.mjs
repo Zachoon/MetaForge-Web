@@ -1,6 +1,6 @@
 ﻿import assert from "node:assert/strict";
 import test from "node:test";
-import { classifyNativeCard, forgeNativeMasterwork, parseNativeBlueprintIntent, poolMechanicalSignals, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
+import { classifyNativeCard, fieldCounterRolesFor, forgeNativeMasterwork, parseNativeBlueprintIntent, poolMechanicalSignals, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
 
 const card = (name, oracleText, typeLine = "Creature — Test", manaCost = "{2}{U}", colorIdentity = ["U"]) => ({ name, oracleText, typeLine, manaCost, colorIdentity });
 const pool = [
@@ -210,6 +210,19 @@ test("does not credit a card for producing or rewarding its own signal", () => {
   const soloPool = [card("Self-Contained", "Create a token. Tokens you control get +1/+1.")];
   const signals = poolMechanicalSignals(soloPool);
   assert.equal(synergyPotentialFor(signals.mechanicsByIndex[0], signals), 0);
+});
+
+test("only leans on live field data for Standard, and only when it's actually usable", () => {
+  const readyMidrange = { readyForCurrentFieldUse: true, leadingStrategy: "Midrange" };
+  assert.deepEqual(fieldCounterRolesFor("Standard", readyMidrange), ["interaction", "draw"]);
+  // Wrong format: a real, ready Commander-format signal should never leak in,
+  // since this table only encodes what a Standard tournament field measured.
+  assert.deepEqual(fieldCounterRolesFor("Commander", readyMidrange), []);
+  // Not enough sample size or coverage yet - stay neutral rather than guess.
+  assert.deepEqual(fieldCounterRolesFor("Standard", { readyForCurrentFieldUse: false, leadingStrategy: "Midrange" }), []);
+  // A strategy name outside the known table shouldn't throw or wildcard-match.
+  assert.deepEqual(fieldCounterRolesFor("Standard", { readyForCurrentFieldUse: true, leadingStrategy: "Some New Archetype" }), []);
+  assert.deepEqual(fieldCounterRolesFor("Standard", null), []);
 });
 
 test("prefers a connected producer/payoff pair over blank filler once slots are scarce", () => {

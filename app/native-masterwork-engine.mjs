@@ -14,6 +14,10 @@ import {
   extractMechanicalSignals,
 } from "./forge-interaction-graph.mjs";
 
+import {
+  getMetaIntelligence,
+} from "./meta-intelligence.mjs";
+
 // MetaForge Native Masterwork Engine
 // Card facts may come from verified catalogs; every construction and ranking
 // decision in this module is deterministic and owned by MetaForge.
@@ -339,6 +343,27 @@ export function synergyPotentialFor(mechanics, poolSignals) {
   return rewardConnections + produceConnections;
 }
 
+// Mirrors the counter-strategy pattern already used for simulated-matchup
+// pressure testing (pressureQuery in page.tsx's Meta Breaker experiments),
+// expressed in this engine's own role vocabulary. Only meaningful data the
+// Forge actually has justifies a bias in construction — a verified,
+// current, sufficiently-sampled tournament field, not a guess.
+const FIELD_COUNTER_ROLES = Object.freeze({
+  Aggro: ["lifegain", "sweeper", "protection"],
+  Control: ["protection", "recursion"],
+  Midrange: ["interaction", "draw"],
+  Tempo: ["interaction"],
+  Combo: ["interaction"],
+  Ramp: ["interaction", "sweeper"],
+});
+
+// Pure and separately testable from getMetaIntelligence()'s live snapshot so
+// coverage doesn't depend on today's actual tournament data staying the same.
+export function fieldCounterRolesFor(format, meta) {
+  if (format !== "Standard" || !meta?.readyForCurrentFieldUse || !meta.leadingStrategy) return [];
+  return FIELD_COUNTER_ROLES[meta.leadingStrategy] || [];
+}
+
 function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
   const roles = classifyNativeCard(card);
   const text = normalized(cardText(card));
@@ -354,6 +379,7 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
   const identityHits = unique([...directTribes, ...tribalSupport]);
   const blueprintRoleHits = roles.filter((role) => context.blueprint.desiredRoles.includes(role));
   const excludedRoleHits = roles.filter((role) => context.blueprint.excludedRoles.includes(role));
+  const fieldPressureHits = roles.filter((role) => context.fieldCounterRoles.includes(role)).length;
   return {
     card,
     roles,
@@ -366,6 +392,7 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
     resilienceRoles: roles.filter((role) => ["draw", "protection", "recursion", "interaction"].includes(role)).length,
     evidenceScore: clamp(Number(evidence.evidenceScore || 0) * 100) * 0.12,
     discovery: evidence.newCardPotential ? 2 : 0,
+    fieldPressureHits,
     directTribes,
     tribalSupport,
     identityHits,
@@ -383,6 +410,7 @@ function prepareForgeAnalysis(input, evidenceByName) {
     terms: preferenceTerms(input),
     ideal: /Aggressive|Tempo/i.test(input.strategy) ? 2.4 : /Control/i.test(input.strategy) ? 3.2 : 2.9,
     blueprint,
+    fieldCounterRoles: fieldCounterRolesFor(input.format, getMetaIntelligence()),
   };
   const commanderName = normalized(input.commander?.name);
   const poolSignals = poolMechanicalSignals(input.cards);
@@ -409,10 +437,11 @@ function scoreCard(entry, input, variant, context) {
     card: entry.card,
     roles: entry.roles,
     cmc: entry.cmc,
-    score: entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + deterministicTieBreak,
+    score: entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + deterministicTieBreak,
     synergyHits: entry.synergyHits,
     synergyPotential: entry.synergyPotential,
     preferenceHits: entry.preferenceHits,
+    fieldPressureHits: entry.fieldPressureHits,
     directTribes: entry.directTribes,
     tribalSupport: entry.tribalSupport,
     identityHits: entry.identityHits,
