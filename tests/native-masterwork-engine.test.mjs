@@ -174,6 +174,26 @@ test("normalizes ordinary-language counter requests", () => {
   );
 });
 
+test("recognizes plain-language role requests, not just rules-text phrasing", () => {
+  const intent = parseNativeBlueprintIntent({ note: "I want removal, ramp, and card draw" });
+  assert.deepEqual(intent.desiredRoles, ["ramp", "draw", "interaction"]);
+  assert.deepEqual(intent.excludedRoles, []);
+});
+
+test("treats a negated role request as an exclusion, not a desire", () => {
+  const intent = parseNativeBlueprintIntent({ note: "no sacrifice, but plenty of removal" });
+  assert.deepEqual(intent.desiredRoles, ["interaction"]);
+  assert.deepEqual(intent.excludedRoles, ["sacrifice"]);
+});
+
+test("keeps an excluded role's cards out of the built deck entirely", () => {
+  const report = forgeNativeMasterwork({
+    format: "Standard", target: 60, strategy: "Balanced midrange",
+    note: "no ramp", seed: 11, cards: pool,
+  });
+  assert.ok(report.selected.rows.every((row) => !row.roles.includes("ramp")));
+});
+
 test("keeps singleton nonbasic spells at one copy", () => {
   const report = forgeNativeMasterwork({ format: "Commander", target: 100, strategy: "Balanced midrange", seed: 7, commander: { name: "Scholar of Tests", colors: ["U"], oracleText: "Draw a card." }, cards: pool });
   assert.equal(report.selected.rows.filter((row) => !row.roles.includes("land") && !row.roles.includes("commander")).every((row) => row.quantity === 1), true);
@@ -189,5 +209,10 @@ test("ranks candidates with explicit role coverage and curve health", () => {
   const report = forgeNativeMasterwork({ format: "Commander", target: 100, strategy: "Control", seed: 13, commander: { name: "Scholar of Tests", colors: ["U"], oracleText: "Whenever you draw a card, create a token." }, cards: pool });
   assert.ok(report.selected.evaluation.roleCoverage > 0.5);
   assert.ok(report.selected.evaluation.curveHealth >= 0);
-  assert.deepEqual(report.candidates.map((candidate) => candidate.score), [...report.candidates.map((candidate) => candidate.score)].sort((a, b) => b - a));
+  // report.candidates is ordered by tournamentScore (a distinct weighted
+  // verdict), not raw evaluation score, so that's the order to assert on.
+  assert.deepEqual(
+    report.candidates.map((candidate) => candidate.tournament.tournamentScore),
+    [...report.candidates.map((candidate) => candidate.tournament.tournamentScore)].sort((a, b) => b - a),
+  );
 });

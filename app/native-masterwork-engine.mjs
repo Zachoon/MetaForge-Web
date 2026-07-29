@@ -38,6 +38,51 @@ const ROLE_PATTERNS = Object.freeze({
   combat: [/whenever .{0,25} attacks/i, /combat damage/i, /double strike/i, /extra combat/i],
 });
 
+// ROLE_PATTERNS matches verified rules text, which speaks in precise oracle
+// phrasing ("destroy target creature"). A player's commission note speaks in
+// plain language ("removal", "board wipes") that never appears in rules text,
+// so notes need their own, looser vocabulary layered on top.
+const NOTE_ROLE_ALIASES = Object.freeze({
+  ramp: [/\bramp\b/i, /\bmana ramp\b/i, /\bacceleration\b/i, /\baccelerate\b/i],
+  draw: [/\bcard draw\b/i, /\bdraw(?:ing)? cards?\b/i, /\bcard advantage\b/i],
+  interaction: [/\bremoval\b/i, /\bcounterspells?\b/i, /\binteraction\b/i, /\bdisruption\b/i, /\bspot removal\b/i],
+  protection: [/\bprotection\b/i, /\bhexproof\b/i, /\bsafety\b/i],
+  recursion: [/\brecursion\b/i, /\breanimator\b/i, /\breanimate\b/i, /\bbring(?:ing)? back\b/i],
+  sweeper: [/\bboard wipes?\b/i, /\bwraths?\b/i, /\bsweepers?\b/i, /\bmass removal\b/i],
+  selection: [/\bcard selection\b/i, /\bfiltering\b/i],
+  tokens: [/\bgo wide\b/i, /\btoken(?:s)? strategy\b/i, /\btokens\b/i, /\bwide board\b/i],
+  sacrifice: [/\baristocrats\b/i, /\bsac(?:rifice)? deck\b/i, /\bsacrifice\b/i, /\bsac(?:s)?\b/i],
+  counters: [/\bcounters strategy\b/i, /\bproliferate\b/i],
+  graveyard: [/\bgraveyard value\b/i, /\bself-?mill\b/i, /\bmill strategy\b/i],
+  artifacts: [/\bartifact synerg(?:y|ies)\b/i, /\bartifacts matter\b/i],
+  spells: [/\bspellslinger\b/i, /\bspells matter\b/i, /\binstants and sorceries\b/i],
+  lifegain: [/\blife ?gain\b/i, /\bgaining life\b/i],
+  combat: [/\bcombat tricks?\b/i, /\bbig combat\b/i],
+});
+const NOTE_NEGATION_CUE = /\b(no|not|never|avoid|avoiding|without|don'?t want|doesn'?t want|hate|skip|exclude|excluding)\b/i;
+const toGlobal = (pattern) => new RegExp(pattern.source, pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`);
+
+// Every role signal in a note is either something the player asked for or
+// something they explicitly ruled out ("no sacrifice"). A short lookbehind
+// window decides which; "no" flips the nearest role mention, not the whole
+// note, so "no sacrifice but plenty of removal" reads correctly.
+function noteRoleSignals(source = "") {
+  const desired = new Set();
+  const excluded = new Set();
+  for (const role of Object.keys(ROLE_PATTERNS)) {
+    const patterns = [...ROLE_PATTERNS[role], ...(NOTE_ROLE_ALIASES[role] || [])];
+    for (const pattern of patterns) {
+      for (const match of source.matchAll(toGlobal(pattern))) {
+        const windowStart = Math.max(0, match.index - 24);
+        const negated = NOTE_NEGATION_CUE.test(source.slice(windowStart, match.index));
+        (negated ? excluded : desired).add(role);
+      }
+    }
+  }
+  for (const role of excluded) desired.delete(role);
+  return { desired: [...desired], excluded: [...excluded] };
+}
+
 const STRATEGY_WEIGHTS = Object.freeze({
   Aggressive: { ramp: 4, draw: 7, interaction: 8, protection: 7, threat: 14, combat: 10 },
   Control: { ramp: 7, draw: 13, interaction: 15, protection: 6, sweeper: 12, threat: 5 },
@@ -206,7 +251,9 @@ export function parseNativeBlueprintIntent(input = {}) {
     ...[...source.matchAll(/\b([a-z][a-z0-9'-]{2,})\s+(?:tribal|typal)\b/g)].map((match) => match[1]),
     ...[...source.matchAll(/\b(?:tribal|typal)\s+([a-z][a-z0-9'-]{2,})\b/g)].map((match) => match[1]),
   ]).filter((term) => !BLUEPRINT_FILLER_WORDS.has(term));
-  const desiredRoles = conceptSignals(source);
+  const roleSignals = noteRoleSignals(source);
+  const desiredRoles = roleSignals.desired;
+  const excludedRoles = roleSignals.excluded;
   const requestedTerms = unique(
     source
       .split(/[^a-z0-9+'/-]+/)
@@ -216,7 +263,7 @@ export function parseNativeBlueprintIntent(input = {}) {
     ...tribalTypes.map((type) => `${type} typal`),
     ...desiredRoles.map((role) => role === "counters" ? "+1/+1 counter growth" : role),
   ];
-  return Object.freeze({ source, tribalTypes, desiredRoles, requestedTerms, promises: unique(promises) });
+  return Object.freeze({ source, tribalTypes, desiredRoles, excludedRoles, requestedTerms, promises: unique(promises) });
 }
 
 function manaValueFromCost(cost = "", fallback = 0) {
@@ -266,6 +313,7 @@ function analyzeCard(card, context, evidenceByName) {
   );
   const identityHits = unique([...directTribes, ...tribalSupport]);
   const blueprintRoleHits = roles.filter((role) => context.blueprint.desiredRoles.includes(role));
+  const excludedRoleHits = roles.filter((role) => context.blueprint.excludedRoles.includes(role));
   return {
     card,
     roles,
@@ -281,6 +329,7 @@ function analyzeCard(card, context, evidenceByName) {
     tribalSupport,
     identityHits,
     blueprintRoleHits,
+    excludedRoleHits,
   };
 }
 
@@ -295,11 +344,17 @@ function prepareForgeAnalysis(input, evidenceByName) {
   };
   const commanderName = normalized(input.commander?.name);
   const cards = input.cards.map((card) => analyzeCard(card, context, evidenceByName));
+  // A stated exclusion ("no sacrifice") is a hard constraint, not a scoring
+  // nudge — the commission promises the deck "must never become" it. Cards
+  // are dropped from candidacy entirely rather than merely deprioritized,
+  // so an unsatisfiable exclusion surfaces as the existing "could not fill
+  // N spell slot(s)" error instead of silently breaking the promise.
+  const eligible = cards.filter((entry) => !entry.excludedRoleHits.length);
   return {
     context,
     cards,
-    spells: cards.filter((entry) => !entry.roles.includes("land") && normalized(entry.card.name) !== commanderName),
-    lands: cards.filter((entry) => entry.roles.includes("land")).map((entry) => entry.card),
+    spells: eligible.filter((entry) => !entry.roles.includes("land") && normalized(entry.card.name) !== commanderName),
+    lands: eligible.filter((entry) => entry.roles.includes("land")).map((entry) => entry.card),
   };
 }
 
@@ -392,7 +447,12 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [])
     let bestAdjusted = Number.NEGATIVE_INFINITY;
     for (const entry of scored) {
       if (selectedNames.has(normalized(entry.card.name))) continue;
-      const deficit = entry.roles.reduce((sum, role) => sum + Math.max(0, (targets[role] || 0) - (roleCounts.get(role) || 0)) * 4, 0);
+      // Unmet targets reward a candidate; roles already well past their
+      // target actively penalize one, or a strongly-weighted requested role
+      // (e.g. "interaction" boosted by both strategy weight and the note
+      // bonus) can win every round indefinitely and crowd out roles with no
+      // note support of their own, like ramp or protection.
+      const deficit = entry.roles.reduce((sum, role) => sum + ((targets[role] || 0) - (roleCounts.get(role) || 0)) * 4, 0);
       const adjusted = entry.score + deficit;
       if (adjusted > bestAdjusted || (adjusted === bestAdjusted && candidate && entry.card.name.localeCompare(candidate.card.name) < 0)) {
         candidate = entry;
