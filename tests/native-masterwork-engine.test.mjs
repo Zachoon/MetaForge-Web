@@ -1,6 +1,6 @@
 ﻿import assert from "node:assert/strict";
 import test from "node:test";
-import { classifyNativeCard, forgeNativeMasterwork, parseNativeBlueprintIntent } from "../app/native-masterwork-engine.mjs";
+import { classifyNativeCard, forgeNativeMasterwork, parseNativeBlueprintIntent, poolMechanicalSignals, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
 
 const card = (name, oracleText, typeLine = "Creature — Test", manaCost = "{2}{U}", colorIdentity = ["U"]) => ({ name, oracleText, typeLine, manaCost, colorIdentity });
 const pool = [
@@ -192,6 +192,24 @@ test("keeps an excluded role's cards out of the built deck entirely", () => {
     note: "no ramp", seed: 11, cards: pool,
   });
   assert.ok(report.selected.rows.every((row) => !row.roles.includes("ramp")));
+});
+
+test("scores a card higher for connecting to a producer/payoff pair already in the pool", () => {
+  const miniPool = [
+    card("Token Maker", "Create a 1/1 white Soldier creature token."),
+    card("Token Reward", "Tokens you control get +1/+1."),
+    card("Isolated Vanilla", "A creature with no special text."),
+  ];
+  const signals = poolMechanicalSignals(miniPool);
+  assert.equal(synergyPotentialFor(signals.mechanicsByIndex[0], signals), 1);
+  assert.equal(synergyPotentialFor(signals.mechanicsByIndex[1], signals), 1);
+  assert.equal(synergyPotentialFor(signals.mechanicsByIndex[2], signals), 0);
+});
+
+test("does not credit a card for producing or rewarding its own signal", () => {
+  const soloPool = [card("Self-Contained", "Create a token. Tokens you control get +1/+1.")];
+  const signals = poolMechanicalSignals(soloPool);
+  assert.equal(synergyPotentialFor(signals.mechanicsByIndex[0], signals), 0);
 });
 
 test("keeps singleton nonbasic spells at one copy", () => {

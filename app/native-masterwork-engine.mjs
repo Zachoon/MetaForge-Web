@@ -10,6 +10,10 @@ import {
   createForgeRecommendationRecord,
 } from "./forge-recommendation-ledger.mjs";
 
+import {
+  extractMechanicalSignals,
+} from "./forge-interaction-graph.mjs";
+
 // MetaForge Native Masterwork Engine
 // Card facts may come from verified catalogs; every construction and ranking
 // decision in this module is deterministic and owned by MetaForge.
@@ -299,7 +303,43 @@ function preferenceTerms(input) {
     .split(/[^a-z0-9+'-]+/).filter((term) => term.length >= 4 && !ignored.has(term)));
 }
 
-function analyzeCard(card, context, evidenceByName) {
+// The same producer/payoff vocabulary that powers the post-build interaction
+// graph (forge-interaction-graph.mjs), applied one pool-wide pass ahead of
+// scoring instead of after construction. A single pass is O(n): count how
+// many pool cards produce or reward each mechanical signal, then each card's
+// synergyPotential is how many of those counts its own produces/rewards tap
+// into. This deliberately skips the O(n^2) pairwise edge graph — the goal
+// here is "does this plug into an active theme in the pool", not the exact
+// edge list, which the interaction graph already reports after the fact.
+// Exposed alongside classifyNativeCard for direct unit testing of the
+// scoring analysis, independent of running a full construction.
+export function poolMechanicalSignals(cards) {
+  const producerCounts = new Map();
+  const payoffCounts = new Map();
+  const mechanicsByIndex = cards.map((card) => {
+    if (/\bLand\b/i.test(card.typeLine || card.type_line || "")) return { signals: [], produces: [], rewards: [] };
+    const mechanics = extractMechanicalSignals(card);
+    for (const signal of mechanics.produces) producerCounts.set(signal, (producerCounts.get(signal) || 0) + 1);
+    for (const signal of mechanics.rewards) payoffCounts.set(signal, (payoffCounts.get(signal) || 0) + 1);
+    return mechanics;
+  });
+  return { mechanicsByIndex, producerCounts, payoffCounts };
+}
+
+export function synergyPotentialFor(mechanics, poolSignals) {
+  if (!mechanics || !poolSignals) return 0;
+  const rewardConnections = mechanics.rewards.reduce((sum, signal) => {
+    const producers = (poolSignals.producerCounts.get(signal) || 0) - (mechanics.produces.includes(signal) ? 1 : 0);
+    return sum + Math.min(4, Math.max(0, producers));
+  }, 0);
+  const produceConnections = mechanics.produces.reduce((sum, signal) => {
+    const payoffs = (poolSignals.payoffCounts.get(signal) || 0) - (mechanics.rewards.includes(signal) ? 1 : 0);
+    return sum + Math.min(4, Math.max(0, payoffs));
+  }, 0);
+  return rewardConnections + produceConnections;
+}
+
+function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
   const roles = classifyNativeCard(card);
   const text = normalized(cardText(card));
   const evidence = evidenceByName.get(normalized(card.name)) || {};
@@ -321,6 +361,7 @@ function analyzeCard(card, context, evidenceByName) {
     cmc: manaValueFromCost(card.manaCost || card.mana_cost, card.cmc),
     roleScore: roles.reduce((sum, role) => sum + (context.weights[role] || (role === "threat" ? 7 : 2)), 0),
     synergyHits: roles.filter((role) => context.commanderSignals.includes(role)).length,
+    synergyPotential: synergyPotentialFor(mechanics, poolSignals),
     preferenceHits: context.terms.filter((term) => text.includes(term)).length,
     resilienceRoles: roles.filter((role) => ["draw", "protection", "recursion", "interaction"].includes(role)).length,
     evidenceScore: clamp(Number(evidence.evidenceScore || 0) * 100) * 0.12,
@@ -343,7 +384,9 @@ function prepareForgeAnalysis(input, evidenceByName) {
     blueprint,
   };
   const commanderName = normalized(input.commander?.name);
-  const cards = input.cards.map((card) => analyzeCard(card, context, evidenceByName));
+  const poolSignals = poolMechanicalSignals(input.cards);
+  const cards = input.cards.map((card, index) =>
+    analyzeCard(card, context, evidenceByName, poolSignals.mechanicsByIndex[index], poolSignals));
   // A stated exclusion ("no sacrifice") is a hard constraint, not a scoring
   // nudge — the commission promises the deck "must never become" it. Cards
   // are dropped from candidacy entirely rather than merely deprioritized,
@@ -365,8 +408,9 @@ function scoreCard(entry, input, variant, context) {
     card: entry.card,
     roles: entry.roles,
     cmc: entry.cmc,
-    score: entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + deterministicTieBreak,
+    score: entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + deterministicTieBreak,
     synergyHits: entry.synergyHits,
+    synergyPotential: entry.synergyPotential,
     preferenceHits: entry.preferenceHits,
     directTribes: entry.directTribes,
     tribalSupport: entry.tribalSupport,
