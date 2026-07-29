@@ -371,6 +371,7 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
     identityHits,
     blueprintRoleHits,
     excludedRoleHits,
+    mechanics: mechanics || { signals: [], produces: [], rewards: [] },
   };
 }
 
@@ -416,6 +417,7 @@ function scoreCard(entry, input, variant, context) {
     tribalSupport: entry.tribalSupport,
     identityHits: entry.identityHits,
     blueprintRoleHits: entry.blueprintRoleHits,
+    mechanics: entry.mechanics,
   };
 }
 
@@ -437,8 +439,20 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [])
   const selected = [];
   const selectedNames = new Set();
   const roleCounts = new Map();
+  // Tracks what the deck-in-progress actually produces/rewards, as opposed
+  // to synergyPotential (a static, whole-pool estimate computed before any
+  // picks exist). This is what lets the fill loop below prefer a card that
+  // plugs into cards that actually made the cut, not ones that merely
+  // existed somewhere in the candidate pool.
+  const producedSoFar = new Map();
+  const rewardedSoFar = new Map();
   const copies = singleton ? 1 : 4;
   let remaining = slots;
+
+  const trackMechanics = (mechanics) => {
+    for (const signal of mechanics?.produces || []) producedSoFar.set(signal, (producedSoFar.get(signal) || 0) + 1);
+    for (const signal of mechanics?.rewards || []) rewardedSoFar.set(signal, (rewardedSoFar.get(signal) || 0) + 1);
+  };
 
   // Preset rows (e.g. a player's own imported decklist) are reserved first,
   // capped at the copy limit and remaining slots, before any competitive
@@ -450,6 +464,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [])
     selected.push({ ...row, quantity });
     selectedNames.add(normalized(row.name));
     for (const role of row.roles) roleCounts.set(role, (roleCounts.get(role) || 0) + quantity);
+    trackMechanics(row.mechanics);
     remaining -= quantity;
   }
 
@@ -469,6 +484,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [])
     });
     selectedNames.add(normalized(candidate.card.name));
     for (const role of candidate.roles) roleCounts.set(role, (roleCounts.get(role) || 0) + quantity);
+    trackMechanics(candidate.mechanics);
     remaining -= quantity;
     return true;
   };
@@ -495,9 +511,18 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [])
       // target actively penalize one, or a strongly-weighted requested role
       // (e.g. "interaction" boosted by both strategy weight and the note
       // bonus) can win every round indefinitely and crowd out roles with no
-      // note support of their own, like ramp or protection.
-      const deficit = entry.roles.reduce((sum, role) => sum + ((targets[role] || 0) - (roleCounts.get(role) || 0)) * 4, 0);
-      const adjusted = entry.score + deficit;
+      // note support of their own, like ramp or protection. This only
+      // applies to roles that actually have a target — "threat" and every
+      // other untracked role must stay neutral, or a role every creature
+      // naturally carries would accrue an ever-growing penalty as the deck
+      // fills in and start losing to genuinely empty filler.
+      const deficit = entry.roles.reduce((sum, role) => (role in targets ? sum + ((targets[role] || 0) - (roleCounts.get(role) || 0)) * 4 : sum), 0);
+      // Rewards a candidate for connecting to cards that actually made the
+      // deck so far, not just ones that existed in the pool. Capped per
+      // signal so one prolific pairing can't dominate every remaining pick.
+      const inDeckSynergy = entry.mechanics.rewards.reduce((sum, signal) => sum + Math.min(4, producedSoFar.get(signal) || 0), 0)
+        + entry.mechanics.produces.reduce((sum, signal) => sum + Math.min(4, rewardedSoFar.get(signal) || 0), 0);
+      const adjusted = entry.score + deficit + inDeckSynergy * 2;
       if (adjusted > bestAdjusted || (adjusted === bestAdjusted && candidate && entry.card.name.localeCompare(candidate.card.name) < 0)) {
         candidate = entry;
         bestAdjusted = adjusted;
@@ -693,6 +718,7 @@ function buildImportedCandidate(input, analysis) {
       tribalSupport: spellEntry.tribalSupport,
       identityHits: spellEntry.identityHits,
       blueprintRoleHits: spellEntry.blueprintRoleHits,
+      mechanics: spellEntry.mechanics,
     });
   }
   if (!presetSpellRows.length && !presetLandRows.length) {

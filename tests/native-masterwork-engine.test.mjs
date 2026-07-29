@@ -212,6 +212,34 @@ test("does not credit a card for producing or rewarding its own signal", () => {
   assert.equal(synergyPotentialFor(signals.mechanicsByIndex[0], signals), 0);
 });
 
+test("prefers a connected producer/payoff pair over blank filler once slots are scarce", () => {
+  // Baseline archetype supply is capped tightly (7 unique cards, 4 copies
+  // each = 28) so it cannot fill all 36 Standard spell slots on its own -
+  // the remaining 8 slots must come from either the connected pair or the
+  // blank filler competing against it. Neither the pair nor the filler
+  // carries any classified role, so nothing but the mechanical connection
+  // (tracked as cards actually get selected, not just pool presence)
+  // explains a difference.
+  const scarceBase = [
+    ...Array.from({ length: 2 }, (_, i) => card(`Flow ${i}`, "When this enters, draw a card. Scry 1.")),
+    ...Array.from({ length: 2 }, (_, i) => card(`Answer ${i}`, "Exile target nonland permanent.")),
+    ...Array.from({ length: 1 }, (_, i) => card(`Shield ${i}`, "Target creature gains hexproof and indestructible until end of turn.")),
+    ...Array.from({ length: 2 }, (_, i) => card(`Stone ${i}`, "Add one mana. Create a Treasure token.", "Artifact", "{2}")),
+  ];
+  const lands = Array.from({ length: 10 }, (_, i) => card(`Island Utility ${i}`, "{T}: Add {U}.", "Land", "", ["U"]));
+  const producer = card("Chain Maker", "Create a 1/1 white Soldier creature token.", "Sorcery");
+  const payoff = card("Chain Reward", "Tokens you control get +1/+1.", "Sorcery");
+  const filler = Array.from({ length: 10 }, (_, i) => card(`Vanilla ${i}`, "Nothing happens.", "Sorcery"));
+  const report = forgeNativeMasterwork({
+    format: "Standard", target: 60, strategy: "Balanced midrange", seed: 33, colors: ["U"],
+    cards: [...scarceBase, producer, payoff, ...filler, ...lands],
+  });
+  const names = new Set(report.selected.rows.map((row) => row.name));
+  assert.ok(names.has("Chain Maker"));
+  assert.ok(names.has("Chain Reward"));
+  assert.equal([...names].filter((name) => name.startsWith("Vanilla")).length, 0);
+});
+
 test("keeps singleton nonbasic spells at one copy", () => {
   const report = forgeNativeMasterwork({ format: "Commander", target: 100, strategy: "Balanced midrange", seed: 7, commander: { name: "Scholar of Tests", colors: ["U"], oracleText: "Draw a card." }, cards: pool });
   assert.equal(report.selected.rows.filter((row) => !row.roles.includes("land") && !row.roles.includes("commander")).every((row) => row.quantity === 1), true);
