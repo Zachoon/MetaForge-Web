@@ -110,6 +110,18 @@
       "load": "entrance",
       "fallback": "Static CSS rune glyph; state-machine animation is paused in quiet-motion mode",
       "notes": "Owner-created Rive medallion with embedded artwork. State Machine 1 maps the website cursor to the isHovering Boolean in full-motion mode."
+    },
+    {
+      "id": "mf-rive-forging-loader-01",
+      "role": "forge-processing-loader",
+      "path": "/assets/forge/animations/metaforge-forging-loader.riv",
+      "sourceRelativePath": "Rive Animations/Forge Motion Kit/sources/metaforge-forging-loader.riv",
+      "license": "owner-created",
+      "licenseEvidence": "Created and animated by the project owner in Rive on 2026-07-29.",
+      "status": "approved",
+      "load": "processing",
+      "fallback": "Static rune glyph while loading and in unsupported runtimes",
+      "notes": "Forge Loader Machine uses the IsProcessing Boolean to transition between Idle and Forge Processing Loop."
     }
   ]
 }

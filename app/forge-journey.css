@@ -1249,6 +1249,11 @@
 .forging-motion i{z-index:2;color:#f1ad60;font:normal 36px Georgia,serif;text-shadow:0 0 22px #ec8d42}
 .forging-motion b,.forging-motion span{position:absolute;inset:3px;border:1px dashed #73ded0;border-radius:50%;animation:masterwork-orbit 3.2s linear infinite}
 .forging-motion span{inset:14px;border-color:#e99548;animation-direction:reverse;animation-duration:2.2s}
+.forging-motion--rive{width:148px;height:148px;margin-bottom:18px}
+.forging-motion--rive canvas{position:absolute;inset:0;width:100%;height:100%;opacity:0;transition:opacity .35s ease}
+.forging-motion--rive.is-loaded canvas{opacity:1}
+.forging-motion--rive.is-loaded>i{opacity:0}
+.forging-motion--rive>i{transition:opacity .25s ease}
 .forging-progress-rail{width:min(100%,520px);height:3px;margin-top:24px;overflow:hidden;background:#21312d}
 .forging-progress-rail span{display:block;width:42%;height:100%;background:linear-gradient(90deg,transparent,#f09a4b,#72ded0,transparent);animation:masterwork-progress 1.55s ease-in-out infinite}
 @keyframes masterwork-orbit{to{transform:rotate(360deg)}}

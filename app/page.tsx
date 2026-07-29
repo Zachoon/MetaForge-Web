@@ -370,6 +370,58 @@ const ForgeConfirmationSeal = ({ motionMode }: { motionMode: MotionMode }) => {
   );
 };
 
+const ForgeProcessingLoader = ({ motionMode }: { motionMode: MotionMode }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    let disposed = false;
+    let rive: {
+      cleanup: () => void;
+      resizeDrawingSurfaceToCanvas: () => void;
+      viewModelInstance: { boolean: (name: string) => { value: boolean } | null } | null;
+    } | null = null;
+    let resizeObserver: ResizeObserver | null = null;
+
+    void import("@rive-app/canvas").then(({ Alignment, Fit, Layout, Rive }) => {
+      if (disposed) return;
+      rive = new Rive({
+        src: "/assets/forge/animations/metaforge-forging-loader.riv",
+        canvas,
+        stateMachines: "Forge Loader Machine",
+        autoBind: true,
+        autoplay: true,
+        layout: new Layout({ fit: Fit.Contain, alignment: Alignment.Center }),
+        onLoad: () => {
+          if (disposed) return;
+          rive?.resizeDrawingSurfaceToCanvas();
+          const processing = rive?.viewModelInstance?.boolean("IsProcessing");
+          if (processing) processing.value = motionMode === "full";
+          setLoaded(true);
+        },
+      });
+      resizeObserver = new ResizeObserver(() => rive?.resizeDrawingSurfaceToCanvas());
+      resizeObserver.observe(canvas);
+    });
+
+    return () => {
+      disposed = true;
+      resizeObserver?.disconnect();
+      rive?.cleanup();
+    };
+  }, [motionMode]);
+
+  return (
+    <div className={`forging-motion forging-motion--rive${loaded ? " is-loaded" : ""}`} aria-hidden="true">
+      <canvas ref={canvasRef} />
+      <i>ᛟ</i>
+    </div>
+  );
+};
+
 const CEREMONY_MOTION_ASSETS = [
   null,
   "furnace-analysis",
@@ -5184,9 +5236,7 @@ export default function Home() {
                   aria-live="polite"
                   aria-label="The native Forge is building your complete deck"
                 >
-                  <div className="forging-motion" aria-hidden="true">
-                    <i>ᛟ</i><b /><span />
-                  </div>
+                  <ForgeProcessingLoader motionMode={motionMode} />
                   <small>METAFORGE NATIVE ENGINE · MASTERWORK IN PROGRESS</small>
                   <strong>
                     {forgeElapsedSeconds < 5
