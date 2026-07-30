@@ -13,7 +13,7 @@ import {
 import { learnRevisionPreferences } from "./revision-learning.mjs";
 import { learnFromForgeInterventions } from "./forge-intervention-learning.mjs";
 import { applyControlledSwap, experimentAdditionSynergy, rankExperimentAdditions, rankExperimentCuts } from "./meta-breaker-experiment.mjs";
-import { forgeNativeMasterwork, forgeImportedMasterwork, manaConsistencyReport, parseNativeBlueprintIntent } from "./native-masterwork-engine.mjs";
+import { colorPipsFromCost, forgeNativeMasterwork, forgeImportedMasterwork, manaConsistencyReport, parseNativeBlueprintIntent } from "./native-masterwork-engine.mjs";
 import { updateFamily, setFamilyMotifWeights } from "./deck-bench.mjs";
 import {
   resolveDeckStructuralCards,
@@ -2260,11 +2260,17 @@ export default function Home() {
     };
     const model = deckRows.map((row) => {
       const fact = cardFacts[cardFactKey(row.name)];
+      const role = roleMap[cardRole(fact)] || "stabilizer";
       return {
         quantity: row.quantity,
         card: row.name,
-        role: roleMap[cardRole(fact)] || "stabilizer",
+        role,
         cmc: Number(fact?.cmc || 0),
+        // Real color data lets the goldfish sim tell a genuine color-screw
+        // risk apart from an ordinary mulligan — land rows carry which
+        // colors they can tap for, spell rows carry their actual pip cost.
+        colorIdentity: role === "land" ? fact?.color_identity || [] : undefined,
+        colorPips: role === "land" ? undefined : colorPipsFromCost(fact?.mana_cost || ""),
       };
     });
     const strategyName = /aggro|pressure/i.test(strategy)
@@ -4751,6 +4757,13 @@ export default function Home() {
                         <b>{simulationDossier.matrix.weakest?.opponent || "Unresolved"}</b>
                         <em>{((simulationDossier.matrix.weakest?.scenarioPassRate || 0) * 100).toFixed(1)}% scenario pass</em>
                       </span>
+                      {simulationDossier.goldfish.expert.colorScrewRate !== null && (
+                        <span>
+                          <small>COLOR SCREW RISK</small>
+                          <b>{(simulationDossier.goldfish.expert.colorScrewRate * 100).toFixed(1)}%</b>
+                          <em>Games that never cast a colored spell at all</em>
+                        </span>
+                      )}
                       <p>Modeled Forge trials test mana, role density, and sequencing under pressure. They are viability gates—not predicted match win rates.</p>
                     </section>
                   )}
