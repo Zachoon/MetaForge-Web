@@ -177,6 +177,32 @@ test("scales the minimum meaningful score gain to the deck's real size instead o
   assert.equal(commanderReport.verdict, "advance");
 });
 
+const matchupBaseA = base.map((row) => ({ ...row, roles: [...row.roles] }));
+matchupBaseA.find((row) => row.name === "Slow Threat").quantity = 3;
+matchupBaseA.push({ quantity: 1, name: "Better Generalist", roles: ["draw", "protection"], cmc: 2 });
+const matchupBaseB = base.map((row) => ({ ...row, roles: [...row.roles] }));
+matchupBaseB.find((row) => row.name === "Slow Threat").quantity = 3;
+matchupBaseB.push({ quantity: 1, name: "Matching Interaction", roles: ["interaction"], cmc: 2 });
+const matchupRivalGeneralist = { id: "generalist", rows: matchupBaseA };
+const matchupRivalMatching = { id: "matching", rows: matchupBaseB };
+
+test("without a matchup preference, the broader structural upgrade wins the same cut", () => {
+  const report = rankOneSlotCounterfactuals(selected, [selected, matchupRivalGeneralist, matchupRivalMatching], options);
+  assert.equal(report.experiments[0].add, "Better Generalist");
+  assert.equal(report.experiments[0].matchupRelevant, false);
+});
+
+test("a recorded matchup weakness reorders the recommendation toward the role that actually addresses it", () => {
+  const report = rankOneSlotCounterfactuals(
+    selected,
+    [selected, matchupRivalGeneralist, matchupRivalMatching],
+    { ...options, preferredRoles: ["interaction"], matchupOpponent: "Aggro" },
+  );
+  assert.equal(report.experiments[0].add, "Matching Interaction");
+  assert.equal(report.experiments[0].matchupRelevant, true);
+  assert.match(report.experiments[0].summary, /losing to against Aggro/i);
+});
+
 test("pools distinct experiments across every candidate, not just one designated rival", () => {
   const singleRival = rankOneSlotCounterfactuals(selected, [selected, rivalA], options);
   assert.equal(singleRival.experiments.length, 1, "a single close rival only ever offers one honest swap here");

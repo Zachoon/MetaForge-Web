@@ -9,6 +9,43 @@
 import { rankOneSlotCounterfactuals } from "./native-one-slot-lab.mjs";
 import { evaluateExperiment } from "./experiment-evidence.mjs";
 import { motifForRoles } from "./masterwork-visual-profile.mjs";
+import { learnRevisionPreferences } from "./revision-learning.mjs";
+
+// A free-text revision signal ("I died before I could answer their board")
+// is only actionable once it's tied to a role the one-slot lab actually
+// tracks. Deliberately narrow: only signals with an unambiguous, defensible
+// role mapping are included, so an unmappable preference (curve, mana) is
+// silently dropped rather than guessed at.
+const PREFERENCE_ROLE_MAP = Object.freeze({
+  "more early interaction": "interaction",
+  "more card advantage": "draw",
+  "more resilience": "protection",
+  "more protection": "protection",
+});
+
+// What's this deck actually been losing to? Scoped to the single opponent
+// archetype with the worst *actionable* (sample >= 4) record, then re-runs
+// the same signal classifier used for general revision guidance, but
+// filtered to just that matchup's matches — so "more early interaction"
+// here means "against this specific opponent," not a vague aggregate.
+// Returns null (not an empty/default preference) whenever there isn't yet
+// enough recorded evidence, so the one-slot lab's ranking stays exactly as
+// it was before this existed until real data actually supports a claim.
+function matchupCounterPreference(matchLog) {
+  if (!matchLog?.length) return null;
+  const overall = learnRevisionPreferences(matchLog, null);
+  const worst = [...overall.matchups]
+    .filter((matchup) => matchup.actionable)
+    .sort((left, right) => left.observedRate - right.observedRate)[0];
+  if (!worst) return null;
+  const opponentMatches = matchLog.filter((match) => (match.opponent || "Unknown / not sure") === worst.opponent);
+  const scoped = learnRevisionPreferences(opponentMatches, null);
+  const preferredRoles = [...new Set(
+    scoped.actionable.map((pattern) => PREFERENCE_ROLE_MAP[pattern.preference]).filter(Boolean),
+  )];
+  if (!preferredRoles.length) return null;
+  return { opponent: worst.opponent, preferredRoles };
+}
 
 const normalized = (value = "") => String(value).normalize("NFKC").trim().toLocaleLowerCase("en");
 
@@ -46,7 +83,10 @@ function describeTradeoff(delta) {
 // causalityReport: output of buildForgeStructuralAnalysis (forge-causality-engine.mjs), or null.
 // matchLog: the array already held in page.tsx state — {result: "win"|"loss", ...}[].
 export function buildExperimentTablets({ selected, candidates, causalityReport = null, matchLog = [], options = {} }) {
-  const ranked = rankOneSlotCounterfactuals(selected, candidates, options);
+  const matchupPreference = matchupCounterPreference(matchLog);
+  const ranked = rankOneSlotCounterfactuals(selected, candidates, matchupPreference
+    ? { ...options, preferredRoles: matchupPreference.preferredRoles, matchupOpponent: matchupPreference.opponent }
+    : options);
   const observation = evaluateExperiment(matchLog);
   const fieldObservation = observation.sampleSize
     ? `${observation.wins}-${observation.losses} across ${observation.sampleSize} recorded match${observation.sampleSize === 1 ? "" : "es"} with this build: ${observation.narrative}`
@@ -75,6 +115,10 @@ export function buildExperimentTablets({ selected, candidates, causalityReport =
       ? describeTradeoff(experiment.delta)
       : `${describeTradeoff(experiment.delta)} Below the Forge's gain threshold: ${experiment.gate.reasons.join(" ")}`,
     evidenceStatus: experiment.confident ? observation.confidence : "speculative",
+    matchupRelevant: experiment.matchupRelevant || false,
+    matchupNote: experiment.matchupRelevant && matchupPreference
+      ? `This card was specifically prioritized because it answers what you've reported losing to against ${matchupPreference.opponent}.`
+      : null,
     summary: experiment.summary,
   }));
 

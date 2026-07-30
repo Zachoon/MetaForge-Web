@@ -140,6 +140,19 @@ function gateSwap(rows, before, after, delta, options) {
   };
 }
 
+// options.preferredRoles (optional): roles the player's actual recorded
+// match history says this deck has been losing to — e.g. repeated "died
+// before I could answer their board" signals against a specific opponent
+// archetype map to "interaction". A swap whose addition carries one of
+// these roles is ranked ahead of an otherwise-similar structural swap, so
+// the recommendation actually responds to what's been losing, not just to
+// abstract role-coverage math. Never overrides the structural gate itself —
+// only reorders among swaps that already passed it.
+function matchupFitFor(addition, options) {
+  if (!options.preferredRoles?.length) return 0;
+  return addition.roles.filter((role) => options.preferredRoles.includes(role)).length;
+}
+
 function buildExperiments(selected, rival, options) {
   const selectedQuantities = new Map(selected.rows.map((row) => [normalized(row.name), row.quantity]));
   const rivalQuantities = new Map(rival.rows.map((row) => [normalized(row.name), row.quantity]));
@@ -157,9 +170,10 @@ function buildExperiments(selected, rival, options) {
     const after = evaluate(rows, options);
     const delta = compare(before, after);
     const gate = gateSwap(rows, before, after, delta, options);
-    experiments.push({ cut: cut.name, add: addition.name, cutRoles: cut.roles, addRoles: addition.roles, rows, before, after, delta, gate });
+    const matchupFit = matchupFitFor(addition, options);
+    experiments.push({ cut: cut.name, add: addition.name, cutRoles: cut.roles, addRoles: addition.roles, rows, before, after, delta, gate, matchupFit });
   }
-  experiments.sort((left, right) => Number(right.gate.passed) - Number(left.gate.passed) || right.delta.score - left.delta.score || left.cut.localeCompare(right.cut) || left.add.localeCompare(right.add));
+  experiments.sort((left, right) => Number(right.gate.passed) - Number(left.gate.passed) || right.matchupFit - left.matchupFit || right.delta.score - left.delta.score || left.cut.localeCompare(right.cut) || left.add.localeCompare(right.add));
   return experiments;
 }
 
@@ -203,7 +217,7 @@ export function rankOneSlotCounterfactuals(selected, candidates, options = {}) {
   }
 
   const experiments = rivals.flatMap((rival) => buildExperiments(selected, rival, options));
-  experiments.sort((left, right) => Number(right.gate.passed) - Number(left.gate.passed) || right.delta.score - left.delta.score || left.cut.localeCompare(right.cut) || left.add.localeCompare(right.add));
+  experiments.sort((left, right) => Number(right.gate.passed) - Number(left.gate.passed) || right.matchupFit - left.matchupFit || right.delta.score - left.delta.score || left.cut.localeCompare(right.cut) || left.add.localeCompare(right.add));
   const limit = options.limit || 3;
 
   // Fill with every gate-passed swap first (a distinct cut each), then, if
@@ -248,9 +262,11 @@ export function rankOneSlotCounterfactuals(selected, candidates, options = {}) {
       delta: experiment.delta,
       gate: experiment.gate,
       confident: experiment.gate.passed,
-      summary: experiment.gate.passed
+      matchupRelevant: experiment.matchupFit > 0,
+      summary: (experiment.gate.passed
         ? `Controlled experiment: replace ${experiment.cut} with ${experiment.add}. The modeled structural score improves by ${experiment.delta.score.toFixed(1)} while required-role coverage, curve health, resilience density, deck size, copy limits, and opening-hand land distribution remain inside their gates.`
-        : `Speculative experiment: replace ${experiment.cut} with ${experiment.add}. This did not clear the Forge's structural gate (${experiment.gate.reasons.join(" ")}) — it's the next-best considered change, not a confident recommendation.`,
+        : `Speculative experiment: replace ${experiment.cut} with ${experiment.add}. This did not clear the Forge's structural gate (${experiment.gate.reasons.join(" ")}) — it's the next-best considered change, not a confident recommendation.`)
+        + (experiment.matchupFit > 0 && options.matchupOpponent ? ` This specifically targets what you've reported losing to against ${options.matchupOpponent}.` : ""),
       contract: "Create exactly one revision, play it as a separate test, and require observed match evidence before calling the change successful.",
     })),
     boundary: "These are deterministic structural experiments, not proof of better match performance.",

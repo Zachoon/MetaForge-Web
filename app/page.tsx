@@ -5617,6 +5617,12 @@ export default function Home() {
                                   <dt>Evidence status</dt>
                                   <dd>{tablet.evidenceStatus}</dd>
                                 </div>
+                                {tablet.matchupNote && (
+                                  <div>
+                                    <dt>Matchup focus</dt>
+                                    <dd>{tablet.matchupNote}</dd>
+                                  </div>
+                                )}
                               </dl>
                               <button
                                 type="button"

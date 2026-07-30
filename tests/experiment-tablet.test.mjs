@@ -26,6 +26,28 @@ const options = { format: "Standard", strategy: "Balanced midrange", target: 60 
 
 const matches = (wins, losses) => [...Array(wins)].map((_, id) => ({ id: `w${id}`, result: "win" })).concat([...Array(losses)].map((_, id) => ({ id: `l${id}`, result: "loss" })));
 
+const aggroInteractionComplaint = () => [
+  { id: "m1", result: "loss", opponent: "Aggro", signal: "I died before I could answer anything" },
+  { id: "m2", result: "loss", opponent: "Aggro", signal: "I needed more early interaction" },
+  { id: "m3", result: "loss", opponent: "Aggro", signal: "I needed more early interaction" },
+  { id: "m4", result: "win", opponent: "Aggro", signal: "" },
+];
+
+test("tailors the recommendation to the specific opponent the deck has actually been losing to", () => {
+  const report = buildExperimentTablets({ selected, candidates, matchLog: aggroInteractionComplaint(), options });
+  const relevant = report.tablets.find((tablet) => tablet.matchupRelevant);
+  assert.ok(relevant, "expected at least one tablet to be flagged as matchup-relevant");
+  assert.match(relevant.summary, /losing to against Aggro/i);
+  assert.match(relevant.matchupNote, /losing to against Aggro/i);
+});
+
+test("without enough recorded matches, matchup preference stays silent and behaves exactly as before", () => {
+  const withNoHistory = buildExperimentTablets({ selected, candidates, matchLog: [], options });
+  const withThinHistory = buildExperimentTablets({ selected, candidates, matchLog: [{ id: "m1", result: "loss", opponent: "Aggro", signal: "I needed more early interaction" }], options });
+  assert.deepEqual(withNoHistory.tablets.map((tablet) => tablet.change), withThinHistory.tablets.map((tablet) => tablet.change));
+  assert.ok(withThinHistory.tablets.every((tablet) => !tablet.matchupRelevant));
+});
+
 test("produces up to three tablets naming distinct cards", () => {
   const report = buildExperimentTablets({ selected, candidates, matchLog: [], options });
   assert.equal(report.status, "advance");

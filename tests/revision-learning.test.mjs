@@ -33,3 +33,12 @@ test("does not call a matchup weakness from fewer than four classified games", (
 test("classifies multiple meanings without assigning personality", () => {
   assert.deepEqual(classifyPlayerSignal("The commander kept dying and I ran out of gas"), ["more card advantage", "more protection"]);
 });
+
+test("classifies the live match-recording UI's own preset signal button, not just hypothetical free text", () => {
+  // "Interaction arrived at the wrong time" is one of the exact fixed
+  // strings the actual product sends (app/page.tsx's preset signal
+  // buttons) — this is what real recorded matches produce, so it must
+  // classify or every downstream consumer keyed on "more early
+  // interaction" is unreachable from the live app.
+  assert.deepEqual(classifyPlayerSignal("Interaction arrived at the wrong time"), ["more early interaction"]);
+});

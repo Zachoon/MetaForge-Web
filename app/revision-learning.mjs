@@ -1,7 +1,13 @@
 const SIGNAL_RULES = [
   [
     "more early interaction",
-    /couldn(?:'|’|’)t answer|need(?:ed)? (?:more )?(?:early )?(?:removal|interaction|answers)|too fast for me|died before/i,
+    // The live match-recording UI only ever sends one of a small set of
+    // preset button labels, not free text — "interaction arrived at the
+    // wrong time" is one of those exact presets, and without it here this
+    // whole rule (and anything downstream keyed on this label) would be
+    // practically unreachable from the actual product, not just from
+    // hypothetical free-text input.
+    /couldn(?:'|’|’)t answer|need(?:ed)? (?:more )?(?:early )?(?:removal|interaction|answers)|too fast for me|died before|interaction arrived at the wrong time/i,
   ],
   [
     "lower curve / faster deployment",
