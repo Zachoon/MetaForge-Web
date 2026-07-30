@@ -574,3 +574,25 @@ test("refines the basic land split using real per-turn consistency, not just raw
     `expected the refined mana base to keep both colors' real consistency reasonably close, got W=${whiteAverage.toFixed(2)} B=${blackAverage.toFixed(2)}`,
   );
 });
+
+test("uses Scryfall's produced_mana as the authoritative color source, not the broader color_identity", () => {
+  const wbCard = (name, oracleText, manaCost, typeLine = "Creature — Test", colorIdentity = ["B"]) => ({ name, oracleText, manaCost, typeLine, colorIdentity });
+  const wbPool = [
+    ...Array.from({ length: 10 }, (_, i) => wbCard(`Black Draw ${i}`, "Draw a card. Scry 1.", "{1}{B}{B}")),
+    ...Array.from({ length: 10 }, (_, i) => wbCard(`Black Answer ${i}`, "Exile target nonland permanent.", "{1}{B}{B}")),
+    ...Array.from({ length: 6 }, (_, i) => wbCard(`White Shield ${i}`, "Target creature gains hexproof and indestructible until end of turn.", "{1}{W}", "Creature — Test", ["W"])),
+    ...Array.from({ length: 6 }, (_, i) => wbCard(`Ramp Stone ${i}`, "Add one mana. Create a Treasure token.", "{2}", "Artifact", [])),
+    // color_identity claims W+B (from a colored activated ability that
+    // costs {W} but doesn't produce it), while produced_mana — the
+    // authoritative field — says it only ever actually taps for B.
+    {
+      name: "Deceptive Land", typeLine: "Land",
+      oracleText: "{T}: Add {B}. {1}{W}, {T}: Scry 1.",
+      colorIdentity: ["W", "B"], producedMana: ["B"],
+    },
+  ];
+  const report = forgeNativeMasterwork({ format: "Standard", target: 60, strategy: "Balanced midrange", seed: 5, colors: ["W", "B"], cards: wbPool });
+  const row = report.selected.rows.find((entry) => entry.name === "Deceptive Land");
+  assert.ok(row, "expected the deceptive land to be selected");
+  assert.deepEqual(row.colorIdentity, ["B"], "the row's stored color source should follow produced_mana, not the broader color_identity");
+});

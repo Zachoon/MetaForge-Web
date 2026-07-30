@@ -866,6 +866,18 @@ function refineBasicSplitForConsistency(rows, colors, spellRows, deckSize, itera
   return rows;
 }
 
+// Scryfall's own `produced_mana` field is the authoritative "what colors can
+// this permanent actually tap for" — a direct answer, not an inference.
+// `colorIdentity` is a broader rules concept (every colored symbol anywhere
+// in the card's text, including a colored activated ability that costs
+// mana but doesn't produce it) and can overcount a land as a source of a
+// color it never actually adds. Falls back to colorIdentity for lands that
+// predate this field being threaded through (imported/preset rows, test
+// fixtures) so nothing regresses when the richer data isn't available.
+function producedColorsOf(card) {
+  return card.producedMana || card.colorIdentity || card.color_identity || [];
+}
+
 function buildManaBase(input, landSlots, lands, variant, presetLands = [], pipTotals = {}, spellRows = []) {
   const colors = input.commander?.colors?.length ? input.commander.colors : input.colors?.length ? input.colors : ["W", "U", "B", "R", "G"];
   const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
@@ -885,7 +897,7 @@ function buildManaBase(input, landSlots, lands, variant, presetLands = [], pipTo
     const quantity = Math.min(land.quantity, limit - already, landSlots - used);
     if (quantity <= 0) continue;
     if (existing) existing.quantity += quantity;
-    else rows.push({ quantity, name: land.name, roles: ["land"], score: 0, cmc: 0, colorIdentity: land.colorIdentity || land.color_identity || [] });
+    else rows.push({ quantity, name: land.name, roles: ["land"], score: 0, cmc: 0, colorIdentity: producedColorsOf(land) });
   }
   const presetLandNames = new Set(rows.map((row) => normalized(row.name)));
 
@@ -898,8 +910,8 @@ function buildManaBase(input, landSlots, lands, variant, presetLands = [], pipTo
   // it nudges the ranking rather than swamping it.
   const totalPips = Object.values(pipTotals).reduce((sum, count) => sum + count, 0) || 1;
   const colorFit = (card) => {
-    const identity = card.colorIdentity || card.color_identity || [];
-    return identity.reduce((sum, color) => sum + (pipTotals[color] || 0), 0) / totalPips;
+    const produced = producedColorsOf(card);
+    return produced.reduce((sum, color) => sum + (pipTotals[color] || 0), 0) / totalPips;
   };
   const rankedLands = lands
     .filter((card) => {
@@ -917,7 +929,7 @@ function buildManaBase(input, landSlots, lands, variant, presetLands = [], pipTo
   for (const land of rankedLands.slice(0, nonbasicLimit)) {
     const used = rows.reduce((sum, row) => sum + row.quantity, 0);
     if (used >= landSlots) break;
-    rows.push({ quantity: singleton ? 1 : Math.min(4, landSlots - used), name: land.name, roles: ["land"], score: 0, cmc: 0, colorIdentity: land.colorIdentity || land.color_identity || [] });
+    rows.push({ quantity: singleton ? 1 : Math.min(4, landSlots - used), name: land.name, roles: ["land"], score: 0, cmc: 0, colorIdentity: producedColorsOf(land) });
   }
   const remaining = landSlots - rows.reduce((sum, row) => sum + row.quantity, 0);
   const basicCounts = proportionalBasicCounts(colors, pipTotals, remaining);
@@ -1042,7 +1054,7 @@ function buildImportedCandidate(input, analysis) {
     if (key === commanderName) continue;
     const landCard = landByName.get(key);
     if (landCard) {
-      presetLandRows.push({ quantity: row.quantity, name: landCard.name, colorIdentity: landCard.colorIdentity || landCard.color_identity || [] });
+      presetLandRows.push({ quantity: row.quantity, name: landCard.name, colorIdentity: producedColorsOf(landCard) });
       continue;
     }
     if (isBasicLandName(row.name)) {

@@ -1083,6 +1083,7 @@ type NativeForgeCard = {
   keywords: string[];
   popularityRank?: number;
   priceUsd?: number;
+  producedMana?: string[];
 };
 
 const nativeCardFact = (card: any): NativeForgeCard => {
@@ -1099,6 +1100,10 @@ const nativeCardFact = (card: any): NativeForgeCard => {
     colorIdentity: card.color_identity || [],
     keywords: card.keywords || [],
     ...(Number.isFinite(priceUsd) ? { priceUsd } : {}),
+    // Scryfall's authoritative "what this permanent actually taps for" —
+    // more precise than color_identity, which also counts colored costs on
+    // activated abilities that don't produce mana at all.
+    ...(Array.isArray(card.produced_mana) ? { producedMana: card.produced_mana } : {}),
   };
 };
 
