@@ -12,6 +12,7 @@ import {
 
 import {
   extractMechanicalSignals,
+  findUnusedEnginePartners,
 } from "./forge-interaction-graph.mjs";
 
 import {
@@ -878,6 +879,16 @@ function producedColorsOf(card) {
   return card.producedMana || card.colorIdentity || card.color_identity || [];
 }
 
+// The built deck's rows carry only what construction needed (name, roles,
+// cmc, colorPips) — not typeLine/oracleText — so finding unused engine
+// partners needs the original fetched card objects for the deck's members,
+// matched back by name against the same pool the row came from.
+function unusedEnginePartnersFor(selected, input) {
+  const deckNames = new Set(selected.rows.map((row) => normalized(row.name)));
+  const deckCardObjects = (input.cards || []).filter((card) => deckNames.has(normalized(card.name)));
+  return findUnusedEnginePartners(deckCardObjects, input.cards || []);
+}
+
 function buildManaBase(input, landSlots, lands, variant, presetLands = [], pipTotals = {}, spellRows = []) {
   const colors = input.commander?.colors?.length ? input.commander.colors : input.colors?.length ? input.colors : ["W", "U", "B", "R", "G"];
   const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
@@ -1243,6 +1254,7 @@ export function forgeNativeMasterwork(input) {
     structuralAnalysis,
     recommendationRecord,
     manaConsistency: manaConsistencyReport(selected.rows, input.target),
+    unusedEnginePartners: unusedEnginePartnersFor(selected, input),
     blueprintIntent: analysis.context.blueprint,
   diagnostics: Object.freeze({
     analysisPasses: 1,
@@ -1345,6 +1357,7 @@ export function forgeImportedMasterwork(input) {
     structuralAnalysis,
     recommendationRecord,
     manaConsistency: manaConsistencyReport(selected.rows, input.target),
+    unusedEnginePartners: unusedEnginePartnersFor(selected, input),
     blueprintIntent: analysis.context.blueprint,
     changes: Object.freeze(changes),
     diagnostics: Object.freeze({

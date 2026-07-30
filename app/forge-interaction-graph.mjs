@@ -150,3 +150,46 @@ export function buildInteractionGraph(cards, options = {}) {
     commanderName: options.commanderName || commander?.name || "",
   };
 }
+
+// enginePairs above only ever looks inside the built deck — a genuine
+// two-way loop sitting in the broader fetched pool, one swap away from a
+// card already in the deck, goes unnoticed. For each pool card not already
+// in the deck, finds its single best mutual-loop partner already in the
+// deck (if any) and ranks the results — the same mutual forward/reverse
+// signal test as enginePairs, just run deck-card-against-pool-card instead
+// of deck-card-against-deck-card. Same inferred-pattern caveat applies:
+// this is a structural read, not a verified combo.
+export function findUnusedEnginePartners(deckCards, poolCards, options = {}) {
+  const normalizeName = (name = "") => String(name).normalize("NFKC").trim().toLocaleLowerCase("en");
+  const isLand = (card) => /\bLand\b/i.test(card?.typeLine || "");
+  const deckNames = new Set(deckCards.filter((card) => card?.name).map((card) => normalizeName(card.name)));
+  const deckNodes = deckCards
+    .filter((card) => card?.name && !isLand(card))
+    .map((card) => ({ ...card, mechanics: extractMechanicalSignals(card) }));
+  const poolNodes = poolCards
+    .filter((card) => card?.name && !isLand(card) && !deckNames.has(normalizeName(card.name)))
+    .map((card) => ({ ...card, mechanics: extractMechanicalSignals(card) }));
+
+  const suggestions = [];
+  for (const poolCard of poolNodes) {
+    let best = null;
+    for (const deckCard of deckNodes) {
+      const forward = poolCard.mechanics.produces.filter((signal) => deckCard.mechanics.rewards.includes(signal));
+      const reverse = deckCard.mechanics.produces.filter((signal) => poolCard.mechanics.rewards.includes(signal));
+      if (!forward.length || !reverse.length) continue;
+      const strength = Math.min(100, 52 + (forward.length + reverse.length) * 14);
+      if (!best || strength > best.strength) best = { partner: deckCard.name, strength, forward, reverse };
+    }
+    if (best) {
+      suggestions.push({
+        card: poolCard.name,
+        partner: best.partner,
+        strength: best.strength,
+        reason: `${poolCard.name} feeds ${best.partner}'s ${best.forward.join("/")} payoff, while ${best.partner} feeds ${poolCard.name}'s ${best.reverse.join("/")} payoff back — sitting unused in your pool.`,
+        evidence: "inferred mutual mechanical loop",
+      });
+    }
+  }
+  suggestions.sort((left, right) => right.strength - left.strength || left.card.localeCompare(right.card));
+  return suggestions.slice(0, options.limit ?? 5);
+}

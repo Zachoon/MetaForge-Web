@@ -617,3 +617,12 @@ test("uses Scryfall's produced_mana as the authoritative color source, not the b
   assert.ok(row, "expected the deceptive land to be selected");
   assert.deepEqual(row.colorIdentity, ["B"], "the row's stored color source should follow produced_mana, not the broader color_identity");
 });
+
+test("a real built deck also reports unused engine partners from the fetched pool", () => {
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Control", seed: 13,
+    commander: { name: "Scholar of Tests", colors: ["U"], oracleText: "Whenever you draw a card, create a token." },
+    cards: pool,
+  });
+  assert.ok(Array.isArray(report.unusedEnginePartners));
+});

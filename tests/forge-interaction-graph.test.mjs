@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildInteractionGraph, extractMechanicalSignals } from "../app/forge-interaction-graph.mjs";
+import { buildInteractionGraph, extractMechanicalSignals, findUnusedEnginePartners } from "../app/forge-interaction-graph.mjs";
 
 test("connects producers to payoffs and forms packages", () => {
   const graph = buildInteractionGraph([
@@ -55,4 +55,34 @@ test("a one-way synergy (only one card feeds the other) is not flagged as an eng
   assert.ok(edge);
   assert.equal(edge.mutual, false);
   assert.equal(graph.enginePairs.length, 0);
+});
+
+const tokenHerald = { name: "Token Herald", typeLine: "Creature", oracleText: "Whenever you draw your second card each turn, create a 1/1 colorless Servo artifact creature token." };
+const cardHerald = { name: "Card Herald", typeLine: "Creature", oracleText: "Draw two cards. Whenever a token you control attacks, this creature gets +1/+0 until end of turn." };
+
+test("suggests a pool card that would form a genuine two-way loop with something already in the deck", () => {
+  const deck = [tokenHerald];
+  const pool = [tokenHerald, cardHerald, { name: "Vanilla", typeLine: "Creature", oracleText: "Vigilance." }];
+  const suggestions = findUnusedEnginePartners(deck, pool);
+  assert.equal(suggestions.length, 1);
+  assert.equal(suggestions[0].card, "Card Herald");
+  assert.equal(suggestions[0].partner, "Token Herald");
+  assert.match(suggestions[0].reason, /sitting unused in your pool/i);
+});
+
+test("never suggests a card that's already in the deck", () => {
+  const deck = [tokenHerald, cardHerald];
+  const pool = [tokenHerald, cardHerald];
+  assert.deepEqual(findUnusedEnginePartners(deck, pool), []);
+});
+
+test("ignores lands in the pool and respects the limit option", () => {
+  const deck = [tokenHerald];
+  const pool = Array.from({ length: 5 }, (_, i) => ({ ...cardHerald, name: `Card Herald ${i}` }));
+  // Same matching text, but it's a land — must never be suggested as a
+  // "combo piece," regardless of what its oracle text happens to say.
+  pool.push({ name: "Unused Land", typeLine: "Land", oracleText: cardHerald.oracleText });
+  const suggestions = findUnusedEnginePartners(deck, pool, { limit: 2 });
+  assert.equal(suggestions.length, 2);
+  assert.ok(suggestions.every((entry) => entry.card !== "Unused Land"));
 });
