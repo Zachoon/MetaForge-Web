@@ -4322,6 +4322,12 @@ export default function Home() {
 
       {(chamber === "commission" || chamber === "refine") && (
         <section className="commission-chamber">
+          {/* A decorative sibling, not an ancestor: the sweep animation needs
+              its own overflow:hidden so it doesn't bleed past the chamber's
+              edges, but putting that on the chamber itself clipped the
+              commander-search results dropdown, which must render below the
+              input regardless of how tall the chamber's own box is. */}
+          <div className="commission-chamber-sweep" aria-hidden="true" />
           <button className="back-link" onClick={() => setChamber("entrance")}>
             ← Return to the Forge Entrance
           </button>

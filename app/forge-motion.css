@@ -376,11 +376,15 @@
   opacity: 1;
 }
 
-.commission-chamber,.masterwork-reveal,.testing-anvil{overflow:hidden}
-.commission-chamber::after,.masterwork-reveal::after,.testing-anvil::after{position:absolute;z-index:0;inset:0;pointer-events:none;content:""}
-.commission-chamber::after{opacity:.34;background:linear-gradient(108deg,transparent 0 46%,rgba(93,224,214,.07) 49%,transparent 52%),radial-gradient(ellipse at 82% 88%,rgba(238,123,49,.13),transparent 28%);animation:mf-blueprint-sweep 11s ease-in-out infinite}
+.masterwork-reveal,.testing-anvil{overflow:hidden}
+.masterwork-reveal::after,.testing-anvil::after{position:absolute;z-index:0;inset:0;pointer-events:none;content:""}
 .masterwork-reveal::after{opacity:.42;background:radial-gradient(ellipse at 50% 94%,rgba(220,112,48,.12),transparent 42%);animation:mf-masterwork-room 10s ease-in-out infinite alternate}
 .commission-chamber>*,.masterwork-reveal>*,.testing-anvil>*{position:relative;z-index:1}
+/* A real sibling element, not ::after on .commission-chamber itself — see
+   the comment in page.tsx. Only this layer clips, so the chamber's other
+   children (the commander-search dropdown among them) never get cut off
+   by a box no taller than the sweep needs to be. */
+.commission-chamber-sweep{position:absolute;z-index:0;inset:0;overflow:hidden;pointer-events:none;opacity:.34;background:linear-gradient(108deg,transparent 0 46%,rgba(93,224,214,.07) 49%,transparent 52%),radial-gradient(ellipse at 82% 88%,rgba(238,123,49,.13),transparent 28%);animation:mf-blueprint-sweep 11s ease-in-out infinite}
 .masterwork-card[data-state="sealed"]{border-color:color-mix(in srgb,var(--motif-accent,var(--mf-thought-energy)) 58%,#25312f);box-shadow:0 30px 90px rgba(0,0,0,.82),inset 0 0 45px rgba(56,210,205,.08)}
 .masterwork-card[data-state="sealed"] .masterwork-seal::after{position:absolute;inset:16%;border:1px solid color-mix(in srgb,var(--motif-accent,var(--mf-thought-energy)) 24%,transparent);border-radius:50%;content:"";box-shadow:0 0 22px color-mix(in srgb,var(--motif-accent,var(--mf-thought-energy)) 14%,transparent);animation:mf-seal-breathe 4.8s ease-in-out infinite}
 .masterwork-card[data-state="revealed"]{animation:mf-card-forged 880ms cubic-bezier(.16,.8,.22,1) both!important}
@@ -450,7 +454,7 @@
   .forge-energy-rails,
   .forge-impact-wave,
   .forge-action-burst,
-  .commission-chamber::after,
+  .commission-chamber-sweep,
   .masterwork-reveal::after,
   .masterwork-card[data-state="sealed"] .masterwork-seal::after,
   .masterwork-card[data-state="revealed"],
