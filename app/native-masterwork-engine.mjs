@@ -824,7 +824,49 @@ export function manaConsistencyReport(rows, deckSize) {
   return { overall: Number(clamp(overall, 0, 1).toFixed(3)), sourcesByColor, cards, risky };
 }
 
-function buildManaBase(input, landSlots, lands, variant, presetLands = [], pipTotals = {}) {
+// Aggregate pip totals capture HOW MUCH of each color a deck needs, but not
+// WHEN — a double-pip 2-drop is far less forgiving than the same pips on a
+// 6-drop, since by turn 6 you've seen many more cards. proportionalBasicCounts
+// below splits basics purely by raw pip share, which can still under-serve a
+// color whose pips concentrate in early, urgent slots even though its total
+// pip count looks smaller. This uses the same real hypergeometric math the
+// consistency report surfaces to nudge the split toward whichever color is
+// actually struggling on its own cards' casting turns — never below 1 basic
+// for a color still in the deck's identity, and bounded to a handful of
+// one-land nudges rather than a full re-solve.
+function refineBasicSplitForConsistency(rows, colors, spellRows, deckSize, iterations = 8) {
+  if (!spellRows?.length || !Number.isFinite(deckSize)) return rows;
+  for (let pass = 0; pass < iterations; pass += 1) {
+    const report = manaConsistencyReport([...rows, ...spellRows], deckSize);
+    if (!report.cards.length) break;
+    const totals = {};
+    for (const card of report.cards) {
+      for (const color of card.colors) {
+        if (!colors.includes(color)) continue;
+        if (!totals[color]) totals[color] = { sum: 0, count: 0 };
+        totals[color].sum += card.probability;
+        totals[color].count += 1;
+      }
+    }
+    const averages = Object.entries(totals).map(([color, { sum, count }]) => [color, sum / count]);
+    if (averages.length < 2) break;
+    averages.sort((left, right) => left[1] - right[1]);
+    const [worstColor, worstAverage] = averages[0];
+    const [bestColor, bestAverage] = averages[averages.length - 1];
+    if (bestAverage - worstAverage < 0.08) break;
+    const bestName = BASIC_BY_COLOR[bestColor];
+    const bestRow = rows.find((row) => row.name === bestName);
+    if (!bestRow || bestRow.quantity <= 1) break;
+    bestRow.quantity -= 1;
+    const worstName = BASIC_BY_COLOR[worstColor];
+    const worstRow = rows.find((row) => row.name === worstName);
+    if (worstRow) worstRow.quantity += 1;
+    else rows.push({ quantity: 1, name: worstName, roles: ["land"], score: 0, cmc: 0, colorIdentity: [worstColor] });
+  }
+  return rows;
+}
+
+function buildManaBase(input, landSlots, lands, variant, presetLands = [], pipTotals = {}, spellRows = []) {
   const colors = input.commander?.colors?.length ? input.commander.colors : input.colors?.length ? input.colors : ["W", "U", "B", "R", "G"];
   const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
   const rows = [];
@@ -886,7 +928,7 @@ function buildManaBase(input, landSlots, lands, variant, presetLands = [], pipTo
     if (existing) existing.quantity += count;
     else rows.push({ quantity: count, name, roles: ["land"], score: 0, cmc: 0, colorIdentity: [color] });
   }
-  return rows;
+  return refineBasicSplitForConsistency(rows, colors, spellRows, input.target);
 }
 
 function evaluateCandidate(rows, roleCounts, input, variant) {
@@ -960,7 +1002,7 @@ function buildCandidate(input, variant, analysis) {
   const scored = spells.map((entry) => scoreCard(entry, input, variant, analysis.context));
   const spellSlots = target - landSlots - commanderSlots;
   const { selected, roleCounts } = chooseSpells(scored, spellSlots, singleton, roleTargets(input.format, input.strategy), analysis.context.blueprint, [], curveTargets(input.strategy, spellSlots));
-  const mana = buildManaBase(input, landSlots, lands, variant, [], aggregatePipTotals(selected));
+  const mana = buildManaBase(input, landSlots, lands, variant, [], aggregatePipTotals(selected), selected);
   const rows = [
     ...(input.commander ? [{ quantity: 1, name: input.commander.name, roles: ["commander"], score: 100, cmc: manaValueFromCost(input.commander.manaCost, input.commander.cmc) }] : []),
     ...selected,
@@ -1036,7 +1078,7 @@ function buildImportedCandidate(input, analysis) {
   const scored = analysis.spells.map((entry) => scoreCard(entry, input, variant, analysis.context));
   const spellSlots = target - landSlots - commanderSlots;
   const { selected, roleCounts } = chooseSpells(scored, spellSlots, singleton, roleTargets(input.format, input.strategy), analysis.context.blueprint, presetSpellRows, curveTargets(input.strategy, spellSlots));
-  const mana = buildManaBase(input, landSlots, analysis.lands, variant, presetLandRows, aggregatePipTotals(selected));
+  const mana = buildManaBase(input, landSlots, analysis.lands, variant, presetLandRows, aggregatePipTotals(selected), selected);
   const rows = [
     ...(input.commander ? [{ quantity: 1, name: input.commander.name, roles: ["commander"], score: 100, cmc: manaValueFromCost(input.commander.manaCost, input.commander.cmc) }] : []),
     ...selected,

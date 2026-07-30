@@ -544,3 +544,33 @@ test("a real built deck reports mana consistency alongside the rest of the maste
   assert.ok(Array.isArray(report.manaConsistency.cards));
   assert.ok(Array.isArray(report.manaConsistency.risky));
 });
+
+test("refines the basic land split using real per-turn consistency, not just raw pip totals", () => {
+  // White's demand is all cheap and urgent (a single pip on turn-1 cards);
+  // black's is all late and forgiving (double pips, but not until turn 6,
+  // by which point far more cards have been seen). A split based only on
+  // raw pip totals has no way to know one color's need is far more
+  // time-sensitive than the other's — this checks the built deck's real
+  // consistency instead of trusting pip count alone.
+  const wbCard = (name, oracleText, manaCost, typeLine = "Creature — Test", colorIdentity = ["B"]) => ({ name, oracleText, manaCost, typeLine, colorIdentity });
+  const wbPool = [
+    ...Array.from({ length: 10 }, (_, i) => wbCard(`Early White Shield ${i}`, "Target creature gains hexproof and indestructible until end of turn.", "{W}", "Creature — Test", ["W"])),
+    ...Array.from({ length: 10 }, (_, i) => wbCard(`Late Black Answer ${i}`, "Destroy target creature.", "{4}{B}{B}", "Creature — Test", ["B"])),
+    ...Array.from({ length: 6 }, (_, i) => wbCard(`Draw ${i}`, "Draw a card. Scry 1.", "{2}", "Sorcery", [])),
+    ...Array.from({ length: 6 }, (_, i) => wbCard(`Ramp Stone ${i}`, "Add one mana. Create a Treasure token.", "{2}", "Artifact", [])),
+  ];
+  const report = forgeNativeMasterwork({ format: "Standard", target: 60, strategy: "Balanced midrange", seed: 5, colors: ["W", "B"], cards: wbPool });
+  const byColor = {};
+  for (const card of report.manaConsistency.cards) {
+    for (const color of card.colors) {
+      (byColor[color] ||= []).push(card.probability);
+    }
+  }
+  const average = (values) => values.reduce((sum, value) => sum + value, 0) / values.length;
+  const whiteAverage = average(byColor.W || [0]);
+  const blackAverage = average(byColor.B || [0]);
+  assert.ok(
+    Math.abs(whiteAverage - blackAverage) < 0.15,
+    `expected the refined mana base to keep both colors' real consistency reasonably close, got W=${whiteAverage.toFixed(2)} B=${blackAverage.toFixed(2)}`,
+  );
+});
