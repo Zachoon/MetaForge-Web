@@ -1648,6 +1648,7 @@ export default function Home() {
     candidates: any[];
     options: { format: string; strategy: string; target: number };
     manaConsistency?: any;
+    unusedEnginePartners?: any[];
   } | null>(null);
   // Non-fatal disclosure for the decklist-import path: names the Forge could
   // not verify or that aren't legal in this format, left out rather than
@@ -2908,6 +2909,7 @@ export default function Home() {
       candidates: nativeReport.candidates,
       options: { format, strategy, target: targetDeckSize(format) },
       manaConsistency: nativeReport.manaConsistency,
+      unusedEnginePartners: nativeReport.unusedEnginePartners,
     });
     void persistStoryBench(
       firstRevision,
@@ -4877,6 +4879,14 @@ export default function Home() {
                               <small>POTENTIAL TWO-CARD ENGINES · PATTERN-INFERRED, NOT A VERIFIED COMBO</small>
                               {interactionGraph.enginePairs.slice(0, 3).map((pair: { cards: string[]; reason: string }) => (
                                 <em key={pair.cards.join("+")}>{pair.cards.join(" + ")} — {pair.reason}</em>
+                              ))}
+                            </span>
+                          )}
+                          {nativeMasterworkContext?.unusedEnginePartners && nativeMasterworkContext.unusedEnginePartners.length > 0 && (
+                            <span className="slot-justification">
+                              <small>SITTING UNUSED IN YOUR POOL · SAME PATTERN-INFERRED CAVEAT</small>
+                              {nativeMasterworkContext.unusedEnginePartners.slice(0, 3).map((entry: { card: string; partner: string; reason: string }) => (
+                                <em key={`${entry.card}+${entry.partner}`}>{entry.card} — {entry.reason}</em>
                               ))}
                             </span>
                           )}
