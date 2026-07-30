@@ -1424,12 +1424,16 @@ const cardGroup = (fact?: CardFact, isCommander = false) => {
   if (/Battle/i.test(type)) return "Battles";
   return "Other";
 };
-// Nonfoil market price is preferred; foil-only cards (some promos/showcase
-// treatments) fall back to the foil price rather than reading as free.
-// Basics and other truly priceless cards correctly return null, not 0 — a
-// real $0.00 card and "no price data yet" are different things.
-const cardPriceUsd = (fact?: CardFact): number | null => {
-  const raw = fact?.prices?.usd ?? fact?.prices?.usd_foil;
+// Reads whichever price the player actually wants — foil or nonfoil — and
+// falls back to the other printing's price only when the requested one
+// doesn't exist at all (foil-only promos have no usd price; some older or
+// bulk commons have no usd_foil price). Basics and other truly priceless
+// cards correctly return null, not 0 — a real $0.00 card and "no price
+// data yet" are different things.
+const cardPriceUsd = (fact?: CardFact, foil = false): number | null => {
+  const preferred = foil ? fact?.prices?.usd_foil : fact?.prices?.usd;
+  const fallback = foil ? fact?.prices?.usd : fact?.prices?.usd_foil;
+  const raw = preferred ?? fallback;
   const value = Number(raw);
   return raw != null && Number.isFinite(value) ? value : null;
 };
@@ -1715,6 +1719,10 @@ export default function Home() {
   const [cardFacts, setCardFacts] = useState<Record<string, CardFact>>({});
   const [hoveredCard, setHoveredCard] = useState("");
   const [cardOrder, setCardOrder] = useState<string[]>([]);
+  // Which cards the player wants priced (and eventually printed) as foil.
+  // Purely a pricing preference for now — doesn't change what card is in
+  // the deck, only which of its two market prices gets used.
+  const [foilCards, setFoilCards] = useState<Set<string>>(new Set());
   const [edhrecEvidence, setEdhrecEvidence] = useState<EdhrecEvidence | null>(
     null,
   );
@@ -2101,7 +2109,8 @@ export default function Home() {
     let pricedCards = 0;
     let unpricedCards = 0;
     for (const row of deckRows) {
-      const price = cardPriceUsd(cardFacts[cardFactKey(row.name)]);
+      const isFoil = foilCards.has(cardFactKey(row.name));
+      const price = cardPriceUsd(cardFacts[cardFactKey(row.name)], isFoil);
       if (price === null) {
         unpricedCards += row.quantity;
         continue;
@@ -2110,7 +2119,7 @@ export default function Home() {
       pricedCards += row.quantity;
     }
     return { total, pricedCards, unpricedCards };
-  }, [deckRows, cardFacts]);
+  }, [deckRows, cardFacts, foilCards]);
   const activeCard =
     hoveredCard || chosenPreview.card || deckRows[0]?.name || "";
   const activeFact = cardFacts[cardFactKey(activeCard)];
@@ -2811,7 +2820,7 @@ export default function Home() {
     if (chamber !== "workbench") return;
     const frame = window.requestAnimationFrame(() => {
       document
-        .querySelectorAll<HTMLButtonElement>(".type-column>button")
+        .querySelectorAll<HTMLElement>(".type-column>.type-column-row")
         .forEach((button) => {
           button.draggable = true;
           button.title = "Drag to reorder this card within the deck gallery";
@@ -6067,10 +6076,13 @@ export default function Home() {
                             </span>
                           </header>
                           {groupedDeck[group].map((row) => {
-                            const rowPrice = cardPriceUsd(cardFacts[cardFactKey(row.name)]);
+                            const rowKey = cardFactKey(row.name);
+                            const isFoil = foilCards.has(rowKey);
+                            const rowPrice = cardPriceUsd(cardFacts[rowKey], isFoil);
                             return (
-                              <button
-                                type="button"
+                              <div
+                                role="button"
+                                tabIndex={0}
                                 key={row.name}
                                 draggable
                                 onDragStart={(event) => {
@@ -6083,6 +6095,7 @@ export default function Home() {
                                 onFocus={() => setHoveredCard(row.name)}
                                 style={swapFlourish ? ({ "--motif-accent": masterworkVisualProfile.accent } as React.CSSProperties) : undefined}
                                 className={[
+                                  "type-column-row",
                                   activeCard === row.name ? "active" : "",
                                   swapFlourish?.stage === "out" && row.name === swapFlourish.cut ? "card-row-cutting" : "",
                                   swapFlourish?.stage === "in" && row.name === swapFlourish.add ? "card-row-materializing" : "",
@@ -6095,7 +6108,25 @@ export default function Home() {
                                     ${(rowPrice * row.quantity).toFixed(2)}
                                   </em>
                                 )}
-                              </button>
+                                <button
+                                  type="button"
+                                  className={`card-row-foil-toggle${isFoil ? " active" : ""}`}
+                                  aria-pressed={isFoil}
+                                  aria-label={`${isFoil ? "Stop pricing" : "Price"} ${row.name} as foil`}
+                                  title={isFoil ? "Priced as foil" : "Price as foil"}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    setFoilCards((current) => {
+                                      const next = new Set(current);
+                                      if (next.has(rowKey)) next.delete(rowKey);
+                                      else next.add(rowKey);
+                                      return next;
+                                    });
+                                  }}
+                                >
+                                  ✦
+                                </button>
+                              </div>
                             );
                           })}
                         </section>

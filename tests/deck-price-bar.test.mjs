@@ -35,3 +35,28 @@ test("the price bar sits below the bench dock in stacking order, not covering it
   // beneath it so the dock remains fully visible and clickable.
   assert.ok(Number(barRule[1]) < 90, `expected the price bar's z-index to stay below the bench dock's, got ${barRule[1]}`);
 });
+
+test("each deck row can be priced as foil or nonfoil independently", () => {
+  assert.match(page, /foilCards/);
+  assert.match(page, /card-row-foil-toggle/);
+  // cardPriceUsd must accept a foil flag and prefer that printing's price,
+  // falling back to the other printing rather than reading as unpriced.
+  assert.match(page, /cardPriceUsd\s*=\s*\(fact\?:\s*CardFact,\s*foil\s*=\s*false\)/);
+  assert.match(page, /foil\s*\?\s*fact\?\.prices\?\.usd_foil\s*:\s*fact\?\.prices\?\.usd/);
+  // The deck-wide total must recompute when foil selections change.
+  const memoDeps = page.match(/\[deckRows, cardFacts, foilCards\]/);
+  assert.ok(memoDeps, "expected deckPriceTotal to depend on foilCards");
+});
+
+test("the foil toggle nests inside the deck row without invalid button-in-button HTML", () => {
+  // The row can no longer be a native <button> once it hosts a nested
+  // foil-toggle button, since <button> cannot contain another <button>.
+  assert.match(page, /"type-column-row"/);
+  assert.match(page, /role="button"/);
+  assert.doesNotMatch(css, /\.type-column>button/);
+});
+
+test("the imperative drag-reorder wiring targets the new row element, not a stale button selector", () => {
+  assert.match(page, /querySelectorAll<HTMLElement>\(".type-column>.type-column-row"\)/);
+  assert.doesNotMatch(page, /querySelectorAll<HTMLButtonElement>\(".type-column>button"\)/);
+});
