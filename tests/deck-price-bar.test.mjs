@@ -25,6 +25,9 @@ test("the price bar is excluded from the generic child-layering rule so position
   const genericLayeringRule = motionCss.match(/\.great-forge > :not\(([^)]*)\)/);
   assert.ok(genericLayeringRule, "expected to find the generic child-layering rule");
   assert.match(genericLayeringRule[1], /\.deck-price-bar/);
+  // Same reasoning applies to the printing picker: it's a fixed-position
+  // popover rendered as a direct child of .great-forge alongside the bar.
+  assert.match(genericLayeringRule[1], /\.printing-picker/);
 });
 
 test("the price bar sits below the bench dock in stacking order, not covering it", () => {
@@ -44,7 +47,7 @@ test("each deck row can be priced as foil or nonfoil independently", () => {
   assert.match(page, /cardPriceUsd\s*=\s*\(fact\?:\s*CardFact,\s*foil\s*=\s*false\)/);
   assert.match(page, /foil\s*\?\s*fact\?\.prices\?\.usd_foil\s*:\s*fact\?\.prices\?\.usd/);
   // The deck-wide total must recompute when foil selections change.
-  const memoDeps = page.match(/\[deckRows, cardFacts, foilCards, cheapestPrintings\]/);
+  const memoDeps = page.match(/\[deckRows, cardFacts, foilCards, cheapestPrintings, printingOverrides\]/);
   assert.ok(memoDeps, "expected deckPriceTotal to depend on foilCards");
 });
 
@@ -72,4 +75,20 @@ test("the foil toggle nests inside the deck row without invalid button-in-button
 test("the imperative drag-reorder wiring targets the new row element, not a stale button selector", () => {
   assert.match(page, /querySelectorAll<HTMLElement>\(".type-column>.type-column-row"\)/);
   assert.doesNotMatch(page, /querySelectorAll<HTMLButtonElement>\(".type-column>button"\)/);
+});
+
+test("right-clicking a deck row opens a printing picker fetched from Scryfall's full print history", () => {
+  assert.match(page, /onContextMenu/);
+  assert.match(page, /printingMenu/);
+  assert.match(page, /unique=prints/);
+  assert.match(page, /printing-picker/);
+});
+
+test("choosing a printing overrides only that card's prices, not the card itself", () => {
+  assert.match(page, /printingOverrides/);
+  assert.match(page, /effectivePriceFact/);
+  // The override supplies alternate usd/usd_foil values on top of the
+  // existing card fact — it must not replace name, type, or oracle text.
+  assert.match(page, /prices:\s*\{\s*usd:\s*override\.usd,\s*usd_foil:\s*override\.usd_foil\s*\}/);
+  assert.match(page, /Use default printing/);
 });

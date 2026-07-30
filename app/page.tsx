@@ -92,6 +92,15 @@ type CardFact = {
   prices?: { usd?: string | null; usd_foil?: string | null };
 };
 type CardSearchResult = { name: string; typeLine: string; image: string };
+type PrintingOption = {
+  id: string;
+  setCode: string;
+  setName: string;
+  collectorNumber: string;
+  image: string;
+  usd: string | null;
+  usd_foil: string | null;
+};
 type MetaBreakerExperiment = {
   cut: string;
   add: CardSearchResult;
@@ -1737,6 +1746,19 @@ export default function Home() {
   // individual foil selections for the total (those selections aren't
   // lost — they just aren't the active pricing mode while this is on).
   const [cheapestPrintings, setCheapestPrintings] = useState(false);
+  // Which specific printing a player has chosen for a card (right-click on
+  // a deck row), keyed by cardFactKey — only overrides the printing whose
+  // prices get used, not which card is in the deck.
+  const [printingOverrides, setPrintingOverrides] = useState<
+    Record<string, PrintingOption>
+  >({});
+  const [printingMenu, setPrintingMenu] = useState<{
+    name: string;
+    x: number;
+    y: number;
+  } | null>(null);
+  const [printingOptions, setPrintingOptions] = useState<PrintingOption[]>([]);
+  const [printingOptionsLoading, setPrintingOptionsLoading] = useState(false);
   const [edhrecEvidence, setEdhrecEvidence] = useState<EdhrecEvidence | null>(
     null,
   );
@@ -2112,6 +2134,17 @@ export default function Home() {
     }
     return groups;
   }, [orderedDeckRows, cardFacts, format, chosenPreview.card, selectedSecondCommander?.name]);
+  // The card fact used for pricing: the player's chosen specific printing
+  // (right-click on a row) if they picked one, otherwise whatever printing
+  // Scryfall returned by default. Only the prices differ; everything else
+  // about the card stays the same.
+  const effectivePriceFact = (name: string): CardFact | undefined => {
+    const key = cardFactKey(name);
+    const override = printingOverrides[key];
+    const base = cardFacts[key];
+    if (!override) return base;
+    return { ...base, prices: { usd: override.usd, usd_foil: override.usd_foil } };
+  };
   // Real market price, not a model guess — the same prices.usd Scryfall
   // already returns for every card fetched into cardFacts, just never
   // surfaced to the player before. Cards with no known price (never
@@ -2123,7 +2156,7 @@ export default function Home() {
     let pricedCards = 0;
     let unpricedCards = 0;
     for (const row of deckRows) {
-      const fact = cardFacts[cardFactKey(row.name)];
+      const fact = effectivePriceFact(row.name);
       const price = cheapestPrintings
         ? cheapestCardPriceUsd(fact)
         : cardPriceUsd(fact, foilCards.has(cardFactKey(row.name)));
@@ -2135,7 +2168,7 @@ export default function Home() {
       pricedCards += row.quantity;
     }
     return { total, pricedCards, unpricedCards };
-  }, [deckRows, cardFacts, foilCards, cheapestPrintings]);
+  }, [deckRows, cardFacts, foilCards, cheapestPrintings, printingOverrides]);
   const activeCard =
     hoveredCard || chosenPreview.card || deckRows[0]?.name || "";
   const activeFact = cardFacts[cardFactKey(activeCard)];
@@ -2729,6 +2762,60 @@ export default function Home() {
     }, 280);
     return () => window.clearTimeout(timer);
   }, [cardSearch, chamber, format, selectedCommander?.name, selectedSecondCommander?.name]);
+
+  useEffect(() => {
+    if (!printingMenu) {
+      setPrintingOptions([]);
+      return;
+    }
+    let cancelled = false;
+    setPrintingOptionsLoading(true);
+    (async () => {
+      try {
+        const query = encodeURIComponent(`!"${printingMenu.name}"`);
+        const response = await fetch(
+          `https://api.scryfall.com/cards/search?q=${query}&unique=prints&order=released&dir=desc`,
+        );
+        const data = await response.json();
+        if (cancelled) return;
+        setPrintingOptions(
+          (data.data || []).map((card: any) => ({
+            id: card.id,
+            setCode: (card.set || "").toUpperCase(),
+            setName: card.set_name || card.set || "",
+            collectorNumber: card.collector_number || "",
+            image:
+              card.image_uris?.small ||
+              card.card_faces?.[0]?.image_uris?.small ||
+              "",
+            usd: card.prices?.usd ?? null,
+            usd_foil: card.prices?.usd_foil ?? null,
+          })),
+        );
+      } catch {
+        if (!cancelled) setPrintingOptions([]);
+      } finally {
+        if (!cancelled) setPrintingOptionsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [printingMenu]);
+
+  useEffect(() => {
+    if (!printingMenu) return;
+    const dismiss = () => setPrintingMenu(null);
+    const dismissOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setPrintingMenu(null);
+    };
+    window.addEventListener("click", dismiss);
+    window.addEventListener("keydown", dismissOnEscape);
+    return () => {
+      window.removeEventListener("click", dismiss);
+      window.removeEventListener("keydown", dismissOnEscape);
+    };
+  }, [printingMenu]);
 
   useEffect(() => {
     if (
@@ -6094,7 +6181,8 @@ export default function Home() {
                           {groupedDeck[group].map((row) => {
                             const rowKey = cardFactKey(row.name);
                             const isFoil = foilCards.has(rowKey);
-                            const rowFact = cardFacts[rowKey];
+                            const rowFact = effectivePriceFact(row.name);
+                            const rowPrinting = printingOverrides[rowKey];
                             const rowPrice = cheapestPrintings
                               ? cheapestCardPriceUsd(rowFact)
                               : cardPriceUsd(rowFact, isFoil);
@@ -6112,6 +6200,14 @@ export default function Home() {
                                 }}
                                 onMouseEnter={() => setHoveredCard(row.name)}
                                 onFocus={() => setHoveredCard(row.name)}
+                                onContextMenu={(event) => {
+                                  event.preventDefault();
+                                  setPrintingMenu({
+                                    name: row.name,
+                                    x: Math.min(event.clientX, window.innerWidth - 270),
+                                    y: Math.min(event.clientY, window.innerHeight - 350),
+                                  });
+                                }}
                                 style={swapFlourish ? ({ "--motif-accent": masterworkVisualProfile.accent } as React.CSSProperties) : undefined}
                                 className={[
                                   "type-column-row",
@@ -6121,7 +6217,17 @@ export default function Home() {
                                 ].filter(Boolean).join(" ")}
                               >
                                 <span>{row.quantity}</span>
-                                <strong>{row.name}</strong>
+                                <strong>
+                                  {row.name}
+                                  {rowPrinting && (
+                                    <small
+                                      className="card-row-printing-tag"
+                                      title={`Priced from ${rowPrinting.setName} (${rowPrinting.setCode}) — right-click to change`}
+                                    >
+                                      {rowPrinting.setCode}
+                                    </small>
+                                  )}
+                                </strong>
                                 {rowPrice !== null && (
                                   <em className="card-row-price">
                                     ${(rowPrice * row.quantity).toFixed(2)}
@@ -6521,6 +6627,70 @@ export default function Home() {
               Cheapest Printings
             </button>
           </div>
+          {printingMenu && (
+            <div
+              className="printing-picker"
+              style={{ left: printingMenu.x, top: printingMenu.y }}
+              onClick={(event) => event.stopPropagation()}
+              onContextMenu={(event) => event.preventDefault()}
+            >
+              <header>
+                <b>{printingMenu.name}</b>
+                <span>Choose a printing</span>
+              </header>
+              {printingOverrides[cardFactKey(printingMenu.name)] && (
+                <button
+                  type="button"
+                  className="printing-picker-reset"
+                  onClick={() => {
+                    const key = cardFactKey(printingMenu.name);
+                    setPrintingOverrides((current) => {
+                      const next = { ...current };
+                      delete next[key];
+                      return next;
+                    });
+                    setPrintingMenu(null);
+                  }}
+                >
+                  Use default printing
+                </button>
+              )}
+              {printingOptionsLoading ? (
+                <p>Loading printings…</p>
+              ) : printingOptions.length === 0 ? (
+                <p>No other printings found.</p>
+              ) : (
+                <ul>
+                  {printingOptions.map((option) => (
+                    <li key={option.id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPrintingOverrides((current) => ({
+                            ...current,
+                            [cardFactKey(printingMenu.name)]: option,
+                          }));
+                          setPrintingMenu(null);
+                        }}
+                      >
+                        {option.image && <img src={option.image} alt="" />}
+                        <span>
+                          <b>{option.setName}</b>
+                          <small>
+                            {option.setCode} · #{option.collectorNumber}
+                          </small>
+                        </span>
+                        <em>
+                          {option.usd ? `$${option.usd}` : "—"}
+                          {option.usd_foil ? ` / ✦$${option.usd_foil}` : ""}
+                        </em>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
           {!editAnvilOpen && (
             <button
               className="edit-anvil-launcher"
