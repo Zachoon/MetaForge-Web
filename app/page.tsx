@@ -89,6 +89,7 @@ type CardFact = {
     type_line?: string;
     image_uris?: { normal?: string; art_crop?: string };
   }>;
+  prices?: { usd?: string | null; usd_foil?: string | null };
 };
 type CardSearchResult = { name: string; typeLine: string; image: string };
 type MetaBreakerExperiment = {
@@ -1423,6 +1424,15 @@ const cardGroup = (fact?: CardFact, isCommander = false) => {
   if (/Battle/i.test(type)) return "Battles";
   return "Other";
 };
+// Nonfoil market price is preferred; foil-only cards (some promos/showcase
+// treatments) fall back to the foil price rather than reading as free.
+// Basics and other truly priceless cards correctly return null, not 0 — a
+// real $0.00 card and "no price data yet" are different things.
+const cardPriceUsd = (fact?: CardFact): number | null => {
+  const raw = fact?.prices?.usd ?? fact?.prices?.usd_foil;
+  const value = Number(raw);
+  return raw != null && Number.isFinite(value) ? value : null;
+};
 const cardRole = (fact?: CardFact) => {
   const text = [
     fact?.type_line,
@@ -2079,6 +2089,27 @@ export default function Home() {
     }
     return groups;
   }, [orderedDeckRows, cardFacts, format, chosenPreview.card, selectedSecondCommander?.name]);
+  // Real market price, not a model guess — the same prices.usd Scryfall
+  // already returns for every card fetched into cardFacts, just never
+  // surfaced to the player before. Cards with no known price (never
+  // fetched yet, or genuinely no listed price) are counted separately
+  // rather than silently treated as free, so the total is honest about
+  // what it does and doesn't cover.
+  const deckPriceTotal = useMemo(() => {
+    let total = 0;
+    let pricedCards = 0;
+    let unpricedCards = 0;
+    for (const row of deckRows) {
+      const price = cardPriceUsd(cardFacts[cardFactKey(row.name)]);
+      if (price === null) {
+        unpricedCards += row.quantity;
+        continue;
+      }
+      total += price * row.quantity;
+      pricedCards += row.quantity;
+    }
+    return { total, pricedCards, unpricedCards };
+  }, [deckRows, cardFacts]);
   const activeCard =
     hoveredCard || chosenPreview.card || deckRows[0]?.name || "";
   const activeFact = cardFacts[cardFactKey(activeCard)];
@@ -6017,30 +6048,38 @@ export default function Home() {
                               )}
                             </span>
                           </header>
-                          {groupedDeck[group].map((row) => (
-                            <button
-                              type="button"
-                              key={row.name}
-                              draggable
-                              onDragStart={(event) => {
-                                event.dataTransfer.setData(
-                                  "text/plain",
-                                  row.name,
-                                );
-                              }}
-                              onMouseEnter={() => setHoveredCard(row.name)}
-                              onFocus={() => setHoveredCard(row.name)}
-                              style={swapFlourish ? ({ "--motif-accent": masterworkVisualProfile.accent } as React.CSSProperties) : undefined}
-                              className={[
-                                activeCard === row.name ? "active" : "",
-                                swapFlourish?.stage === "out" && row.name === swapFlourish.cut ? "card-row-cutting" : "",
-                                swapFlourish?.stage === "in" && row.name === swapFlourish.add ? "card-row-materializing" : "",
-                              ].filter(Boolean).join(" ")}
-                            >
-                              <span>{row.quantity}</span>
-                              <strong>{row.name}</strong>
-                            </button>
-                          ))}
+                          {groupedDeck[group].map((row) => {
+                            const rowPrice = cardPriceUsd(cardFacts[cardFactKey(row.name)]);
+                            return (
+                              <button
+                                type="button"
+                                key={row.name}
+                                draggable
+                                onDragStart={(event) => {
+                                  event.dataTransfer.setData(
+                                    "text/plain",
+                                    row.name,
+                                  );
+                                }}
+                                onMouseEnter={() => setHoveredCard(row.name)}
+                                onFocus={() => setHoveredCard(row.name)}
+                                style={swapFlourish ? ({ "--motif-accent": masterworkVisualProfile.accent } as React.CSSProperties) : undefined}
+                                className={[
+                                  activeCard === row.name ? "active" : "",
+                                  swapFlourish?.stage === "out" && row.name === swapFlourish.cut ? "card-row-cutting" : "",
+                                  swapFlourish?.stage === "in" && row.name === swapFlourish.add ? "card-row-materializing" : "",
+                                ].filter(Boolean).join(" ")}
+                              >
+                                <span>{row.quantity}</span>
+                                <strong>{row.name}</strong>
+                                {rowPrice !== null && (
+                                  <em className="card-row-price">
+                                    ${(rowPrice * row.quantity).toFixed(2)}
+                                  </em>
+                                )}
+                              </button>
+                            );
+                          })}
                         </section>
                       ))}
                   </div>
@@ -6387,6 +6426,17 @@ export default function Home() {
       )}
       {chamber === "workbench" && deckRows.length > 0 && (
         <>
+          <div className="deck-price-bar" role="status" aria-label="Deck market price total">
+            <span>
+              <small>MARKET TOTAL</small>
+              <strong>${deckPriceTotal.total.toFixed(2)}</strong>
+            </span>
+            {deckPriceTotal.unpricedCards > 0 && (
+              <em>
+                {deckPriceTotal.unpricedCards} card{deckPriceTotal.unpricedCards === 1 ? "" : "s"} without price data
+              </em>
+            )}
+          </div>
           {!editAnvilOpen && (
             <button
               className="edit-anvil-launcher"

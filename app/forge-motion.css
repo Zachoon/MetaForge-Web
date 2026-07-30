@@ -116,7 +116,7 @@
   contain: strict;
 }
 
-.great-forge > :not(.forge-textures, .forge-motion-layer, .bench-dock, .edit-anvil-launcher, .forge-edit-workbench) {
+.great-forge > :not(.forge-textures, .forge-motion-layer, .bench-dock, .edit-anvil-launcher, .forge-edit-workbench, .deck-price-bar) {
   position: relative;
   z-index: 13;
 }
