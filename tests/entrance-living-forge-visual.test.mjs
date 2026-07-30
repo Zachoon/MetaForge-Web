@@ -29,3 +29,12 @@ test("entrance motion is layered, bounded, and has a quiet fallback", () => {
   assert.ok(statSync(embers).size < 8_000_000);
   assert.ok(statSync(aperture).size < 5_000_000);
 });
+
+test("the living Forge responds to both commission intents without requiring a pointer", () => {
+  assert.match(css, /Intent response/);
+  assert.match(css, /forge-commission-card\.ember:is\(:hover,:focus-visible\)/);
+  assert.match(css, /forge-commission-card\.teal:is\(:hover,:focus-visible\)/);
+  assert.match(css, /entrance-choice-surge/);
+  assert.match(css, /entrance-choice-flash/);
+  assert.match(css, /prefers-reduced-motion:reduce/);
+});

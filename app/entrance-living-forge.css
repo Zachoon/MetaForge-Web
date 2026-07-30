@@ -20,3 +20,19 @@
 @keyframes entrance-rails-breathe{50%{border-color:#78e6d34a;box-shadow:0 0 0 5.5vw #0000,0 0 0 calc(5.5vw + 1px) #e08b3631,inset 0 0 110px #000}}
 @media(max-width:900px){.entrance-visual>.forge-sigil{width:min(48vw,300px)}.entrance-furnace-bloom{width:min(110vw,680px)}.entrance-aperture-film{width:150%}}
 @media(prefers-reduced-motion:reduce){.entrance-ember-film,.entrance-aperture-film{display:none}.entrance-furnace-bloom,.entrance-heat-lens,.entrance-forge-rails{animation:none}.entrance-living-forge{background:linear-gradient(180deg,#050807b0,#050807e8),url('/forge-hero.webp') center/cover}.entrance-living-forge:before{background:radial-gradient(circle at 50% 50%,transparent 0 20%,#02050455 48%,#020403d0 92%)}}
+
+/* Intent response: the Forge reacts to the path under the player's hand. */
+.entrance-ember-film,.entrance-aperture-film,.entrance-furnace-bloom,.entrance-forge-rails,.entrance-visual>.forge-sigil{transition:opacity .55s ease,filter .55s ease,transform .55s cubic-bezier(.2,.8,.2,1),border-color .55s ease,box-shadow .55s ease}
+.forge-entrance:has(.forge-commission-card.ember:is(:hover,:focus-visible)) .entrance-ember-film{opacity:1;filter:saturate(1.18) contrast(1.22) brightness(.88)}
+.forge-entrance:has(.forge-commission-card.ember:is(:hover,:focus-visible)) .entrance-aperture-film{opacity:.4;filter:hue-rotate(118deg) saturate(1.2) brightness(.95) contrast(1.3);transform:translate(-50%,-50%) scale(1.38)}
+.forge-entrance:has(.forge-commission-card.ember:is(:hover,:focus-visible)) .entrance-furnace-bloom{filter:hue-rotate(-34deg) saturate(1.45) blur(1px) drop-shadow(0 0 66px #ef7f3045)}
+.forge-entrance:has(.forge-commission-card.ember:is(:hover,:focus-visible)) .entrance-visual>.forge-sigil{border-color:#e89a5090;box-shadow:0 28px 90px #000d,0 0 104px #e477304f,inset 0 0 60px #160a04;transform:scale(1.035)}
+.forge-entrance:has(.forge-commission-card.teal:is(:hover,:focus-visible)) .entrance-ember-film{opacity:.56;filter:hue-rotate(22deg) saturate(.68) contrast(1.25) brightness(.62)}
+.forge-entrance:has(.forge-commission-card.teal:is(:hover,:focus-visible)) .entrance-aperture-film{opacity:.58;filter:hue-rotate(158deg) saturate(1.25) brightness(1.08) contrast(1.32);transform:translate(-50%,-50%) scale(1.14)}
+.forge-entrance:has(.forge-commission-card.teal:is(:hover,:focus-visible)) .entrance-forge-rails{border-color:#88efe166;box-shadow:0 0 0 4.2vw #0000,0 0 0 calc(4.2vw + 1px) #63dfca4a,inset 0 0 90px #000;transform:scale(.94)}
+.forge-entrance:has(.forge-commission-card.teal:is(:hover,:focus-visible)) .entrance-visual>.forge-sigil{border-color:#84efe0a3;box-shadow:0 28px 90px #000d,0 0 112px #4edbc65a,inset 0 0 64px #020d0b;transform:scale(.975)}
+.forge-entrance:has(.forge-commission-card:is(:active)) .entrance-living-forge{animation:entrance-choice-surge .48s cubic-bezier(.16,.8,.3,1) both}
+.forge-entrance:has(.forge-commission-card:is(:active)) .entrance-visual:after{background:radial-gradient(circle at 50% 50%,#eafff0b5 0 2%,#79e7d44f 10%,#e383322d 25%,transparent 48%),linear-gradient(180deg,#0000,#000b);animation:entrance-choice-flash .48s ease-out both}
+@keyframes entrance-choice-surge{45%{filter:brightness(1.5) contrast(1.14);transform:scale(1.035)}100%{filter:none;transform:none}}
+@keyframes entrance-choice-flash{from{opacity:.9}to{opacity:0}}
+@media(prefers-reduced-motion:reduce){.entrance-ember-film,.entrance-aperture-film,.entrance-furnace-bloom,.entrance-forge-rails,.entrance-visual>.forge-sigil{transition:none}.forge-entrance:has(.forge-commission-card:is(:active)) .entrance-living-forge,.forge-entrance:has(.forge-commission-card:is(:active)) .entrance-visual:after{animation:none}}
