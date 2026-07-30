@@ -484,7 +484,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .masterwork-card[data-state="sealed"]:after{content:"ALTERNATE PATH";position:absolute;top:16px;left:18px;color:#71817c;font:800 8px ui-monospace,monospace;letter-spacing:.15em}
 .masterwork-card[data-state="sealed"] .masterwork-seal{min-height:360px;padding-top:48px}
 .masterwork-card[data-state="sealed"] .masterwork-seal:after{inset:50% auto auto 50%;width:150px;height:150px;transform:translate(-50%,-50%);border-color:#72d8c23b;box-shadow:0 0 35px #64d2be14,inset 0 0 28px #64d2be0d}
-.masterwork-card[data-state="sealed"] .masterwork-seal i{position:relative;z-index:1;font-size:78px}
+.masterwork-card[data-state="sealed"] .masterwork-seal i{position:relative;z-index:1;font-size:calc(78px * var(--forge-reading-scale))}
 .masterwork-card[data-state="sealed"] .masterwork-seal b{position:relative;overflow:hidden;min-width:220px;background:linear-gradient(90deg,#10231f,#142b26)}
 .masterwork-card[data-state="sealed"] .masterwork-seal b:after{content:"  →";color:#79dbc8}
 .masterwork-card[data-state="sealed"]:hover,.masterwork-card[data-state="sealed"]:focus-within{border-color:#6b9e92;box-shadow:0 22px 65px #000a,0 0 42px #5ad0b91a;transform:translateY(-3px)}
