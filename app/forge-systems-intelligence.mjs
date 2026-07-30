@@ -34,6 +34,8 @@ const SYSTEM_LABELS = Object.freeze({
   life: "Life Engine",
   etb: "Enter-the-Battlefield Engine",
   combat: "Combat Engine",
+  evasion: "Evasion Engine",
+  protection: "Protection Engine",
 });
 
 const SCORE_LIMITS = Object.freeze({

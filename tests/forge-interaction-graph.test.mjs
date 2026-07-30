@@ -47,6 +47,34 @@ test("flags a genuine two-way loop as an engine pair, distinct from an ordinary 
   assert.match(graph.enginePairs[0].reason, /two-way loop/i);
 });
 
+test("connects an evasion grantor to a payoff that specifically rewards flying creatures", () => {
+  const grantor = { name: "Sky Blessing", typeLine: "Aura", oracleText: "Enchant creature. Enchanted creature gains flying." };
+  const payoff = { name: "Wind Marshal", typeLine: "Creature", oracleText: "Creatures you control with flying get +1/+1." };
+  const graph = buildInteractionGraph([grantor, payoff]);
+  const edge = graph.edges.find((entry) => entry.from === "Sky Blessing" && entry.to === "Wind Marshal");
+  assert.ok(edge, "expected an edge between the flying grantor and the flying payoff");
+  assert.ok(edge.signals.includes("evasion"));
+});
+
+test("two unrelated fliers don't connect just for sharing a keyword", () => {
+  // Merely both having flying isn't a synergy the way two graveyard cards
+  // sharing a real theme is — evasion only forms an edge through an
+  // actual producer/payoff relationship, never blanket shared-signal.
+  const first = { name: "Griffin One", typeLine: "Creature", oracleText: "Flying." };
+  const second = { name: "Griffin Two", typeLine: "Creature", oracleText: "Flying." };
+  const graph = buildInteractionGraph([first, second]);
+  assert.equal(graph.edges.length, 0);
+});
+
+test("connects a protection grantor to a payoff that specifically rewards indestructible creatures", () => {
+  const grantor = { name: "Ward Ritual", typeLine: "Instant", oracleText: "Target creature you control gains indestructible until end of turn." };
+  const payoff = { name: "Unbreakable Champion", typeLine: "Creature", oracleText: "Whenever a creature you control with indestructible attacks, draw a card." };
+  const graph = buildInteractionGraph([grantor, payoff]);
+  const edge = graph.edges.find((entry) => entry.from === "Ward Ritual" && entry.to === "Unbreakable Champion");
+  assert.ok(edge, "expected an edge between the indestructible grantor and the indestructible payoff");
+  assert.ok(edge.signals.includes("protection"));
+});
+
 test("a one-way synergy (only one card feeds the other) is not flagged as an engine pair", () => {
   const producer = { name: "Only Producer", typeLine: "Sorcery", oracleText: "Create two 1/1 creature tokens." };
   const payoff = { name: "Only Payoff", typeLine: "Enchantment", oracleText: "Creatures you control get +1/+1 for each token you control." };

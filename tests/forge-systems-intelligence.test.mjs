@@ -580,6 +580,63 @@ test(
 );
 
 test(
+  "labels evasion and protection systems by name instead of falling back to the raw signal",
+  () => {
+    const graph = {
+      nodes: [
+        {
+          name: "Sky Blessing",
+          typeLine: "Aura",
+          quantity: 1,
+          mechanics: {
+            signals: ["evasion"],
+            produces: ["evasion"],
+            rewards: [],
+          },
+        },
+        {
+          name: "Wind Marshal",
+          typeLine: "Creature",
+          quantity: 1,
+          mechanics: {
+            signals: ["evasion"],
+            produces: [],
+            rewards: ["evasion"],
+          },
+        },
+      ],
+      edges: [
+        {
+          from: "Sky Blessing",
+          to: "Wind Marshal",
+          signals: ["evasion"],
+          strength: 80,
+        },
+      ],
+      packages: [
+        {
+          signal: "evasion",
+          members: ["Sky Blessing", "Wind Marshal"],
+        },
+      ],
+      isolated: [],
+      nonbos: [],
+      commanderLinks: [],
+      coverage: 1,
+      commanderName: "",
+    };
+
+    const report = buildForgeSystemsReport(graph);
+    const evasionSystem = report.systems.find(
+      (system) => system.signal === "evasion",
+    );
+
+    assert.ok(evasionSystem);
+    assert.equal(evasionSystem.name, "Evasion Engine");
+  },
+);
+
+test(
   "returns deterministic output for the same graph",
   () => {
     const first =

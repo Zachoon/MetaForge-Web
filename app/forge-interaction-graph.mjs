@@ -11,6 +11,11 @@ const SIGNALS = [
   ["life", /gain(?:s)? [^.]* life|whenever you gain life|life total/i],
   ["etb", /enters the battlefield|when(?:ever)? [^.]* enters/i],
   ["combat", /whenever [^.]* attacks|combat damage|attacking creature/i],
+  // Flying/menace/trample/unblockable are printed as literal words in a
+  // card's own oracle text whenever it has or grants them — no separate
+  // keywords field needed, textOf() already sees them.
+  ["evasion", /\bflying\b|\bmenace\b|\btrample\b|can(?:'|’)t be blocked|\bskulk\b/i],
+  ["protection", /\bhexproof\b|\bindestructible\b|protection from|\bward\b \d|phase out/i],
 ];
 
 const PRODUCERS = {
@@ -26,6 +31,11 @@ const PRODUCERS = {
   life: /gain(?:s)? [^.]* life|lifelink/i,
   etb: /create(?:s)? [^.]* token|return [^.]* to the battlefield/i,
   combat: /haste|create(?:s)? [^.]* creature token/i,
+  // Having or granting the keyword itself is what "produces" evasion — a
+  // vanilla flier and an aura that says "target creature gains flying"
+  // are the same producer shape from a synergy-detection standpoint.
+  evasion: /\bflying\b|\bmenace\b|\btrample\b|can(?:'|’)t be blocked|\bskulk\b/i,
+  protection: /\bhexproof\b|\bindestructible\b|protection from|\bward\b|phase out|gains? indestructible|gains? hexproof/i,
 };
 
 const PAYOFFS = {
@@ -41,6 +51,14 @@ const PAYOFFS = {
   life: /whenever you gain life|if your life total|life you gained/i,
   etb: /whenever another [^.]* enters|when [^.]* enters/i,
   combat: /whenever [^.]* attacks|combat damage|attacking creatures/i,
+  // Deliberately narrower than PRODUCERS.evasion — this is cards that
+  // specifically reward flying/menace/unblocked creatures (an anthem
+  // that only boosts fliers), not any card that merely has the keyword.
+  evasion: /with flying|with menace|unblocked|can(?:'|’)t be blocked except/i,
+  // Real "protection matters" payoffs are rare (protection is mostly a
+  // standalone defensive tool, not a two-card engine axis) — this stays
+  // narrow on purpose rather than over-matching unrelated text.
+  protection: /creatures? you control with hexproof|creatures? you control with indestructible|whenever [^.]* with hexproof|whenever [^.]* with indestructible/i,
 };
 
 const NEGATIVE_RULES = [
@@ -79,6 +97,13 @@ export function buildInteractionGraph(cards, options = {}) {
       const forward = left.mechanics.produces.filter((signal) => right.mechanics.rewards.includes(signal));
       const reverse = right.mechanics.produces.filter((signal) => left.mechanics.rewards.includes(signal));
       const shared = left.mechanics.signals.filter((signal) => right.mechanics.signals.includes(signal));
+      // evasion/protection are deliberately left out of this shared-theme
+      // whitelist: two random fliers, or two creatures that each happen to
+      // have hexproof, aren't synergizing just because they share a
+      // keyword the way two graveyard cards share a real theme. Those two
+      // signals only ever form an edge through genuine producer/payoff
+      // wiring below (an aura granting flying feeding an anthem that
+      // rewards fliers), never merely by both mentioning the same keyword.
       const reasons = [...new Set([...forward, ...reverse, ...shared.filter((signal) => ["spells", "graveyard", "counters", "tokens", "artifacts", "combat"].includes(signal))])];
       // A one-way edge (A feeds B) is an ordinary synergy pairing. A mutual
       // edge — each card produces a signal the other one rewards — is the
