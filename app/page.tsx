@@ -1,6 +1,7 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { evaluateSimulationGate } from "./goldfish-simulation.mjs";
 import { evaluateMatchupMatrix } from "./matchup-simulation.mjs";
 import { getMetaIntelligence } from "./meta-intelligence.mjs";
@@ -1654,6 +1655,41 @@ export default function Home() {
     [],
   );
   const [commanderSearchOpen, setCommanderSearchOpen] = useState(false);
+  // .commander-search lives deep inside .commission-chamber, which — like
+  // every other direct child of .great-forge — gets position:relative plus
+  // a real z-index from the app's global layering rule. That combination
+  // creates a stacking context, and position:fixed does NOT escape an
+  // ancestor's stacking context (only its containing block) — so no
+  // z-index on the dropdown itself can ever win against a fixed sibling
+  // like the bench dock. Portaling the listbox straight to <body>, sized
+  // and positioned from the real input's on-screen rect, sidesteps the
+  // trap entirely instead of fighting it.
+  const commanderSearchRef = useRef<HTMLDivElement>(null);
+  const [commanderSearchRect, setCommanderSearchRect] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
+  useLayoutEffect(() => {
+    if (!commanderSearchOpen) return;
+    const updateRect = () => {
+      const el = commanderSearchRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      setCommanderSearchRect({
+        top: rect.bottom + 5,
+        left: rect.left,
+        width: rect.width,
+      });
+    };
+    updateRect();
+    window.addEventListener("resize", updateRect);
+    window.addEventListener("scroll", updateRect, true);
+    return () => {
+      window.removeEventListener("resize", updateRect);
+      window.removeEventListener("scroll", updateRect, true);
+    };
+  }, [commanderSearchOpen]);
   const [selectedCommander, setSelectedCommander] =
     useState<CommanderOption | null>(null);
   const [commanderSearching, setCommanderSearching] = useState(false);
@@ -1669,6 +1705,37 @@ export default function Home() {
     useState<CommanderOption | null>(null);
   const [secondCommanderSearching, setSecondCommanderSearching] =
     useState(false);
+  // Same portal treatment as commanderSearchRef above, for the same reason:
+  // this search box is just as deeply nested inside .commission-chamber's
+  // stacking-context trap.
+  const secondCommanderSearchRef = useRef<HTMLDivElement>(null);
+  const [secondCommanderSearchRect, setSecondCommanderSearchRect] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
+  const secondCommanderDropdownOpen =
+    secondCommanderSearching || secondCommanderResults.length > 0;
+  useLayoutEffect(() => {
+    if (!secondCommanderDropdownOpen) return;
+    const updateRect = () => {
+      const el = secondCommanderSearchRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      setSecondCommanderSearchRect({
+        top: rect.bottom + 5,
+        left: rect.left,
+        width: rect.width,
+      });
+    };
+    updateRect();
+    window.addEventListener("resize", updateRect);
+    window.addEventListener("scroll", updateRect, true);
+    return () => {
+      window.removeEventListener("resize", updateRect);
+      window.removeEventListener("scroll", updateRect, true);
+    };
+  }, [secondCommanderDropdownOpen]);
   const [randomizingCommander, setRandomizingCommander] = useState(false);
   const [randomCommanderMode, setRandomCommanderMode] = useState(false);
   const [randomCommanderOptions, setRandomCommanderOptions] = useState<
@@ -4471,8 +4538,19 @@ export default function Home() {
                 ) : (
                   <div
                     className="commander-search"
+                    ref={commanderSearchRef}
                     onBlur={(event) => {
-                      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                      // The results listbox is portaled to <body> now (see
+                      // commanderSearchRect above), so a click on an option
+                      // moves focus to an element this box no longer
+                      // contains in the DOM tree — check the portal too, or
+                      // every option click would blur-close the dropdown
+                      // before its own onClick had a chance to fire.
+                      const related = event.relatedTarget as Node | null;
+                      const inPortal =
+                        related instanceof HTMLElement &&
+                        related.closest(".commander-search-portal");
+                      if (!event.currentTarget.contains(related) && !inPortal) {
                         setCommanderSearchOpen(false);
                       }
                     }}
@@ -4506,48 +4584,60 @@ export default function Home() {
                     </div>
                     {commanderSearchOpen && (commanderSearching ||
                       commanderResults.length > 0 ||
-                      commanderQuery.trim().length > 1) && (
-                      <div role="listbox">
-                        {commanderSearching ? (
-                          <p>The Archive is searching…</p>
-                        ) : commanderResults.length ? (
-                          commanderResults.map((option) => (
-                            <button
-                              type="button"
-                              role="option"
-                              key={option.name}
-                              onClick={() => {
-                                setSelectedCommander(option);
-                                setCommanderQuery(option.name);
-                                setCommanderResults([]);
-                                setCommanderSearchOpen(false);
-                              }}
-                            >
-                              <span>
-                                {option.image ? (
-                                  <img src={option.image} alt="" />
-                                ) : (
-                                  "◆"
-                                )}
-                              </span>
-                              <b>
-                                {option.name}
-                                <small>{option.typeLine}</small>
-                              </b>
-                              <em>{option.colors.join("") || "C"}</em>
-                            </button>
-                          ))
-                        ) : (
-                          <p>
-                            No legal {format} commander matches that search.
-                          </p>
-                        )}
-                      </div>
-                    )}
+                      commanderQuery.trim().length > 1) &&
+                      commanderSearchRect &&
+                      createPortal(
+                        <div
+                          role="listbox"
+                          className="commander-search-portal"
+                          style={{
+                            position: "fixed",
+                            top: commanderSearchRect.top,
+                            left: commanderSearchRect.left,
+                            width: commanderSearchRect.width,
+                          }}
+                        >
+                          {commanderSearching ? (
+                            <p>The Archive is searching…</p>
+                          ) : commanderResults.length ? (
+                            commanderResults.map((option) => (
+                              <button
+                                type="button"
+                                role="option"
+                                key={option.name}
+                                onClick={() => {
+                                  setSelectedCommander(option);
+                                  setCommanderQuery(option.name);
+                                  setCommanderResults([]);
+                                  setCommanderSearchOpen(false);
+                                }}
+                              >
+                                <span>
+                                  {option.image ? (
+                                    <img src={option.image} alt="" />
+                                  ) : (
+                                    "◆"
+                                  )}
+                                </span>
+                                <b>
+                                  {option.name}
+                                  <small>{option.typeLine}</small>
+                                </b>
+                                <em>{option.colors.join("") || "C"}</em>
+                              </button>
+                            ))
+                          ) : (
+                            <p>
+                              No legal {format} commander matches that search.
+                            </p>
+                          )}
+                        </div>,
+                        document.body,
+                      )}
                   </div>
                 )}
                 {selectedCommander && partnerEligibility && (
-                  <div className="commander-search">
+                  <div className="commander-search" ref={secondCommanderSearchRef}>
                     <span>
                       OPTIONAL ·{" "}
                       {partnerEligibility.kind === "background"
@@ -4593,40 +4683,51 @@ export default function Home() {
                             />
                           </div>
                         )}
-                        {(secondCommanderSearching ||
-                          secondCommanderResults.length > 0) && (
-                          <div role="listbox">
-                            {secondCommanderSearching ? (
-                              <p>The Archive is searching…</p>
-                            ) : (
-                              secondCommanderResults.map((option) => (
-                                <button
-                                  type="button"
-                                  role="option"
-                                  key={option.name}
-                                  onClick={() => {
-                                    setSelectedSecondCommander(option);
-                                    setSecondCommanderQuery(option.name);
-                                    setSecondCommanderResults([]);
-                                  }}
-                                >
-                                  <span>
-                                    {option.image ? (
-                                      <img src={option.image} alt="" />
-                                    ) : (
-                                      "◆"
-                                    )}
-                                  </span>
-                                  <b>
-                                    {option.name}
-                                    <small>{option.typeLine}</small>
-                                  </b>
-                                  <em>{option.colors.join("") || "C"}</em>
-                                </button>
-                              ))
-                            )}
-                          </div>
-                        )}
+                        {secondCommanderDropdownOpen &&
+                          secondCommanderSearchRect &&
+                          createPortal(
+                            <div
+                              role="listbox"
+                              className="commander-search-portal"
+                              style={{
+                                position: "fixed",
+                                top: secondCommanderSearchRect.top,
+                                left: secondCommanderSearchRect.left,
+                                width: secondCommanderSearchRect.width,
+                              }}
+                            >
+                              {secondCommanderSearching ? (
+                                <p>The Archive is searching…</p>
+                              ) : (
+                                secondCommanderResults.map((option) => (
+                                  <button
+                                    type="button"
+                                    role="option"
+                                    key={option.name}
+                                    onClick={() => {
+                                      setSelectedSecondCommander(option);
+                                      setSecondCommanderQuery(option.name);
+                                      setSecondCommanderResults([]);
+                                    }}
+                                  >
+                                    <span>
+                                      {option.image ? (
+                                        <img src={option.image} alt="" />
+                                      ) : (
+                                        "◆"
+                                      )}
+                                    </span>
+                                    <b>
+                                      {option.name}
+                                      <small>{option.typeLine}</small>
+                                    </b>
+                                    <em>{option.colors.join("") || "C"}</em>
+                                  </button>
+                                ))
+                              )}
+                            </div>,
+                            document.body,
+                          )}
                       </>
                     )}
                   </div>

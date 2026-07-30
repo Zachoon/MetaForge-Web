@@ -28,9 +28,30 @@ test("commander choice becomes a responsive, motion-safe Blueprint seal", () => 
 test("commander predictions dismiss instead of leaving an empty listbox", () => {
   assert.match(page, /commanderSearchOpen/);
   assert.match(page, /event\.key === "Escape"/);
-  assert.match(page, /event\.currentTarget\.contains\(event\.relatedTarget/);
+  assert.match(page, /event\.currentTarget\.contains\(related\)/);
   assert.match(page, /commanderSearchOpen && \(commanderSearching/);
   assert.match(page, /setCommanderSearchOpen\(false\)/);
+});
+
+test("the commander search dropdowns escape .commission-chamber's stacking context via a body portal", () => {
+  // position:fixed does NOT escape an ancestor's stacking context, only
+  // its containing block — and .commission-chamber (like every other
+  // direct child of .great-forge) gets a real z-index from the global
+  // layering rule, which creates exactly that kind of context. No
+  // z-index on the dropdown itself can win against a fixed sibling like
+  // the bench dock from inside that trap, so it has to actually leave
+  // the DOM subtree via createPortal(..., document.body) instead.
+  assert.match(page, /import \{ createPortal \} from "react-dom";/);
+  assert.match(page, /createPortal\(\s*<div\s*\n\s*role="listbox"\s*\n\s*className="commander-search-portal"/);
+  assert.match(page, /document\.body,\s*\)/);
+  // Both the primary commander search and the Partner/Background search
+  // need the same treatment — they're both inside the same trap.
+  const portalCount = (page.match(/createPortal\(/g) || []).length;
+  assert.ok(portalCount >= 2, `expected at least 2 createPortal calls (primary + second commander search), got ${portalCount}`);
+  // The blur-to-close handler must also recognize the portaled listbox as
+  // "still part of this widget," or every option click would close the
+  // dropdown (via blur) before its own onClick had a chance to fire.
+  assert.match(page, /related\.closest\(".commander-search-portal"\)/);
 });
 
 test("the search results dropdown isn't clipped by the Blueprint seal's own overflow:hidden", () => {
