@@ -5,6 +5,7 @@ import test from "node:test";
 const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
 const css = await readFile(new URL("../app/testing-anvil.css", import.meta.url), "utf8");
 const motifCss = await readFile(new URL("../app/masterwork-motifs.css", import.meta.url), "utf8");
+const polishCss = await readFile(new URL("../app/forge-polish.css", import.meta.url), "utf8");
 
 test("defaults the workbench to a remembered Guided View", () => {
   assert.match(page, /useState<"guided" \| "full">\("guided"\)/);
@@ -29,6 +30,14 @@ test("turns the result into one active chapter instead of a continuous instrumen
   assert.match(css, /\.chapter-2-active>\.testing-loop\{display:block/);
   assert.match(css, /\.chapter-3-active \.forge-understanding-bridge\{display:block/);
   assert.match(css, /\.chapter-4-active \.forge-intelligence-vault\{display:block/);
+});
+
+test("keeps the chapter connector below the labels instead of striking through them", () => {
+  assert.match(
+    polishCss,
+    /\.progressive-results \.forge-chapter-rail:before\{top:auto;[^}]*bottom:6px/,
+  );
+  assert.match(polishCss, /\.progressive-results \.forge-chapter-rail>button\{padding-bottom:18px\}/);
 });
 
 test("lets players revisit every commission step they have already reached", () => {
