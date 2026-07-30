@@ -1,6 +1,6 @@
 ﻿import assert from "node:assert/strict";
 import test from "node:test";
-import { classifyNativeCard, curveTargets, fieldCounterRolesFor, forgeNativeMasterwork, parseNativeBlueprintIntent, poolMechanicalSignals, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
+import { classifyNativeCard, colorPipsFromCost, curveTargets, fieldCounterRolesFor, forgeNativeMasterwork, parseNativeBlueprintIntent, poolMechanicalSignals, proportionalBasicCounts, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
 
 const card = (name, oracleText, typeLine = "Creature — Test", manaCost = "{2}{U}", colorIdentity = ["U"]) => ({ name, oracleText, typeLine, manaCost, colorIdentity });
 const pool = [
@@ -310,4 +310,34 @@ test("ranks candidates with explicit role coverage and curve health", () => {
     report.candidates.map((candidate) => candidate.tournament.tournamentScore),
     [...report.candidates.map((candidate) => candidate.tournament.tournamentScore)].sort((a, b) => b - a),
   );
+});
+
+test("counts colored mana pips, including hybrid symbols toward every named color", () => {
+  assert.deepEqual(colorPipsFromCost("{2}{B}{B}"), { W: 0, U: 0, B: 2, R: 0, G: 0 });
+  assert.deepEqual(colorPipsFromCost("{W/U}"), { W: 1, U: 1, B: 0, R: 0, G: 0 });
+  assert.deepEqual(colorPipsFromCost("{3}"), { W: 0, U: 0, B: 0, R: 0, G: 0 });
+});
+
+test("splits basic lands proportionally to actual pip demand, not evenly by color", () => {
+  assert.deepEqual(proportionalBasicCounts(["W", "B"], { W: 2, B: 8 }, 10), { W: 2, B: 8 });
+  // Largest-remainder rounding must still sum to exactly `remaining`.
+  const uneven = proportionalBasicCounts(["W", "B"], { W: 1, B: 2 }, 7);
+  assert.equal(uneven.W + uneven.B, 7);
+  // No pip signal at all (e.g. an all-colorless pool) falls back to the
+  // previous even-split behavior instead of dividing by zero.
+  assert.deepEqual(proportionalBasicCounts(["W", "U"], {}, 4), { W: 2, U: 2 });
+});
+
+test("weights the actual built deck's basic lands toward its heavier color, not an even split", () => {
+  const wbCard = (name, oracleText, manaCost, typeLine = "Creature — Test", colorIdentity = ["B"]) => ({ name, oracleText, manaCost, typeLine, colorIdentity });
+  const wbPool = [
+    ...Array.from({ length: 10 }, (_, i) => wbCard(`Black Draw ${i}`, "Draw a card. Scry 1.", "{1}{B}{B}")),
+    ...Array.from({ length: 10 }, (_, i) => wbCard(`Black Answer ${i}`, "Exile target nonland permanent.", "{1}{B}{B}")),
+    ...Array.from({ length: 6 }, (_, i) => wbCard(`White Shield ${i}`, "Target creature gains hexproof and indestructible until end of turn.", "{1}{W}", "Creature — Test", ["W"])),
+    ...Array.from({ length: 6 }, (_, i) => wbCard(`Ramp Stone ${i}`, "Add one mana. Create a Treasure token.", "{2}", "Artifact", [])),
+  ];
+  const report = forgeNativeMasterwork({ format: "Standard", target: 60, strategy: "Balanced midrange", seed: 5, colors: ["W", "B"], cards: wbPool });
+  const swamp = report.selected.rows.find((row) => row.name === "Swamp")?.quantity || 0;
+  const plains = report.selected.rows.find((row) => row.name === "Plains")?.quantity || 0;
+  assert.ok(swamp > plains, `expected more Swamp than Plains given the heavier black pip cost, got ${swamp} vs ${plains}`);
 });

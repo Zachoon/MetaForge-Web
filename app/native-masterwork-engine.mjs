@@ -280,6 +280,20 @@ function manaValueFromCost(cost = "", fallback = 0) {
   return symbols.reduce((sum, symbol) => sum + (/^\d+$/.test(symbol) ? Number(symbol) : /^(X|Y|Z)$/.test(symbol) ? 0 : 1), 0);
 }
 
+// Hybrid symbols ({W/U}, {B/P}, etc.) count toward every named color at full
+// weight rather than splitting — a simplification, but a card that can be
+// cast with either color genuinely does pull the mana base toward both.
+export function colorPipsFromCost(cost = "") {
+  const symbols = [...String(cost).matchAll(/\{([^}]+)\}/g)].map((match) => match[1]);
+  const pips = { W: 0, U: 0, B: 0, R: 0, G: 0 };
+  for (const symbol of symbols) {
+    for (const color of Object.keys(pips)) {
+      if (symbol.includes(color)) pips[color] += 1;
+    }
+  }
+  return pips;
+}
+
 function cardText(card) {
   return `${card.name || ""}\n${card.typeLine || card.type_line || ""}\n${card.oracleText || card.oracle_text || ""}\n${(card.keywords || []).join(" ")}`;
 }
@@ -399,6 +413,7 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
     blueprintRoleHits,
     excludedRoleHits,
     mechanics: mechanics || { signals: [], produces: [], rewards: [] },
+    colorPips: colorPipsFromCost(card.manaCost || card.mana_cost),
   };
 }
 
@@ -447,6 +462,7 @@ function scoreCard(entry, input, variant, context) {
     identityHits: entry.identityHits,
     blueprintRoleHits: entry.blueprintRoleHits,
     mechanics: entry.mechanics,
+    colorPips: entry.colorPips,
   };
 }
 
@@ -545,6 +561,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       identityHits: candidate.identityHits,
       blueprintRoleHits: candidate.blueprintRoleHits,
       mechanics: candidate.mechanics,
+      colorPips: candidate.colorPips,
     });
     selectedNames.add(normalized(candidate.card.name));
     for (const role of candidate.roles) roleCounts.set(role, (roleCounts.get(role) || 0) + quantity);
@@ -607,7 +624,52 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
   return { selected, roleCounts };
 }
 
-function buildManaBase(input, landSlots, lands, variant, presetLands = []) {
+function aggregatePipTotals(rows) {
+  const totals = { W: 0, U: 0, B: 0, R: 0, G: 0 };
+  for (const row of rows) {
+    const pips = row.colorPips || {};
+    for (const color of Object.keys(totals)) totals[color] += (pips[color] || 0) * row.quantity;
+  }
+  return totals;
+}
+
+// Splits `remaining` basics across colors in proportion to how many colored
+// mana symbols the selected spells actually need, instead of an even share
+// per color regardless of how lopsided the deck's real costs are. Falls
+// back to an even split only when there's no pip signal at all (e.g. an
+// all-colorless pool), matching the previous behavior exactly in that case.
+export function proportionalBasicCounts(colors, pipTotals, remaining) {
+  const relevant = colors.filter((color) => (pipTotals[color] || 0) > 0);
+  const totalPips = relevant.reduce((sum, color) => sum + pipTotals[color], 0);
+  const counts = {};
+  if (!totalPips || !relevant.length) {
+    for (let index = 0; index < remaining; index += 1) {
+      const color = colors[index % colors.length];
+      counts[color] = (counts[color] || 0) + 1;
+    }
+    return counts;
+  }
+  const shares = relevant.map((color) => ({ color, exact: (pipTotals[color] / totalPips) * remaining }));
+  let assigned = 0;
+  for (const { color, exact } of shares) {
+    counts[color] = Math.floor(exact);
+    assigned += counts[color];
+  }
+  // Largest-remainder method: hand out any leftover basics (from rounding
+  // down) to the colors with the biggest fractional shortfall first, so the
+  // total always sums to exactly `remaining` rather than drifting.
+  const remainders = shares
+    .map(({ color, exact }) => ({ color, fraction: exact - Math.floor(exact) }))
+    .sort((a, b) => b.fraction - a.fraction || a.color.localeCompare(b.color));
+  for (let index = 0; assigned < remaining; index += 1) {
+    const color = remainders[index % remainders.length].color;
+    counts[color] = (counts[color] || 0) + 1;
+    assigned += 1;
+  }
+  return counts;
+}
+
+function buildManaBase(input, landSlots, lands, variant, presetLands = [], pipTotals = {}) {
   const colors = input.commander?.colors?.length ? input.commander.colors : input.colors?.length ? input.colors : ["W", "U", "B", "R", "G"];
   const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
   const rows = [];
@@ -648,13 +710,14 @@ function buildManaBase(input, landSlots, lands, variant, presetLands = []) {
     if (used >= landSlots) break;
     rows.push({ quantity: singleton ? 1 : Math.min(4, landSlots - used), name: land.name, roles: ["land"], score: 0, cmc: 0 });
   }
-  let remaining = landSlots - rows.reduce((sum, row) => sum + row.quantity, 0);
-  for (let index = 0; remaining > 0; index += 1) {
-    const name = BASIC_BY_COLOR[colors[index % colors.length]] || "Wastes";
+  const remaining = landSlots - rows.reduce((sum, row) => sum + row.quantity, 0);
+  const basicCounts = proportionalBasicCounts(colors, pipTotals, remaining);
+  for (const [color, count] of Object.entries(basicCounts)) {
+    if (!count) continue;
+    const name = BASIC_BY_COLOR[color] || "Wastes";
     const existing = rows.find((row) => row.name === name);
-    if (existing) existing.quantity += 1;
-    else rows.push({ quantity: 1, name, roles: ["land"], score: 0, cmc: 0 });
-    remaining -= 1;
+    if (existing) existing.quantity += count;
+    else rows.push({ quantity: count, name, roles: ["land"], score: 0, cmc: 0 });
   }
   return rows;
 }
@@ -730,7 +793,7 @@ function buildCandidate(input, variant, analysis) {
   const scored = spells.map((entry) => scoreCard(entry, input, variant, analysis.context));
   const spellSlots = target - landSlots - commanderSlots;
   const { selected, roleCounts } = chooseSpells(scored, spellSlots, singleton, roleTargets(input.format, input.strategy), analysis.context.blueprint, [], curveTargets(input.strategy, spellSlots));
-  const mana = buildManaBase(input, landSlots, lands, variant);
+  const mana = buildManaBase(input, landSlots, lands, variant, [], aggregatePipTotals(selected));
   const rows = [
     ...(input.commander ? [{ quantity: 1, name: input.commander.name, roles: ["commander"], score: 100, cmc: manaValueFromCost(input.commander.manaCost, input.commander.cmc) }] : []),
     ...selected,
@@ -792,6 +855,7 @@ function buildImportedCandidate(input, analysis) {
       identityHits: spellEntry.identityHits,
       blueprintRoleHits: spellEntry.blueprintRoleHits,
       mechanics: spellEntry.mechanics,
+      colorPips: spellEntry.colorPips,
     });
   }
   if (!presetSpellRows.length && !presetLandRows.length) {
@@ -804,7 +868,7 @@ function buildImportedCandidate(input, analysis) {
   const scored = analysis.spells.map((entry) => scoreCard(entry, input, variant, analysis.context));
   const spellSlots = target - landSlots - commanderSlots;
   const { selected, roleCounts } = chooseSpells(scored, spellSlots, singleton, roleTargets(input.format, input.strategy), analysis.context.blueprint, presetSpellRows, curveTargets(input.strategy, spellSlots));
-  const mana = buildManaBase(input, landSlots, analysis.lands, variant, presetLandRows);
+  const mana = buildManaBase(input, landSlots, analysis.lands, variant, presetLandRows, aggregatePipTotals(selected));
   const rows = [
     ...(input.commander ? [{ quantity: 1, name: input.commander.name, roles: ["commander"], score: 100, cmc: manaValueFromCost(input.commander.manaCost, input.commander.cmc) }] : []),
     ...selected,
