@@ -44,8 +44,21 @@ test("each deck row can be priced as foil or nonfoil independently", () => {
   assert.match(page, /cardPriceUsd\s*=\s*\(fact\?:\s*CardFact,\s*foil\s*=\s*false\)/);
   assert.match(page, /foil\s*\?\s*fact\?\.prices\?\.usd_foil\s*:\s*fact\?\.prices\?\.usd/);
   // The deck-wide total must recompute when foil selections change.
-  const memoDeps = page.match(/\[deckRows, cardFacts, foilCards\]/);
+  const memoDeps = page.match(/\[deckRows, cardFacts, foilCards, cheapestPrintings\]/);
   assert.ok(memoDeps, "expected deckPriceTotal to depend on foilCards");
+});
+
+test("a deck-wide toggle can price every card at its cheapest fetched printing", () => {
+  assert.match(page, /cheapestPrintings/);
+  assert.match(page, /cheapestCardPriceUsd/);
+  assert.match(page, /cheapest-printings-toggle/);
+  // Overrides the per-card foil selection for the total, rather than
+  // stacking with it (the two are alternate pricing modes, not additive).
+  assert.match(page, /cheapestPrintings\s*\n?\s*\?\s*cheapestCardPriceUsd\(fact\)\s*\n?\s*:\s*cardPriceUsd\(fact, foilCards\.has/);
+  // The per-card foil toggle is disabled (not just visually inert) while
+  // cheapest-printing mode is active, so its state can't silently drift
+  // from what's actually being priced.
+  assert.match(page, /disabled=\{cheapestPrintings\}/);
 });
 
 test("the foil toggle nests inside the deck row without invalid button-in-button HTML", () => {

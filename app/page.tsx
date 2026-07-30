@@ -1437,6 +1437,15 @@ const cardPriceUsd = (fact?: CardFact, foil = false): number | null => {
   const value = Number(raw);
   return raw != null && Number.isFinite(value) ? value : null;
 };
+// The cheaper of this same printing's nonfoil/foil prices — a lightweight
+// "budget bling" reading that reuses prices already on hand, distinct from
+// searching every printing a card has ever had (a separate, heavier feature).
+const cheapestCardPriceUsd = (fact?: CardFact): number | null => {
+  const candidates = [fact?.prices?.usd, fact?.prices?.usd_foil]
+    .map((raw) => (raw != null ? Number(raw) : null))
+    .filter((value): value is number => value !== null && Number.isFinite(value));
+  return candidates.length ? Math.min(...candidates) : null;
+};
 const cardRole = (fact?: CardFact) => {
   const text = [
     fact?.type_line,
@@ -1723,6 +1732,11 @@ export default function Home() {
   // Purely a pricing preference for now — doesn't change what card is in
   // the deck, only which of its two market prices gets used.
   const [foilCards, setFoilCards] = useState<Set<string>>(new Set());
+  // Deck-wide "show me the budget build" reading: prices every card at
+  // whichever of its fetched nonfoil/foil prices is cheaper, overriding
+  // individual foil selections for the total (those selections aren't
+  // lost — they just aren't the active pricing mode while this is on).
+  const [cheapestPrintings, setCheapestPrintings] = useState(false);
   const [edhrecEvidence, setEdhrecEvidence] = useState<EdhrecEvidence | null>(
     null,
   );
@@ -2109,8 +2123,10 @@ export default function Home() {
     let pricedCards = 0;
     let unpricedCards = 0;
     for (const row of deckRows) {
-      const isFoil = foilCards.has(cardFactKey(row.name));
-      const price = cardPriceUsd(cardFacts[cardFactKey(row.name)], isFoil);
+      const fact = cardFacts[cardFactKey(row.name)];
+      const price = cheapestPrintings
+        ? cheapestCardPriceUsd(fact)
+        : cardPriceUsd(fact, foilCards.has(cardFactKey(row.name)));
       if (price === null) {
         unpricedCards += row.quantity;
         continue;
@@ -2119,7 +2135,7 @@ export default function Home() {
       pricedCards += row.quantity;
     }
     return { total, pricedCards, unpricedCards };
-  }, [deckRows, cardFacts, foilCards]);
+  }, [deckRows, cardFacts, foilCards, cheapestPrintings]);
   const activeCard =
     hoveredCard || chosenPreview.card || deckRows[0]?.name || "";
   const activeFact = cardFacts[cardFactKey(activeCard)];
@@ -6078,7 +6094,10 @@ export default function Home() {
                           {groupedDeck[group].map((row) => {
                             const rowKey = cardFactKey(row.name);
                             const isFoil = foilCards.has(rowKey);
-                            const rowPrice = cardPriceUsd(cardFacts[rowKey], isFoil);
+                            const rowFact = cardFacts[rowKey];
+                            const rowPrice = cheapestPrintings
+                              ? cheapestCardPriceUsd(rowFact)
+                              : cardPriceUsd(rowFact, isFoil);
                             return (
                               <div
                                 role="button"
@@ -6112,8 +6131,15 @@ export default function Home() {
                                   type="button"
                                   className={`card-row-foil-toggle${isFoil ? " active" : ""}`}
                                   aria-pressed={isFoil}
+                                  disabled={cheapestPrintings}
                                   aria-label={`${isFoil ? "Stop pricing" : "Price"} ${row.name} as foil`}
-                                  title={isFoil ? "Priced as foil" : "Price as foil"}
+                                  title={
+                                    cheapestPrintings
+                                      ? "Turn off Cheapest Printings to choose foil or nonfoil per card"
+                                      : isFoil
+                                        ? "Priced as foil"
+                                        : "Price as foil"
+                                  }
                                   onClick={(event) => {
                                     event.stopPropagation();
                                     setFoilCards((current) => {
@@ -6485,6 +6511,15 @@ export default function Home() {
                 {deckPriceTotal.unpricedCards} card{deckPriceTotal.unpricedCards === 1 ? "" : "s"} without price data
               </em>
             )}
+            <button
+              type="button"
+              className={`cheapest-printings-toggle${cheapestPrintings ? " active" : ""}`}
+              aria-pressed={cheapestPrintings}
+              title="Price every card at its cheapest fetched printing, to see the deck regardless of bling"
+              onClick={() => setCheapestPrintings((current) => !current)}
+            >
+              Cheapest Printings
+            </button>
           </div>
           {!editAnvilOpen && (
             <button
