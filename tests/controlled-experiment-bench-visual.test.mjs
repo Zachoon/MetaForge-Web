@@ -22,3 +22,19 @@ test("the controlled experiment bench supports focus, small screens, and quiet m
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
   assert.match(css, /meta-breaker-workflow>button:after\{display:none\}/);
 });
+
+test("the one-card test explanation text is legible on its own, not only via the reading-size toggle", () => {
+  // A reported real-world complaint: this text was a flat 11px with
+  // line-height:1.4 and completely outside the --forge-reading-scale
+  // system used elsewhere in the Blueprint chamber, so the font-size
+  // toggle did nothing for it. It needs its own reasonable baseline
+  // AND to respond to the toggle for players who bump it up further.
+  const paragraphRule = css.match(/\.meta-breaker-workflow article p\{([^}]*)\}/);
+  assert.ok(paragraphRule, "expected to find the one-card test paragraph rule");
+  assert.match(paragraphRule[1], /line-height:1\.6/);
+  assert.match(paragraphRule[1], /var\(--forge-reading-scale\)/);
+
+  const headlineRule = css.match(/\.meta-breaker-workflow article b\{([^}]*)\}/);
+  assert.ok(headlineRule);
+  assert.match(headlineRule[1], /var\(--forge-reading-scale\)/);
+});
