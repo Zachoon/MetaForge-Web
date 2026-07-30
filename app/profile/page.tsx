@@ -254,6 +254,40 @@ export default function PlayerProfile() {
         </div>
       </section>
 
+      <section className="legacy-path" aria-labelledby="legacy-path-title">
+        <header>
+          <span>
+            <small>YOUR FORGE LEGACY</small>
+            <h2 id="legacy-path-title">A record earned one real decision at a time.</h2>
+          </span>
+          <strong>{identity.depth}<i>/</i>{identity.allMilestones.length}</strong>
+        </header>
+        <div className="legacy-rail" aria-label={`${identity.depth} of ${identity.allMilestones.length} milestones reached`}>
+          <i style={{ width: `${identity.allMilestones.length ? (identity.depth / identity.allMilestones.length) * 100 : 0}%` }} />
+        </div>
+        <ol>
+          {identity.allMilestones.map((milestone: any, index: number) => {
+            const isNext = identity.nextMilestone?.id === milestone.id;
+            return (
+              <li key={milestone.id} className={milestone.reached ? "reached" : isNext ? "next" : "locked"}>
+                <i>{milestone.reached ? "✓" : index + 1}</i>
+                <span>
+                  <small>{milestone.reached ? "FORGED" : isNext ? "NEXT" : "AWAITING"}</small>
+                  <b>{milestone.label}</b>
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+        <footer>
+          {identity.nextMilestone ? (
+            <><span><small>THE NEXT MARK</small><b>{identity.nextMilestone.label}</b></span><a href="/">Continue your Forge →</a></>
+          ) : (
+            <><span><small>THE RECORD IS COMPLETE</small><b>Every current Forge milestone has been earned.</b></span><a href="/">Begin another Masterwork →</a></>
+          )}
+        </footer>
+      </section>
+
       <section className="mastery-grid">
         <article><span>MATCHES RECORDED</span><b>{mastery.totalMatches}</b><em>{mastery.wins}W · {mastery.losses}L</em></article>
         <article><span>EXPERIMENTS ACCEPTED</span><b>{mastery.experimentsAccepted}</b><em>Revisions promoted from a controlled test</em></article>
