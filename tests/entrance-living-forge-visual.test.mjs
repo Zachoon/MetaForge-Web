@@ -38,3 +38,14 @@ test("the living Forge responds to both commission intents without requiring a p
   assert.match(css, /entrance-choice-flash/);
   assert.match(css, /prefers-reduced-motion:reduce/);
 });
+
+test("the entrance rune is a forged high-resolution seal with Rive used as energy", () => {
+  assert.match(css, /Forged MetaForge seal/);
+  assert.match(css, /\.forge-rive-rune\{[^}]*opacity:\.18!important/);
+  assert.match(css, /content:"F"/);
+  assert.match(css, /repeating-conic-gradient/);
+  assert.match(css, /metaforge-seal-index/);
+  assert.match(css, /metaforge-seal-counterspin/);
+  assert.match(css, /metaforge-core-breathe/);
+  assert.match(css, /metaforge-core-sheen/);
+});
