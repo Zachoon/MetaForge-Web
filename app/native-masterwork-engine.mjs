@@ -298,6 +298,18 @@ function cardText(card) {
   return `${card.name || ""}\n${card.typeLine || card.type_line || ""}\n${card.oracleText || card.oracle_text || ""}\n${(card.keywords || []).join(" ")}`;
 }
 
+// Scryfall's own edhrec-order popularity rank (0 = most played) is real,
+// already-fetched evidence for "is this card actually good," previously
+// used only to decide fetch order and then discarded by the scorer. Every
+// non-Commander format has no other card-quality signal at all — role text
+// alone can't tell a strong card from weak filler that happens to match a
+// pattern. Log decay keeps the top of the list meaningfully ahead without
+// letting popularity dominate synergy/role/curve fit lower down.
+export function popularityScoreFromRank(rank) {
+  if (!Number.isFinite(rank) || rank < 0) return 0;
+  return Math.max(0, 9 - Math.log2(rank + 1) * 1.3);
+}
+
 export function classifyNativeCard(card) {
   const typeLine = String(card.typeLine || card.type_line || "");
   const text = cardText(card);
@@ -406,6 +418,7 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
     resilienceRoles: roles.filter((role) => ["draw", "protection", "recursion", "interaction"].includes(role)).length,
     evidenceScore: clamp(Number(evidence.evidenceScore || 0) * 100) * 0.12,
     discovery: evidence.newCardPotential ? 2 : 0,
+    popularityScore: popularityScoreFromRank(card.popularityRank),
     fieldPressureHits,
     directTribes,
     tribalSupport,
@@ -452,7 +465,7 @@ function scoreCard(entry, input, variant, context) {
     card: entry.card,
     roles: entry.roles,
     cmc: entry.cmc,
-    score: entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + deterministicTieBreak,
+    score: entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + deterministicTieBreak,
     synergyHits: entry.synergyHits,
     synergyPotential: entry.synergyPotential,
     preferenceHits: entry.preferenceHits,

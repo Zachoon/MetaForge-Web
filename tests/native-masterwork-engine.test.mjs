@@ -1,6 +1,6 @@
 ﻿import assert from "node:assert/strict";
 import test from "node:test";
-import { classifyNativeCard, colorPipsFromCost, curveTargets, fieldCounterRolesFor, forgeNativeMasterwork, parseNativeBlueprintIntent, poolMechanicalSignals, proportionalBasicCounts, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
+import { classifyNativeCard, colorPipsFromCost, curveTargets, fieldCounterRolesFor, forgeNativeMasterwork, parseNativeBlueprintIntent, poolMechanicalSignals, popularityScoreFromRank, proportionalBasicCounts, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
 
 const card = (name, oracleText, typeLine = "Creature — Test", manaCost = "{2}{U}", colorIdentity = ["U"]) => ({ name, oracleText, typeLine, manaCost, colorIdentity });
 const pool = [
@@ -340,6 +340,39 @@ test("weights the actual built deck's basic lands toward its heavier color, not 
   const swamp = report.selected.rows.find((row) => row.name === "Swamp")?.quantity || 0;
   const plains = report.selected.rows.find((row) => row.name === "Plains")?.quantity || 0;
   assert.ok(swamp > plains, `expected more Swamp than Plains given the heavier black pip cost, got ${swamp} vs ${plains}`);
+});
+
+test("scores real-world popularity rank with diminishing returns and treats a missing rank as neutral", () => {
+  assert.ok(popularityScoreFromRank(0) > popularityScoreFromRank(10));
+  assert.ok(popularityScoreFromRank(10) > popularityScoreFromRank(100));
+  assert.ok(popularityScoreFromRank(100) >= 0);
+  assert.equal(popularityScoreFromRank(undefined), 0);
+  assert.equal(popularityScoreFromRank(-1), 0);
+});
+
+test("prefers cards with strong real-world adoption over otherwise-identical blank filler once slots are scarce", () => {
+  // Same scarce-supply shape as the producer/payoff test above: 7 unique
+  // base cards (28 copies) leave exactly 8 of Standard's 36 spell slots
+  // open. Six filler cards share identical text, type, and cost — the only
+  // difference is popularityRank, so if it has no effect, which two of the
+  // six fill those 8 slots is essentially a coin flip on the tiebreak hash.
+  const scarceBase = [
+    ...Array.from({ length: 2 }, (_, i) => card(`Flow ${i}`, "When this enters, draw a card. Scry 1.")),
+    ...Array.from({ length: 2 }, (_, i) => card(`Answer ${i}`, "Exile target nonland permanent.")),
+    ...Array.from({ length: 1 }, (_, i) => card(`Shield ${i}`, "Target creature gains hexproof and indestructible until end of turn.")),
+    ...Array.from({ length: 2 }, (_, i) => card(`Stone ${i}`, "Add one mana. Create a Treasure token.", "Artifact", "{2}")),
+  ];
+  const lands = Array.from({ length: 10 }, (_, i) => card(`Island Utility ${i}`, "{T}: Add {U}.", "Land", "", ["U"]));
+  const popularFiller = Array.from({ length: 3 }, (_, i) => ({ ...card(`Popular Vanilla ${i}`, "Nothing happens.", "Sorcery"), popularityRank: i }));
+  const obscureFiller = Array.from({ length: 3 }, (_, i) => ({ ...card(`Obscure Vanilla ${i}`, "Nothing happens.", "Sorcery"), popularityRank: 500 + i }));
+  const report = forgeNativeMasterwork({
+    format: "Standard", target: 60, strategy: "Balanced midrange", seed: 33, colors: ["U"],
+    cards: [...scarceBase, ...popularFiller, ...obscureFiller, ...lands],
+  });
+  const popularQuantity = report.selected.rows.filter((row) => row.name.startsWith("Popular Vanilla")).reduce((sum, row) => sum + row.quantity, 0);
+  const obscureQuantity = report.selected.rows.filter((row) => row.name.startsWith("Obscure Vanilla")).reduce((sum, row) => sum + row.quantity, 0);
+  assert.equal(popularQuantity, 8, `expected all 8 open slots to go to the popular filler, got ${popularQuantity}`);
+  assert.equal(obscureQuantity, 0, `expected no obscure filler to make the cut, got ${obscureQuantity}`);
 });
 
 test("prefers nonbasic lands that fix the deck's heavier-demand color over otherwise-identical off-focus lands", () => {

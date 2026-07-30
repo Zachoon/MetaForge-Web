@@ -1075,6 +1075,7 @@ type NativeForgeCard = {
   oracleText: string;
   colorIdentity: string[];
   keywords: string[];
+  popularityRank?: number;
 };
 
 const nativeCardFact = (card: any): NativeForgeCard => ({
@@ -1122,15 +1123,21 @@ const loadNativeForgePool = async (
   );
   const cards: NativeForgeCard[] = [];
   const seen = new Set<string>();
-  const addRawCard = (rawCard: any) => {
+  const addRawCard = (rawCard: any, popularityRank?: number) => {
     const card = nativeCardFact(rawCard);
     const key = cardFactKey(card.name);
     if (!card.name || seen.has(key)) return;
     seen.add(key);
+    if (popularityRank !== undefined) card.popularityRank = popularityRank;
     cards.push(card);
   };
   let nextUrl = `https://api.scryfall.com/cards/search?q=${query}&order=edhrec&unique=cards`;
 
+  // Scryfall's edhrec ordering is a real, already-fetched signal for "how
+  // good/played is this card" — free popularity evidence the engine used to
+  // discard entirely for every non-Commander format. Rank position (not the
+  // raw page) is threaded through so the engine can weigh it later.
+  let popularityRank = 0;
   for (let page = 0; nextUrl && page < 4; page += 1) {
     const response = await fetch(nextUrl, {
       headers: { Accept: "application/json" },
@@ -1138,7 +1145,8 @@ const loadNativeForgePool = async (
     if (!response.ok) throw new Error("The verified card catalog is unavailable");
     const result = await response.json();
     for (const rawCard of result.data || []) {
-      addRawCard(rawCard);
+      addRawCard(rawCard, popularityRank);
+      popularityRank += 1;
     }
     nextUrl = result.has_more ? String(result.next_page || "") : "";
   }
