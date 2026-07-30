@@ -310,6 +310,24 @@ export function popularityScoreFromRank(rank) {
   return Math.max(0, 9 - Math.log2(rank + 1) * 1.3);
 }
 
+// The Blueprint's budget selector ("Budget conscious", "Moderate
+// investment", ...) was pure UI decoration — never once read by
+// construction, so a player who picked "Budget conscious" got the exact
+// same deck as "No strict limit." "No strict limit" and "Competitive
+// optimization" intentionally carry no pressure (undefined lookup), so
+// unset/optimized budgets are byte-for-byte the pre-existing behavior. A
+// card with no known price is never penalized — absence of data isn't
+// evidence it's expensive.
+const BUDGET_PRICE_PRESSURE = Object.freeze({
+  "Budget conscious": 1.4,
+  "Moderate investment": 0.5,
+});
+export function budgetScoreFor(priceUsd, budget) {
+  const pressure = BUDGET_PRICE_PRESSURE[budget];
+  if (!pressure || !Number.isFinite(priceUsd) || priceUsd <= 0) return 0;
+  return -Math.log2(priceUsd + 1) * pressure;
+}
+
 export function classifyNativeCard(card) {
   const typeLine = String(card.typeLine || card.type_line || "");
   const text = cardText(card);
@@ -419,6 +437,7 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
     evidenceScore: clamp(Number(evidence.evidenceScore || 0) * 100) * 0.12,
     discovery: evidence.newCardPotential ? 2 : 0,
     popularityScore: popularityScoreFromRank(card.popularityRank),
+    budgetScore: budgetScoreFor(card.priceUsd, context.budget),
     fieldPressureHits,
     directTribes,
     tribalSupport,
@@ -439,6 +458,7 @@ function prepareForgeAnalysis(input, evidenceByName) {
     ideal: /Aggressive|Tempo/i.test(input.strategy) ? 2.4 : /Control/i.test(input.strategy) ? 3.2 : 2.9,
     blueprint,
     fieldCounterRoles: fieldCounterRolesFor(input.format, getMetaIntelligence()),
+    budget: input.budget,
   };
   const commanderName = normalized(input.commander?.name);
   const poolSignals = poolMechanicalSignals(input.cards);
@@ -465,7 +485,7 @@ function scoreCard(entry, input, variant, context) {
     card: entry.card,
     roles: entry.roles,
     cmc: entry.cmc,
-    score: entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + deterministicTieBreak,
+    score: entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + entry.budgetScore + deterministicTieBreak,
     synergyHits: entry.synergyHits,
     synergyPotential: entry.synergyPotential,
     preferenceHits: entry.preferenceHits,

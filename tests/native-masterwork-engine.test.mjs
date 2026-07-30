@@ -1,6 +1,6 @@
 ﻿import assert from "node:assert/strict";
 import test from "node:test";
-import { classifyNativeCard, colorPipsFromCost, curveTargets, fieldCounterRolesFor, forgeNativeMasterwork, parseNativeBlueprintIntent, poolMechanicalSignals, popularityScoreFromRank, proportionalBasicCounts, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
+import { budgetScoreFor, classifyNativeCard, colorPipsFromCost, curveTargets, fieldCounterRolesFor, forgeNativeMasterwork, parseNativeBlueprintIntent, poolMechanicalSignals, popularityScoreFromRank, proportionalBasicCounts, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
 
 const card = (name, oracleText, typeLine = "Creature — Test", manaCost = "{2}{U}", colorIdentity = ["U"]) => ({ name, oracleText, typeLine, manaCost, colorIdentity });
 const pool = [
@@ -373,6 +373,41 @@ test("prefers cards with strong real-world adoption over otherwise-identical bla
   const obscureQuantity = report.selected.rows.filter((row) => row.name.startsWith("Obscure Vanilla")).reduce((sum, row) => sum + row.quantity, 0);
   assert.equal(popularQuantity, 8, `expected all 8 open slots to go to the popular filler, got ${popularQuantity}`);
   assert.equal(obscureQuantity, 0, `expected no obscure filler to make the cut, got ${obscureQuantity}`);
+});
+
+test("penalizes expensive cards only when the budget selector actually constrains spending", () => {
+  assert.equal(budgetScoreFor(50, "No strict limit"), 0);
+  assert.equal(budgetScoreFor(50, "Competitive optimization"), 0);
+  assert.equal(budgetScoreFor(50, undefined), 0);
+  assert.equal(budgetScoreFor(NaN, "Budget conscious"), 0);
+  assert.ok(budgetScoreFor(50, "Budget conscious") < 0);
+  assert.ok(budgetScoreFor(50, "Budget conscious") < budgetScoreFor(50, "Moderate investment"));
+  assert.ok(budgetScoreFor(50, "Budget conscious") < budgetScoreFor(5, "Budget conscious"));
+});
+
+test("honors the budget selector by preferring cheap cards over otherwise-identical expensive ones", () => {
+  // Same scarce-supply shape as the popularity test above: 7 unique base
+  // cards (28 copies) leave exactly 8 of Standard's 36 spell slots open.
+  // Six filler cards share identical text, type, and cost — the only
+  // difference is price — so "Budget conscious" should sweep the cheap ones
+  // and shut the expensive ones out entirely.
+  const scarceBase = [
+    ...Array.from({ length: 2 }, (_, i) => card(`Flow ${i}`, "When this enters, draw a card. Scry 1.")),
+    ...Array.from({ length: 2 }, (_, i) => card(`Answer ${i}`, "Exile target nonland permanent.")),
+    ...Array.from({ length: 1 }, (_, i) => card(`Shield ${i}`, "Target creature gains hexproof and indestructible until end of turn.")),
+    ...Array.from({ length: 2 }, (_, i) => card(`Stone ${i}`, "Add one mana. Create a Treasure token.", "Artifact", "{2}")),
+  ];
+  const lands = Array.from({ length: 10 }, (_, i) => card(`Island Utility ${i}`, "{T}: Add {U}.", "Land", "", ["U"]));
+  const cheapFiller = Array.from({ length: 3 }, (_, i) => ({ ...card(`Cheap Vanilla ${i}`, "Nothing happens.", "Sorcery"), priceUsd: 0.25 }));
+  const pricyFiller = Array.from({ length: 3 }, (_, i) => ({ ...card(`Pricy Vanilla ${i}`, "Nothing happens.", "Sorcery"), priceUsd: 60 }));
+  const report = forgeNativeMasterwork({
+    format: "Standard", target: 60, strategy: "Balanced midrange", seed: 33, colors: ["U"], budget: "Budget conscious",
+    cards: [...scarceBase, ...cheapFiller, ...pricyFiller, ...lands],
+  });
+  const cheapQuantity = report.selected.rows.filter((row) => row.name.startsWith("Cheap Vanilla")).reduce((sum, row) => sum + row.quantity, 0);
+  const pricyQuantity = report.selected.rows.filter((row) => row.name.startsWith("Pricy Vanilla")).reduce((sum, row) => sum + row.quantity, 0);
+  assert.equal(cheapQuantity, 8, `expected all 8 open slots to go to the cheap filler, got ${cheapQuantity}`);
+  assert.equal(pricyQuantity, 0, `expected no pricy filler to make the cut, got ${pricyQuantity}`);
 });
 
 test("prefers nonbasic lands that fix the deck's heavier-demand color over otherwise-identical off-focus lands", () => {

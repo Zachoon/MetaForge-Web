@@ -1076,20 +1076,25 @@ type NativeForgeCard = {
   colorIdentity: string[];
   keywords: string[];
   popularityRank?: number;
+  priceUsd?: number;
 };
 
-const nativeCardFact = (card: any): NativeForgeCard => ({
-  name: String(card.name || ""),
-  manaCost: String(card.mana_cost || card.card_faces?.[0]?.mana_cost || ""),
-  cmc: Number(card.cmc || 0),
-  typeLine: String(card.type_line || ""),
-  oracleText: String(
-    card.oracle_text ||
-      (card.card_faces || []).map((face: any) => face.oracle_text || "").join("\n"),
-  ),
-  colorIdentity: card.color_identity || [],
-  keywords: card.keywords || [],
-});
+const nativeCardFact = (card: any): NativeForgeCard => {
+  const priceUsd = Number(card.prices?.usd ?? card.prices?.usd_foil ?? NaN);
+  return {
+    name: String(card.name || ""),
+    manaCost: String(card.mana_cost || card.card_faces?.[0]?.mana_cost || ""),
+    cmc: Number(card.cmc || 0),
+    typeLine: String(card.type_line || ""),
+    oracleText: String(
+      card.oracle_text ||
+        (card.card_faces || []).map((face: any) => face.oracle_text || "").join("\n"),
+    ),
+    colorIdentity: card.color_identity || [],
+    keywords: card.keywords || [],
+    ...(Number.isFinite(priceUsd) ? { priceUsd } : {}),
+  };
+};
 
 const loadNativeForgePool = async (
   format: string,
@@ -2926,6 +2931,7 @@ export default function Home() {
           : null,
         cards: pool.cards,
         evidence: evidence?.cards || [],
+        budget,
       });
       await applyForgeResult(nativeReport, {
         generationId,
@@ -3021,6 +3027,7 @@ export default function Home() {
           cards: resolution.pool,
           importedRows: resolution.importedRows,
           evidence: evidence?.cards || [],
+          budget,
         });
         await applyForgeResult(nativeReport, {
           generationId,
@@ -3042,6 +3049,7 @@ export default function Home() {
           commander: commanderInput,
           cards: pool.cards,
           evidence: evidence?.cards || [],
+          budget,
         });
         await applyForgeResult(nativeReport, {
           generationId,
