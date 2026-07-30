@@ -5937,6 +5937,13 @@ export default function Home() {
               <div>
                 <small>THE PRIVATE BENCH</small>
                 <strong>Your preserved Masterworks</strong>
+                {savedMasterworks.length > 0 && (
+                  <p>
+                    <b>{savedMasterworks.filter((family) => family.archived).length} sealed</b>
+                    <span>·</span>
+                    <b>{savedMasterworks.filter((family) => !family.archived).length} still on the anvil</b>
+                  </p>
+                )}
               </div>
               <button
                 onClick={() => setBenchOpen(false)}
@@ -5950,6 +5957,8 @@ export default function Home() {
                 {savedMasterworks.slice(0, 10).map((family) => {
                   const evidence =
                     family.record || family.revisions.at(-1)?.evidence || {};
+                  const evidenceCount = Number(evidence.wins || 0) + Number(evidence.losses || 0);
+                  const dominantMotif = Object.entries(family.motifWeights || {}).sort((a, b) => b[1] - a[1])[0]?.[0];
                   return (
                     <button
                       key={family.id}
@@ -5959,19 +5968,24 @@ export default function Home() {
                         setBenchOpen(false);
                       }}
                     >
-                      <span>
+                      <span className="bench-card-art">
                         {family.commander?.image ? (
                           <img src={family.commander.image} alt="" />
                         ) : (
                           <i>ᛞ</i>
                         )}
+                        <em>{family.archived ? "SEALED" : family.id === deckId ? "ON THE ANVIL" : "IN PROGRESS"}</em>
+                        {dominantMotif && <small>{dominantMotif}</small>}
                       </span>
-                      <b>{family.name}</b>
-                      <small>{family.commander?.name || family.format}</small>
-                      <em>
-                        {Number(evidence.wins || 0)}W ·{" "}
-                        {Number(evidence.losses || 0)}L
-                      </em>
+                      <span className="bench-card-copy">
+                        <b>{family.name}</b>
+                        <small>{family.commander?.name || family.format}</small>
+                      </span>
+                      <span className="bench-card-vitals">
+                        <em><b>{family.revisions.length || 1}</b> revision{family.revisions.length === 1 ? "" : "s"}</em>
+                        <em><b>{evidenceCount}</b> match{evidenceCount === 1 ? "" : "es"}</em>
+                      </span>
+                      <span className="bench-card-open">Open Masterwork <i>→</i></span>
                     </button>
                   );
                 })}

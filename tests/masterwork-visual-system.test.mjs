@@ -8,6 +8,7 @@ const icons = fs.readFileSync(new URL("../app/masterwork-motif-icons.tsx", impor
 const globals = fs.readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 const motionCss = fs.readFileSync(new URL("../app/forge-motion.css", import.meta.url), "utf8");
 const journeyCss = fs.readFileSync(new URL("../app/forge-journey.css", import.meta.url), "utf8");
+const benchCss = fs.readFileSync(new URL("../app/deck-bench-dock.css", import.meta.url), "utf8");
 
 test("the reveal chamber uses a dedicated, module-level MasterworkCard instead of an inline article", () => {
   assert.match(page, /^function MasterworkCard\(/m);
@@ -66,4 +67,15 @@ test("the workbench keeps one explicit next action visible through the full Forg
   assert.match(page, /id="match-evidence"/);
   assert.match(journeyCss, /\.forge-path li\.active/);
   assert.match(journeyCss, /prefers-reduced-motion:reduce[^}]*\.forge-path:before/s);
+});
+
+test("the Private Bench reads as a living archive instead of a plain saved-deck list", () => {
+  assert.match(page, /className="bench-card-art"/);
+  assert.match(page, /ON THE ANVIL/);
+  assert.match(page, /family\.revisions\.length/);
+  assert.match(page, /evidenceCount/);
+  assert.match(page, /Open Masterwork/);
+  assert.match(benchCss, /\.bench-card-vitals/);
+  assert.match(benchCss, /@keyframes bench-masterwork-rise/);
+  assert.match(benchCss, /prefers-reduced-motion:reduce[^}]*\.bench-dock\.open/s);
 });

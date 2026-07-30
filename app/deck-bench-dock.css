@@ -126,6 +126,7 @@
 .bench-tray header strong {
   display: block;
 }
+.bench-tray > header p{display:flex;align-items:center;gap:7px;margin:5px 0 0;color:#657b75;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}.bench-tray > header p b{color:#8fa7a1;font-weight:700}.bench-tray > header p b:first-child{color:#d1ad68}
 .bench-tray header small {
   color: #e7a24d;
   font-size: 7px;
@@ -155,9 +156,9 @@
 }
 .bench-decks > button {
   display: grid;
-  min-width: 142px;
-  max-width: 142px;
-  grid-template-rows: 92px auto auto auto;
+  min-width: 218px;
+  max-width: 218px;
+  grid-template-rows: 124px auto auto auto;
   overflow: hidden;
   padding: 0 0 11px;
   border: 1px solid #354c46;
@@ -165,12 +166,14 @@
   color: #dfe8e3;
   text-align: left;
   scroll-snap-align: start;
+  transition:border-color .2s ease,background .2s ease,transform .2s ease,box-shadow .2s ease;
 }
 .bench-decks > button:hover,
 .bench-decks > button.active {
   border-color: #75dbc4;
   background: #153029;
   box-shadow: 0 0 18px #75dbc422;
+  transform:translateY(-2px);
 }
 .bench-decks > button.finished {
   border-color: #a1802f;
@@ -181,12 +184,14 @@
   border-color: #d2b06a;
   box-shadow: 0 0 18px #d2b06a33;
 }
-.bench-decks > button > span {
+.bench-card-art {
+  position:relative;
   display: grid;
   place-items: center;
   overflow: hidden;
   background: radial-gradient(circle, #244b42, #081210);
 }
+.bench-card-art:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 35%,#06100fe8),linear-gradient(105deg,#58d5c21a,transparent 45%);pointer-events:none}.bench-card-art>em{position:absolute;z-index:2;top:9px;left:9px;margin:0;padding:4px 6px;border:1px solid #5e7e76;background:#06100ed9;color:#9ed5ca;font:800 8px Inter,sans-serif;letter-spacing:.12em}.bench-card-art>small{position:absolute;z-index:2;right:9px;bottom:8px;max-width:58%;margin:0;overflow:hidden;color:#d6aa66;font:800 8px Inter,sans-serif;letter-spacing:.09em;text-overflow:ellipsis;text-transform:uppercase;white-space:nowrap}.bench-decks>button.finished .bench-card-art>em{border-color:#9c793a;color:#f0c77c}.bench-decks>button.active .bench-card-art>em{border-color:#69d5c2;color:#b5fff2;box-shadow:0 0 12px #64dac345}
 .bench-decks img {
   width: 100%;
   height: 100%;
@@ -198,14 +203,7 @@
   font: normal 42px Georgia;
   text-shadow: 0 0 22px #e79943;
 }
-.bench-decks b,
-.bench-decks small,
-.bench-decks em {
-  margin-right: 10px;
-  margin-left: 10px;
-}
-.bench-decks b {
-  margin-top: 9px;
+.bench-card-copy{display:grid;gap:4px;padding:11px 12px 8px}.bench-card-copy b {
   overflow: hidden;
   font:
     600 15px Georgia,
@@ -213,21 +211,14 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.bench-decks small {
-  margin-top: 4px;
+.bench-card-copy small {
   overflow: hidden;
   color: #76cbb9;
   font-size: 7px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.bench-decks em {
-  margin-top: 7px;
-  color: #879a95;
-  font:
-    normal 12px Inter,
-    sans-serif;
-}
+.bench-card-vitals{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin:0 12px;border:1px solid #293d38;background:#081210}.bench-card-vitals em{display:grid;gap:2px;padding:7px;color:#6f837e;font:normal 8px Inter,sans-serif;text-align:center;text-transform:uppercase}.bench-card-vitals em+em{border-left:1px solid #293d38}.bench-card-vitals b{margin:0;color:#b7cbc5;font:700 12px Inter,sans-serif}.bench-card-open{display:flex;align-items:center;justify-content:space-between;margin-top:9px;padding:8px 12px 0;border-top:1px solid #263a35;color:#69cbb8;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.bench-card-open i{font:normal 14px Inter,sans-serif;transition:transform .2s ease}.bench-decks>button:hover .bench-card-open i,.bench-decks>button:focus-visible .bench-card-open i{transform:translateX(3px)}
 .bench-tray > footer {
   justify-content: flex-end;
   margin-top: 5px;
@@ -265,8 +256,8 @@
     padding: 12px;
   }
   .bench-decks > button {
-    min-width: 125px;
-    max-width: 125px;
+    min-width: 196px;
+    max-width: 196px;
   }
   .bench-tray > footer {
     align-items: stretch;
@@ -283,7 +274,9 @@
 .bench-toggle em{font-size:12px}
 .bench-tray header small{font-size:10px}
 .bench-tray header button,.bench-tray footer button{font-size:11px}
-.bench-decks small{font-size:10px}
+.bench-card-copy small{font-size:10px}
+
+.bench-dock.open .bench-decks>button{animation:bench-masterwork-rise .42s cubic-bezier(.2,.8,.2,1) both}.bench-dock.open .bench-decks>button:nth-child(2){animation-delay:45ms}.bench-dock.open .bench-decks>button:nth-child(3){animation-delay:90ms}.bench-dock.open .bench-decks>button:nth-child(4){animation-delay:135ms}.bench-dock.open .bench-decks>button:nth-child(5){animation-delay:180ms}@keyframes bench-masterwork-rise{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}@media(prefers-reduced-motion:reduce){.bench-dock.open .bench-decks>button{animation:none}.bench-decks>button,.bench-card-open i{transition:none}}
 
 /* Organic flow: the closed Bench is a quiet tool, not a permanent chapter. */
 .bench-dock:not(.open){right:22px;left:auto;width:min(330px,calc(100% - 44px));margin:0}.bench-dock:not(.open) .bench-handle{min-height:44px;border-radius:8px 8px 0 0}.bench-dock:not(.open) .bench-toggle{padding:6px 10px;gap:9px}.bench-dock:not(.open) .bench-toggle>i{width:28px;height:28px;font-size:16px}.bench-dock:not(.open) .bench-toggle small{font-size:9px}.bench-dock:not(.open) .bench-toggle b{font-size:10px}.bench-dock:not(.open) .bench-toggle em{font-size:9px}.bench-dock:not(.open) .bench-handle>img{width:32px;height:38px}.bench-dock.open{max-width:1040px}.great-forge{padding-bottom:54px}@media(max-width:650px){.bench-dock:not(.open){right:10px;width:min(290px,calc(100% - 20px))}.bench-dock:not(.open) .bench-toggle em{display:none}}
