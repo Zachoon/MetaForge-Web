@@ -1628,6 +1628,7 @@ export default function Home() {
   const [commanderResults, setCommanderResults] = useState<CommanderOption[]>(
     [],
   );
+  const [commanderSearchOpen, setCommanderSearchOpen] = useState(false);
   const [selectedCommander, setSelectedCommander] =
     useState<CommanderOption | null>(null);
   const [commanderSearching, setCommanderSearching] = useState(false);
@@ -2968,6 +2969,7 @@ export default function Home() {
 
   async function chooseRandomCommander() {
     setRandomizingCommander(true);
+    setCommanderSearchOpen(false);
     setCommanderResults([]);
     try {
       const query = encodeURIComponent(
@@ -4326,13 +4328,28 @@ export default function Home() {
                     </div>
                   </article>
                 ) : (
-                  <div className="commander-search">
+                  <div
+                    className="commander-search"
+                    onBlur={(event) => {
+                      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                        setCommanderSearchOpen(false);
+                      }
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") {
+                        setCommanderSearchOpen(false);
+                        event.currentTarget.querySelector("input")?.blur();
+                      }
+                    }}
+                  >
                     <div className="commander-choice">
                       <input
                         value={commanderQuery}
-                        onChange={(event) =>
-                          setCommanderQuery(event.target.value)
-                        }
+                        onFocus={() => setCommanderSearchOpen(true)}
+                        onChange={(event) => {
+                          setCommanderQuery(event.target.value);
+                          setCommanderSearchOpen(true);
+                        }}
                         placeholder={`Search legal ${format} commanders…`}
                         aria-label={`Search legal ${format} commanders`}
                       />
@@ -4346,7 +4363,7 @@ export default function Home() {
                           : "Surprise me · reveal three commanders"}
                       </button>
                     </div>
-                    {(commanderSearching ||
+                    {commanderSearchOpen && (commanderSearching ||
                       commanderResults.length > 0 ||
                       commanderQuery.trim().length > 1) && (
                       <div role="listbox">
@@ -4362,6 +4379,7 @@ export default function Home() {
                                 setSelectedCommander(option);
                                 setCommanderQuery(option.name);
                                 setCommanderResults([]);
+                                setCommanderSearchOpen(false);
                               }}
                             >
                               <span>

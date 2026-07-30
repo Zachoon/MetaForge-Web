@@ -23,3 +23,11 @@ test("commander choice becomes a responsive, motion-safe Blueprint seal", () => 
   assert.match(commander, /@keyframes commander-bound-in/);
   assert.match(commander, /prefers-reduced-motion:reduce[^}]*\.commander-blueprint/s);
 });
+
+test("commander predictions dismiss instead of leaving an empty listbox", () => {
+  assert.match(page, /commanderSearchOpen/);
+  assert.match(page, /event\.key === "Escape"/);
+  assert.match(page, /event\.currentTarget\.contains\(event\.relatedTarget/);
+  assert.match(page, /commanderSearchOpen && \(commanderSearching/);
+  assert.match(page, /setCommanderSearchOpen\(false\)/);
+});
