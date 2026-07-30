@@ -2932,6 +2932,7 @@ export default function Home() {
         cards: pool.cards,
         evidence: evidence?.cards || [],
         budget,
+        complexity,
       });
       await applyForgeResult(nativeReport, {
         generationId,
@@ -3028,6 +3029,7 @@ export default function Home() {
           importedRows: resolution.importedRows,
           evidence: evidence?.cards || [],
           budget,
+          complexity,
         });
         await applyForgeResult(nativeReport, {
           generationId,
@@ -3050,6 +3052,7 @@ export default function Home() {
           cards: pool.cards,
           evidence: evidence?.cards || [],
           budget,
+          complexity,
         });
         await applyForgeResult(nativeReport, {
           generationId,

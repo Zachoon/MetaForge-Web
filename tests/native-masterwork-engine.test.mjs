@@ -1,6 +1,6 @@
 ﻿import assert from "node:assert/strict";
 import test from "node:test";
-import { budgetScoreFor, classifyNativeCard, colorPipsFromCost, curveTargets, fieldCounterRolesFor, forgeNativeMasterwork, parseNativeBlueprintIntent, poolMechanicalSignals, popularityScoreFromRank, proportionalBasicCounts, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
+import { budgetScoreFor, classifyNativeCard, colorPipsFromCost, complexityScoreFor, curveTargets, fieldCounterRolesFor, forgeNativeMasterwork, oracleTextComplexity, parseNativeBlueprintIntent, poolMechanicalSignals, popularityScoreFromRank, proportionalBasicCounts, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
 
 const card = (name, oracleText, typeLine = "Creature — Test", manaCost = "{2}{U}", colorIdentity = ["U"]) => ({ name, oracleText, typeLine, manaCost, colorIdentity });
 const pool = [
@@ -408,6 +408,46 @@ test("honors the budget selector by preferring cheap cards over otherwise-identi
   const pricyQuantity = report.selected.rows.filter((row) => row.name.startsWith("Pricy Vanilla")).reduce((sum, row) => sum + row.quantity, 0);
   assert.equal(cheapQuantity, 8, `expected all 8 open slots to go to the cheap filler, got ${cheapQuantity}`);
   assert.equal(pricyQuantity, 0, `expected no pricy filler to make the cut, got ${pricyQuantity}`);
+});
+
+test("scores oracle text complexity from choice points, triggers, and activated abilities, not just word count", () => {
+  const vanilla = "Nothing happens.";
+  const technical = "At the beginning of your upkeep, choose one — This permanent becomes a copy of itself; or it becomes larger until your next turn. {3}: This permanent becomes untargetable until your next turn.";
+  assert.ok(oracleTextComplexity(technical) > oracleTextComplexity(vanilla));
+  assert.equal(oracleTextComplexity(""), 0);
+});
+
+test("pressures complexity only when the selector actually asks for it, and in the right direction", () => {
+  const technicalScore = oracleTextComplexity("At the beginning of your upkeep, choose one — This permanent becomes a copy of itself; or it becomes larger until your next turn. {3}: This permanent becomes untargetable until your next turn.");
+  assert.equal(complexityScoreFor(technicalScore, "Balanced"), 0);
+  assert.equal(complexityScoreFor(technicalScore, undefined), 0);
+  assert.ok(complexityScoreFor(technicalScore, "Accessible") < 0);
+  assert.ok(complexityScoreFor(technicalScore, "Technical") > 0);
+  assert.ok(complexityScoreFor(technicalScore, "Maximum depth") > complexityScoreFor(technicalScore, "Technical"));
+});
+
+test("honors the complexity selector by preferring simple cards over otherwise-identical technical ones once Accessible is chosen", () => {
+  // Same scarce-supply shape as the budget test above. Six filler cards
+  // carry no classified role at all (so nothing but complexity explains a
+  // difference) and identical cost — only the oracle text's choice points,
+  // triggers, and activated ability differ.
+  const scarceBase = [
+    ...Array.from({ length: 2 }, (_, i) => card(`Flow ${i}`, "When this enters, draw a card. Scry 1.")),
+    ...Array.from({ length: 2 }, (_, i) => card(`Answer ${i}`, "Exile target nonland permanent.")),
+    ...Array.from({ length: 1 }, (_, i) => card(`Shield ${i}`, "Target creature gains hexproof and indestructible until end of turn.")),
+    ...Array.from({ length: 2 }, (_, i) => card(`Stone ${i}`, "Add one mana. Create a Treasure token.", "Artifact", "{2}")),
+  ];
+  const lands = Array.from({ length: 10 }, (_, i) => card(`Island Utility ${i}`, "{T}: Add {U}.", "Land", "", ["U"]));
+  const simpleFiller = Array.from({ length: 3 }, (_, i) => card(`Simple Vanilla ${i}`, "Nothing happens.", "Sorcery"));
+  const technicalFiller = Array.from({ length: 3 }, (_, i) => card(`Technical Trickster ${i}`, "At the beginning of your upkeep, choose one — This permanent becomes a copy of itself; or it becomes larger until your next turn. {3}: This permanent becomes untargetable until your next turn.", "Sorcery"));
+  const report = forgeNativeMasterwork({
+    format: "Standard", target: 60, strategy: "Balanced midrange", seed: 33, colors: ["U"], complexity: "Accessible",
+    cards: [...scarceBase, ...simpleFiller, ...technicalFiller, ...lands],
+  });
+  const simpleQuantity = report.selected.rows.filter((row) => row.name.startsWith("Simple Vanilla")).reduce((sum, row) => sum + row.quantity, 0);
+  const technicalQuantity = report.selected.rows.filter((row) => row.name.startsWith("Technical Trickster")).reduce((sum, row) => sum + row.quantity, 0);
+  assert.equal(simpleQuantity, 8, `expected all 8 open slots to go to the simple filler, got ${simpleQuantity}`);
+  assert.equal(technicalQuantity, 0, `expected no technical filler to make the cut, got ${technicalQuantity}`);
 });
 
 test("prefers nonbasic lands that fix the deck's heavier-demand color over otherwise-identical off-focus lands", () => {

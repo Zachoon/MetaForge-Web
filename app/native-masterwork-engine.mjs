@@ -328,6 +328,35 @@ export function budgetScoreFor(priceUsd, budget) {
   return -Math.log2(priceUsd + 1) * pressure;
 }
 
+// Same broken-promise shape as budget above: the Blueprint's complexity
+// selector ("Accessible", "Technical", "Maximum depth") was never read past
+// its own form state. Word count is a blunt but honest proxy for how much a
+// card asks of its pilot; choice points (modal bullets, "may"/"choose"),
+// triggers, and activated-ability costs count for more than plain wording,
+// since those are what actually make a card hard to play correctly.
+export function oracleTextComplexity(oracleText = "") {
+  const text = String(oracleText);
+  const words = text.split(/\s+/).filter(Boolean).length;
+  const choicePoints = (text.match(/\bchoose\b|\bmay\b|•/gi) || []).length;
+  const triggers = (text.match(/\bwhenever\b|\bat the beginning of\b/gi) || []).length;
+  const activatedAbilities = (text.match(/\{[^}]*\}[^.]*?:/g) || []).length;
+  return words * 0.5 + choicePoints * 4 + triggers * 3 + activatedAbilities * 3;
+}
+
+// "Balanced" and any unset value carry no pressure, so the default
+// experience is byte-for-byte the pre-existing behavior — same contract as
+// the budget pressures above.
+const COMPLEXITY_PRESSURE = Object.freeze({
+  Accessible: -0.35,
+  Technical: 0.35,
+  "Maximum depth": 0.6,
+});
+export function complexityScoreFor(textComplexity, complexity) {
+  const pressure = COMPLEXITY_PRESSURE[complexity];
+  if (!pressure || !Number.isFinite(textComplexity)) return 0;
+  return textComplexity * pressure;
+}
+
 export function classifyNativeCard(card) {
   const typeLine = String(card.typeLine || card.type_line || "");
   const text = cardText(card);
@@ -438,6 +467,7 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
     discovery: evidence.newCardPotential ? 2 : 0,
     popularityScore: popularityScoreFromRank(card.popularityRank),
     budgetScore: budgetScoreFor(card.priceUsd, context.budget),
+    complexityScore: complexityScoreFor(oracleTextComplexity(card.oracleText || card.oracle_text), context.complexity),
     fieldPressureHits,
     directTribes,
     tribalSupport,
@@ -459,6 +489,7 @@ function prepareForgeAnalysis(input, evidenceByName) {
     blueprint,
     fieldCounterRoles: fieldCounterRolesFor(input.format, getMetaIntelligence()),
     budget: input.budget,
+    complexity: input.complexity,
   };
   const commanderName = normalized(input.commander?.name);
   const poolSignals = poolMechanicalSignals(input.cards);
@@ -485,7 +516,7 @@ function scoreCard(entry, input, variant, context) {
     card: entry.card,
     roles: entry.roles,
     cmc: entry.cmc,
-    score: entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + entry.budgetScore + deterministicTieBreak,
+    score: entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + entry.budgetScore + entry.complexityScore + deterministicTieBreak,
     synergyHits: entry.synergyHits,
     synergyPotential: entry.synergyPotential,
     preferenceHits: entry.preferenceHits,
