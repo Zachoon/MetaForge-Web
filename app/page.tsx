@@ -389,8 +389,12 @@ const ForgeProcessingLoader = ({ motionMode }: { motionMode: MotionMode }) => {
 
   return (
     <div className={`forging-motion forging-motion--rive${loaded ? " is-loaded" : ""}`} aria-hidden="true">
+      <span className="processing-crucible" />
+      <span className="processing-index-ring" />
+      <span className="processing-heat-ring" />
       <canvas ref={canvasRef} />
       <i>ᛟ</i>
+      <span className="processing-sparks"><b /><b /><b /><b /><b /><b /></span>
     </div>
   );
 };
@@ -422,6 +426,8 @@ const ForgeCeremonyMotion = ({
       aria-hidden="true"
     >
       <span className="forge-motion-aura" />
+      <span className="forge-motion-crucible" />
+      <span className="forge-motion-index" />
       <img src={`/assets/forge/animations/${asset}.svg`} alt="" />
       <span className="forge-motion-scan" />
       <span className="forge-motion-embers"><i /><i /><i /><i /></span>
@@ -1824,6 +1830,16 @@ export default function Home() {
     const timer = window.setTimeout(() => setStage((value) => value + 1), 1150);
     return () => window.clearTimeout(timer);
   }, [chamber, stage, deck, format, selectedCommander, randomCommission]);
+
+  useEffect(() => {
+    if (benchStatus !== "forging" || forgeStartedAt === null) return;
+    const updateElapsed = () => {
+      setForgeElapsedSeconds(Math.max(0, Math.floor((Date.now() - forgeStartedAt) / 1000)));
+    };
+    updateElapsed();
+    const timer = window.setInterval(updateElapsed, 250);
+    return () => window.clearInterval(timer);
+  }, [benchStatus, forgeStartedAt]);
 
   const progress = useMemo(
     () => ((stage + 1) / FORGING_STAGES.length) * 100,

@@ -518,3 +518,36 @@
 .great-forge[data-forge-state="reveal"]::after{background:radial-gradient(600px circle at var(--mf-pointer-x,50vw) var(--mf-pointer-y,36vh),rgba(255,168,78,.08),rgba(67,222,216,.04) 42%,transparent 74%)}
 .great-forge[data-motion="quiet"]::after{display:none}.great-forge[data-motion="quiet"] .mf-living-reveal{transition:none;opacity:1;transform:none;filter:none}
 @media (hover:none),(pointer:coarse){.great-forge::after{background:radial-gradient(520px circle at 50% 32%,rgba(70,218,213,.045),transparent 70%)}}
+
+/* Precision forging instruments. The imported art now behaves as an energy
+   layer inside authored metalwork instead of carrying the whole visual. */
+.forge-ceremony-motion{width:min(42vw,470px);filter:drop-shadow(0 34px 48px #000a)}
+.forge-ceremony-motion:before,.forge-ceremony-motion:after{content:"";position:absolute;z-index:0;border-radius:50%;pointer-events:none}
+.forge-ceremony-motion:before{inset:2%;border:1px solid #a668354a;background:radial-gradient(circle,#e78b3e12 0 23%,transparent 24%),repeating-conic-gradient(from 2deg,#d8985c55 0 1deg,transparent 1deg 13deg);mask:radial-gradient(circle,transparent 0 76%,#000 76.4% 78%,transparent 78.5%);animation:precision-index-turn 28s linear infinite}
+.forge-ceremony-motion:after{inset:11%;border:1px solid #69cfc05c;box-shadow:inset 0 0 28px #58cbb719,0 0 34px #e0813312;animation:precision-counter-turn 19s linear infinite}
+.forge-motion-crucible{position:absolute;z-index:1;inset:18%;border:1px solid #9c744f66;border-radius:50%;background:radial-gradient(circle at 50% 42%,#fff4d610 0 5%,#e88d3c1f 11%,#0a0e0cdd 44%,#030504 72%);box-shadow:inset 0 0 0 8px #101512,inset 0 0 0 9px #5ebfad32,inset 0 0 55px #e47f2925,0 0 50px #de7d2524;animation:precision-crucible-breathe 3.2s ease-in-out infinite}
+.forge-motion-index{position:absolute;z-index:3;inset:26%;border:1px dashed #e6a6636e;border-radius:50%;box-shadow:0 0 18px #e58d3a20;animation:precision-index-turn 12s linear infinite}
+.forge-ceremony-motion img{z-index:2;width:76%;height:76%;opacity:.82;filter:sepia(.18) saturate(.88) contrast(1.12) drop-shadow(0 0 16px #e58a3835)!important;mix-blend-mode:screen}
+.forge-motion-scan{z-index:4}.forge-motion-embers{z-index:5}
+
+.masterwork-forging-progress{overflow:hidden;isolation:isolate}
+.forging-motion--rive{position:relative;width:190px;height:190px;margin:4px auto 24px;filter:drop-shadow(0 26px 35px #000a)}
+.forging-motion--rive:before,.forging-motion--rive:after{content:"";position:absolute;border-radius:50%;pointer-events:none}
+.forging-motion--rive:before{inset:0;border:1px solid #d78a485c;background:repeating-conic-gradient(from 0deg,#eca15e88 0 1deg,transparent 1deg 14deg);mask:radial-gradient(circle,transparent 0 85%,#000 85.5% 87%,transparent 87.5%);animation:processing-index 20s linear infinite}
+.forging-motion--rive:after{inset:11%;border:1px solid #62cbb85c;box-shadow:inset 0 0 28px #63d6c021,0 0 28px #d97b3421;animation:processing-index 13s linear infinite reverse}
+.processing-crucible{position:absolute;z-index:0;inset:23%;border-radius:50%;background:radial-gradient(circle at 50% 40%,#fff2d721 0 5%,#e58a3c2b 13%,#13201c 38%,#060908 70%);box-shadow:inset 0 0 0 7px #0b100e,inset 0 0 0 8px #bf784d55,0 0 38px #d77c3438;animation:processing-breathe 2.7s ease-in-out infinite}
+.processing-index-ring,.processing-heat-ring{position:absolute;z-index:2;border-radius:50%;pointer-events:none}
+.processing-index-ring{inset:18%;border:1px dashed #e4a15f78;animation:processing-index 9s linear infinite}
+.processing-heat-ring{inset:31%;border:1px solid #78d8c68c;box-shadow:0 0 18px #5cd3bd4a,inset 0 0 20px #dd81343d;animation:processing-heat 2.2s ease-in-out infinite}
+.forging-motion--rive canvas{z-index:1;inset:27%!important;width:46%!important;height:46%!important;opacity:.18!important;filter:saturate(.75) contrast(1.14);mix-blend-mode:screen}
+.forging-motion--rive>i{z-index:3;color:#f4d5ad;font-size:37px;text-shadow:0 0 15px #e78c43,0 0 32px #70d7c3;opacity:1!important}
+.processing-sparks{position:absolute;z-index:4;inset:0}.processing-sparks b{position:absolute;left:50%;top:50%;width:3px;height:3px;border-radius:50%;background:#ffd095;box-shadow:0 0 9px #e98638;opacity:0;animation:processing-spark 2.4s ease-out infinite}.processing-sparks b:nth-child(2){animation-delay:-.4s;rotate:55deg}.processing-sparks b:nth-child(3){animation-delay:-.8s;rotate:112deg}.processing-sparks b:nth-child(4){animation-delay:-1.2s;rotate:178deg}.processing-sparks b:nth-child(5){animation-delay:-1.6s;rotate:238deg}.processing-sparks b:nth-child(6){animation-delay:-2s;rotate:302deg}
+@keyframes precision-index-turn{to{transform:rotate(360deg)}}
+@keyframes precision-counter-turn{to{transform:rotate(-360deg)}}
+@keyframes precision-crucible-breathe{50%{box-shadow:inset 0 0 0 8px #101512,inset 0 0 0 9px #65d0bd55,inset 0 0 70px #ed8a343b,0 0 72px #df802b38;transform:scale(1.015)}}
+@keyframes processing-index{to{transform:rotate(360deg)}}
+@keyframes processing-breathe{50%{transform:scale(1.045);box-shadow:inset 0 0 0 7px #0b100e,inset 0 0 0 8px #d890575f,0 0 54px #e1873e4a}}
+@keyframes processing-heat{50%{opacity:.65;transform:scale(.94)}}
+@keyframes processing-spark{0%,28%{opacity:0;transform:translateY(0) scale(.4)}42%{opacity:.9}100%{opacity:0;transform:translateY(-78px) translateX(15px) scale(1.4)}}
+@media(max-width:700px){.forge-ceremony-motion{width:min(84vw,420px)}.forging-motion--rive{width:164px;height:164px}}
+@media(prefers-reduced-motion:reduce){.forge-ceremony-motion:before,.forge-ceremony-motion:after,.forge-motion-crucible,.forge-motion-index,.forging-motion--rive:before,.forging-motion--rive:after,.processing-crucible,.processing-index-ring,.processing-heat-ring,.processing-sparks b{animation:none!important}.processing-sparks{display:none}}

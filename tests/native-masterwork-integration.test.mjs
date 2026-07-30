@@ -23,6 +23,8 @@ test("Blueprint identity shapes previews and targeted verified-pool retrieval", 
 
 test("native forging exposes visible elapsed progress and moving stages", () => {
   assert.match(page, /forgeElapsedSeconds/);
+  assert.match(page, /Date\.now\(\) - forgeStartedAt/);
+  assert.match(page, /setInterval\(updateElapsed, 250\)/);
   assert.match(page, /METAFORGE NATIVE ENGINE/);
   assert.match(page, /Forging three competing candidates/);
   assert.match(page, /role="status"/);
