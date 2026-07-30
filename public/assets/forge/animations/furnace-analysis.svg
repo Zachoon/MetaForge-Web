@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <g id="outer-ring" fill="none" stroke="#587078"><circle cx="256" cy="256" r="170" stroke-width="10"/><path d="M256 70v30M256 412v30M70 256h30M412 256h30" stroke="#6DDDF0" stroke-width="8"/></g>
+  <path id="furnace" fill="#26343A" stroke="#D8FBFF" stroke-width="8" d="M166 166h180v210H166z"/>
+  <path id="door" fill="#081012" stroke="#F49A45" stroke-width="8" d="M205 242h102v96H205z"/>
+  <g id="flames" fill="#F49A45"><path d="M230 323c-36-49 26-67 17-111 46 37 16 62 24 84 10-20 26-30 28-52 31 48 6 88-30 88-16 0-30-3-39-9z"/><path d="M254 327c-18-28 16-38 11-63 26 23 12 38 18 52-5 8-15 13-29 11z" fill="#FFD58A"/></g>
+  <g id="scan-dots" fill="#6DDDF0"><circle cx="191" cy="197" r="7"/><circle cx="224" cy="197" r="7"/><circle cx="257" cy="197" r="7"/><circle cx="290" cy="197" r="7"/><circle cx="323" cy="197" r="7"/></g>
+</svg>

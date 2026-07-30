@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <path id="badge" fill="#26343A" stroke="#F49A45" stroke-width="12" d="M256 72l48 31 57-2 19 54 46 34-17 55 17 55-46 34-19 54-57-2-48 31-48-31-57 2-19-54-46-34 17-55-17-55 46-34 19-54 57 2z"/>
+  <circle id="badge-inner" cx="256" cy="244" r="108" fill="#081012" stroke="#587078" stroke-width="7"/>
+  <path id="lock-body" fill="#F49A45" stroke="#FFD58A" stroke-width="7" d="M198 234h116v102H198z"/>
+  <path id="shackle" fill="none" stroke="#D8FBFF" stroke-width="16" stroke-linecap="round" d="M218 234v-33c0-52 76-52 76 0v33"/>
+  <path id="keyhole" fill="#081012" d="M256 263a15 15 0 0 1 9 27v20h-18v-20a15 15 0 0 1 9-27z"/>
+  <g id="rays" stroke="#6DDDF0" stroke-width="7" stroke-linecap="round"><path d="M256 40v24M256 424v24M52 244h24M436 244h24"/></g>
+</svg>

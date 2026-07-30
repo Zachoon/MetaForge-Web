@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <path id="warning-frame" fill="#26343A" stroke="#F49A45" stroke-width="12" stroke-linejoin="round" d="M256 68l194 336H62z"/>
+  <path id="warning-core" fill="#081012" stroke="#587078" stroke-width="5" d="M256 118l147 255H109z"/>
+  <path id="mark" fill="#FFD58A" d="M238 190h36l-7 111h-22zm18 137a21 21 0 1 1 0 42 21 21 0 0 1 0-42z"/>
+  <g id="fractures" fill="none" stroke="#6DDDF0" stroke-width="6" stroke-linecap="round"><path d="M178 263l-37-25-26 12-25-31"/><path d="M334 264l37-25 26 12 25-31"/><path d="M198 352l-27 34-32 2"/><path d="M314 352l27 34 32 2"/></g>
+</svg>

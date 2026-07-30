@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <g id="seal-ring" fill="none" stroke="#F49A45" stroke-width="14"><circle cx="256" cy="256" r="150"/><circle cx="256" cy="256" r="118" stroke="#587078" stroke-width="4"/></g>
+  <g id="seal-rays" stroke="#FFD58A" stroke-width="7" stroke-linecap="round"><path d="M256 62v24M256 426v24M62 256h24M426 256h24M119 119l17 17M376 376l17 17M393 119l-17 17M136 376l-17 17"/></g>
+  <path id="hammer" fill="#26343A" stroke="#D8FBFF" stroke-width="8" stroke-linejoin="round" d="M182 158l57 20-17 48 108 108-31 31-108-108-48 17-20-57z"/>
+  <path id="check" fill="none" stroke="#6DDDF0" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" d="M188 279l46 46 96-112"/>
+</svg>

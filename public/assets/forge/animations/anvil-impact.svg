@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <g id="sparks" fill="#FFD58A"><path d="M118 177l-40-30 51 11z"/><path d="M397 177l38-32-50 13z"/><path d="M151 112l-7-55 29 48z"/><path d="M360 108l15-52 12 57z"/></g>
+  <path id="hammer" fill="#26343A" stroke="#D8FBFF" stroke-width="8" stroke-linejoin="round" d="M151 93h143l30 45-42 45H151l-28-45zm78 76l32 18-94 170-32-18z"/>
+  <path id="anvil" fill="#26343A" stroke="#587078" stroke-width="9" stroke-linejoin="round" d="M98 286h316l-42 49h-64l12 63h47v37H145v-37h47l12-63h-64z"/>
+  <ellipse id="impact-glow" cx="256" cy="285" rx="116" ry="25" fill="#F49A45" opacity=".28"/>
+</svg>

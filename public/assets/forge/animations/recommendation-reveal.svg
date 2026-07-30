@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <g id="back-cards" fill="#10252B" stroke="#587078" stroke-width="7"><rect x="107" y="132" width="184" height="250" rx="13" transform="rotate(-12 199 257)"/><rect x="221" y="132" width="184" height="250" rx="13" transform="rotate(12 313 257)"/></g>
+  <rect id="front-card" x="164" y="104" width="184" height="280" rx="14" fill="#26343A" stroke="#6DDDF0" stroke-width="9"/>
+  <path id="rune" fill="none" stroke="#D8FBFF" stroke-width="10" stroke-linejoin="round" d="M256 164l52 51-52 89-52-89zM204 215h104"/>
+  <path id="recommendation-bar" fill="#F49A45" d="M196 329h120v18H196z"/>
+  <g id="sparkles" fill="#FFD58A"><path d="M111 92l10 25 25 10-25 10-10 25-10-25-25-10 25-10z"/><path d="M401 314l8 19 19 8-19 8-8 19-8-19-19-8 19-8z"/></g>
+</svg>

@@ -326,46 +326,13 @@ const ForgeRune = ({ motionMode }: { motionMode: MotionMode }) => {
 };
 
 const ForgeConfirmationSeal = ({ motionMode }: { motionMode: MotionMode }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    let disposed = false;
-    let rive: { cleanup: () => void; resizeDrawingSurfaceToCanvas: () => void } | null = null;
-    let resizeObserver: ResizeObserver | null = null;
-
-    void import("@rive-app/canvas").then(({ Alignment, Fit, Layout, Rive }) => {
-      if (disposed) return;
-      rive = new Rive({
-        src: "/assets/forge/animations/forge-confirmation-seal.riv",
-        canvas,
-        animations: "Confirm",
-        autoplay: motionMode === "full",
-        layout: new Layout({ fit: Fit.Contain, alignment: Alignment.Center }),
-        onLoad: () => {
-          if (disposed) return;
-          rive?.resizeDrawingSurfaceToCanvas();
-          setLoaded(true);
-        },
-      });
-      resizeObserver = new ResizeObserver(() => rive?.resizeDrawingSurfaceToCanvas());
-      resizeObserver.observe(canvas);
-    });
-
-    return () => {
-      disposed = true;
-      resizeObserver?.disconnect();
-      rive?.cleanup();
-    };
-  }, [motionMode]);
-
   return (
-    <div className={`forge-confirmation-seal${loaded ? " is-loaded" : ""}`} aria-hidden="true">
-      <canvas ref={canvasRef} />
-      <span>ᛟ</span>
+    <div className={`forge-confirmation-seal${motionMode === "quiet" ? " is-quiet" : ""}`} aria-hidden="true">
+      <span className="forge-seal-halo" />
+      <span className="forge-seal-orbit" />
+      <img src="/assets/forge/animations/forge-confirmation-seal.svg" alt="" />
+      <span className="forge-seal-flare" />
+      <span className="forge-seal-sparks"><i /><i /><i /><i /><i /><i /></span>
     </div>
   );
 };
@@ -449,7 +416,7 @@ const ForgeCeremonyMotion = ({
       aria-hidden="true"
     >
       <span className="forge-motion-aura" />
-      <img src={`/assets/forge/animations/${asset}.png`} alt="" />
+      <img src={`/assets/forge/animations/${asset}.svg`} alt="" />
       <span className="forge-motion-scan" />
       <span className="forge-motion-embers"><i /><i /><i /><i /></span>
     </div>

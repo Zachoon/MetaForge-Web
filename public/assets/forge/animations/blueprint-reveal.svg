@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <path id="paper" fill="#10252B" stroke="#6DDDF0" stroke-width="8" d="M116 112h280v288H116z"/>
+  <g id="grid" stroke="#587078" stroke-width="3" opacity=".7"><path d="M156 112v288M206 112v288M256 112v288M306 112v288M356 112v288M116 152h280M116 202h280M116 252h280M116 302h280M116 352h280"/></g>
+  <g id="drawing" fill="none" stroke="#D8FBFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><path d="M175 320V211l81-52 81 52v109z"/><circle cx="256" cy="253" r="45"/><path d="M256 208v90M211 253h90"/></g>
+  <path id="reveal-line" stroke="#F49A45" stroke-width="9" stroke-linecap="round" d="M145 348h222"/>
+  <g id="corner-marks" stroke="#FFD58A" stroke-width="8"><path d="M101 144v-47h47M364 97h47v47M101 368v47h47M364 415h47v-47"/></g>
+</svg>

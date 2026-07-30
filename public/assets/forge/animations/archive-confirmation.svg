@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <path id="archive-box" fill="#26343A" stroke="#587078" stroke-width="9" d="M119 170h274v231H119z"/>
+  <path id="archive-lid" fill="#10252B" stroke="#D8FBFF" stroke-width="9" d="M98 119h316v72H98z"/>
+  <path id="slot" fill="#081012" stroke="#6DDDF0" stroke-width="7" d="M205 228h102v42H205z"/>
+  <circle id="seal" cx="337" cy="341" r="69" fill="#081012" stroke="#F49A45" stroke-width="10"/>
+  <path id="check" fill="none" stroke="#FFD58A" stroke-width="15" stroke-linecap="round" stroke-linejoin="round" d="M303 341l25 25 45-55"/>
+</svg>
