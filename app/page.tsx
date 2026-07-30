@@ -39,6 +39,12 @@ type Chamber =
 
 type MotionMode = "full" | "quiet";
 type ForgeAction = "none" | "forge" | "reveal" | "select" | "refine" | "grow";
+type MilestoneMotion = {
+  kind: "ignition" | "masterwork-ready" | "masterwork-selected" | "experiment-chosen" | "revision-accepted";
+  eyebrow: string;
+  label: string;
+  glyph: string;
+} | null;
 
 const FORGING_STAGES = [
   ["The blueprint is sealed", "Reading the commission marks…", "642"],
@@ -1601,6 +1607,7 @@ export default function Home() {
   // finished. Real footage reserved for this one rare climax so it never
   // wears out from repetition the way a per-action effect would.
   const [sealBurst, setSealBurst] = useState(false);
+  const [milestoneMotion, setMilestoneMotion] = useState<MilestoneMotion>(null);
   // Surfaced right after an experiment finishes applying, in the same
   // chapter as the deck list that just changed — a forced decision instead
   // of silently sitting on the tablets screen with nothing to do next.
@@ -1747,6 +1754,26 @@ export default function Home() {
   }, [forgeAction, actionPulse]);
 
   useEffect(() => {
+    if (!milestoneMotion) return;
+    const reset = window.setTimeout(() => setMilestoneMotion(null), 2100);
+    return () => window.clearTimeout(reset);
+  }, [milestoneMotion]);
+
+  const previousChamberRef = useRef<Chamber>(chamber);
+  useEffect(() => {
+    const previous = previousChamberRef.current;
+    previousChamberRef.current = chamber;
+    if (previous === "forging" && chamber === "masterworks") {
+      setMilestoneMotion({
+        kind: "masterwork-ready",
+        eyebrow: "THE GREAT FORGE ANSWERS",
+        label: "Three Masterworks Survived",
+        glyph: "ᛞ",
+      });
+    }
+  }, [chamber]);
+
+  useEffect(() => {
     window.localStorage.setItem("metaforge.resultViewMode", resultViewMode);
     setIntelligenceOpen(resultViewMode === "full");
     setMatchEvidenceOpen(resultViewMode === "full");
@@ -1835,6 +1862,7 @@ export default function Home() {
   }, [chamber, stage, motionMode]);
 
   const awaken = () => {
+    setMilestoneMotion({ kind: "ignition", eyebrow: "BLUEPRINT SEALED", label: "Awakening the Great Forge", glyph: "ᚠ" });
     setCommissionSeed(Date.now());
     setStage(0);
     setMasterworkPage(0);
@@ -2884,6 +2912,7 @@ export default function Home() {
     setDeckId(generationId);
     setSelectedWork(index);
     if (commander) setSelectedCommander(commander);
+    setMilestoneMotion({ kind: "masterwork-selected", eyebrow: "DESIGN CHOSEN", label: work.name, glyph: work.rune || "ᛞ" });
     setChamber("workbench");
     setBenchStatus("forging");
     setForgeStartedAt(Date.now());
@@ -3116,6 +3145,7 @@ export default function Home() {
     setBenchStatus("testing");
     setOpeningExperimentPending(false);
     setOpeningExperimentFocus("");
+    setMilestoneMotion({ kind: "masterwork-selected", eyebrow: "MASTERWORK REOPENED", label: family.name, glyph: "ᛞ" });
     setChamber("workbench");
   }
 
@@ -3629,6 +3659,7 @@ export default function Home() {
       setSwapFlourish(null);
       setLastAcceptedRevisionCount(nextRevisions.length);
       setPostAcceptChoice(true);
+      setMilestoneMotion({ kind: "revision-accepted", eyebrow: "THE ANVIL REMEMBERS", label: "Revision Accepted", glyph: "ᛏ" });
     }, 1800);
   }
 
@@ -3641,6 +3672,7 @@ export default function Home() {
     setRevisions(nextRevisions);
     setOpeningExperimentPending(false);
     setOpeningExperimentFocus(cardName);
+    setMilestoneMotion({ kind: "experiment-chosen", eyebrow: "FIRST EXPERIMENT", label: cardName, glyph: "ᚲ" });
     setActiveForgeChapter(1);
     recordForgeIntervention("opening control experiment", `Keep ${cardName} and observe the flex slot`, "accepted", nextRevisions.length);
     void persistStoryBench(nextRevisions, record);
@@ -3692,6 +3724,23 @@ export default function Home() {
         </div>
         <div className="forge-vignette" />
       </div>
+      {milestoneMotion && motionMode === "full" && (
+        <div className={`forge-milestone-motion milestone-${milestoneMotion.kind}`} role="status" aria-live="polite">
+          <div className="milestone-shutter milestone-shutter-left" />
+          <div className="milestone-shutter milestone-shutter-right" />
+          <div className="milestone-smoke" />
+          <div className="milestone-flare" />
+          <div className="milestone-sparks" aria-hidden="true"><i /><i /><i /><i /></div>
+          <div className="milestone-seal">
+            <span /><span />
+            <i>{milestoneMotion.glyph}</i>
+          </div>
+          <div className="milestone-copy">
+            <small>{milestoneMotion.eyebrow}</small>
+            <strong>{milestoneMotion.label}</strong>
+          </div>
+        </div>
+      )}
       <header className="forge-bar">
         <button
           className="forge-brand"
@@ -4319,6 +4368,7 @@ export default function Home() {
                         if (choice.kind === "swap") {
                           setOpeningExperimentPending(false);
                           setOpeningExperimentFocus(choice.card);
+                          setMilestoneMotion({ kind: "experiment-chosen", eyebrow: "FIRST EXPERIMENT", label: choice.card, glyph: "ᚲ" });
                           void applyExperimentTablet(choice.tablet);
                         } else {
                           acceptOpeningControl(choice.card);

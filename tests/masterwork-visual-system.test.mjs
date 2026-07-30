@@ -6,6 +6,7 @@ const page = fs.readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8"
 const css = fs.readFileSync(new URL("../app/masterwork-motifs.css", import.meta.url), "utf8");
 const icons = fs.readFileSync(new URL("../app/masterwork-motif-icons.tsx", import.meta.url), "utf8");
 const globals = fs.readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+const motionCss = fs.readFileSync(new URL("../app/forge-motion.css", import.meta.url), "utf8");
 
 test("the reveal chamber uses a dedicated, module-level MasterworkCard instead of an inline article", () => {
   assert.match(page, /^function MasterworkCard\(/m);
@@ -39,4 +40,17 @@ test("the workbench sigil is driven by the deterministic resolver, not invented 
   assert.match(page, /import \{ resolveMasterworkVisualProfile \} from "\.\/masterwork-visual-profile\.mjs";/);
   assert.match(page, /masterworkVisualProfile = useMemo/);
   assert.match(page, /data-evolved={masterworkVisualProfile\.evolved}/);
+});
+
+test("major player milestones use choreographed sequences while reduced motion stays quiet", () => {
+  assert.match(page, /type MilestoneMotion/);
+  assert.match(page, /className={`forge-milestone-motion milestone-\$\{milestoneMotion\.kind\}`}/);
+  assert.match(page, /kind: "masterwork-ready"/);
+  assert.match(page, /kind: "experiment-chosen"/);
+  assert.match(page, /kind: "revision-accepted"/);
+  assert.match(motionCss, /\.milestone-shutter/);
+  assert.match(motionCss, /\.milestone-smoke/);
+  assert.match(motionCss, /\.milestone-flare/);
+  assert.match(motionCss, /\.milestone-sparks/);
+  assert.match(motionCss, /prefers-reduced-motion:reduce[^}]*\.forge-milestone-motion\{display:none!important\}/s);
 });
