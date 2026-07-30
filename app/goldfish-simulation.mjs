@@ -1,5 +1,5 @@
-const SUPPORTED_ROLES = new Set(["removal","counter","draw","sweeper","stabilizer","finisher"]);
-const STRATEGY_WEIGHTS = { Aggro:{stabilizer:4,finisher:3,draw:1}, Tempo:{stabilizer:3,counter:3,draw:2,finisher:1}, Midrange:{stabilizer:3,draw:2,removal:2,finisher:2}, Control:{draw:3,counter:3,removal:2,sweeper:2,finisher:1}, Ramp:{draw:2,finisher:4} };
+const SUPPORTED_ROLES = new Set(["removal","counter","draw","sweeper","stabilizer","finisher","ramp","protection"]);
+const STRATEGY_WEIGHTS = { Aggro:{stabilizer:4,finisher:3,draw:1,ramp:1,protection:2}, Tempo:{stabilizer:3,counter:3,draw:2,finisher:1,ramp:1,protection:2}, Midrange:{stabilizer:3,draw:2,removal:2,finisher:2,ramp:2,protection:2}, Control:{draw:3,counter:3,removal:2,sweeper:2,finisher:1,ramp:1.5,protection:1}, Ramp:{draw:2,finisher:4,ramp:4,protection:1} };
 
 // Cards may optionally carry `colorPips` (nonland: {W,U,B,R,G} pip counts
 // from their cost) and `colorIdentity` (land: which colors it can tap for).
@@ -46,8 +46,14 @@ export function simulateGoldfish(deck, strategy="Midrange", games=1000, seed=812
     const colorTrapped=hand.some(card=>!isLand(card)&&hasPips(card.colorPips)&&Object.keys(card.colorPips).some(color=>(card.colorPips[color]||0)>0&&!openingLandColors.some(colors=>colors.includes(color))));
     if(openingLands>=2&&openingLands<=5&&!colorTrapped)keeps++;
     const battlefieldLandColors=[];
-    let battlefieldLands=0,spent=0,score=0,turnHit=null,firstColoredCastTurn=null;
+    // Ramp spells (search-a-land, treasure-adjacent effects) don't just score
+    // value like any other card — they mechanically accelerate every later
+    // turn. Modeled as "enters tapped": a ramp spell cast this turn adds a
+    // mana source starting next turn, not immediately, matching how the
+    // common effects (Rampant Growth, Cultivate) actually resolve.
+    let battlefieldLands=0,pendingRamp=0,spent=0,score=0,turnHit=null,firstColoredCastTurn=null;
     for(let turn=1;turn<=8;turn++){
+      battlefieldLands+=pendingRamp;pendingRamp=0;
       if(library.length)hand.push(library.pop());
       const landIndex=hand.findIndex(isLand);
       if(landIndex>=0){const landCard=hand[landIndex];hand.splice(landIndex,1);battlefieldLands++;battlefieldLandColors.push(landColors(landCard));}
@@ -57,6 +63,7 @@ export function simulateGoldfish(deck, strategy="Midrange", games=1000, seed=812
         if(!castable.length)break;
         castable.sort((a,b)=>priority(b,strategy,policy,rng)-priority(a,strategy,policy,rng));
         const chosen=castable[0];hand.splice(hand.indexOf(chosen),1);mana-=chosen.cmc||0;spent+=chosen.cmc||0;score+=roleValue(chosen.role,strategy);
+        if(chosen.role==="ramp")pendingRamp+=1;
         if(turnHit===null&&score>=8)turnHit=turn;
         if(firstColoredCastTurn===null&&hasPips(chosen.colorPips))firstColoredCastTurn=turn;
       }

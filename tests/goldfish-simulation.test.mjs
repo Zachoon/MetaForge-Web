@@ -22,3 +22,35 @@ test("colorScrewRate and keepableRate recover once the deck actually has matchin
   assert.ok(result.colorScrewRate<0.05,`expected near-zero color screw with 24 matching sources, got ${result.colorScrewRate}`);
   assert.ok(result.keepableRate>0.3,`expected a healthy keepable rate with matching sources, got ${result.keepableRate}`);
 });
+test("ramp and protection are modeled roles, not unsupported cards that block the gate",()=>{
+  const deck=[
+    {quantity:24,card:"Forest",role:"land",cmc:undefined},
+    {quantity:6,card:"Rampant Growth",role:"ramp",cmc:2},
+    {quantity:6,card:"Heroic Intervention",role:"protection",cmc:2},
+    {quantity:24,card:"Big Threat",role:"finisher",cmc:4},
+  ];
+  const result=simulateGoldfish(deck,"Midrange",300,3);
+  assert.deepEqual(result.unsupportedCards,[]);
+  assert.equal(result.modelCoverage,1);
+});
+test("a ramp spell mechanically adds a mana source starting next turn, accelerating every later turn",()=>{
+  // Fodder is cheap and plentiful so any mana ramp frees up actually gets
+  // spent — averageManaSpent then directly reflects how much extra mana
+  // the ramp cards produced across the game, not just their own value.
+  const rampDeck=[
+    {quantity:24,card:"Forest",role:"land",cmc:undefined},
+    {quantity:4,card:"Rampant Growth",role:"ramp",cmc:2},
+    {quantity:32,card:"Fodder",role:"stabilizer",cmc:1},
+  ];
+  const noRampDeck=[
+    {quantity:24,card:"Forest",role:"land",cmc:undefined},
+    {quantity:4,card:"Generic Value",role:"stabilizer",cmc:2},
+    {quantity:32,card:"Fodder",role:"stabilizer",cmc:1},
+  ];
+  const withRamp=simulateGoldfish(rampDeck,"Midrange",600,21);
+  const withoutRamp=simulateGoldfish(noRampDeck,"Midrange",600,21);
+  assert.ok(
+    withRamp.averageManaSpent>withoutRamp.averageManaSpent,
+    `expected ramp to spend more total mana over 8 turns than an equivalent non-ramp card, got ${withRamp.averageManaSpent} vs ${withoutRamp.averageManaSpent}`,
+  );
+});

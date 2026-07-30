@@ -2409,13 +2409,18 @@ export default function Home() {
               : "Advances the primary plan while maintaining useful battlefield presence.";
   const simulationDossier = useMemo(() => {
     if (!deckIntegrity.passed) return null;
+    // Acceleration and Protection used to fall back into "stabilizer" and
+    // "counter" — real roles the simulators already model, but the wrong
+    // ones. A ramp spell doesn't hold up mana like a counterspell, and
+    // hexproof/indestructible isn't countermagic; both simulators now have
+    // dedicated ramp/protection roles, so this maps to the real thing.
     const roleMap: Record<string, string> = {
       "Mana source": "land",
       "Board reset": "sweeper",
       Interaction: "removal",
-      Acceleration: "stabilizer",
+      Acceleration: "ramp",
       "Card advantage": "draw",
-      Protection: "counter",
+      Protection: "protection",
       "Engine piece": "finisher",
       Threat: "finisher",
       "Flexible support": "stabilizer",

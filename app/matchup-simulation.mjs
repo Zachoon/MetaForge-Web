@@ -1,11 +1,18 @@
 const PROFILES = Object.freeze({
-  Aggro: { pressure: 9, turns: 5, answers: { removal: 3, sweeper: 5, stabilizer: 4, counter: 1, draw: .5, finisher: .5 } },
-  Midrange: { pressure: 7, turns: 7, answers: { removal: 2, sweeper: 2, stabilizer: 3, counter: 1.5, draw: 2, finisher: 2 } },
-  Control: { pressure: 5, turns: 9, answers: { removal: .5, sweeper: .5, stabilizer: .5, counter: 3, draw: 3, finisher: 3 } },
-  Tempo: { pressure: 7.5, turns: 6, answers: { removal: 2, sweeper: 1, stabilizer: 2, counter: 2.5, draw: 2, finisher: 1 } },
+  // Protection (hexproof/indestructible/fog effects) keeps a blocker or
+  // key permanent alive against exactly the removal/combat pressure each
+  // archetype brings — most valuable against Aggro's combat math, least
+  // relevant against Control, which rarely attacks into it. Ramp doesn't
+  // "answer" opposing pressure directly, so it earns only a small credit
+  // for the inevitability it buys — it isn't a wasted card, just not a
+  // response the way removal or a sweeper is.
+  Aggro: { pressure: 9, turns: 5, answers: { removal: 3, sweeper: 5, stabilizer: 4, counter: 1, draw: .5, finisher: .5, protection: 2.5, ramp: .3 } },
+  Midrange: { pressure: 7, turns: 7, answers: { removal: 2, sweeper: 2, stabilizer: 3, counter: 1.5, draw: 2, finisher: 2, protection: 1.5, ramp: .5 } },
+  Control: { pressure: 5, turns: 9, answers: { removal: .5, sweeper: .5, stabilizer: .5, counter: 3, draw: 3, finisher: 3, protection: 1, ramp: .5 } },
+  Tempo: { pressure: 7.5, turns: 6, answers: { removal: 2, sweeper: 1, stabilizer: 2, counter: 2.5, draw: 2, finisher: 1, protection: 2, ramp: .3 } },
 });
 
-const MODELED_ROLES = new Set(["removal", "counter", "draw", "sweeper", "stabilizer", "finisher"]);
+const MODELED_ROLES = new Set(["removal", "counter", "draw", "sweeper", "stabilizer", "finisher", "ramp", "protection"]);
 
 export function simulateMatchupScenarios(deck, opponent = "Midrange", trials = 2000, seed = 991, pilot = "expert") {
   const profile = PROFILES[opponent];

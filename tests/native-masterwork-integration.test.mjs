@@ -14,6 +14,21 @@ test("Masterwork selection uses the native engine instead of a model endpoint", 
   assert.doesNotMatch(generation, /task:\s*["']deck_generation/);
 });
 
+test("the simulation dossier maps ramp and protection to their own modeled roles, not stabilizer/counter", () => {
+  // roleMap used to fold Acceleration into "stabilizer" and Protection into
+  // "counter" — both goldfish-simulation.mjs and matchup-simulation.mjs now
+  // understand real ramp/protection roles, so the dossier must feed them
+  // in rather than silently mislabeling ramp as a defensive card or
+  // protection as countermagic.
+  const dossierStart = page.indexOf("const simulationDossier = useMemo");
+  const dossierEnd = page.indexOf("}, [", dossierStart);
+  const dossier = page.slice(dossierStart, dossierEnd);
+  assert.match(dossier, /Acceleration:\s*"ramp"/);
+  assert.match(dossier, /Protection:\s*"protection"/);
+  assert.doesNotMatch(dossier, /Acceleration:\s*"stabilizer"/);
+  assert.doesNotMatch(dossier, /Protection:\s*"counter"/);
+});
+
 test("Blueprint identity shapes previews and targeted verified-pool retrieval", () => {
   assert.match(page, /parseNativeBlueprintIntent/);
   assert.match(page, /This version puts \$\{blueprintPromise\} first/);
