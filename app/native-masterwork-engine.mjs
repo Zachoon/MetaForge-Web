@@ -921,8 +921,13 @@ function buildManaBase(input, landSlots, lands, variant, presetLands = [], pipTo
     .sort((left, right) => {
       const leftText = normalized(cardText(left));
       const rightText = normalized(cardText(right));
-      const leftScore = (leftText.includes("enters the battlefield tapped") ? -4 : 2) + (leftText.includes("add") ? 2 : 0) + colorFit(left) * 4 + (hash(`${input.seed}|${variant.id}|${left.name}`) % 100) / 10000;
-      const rightScore = (rightText.includes("enters the battlefield tapped") ? -4 : 2) + (rightText.includes("add") ? 2 : 0) + colorFit(right) * 4 + (hash(`${input.seed}|${variant.id}|${right.name}`) % 100) / 10000;
+      // Lands ride through the same edhrec-ordered fetch as spells and
+      // already carry a popularityRank from it — a well-adopted dual
+      // (Godless Shrine) previously ranked identically to an obscure
+      // equal-color-fit land nobody plays, since only color fit and text
+      // heuristics were scored. Same signal, same scale, as spell scoring.
+      const leftScore = (leftText.includes("enters the battlefield tapped") ? -4 : 2) + (leftText.includes("add") ? 2 : 0) + colorFit(left) * 4 + popularityScoreFromRank(left.popularityRank) + (hash(`${input.seed}|${variant.id}|${left.name}`) % 100) / 10000;
+      const rightScore = (rightText.includes("enters the battlefield tapped") ? -4 : 2) + (rightText.includes("add") ? 2 : 0) + colorFit(right) * 4 + popularityScoreFromRank(right.popularityRank) + (hash(`${input.seed}|${variant.id}|${right.name}`) % 100) / 10000;
       return rightScore - leftScore || left.name.localeCompare(right.name);
     });
   const nonbasicLimit = Math.min(lands.length, singleton ? Math.min(landSlots - 18, 18) : 6);

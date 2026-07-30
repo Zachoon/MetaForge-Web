@@ -496,6 +496,27 @@ test("prefers nonbasic lands that fix the deck's heavier-demand color over other
   assert.ok(whiteUtilityCount < 4, `expected fewer white utility lands picked than black, got ${whiteUtilityCount}`);
 });
 
+test("prefers well-adopted nonbasic lands over an otherwise-identical obscure one", () => {
+  const bCard = (name, oracleText, manaCost, typeLine = "Creature — Test") => ({ name, oracleText, manaCost, typeLine, colorIdentity: ["B"] });
+  const utilityLand = (name, popularityRank) => ({ name, oracleText: "{T}: Add {B}.", manaCost: "", typeLine: "Land", colorIdentity: ["B"], popularityRank });
+  const bPool = [
+    ...Array.from({ length: 10 }, (_, i) => bCard(`Black Draw ${i}`, "Draw a card. Scry 1.", "{1}{B}")),
+    ...Array.from({ length: 10 }, (_, i) => bCard(`Black Answer ${i}`, "Exile target nonland permanent.", "{1}{B}{B}")),
+    ...Array.from({ length: 6 }, (_, i) => bCard(`Ramp Stone ${i}`, "Add one mana. Create a Treasure token.", "{2}", "Artifact")),
+    // Same color, same "add" text, same untapped status — only real-world
+    // adoption (popularityRank) differs. Six popular lands exactly fill
+    // Standard's 6-nonbasic limit, so if the signal works, none of the
+    // four obscure ones should make the cut at all.
+    ...Array.from({ length: 6 }, (_, i) => utilityLand(`Popular Swamp Land ${i}`, i)),
+    ...Array.from({ length: 4 }, (_, i) => utilityLand(`Obscure Swamp Land ${i}`, 500 + i)),
+  ];
+  const report = forgeNativeMasterwork({ format: "Standard", target: 60, strategy: "Balanced midrange", seed: 5, colors: ["B"], cards: bPool });
+  const popularCount = report.selected.rows.filter((row) => row.name.startsWith("Popular Swamp Land")).length;
+  const obscureCount = report.selected.rows.filter((row) => row.name.startsWith("Obscure Swamp Land")).length;
+  assert.equal(popularCount, 6, "expected all six popular lands to be chosen ahead of any obscure ones");
+  assert.equal(obscureCount, 0, "expected no obscure lands to make the cut given the 6-nonbasic limit");
+});
+
 test("computes exact hypergeometric probabilities on small, hand-checkable populations", () => {
   // N=4, K=2 successes, draw 2: P(both successes) = C(2,2)*C(2,0)/C(4,2) = 1/6.
   assert.ok(Math.abs(hypergeometricAtLeast(4, 2, 2, 2) - 1 / 6) < 1e-9);
