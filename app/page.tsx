@@ -4850,6 +4850,15 @@ export default function Home() {
                             </article>
                           </section>
 
+                          {interactionGraph.enginePairs.length > 0 && (
+                            <span className="slot-justification">
+                              <small>POTENTIAL TWO-CARD ENGINES · PATTERN-INFERRED, NOT A VERIFIED COMBO</small>
+                              {interactionGraph.enginePairs.slice(0, 3).map((pair: { cards: string[]; reason: string }) => (
+                                <em key={pair.cards.join("+")}>{pair.cards.join(" + ")} — {pair.reason}</em>
+                              ))}
+                            </span>
+                          )}
+
                           <div className="systems-blueprint-grid">
                             {visibleForgeSystems.map(
                               (system, systemIndex) => {

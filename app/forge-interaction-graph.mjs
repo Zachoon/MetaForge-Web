@@ -80,6 +80,14 @@ export function buildInteractionGraph(cards, options = {}) {
       const reverse = right.mechanics.produces.filter((signal) => left.mechanics.rewards.includes(signal));
       const shared = left.mechanics.signals.filter((signal) => right.mechanics.signals.includes(signal));
       const reasons = [...new Set([...forward, ...reverse, ...shared.filter((signal) => ["spells", "graveyard", "counters", "tokens", "artifacts", "combat"].includes(signal))])];
+      // A one-way edge (A feeds B) is an ordinary synergy pairing. A mutual
+      // edge — each card produces a signal the other one rewards — is the
+      // shape of a real two-card engine (a token maker plus a sac outlet
+      // that pays off tokens and whose own death trigger the maker doesn't
+      // care about, say). Still inferred from text patterns, not a verified
+      // combo database, so it's surfaced as a structural pattern to
+      // investigate, never as a guaranteed interaction.
+      const mutual = forward.length > 0 && reverse.length > 0;
       if (reasons.length) edges.push({
         from: left.name,
         to: right.name,
@@ -87,6 +95,9 @@ export function buildInteractionGraph(cards, options = {}) {
         strength: Math.min(100, 52 + reasons.length * 14 + (forward.length + reverse.length) * 9),
         reason: `${left.name} and ${right.name} connect through ${reasons.join(", ")}.`,
         evidence: forward.length || reverse.length ? "inferred mechanical edge" : "shared oracle signal",
+        mutual,
+        forwardSignals: forward,
+        reverseSignals: reverse,
       });
     }
   }
@@ -116,12 +127,22 @@ export function buildInteractionGraph(cards, options = {}) {
   const commanderLinks = commander ? edges.filter((edge) => edge.from === commander.name || edge.to === commander.name) : [];
   const coverage = nonlands.length ? connected.size / nonlands.length : 0;
   const confidence = nonlands.length < 8 ? "LOW · INCOMPLETE CARD SET" : coverage >= .75 ? "HIGH · ORACLE-DERIVED" : coverage >= .45 ? "MEDIUM · PARTIAL PACKAGE COVERAGE" : "LOW · MANY ISOLATED SLOTS";
+  const enginePairs = edges
+    .filter((edge) => edge.mutual)
+    .map((edge) => ({
+      cards: [edge.from, edge.to],
+      strength: edge.strength,
+      reason: `${edge.from} feeds ${edge.to}'s ${edge.forwardSignals.join("/")} payoff, while ${edge.to} feeds ${edge.from}'s ${edge.reverseSignals.join("/")} payoff back — a genuine two-way loop, not just a shared theme.`,
+      evidence: "inferred mutual mechanical loop",
+    }))
+    .sort((a, b) => b.strength - a.strength);
   return {
     nodes,
     edges,
     packages,
     isolated,
     nonbos,
+    enginePairs,
     commanderLinks,
     coverage,
     confidence,

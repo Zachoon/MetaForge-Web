@@ -29,3 +29,30 @@ test("keeps unsupported cards visible as isolated slots", () => {
   assert.deepEqual(graph.isolated, ["Token Maker", "Vanilla"]);
   assert.ok(extractMechanicalSignals({ typeLine: "Sorcery", oracleText: "Create a Treasure token." }).produces.includes("treasure"));
 });
+
+test("flags a genuine two-way loop as an engine pair, distinct from an ordinary one-way synergy edge", () => {
+  // Token Herald produces tokens (rewarded by Card Herald) and rewards draw
+  // (via "second card"); Card Herald produces draw (via "draw two cards")
+  // and rewards tokens (via "token you control") — each card feeds the
+  // other through a *different* signal, a real two-way loop shape, not
+  // just two cards that happen to share one theme.
+  const tokenHerald = { name: "Token Herald", typeLine: "Creature", oracleText: "Whenever you draw your second card each turn, create a 1/1 colorless Servo artifact creature token." };
+  const cardHerald = { name: "Card Herald", typeLine: "Creature", oracleText: "Draw two cards. Whenever a token you control attacks, this creature gets +1/+0 until end of turn." };
+  const graph = buildInteractionGraph([tokenHerald, cardHerald]);
+  const edge = graph.edges.find((entry) => entry.from === "Token Herald" && entry.to === "Card Herald");
+  assert.ok(edge, "expected an edge between the two cards");
+  assert.equal(edge.mutual, true);
+  assert.equal(graph.enginePairs.length, 1);
+  assert.deepEqual(graph.enginePairs[0].cards, ["Token Herald", "Card Herald"]);
+  assert.match(graph.enginePairs[0].reason, /two-way loop/i);
+});
+
+test("a one-way synergy (only one card feeds the other) is not flagged as an engine pair", () => {
+  const producer = { name: "Only Producer", typeLine: "Sorcery", oracleText: "Create two 1/1 creature tokens." };
+  const payoff = { name: "Only Payoff", typeLine: "Enchantment", oracleText: "Creatures you control get +1/+1 for each token you control." };
+  const graph = buildInteractionGraph([producer, payoff]);
+  const edge = graph.edges.find((entry) => entry.from === "Only Producer" && entry.to === "Only Payoff");
+  assert.ok(edge);
+  assert.equal(edge.mutual, false);
+  assert.equal(graph.enginePairs.length, 0);
+});
