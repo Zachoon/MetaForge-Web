@@ -15,6 +15,16 @@ test("classifies native deck-building roles from verified rules text", () => {
   assert.deepEqual(classifyNativeCard(card("Answer", "Destroy target creature. Draw a card.")), ["draw", "interaction", "threat"]);
 });
 
+test("classifies hand disruption as its own role, distinct from removal and self-loot", () => {
+  assert.deepEqual(classifyNativeCard(card("Thoughtseize", "Target player reveals their hand. You choose a nonland card from it. That player discards that card.", "Sorcery")), ["discard"]);
+  assert.deepEqual(classifyNativeCard(card("Mind Rot", "Target opponent discards two cards.", "Sorcery")), ["discard"]);
+  // "you may discard a card, then draw" is self-loot filtering, not hand
+  // disruption, and must not be tagged discard (it still separately reads
+  // as "draw" too, since it does draw cards — that part is unrelated to
+  // this distinction).
+  assert.deepEqual(classifyNativeCard(card("Careful Study", "You may discard a card. If you do, draw two cards.", "Sorcery")), ["draw", "selection"]);
+});
+
 test("forges three deterministic personalized candidates without a model", () => {
   const input = { format: "Commander", target: 100, strategy: "Control", path: "Reactive Precision", note: "I love card draw and protection", seed: 42, commander: { name: "Scholar of Tests", colors: ["U"], oracleText: "Whenever you draw your second card, create a token." }, cards: pool };
   const first = forgeNativeMasterwork(input);
@@ -180,6 +190,15 @@ test("recognizes plain-language role requests, not just rules-text phrasing", ()
   assert.deepEqual(intent.excludedRoles, []);
 });
 
+test("recognizes hand disruption requests in plain language", () => {
+  // "disruption" alone already aliases to the broader "interaction" role
+  // (existing behavior); "discard" is the specific, distinct signal this
+  // adds on top, so both are legitimately desired here.
+  const intent = parseNativeBlueprintIntent({ note: "I want hand disruption and discard" });
+  assert.deepEqual(intent.desiredRoles, ["interaction", "discard"]);
+  assert.deepEqual(intent.excludedRoles, []);
+});
+
 test("treats a negated role request as an exclusion, not a desire", () => {
   const intent = parseNativeBlueprintIntent({ note: "no sacrifice, but plenty of removal" });
   assert.deepEqual(intent.desiredRoles, ["interaction"]);
@@ -192,6 +211,15 @@ test("keeps an excluded role's cards out of the built deck entirely", () => {
     note: "no ramp", seed: 11, cards: pool,
   });
   assert.ok(report.selected.rows.every((row) => !row.roles.includes("ramp")));
+});
+
+test("prioritizes hand disruption when explicitly requested in the note", () => {
+  const duress = card("Duress", "Target player reveals their hand. You choose a noncreature, nonland card from it. That player discards that card.", "Sorcery");
+  const report = forgeNativeMasterwork({
+    format: "Standard", target: 60, strategy: "Balanced midrange",
+    note: "I want hand disruption", seed: 7, cards: [duress, ...pool],
+  });
+  assert.ok(report.selected.rows.some((row) => row.name === "Duress"));
 });
 
 test("scores a card higher for connecting to a producer/payoff pair already in the pool", () => {

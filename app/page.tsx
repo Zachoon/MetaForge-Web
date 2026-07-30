@@ -1168,6 +1168,7 @@ const loadNativeForgePool = async (
     spells: '(o:"instant or sorcery" OR o:"noncreature spell")',
     lifegain: '(o:"gain life" OR kw:lifelink)',
     combat: "(o:combat OR o:attack)",
+    discard: "o:discard",
   };
   const identityQueries = [
     ...blueprint.tribalTypes.map((term: string) => `(t:"${term}" OR o:"${term}" OR name:"${term}")`),

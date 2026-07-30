@@ -44,6 +44,11 @@ const ROLE_PATTERNS = Object.freeze({
   spells: [/instant or sorcery/i, /noncreature spell/i, /whenever you cast/i, /prowess/i],
   lifegain: [/you gain .{0,12}life/i, /whenever you gain life/i, /lifelink/i],
   combat: [/whenever .{0,25} attacks/i, /combat damage/i, /double strike/i, /extra combat/i],
+  // Hand disruption is its own deckbuilding axis, not covered by
+  // "interaction" above (which only matches destroy/exile/counter/damage/
+  // bounce). Scoped to the opponent discarding, not a self-loot effect
+  // ("you may discard a card, then draw"), which "selection" already owns.
+  discard: [/target (?:player|opponent) discards?/i, /each (?:player|opponent) discards?/i, /that player discards?/i],
 });
 
 // ROLE_PATTERNS matches verified rules text, which speaks in precise oracle
@@ -66,6 +71,7 @@ const NOTE_ROLE_ALIASES = Object.freeze({
   spells: [/\bspellslinger\b/i, /\bspells matter\b/i, /\binstants and sorceries\b/i],
   lifegain: [/\blife ?gain\b/i, /\bgaining life\b/i],
   combat: [/\bcombat tricks?\b/i, /\bbig combat\b/i],
+  discard: [/\bdiscard\b/i, /\bhand disruption\b/i, /\bhand attack\b/i, /\bdisrupt(?:ion)? (?:their|the opponent'?s) hand\b/i],
 });
 const NOTE_NEGATION_CUE = /\b(no|not|never|avoid|avoiding|without|don'?t want|doesn'?t want|hate|skip|exclude|excluding)\b/i;
 const toGlobal = (pattern) => new RegExp(pattern.source, pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`);
