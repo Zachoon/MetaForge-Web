@@ -3889,10 +3889,27 @@ export default function Home() {
             </div>
           </div>
           <div className="entrance-visual" aria-label="The Great Forge, ever-burning">
-            <div className="entrance-hearth-cycle" aria-hidden="true">
-              {Array.from({ length: 13 }, (_, index) => (
-                <i key={index} />
-              ))}
+            <div className="entrance-living-forge" aria-hidden="true">
+              <video
+                className="entrance-ember-film"
+                src="/assets/forge/vfx/entrance-embers.mp4"
+                poster="/forge-hero.webp"
+                autoPlay
+                loop
+                muted
+                playsInline
+              />
+              <video
+                className="entrance-aperture-film"
+                src="/assets/forge/vfx/entrance-aperture.mp4"
+                autoPlay
+                loop
+                muted
+                playsInline
+              />
+              <span className="entrance-furnace-bloom" />
+              <span className="entrance-heat-lens" />
+              <span className="entrance-forge-rails" />
             </div>
             <div className="forge-sigil">
               <ForgeRune motionMode={motionMode} />
