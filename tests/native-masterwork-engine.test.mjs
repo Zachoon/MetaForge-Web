@@ -626,3 +626,39 @@ test("a real built deck also reports unused engine partners from the fetched poo
   });
   assert.ok(Array.isArray(report.unusedEnginePartners));
 });
+
+test("supports a second commander (Partner or Background) with combined color identity and both slots reserved", () => {
+  const primary = { name: "Primary Commander", colors: ["U"], oracleText: "Partner" };
+  const secondCommander = { name: "Second Commander", colors: ["B"], oracleText: "Partner" };
+  const wbCard = (name, oracleText, manaCost, typeLine = "Creature — Test", colorIdentity = ["B"]) => ({ name, oracleText, manaCost, typeLine, colorIdentity });
+  const twoColorPool = [
+    ...Array.from({ length: 16 }, (_, i) => wbCard(`Blue Draw ${i}`, "Draw a card. Scry 1.", "{1}{U}", "Creature — Test", ["U"])),
+    ...Array.from({ length: 16 }, (_, i) => wbCard(`Black Answer ${i}`, "Destroy target creature.", "{1}{B}{B}", "Creature — Test", ["B"])),
+    ...Array.from({ length: 16 }, (_, i) => wbCard(`Ramp Stone ${i}`, "Add one mana. Create a Treasure token.", "{2}", "Artifact", [])),
+    ...Array.from({ length: 16 }, (_, i) => wbCard(`Protect ${i}`, "Target creature gains hexproof and indestructible until end of turn.", "{1}{U}", "Creature — Test", ["U"])),
+    ...Array.from({ length: 16 }, (_, i) => wbCard(`Recur ${i}`, "Return target creature card from your graveyard to your hand.", "{2}{B}", "Creature — Test", ["B"])),
+  ];
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 9,
+    commander: primary, secondCommander,
+    cards: twoColorPool,
+  });
+  const commanderRows = report.selected.rows.filter((row) => row.roles.includes("commander"));
+  assert.equal(commanderRows.length, 2, "expected both commanders to occupy their own row");
+  assert.deepEqual(commanderRows.map((row) => row.name).sort(), ["Primary Commander", "Second Commander"]);
+  assert.equal(report.selected.rows.reduce((sum, row) => sum + row.quantity, 0), 100);
+  // Black cards are only legally includable because the second commander's
+  // color identity was unioned into the deck's colors, not discarded.
+  assert.ok(report.selected.rows.some((row) => row.name.startsWith("Black Answer")), "expected the second commander's color to actually be usable, not just declared");
+});
+
+test("a single commander with no partner behaves exactly as before", () => {
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Control", seed: 13,
+    commander: { name: "Scholar of Tests", colors: ["U"], oracleText: "Whenever you draw a card, create a token." },
+    cards: pool,
+  });
+  const commanderRows = report.selected.rows.filter((row) => row.roles.includes("commander"));
+  assert.equal(commanderRows.length, 1);
+  assert.equal(commanderRows[0].name, "Scholar of Tests");
+});

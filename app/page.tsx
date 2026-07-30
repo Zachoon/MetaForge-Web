@@ -1031,6 +1031,25 @@ const commanderOption = (card: any): CommanderOption => {
     verifiedFacts: `LIVE SCRYFALL RECORD\nName: ${card.name}\nMana cost: ${card.mana_cost || card.card_faces?.[0]?.mana_cost || "None"}\nType: ${card.type_line || ""}\nColor identity: ${(card.color_identity || []).join("") || "Colorless"}\nSet: ${card.set_name || ""} (${card.set || ""})\nAvailable games: ${(card.games || []).join(", ")}\nBrawl legality: ${card.legalities?.brawl || "unknown"}\nCommander legality: ${card.legalities?.commander || "unknown"}\nOracle text:\n${faceFacts || card.oracle_text || ""}`,
   };
 };
+// Reads the same verifiedFacts oracle-text block already built for every
+// commander to detect Partner, "Partner with <name>", and Background
+// eligibility — no separate fetch needed, since the text is already on hand
+// the moment a commander is chosen.
+type PartnerEligibility =
+  | { kind: "partner" }
+  | { kind: "partner-with"; specificName: string }
+  | { kind: "background" };
+const partnerEligibilityFor = (
+  commander: CommanderOption | null,
+): PartnerEligibility | null => {
+  if (!commander) return null;
+  const text = commander.verifiedFacts || "";
+  const specificMatch = text.match(/partner with ([^.\n]+)/i);
+  if (specificMatch) return { kind: "partner-with", specificName: specificMatch[1].trim() };
+  if (/\bpartner\b/i.test(text)) return { kind: "partner" };
+  if (/choose a background/i.test(text)) return { kind: "background" };
+  return null;
+};
 const formatEdhrecEvidence = (
   evidence: EdhrecEvidence | null,
   format: string,
@@ -1118,6 +1137,7 @@ const loadNativeForgePool = async (
   commander: CommanderOption | null,
   lynchpin: string,
   note = "",
+  secondCommander: CommanderOption | null = null,
 ) => {
   let anchor: any = null;
   if (!commander && lynchpin) {
@@ -1128,8 +1148,11 @@ const loadNativeForgePool = async (
     if (anchorResponse.ok) anchor = await anchorResponse.json();
   }
   const noteColors = colorsFromNote(note);
-  const colors = commander?.colors?.length
-    ? commander.colors
+  const commanderColors = [
+    ...new Set([...(commander?.colors || []), ...(secondCommander?.colors || [])]),
+  ];
+  const colors = commanderColors.length
+    ? commanderColors
     : noteColors.length
       ? noteColors
       : anchor?.color_identity?.length
@@ -1213,14 +1236,16 @@ const normalizeCommanderDeck = (
   text: string,
   commander: CommanderOption | null,
   format: string,
+  secondCommander: CommanderOption | null = null,
 ) => {
   if (!commander || !isCommanderFormat(format)) return null;
   const target = targetDeckSize(format);
   const parsed = parseDeckRows(text).filter(
     (row) => Number.isFinite(row.quantity) && row.quantity > 0 && row.name,
   );
+  const commanders = [commander, ...(secondCommander ? [secondCommander] : [])];
   const commanderKeys = new Set(
-    [commander.name, commander.name.split(" // ")[0]].map(cardFactKey),
+    commanders.flatMap((entry) => [entry.name, entry.name.split(" // ")[0]].map(cardFactKey)),
   );
   const merged = new Map<string, DeckRow>();
   for (const row of parsed) {
@@ -1238,7 +1263,7 @@ const normalizeCommanderDeck = (
     });
   }
   const rows: DeckRow[] = [
-    { quantity: 1, name: commander.name },
+    ...commanders.map((entry) => ({ quantity: 1, name: entry.name })),
     ...merged.values(),
   ];
   let total = rows.reduce((sum, row) => sum + row.quantity, 0);
@@ -1247,7 +1272,7 @@ const normalizeCommanderDeck = (
   // abbreviated answer should still retry instead of becoming a pile of basics.
   if (total < target - 20) return null;
 
-  for (let index = rows.length - 1; total > target && index > 0; index -= 1) {
+  for (let index = rows.length - 1; total > target && index >= commanders.length; index -= 1) {
     const row = rows[index];
     const removable = BASIC_LAND_KEYS.has(cardFactKey(row.name))
       ? row.quantity
@@ -1258,7 +1283,10 @@ const normalizeCommanderDeck = (
     if (row.quantity === 0) rows.splice(index, 1);
   }
 
-  const colors = commander.colors.length ? commander.colors : ["C"];
+  const combinedColors = [
+    ...new Set(commanders.flatMap((entry) => entry.colors)),
+  ];
+  const colors = combinedColors.length ? combinedColors : ["C"];
   for (let index = 0; total < target; index += 1) {
     const land = BASIC_LANDS[colors[index % colors.length]] || "Wastes";
     const existing = rows.find((row) => cardFactKey(row.name) === cardFactKey(land));
@@ -1593,6 +1621,18 @@ export default function Home() {
   const [selectedCommander, setSelectedCommander] =
     useState<CommanderOption | null>(null);
   const [commanderSearching, setCommanderSearching] = useState(false);
+  // A second card in the command zone — a Partner commander or a
+  // Background — combines its color identity and physical slot with the
+  // primary commander rather than replacing it. Optional and independent
+  // of the primary commander's own search state.
+  const [secondCommanderQuery, setSecondCommanderQuery] = useState("");
+  const [secondCommanderResults, setSecondCommanderResults] = useState<
+    CommanderOption[]
+  >([]);
+  const [selectedSecondCommander, setSelectedSecondCommander] =
+    useState<CommanderOption | null>(null);
+  const [secondCommanderSearching, setSecondCommanderSearching] =
+    useState(false);
   const [randomizingCommander, setRandomizingCommander] = useState(false);
   const [randomCommanderMode, setRandomCommanderMode] = useState(false);
   const [randomCommanderOptions, setRandomCommanderOptions] = useState<
@@ -2024,17 +2064,21 @@ export default function Home() {
     [deckRows, cardOrder],
   );
   const groupedDeck = useMemo(() => {
+    const commanderKeys = new Set(
+      [chosenPreview.card, selectedSecondCommander?.name]
+        .filter(Boolean)
+        .map((name) => cardFactKey(name as string)),
+    );
     const groups: Record<string, DeckRow[]> = {};
     for (const row of orderedDeckRows) {
       const group = cardGroup(
         cardFacts[cardFactKey(row.name)],
-        isCommanderFormat(format) &&
-          cardFactKey(row.name) === cardFactKey(chosenPreview.card),
+        isCommanderFormat(format) && commanderKeys.has(cardFactKey(row.name)),
       );
       (groups[group] ||= []).push(row);
     }
     return groups;
-  }, [orderedDeckRows, cardFacts, format, chosenPreview.card]);
+  }, [orderedDeckRows, cardFacts, format, chosenPreview.card, selectedSecondCommander?.name]);
   const activeCard =
     hoveredCard || chosenPreview.card || deckRows[0]?.name || "";
   const activeFact = cardFacts[cardFactKey(activeCard)];
@@ -2061,7 +2105,10 @@ export default function Home() {
     const commanderQuantity = deckRows
       .filter((row) => cardFactKey(row.name) === commanderKey)
       .reduce((sum, row) => sum + row.quantity, 0);
-    const commanderColors = new Set(selectedCommander?.colors || []);
+    const commanderColors = new Set([
+      ...(selectedCommander?.colors || []),
+      ...(selectedSecondCommander?.colors || []),
+    ]);
     const identityBreaks = isCommanderFormat(format)
       ? deckRows.filter((row) => {
           const colors = cardFacts[cardFactKey(row.name)]?.color_identity || [];
@@ -2112,7 +2159,7 @@ export default function Home() {
       averageCmc: spellCount ? cmcTotal / spellCount : 0,
       passed: Boolean(deckRows.length && !unresolved.length && !issues.length),
     };
-  }, [deckRows, cardFacts, format, chosenPreview.card, selectedCommander]);
+  }, [deckRows, cardFacts, format, chosenPreview.card, selectedCommander, selectedSecondCommander]);
   const activeRole = cardRole(activeFact);
   const structuralCards = useMemo(
     () =>
@@ -2591,8 +2638,14 @@ export default function Home() {
     }
     const timer = window.setTimeout(async () => {
       try {
-        const identity = selectedCommander?.colors?.length
-          ? ` id<=${selectedCommander.colors.join("").toLowerCase()}`
+        const combinedIdentity = [
+          ...new Set([
+            ...(selectedCommander?.colors || []),
+            ...(selectedSecondCommander?.colors || []),
+          ]),
+        ];
+        const identity = combinedIdentity.length
+          ? ` id<=${combinedIdentity.join("").toLowerCase()}`
           : "";
         const query = encodeURIComponent(
           `${scryfallFormatTerms(format)}${identity} name:${cardSearch.trim()}`,
@@ -2618,7 +2671,7 @@ export default function Home() {
       }
     }, 280);
     return () => window.clearTimeout(timer);
-  }, [cardSearch, chamber, format, selectedCommander?.name]);
+  }, [cardSearch, chamber, format, selectedCommander?.name, selectedSecondCommander?.name]);
 
   useEffect(() => {
     if (
@@ -2648,6 +2701,79 @@ export default function Home() {
     }, 320);
     return () => window.clearTimeout(timer);
   }, [commanderQuery, format, selectedCommander?.name]);
+
+  const partnerEligibility = useMemo(
+    () => partnerEligibilityFor(selectedCommander),
+    [selectedCommander],
+  );
+
+  // Whenever the primary commander changes (including being cleared), any
+  // second-commander choice made for the PREVIOUS one is no longer
+  // necessarily legal — reset rather than silently carry it forward.
+  useEffect(() => {
+    setSelectedSecondCommander(null);
+    setSecondCommanderQuery("");
+    setSecondCommanderResults([]);
+  }, [selectedCommander?.name]);
+
+  // "Partner with <name>" names one specific card, so there's nothing to
+  // type — fetch that exact card once and offer it as a single suggestion.
+  useEffect(() => {
+    if (partnerEligibility?.kind !== "partner-with" || selectedSecondCommander) {
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch(
+          `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(partnerEligibility.specificName)}`,
+        );
+        if (!response.ok || cancelled) return;
+        const card = await response.json();
+        if (!cancelled) setSecondCommanderResults([commanderOption(card)]);
+      } catch {
+        /* The specific partner suggestion is optional; nothing to fall back to here. */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [partnerEligibility, selectedSecondCommander]);
+
+  // Plain "Partner" and "Choose a Background" both search-as-you-type,
+  // scoped to whichever legality the primary commander's ability actually
+  // grants (any other Partner card, or specifically a Background).
+  useEffect(() => {
+    if (
+      !partnerEligibility ||
+      partnerEligibility.kind === "partner-with" ||
+      secondCommanderQuery.trim().length < 2 ||
+      selectedSecondCommander?.name === secondCommanderQuery.trim()
+    ) {
+      setSecondCommanderResults([]);
+      return;
+    }
+    const eligibilityTerm =
+      partnerEligibility.kind === "background" ? "t:background" : "is:commander o:partner";
+    const timer = window.setTimeout(async () => {
+      setSecondCommanderSearching(true);
+      try {
+        const query = encodeURIComponent(
+          `${scryfallFormatTerms(format)} ${eligibilityTerm} name:${secondCommanderQuery.trim()}`,
+        );
+        const response = await fetch(
+          `https://api.scryfall.com/cards/search?q=${query}&order=name`,
+        );
+        const data = await response.json();
+        setSecondCommanderResults((data.data || []).slice(0, 8).map(commanderOption));
+      } catch {
+        setSecondCommanderResults([]);
+      } finally {
+        setSecondCommanderSearching(false);
+      }
+    }, 320);
+    return () => window.clearTimeout(timer);
+  }, [secondCommanderQuery, format, partnerEligibility, selectedSecondCommander?.name]);
 
   useEffect(() => {
     if (chamber !== "workbench") return;
@@ -2939,6 +3065,12 @@ export default function Home() {
     const work = workFor(index);
     const preview = previewFor(index);
     const commander = commanderFor(index);
+    // Only carry a Partner/Background over when this masterwork actually
+    // uses the commander it was chosen for — a "surprise me" reveal can
+    // preview a different randomly-suggested commander per candidate, and
+    // a partner picked for one shouldn't silently attach to another.
+    const secondCommander =
+      commander?.name === selectedCommander?.name ? selectedSecondCommander : null;
     const generationId = crypto.randomUUID();
     setRestoredWork(null);
     setDeckId(generationId);
@@ -2975,7 +3107,7 @@ export default function Home() {
     setEdhrecEvidence(evidence);
 
     try {
-      const pool = await loadNativeForgePool(format, commander, preview.card, commissionNote);
+      const pool = await loadNativeForgePool(format, commander, preview.card, commissionNote, secondCommander);
       const nativeReport = forgeNativeMasterwork({
         format,
         target: targetDeckSize(format),
@@ -2989,6 +3121,13 @@ export default function Home() {
               name: commander.name,
               colors: commander.colors,
               oracleText: commander.verifiedFacts,
+            }
+          : null,
+        secondCommander: secondCommander
+          ? {
+              name: secondCommander.name,
+              colors: secondCommander.colors,
+              oracleText: secondCommander.verifiedFacts,
             }
           : null,
         cards: pool.cards,
@@ -3023,6 +3162,7 @@ export default function Home() {
   // so there's no real ambiguity to resolve with three alternates.
   async function commitDirectForge(mode: "decklist" | "commander") {
     const commander = selectedCommander;
+    const secondCommander = selectedSecondCommander;
     const generationId = crypto.randomUUID();
     const directWork: Masterwork = {
       rune: "ᛞ",
@@ -3067,9 +3207,12 @@ export default function Home() {
     setEdhrecEvidence(evidence);
 
     try {
-      const pool = await loadNativeForgePool(format, commander, "", commissionNote);
+      const pool = await loadNativeForgePool(format, commander, "", commissionNote, secondCommander);
       const commanderInput = commander
         ? { name: commander.name, colors: commander.colors, oracleText: commander.verifiedFacts }
+        : null;
+      const secondCommanderInput = secondCommander
+        ? { name: secondCommander.name, colors: secondCommander.colors, oracleText: secondCommander.verifiedFacts }
         : null;
 
       if (mode === "decklist") {
@@ -3087,6 +3230,7 @@ export default function Home() {
           seed: hashText(`${commissionSeed}|import|${deck.length}`),
           colors: pool.colors,
           commander: commanderInput,
+          secondCommander: secondCommanderInput,
           cards: resolution.pool,
           importedRows: resolution.importedRows,
           evidence: evidence?.cards || [],
@@ -3111,6 +3255,7 @@ export default function Home() {
           seed: hashText(`${commissionSeed}|commander|${commander?.name || ""}`),
           colors: pool.colors,
           commander: commanderInput,
+          secondCommander: secondCommanderInput,
           cards: pool.cards,
           evidence: evidence?.cards || [],
           budget,
@@ -3458,7 +3603,7 @@ export default function Home() {
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || "Repair unavailable");
       let repaired = String(data.answer || "");
-      const normalized = normalizeCommanderDeck(repaired, selectedCommander, format);
+      const normalized = normalizeCommanderDeck(repaired, selectedCommander, format, selectedSecondCommander);
       if (normalized) repaired = normalized;
       const total = parseDeckRows(repaired).reduce((sum, row) => sum + row.quantity, 0);
       if (total !== deckIntegrity.target) throw new Error("Repair remained incomplete");
@@ -3482,7 +3627,10 @@ export default function Home() {
     setMetaBreakerExperiments([]);
     try {
       const currentNames = new Set(deckRows.map((row) => cardFactKey(row.name)));
-      const commanderColors = new Set(selectedCommander?.colors || []);
+      const commanderColors = new Set([
+        ...(selectedCommander?.colors || []),
+        ...(selectedSecondCommander?.colors || []),
+      ]);
       let candidates: Array<any> = [];
       if (isCommanderFormat(format) && edhrecEvidence?.available) {
         const names = edhrecEvidence.cards
@@ -4205,6 +4353,91 @@ export default function Home() {
                           </p>
                         )}
                       </div>
+                    )}
+                  </div>
+                )}
+                {selectedCommander && partnerEligibility && (
+                  <div className="commander-search">
+                    <span>
+                      OPTIONAL ·{" "}
+                      {partnerEligibility.kind === "background"
+                        ? "CHOOSE A BACKGROUND"
+                        : "CHOOSE A PARTNER"}
+                    </span>
+                    {selectedSecondCommander ? (
+                      <article>
+                        <img src={selectedSecondCommander.image} alt="" />
+                        <div>
+                          <b>{selectedSecondCommander.name}</b>
+                          <span>{selectedSecondCommander.typeLine}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedSecondCommander(null);
+                            setSecondCommanderQuery("");
+                          }}
+                        >
+                          Change
+                        </button>
+                      </article>
+                    ) : (
+                      <>
+                        {partnerEligibility.kind !== "partner-with" && (
+                          <div className="commander-choice">
+                            <input
+                              value={secondCommanderQuery}
+                              onChange={(event) =>
+                                setSecondCommanderQuery(event.target.value)
+                              }
+                              placeholder={
+                                partnerEligibility.kind === "background"
+                                  ? "Search legal Backgrounds…"
+                                  : "Search legal Partner commanders…"
+                              }
+                              aria-label={
+                                partnerEligibility.kind === "background"
+                                  ? "Search legal Backgrounds"
+                                  : "Search legal Partner commanders"
+                              }
+                            />
+                          </div>
+                        )}
+                        {(secondCommanderSearching ||
+                          secondCommanderResults.length > 0) && (
+                          <div role="listbox">
+                            {secondCommanderSearching ? (
+                              <p>The Archive is searching…</p>
+                            ) : (
+                              secondCommanderResults.map((option) => (
+                                <button
+                                  type="button"
+                                  role="option"
+                                  key={option.name}
+                                  onClick={() => {
+                                    setSelectedSecondCommander(option);
+                                    setSecondCommanderQuery(option.name);
+                                    setSecondCommanderResults([]);
+                                  }}
+                                >
+                                  <span>
+                                    {option.image ? (
+                                      <img src={option.image} alt="" />
+                                    ) : (
+                                      "◆"
+                                    )}
+                                  </span>
+                                  <b>
+                                    {option.name}
+                                    <small>{option.typeLine}</small>
+                                  </b>
+                                  <em>{option.colors.join("") || "C"}</em>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 )}

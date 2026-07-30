@@ -120,6 +120,26 @@ const clamp = (value, min = 0, max = 100) => Math.min(max, Math.max(min, Number(
 const normalized = (value = "") => String(value).normalize("NFKC").trim().toLocaleLowerCase("en");
 const hash = (value = "") => Array.from(String(value)).reduce((total, character) => ((total * 33) ^ character.charCodeAt(0)) >>> 0, 5381);
 const unique = (values) => [...new Set(values.filter(Boolean))];
+
+// A Commander deck can have a second card in the command zone — a Partner
+// commander or a Background — which combines its color identity, oracle
+// text, and physical card slot with the primary commander rather than
+// replacing it. input.secondCommander is optional and purely additive:
+// every helper below degrades to exactly the existing single-commander
+// behavior when it's absent, so nothing changes for a deck without one.
+function allCommanders(input) {
+  return [input.commander, input.secondCommander].filter(Boolean);
+}
+function commanderColors(input) {
+  const colors = new Set();
+  for (const commander of allCommanders(input)) {
+    for (const color of commander.colors || []) colors.add(color);
+  }
+  return [...colors];
+}
+function commanderNamesNormalized(input) {
+  return new Set(allCommanders(input).map((commander) => normalized(commander.name)));
+}
 const BASIC_LAND_FACTS = Object.freeze({
   Plains: {
     typeLine: "Basic Land — Plains",
@@ -153,9 +173,7 @@ function createVerifiedCardIndex(input) {
     ...(Array.isArray(input.cards)
       ? input.cards
       : []),
-    ...(input.commander
-      ? [input.commander]
-      : []),
+    ...allCommanders(input),
   ];
 
   return new Map(
@@ -204,10 +222,8 @@ function buildSelectedStructuralCards(
   const verifiedByName =
     createVerifiedCardIndex(input);
 
-  const commanderName =
-    normalized(
-      input.commander?.name,
-    );
+  const commanderNames =
+    commanderNamesNormalized(input);
 
   return selected.rows.map((row) => {
     const verified =
@@ -246,8 +262,9 @@ function buildSelectedStructuralCards(
           Number(row.quantity || 1),
         ),
       isCommander:
-        normalized(row.name) ===
-        commanderName,
+        commanderNames.has(
+          normalized(row.name),
+        ),
     };
   });
 }
@@ -386,7 +403,8 @@ function conceptSignals(text = "") {
 
 function preferenceTerms(input) {
   const ignored = new Set(["this", "that", "with", "from", "your", "deck", "cards", "card", "want", "play", "forge", "must", "never", "should"]);
-  return unique(normalized(`${input.strategy} ${input.path} ${input.note} ${input.commander?.oracleText || ""}`)
+  const commanderText = allCommanders(input).map((commander) => commander.oracleText || "").join(" ");
+  return unique(normalized(`${input.strategy} ${input.path} ${input.note} ${commanderText}`)
     .split(/[^a-z0-9+'-]+/).filter((term) => term.length >= 4 && !ignored.has(term)));
 }
 
@@ -493,7 +511,7 @@ function prepareForgeAnalysis(input, evidenceByName) {
   const blueprint = parseNativeBlueprintIntent(input);
   const context = {
     weights: STRATEGY_WEIGHTS[input.strategy] || STRATEGY_WEIGHTS["Balanced midrange"],
-    commanderSignals: conceptSignals(input.commander?.oracleText || ""),
+    commanderSignals: unique(allCommanders(input).flatMap((commander) => conceptSignals(commander.oracleText || ""))),
     terms: preferenceTerms(input),
     ideal: /Aggressive|Tempo/i.test(input.strategy) ? 2.4 : /Control/i.test(input.strategy) ? 3.2 : 2.9,
     blueprint,
@@ -501,7 +519,7 @@ function prepareForgeAnalysis(input, evidenceByName) {
     budget: input.budget,
     complexity: input.complexity,
   };
-  const commanderName = normalized(input.commander?.name);
+  const commanderNames = commanderNamesNormalized(input);
   const poolSignals = poolMechanicalSignals(input.cards);
   const cards = input.cards.map((card, index) =>
     analyzeCard(card, context, evidenceByName, poolSignals.mechanicsByIndex[index], poolSignals));
@@ -514,7 +532,7 @@ function prepareForgeAnalysis(input, evidenceByName) {
   return {
     context,
     cards,
-    spells: eligible.filter((entry) => !entry.roles.includes("land") && normalized(entry.card.name) !== commanderName),
+    spells: eligible.filter((entry) => !entry.roles.includes("land") && !commanderNames.has(normalized(entry.card.name))),
     lands: eligible.filter((entry) => entry.roles.includes("land")).map((entry) => entry.card),
   };
 }
@@ -890,7 +908,7 @@ function unusedEnginePartnersFor(selected, input) {
 }
 
 function buildManaBase(input, landSlots, lands, variant, presetLands = [], pipTotals = {}, spellRows = []) {
-  const colors = input.commander?.colors?.length ? input.commander.colors : input.colors?.length ? input.colors : ["W", "U", "B", "R", "G"];
+  const colors = commanderColors(input).length ? commanderColors(input) : input.colors?.length ? input.colors : ["W", "U", "B", "R", "G"];
   const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
   const rows = [];
 
@@ -1023,7 +1041,7 @@ function computeBlueprintAlignment(analysis, selected, singleton) {
 function buildCandidate(input, variant, analysis) {
   const target = input.target || (["Commander", "Brawl"].includes(input.format) ? 100 : 60);
   const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
-  const commanderSlots = input.commander ? 1 : 0;
+  const commanderSlots = allCommanders(input).length;
   const landSlots = singleton ? Math.round(target * 0.37) : Math.round(target * 0.4);
   const spells = analysis.spells;
   const lands = analysis.lands;
@@ -1032,7 +1050,7 @@ function buildCandidate(input, variant, analysis) {
   const { selected, roleCounts } = chooseSpells(scored, spellSlots, singleton, roleTargets(input.format, input.strategy), analysis.context.blueprint, [], curveTargets(input.strategy, spellSlots));
   const mana = buildManaBase(input, landSlots, lands, variant, [], aggregatePipTotals(selected), selected);
   const rows = [
-    ...(input.commander ? [{ quantity: 1, name: input.commander.name, roles: ["commander"], score: 100, cmc: manaValueFromCost(input.commander.manaCost, input.commander.cmc) }] : []),
+    ...allCommanders(input).map((commander) => ({ quantity: 1, name: commander.name, roles: ["commander"], score: 100, cmc: manaValueFromCost(commander.manaCost, commander.cmc) })),
     ...selected,
     ...mana,
   ];
@@ -1057,9 +1075,9 @@ function buildCandidate(input, variant, analysis) {
 function buildImportedCandidate(input, analysis) {
   const target = input.target || (["Commander", "Brawl"].includes(input.format) ? 100 : 60);
   const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
-  const commanderSlots = input.commander ? 1 : 0;
+  const commanderSlots = allCommanders(input).length;
   const landSlots = singleton ? Math.round(target * 0.37) : Math.round(target * 0.4);
-  const commanderName = normalized(input.commander?.name);
+  const commanderNames = commanderNamesNormalized(input);
 
   const spellByName = new Map(analysis.spells.map((entry) => [normalized(entry.card.name), entry]));
   const landByName = new Map(analysis.lands.map((card) => [normalized(card.name), card]));
@@ -1067,7 +1085,7 @@ function buildImportedCandidate(input, analysis) {
   const presetLandRows = [];
   for (const row of input.importedRows) {
     const key = normalized(row.name);
-    if (key === commanderName) continue;
+    if (commanderNames.has(key)) continue;
     const landCard = landByName.get(key);
     if (landCard) {
       presetLandRows.push({ quantity: row.quantity, name: landCard.name, colorIdentity: producedColorsOf(landCard) });
@@ -1108,7 +1126,7 @@ function buildImportedCandidate(input, analysis) {
   const { selected, roleCounts } = chooseSpells(scored, spellSlots, singleton, roleTargets(input.format, input.strategy), analysis.context.blueprint, presetSpellRows, curveTargets(input.strategy, spellSlots));
   const mana = buildManaBase(input, landSlots, analysis.lands, variant, presetLandRows, aggregatePipTotals(selected), selected);
   const rows = [
-    ...(input.commander ? [{ quantity: 1, name: input.commander.name, roles: ["commander"], score: 100, cmc: manaValueFromCost(input.commander.manaCost, input.commander.cmc) }] : []),
+    ...allCommanders(input).map((commander) => ({ quantity: 1, name: commander.name, roles: ["commander"], score: 100, cmc: manaValueFromCost(commander.manaCost, commander.cmc) })),
     ...selected,
     ...mana,
   ];

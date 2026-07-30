@@ -18,7 +18,17 @@ test("Blueprint identity shapes previews and targeted verified-pool retrieval", 
   assert.match(page, /parseNativeBlueprintIntent/);
   assert.match(page, /This version puts \$\{blueprintPromise\} first/);
   assert.match(page, /Popularity pages are intentionally broad/);
-  assert.match(page, /loadNativeForgePool\(format, commander, preview\.card, commissionNote\)/);
+  assert.match(page, /loadNativeForgePool\(format, commander, preview\.card, commissionNote, secondCommander\)/);
+});
+
+test("supports a second commander (Partner or Background) as a distinct, optional selection", () => {
+  assert.match(page, /partnerEligibilityFor/);
+  assert.match(page, /"partner-with"/);
+  assert.match(page, /"background"/);
+  assert.match(page, /selectedSecondCommander/);
+  // Wired into both the imported-decklist and direct-commander build paths.
+  const wiredCallSites = page.match(/secondCommander: secondCommanderInput/g) || [];
+  assert.equal(wiredCallSites.length, 2);
 });
 
 test("native forging exposes visible elapsed progress and moving stages", () => {
