@@ -1428,6 +1428,7 @@ const blueprintDefinition = (
 // instead of being redefined — and its local `revealed` state — every render.
 type MasterworkCardProps = {
   poolIndex: number;
+  featured?: boolean;
   alignedWork: Masterwork;
   preview: DeckPreview;
   commander: CommanderOption | null;
@@ -1436,18 +1437,19 @@ type MasterworkCardProps = {
   onInspect: () => void;
 };
 
-function MasterworkCard({ poolIndex, alignedWork, preview, commander, insight, format, onInspect }: MasterworkCardProps) {
-  const [revealed, setRevealed] = useState(false);
+function MasterworkCard({ poolIndex, featured = false, alignedWork, preview, commander, insight, format, onInspect }: MasterworkCardProps) {
+  const [revealed, setRevealed] = useState(featured);
   return (
     <article
-      className={`masterwork-card ${alignedWork.tone}`}
+      className={`masterwork-card ${alignedWork.tone}${featured ? " is-featured" : ""}`}
       data-state={revealed ? "revealed" : "sealed"}
     >
       {revealed ? (
         <>
-          <span>
-            MASTERWORK {String(poolIndex + 1).padStart(2, "0")}
-          </span>
+          <div className="masterwork-card-kicker">
+            <span>{featured ? "THE FORGE'S RECOMMENDATION" : `ALTERNATE MASTERWORK ${String(poolIndex + 1).padStart(2, "0")}`}</span>
+            {featured && <b>BEST BLUEPRINT MATCH</b>}
+          </div>
           <div className="masterwork-title">
             <i>{alignedWork.rune}</i>
             <div>
@@ -1520,7 +1522,7 @@ function MasterworkCard({ poolIndex, alignedWork, preview, commander, insight, f
           </div>
           <p className="masterwork-verdict"><GlossaryText text={alignedWork.verdict} /></p>
           <button onClick={onInspect}>
-            Inspect this Masterwork <b>→</b>
+            {featured ? "Enter the recommended Masterwork" : "Compare this Masterwork"} <b>→</b>
           </button>
         </>
       ) : (
@@ -4066,14 +4068,14 @@ export default function Home() {
               <i /> THE GREAT FORGE ANSWERS <i />
             </span>
             <h1>
-              Steel bends. Runes awaken.
+              The Forge has chosen.
               <br />
-              <em>Three designs endure.</em>
+              <em>One design leads.</em>
             </h1>
             <p>
-              The Forge honored your {format} commission and shaped three paths
-              around <strong>{strategy.toLowerCase()}</strong>. Choose the one
-              that feels like yours.
+              This recommendation best matches your {format} commission and
+              <strong> {strategy.toLowerCase()}</strong> direction. Two alternate
+              paths remain available when you want a different tradeoff.
             </p>
           </header>
           {commissionNote.trim() && (
@@ -4125,6 +4127,7 @@ export default function Home() {
                 <MasterworkCard
                   key={`masterwork-${poolIndex}`}
                   poolIndex={poolIndex}
+                  featured={index === 0}
                   alignedWork={alignedWork}
                   preview={preview}
                   commander={commander}
