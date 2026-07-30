@@ -61,6 +61,14 @@ const STRUCTURAL_THRESHOLDS = Object.freeze({
   lowPlanRealization: 0.6,
 });
 
+// Below this share of nonland cards, "answers" (removal, sweepers, and
+// countermagic — the cards that interact with what the opponent puts on
+// the battlefield, not the deck's own plan) are thin enough to call out
+// on their own, independent of which graph system is weakest.
+const INTERACTION_DENSITY_THRESHOLDS = Object.freeze({
+  lowAnswerRatio: 0.12,
+});
+
 const HEALTH_WEIGHTS = Object.freeze({
   consistency: 0.27,
   resilience: 0.25,
@@ -1264,6 +1272,60 @@ function compareSystemWeakness(
 // Failure Analysis
 // =============================================================================
 
+function describeInteractionDensity(
+  simulationDossier,
+) {
+  const roleCounts =
+    simulationDossier?.roleCounts;
+
+  if (!roleCounts) {
+    return null;
+  }
+
+  const nonlandTotal = Object.values(
+    roleCounts,
+  ).reduce(
+    (sum, count) => sum + count,
+    0,
+  );
+
+  if (!nonlandTotal) {
+    return null;
+  }
+
+  const answers =
+    (roleCounts.removal || 0) +
+    (roleCounts.sweeper || 0) +
+    (roleCounts.counter || 0);
+
+  const answerRatio =
+    answers / nonlandTotal;
+
+  if (
+    answerRatio >=
+    INTERACTION_DENSITY_THRESHOLDS
+      .lowAnswerRatio
+  ) {
+    return null;
+  }
+
+  const averageCmc = Number(
+    simulationDossier.averageCmc,
+  );
+
+  const curveText = Number.isFinite(
+    averageCmc,
+  )
+    ? ` against an average nonland cost of ${averageCmc.toFixed(1)}`
+    : "";
+
+  return (
+    `Only ${answers} of ${nonlandTotal} nonland cards interact with an ` +
+    `opposing board (removal, sweepers, or countermagic)${curveText} — ` +
+    "thin insurance if this deck falls behind rather than races ahead."
+  );
+}
+
 function createFailureChain(
   weakest,
   simulationDossier,
@@ -1326,6 +1388,15 @@ function createFailureChain(
     chain.push(
       `${weakestMatchup.opponent} is the hardest modeled pressure profile, but this identifies a stress condition rather than a predicted matchup result.`,
     );
+  }
+
+  const interactionDensity =
+    describeInteractionDensity(
+      simulationDossier,
+    );
+
+  if (interactionDensity) {
+    chain.push(interactionDensity);
   }
 
   if (!chain.length) {

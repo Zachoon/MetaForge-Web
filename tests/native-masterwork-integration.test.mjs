@@ -29,6 +29,18 @@ test("the simulation dossier maps ramp and protection to their own modeled roles
   assert.doesNotMatch(dossier, /Protection:\s*"counter"/);
 });
 
+test("the simulation dossier feeds real role counts and average curve into the interaction-density check", () => {
+  const dossierStart = page.indexOf("const simulationDossier = useMemo");
+  const dossierEnd = page.indexOf("}, [", dossierStart);
+  const dossier = page.slice(dossierStart, dossierEnd);
+  assert.match(dossier, /roleCounts/);
+  assert.match(dossier, /averageCmc/);
+  // forgeFailureAnalysis must actually receive the dossier this feeds,
+  // or the interaction-density check in forge-systems-intelligence.mjs
+  // never sees real data.
+  assert.match(page, /buildBoundedFailureAnalysis\(\s*forgeSystemsReport,\s*simulationDossier,?\s*\)/);
+});
+
 test("Blueprint identity shapes previews and targeted verified-pool retrieval", () => {
   assert.match(page, /parseNativeBlueprintIntent/);
   assert.match(page, /This version puts \$\{blueprintPromise\} first/);

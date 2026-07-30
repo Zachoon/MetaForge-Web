@@ -438,6 +438,113 @@ test(
 );
 
 test(
+  "calls out thin interaction density independent of which system is weakest",
+  () => {
+    const report =
+      buildForgeSystemsReport(
+        interactionGraph,
+      );
+
+    const analysis =
+      buildBoundedFailureAnalysis(
+        report,
+        {
+          roleCounts: {
+            finisher: 30,
+            stabilizer: 20,
+            removal: 2,
+            sweeper: 0,
+          },
+          averageCmc: 4.2,
+        },
+      );
+
+    assert.ok(
+      analysis.chain.some(
+        (line) =>
+          /2 of 52 nonland cards/.test(
+            line,
+          ),
+      ),
+    );
+
+    assert.ok(
+      analysis.chain.some(
+        (line) =>
+          /average nonland cost of 4\.2/.test(
+            line,
+          ),
+      ),
+    );
+  },
+);
+
+test(
+  "does not flag interaction density when answers are actually plentiful",
+  () => {
+    const report =
+      buildForgeSystemsReport(
+        interactionGraph,
+      );
+
+    const analysis =
+      buildBoundedFailureAnalysis(
+        report,
+        {
+          roleCounts: {
+            finisher: 20,
+            stabilizer: 20,
+            removal: 8,
+            sweeper: 4,
+            counter: 2,
+          },
+          averageCmc: 3.1,
+        },
+      );
+
+    assert.ok(
+      analysis.chain.every(
+        (line) =>
+          !/nonland cards interact/.test(
+            line,
+          ),
+      ),
+    );
+  },
+);
+
+test(
+  "does not invent an interaction-density finding when role counts aren't supplied",
+  () => {
+    const report =
+      buildForgeSystemsReport(
+        interactionGraph,
+      );
+
+    const analysis =
+      buildBoundedFailureAnalysis(
+        report,
+        {
+          goldfish: {
+            expert: {
+              planRealizationRate: 0.9,
+            },
+          },
+        },
+      );
+
+    assert.ok(
+      analysis.chain.every(
+        (line) =>
+          !/nonland cards interact/.test(
+            line,
+          ),
+      ),
+    );
+  },
+);
+
+test(
   "refuses to invent failure analysis without connected systems",
   () => {
     const report =

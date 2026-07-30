@@ -2447,9 +2447,24 @@ export default function Home() {
         : /tempo/i.test(strategy)
           ? "Tempo"
           : "Midrange";
+    // Real role counts and average nonland cost, already computed for the
+    // sims above — reused here so forgeFailureAnalysis can reason about
+    // interaction density (answers vs. curve) instead of only graph
+    // connectivity, without a second pass over the decklist.
+    const nonlandModel = model.filter((row) => row.role !== "land");
+    const nonlandQuantity = nonlandModel.reduce((sum, row) => sum + row.quantity, 0);
+    const roleCounts = nonlandModel.reduce((counts, row) => {
+      counts[row.role] = (counts[row.role] || 0) + row.quantity;
+      return counts;
+    }, {} as Record<string, number>);
+    const averageCmc = nonlandQuantity
+      ? nonlandModel.reduce((sum, row) => sum + row.cmc * row.quantity, 0) / nonlandQuantity
+      : 0;
     return {
       goldfish: evaluateSimulationGate(model, strategyName, 1200, 8128),
       matrix: evaluateMatchupMatrix(model, undefined, 900, 991),
+      roleCounts,
+      averageCmc,
     };
   }, [deckIntegrity.passed, deckRows, cardFacts, strategy]);
 
