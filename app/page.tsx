@@ -3663,6 +3663,13 @@ export default function Home() {
     }, 1800);
   }
 
+  function finishCurrentMasterwork() {
+    if (!deckId || currentFamilyArchived) return;
+    setSealBurst(true);
+    setFamilyArchived(deckId, true);
+    window.setTimeout(() => setSealBurst(false), 2200);
+  }
+
   function acceptOpeningControl(cardName: string) {
     const note = `Opening control experiment: keep ${cardName} in the first build and watch its performance before rotating the slot.`;
     const nextRevisions = [
@@ -4467,6 +4474,67 @@ export default function Home() {
                 <button type="button" onClick={() => setActiveForgeChapter(2)}>Return to the experiment →</button>
               )}
             </aside>
+          )}
+          {!openingExperimentPending && benchStatus !== "forging" && deckRows.length > 0 && (
+            <section className="forge-path" aria-labelledby="forge-path-title">
+              <header>
+                <span>
+                  <small>YOUR FORGE PATH</small>
+                  <strong id="forge-path-title">
+                    {currentFamilyArchived
+                      ? "This Masterwork is sealed."
+                      : revisionLearning.sampleSize > 0
+                        ? "Evidence is on the anvil."
+                        : benchStatus === "testing"
+                          ? "The experiment is ready for the table."
+                          : openingExperimentFocus
+                            ? "Your first experiment is set."
+                            : "Begin with the complete Masterwork."}
+                  </strong>
+                </span>
+                <b>{currentFamilyArchived ? "5 OF 5" : revisionLearning.sampleSize > 0 ? "4 OF 5" : benchStatus === "testing" ? "3 OF 5" : openingExperimentFocus ? "2 OF 5" : "1 OF 5"}</b>
+              </header>
+              <ol>
+                {[
+                  ["Masterwork", true],
+                  ["Experiment", Boolean(openingExperimentFocus) || benchStatus === "testing" || revisionLearning.sampleSize > 0 || currentFamilyArchived],
+                  ["Table test", benchStatus === "testing" || revisionLearning.sampleSize > 0 || currentFamilyArchived],
+                  ["Evidence", revisionLearning.sampleSize > 0 || currentFamilyArchived],
+                  ["Seal", currentFamilyArchived],
+                ].map(([label, complete], index) => {
+                  const active = !complete && [
+                    true,
+                    Boolean(openingExperimentFocus) || benchStatus === "testing" || revisionLearning.sampleSize > 0 || currentFamilyArchived,
+                    benchStatus === "testing" || revisionLearning.sampleSize > 0 || currentFamilyArchived,
+                    revisionLearning.sampleSize > 0 || currentFamilyArchived,
+                    currentFamilyArchived,
+                  ].slice(0, index).every(Boolean);
+                  return <li key={String(label)} className={complete ? "complete" : active ? "active" : ""}><i>{complete ? "✓" : index + 1}</i><span>{label}</span></li>;
+                })}
+              </ol>
+              <footer>
+                <p>
+                  {currentFamilyArchived
+                    ? "The full journey is preserved on your private Bench."
+                    : revisionLearning.sampleSize > 0
+                      ? `${revisionLearning.sampleSize} match ${revisionLearning.sampleSize === 1 ? "result is" : "results are"} attached to this exact revision. Seal it when the lesson feels complete.`
+                      : benchStatus === "testing"
+                        ? "Play the list, then record the result. One honest match is more useful than a guessed conclusion."
+                        : openingExperimentFocus
+                          ? `Carry ${openingExperimentFocus} into a match as a question—not a verdict.`
+                          : "Read the finished list, then begin a recorded test when you understand what it is trying to do."}
+                </p>
+                {currentFamilyArchived ? (
+                  <button type="button" onClick={startNewForge}>Start another Forge →</button>
+                ) : revisionLearning.sampleSize > 0 ? (
+                  <button type="button" onClick={finishCurrentMasterwork}>Seal this Masterwork →</button>
+                ) : benchStatus === "testing" ? (
+                  <button type="button" onClick={() => { setActiveForgeChapter(2); setMatchEvidenceOpen(true); window.requestAnimationFrame(() => document.getElementById("match-evidence")?.scrollIntoView({ behavior: "smooth", block: "center" })); }}>Record match evidence →</button>
+                ) : (
+                  <button type="button" disabled={!deckIntegrity.passed} onClick={beginTesting}>Begin the first table test →</button>
+                )}
+              </footer>
+            </section>
           )}
           <div className={`testing-layout chapter-${activeForgeChapter}-active ${deckViewMode}-deck-view`}>
             <div className="deck-reference-strip">
@@ -5750,6 +5818,7 @@ export default function Home() {
                 </p>
               </details>
               <details
+                id="match-evidence"
                 className="match-evidence-drawer"
                 open={matchEvidenceOpen}
                 onToggle={(event) => setMatchEvidenceOpen(event.currentTarget.open)}
@@ -5834,11 +5903,7 @@ export default function Home() {
                     <button
                       type="button"
                       className="finish-masterwork"
-                      onClick={() => {
-                        setSealBurst(true);
-                        setFamilyArchived(deckId, true);
-                        window.setTimeout(() => setSealBurst(false), 2200);
-                      }}
+                      onClick={finishCurrentMasterwork}
                     >
                       Preserve as Finished Masterwork
                     </button>

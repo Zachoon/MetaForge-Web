@@ -7,6 +7,7 @@ const css = fs.readFileSync(new URL("../app/masterwork-motifs.css", import.meta.
 const icons = fs.readFileSync(new URL("../app/masterwork-motif-icons.tsx", import.meta.url), "utf8");
 const globals = fs.readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 const motionCss = fs.readFileSync(new URL("../app/forge-motion.css", import.meta.url), "utf8");
+const journeyCss = fs.readFileSync(new URL("../app/forge-journey.css", import.meta.url), "utf8");
 
 test("the reveal chamber uses a dedicated, module-level MasterworkCard instead of an inline article", () => {
   assert.match(page, /^function MasterworkCard\(/m);
@@ -53,4 +54,16 @@ test("major player milestones use choreographed sequences while reduced motion s
   assert.match(motionCss, /\.milestone-flare/);
   assert.match(motionCss, /\.milestone-sparks/);
   assert.match(motionCss, /prefers-reduced-motion:reduce[^}]*\.forge-milestone-motion\{display:none!important\}/s);
+});
+
+test("the workbench keeps one explicit next action visible through the full Forge Path", () => {
+  assert.match(page, /className="forge-path"/);
+  assert.match(page, /YOUR FORGE PATH/);
+  assert.match(page, /Begin the first table test/);
+  assert.match(page, /Record match evidence/);
+  assert.match(page, /Seal this Masterwork/);
+  assert.match(page, /Start another Forge/);
+  assert.match(page, /id="match-evidence"/);
+  assert.match(journeyCss, /\.forge-path li\.active/);
+  assert.match(journeyCss, /prefers-reduced-motion:reduce[^}]*\.forge-path:before/s);
 });
