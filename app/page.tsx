@@ -4985,7 +4985,8 @@ export default function Home() {
                                 The Forge's single highest-value read on this
                                 system: <b>{forgeCausalityReport.highestValueUpgrade.recommendation}</b> This is
                                 structural-only context — for an exact, gated
-                                one-card experiment, use the tablets in{" "}
+                                one-card experiment, see the tournament-rival
+                                experiments below, or the Deck Stress Lab in{" "}
                                 <button type="button" className="deep-forge-redirect-link" onClick={() => setActiveForgeChapter(2)}>
                                   Chapter II · Shape
                                 </button>.
@@ -5170,41 +5171,135 @@ export default function Home() {
                   )}
                 </section>
               )}
-              {metaBreakerDossier && (
-                <section className="meta-breaker-dossier">
-                  <header>
-                    <span><small>DECK STRESS LAB · CONTROLLED TEST</small><b>What this deck struggled with, why it matters, and one safe change to compare.</b></span>
-                    <strong>{metaBreakerDossier.confidence}</strong>
-                  </header>
-                  <div>
-                    <span><small>WHAT THE MODEL SAW</small><b>{metaBreakerDossier.field}</b><em>{metaBreakerDossier.source}</em></span>
-                    <span><small>WHY IT MATTERS</small><b>{metaBreakerDossier.hypothesis}</b></span>
-                    <span><small>ONE CHANGE TO TEST</small><b>{metaBreakerDossier.test}</b></span>
-                  </div>
-                  <footer className="meta-breaker-workflow">
-                    <button onClick={forgeMetaBreakerExperiments} disabled={metaBreakerLoading || !deckIntegrity.passed}>
-                      {metaBreakerLoading ? "Searching the legal card pool…" : "Show three one-card tests"}
-                    </button>
-                    {metaBreakerExperiments.length > 0 && <div>
-                      {metaBreakerExperiments.map((experiment) => (
-                        <article key={`${experiment.cut}-${experiment.add.name}`}>
-                          <img src={experiment.add.image} alt="" />
-                          <span>
-                            <small>ONE-CARD TEST</small>
-                            <b>−1 {experiment.cut}<br />+1 {experiment.add.name}</b>
-                            <p><strong>WHY THIS SWAP</strong>{experiment.reason}</p>
-                            <p><strong>EXPECTED CHANGE</strong>{experiment.expectedChange}</p>
-                            <p><strong>HOW TO JUDGE IT</strong>{experiment.measurement}</p>
-                            <em>{experiment.confidence}</em>
-                          </span>
-                          <button onClick={() => applyMetaBreakerExperiment(experiment)}>Create revision</button>
+              <section className="refinement-starters-vault" aria-label="Tournament-rival controlled experiments">
+                <header className="vault-experiments-header">
+                  <small>ADVANCED · TOURNAMENT-RIVAL EXPERIMENTS</small>
+                  <b>A second, independent read: this exact build vs. its closest rival from generation.</b>
+                </header>
+                <div className="refinement-starters experiment-tablets" aria-label="Three evidence-led controlled experiments">
+                  {experimentTablets && experimentTablets.status === "advance" ? (
+                    experimentTablets.tablets.map((tablet: any, index: number) => {
+                      if (tablet.type === "confidence") {
+                        return (
+                          <article
+                            key={tablet.id}
+                            className="experiment-tablet-card confidence-tablet"
+                            style={{ "--motif-accent": masterworkVisualProfile.accent } as React.CSSProperties}
+                          >
+                            <header>
+                              <small>EXPERIMENT {index + 1} · THE FORGE'S READ</small>
+                            </header>
+                            <div className="confidence-tablet-body">
+                              <strong>{tablet.headline}</strong>
+                              <p>{tablet.detail}</p>
+                            </div>
+                            {deckId && !currentFamilyArchived && (
+                              <button
+                                type="button"
+                                className="tablet-accept confidence-seal"
+                                onClick={() => {
+                                  setSealBurst(true);
+                                  setFamilyArchived(deckId, true);
+                                  window.setTimeout(() => setSealBurst(false), 2200);
+                                }}
+                              >
+                                Seal it as a Finished Masterwork →
+                              </button>
+                            )}
+                          </article>
+                        );
+                      }
+                      const Icon = tablet.motif ? MOTIF_ICONS[tablet.motif as keyof typeof MOTIF_ICONS] : null;
+                      const applying =
+                        swapFlourish?.cut === tablet.change.cut &&
+                        swapFlourish?.add === tablet.change.add;
+                      return (
+                        <article
+                          key={tablet.id}
+                          className={`experiment-tablet-card ${applying ? "applying" : ""} ${tablet.confident === false ? "speculative" : ""}`}
+                          style={{ "--motif-accent": masterworkVisualProfile.accent } as React.CSSProperties}
+                        >
+                          <div className="tablet-flip-inner">
+                            <div className="tablet-face tablet-face-front">
+                              <header>
+                                <small>
+                                  EXPERIMENT {index + 1}
+                                  {tablet.confident === false && <em className="speculative-badge">SPECULATIVE</em>}
+                                </small>
+                                {Icon && (
+                                  <span className="tablet-motif-icon">
+                                    <Icon size={30} />
+                                  </span>
+                                )}
+                              </header>
+                              <div className="tablet-swap-art">
+                                <figure>
+                                  <img src={cardImage(tablet.change.cut)} alt={tablet.change.cut} loading="lazy" />
+                                  <figcaption>CUT · {tablet.change.cut}</figcaption>
+                                </figure>
+                                <span className="tablet-swap-arrow">→</span>
+                                <figure>
+                                  <img src={cardImage(tablet.change.add)} alt={tablet.change.add} loading="lazy" />
+                                  <figcaption>ADD · {tablet.change.add}</figcaption>
+                                </figure>
+                              </div>
+                              <dl>
+                                <div>
+                                  <dt>Field observation</dt>
+                                  <dd>{tablet.fieldObservation}</dd>
+                                </div>
+                                <div>
+                                  <dt>Structural pressure point</dt>
+                                  <dd>{tablet.pressurePoint}</dd>
+                                </div>
+                                <div>
+                                  <dt>Smallest honest test</dt>
+                                  <dd>{tablet.testContract}</dd>
+                                </div>
+                                <div>
+                                  <dt>Expected benefit</dt>
+                                  <dd>{tablet.expectedBenefit}</dd>
+                                </div>
+                                <div>
+                                  <dt>Tradeoff</dt>
+                                  <dd>{tablet.tradeoff}</dd>
+                                </div>
+                                <div>
+                                  <dt>Evidence status</dt>
+                                  <dd>{tablet.evidenceStatus}</dd>
+                                </div>
+                              </dl>
+                              <button
+                                type="button"
+                                className="tablet-accept"
+                                disabled={!!swapFlourish}
+                                onClick={() => applyExperimentTablet(tablet)}
+                              >
+                                {applying ? "Applying…" : "Accept this experiment →"}
+                              </button>
+                            </div>
+                            <div className="tablet-face tablet-face-back">
+                              {Icon && (
+                                <span className="tablet-motif-icon">
+                                  <Icon size={54} />
+                                </span>
+                              )}
+                              <strong>EXPERIMENT ACCEPTED</strong>
+                              <span>{tablet.change.add} enters the Masterwork</span>
+                            </div>
+                          </div>
                         </article>
-                      ))}
-                    </div>}
-                    {!metaBreakerLoading && metaBreakerExperiments.length === 0 && <small>Every proposed add is checked against live format legality, Arena availability when required, and commander color identity before it appears here.</small>}
-                  </footer>
-                </section>
-              )}
+                      );
+                    })
+                  ) : (
+                    <p className="experiment-tablets-empty">
+                      {experimentTablets
+                        ? experimentTablets.summary
+                        : "Re-forge this Masterwork to generate fresh evidence-led experiments."}
+                    </p>
+                  )}
+                </div>
+              </section>
               </details>
               {benchStatus === "forging" ? (
                 <section
@@ -5372,15 +5467,6 @@ export default function Home() {
               </footer>
             </article>
             <aside className="testing-loop">
-              <header>
-                <small>CHAPTER II · SHAPE THE MASTERWORK</small>
-                <h2>Three real experiments, ready to test.</h2>
-                <p>
-                  Each one is an exact card swap the Forge already gated
-                  against this deck's real structure. Accept one and watch
-                  it happen — no guesswork, no typing required.
-                </p>
-              </header>
               {forgeReply && (
                 <details className="why-this-masterwork">
                   <summary>
@@ -5390,129 +5476,55 @@ export default function Home() {
                   <pre>{forgeReply}</pre>
                 </details>
               )}
-              <section className="refinement-starters experiment-tablets" aria-label="Three evidence-led controlled experiments">
-                {experimentTablets && experimentTablets.status === "advance" ? (
-                  experimentTablets.tablets.map((tablet: any, index: number) => {
-                    if (tablet.type === "confidence") {
-                      return (
-                        <article
-                          key={tablet.id}
-                          className="experiment-tablet-card confidence-tablet"
-                          style={{ "--motif-accent": masterworkVisualProfile.accent } as React.CSSProperties}
-                        >
-                          <header>
-                            <small>EXPERIMENT {index + 1} · THE FORGE'S READ</small>
-                          </header>
-                          <div className="confidence-tablet-body">
-                            <strong>{tablet.headline}</strong>
-                            <p>{tablet.detail}</p>
-                          </div>
-                          {deckId && !currentFamilyArchived && (
-                            <button
-                              type="button"
-                              className="tablet-accept confidence-seal"
-                              onClick={() => {
-                                setSealBurst(true);
-                                setFamilyArchived(deckId, true);
-                                window.setTimeout(() => setSealBurst(false), 2200);
-                              }}
-                            >
-                              Seal it as a Finished Masterwork →
-                            </button>
-                          )}
+              {metaBreakerDossier && (
+                <section className="meta-breaker-dossier">
+                  <header>
+                    <span><small>DECK STRESS LAB · CONTROLLED TEST</small><b>What this deck struggled with, why it matters, and one safe change to compare.</b></span>
+                    <strong>{metaBreakerDossier.confidence}</strong>
+                  </header>
+                  <div>
+                    <span><small>WHAT THE MODEL SAW</small><b>{metaBreakerDossier.field}</b><em>{metaBreakerDossier.source}</em></span>
+                    <span><small>WHY IT MATTERS</small><b>{metaBreakerDossier.hypothesis}</b></span>
+                    <span><small>ONE CHANGE TO TEST</small><b>{metaBreakerDossier.test}</b></span>
+                  </div>
+                  <footer className="meta-breaker-workflow">
+                    <button onClick={forgeMetaBreakerExperiments} disabled={metaBreakerLoading || !deckIntegrity.passed}>
+                      {metaBreakerLoading ? "Searching the legal card pool…" : "Show three one-card tests"}
+                    </button>
+                    {metaBreakerExperiments.length > 0 && <div>
+                      {metaBreakerExperiments.map((experiment) => (
+                        <article key={`${experiment.cut}-${experiment.add.name}`}>
+                          <img src={experiment.add.image} alt="" />
+                          <span>
+                            <small>ONE-CARD TEST</small>
+                            <b>−1 {experiment.cut}<br />+1 {experiment.add.name}</b>
+                            <p><strong>WHY THIS SWAP</strong>{experiment.reason}</p>
+                            <p><strong>EXPECTED CHANGE</strong>{experiment.expectedChange}</p>
+                            <p><strong>HOW TO JUDGE IT</strong>{experiment.measurement}</p>
+                            <em>{experiment.confidence}</em>
+                          </span>
+                          <button onClick={() => applyMetaBreakerExperiment(experiment)}>Create revision</button>
                         </article>
-                      );
-                    }
-                    const Icon = tablet.motif ? MOTIF_ICONS[tablet.motif as keyof typeof MOTIF_ICONS] : null;
-                    const applying =
-                      swapFlourish?.cut === tablet.change.cut &&
-                      swapFlourish?.add === tablet.change.add;
-                    return (
-                      <article
-                        key={tablet.id}
-                        className={`experiment-tablet-card ${applying ? "applying" : ""} ${tablet.confident === false ? "speculative" : ""}`}
-                        style={{ "--motif-accent": masterworkVisualProfile.accent } as React.CSSProperties}
-                      >
-                        <div className="tablet-flip-inner">
-                          <div className="tablet-face tablet-face-front">
-                            <header>
-                              <small>
-                                EXPERIMENT {index + 1}
-                                {tablet.confident === false && <em className="speculative-badge">SPECULATIVE</em>}
-                              </small>
-                              {Icon && (
-                                <span className="tablet-motif-icon">
-                                  <Icon size={30} />
-                                </span>
-                              )}
-                            </header>
-                            <div className="tablet-swap-art">
-                              <figure>
-                                <img src={cardImage(tablet.change.cut)} alt={tablet.change.cut} loading="lazy" />
-                                <figcaption>CUT · {tablet.change.cut}</figcaption>
-                              </figure>
-                              <span className="tablet-swap-arrow">→</span>
-                              <figure>
-                                <img src={cardImage(tablet.change.add)} alt={tablet.change.add} loading="lazy" />
-                                <figcaption>ADD · {tablet.change.add}</figcaption>
-                              </figure>
-                            </div>
-                            <dl>
-                              <div>
-                                <dt>Field observation</dt>
-                                <dd>{tablet.fieldObservation}</dd>
-                              </div>
-                              <div>
-                                <dt>Structural pressure point</dt>
-                                <dd>{tablet.pressurePoint}</dd>
-                              </div>
-                              <div>
-                                <dt>Smallest honest test</dt>
-                                <dd>{tablet.testContract}</dd>
-                              </div>
-                              <div>
-                                <dt>Expected benefit</dt>
-                                <dd>{tablet.expectedBenefit}</dd>
-                              </div>
-                              <div>
-                                <dt>Tradeoff</dt>
-                                <dd>{tablet.tradeoff}</dd>
-                              </div>
-                              <div>
-                                <dt>Evidence status</dt>
-                                <dd>{tablet.evidenceStatus}</dd>
-                              </div>
-                            </dl>
-                            <button
-                              type="button"
-                              className="tablet-accept"
-                              disabled={!!swapFlourish}
-                              onClick={() => applyExperimentTablet(tablet)}
-                            >
-                              {applying ? "Applying…" : "Accept this experiment →"}
-                            </button>
-                          </div>
-                          <div className="tablet-face tablet-face-back">
-                            {Icon && (
-                              <span className="tablet-motif-icon">
-                                <Icon size={54} />
-                              </span>
-                            )}
-                            <strong>EXPERIMENT ACCEPTED</strong>
-                            <span>{tablet.change.add} enters the Masterwork</span>
-                          </div>
-                        </div>
-                      </article>
-                    );
-                  })
-                ) : (
-                  <p className="experiment-tablets-empty">
-                    {experimentTablets
-                      ? experimentTablets.summary
-                      : "Re-forge this Masterwork to generate fresh evidence-led experiments."}
-                  </p>
-                )}
-              </section>
+                      ))}
+                    </div>}
+                    {!metaBreakerLoading && metaBreakerExperiments.length === 0 && <small>Every proposed add is checked against live format legality, Arena availability when required, and commander color identity before it appears here.</small>}
+                  </footer>
+                </section>
+              )}
+              <details className="deep-forge-redirect-drawer">
+                <summary>
+                  <small>ADVANCED</small>
+                  <b>Tournament-rival one-card experiments</b>
+                </summary>
+                <p>
+                  A second, independent set of gated one-card tests compares
+                  this exact build against its closest tournament rival from
+                  generation. Find it in{" "}
+                  <button type="button" className="deep-forge-redirect-link" onClick={() => setActiveForgeChapter(4)}>
+                    Chapter IV · Deep Forge
+                  </button>.
+                </p>
+              </details>
               <details
                 className="match-evidence-drawer"
                 open={matchEvidenceOpen}
