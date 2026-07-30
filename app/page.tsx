@@ -47,26 +47,25 @@ type MilestoneMotion = {
 } | null;
 
 const FORGING_STAGES = [
-  ["The blueprint is sealed", "Reading the commission marks…", "642"],
-  ["Awakening the Great Furnace", "Ancient channels fill with light.", "642"],
+  ["The blueprint is sealed", "The commission enters the crucible.", "SEAL"],
+  ["Awakening the Great Furnace", "Heat gathers around the chosen intent.", "IGNITE"],
   [
     "Consulting the Archive",
-    "Rejecting designs with repeated structural failures…",
-    "318",
+    "Past masterworks sharpen the first lines of the build.",
+    "ALIGN",
   ],
   [
     "Shaping the strategic core",
-    "Aligning every card with the requested strategy…",
-    "141",
+    "Every card is drawn toward the commission's purpose.",
+    "SHAPE",
   ],
-  ["Tempering the mana lattice", "Discarding unstable foundations…", "47"],
+  ["Tempering the mana lattice", "The foundation is balanced under heat.", "TEMPER"],
   [
     "Testing structural integrity",
-    "Pressing each design against hostile plans…",
-    "9",
+    "The design is pressed against hostile plans.",
+    "PROVE",
   ],
-  ["Inspecting imperfections", "Recording every honest weakness…", "3"],
-  ["Three designs survived", "Cooling the surviving masterworks…", "3"],
+  ["Cooling the masterwork", "The finished weapon takes its final form.", "REVEAL"],
 ] as const;
 
 type DeckPreview = { card: string; role: string; theme: string; win: string };
@@ -409,17 +408,6 @@ const ForgeProcessingLoader = ({ motionMode }: { motionMode: MotionMode }) => {
   );
 };
 
-const CEREMONY_MOTION_ASSETS = [
-  null,
-  "furnace-analysis",
-  "archive-confirmation",
-  "blueprint-reveal",
-  "warning-fracture",
-  "anvil-impact",
-  "recommendation-reveal",
-  "masterwork-unlock",
-] as const;
-
 const ForgeCeremonyMotion = ({
   stage,
   motionMode,
@@ -427,20 +415,35 @@ const ForgeCeremonyMotion = ({
   stage: number;
   motionMode: MotionMode;
 }) => {
-  if (stage === 0) return <ForgeConfirmationSeal motionMode={motionMode} />;
-  const asset = CEREMONY_MOTION_ASSETS[stage] ?? "furnace-analysis";
   return (
     <div
-      key={`${asset}-${stage}`}
-      className={`forge-ceremony-motion forge-ceremony-motion--${asset}${motionMode === "quiet" ? " is-quiet" : ""}`}
+      className={`forge-cinematic-forge${motionMode === "quiet" ? " is-quiet" : ""}`}
+      data-phase={stage + 1}
       aria-hidden="true"
     >
-      <span className="forge-motion-aura" />
-      <span className="forge-motion-crucible" />
-      <span className="forge-motion-index" />
-      <img src={`/assets/forge/animations/${asset}.svg`} alt="" />
-      <span className="forge-motion-scan" />
-      <span className="forge-motion-embers"><i /><i /><i /><i /></span>
+      <video
+        className="forge-cinematic-aperture"
+        src="/assets/forge/vfx/entrance-aperture.mp4"
+        autoPlay={motionMode === "full"}
+        muted
+        loop
+        playsInline
+        preload="auto"
+      />
+      <video
+        className="forge-cinematic-embers"
+        src="/assets/forge/vfx/entrance-embers.mp4"
+        autoPlay={motionMode === "full"}
+        muted
+        loop
+        playsInline
+        preload="auto"
+      />
+      <span className="forge-cinematic-vignette" />
+      <span className="forge-cinematic-halo" />
+      <span className="forge-cinematic-index" />
+      <span className="forge-cinematic-core"><i /><b /></span>
+      <span className="forge-cinematic-sparks"><i /><i /><i /><i /><i /><i /></span>
     </div>
   );
 };
@@ -4641,20 +4644,16 @@ export default function Home() {
             </span>
             <h1>{FORGING_STAGES[stage][0]}</h1>
             <p>{FORGING_STAGES[stage][1]}</p>
-            <div className="candidate-count">
+            <div className="ceremony-phase">
+              <small>CRAFT PHASE {stage + 1} / {FORGING_STAGES.length}</small>
               <strong>{FORGING_STAGES[stage][2]}</strong>
-              <span>
-                CANDIDATE DESIGNS
-                <br />
-                REMAINING
-              </span>
             </div>
             <div className="ceremony-progress">
               <span>
                 <b style={{ width: `${progress}%` }} />
               </span>
               <small>
-                FORGING STAGE {stage + 1} OF {FORGING_STAGES.length}
+                THE FORGE IS WORKING · HOLD FAST
               </small>
             </div>
           </div>
