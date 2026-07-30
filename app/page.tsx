@@ -4256,6 +4256,14 @@ export default function Home() {
             ))}
           </nav>
           <div className={`testing-layout chapter-${activeForgeChapter}-active ${deckViewMode}-deck-view`}>
+            <div className="deck-reference-strip">
+              <img src={cardImage(chosenPreview.card)} alt="" />
+              <div>
+                <strong>{chosenWork.name}</strong>
+                <span>{deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards · {format}</span>
+              </div>
+              <button type="button" onClick={() => setActiveForgeChapter(1)}>View full deck →</button>
+            </div>
             <article className="deck-manuscript">
               <header>
                 <div>
