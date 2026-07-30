@@ -341,3 +341,21 @@ test("weights the actual built deck's basic lands toward its heavier color, not 
   const plains = report.selected.rows.find((row) => row.name === "Plains")?.quantity || 0;
   assert.ok(swamp > plains, `expected more Swamp than Plains given the heavier black pip cost, got ${swamp} vs ${plains}`);
 });
+
+test("prefers nonbasic lands that fix the deck's heavier-demand color over otherwise-identical off-focus lands", () => {
+  const wbCard = (name, oracleText, manaCost, typeLine = "Creature — Test", colorIdentity = ["B"]) => ({ name, oracleText, manaCost, typeLine, colorIdentity });
+  const utilityLand = (name, color) => ({ name, oracleText: "{T}: Add one mana of the indicated color.", manaCost: "", typeLine: "Land", colorIdentity: [color] });
+  const wbPool = [
+    ...Array.from({ length: 10 }, (_, i) => wbCard(`Black Draw ${i}`, "Draw a card. Scry 1.", "{1}{B}{B}")),
+    ...Array.from({ length: 10 }, (_, i) => wbCard(`Black Answer ${i}`, "Exile target nonland permanent.", "{1}{B}{B}")),
+    ...Array.from({ length: 6 }, (_, i) => wbCard(`White Shield ${i}`, "Target creature gains hexproof and indestructible until end of turn.", "{1}{W}", "Creature — Test", ["W"])),
+    ...Array.from({ length: 6 }, (_, i) => wbCard(`Ramp Stone ${i}`, "Add one mana. Create a Treasure token.", "{2}", "Artifact", [])),
+    ...Array.from({ length: 4 }, (_, i) => utilityLand(`Black Utility Land ${i}`, "B")),
+    ...Array.from({ length: 4 }, (_, i) => utilityLand(`White Utility Land ${i}`, "W")),
+  ];
+  const report = forgeNativeMasterwork({ format: "Standard", target: 60, strategy: "Balanced midrange", seed: 5, colors: ["W", "B"], cards: wbPool });
+  const blackUtilityCount = report.selected.rows.filter((row) => row.name.startsWith("Black Utility Land")).length;
+  const whiteUtilityCount = report.selected.rows.filter((row) => row.name.startsWith("White Utility Land")).length;
+  assert.equal(blackUtilityCount, 4, "expected all four black utility lands to be chosen ahead of any white ones");
+  assert.ok(whiteUtilityCount < 4, `expected fewer white utility lands picked than black, got ${whiteUtilityCount}`);
+});

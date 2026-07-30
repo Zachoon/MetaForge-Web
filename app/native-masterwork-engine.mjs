@@ -692,6 +692,18 @@ function buildManaBase(input, landSlots, lands, variant, presetLands = [], pipTo
   }
   const presetLandNames = new Set(rows.map((row) => normalized(row.name)));
 
+  // A nonbasic that fixes colors the deck is actually starved for (heavy
+  // black pip demand, say) is worth more than one that happens to fix a
+  // barely-played splash color — and a dual touching two in-demand colors
+  // should outrank a mono land, since it does double duty. colorFit sums the
+  // land's own producible colors against the pip totals and normalizes to the
+  // same rough 0-4 scale as the existing untapped/fixing-text terms below, so
+  // it nudges the ranking rather than swamping it.
+  const totalPips = Object.values(pipTotals).reduce((sum, count) => sum + count, 0) || 1;
+  const colorFit = (card) => {
+    const identity = card.colorIdentity || card.color_identity || [];
+    return identity.reduce((sum, color) => sum + (pipTotals[color] || 0), 0) / totalPips;
+  };
   const rankedLands = lands
     .filter((card) => {
       const identity = card.colorIdentity || card.color_identity || [];
@@ -700,8 +712,8 @@ function buildManaBase(input, landSlots, lands, variant, presetLands = [], pipTo
     .sort((left, right) => {
       const leftText = normalized(cardText(left));
       const rightText = normalized(cardText(right));
-      const leftScore = (leftText.includes("enters the battlefield tapped") ? -4 : 2) + (leftText.includes("add") ? 2 : 0) + (hash(`${input.seed}|${variant.id}|${left.name}`) % 100) / 10000;
-      const rightScore = (rightText.includes("enters the battlefield tapped") ? -4 : 2) + (rightText.includes("add") ? 2 : 0) + (hash(`${input.seed}|${variant.id}|${right.name}`) % 100) / 10000;
+      const leftScore = (leftText.includes("enters the battlefield tapped") ? -4 : 2) + (leftText.includes("add") ? 2 : 0) + colorFit(left) * 4 + (hash(`${input.seed}|${variant.id}|${left.name}`) % 100) / 10000;
+      const rightScore = (rightText.includes("enters the battlefield tapped") ? -4 : 2) + (rightText.includes("add") ? 2 : 0) + colorFit(right) * 4 + (hash(`${input.seed}|${variant.id}|${right.name}`) % 100) / 10000;
       return rightScore - leftScore || left.name.localeCompare(right.name);
     });
   const nonbasicLimit = Math.min(lands.length, singleton ? Math.min(landSlots - 18, 18) : 6);
