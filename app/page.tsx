@@ -13,7 +13,7 @@ import {
 import { learnRevisionPreferences } from "./revision-learning.mjs";
 import { learnFromForgeInterventions } from "./forge-intervention-learning.mjs";
 import { applyControlledSwap, experimentAdditionSynergy, rankExperimentAdditions, rankExperimentCuts } from "./meta-breaker-experiment.mjs";
-import { forgeNativeMasterwork, forgeImportedMasterwork, parseNativeBlueprintIntent } from "./native-masterwork-engine.mjs";
+import { forgeNativeMasterwork, forgeImportedMasterwork, manaConsistencyReport, parseNativeBlueprintIntent } from "./native-masterwork-engine.mjs";
 import { updateFamily, setFamilyMotifWeights } from "./deck-bench.mjs";
 import {
   resolveDeckStructuralCards,
@@ -1642,6 +1642,7 @@ export default function Home() {
     selected: any;
     candidates: any[];
     options: { format: string; strategy: string; target: number };
+    manaConsistency?: any;
   } | null>(null);
   // Non-fatal disclosure for the decklist-import path: names the Forge could
   // not verify or that aren't legal in this format, left out rather than
@@ -2895,6 +2896,7 @@ export default function Home() {
       selected: nativeReport.selected,
       candidates: nativeReport.candidates,
       options: { format, strategy, target: targetDeckSize(format) },
+      manaConsistency: nativeReport.manaConsistency,
     });
     void persistStoryBench(
       firstRevision,
@@ -3636,7 +3638,7 @@ export default function Home() {
     // buildExperimentTablets keeps re-diffing the ORIGINAL forged deck on
     // every render, so the same three tablets (some now stale or already
     // applied) just kept reappearing after every accept.
-    const knownRows = new Map<string, { roles?: string[]; cmc?: number }>();
+    const knownRows = new Map<string, { roles?: string[]; cmc?: number; colorPips?: Record<string, number>; colorIdentity?: string[] }>();
     for (const row of nativeMasterworkContext.selected?.rows || []) knownRows.set(row.name, row);
     for (const candidate of nativeMasterworkContext.candidates || []) {
       for (const row of candidate.rows || []) {
@@ -3645,11 +3647,19 @@ export default function Home() {
     }
     const nextSelectedRows = remaining.map((row) => {
       const known = knownRows.get(row.name);
-      return { quantity: row.quantity, name: row.name, roles: known?.roles || [], cmc: known?.cmc ?? 0 };
+      return {
+        quantity: row.quantity,
+        name: row.name,
+        roles: known?.roles || [],
+        cmc: known?.cmc ?? 0,
+        colorPips: known?.colorPips,
+        colorIdentity: known?.colorIdentity,
+      };
     });
     setNativeMasterworkContext({
       ...nativeMasterworkContext,
       selected: { ...nativeMasterworkContext.selected, rows: nextSelectedRows, deckText: nextDeck },
+      manaConsistency: manaConsistencyReport(nextSelectedRows, nativeMasterworkContext.options.target),
     });
 
     setForgedDeck(nextDeck);
@@ -4702,6 +4712,23 @@ export default function Home() {
                     <span><small>INTERACTION</small><b>{(deckIntegrity.roles.Interaction || 0) + (deckIntegrity.roles["Board reset"] || 0)}</b></span>
                     <span><small>ADVANTAGE + ENGINES</small><b>{(deckIntegrity.roles["Card advantage"] || 0) + (deckIntegrity.roles["Engine piece"] || 0)}</b></span>
                   </div>
+                  {nativeMasterworkContext?.manaConsistency && (
+                    <section className="stress-dossier">
+                      <span>
+                        <small>MANA CONSISTENCY</small>
+                        <b>{(nativeMasterworkContext.manaConsistency.overall * 100).toFixed(0)}% on-curve</b>
+                        <em>Real hypergeometric odds, not a heuristic guess</em>
+                      </span>
+                      {nativeMasterworkContext.manaConsistency.risky.slice(0, 3).map((entry: { name: string; turn: number; colors: string[]; probability: number }) => (
+                        <span key={entry.name}>
+                          <small>{entry.colors.join("")} by turn {entry.turn}</small>
+                          <b>{entry.name}</b>
+                          <em>{(entry.probability * 100).toFixed(0)}% chance on time</em>
+                        </span>
+                      ))}
+                      <p>Counts land sources only today — mana rocks and dorks are a deliberate later refinement — and treats multi-color needs as independent draws, so real odds run slightly higher than shown.</p>
+                    </section>
+                  )}
                   {simulationDossier && (
                     <section className="stress-dossier">
                       <span>

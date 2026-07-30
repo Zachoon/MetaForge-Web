@@ -1,6 +1,6 @@
 ﻿import assert from "node:assert/strict";
 import test from "node:test";
-import { budgetScoreFor, classifyNativeCard, colorPipsFromCost, complexityScoreFor, curveTargets, fieldCounterRolesFor, forgeNativeMasterwork, oracleTextComplexity, parseNativeBlueprintIntent, poolMechanicalSignals, popularityScoreFromRank, proportionalBasicCounts, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
+import { budgetScoreFor, classifyNativeCard, colorPipsFromCost, complexityScoreFor, curveTargets, fieldCounterRolesFor, forgeNativeMasterwork, hypergeometricAtLeast, manaConsistencyReport, oracleTextComplexity, parseNativeBlueprintIntent, poolMechanicalSignals, popularityScoreFromRank, proportionalBasicCounts, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
 
 const card = (name, oracleText, typeLine = "Creature — Test", manaCost = "{2}{U}", colorIdentity = ["U"]) => ({ name, oracleText, typeLine, manaCost, colorIdentity });
 const pool = [
@@ -494,4 +494,53 @@ test("prefers nonbasic lands that fix the deck's heavier-demand color over other
   const whiteUtilityCount = report.selected.rows.filter((row) => row.name.startsWith("White Utility Land")).length;
   assert.equal(blackUtilityCount, 4, "expected all four black utility lands to be chosen ahead of any white ones");
   assert.ok(whiteUtilityCount < 4, `expected fewer white utility lands picked than black, got ${whiteUtilityCount}`);
+});
+
+test("computes exact hypergeometric probabilities on small, hand-checkable populations", () => {
+  // N=4, K=2 successes, draw 2: P(both successes) = C(2,2)*C(2,0)/C(4,2) = 1/6.
+  assert.ok(Math.abs(hypergeometricAtLeast(4, 2, 2, 2) - 1 / 6) < 1e-9);
+  // P(at least 1 success) = 1 - P(0 successes) = 1 - C(2,0)*C(2,2)/C(4,2) = 5/6.
+  assert.ok(Math.abs(hypergeometricAtLeast(4, 2, 2, 1) - 5 / 6) < 1e-9);
+  // Needing zero copies is a certainty regardless of population shape.
+  assert.equal(hypergeometricAtLeast(60, 5, 7, 0), 1);
+  // Every card in the population is a "success" — any draw guarantees enough.
+  assert.equal(hypergeometricAtLeast(60, 60, 7, 5), 1);
+  // No successes exist in the population at all — impossible to draw one.
+  assert.equal(hypergeometricAtLeast(60, 0, 7, 1), 0);
+  // Needing more successes than exist in either the population or the draw
+  // is impossible.
+  assert.equal(hypergeometricAtLeast(60, 10, 7, 8), 0);
+});
+
+test("hypergeometric probability rises with more sources or more draws, and falls with a stricter requirement", () => {
+  assert.ok(hypergeometricAtLeast(60, 20, 7, 1) > hypergeometricAtLeast(60, 10, 7, 1));
+  assert.ok(hypergeometricAtLeast(60, 10, 14, 1) > hypergeometricAtLeast(60, 10, 7, 1));
+  assert.ok(hypergeometricAtLeast(60, 10, 7, 1) > hypergeometricAtLeast(60, 10, 7, 2));
+});
+
+test("scores mana consistency from real land color sources against each spell's actual pip cost and casting turn", () => {
+  const rows = [
+    { name: "Swamp", quantity: 12, roles: ["land"], colorIdentity: ["B"], cmc: 0 },
+    { name: "Plains", quantity: 4, roles: ["land"], colorIdentity: ["W"], cmc: 0 },
+    { name: "Easy Black One-Drop", quantity: 4, roles: ["threat"], colorIdentity: [], cmc: 1, colorPips: { W: 0, U: 0, B: 1, R: 0, G: 0 } },
+    { name: "Hard White Double-Pip", quantity: 4, roles: ["threat"], colorIdentity: [], cmc: 2, colorPips: { W: 2, U: 0, B: 0, R: 0, G: 0 } },
+  ];
+  const report = manaConsistencyReport(rows, 60);
+  const easy = report.cards.find((entry) => entry.name === "Easy Black One-Drop");
+  const hard = report.cards.find((entry) => entry.name === "Hard White Double-Pip");
+  assert.ok(easy.probability > hard.probability, "a single black pip off 12 Swamps should be far more reliable than double-white off only 4 Plains");
+  assert.ok(report.risky.some((entry) => entry.name === "Hard White Double-Pip"));
+  assert.ok(report.overall > 0 && report.overall <= 1);
+  assert.deepEqual(report.sourcesByColor, { W: 4, U: 0, B: 12, R: 0, G: 0 });
+});
+
+test("a real built deck reports mana consistency alongside the rest of the masterwork", () => {
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Control", seed: 13,
+    commander: { name: "Scholar of Tests", colors: ["U"], oracleText: "Whenever you draw a card, create a token." },
+    cards: pool,
+  });
+  assert.ok(report.manaConsistency.overall >= 0 && report.manaConsistency.overall <= 1);
+  assert.ok(Array.isArray(report.manaConsistency.cards));
+  assert.ok(Array.isArray(report.manaConsistency.risky));
 });

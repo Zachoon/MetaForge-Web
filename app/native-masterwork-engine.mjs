@@ -27,6 +27,9 @@ const BASIC_BY_COLOR = Object.freeze({
 });
 const BASIC_LAND_NAMES = Object.freeze(["Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes"]);
 const isBasicLandName = (name = "") => BASIC_LAND_NAMES.some((basic) => basic.toLowerCase() === String(name).trim().toLowerCase());
+const BASIC_COLOR_BY_NAME = Object.freeze({
+  Plains: ["W"], Island: ["U"], Swamp: ["B"], Mountain: ["R"], Forest: ["G"], Wastes: [],
+});
 
 const ROLE_PATTERNS = Object.freeze({
   ramp: [/add .{0,18}mana/i, /create .{0,18}treasure/i, /search your library for .{0,30}land/i, /land card.{0,30}battlefield/i],
@@ -739,6 +742,88 @@ export function proportionalBasicCounts(colors, pipTotals, remaining) {
   return counts;
 }
 
+// log(n!) via a plain cumulative sum rather than a gamma-function
+// approximation — deck sizes never exceed a few hundred cards, so the O(n)
+// loop is cheap and exact enough for probabilities we're going to round to a
+// percent anyway.
+function logFactorial(n) {
+  let sum = 0;
+  for (let index = 2; index <= n; index += 1) sum += Math.log(index);
+  return sum;
+}
+function logChoose(n, k) {
+  if (k < 0 || k > n || n < 0) return -Infinity;
+  return logFactorial(n) - logFactorial(k) - logFactorial(n - k);
+}
+
+// P(X >= minSuccesses) for X ~ Hypergeometric(populationSize, successStates,
+// sampleSize) — e.g. "drawing at least 2 of your 9 black sources in your
+// first 8 cards out of a 60-card deck." Computed in log space term-by-term
+// (rather than naive factorials) so it stays numerically stable at
+// Commander-sized (100-card) populations, where raw binomial coefficients
+// overflow a double long before the final ratio would.
+export function hypergeometricAtLeast(populationSize, successStates, sampleSize, minSuccesses) {
+  const N = Math.max(0, Math.round(Number(populationSize) || 0));
+  const K = Math.max(0, Math.min(N, Math.round(Number(successStates) || 0)));
+  const n = Math.max(0, Math.min(N, Math.round(Number(sampleSize) || 0)));
+  const min = Math.max(0, Math.round(Number(minSuccesses) || 0));
+  if (min <= 0) return 1;
+  const maxK = Math.min(n, K);
+  if (min > maxK) return 0;
+  const logDenominator = logChoose(N, n);
+  let probability = 0;
+  for (let k = min; k <= maxK; k += 1) {
+    probability += Math.exp(logChoose(K, k) + logChoose(N - K, n - k) - logDenominator);
+  }
+  return clamp(probability, 0, 1);
+}
+
+// How many cards a player has seen by the turn they'd naturally cast a spell
+// of this cost — opening hand plus one draw per turn, assuming the play (the
+// more common, slightly less forgiving case; drawing on turn one moves this
+// up by one card and is left as a deliberate simplification, not modeled
+// separately).
+function cardsSeenByTurn(turn) {
+  return 6 + Math.max(1, Math.round(turn));
+}
+
+// Real mana math, not a heuristic: for each colored-pip spell in the built
+// deck, what's the actual probability of having enough sources of every
+// color it needs by the turn it wants to be cast? Only land rows count as
+// sources for now (mana rocks/dorks are a deliberate later refinement, not
+// modeled here) — colorIdentity on a land row is a stand-in for "produces
+// this color," which is accurate for real duals/fetches/basics but would
+// overcredit a land that merely shares a color identity without actually
+// tapping for it (no such lands exist in the current pool-selection logic,
+// but a future non-mana-producing legendary land could violate this).
+// Multi-color requirements use the minimum across colors, a marginal-
+// probability approximation rather than a true joint distribution (the two
+// draws aren't independent) — deliberately conservative-leaning, not exact.
+export function manaConsistencyReport(rows, deckSize) {
+  const sourcesByColor = { W: 0, U: 0, B: 0, R: 0, G: 0 };
+  for (const row of rows) {
+    if (!row.roles?.includes("land")) continue;
+    for (const color of row.colorIdentity || []) {
+      if (color in sourcesByColor) sourcesByColor[color] += row.quantity;
+    }
+  }
+  const cards = [];
+  for (const row of rows) {
+    if (row.roles?.includes("land")) continue;
+    const neededColors = Object.entries(row.colorPips || {}).filter(([, count]) => count > 0);
+    if (!neededColors.length) continue;
+    const turn = Math.max(1, Math.round(row.cmc));
+    const draws = cardsSeenByTurn(turn);
+    const probability = Math.min(
+      ...neededColors.map(([color, count]) => hypergeometricAtLeast(deckSize, sourcesByColor[color] || 0, draws, count)),
+    );
+    cards.push({ name: row.name, turn, colors: neededColors.map(([color]) => color), probability: Number(probability.toFixed(3)) });
+  }
+  const overall = cards.length ? cards.reduce((sum, entry) => sum + entry.probability, 0) / cards.length : 1;
+  const risky = [...cards].sort((left, right) => left.probability - right.probability).filter((entry) => entry.probability < 0.8);
+  return { overall: Number(clamp(overall, 0, 1).toFixed(3)), sourcesByColor, cards, risky };
+}
+
 function buildManaBase(input, landSlots, lands, variant, presetLands = [], pipTotals = {}) {
   const colors = input.commander?.colors?.length ? input.commander.colors : input.colors?.length ? input.colors : ["W", "U", "B", "R", "G"];
   const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
@@ -758,7 +843,7 @@ function buildManaBase(input, landSlots, lands, variant, presetLands = [], pipTo
     const quantity = Math.min(land.quantity, limit - already, landSlots - used);
     if (quantity <= 0) continue;
     if (existing) existing.quantity += quantity;
-    else rows.push({ quantity, name: land.name, roles: ["land"], score: 0, cmc: 0 });
+    else rows.push({ quantity, name: land.name, roles: ["land"], score: 0, cmc: 0, colorIdentity: land.colorIdentity || land.color_identity || [] });
   }
   const presetLandNames = new Set(rows.map((row) => normalized(row.name)));
 
@@ -790,7 +875,7 @@ function buildManaBase(input, landSlots, lands, variant, presetLands = [], pipTo
   for (const land of rankedLands.slice(0, nonbasicLimit)) {
     const used = rows.reduce((sum, row) => sum + row.quantity, 0);
     if (used >= landSlots) break;
-    rows.push({ quantity: singleton ? 1 : Math.min(4, landSlots - used), name: land.name, roles: ["land"], score: 0, cmc: 0 });
+    rows.push({ quantity: singleton ? 1 : Math.min(4, landSlots - used), name: land.name, roles: ["land"], score: 0, cmc: 0, colorIdentity: land.colorIdentity || land.color_identity || [] });
   }
   const remaining = landSlots - rows.reduce((sum, row) => sum + row.quantity, 0);
   const basicCounts = proportionalBasicCounts(colors, pipTotals, remaining);
@@ -799,7 +884,7 @@ function buildManaBase(input, landSlots, lands, variant, presetLands = [], pipTo
     const name = BASIC_BY_COLOR[color] || "Wastes";
     const existing = rows.find((row) => row.name === name);
     if (existing) existing.quantity += count;
-    else rows.push({ quantity: count, name, roles: ["land"], score: 0, cmc: 0 });
+    else rows.push({ quantity: count, name, roles: ["land"], score: 0, cmc: 0, colorIdentity: [color] });
   }
   return rows;
 }
@@ -915,13 +1000,14 @@ function buildImportedCandidate(input, analysis) {
     if (key === commanderName) continue;
     const landCard = landByName.get(key);
     if (landCard) {
-      presetLandRows.push({ quantity: row.quantity, name: landCard.name });
+      presetLandRows.push({ quantity: row.quantity, name: landCard.name, colorIdentity: landCard.colorIdentity || landCard.color_identity || [] });
       continue;
     }
     if (isBasicLandName(row.name)) {
       // Basic lands are always legal and don't need to appear in the
       // verified pool — the Forge already synthesizes them on demand.
-      presetLandRows.push({ quantity: row.quantity, name: BASIC_LAND_NAMES.find((basic) => basic.toLowerCase() === row.name.trim().toLowerCase()) });
+      const basicName = BASIC_LAND_NAMES.find((basic) => basic.toLowerCase() === row.name.trim().toLowerCase());
+      presetLandRows.push({ quantity: row.quantity, name: basicName, colorIdentity: BASIC_COLOR_BY_NAME[basicName] || [] });
       continue;
     }
     const spellEntry = spellByName.get(key);
@@ -1097,6 +1183,7 @@ export function forgeNativeMasterwork(input) {
     laboratory,
     structuralAnalysis,
     recommendationRecord,
+    manaConsistency: manaConsistencyReport(selected.rows, input.target),
     blueprintIntent: analysis.context.blueprint,
   diagnostics: Object.freeze({
     analysisPasses: 1,
@@ -1198,6 +1285,7 @@ export function forgeImportedMasterwork(input) {
     laboratory,
     structuralAnalysis,
     recommendationRecord,
+    manaConsistency: manaConsistencyReport(selected.rows, input.target),
     blueprintIntent: analysis.context.blueprint,
     changes: Object.freeze(changes),
     diagnostics: Object.freeze({
