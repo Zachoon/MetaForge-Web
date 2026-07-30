@@ -54,6 +54,8 @@ test("major player milestones use choreographed sequences while reduced motion s
   assert.match(motionCss, /\.milestone-smoke/);
   assert.match(motionCss, /\.milestone-flare/);
   assert.match(motionCss, /\.milestone-sparks/);
+  assert.match(motionCss, /\.milestone-masterwork-ready:before/);
+  assert.match(motionCss, /@keyframes furnace-roar-envelope/);
   assert.match(motionCss, /prefers-reduced-motion:reduce[^}]*\.forge-milestone-motion\{display:none!important\}/s);
 });
 
