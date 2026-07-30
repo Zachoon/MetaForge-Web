@@ -73,6 +73,18 @@ test("offers three evidence-led experiment tablets before optional match evidenc
   assert.doesNotMatch(page, /async function consultForge/);
 });
 
+test("makes a guided three-card experiment the doorway to a new Masterwork", () => {
+  assert.match(page, /openingExperimentPending/);
+  assert.match(page, /YOUR FIRST OFFICIAL EXPERIMENT/);
+  assert.match(page, /openingExperimentChoices\.map/);
+  assert.match(page, /CONTROL EXPERIMENT/);
+  assert.match(page, /Skip guidance · Reveal the full deck/);
+  assert.match(page, /className="forge-journey-guide"/);
+  assert.match(page, /Prepare the test/);
+  assert.match(css, /\.opening-experiment-pending \.result-view-controls[^}]*display:none/);
+  assert.match(css, /\.opening-experiment-options\{display:grid;grid-template-columns:repeat\(3/);
+});
+
 test("accepting an experiment tablet plays out where the player can actually see it", () => {
   // The deck list that receives the cut/materialize animation classes only
   // renders while Chapter I is active — the accept handler must jump there

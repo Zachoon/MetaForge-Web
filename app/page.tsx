@@ -1687,6 +1687,8 @@ export default function Home() {
   const [matchEvidenceOpen, setMatchEvidenceOpen] = useState(false);
   const [activeForgeChapter, setActiveForgeChapter] = useState<1 | 2 | 3 | 4>(1);
   const [deckViewMode, setDeckViewMode] = useState<"workbench" | "ledger">("workbench");
+  const [openingExperimentPending, setOpeningExperimentPending] = useState(false);
+  const [openingExperimentFocus, setOpeningExperimentFocus] = useState("");
   const [furthestCommissionStep, setFurthestCommissionStep] = useState(0);
 
   useEffect(() => {
@@ -2274,6 +2276,50 @@ export default function Home() {
     });
   }, [nativeMasterworkContext, forgeCausalityReport, matchLog]);
 
+  const openingExperimentChoices = useMemo(() => {
+    if (!nativeMasterworkContext || !experimentTablets) return [];
+    const experiments: any[] = [];
+    const proposedCards = new Set<string>();
+    for (const tablet of experimentTablets.tablets.filter((entry: any) => entry.type === "experiment")) {
+      if (proposedCards.has(tablet.change.add) || experiments.length >= 3) continue;
+      proposedCards.add(tablet.change.add);
+      experiments.push({
+        id: tablet.id,
+        kind: "swap" as const,
+        card: tablet.change.add,
+        eyebrow: tablet.confident === false ? "SPECULATIVE FLEX" : "FORGE RECOMMENDATION",
+        title: `Test ${tablet.change.add}`,
+        detail: `Rotate out ${tablet.change.cut}. ${tablet.expectedBenefit}`,
+        tablet,
+      });
+    }
+    const used = new Set(experiments.map((choice: any) => choice.card));
+    const controls = (nativeMasterworkContext.selected?.rows || [])
+      .filter((row: any) =>
+        !row.roles?.includes("land") &&
+        !row.roles?.includes("commander") &&
+        !used.has(row.name),
+      )
+      .sort((left: any, right: any) =>
+        Number(left.quantity || 0) - Number(right.quantity || 0) ||
+        Number(right.cmc || 0) - Number(left.cmc || 0),
+      );
+    for (const row of controls) {
+      if (experiments.length >= 3) break;
+      used.add(row.name);
+      experiments.push({
+        id: `control-${row.name}`,
+        kind: "control" as const,
+        card: row.name,
+        eyebrow: "CONTROL EXPERIMENT",
+        title: `Keep ${row.name}`,
+        detail: "Keep the Forge's original flex choice and make this the card you watch first in real matches.",
+        tablet: null,
+      });
+    }
+    return experiments.slice(0, 3);
+  }, [nativeMasterworkContext, experimentTablets]);
+
   const masterworkVisualProfile = useMemo(
     () =>
       resolveMasterworkVisualProfile({
@@ -2835,6 +2881,8 @@ export default function Home() {
     setRemovedCards([]);
     setReplacementRecommendations([]);
     setLastCutCard("");
+    setOpeningExperimentPending(true);
+    setOpeningExperimentFocus("");
     setActiveForgeChapter(1);
     setDeckViewMode("workbench");
 
@@ -2923,6 +2971,8 @@ export default function Home() {
     setRemovedCards([]);
     setReplacementRecommendations([]);
     setLastCutCard("");
+    setOpeningExperimentPending(mode === "commander");
+    setOpeningExperimentFocus("");
     setActiveForgeChapter(1);
     setDeckViewMode("workbench");
 
@@ -3044,6 +3094,8 @@ export default function Home() {
     setSwapFlourish(null);
     setImportWarnings([]);
     setBenchStatus("testing");
+    setOpeningExperimentPending(false);
+    setOpeningExperimentFocus("");
     setChamber("workbench");
   }
 
@@ -3558,6 +3610,20 @@ export default function Home() {
       setLastAcceptedRevisionCount(nextRevisions.length);
       setPostAcceptChoice(true);
     }, 1800);
+  }
+
+  function acceptOpeningControl(cardName: string) {
+    const note = `Opening control experiment: keep ${cardName} in the first build and watch its performance before rotating the slot.`;
+    const nextRevisions = [
+      ...revisions,
+      { deck: forgedDeck, note, createdAt: new Date().toISOString(), recommendationRecord: null },
+    ];
+    setRevisions(nextRevisions);
+    setOpeningExperimentPending(false);
+    setOpeningExperimentFocus(cardName);
+    setActiveForgeChapter(1);
+    recordForgeIntervention("opening control experiment", `Keep ${cardName} and observe the flex slot`, "accepted", nextRevisions.length);
+    void persistStoryBench(nextRevisions, record);
   }
 
   return (
@@ -4169,7 +4235,7 @@ export default function Home() {
       )}
 
       {chamber === "workbench" && (
-        <section className={`testing-anvil progressive-results ${resultViewMode}-results`}>
+        <section className={`testing-anvil progressive-results ${resultViewMode}-results ${openingExperimentPending && benchStatus !== "forging" ? "opening-experiment-pending" : ""}`}>
           <button
             className="back-link"
             onClick={() => setChamber("masterworks")}
@@ -4203,6 +4269,63 @@ export default function Home() {
               </div>
             </div>
           </header>
+          {openingExperimentPending && benchStatus !== "forging" && openingExperimentChoices.length > 0 && (
+            <section className="opening-experiment-gate" aria-labelledby="opening-experiment-title">
+              <header>
+                <span>
+                  <small>YOUR FIRST OFFICIAL EXPERIMENT</small>
+                  <h2 id="opening-experiment-title">Choose the first card this Masterwork will test.</h2>
+                </span>
+                <b>1 OF 3 · PLAYER DECISION</b>
+              </header>
+              <p>
+                The Forge has completed the structure, but the final list stays veiled until you choose its first flex decision. Pick the hypothesis you want to carry into your opening matches.
+              </p>
+              <div className="opening-experiment-options">
+                {openingExperimentChoices.map((choice: any, index: number) => (
+                  <article key={choice.id}>
+                    <figure>
+                      <img src={cardImage(choice.card)} alt={choice.card} loading="lazy" />
+                      <figcaption>PATH {index + 1}</figcaption>
+                    </figure>
+                    <div>
+                      <small>{choice.eyebrow}</small>
+                      <h3>{choice.title}</h3>
+                      <p>{choice.detail}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (choice.kind === "swap") {
+                          setOpeningExperimentPending(false);
+                          setOpeningExperimentFocus(choice.card);
+                          void applyExperimentTablet(choice.tablet);
+                        } else {
+                          acceptOpeningControl(choice.card);
+                        }
+                      }}
+                    >
+                      Choose this experiment →
+                    </button>
+                  </article>
+                ))}
+              </div>
+              <footer>
+                <span><strong>WHAT HAPPENS NEXT</strong> Your choice becomes the first official experiment, then the complete deck and its guided testing path are revealed.</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpeningExperimentPending(false);
+                    setOpeningExperimentFocus("");
+                    setActiveForgeChapter(1);
+                    recordForgeIntervention("opening guidance", "Skipped the guided first experiment", "dismissed");
+                  }}
+                >
+                  Skip guidance · Reveal the full deck
+                </button>
+              </footer>
+            </section>
+          )}
           <nav className="result-view-controls" aria-label="Forge result detail level">
             <span>
               <small>RESULT VIEW</small>
@@ -4255,6 +4378,26 @@ export default function Home() {
               </button>
             ))}
           </nav>
+          {openingExperimentFocus && resultViewMode === "guided" && (
+            <aside className="forge-journey-guide" aria-live="polite">
+              <span>
+                <small>GUIDED FORGE · STEP {activeForgeChapter + 1} OF 5</small>
+                <strong>
+                  {activeForgeChapter === 1 && `Your ${openingExperimentFocus} experiment is set. Review the complete build it lives inside.`}
+                  {activeForgeChapter === 2 && `Define what success looks like for ${openingExperimentFocus}, then carry that question into a match.`}
+                  {activeForgeChapter === 3 && "Understand the machine before judging one card in isolation."}
+                  {activeForgeChapter === 4 && "Use the Deep Forge only when you want the evidence behind the recommendation."}
+                </strong>
+              </span>
+              {activeForgeChapter < 4 ? (
+                <button type="button" onClick={() => setActiveForgeChapter((activeForgeChapter + 1) as 1 | 2 | 3 | 4)}>
+                  {activeForgeChapter === 1 ? "I understand the build · Prepare the test →" : activeForgeChapter === 2 ? "Test defined · Understand the machine →" : "Continue into the Deep Forge →"}
+                </button>
+              ) : (
+                <button type="button" onClick={() => setActiveForgeChapter(2)}>Return to the experiment →</button>
+              )}
+            </aside>
+          )}
           <div className={`testing-layout chapter-${activeForgeChapter}-active ${deckViewMode}-deck-view`}>
             <div className="deck-reference-strip">
               <img src={cardImage(chosenPreview.card)} alt="" />
