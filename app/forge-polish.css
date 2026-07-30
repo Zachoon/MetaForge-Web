@@ -429,3 +429,43 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 @media (prefers-reduced-motion: reduce) {
   .entrance-actions > button,.masterwork-card,.history-open { transition: none; }
 }
+
+/* The recommendation is the reveal. Put the work in the first viewport and
+   let the ceremonial explanation close the selection instead of delaying it. */
+.masterwork-reveal {
+  display: flex;
+  flex-direction: column;
+  padding-top: 20px;
+}
+.masterwork-reveal > .masterwork-actions { order: 1; margin-top: 0; padding-top: 0; }
+.masterwork-reveal > .masterwork-grid { order: 2; margin-top: 14px; margin-bottom: 28px; }
+.masterwork-reveal > header {
+  order: 3;
+  display: grid;
+  grid-template-columns: minmax(0,1.15fr) minmax(300px,.85fr);
+  gap: clamp(28px,5vw,80px);
+  align-items: end;
+  padding: clamp(30px,4vw,52px) clamp(4px,2vw,24px);
+  border-top: 1px solid var(--forge-hairline);
+  text-align: left;
+}
+.masterwork-reveal > header .forge-eyebrow { grid-column: 1/-1; justify-content: flex-start; margin-bottom: -12px; }
+.masterwork-reveal > header h1 { margin: 0; font-size: clamp(34px,4vw,58px); }
+.masterwork-reveal > header p { margin: 0; padding-left: 24px; border-left: 1px solid var(--forge-bright-line); }
+.masterwork-reveal > .blueprint-promise { order: 4; margin-top: 0; }
+.masterwork-reveal > footer { order: 5; margin-top: 26px; }
+.masterwork-actions::before {
+  content: "THE FORGE'S RECOMMENDATION";
+  color: var(--forge-ember-soft);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .16em;
+}
+@media(max-width:760px){
+  .masterwork-reveal{padding-top:12px}
+  .masterwork-reveal>.masterwork-actions{align-items:flex-start;flex-direction:column;margin-bottom:8px}
+  .masterwork-actions .masterwork-recycle{width:100%;margin-left:0}
+  .masterwork-reveal>header{grid-template-columns:1fr;gap:18px;padding-inline:4px}
+  .masterwork-reveal>header .forge-eyebrow{margin-bottom:0}
+  .masterwork-reveal>header p{padding:0;border-left:0}
+}
