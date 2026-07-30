@@ -31,3 +31,15 @@ test("commander predictions dismiss instead of leaving an empty listbox", () => 
   assert.match(page, /commanderSearchOpen && \(commanderSearching/);
   assert.match(page, /setCommanderSearchOpen\(false\)/);
 });
+
+test("the search results dropdown isn't clipped by the Blueprint seal's own overflow:hidden", () => {
+  // .commander-search's results listbox is position:absolute and must
+  // render outside .commander-blueprint's box while searching. The seal
+  // only needs overflow:hidden once a commander article is actually
+  // bound (to clip its corner badge/gradient) — applying it unconditionally
+  // silently clips the search dropdown to almost nothing.
+  assert.doesNotMatch(commander, /\.commander-blueprint\{overflow:hidden/);
+  const scoped = commander.match(/\.commander-blueprint:has\(>article\)\{([^}]*)\}/);
+  assert.ok(scoped, "expected overflow:hidden to be scoped to the bound-commander state");
+  assert.match(scoped[1], /overflow:hidden/);
+});
