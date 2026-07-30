@@ -54,14 +54,14 @@ type SavedRevision = {
   deckText: string;
   note: string;
   createdAt: string;
-  matches?: Array<{ id: string; result: "win" | "loss" }>;
+  matches?: Array<{ id: string; result: "win" | "loss"; playedAt?: string }>;
 };
 type SavedFamily = {
   id: string;
   name: string;
   format: string;
   strategy?: string;
-  commander?: { name: string; colors: string[] } | null;
+  commander?: { name: string; colors: string[]; image?: string } | null;
   record?: { wins: number; losses: number };
   archived?: boolean;
   // Written by the main app's refreshMasterworkMotif when a Masterwork is
@@ -137,6 +137,27 @@ export default function PlayerProfile() {
       }),
     [families, cachedMotifWeightsByFamily, motifWeightsByFamily],
   );
+  const chronicle = useMemo(() =>
+    (families || []).flatMap((family) =>
+      family.revisions.flatMap((revision, revisionIndex) => {
+        const revisionEntry = {
+          id: `${family.id}-revision-${revisionIndex}`,
+          family: family.name,
+          kind: revisionIndex === 0 ? "MASTERWORK FORGED" : "REVISION PRESERVED",
+          detail: revision.note || (revisionIndex === 0 ? "The first complete build entered the archive." : `Revision ${revisionIndex + 1} joined this Masterwork.`),
+          occurredAt: revision.createdAt,
+        };
+        const matches = (revision.matches || []).map((match) => ({
+          id: `${family.id}-${match.id}`,
+          family: family.name,
+          kind: match.result === "win" ? "MATCH WON" : "MATCH RECORDED",
+          detail: `Evidence attached to revision ${revisionIndex + 1}.`,
+          occurredAt: match.playedAt || revision.createdAt,
+        }));
+        return [revisionEntry, ...matches];
+      }),
+    ).sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime()).slice(0, 8),
+  [families]);
   const selectedFamily = families?.find((family) => family.id === selectedId) || null;
   const IdentityMotifIcon = identity.dominantMotif ? MOTIF_ICONS[identity.dominantMotif as MotifId] : null;
 
@@ -146,6 +167,7 @@ export default function PlayerProfile() {
       return;
     }
     setSelectedId(family.id);
+    window.requestAnimationFrame(() => document.getElementById("profile-structure")?.scrollIntoView({ behavior: "smooth", block: "start" }));
     setStructuralLoading(family.id);
     try {
       const { analysis, motifWeights } = await fetchStructuralAnalysis(family);
@@ -302,12 +324,22 @@ export default function PlayerProfile() {
           {families.map((family) => {
             const evidence = family.record || { wins: 0, losses: 0 };
             return (
-              <article key={family.id} className={family.archived ? "finished" : ""}>
+              <article key={family.id} className={[family.archived ? "finished" : "", selectedId === family.id ? "selected" : ""].filter(Boolean).join(" ")}>
                 <button className="profile-deck-open" onClick={() => inspectStructure(family)}>
-                  <small>{family.archived ? "FINISHED · " : ""}{family.format}</small>
-                  <strong>{family.name}</strong>
-                  <span>{family.commander?.name || "No commander"}</span>
-                  <em>{evidence.wins}W · {evidence.losses}L · {family.revisions.length} revision{family.revisions.length === 1 ? "" : "s"}</em>
+                  <span className="profile-deck-art">
+                    {family.commander?.image ? <img src={family.commander.image} alt="" /> : <i>ᛞ</i>}
+                    <small>{family.archived ? "SEALED" : "IN PROGRESS"}</small>
+                  </span>
+                  <span className="profile-deck-copy">
+                    <small>{family.format}</small>
+                    <strong>{family.name}</strong>
+                    <span>{family.commander?.name || "No commander"}</span>
+                  </span>
+                  <span className="profile-deck-proof">
+                    <em><b>{family.revisions.length}</b> revisions</em>
+                    <em><b>{evidence.wins + evidence.losses}</b> matches</em>
+                    <i>Inspect structure →</i>
+                  </span>
                 </button>
               </article>
             );
@@ -315,11 +347,26 @@ export default function PlayerProfile() {
         </div>
       </section>
 
+      <section className="forge-chronicle" aria-labelledby="forge-chronicle-title">
+        <header><span><small>RECENT CHRONICLE</small><h2 id="forge-chronicle-title">What you have actually forged.</h2></span><b>{chronicle.length} latest marks</b></header>
+        {chronicle.length ? (
+          <ol>
+            {chronicle.map((entry) => (
+              <li key={entry.id}>
+                <i />
+                <span><small>{entry.kind}</small><b>{entry.family}</b><p>{entry.detail}</p></span>
+                <time dateTime={entry.occurredAt}>{new Date(entry.occurredAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</time>
+              </li>
+            ))}
+          </ol>
+        ) : <p className="empty">Your first saved Masterwork will begin this chronicle.</p>}
+      </section>
+
       {selectedFamily && (
-        <section className="profile-structure">
+        <section className="profile-structure" id="profile-structure">
           <header>
-            <small>STRUCTURAL BREAKDOWN</small>
-            <h2>{selectedFamily.name}</h2>
+            <span><small>STRUCTURAL BREAKDOWN</small><h2>{selectedFamily.name}</h2></span>
+            <button type="button" onClick={() => setSelectedId(null)}>Close inspection</button>
           </header>
           {structuralLoading === selectedFamily.id && <p className="empty">Reading verified card text for every slot…</p>}
           {analysisError && <p className="empty">{analysisError}</p>}

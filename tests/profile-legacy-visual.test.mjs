@@ -15,3 +15,14 @@ test("Forge Mastery turns real milestones into a visible personal legacy path", 
   assert.match(css, /\.legacy-path li\.next/);
   assert.match(css, /prefers-reduced-motion:reduce[^}]*\.legacy-rail/s);
 });
+
+test("the profile batch makes the archive, chronicle, and inspection feel connected", () => {
+  assert.match(profile, /className="profile-deck-art"/);
+  assert.match(profile, /className="profile-deck-proof"/);
+  assert.match(profile, /const chronicle = useMemo/);
+  assert.match(profile, /RECENT CHRONICLE/);
+  assert.match(profile, /id="profile-structure"/);
+  assert.match(profile, /Close inspection/);
+  assert.match(css, /\.forge-chronicle/);
+  assert.match(css, /@keyframes profile-inspection-open/);
+});
