@@ -40,7 +40,7 @@ type Chamber =
 type MotionMode = "full" | "quiet";
 type ForgeAction = "none" | "forge" | "reveal" | "select" | "refine" | "grow";
 type MilestoneMotion = {
-  kind: "ignition" | "masterwork-ready" | "masterwork-selected" | "experiment-chosen" | "revision-accepted";
+  kind: "ignition" | "masterwork-ready" | "masterwork-selected" | "experiment-chosen" | "revision-accepted" | "evidence-recorded";
   eyebrow: string;
   label: string;
   glyph: string;
@@ -1620,6 +1620,7 @@ export default function Home() {
     "idle" | "forging" | "testing" | "thinking"
   >("idle");
   const [record, setRecord] = useState({ wins: 0, losses: 0 });
+  const [pendingMatchResult, setPendingMatchResult] = useState<"win" | "loss" | null>(null);
   const [opponentArchetype, setOpponentArchetype] = useState("Unknown / not sure");
   const [matchLog, setMatchLog] = useState<Array<{
     id: string;
@@ -3567,7 +3568,7 @@ export default function Home() {
     ]);
   }
 
-  function recordMatch(result: "win" | "loss") {
+  function recordMatch(result: "win" | "loss", signal = "No single lesson isolated") {
     const next =
       result === "win"
         ? { ...record, wins: record.wins + 1 }
@@ -3580,12 +3581,19 @@ export default function Home() {
         id: crypto.randomUUID(),
         result,
         opponent: opponentArchetype,
-        signal: "",
+        signal,
         playedAt: new Date().toISOString(),
         revision: Math.max(1, revisions.length),
       },
     ];
     setMatchLog(nextMatches);
+    setPendingMatchResult(null);
+    setMilestoneMotion({
+      kind: "evidence-recorded",
+      eyebrow: "EVIDENCE PRESERVED",
+      label: `${result === "win" ? "WIN" : "LOSS"} · ${opponentArchetype}`,
+      glyph: "ᛇ",
+    });
     void persistStoryBench(revisions, next, "", undefined, nextMatches);
   }
 
@@ -5827,23 +5835,39 @@ export default function Home() {
                   <span><small>MATCH EVIDENCE · OPTIONAL</small><b>Record games and inspect what the Forge has learned</b></span>
                   <strong>{matchEvidenceOpen ? "HIDE" : `${revisionLearning.sampleSize} RECORDED`}</strong>
                 </summary>
-              <label className="opponent-signal">
-                <span>OPPONENT ARCHETYPE · OPTIONAL BUT VALUABLE</span>
-                <select value={opponentArchetype} onChange={(event) => setOpponentArchetype(event.target.value)}>
-                  {["Unknown / not sure", "Aggro", "Tempo", "Midrange", "Control", "Ramp", "Combo", "Tokens", "Graveyard", "Other / rogue"].map((option) => (
-                    <option key={option}>{option}</option>
-                  ))}
-                </select>
-                <small>Every result is tied to this exact revision. Unknown is honest evidence; one match never rewrites the deck.</small>
-              </label>
-              <div className="test-record">
-                <button onClick={() => recordMatch("win")}>
-                  Record a win <b>{record.wins}</b>
-                </button>
-                <button onClick={() => recordMatch("loss")}>
-                  Record a loss <b>{record.losses}</b>
-                </button>
-              </div>
+              <section className="evidence-ritual" aria-label="Record one match">
+                <header>
+                  <span><small>STEP 1 · THE RESULT</small><b>What happened at the table?</b></span>
+                  <em>REVISION {Math.max(1, revisions.length)}</em>
+                </header>
+                <div className="test-record">
+                  <button className={pendingMatchResult === "win" ? "selected" : ""} onClick={() => setPendingMatchResult("win")}>
+                    I won this match <b>{record.wins}</b>
+                  </button>
+                  <button className={pendingMatchResult === "loss" ? "selected" : ""} onClick={() => setPendingMatchResult("loss")}>
+                    I lost this match <b>{record.losses}</b>
+                  </button>
+                </div>
+                {pendingMatchResult && (
+                  <div className="evidence-context">
+                    <label className="opponent-signal">
+                      <span>STEP 2 · WHAT DID YOU FACE?</span>
+                      <select value={opponentArchetype} onChange={(event) => setOpponentArchetype(event.target.value)}>
+                        {["Unknown / not sure", "Aggro", "Tempo", "Midrange", "Control", "Ramp", "Combo", "Tokens", "Graveyard", "Other / rogue"].map((option) => (
+                          <option key={option}>{option}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <fieldset>
+                      <legend>STEP 3 · WHAT WAS THE CLEAREST LESSON?</legend>
+                      {["The plan came together", "Too slow to stabilize", "Mana helped or hurt", "Interaction arrived at the wrong time", "A key card overperformed", "No single lesson isolated"].map((signal) => (
+                        <button type="button" key={signal} onClick={() => recordMatch(pendingMatchResult, signal)}>{signal}<i>→</i></button>
+                      ))}
+                    </fieldset>
+                    <small>Choose the closest honest observation. The Forge preserves it as one clue—not a verdict.</small>
+                  </div>
+                )}
+              </section>
               <section className="revision-learning-dossier">
                 <header><small>REVISION {Math.max(1, revisions.length)} LEARNING</small><b>{revisionLearning.sampleSize} recorded match{revisionLearning.sampleSize === 1 ? "" : "es"}</b></header>
                 {revisionLearning.actionable.length ? revisionLearning.actionable.slice(0, 3).map((pattern) => (

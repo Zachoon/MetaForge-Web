@@ -79,3 +79,13 @@ test("the Private Bench reads as a living archive instead of a plain saved-deck 
   assert.match(benchCss, /@keyframes bench-masterwork-rise/);
   assert.match(benchCss, /prefers-reduced-motion:reduce[^}]*\.bench-dock\.open/s);
 });
+
+test("recording a match is a bounded three-step evidence ritual", () => {
+  assert.match(page, /pendingMatchResult/);
+  assert.match(page, /STEP 1 · THE RESULT/);
+  assert.match(page, /STEP 2 · WHAT DID YOU FACE/);
+  assert.match(page, /STEP 3 · WHAT WAS THE CLEAREST LESSON/);
+  assert.match(page, /No single lesson isolated/);
+  assert.match(page, /kind: "evidence-recorded"/);
+  assert.match(motionCss, /\.milestone-evidence-recorded/);
+});
