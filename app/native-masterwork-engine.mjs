@@ -1057,16 +1057,71 @@ function computeBlueprintAlignment(analysis, selected, singleton) {
   });
 }
 
+// A Commander deck's real land needs move with its actual curve and ramp
+// density, not a flat 37% — the well-known deckbuilding guidance (Frank
+// Karsten's land-count tables) scales land count up with average CMC and
+// down with mana-rock/dork density, since a rock meaningfully substitutes
+// for a land. Roughly +1 land per +0.5 average CMC above a 3.0 baseline.
+// Ramp gets a grace allowance first: nearly every Commander deck already
+// runs a handful of staple rocks (Sol Ring, signets) regardless of
+// strategy, and especially a multicolor deck's ramp package is doing
+// double duty fixing colors, not just accelerating — so only ramp beyond
+// that normal baseline counts against land count, and even then it's
+// capped well short of the curve signal it's weighed against (confirmed
+// against a real 5-color, high-curve, ramp-heavy fetched pool: without
+// this grace/cap, 16 ordinary ramp pieces alone swamped a real +1 curve
+// signal down to the hard floor). Bounded to a handful of lands either
+// side of the existing default — this nudges a well-tested baseline, it
+// doesn't replace it. Scoped to singleton formats only: a 60-card
+// constructed deck's 4-copy density and sideboard-backed consistency make
+// the same per-card curve math a much shakier fit, so that ratio is left
+// alone.
+export function curveAwareLandAdjustment(samples) {
+  let totalCmc = 0;
+  let totalQuantity = 0;
+  let rampQuantity = 0;
+  for (const sample of samples) {
+    const quantity = Math.max(1, Number(sample.quantity) || 1);
+    totalCmc += (sample.cmc || 0) * quantity;
+    totalQuantity += quantity;
+    if (sample.roles?.includes("ramp")) rampQuantity += quantity;
+  }
+  if (!totalQuantity) return 0;
+  const avgCmc = totalCmc / totalQuantity;
+  const curveAdjustment = Math.round((avgCmc - 3.0) * 2);
+  const rampGrace = 3;
+  const rampAdjustment = Math.min(3, Math.floor(Math.max(0, rampQuantity - rampGrace) / 3));
+  return clamp(curveAdjustment - rampAdjustment, -4, 4);
+}
+
 function buildCandidate(input, variant, analysis) {
   const target = input.target || (["Commander", "Brawl"].includes(input.format) ? 100 : 60);
   const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
   const commanderSlots = allCommanders(input).length;
-  const landSlots = singleton ? Math.round(target * 0.37) : Math.round(target * 0.4);
-  const spells = analysis.spells;
+  const baselineLandSlots = singleton ? Math.round(target * 0.37) : Math.round(target * 0.4);
+  const scored = analysis.spells.map((entry) => scoreCard(entry, input, variant, analysis.context));
   const lands = analysis.lands;
-  const scored = spells.map((entry) => scoreCard(entry, input, variant, analysis.context));
+  const targets = roleTargets(input.format, input.strategy);
+  const baselineSpellSlots = target - baselineLandSlots - commanderSlots;
+  // A raw score-sorted sample skews toward whatever the scorer rewards
+  // (efficiency, synergy) rather than the deck's real curve — chooseSpells'
+  // own curve-shaping only kicks in once it runs. So the land estimate
+  // instead measures a real preliminary selection (curve targets already
+  // applied) and only re-runs selection if that changes the land count.
+  const preliminary = singleton
+    ? chooseSpells(scored, baselineSpellSlots, singleton, targets, analysis.context.blueprint, [], curveTargets(input.strategy, baselineSpellSlots))
+    : null;
+  const landSlots = singleton
+    ? clamp(
+        baselineLandSlots + curveAwareLandAdjustment(preliminary.selected),
+        Math.round(target * 0.32),
+        Math.round(target * 0.42),
+      )
+    : baselineLandSlots;
   const spellSlots = target - landSlots - commanderSlots;
-  const { selected, roleCounts } = chooseSpells(scored, spellSlots, singleton, roleTargets(input.format, input.strategy), analysis.context.blueprint, [], curveTargets(input.strategy, spellSlots));
+  const { selected, roleCounts } = spellSlots === baselineSpellSlots && preliminary
+    ? preliminary
+    : chooseSpells(scored, spellSlots, singleton, targets, analysis.context.blueprint, [], curveTargets(input.strategy, spellSlots));
   const mana = buildManaBase(input, landSlots, lands, variant, [], aggregatePipTotals(selected), selected);
   const rows = [
     ...allCommanders(input).map((commander) => ({ quantity: 1, name: commander.name, roles: ["commander"], score: 100, cmc: manaValueFromCost(commander.manaCost, commander.cmc) })),
@@ -1095,7 +1150,6 @@ function buildImportedCandidate(input, analysis) {
   const target = input.target || (["Commander", "Brawl"].includes(input.format) ? 100 : 60);
   const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
   const commanderSlots = allCommanders(input).length;
-  const landSlots = singleton ? Math.round(target * 0.37) : Math.round(target * 0.4);
   const commanderNames = commanderNamesNormalized(input);
 
   const spellByName = new Map(analysis.spells.map((entry) => [normalized(entry.card.name), entry]));
@@ -1137,6 +1191,18 @@ function buildImportedCandidate(input, analysis) {
   if (!presetSpellRows.length && !presetLandRows.length) {
     throw new Error("None of the submitted cards could be matched to the verified pool");
   }
+
+  // The player's own submitted spells are the real curve/ramp signal here
+  // — more precise than the candidate-pool estimate buildCandidate has to
+  // fall back on, since we already know exactly what's going in the deck.
+  const baselineLandSlots = singleton ? Math.round(target * 0.37) : Math.round(target * 0.4);
+  const landSlots = singleton
+    ? clamp(
+        baselineLandSlots + curveAwareLandAdjustment(presetSpellRows),
+        Math.round(target * 0.32),
+        Math.round(target * 0.42),
+      )
+    : baselineLandSlots;
 
   // Preset rows are reserved unconditionally, so this variant only shapes
   // which cards fill any slots the player's list didn't already occupy.

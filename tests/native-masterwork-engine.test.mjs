@@ -1,6 +1,6 @@
 ﻿import assert from "node:assert/strict";
 import test from "node:test";
-import { budgetScoreFor, classifyNativeCard, colorPipsFromCost, complexityScoreFor, curveTargets, fieldCounterRolesFor, forgeNativeMasterwork, hypergeometricAtLeast, manaConsistencyReport, oracleTextComplexity, parseNativeBlueprintIntent, poolMechanicalSignals, popularityScoreFromRank, proportionalBasicCounts, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
+import { budgetScoreFor, classifyNativeCard, colorPipsFromCost, complexityScoreFor, curveAwareLandAdjustment, curveTargets, fieldCounterRolesFor, forgeNativeMasterwork, hypergeometricAtLeast, manaConsistencyReport, oracleTextComplexity, parseNativeBlueprintIntent, poolMechanicalSignals, popularityScoreFromRank, proportionalBasicCounts, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
 
 const card = (name, oracleText, typeLine = "Creature — Test", manaCost = "{2}{U}", colorIdentity = ["U"]) => ({ name, oracleText, typeLine, manaCost, colorIdentity });
 const pool = [
@@ -704,4 +704,111 @@ test("a single commander with no partner behaves exactly as before", () => {
   const commanderRows = report.selected.rows.filter((row) => row.roles.includes("commander"));
   assert.equal(commanderRows.length, 1);
   assert.equal(commanderRows[0].name, "Scholar of Tests");
+});
+
+test("curveAwareLandAdjustment nudges up for a high average CMC with no ramp", () => {
+  const samples = [
+    { quantity: 20, cmc: 6, roles: ["threat"] },
+  ];
+  // avgCmc 6.0 is +3.0 above the 3.0 baseline -> +6 raw, clamped to +4.
+  assert.equal(curveAwareLandAdjustment(samples), 4);
+});
+
+test("curveAwareLandAdjustment nudges down for heavy ramp even at a normal curve, after its grace allowance", () => {
+  const samples = [
+    { quantity: 12, cmc: 3, roles: ["threat"] },
+    { quantity: 9, cmc: 3, roles: ["ramp"] },
+  ];
+  // avgCmc stays at 3.0 (no curve adjustment). The first 3 ramp pieces are
+  // a free grace allowance (nearly every deck runs a few staple rocks
+  // regardless of strategy), leaving 6 effective ramp pieces -> -2.
+  assert.equal(curveAwareLandAdjustment(samples), -2);
+});
+
+test("curveAwareLandAdjustment does not penalize an ordinary handful of staple ramp pieces", () => {
+  const samples = [
+    { quantity: 20, cmc: 3, roles: ["threat"] },
+    { quantity: 3, cmc: 3, roles: ["ramp"] },
+  ];
+  assert.equal(curveAwareLandAdjustment(samples), 0);
+});
+
+test("heavy ramp in a genuinely high-curve deck reduces lands modestly, not to the floor", () => {
+  // Regression case from a real live-fetched 5-color Commander pool (The
+  // Ur-Dragon, avg spell CMC 3.7, 16 ramp/fixing pieces): before the grace
+  // allowance and ramp cap existed, 16 ordinary ramp pieces alone swamped
+  // a real +1 curve signal all the way down to the -4 floor.
+  const samples = [
+    { quantity: 49, cmc: 4.06, roles: ["threat"] },
+    { quantity: 16, cmc: 2, roles: ["ramp"] },
+  ];
+  const adjustment = curveAwareLandAdjustment(samples);
+  assert.ok(adjustment > -4, `expected heavy ramp to be capped short of the floor even at a high curve, got ${adjustment}`);
+  assert.ok(adjustment < 0, `expected heavy ramp to still pull lands down somewhat, got ${adjustment}`);
+});
+
+test("curveAwareLandAdjustment is bounded on both sides regardless of how extreme the sample is", () => {
+  const extremeHigh = [{ quantity: 10, cmc: 12, roles: ["threat"] }];
+  const extremeLow = [
+    { quantity: 3, cmc: 0, roles: ["threat"] },
+    { quantity: 30, cmc: 1, roles: ["ramp"] },
+  ];
+  assert.equal(curveAwareLandAdjustment(extremeHigh), 4);
+  assert.equal(curveAwareLandAdjustment(extremeLow), -4);
+});
+
+test("curveAwareLandAdjustment returns no nudge for an empty or all-ramp-free average deck", () => {
+  assert.equal(curveAwareLandAdjustment([]), 0);
+  assert.equal(curveAwareLandAdjustment([{ quantity: 10, cmc: 3, roles: ["threat"] }]), 0);
+});
+
+// Diverse across every role roleTargets checks (ramp/draw/interaction/
+// protection/recursion/sweeper) so the tournament's 45% role-coverage floor
+// clears easily, while still skewing heavily toward a high curve with only
+// a light dose of ramp — isolating the curve half of the adjustment.
+const highCurvePool = [
+  ...Array.from({ length: 20 }, (_, i) => card(`Draw ${i}`, "When this enters, draw a card. Scry 1.", "Creature — Test", "{4}{U}{U}")),
+  ...Array.from({ length: 20 }, (_, i) => card(`Answer ${i}`, "Exile target nonland permanent.", "Creature — Test", "{4}{U}{U}")),
+  ...Array.from({ length: 15 }, (_, i) => card(`Shield ${i}`, "Target creature gains hexproof and indestructible until end of turn.", "Creature — Test", "{3}{U}{U}")),
+  ...Array.from({ length: 10 }, (_, i) => card(`Recur ${i}`, "Return target creature card from your graveyard to your hand.", "Creature — Test", "{3}{U}{U}")),
+  ...Array.from({ length: 8 }, (_, i) => card(`Sweep ${i}`, "Exile all creatures.", "Sorcery", "{5}{U}{U}")),
+  ...Array.from({ length: 8 }, (_, i) => card(`Stone ${i}`, "Add one mana. Create a Treasure token.", "Artifact", "{2}")),
+  ...Array.from({ length: 10 }, (_, i) => card(`Island Utility ${i}`, "{T}: Add {U}.", "Land", "", ["U"])),
+];
+
+test("a high-curve, ramp-light Commander deck gets more lands than the flat 37% baseline", () => {
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Control", seed: 21,
+    commander: { name: "Scholar of Tests", colors: ["U"], oracleText: "Whenever you draw a card, create a token." },
+    cards: highCurvePool,
+  });
+  const landSlots = report.selected.rows.filter((row) => row.roles.includes("land")).reduce((sum, row) => sum + row.quantity, 0);
+  assert.ok(landSlots > 37, `expected more than the flat 37-land baseline for a high-curve deck, got ${landSlots}`);
+  assert.equal(report.selected.rows.reduce((sum, row) => sum + row.quantity, 0), 100, "total deck size must still hit the target regardless of how the land/spell split shifted");
+});
+
+test("a low-curve, ramp-heavy Commander deck gets fewer lands than the flat 37% baseline", () => {
+  const rampPool = [
+    ...Array.from({ length: 30 }, (_, i) => card(`Dork ${i}`, "Add one mana. Create a Treasure token.", "Artifact", "{1}")),
+    ...Array.from({ length: 15 }, (_, i) => card(`Cheap Draw ${i}`, "Draw a card. Scry 1.", "Creature — Test", "{U}")),
+    ...Array.from({ length: 15 }, (_, i) => card(`Cheap Answer ${i}`, "Exile target nonland permanent.", "Creature — Test", "{U}")),
+    ...Array.from({ length: 8 }, (_, i) => card(`Cheap Shield ${i}`, "Target creature gains hexproof and indestructible until end of turn.", "Creature — Test", "{U}")),
+    ...Array.from({ length: 6 }, (_, i) => card(`Cheap Recur ${i}`, "Return target creature card from your graveyard to your hand.", "Creature — Test", "{1}{U}")),
+    ...Array.from({ length: 5 }, (_, i) => card(`Cheap Sweep ${i}`, "Exile all creatures.", "Sorcery", "{1}{U}")),
+    ...Array.from({ length: 10 }, (_, i) => card(`Island Utility ${i}`, "{T}: Add {U}.", "Land", "", ["U"])),
+  ];
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Aggressive", seed: 23,
+    commander: { name: "Scholar of Tests", colors: ["U"], oracleText: "Whenever you draw a card, create a token." },
+    cards: rampPool,
+  });
+  const landSlots = report.selected.rows.filter((row) => row.roles.includes("land")).reduce((sum, row) => sum + row.quantity, 0);
+  assert.ok(landSlots < 37, `expected fewer than the flat 37-land baseline for a low-curve, ramp-heavy deck, got ${landSlots}`);
+  assert.equal(report.selected.rows.reduce((sum, row) => sum + row.quantity, 0), 100);
+});
+
+test("curve-aware land scaling never touches non-singleton formats, which stay at a flat 40%", () => {
+  const report = forgeNativeMasterwork({ format: "Standard", target: 60, strategy: "Control", seed: 25, colors: ["U"], cards: highCurvePool });
+  const landSlots = report.selected.rows.filter((row) => row.roles.includes("land")).reduce((sum, row) => sum + row.quantity, 0);
+  assert.equal(landSlots, 24, "60-card Standard must stay at the flat 40% baseline (24 lands) regardless of curve");
 });
