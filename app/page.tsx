@@ -5303,7 +5303,7 @@ export default function Home() {
                           <em>{(entry.probability * 100).toFixed(0)}% chance on time</em>
                         </span>
                       ))}
-                      <p>Counts land sources only today — mana rocks and dorks are a deliberate later refinement — and treats multi-color needs as independent draws, so real odds run slightly higher than shown.</p>
+                      <p>Counts lands, mana rocks, and dorks as real color sources, but treats multi-color needs as independent draws, so real odds run slightly higher than shown.</p>
                     </section>
                   )}
                   {simulationDossier && (
