@@ -28,23 +28,76 @@ function canPayPips(battlefieldColors, pips) {
   return true;
 }
 
+// A hand is a London-mulligan keep candidate if it isn't land-flooded/
+// -screwed and isn't a trap — none of its lands can produce a color its
+// own nonland cards actually need. Only checks presence of a source, not
+// full pip count: with 7 cards you aren't expected to already hold every
+// double-pip requirement, just not be completely locked out of a color
+// your hand wants to play.
+export function isKeepable(hand){
+  const openingLandColors=hand.filter(isLand).map(landColors);
+  const openingLands=hand.filter(isLand).length;
+  const colorTrapped=hand.some(card=>!isLand(card)&&hasPips(card.colorPips)&&Object.keys(card.colorPips).some(color=>(card.colorPips[color]||0)>0&&!openingLandColors.some(colors=>colors.includes(color))));
+  return openingLands>=2&&openingLands<=5&&!colorTrapped;
+}
+
+// Real London mulligan: draw 7, shuffle the whole hand back and redraw 7
+// again if it isn't keepable, then bottom one card per mulligan taken once
+// you stop. Capped at two mulligans (a floor of a 5-card hand) — real
+// pilots essentially always keep by then, and an uncapped loop would let a
+// single bad manabase "successfully" mulligan its way to a good hand every
+// single game, hiding the exact inconsistency this model exists to catch.
+const MULLIGAN_CAP=2;
+export function drawOpeningHand(deckCards,rng){
+  const library=[...deckCards];shuffle(library,rng);
+  let hand=library.splice(-7),mulligans=0;
+  while(!isKeepable(hand)&&mulligans<MULLIGAN_CAP){
+    library.push(...hand);shuffle(library,rng);
+    hand=library.splice(-7);mulligans+=1;
+  }
+  // Recorded before bottoming: a hand forced to be kept at the mulligan cap
+  // despite still failing the keep criteria is real evidence the manabase
+  // is inconsistent, not a success — bottoming a couple of cards afterward
+  // doesn't fix a hand that was fundamentally screwed or flooded.
+  const wasKeepable=isKeepable(hand);
+  if(mulligans>0)hand=bottomWorstCards(hand,mulligans,library);
+  return {hand,library,mulligans,keepable:wasKeepable};
+}
+
+// Bottoms the cards a real pilot would actually part with: excess lands
+// first once the hand is flooded (more than 4), otherwise the most
+// expensive nonland card — the one least likely to be castable soon.
+// Lands go to the front of the library array (the end is "top of deck" by
+// this module's draw-by-pop convention below), so a bottomed card stays
+// out of the way for the rest of the game, same as it would on paper.
+function bottomWorstCards(hand,count,library){
+  const kept=[...hand];
+  for(let i=0;i<count&&kept.length;i+=1){
+    let worstIndex=-1;
+    if(kept.filter(isLand).length>4){
+      worstIndex=kept.findIndex(isLand);
+    }else{
+      worstIndex=kept.reduce((best,card,index)=>{
+        if(isLand(card))return best;
+        return best===-1||(card.cmc||0)>(kept[best].cmc||0)?index:best;
+      },-1);
+    }
+    if(worstIndex===-1)worstIndex=kept.length-1;
+    library.unshift(kept.splice(worstIndex,1)[0]);
+  }
+  return kept;
+}
+
 export function simulateGoldfish(deck, strategy="Midrange", games=1000, seed=8128, policy="expert") {
-  const rng=mulberry32(seed); const cards=deck.flatMap(card=>Array(card.quantity).fill(card)); let totalSpent=0,totalRealization=0,realized=0,keeps=0;
+  const rng=mulberry32(seed); const cards=deck.flatMap(card=>Array(card.quantity).fill(card)); let totalSpent=0,totalRealization=0,realized=0,keeps=0,totalMulligans=0,mulliganGames=0;
   const unsupported=[...new Set(deck.filter(card=>card.role&&!card.role.includes("land")&&!SUPPORTED_ROLES.has(card.role)).map(card=>card.card))];
   const colorAware=deck.some(card=>hasPips(card.colorPips));
   let colorScrewed=0;
   for(let game=0;game<games;game++){
-    const library=[...cards];shuffle(library,rng);
-    const hand=library.splice(-7);
-    const openingLandColors=hand.filter(isLand).map(landColors);
-    const openingLands=hand.filter(isLand).length;
-    // A hand isn't just "2-5 lands" — it's a trap if none of those lands
-    // can produce a color its own nonland cards actually need. Only checks
-    // presence of a source, not full pip count: with 7 cards you aren't
-    // expected to already hold every double-pip requirement, just not be
-    // completely locked out of a color your hand wants to play.
-    const colorTrapped=hand.some(card=>!isLand(card)&&hasPips(card.colorPips)&&Object.keys(card.colorPips).some(color=>(card.colorPips[color]||0)>0&&!openingLandColors.some(colors=>colors.includes(color))));
-    if(openingLands>=2&&openingLands<=5&&!colorTrapped)keeps++;
+    const drawn=drawOpeningHand(cards,rng);
+    const library=drawn.library,hand=drawn.hand;
+    if(drawn.mulligans>0){totalMulligans+=drawn.mulligans;mulliganGames+=1;}
+    if(drawn.keepable)keeps++;
     const battlefieldLandColors=[];
     // Ramp spells (search-a-land, treasure-adjacent effects) don't just score
     // value like any other card — they mechanically accelerate every later
@@ -71,7 +124,7 @@ export function simulateGoldfish(deck, strategy="Midrange", games=1000, seed=812
     if(colorAware&&firstColoredCastTurn===null)colorScrewed++;
     totalSpent+=spent;if(turnHit!==null){realized++;totalRealization+=turnHit;}
   }
-  return {games,strategy,policy,keepableRate:keeps/games,averageManaSpent:totalSpent/games,planRealizationRate:realized/games,averageRealizationTurn:realized?totalRealization/realized:null,colorScrewRate:colorAware?colorScrewed/games:null,unsupportedCards:unsupported,modelCoverage:cards.length?1-unsupported.reduce((n,name)=>n+(deck.find(c=>c.card===name)?.quantity||0),0)/cards.length:0};
+  return {games,strategy,policy,keepableRate:keeps/games,mulliganRate:mulliganGames/games,averageMulligans:totalMulligans/games,averageManaSpent:totalSpent/games,planRealizationRate:realized/games,averageRealizationTurn:realized?totalRealization/realized:null,colorScrewRate:colorAware?colorScrewed/games:null,unsupportedCards:unsupported,modelCoverage:cards.length?1-unsupported.reduce((n,name)=>n+(deck.find(c=>c.card===name)?.quantity||0),0)/cards.length:0};
 }
 
 export function evaluateSimulationGate(deck,strategy="Midrange",games=2000,seed=8128){const expert=simulateGoldfish(deck,strategy,games,seed,"expert"),greedy=simulateGoldfish(deck,strategy,games,seed,"greedy");const sensitivity=Math.max(0,expert.planRealizationRate-greedy.planRealizationRate);return {expert,greedy,pilotSensitivity:sensitivity,sensitivityLabel:sensitivity>.12?"high":sensitivity>.05?"moderate":"low",gate:expert.modelCoverage<.8?"unsupported":expert.keepableRate<.65?"consistency-fail":expert.planRealizationRate<.55?"goldfish-fail":"goldfish-pass",warning:"Goldfish results model sequencing without an opponent. They are a viability gate, not a predicted match win rate."};}

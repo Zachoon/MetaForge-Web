@@ -5311,7 +5311,7 @@ export default function Home() {
                       <span>
                         <small>OPENING-HAND GATE</small>
                         <b>{(simulationDossier.goldfish.expert.keepableRate * 100).toFixed(1)}% keepable</b>
-                        <em>{simulationDossier.goldfish.gate.replaceAll("-", " ")}</em>
+                        <em>{simulationDossier.goldfish.gate.replaceAll("-", " ")} · avg {simulationDossier.goldfish.expert.averageMulligans.toFixed(1)} mulligans</em>
                       </span>
                       <span>
                         <small>PLAN REALIZATION</small>
