@@ -45,6 +45,16 @@ test("detects a symmetric library-search lock as a nonbo against the deck's own 
   assert.equal(oneSided.nonbos.length, 0);
 });
 
+test("detects a symmetric draw lock as a nonbo against the deck's own draw package", () => {
+  // Mornsong Aria's real printed text: "Players can't draw cards or gain
+  // life." — a genuine symmetric draw-and-life lock, verified against
+  // app/standard-set-cards.mjs rather than assumed from memory.
+  const payoff = { name: "Bookworm", typeLine: "Creature", oracleText: "Whenever you draw a card, put a +1/+1 counter on this creature." };
+  const graph = buildInteractionGraph([payoff, { name: "Mornsong Aria", typeLine: "Enchantment", oracleText: "Players can't draw cards or gain life. At the beginning of each player's draw step, that player loses 3 life, searches their library for a card, puts it into their hand, then shuffles." }]);
+  assert.equal(graph.nonbos.length, 1);
+  assert.equal(graph.nonbos[0].signal, "draw");
+});
+
 test("flags a trigger doubler as a verified amplifier of every real ETB payoff in the deck", () => {
   const doubler = { name: "Panharmonicon", typeLine: "Artifact", oracleText: "If an enters-the-battlefield ability of a permanent you control triggers, that ability triggers an additional time." };
   const payoff = { name: "Soul Warden", typeLine: "Creature", oracleText: "Whenever another creature enters the battlefield under your control, you gain 1 life." };

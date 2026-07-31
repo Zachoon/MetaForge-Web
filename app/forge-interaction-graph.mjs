@@ -120,6 +120,9 @@ const NEGATIVE_RULES = [
   // Stranglehold-style: shuts off the deck's own fetch/tutor-to-battlefield
   // land package along with everyone else's.
   ["lands", /players can(?:'|’)t search (?:their )?libraries|players can(?:'|’)t play lands from (?:their )?libraries/i, "Library-search denial conflicts with the deck's own land-tutoring or fetch package."],
+  // Mornsong Aria-style: a symmetric draw lock that also conflicts with
+  // the deck's own draw package, same shape as the life/lands rules above.
+  ["draw", /players can(?:'|’)t draw cards?/i, "Draw denial conflicts with the deck's own card-draw package."],
 ];
 
 // Certain rules facts, not inferred patterns — a card with one of these
