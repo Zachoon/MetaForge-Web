@@ -23,6 +23,15 @@ export function experimentAdditionSynergy(card, graph) {
     const reverse = mechanics.rewards.some((signal) => nodeMechanics.produces.includes(signal));
     if (forward || reverse) connections += 1;
   }
+  // A candidate an existing trigger/resource doubler would reach (Panharmonicon,
+  // Doubling Season, an extra combat phase, a damage-doubling replacement
+  // effect) is a certain rules-verified connection the moment it enters the
+  // deck, not an inferred one — credited the same as an ordinary
+  // producer/payoff match above, not stacked on top of it, since it's the
+  // same "this card plugs into something real already here" claim.
+  for (const amplifier of graph?.amplifiers || []) {
+    if (mechanics[amplifier.side]?.includes(amplifier.signal)) connections += 1;
+  }
   return connections;
 }
 

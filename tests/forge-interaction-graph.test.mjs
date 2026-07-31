@@ -53,6 +53,9 @@ test("flags a trigger doubler as a verified amplifier of every real ETB payoff i
   assert.equal(graph.amplifiers[0].source, "Panharmonicon");
   assert.deepEqual(graph.amplifiers[0].amplifies, ["Soul Warden"]);
   assert.equal(graph.amplifiers[0].evidence, "verified rules-text trigger amplifier");
+  // Exposed so a caller evaluating a not-yet-added candidate card (Meta
+  // Breaker Lab) can check card.mechanics[side].includes(signal) directly.
+  assert.equal(graph.amplifiers[0].side, "rewards");
 });
 
 test("a trigger doubler with nothing to double doesn't produce an empty amplifier entry", () => {

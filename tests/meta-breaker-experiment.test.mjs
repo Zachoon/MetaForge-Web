@@ -34,6 +34,17 @@ test("counts a real deck connection in either direction", () => {
   assert.equal(experimentAdditionSynergy({ name: "Vanilla", type_line: "Sorcery", oracle_text: "Nothing happens." }, unrelatedGraph), 0);
 });
 
+test("credits a candidate an existing trigger amplifier would reach, even with no ordinary producer/payoff connection", () => {
+  const graph = {
+    nodes: [],
+    amplifiers: [{ source: "Panharmonicon", signal: "etb", side: "rewards", amplifies: [] }],
+  };
+  const caught = { name: "Soul Warden", type_line: "Creature", oracle_text: "Whenever another creature enters the battlefield under your control, you gain 1 life." };
+  const unrelated = { name: "Vanilla", type_line: "Sorcery", oracle_text: "Nothing happens." };
+  assert.equal(experimentAdditionSynergy(caught, graph), 1);
+  assert.equal(experimentAdditionSynergy(unrelated, graph), 0);
+});
+
 test("ranks a candidate that connects to the existing deck ahead of one that doesn't", () => {
   const graph = { nodes: [{ name: "Token Maker", mechanics: { produces: ["tokens"], rewards: [] } }] };
   const connected = { name: "Token Reward", type_line: "Sorcery", oracle_text: "Tokens you control get +1/+1." };

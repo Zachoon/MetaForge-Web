@@ -280,6 +280,12 @@ export function buildInteractionGraph(cards, options = {}) {
     if (amplified.length) amplifiers.push({
       source: source.name,
       signal,
+      // Which side of a card's mechanics the doubling reaches — exposed so
+      // a caller evaluating a candidate not yet in the deck (Meta Breaker
+      // Lab) can check card.mechanics[side].includes(signal) directly,
+      // without re-deriving DOUBLER_PATTERNS' own side mapping a second
+      // time elsewhere.
+      side,
       amplifies: amplified.map((card) => card.name),
       reason: `${source.name} ${verb} — a certain rules fact, not an inferred pattern.`,
       evidence: "verified rules-text trigger amplifier",
