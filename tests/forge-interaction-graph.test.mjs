@@ -123,6 +123,22 @@ test("an ordinary attack trigger's own text is not mistaken for a literal extra 
   assert.deepEqual(graph.amplifiers, []);
 });
 
+test("Fiery Emancipation-style damage replacement amplifies every real damage source already in the deck", () => {
+  const doubler = { name: "Fiery Emancipation", typeLine: "Enchantment", oracleText: "If a source you control would deal damage to an opponent or a permanent or planeswalker an opponent controls, it deals triple that damage to that permanent, planeswalker, or player instead." };
+  const burnSpell = { name: "Bolt of Fire", typeLine: "Instant", oracleText: "Deals 3 damage to any target." };
+  const graph = buildInteractionGraph([doubler, burnSpell]);
+  assert.equal(graph.amplifiers.length, 1);
+  assert.equal(graph.amplifiers[0].signal, "damage");
+  assert.deepEqual(graph.amplifiers[0].amplifies, ["Bolt of Fire"]);
+});
+
+test("an ordinary burn spell's own text is not mistaken for a damage-doubling replacement effect", () => {
+  const ordinary = { name: "Bolt of Fire", typeLine: "Instant", oracleText: "Deals 3 damage to any target." };
+  const another = { name: "Second Bolt", typeLine: "Instant", oracleText: "Deals 4 damage to target creature." };
+  const graph = buildInteractionGraph([ordinary, another]);
+  assert.deepEqual(graph.amplifiers, []);
+});
+
 test("keeps unsupported cards visible as isolated slots", () => {
   const graph = buildInteractionGraph([
     { name: "Token Maker", typeLine: "Sorcery", oracleText: "Create two 1/1 creature tokens." },

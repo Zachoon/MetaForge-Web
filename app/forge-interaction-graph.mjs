@@ -74,6 +74,13 @@ const PRODUCERS = {
   // are the same producer shape from a synergy-detection standpoint.
   evasion: /\bflying\b|\bmenace\b|\btrample\b|can(?:'|’)t be blocked|\bskulk\b/i,
   protection: /\bhexproof\b|\bindestructible\b|protection from|\bward\b|phase out|gains? indestructible|gains? hexproof/i,
+  // Producer-only: no PAYOFFS.damage or SIGNALS entry, since "damage
+  // matters" payoffs (as opposed to sources that deal damage) don't have a
+  // clean, confidently-verified generic phrasing the way tokens/counters/
+  // graveyard payoffs do — narrow scope, just enough to support the Fiery
+  // Emancipation/Furnace of Rath amplifier below rather than a full
+  // producer/payoff pairing built on an unverified guess.
+  damage: /deals? \d+ damage/i,
 };
 
 const PAYOFFS = {
@@ -154,6 +161,17 @@ const DOUBLER_PATTERNS = [
     side: "rewards",
     pattern: /additional combat phase/i,
     verb: "grants an additional combat phase, giving every attack trigger in the deck a second chance to fire this turn",
+  },
+  // Fiery Emancipation/Furnace of Rath/Gratuitous Violence-style: a source
+  // dealing double (or triple) damage instead is a certain rules
+  // replacement effect, not an inferred pattern. Amplifies "produces" —
+  // every burn spell or damage-dealing ability in the deck hits harder,
+  // whether or not it's phrased as a trigger.
+  {
+    signal: "damage",
+    side: "produces",
+    pattern: /if a source (?:you control )?would deal damage to[^.]*, it deals (?:double|triple) that damage/i,
+    verb: "doubles (or triples) the damage every source in the deck deals",
   },
 ];
 
