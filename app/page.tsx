@@ -1787,6 +1787,11 @@ export default function Home() {
     options: { format: string; strategy: string; target: number };
     manaConsistency?: any;
     unusedEnginePartners?: any[];
+    // The exact verified pool this generation used — needed so a later
+    // refinement pass (buildExperimentTablets' practical simulation gate)
+    // can reconnect a swap's rows back to real card text, the same
+    // reconnection buildSimulationModel already does server-side.
+    cardPool?: any[];
   } | null>(null);
   // Non-fatal disclosure for the decklist-import path: names the Forge could
   // not verify or that aren't legal in this format, left out rather than
@@ -2392,6 +2397,7 @@ export default function Home() {
         packages: interactionGraph.packages,
         edges: interactionGraph.edges,
         nonbos: interactionGraph.nonbos,
+        amplifiers: interactionGraph.amplifiers,
         isolated: interactionGraph.isolated,
       };
     }
@@ -2411,6 +2417,11 @@ export default function Home() {
           ("target" in conflict &&
             typeof conflict.target === "string" &&
             members.has(conflict.target)),
+      ),
+      amplifiers: interactionGraph.amplifiers.filter(
+        (amplifier) =>
+          members.has(amplifier.source) ||
+          amplifier.amplifies.some((name) => members.has(name)),
       ),
       isolated: interactionGraph.isolated.filter((name) =>
         members.has(name),
@@ -2544,11 +2555,25 @@ export default function Home() {
 
   const experimentTablets = useMemo(() => {
     if (!nativeMasterworkContext) return null;
+    // Practical simulation gate: only real when the exact verified pool
+    // this deck was built from is still known. A restored/older saved
+    // Masterwork without one still gets the theoretical-only tablets
+    // buildExperimentTablets already produces when `input` is omitted,
+    // never a crash or a silently wrong recommendation.
+    const input = nativeMasterworkContext.cardPool?.length
+      ? {
+          format: nativeMasterworkContext.options.format,
+          strategy: nativeMasterworkContext.options.strategy,
+          target: nativeMasterworkContext.options.target,
+          cards: nativeMasterworkContext.cardPool,
+        }
+      : null;
     return buildExperimentTablets({
       selected: nativeMasterworkContext.selected,
       candidates: nativeMasterworkContext.candidates,
       causalityReport: forgeCausalityReport,
       matchLog,
+      input,
       options: nativeMasterworkContext.options,
     });
   }, [nativeMasterworkContext, forgeCausalityReport, matchLog]);
@@ -3240,6 +3265,7 @@ export default function Home() {
       index: number;
       replyText: string;
       revisionNote: string;
+      cardPool?: any[];
     },
   ) {
     const answer = nativeReport.selected.deckText;
@@ -3265,6 +3291,7 @@ export default function Home() {
       options: { format, strategy, target: targetDeckSize(format) },
       manaConsistency: nativeReport.manaConsistency,
       unusedEnginePartners: nativeReport.unusedEnginePartners,
+      cardPool: opts.cardPool,
     });
     void persistStoryBench(
       firstRevision,
@@ -3355,6 +3382,7 @@ export default function Home() {
         index,
         replyText: `${nativeReport.methodology}\n\n${nativeReport.selected.tournament.reason}\n${nativeReport.reasoning.summary}\n${nativeReport.laboratory.summary}${nativeReport.laboratory.verdict === "advance" ? `\nTest contract: ${nativeReport.laboratory.contract}` : ""}\nStructural read: ${nativeReport.selected.evaluation.cohesion}/100 cohesion, ${nativeReport.selected.evaluation.resilience}/100 resilience. ${nativeReport.tournament.frontier.length} of 3 candidates reached the tradeoff frontier. ${nativeReport.reasoning.boundary} ${nativeReport.laboratory.boundary}`,
         revisionNote: `Original native Forge candidate · ${nativeReport.selected.label}`,
+        cardPool: pool.cards,
       });
     } catch (error) {
       setForgedDeck("");
@@ -3457,6 +3485,7 @@ export default function Home() {
           index: 0,
           replyText: `${nativeReport.methodology}\n\n${nativeReport.reasoning.summary}\n${nativeReport.laboratory.summary}${nativeReport.laboratory.verdict === "advance" ? `\nTest contract: ${nativeReport.laboratory.contract}` : ""}\n${nativeReport.reasoning.boundary} ${nativeReport.laboratory.boundary}`,
           revisionNote: "Adapted directly from your submitted list",
+          cardPool: resolution.pool,
         });
       } else {
         const nativeReport = forgeNativeMasterwork({
@@ -3481,6 +3510,7 @@ export default function Home() {
           index: 0,
           replyText: `${nativeReport.methodology}\n\n${nativeReport.selected.tournament.reason}\n${nativeReport.reasoning.summary}\n${nativeReport.laboratory.summary}${nativeReport.laboratory.verdict === "advance" ? `\nTest contract: ${nativeReport.laboratory.contract}` : ""}\nStructural read: ${nativeReport.selected.evaluation.cohesion}/100 cohesion, ${nativeReport.selected.evaluation.resilience}/100 resilience. ${nativeReport.reasoning.boundary} ${nativeReport.laboratory.boundary}`,
           revisionNote: `Built directly for ${commander?.name || "your commander"} · ${nativeReport.selected.label}`,
+          cardPool: pool.cards,
         });
       }
     } catch (error) {
