@@ -250,7 +250,7 @@
   color: var(--forge-ember-soft);
   box-shadow: inset 0 0 18px rgba(220,136,64,.08);
 }
-.forge-brand strong { font-family: Georgia, "Times New Roman", serif; font-weight: 600; letter-spacing: .08em; }
+.forge-brand strong { font-family: Fraunces, Georgia, "Times New Roman", serif; font-weight: 600; letter-spacing: .08em; }
 .forge-brand small { color: #78857f; letter-spacing: .2em; }
 
 .forge-steps { gap: clamp(12px,2vw,30px); }

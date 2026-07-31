@@ -4,7 +4,7 @@
 .masterwork-card[data-state="sealed"]{display:grid;place-items:stretch;padding:0;overflow:hidden}
 .masterwork-seal{position:relative;display:grid;width:100%;min-height:410px;place-items:center;gap:16px;padding:24px;border:0;background:transparent;color:#dfe8e2;text-align:center;cursor:pointer}
 .masterwork-seal small{color:#74817d;font-size:calc(11px * var(--forge-reading-scale));letter-spacing:.16em}
-.masterwork-seal i{display:block;font:normal 72px Georgia;color:var(--motif-accent,var(--teal,#6dddf0));text-shadow:0 0 30px var(--motif-accent,var(--teal,#6dddf0));transition:text-shadow .3s ease,transform .3s ease}
+.masterwork-seal i{display:block;font:normal 72px Fraunces, Georgia;color:var(--motif-accent,var(--teal,#6dddf0));text-shadow:0 0 30px var(--motif-accent,var(--teal,#6dddf0));transition:text-shadow .3s ease,transform .3s ease}
 .masterwork-seal b{padding:11px 18px;border:1px solid #53655f;background:#13231f;color:#b5d7cd;font-size:calc(11px * var(--forge-reading-scale));font-weight:800;letter-spacing:.1em;text-transform:uppercase;transition:border-color .3s ease,color .3s ease}
 .masterwork-seal:before{content:"";position:absolute;inset:0;z-index:-1;background:radial-gradient(circle at 50% 65%,#e39a4822,transparent 45%),url('/assets/forge/furnace_glow.svg') center/cover;opacity:.5;animation:seal-breathe 5s ease-in-out infinite}
 .masterwork-card[data-state="sealed"]:hover .masterwork-seal i,
@@ -89,7 +89,7 @@
 .tablet-face{backface-visibility:hidden;-webkit-backface-visibility:hidden}
 .tablet-face-front{display:grid;grid-template-rows:auto auto 1fr auto;gap:10px}
 .tablet-face-back{position:absolute;inset:0;display:grid;place-items:center;gap:10px;padding:20px;text-align:center;transform:rotateY(180deg);background:radial-gradient(circle at 50% 38%,color-mix(in srgb,var(--motif-accent,var(--teal,#6dddf0)) 40%,#0a1412),#050908 74%)}
-.tablet-face-back strong{color:#eafffa;font:700 19px Georgia,serif;letter-spacing:.03em;text-shadow:0 0 18px color-mix(in srgb,var(--motif-accent,var(--teal,#6dddf0)) 70%,transparent)}
+.tablet-face-back strong{color:#eafffa;font:700 19px Fraunces, Georgia,serif;letter-spacing:.03em;text-shadow:0 0 18px color-mix(in srgb,var(--motif-accent,var(--teal,#6dddf0)) 70%,transparent)}
 .tablet-face-back span{color:#bfe9dd;font-size:calc(12px * var(--forge-reading-scale))}
 .tablet-face-back .tablet-motif-icon{transform:scale(1.7);filter:drop-shadow(0 0 26px color-mix(in srgb,var(--motif-accent,var(--teal,#6dddf0)) 85%,transparent))}
 @keyframes tablet-shockwave{0%{opacity:.95;transform:scale(.5)}100%{opacity:0;transform:scale(1.5)}}
@@ -101,7 +101,7 @@
 .confidence-tablet{display:grid;grid-template-rows:auto 1fr auto;gap:12px;padding:18px;border-color:#6b5a30;background:radial-gradient(circle at 50% 0%,#3a2c1244,transparent 60%),linear-gradient(160deg,#181209,#0d0a06)}
 .confidence-tablet>header small{color:#d2b06a;font-size:calc(10px * var(--forge-reading-scale));font-weight:900;letter-spacing:.1em}
 .confidence-tablet-body{display:grid;align-content:center;gap:8px}
-.confidence-tablet-body strong{color:#f0d9a0;font:600 17px/1.3 Georgia,serif}
+.confidence-tablet-body strong{color:#f0d9a0;font:600 17px/1.3 Fraunces, Georgia,serif}
 .confidence-tablet-body p{margin:0;color:#b9ad91;font-size:calc(12px * var(--forge-reading-scale));line-height:1.55}
 .confidence-seal{padding:12px 14px;border:1px solid #d2b06a;background:linear-gradient(90deg,#5a441c,#2c2210);color:#fff3da;font-size:calc(12px * var(--forge-reading-scale));font-weight:800;letter-spacing:.05em;text-transform:uppercase;cursor:pointer}
 .confidence-seal:hover{background:linear-gradient(90deg,#6d5424,#3a2d14)}
@@ -121,7 +121,7 @@
 .why-this-masterwork summary{cursor:pointer;display:flex;flex-direction:column;gap:3px}
 .why-this-masterwork summary small{color:#75dbc4;font-size:calc(9px * var(--forge-reading-scale));font-weight:900;letter-spacing:.1em}
 .why-this-masterwork summary b{color:#c8d2ce;font-size:calc(13px * var(--forge-reading-scale));font-weight:600}
-.why-this-masterwork pre{margin:12px 0 0;white-space:pre-wrap;color:#9caea8;font:12px/1.6 Georgia,serif}
+.why-this-masterwork pre{margin:12px 0 0;white-space:pre-wrap;color:#9caea8;font:12px/1.6 Fraunces, Georgia,serif}
 
 .swap-flourish-banner{display:flex;align-items:baseline;gap:10px;margin-top:14px;padding:14px 18px;border:1px solid var(--motif-accent,var(--teal,#6dddf0));background:color-mix(in srgb,var(--motif-accent,var(--teal,#6dddf0)) 10%,#0a1412);animation:flourish-banner-in .3s ease-out}
 .swap-flourish-banner span{color:var(--motif-accent,var(--teal,#6dddf0));font-size:calc(10px * var(--forge-reading-scale));font-weight:900;letter-spacing:.12em}
