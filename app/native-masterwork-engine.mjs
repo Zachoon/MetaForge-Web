@@ -1,6 +1,6 @@
 ﻿import { runNativeMasterworkTournament } from "./native-masterwork-tournament.mjs";
 import { explainNativeMasterworkDecision } from "./native-masterwork-reasoning.mjs";
-import { runOneSlotCounterfactualLab } from "./native-one-slot-lab.mjs";
+import { rankOneSlotCounterfactuals, runOneSlotCounterfactualLab } from "./native-one-slot-lab.mjs";
 
 import {
   buildForgeStructuralAnalysis,
@@ -21,7 +21,9 @@ import {
   getMetaIntelligence,
 } from "./meta-intelligence.mjs";
 
-import { buildSideboard } from "./adaptive-recommendation.mjs";
+import { buildSideboard, simulationRoleFor, strategyArchetypeFor } from "./adaptive-recommendation.mjs";
+import { evaluateSimulationGate } from "./goldfish-simulation.mjs";
+import { evaluateMatchupMatrix } from "./matchup-simulation.mjs";
 
 // MetaForge Native Masterwork Engine
 // Card facts may come from verified catalogs; every construction and ranking
@@ -1212,6 +1214,191 @@ function sideboardFor(scored, selected, singleton) {
   const pool = scored.map((entry) => ({ ...entry.card, score: entry.score }));
   const mainDeckNames = selected.map((row) => row.name);
   return buildSideboard(pool, mainDeckNames);
+}
+
+// The practical simulation gate: the same evidence tier the Testing Anvil
+// shows a finished deck (goldfish opening-hand consistency, matchup
+// archetype pressure) run against a one-slot swap *before* it's ever
+// recommended, not just reported on afterward — the user's own framing:
+// theoretical, then practical, before the Forge decides. Reduced trial
+// count from the Testing Anvil's own defaults (300 vs. 1200-2000), since
+// this runs on several candidates per decision rather than once on a
+// finished deck, and a real regression shows up well within a few hundred
+// trials.
+const PRACTICAL_TRIALS = 300;
+const PRACTICAL_SEED = 7919;
+// How many theoretically-confident candidates get a practical check
+// before trimming to the final recommended count — bounded so a build
+// with many passing structural swaps doesn't run an unbounded number of
+// simulation batches.
+const PRACTICAL_POOL_CAP = 6;
+
+// Rows built for deck construction carry only what construction needed
+// (name, roles, cmc, colorPips) — not typeLine/oracleText, the same gap
+// unusedEnginePartnersFor already works around by matching back to the
+// original verified pool by name. Reuses that exact reconnection idiom,
+// then classifies each card into the land/sweeper/removal/counter/ramp/
+// draw/protection/finisher/stabilizer vocabulary the two simulators
+// already model — via simulationRoleFor, not classifyNativeCard's roles,
+// since that vocabulary can't distinguish counter from removal (both read
+// "interaction") the way real oracle text can. Prefers colorPips/
+// colorIdentity already computed onto the row during construction over
+// re-deriving them, since that's the more authoritative, already-verified
+// value for everything except the bare commander row.
+function buildSimulationModel(rows, input) {
+  const verifiedByName = createVerifiedCardIndex(input);
+  return rows.map((row) => {
+    const isLandRow = row.roles.includes("land");
+    const verified = verifiedByName.get(normalized(row.name));
+    const source = verified || createBasicLandRecord(row.name) || { name: row.name, typeLine: isLandRow ? "Land" : "", oracleText: "" };
+    const card = {
+      ...source,
+      name: row.name,
+      typeLine: source.typeLine || source.type_line || "",
+      oracleText: source.oracleText || source.oracle_text || "",
+    };
+    return {
+      quantity: Math.max(1, Number(row.quantity || 1)),
+      card: row.name,
+      role: simulationRoleFor(card),
+      cmc: Number(row.cmc || 0),
+      colorIdentity: isLandRow ? (row.colorIdentity || producedColorsOf(card)) : undefined,
+      colorPips: isLandRow ? undefined : (row.colorPips || colorPipsFromCost(card.manaCost || card.mana_cost)),
+    };
+  });
+}
+
+function simulatePractical(model, strategyName) {
+  return {
+    goldfish: evaluateSimulationGate(model, strategyName, PRACTICAL_TRIALS, PRACTICAL_SEED),
+    matrix: evaluateMatchupMatrix(model, undefined, PRACTICAL_TRIALS, PRACTICAL_SEED),
+  };
+}
+
+const GOLDFISH_GATE_RANK = { unsupported: 0, "consistency-fail": 1, "goldfish-fail": 2, "goldfish-pass": 3 };
+const MATRIX_GATE_RANK = { "matrix-hold": 0, "matrix-pass": 1 };
+// How much a rate is allowed to fall within the *same* gate tier before
+// counting as a regression on its own — a swap that stays "goldfish-pass"
+// but drops from 80% keepable to 68% keepable is still a real practical
+// cost a tier-only comparison would miss entirely.
+const PRACTICAL_RATE_FLOOR = 0.08;
+
+// Compares two already-run practical simulation results. Exposed
+// separately from evaluatePracticalImpact below for direct testing
+// against fixed, hand-built results, without paying for two full
+// simulation runs per test case.
+export function comparePracticalImpact(before, after) {
+  const reasons = [];
+  if (GOLDFISH_GATE_RANK[after.goldfish.gate] < GOLDFISH_GATE_RANK[before.goldfish.gate]) {
+    reasons.push(`Opening-hand consistency regresses from ${before.goldfish.gate.replaceAll("-", " ")} to ${after.goldfish.gate.replaceAll("-", " ")}.`);
+  }
+  const keepableDrop = before.goldfish.expert.keepableRate - after.goldfish.expert.keepableRate;
+  if (keepableDrop > PRACTICAL_RATE_FLOOR) {
+    reasons.push(`Opening-hand keepable rate falls by ${(keepableDrop * 100).toFixed(1)} points.`);
+  }
+  const realizationDrop = before.goldfish.expert.planRealizationRate - after.goldfish.expert.planRealizationRate;
+  if (realizationDrop > PRACTICAL_RATE_FLOOR) {
+    reasons.push(`Plan realization rate falls by ${(realizationDrop * 100).toFixed(1)} points.`);
+  }
+  if (MATRIX_GATE_RANK[after.matrix.gate] < MATRIX_GATE_RANK[before.matrix.gate]) {
+    reasons.push(`Matchup stress testing regresses from ${before.matrix.gate.replaceAll("-", " ")} to ${after.matrix.gate.replaceAll("-", " ")}.`);
+  }
+  const scenarioDrop = (before.matrix.weakest?.scenarioPassRate || 0) - (after.matrix.weakest?.scenarioPassRate || 0);
+  if (scenarioDrop > PRACTICAL_RATE_FLOOR) {
+    reasons.push(`Hardest stress-test pass rate falls by ${(scenarioDrop * 100).toFixed(1)} points against ${after.matrix.weakest?.opponent || "its toughest matchup"}.`);
+  }
+  return { passed: reasons.length === 0, reasons };
+}
+
+// Runs the actual practical simulation for a one-slot swap's resulting
+// rows and compares it against an already-computed "before" baseline —
+// the caller supplies `before` once and reuses it across every candidate
+// swap being evaluated against the same starting deck, instead of
+// re-simulating the unchanged side of the comparison every time.
+export function evaluatePracticalImpact(before, afterRows, input) {
+  const strategyName = strategyArchetypeFor(input.strategy);
+  const after = simulatePractical(buildSimulationModel(afterRows, input), strategyName);
+  return { ...comparePracticalImpact(before, after), before, after };
+}
+
+// The theoretical structural gate (role coverage, curve, cohesion) only
+// ever reasons about rules text — it can't say whether a swap that looks
+// better on paper actually draws worse or folds to real pressure. Ranks
+// the same way rankOneSlotCounterfactuals already does, then requires
+// each theoretically-confident candidate to also clear a practical
+// simulation check before it keeps its "confident" status — never
+// promoting a candidate the theoretical gate already rejected, only ever
+// demoting one it accepted.
+export function rankPracticalOneSlotCounterfactuals(selected, candidates, input, options = {}) {
+  const limit = options.limit || 3;
+  // format/strategy/target come from `input`, same as every other call site
+  // in this file derives them — callers of the practical wrappers supply
+  // `options` only for the extra knobs (limit, preferredRoles,
+  // matchupOpponent), not a second, easy-to-drift copy of the format.
+  const theoreticalOptions = { format: input.format, strategy: input.strategy, target: input.target, ...options, limit: Math.min(PRACTICAL_POOL_CAP, limit + 3) };
+  const theoretical = rankOneSlotCounterfactuals(selected, candidates, theoreticalOptions);
+  if (theoretical.verdict !== "advance" || !theoretical.experiments.length) {
+    return { ...theoretical, experiments: theoretical.experiments.map((experiment) => ({ ...experiment, practical: null })) };
+  }
+
+  const strategyName = strategyArchetypeFor(input.strategy);
+  const before = simulatePractical(buildSimulationModel(selected.rows, input), strategyName);
+
+  const withPractical = theoretical.experiments.map((experiment) => {
+    // Only spend simulation budget on candidates the structural gate
+    // already accepted — a speculative candidate's fate is already
+    // decided, so a practical check would tell us nothing new about
+    // whether to recommend it.
+    if (!experiment.confident) return { ...experiment, practical: null };
+    const practical = evaluatePracticalImpact(before, experiment.rows, input);
+    return {
+      ...experiment,
+      practical,
+      confident: experiment.confident && practical.passed,
+      summary: practical.passed
+        ? `${experiment.summary} Practical goldfish and matchup simulation confirm no regression.`
+        : `Speculative experiment: replace ${experiment.cut} with ${experiment.add}. This cleared the Forge's structural gate but failed practical simulation testing (${practical.reasons.join(" ")}) — the modeled improvement doesn't hold up when actually drawn and played.`,
+    };
+  });
+
+  withPractical.sort((left, right) => Number(right.confident) - Number(left.confident));
+
+  return {
+    ...theoretical,
+    experiments: withPractical.slice(0, limit),
+    boundary: "These are deterministic structural and simulated experiments, not proof of better real-game match performance.",
+  };
+}
+
+// Same practical upgrade as rankPracticalOneSlotCounterfactuals, reshaped
+// to runOneSlotCounterfactualLab's single-best contract: wraps the
+// existing (unchanged) theoretical function, then only advances if the
+// theoretical winner also clears the practical check — falling to
+// "inconclusive" rather than recommending a change simulation shows
+// doesn't actually hold up, the same shape the original function already
+// uses when nothing clears the structural gate.
+export function runPracticalOneSlotCounterfactualLab(selected, candidates, reasoning, input, options = {}) {
+  // Same reasoning as rankPracticalOneSlotCounterfactuals above:
+  // format/strategy/target come from `input`, not a second copy in options.
+  const theoreticalOptions = { format: input.format, strategy: input.strategy, target: input.target, ...options };
+  const theoretical = runOneSlotCounterfactualLab(selected, candidates, reasoning, theoreticalOptions);
+  if (theoretical.verdict !== "advance") return { ...theoretical, practical: null };
+
+  const strategyName = strategyArchetypeFor(input.strategy);
+  const before = simulatePractical(buildSimulationModel(selected.rows, input), strategyName);
+  const practical = evaluatePracticalImpact(before, theoretical.experiment.rows, input);
+  if (practical.passed) {
+    return { ...theoretical, practical, summary: `${theoretical.summary} Practical goldfish and matchup simulation confirm no regression.` };
+  }
+  return {
+    verdict: "inconclusive",
+    experimentsTested: theoretical.experimentsTested,
+    experiment: theoretical.experiment,
+    practical,
+    summary: `Controlled experiment: replace ${theoretical.experiment.cut} with ${theoretical.experiment.add}. This cleared every structural gate but failed practical simulation testing (${practical.reasons.join(" ")}), so the selected Masterwork remains unchanged.`,
+    contract: theoretical.contract,
+    boundary: "This is a deterministic structural and simulated experiment, not proof of better real-game match performance.",
+  };
 }
 
 function buildCandidate(input, variant, analysis) {

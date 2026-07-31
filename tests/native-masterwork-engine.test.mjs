@@ -1,6 +1,7 @@
 ﻿import assert from "node:assert/strict";
 import test from "node:test";
-import { budgetScoreFor, classifyNativeCard, colorPipsFromCost, complexityScoreFor, conceptSignals, curveAwareLandAdjustment, curveTargets, fieldCounterRolesFor, forgeNativeMasterwork, hypergeometricAtLeast, interactionQualityFor, manaConsistencyReport, oracleTextComplexity, parseNativeBlueprintIntent, poolMechanicalSignals, popularityScoreFromRank, proportionalBasicCounts, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
+import { budgetScoreFor, classifyNativeCard, colorPipsFromCost, comparePracticalImpact, complexityScoreFor, conceptSignals, curveAwareLandAdjustment, curveTargets, evaluatePracticalImpact, fieldCounterRolesFor, forgeNativeMasterwork, hypergeometricAtLeast, interactionQualityFor, manaConsistencyReport, oracleTextComplexity, parseNativeBlueprintIntent, poolMechanicalSignals, popularityScoreFromRank, proportionalBasicCounts, rankPracticalOneSlotCounterfactuals, runPracticalOneSlotCounterfactualLab, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
+import { runOneSlotCounterfactualLab } from "../app/native-one-slot-lab.mjs";
 
 const card = (name, oracleText, typeLine = "Creature — Test", manaCost = "{2}{U}", colorIdentity = ["U"]) => ({ name, oracleText, typeLine, manaCost, colorIdentity });
 const pool = [
@@ -158,6 +159,184 @@ test("prefers unconditional removal over otherwise-identical conditional removal
     unconditionalQuantity > conditionalQuantity,
     `expected unconditional removal (${unconditionalQuantity}) to outcompete otherwise-identical restricted removal (${conditionalQuantity})`,
   );
+});
+
+// Fixture builders for comparePracticalImpact — real evaluateSimulationGate/
+// evaluateMatchupMatrix shapes, hand-built so the comparison logic itself
+// can be tested deterministically without paying for real simulation runs.
+const practical = (goldfishGate, keepableRate, planRealizationRate, matrixGate, scenarioPassRate, opponent = "Aggro") => ({
+  goldfish: { gate: goldfishGate, expert: { keepableRate, planRealizationRate } },
+  matrix: { gate: matrixGate, weakest: { scenarioPassRate, opponent } },
+});
+
+test("comparePracticalImpact passes when nothing meaningfully changes", () => {
+  const before = practical("goldfish-pass", 0.8, 0.7, "matrix-pass", 0.65);
+  const after = practical("goldfish-pass", 0.79, 0.71, "matrix-pass", 0.66);
+  assert.deepEqual(comparePracticalImpact(before, after), { passed: true, reasons: [] });
+});
+
+test("comparePracticalImpact fails a swap that drops to a worse goldfish gate tier", () => {
+  const before = practical("goldfish-pass", 0.8, 0.7, "matrix-pass", 0.65);
+  const after = practical("consistency-fail", 0.8, 0.7, "matrix-pass", 0.65);
+  const result = comparePracticalImpact(before, after);
+  assert.equal(result.passed, false);
+  assert.match(result.reasons[0], /consistency regresses from goldfish pass to consistency fail/i);
+});
+
+test("comparePracticalImpact fails a swap that drops to a worse matchup gate tier", () => {
+  const before = practical("goldfish-pass", 0.8, 0.7, "matrix-pass", 0.65);
+  const after = practical("goldfish-pass", 0.8, 0.7, "matrix-hold", 0.65);
+  const result = comparePracticalImpact(before, after);
+  assert.equal(result.passed, false);
+  assert.match(result.reasons.join(" "), /matchup stress testing regresses from matrix pass to matrix hold/i);
+});
+
+test("comparePracticalImpact fails a meaningful rate drop even within the same gate tier", () => {
+  const before = practical("goldfish-pass", 0.80, 0.70, "matrix-pass", 0.65);
+  const after = practical("goldfish-pass", 0.68, 0.70, "matrix-pass", 0.65);
+  const result = comparePracticalImpact(before, after);
+  assert.equal(result.passed, false);
+  assert.match(result.reasons.join(" "), /keepable rate falls by 12\.0 points/i);
+});
+
+test("comparePracticalImpact tolerates a small, ordinary rate wobble within the same gate tier", () => {
+  const before = practical("goldfish-pass", 0.80, 0.70, "matrix-pass", 0.65);
+  const after = practical("goldfish-pass", 0.75, 0.70, "matrix-pass", 0.65);
+  assert.equal(comparePracticalImpact(before, after).passed, true);
+});
+
+test("comparePracticalImpact fails a meaningful drop in the hardest matchup's scenario pass rate", () => {
+  const before = practical("goldfish-pass", 0.80, 0.70, "matrix-pass", 0.65, "Aggro");
+  const after = practical("goldfish-pass", 0.80, 0.70, "matrix-pass", 0.50, "Aggro");
+  const result = comparePracticalImpact(before, after);
+  assert.equal(result.passed, false);
+  assert.match(result.reasons.join(" "), /hardest stress-test pass rate falls by 15\.0 points against Aggro/i);
+});
+
+test("comparePracticalImpact never rewards an improvement as a failure", () => {
+  const before = practical("consistency-fail", 0.5, 0.4, "matrix-hold", 0.3);
+  const after = practical("goldfish-pass", 0.9, 0.8, "matrix-pass", 0.7);
+  assert.deepEqual(comparePracticalImpact(before, after), { passed: true, reasons: [] });
+});
+
+test("evaluatePracticalImpact runs a real deterministic simulation against a supplied baseline", () => {
+  const input = { format: "Standard", strategy: "Balanced midrange", target: 60, colors: ["U"], cards: pool };
+  const rows = [
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Island Utility ${i}`, roles: ["land"], cmc: 0, quantity: 1 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, roles: ["interaction"], cmc: 2, quantity: 1 })),
+    ...Array.from({ length: 12 }, (_, i) => ({ name: `Flow ${i}`, roles: ["draw"], cmc: 3, quantity: 1 })),
+  ];
+  // An intentionally unbeatable baseline so the real "after" run reported
+  // below it is a stable, deterministic thing to assert on, not a coin
+  // flip against an equally-real baseline.
+  const perfectBaseline = { goldfish: { gate: "goldfish-pass", expert: { keepableRate: 1, planRealizationRate: 1 } }, matrix: { gate: "matrix-pass", weakest: { scenarioPassRate: 1, opponent: "Aggro" } } };
+  const first = evaluatePracticalImpact(perfectBaseline, rows, input);
+  const second = evaluatePracticalImpact(perfectBaseline, rows, input);
+  assert.deepEqual(first, second, "same inputs must produce the same practical evaluation every time");
+  assert.ok(first.after.goldfish.gate);
+  assert.ok(first.after.matrix.gate);
+  assert.equal(first.passed, false, "nothing beats a perfect baseline, so this should always report a regression");
+  assert.ok(first.reasons.length > 0);
+});
+
+const practicalInput = { format: "Standard", target: 60, strategy: "Balanced midrange", colors: ["U"], seed: 9, cards: pool };
+
+test("rankPracticalOneSlotCounterfactuals adds real practical evidence, and confident always means both gates passed", () => {
+  const report = forgeNativeMasterwork(practicalInput);
+  const first = rankPracticalOneSlotCounterfactuals(report.selected, report.candidates, practicalInput, { limit: 3 });
+  const second = rankPracticalOneSlotCounterfactuals(report.selected, report.candidates, practicalInput, { limit: 3 });
+  assert.deepEqual(first, second, "must be fully deterministic for the same inputs");
+  assert.ok(["advance", "inconclusive"].includes(first.verdict));
+  assert.ok(first.experiments.length <= 3);
+  for (const experiment of first.experiments) {
+    if (experiment.confident) {
+      assert.ok(experiment.practical, "confident requires a real practical evaluation to back it");
+      assert.equal(experiment.practical.passed, true);
+    }
+    // Never promotes a candidate the structural gate itself rejected —
+    // practical evaluation can only demote a theoretical pass, never
+    // rescue a theoretical failure.
+    if (!experiment.gate.passed) assert.equal(experiment.confident, false);
+  }
+});
+
+test("rankPracticalOneSlotCounterfactuals skips practical simulation for candidates that already failed the structural gate", () => {
+  const report = forgeNativeMasterwork(practicalInput);
+  const result = rankPracticalOneSlotCounterfactuals(report.selected, report.candidates, practicalInput, { limit: 3 });
+  for (const experiment of result.experiments) {
+    if (!experiment.gate.passed) assert.equal(experiment.practical, null);
+  }
+});
+
+test("runPracticalOneSlotCounterfactualLab only advances when the theoretical winner also clears practical simulation", () => {
+  const report = forgeNativeMasterwork(practicalInput);
+  const first = runPracticalOneSlotCounterfactualLab(report.selected, report.candidates, report.reasoning, practicalInput);
+  const second = runPracticalOneSlotCounterfactualLab(report.selected, report.candidates, report.reasoning, practicalInput);
+  assert.deepEqual(first, second, "must be fully deterministic for the same inputs");
+  assert.ok(["advance", "inconclusive"].includes(first.verdict));
+  if (first.verdict === "advance") {
+    assert.ok(first.practical);
+    assert.equal(first.practical.passed, true);
+  } else if (first.practical) {
+    // Practical evaluation ran (the theoretical winner cleared its gate)
+    // and failed — a real, distinct rejection reason from a plain
+    // structural miss.
+    assert.ok(first.experiment);
+    assert.match(first.summary, /cleared every structural gate but failed practical simulation testing/i);
+  } else {
+    // Never reached practical evaluation at all — the theoretical gate
+    // itself already held the list, same as the unwrapped function.
+    assert.match(first.summary, /none cleared every structural gate/i);
+  }
+});
+
+// A synthetic fixture reused from native-one-slot-lab.test.mjs's own
+// "advances an exact one-slot improvement deterministically" test — known
+// to clear the theoretical gate with a specific cut/add pair, so the
+// practical wiring itself (does it actually run, does its result gate the
+// final verdict) is deterministic to exercise here. These row names aren't
+// in a real card pool, so buildSimulationModel's fallback applies (blank
+// oracle text, every nonland card reads as the same "stabilizer" role) —
+// degenerate role diversity, but a real, honest simulation run all the same.
+const wiringBase = [
+  { quantity: 24, name: "Wiring Island", roles: ["land"], cmc: 0 },
+  { quantity: 4, name: "Wiring Slow Threat", roles: ["threat"], cmc: 6 },
+  { quantity: 4, name: "Wiring Draw", roles: ["draw"], cmc: 3 },
+  { quantity: 4, name: "Wiring Answer", roles: ["interaction"], cmc: 2 },
+  { quantity: 4, name: "Wiring Ramp", roles: ["ramp"], cmc: 2 },
+  { quantity: 4, name: "Wiring Shield", roles: ["protection"], cmc: 2 },
+  { quantity: 4, name: "Wiring Return", roles: ["recursion"], cmc: 3 },
+  { quantity: 4, name: "Wiring Sweep", roles: ["sweeper"], cmc: 4 },
+  { quantity: 4, name: "Wiring Body", roles: ["threat"], cmc: 3 },
+  { quantity: 4, name: "Wiring Second Body", roles: ["threat"], cmc: 3 },
+];
+const wiringRival = wiringBase.map((row) => ({ ...row, roles: [...row.roles] }));
+wiringRival.find((row) => row.name === "Wiring Slow Threat").quantity = 3;
+wiringRival.push({ quantity: 1, name: "Wiring Flexible Answer", roles: ["draw", "interaction", "protection"], cmc: 2 });
+const wiringSelected = { id: "selected", rows: wiringBase };
+const wiringRivalCandidate = { id: "rival", rows: wiringRival };
+const wiringInput = { format: "Standard", strategy: "Balanced midrange", target: 60, cards: [] };
+
+test("runPracticalOneSlotCounterfactualLab actually runs practical evaluation once the theoretical winner clears its gate", () => {
+  const theoreticalOnly = runOneSlotCounterfactualLab(wiringSelected, [wiringSelected, wiringRivalCandidate], { rivalId: "rival" }, wiringInput);
+  assert.equal(theoreticalOnly.verdict, "advance", "sanity check: this fixture must clear the theoretical gate on its own");
+
+  const result = runPracticalOneSlotCounterfactualLab(wiringSelected, [wiringSelected, wiringRivalCandidate], { rivalId: "rival" }, wiringInput);
+  assert.ok(result.practical, "practical evaluation must actually have run, not stayed null, once the theoretical gate passed");
+  assert.equal(typeof result.practical.passed, "boolean");
+  assert.equal(result.verdict, result.practical.passed ? "advance" : "inconclusive");
+});
+
+test("runPracticalOneSlotCounterfactualLab reports no practical evidence when the theoretical gate alone already holds the list", () => {
+  const identicalCandidates = [{ id: "selected", rows: [{ quantity: 24, name: "Island Utility 0", roles: ["land"], cmc: 0 }] }];
+  const result = runPracticalOneSlotCounterfactualLab(
+    identicalCandidates[0],
+    identicalCandidates,
+    { rivalId: null },
+    practicalInput,
+  );
+  assert.equal(result.verdict, "inconclusive");
+  assert.equal(result.practical, null);
 });
 
 test("forges three deterministic personalized candidates without a model", () => {

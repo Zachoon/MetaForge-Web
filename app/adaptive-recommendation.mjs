@@ -7,6 +7,23 @@ const PLANS = {
   Midrange: { add: ["sideboard-finisher", "sideboard-removal"], cut: ["counter", "draw"], purpose: "match its threat quality without surrendering card economy" },
 };
 
+// The single source of the strategy-text-to-simulator-archetype mapping —
+// matchup-simulation.mjs's PROFILES are keyed by these four names. Ported
+// from page.tsx's own inline version of this same check, with one real fix
+// caught while writing tests against it: native-masterwork-engine.mjs's own
+// STRATEGY_WEIGHTS uses the exact key "Aggressive" (confirmed live in
+// tests/native-masterwork-engine.test.mjs), but the original regex only
+// matched "aggro" or "pressure" — a bare "Aggressive" strategy fell through
+// to Midrange archetype modeling. Broadened rather than ported verbatim,
+// since this function is a fresh consumer and shouldn't start from a known
+// miss; page.tsx's own still-inline copy is unaffected either way.
+export function strategyArchetypeFor(strategy = "") {
+  if (/aggro|aggressive|pressure/i.test(strategy)) return "Aggro";
+  if (/control/i.test(strategy)) return "Control";
+  if (/tempo/i.test(strategy)) return "Tempo";
+  return "Midrange";
+}
+
 // The single source of the matchup-facing role vocabulary (land, sweeper,
 // removal, ramp, draw, protection, finisher, stabilizer) — the same coarse
 // "what does this card do in a real match" labels goldfish-simulation.mjs

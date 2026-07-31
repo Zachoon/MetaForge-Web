@@ -99,6 +99,15 @@ test("ranks up to three distinct-cut passing experiments", () => {
   }
 });
 
+test("rankOneSlotCounterfactuals exposes the exact resulting row list for each experiment, not just its summary", () => {
+  const report = rankOneSlotCounterfactuals(selected, [selected, rival], options);
+  const [experiment] = report.experiments;
+  assert.ok(Array.isArray(experiment.rows));
+  assert.equal(experiment.rows.reduce((sum, row) => sum + row.quantity, 0), 60);
+  assert.ok(experiment.rows.some((row) => row.name === experiment.add));
+  assert.ok(!experiment.rows.some((row) => row.name === experiment.cut) || experiment.rows.find((row) => row.name === experiment.cut).quantity < base.find((row) => row.name === experiment.cut).quantity);
+});
+
 test("rankOneSlotCounterfactuals refuses to invent an experiment without a viable rival", () => {
   const report = rankOneSlotCounterfactuals(selected, [selected], options);
   assert.equal(report.experimentsTested, 0);

@@ -259,6 +259,10 @@ export function rankOneSlotCounterfactuals(selected, candidates, options = {}) {
       add: experiment.add,
       cutRoles: experiment.cutRoles,
       addRoles: experiment.addRoles,
+      // The resulting full row list after this exact swap — exposed so a
+      // caller can run a further check against it (a practical simulation
+      // gate, say) without having to re-derive the swap itself.
+      rows: experiment.rows,
       delta: experiment.delta,
       gate: experiment.gate,
       confident: experiment.gate.passed,

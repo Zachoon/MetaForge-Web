@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import CANDIDATE from "../app/forge-candidate.mjs";
-import { buildSideboard, evaluateLastMatchSignal, evaluateMatchupEvidence, simulationRoleFor } from "../app/adaptive-recommendation.mjs";
+import { buildSideboard, evaluateLastMatchSignal, evaluateMatchupEvidence, simulationRoleFor, strategyArchetypeFor } from "../app/adaptive-recommendation.mjs";
 
 const aggroCards = ["Hired Claw", "Emberheart Challenger", "Slickshot Show-Off", "Lightning Strike", "Mountain"];
 const match = (id, result, cards = aggroCards) => ({ id, result, revealedOpponentCards: cards });
@@ -52,6 +52,20 @@ test("simulationRoleFor classifies into the exact vocabulary PLANS.add already s
   // interactionQualityFor and forge-interaction-graph.mjs's
   // COLOR_TYPE_RESTRICTION for the same reason.
   assert.equal(simulationRoleFor({ typeLine: "Instant", oracleText: "Exile target nonland permanent." }), "removal");
+});
+
+test("strategyArchetypeFor maps a Blueprint strategy string to the exact archetype key matchup-simulation.mjs's PROFILES uses", () => {
+  // "Aggressive" is the exact real strategy key native-masterwork-engine.mjs's
+  // own STRATEGY_WEIGHTS uses (confirmed in its own test suite) — must map
+  // to Aggro, not fall through to Midrange.
+  assert.equal(strategyArchetypeFor("Aggressive"), "Aggro");
+  assert.equal(strategyArchetypeFor("Aggro"), "Aggro");
+  assert.equal(strategyArchetypeFor("Full aggro pressure"), "Aggro");
+  assert.equal(strategyArchetypeFor("Control"), "Control");
+  assert.equal(strategyArchetypeFor("Tempo"), "Tempo");
+  assert.equal(strategyArchetypeFor("Balanced midrange"), "Midrange");
+  assert.equal(strategyArchetypeFor("Combo"), "Midrange");
+  assert.equal(strategyArchetypeFor(""), "Midrange");
 });
 
 test("simulationRoleFor gives counterspells their own role instead of collapsing them into removal", () => {

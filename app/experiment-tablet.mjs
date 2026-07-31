@@ -7,6 +7,7 @@
 // into the seven-field tablet shape and is honest when evidence is thin.
 
 import { rankOneSlotCounterfactuals } from "./native-one-slot-lab.mjs";
+import { rankPracticalOneSlotCounterfactuals } from "./native-masterwork-engine.mjs";
 import { evaluateExperiment } from "./experiment-evidence.mjs";
 import { motifForRoles } from "./masterwork-visual-profile.mjs";
 import { learnRevisionPreferences } from "./revision-learning.mjs";
@@ -82,11 +83,20 @@ function describeTradeoff(delta) {
 
 // causalityReport: output of buildForgeStructuralAnalysis (forge-causality-engine.mjs), or null.
 // matchLog: the array already held in page.tsx state — {result: "win"|"loss", ...}[].
-export function buildExperimentTablets({ selected, candidates, causalityReport = null, matchLog = [], options = {} }) {
+// input: the same verified-pool object passed to forgeNativeMasterwork
+// (needs .cards, .format, .strategy, .target). Optional — when supplied,
+// each theoretically-confident swap also has to clear a real goldfish/
+// matchup simulation before it's recommended, not just look better on
+// paper (see rankPracticalOneSlotCounterfactuals). Omitted, this falls
+// back to exactly today's theoretical-only ranking, unchanged.
+export function buildExperimentTablets({ selected, candidates, causalityReport = null, matchLog = [], options = {}, input = null }) {
   const matchupPreference = matchupCounterPreference(matchLog);
-  const ranked = rankOneSlotCounterfactuals(selected, candidates, matchupPreference
+  const rankingOptions = matchupPreference
     ? { ...options, preferredRoles: matchupPreference.preferredRoles, matchupOpponent: matchupPreference.opponent }
-    : options);
+    : options;
+  const ranked = input
+    ? rankPracticalOneSlotCounterfactuals(selected, candidates, input, rankingOptions)
+    : rankOneSlotCounterfactuals(selected, candidates, rankingOptions);
   const observation = evaluateExperiment(matchLog);
   const fieldObservation = observation.sampleSize
     ? `${observation.wins}-${observation.losses} across ${observation.sampleSize} recorded match${observation.sampleSize === 1 ? "" : "es"} with this build: ${observation.narrative}`
@@ -113,8 +123,19 @@ export function buildExperimentTablets({ selected, candidates, causalityReport =
     expectedBenefit: describeBenefit(experiment.delta),
     tradeoff: experiment.confident
       ? describeTradeoff(experiment.delta)
-      : `${describeTradeoff(experiment.delta)} Below the Forge's gain threshold: ${experiment.gate.reasons.join(" ")}`,
+      : !experiment.gate.passed
+        ? `${describeTradeoff(experiment.delta)} Below the Forge's gain threshold: ${experiment.gate.reasons.join(" ")}`
+        // Cleared the structural gate but failed the practical simulation
+        // check — a real, distinct reason from a plain structural miss,
+        // and worth saying so rather than reusing the same gate-reasons
+        // phrasing for a different kind of rejection.
+        : `${describeTradeoff(experiment.delta)} Cleared the structural gate but failed practical simulation testing: ${experiment.practical?.reasons.join(" ") || "modeled regression detected."}`,
     evidenceStatus: experiment.confident ? observation.confidence : "speculative",
+    // Real goldfish/matchup simulation evidence for this exact swap, when
+    // an `input` was supplied to buildExperimentTablets — null otherwise
+    // (theoretical-only ranking, or a candidate the structural gate
+    // already rejected before it was worth spending simulation budget on).
+    practicalEvidence: experiment.practical || null,
     matchupRelevant: experiment.matchupRelevant || false,
     matchupNote: experiment.matchupRelevant && matchupPreference
       ? `This card was specifically prioritized because it answers what you've reported losing to against ${matchupPreference.opponent}.`

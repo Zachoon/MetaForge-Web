@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildExperimentTablets } from "../app/experiment-tablet.mjs";
+import { forgeNativeMasterwork } from "../app/native-masterwork-engine.mjs";
 
 const base = [
   { quantity: 24, name: "Island", roles: ["land"], cmc: 0 },
@@ -150,6 +151,45 @@ test("surfaces a speculative experiment tablet instead of only a confidence card
   assert.equal(experimentTablets[0].confident, false);
   assert.equal(experimentTablets[0].evidenceStatus, "speculative");
   assert.match(experimentTablets[0].tradeoff, /below the forge's gain threshold/i);
+});
+
+const realCard = (name, oracleText, typeLine = "Creature — Test", manaCost = "{2}{U}", colorIdentity = ["U"]) => ({ name, oracleText, typeLine, manaCost, colorIdentity });
+const realPool = [
+  ...Array.from({ length: 28 }, (_, i) => realCard(`Flow ${i}`, "When this enters, draw a card. Scry 1.")),
+  ...Array.from({ length: 24 }, (_, i) => realCard(`Answer ${i}`, "Exile target nonland permanent.")),
+  ...Array.from({ length: 18 }, (_, i) => realCard(`Shield ${i}`, "Target creature gains hexproof and indestructible until end of turn.")),
+  ...Array.from({ length: 18 }, (_, i) => realCard(`Stone ${i}`, "Add one mana. Create a Treasure token.", "Artifact", "{2}")),
+  ...Array.from({ length: 10 }, (_, i) => realCard(`Island Utility ${i}`, "{T}: Add {U}.", "Land", "", ["U"])),
+];
+const realInput = { format: "Standard", target: 60, strategy: "Balanced midrange", colors: ["U"], seed: 9, cards: realPool };
+
+test("without an input, behaves exactly as before: no practicalEvidence field populated", () => {
+  const report = buildExperimentTablets({ selected, candidates, matchLog: [], options });
+  for (const tablet of report.tablets.filter((t) => t.type === "experiment")) {
+    assert.equal(tablet.practicalEvidence, null);
+  }
+});
+
+test("with a real input supplied, confident tablets carry real practical simulation evidence", () => {
+  const report = forgeNativeMasterwork(realInput);
+  const tablets = buildExperimentTablets({ selected: report.selected, candidates: report.candidates, matchLog: [], options: { format: realInput.format, strategy: realInput.strategy, target: realInput.target }, input: realInput });
+  const experimentTablets = tablets.tablets.filter((t) => t.type === "experiment");
+  for (const tablet of experimentTablets) {
+    if (tablet.confident) {
+      assert.ok(tablet.practicalEvidence, "a confident tablet must carry real practical evidence backing that confidence");
+      assert.equal(tablet.practicalEvidence.passed, true);
+    }
+  }
+});
+
+test("with a real input supplied, a tablet that failed practical simulation explains why in its tradeoff, not just the structural gate reasons", () => {
+  const report = forgeNativeMasterwork(realInput);
+  const tablets = buildExperimentTablets({ selected: report.selected, candidates: report.candidates, matchLog: [], options: { format: realInput.format, strategy: realInput.strategy, target: realInput.target }, input: realInput });
+  const practicallyRejected = tablets.tablets.filter((t) => t.type === "experiment" && t.practicalEvidence && !t.practicalEvidence.passed);
+  for (const tablet of practicallyRejected) {
+    assert.equal(tablet.confident, false);
+    assert.match(tablet.tradeoff, /failed practical simulation testing/i);
+  }
 });
 
 test("pads a partial set of real experiments with exactly one confidence tablet, never more", () => {
