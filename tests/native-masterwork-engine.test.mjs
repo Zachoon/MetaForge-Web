@@ -1,6 +1,6 @@
 ﻿import assert from "node:assert/strict";
 import test from "node:test";
-import { budgetScoreFor, classifyNativeCard, colorPipsFromCost, complexityScoreFor, curveAwareLandAdjustment, curveTargets, fieldCounterRolesFor, forgeNativeMasterwork, hypergeometricAtLeast, interactionQualityFor, manaConsistencyReport, oracleTextComplexity, parseNativeBlueprintIntent, poolMechanicalSignals, popularityScoreFromRank, proportionalBasicCounts, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
+import { budgetScoreFor, classifyNativeCard, colorPipsFromCost, complexityScoreFor, conceptSignals, curveAwareLandAdjustment, curveTargets, fieldCounterRolesFor, forgeNativeMasterwork, hypergeometricAtLeast, interactionQualityFor, manaConsistencyReport, oracleTextComplexity, parseNativeBlueprintIntent, poolMechanicalSignals, popularityScoreFromRank, proportionalBasicCounts, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
 
 const card = (name, oracleText, typeLine = "Creature — Test", manaCost = "{2}{U}", colorIdentity = ["U"]) => ({ name, oracleText, typeLine, manaCost, colorIdentity });
 const pool = [
@@ -62,6 +62,26 @@ test("database-confirmed and regex-confirmed roles for the same card merge witho
   // it oracle text that also regex-matches "sacrifice" to prove the merge
   // is a deduplicated union, not two separate entries.
   assert.deepEqual(classifyNativeCard(card("A Golden Opportunity", "Sacrifice a creature.", "Sorcery")), ["sacrifice"]);
+});
+
+test("conceptSignals reads a commander's own database-confirmed roles, not just its oracle-text regex matches", () => {
+  // Same real card/tag pairs as classifyNativeCard's database tests above,
+  // now read through conceptSignals — the function that turns a commander's
+  // text into the "does this card do what my commander cares about" synergy
+  // signal. Empty oracle text means any signal here can only have come from
+  // the database lookup.
+  assert.deepEqual(conceptSignals(card("_____ goblin", "", "Legendary Creature")), ["ramp"]);
+  assert.deepEqual(conceptSignals(card("a golden opportunity", "", "Legendary Enchantment")), ["sacrifice"]);
+  // A commander's real rules text still contributes its regex-matched
+  // signals alongside any database-confirmed ones, deduplicated.
+  assert.deepEqual(
+    conceptSignals(card("Blood Artist Commander", "Whenever a creature dies, you gain 1 life.", "Legendary Creature")),
+    ["sacrifice", "lifegain"],
+  );
+});
+
+test("conceptSignals never calls a commander printed on a basic land \"ramp\" from the mana_acceleration tag", () => {
+  assert.deepEqual(conceptSignals(card("Island", "", "Basic Land — Island")), []);
 });
 
 test("interactionQualityFor scores unconditional removal at full quality", () => {

@@ -488,9 +488,17 @@ export function classifyNativeCard(card) {
   return unique(roles);
 }
 
-function conceptSignals(text = "") {
-  const source = normalized(text);
-  return Object.keys(ROLE_PATTERNS).filter((role) => ROLE_PATTERNS[role].some((pattern) => pattern.test(source)));
+// Same database cross-reference as classifyNativeCard, applied to a
+// commander's own text so the synergy bonus below ("does this card do what
+// my commander cares about") sees the same evidence a card's own role
+// classification does — a commander whose ramp ability is phrased in a way
+// the regex above doesn't cover would otherwise silently grant no ramp
+// synergy bonus at all.
+export function conceptSignals(card) {
+  const text = normalized(card?.oracleText || card?.oracle_text || "");
+  const regexSignals = Object.keys(ROLE_PATTERNS).filter((role) => ROLE_PATTERNS[role].some((pattern) => pattern.test(text)));
+  const isLand = /\bLand\b/i.test(card?.typeLine || card?.type_line || "");
+  return unique([...regexSignals, ...roleTagsFor(card, isLand)]);
 }
 
 function preferenceTerms(input) {
@@ -607,7 +615,7 @@ function prepareForgeAnalysis(input, evidenceByName) {
   const blueprint = parseNativeBlueprintIntent(input);
   const context = {
     weights: STRATEGY_WEIGHTS[input.strategy] || STRATEGY_WEIGHTS["Balanced midrange"],
-    commanderSignals: unique(allCommanders(input).flatMap((commander) => conceptSignals(commander.oracleText || ""))),
+    commanderSignals: unique(allCommanders(input).flatMap((commander) => conceptSignals(commander))),
     terms: preferenceTerms(input),
     ideal: /Aggressive|Tempo/i.test(input.strategy) ? 2.4 : /Control/i.test(input.strategy) ? 3.2 : 2.9,
     blueprint,
