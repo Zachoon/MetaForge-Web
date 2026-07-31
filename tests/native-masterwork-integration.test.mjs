@@ -14,19 +14,19 @@ test("Masterwork selection uses the native engine instead of a model endpoint", 
   assert.doesNotMatch(generation, /task:\s*["']deck_generation/);
 });
 
-test("the simulation dossier maps ramp and protection to their own modeled roles, not stabilizer/counter", () => {
-  // roleMap used to fold Acceleration into "stabilizer" and Protection into
-  // "counter" — both goldfish-simulation.mjs and matchup-simulation.mjs now
-  // understand real ramp/protection roles, so the dossier must feed them
-  // in rather than silently mislabeling ramp as a defensive card or
-  // protection as countermagic.
+test("the simulation dossier gets its roles from the shared simulationRoleFor classifier, not a re-inlined copy", () => {
+  // Acceleration/Protection used to fold into "stabilizer"/"counter" via an
+  // inline roleMap here — now sourced from adaptive-recommendation.mjs's
+  // simulationRoleFor (see tests/adaptive-recommendation.test.mjs for the
+  // actual ramp/protection regression coverage, tested behaviorally rather
+  // than by pattern-matching page.tsx's source text). This just guards
+  // against a second inline copy quietly reappearing and drifting from it.
+  assert.match(page, /import \{[^}]*\bsimulationRoleFor\b[^}]*\} from "\.\/adaptive-recommendation\.mjs";/);
   const dossierStart = page.indexOf("const simulationDossier = useMemo");
   const dossierEnd = page.indexOf("}, [", dossierStart);
   const dossier = page.slice(dossierStart, dossierEnd);
-  assert.match(dossier, /Acceleration:\s*"ramp"/);
-  assert.match(dossier, /Protection:\s*"protection"/);
-  assert.doesNotMatch(dossier, /Acceleration:\s*"stabilizer"/);
-  assert.doesNotMatch(dossier, /Protection:\s*"counter"/);
+  assert.match(dossier, /simulationRoleFor\(fact\)/);
+  assert.doesNotMatch(dossier, /roleMap/);
 });
 
 test("the simulation dossier feeds real role counts and average curve into the interaction-density check", () => {

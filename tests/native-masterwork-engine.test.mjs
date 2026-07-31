@@ -463,6 +463,18 @@ test("creates exact-size constructed candidates with four-copy limits", () => {
   assert.equal(report.selected.rows.every((row) => row.roles.includes("land") || row.quantity <= 4), true);
 });
 
+test("a Standard build gets a real sideboard from the unused pool; a singleton Commander build gets none", () => {
+  const standard = forgeNativeMasterwork({ format: "Standard", target: 60, strategy: "Tempo", path: "Tempo Conversion", note: "cheap interaction", colors: ["U"], seed: 9, cards: pool });
+  assert.ok(Array.isArray(standard.selected.sideboard), "Standard is best-of-3 and should get a real sideboard");
+  assert.ok(standard.selected.sideboard.length > 0);
+  assert.ok(standard.selected.sideboard.every((row) => row.role.startsWith("sideboard-") && row.quantity > 0 && row.card));
+  const mainDeckNames = new Set(standard.selected.rows.map((row) => row.name));
+  assert.ok(standard.selected.sideboard.every((row) => !mainDeckNames.has(row.card)), "never offers a card already in the main deck");
+
+  const commander = forgeNativeMasterwork({ format: "Commander", target: 100, strategy: "Control", seed: 13, commander: { name: "Scholar of Tests", colors: ["U"], oracleText: "Whenever you draw a card, create a token." }, cards: pool });
+  assert.equal(commander.selected.sideboard, undefined, "Commander is singleton and has no best-of-3 sideboard");
+});
+
 test("ranks candidates with explicit role coverage and curve health", () => {
   const report = forgeNativeMasterwork({ format: "Commander", target: 100, strategy: "Control", seed: 13, commander: { name: "Scholar of Tests", colors: ["U"], oracleText: "Whenever you draw a card, create a token." }, cards: pool });
   assert.ok(report.selected.evaluation.roleCoverage > 0.5);

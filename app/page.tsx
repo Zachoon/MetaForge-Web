@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperti
 import { createPortal } from "react-dom";
 import { evaluateSimulationGate } from "./goldfish-simulation.mjs";
 import { evaluateMatchupMatrix } from "./matchup-simulation.mjs";
+import { displayRoleFor, simulationRoleFor } from "./adaptive-recommendation.mjs";
 import { getMetaIntelligence } from "./meta-intelligence.mjs";
 import {
   buildBoundedFailureAnalysis,
@@ -1459,24 +1460,12 @@ const cheapestCardPriceUsd = (fact?: CardFact): number | null => {
     .filter((value): value is number => value !== null && Number.isFinite(value));
   return candidates.length ? Math.min(...candidates) : null;
 };
-const cardRole = (fact?: CardFact) => {
-  const text = [
-    fact?.type_line,
-    fact?.oracle_text,
-    ...(fact?.card_faces || []).flatMap((face) => [face.type_line, face.oracle_text]),
-  ]
-    .filter(Boolean)
-    .join(" ");
-  if (/Land/i.test(text)) return "Mana source";
-  if (/destroy all|exile all|all creatures|get -\d+\/-\d+/i.test(text)) return "Board reset";
-  if (/counter target spell|destroy target|exile target|deals? \d+ damage/i.test(text)) return "Interaction";
-  if (/add .+ mana|search your library for .+ land|treasure token/i.test(text)) return "Acceleration";
-  if (/draw (?:a|one|two|three|\d+)|look at the top|exile .+ you may play/i.test(text)) return "Card advantage";
-  if (/hexproof|indestructible|protection from|phase out|regenerate/i.test(text)) return "Protection";
-  if (/create .+ token|whenever|for each|double|copy/i.test(text)) return "Engine piece";
-  if (/Creature|Planeswalker/i.test(text)) return "Threat";
-  return "Flexible support";
-};
+// displayRoleFor/simulationRoleFor now live in adaptive-recommendation.mjs
+// — the single source both this display label and the simulation/sideboard
+// role vocabulary are derived from, instead of two copies that could drift.
+// It already reads both typeLine/type_line and oracleText/oracle_text, so
+// a raw Scryfall-shaped CardFact passes through directly.
+const cardRole = (fact?: CardFact) => displayRoleFor(fact);
 const BASIC_CARD_NAMES = new Set(["plains", "island", "swamp", "mountain", "forest", "wastes"]);
 
 type ReadingSize = "compact" | "comfortable" | "large";
@@ -2476,25 +2465,14 @@ export default function Home() {
               : "Advances the primary plan while maintaining useful battlefield presence.";
   const simulationDossier = useMemo(() => {
     if (!deckIntegrity.passed) return null;
-    // Acceleration and Protection used to fall back into "stabilizer" and
-    // "counter" — real roles the simulators already model, but the wrong
-    // ones. A ramp spell doesn't hold up mana like a counterspell, and
-    // hexproof/indestructible isn't countermagic; both simulators now have
-    // dedicated ramp/protection roles, so this maps to the real thing.
-    const roleMap: Record<string, string> = {
-      "Mana source": "land",
-      "Board reset": "sweeper",
-      Interaction: "removal",
-      Acceleration: "ramp",
-      "Card advantage": "draw",
-      Protection: "protection",
-      "Engine piece": "finisher",
-      Threat: "finisher",
-      "Flexible support": "stabilizer",
-    };
+    // simulationRoleFor (adaptive-recommendation.mjs) is the single source
+    // of this translation now — Acceleration and Protection used to fall
+    // back into "stabilizer" and "counter" before it gained dedicated
+    // ramp/protection roles, and buildSideboard needs the exact same
+    // mapping cardRole's display labels use here, not a second copy of it.
     const model = deckRows.map((row) => {
       const fact = cardFacts[cardFactKey(row.name)];
-      const role = roleMap[cardRole(fact)] || "stabilizer";
+      const role = simulationRoleFor(fact);
       return {
         quantity: row.quantity,
         card: row.name,

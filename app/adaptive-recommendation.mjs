@@ -7,6 +7,104 @@ const PLANS = {
   Midrange: { add: ["sideboard-finisher", "sideboard-removal"], cut: ["counter", "draw"], purpose: "match its threat quality without surrendering card economy" },
 };
 
+// The single source of the matchup-facing role vocabulary (land, sweeper,
+// removal, ramp, draw, protection, finisher, stabilizer) — the same coarse
+// "what does this card do in a real match" labels goldfish-simulation.mjs
+// and matchup-simulation.mjs already model, and now the vocabulary this
+// module's own PLANS table above is written against. Previously this
+// classification lived only inline in page.tsx (used to build the model
+// fed to the two simulators); it's ported here unchanged so buildSideboard
+// below can use the exact same roles without a second, drifting copy of
+// the same nine regex checks.
+export function displayRoleFor(card) {
+  const text = [
+    card?.typeLine || card?.type_line,
+    card?.oracleText || card?.oracle_text,
+    ...(card?.cardFaces || card?.card_faces || []).flatMap((face) => [face.typeLine || face.type_line, face.oracleText || face.oracle_text]),
+  ].filter(Boolean).join(" ");
+  // \b, not a bare /Land/i: "exile target nonland permanent" (Anguished
+  // Unmaking, Vindicate — one of the broadest removal templates in the
+  // game, already called out for the same reason in
+  // native-masterwork-engine.mjs's interactionQualityFor and
+  // forge-interaction-graph.mjs's COLOR_TYPE_RESTRICTION) would otherwise
+  // match "land" as a bare substring of "nonland" and get classified as a
+  // mana source instead of removal.
+  if (/\bLand\b/i.test(text)) return "Mana source";
+  if (/destroy all|exile all|all creatures|get -\d+\/-\d+/i.test(text)) return "Board reset";
+  if (/counter target spell|destroy target|exile target|deals? \d+ damage/i.test(text)) return "Interaction";
+  if (/add .+ mana|search your library for .+ land|treasure token/i.test(text)) return "Acceleration";
+  if (/draw (?:a|one|two|three|\d+)|look at the top|exile .+ you may play/i.test(text)) return "Card advantage";
+  if (/hexproof|indestructible|protection from|phase out|regenerate/i.test(text)) return "Protection";
+  if (/create .+ token|whenever|for each|double|copy/i.test(text)) return "Engine piece";
+  if (/Creature|Planeswalker/i.test(text)) return "Threat";
+  return "Flexible support";
+}
+const DISPLAY_ROLE_MAP = {
+  "Mana source": "land",
+  "Board reset": "sweeper",
+  Interaction: "removal",
+  Acceleration: "ramp",
+  "Card advantage": "draw",
+  Protection: "protection",
+  "Engine piece": "finisher",
+  Threat: "finisher",
+  "Flexible support": "stabilizer",
+};
+export function simulationRoleFor(card) {
+  return DISPLAY_ROLE_MAP[displayRoleFor(card)] || "stabilizer";
+}
+
+// Only the roles PLANS.add above ever actually asks for — a sideboard full
+// of ramp or protection tech nobody's plan references would just be dead
+// weight relative to what this module can currently recommend bringing in.
+const SIDEBOARD_ROLES = new Set(["stabilizer", "sweeper", "removal", "counter", "finisher"]);
+
+// Builds a real sideboard from whatever of the verified pool didn't make
+// the main deck, in the exact {quantity, card, role} shape every function
+// above already expects — the missing half of the pipeline: PLANS could
+// always describe a repair, but nothing ever supplied a real
+// candidate.sideboard for it to search until this existed. Cards may
+// optionally carry a `score` (native-masterwork-engine.mjs's role-fit
+// score) to prefer the pool's strongest options per role; unscored callers
+// get a stable, deterministic order instead of a silently arbitrary one.
+export function buildSideboard(pool, mainDeckNames, options = {}) {
+  const target = options.target ?? 15;
+  const perRole = options.perRole ?? 3;
+  const excluded = new Set([...mainDeckNames].map((name) => String(name).normalize("NFKC").trim().toLocaleLowerCase("en")));
+  const isLand = (card) => /\bLand\b/i.test(card?.typeLine || card?.type_line || "");
+  const candidates = pool
+    .filter((card) => card?.name && !isLand(card) && !excluded.has(String(card.name).normalize("NFKC").trim().toLocaleLowerCase("en")))
+    .map((card) => ({ card, role: simulationRoleFor(card) }))
+    .filter(({ role }) => SIDEBOARD_ROLES.has(role))
+    .sort((a, b) => (b.card.score || 0) - (a.card.score || 0) || a.card.name.localeCompare(b.card.name));
+
+  const byRole = new Map();
+  for (const { card, role } of candidates) {
+    if (!byRole.has(role)) byRole.set(role, []);
+    if (byRole.get(role).length < perRole) byRole.get(role).push(card);
+  }
+
+  const sideboard = [];
+  let slotsLeft = target;
+  // Round-robin across roles instead of filling one role to its cap first,
+  // so a 15-card sideboard reads as a real matchup toolbox (some of
+  // everything PLANS might ask for) rather than fifteen copies of
+  // whatever the top-scoring single role happened to be.
+  const roles = [...SIDEBOARD_ROLES].filter((role) => byRole.has(role));
+  let index = 0;
+  while (slotsLeft > 0 && roles.some((role) => byRole.get(role).length)) {
+    const role = roles[index % roles.length];
+    index += 1;
+    const cards = byRole.get(role);
+    if (!cards.length) continue;
+    const card = cards.shift();
+    const quantity = Math.min(3, slotsLeft);
+    sideboard.push({ quantity, card: card.name, role: `sideboard-${role}` });
+    slotsLeft -= quantity;
+  }
+  return sideboard;
+}
+
 export function evaluateLastMatchSignal(match, candidate) {
   if (!match) return { status: "waiting", narrative: "Complete an Arena match with this test version and Forge will update its coaching signal here." };
   const opponent = classifyRevealedOpponent(match.revealedOpponentCards);

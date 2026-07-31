@@ -21,6 +21,8 @@ import {
   getMetaIntelligence,
 } from "./meta-intelligence.mjs";
 
+import { buildSideboard } from "./adaptive-recommendation.mjs";
+
 // MetaForge Native Masterwork Engine
 // Card facts may come from verified catalogs; every construction and ranking
 // decision in this module is deterministic and owned by MetaForge.
@@ -1198,6 +1200,20 @@ export function curveAwareLandAdjustment(samples) {
   return clamp(curveAdjustment - rampAdjustment, -4, 4);
 }
 
+// Constructed (non-singleton) formats play best-of-3 with a real 15-card
+// sideboard; Commander/Brawl/Standard Brawl are singleton and don't have
+// one. Built from whatever of the same scored, verified pool didn't make
+// the main deck, so it's real match-ready evidence
+// adaptive-recommendation.mjs's PLANS/evaluateMatchupEvidence can act on —
+// the missing half of that module's pipeline, which could always describe
+// a repair but never had a real candidate.sideboard to search until now.
+function sideboardFor(scored, selected, singleton) {
+  if (singleton) return undefined;
+  const pool = scored.map((entry) => ({ ...entry.card, score: entry.score }));
+  const mainDeckNames = selected.map((row) => row.name);
+  return buildSideboard(pool, mainDeckNames);
+}
+
 function buildCandidate(input, variant, analysis) {
   const target = input.target || (["Commander", "Brawl"].includes(input.format) ? 100 : 60);
   const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
@@ -1242,6 +1258,7 @@ function buildCandidate(input, variant, analysis) {
     evaluation,
     blueprintAlignment,
     score: evaluation.score,
+    sideboard: sideboardFor(scored, selected, singleton),
     boundary: "Native structural candidate. Legality and simulations are hard gates; real match performance remains unproven.",
   };
 }
@@ -1330,6 +1347,7 @@ function buildImportedCandidate(input, analysis) {
     evaluation,
     blueprintAlignment,
     score: evaluation.score,
+    sideboard: sideboardFor(scored, selected, singleton),
     boundary: "Adapted directly from your submitted list. Legality and simulations are hard gates; real match performance remains unproven.",
   };
 }
