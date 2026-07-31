@@ -516,7 +516,7 @@
 @media(prefers-reduced-motion:reduce){.forge-milestone-motion{display:none!important}.progressive-results .chapter-1-active .deck-manuscript>header,.progressive-results .chapter-1-active .forge-quick-read,.progressive-results .chapter-1-active .deck-gallery,.progressive-results .chapter-2-active>.testing-loop,.progressive-results .chapter-3-active .forge-understanding-bridge,.progressive-results .chapter-4-active .forge-intelligence-vault{animation:none}}
 /* Living UI phase: the forge responds softly between its major ceremonies. */
 .great-forge::after{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(420px circle at var(--mf-pointer-x,50vw) var(--mf-pointer-y,36vh),rgba(77,219,215,.055),rgba(255,139,55,.025) 38%,transparent 70%);mix-blend-mode:screen;transition:opacity .35s ease}
-.great-forge>header,.great-forge>section{position:relative;z-index:2}
+.great-forge>header,.great-forge>section:not(.forge-edit-workbench){position:relative;z-index:2}
 .mf-living-reveal{opacity:0;transform:translateY(14px) scale(.992);filter:blur(3px);transition:opacity .58s ease var(--mf-reveal-delay,0ms),transform .72s cubic-bezier(.18,.82,.2,1) var(--mf-reveal-delay,0ms),filter .55s ease var(--mf-reveal-delay,0ms)}
 .mf-living-reveal.is-visible{opacity:1;transform:none;filter:none}
 .great-forge button,.great-forge [role="button"]{transition-property:transform,border-color,background-color,box-shadow,color,opacity;transition-duration:.18s;transition-timing-function:ease}
