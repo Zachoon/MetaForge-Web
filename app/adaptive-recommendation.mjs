@@ -31,7 +31,16 @@ export function displayRoleFor(card) {
   // mana source instead of removal.
   if (/\bLand\b/i.test(text)) return "Mana source";
   if (/destroy all|exile all|all creatures|get -\d+\/-\d+/i.test(text)) return "Board reset";
-  if (/counter target spell|destroy target|exile target|deals? \d+ damage/i.test(text)) return "Interaction";
+  // Counterspells and removal used to share one "Interaction" bucket that
+  // always mapped to "removal" below — meaning "counter" was a role every
+  // PLANS entry above already searched for (Control's plan wants
+  // sideboard-counter; Aggro's and Midrange's want to cut counter) but no
+  // card could ever actually earn, silently making those PLANS entries
+  // dead. Checked first since it's the more specific claim: a counterspell
+  // that also mentions dealing damage on a rider clause is still a
+  // counterspell first.
+  if (/counter target spell/i.test(text)) return "Counter magic";
+  if (/destroy target|exile target|deals? \d+ damage/i.test(text)) return "Interaction";
   if (/add .+ mana|search your library for .+ land|treasure token/i.test(text)) return "Acceleration";
   if (/draw (?:a|one|two|three|\d+)|look at the top|exile .+ you may play/i.test(text)) return "Card advantage";
   if (/hexproof|indestructible|protection from|phase out|regenerate/i.test(text)) return "Protection";
@@ -42,6 +51,7 @@ export function displayRoleFor(card) {
 const DISPLAY_ROLE_MAP = {
   "Mana source": "land",
   "Board reset": "sweeper",
+  "Counter magic": "counter",
   Interaction: "removal",
   Acceleration: "ramp",
   "Card advantage": "draw",

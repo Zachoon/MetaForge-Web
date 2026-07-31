@@ -54,6 +54,19 @@ test("simulationRoleFor classifies into the exact vocabulary PLANS.add already s
   assert.equal(simulationRoleFor({ typeLine: "Instant", oracleText: "Exile target nonland permanent." }), "removal");
 });
 
+test("simulationRoleFor gives counterspells their own role instead of collapsing them into removal", () => {
+  // Control's PLANS entry specifically searches sideboard-counter, and
+  // Aggro's/Midrange's specifically cut counter — dead search terms until
+  // a counterspell could actually earn this role.
+  assert.equal(simulationRoleFor({ typeLine: "Instant", oracleText: "Counter target spell." }), "counter");
+  assert.equal(simulationRoleFor({ typeLine: "Instant", oracleText: "Counter target spell unless its controller pays {3}." }), "counter");
+  // A counterspell with a damage rider clause is still a counterspell
+  // first, not misread as removal because the text also mentions damage.
+  assert.equal(simulationRoleFor({ typeLine: "Instant", oracleText: "Counter target spell. If that spell is countered this way, exile it instead and its controller loses 2 life." }), "counter");
+  // Real removal (no "counter target spell" phrasing) is unaffected.
+  assert.equal(simulationRoleFor({ typeLine: "Instant", oracleText: "Destroy target creature." }), "removal");
+});
+
 test("buildSideboard fills a real 15-card sideboard from the unused pool, spread across the roles PLANS.add can actually search", () => {
   const card = (name, typeLine, oracleText, score) => ({ name, typeLine, oracleText, score });
   const pool = [
