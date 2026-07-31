@@ -21,6 +21,30 @@ test("detects true symmetrical nonbos but ignores opponent-only hate", () => {
   assert.equal(oneSided.nonbos.length, 0);
 });
 
+test("detects a symmetric lifegain lock as a nonbo against the deck's own lifegain package, but the pattern stays scoped to \"players\" and doesn't fire on an asymmetric opponents-only hoser", () => {
+  const payoff = { name: "Healer", typeLine: "Creature", oracleText: "Whenever you gain life, draw a card." };
+  const symmetrical = buildInteractionGraph([payoff, { name: "Vortex", typeLine: "Enchantment", oracleText: "Players can't gain life." }]);
+  assert.equal(symmetrical.nonbos.length, 1);
+  assert.equal(symmetrical.nonbos[0].signal, "life");
+  // A one-sided hoser like Erebos ("Your opponents can't gain life.") is
+  // worded around "opponents", not "players" — a genuinely different
+  // phrase, not the same rule caught by the opponent-text filter below.
+  const oneSided = buildInteractionGraph([payoff, { name: "Erebos", typeLine: "Enchantment Creature", oracleText: "Your opponents can't gain life." }]);
+  assert.equal(oneSided.nonbos.length, 0);
+});
+
+test("detects a symmetric library-search lock as a nonbo against the deck's own land-tutoring package, but the pattern stays scoped to \"players\" and doesn't fire on an asymmetric opponents-only hoser", () => {
+  const tutor = { name: "Fetcher", typeLine: "Sorcery", oracleText: "Search your library for a land card and put it onto the battlefield." };
+  const symmetrical = buildInteractionGraph([tutor, { name: "Hold", typeLine: "Enchantment", oracleText: "Players can't search libraries." }]);
+  assert.equal(symmetrical.nonbos.length, 1);
+  assert.equal(symmetrical.nonbos[0].signal, "lands");
+  // A one-sided hoser like Aven Mindcensor ("Your opponents can't search
+  // libraries.") is worded around "opponents", not "players" — a
+  // genuinely different phrase, same distinction as the lifegain case above.
+  const oneSided = buildInteractionGraph([tutor, { name: "Mindcensor", typeLine: "Creature", oracleText: "Your opponents can't search libraries." }]);
+  assert.equal(oneSided.nonbos.length, 0);
+});
+
 test("keeps unsupported cards visible as isolated slots", () => {
   const graph = buildInteractionGraph([
     { name: "Token Maker", typeLine: "Sorcery", oracleText: "Create two 1/1 creature tokens." },

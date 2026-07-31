@@ -106,6 +106,13 @@ const NEGATIVE_RULES = [
   ["counters", /counters? can(?:'|’)t be put|players can(?:'|’)t get counters/i, "Counter prevention conflicts with the deck's counter package."],
   ["sacrifice", /players can(?:'|’)t sacrifice|permanents can(?:'|’)t be sacrificed/i, "Sacrifice prevention conflicts with the deck's sacrifice outlets or death payoffs."],
   ["spells", /players can(?:'|’)t cast noncreature spells|each player can(?:'|’)t cast more than one spell/i, "Spell restriction conflicts with the deck's own spell-heavy engine."],
+  // Sulfuric Vortex-style: a symmetric lifegain lock a deck's own lifegain
+  // package can't work around, unlike a one-sided "opponents can't gain
+  // life" hoser (already excluded below by the opponent-text filter).
+  ["life", /players can(?:'|’)t gain life|if a player would gain life, (?:that player|they) (?:gains? no life|loses? that much life instead)/i, "Life-gain denial conflicts with the deck's own lifegain package."],
+  // Stranglehold-style: shuts off the deck's own fetch/tutor-to-battlefield
+  // land package along with everyone else's.
+  ["lands", /players can(?:'|’)t search (?:their )?libraries|players can(?:'|’)t play lands from (?:their )?libraries/i, "Library-search denial conflicts with the deck's own land-tutoring or fetch package."],
 ];
 
 function textOf(card) {
