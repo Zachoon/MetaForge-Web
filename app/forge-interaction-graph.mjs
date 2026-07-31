@@ -1,3 +1,41 @@
+import CARD_MECHANICS from "./card-mechanics.mjs";
+
+const normalizeCardName = (name = "") => String(name).normalize("NFKC").trim().toLocaleLowerCase("en");
+
+// Curated tags from the offline card-mechanics database confirm a producer or
+// payoff role with certainty an oracle-text regex can't match — no keyword
+// drift, no missed synonyms. Only mapped where the database draws a clean
+// producer/payoff line; ambiguous tags (e.g. broad "card_advantage") are left
+// to the regex heuristics below rather than forced into a pairing they don't
+// cleanly support.
+const TAG_PRODUCERS = {
+  tokens: ["token_producer"],
+  counters: ["counter_producer"],
+  graveyard: ["graveyard_setup"],
+  sacrifice: ["sacrifice_outlet"],
+  lands: ["land_search"],
+  life: ["lifegain"],
+  treasure: ["treasure"],
+};
+
+const TAG_PAYOFFS = {
+  tokens: ["token_payoff"],
+  counters: ["counter_payoff"],
+  graveyard: ["graveyard_recursion"],
+  sacrifice: ["death_payoff"],
+  lands: ["landfall_payoff"],
+  life: ["lifegain_payoff"],
+  spells: ["spell_payoff"],
+};
+
+function tagSignalsFor(card, table) {
+  const tags = CARD_MECHANICS[normalizeCardName(card?.name)];
+  if (!tags) return [];
+  return Object.entries(table)
+    .filter(([, tagNames]) => tagNames.some((tag) => tags.includes(tag)))
+    .map(([signal]) => signal);
+}
+
 const SIGNALS = [
   ["tokens", /create(?:s)? [^.]* token|token(?:s)? you control/i],
   ["treasure", /treasure token|treasures? you control/i],
@@ -77,9 +115,13 @@ function textOf(card) {
 export function extractMechanicalSignals(card) {
   const text = textOf(card);
   const signals = SIGNALS.filter(([, pattern]) => pattern.test(text)).map(([name]) => name);
-  const produces = Object.entries(PRODUCERS).filter(([, pattern]) => pattern.test(text)).map(([name]) => name);
-  const rewards = Object.entries(PAYOFFS).filter(([, pattern]) => pattern.test(text)).map(([name]) => name);
-  return { signals, produces, rewards };
+  const regexProduces = Object.entries(PRODUCERS).filter(([, pattern]) => pattern.test(text)).map(([name]) => name);
+  const regexRewards = Object.entries(PAYOFFS).filter(([, pattern]) => pattern.test(text)).map(([name]) => name);
+  const tagProduces = tagSignalsFor(card, TAG_PRODUCERS);
+  const tagRewards = tagSignalsFor(card, TAG_PAYOFFS);
+  const produces = [...new Set([...regexProduces, ...tagProduces])];
+  const rewards = [...new Set([...regexRewards, ...tagRewards])];
+  return { signals, produces, rewards, tagProduces, tagRewards };
 }
 
 export function buildInteractionGraph(cards, options = {}) {
@@ -105,21 +147,31 @@ export function buildInteractionGraph(cards, options = {}) {
       // wiring below (an aura granting flying feeding an anthem that
       // rewards fliers), never merely by both mentioning the same keyword.
       const reasons = [...new Set([...forward, ...reverse, ...shared.filter((signal) => ["spells", "graveyard", "counters", "tokens", "artifacts", "combat"].includes(signal))])];
+      // A signal counts as database-confirmed only when the producing side's
+      // tag AND the rewarding side's tag both come from the curated
+      // card-mechanics database rather than a regex guess — e.g. a real
+      // sacrifice_outlet feeding a real death_payoff, not two cards that
+      // merely mention "sacrifice" and "dies" in unrelated ways.
+      const tagForward = forward.filter((signal) => left.mechanics.tagProduces.includes(signal) && right.mechanics.tagRewards.includes(signal));
+      const tagReverse = reverse.filter((signal) => right.mechanics.tagProduces.includes(signal) && left.mechanics.tagRewards.includes(signal));
+      const tagConfirmed = tagForward.length + tagReverse.length;
       // A one-way edge (A feeds B) is an ordinary synergy pairing. A mutual
       // edge — each card produces a signal the other one rewards — is the
       // shape of a real two-card engine (a token maker plus a sac outlet
       // that pays off tokens and whose own death trigger the maker doesn't
       // care about, say). Still inferred from text patterns, not a verified
       // combo database, so it's surfaced as a structural pattern to
-      // investigate, never as a guaranteed interaction.
+      // investigate, never as a guaranteed interaction — unless the curated
+      // mechanics database confirms both ends, in which case it's labeled
+      // verified rather than inferred.
       const mutual = forward.length > 0 && reverse.length > 0;
       if (reasons.length) edges.push({
         from: left.name,
         to: right.name,
         signals: reasons,
-        strength: Math.min(100, 52 + reasons.length * 14 + (forward.length + reverse.length) * 9),
+        strength: Math.min(100, 52 + reasons.length * 14 + (forward.length + reverse.length) * 9 + tagConfirmed * 6),
         reason: `${left.name} and ${right.name} connect through ${reasons.join(", ")}.`,
-        evidence: forward.length || reverse.length ? "inferred mechanical edge" : "shared oracle signal",
+        evidence: tagConfirmed ? "verified card-database mechanic" : forward.length || reverse.length ? "inferred mechanical edge" : "shared oracle signal",
         mutual,
         forwardSignals: forward,
         reverseSignals: reverse,

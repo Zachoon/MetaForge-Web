@@ -104,6 +104,28 @@ test("never suggests a card that's already in the deck", () => {
   assert.deepEqual(findUnusedEnginePartners(deck, pool), []);
 });
 
+test("connects a sacrifice outlet to a death payoff using the card-mechanics database even when the oracle text alone wouldn't match", () => {
+  // "A Golden Opportunity" is tagged sacrifice_outlet and "A-Blood Artist" is
+  // tagged death_payoff in app/card-mechanics.mjs. Oracle text is deliberately
+  // vague/omitted here so the edge can only come from the tag lookup, proving
+  // the database signal fires independently of the regex heuristics.
+  const outlet = { name: "A Golden Opportunity", typeLine: "Enchantment", oracleText: "" };
+  const payoff = { name: "A-Blood Artist", typeLine: "Creature", oracleText: "" };
+  const graph = buildInteractionGraph([outlet, payoff]);
+  const edge = graph.edges.find((entry) => entry.from === "A Golden Opportunity" && entry.to === "A-Blood Artist");
+  assert.ok(edge, "expected a database-derived edge between the sac outlet and the death payoff");
+  assert.equal(edge.evidence, "verified card-database mechanic");
+  assert.ok(edge.signals.includes("sacrifice"));
+});
+
+test("card-mechanics tag lookup is case/whitespace-insensitive and silently absent for unknown cards", () => {
+  const known = extractMechanicalSignals({ name: "  A-BLOOD ARTIST  ", typeLine: "Creature", oracleText: "" });
+  assert.ok(known.tagRewards.includes("sacrifice"));
+  const unknown = extractMechanicalSignals({ name: "Totally Made Up Card Name Xyz", typeLine: "Creature", oracleText: "" });
+  assert.deepEqual(unknown.tagProduces, []);
+  assert.deepEqual(unknown.tagRewards, []);
+});
+
 test("ignores lands in the pool and respects the limit option", () => {
   const deck = [tokenHerald];
   const pool = Array.from({ length: 5 }, (_, i) => ({ ...cardHerald, name: `Card Herald ${i}` }));
