@@ -69,6 +69,44 @@ test("an ordinary ETB creature that merely mentions entering the battlefield is 
   assert.deepEqual(graph.amplifiers, []);
 });
 
+test("Doubling Season amplifies both the token producers and the counter producers already in the deck, as two distinct entries", () => {
+  const doubler = { name: "Doubling Season", typeLine: "Enchantment", oracleText: "If an effect would create one or more tokens under your control, it creates twice that many instead. If an effect would put one or more counters on a permanent or player, it puts twice that many instead." };
+  const tokenMaker = { name: "Token Maker", typeLine: "Sorcery", oracleText: "Create two 1/1 creature tokens." };
+  const counterMaker = { name: "Counter Maker", typeLine: "Sorcery", oracleText: "Put three +1/+1 counters on target creature." };
+  const graph = buildInteractionGraph([doubler, tokenMaker, counterMaker]);
+  assert.equal(graph.amplifiers.length, 2);
+  const tokenAmplifier = graph.amplifiers.find((entry) => entry.signal === "tokens");
+  const counterAmplifier = graph.amplifiers.find((entry) => entry.signal === "counters");
+  assert.deepEqual(tokenAmplifier.amplifies, ["Token Maker"]);
+  assert.deepEqual(counterAmplifier.amplifies, ["Counter Maker"]);
+});
+
+test("Parallel Lives amplifies token producers only — real cards can double one resource without doubling both", () => {
+  const doubler = { name: "Parallel Lives", typeLine: "Enchantment", oracleText: "If an effect would create one or more tokens under your control, it creates twice that many instead." };
+  const tokenMaker = { name: "Token Maker", typeLine: "Sorcery", oracleText: "Create two 1/1 creature tokens." };
+  const counterMaker = { name: "Counter Maker", typeLine: "Sorcery", oracleText: "Put three +1/+1 counters on target creature." };
+  const graph = buildInteractionGraph([doubler, tokenMaker, counterMaker]);
+  assert.equal(graph.amplifiers.length, 1);
+  assert.equal(graph.amplifiers[0].signal, "tokens");
+  assert.deepEqual(graph.amplifiers[0].amplifies, ["Token Maker"]);
+});
+
+test("a token/counter doubler amplifies producers, not payoffs — the doubling applies to the effect creating the resource, whether or not it's a trigger", () => {
+  const doubler = { name: "Doubling Season", typeLine: "Enchantment", oracleText: "If an effect would create one or more tokens under your control, it creates twice that many instead. If an effect would put one or more counters on a permanent or player, it puts twice that many instead." };
+  // Rewards tokens (cares about tokens already on the battlefield) but
+  // never itself produces one — must not be amplified.
+  const payoffOnly = { name: "Anthem", typeLine: "Enchantment", oracleText: "Creatures you control get +1/+1 for each token you control." };
+  const graph = buildInteractionGraph([doubler, payoffOnly]);
+  assert.deepEqual(graph.amplifiers, []);
+});
+
+test("an ordinary token producer's own oracle text is not mistaken for Doubling Season's exact doubling clause", () => {
+  const ordinary = { name: "Token Maker", typeLine: "Sorcery", oracleText: "Create two 1/1 creature tokens." };
+  const anotherMaker = { name: "Another Maker", typeLine: "Sorcery", oracleText: "Create four 1/1 creature tokens." };
+  const graph = buildInteractionGraph([ordinary, anotherMaker]);
+  assert.deepEqual(graph.amplifiers, []);
+});
+
 test("keeps unsupported cards visible as isolated slots", () => {
   const graph = buildInteractionGraph([
     { name: "Token Maker", typeLine: "Sorcery", oracleText: "Create two 1/1 creature tokens." },

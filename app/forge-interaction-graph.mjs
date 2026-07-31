@@ -115,12 +115,36 @@ const NEGATIVE_RULES = [
   ["lands", /players can(?:'|’)t search (?:their )?libraries|players can(?:'|’)t play lands from (?:their )?libraries/i, "Library-search denial conflicts with the deck's own land-tutoring or fetch package."],
 ];
 
-// Panharmonicon/Yarok-style: "that ability triggers an additional time" is
-// a certain rules fact, not an inferred pattern — a card with this text
-// objectively doubles every qualifying enters-the-battlefield trigger in
-// the deck. This is the positive counterpart to NEGATIVE_RULES: the same
-// "verified" evidence tier, just an amplifier instead of a conflict.
-const ETB_DOUBLER = /(?:enters?(?: the battlefield)?|entering the battlefield)[^.]{0,80}triggers? an additional time/i;
+// Certain rules facts, not inferred patterns — a card with one of these
+// texts objectively doubles a real resource or trigger elsewhere in the
+// deck. The positive counterpart to NEGATIVE_RULES: same "verified"
+// evidence tier, just an amplifier instead of a conflict. Each entry names
+// which side of a card's mechanics the doubling actually reaches:
+// Panharmonicon-style trigger doublers amplify the "rewards" side (the
+// card's own "whenever X enters" ability is what fires twice), while
+// Doubling Season-style resource doublers amplify the "produces" side
+// (every effect that creates the resource makes twice as many, whether or
+// not it's phrased as a trigger).
+const DOUBLER_PATTERNS = [
+  {
+    signal: "etb",
+    side: "rewards",
+    pattern: /(?:enters?(?: the battlefield)?|entering the battlefield)[^.]{0,80}triggers? an additional time/i,
+    verb: "makes every enters-the-battlefield trigger in the deck happen an additional time",
+  },
+  {
+    signal: "tokens",
+    side: "produces",
+    pattern: /if an effect would create (?:one or more|1 or more) tokens?[^.]*, it creates? twice that many/i,
+    verb: "doubles every token this deck creates",
+  },
+  {
+    signal: "counters",
+    side: "produces",
+    pattern: /if an effect would put (?:one or more|1 or more) counters?[^.]*, it puts twice that many/i,
+    verb: "doubles every counter this deck places",
+  },
+];
 
 function textOf(card) {
   return [card.typeLine, card.oracleText].filter(Boolean).join(" ");
@@ -221,13 +245,14 @@ export function buildInteractionGraph(cards, options = {}) {
   // same as nonbos: a fundamentally different (and here, positive) claim
   // than an inferred producer/payoff pairing.
   const amplifiers = [];
-  for (const source of nonlands) {
-    if (!ETB_DOUBLER.test(textOf(source))) continue;
-    const amplified = nonlands.filter((card) => card.name !== source.name && card.mechanics.rewards.includes("etb"));
+  for (const source of nonlands) for (const { signal, side, pattern, verb } of DOUBLER_PATTERNS) {
+    if (!pattern.test(textOf(source))) continue;
+    const amplified = nonlands.filter((card) => card.name !== source.name && card.mechanics[side].includes(signal));
     if (amplified.length) amplifiers.push({
       source: source.name,
+      signal,
       amplifies: amplified.map((card) => card.name),
-      reason: `${source.name} makes every enters-the-battlefield trigger in the deck happen an additional time — a certain rules fact, not an inferred pattern.`,
+      reason: `${source.name} ${verb} — a certain rules fact, not an inferred pattern.`,
       evidence: "verified rules-text trigger amplifier",
     });
   }
