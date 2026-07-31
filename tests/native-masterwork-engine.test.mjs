@@ -38,11 +38,41 @@ test("interactionQualityFor scores unconditional removal at full quality", () =>
 });
 
 test("interactionQualityFor downweights restricted removal that can simply whiff", () => {
-  assert.equal(interactionQualityFor("Destroy target creature with mana value 3 or less."), 0.65);
-  assert.equal(interactionQualityFor("Exile target creature with power 4 or greater."), 0.65);
-  assert.equal(interactionQualityFor("Counter target spell unless its controller pays {3}."), 0.65);
+  assert.equal(interactionQualityFor("Destroy target creature with mana value 3 or less."), 0.66);
+  assert.equal(interactionQualityFor("Exile target creature with power 4 or greater."), 0.74);
+  assert.equal(interactionQualityFor("Counter target spell unless its controller pays {3}."), 0.74);
+  // Combat-state and color/type restrictions have no clean numeric severity
+  // signal to grade against, so they keep the original flat penalty.
   assert.equal(interactionQualityFor("Destroy target attacking or blocking creature."), 0.65);
   assert.equal(interactionQualityFor("Destroy target nonblack creature."), 0.65);
+});
+
+test("interactionQualityFor grades a numeric cap's severity instead of one flat penalty for every conditional removal spell", () => {
+  // "Mana value N or less" gets broader — and so better — as N rises: a
+  // 1-or-less cap misses almost every real creature, a 6-or-less cap misses
+  // almost none.
+  const veryNarrow = interactionQualityFor("Destroy target creature with mana value 1 or less.");
+  const midCap = interactionQualityFor("Destroy target creature with mana value 3 or less.");
+  const wideCap = interactionQualityFor("Destroy target creature with mana value 6 or less.");
+  assert.ok(veryNarrow < midCap && midCap < wideCap, `expected 1-or-less (${veryNarrow}) < 3-or-less (${midCap}) < 6-or-less (${wideCap})`);
+  assert.ok(wideCap < 1, "even a wide cap should stay below a truly unconditional spell");
+
+  // "N or greater" is the mirror image: a 1-or-greater bar clears almost
+  // every creature, a 6-or-greater bar clears almost none.
+  const easyBar = interactionQualityFor("Exile target creature with power 1 or greater.");
+  const midBar = interactionQualityFor("Exile target creature with power 4 or greater.");
+  const hardBar = interactionQualityFor("Exile target creature with power 7 or greater.");
+  assert.ok(easyBar > midBar && midBar > hardBar, `expected 1-or-greater (${easyBar}) > 4-or-greater (${midBar}) > 7-or-greater (${hardBar})`);
+
+  // A counterspell's tax is the opponent's restriction, not the caster's —
+  // quality rises with the tax instead of falling.
+  const lightTax = interactionQualityFor("Counter target spell unless its controller pays {1}.");
+  const heavyTax = interactionQualityFor("Counter target spell unless its controller pays {5}.");
+  assert.ok(lightTax < heavyTax, `expected a light {1} tax (${lightTax}) to score below a heavy {5} tax (${heavyTax})`);
+
+  // An unparseable tax (no stated amount) keeps the original flat penalty
+  // rather than inventing a severity from nothing.
+  assert.equal(interactionQualityFor("Counter target spell unless its controller pays {X}."), 0.65);
 });
 
 test("a restricted removal spell still classifies as interaction — only its scoring weight changes, not its role", () => {

@@ -62,20 +62,51 @@ const ROLE_PATTERNS = Object.freeze({
 // contribution to roleScore (below); it doesn't touch classification, so a
 // restricted removal spell is still correctly tagged "interaction" and
 // still counts toward the format's interaction role target.
-const CONDITIONAL_REMOVAL_PATTERNS = [
-  /(?:power|toughness|mana value|converted mana cost) \d+ or (?:less|greater|more)/i,
-  /unless (?:its|their|that player'?s?) controller pays/i,
-  /target (?:attacking|blocking|tapped)(?:\s+or\s+(?:attacking|blocking|tapped))?\s+creature/i,
-  // Color/token/artifact restrictions genuinely narrow what a spell can hit
-  // (Doom Blade-style "nonblack creature"). "Nonland permanent" is the
-  // opposite — excluding lands from "permanent" is what makes that template
-  // one of the broadest, most flexible removal effects in the game (e.g.
-  // Anguished Unmaking), not a restriction, so "land" is deliberately absent
-  // from this list.
-  /target non(?:white|blue|black|red|green|artifact|token) (?:creature|permanent|artifact|enchantment)/i,
-];
+const CMC_OR_STAT_CAP = /(?:power|toughness|mana value|converted mana cost) (\d+) or (less|greater|more)/i;
+const TAX_COUNTERSPELL = /unless (?:its|their|that player'?s?) controller pays(?:[^.]*?\{(\d+)\})?/i;
+const COMBAT_STATE_RESTRICTION = /target (?:attacking|blocking|tapped)(?:\s+or\s+(?:attacking|blocking|tapped))?\s+creature/i;
+// Color/token/artifact restrictions genuinely narrow what a spell can hit
+// (Doom Blade-style "nonblack creature"). "Nonland permanent" is the
+// opposite — excluding lands from "permanent" is what makes that template
+// one of the broadest, most flexible removal effects in the game (e.g.
+// Anguished Unmaking), not a restriction, so "land" is deliberately absent
+// from this list.
+const COLOR_TYPE_RESTRICTION = /target non(?:white|blue|black|red|green|artifact|token) (?:creature|permanent|artifact|enchantment)/i;
+
+// A numeric cap's real cost depends on which side of the number it misses,
+// not just that a number exists. "Mana value N or less" (or "power/
+// toughness N or less") gets *broader* — and so more valuable — as N rises,
+// since it covers more of a real card pool. "N or greater/more" is the
+// mirror image: it gets *narrower* as N rises, since fewer permanents clear
+// a high bar. Either shape keeps the same band: a cap is never quite as
+// good as no cap at all (0.92 ceiling) and never so narrow it's worthless
+// (0.42 floor), stepping roughly an eighth per point of breadth and landing
+// close to the old flat 0.65 penalty right around breadth 3 — a card like
+// the original "mana value 3 or less" example scores almost the same as it
+// always did, while a 1-or-less cap and a 6-or-less cap now land far apart
+// instead of being scored identically.
+function capQuality(cap, direction) {
+  const breadth = direction === "less" ? cap : Math.max(1, 8 - cap);
+  return Math.round(clamp(0.42 + breadth * 0.08, 0.42, 0.92) * 100) / 100;
+}
+
+// A counterspell's tax restricts the *opponent*, not the caster — quality
+// rises with the tax amount instead of falling, the mirror image of a
+// removal cap (a {1} tax is barely a tax; a {5} tax approaches a hard
+// counter). A tax with no parseable numeric amount (an X cost, or phrasing
+// this pattern doesn't capture) keeps the original flat penalty rather than
+// inventing a severity from nothing.
+function taxQuality(tax) {
+  return Math.round(clamp(0.5 + tax * 0.08, 0.5, 0.92) * 100) / 100;
+}
+
 export function interactionQualityFor(text = "") {
-  return CONDITIONAL_REMOVAL_PATTERNS.some((pattern) => pattern.test(text)) ? 0.65 : 1;
+  const capMatch = text.match(CMC_OR_STAT_CAP);
+  if (capMatch) return capQuality(Number(capMatch[1]), capMatch[2] === "less" ? "less" : "greater");
+  const taxMatch = text.match(TAX_COUNTERSPELL);
+  if (taxMatch) return taxMatch[1] ? taxQuality(Number(taxMatch[1])) : 0.65;
+  if (COMBAT_STATE_RESTRICTION.test(text) || COLOR_TYPE_RESTRICTION.test(text)) return 0.65;
+  return 1;
 }
 
 // ROLE_PATTERNS matches verified rules text, which speaks in precise oracle
