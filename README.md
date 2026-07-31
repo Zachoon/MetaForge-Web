@@ -1,7 +1,7 @@
 # MetaForge Web Forge
 
 This directory contains the player-facing MetaForge private alpha. Start with
-the repository-level [Project Manifest](../PROJECT_MANIFEST.md) for the current
+the repository-level [Captain's Log](../CAPTAINS_LOG.md) for the current
 journey, live environments, architecture map, and handoff notes.
 
 ## Runtime
