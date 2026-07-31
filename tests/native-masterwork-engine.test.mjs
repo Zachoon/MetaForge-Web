@@ -1,6 +1,6 @@
 ﻿import assert from "node:assert/strict";
 import test from "node:test";
-import { budgetScoreFor, classifyNativeCard, colorPipsFromCost, complexityScoreFor, curveAwareLandAdjustment, curveTargets, fieldCounterRolesFor, forgeNativeMasterwork, hypergeometricAtLeast, manaConsistencyReport, oracleTextComplexity, parseNativeBlueprintIntent, poolMechanicalSignals, popularityScoreFromRank, proportionalBasicCounts, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
+import { budgetScoreFor, classifyNativeCard, colorPipsFromCost, complexityScoreFor, curveAwareLandAdjustment, curveTargets, fieldCounterRolesFor, forgeNativeMasterwork, hypergeometricAtLeast, interactionQualityFor, manaConsistencyReport, oracleTextComplexity, parseNativeBlueprintIntent, poolMechanicalSignals, popularityScoreFromRank, proportionalBasicCounts, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
 
 const card = (name, oracleText, typeLine = "Creature — Test", manaCost = "{2}{U}", colorIdentity = ["U"]) => ({ name, oracleText, typeLine, manaCost, colorIdentity });
 const pool = [
@@ -23,6 +23,52 @@ test("classifies hand disruption as its own role, distinct from removal and self
   // as "draw" too, since it does draw cards — that part is unrelated to
   // this distinction).
   assert.deepEqual(classifyNativeCard(card("Careful Study", "You may discard a card. If you do, draw two cards.", "Sorcery")), ["draw", "selection"]);
+});
+
+test("interactionQualityFor scores unconditional removal at full quality", () => {
+  assert.equal(interactionQualityFor("Destroy target creature."), 1);
+  assert.equal(interactionQualityFor("Exile target permanent."), 1);
+  assert.equal(interactionQualityFor("Counter target spell."), 1);
+  assert.equal(interactionQualityFor("Deals 3 damage to target creature."), 1);
+  // "Nonland permanent" excludes lands, which is what makes this template
+  // (Anguished Unmaking, Vindicate) one of the broadest, most flexible
+  // removal effects in the game — it must not read as a restriction just
+  // because the word starts with "non".
+  assert.equal(interactionQualityFor("Exile target nonland permanent."), 1);
+});
+
+test("interactionQualityFor downweights restricted removal that can simply whiff", () => {
+  assert.equal(interactionQualityFor("Destroy target creature with mana value 3 or less."), 0.65);
+  assert.equal(interactionQualityFor("Exile target creature with power 4 or greater."), 0.65);
+  assert.equal(interactionQualityFor("Counter target spell unless its controller pays {3}."), 0.65);
+  assert.equal(interactionQualityFor("Destroy target attacking or blocking creature."), 0.65);
+  assert.equal(interactionQualityFor("Destroy target nonblack creature."), 0.65);
+});
+
+test("a restricted removal spell still classifies as interaction — only its scoring weight changes, not its role", () => {
+  assert.deepEqual(classifyNativeCard(card("Doom Blade", "Destroy target nonblack creature.", "Instant")), ["interaction"]);
+});
+
+test("prefers unconditional removal over otherwise-identical conditional removal once slots are scarce", () => {
+  const scarceBase = [
+    ...Array.from({ length: 2 }, (_, i) => card(`Flow ${i}`, "When this enters, draw a card. Scry 1.")),
+    ...Array.from({ length: 2 }, (_, i) => card(`Shield ${i}`, "Target creature gains hexproof and indestructible until end of turn.")),
+    ...Array.from({ length: 2 }, (_, i) => card(`Stone ${i}`, "Add one mana. Create a Treasure token.", "Artifact", "{2}")),
+  ];
+  const lands = Array.from({ length: 10 }, (_, i) => card(`Island Utility ${i}`, "{T}: Add {U}.", "Land", "", ["U"]));
+  const unconditionalFiller = Array.from({ length: 3 }, (_, i) => card(`Clean Removal ${i}`, "Destroy target creature.", "Instant"));
+  const conditionalFiller = Array.from({ length: 3 }, (_, i) => card(`Restricted Removal ${i}`, "Destroy target creature with mana value 3 or less.", "Instant"));
+  const report = forgeNativeMasterwork({
+    format: "Standard", target: 60, strategy: "Balanced midrange", seed: 33, colors: ["U"],
+    cards: [...scarceBase, ...unconditionalFiller, ...conditionalFiller, ...lands],
+  });
+  const unconditionalQuantity = report.selected.rows.filter((row) => row.name.startsWith("Clean Removal")).reduce((sum, row) => sum + row.quantity, 0);
+  const conditionalQuantity = report.selected.rows.filter((row) => row.name.startsWith("Restricted Removal")).reduce((sum, row) => sum + row.quantity, 0);
+  assert.ok(unconditionalQuantity > 0, "expected at least some unconditional removal to make the cut");
+  assert.ok(
+    unconditionalQuantity > conditionalQuantity,
+    `expected unconditional removal (${unconditionalQuantity}) to outcompete otherwise-identical restricted removal (${conditionalQuantity})`,
+  );
 });
 
 test("forges three deterministic personalized candidates without a model", () => {

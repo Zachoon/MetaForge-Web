@@ -55,6 +55,29 @@ const ROLE_PATTERNS = Object.freeze({
   discard: [/target (?:player|opponent) discards?/i, /each (?:player|opponent) discards?/i, /that player discards?/i],
 });
 
+// "Destroy target creature" and "destroy target creature with mana value 3
+// or less" both earn the "interaction" role identically above, but a real
+// deckbuilder values them very differently — the restricted version can
+// simply whiff. This only downweights the "interaction" role's own
+// contribution to roleScore (below); it doesn't touch classification, so a
+// restricted removal spell is still correctly tagged "interaction" and
+// still counts toward the format's interaction role target.
+const CONDITIONAL_REMOVAL_PATTERNS = [
+  /(?:power|toughness|mana value|converted mana cost) \d+ or (?:less|greater|more)/i,
+  /unless (?:its|their|that player'?s?) controller pays/i,
+  /target (?:attacking|blocking|tapped)(?:\s+or\s+(?:attacking|blocking|tapped))?\s+creature/i,
+  // Color/token/artifact restrictions genuinely narrow what a spell can hit
+  // (Doom Blade-style "nonblack creature"). "Nonland permanent" is the
+  // opposite — excluding lands from "permanent" is what makes that template
+  // one of the broadest, most flexible removal effects in the game (e.g.
+  // Anguished Unmaking), not a restriction, so "land" is deliberately absent
+  // from this list.
+  /target non(?:white|blue|black|red|green|artifact|token) (?:creature|permanent|artifact|enchantment)/i,
+];
+export function interactionQualityFor(text = "") {
+  return CONDITIONAL_REMOVAL_PATTERNS.some((pattern) => pattern.test(text)) ? 0.65 : 1;
+}
+
 // ROLE_PATTERNS matches verified rules text, which speaks in precise oracle
 // phrasing ("destroy target creature"). A player's commission note speaks in
 // plain language ("removal", "board wipes") that never appears in rules text,
@@ -486,7 +509,11 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
     roles,
     text,
     cmc: manaValueFromCost(card.manaCost || card.mana_cost, card.cmc),
-    roleScore: roles.reduce((sum, role) => sum + (context.weights[role] || (role === "threat" ? 7 : 2)), 0),
+    roleScore: roles.reduce((sum, role) => {
+      const weight = context.weights[role] || (role === "threat" ? 7 : 2);
+      const quality = role === "interaction" ? interactionQualityFor(text) : 1;
+      return sum + weight * quality;
+    }, 0),
     synergyHits: roles.filter((role) => context.commanderSignals.includes(role)).length,
     synergyPotential: synergyPotentialFor(mechanics, poolSignals),
     preferenceHits: context.terms.filter((term) => text.includes(term)).length,
