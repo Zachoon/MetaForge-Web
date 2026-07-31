@@ -144,6 +144,17 @@ const DOUBLER_PATTERNS = [
     pattern: /if an effect would put (?:one or more|1 or more) counters?[^.]*, it puts twice that many/i,
     verb: "doubles every counter this deck places",
   },
+  // Aggravated Assault/Combat Celebrant-style: a literal extra combat
+  // phase is a certain rules fact, not an inferred pattern — every "whenever
+  // ~ attacks" trigger in the deck gets a second attack step to fire from
+  // this turn. Amplifies "rewards," same as the ETB doubler above: the
+  // combat trigger itself is what fires twice, not what a card produces.
+  {
+    signal: "combat",
+    side: "rewards",
+    pattern: /additional combat phase/i,
+    verb: "grants an additional combat phase, giving every attack trigger in the deck a second chance to fire this turn",
+  },
 ];
 
 function textOf(card) {

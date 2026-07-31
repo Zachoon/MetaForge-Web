@@ -107,6 +107,22 @@ test("an ordinary token producer's own oracle text is not mistaken for Doubling 
   assert.deepEqual(graph.amplifiers, []);
 });
 
+test("Aggravated Assault-style extra combat phase amplifies every real attack-trigger payoff in the deck", () => {
+  const extraCombat = { name: "Aggravated Assault", typeLine: "Artifact", oracleText: "{2}{R}{R}, {T}: Untap all creatures you control. After this main phase, there is an additional combat phase followed by an additional main phase." };
+  const attackPayoff = { name: "Battle Cry Herald", typeLine: "Creature", oracleText: "Whenever this creature attacks, draw a card." };
+  const graph = buildInteractionGraph([extraCombat, attackPayoff]);
+  assert.equal(graph.amplifiers.length, 1);
+  assert.equal(graph.amplifiers[0].signal, "combat");
+  assert.deepEqual(graph.amplifiers[0].amplifies, ["Battle Cry Herald"]);
+});
+
+test("an ordinary attack trigger's own text is not mistaken for a literal extra combat phase", () => {
+  const ordinary = { name: "Battle Cry Herald", typeLine: "Creature", oracleText: "Whenever this creature attacks, draw a card." };
+  const another = { name: "Second Striker", typeLine: "Creature", oracleText: "Whenever this creature attacks, you gain 1 life." };
+  const graph = buildInteractionGraph([ordinary, another]);
+  assert.deepEqual(graph.amplifiers, []);
+});
+
 test("keeps unsupported cards visible as isolated slots", () => {
   const graph = buildInteractionGraph([
     { name: "Token Maker", typeLine: "Sorcery", oracleText: "Create two 1/1 creature tokens." },
