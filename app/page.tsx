@@ -5326,7 +5326,7 @@ export default function Home() {
                       <span>
                         <small>HARDEST STRESS PROFILE</small>
                         <b>{simulationDossier.matrix.weakest?.opponent || "Unresolved"}</b>
-                        <em>{((simulationDossier.matrix.weakest?.scenarioPassRate || 0) * 100).toFixed(1)}% scenario pass</em>
+                        <em>{((simulationDossier.matrix.weakest?.scenarioPassRate || 0) * 100).toFixed(1)}% scenario pass · avg {(simulationDossier.matrix.weakest?.averageMulligans || 0).toFixed(1)} mulligans</em>
                       </span>
                       {simulationDossier.goldfish.expert.colorScrewRate !== null && (
                         <span>

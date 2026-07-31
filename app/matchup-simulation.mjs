@@ -14,6 +14,56 @@ const PROFILES = Object.freeze({
 
 const MODELED_ROLES = new Set(["removal", "counter", "draw", "sweeper", "stabilizer", "finisher", "ramp", "protection"]);
 
+// Land-count keepability, same band goldfish-simulation.mjs's opening-hand
+// gate uses, extended with the same optional color-trap check when the
+// deck actually carries color data (colorPips/colorIdentity) — and
+// degrading gracefully to a land-count-only check when it doesn't, since
+// this function is also called with the plain {quantity,card,role,cmc}
+// shape that carries no color information at all.
+export function isKeepable(hand) {
+  const lands = hand.filter(isLand).length;
+  if (lands < 2 || lands > 5) return false;
+  const landColors = hand.filter(isLand).map((card) => card?.colorIdentity || []);
+  return !hand.some((card) => !isLand(card) && card.colorPips && Object.keys(card.colorPips).some((color) => (card.colorPips[color] || 0) > 0 && !landColors.some((colors) => colors.includes(color))));
+}
+
+// Real London mulligan, same shape as goldfish-simulation.mjs's: draw 7,
+// redraw if unkeepable, capped at two mulligans (a floor of a 5-card
+// hand), then bottom one card per mulligan taken — excess lands first if
+// flooded, otherwise the priciest nonland card. This module draws from the
+// front of a shuffled library (`seen` below reads forward), the opposite
+// convention from goldfish-simulation.mjs's draw-by-pop-from-the-end, so
+// "bottom of the library" here means the back of the array, not the front.
+const MULLIGAN_CAP = 2;
+export function drawOpeningHand(deckCards, rng) {
+  const library = [...deckCards]; shuffle(library, rng);
+  let hand = library.splice(0, 7), mulligans = 0;
+  while (!isKeepable(hand) && mulligans < MULLIGAN_CAP) {
+    library.unshift(...hand); shuffle(library, rng);
+    hand = library.splice(0, 7); mulligans += 1;
+  }
+  if (mulligans > 0) hand = bottomWorstCards(hand, mulligans, library);
+  return { hand, library, mulligans };
+}
+
+function bottomWorstCards(hand, count, library) {
+  const kept = [...hand];
+  for (let i = 0; i < count && kept.length; i += 1) {
+    let worstIndex = -1;
+    if (kept.filter(isLand).length > 4) {
+      worstIndex = kept.findIndex(isLand);
+    } else {
+      worstIndex = kept.reduce((best, card, index) => {
+        if (isLand(card)) return best;
+        return best === -1 || (card.cmc || 0) > (kept[best].cmc || 0) ? index : best;
+      }, -1);
+    }
+    if (worstIndex === -1) worstIndex = kept.length - 1;
+    library.push(kept.splice(worstIndex, 1)[0]);
+  }
+  return kept;
+}
+
 export function simulateMatchupScenarios(deck, opponent = "Midrange", trials = 2000, seed = 991, pilot = "expert") {
   const profile = PROFILES[opponent];
   if (!profile) return { opponent, trials: 0, gate: "unsupported-opponent", scenarioPassRate: 0, modelCoverage: 0, unsupportedCards: [] };
@@ -21,11 +71,13 @@ export function simulateMatchupScenarios(deck, opponent = "Midrange", trials = 2
   const cards = deck.flatMap((card) => Array(card.quantity).fill(card));
   const unsupportedCards = [...new Set(deck.filter((card) => !isLand(card) && !MODELED_ROLES.has(card.role)).map((card) => card.card))];
   const modeled = cards.filter((card) => isLand(card) || MODELED_ROLES.has(card.role)).length;
-  let passes = 0, totalMargin = 0, stabilized = 0;
+  let passes = 0, totalMargin = 0, stabilized = 0, totalMulligans = 0, mulliganTrials = 0;
 
   for (let trial = 0; trial < trials; trial++) {
-    const library = [...cards]; shuffle(library, rng);
-    const seen = library.slice(0, Math.min(library.length, 7 + profile.turns));
+    const drawn = drawOpeningHand(cards, rng);
+    if (drawn.mulligans > 0) { totalMulligans += drawn.mulligans; mulliganTrials += 1; }
+    const nextDraws = drawn.library.slice(0, Math.max(0, profile.turns));
+    const seen = [...drawn.hand, ...nextDraws];
     const lands = seen.filter(isLand).length;
     const manaFactor = lands >= Math.min(3, profile.turns) ? 1 : .62;
     const responses = seen.filter((card) => !isLand(card) && MODELED_ROLES.has(card.role));
@@ -43,7 +95,7 @@ export function simulateMatchupScenarios(deck, opponent = "Midrange", trials = 2
 
   const modelCoverage = cards.length ? modeled / cards.length : 0;
   const scenarioPassRate = passes / trials;
-  return { opponent, trials, pilot, scenarioPassRate, stabilizationRate: stabilized / trials, averageMargin: totalMargin / trials, modelCoverage, unsupportedCards, gate: modelCoverage < .8 ? "unsupported" : scenarioPassRate >= .58 ? "scenario-pass" : "scenario-hold", warning: "Scenario trials stress role density and sequencing against an archetype pressure model. They are not rules-complete games or a predicted match win rate." };
+  return { opponent, trials, pilot, scenarioPassRate, stabilizationRate: stabilized / trials, averageMargin: totalMargin / trials, averageMulligans: totalMulligans / trials, mulliganRate: mulliganTrials / trials, modelCoverage, unsupportedCards, gate: modelCoverage < .8 ? "unsupported" : scenarioPassRate >= .58 ? "scenario-pass" : "scenario-hold", warning: "Scenario trials stress role density and sequencing against an archetype pressure model. They are not rules-complete games or a predicted match win rate." };
 }
 
 export function evaluateMatchupMatrix(deck, opponents = Object.keys(PROFILES), trials = 2000, seed = 991) {
