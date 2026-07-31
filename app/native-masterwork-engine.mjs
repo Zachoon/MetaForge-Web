@@ -654,6 +654,11 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       blueprintRoleHits: candidate.blueprintRoleHits,
       mechanics: candidate.mechanics,
       colorPips: candidate.colorPips,
+      // Scryfall's produced_mana exists on any permanent, not just lands —
+      // a mana rock or dork is a real color source the consistency math
+      // should credit, same as a land. Empty for the vast majority of
+      // nonland cards that don't produce mana at all.
+      producesColors: nonlandProducedColorsOf(candidate.card),
     });
     selectedNames.add(normalized(candidate.card.name));
     for (const role of candidate.roles) roleCounts.set(role, (roleCounts.get(role) || 0) + quantity);
@@ -808,21 +813,24 @@ function cardsSeenByTurn(turn) {
 
 // Real mana math, not a heuristic: for each colored-pip spell in the built
 // deck, what's the actual probability of having enough sources of every
-// color it needs by the turn it wants to be cast? Only land rows count as
-// sources for now (mana rocks/dorks are a deliberate later refinement, not
-// modeled here) — colorIdentity on a land row is a stand-in for "produces
-// this color," which is accurate for real duals/fetches/basics but would
-// overcredit a land that merely shares a color identity without actually
-// tapping for it (no such lands exist in the current pool-selection logic,
-// but a future non-mana-producing legendary land could violate this).
-// Multi-color requirements use the minimum across colors, a marginal-
-// probability approximation rather than a true joint distribution (the two
-// draws aren't independent) — deliberately conservative-leaning, not exact.
+// color it needs by the turn it wants to be cast? Land rows count via
+// colorIdentity (a stand-in for "produces this color," accurate for real
+// duals/fetches/basics but would overcredit a land that merely shares a
+// color identity without actually tapping for it — no such lands exist in
+// the current pool-selection logic). Nonland rows count via producesColors
+// (Scryfall's produced_mana, threaded through at selection time) — a mana
+// rock or dork is a real, static color source the same way a land is; this
+// deliberately doesn't model WHEN it came down (a rock cast turn 3 isn't
+// actually a source turn 1), matching the same whole-game simplification
+// already made for lands. Multi-color requirements use the minimum across
+// colors, a marginal-probability approximation rather than a true joint
+// distribution (the two draws aren't independent) — deliberately
+// conservative-leaning, not exact.
 export function manaConsistencyReport(rows, deckSize) {
   const sourcesByColor = { W: 0, U: 0, B: 0, R: 0, G: 0 };
   for (const row of rows) {
-    if (!row.roles?.includes("land")) continue;
-    for (const color of row.colorIdentity || []) {
+    const produces = row.roles?.includes("land") ? row.colorIdentity : row.producesColors;
+    for (const color of produces || []) {
       if (color in sourcesByColor) sourcesByColor[color] += row.quantity;
     }
   }
@@ -895,6 +903,17 @@ function refineBasicSplitForConsistency(rows, colors, spellRows, deckSize, itera
 // fixtures) so nothing regresses when the richer data isn't available.
 function producedColorsOf(card) {
   return card.producedMana || card.colorIdentity || card.color_identity || [];
+}
+
+// The colorIdentity/color_identity fallback above is only sound for lands
+// (where it's a reasonable proxy for what a card taps for, per the comment
+// above). Applied to a nonland card it would be actively wrong — a random
+// blue creature has color identity U but doesn't produce blue mana just by
+// existing. Nonland rows need the direct, no-fallback signal: only real
+// produced_mana counts, so a mana rock or dork is credited and everything
+// else correctly contributes nothing.
+function nonlandProducedColorsOf(card) {
+  return card.producedMana || [];
 }
 
 // The built deck's rows carry only what construction needed (name, roles,
@@ -1112,6 +1131,7 @@ function buildImportedCandidate(input, analysis) {
       blueprintRoleHits: spellEntry.blueprintRoleHits,
       mechanics: spellEntry.mechanics,
       colorPips: spellEntry.colorPips,
+      producesColors: nonlandProducedColorsOf(spellEntry.card),
     });
   }
   if (!presetSpellRows.length && !presetLandRows.length) {

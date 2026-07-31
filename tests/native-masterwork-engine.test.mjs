@@ -555,6 +555,49 @@ test("scores mana consistency from real land color sources against each spell's 
   assert.deepEqual(report.sourcesByColor, { W: 4, U: 0, B: 12, R: 0, G: 0 });
 });
 
+test("a nonland card with color identity but no real producedMana is never credited as a source", () => {
+  // The land-oriented helper falls back to colorIdentity when producedMana
+  // is absent — reusing it for nonland rows would wrongly turn every
+  // colored creature/spell in the deck into a "mana source" just because
+  // it shares a color identity, which would blow the whole consistency
+  // model up to near-100% for every deck. A blue creature with no mana
+  // ability must contribute nothing.
+  const rows = [
+    { name: "Island", quantity: 4, roles: ["land"], colorIdentity: ["U"], cmc: 0 },
+    { name: "Vanilla Blue Bear", quantity: 4, roles: ["threat"], colorIdentity: ["U"], cmc: 2, colorPips: { W: 0, U: 1, B: 0, R: 0, G: 0 } },
+  ];
+  const report = manaConsistencyReport(rows, 60);
+  assert.deepEqual(report.sourcesByColor, { W: 0, U: 4, B: 0, R: 0, G: 0 });
+});
+
+test("a mana rock or dork counts as a real color source, same as a land", () => {
+  const rows = [
+    { name: "Swamp", quantity: 10, roles: ["land"], colorIdentity: ["B"], cmc: 0 },
+    // A colorless rock (no producesColors matching W/U/B/R/G) shouldn't
+    // fix anything — Sol Ring doesn't make green mana just by existing.
+    { name: "Sol Ring", quantity: 1, roles: ["ramp"], cmc: 1, colorPips: {}, producesColors: ["C"] },
+    // A green-producing dork is a real source, same as a Forest would be.
+    { name: "Llanowar Elves", quantity: 1, roles: ["ramp"], cmc: 1, colorPips: { W: 0, U: 0, B: 0, R: 0, G: 1 }, producesColors: ["G"] },
+    { name: "Hard Green Double-Pip", quantity: 4, roles: ["threat"], colorIdentity: [], cmc: 2, colorPips: { W: 0, U: 0, B: 0, R: 0, G: 2 } },
+  ];
+  const report = manaConsistencyReport(rows, 60);
+  assert.deepEqual(report.sourcesByColor, { W: 0, U: 0, B: 10, R: 0, G: 1 });
+});
+
+test("mana-rock-aware sourcing raises consistency vs. the same deck without crediting the rock", () => {
+  const baseline = [
+    { name: "Forest", quantity: 8, roles: ["land"], colorIdentity: ["G"], cmc: 0 },
+    { name: "Hard Green Double-Pip", quantity: 4, roles: ["threat"], colorIdentity: [], cmc: 3, colorPips: { W: 0, U: 0, B: 0, R: 0, G: 2 } },
+  ];
+  const withDorks = [
+    ...baseline,
+    { name: "Llanowar Elves", quantity: 4, roles: ["ramp"], cmc: 1, colorPips: { W: 0, U: 0, B: 0, R: 0, G: 1 }, producesColors: ["G"] },
+  ];
+  const before = manaConsistencyReport(baseline, 60).cards.find((entry) => entry.name === "Hard Green Double-Pip");
+  const after = manaConsistencyReport(withDorks, 60).cards.find((entry) => entry.name === "Hard Green Double-Pip");
+  assert.ok(after.probability > before.probability, "four more green sources from dorks should measurably improve the double-pip card's odds");
+});
+
 test("a real built deck reports mana consistency alongside the rest of the masterwork", () => {
   const report = forgeNativeMasterwork({
     format: "Commander", target: 100, strategy: "Control", seed: 13,
