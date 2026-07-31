@@ -25,6 +25,45 @@ test("classifies hand disruption as its own role, distinct from removal and self
   assert.deepEqual(classifyNativeCard(card("Careful Study", "You may discard a card. If you do, draw two cards.", "Sorcery")), ["draw", "selection"]);
 });
 
+test("classifyNativeCard adds a role confirmed by the card-mechanics database even when the oracle text alone wouldn't match", () => {
+  // Real cards from app/card-mechanics.mjs, each tagged with the mechanic
+  // named in the test but given no oracle text here — any role that still
+  // comes back can only have come from the database lookup, not the regex.
+  assert.deepEqual(classifyNativeCard(card("_____ goblin", "", "Sorcery")), ["ramp"]);
+  // Also tagged mana_acceleration — a real card can carry more than one
+  // database-confirmed role at once, same as regex classification already
+  // allows.
+  assert.deepEqual(classifyNativeCard(card("a-jade orb of dragonkind", "", "Sorcery")), ["ramp", "protection"]);
+  assert.deepEqual(classifyNativeCard(card("a good day to pie", "", "Sorcery")), ["recursion"]);
+  // Also tagged lifegain.
+  assert.deepEqual(classifyNativeCard(card("a-cosmos elixir", "", "Sorcery")), ["selection", "lifegain"]);
+  assert.deepEqual(classifyNativeCard(card("a girl and her dogs", "", "Sorcery")), ["tokens"]);
+  assert.deepEqual(classifyNativeCard(card("_____-o-saurus", "", "Sorcery")), ["counters"]);
+  assert.deepEqual(classifyNativeCard(card("17-year cicadas", "", "Sorcery")), ["spells"]);
+  assert.deepEqual(classifyNativeCard(card("a golden opportunity", "", "Sorcery")), ["sacrifice"]);
+  assert.deepEqual(classifyNativeCard(card("_____ bird gets the worm", "", "Sorcery")), ["lifegain"]);
+});
+
+test("classifyNativeCard never calls a basic land \"ramp\" just because the database tags it mana_acceleration", () => {
+  // Every basic land is tagged mana_acceleration in the database — true of
+  // any land, and not what the "ramp" role means (accelerating ahead of
+  // your land drops). Real mana rocks/dorks are never lands, so this must
+  // stay scoped to land cards specifically, not a blanket tag distrust.
+  assert.deepEqual(classifyNativeCard(card("Island", "", "Basic Land — Island")), ["land"]);
+  assert.deepEqual(classifyNativeCard(card("_____ goblin", "", "Sorcery")), ["ramp"]);
+});
+
+test("classifyNativeCard never invents a role for a card the database doesn't recognize", () => {
+  assert.deepEqual(classifyNativeCard(card("Totally Made Up Card Name Xyz", "", "Sorcery")), []);
+});
+
+test("database-confirmed and regex-confirmed roles for the same card merge without duplicates", () => {
+  // "A Golden Opportunity" is tagged sacrifice_outlet in the database; give
+  // it oracle text that also regex-matches "sacrifice" to prove the merge
+  // is a deduplicated union, not two separate entries.
+  assert.deepEqual(classifyNativeCard(card("A Golden Opportunity", "Sacrifice a creature.", "Sorcery")), ["sacrifice"]);
+});
+
 test("interactionQualityFor scores unconditional removal at full quality", () => {
   assert.equal(interactionQualityFor("Destroy target creature."), 1);
   assert.equal(interactionQualityFor("Exile target permanent."), 1);

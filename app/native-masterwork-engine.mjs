@@ -15,6 +15,8 @@ import {
   findUnusedEnginePartners,
 } from "./forge-interaction-graph.mjs";
 
+import CARD_MECHANICS from "./card-mechanics.mjs";
+
 import {
   getMetaIntelligence,
 } from "./meta-intelligence.mjs";
@@ -53,6 +55,27 @@ const ROLE_PATTERNS = Object.freeze({
   // bounce). Scoped to the opponent discarding, not a self-loot effect
   // ("you may discard a card, then draw"), which "selection" already owns.
   discard: [/target (?:player|opponent) discards?/i, /each (?:player|opponent) discards?/i, /that player discards?/i],
+});
+
+// Rules-text regex alone misses real cards that do the same job in an
+// unusual phrasing — a card tagged mana_acceleration in the curated
+// card-mechanics database (app/card-mechanics.mjs) is real evidence a card
+// ramps, even when it doesn't match any of the ramp patterns above. Only
+// roles with one clean, unambiguous tag are mapped here; roles the tag
+// database has no dedicated signal for (interaction, sweeper, artifacts,
+// combat, discard, draw — "card_advantage" is too broad to stand in for
+// draw specifically) are left to the regex alone rather than guessing.
+const ROLE_TAGS = Object.freeze({
+  ramp: ["mana_acceleration"],
+  protection: ["protection"],
+  recursion: ["graveyard_recursion"],
+  selection: ["scry", "surveil"],
+  tokens: ["token_producer"],
+  sacrifice: ["sacrifice_outlet"],
+  counters: ["counter_producer"],
+  graveyard: ["graveyard_setup", "mill"],
+  spells: ["spell_payoff"],
+  lifegain: ["lifegain", "lifegain_payoff"],
 });
 
 // "Destroy target creature" and "destroy target creature with mana value 3
@@ -438,14 +461,29 @@ export function complexityScoreFor(textComplexity, complexity) {
   return textComplexity * pressure;
 }
 
+// Every basic land is tagged mana_acceleration in the database — "adds
+// mana" is true of literally every land, which isn't what the "ramp" role
+// means here (accelerating ahead of your land drops). Real mana rocks and
+// dorks are never lands, so the tag is only trustworthy for the "ramp"
+// role specifically when the card isn't one.
+function roleTagsFor(card, isLand) {
+  const tags = CARD_MECHANICS[normalized(card?.name)];
+  if (!tags) return [];
+  return Object.entries(ROLE_TAGS)
+    .filter(([role, tagNames]) => !(isLand && role === "ramp") && tagNames.some((tag) => tags.includes(tag)))
+    .map(([role]) => role);
+}
+
 export function classifyNativeCard(card) {
   const typeLine = String(card.typeLine || card.type_line || "");
   const text = cardText(card);
   const roles = [];
-  if (/\bLand\b/i.test(typeLine)) roles.push("land");
+  const isLand = /\bLand\b/i.test(typeLine);
+  if (isLand) roles.push("land");
   for (const [role, patterns] of Object.entries(ROLE_PATTERNS)) {
     if (patterns.some((pattern) => pattern.test(text))) roles.push(role);
   }
+  roles.push(...roleTagsFor(card, isLand));
   if (!roles.includes("land") && (/\bCreature\b|Planeswalker/i.test(typeLine) || /you win the game/i.test(text))) roles.push("threat");
   return unique(roles);
 }
