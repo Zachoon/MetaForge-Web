@@ -214,6 +214,7 @@ function normalizeGraph(
     packages: graph?.packages || [],
     isolated: graph?.isolated || [],
     nonbos: graph?.nonbos || [],
+    amplifiers: graph?.amplifiers || [],
     commanderLinks:
       graph?.commanderLinks || [],
     coverage: Number(
@@ -1499,6 +1500,13 @@ export function buildForgeSystemsReport(
       context.graph.isolated,
     conflicts:
       context.graph.nonbos,
+    // Trigger/resource doublers (Panharmonicon, Doubling Season, an extra
+    // combat phase, a damage-doubling replacement effect) are a certain
+    // rules-verified structural strength, the positive counterpart to
+    // conflicts above — surfaced the same way, straight through from the
+    // interaction graph, rather than left invisible to this report.
+    amplifiers:
+      context.graph.amplifiers,
     systemCoverage,
     graphCoverage:
       context.graph.coverage,

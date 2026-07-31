@@ -171,6 +171,7 @@ const interactionGraph = {
     "Loose Card",
   ],
   nonbos: [],
+  amplifiers: [],
   commanderLinks: [],
   coverage: 0.8,
   commanderName: "Commander",
@@ -218,6 +219,49 @@ test(
 
     assert.ok(
       artifactSystem.support.length >= 0,
+    );
+  },
+);
+
+test(
+  "surfaces the interaction graph's verified amplifiers on the top-level report, not just conflicts",
+  () => {
+    const graphWithAmplifier = {
+      ...interactionGraph,
+      amplifiers: [
+        {
+          source: "Panharmonicon",
+          signal: "etb",
+          amplifies: ["Payoff"],
+          reason: "Panharmonicon makes every enters-the-battlefield trigger in the deck happen an additional time — a certain rules fact, not an inferred pattern.",
+          evidence: "verified rules-text trigger amplifier",
+        },
+      ],
+    };
+
+    const report =
+      buildForgeSystemsReport(
+        graphWithAmplifier,
+      );
+
+    assert.deepEqual(
+      report.amplifiers,
+      graphWithAmplifier.amplifiers,
+    );
+  },
+);
+
+test(
+  "defaults amplifiers to an empty array when the interaction graph doesn't supply one",
+  () => {
+    const report =
+      buildForgeSystemsReport(
+        interactionGraph,
+      );
+
+    assert.deepEqual(
+      report.amplifiers,
+      [],
     );
   },
 );
