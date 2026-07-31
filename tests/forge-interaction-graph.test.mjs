@@ -45,6 +45,30 @@ test("detects a symmetric library-search lock as a nonbo against the deck's own 
   assert.equal(oneSided.nonbos.length, 0);
 });
 
+test("flags a trigger doubler as a verified amplifier of every real ETB payoff in the deck", () => {
+  const doubler = { name: "Panharmonicon", typeLine: "Artifact", oracleText: "If an enters-the-battlefield ability of a permanent you control triggers, that ability triggers an additional time." };
+  const payoff = { name: "Soul Warden", typeLine: "Creature", oracleText: "Whenever another creature enters the battlefield under your control, you gain 1 life." };
+  const graph = buildInteractionGraph([doubler, payoff]);
+  assert.equal(graph.amplifiers.length, 1);
+  assert.equal(graph.amplifiers[0].source, "Panharmonicon");
+  assert.deepEqual(graph.amplifiers[0].amplifies, ["Soul Warden"]);
+  assert.equal(graph.amplifiers[0].evidence, "verified rules-text trigger amplifier");
+});
+
+test("a trigger doubler with nothing to double doesn't produce an empty amplifier entry", () => {
+  const doubler = { name: "Panharmonicon", typeLine: "Artifact", oracleText: "If an enters-the-battlefield ability of a permanent you control triggers, that ability triggers an additional time." };
+  const noPayoff = { name: "Vanilla Bear", typeLine: "Creature", oracleText: "Vigilance." };
+  const graph = buildInteractionGraph([doubler, noPayoff]);
+  assert.deepEqual(graph.amplifiers, []);
+});
+
+test("an ordinary ETB creature that merely mentions entering the battlefield is not mistaken for a trigger doubler", () => {
+  const ordinary = { name: "Mulldrifter", typeLine: "Creature", oracleText: "When Mulldrifter enters the battlefield, draw two cards." };
+  const payoff = { name: "Soul Warden", typeLine: "Creature", oracleText: "Whenever another creature enters the battlefield under your control, you gain 1 life." };
+  const graph = buildInteractionGraph([ordinary, payoff]);
+  assert.deepEqual(graph.amplifiers, []);
+});
+
 test("keeps unsupported cards visible as isolated slots", () => {
   const graph = buildInteractionGraph([
     { name: "Token Maker", typeLine: "Sorcery", oracleText: "Create two 1/1 creature tokens." },

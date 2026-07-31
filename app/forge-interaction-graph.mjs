@@ -115,6 +115,13 @@ const NEGATIVE_RULES = [
   ["lands", /players can(?:'|’)t search (?:their )?libraries|players can(?:'|’)t play lands from (?:their )?libraries/i, "Library-search denial conflicts with the deck's own land-tutoring or fetch package."],
 ];
 
+// Panharmonicon/Yarok-style: "that ability triggers an additional time" is
+// a certain rules fact, not an inferred pattern — a card with this text
+// objectively doubles every qualifying enters-the-battlefield trigger in
+// the deck. This is the positive counterpart to NEGATIVE_RULES: the same
+// "verified" evidence tier, just an amplifier instead of a conflict.
+const ETB_DOUBLER = /(?:enters?(?: the battlefield)?|entering the battlefield)[^.]{0,80}triggers? an additional time/i;
+
 function textOf(card) {
   return [card.typeLine, card.oracleText].filter(Boolean).join(" ");
 }
@@ -207,6 +214,23 @@ export function buildInteractionGraph(cards, options = {}) {
     const conflicts = nonlands.filter((card) => card.name !== source.name && (card.mechanics.produces.includes(signal) || card.mechanics.rewards.includes(signal)));
     if (conflicts.length) nonbos.push({ source: source.name, signal, conflicts: conflicts.map((card) => card.name), reason, evidence: "verified oracle-derived conflict" });
   }
+  // A trigger doubler amplifies every card with a real "whenever X enters"
+  // payoff already in the deck — not just cards it shares a produces/
+  // rewards pairing with, since it doesn't need to produce anything itself
+  // to double an existing trigger. A separate pass from the edges above,
+  // same as nonbos: a fundamentally different (and here, positive) claim
+  // than an inferred producer/payoff pairing.
+  const amplifiers = [];
+  for (const source of nonlands) {
+    if (!ETB_DOUBLER.test(textOf(source))) continue;
+    const amplified = nonlands.filter((card) => card.name !== source.name && card.mechanics.rewards.includes("etb"));
+    if (amplified.length) amplifiers.push({
+      source: source.name,
+      amplifies: amplified.map((card) => card.name),
+      reason: `${source.name} makes every enters-the-battlefield trigger in the deck happen an additional time — a certain rules fact, not an inferred pattern.`,
+      evidence: "verified rules-text trigger amplifier",
+    });
+  }
   const commander = nonlands.find((card) => card.isCommander);
   const commanderLinks = commander ? edges.filter((edge) => edge.from === commander.name || edge.to === commander.name) : [];
   const coverage = nonlands.length ? connected.size / nonlands.length : 0;
@@ -226,6 +250,7 @@ export function buildInteractionGraph(cards, options = {}) {
     packages,
     isolated,
     nonbos,
+    amplifiers,
     enginePairs,
     commanderLinks,
     coverage,

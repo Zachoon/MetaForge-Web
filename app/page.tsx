@@ -6080,9 +6080,12 @@ export default function Home() {
                           {!focusedInteractionGraph.edges.length && <em>No oracle-derived relationship is strong enough to claim.</em>}
                         </article>
                         <article className={focusedInteractionGraph.nonbos.length ? "graph-warning" : ""}>
-                          <small>CONFLICT + ISOLATION AUDIT</small>
+                          <small>RULES AUDIT + ISOLATION</small>
                           {focusedInteractionGraph.nonbos.slice(0, 2).map((conflict) => <p key={`${conflict.source}-${conflict.signal}`}><b>NONBO · {conflict.source}</b><span>{conflict.reason}</span></p>)}
                           {!focusedInteractionGraph.nonbos.length && <p><b>NO VERIFIED NONBO</b><span>No symmetrical oracle-text conflict was detected.</span></p>}
+                          {focusedInteractionGraph.amplifiers.slice(0, 2).map((amplifier: { source: string; reason: string }) => (
+                            <p key={amplifier.source}><b>AMPLIFIER · {amplifier.source}</b><span>{amplifier.reason}</span></p>
+                          ))}
                           <em>{focusedInteractionGraph.isolated.length ? `${focusedInteractionGraph.isolated.length} isolated slot${focusedInteractionGraph.isolated.length === 1 ? "" : "s"}: ${focusedInteractionGraph.isolated.slice(0, 4).join(" · ")}` : activeSystem ? "Every card in this machine has at least one modeled relationship." : "Every nonland slot has at least one modeled relationship."}</em>
                         </article>
                       </div>
