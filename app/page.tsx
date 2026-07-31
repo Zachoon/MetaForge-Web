@@ -3562,6 +3562,17 @@ export default function Home() {
   }
 
   async function deleteSavedMasterwork(id: string) {
+    // A confirmation wasn't strictly needed when this only lived at the
+    // bottom of the full Archive list, but it's about to become a single
+    // click away from the always-visible bench dock too — a permanent,
+    // unrecoverable delete deserves a guard once it's that easy to reach.
+    const family = savedMasterworks.find((entry) => entry.id === id);
+    if (
+      family &&
+      !window.confirm(`Delete "${family.name}" permanently? This can't be undone.`)
+    ) {
+      return;
+    }
     try {
       const response = await fetch("/api/account/deck-bench", {
         cache: "no-store",
@@ -6666,12 +6677,21 @@ export default function Home() {
                   const evidenceCount = Number(evidence.wins || 0) + Number(evidence.losses || 0);
                   const dominantMotif = Object.entries(family.motifWeights || {}).sort((a, b) => b[1] - a[1])[0]?.[0];
                   return (
-                    <button
+                    <div
                       key={family.id}
-                      className={[family.id === deckId ? "active" : "", family.archived ? "finished" : ""].filter(Boolean).join(" ")}
+                      role="button"
+                      tabIndex={0}
+                      className={["bench-card", family.id === deckId ? "active" : "", family.archived ? "finished" : ""].filter(Boolean).join(" ")}
                       onClick={() => {
                         openSavedMasterwork(family);
                         setBenchOpen(false);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          openSavedMasterwork(family);
+                          setBenchOpen(false);
+                        }
                       }}
                     >
                       <span className="bench-card-art">
@@ -6692,7 +6712,19 @@ export default function Home() {
                         <em><b>{evidenceCount}</b> match{evidenceCount === 1 ? "" : "es"}</em>
                       </span>
                       <span className="bench-card-open">Open Masterwork <i>→</i></span>
-                    </button>
+                      <button
+                        type="button"
+                        className="bench-card-delete"
+                        aria-label={`Delete ${family.name}`}
+                        title="Delete this Masterwork permanently"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void deleteSavedMasterwork(family.id);
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
                   );
                 })}
               </div>

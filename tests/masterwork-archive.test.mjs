@@ -9,8 +9,12 @@ test("finishing a Masterwork is a distinct, reversible action from delete", () =
   assert.match(page, /async function setFamilyArchived/);
   assert.match(page, /updateFamily\(\s*\{ schemaVersion: 1, families: data\.bench\?\.families \|\| \[\] \},\s*id,\s*archived \? "archive" : "restore"/);
   // deleteSavedMasterwork must remain a real, separate hard delete.
-  assert.match(page, /async function deleteSavedMasterwork[\s\S]{0,400}filter\(\s*\(family: SavedFamily\) => family\.id !== id/);
+  assert.match(page, /async function deleteSavedMasterwork[\s\S]{0,900}filter\(\s*\(family: SavedFamily\) => family\.id !== id/);
   assert.doesNotMatch(page, /deleteSavedMasterwork[\s\S]{0,200}updateFamily/);
+});
+
+test("a permanent delete asks for confirmation once it's a single click from the bench dock", () => {
+  assert.match(page, /window\.confirm\(`Delete "\$\{family\.name\}" permanently\? This can't be undone\.`\)/);
 });
 
 test("a save never silently un-finishes an already-archived Masterwork", () => {

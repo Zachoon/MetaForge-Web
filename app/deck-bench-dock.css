@@ -154,7 +154,8 @@
   padding: 3px 2px 12px;
   scroll-snap-type: x mandatory;
 }
-.bench-decks > button {
+.bench-decks > .bench-card {
+  position: relative;
   display: grid;
   min-width: 218px;
   max-width: 218px;
@@ -165,22 +166,53 @@
   background: #0c1a18;
   color: #dfe8e3;
   text-align: left;
+  cursor: pointer;
   scroll-snap-align: start;
   transition:border-color .2s ease,background .2s ease,transform .2s ease,box-shadow .2s ease;
 }
-.bench-decks > button:hover,
-.bench-decks > button.active {
+.bench-card-delete {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 1px solid #5e7e76;
+  background: #06100ed9;
+  color: #9ed5ca;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .15s ease, border-color .15s ease, color .15s ease, background .15s ease;
+}
+.bench-card:hover .bench-card-delete,
+.bench-card:focus-within .bench-card-delete,
+.bench-card-delete:focus-visible {
+  opacity: 1;
+}
+.bench-card-delete:hover,
+.bench-card-delete:focus-visible {
+  outline: 0;
+  border-color: #e08a6a;
+  background: #2a1310;
+  color: #ffb59b;
+}
+.bench-decks > .bench-card:hover,
+.bench-decks > .bench-card.active {
   border-color: #75dbc4;
   background: #153029;
   box-shadow: 0 0 18px #75dbc422;
   transform:translateY(-2px);
 }
-.bench-decks > button.finished {
+.bench-decks > .bench-card.finished {
   border-color: #a1802f;
   background: linear-gradient(160deg, #1c1509, #12100a);
 }
-.bench-decks > button.finished:hover,
-.bench-decks > button.finished.active {
+.bench-decks > .bench-card.finished:hover,
+.bench-decks > .bench-card.finished.active {
   border-color: #d2b06a;
   box-shadow: 0 0 18px #d2b06a33;
 }
@@ -191,7 +223,7 @@
   overflow: hidden;
   background: radial-gradient(circle, #244b42, #081210);
 }
-.bench-card-art:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 35%,#06100fe8),linear-gradient(105deg,#58d5c21a,transparent 45%);pointer-events:none}.bench-card-art>em{position:absolute;z-index:2;top:9px;left:9px;margin:0;padding:4px 6px;border:1px solid #5e7e76;background:#06100ed9;color:#9ed5ca;font:800 8px Inter,sans-serif;letter-spacing:.12em}.bench-card-art>small{position:absolute;z-index:2;right:9px;bottom:8px;max-width:58%;margin:0;overflow:hidden;color:#d6aa66;font:800 8px Inter,sans-serif;letter-spacing:.09em;text-overflow:ellipsis;text-transform:uppercase;white-space:nowrap}.bench-decks>button.finished .bench-card-art>em{border-color:#9c793a;color:#f0c77c}.bench-decks>button.active .bench-card-art>em{border-color:#69d5c2;color:#b5fff2;box-shadow:0 0 12px #64dac345}
+.bench-card-art:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 35%,#06100fe8),linear-gradient(105deg,#58d5c21a,transparent 45%);pointer-events:none}.bench-card-art>em{position:absolute;z-index:2;top:9px;left:9px;margin:0;padding:4px 6px;border:1px solid #5e7e76;background:#06100ed9;color:#9ed5ca;font:800 8px Inter,sans-serif;letter-spacing:.12em}.bench-card-art>small{position:absolute;z-index:2;right:9px;bottom:8px;max-width:58%;margin:0;overflow:hidden;color:#d6aa66;font:800 8px Inter,sans-serif;letter-spacing:.09em;text-overflow:ellipsis;text-transform:uppercase;white-space:nowrap}.bench-decks>.bench-card.finished .bench-card-art>em{border-color:#9c793a;color:#f0c77c}.bench-decks>.bench-card.active .bench-card-art>em{border-color:#69d5c2;color:#b5fff2;box-shadow:0 0 12px #64dac345}
 .bench-decks img {
   width: 100%;
   height: 100%;
@@ -218,7 +250,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.bench-card-vitals{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin:0 12px;border:1px solid #293d38;background:#081210}.bench-card-vitals em{display:grid;gap:2px;padding:7px;color:#6f837e;font:normal 8px Inter,sans-serif;text-align:center;text-transform:uppercase}.bench-card-vitals em+em{border-left:1px solid #293d38}.bench-card-vitals b{margin:0;color:#b7cbc5;font:700 12px Inter,sans-serif}.bench-card-open{display:flex;align-items:center;justify-content:space-between;margin-top:9px;padding:8px 12px 0;border-top:1px solid #263a35;color:#69cbb8;font-size:calc(9px * var(--forge-reading-scale));font-weight:800;letter-spacing:.08em;text-transform:uppercase}.bench-card-open i{font:normal 14px Inter,sans-serif;transition:transform .2s ease}.bench-decks>button:hover .bench-card-open i,.bench-decks>button:focus-visible .bench-card-open i{transform:translateX(3px)}
+.bench-card-vitals{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin:0 12px;border:1px solid #293d38;background:#081210}.bench-card-vitals em{display:grid;gap:2px;padding:7px;color:#6f837e;font:normal 8px Inter,sans-serif;text-align:center;text-transform:uppercase}.bench-card-vitals em+em{border-left:1px solid #293d38}.bench-card-vitals b{margin:0;color:#b7cbc5;font:700 12px Inter,sans-serif}.bench-card-open{display:flex;align-items:center;justify-content:space-between;margin-top:9px;padding:8px 12px 0;border-top:1px solid #263a35;color:#69cbb8;font-size:calc(9px * var(--forge-reading-scale));font-weight:800;letter-spacing:.08em;text-transform:uppercase}.bench-card-open i{font:normal 14px Inter,sans-serif;transition:transform .2s ease}.bench-decks>.bench-card:hover .bench-card-open i,.bench-decks>.bench-card:focus-visible .bench-card-open i{transform:translateX(3px)}
 .bench-tray > footer {
   justify-content: flex-end;
   margin-top: 5px;
@@ -255,7 +287,7 @@
   .bench-tray {
     padding: 12px;
   }
-  .bench-decks > button {
+  .bench-decks > .bench-card {
     min-width: 196px;
     max-width: 196px;
   }
@@ -276,7 +308,7 @@
 .bench-tray header button,.bench-tray footer button{font-size:calc(11px * var(--forge-reading-scale))}
 .bench-card-copy small{font-size:calc(10px * var(--forge-reading-scale))}
 
-.bench-dock.open .bench-decks>button{animation:bench-masterwork-rise .42s cubic-bezier(.2,.8,.2,1) both}.bench-dock.open .bench-decks>button:nth-child(2){animation-delay:45ms}.bench-dock.open .bench-decks>button:nth-child(3){animation-delay:90ms}.bench-dock.open .bench-decks>button:nth-child(4){animation-delay:135ms}.bench-dock.open .bench-decks>button:nth-child(5){animation-delay:180ms}@keyframes bench-masterwork-rise{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}@media(prefers-reduced-motion:reduce){.bench-dock.open .bench-decks>button{animation:none}.bench-decks>button,.bench-card-open i{transition:none}}
+.bench-dock.open .bench-decks>.bench-card{animation:bench-masterwork-rise .42s cubic-bezier(.2,.8,.2,1) both}.bench-dock.open .bench-decks>.bench-card:nth-child(2){animation-delay:45ms}.bench-dock.open .bench-decks>.bench-card:nth-child(3){animation-delay:90ms}.bench-dock.open .bench-decks>.bench-card:nth-child(4){animation-delay:135ms}.bench-dock.open .bench-decks>.bench-card:nth-child(5){animation-delay:180ms}@keyframes bench-masterwork-rise{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}@media(prefers-reduced-motion:reduce){.bench-dock.open .bench-decks>.bench-card{animation:none}.bench-decks>.bench-card,.bench-card-open i{transition:none}}
 
 /* Organic flow: the closed Bench is a quiet tool, not a permanent chapter. */
 .bench-dock:not(.open){right:22px;left:auto;width:min(330px,calc(100% - 44px));margin:0}.bench-dock:not(.open) .bench-handle{min-height:44px;border-radius:8px 8px 0 0}.bench-dock:not(.open) .bench-toggle{padding:6px 10px;gap:9px}.bench-dock:not(.open) .bench-toggle>i{width:28px;height:28px;font-size:calc(16px * var(--forge-reading-scale))}.bench-dock:not(.open) .bench-toggle small{font-size:calc(9px * var(--forge-reading-scale))}.bench-dock:not(.open) .bench-toggle b{font-size:calc(10px * var(--forge-reading-scale))}.bench-dock:not(.open) .bench-toggle em{font-size:calc(9px * var(--forge-reading-scale))}.bench-dock:not(.open) .bench-handle>img{width:32px;height:38px}.bench-dock.open{max-width:1040px}.great-forge{padding-bottom:54px}@media(max-width:650px){.bench-dock:not(.open){right:10px;width:min(290px,calc(100% - 20px))}.bench-dock:not(.open) .bench-toggle em{display:none}}
