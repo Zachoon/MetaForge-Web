@@ -131,6 +131,35 @@ test("evaluateCommanderPowerSignal surfaces a real mutual engine-pair loop from 
   const graph = buildInteractionGraph([tokenHerald, cardHerald]);
   const result = evaluateCommanderPowerSignal([tokenHerald, cardHerald], graph);
   assert.deepEqual(result.interconnection.comboLoops, ["Token Herald + Card Herald"]);
+  assert.equal(result.interconnection.comboLoopTotal, 1);
+});
+
+// A real 100-card Commander build fetched from live Scryfall data returned
+// 551 mutual engine pairs from buildInteractionGraph in manual verification
+// — a real number, but useless as a raw list to a player. Six independent
+// copies of the same producer/payoff template (more than the 5-item cap)
+// proves the module actually caps the displayed list while still reporting
+// the true total honestly, rather than either silently truncating data or
+// dumping an unusable list of hundreds.
+const heraldPair = (n) => ([
+  { name: `Token Herald ${n}`, typeLine: "Creature", oracleText: "Whenever you draw your second card each turn, create a 1/1 colorless Servo artifact creature token." },
+  { name: `Card Herald ${n}`, typeLine: "Creature", oracleText: "Draw two cards. Whenever a token you control attacks, this creature gets +1/+0 until end of turn." },
+]);
+const sixHeraldPairs = Array.from({ length: 6 }, (_, i) => heraldPair(i)).flat();
+
+test("evaluateCommanderPowerSignal caps the displayed combo-loop list while reporting the true total honestly", () => {
+  const graph = buildInteractionGraph(sixHeraldPairs);
+  // Six copies of the same producer/payoff template cross-connect with
+  // each other too (every "Token Herald N" shares identical oracle text
+  // with every "Card Herald M"), not just its own numbered pair — real
+  // behavior verified live against a real 100-card Commander build, which
+  // returned 551 mutual pairs this same way. The point of this test isn't
+  // the exact count, it's proving the cap and the honest total both track
+  // whatever the real graph actually produces.
+  assert.ok(graph.enginePairs.length > 5, "sanity check: this fixture must exceed the cap to actually exercise it");
+  const result = evaluateCommanderPowerSignal(sixHeraldPairs, graph);
+  assert.equal(result.interconnection.comboLoops.length, 5, "the displayed list must be capped at 5");
+  assert.equal(result.interconnection.comboLoopTotal, graph.enginePairs.length, "the true total must match the real graph, not the capped list");
 });
 
 test("evaluateCommanderPowerSignal surfaces a real verified trigger amplifier from the supplied interaction graph", () => {

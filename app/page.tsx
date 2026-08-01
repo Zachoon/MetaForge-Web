@@ -1792,6 +1792,19 @@ export default function Home() {
     // can reconnect a swap's rows back to real card text, the same
     // reconnection buildSimulationModel already does server-side.
     cardPool?: any[];
+    // Set only when the tournament's structural pick was close enough to
+    // a rival that the Forge ran a real goldfish/matchup check to settle
+    // it (see applyPracticalTiebreak in native-masterwork-engine.mjs).
+    // null the rest of the time — most generations never trigger it.
+    practicalTiebreak?: any;
+    // Commander-only: fast-mana/tutor/extra-turn/mass-land-denial signals
+    // and interaction-graph interconnection data for this exact build.
+    // Unlike manaConsistency below, this is not recomputed after a
+    // one-slot swap — an accepted simplification, since the signals
+    // driving the tier (fast mana, tutors, extra turns, mass land denial)
+    // rarely change on a single swap and a full recompute needs the
+    // interaction graph rebuilt too.
+    powerSignal?: any;
   } | null>(null);
   // Non-fatal disclosure for the decklist-import path: names the Forge could
   // not verify or that aren't legal in this format, left out rather than
@@ -3292,6 +3305,8 @@ export default function Home() {
       manaConsistency: nativeReport.manaConsistency,
       unusedEnginePartners: nativeReport.unusedEnginePartners,
       cardPool: opts.cardPool,
+      practicalTiebreak: nativeReport.practicalTiebreak || null,
+      powerSignal: nativeReport.powerSignal || null,
     });
     void persistStoryBench(
       firstRevision,
@@ -5239,6 +5254,12 @@ export default function Home() {
                   <b>{strategy}</b>
                 </span>
               </section>
+              {nativeMasterworkContext?.practicalTiebreak?.overridden && (
+                <span className="slot-justification">
+                  <small>PRACTICAL SIMULATION SETTLED A CLOSE CALL</small>
+                  <em>{nativeMasterworkContext.practicalTiebreak.reason}</em>
+                </span>
+              )}
               <section className="forge-understanding-bridge" aria-label="Essential deck understanding">
                 <header>
                   <small>CHAPTER III · UNDERSTAND THE MASTERWORK</small>
@@ -5312,6 +5333,43 @@ export default function Home() {
                         </span>
                       ))}
                       <p>Counts lands, mana rocks, and dorks as real color sources, but treats multi-color needs as independent draws, so real odds run slightly higher than shown.</p>
+                    </section>
+                  )}
+                  {nativeMasterworkContext?.powerSignal && (
+                    <section className="stress-dossier">
+                      <span>
+                        <small>COMMANDER POWER SIGNAL</small>
+                        <b>{nativeMasterworkContext.powerSignal.tier}</b>
+                        <em>{nativeMasterworkContext.powerSignal.note}</em>
+                      </span>
+                      <span>
+                        <small>FAST MANA</small>
+                        <b>{nativeMasterworkContext.powerSignal.fastMana.length}</b>
+                        <em>{nativeMasterworkContext.powerSignal.fastMana.slice(0, 3).join(", ") || "None detected"}</em>
+                      </span>
+                      <span>
+                        <small>UNRESTRICTED TUTORS</small>
+                        <b>{nativeMasterworkContext.powerSignal.tutors.unrestricted.length}</b>
+                        <em>{nativeMasterworkContext.powerSignal.tutors.unrestricted.slice(0, 3).join(", ") || "None detected"}</em>
+                      </span>
+                      <span>
+                        <small>EXTRA TURNS + LAND DENIAL</small>
+                        <b>{nativeMasterworkContext.powerSignal.extraTurns.length + nativeMasterworkContext.powerSignal.massLandDenial.length}</b>
+                        <em>{[...nativeMasterworkContext.powerSignal.extraTurns, ...nativeMasterworkContext.powerSignal.massLandDenial].slice(0, 3).join(", ") || "None detected"}</em>
+                      </span>
+                      {(nativeMasterworkContext.powerSignal.interconnection.comboLoopTotal > 0 || nativeMasterworkContext.powerSignal.interconnection.amplifiers.length > 0) && (
+                        <span>
+                          <small>REAL INTERCONNECTION</small>
+                          <b>
+                            {nativeMasterworkContext.powerSignal.interconnection.comboLoopTotal} mutual loop{nativeMasterworkContext.powerSignal.interconnection.comboLoopTotal === 1 ? "" : "s"}
+                            {nativeMasterworkContext.powerSignal.interconnection.amplifiers.length ? ` · ${nativeMasterworkContext.powerSignal.interconnection.amplifiers.length} amplifier${nativeMasterworkContext.powerSignal.interconnection.amplifiers.length === 1 ? "" : "s"}` : ""}
+                          </b>
+                          <em>
+                            {[...nativeMasterworkContext.powerSignal.interconnection.amplifiers, ...nativeMasterworkContext.powerSignal.interconnection.comboLoops].slice(0, 3).join(" · ") || "Detected"} · informational, not counted toward the tier above
+                          </em>
+                        </span>
+                      )}
+                      <p>{nativeMasterworkContext.powerSignal.evidence}</p>
                     </section>
                   )}
                   {simulationDossier && (

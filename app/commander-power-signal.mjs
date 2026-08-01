@@ -111,7 +111,15 @@ export function evaluateCommanderPowerSignal(cards, interactionGraph = null) {
   // into the same score as fast mana/tutors/extra turns would conflate
   // "interconnected" with "powerful," the exact overreach this module's
   // narrow, oracle-text-anchored signals otherwise avoid.
-  const comboLoops = [...new Set((interactionGraph?.enginePairs || []).map((pair) => pair.cards.join(" + ")))];
+  //
+  // enginePairs already arrives sorted by edge strength (buildInteractionGraph
+  // sorts it before returning), so slicing to the top 5 keeps the strongest,
+  // most notable loops — verified against a real 100-card build that
+  // returned 551 total mutual pairs: a real number, but useless as a raw
+  // count to a player, so comboLoopTotal keeps that honest without forcing
+  // every consumer to render a list of hundreds.
+  const allComboLoops = [...new Set((interactionGraph?.enginePairs || []).map((pair) => pair.cards.join(" + ")))];
+  const comboLoops = allComboLoops.slice(0, 5);
   const amplifiers = [...new Set((interactionGraph?.amplifiers || []).map((entry) => entry.source))];
 
   const signalScore = fastMana.length + tutors.unrestricted.length + extraTurns.length + massLandDenial.length * 2;
@@ -128,6 +136,7 @@ export function evaluateCommanderPowerSignal(cards, interactionGraph = null) {
     massLandDenial: Object.freeze([...new Set(massLandDenial)]),
     interconnection: Object.freeze({
       comboLoops: Object.freeze(comboLoops),
+      comboLoopTotal: allComboLoops.length,
       amplifiers: Object.freeze(amplifiers),
       evidence: "Real mutual mechanical loops and verified rules-text trigger amplifiers from this build's own interaction graph — informational, not counted toward the power tier above, and not a claim that any loop goes infinite.",
     }),
