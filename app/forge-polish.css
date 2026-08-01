@@ -64,7 +64,7 @@
   color: #f0eee8;
   font-size: clamp(34px, 4.6vw, 56px);
   font-weight: 400;
-  letter-spacing: -.035em;
+  letter-spacing: .01em;
 }
 
 .commission-heading p {
@@ -250,7 +250,7 @@
   color: var(--forge-ember-soft);
   box-shadow: inset 0 0 18px rgba(220,136,64,.08);
 }
-.forge-brand strong { font-family: Fraunces, Georgia, "Times New Roman", serif; font-weight: 600; letter-spacing: .08em; }
+.forge-brand strong { font-family: Newsreader, Georgia, "Times New Roman", serif; font-weight: 600; letter-spacing: .08em; }
 .forge-brand small { color: #78857f; letter-spacing: .2em; }
 
 .forge-steps { gap: clamp(12px,2vw,30px); }
@@ -294,8 +294,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   margin: 18px 0 22px;
   color: #f3efe8;
   font-size: clamp(50px,6.2vw,92px);
-  line-height: .93;
-  letter-spacing: -.055em;
+  line-height: 1.04;
+  letter-spacing: .01em;
   text-wrap: balance;
 }
 .entrance-copy h1 em { color: var(--forge-ember-soft); }
@@ -356,7 +356,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 }
 .ceremony-copy { max-width: 650px; }
 .ceremony-copy .forge-eyebrow { color: var(--forge-ember-soft); }
-.ceremony-copy h1 { color: #f2eadd; letter-spacing: -.035em; text-transform: none; text-wrap: balance; }
+.ceremony-copy h1 { color: #f2eadd; letter-spacing: .01em; text-transform: none; text-wrap: balance; }
 .ceremony-copy > p { color: #9eaaa4; }
 .candidate-count { padding-block: 18px; border-block: 1px solid rgba(131,122,103,.24); }
 .candidate-count strong { color: var(--forge-ember-soft); }
@@ -373,7 +373,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 }
 .masterwork-reveal:before { opacity: .48; }
 .masterwork-reveal > header { max-width: 930px; margin-inline: auto; }
-.masterwork-reveal > header h1 { color: #f2ede5; font-size: clamp(42px,5.3vw,72px); line-height: .98; letter-spacing: -.045em; text-wrap: balance; }
+.masterwork-reveal > header h1 { color: #f2ede5; font-size: clamp(42px,5.3vw,72px); line-height: 1.04; letter-spacing: .01em; text-wrap: balance; }
 .masterwork-reveal > header h1 em { color: var(--forge-ember-soft); }
 .masterwork-reveal > header p { max-width: 680px; color: #98a59f; }
 .blueprint-promise {
@@ -403,7 +403,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 
 /* Workbench and persistent bench share the same finishing details. */
 .testing-anvil > header { max-width: 1120px; }
-.testing-anvil > header h1 { color: #f1ece4; letter-spacing: -.035em; text-wrap: balance; }
+.testing-anvil > header h1 { color: #f1ece4; letter-spacing: .01em; text-wrap: balance; }
 .result-view-controls button,.forge-chapter-rail button,.deck-reference-strip button,.forge-journey-guide button { border-radius: 0; }
 .bench-handle { border-color: rgba(220,136,64,.42); background: linear-gradient(90deg,#151711,#0b100e); box-shadow: 0 -10px 35px rgba(0,0,0,.4); }
 .bench-tray { border-color: rgba(129,146,138,.32); background: linear-gradient(160deg,#0e1512,#080c0a); box-shadow: 0 -28px 80px rgba(0,0,0,.65); }

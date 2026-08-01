@@ -54,7 +54,7 @@
   border: 1px solid #6a877f;
   background: #0d1b1a;
   color: #e7a24d;
-  font: normal 19px Fraunces, Georgia;
+  font: normal 19px Newsreader, Georgia;
 }
 .bench-toggle span {
   min-width: 0;
@@ -135,7 +135,7 @@
 .bench-tray header strong {
   margin-top: 4px;
   font:
-    500 22px Fraunces, Georgia,
+    500 22px Newsreader, Georgia,
     serif;
 }
 .bench-tray header button,
@@ -232,13 +232,13 @@
 }
 .bench-decks i {
   color: #d68a3a;
-  font: normal 42px Fraunces, Georgia;
+  font: normal 42px Newsreader, Georgia;
   text-shadow: 0 0 22px #e79943;
 }
 .bench-card-copy{display:grid;gap:4px;padding:11px 12px 8px}.bench-card-copy b {
   overflow: hidden;
   font:
-    600 15px Fraunces, Georgia,
+    600 15px Newsreader, Georgia,
     serif;
   text-overflow: ellipsis;
   white-space: nowrap;
