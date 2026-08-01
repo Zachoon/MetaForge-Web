@@ -71,6 +71,27 @@ const TIERS = [
   { max: Infinity, tier: "Maximum", note: "A dense concentration of fast-mana, tutor, extra-turn, and/or mass-land-denial signals — a competitive-leaning build." },
 ];
 
+// Exposed so a caller choosing between tiers (a Blueprint target-tier
+// selector, say) has the same ordinal ranking this module uses
+// internally, instead of re-deriving or hardcoding a second copy of it.
+export const POWER_TIERS = Object.freeze(TIERS.map((entry) => entry.tier));
+
+// A single card's power-signal category, if any — reuses the exact same
+// detectors evaluateCommanderPowerSignal itself runs per card, so a
+// caller scoring construction-time candidates (native-masterwork-engine's
+// scoreCard, biasing toward a player-chosen target tier) reads the same
+// certain, oracle-text-anchored signals rather than a second, drifting
+// copy of the same regexes. Returns at most one category — a card is
+// scored for its *strongest* signal, not summed across all of them,
+// mirroring how each category already only counts a card once above.
+export function powerSignalCategoryFor(card) {
+  if (isFastManaRock(card) || isManaRitual(card)) return "fastMana";
+  if (tutorKind(card) === "unrestricted") return "tutor";
+  if (isExtraTurn(card)) return "extraTurn";
+  if (isMassLandDenial(card)) return "massLandDenial";
+  return null;
+}
+
 // cards: the same {name, typeLine, oracleText, quantity, isCommander}[]
 // shape buildSelectedStructuralCards already produces for
 // buildForgeStructuralAnalysis — reused here rather than re-deriving a

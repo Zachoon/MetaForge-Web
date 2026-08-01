@@ -1,6 +1,6 @@
 ﻿import assert from "node:assert/strict";
 import test from "node:test";
-import { applyPracticalTiebreak, budgetScoreFor, classifyNativeCard, colorPipsFromCost, comparePracticalImpact, complexityScoreFor, conceptSignals, curveAwareLandAdjustment, curveTargets, evaluatePracticalImpact, fieldCounterRolesFor, forgeNativeMasterwork, hypergeometricAtLeast, interactionQualityFor, manaConsistencyReport, oracleTextComplexity, parseNativeBlueprintIntent, poolMechanicalSignals, popularityScoreFromRank, practicalOutranks, proportionalBasicCounts, rankPracticalOneSlotCounterfactuals, runPracticalOneSlotCounterfactualLab, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
+import { applyPracticalTiebreak, budgetScoreFor, classifyNativeCard, colorPipsFromCost, comparePracticalImpact, complexityScoreFor, conceptSignals, curveAwareLandAdjustment, curveTargets, evaluatePracticalImpact, fieldCounterRolesFor, forgeNativeMasterwork, hypergeometricAtLeast, interactionQualityFor, manaConsistencyReport, oracleTextComplexity, parseNativeBlueprintIntent, poolMechanicalSignals, popularityScoreFromRank, powerTierScoreFor, practicalOutranks, proportionalBasicCounts, rankPracticalOneSlotCounterfactuals, runPracticalOneSlotCounterfactualLab, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
 import { runOneSlotCounterfactualLab } from "../app/native-one-slot-lab.mjs";
 
 const card = (name, oracleText, typeLine = "Creature — Test", manaCost = "{2}{U}", colorIdentity = ["U"]) => ({ name, oracleText, typeLine, manaCost, colorIdentity });
@@ -1304,4 +1304,103 @@ test("forgeNativeMasterwork populates a real Commander power signal for Commande
 
   const standardReport = forgeNativeMasterwork(practicalInput);
   assert.equal(standardReport.powerSignal, null, "power signal is a Commander-specific concept and must stay null for other formats");
+});
+
+test("powerSignal also populates for Brawl and Standard Brawl, the other singleton commander-style formats", () => {
+  for (const format of ["Brawl", "Standard Brawl"]) {
+    const report = forgeNativeMasterwork({
+      format, target: 60, strategy: "Balanced midrange", seed: 7,
+      commander: { name: "Scholar of Tests", colors: ["U"], oracleText: "Draw a card." },
+      cards: pool,
+    });
+    assert.ok(report.powerSignal, `${format} must also produce a power signal, not just Commander`);
+  }
+});
+
+test("powerTierScoreFor nudges a fast-mana/tutor/extra-turn/mass-land-denial card toward or away from a chosen target tier, and never touches an ordinary card", () => {
+  const fastManaCard = { name: "Test Rock", typeLine: "Artifact", oracleText: "{T}: Add {C}{C}.", cmc: 1 };
+  const massLandDenialCard = { name: "Test Armageddon", typeLine: "Sorcery", oracleText: "Destroy all lands.", cmc: 3 };
+  const vanilla = { name: "Test Bear", typeLine: "Creature", oracleText: "", cmc: 2 };
+
+  assert.ok(powerTierScoreFor(fastManaCard, "Casual") < 0, "targeting Casual must penalize a fast-mana card");
+  assert.ok(powerTierScoreFor(fastManaCard, "Maximum") > 0, "targeting Maximum must reward a fast-mana card");
+  assert.ok(
+    powerTierScoreFor(massLandDenialCard, "Maximum") > powerTierScoreFor(fastManaCard, "Maximum"),
+    "mass land denial is weighted double, same as in evaluateCommanderPowerSignal's own signalScore",
+  );
+  assert.equal(powerTierScoreFor(vanilla, "Casual"), 0, "a card with no power signal is never nudged either way");
+  assert.equal(powerTierScoreFor(vanilla, "Maximum"), 0);
+  assert.equal(powerTierScoreFor(fastManaCard, undefined), 0, "no target tier at all means no bias");
+  assert.equal(powerTierScoreFor(fastManaCard, "No preference"), 0, "an unrecognized/neutral target means no bias");
+});
+
+// Role-diverse, same shape as the shared `pool` fixture (draw/interaction/
+// protection/ramp), so a generation attempt can actually clear the
+// structural role-coverage gate on the cheap/common half alone once the
+// pricey/rare half is excluded — a flat pile of one role (as an earlier,
+// simpler version of this fixture used) fails that gate regardless of
+// price or rarity, which would test nothing about the exclusion itself.
+const tieredCard = (name, roleText, extra) => ({ name, oracleText: roleText, typeLine: "Creature — Test", manaCost: "{2}{U}", colorIdentity: ["U"], ...extra });
+const ROLE_TEXTS = [
+  "When this enters, draw a card. Scry 1.",
+  "Exile target nonland permanent.",
+  "Target creature gains hexproof and indestructible until end of turn.",
+];
+const pricedPool = [
+  ...ROLE_TEXTS.flatMap((text, roleIndex) => Array.from({ length: 14 }, (_, i) => tieredCard(`Cheap Role${roleIndex} ${i}`, text, { priceUsd: 1 }))),
+  ...ROLE_TEXTS.flatMap((text, roleIndex) => Array.from({ length: 8 }, (_, i) => tieredCard(`Pricey Role${roleIndex} ${i}`, text, { priceUsd: 100 }))),
+  ...Array.from({ length: 10 }, (_, i) => card(`Island Utility ${i}`, "{T}: Add {U}.", "Land", "", ["U"])),
+];
+
+test("forgeNativeMasterwork's maxCardPrice is a hard exclusion, never just a deprioritization", () => {
+  const report = forgeNativeMasterwork({ format: "Standard", target: 60, strategy: "Balanced midrange", seed: 11, colors: ["U"], cards: pricedPool, maxCardPrice: 5 });
+  const overBudget = report.selected.rows.filter((row) => row.name.startsWith("Pricey"));
+  assert.equal(overBudget.length, 0, "no card priced over the cap may ever be selected, regardless of how well it otherwise scores");
+  assert.equal(report.selected.rows.reduce((sum, row) => sum + row.quantity, 0), 60, "a complete legal deck must still be buildable from what's left under the cap");
+});
+
+const rarityPool = [
+  ...ROLE_TEXTS.flatMap((text, roleIndex) => Array.from({ length: 14 }, (_, i) => tieredCard(`Common Role${roleIndex} ${i}`, text, { rarity: "common" }))),
+  ...ROLE_TEXTS.flatMap((text, roleIndex) => Array.from({ length: 8 }, (_, i) => tieredCard(`Mythic Role${roleIndex} ${i}`, text, { rarity: "mythic" }))),
+  ...Array.from({ length: 10 }, (_, i) => card(`Island Utility ${i}`, "{T}: Add {U}.", "Land", "", ["U"])),
+];
+
+test("forgeNativeMasterwork's commonsOnly is a hard exclusion, never just a deprioritization", () => {
+  const report = forgeNativeMasterwork({ format: "Standard", target: 60, strategy: "Balanced midrange", seed: 13, colors: ["U"], cards: rarityPool, commonsOnly: true });
+  const nonCommon = report.selected.rows.filter((row) => row.name.startsWith("Mythic"));
+  assert.equal(nonCommon.length, 0, "no non-common card may ever be selected once commonsOnly is set");
+  assert.equal(report.selected.rows.reduce((sum, row) => sum + row.quantity, 0), 60);
+});
+
+test("maxCardPrice and commonsOnly never exclude a card whose price or rarity is simply unknown", () => {
+  // The shared `pool` fixture carries neither priceUsd nor rarity on any
+  // card — absence of data must never be treated as evidence a card is
+  // over budget or non-common, same convention budgetScoreFor's soft
+  // nudge already follows.
+  const report = forgeNativeMasterwork({ format: "Standard", target: 60, strategy: "Balanced midrange", seed: 9, colors: ["U"], cards: pool, maxCardPrice: 1, commonsOnly: true });
+  assert.equal(report.selected.rows.reduce((sum, row) => sum + row.quantity, 0), 60, "a complete legal deck must still be buildable when the whole pool has unknown price/rarity data");
+});
+
+// A scarce, competitive resource (six candidates for far fewer real
+// slots), same "prefers X once slots are scarce" shape other tests in
+// this file already use to prove a scoring nudge has a real, measurable
+// effect on actual construction — not just on the isolated per-card
+// score powerTierScoreFor's own direct test already covers.
+const quickRock = (n) => card(`Quick Rock ${n}`, "{T}: Add {C}{C}.", "Artifact", "{1}");
+const tierPool = [
+  ...Array.from({ length: 16 }, (_, i) => card(`Flow ${i}`, "When this enters, draw a card. Scry 1.")),
+  ...Array.from({ length: 16 }, (_, i) => card(`Answer ${i}`, "Exile target nonland permanent.")),
+  ...Array.from({ length: 16 }, (_, i) => card(`Shield ${i}`, "Target creature gains hexproof and indestructible until end of turn.")),
+  ...Array.from({ length: 6 }, (_, i) => quickRock(i)),
+  ...Array.from({ length: 10 }, (_, i) => card(`Island Utility ${i}`, "{T}: Add {U}.", "Land", "", ["U"])),
+];
+const quickRockCount = (report) => report.selected.rows.filter((row) => row.name.startsWith("Quick Rock")).reduce((sum, row) => sum + row.quantity, 0);
+
+test("targetPowerTier actually changes real construction, not just an isolated card score", () => {
+  const casual = forgeNativeMasterwork({ format: "Standard", target: 60, strategy: "Balanced midrange", seed: 21, colors: ["U"], cards: tierPool, targetPowerTier: "Casual" });
+  const maximum = forgeNativeMasterwork({ format: "Standard", target: 60, strategy: "Balanced midrange", seed: 21, colors: ["U"], cards: tierPool, targetPowerTier: "Maximum" });
+  assert.ok(
+    quickRockCount(maximum) > quickRockCount(casual),
+    `expected targeting Maximum (${quickRockCount(maximum)} fast-mana rocks) to select strictly more than targeting Casual (${quickRockCount(casual)}) from the same scarce, competitive pool`,
+  );
 });

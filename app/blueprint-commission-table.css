@@ -21,6 +21,10 @@
    explicit dark ink color while the closed control keeps its ivory text. */
 .mark-grid select option{background:#f2efe7;color:#101815;font-weight:650}
 .mark-grid select option:checked{background:#296b9e;color:#fff}
+.mark-grid input[type="number"]{width:100%;min-height:50px;padding:0 14px;border:1px solid #46514d;background:#0b1112e8;color:#f4f1e9;font-weight:800;letter-spacing:.035em}
+.mark-grid input[type="number"]::placeholder{color:#7f928c;font-weight:600}
+.mark-grid label.blueprint-checkbox-field{display:flex;flex-direction:column;justify-content:center;gap:10px}
+.mark-grid label.blueprint-checkbox-field input[type="checkbox"]{width:22px;height:22px;accent-color:var(--amber);cursor:pointer}
 .blueprint-choice-definition{color:#aabcb6!important;font-size:12px!important;line-height:1.5!important}
 .commander-blueprint,.commission-note,.deck-offering{border-color:#50665f;background:linear-gradient(115deg,#0d1a17,#09110f)}
 .commander-blueprint{margin-top:16px;padding:22px}

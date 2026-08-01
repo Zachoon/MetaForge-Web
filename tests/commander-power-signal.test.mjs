@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { evaluateCommanderPowerSignal } from "../app/commander-power-signal.mjs";
+import { evaluateCommanderPowerSignal, POWER_TIERS, powerSignalCategoryFor } from "../app/commander-power-signal.mjs";
 import { buildInteractionGraph } from "../app/forge-interaction-graph.mjs";
 
 // Real oracle text for well-known, unambiguous cards — each chosen because
@@ -181,4 +181,25 @@ test("a synergy-dense build's combo loops and amplifiers never inflate the power
   assert.equal(withGraph.tier, "Casual");
   assert.ok(withGraph.interconnection.comboLoops.length > 0, "sanity check: the graph did detect a real loop");
   assert.ok(withGraph.interconnection.amplifiers.length > 0, "sanity check: the graph did detect a real amplifier");
+});
+
+// powerSignalCategoryFor — the per-card categorization a scoring bias
+// (native-masterwork-engine.mjs, biasing toward a player-chosen target
+// tier) reuses directly, so it's tested here with the same real cards
+// evaluateCommanderPowerSignal's own tests already use.
+test("powerSignalCategoryFor reads the same real cards evaluateCommanderPowerSignal itself detects", () => {
+  assert.equal(powerSignalCategoryFor(solRing), "fastMana");
+  assert.equal(powerSignalCategoryFor(manaCrypt), "fastMana");
+  assert.equal(powerSignalCategoryFor(birdsOfParadise), "fastMana");
+  assert.equal(powerSignalCategoryFor(darkRitual), "fastMana");
+  assert.equal(powerSignalCategoryFor(demonicTutor), "tutor");
+  assert.equal(powerSignalCategoryFor(rampantGrowth), null, "a basic-land-restricted tutor is ordinary ramp, not a power signal");
+  assert.equal(powerSignalCategoryFor(timeWarp), "extraTurn");
+  assert.equal(powerSignalCategoryFor(armageddon), "massLandDenial");
+  assert.equal(powerSignalCategoryFor(vanillaBear), null);
+  assert.equal(powerSignalCategoryFor(plains), null);
+});
+
+test("POWER_TIERS is the same ordered tier list evaluateCommanderPowerSignal itself assigns from", () => {
+  assert.deepEqual(POWER_TIERS, ["Casual", "Focused", "High-Power", "Maximum"]);
 });

@@ -1,7 +1,7 @@
 ﻿import { runNativeMasterworkTournament } from "./native-masterwork-tournament.mjs";
 import { explainNativeMasterworkDecision } from "./native-masterwork-reasoning.mjs";
 import { rankOneSlotCounterfactuals, runOneSlotCounterfactualLab } from "./native-one-slot-lab.mjs";
-import { evaluateCommanderPowerSignal } from "./commander-power-signal.mjs";
+import { evaluateCommanderPowerSignal, POWER_TIERS, powerSignalCategoryFor } from "./commander-power-signal.mjs";
 
 import {
   buildForgeStructuralAnalysis,
@@ -437,6 +437,25 @@ export function budgetScoreFor(priceUsd, budget) {
   return -Math.log2(priceUsd + 1) * pressure;
 }
 
+// A soft nudge toward a player-chosen target power tier, same shape as
+// budgetScoreFor above — never a hard exclusion, since a tier is a
+// heuristic estimate of the *finished* deck, not a rule any single card
+// can be judged against in isolation. Reuses powerSignalCategoryFor
+// (commander-power-signal.mjs) so this reads the exact same certain,
+// oracle-text-anchored signals the honest post-hoc tier report itself
+// uses, rather than a second, drifting definition of "powerful."
+// Mass land denial is weighted double, mirroring evaluateCommanderPowerSignal's
+// own signalScore weighting for the same category.
+const POWER_TIER_BIAS = Object.freeze({ Casual: -3, Focused: -1, "High-Power": 1, Maximum: 3 });
+const POWER_TIER_CATEGORY_WEIGHT = Object.freeze({ fastMana: 1, tutor: 1, extraTurn: 1, massLandDenial: 2 });
+export function powerTierScoreFor(card, targetPowerTier) {
+  const bias = POWER_TIER_BIAS[targetPowerTier];
+  if (!bias) return 0;
+  const category = powerSignalCategoryFor(card);
+  if (!category) return 0;
+  return bias * (POWER_TIER_CATEGORY_WEIGHT[category] || 1);
+}
+
 // Same broken-promise shape as budget above: the Blueprint's complexity
 // selector ("Accessible", "Technical", "Maximum depth") was never read past
 // its own form state. Word count is a blunt but honest proxy for how much a
@@ -605,6 +624,7 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
     popularityScore: popularityScoreFromRank(card.popularityRank),
     budgetScore: budgetScoreFor(card.priceUsd, context.budget),
     complexityScore: complexityScoreFor(oracleTextComplexity(card.oracleText || card.oracle_text), context.complexity),
+    powerTierScore: powerTierScoreFor(card, context.targetPowerTier),
     fieldPressureHits,
     directTribes,
     tribalSupport,
@@ -627,6 +647,7 @@ function prepareForgeAnalysis(input, evidenceByName) {
     fieldCounterRoles: fieldCounterRolesFor(input.format, getMetaIntelligence()),
     budget: input.budget,
     complexity: input.complexity,
+    targetPowerTier: input.targetPowerTier,
   };
   const commanderNames = commanderNamesNormalized(input);
   const poolSignals = poolMechanicalSignals(input.cards);
@@ -637,7 +658,17 @@ function prepareForgeAnalysis(input, evidenceByName) {
   // are dropped from candidacy entirely rather than merely deprioritized,
   // so an unsatisfiable exclusion surfaces as the existing "could not fill
   // N spell slot(s)" error instead of silently breaking the promise.
-  const eligible = cards.filter((entry) => !entry.excludedRoleHits.length);
+  //
+  // maxCardPrice and commonsOnly are the same kind of hard promise, not a
+  // scoring nudge: a player building a budget or commons-only list needs
+  // the Forge to actually never print an over-budget or non-common card,
+  // not just deprioritize it. A card with no known price is never
+  // excluded on price — absence of data isn't evidence it's over budget,
+  // same convention budgetScoreFor already follows for its soft nudge.
+  const eligible = cards.filter((entry) =>
+    !entry.excludedRoleHits.length &&
+    !(Number.isFinite(input.maxCardPrice) && Number.isFinite(entry.card.priceUsd) && entry.card.priceUsd > input.maxCardPrice) &&
+    !(input.commonsOnly && entry.card.rarity && entry.card.rarity !== "common"));
   return {
     context,
     cards,
@@ -653,7 +684,7 @@ function scoreCard(entry, input, variant, context) {
     card: entry.card,
     roles: entry.roles,
     cmc: entry.cmc,
-    score: entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + entry.budgetScore + entry.complexityScore + deterministicTieBreak,
+    score: entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + entry.budgetScore + entry.complexityScore + entry.powerTierScore + deterministicTieBreak,
     synergyHits: entry.synergyHits,
     synergyPotential: entry.synergyPotential,
     preferenceHits: entry.preferenceHits,
@@ -1684,7 +1715,7 @@ export function forgeNativeMasterwork(input) {
       },
     );
 
-  const powerSignal = input.format === "Commander" ? evaluateCommanderPowerSignal(structuralCards, structuralAnalysis.graph) : null;
+  const powerSignal = ["Commander", "Brawl", "Standard Brawl"].includes(input.format) ? evaluateCommanderPowerSignal(structuralCards, structuralAnalysis.graph) : null;
 
   const recommendationRecord =
     createForgeRecommendationRecord({
@@ -1825,7 +1856,7 @@ export function forgeImportedMasterwork(input) {
 
   const structuralCards = buildSelectedStructuralCards(selected, input);
   const structuralAnalysis = buildForgeStructuralAnalysis(structuralCards, { commanderName: input.commander?.name || "" });
-  const powerSignal = input.format === "Commander" ? evaluateCommanderPowerSignal(structuralCards, structuralAnalysis.graph) : null;
+  const powerSignal = ["Commander", "Brawl", "Standard Brawl"].includes(input.format) ? evaluateCommanderPowerSignal(structuralCards, structuralAnalysis.graph) : null;
   const recommendationRecord = createForgeRecommendationRecord({
     engineVersion: "metaforge-native-import-v1",
     format: input.format,

@@ -1124,6 +1124,7 @@ type NativeForgeCard = {
   popularityRank?: number;
   priceUsd?: number;
   producedMana?: string[];
+  rarity?: string;
 };
 
 const nativeCardFact = (card: any): NativeForgeCard => {
@@ -1144,6 +1145,11 @@ const nativeCardFact = (card: any): NativeForgeCard => {
     // more precise than color_identity, which also counts colored costs on
     // activated abilities that don't produce mana at all.
     ...(Array.isArray(card.produced_mana) ? { producedMana: card.produced_mana } : {}),
+    // Scryfall's printed rarity for whichever printing was fetched — used
+    // only for a player-chosen "commons only" hard restriction; absent
+    // entirely (not "common") when Scryfall doesn't report one, so a
+    // missing value is never silently treated as a common.
+    ...(typeof card.rarity === "string" ? { rarity: card.rarity } : {}),
   };
 };
 
@@ -1500,6 +1506,13 @@ const BLUEPRINT_DEFINITIONS = {
     "Moderate investment": "Allow selective premium cards when they materially improve the deck.",
     "Competitive optimization": "Prioritize performance and consistency over card cost.",
   },
+  targetPowerTier: {
+    "": "Let structure and strategy decide, with no power-level pressure either way.",
+    Casual: "Lean away from fast mana, unrestricted tutors, extra turns, and mass land denial.",
+    Focused: "Allow a modest amount of real power signals — a build with teeth, not a stax or combo-first list.",
+    "High-Power": "Lean toward fast mana, tutors, and extra turns where they otherwise fit.",
+    Maximum: "Actively seek fast mana, unrestricted tutors, extra turns, and mass land denial wherever legal.",
+  },
 } as const;
 
 const blueprintDefinition = (
@@ -1632,6 +1645,25 @@ export default function Home() {
   const [strategy, setStrategy] = useState("Balanced midrange");
   const [complexity, setComplexity] = useState("Balanced");
   const [budget, setBudget] = useState("No strict limit");
+  // A hard $ ceiling per card, generic across every format — the player
+  // dials in whatever real-world budget rule their pod actually uses
+  // (a $5 cap, a Pauper-adjacent commons restriction, or both together)
+  // rather than the Forge trying to name and encode a specific named
+  // community format it can't verify the exact rules of. Empty string
+  // means no cap; parsed to a number only at generation time.
+  const [maxCardPriceInput, setMaxCardPriceInput] = useState("");
+  const [commonsOnly, setCommonsOnly] = useState(false);
+  // Only meaningful for the singleton commander-style formats
+  // (Commander/Brawl/Standard Brawl) — the same set powerSignal itself
+  // already reports for. "" means no target: the existing, unbiased
+  // behavior.
+  const [targetPowerTier, setTargetPowerTier] = useState("");
+  // Parsed once and reused at every generation call site rather than
+  // re-parsing the raw text input three times — blank or non-numeric
+  // text means no cap, matching maxCardPriceInput's own "" default.
+  const maxCardPrice = maxCardPriceInput.trim() !== "" && Number.isFinite(Number(maxCardPriceInput))
+    ? Number(maxCardPriceInput)
+    : undefined;
   const [readingSize, setReadingSize] = useState<ReadingSize>("comfortable");
   const [motionMode, setMotionMode] = useState<MotionMode>("full");
   const [forgeAction, setForgeAction] = useState<ForgeAction>("none");
@@ -1805,6 +1837,11 @@ export default function Home() {
     // rarely change on a single swap and a full recompute needs the
     // interaction graph rebuilt too.
     powerSignal?: any;
+    // The target power tier this exact generation was biased toward, if
+    // any — captured at generation time (not read live from the
+    // Blueprint's own state) so it stays accurate even if the player
+    // changes the selector afterward without regenerating.
+    requestedPowerTier?: string;
   } | null>(null);
   // Non-fatal disclosure for the decklist-import path: names the Forge could
   // not verify or that aren't legal in this format, left out rather than
@@ -3307,6 +3344,7 @@ export default function Home() {
       cardPool: opts.cardPool,
       practicalTiebreak: nativeReport.practicalTiebreak || null,
       powerSignal: nativeReport.powerSignal || null,
+      requestedPowerTier: isCommanderFormat(format) && targetPowerTier ? targetPowerTier : undefined,
     });
     void persistStoryBench(
       firstRevision,
@@ -3389,6 +3427,9 @@ export default function Home() {
         evidence: evidence?.cards || [],
         budget,
         complexity,
+        maxCardPrice,
+        commonsOnly,
+        targetPowerTier: isCommanderFormat(format) ? targetPowerTier || undefined : undefined,
       });
       await applyForgeResult(nativeReport, {
         generationId,
@@ -3477,6 +3518,15 @@ export default function Home() {
           ...resolution.unresolvedNames.map((name) => `"${name}" could not be verified and was left out.`),
           ...resolution.illegalNames.map((name) => `"${name}" is not legal in ${format} and was left out.`),
         ]);
+        // Deliberately omits maxCardPrice/commonsOnly/targetPowerTier:
+        // forgeImportedMasterwork preserves whatever the player actually
+        // pasted in (that's its whole contract — "the Forge never
+        // silently substitutes its own optimization for what the player
+        // submitted"), and those hard filters would silently drop an
+        // over-budget or non-common card straight out of their own list
+        // instead. A budget/rarity/power target is a construction-time
+        // preference for cards the Forge is choosing, not a retroactive
+        // filter on cards the player already chose themselves.
         const nativeReport = forgeImportedMasterwork({
           format,
           target: targetDeckSize(format),
@@ -3517,6 +3567,9 @@ export default function Home() {
           evidence: evidence?.cards || [],
           budget,
           complexity,
+          maxCardPrice,
+          commonsOnly,
+          targetPowerTier: isCommanderFormat(format) ? targetPowerTier || undefined : undefined,
         });
         await applyForgeResult(nativeReport, {
           generationId,
@@ -4531,6 +4584,46 @@ export default function Home() {
                 </select>
                 <small id="budget-definition" className="blueprint-choice-definition">{blueprintDefinition("budget", budget)}</small>
               </label>
+              <label>
+                <span>
+                  MAX PRICE PER CARD
+                  <button type="button" className="blueprint-glossary-tip" data-definition="A hard $ ceiling — no card in the build will ever cost more than this, at its cheapest known printing. Leave blank for no limit. A card with no known price is never excluded." aria-label="Explain max price per card">?</button>
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  inputMode="decimal"
+                  placeholder="No limit"
+                  value={maxCardPriceInput}
+                  onChange={(event) => setMaxCardPriceInput(event.target.value)}
+                />
+                <small className="blueprint-choice-definition">A hard cap, not a preference — dial in your own group's budget rule. Combine with Commons Only for a Pauper-style build.</small>
+              </label>
+              <label className="blueprint-checkbox-field">
+                <span>
+                  COMMONS ONLY
+                  <button type="button" className="blueprint-glossary-tip" data-definition="Only common-rarity cards are eligible, including nonbasic lands — a hard restriction, the same rarity rule Pauper-style formats use. A card with no known rarity is never excluded." aria-label="Explain commons only">?</button>
+                </span>
+                <input type="checkbox" checked={commonsOnly} onChange={(event) => setCommonsOnly(event.target.checked)} />
+                <small className="blueprint-choice-definition">Restricts every card, including nonbasic lands, to common rarity.</small>
+              </label>
+              {isCommanderFormat(format) && (
+                <label>
+                  <span>
+                    TARGET POWER TIER
+                    <button type="button" className="blueprint-glossary-tip" data-definition={blueprintDefinition("targetPowerTier", targetPowerTier)} aria-label={`Explain ${targetPowerTier || "No preference"} target power tier`}>?</button>
+                  </span>
+                  <select aria-describedby="power-tier-definition" value={targetPowerTier} onChange={(event) => setTargetPowerTier(event.target.value)}>
+                    <option value="">No preference</option>
+                    <option>Casual</option>
+                    <option>Focused</option>
+                    <option>High-Power</option>
+                    <option>Maximum</option>
+                  </select>
+                  <small id="power-tier-definition" className="blueprint-choice-definition">{blueprintDefinition("targetPowerTier", targetPowerTier)} A nudge, not a guarantee — the Forge honestly reports the tier the finished deck actually reaches.</small>
+                </label>
+              )}
             </div>
             {isCommanderFormat(format) && (
               <section className="commander-blueprint">
@@ -5342,6 +5435,17 @@ export default function Home() {
                         <b>{nativeMasterworkContext.powerSignal.tier}</b>
                         <em>{nativeMasterworkContext.powerSignal.note}</em>
                       </span>
+                      {nativeMasterworkContext.requestedPowerTier && (
+                        <span>
+                          <small>TARGETED</small>
+                          <b>{nativeMasterworkContext.requestedPowerTier}</b>
+                          <em>
+                            {nativeMasterworkContext.requestedPowerTier === nativeMasterworkContext.powerSignal.tier
+                              ? "The finished deck reached the requested tier."
+                              : "A nudge, not a guarantee — the finished deck landed here instead, honestly."}
+                          </em>
+                        </span>
+                      )}
                       <span>
                         <small>FAST MANA</small>
                         <b>{nativeMasterworkContext.powerSignal.fastMana.length}</b>
@@ -6841,7 +6945,7 @@ export default function Home() {
             </span>
             {nativeMasterworkContext?.powerSignal && (
               <span title={nativeMasterworkContext.powerSignal.note}>
-                <small>POWER SIGNAL</small>
+                <small>{nativeMasterworkContext.requestedPowerTier ? `POWER SIGNAL · TARGETED ${nativeMasterworkContext.requestedPowerTier.toUpperCase()}` : "POWER SIGNAL"}</small>
                 <strong>{nativeMasterworkContext.powerSignal.tier}</strong>
               </span>
             )}
