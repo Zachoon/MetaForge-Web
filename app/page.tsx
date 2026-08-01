@@ -26,6 +26,7 @@ import {
   diffPlayerIdentity,
 } from "./player-identity.mjs";
 import { IdentityBadge } from "./identity-badge";
+import { ForgeWalkthrough, hasSeenWalkthrough } from "./forge-walkthrough";
 import { prepareStoryBenchRevisions, serializeStoryBenchRevision, restoreStoryBenchRevisions } from "./story-bench-recommendation-ledger.mjs";
 import { buildExperimentTablets } from "./experiment-tablet.mjs";
 import { resolveMasterworkVisualProfile } from "./masterwork-visual-profile.mjs";
@@ -1640,6 +1641,13 @@ function MasterworkCard({ poolIndex, featured = false, alignedWork, preview, com
 
 export default function Home() {
   const [chamber, setChamber] = useState<Chamber>("entrance");
+  // Auto-opens once per browser (localStorage-gated) for a first-time
+  // visitor landing on the entrance screen; always replayable via the
+  // header's tour button regardless of that flag.
+  const [walkthroughActive, setWalkthroughActive] = useState(false);
+  useEffect(() => {
+    if (!hasSeenWalkthrough()) setWalkthroughActive(true);
+  }, []);
   const [stage, setStage] = useState(0);
   const [format, setFormat] = useState("Standard");
   const [strategy, setStrategy] = useState("Balanced midrange");
@@ -4320,6 +4328,15 @@ export default function Home() {
           >
             FX
           </button>
+          <button
+            type="button"
+            className="motion-toggle"
+            aria-label="Replay the guided tour"
+            title="Replay the guided tour"
+            onClick={() => setWalkthroughActive(true)}
+          >
+            ?
+          </button>
           <IdentityBadge
             depth={playerIdentity.depth}
             totalMilestones={playerIdentity.allMilestones.length}
@@ -4333,6 +4350,13 @@ export default function Home() {
           </button>
         </div>
       </header>
+
+      <ForgeWalkthrough
+        active={walkthroughActive}
+        chamber={chamber}
+        setChamber={setChamber}
+        onClose={() => setWalkthroughActive(false)}
+      />
 
       {chamber === "entrance" && (
         <section className="forge-entrance">
