@@ -1,6 +1,7 @@
 ﻿import { runNativeMasterworkTournament } from "./native-masterwork-tournament.mjs";
 import { explainNativeMasterworkDecision } from "./native-masterwork-reasoning.mjs";
 import { rankOneSlotCounterfactuals, runOneSlotCounterfactualLab } from "./native-one-slot-lab.mjs";
+import { evaluateCommanderPowerSignal } from "./commander-power-signal.mjs";
 
 import {
   buildForgeStructuralAnalysis,
@@ -1683,6 +1684,8 @@ export function forgeNativeMasterwork(input) {
       },
     );
 
+  const powerSignal = input.format === "Commander" ? evaluateCommanderPowerSignal(structuralCards) : null;
+
   const recommendationRecord =
     createForgeRecommendationRecord({
       engineVersion:
@@ -1755,6 +1758,7 @@ export function forgeNativeMasterwork(input) {
     reasoning,
     laboratory,
     structuralAnalysis,
+    powerSignal,
     recommendationRecord,
     manaConsistency: manaConsistencyReport(selected.rows, input.target),
     unusedEnginePartners: unusedEnginePartnersFor(selected, input),
@@ -1821,6 +1825,7 @@ export function forgeImportedMasterwork(input) {
 
   const structuralCards = buildSelectedStructuralCards(selected, input);
   const structuralAnalysis = buildForgeStructuralAnalysis(structuralCards, { commanderName: input.commander?.name || "" });
+  const powerSignal = input.format === "Commander" ? evaluateCommanderPowerSignal(structuralCards) : null;
   const recommendationRecord = createForgeRecommendationRecord({
     engineVersion: "metaforge-native-import-v1",
     format: input.format,
@@ -1858,6 +1863,7 @@ export function forgeImportedMasterwork(input) {
     reasoning,
     laboratory,
     structuralAnalysis,
+    powerSignal,
     recommendationRecord,
     manaConsistency: manaConsistencyReport(selected.rows, input.target),
     unusedEnginePartners: unusedEnginePartnersFor(selected, input),

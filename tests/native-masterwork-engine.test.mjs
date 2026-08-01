@@ -1281,3 +1281,22 @@ test("forgeNativeMasterwork's practicalTiebreak field, when it fires, stays cons
   const again = forgeNativeMasterwork(practicalInput);
   assert.deepEqual(report.practicalTiebreak, again.practicalTiebreak, "must be deterministic for the same seed/input");
 });
+
+test("forgeNativeMasterwork populates a real Commander power signal for Commander format and leaves it null everywhere else", () => {
+  const commanderReport = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 7,
+    commander: { name: "Scholar of Tests", colors: ["U"], oracleText: "Draw a card." },
+    cards: pool,
+  });
+  assert.ok(commanderReport.powerSignal, "Commander format must always produce a power signal");
+  assert.equal(typeof commanderReport.powerSignal.tier, "string");
+  assert.match(commanderReport.powerSignal.evidence, /forge theory/i);
+  // The shared `pool` fixture has no fast-mana, tutor, extra-turn, or
+  // mass-land-denial cards in it, so the honest answer here is "Casual" —
+  // asserting that instead of just presence guards against a signal that
+  // always fires regardless of the actual deck.
+  assert.equal(commanderReport.powerSignal.tier, "Casual");
+
+  const standardReport = forgeNativeMasterwork(practicalInput);
+  assert.equal(standardReport.powerSignal, null, "power signal is a Commander-specific concept and must stay null for other formats");
+});
