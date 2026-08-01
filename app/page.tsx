@@ -6839,6 +6839,12 @@ export default function Home() {
               <small>MARKET TOTAL</small>
               <strong>${deckPriceTotal.total.toFixed(2)}</strong>
             </span>
+            {nativeMasterworkContext?.powerSignal && (
+              <span title={nativeMasterworkContext.powerSignal.note}>
+                <small>POWER SIGNAL</small>
+                <strong>{nativeMasterworkContext.powerSignal.tier}</strong>
+              </span>
+            )}
             {deckPriceTotal.unpricedCards > 0 && (
               <em>
                 {deckPriceTotal.unpricedCards} card{deckPriceTotal.unpricedCards === 1 ? "" : "s"} without price data
