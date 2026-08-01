@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { evaluateCommanderPowerSignal } from "../app/commander-power-signal.mjs";
+import { buildInteractionGraph } from "../app/forge-interaction-graph.mjs";
 
 // Real oracle text for well-known, unambiguous cards — each chosen because
 // it's the canonical example of the exact signal it's meant to exercise.
@@ -106,4 +107,49 @@ test("evaluateCommanderPowerSignal deduplicates repeated card name occurrences w
 test("evaluateCommanderPowerSignal is a pure function of its input — same cards, same result", () => {
   const cards = [solRing, demonicTutor, timeWarp, armageddon, vanillaBear, plains];
   assert.deepEqual(evaluateCommanderPowerSignal(cards), evaluateCommanderPowerSignal(cards));
+});
+
+// interactionGraph is optional — every existing signal keeps working, and
+// interconnection reports empty rather than throwing, when no graph is
+// supplied (a direct caller with no structural analysis available yet).
+test("evaluateCommanderPowerSignal reports an empty interconnection section when no interaction graph is supplied", () => {
+  const result = evaluateCommanderPowerSignal([solRing, vanillaBear, plains]);
+  assert.deepEqual(result.interconnection.comboLoops, []);
+  assert.deepEqual(result.interconnection.amplifiers, []);
+  assert.deepEqual(result.fastMana, ["Sol Ring"], "every other signal must be unaffected by a missing graph");
+});
+
+// Reuses the exact fixtures forge-interaction-graph's own test suite
+// already proves produce a real mutual two-way loop and a real verified
+// trigger amplifier, rather than hand-predicting a new pair's regex match.
+const tokenHerald = { name: "Token Herald", typeLine: "Creature", oracleText: "Whenever you draw your second card each turn, create a 1/1 colorless Servo artifact creature token." };
+const cardHerald = { name: "Card Herald", typeLine: "Creature", oracleText: "Draw two cards. Whenever a token you control attacks, this creature gets +1/+0 until end of turn." };
+const panharmonicon = { name: "Panharmonicon", typeLine: "Artifact", oracleText: "If an enters-the-battlefield ability of a permanent you control triggers, that ability triggers an additional time." };
+const soulWarden = { name: "Soul Warden", typeLine: "Creature", oracleText: "Whenever another creature enters the battlefield under your control, you gain 1 life." };
+
+test("evaluateCommanderPowerSignal surfaces a real mutual engine-pair loop from the supplied interaction graph", () => {
+  const graph = buildInteractionGraph([tokenHerald, cardHerald]);
+  const result = evaluateCommanderPowerSignal([tokenHerald, cardHerald], graph);
+  assert.deepEqual(result.interconnection.comboLoops, ["Token Herald + Card Herald"]);
+});
+
+test("evaluateCommanderPowerSignal surfaces a real verified trigger amplifier from the supplied interaction graph", () => {
+  const graph = buildInteractionGraph([panharmonicon, soulWarden]);
+  const result = evaluateCommanderPowerSignal([panharmonicon, soulWarden], graph);
+  assert.deepEqual(result.interconnection.amplifiers, ["Panharmonicon"]);
+});
+
+test("a synergy-dense build's combo loops and amplifiers never inflate the power tier or signal score", () => {
+  // Grizzly Bears + Plains carry zero fast-mana/tutor/extra-turn/mass-
+  // land-denial signals on their own, so the tier here must stay exactly
+  // what it would be without the graph at all — interconnection is
+  // informational only, never folded into signalScore.
+  const graph = buildInteractionGraph([tokenHerald, cardHerald, panharmonicon, soulWarden]);
+  const withGraph = evaluateCommanderPowerSignal([tokenHerald, cardHerald, panharmonicon, soulWarden, vanillaBear, plains], graph);
+  const withoutGraph = evaluateCommanderPowerSignal([tokenHerald, cardHerald, panharmonicon, soulWarden, vanillaBear, plains]);
+  assert.equal(withGraph.signalScore, withoutGraph.signalScore);
+  assert.equal(withGraph.tier, withoutGraph.tier);
+  assert.equal(withGraph.tier, "Casual");
+  assert.ok(withGraph.interconnection.comboLoops.length > 0, "sanity check: the graph did detect a real loop");
+  assert.ok(withGraph.interconnection.amplifiers.length > 0, "sanity check: the graph did detect a real amplifier");
 });

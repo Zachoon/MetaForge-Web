@@ -8,8 +8,6 @@
 // on real cards in the actual build; the tier label is Forge Theory (a
 // bounded heuristic), never presented as a rule or a guaranteed pod fit.
 
-const normalizedText = (card) => [card?.typeLine, card?.oracleText].filter(Boolean).join(" ");
-
 function manaValueOf(card) {
   if (Number.isFinite(card?.cmc)) return card.cmc;
   const cost = card?.manaCost || card?.mana_cost || "";
@@ -77,7 +75,14 @@ const TIERS = [
 // shape buildSelectedStructuralCards already produces for
 // buildForgeStructuralAnalysis — reused here rather than re-deriving a
 // second reconnection to the verified pool.
-export function evaluateCommanderPowerSignal(cards) {
+//
+// interactionGraph: the same graph buildForgeStructuralAnalysis already
+// computes for this exact build (its own `.graph` field) — passed in
+// rather than recomputed, so this costs nothing extra on the generation
+// path. Optional: callers without one (direct unit tests, or a future
+// caller that hasn't built a graph yet) get every other signal unaffected
+// and an empty interconnection section instead of a crash.
+export function evaluateCommanderPowerSignal(cards, interactionGraph = null) {
   const nonlands = cards.filter((card) => !/\bLand\b/i.test(card.typeLine || ""));
   const fastMana = [];
   const tutors = { unrestricted: [], restricted: [] };
@@ -98,6 +103,17 @@ export function evaluateCommanderPowerSignal(cards) {
     }
   }
 
+  // Deliberately kept out of signalScore/tier below: a mutual two-card
+  // loop is a *synergy* claim (each card feeds the other something),
+  // and a trigger amplifier is a *build-around* claim — neither one
+  // verifies the loop actually goes infinite or costs nothing to repeat.
+  // Folding a synergy-dense but ordinary-power casual deck's loop count
+  // into the same score as fast mana/tutors/extra turns would conflate
+  // "interconnected" with "powerful," the exact overreach this module's
+  // narrow, oracle-text-anchored signals otherwise avoid.
+  const comboLoops = [...new Set((interactionGraph?.enginePairs || []).map((pair) => pair.cards.join(" + ")))];
+  const amplifiers = [...new Set((interactionGraph?.amplifiers || []).map((entry) => entry.source))];
+
   const signalScore = fastMana.length + tutors.unrestricted.length + extraTurns.length + massLandDenial.length * 2;
   const { tier, note } = TIERS.find((entry) => signalScore <= entry.max);
 
@@ -110,6 +126,11 @@ export function evaluateCommanderPowerSignal(cards) {
     tutors: Object.freeze({ unrestricted: [...new Set(tutors.unrestricted)], restricted: [...new Set(tutors.restricted)] }),
     extraTurns: Object.freeze([...new Set(extraTurns)]),
     massLandDenial: Object.freeze([...new Set(massLandDenial)]),
+    interconnection: Object.freeze({
+      comboLoops: Object.freeze(comboLoops),
+      amplifiers: Object.freeze(amplifiers),
+      evidence: "Real mutual mechanical loops and verified rules-text trigger amplifiers from this build's own interaction graph — informational, not counted toward the power tier above, and not a claim that any loop goes infinite.",
+    }),
     evidence: "Forge Theory: a bounded heuristic over real, quoted oracle-text signals in this exact build — not a claim to match any official bracket system's named-card criteria, and not a guarantee this deck fits a given pod.",
   });
 }

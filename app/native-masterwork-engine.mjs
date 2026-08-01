@@ -1684,7 +1684,7 @@ export function forgeNativeMasterwork(input) {
       },
     );
 
-  const powerSignal = input.format === "Commander" ? evaluateCommanderPowerSignal(structuralCards) : null;
+  const powerSignal = input.format === "Commander" ? evaluateCommanderPowerSignal(structuralCards, structuralAnalysis.graph) : null;
 
   const recommendationRecord =
     createForgeRecommendationRecord({
@@ -1825,7 +1825,7 @@ export function forgeImportedMasterwork(input) {
 
   const structuralCards = buildSelectedStructuralCards(selected, input);
   const structuralAnalysis = buildForgeStructuralAnalysis(structuralCards, { commanderName: input.commander?.name || "" });
-  const powerSignal = input.format === "Commander" ? evaluateCommanderPowerSignal(structuralCards) : null;
+  const powerSignal = input.format === "Commander" ? evaluateCommanderPowerSignal(structuralCards, structuralAnalysis.graph) : null;
   const recommendationRecord = createForgeRecommendationRecord({
     engineVersion: "metaforge-native-import-v1",
     format: input.format,

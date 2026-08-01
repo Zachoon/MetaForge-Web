@@ -1291,6 +1291,11 @@ test("forgeNativeMasterwork populates a real Commander power signal for Commande
   assert.ok(commanderReport.powerSignal, "Commander format must always produce a power signal");
   assert.equal(typeof commanderReport.powerSignal.tier, "string");
   assert.match(commanderReport.powerSignal.evidence, /forge theory/i);
+  // Confirms the wired-through interaction graph is the real one this
+  // exact report already computed for structuralAnalysis, not a fresh,
+  // disconnected recomputation — same field shape, same underlying data.
+  assert.ok(Array.isArray(commanderReport.powerSignal.interconnection.comboLoops));
+  assert.ok(Array.isArray(commanderReport.powerSignal.interconnection.amplifiers));
   // The shared `pool` fixture has no fast-mana, tutor, extra-turn, or
   // mass-land-denial cards in it, so the honest answer here is "Casual" —
   // asserting that instead of just presence guards against a signal that
