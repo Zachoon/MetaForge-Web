@@ -1321,6 +1321,94 @@ export function evaluatePracticalImpact(before, afterRows, input) {
   return { ...comparePracticalImpact(before, after), before, after };
 }
 
+// runNativeMasterworkTournament's own contract is explicit: its weighted
+// score is a deterministic structural comparison, not a predicted win rate
+// — by design, it can't know that two candidates scoring within a few
+// points of each other are a genuine toss-up rather than a real, decisive
+// lead. That gap is exactly where a real goldfish/matchup check earns its
+// cost: only the handful of candidates that close to the leader ever get
+// simulated, so the common case (one clear structural leader) never pays
+// for it at all.
+const TOURNAMENT_PRACTICAL_MARGIN = 6;
+
+// Ordered the same way comparePracticalImpact prioritizes evidence: gate
+// tier first (a real pass/fail line), then rate, and only once a rate gap
+// clears PRACTICAL_RATE_FLOOR — the same noise floor used everywhere else
+// in this file — so two contenders that are practically indistinguishable
+// don't get an invented winner.
+export function practicalOutranks(a, b) {
+  if (GOLDFISH_GATE_RANK[a.goldfish.gate] !== GOLDFISH_GATE_RANK[b.goldfish.gate]) {
+    return GOLDFISH_GATE_RANK[a.goldfish.gate] > GOLDFISH_GATE_RANK[b.goldfish.gate];
+  }
+  if (MATRIX_GATE_RANK[a.matrix.gate] !== MATRIX_GATE_RANK[b.matrix.gate]) {
+    return MATRIX_GATE_RANK[a.matrix.gate] > MATRIX_GATE_RANK[b.matrix.gate];
+  }
+  const keepableGap = a.goldfish.expert.keepableRate - b.goldfish.expert.keepableRate;
+  if (Math.abs(keepableGap) > PRACTICAL_RATE_FLOOR) return keepableGap > 0;
+  const scenarioGap = (a.matrix.weakest?.scenarioPassRate || 0) - (b.matrix.weakest?.scenarioPassRate || 0);
+  return scenarioGap > PRACTICAL_RATE_FLOOR;
+}
+
+// Wraps a completed structural tournament exactly the way
+// forgeImportedMasterwork already overrides one to force-preserve a
+// player's own list (see `forcedTournament` below): never mutates the
+// original, only ever produces a shallow-frozen copy with `selectedId`
+// and the affected `results` entries reassigned, so every downstream
+// consumer (reasoning, recommendationRecord, UI) reads one consistent
+// tournament regardless of whether a tiebreak fired.
+export function applyPracticalTiebreak(tournament, candidates, input) {
+  const leaderScore = tournament.results.find((result) => result.id === tournament.selectedId)?.tournamentScore || 0;
+  const contenders = tournament.results
+    .filter((result) => result.verdict !== "reject" && leaderScore - result.tournamentScore <= TOURNAMENT_PRACTICAL_MARGIN)
+    .map((result) => candidates.find((candidate) => candidate.id === result.id))
+    .filter(Boolean);
+  if (contenders.length < 2) return { tournament, practicalTiebreak: null };
+
+  const strategyName = strategyArchetypeFor(input.strategy);
+  const evaluated = contenders.map((candidate) => ({
+    candidate,
+    practical: simulatePractical(buildSimulationModel(candidate.rows, input), strategyName),
+  }));
+  const practicalWinner = evaluated.reduce((best, entry) =>
+    (practicalOutranks(entry.practical, best.practical) ? entry : best));
+  const contenderSummary = evaluated.map((entry) => ({
+    id: entry.candidate.id,
+    label: entry.candidate.label,
+    goldfishGate: entry.practical.goldfish.gate,
+    matrixGate: entry.practical.matrix.gate,
+    keepableRate: entry.practical.goldfish.expert.keepableRate,
+  }));
+
+  const structuralWinnerId = tournament.selectedId;
+  if (practicalWinner.candidate.id === structuralWinnerId) {
+    return { tournament, practicalTiebreak: { triggered: true, overridden: false, contenders: contenderSummary } };
+  }
+
+  const structuralWinner = evaluated.find((entry) => entry.candidate.id === structuralWinnerId);
+  const reason = `${practicalWinner.candidate.label} and ${structuralWinner.candidate.label} scored within ${TOURNAMENT_PRACTICAL_MARGIN} structural points of each other, so the Forge ran a real goldfish and matchup simulation to break the tie. ${practicalWinner.candidate.label} cleared ${practicalWinner.practical.goldfish.gate.replaceAll("-", " ")} / ${practicalWinner.practical.matrix.gate.replaceAll("-", " ")} at ${(practicalWinner.practical.goldfish.expert.keepableRate * 100).toFixed(0)}% keepable, while ${structuralWinner.candidate.label} only reached ${structuralWinner.practical.goldfish.gate.replaceAll("-", " ")} / ${structuralWinner.practical.matrix.gate.replaceAll("-", " ")} at ${(structuralWinner.practical.goldfish.expert.keepableRate * 100).toFixed(0)}% keepable.`;
+  const results = tournament.results.map((result) => {
+    if (result.id === practicalWinner.candidate.id) return { ...result, verdict: "advance", reason };
+    if (result.id === structuralWinnerId) {
+      return { ...result, verdict: result.onFrontier ? "hold" : "reject", reason: `${result.label} led on structure alone, but lost a practical simulation tiebreak to ${practicalWinner.candidate.label}.` };
+    }
+    return result;
+  });
+
+  return {
+    tournament: Object.freeze({ ...tournament, selectedId: practicalWinner.candidate.id, results }),
+    practicalTiebreak: {
+      triggered: true,
+      overridden: true,
+      fromId: structuralWinnerId,
+      fromLabel: structuralWinner.candidate.label,
+      toId: practicalWinner.candidate.id,
+      toLabel: practicalWinner.candidate.label,
+      contenders: contenderSummary,
+      reason,
+    },
+  };
+}
+
 // The theoretical structural gate (role coverage, curve, cohesion) only
 // ever reasons about rules text — it can't say whether a swap that looks
 // better on paper actually draws worse or folds to real pressure. Ranks
@@ -1561,7 +1649,8 @@ export function forgeNativeMasterwork(input) {
   const evidenceByName = new Map((input.evidence || []).map((entry) => [normalized(entry.name), entry]));
   const analysis = prepareForgeAnalysis(input, evidenceByName);
   const candidates = VARIANTS.map((variant) => buildCandidate(input, variant, analysis));
-  const tournament = runNativeMasterworkTournament(candidates, { format: input.format, target: input.target });
+  const structuralTournament = runNativeMasterworkTournament(candidates, { format: input.format, target: input.target });
+  const { tournament, practicalTiebreak } = applyPracticalTiebreak(structuralTournament, candidates, input);
   const verdictById = new Map(tournament.results.map((result) => [result.id, result]));
   const ranked = candidates
     .map((candidate) => ({ ...candidate, tournament: verdictById.get(candidate.id) }))
@@ -1662,6 +1751,7 @@ export function forgeNativeMasterwork(input) {
     selected,
     candidates: ranked,
     tournament,
+    practicalTiebreak,
     reasoning,
     laboratory,
     structuralAnalysis,

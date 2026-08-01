@@ -1,6 +1,6 @@
 ﻿import assert from "node:assert/strict";
 import test from "node:test";
-import { budgetScoreFor, classifyNativeCard, colorPipsFromCost, comparePracticalImpact, complexityScoreFor, conceptSignals, curveAwareLandAdjustment, curveTargets, evaluatePracticalImpact, fieldCounterRolesFor, forgeNativeMasterwork, hypergeometricAtLeast, interactionQualityFor, manaConsistencyReport, oracleTextComplexity, parseNativeBlueprintIntent, poolMechanicalSignals, popularityScoreFromRank, proportionalBasicCounts, rankPracticalOneSlotCounterfactuals, runPracticalOneSlotCounterfactualLab, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
+import { applyPracticalTiebreak, budgetScoreFor, classifyNativeCard, colorPipsFromCost, comparePracticalImpact, complexityScoreFor, conceptSignals, curveAwareLandAdjustment, curveTargets, evaluatePracticalImpact, fieldCounterRolesFor, forgeNativeMasterwork, hypergeometricAtLeast, interactionQualityFor, manaConsistencyReport, oracleTextComplexity, parseNativeBlueprintIntent, poolMechanicalSignals, popularityScoreFromRank, practicalOutranks, proportionalBasicCounts, rankPracticalOneSlotCounterfactuals, runPracticalOneSlotCounterfactualLab, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
 import { runOneSlotCounterfactualLab } from "../app/native-one-slot-lab.mjs";
 
 const card = (name, oracleText, typeLine = "Creature — Test", manaCost = "{2}{U}", colorIdentity = ["U"]) => ({ name, oracleText, typeLine, manaCost, colorIdentity });
@@ -1137,4 +1137,147 @@ test("curve-aware land scaling never touches non-singleton formats, which stay a
   const report = forgeNativeMasterwork({ format: "Standard", target: 60, strategy: "Control", seed: 25, colors: ["U"], cards: highCurvePool });
   const landSlots = report.selected.rows.filter((row) => row.roles.includes("land")).reduce((sum, row) => sum + row.quantity, 0);
   assert.equal(landSlots, 24, "60-card Standard must stay at the flat 40% baseline (24 lands) regardless of curve");
+});
+
+// practicalOutranks — direct unit tests against the same hand-built
+// goldfish/matrix shapes comparePracticalImpact's own tests already use,
+// so the ranking logic is deterministic to exercise without paying for a
+// real simulation run per case.
+test("practicalOutranks prefers a strictly better goldfish gate tier regardless of rates", () => {
+  const better = practical("goldfish-pass", 0.5, 0.5, "matrix-hold", 0.3);
+  const worse = practical("goldfish-fail", 0.95, 0.95, "matrix-pass", 0.9);
+  assert.equal(practicalOutranks(better, worse), true);
+  assert.equal(practicalOutranks(worse, better), false);
+});
+
+test("practicalOutranks falls through to matchup gate tier once goldfish gates tie", () => {
+  const better = practical("goldfish-pass", 0.7, 0.7, "matrix-pass", 0.5);
+  const worse = practical("goldfish-pass", 0.7, 0.7, "matrix-hold", 0.9);
+  assert.equal(practicalOutranks(better, worse), true);
+  assert.equal(practicalOutranks(worse, better), false);
+});
+
+test("practicalOutranks only prefers a rate difference once it clears the same noise floor comparePracticalImpact uses", () => {
+  const a = practical("goldfish-pass", 0.71, 0.7, "matrix-pass", 0.5);
+  const b = practical("goldfish-pass", 0.70, 0.7, "matrix-pass", 0.5);
+  assert.equal(practicalOutranks(a, b), false, "a 1-point keepable gap is noise, not a real preference");
+  assert.equal(practicalOutranks(b, a), false, "neither direction should invent a preference from noise");
+  const c = practical("goldfish-pass", 0.80, 0.7, "matrix-pass", 0.5);
+  assert.equal(practicalOutranks(c, b), true, "a gap past the noise floor is a real preference");
+});
+
+// applyPracticalTiebreak — runNativeMasterworkTournament's own structural
+// score is explicitly not a predicted win rate, so two candidates that
+// land within a few points of each other are a genuine toss-up, not real
+// evidence one is better. These fixtures hand-build the tournament shape
+// applyPracticalTiebreak actually reads (id/verdict/tournamentScore/
+// onFrontier per result) so the margin-detection logic itself is
+// deterministic to exercise, independent of how a real tournament score
+// gets computed.
+const clearLeaderTournament = Object.freeze({
+  selectedId: "leader",
+  results: [
+    { id: "leader", label: "Clear Leader", verdict: "advance", tournamentScore: 90, onFrontier: true, gate: { passed: true, reasons: [] }, axes: {}, reason: "" },
+    { id: "second", label: "Second", verdict: "hold", tournamentScore: 60, onFrontier: true, gate: { passed: true, reasons: [] }, axes: {}, reason: "" },
+    { id: "third", label: "Third", verdict: "reject", tournamentScore: 0, onFrontier: false, gate: { passed: false, reasons: ["structurally invalid"] }, axes: {}, reason: "" },
+  ],
+});
+
+test("applyPracticalTiebreak never spends simulation budget when the structural leader is clearly ahead of the field", () => {
+  const { tournament: result, practicalTiebreak } = applyPracticalTiebreak(clearLeaderTournament, [
+    { id: "leader", label: "Clear Leader", rows: healthyRows },
+    { id: "second", label: "Second", rows: healthyRows },
+    { id: "third", label: "Third", rows: healthyRows },
+  ], practicalInput);
+  assert.equal(practicalTiebreak, null);
+  assert.equal(result, clearLeaderTournament, "must return the exact same tournament object, not a copy, when the margin never triggers");
+});
+
+test("applyPracticalTiebreak triggers on a close structural margin but doesn't invent an override between practically-identical candidates", () => {
+  const identicalTournament = Object.freeze({
+    selectedId: "leader",
+    results: [
+      { id: "leader", label: "Leader", verdict: "advance", tournamentScore: 80, onFrontier: true, gate: { passed: true, reasons: [] }, axes: {}, reason: "" },
+      { id: "rival", label: "Rival", verdict: "hold", tournamentScore: 77, onFrontier: true, gate: { passed: true, reasons: [] }, axes: {}, reason: "" },
+    ],
+  });
+  const { tournament: result, practicalTiebreak } = applyPracticalTiebreak(identicalTournament, [
+    { id: "leader", label: "Leader", rows: healthyRows },
+    { id: "rival", label: "Rival", rows: healthyRows.map((row) => ({ ...row })) },
+  ], practicalInput);
+  assert.ok(practicalTiebreak.triggered);
+  assert.equal(practicalTiebreak.overridden, false, "practically-identical rows must never produce an invented override");
+  assert.equal(result, identicalTournament, "an untriggered override must return the exact same tournament object");
+});
+
+// A healthy, well-landed baseline shared by the tiebreak tests below, and
+// a land-starved deck (14/60) — a robust, well-understood worse-goldfish
+// case relative to it with otherwise identical role shape — real mana
+// screw the keepability model is built to catch, not a contrived edge
+// case that depends on reading the simulator's internals.
+const healthyRows = [
+  ...Array.from({ length: 24 }, (_, i) => ({ name: `Island Utility ${i}`, roles: ["land"], cmc: 0, quantity: 1 })),
+  ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, roles: ["interaction"], cmc: 2, quantity: 1 })),
+  ...Array.from({ length: 12 }, (_, i) => ({ name: `Flow ${i}`, roles: ["draw"], cmc: 3, quantity: 1 })),
+];
+const starvedRows = [
+  ...Array.from({ length: 14 }, (_, i) => ({ name: `Island Utility ${i}`, roles: ["land"], cmc: 0, quantity: 1 })),
+  ...Array.from({ length: 34 }, (_, i) => ({ name: `Answer ${i}`, roles: ["interaction"], cmc: 2, quantity: 1 })),
+  ...Array.from({ length: 12 }, (_, i) => ({ name: `Flow ${i}`, roles: ["draw"], cmc: 3, quantity: 1 })),
+];
+
+test("applyPracticalTiebreak overrides a structural leader that is meaningfully weaker in real goldfish simulation", () => {
+  const tiebreakTournament = Object.freeze({
+    selectedId: "starved",
+    results: [
+      { id: "starved", label: "Starved Leader", verdict: "advance", tournamentScore: 80, onFrontier: true, gate: { passed: true, reasons: [] }, axes: {}, reason: "" },
+      { id: "healthy", label: "Healthy Rival", verdict: "hold", tournamentScore: 77, onFrontier: true, gate: { passed: true, reasons: [] }, axes: {}, reason: "" },
+    ],
+  });
+  const { tournament: result, practicalTiebreak } = applyPracticalTiebreak(tiebreakTournament, [
+    { id: "starved", label: "Starved Leader", rows: starvedRows },
+    { id: "healthy", label: "Healthy Rival", rows: healthyRows },
+  ], practicalInput);
+
+  assert.ok(practicalTiebreak.triggered);
+  assert.equal(practicalTiebreak.overridden, true);
+  assert.equal(practicalTiebreak.fromId, "starved");
+  assert.equal(practicalTiebreak.toId, "healthy");
+  assert.equal(result.selectedId, "healthy");
+  assert.equal(result.results.find((entry) => entry.id === "healthy").verdict, "advance");
+  assert.equal(result.results.find((entry) => entry.id === "starved").verdict, "hold");
+  // Every other field on the original tournament (frontier membership,
+  // gate reasons, axes) must survive untouched — only verdict/selectedId
+  // and the two affected reasons change.
+  assert.equal(result.results.find((entry) => entry.id === "healthy").onFrontier, true);
+});
+
+test("applyPracticalTiebreak is fully deterministic for the same inputs", () => {
+  const tiebreakTournament = Object.freeze({
+    selectedId: "starved",
+    results: [
+      { id: "starved", label: "Starved Leader", verdict: "advance", tournamentScore: 80, onFrontier: true, gate: { passed: true, reasons: [] }, axes: {}, reason: "" },
+      { id: "healthy", label: "Healthy Rival", verdict: "hold", tournamentScore: 77, onFrontier: true, gate: { passed: true, reasons: [] }, axes: {}, reason: "" },
+    ],
+  });
+  const candidates = [{ id: "starved", label: "Starved Leader", rows: starvedRows }, { id: "healthy", label: "Healthy Rival", rows: healthyRows }];
+  const first = applyPracticalTiebreak(tiebreakTournament, candidates, practicalInput);
+  const second = applyPracticalTiebreak(tiebreakTournament, candidates, practicalInput);
+  assert.deepEqual(first.practicalTiebreak, second.practicalTiebreak);
+});
+
+// End-to-end: forgeNativeMasterwork's own practicalTiebreak field must stay
+// internally consistent with which candidate actually won, whether or not
+// this particular pool's three structural tempers happen to land close
+// enough together to trigger it.
+test("forgeNativeMasterwork's practicalTiebreak field, when it fires, stays consistent with the final selected candidate", () => {
+  const report = forgeNativeMasterwork(practicalInput);
+  assert.ok("practicalTiebreak" in report);
+  if (report.practicalTiebreak?.overridden) {
+    assert.equal(report.tournament.selectedId, report.practicalTiebreak.toId);
+    assert.equal(report.selected.id, report.practicalTiebreak.toId);
+    assert.equal(report.reasoning.selectedId, report.practicalTiebreak.toId);
+  }
+  const again = forgeNativeMasterwork(practicalInput);
+  assert.deepEqual(report.practicalTiebreak, again.practicalTiebreak, "must be deterministic for the same seed/input");
 });
