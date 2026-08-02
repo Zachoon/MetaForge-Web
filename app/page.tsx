@@ -42,6 +42,7 @@ import { ForgeWalkthrough, hasSeenWalkthrough } from "./forge-walkthrough";
 import { prepareStoryBenchRevisions, serializeStoryBenchRevision, restoreStoryBenchRevisions } from "./story-bench-recommendation-ledger.mjs";
 import { resolveMasterworkVisualProfile } from "./masterwork-visual-profile.mjs";
 import { MOTIF_ICONS } from "./masterwork-motif-icons";
+import { buildTcgplayerLink, AFFILIATE_DISCLOSURE_TEXT } from "./affiliate-links.mjs";
 
 type Chamber =
   | "entrance"
@@ -113,6 +114,10 @@ type PrintingOption = {
   image: string;
   usd: string | null;
   usd_foil: string | null;
+  // Bare Scryfall tcgplayer_id for this exact printing — never Scryfall's
+  // own purchase_uris.tcgplayer, which carries Scryfall's affiliate
+  // attribution, not MetaForge's. See app/affiliate-links.mjs.
+  tcgplayerId: number | null;
 };
 type MetaBreakerExperiment = {
   cut: string;
@@ -1731,6 +1736,25 @@ export default function Home() {
   } | null>(null);
   const [printingOptions, setPrintingOptions] = useState<PrintingOption[]>([]);
   const [printingOptionsLoading, setPrintingOptionsLoading] = useState(false);
+  // Server-controlled, fails closed to false (no purchase CTA, no nearby
+  // disclosure) until /api/forge/status confirms the flag is on — never
+  // defaulted true, never read from a client-bundled constant. See
+  // worker/index.ts and app/affiliate-links.mjs.
+  const [tcgplayerAffiliateEnabled, setTcgplayerAffiliateEnabled] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/forge/status")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.tcgplayerAffiliateEnabled === true) setTcgplayerAffiliateEnabled(true);
+      })
+      .catch(() => {
+        /* Stays fail-closed (false) on any error. */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [edhrecEvidence, setEdhrecEvidence] = useState<EdhrecEvidence | null>(
     null,
   );
@@ -2789,6 +2813,9 @@ export default function Home() {
               "",
             usd: card.prices?.usd ?? null,
             usd_foil: card.prices?.usd_foil ?? null,
+            // Bare numeric ID only — never card.purchase_uris, which
+            // wraps Scryfall's own TCGplayer affiliate attribution.
+            tcgplayerId: Number.isInteger(card.tcgplayer_id) ? card.tcgplayer_id : null,
           })),
         );
       } catch {
@@ -6468,6 +6495,12 @@ export default function Home() {
                   <div className="forging-progress-rail" aria-hidden="true"><span /></div>
                 </section>
               ) : deckRows.length ? (
+                <>
+                  {tcgplayerAffiliateEnabled && (
+                    <p className="affiliate-disclosure" role="note">
+                      {AFFILIATE_DISCLOSURE_TEXT}
+                    </p>
+                  )}
                 <div className="deck-gallery">
                   <aside className="card-preview-stage">
                     <div>
@@ -6525,6 +6558,16 @@ export default function Home() {
                             const rowPrice = cheapestPrintings
                               ? cheapestCardPriceUsd(rowFact)
                               : cardPriceUsd(rowFact, isFoil);
+                            // Only the player's explicitly selected printing
+                            // carries a reliable TCGplayer product ID here —
+                            // an unselected row has no printing identity to
+                            // be exact about, so this honestly falls back to
+                            // a name search rather than guessing one.
+                            const rowPurchaseLink = buildTcgplayerLink({
+                              cardName: row.name,
+                              tcgplayerProductId: rowPrinting?.tcgplayerId ?? null,
+                              enabled: tcgplayerAffiliateEnabled,
+                            });
                             return (
                               <div
                                 role="button"
@@ -6572,31 +6615,51 @@ export default function Home() {
                                     ${(rowPrice * row.quantity).toFixed(2)}
                                   </em>
                                 )}
-                                <button
-                                  type="button"
-                                  className={`card-row-foil-toggle${isFoil ? " active" : ""}`}
-                                  aria-pressed={isFoil}
-                                  disabled={cheapestPrintings}
-                                  aria-label={`${isFoil ? "Stop pricing" : "Price"} ${row.name} as foil`}
-                                  title={
-                                    cheapestPrintings
-                                      ? "Turn off Cheapest Printings to choose foil or nonfoil per card"
-                                      : isFoil
-                                        ? "Priced as foil"
-                                        : "Price as foil"
-                                  }
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    setFoilCards((current) => {
-                                      const next = new Set(current);
-                                      if (next.has(rowKey)) next.delete(rowKey);
-                                      else next.add(rowKey);
-                                      return next;
-                                    });
-                                  }}
-                                >
-                                  ✦
-                                </button>
+                                {/* One wrapper occupies the row's fourth grid
+                                    column so a purchase link never becomes an
+                                    uncontrolled fifth grid item — see
+                                    .type-column-row's four-column grid in
+                                    app/testing-anvil.css. */}
+                                <span className="card-row-actions">
+                                  <button
+                                    type="button"
+                                    className={`card-row-foil-toggle${isFoil ? " active" : ""}`}
+                                    aria-pressed={isFoil}
+                                    disabled={cheapestPrintings}
+                                    aria-label={`${isFoil ? "Stop pricing" : "Price"} ${row.name} as foil`}
+                                    title={
+                                      cheapestPrintings
+                                        ? "Turn off Cheapest Printings to choose foil or nonfoil per card"
+                                        : isFoil
+                                          ? "Priced as foil"
+                                          : "Price as foil"
+                                    }
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      setFoilCards((current) => {
+                                        const next = new Set(current);
+                                        if (next.has(rowKey)) next.delete(rowKey);
+                                        else next.add(rowKey);
+                                        return next;
+                                      });
+                                    }}
+                                  >
+                                    ✦
+                                  </button>
+                                  {rowPurchaseLink && (
+                                    <a
+                                      className={`card-row-purchase-link${rowPurchaseLink.isExactPrinting ? " exact-printing" : ""}`}
+                                      href={rowPurchaseLink.url}
+                                      target={rowPurchaseLink.target}
+                                      rel={rowPurchaseLink.rel}
+                                      aria-label={`${rowPurchaseLink.label} — ${row.name}`}
+                                      title={rowPurchaseLink.isExactPrinting ? "Opens this exact printing on TCGplayer" : "Opens a TCGplayer search for this card"}
+                                      onClick={(event) => event.stopPropagation()}
+                                    >
+                                      ↗
+                                    </a>
+                                  )}
+                                </span>
                               </div>
                             );
                           })}
@@ -6604,6 +6667,7 @@ export default function Home() {
                       ))}
                   </div>
                 </div>
+                </>
               ) : forgeGenerationError ? (
                 <div className="forge-generation-failure" role="alert">
                   <small>THE METAL DID NOT SET</small>
@@ -7027,32 +7091,51 @@ export default function Home() {
                 <p>No other printings found.</p>
               ) : (
                 <ul>
-                  {printingOptions.map((option) => (
-                    <li key={option.id}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPrintingOverrides((current) => ({
-                            ...current,
-                            [cardFactKey(printingMenu.name)]: option,
-                          }));
-                          setPrintingMenu(null);
-                        }}
-                      >
-                        {option.image && <img src={option.image} alt="" />}
-                        <span>
-                          <b>{option.setName}</b>
-                          <small>
-                            {option.setCode} · #{option.collectorNumber}
-                          </small>
-                        </span>
-                        <em>
-                          {option.usd ? `$${option.usd}` : "—"}
-                          {option.usd_foil ? ` / ✦$${option.usd_foil}` : ""}
-                        </em>
-                      </button>
-                    </li>
-                  ))}
+                  {printingOptions.map((option) => {
+                    const optionPurchaseLink = buildTcgplayerLink({
+                      cardName: printingMenu.name,
+                      tcgplayerProductId: option.tcgplayerId,
+                      enabled: tcgplayerAffiliateEnabled,
+                    });
+                    return (
+                      <li key={option.id}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPrintingOverrides((current) => ({
+                              ...current,
+                              [cardFactKey(printingMenu.name)]: option,
+                            }));
+                            setPrintingMenu(null);
+                          }}
+                        >
+                          {option.image && <img src={option.image} alt="" />}
+                          <span>
+                            <b>{option.setName}</b>
+                            <small>
+                              {option.setCode} · #{option.collectorNumber}
+                            </small>
+                          </span>
+                          <em>
+                            {option.usd ? `$${option.usd}` : "—"}
+                            {option.usd_foil ? ` / ✦$${option.usd_foil}` : ""}
+                          </em>
+                        </button>
+                        {optionPurchaseLink && (
+                          <a
+                            className={`printing-option-purchase-link${optionPurchaseLink.isExactPrinting ? " exact-printing" : ""}`}
+                            href={optionPurchaseLink.url}
+                            target={optionPurchaseLink.target}
+                            rel={optionPurchaseLink.rel}
+                            title={optionPurchaseLink.isExactPrinting ? "Opens this exact printing on TCGplayer — does not select it here" : "Opens a TCGplayer search for this card — does not select this printing here"}
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            {optionPurchaseLink.label}
+                          </a>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>

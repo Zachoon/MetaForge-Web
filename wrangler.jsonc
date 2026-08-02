@@ -24,7 +24,11 @@
     // issuer URL/client_id), and both are already visible in the login
     // redirect Access itself sends to any unauthenticated visitor.
     "ACCESS_TEAM_DOMAIN": "long-water-f05e.cloudflareaccess.com",
-    "ACCESS_AUD": "6d1c3df5e4c198c39d39e4caf4c7fd5386ec65de6c5558b99570dec8871e0a23,8376767e20ac9929d4e3af8fde3000cb193ec7b4c44fb6657682d5cf87ad20be"
+    "ACCESS_AUD": "6d1c3df5e4c198c39d39e4caf4c7fd5386ec65de6c5558b99570dec8871e0a23,8376767e20ac9929d4e3af8fde3000cb193ec7b4c44fb6657682d5cf87ad20be",
+    // Explicit default-off feature flag, not a secret — flip to "true"
+    // only once TCGplayer is confirmed joined in the Impact dashboard.
+    // See app/affiliate-links.mjs and worker/index.ts's /api/forge/status.
+    "TCGPLAYER_AFFILIATE_ENABLED": "false"
   },
   "d1_databases": [
     {

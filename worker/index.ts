@@ -36,6 +36,13 @@ interface Env {
   ASSETS: Fetcher;
   METAFORGE_BOOTSTRAP_LOCK?: string;
   METAFORGE_FOUNDER_USER_KEY?: string;
+  // Not a secret — a plain feature flag, same category as
+  // ACCESS_TEAM_DOMAIN/ACCESS_AUD below. Controls only whether
+  // /api/forge/status advertises the TCGplayer purchase-link feature as
+  // on; the client never reads this var directly, only the derived
+  // boolean in that response. Absent or anything other than exactly
+  // "true" fails closed. See app/affiliate-links.mjs.
+  TCGPLAYER_AFFILIATE_ENABLED?: string;
   DB: D1Database;
   IMAGES: {
     input(stream: ReadableStream): {
@@ -84,7 +91,7 @@ const worker = {
     if (url.pathname === "/api/account/claim-guest") return handleGuestClaim(request, env);
     if (url.pathname === "/api/forge/structural-analyze") return handleForgeStructuralAnalyze(request, env);
     if (url.pathname === "/api/forge/one-slot-experiment") return handleForgeOneSlot(request, env);
-    if (url.pathname === "/api/forge/status") {ctx.waitUntil(ensureDataGoblinsStarted(env));return Response.json({ready:true,build:BUILD_ID,modelReady:false,mode:"native",fallback:"MetaForge Native Coach remains available without a model call"},{headers:{"Cache-Control":"no-store"}})}
+    if (url.pathname === "/api/forge/status") {ctx.waitUntil(ensureDataGoblinsStarted(env));return Response.json({ready:true,build:BUILD_ID,modelReady:false,mode:"native",fallback:"MetaForge Native Coach remains available without a model call",tcgplayerAffiliateEnabled:env.TCGPLAYER_AFFILIATE_ENABLED === "true"},{headers:{"Cache-Control":"no-store"}})}
     if (url.pathname === "/api/founder/knowledge") return handleCoachingKnowledge(request, env, true);
     if (url.pathname === "/api/coach/knowledge") return handleCoachingKnowledge(request, env, false);
     if (url.pathname === "/api/founder/goblins") return handleGoblinOperations(request, env);

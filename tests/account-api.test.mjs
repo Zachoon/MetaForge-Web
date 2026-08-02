@@ -101,6 +101,35 @@ test("Riftbound native coaching supplies the field snapshot instead of asking pl
 });
 test("Coach status always reports native mode; MetaForge no longer calls an external model",async()=>{const worker=await loadWorker(),DB=new FakeD1(),pending=[];const awaitedCtx={...ctx,waitUntil(promise){pending.push(promise)}};const status=await (await worker.fetch(coachStatusRequest(),env(DB),awaitedCtx)).json();assert.equal(status.ready,true);assert.equal(status.modelReady,false);assert.equal(status.mode,"native");assert.match(status.fallback,/Native Coach/i);await Promise.all(pending)});
 
+// The server, not a client-bundled constant, controls whether the
+// TCGplayer purchase-link feature is on — app/page.tsx only ever trusts
+// this field, never a hardcoded default. Missing/absent config must fail
+// closed to false, the same convention every other public-safe var in
+// this codebase already follows (see wrangler.jsonc's default "false").
+test("forge/status fails closed to tcgplayerAffiliateEnabled: false when the flag is unset", async () => {
+  const worker = await loadWorker();
+  const DB = new FakeD1();
+  const pending = [];
+  const awaitedCtx = { ...ctx, waitUntil(promise) { pending.push(promise); } };
+  const status = await (await worker.fetch(coachStatusRequest(), env(DB), awaitedCtx)).json();
+  assert.equal(status.tcgplayerAffiliateEnabled, false);
+  await Promise.all(pending);
+});
+
+test("forge/status only reports tcgplayerAffiliateEnabled: true for the exact configured value, never a truthy-ish one", async () => {
+  const worker = await loadWorker();
+  const DB = new FakeD1();
+  const pending = [];
+  const awaitedCtx = { ...ctx, waitUntil(promise) { pending.push(promise); } };
+  const trueStatus = await (await worker.fetch(coachStatusRequest(), { ...env(DB), TCGPLAYER_AFFILIATE_ENABLED: "true" }, awaitedCtx)).json();
+  assert.equal(trueStatus.tcgplayerAffiliateEnabled, true);
+  for (const nearMiss of ["True", "1", "yes", "TRUE ", ""]) {
+    const nearMissStatus = await (await worker.fetch(coachStatusRequest(), { ...env(DB), TCGPLAYER_AFFILIATE_ENABLED: nearMiss }, awaitedCtx)).json();
+    assert.equal(nearMissStatus.tcgplayerAffiliateEnabled, false, `"${nearMiss}" must not be treated as enabled`);
+  }
+  await Promise.all(pending);
+});
+
 test("Player DNA coaching preferences restore across devices without stale overwrites",async()=>{
   const worker=await loadWorker(),DB=new ProfileD1();
   assert.equal((await worker.fetch(profileRequest("GET",null),env(DB),ctx)).status,401);
