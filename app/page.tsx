@@ -14,6 +14,7 @@ import { getMetaIntelligence } from "./meta-intelligence.mjs";
 // client bundle.
 import type { ForgeAnalysisReport } from "./forge-analysis-contract";
 import { EMPTY_FORGE_ANALYSIS_REPORT } from "./forge-analysis-contract";
+import type { ForgeExperimentReport } from "./forge-experiment-contract";
 import { runDebouncedAnalysis } from "./debounced-analysis-request.mjs";
 import { applyControlledSwap, experimentAdditionSynergy, rankExperimentAdditions, rankExperimentCuts } from "./meta-breaker-experiment.mjs";
 // forgeNativeMasterwork/forgeImportedMasterwork deliberately NOT imported
@@ -39,7 +40,6 @@ import {
 import { IdentityBadge } from "./identity-badge";
 import { ForgeWalkthrough, hasSeenWalkthrough } from "./forge-walkthrough";
 import { prepareStoryBenchRevisions, serializeStoryBenchRevision, restoreStoryBenchRevisions } from "./story-bench-recommendation-ledger.mjs";
-import { buildExperimentTablets } from "./experiment-tablet.mjs";
 import { resolveMasterworkVisualProfile } from "./masterwork-visual-profile.mjs";
 import { MOTIF_ICONS } from "./masterwork-motif-icons";
 
@@ -1612,6 +1612,13 @@ export default function Home() {
     selected: any;
     candidates: any[];
     options: { format: string; strategy: string; target: number };
+    // Opaque server-issued handle for this generation's cached context
+    // (forge-generation-store.ts) — lets the Testing Anvil one-slot lab
+    // ask for fresh experiments without resending the ranked candidates
+    // or the verified card pool. Undefined for a restored/older saved
+    // Masterwork, same as cardPool below — both fall back to the same
+    // honest "no live engine context" degradation.
+    generationId?: string;
     manaConsistency?: any;
     unusedEnginePartners?: any[];
     // The exact verified pool this generation used — needed so a later
@@ -2382,30 +2389,45 @@ export default function Home() {
 
   const simulationDossier = activeStructuralReport.simulationDossier;
 
-  const experimentTablets = useMemo(() => {
-    if (!nativeMasterworkContext || !structuralReportReady) return null;
-    // Practical simulation gate: only real when the exact verified pool
-    // this deck was built from is still known. A restored/older saved
-    // Masterwork without one still gets the theoretical-only tablets
-    // buildExperimentTablets already produces when `input` is omitted,
-    // never a crash or a silently wrong recommendation.
-    const input = nativeMasterworkContext.cardPool?.length
-      ? {
-          format: nativeMasterworkContext.options.format,
-          strategy: nativeMasterworkContext.options.strategy,
-          target: nativeMasterworkContext.options.target,
-          cards: nativeMasterworkContext.cardPool,
-        }
-      : null;
-    return buildExperimentTablets({
-      selected: nativeMasterworkContext.selected,
-      candidates: nativeMasterworkContext.candidates,
-      causalityReport: forgeCausalityReport,
-      matchLog,
-      input,
-      options: nativeMasterworkContext.options,
+  // The one-slot counterfactual lab (native-one-slot-lab.mjs), the
+  // practical goldfish/matchup gate, and tablet assembly
+  // (experiment-tablet.mjs) now run server-side (forge-one-slot.ts)
+  // against the cached generation context behind nativeMasterworkContext.
+  // generationId — no candidates or card pool round-trip from here.
+  // Same debounced/race-safe fetch pattern as the structural-analysis
+  // effect above, and the same union-of-triggers reasoning: causality
+  // and matchLog changing are the real signals a new experiment read is
+  // worth asking for, not per-keystroke deck edits.
+  const [experimentTablets, setExperimentTablets] = useState<ForgeExperimentReport | null>(null);
+  const [experimentReportStatus, setExperimentReportStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+
+  useEffect(() => {
+    if (!nativeMasterworkContext?.generationId || !structuralReportReady) {
+      setExperimentTablets(null);
+      setExperimentReportStatus("idle");
+      return;
+    }
+    return runDebouncedAnalysis({
+      url: "/api/forge/one-slot-experiment",
+      delayMs: 800,
+      fetchImpl: fetch,
+      requestBody: {
+        generationId: nativeMasterworkContext.generationId,
+        currentRows: (nativeMasterworkContext.selected?.rows || []).map((row: any) => ({
+          quantity: row.quantity,
+          name: row.name,
+        })),
+        matchLog,
+        causalityReport: forgeCausalityReport,
+      },
+      onLoading: () => setExperimentReportStatus("loading"),
+      onSuccess: (data: { report: ForgeExperimentReport }) => {
+        setExperimentTablets(data.report);
+        setExperimentReportStatus("ready");
+      },
+      onError: () => setExperimentReportStatus("error"),
     });
-  }, [nativeMasterworkContext, forgeCausalityReport, matchLog]);
+  }, [nativeMasterworkContext, forgeCausalityReport, matchLog, structuralReportReady]);
 
   const openingExperimentChoices = useMemo(() => {
     if (!nativeMasterworkContext || !experimentTablets) return [];
@@ -3089,6 +3111,10 @@ export default function Home() {
       replyText: string;
       revisionNote: string;
       cardPool?: any[];
+      // The server-issued Testing Anvil handle (forge-generate.ts's
+      // response) — distinct from opts.generationId above, which is the
+      // client-generated deckId-like grouping ID used by persistStoryBench.
+      serverGenerationId?: string;
     },
   ) {
     const answer = nativeReport.selected.deckText;
@@ -3115,6 +3141,7 @@ export default function Home() {
       manaConsistency: nativeReport.manaConsistency,
       unusedEnginePartners: nativeReport.unusedEnginePartners,
       cardPool: opts.cardPool,
+      generationId: opts.serverGenerationId,
       practicalTiebreak: nativeReport.practicalTiebreak || null,
       powerSignal: nativeReport.powerSignal || null,
       requestedPowerTier: isCommanderFormat(format) && targetPowerTier ? targetPowerTier : undefined,
@@ -3138,6 +3165,7 @@ export default function Home() {
     nativeReport: any;
     cardPool: any[];
     colors: string[];
+    generationId?: string;
     importWarnings?: { unresolvedNames: string[]; illegalNames: string[] };
   }> {
     const response = await fetch("/api/forge/generate", {
@@ -3196,7 +3224,7 @@ export default function Home() {
     setEdhrecEvidence(evidence);
 
     try {
-      const { nativeReport, cardPool } = await callForgeGenerate({
+      const { nativeReport, cardPool, generationId: newGenerationId } = await callForgeGenerate({
         mode: "native",
         format,
         strategy,
@@ -3233,6 +3261,7 @@ export default function Home() {
         replyText: `${nativeReport.methodology}\n\n${nativeReport.selected.tournament.reason}\n${nativeReport.reasoning.summary}\n${nativeReport.laboratory.summary}${nativeReport.laboratory.verdict === "advance" ? `\nTest contract: ${nativeReport.laboratory.contract}` : ""}\nStructural read: ${nativeReport.selected.evaluation.cohesion}/100 cohesion, ${nativeReport.selected.evaluation.resilience}/100 resilience. ${nativeReport.tournament.frontier.length} of 3 candidates reached the tradeoff frontier. ${nativeReport.reasoning.boundary} ${nativeReport.laboratory.boundary}`,
         revisionNote: `Original native Forge candidate · ${nativeReport.selected.label}`,
         cardPool,
+        serverGenerationId: newGenerationId,
       });
     } catch (error) {
       setForgedDeck("");
@@ -3315,7 +3344,7 @@ export default function Home() {
         // instead. A budget/rarity/power target is a construction-time
         // preference for cards the Forge is choosing, not a retroactive
         // filter on cards the player already chose themselves.
-        const { nativeReport, cardPool, importWarnings } = await callForgeGenerate({
+        const { nativeReport, cardPool, generationId: newGenerationId, importWarnings } = await callForgeGenerate({
           mode: "imported",
           format,
           strategy,
@@ -3340,9 +3369,10 @@ export default function Home() {
           replyText: `${nativeReport.methodology}\n\n${nativeReport.reasoning.summary}\n${nativeReport.laboratory.summary}${nativeReport.laboratory.verdict === "advance" ? `\nTest contract: ${nativeReport.laboratory.contract}` : ""}\n${nativeReport.reasoning.boundary} ${nativeReport.laboratory.boundary}`,
           revisionNote: "Adapted directly from your submitted list",
           cardPool,
+          serverGenerationId: newGenerationId,
         });
       } else {
-        const { nativeReport, cardPool } = await callForgeGenerate({
+        const { nativeReport, cardPool, generationId: newGenerationId } = await callForgeGenerate({
           mode: "direct",
           format,
           strategy,
@@ -3365,6 +3395,7 @@ export default function Home() {
           replyText: `${nativeReport.methodology}\n\n${nativeReport.selected.tournament.reason}\n${nativeReport.reasoning.summary}\n${nativeReport.laboratory.summary}${nativeReport.laboratory.verdict === "advance" ? `\nTest contract: ${nativeReport.laboratory.contract}` : ""}\nStructural read: ${nativeReport.selected.evaluation.cohesion}/100 cohesion, ${nativeReport.selected.evaluation.resilience}/100 resilience. ${nativeReport.reasoning.boundary} ${nativeReport.laboratory.boundary}`,
           revisionNote: `Built directly for ${commander?.name || "your commander"} · ${nativeReport.selected.label}`,
           cardPool,
+          serverGenerationId: newGenerationId,
         });
       }
     } catch (error) {
@@ -6214,7 +6245,11 @@ export default function Home() {
                     <p className="experiment-tablets-empty">
                       {experimentTablets
                         ? experimentTablets.summary
-                        : "Re-forge this Masterwork to generate fresh evidence-led experiments."}
+                        : experimentReportStatus === "loading"
+                          ? "Running the one-slot laboratory…"
+                          : experimentReportStatus === "error"
+                            ? "The one-slot laboratory couldn't complete. It will retry on your next edit or match result."
+                            : "Re-forge this Masterwork to generate fresh evidence-led experiments."}
                     </p>
                   )}
                 </div>

@@ -9,7 +9,9 @@ import { ensureDataGoblinsStarted, handleGoblinOperations, runDataGoblins } from
 import { handleEdhrecEvidence } from "./edhrec-evidence";
 import { handleForgeGenerate } from "./forge-generate";
 import { handleForgeStructuralAnalyze } from "./forge-structural-analyze";
+import { handleForgeOneSlot } from "./forge-one-slot";
 import { cleanupExpiredRateLimits } from "./api-hardening";
+import { cleanupExpiredGenerations } from "./forge-generation-store";
 const BUILD_ID = "2026.07.16-workspace1";
 
 interface Env {
@@ -61,6 +63,7 @@ const worker = {
     if (url.pathname === "/api/forge/edhrec") return handleEdhrecEvidence(request, env);
     if (url.pathname === "/api/forge/generate") return handleForgeGenerate(request, env);
     if (url.pathname === "/api/forge/structural-analyze") return handleForgeStructuralAnalyze(request, env);
+    if (url.pathname === "/api/forge/one-slot-experiment") return handleForgeOneSlot(request, env);
     if (url.pathname === "/api/forge/status") {ctx.waitUntil(ensureDataGoblinsStarted(env));return Response.json({ready:true,build:BUILD_ID,modelReady:false,mode:"native",fallback:"MetaForge Native Coach remains available without a model call"},{headers:{"Cache-Control":"no-store"}})}
     if (url.pathname === "/api/founder/knowledge") return handleCoachingKnowledge(request, env, true);
     if (url.pathname === "/api/coach/knowledge") return handleCoachingKnowledge(request, env, false);
@@ -79,7 +82,7 @@ const worker = {
 
     return handler.fetch(request, env, ctx);
   },
-  async scheduled(_controller:ScheduledController,env:Env,ctx:ExecutionContext){ctx.waitUntil(runDataGoblins(env));ctx.waitUntil(cleanupExpiredRateLimits(env));},
+  async scheduled(_controller:ScheduledController,env:Env,ctx:ExecutionContext){ctx.waitUntil(runDataGoblins(env));ctx.waitUntil(cleanupExpiredRateLimits(env));ctx.waitUntil(cleanupExpiredGenerations(env));},
 };
 
 export default worker;

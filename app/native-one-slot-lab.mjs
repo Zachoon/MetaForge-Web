@@ -153,14 +153,22 @@ function matchupFitFor(addition, options) {
   return addition.roles.filter((role) => options.preferredRoles.includes(role)).length;
 }
 
+// options.excludedCards (optional): names the player has explicitly
+// excluded (e.g. "never suggest this again"). Filtered out of additions
+// only — an excluded card is never proposed as an incoming swap, but
+// cutting it (if it's already in the deck) is unaffected. Shaped as a
+// flat name list here; the multi-slot cut-and-refill feature (tracked in
+// CAPTAINS_LOG.md, not yet built) will need per-quantity exclusions, but
+// one-slot swaps only ever add a single copy, so a name is enough today.
 function buildExperiments(selected, rival, options) {
   const selectedQuantities = new Map(selected.rows.map((row) => [normalized(row.name), row.quantity]));
   const rivalQuantities = new Map(rival.rows.map((row) => [normalized(row.name), row.quantity]));
+  const excluded = new Set((options.excludedCards || []).map(normalized));
   const cuts = selected.rows.filter((row) =>
     !isLand(row) && !isCommander(row) && row.quantity > (rivalQuantities.get(normalized(row.name)) || 0),
   );
   const additions = rival.rows.filter((row) =>
-    !isLand(row) && !isCommander(row) && row.quantity > (selectedQuantities.get(normalized(row.name)) || 0),
+    !isLand(row) && !isCommander(row) && row.quantity > (selectedQuantities.get(normalized(row.name)) || 0) && !excluded.has(normalized(row.name)),
   );
   const before = evaluate(selected.rows, options);
   const experiments = [];

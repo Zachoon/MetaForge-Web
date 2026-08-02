@@ -227,3 +227,34 @@ test("pools distinct experiments across every candidate, not just one designated
   const cuts = allRivals.experiments.map((experiment) => experiment.cut).sort();
   assert.deepEqual(cuts, ["Draw", "Slow Threat"]);
 });
+
+// excludedCards is the one-slot lab's future-proofing hook for the
+// (not-yet-built) multi-slot cut-and-refill feature: a player-declared
+// "never suggest this again" list. One-slot swaps only ever add a single
+// copy, so a flat name list is enough today — a name is either excluded
+// or it isn't. Cutting an already-excluded card that's already in the
+// deck is unaffected; only proposing it as a new addition is blocked.
+test("excludedCards filters an otherwise-winning addition out of the ranking entirely", () => {
+  const withoutExclusion = rankOneSlotCounterfactuals(selected, [selected, rival], options);
+  assert.equal(withoutExclusion.experiments[0].add, "Flexible Answer");
+
+  const withExclusion = rankOneSlotCounterfactuals(selected, [selected, rival], { ...options, excludedCards: ["Flexible Answer"] });
+  assert.deepEqual(withExclusion.experiments, []);
+  assert.equal(withExclusion.verdict, "inconclusive");
+});
+
+test("excludedCards only blocks the excluded card from being added, not from remaining as a cut candidate", () => {
+  // multiSwapRival's only addition is Flexible Draw; excluding a
+  // different, unrelated name should change nothing.
+  const report = rankOneSlotCounterfactuals(multiSwapSelected, [multiSwapSelected, multiSwapRivalCandidate], {
+    ...options,
+    excludedCards: ["Some Unrelated Card"],
+  });
+  assert.equal(report.verdict, "advance");
+  assert.equal(report.experiments.length, 3);
+});
+
+test("excludedCards compares names case- and accent-insensitively, matching every other name comparison in this module", () => {
+  const report = rankOneSlotCounterfactuals(selected, [selected, rival], { ...options, excludedCards: ["  flexible ANSWER  "] });
+  assert.deepEqual(report.experiments, []);
+});

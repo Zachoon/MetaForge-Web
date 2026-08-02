@@ -6,8 +6,12 @@
 // the browser sends commission parameters, this Worker runs the real
 // engine, and only the finished result crosses back over the network.
 // The card pool itself is still returned in the response — it's public
-// Scryfall data, not the algorithm, and the client-side refinement
-// features (Testing Anvil one-slot swaps) still need it locally for now.
+// Scryfall data, not the algorithm, and the client still renders the
+// initial reveal from it directly. The full generation context (pool,
+// ranked candidates, selected build) is also cached server-side under a
+// new opaque generationId (forge-generation-store.ts), so the Testing
+// Anvil one-slot lab (forge-one-slot.ts) never needs the ~362KB pool
+// round-tripped back from the browser to run a later experiment.
 //
 // Public-alpha hardening: authenticated (reuses the same account
 // identity as every other /api/account and /api/forge endpoint — the
@@ -21,6 +25,7 @@ import {
 } from "../app/native-masterwork-engine.mjs";
 import { userKey } from "./account-bench";
 import { checkRateLimit, readJsonWithLimit } from "./api-hardening";
+import { storeGeneration } from "./forge-generation-store";
 
 interface Env {
   DB: D1Database;
@@ -422,10 +427,17 @@ export async function handleForgeGenerate(request: Request, env: Env): Promise<R
         budget: body.budget,
         complexity: body.complexity,
       });
+      const generationId = await storeGeneration(env, key, {
+        selected: nativeReport.selected,
+        candidates: nativeReport.candidates,
+        cardPool: resolution.pool,
+        options: { format: body.format, strategy: body.strategy, target },
+      });
       return json({
         nativeReport,
         cardPool: resolution.pool,
         colors: pool.colors,
+        generationId,
         importWarnings: { unresolvedNames: resolution.unresolvedNames, illegalNames: resolution.illegalNames },
       });
     }
@@ -451,7 +463,13 @@ export async function handleForgeGenerate(request: Request, env: Env): Promise<R
       commonsOnly: body.commonsOnly,
       targetPowerTier: isCommanderFormat(body.format) ? body.targetPowerTier || undefined : undefined,
     });
-    return json({ nativeReport, cardPool: pool.cards, colors: pool.colors });
+    const generationId = await storeGeneration(env, key, {
+      selected: nativeReport.selected,
+      candidates: nativeReport.candidates,
+      cardPool: pool.cards,
+      options: { format: body.format, strategy: body.strategy, target },
+    });
+    return json({ nativeReport, cardPool: pool.cards, colors: pool.colors, generationId });
   } catch (error) {
     // Never echo a raw exception message — it can contain internal
     // implementation detail. The one exception: the catalog-unavailable
