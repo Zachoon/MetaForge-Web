@@ -17,6 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
     icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
     openGraph: { title, description, type: "website", images: [{ url: "/og.png", width: 1200, height: 630, alt: "MetaForge — Stop guessing. Forge a better deck." }] },
     twitter: { card: "summary_large_image", title, description, images: ["/og.png"] },
+    other: { "impact-site-verification": "20eee0f8-1f57-4304-a32d-17bba0f1ec2a" },
   };
 }
 
@@ -24,7 +25,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <head>
-        <meta name="impact-site-verification" content="20eee0f8-1f57-4304-a32d-17bba0f1ec2a" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
