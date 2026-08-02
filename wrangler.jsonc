@@ -9,6 +9,11 @@
   },
   "workers_dev": true,
   "preview_urls": false,
+  "routes": [
+    { "pattern": "metaforge.gg", "custom_domain": true },
+    { "pattern": "www.metaforge.gg", "custom_domain": true },
+    { "pattern": "app.metaforge.gg", "custom_domain": true }
+  ],
   "triggers": { "crons": ["0 * * * *"] },
   "vars": {
     "METAFORGE_BOOTSTRAP_LOCK": "unlocked",

@@ -4304,6 +4304,9 @@ export default function Home() {
           </button>
         </div>
       </header>
+      <nav className="launch-legal-nav" aria-label="Legal and support">
+        <a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="mailto:support@metaforge.gg">Support</a>
+      </nav>
 
       <ForgeWalkthrough
         active={walkthroughActive}
