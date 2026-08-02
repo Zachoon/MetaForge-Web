@@ -7057,7 +7057,7 @@ export default function Home() {
               )}
             </div>
           )}
-          {!editAnvilOpen && (
+          {!guestMode && !editAnvilOpen && (
             <button
               className="edit-anvil-launcher"
               onClick={() => setEditAnvilOpen(true)}

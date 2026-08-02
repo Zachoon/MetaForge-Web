@@ -32,4 +32,5 @@ test("guest UI uses the guest endpoint and suppresses persistence and structural
   assert.match(source, /persist: !guestMode/);
   assert.match(source, /if \(guestMode\) \{\s*setStructuralAnalysisStatus\("idle"\)/);
   assert.match(source, /https:\/\/app\.metaforge\.gg\/\?claim=/);
+  assert.match(source, /!guestMode && !editAnvilOpen/);
 });
