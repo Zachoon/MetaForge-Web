@@ -8,13 +8,23 @@
 // The card pool itself is still returned in the response — it's public
 // Scryfall data, not the algorithm, and the client-side refinement
 // features (Testing Anvil one-slot swaps) still need it locally for now.
+//
+// Public-alpha hardening: authenticated (reuses the same account
+// identity as every other /api/account and /api/forge endpoint — the
+// site-wide bootstrap lock is not endpoint authentication), rate
+// limited, and size/shape validated. See CAPTAINS_LOG.md for the
+// reasoning behind the specific limits chosen.
 import {
   forgeNativeMasterwork,
   forgeImportedMasterwork,
   parseNativeBlueprintIntent,
 } from "../app/native-masterwork-engine.mjs";
+import { userKey } from "./account-bench";
+import { checkRateLimit, readJsonWithLimit } from "./api-hardening";
 
-type Env = Record<string, unknown>;
+interface Env {
+  DB: D1Database;
+}
 
 type CommanderInput = { name: string; colors: string[]; oracleText: string } | null;
 
@@ -37,8 +47,40 @@ type GenerateRequest = {
   deck?: string;
 };
 
-const json = (value: unknown, status = 200) =>
-  Response.json(value, { status, headers: { "Cache-Control": "no-store" } });
+const json = (value: unknown, status = 200, headers: Record<string, string> = {}) =>
+  Response.json(value, { status, headers: { "Cache-Control": "no-store", ...headers } });
+
+// This is the expensive endpoint: up to ~10 external Scryfall requests
+// plus the full construction tournament per call. Real usage is bursty
+// exploration — a handful of "forge three new Masterworks" calls per
+// session, not a sustained stream. 15/5min comfortably covers heavy
+// legitimate exploration (recycling results repeatedly while dialing in
+// a commission) while blocking scripted hammering, which would rack up
+// a real Scryfall request volume fast at this endpoint's cost.
+const RATE_LIMIT = 15;
+const RATE_WINDOW_MS = 5 * 60 * 1000;
+
+// The largest legitimate payload here is an imported decklist (up to
+// ~100 lines with printing annotations, well under 10KB) plus an
+// evidence-cards array of EDHREC-style signal objects. 256KB gives
+// generous headroom while still rejecting a genuinely oversized body.
+const MAX_BODY_BYTES = 256 * 1024;
+const MAX_EVIDENCE_CARDS = 500;
+const MAX_DECK_TEXT = 50_000;
+const MAX_SHORT_STRING = 200;
+const MAX_NOTE = 2000;
+const MAX_ORACLE_TEXT = 4000;
+const ALLOWED_MODES = new Set(["native", "imported", "direct"]);
+const ALLOWED_FORMATS = new Set([
+  "Standard",
+  "Brawl",
+  "Standard Brawl",
+  "Commander",
+  "Modern",
+  "Premodern",
+  "Pioneer",
+  "Historic",
+]);
 
 // Scryfall's own API guidelines ask for a descriptive User-Agent and have
 // been known to reject server-to-server requests that arrive without
@@ -49,6 +91,8 @@ const json = (value: unknown, status = 200) =>
 // automatically). Matches the header shape worker/edhrec-evidence.ts
 // already uses for its own external fetch.
 const SCRYFALL_HEADERS = { Accept: "application/json", "User-Agent": "MetaForge/0.1 (+https://metaforge-private-alpha.metaforge-labs.workers.dev)" };
+
+const CATALOG_UNAVAILABLE_MESSAGE = "The verified card catalog is unavailable";
 
 const targetDeckSize = (format: string) =>
   format === "Commander" || format === "Brawl" ? 100 : 60;
@@ -182,7 +226,7 @@ async function loadNativeForgePool(
   let popularityRank = 0;
   for (let page = 0; nextUrl && page < 4; page += 1) {
     const response = await fetch(nextUrl, { headers: SCRYFALL_HEADERS });
-    if (!response.ok) throw new Error("The verified card catalog is unavailable");
+    if (!response.ok) throw new Error(CATALOG_UNAVAILABLE_MESSAGE);
     const result: any = await response.json();
     for (const rawCard of result.data || []) {
       addRawCard(rawCard, popularityRank);
@@ -273,23 +317,95 @@ async function resolveImportedDecklist(text: string, poolCards: NativeForgeCard[
   return { importedRows, pool: [...poolCards, ...additionalPoolCards], unresolvedNames, illegalNames };
 }
 
-export async function handleForgeGenerate(request: Request, _env: Env): Promise<Response> {
-  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
-  let body: GenerateRequest;
-  try {
-    body = await request.json();
-  } catch {
-    return json({ error: "Invalid request body" }, 400);
+function sanitizeCommander(raw: unknown): CommanderInput {
+  if (!raw || typeof raw !== "object") return null;
+  const source = raw as Record<string, unknown>;
+  const name = String(source.name || "").slice(0, MAX_SHORT_STRING);
+  if (!name) return null;
+  const colors = Array.isArray(source.colors)
+    ? source.colors.filter((c): c is string => typeof c === "string").slice(0, 5).map((c) => c.slice(0, 2))
+    : [];
+  const oracleText = String(source.oracleText || "").slice(0, MAX_ORACLE_TEXT);
+  return { name, colors, oracleText };
+}
+
+function validateRequest(body: any): { ok: true; value: GenerateRequest } | { ok: false; error: string } {
+  if (!body || typeof body !== "object") return { ok: false, error: "A request body is required" };
+  if (!ALLOWED_MODES.has(body.mode)) return { ok: false, error: "mode must be one of native, imported, direct" };
+  if (typeof body.format !== "string" || !ALLOWED_FORMATS.has(body.format)) return { ok: false, error: "format is not a supported format" };
+  if (typeof body.strategy !== "string" || !body.strategy.trim() || body.strategy.length > MAX_SHORT_STRING) {
+    return { ok: false, error: "strategy is required" };
   }
-  if (!body?.mode || !body.format || !body.strategy) return json({ error: "format, strategy, and mode are required" }, 400);
+  if (body.mode === "imported" && (typeof body.deck !== "string" || !body.deck.trim())) {
+    return { ok: false, error: "A decklist is required for the imported mode" };
+  }
+  if (typeof body.deck === "string" && body.deck.length > MAX_DECK_TEXT) {
+    return { ok: false, error: "deck text is too long" };
+  }
+  if (body.evidenceCards !== undefined && !Array.isArray(body.evidenceCards)) {
+    return { ok: false, error: "evidenceCards must be an array" };
+  }
+  if (Array.isArray(body.evidenceCards) && body.evidenceCards.length > MAX_EVIDENCE_CARDS) {
+    return { ok: false, error: `evidenceCards must not exceed ${MAX_EVIDENCE_CARDS} entries` };
+  }
+  if (body.maxCardPrice !== undefined && body.maxCardPrice !== null) {
+    if (typeof body.maxCardPrice !== "number" || !Number.isFinite(body.maxCardPrice) || body.maxCardPrice < 0 || body.maxCardPrice > 100_000) {
+      return { ok: false, error: "maxCardPrice is out of range" };
+    }
+  }
+  if (body.seed !== undefined && (typeof body.seed !== "number" || !Number.isFinite(body.seed))) {
+    return { ok: false, error: "seed must be a number" };
+  }
+
+  const value: GenerateRequest = {
+    mode: body.mode,
+    format: body.format,
+    strategy: body.strategy,
+    complexity: typeof body.complexity === "string" ? body.complexity.slice(0, MAX_SHORT_STRING) : "",
+    budget: typeof body.budget === "string" ? body.budget.slice(0, MAX_SHORT_STRING) : "",
+    note: typeof body.note === "string" ? body.note.slice(0, MAX_NOTE) : "",
+    path: typeof body.path === "string" ? body.path.slice(0, MAX_SHORT_STRING) : "",
+    seed: typeof body.seed === "number" ? body.seed : Date.now(),
+    commander: sanitizeCommander(body.commander),
+    secondCommander: sanitizeCommander(body.secondCommander),
+    evidenceCards: Array.isArray(body.evidenceCards) ? body.evidenceCards.slice(0, MAX_EVIDENCE_CARDS) : [],
+    maxCardPrice: typeof body.maxCardPrice === "number" ? body.maxCardPrice : undefined,
+    commonsOnly: body.commonsOnly === true,
+    targetPowerTier: typeof body.targetPowerTier === "string" ? body.targetPowerTier.slice(0, MAX_SHORT_STRING) : undefined,
+    lynchpin: typeof body.lynchpin === "string" ? body.lynchpin.slice(0, MAX_SHORT_STRING) : undefined,
+    deck: typeof body.deck === "string" ? body.deck : undefined,
+  };
+  return { ok: true, value };
+}
+
+export async function handleForgeGenerate(request: Request, env: Env): Promise<Response> {
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
+
+  const key = await userKey(request);
+  if (!key) return json({ error: "Authenticated account required" }, 401);
+
+  const limitResult = await checkRateLimit(env, key, "forge-generate", RATE_LIMIT, RATE_WINDOW_MS);
+  if (!limitResult.allowed) {
+    return json(
+      { error: "Rate limit exceeded", retryAfterSeconds: limitResult.retryAfterSeconds },
+      429,
+      { "Retry-After": String(limitResult.retryAfterSeconds) },
+    );
+  }
+
+  const bodyResult = await readJsonWithLimit(request, MAX_BODY_BYTES);
+  if (!bodyResult.ok) return json({ error: bodyResult.error }, bodyResult.status);
+
+  const validated = validateRequest(bodyResult.data);
+  if (!validated.ok) return json({ error: validated.error }, 400);
+  const body = validated.value;
 
   try {
     const target = targetDeckSize(body.format);
     const pool = await loadNativeForgePool(body.format, body.commander, body.lynchpin || "", body.note || "", body.secondCommander);
 
     if (body.mode === "imported") {
-      if (typeof body.deck !== "string" || !body.deck.trim()) return json({ error: "A decklist is required for the imported mode" }, 400);
-      const resolution = await resolveImportedDecklist(body.deck, pool.cards, body.format, body.commander);
+      const resolution = await resolveImportedDecklist(body.deck!, pool.cards, body.format, body.commander);
       const nativeReport = forgeImportedMasterwork({
         format: body.format,
         target,
@@ -337,6 +453,15 @@ export async function handleForgeGenerate(request: Request, _env: Env): Promise<
     });
     return json({ nativeReport, cardPool: pool.cards, colors: pool.colors });
   } catch (error) {
-    return json({ error: error instanceof Error ? error.message : "The native Forge could not complete this candidate." }, 500);
+    // Never echo a raw exception message — it can contain internal
+    // implementation detail. The one exception: the catalog-unavailable
+    // message is written by this file itself specifically for players
+    // to see when Scryfall is unreachable, a real and expected failure
+    // mode worth surfacing plainly rather than masking.
+    if (error instanceof Error && error.message === CATALOG_UNAVAILABLE_MESSAGE) {
+      return json({ error: CATALOG_UNAVAILABLE_MESSAGE }, 503);
+    }
+    console.error("forge-generate failed", error);
+    return json({ error: "The native Forge could not complete this candidate. Try again or adjust the commission." }, 500);
   }
 }

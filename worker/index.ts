@@ -59,7 +59,7 @@ const worker = {
     if (url.pathname === "/api/forge/chat") return handleForgeChat(request, env);
     if (url.pathname === "/api/forge/edhrec") return handleEdhrecEvidence(request, env);
     if (url.pathname === "/api/forge/generate") return handleForgeGenerate(request, env);
-    if (url.pathname === "/api/forge/structural-analyze") return handleForgeStructuralAnalyze(request);
+    if (url.pathname === "/api/forge/structural-analyze") return handleForgeStructuralAnalyze(request, env);
     if (url.pathname === "/api/forge/status") {ctx.waitUntil(ensureDataGoblinsStarted(env));return Response.json({ready:true,build:BUILD_ID,modelReady:false,mode:"native",fallback:"MetaForge Native Coach remains available without a model call"},{headers:{"Cache-Control":"no-store"}})}
     if (url.pathname === "/api/founder/knowledge") return handleCoachingKnowledge(request, env, true);
     if (url.pathname === "/api/coach/knowledge") return handleCoachingKnowledge(request, env, false);
