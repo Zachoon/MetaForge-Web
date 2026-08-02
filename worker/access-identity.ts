@@ -14,7 +14,9 @@
 // the public parameters any verifier needs, the same way an OAuth client_id
 // or issuer URL is public. They're read from env vars (ACCESS_TEAM_DOMAIN,
 // ACCESS_AUD) rather than hardcoded so the same code works if the Access
-// application is ever recreated with a new AUD.
+// application is ever recreated with a new AUD. ACCESS_AUD may contain a
+// comma-separated list during a safe hostname/application transition; jose
+// still requires the token to match at least one explicitly configured value.
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
 export interface AccessEnv {
@@ -73,8 +75,8 @@ export async function verifyAccessIdentity(request: Request, env: AccessEnv): Pr
   if (!token) return devBypassIdentity(request, env);
 
   const teamDomain = env.ACCESS_TEAM_DOMAIN;
-  const audience = env.ACCESS_AUD;
-  if (!teamDomain || !audience) {
+  const audiences = (env.ACCESS_AUD || "").split(",").map((value) => value.trim()).filter(Boolean);
+  if (!teamDomain || audiences.length === 0) {
     // Misconfiguration, not a caller error — fail closed rather than
     // silently skipping verification.
     console.error("Access verification is not configured (ACCESS_TEAM_DOMAIN/ACCESS_AUD missing)");
@@ -84,7 +86,7 @@ export async function verifyAccessIdentity(request: Request, env: AccessEnv): Pr
   try {
     const { payload } = await jwtVerify(token, jwksFor(teamDomain), {
       issuer: `https://${teamDomain}`,
-      audience,
+      audience: audiences,
     });
     return normalizedEmail(payload.email) ? { email: normalizedEmail(payload.email)! } : null;
   } catch {

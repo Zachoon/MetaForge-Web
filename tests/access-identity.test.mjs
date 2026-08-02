@@ -165,6 +165,22 @@ test("a valid, correctly signed JWT authenticates and derives the same user_key 
   }
 });
 
+test("a verified JWT from either explicitly configured Access application is accepted during the public-host transition", async () => {
+  const worker = await loadWorker();
+  const restore = await mockAccessJwks();
+  try {
+    const DB = new RecordingD1();
+    const secondAudience = "public-account-application-aud";
+    const token = await signAccessJwt({ email: "player@example.com", audience: secondAudience });
+    const env = { ...accessEnv(DB), ACCESS_AUD: `${TEST_AUD},${secondAudience}` };
+    const response = await worker.fetch(benchRequest(accessJwtHeaders(token)), env, ctx);
+    assert.equal(response.status, 200);
+    assert.equal(DB.lastWriteKey, await expectedUserKey("player@example.com"));
+  } finally {
+    restore();
+  }
+});
+
 test("local dev bypass is inert unless ALLOW_DEV_AUTH_BYPASS is explicitly set, even with the dev header present", async () => {
   const worker = await loadWorker();
   const DB = new RecordingD1();
