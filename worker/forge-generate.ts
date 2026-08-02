@@ -389,6 +389,16 @@ export async function handleForgeGenerate(request: Request, env: Env): Promise<R
   const key = await userKey(request, env);
   if (!key) return json({ error: "Authenticated account required" }, 401);
 
+  return handleForgeGenerateForKey(request, env, key);
+}
+
+// Guest forging has its own Turnstile, one-use-session, and rate-limit
+// boundary. Once that boundary authorizes a request it calls this same
+// construction path, ensuring guest previews and account builds never
+// drift into two different engines.
+export async function handleForgeGenerateForKey(request: Request, env: Env, key: string): Promise<Response> {
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
+
   const limitResult = await checkRateLimit(env, key, "forge-generate", RATE_LIMIT, RATE_WINDOW_MS);
   if (!limitResult.allowed) {
     return json(

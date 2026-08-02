@@ -1428,6 +1428,40 @@ function MasterworkCard({ poolIndex, featured = false, alignedWork, preview, com
 
 export default function Home() {
   const [chamber, setChamber] = useState<Chamber>("entrance");
+  const [guestMode, setGuestMode] = useState(true);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [guestClaimToken, setGuestClaimToken] = useState("");
+  // The claim response mirrors the server-owned Forge report contract.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [pendingClaimResult, setPendingClaimResult] = useState<any>(null);
+  const turnstileHostRef = useRef<HTMLDivElement>(null);
+  const turnstileWidgetRef = useRef<string | null>(null);
+  useEffect(() => {
+    const host = window.location.hostname.toLowerCase();
+    const isGuest = host === "metaforge.gg" || host === "www.metaforge.gg" || new URLSearchParams(window.location.search).get("guest") === "1";
+    queueMicrotask(() => setGuestMode(isGuest));
+  }, []);
+  useEffect(() => {
+    if (!guestMode || !turnstileHostRef.current || turnstileWidgetRef.current) return;
+    let cancelled = false;
+    const render = () => {
+      // Turnstile attaches its explicit-render API to window after its
+      // asynchronously-loaded script becomes ready.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const turnstile = (window as any).turnstile;
+      if (cancelled || !turnstile || !turnstileHostRef.current || turnstileWidgetRef.current) return;
+      turnstileWidgetRef.current = turnstile.render(turnstileHostRef.current, {
+        sitekey: "0x4AAAAAAEEl7173Degrwsrc",
+        theme: "dark",
+        callback: (token: string) => setTurnstileToken(token),
+        "expired-callback": () => setTurnstileToken(""),
+        "error-callback": () => setTurnstileToken(""),
+      });
+    };
+    const interval = window.setInterval(render, 250);
+    render();
+    return () => { cancelled = true; window.clearInterval(interval); };
+  }, [guestMode]);
   // Auto-opens once per browser (localStorage-gated) for a first-time
   // visitor landing on the entrance screen; always replayable via the
   // header's tour button regardless of that flag.
@@ -2377,6 +2411,11 @@ export default function Home() {
   // cleanup before the next one fires, so a superseded call is always
   // canceled (timer cleared, fetch aborted) before a new one starts.
   useEffect(() => {
+    if (guestMode) {
+      setStructuralAnalysisStatus("idle");
+      setStructuralAnalysisReport(null);
+      return;
+    }
     if (!structuralCards.length) {
       setStructuralAnalysisStatus("idle");
       setStructuralAnalysisReport(null);
@@ -2402,7 +2441,7 @@ export default function Home() {
       },
       onError: () => setStructuralAnalysisStatus("error"),
     });
-  }, [structuralCards, chosenPreview.card, strategy, deckIntegrity.passed, matchLog, forgeInterventions, revisions.length]);
+  }, [guestMode, structuralCards, chosenPreview.card, strategy, deckIntegrity.passed, matchLog, forgeInterventions, revisions.length]);
 
   const forgeFailureAnalysis = activeStructuralReport.failureAnalysis;
 
@@ -3137,6 +3176,7 @@ export default function Home() {
       // response) — distinct from opts.generationId above, which is the
       // client-generated deckId-like grouping ID used by persistStoryBench.
       serverGenerationId?: string;
+      persist?: boolean;
     },
   ) {
     const answer = nativeReport.selected.deckText;
@@ -3169,12 +3209,14 @@ export default function Home() {
       powerAudit: nativeReport.powerAudit || null,
       requestedPowerTier: isCommanderFormat(format) && targetPowerTier ? targetPowerTier : undefined,
     });
-    void persistStoryBench(
-      firstRevision,
-      { wins: 0, losses: 0 },
-      opts.generationId,
-      { work: opts.work, commander: opts.commander, index: opts.index },
-    );
+    if (opts.persist !== false) {
+      void persistStoryBench(
+        firstRevision,
+        { wins: 0, losses: 0 },
+        opts.generationId,
+        { work: opts.work, commander: opts.commander, index: opts.index },
+      );
+    }
   }
 
   // The actual deck-construction algorithm (forgeNativeMasterwork /
@@ -3190,16 +3232,74 @@ export default function Home() {
     colors: string[];
     generationId?: string;
     importWarnings?: { unresolvedNames: string[]; illegalNames: string[] };
+    claimToken?: string;
   }> {
-    const response = await fetch("/api/forge/generate", {
+    if (guestMode && !turnstileToken) throw new Error("Complete the human verification before striking the Forge");
+    const response = await fetch(guestMode ? "/api/forge/guest-generate" : "/api/forge/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(guestMode ? { ...payload, turnstileToken } : payload),
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data?.error || "The native Forge could not complete this candidate.");
+    if (guestMode) {
+      setTurnstileToken("");
+      setGuestClaimToken(data.claimToken || "");
+    }
     return data;
   }
+
+  useEffect(() => {
+    if (guestMode) return;
+    const claimToken = new URLSearchParams(window.location.search).get("claim");
+    if (!claimToken) return;
+    let cancelled = false;
+    void fetch("/api/account/claim-guest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ claimToken }),
+    }).then(async (response) => {
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || "This preview could not be restored");
+      if (cancelled) return;
+      setFormat(data.claimContext.format);
+      setStrategy(data.claimContext.strategy);
+      setPendingClaimResult(data);
+      window.history.replaceState({}, "", window.location.pathname);
+    }).catch((error) => {
+      if (!cancelled) setForgeGenerationError(error instanceof Error ? error.message : "This preview could not be restored");
+    });
+    return () => { cancelled = true; };
+  }, [guestMode]);
+
+  useEffect(() => {
+    if (!pendingClaimResult || format !== pendingClaimResult.claimContext.format) return;
+    const claimed = pendingClaimResult;
+    setPendingClaimResult(null);
+    const claimedWork: Masterwork = {
+      rune: "ᛞ",
+      name: claimed.nativeReport.selected?.label || "Your First Masterwork",
+      path: "Claimed Preview Masterwork",
+      tone: "steel",
+      verdict: "Your guest Forge, now preserved in your account.",
+    };
+    const localGenerationId = crypto.randomUUID();
+    setDeckId(localGenerationId);
+    setRestoredWork(claimedWork);
+    setSelectedWork(0);
+    setChamber("workbench");
+    setActiveForgeChapter(1);
+    void applyForgeResult(claimed.nativeReport, {
+      generationId: localGenerationId,
+      work: claimedWork,
+      commander: null,
+      index: 0,
+      replyText: `${claimed.nativeReport.methodology}\n\n${claimed.nativeReport.reasoning.summary}`,
+      revisionNote: "Claimed from your free Forge preview",
+      cardPool: claimed.cardPool,
+      serverGenerationId: claimed.generationId,
+    });
+  }, [pendingClaimResult, format]);
 
   async function inspectMasterwork(index: number) {
     const work = workFor(index);
@@ -3234,7 +3334,7 @@ export default function Home() {
     setDeckViewMode("workbench");
 
     let evidence: EdhrecEvidence | null = null;
-    if (commander && isCommanderFormat(format)) {
+    if (!guestMode && commander && isCommanderFormat(format)) {
       try {
         const evidenceResponse = await fetch(
           `/api/forge/edhrec?commander=${encodeURIComponent(commander.name)}`,
@@ -3285,6 +3385,7 @@ export default function Home() {
         revisionNote: `Original native Forge candidate · ${nativeReport.selected.label}`,
         cardPool,
         serverGenerationId: newGenerationId,
+        persist: !guestMode,
       });
     } catch (error) {
       setForgedDeck("");
@@ -3337,7 +3438,7 @@ export default function Home() {
     setDeckViewMode("workbench");
 
     let evidence: EdhrecEvidence | null = null;
-    if (commander && isCommanderFormat(format)) {
+    if (!guestMode && commander && isCommanderFormat(format)) {
       try {
         const evidenceResponse = await fetch(
           `/api/forge/edhrec?commander=${encodeURIComponent(commander.name)}`,
@@ -3393,6 +3494,7 @@ export default function Home() {
           revisionNote: "Adapted directly from your submitted list",
           cardPool,
           serverGenerationId: newGenerationId,
+          persist: !guestMode,
         });
       } else {
         const { nativeReport, cardPool, generationId: newGenerationId } = await callForgeGenerate({
@@ -3419,6 +3521,7 @@ export default function Home() {
           revisionNote: `Built directly for ${commander?.name || "your commander"} · ${nativeReport.selected.label}`,
           cardPool,
           serverGenerationId: newGenerationId,
+          persist: !guestMode,
         });
       }
     } catch (error) {
@@ -4048,6 +4151,7 @@ export default function Home() {
       data-forge-state={forgeState}
       data-forge-stage={chamber === "forging" ? stage + 1 : undefined}
       data-motion={motionMode}
+      data-guest-mode={guestMode ? "true" : "false"}
       data-forge-action={forgeAction}
       onClickCapture={captureForgeAction}
       style={{ "--mf-action-x": `${actionPoint.x}%`, "--mf-action-y": `${actionPoint.y}%` } as CSSProperties}
@@ -4073,6 +4177,24 @@ export default function Home() {
         <mark />
         <q />
       </div>
+      {guestMode && !forgedDeck && (
+        <aside className="guest-forge-pass" aria-label="Free Forge preview verification">
+          <div>
+            <small>ONE FREE FORGE · NO ACCOUNT REQUIRED</small>
+            <b>{turnstileToken ? "The Forge is ready for you." : "Confirm you’re human, then build your Blueprint."}</b>
+          </div>
+          <div ref={turnstileHostRef} />
+        </aside>
+      )}
+      {guestMode && forgedDeck && guestClaimToken && (
+        <aside className="guest-result-gate" role="region" aria-label="Save this Masterwork">
+          <div>
+            <small>YOUR PREVIEW MASTERWORK IS READY</small>
+            <b>Create your free account to save it, edit cards, run experiments, and record matches.</b>
+          </div>
+          <a href={`https://app.metaforge.gg/?claim=${encodeURIComponent(guestClaimToken)}`}>Save and continue →</a>
+        </aside>
+      )}
       <div className="forge-motion-layer" aria-hidden="true" key={`${chamber}-${stage}-${actionPulse}`}>
         <div className="forge-heat-haze" />
         <div className="forge-ash-field">
@@ -7199,5 +7321,3 @@ export default function Home() {
     </main>
   );
 }
-
-

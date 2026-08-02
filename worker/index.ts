@@ -12,6 +12,7 @@ import { handleForgeStructuralAnalyze } from "./forge-structural-analyze";
 import { handleForgeOneSlot } from "./forge-one-slot";
 import { cleanupExpiredRateLimits } from "./api-hardening";
 import { cleanupExpiredGenerations } from "./forge-generation-store";
+import { cleanupExpiredGuestForges, handleGuestClaim, handleGuestForge } from "./guest-forge";
 const BUILD_ID = "2026.07.16-workspace1";
 
 interface Env {
@@ -62,6 +63,8 @@ const worker = {
     if (url.pathname === "/api/forge/chat") return handleForgeChat(request, env);
     if (url.pathname === "/api/forge/edhrec") return handleEdhrecEvidence(request, env);
     if (url.pathname === "/api/forge/generate") return handleForgeGenerate(request, env);
+    if (url.pathname === "/api/forge/guest-generate") return handleGuestForge(request, env);
+    if (url.pathname === "/api/account/claim-guest") return handleGuestClaim(request, env);
     if (url.pathname === "/api/forge/structural-analyze") return handleForgeStructuralAnalyze(request, env);
     if (url.pathname === "/api/forge/one-slot-experiment") return handleForgeOneSlot(request, env);
     if (url.pathname === "/api/forge/status") {ctx.waitUntil(ensureDataGoblinsStarted(env));return Response.json({ready:true,build:BUILD_ID,modelReady:false,mode:"native",fallback:"MetaForge Native Coach remains available without a model call"},{headers:{"Cache-Control":"no-store"}})}
@@ -82,7 +85,7 @@ const worker = {
 
     return handler.fetch(request, env, ctx);
   },
-  async scheduled(_controller:ScheduledController,env:Env,ctx:ExecutionContext){ctx.waitUntil(runDataGoblins(env));ctx.waitUntil(cleanupExpiredRateLimits(env));ctx.waitUntil(cleanupExpiredGenerations(env));},
+  async scheduled(_controller:ScheduledController,env:Env,ctx:ExecutionContext){ctx.waitUntil(runDataGoblins(env));ctx.waitUntil(cleanupExpiredRateLimits(env));ctx.waitUntil(cleanupExpiredGenerations(env));ctx.waitUntil(cleanupExpiredGuestForges(env));},
 };
 
 export default worker;
