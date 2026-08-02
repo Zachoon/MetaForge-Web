@@ -1,25 +1,8 @@
 import { userKey } from "./account-bench";
 import { nativeCoachAnswer } from "./native-coach";
-import { riftboundCoachContext } from "../app/riftbound-coach-context.mjs";
-import { riftboundMetaContext } from "../app/riftbound-meta-context.mjs";
-interface ChatEnv { DB: D1Database; OPENAI_API_KEY?: string; OPENAI_MODEL?: string; METAFORGE_FOUNDER_USER_KEY?: string }
+interface ChatEnv { DB: D1Database; METAFORGE_FOUNDER_USER_KEY?: string }
 type ChatMessage = { role: "user" | "assistant"; content: string };
-const SYSTEM = `You are the MetaForge Coach, a rigorous trading-card-game strategy teacher. The current game is supplied in context. Never transfer one game's rules, cards, terminology, legality, or match evidence into another. Teach rather than dictate. Separate verified facts and match evidence from hypotheses. Never invent card text, legality, tournament results, prices, rules, or win rates. If current facts are missing, identify the uncertainty without assigning verification work to the player when MetaForge supplied a verified fact. Respect the requested format, goals, and play style. Personal match results are evidence about this player and revision, not proof of universal strength.
-
-Answer like an elite coach, not an essay. Lead with a direct verdict in 1-2 sentences, then give the 2-4 most decision-relevant reasons, the strongest tradeoff or alternative, and one concrete next test. Default to 350 words or fewer unless the player requests depth. Use clean plain text with short labels and bullets; do not emit Markdown headings, tables, decorative separators, or raw ** formatting. Do not repeat the question. Distinguish verified evidence, inference, and Forge Theory. Do not present generic preservation of the deck's obvious core mechanic as the main recommendation; use it as a constraint while proposing an actionable improvement.
-
-For a play decision, reason in this order: identify legal candidate lines; determine the current role (aggressor, defender, or pivot) from clocks, board, and inevitability; estimate the opponent range from observations rather than omniscience; compare tempo, card economy, board control, resource efficiency, pressure, reach, information, flexibility, synergy, inevitability, downside, and terminal outcomes; test the preferred line against the most credible punishments; state assumptions and missing state; explain the strongest alternative and what evidence would reverse the choice. Label close decisions as close. Never claim a line was wrong from the match result alone. Never imply that this text analysis is a rules-complete game simulation.
-
-Close every coaching answer with a compact learning loop: Decision (what to do now), Test (the smallest observable thing to try), and Return signal (what the player should report back, including what would cause Forge to change its mind). When the player returns with a result, compare it to the prior test rather than restarting the advice. One match is a signal; repeated, matched observations can justify a new recommendation. Keep the loop specific to this game and the exact deck or decision under discussion.`;
-const DECK_SYSTEM = `You are the MetaForge deck construction engine. Your job is to complete the selected Masterwork, not discuss whether you can do it. When MetaForge supplies a verified commander record, it is authoritative and binding. Produce a complete import-ready Magic decklist for the requested format in this response. For Brawl and Commander, output exactly 100 total cards: exactly one commander plus 99 main-deck cards. For Standard Brawl, output exactly 60 total cards: exactly one commander plus 59 main-deck cards. For other constructed formats, output exactly 60 main-deck cards unless the supplied format explicitly requires another size. Respect singleton, color identity, current supplied legality, and Arena availability where applicable. Use one line per card in the form "1 Card Name" (or legal quantities for non-singleton formats). Begin with a pilot brief of no more than 120 words, but never begin a pilot-brief line with a number; only decklist lines may begin with numeric quantities. Do not ask follow-up questions, refuse because a supplied commander is unfamiliar, return a template, or delegate verification to the player. If a peripheral fact is uncertain, choose a conservative verified alternative and still complete the list. Never claim the candidate has been tournament-validated.`;
 const json = (value: unknown, status = 200) => Response.json(value, { status, headers: { "Cache-Control": "no-store" } });
-function coachingLoop(messages: ChatMessage[], context: any) {
-  const recent = messages.slice(-6).map(message => `${message.role}: ${message.content}`).join("\n");
-  const hasDeck = Boolean(String(context?.deckText || "").trim());
-  const hasResult = /won|lost|match|game|failed|worked|didn't work|did not work|result/i.test(recent);
-  const focus = hasResult ? "review an observed result against the previous recommendation" : hasDeck ? "turn the current deck question into one bounded test" : "clarify the intended deck or decision before claiming a solution";
-  return `COACHING LOOP STATE\nCurrent focus: ${focus}.\nDeck supplied: ${hasDeck ? "yes" : "no"}.\nRecent conversation for continuity:\n${recent || "No earlier coaching turn."}\nDo not repeat prior advice unless the player asked for a restatement. Advance the loop by one useful step.`;
-}
 export async function handleForgeChat(request: Request, env: ChatEnv) {
   const key = await userKey(request);
   if (!key) return json({ error: "Authenticated account required" }, 401);
@@ -28,36 +11,14 @@ export async function handleForgeChat(request: Request, env: ChatEnv) {
   const messages: ChatMessage[] = Array.isArray(payload.messages) ? payload.messages.slice(-12).filter((m: any) => ["user", "assistant"].includes(m?.role) && typeof m.content === "string").map((m: any) => ({ role: m.role, content: m.content.slice(0, 2500) })) : [];
   if (!messages.length || messages.at(-1)?.role !== "user") return json({ error: "A user message is required" }, 400);
   const c = payload.context && typeof payload.context === "object" ? payload.context : {};
-  const deckGeneration = payload.task === "deck_generation";
-  const depth = ["quick", "balanced", "deep"].includes(String(payload.depth)) ? String(payload.depth) : "balanced";
-  const depthConfig = deckGeneration ? { instruction:"DECK CONSTRUCTION: complete the import-ready list now.", tokens:5200, effort:"medium" } : depth === "quick" ? { instruction:"QUICK: answer in 120-180 words. Give the verdict, two reasons, and one next action.", tokens:550, effort:"low" } : depth === "deep" ? { instruction:"DEEP: answer in up to 700 words. Show assumptions, competing lines, evidence boundaries, and what would reverse the conclusion.", tokens:1800, effort:"medium" } : { instruction:"BALANCED: answer in 250-350 words. Give the verdict, key reasons, tradeoff, and a concrete test.", tokens:1100, effort:"low" };
-  if(!env.OPENAI_API_KEY) return deckGeneration ? json({ error:"The Forge deck engine is temporarily unavailable; no incomplete substitute was returned." },503) : json({answer:nativeCoachAnswer(messages,c),model:"metaforge-native-v1",remaining:null,resetAt:null,evidenceBoundary:"Deterministic local reasoning from the supplied deck and verified card facts; no model call was made."});
-  const now = new Date(), day = (now.getUTCDay() + 6) % 7;
-  const week = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - day)).toISOString().slice(0,10);
-  const reset = new Date(`${week}T00:00:00.000Z`); reset.setUTCDate(reset.getUTCDate() + 7);
-  const founder = key === env.METAFORGE_FOUNDER_USER_KEY;
-  let used = 0;
-  if (!founder) {
-    await env.DB.prepare("INSERT OR IGNORE INTO forge_chat_usage (user_key, week_start, questions) VALUES (?, ?, 0)").bind(key, week).run();
-    const row = await env.DB.prepare("SELECT questions FROM forge_chat_usage WHERE user_key = ? AND week_start = ?").bind(key, week).first<{questions:number}>();
-    used = Number(row?.questions || 0);
-    if (used >= 10) return json({ error:"Weekly Forge conversation limit reached", remaining:0, resetAt:reset.toISOString() },429);
-    await env.DB.prepare("UPDATE forge_chat_usage SET questions = questions + 1, updated_at = CURRENT_TIMESTAMP WHERE user_key = ? AND week_start = ?").bind(key, week).run();
-    used += 1;
-  }
-  const game = /^riftbound$/i.test(String(c.game || "")) ? "riftbound" : "mtg";
-  const riftbound = game === "riftbound" ? riftboundCoachContext(messages.at(-1)?.content || "", String(c.deckText || "")) : null;
-  const riftMeta = game === "riftbound" ? riftboundMetaContext(now) : null;
-  let knowledge = "No approved professional coaching claims matched this game yet.";
-  try {
-    const rows = await env.DB.prepare("SELECT author, principle, summary, stance, source_title FROM coaching_knowledge_claims WHERE game = ? AND status = 'approved' ORDER BY reviewed_at DESC LIMIT 8").bind(game).all<any>();
-    if (rows.results?.length) knowledge = rows.results.map((row:any) => `- ${row.principle}: ${row.summary} (${row.stance}; ${row.author}, ${row.source_title})`).join("\n").slice(0,6000);
-  } catch { /* Coaching still works while an older database migration catches up. */ }
-  const riftboundEvidence = riftbound && riftMeta ? `\n\nVERIFIED RIFTBOUND RETRIEVAL\nMetaForge has an official-gallery catalog containing ${riftbound.catalogSize} records, updated ${riftbound.catalogUpdatedAt}. Do not say the Riftbound card pool or rules are unavailable.\nRules (${riftbound.rulesSource}):\n${riftbound.rules.map(rule=>`- ${rule}`).join("\n")}\nRetrieved official-gallery card records (${riftbound.catalogSource}):\n${riftbound.facts.map(fact=>`- ${fact}`).join("\n")}\n\nCURRENT RIFTBOUND FIELD SNAPSHOT\nAs of: ${riftMeta.asOf} (${riftMeta.ageDays} days old; ${riftMeta.freshness})\nSource: ${riftMeta.sourceTitle} — ${riftMeta.source}\nCoverage: ${riftMeta.coverage}\nTier 1: ${riftMeta.tier1.map(item=>`${item.legend} (${item.evidence})`).join("; ")}\nTier 2 contenders: ${riftMeta.tier2.join(", ")}\nField read: ${riftMeta.fieldRead}\nPressures:\n${riftMeta.pressures.map(item=>`- ${item}`).join("\n")}\nInstruction: MetaForge supplied the current field. Never ask the player to provide “the meta.” Begin anti-meta answers by stating this field read and its date/confidence, then explain how the proposal attacks at least the Tier 1 quartet and where it remains exposed. “Break the meta” means a testable counter-field hypothesis, not a guaranteed win claim.\nEvidence boundary: the card pool and Main Deck rules are verified official records; the metagame snapshot is tournament-derived independent analysis. Retrieved card records may omit cost, type, domain, rune, Champion, or Legend fields, so do not assert omitted properties or complete tournament legality.` : "";
-  const context = `CURRENT USER CONTEXT\nGame: ${game === "riftbound" ? "Riftbound" : "Magic: The Gathering"}\nAnswer mode: ${depthConfig.instruction}\nDeck name: ${String(c.deckName || "Untitled").slice(0,120)}\nFormat: ${String(c.format || "Unknown").slice(0,60)}\nCoaching preferences: ${String(c.coachingProfile || "Not specified").slice(0,1000)}\nVerified card facts supplied by MetaForge (treat only these as authoritative card text):\n${String(c.verifiedFacts || "None supplied").slice(0,10000)}\nCurrent deck or pool:\n${String(c.deckText || "Not supplied").slice(0,14000)}\n\n${coachingLoop(messages,c)}${riftboundEvidence}\n\nAPPROVED PROFESSIONAL KNOWLEDGE FOR THIS GAME\n${knowledge}\nUse professional perspectives as attributed lenses, not universal truth. Never mix games.`;
-  const upstream = await fetch("https://api.openai.com/v1/responses", { method:"POST", headers:{ Authorization:`Bearer ${env.OPENAI_API_KEY}`, "Content-Type":"application/json" }, body:JSON.stringify({ model:env.OPENAI_MODEL || "gpt-5.2", input:[{role:"system",content:deckGeneration ? DECK_SYSTEM : SYSTEM},{role:"system",content:context},...messages], reasoning:{effort:depthConfig.effort}, max_output_tokens:depthConfig.tokens, store:false }) });
-  const result:any = await upstream.json().catch(()=>({}));
-  if (!upstream.ok) { if (!founder) await env.DB.prepare("UPDATE forge_chat_usage SET questions = MAX(0, questions - 1) WHERE user_key = ? AND week_start = ?").bind(key, week).run(); return json({ error:"The Forge brain could not answer", detail:result?.error?.message || "Model request failed" },502); }
-  const answer = result.output_text || (result.output || []).flatMap((item:any)=>item.content || []).find((item:any)=>item.type === "output_text")?.text;
-  return answer ? json({ answer, model:env.OPENAI_MODEL || "gpt-5.2", depth, remaining:founder ? null : 10-used, resetAt:reset.toISOString(), evidenceBoundary:"Personalized guidance grounded in game-separated verified context and approved coaching knowledge; not automatic global training." }) : json({error:"The Forge returned no readable answer"},502);
+  // Deck repair/generation needs a full replacement decklist, which the deterministic
+  // native coach does not produce; MetaForge no longer calls an external model for it.
+  if (payload.task === "deck_generation") return json({ error: "Automatic repair is not available; the flagged cards need a manual edit." }, 503);
+  return json({
+    answer: nativeCoachAnswer(messages, c),
+    model: "metaforge-native-v1",
+    remaining: null,
+    resetAt: null,
+    evidenceBoundary: "Deterministic local reasoning from the supplied deck and verified card facts; no model call was made.",
+  });
 }

@@ -92,7 +92,7 @@ test("Riftbound native coaching supplies the field snapshot instead of asking pl
   const request=new Request("https://example.test/api/forge/chat",{method:"POST",headers:{"cf-access-authenticated-user-email":"one@example.com","content-type":"application/json"},body:JSON.stringify({messages:[{role:"user",content:"Build me a counter-meta Riftbound deck"}],context:{game:"riftbound",format:"Riftbound constructed"}})});
   const response=await worker.fetch(request,env(DB),ctx);assert.equal(response.status,200);const body=await response.json();assert.match(body.answer,/Current Riftbound field/);assert.match(body.answer,/Tier 1/);
 });
-test("Coach readiness distinguishes native and model modes before a tester composes",async()=>{const worker=await loadWorker(),DB=new FakeD1(),pending=[];const awaitedCtx={...ctx,waitUntil(promise){pending.push(promise)}};const offline=await (await worker.fetch(coachStatusRequest(),env(DB),awaitedCtx)).json();assert.equal(offline.ready,true);assert.equal(offline.modelReady,false);assert.equal(offline.mode,"native");assert.match(offline.fallback,/Native Coach/i);const online=await (await worker.fetch(coachStatusRequest(),{...env(DB),OPENAI_API_KEY:"test"},awaitedCtx)).json();assert.equal(online.ready,true);assert.equal(online.modelReady,true);assert.equal(online.mode,"model");await Promise.all(pending)});
+test("Coach status always reports native mode; MetaForge no longer calls an external model",async()=>{const worker=await loadWorker(),DB=new FakeD1(),pending=[];const awaitedCtx={...ctx,waitUntil(promise){pending.push(promise)}};const status=await (await worker.fetch(coachStatusRequest(),env(DB),awaitedCtx)).json();assert.equal(status.ready,true);assert.equal(status.modelReady,false);assert.equal(status.mode,"native");assert.match(status.fallback,/Native Coach/i);await Promise.all(pending)});
 
 test("Player DNA coaching preferences restore across devices without stale overwrites",async()=>{
   const worker=await loadWorker(),DB=new ProfileD1();
@@ -109,8 +109,6 @@ test("Player DNA coaching preferences restore across devices without stale overw
 test("founder operations expose runtime readiness without exposing secrets",async()=>{
   const worker=await loadWorker();const DB=new FakeD1();const founderEnv={...env(DB),METAFORGE_FOUNDER_USER_KEY:"f45237c471be9524242fb124700a61b6916cbbff9967c8ba74e43af0617bea90"};
   assert.equal((await worker.fetch(goblinRequest("buddy@example.com"),founderEnv,ctx)).status,403);
-  const missing=await (await worker.fetch(goblinRequest("zach@dukecity.games"),founderEnv,ctx)).json();
-  assert.equal(missing.readiness.coach,false);assert.equal(missing.readiness.officialSourceIndexing,true);assert.equal(missing.readiness.collectorHealth,"awaiting-first-run");assert.match(missing.readiness.schedule,/Hourly/);assert.equal("OPENAI_API_KEY" in missing,false);
-  const ready=await (await worker.fetch(goblinRequest("zach@dukecity.games"),{...founderEnv,OPENAI_API_KEY:"test-secret"},ctx)).json();
-  assert.equal(ready.readiness.coach,true);
+  const body=await (await worker.fetch(goblinRequest("zach@dukecity.games"),founderEnv,ctx)).json();
+  assert.equal(body.readiness.coach,true);assert.equal(body.readiness.strategicExtraction,false);assert.equal(body.readiness.officialSourceIndexing,true);assert.equal(body.readiness.collectorHealth,"awaiting-first-run");assert.match(body.readiness.schedule,/Hourly/);assert.equal("OPENAI_API_KEY" in body,false);
 });

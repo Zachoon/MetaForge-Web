@@ -14,8 +14,6 @@ interface Env {
   ASSETS: Fetcher;
   METAFORGE_BOOTSTRAP_LOCK?: string;
   METAFORGE_FOUNDER_USER_KEY?: string;
-  OPENAI_API_KEY?: string;
-  OPENAI_MODEL?: string;
   DB: D1Database;
   IMAGES: {
     input(stream: ReadableStream): {
@@ -60,7 +58,7 @@ const worker = {
     if (url.pathname === "/api/forge/chat") return handleForgeChat(request, env);
     if (url.pathname === "/api/forge/edhrec") return handleEdhrecEvidence(request, env);
     if (url.pathname === "/api/forge/generate") return handleForgeGenerate(request, env);
-    if (url.pathname === "/api/forge/status") {ctx.waitUntil(ensureDataGoblinsStarted(env));return Response.json({ready:true,build:BUILD_ID,modelReady:Boolean(env.OPENAI_API_KEY),mode:env.OPENAI_API_KEY?"model":"native",fallback:"MetaForge Native Coach remains available without a model call"},{headers:{"Cache-Control":"no-store"}})}
+    if (url.pathname === "/api/forge/status") {ctx.waitUntil(ensureDataGoblinsStarted(env));return Response.json({ready:true,build:BUILD_ID,modelReady:false,mode:"native",fallback:"MetaForge Native Coach remains available without a model call"},{headers:{"Cache-Control":"no-store"}})}
     if (url.pathname === "/api/founder/knowledge") return handleCoachingKnowledge(request, env, true);
     if (url.pathname === "/api/coach/knowledge") return handleCoachingKnowledge(request, env, false);
     if (url.pathname === "/api/founder/goblins") return handleGoblinOperations(request, env);
