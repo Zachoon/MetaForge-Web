@@ -1,8 +1,9 @@
-interface AccountEnv { DB: D1Database }
+import { verifyAccessIdentity, type AccessEnv } from "./access-identity";
+
+interface AccountEnv extends AccessEnv { DB: D1Database }
 
 type StoredBench = { bench_json: string; revision: number; updated_at: string };
 
-const EMAIL_HEADER = "cf-access-authenticated-user-email";
 const MAX_BENCH_BYTES = 2_000_000;
 const FEEDBACK_CATEGORIES = new Set(["broken", "confusing", "missed-interaction", "helped", "idea"]);
 
@@ -10,10 +11,18 @@ function json(value: unknown, status = 200, headers: Record<string, string> = {}
   return Response.json(value, { status, headers: { "Cache-Control": "no-store", ...headers } });
 }
 
-export async function userKey(request: Request) {
-  const email = request.headers.get(EMAIL_HEADER)?.trim().toLowerCase();
-  if (!email || !email.includes("@")) return null;
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`metaforge-account:${email}`));
+// Identity is derived only from a cryptographically verified Access JWT
+// (or, in local development only, an explicitly gated bypass — see
+// access-identity.ts) — never from the caller-supplied email header
+// alone. The hash input format (`metaforge-account:${email}`) is
+// unchanged from before this verification was added: Access's own
+// convenience email header was always populated from this exact JWT
+// email claim, so existing account records and their user_key values
+// are unaffected by this change.
+export async function userKey(request: Request, env: AccountEnv) {
+  const identity = await verifyAccessIdentity(request, env);
+  if (!identity) return null;
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`metaforge-account:${identity.email}`));
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
@@ -28,7 +37,7 @@ async function load(env: AccountEnv, key: string) {
 }
 
 export async function handleAccountBench(request: Request, env: AccountEnv): Promise<Response> {
-  const key = await userKey(request);
+  const key = await userKey(request, env);
   if (!key) return json({ error: "Authenticated account required" }, 401);
 
   if (request.method === "GET") {
@@ -62,7 +71,7 @@ export async function handleAccountBench(request: Request, env: AccountEnv): Pro
 }
 
 export async function handleFounderFeedback(request: Request, env: AccountEnv): Promise<Response> {
-  const key = await userKey(request);
+  const key = await userKey(request, env);
   if (!key) return json({ error: "Authenticated account required" }, 401);
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
   let payload: { category?: unknown; message?: unknown; context?: unknown };
@@ -76,7 +85,7 @@ export async function handleFounderFeedback(request: Request, env: AccountEnv): 
 }
 
 export async function handlePlayerProfile(request: Request, env: AccountEnv): Promise<Response> {
-  const key=await userKey(request); if(!key)return json({error:"Authenticated account required"},401);
+  const key=await userKey(request, env); if(!key)return json({error:"Authenticated account required"},401);
   if(request.method==="GET"){
     const row=await env.DB.prepare("SELECT profile_json, revision, updated_at FROM account_player_profiles WHERE user_key=?").bind(key).first<any>();
     if(!row)return json({profile:{},revision:0,updatedAt:null});

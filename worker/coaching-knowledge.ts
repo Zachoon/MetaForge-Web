@@ -10,7 +10,7 @@ async function idFor(value:string){const bytes=await crypto.subtle.digest("SHA-2
 function mapped(row:any){return {id:row.id,game:row.game||"mtg",sourceUrl:row.source_url,sourceTitle:row.source_title,author:row.author,publishedAt:row.published_at,sourceType:row.source_type,summary:row.summary,principle:row.principle,format:row.format,stance:row.stance,tags:JSON.parse(row.tags_json||"[]"),cards:JSON.parse(row.cards_json||"[]"),status:row.status,createdAt:row.created_at,reviewedAt:row.reviewed_at}}
 
 export async function handleCoachingKnowledge(request:Request,env:Env,founderOnly=false){
-  const key=await userKey(request); if(!key)return json({error:"Authenticated account required"},401);
+  const key=await userKey(request,env); if(!key)return json({error:"Authenticated account required"},401);
   const founder=Boolean(env.METAFORGE_FOUNDER_USER_KEY&&key===env.METAFORGE_FOUNDER_USER_KEY);
   if(founderOnly&&!founder)return json({error:"Founder access required"},403);
   if(request.method==="GET"){

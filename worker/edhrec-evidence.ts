@@ -8,7 +8,7 @@ const json = (value: unknown, status = 200) => Response.json(value, { status, he
 const commanderSlug = (name: string) => name.split("//")[0].normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 export async function handleEdhrecEvidence(request: Request, env: Env) {
-  if (!(await userKey(request))) return json({ error: "Authenticated account required" }, 401);
+  if (!(await userKey(request, env))) return json({ error: "Authenticated account required" }, 401);
   if (request.method !== "GET") return json({ error: "Method not allowed" }, 405);
   const commander = new URL(request.url).searchParams.get("commander")?.trim() || "";
   if (!commander || commander.length > 180) return json({ error: "Commander required" }, 400);

@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-// Models the api_rate_limits table's atomic upsert+RETURNING query well
-// enough to exercise real increment-and-check behavior deterministically
-// (a plain first-key-only map, like other tests' FakeD1, can't model the
-// composite user+endpoint+window bucket key checkRateLimit relies on).
+// Models the api_rate_limits table's atomic upsert+RETURNING query (for
+// checkRateLimit) and the age-based DELETE (for cleanupExpiredRateLimits)
+// well enough to exercise both deterministically — a plain first-key-only
+// map, like other tests' FakeD1, can't model the composite
+// user+endpoint+window bucket key or a real age comparison. Each bucket
+// tracks its own updatedAt (ms) so tests can simulate time passing by
+// setting it directly, mirroring D1's real updated_at column.
 class RateLimitD1 {
   buckets = new Map();
   prepare(sql) {
@@ -13,17 +16,32 @@ class RateLimitD1 {
       bind(...values) {
         return {
           async first() {
-            if (sql.includes("api_rate_limits")) {
+            if (sql.includes("INSERT INTO api_rate_limits")) {
               const [userKey, endpoint, windowBucket] = values;
               const bucketKey = `${userKey}|${endpoint}|${windowBucket}`;
-              const next = (db.buckets.get(bucketKey) || 0) + 1;
-              db.buckets.set(bucketKey, next);
+              const existing = db.buckets.get(bucketKey);
+              const next = (existing?.requests || 0) + 1;
+              db.buckets.set(bucketKey, { requests: next, updatedAt: Date.now() });
               return { requests: next };
             }
             return null;
           },
           async run() {
-            return { success: true };
+            if (sql.includes("DELETE FROM api_rate_limits")) {
+              // bound value is the SQLite datetime() modifier, e.g. "-2 hours"
+              const match = String(values[0]).match(/^-(\d+(?:\.\d+)?)\s+hours?$/);
+              const maxAgeMs = (match ? Number(match[1]) : 2) * 60 * 60 * 1000;
+              const cutoff = Date.now() - maxAgeMs;
+              let changes = 0;
+              for (const [key, bucket] of [...db.buckets.entries()]) {
+                if (bucket.updatedAt < cutoff) {
+                  db.buckets.delete(key);
+                  changes += 1;
+                }
+              }
+              return { success: true, meta: { changes } };
+            }
+            return { success: true, meta: { changes: 0 } };
           },
           async all() {
             return { results: [] };
@@ -40,10 +58,13 @@ async function loadWorker() {
   return (await import(workerUrl.href)).default;
 }
 
-const env = (DB) => ({ DB, ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) }, METAFORGE_BOOTSTRAP_LOCK: "unlocked" });
+// These tests exercise rate limiting/validation/size-cap behavior, not
+// the Access identity mechanism itself (see access-identity.test.mjs
+// for that) — so they use the explicitly-gated local dev bypass.
+const env = (DB) => ({ DB, ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) }, METAFORGE_BOOTSTRAP_LOCK: "unlocked", ALLOW_DEV_AUTH_BYPASS: "true" });
 const ctx = { waitUntil() {}, passThroughOnException() {} };
 
-const authHeaders = (email) => (email ? { "cf-access-authenticated-user-email": email } : {});
+const authHeaders = (email) => (email ? { "x-dev-user-email": email } : {});
 
 const analyzeRequest = (email, body, extraHeaders = {}) =>
   new Request("https://example.test/api/forge/structural-analyze", {
@@ -229,4 +250,34 @@ test("structural-analyze never echoes a raw exception message on unexpected fail
     assert.equal(body.error, "Structural analysis could not complete for this deck.");
     assert.doesNotMatch(body.error, /at .*\(|TypeError|ReferenceError|node_modules/);
   }
+});
+
+test("the hourly scheduled handler deletes expired rate-limit buckets and leaves current ones", async () => {
+  const worker = await loadWorker();
+  const DB = new RateLimitD1();
+  // A bucket from well over 2 hours ago (expired) and one from just now
+  // (current), planted directly rather than through checkRateLimit so
+  // each bucket's age is exact and independent of real wall-clock timing
+  // during the test run.
+  DB.buckets.set("old-user|forge-generate|100", { requests: 3, updatedAt: Date.now() - 3 * 60 * 60 * 1000 });
+  DB.buckets.set("recent-user|forge-generate|999999", { requests: 2, updatedAt: Date.now() });
+
+  // scheduled() also runs the data-goblin collectors, which fetch real
+  // external URLs — not this test's concern, and not something a test
+  // suite should depend on the network for. Fail those fast instead of
+  // letting them actually reach magic.wizards.com etc.
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response("unavailable", { status: 503 });
+  const pending = [];
+  const awaitedCtx = { waitUntil(promise) { pending.push(promise); }, passThroughOnException() {} };
+  try {
+    await worker.scheduled({}, { DB, METAFORGE_BOOTSTRAP_LOCK: "unlocked" }, awaitedCtx);
+    await Promise.all(pending);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.equal(DB.buckets.has("old-user|forge-generate|100"), false);
+  assert.equal(DB.buckets.has("recent-user|forge-generate|999999"), true);
+  assert.equal(DB.buckets.get("recent-user|forge-generate|999999").requests, 2);
 });

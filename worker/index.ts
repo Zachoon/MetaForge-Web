@@ -9,6 +9,7 @@ import { ensureDataGoblinsStarted, handleGoblinOperations, runDataGoblins } from
 import { handleEdhrecEvidence } from "./edhrec-evidence";
 import { handleForgeGenerate } from "./forge-generate";
 import { handleForgeStructuralAnalyze } from "./forge-structural-analyze";
+import { cleanupExpiredRateLimits } from "./api-hardening";
 const BUILD_ID = "2026.07.16-workspace1";
 
 interface Env {
@@ -78,7 +79,7 @@ const worker = {
 
     return handler.fetch(request, env, ctx);
   },
-  async scheduled(_controller:ScheduledController,env:Env,ctx:ExecutionContext){ctx.waitUntil(runDataGoblins(env));},
+  async scheduled(_controller:ScheduledController,env:Env,ctx:ExecutionContext){ctx.waitUntil(runDataGoblins(env));ctx.waitUntil(cleanupExpiredRateLimits(env));},
 };
 
 export default worker;

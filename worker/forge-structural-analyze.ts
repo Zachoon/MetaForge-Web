@@ -67,7 +67,7 @@ function sanitizeCard(raw: any) {
 export async function handleForgeStructuralAnalyze(request: Request, env: Env): Promise<Response> {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
 
-  const key = await userKey(request);
+  const key = await userKey(request, env);
   if (!key) return json({ error: "Authenticated account required" }, 401);
 
   const limitResult = await checkRateLimit(env, key, "forge-structural-analyze", RATE_LIMIT, RATE_WINDOW_MS);

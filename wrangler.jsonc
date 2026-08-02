@@ -12,7 +12,14 @@
   "triggers": { "crons": ["0 * * * *"] },
   "vars": {
     "METAFORGE_BOOTSTRAP_LOCK": "unlocked",
-    "METAFORGE_FOUNDER_USER_KEY": "f45237c471be9524242fb124700a61b6916cbbff9967c8ba74e43af0617bea90"
+    "METAFORGE_FOUNDER_USER_KEY": "f45237c471be9524242fb124700a61b6916cbbff9967c8ba74e43af0617bea90",
+    // Cloudflare Access verification parameters for worker/access-identity.ts.
+    // Not secrets — the team domain and an Access application's Audience
+    // (AUD) tag are public verifier parameters (same category as an OAuth
+    // issuer URL/client_id), and both are already visible in the login
+    // redirect Access itself sends to any unauthenticated visitor.
+    "ACCESS_TEAM_DOMAIN": "long-water-f05e.cloudflareaccess.com",
+    "ACCESS_AUD": "6d1c3df5e4c198c39d39e4caf4c7fd5386ec65de6c5558b99570dec8871e0a23"
   },
   "d1_databases": [
     {

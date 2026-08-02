@@ -45,6 +45,26 @@ export async function checkRateLimit(
   return { allowed: requests <= limit, retryAfterSeconds };
 }
 
+// Rate-limit buckets are cheap individually but accumulate forever
+// without cleanup — every distinct (user, endpoint, 5-minute-window)
+// combination is a permanent row otherwise. Called from the existing
+// hourly scheduled() handler alongside the data-goblin collectors.
+// Uses SQLite's own datetime() for the cutoff rather than formatting one
+// in JS: CURRENT_TIMESTAMP produces "YYYY-MM-DD HH:MM:SS" (space-
+// separated, no offset), which does not compare correctly against a
+// JS-built ISO string ("...THH:MM:SS.sssZ") — letting SQLite compute
+// both sides avoids that format mismatch entirely. Two hours is
+// generous headroom past any current rate-limit window (both current
+// limiters use 5-minute windows).
+export async function cleanupExpiredRateLimits(env: RateLimitEnv, maxAgeHours = 2): Promise<number> {
+  const result = await env.DB.prepare(
+    `DELETE FROM api_rate_limits WHERE updated_at < datetime('now', ?)`,
+  )
+    .bind(`-${maxAgeHours} hours`)
+    .run();
+  return Number(result.meta?.changes || 0);
+}
+
 export type BodyReadResult =
   | { ok: true; data: any }
   | { ok: false; status: 400 | 413; error: string };

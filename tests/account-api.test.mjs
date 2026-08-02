@@ -22,15 +22,22 @@ async function loadWorker() {
   return (await import(workerUrl.href)).default;
 }
 
-const env = (DB) => ({ DB, ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) }, METAFORGE_BOOTSTRAP_LOCK: "unlocked" });
+// These tests exercise account/feedback/profile/founder logic, not the
+// Access identity mechanism itself (that gets dedicated, rigorous
+// real-signed-JWT coverage in access-identity.test.mjs) — so they use
+// the explicitly-gated local dev bypass (ALLOW_DEV_AUTH_BYPASS + a
+// distinct x-dev-user-email header) rather than constructing a JWT per
+// test. This is the exact mechanism a real developer running
+// `npm run dev` locally would use; see worker/access-identity.ts.
+const env = (DB) => ({ DB, ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) }, METAFORGE_BOOTSTRAP_LOCK: "unlocked", ALLOW_DEV_AUTH_BYPASS: "true" });
 const ctx = { waitUntil() {}, passThroughOnException() {} };
-const request = (method, email, body) => new Request("https://example.test/api/account/deck-bench", { method, headers: { ...(email ? { "cf-access-authenticated-user-email": email } : {}), ...(body ? { "content-type": "application/json" } : {}) }, body: body ? JSON.stringify(body) : undefined });
-const feedbackRequest = (email, body) => new Request("https://example.test/api/account/feedback", { method: "POST", headers: { ...(email ? { "cf-access-authenticated-user-email": email } : {}), "content-type": "application/json" }, body: JSON.stringify(body) });
-const founderRequest = (email) => new Request("https://example.test/api/founder/overview", { headers: email ? { "cf-access-authenticated-user-email": email } : {} });
-const goblinRequest = (email) => new Request("https://example.test/api/founder/goblins", { headers: email ? { "cf-access-authenticated-user-email": email } : {} });
-const chatRequest = (email) => new Request("https://example.test/api/forge/chat", { method:"POST", headers:{ ...(email ? {"cf-access-authenticated-user-email":email}:{}), "content-type":"application/json" }, body:JSON.stringify({messages:[{role:"user",content:"Help me build a deck"}],context:{format:"Standard"}}) });
+const request = (method, email, body) => new Request("https://example.test/api/account/deck-bench", { method, headers: { ...(email ? { "x-dev-user-email": email } : {}), ...(body ? { "content-type": "application/json" } : {}) }, body: body ? JSON.stringify(body) : undefined });
+const feedbackRequest = (email, body) => new Request("https://example.test/api/account/feedback", { method: "POST", headers: { ...(email ? { "x-dev-user-email": email } : {}), "content-type": "application/json" }, body: JSON.stringify(body) });
+const founderRequest = (email) => new Request("https://example.test/api/founder/overview", { headers: email ? { "x-dev-user-email": email } : {} });
+const goblinRequest = (email) => new Request("https://example.test/api/founder/goblins", { headers: email ? { "x-dev-user-email": email } : {} });
+const chatRequest = (email) => new Request("https://example.test/api/forge/chat", { method:"POST", headers:{ ...(email ? {"x-dev-user-email":email}:{}), "content-type":"application/json" }, body:JSON.stringify({messages:[{role:"user",content:"Help me build a deck"}],context:{format:"Standard"}}) });
 const coachStatusRequest=()=>new Request("https://example.test/api/forge/status");
-const profileRequest=(method,email,body)=>new Request("https://example.test/api/account/player-profile",{method,headers:{...(email?{"cf-access-authenticated-user-email":email}:{}),...(body?{"content-type":"application/json"}:{})},body:body?JSON.stringify(body):undefined});
+const profileRequest=(method,email,body)=>new Request("https://example.test/api/account/player-profile",{method,headers:{...(email?{"x-dev-user-email":email}:{}),...(body?{"content-type":"application/json"}:{})},body:body?JSON.stringify(body):undefined});
 
 class ProfileD1 {
   rows=new Map();
@@ -89,7 +96,7 @@ test("Forge conversation requires an account and falls back to native coaching w
 });
 test("Riftbound native coaching supplies the field snapshot instead of asking players to provide the meta", async () => {
   const worker=await loadWorker(); const DB=new FakeD1();
-  const request=new Request("https://example.test/api/forge/chat",{method:"POST",headers:{"cf-access-authenticated-user-email":"one@example.com","content-type":"application/json"},body:JSON.stringify({messages:[{role:"user",content:"Build me a counter-meta Riftbound deck"}],context:{game:"riftbound",format:"Riftbound constructed"}})});
+  const request=new Request("https://example.test/api/forge/chat",{method:"POST",headers:{"x-dev-user-email":"one@example.com","content-type":"application/json"},body:JSON.stringify({messages:[{role:"user",content:"Build me a counter-meta Riftbound deck"}],context:{game:"riftbound",format:"Riftbound constructed"}})});
   const response=await worker.fetch(request,env(DB),ctx);assert.equal(response.status,200);const body=await response.json();assert.match(body.answer,/Current Riftbound field/);assert.match(body.answer,/Tier 1/);
 });
 test("Coach status always reports native mode; MetaForge no longer calls an external model",async()=>{const worker=await loadWorker(),DB=new FakeD1(),pending=[];const awaitedCtx={...ctx,waitUntil(promise){pending.push(promise)}};const status=await (await worker.fetch(coachStatusRequest(),env(DB),awaitedCtx)).json();assert.equal(status.ready,true);assert.equal(status.modelReady,false);assert.equal(status.mode,"native");assert.match(status.fallback,/Native Coach/i);await Promise.all(pending)});

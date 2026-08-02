@@ -4,7 +4,7 @@ interface ChatEnv { DB: D1Database; METAFORGE_FOUNDER_USER_KEY?: string }
 type ChatMessage = { role: "user" | "assistant"; content: string };
 const json = (value: unknown, status = 200) => Response.json(value, { status, headers: { "Cache-Control": "no-store" } });
 export async function handleForgeChat(request: Request, env: ChatEnv) {
-  const key = await userKey(request);
+  const key = await userKey(request, env);
   if (!key) return json({ error: "Authenticated account required" }, 401);
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
   let payload: any; try { payload = await request.json(); } catch { return json({ error: "Invalid JSON" }, 400); }

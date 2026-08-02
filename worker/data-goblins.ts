@@ -47,7 +47,7 @@ export async function ensureDataGoblinsStarted(env:Env,fetcher:typeof fetch=fetc
   return claimCollectorBootstrap(env.DB,()=>runDataGoblins(env,fetcher));
 }
 export async function handleGoblinOperations(request:Request,env:Env){
-  const key=await userKey(request);
+  const key=await userKey(request,env);
   if(!key||key!==env.METAFORGE_FOUNDER_USER_KEY)return Response.json({error:"Founder access required"},{status:403});
   if(request.method==="POST"){await runDataGoblins(env);return Response.json({started:true});}
   const runs=await env.DB.prepare("SELECT * FROM data_goblin_runs ORDER BY started_at DESC LIMIT 20").all();

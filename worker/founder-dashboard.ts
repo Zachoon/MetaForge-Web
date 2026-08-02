@@ -10,7 +10,7 @@ function response(value: unknown, status = 200) {
 }
 
 export async function handleFounderOverview(request: Request, env: FounderEnv) {
-  const key = await userKey(request);
+  const key = await userKey(request, env);
   if (!key || !env.METAFORGE_FOUNDER_USER_KEY || key !== env.METAFORGE_FOUNDER_USER_KEY) return response({ error: "Founder access required" }, 403);
   if (request.method !== "GET") return response({ error: "Method not allowed" }, 405);
 
