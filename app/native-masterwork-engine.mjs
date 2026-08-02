@@ -1,7 +1,7 @@
 ﻿import { runNativeMasterworkTournament } from "./native-masterwork-tournament.mjs";
 import { explainNativeMasterworkDecision } from "./native-masterwork-reasoning.mjs";
 import { rankOneSlotCounterfactuals, runOneSlotCounterfactualLab } from "./native-one-slot-lab.mjs";
-import { evaluateCommanderPowerSignal, POWER_TIERS, powerSignalCategoryFor } from "./commander-power-signal.mjs";
+import { evaluateCommanderPowerSignal, POWER_TIERS, powerSignalCategoryFor, CATEGORY_WEIGHT as POWER_CATEGORY_WEIGHT } from "./commander-power-signal.mjs";
 
 import {
   buildForgeStructuralAnalysis,
@@ -447,13 +447,67 @@ export function budgetScoreFor(priceUsd, budget) {
 // Mass land denial is weighted double, mirroring evaluateCommanderPowerSignal's
 // own signalScore weighting for the same category.
 const POWER_TIER_BIAS = Object.freeze({ Casual: -3, Focused: -1, "High-Power": 1, Maximum: 3 });
-const POWER_TIER_CATEGORY_WEIGHT = Object.freeze({ fastMana: 1, tutor: 1, extraTurn: 1, massLandDenial: 2 });
 export function powerTierScoreFor(card, targetPowerTier) {
   const bias = POWER_TIER_BIAS[targetPowerTier];
   if (!bias) return 0;
   const category = powerSignalCategoryFor(card);
   if (!category) return 0;
-  return bias * (POWER_TIER_CATEGORY_WEIGHT[category] || 1);
+  return bias * (POWER_CATEGORY_WEIGHT[category] || 1);
+}
+
+// Requested tier (a construction-time bias, above) and measured tier
+// (evaluateCommanderPowerSignal's own honest post-hoc read of the actual
+// finished decklist) are independent by design — the bias nudges card
+// selection but never excludes, so a thin pool or a bias too weak to
+// overcome real role/curve requirements can still finish somewhere other
+// than requested. This is the audit that catches that gap rather than
+// silently reporting the measured tier next to a target it may not
+// match.
+const POWER_TIER_INDEX = Object.freeze(Object.fromEntries(POWER_TIERS.map((tier, index) => [tier, index])));
+
+// rebuildAttempted/rebuildImproved/rebuildReachedTarget are three
+// separate, honest claims — never conflated into one "rebuilt" boolean.
+// A rebuild can be attempted and genuinely improve the measured tier
+// (Maximum -> High-Power, say) without ever reaching the requested one;
+// that must read as "improved but still disclosed as mismatched," never
+// as "reached it." Only rebuildReachedTarget licenses the "reached the
+// requested tier" copy anywhere downstream (native-masterwork-engine's
+// own caller, and page.tsx's rendering of this same field).
+function auditPowerTier(powerSignal, requestedTier) {
+  const requestedIndex = POWER_TIER_INDEX[requestedTier];
+  if (requestedIndex === undefined) return null;
+  const measuredIndex = POWER_TIER_INDEX[powerSignal.tier];
+  const mismatch = measuredIndex !== requestedIndex;
+  return {
+    requested: requestedTier,
+    measured: powerSignal.tier,
+    mismatch,
+    direction: !mismatch ? null : measuredIndex > requestedIndex ? "higherThanRequested" : "lowerThanRequested",
+    rebuildAttempted: false,
+    rebuildImproved: false,
+    rebuildReachedTarget: false,
+  };
+}
+
+// Only ever called for a requested Casual build that measured materially
+// higher (see forgeNativeMasterwork) — never for imported decks, whose
+// contract preserves the player's submitted list unconditionally.
+// Excludes exactly the cards evaluateCommanderPowerSignal itself flagged
+// as high-ceiling from the eligible spell pool, then re-runs the same
+// pure selection function for the same variant. If the commander itself
+// is the (or the only) flagged card, no nonland exclusion can fix that —
+// this returns null rather than pretending a rebuild happened, and the
+// caller falls back to an honest disclosed mismatch.
+function rebuildExcludingHighCeilingCards(input, variant, analysis, excludedNames) {
+  if (!variant || !excludedNames?.length) return null;
+  const excluded = new Set(excludedNames.map(normalized));
+  const filteredSpells = analysis.spells.filter((entry) => !excluded.has(normalized(entry.card.name)));
+  if (filteredSpells.length === analysis.spells.length) return null;
+  try {
+    return buildCandidate(input, variant, { ...analysis, spells: filteredSpells });
+  } catch {
+    return null;
+  }
 }
 
 // Same broken-promise shape as budget above: the Blueprint's complexity
@@ -1684,10 +1738,64 @@ export function forgeNativeMasterwork(input) {
   const structuralTournament = runNativeMasterworkTournament(candidates, { format: input.format, target: input.target });
   const { tournament, practicalTiebreak } = applyPracticalTiebreak(structuralTournament, candidates, input);
   const verdictById = new Map(tournament.results.map((result) => [result.id, result]));
-  const ranked = candidates
+  let ranked = candidates
     .map((candidate) => ({ ...candidate, tournament: verdictById.get(candidate.id) }))
     .sort((left, right) => right.tournament.tournamentScore - left.tournament.tournamentScore || left.id.localeCompare(right.id));
-  const selected = ranked.find((candidate) => candidate.id === tournament.selectedId);
+  let selected = ranked.find((candidate) => candidate.id === tournament.selectedId);
+
+  let structuralCards = buildSelectedStructuralCards(selected, input);
+  let structuralAnalysis = buildForgeStructuralAnalysis(structuralCards, { commanderName: input.commander?.name || "" });
+  let powerSignal = ["Commander", "Brawl", "Standard Brawl"].includes(input.format) ? evaluateCommanderPowerSignal(structuralCards, structuralAnalysis.graph) : null;
+  let powerAudit = null;
+
+  // Requested tier is a construction-time bias (powerTierScoreFor above),
+  // never a hard exclusion — so a thin pool, or role/curve requirements
+  // that outweigh the bias, can still finish somewhere other than
+  // requested. A Casual request that measured materially higher gets one
+  // real rebuild attempt, excluding exactly the flagged high-ceiling
+  // cards from the eligible pool and re-selecting for the same variant.
+  // Any other direction of mismatch (a High-Power/Maximum request that
+  // measured lower, say — often just an honest reflection of a thin
+  // pool, not a defect) is disclosed, never silently forced upward.
+  if (powerSignal && input.targetPowerTier) {
+    const audit = auditPowerTier(powerSignal, input.targetPowerTier);
+    powerAudit = audit;
+    if (audit?.mismatch && audit.direction === "higherThanRequested" && input.targetPowerTier === "Casual") {
+      const variant = VARIANTS.find((entry) => entry.id === selected.id);
+      const rebuilt = rebuildExcludingHighCeilingCards(input, variant, analysis, powerSignal.highCeilingCards);
+      if (rebuilt) {
+        const rebuiltStructuralCards = buildSelectedStructuralCards(rebuilt, input);
+        const rebuiltStructuralAnalysis = buildForgeStructuralAnalysis(rebuiltStructuralCards, { commanderName: input.commander?.name || "" });
+        const rebuiltPowerSignal = evaluateCommanderPowerSignal(rebuiltStructuralCards, rebuiltStructuralAnalysis.graph);
+        const rebuiltAudit = auditPowerTier(rebuiltPowerSignal, input.targetPowerTier);
+        const improved = POWER_TIER_INDEX[rebuiltPowerSignal.tier] < POWER_TIER_INDEX[powerSignal.tier];
+        if (improved) {
+          // The rebuilt candidate replaces the delivered decklist even
+          // when it only partially closes the gap (Maximum -> High-Power
+          // while targeting Casual, say) — "rebuild within the
+          // constraint when possible" means take the real improvement,
+          // never discard it just because it fell short. rebuildImproved
+          // and rebuildReachedTarget stay independently honest either way.
+          const rebuiltCandidate = { ...selected, ...rebuilt, id: selected.id, tournament: selected.tournament };
+          ranked = ranked.map((candidate) => (candidate.id === selected.id ? rebuiltCandidate : candidate));
+          selected = rebuiltCandidate;
+          structuralCards = rebuiltStructuralCards;
+          structuralAnalysis = rebuiltStructuralAnalysis;
+          powerSignal = rebuiltPowerSignal;
+          powerAudit = { ...rebuiltAudit, rebuildAttempted: true, rebuildImproved: true, rebuildReachedTarget: !rebuiltAudit.mismatch, originalMeasuredTier: audit.measured };
+        } else {
+          // The rebuild ran but produced no real improvement (a thin
+          // pool with no legal alternative worth shipping) — the
+          // original, pre-rebuild candidate stays delivered, and the
+          // audit says so honestly rather than claiming any progress.
+          powerAudit = { ...audit, rebuildAttempted: true, rebuildImproved: false, rebuildReachedTarget: false };
+        }
+      } else {
+        powerAudit = { ...audit, rebuildAttempted: false, rebuildImproved: false, rebuildReachedTarget: false };
+      }
+    }
+  }
+
   const reasoning = explainNativeMasterworkDecision(ranked, tournament);
   const laboratory = runOneSlotCounterfactualLab(
     selected,
@@ -1699,23 +1807,6 @@ export function forgeNativeMasterwork(input) {
       target: input.target,
     },
   );
-
-  const structuralCards =
-    buildSelectedStructuralCards(
-      selected,
-      input,
-    );
-
-  const structuralAnalysis =
-    buildForgeStructuralAnalysis(
-      structuralCards,
-      {
-        commanderName:
-          input.commander?.name || "",
-      },
-    );
-
-  const powerSignal = ["Commander", "Brawl", "Standard Brawl"].includes(input.format) ? evaluateCommanderPowerSignal(structuralCards, structuralAnalysis.graph) : null;
 
   const recommendationRecord =
     createForgeRecommendationRecord({
@@ -1790,6 +1881,7 @@ export function forgeNativeMasterwork(input) {
     laboratory,
     structuralAnalysis,
     powerSignal,
+    powerAudit,
     recommendationRecord,
     manaConsistency: manaConsistencyReport(selected.rows, input.target),
     unusedEnginePartners: unusedEnginePartnersFor(selected, input),
@@ -1895,6 +1987,13 @@ export function forgeImportedMasterwork(input) {
     laboratory,
     structuralAnalysis,
     powerSignal,
+    // Imported decks never receive a targetPowerTier (forge-generate.ts
+    // deliberately omits it — the player's submitted list is preserved
+    // unconditionally, never rebuilt), so there is never anything to
+    // audit against. powerSignal above still reports the real measured
+    // tier honestly; this stays null for a consistent report shape
+    // rather than being omitted.
+    powerAudit: null,
     recommendationRecord,
     manaConsistency: manaConsistencyReport(selected.rows, input.target),
     unusedEnginePartners: unusedEnginePartnersFor(selected, input),

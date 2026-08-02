@@ -1317,6 +1317,136 @@ test("powerSignal also populates for Brawl and Standard Brawl, the other singlet
   }
 });
 
+test("powerAudit stays null for a non-Commander-family format even when a targetPowerTier is somehow supplied — the Commander tier vocabulary never leaks into a competitive 60-card format", () => {
+  const report = forgeNativeMasterwork({
+    format: "Standard", target: 60, strategy: "Balanced midrange", seed: 7,
+    cards: pool, colors: ["U"], targetPowerTier: "Casual",
+  });
+  assert.equal(report.powerSignal, null);
+  assert.equal(report.powerAudit, null);
+});
+
+// --- Requested-tier vs. measured-tier audit and rebuild -----------------
+// Four cards, each independently verified high-ceiling on its own oracle
+// text (two different repeatable-value-engine shapes, one via a
+// combo-proximate mutual pair) added to the shared, role-diverse `pool`
+// fixture, which by itself already measures Casual (see the "populates a
+// real Commander power signal" test above). Real construction picks them
+// up when unconstrained; a Casual request should exclude them via one
+// real rebuild.
+const powerTierEngineCards = [
+  card("Test Bone Reaper", "Sacrifice a creature: Draw a card, then this deals 1 damage to any target. Whenever another creature you control dies, you may sacrifice another creature.", "Creature — Test", "{1}{U}"),
+  card("Test Card Reaper", "When this creature dies, draw a card if you have seven or more cards in your hand. Sacrifice another creature: This deals 2 damage to any target.", "Creature — Test", "{U}"),
+  card("Test Grand Archivist", "Whenever you cast an instant or sorcery spell, draw a card.", "Creature — Test", "{1}{U}"),
+  card("Test Chronicle Thief", "Whenever you cast a legendary spell, search your library for a card, put it onto the battlefield, then shuffle.", "Creature — Test", "{3}{U}{U}"),
+];
+const powerTierPool = [...pool, ...powerTierEngineCards];
+const powerTierCommander = { name: "Scholar of Tests", colors: ["U"], oracleText: "Draw a card." };
+
+test("a Maximum target that the pool can't fully reach is disclosed honestly, not silently relabeled", () => {
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 7,
+    commander: powerTierCommander, cards: powerTierPool, targetPowerTier: "Maximum",
+  });
+  assert.ok(powerTierEngineCards.some((c) => report.selected.rows.some((row) => row.name === c.name)), "the bias should actually pull in at least one flagged card when targeting Maximum");
+  assert.equal(report.powerAudit.requested, "Maximum");
+  // This fixture pool cannot actually reach Maximum — an honest,
+  // undisguised report is the entire point of this feature.
+  assert.equal(report.powerAudit.mismatch, true);
+  assert.equal(report.powerAudit.direction, "lowerThanRequested");
+  assert.equal(report.powerAudit.rebuildAttempted, false, "rebuild only ever applies to a requested-Casual-but-measured-higher mismatch");
+  assert.equal(report.powerAudit.rebuildImproved, false);
+  assert.equal(report.powerAudit.rebuildReachedTarget, false);
+});
+
+test("a requested Casual build that measures materially higher is rebuilt within the constraint when a legal alternative exists", () => {
+  const unconstrained = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 7,
+    commander: powerTierCommander, cards: powerTierPool, targetPowerTier: "Maximum",
+  });
+  assert.notEqual(unconstrained.powerSignal.tier, "Casual", "sanity check: this pool must actually be capable of measuring above Casual when unconstrained");
+
+  const casualReport = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 7,
+    commander: powerTierCommander, cards: powerTierPool, targetPowerTier: "Casual",
+  });
+  assert.equal(casualReport.powerSignal.tier, "Casual");
+  assert.equal(casualReport.powerAudit.mismatch, false);
+  assert.equal(casualReport.powerAudit.rebuildAttempted, true);
+  assert.equal(casualReport.powerAudit.rebuildImproved, true);
+  assert.equal(casualReport.powerAudit.rebuildReachedTarget, true, "a rebuild that genuinely reaches the requested tier must say so, not just 'improved'");
+  assert.ok(powerTierEngineCards.every((c) => !casualReport.selected.rows.some((row) => row.name === c.name)), "every flagged high-ceiling card must actually be excluded from the rebuilt list, not just relabeled");
+  assert.equal(casualReport.selected.rows.reduce((sum, row) => sum + row.quantity, 0), 100, "the rebuilt candidate must still be a complete, legal deck");
+  // The delivered list (selected) and the candidates array (ranked) must
+  // describe the same, post-rebuild deck — never the pre-rebuild one.
+  const deliveredCandidate = casualReport.candidates.find((c) => c.id === casualReport.selected.id);
+  assert.deepEqual(deliveredCandidate.rows, casualReport.selected.rows, "candidates/ranked must reflect the rebuilt rows, not the original pre-rebuild candidate");
+  assert.equal(casualReport.reasoning.selectedId, casualReport.selected.id);
+  assert.equal(casualReport.tournament.selectedId, casualReport.selected.id);
+});
+
+// A pool deep enough in redundant, identically-flagged engine cards that
+// excluding the first-selected batch still leaves the rebuild no choice
+// but to pull in more of the same flagged template to complete a legal
+// 100-card deck — Maximum rebuilds down to High-Power, a real
+// improvement, but never reaches the requested Casual. This is the
+// live-observed shape (verified against a real Commander generation
+// against live Scryfall data before writing this fixture): rebuildImproved
+// must be true, rebuildReachedTarget must stay false, and the measured
+// tier must be exactly what's disclosed — never silently called "reached."
+const deepEngineCards = Array.from({ length: 15 }, (_, i) =>
+  card(`Test Deep Engine ${i}`, "Whenever you cast an instant or sorcery spell, draw a card.", "Creature — Test", "{1}{U}"),
+);
+const scarceDrawPool = [
+  ...Array.from({ length: 6 }, (_, i) => card(`Scarce Flow ${i}`, "When this enters, draw a card. Scry 1.")),
+  ...Array.from({ length: 24 }, (_, i) => card(`Scarce Answer ${i}`, "Exile target nonland permanent.")),
+  ...Array.from({ length: 18 }, (_, i) => card(`Scarce Shield ${i}`, "Target creature gains hexproof and indestructible until end of turn.")),
+  ...Array.from({ length: 18 }, (_, i) => card(`Scarce Stone ${i}`, "Add one mana. Create a Treasure token.", "Artifact", "{2}")),
+  ...Array.from({ length: 10 }, (_, i) => card(`Scarce Island Utility ${i}`, "{T}: Add {U}.", "Land", "", ["U"])),
+];
+
+test("a rebuild that improves Maximum toward Casual but only reaches High-Power is reported as improved and unresolved — never as reached", () => {
+  const casualReport = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 7,
+    commander: powerTierCommander, cards: [...scarceDrawPool, ...deepEngineCards], targetPowerTier: "Casual",
+  });
+  assert.equal(casualReport.powerAudit.originalMeasuredTier, "Maximum", "sanity check: the pre-rebuild pass must have actually measured Maximum for this fixture");
+  assert.equal(casualReport.powerSignal.tier, "High-Power");
+  assert.equal(casualReport.powerAudit.measured, "High-Power");
+  assert.equal(casualReport.powerAudit.mismatch, true);
+  assert.equal(casualReport.powerAudit.rebuildAttempted, true);
+  assert.equal(casualReport.powerAudit.rebuildImproved, true, "Maximum -> High-Power is a real improvement and must be credited as one");
+  assert.equal(casualReport.powerAudit.rebuildReachedTarget, false, "High-Power is not Casual — this must never read as having reached the target");
+});
+
+test("a requested Casual build stays honestly disclosed when no rebuild can fix it — the commander itself is the only offending card", () => {
+  const powerfulCommander = { name: "Test Archmage Commander", colors: ["U"], oracleText: "Whenever you cast an instant or sorcery spell, draw a card." };
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 7,
+    commander: powerfulCommander, cards: pool, targetPowerTier: "Casual",
+  });
+  assert.notEqual(report.powerSignal.tier, "Casual", "sanity check: the commander's own signal must actually be what's driving the measured tier here");
+  assert.equal(report.powerAudit.mismatch, true);
+  assert.equal(report.powerAudit.direction, "higherThanRequested");
+  assert.equal(report.powerAudit.rebuildAttempted, false, "no nonland exclusion can remove the commander itself — the mismatch must be disclosed, never silently hidden");
+  assert.equal(report.powerAudit.rebuildImproved, false);
+  assert.equal(report.powerAudit.rebuildReachedTarget, false);
+  assert.equal(report.powerAudit.measured, report.powerSignal.tier, "the disclosed measured tier must match what actually shipped, not a stale pre-check value");
+});
+
+test("the rebuild is deterministic for the same seed and input", () => {
+  const first = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 7,
+    commander: powerTierCommander, cards: powerTierPool, targetPowerTier: "Casual",
+  });
+  const second = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 7,
+    commander: powerTierCommander, cards: powerTierPool, targetPowerTier: "Casual",
+  });
+  assert.deepEqual(first.powerAudit, second.powerAudit);
+  assert.deepEqual(first.selected.rows, second.selected.rows);
+});
+
 test("powerTierScoreFor nudges a fast-mana/tutor/extra-turn/mass-land-denial card toward or away from a chosen target tier, and never touches an ordinary card", () => {
   const fastManaCard = { name: "Test Rock", typeLine: "Artifact", oracleText: "{T}: Add {C}{C}.", cmc: 1 };
   const massLandDenialCard = { name: "Test Armageddon", typeLine: "Sorcery", oracleText: "Destroy all lands.", cmc: 3 };
@@ -1332,6 +1462,22 @@ test("powerTierScoreFor nudges a fast-mana/tutor/extra-turn/mass-land-denial car
   assert.equal(powerTierScoreFor(vanilla, "Maximum"), 0);
   assert.equal(powerTierScoreFor(fastManaCard, undefined), 0, "no target tier at all means no bias");
   assert.equal(powerTierScoreFor(fastManaCard, "No preference"), 0, "an unrecognized/neutral target means no bias");
+});
+
+test("a multi-category card is biased by its strongest matched category's weight, not whichever category happens to be checked first", () => {
+  // Matches both fastMana (weight 1) and repeatableValueEngine (weight
+  // 2): a free mana ability plus a repeatable sacrifice-for-a-card
+  // engine on the same card.
+  const dualSignalCard = { name: "Test Dual Signal Rock", typeLine: "Artifact", oracleText: "Add {C}. Sacrifice a creature: Draw a card.", cmc: 0 };
+  const fastManaOnlyCard = { name: "Test Fast Mana Only", typeLine: "Artifact", oracleText: "{T}: Add {C}{C}.", cmc: 1 };
+  assert.ok(
+    Math.abs(powerTierScoreFor(dualSignalCard, "Casual")) > Math.abs(powerTierScoreFor(fastManaOnlyCard, "Casual")),
+    "the dual-signal card must be penalized more (biased by repeatableValueEngine's weight 2) than a card matching only fastMana's weight 1",
+  );
+  assert.ok(
+    Math.abs(powerTierScoreFor(dualSignalCard, "Maximum")) > Math.abs(powerTierScoreFor(fastManaOnlyCard, "Maximum")),
+    "the same must hold in the rewarding direction",
+  );
 });
 
 // Role-diverse, same shape as the shared `pool` fixture (draw/interaction/

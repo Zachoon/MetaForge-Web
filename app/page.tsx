@@ -1639,6 +1639,28 @@ export default function Home() {
     // rarely change on a single swap and a full recompute needs the
     // interaction graph rebuilt too.
     powerSignal?: any;
+    // The independent post-construction audit of requestedPowerTier vs.
+    // the real measured powerSignal.tier — null for imported decks
+    // (never rebuilt, never audited against a target that doesn't exist
+    // for that path) and for non-Commander-family formats. See
+    // native-masterwork-engine.mjs's auditPowerTier/
+    // rebuildExcludingHighCeilingCards.
+    powerAudit?: {
+      requested: string;
+      measured: string;
+      mismatch: boolean;
+      direction: "higherThanRequested" | "lowerThanRequested" | null;
+      // Kept as three separately-honest claims, never one "rebuilt"
+      // boolean: a rebuild can be attempted and genuinely improve the
+      // measured tier without ever reaching the requested one (Maximum
+      // rebuilding down to High-Power while targeting Casual, say) —
+      // that must render as "improved but still disclosed as
+      // mismatched," never as "reached it."
+      rebuildAttempted: boolean;
+      rebuildImproved: boolean;
+      rebuildReachedTarget: boolean;
+      originalMeasuredTier?: string;
+    } | null;
     // The target power tier this exact generation was biased toward, if
     // any — captured at generation time (not read live from the
     // Blueprint's own state) so it stays accurate even if the player
@@ -3144,6 +3166,7 @@ export default function Home() {
       generationId: opts.serverGenerationId,
       practicalTiebreak: nativeReport.practicalTiebreak || null,
       powerSignal: nativeReport.powerSignal || null,
+      powerAudit: nativeReport.powerAudit || null,
       requestedPowerTier: isCommanderFormat(format) && targetPowerTier ? targetPowerTier : undefined,
     });
     void persistStoryBench(
@@ -5283,9 +5306,13 @@ export default function Home() {
                           <small>TARGETED</small>
                           <b>{nativeMasterworkContext.requestedPowerTier}</b>
                           <em>
-                            {nativeMasterworkContext.requestedPowerTier === nativeMasterworkContext.powerSignal.tier
-                              ? "The finished deck reached the requested tier."
-                              : "A nudge, not a guarantee — the finished deck landed here instead, honestly."}
+                            {nativeMasterworkContext.powerAudit?.rebuildReachedTarget
+                              ? `Rebuilt to reach it: the first pass measured ${nativeMasterworkContext.powerAudit.originalMeasuredTier}, so the Forge excluded the flagged cards and rebuilt to the requested tier.`
+                              : !nativeMasterworkContext.powerAudit || !nativeMasterworkContext.powerAudit.mismatch
+                                ? "The finished deck reached the requested tier."
+                                : nativeMasterworkContext.powerAudit.rebuildImproved
+                                  ? `Improved but not fully resolved: rebuilding brought it from ${nativeMasterworkContext.powerAudit.originalMeasuredTier} to ${nativeMasterworkContext.powerAudit.measured}, still above the requested tier — disclosed honestly, not relabeled.`
+                                  : "A nudge, not a guarantee — the finished deck landed here instead, honestly disclosed rather than relabeled."}
                           </em>
                         </span>
                       )}
@@ -5304,6 +5331,36 @@ export default function Home() {
                         <b>{nativeMasterworkContext.powerSignal.extraTurns.length + nativeMasterworkContext.powerSignal.massLandDenial.length}</b>
                         <em>{[...nativeMasterworkContext.powerSignal.extraTurns, ...nativeMasterworkContext.powerSignal.massLandDenial].slice(0, 3).join(", ") || "None detected"}</em>
                       </span>
+                      <span>
+                        <small>REPEATABLE ENGINES + MULTIPLIERS</small>
+                        <b>{nativeMasterworkContext.powerSignal.repeatableValueEngine.length + nativeMasterworkContext.powerSignal.resourceMultiplier.length}</b>
+                        <em>{[...nativeMasterworkContext.powerSignal.repeatableValueEngine, ...nativeMasterworkContext.powerSignal.resourceMultiplier].slice(0, 3).join(", ") || "None detected"}</em>
+                      </span>
+                      <span>
+                        <small>EFFICIENT INTERACTION</small>
+                        <b>{nativeMasterworkContext.powerSignal.efficientInteraction.length}</b>
+                        <em>{nativeMasterworkContext.powerSignal.efficientInteraction.slice(0, 3).join(", ") || "None detected"}</em>
+                      </span>
+                      {nativeMasterworkContext.powerSignal.comboProximity.count > 0 && (
+                        <span>
+                          <small>COMPACT COMBO PROXIMITY</small>
+                          <b>{nativeMasterworkContext.powerSignal.comboProximity.count} verified pair{nativeMasterworkContext.powerSignal.comboProximity.count === 1 ? "" : "s"}</b>
+                          <em>{nativeMasterworkContext.powerSignal.comboProximity.pairs.slice(0, 2).join(" · ")} · counted toward the tier above</em>
+                        </span>
+                      )}
+                      {(nativeMasterworkContext.powerSignal.commanderSynergy.ownSignal || nativeMasterworkContext.powerSignal.commanderSynergy.amplifiedCards.length > 0 || nativeMasterworkContext.powerSignal.commanderSynergy.spellSynergy) && (
+                        <span>
+                          <small>COMMANDER SYNERGY</small>
+                          <b>
+                            {[
+                              nativeMasterworkContext.powerSignal.commanderSynergy.ownSignal && "carries its own signal",
+                              nativeMasterworkContext.powerSignal.commanderSynergy.amplifiedCards.length > 0 && `combines with ${nativeMasterworkContext.powerSignal.commanderSynergy.amplifiedCards.length} card${nativeMasterworkContext.powerSignal.commanderSynergy.amplifiedCards.length === 1 ? "" : "s"}`,
+                              nativeMasterworkContext.powerSignal.commanderSynergy.spellSynergy && "amplifies this shell's spells",
+                            ].filter(Boolean).join(" · ")}
+                          </b>
+                          <em>Verified from the commander's own text and this build's actual composition — counted toward the tier above</em>
+                        </span>
+                      )}
                       {(nativeMasterworkContext.powerSignal.interconnection.comboLoopTotal > 0 || nativeMasterworkContext.powerSignal.interconnection.amplifiers.length > 0) && (
                         <span>
                           <small>REAL INTERCONNECTION</small>
@@ -5312,7 +5369,7 @@ export default function Home() {
                             {nativeMasterworkContext.powerSignal.interconnection.amplifiers.length ? ` · ${nativeMasterworkContext.powerSignal.interconnection.amplifiers.length} amplifier${nativeMasterworkContext.powerSignal.interconnection.amplifiers.length === 1 ? "" : "s"}` : ""}
                           </b>
                           <em>
-                            {[...nativeMasterworkContext.powerSignal.interconnection.amplifiers, ...nativeMasterworkContext.powerSignal.interconnection.comboLoops].slice(0, 3).join(" · ") || "Detected"} · informational, not counted toward the tier above
+                            {[...nativeMasterworkContext.powerSignal.interconnection.amplifiers, ...nativeMasterworkContext.powerSignal.interconnection.comboLoops].slice(0, 3).join(" · ") || "Detected"} · informational only, not counted toward the tier above (see Compact Combo Proximity for the subset that is)
                           </em>
                         </span>
                       )}

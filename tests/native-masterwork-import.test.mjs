@@ -90,3 +90,62 @@ test("refuses an empty imported list outright", () => {
   const input = { ...baseInput, importedRows: [] };
   assert.throws(() => forgeImportedMasterwork(input), /at least one verified card/i);
 });
+
+// --- Honest power-tier auditing: imported decks ------------------------
+// Imported decks never receive a targetPowerTier (forge-generate.ts
+// omits it unconditionally) and never get rebuilt — the player's
+// submitted list is preserved exactly, "audited and warned about" means
+// the real measured tier is reported honestly, never that the Forge
+// silently substitutes its own optimization.
+const yawgmothLike = card(
+  "Test Sacrifice Engine",
+  "{B}, Sacrifice a creature: Put a -1/-1 counter on up to one target creature. If a creature card was put into a graveyard this way this turn, draw a card.",
+  "Legendary Creature — Test",
+  "{1}{B}",
+  ["B"],
+);
+const commanderPoolWithEngine = [...pool, yawgmothLike];
+
+test("an imported Commander list containing a real high-ceiling card is honestly measured, not silently relabeled Casual", () => {
+  const input = {
+    ...baseInput,
+    format: "Commander",
+    target: 100,
+    colors: ["U", "B"],
+    commander: { name: "Scholar of Tests", colors: ["U"], oracleText: "Draw a card." },
+    cards: commanderPoolWithEngine,
+    importedRows: [
+      { quantity: 1, name: "Test Sacrifice Engine" },
+      { quantity: 1, name: "Flow 0" },
+      { quantity: 1, name: "Answer 0" },
+      { quantity: 37, name: "Island" },
+    ],
+  };
+  const report = forgeImportedMasterwork(input);
+  assert.ok(report.selected.rows.some((row) => row.name === "Test Sacrifice Engine"), "the player's own submitted card must never be silently excluded");
+  assert.ok(report.powerSignal.repeatableValueEngine.includes("Test Sacrifice Engine"), "the real measured tier must actually see and report the card's power signal");
+  assert.equal(report.powerAudit, null, "imported decks have no requested tier to audit against, and are never rebuilt");
+});
+
+test("an imported deck's power signal is never influenced by a targetPowerTier — the field doesn't exist for this path", () => {
+  const input = {
+    ...baseInput,
+    format: "Commander",
+    target: 100,
+    colors: ["U", "B"],
+    commander: { name: "Scholar of Tests", colors: ["U"], oracleText: "Draw a card." },
+    cards: commanderPoolWithEngine,
+    // targetPowerTier deliberately supplied here to confirm forgeImportedMasterwork
+    // has no code path that reads it at all — forge-generate.ts already
+    // never passes it for imports, this is defense in depth at the engine level.
+    targetPowerTier: "Casual",
+    importedRows: [
+      { quantity: 1, name: "Test Sacrifice Engine" },
+      { quantity: 1, name: "Flow 0" },
+      { quantity: 37, name: "Island" },
+    ],
+  };
+  const report = forgeImportedMasterwork(input);
+  assert.ok(report.selected.rows.some((row) => row.name === "Test Sacrifice Engine"), "must never be excluded even if a targetPowerTier is somehow supplied");
+  assert.equal(report.powerAudit, null);
+});
