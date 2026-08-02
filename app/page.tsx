@@ -15,7 +15,16 @@ import {
 import { learnRevisionPreferences } from "./revision-learning.mjs";
 import { learnFromForgeInterventions } from "./forge-intervention-learning.mjs";
 import { applyControlledSwap, experimentAdditionSynergy, rankExperimentAdditions, rankExperimentCuts } from "./meta-breaker-experiment.mjs";
-import { colorPipsFromCost, forgeNativeMasterwork, forgeImportedMasterwork, manaConsistencyReport, parseNativeBlueprintIntent } from "./native-masterwork-engine.mjs";
+// forgeNativeMasterwork/forgeImportedMasterwork deliberately NOT imported
+// here anymore — the actual deck-construction algorithm now runs
+// server-side only (worker/forge-generate.ts, called via
+// callForgeGenerate's fetch to /api/forge/generate), so it no longer
+// ships in this client bundle. These three remain: they're small,
+// self-contained utilities still used elsewhere in this file (blueprint
+// note parsing, mana-pip math, and the post-swap mana-consistency
+// refresh on the Testing Anvil), not part of the construction algorithm
+// itself.
+import { colorPipsFromCost, manaConsistencyReport, parseNativeBlueprintIntent } from "./native-masterwork-engine.mjs";
 import { updateFamily, setFamilyMotifWeights } from "./deck-bench.mjs";
 import {
   resolveDeckStructuralCards,
@@ -1114,146 +1123,6 @@ const BASIC_LANDS: Record<string, string> = {
 const BASIC_LAND_KEYS = new Set(
   [...Object.values(BASIC_LANDS), "Wastes"].map(cardFactKey),
 );
-type NativeForgeCard = {
-  name: string;
-  manaCost: string;
-  cmc: number;
-  typeLine: string;
-  oracleText: string;
-  colorIdentity: string[];
-  keywords: string[];
-  popularityRank?: number;
-  priceUsd?: number;
-  producedMana?: string[];
-  rarity?: string;
-};
-
-const nativeCardFact = (card: any): NativeForgeCard => {
-  const priceUsd = Number(card.prices?.usd ?? card.prices?.usd_foil ?? NaN);
-  return {
-    name: String(card.name || ""),
-    manaCost: String(card.mana_cost || card.card_faces?.[0]?.mana_cost || ""),
-    cmc: Number(card.cmc || 0),
-    typeLine: String(card.type_line || ""),
-    oracleText: String(
-      card.oracle_text ||
-        (card.card_faces || []).map((face: any) => face.oracle_text || "").join("\n"),
-    ),
-    colorIdentity: card.color_identity || [],
-    keywords: card.keywords || [],
-    ...(Number.isFinite(priceUsd) ? { priceUsd } : {}),
-    // Scryfall's authoritative "what this permanent actually taps for" —
-    // more precise than color_identity, which also counts colored costs on
-    // activated abilities that don't produce mana at all.
-    ...(Array.isArray(card.produced_mana) ? { producedMana: card.produced_mana } : {}),
-    // Scryfall's printed rarity for whichever printing was fetched — used
-    // only for a player-chosen "commons only" hard restriction; absent
-    // entirely (not "common") when Scryfall doesn't report one, so a
-    // missing value is never silently treated as a common.
-    ...(typeof card.rarity === "string" ? { rarity: card.rarity } : {}),
-  };
-};
-
-const loadNativeForgePool = async (
-  format: string,
-  commander: CommanderOption | null,
-  lynchpin: string,
-  note = "",
-  secondCommander: CommanderOption | null = null,
-) => {
-  let anchor: any = null;
-  if (!commander && lynchpin) {
-    const anchorResponse = await fetch(
-      `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(lynchpin)}`,
-      { headers: { Accept: "application/json" } },
-    );
-    if (anchorResponse.ok) anchor = await anchorResponse.json();
-  }
-  const noteColors = colorsFromNote(note);
-  const commanderColors = [
-    ...new Set([...(commander?.colors || []), ...(secondCommander?.colors || [])]),
-  ];
-  const colors = commanderColors.length
-    ? commanderColors
-    : noteColors.length
-      ? noteColors
-      : anchor?.color_identity?.length
-        ? anchor.color_identity
-        : [];
-  const colorQuery = colors.length
-    ? ` id<=${colors.join("").toLowerCase()}`
-    : commander
-      ? " id:c"
-      : "";
-  const query = encodeURIComponent(
-    `${scryfallFormatTerms(format)}${colorQuery} -is:funny`,
-  );
-  const cards: NativeForgeCard[] = [];
-  const seen = new Set<string>();
-  const addRawCard = (rawCard: any, popularityRank?: number) => {
-    const card = nativeCardFact(rawCard);
-    const key = cardFactKey(card.name);
-    if (!card.name || seen.has(key)) return;
-    seen.add(key);
-    if (popularityRank !== undefined) card.popularityRank = popularityRank;
-    cards.push(card);
-  };
-  let nextUrl = `https://api.scryfall.com/cards/search?q=${query}&order=edhrec&unique=cards`;
-
-  // Scryfall's edhrec ordering is a real, already-fetched signal for "how
-  // good/played is this card" — free popularity evidence the engine used to
-  // discard entirely for every non-Commander format. Rank position (not the
-  // raw page) is threaded through so the engine can weigh it later.
-  let popularityRank = 0;
-  for (let page = 0; nextUrl && page < 4; page += 1) {
-    const response = await fetch(nextUrl, {
-      headers: { Accept: "application/json" },
-    });
-    if (!response.ok) throw new Error("The verified card catalog is unavailable");
-    const result = await response.json();
-    for (const rawCard of result.data || []) {
-      addRawCard(rawCard, popularityRank);
-      popularityRank += 1;
-    }
-    nextUrl = result.has_more ? String(result.next_page || "") : "";
-  }
-
-  // Popularity pages are intentionally broad, but explicit player identity is
-  // fetched directly so niche/lore themes cannot disappear before scoring.
-  const blueprint = parseNativeBlueprintIntent({ note });
-  const roleQueries: Record<string, string> = {
-    counters: 'o:"+1/+1 counter"',
-    tokens: "o:create o:token",
-    sacrifice: "o:sacrifice",
-    graveyard: "o:graveyard",
-    artifacts: "(t:artifact OR o:artifact)",
-    spells: '(o:"instant or sorcery" OR o:"noncreature spell")',
-    lifegain: '(o:"gain life" OR kw:lifelink)',
-    combat: "(o:combat OR o:attack)",
-    discard: "o:discard",
-  };
-  const identityQueries = [
-    ...blueprint.tribalTypes.map((term: string) => `(t:"${term}" OR o:"${term}" OR name:"${term}")`),
-    ...blueprint.desiredRoles.map((role: string) => roleQueries[role]).filter(Boolean),
-  ].slice(0, 6);
-  for (const identityQuery of identityQueries) {
-    const targetedUrl = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`${scryfallFormatTerms(format)}${colorQuery} ${identityQuery} -is:funny`)}&order=name&unique=cards`;
-    const response = await fetch(targetedUrl, { headers: { Accept: "application/json" } });
-    if (!response.ok) continue;
-    const result = await response.json();
-    for (const rawCard of result.data || []) addRawCard(rawCard);
-  }
-
-  const anchorFitsColors =
-    !anchor ||
-    !colors.length ||
-    (anchor.color_identity || []).every((color: string) => colors.includes(color));
-  if (anchor && anchorFitsColors) {
-    const fact = nativeCardFact(anchor);
-    if (!seen.has(cardFactKey(fact.name))) cards.unshift(fact);
-  }
-  return { cards, colors };
-};
 const normalizeCommanderDeck = (
   text: string,
   commander: CommanderOption | null,
@@ -1318,102 +1187,6 @@ const normalizeCommanderDeck = (
   }
   return rows.map((row) => `${row.quantity} ${row.name}`).join("\n");
 };
-// Resolves a player's pasted decklist against the already-fetched pool plus
-// one bulk Scryfall lookup for names not already present, honoring the
-// project's "never fabricate" rule: unresolved or illegal-in-format names
-// are excluded from construction and returned separately for disclosure,
-// never silently dropped or auto-corrected.
-const resolveImportedDecklist = async (
-  text: string,
-  poolCards: NativeForgeCard[],
-  format: string,
-  commander: CommanderOption | null,
-): Promise<{
-  importedRows: DeckRow[];
-  pool: NativeForgeCard[];
-  unresolvedNames: string[];
-  illegalNames: string[];
-}> => {
-  const parsed = parseDeckRows(text).filter(
-    (row) => Number.isFinite(row.quantity) && row.quantity > 0 && row.name,
-  );
-  const commanderKeys = commander
-    ? new Set([commander.name, commander.name.split(" // ")[0]].map(cardFactKey))
-    : new Set<string>();
-  const merged = new Map<string, DeckRow>();
-  for (const row of parsed) {
-    const key = cardFactKey(row.name);
-    if (commanderKeys.has(key)) continue;
-    const existing = merged.get(key);
-    if (existing) existing.quantity += row.quantity;
-    else merged.set(key, { name: row.name, quantity: row.quantity });
-  }
-  const rows = [...merged.values()];
-
-  const poolByKey = new Map(poolCards.map((card) => [cardFactKey(card.name), card]));
-  const needsLookup = rows.filter((row) => {
-    const key = cardFactKey(row.name);
-    return !BASIC_LAND_KEYS.has(key) && !poolByKey.has(key);
-  });
-
-  const rawByKey = new Map<string, any>();
-  const notFoundKeys = new Set<string>();
-  for (let index = 0; index < needsLookup.length; index += 75) {
-    const chunk = needsLookup.slice(index, index + 75);
-    try {
-      const response = await fetch("https://api.scryfall.com/cards/collection", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ identifiers: chunk.map((row) => ({ name: row.name })) }),
-      });
-      const data = await response.json();
-      for (const rawCard of data.data || []) rawByKey.set(cardFactKey(rawCard.name), rawCard);
-      for (const entry of data.not_found || []) if (entry?.name) notFoundKeys.add(cardFactKey(entry.name));
-    } catch {
-      for (const row of chunk) notFoundKeys.add(cardFactKey(row.name));
-    }
-  }
-
-  const legalityKey = scryfallLegality(format);
-  const arenaRequired = format === "Brawl" || format === "Standard Brawl";
-  const importedRows: DeckRow[] = [];
-  const additionalPoolCards: NativeForgeCard[] = [];
-  const unresolvedNames: string[] = [];
-  const illegalNames: string[] = [];
-  for (const row of rows) {
-    const key = cardFactKey(row.name);
-    if (BASIC_LAND_KEYS.has(key)) {
-      importedRows.push(row);
-      continue;
-    }
-    if (poolByKey.has(key)) {
-      // Already present in the verified, format-filtered pool — legal by
-      // construction of the pool's own search query.
-      importedRows.push({ name: poolByKey.get(key)!.name, quantity: row.quantity });
-      continue;
-    }
-    const raw = rawByKey.get(key);
-    if (!raw) {
-      unresolvedNames.push(row.name);
-      continue;
-    }
-    const legality = raw.legalities?.[legalityKey];
-    if (legality !== "legal" || (arenaRequired && !raw.games?.includes("arena"))) {
-      illegalNames.push(row.name);
-      continue;
-    }
-    importedRows.push({ name: raw.name, quantity: row.quantity });
-    additionalPoolCards.push(nativeCardFact(raw));
-  }
-
-  return {
-    importedRows,
-    pool: [...poolCards, ...additionalPoolCards],
-    unresolvedNames,
-    illegalNames,
-  };
-};
-
 const indexCardFact = (
   target: Record<string, CardFact>,
   fact: CardFact,
@@ -3362,6 +3135,29 @@ export default function Home() {
     );
   }
 
+  // The actual deck-construction algorithm (forgeNativeMasterwork /
+  // forgeImportedMasterwork — the tournament, every scoring weight, every
+  // gate) runs server-side now, not in this bundle. This is the one call
+  // site that reaches it: the browser sends commission parameters, the
+  // Worker runs the real engine, and only the finished result — plus the
+  // card pool itself, which is public Scryfall data, not the algorithm —
+  // crosses back over the network.
+  async function callForgeGenerate(payload: Record<string, unknown>): Promise<{
+    nativeReport: any;
+    cardPool: any[];
+    colors: string[];
+    importWarnings?: { unresolvedNames: string[]; illegalNames: string[] };
+  }> {
+    const response = await fetch("/api/forge/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data?.error || "The native Forge could not complete this candidate.");
+    return data;
+  }
+
   async function inspectMasterwork(index: number) {
     const work = workFor(index);
     const preview = previewFor(index);
@@ -3408,15 +3204,15 @@ export default function Home() {
     setEdhrecEvidence(evidence);
 
     try {
-      const pool = await loadNativeForgePool(format, commander, preview.card, commissionNote, secondCommander);
-      const nativeReport = forgeNativeMasterwork({
+      const { nativeReport, cardPool } = await callForgeGenerate({
+        mode: "native",
         format,
-        target: targetDeckSize(format),
         strategy,
+        complexity,
+        budget,
         path: work.path,
         note: `${commissionNote}\n${interventionLearning.reusableGuidance}`.trim(),
         seed: hashText(`${commissionSeed}|${index}|${work.name}`),
-        colors: pool.colors,
         commander: commander
           ? {
               name: commander.name,
@@ -3431,10 +3227,8 @@ export default function Home() {
               oracleText: secondCommander.verifiedFacts,
             }
           : null,
-        cards: pool.cards,
-        evidence: evidence?.cards || [],
-        budget,
-        complexity,
+        lynchpin: preview.card,
+        evidenceCards: evidence?.cards || [],
         maxCardPrice,
         commonsOnly,
         targetPowerTier: isCommanderFormat(format) ? targetPowerTier || undefined : undefined,
@@ -3446,7 +3240,7 @@ export default function Home() {
         index,
         replyText: `${nativeReport.methodology}\n\n${nativeReport.selected.tournament.reason}\n${nativeReport.reasoning.summary}\n${nativeReport.laboratory.summary}${nativeReport.laboratory.verdict === "advance" ? `\nTest contract: ${nativeReport.laboratory.contract}` : ""}\nStructural read: ${nativeReport.selected.evaluation.cohesion}/100 cohesion, ${nativeReport.selected.evaluation.resilience}/100 resilience. ${nativeReport.tournament.frontier.length} of 3 candidates reached the tradeoff frontier. ${nativeReport.reasoning.boundary} ${nativeReport.laboratory.boundary}`,
         revisionNote: `Original native Forge candidate · ${nativeReport.selected.label}`,
-        cardPool: pool.cards,
+        cardPool,
       });
     } catch (error) {
       setForgedDeck("");
@@ -3512,7 +3306,6 @@ export default function Home() {
     setEdhrecEvidence(evidence);
 
     try {
-      const pool = await loadNativeForgePool(format, commander, "", commissionNote, secondCommander);
       const commanderInput = commander
         ? { name: commander.name, colors: commander.colors, oracleText: commander.verifiedFacts }
         : null;
@@ -3521,11 +3314,6 @@ export default function Home() {
         : null;
 
       if (mode === "decklist") {
-        const resolution = await resolveImportedDecklist(deck, pool.cards, format, commander);
-        setImportWarnings([
-          ...resolution.unresolvedNames.map((name) => `"${name}" could not be verified and was left out.`),
-          ...resolution.illegalNames.map((name) => `"${name}" is not legal in ${format} and was left out.`),
-        ]);
         // Deliberately omits maxCardPrice/commonsOnly/targetPowerTier:
         // forgeImportedMasterwork preserves whatever the player actually
         // pasted in (that's its whole contract — "the Forge never
@@ -3535,22 +3323,23 @@ export default function Home() {
         // instead. A budget/rarity/power target is a construction-time
         // preference for cards the Forge is choosing, not a retroactive
         // filter on cards the player already chose themselves.
-        const nativeReport = forgeImportedMasterwork({
+        const { nativeReport, cardPool, importWarnings } = await callForgeGenerate({
+          mode: "imported",
           format,
-          target: targetDeckSize(format),
           strategy,
-          path: "",
+          complexity,
+          budget,
           note: `${commissionNote}\n${interventionLearning.reusableGuidance}`.trim(),
           seed: hashText(`${commissionSeed}|import|${deck.length}`),
-          colors: pool.colors,
           commander: commanderInput,
           secondCommander: secondCommanderInput,
-          cards: resolution.pool,
-          importedRows: resolution.importedRows,
-          evidence: evidence?.cards || [],
-          budget,
-          complexity,
+          deck,
+          evidenceCards: evidence?.cards || [],
         });
+        setImportWarnings([
+          ...(importWarnings?.unresolvedNames || []).map((name) => `"${name}" could not be verified and was left out.`),
+          ...(importWarnings?.illegalNames || []).map((name) => `"${name}" is not legal in ${format} and was left out.`),
+        ]);
         await applyForgeResult(nativeReport, {
           generationId,
           work: directWork,
@@ -3558,23 +3347,20 @@ export default function Home() {
           index: 0,
           replyText: `${nativeReport.methodology}\n\n${nativeReport.reasoning.summary}\n${nativeReport.laboratory.summary}${nativeReport.laboratory.verdict === "advance" ? `\nTest contract: ${nativeReport.laboratory.contract}` : ""}\n${nativeReport.reasoning.boundary} ${nativeReport.laboratory.boundary}`,
           revisionNote: "Adapted directly from your submitted list",
-          cardPool: resolution.pool,
+          cardPool,
         });
       } else {
-        const nativeReport = forgeNativeMasterwork({
+        const { nativeReport, cardPool } = await callForgeGenerate({
+          mode: "direct",
           format,
-          target: targetDeckSize(format),
           strategy,
-          path: "",
+          complexity,
+          budget,
           note: `${commissionNote}\n${interventionLearning.reusableGuidance}`.trim(),
           seed: hashText(`${commissionSeed}|commander|${commander?.name || ""}`),
-          colors: pool.colors,
           commander: commanderInput,
           secondCommander: secondCommanderInput,
-          cards: pool.cards,
-          evidence: evidence?.cards || [],
-          budget,
-          complexity,
+          evidenceCards: evidence?.cards || [],
           maxCardPrice,
           commonsOnly,
           targetPowerTier: isCommanderFormat(format) ? targetPowerTier || undefined : undefined,
@@ -3586,7 +3372,7 @@ export default function Home() {
           index: 0,
           replyText: `${nativeReport.methodology}\n\n${nativeReport.selected.tournament.reason}\n${nativeReport.reasoning.summary}\n${nativeReport.laboratory.summary}${nativeReport.laboratory.verdict === "advance" ? `\nTest contract: ${nativeReport.laboratory.contract}` : ""}\nStructural read: ${nativeReport.selected.evaluation.cohesion}/100 cohesion, ${nativeReport.selected.evaluation.resilience}/100 resilience. ${nativeReport.reasoning.boundary} ${nativeReport.laboratory.boundary}`,
           revisionNote: `Built directly for ${commander?.name || "your commander"} · ${nativeReport.selected.label}`,
-          cardPool: pool.cards,
+          cardPool,
         });
       }
     } catch (error) {

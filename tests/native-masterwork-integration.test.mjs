@@ -4,14 +4,25 @@ import test from "node:test";
 
 const page = fs.readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
 const nativeEngine = fs.readFileSync(new URL("../app/native-masterwork-engine.mjs", import.meta.url), "utf8");
+// The actual construction algorithm now runs server-side
+// (worker/forge-generate.ts) rather than being called directly from
+// page.tsx — several assertions below moved here with it.
+const forgeGenerateWorker = fs.readFileSync(new URL("../worker/forge-generate.ts", import.meta.url), "utf8");
 const start = page.indexOf("async function inspectMasterwork");
 const end = page.indexOf("function openSavedMasterwork", start);
 const generation = page.slice(start, end);
 
 test("Masterwork selection uses the native engine instead of a model endpoint", () => {
-  assert.match(generation, /forgeNativeMasterwork/);
+  // The construction algorithm itself moved server-side (see the engine-
+  // protection session) so it no longer ships in the client bundle — the
+  // client now calls the real generation endpoint, and the endpoint
+  // itself runs the real engine, not a model/chat call.
+  assert.match(generation, /callForgeGenerate/);
+  assert.match(generation, /mode:\s*"native"/);
   assert.doesNotMatch(generation, /api\/forge\/chat/);
   assert.doesNotMatch(generation, /task:\s*["']deck_generation/);
+  assert.match(forgeGenerateWorker, /forgeNativeMasterwork/);
+  assert.doesNotMatch(forgeGenerateWorker, /openai|chat\.completions/i);
 });
 
 test("the simulation dossier gets its roles from the shared simulationRoleFor classifier, not a re-inlined copy", () => {
@@ -44,8 +55,11 @@ test("the simulation dossier feeds real role counts and average curve into the i
 test("Blueprint identity shapes previews and targeted verified-pool retrieval", () => {
   assert.match(page, /parseNativeBlueprintIntent/);
   assert.match(page, /This version puts \$\{blueprintPromise\} first/);
-  assert.match(page, /Popularity pages are intentionally broad/);
-  assert.match(page, /loadNativeForgePool\(format, commander, preview\.card, commissionNote, secondCommander\)/);
+  // Verified-pool retrieval (loadNativeForgePool) now runs server-side,
+  // same targeted-identity behavior, moved to worker/forge-generate.ts
+  // along with the rest of the construction pipeline.
+  assert.match(forgeGenerateWorker, /Popularity pages are intentionally broad/);
+  assert.match(page, /lynchpin:\s*preview\.card/);
 });
 
 test("supports a second commander (Partner or Background) as a distinct, optional selection", () => {
