@@ -6,12 +6,15 @@ import { evaluateSimulationGate } from "./goldfish-simulation.mjs";
 import { evaluateMatchupMatrix } from "./matchup-simulation.mjs";
 import { displayRoleFor, simulationRoleFor } from "./adaptive-recommendation.mjs";
 import { getMetaIntelligence } from "./meta-intelligence.mjs";
-import {
-  buildBoundedFailureAnalysis,
-} from "./forge-systems-intelligence.mjs";
-import {
-  buildForgeStructuralAnalysis,
-} from "./forge-structural-pipeline.mjs";
+// The interaction graph, systems intelligence, causality engine, and
+// bounded failure analysis all now run server-side
+// (worker/forge-structural-analyze.ts, called via a debounced fetch to
+// /api/forge/structural-analyze) rather than shipping their full
+// reasoning to the browser. This type-only import (plus one small real
+// "no cards yet" data constant) carries zero engine logic into the
+// client bundle.
+import type { ForgeAnalysisReport } from "./forge-analysis-contract";
+import { EMPTY_FORGE_ANALYSIS_REPORT } from "./forge-analysis-contract";
 import { learnRevisionPreferences } from "./revision-learning.mjs";
 import { learnFromForgeInterventions } from "./forge-intervention-learning.mjs";
 import { applyControlledSwap, experimentAdditionSynergy, rankExperimentAdditions, rankExperimentCuts } from "./meta-breaker-experiment.mjs";
@@ -2185,25 +2188,32 @@ export default function Home() {
     ],
   );
 
-  const baseStructuralAnalysis = useMemo(
-    () =>
-      buildForgeStructuralAnalysis(
-        structuralCards,
-        {
-          commanderName: chosenPreview.card,
-        },
-      ),
-    [
-      structuralCards,
-      chosenPreview.card,
-    ],
-  );
+  // Debounced server-side structural analysis. Deck editing (cut/add/drag)
+  // stays instant and purely client-side; only this — the interaction
+  // graph, systems intelligence, causality engine, and bounded failure
+  // analysis, all now server-only — waits briefly after the player stops
+  // editing before refreshing. structuralAnalysisReport keeps its last
+  // real value across a refresh (no flash back to "0 systems" on every
+  // edit); structuralAnalysisStatus tracks idle/loading/ready/error
+  // explicitly for anything that wants to show that state. The actual
+  // fetch effect is defined further below, once simulationDossier (one of
+  // its inputs) exists — this block only owns state and the values every
+  // earlier hook in this component reads from it.
+  const [structuralAnalysisStatus, setStructuralAnalysisStatus] = useState<
+    "idle" | "loading" | "ready" | "error"
+  >("idle");
+  const [structuralAnalysisReport, setStructuralAnalysisReport] =
+    useState<ForgeAnalysisReport | null>(null);
+
+  const structuralReportReady = structuralAnalysisReport !== null;
+  const activeStructuralReport =
+    structuralAnalysisReport ?? EMPTY_FORGE_ANALYSIS_REPORT;
 
   const interactionGraph =
-    baseStructuralAnalysis.graph;
+    activeStructuralReport.graph;
 
   const forgeSystemsReport =
-    baseStructuralAnalysis.systems;
+    activeStructuralReport.systems;
 
 
   const activeSystem = useMemo(
@@ -2355,37 +2365,47 @@ export default function Home() {
     };
   }, [deckIntegrity.passed, deckRows, cardFacts, strategy]);
 
-  const forgeFailureAnalysis = useMemo(
-    () =>
-      buildBoundedFailureAnalysis(
-        forgeSystemsReport,
-        simulationDossier,
-      ),
-    [forgeSystemsReport, simulationDossier],
-  );
+  useEffect(() => {
+    if (!structuralCards.length) {
+      setStructuralAnalysisStatus("idle");
+      setStructuralAnalysisReport(null);
+      return;
+    }
+    let cancelled = false;
+    setStructuralAnalysisStatus("loading");
+    const timer = setTimeout(async () => {
+      try {
+        const response = await fetch("/api/forge/structural-analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            cards: structuralCards,
+            commanderName: chosenPreview.card,
+            simulationDossier,
+          }),
+        });
+        const data = await response.json();
+        if (cancelled) return;
+        if (!response.ok) throw new Error(data?.error || "Structural analysis unavailable");
+        setStructuralAnalysisReport(data.report as ForgeAnalysisReport);
+        setStructuralAnalysisStatus("ready");
+      } catch {
+        if (!cancelled) setStructuralAnalysisStatus("error");
+      }
+    }, 800);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [structuralCards, chosenPreview.card, simulationDossier]);
 
-  const structuralAnalysis = useMemo(
-    () =>
-      buildForgeStructuralAnalysis(
-        structuralCards,
-        {
-          commanderName:
-            chosenPreview.card,
-          simulationDossier,
-        },
-      ),
-    [
-      structuralCards,
-      chosenPreview.card,
-      simulationDossier,
-    ],
-  );
+  const forgeFailureAnalysis = activeStructuralReport.failureAnalysis;
 
   const forgeCausalityReport =
-    structuralAnalysis.causality;
+    activeStructuralReport.causality;
 
   const experimentTablets = useMemo(() => {
-    if (!nativeMasterworkContext) return null;
+    if (!nativeMasterworkContext || !structuralReportReady) return null;
     // Practical simulation gate: only real when the exact verified pool
     // this deck was built from is still known. A restored/older saved
     // Masterwork without one still gets the theoretical-only tablets
@@ -5167,6 +5187,16 @@ export default function Home() {
                 <header>
                   <small>CHAPTER III · UNDERSTAND THE MASTERWORK</small>
                   <h2>The essential reading, without the instrument panel.</h2>
+                  {structuralAnalysisStatus === "loading" && !structuralReportReady && (
+                    <p className="structural-analysis-pending" role="status">
+                      Analyzing this build's structure…
+                    </p>
+                  )}
+                  {structuralAnalysisStatus === "error" && !structuralReportReady && (
+                    <p className="structural-analysis-pending" role="status">
+                      Structural analysis is temporarily unavailable. Deck editing and testing remain unaffected.
+                    </p>
+                  )}
                 </header>
                 <div>
                   <span><small>LEGALITY</small><b>{deckIntegrity.passed ? "Verified" : deckIntegrity.checking ? "Checking" : "Attention required"}</b></span>

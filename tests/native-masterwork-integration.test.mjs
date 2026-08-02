@@ -8,6 +8,10 @@ const nativeEngine = fs.readFileSync(new URL("../app/native-masterwork-engine.mj
 // (worker/forge-generate.ts) rather than being called directly from
 // page.tsx — several assertions below moved here with it.
 const forgeGenerateWorker = fs.readFileSync(new URL("../worker/forge-generate.ts", import.meta.url), "utf8");
+// The interaction graph, systems intelligence, causality engine, and
+// bounded failure analysis moved server-side the same way — several
+// assertions below moved here with them too.
+const forgeStructuralAnalyzeWorker = fs.readFileSync(new URL("../worker/forge-structural-analyze.ts", import.meta.url), "utf8");
 const start = page.indexOf("async function inspectMasterwork");
 const end = page.indexOf("function openSavedMasterwork", start);
 const generation = page.slice(start, end);
@@ -46,10 +50,18 @@ test("the simulation dossier feeds real role counts and average curve into the i
   const dossier = page.slice(dossierStart, dossierEnd);
   assert.match(dossier, /roleCounts/);
   assert.match(dossier, /averageCmc/);
-  // forgeFailureAnalysis must actually receive the dossier this feeds,
-  // or the interaction-density check in forge-systems-intelligence.mjs
-  // never sees real data.
-  assert.match(page, /buildBoundedFailureAnalysis\(\s*forgeSystemsReport,\s*simulationDossier,?\s*\)/);
+  // The dossier is sent to the server as part of the same request that
+  // returns the structural report, and buildBoundedFailureAnalysis (now
+  // server-side) must actually receive it there, or the interaction-
+  // density check in forge-systems-intelligence.mjs never sees real data.
+  const analyzeFetchStart = page.indexOf('fetch("/api/forge/structural-analyze"');
+  const analyzeFetchEnd = page.indexOf("});", analyzeFetchStart);
+  const analyzeFetch = page.slice(analyzeFetchStart, analyzeFetchEnd);
+  assert.match(analyzeFetch, /simulationDossier/);
+  assert.match(
+    forgeStructuralAnalyzeWorker,
+    /buildBoundedFailureAnalysis\(\s*analysis\.systems,\s*simulationDossier,?\s*\)/,
+  );
 });
 
 test("Blueprint identity shapes previews and targeted verified-pool retrieval", () => {
@@ -112,8 +124,11 @@ test("initial Blueprint choices explain game terms before submission", () => {
   assert.match(page, /Trade resources, answer key threats/i);
 });
 
-test("Workbench structural intelligence uses the shared Forge pipeline", () => {
-  assert.match(
+test("Workbench structural intelligence runs server-side through the shared Forge pipeline", () => {
+  // The interaction graph, systems intelligence, and causality engine no
+  // longer run in the browser — page.tsx only holds a type-only import of
+  // the response contract and calls the real analysis endpoint.
+  assert.doesNotMatch(
     page,
     /buildForgeStructuralAnalysis/,
   );
@@ -133,19 +148,39 @@ test("Workbench structural intelligence uses the shared Forge pipeline", () => {
     /buildForgeCausalityReport/,
   );
 
-  assert.match(
+  assert.doesNotMatch(
     page,
-    /baseStructuralAnalysis\.graph/,
+    /buildBoundedFailureAnalysis/,
   );
 
   assert.match(
     page,
-    /baseStructuralAnalysis\.systems/,
+    /fetch\("\/api\/forge\/structural-analyze"/,
   );
 
   assert.match(
     page,
-    /structuralAnalysis\.causality/,
+    /activeStructuralReport\.graph/,
+  );
+
+  assert.match(
+    page,
+    /activeStructuralReport\.systems/,
+  );
+
+  assert.match(
+    page,
+    /activeStructuralReport\.causality/,
+  );
+
+  assert.match(
+    forgeStructuralAnalyzeWorker,
+    /buildForgeStructuralAnalysis/,
+  );
+
+  assert.match(
+    forgeStructuralAnalyzeWorker,
+    /buildBoundedFailureAnalysis/,
   );
 });
 
