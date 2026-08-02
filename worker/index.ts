@@ -14,6 +14,23 @@ import { cleanupExpiredRateLimits } from "./api-hardening";
 import { cleanupExpiredGenerations } from "./forge-generation-store";
 import { cleanupExpiredGuestForges, handleGuestClaim, handleGuestForge } from "./guest-forge";
 const BUILD_ID = "2026.07.16-workspace1";
+const IMPACT_SITE_VERIFICATION = "05208696-7452-434e-89b1-d6be551c7505";
+
+async function addImpactVerification(response: Response): Promise<Response> {
+  if (!response.headers.get("content-type")?.toLowerCase().includes("text/html")) return response;
+
+  const html = await response.text();
+  const tag = `<meta name="impact-site-verification" value="${IMPACT_SITE_VERIFICATION}">`;
+  if (!html.includes("</head>")) return new Response(html, response);
+
+  const headers = new Headers(response.headers);
+  headers.delete("content-length");
+  return new Response(html.replace("</head>", `${tag}</head>`), {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
 
 interface Env {
   ASSETS: Fetcher;
@@ -83,7 +100,7 @@ const worker = {
       }, allowedWidths);
     }
 
-    return handler.fetch(request, env, ctx);
+    return addImpactVerification(await handler.fetch(request, env, ctx));
   },
   async scheduled(_controller:ScheduledController,env:Env,ctx:ExecutionContext){ctx.waitUntil(runDataGoblins(env));ctx.waitUntil(cleanupExpiredRateLimits(env));ctx.waitUntil(cleanupExpiredGenerations(env));ctx.waitUntil(cleanupExpiredGuestForges(env));},
 };

@@ -19,6 +19,8 @@ test("server-renders the MetaForge product experience", async () => {
   const html = await response.text();
   assert.match(html, /<title>MetaForge — Forge a Better Deck<\/title>/i);
   assert.match(html, /THE GREAT FORGE AWAITS/);
+  assert.match(html, /<meta name="impact-site-verification" value="05208696-7452-434e-89b1-d6be551c7505">/i);
+  assert.doesNotMatch(html, /20eee0f8-1f57-4304-a32d-17bba0f1ec2a/i);
   assert.match(html, /data-forge-state="dormant"/);
   assert.match(html, /data-forge-action="none"/);
   assert.match(html, /data-motion="full"/);
