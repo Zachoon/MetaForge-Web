@@ -12,6 +12,7 @@ const forgeGenerateWorker = fs.readFileSync(new URL("../worker/forge-generate.ts
 // bounded failure analysis moved server-side the same way — several
 // assertions below moved here with them too.
 const forgeStructuralAnalyzeWorker = fs.readFileSync(new URL("../worker/forge-structural-analyze.ts", import.meta.url), "utf8");
+const debouncedAnalysisRequest = fs.readFileSync(new URL("../app/debounced-analysis-request.mjs", import.meta.url), "utf8");
 const start = page.indexOf("async function inspectMasterwork");
 const end = page.indexOf("function openSavedMasterwork", start);
 const generation = page.slice(start, end);
@@ -34,30 +35,37 @@ test("the simulation dossier gets its roles from the shared simulationRoleFor cl
   // inline roleMap here — now sourced from adaptive-recommendation.mjs's
   // simulationRoleFor (see tests/adaptive-recommendation.test.mjs for the
   // actual ramp/protection regression coverage, tested behaviorally rather
-  // than by pattern-matching page.tsx's source text). This just guards
-  // against a second inline copy quietly reappearing and drifting from it.
-  assert.match(page, /import \{[^}]*\bsimulationRoleFor\b[^}]*\} from "\.\/adaptive-recommendation\.mjs";/);
-  const dossierStart = page.indexOf("const simulationDossier = useMemo");
-  const dossierEnd = page.indexOf("}, [", dossierStart);
-  const dossier = page.slice(dossierStart, dossierEnd);
-  assert.match(dossier, /simulationRoleFor\(fact\)/);
+  // than by pattern-matching source text). The dossier itself, and its role
+  // classification, moved server-side in the same pass as simulation and
+  // revision/intervention learning — this just guards against a second
+  // inline copy quietly reappearing in page.tsx and drifting from it.
+  assert.doesNotMatch(page, /simulationRoleFor/);
+  assert.match(
+    forgeStructuralAnalyzeWorker,
+    /import \{[^}]*\bsimulationRoleFor\b[^}]*\} from "\.\.\/app\/adaptive-recommendation\.mjs";/,
+  );
+  const dossierStart = forgeStructuralAnalyzeWorker.indexOf("const model = cards.map");
+  const dossierEnd = forgeStructuralAnalyzeWorker.indexOf("simulationDossier = {", dossierStart);
+  const dossier = forgeStructuralAnalyzeWorker.slice(dossierStart, dossierEnd);
+  assert.match(dossier, /simulationRoleFor\(\{/);
   assert.doesNotMatch(dossier, /roleMap/);
 });
 
 test("the simulation dossier feeds real role counts and average curve into the interaction-density check", () => {
-  const dossierStart = page.indexOf("const simulationDossier = useMemo");
-  const dossierEnd = page.indexOf("}, [", dossierStart);
-  const dossier = page.slice(dossierStart, dossierEnd);
+  const dossierStart = forgeStructuralAnalyzeWorker.indexOf("const model = cards.map");
+  const dossierEnd = forgeStructuralAnalyzeWorker.indexOf("simulationDossier = {", dossierStart);
+  const dossier = forgeStructuralAnalyzeWorker.slice(dossierStart, dossierEnd);
   assert.match(dossier, /roleCounts/);
   assert.match(dossier, /averageCmc/);
-  // The dossier is sent to the server as part of the same request that
-  // returns the structural report, and buildBoundedFailureAnalysis (now
-  // server-side) must actually receive it there, or the interaction-
-  // density check in forge-systems-intelligence.mjs never sees real data.
-  const analyzeFetchStart = page.indexOf('fetch("/api/forge/structural-analyze"');
-  const analyzeFetchEnd = page.indexOf("});", analyzeFetchStart);
-  const analyzeFetch = page.slice(analyzeFetchStart, analyzeFetchEnd);
-  assert.match(analyzeFetch, /simulationDossier/);
+  // The client sends raw deck rows and a computeSimulation flag, not a
+  // pre-computed dossier — the server now builds the dossier itself, then
+  // buildBoundedFailureAnalysis (also server-side) must actually receive
+  // it, or the interaction-density check in forge-systems-intelligence.mjs
+  // never sees real data.
+  const analyzeCallStart = page.indexOf("return runDebouncedAnalysis({");
+  const analyzeCallEnd = page.indexOf("});", analyzeCallStart);
+  const analyzeCall = page.slice(analyzeCallStart, analyzeCallEnd);
+  assert.match(analyzeCall, /computeSimulation/);
   assert.match(
     forgeStructuralAnalyzeWorker,
     /buildBoundedFailureAnalysis\(\s*analysis\.systems,\s*simulationDossier,?\s*\)/,
@@ -153,9 +161,18 @@ test("Workbench structural intelligence runs server-side through the shared Forg
     /buildBoundedFailureAnalysis/,
   );
 
+  // The actual fetch call lives in debounced-analysis-request.mjs now
+  // (pulled out for testable race/staleness behavior — see
+  // tests/debounced-analysis-request.test.mjs); page.tsx calls it with
+  // the real endpoint URL.
   assert.match(
     page,
-    /fetch\("\/api\/forge\/structural-analyze"/,
+    /runDebouncedAnalysis\(\{[\s\S]*?url:\s*"\/api\/forge\/structural-analyze"/,
+  );
+
+  assert.match(
+    debouncedAnalysisRequest,
+    /await fetchImpl\(url,/,
   );
 
   assert.match(

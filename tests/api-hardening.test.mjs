@@ -110,6 +110,65 @@ test("structural-analyze runs the real engine for an authenticated, valid reques
   assert.ok(Array.isArray(body.report.graph.edges));
   assert.ok(Array.isArray(body.report.systems.systems));
   assert.ok("failureAnalysis" in body.report);
+  // computeSimulation defaults to false (not sent) — no client-side
+  // deckIntegrity gate was replicated server-side, so the endpoint takes
+  // the client's word for whether simulation is meaningful right now.
+  assert.equal(body.report.simulationDossier, null);
+  // revisionLearning/interventionLearning always compute — cheap, pure,
+  // and there's no equivalent "is this meaningful yet" gate for them.
+  assert.equal(body.report.revisionLearning.sampleSize, 0);
+  assert.ok(Array.isArray(body.report.interventionLearning.experiments));
+});
+
+test("structural-analyze computes a real simulation dossier when computeSimulation is true", async () => {
+  const worker = await loadWorker();
+  const cardsWithManaData = VALID_CARDS.map((card) => ({ ...card, colorIdentity: ["R"], manaCost: "{2}{R}" }));
+  const response = await worker.fetch(
+    analyzeRequest("one@example.com", { cards: cardsWithManaData, strategy: "Aggressive pressure", computeSimulation: true }),
+    env(new RateLimitD1()),
+    ctx,
+  );
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.ok(body.report.simulationDossier);
+  assert.equal(body.report.simulationDossier.goldfish.expert.strategy, "Aggro");
+  assert.ok(body.report.simulationDossier.matrix.rows.length > 0);
+  assert.ok(typeof body.report.simulationDossier.roleCounts === "object");
+});
+
+test("structural-analyze computes real revision and intervention learning from real history", async () => {
+  const worker = await loadWorker();
+  const matchLog = [
+    { id: "m1", result: "loss", opponent: "Aggro", signal: "Kept a risky hand and lost to fast pressure", playedAt: "2026-08-01", revision: 1 },
+    { id: "m2", result: "loss", opponent: "Aggro", signal: "Kept a risky hand and lost to fast pressure", playedAt: "2026-08-01", revision: 1 },
+  ];
+  const response = await worker.fetch(
+    analyzeRequest("one@example.com", { cards: VALID_CARDS, matchLog, revisionsCount: 1 }),
+    env(new RateLimitD1()),
+    ctx,
+  );
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.report.revisionLearning.sampleSize, 2);
+});
+
+test("structural-analyze rejects a matchLog that isn't an array", async () => {
+  const worker = await loadWorker();
+  const response = await worker.fetch(analyzeRequest("one@example.com", { cards: VALID_CARDS, matchLog: "not an array" }), env(new RateLimitD1()), ctx);
+  assert.equal(response.status, 400);
+});
+
+test("structural-analyze rejects an oversized matchLog", async () => {
+  const worker = await loadWorker();
+  const tooMany = Array.from({ length: 2001 }, (_, index) => ({ id: `m${index}` }));
+  const response = await worker.fetch(analyzeRequest("one@example.com", { cards: VALID_CARDS, matchLog: tooMany }), env(new RateLimitD1()), ctx);
+  assert.equal(response.status, 400);
+});
+
+test("structural-analyze rejects a forgeInterventions that isn't an array", async () => {
+  const worker = await loadWorker();
+  const response = await worker.fetch(analyzeRequest("one@example.com", { cards: VALID_CARDS, forgeInterventions: "nope" }), env(new RateLimitD1()), ctx);
+  assert.equal(response.status, 400);
 });
 
 test("structural-analyze rejects malformed JSON with 400", async () => {

@@ -2,12 +2,11 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { evaluateSimulationGate } from "./goldfish-simulation.mjs";
-import { evaluateMatchupMatrix } from "./matchup-simulation.mjs";
-import { displayRoleFor, simulationRoleFor } from "./adaptive-recommendation.mjs";
+import { displayRoleFor } from "./adaptive-recommendation.mjs";
 import { getMetaIntelligence } from "./meta-intelligence.mjs";
-// The interaction graph, systems intelligence, causality engine, and
-// bounded failure analysis all now run server-side
+// The interaction graph, systems intelligence, causality engine, bounded
+// failure analysis, goldfish/matchup simulation, and revision/
+// intervention learning all now run server-side
 // (worker/forge-structural-analyze.ts, called via a debounced fetch to
 // /api/forge/structural-analyze) rather than shipping their full
 // reasoning to the browser. This type-only import (plus one small real
@@ -15,19 +14,19 @@ import { getMetaIntelligence } from "./meta-intelligence.mjs";
 // client bundle.
 import type { ForgeAnalysisReport } from "./forge-analysis-contract";
 import { EMPTY_FORGE_ANALYSIS_REPORT } from "./forge-analysis-contract";
-import { learnRevisionPreferences } from "./revision-learning.mjs";
-import { learnFromForgeInterventions } from "./forge-intervention-learning.mjs";
+import { runDebouncedAnalysis } from "./debounced-analysis-request.mjs";
 import { applyControlledSwap, experimentAdditionSynergy, rankExperimentAdditions, rankExperimentCuts } from "./meta-breaker-experiment.mjs";
 // forgeNativeMasterwork/forgeImportedMasterwork deliberately NOT imported
 // here anymore — the actual deck-construction algorithm now runs
 // server-side only (worker/forge-generate.ts, called via
 // callForgeGenerate's fetch to /api/forge/generate), so it no longer
-// ships in this client bundle. These three remain: they're small,
+// ships in this client bundle. These two remain: they're small,
 // self-contained utilities still used elsewhere in this file (blueprint
-// note parsing, mana-pip math, and the post-swap mana-consistency
-// refresh on the Testing Anvil), not part of the construction algorithm
-// itself.
-import { colorPipsFromCost, manaConsistencyReport, parseNativeBlueprintIntent } from "./native-masterwork-engine.mjs";
+// note parsing and the post-swap mana-consistency refresh on the Testing
+// Anvil), not part of the construction algorithm itself. colorPipsFromCost
+// moved out entirely once the simulation dossier that was its only
+// caller became server-side too.
+import { manaConsistencyReport, parseNativeBlueprintIntent } from "./native-masterwork-engine.mjs";
 import { updateFamily, setFamilyMotifWeights } from "./deck-bench.mjs";
 import {
   resolveDeckStructuralCards,
@@ -1243,10 +1242,10 @@ const cheapestCardPriceUsd = (fact?: CardFact): number | null => {
     .filter((value): value is number => value !== null && Number.isFinite(value));
   return candidates.length ? Math.min(...candidates) : null;
 };
-// displayRoleFor/simulationRoleFor now live in adaptive-recommendation.mjs
-// — the single source both this display label and the simulation/sideboard
-// role vocabulary are derived from, instead of two copies that could drift.
-// It already reads both typeLine/type_line and oracleText/oracle_text, so
+// displayRoleFor lives in adaptive-recommendation.mjs alongside the
+// server-side simulation role vocabulary it's the display counterpart
+// of, so the two stay derived from one place instead of drifting. It
+// already reads both typeLine/type_line and oracleText/oracle_text, so
 // a raw Scryfall-shaped CardFact passes through directly.
 const cardRole = (fact?: CardFact) => displayRoleFor(fact);
 const BASIC_CARD_NAMES = new Set(["plains", "island", "swamp", "mountain", "forest", "wastes"]);
@@ -2178,6 +2177,8 @@ export default function Home() {
             isCommanderFormat(format) &&
             cardFactKey(row.name) ===
               cardFactKey(chosenPreview.card),
+          colorIdentity: fact?.color_identity || [],
+          manaCost: fact?.mana_cost || "",
         };
       }),
     [
@@ -2315,94 +2316,59 @@ export default function Home() {
               : activeRole === "Protection"
                 ? "Preserves a commander, engine, or decisive threat through interaction."
               : "Advances the primary plan while maintaining useful battlefield presence.";
-  const simulationDossier = useMemo(() => {
-    if (!deckIntegrity.passed) return null;
-    // simulationRoleFor (adaptive-recommendation.mjs) is the single source
-    // of this translation now — Acceleration and Protection used to fall
-    // back into "stabilizer" and "counter" before it gained dedicated
-    // ramp/protection roles, and buildSideboard needs the exact same
-    // mapping cardRole's display labels use here, not a second copy of it.
-    const model = deckRows.map((row) => {
-      const fact = cardFacts[cardFactKey(row.name)];
-      const role = simulationRoleFor(fact);
-      return {
-        quantity: row.quantity,
-        card: row.name,
-        role,
-        cmc: Number(fact?.cmc || 0),
-        // Real color data lets the goldfish sim tell a genuine color-screw
-        // risk apart from an ordinary mulligan — land rows carry which
-        // colors they can tap for, spell rows carry their actual pip cost.
-        colorIdentity: role === "land" ? fact?.color_identity || [] : undefined,
-        colorPips: role === "land" ? undefined : colorPipsFromCost(fact?.mana_cost || ""),
-      };
-    });
-    const strategyName = /aggro|pressure/i.test(strategy)
-      ? "Aggro"
-      : /control/i.test(strategy)
-        ? "Control"
-        : /tempo/i.test(strategy)
-          ? "Tempo"
-          : "Midrange";
-    // Real role counts and average nonland cost, already computed for the
-    // sims above — reused here so forgeFailureAnalysis can reason about
-    // interaction density (answers vs. curve) instead of only graph
-    // connectivity, without a second pass over the decklist.
-    const nonlandModel = model.filter((row) => row.role !== "land");
-    const nonlandQuantity = nonlandModel.reduce((sum, row) => sum + row.quantity, 0);
-    const roleCounts = nonlandModel.reduce((counts, row) => {
-      counts[row.role] = (counts[row.role] || 0) + row.quantity;
-      return counts;
-    }, {} as Record<string, number>);
-    const averageCmc = nonlandQuantity
-      ? nonlandModel.reduce((sum, row) => sum + row.cmc * row.quantity, 0) / nonlandQuantity
-      : 0;
-    return {
-      goldfish: evaluateSimulationGate(model, strategyName, 1200, 8128),
-      matrix: evaluateMatchupMatrix(model, undefined, 900, 991),
-      roleCounts,
-      averageCmc,
-    };
-  }, [deckIntegrity.passed, deckRows, cardFacts, strategy]);
-
+  // Union-of-triggers: this single debounced request now covers both
+  // simulation (live-editing reactive — deckRows/cardFacts/strategy) and
+  // revision/intervention learning (event reactive — matchLog/
+  // forgeInterventions/revisions.length change on match-recording and
+  // intervention accept/dismiss, not on card edits). Either trigger
+  // refetches everything; both computations are cheap and pure, so
+  // recomputing the other section redundantly costs nothing real, and
+  // this avoids a second parallel endpoint/state machine for a boundary
+  // that's otherwise identical in shape.
+  //
+  // runDebouncedAnalysis (debounced-analysis-request.mjs) owns the
+  // debounce timer, AbortController, and stale-response guard as a
+  // plain, framework-free function specifically so that race behavior
+  // (rapid edits collapsing into one request, an out-of-order late
+  // response never overwriting newer state) is directly unit-testable
+  // without rendering this component. Its returned cancel function is
+  // this effect's cleanup — React always runs the previous effect's
+  // cleanup before the next one fires, so a superseded call is always
+  // canceled (timer cleared, fetch aborted) before a new one starts.
   useEffect(() => {
     if (!structuralCards.length) {
       setStructuralAnalysisStatus("idle");
       setStructuralAnalysisReport(null);
       return;
     }
-    let cancelled = false;
-    setStructuralAnalysisStatus("loading");
-    const timer = setTimeout(async () => {
-      try {
-        const response = await fetch("/api/forge/structural-analyze", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            cards: structuralCards,
-            commanderName: chosenPreview.card,
-            simulationDossier,
-          }),
-        });
-        const data = await response.json();
-        if (cancelled) return;
-        if (!response.ok) throw new Error(data?.error || "Structural analysis unavailable");
-        setStructuralAnalysisReport(data.report as ForgeAnalysisReport);
+    return runDebouncedAnalysis({
+      url: "/api/forge/structural-analyze",
+      delayMs: 800,
+      fetchImpl: fetch,
+      requestBody: {
+        cards: structuralCards,
+        commanderName: chosenPreview.card,
+        strategy,
+        computeSimulation: deckIntegrity.passed,
+        matchLog,
+        forgeInterventions,
+        revisionsCount: revisions.length,
+      },
+      onLoading: () => setStructuralAnalysisStatus("loading"),
+      onSuccess: (data: { report: ForgeAnalysisReport }) => {
+        setStructuralAnalysisReport(data.report);
         setStructuralAnalysisStatus("ready");
-      } catch {
-        if (!cancelled) setStructuralAnalysisStatus("error");
-      }
-    }, 800);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [structuralCards, chosenPreview.card, simulationDossier]);
+      },
+      onError: () => setStructuralAnalysisStatus("error"),
+    });
+  }, [structuralCards, chosenPreview.card, strategy, deckIntegrity.passed, matchLog, forgeInterventions, revisions.length]);
 
   const forgeFailureAnalysis = activeStructuralReport.failureAnalysis;
 
   const forgeCausalityReport =
     activeStructuralReport.causality;
+
+  const simulationDossier = activeStructuralReport.simulationDossier;
 
   const experimentTablets = useMemo(() => {
     if (!nativeMasterworkContext || !structuralReportReady) return null;
@@ -2551,14 +2517,8 @@ export default function Home() {
       test: `${repair.test} The next revision must beat the ${weakestRate}% baseline without lowering opening-hand consistency.`,
     };
   }, [simulationDossier, format, edhrecEvidence]);
-  const revisionLearning = useMemo(
-    () => learnRevisionPreferences(matchLog, Math.max(1, revisions.length)),
-    [matchLog, revisions.length],
-  );
-  const interventionLearning = useMemo(
-    () => learnFromForgeInterventions(forgeInterventions, matchLog),
-    [forgeInterventions, matchLog],
-  );
+  const revisionLearning = activeStructuralReport.revisionLearning;
+  const interventionLearning = activeStructuralReport.interventionLearning;
   const verifiedDeckFacts = useMemo(
     () =>
       [

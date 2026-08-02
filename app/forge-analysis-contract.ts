@@ -69,6 +69,33 @@ export interface ForgeAnalysisReport {
     nextTest: string;
     evidence: string;
   };
+  // null when the request didn't ask for simulation (computeSimulation:
+  // false — mirrors the client's own deckIntegrity.passed gate, which
+  // this endpoint doesn't replicate; the client still decides whether a
+  // simulation is meaningful to request) rather than when the deck is
+  // simply empty, which instead returns the engine's own real
+  // "unsupported gate" output for zero cards.
+  simulationDossier: {
+    goldfish: any;
+    matrix: any;
+    roleCounts: Record<string, number>;
+    averageCmc: number;
+  } | null;
+  revisionLearning: {
+    revision: number;
+    sampleSize: number;
+    patterns: any[];
+    matchups: any[];
+    actionable: any[];
+    guidance: string;
+  };
+  interventionLearning: {
+    experiments: any[];
+    patterns: any[];
+    reusable: any[];
+    reusableGuidance: string;
+    evidenceBoundary: string;
+  };
   methodology: string;
 }
 
@@ -134,6 +161,28 @@ export const EMPTY_FORGE_ANALYSIS_REPORT: ForgeAnalysisReport = {
     chain: [],
     nextTest: "Resolve the remaining card records and collect classified match signals before changing the deck.",
     evidence: "Insufficient evidence for a structural hypothesis.",
+  },
+  // Not requested by default (no computeSimulation flag) — this is the
+  // idle/pre-load placeholder shape, not a claim that zero cards were
+  // analyzed. When a real request does ask for simulation on an empty
+  // deck, the engine's own real "unsupported gate" output is used
+  // instead (captured the same way, from evaluateSimulationGate([],...)
+  // and evaluateMatchupMatrix([],...) directly).
+  simulationDossier: null,
+  revisionLearning: {
+    revision: 1,
+    sampleSize: 0,
+    patterns: [],
+    matchups: [],
+    actionable: [],
+    guidance: "No repeated preference has cleared the two-signal learning threshold. Preserve the list and collect another explicit match signal.",
+  },
+  interventionLearning: {
+    experiments: [],
+    patterns: [],
+    reusable: [],
+    reusableGuidance: "No intervention has earned reuse yet. Build from the current Blueprint and collect controlled before/after evidence.",
+    evidenceBoundary: "MetaForge never rewrites its own rules from one result. An intervention needs four matches before and after, and the same kind must improve twice before it becomes a reusable player prior.",
   },
   methodology: "MetaForge converts verified card text into an interaction graph, interprets repeatable systems, and then forms bounded structural-impact hypotheses. These results do not prove real-game causation or predict match outcomes.",
 };

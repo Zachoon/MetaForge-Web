@@ -1,15 +1,16 @@
 // Server-side structural intelligence. The interaction graph, systems
-// intelligence, and causality engine used to run entirely client-side via
-// buildForgeStructuralAnalysis, shipping their full reasoning (producer/
-// payoff signal tables, system health scoring, causality weighting) to
-// every visitor's browser. This endpoint runs the real engines here;
-// only the finished report crosses back over the network.
+// intelligence, causality engine, goldfish/matchup simulation, and
+// revision/intervention learning used to run entirely client-side,
+// shipping their full reasoning (producer/payoff signal tables, system
+// health scoring, causality weighting, simulation trial models, learning
+// thresholds) to every visitor's browser. This endpoint runs the real
+// engines here; only the finished report crosses back over the network.
 //
-// buildBoundedFailureAnalysis also moves here rather than staying
-// client-side — it's the one other direct forge-systems-intelligence.mjs
-// import page.tsx still had, and leaving it there would keep pulling the
-// whole module (and its systems-building internals) back into the client
-// bundle even after the pipeline import above it was removed.
+// buildBoundedFailureAnalysis, the simulation gate/matrix, and the
+// learning functions all moved here in the same pass rather than
+// staying client-side as separate direct imports, each of which would
+// have kept pulling its whole module (and its internals) back into the
+// client bundle.
 //
 // Public-alpha hardening: authenticated (reuses the same account
 // identity as every other /api/account and /api/forge endpoint — the
@@ -18,6 +19,12 @@
 // reasoning behind the specific limits chosen.
 import { buildForgeStructuralAnalysis } from "../app/forge-structural-pipeline.mjs";
 import { buildBoundedFailureAnalysis } from "../app/forge-systems-intelligence.mjs";
+import { evaluateSimulationGate } from "../app/goldfish-simulation.mjs";
+import { evaluateMatchupMatrix } from "../app/matchup-simulation.mjs";
+import { simulationRoleFor } from "../app/adaptive-recommendation.mjs";
+import { colorPipsFromCost } from "../app/native-masterwork-engine.mjs";
+import { learnRevisionPreferences } from "../app/revision-learning.mjs";
+import { learnFromForgeInterventions } from "../app/forge-intervention-learning.mjs";
 import type { ForgeAnalysisReport } from "../app/forge-analysis-contract";
 import { userKey } from "./account-bench";
 import { checkRateLimit, readJsonWithLimit } from "./api-hardening";
@@ -36,21 +43,37 @@ const json = (value: unknown, status = 200, headers: Record<string, string> = {}
 // roughly 375 requests; a real player pausing between edits sends far
 // fewer. 150/5min (~30/min sustained) comfortably covers heavy real
 // editing while still meaningfully throttling a script bypassing the
-// client debounce entirely.
+// client debounce entirely. Match-recording and intervention events now
+// also trigger this same endpoint (the union-of-triggers design), but
+// those are rarer than edits, not an additional load concern.
 const RATE_LIMIT = 150;
 const RATE_WINDOW_MS = 5 * 60 * 1000;
 
 // Structural cards carry oracle text and type lines for every unique
 // card in the deck (up to ~100 rows for the largest supported formats,
-// Commander/Brawl) plus a simulation dossier (goldfish/matchup results,
-// role counts). 512KB gives generous headroom above any real deck's
-// payload while still rejecting a genuinely oversized/malicious body.
+// Commander/Brawl), plus match history and intervention history. 512KB
+// gives generous headroom above any real deck/history payload while
+// still rejecting a genuinely oversized/malicious body.
 const MAX_BODY_BYTES = 512 * 1024;
 const MAX_CARDS = 300;
 const MAX_TEXT_FIELD = 4000;
 const MAX_COMMANDER_NAME = 400;
+const MAX_SHORT_STRING = 400;
+const MAX_MATCH_LOG = 2000;
+const MAX_INTERVENTIONS = 1000;
 
-function sanitizeCard(raw: any) {
+interface SanitizedCard {
+  name: string;
+  quantity: number;
+  typeLine: string;
+  oracleText: string;
+  cmc: number;
+  isCommander: boolean;
+  colorIdentity: string[];
+  manaCost: string;
+}
+
+function sanitizeCard(raw: any): SanitizedCard | null {
   if (!raw || typeof raw !== "object") return null;
   const name = String(raw.name || "").slice(0, MAX_COMMANDER_NAME);
   if (!name) return null;
@@ -61,7 +84,31 @@ function sanitizeCard(raw: any) {
     oracleText: String(raw.oracleText || "").slice(0, MAX_TEXT_FIELD),
     cmc: Number.isFinite(raw.cmc) ? raw.cmc : 0,
     isCommander: raw.isCommander === true,
+    colorIdentity: Array.isArray(raw.colorIdentity)
+      ? raw.colorIdentity.filter((c: unknown): c is string => typeof c === "string").slice(0, 5).map((c: string) => c.slice(0, 2))
+      : [],
+    manaCost: String(raw.manaCost || "").slice(0, 80),
   };
+}
+
+// matchLog/forgeInterventions entries are passed through to pure,
+// already-defensive learning functions (learnRevisionPreferences,
+// learnFromForgeInterventions) rather than deeply shape-validated field
+// by field — the same trust boundary buildForgeStructuralAnalysis
+// already applies to malformed cards. Only array length and a generic
+// string-field cap (against a single oversized entry) are enforced here.
+function sanitizeHistoryEntry(raw: any) {
+  if (!raw || typeof raw !== "object") return null;
+  const clipped: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    clipped[k] = typeof v === "string" ? v.slice(0, MAX_SHORT_STRING) : v;
+  }
+  return clipped;
+}
+
+function sanitizeHistoryArray(raw: unknown, maxEntries: number) {
+  if (!Array.isArray(raw)) return [];
+  return raw.slice(0, maxEntries).map(sanitizeHistoryEntry).filter((entry) => entry !== null);
 }
 
 export async function handleForgeStructuralAnalyze(request: Request, env: Env): Promise<Response> {
@@ -85,20 +132,86 @@ export async function handleForgeStructuralAnalyze(request: Request, env: Env): 
 
   if (!Array.isArray(payload?.cards)) return json({ error: "cards must be an array" }, 400);
   if (payload.cards.length > MAX_CARDS) return json({ error: `cards must not exceed ${MAX_CARDS} entries` }, 400);
-  const cards = payload.cards.map(sanitizeCard).filter((card: unknown) => card !== null);
+  const cards: SanitizedCard[] = (payload.cards as unknown[])
+    .map(sanitizeCard)
+    .filter((card: SanitizedCard | null): card is SanitizedCard => card !== null);
+
+  if (payload?.matchLog !== undefined && !Array.isArray(payload.matchLog)) {
+    return json({ error: "matchLog must be an array" }, 400);
+  }
+  if (Array.isArray(payload?.matchLog) && payload.matchLog.length > MAX_MATCH_LOG) {
+    return json({ error: `matchLog must not exceed ${MAX_MATCH_LOG} entries` }, 400);
+  }
+  if (payload?.forgeInterventions !== undefined && !Array.isArray(payload.forgeInterventions)) {
+    return json({ error: "forgeInterventions must be an array" }, 400);
+  }
+  if (Array.isArray(payload?.forgeInterventions) && payload.forgeInterventions.length > MAX_INTERVENTIONS) {
+    return json({ error: `forgeInterventions must not exceed ${MAX_INTERVENTIONS} entries` }, 400);
+  }
 
   const commanderName =
     typeof payload?.commanderName === "string" ? payload.commanderName.slice(0, MAX_COMMANDER_NAME) : "";
-
-  const simulationDossier =
-    payload?.simulationDossier && typeof payload.simulationDossier === "object" && !Array.isArray(payload.simulationDossier)
-      ? payload.simulationDossier
-      : null;
+  const strategy = typeof payload?.strategy === "string" ? payload.strategy.slice(0, MAX_SHORT_STRING) : "";
+  const computeSimulation = payload?.computeSimulation === true;
+  const matchLog = sanitizeHistoryArray(payload?.matchLog, MAX_MATCH_LOG);
+  const forgeInterventions = sanitizeHistoryArray(payload?.forgeInterventions, MAX_INTERVENTIONS);
+  const revisionsCount = Number.isFinite(payload?.revisionsCount) ? Math.max(1, Math.trunc(payload.revisionsCount)) : 1;
 
   try {
+    let simulationDossier: ForgeAnalysisReport["simulationDossier"] = null;
+    if (computeSimulation) {
+      const model = cards.map((card) => {
+        const role = simulationRoleFor({
+          type_line: card.typeLine,
+          oracle_text: card.oracleText,
+          cmc: card.cmc,
+          mana_cost: card.manaCost,
+        });
+        return {
+          quantity: card.quantity,
+          card: card.name,
+          role,
+          cmc: card.cmc,
+          colorIdentity: role === "land" ? card.colorIdentity : undefined,
+          colorPips: role === "land" ? undefined : colorPipsFromCost(card.manaCost || ""),
+        };
+      });
+      const strategyName = /aggro|pressure/i.test(strategy)
+        ? "Aggro"
+        : /control/i.test(strategy)
+          ? "Control"
+          : /tempo/i.test(strategy)
+            ? "Tempo"
+            : "Midrange";
+      const nonlandModel = model.filter((row) => row.role !== "land");
+      const nonlandQuantity = nonlandModel.reduce((sum, row) => sum + row.quantity, 0);
+      const roleCounts = nonlandModel.reduce((counts: Record<string, number>, row) => {
+        counts[row.role] = (counts[row.role] || 0) + row.quantity;
+        return counts;
+      }, {});
+      const averageCmc = nonlandQuantity
+        ? nonlandModel.reduce((sum, row) => sum + row.cmc * row.quantity, 0) / nonlandQuantity
+        : 0;
+      simulationDossier = {
+        goldfish: evaluateSimulationGate(model, strategyName, 1200, 8128),
+        matrix: evaluateMatchupMatrix(model, undefined, 900, 991),
+        roleCounts,
+        averageCmc,
+      };
+    }
+
     const analysis = buildForgeStructuralAnalysis(cards, { commanderName, simulationDossier });
     const failureAnalysis = buildBoundedFailureAnalysis(analysis.systems, simulationDossier);
-    const report: ForgeAnalysisReport = { ...analysis, failureAnalysis };
+    const revisionLearning = learnRevisionPreferences(matchLog, revisionsCount);
+    const interventionLearning = learnFromForgeInterventions(forgeInterventions, matchLog);
+
+    const report: ForgeAnalysisReport = {
+      ...analysis,
+      failureAnalysis,
+      simulationDossier,
+      revisionLearning,
+      interventionLearning,
+    };
     return json({ report });
   } catch (error) {
     // Never echo the raw exception message — it can contain internal
