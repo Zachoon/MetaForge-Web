@@ -252,8 +252,19 @@ export function rankOneSlotCounterfactuals(selected, candidates, options = {}) {
     });
   }
 
+  const confidentCount = distinct.filter((experiment) => experiment.gate.passed).length;
   return deepFreeze({
     verdict: "advance", experimentsTested: experiments.length,
+    // Every other verdict branch above sets a top-level summary; this one
+    // didn't, and buildExperimentTablets (experiment-tablet.mjs) reads
+    // ranked.summary unconditionally for its confidence-tablet fallback
+    // whenever fewer than 3 experiments pass — including here, on
+    // "advance" with 1-2 results. A real deck hit this live: distinct.length
+    // was legitimately under 3, verdict was "advance", and the fallback
+    // rendered "undefined That silence is itself a signal...".
+    summary: confidentCount
+      ? `The Forge tested ${experiments.length} exact one-slot changes; ${confidentCount} cleared every structural gate.`
+      : `The Forge tested ${experiments.length} exact one-slot changes; none cleared every structural gate, so the next-best speculative changes are shown instead.`,
     experiments: distinct.map((experiment) => ({
       cut: experiment.cut,
       add: experiment.add,

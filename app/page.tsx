@@ -387,7 +387,19 @@ const ForgeProcessingLoader = ({ motionMode }: { motionMode: MotionMode }) => {
       rive = new Rive({
         src: "/assets/forge/animations/metaforge-forging-loader.riv",
         canvas,
-        stateMachines: "Forge Loader Machine",
+        // The exported .riv asset's actual internal state machine is named
+        // "State Machine 1" (Rive's default auto-generated name) — verified
+        // directly against the binary's own string table, not assumed.
+        // asset-registry.json's own notes describe it as "Forge Loader
+        // Machine", but that name doesn't exist in what was actually
+        // exported, which is why this always fell back with a console
+        // error live ("State Machine with name Forge Loader Machine not
+        // found"). Matching the real asset here rather than editing the
+        // .riv file itself, which is the owner's separate animation work.
+        // If a future re-export renames the state machine to match the
+        // documented name, update this string to match — don't let it
+        // silently drift again.
+        stateMachines: "State Machine 1",
         autoBind: true,
         autoplay: true,
         layout: new Layout({ fit: Fit.Contain, alignment: Alignment.Center }),

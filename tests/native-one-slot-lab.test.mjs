@@ -128,6 +128,12 @@ test("rankOneSlotCounterfactuals backfills with the next-best speculative swap i
   assert.equal(report.experiments[0].confident, false);
   assert.equal(report.experiments[0].cut, "Answer");
   assert.match(report.experiments[0].summary, /speculative/i);
+  // A live production deck hit exactly this shape — "advance" with fewer
+  // than 3 experiments — and buildExperimentTablets' confidence-tablet
+  // fallback reads this top-level summary unconditionally, rendering
+  // "undefined ..." when it was missing. Every verdict branch must set it.
+  assert.equal(typeof report.summary, "string");
+  assert.ok(report.summary.length > 0);
 });
 
 test("rankOneSlotCounterfactuals reports truly nothing only when no distinct candidate pair exists at all", () => {

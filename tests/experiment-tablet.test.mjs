@@ -133,6 +133,12 @@ test("offers an honest confidence tablet instead of an empty slot when no experi
   assert.equal(report.tablets[0].type, "confidence");
   assert.match(report.tablets[0].headline, /no structural swap clears the bar/i);
   assert.ok(report.tablets[0].detail);
+  // A truthy check alone passed even when detail was the literal string
+  // "undefined That silence is itself a signal..." — ranked.summary was
+  // missing on native-one-slot-lab.mjs's "advance" verdict, and this
+  // fallback text always starts with it. Caught live before this check
+  // existed; guards the actual symptom, not just presence of some string.
+  assert.doesNotMatch(report.tablets[0].detail, /^undefined\b/);
 });
 
 test("surfaces a speculative experiment tablet instead of only a confidence card when the only candidate misses the gate", () => {
@@ -210,4 +216,12 @@ test("pads a partial set of real experiments with exactly one confidence tablet,
   const confidenceTablets = report.tablets.filter((tablet) => tablet.type === "confidence");
   assert.ok(confidenceTablets.length <= 1);
   assert.equal(report.tablets.length, report.tablets.filter((t) => t.type === "experiment").length + confidenceTablets.length);
+  // Same "advance" + fewer-than-3-experiments shape a live deck hit —
+  // confirms the confidence tablet's detail text is real, not
+  // "undefined ...", specifically when verdict is "advance" (as opposed
+  // to the "offers an honest confidence tablet" test above, which is the
+  // "inconclusive" case that already worked before this fix).
+  for (const tablet of confidenceTablets) {
+    assert.doesNotMatch(tablet.detail, /undefined/);
+  }
 });
