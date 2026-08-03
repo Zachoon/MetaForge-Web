@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-async function render() {
+async function render(url = "https://metaforge.gg/") {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
   const { default: worker } = await import(workerUrl.href);
   return worker.fetch(
-    new Request("http://localhost/", { headers: { accept: "text/html" } }),
+    new Request(url, { headers: { accept: "text/html" } }),
     { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) }, METAFORGE_BOOTSTRAP_LOCK: "unlocked" },
     { waitUntil() {}, passThroughOnException() {} },
   );
@@ -20,6 +20,11 @@ test("server-renders the MetaForge product experience", async () => {
   assert.match(html, /<title>MetaForge — Forge a Better Deck<\/title>/i);
   assert.match(html, /THE GREAT FORGE AWAITS/);
   assert.match(html, /<meta name="impact-site-verification" value="05208696-7452-434e-89b1-d6be551c7505">/i);
+  assert.match(html, /<link rel="canonical" href="https:\/\/metaforge\.gg\/">/i);
+  assert.match(html, /<script type="application\/ld\+json">.*"WebApplication".*<\/script>/i);
+  assert.match(html, /<meta name="robots" content="index, follow">/i);
+  assert.doesNotMatch(html, /content="noindex/i);
+  assert.match(html, /<meta property="og:image" content="https:\/\/metaforge\.gg\/og\.png"/i);
   assert.doesNotMatch(html, /20eee0f8-1f57-4304-a32d-17bba0f1ec2a/i);
   assert.match(html, /data-forge-state="dormant"/);
   assert.match(html, /data-forge-action="none"/);
@@ -35,4 +40,40 @@ test("server-renders the MetaForge product experience", async () => {
   assert.doesNotMatch(html, /RELEASE GATE|LIVE ACCEPTANCE/);
   assert.match(html, /THE ARCHIVE IS LISTENING/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
+});
+
+test("keeps the authenticated app out of search results", async () => {
+  const response = await render("https://app.metaforge.gg/");
+  assert.equal(response.headers.get("x-robots-tag"), "noindex, nofollow, noarchive, noimageindex");
+  const html = await response.text();
+  assert.match(html, /<meta name="robots" content="noindex, nofollow, noarchive, noimageindex">/i);
+  assert.doesNotMatch(html, /application\/ld\+json/i);
+  assert.doesNotMatch(html, /impact-site-verification/i);
+});
+
+test("publishes canonical URLs for public legal pages", async () => {
+  const response = await render("https://www.metaforge.gg/privacy");
+  const html = await response.text();
+  assert.match(html, /<link rel="canonical" href="https:\/\/metaforge\.gg\/privacy">/i);
+});
+
+test("publishes a crawlable public robots file and sitemap", async () => {
+  const robots = await render("https://metaforge.gg/robots.txt");
+  assert.equal(robots.status, 200);
+  assert.match(await robots.text(), /Sitemap: https:\/\/metaforge\.gg\/sitemap\.xml/);
+
+  const sitemap = await render("https://metaforge.gg/sitemap.xml");
+  assert.equal(sitemap.status, 200);
+  assert.match(sitemap.headers.get("content-type") ?? "", /^application\/xml/i);
+  const xml = await sitemap.text();
+  assert.match(xml, /<loc>https:\/\/metaforge\.gg\/<\/loc>/);
+  assert.match(xml, /<loc>https:\/\/metaforge\.gg\/terms<\/loc>/);
+  assert.match(xml, /<loc>https:\/\/metaforge\.gg\/privacy<\/loc>/);
+});
+
+test("blocks crawler discovery on the authenticated host", async () => {
+  const robots = await render("https://app.metaforge.gg/robots.txt");
+  assert.equal(await robots.text(), "User-agent: *\nDisallow: /\n");
+  const sitemap = await render("https://app.metaforge.gg/sitemap.xml");
+  assert.equal(sitemap.status, 404);
 });

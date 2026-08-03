@@ -15,17 +15,56 @@ import { cleanupExpiredGenerations } from "./forge-generation-store";
 import { cleanupExpiredGuestForges, handleGuestClaim, handleGuestForge } from "./guest-forge";
 const BUILD_ID = "2026.07.16-workspace1";
 const IMPACT_SITE_VERIFICATION = "05208696-7452-434e-89b1-d6be551c7505";
+const PUBLIC_HOSTS = new Set(["metaforge.gg", "www.metaforge.gg"]);
+const SEO_HEADERS = { "Cache-Control": "public, max-age=3600", "Content-Type": "text/plain; charset=utf-8" };
 
-async function addImpactVerification(response: Response): Promise<Response> {
+function robotsResponse(url: URL): Response {
+  const body = PUBLIC_HOSTS.has(url.hostname)
+    ? "User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /founder/\nDisallow: /profile/\nSitemap: https://metaforge.gg/sitemap.xml\nHost: metaforge.gg\n"
+    : "User-agent: *\nDisallow: /\n";
+  return new Response(body, { headers: SEO_HEADERS });
+}
+
+function sitemapResponse(url: URL): Response {
+  if (!PUBLIC_HOSTS.has(url.hostname)) return new Response("Not found", { status: 404 });
+  const urls = ["https://metaforge.gg/", "https://metaforge.gg/terms", "https://metaforge.gg/privacy"];
+  const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map((pageUrl, index) => `\n  <url><loc>${pageUrl}</loc><lastmod>2026-08-02</lastmod><changefreq>${index === 0 ? "weekly" : "monthly"}</changefreq><priority>${index === 0 ? "1.0" : "0.3"}</priority></url>`).join("")}\n</urlset>\n`;
+  return new Response(body, { headers: { ...SEO_HEADERS, "Content-Type": "application/xml; charset=utf-8" } });
+}
+
+function seoMarkup(url: URL): string {
+  const canonicalUrl = new URL(url.pathname === "/" ? "/" : url.pathname, "https://metaforge.gg").href;
+  const canonical = `<link rel="canonical" href="${canonicalUrl}">`;
+  if (url.pathname !== "/") return canonical;
+
+  const structuredData = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    name: "MetaForge",
+    url: "https://metaforge.gg/",
+    description: "Explainable Magic: The Gathering deck analysis that finds pressure points and gives you changes worth testing.",
+    applicationCategory: "GameApplication",
+    operatingSystem: "Any modern web browser",
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  }).replace(/</g, "\\u003c");
+  return `${canonical}<script type="application/ld+json">${structuredData}</script>`;
+}
+
+async function addDocumentMetadata(response: Response, requestUrl: string): Promise<Response> {
   if (!response.headers.get("content-type")?.toLowerCase().includes("text/html")) return response;
 
-  const html = await response.text();
-  const tag = `<meta name="impact-site-verification" value="${IMPACT_SITE_VERIFICATION}">`;
+  const url = new URL(requestUrl);
+  const isPublicSite = PUBLIC_HOSTS.has(url.hostname);
+  const html = (await response.text()).replace(/<meta\s+name=["']robots["'][^>]*>/gi, "");
+  const metadata = isPublicSite
+    ? `<meta name="robots" content="index, follow"><meta name="impact-site-verification" value="${IMPACT_SITE_VERIFICATION}">${seoMarkup(url)}`
+    : '<meta name="robots" content="noindex, nofollow, noarchive, noimageindex">';
   if (!html.includes("</head>")) return new Response(html, response);
 
   const headers = new Headers(response.headers);
   headers.delete("content-length");
-  return new Response(html.replace("</head>", `${tag}</head>`), {
+  if (!isPublicSite) headers.set("X-Robots-Tag", "noindex, nofollow, noarchive, noimageindex");
+  return new Response(html.replace("</head>", `${metadata}</head>`), {
     status: response.status,
     statusText: response.statusText,
     headers,
@@ -74,6 +113,9 @@ const worker = {
     }
     const url = new URL(request.url);
 
+    if (url.pathname === "/robots.txt") return robotsResponse(url);
+    if (url.pathname === "/sitemap.xml") return sitemapResponse(url);
+
     if (url.pathname === "/api/account/deck-bench") {
       return handleAccountBench(request, env);
     }
@@ -107,7 +149,7 @@ const worker = {
       }, allowedWidths);
     }
 
-    return addImpactVerification(await handler.fetch(request, env, ctx));
+    return addDocumentMetadata(await handler.fetch(request, env, ctx), request.url);
   },
   async scheduled(_controller:ScheduledController,env:Env,ctx:ExecutionContext){ctx.waitUntil(runDataGoblins(env));ctx.waitUntil(cleanupExpiredRateLimits(env));ctx.waitUntil(cleanupExpiredGenerations(env));ctx.waitUntil(cleanupExpiredGuestForges(env));},
 };
