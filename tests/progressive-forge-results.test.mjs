@@ -84,6 +84,12 @@ test("offers three evidence-led experiment tablets before optional match evidenc
 
 test("makes a guided three-card experiment the doorway to a new Masterwork", () => {
   assert.match(page, /openingExperimentPending/);
+  assert.match(
+    page,
+    /const openingExperimentGateActive\s*=\s*openingExperimentPending\s*&&\s*benchStatus !== "forging"\s*&&\s*openingExperimentChoices\.length > 0/,
+    "The opening experiment must never hide the finished deck when there are no choices to render.",
+  );
+  assert.match(page, /openingExperimentGateActive \? "opening-experiment-pending" : ""/);
   assert.match(page, /YOUR FIRST OFFICIAL EXPERIMENT/);
   assert.match(page, /openingExperimentChoices\.map/);
   assert.match(page, /CONTROL EXPERIMENT/);

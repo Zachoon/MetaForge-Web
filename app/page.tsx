@@ -2632,6 +2632,15 @@ export default function Home() {
     return experiments.slice(0, 3);
   }, [nativeMasterworkContext, experimentTablets]);
 
+  // Never veil the completed deck unless there is a real decision to render.
+  // The one-slot report can be unavailable or legitimately return no tablets;
+  // leaving `openingExperimentPending` alone in that case created an empty,
+  // unclickable Masterwork shell.
+  const openingExperimentGateActive =
+    openingExperimentPending &&
+    benchStatus !== "forging" &&
+    openingExperimentChoices.length > 0;
+
   const masterworkVisualProfile = useMemo(
     () =>
       resolveMasterworkVisualProfile({
@@ -5189,7 +5198,7 @@ export default function Home() {
       )}
 
       {chamber === "workbench" && (
-        <section className={`testing-anvil progressive-results ${resultViewMode}-results ${openingExperimentPending && benchStatus !== "forging" ? "opening-experiment-pending" : ""}`}>
+        <section className={`testing-anvil progressive-results ${resultViewMode}-results ${openingExperimentGateActive ? "opening-experiment-pending" : ""}`}>
           <button
             className="back-link"
             onClick={() => setChamber("masterworks")}
@@ -5223,7 +5232,7 @@ export default function Home() {
               </div>
             </div>
           </header>
-          {openingExperimentPending && benchStatus !== "forging" && openingExperimentChoices.length > 0 && (
+          {openingExperimentGateActive && (
             <section className="opening-experiment-gate" aria-labelledby="opening-experiment-title">
               <header>
                 <span>
@@ -5353,7 +5362,7 @@ export default function Home() {
               )}
             </aside>
           )}
-          {!openingExperimentPending && benchStatus !== "forging" && deckRows.length > 0 && (
+          {!openingExperimentGateActive && benchStatus !== "forging" && deckRows.length > 0 && (
             <section className="forge-path" aria-labelledby="forge-path-title">
               <header>
                 <span>
