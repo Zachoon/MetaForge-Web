@@ -18,7 +18,8 @@ test("server-renders the MetaForge product experience", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   const html = await response.text();
   assert.match(html, /<title>MetaForge — Forge a Better Deck<\/title>/i);
-  assert.match(html, /THE GREAT FORGE AWAITS/);
+  assert.match(html, /EXPLAINABLE MAGIC: THE GATHERING DECK BUILDER/);
+  assert.match(html, /Build a new MTG deck or analyze a list you already play/);
   assert.match(html, /<meta name="impact-site-verification" value="05208696-7452-434e-89b1-d6be551c7505">/i);
   assert.match(html, /<link rel="canonical" href="https:\/\/metaforge\.gg\/">/i);
   assert.match(html, /<script type="application\/ld\+json">.*"WebApplication".*<\/script>/i);
@@ -54,13 +55,24 @@ test("keeps the authenticated app out of search results", async () => {
 test("publishes canonical URLs for public legal pages", async () => {
   const response = await render("https://www.metaforge.gg/privacy");
   const html = await response.text();
-  assert.match(html, /<link rel="canonical" href="https:\/\/metaforge\.gg\/privacy">/i);
+  assert.match(html, /<title>Privacy Policy \| MetaForge<\/title>/i);
+  assert.match(html, /How MetaForge handles guest Forge previews/i);
+  assert.match(html, /<link rel="canonical" href="https:\/\/metaforge\.gg\/privacy"\s*\/>/i);
+  assert.equal(html.match(/rel="canonical"/gi)?.length, 1);
+
+  const terms = await render("https://metaforge.gg/terms");
+  const termsHtml = await terms.text();
+  assert.match(termsHtml, /<title>Terms of Use \| MetaForge<\/title>/i);
+  assert.match(termsHtml, /public-alpha Magic: The Gathering deckbuilding/i);
+  assert.match(termsHtml, /<link rel="canonical" href="https:\/\/metaforge\.gg\/terms"\s*\/>/i);
+  assert.equal(termsHtml.match(/rel="canonical"/gi)?.length, 1);
 });
 
 test("publishes a crawlable public robots file and sitemap", async () => {
   const robots = await render("https://metaforge.gg/robots.txt");
   assert.equal(robots.status, 200);
   assert.match(await robots.text(), /Sitemap: https:\/\/metaforge\.gg\/sitemap\.xml/);
+  assert.match(await render("https://metaforge.gg/robots.txt").then((response) => response.text()), /Disallow: \/profile\n/);
 
   const sitemap = await render("https://metaforge.gg/sitemap.xml");
   assert.equal(sitemap.status, 200);

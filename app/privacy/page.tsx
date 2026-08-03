@@ -1,4 +1,11 @@
+import type { Metadata } from "next";
 import "../legal.css";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy | MetaForge",
+  description: "How MetaForge handles guest Forge previews, account data, decklists, security information, and privacy requests.",
+  alternates: { canonical: "https://metaforge.gg/privacy" },
+};
 
 export default function PrivacyPage() {
   return <main className="legal-page"><div className="legal-shell">

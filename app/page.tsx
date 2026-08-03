@@ -4347,7 +4347,7 @@ export default function Home() {
         <section className="forge-entrance">
           <div className="entrance-copy">
             <span className="forge-eyebrow">
-              <i /> THE GREAT FORGE AWAITS
+              <i /> EXPLAINABLE MAGIC: THE GATHERING DECK BUILDER
             </span>
             <h1>
               What do you want
@@ -4355,8 +4355,9 @@ export default function Home() {
               to <em>create today?</em>
             </h1>
             <p>
-              Every legendary deck begins as a blueprint. Commission a new
-              design or bring an existing build to the anvil for refinement.
+              Build a new MTG deck or analyze a list you already play. MetaForge
+              turns your format, strategy, budget, and power goals into an
+              explainable blueprint you can inspect and refine.
             </p>
             <div className="entrance-actions">
               <ForgeCommissionCard

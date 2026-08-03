@@ -1,4 +1,11 @@
+import type { Metadata } from "next";
 import "../legal.css";
+
+export const metadata: Metadata = {
+  title: "Terms of Use | MetaForge",
+  description: "Terms for using MetaForge's public-alpha Magic: The Gathering deckbuilding and analysis service.",
+  alternates: { canonical: "https://metaforge.gg/terms" },
+};
 
 export default function TermsPage() {
   return <main className="legal-page"><div className="legal-shell">

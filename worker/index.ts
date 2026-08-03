@@ -20,7 +20,7 @@ const SEO_HEADERS = { "Cache-Control": "public, max-age=3600", "Content-Type": "
 
 function robotsResponse(url: URL): Response {
   const body = PUBLIC_HOSTS.has(url.hostname)
-    ? "User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /founder/\nDisallow: /profile/\nSitemap: https://metaforge.gg/sitemap.xml\nHost: metaforge.gg\n"
+    ? "User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /founder\nDisallow: /profile\nSitemap: https://metaforge.gg/sitemap.xml\nHost: metaforge.gg\n"
     : "User-agent: *\nDisallow: /\n";
   return new Response(body, { headers: SEO_HEADERS });
 }
@@ -32,9 +32,9 @@ function sitemapResponse(url: URL): Response {
   return new Response(body, { headers: { ...SEO_HEADERS, "Content-Type": "application/xml; charset=utf-8" } });
 }
 
-function seoMarkup(url: URL): string {
+function seoMarkup(url: URL, html: string): string {
   const canonicalUrl = new URL(url.pathname === "/" ? "/" : url.pathname, "https://metaforge.gg").href;
-  const canonical = `<link rel="canonical" href="${canonicalUrl}">`;
+  const canonical = /<link\s+rel=["']canonical["']/i.test(html) ? "" : `<link rel="canonical" href="${canonicalUrl}">`;
   if (url.pathname !== "/") return canonical;
 
   const structuredData = JSON.stringify({
@@ -57,7 +57,7 @@ async function addDocumentMetadata(response: Response, requestUrl: string): Prom
   const isPublicSite = PUBLIC_HOSTS.has(url.hostname);
   const html = (await response.text()).replace(/<meta\s+name=["']robots["'][^>]*>/gi, "");
   const metadata = isPublicSite
-    ? `<meta name="robots" content="index, follow"><meta name="impact-site-verification" value="${IMPACT_SITE_VERIFICATION}">${seoMarkup(url)}`
+    ? `<meta name="robots" content="index, follow"><meta name="impact-site-verification" value="${IMPACT_SITE_VERIFICATION}">${seoMarkup(url, html)}`
     : '<meta name="robots" content="noindex, nofollow, noarchive, noimageindex">';
   if (!html.includes("</head>")) return new Response(html, response);
 
