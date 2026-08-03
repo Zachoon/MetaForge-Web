@@ -7,12 +7,12 @@ const [page, css] = await Promise.all([
   readFile(new URL("../app/testing-anvil.css", import.meta.url), "utf8"),
 ]);
 
-test("the revealed Masterwork uses a living four-chapter progression track", () => {
+test("the revealed Masterwork uses a living five-chapter progression track", () => {
   assert.match(page, /Masterwork journey chapters/);
   assert.match(page, /The Masterwork/);
-  assert.match(page, /Shape/);
-  assert.match(page, /Understand/);
-  assert.match(page, /Deep Forge/);
+  assert.match(page, /Testing Anvil/);
+  assert.match(page, /How It Works/);
+  assert.match(page, /Evidence Vault/);
   assert.match(css, /Living Masterwork progression/);
   assert.match(css, /counter-reset:forge-chapter/);
   assert.match(css, /masterwork-deck-unveil/);

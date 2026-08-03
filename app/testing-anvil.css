@@ -288,6 +288,13 @@ step that's actually in focus. */
 @media(max-width:900px){.progressive-results .forge-chapter-rail{grid-template-columns:1fr 1fr}.progressive-results .forge-chapter-rail>button:last-child{grid-column:1/-1}.proving-grounds>header,.proving-grounds>footer{align-items:stretch;flex-direction:column}.proving-grounds>footer button{width:100%}}
 @media(max-width:560px){.progressive-results .forge-chapter-rail{grid-template-columns:1fr}.progressive-results .forge-chapter-rail>button:last-child{grid-column:auto}.proving-grounds{padding:22px 16px}.proving-grounds>article{padding:20px 16px}.field-test-why,.field-test-watch{grid-template-columns:1fr;gap:5px}.field-test-result,.field-test-outcome{grid-template-columns:1fr}.field-test-read>div{display:grid}.field-test-read button{width:100%}}
 
+/* Orientation stays visible even when a restored Masterwork has no opening
+   experiment attached. On phones the map becomes a swipeable chapter ribbon
+   instead of five full-width cards stacked above the active content. */
+.forge-map-intro{display:flex;align-items:center;justify-content:space-between;gap:18px;width:min(1480px,100%);margin:0 auto;padding:10px 16px;border:1px solid #454b43;border-bottom:0;background:#0c1210;color:#8d9b95}.forge-map-intro span{flex:0 0 auto;color:#d88b45;font-size:calc(9px * var(--forge-reading-scale));font-weight:900;letter-spacing:.15em}.forge-map-intro p{margin:0;font-size:calc(11px * var(--forge-reading-scale));line-height:1.4;text-align:right}
+.opening-experiment-pending .forge-map-intro{display:none}
+@media(max-width:560px){.forge-map-intro{align-items:flex-start;flex-direction:column;gap:4px;padding:11px 13px}.forge-map-intro p{text-align:left}.progressive-results .forge-chapter-rail{display:flex;grid-template-columns:none;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-color:#765334 #111713;scrollbar-width:thin}.progressive-results .forge-chapter-rail>button,.progressive-results .forge-chapter-rail>button:last-child{flex:0 0 82%;min-height:70px;grid-column:auto;scroll-snap-align:start}.progressive-results .forge-chapter-rail>button.active{box-shadow:inset 0 -3px #d9843d}}
+
 /* Finished Masterwork preservation: the last Forge Path step becomes a seal
    altar, and a completed path reads as a preserved record rather than "done". */
 .forge-path:has(li:last-child.active){border-color:#8b633d;background:radial-gradient(circle at 82% 50%,#cf75272d,transparent 28%),linear-gradient(100deg,#0b1210,#17130d 58%,#1d1109),url('/assets/forge/hammered_iron.svg') center/cover;box-shadow:0 20px 58px #0009,0 0 38px #cf77231b}

@@ -25,6 +25,11 @@ test("places deck and refinement surfaces before the intelligence vault", () => 
 test("turns the result into one active chapter instead of a continuous instrument wall", () => {
   assert.match(page, /activeForgeChapter.*useState<1 \| 2 \| 3 \| 4 \| 5>\(1\)/);
   assert.match(page, /id="forge-chapter-rail"/);
+  assert.match(page, /MASTERWORK MAP/);
+  assert.match(page, /The highlighted chapter is where you are now/);
+  assert.match(page, /Testing Anvil/);
+  assert.match(page, /How It Works/);
+  assert.match(page, /Evidence Vault/);
   assert.match(page, /chapter-\$\{activeForgeChapter\}-active/);
   assert.match(css, /\.chapter-1-active \.deck-manuscript>header\{display:flex\}/);
   assert.match(css, /\.chapter-2-active>\.testing-loop\{display:block/);
@@ -34,6 +39,10 @@ test("turns the result into one active chapter instead of a continuous instrumen
   assert.match(page, /This game did not test it/);
   assert.match(page, /The Forge will treat them as one clue/);
   assert.match(css, /\.chapter-5-active>\.proving-grounds\{display:block/);
+  assert.match(css, /scroll-snap-type:x mandatory/);
+  assert.match(css, /flex:0 0 82%/);
+  assert.match(page, /activeButton\.offsetLeft - \(rail\.clientWidth - activeButton\.clientWidth\) \/ 2/);
+  assert.match(css, /\.opening-experiment-pending \.forge-map-intro\{display:none\}/);
   assert.match(css, /\.chapter-3-active \.forge-understanding-bridge\{display:block/);
   assert.match(css, /\.chapter-4-active \.forge-intelligence-vault\{display:block/);
 });
@@ -101,6 +110,7 @@ test("makes a guided three-card experiment the doorway to a new Masterwork", () 
   assert.match(page, /CONTROL EXPERIMENT/);
   assert.match(page, /Skip guidance · Reveal the full deck/);
   assert.match(page, /className="forge-journey-guide"/);
+  assert.match(page, /deckRows\.length > 0 && resultViewMode === "guided"/);
   assert.match(page, /Prepare the test/);
   assert.match(css, /\.opening-experiment-pending \.result-view-controls[^}]*display:none/);
   assert.match(css, /\.opening-experiment-options\{display:grid;grid-template-columns:repeat\(3/);

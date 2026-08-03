@@ -1915,6 +1915,18 @@ export default function Home() {
   }, [readingSize]);
 
   useEffect(() => {
+    if (!window.matchMedia("(max-width: 560px)").matches) return;
+    const rail = document.getElementById("forge-chapter-rail");
+    const activeButton = rail?.querySelector<HTMLElement>("button.active");
+    if (!rail || !activeButton) return;
+    const left = activeButton.offsetLeft - (rail.clientWidth - activeButton.clientWidth) / 2;
+    rail.scrollTo({
+      left: Math.max(0, left),
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+    });
+  }, [activeForgeChapter]);
+
+  useEffect(() => {
     window.localStorage.setItem("metaforge.motionMode", motionMode);
   }, [motionMode]);
 
@@ -5405,6 +5417,10 @@ export default function Home() {
               </button>
             </div>
           </nav>
+          <div className="forge-map-intro">
+            <span>MASTERWORK MAP</span>
+            <p>Move through these chapters in order, or revisit any chapter. The highlighted chapter is where you are now.</p>
+          </div>
           <nav
             id="forge-chapter-rail"
             className="forge-chapter-rail"
@@ -5412,9 +5428,9 @@ export default function Home() {
           >
             {[
               [1, "The Masterwork", `${deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards`],
-              [2, "Shape", forgeReply ? "Options ready" : benchStatus === "testing" ? "Testing active" : "Choose a question"],
-              [3, "Understand", forgeSystemsReport.strongestSystem?.name || "Essential reading"],
-              [4, "Deep Forge", deckIntegrity.passed ? "Evidence ready" : "Review integrity"],
+              [2, "Testing Anvil", forgeReply ? "Controlled changes" : benchStatus === "testing" ? "Testing active" : "Choose a question"],
+              [3, "How It Works", forgeSystemsReport.strongestSystem?.name || "Deck systems"],
+              [4, "Evidence Vault", deckIntegrity.passed ? "Checks and analysis" : "Review integrity"],
               [5, "Proving Grounds", activeFieldTest ? "Field test active" : revisionLearning.sampleSize ? `${revisionLearning.sampleSize} clues recorded` : "Your next game"],
             ].map(([chapterNumber, label, status]) => (
               <button
@@ -5430,21 +5446,21 @@ export default function Home() {
               </button>
             ))}
           </nav>
-          {openingExperimentFocus && resultViewMode === "guided" && (
+          {!openingExperimentGateActive && benchStatus !== "forging" && deckRows.length > 0 && resultViewMode === "guided" && (
             <aside className="forge-journey-guide" aria-live="polite">
               <span>
                 <small>GUIDED FORGE · STEP {activeForgeChapter} OF 5</small>
                 <strong>
-                  {activeForgeChapter === 1 && `Your ${openingExperimentFocus} experiment is set. Review the complete build it lives inside.`}
-                  {activeForgeChapter === 2 && `Define what success looks like for ${openingExperimentFocus}, then carry that question into a match.`}
-                  {activeForgeChapter === 3 && "Understand the machine before judging one card in isolation."}
-                  {activeForgeChapter === 4 && "Use the Deep Forge only when you want the evidence behind the recommendation."}
+                  {activeForgeChapter === 1 && (openingExperimentFocus ? `Your ${openingExperimentFocus} experiment is set. Review the complete build it lives inside.` : "Start here: review the finished list, its roles, and the plan the deck is built to execute.")}
+                  {activeForgeChapter === 2 && (openingExperimentFocus ? `Compare the controlled ${openingExperimentFocus} experiment without changing unrelated parts of the deck.` : "Use the Testing Anvil when you want to compare one small, controlled change.")}
+                  {activeForgeChapter === 3 && "See how the deck's cards support one another before judging a single card in isolation."}
+                  {activeForgeChapter === 4 && "Open the Evidence Vault for legality checks, structural analysis, and the evidence behind the recommendation."}
                   {activeForgeChapter === 5 && "Take one clear question to the table, then bring back one honest clue."}
                 </strong>
               </span>
               {activeForgeChapter < 5 ? (
                 <button type="button" onClick={() => setActiveForgeChapter((activeForgeChapter + 1) as 1 | 2 | 3 | 4 | 5)}>
-                  {activeForgeChapter === 1 ? "I understand the build · Prepare the test →" : activeForgeChapter === 2 ? "Test defined · Understand the machine →" : activeForgeChapter === 3 ? "Continue into the Deep Forge →" : "Take it to the Proving Grounds →"}
+                  {activeForgeChapter === 1 ? "Next · Prepare the test →" : activeForgeChapter === 2 ? "Next · Learn how the deck works →" : activeForgeChapter === 3 ? "Next · Inspect the evidence →" : "Next · Prepare a real-game test →"}
                 </button>
               ) : (
                 <button type="button" onClick={() => setActiveForgeChapter(1)}>Return to the Masterwork →</button>
