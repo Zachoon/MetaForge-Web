@@ -2739,6 +2739,7 @@ export default function Home() {
   }, [simulationDossier, format, edhrecEvidence]);
   const revisionLearning = activeStructuralReport.revisionLearning;
   const interventionLearning = activeStructuralReport.interventionLearning;
+  const coachingDiagnosis = activeStructuralReport.coachingDiagnosis;
   const verifiedDeckFacts = useMemo(
     () =>
       [
@@ -7276,7 +7277,7 @@ export default function Home() {
                     </label>
                     <fieldset>
                       <legend>STEP 3 · WHAT WAS THE CLEAREST LESSON?</legend>
-                      {["The plan came together", "Too slow to stabilize", "Mana helped or hurt", "Interaction arrived at the wrong time", "A key card overperformed", "No single lesson isolated"].map((signal) => (
+                      {["The plan came together", "Too slow to stabilize", "Mana helped or hurt", "Interaction arrived at the wrong time", "My mulligan decision mattered", "I found a sequencing mistake", "A key card overperformed", "No single lesson isolated"].map((signal) => (
                         <button type="button" key={signal} onClick={() => recordMatch(pendingMatchResult, signal)}>{signal}<i>→</i></button>
                       ))}
                     </fieldset>
@@ -7286,6 +7287,24 @@ export default function Home() {
               </section>
               <section className="revision-learning-dossier">
                 <header><small>REVISION {Math.max(1, revisions.length)} LEARNING</small><b>{revisionLearning.sampleSize} recorded match{revisionLearning.sampleSize === 1 ? "" : "es"}</b></header>
+                <article className={`coaching-diagnosis diagnosis-${coachingDiagnosis.primary.category}`}>
+                  <header>
+                    <span><small>COACHING READ</small><b>{coachingDiagnosis.primary.label}</b></span>
+                    <em>{coachingDiagnosis.primary.confidence}</em>
+                  </header>
+                  <p><b>What supports it</b><span>{coachingDiagnosis.primary.evidence.join(" · ")}</span></p>
+                  <p><b>What to do</b><span>{coachingDiagnosis.primary.recommendation}</span></p>
+                  <p><b>How to test it</b><span>{coachingDiagnosis.primary.measurement}</span></p>
+                  {coachingDiagnosis.alternatives.length > 0 && (
+                    <details>
+                      <summary>{coachingDiagnosis.alternatives.length} other evidence-backed read{coachingDiagnosis.alternatives.length === 1 ? "" : "s"}</summary>
+                      {coachingDiagnosis.alternatives.map((alternative) => (
+                        <span key={alternative.category}><b>{alternative.label}</b>{alternative.recommendation}</span>
+                      ))}
+                    </details>
+                  )}
+                  <small>{coachingDiagnosis.evidenceBoundary}</small>
+                </article>
                 {revisionLearning.actionable.length ? revisionLearning.actionable.slice(0, 3).map((pattern) => (
                   <p key={pattern.preference}><b>{pattern.preference}</b><span>{pattern.confidence} · {pattern.count} matching signals</span></p>
                 )) : <p><b>NO PERSISTENT PREFERENCE YET</b><span>Two matching signals are required before the Forge treats a feeling as a revision pattern.</span></p>}

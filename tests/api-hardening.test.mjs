@@ -120,6 +120,7 @@ test("structural-analyze runs the real engine for an authenticated, valid reques
   // and there's no equivalent "is this meaningful yet" gate for them.
   assert.equal(body.report.revisionLearning.sampleSize, 0);
   assert.ok(Array.isArray(body.report.interventionLearning.experiments));
+  assert.equal(body.report.coachingDiagnosis.primary.category, "collect-more-evidence");
 });
 
 test("structural-analyze computes a real simulation dossier when computeSimulation is true", async () => {

@@ -112,6 +112,22 @@ export interface ForgeAnalysisReport {
     reusableGuidance: string;
     evidenceBoundary: string;
   };
+  coachingDiagnosis: {
+    engine: string;
+    revision: number;
+    sampleSize: number;
+    primary: {
+      category: "construction-pressure" | "piloting-decision" | "matchup-pressure" | "ordinary-variance" | "revision-effect" | "collect-more-evidence";
+      label: string;
+      confidence: string;
+      evidence: readonly string[];
+      recommendation: string;
+      measurement: string;
+    };
+    alternatives: readonly any[];
+    evidenceBoundary: string;
+    confidence: number;
+  };
   methodology: string;
 }
 
@@ -204,6 +220,22 @@ export const EMPTY_FORGE_ANALYSIS_REPORT: ForgeAnalysisReport = {
     reusable: [],
     reusableGuidance: "No intervention has earned reuse yet. Build from the current Blueprint and collect controlled before/after evidence.",
     evidenceBoundary: "MetaForge never rewrites its own rules from one result. An intervention needs four matches before and after, and the same kind must improve twice before it becomes a reusable player prior.",
+  },
+  coachingDiagnosis: {
+    engine: "metaforge-exact-revision-coach-v1",
+    revision: 1,
+    sampleSize: 0,
+    primary: {
+      category: "collect-more-evidence",
+      label: "Collect more evidence",
+      confidence: "insufficient",
+      evidence: ["0 matches attached to this revision", "No category has crossed its evidence gate"],
+      recommendation: "Preserve the list and record the next honest result, opponent family, and clearest lesson.",
+      measurement: "Two repeated issue signals, two explicit decision moments, or four concentrated matchup games can open a diagnosis.",
+    },
+    alternatives: [],
+    evidenceBoundary: "MetaForge diagnoses repeated evidence attached to this exact revision. A loss alone never proves a bad deck or a piloting mistake, and observed samples are not predicted win rates.",
+    confidence: 0,
   },
   methodology: "MetaForge converts verified card text into an interaction graph, interprets repeatable systems, and then forms bounded structural-impact hypotheses. These results do not prove real-game causation or predict match outcomes.",
 };

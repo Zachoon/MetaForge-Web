@@ -42,3 +42,12 @@ test("classifies the live match-recording UI's own preset signal button, not jus
   // interaction" is unreachable from the live app.
   assert.deepEqual(classifyPlayerSignal("Interaction arrived at the wrong time"), ["more early interaction"]);
 });
+
+test("the live recorder exposes explicit decision evidence without treating it as construction evidence", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.match(page, /My mulligan decision mattered/);
+  assert.match(page, /I found a sequencing mistake/);
+  assert.deepEqual(classifyPlayerSignal("My mulligan decision mattered"), []);
+  assert.deepEqual(classifyPlayerSignal("I found a sequencing mistake"), []);
+});

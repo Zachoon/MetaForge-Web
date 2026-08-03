@@ -26,6 +26,7 @@ import { simulationRoleFor } from "../app/adaptive-recommendation.mjs";
 import { colorPipsFromCost } from "../app/native-masterwork-engine.mjs";
 import { learnRevisionPreferences } from "../app/revision-learning.mjs";
 import { learnFromForgeInterventions } from "../app/forge-intervention-learning.mjs";
+import { buildCoachingDiagnosis } from "../app/coaching-diagnosis.mjs";
 import type { ForgeAnalysisReport } from "../app/forge-analysis-contract";
 import { userKey } from "./account-bench";
 import { checkRateLimit, readJsonWithLimit } from "./api-hardening";
@@ -214,6 +215,11 @@ export async function handleForgeStructuralAnalyze(request: Request, env: Env): 
     const failureAnalysis = buildBoundedFailureAnalysis(analysis.systems, simulationDossier);
     const revisionLearning = learnRevisionPreferences(matchLog, revisionsCount);
     const interventionLearning = learnFromForgeInterventions(forgeInterventions, matchLog);
+    const coachingDiagnosis = buildCoachingDiagnosis({
+      matches: matchLog,
+      currentRevision: revisionsCount,
+      interventionLearning,
+    });
 
     const report: ForgeAnalysisReport = {
       ...analysis,
@@ -221,6 +227,7 @@ export async function handleForgeStructuralAnalyze(request: Request, env: Env): 
       simulationDossier,
       revisionLearning,
       interventionLearning,
+      coachingDiagnosis,
     };
     return json({ report });
   } catch (error) {
