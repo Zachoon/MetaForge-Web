@@ -1727,6 +1727,11 @@ export default function Home() {
   const [cardFacts, setCardFacts] = useState<Record<string, CardFact>>({});
   const [hoveredCard, setHoveredCard] = useState("");
   const [inspectedCard, setInspectedCard] = useState("");
+  const [cardActionMenu, setCardActionMenu] = useState<{
+    name: string;
+    x: number;
+    y: number;
+  } | null>(null);
   const [refillCuts, setRefillCuts] = useState<Record<string, number>>({});
   const [multiRefillStatus, setMultiRefillStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [multiRefillError, setMultiRefillError] = useState("");
@@ -2911,6 +2916,20 @@ export default function Home() {
       window.removeEventListener("keydown", dismissOnEscape);
     };
   }, [printingMenu]);
+
+  useEffect(() => {
+    if (!cardActionMenu) return;
+    const dismiss = () => setCardActionMenu(null);
+    const dismissOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setCardActionMenu(null);
+    };
+    window.addEventListener("click", dismiss);
+    window.addEventListener("keydown", dismissOnEscape);
+    return () => {
+      window.removeEventListener("click", dismiss);
+      window.removeEventListener("keydown", dismissOnEscape);
+    };
+  }, [cardActionMenu]);
 
   useEffect(() => {
     if (
@@ -6762,11 +6781,24 @@ export default function Home() {
                                 }}
                                 onMouseEnter={() => setHoveredCard(row.name)}
                                 onFocus={() => setHoveredCard(row.name)}
-                                onClick={() => setInspectedCard(row.name)}
+                                aria-haspopup="menu"
+                                aria-expanded={cardActionMenu?.name === row.name}
+                                onClick={(event) => {
+                                  setCardActionMenu({
+                                    name: row.name,
+                                    x: Math.min(event.clientX, window.innerWidth - 250),
+                                    y: Math.min(event.clientY, window.innerHeight - 260),
+                                  });
+                                }}
                                 onKeyDown={(event) => {
                                   if (event.key === "Enter" || event.key === " ") {
                                     event.preventDefault();
-                                    setInspectedCard(row.name);
+                                    const bounds = event.currentTarget.getBoundingClientRect();
+                                    setCardActionMenu({
+                                      name: row.name,
+                                      x: Math.min(bounds.left + 20, window.innerWidth - 250),
+                                      y: Math.min(bounds.bottom + 6, window.innerHeight - 260),
+                                    });
                                   }
                                 }}
                                 onContextMenu={(event) => {
@@ -6980,6 +7012,82 @@ export default function Home() {
                 </div>,
                 document.body,
               )}
+              {cardActionMenu && createPortal((() => {
+                const menuRow = deckRows.find((row) => row.name === cardActionMenu.name);
+                const menuKey = cardFactKey(cardActionMenu.name);
+                const menuIsFoil = foilCards.has(menuKey);
+                const menuIsCommander = [selectedCommander?.name, selectedSecondCommander?.name]
+                  .filter(Boolean)
+                  .some((name) => cardFactKey(name as string) === menuKey);
+                const canRefill = !guestMode && Boolean(nativeMasterworkContext?.generationId) && !menuIsCommander && Boolean(menuRow);
+                return (
+                  <div
+                    className="card-action-menu"
+                    role="menu"
+                    aria-label={`${cardActionMenu.name} actions`}
+                    style={{ left: cardActionMenu.x, top: cardActionMenu.y }}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <header>
+                      <small>CARD OPTIONS</small>
+                      <b>{cardActionMenu.name}</b>
+                    </header>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      autoFocus
+                      onClick={() => {
+                        setInspectedCard(cardActionMenu.name);
+                        setCardActionMenu(null);
+                      }}
+                    >
+                      <span>View card dossier</span><i>Oracle text &amp; deck context</i>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setPrintingMenu({ name: cardActionMenu.name, x: cardActionMenu.x, y: cardActionMenu.y });
+                        setCardActionMenu(null);
+                      }}
+                    >
+                      <span>Choose printing</span><i>Art, set &amp; price</i>
+                    </button>
+                    {canRefill && menuRow && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        disabled={(refillCuts[cardActionMenu.name] || 0) >= menuRow.quantity}
+                        onClick={() => {
+                          setRefillCuts((current) => ({
+                            ...current,
+                            [cardActionMenu.name]: Math.min(menuRow.quantity, (current[cardActionMenu.name] || 0) + 1),
+                          }));
+                          setCardActionMenu(null);
+                        }}
+                      >
+                        <span>Mark one for replacement</span><i>{refillCuts[cardActionMenu.name] || 0} of {menuRow.quantity} marked</i>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={cheapestPrintings}
+                      onClick={() => {
+                        setFoilCards((current) => {
+                          const next = new Set(current);
+                          if (next.has(menuKey)) next.delete(menuKey);
+                          else next.add(menuKey);
+                          return next;
+                        });
+                        setCardActionMenu(null);
+                      }}
+                    >
+                      <span>{menuIsFoil ? "Use nonfoil pricing" : "Use foil pricing"}</span><i>{cheapestPrintings ? "Turn off Cheapest Printings first" : "Pricing preference"}</i>
+                    </button>
+                  </div>
+                );
+              })(), document.body)}
               {importWarnings.length > 0 && (
                 <div className="import-warnings" role="status">
                   <small>SOME CARDS WERE LEFT OUT</small>
