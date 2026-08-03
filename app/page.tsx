@@ -1459,6 +1459,7 @@ export default function Home() {
         sitekey: "0x4AAAAAAEEl7173Degrwsrc",
         theme: "dark",
         size: "flexible",
+        appearance: "interaction-only",
         callback: (token: string) => setTurnstileToken(token),
         "expired-callback": () => setTurnstileToken(""),
         "error-callback": () => setTurnstileToken(""),
@@ -4211,7 +4212,10 @@ export default function Home() {
             <small>ONE FREE FORGE · NO ACCOUNT REQUIRED</small>
             <b>{turnstileToken ? "The Forge is ready for you." : "Confirm you’re human, then build your Blueprint."}</b>
           </div>
-          <div ref={turnstileHostRef} />
+          <div
+            className={`turnstile-host${turnstileToken ? " verified" : ""}`}
+            ref={turnstileHostRef}
+          />
         </aside>
       )}
       {guestMode && forgedDeck && guestClaimToken && (
