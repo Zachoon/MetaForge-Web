@@ -135,6 +135,14 @@ type ForgeIntervention = {
   revision: number;
   createdAt: string;
 };
+type MultiRefillPackage = {
+  id: string;
+  label: string;
+  additions: DeckRow[];
+  rows: any[];
+  evaluation?: { score?: number; roleCoverage?: number; curveHealth?: number; cohesion?: number } | null;
+  boundary?: string;
+};
 type CommanderOption = {
   name: string;
   colors: string[];
@@ -1715,6 +1723,16 @@ export default function Home() {
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
   const [cardFacts, setCardFacts] = useState<Record<string, CardFact>>({});
   const [hoveredCard, setHoveredCard] = useState("");
+  const [inspectedCard, setInspectedCard] = useState("");
+  const [refillCuts, setRefillCuts] = useState<Record<string, number>>({});
+  const [multiRefillStatus, setMultiRefillStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [multiRefillError, setMultiRefillError] = useState("");
+  const [multiRefillResult, setMultiRefillResult] = useState<{
+    slots: number;
+    summary: string;
+    boundary: string;
+    packages: MultiRefillPackage[];
+  } | null>(null);
   const [cardOrder, setCardOrder] = useState<string[]>([]);
   // Which cards the player wants priced (and eventually printed) as foil.
   // Purely a pricing preference for now — doesn't change what card is in
@@ -2170,10 +2188,19 @@ export default function Home() {
   const activeCard =
     hoveredCard || chosenPreview.card || deckRows[0]?.name || "";
   const activeFact = cardFacts[cardFactKey(activeCard)];
+  const activePrinting = printingOverrides[cardFactKey(activeCard)];
   const activeImage =
+    activePrinting?.image ||
     activeFact?.image_uris?.normal ||
     activeFact?.card_faces?.[0]?.image_uris?.normal ||
     (activeCard ? cardImage(activeCard) : "");
+  const inspectedFact = cardFacts[cardFactKey(inspectedCard)];
+  const inspectedPrinting = printingOverrides[cardFactKey(inspectedCard)];
+  const inspectedImage =
+    inspectedPrinting?.image ||
+    inspectedFact?.image_uris?.normal ||
+    inspectedFact?.card_faces?.[0]?.image_uris?.normal ||
+    (inspectedCard ? cardImage(inspectedCard) : "");
   const deckIntegrity = useMemo(() => {
     const target = targetDeckSize(format);
     const total = deckRows.reduce((sum, row) => sum + row.quantity, 0);
@@ -2417,6 +2444,43 @@ export default function Home() {
               : activeRole === "Protection"
                 ? "Preserves a commander, engine, or decisive threat through interaction."
               : "Advances the primary plan while maintaining useful battlefield presence.";
+  const inspectedRole = inspectedCard ? cardRole(inspectedFact) : "";
+  const inspectedIsCommander = isCommanderFormat(format) && [chosenPreview.card, selectedSecondCommander?.name]
+    .filter(Boolean)
+    .some((name) => cardFactKey(name as string) === cardFactKey(inspectedCard));
+  const inspectedConnections = inspectedCard
+    ? interactionGraph.edges.filter(
+        (edge) => edge.from === inspectedCard || edge.to === inspectedCard,
+      )
+    : [];
+  const inspectedSystems = inspectedCard
+    ? forgeSystemsReport.systems.filter((system) =>
+        system.members.includes(inspectedCard),
+      )
+    : [];
+  const inspectedSlotReason =
+    inspectedRole === "Mana source"
+      ? "Supports the deck's colored-mana and land-count requirements."
+      : inspectedRole === "Interaction" || inspectedRole === "Board reset"
+        ? "Protects the Masterwork's plan by answering opposing development."
+        : inspectedRole === "Acceleration"
+          ? "Moves the commander and expensive payoff turns ahead of schedule."
+          : inspectedRole === "Card advantage"
+            ? "Keeps the Forge supplied after early resources are exchanged."
+            : inspectedRole === "Engine piece"
+              ? "Connects multiple cards so the deck produces compounding value."
+              : inspectedRole === "Protection"
+                ? "Preserves a commander, engine, or decisive threat through interaction."
+                : "Advances the primary plan while maintaining useful battlefield presence.";
+
+  useEffect(() => {
+    if (!inspectedCard) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setInspectedCard("");
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [inspectedCard]);
   // Union-of-triggers: this single debounced request now covers both
   // simulation (live-editing reactive — deckRows/cardFacts/strategy) and
   // revision/intervention learning (event reactive — matchLog/
@@ -4150,6 +4214,55 @@ export default function Home() {
       setPostAcceptChoice(true);
       setMilestoneMotion({ kind: "revision-accepted", eyebrow: "THE ANVIL REMEMBERS", label: "Revision Accepted", glyph: "ᛏ" });
     }, 1800);
+  }
+
+  async function forgeMultiRefill() {
+    if (!nativeMasterworkContext?.generationId || !Object.keys(refillCuts).length) return;
+    setMultiRefillStatus("loading");
+    setMultiRefillError("");
+    setMultiRefillResult(null);
+    try {
+      const response = await fetch("/api/forge/multi-refill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          generationId: nativeMasterworkContext.generationId,
+          currentRows: deckRows,
+          cuts: Object.entries(refillCuts).map(([name, quantity]) => ({ name, quantity })),
+        }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.error || "The refill experiment could not complete.");
+      setMultiRefillResult(data);
+      setMultiRefillStatus("ready");
+    } catch (error) {
+      setMultiRefillError(error instanceof Error ? error.message : "The refill experiment could not complete.");
+      setMultiRefillStatus("error");
+    }
+  }
+
+  function applyMultiRefillPackage(refill: MultiRefillPackage) {
+    if (!nativeMasterworkContext || !refill.rows?.length) return;
+    const nextDeck = refill.rows.map((row) => `${row.quantity} ${row.name}`).join("\n");
+    const cutSummary = Object.entries(refillCuts).map(([name, quantity]) => `−${quantity} ${name}`).join("; ");
+    const addSummary = refill.additions.map((row) => `+${row.quantity} ${row.name}`).join("; ");
+    const note = `Accepted multi-slot refill: ${cutSummary}; ${addSummary}. ${multiRefillResult?.boundary || "Real match performance remains unproven."}`;
+    const nextRevisions = [...revisions, { deck: nextDeck, note, createdAt: new Date().toISOString(), recommendationRecord: null }];
+    setNativeMasterworkContext({
+      ...nativeMasterworkContext,
+      selected: { ...nativeMasterworkContext.selected, rows: refill.rows, deckText: nextDeck },
+      manaConsistency: manaConsistencyReport(refill.rows, nativeMasterworkContext.options.target),
+    });
+    setForgedDeck(nextDeck);
+    setRevisions(nextRevisions);
+    recordForgeIntervention("multi-slot refill", `${cutSummary}; ${addSummary}`, "accepted", nextRevisions.length);
+    setRefillCuts({});
+    setMultiRefillResult(null);
+    setMultiRefillStatus("idle");
+    setInspectedCard("");
+    wakeForge("grow");
+    void persistStoryBench(nextRevisions, record);
+    setMilestoneMotion({ kind: "revision-accepted", eyebrow: "THE ANVIL REMEMBERS", label: `${refill.additions.reduce((sum, row) => sum + row.quantity, 0)} Slots Reforged`, glyph: "ᛏ" });
   }
 
   function finishCurrentMasterwork() {
@@ -6515,17 +6628,57 @@ export default function Home() {
                       {AFFILIATE_DISCLOSURE_TEXT}
                     </p>
                   )}
+                {!guestMode && nativeMasterworkContext?.generationId && (
+                  <section className="multi-refill-workbench" aria-label="Multi-card cut and refill experiment">
+                    <div>
+                      <small>MULTI-SLOT EXPERIMENT</small>
+                      <strong>
+                        {Object.keys(refillCuts).length
+                          ? `${Object.values(refillCuts).reduce((sum, quantity) => sum + quantity, 0)} slot${Object.values(refillCuts).reduce((sum, quantity) => sum + quantity, 0) === 1 ? "" : "s"} marked for replacement`
+                          : "Inspect cards and mark every slot you want replaced."}
+                      </strong>
+                      <span>Cut cards stay excluded from incoming recommendations.</span>
+                    </div>
+                    <button type="button" disabled={!Object.keys(refillCuts).length || multiRefillStatus === "loading"} onClick={() => void forgeMultiRefill()}>
+                      {multiRefillStatus === "loading" ? "Forging replacements…" : "Forge replacement packages"}
+                    </button>
+                    {Object.keys(refillCuts).length > 0 && (
+                      <button type="button" className="multi-refill-clear" onClick={() => { setRefillCuts({}); setMultiRefillResult(null); setMultiRefillStatus("idle"); }}>
+                        Clear
+                      </button>
+                    )}
+                    {multiRefillError && <p role="alert">{multiRefillError}</p>}
+                    {multiRefillResult && (
+                      <div className="multi-refill-packages">
+                        <p>{multiRefillResult.summary}</p>
+                        {multiRefillResult.packages.map((refill) => (
+                          <article key={refill.id}>
+                            <header><b>{refill.label}</b><span>{refill.evaluation?.score?.toFixed?.(1) || "—"} structural</span></header>
+                            <p>{refill.additions.map((row) => `+${row.quantity} ${row.name}`).join(" · ")}</p>
+                            <small>{multiRefillResult.boundary}</small>
+                            <button type="button" onClick={() => applyMultiRefillPackage(refill)}>Create this revision</button>
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                )}
                 <div className="deck-gallery">
                   <aside className="card-preview-stage">
-                    <div>
+                    <button
+                      type="button"
+                      className="card-preview-open"
+                      onClick={() => activeCard && setInspectedCard(activeCard)}
+                      aria-label={`Inspect ${activeCard}`}
+                    >
                       {activeImage && (
                         <img
                           src={activeImage}
                           alt={`${activeCard} card preview`}
                         />
                       )}
-                    </div>
-                    <small>HOVER OR FOCUS A CARD</small>
+                    </button>
+                    <small>SELECT A CARD TO INSPECT</small>
                     <strong>{activeCard}</strong>
                     <span>
                       {activeFact?.type_line ||
@@ -6596,6 +6749,13 @@ export default function Home() {
                                 }}
                                 onMouseEnter={() => setHoveredCard(row.name)}
                                 onFocus={() => setHoveredCard(row.name)}
+                                onClick={() => setInspectedCard(row.name)}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter" || event.key === " ") {
+                                    event.preventDefault();
+                                    setInspectedCard(row.name);
+                                  }
+                                }}
                                 onContextMenu={(event) => {
                                   event.preventDefault();
                                   setPrintingMenu({
@@ -6705,6 +6865,107 @@ export default function Home() {
                 </div>
               ) : (
                 <pre>The Forge is waiting for a valid commission.</pre>
+              )}
+              {inspectedCard && createPortal(
+                <div
+                  className="card-inspector-backdrop"
+                  role="presentation"
+                  onMouseDown={(event) => {
+                    if (event.currentTarget === event.target) setInspectedCard("");
+                  }}
+                >
+                  <section
+                    className="card-inspector"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="card-inspector-title"
+                  >
+                    <button
+                      type="button"
+                      className="card-inspector-close"
+                      onClick={() => setInspectedCard("")}
+                      aria-label="Close card inspector"
+                    >
+                      ×
+                    </button>
+                    <div className="card-inspector-art">
+                      {inspectedImage && <img src={inspectedImage} alt={`${inspectedCard} card`} />}
+                      {inspectedPrinting && (
+                        <small>
+                          SELECTED PRINTING · {inspectedPrinting.setName} ({inspectedPrinting.setCode.toUpperCase()}) #{inspectedPrinting.collectorNumber}
+                        </small>
+                      )}
+                    </div>
+                    <div className="card-inspector-dossier">
+                      <small>CONTEXTUAL CARD DOSSIER</small>
+                      <h3 id="card-inspector-title">{inspectedCard}</h3>
+                      <p className="card-inspector-type">{inspectedFact?.type_line || "Card type unavailable"}</p>
+                      <div className="card-inspector-signals">
+                        <span><b>{inspectedRole || "Unclassified"}</b> slot duty</span>
+                        <span><b>{inspectedConnections.length}</b> verified connection{inspectedConnections.length === 1 ? "" : "s"}</span>
+                        <span><b>{inspectedSystems.length}</b> system{inspectedSystems.length === 1 ? "" : "s"}</span>
+                      </div>
+                      <div className="card-inspector-section">
+                        <small>WHY IT IS HERE</small>
+                        <p>{inspectedSlotReason}</p>
+                      </div>
+                      {!guestMode && nativeMasterworkContext?.generationId && (() => {
+                        const inspectedRow = deckRows.find((row) => row.name === inspectedCard);
+                        const selectedQuantity = refillCuts[inspectedCard] || 0;
+                        if (!inspectedRow || inspectedIsCommander) return null;
+                        return (
+                          <div className="card-inspector-refill">
+                            <div>
+                              <small>CUT &amp; REFILL</small>
+                              <p>Mark copies to remove. The Forge will fill every open slot without proposing this card as a replacement.</p>
+                            </div>
+                            <div className="card-inspector-quantity">
+                              <button type="button" disabled={selectedQuantity === 0} onClick={() => setRefillCuts((current) => {
+                                const next = { ...current };
+                                if (selectedQuantity <= 1) delete next[inspectedCard];
+                                else next[inspectedCard] = selectedQuantity - 1;
+                                return next;
+                              })}>−</button>
+                              <b>{selectedQuantity}</b>
+                              <button type="button" disabled={selectedQuantity >= inspectedRow.quantity} onClick={() => setRefillCuts((current) => ({ ...current, [inspectedCard]: Math.min(inspectedRow.quantity, selectedQuantity + 1) }))}>+</button>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                      <div className="card-inspector-section">
+                        <small>ORACLE TEXT</small>
+                        <p className="card-inspector-oracle">
+                          {inspectedFact?.oracle_text || inspectedFact?.card_faces?.map((face) => face.oracle_text).filter(Boolean).join("\n\n") || "Oracle text is not available for this card."}
+                        </p>
+                      </div>
+                      <div className="card-inspector-section">
+                        <small>DECK CONNECTIONS</small>
+                        {inspectedConnections.length ? (
+                          <ul>
+                            {inspectedConnections.slice(0, 6).map((edge) => (
+                              <li key={`${edge.from}-${edge.to}`}>
+                                <b>{edge.from === inspectedCard ? edge.to : edge.from}</b>
+                                <span>{edge.signals.join(" + ")}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p>No direct mechanical connection is currently verified. That is evidence to inspect—not proof that the card is useless.</p>
+                        )}
+                      </div>
+                      {inspectedSystems.length > 0 && (
+                        <div className="card-inspector-section">
+                          <small>SYSTEM MEMBERSHIP</small>
+                          <p>{inspectedSystems.map((system) => system.name).join(" · ")}</p>
+                        </div>
+                      )}
+                      <p className="card-inspector-boundary">
+                        These signals describe verified deck context. They are not a universal card rating or a promise of match performance.
+                      </p>
+                    </div>
+                  </section>
+                </div>,
+                document.body,
               )}
               {importWarnings.length > 0 && (
                 <div className="import-warnings" role="status">

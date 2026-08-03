@@ -40,6 +40,10 @@ export interface StoredGenerationPayload {
   candidates: any[];
   cardPool: any[];
   options: { format: string; strategy: string; target: number };
+  // Sanitized construction inputs required to refill user-created gaps
+  // without asking the browser to resend engine context. `cards` is kept
+  // separately in cardPool so this remains small and non-duplicative.
+  forgeInput?: Record<string, unknown>;
 }
 
 interface GenerationStoreEnv {

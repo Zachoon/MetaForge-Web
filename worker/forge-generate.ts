@@ -442,6 +442,13 @@ export async function handleForgeGenerateForKey(request: Request, env: Env, key:
         candidates: nativeReport.candidates,
         cardPool: resolution.pool,
         options: { format: body.format, strategy: body.strategy, target },
+        forgeInput: {
+          format: body.format, target, strategy: body.strategy, path: "", note: body.note || "",
+          seed: body.seed, colors: pool.colors, commander: body.commander,
+          secondCommander: body.secondCommander, evidence: body.evidenceCards || [],
+          budget: body.budget, complexity: body.complexity, maxCardPrice: body.maxCardPrice,
+          commonsOnly: body.commonsOnly, targetPowerTier: isCommanderFormat(body.format) ? body.targetPowerTier || undefined : undefined,
+        },
       });
       return json({
         nativeReport,
@@ -478,6 +485,13 @@ export async function handleForgeGenerateForKey(request: Request, env: Env, key:
       candidates: nativeReport.candidates,
       cardPool: pool.cards,
       options: { format: body.format, strategy: body.strategy, target },
+      forgeInput: {
+        format: body.format, target, strategy: body.strategy, path: body.path || "", note: body.note || "",
+        seed: body.seed, colors: pool.colors, commander: body.commander,
+        secondCommander: body.secondCommander, evidence: body.evidenceCards || [],
+        budget: body.budget, complexity: body.complexity, maxCardPrice: body.maxCardPrice,
+        commonsOnly: body.commonsOnly, targetPowerTier: isCommanderFormat(body.format) ? body.targetPowerTier || undefined : undefined,
+      },
     });
     return json({ nativeReport, cardPool: pool.cards, colors: pool.colors, generationId });
   } catch (error) {

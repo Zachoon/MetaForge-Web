@@ -1730,6 +1730,93 @@ function diffImportedChanges(importedRows, selectedRows) {
   return { added, trimmed };
 }
 
+// Fills explicit player-created gaps without rebuilding or silently
+// rebalancing the rest of the deck. Every uncut quantity is copied into
+// each package exactly as supplied. Cut names are hard-excluded from all
+// additions, while the original land/nonland shape of the removed slots is
+// preserved so a spell cut cannot quietly become an extra land (or vice
+// versa). The three established Forge variants produce alternative packages
+// from the same commission rather than a pile of independently-good cards.
+export function forgeMultiSlotRefills(input, currentRows, requestedCuts) {
+  if (!input?.cards?.length) throw new Error("Multi-slot refill requires a verified card pool");
+  if (!Array.isArray(currentRows) || !currentRows.length || !Array.isArray(requestedCuts) || !requestedCuts.length) {
+    throw new Error("Multi-slot refill requires a current deck and explicit cuts");
+  }
+  const evidenceByName = new Map((input.evidence || []).map((entry) => [normalized(entry.name), entry]));
+  const analysis = prepareForgeAnalysis(input, evidenceByName);
+  const analyzedByName = new Map(analysis.cards.map((entry) => [normalized(entry.card.name), entry]));
+  const commanders = commanderNamesNormalized(input);
+  const excluded = new Set(requestedCuts.map((cut) => normalized(cut.name)));
+  if (requestedCuts.some((cut) => commanders.has(normalized(cut.name)))) throw new Error("The commander cannot be cut in a refill experiment");
+
+  const cutKinds = [];
+  for (const cut of requestedCuts) {
+    const entry = analyzedByName.get(normalized(cut.name));
+    const land = entry?.roles.includes("land") || isBasicLandName(cut.name);
+    for (let count = 0; count < Number(cut.quantity || 0); count += 1) cutKinds.push(land ? "land" : "spell");
+  }
+  const target = input.target || currentRows.reduce((sum, row) => sum + Number(row.quantity || 0), 0) + cutKinds.length;
+  const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
+  const copyLimit = singleton ? 1 : 4;
+
+  const enrich = (row) => {
+    const key = normalized(row.name);
+    if (commanders.has(key)) return { ...row, roles: ["commander"], score: 100, cmc: 0 };
+    const entry = analyzedByName.get(key);
+    if (entry) return { ...row, roles: entry.roles, cmc: entry.cmc, colorPips: entry.colorPips, colorIdentity: entry.card.colorIdentity || entry.card.color_identity };
+    if (isBasicLandName(row.name)) return { ...row, roles: ["land"], cmc: 0, colorPips: {}, colorIdentity: BASIC_COLOR_BY_NAME[row.name] || [] };
+    return { ...row, roles: [], cmc: 0, colorPips: {} };
+  };
+
+  const packages = VARIANTS.map((variant) => {
+    const rows = currentRows.map((row) => enrich({ name: row.name, quantity: Number(row.quantity || 0) })).filter((row) => row.quantity > 0);
+    const additions = [];
+    const scored = analysis.cards.map((entry) => ({ entry, scored: scoreCard(entry, input, variant, analysis.context) }));
+    for (const kind of cutKinds) {
+      const candidates = scored.filter(({ entry }) => {
+        const key = normalized(entry.card.name);
+        const isLand = entry.roles.includes("land");
+        const existing = rows.find((row) => normalized(row.name) === key)?.quantity || 0;
+        return !excluded.has(key) && !commanders.has(key) && (kind === "land" ? isLand : !isLand) && existing < copyLimit;
+      });
+      let best = null;
+      for (const candidate of candidates) {
+        const trial = rows.map((row) => ({ ...row }));
+        const existing = trial.find((row) => normalized(row.name) === normalized(candidate.entry.card.name));
+        if (existing) existing.quantity += 1;
+        else trial.push(enrich({ name: candidate.entry.card.name, quantity: 1 }));
+        const roleCounts = new Map();
+        for (const row of trial) for (const role of row.roles || []) roleCounts.set(role, (roleCounts.get(role) || 0) + row.quantity);
+        const evaluation = evaluateCandidate(trial, roleCounts, input, variant);
+        const merit = evaluation.score * 100 + candidate.scored.score;
+        if (!best || merit > best.merit || (merit === best.merit && candidate.entry.card.name.localeCompare(best.candidate.entry.card.name) < 0)) {
+          best = { candidate, merit, evaluation };
+        }
+      }
+      if (!best) throw new Error("The verified pool cannot fill every requested slot");
+      const existing = rows.find((row) => normalized(row.name) === normalized(best.candidate.entry.card.name));
+      if (existing) existing.quantity += 1;
+      else rows.push(enrich({ name: best.candidate.entry.card.name, quantity: 1 }));
+      const added = additions.find((row) => normalized(row.name) === normalized(best.candidate.entry.card.name));
+      if (added) added.quantity += 1;
+      else additions.push({ name: best.candidate.entry.card.name, quantity: 1, roles: best.candidate.entry.roles });
+    }
+    const roleCounts = new Map();
+    for (const row of rows) for (const role of row.roles || []) roleCounts.set(role, (roleCounts.get(role) || 0) + row.quantity);
+    const evaluation = evaluateCandidate(rows, roleCounts, input, variant);
+    if (rows.reduce((sum, row) => sum + row.quantity, 0) !== target) throw new Error("A refill package changed deck size");
+    return {
+      id: variant.id,
+      label: variant.label,
+      rows,
+      additions,
+      evaluation,
+      boundary: "Exact-size, constraint-preserving modeled refill. Real match performance remains unproven.",
+    };
+  });
+  return Object.freeze({ packages });
+}
+
 export function forgeNativeMasterwork(input) {
   if (!input || !Array.isArray(input.cards) || !input.cards.length) throw new Error("Native Forge requires a verified card pool");
   const evidenceByName = new Map((input.evidence || []).map((entry) => [normalized(entry.name), entry]));
