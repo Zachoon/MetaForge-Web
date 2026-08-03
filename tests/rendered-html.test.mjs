@@ -20,6 +20,8 @@ test("server-renders the MetaForge product experience", async () => {
   assert.match(html, /<title>MetaForge — Forge a Better Deck<\/title>/i);
   assert.match(html, /EXPLAINABLE MAGIC: THE GATHERING DECK BUILDER/);
   assert.match(html, /Build a new MTG deck or analyze a list you already play/);
+  assert.match(html, /class="forge-brand-logo"[^>]+src="\/assets\/brand\/metaforge-mf-anvil\.webp"/i);
+  assert.doesNotMatch(html, /<i>MF<\/i>/i);
   assert.match(html, /<meta name="impact-site-verification" value="05208696-7452-434e-89b1-d6be551c7505">/i);
   assert.match(html, /<link rel="canonical" href="https:\/\/metaforge\.gg\/">/i);
   assert.match(html, /<script type="application\/ld\+json">.*"WebApplication".*<\/script>/i);

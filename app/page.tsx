@@ -4261,7 +4261,12 @@ export default function Home() {
           onClick={() => setChamber("entrance")}
           aria-label="Return to Forge entrance"
         >
-          <i>MF</i>
+          <img
+            className="forge-brand-logo"
+            src="/assets/brand/metaforge-mf-anvil.webp"
+            alt=""
+            aria-hidden="true"
+          />
           <span>
             METAFORGE<small>THE GREAT FORGE</small>
           </span>

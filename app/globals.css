@@ -381,6 +381,14 @@ footer p { font-family:Newsreader, Georgia,serif; font-style:italic; }
   bottom: max(14px, env(safe-area-inset-bottom));
 }
 .great-forge > nav.launch-legal-nav { position: absolute; }
+.great-forge .forge-brand-logo {
+  display: block;
+  width: 50px;
+  height: 34px;
+  object-fit: contain;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 0 7px rgba(232, 112, 34, .2));
+}
 .great-forge[data-guest-mode="true"] { padding-bottom: 104px; }
 .guest-forge-pass > div:last-child { flex: 0 0 auto; max-width: 100%; }
 .guest-forge-pass iframe { display: block; max-width: 100%; }
@@ -401,7 +409,7 @@ footer p { font-family:Newsreader, Georgia,serif; font-style:italic; }
 @media (max-width: 620px) {
   .great-forge .forge-bar { padding-inline: 12px; }
   .great-forge .forge-brand { gap: 9px; }
-  .great-forge .forge-brand > i { width: 34px; height: 34px; }
+  .great-forge .forge-brand-logo { width: 42px; height: 30px; }
   .great-forge .forge-brand span { font-size: 12px; letter-spacing: .1em; }
   .great-forge .forge-brand small { font-size: 9px; letter-spacing: .14em; }
   .great-forge .entrance-copy { padding: 38px 18px 42px; }
