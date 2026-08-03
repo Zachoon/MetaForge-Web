@@ -106,6 +106,47 @@ const secondRecord =
 
 
 test(
+  "preserves a real exact-revision fingerprint and attaches only its matches",
+  () => {
+    const exact = "a".repeat(24);
+    const other = "b".repeat(24);
+    const serialized = serializeStoryBenchRevision(
+      {
+        deck: "1 Island",
+        note: "Exact list",
+        createdAt: "2026-08-03T00:00:00Z",
+        fingerprint: exact,
+      },
+      {
+        index: 0,
+        revisionCount: 1,
+        matches: [
+          { id: "right", revision: 1, deckFingerprint: exact, result: "win" },
+          { id: "wrong-fingerprint", revision: 1, deckFingerprint: other, result: "loss" },
+          { id: "wrong-version", revision: 2, deckFingerprint: other, result: "loss" },
+        ],
+      },
+    );
+
+    assert.equal(serialized.fingerprint, exact);
+    assert.deepEqual(serialized.matches.map((match) => match.id), ["right"]);
+    assert.equal(restoreStoryBenchRevisions([serialized])[0].fingerprint, exact);
+  },
+);
+
+test(
+  "adopts a match fingerprint for legacy revisions without an exact identity",
+  () => {
+    const exact = "c".repeat(24);
+    const serialized = serializeStoryBenchRevision(
+      { deck: "1 Forest", note: "Legacy", createdAt: "2026-08-03T00:00:00Z" },
+      { index: 0, revisionCount: 1, matches: [{ id: "m1", revision: 1, deckFingerprint: exact, result: "loss" }] },
+    );
+    assert.equal(serialized.fingerprint, exact);
+  },
+);
+
+test(
   "normalizes legacy Story Bench revisions without inventing ledger evidence",
   () => {
     const restored =

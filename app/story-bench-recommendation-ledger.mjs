@@ -112,6 +112,17 @@ export function normalizeStoryBenchRevision(
       : null;
 
   const normalized = {
+    fingerprint:
+      /^[0-9a-f]{24}$/.test(
+        normalizedText(
+          source.fingerprint,
+        ),
+      )
+        ? normalizedText(
+            source.fingerprint,
+          )
+        : "",
+
     deck:
       normalizedText(
         source.deck,
@@ -235,9 +246,28 @@ export function serializeStoryBenchRevision(
       ? source.revisionCount
       : index + 1;
 
+  const exactMatchFingerprint =
+    matches.find(
+      (match) =>
+        Number(
+          match?.revision || revisionCount,
+        ) === index + 1 &&
+        /^[0-9a-f]{24}$/.test(
+          normalizedText(
+            match?.deckFingerprint,
+          ),
+        ),
+    )?.deckFingerprint || "";
+
+  const serializedFingerprint =
+    normalized.fingerprint ||
+    normalized.recommendationRecord?.deckFingerprint ||
+    exactMatchFingerprint ||
+    `story-${index + 1}-${normalized.createdAt}`;
+
   const serialized = {
     fingerprint:
-      `story-${index + 1}-${normalized.createdAt}`,
+      serializedFingerprint,
 
     version:
       index + 1,
@@ -294,7 +324,10 @@ export function serializeStoryBenchRevision(
             match?.revision ||
               revisionCount,
           ) ===
-          index + 1,
+          index + 1 &&
+          (!/^[0-9a-f]{24}$/.test(serializedFingerprint) ||
+            !match?.deckFingerprint ||
+            match.deckFingerprint === serializedFingerprint),
       ),
 
     recommendationRecord:
@@ -322,6 +355,10 @@ export function restoreStoryBenchRevisions(
         : []
     ).map(
       (revision) => ({
+        fingerprint:
+          revision?.fingerprint ??
+          "",
+
         deck:
           revision?.deckText ??
           revision?.deck ??

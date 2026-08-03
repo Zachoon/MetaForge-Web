@@ -43,6 +43,7 @@ import { prepareStoryBenchRevisions, serializeStoryBenchRevision, restoreStoryBe
 import { resolveMasterworkVisualProfile } from "./masterwork-visual-profile.mjs";
 import { MOTIF_ICONS } from "./masterwork-motif-icons";
 import { buildTcgplayerLink, AFFILIATE_DISCLOSURE_TEXT } from "./affiliate-links.mjs";
+import { deckFingerprint } from "./deck-fingerprint.mjs";
 
 type Chamber =
   | "entrance"
@@ -188,6 +189,7 @@ type SavedFamily = {
       signal: string;
       playedAt: string;
       revision?: number;
+      deckFingerprint?: string;
     }>;
   }>;
 };
@@ -1648,9 +1650,10 @@ export default function Home() {
     signal: string;
     playedAt: string;
     revision?: number;
+    deckFingerprint?: string;
   }>>([]);
   const [revisions, setRevisions] = useState<
-    Array<{ deck: string; note: string; createdAt: string; recommendationRecord?: any }>
+    Array<{ deck: string; note: string; createdAt: string; fingerprint?: string; recommendationRecord?: any }>
   >([]);
   // Holds the current native engine pass (selected candidate and all ranked
   // candidates) so the experiment tablets can run the one-slot laboratory
@@ -3635,6 +3638,7 @@ export default function Home() {
       deck: revision.deck,
       note: revision.note,
       createdAt: revision.createdAt,
+      fingerprint: revision.fingerprint,
       recommendationRecord: revision.recommendationRecord,
     }));
     const latest = restoredRevisions.at(-1);
@@ -4105,7 +4109,14 @@ export default function Home() {
     ]);
   }
 
-  function recordMatch(result: "win" | "loss", signal = "No single lesson isolated") {
+  async function recordMatch(result: "win" | "loss", signal = "No single lesson isolated") {
+    const activeFingerprint = await deckFingerprint(parseDeckRows(forgedDeck));
+    const activeRevision = Math.max(1, revisions.length);
+    const fingerprintedRevisions = revisions.map((revision, index) =>
+      index === activeRevision - 1
+        ? { ...revision, fingerprint: activeFingerprint }
+        : revision,
+    );
     const next =
       result === "win"
         ? { ...record, wins: record.wins + 1 }
@@ -4120,9 +4131,11 @@ export default function Home() {
         opponent: opponentArchetype,
         signal,
         playedAt: new Date().toISOString(),
-        revision: Math.max(1, revisions.length),
+        revision: activeRevision,
+        deckFingerprint: activeFingerprint,
       },
     ];
+    setRevisions(fingerprintedRevisions);
     setMatchLog(nextMatches);
     setPendingMatchResult(null);
     setMilestoneMotion({
@@ -4131,7 +4144,7 @@ export default function Home() {
       label: `${result === "win" ? "WIN" : "LOSS"} · ${opponentArchetype}`,
       glyph: "ᛇ",
     });
-    void persistStoryBench(revisions, next, "", undefined, nextMatches);
+    void persistStoryBench(fingerprintedRevisions, next, "", undefined, nextMatches);
   }
 
   // Accepting an experiment tablet applies the exact card-for-card swap it
