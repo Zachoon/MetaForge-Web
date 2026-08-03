@@ -4206,8 +4206,11 @@ export default function Home() {
         <mark />
         <q />
       </div>
-      {guestMode && !forgedDeck && !walkthroughActive && (
-        <aside className="guest-forge-pass" aria-label="Free Forge preview verification">
+      {guestMode && !forgedDeck && (
+        <aside
+          className={`guest-forge-pass${turnstileToken ? " verified" : ""}${walkthroughActive ? " tour-hidden" : ""}`}
+          aria-label="Free Forge preview verification"
+        >
           <div>
             <small>ONE FREE FORGE · NO ACCOUNT REQUIRED</small>
             <b>{turnstileToken ? "The Forge is ready for you." : "Confirm you’re human, then build your Blueprint."}</b>

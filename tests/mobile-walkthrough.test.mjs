@@ -14,7 +14,7 @@ test("mobile tour uses a stable bottom sheet and a bounded form target", () => {
   assert.match(walkthrough, /if \(!rect \|\| mobileLayout\) return undefined/);
   assert.match(walkthroughStyles, /@media \(max-width: 700px\)[\s\S]*?\.forge-walkthrough-tooltip,[\s\S]*?bottom: max\(10px, env\(safe-area-inset-bottom\)\)/);
   assert.match(walkthroughStyles, /\.forge-walkthrough-spotlight \{ transition: none; \}/);
-  assert.match(page, /guestMode && !forgedDeck && !walkthroughActive/);
+  assert.match(page, /walkthroughActive \? " tour-hidden" : ""/);
 });
 
 test("mobile Blueprint keeps inline definitions and removes overlapping question controls", () => {

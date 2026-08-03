@@ -37,7 +37,9 @@ test("guest UI uses the guest endpoint and suppresses persistence and structural
   assert.match(source, /size: "flexible"/);
   assert.match(source, /appearance: "interaction-only"/);
   assert.match(source, /turnstile-host\$\{turnstileToken \? " verified" : ""\}/);
+  assert.match(source, /guest-forge-pass\$\{turnstileToken \? " verified" : ""\}\$\{walkthroughActive \? " tour-hidden" : ""\}/);
   assert.match(styles, /\.guest-forge-pass \.turnstile-host\.verified \{ display: none; \}/);
+  assert.match(styles, /> \.guest-forge-pass\.verified,[\s\S]*?> \.guest-forge-pass\.tour-hidden \{ display: none; \}/);
   assert.match(styles, /\.great-forge\[data-guest-mode="true"\] > \.guest-forge-pass,[\s\S]*?position: fixed/);
   assert.match(styles, /\.great-forge\[data-guest-mode="true"\][\s\S]*?padding-bottom/);
 });
