@@ -2466,6 +2466,11 @@ export default function Home() {
         system.members.includes(inspectedCard),
       )
     : [];
+  const inspectedEvaluation = inspectedCard
+    ? activeStructuralReport.cardEvaluations.cards.find(
+        (evaluation) => cardFactKey(evaluation.name) === cardFactKey(inspectedCard),
+      ) || null
+    : null;
   const inspectedSlotReason =
     inspectedRole === "Mana source"
       ? "Supports the deck's colored-mana and land-count requirements."
@@ -6961,10 +6966,36 @@ export default function Home() {
                         <span><b>{inspectedConnections.length}</b> verified connection{inspectedConnections.length === 1 ? "" : "s"}</span>
                         <span><b>{inspectedSystems.length}</b> system{inspectedSystems.length === 1 ? "" : "s"}</span>
                       </div>
+                      {inspectedEvaluation && (
+                        <div className="card-context-scores" aria-label="Contextual deck scores">
+                          {[
+                            ["Synergy", inspectedEvaluation.scores.synergy],
+                            ["Plan fit", inspectedEvaluation.scores.planFit],
+                            ["Evidence", inspectedEvaluation.scores.reliability],
+                            ["Impact", inspectedEvaluation.scores.structuralImpact],
+                            ["Replaceable", inspectedEvaluation.scores.replaceability],
+                          ].map(([label, score]) => (
+                            <span key={String(label)} title={`${label}: ${score} out of 100 in this deck`}>
+                              <small>{label}</small>
+                              <b>{score}</b>
+                              <i><em style={{ width: `${score}%` }} /></i>
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <div className="card-inspector-section">
                         <small>WHY IT IS HERE</small>
-                        <p>{inspectedSlotReason}</p>
+                        <p>{inspectedEvaluation?.whyHere || inspectedSlotReason}</p>
                       </div>
+                      {inspectedEvaluation && (
+                        <div className="card-inspector-section">
+                          <small>IF YOU CUT IT</small>
+                          <p>{inspectedEvaluation.cutImpact}</p>
+                          {inspectedEvaluation.alternatives.length > 0 && (
+                            <p className="card-context-alternatives"><b>Detected role alternatives:</b> {inspectedEvaluation.alternatives.join(" · ")}</p>
+                          )}
+                        </div>
+                      )}
                       {!guestMode && nativeMasterworkContext?.generationId && (() => {
                         const inspectedRow = deckRows.find((row) => row.name === inspectedCard);
                         const selectedQuantity = refillCuts[inspectedCard] || 0;
@@ -7016,7 +7047,7 @@ export default function Home() {
                         </div>
                       )}
                       <p className="card-inspector-boundary">
-                        These signals describe verified deck context. They are not a universal card rating or a promise of match performance.
+                        {activeStructuralReport.cardEvaluations.methodology}
                       </p>
                     </div>
                   </section>

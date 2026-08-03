@@ -18,6 +18,7 @@
 // limited, and size/shape validated. See CAPTAINS_LOG.md for the
 // reasoning behind the specific limits chosen.
 import { buildForgeStructuralAnalysis } from "../app/forge-structural-pipeline.mjs";
+import { buildContextualCardEvaluations } from "../app/contextual-card-evaluation.mjs";
 import { buildBoundedFailureAnalysis } from "../app/forge-systems-intelligence.mjs";
 import { evaluateSimulationGate } from "../app/goldfish-simulation.mjs";
 import { evaluateMatchupMatrix } from "../app/matchup-simulation.mjs";
@@ -200,7 +201,16 @@ export async function handleForgeStructuralAnalyze(request: Request, env: Env): 
       };
     }
 
-    const analysis = buildForgeStructuralAnalysis(cards, { commanderName, simulationDossier });
+    const structuralAnalysis = buildForgeStructuralAnalysis(cards, { commanderName, simulationDossier });
+    const analysis = {
+      ...structuralAnalysis,
+      cardEvaluations: buildContextualCardEvaluations(
+        cards,
+        structuralAnalysis.graph,
+        structuralAnalysis.systems,
+        structuralAnalysis.causality,
+      ),
+    };
     const failureAnalysis = buildBoundedFailureAnalysis(analysis.systems, simulationDossier);
     const revisionLearning = learnRevisionPreferences(matchLog, revisionsCount);
     const interventionLearning = learnFromForgeInterventions(forgeInterventions, matchLog);

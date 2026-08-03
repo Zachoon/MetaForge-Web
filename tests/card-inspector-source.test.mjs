@@ -9,6 +9,16 @@ test("selected printing drives both the deck preview and contextual inspector im
   assert.match(page, /const inspectedImage\s*=\s*inspectedPrinting\?\.image\s*\|\|/);
 });
 
+test("the dossier renders server-computed contextual card intelligence", () => {
+  assert.match(page, /activeStructuralReport\.cardEvaluations\.cards\.find/);
+  assert.match(page, /Contextual deck scores/);
+  assert.match(page, /\["Synergy", inspectedEvaluation\.scores\.synergy\]/);
+  assert.match(page, /\["Plan fit", inspectedEvaluation\.scores\.planFit\]/);
+  assert.match(page, /IF YOU CUT IT/);
+  assert.match(page, /Detected role alternatives/);
+  assert.match(page, /activeStructuralReport\.cardEvaluations\.methodology/);
+});
+
 test("deck rows open a keyboard-accessible action menu before the contextual inspector", () => {
   assert.match(page, /aria-haspopup="menu"/);
   assert.match(page, /setCardActionMenu\(\{/);
@@ -19,5 +29,5 @@ test("deck rows open a keyboard-accessible action menu before the contextual ins
   assert.match(page, /setInspectedCard\(cardActionMenu\.name\)/);
   assert.match(page, /role="dialog"/);
   assert.match(page, /ORACLE TEXT/);
-  assert.match(page, /not a universal card rating or a promise of match performance/i);
+  assert.match(page, /cardEvaluations\.methodology/);
 });

@@ -109,6 +109,8 @@ test("structural-analyze runs the real engine for an authenticated, valid reques
   assert.equal(body.report.engine, "metaforge-structural-pipeline-v1");
   assert.ok(Array.isArray(body.report.graph.edges));
   assert.ok(Array.isArray(body.report.systems.systems));
+  assert.equal(body.report.cardEvaluations.engine, "metaforge-contextual-card-evaluation-v1");
+  assert.equal(body.report.cardEvaluations.cards.length, VALID_CARDS.length);
   assert.ok("failureAnalysis" in body.report);
   // computeSimulation defaults to false (not sent) — no client-side
   // deckIntegrity gate was replicated server-side, so the endpoint takes

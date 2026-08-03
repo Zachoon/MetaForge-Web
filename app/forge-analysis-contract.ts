@@ -62,6 +62,22 @@ export interface ForgeAnalysisReport {
     evidence: string;
     methodology: string;
   };
+  cardEvaluations: {
+    engine: string;
+    cards: Array<{
+      name: string;
+      quantity: number;
+      role: string;
+      systems: string[];
+      partners: string[];
+      alternatives: string[];
+      scores: { synergy: number; planFit: number; reliability: number; structuralImpact: number; replaceability: number };
+      whyHere: string;
+      cutImpact: string;
+      evidence: string;
+    }>;
+    methodology: string;
+  };
   failureAnalysis: {
     status: string;
     headline: string;
@@ -154,6 +170,11 @@ export const EMPTY_FORGE_ANALYSIS_REPORT: ForgeAnalysisReport = {
     headline: "The Forge cannot form a causal hypothesis without a detected multi-card system.",
     evidence: "The Forge requires at least one detected multi-card system before it can form a bounded structural-impact hypothesis.",
     methodology: "Structural-impact scores are deterministic hypotheses derived from the supplied interaction graph, detected systems, and optional modeled trials. They do not prove real-game causation, card quality, or predicted win rate.",
+  },
+  cardEvaluations: {
+    engine: "",
+    cards: [],
+    methodology: "Scores compare each card only with this deck's verified Oracle-text graph, detected systems, and bounded structural hypotheses. They are not universal card ratings, price judgments, or predicted win rates.",
   },
   failureAnalysis: {
     status: "insufficient-structure",
