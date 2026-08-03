@@ -35,6 +35,6 @@ test("guest UI uses the guest endpoint and suppresses persistence and structural
   assert.match(source, /https:\/\/app\.metaforge\.gg\/\?claim=/);
   assert.match(source, /!guestMode && !editAnvilOpen/);
   assert.match(source, /size: "flexible"/);
-  assert.match(styles, /\.great-forge > \.guest-forge-pass,[\s\S]*?position: fixed/);
+  assert.match(styles, /\.great-forge\[data-guest-mode="true"\] > \.guest-forge-pass,[\s\S]*?position: fixed/);
   assert.match(styles, /\.great-forge\[data-guest-mode="true"\][\s\S]*?padding-bottom/);
 });

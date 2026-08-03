@@ -372,23 +372,23 @@ footer p { font-family:Newsreader, Georgia,serif; font-style:italic; }
    direct children relative positioning; these two overlays are exceptions and
    need the stronger child selector so the verification panel cannot be pushed
    above the viewport and the legal links stay anchored below the header. */
-.great-forge > .guest-forge-pass,
-.great-forge > .guest-result-gate {
+.great-forge[data-guest-mode="true"] > .guest-forge-pass,
+.great-forge[data-guest-mode="true"] > .guest-result-gate {
   position: fixed;
   z-index: 130;
   top: auto;
   right: auto;
   bottom: max(14px, env(safe-area-inset-bottom));
 }
-.great-forge > .launch-legal-nav { position: absolute; }
+.great-forge > nav.launch-legal-nav { position: absolute; }
 .great-forge[data-guest-mode="true"] { padding-bottom: 104px; }
 .guest-forge-pass > div:last-child { flex: 0 0 auto; max-width: 100%; }
 .guest-forge-pass iframe { display: block; max-width: 100%; }
 
 @media (max-width: 720px) {
   .great-forge[data-guest-mode="true"] { padding-bottom: 150px; }
-  .great-forge > .guest-forge-pass,
-  .great-forge > .guest-result-gate {
+  .great-forge[data-guest-mode="true"] > .guest-forge-pass,
+  .great-forge[data-guest-mode="true"] > .guest-result-gate {
     width: calc(100vw - 20px);
     gap: 10px;
     padding: 11px 12px;
@@ -399,33 +399,33 @@ footer p { font-family:Newsreader, Georgia,serif; font-style:italic; }
 }
 
 @media (max-width: 620px) {
-  .forge-bar { padding-inline: 12px; }
-  .forge-brand { gap: 9px; }
-  .forge-brand > i { width: 34px; height: 34px; }
-  .forge-brand span { font-size: 12px; letter-spacing: .1em; }
-  .forge-brand small { font-size: 9px; letter-spacing: .14em; }
-  .entrance-copy { padding: 38px 18px 42px; }
-  .entrance-copy h1 { margin: 14px 0 18px; font-size: clamp(38px,11.5vw,46px); line-height: 1.05; }
-  .entrance-copy h1 br { display: none; }
-  .entrance-copy > p { font-size: 16px; line-height: 1.6; }
-  .entrance-actions { margin-top: 28px; }
-  .entrance-actions > button { min-height: 150px; padding: 20px; }
-  .entrance-actions strong { margin-top: 20px; font-size: 21px; }
-  .entrance-actions .forge-card-description { font-size: 13px; line-height: 1.45; }
-  .entrance-actions b { margin-top: 18px; font-size: 12px; }
-  .launch-legal-nav a { font-size: 12px; }
+  .great-forge .forge-bar { padding-inline: 12px; }
+  .great-forge .forge-brand { gap: 9px; }
+  .great-forge .forge-brand > i { width: 34px; height: 34px; }
+  .great-forge .forge-brand span { font-size: 12px; letter-spacing: .1em; }
+  .great-forge .forge-brand small { font-size: 9px; letter-spacing: .14em; }
+  .great-forge .entrance-copy { padding: 38px 18px 42px; }
+  .great-forge .entrance-copy h1 { margin: 14px 0 18px; font-size: clamp(38px,11.5vw,46px); line-height: 1.05; }
+  .great-forge .entrance-copy h1 br { display: none; }
+  .great-forge .entrance-copy > p { font-size: 16px; line-height: 1.6; }
+  .great-forge .entrance-actions { margin-top: 28px; }
+  .great-forge .entrance-actions > button { min-height: 150px; padding: 20px; }
+  .great-forge .entrance-actions strong { margin-top: 20px; font-size: 21px; }
+  .great-forge .entrance-actions .forge-card-description { font-size: 13px; line-height: 1.45; }
+  .great-forge .entrance-actions b { margin-top: 18px; font-size: 12px; }
+  .great-forge .launch-legal-nav a { font-size: 12px; }
 }
 
 @media (max-width: 420px) {
-  .forge-brand small { display: none; }
-  .forge-reading-tools > button:not(.quiet-action) { width: 30px; height: 30px; }
+  .great-forge .forge-brand small { display: none; }
+  .great-forge .forge-reading-tools > button:not(.quiet-action) { width: 30px; height: 30px; }
 }
 
 @media (max-width: 360px) {
-  .forge-brand > span { display: none; }
-  .great-forge > .guest-forge-pass,
-  .great-forge > .guest-result-gate {
-    width: calc(100vw - 8px);
+  .great-forge .forge-brand > span { display: none; }
+  .great-forge[data-guest-mode="true"] > .guest-forge-pass,
+  .great-forge[data-guest-mode="true"] > .guest-result-gate {
+    width: calc(100% - 8px);
     padding-inline: 6px;
   }
 }
