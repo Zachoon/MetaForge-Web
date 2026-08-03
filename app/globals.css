@@ -425,7 +425,7 @@ footer p { font-family:Newsreader, Georgia,serif; font-style:italic; }
   .great-forge .forge-brand > span { display: none; }
   .great-forge[data-guest-mode="true"] > .guest-forge-pass,
   .great-forge[data-guest-mode="true"] > .guest-result-gate {
-    width: calc(100% - 8px);
+    width: calc(100vw - 20px);
     padding-inline: 6px;
   }
 }
