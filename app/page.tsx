@@ -4206,7 +4206,7 @@ export default function Home() {
         <mark />
         <q />
       </div>
-      {guestMode && !forgedDeck && (
+      {guestMode && !forgedDeck && !walkthroughActive && (
         <aside className="guest-forge-pass" aria-label="Free Forge preview verification">
           <div>
             <small>ONE FREE FORGE · NO ACCOUNT REQUIRED</small>

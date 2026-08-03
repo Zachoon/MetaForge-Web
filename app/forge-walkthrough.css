@@ -83,3 +83,23 @@
   background: var(--amber, #e39a48) !important;
   color: #11191a !important;
 }
+
+@media (max-width: 700px) {
+  .forge-walkthrough-spotlight { transition: none; }
+  .forge-walkthrough-tooltip,
+  .forge-walkthrough-tooltip[data-centered="true"] {
+    top: auto;
+    right: 10px;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    left: 10px;
+    width: auto;
+    max-width: none;
+    max-height: min(48dvh, 390px);
+    padding: 15px;
+    overflow-y: auto;
+    transform: none;
+  }
+  .forge-walkthrough-tooltip h3 { margin-block: 6px 8px; font-size: 19px; }
+  .forge-walkthrough-tooltip p { margin-bottom: 12px; font-size: 13px; line-height: 1.45; }
+  .forge-walkthrough-actions button { min-height: 42px; padding: 9px 12px; }
+}

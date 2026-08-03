@@ -19,6 +19,7 @@ type WalkthroughStep = {
   title: string;
   body: string;
   targetSelector?: string;
+  mobileTargetSelector?: string;
   requiredChamber?: WalkthroughChamber;
 };
 
@@ -40,6 +41,7 @@ const STEPS: WalkthroughStep[] = [
     title: "Real constraints, not decoration",
     body: "Format, strategy, complexity, and budget all actually shape construction — including the price cap and power-tier options. Nothing here is cosmetic; every mark changes what gets built.",
     targetSelector: ".mark-grid",
+    mobileTargetSelector: ".mark-grid > label:first-child",
     requiredChamber: "commission",
   },
   {
@@ -47,6 +49,7 @@ const STEPS: WalkthroughStep[] = [
     title: "Tell the Forge the one thing it must know",
     body: "A favorite card, a play pattern you love, or something this deck must never become — plain language the Forge reads directly into construction.",
     targetSelector: ".commission-note",
+    mobileTargetSelector: ".commission-note textarea",
     requiredChamber: "commission",
   },
   {
@@ -90,9 +93,18 @@ export function ForgeWalkthrough({
 }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
+  const [mobileLayout, setMobileLayout] = useState(false);
   const step = STEPS[stepIndex];
   const isFirst = stepIndex === 0;
   const isLast = stepIndex === STEPS.length - 1;
+
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 700px)");
+    const update = () => setMobileLayout(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
 
   // Drives the underlying app to whichever chamber this step's target
   // actually lives in — the tour moves the player through the real flow
@@ -106,12 +118,23 @@ export function ForgeWalkthrough({
 
   useEffect(() => {
     if (!active) return;
-    if (!step.targetSelector) {
+    const targetSelector = mobileLayout && step.mobileTargetSelector
+      ? step.mobileTargetSelector
+      : step.targetSelector;
+    if (!targetSelector) {
       setRect(null);
       return;
     }
+    let positionedTarget = false;
+    let positionTimer: number | undefined;
     const measure = () => {
-      const el = document.querySelector(step.targetSelector!);
+      const el = document.querySelector(targetSelector);
+      if (el && mobileLayout && !positionedTarget) {
+        positionedTarget = true;
+        positionTimer = window.setTimeout(() => {
+          el.scrollIntoView({ behavior: "auto", block: "center", inline: "nearest" });
+        }, 60);
+      }
       setRect(el ? el.getBoundingClientRect() : null);
     };
     // Polls on an interval rather than requestAnimationFrame: rAF only
@@ -128,19 +151,20 @@ export function ForgeWalkthrough({
     const interval = window.setInterval(measure, 150);
     window.addEventListener("resize", measure);
     return () => {
+      if (positionTimer !== undefined) window.clearTimeout(positionTimer);
       window.clearInterval(interval);
       window.removeEventListener("resize", measure);
     };
-  }, [active, step]);
+  }, [active, step, mobileLayout]);
 
   const tooltipStyle = useMemo(() => {
-    if (!rect) return undefined;
+    if (!rect || mobileLayout) return undefined;
     const preferBelow = rect.bottom + 220 < window.innerHeight;
     return {
       top: preferBelow ? rect.bottom + 16 : Math.max(16, rect.top - 220),
       left: Math.min(Math.max(16, rect.left), window.innerWidth - 380),
     };
-  }, [rect]);
+  }, [rect, mobileLayout]);
 
   if (!active) return null;
 

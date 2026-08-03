@@ -1297,7 +1297,7 @@
 .blueprint-glossary-tip:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
 
 @media(max-width:900px){.forge-reading-tools>span{display:none}.forge-reading-tools .quiet-action{display:none}}
-@media(max-width:560px){.forge-reading-tools{gap:3px}.forge-reading-tools>button:not(.quiet-action){width:28px;height:28px}.blueprint-glossary-tip:after{position:fixed;right:16px;bottom:18px;left:16px;width:auto;transform:translateY(5px)}.blueprint-glossary-tip:hover:after,.blueprint-glossary-tip:focus-visible:after{transform:none}}
+@media(max-width:700px){.forge-reading-tools{gap:3px}.forge-reading-tools>button:not(.quiet-action){width:28px;height:28px}.blueprint-glossary-tip{display:none}}
 
 /* The Forge Path keeps one clear next action visible throughout the testing
    journey. It reads as an engraved instrument panel, not a floating alert. */
