@@ -27,6 +27,7 @@ import { colorPipsFromCost } from "../app/native-masterwork-engine.mjs";
 import { learnRevisionPreferences } from "../app/revision-learning.mjs";
 import { learnFromForgeInterventions } from "../app/forge-intervention-learning.mjs";
 import { buildCoachingDiagnosis } from "../app/coaching-diagnosis.mjs";
+import { buildProvingGroundsBrief } from "../app/proving-grounds.mjs";
 import type { ForgeAnalysisReport } from "../app/forge-analysis-contract";
 import { userKey } from "./account-bench";
 import { checkRateLimit, readJsonWithLimit } from "./api-hardening";
@@ -220,6 +221,11 @@ export async function handleForgeStructuralAnalyze(request: Request, env: Env): 
       currentRevision: revisionsCount,
       interventionLearning,
     });
+    const provingGrounds = buildProvingGroundsBrief({
+      coachingDiagnosis,
+      failureAnalysis,
+      simulationDossier,
+    });
 
     const report: ForgeAnalysisReport = {
       ...analysis,
@@ -228,6 +234,7 @@ export async function handleForgeStructuralAnalyze(request: Request, env: Env): 
       revisionLearning,
       interventionLearning,
       coachingDiagnosis,
+      provingGrounds,
     };
     return json({ report });
   } catch (error) {

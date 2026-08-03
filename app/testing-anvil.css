@@ -257,6 +257,37 @@ step that's actually in focus. */
 @media(max-width:760px){.progressive-results .chapter-4-active .forge-intelligence-vault>summary{padding:82px 20px 22px}.progressive-results .chapter-4-active .forge-intelligence-vault>summary:before{top:22px;left:20px;transform:none}.progressive-results .chapter-4-active .forge-intelligence-vault>summary:after{display:none}.progressive-results .chapter-4-active .forge-intelligence-vault>summary strong{position:static;align-self:flex-start}.progressive-results .chapter-4-active .forge-intelligence-vault>summary:hover:before,.progressive-results .chapter-4-active .forge-intelligence-vault>summary:focus-visible:before,.progressive-results .chapter-4-active .forge-intelligence-vault[open]>summary:before{transform:none}}
 @media(prefers-reduced-motion:reduce){.progressive-results .chapter-4-active .forge-intelligence-vault:before,.progressive-results .chapter-4-active .forge-intelligence-vault[open]>.integrity-dossier,.progressive-results .chapter-4-active .forge-intelligence-vault[open]>.refinement-starters-vault{animation:none}.progressive-results .chapter-4-active .forge-intelligence-vault>summary,.progressive-results .chapter-4-active .forge-intelligence-vault>summary:before{transition:none}}
 
+/* Chapter V · The Proving Grounds — the guided handoff from a finished deck
+   to one bounded real-game question. */
+.progressive-results .forge-chapter-rail{grid-template-columns:repeat(5,minmax(0,1fr))}
+.progressive-results .testing-layout>.proving-grounds{display:none;order:8}
+.progressive-results .chapter-5-active>.proving-grounds{display:block}
+.progressive-results .chapter-5-active .deck-reference-strip{display:flex;order:-1}
+.proving-grounds{padding:clamp(24px,4vw,54px);border:1px solid #4f584c;background:radial-gradient(circle at 82% 0,#d57c2724,transparent 30%),linear-gradient(145deg,#101713,#090e0c);box-shadow:0 30px 85px #000a}
+.proving-grounds>header{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding-bottom:22px;border-bottom:1px solid #3b493f}
+.proving-grounds>header small,.proving-grounds article>small{color:#e59647;font-size:calc(10px * var(--forge-reading-scale));font-weight:900;letter-spacing:.16em}
+.proving-grounds>header h2{margin:6px 0 0;color:#e8ece7;font:600 clamp(24px,3.2vw,38px)/1.1 Newsreader,Georgia,serif}
+.proving-grounds>header em{padding:8px 11px;border:1px solid #4e756a;background:#10211d;color:#84d5c3;font:900 9px ui-monospace,monospace;letter-spacing:.1em}
+.proving-grounds>article{max-width:920px;margin:28px auto 0;padding:clamp(22px,4vw,42px);border:1px solid #5d4a35;background:linear-gradient(145deg,#1c160f,#0b1411);box-shadow:0 18px 50px #0007}
+.proving-grounds article h3{max-width:800px;margin:10px 0 22px;color:#f2e8d7;font:600 clamp(26px,4vw,44px)/1.08 Newsreader,Georgia,serif}
+.proving-grounds article p{color:#aebdb7;font-size:calc(14px * var(--forge-reading-scale));line-height:1.65}
+.field-test-why,.field-test-watch{display:grid;grid-template-columns:150px 1fr;gap:18px;margin:0;padding:16px 0;border-top:1px solid #3d453d}
+.field-test-why b,.field-test-watch b,.active-field-test p b{color:#e2a05d;text-transform:uppercase;font-size:calc(10px * var(--forge-reading-scale));letter-spacing:.12em}
+.field-test-why span,.field-test-watch span{color:#c6d0cb}
+.proving-grounds article>aside{margin:18px 0;padding:13px 15px;border-left:2px solid #69bbaa;background:#0d1b18;color:#91aaa2;font-size:calc(11px * var(--forge-reading-scale));line-height:1.55}
+.field-test-brief>button,.field-test-read button,.active-field-test button,.proving-grounds>footer button{padding:13px 17px;border:1px solid #b7773e;background:linear-gradient(90deg,#77391e,#3e251b);color:#fff;font-weight:800}
+.field-test-brief>button{width:100%;margin-top:4px}
+.active-field-test>section{margin-top:24px;padding-top:22px;border-top:1px solid #4a463b}.active-field-test h4{margin:0;color:#e9e3d8;font:600 23px Newsreader,Georgia,serif}.active-field-test section>p{margin:5px 0 16px}
+.field-test-result{display:grid;grid-template-columns:1fr 1fr;gap:9px}.field-test-result button.selected{border-color:#6cd0bb;background:#123029;box-shadow:inset 0 0 0 1px #6cd0bb}
+.field-test-outcome{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}.field-test-outcome button{border-color:#496159;background:#0d1a17;color:#c4d3cd;text-align:left}
+.field-test-read>div{display:flex;flex-wrap:wrap;gap:10px}.field-test-read>div button+button{border-color:#4b5b55;background:#101916;color:#aebdb7}
+.proving-grounds>footer{display:flex;align-items:center;justify-content:space-between;gap:18px;max-width:920px;margin:20px auto 0;color:#899b94;font-size:calc(11px * var(--forge-reading-scale))}.proving-grounds>footer span b{color:#74cbb8}.proving-grounds>footer button{padding:9px 12px;border-color:#455d56;background:#0d1815;color:#90bdb2}
+.progressive-results .forge-chapter-rail:has(>button:nth-child(5).active)>button:nth-child(-n+4){background:linear-gradient(180deg,#101b17,#0b1210);color:#b9ccc5}
+.progressive-results .forge-chapter-rail:has(>button:nth-child(5).active)>button:nth-child(-n+4):before{content:"✓";border-color:#64b8a6;background:#10231f;color:#a4e4d6;box-shadow:0 0 0 5px #0d1512,0 0 15px #5dbaa52d}
+.progressive-results .forge-chapter-rail:has(>button:nth-child(5).active)>button:nth-child(-n+4) small{color:#65b8a6}
+@media(max-width:900px){.progressive-results .forge-chapter-rail{grid-template-columns:1fr 1fr}.progressive-results .forge-chapter-rail>button:last-child{grid-column:1/-1}.proving-grounds>header,.proving-grounds>footer{align-items:stretch;flex-direction:column}.proving-grounds>footer button{width:100%}}
+@media(max-width:560px){.progressive-results .forge-chapter-rail{grid-template-columns:1fr}.progressive-results .forge-chapter-rail>button:last-child{grid-column:auto}.proving-grounds{padding:22px 16px}.proving-grounds>article{padding:20px 16px}.field-test-why,.field-test-watch{grid-template-columns:1fr;gap:5px}.field-test-result,.field-test-outcome{grid-template-columns:1fr}.field-test-read>div{display:grid}.field-test-read button{width:100%}}
+
 /* Finished Masterwork preservation: the last Forge Path step becomes a seal
    altar, and a completed path reads as a preserved record rather than "done". */
 .forge-path:has(li:last-child.active){border-color:#8b633d;background:radial-gradient(circle at 82% 50%,#cf75272d,transparent 28%),linear-gradient(100deg,#0b1210,#17130d 58%,#1d1109),url('/assets/forge/hammered_iron.svg') center/cover;box-shadow:0 20px 58px #0009,0 0 38px #cf77231b}

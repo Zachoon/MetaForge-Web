@@ -62,8 +62,8 @@ test("major player milestones use choreographed sequences while reduced motion s
 test("the workbench keeps one explicit next action visible through the full Forge Path", () => {
   assert.match(page, /className="forge-path"/);
   assert.match(page, /YOUR FORGE PATH/);
-  assert.match(page, /Begin the first table test/);
-  assert.match(page, /Record match evidence/);
+  assert.match(page, /Prepare the first table test/);
+  assert.match(page, /Return to the Proving Grounds/);
   assert.match(page, /Seal this Masterwork/);
   assert.match(page, /Start another Forge/);
   assert.match(page, /id="match-evidence"/);

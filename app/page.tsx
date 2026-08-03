@@ -1664,7 +1664,19 @@ export default function Home() {
     playedAt: string;
     revision?: number;
     deckFingerprint?: string;
+    fieldTest?: { question: string; outcome: string; source: string };
   }>>([]);
+  const [activeFieldTest, setActiveFieldTest] = useState<null | {
+    deckId: string;
+    revision: number;
+    question: string;
+    watchFor: string;
+    why: string;
+    source: string;
+    startedAt: string;
+  }>(null);
+  const [fieldTestResult, setFieldTestResult] = useState<"win" | "loss" | null>(null);
+  const [fieldTestRead, setFieldTestRead] = useState<null | { headline: string; guidance: string }>(null);
   const [revisions, setRevisions] = useState<
     Array<{ deck: string; note: string; createdAt: string; fingerprint?: string; recommendationRecord?: any }>
   >([]);
@@ -1852,7 +1864,7 @@ export default function Home() {
   const [interventionLearningReady, setInterventionLearningReady] = useState(false);
   const [showAllSystems, setShowAllSystems] = useState(false);
   const [matchEvidenceOpen, setMatchEvidenceOpen] = useState(false);
-  const [activeForgeChapter, setActiveForgeChapter] = useState<1 | 2 | 3 | 4>(1);
+  const [activeForgeChapter, setActiveForgeChapter] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [deckViewMode, setDeckViewMode] = useState<"workbench" | "ledger">("workbench");
   const [openingExperimentPending, setOpeningExperimentPending] = useState(false);
   const [openingExperimentFocus, setOpeningExperimentFocus] = useState("");
@@ -1884,6 +1896,19 @@ export default function Home() {
       setInterventionLearningReady(true);
     }
   }, []);
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem("metaforge.activeFieldTest") || "null");
+      if (saved?.deckId === (deckId || "unsaved-masterwork") && Number(saved?.revision) === Math.max(1, revisions.length)) {
+        setActiveFieldTest(saved);
+      } else {
+        setActiveFieldTest(null);
+      }
+    } catch {
+      setActiveFieldTest(null);
+    }
+  }, [deckId, revisions.length]);
 
   useEffect(() => {
     window.localStorage.setItem("metaforge.readingSize", readingSize);
@@ -2740,6 +2765,7 @@ export default function Home() {
   const revisionLearning = activeStructuralReport.revisionLearning;
   const interventionLearning = activeStructuralReport.interventionLearning;
   const coachingDiagnosis = activeStructuralReport.coachingDiagnosis;
+  const provingGrounds = activeStructuralReport.provingGrounds;
   const verifiedDeckFacts = useMemo(
     () =>
       [
@@ -4156,7 +4182,11 @@ export default function Home() {
     ]);
   }
 
-  async function recordMatch(result: "win" | "loss", signal = "No single lesson isolated") {
+  async function recordMatch(
+    result: "win" | "loss",
+    signal = "No single lesson isolated",
+    fieldTest?: { question: string; outcome: string; source: string },
+  ) {
     const activeFingerprint = await deckFingerprint(parseDeckRows(forgedDeck));
     const activeRevision = Math.max(1, revisions.length);
     const fingerprintedRevisions = revisions.map((revision, index) =>
@@ -4180,6 +4210,7 @@ export default function Home() {
         playedAt: new Date().toISOString(),
         revision: activeRevision,
         deckFingerprint: activeFingerprint,
+        ...(fieldTest ? { fieldTest } : {}),
       },
     ];
     setRevisions(fingerprintedRevisions);
@@ -4192,6 +4223,43 @@ export default function Home() {
       glyph: "ᛇ",
     });
     void persistStoryBench(fingerprintedRevisions, next, "", undefined, nextMatches);
+  }
+
+  function beginProvingGroundsTest() {
+    const next = {
+      deckId: deckId || "unsaved-masterwork",
+      revision: Math.max(1, revisions.length),
+      question: provingGrounds.question,
+      watchFor: provingGrounds.watchFor,
+      why: provingGrounds.why,
+      source: provingGrounds.source,
+      startedAt: new Date().toISOString(),
+    };
+    setActiveFieldTest(next);
+    setFieldTestResult(null);
+    setFieldTestRead(null);
+    window.localStorage.setItem("metaforge.activeFieldTest", JSON.stringify(next));
+    setBenchStatus("testing");
+  }
+
+  async function finishProvingGroundsTest(outcome: "observed" | "missed" | "not-tested" | "unsure") {
+    if (!activeFieldTest || !fieldTestResult) return;
+    await recordMatch(fieldTestResult, "No single lesson isolated", {
+      question: activeFieldTest.question,
+      outcome,
+      source: activeFieldTest.source,
+    });
+    const read = outcome === "observed"
+      ? { headline: "The test produced a supporting clue.", guidance: "Keep this revision stable and look for the same observation once more before acting on it." }
+      : outcome === "missed"
+        ? { headline: "The expected signal did not appear.", guidance: "That weakens the hypothesis for this game, but one miss is not enough to discard it. Repeat the same test once before changing the deck." }
+        : outcome === "not-tested"
+          ? { headline: "This game did not test the question.", guidance: "No conclusion is the honest conclusion. Carry the same test into the next relevant game." }
+          : { headline: "The clue was not clear enough to classify.", guidance: "Keep the deck unchanged. Next game, watch only the named moment instead of diagnosing everything at once." };
+    setFieldTestRead(read);
+    setFieldTestResult(null);
+    setActiveFieldTest(null);
+    window.localStorage.removeItem("metaforge.activeFieldTest");
   }
 
   // Accepting an experiment tablet applies the exact card-for-card swap it
@@ -5347,13 +5415,14 @@ export default function Home() {
               [2, "Shape", forgeReply ? "Options ready" : benchStatus === "testing" ? "Testing active" : "Choose a question"],
               [3, "Understand", forgeSystemsReport.strongestSystem?.name || "Essential reading"],
               [4, "Deep Forge", deckIntegrity.passed ? "Evidence ready" : "Review integrity"],
+              [5, "Proving Grounds", activeFieldTest ? "Field test active" : revisionLearning.sampleSize ? `${revisionLearning.sampleSize} clues recorded` : "Your next game"],
             ].map(([chapterNumber, label, status]) => (
               <button
                 type="button"
                 key={chapterNumber}
                 className={activeForgeChapter === chapterNumber ? "active" : ""}
                 aria-current={activeForgeChapter === chapterNumber ? "step" : undefined}
-                onClick={() => setActiveForgeChapter(chapterNumber as 1 | 2 | 3 | 4)}
+                onClick={() => setActiveForgeChapter(chapterNumber as 1 | 2 | 3 | 4 | 5)}
               >
                 <small>CHAPTER {chapterNumber}</small>
                 <b>{label}</b>
@@ -5364,20 +5433,21 @@ export default function Home() {
           {openingExperimentFocus && resultViewMode === "guided" && (
             <aside className="forge-journey-guide" aria-live="polite">
               <span>
-                <small>GUIDED FORGE · STEP {activeForgeChapter + 1} OF 5</small>
+                <small>GUIDED FORGE · STEP {activeForgeChapter} OF 5</small>
                 <strong>
                   {activeForgeChapter === 1 && `Your ${openingExperimentFocus} experiment is set. Review the complete build it lives inside.`}
                   {activeForgeChapter === 2 && `Define what success looks like for ${openingExperimentFocus}, then carry that question into a match.`}
                   {activeForgeChapter === 3 && "Understand the machine before judging one card in isolation."}
                   {activeForgeChapter === 4 && "Use the Deep Forge only when you want the evidence behind the recommendation."}
+                  {activeForgeChapter === 5 && "Take one clear question to the table, then bring back one honest clue."}
                 </strong>
               </span>
-              {activeForgeChapter < 4 ? (
-                <button type="button" onClick={() => setActiveForgeChapter((activeForgeChapter + 1) as 1 | 2 | 3 | 4)}>
-                  {activeForgeChapter === 1 ? "I understand the build · Prepare the test →" : activeForgeChapter === 2 ? "Test defined · Understand the machine →" : "Continue into the Deep Forge →"}
+              {activeForgeChapter < 5 ? (
+                <button type="button" onClick={() => setActiveForgeChapter((activeForgeChapter + 1) as 1 | 2 | 3 | 4 | 5)}>
+                  {activeForgeChapter === 1 ? "I understand the build · Prepare the test →" : activeForgeChapter === 2 ? "Test defined · Understand the machine →" : activeForgeChapter === 3 ? "Continue into the Deep Forge →" : "Take it to the Proving Grounds →"}
                 </button>
               ) : (
-                <button type="button" onClick={() => setActiveForgeChapter(2)}>Return to the experiment →</button>
+                <button type="button" onClick={() => setActiveForgeChapter(1)}>Return to the Masterwork →</button>
               )}
             </aside>
           )}
@@ -5435,9 +5505,9 @@ export default function Home() {
                 ) : revisionLearning.sampleSize > 0 ? (
                   <button type="button" onClick={finishCurrentMasterwork}>Seal this Masterwork →</button>
                 ) : benchStatus === "testing" ? (
-                  <button type="button" onClick={() => { setActiveForgeChapter(2); setMatchEvidenceOpen(true); window.requestAnimationFrame(() => document.getElementById("match-evidence")?.scrollIntoView({ behavior: "smooth", block: "center" })); }}>Record match evidence →</button>
+                  <button type="button" onClick={() => setActiveForgeChapter(5)}>Return to the Proving Grounds →</button>
                 ) : (
-                  <button type="button" disabled={!deckIntegrity.passed} onClick={beginTesting}>Begin the first table test →</button>
+                  <button type="button" disabled={!deckIntegrity.passed} onClick={() => setActiveForgeChapter(5)}>Prepare the first table test →</button>
                 )}
               </footer>
             </section>
@@ -7383,6 +7453,57 @@ export default function Home() {
                 </div>
               )}
             </aside>
+            <section className="proving-grounds" aria-labelledby="proving-grounds-title">
+              <header>
+                <span><small>CHAPTER V · THE PROVING GROUNDS</small><h2 id="proving-grounds-title">Your guide stays with you after the Forge.</h2></span>
+                <em>REVISION {Math.max(1, revisions.length)}</em>
+              </header>
+              {fieldTestRead ? (
+                <article className="field-test-read" aria-live="polite">
+                  <small>IMMEDIATE COACHING READ</small>
+                  <h3>{fieldTestRead.headline}</h3>
+                  <p>{fieldTestRead.guidance}</p>
+                  <div>
+                    <button type="button" onClick={() => { setFieldTestRead(null); beginProvingGroundsTest(); }}>Run this question again</button>
+                    <button type="button" onClick={() => { setFieldTestRead(null); setActiveForgeChapter(2); }}>Return to the Testing Anvil</button>
+                  </div>
+                </article>
+              ) : activeFieldTest ? (
+                <article className="active-field-test">
+                  <small>FIELD TEST ACTIVE · PRESERVED ON THIS DEVICE</small>
+                  <h3>{activeFieldTest.question}</h3>
+                  <p><b>Watch only this:</b> {activeFieldTest.watchFor}</p>
+                  <aside>{provingGrounds.boundary}</aside>
+                  <section>
+                    <h4>Back from the game?</h4>
+                    <p>Two answers. No essay. The Forge will treat them as one clue.</p>
+                    <div className="field-test-result">
+                      <button type="button" className={fieldTestResult === "win" ? "selected" : ""} onClick={() => setFieldTestResult("win")}>I won</button>
+                      <button type="button" className={fieldTestResult === "loss" ? "selected" : ""} onClick={() => setFieldTestResult("loss")}>I lost</button>
+                    </div>
+                    {fieldTestResult && <div className="field-test-outcome">
+                      <button type="button" onClick={() => finishProvingGroundsTest("observed")}>{provingGrounds.successPrompt}</button>
+                      <button type="button" onClick={() => finishProvingGroundsTest("missed")}>{provingGrounds.missedPrompt}</button>
+                      <button type="button" onClick={() => finishProvingGroundsTest("not-tested")}>This game did not test it</button>
+                      <button type="button" onClick={() => finishProvingGroundsTest("unsure")}>I’m not sure</button>
+                    </div>}
+                  </section>
+                </article>
+              ) : (
+                <article className="field-test-brief">
+                  <small>THE FORGE’S NEXT QUESTION</small>
+                  <h3>{provingGrounds.question}</h3>
+                  <p className="field-test-why"><b>Why this question</b><span>{provingGrounds.why}</span></p>
+                  <p className="field-test-watch"><b>Watch only this</b><span>{provingGrounds.watchFor}</span></p>
+                  <aside>{provingGrounds.boundary}</aside>
+                  <button type="button" disabled={!deckIntegrity.passed} onClick={beginProvingGroundsTest}>Begin this field test →</button>
+                </article>
+              )}
+              <footer>
+                <span><b>{revisionLearning.sampleSize}</b> exact-revision clue{revisionLearning.sampleSize === 1 ? "" : "s"} preserved</span>
+                <button type="button" onClick={() => { setActiveForgeChapter(2); setMatchEvidenceOpen(true); window.requestAnimationFrame(() => document.getElementById("match-evidence")?.scrollIntoView({ behavior: "smooth", block: "center" })); }}>Open full match history & coaching →</button>
+              </footer>
+            </section>
           </div>
         </section>
       )}

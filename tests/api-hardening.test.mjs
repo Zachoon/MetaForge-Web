@@ -121,6 +121,8 @@ test("structural-analyze runs the real engine for an authenticated, valid reques
   assert.equal(body.report.revisionLearning.sampleSize, 0);
   assert.ok(Array.isArray(body.report.interventionLearning.experiments));
   assert.equal(body.report.coachingDiagnosis.primary.category, "collect-more-evidence");
+  assert.equal(body.report.provingGrounds.engine, "metaforge-proving-grounds-v1");
+  assert.match(body.report.provingGrounds.boundary, /one clue, not a verdict/i);
 });
 
 test("structural-analyze computes a real simulation dossier when computeSimulation is true", async () => {

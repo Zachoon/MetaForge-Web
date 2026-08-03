@@ -128,6 +128,16 @@ export interface ForgeAnalysisReport {
     evidenceBoundary: string;
     confidence: number;
   };
+  provingGrounds: {
+    engine: string;
+    source: string;
+    question: string;
+    watchFor: string;
+    why: string;
+    successPrompt: string;
+    missedPrompt: string;
+    boundary: string;
+  };
   methodology: string;
 }
 
@@ -236,6 +246,16 @@ export const EMPTY_FORGE_ANALYSIS_REPORT: ForgeAnalysisReport = {
     alternatives: [],
     evidenceBoundary: "MetaForge diagnoses repeated evidence attached to this exact revision. A loss alone never proves a bad deck or a piloting mistake, and observed samples are not predicted win rates.",
     confidence: 0,
+  },
+  provingGrounds: {
+    engine: "metaforge-proving-grounds-v1",
+    source: "collect-more-evidence",
+    question: "What is the first repeatable reason this deck succeeds or stalls?",
+    watchFor: "Notice the first decisive turn and name only the clearest observable lesson.",
+    why: "There is not enough exact-revision evidence for an honest diagnosis yet.",
+    successPrompt: "Yes — the thing I watched happened",
+    missedPrompt: "No — it did not happen",
+    boundary: "One game supplies one clue, not a verdict. The Forge will preserve the exact revision and look for repetition before recommending a change.",
   },
   methodology: "MetaForge converts verified card text into an interaction graph, interprets repeatable systems, and then forms bounded structural-impact hypotheses. These results do not prove real-game causation or predict match outcomes.",
 };

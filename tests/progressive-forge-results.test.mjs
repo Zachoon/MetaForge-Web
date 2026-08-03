@@ -23,11 +23,17 @@ test("places deck and refinement surfaces before the intelligence vault", () => 
 });
 
 test("turns the result into one active chapter instead of a continuous instrument wall", () => {
-  assert.match(page, /activeForgeChapter.*useState<1 \| 2 \| 3 \| 4>\(1\)/);
+  assert.match(page, /activeForgeChapter.*useState<1 \| 2 \| 3 \| 4 \| 5>\(1\)/);
   assert.match(page, /id="forge-chapter-rail"/);
   assert.match(page, /chapter-\$\{activeForgeChapter\}-active/);
   assert.match(css, /\.chapter-1-active \.deck-manuscript>header\{display:flex\}/);
   assert.match(css, /\.chapter-2-active>\.testing-loop\{display:block/);
+  assert.match(page, /CHAPTER V · THE PROVING GROUNDS/);
+  assert.match(page, /Begin this field test/);
+  assert.match(page, /metaforge\.activeFieldTest/);
+  assert.match(page, /This game did not test it/);
+  assert.match(page, /The Forge will treat them as one clue/);
+  assert.match(css, /\.chapter-5-active>\.proving-grounds\{display:block/);
   assert.match(css, /\.chapter-3-active \.forge-understanding-bridge\{display:block/);
   assert.match(css, /\.chapter-4-active \.forge-intelligence-vault\{display:block/);
 });
