@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import { forgeNativeMasterwork } from "../app/native-masterwork-engine.mjs";
 
 class ForgeD1 {
@@ -93,7 +96,36 @@ test("multi-refill preserves uncut quantities, fills every slot, and never re-ad
     const addedFacts = candidate.additions.map((addition) => pool.find((entry) => entry.name === addition.name));
     assert.equal(addedFacts.filter((entry) => /\bLand\b/.test(entry?.typeLine || "")).length, 1, "one removed land must refill with one land");
     assert.equal(addedFacts.filter((entry) => !/\bLand\b/.test(entry?.typeLine || "")).length, 1, "one removed spell must refill with one spell");
+    assert.equal(typeof candidate.context?.preservationScore, "number");
+    assert.equal(typeof candidate.context?.rolePreservation, "number");
+    assert.equal(typeof candidate.context?.systemPreservation, "number");
+    assert.ok(Array.isArray(candidate.context?.removedRoles));
+    assert.ok(Array.isArray(candidate.context?.restoredRoles));
+    assert.ok(Array.isArray(candidate.context?.affectedSystems));
+    assert.ok(candidate.context?.summary && !candidate.context.summary.includes("undefined"));
   }
+  for (let index = 1; index < body.packages.length; index += 1) {
+    assert.ok(body.packages[index - 1].context.preservationScore >= body.packages[index].context.preservationScore, "packages must rank by preserved structural footprint");
+  }
+});
+
+test("multi-refill explains the functional footprint removed by the player's cuts", async () => {
+  const report = forgeNativeMasterwork(input);
+  const currentRows = report.selected.rows.map((row) => ({ name: row.name, quantity: row.quantity }));
+  const functionalCut = report.selected.rows.find((row) => row.roles.some((role) => !["land", "commander"].includes(role)));
+  assert.ok(functionalCut, "fixture needs a function-bearing spell");
+  const afterCut = currentRows
+    .map((row) => row.name === functionalCut.name ? { ...row, quantity: row.quantity - 1 } : row)
+    .filter((row) => row.quantity > 0);
+  const result = (await import("../app/native-masterwork-engine.mjs")).forgeMultiSlotRefills(
+    input,
+    afterCut,
+    [{ name: functionalCut.name, quantity: 1 }],
+  );
+  const expectedRoles = functionalCut.roles.filter((role) => !["land", "commander"].includes(role));
+  assert.ok(expectedRoles.some((role) => result.packages[0].context.removedRoles.includes(role)), "the cut card's real role must be recorded");
+  assert.ok(result.packages.every((entry) => !entry.additions.some((addition) => addition.name === functionalCut.name)), "the cut card must remain excluded");
+  assert.match(result.packages[0].context.summary, /Restores|Preserves|less supported/);
 });
 
 test("multi-refill hides another player's generation behind the same 404 boundary", async () => {
@@ -103,4 +135,17 @@ test("multi-refill hides another player's generation behind the same 404 boundar
   const response = await app.fetch(request("stranger@example.com", { generationId: "owned", currentRows: [{ name: "A", quantity: 1 }], cuts: [{ name: "A", quantity: 1 }] }), env(DB), ctx);
   assert.equal(response.status, 404);
   assert.match((await response.json()).error, /no longer available/i);
+});
+
+test("multi-refill role and system ranking remains server-only", () => {
+  const clientDir = fileURLToPath(new URL("../dist/client/", import.meta.url));
+  const serverDir = fileURLToPath(new URL("../dist/server/", import.meta.url));
+  const readBundle = (dir) => fs.readdirSync(dir, { recursive: true })
+    .filter((name) => /\.(?:js|mjs)$/.test(String(name)))
+    .map((name) => fs.readFileSync(path.join(dir, String(name)), "utf8"))
+    .join("\n");
+  const client = readBundle(clientDir);
+  const server = readBundle(serverDir);
+  assert.doesNotMatch(client, /restorationMerit|cutRoleNeeds|affectedSystems/);
+  assert.match(server, /restorationMerit|cutRoleNeeds|affectedSystems/);
 });

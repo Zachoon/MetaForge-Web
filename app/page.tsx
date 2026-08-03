@@ -142,6 +142,19 @@ type MultiRefillPackage = {
   additions: DeckRow[];
   rows: any[];
   evaluation?: { score?: number; roleCoverage?: number; curveHealth?: number; cohesion?: number } | null;
+  context?: {
+    preservationScore: number;
+    rolePreservation: number;
+    systemPreservation: number;
+    removedRoles: string[];
+    restoredRoles: string[];
+    exposedRoles: string[];
+    affectedSystems: string[];
+    preservedSystems: string[];
+    repairedSystems: string[];
+    exposedSystems: string[];
+    summary: string;
+  } | null;
   boundary?: string;
 };
 type CommanderOption = {
@@ -6699,8 +6712,14 @@ export default function Home() {
                         <p>{multiRefillResult.summary}</p>
                         {multiRefillResult.packages.map((refill) => (
                           <article key={refill.id}>
-                            <header><b>{refill.label}</b><span>{refill.evaluation?.score?.toFixed?.(1) || "—"} structural</span></header>
+                            <header><b>{refill.label}</b><span>{refill.context?.preservationScore?.toFixed?.(0) || "—"}% footprint kept</span></header>
                             <p>{refill.additions.map((row) => `+${row.quantity} ${row.name}`).join(" · ")}</p>
+                            {refill.context && (
+                              <div className="multi-refill-context">
+                                <strong>{refill.context.summary}</strong>
+                                <span>{refill.context.rolePreservation.toFixed(0)}% roles · {refill.context.systemPreservation.toFixed(0)}% affected systems</span>
+                              </div>
+                            )}
                             <small>{multiRefillResult.boundary}</small>
                             <button type="button" onClick={() => applyMultiRefillPackage(refill)}>Create this revision</button>
                           </article>

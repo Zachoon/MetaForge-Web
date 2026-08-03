@@ -1759,6 +1759,26 @@ export function forgeMultiSlotRefills(input, currentRows, requestedCuts) {
   const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
   const copyLimit = singleton ? 1 : 4;
 
+  // A refill is not just an empty-slot problem. The removed cards carried
+  // concrete deck functions, and often participated in one or more connected
+  // systems. Track those losses explicitly so replacement merit rewards
+  // restoring the player's existing plan instead of merely selecting the
+  // strongest generally useful card that happens to fit the slot type.
+  const cutRoleNeeds = new Map();
+  for (const cut of requestedCuts) {
+    const entry = analyzedByName.get(normalized(cut.name));
+    for (const role of entry?.roles || []) {
+      if (role === "land") continue;
+      cutRoleNeeds.set(role, (cutRoleNeeds.get(role) || 0) + Number(cut.quantity || 0));
+    }
+  }
+  const originalRows = currentRows.map((row) => ({ ...row }));
+  for (const cut of requestedCuts) {
+    const existing = originalRows.find((row) => normalized(row.name) === normalized(cut.name));
+    if (existing) existing.quantity += Number(cut.quantity || 0);
+    else originalRows.push({ name: cut.name, quantity: Number(cut.quantity || 0) });
+  }
+
   const enrich = (row) => {
     const key = normalized(row.name);
     if (commanders.has(key)) return { ...row, roles: ["commander"], score: 100, cmc: 0 };
@@ -1768,9 +1788,20 @@ export function forgeMultiSlotRefills(input, currentRows, requestedCuts) {
     return { ...row, roles: [], cmc: 0, colorPips: {} };
   };
 
+  const structuralReportFor = (rows) => buildForgeStructuralAnalysis(
+    buildSelectedStructuralCards({ rows: rows.map(enrich) }, input),
+    { commanderName: input.commander?.name || "" },
+  );
+  const originalStructural = structuralReportFor(originalRows);
+  const cutNames = new Set(requestedCuts.map((cut) => normalized(cut.name)));
+  const affectedSystems = originalStructural.systems.systems.filter((system) =>
+    system.members.some((name) => cutNames.has(normalized(name))),
+  );
+
   const packages = VARIANTS.map((variant) => {
     const rows = currentRows.map((row) => enrich({ name: row.name, quantity: Number(row.quantity || 0) })).filter((row) => row.quantity > 0);
     const additions = [];
+    const restoredRoleCounts = new Map();
     const scored = analysis.cards.map((entry) => ({ entry, scored: scoreCard(entry, input, variant, analysis.context) }));
     for (const kind of cutKinds) {
       const candidates = scored.filter(({ entry }) => {
@@ -1788,7 +1819,18 @@ export function forgeMultiSlotRefills(input, currentRows, requestedCuts) {
         const roleCounts = new Map();
         for (const row of trial) for (const role of row.roles || []) roleCounts.set(role, (roleCounts.get(role) || 0) + row.quantity);
         const evaluation = evaluateCandidate(trial, roleCounts, input, variant);
-        const merit = evaluation.score * 100 + candidate.scored.score;
+        const restoredRoles = candidate.entry.roles.filter((role) =>
+          cutRoleNeeds.has(role) && (restoredRoleCounts.get(role) || 0) < cutRoleNeeds.get(role),
+        );
+        // Role restoration is intentionally material but not absolute: hard
+        // legality/deck-shape gates remain upstream, while the structural
+        // evaluation can still reject a superficially similar but damaging
+        // replacement.
+        const restorationMerit = restoredRoles.reduce((sum, role) => {
+          const scarcity = 1 / Math.max(1, cutRoleNeeds.get(role));
+          return sum + 180 + scarcity * 40;
+        }, 0);
+        const merit = evaluation.score * 100 + candidate.scored.score + restorationMerit;
         if (!best || merit > best.merit || (merit === best.merit && candidate.entry.card.name.localeCompare(best.candidate.entry.card.name) < 0)) {
           best = { candidate, merit, evaluation };
         }
@@ -1800,10 +1842,40 @@ export function forgeMultiSlotRefills(input, currentRows, requestedCuts) {
       const added = additions.find((row) => normalized(row.name) === normalized(best.candidate.entry.card.name));
       if (added) added.quantity += 1;
       else additions.push({ name: best.candidate.entry.card.name, quantity: 1, roles: best.candidate.entry.roles });
+      for (const role of best.candidate.entry.roles) {
+        if (cutRoleNeeds.has(role)) restoredRoleCounts.set(role, (restoredRoleCounts.get(role) || 0) + 1);
+      }
     }
     const roleCounts = new Map();
     for (const row of rows) for (const role of row.roles || []) roleCounts.set(role, (roleCounts.get(role) || 0) + row.quantity);
     const evaluation = evaluateCandidate(rows, roleCounts, input, variant);
+    const finalStructural = structuralReportFor(rows);
+    const finalSystemsByName = new Map(finalStructural.systems.systems.map((system) => [system.name, system]));
+    const additionNames = new Set(additions.map((row) => normalized(row.name)));
+    const removedRoles = [...cutRoleNeeds.keys()].sort();
+    const restoredRoles = removedRoles.filter((role) => (restoredRoleCounts.get(role) || 0) > 0);
+    const exposedRoles = removedRoles.filter((role) => (restoredRoleCounts.get(role) || 0) < cutRoleNeeds.get(role));
+    const repairedSystems = affectedSystems
+      .filter((system) => finalSystemsByName.get(system.name)?.members.some((name) => additionNames.has(normalized(name))))
+      .map((system) => system.name);
+    const preservedSystems = affectedSystems
+      .filter((system) => finalSystemsByName.has(system.name))
+      .map((system) => system.name);
+    const exposedSystems = affectedSystems
+      .filter((system) => !finalSystemsByName.has(system.name))
+      .map((system) => system.name);
+    const roleNeedTotal = [...cutRoleNeeds.values()].reduce((sum, count) => sum + count, 0);
+    const roleRestoredTotal = [...cutRoleNeeds].reduce((sum, [role, count]) => sum + Math.min(count, restoredRoleCounts.get(role) || 0), 0);
+    const rolePreservation = roleNeedTotal ? roleRestoredTotal / roleNeedTotal : 1;
+    const systemPreservation = affectedSystems.length ? preservedSystems.length / affectedSystems.length : 1;
+    const preservationScore = Number(((rolePreservation * 0.6 + systemPreservation * 0.4) * 100).toFixed(1));
+    const summaryParts = [];
+    if (restoredRoles.length) summaryParts.push(`Restores ${restoredRoles.join(", ")}`);
+    if (repairedSystems.length) summaryParts.push(`reconnects ${repairedSystems.join(", ")}`);
+    if (exposedRoles.length || exposedSystems.length) {
+      summaryParts.push(`leaves ${[...exposedRoles, ...exposedSystems].join(", ")} less supported`);
+    }
+    if (!summaryParts.length) summaryParts.push("Preserves the cut cards' structural footprint");
     if (rows.reduce((sum, row) => sum + row.quantity, 0) !== target) throw new Error("A refill package changed deck size");
     return {
       id: variant.id,
@@ -1811,9 +1883,27 @@ export function forgeMultiSlotRefills(input, currentRows, requestedCuts) {
       rows,
       additions,
       evaluation,
+      context: {
+        preservationScore,
+        rolePreservation: Number((rolePreservation * 100).toFixed(1)),
+        systemPreservation: Number((systemPreservation * 100).toFixed(1)),
+        removedRoles,
+        restoredRoles,
+        exposedRoles,
+        affectedSystems: affectedSystems.map((system) => system.name),
+        preservedSystems,
+        repairedSystems,
+        exposedSystems,
+        summary: `${summaryParts.join("; ")}.`,
+      },
       boundary: "Exact-size, constraint-preserving modeled refill. Real match performance remains unproven.",
     };
   });
+  packages.sort((left, right) =>
+    right.context.preservationScore - left.context.preservationScore ||
+    right.evaluation.score - left.evaluation.score ||
+    left.id.localeCompare(right.id),
+  );
   return Object.freeze({ packages });
 }
 
