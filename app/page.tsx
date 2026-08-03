@@ -6710,12 +6710,14 @@ export default function Home() {
                         />
                       )}
                     </button>
-                    <small>SELECT A CARD TO INSPECT</small>
-                    <strong>{activeCard}</strong>
-                    <span>
-                      {activeFact?.type_line ||
-                        "Card details awaken on inspection"}
-                    </span>
+                    <div className="card-preview-summary">
+                      <small>ACTIVE CARD · TAP FOR DOSSIER</small>
+                      <strong>{activeCard}</strong>
+                      <span>
+                        {activeFact?.type_line ||
+                          "Card details awaken on inspection"}
+                      </span>
+                    </div>
                     <span className="slot-justification">
                       <small>SLOT DUTY · {activeRole.toUpperCase()}</small>
                       {activeSlotReason}

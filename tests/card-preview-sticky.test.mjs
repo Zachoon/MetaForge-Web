@@ -25,6 +25,24 @@ test("keeps the deck card preview attached to viewport scrolling", () => {
     "The deck preview must remain sticky below the Forge navigation.",
   );
 
+  assert.match(
+    testingAnvilCss,
+    /\.progressive-results \.testing-layout\{[^}]*overflow:clip/,
+    "The Workbench shell must clip decoration without trapping sticky descendants.",
+  );
+
+  assert.match(
+    testingAnvilCss,
+    /\.workbench-deck-view \.card-preview-stage\{top:0\}/,
+    "The contained deck scroller must pin its preview to its own top edge.",
+  );
+
+  assert.match(
+    testingAnvilCss,
+    /@media\(max-width:560px\)[\s\S]*?\.card-preview-stage\{position:sticky!important;[^}]*top:66px/,
+    "The mobile preview must remain visible as a compact sticky card companion.",
+  );
+
   assert.doesNotMatch(
     forgeJourneyCss,
     /\.great-forge\{[^}]*overflow:hidden/,
