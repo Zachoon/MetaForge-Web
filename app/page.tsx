@@ -1458,6 +1458,7 @@ export default function Home() {
       turnstileWidgetRef.current = turnstile.render(turnstileHostRef.current, {
         sitekey: "0x4AAAAAAEEl7173Degrwsrc",
         theme: "dark",
+        size: "flexible",
         callback: (token: string) => setTurnstileToken(token),
         "expired-callback": () => setTurnstileToken(""),
         "error-callback": () => setTurnstileToken(""),

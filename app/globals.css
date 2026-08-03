@@ -367,3 +367,65 @@ footer p { font-family:Newsreader, Georgia,serif; font-style:italic; }
 /* Guests can inspect the finished list, but mutation/learning tools begin after account creation. */
 [data-guest-mode="true"] .forge-edit-workbench,[data-guest-mode="true"] .evidence-ritual,[data-guest-mode="true"] .opening-experiment-gate{pointer-events:none;opacity:.42;filter:saturate(.55)}
 .launch-legal-nav{position:absolute;z-index:31;top:78px;right:18px;display:flex;gap:13px}.launch-legal-nav a{color:#947d69;font:600 11px Inter,sans-serif;text-decoration:none}.launch-legal-nav a:hover{color:#e6a35c}@media(max-width:720px){.launch-legal-nav{top:70px;right:10px}}
+
+/* Public entrance guardrails. The Forge motion layer deliberately gives most
+   direct children relative positioning; these two overlays are exceptions and
+   need the stronger child selector so the verification panel cannot be pushed
+   above the viewport and the legal links stay anchored below the header. */
+.great-forge > .guest-forge-pass,
+.great-forge > .guest-result-gate {
+  position: fixed;
+  z-index: 130;
+  top: auto;
+  right: auto;
+  bottom: max(14px, env(safe-area-inset-bottom));
+}
+.great-forge > .launch-legal-nav { position: absolute; }
+.great-forge[data-guest-mode="true"] { padding-bottom: 104px; }
+.guest-forge-pass > div:last-child { flex: 0 0 auto; max-width: 100%; }
+.guest-forge-pass iframe { display: block; max-width: 100%; }
+
+@media (max-width: 720px) {
+  .great-forge[data-guest-mode="true"] { padding-bottom: 150px; }
+  .great-forge > .guest-forge-pass,
+  .great-forge > .guest-result-gate {
+    width: calc(100vw - 20px);
+    gap: 10px;
+    padding: 11px 12px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+  }
+  .guest-forge-pass small,.guest-result-gate small { font-size: 10px; letter-spacing: .09em; }
+  .guest-forge-pass b,.guest-result-gate b { font-size: 13px; line-height: 1.35; }
+}
+
+@media (max-width: 620px) {
+  .forge-bar { padding-inline: 12px; }
+  .forge-brand { gap: 9px; }
+  .forge-brand > i { width: 34px; height: 34px; }
+  .forge-brand span { font-size: 12px; letter-spacing: .1em; }
+  .forge-brand small { font-size: 9px; letter-spacing: .14em; }
+  .entrance-copy { padding: 38px 18px 42px; }
+  .entrance-copy h1 { margin: 14px 0 18px; font-size: clamp(38px,11.5vw,46px); line-height: 1.05; }
+  .entrance-copy h1 br { display: none; }
+  .entrance-copy > p { font-size: 16px; line-height: 1.6; }
+  .entrance-actions { margin-top: 28px; }
+  .entrance-actions > button { min-height: 150px; padding: 20px; }
+  .entrance-actions strong { margin-top: 20px; font-size: 21px; }
+  .entrance-actions .forge-card-description { font-size: 13px; line-height: 1.45; }
+  .entrance-actions b { margin-top: 18px; font-size: 12px; }
+  .launch-legal-nav a { font-size: 12px; }
+}
+
+@media (max-width: 420px) {
+  .forge-brand small { display: none; }
+  .forge-reading-tools > button:not(.quiet-action) { width: 30px; height: 30px; }
+}
+
+@media (max-width: 360px) {
+  .forge-brand > span { display: none; }
+  .great-forge > .guest-forge-pass,
+  .great-forge > .guest-result-gate {
+    width: calc(100vw - 8px);
+    padding-inline: 6px;
+  }
+}
