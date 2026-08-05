@@ -28,6 +28,7 @@ import { applyControlledSwap, experimentAdditionSynergy, rankExperimentAdditions
 // moved out entirely once the simulation dossier that was its only
 // caller became server-side too.
 import { manaConsistencyReport, parseNativeBlueprintIntent } from "./native-masterwork-engine.mjs";
+import { commanderOptionFromCard, resolvePastedCommanderCandidate } from "./deck-import-commander.mjs";
 import { updateFamily, setFamilyMotifWeights } from "./deck-bench.mjs";
 import {
   resolveDeckStructuralCards,
@@ -1082,22 +1083,7 @@ const createMasterworks = (seed: number, commander = "", note = ""): Masterwork[
     };
   });
 };
-const commanderOption = (card: any): CommanderOption => {
-  const faceFacts = (card.card_faces || [])
-    .map(
-      (face: any) =>
-        `${face.name} ${face.mana_cost || ""}\n${face.type_line || ""}\n${face.oracle_text || ""}`,
-    )
-    .join("\nTRANSFORMS TO\n");
-  return {
-    name: card.name,
-    colors: card.color_identity || [],
-    typeLine: card.type_line || "Legendary card",
-    image:
-      card.image_uris?.small || card.card_faces?.[0]?.image_uris?.small || "",
-    verifiedFacts: `LIVE SCRYFALL RECORD\nName: ${card.name}\nMana cost: ${card.mana_cost || card.card_faces?.[0]?.mana_cost || "None"}\nType: ${card.type_line || ""}\nColor identity: ${(card.color_identity || []).join("") || "Colorless"}\nSet: ${card.set_name || ""} (${card.set || ""})\nAvailable games: ${(card.games || []).join(", ")}\nBrawl legality: ${card.legalities?.brawl || "unknown"}\nCommander legality: ${card.legalities?.commander || "unknown"}\nOracle text:\n${faceFacts || card.oracle_text || ""}`,
-  };
-};
+const commanderOption = (card: any): CommanderOption => commanderOptionFromCard(card);
 // Reads the same verifiedFacts oracle-text block already built for every
 // commander to detect Partner, "Partner with <name>", and Background
 // eligibility — no separate fetch needed, since the text is already on hand
@@ -3026,6 +3012,31 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, [commanderQuery, format, selectedCommander?.name]);
 
+  // Reviewing a pasted decklist (chamber "refine") never asks the player to
+  // choose or discover a commander the way a fresh build does — if their
+  // paste already names one in the trailing-block shape Moxfield/Arena/MTGO
+  // exports use, resolve and reserve it automatically so the commander
+  // section below renders its "Commander selected" summary instead of the
+  // discovery UI. A paste that doesn't take that shape leaves selectedCommander
+  // unset and falls back to the manual picker, which still omits the
+  // fresh-build-only "Suggest a commander for me" ceremony in this chamber.
+  useEffect(() => {
+    if (chamber !== "refine" || !isCommanderFormat(format) || selectedCommander) return;
+    const timer = window.setTimeout(async () => {
+      try {
+        const resolved = await resolvePastedCommanderCandidate({
+          deckText: deck,
+          formatTerms: scryfallFormatTerms(format),
+          mapCard: commanderOption,
+        });
+        if (resolved) setSelectedCommander(resolved);
+      } catch {
+        /* Auto-detection is a convenience only; the manual picker remains available. */
+      }
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [chamber, format, deck, selectedCommander]);
+
   const partnerEligibility = useMemo(
     () => partnerEligibilityFor(selectedCommander),
     [selectedCommander],
@@ -4934,7 +4945,9 @@ export default function Home() {
                     <strong>
                       {selectedCommander
                         ? "Commander bound to this Blueprint"
-                        : "Choose a legend—or let the Forge discover one"}
+                        : chamber === "refine"
+                          ? "Confirm the commander from your list"
+                          : "Choose a legend—or let the Forge discover one"}
                     </strong>
                   </div>
                   {selectedCommander && (
@@ -4997,9 +5010,14 @@ export default function Home() {
                           setCommanderQuery(event.target.value);
                           setCommanderSearchOpen(true);
                         }}
-                        placeholder={`Search legal ${format} commanders…`}
+                        placeholder={
+                          chamber === "refine"
+                            ? `Search for the commander from your list…`
+                            : `Search legal ${format} commanders…`
+                        }
                         aria-label={`Search legal ${format} commanders`}
                       />
+                      {chamber !== "refine" && (
                       <button
                         type="button"
                         disabled={randomizingCommander}
@@ -5009,6 +5027,7 @@ export default function Home() {
                           ? "Drawing three starter legends…"
                           : "Surprise me · reveal three commanders"}
                       </button>
+                      )}
                     </div>
                     {commanderSearchOpen && (commanderSearching ||
                       commanderResults.length > 0 ||
