@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { displayRoleFor } from "./adaptive-recommendation.mjs";
+import { REVIEW_FOCUS_OPTIONS, toggleReviewFocus, buildReviewFocusContext } from "./review-focus.mjs";
 import { getMetaIntelligence } from "./meta-intelligence.mjs";
 // The interaction graph, systems intelligence, causality engine, bounded
 // failure analysis, goldfish/matchup simulation, and revision/
@@ -1517,6 +1518,12 @@ export default function Home() {
   const [actionPoint, setActionPoint] = useState({ x: 50, y: 52 });
   const [deck, setDeck] = useState("");
   const [commissionNote, setCommissionNote] = useState("");
+  // The player's one-click coaching focus for a pasted-decklist review —
+  // deliberately separate from commissionNote (their own free text) so
+  // neither silently overwrites the other. See colorsFromNote for why
+  // note-field scanning already exists; this is threaded into the same
+  // note sent to callForgeGenerate, not a new backend contract.
+  const [reviewFocus, setReviewFocus] = useState("");
   const [commanderQuery, setCommanderQuery] = useState("");
   const [commanderResults, setCommanderResults] = useState<CommanderOption[]>(
     [],
@@ -3689,13 +3696,17 @@ export default function Home() {
         // instead. A budget/rarity/power target is a construction-time
         // preference for cards the Forge is choosing, not a retroactive
         // filter on cards the player already chose themselves.
+        // reviewFocus is a one-click coaching-intent signal, not a deck
+        // characteristic — buildReviewFocusContext says so explicitly so
+        // the engine doesn't mistake it for a build constraint the way
+        // commissionNote's freeform card/play-style text can be.
         const { nativeReport, cardPool, generationId: newGenerationId, importWarnings } = await callForgeGenerate({
           mode: "imported",
           format,
           strategy,
           complexity,
           budget,
-          note: `${commissionNote}\n${interventionLearning.reusableGuidance}`.trim(),
+          note: `${buildReviewFocusContext(reviewFocus)}${commissionNote}\n${interventionLearning.reusableGuidance}`.trim(),
           seed: hashText(`${commissionSeed}|import|${deck.length}`),
           commander: commanderInput,
           secondCommander: secondCommanderInput,
@@ -3935,6 +3946,7 @@ export default function Home() {
     setCommanderQuery("");
     setCommissionNote("");
     setDeck("");
+    setReviewFocus("");
     setRecord({ wins: 0, losses: 0 });
     setMatchLog([]);
     setOpponentArchetype("Unknown / not sure");
@@ -4676,7 +4688,10 @@ export default function Home() {
                   // A blank commission must actually be blank — a decklist
                   // pasted in an earlier refinement session should never
                   // silently carry over and skip the three-reveal here.
+                  // reviewFocus is Review-session state in the same way, so
+                  // it gets cleared alongside deck for the same reason.
                   setDeck("");
+                  setReviewFocus("");
                   setBuildStep(0);
                   setChamber("commission");
                 }}
@@ -5193,6 +5208,35 @@ export default function Home() {
                   </div>
                 )}
               </section>
+            )}
+            {chamber === "refine" && (
+              <div className="review-focus-picker">
+                <span className="forge-eyebrow">
+                  <i /> BEFORE WE DIVE IN
+                </span>
+                <p id="review-focus-question">What would you most like help with?</p>
+                <div
+                  className="review-focus-chips"
+                  role="group"
+                  aria-labelledby="review-focus-question"
+                >
+                  {REVIEW_FOCUS_OPTIONS.map((option) => (
+                    <button
+                      type="button"
+                      key={option}
+                      className={
+                        reviewFocus === option
+                          ? "review-focus-chip is-selected"
+                          : "review-focus-chip"
+                      }
+                      aria-pressed={reviewFocus === option}
+                      onClick={() => setReviewFocus((current) => toggleReviewFocus(current, option))}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
             <label className="commission-note">
               <span>OPTIONAL · CARDS OR PLAY STYLES YOU WANT</span>
