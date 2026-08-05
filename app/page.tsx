@@ -4655,9 +4655,9 @@ export default function Home() {
               <i /> MAGIC: THE GATHERING · COMMANDER DECK BUILDER
             </span>
             <h1>
-              Build a complete
+              Understand your deck.
               <br />
-              <em>Commander deck.</em>
+              <em>Build with confidence.</em>
             </h1>
             <p>
               Choose a commander and how you want to play. MetaForge builds the
