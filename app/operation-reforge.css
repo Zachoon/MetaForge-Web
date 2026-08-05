@@ -1,0 +1,26 @@
+/* Operation Reforge Sprint 1: deck-first comprehension and hierarchy. */
+.forge-entrance .entrance-copy{max-width:720px}
+.forge-entrance .entrance-copy>p{max-width:660px;font-size:clamp(17px,2vw,21px);line-height:1.65;color:#c2d1ce}
+.forge-entrance .entrance-actions>article:first-child{border-color:#e39a48;box-shadow:0 20px 60px #0008,0 0 44px #e39a4820}
+.forge-steps button{min-width:112px}
+.forge-steps button.current{color:#fff;background:#18312f}
+.commission-heading p{max-width:720px;font-size:17px;line-height:1.6}
+.chamber-commission .commission-heading:after{content:"THREE QUICK STEPS\A Commander, strategy, then optional preferences."}
+.mark-grid>label:after{display:none}.commission-note:before{content:"OPTIONAL NOTE"}.awaken-button:not(:disabled):after{content:"READY TO BUILD"}.awaken-button:disabled:after{content:"CHOOSE A COMMANDER"}
+.commission-note{border-top:1px solid #294246;padding-top:24px}
+.build-stepper{display:grid;grid-template-columns:repeat(3,1fr);max-width:720px;margin:0 auto 30px;border:1px solid #294246;background:#091416}
+.build-stepper button{display:flex;align-items:center;gap:10px;padding:14px 16px;border:0;border-right:1px solid #294246;background:transparent;color:#829895;text-align:left}.build-stepper button:last-child{border-right:0}.build-stepper button.current{background:#18312f;color:#fff}.build-stepper button.complete{color:#75dbc4}
+.build-stepper i{display:grid;place-items:center;width:24px;height:24px;border:1px solid currentColor;border-radius:50%;font-style:normal;font-weight:800;font-size:11px}
+.chamber-commission .build-step-0 .build-choice-strategy,.chamber-commission .build-step-0 .build-choice-preference,.chamber-commission .build-step-0 .commission-note,.chamber-commission .build-step-0 .awaken-button{display:none}
+.chamber-commission .build-step-1 .build-choice-format,.chamber-commission .build-step-1 .build-choice-commander,.chamber-commission .build-step-1 .build-choice-preference,.chamber-commission .build-step-1 .commission-note,.chamber-commission .build-step-1 .awaken-button{display:none}
+.chamber-commission .build-step-2 .build-choice-format,.chamber-commission .build-step-2 .build-choice-strategy,.chamber-commission .build-step-2 .build-choice-commander{display:none}
+.chamber-commission .build-step-0 .mark-grid,.chamber-commission .build-step-1 .mark-grid{grid-template-columns:minmax(0,720px);justify-content:center}
+.build-step-actions{display:flex;justify-content:flex-end;gap:12px;max-width:720px;margin:24px auto 0}.build-step-actions button,.build-final-back{padding:13px 18px;border:1px solid #54716d;background:#0d1a1c;color:#dce9e6;font-weight:800}.build-step-actions .build-next{margin-left:auto;border-color:#e39a48;background:#e39a48;color:#11191a}.build-step-actions button:disabled{cursor:not-allowed;opacity:.45}.build-final-back{display:block;margin:18px 0 0}
+.progressive-results>header{padding-bottom:26px;border-bottom:1px solid #355357}
+.progressive-results>header .forge-eyebrow{color:#e8ae68}
+.progressive-results .deck-manuscript{border-color:#52716e;box-shadow:0 22px 70px #0007}
+.progressive-results .forge-chapter-rail>button:first-child{border-color:#e39a48}
+.progressive-results .forge-chapter-rail>button:not(.active){opacity:.78}
+.forge-guide-navigation{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.progressive-results .forge-intelligence-vault,.progressive-results .forge-understanding-bridge,.progressive-results .testing-loop,.progressive-results .proving-grounds{margin-top:18px}
+@media(max-width:760px){.forge-steps button{min-width:0}.forge-steps button b{display:none}.entrance-actions{grid-template-columns:1fr!important}.build-stepper button{padding:11px 8px;justify-content:center}.build-stepper button span{font-size:11px}.build-step-actions{flex-direction:column-reverse}.build-step-actions button{width:100%}}
