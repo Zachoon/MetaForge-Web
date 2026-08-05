@@ -5265,9 +5265,9 @@ export default function Home() {
               <i /> THE GREAT FORGE ANSWERS <i />
             </span>
             <h1>
-              The Forge has chosen.
+              One path stands out.
               <br />
-              <em>One design leads.</em>
+              <em>Here’s why.</em>
             </h1>
             <p>
               This recommendation best matches your {format} commission and

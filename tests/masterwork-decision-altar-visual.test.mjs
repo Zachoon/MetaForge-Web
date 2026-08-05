@@ -8,6 +8,9 @@ const [page, polish] = await Promise.all([
 ]);
 
 test("Masterwork reveal presents one recommendation and two deliberate alternatives", () => {
+  assert.match(page, /One path stands out/);
+  assert.match(page, /Here’s why/);
+  assert.doesNotMatch(page, /The Forge has chosen/);
   assert.match(page, /THE FORGE'S RECOMMENDATION/);
   assert.match(page, /BEST BLUEPRINT MATCH/);
   assert.match(page, /Reveal this Masterwork/);
