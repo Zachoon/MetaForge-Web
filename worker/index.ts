@@ -104,6 +104,18 @@ interface ExecutionContext {
 // dangerouslyAllowSVG: true in next.config.js and uncomment below:
 // const imageConfig: ImageConfig = { dangerouslyAllowSVG: true };
 
+// A minimal, uncorrelated-with-any-handler's-own-shape JSON envelope used
+// only by this file's own safety net (unmatched /api/* paths and uncaught
+// exceptions from any handler). Every handler already returns its own
+// JSON on every path it anticipates; this exists strictly for the paths
+// no handler ever anticipated — so callers under /api/* never get Cloudflare's
+// default HTML error page (which starts a JSON parse on the client with
+// `Unexpected token '<'`) for a route that doesn't exist or a dependency
+// (e.g. D1) that unexpectedly throws.
+function apiJson(value: unknown, status: number): Response {
+  return Response.json(value, { status, headers: { "Cache-Control": "no-store" } });
+}
+
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     if (env.METAFORGE_BOOTSTRAP_LOCK !== "unlocked") {
@@ -117,28 +129,46 @@ const worker = {
     if (url.pathname === "/robots.txt") return robotsResponse(url);
     if (url.pathname === "/sitemap.xml") return sitemapResponse(url);
 
-    if (url.pathname === "/api/account/deck-bench") {
-      return handleAccountBench(request, env);
+    try {
+      if (url.pathname === "/api/account/deck-bench") {
+        return await handleAccountBench(request, env);
+      }
+      if (url.pathname === "/api/account/feedback") {
+        return await handleFounderFeedback(request, env);
+      }
+      if (url.pathname === "/api/account/player-profile") return await handlePlayerProfile(request, env);
+      if (url.pathname === "/api/founder/overview") {
+        return await handleFounderOverview(request, env);
+      }
+      if (url.pathname === "/api/forge/chat") return await handleForgeChat(request, env);
+      if (url.pathname === "/api/forge/edhrec") return await handleEdhrecEvidence(request, env);
+      if (url.pathname === "/api/forge/generate") return await handleForgeGenerate(request, env);
+      if (url.pathname === "/api/forge/guest-generate") return await handleGuestForge(request, env);
+      if (url.pathname === "/api/account/claim-guest") return await handleGuestClaim(request, env);
+      if (url.pathname === "/api/forge/structural-analyze") return await handleForgeStructuralAnalyze(request, env);
+      if (url.pathname === "/api/forge/one-slot-experiment") return await handleForgeOneSlot(request, env);
+      if (url.pathname === "/api/forge/multi-refill") return await handleForgeMultiRefill(request, env);
+      if (url.pathname === "/api/forge/status") {ctx.waitUntil(ensureDataGoblinsStarted(env));return Response.json({ready:true,build:BUILD_ID,modelReady:false,mode:"native",fallback:"MetaForge Native Coach remains available without a model call",tcgplayerAffiliateEnabled:env.TCGPLAYER_AFFILIATE_ENABLED === "true"},{headers:{"Cache-Control":"no-store"}})}
+      if (url.pathname === "/api/founder/knowledge") return await handleCoachingKnowledge(request, env, true);
+      if (url.pathname === "/api/coach/knowledge") return await handleCoachingKnowledge(request, env, false);
+      if (url.pathname === "/api/founder/goblins") return await handleGoblinOperations(request, env);
+
+      // No handler above claimed this /api/ path — a mistyped or removed
+      // route must still come back as JSON, not fall through to the SSR
+      // handler below (which renders the HTML app shell/404 page for
+      // unmatched routes; fine for real pages, wrong for API callers).
+      if (url.pathname.startsWith("/api/")) return apiJson({ error: "Not found" }, 404);
+    } catch (error) {
+      // Last-resort net: every handler above already returns its own JSON
+      // on the failure paths it anticipates (validation, auth, engine
+      // exceptions). This only fires for what none of them anticipated —
+      // e.g. a transient D1 failure on a query that isn't already inside
+      // that handler's own try/catch. Without this, Cloudflare's runtime
+      // turns an uncaught exception into an HTML error page, which is
+      // exactly the "Unexpected token '<'" failure this exists to close.
+      console.error("Unhandled exception for", url.pathname, error);
+      return apiJson({ error: "Internal server error" }, 500);
     }
-    if (url.pathname === "/api/account/feedback") {
-      return handleFounderFeedback(request, env);
-    }
-    if (url.pathname === "/api/account/player-profile") return handlePlayerProfile(request, env);
-    if (url.pathname === "/api/founder/overview") {
-      return handleFounderOverview(request, env);
-    }
-    if (url.pathname === "/api/forge/chat") return handleForgeChat(request, env);
-    if (url.pathname === "/api/forge/edhrec") return handleEdhrecEvidence(request, env);
-    if (url.pathname === "/api/forge/generate") return handleForgeGenerate(request, env);
-    if (url.pathname === "/api/forge/guest-generate") return handleGuestForge(request, env);
-    if (url.pathname === "/api/account/claim-guest") return handleGuestClaim(request, env);
-    if (url.pathname === "/api/forge/structural-analyze") return handleForgeStructuralAnalyze(request, env);
-    if (url.pathname === "/api/forge/one-slot-experiment") return handleForgeOneSlot(request, env);
-    if (url.pathname === "/api/forge/multi-refill") return handleForgeMultiRefill(request, env);
-    if (url.pathname === "/api/forge/status") {ctx.waitUntil(ensureDataGoblinsStarted(env));return Response.json({ready:true,build:BUILD_ID,modelReady:false,mode:"native",fallback:"MetaForge Native Coach remains available without a model call",tcgplayerAffiliateEnabled:env.TCGPLAYER_AFFILIATE_ENABLED === "true"},{headers:{"Cache-Control":"no-store"}})}
-    if (url.pathname === "/api/founder/knowledge") return handleCoachingKnowledge(request, env, true);
-    if (url.pathname === "/api/coach/knowledge") return handleCoachingKnowledge(request, env, false);
-    if (url.pathname === "/api/founder/goblins") return handleGoblinOperations(request, env);
 
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];

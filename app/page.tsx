@@ -3421,7 +3421,33 @@ export default function Home() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(guestMode ? { ...payload, turnstileToken } : payload),
     });
-    const data = await response.json();
+    // Read the body as text exactly once and only parse it as JSON when the
+    // server actually says it sent JSON. A bare response.json() here throws
+    // "Unexpected token '<'" on anything else (an expired-session redirect
+    // to an HTML login page, a platform-level HTML error page, a proxy
+    // timeout page) and that raw parse error is what the player sees
+    // instead of a real diagnosis — the commission and pasted decklist
+    // survive either way since neither is touched until a result comes back.
+    const rawBody = await response.text();
+    const isJson = (response.headers.get("content-type") || "").toLowerCase().includes("application/json");
+    let data: any = null;
+    if (isJson) {
+      try { data = JSON.parse(rawBody); } catch { data = null; }
+    }
+    if (data === null) {
+      console.error("Forge generate returned a non-JSON response", {
+        status: response.status,
+        redirected: response.redirected,
+        finalUrl: response.url,
+        contentType: response.headers.get("content-type"),
+        bodyPreview: rawBody.slice(0, 500),
+      });
+      throw new Error(
+        response.redirected || response.status === 401
+          ? "Your session needs to be refreshed. Reload the page and try again — your commission and decklist are still here."
+          : "The native Forge could not complete this candidate (unexpected server response). Try again in a moment.",
+      );
+    }
     if (!response.ok) throw new Error(data?.error || "The native Forge could not complete this candidate.");
     if (guestMode) {
       setTurnstileToken("");

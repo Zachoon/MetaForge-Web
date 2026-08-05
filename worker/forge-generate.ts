@@ -399,7 +399,13 @@ export async function handleForgeGenerate(request: Request, env: Env): Promise<R
 export async function handleForgeGenerateForKey(request: Request, env: Env, key: string): Promise<Response> {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
 
-  const limitResult = await checkRateLimit(env, key, "forge-generate", RATE_LIMIT, RATE_WINDOW_MS);
+  let limitResult;
+  try {
+    limitResult = await checkRateLimit(env, key, "forge-generate", RATE_LIMIT, RATE_WINDOW_MS);
+  } catch (error) {
+    console.error("forge-generate rate limit check failed", error);
+    return json({ error: "The native Forge could not complete this candidate. Try again or adjust the commission." }, 500);
+  }
   if (!limitResult.allowed) {
     return json(
       { error: "Rate limit exceeded", retryAfterSeconds: limitResult.retryAfterSeconds },
