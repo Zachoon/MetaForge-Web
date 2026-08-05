@@ -7,11 +7,11 @@ const css = await readFile(new URL("../app/testing-anvil.css", import.meta.url),
 const motifCss = await readFile(new URL("../app/masterwork-motifs.css", import.meta.url), "utf8");
 const polishCss = await readFile(new URL("../app/forge-polish.css", import.meta.url), "utf8");
 
-test("defaults the workbench to a remembered Guided View", () => {
+test("defaults the workbench to a remembered deck-first view", () => {
   assert.match(page, /useState<"guided" \| "full">\("guided"\)/);
   assert.match(page, /metaforge\.resultViewMode/);
-  assert.match(page, />\s*Guided View\s*</);
-  assert.match(page, />\s*Full Forge\s*</);
+  assert.match(page, />\s*Deck first\s*</);
+  assert.match(page, />\s*All analysis\s*</);
 });
 
 test("places deck and refinement surfaces before the intelligence vault", () => {
@@ -25,11 +25,11 @@ test("places deck and refinement surfaces before the intelligence vault", () => 
 test("turns the result into one active chapter instead of a continuous instrument wall", () => {
   assert.match(page, /activeForgeChapter.*useState<1 \| 2 \| 3 \| 4 \| 5>\(1\)/);
   assert.match(page, /id="forge-chapter-rail"/);
-  assert.match(page, /MASTERWORK MAP/);
-  assert.match(page, /The highlighted chapter is where you are now/);
-  assert.match(page, /Testing Anvil/);
-  assert.match(page, /How It Works/);
-  assert.match(page, /Evidence Vault/);
+  assert.match(page, /WHAT TO DO NEXT/);
+  assert.match(page, /Your deck is ready/);
+  assert.match(page, /"Improve"/);
+  assert.match(page, /"How it works"/);
+  assert.match(page, /"Analysis"/);
   assert.match(page, /chapter-\$\{activeForgeChapter\}-active/);
   assert.match(css, /\.chapter-1-active \.deck-manuscript>header\{display:flex\}/);
   assert.match(css, /\.chapter-2-active>\.testing-loop\{display:block/);
@@ -45,6 +45,25 @@ test("turns the result into one active chapter instead of a continuous instrumen
   assert.match(css, /\.opening-experiment-pending \.forge-map-intro\{display:none\}/);
   assert.match(css, /\.chapter-3-active \.forge-understanding-bridge\{display:block/);
   assert.match(css, /\.chapter-4-active \.forge-intelligence-vault\{display:block/);
+});
+
+test("reveals a complete deck immediately after the forge ceremony", () => {
+  assert.match(page, /void inspectMasterwork\(0\)/);
+  assert.match(page, /setOpeningExperimentPending\(false\)/);
+  assert.doesNotMatch(page, /setOpeningExperimentPending\(mode === "commander"\)/);
+  assert.match(page, /\[1, "Your deck"/);
+  assert.match(page, /className="forge-guide-navigation"/);
+  assert.match(page, /← Back/);
+  assert.match(page, /Next · Improve →/);
+});
+
+test("turns new-deck setup into three progressively disclosed decisions", () => {
+  assert.match(page, /useState<0 \| 1 \| 2>\(0\)/);
+  assert.match(page, /aria-label="Deck setup progress"/);
+  assert.match(page, /\["Commander", "Strategy", "Preferences"\]/);
+  assert.match(page, /Next · Choose strategy →/);
+  assert.match(page, /Next · Optional preferences →/);
+  assert.match(page, /buildStep === 0 && isCommanderFormat\(format\) && !selectedCommander/);
 });
 
 test("keeps the chapter connector below the labels instead of striking through them", () => {
@@ -111,7 +130,7 @@ test("makes a guided three-card experiment the doorway to a new Masterwork", () 
   assert.match(page, /Skip guidance · Reveal the full deck/);
   assert.match(page, /className="forge-journey-guide"/);
   assert.match(page, /deckRows\.length > 0 && resultViewMode === "guided"/);
-  assert.match(page, /Prepare the test/);
+  assert.match(page, /Next · Improve →/);
   assert.match(css, /\.opening-experiment-pending \.result-view-controls[^}]*display:none/);
   assert.match(css, /\.opening-experiment-options\{display:grid;grid-template-columns:repeat\(3/);
 });

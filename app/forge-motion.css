@@ -560,3 +560,351 @@
 @keyframes processing-spark{0%,28%{opacity:0;transform:translateY(0) scale(.4)}42%{opacity:.9}100%{opacity:0;transform:translateY(-78px) translateX(15px) scale(1.4)}}
 @media(max-width:700px){.forge-ceremony-motion{width:min(84vw,420px)}.forging-motion--rive{width:164px;height:164px}}
 @media(prefers-reduced-motion:reduce){.forge-ceremony-motion:before,.forge-ceremony-motion:after,.forge-motion-crucible,.forge-motion-index,.forging-motion--rive:before,.forging-motion--rive:after,.processing-crucible,.processing-index-ring,.processing-heat-ring,.processing-sparks b{animation:none!important}.processing-sparks{display:none}}
+/* ========================================================================
+   THE SOUL OF THE FORGE — PHASE 1
+   Dormant, aware, listening, committed, working, inspecting, presenting.
+   The chamber says where the player is. The mood says how the Forge feels.
+   ======================================================================== */
+
+.great-forge {
+  --mf-forge-breath-duration: 8s;
+  --mf-forge-awareness: 0;
+  --mf-forge-focus: 0.18;
+  --mf-forge-pride: 0;
+  --mf-forge-wake-scale: 0.96;
+  --mf-forge-environment-brightness: 0.92;
+}
+
+.great-forge[data-forge-mood="dormant"] {
+  --mf-active-energy: #ad7543;
+  --mf-active-intensity: 0.07;
+  --mf-atmosphere-opacity: 0.12;
+  --mf-forge-breath-duration: 11s;
+  --mf-forge-awareness: 0;
+  --mf-forge-focus: 0.06;
+  --mf-forge-wake-scale: 0.94;
+  --mf-forge-environment-brightness: 0.78;
+}
+
+.great-forge[data-forge-mood="aware"] {
+  --mf-active-energy: var(--mf-thought-energy);
+  --mf-active-intensity: 0.2;
+  --mf-atmosphere-opacity: 0.25;
+  --mf-forge-breath-duration: 5.8s;
+  --mf-forge-awareness: 1;
+  --mf-forge-focus: 0.3;
+  --mf-forge-wake-scale: 1;
+  --mf-forge-environment-brightness: 1.05;
+}
+
+.great-forge[data-forge-mood="listening"] {
+  --mf-active-energy: var(--mf-thought-energy);
+  --mf-active-intensity: 0.13;
+  --mf-atmosphere-opacity: 0.2;
+  --mf-forge-breath-duration: 7.5s;
+  --mf-forge-awareness: 0.34;
+  --mf-forge-focus: 0.38;
+  --mf-forge-wake-scale: 0.985;
+  --mf-forge-environment-brightness: 0.96;
+}
+
+.great-forge[data-forge-mood="committed"] {
+  --mf-active-energy: var(--mf-forge-energy);
+  --mf-active-intensity: 0.32;
+  --mf-atmosphere-opacity: 0.36;
+  --mf-forge-breath-duration: 2.9s;
+  --mf-forge-awareness: 0.85;
+  --mf-forge-focus: 0.72;
+  --mf-forge-wake-scale: 1.025;
+  --mf-forge-environment-brightness: 1.13;
+}
+
+.great-forge[data-forge-mood="forging"] {
+  --mf-active-energy: var(--mf-forge-energy);
+  --mf-active-intensity: 0.38;
+  --mf-atmosphere-opacity: 0.4;
+  --mf-forge-breath-duration: 2.4s;
+  --mf-forge-awareness: 0.52;
+  --mf-forge-focus: 0.84;
+  --mf-forge-wake-scale: 1.015;
+  --mf-forge-environment-brightness: 1.12;
+}
+
+.great-forge[data-forge-mood="inspecting"] {
+  --mf-active-energy: #d2b07d;
+  --mf-active-intensity: 0.2;
+  --mf-atmosphere-opacity: 0.2;
+  --mf-forge-breath-duration: 6.4s;
+  --mf-forge-awareness: 0.22;
+  --mf-forge-focus: 0.92;
+  --mf-forge-wake-scale: 0.99;
+  --mf-forge-environment-brightness: 0.94;
+}
+
+.great-forge[data-forge-mood="presenting"] {
+  --mf-active-energy: var(--mf-completion-energy);
+  --mf-active-intensity: 0.34;
+  --mf-atmosphere-opacity: 0.31;
+  --mf-forge-breath-duration: 4.2s;
+  --mf-forge-awareness: 0.68;
+  --mf-forge-focus: 0.58;
+  --mf-forge-pride: 1;
+  --mf-forge-wake-scale: 1.02;
+  --mf-forge-environment-brightness: 1.12;
+}
+
+.great-forge[data-forge-mood="resting"] {
+  --mf-active-intensity: 0.14;
+  --mf-atmosphere-opacity: 0.18;
+  --mf-forge-breath-duration: 8.5s;
+  --mf-forge-awareness: 0.12;
+  --mf-forge-focus: 0.24;
+  --mf-forge-pride: 0.15;
+  --mf-forge-wake-scale: 1;
+  --mf-forge-environment-brightness: 0.95;
+}
+
+/* The room breathes according to character state rather than chamber alone. */
+.forge-textures {
+  filter:
+    brightness(var(--mf-forge-environment-brightness))
+    saturate(calc(0.88 + var(--mf-forge-focus) * 0.28));
+  transition:
+    filter 720ms cubic-bezier(0.2, 0.72, 0.2, 1),
+    opacity 720ms cubic-bezier(0.2, 0.72, 0.2, 1);
+}
+
+.forge-textures b {
+  animation-duration: var(--mf-forge-breath-duration);
+}
+
+.forge-heat-haze {
+  animation-duration: var(--mf-forge-breath-duration);
+  transition:
+    opacity 720ms cubic-bezier(0.2, 0.72, 0.2, 1),
+    filter 720ms cubic-bezier(0.2, 0.72, 0.2, 1);
+}
+
+/* A restrained environmental acknowledgement—not a notification or modal. */
+.forge-awareness-pulse {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  width: min(58vw, 720px);
+  aspect-ratio: 1;
+  pointer-events: none;
+  opacity: var(--mf-forge-awareness);
+  transform:
+    translate(-50%, -50%)
+    scale(var(--mf-forge-wake-scale));
+  transition:
+    opacity 520ms ease,
+    transform 760ms cubic-bezier(0.16, 0.78, 0.2, 1);
+}
+
+.forge-awareness-pulse::before,
+.forge-awareness-pulse::after,
+.forge-awareness-pulse > i,
+.forge-awareness-pulse > b {
+  content: "";
+  position: absolute;
+  inset: 22%;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.forge-awareness-pulse::before {
+  border: 1px solid
+    color-mix(
+      in srgb,
+      var(--mf-active-energy) 42%,
+      transparent
+    );
+  box-shadow:
+    inset 0 0 28px
+      color-mix(
+        in srgb,
+        var(--mf-active-energy) 10%,
+        transparent
+      ),
+    0 0 30px
+      color-mix(
+        in srgb,
+        var(--mf-active-energy) 10%,
+        transparent
+      );
+}
+
+.forge-awareness-pulse::after {
+  inset: 31%;
+  background:
+    radial-gradient(
+      circle,
+      color-mix(
+        in srgb,
+        var(--mf-active-energy) 12%,
+        transparent
+      ),
+      transparent 68%
+    );
+  filter: blur(10px);
+}
+
+.forge-awareness-pulse > i {
+  inset: 28%;
+  border:
+    1px solid
+    color-mix(
+      in srgb,
+      var(--mf-active-energy) 24%,
+      transparent
+    );
+}
+
+.forge-awareness-pulse > b {
+  inset: 41%;
+  background:
+    radial-gradient(
+      circle,
+      color-mix(
+        in srgb,
+        var(--mf-active-energy) 26%,
+        white 5%
+      ),
+      transparent 66%
+    );
+  filter: blur(7px);
+}
+
+/* Initial wake: the Forge notices rather than announces itself. */
+.great-forge[data-forge-mood="aware"] .forge-awareness-pulse::before {
+  animation:
+    mf-forge-notices-player
+    860ms
+    cubic-bezier(0.16, 0.8, 0.22, 1)
+    both;
+}
+
+.great-forge[data-forge-mood="aware"] .forge-awareness-pulse > i {
+  animation:
+    mf-forge-listening-ring
+    2.8s
+    ease-in-out
+    infinite;
+}
+
+/* Commitment draws energy inward before the furnace takes control. */
+.great-forge[data-forge-mood="committed"] .forge-awareness-pulse {
+  animation:
+    mf-forge-accepts-commission
+    900ms
+    cubic-bezier(0.2, 0.78, 0.22, 1)
+    both;
+}
+
+.great-forge[data-forge-mood="committed"] .forge-ash-field i {
+  animation-duration: calc(3.8s + var(--ash-index, 1) * 0.18s);
+}
+
+.great-forge[data-forge-mood="inspecting"] .forge-energy-rails,
+.great-forge[data-forge-mood="inspecting"] .forge-rune-current {
+  opacity: 0.08;
+  transition: opacity 900ms ease;
+}
+
+.great-forge[data-forge-mood="presenting"] .forge-awareness-pulse::before {
+  animation:
+    mf-forge-presents-masterwork
+    1.45s
+    cubic-bezier(0.16, 0.78, 0.2, 1)
+    both;
+}
+
+@keyframes mf-forge-notices-player {
+  0% {
+    opacity: 0;
+    transform: scale(0.82);
+    filter: blur(5px);
+  }
+
+  48% {
+    opacity: 0.78;
+  }
+
+  100% {
+    opacity: 0.42;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes mf-forge-listening-ring {
+  0%,
+  100% {
+    opacity: 0.18;
+    transform: scale(0.98);
+  }
+
+  50% {
+    opacity: 0.42;
+    transform: scale(1.025);
+  }
+}
+
+@keyframes mf-forge-accepts-commission {
+  0% {
+    opacity: 0.78;
+    transform:
+      translate(-50%, -50%)
+      scale(1.04);
+    filter: brightness(1.1);
+  }
+
+  42% {
+    opacity: 0.94;
+    transform:
+      translate(-50%, -50%)
+      scale(0.86);
+    filter: brightness(1.34);
+  }
+
+  100% {
+    opacity: 0.34;
+    transform:
+      translate(-50%, -50%)
+      scale(0.98);
+    filter: brightness(1);
+  }
+}
+
+@keyframes mf-forge-presents-masterwork {
+  0% {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+
+  45% {
+    opacity: 0.72;
+  }
+
+  100% {
+    opacity: 0.34;
+    transform: scale(1.04);
+  }
+}
+
+/* Quiet mode keeps state and accessibility semantics without spectacle. */
+.great-forge[data-motion="quiet"] .forge-awareness-pulse {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .forge-awareness-pulse,
+  .forge-awareness-pulse::before,
+  .forge-awareness-pulse::after,
+  .forge-awareness-pulse > i,
+  .forge-awareness-pulse > b {
+    animation: none !important;
+    transition-duration: 1ms !important;
+  }
+}

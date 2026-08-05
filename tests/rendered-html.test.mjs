@@ -18,8 +18,9 @@ test("server-renders the MetaForge product experience", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   const html = await response.text();
   assert.match(html, /<title>MetaForge — Forge a Better Deck<\/title>/i);
-  assert.match(html, /EXPLAINABLE MAGIC: THE GATHERING DECK BUILDER/);
-  assert.match(html, /Build a new MTG deck or analyze a list you already play/);
+  assert.match(html, /MAGIC: THE GATHERING · COMMANDER DECK BUILDER/);
+  assert.match(html, /Build a complete/);
+  assert.match(html, /MetaForge builds the full, legal deck first/);
   assert.match(html, /class="forge-brand-logo"[^>]+src="\/assets\/brand\/metaforge-mf-anvil\.webp"/i);
   assert.doesNotMatch(html, /<i>MF<\/i>/i);
   assert.match(html, /<meta name="impact-site-verification" value="05208696-7452-434e-89b1-d6be551c7505">/i);
@@ -35,13 +36,13 @@ test("server-renders the MetaForge product experience", async () => {
   assert.match(html, /class="forge-motion-layer"/);
   assert.match(html, /class="forge-action-burst"/);
   assert.match(html, /Use quiet Forge motion/);
-  assert.match(html, /Forge a new deck/);
-  assert.match(html, /Refine a current build/);
+  assert.match(html, /Build a Commander deck/);
+  assert.match(html, /Review my decklist/);
   assert.match(html, /THE PRIVATE BENCH/);
   assert.match(html, /Your preserved Masterworks/);
   assert.match(html, /Start a New Forge/);
   assert.doesNotMatch(html, /RELEASE GATE|LIVE ACCEPTANCE/);
-  assert.match(html, /THE ARCHIVE IS LISTENING/);
+  assert.match(html, /BUILT FOR COMMANDER PLAYERS/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
 });
 

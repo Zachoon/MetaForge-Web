@@ -4,7 +4,7 @@ import "./globals.css";
 export function generateMetadata(): Metadata {
   const metadataBase = new URL("https://metaforge.gg");
   const title = "MetaForge — Forge a Better Deck";
-  const description = "Explainable Magic: The Gathering deck analysis that finds pressure points and gives you changes worth testing.";
+  const description = "Choose a Magic: The Gathering commander and strategy. Get a complete deck, clear explanations, and optional improvements.";
 
   return {
     metadataBase,

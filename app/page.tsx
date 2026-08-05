@@ -1486,7 +1486,8 @@ export default function Home() {
     if (!hasSeenWalkthrough()) setWalkthroughActive(true);
   }, []);
   const [stage, setStage] = useState(0);
-  const [format, setFormat] = useState("Standard");
+  const [buildStep, setBuildStep] = useState<0 | 1 | 2>(0);
+  const [format, setFormat] = useState("Commander");
   const [strategy, setStrategy] = useState("Balanced midrange");
   const [complexity, setComplexity] = useState("Balanced");
   const [budget, setBudget] = useState("No strict limit");
@@ -1978,7 +1979,9 @@ export default function Home() {
           void commitDirectForge("commander");
           return;
         }
-        setChamber("masterworks");
+        // Reward before optimization: the ceremony resolves into a complete
+        // deck. Alternate designs remain available after the first result.
+        void inspectMasterwork(0);
       }, 1500);
       return () => window.clearTimeout(reveal);
     }
@@ -3546,7 +3549,7 @@ export default function Home() {
     setRemovedCards([]);
     setReplacementRecommendations([]);
     setLastCutCard("");
-    setOpeningExperimentPending(true);
+    setOpeningExperimentPending(false);
     setOpeningExperimentFocus("");
     setActiveForgeChapter(1);
     setDeckViewMode("workbench");
@@ -3650,7 +3653,7 @@ export default function Home() {
     setRemovedCards([]);
     setReplacementRecommendations([]);
     setLastCutCard("");
-    setOpeningExperimentPending(mode === "commander");
+    setOpeningExperimentPending(false);
     setOpeningExperimentFocus("");
     setActiveForgeChapter(1);
     setDeckViewMode("workbench");
@@ -4570,10 +4573,10 @@ export default function Home() {
         </button>
         <nav className="forge-steps" aria-label="Commission progress">
           {[
-            ["01", "Entrance"],
-            ["02", "Blueprint"],
-            ["03", "The Forge"],
-            ["04", "Masterworks"],
+            ["01", "Start"],
+            ["02", "Build choices"],
+            ["03", "Building"],
+            ["04", "Your deck"],
           ].map(([number, label], index) => (
             <button
               type="button"
@@ -4649,24 +4652,24 @@ export default function Home() {
         <section className="forge-entrance">
           <div className="entrance-copy">
             <span className="forge-eyebrow">
-              <i /> EXPLAINABLE MAGIC: THE GATHERING DECK BUILDER
+              <i /> MAGIC: THE GATHERING · COMMANDER DECK BUILDER
             </span>
             <h1>
-              What do you want
+              Build a complete
               <br />
-              to <em>create today?</em>
+              <em>Commander deck.</em>
             </h1>
             <p>
-              Build a new MTG deck or analyze a list you already play. MetaForge
-              turns your format, strategy, budget, and power goals into an
-              explainable blueprint you can inspect and refine.
+              Choose a commander and how you want to play. MetaForge builds the
+              full, legal deck first—then explains every choice and helps you
+              improve it one change at a time.
             </p>
             <div className="entrance-actions">
               <ForgeCommissionCard
-                eyebrow="COMMISSION I"
-                title="Forge a new deck"
-                description="Shape a masterwork from a fresh blueprint."
-                cta="Enter the drafting chamber →"
+                eyebrow="START HERE"
+                title="Build a Commander deck"
+                description="Pick your commander and strategy. Get a complete deck."
+                cta="Build my deck →"
                 tone="ember"
                 motionMode={motionMode}
                 onActivate={() => {
@@ -4674,14 +4677,15 @@ export default function Home() {
                   // pasted in an earlier refinement session should never
                   // silently carry over and skip the three-reveal here.
                   setDeck("");
+                  setBuildStep(0);
                   setChamber("commission");
                 }}
               />
               <ForgeCommissionCard
-                eyebrow="COMMISSION II"
-                title="Refine a current build"
-                description="Bring an existing deck to the anvil."
-                cta="Enter the refinement chamber →"
+                eyebrow="ALREADY HAVE A DECK?"
+                title="Review my decklist"
+                description="Paste a list to check it and find useful improvements."
+                cta="Review my deck →"
                 tone="teal"
                 motionMode={motionMode}
                 onActivate={() => setChamber("refine")}
@@ -4717,8 +4721,8 @@ export default function Home() {
               <b />
             </div>
             <p>
-              THE ARCHIVE IS LISTENING
-              <small>Every lesson. Every failure. Every masterwork.</small>
+              BUILT FOR COMMANDER PLAYERS
+              <small>Complete deck first. Clear reasons second.</small>
             </p>
           </div>
           {savedMasterworks.length > 0 && (
@@ -4795,27 +4799,36 @@ export default function Home() {
               input regardless of how tall the chamber's own box is. */}
           <div className="commission-chamber-sweep" aria-hidden="true" />
           <button className="back-link" onClick={() => setChamber("entrance")}>
-            ← Return to the Forge Entrance
+            ← Back to start
           </button>
           <div className="commission-heading">
             <span className="forge-eyebrow">
               <i />{" "}
               {chamber === "commission"
-                ? "COMMISSION I · THE BLUEPRINT"
-                : "COMMISSION II · THE ANVIL"}
+                ? "BUILD A DECK · YOUR CHOICES"
+                : "REVIEW A DECK · PASTE YOUR LIST"}
             </span>
             <h1>
               {chamber === "commission"
-                ? "Describe the weapon you want to wield."
-                : "Bring your deck to the anvil."}
+                ? "Choose your commander and game plan."
+                : "Paste the deck you want to improve."}
             </h1>
             <p>
               {chamber === "commission"
-                ? "These marks become constraints—not decoration. The Forge will honor how you want to play."
-                : "The Forge will preserve what works, expose the fracture, and temper one deliberate change."}
+                ? "Start with the two choices that matter. Preferences are optional, and you can change them later."
+                : "MetaForge keeps what works, checks the list, and suggests one clear change at a time."}
             </p>
           </div>
-          <div className="commission-scroll">
+          <div className={`commission-scroll build-step-${buildStep}`}>
+            {chamber === "commission" && (
+              <nav className="build-stepper" aria-label="Deck setup progress">
+                {["Commander", "Strategy", "Preferences"].map((label, index) => (
+                  <button type="button" key={label} className={buildStep === index ? "current" : buildStep > index ? "complete" : ""} aria-current={buildStep === index ? "step" : undefined} disabled={index > buildStep} onClick={() => index < buildStep && setBuildStep(index as 0 | 1 | 2)}>
+                    <i>{buildStep > index ? "✓" : index + 1}</i><span>{label}</span>
+                  </button>
+                ))}
+              </nav>
+            )}
             {chamber === "refine" && (
               <label className="deck-offering">
                 <span>YOUR CURRENT DECKLIST</span>
@@ -4827,7 +4840,7 @@ export default function Home() {
               </label>
             )}
             <div className="mark-grid">
-              <label>
+              <label className="build-choice-format">
                 <span>
                   FORMAT
                   <button type="button" className="blueprint-glossary-tip" data-definition={blueprintDefinition("format", format)} aria-label={`Explain ${format}`}>?</button>
@@ -4852,9 +4865,9 @@ export default function Home() {
                 </select>
                 <small id="format-definition" className="blueprint-choice-definition">{blueprintDefinition("format", format)}</small>
               </label>
-              <label>
+              <label className="build-choice-strategy">
                 <span>
-                  HOW SHOULD IT FIGHT?
+                  STRATEGY
                   <button type="button" className="blueprint-glossary-tip" data-definition={blueprintDefinition("strategy", strategy)} aria-label={`Explain ${strategy}`}>?</button>
                 </span>
                 <select
@@ -4870,7 +4883,7 @@ export default function Home() {
                 </select>
                 <small id="strategy-definition" className="blueprint-choice-definition">{blueprintDefinition("strategy", strategy)}</small>
               </label>
-              <label>
+              <label className="build-choice-preference">
                 <span>
                   COMPLEXITY
                   <button type="button" className="blueprint-glossary-tip" data-definition={blueprintDefinition("complexity", complexity)} aria-label={`Explain ${complexity} complexity`}>?</button>
@@ -4883,7 +4896,7 @@ export default function Home() {
                 </select>
                 <small id="complexity-definition" className="blueprint-choice-definition">{blueprintDefinition("complexity", complexity)}</small>
               </label>
-              <label>
+              <label className="build-choice-preference">
                 <span>
                   BUDGET
                   <button type="button" className="blueprint-glossary-tip" data-definition={blueprintDefinition("budget", budget)} aria-label={`Explain ${budget}`}>?</button>
@@ -4896,7 +4909,7 @@ export default function Home() {
                 </select>
                 <small id="budget-definition" className="blueprint-choice-definition">{blueprintDefinition("budget", budget)}</small>
               </label>
-              <label>
+              <label className="build-choice-preference">
                 <span>
                   MAX PRICE PER CARD
                   <button type="button" className="blueprint-glossary-tip" data-definition="A hard $ ceiling — no card in the build will ever cost more than this, at its cheapest known printing. Leave blank for no limit. A card with no known price is never excluded." aria-label="Explain max price per card">?</button>
@@ -4912,7 +4925,7 @@ export default function Home() {
                 />
                 <small className="blueprint-choice-definition">A hard cap, not a preference — dial in your own group's budget rule. Combine with Commons Only for a Pauper-style build.</small>
               </label>
-              <label className="blueprint-checkbox-field">
+              <label className="blueprint-checkbox-field build-choice-preference">
                 <span>
                   COMMONS ONLY
                   <button type="button" className="blueprint-glossary-tip" data-definition="Only common-rarity cards are eligible, including nonbasic lands — a hard restriction, the same rarity rule Pauper-style formats use. A card with no known rarity is never excluded." aria-label="Explain commons only">?</button>
@@ -4921,7 +4934,7 @@ export default function Home() {
                 <small className="blueprint-choice-definition">Restricts every card, including nonbasic lands, to common rarity.</small>
               </label>
               {isCommanderFormat(format) && (
-                <label>
+                <label className="build-choice-preference">
                   <span>
                     TARGET POWER TIER
                     <button type="button" className="blueprint-glossary-tip" data-definition={blueprintDefinition("targetPowerTier", targetPowerTier)} aria-label={`Explain ${targetPowerTier || "No preference"} target power tier`}>?</button>
@@ -4938,13 +4951,13 @@ export default function Home() {
               )}
             </div>
             {isCommanderFormat(format) && (
-              <section className="commander-blueprint">
+              <section className="commander-blueprint build-choice-commander">
                 <header>
                   <div>
                     <span>COMMANDER · LEGAL {format.toUpperCase()} INDEX</span>
                     <strong>
                       {selectedCommander
-                        ? "Commander bound to this Blueprint"
+                        ? "Commander selected"
                         : chamber === "refine"
                           ? "Confirm the commander from your list"
                           : "Choose a legend—or let the Forge discover one"}
@@ -5024,8 +5037,8 @@ export default function Home() {
                         onClick={chooseRandomCommander}
                       >
                         {randomizingCommander
-                          ? "Drawing three starter legends…"
-                          : "Surprise me · reveal three commanders"}
+                          ? "Finding commanders…"
+                          : "Suggest a commander for me"}
                       </button>
                       )}
                     </div>
@@ -5182,13 +5195,24 @@ export default function Home() {
               </section>
             )}
             <label className="commission-note">
-              <span>THE ONE THING THE FORGE MUST UNDERSTAND</span>
+              <span>OPTIONAL · CARDS OR PLAY STYLES YOU WANT</span>
               <textarea
                 value={commissionNote}
                 onChange={(event) => setCommissionNote(event.target.value)}
                 placeholder="Favorite cards, play patterns you love, or anything this deck must never become…"
               />
             </label>
+            {chamber === "commission" && buildStep < 2 && (
+              <div className="build-step-actions">
+                {buildStep > 0 && <button type="button" className="build-back" onClick={() => setBuildStep((buildStep - 1) as 0 | 1)}>← Back</button>}
+                <button type="button" className="build-next" disabled={buildStep === 0 && isCommanderFormat(format) && !selectedCommander} onClick={() => setBuildStep((buildStep + 1) as 1 | 2)}>
+                  {buildStep === 0 ? "Next · Choose strategy →" : "Next · Optional preferences →"}
+                </button>
+              </div>
+            )}
+            {chamber === "commission" && buildStep === 2 && (
+              <button type="button" className="build-back build-final-back" onClick={() => setBuildStep(1)}>← Back to strategy</button>
+            )}
             <button
               className="awaken-button"
               disabled={
@@ -5199,10 +5223,10 @@ export default function Home() {
             >
               <span>
                 {isCommanderFormat(format) && !selectedCommander
-                  ? "Choose a legal commander to seal the Blueprint"
-                  : "Seal the commission"}
+                  ? "Choose a legal commander to continue"
+                  : "Your choices are ready"}
               </span>
-              <strong>AWAKEN THE GREAT FORGE</strong>
+              <strong>{chamber === "refine" ? "REVIEW MY DECK" : "BUILD MY COMPLETE DECK"}</strong>
               <b>→</b>
             </button>
           </div>
@@ -5214,7 +5238,7 @@ export default function Home() {
           <ForgeCeremonyMotion stage={stage} motionMode={motionMode} />
           <div className="ceremony-copy">
             <span className="forge-eyebrow">
-              <i /> COMMISSION ACCEPTED
+              <i /> BUILDING YOUR DECK
             </span>
             <h1>{FORGING_STAGES[stage][0]}</h1>
             <p>{FORGING_STAGES[stage][1]}</p>
@@ -5227,7 +5251,7 @@ export default function Home() {
                 <b style={{ width: `${progress}%` }} />
               </span>
               <small>
-                THE FORGE IS WORKING · HOLD FAST
+                CHECKING CARDS, RULES, AND YOUR STRATEGY
               </small>
             </div>
           </div>
@@ -5345,13 +5369,13 @@ export default function Home() {
         <section className={`testing-anvil progressive-results ${resultViewMode}-results ${openingExperimentGateActive ? "opening-experiment-pending" : ""}`}>
           <button
             className="back-link"
-            onClick={() => setChamber("masterworks")}
+            onClick={() => setChamber(deck.trim() ? "refine" : "commission")}
           >
-            ← Return to the three Masterworks
+            ← Back to build choices
           </button>
           <header>
             <span className="forge-eyebrow">
-              <i /> MASTERWORK CHOSEN · THE TESTING ANVIL
+              <i /> YOUR COMPLETE DECK · READY TO PLAY
             </span>
             <div className="masterwork-heading">
               {masterworkVisualProfile.primaryMotif && (
@@ -5436,7 +5460,7 @@ export default function Home() {
           )}
           <nav className="result-view-controls" aria-label="Forge result detail level">
             <span>
-              <small>RESULT VIEW</small>
+              <small>DETAIL LEVEL</small>
               <b>
                 {resultViewMode === "guided"
                   ? "Deck first. Deeper intelligence opens when you ask."
@@ -5450,7 +5474,7 @@ export default function Home() {
                 aria-pressed={resultViewMode === "guided"}
                 onClick={() => setResultViewMode("guided")}
               >
-                Guided View
+                Deck first
               </button>
               <button
                 type="button"
@@ -5458,25 +5482,31 @@ export default function Home() {
                 aria-pressed={resultViewMode === "full"}
                 onClick={() => setResultViewMode("full")}
               >
-                Full Forge
+                All analysis
               </button>
             </div>
           </nav>
           <div className="forge-map-intro">
-            <span>MASTERWORK MAP</span>
-            <p>Move through these chapters in order, or revisit any chapter. The highlighted chapter is where you are now.</p>
+            <span>WHAT TO DO NEXT</span>
+            <p>Your deck is ready. Review it first, then explore improvements, explanations, analysis, and playtesting when you want them.</p>
           </div>
+          <p
+            className="forge-chapter-rail-eyebrow"
+            style={{ margin: "0 0 4px", textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.65 }}
+          >
+            <small>The Masterwork</small>
+          </p>
           <nav
             id="forge-chapter-rail"
             className="forge-chapter-rail"
             aria-label="Masterwork journey chapters"
           >
             {[
-              [1, "The Masterwork", `${deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards`],
-              [2, "Testing Anvil", forgeReply ? "Controlled changes" : benchStatus === "testing" ? "Testing active" : "Choose a question"],
-              [3, "How It Works", forgeSystemsReport.strongestSystem?.name || "Deck systems"],
-              [4, "Evidence Vault", deckIntegrity.passed ? "Checks and analysis" : "Review integrity"],
-              [5, "Proving Grounds", activeFieldTest ? "Field test active" : revisionLearning.sampleSize ? `${revisionLearning.sampleSize} clues recorded` : "Your next game"],
+              [1, "Your deck", `${deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards`],
+              [2, "Improve", forgeReply ? "Suggested changes" : benchStatus === "testing" ? "Test active" : "Compare one change"],
+              [3, "How it works", forgeSystemsReport.strongestSystem?.name || "Deck plan"],
+              [4, "Analysis", deckIntegrity.passed ? "Rules and deck checks" : "Needs attention"],
+              [5, "Playtest", activeFieldTest ? "Playtest active" : revisionLearning.sampleSize ? `${revisionLearning.sampleSize} results recorded` : "Try it in a game"],
             ].map(([chapterNumber, label, status]) => (
               <button
                 type="button"
@@ -5503,13 +5533,20 @@ export default function Home() {
                   {activeForgeChapter === 5 && "Take one clear question to the table, then bring back one honest clue."}
                 </strong>
               </span>
-              {activeForgeChapter < 5 ? (
-                <button type="button" onClick={() => setActiveForgeChapter((activeForgeChapter + 1) as 1 | 2 | 3 | 4 | 5)}>
-                  {activeForgeChapter === 1 ? "Next · Prepare the test →" : activeForgeChapter === 2 ? "Next · Learn how the deck works →" : activeForgeChapter === 3 ? "Next · Inspect the evidence →" : "Next · Prepare a real-game test →"}
-                </button>
-              ) : (
-                <button type="button" onClick={() => setActiveForgeChapter(1)}>Return to the Masterwork →</button>
-              )}
+              <div className="forge-guide-navigation">
+                {activeForgeChapter > 1 && (
+                  <button type="button" onClick={() => setActiveForgeChapter((activeForgeChapter - 1) as 1 | 2 | 3 | 4 | 5)}>
+                    ← Back
+                  </button>
+                )}
+                {activeForgeChapter < 5 ? (
+                  <button type="button" onClick={() => setActiveForgeChapter((activeForgeChapter + 1) as 1 | 2 | 3 | 4 | 5)}>
+                    {activeForgeChapter === 1 ? "Next · Improve →" : activeForgeChapter === 2 ? "Next · How it works →" : activeForgeChapter === 3 ? "Next · Analysis →" : "Next · Playtest →"}
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => setActiveForgeChapter(1)}>Return to your deck →</button>
+                )}
+              </div>
             </aside>
           )}
           {!openingExperimentGateActive && benchStatus !== "forging" && deckRows.length > 0 && (

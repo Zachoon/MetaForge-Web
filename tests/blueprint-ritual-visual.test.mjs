@@ -8,7 +8,12 @@ const commander = fs.readFileSync(new URL("../app/blueprint-commander.css", impo
 const motion = fs.readFileSync(new URL("../app/forge-motion.css", import.meta.url), "utf8");
 
 test("the Blueprint chamber presents choices as a completed commissioning ritual", () => {
-  assert.match(page, /className="commission-scroll"/);
+  // The build-step navigation pass kept this compatibility class as a
+  // hook (visual tests and CSS selectors depend on it) but combined it
+  // with a dynamic step modifier, so it's no longer the sole class in a
+  // plain string literal — check it's present as a leading class instead
+  // of demanding an exact, single-class match.
+  assert.match(page, /className=\{`commission-scroll[^`]*`\}|className="commission-scroll"/);
   assert.match(page, /className="mark-grid"/);
   assert.match(page, /className="commission-note"/);
   assert.match(page, /className="awaken-button"/);
@@ -19,7 +24,10 @@ test("the Blueprint chamber presents choices as a completed commissioning ritual
 });
 
 test("commander choice becomes a responsive, motion-safe Blueprint seal", () => {
-  assert.match(page, /className="commander-blueprint"/);
+  // Same compatibility-hook story as commission-scroll above: kept as a
+  // real class on the element, now paired with build-choice-commander
+  // rather than standing alone.
+  assert.match(page, /className="commander-blueprint(?: [^"]*)?"/);
   assert.match(commander, /COMMANDER BOUND/);
   assert.match(commander, /@keyframes commander-bound-in/);
   assert.match(commander, /prefers-reduced-motion:reduce[^}]*\.commander-blueprint/s);
