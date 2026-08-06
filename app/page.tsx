@@ -7884,7 +7884,7 @@ export default function Home() {
               title="Price every card at its cheapest fetched printing, to see the deck regardless of bling"
               onClick={() => setCheapestPrintings((current) => !current)}
             >
-              Cheapest Printings
+              Compare Printings
             </button>
           </div>
           {printingMenu && (
