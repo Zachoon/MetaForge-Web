@@ -178,5 +178,5 @@ test("purchase surfaces in page.tsx consume buildTcgplayerLink rather than const
   const source = fs.readFileSync(fileURLToPath(new URL("../app/page.tsx", import.meta.url)), "utf8");
   assert.match(source, /import \{ buildTcgplayerLink, AFFILIATE_DISCLOSURE_TEXT \} from "\.\/affiliate-links\.mjs";/);
   const buildCallCount = (source.match(/buildTcgplayerLink\(\{/g) || []).length;
-  assert.equal(buildCallCount, 3, "expected exactly three call sites: decklist row, printing picker, card inspector — Phase 1's full scope");
+  assert.equal(buildCallCount, 5, "expected exactly five call sites: decklist row, printing picker, card inspector (Phase 1), plus workbench replacement recommendations and experiment tablets (Phase 1B)");
 });

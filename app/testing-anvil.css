@@ -333,6 +333,12 @@ step that's actually in focus. */
 .card-inspector-purchase-link{display:inline-block;margin-top:10px;padding:5px 11px;border:1px solid #3a534c;border-radius:4px;background:#0e1a18;color:#7f918c;font-size:calc(11px * var(--forge-reading-scale));font-weight:600;letter-spacing:.02em;text-decoration:none;transition:.15s}
 .card-inspector-purchase-link:hover,.card-inspector-purchase-link:focus-visible{outline:0;border-color:#6fb3a0;color:#c8ece2}
 
+.replacement-purchase-link{display:inline-block;margin-top:6px;padding:5px 11px;border:1px solid #3a534c;border-radius:4px;background:#0e1a18;color:#7f918c;font-size:calc(11px * var(--forge-reading-scale));font-weight:600;letter-spacing:.02em;text-decoration:none;transition:.15s}
+.replacement-purchase-link:hover,.replacement-purchase-link:focus-visible{outline:0;border-color:#6fb3a0;color:#c8ece2}
+
+.tablet-purchase-link{display:block;margin-top:4px;color:#7f918c;font-size:calc(9px * var(--forge-reading-scale));font-weight:700;letter-spacing:.04em;text-decoration:none;transition:.15s}
+.tablet-purchase-link:hover,.tablet-purchase-link:focus-visible{outline:0;color:#c8ece2;text-decoration:underline}
+
 .printing-picker li{border-bottom:1px solid #1c2b27}
 .printing-picker li:last-child{border-bottom:0}
 .printing-picker li button{border-bottom:0}

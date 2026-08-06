@@ -48,6 +48,17 @@ test("the disclosure renders exactly once, gated behind the same tcgplayerAffili
   assert.match(page, /\{tcgplayerAffiliateEnabled && \(\s*\n\s*<p className="affiliate-disclosure"/);
 });
 
+test("Phase 1B's two new purchase surfaces (replacement panel, experiment tablets) reuse the single existing disclosure — neither adds its own", () => {
+  const occurrences = page.match(/className="affiliate-disclosure"/g) || [];
+  assert.equal(occurrences.length, 1, "adding the two Phase 1B surfaces must not raise the disclosure count above 1");
+  const replacementBlock = page.match(/className="forge-replacements"[\s\S]{0,4400}/)?.[0];
+  assert.ok(replacementBlock);
+  assert.doesNotMatch(replacementBlock, /affiliate-disclosure/);
+  const tabletsBlock = page.match(/className="refinement-starters-vault"[\s\S]{0,3200}/)?.[0];
+  assert.ok(tabletsBlock);
+  assert.doesNotMatch(tabletsBlock, /affiliate-disclosure/);
+});
+
 // --- Explicitly excluded surfaces (Phase 1 scope decision) ---
 //
 // tests/affiliate-links-isolation.test.mjs already proves the whole file
@@ -68,12 +79,81 @@ test("the mobile\\/desktop card action menu never gets a purchase action — it'
   assert.doesNotMatch(menuBlock, /buildTcgplayerLink|TCGplayer/i);
 });
 
-test("recommendation\\/lab surfaces (experiment tablets, multi-refill, meta-breaker) never get a purchase action in this batch", () => {
-  for (const marker of [/className="experiment-tablet[^"]*"[\s\S]{0,600}/, /className="multi-refill-packages"[\s\S]{0,600}/, /className="meta-breaker-dossier"[\s\S]{0,600}/]) {
+test("recommendation\\/lab surfaces still deferred in Phase 1B (multi-refill, meta-breaker) never get a purchase action", () => {
+  for (const marker of [/className="multi-refill-packages"[\s\S]{0,600}/, /className="meta-breaker-dossier"[\s\S]{0,600}/]) {
     const block = page.match(marker)?.[0];
     assert.ok(block, `expected to find a block matching ${marker}`);
     assert.doesNotMatch(block, /buildTcgplayerLink|TCGplayer/i);
   }
+});
+
+test("the opening-experiment gate (curated first-experiment picker) remains untouched — same tablet data as the full tablet list, but this view is deferred", () => {
+  const gateBlock = page.match(/className="opening-experiment-gate"[\s\S]{0,2200}/)?.[0];
+  assert.ok(gateBlock, "expected to find the opening-experiment-gate block");
+  assert.doesNotMatch(gateBlock, /buildTcgplayerLink|TCGplayer/i);
+});
+
+// --- Phase 1B: workbench replacement recommendations ---
+
+test("the replacement panel builds a name-only search link for the candidate card — no printing exists yet for a card that isn't in the deck", () => {
+  assert.match(
+    page,
+    /const replacementPurchaseLink = buildTcgplayerLink\(\{\s*\n\s*cardName: card\.name,\s*\n\s*tcgplayerProductId: null,\s*\n\s*enabled: tcgplayerAffiliateEnabled,/,
+  );
+});
+
+test("the replacement panel's purchase link sits beside \"Add to deck\", never replaces it, and its click handler never calls addCardToDeck", () => {
+  const mapBlock = page.match(/replacementRecommendations\.map\(\(card, index\) => \{[\s\S]*?\n {16}\}\)\}/)?.[0];
+  assert.ok(mapBlock, "expected to find the replacementRecommendations.map block");
+  assert.match(mapBlock, />\s*Add to deck\s*<\/button>/);
+  const linkBlock = mapBlock.match(/\{replacementPurchaseLink && \([\s\S]*?<\/a>\s*\)\}/)?.[0];
+  assert.ok(linkBlock, "expected to find the replacementPurchaseLink conditional block");
+  assert.match(linkBlock, /className="replacement-purchase-link"/);
+  assert.match(linkBlock, />\s*Buy on TCGplayer\s*<\/a>/);
+  assert.match(linkBlock, /href=\{replacementPurchaseLink\.url\}/);
+  assert.match(linkBlock, /target=\{replacementPurchaseLink\.target\}/);
+  assert.match(linkBlock, /rel=\{replacementPurchaseLink\.rel\}/);
+  assert.match(linkBlock, /onClick=\{\(event\) => event\.stopPropagation\(\)\}/);
+  assert.doesNotMatch(linkBlock, /addCardToDeck/);
+  // The link must appear after the button in source order, i.e. visually
+  // beneath it, never displacing it as the primary action.
+  assert.ok(mapBlock.indexOf("Add to deck") < mapBlock.indexOf("replacement-purchase-link"));
+});
+
+test("lastCutCard (the outgoing card) never gets a purchase action anywhere in the replacement panel", () => {
+  const panelBlock = page.match(/className="forge-replacements"[\s\S]{0,4400}/)?.[0];
+  assert.ok(panelBlock, "expected to find the forge-replacements panel");
+  assert.doesNotMatch(panelBlock, /buildTcgplayerLink\(\{\s*\n\s*cardName: lastCutCard/);
+});
+
+// --- Phase 1B: experiment tablets (full list) ---
+
+test("the experiment tablet's purchase link builds a name-only search link for tablet.change.add only", () => {
+  assert.match(
+    page,
+    /const tabletPurchaseLink = buildTcgplayerLink\(\{\s*\n\s*cardName: tablet\.change\.add,\s*\n\s*tcgplayerProductId: null,\s*\n\s*enabled: tcgplayerAffiliateEnabled,/,
+  );
+});
+
+test("the tablet purchase link renders only inside the ADD figure, never the CUT figure", () => {
+  const cutFigure = page.match(/<figure>\s*<img src=\{cardImage\(tablet\.change\.cut\)\}[\s\S]*?<\/figure>/)?.[0];
+  assert.ok(cutFigure, "expected to find the CUT figure");
+  assert.doesNotMatch(cutFigure, /tablet-purchase-link|buildTcgplayerLink|TCGplayer/i);
+  const addFigure = page.match(/<figure>\s*<img src=\{cardImage\(tablet\.change\.add\)\}[\s\S]*?<\/figure>/)?.[0];
+  assert.ok(addFigure, "expected to find the ADD figure");
+  assert.match(addFigure, /className="tablet-purchase-link"/);
+  assert.match(addFigure, />\s*Buy on TCGplayer\s*<\/a>/);
+  assert.match(addFigure, /href=\{tabletPurchaseLink\.url\}/);
+  assert.match(addFigure, /target=\{tabletPurchaseLink\.target\}/);
+  assert.match(addFigure, /rel=\{tabletPurchaseLink\.rel\}/);
+  assert.match(addFigure, /onClick=\{\(event\) => event\.stopPropagation\(\)\}/);
+});
+
+test("\"Accept this experiment\" remains present and untouched as the tablet's primary action", () => {
+  const tabletCardBlock = page.match(/const tabletPurchaseLink[\s\S]{0,5000}Accept this experiment/)?.[0];
+  assert.ok(tabletCardBlock, "expected to find the Accept button within the same tablet card as the purchase link");
+  assert.match(tabletCardBlock, /className="tablet-accept"/);
+  assert.match(tabletCardBlock, /onClick=\{\(\) => applyExperimentTablet\(tablet\)\}/);
 });
 
 test("no deck-level \"Shop Missing Cards\"\\/\"Buy on TCGplayer\" CTA exists near the deck price bar — deferred pending cart-deep-link verification", () => {

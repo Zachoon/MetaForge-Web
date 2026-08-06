@@ -6837,6 +6837,15 @@ export default function Home() {
                       const applying =
                         swapFlourish?.cut === tablet.change.cut &&
                         swapFlourish?.add === tablet.change.add;
+                      // The ADD side only — tablet.change.cut is the card
+                      // leaving the deck and must never get a purchase
+                      // action. No printing is known yet at this stage, so
+                      // this is always the honest search fallback.
+                      const tabletPurchaseLink = buildTcgplayerLink({
+                        cardName: tablet.change.add,
+                        tcgplayerProductId: null,
+                        enabled: tcgplayerAffiliateEnabled,
+                      });
                       return (
                         <article
                           key={tablet.id}
@@ -6865,6 +6874,17 @@ export default function Home() {
                                 <figure>
                                   <img src={cardImage(tablet.change.add)} alt={tablet.change.add} loading="lazy" />
                                   <figcaption>ADD · {tablet.change.add}</figcaption>
+                                  {tabletPurchaseLink && (
+                                    <a
+                                      className="tablet-purchase-link"
+                                      href={tabletPurchaseLink.url}
+                                      target={tabletPurchaseLink.target}
+                                      rel={tabletPurchaseLink.rel}
+                                      onClick={(event) => event.stopPropagation()}
+                                    >
+                                      Buy on TCGplayer
+                                    </a>
+                                  )}
                                 </figure>
                               </div>
                               <dl>
@@ -8172,7 +8192,18 @@ export default function Home() {
               </div>
             ) : replacementRecommendations.length > 0 ? (
               <div className="replacement-grid">
-                {replacementRecommendations.map((card, index) => (
+                {replacementRecommendations.map((card, index) => {
+                  // Search-fallback only: replacement candidates come back
+                  // from recommendReplacements as a name/typeLine/image
+                  // CardSearchResult, never a specific printing — same
+                  // honest fallback the decklist row and card inspector
+                  // already use for unselected printings.
+                  const replacementPurchaseLink = buildTcgplayerLink({
+                    cardName: card.name,
+                    tcgplayerProductId: null,
+                    enabled: tcgplayerAffiliateEnabled,
+                  });
+                  return (
                   <article
                     key={card.name}
                     draggable
@@ -8204,9 +8235,21 @@ export default function Home() {
                       >
                         Add to deck
                       </button>
+                      {replacementPurchaseLink && (
+                        <a
+                          className="replacement-purchase-link"
+                          href={replacementPurchaseLink.url}
+                          target={replacementPurchaseLink.target}
+                          rel={replacementPurchaseLink.rel}
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          Buy on TCGplayer
+                        </a>
+                      )}
                     </div>
                   </article>
-                ))}
+                  );
+                })}
                 <aside
                   onDragOver={(event) => event.preventDefault()}
                   onDrop={(event) => {
