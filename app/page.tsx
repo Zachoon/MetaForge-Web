@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperti
 import { createPortal } from "react-dom";
 import { displayRoleFor } from "./adaptive-recommendation.mjs";
 import { REVIEW_FOCUS_OPTIONS, REVIEW_FOCUS_LABELS, toggleReviewFocus } from "./review-focus.mjs";
+import { resolveAcademyGuideEntry } from "./academy-guide-entry.mjs";
 import { getMetaIntelligence } from "./meta-intelligence.mjs";
 // The interaction graph, systems intelligence, causality engine, bounded
 // failure analysis, goldfish/matchup simulation, and revision/
@@ -3499,6 +3500,29 @@ export default function Home() {
     }
     return data;
   }
+
+  // Academy guide handoff (?guide=cast-spells): a public, stable key —
+  // never the canonical reviewFocus string itself — resolved through the
+  // one small allowlist in academy-guide-entry.mjs. Runs once on mount,
+  // same shape as the claim-token effect below (read the param, apply it,
+  // scrub the URL via replaceState so a later reload can never reapply
+  // it). Deliberately does NOT fire if this browser tab is already mid-
+  // session — a stray or reloaded ?guide= must never clobber a decklist
+  // or focus the player already started working with. Never auto-submits
+  // or triggers generation: setting chamber/reviewFocus is exactly what
+  // clicking the entrance card and a chip already does, and the player
+  // can change or clear the preselected focus normally afterward.
+  useEffect(() => {
+    const guideKey = new URLSearchParams(window.location.search).get("guide");
+    if (!guideKey) return;
+    window.history.replaceState({}, "", window.location.pathname);
+    const entry = resolveAcademyGuideEntry(guideKey);
+    if (!entry) return;
+    if (chamber !== "entrance" || deck.trim() || reviewFocus) return;
+    setChamber(entry.chamber);
+    setReviewFocus(entry.reviewFocus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (guestMode) return;

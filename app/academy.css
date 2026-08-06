@@ -1,0 +1,30 @@
+/* Academy-specific additions on top of legal.css's existing page/shell/card
+   shell (reused as-is for the dark, warm-forge reading layout). Only new
+   pieces: the CTA button and the guide-index list — nothing here
+   redefines colors, type, or spacing already established in legal.css. */
+.legal-card > section:first-of-type > p:first-of-type { font-size: 17px; color: #eee2cf; }
+.legal-card h3 { margin: 22px 0 8px; color: #eda75a; font: 600 18px Newsreader, Georgia, serif; }
+.academy-cta {
+  margin-top: 32px;
+  padding: 28px;
+  border: 1px solid #6b3d22;
+  border-radius: 14px;
+  background: rgba(87, 44, 24, 0.28);
+}
+.academy-cta p { margin: 0 0 16px; }
+.academy-cta a.academy-cta-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 22px;
+  border-radius: 999px;
+  background: #e79b41;
+  color: #1a0f08;
+  font-weight: 700;
+  text-decoration: none;
+  letter-spacing: 0.01em;
+}
+.academy-guide-list { list-style: none; padding: 0; margin: 24px 0 0; display: grid; gap: 14px; }
+.academy-guide-list li { padding: 18px 20px; border: 1px solid #39251d; border-radius: 12px; }
+.academy-guide-list a { font-weight: 700; text-decoration: none; }
+.academy-guide-list p { margin: 6px 0 0; font-size: 14px; }
