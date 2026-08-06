@@ -124,13 +124,59 @@ test("the client bundle carries the new affiliate-link builder itself (expected 
   // hrefs) is present without anything unsafe alongside it.
   assert.match(clientSource, /tcgplayer\.com\/product\//, "sanity check: the affiliate-link builder's own destination-URL logic must actually be present in the client bundle");
 
-  // Must never appear: Scryfall's own affiliate-wrapped TCGplayer URL
-  // shape, or the raw env var name (as opposed to the derived boolean
-  // the client actually consumes).
-  assert.doesNotMatch(clientSource, /partner\.tcgplayer\.com/, "Scryfall's affiliate-wrapped TCGplayer URL must never reach the client");
+  // TCGplayer is now an approved, joined Impact partnership, and every
+  // purchase link is explicitly wrapped through Impact's verified deep-link
+  // mechanism (buildImpactTrackingUrl in app/affiliate-links.mjs) — so
+  // partner.tcgplayer.com is now expected in the client bundle, not
+  // forbidden. What must still never appear: any OTHER account/campaign
+  // path (a typo'd, copy-pasted-from-elsewhere, or fabricated second
+  // tracking base), Scryfall's own purchase_uris field, the raw env var
+  // name, or an invented tracking parameter this codebase doesn't actually
+  // control (irclickid etc. are appended by Impact's own redirect server,
+  // never constructed here).
+  assert.match(clientSource, /partner\.tcgplayer\.com\/c\/7552660\/1780961\/21018/, "the one approved MetaForge tracking base must be present — it's how every real purchase link is now built");
+  const trackingPaths = [...new Set([...clientSource.matchAll(/partner\.tcgplayer\.com\/c\/(\d+\/\d+\/\d+)/g)].map((match) => match[1]))];
+  assert.deepEqual(trackingPaths, ["7552660/1780961/21018"], "no other partner account/campaign path may appear alongside the approved one");
   assert.doesNotMatch(clientSource, /purchase_uris/);
   assert.doesNotMatch(clientSource, /TCGPLAYER_AFFILIATE_ENABLED/, "the raw env var name must never leak — only the derived tcgplayerAffiliateEnabled boolean the client fetches");
   for (const invented of [/irclickid/i, /mediaPartnerId/i, /campaignid/i, /subId1/i, /\.sjv\.io/i]) {
-    assert.doesNotMatch(clientSource, invented, `no invented Impact tracking parameter (${invented}) may appear before real approved values exist`);
+    assert.doesNotMatch(clientSource, invented, `${invented} is appended by Impact's own redirect server and must never be constructed by this codebase`);
   }
+});
+
+// Single-source-of-truth checks (worker/audit finding: the tracking base
+// URL and raw TCGplayer product/search URL construction must exist in
+// exactly one place, and every purchase surface must consume the shared
+// helper rather than building its own href).
+test("the Impact tracking base and raw TCGplayer URL construction exist only in app/affiliate-links.mjs", () => {
+  const appDir = fileURLToPath(new URL("../app/", import.meta.url));
+  const walk = (dir, out = []) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full, out);
+      else if (/\.(mjs|tsx?|jsx?)$/.test(entry.name)) out.push(full);
+    }
+    return out;
+  };
+  const sourceFiles = walk(appDir);
+  const patterns = {
+    "the Impact tracking base URL": /partner\.tcgplayer\.com\/c\/7552660/,
+    "the raw TCGplayer product URL": /www\.tcgplayer\.com\/product\//,
+    "the raw TCGplayer search URL": /www\.tcgplayer\.com\/search\/magic\/product/,
+  };
+  for (const [description, pattern] of Object.entries(patterns)) {
+    const matches = sourceFiles.filter((file) => pattern.test(fs.readFileSync(file, "utf8")));
+    assert.deepEqual(
+      matches.map((file) => path.relative(appDir, file)),
+      ["affiliate-links.mjs"],
+      `${description} must be constructed in exactly one file (affiliate-links.mjs), found in: ${matches.map((file) => path.relative(appDir, file)).join(", ") || "(nowhere — unexpected)"}`,
+    );
+  }
+});
+
+test("purchase surfaces in page.tsx consume buildTcgplayerLink rather than constructing a TCGplayer/Impact URL themselves", () => {
+  const source = fs.readFileSync(fileURLToPath(new URL("../app/page.tsx", import.meta.url)), "utf8");
+  assert.match(source, /import \{ buildTcgplayerLink, AFFILIATE_DISCLOSURE_TEXT \} from "\.\/affiliate-links\.mjs";/);
+  const buildCallCount = (source.match(/buildTcgplayerLink\(\{/g) || []).length;
+  assert.equal(buildCallCount, 3, "expected exactly three call sites: decklist row, printing picker, card inspector — Phase 1's full scope");
 });

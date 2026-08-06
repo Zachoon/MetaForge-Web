@@ -323,6 +323,9 @@ step that's actually in focus. */
 .card-row-purchase-link.exact-printing{color:#7ed7c5}
 .card-row-purchase-link.exact-printing:hover,.card-row-purchase-link.exact-printing:focus-visible{border-color:#6fb3a0;color:#c8ece2}
 
+.card-inspector-purchase-link{display:inline-block;margin-top:10px;padding:5px 11px;border:1px solid #3a534c;border-radius:4px;background:#0e1a18;color:#7f918c;font-size:calc(11px * var(--forge-reading-scale));font-weight:600;letter-spacing:.02em;text-decoration:none;transition:.15s}
+.card-inspector-purchase-link:hover,.card-inspector-purchase-link:focus-visible{outline:0;border-color:#6fb3a0;color:#c8ece2}
+
 .printing-picker li{border-bottom:1px solid #1c2b27}
 .printing-picker li:last-child{border-bottom:0}
 .printing-picker li button{border-bottom:0}

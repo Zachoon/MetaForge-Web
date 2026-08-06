@@ -2518,6 +2518,18 @@ export default function Home() {
         (evaluation) => cardFactKey(evaluation.name) === cardFactKey(inspectedCard),
       ) || null
     : null;
+  // Prefers the exact printing the player already chose via the printing
+  // picker (inspectedPrinting.tcgplayerId); falls back to a name-only
+  // search when no printing has been selected yet. Same shared helper the
+  // decklist row and printing picker already use — never a second,
+  // ad-hoc URL construction.
+  const inspectorPurchaseLink = inspectedCard
+    ? buildTcgplayerLink({
+        cardName: inspectedCard,
+        tcgplayerProductId: inspectedPrinting?.tcgplayerId ?? null,
+        enabled: tcgplayerAffiliateEnabled,
+      })
+    : null;
   const inspectedSlotReason =
     inspectedRole === "Mana source"
       ? "Supports the deck's colored-mana and land-count requirements."
@@ -7247,6 +7259,17 @@ export default function Home() {
                         <small>
                           SELECTED PRINTING · {inspectedPrinting.setName} ({inspectedPrinting.setCode.toUpperCase()}) #{inspectedPrinting.collectorNumber}
                         </small>
+                      )}
+                      {inspectorPurchaseLink && (
+                        <a
+                          className="card-inspector-purchase-link"
+                          href={inspectorPurchaseLink.url}
+                          target={inspectorPurchaseLink.target}
+                          rel={inspectorPurchaseLink.rel}
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          Buy on TCGplayer
+                        </a>
                       )}
                     </div>
                     <div className="card-inspector-dossier">
