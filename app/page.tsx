@@ -7252,6 +7252,14 @@ export default function Home() {
                         <p>{inspectedEvaluation?.whyHere || inspectedSlotReason}</p>
                       </div>
                       {inspectedEvaluation && (
+                        <div className="card-inspector-section card-inspector-timing">
+                          <small>INTENT &amp; CLOCK</small>
+                          <p><b>Intent:</b> {inspectedEvaluation.timing.intent}</p>
+                          <p><b>Clock:</b> {inspectedEvaluation.timing.clock}</p>
+                          <p><b>Why it matters:</b> {inspectedEvaluation.timing.whyItMatters}</p>
+                        </div>
+                      )}
+                      {inspectedEvaluation && (
                         <div className="card-inspector-section">
                           <small>IF YOU CUT IT</small>
                           <p>{inspectedEvaluation.cutImpact}</p>

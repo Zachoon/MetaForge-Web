@@ -1,5 +1,6 @@
 // Server-side interpretation layer for a card inside one specific deck.
 // Scores summarize the structural model; they are not universal ratings.
+import { describeCardTiming } from "./card-timing-reasoning.mjs";
 
 const VERSION = "metaforge-contextual-card-evaluation-v1";
 const clamp = (value) => Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
@@ -99,6 +100,12 @@ export function buildContextualCardEvaluations(cards, graph, systemsReport, caus
       scores: { synergy, planFit, reliability, structuralImpact, replaceability },
       whyHere,
       cutImpact,
+      // Intent + Clock: what this card is trying to do, and when that
+      // actually starts mattering — a card-timing-reasoning.mjs read, not
+      // a re-derivation of anything above. whyHere/cutImpact answer "why
+      // is this card in THIS deck"; timing answers "what does this card
+      // do and when," true regardless of deck context.
+      timing: describeCardTiming(card),
       evidence: cardEdges.length || cardSystems.length
         ? "oracle-derived deck context"
         : "insufficient connected evidence",

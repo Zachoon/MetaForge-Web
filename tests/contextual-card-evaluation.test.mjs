@@ -59,4 +59,11 @@ test("keeps contextual scoring implementation server-side", () => {
   assert.doesNotMatch(clientSource, /metaforge-contextual-card-evaluation-v1/);
   assert.doesNotMatch(clientSource, /redundancyScore\(/);
   assert.match(serverSource, /metaforge-contextual-card-evaluation-v1/);
+  // card-timing-reasoning.mjs (Intent + Clock) is a new dependency of this
+  // module as of the same change that added the `timing` field above —
+  // its sentence templates and category thresholds must stay server-only
+  // too, the same way the rest of this file's reasoning does.
+  assert.doesNotMatch(clientSource, /finds exactly the piece your plan needs/);
+  assert.doesNotMatch(clientSource, /Scales with your plan/);
+  assert.match(serverSource, /finds exactly the piece your plan needs/);
 });

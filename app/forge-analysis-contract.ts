@@ -78,6 +78,10 @@ export interface ForgeAnalysisReport {
       scores: { synergy: number; planFit: number; reliability: number; structuralImpact: number; replaceability: number };
       whyHere: string;
       cutImpact: string;
+      // Intent + Clock (card-timing-reasoning.mjs): what this card is
+      // trying to do and when that starts mattering, true independent of
+      // this specific deck — a different question than whyHere/cutImpact.
+      timing: { intent: string; clockLabel: string; clock: string; whyItMatters: string; source: string };
       evidence: string;
     }>;
     methodology: string;
