@@ -4729,7 +4729,7 @@ export default function Home() {
         <section className="forge-entrance">
           <div className="entrance-copy">
             <span className="forge-eyebrow">
-              <i /> MAGIC: THE GATHERING · COMMANDER DECK BUILDER
+              <i /> MAGIC: THE GATHERING · DECK COACH
             </span>
             <h1>
               Understand your deck.

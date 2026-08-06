@@ -18,7 +18,7 @@ test("server-renders the MetaForge product experience", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   const html = await response.text();
   assert.match(html, /<title>MetaForge — Forge a Better Deck<\/title>/i);
-  assert.match(html, /MAGIC: THE GATHERING · COMMANDER DECK BUILDER/);
+  assert.match(html, /MAGIC: THE GATHERING · DECK COACH/);
   assert.match(html, /Understand your deck/);
   assert.match(html, /MetaForge builds the full, legal deck first/);
   assert.match(html, /class="forge-brand-logo"[^>]+src="\/assets\/brand\/metaforge-mf-anvil\.webp"/i);
