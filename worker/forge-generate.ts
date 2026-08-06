@@ -26,6 +26,8 @@ import {
 import { userKey } from "./account-bench";
 import { checkRateLimit, readJsonWithLimit } from "./api-hardening";
 import { storeGeneration } from "./forge-generation-store";
+import { isValidReviewFocus } from "../app/review-focus.mjs";
+import { evaluateReviewFocus } from "../app/review-focus-reasoning.mjs";
 
 interface Env {
   DB: D1Database;
@@ -50,6 +52,7 @@ type GenerateRequest = {
   targetPowerTier?: string;
   lynchpin?: string;
   deck?: string;
+  reviewFocus?: string;
 };
 
 const json = (value: unknown, status = 200, headers: Record<string, string> = {}) =>
@@ -361,6 +364,14 @@ function validateRequest(body: any): { ok: true; value: GenerateRequest } | { ok
   if (body.seed !== undefined && (typeof body.seed !== "number" || !Number.isFinite(body.seed))) {
     return { ok: false, error: "seed must be a number" };
   }
+  // reviewFocus is a player-stated coaching intent for this review session
+  // (app/review-focus.mjs is the single source of truth for the six
+  // canonical values), never a deck characteristic — validated the same
+  // way mode/format are, against a fixed allowed set, rather than passed
+  // through as free text the way note/commissionNote are.
+  if (body.reviewFocus !== undefined && body.reviewFocus !== "" && !isValidReviewFocus(body.reviewFocus)) {
+    return { ok: false, error: "reviewFocus must be one of the supported coaching focus values" };
+  }
 
   const value: GenerateRequest = {
     mode: body.mode,
@@ -379,6 +390,7 @@ function validateRequest(body: any): { ok: true; value: GenerateRequest } | { ok
     targetPowerTier: typeof body.targetPowerTier === "string" ? body.targetPowerTier.slice(0, MAX_SHORT_STRING) : undefined,
     lynchpin: typeof body.lynchpin === "string" ? body.lynchpin.slice(0, MAX_SHORT_STRING) : undefined,
     deck: typeof body.deck === "string" ? body.deck : undefined,
+    reviewFocus: typeof body.reviewFocus === "string" && body.reviewFocus ? body.reviewFocus : undefined,
   };
   return { ok: true, value };
 }
@@ -462,6 +474,12 @@ export async function handleForgeGenerateForKey(request: Request, env: Env, key:
         colors: pool.colors,
         generationId,
         importWarnings: { unresolvedNames: resolution.unresolvedNames, illegalNames: resolution.illegalNames },
+        // Only the imported/refine path carries a reviewFocus selection
+        // today (the entrance chip only renders in that chamber — see
+        // app/review-focus.mjs and app/page.tsx). evaluateReviewFocus
+        // reads real fields already present on nativeReport above; it
+        // never re-runs or duplicates the construction algorithm.
+        reviewFocusResult: evaluateReviewFocus(body.reviewFocus, nativeReport),
       });
     }
 

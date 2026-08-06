@@ -276,6 +276,71 @@ test("authenticated imported generation succeeds end-to-end and returns real JSO
   });
 });
 
+test("reviewFocus validation: an unrecognized value is rejected with a clean 400, never passed through to the engine", async () => {
+  const worker = await loadWorker();
+  await withMockedFetch(mockExternalFetch(), async () => {
+    const response = await worker.fetch(
+      generateRequest("importer@example.com", {
+        mode: "imported",
+        format: "Standard",
+        strategy: "Balanced midrange",
+        deck: "4 Flow 0\n4 Answer 0\n20 Island",
+        reviewFocus: "Make it broken",
+      }),
+      env(new ForgeD1()),
+      ctx,
+    );
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.match(body.error, /reviewFocus/);
+  });
+});
+
+test("reviewFocus omitted: reviewFocusResult is null, never a half-built object", async () => {
+  const worker = await loadWorker();
+  await withMockedFetch(mockExternalFetch(), async () => {
+    const response = await worker.fetch(
+      generateRequest("importer@example.com", {
+        mode: "imported",
+        format: "Standard",
+        strategy: "Balanced midrange",
+        deck: "4 Flow 0\n4 Answer 0\n20 Island",
+      }),
+      env(new ForgeD1()),
+      ctx,
+    );
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.reviewFocusResult, null);
+  });
+});
+
+test("reviewFocus supplied: a validated canonical value returns a real, evidence-backed reviewFocusResult alongside nativeReport", async () => {
+  const worker = await loadWorker();
+  await withMockedFetch(mockExternalFetch(), async () => {
+    const response = await worker.fetch(
+      generateRequest("importer@example.com", {
+        mode: "imported",
+        format: "Standard",
+        strategy: "Balanced midrange",
+        deck: "4 Flow 0\n4 Answer 0\n20 Island",
+        reviewFocus: "More consistency",
+      }),
+      env(new ForgeD1()),
+      ctx,
+    );
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.reviewFocusResult.focus, "More consistency");
+    // Grounded against this exact generation's own manaConsistency.overall
+    // (a real field already present on nativeReport), not a fixed string.
+    const expectedPct = Math.round(body.nativeReport.manaConsistency.overall * 100);
+    assert.match(body.reviewFocusResult.evidence, new RegExp(`${expectedPct}%`));
+    assert.ok(body.reviewFocusResult.asked.length > 0);
+    assert.ok(body.reviewFocusResult.nextStep.length > 0);
+  });
+});
+
 test("guest imported generation succeeds end-to-end via the guest boundary and returns real JSON, not HTML", async () => {
   const worker = await loadWorker();
   await withMockedFetch(mockExternalFetch(), async () => {

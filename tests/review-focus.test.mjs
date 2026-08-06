@@ -5,8 +5,15 @@ import {
   REVIEW_FOCUS_OPTIONS,
   REVIEW_FOCUS_LABELS,
   toggleReviewFocus,
-  buildReviewFocusContext,
+  isValidReviewFocus,
 } from "../app/review-focus.mjs";
+
+// The evidence-reading evaluators (evaluateReviewFocus and friends) are
+// deliberately NOT imported here — this file covers the client-safe half
+// of the split (options, labels, toggle state, the page.tsx UI contract).
+// See tests/review-focus-reasoning.test.mjs for the server-only coaching
+// logic, and this file's own "client bundle" test below for the proof
+// that split actually holds in the built output.
 
 const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
 
@@ -24,28 +31,30 @@ test("clicking the selected chip again clears it", () => {
   assert.equal(toggleReviewFocus("Faster starts", "Faster starts"), "");
 });
 
-test("no selection is required — empty string is a valid, unforced state", () => {
-  assert.equal(buildReviewFocusContext(""), "");
-});
+// --- Generation-request field composition ---
 
-// --- Generation-request note composition ---
-
-test("a selected focus is included in the generation request as a structured, explained prefix", () => {
-  const context = buildReviewFocusContext("More consistency");
-  assert.match(context, /Player review focus: More consistency\./);
-  // Requirement: never a bare, unexplained label — the engine must be told
-  // this is a coaching focus, not a deck characteristic.
-  assert.match(context, /coaching focus the player selected/);
-  assert.match(context, /not a deck characteristic or constraint/);
-});
-
-test("commissionNote and reviewFocus are composed together, not merged into one field", () => {
-  // page.tsx must call buildReviewFocusContext(reviewFocus) and interpolate
-  // commissionNote as its own separate template segment in the same note —
-  // never collapsed into commissionNote itself.
+test("reviewFocus travels to the server as its own dedicated field, not folded into the free-text note", () => {
+  // The imported/refine call site must pass reviewFocus as a top-level
+  // callForgeGenerate property. The note field composes only commissionNote
+  // and interventionLearning — reviewFocus is deliberately absent from it
+  // (worker/forge-generate.ts validates and evaluates it separately), so an
+  // unexplained label can no longer be misread by the engine's own
+  // note-scanning signals (colorsFromNote, blueprint intent parsing).
   assert.match(
     page,
-    /note: `\$\{buildReviewFocusContext\(reviewFocus\)\}\$\{commissionNote\}\\n\$\{interventionLearning\.reusableGuidance\}`\.trim\(\)/,
+    /note: `\$\{commissionNote\}\\n\$\{interventionLearning\.reusableGuidance\}`\.trim\(\)/,
+  );
+  assert.match(page, /reviewFocus: reviewFocus \|\| undefined,/);
+});
+
+test("no reference to the retired note-prefix helper remains", () => {
+  assert.doesNotMatch(page, /buildReviewFocusContext/);
+});
+
+test("the coaching result is rendered inside the existing reply/results experience, not a new UI element", () => {
+  assert.match(
+    page,
+    /replyText: `\$\{nativeReport\.methodology\}[\s\S]*?\$\{reviewFocusResult \? `\\n\\nCoaching focus/,
   );
 });
 
@@ -172,5 +181,56 @@ test("failed generation does not reset the decklist or commissionNote either", (
     assert.doesNotMatch(block, /setDeck\(""\)/);
     assert.doesNotMatch(block, /setCommissionNote\(""\)/);
     assert.doesNotMatch(block, /setReviewFocus\(""\)/);
+  }
+});
+
+// --- isValidReviewFocus: the environment-neutral validation helper ---
+
+test("isValidReviewFocus accepts exactly the six canonical values", () => {
+  for (const focus of REVIEW_FOCUS_OPTIONS) assert.equal(isValidReviewFocus(focus), true);
+});
+
+test("isValidReviewFocus rejects empty string, undefined, and unrecognized values", () => {
+  assert.equal(isValidReviewFocus(""), false);
+  assert.equal(isValidReviewFocus(undefined), false);
+  assert.equal(isValidReviewFocus("Something made up"), false);
+});
+
+// --- Module boundary: the evaluators must never reach the client ---
+
+test("review-focus.mjs (the client-imported half) never imports the server-only reasoning module", async () => {
+  const source = await readFile(new URL("../app/review-focus.mjs", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /^import.*review-focus-reasoning/m, "review-focus.mjs must not import its own server-only sibling — mentioning it in a comment is fine, importing it is not");
+  assert.doesNotMatch(source, /export function evaluateReviewFocus/);
+});
+
+test("the production client bundle never contains the server-side coaching templates, thresholds, or evaluator branch strings", async () => {
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const clientDir = fileURLToPath(new URL("../dist/client/", import.meta.url));
+  assert.ok(fs.existsSync(clientDir), "dist/client must exist — run `npm run build` first");
+  const files = [];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith(".js")) files.push(full);
+    }
+  };
+  walk(clientDir);
+  const clientSource = files.map((file) => fs.readFileSync(file, "utf8")).join("\n");
+  // Sentence fragments unique to the server-only coaching copy — if any of
+  // these show up in the client bundle, review-focus-reasoning.mjs (or a
+  // module that imports it) leaked into a "use client" import chain.
+  for (const serverOnlyFragment of [
+    "You wanted to know why this deck sometimes feels like it's playing catch-up",
+    "I don't have a reliable way to measure how this deck closes games",
+    "The Forge did not detect a dedicated finisher",
+    "contribute directly to how this deck can finish a game",
+    "work together to create this deck's clearest, most repeatable plan",
+    "covers about",
+  ]) {
+    assert.doesNotMatch(clientSource, new RegExp(serverOnlyFragment.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
 });

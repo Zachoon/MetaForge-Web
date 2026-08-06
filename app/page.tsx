@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { displayRoleFor } from "./adaptive-recommendation.mjs";
-import { REVIEW_FOCUS_OPTIONS, REVIEW_FOCUS_LABELS, toggleReviewFocus, buildReviewFocusContext } from "./review-focus.mjs";
+import { REVIEW_FOCUS_OPTIONS, REVIEW_FOCUS_LABELS, toggleReviewFocus } from "./review-focus.mjs";
 import { getMetaIntelligence } from "./meta-intelligence.mjs";
 // The interaction graph, systems intelligence, causality engine, bounded
 // failure analysis, goldfish/matchup simulation, and revision/
@@ -3435,6 +3435,7 @@ export default function Home() {
     generationId?: string;
     importWarnings?: { unresolvedNames: string[]; illegalNames: string[] };
     claimToken?: string;
+    reviewFocusResult?: { focus: string; concise: string } | null;
   }> {
     if (guestMode && !turnstileToken) throw new Error("Complete the human verification before striking the Forge");
     const response = await fetch(guestMode ? "/api/forge/guest-generate" : "/api/forge/generate", {
@@ -3697,21 +3698,25 @@ export default function Home() {
         // preference for cards the Forge is choosing, not a retroactive
         // filter on cards the player already chose themselves.
         // reviewFocus is a one-click coaching-intent signal, not a deck
-        // characteristic — buildReviewFocusContext says so explicitly so
-        // the engine doesn't mistake it for a build constraint the way
-        // commissionNote's freeform card/play-style text can be.
-        const { nativeReport, cardPool, generationId: newGenerationId, importWarnings } = await callForgeGenerate({
+        // characteristic, so it travels as its own validated request field
+        // (worker/forge-generate.ts) rather than inside the free-text note
+        // the engine scans for other signals (colorsFromNote, blueprint
+        // intent) — sending it as text there risked exactly that
+        // misreading. The server evaluates it against this generation's
+        // own evidence and returns reviewFocusResult, rendered below.
+        const { nativeReport, cardPool, generationId: newGenerationId, importWarnings, reviewFocusResult } = await callForgeGenerate({
           mode: "imported",
           format,
           strategy,
           complexity,
           budget,
-          note: `${buildReviewFocusContext(reviewFocus)}${commissionNote}\n${interventionLearning.reusableGuidance}`.trim(),
+          note: `${commissionNote}\n${interventionLearning.reusableGuidance}`.trim(),
           seed: hashText(`${commissionSeed}|import|${deck.length}`),
           commander: commanderInput,
           secondCommander: secondCommanderInput,
           deck,
           evidenceCards: evidence?.cards || [],
+          reviewFocus: reviewFocus || undefined,
         });
         setImportWarnings([
           ...(importWarnings?.unresolvedNames || []).map((name) => `"${name}" could not be verified and was left out.`),
@@ -3722,7 +3727,7 @@ export default function Home() {
           work: directWork,
           commander,
           index: 0,
-          replyText: `${nativeReport.methodology}\n\n${nativeReport.reasoning.summary}\n${nativeReport.laboratory.summary}${nativeReport.laboratory.verdict === "advance" ? `\nTest contract: ${nativeReport.laboratory.contract}` : ""}\n${nativeReport.reasoning.boundary} ${nativeReport.laboratory.boundary}`,
+          replyText: `${nativeReport.methodology}\n\n${nativeReport.reasoning.summary}\n${nativeReport.laboratory.summary}${nativeReport.laboratory.verdict === "advance" ? `\nTest contract: ${nativeReport.laboratory.contract}` : ""}\n${nativeReport.reasoning.boundary} ${nativeReport.laboratory.boundary}${reviewFocusResult ? `\n\nCoaching focus — ${reviewFocusResult.focus}:\n${reviewFocusResult.concise}` : ""}`,
           revisionNote: "Adapted directly from your submitted list",
           cardPool,
           serverGenerationId: newGenerationId,

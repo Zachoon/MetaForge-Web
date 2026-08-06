@@ -1,8 +1,15 @@
 // Pure helpers for the Review-path "Before we dive in" one-click coaching
 // focus (reviewFocus in page.tsx) — kept in their own module, out of the
-// big client component, so the selection/toggle logic and the generation-
-// request note prefix are directly unit-testable, the same way the rest of
-// the coaching-adjacent logic in this app/ directory is.
+// big client component, so the selection/toggle logic is directly
+// unit-testable, the same way the rest of the coaching-adjacent logic in
+// this app/ directory is.
+//
+// Client-safe by design: this module ships in the browser bundle (page.tsx
+// imports it directly), so it holds only the canonical option list, its
+// display labels, and pure UI-state helpers — never the evidence-reading
+// evaluators that read nativeReport, which live server-side in
+// review-focus-reasoning.mjs (see that file's own header for why the split
+// exists and what belongs on which side of it).
 
 export const REVIEW_FOCUS_OPTIONS = [
   "Faster starts",
@@ -33,13 +40,10 @@ export function toggleReviewFocus(current, option) {
   return current === option ? "" : option;
 }
 
-// Structured prefix for the note sent to callForgeGenerate. Deliberately
-// explains what the line represents rather than concatenating a bare
-// label — the engine already scans this same note field for other signals
-// (see colorsFromNote in page.tsx), so an unexplained label risks being
-// misread as a deck characteristic instead of a player-stated coaching
-// focus for this review session.
-export function buildReviewFocusContext(reviewFocus) {
-  if (!reviewFocus) return "";
-  return `Player review focus: ${reviewFocus}. This is the coaching focus the player selected for this review session, not a deck characteristic or constraint.\n`;
+// Environment-neutral membership check — used by worker/forge-generate.ts
+// to validate the request field and by review-focus-reasoning.mjs's own
+// entry point, so both sides check against the exact same canonical list
+// rather than each re-deriving the condition.
+export function isValidReviewFocus(value) {
+  return typeof value === "string" && REVIEW_FOCUS_OPTIONS.includes(value);
 }
