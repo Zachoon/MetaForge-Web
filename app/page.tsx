@@ -3421,6 +3421,28 @@ export default function Home() {
     }
   }
 
+  // Cloudflare Turnstile tokens are single-use server-side (guest-forge.ts's
+  // validateTurnstile calls Cloudflare's siteverify, which spends the token
+  // on that call alone) regardless of whether the deck-construction attempt
+  // that follows it succeeds or fails. turnstileToken is only cleared on a
+  // full success (below, after the response.ok check) — so a construction
+  // failure for any unrelated reason (a transient Scryfall hiccup, an
+  // engine edge case, anything) leaves the browser still holding that
+  // now-dead token, and the widget itself never fires expired-callback for
+  // this since nothing expired on its end. Left alone, "Strike the Anvil
+  // Again" resends the same spent token forever, which Cloudflare correctly
+  // rejects every time — surfacing "complete the human verification" on
+  // every retry and permanently hiding whatever the real first failure was.
+  // Call this on any guest-mode generation failure so the retry gets an
+  // actual fresh token instead of repeating a doomed one.
+  function resetGuestVerificationAfterFailure() {
+    if (!guestMode) return;
+    setTurnstileToken("");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const turnstile = (window as any).turnstile;
+    if (turnstile && turnstileWidgetRef.current) turnstile.reset(turnstileWidgetRef.current);
+  }
+
   // The actual deck-construction algorithm (forgeNativeMasterwork /
   // forgeImportedMasterwork — the tournament, every scoring weight, every
   // gate) runs server-side now, not in this bundle. This is the one call
@@ -3619,6 +3641,7 @@ export default function Home() {
     } catch (error) {
       setForgedDeck("");
       setNativeMasterworkContext(null);
+      resetGuestVerificationAfterFailure();
       setForgeGenerationError(
         error instanceof Error
           ? `${error.message}. Your commission is safe—strike the anvil again when verified card data is available.`
@@ -3764,6 +3787,7 @@ export default function Home() {
     } catch (error) {
       setForgedDeck("");
       setNativeMasterworkContext(null);
+      resetGuestVerificationAfterFailure();
       setForgeGenerationError(
         error instanceof Error
           ? `${error.message}. Your commission is safe—strike the anvil again when verified card data is available.`
