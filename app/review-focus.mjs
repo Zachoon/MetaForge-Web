@@ -13,6 +13,20 @@ export const REVIEW_FOCUS_OPTIONS = [
   "Not sure yet",
 ];
 
+// Plain-language front door onto the same six canonical values above — a
+// brand-new player shouldn't need deckbuilding vocabulary to pick one of
+// these. Display-only: REVIEW_FOCUS_OPTIONS (the canonical value) still
+// drives selection state, the generation request, and engine reasoning.
+// Never read this map for anything but rendering the chip's visible text.
+export const REVIEW_FOCUS_LABELS = Object.freeze({
+  "Faster starts": "I always feel like I’m playing from behind.",
+  "More consistency": "Sometimes everything clicks—and sometimes nothing does.",
+  "Closing games": "I get set up, but I can’t finish games.",
+  "Better interaction": "I never seem to have the right answer.",
+  "Understanding the deck": "I don’t know what this deck is trying to do.",
+  "Not sure yet": "I’m not sure—that’s why I’m here.",
+});
+
 // One click selects a chip. Clicking the already-selected chip clears it.
 // Clicking a different chip replaces the selection. Never requires one.
 export function toggleReviewFocus(current, option) {

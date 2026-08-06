@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { displayRoleFor } from "./adaptive-recommendation.mjs";
-import { REVIEW_FOCUS_OPTIONS, toggleReviewFocus, buildReviewFocusContext } from "./review-focus.mjs";
+import { REVIEW_FOCUS_OPTIONS, REVIEW_FOCUS_LABELS, toggleReviewFocus, buildReviewFocusContext } from "./review-focus.mjs";
 import { getMetaIntelligence } from "./meta-intelligence.mjs";
 // The interaction graph, systems intelligence, causality engine, bounded
 // failure analysis, goldfish/matchup simulation, and revision/
@@ -5214,7 +5214,7 @@ export default function Home() {
                 <span className="forge-eyebrow">
                   <i /> BEFORE WE DIVE IN
                 </span>
-                <p id="review-focus-question">What would you most like help with?</p>
+                <p id="review-focus-question">WHAT’S HAPPENING WHEN YOU PLAY THIS DECK?</p>
                 <div
                   className="review-focus-chips"
                   role="group"
@@ -5232,7 +5232,7 @@ export default function Home() {
                       aria-pressed={reviewFocus === option}
                       onClick={() => setReviewFocus((current) => toggleReviewFocus(current, option))}
                     >
-                      {option}
+                      {REVIEW_FOCUS_LABELS[option]}
                     </button>
                   ))}
                 </div>

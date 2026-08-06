@@ -3,6 +3,7 @@ import test from "node:test";
 import { readFile } from "node:fs/promises";
 import {
   REVIEW_FOCUS_OPTIONS,
+  REVIEW_FOCUS_LABELS,
   toggleReviewFocus,
   buildReviewFocusContext,
 } from "../app/review-focus.mjs";
@@ -61,7 +62,7 @@ test("chips do not appear in commission/build mode — no second render site out
 
 test("exact UI copy is present", () => {
   assert.match(page, /BEFORE WE DIVE IN/);
-  assert.match(page, /What would you most like help with\?/);
+  assert.match(page, /WHAT’S HAPPENING WHEN YOU PLAY THIS DECK\?/);
 });
 
 // --- Accessibility ---
@@ -79,7 +80,7 @@ test("aria-pressed is driven directly off the current selection, not a static va
 });
 
 test("the chip group has an explicit accessible label tied to the question text", () => {
-  assert.match(page, /<p id="review-focus-question">What would you most like help with\?<\/p>/);
+  assert.match(page, /<p id="review-focus-question">WHAT’S HAPPENING WHEN YOU PLAY THIS DECK\?<\/p>/);
   assert.match(
     page,
     /className="review-focus-chips"\s*\n\s*role="group"\s*\n\s*aria-labelledby="review-focus-question"/,
@@ -95,6 +96,35 @@ test("all six chip labels are present, and only those six", () => {
     "Understanding the deck",
     "Not sure yet",
   ]);
+});
+
+// --- Plain-language display labels (front door onto the same six values) ---
+
+test("REVIEW_FOCUS_LABELS maps exactly the six canonical values to plain-language sentences", () => {
+  assert.deepEqual(Object.keys(REVIEW_FOCUS_LABELS).sort(), [...REVIEW_FOCUS_OPTIONS].sort());
+  assert.deepEqual(REVIEW_FOCUS_LABELS, {
+    "Faster starts": "I always feel like I’m playing from behind.",
+    "More consistency": "Sometimes everything clicks—and sometimes nothing does.",
+    "Closing games": "I get set up, but I can’t finish games.",
+    "Better interaction": "I never seem to have the right answer.",
+    "Understanding the deck": "I don’t know what this deck is trying to do.",
+    "Not sure yet": "I’m not sure—that’s why I’m here.",
+  });
+});
+
+test("the chip renders the plain-language label, not the raw canonical value, as its visible text", () => {
+  const block = page.match(
+    /<div className="review-focus-picker">[\s\S]*?<label className="commission-note">/,
+  );
+  assert.ok(block, "expected to find the review-focus-picker block");
+  assert.match(block[0], /\{REVIEW_FOCUS_LABELS\[option\]\}/);
+  assert.doesNotMatch(block[0], />\s*\{option\}\s*<\/button>/);
+});
+
+test("selection state, aria-pressed, and the toggle call still key off the canonical value, not the label", () => {
+  assert.match(page, /reviewFocus === option\s*\n\s*\?\s*"review-focus-chip is-selected"/);
+  assert.match(page, /aria-pressed=\{reviewFocus === option\}/);
+  assert.match(page, /toggleReviewFocus\(current, option\)/);
 });
 
 test("no separate Continue/Confirm button was added — one button per chip, nothing else", () => {
