@@ -69,6 +69,24 @@ test("refuses to invent an experiment without a viable rival", () => {
   assert.match(report.boundary, /instead of inventing/i);
 });
 
+test("the true no-other-candidate dead end cites the actual selected build by name, never a bare generic message", () => {
+  const report = runOneSlotCounterfactualLab(selected, [selected], { rivalId: null }, options);
+  assert.doesNotMatch(report.summary, /^no viable rival supplied/i);
+  assert.match(report.summary, /only candidate built for this commission/i);
+});
+
+test("a missing/stale rivalId falls back to any other real candidate instead of dead-ending, when one is actually available", () => {
+  // reasoning.rivalId is supposed to name the tournament's closest
+  // competitor, but if it's ever wrong or absent, the pool still has a real
+  // rival (the same "rival" fixture the deterministic-improvement test
+  // above uses) — this must produce a genuine experiment, not "inconclusive
+  // because no rival was named."
+  const report = runOneSlotCounterfactualLab(selected, [selected, rival], { rivalId: "does-not-exist" }, options);
+  assert.equal(report.verdict, "advance");
+  assert.equal(report.experiment.cut, "Slow Threat");
+  assert.equal(report.experiment.add, "Flexible Answer");
+});
+
 test("keeps claims bounded to a controlled revision", () => {
   const report = runOneSlotCounterfactualLab(selected, [selected, rival], { rivalId: "rival" }, options);
   assert.match(report.contract, /observed match evidence/i);
@@ -113,6 +131,12 @@ test("rankOneSlotCounterfactuals refuses to invent an experiment without a viabl
   assert.equal(report.experimentsTested, 0);
   assert.deepEqual(report.experiments, []);
   assert.match(report.boundary, /instead of inventing/i);
+});
+
+test("rankOneSlotCounterfactuals's true no-other-candidate dead end also cites the actual selected build by name", () => {
+  const report = rankOneSlotCounterfactuals(selected, [selected], options);
+  assert.doesNotMatch(report.summary, /^no viable rival supplied/i);
+  assert.match(report.summary, /only candidate built for this commission/i);
 });
 
 test("rankOneSlotCounterfactuals backfills with the next-best speculative swap instead of going silent", () => {

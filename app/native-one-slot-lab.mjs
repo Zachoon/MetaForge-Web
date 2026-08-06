@@ -187,8 +187,23 @@ function buildExperiments(selected, rival, options) {
 
 export function runOneSlotCounterfactualLab(selected, candidates, reasoning, options = {}) {
   if (!selected?.rows?.length) throw new Error("One-slot laboratory requires a selected Masterwork");
-  const rival = candidates.find((candidate) => candidate.id === reasoning?.rivalId);
-  if (!rival) return deepFreeze({ verdict: "inconclusive", experimentsTested: 0, experiment: null, summary: "No viable rival supplied a bounded one-slot experiment.", boundary: "The Forge preserved the selected list instead of inventing an upgrade." });
+  let rival = candidates.find((candidate) => candidate.id === reasoning?.rivalId);
+  // reasoning.rivalId names the tournament's closest competitor, but if it's
+  // ever missing or stale, any other real candidate in the pool is still a
+  // legitimate one-slot comparison — falling back to the next-highest-scoring
+  // alternative (the same pool rankOneSlotCounterfactuals already draws
+  // from) keeps this a real experiment instead of an empty dead end.
+  if (!rival) {
+    const others = candidates.filter((candidate) => candidate.id !== selected.id).sort((a, b) => (b.score || 0) - (a.score || 0));
+    rival = others[0];
+  }
+  if (!rival) {
+    return deepFreeze({
+      verdict: "inconclusive", experimentsTested: 0, experiment: null,
+      summary: `${selected.label || "This build"} was the only candidate built for this commission, so there was nothing else to compare it against for a one-slot swap.`,
+      boundary: "The Forge preserved the selected list instead of inventing an upgrade.",
+    });
+  }
 
   const experiments = buildExperiments(selected, rival, options);
   const best = experiments[0] || null;
@@ -219,7 +234,7 @@ export function rankOneSlotCounterfactuals(selected, candidates, options = {}) {
   if (!rivals.length) {
     return deepFreeze({
       verdict: "inconclusive", experimentsTested: 0, experiments: [],
-      summary: "No viable rival supplied a bounded one-slot experiment.",
+      summary: `${selected.label || "This build"} was the only candidate built for this commission, so there was nothing else to compare it against for a one-slot swap.`,
       boundary: "The Forge preserved the selected list instead of inventing an upgrade.",
     });
   }

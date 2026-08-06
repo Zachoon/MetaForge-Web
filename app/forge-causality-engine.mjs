@@ -838,6 +838,10 @@ export function buildForgeCausalityReport(
     .map(normalizedSystem);
 
   if (!systems.length) {
+    const isolatedCount =
+      normalizedReport.isolatedCards.length;
+    const isolatedSample =
+      normalizedReport.isolatedCards.slice(0, 2).join(" and ");
     return deepFreeze({
       status: "insufficient-structure",
       systems: [],
@@ -856,6 +860,15 @@ export function buildForgeCausalityReport(
         "INSUFFICIENT · NO DETECTED SYSTEMS",
       headline:
         "The Forge cannot form a causal hypothesis without a detected multi-card system.",
+      // Every "no system" report still has real, computed evidence sitting
+      // right next to it — the interaction graph's own isolated-card list —
+      // so the player is never left with a bare verdict and nothing to act
+      // on. Mirrors forge-systems-intelligence.mjs's buildBoundedFailureAnalysis,
+      // which already supplies a nextTest for this identical condition.
+      nextTest:
+        isolatedCount
+          ? `${isolatedCount} card${isolatedCount === 1 ? "" : "s"} in this deck — including ${isolatedSample}${isolatedCount > 2 ? ", among others," : ""} — have no detected mechanical link to anything else in the list. Pairing one of them with a card that shares its trigger or resource is what would give the Forge a real system to map.`
+          : "Every card here already shares some mechanical link with another, but not enough of them link together as one package yet for the Forge to call it a system — a few more cards along the same lines should be enough.",
       evidence: EVIDENCE.insufficient,
       methodology: EVIDENCE.methodology,
     });
@@ -995,6 +1008,11 @@ export function buildForgeCausalityReport(
     headline: mostFragileSystem
       ? `${mostFragileSystem.name} is the clearest current structural-risk hypothesis; controlled testing is required before treating that pattern as a real-game cause.`
       : "No structural-risk hypothesis is currently available.",
+    // Shape-consistency with the insufficient-structure branch above, which
+    // is the only branch that ever populates this — kept null here so both
+    // branches share one type instead of an optional field that only
+    // exists on one of them.
+    nextTest: null,
     evidence:
       "This report compares modeled system structure. It does not prove that any card caused a win, loss, or matchup result.",
     methodology: EVIDENCE.methodology,

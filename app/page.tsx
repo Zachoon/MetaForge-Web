@@ -6480,6 +6480,9 @@ export default function Home() {
                                     : "The Forge is mapping structural consequences."}
                                 </h3>
                                 <p>{forgeCausalityReport.headline}</p>
+                                {forgeCausalityReport.nextTest && (
+                                  <p className="causality-next-test">{forgeCausalityReport.nextTest}</p>
+                                )}
                               </div>
                               <span className="causality-confidence-seal">
                                 <b>{forgeCausalityReport.structuralResilience}</b>

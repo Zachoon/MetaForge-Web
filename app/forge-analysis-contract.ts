@@ -59,6 +59,10 @@ export interface ForgeAnalysisReport {
     highestValueUpgrade: { systemId: string; systemName: string; targetCard: string; priority: number; recommendation: string; contract: string } | null;
     confidence: string;
     headline: string;
+    // Only populated on the insufficient-structure branch (no detected
+    // system) — the one case where headline alone would otherwise leave
+    // the player with a verdict and nothing concrete to act on.
+    nextTest: string | null;
     evidence: string;
     methodology: string;
   };
@@ -194,6 +198,7 @@ export const EMPTY_FORGE_ANALYSIS_REPORT: ForgeAnalysisReport = {
     highestValueUpgrade: null,
     confidence: "INSUFFICIENT · NO DETECTED SYSTEMS",
     headline: "The Forge cannot form a causal hypothesis without a detected multi-card system.",
+    nextTest: "Add a few cards that share a mechanical link with something already in the deck — the Forge needs at least one detected multi-card system to start mapping structural risk.",
     evidence: "The Forge requires at least one detected multi-card system before it can form a bounded structural-impact hypothesis.",
     methodology: "Structural-impact scores are deterministic hypotheses derived from the supplied interaction graph, detected systems, and optional modeled trials. They do not prove real-game causation, card quality, or predicted win rate.",
   },

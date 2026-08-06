@@ -407,6 +407,51 @@ test(
       report.evidence,
       /requires at least one detected/i,
     );
+
+    // The insufficient-structure branch must never leave the player with a
+    // bare verdict and nothing to act on — it has real, already-computed
+    // evidence sitting right next to it (the interaction graph's own
+    // isolated-card list), so it names the actual card rather than staying
+    // silent.
+    assert.match(
+      report.nextTest,
+      /Solo Card/,
+    );
+  },
+);
+
+test(
+  "insufficient-structure's nextTest still gives a real, honest read when there are no isolated cards either",
+  () => {
+    const report =
+      buildForgeCausalityReport(
+        {
+          nodes: [{ name: "Linked One" }, { name: "Linked Two" }],
+          edges: [],
+          isolated: [],
+          coverage: 0,
+        },
+        {
+          systems: [],
+          bridgeCards: [],
+          isolatedCards: [],
+          systemCoverage: 0,
+          graphCoverage: 0,
+        },
+      );
+
+    assert.equal(
+      report.status,
+      "insufficient-structure",
+    );
+    assert.doesNotMatch(
+      report.nextTest,
+      /undefined/,
+    );
+    assert.match(
+      report.nextTest,
+      /doesn't have a big enough package yet|not enough of them link together/i,
+    );
   },
 );
 
