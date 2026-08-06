@@ -3532,7 +3532,7 @@ export default function Home() {
     if (!entry) return;
     if (chamber !== "entrance" || deck.trim() || reviewFocus) return;
     setChamber(entry.chamber);
-    setReviewFocus(entry.reviewFocus);
+    if (entry.reviewFocus) setReviewFocus(entry.reviewFocus);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -13,6 +13,12 @@ test("the resolved reviewFocus is always one of the six canonical values — nev
   assert.ok(REVIEW_FOCUS_OPTIONS.includes(entry.reviewFocus));
 });
 
+test("the public guide key 'out-of-cards' resolves to the refine chamber with no reviewFocus preselected — an honest gap, no canonical focus matches it yet", () => {
+  const entry = resolveAcademyGuideEntry("out-of-cards");
+  assert.deepEqual(entry, { chamber: "refine" });
+  assert.equal(entry.reviewFocus, undefined);
+});
+
 test("unknown, empty, and malformed keys are all ignored safely, never thrown", () => {
   assert.equal(resolveAcademyGuideEntry("does-not-exist"), null);
   assert.equal(resolveAcademyGuideEntry(""), null);

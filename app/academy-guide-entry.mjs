@@ -9,14 +9,20 @@
 // single source of truth in review-focus.mjs) at module load — a typo'd or
 // retired focus value here fails loudly at build/test time, never silently
 // sends a real player into refine mode with an invalid selection.
+//
+// reviewFocus is optional on an entry: a guide can hand off to the refine
+// chamber without preselecting a focus chip, for exactly the case where no
+// canonical focus actually matches what the guide diagnoses — an honest
+// gap, not a bug. See "out-of-cards" below.
 import { REVIEW_FOCUS_OPTIONS } from "./review-focus.mjs";
 
 const ACADEMY_GUIDE_ENTRIES = Object.freeze({
   "cast-spells": Object.freeze({ chamber: "refine", reviewFocus: "More consistency" }),
+  "out-of-cards": Object.freeze({ chamber: "refine" }),
 });
 
 for (const [key, entry] of Object.entries(ACADEMY_GUIDE_ENTRIES)) {
-  if (!REVIEW_FOCUS_OPTIONS.includes(entry.reviewFocus)) {
+  if (entry.reviewFocus && !REVIEW_FOCUS_OPTIONS.includes(entry.reviewFocus)) {
     throw new Error(`Academy guide entry "${key}" points to a reviewFocus value that isn't one of the six canonical options: ${entry.reviewFocus}`);
   }
 }

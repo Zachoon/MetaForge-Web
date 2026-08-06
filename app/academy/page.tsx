@@ -8,11 +8,22 @@ export const metadata: Metadata = {
   alternates: { canonical: "https://metaforge.gg/academy" },
 };
 
+// Framed as the player's own thought, not the guide's clinical title — a
+// new player searches "why can't I cast my spells," not "mana consistency
+// guide." The thought is the headline; title/description stay only for
+// the link's accessible name and supporting copy.
 const GUIDES = [
   {
     href: "/academy/why-cant-i-cast-my-spells",
+    thought: "I can't cast my spells.",
     title: "Why Can't I Cast My Spells?",
     description: "The five most common reasons Commander decks feel stuck — and how to tell which one is actually yours.",
+  },
+  {
+    href: "/academy/why-do-i-run-out-of-cards",
+    thought: "I run out of cards.",
+    title: "Why Do I Always Run Out of Cards?",
+    description: "Two very different problems feel identical at the table — here's how to tell which one is actually yours.",
   },
 ];
 
@@ -33,12 +44,15 @@ export default function AcademyIndex() {
             </p>
           </section>
           <section>
-            <h2>Guides</h2>
-            <ul className="academy-guide-list">
+            <h2>What&rsquo;s happening in your games?</h2>
+            <ul className="academy-thought-list">
               {GUIDES.map((guide) => (
                 <li key={guide.href}>
-                  <a href={guide.href}>{guide.title}</a>
-                  <p>{guide.description}</p>
+                  <a href={guide.href}>
+                    <strong>&ldquo;{guide.thought}&rdquo;</strong>
+                    <span>{guide.title}</span>
+                    <p>{guide.description}</p>
+                  </a>
                 </li>
               ))}
             </ul>

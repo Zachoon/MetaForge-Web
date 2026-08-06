@@ -24,7 +24,26 @@
   text-decoration: none;
   letter-spacing: 0.01em;
 }
-.academy-guide-list { list-style: none; padding: 0; margin: 24px 0 0; display: grid; gap: 14px; }
-.academy-guide-list li { padding: 18px 20px; border: 1px solid #39251d; border-radius: 12px; }
-.academy-guide-list a { font-weight: 700; text-decoration: none; }
-.academy-guide-list p { margin: 6px 0 0; font-size: 14px; }
+.academy-thought-list { list-style: none; padding: 0; margin: 24px 0 0; display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.academy-thought-list li { display: flex; }
+.academy-thought-list a {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 22px 24px;
+  border: 1px solid #39251d;
+  border-radius: 14px;
+  background: rgba(87, 44, 24, 0.14);
+  text-decoration: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.academy-thought-list a:hover,
+.academy-thought-list a:focus-visible {
+  border-color: #e79b41;
+  background: rgba(87, 44, 24, 0.28);
+  outline: none;
+}
+.academy-thought-list strong { font: 600 21px Newsreader, Georgia, serif; color: #eee2cf; }
+.academy-thought-list span { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #e79b41; }
+.academy-thought-list p { margin: 4px 0 0; font-size: 14px; color: #b9ab97; }
