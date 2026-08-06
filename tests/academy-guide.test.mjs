@@ -76,6 +76,13 @@ test("the Academy index is a real page with only the one published guide — no 
   assert.match(html, /<link rel="canonical" href="https:\/\/metaforge\.gg\/academy"\s*\/>/i);
   assert.equal(html.match(/rel="canonical"/gi)?.length, 1);
   assert.match(html, /href="\/academy\/why-cant-i-cast-my-spells"/);
+  // The H1 owns search intent — the brand name is already in the logo and
+  // the eyebrow label, so the visible heading names the actual topic
+  // instead of repeating "MetaForge."
+  const h1Matches = [...html.matchAll(/<h1[^>]*>([\s\S]*?)<\/h1>/gi)];
+  assert.equal(h1Matches.length, 1, "expected exactly one H1 on the Academy index");
+  assert.equal(h1Matches[0][1], "Commander Deckbuilding Academy");
+  assert.doesNotMatch(h1Matches[0][1], /MetaForge/);
   for (const placeholder of [/coming soon/i, /more guides on the way/i, /placeholder/i]) {
     assert.doesNotMatch(html, placeholder);
   }

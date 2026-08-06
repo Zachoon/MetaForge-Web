@@ -23,7 +23,7 @@ export default function AcademyIndex() {
         <a className="legal-brand" href="/"><i>MF</i> METAFORGE</a>
         <article className="legal-card">
           <small>METAFORGE ACADEMY</small>
-          <h1>MetaForge Academy</h1>
+          <h1>Commander Deckbuilding Academy</h1>
           <p className="updated">Plain-language guides to real Commander deckbuilding problems.</p>
           <section>
             <p>

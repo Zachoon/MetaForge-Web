@@ -50,6 +50,39 @@ test("the effect never calls a generation/submit function — applying a guide e
   }
 });
 
+// --- The one in-app link into the Academy ---
+//
+// A deliberate product decision, not an incidental one: exactly one
+// contextual link exists, only inside the Review path's review-focus
+// picker (never a permanent nav item, never on the Build path), and it
+// points to /academy — the index/hub — never a specific guide. See the
+// conversation this was scoped from: someone already choosing "Review my
+// decklist" is the Academy's actual audience; someone on Build is trying
+// to create something, not stop to read.
+
+test("exactly one Academy link exists in the whole app, inside the review-focus picker, immediately after the chips", () => {
+  const occurrences = page.match(/href="\/academy"/g) || [];
+  assert.equal(occurrences.length, 1, "expected exactly one contextual link — not a permanent nav item duplicated elsewhere (e.g. the entrance footer)");
+  const pickerBlock = page.match(/<div className="review-focus-picker">[\s\S]*?<\/div>\s*\)\}/)?.[0];
+  assert.ok(pickerBlock, "expected to find the review-focus-picker block");
+  assert.match(pickerBlock, /href="\/academy"/, "the link must live inside the review-focus picker, not elsewhere in the refine chamber");
+});
+
+test("the link points to the Academy index/hub, never a specific guide — scales from 1 guide to 30 without edits", () => {
+  assert.doesNotMatch(page, /href="\/academy\/[a-z-]+"/, "must never deep-link to a specific guide from in-app — that's the index's job");
+});
+
+test("the link reads as an escape hatch (\"not sure where to start\"), not a navigation label", () => {
+  assert.match(page, /Not sure where to start\?/);
+  assert.match(page, /Browse guides →/);
+});
+
+test("the Build\\/commission path never shows the Academy link — it's Review-only by design", () => {
+  const commissionBlock = page.match(/\{chamber === "commission" && \([\s\S]*?\n {12}\)\}/)?.[0];
+  assert.ok(commissionBlock, "expected to find a commission-chamber JSX block to check — this test's own regex may need updating if the surrounding markup changed");
+  assert.doesNotMatch(commissionBlock, /academy/i);
+});
+
 test("reviewFocus remains ordinary, editable UI state after being preselected — the chip toggle and awaken-button gating are unaware of the Academy entry point", () => {
   // Re-confirms two invariants tests/review-focus.test.mjs already pins for
   // reviewFocus in general — restated here because the Academy handoff is

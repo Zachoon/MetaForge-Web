@@ -5289,6 +5289,10 @@ export default function Home() {
                     </button>
                   ))}
                 </div>
+                <p className="review-focus-academy-link">
+                  Not sure where to start? Learn the most common Commander deckbuilding problems in the
+                  MetaForge Academy. <a href="/academy">Browse guides →</a>
+                </p>
               </div>
             )}
             <label className="commission-note">
