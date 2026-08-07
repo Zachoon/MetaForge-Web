@@ -77,6 +77,7 @@ test("the Academy index is a real page listing exactly the published guides — 
   assert.equal(html.match(/rel="canonical"/gi)?.length, 1);
   assert.match(html, /href="\/academy\/why-cant-i-cast-my-spells"/);
   assert.match(html, /href="\/academy\/why-do-i-run-out-of-cards"/);
+  assert.match(html, /href="\/academy\/why-does-my-deck-start-so-slowly"/);
   // The H1 owns search intent — the brand name is already in the logo and
   // the eyebrow label, so the visible heading names the actual topic
   // instead of repeating "MetaForge."
@@ -94,14 +95,16 @@ test("the Academy index frames each entry as the player's own first-person thoug
   assert.match(html, /What.{1,6}s happening in your games\?/);
   assert.match(html, /I can.{1,6}t cast my spells\./);
   assert.match(html, /I run out of cards\./);
+  assert.match(html, /My deck starts too slowly\./);
 });
 
-test("both Academy pages are listed in the public sitemap", async () => {
+test("all three Academy pages are listed in the public sitemap", async () => {
   const response = await render("https://metaforge.gg/sitemap.xml");
   const xml = await response.text();
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/academy<\/loc>/);
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/academy\/why-cant-i-cast-my-spells<\/loc>/);
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/academy\/why-do-i-run-out-of-cards<\/loc>/);
+  assert.match(xml, /<loc>https:\/\/metaforge\.gg\/academy\/why-does-my-deck-start-so-slowly<\/loc>/);
 });
 
 test("the guide is not crawl-blocked by robots.txt", async () => {
@@ -156,4 +159,54 @@ test("the second guide's CTA uses the public guide key, never exposes the intern
   assert.match(html, /Card advantage/, "must point to the real, generically visible per-card role tag — not an invented metric");
   assert.doesNotMatch(html, /guarantee|100%|proves?\b.{0,15}(problem|issue)/i, "must never overclaim beyond what the engine can actually support");
   assert.match(html, /won.{1,6}t sort your dead hands into true versus virtual shortage/i, "must be explicit that the true/virtual split still requires the player's own observation");
+});
+
+// --- Third guide: Why Does My Deck Start So Slowly? ---
+
+test("the third guide route exists, server-renders, and carries real SEO metadata", async () => {
+  const response = await render("https://metaforge.gg/academy/why-does-my-deck-start-so-slowly");
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
+  const html = await response.text();
+
+  assert.match(html, /<title>Why Does My Deck Start So Slowly\? \| MetaForge<\/title>/i);
+  assert.match(html, /Still setting up on turn four/i);
+  assert.match(html, /<link rel="canonical" href="https:\/\/metaforge\.gg\/academy\/why-does-my-deck-start-so-slowly"\s*\/>/i);
+  assert.equal(html.match(/rel="canonical"/gi)?.length, 1, "exactly one canonical tag — the global seoMarkup injector must not add a duplicate");
+});
+
+test("the third guide has exactly one real, semantic H1 with the actual guide question", async () => {
+  const html = await (await render("https://metaforge.gg/academy/why-does-my-deck-start-so-slowly")).text();
+  const h1Matches = [...html.matchAll(/<h1[^>]*>([\s\S]*?)<\/h1>/gi)];
+  assert.equal(h1Matches.length, 1, "expected exactly one H1 on the guide");
+  assert.match(h1Matches[0][1], /Why Does My Deck Start So Slowly\?/);
+});
+
+test("the third guide covers all four named causes, not a placeholder or stub", async () => {
+  const html = await (await render("https://metaforge.gg/academy/why-does-my-deck-start-so-slowly")).text();
+  assert.match(html, /top-heavy/i);
+  assert.match(html, /fast mana/i);
+  assert.match(html, /stuck on color/i);
+  assert.match(html, /relative to the table/i);
+  for (const placeholder of [/lorem ipsum/i, /coming soon/i, /placeholder/i, /TBD/i, /TODO/i, /\[insert/i]) {
+    assert.doesNotMatch(html, placeholder, `found placeholder-shaped text matching ${placeholder}`);
+  }
+});
+
+test("the third guide cross-links the first and second guides instead of re-explaining their concepts from scratch", async () => {
+  const html = await (await render("https://metaforge.gg/academy/why-does-my-deck-start-so-slowly")).text();
+  assert.match(html, /href="\/academy\/why-cant-i-cast-my-spells"/);
+  assert.match(html, /href="\/academy\/why-do-i-run-out-of-cards"/);
+});
+
+test("the third guide's CTA uses the public guide key, never exposes the internal reviewFocus/focus param, and precisely scopes what the real fast-mana signal covers", async () => {
+  const html = await (await render("https://metaforge.gg/academy/why-does-my-deck-start-so-slowly")).text();
+  assert.match(html, /href="\/\?guide=starts-slow"/);
+  assert.doesNotMatch(html, /focus=/i, "the URL must never expose the internal reviewFocus query param or value");
+  assert.match(html, /Investigate my deck/i);
+  assert.match(html, /Bring your decklist/i);
+  // Must not overclaim "fast mana" as covering all ramp broadly.
+  assert.match(html, /not every card that.{1,6}s loosely .{0,3}ramp.{0,3}/i);
+  assert.doesNotMatch(html, /guarantee|100%|proves?\b.{0,15}(problem|issue)/i, "must never overclaim beyond what the engine can actually support");
+  assert.match(html, /won.{1,6}t know how fast the rest of your table plays/i, "must be explicit that table-relative pace is not something the engine measures");
 });

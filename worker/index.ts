@@ -35,8 +35,9 @@ function sitemapResponse(url: URL): Response {
     "https://metaforge.gg/academy",
     "https://metaforge.gg/academy/why-cant-i-cast-my-spells",
     "https://metaforge.gg/academy/why-do-i-run-out-of-cards",
+    "https://metaforge.gg/academy/why-does-my-deck-start-so-slowly",
   ];
-  const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map((pageUrl, index) => `\n  <url><loc>${pageUrl}</loc><lastmod>${index === urls.length - 1 ? "2026-08-06" : "2026-08-02"}</lastmod><changefreq>${index === 0 ? "weekly" : "monthly"}</changefreq><priority>${index === 0 ? "1.0" : "0.3"}</priority></url>`).join("")}\n</urlset>\n`;
+  const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map((pageUrl, index) => `\n  <url><loc>${pageUrl}</loc><lastmod>${index >= urls.length - 2 ? "2026-08-06" : "2026-08-02"}</lastmod><changefreq>${index === 0 ? "weekly" : "monthly"}</changefreq><priority>${index === 0 ? "1.0" : "0.3"}</priority></url>`).join("")}\n</urlset>\n`;
   return new Response(body, { headers: { ...SEO_HEADERS, "Content-Type": "application/xml; charset=utf-8" } });
 }
 

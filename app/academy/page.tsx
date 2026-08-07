@@ -25,6 +25,12 @@ const GUIDES = [
     title: "Why Do I Always Run Out of Cards?",
     description: "Two very different problems feel identical at the table — here's how to tell which one is actually yours.",
   },
+  {
+    href: "/academy/why-does-my-deck-start-so-slowly",
+    thought: "My deck starts too slowly.",
+    title: "Why Does My Deck Start So Slowly?",
+    description: "Four separate causes feel identical at the table — here's how to tell which one is actually yours.",
+  },
 ];
 
 export default function AcademyIndex() {

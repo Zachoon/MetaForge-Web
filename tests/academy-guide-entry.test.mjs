@@ -19,6 +19,12 @@ test("the public guide key 'out-of-cards' resolves to the refine chamber with no
   assert.equal(entry.reviewFocus, undefined);
 });
 
+test("the public guide key 'starts-slow' resolves to the refine chamber with the canonical Faster starts focus", () => {
+  const entry = resolveAcademyGuideEntry("starts-slow");
+  assert.deepEqual(entry, { chamber: "refine", reviewFocus: "Faster starts" });
+  assert.ok(REVIEW_FOCUS_OPTIONS.includes(entry.reviewFocus));
+});
+
 test("unknown, empty, and malformed keys are all ignored safely, never thrown", () => {
   assert.equal(resolveAcademyGuideEntry("does-not-exist"), null);
   assert.equal(resolveAcademyGuideEntry(""), null);
