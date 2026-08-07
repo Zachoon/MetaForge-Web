@@ -1227,6 +1227,80 @@ const blueprintDefinition = (
   value: string,
 ) => (BLUEPRINT_DEFINITIONS[category] as Record<string, string>)[value] || "The Forge will explain this choice as its card pool and rules are verified.";
 
+// A production walkthrough proved that three genuinely different failure
+// classes — an expired Turnstile token, the network anti-abuse limiter,
+// and a truly incomplete generation — used to collapse into one
+// indistinguishable "Forge failed" screen, because every guest-forge
+// failure was caught in one place and rendered from a single message
+// string. That's why "the engine didn't build anything" felt impossible
+// to kill: most of those reports were never construction failures at
+// all. callForgeGenerate now throws a ForgeGenerationError carrying the
+// server's machine-readable code; normalizeForgeFailure maps every known
+// code to how the UI must treat it, once, here — never re-derive this by
+// comparing message strings at a render site.
+type GuestForgeErrorCode =
+  | "GUEST_PREVIEW_ALREADY_USED"
+  | "NETWORK_RATE_LIMITED"
+  | "HUMAN_VERIFICATION_REQUIRED"
+  | "INCOMPLETE_GENERATION"
+  | "CATALOG_UNAVAILABLE"
+  | "GENERATION_FAILED";
+
+class ForgeGenerationError extends Error {
+  code?: string;
+  claimToken?: string;
+  constructor(message: string, code?: string, claimToken?: string) {
+    super(message);
+    this.code = code;
+    this.claimToken = claimToken;
+  }
+}
+
+type NormalizedForgeFailure = {
+  code: GuestForgeErrorCode | "UNKNOWN";
+  message: string;
+  claimToken?: string;
+  // Whether "Strike the Anvil Again" may ever work against this exact
+  // failure. GUEST_PREVIEW_ALREADY_USED and NETWORK_RATE_LIMITED are both
+  // permanent-for-now rejections under the same guest identity/network —
+  // no fresh Turnstile token changes that, so retry must not be offered.
+  retryable: boolean;
+  // Whether this specific response means the guest's one free preview
+  // was actually spent. Only GUEST_PREVIEW_ALREADY_USED may ever say so —
+  // every other code, including the network limiter, must say the
+  // opposite plainly.
+  previewConsumed: boolean;
+  // Whether a fresh Turnstile challenge is the correct next step. False
+  // for both non-retryable codes (retrying can't work regardless of
+  // verification) and true for every retryable one (a Turnstile token is
+  // single-use server-side the moment it's checked, spent whether or not
+  // the attempt that follows succeeds).
+  requiresVerification: boolean;
+};
+
+const GUEST_FORGE_ERROR_META: Record<GuestForgeErrorCode, Omit<NormalizedForgeFailure, "code" | "message" | "claimToken">> = {
+  GUEST_PREVIEW_ALREADY_USED: { retryable: false, previewConsumed: true, requiresVerification: false },
+  NETWORK_RATE_LIMITED: { retryable: false, previewConsumed: false, requiresVerification: false },
+  HUMAN_VERIFICATION_REQUIRED: { retryable: true, previewConsumed: false, requiresVerification: true },
+  INCOMPLETE_GENERATION: { retryable: true, previewConsumed: false, requiresVerification: true },
+  CATALOG_UNAVAILABLE: { retryable: true, previewConsumed: false, requiresVerification: true },
+  GENERATION_FAILED: { retryable: true, previewConsumed: false, requiresVerification: true },
+};
+
+function normalizeForgeFailure(error: unknown): NormalizedForgeFailure {
+  const message = error instanceof Error ? error.message : "The native Forge could not complete this candidate.";
+  const rawCode = error instanceof ForgeGenerationError ? error.code : undefined;
+  const code: GuestForgeErrorCode | "UNKNOWN" =
+    rawCode && Object.prototype.hasOwnProperty.call(GUEST_FORGE_ERROR_META, rawCode) ? (rawCode as GuestForgeErrorCode) : "UNKNOWN";
+  const claimToken = error instanceof ForgeGenerationError ? error.claimToken : undefined;
+  // An unrecognized/missing code (an older deploy, a network-level error
+  // never touched by this contract) defaults to the same treatment as
+  // GENERATION_FAILED — retryable, preview preserved — never to "already
+  // used," since that is the one claim this function must never guess at.
+  const meta = code === "UNKNOWN" ? GUEST_FORGE_ERROR_META.GENERATION_FAILED : GUEST_FORGE_ERROR_META[code];
+  return { code, message, claimToken, ...meta };
+}
+
 
 export default function Home() {
   const [chamber, setChamber] = useState<Chamber>("entrance");
@@ -1672,6 +1746,11 @@ export default function Home() {
   const [removedCards, setRemovedCards] = useState<DeckRow[]>([]);
   const [editAnvilOpen, setEditAnvilOpen] = useState(false);
   const [forgeGenerationError, setForgeGenerationError] = useState("");
+  // The normalized shape (see normalizeForgeFailure above) — drives every
+  // decision the failure UI makes (retry button, "preview not used"
+  // copy, sign-in/claim path). forgeGenerationError above stays the raw
+  // display message; this is never re-derived from it by string-matching.
+  const [forgeGenerationFailure, setForgeGenerationFailure] = useState<NormalizedForgeFailure | null>(null);
   const [forgeStartedAt, setForgeStartedAt] = useState<number | null>(null);
   const [forgeElapsedSeconds, setForgeElapsedSeconds] = useState(0);
   const [replacementRecommendations, setReplacementRecommendations] = useState<
@@ -3341,7 +3420,7 @@ export default function Home() {
       concise: string;
     } | null;
   }> {
-    if (guestMode && !turnstileToken) throw new Error("Complete the human verification before striking the Forge");
+    if (guestMode && !turnstileToken) throw new ForgeGenerationError("Complete the human verification before striking the Forge", "HUMAN_VERIFICATION_REQUIRED");
     const response = await fetch(guestMode ? "/api/forge/guest-generate" : "/api/forge/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -3368,13 +3447,20 @@ export default function Home() {
         contentType: response.headers.get("content-type"),
         bodyPreview: rawBody.slice(0, 500),
       });
-      throw new Error(
+      throw new ForgeGenerationError(
         response.redirected || response.status === 401
           ? "Your session needs to be refreshed. Reload the page and try again — your commission and decklist are still here."
           : "The native Forge could not complete this candidate (unexpected server response). Try again in a moment.",
+        "GENERATION_FAILED",
       );
     }
-    if (!response.ok) throw new Error(data?.error || "The native Forge could not complete this candidate.");
+    if (!response.ok) {
+      throw new ForgeGenerationError(
+        data?.error || "The native Forge could not complete this candidate.",
+        typeof data?.code === "string" ? data.code : "GENERATION_FAILED",
+        typeof data?.claimToken === "string" ? data.claimToken : undefined,
+      );
+    }
     if (guestMode) {
       setTurnstileToken("");
       setGuestClaimToken(data.claimToken || "");
@@ -3483,6 +3569,7 @@ export default function Home() {
     setForgeElapsedSeconds(0);
     setForgeReply("");
     setForgeGenerationError("");
+    setForgeGenerationFailure(null);
     setImportWarnings([]);
     setReviewFocusResult(null);
     setConsideringCards([]);
@@ -3604,13 +3691,21 @@ export default function Home() {
         setChamber("masterworks");
       }
     } catch (error) {
+      const failure = normalizeForgeFailure(error);
       setForgedDeck("");
       setNativeMasterworkContext(null);
-      resetGuestVerificationAfterFailure();
+      // A Turnstile token is single-use server-side the moment it's
+      // checked, spent whether or not the attempt that follows it
+      // succeeds — but only reset it when a fresh one could actually
+      // help. GUEST_PREVIEW_ALREADY_USED and NETWORK_RATE_LIMITED are
+      // both rejections no new token changes; resetting there would
+      // dress retry up as viable when it categorically isn't.
+      if (failure.requiresVerification) resetGuestVerificationAfterFailure();
+      setForgeGenerationFailure(failure);
       setForgeGenerationError(
-        error instanceof Error
-          ? `${error.message}. Your commission is safe—strike the anvil again when verified card data is available.`
-          : "The native Forge could not complete this candidate. Your commission is safe—strike the anvil again.",
+        failure.retryable
+          ? `${failure.message} Your commission is safe—strike the anvil again when verified card data is available.`
+          : failure.message,
       );
     } finally {
       setBenchStatus("idle");
@@ -7090,26 +7185,62 @@ export default function Home() {
                 </>
               ) : forgeGenerationError ? (
                 <div className="forge-generation-failure" role="alert">
-                  <small>THE METAL DID NOT SET</small>
-                  <h3>No incomplete deck was saved.</h3>
-                  <p>{forgeGenerationError}</p>
-                  {guestMode && !turnstileToken && (
-                    <p className="forge-generation-failure-verify-note">
-                      Your preview was not used. Complete the verification above, then try again.
-                    </p>
+                  {forgeGenerationFailure?.code === "GUEST_PREVIEW_ALREADY_USED" ? (
+                    <>
+                      <small>YOUR FREE PREVIEW IS SPENT</small>
+                      <h3>This free preview Forge has already been used.</h3>
+                      <p>{forgeGenerationError}</p>
+                      {/* Non-retryable: a fresh Turnstile token cannot make an
+                          already-consumed guest entitlement available again,
+                          so no retry action is offered here — only a real
+                          path forward (open the saved result, or sign in). */}
+                      <div className="forge-generation-failure-actions">
+                        {forgeGenerationFailure.claimToken && (
+                          <a href={`https://app.metaforge.gg/?claim=${encodeURIComponent(forgeGenerationFailure.claimToken)}`}>
+                            Open your saved result →
+                          </a>
+                        )}
+                        <a href="https://app.metaforge.gg/">Sign in / create account →</a>
+                      </div>
+                    </>
+                  ) : forgeGenerationFailure?.code === "NETWORK_RATE_LIMITED" ? (
+                    <>
+                      <small>TOO MANY ATTEMPTS FROM THIS NETWORK</small>
+                      <h3>This network has reached today's Forge limit.</h3>
+                      <p>{forgeGenerationError}</p>
+                      {/* Also non-retryable, and for a fundamentally different
+                          reason than the entitlement case above: this is an
+                          anti-abuse signal on the network, not a claim about
+                          this player's own preview — a fresh Turnstile token
+                          changes nothing about it, so no retry is offered. */}
+                      <div className="forge-generation-failure-actions">
+                        <a href="https://app.metaforge.gg/">Sign in / create account →</a>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <small>THE METAL DID NOT SET</small>
+                      <h3>No incomplete deck was saved.</h3>
+                      <p>{forgeGenerationError}</p>
+                      {guestMode && !turnstileToken && (
+                        <p className="forge-generation-failure-verify-note">
+                          Your preview was not used. Complete the verification above, then try again.
+                        </p>
+                      )}
+                      <button
+                        disabled={guestMode && !turnstileToken}
+                        onClick={() => {
+                          if (deck.trim()) {
+                            void commitDirectForge("decklist");
+                            return;
+                          }
+                          void commitDirectForge("commander");
+                        }}
+                      >
+                        Strike the Anvil Again
+                      </button>
+                    </>
                   )}
-                  <button
-                    disabled={guestMode && !turnstileToken}
-                    onClick={() => {
-                      if (deck.trim()) {
-                        void commitDirectForge("decklist");
-                        return;
-                      }
-                      void commitDirectForge("commander");
-                    }}
-                  >
-                    Strike the Anvil Again
-                  </button>
                 </div>
               ) : (
                 <pre>The Forge is waiting for a valid commission.</pre>

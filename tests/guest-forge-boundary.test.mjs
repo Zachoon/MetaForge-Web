@@ -123,3 +123,132 @@ test("a naturally expired or errored Turnstile token also forces an explicit wid
     /"error-callback": \(\) => \{\s*setTurnstileToken\(""\);\s*if \(turnstileWidgetRef\.current\) turnstile\.reset\(turnstileWidgetRef\.current\);\s*\}/,
   );
 });
+
+// P0 follow-up: a production walkthrough proved a network-rate-limit 429
+// used to render literally contradictory copy in the same failure state —
+// "this network has used its preview" alongside "your preview was not
+// used, try again" — because every guest-forge failure fell through one
+// generic catch and one generic message-string render. The fix gives the
+// server six machine-readable codes (worker/guest-forge.ts,
+// worker/forge-generate.ts) and the client a single normalizeForgeFailure
+// mapping (app/page.tsx) that the failure UI branches on by code, never by
+// comparing message text. These tests pin that contract at the source
+// level: the normalization table itself, and that each rendered branch
+// only ever shows copy consistent with its own code.
+
+test("the server defines exactly the six required guest-forge error codes", async () => {
+  const guestForge = await read("worker/guest-forge.ts");
+  const forgeGenerate = await read("worker/forge-generate.ts");
+  const validator = await read("worker/forge-result-validator.mjs");
+  const combined = guestForge + forgeGenerate + validator;
+  for (const code of [
+    "GUEST_PREVIEW_ALREADY_USED",
+    "NETWORK_RATE_LIMITED",
+    "HUMAN_VERIFICATION_REQUIRED",
+    "INCOMPLETE_GENERATION",
+    "CATALOG_UNAVAILABLE",
+    "GENERATION_FAILED",
+  ]) {
+    assert.match(combined, new RegExp(`code: "${code}"`), `expected ${code} to be returned by the server`);
+  }
+});
+
+test("NETWORK_RATE_LIMITED is a 429 that explicitly denies the preview was ever used, and never claims the network's preview was spent", async () => {
+  const source = await read("worker/guest-forge.ts");
+  const block = source.match(/if \(!networkLimit\.allowed\) \{[\s\S]*?429,\n\s*\{[\s\S]*?\);\n\s*\}/)?.[0];
+  assert.ok(block, "expected the network-rate-limit response block");
+  assert.match(block, /429/);
+  assert.match(block, /"NETWORK_RATE_LIMITED"/);
+  assert.match(block, /Your preview has not been used/);
+  assert.doesNotMatch(block, /has used its preview/i, "the network limiter must never claim a preview was used — a network is not a player");
+});
+
+test("GUEST_PREVIEW_ALREADY_USED stays a 409 and is the only server response allowed to say the preview was used", async () => {
+  const source = await read("worker/guest-forge.ts");
+  const block = source.match(/if \(Number\(reserved\.meta\?\.changes \|\| 0\) !== 1\) \{[\s\S]*?409,\n\s*\);/)?.[0];
+  assert.ok(block, "expected the already-reserved response block");
+  assert.match(block, /409/);
+  assert.match(block, /"GUEST_PREVIEW_ALREADY_USED"/);
+  assert.match(block, /already been used/);
+  assert.match(block, /claimToken/);
+});
+
+test("normalizeForgeFailure maps every code to its retry/preview/verification meaning exactly once, defaulting unknown codes to GENERATION_FAILED's meta (never to already-used)", async () => {
+  const source = await read("app/page.tsx");
+  const table = source.match(/const GUEST_FORGE_ERROR_META[\s\S]*?\n\};/)?.[0];
+  assert.ok(table, "expected the GUEST_FORGE_ERROR_META table");
+  assert.match(table, /GUEST_PREVIEW_ALREADY_USED: \{ retryable: false, previewConsumed: true, requiresVerification: false \}/);
+  assert.match(table, /NETWORK_RATE_LIMITED: \{ retryable: false, previewConsumed: false, requiresVerification: false \}/);
+  assert.match(table, /HUMAN_VERIFICATION_REQUIRED: \{ retryable: true, previewConsumed: false, requiresVerification: true \}/);
+  assert.match(table, /INCOMPLETE_GENERATION: \{ retryable: true, previewConsumed: false, requiresVerification: true \}/);
+  assert.match(table, /CATALOG_UNAVAILABLE: \{ retryable: true, previewConsumed: false, requiresVerification: true \}/);
+  assert.match(table, /GENERATION_FAILED: \{ retryable: true, previewConsumed: false, requiresVerification: true \}/);
+
+  const fn = source.match(/function normalizeForgeFailure[\s\S]*?\n\}/)?.[0];
+  assert.ok(fn, "expected the normalizeForgeFailure function");
+  assert.match(
+    fn,
+    /const meta = code === "UNKNOWN" \? GUEST_FORGE_ERROR_META\.GENERATION_FAILED : GUEST_FORGE_ERROR_META\[code\];/,
+    "an unrecognized code must fall back to GENERATION_FAILED's meta, which is retryable and never previewConsumed",
+  );
+});
+
+test("only requiresVerification failures reset the Turnstile widget; NETWORK_RATE_LIMITED and GUEST_PREVIEW_ALREADY_USED do not", async () => {
+  const source = await read("app/page.tsx");
+  const catchBlock = source.match(/\} catch \(error\) \{\s*const failure = normalizeForgeFailure\(error\);[\s\S]*?\} finally \{/)?.[0];
+  assert.ok(catchBlock, "expected the commitDirectForge catch block");
+  assert.match(
+    catchBlock,
+    /if \(failure\.requiresVerification\) resetGuestVerificationAfterFailure\(\);/,
+    "the reset must be gated on requiresVerification, not called unconditionally",
+  );
+});
+
+// Each branch is sliced by the unique heading string that opens it, rather
+// than by matching nested-ternary `) : (` closers — the three branches
+// share that same closer token structurally, which makes it an unreliable
+// boundary. The heading strings are each unique in the file and appear in
+// source order, so slicing between them isolates exactly one branch's JSX.
+function forgeFailureBranches(source) {
+  const alreadyUsedStart = source.indexOf("YOUR FREE PREVIEW IS SPENT");
+  const networkStart = source.indexOf("TOO MANY ATTEMPTS FROM THIS NETWORK");
+  const retryableStart = source.indexOf("THE METAL DID NOT SET");
+  const blockEnd = source.indexOf("The Forge is waiting for a valid commission");
+  assert.ok(alreadyUsedStart > 0 && networkStart > alreadyUsedStart, "expected the GUEST_PREVIEW_ALREADY_USED branch heading before the NETWORK_RATE_LIMITED heading");
+  assert.ok(retryableStart > networkStart && blockEnd > retryableStart, "expected the retryable-branch heading before the end of the failure block");
+  return {
+    alreadyUsed: source.slice(alreadyUsedStart, networkStart),
+    network: source.slice(networkStart, retryableStart),
+    retryable: source.slice(retryableStart, blockEnd),
+  };
+}
+
+test("the failure UI renders a distinct, non-contradictory branch per error code", async () => {
+  const source = await read("app/page.tsx");
+  const { alreadyUsed, network, retryable } = forgeFailureBranches(source);
+
+  assert.match(alreadyUsed, /already been used/);
+  assert.doesNotMatch(alreadyUsed, /Strike the Anvil Again/, "an already-used preview must never offer a retry — retry cannot succeed under the same guest identity");
+  assert.doesNotMatch(alreadyUsed, /preview was not used/i, "an already-used preview must never simultaneously claim the preview was not used");
+
+  assert.match(network, /reached today's Forge limit/);
+  assert.doesNotMatch(network, /Strike the Anvil Again/, "the network limiter must never present a retry button pretending an immediate retry can work");
+  assert.doesNotMatch(network, /card-data|catalog/i, "the network limiter must never render catalog/card-data failure language");
+  assert.doesNotMatch(network, /No incomplete deck was saved/i, "the network limiter must never render incomplete-generation language");
+  assert.match(network, /Sign in \/ create account/, "the network limiter must offer the sign-in path");
+
+  assert.match(retryable, /Strike the Anvil Again/);
+  assert.doesNotMatch(retryable, /already been used|preview is spent/i, "retryable failures must never claim the preview was already used");
+});
+
+// Hard regression lock for the exact production video: a NETWORK_RATE_LIMITED
+// 429 must never be able to render both "this network has used its preview"
+// and "your preview was not used, complete verification and try again" in
+// the same state — the two claims directly contradict each other and that
+// contradiction is what made the failure unreadable for weeks.
+test("regression: a NETWORK_RATE_LIMITED state can never render both the old contradictory claims at once", async () => {
+  const source = await read("app/page.tsx");
+  const { network } = forgeFailureBranches(source);
+  assert.doesNotMatch(network, /has used its preview Forge for now/);
+  assert.doesNotMatch(network, /Complete the verification above, then try again/);
+});

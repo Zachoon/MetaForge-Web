@@ -79,7 +79,7 @@ test("the imported-generate call still targets the authenticated or guest genera
 
 test("a failed forge attempt still preserves the pasted decklist and selected commander (deck/commander state is never cleared on catch)", async () => {
   const source = await read("app/page.tsx");
-  const catchBlock = source.match(/\} catch \(error\) \{\s*setForgedDeck\(""\);[\s\S]*?\} finally \{/);
+  const catchBlock = source.match(/\} catch \(error\) \{\s*const failure = normalizeForgeFailure\(error\);\s*setForgedDeck\(""\);[\s\S]*?\} finally \{/);
   assert.ok(catchBlock, "the commitForge catch block exists");
   assert.doesNotMatch(catchBlock[0], /setDeck\(/, "the pasted decklist text is never cleared on a failed generation");
   assert.doesNotMatch(catchBlock[0], /setSelectedCommander\(/, "the selected/detected commander is never cleared on a failed generation");

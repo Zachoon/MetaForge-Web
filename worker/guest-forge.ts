@@ -54,6 +54,34 @@ async function validateTurnstile(request: Request, secret: string, token: unknow
   return result.success === true;
 }
 
+// Guest requests pass through two independent gates, and conflating them
+// is exactly the bug this file used to have:
+//
+//   Gate B — guest_forge_sessions, keyed by the signed per-browser cookie
+//   (sessionFromRequest below) — is the REAL one-preview entitlement. It
+//   is healthy: a browser gets exactly one free preview, tracked by an
+//   identity that follows that browser, not its network.
+//
+//   Gate A — NETWORK_RATE_LIMIT_PER_DAY below, keyed by IP+User-Agent —
+//   is anti-abuse infrastructure ONLY. It must never be read, logged, or
+//   messaged as if it were an entitlement: a network is not a player, and
+//   a household/dorm/game-store/library/school/VPN-exit/carrier-NAT
+//   sharing one IP+UA is not one "guest" that used up a shared preview.
+//   Its old 3/day threshold was tuned against imaginary coordinated abuse
+//   and was, in production, blocking real individual users retrying a
+//   few times after an unrelated hiccup. Turnstile plus Gate B already
+//   protect the free preview; this only needs to catch genuine
+//   high-volume abuse, so it stays generous.
+const NETWORK_RATE_LIMIT_PER_DAY = 50;
+const NETWORK_RATE_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+// Non-PII structured logging so a support/observability pass can tell
+// which gate actually fired without reproducing it by hand — never the
+// raw IP, cookie value, or session key, only operational counters.
+function logGuestGateEvent(event: Record<string, unknown>) {
+  console.log(JSON.stringify({ event: "guest_forge_gate", ...event }));
+}
+
 export async function handleGuestForge(request: Request, env: Env): Promise<Response> {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
   if (!env.TURNSTILE_SECRET_KEY || !env.GUEST_SESSION_SECRET) {
@@ -63,30 +91,65 @@ export async function handleGuestForge(request: Request, env: Env): Promise<Resp
   const bodyResult = await readJsonWithLimit(request, MAX_BODY_BYTES);
   if (!bodyResult.ok) return json({ error: bodyResult.error }, bodyResult.status);
   const body = bodyResult.data;
+  const hadGuestCookie = cookieValue(request) !== null;
   if (!(await validateTurnstile(request, env.TURNSTILE_SECRET_KEY, body?.turnstileToken))) {
-    return json({ error: "Please complete the human verification and try again" }, 400);
+    logGuestGateEvent({ outcome: "human_verification_required", hadGuestCookie });
+    return json({ error: "Please complete the human verification and try again.", code: "HUMAN_VERIFICATION_REQUIRED" }, 400);
   }
 
   const session = await sessionFromRequest(request, env.GUEST_SESSION_SECRET);
   const now = Date.now();
+
+  // Gate A — anti-abuse only. See the module-level note above: this must
+  // never imply a specific player's preview was consumed, because it has
+  // no idea whether it was — it only knows this IP+UA made a lot of
+  // requests recently.
   const networkSignal = await hmac(
     env.GUEST_SESSION_SECRET,
     `${request.headers.get("CF-Connecting-IP") || "unknown"}|${request.headers.get("user-agent") || "unknown"}`,
   );
-  const networkLimit = await checkRateLimit(env, networkSignal, "guest-forge-network", 3, 24 * 60 * 60 * 1000);
+  const networkLimit = await checkRateLimit(env, networkSignal, "guest-forge-network", NETWORK_RATE_LIMIT_PER_DAY, NETWORK_RATE_WINDOW_MS);
   if (!networkLimit.allowed) {
-    return json({ error: "This network has used its preview Forge for now", retryAfterSeconds: networkLimit.retryAfterSeconds }, 429, {
-      "Retry-After": String(networkLimit.retryAfterSeconds),
+    logGuestGateEvent({
+      outcome: "network_rate_limited",
+      hadGuestCookie,
+      threshold: NETWORK_RATE_LIMIT_PER_DAY,
     });
+    return json(
+      {
+        error: "Too many Forge attempts have come from this network recently. Your preview has not been used. Try again later, or sign in to continue.",
+        code: "NETWORK_RATE_LIMITED",
+        retryAfterSeconds: networkLimit.retryAfterSeconds,
+      },
+      429,
+      { "Retry-After": String(networkLimit.retryAfterSeconds) },
+    );
   }
 
+  // Gate B — the real entitlement. A conflict here means this exact
+  // signed browser identity already has a 'pending' or 'used' row —
+  // genuinely already used, not a network-sharing false positive.
   const reserved = await env.DB.prepare(
     `INSERT INTO guest_forge_sessions (session_key, status, created_at, expires_at)
      VALUES (?, 'pending', ?, ?)
      ON CONFLICT(session_key) DO NOTHING`,
   ).bind(session.id, now, now + TTL_MS).run();
   if (Number(reserved.meta?.changes || 0) !== 1) {
-    return json({ error: "Your free preview Forge has already been used. Create an account to keep forging." }, 409);
+    // A genuinely-used entitlement may still have a real, unclaimed
+    // result sitting behind it — surface the claim path instead of a
+    // dead end wherever one exists.
+    const existingClaim = await env.DB.prepare(
+      `SELECT claim_token FROM guest_forges WHERE session_key = ? AND claimed_by IS NULL AND expires_at >= ? ORDER BY created_at DESC LIMIT 1`,
+    ).bind(session.id, now).first<{ claim_token: string }>();
+    logGuestGateEvent({ outcome: "preview_already_used", hadGuestCookie, hasClaimableResult: Boolean(existingClaim) });
+    return json(
+      {
+        error: "Your free preview Forge has already been used. Create an account to keep forging.",
+        code: "GUEST_PREVIEW_ALREADY_USED",
+        claimToken: existingClaim?.claim_token || undefined,
+      },
+      409,
+    );
   }
 
   try {
@@ -102,6 +165,12 @@ export async function handleGuestForge(request: Request, env: Env): Promise<Resp
     const responseBody = await forgeResponse.json<Record<string, unknown>>();
     if (!forgeResponse.ok) {
       await env.DB.prepare(`DELETE FROM guest_forge_sessions WHERE session_key = ? AND status = 'pending'`).bind(session.id).run();
+      logGuestGateEvent({
+        outcome: "retryable_generation_failure",
+        hadGuestCookie,
+        status: forgeResponse.status,
+        code: typeof responseBody.code === "string" ? responseBody.code : null,
+      });
       return json(responseBody, forgeResponse.status);
     }
 
@@ -115,6 +184,7 @@ export async function handleGuestForge(request: Request, env: Env): Promise<Resp
          VALUES (?, ?, ?, ?, ?, ?)`,
       ).bind(claimToken, session.id, generationId, JSON.stringify(responseBody), now, now + TTL_MS),
     ]);
+    logGuestGateEvent({ outcome: "success", hadGuestCookie });
     return json(
       { ...responseBody, claimToken, guestPreview: true },
       200,
@@ -122,8 +192,9 @@ export async function handleGuestForge(request: Request, env: Env): Promise<Resp
     );
   } catch (error) {
     await env.DB.prepare(`DELETE FROM guest_forge_sessions WHERE session_key = ? AND status = 'pending'`).bind(session.id).run();
+    logGuestGateEvent({ outcome: "retryable_generation_failure", hadGuestCookie, status: 500, code: "GENERATION_FAILED" });
     console.error("guest forge failed", error);
-    return json({ error: "The Forge could not complete this preview. Please try again." }, 500);
+    return json({ error: "The Forge could not complete this preview. Please try again.", code: "GENERATION_FAILED" }, 500);
   }
 }
 

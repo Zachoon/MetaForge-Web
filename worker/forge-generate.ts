@@ -493,7 +493,7 @@ export async function handleForgeGenerateForKey(request: Request, env: Env, key:
     limitResult = await checkRateLimit(env, key, "forge-generate", RATE_LIMIT, RATE_WINDOW_MS);
   } catch (error) {
     console.error("forge-generate rate limit check failed", error);
-    return json({ error: "The native Forge could not complete this candidate. Try again or adjust the commission." }, 500);
+    return json({ error: "The native Forge could not complete this candidate. Try again or adjust the commission.", code: "GENERATION_FAILED" }, 500);
   }
   if (!limitResult.allowed) {
     return json(
@@ -639,7 +639,7 @@ export async function handleForgeGenerateForKey(request: Request, env: Env, key:
     // mode worth surfacing plainly rather than masking.
     if (error instanceof Error && error.message === CATALOG_UNAVAILABLE_MESSAGE) {
       logConstructionOutcome({ outcome: "incomplete", format: body.format, commanderName: body.commander?.name, target: targetDeckSize(body.format), failureCategory: "CATALOG_UNAVAILABLE" });
-      return json({ error: CATALOG_UNAVAILABLE_MESSAGE }, 503);
+      return json({ error: CATALOG_UNAVAILABLE_MESSAGE, code: "CATALOG_UNAVAILABLE" }, 503);
     }
     // Everything past the recovery ladder (relaxAnalysisPreferences)
     // throwing again, or every candidate failing its own hard gate —
@@ -656,6 +656,6 @@ export async function handleForgeGenerateForKey(request: Request, env: Env, key:
       failureMessage: error instanceof Error ? error.message : String(error),
     });
     if (!structuralExhaustion) console.error("forge-generate failed", error);
-    return json({ error: "The native Forge could not complete this candidate. Try again or adjust the commission." }, 500);
+    return json({ error: "The native Forge could not complete this candidate. Try again or adjust the commission.", code: "GENERATION_FAILED" }, 500);
   }
 }
