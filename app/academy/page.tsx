@@ -47,6 +47,12 @@ const GUIDES = [
     title: "Why Do I Lose After Getting Ahead?",
     description: "Getting ahead, staying ahead, and actually ending the game are three separate skills — here's which one you're missing.",
   },
+  {
+    href: "/academy/what-is-my-deck-actually-trying-to-do",
+    thought: "I don't know what my deck is trying to do.",
+    title: "What Is My Deck Actually Trying to Do?",
+    description: "A theme, real synergy, a repeatable plan, and the cards holding it together are four different things — here's how to tell them apart.",
+  },
 ];
 
 export default function AcademyIndex() {

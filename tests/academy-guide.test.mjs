@@ -80,6 +80,7 @@ test("the Academy index is a real page listing exactly the published guides — 
   assert.match(html, /href="\/academy\/why-does-my-deck-start-so-slowly"/);
   assert.match(html, /href="\/academy\/how-much-interaction-do-i-actually-need"/);
   assert.match(html, /href="\/academy\/why-do-i-lose-after-getting-ahead"/);
+  assert.match(html, /href="\/academy\/what-is-my-deck-actually-trying-to-do"/);
   // The H1 owns search intent — the brand name is already in the logo and
   // the eyebrow label, so the visible heading names the actual topic
   // instead of repeating "MetaForge."
@@ -100,9 +101,10 @@ test("the Academy index frames each entry as the player's own first-person thoug
   assert.match(html, /My deck starts too slowly\./);
   assert.match(html, /I never seem to have the right answer\./);
   assert.match(html, /I always lose after getting ahead\./);
+  assert.match(html, /I don.{1,6}t know what my deck is trying to do\./);
 });
 
-test("all five Academy pages are listed in the public sitemap", async () => {
+test("all six Academy pages are listed in the public sitemap", async () => {
   const response = await render("https://metaforge.gg/sitemap.xml");
   const xml = await response.text();
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/academy<\/loc>/);
@@ -111,6 +113,7 @@ test("all five Academy pages are listed in the public sitemap", async () => {
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/academy\/why-does-my-deck-start-so-slowly<\/loc>/);
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/academy\/how-much-interaction-do-i-actually-need<\/loc>/);
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/academy\/why-do-i-lose-after-getting-ahead<\/loc>/);
+  assert.match(xml, /<loc>https:\/\/metaforge\.gg\/academy\/what-is-my-deck-actually-trying-to-do<\/loc>/);
 });
 
 test("the guide is not crawl-blocked by robots.txt", async () => {
@@ -317,4 +320,48 @@ test("the fifth guide's CTA uses the public guide key, never exposes the interna
   assert.match(html, /not automatically a flaw/i);
   assert.doesNotMatch(html, /guarantee|100%|proves?\b.{0,15}(problem|issue)/i, "must never overclaim beyond what the engine can actually support");
   assert.match(html, /won.{1,6}t watch whether you become the table.{1,6}s target/i, "must be explicit that the multiplayer-target dynamic is not something the engine measures");
+});
+
+// --- Sixth guide (capstone): What Is My Deck Actually Trying to Do? ---
+
+test("the sixth guide route exists, server-renders, and carries real SEO metadata", async () => {
+  const response = await render("https://metaforge.gg/academy/what-is-my-deck-actually-trying-to-do");
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
+  const html = await response.text();
+
+  assert.match(html, /<title>What Is My Deck Actually Trying to Do\? \| MetaForge<\/title>/i);
+  assert.match(html, /A deck full of individually good cards/i);
+  assert.match(html, /<link rel="canonical" href="https:\/\/metaforge\.gg\/academy\/what-is-my-deck-actually-trying-to-do"\s*\/>/i);
+  assert.equal(html.match(/rel="canonical"/gi)?.length, 1, "exactly one canonical tag — the global seoMarkup injector must not add a duplicate");
+});
+
+test("the sixth guide has exactly one real, semantic H1 with the actual guide question", async () => {
+  const html = await (await render("https://metaforge.gg/academy/what-is-my-deck-actually-trying-to-do")).text();
+  const h1Matches = [...html.matchAll(/<h1[^>]*>([\s\S]*?)<\/h1>/gi)];
+  assert.equal(h1Matches.length, 1, "expected exactly one H1 on the guide");
+  assert.match(h1Matches[0][1], /What Is My Deck Actually Trying to Do\?/);
+});
+
+test("the sixth guide covers all four named distinctions, not a placeholder or stub", async () => {
+  const html = await (await render("https://metaforge.gg/academy/what-is-my-deck-actually-trying-to-do")).text();
+  assert.match(html, /A theme/i);
+  assert.match(html, /Real synergy/i);
+  assert.match(html, /A repeatable plan/i);
+  assert.match(html, /The cards holding that plan together/i);
+  for (const placeholder of [/lorem ipsum/i, /coming soon/i, /placeholder/i, /TBD/i, /TODO/i, /\[insert/i]) {
+    assert.doesNotMatch(html, placeholder, `found placeholder-shaped text matching ${placeholder}`);
+  }
+});
+
+test("the sixth guide's CTA uses the public guide key, never exposes the internal reviewFocus/focus param, and is honest about which parts of the analysis are verified versus the player's own judgment", async () => {
+  const html = await (await render("https://metaforge.gg/academy/what-is-my-deck-actually-trying-to-do")).text();
+  assert.match(html, /href="\/\?guide=deck-plan"/);
+  assert.doesNotMatch(html, /focus=/i, "the URL must never expose the internal reviewFocus query param or value");
+  assert.match(html, /Investigate my deck/i);
+  assert.match(html, /Bring your decklist/i);
+  // Must reference the real, generically visible bridge-card feature, not an invented metric.
+  assert.match(html, /bridge cards/i);
+  assert.doesNotMatch(html, /guarantee|100%|proves?\b.{0,15}(problem|issue)/i, "must never overclaim beyond what the engine can actually support");
+  assert.match(html, /won.{1,6}t tell you whether a theme you love is doing real mechanical work/i, "must be explicit that judging a theme's real value is still the player's call, not the engine's");
 });

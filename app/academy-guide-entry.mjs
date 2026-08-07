@@ -22,6 +22,7 @@ const ACADEMY_GUIDE_ENTRIES = Object.freeze({
   "starts-slow": Object.freeze({ chamber: "refine", reviewFocus: "Faster starts" }),
   "enough-interaction": Object.freeze({ chamber: "refine", reviewFocus: "Better interaction" }),
   "closing-games": Object.freeze({ chamber: "refine", reviewFocus: "Closing games" }),
+  "deck-plan": Object.freeze({ chamber: "refine", reviewFocus: "Understanding the deck" }),
 });
 
 for (const [key, entry] of Object.entries(ACADEMY_GUIDE_ENTRIES)) {
