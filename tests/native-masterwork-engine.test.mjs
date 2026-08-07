@@ -1550,3 +1550,122 @@ test("targetPowerTier actually changes real construction, not just an isolated c
     `expected targeting Maximum (${quickRockCount(maximum)} fast-mana rocks) to select strictly more than targeting Casual (${quickRockCount(casual)}) from the same scarce, competitive pool`,
   );
 });
+
+// --- Construction recovery ladder (P0: a legal commander with a real,
+// non-throwing scarce-pool condition used to surface as a total failure —
+// see buildCandidate/buildImportedCandidate's recovery wrapper and
+// relaxAnalysisPreferences) ---
+
+// Singleton formats need one unique eligible card per spell slot (~62 of
+// them for a 100-card Commander deck once lands/commander are set aside).
+// A cheap-only pool with real role diversity (draw/interaction/protection/
+// ramp, same shape as the proven `pool` fixture above) is deliberately
+// short of 62 on its own — under a $2 cap it would previously throw
+// "could not fill N spell slot(s)" straight out of chooseSpells. The
+// equally diverse "premium" half pushes the total pool comfortably past
+// 62, and past the format's own role-coverage gate, once the cap relaxes.
+const cheapDraw = (n) => ({ ...card(`Cheap Draw ${n}`, "When this enters, draw a card. Scry 1.", "Creature — Test", "{1}{G}", ["G"]), priceUsd: 0.5 });
+const cheapAnswer = (n) => ({ ...card(`Cheap Answer ${n}`, "Destroy target creature.", "Sorcery", "{1}{G}", ["G"]), priceUsd: 0.5 });
+const cheapShield = (n) => ({ ...card(`Cheap Shield ${n}`, "Target creature gains hexproof and indestructible until end of turn.", "Instant", "{G}", ["G"]), priceUsd: 0.5 });
+const premiumDraw = (n) => ({ ...card(`Premium Draw ${n}`, "When this enters, draw a card. Scry 1.", "Creature — Test", "{2}{G}", ["G"]), priceUsd: 45 });
+const premiumAnswer = (n) => ({ ...card(`Premium Answer ${n}`, "Destroy target creature. Draw a card.", "Sorcery", "{2}{G}", ["G"]), priceUsd: 45 });
+const premiumRamp = (n) => ({ ...card(`Premium Rock ${n}`, "Add one mana of any color.", "Artifact", "{1}", []), priceUsd: 45 });
+const scarceCommanderPool = [
+  ...Array.from({ length: 14 }, (_, i) => cheapDraw(i)),
+  ...Array.from({ length: 13 }, (_, i) => cheapAnswer(i)),
+  ...Array.from({ length: 13 }, (_, i) => cheapShield(i)),
+  ...Array.from({ length: 14 }, (_, i) => premiumDraw(i)),
+  ...Array.from({ length: 13 }, (_, i) => premiumAnswer(i)),
+  ...Array.from({ length: 13 }, (_, i) => premiumRamp(i)),
+  ...Array.from({ length: 20 }, (_, i) => card(`Forest Utility ${i}`, "{T}: Add {G}.", "Land", "", ["G"])),
+];
+
+test("a strict budget cap that would leave too few eligible cards to fill a singleton deck recovers instead of failing outright", () => {
+  const report = forgeNativeMasterwork({
+    format: "Commander",
+    target: 100,
+    strategy: "Balanced midrange",
+    seed: 7,
+    colors: ["G"],
+    cards: scarceCommanderPool,
+    commander: { name: "Test Commander", colors: ["G"], oracleText: "" },
+    maxCardPrice: 2,
+  });
+  const total = report.selected.rows.reduce((sum, row) => sum + row.quantity, 0);
+  assert.equal(total, 100, "the deck must still reach the exact legal target size");
+  assert.equal(report.selected.recoveryStage, "relaxed-preferences", "recovery must be recorded, not silently invisible");
+  assert.match(report.selected.recoveryNote, /Budget or rarity preferences were relaxed/);
+  // Recovery relaxed the budget cap, not color identity — every nonland,
+  // non-basic-land row must still be from the supplied, already
+  // color-legal pool.
+  const poolNames = new Set(scarceCommanderPool.map((c) => c.name));
+  for (const row of report.selected.rows) {
+    if (row.roles?.includes("land") || row.name === "Test Commander") continue;
+    assert.ok(poolNames.has(row.name), `${row.name} must come from the verified, already color-legal pool`);
+  }
+});
+
+test("when relaxing budget/commons preferences would not actually grow the pool, the original scarcity error still surfaces (no infinite or misleading retry)", () => {
+  // No maxCardPrice is set at all here — every nonland card is already
+  // eligible, so relaxAnalysisPreferences has nothing left to relax. The
+  // pool is just genuinely too small (5 unique spells for ~62 slots), and
+  // recovery must not mask that real cause with a second, identical
+  // failure disguised as a successful retry.
+  const genuinelyTooSmallPool = [
+    ...Array.from({ length: 5 }, (_, i) => cheapDraw(i)),
+    ...Array.from({ length: 20 }, (_, i) => card(`Green Land ${i}`, "{T}: Add {G}.", "Land", "", ["G"])),
+  ];
+  assert.throws(
+    () =>
+      forgeNativeMasterwork({
+        format: "Commander",
+        target: 100,
+        strategy: "Balanced midrange",
+        seed: 7,
+        colors: ["G"],
+        cards: genuinelyTooSmallPool,
+        commander: { name: "Test Commander", colors: ["G"], oracleText: "" },
+      }),
+    /could not fill \d+ spell slot/,
+  );
+});
+
+// P0 Part 4 — the masterworks screen lets the player pick ANY exposed
+// candidate, so a candidate that failed its own hard gate must never be
+// one of the exposed choices, but a single bad candidate must also never
+// take the other two down with it (previously: candidates: ranked
+// exposed every VARIANTS entry unconditionally, gate-rejected or not).
+// scarceCommanderPool above is tight enough that all three tempers
+// (cohesion/resilience/precision) converge on nearly the same 100 cards —
+// a real, deterministic way to trigger the tournament's own >=90%-overlap
+// duplicate rejection without hand-faking a gate failure.
+test("a candidate that fails its own hard gate (here: a >=90% duplicate of an already-passing design) is never exposed on the masterworks screen — but the other valid candidates still are", () => {
+  const report = forgeNativeMasterwork({
+    format: "Commander",
+    target: 100,
+    strategy: "Balanced midrange",
+    seed: 7,
+    colors: ["G"],
+    cards: scarceCommanderPool,
+    commander: { name: "Test Commander", colors: ["G"], oracleText: "" },
+    maxCardPrice: 2,
+  });
+  // Confirms the fixture actually produces a real gate rejection, not
+  // just asserting the filter never removes anything.
+  const rejectedInTournament = report.tournament.results.filter((result) => !result.gate.passed);
+  assert.ok(rejectedInTournament.length > 0, "expected this scarce, tight pool to produce at least one real gate rejection");
+
+  const exposedIds = new Set(report.candidates.map((candidate) => candidate.id));
+  for (const rejected of rejectedInTournament) {
+    assert.ok(!exposedIds.has(rejected.id), `${rejected.id} failed its hard gate (${rejected.gate.reasons.join(" ")}) and must not be a selectable candidate`);
+  }
+  // The tournament winner and any other candidate that actually passed
+  // its gate must still be present — one bad candidate doesn't take the
+  // valid ones down with it.
+  assert.ok(exposedIds.has(report.selected.id));
+  const passedInTournament = report.tournament.results.filter((result) => result.gate.passed);
+  for (const passed of passedInTournament) {
+    assert.ok(exposedIds.has(passed.id), `${passed.id} passed its hard gate and must remain a real, selectable option`);
+  }
+  assert.equal(report.candidates.length, passedInTournament.length);
+});

@@ -731,6 +731,29 @@ function prepareForgeAnalysis(input, evidenceByName) {
   };
 }
 
+// Recovery-ladder step 2 (see buildCandidate below): a scarce color
+// identity combined with a strict budget or commons-only preference can
+// leave too few eligible cards to fill every slot — buildCandidate's first
+// attempt throws in exactly that case (chooseSpells' "could not fill N
+// spell slot(s)"). Budget and rarity are real preferences, not rules: this
+// rebuilds the spell/land pools from the same already-analyzed cards
+// without the maxCardPrice/commonsOnly exclusion, so a second attempt has
+// a realistic chance to actually complete. A stated hard exclusion
+// (excludedRoleHits — "this deck must never become X") is deliberately
+// NOT relaxed here: only preferences the player never asked to be
+// absolute may bend. Legality, format, color identity, and the commander
+// itself were never filtered here at all — they're guaranteed further
+// upstream, by the verified pool this analysis was built from.
+function relaxAnalysisPreferences(analysis, input) {
+  const commanderNames = commanderNamesNormalized(input);
+  const eligible = analysis.cards.filter((entry) => !entry.excludedRoleHits.length);
+  return {
+    ...analysis,
+    spells: eligible.filter((entry) => !entry.roles.includes("land") && !commanderNames.has(normalized(entry.card.name))),
+    lands: eligible.filter((entry) => entry.roles.includes("land")).map((entry) => entry.card),
+  };
+}
+
 function scoreCard(entry, input, variant, context) {
   const curveScore = Math.max(0, 10 - Math.abs(entry.cmc - context.ideal) * 3.2) * variant.curve;
   const deterministicTieBreak = (hash(`${input.seed}|${variant.id}|${entry.card.name}`) % 1000) / 100000;
@@ -1575,7 +1598,7 @@ export function runPracticalOneSlotCounterfactualLab(selected, candidates, reaso
   };
 }
 
-function buildCandidate(input, variant, analysis) {
+function buildCandidateAttempt(input, variant, analysis) {
   const target = input.target || (["Commander", "Brawl"].includes(input.format) ? 100 : 60);
   const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
   const commanderSlots = allCommanders(input).length;
@@ -1624,11 +1647,48 @@ function buildCandidate(input, variant, analysis) {
   };
 }
 
+// Recovery ladder, step 1 -> step 2: buildCandidateAttempt throws
+// (chooseSpells' "could not fill N spell slot(s)") only when the eligible
+// spell pool genuinely runs out — every legal, color-correct, non-excluded
+// card already used. That's real card-pool scarcity, not a bug in the
+// picker itself, and it is exactly the condition that used to surface to
+// the player as an unrecoverable failure (or, before the server-side
+// validator, a silently incomplete "success"). One retry with budget/
+// commons-only preferences relaxed (relaxAnalysisPreferences) covers the
+// dominant real-world cause: a narrow color identity plus a strict budget
+// or commons-only preference. Format legality, color identity, the
+// commander, singleton rules, and any stated hard exclusion are never
+// touched by either attempt — only this one soft-preference lever bends.
+function buildCandidate(input, variant, analysis) {
+  try {
+    return { ...buildCandidateAttempt(input, variant, analysis), recoveryStage: "ideal" };
+  } catch (error) {
+    if (!(error instanceof Error) || !/could not fill \d+ spell slot/.test(error.message)) throw error;
+    const missingSlots = Number(error.message.match(/could not fill (\d+) spell slot/)?.[1]) || null;
+    const relaxed = relaxAnalysisPreferences(analysis, input);
+    // If relaxing budget/commons-only preferences didn't actually grow the
+    // eligible pool, the scarcity is structural (a genuinely thin color
+    // identity, or a hard exclusion doing the work) — retrying would fail
+    // identically. Let the original, more specific error surface instead
+    // of masking it with a second identical failure.
+    if (relaxed.spells.length <= analysis.spells.length) throw error;
+    const recovered = buildCandidateAttempt(input, variant, relaxed);
+    return {
+      ...recovered,
+      recoveryStage: "relaxed-preferences",
+      recoveryNote: "Budget or rarity preferences were relaxed to complete this deck. Format legality, color identity, and your commander were never affected.",
+      // Server-side observability only (worker/forge-generate.ts logs
+      // this) — never surfaced to the player as-is.
+      recoveryDiagnostics: { missingSlots, initialEligibleCount: analysis.spells.length, relaxedEligibleCount: relaxed.spells.length },
+    };
+  }
+}
+
 // Reserves the player's own imported card names first (capped at the copy
 // limit and exact deck size), then fills any remaining gaps with the same
 // scoring/anchoring logic buildCandidate uses. Guarantees a legal, complete
 // deck by construction rather than hoping the pasted list happens to work.
-function buildImportedCandidate(input, analysis) {
+function buildImportedCandidateAttempt(input, analysis) {
   const target = input.target || (["Commander", "Brawl"].includes(input.format) ? 100 : 60);
   const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
   const commanderSlots = allCommanders(input).length;
@@ -1711,6 +1771,29 @@ function buildImportedCandidate(input, analysis) {
     sideboard: sideboardFor(scored, selected, singleton),
     boundary: "Adapted directly from your submitted list. Legality and simulations are hard gates; real match performance remains unproven.",
   };
+}
+
+// Same recovery ladder as buildCandidate above, for the Review/import
+// path: the player's own submitted cards are always reserved first
+// (buildImportedCandidateAttempt's preset rows), so this only ever
+// relaxes the Forge's own fill choices for the gaps their list left open
+// — it can never drop or substitute a card the player actually pasted in.
+function buildImportedCandidate(input, analysis) {
+  try {
+    return { ...buildImportedCandidateAttempt(input, analysis), recoveryStage: "ideal" };
+  } catch (error) {
+    if (!(error instanceof Error) || !/could not fill \d+ spell slot/.test(error.message)) throw error;
+    const missingSlots = Number(error.message.match(/could not fill (\d+) spell slot/)?.[1]) || null;
+    const relaxed = relaxAnalysisPreferences(analysis, input);
+    if (relaxed.spells.length <= analysis.spells.length) throw error;
+    const recovered = buildImportedCandidateAttempt(input, relaxed);
+    return {
+      ...recovered,
+      recoveryStage: "relaxed-preferences",
+      recoveryNote: "Budget or rarity preferences were relaxed to complete this deck. Format legality, color identity, your commander, and every card you submitted were never affected.",
+      recoveryDiagnostics: { missingSlots, initialEligibleCount: analysis.spells.length, relaxedEligibleCount: relaxed.spells.length },
+    };
+  }
 }
 
 // Enumerates every deviation from the player's original pasted list so
@@ -2048,10 +2131,23 @@ export function forgeNativeMasterwork(input) {
           .blueprint,
     });
 
+  // The masterworks screen lets the player enter ANY exposed candidate —
+  // never just the recommended one — so a candidate that failed its own
+  // hard gate (role coverage, mana-share, curve, or a >=90% duplicate of
+  // an already-passing design) must never be one of the choices. The
+  // tournament above already computes this per candidate (gate.passed);
+  // `selected` was already guaranteed to come from the passing set, but
+  // `ranked` on its own still carried every candidate, rejected ones
+  // included. `selected` remaining reachable here is guaranteed: the
+  // tournament itself already throws before this point if zero
+  // candidates pass, so at least one (the winner) always survives this
+  // filter.
+  const publicCandidates = ranked.filter((candidate) => candidate.tournament?.gate?.passed !== false);
+
   return Object.freeze({
     engine: "metaforge-native-masterwork-v6",
     selected,
-    candidates: ranked,
+    candidates: publicCandidates,
     tournament,
     practicalTiebreak,
     reasoning,

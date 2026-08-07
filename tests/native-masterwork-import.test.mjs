@@ -149,3 +149,46 @@ test("an imported deck's power signal is never influenced by a targetPowerTier �
   assert.ok(report.selected.rows.some((row) => row.name === "Test Sacrifice Engine"), "must never be excluded even if a targetPowerTier is somehow supplied");
   assert.equal(report.powerAudit, null);
 });
+
+// P0 recovery ladder, Review/import path: the player's own submitted rows
+// are always reserved first (they can never be dropped), but the gaps
+// their list leaves open are filled from the same eligible pool a fresh
+// build uses — a strict budget cap on top of a scarce color identity can
+// leave that gap-filling short exactly like buildCandidate's, and must
+// recover the same way instead of failing the whole import.
+test("a strict budget cap that would leave too few eligible cards to fill the gaps in a pasted list recovers instead of failing outright", () => {
+  const cheapDraw = (n) => ({ ...card(`Cheap Draw ${n}`, "When this enters, draw a card. Scry 1.", "Creature — Test", "{1}{G}", ["G"]), priceUsd: 0.5 });
+  const cheapAnswer = (n) => ({ ...card(`Cheap Answer ${n}`, "Destroy target creature.", "Sorcery", "{1}{G}", ["G"]), priceUsd: 0.5 });
+  const cheapShield = (n) => ({ ...card(`Cheap Shield ${n}`, "Target creature gains hexproof and indestructible until end of turn.", "Instant", "{G}", ["G"]), priceUsd: 0.5 });
+  const premiumDraw = (n) => ({ ...card(`Premium Draw ${n}`, "When this enters, draw a card. Scry 1.", "Creature — Test", "{2}{G}", ["G"]), priceUsd: 45 });
+  const premiumAnswer = (n) => ({ ...card(`Premium Answer ${n}`, "Destroy target creature. Draw a card.", "Sorcery", "{2}{G}", ["G"]), priceUsd: 45 });
+  const premiumRamp = (n) => ({ ...card(`Premium Rock ${n}`, "Add one mana of any color.", "Artifact", "{1}", []), priceUsd: 45 });
+  const scarcePool = [
+    ...Array.from({ length: 14 }, (_, i) => cheapDraw(i)),
+    ...Array.from({ length: 13 }, (_, i) => cheapAnswer(i)),
+    ...Array.from({ length: 13 }, (_, i) => cheapShield(i)),
+    ...Array.from({ length: 14 }, (_, i) => premiumDraw(i)),
+    ...Array.from({ length: 13 }, (_, i) => premiumAnswer(i)),
+    ...Array.from({ length: 13 }, (_, i) => premiumRamp(i)),
+    ...Array.from({ length: 20 }, (_, i) => card(`Forest Utility ${i}`, "{T}: Add {G}.", "Land", "", ["G"])),
+  ];
+  const input = {
+    ...baseInput,
+    format: "Commander",
+    target: 100,
+    colors: ["G"],
+    commander: { name: "Test Commander", colors: ["G"], oracleText: "" },
+    cards: scarcePool,
+    maxCardPrice: 2,
+    importedRows: [
+      { quantity: 1, name: "Cheap Draw 0" },
+      { quantity: 30, name: "Forest" },
+    ],
+  };
+  const report = forgeImportedMasterwork(input);
+  const total = report.selected.rows.reduce((sum, row) => sum + row.quantity, 0);
+  assert.equal(total, 100, "the deck must still reach the exact legal target size");
+  assert.equal(report.selected.recoveryStage, "relaxed-preferences");
+  const submitted = report.selected.rows.find((row) => row.name === "Cheap Draw 0");
+  assert.equal(submitted.quantity, 1, "the player's own submitted card is never affected by recovery");
+});

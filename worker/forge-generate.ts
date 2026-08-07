@@ -109,6 +109,33 @@ const SCRYFALL_HEADERS = { Accept: "application/json", "User-Agent": "MetaForge/
 
 const CATALOG_UNAVAILABLE_MESSAGE = "The verified card catalog is unavailable";
 
+// A single flaky Scryfall request (a rate-limit response under real load,
+// or a transient 5xx) used to end the whole commission immediately — the
+// pool-loading loop below threw CATALOG_UNAVAILABLE_MESSAGE on the very
+// first non-ok page, even though the very next attempt, moments later,
+// would often have succeeded. Bounded (never more than 2 retries, capped
+// backoff) so a request that's genuinely down still fails promptly rather
+// than hanging the commission — Workers have a real execution time
+// budget. A non-transient failure (a malformed query, 404) is returned
+// immediately on the first try; retrying it would just waste the budget
+// reproducing the same result.
+async function fetchScryfallWithRetry(url: string, init: RequestInit = {}, attempts = 3): Promise<Response> {
+  let lastResponse: Response | null = null;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const response = await fetch(url, { ...init, headers: { ...SCRYFALL_HEADERS, ...init.headers } });
+    if (response.ok) return response;
+    lastResponse = response;
+    const transient = response.status === 429 || (response.status >= 500 && response.status < 600);
+    if (!transient || attempt === attempts - 1) return response;
+    const retryAfterSeconds = Number(response.headers.get("Retry-After"));
+    const delayMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+      ? Math.min(retryAfterSeconds * 1000, 2000)
+      : 250 * 2 ** attempt;
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+  return lastResponse as Response;
+}
+
 // --- Duplicated from the client's own small, non-secret utility
 // functions (app/page.tsx) rather than imported from there, since
 // page.tsx is a "use client" file and importing from it would pull
@@ -200,7 +227,7 @@ async function loadNativeForgePool(
 ) {
   let anchor: any = null;
   if (!commander && lynchpin) {
-    const anchorResponse = await fetch(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(lynchpin)}`, { headers: SCRYFALL_HEADERS });
+    const anchorResponse = await fetchScryfallWithRetry(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(lynchpin)}`);
     if (anchorResponse.ok) anchor = await anchorResponse.json();
   }
   const noteColors = colorsFromNote(note);
@@ -227,9 +254,17 @@ async function loadNativeForgePool(
   // Popularity pages are intentionally broad, but explicit player identity
   // is fetched directly below so niche/lore themes cannot disappear before
   // scoring.
+  // Capped at 6 pages (up from 4): a real, if uncommon, cause of thin
+  // eligible pools was simply not asking Scryfall for enough of them in
+  // the first place — 4 pages tops out at ~700 raw cards before any
+  // preference filtering, which is comfortable for a typical build but
+  // leaves little margin once a narrow color identity meets a strict
+  // budget/commons-only preference. 6 pages (~1050 cards) gives the
+  // recovery ladder (relaxAnalysisPreferences, native-masterwork-engine
+  // .mjs) more room to actually succeed instead of hitting the same wall.
   let popularityRank = 0;
-  for (let page = 0; nextUrl && page < 4; page += 1) {
-    const response = await fetch(nextUrl, { headers: SCRYFALL_HEADERS });
+  for (let page = 0; nextUrl && page < 6; page += 1) {
+    const response = await fetchScryfallWithRetry(nextUrl);
     if (!response.ok) throw new Error(CATALOG_UNAVAILABLE_MESSAGE);
     const result: any = await response.json();
     for (const rawCard of result.data || []) {
@@ -251,7 +286,7 @@ async function loadNativeForgePool(
   ].slice(0, 6);
   for (const identityQuery of identityQueries) {
     const targetedUrl = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`${scryfallFormatTerms(format)}${colorQuery} ${identityQuery} -is:funny`)}&order=name&unique=cards`;
-    const response = await fetch(targetedUrl, { headers: SCRYFALL_HEADERS });
+    const response = await fetchScryfallWithRetry(targetedUrl);
     if (!response.ok) continue;
     const result: any = await response.json();
     for (const rawCard of result.data || []) addRawCard(rawCard);
@@ -288,9 +323,9 @@ async function resolveImportedDecklist(text: string, poolCards: NativeForgeCard[
   for (let index = 0; index < needsLookup.length; index += 75) {
     const chunk = needsLookup.slice(index, index + 75);
     try {
-      const response = await fetch("https://api.scryfall.com/cards/collection", {
+      const response = await fetchScryfallWithRetry("https://api.scryfall.com/cards/collection", {
         method: "POST",
-        headers: { ...SCRYFALL_HEADERS, "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ identifiers: chunk.map((row) => ({ name: row.name })) }),
       });
       const data: any = await response.json();
@@ -400,6 +435,43 @@ function validateRequest(body: any): { ok: true; value: GenerateRequest } | { ok
 // `if (!resultCheck.ok)` still narrows to the failure branch's fields.
 type GeneratedResultValidation = { ok: true } | { ok: false; code: string; message: string };
 
+// Structured, log-only observability for construction recovery — never
+// returned to the player, never includes anything about who they are.
+// format/commander/target/strategy are all public game data (the same
+// things visible in the request itself); commander name is included only
+// where the request already carries one. This is the whole answer to
+// "why did this deck fail (or need to relax a preference) for this
+// commander/format" without needing to reproduce it by hand afterward.
+function logConstructionOutcome(event: {
+  outcome: "success" | "incomplete";
+  format: string;
+  commanderName?: string | null;
+  target: number;
+  recoveryStage?: string;
+  finalSize?: number;
+  failureCategory?: string;
+  failureMessage?: string;
+  recoveryDiagnostics?: unknown;
+}) {
+  const logFn = event.outcome === "success" && event.recoveryStage === "ideal" ? undefined : console.log;
+  // The common case (ideal, no recovery needed) is deliberately not
+  // logged at all — logging every successful generation would drown the
+  // signal this exists to surface. Only recoveries and failures log.
+  if (!logFn) return;
+  logFn(JSON.stringify({
+    event: "forge-construction-outcome",
+    outcome: event.outcome,
+    format: event.format,
+    commander: event.commanderName || null,
+    target: event.target,
+    recoveryStage: event.recoveryStage || null,
+    finalSize: event.finalSize ?? null,
+    failureCategory: event.failureCategory || null,
+    failureMessage: event.failureMessage || null,
+    recoveryDiagnostics: event.recoveryDiagnostics || null,
+  }));
+}
+
 export async function handleForgeGenerate(request: Request, env: Env): Promise<Response> {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
 
@@ -462,8 +534,18 @@ export async function handleForgeGenerateForKey(request: Request, env: Env, key:
       });
       const resultCheck = validateGeneratedResult(nativeReport, body.format) as GeneratedResultValidation;
       if (!resultCheck.ok) {
+        logConstructionOutcome({
+          outcome: "incomplete", format: body.format, commanderName: body.commander?.name, target,
+          failureCategory: resultCheck.code, failureMessage: resultCheck.message,
+        });
         return json({ error: resultCheck.message, code: resultCheck.code }, 422);
       }
+      logConstructionOutcome({
+        outcome: "success", format: body.format, commanderName: body.commander?.name, target,
+        recoveryStage: (nativeReport.selected as any)?.recoveryStage,
+        finalSize: (nativeReport.selected as any)?.rows.reduce((sum: number, row: any) => sum + row.quantity, 0),
+        recoveryDiagnostics: (nativeReport.selected as any)?.recoveryDiagnostics,
+      });
       const generationId = await storeGeneration(env, key, {
         selected: nativeReport.selected,
         candidates: nativeReport.candidates,
@@ -515,12 +597,26 @@ export async function handleForgeGenerateForKey(request: Request, env: Env, key:
     });
     const resultCheck = validateGeneratedResult(nativeReport, body.format) as GeneratedResultValidation;
     if (!resultCheck.ok) {
+      logConstructionOutcome({
+        outcome: "incomplete", format: body.format, commanderName: body.commander?.name, target,
+        failureCategory: resultCheck.code, failureMessage: resultCheck.message,
+      });
       return json({ error: resultCheck.message, code: resultCheck.code }, 422);
     }
     const candidatesCheck = validateAllCandidatesComplete(nativeReport, body.format) as GeneratedResultValidation;
     if (!candidatesCheck.ok) {
+      logConstructionOutcome({
+        outcome: "incomplete", format: body.format, commanderName: body.commander?.name, target,
+        failureCategory: candidatesCheck.code, failureMessage: candidatesCheck.message,
+      });
       return json({ error: candidatesCheck.message, code: candidatesCheck.code }, 422);
     }
+    logConstructionOutcome({
+      outcome: "success", format: body.format, commanderName: body.commander?.name, target,
+      recoveryStage: (nativeReport.selected as any)?.recoveryStage,
+      finalSize: (nativeReport.selected as any)?.rows.reduce((sum: number, row: any) => sum + row.quantity, 0),
+      recoveryDiagnostics: (nativeReport.selected as any)?.recoveryDiagnostics,
+    });
     const generationId = await storeGeneration(env, key, {
       selected: nativeReport.selected,
       candidates: nativeReport.candidates,
@@ -542,9 +638,24 @@ export async function handleForgeGenerateForKey(request: Request, env: Env, key:
     // to see when Scryfall is unreachable, a real and expected failure
     // mode worth surfacing plainly rather than masking.
     if (error instanceof Error && error.message === CATALOG_UNAVAILABLE_MESSAGE) {
+      logConstructionOutcome({ outcome: "incomplete", format: body.format, commanderName: body.commander?.name, target: targetDeckSize(body.format), failureCategory: "CATALOG_UNAVAILABLE" });
       return json({ error: CATALOG_UNAVAILABLE_MESSAGE }, 503);
     }
-    console.error("forge-generate failed", error);
+    // Everything past the recovery ladder (relaxAnalysisPreferences)
+    // throwing again, or every candidate failing its own hard gate —
+    // real structural exhaustion, not an unexpected bug. Distinguished
+    // from a genuine unhandled exception so the two failure classes
+    // don't drown each other out in logs.
+    const structuralExhaustion = error instanceof Error && /could not fill \d+ spell slot|failed a hard gate|could not adapt your list/.test(error.message);
+    logConstructionOutcome({
+      outcome: "incomplete",
+      format: body.format,
+      commanderName: body.commander?.name,
+      target: targetDeckSize(body.format),
+      failureCategory: structuralExhaustion ? "CONSTRUCTION_EXHAUSTED" : "UNEXPECTED_EXCEPTION",
+      failureMessage: error instanceof Error ? error.message : String(error),
+    });
+    if (!structuralExhaustion) console.error("forge-generate failed", error);
     return json({ error: "The native Forge could not complete this candidate. Try again or adjust the commission." }, 500);
   }
 }

@@ -84,7 +84,9 @@ test("the commission chamber's supporting paragraph was already format-neutral a
 // --- 5. Disabled-state / validation microcopy ---
 
 test("commander-only disabled copy ('Choose a legal commander to continue') appears only behind an isCommanderFormat check, never as the only branch", () => {
-  const block = page.match(/\{isCommanderFormat\(format\) && !selectedCommander\s*\n\s*\? "Choose a legal commander to continue"\s*\n\s*: "Your choices are ready"\}/);
+  const block = page.match(
+    /\{isCommanderFormat\(format\) && !selectedCommander\s*\n\s*\? "Choose a legal commander to continue"\s*\n\s*: guestMode && !turnstileToken\s*\n\s*\? "Confirm you're human above, then build your deck"\s*\n\s*: "Your choices are ready"\}/,
+  );
   assert.ok(block, "expected the commander-disabled microcopy to remain conditioned on isCommanderFormat, with a format-neutral fallback");
 });
 

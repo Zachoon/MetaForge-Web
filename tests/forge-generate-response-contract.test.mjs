@@ -237,6 +237,41 @@ test("upstream failure: a Scryfall catalog outage returns a sanitized 503 JSON, 
   });
 });
 
+// P0: a single transient Scryfall failure (a rate-limit response under
+// real load, or a momentary 5xx) used to end the whole commission
+// immediately, throwing CATALOG_UNAVAILABLE_MESSAGE on the very first
+// non-ok page even though the very next attempt would often have
+// succeeded. fetchScryfallWithRetry now retries a 429/5xx (bounded, small
+// backoff) before giving up — this proves a transient failure that
+// recovers on the very next attempt no longer turns into a 503 at all.
+test("transient Scryfall failure resilience: a single 429 that recovers on retry does not fail the generation", async () => {
+  const worker = await loadWorker();
+  let searchCalls = 0;
+  const flakyThenOkFetch = async (input) => {
+    const url = typeof input === "string" ? input : input.url;
+    if (url.includes("api.scryfall.com/cards/search")) {
+      searchCalls += 1;
+      if (searchCalls === 1) return new Response("Rate limited", { status: 429, headers: { "Retry-After": "0" } });
+      return new Response(JSON.stringify({ data: importPool, has_more: false }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+    if (url.includes("api.scryfall.com/cards/collection")) {
+      return new Response(JSON.stringify({ data: [] }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+    return new Response("Not found", { status: 404 });
+  };
+  await withMockedFetch(flakyThenOkFetch, async () => {
+    const response = await worker.fetch(
+      generateRequest("one@example.com", { mode: "native", format: "Standard", strategy: "Balanced midrange" }),
+      env(new ForgeD1()),
+      ctx,
+    );
+    assert.equal(response.status, 200, "the retry must recover instead of surfacing the transient 429 as a failure");
+    const body = await response.json();
+    assert.equal(body.nativeReport.selected.rows.reduce((sum, row) => sum + row.quantity, 0), 60);
+  });
+  assert.ok(searchCalls >= 2, "expected the retry to actually re-request the same page, not just accept the first failure");
+});
+
 test("engine/storage exception: a failure while persisting a real generation still returns sanitized JSON 500, never the raw exception", async () => {
   const worker = await loadWorker();
   await withMockedFetch(mockExternalFetch(), async () => {
@@ -363,4 +398,86 @@ test("guest imported generation succeeds end-to-end via the guest boundary and r
     assert.equal(body.guestPreview, true);
     assert.equal(body.generationId, undefined, "a guest never gets the reusable generation handle directly");
   });
+});
+
+// P0 Part 9: structured, log-only observability for construction
+// recovery. A strict budget cap on a real but scarce mono-green pool
+// forces buildCandidate's recovery ladder to engage (same real mechanism
+// tests/native-masterwork-engine.test.mjs proves directly) — this proves
+// the worker actually logs it, with the fields Part 9 asked for, end to
+// end through the real request path.
+test("construction recovery logs a structured, non-user-identifying diagnostic when the budget-preference recovery ladder engages", async () => {
+  const worker = await loadWorker();
+  const rawCardGreen = (name, opts = {}) => ({
+    name,
+    mana_cost: opts.manaCost ?? "{1}{G}",
+    cmc: opts.cmc ?? 2,
+    type_line: opts.typeLine ?? "Creature — Test",
+    oracle_text: opts.oracleText ?? "",
+    color_identity: opts.colorIdentity ?? ["G"],
+    keywords: [],
+    prices: { usd: opts.usd ?? null },
+    legalities: { commander: "legal" },
+    games: ["paper", "arena"],
+  });
+  const cheapDraw = (n) => rawCardGreen(`Cheap Draw ${n}`, { oracleText: "When this enters, draw a card. Scry 1.", cmc: 2, usd: "0.5" });
+  const cheapAnswer = (n) => rawCardGreen(`Cheap Answer ${n}`, { oracleText: "Destroy target creature.", cmc: 2, usd: "0.5" });
+  const cheapShield = (n) => rawCardGreen(`Cheap Shield ${n}`, { oracleText: "Target creature gains hexproof and indestructible until end of turn.", cmc: 1, usd: "0.5" });
+  const premiumDraw = (n) => rawCardGreen(`Premium Draw ${n}`, { oracleText: "When this enters, draw a card. Scry 1.", cmc: 3, usd: "45" });
+  const premiumAnswer = (n) => rawCardGreen(`Premium Answer ${n}`, { oracleText: "Destroy target creature. Draw a card.", cmc: 3, usd: "45" });
+  const premiumRamp = (n) => rawCardGreen(`Premium Rock ${n}`, { typeLine: "Artifact", oracleText: "Add one mana of any color.", manaCost: "{1}", cmc: 1, colorIdentity: [], usd: "45" });
+  const scarcePool = [
+    ...Array.from({ length: 14 }, (_, i) => cheapDraw(i)),
+    ...Array.from({ length: 13 }, (_, i) => cheapAnswer(i)),
+    ...Array.from({ length: 13 }, (_, i) => cheapShield(i)),
+    ...Array.from({ length: 14 }, (_, i) => premiumDraw(i)),
+    ...Array.from({ length: 13 }, (_, i) => premiumAnswer(i)),
+    ...Array.from({ length: 13 }, (_, i) => premiumRamp(i)),
+    ...Array.from({ length: 40 }, (_, i) => rawCardGreen(`Forest Utility ${i}`, { typeLine: "Land", manaCost: "", cmc: 0, oracleText: "{T}: Add {G}." })),
+  ];
+  const scarcePoolFetch = async (input) => {
+    const url = typeof input === "string" ? input : input.url;
+    if (url.includes("challenges.cloudflare.com/turnstile")) {
+      return new Response(JSON.stringify({ success: true }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+    if (url.includes("api.scryfall.com/cards/search")) {
+      return new Response(JSON.stringify({ data: scarcePool, has_more: false }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+    return new Response("Not found", { status: 404 });
+  };
+  const originalConsoleLog = console.log;
+  const logged = [];
+  console.log = (...args) => logged.push(args.join(" "));
+  try {
+    await withMockedFetch(scarcePoolFetch, async () => {
+      const response = await worker.fetch(
+        generateRequest("one@example.com", {
+          mode: "direct",
+          format: "Commander",
+          strategy: "Balanced midrange",
+          commander: { name: "Test Commander", colors: ["G"], oracleText: "" },
+          maxCardPrice: 2,
+        }),
+        env(new ForgeD1()),
+        ctx,
+      );
+      assert.equal(response.status, 200, "the recovery ladder must still produce a real, complete deck");
+      const body = await response.json();
+      assert.equal(body.nativeReport.selected.recoveryStage, "relaxed-preferences");
+    });
+  } finally {
+    console.log = originalConsoleLog;
+  }
+  const entry = logged.map((line) => { try { return JSON.parse(line); } catch { return null; } }).find((parsed) => parsed?.event === "forge-construction-outcome");
+  assert.ok(entry, "expected a structured forge-construction-outcome log entry");
+  assert.equal(entry.outcome, "success");
+  assert.equal(entry.format, "Commander");
+  assert.equal(entry.commander, "Test Commander");
+  assert.equal(entry.target, 100);
+  assert.equal(entry.recoveryStage, "relaxed-preferences");
+  assert.equal(entry.finalSize, 100);
+  assert.ok(entry.recoveryDiagnostics, "expected missingSlots/eligible-count diagnostics");
+  assert.equal(typeof entry.recoveryDiagnostics.missingSlots, "number");
+  // No user identity, email, IP, or session token anywhere in the log line.
+  assert.doesNotMatch(logged.join("\n"), /one@example\.com/);
 });

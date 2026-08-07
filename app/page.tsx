@@ -1258,8 +1258,23 @@ export default function Home() {
         size: "flexible",
         appearance: "interaction-only",
         callback: (token: string) => setTurnstileToken(token),
-        "expired-callback": () => setTurnstileToken(""),
-        "error-callback": () => setTurnstileToken(""),
+        // A token that expires while the player is still configuring their
+        // build (Cloudflare's own ~5-minute window) used to only clear
+        // React state here — the widget itself could be left showing a
+        // stale "verified" appearance instead of a fresh, actionable
+        // challenge, so a click on Forge minutes later silently failed with
+        // a confusing verification error after the whole forging animation
+        // had already played. Explicitly reset() alongside clearing state
+        // so the widget always re-renders a real, interactive challenge —
+        // never a stale checkmark the player can't act on.
+        "expired-callback": () => {
+          setTurnstileToken("");
+          if (turnstileWidgetRef.current) turnstile.reset(turnstileWidgetRef.current);
+        },
+        "error-callback": () => {
+          setTurnstileToken("");
+          if (turnstileWidgetRef.current) turnstile.reset(turnstileWidgetRef.current);
+        },
       });
     };
     const interval = window.setInterval(render, 250);
@@ -5102,14 +5117,17 @@ export default function Home() {
               className="awaken-button"
               disabled={
                 (chamber === "refine" && !deck.trim()) ||
-                (isCommanderFormat(format) && !selectedCommander)
+                (isCommanderFormat(format) && !selectedCommander) ||
+                (guestMode && !turnstileToken)
               }
               onClick={awaken}
             >
               <span>
                 {isCommanderFormat(format) && !selectedCommander
                   ? "Choose a legal commander to continue"
-                  : "Your choices are ready"}
+                  : guestMode && !turnstileToken
+                    ? "Confirm you're human above, then build your deck"
+                    : "Your choices are ready"}
               </span>
               <strong>{chamber === "refine" ? "REVIEW MY DECK" : "BUILD MY COMPLETE DECK"}</strong>
               <b>→</b>
@@ -5503,14 +5521,16 @@ export default function Home() {
             </section>
           )}
           <div className={`testing-layout chapter-${activeForgeChapter}-active ${deckViewMode}-deck-view`}>
-            <div className="deck-reference-strip">
-              <img src={cardImage(chosenPreview.card)} alt="" />
-              <div>
-                <strong>{chosenWork.name}</strong>
-                <span>{deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards · {format}</span>
+            {hasValidatedDeck && (
+              <div className="deck-reference-strip">
+                <img src={cardImage(chosenPreview.card)} alt="" />
+                <div>
+                  <strong>{chosenWork.name}</strong>
+                  <span>{deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards · {format}</span>
+                </div>
+                <button type="button" onClick={() => setActiveForgeChapter(1)}>View full deck →</button>
               </div>
-              <button type="button" onClick={() => setActiveForgeChapter(1)}>View full deck →</button>
-            </div>
+            )}
             <article className="deck-manuscript">
               <header>
                 <div>
@@ -5518,35 +5538,38 @@ export default function Home() {
                   <h2>
                     {benchStatus === "forging"
                       ? "The Forge is producing your deck…"
-                      : `${deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards · ${Object.keys(groupedDeck).length} sections`}
+                      : hasValidatedDeck
+                        ? `${deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards · ${Object.keys(groupedDeck).length} sections`
+                        : "Build not completed"}
                   </h2>
                 </div>
-                <div className="deck-header-actions">
-                  <span className="deck-view-toggle" aria-label="Deck presentation">
+                {hasValidatedDeck && (
+                  <div className="deck-header-actions">
+                    <span className="deck-view-toggle" aria-label="Deck presentation">
+                      <button
+                        type="button"
+                        className={deckViewMode === "workbench" ? "active" : ""}
+                        aria-pressed={deckViewMode === "workbench"}
+                        onClick={() => setDeckViewMode("workbench")}
+                      >
+                        Workbench
+                      </button>
+                      <button
+                        type="button"
+                        className={deckViewMode === "ledger" ? "active" : ""}
+                        aria-pressed={deckViewMode === "ledger"}
+                        onClick={() => setDeckViewMode("ledger")}
+                      >
+                        Full ledger
+                      </button>
+                    </span>
                     <button
-                      type="button"
-                      className={deckViewMode === "workbench" ? "active" : ""}
-                      aria-pressed={deckViewMode === "workbench"}
-                      onClick={() => setDeckViewMode("workbench")}
+                      onClick={() => navigator.clipboard.writeText(forgedDeck)}
                     >
-                      Workbench
+                      Copy deck
                     </button>
-                    <button
-                      type="button"
-                      className={deckViewMode === "ledger" ? "active" : ""}
-                      aria-pressed={deckViewMode === "ledger"}
-                      onClick={() => setDeckViewMode("ledger")}
-                    >
-                      Full ledger
-                    </button>
-                  </span>
-                  <button
-                    disabled={!deckRows.length || benchStatus === "forging"}
-                    onClick={() => navigator.clipboard.writeText(forgedDeck)}
-                  >
-                    Copy deck
-                  </button>
-                </div>
+                  </div>
+                )}
               </header>
               {postAcceptChoice && (
                 <div className="post-accept-choice" role="status">
@@ -7011,7 +7034,13 @@ export default function Home() {
                   <small>THE METAL DID NOT SET</small>
                   <h3>No incomplete deck was saved.</h3>
                   <p>{forgeGenerationError}</p>
+                  {guestMode && !turnstileToken && (
+                    <p className="forge-generation-failure-verify-note">
+                      Your preview was not used. Complete the verification above, then try again.
+                    </p>
+                  )}
                   <button
+                    disabled={guestMode && !turnstileToken}
                     onClick={() => {
                       if (deck.trim()) {
                         void commitDirectForge("decklist");
@@ -7258,28 +7287,32 @@ export default function Home() {
                   </ul>
                 </div>
               )}
-              <details className="raw-decklist">
-                <summary>View complete Forge response / import text</summary>
-                <pre>{forgedDeck}</pre>
-              </details>
-              <footer>
-                <span>
-                  Featured{" "}
-                  {format === "Commander" || format === "Brawl"
-                    ? "commander"
-                    : "lynchpin"}
-                  : <b>{chosenPreview.card}</b>
-                </span>
-                <button
-                  disabled={benchStatus === "forging" || !deckIntegrity.passed}
-                  title={deckIntegrity.passed ? "Begin a recorded test with this verified revision" : "Every legality and structural check must pass before testing"}
-                  onClick={beginTesting}
-                >
-                  {benchStatus === "testing"
-                    ? "Testing is active ✓"
-                    : "Choose this deck & begin testing"}
-                </button>
-              </footer>
+              {hasValidatedDeck && (
+                <details className="raw-decklist">
+                  <summary>View complete Forge response / import text</summary>
+                  <pre>{forgedDeck}</pre>
+                </details>
+              )}
+              {hasValidatedDeck && (
+                <footer>
+                  <span>
+                    Featured{" "}
+                    {format === "Commander" || format === "Brawl"
+                      ? "commander"
+                      : "lynchpin"}
+                    : <b>{chosenPreview.card}</b>
+                  </span>
+                  <button
+                    disabled={!deckIntegrity.passed}
+                    title={deckIntegrity.passed ? "Begin a recorded test with this verified revision" : "Every legality and structural check must pass before testing"}
+                    onClick={beginTesting}
+                  >
+                    {benchStatus === "testing"
+                      ? "Testing is active ✓"
+                      : "Choose this deck & begin testing"}
+                  </button>
+                </footer>
+              )}
             </article>
             <aside className="testing-loop">
               {forgeReply && (

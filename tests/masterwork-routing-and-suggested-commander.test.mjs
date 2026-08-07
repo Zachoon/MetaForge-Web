@@ -124,3 +124,45 @@ test("a failed generation surfaces a dedicated failure state that confirms the p
   assert.match(page, /No incomplete deck was saved\./);
   assert.match(page, /Strike the Anvil Again/);
 });
+
+// P0 follow-up: a real screenshot showed "YOUR COMPLETE DECK · READY TO
+// PLAY" and "0 cards · 0 sections" rendering ABOVE a "No incomplete deck
+// was saved" failure state simultaneously — hasValidatedDeck existed but
+// several success-chrome elements sat outside its reach: the deck-
+// reference-strip, the deck-manuscript header's own card/section count and
+// Workbench/Full ledger/Copy deck controls, the raw-decklist response
+// viewer, and the deck-manuscript footer's "begin testing" trigger. Every
+// one of these is now gated. This test proves the exact reported condition
+// (forgeGenerationError set, deckRows empty) can never satisfy
+// hasValidatedDeck, then proves every listed success element is
+// structurally unreachable without it — not by rendering the component
+// (no harness exists in this repo), but by pinning that each one's JSX is
+// a direct or ancestor-gated child of the hasValidatedDeck check.
+test("hasValidatedDeck is definitionally false whenever forgeGenerationError is set or deckRows is empty — the exact reported failure condition", () => {
+  assert.match(
+    page,
+    /const hasValidatedDeck =\s*benchStatus !== "forging" &&\s*!forgeGenerationError &&\s*deckRows\.length > 0 &&\s*deckRows\.reduce\(\(sum, row\) => sum \+ row\.quantity, 0\) === targetDeckSize\(format\);/,
+    "forgeGenerationError truthy or deckRows.length === 0 must each independently force hasValidatedDeck to false",
+  );
+});
+
+test("none of the reported success strings can render outside hasValidatedDeck: header framing, chapter rail, deck stats, Workbench/ledger/copy, raw response, begin-testing", () => {
+  // "YOUR COMPLETE DECK · READY TO PLAY" / the workbench header framing
+  assert.match(page, /\{hasValidatedDeck\s*\n\s*\? "YOUR COMPLETE DECK · READY TO PLAY"/);
+  // The chapter rail, "Your deck is ready" intro, and detail-level nav
+  assert.match(page, /\{hasValidatedDeck \? \(\s*<>\s*<nav className="result-view-controls"/);
+  // The deck-reference-strip (card art, name, "N cards · format" chip)
+  assert.match(page, /\{hasValidatedDeck && \(\s*<div className="deck-reference-strip">/);
+  // The "N cards · N sections" count and the Workbench/Full ledger/Copy
+  // deck controls inside the deck-manuscript header
+  assert.match(
+    page,
+    /: hasValidatedDeck\s*\n\s*\? `\$\{deckRows\.reduce\(\(sum, row\) => sum \+ row\.quantity, 0\)\} cards · \$\{Object\.keys\(groupedDeck\)\.length\} sections`\s*\n\s*: "Build not completed"/,
+  );
+  assert.match(page, /\{hasValidatedDeck && \(\s*<div className="deck-header-actions">/);
+  // The raw Forge-response viewer and the "begin testing" trigger
+  assert.match(page, /\{hasValidatedDeck && \(\s*<details className="raw-decklist">/);
+  assert.match(page, /\{hasValidatedDeck && \(\s*<footer>\s*<span>\s*Featured/);
+  // The main card-list/analysis content branch itself
+  assert.match(page, /\) : hasValidatedDeck \? \(\s*<>\s*\{tcgplayerAffiliateEnabled/);
+});
