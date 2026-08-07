@@ -525,3 +525,91 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .forge-cinematic-forge.is-quiet video{display:none}.forge-cinematic-forge.is-quiet *{animation:none!important}.forge-cinematic-forge.is-quiet{background:radial-gradient(circle,#6b2812 0,#130805 26%,#030504 70%)}
 @media(max-width:900px){.forge-cinematic-forge{width:min(84vw,560px)}}
 @media(prefers-reduced-motion:reduce){.forge-cinematic-forge video{display:none}.forge-cinematic-forge,.forge-cinematic-forge *,.ceremony-copy h1,.ceremony-copy>p{animation:none!important}}
+
+/* Real-candidate Masterwork picker (Bug 1B): three already-generated, fully
+   legal decks the player chooses between explicitly. Reuses .masterwork-card/
+   .masterwork-grid/.blueprint-promise's base look above, but the card body
+   itself (plain header/dl/reason/caption) is new — no reveal ceremony, no
+   templated glimpse/plan/stats, since every field here is real engine output. */
+.masterwork-card > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid rgba(186, 143, 91, .2);
+}
+.masterwork-card > header em {
+  padding: 4px 8px;
+  border: 1px solid rgba(109, 221, 240, .28);
+  background: rgba(27, 84, 79, .16);
+  color: #87e1d5;
+  font: 800 9px/1 Inter, sans-serif;
+  font-style: normal;
+  letter-spacing: .12em;
+}
+.masterwork-card > header strong {
+  color: #f1eee4;
+  font: 600 19px/1.2 Newsreader, Georgia, serif;
+}
+.masterwork-card > header span {
+  margin-left: auto;
+  color: #8fa39d;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+}
+.masterwork-card > dl {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 16px 0 0;
+  border: 1px solid #39504b;
+  background: #0a1314;
+}
+.masterwork-card > dl > div {
+  padding: 10px 8px;
+  border-right: 1px solid #30433f;
+}
+.masterwork-card > dl > div:last-child { border-right: 0; }
+.masterwork-card > dl dt {
+  color: #7ed7c5;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.masterwork-card > dl dd {
+  margin: 5px 0 0;
+  color: #e2ebe8;
+  font-size: 15px;
+}
+.masterwork-card-reason {
+  margin: 14px 0 0 !important;
+  color: #b7c3bf !important;
+  font-size: 13px !important;
+  font-weight: 500;
+  line-height: 1.5 !important;
+}
+.masterwork-card > small {
+  display: block;
+  margin-top: auto;
+  padding-top: 14px;
+  color: #7f918b;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.masterwork-reveal-empty {
+  width: min(680px, 100%);
+  margin: 60px auto;
+  padding: 40px;
+  border: 1px solid #39433f;
+  background: #0b1112;
+  text-align: center;
+}
+.masterwork-reveal-empty p { margin: 0 0 18px; color: #aebbb6; font-size: 14px; }
+@media (max-width: 520px) {
+  .masterwork-card > dl { grid-template-columns: 1fr; }
+  .masterwork-card > dl > div { border-right: 0; border-bottom: 1px solid #30433f; }
+  .masterwork-card > dl > div:last-child { border-bottom: 0; }
+  .masterwork-card > header span { margin-left: 0; }
+}

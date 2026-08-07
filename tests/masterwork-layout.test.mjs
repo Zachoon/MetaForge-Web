@@ -38,6 +38,6 @@ test("derives Masterwork titles, tone, and plain-language paths from one design 
 });
 
 test("keeps Masterwork cards stable instead of replaying reveal animation on updates", () => {
-  assert.match(page, /key={`masterwork-\$\{poolIndex\}`}/);
+  assert.match(page, /key={candidate\.id}/);
   assert.match(journeyCss, /\.masterwork-card\{animation:none!important;contain:layout\}/);
 });

@@ -67,9 +67,9 @@ test("Phase 1B's two new purchase surfaces (replacement panel, experiment tablet
 // named, block-scoped checks on top of that global proof, for the
 // specific surfaces called out as excluded in this batch.
 
-test("the Masterwork candidate reveal never gets a purchase action", () => {
-  const masterworkBlock = page.match(/function MasterworkCard\([\s\S]*?\n}/)?.[0];
-  assert.ok(masterworkBlock, "expected to find the MasterworkCard component");
+test("the Masterwork candidate picker never gets a purchase action", () => {
+  const masterworkBlock = page.match(/\{chamber === "masterworks" && \([\s\S]*?\n {6}\)\}/)?.[0];
+  assert.ok(masterworkBlock, "expected to find the masterworks chamber block");
   assert.doesNotMatch(masterworkBlock, /buildTcgplayerLink|TCGplayer/i);
 });
 

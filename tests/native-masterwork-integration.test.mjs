@@ -13,19 +13,29 @@ const forgeGenerateWorker = fs.readFileSync(new URL("../worker/forge-generate.ts
 // assertions below moved here with them too.
 const forgeStructuralAnalyzeWorker = fs.readFileSync(new URL("../worker/forge-structural-analyze.ts", import.meta.url), "utf8");
 const debouncedAnalysisRequest = fs.readFileSync(new URL("../app/debounced-analysis-request.mjs", import.meta.url), "utf8");
-const start = page.indexOf("async function inspectMasterwork");
-const end = page.indexOf("function openSavedMasterwork", start);
-const generation = page.slice(start, end);
+// Bug 1B retired the separate per-candidate "native" reveal call
+// (inspectMasterwork): commitDirectForge's commander branch now makes the
+// one call that produces all three real candidates up front (mode:
+// "direct" — forge-generate.ts's own comment confirms "native" and
+// "direct" both run the identical forgeNativeMasterwork construction, they
+// only ever differed in lynchpin/path), and enterMasterwork applies
+// whichever the player explicitly picks with zero further network calls.
+const commitStart = page.indexOf('async function commitDirectForge(mode: "decklist" | "commander")');
+const commitEnd = page.indexOf("function openSavedMasterwork", commitStart);
+const commitDirectForgeSource = page.slice(commitStart, commitEnd);
+const enterStart = page.indexOf("function enterMasterwork(candidateId: string)");
+const enterEnd = page.indexOf("function resetGuestVerificationAfterFailure", enterStart);
+const enterMasterworkSource = page.slice(enterStart, enterEnd);
 
 test("Masterwork selection uses the native engine instead of a model endpoint", () => {
   // The construction algorithm itself moved server-side (see the engine-
   // protection session) so it no longer ships in the client bundle — the
   // client now calls the real generation endpoint, and the endpoint
   // itself runs the real engine, not a model/chat call.
-  assert.match(generation, /callForgeGenerate/);
-  assert.match(generation, /mode:\s*"native"/);
-  assert.doesNotMatch(generation, /api\/forge\/chat/);
-  assert.doesNotMatch(generation, /task:\s*["']deck_generation/);
+  assert.match(commitDirectForgeSource, /callForgeGenerate/);
+  assert.match(commitDirectForgeSource, /mode:\s*"direct"/);
+  assert.doesNotMatch(commitDirectForgeSource, /api\/forge\/chat/);
+  assert.doesNotMatch(commitDirectForgeSource, /task:\s*["']deck_generation/);
   assert.match(forgeGenerateWorker, /forgeNativeMasterwork/);
   assert.doesNotMatch(forgeGenerateWorker, /openai|chat\.completions/i);
 });
@@ -72,14 +82,19 @@ test("the simulation dossier feeds real role counts and average curve into the i
   );
 });
 
-test("Blueprint identity shapes previews and targeted verified-pool retrieval", () => {
+test("Blueprint identity shapes targeted verified-pool retrieval", () => {
   assert.match(page, /parseNativeBlueprintIntent/);
-  assert.match(page, /This version puts \$\{blueprintPromise\} first/);
   // Verified-pool retrieval (loadNativeForgePool) now runs server-side,
   // same targeted-identity behavior, moved to worker/forge-generate.ts
   // along with the rest of the construction pipeline.
   assert.match(forgeGenerateWorker, /Popularity pages are intentionally broad/);
-  assert.match(page, /lynchpin:\s*preview\.card/);
+  // loadNativeForgePool only reads lynchpin when there's no commander to
+  // anchor around — a non-Commander build (Standard, Modern, ...) still
+  // needs a targeted identity, supplied from the curated FORMAT_PREVIEWS
+  // flagship card instead of a per-candidate preview (there's no longer a
+  // per-candidate call to hang one off of — one shared generation call now
+  // produces all three real candidates together).
+  assert.match(commitDirectForgeSource, /lynchpin:\s*commander \? undefined : previewFor\(0\)\.card/);
 });
 
 test("supports a second commander (Partner or Background) as a distinct, optional selection", () => {
@@ -102,20 +117,20 @@ test("native forging exposes visible elapsed progress and moving stages", () => 
 });
 
 test("native forging explains the tournament verdict and bounded tradeoff", () => {
-  assert.match(generation, /selected\.tournament\.reason/);
-  assert.match(generation, /tradeoff frontier/);
-  assert.match(generation, /reasoning\.boundary/);
+  assert.match(enterMasterworkSource, /selected\.tournament\.reason/);
+  assert.match(enterMasterworkSource, /tradeoff frontier/);
+  assert.match(enterMasterworkSource, /reasoning\.boundary/);
 });
 
 test("native forging exposes bounded counterfactual reasoning", () => {
-  assert.match(generation, /nativeReport\.reasoning\.summary/);
-  assert.match(generation, /nativeReport\.reasoning\.boundary/);
+  assert.match(enterMasterworkSource, /nativeReport\.reasoning\.summary/);
+  assert.match(enterMasterworkSource, /nativeReport\.reasoning\.boundary/);
 });
 
 test("native forging exposes the exact one-slot laboratory verdict", () => {
-  assert.match(generation, /nativeReport\.laboratory\.summary/);
-  assert.match(generation, /nativeReport\.laboratory\.contract/);
-  assert.match(generation, /nativeReport\.laboratory\.boundary/);
+  assert.match(enterMasterworkSource, /nativeReport\.laboratory\.summary/);
+  assert.match(enterMasterworkSource, /nativeReport\.laboratory\.contract/);
+  assert.match(enterMasterworkSource, /nativeReport\.laboratory\.boundary/);
 });
 
 test("Blueprint offers a persistent player-controlled reading size", () => {

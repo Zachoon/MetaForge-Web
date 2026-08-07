@@ -722,17 +722,6 @@ const colorsFromNote = (note = ""): string[] => {
   return [];
 };
 
-const MASTERWORK_STATS = [
-  [94, 46, 70, 48],
-  [72, 78, 76, 68],
-  [28, 96, 64, 86],
-  [76, 88, 72, 78],
-  [62, 54, 94, 72],
-  [44, 82, 88, 76],
-  [86, 48, 90, 58],
-  [38, 68, 98, 96],
-  [42, 58, 82, 66],
-] as const;
 const commanderOracleText = (commander?: CommanderOption | null) =>
   String(commander?.verifiedFacts || "")
     .split("Oracle text:\n")
@@ -766,105 +755,6 @@ const arrangeCommanderStarters = (candidates: CommanderOption[]) => {
         bestIndex = index;
     return available.splice(bestIndex, 1);
   });
-};
-const alignRandomMasterwork = (work: Masterwork, commander: CommanderOption | null, index: number) => {
-  if (!commander) return work;
-  const lane = MASTERWORK_LANES[index % MASTERWORK_LANES.length];
-  const identity = commander.name.split(/[ ,/]+/)[0] || "Forge";
-  const noun = lane.nouns[Math.floor(index / 3) % lane.nouns.length];
-  return {
-    ...work,
-    name: `The ${identity} ${noun}`,
-    path: lane.path,
-    tone: lane.tone,
-    verdict: lane.verdict,
-  };
-};
-const masterworkStats = (commander: CommanderOption | null, index: number) => {
-  if (!commander) return MASTERWORK_STATS[index];
-  const lane = FORGE_LANES[index % 3];
-  const scores = commanderLaneScores(commander);
-  const base: Record<ForgeLane, [number, number, number, number]> = {
-    pressure: [82, 54, 72, 54],
-    engine: [54, 66, 90, 78],
-    inevitability: [34, 88, 76, 82],
-  };
-  const result = [...base[lane]] as [number, number, number, number];
-  result[0] = Math.min(98, result[0] + Math.min(12, scores.pressure));
-  result[1] = Math.min(98, result[1] + Math.min(10, scores.inevitability));
-  result[2] = Math.min(98, result[2] + Math.min(8, scores.engine));
-  return result;
-};
-const masterworkInsight = (
-  work: Masterwork,
-  preview: DeckPreview,
-  commander: CommanderOption | null,
-  note = "",
-) => {
-  const blueprint = parseNativeBlueprintIntent({ note });
-  const blueprintPromise = blueprint.promises.join(" plus ");
-  const oracle = commanderOracleText(commander);
-  const mechanics = [
-    [/sacrifice|dies|graveyard/i, "graveyard and sacrifice value"],
-    [/\bcounter|proliferate/i, "counter-based scaling"],
-    [/draw|look at|exile.+play/i, "repeatable card selection"],
-    [/token|create/i, "token production"],
-    [/attack|combat|damage/i, "combat conversion"],
-    [/artifact|vehicle|equipment/i, "artifact synergies"],
-    [/instant|sorcery|\bcast\b/i, "spell sequencing"],
-    [/\bland|mana/i, "mana and land development"],
-  ]
-    .filter(([pattern]) => (pattern as RegExp).test(oracle))
-    .map(([, label]) => String(label))
-    .slice(0, 2);
-  const identity = mechanics.length
-    ? mechanics.join(" plus ")
-    : commander
-      ? "the commander's verified rules text"
-      : preview.theme.toLowerCase();
-  const path = work.path.toLowerCase();
-  const pressure = /aggress|pressure|tempo|go-wide/.test(path);
-  const control = /control|reactive|bastion|precision/.test(path);
-  const engine = /synergy|engine|combo|alchemy|growth/.test(path);
-  const attrition = /attrition|graveyard|inevitability|resource|ramp/.test(path);
-  const baseOpening = pressure
-    ? "Play useful threats early, then protect the lead and keep attacking."
-    : control
-      ? "Build your mana, answer the most dangerous cards, and play the commander when it is safer."
-      : engine
-        ? "Play the smaller cards that support your theme, then let the commander connect them into a stronger whole."
-        : "Build your mana, keep a useful answer ready, and choose between attacking or rebuilding as the game changes.";
-  const baseWin = pressure
-      ? `Use ${identity} to keep dealing damage and finish before slower decks recover.`
-      : control
-      ? `Use ${identity} to gain an advantage after trading cards, then win with a threat you can protect.`
-      : engine
-        ? `Combine several cards that reward ${identity}; each card should still do something useful on its own.`
-        : attrition
-          ? `Trade resources carefully until ${identity} gives you more useful cards and choices than your opponents.`
-          : preview.win;
-  const opening = blueprintPromise
-    ? `This version puts ${blueprintPromise} first. ${baseOpening}`
-    : baseOpening;
-  const win = blueprintPromise
-    ? `${baseWin} The finished deck must include enough ${blueprintPromise} cards for that request to matter in normal games.`
-    : baseWin;
-  const packages = (pressure
-    ? ["Early attackers", "Ways to protect them", "Damage after combat stalls"]
-    : control
-      ? ["Early answers", "Ways to draw more cards", "Reliable finishers"]
-      : engine
-        ? ["Theme starters", "Cards that reward the theme", "Backup ways to win"]
-        : ["Reliable mana", "Flexible answers", "A strong late game"]);
-  if (blueprintPromise) packages.unshift(`Your request · ${blueprintPromise}`);
-  const weakness = pressure
-    ? "A board wipe can undo the early lead, so keep some threats back when possible."
-    : control
-      ? "Very fast threats can arrive before the deck has the right answer."
-      : engine
-        ? "Removing the key reward cards can slow the theme, so the deck needs more than one card that fills each important job."
-        : "Very fast starts can punish the turns spent building mana and preparing for a longer game.";
-  return { opening, win, packages, weakness, oracle };
 };
 const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
   Standard: [
@@ -1337,123 +1227,6 @@ const blueprintDefinition = (
   value: string,
 ) => (BLUEPRINT_DEFINITIONS[category] as Record<string, string>)[value] || "The Forge will explain this choice as its card pool and rules are verified.";
 
-// Sealed -> revealed ceremony for one Masterwork in the three-reveal chamber.
-// Kept at module level (not nested inside Home) so it mounts once per card
-// instead of being redefined — and its local `revealed` state — every render.
-type MasterworkCardProps = {
-  poolIndex: number;
-  featured?: boolean;
-  alignedWork: Masterwork;
-  preview: DeckPreview;
-  commander: CommanderOption | null;
-  insight: ReturnType<typeof masterworkInsight>;
-  format: string;
-  onInspect: () => void;
-};
-
-function MasterworkCard({ poolIndex, featured = false, alignedWork, preview, commander, insight, format, onInspect }: MasterworkCardProps) {
-  const [revealed, setRevealed] = useState(featured);
-  return (
-    <article
-      className={`masterwork-card ${alignedWork.tone}${featured ? " is-featured" : ""}`}
-      data-state={revealed ? "revealed" : "sealed"}
-    >
-      {revealed ? (
-        <>
-          <div className="masterwork-card-kicker">
-            <span>{featured ? "THE FORGE'S RECOMMENDATION" : `ALTERNATE MASTERWORK ${String(poolIndex + 1).padStart(2, "0")}`}</span>
-            {featured && <b>BEST BLUEPRINT MATCH</b>}
-          </div>
-          <div className="masterwork-title">
-            <i>{alignedWork.rune}</i>
-            <div>
-              <small>
-                <GlossaryText text={alignedWork.path} /> · {format}
-              </small>
-              <h2>{alignedWork.name}</h2>
-            </div>
-          </div>
-          <div className="masterwork-glimpse">
-            <span
-              className="commander-inspector"
-              tabIndex={0}
-              aria-label={`Inspect ${preview.card} rules`}
-            >
-              <img
-                src={commander?.image || cardImage(preview.card)}
-                alt={`${preview.card} card`}
-                loading="lazy"
-              />
-              <span className="commander-zoom" role="tooltip">
-                <img
-                  src={cardImage(preview.card)}
-                  alt={`${preview.card} enlarged card`}
-                />
-                <span>
-                  <b>{preview.card}</b>
-                  <small>{commander?.typeLine || preview.role}</small>
-                  <em>
-                    {insight.oracle ||
-                      "The full card image contains the verified rules text."}
-                  </em>
-                </span>
-              </span>
-            </span>
-            <div>
-              <small>{preview.role}</small>
-              <strong>{preview.card}</strong>
-              {commander && (
-                <small className="identity-name">
-                  <GlossaryText text={colorIdentityName(commander.colors)} /> · {commander.colors.join("") || "C"}
-                </small>
-              )}
-              <p><b>HOW IT STARTS</b><GlossaryText text={insight.opening} /></p>
-              <em>
-                <b>HOW IT WINS</b>
-                <GlossaryText text={insight.win} />
-              </em>
-            </div>
-          </div>
-          <div className="masterwork-plan">
-            <span>
-              <small>IMPORTANT PIECES</small>
-              <b><GlossaryText text={insight.packages.join(" · ")} /></b>
-            </span>
-            <span>
-              <small>MAIN TRADEOFF</small>
-              <b><GlossaryText text={insight.weakness} /></b>
-            </span>
-          </div>
-          <div className="masterwork-stats">
-            {["Aggression", "Interaction", "Synergy", "Complexity"].map(
-              (label, statIndex) => (
-                <span key={label}>
-                  <small><GlossaryText text={label} /> · estimate</small>
-                  <b>{masterworkStats(commander, poolIndex)[statIndex]}</b>
-                </span>
-              ),
-            )}
-          </div>
-          <p className="masterwork-verdict"><GlossaryText text={alignedWork.verdict} /></p>
-          <button onClick={onInspect}>
-            {featured ? "Enter the recommended Masterwork" : "Compare this Masterwork"} <b>→</b>
-          </button>
-        </>
-      ) : (
-        <button
-          type="button"
-          className="masterwork-seal"
-          onClick={() => setRevealed(true)}
-          aria-label={`Reveal Masterwork ${poolIndex + 1}`}
-        >
-          <small>MASTERWORK {String(poolIndex + 1).padStart(2, "0")}</small>
-          <i>{alignedWork.rune}</i>
-          <b>Reveal this Masterwork</b>
-        </button>
-      )}
-    </article>
-  );
-}
 
 export default function Home() {
   const [chamber, setChamber] = useState<Chamber>("entrance");
@@ -1625,7 +1398,6 @@ export default function Home() {
     };
   }, [secondCommanderDropdownOpen]);
   const [randomizingCommander, setRandomizingCommander] = useState(false);
-  const [randomCommanderMode, setRandomCommanderMode] = useState(false);
   const [randomCommanderOptions, setRandomCommanderOptions] = useState<
     CommanderOption[]
   >([]);
@@ -1633,7 +1405,6 @@ export default function Home() {
     [],
   );
   const [selectedWork, setSelectedWork] = useState(0);
-  const [masterworkPage, setMasterworkPage] = useState(0);
   const [forgedDeck, setForgedDeck] = useState("");
   const [forgeReply, setForgeReply] = useState("");
   // Populated once, informationally, when a Masterwork is forged — the
@@ -1691,8 +1462,8 @@ export default function Home() {
   // Holds the current native engine pass (selected candidate and all ranked
   // candidates) so the experiment tablets can run the one-slot laboratory
   // against every candidate without recomputing the Forge. Only available
-  // after a fresh inspectMasterwork() call; null for restored saved decks,
-  // which carry no live engine context.
+  // after a fresh applyForgeResult() call (commitDirectForge/enterMasterwork);
+  // null for restored saved decks, which carry no live engine context.
   const [nativeMasterworkContext, setNativeMasterworkContext] = useState<{
     selected: any;
     candidates: any[];
@@ -1847,6 +1618,21 @@ export default function Home() {
     label: string;
   } | null>(null);
   const [restoredWork, setRestoredWork] = useState<Masterwork | null>(null);
+  // Holds a completed generation's full result — including every real
+  // candidate the engine already built — between the moment generation
+  // succeeds and the moment the player explicitly enters one. Nothing in
+  // workbench state (forgedDeck, nativeMasterworkContext, etc.) is touched
+  // until enterMasterwork runs; a pending choice the player never acts on
+  // simply never becomes a deck.
+  const [pendingCandidateChoice, setPendingCandidateChoice] = useState<{
+    nativeReport: any;
+    cardPool: any[];
+    generationId: string;
+    serverGenerationId?: string;
+    work: Masterwork;
+    commander: CommanderOption | null;
+    persist: boolean;
+  } | null>(null);
   const [benchOpen, setBenchOpen] = useState(false);
   const [cardSearch, setCardSearch] = useState("");
   const [cardSearchResults, setCardSearchResults] = useState<
@@ -1978,37 +1764,29 @@ export default function Home() {
     );
   }, [forgeInterventions, interventionLearningReady]);
 
-  const randomCommission =
-    randomCommanderMode &&
-    Boolean(
-      selectedCommander &&
-      seenRandomCommanders.includes(selectedCommander.name),
-    );
   useEffect(() => {
     if (chamber !== "forging") return;
     if (stage >= FORGING_STAGES.length - 1) {
       const reveal = window.setTimeout(() => {
-        // A pasted decklist or a commander already locked in (outside the
-        // "surprise me" flow, where the reveal is three different
-        // commanders) means there's no real ambiguity to resolve with three
-        // alternates — build the one deck the player actually asked for.
+        // A pasted decklist has no real ambiguity to resolve — adapt the
+        // one list the player actually submitted. Every other build
+        // (commander chosen manually, chosen from a suggestion, or no
+        // commander at all for a non-Commander format) runs the exact same
+        // single generation call and lands on an explicit Masterwork
+        // choice before anything is committed — see commitDirectForge's
+        // "commander" branch and pendingCandidateChoice below. Nothing
+        // here auto-selects a design; the player always does.
         if (deck.trim()) {
           void commitDirectForge("decklist");
           return;
         }
-        if (isCommanderFormat(format) && selectedCommander && !randomCommission) {
-          void commitDirectForge("commander");
-          return;
-        }
-        // Reward before optimization: the ceremony resolves into a complete
-        // deck. Alternate designs remain available after the first result.
-        void inspectMasterwork(0);
+        void commitDirectForge("commander");
       }, 1500);
       return () => window.clearTimeout(reveal);
     }
     const timer = window.setTimeout(() => setStage((value) => value + 1), 1150);
     return () => window.clearTimeout(timer);
-  }, [chamber, stage, deck, format, selectedCommander, randomCommission]);
+  }, [chamber, stage, deck, format, selectedCommander]);
 
   useEffect(() => {
     if (benchStatus !== "forging" || forgeStartedAt === null) return;
@@ -2068,7 +1846,6 @@ export default function Home() {
     setMilestoneMotion({ kind: "ignition", eyebrow: "BLUEPRINT SEALED", label: "Awakening the Great Forge", glyph: "ᚠ" });
     setCommissionSeed(Date.now());
     setStage(0);
-    setMasterworkPage(0);
     setSelectedWork(0);
     setChamber("forging");
   };
@@ -2149,26 +1926,26 @@ export default function Home() {
       setStage(Math.max(0, FORGING_STAGES.length - 1));
       setChamber("forging");
     }
-    if (step === 3) setChamber("masterworks");
+    // Masterworks is a one-time choice gate, not a revisitable screen: once
+    // a candidate has been entered, pendingCandidateChoice is cleared and
+    // the real deck lives in the workbench, so "Your deck" must point there
+    // instead of back at an empty, already-resolved selection screen.
+    if (step === 3) setChamber(pendingCandidateChoice ? "masterworks" : "workbench");
   };
+  // createMasterworks/workFor/previewFor now serve one purpose only: a
+  // safe, non-null default for chosenWork/chosenPreview before any real
+  // generation has happened yet (chamber !== "workbench"). Every reachable
+  // workbench state sets restoredWork itself (commitDirectForge, for both
+  // the decklist and commander paths) before the player can ever see this
+  // fallback — see chosenWork below. There is no live "three masterworks"
+  // reveal anymore; that's what pendingCandidateChoice + the masterworks
+  // chamber now do, with the engine's own real candidates.
   const masterworks = useMemo(
     () => createMasterworks(commissionSeed, selectedCommander?.name, commissionNote),
     [commissionSeed, selectedCommander?.name, commissionNote],
   );
-  const visibleMasterworks = useMemo(
-    () => masterworks.slice(masterworkPage * 3, masterworkPage * 3 + 3),
-    [masterworkPage, masterworks],
-  );
-  const commanderFor = (index: number) =>
-    randomCommission && randomCommanderOptions.length === 3
-      ? randomCommanderOptions[index % 3]
-      : selectedCommander;
-  const workFor = (index: number) => {
-    const work = masterworks[index];
-    return randomCommission
-      ? alignRandomMasterwork(work, commanderFor(index), index)
-      : work;
-  };
+  const commanderFor = (_index: number) => selectedCommander;
+  const workFor = (index: number) => masterworks[index];
   const previewFor = (index: number) => {
     const base = (FORMAT_PREVIEWS[
       format === "Standard Brawl" ? "Brawl" : format
@@ -2178,9 +1955,7 @@ export default function Home() {
       ? {
           ...base,
           card: commander.name,
-          role: randomCommission
-            ? "Commander · discovered by the Forge"
-            : "Commander · chosen in your Blueprint",
+          role: "Commander · chosen in your Blueprint",
           theme:
             commissionNote.trim() ||
             `A ${commander.colors.join("")} identity commission built around this commander.`,
@@ -2193,6 +1968,18 @@ export default function Home() {
     savedMasterworks.find((family) => family.id === deckId)?.archived,
   );
   const deckRows = useMemo(() => parseDeckRows(forgedDeck), [forgedDeck]);
+  // The success/failure boundary itself: chamber === "workbench" only means
+  // a build was requested, not that a real, complete deck exists — it's
+  // also true for the few seconds a generation is still in flight, and
+  // (until the request resolves) for a generation that's about to fail.
+  // Success chrome (the "ready to play" framing, card counts, copy/price
+  // actions) must gate on this, never on chamber alone, so a forging-in-
+  // progress or failed attempt is never dressed up as a finished deck.
+  const hasValidatedDeck =
+    benchStatus !== "forging" &&
+    !forgeGenerationError &&
+    deckRows.length > 0 &&
+    deckRows.reduce((sum, row) => sum + row.quantity, 0) === targetDeckSize(format);
   const orderedDeckRows = useMemo(
     () =>
       [...deckRows].sort((a, b) => {
@@ -3306,6 +3093,25 @@ export default function Home() {
     }
   }
 
+  // The one path every commander choice must go through — a typed search
+  // result and a drawn suggestion must carry identical side effects, never
+  // a second, drifting copy. Selecting a suggestion is not a commitment to
+  // build with it; it's exactly the same act as typing its name and
+  // clicking it in the search results, nothing more.
+  function selectCommander(option: CommanderOption) {
+    setSelectedCommander(option);
+    setCommanderQuery(option.name);
+    setCommanderResults([]);
+    setCommanderSearchOpen(false);
+    setRandomCommanderOptions([]);
+  }
+
+  // Draws three suggested commanders and stops — it must never select one,
+  // never advance buildStep, never touch chamber, and never call
+  // generation. Those are exactly the four things a "suggest for me" click
+  // must never silently do on the player's behalf; the player still picks
+  // one (or none) through the picker this populates, via the same
+  // selectCommander path a manual search result uses.
   async function chooseRandomCommander() {
     setRandomizingCommander(true);
     setCommanderSearchOpen(false);
@@ -3334,53 +3140,10 @@ export default function Home() {
       const starters = arrangeCommanderStarters(candidates).slice(0, 3);
       if (starters.length !== 3)
         throw new Error("Could not draw three unique commanders");
-      setSelectedCommander(starters[0]);
-      setCommanderQuery("");
-      setRandomCommanderMode(true);
       setRandomCommanderOptions(starters);
       setSeenRandomCommanders([...exclusions]);
-      setCommissionSeed(Date.now());
-      setStage(0);
-      setMasterworkPage(0);
-      setSelectedWork(0);
-      setChamber("forging");
     } catch {
       setCommanderQuery("");
-    } finally {
-      setRandomizingCommander(false);
-    }
-  }
-
-  async function recycleMasterworks() {
-    if (randomizingCommander) return;
-    if (!randomCommission) {
-      setMasterworkPage((page) => page + 1);
-      return;
-    }
-    setRandomizingCommander(true);
-    try {
-      const query = encodeURIComponent(
-          `${scryfallFormatTerms(format)} is:commander`,
-        ),
-        exclusions = new Set(seenRandomCommanders),
-        candidates: CommanderOption[] = [];
-      for (let attempts = 0; candidates.length < 9 && attempts < 30; attempts += 1) {
-        const response = await fetch(
-          `https://api.scryfall.com/cards/random?q=${query}`,
-        );
-        if (!response.ok) continue;
-        const option = commanderOption(await response.json());
-        if (!exclusions.has(option.name)) {
-          exclusions.add(option.name);
-          candidates.push(option);
-        }
-      }
-      const next = arrangeCommanderStarters(candidates).slice(0, 3);
-      if (next.length !== 3)
-        throw new Error("Could not draw three unique commanders");
-      setRandomCommanderOptions(next);
-      setSeenRandomCommanders([...exclusions]);
-      setMasterworkPage((page) => page + 1);
     } finally {
       setRandomizingCommander(false);
     }
@@ -3445,6 +3208,62 @@ export default function Home() {
         { work: opts.work, commander: opts.commander, index: opts.index },
       );
     }
+  }
+
+  // The only way a pending choice ever becomes the workbench's actual
+  // deck — an explicit click on one of the three real candidates already
+  // sitting in pendingCandidateChoice.nativeReport.candidates. No network
+  // call: every candidate was already fully built by the one generation
+  // call that produced pendingCandidateChoice.
+  //
+  // manaConsistency, powerSignal, powerAudit, unusedEnginePartners, and
+  // practicalTiebreak are all computed server-side against nativeReport
+  // .selected specifically (the tournament winner), not per-candidate —
+  // carrying them forward unchanged for a different, player-chosen
+  // candidate would misattribute analysis of one deck to another. When
+  // the player picks the recommended candidate, nothing changes. When
+  // they pick an alternate, this recomputes the one field that has a
+  // real, pure, client-safe equivalent (manaConsistencyReport, the same
+  // function already used for post-acceptance revisions) and honestly
+  // clears the rest rather than showing analysis for a deck that isn't
+  // this one — the workbench's own downstream structural/consistency
+  // panels already re-derive fresh from whatever deck is actually loaded.
+  function enterMasterwork(candidateId: string) {
+    if (!pendingCandidateChoice) return;
+    const { nativeReport, cardPool, generationId, serverGenerationId, work, commander, persist } = pendingCandidateChoice;
+    const candidates = nativeReport.candidates || [];
+    const chosen = candidates.find((candidate: any) => candidate.id === candidateId) || nativeReport.selected;
+    const isRecommended = chosen.id === nativeReport.selected.id;
+    const reportForChosen = isRecommended
+      ? nativeReport
+      : {
+          ...nativeReport,
+          selected: chosen,
+          manaConsistency: manaConsistencyReport(chosen.rows, targetDeckSize(format)),
+          unusedEnginePartners: [],
+          practicalTiebreak: null,
+          powerSignal: null,
+          powerAudit: null,
+          recommendationRecord: null,
+        };
+    setChamber("workbench");
+    setBenchStatus("idle");
+    void applyForgeResult(reportForChosen, {
+      generationId,
+      work,
+      commander,
+      index: 0,
+      replyText: isRecommended
+        ? `${nativeReport.methodology}\n\n${nativeReport.selected.tournament.reason}\n${nativeReport.reasoning.summary}\n${nativeReport.laboratory.summary}${nativeReport.laboratory.verdict === "advance" ? `\nTest contract: ${nativeReport.laboratory.contract}` : ""}\nStructural read: ${nativeReport.selected.evaluation.cohesion}/100 cohesion, ${nativeReport.selected.evaluation.resilience}/100 resilience. ${nativeReport.tournament.frontier.length} of 3 candidates reached the tradeoff frontier. ${nativeReport.reasoning.boundary} ${nativeReport.laboratory.boundary}`
+        : `${nativeReport.methodology}\n\nYou chose ${chosen.label} over the Forge's recommended ${nativeReport.selected.label}.\nStructural read: ${chosen.evaluation.cohesion}/100 cohesion, ${chosen.evaluation.resilience}/100 resilience.\n${chosen.boundary}`,
+      revisionNote: isRecommended
+        ? `Built directly for ${commander?.name || "your commander"} · ${nativeReport.selected.label}`
+        : `Built directly for ${commander?.name || "your commander"} · ${chosen.label} (chosen over the recommendation)`,
+      cardPool,
+      serverGenerationId,
+      persist,
+    });
+    setPendingCandidateChoice(null);
   }
 
   // Cloudflare Turnstile tokens are single-use server-side (guest-forge.ts's
@@ -3601,107 +3420,6 @@ export default function Home() {
     });
   }, [pendingClaimResult, format]);
 
-  async function inspectMasterwork(index: number) {
-    const work = workFor(index);
-    const preview = previewFor(index);
-    const commander = commanderFor(index);
-    // Only carry a Partner/Background over when this masterwork actually
-    // uses the commander it was chosen for — a "surprise me" reveal can
-    // preview a different randomly-suggested commander per candidate, and
-    // a partner picked for one shouldn't silently attach to another.
-    const secondCommander =
-      commander?.name === selectedCommander?.name ? selectedSecondCommander : null;
-    const generationId = crypto.randomUUID();
-    setRestoredWork(null);
-    setDeckId(generationId);
-    setSelectedWork(index);
-    if (commander) setSelectedCommander(commander);
-    setMilestoneMotion({ kind: "masterwork-selected", eyebrow: "DESIGN CHOSEN", label: work.name, glyph: work.rune || "ᛞ" });
-    setChamber("workbench");
-    setBenchStatus("forging");
-    setForgeStartedAt(Date.now());
-    setForgeElapsedSeconds(0);
-    setForgeReply("");
-    setForgeGenerationError("");
-    setImportWarnings([]);
-    setConsideringCards([]);
-    setRemovedCards([]);
-    setReplacementRecommendations([]);
-    setLastCutCard("");
-    setOpeningExperimentPending(false);
-    setOpeningExperimentFocus("");
-    setActiveForgeChapter(1);
-    setDeckViewMode("workbench");
-
-    let evidence: EdhrecEvidence | null = null;
-    if (!guestMode && commander && isCommanderFormat(format)) {
-      try {
-        const evidenceResponse = await fetch(
-          `/api/forge/edhrec?commander=${encodeURIComponent(commander.name)}`,
-        );
-        if (evidenceResponse.ok) evidence = await evidenceResponse.json();
-      } catch {
-        /* Adoption evidence is optional; native construction remains available. */
-      }
-    }
-    setEdhrecEvidence(evidence);
-
-    try {
-      const { nativeReport, cardPool, generationId: newGenerationId } = await callForgeGenerate({
-        mode: "native",
-        format,
-        strategy,
-        complexity,
-        budget,
-        path: work.path,
-        note: `${commissionNote}\n${interventionLearning.reusableGuidance}`.trim(),
-        seed: hashText(`${commissionSeed}|${index}|${work.name}`),
-        commander: commander
-          ? {
-              name: commander.name,
-              colors: commander.colors,
-              oracleText: commander.verifiedFacts,
-            }
-          : null,
-        secondCommander: secondCommander
-          ? {
-              name: secondCommander.name,
-              colors: secondCommander.colors,
-              oracleText: secondCommander.verifiedFacts,
-            }
-          : null,
-        lynchpin: preview.card,
-        evidenceCards: evidence?.cards || [],
-        maxCardPrice,
-        commonsOnly,
-        targetPowerTier: isCommanderFormat(format) ? targetPowerTier || undefined : undefined,
-      });
-      await applyForgeResult(nativeReport, {
-        generationId,
-        work,
-        commander,
-        index,
-        replyText: `${nativeReport.methodology}\n\n${nativeReport.selected.tournament.reason}\n${nativeReport.reasoning.summary}\n${nativeReport.laboratory.summary}${nativeReport.laboratory.verdict === "advance" ? `\nTest contract: ${nativeReport.laboratory.contract}` : ""}\nStructural read: ${nativeReport.selected.evaluation.cohesion}/100 cohesion, ${nativeReport.selected.evaluation.resilience}/100 resilience. ${nativeReport.tournament.frontier.length} of 3 candidates reached the tradeoff frontier. ${nativeReport.reasoning.boundary} ${nativeReport.laboratory.boundary}`,
-        revisionNote: `Original native Forge candidate · ${nativeReport.selected.label}`,
-        cardPool,
-        serverGenerationId: newGenerationId,
-        persist: !guestMode,
-      });
-    } catch (error) {
-      setForgedDeck("");
-      setNativeMasterworkContext(null);
-      resetGuestVerificationAfterFailure();
-      setForgeGenerationError(
-        error instanceof Error
-          ? `${error.message}. Your commission is safe—strike the anvil again when verified card data is available.`
-          : "The native Forge could not complete this candidate. Your commission is safe—strike the anvil again.",
-      );
-    } finally {
-      setBenchStatus("idle");
-      setForgeStartedAt(null);
-    }
-  }
-
   // Skips the three-masterwork reveal entirely: a pasted decklist or a
   // commander already locked in gives the Forge one clear thing to build,
   // so there's no real ambiguity to resolve with three alternates.
@@ -3816,22 +3534,35 @@ export default function Home() {
           seed: hashText(`${commissionSeed}|commander|${commander?.name || ""}`),
           commander: commanderInput,
           secondCommander: secondCommanderInput,
+          // Only meaningful when there's no commander to anchor color/pool
+          // retrieval around (loadNativeForgePool only reads it in that
+          // case) — a curated flagship card for the chosen format so a
+          // non-Commander build still gets a targeted, identity-driven
+          // pool instead of an unweighted popularity dump.
+          lynchpin: commander ? undefined : previewFor(0).card,
           evidenceCards: evidence?.cards || [],
           maxCardPrice,
           commonsOnly,
           targetPowerTier: isCommanderFormat(format) ? targetPowerTier || undefined : undefined,
         });
-        await applyForgeResult(nativeReport, {
+        // A fresh build never auto-enters a Masterwork. The one generation
+        // call above already produced all three real candidates
+        // (nativeReport.candidates — the same synergy/resilience/precision
+        // tempers the old three-reveal ceremony promised, just computed
+        // together instead of one at a time) — no second generation call
+        // happens here or in enterMasterwork below. The player explicitly
+        // chooses one on the masterworks screen next; nothing is applied
+        // to the workbench until they do.
+        setPendingCandidateChoice({
+          nativeReport,
+          cardPool,
           generationId,
+          serverGenerationId: newGenerationId,
           work: directWork,
           commander,
-          index: 0,
-          replyText: `${nativeReport.methodology}\n\n${nativeReport.selected.tournament.reason}\n${nativeReport.reasoning.summary}\n${nativeReport.laboratory.summary}${nativeReport.laboratory.verdict === "advance" ? `\nTest contract: ${nativeReport.laboratory.contract}` : ""}\nStructural read: ${nativeReport.selected.evaluation.cohesion}/100 cohesion, ${nativeReport.selected.evaluation.resilience}/100 resilience. ${nativeReport.reasoning.boundary} ${nativeReport.laboratory.boundary}`,
-          revisionNote: `Built directly for ${commander?.name || "your commander"} · ${nativeReport.selected.label}`,
-          cardPool,
-          serverGenerationId: newGenerationId,
           persist: !guestMode,
         });
+        setChamber("masterworks");
       }
     } catch (error) {
       setForgedDeck("");
@@ -5135,6 +4866,39 @@ export default function Home() {
                       </button>
                       )}
                     </div>
+                    {randomCommanderOptions.length > 0 && (
+                      <div className="commander-suggestions" role="group" aria-label="Suggested commanders">
+                        <p>The Forge drew three legal options. Pick one to continue — nothing is chosen yet.</p>
+                        <div className="commander-suggestions-grid">
+                          {randomCommanderOptions.map((option) => (
+                            <button
+                              type="button"
+                              key={option.name}
+                              className="commander-suggestion-card"
+                              onClick={() => selectCommander(option)}
+                            >
+                              {option.image ? (
+                                <img src={option.image} alt="" />
+                              ) : (
+                                "◆"
+                              )}
+                              <b>
+                                {option.name}
+                                <small>{option.typeLine}</small>
+                              </b>
+                              <em>{option.colors.join("") || "C"}</em>
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          className="commander-suggestions-dismiss"
+                          onClick={() => setRandomCommanderOptions([])}
+                        >
+                          None of these — search instead
+                        </button>
+                      </div>
+                    )}
                     {commanderSearchOpen && (commanderSearching ||
                       commanderResults.length > 0 ||
                       commanderQuery.trim().length > 1) &&
@@ -5158,12 +4922,7 @@ export default function Home() {
                                 type="button"
                                 role="option"
                                 key={option.name}
-                                onClick={() => {
-                                  setSelectedCommander(option);
-                                  setCommanderQuery(option.name);
-                                  setCommanderResults([]);
-                                  setCommanderSearchOpen(false);
-                                }}
+                                onClick={() => selectCommander(option)}
                               >
                                 <span>
                                   {option.image ? (
@@ -5386,108 +5145,94 @@ export default function Home() {
 
       {chamber === "masterworks" && (
         <section className="masterwork-reveal">
-          <header>
-            <span className="forge-eyebrow">
-              <i /> THE GREAT FORGE ANSWERS <i />
-            </span>
-            <h1>
-              One path stands out.
-              <br />
-              <em>Here’s why.</em>
-            </h1>
-            <p>
-              This recommendation best matches your {format} commission and
-              <strong> {strategy.toLowerCase()}</strong> direction. Two alternate
-              paths remain available when you want a different tradeoff.
-            </p>
-          </header>
-          {commissionNote.trim() && (
-            <section className="blueprint-promise" aria-label="Blueprint promise">
-              <span>
-                <small>THE FORGE HEARD YOU</small>
-                <b>{commissionNote.trim()}</b>
-              </span>
-              <p>
-                Every Masterwork below must honor this identity before general
-                optimization. If the verified legal pool cannot support part of
-                it, the Forge will say so instead of silently replacing it.
-              </p>
-            </section>
+          {pendingCandidateChoice ? (
+            <>
+              <header>
+                <span className="forge-eyebrow">
+                  <i /> THE GREAT FORGE ANSWERS <i />
+                </span>
+                <h1>
+                  Three real builds. You choose.
+                </h1>
+                <p>
+                  Every card below is already verified and legal for your {format} commission —
+                  nothing here is a preview or a guess. The Forge recommends one, with its reasoning
+                  underneath it, but entering a Masterwork is always your call.
+                </p>
+              </header>
+              {commissionNote.trim() && (
+                <section className="blueprint-promise" aria-label="Blueprint promise">
+                  <span>
+                    <small>THE FORGE HEARD YOU</small>
+                    <b>{commissionNote.trim()}</b>
+                  </span>
+                  <p>
+                    Every candidate below honors this identity before general optimization. If the
+                    verified legal pool couldn&rsquo;t support part of it, the Forge says so instead of
+                    silently replacing it.
+                  </p>
+                </section>
+              )}
+              <div className="masterwork-grid">
+                {(pendingCandidateChoice.nativeReport.candidates || [pendingCandidateChoice.nativeReport.selected]).map((candidate: any) => {
+                  const isRecommended = candidate.id === pendingCandidateChoice.nativeReport.selected.id;
+                  const cardCount = candidate.rows.reduce((sum: number, row: any) => sum + row.quantity, 0);
+                  return (
+                    <article
+                      key={candidate.id}
+                      className={`masterwork-card${isRecommended ? " is-featured" : ""}`}
+                    >
+                      <header>
+                        {isRecommended && <em>RECOMMENDED</em>}
+                        <strong>{candidate.label}</strong>
+                        <span>{cardCount} cards</span>
+                      </header>
+                      <dl>
+                        <div>
+                          <dt>Cohesion</dt>
+                          <dd>{candidate.evaluation.cohesion}/100</dd>
+                        </div>
+                        <div>
+                          <dt>Resilience</dt>
+                          <dd>{candidate.evaluation.resilience}/100</dd>
+                        </div>
+                        <div>
+                          <dt>Curve health</dt>
+                          <dd>{candidate.evaluation.curveHealth}/100</dd>
+                        </div>
+                      </dl>
+                      {isRecommended && pendingCandidateChoice.nativeReport.selected.tournament?.reason && (
+                        <p className="masterwork-card-reason">
+                          {pendingCandidateChoice.nativeReport.selected.tournament.reason}
+                        </p>
+                      )}
+                      <small>{candidate.boundary}</small>
+                      <button type="button" onClick={() => enterMasterwork(candidate.id)}>
+                        Enter this Masterwork →
+                      </button>
+                    </article>
+                  );
+                })}
+              </div>
+              <footer>
+                <button
+                  onClick={() => {
+                    setPendingCandidateChoice(null);
+                    setChamber("entrance");
+                  }}
+                >
+                  Begin a new commission
+                </button>
+              </footer>
+            </>
+          ) : (
+            <div className="masterwork-reveal-empty">
+              <p>There&rsquo;s no build waiting for a choice right now.</p>
+              <button type="button" onClick={() => setChamber("entrance")}>
+                Return to start
+              </button>
+            </div>
           )}
-          <div className="masterwork-actions">
-            <span>
-              REVEAL {masterworkPage + 1} · {masterworkPage * 3 + 1}–
-              {masterworkPage * 3 + visibleMasterworks.length} SEEN THIS
-              COMMISSION
-            </span>
-            <button
-              className="masterwork-recycle"
-              disabled={
-                randomizingCommander ||
-                (masterworkPage + 1) * 3 >= masterworks.length
-              }
-              onClick={recycleMasterworks}
-            >
-              {randomizingCommander
-                ? "Drawing three unseen commanders…"
-                : (masterworkPage + 1) * 3 >= masterworks.length
-                  ? "All unseen Masterworks revealed"
-                  : randomCommission
-                    ? "None feel right? Draw three new commanders →"
-                    : "None feel right? Forge three different Masterworks →"}
-            </button>
-          </div>
-          <div className="masterwork-grid">
-            {visibleMasterworks.map((work, index) => {
-              const poolIndex = masterworkPage * 3 + index;
-              const preview = previewFor(poolIndex);
-              const commander = commanderFor(poolIndex);
-              const alignedWork = randomCommission
-                ? alignRandomMasterwork(work, commander, poolIndex)
-                : work;
-              const insight = masterworkInsight(alignedWork, preview, commander, commissionNote);
-              return (
-                <MasterworkCard
-                  key={`masterwork-${poolIndex}`}
-                  poolIndex={poolIndex}
-                  featured={index === 0}
-                  alignedWork={alignedWork}
-                  preview={preview}
-                  commander={commander}
-                  insight={insight}
-                  format={format}
-                  onInspect={() => inspectMasterwork(poolIndex)}
-                />
-              );
-            })}
-          </div>
-          <footer>
-            <button
-              onClick={() => {
-                setMasterworkPage(0);
-                setChamber("entrance");
-              }}
-            >
-              Begin a new commission
-            </button>
-            <span>THREE OF 642 DESIGNS SURVIVED</span>
-            <button
-              className="masterwork-recycle"
-              disabled={
-                randomizingCommander ||
-                (masterworkPage + 1) * 3 >= masterworks.length
-              }
-              onClick={recycleMasterworks}
-            >
-              {randomizingCommander
-                ? "Drawing three unseen commanders…"
-                : (masterworkPage + 1) * 3 >= masterworks.length
-                  ? "All unseen Masterworks revealed"
-                  : randomCommission
-                    ? "Recycle these · Draw three new commanders →"
-                    : "Recycle these · Forge three new Masterworks →"}
-            </button>
-          </footer>
         </section>
       )}
 
@@ -5501,10 +5246,15 @@ export default function Home() {
           </button>
           <header>
             <span className="forge-eyebrow">
-              <i /> YOUR COMPLETE DECK · READY TO PLAY
+              <i />{" "}
+              {hasValidatedDeck
+                ? "YOUR COMPLETE DECK · READY TO PLAY"
+                : benchStatus === "forging"
+                  ? "BUILDING YOUR DECK · NOT READY YET"
+                  : "BUILD NOT COMPLETED"}
             </span>
             <div className="masterwork-heading">
-              {masterworkVisualProfile.primaryMotif && (
+              {hasValidatedDeck && masterworkVisualProfile.primaryMotif && (
                 <span
                   className="masterwork-sigil"
                   data-evolved={masterworkVisualProfile.evolved}
@@ -5518,11 +5268,15 @@ export default function Home() {
                 </span>
               )}
               <div>
-                <h1>{chosenWork.name}</h1>
-                <p>
-                  {chosenWork.path} · {format} · Revision{" "}
-                  {Math.max(1, revisions.length)}
-                </p>
+                <h1>{hasValidatedDeck ? chosenWork.name : benchStatus === "forging" ? "Forging your Masterwork…" : "No deck was completed"}</h1>
+                {hasValidatedDeck ? (
+                  <p>
+                    {chosenWork.path} · {format} · Revision{" "}
+                    {Math.max(1, revisions.length)}
+                  </p>
+                ) : (
+                  <p>{format}</p>
+                )}
               </div>
             </div>
           </header>
@@ -5584,69 +5338,81 @@ export default function Home() {
               </footer>
             </section>
           )}
-          <nav className="result-view-controls" aria-label="Forge result detail level">
-            <span>
-              <small>DETAIL LEVEL</small>
-              <b>
-                {resultViewMode === "guided"
-                  ? "Deck first. Deeper intelligence opens when you ask."
-                  : "Every Forge instrument is awake."}
-              </b>
-            </span>
-            <div>
-              <button
-                type="button"
-                className={resultViewMode === "guided" ? "active" : ""}
-                aria-pressed={resultViewMode === "guided"}
-                onClick={() => setResultViewMode("guided")}
+          {hasValidatedDeck ? (
+            <>
+              <nav className="result-view-controls" aria-label="Forge result detail level">
+                <span>
+                  <small>DETAIL LEVEL</small>
+                  <b>
+                    {resultViewMode === "guided"
+                      ? "Deck first. Deeper intelligence opens when you ask."
+                      : "Every Forge instrument is awake."}
+                  </b>
+                </span>
+                <div>
+                  <button
+                    type="button"
+                    className={resultViewMode === "guided" ? "active" : ""}
+                    aria-pressed={resultViewMode === "guided"}
+                    onClick={() => setResultViewMode("guided")}
+                  >
+                    Deck first
+                  </button>
+                  <button
+                    type="button"
+                    className={resultViewMode === "full" ? "active" : ""}
+                    aria-pressed={resultViewMode === "full"}
+                    onClick={() => setResultViewMode("full")}
+                  >
+                    All analysis
+                  </button>
+                </div>
+              </nav>
+              <div className="forge-map-intro">
+                <span>WHAT TO DO NEXT</span>
+                <p>Your deck is ready. Review it first, then explore improvements, explanations, analysis, and playtesting when you want them.</p>
+              </div>
+              <p
+                className="forge-chapter-rail-eyebrow"
+                style={{ margin: "0 0 4px", textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.65 }}
               >
-                Deck first
-              </button>
-              <button
-                type="button"
-                className={resultViewMode === "full" ? "active" : ""}
-                aria-pressed={resultViewMode === "full"}
-                onClick={() => setResultViewMode("full")}
+                <small>The Masterwork</small>
+              </p>
+              <nav
+                id="forge-chapter-rail"
+                className="forge-chapter-rail"
+                aria-label="Masterwork journey chapters"
               >
-                All analysis
-              </button>
-            </div>
-          </nav>
-          <div className="forge-map-intro">
-            <span>WHAT TO DO NEXT</span>
-            <p>Your deck is ready. Review it first, then explore improvements, explanations, analysis, and playtesting when you want them.</p>
-          </div>
-          <p
-            className="forge-chapter-rail-eyebrow"
-            style={{ margin: "0 0 4px", textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.65 }}
-          >
-            <small>The Masterwork</small>
-          </p>
-          <nav
-            id="forge-chapter-rail"
-            className="forge-chapter-rail"
-            aria-label="Masterwork journey chapters"
-          >
-            {[
-              [1, "Your deck", `${deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards`],
-              [2, "Improve", forgeReply ? "Suggested changes" : benchStatus === "testing" ? "Test active" : "Compare one change"],
-              [3, "How it works", forgeSystemsReport.strongestSystem?.name || "Deck plan"],
-              [4, "Analysis", deckIntegrity.passed ? "Rules and deck checks" : "Needs attention"],
-              [5, "Playtest", activeFieldTest ? "Playtest active" : revisionLearning.sampleSize ? `${revisionLearning.sampleSize} results recorded` : "Try it in a game"],
-            ].map(([chapterNumber, label, status]) => (
-              <button
-                type="button"
-                key={chapterNumber}
-                className={activeForgeChapter === chapterNumber ? "active" : ""}
-                aria-current={activeForgeChapter === chapterNumber ? "step" : undefined}
-                onClick={() => setActiveForgeChapter(chapterNumber as 1 | 2 | 3 | 4 | 5)}
-              >
-                <small>CHAPTER {chapterNumber}</small>
-                <b>{label}</b>
-                <span>{status}</span>
-              </button>
-            ))}
-          </nav>
+                {[
+                  [1, "Your deck", `${deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards`],
+                  [2, "Improve", forgeReply ? "Suggested changes" : benchStatus === "testing" ? "Test active" : "Compare one change"],
+                  [3, "How it works", forgeSystemsReport.strongestSystem?.name || "Deck plan"],
+                  [4, "Analysis", deckIntegrity.passed ? "Rules and deck checks" : "Needs attention"],
+                  [5, "Playtest", activeFieldTest ? "Playtest active" : revisionLearning.sampleSize ? `${revisionLearning.sampleSize} results recorded` : "Try it in a game"],
+                ].map(([chapterNumber, label, status]) => (
+                  <button
+                    type="button"
+                    key={chapterNumber}
+                    className={activeForgeChapter === chapterNumber ? "active" : ""}
+                    aria-current={activeForgeChapter === chapterNumber ? "step" : undefined}
+                    onClick={() => setActiveForgeChapter(chapterNumber as 1 | 2 | 3 | 4 | 5)}
+                  >
+                    <small>CHAPTER {chapterNumber}</small>
+                    <b>{label}</b>
+                    <span>{status}</span>
+                  </button>
+                ))}
+              </nav>
+            </>
+          ) : (
+            !openingExperimentGateActive &&
+            benchStatus !== "forging" &&
+            forgeGenerationError && (
+              <p className="forge-map-intro">
+                <span>NOT READY</span> This attempt did not produce a complete deck. See the failure details below — your commission and any preview are unaffected.
+              </p>
+            )
+          )}
           {!openingExperimentGateActive && benchStatus !== "forging" && deckRows.length > 0 && resultViewMode === "guided" && (
             <aside className="forge-journey-guide" aria-live="polite">
               <span>
@@ -6998,7 +6764,7 @@ export default function Home() {
                   </time>
                   <div className="forging-progress-rail" aria-hidden="true"><span /></div>
                 </section>
-              ) : deckRows.length ? (
+              ) : hasValidatedDeck ? (
                 <>
                   {tcgplayerAffiliateEnabled && (
                     <p className="affiliate-disclosure" role="note">
@@ -7251,11 +7017,7 @@ export default function Home() {
                         void commitDirectForge("decklist");
                         return;
                       }
-                      if (isCommanderFormat(format) && selectedCommander && !randomCommission) {
-                        void commitDirectForge("commander");
-                        return;
-                      }
-                      void inspectMasterwork(selectedWork);
+                      void commitDirectForge("commander");
                     }}
                   >
                     Strike the Anvil Again

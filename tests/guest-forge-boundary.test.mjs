@@ -65,10 +65,10 @@ test("a failed guest generation resets the Turnstile widget so the retry gets a 
     /turnstile\.reset\(turnstileWidgetRef\.current\)/,
     "the helper must actually re-render the Turnstile challenge, not just clear local state",
   );
-  // Both generation catch blocks (inspectMasterwork's native-reveal path and
-  // commitDirectForge's decklist/commander path) must call the reset —
-  // exactly two call sites, matching the two places a guest generation can
-  // fail after Turnstile has already been spent.
+  // commitDirectForge is now the only generation call site (its commander
+  // branch produces all three Masterwork candidates in one call and routes
+  // through the masterworks picker instead of a separate inspectMasterwork
+  // generation per selection), so exactly one catch block needs the reset.
   const occurrences = source.match(/resetGuestVerificationAfterFailure\(\);/g) || [];
-  assert.equal(occurrences.length, 2, "expected the reset to run in both generation failure catch blocks");
+  assert.equal(occurrences.length, 1, "expected the reset to run in the one generation failure catch block");
 });

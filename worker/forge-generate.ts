@@ -28,6 +28,13 @@ import { checkRateLimit, readJsonWithLimit } from "./api-hardening";
 import { storeGeneration } from "./forge-generation-store";
 import { isValidReviewFocus } from "../app/review-focus.mjs";
 import { evaluateReviewFocus } from "../app/review-focus-reasoning.mjs";
+import {
+  targetDeckSize,
+  isCommanderFormat,
+  parseDeckRows,
+  validateGeneratedResult,
+  validateAllCandidatesComplete,
+} from "./forge-result-validator.mjs";
 
 interface Env {
   DB: D1Database;
@@ -101,12 +108,6 @@ const ALLOWED_FORMATS = new Set([
 const SCRYFALL_HEADERS = { Accept: "application/json", "User-Agent": "MetaForge/0.1 (+https://metaforge-private-alpha.metaforge-labs.workers.dev)" };
 
 const CATALOG_UNAVAILABLE_MESSAGE = "The verified card catalog is unavailable";
-
-const targetDeckSize = (format: string) =>
-  format === "Commander" || format === "Brawl" ? 100 : 60;
-
-const isCommanderFormat = (format: string) =>
-  ["Commander", "Brawl", "Standard Brawl"].includes(format);
 
 // --- Duplicated from the client's own small, non-secret utility
 // functions (app/page.tsx) rather than imported from there, since
@@ -189,11 +190,6 @@ const nativeCardFact = (card: any): NativeForgeCard => {
 };
 
 type DeckRow = { quantity: number; name: string };
-const parseDeckRows = (text: string): DeckRow[] =>
-  text.split(/\r?\n/).flatMap((line) => {
-    const match = line.trim().match(/^(\d+)\s+(.+?)(?:\s+\([A-Z0-9]{2,6}\)\s+\d+\w*)?$/);
-    return match ? [{ quantity: Number(match[1]), name: match[2].trim() }] : [];
-  });
 
 async function loadNativeForgePool(
   format: string,
@@ -270,7 +266,7 @@ async function loadNativeForgePool(
 }
 
 async function resolveImportedDecklist(text: string, poolCards: NativeForgeCard[], format: string, commander: CommanderInput) {
-  const parsed = parseDeckRows(text).filter((row) => Number.isFinite(row.quantity) && row.quantity > 0 && row.name);
+  const parsed = parseDeckRows(text).filter((row: DeckRow) => Number.isFinite(row.quantity) && row.quantity > 0 && row.name);
   const commanderKeys = commander ? new Set([commander.name, commander.name.split(" // ")[0]].map(cardFactKey)) : new Set<string>();
   const merged = new Map<string, DeckRow>();
   for (const row of parsed) {
@@ -395,6 +391,15 @@ function validateRequest(body: any): { ok: true; value: GenerateRequest } | { ok
   return { ok: true, value };
 }
 
+// Bug 2's validateGeneratedResult/validateAllCandidatesComplete now live in
+// ./forge-result-validator.mjs (imported above) — pure logic split out so
+// tests can import it directly without pulling in this file's D1/account
+// dependencies. That file has no TypeScript declarations of its own, so
+// its inferred return type loses the { ok: true } | { ok: false, ... }
+// discriminated union — annotated explicitly at each call site below so
+// `if (!resultCheck.ok)` still narrows to the failure branch's fields.
+type GeneratedResultValidation = { ok: true } | { ok: false; code: string; message: string };
+
 export async function handleForgeGenerate(request: Request, env: Env): Promise<Response> {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
 
@@ -455,6 +460,10 @@ export async function handleForgeGenerateForKey(request: Request, env: Env, key:
         budget: body.budget,
         complexity: body.complexity,
       });
+      const resultCheck = validateGeneratedResult(nativeReport, body.format) as GeneratedResultValidation;
+      if (!resultCheck.ok) {
+        return json({ error: resultCheck.message, code: resultCheck.code }, 422);
+      }
       const generationId = await storeGeneration(env, key, {
         selected: nativeReport.selected,
         candidates: nativeReport.candidates,
@@ -504,6 +513,14 @@ export async function handleForgeGenerateForKey(request: Request, env: Env, key:
       commonsOnly: body.commonsOnly,
       targetPowerTier: isCommanderFormat(body.format) ? body.targetPowerTier || undefined : undefined,
     });
+    const resultCheck = validateGeneratedResult(nativeReport, body.format) as GeneratedResultValidation;
+    if (!resultCheck.ok) {
+      return json({ error: resultCheck.message, code: resultCheck.code }, 422);
+    }
+    const candidatesCheck = validateAllCandidatesComplete(nativeReport, body.format) as GeneratedResultValidation;
+    if (!candidatesCheck.ok) {
+      return json({ error: candidatesCheck.message, code: candidatesCheck.code }, 422);
+    }
     const generationId = await storeGeneration(env, key, {
       selected: nativeReport.selected,
       candidates: nativeReport.candidates,

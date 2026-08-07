@@ -50,7 +50,10 @@ test("refine mode without a detectable commander keeps the manual search input a
   // chamber condition of its own — only the random-suggestion button
   // nested inside it does — so a paste that extractPastedCommanderName
   // can't resolve still leaves the manual search box available in refine.
-  const searchBlockMatch = source.match(/<div\s*\n\s*className="commander-search"[\s\S]*?<\/div>\s*\{commanderSearchOpen/);
+  // Bounded on the button's own conditional close (not on a later sibling
+  // marker) so it stays stable regardless of what else renders after the
+  // button inside .commander-search (e.g. the suggested-commander picker).
+  const searchBlockMatch = source.match(/<div\s*\n\s*className="commander-search"[\s\S]*?disabled=\{randomizingCommander\}[\s\S]*?\)\}/);
   assert.ok(searchBlockMatch, "the commander-search block exists");
   assert.doesNotMatch(
     searchBlockMatch[0].split(`{chamber !== "refine" && (`)[0],

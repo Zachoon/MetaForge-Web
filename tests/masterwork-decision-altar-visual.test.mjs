@@ -7,17 +7,20 @@ const [page, polish] = await Promise.all([
   readFile(new URL("../app/forge-polish.css", import.meta.url), "utf8"),
 ]);
 
-test("Masterwork reveal presents one recommendation and two deliberate alternatives", () => {
-  assert.match(page, /One path stands out/);
-  assert.match(page, /Here’s why/);
+// Bug 1B replaced the old sealed/revealed reveal ceremony (three templated
+// designs, one manually "revealed" at a time, entering any of them
+// triggering its own separate generation call) with a real-candidate picker:
+// all three already-generated, fully legal builds shown at once, one marked
+// recommended, entering any of them an explicit click with zero further
+// network calls. This test now pins that shape instead of the old one.
+test("Masterwork picker presents one recommendation and two real alternatives, already built", () => {
+  assert.match(page, /Three real builds\. You choose\./);
+  assert.match(page, /THE GREAT FORGE ANSWERS/);
   assert.doesNotMatch(page, /The Forge has chosen/);
-  assert.match(page, /THE FORGE'S RECOMMENDATION/);
-  assert.match(page, /BEST BLUEPRINT MATCH/);
-  assert.match(page, /Reveal this Masterwork/);
-  assert.match(polish, /Masterwork decision altar/);
+  assert.match(page, /\{isRecommended && <em>RECOMMENDED<\/em>\}/);
+  assert.doesNotMatch(page, /Reveal this Masterwork/, "the sealed/revealed ceremony is retired — every candidate is shown immediately");
   assert.match(polish, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(polish, /content:"FORGE'S READ"/);
-  assert.match(polish, /content:"ALTERNATE PATH"/);
 });
 
 test("Masterwork altar remains usable on small screens and with reduced motion", () => {

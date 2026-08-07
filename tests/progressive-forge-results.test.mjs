@@ -47,8 +47,17 @@ test("turns the result into one active chapter instead of a continuous instrumen
   assert.match(css, /\.chapter-4-active \.forge-intelligence-vault\{display:block/);
 });
 
-test("reveals a complete deck immediately after the forge ceremony", () => {
-  assert.match(page, /void inspectMasterwork\(0\)/);
+// A pasted decklist still reveals its complete deck immediately after the
+// forge ceremony (no ambiguity to resolve — there's only ever one legal
+// adaptation of the player's own list). A fresh commander build no longer
+// does: it used to auto-call inspectMasterwork(0) here, silently entering
+// the Forge's recommended candidate without the player ever choosing —
+// exactly the auto-advance bug this fix removes. inspectMasterwork itself
+// is gone; a fresh build now lands on the masterworks chamber and only
+// reveals a deck once the player explicitly picks one (enterMasterwork).
+test("a pasted decklist reveals its complete deck immediately; a fresh build never auto-selects one", () => {
+  assert.doesNotMatch(page, /inspectMasterwork/, "the auto-entering per-candidate reveal function is retired entirely");
+  assert.match(page, /setChamber\("masterworks"\)/, "a fresh commander build lands on the masterworks choice, not a pre-selected deck");
   assert.match(page, /setOpeningExperimentPending\(false\)/);
   assert.doesNotMatch(page, /setOpeningExperimentPending\(mode === "commander"\)/);
   assert.match(page, /\[1, "Your deck"/);

@@ -10,16 +10,19 @@ const motionCss = fs.readFileSync(new URL("../app/forge-motion.css", import.meta
 const journeyCss = fs.readFileSync(new URL("../app/forge-journey.css", import.meta.url), "utf8");
 const benchCss = fs.readFileSync(new URL("../app/deck-bench-dock.css", import.meta.url), "utf8");
 
-test("the reveal chamber uses a dedicated, module-level MasterworkCard instead of an inline article", () => {
-  assert.match(page, /^function MasterworkCard\(/m);
-  assert.match(page, /useState\(false\)/);
-  assert.match(page, /<MasterworkCard\s/);
-  assert.doesNotMatch(page, /className={`masterwork-card \${alignedWork\.tone}`}\s*\n\s*key=/);
+// Bug 1B retired the templated sealed/revealed MasterworkCard component
+// entirely: the masterworks chamber now maps the engine's own three real,
+// already-generated candidates directly (pendingCandidateChoice.nativeReport
+// .candidates), keyed by the server's own candidate.id, with no local
+// per-card reveal state to preserve across renders.
+test("the masterworks chamber renders the engine's own real candidates, not a templated MasterworkCard", () => {
+  assert.doesNotMatch(page, /function MasterworkCard\(/, "the templated reveal-ceremony component is retired");
+  assert.match(page, /pendingCandidateChoice\.nativeReport\.candidates/);
+  assert.match(page, /key={candidate\.id}/);
 });
 
-test("sealed cards are a real, keyboard-focusable button, not a bare clickable div", () => {
-  assert.match(page, /className="masterwork-seal"[\s\S]{0,80}onClick={\(\) => setRevealed\(true\)}/);
-  assert.match(css, /\.masterwork-seal:focus-visible/);
+test("entering a Masterwork is a real, keyboard-focusable button, not a bare clickable div", () => {
+  assert.match(page, /<button type="button" onClick={\(\) => enterMasterwork\(candidate\.id\)}>/);
 });
 
 test("reduced motion is honored for every new animation, not just some", () => {
