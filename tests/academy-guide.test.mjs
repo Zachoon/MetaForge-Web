@@ -79,6 +79,7 @@ test("the Academy index is a real page listing exactly the published guides — 
   assert.match(html, /href="\/academy\/why-do-i-run-out-of-cards"/);
   assert.match(html, /href="\/academy\/why-does-my-deck-start-so-slowly"/);
   assert.match(html, /href="\/academy\/how-much-interaction-do-i-actually-need"/);
+  assert.match(html, /href="\/academy\/why-do-i-lose-after-getting-ahead"/);
   // The H1 owns search intent — the brand name is already in the logo and
   // the eyebrow label, so the visible heading names the actual topic
   // instead of repeating "MetaForge."
@@ -98,9 +99,10 @@ test("the Academy index frames each entry as the player's own first-person thoug
   assert.match(html, /I run out of cards\./);
   assert.match(html, /My deck starts too slowly\./);
   assert.match(html, /I never seem to have the right answer\./);
+  assert.match(html, /I always lose after getting ahead\./);
 });
 
-test("all four Academy pages are listed in the public sitemap", async () => {
+test("all five Academy pages are listed in the public sitemap", async () => {
   const response = await render("https://metaforge.gg/sitemap.xml");
   const xml = await response.text();
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/academy<\/loc>/);
@@ -108,6 +110,7 @@ test("all four Academy pages are listed in the public sitemap", async () => {
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/academy\/why-do-i-run-out-of-cards<\/loc>/);
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/academy\/why-does-my-deck-start-so-slowly<\/loc>/);
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/academy\/how-much-interaction-do-i-actually-need<\/loc>/);
+  assert.match(xml, /<loc>https:\/\/metaforge\.gg\/academy\/why-do-i-lose-after-getting-ahead<\/loc>/);
 });
 
 test("the guide is not crawl-blocked by robots.txt", async () => {
@@ -261,4 +264,57 @@ test("the fourth guide's CTA uses the public guide key, never exposes the intern
   assert.match(html, /not every card that merely deals with something eventually/i);
   assert.doesNotMatch(html, /guarantee|100%|proves?\b.{0,15}(problem|issue)/i, "must never overclaim beyond what the engine can actually support");
   assert.match(html, /won.{1,6}t tell you if your interaction is crowding out your own game plan/i, "must be explicit that plan-crowding and answer speed are not measured");
+});
+
+// --- Fifth guide: Why Do I Lose After Getting Ahead? ---
+
+test("the fifth guide route exists, server-renders, and carries real SEO metadata", async () => {
+  const response = await render("https://metaforge.gg/academy/why-do-i-lose-after-getting-ahead");
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
+  const html = await response.text();
+
+  assert.match(html, /<title>Why Do I Lose After Getting Ahead\? \| MetaForge<\/title>/i);
+  assert.match(html, /Board.{1,6}s in your favor/i);
+  assert.match(html, /<link rel="canonical" href="https:\/\/metaforge\.gg\/academy\/why-do-i-lose-after-getting-ahead"\s*\/>/i);
+  assert.equal(html.match(/rel="canonical"/gi)?.length, 1, "exactly one canonical tag — the global seoMarkup injector must not add a duplicate");
+});
+
+test("the fifth guide has exactly one real, semantic H1 with the actual guide question", async () => {
+  const html = await (await render("https://metaforge.gg/academy/why-do-i-lose-after-getting-ahead")).text();
+  const h1Matches = [...html.matchAll(/<h1[^>]*>([\s\S]*?)<\/h1>/gi)];
+  assert.equal(h1Matches.length, 1, "expected exactly one H1 on the guide");
+  assert.match(h1Matches[0][1], /Why Do I Lose After Getting Ahead\?/);
+});
+
+test("the fifth guide covers all three named skills, not a placeholder or stub", async () => {
+  const html = await (await render("https://metaforge.gg/academy/why-do-i-lose-after-getting-ahead")).text();
+  assert.match(html, /Getting ahead/i);
+  assert.match(html, /Staying ahead/i);
+  assert.match(html, /Actually ending the game/i);
+  for (const placeholder of [/lorem ipsum/i, /coming soon/i, /placeholder/i, /TBD/i, /TODO/i, /\[insert/i]) {
+    assert.doesNotMatch(html, placeholder, `found placeholder-shaped text matching ${placeholder}`);
+  }
+});
+
+test("the fifth guide cross-links guides one through four instead of re-explaining their concepts from scratch", async () => {
+  const html = await (await render("https://metaforge.gg/academy/why-do-i-lose-after-getting-ahead")).text();
+  assert.match(html, /href="\/academy\/why-cant-i-cast-my-spells"/);
+  assert.match(html, /href="\/academy\/why-do-i-run-out-of-cards"/);
+  assert.match(html, /href="\/academy\/why-does-my-deck-start-so-slowly"/);
+  assert.match(html, /href="\/academy\/how-much-interaction-do-i-actually-need"/);
+});
+
+test("the fifth guide's CTA uses the public guide key, never exposes the internal reviewFocus/focus param, and is honest about what real-closer detection does and does not cover", async () => {
+  const html = await (await render("https://metaforge.gg/academy/why-do-i-lose-after-getting-ahead")).text();
+  assert.match(html, /href="\/\?guide=closing-games"/);
+  assert.doesNotMatch(html, /focus=/i, "the URL must never expose the internal reviewFocus query param or value");
+  assert.match(html, /Investigate my deck/i);
+  assert.match(html, /Bring your decklist/i);
+  // Must scope the real signal to Commander/Brawl, matching evaluateClosingGames's own format gate.
+  assert.match(html, /for Commander and Brawl decks/i);
+  // Must not treat "no closer found" as automatically a flaw — matches the evaluator's own real framing.
+  assert.match(html, /not automatically a flaw/i);
+  assert.doesNotMatch(html, /guarantee|100%|proves?\b.{0,15}(problem|issue)/i, "must never overclaim beyond what the engine can actually support");
+  assert.match(html, /won.{1,6}t watch whether you become the table.{1,6}s target/i, "must be explicit that the multiplayer-target dynamic is not something the engine measures");
 });

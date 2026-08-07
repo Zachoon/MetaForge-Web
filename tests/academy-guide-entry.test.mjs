@@ -31,6 +31,12 @@ test("the public guide key 'enough-interaction' resolves to the refine chamber w
   assert.ok(REVIEW_FOCUS_OPTIONS.includes(entry.reviewFocus));
 });
 
+test("the public guide key 'closing-games' resolves to the refine chamber with the canonical Closing games focus", () => {
+  const entry = resolveAcademyGuideEntry("closing-games");
+  assert.deepEqual(entry, { chamber: "refine", reviewFocus: "Closing games" });
+  assert.ok(REVIEW_FOCUS_OPTIONS.includes(entry.reviewFocus));
+});
+
 test("unknown, empty, and malformed keys are all ignored safely, never thrown", () => {
   assert.equal(resolveAcademyGuideEntry("does-not-exist"), null);
   assert.equal(resolveAcademyGuideEntry(""), null);

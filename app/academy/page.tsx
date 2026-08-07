@@ -41,6 +41,12 @@ const GUIDES = [
     title: "How Much Interaction Do I Actually Need?",
     description: "Too little and you get run over. Too much and you never do anything of your own — here's how to tell which side you're on.",
   },
+  {
+    href: "/academy/why-do-i-lose-after-getting-ahead",
+    thought: "I always lose after getting ahead.",
+    title: "Why Do I Lose After Getting Ahead?",
+    description: "Getting ahead, staying ahead, and actually ending the game are three separate skills — here's which one you're missing.",
+  },
 ];
 
 export default function AcademyIndex() {
