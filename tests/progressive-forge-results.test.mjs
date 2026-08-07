@@ -15,11 +15,73 @@ test("defaults the workbench to a remembered deck-first view", () => {
 });
 
 test("places deck and refinement surfaces before the intelligence vault", () => {
-  assert.match(css, /\.progressive-results \.deck-gallery[^}]*order:2/);
-  assert.match(css, /\.progressive-results \.testing-loop\{order:4/);
-  assert.match(css, /\.progressive-results \.forge-understanding-bridge\{order:5/);
-  assert.match(css, /\.progressive-results \.forge-intelligence-vault\{order:6/);
+  assert.match(css, /\.progressive-results \.deck-gallery[^}]*order:3/);
+  assert.match(css, /\.progressive-results \.testing-loop\{order:5/);
+  assert.match(css, /\.progressive-results \.forge-understanding-bridge\{order:6/);
+  assert.match(css, /\.progressive-results \.forge-intelligence-vault\{order:7/);
   assert.match(page, /className="forge-intelligence-vault"/);
+});
+
+// P0 follow-up (2026-08-07): the first-run coaching panel, chapter 1,
+// between forge-quick-read and the deck grid — surfaces
+// forgeSystemsReport.strongestSystem and (when the player asked a Review
+// coaching question) reviewFocusResult's real evidence/nextStep
+// immediately instead of 1-2 clicks deep in chapter 3.
+test("the first-run coaching panel sits between forge-quick-read and the deck grid, and is visible by default in chapter 1", () => {
+  assert.match(css, /\.progressive-results \.forge-quick-read\{order:1\}\.progressive-results \.first-run-coaching\{order:2\}/);
+  assert.match(css, /\.progressive-results \.chapter-1-active \.first-run-coaching\{display:block\}/);
+  assert.match(page, /className="first-run-coaching" aria-label="MetaForge's first read on this deck"/);
+});
+
+// forge-quick-read (the neighboring, pre-existing panel) renders
+// unconditionally off chosenWork's own safe-fallback default — it isn't
+// gated on hasValidatedDeck and that's out of scope here. The new
+// coaching panel must not repeat that gap: it reads forgeSystemsReport
+// and reviewFocusResult, neither of which has a meaningful "safe
+// placeholder" the way chosenWork does, so showing it before a real,
+// validated deck exists would either show stale data from a previous
+// session or empty/loading noise dressed up as a real coaching read.
+test("the coaching panel itself (not just its content) is gated on hasValidatedDeck — it must not render during forging or after a failed generation", () => {
+  const panelSite = page.match(/\{hasValidatedDeck && \(\s*<section className="first-run-coaching"/);
+  assert.ok(panelSite, "expected the entire <section className=\"first-run-coaching\"> to be wrapped in {hasValidatedDeck && (...)}");
+});
+
+test("the coaching panel always shows what MetaForge's own structural analysis noticed first, with an honest loading state", () => {
+  const block = page.match(/className="first-run-coaching"[\s\S]*?<\/section>/)?.[0];
+  assert.ok(block, "expected to find the first-run-coaching panel's JSX");
+  assert.match(block, /WHAT STOOD OUT FIRST/);
+  assert.match(block, /forgeSystemsReport\.strongestSystem\?\.name/);
+  assert.match(
+    block,
+    /structuralAnalysisStatus === "loading" && !structuralReportReady\s*\n\s*\? "Analyzing this build's structure…"/,
+    "must not show a blank/undefined value while the debounced structural analysis is still running",
+  );
+});
+
+test("the coaching panel leads with the player's own Review coaching question when one was asked, real evidence and nextStep — not just the generic .concise blob", () => {
+  const block = page.match(/className="first-run-coaching"[\s\S]*?<\/section>/)?.[0];
+  assert.ok(block);
+  assert.match(block, /reviewFocusResult \? \(/);
+  assert.match(block, /YOU ASKED — \{reviewFocusResult\.focus\.toUpperCase\(\)\}/);
+  assert.match(block, /\{reviewFocusResult\.evidence\}/);
+  assert.match(block, /\{reviewFocusResult\.nextStep\}/);
+  // A fresh build (no Review focus asked) falls back to a real structural
+  // signal, never a placeholder implying nothing is known.
+  assert.match(block, /WATCH FOR THIS NEXT GAME/);
+  assert.match(block, /forgeSystemsReport\.weakestSystem\?\.name \|\| simulationDossier\?\.matrix\.weakest\?\.opponent/);
+});
+
+test("reviewFocusResult carries its full evidence shape (asked/evidence/nextStep), not just .concise, and is reset on every new commission", () => {
+  const stateDecl = page.match(/const \[reviewFocusResult, setReviewFocusResult\] = useState<\{[\s\S]*?\}\s*\| null>\(null\);/)?.[0];
+  assert.ok(stateDecl, "expected the reviewFocusResult state declaration");
+  assert.match(stateDecl, /asked: string;/);
+  assert.match(stateDecl, /evidence: string;/);
+  assert.match(stateDecl, /nextStep: string;/);
+  // Reset alongside importWarnings in both places a new/restored deck
+  // replaces whatever was previously loaded — never left stale from a
+  // prior generation.
+  const resetSites = page.match(/setImportWarnings\(\[\]\);\s*setReviewFocusResult\(null\);/g) || [];
+  assert.equal(resetSites.length, 2, "expected exactly two reset sites: commitDirectForge and openSavedMasterwork");
 });
 
 test("turns the result into one active chapter instead of a continuous instrument wall", () => {

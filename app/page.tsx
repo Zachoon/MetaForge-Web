@@ -1543,6 +1543,21 @@ export default function Home() {
   // silently dropped or auto-corrected. Distinct from forgeGenerationError,
   // which means generation failed entirely.
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
+  // The server's real, evidence-backed answer to the coaching focus the
+  // player picked in the Review chamber (worker/review-focus-reasoning
+  // .mjs's evaluateReviewFocus) — previously only its .concise field was
+  // even typed, folded into the reasoning-drawer reply text and then
+  // discarded; asked/evidence/nextStep never reached the UI at all. Kept
+  // as its own state so the first-run coaching panel (chapter 1) can
+  // surface it immediately instead of burying it in a text blob.
+  const [reviewFocusResult, setReviewFocusResult] = useState<{
+    focus: string;
+    asked: string;
+    evidence: string;
+    nextStep: string;
+    insufficientEvidence?: boolean;
+    concise: string;
+  } | null>(null);
   const [cardFacts, setCardFacts] = useState<Record<string, CardFact>>({});
   const [hoveredCard, setHoveredCard] = useState("");
   const [inspectedCard, setInspectedCard] = useState("");
@@ -3317,7 +3332,14 @@ export default function Home() {
     generationId?: string;
     importWarnings?: { unresolvedNames: string[]; illegalNames: string[] };
     claimToken?: string;
-    reviewFocusResult?: { focus: string; concise: string } | null;
+    reviewFocusResult?: {
+      focus: string;
+      asked: string;
+      evidence: string;
+      nextStep: string;
+      insufficientEvidence?: boolean;
+      concise: string;
+    } | null;
   }> {
     if (guestMode && !turnstileToken) throw new Error("Complete the human verification before striking the Forge");
     const response = await fetch(guestMode ? "/api/forge/guest-generate" : "/api/forge/generate", {
@@ -3462,6 +3484,7 @@ export default function Home() {
     setForgeReply("");
     setForgeGenerationError("");
     setImportWarnings([]);
+    setReviewFocusResult(null);
     setConsideringCards([]);
     setRemovedCards([]);
     setReplacementRecommendations([]);
@@ -3527,6 +3550,7 @@ export default function Home() {
           ...(importWarnings?.unresolvedNames || []).map((name) => `"${name}" could not be verified and was left out.`),
           ...(importWarnings?.illegalNames || []).map((name) => `"${name}" is not legal in ${format} and was left out.`),
         ]);
+        setReviewFocusResult(reviewFocusResult || null);
         await applyForgeResult(nativeReport, {
           generationId,
           work: directWork,
@@ -3630,6 +3654,7 @@ export default function Home() {
     setForgeReply("");
     setSwapFlourish(null);
     setImportWarnings([]);
+    setReviewFocusResult(null);
     setBenchStatus("testing");
     setOpeningExperimentPending(false);
     setOpeningExperimentFocus("");
@@ -5625,6 +5650,40 @@ export default function Home() {
                   <b>{strategy}</b>
                 </span>
               </section>
+              {hasValidatedDeck && (
+              <section className="first-run-coaching" aria-label="MetaForge's first read on this deck">
+                <header>
+                  <small>METAFORGE'S FIRST READ</small>
+                  <h2>What stood out, and what to watch for.</h2>
+                </header>
+                <div>
+                  <span>
+                    <small>WHAT STOOD OUT FIRST</small>
+                    <b>
+                      {structuralAnalysisStatus === "loading" && !structuralReportReady
+                        ? "Analyzing this build's structure…"
+                        : forgeSystemsReport.strongestSystem?.name || "No single repeatable system stood out yet — every card is doing its own job."}
+                    </b>
+                  </span>
+                  {reviewFocusResult ? (
+                    <span>
+                      <small>YOU ASKED — {reviewFocusResult.focus.toUpperCase()}</small>
+                      <b>{reviewFocusResult.evidence}</b>
+                      <em>{reviewFocusResult.nextStep}</em>
+                    </span>
+                  ) : (
+                    <span>
+                      <small>WATCH FOR THIS NEXT GAME</small>
+                      <b>
+                        {structuralAnalysisStatus === "loading" && !structuralReportReady
+                          ? "Still resolving"
+                          : forgeSystemsReport.weakestSystem?.name || simulationDossier?.matrix.weakest?.opponent || "Play a game and record the result — that's the fastest way to find one."}
+                      </b>
+                    </span>
+                  )}
+                </div>
+              </section>
+              )}
               {nativeMasterworkContext?.practicalTiebreak?.overridden && (
                 <span className="slot-justification">
                   <small>PRACTICAL SIMULATION SETTLED A CLOSE CALL</small>
