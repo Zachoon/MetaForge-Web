@@ -12,8 +12,16 @@ const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8")
 // would have left the same first-impression problem mostly intact) ---
 
 test("the entrance sub-headline no longer opens with a Commander-only imperative", () => {
-  assert.match(page, /Choose your format and game plan\. MetaForge builds the/);
+  assert.match(page, /Choose your format and game plan\. MetaForge/);
   assert.doesNotMatch(page, /Choose a commander and how you want to play/);
+});
+
+test("the entrance sub-headline describes what MetaForge helps the player do, not a 'builds the deck for you' generator claim", () => {
+  assert.match(
+    page,
+    /Choose your format and game plan\. MetaForge explains how your\s*\n\s*deck works, shows what to improve, and helps you make\s*\n\s*confident changes\./,
+  );
+  assert.doesNotMatch(page, /MetaForge builds the\s*\n\s*full, legal deck first/);
 });
 
 test("the entrance visual badge reflects a multi-format deck coach, not a Commander-only claim", () => {
@@ -31,8 +39,12 @@ test("the entrance Build card no longer claims MetaForge only builds Commander d
 });
 
 test("the entrance Build card's supporting copy is format-neutral", () => {
-  assert.match(page, /description="Choose a format and strategy\. Build around a real game plan\."/);
+  assert.match(page, /description="Choose a format and strategy\. Shape a deck around a real game plan\."/);
   assert.doesNotMatch(page, /description="Pick your commander and strategy\. Get a complete deck\."/);
+  // "Build around" was itself a subtle generator-first implication —
+  // "Shape a deck around" keeps MetaForge as the thing helping the player
+  // shape it, not the thing producing it for them.
+  assert.doesNotMatch(page, /description="Choose a format and strategy\. Build around a real game plan\."/);
   // The CTA itself was explicitly out of scope for this batch.
   assert.match(page, /cta="Build my deck →"/);
 });

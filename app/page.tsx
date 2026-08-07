@@ -4750,15 +4750,15 @@ export default function Home() {
               <em>Build with confidence.</em>
             </h1>
             <p>
-              Choose your format and game plan. MetaForge builds the
-              full, legal deck first—then explains every choice and helps you
-              improve it one change at a time.
+              Choose your format and game plan. MetaForge explains how your
+              deck works, shows what to improve, and helps you make
+              confident changes.
             </p>
             <div className="entrance-actions">
               <ForgeCommissionCard
                 eyebrow="START HERE"
                 title="Build a deck"
-                description="Choose a format and strategy. Build around a real game plan."
+                description="Choose a format and strategy. Shape a deck around a real game plan."
                 cta="Build my deck →"
                 tone="ember"
                 motionMode={motionMode}

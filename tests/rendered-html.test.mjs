@@ -20,7 +20,7 @@ test("server-renders the MetaForge product experience", async () => {
   assert.match(html, /<title>MetaForge — Forge a Better Deck<\/title>/i);
   assert.match(html, /MAGIC: THE GATHERING · DECK COACH/);
   assert.match(html, /Understand your deck/);
-  assert.match(html, /MetaForge builds the full, legal deck first/);
+  assert.match(html, /MetaForge explains how your\s*\n?\s*deck works, shows what to improve, and helps you make\s*\n?\s*confident changes\./);
   assert.match(html, /class="forge-brand-logo"[^>]+src="\/assets\/brand\/metaforge-mf-anvil\.webp"/i);
   assert.doesNotMatch(html, /<i>MF<\/i>/i);
   assert.match(html, /<meta name="impact-site-verification" value="05208696-7452-434e-89b1-d6be551c7505">/i);
