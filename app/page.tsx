@@ -1020,6 +1020,19 @@ const cardImage = (name: string) =>
   `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=normal`;
 const isCommanderFormat = (format: string) =>
   ["Commander", "Brawl", "Standard Brawl"].includes(format);
+// The commission chamber's own copy must never claim every format needs a
+// commander — only the singleton, commander-led formats isCommanderFormat
+// already recognizes actually do. Small lookups, not scattered inline
+// ternaries, so every commander-vs-format string branches off the exact
+// same real predicate.
+const commissionHeadingFor = (format: string) =>
+  isCommanderFormat(format)
+    ? "Choose your commander and game plan."
+    : "Choose your format and game plan.";
+const buildStepLabelsFor = (format: string) =>
+  isCommanderFormat(format)
+    ? ["Commander", "Strategy", "Preferences"]
+    : ["Format", "Strategy", "Preferences"];
 const targetDeckSize = (format: string) =>
   format === "Commander" || format === "Brawl"
     ? 100
@@ -4737,15 +4750,15 @@ export default function Home() {
               <em>Build with confidence.</em>
             </h1>
             <p>
-              Choose a commander and how you want to play. MetaForge builds the
+              Choose your format and game plan. MetaForge builds the
               full, legal deck first—then explains every choice and helps you
               improve it one change at a time.
             </p>
             <div className="entrance-actions">
               <ForgeCommissionCard
                 eyebrow="START HERE"
-                title="Build a Commander deck"
-                description="Pick your commander and strategy. Get a complete deck."
+                title="Build a deck"
+                description="Choose a format and strategy. Build around a real game plan."
                 cta="Build my deck →"
                 tone="ember"
                 motionMode={motionMode}
@@ -4801,7 +4814,7 @@ export default function Home() {
               <b />
             </div>
             <p>
-              BUILT FOR COMMANDER PLAYERS
+              A DECK COACH FOR EVERY FORMAT
               <small>Complete deck first. Clear reasons second.</small>
             </p>
           </div>
@@ -4890,7 +4903,7 @@ export default function Home() {
             </span>
             <h1>
               {chamber === "commission"
-                ? "Choose your commander and game plan."
+                ? commissionHeadingFor(format)
                 : "Paste the deck you want to improve."}
             </h1>
             <p>
@@ -4902,7 +4915,7 @@ export default function Home() {
           <div className={`commission-scroll build-step-${buildStep}`}>
             {chamber === "commission" && (
               <nav className="build-stepper" aria-label="Deck setup progress">
-                {["Commander", "Strategy", "Preferences"].map((label, index) => (
+                {buildStepLabelsFor(format).map((label, index) => (
                   <button type="button" key={label} className={buildStep === index ? "current" : buildStep > index ? "complete" : ""} aria-current={buildStep === index ? "step" : undefined} disabled={index > buildStep} onClick={() => index < buildStep && setBuildStep(index as 0 | 1 | 2)}>
                     <i>{buildStep > index ? "✓" : index + 1}</i><span>{label}</span>
                   </button>

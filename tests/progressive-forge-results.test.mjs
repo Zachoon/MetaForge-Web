@@ -60,7 +60,9 @@ test("reveals a complete deck immediately after the forge ceremony", () => {
 test("turns new-deck setup into three progressively disclosed decisions", () => {
   assert.match(page, /useState<0 \| 1 \| 2>\(0\)/);
   assert.match(page, /aria-label="Deck setup progress"/);
+  assert.match(page, /buildStepLabelsFor\(format\)\.map/);
   assert.match(page, /\["Commander", "Strategy", "Preferences"\]/);
+  assert.match(page, /\["Format", "Strategy", "Preferences"\]/);
   assert.match(page, /Next · Choose strategy →/);
   assert.match(page, /Next · Optional preferences →/);
   assert.match(page, /buildStep === 0 && isCommanderFormat\(format\) && !selectedCommander/);
