@@ -20,6 +20,7 @@ const ACADEMY_GUIDE_ENTRIES = Object.freeze({
   "cast-spells": Object.freeze({ chamber: "refine", reviewFocus: "More consistency" }),
   "out-of-cards": Object.freeze({ chamber: "refine" }),
   "starts-slow": Object.freeze({ chamber: "refine", reviewFocus: "Faster starts" }),
+  "enough-interaction": Object.freeze({ chamber: "refine", reviewFocus: "Better interaction" }),
 });
 
 for (const [key, entry] of Object.entries(ACADEMY_GUIDE_ENTRIES)) {

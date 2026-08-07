@@ -31,6 +31,16 @@ const GUIDES = [
     title: "Why Does My Deck Start So Slowly?",
     description: "Four separate causes feel identical at the table — here's how to tell which one is actually yours.",
   },
+  {
+    href: "/academy/how-much-interaction-do-i-actually-need",
+    // Same phrasing as the "Better interaction" review-focus chip
+    // (review-focus.mjs's REVIEW_FOCUS_LABELS) — a deliberate echo, not a
+    // coincidence: the same question shows up in the same words whether a
+    // player meets it here or already mid-session.
+    thought: "I never seem to have the right answer.",
+    title: "How Much Interaction Do I Actually Need?",
+    description: "Too little and you get run over. Too much and you never do anything of your own — here's how to tell which side you're on.",
+  },
 ];
 
 export default function AcademyIndex() {
