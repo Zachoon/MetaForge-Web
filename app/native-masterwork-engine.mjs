@@ -2097,6 +2097,17 @@ function budgetDiagnosticsFor(candidate, input) {
   };
 }
 
+// The six roles roleTargets/hardGate actually track and enforce a floor
+// for. Every other classifyNativeCard tag (threat, counters, artifacts,
+// combat, graveyard, tokens, selection, spells, lifegain...) is real and
+// meaningful elsewhere (structural analysis, tribal synergy) but carries
+// no construction-time floor of its own — "threat" in particular applies
+// to nearly any real creature. Treating those as valid "same slot"
+// evidence let one broadly-tagged, high-scoring card get flagged as the
+// substitute for a dozen unrelated offenders in the first real-generation
+// audit pass. Only these six count as a load-bearing slot to protect.
+const TRACKED_LOAD_BEARING_ROLES = ["ramp", "draw", "interaction", "protection", "recursion", "sweeper"];
+
 // Phase 2A: budget substitution diagnostic — server-side/dev observability
 // only, not wired into any player-facing report yet. The land fix (Phase 1)
 // showed that a real preference term can exist and still lose every
@@ -2140,68 +2151,116 @@ export function auditBudgetSubstitutions(input, options = {}) {
     const entry = analyzedByName.get(key);
     const own = scoredByName.get(key);
     const roles = entry.roles.filter((role) => role !== "land");
+    const trackedRoles = roles.filter((role) => TRACKED_LOAD_BEARING_ROLES.includes(role));
+    // A "luxury" card holds down no load-bearing role at all — it's in
+    // the deck for some other reason (raw power, synergy, a pet card),
+    // not to satisfy a counted construction requirement. It gets the
+    // fallback rule below instead of a role-matched comparison, since
+    // there is no role floor of its own to hold it to a like-for-like
+    // substitute.
+    const isLuxuryCard = trackedRoles.length === 0;
 
-    // Same slot/role context: shares at least one real role, actually
-    // cheaper, legal, and not already at its copy limit.
-    const alternatives = scored.filter(({ entry: candidateEntry }) => {
-      const candidateKey = normalized(candidateEntry.card.name);
-      if (candidateKey === key || !spellNames.has(candidateKey)) return false;
-      if (!Number.isFinite(candidateEntry.card.priceUsd) || candidateEntry.card.priceUsd >= entry.card.priceUsd) return false;
-      if ((quantityByName.get(candidateKey) || 0) >= copyLimit) return false;
-      return roles.some((role) => candidateEntry.roles.includes(role));
-    });
-    let best = null;
-    for (const option of alternatives) {
-      if (!best || option.scored.score > best.scored.score) best = option;
-    }
+    const cheaperAndLegal = (candidateEntry, candidateKey) =>
+      candidateKey !== key &&
+      spellNames.has(candidateKey) &&
+      Number.isFinite(candidateEntry.card.priceUsd) &&
+      candidateEntry.card.priceUsd < entry.card.priceUsd &&
+      (quantityByName.get(candidateKey) || 0) < copyLimit;
 
-    let hardGateImpact = "no cheaper legal alternative in this role context";
-    let scoreDifference = null;
-    let alternative = null;
-    if (best) {
-      const bestKey = normalized(best.entry.card.name);
+    // Tracked-role cards: only a card sharing one of ITS tracked roles is
+    // a fair "same slot" comparison. Luxury cards: no role requirement —
+    // the fallback rule (below) does the real filtering instead.
+    const pool = scored
+      .filter(({ entry: candidateEntry }) => {
+        const candidateKey = normalized(candidateEntry.card.name);
+        if (!cheaperAndLegal(candidateEntry, candidateKey)) return false;
+        return isLuxuryCard || trackedRoles.some((role) => candidateEntry.roles.includes(role));
+      })
+      .sort((a, b) => b.scored.score - a.scored.score);
+
+    // Simulates cutting `row` for `option` and reports both the
+    // load-bearing-floor/hard-gate impact and how the swap moves the
+    // deck's own overall evaluateCandidate score (used only by the
+    // luxury fallback below).
+    const evaluateSwap = (option) => {
+      const optionKey = normalized(option.entry.card.name);
       const trialRoleCounts = new Map(roleCounts);
       for (const role of entry.roles) trialRoleCounts.set(role, (trialRoleCounts.get(role) || 0) - 1);
-      for (const role of best.entry.roles) trialRoleCounts.set(role, (trialRoleCounts.get(role) || 0) + 1);
-      const alreadyPresent = quantityByName.has(bestKey);
+      for (const role of option.entry.roles) trialRoleCounts.set(role, (trialRoleCounts.get(role) || 0) + 1);
+      const alreadyPresent = quantityByName.has(optionKey);
       const trialRows = candidate.rows
         .map((r) => {
           const rKey = normalized(r.name);
           if (rKey === key) return { ...r, quantity: r.quantity - 1 };
-          if (alreadyPresent && rKey === bestKey) return { ...r, quantity: r.quantity + 1 };
+          if (alreadyPresent && rKey === optionKey) return { ...r, quantity: r.quantity + 1 };
           return r;
         })
         .filter((r) => r.quantity > 0);
       if (!alreadyPresent) {
-        trialRows.push({ name: best.entry.card.name, quantity: 1, roles: best.entry.roles, cmc: best.entry.cmc, colorPips: best.entry.colorPips });
+        trialRows.push({ name: option.entry.card.name, quantity: 1, roles: option.entry.roles, cmc: option.entry.cmc, colorPips: option.entry.colorPips });
       }
       const trialEvaluation = evaluateCandidate(trialRows, trialRoleCounts, input, variant);
       const brokenRole = Object.entries(targets).find(
         ([role, target]) => (roleCounts.get(role) || 0) >= target && (trialRoleCounts.get(role) || 0) < target,
       );
-      hardGateImpact = brokenRole
+      const hardGateImpact = brokenRole
         ? `role floor: ${brokenRole[0]} would fall below ${brokenRole[1]}`
         : trialEvaluation.roleCoverage < 0.45
           ? "structural gate: role coverage would fall below the 45% floor"
           : trialEvaluation.curveHealth < 45
             ? "structural gate: curve health would fall below the 45/100 floor"
             : "none";
-      scoreDifference = Number((own.scored.score - best.scored.score).toFixed(2));
-      alternative = { name: best.entry.card.name, priceUsd: best.entry.card.priceUsd, score: Number(best.scored.score.toFixed(2)) };
+      return { hardGateImpact, deckScoreDelta: trialEvaluation.score - candidate.evaluation.score };
+    };
+
+    let best = null;
+    let hardGateImpact;
+    if (!pool.length) {
+      hardGateImpact = isLuxuryCard
+        ? "no cheaper legal alternative exists"
+        : "no cheaper legal alternative shares a tracked load-bearing role";
+    } else if (isLuxuryCard) {
+      // Walk cheapest-restriction-free candidates best-score-first; the
+      // first one that doesn't cost the deck's own overall score or trip
+      // a hard-gate/role-floor metric is the fallback rule's answer. A
+      // luxury card has nothing of its own to defend, so a candidate that
+      // WOULD regress the deck isn't a fair swap and is skipped, not
+      // reported.
+      for (const option of pool) {
+        const swap = evaluateSwap(option);
+        if (swap.hardGateImpact === "none" && swap.deckScoreDelta >= 0) { best = option; hardGateImpact = "none"; break; }
+      }
+      if (!best) hardGateImpact = "no cheaper legal alternative preserves this deck's overall score without breaking a hard-gate metric";
+    } else {
+      best = pool[0];
+      hardGateImpact = evaluateSwap(best).hardGateImpact;
     }
+
+    const compatibleAlternatives = pool.slice(0, 5).map((option) => ({
+      name: option.entry.card.name,
+      priceUsd: option.entry.card.priceUsd,
+      score: Number(option.scored.score.toFixed(2)),
+    }));
+    const alternative = best
+      ? { name: best.entry.card.name, priceUsd: best.entry.card.priceUsd, score: Number(best.scored.score.toFixed(2)) }
+      : null;
+    const scoreDifference = best ? Number((own.scored.score - best.scored.score).toFixed(2)) : null;
 
     return {
       name: row.name,
       priceUsd: entry.card.priceUsd,
       roles,
+      trackedRoles,
+      luxuryCard: isLuxuryCard,
       score: Number(own.scored.score.toFixed(2)),
       budgetContribution: Number(entry.budgetScore.toFixed(2)),
       alternative,
+      compatibleAlternatives,
       priceDifferenceUsd: alternative ? Number((entry.card.priceUsd - alternative.priceUsd).toFixed(2)) : null,
       scoreDifference,
       hardGateImpact,
       conclusion: !alternative
-        ? "no cheaper legal alternative exists for this role context"
+        ? hardGateImpact
         : hardGateImpact !== "none"
           ? "expensive inclusion has a structural justification"
           : "budget preference is being ignored relative to a small structural gain",
