@@ -271,3 +271,22 @@ test("preserves match evidence on its exact revision", () => {
   );
   assert.match(page, /family\.revisions\.flatMap/);
 });
+
+// P0 follow-up: multiple production failure videos showed the floating
+// "YOUR BENCH" launcher (aside.bench-dock, gated only on chamber !==
+// "forging" — mounted during a workbench-stage failure too) reading
+// "Ready for your first Masterwork" at the exact moment the main panel
+// said "No deck was completed." Neither claim was individually false (the
+// bench is about the player's saved-deck ARCHIVE, unrelated to the current
+// attempt) but shown together they read as contradictory chrome. Only the
+// invitation language is suppressed during a failure — the rest of the
+// panel (saved-deck navigation, "Start a New Forge") stays available.
+test("the floating Bench launcher never invites 'Ready for your first Masterwork' while the current attempt just failed", () => {
+  const handleBlock = page.match(/<div className="bench-handle">[\s\S]*?<\/button>\s*<\/div>/)?.[0];
+  assert.ok(handleBlock, "expected to find the bench-handle launcher JSX");
+  assert.match(
+    handleBlock,
+    /forgeGenerationError[\s\S]*?\? "Nothing preserved yet"\s*\n\s*: "Ready for your first Masterwork"/,
+    "the empty-archive invitation must be suppressed specifically while forgeGenerationError is set",
+  );
+});

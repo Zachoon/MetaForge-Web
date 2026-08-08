@@ -7881,7 +7881,19 @@ export default function Home() {
                 <b>
                   {savedMasterworks.length
                     ? `${savedMasterworks.length} Masterwork${savedMasterworks.length === 1 ? "" : "s"} preserved`
-                    : "Ready for your first Masterwork"}
+                    : forgeGenerationError
+                      // This floating launcher is always mounted (gated only on
+                      // chamber !== "forging"), independent of whether the
+                      // current attempt succeeded — so an empty archive used to
+                      // say "Ready for your first Masterwork" even while the
+                      // main panel displayed "No deck was completed" right next
+                      // to it. Neither claim was individually false, but shown
+                      // together they read as contradictory chrome. Only the
+                      // invitation language is suppressed here; the rest of the
+                      // panel (saved-deck navigation, "Start a New Forge") stays
+                      // fully available during a failure.
+                      ? "Nothing preserved yet"
+                      : "Ready for your first Masterwork"}
                 </b>
               </span>
               <em>{benchOpen ? "Lower the Bench" : "Raise the Bench"}</em>

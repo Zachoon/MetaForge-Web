@@ -1,6 +1,6 @@
 import { userKey } from "./account-bench";
 import { checkRateLimit, readJsonWithLimit } from "./api-hardening";
-import { generateForgeResult } from "./forge-generate";
+import { generateForgeResult, type ForgeGenerationResult } from "./forge-generate";
 import { loadGeneration, storeGeneration } from "./forge-generation-store";
 
 interface Env {
@@ -85,6 +85,56 @@ const NETWORK_RATE_WINDOW_MS = 24 * 60 * 60 * 1000;
 // drastically shorter than the 24h TTL a stuck 'pending' row used to
 // block a guest for — see the reclaim logic below.
 const PENDING_SESSION_LEASE_MS = 3 * 60 * 1000;
+
+// A traced production incident found generateForgeResult's full body can
+// reach ~2.3MB — dominated by nativeReport.structuralAnalysis (~79%) and
+// the outer cardPool (~16%) — and that persisting the WHOLE thing into
+// guest_forges.response_json hit D1's hard per-value limit with
+// SQLITE_TOOBIG, discarding an otherwise-successful generation. A full
+// audit of every client/claim/account/one-slot/multi-refill read site
+// confirmed structuralAnalysis is never read from this payload by
+// anyone — the client's own structural-analysis UI makes an independent
+// authenticated request instead, which guests never even reach — and the
+// outer cardPool is assigned to state but never read back. Both are
+// already fully served elsewhere (forge_generations, or Scryfall directly)
+// for the flows that actually need them. This function keeps only what
+// the masterworks picker, workbench, and claim-restoration UI genuinely
+// render, matching the field-by-field trace in the P0 finalization report.
+//
+// The immediate browser response (clientBody, below) is intentionally left
+// untouched by this hotfix — buildClientForgePayload is a pass-through, a
+// named seam for a future lazy-loaded-structural-analysis change, not a
+// behavior change today. Only what gets WRITTEN to D1 shrinks.
+function buildClientForgePayload(body: Record<string, unknown>): Record<string, unknown> {
+  return body;
+}
+
+function buildGuestClaimPayload(body: Record<string, unknown>): Record<string, unknown> {
+  const nativeReport = (body.nativeReport || {}) as Record<string, unknown>;
+  const compactReport: Record<string, unknown> = {};
+  for (const field of [
+    "selected", "candidates", "tournament", "practicalTiebreak", "reasoning",
+    "laboratory", "powerSignal", "powerAudit", "recommendationRecord",
+    "manaConsistency", "unusedEnginePartners", "methodology",
+  ]) {
+    if (field in nativeReport) compactReport[field] = nativeReport[field];
+  }
+  const claimPayload: Record<string, unknown> = { nativeReport: compactReport };
+  // Only present for the imported/refine path; harmless to omit otherwise.
+  if ("importWarnings" in body) claimPayload.importWarnings = body.importWarnings;
+  if ("reviewFocusResult" in body) claimPayload.reviewFocusResult = body.reviewFocusResult;
+  return claimPayload;
+}
+
+// Comfortably below D1's actual hard limit (which is what produced
+// SQLITE_TOOBIG in the first place) — the compact payload above measures
+// well under 200KB in production-equivalent testing, so 500KB gives ~2.5x
+// headroom for format/candidate-count variance while still catching any
+// future accidental re-bloat (e.g. a field added back to the compact list
+// without checking its size) long before it could ever hit D1's real
+// ceiling again. The application must be the first validator here, not D1.
+const MAX_CLAIM_PAYLOAD_BYTES = 500_000;
+const byteLength = (value: string): number => new TextEncoder().encode(value).length;
 
 // Non-PII structured logging so a support/observability pass can tell
 // which gate actually fired without reproducing it by hand — never the
@@ -195,6 +245,26 @@ export async function handleGuestForge(request: Request, env: Env): Promise<Resp
   }
   const gate_ms = Date.now() - gateStart;
 
+  // Declared outside the try so the outer catch (below) can still report
+  // generation.timing when the failure happens AFTER generateForgeResult
+  // already succeeded — the exact gap the live production trace exposed:
+  // that catch's log used to carry only gate_ms/total_ms, even though
+  // catalog/generation/validation had already completed and their timing
+  // was sitting right there in scope, just not included in the log call.
+  let generation: ForgeGenerationResult | undefined;
+  const timingFields = () => {
+    const t = generation?.timing;
+    return {
+      catalog_ms: t?.catalogMs ?? null,
+      generation_ms: t?.generationMs ?? null,
+      validation_ms: t?.validationMs ?? null,
+      persistence_ms: t?.persistenceMs ?? null,
+      scryfall_request_count: t?.scryfallRequestCount ?? null,
+      candidate_count: t?.candidateCount ?? null,
+      target_size: t?.targetSize ?? null,
+    };
+  };
+
   try {
     const forgeBody = { ...body };
     delete forgeBody.turnstileToken;
@@ -210,8 +280,7 @@ export async function handleGuestForge(request: Request, env: Env): Promise<Resp
     // same isolate: a full parse of the single largest object in the
     // request, for no reason beyond the old function signature. Using the
     // object directly removes that parse entirely.
-    const generation = await generateForgeResult(internalRequest, env, guestKey);
-    const t = generation.timing;
+    generation = await generateForgeResult(internalRequest, env, guestKey);
     if (generation.status !== 200) {
       await env.DB.prepare(`DELETE FROM guest_forge_sessions WHERE session_key = ? AND status = 'pending'`).bind(session.id).run();
       logGuestGateEvent({
@@ -221,13 +290,7 @@ export async function handleGuestForge(request: Request, env: Env): Promise<Resp
         status: generation.status,
         code: typeof generation.body.code === "string" ? generation.body.code : null,
         gate_ms,
-        catalog_ms: t.catalogMs,
-        generation_ms: t.generationMs,
-        validation_ms: t.validationMs,
-        persistence_ms: t.persistenceMs,
-        scryfall_request_count: t.scryfallRequestCount,
-        candidate_count: t.candidateCount,
-        target_size: t.targetSize,
+        ...timingFields(),
         total_ms: Date.now() - totalStart,
       });
       return json(generation.body, generation.status);
@@ -236,31 +299,55 @@ export async function handleGuestForge(request: Request, env: Env): Promise<Resp
     const finalizationStart = Date.now();
     const { generationId, ...storedBody } = generation.body as Record<string, unknown> & { generationId?: unknown };
     const claimToken = crypto.randomUUID();
-    // Stored once, as the exact bytes written to D1 — never reparsed to
-    // build the client response below, since the two shapes deliberately
-    // differ (see the comment on the final return). If nativeReport ever
-    // becomes genuinely non-serializable, JSON.stringify throws here and
-    // falls into this function's own catch below, which already returns
-    // a typed GENERATION_FAILED response — the one real serialization
-    // boundary this now has, in place of the throwaway probe that used
-    // to run inside validateGeneratedResult for no downstream benefit.
-    const storedJson = JSON.stringify(storedBody);
+    // Persisted production trace: a fully successful generation (engine
+    // ran, validated, forge_generations written) still discarded the
+    // player's deck here, because storedBody — the FULL response,
+    // dominated by nativeReport.structuralAnalysis — exceeded D1's
+    // per-value limit and INSERT threw SQLITE_TOOBIG. A field-by-field
+    // audit confirmed structuralAnalysis (and the outer cardPool) are
+    // never read by any guest/claim/account/one-slot/multi-refill code
+    // path, so buildGuestClaimPayload keeps only what those surfaces
+    // actually render — see its own comment for the full trace summary.
+    // D1 must never be the first thing to notice an oversized payload
+    // again, so the size check below runs before any write is attempted.
+    const claimBody = buildGuestClaimPayload(storedBody);
+    const claimJson = JSON.stringify(claimBody);
+    const claim_payload_bytes = byteLength(claimJson);
+    if (claim_payload_bytes > MAX_CLAIM_PAYLOAD_BYTES) {
+      await env.DB.prepare(`DELETE FROM guest_forge_sessions WHERE session_key = ? AND status = 'pending'`).bind(session.id).run();
+      logGuestGateEvent({
+        outcome: "claim_payload_too_large",
+        hadGuestCookie,
+        reclaimedStaleLease,
+        status: 500,
+        code: "GENERATION_FAILED",
+        gate_ms,
+        ...timingFields(),
+        finalization_ms: Date.now() - finalizationStart,
+        total_ms: Date.now() - totalStart,
+        claim_payload_bytes,
+      });
+      console.error("guest forge claim payload exceeded the application size ceiling", { claim_payload_bytes, ceiling: MAX_CLAIM_PAYLOAD_BYTES });
+      return json({ error: "The Forge could not complete this preview. Please try again.", code: "GENERATION_FAILED" }, 500);
+    }
     await env.DB.batch([
       env.DB.prepare(`UPDATE guest_forge_sessions SET status = 'used' WHERE session_key = ? AND status = 'pending'`).bind(session.id),
       env.DB.prepare(
         `INSERT INTO guest_forges (claim_token, session_key, generation_id, response_json, created_at, expires_at)
          VALUES (?, ?, ?, ?, ?, ?)`,
-      ).bind(claimToken, session.id, String(generationId || ""), storedJson, now, now + TTL_MS),
+      ).bind(claimToken, session.id, String(generationId || ""), claimJson, now, now + TTL_MS),
     ]);
-    // The client response carries two fields the stored copy deliberately
-    // omits: claimToken (regenerated fresh on every claim lookup, not
-    // this request's problem to persist) and guestPreview:true (a marker
-    // for THIS response; handleGuestClaim later spreads the stored copy
-    // directly into its own response, and neither field belongs in a
-    // claimed-by-an-account result). Different shape, so it needs its own
-    // stringify — the one genuinely unavoidable serialization boundary,
-    // since it IS the outgoing HTTP body.
-    const clientBody = { ...storedBody, claimToken, guestPreview: true };
+    // The browser response stays the FULL body (buildClientForgePayload is
+    // a pass-through for this hotfix — see its own comment) plus two
+    // fields the stored copy deliberately omits: claimToken (regenerated
+    // fresh on every claim lookup, not this request's problem to persist)
+    // and guestPreview:true (a marker for THIS response; handleGuestClaim
+    // later spreads the stored copy directly into its own response, and
+    // neither field belongs in a claimed-by-an-account result). This is
+    // now genuinely a different shape from claimBody above, not just a
+    // different set of extra fields on top of the same object — the two
+    // no longer need to be equal, and code must not assume they are.
+    const clientBody = { ...buildClientForgePayload(storedBody), claimToken, guestPreview: true };
     const responseString = JSON.stringify(clientBody);
     const finalization_ms = Date.now() - finalizationStart;
     logGuestGateEvent({
@@ -268,17 +355,12 @@ export async function handleGuestForge(request: Request, env: Env): Promise<Resp
       hadGuestCookie,
       reclaimedStaleLease,
       gate_ms,
-      catalog_ms: t.catalogMs,
-      generation_ms: t.generationMs,
-      validation_ms: t.validationMs,
-      persistence_ms: t.persistenceMs,
+      ...timingFields(),
       finalization_ms,
       total_ms: Date.now() - totalStart,
       response_bytes: responseString.length,
-      scryfall_request_count: t.scryfallRequestCount,
-      candidate_count: t.candidateCount,
-      target_size: t.targetSize,
-      final_size: t.finalSize,
+      claim_payload_bytes,
+      final_size: generation.timing.finalSize,
     });
     return new Response(responseString, {
       status: 200,
@@ -297,6 +379,7 @@ export async function handleGuestForge(request: Request, env: Env): Promise<Resp
       status: 500,
       code: "GENERATION_FAILED",
       gate_ms,
+      ...timingFields(),
       total_ms: Date.now() - totalStart,
     });
     console.error("guest forge failed", error);

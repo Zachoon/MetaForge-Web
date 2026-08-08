@@ -44,26 +44,45 @@ test("regression: the guest path must never call handleForgeGenerateForKey and t
   assert.doesNotMatch(source, /[=(]\s*await handleForgeGenerateForKey\(/, "guest-forge.ts must not call handleForgeGenerateForKey as executable code (a comment may still name it for context)");
   assert.doesNotMatch(source, /import \{[^}]*handleForgeGenerateForKey/, "guest-forge.ts must not import handleForgeGenerateForKey");
   assert.doesNotMatch(source, /const \w+ = await forgeResponse\.json/, "the old parse-what-we-just-built pattern must be gone as executable code");
-  assert.match(source, /import \{ generateForgeResult \} from "\.\/forge-generate"/);
-  assert.match(source, /const generation = await generateForgeResult\(internalRequest, env, guestKey\);/);
+  assert.match(source, /import \{ generateForgeResult, type ForgeGenerationResult \} from "\.\/forge-generate"/);
+  assert.match(source, /generation = await generateForgeResult\(internalRequest, env, guestKey\);/);
 });
 
-test("the guest success path stringifies the stored copy and the client copy exactly once each, and reuses those exact values rather than re-deriving them", async () => {
+test("the guest success path stringifies the compact claim payload and the full client payload exactly once each, and reuses those exact values rather than re-deriving them", async () => {
   const source = await read("worker/guest-forge.ts");
   const successStart = source.indexOf("const finalizationStart = Date.now();");
   const successEnd = source.indexOf("} catch (error) {");
   const block = source.slice(successStart, successEnd);
   assert.ok(block.length > 0, "expected the finalization block");
 
-  const storedStringifies = block.match(/JSON\.stringify\(storedBody\)/g) || [];
-  assert.equal(storedStringifies.length, 1, "storedBody must be stringified exactly once");
+  const claimStringifies = block.match(/JSON\.stringify\(claimBody\)/g) || [];
+  assert.equal(claimStringifies.length, 1, "claimBody must be stringified exactly once");
   const clientStringifies = block.match(/JSON\.stringify\(clientBody\)/g) || [];
   assert.equal(clientStringifies.length, 1, "clientBody must be stringified exactly once");
 
   // The D1 bind and the outgoing Response must both reuse the already-
   // computed strings, not re-stringify inline.
-  assert.match(block, /\.bind\(claimToken, session\.id, String\(generationId \|\| ""\), storedJson,/, "the D1 insert must reuse the storedJson variable, not stringify again inline");
+  assert.match(block, /\.bind\(claimToken, session\.id, String\(generationId \|\| ""\), claimJson,/, "the D1 insert must reuse the claimJson variable, not stringify again inline");
   assert.match(block, /return new Response\(responseString,/, "the outgoing Response must reuse the responseString variable, not stringify again inline");
+});
+
+test("guest_forges persistence goes through buildGuestClaimPayload, never the raw storedBody (the exact source of the SQLITE_TOOBIG production incident)", async () => {
+  const source = await read("worker/guest-forge.ts");
+  assert.match(source, /const claimBody = buildGuestClaimPayload\(storedBody\);/);
+  assert.doesNotMatch(source, /\.bind\(claimToken, session\.id, String\(generationId \|\| ""\), JSON\.stringify\(storedBody\)/, "the full storedBody must never be bound directly into the guest_forges insert again");
+});
+
+test("a size guard runs before any D1 write is attempted, and the ceiling is well below D1's own hard limit", async () => {
+  const source = await read("worker/guest-forge.ts");
+  assert.match(source, /const MAX_CLAIM_PAYLOAD_BYTES = 500_000;/);
+  const guardStart = source.indexOf("const claim_payload_bytes = byteLength(claimJson);");
+  const batchStart = source.indexOf("await env.DB.batch([");
+  assert.ok(guardStart > 0 && batchStart > guardStart, "the size check must run before the D1 batch write, not after");
+  const guardBlock = source.slice(guardStart, batchStart);
+  assert.match(guardBlock, /if \(claim_payload_bytes > MAX_CLAIM_PAYLOAD_BYTES\) \{/);
+  assert.match(guardBlock, /DELETE FROM guest_forge_sessions WHERE session_key = \? AND status = 'pending'/, "an oversized claim payload must still release the reservation");
+  assert.match(guardBlock, /code: "GENERATION_FAILED"/);
+  assert.doesNotMatch(guardBlock, /env\.DB\.batch\(/, "no D1 write may occur inside the oversized-payload branch");
 });
 
 test("validateGeneratedResult no longer runs a throwaway full-object serializability probe", async () => {
@@ -85,6 +104,11 @@ class FinalizationD1 {
   forges = new Map();
   generations = new Map();
   buckets = new Map();
+  // unset by default (real D1's actual limit is comfortably above anything
+  // this test suite ever writes); a test can set this low to simulate D1
+  // itself rejecting an oversized bind as a genuine backstop check,
+  // independent of the application-level MAX_CLAIM_PAYLOAD_BYTES guard.
+  sqliteTooBigThreshold = Infinity;
   prepare(sql) {
     const db = this;
     return {
@@ -104,6 +128,18 @@ class FinalizationD1 {
                 .filter(([, row]) => row.sessionKey === sessionKey && row.claimedBy === null)
                 .sort((a, b) => b[1].createdAt - a[1].createdAt)[0];
               return match ? { claim_token: match[0] } : null;
+            }
+            if (sql.includes("SELECT session_key, generation_id, response_json, expires_at, claimed_by FROM guest_forges")) {
+              const [claimToken] = values;
+              const row = db.forges.get(claimToken);
+              if (!row) return null;
+              return { session_key: row.sessionKey, generation_id: row.generationId, response_json: row.responseJson, expires_at: row.expiresAt, claimed_by: row.claimedBy };
+            }
+            if (sql.includes("SELECT user_key, schema_version, payload_json, expires_at FROM forge_generations")) {
+              const [generationId] = values;
+              const row = db.generations.get(generationId);
+              if (!row) return null;
+              return { user_key: row.userKey, schema_version: row.schemaVersion, payload_json: row.payloadJson, expires_at: row.expiresAt };
             }
             return null;
           },
@@ -137,13 +173,26 @@ class FinalizationD1 {
             }
             if (sql.includes("INSERT INTO guest_forges")) {
               const [claimToken, sessionKey, generationId, responseJson, createdAt, expiresAt] = values;
+              if (Buffer.byteLength(responseJson, "utf8") > db.sqliteTooBigThreshold) {
+                throw new Error("D1_ERROR: string or blob too big: SQLITE_TOOBIG");
+              }
               db.forges.set(claimToken, { sessionKey, generationId, responseJson, createdAt, expiresAt, claimedBy: null });
               return { success: true, meta: { changes: 1 } };
             }
             if (sql.includes("INSERT INTO forge_generations")) {
-              const [generationId] = values;
-              db.generations.set(generationId, true);
+              const [generationId, userKey, schemaVersion, payloadJson, expiresAt] = values;
+              db.generations.set(generationId, { userKey, schemaVersion, payloadJson, expiresAt });
               return { success: true, meta: { changes: 1 } };
+            }
+            if (sql.includes("UPDATE guest_forges SET claimed_by")) {
+              const [claimedBy, claimedAt, claimToken, notExpiredBefore] = values;
+              const row = db.forges.get(claimToken);
+              if (row && row.claimedBy === null && row.expiresAt >= notExpiredBefore) {
+                row.claimedBy = claimedBy;
+                row.claimedAt = claimedAt;
+                return { success: true, meta: { changes: 1 } };
+              }
+              return { success: true, meta: { changes: 0 } };
             }
             return { success: true, meta: { changes: 0 } };
           },
@@ -152,10 +201,30 @@ class FinalizationD1 {
       },
     };
   }
+  // Real D1 batches run inside a single transaction — if any statement
+  // throws, none of them commit. The production incident's own D1 read
+  // (the orphaned session was still 'pending', never 'used', after the
+  // SQLITE_TOOBIG failure) already proved this atomicity holds for real;
+  // this double must model it too, or a test could pass here for a reason
+  // that isn't actually true in production. Snapshot-and-restore is a
+  // reasonably faithful stand-in for a real ROLLBACK, cheap enough for a
+  // Map-backed double this small.
   async batch(statements) {
-    const results = [];
-    for (const s of statements) results.push(await s.run());
-    return results;
+    const snapshot = {
+      sessions: new Map([...this.sessions].map(([k, v]) => [k, { ...v }])),
+      forges: new Map([...this.forges].map(([k, v]) => [k, { ...v }])),
+      generations: new Map([...this.generations].map(([k, v]) => [k, { ...v }])),
+    };
+    try {
+      const results = [];
+      for (const s of statements) results.push(await s.run());
+      return results;
+    } catch (error) {
+      this.sessions = snapshot.sessions;
+      this.forges = snapshot.forges;
+      this.generations = snapshot.generations;
+      throw error;
+    }
   }
 }
 
@@ -174,6 +243,12 @@ const guestEnv = (DB) => ({
   TURNSTILE_SECRET_KEY: "finalization-test-turnstile-secret",
   GUEST_SESSION_SECRET: GUEST_SECRET,
 });
+// Same dev-auth-bypass convention tests/forge-generate-response-contract
+// .test.mjs already established for exercising authenticated endpoints
+// without a real Cloudflare Access identity — worker/account-bench.ts's
+// userKey() honors it via verifyAccessIdentity.
+const accountEnv = (DB) => ({ ...guestEnv(DB), ALLOW_DEV_AUTH_BYPASS: "true" });
+const authHeaders = (email) => ({ "x-dev-user-email": email });
 
 async function signGuestCookie(secret, id) {
   const enc = new TextEncoder();
@@ -193,6 +268,13 @@ const guestRequest = (cookie, { ip = "198.51.100.50", ua = "finalization-test-ag
       ...(cookie ? { cookie: `mf_guest=${cookie}` } : {}),
     },
     body: JSON.stringify({ turnstileToken: "finalization-test-token-0123456789", mode: "imported", format: "Standard", strategy: "Balanced midrange", deck: "4 Flow 0\n4 Answer 0\n20 Island" }),
+  });
+
+const claimRequest = (claimToken, email) =>
+  new Request("https://example.test/api/account/claim-guest", {
+    method: "POST",
+    headers: { "content-type": "application/json", ...authHeaders(email) },
+    body: JSON.stringify({ claimToken }),
   });
 
 async function withMockedFetch(scryfallOk, fn) {
@@ -340,7 +422,14 @@ async function withRealGenerationFetch(fn) {
   }
 }
 
-test("the persisted claimable response equals the client response, minus the two fields that are deliberately request-specific (claimToken, guestPreview)", async () => {
+// P0 follow-up: the previous version of this test asserted the persisted
+// D1 copy equals the client response minus claimToken/guestPreview — that
+// equality assumption is exactly what caused the production incident
+// (persisting the full ~2.3MB response, dominated by structuralAnalysis,
+// hit D1's SQLITE_TOOBIG). The compact claim payload is now a genuine
+// SUBSET, not "everything minus two fields" — this test pins the new,
+// correct relationship instead.
+test("the persisted claim payload is a compact subset of the client response — never structuralAnalysis or cardPool, but everything the claim/masterworks UI actually reads", async () => {
   const worker = await loadWorker();
   const db = new FinalizationD1();
 
@@ -354,12 +443,69 @@ test("the persisted claimable response equals the client response, minus the two
   const [stored] = [...db.forges.values()];
   const persisted = JSON.parse(stored.responseJson);
 
-  const { claimToken, guestPreview, ...clientWithoutRequestSpecificFields } = clientData;
-  assert.equal(typeof claimToken, "string");
-  assert.equal(guestPreview, true);
-  assert.deepEqual(persisted, clientWithoutRequestSpecificFields, "the stored copy must match the client response exactly once claimToken/guestPreview are set aside");
+  // The client (browser) response is intentionally left full for this
+  // hotfix — it must still carry every field the current UI renders.
+  assert.equal(typeof clientData.claimToken, "string");
+  assert.equal(clientData.guestPreview, true);
+  assert.ok(clientData.nativeReport, "the client response must still include nativeReport");
+
+  // The persisted copy must never carry request-specific fields, and must
+  // never carry the fields the audit proved are dead weight for every
+  // downstream consumer (claim UI, one-slot/multi-refill, account bench).
   assert.equal("claimToken" in persisted, false, "the stored copy must never itself carry a claimToken — handleGuestClaim spreads this directly into its own response");
   assert.equal("guestPreview" in persisted, false, "the stored copy must never claim guestPreview:true — that marker does not survive a real account claiming the result");
+  assert.equal("cardPool" in persisted, false, "the outer cardPool must never be duplicated into the claim payload — confirmed unread by every claim/account consumer");
+  assert.equal("colors" in persisted, false);
+  assert.equal("structuralAnalysis" in persisted.nativeReport, false, "structuralAnalysis (~79% of the full payload) must never be persisted into guest_forges");
+  assert.equal("engine" in persisted.nativeReport, false);
+  assert.equal("blueprintIntent" in persisted.nativeReport, false);
+  assert.equal("diagnostics" in persisted.nativeReport, false);
+
+  // Everything the masterworks-picker/workbench/claim UI actually reads
+  // must still be present and byte-for-byte equal to what the client got.
+  for (const field of ["selected", "candidates", "tournament", "reasoning", "laboratory", "powerSignal", "powerAudit", "recommendationRecord", "manaConsistency", "unusedEnginePartners", "methodology"]) {
+    assert.deepEqual(persisted.nativeReport[field], clientData.nativeReport[field], `expected ${field} to survive into the compact claim payload unchanged`);
+  }
+
+  const persistedBytes = Buffer.byteLength(stored.responseJson, "utf8");
+  const clientBytes = Buffer.byteLength(JSON.stringify(clientData), "utf8");
+  assert.ok(persistedBytes < clientBytes, "the compact claim payload must be meaningfully smaller than the full client response");
+});
+
+test("no oversized bind is ever attempted: the compact claim payload for a real generation stays far below both the application ceiling and D1's own limit", async () => {
+  const worker = await loadWorker();
+  const db = new FinalizationD1();
+
+  await withRealGenerationFetch(async () => {
+    const response = await worker.fetch(guestRequest(null), guestEnv(db), ctx);
+    assert.equal(response.status, 200);
+  });
+
+  const [stored] = [...db.forges.values()];
+  const bytes = Buffer.byteLength(stored.responseJson, "utf8");
+  assert.ok(bytes < 500_000, `expected the compact claim payload to stay under the 500KB application ceiling, got ${bytes} bytes`);
+});
+
+// This is literally the P0 production incident, reproduced deliberately:
+// D1 rejects an oversized guest_forges write with SQLITE_TOOBIG. Before
+// this fix, that discarded an otherwise-successful generation behind a
+// vague 500. The compact payload keeps this from ever happening in
+// practice (previous test), but D1's own limit is a genuine backstop this
+// code must still survive gracefully if it's ever hit for any other
+// reason (a future field added back to the compact list, a much larger
+// real deck, etc.) — never a silently-orphaned session, never an opaque
+// crash.
+test("regression: if D1 itself ever rejects the guest_forges write as too large, the failure is still clean — typed response, reservation released, no orphaned session", async () => {
+  const worker = await loadWorker();
+  const db = new FinalizationD1();
+  db.sqliteTooBigThreshold = 1000; // far below the real ~20KB compact payload for this fixture — guaranteed to trip
+
+  const response = await withRealGenerationFetch(async () => worker.fetch(guestRequest(null), guestEnv(db), ctx));
+  assert.equal(response.status, 500);
+  const body = await response.json();
+  assert.equal(body.code, "GENERATION_FAILED");
+  assert.equal(db.forges.size, 0, "no guest_forges row can exist when the write itself failed");
+  assert.equal(db.sessions.size, 0, "the pending reservation must be released, not left orphaned, even when D1 itself is what rejected the write");
 });
 
 test("existing external API JSON contract is unchanged: authenticated /api/forge/generate still returns nativeReport/cardPool/colors/generationId directly, and typed error codes survive the refactor", async () => {
@@ -384,4 +530,98 @@ test("existing external API JSON contract is unchanged: authenticated /api/forge
   const body = await response.json();
   assert.deepEqual(Object.keys(body), ["error"]);
   assert.equal(body.error, "Authenticated account required");
+});
+
+// --- Claim-flow coverage ---
+//
+// handleGuestClaim (worker/guest-forge.ts) never needed a code change for
+// the compact-payload fix: it already just JSON.parse()s row.response_json
+// and spreads it into its own response — a shape-agnostic pattern that
+// works identically whether that JSON is the OLD full payload (historical
+// rows already in production) or the NEW compact one. These tests prove
+// both directly, end to end, rather than assuming it from the source.
+
+test("claim flow works end to end from the new compact representation: a real guest generation, claimed by an account, still returns everything the workbench UI reads", async () => {
+  const worker = await loadWorker();
+  const db = new FinalizationD1();
+
+  const guestData = await withRealGenerationFetch(async () => {
+    const response = await worker.fetch(guestRequest(null), guestEnv(db), ctx);
+    assert.equal(response.status, 200);
+    return response.json();
+  });
+  assert.equal(typeof guestData.claimToken, "string");
+
+  const claimResponse = await worker.fetch(claimRequest(guestData.claimToken, "claimant@example.test"), accountEnv(db), ctx);
+  assert.equal(claimResponse.status, 200);
+  const claimed = await claimResponse.json();
+
+  assert.equal(claimed.claimed, true);
+  assert.equal(typeof claimed.generationId, "string");
+  assert.ok(claimed.claimContext, "expected claimContext (format/strategy) from the separate forge_generations store");
+  // Everything the claim-restoration UI (applyForgeResult) actually reads
+  // must survive the compact round trip.
+  for (const field of ["selected", "candidates", "recommendationRecord", "manaConsistency", "unusedEnginePartners", "methodology", "reasoning"]) {
+    assert.deepEqual(claimed.nativeReport[field], guestData.nativeReport[field], `expected ${field} to survive claim restoration`);
+  }
+  assert.equal("guestPreview" in claimed, false, "a claimed result must never still claim to be an unclaimed guest preview");
+
+  // Claiming must not leave a second, competing guest reservation.
+  const claimedForge = [...db.forges.values()].find((row) => row.claimedBy === "claimant@example.test" || row.claimedBy);
+  assert.ok(claimedForge, "expected the guest_forges row to record who claimed it");
+  assert.ok(claimedForge.claimedBy, "claimedBy must be set");
+});
+
+test("backward compatibility: a historical guest_forges row stored in the OLD full-payload shape (including cardPool/structuralAnalysis) still claims correctly", async () => {
+  const worker = await loadWorker();
+  const db = new FinalizationD1();
+
+  // Seed state exactly as the OLD code path would have left it: a 'used'
+  // session, a matching forge_generations row, and a guest_forges row
+  // whose response_json is the FULL old shape — proving the claim path
+  // makes no assumption about which shape it's reading.
+  const sessionKey = "legacy-guest-session-id";
+  const generationId = "legacy-generation-id";
+  const claimToken = "legacy-claim-token";
+  const now = Date.now();
+  db.sessions.set(sessionKey, { status: "used", createdAt: now - 60_000, expiresAt: now + 86_400_000 });
+  db.generations.set(generationId, {
+    userKey: `guest:${sessionKey}`,
+    schemaVersion: 1,
+    payloadJson: JSON.stringify({ selected: { deckText: "20 Island", rows: [] }, candidates: [], cardPool: [], options: { format: "Standard", strategy: "Balanced", target: 60 } }),
+    expiresAt: now + 86_400_000,
+  });
+  db.forges.set(claimToken, {
+    sessionKey,
+    generationId,
+    responseJson: JSON.stringify({
+      nativeReport: {
+        selected: { id: "legacy-selected", deckText: "20 Island" },
+        candidates: [{ id: "legacy-selected", deckText: "20 Island" }],
+        methodology: "legacy methodology",
+        reasoning: { summary: "legacy reasoning" },
+        // The exact fields the compact payload now omits — present here
+        // because this row predates the fix. Must not break anything.
+        structuralAnalysis: { legacyGraph: "a multi-hundred-KB blob in production" },
+        cardPool: [{ name: "legacy pool card" }],
+        engine: "native",
+      },
+      cardPool: [{ name: "legacy pool card" }],
+      colors: ["U"],
+    }),
+    createdAt: now - 60_000,
+    expiresAt: now + 86_400_000,
+    claimedBy: null,
+  });
+
+  const response = await worker.fetch(claimRequest(claimToken, "legacy-claimant@example.test"), accountEnv(db), ctx);
+  assert.equal(response.status, 200);
+  const claimed = await response.json();
+  assert.equal(claimed.claimed, true);
+  assert.equal(claimed.nativeReport.methodology, "legacy methodology");
+  assert.equal(claimed.nativeReport.selected.id, "legacy-selected");
+  // The old row's extra fields are harmless leftovers, not a contract this
+  // code needs to strip — they simply pass through unused, same as they
+  // always would have for any already-claimed historical row.
+  assert.ok(claimed.nativeReport.structuralAnalysis, "old-shape extra fields must not break parsing, even though new rows will never include them");
 });
