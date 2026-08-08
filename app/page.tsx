@@ -110,6 +110,12 @@ type CardFact = {
   prices?: { usd?: string | null; usd_foil?: string | null };
 };
 type CardSearchResult = { name: string; typeLine: string; image: string };
+// name/typeLine/image are display data only (a Scryfall lookup done purely
+// for the card image and type line). reason/roles come directly from
+// /api/forge/multi-refill's real package.context.summary and
+// package.additions[0].roles — the actual legality/role-fit evidence, not
+// re-derived or inferred client-side.
+type ReplacementCandidate = CardSearchResult & { reason: string; roles: string[] };
 type PrintingOption = {
   id: string;
   setCode: string;
@@ -1008,21 +1014,6 @@ const partnerEligibilityFor = (
   if (/choose a background/i.test(text)) return { kind: "background" };
   return null;
 };
-const formatEdhrecEvidence = (
-  evidence: EdhrecEvidence | null,
-  format: string,
-) => {
-  if (!evidence?.available || !evidence.cards.length)
-    return "EDHREC has no usable commander evidence for this commission yet. Do not penalize new or sparsely indexed cards; evaluate them from verified rules text and the Blueprint.";
-  const signals = evidence.cards
-    .slice(0, 45)
-    .map(
-      (card) =>
-        `${card.name} | ${card.category} | conservative evidence score ${((card.evidenceScore || 0) * 100).toFixed(0)}/100 | adoption ${(card.inclusion * 100).toFixed(1)}% (lower bound ${((card.adoptionFloor || 0) * 100).toFixed(1)}%; ${card.decks}/${card.eligibleDecks || "?"} eligible decks) | raw synergy ${(card.synergy * 100).toFixed(1)}% | sample-adjusted synergy ${((card.shrunkSynergy || 0) * 100).toFixed(1)}% | ${card.evidenceClass || "descriptive signal"} | confidence ${card.confidence}${card.newCardPotential ? " | PROMISING NEW-CARD HYPOTHESIS" : ""}`,
-    )
-    .join("\n");
-  return `EDHREC COMMANDER EVIDENCE (descriptive, not a legality source)\n${evidence.methodology || "Adoption and commander-relative synergy evidence."}\n${format.includes("Brawl") ? `This is cross-format Commander evidence only. Every candidate must still pass current Arena ${format} legality and color-identity checks in Scryfall.` : "Every candidate must still pass current Commander legality and color-identity checks in Scryfall."}\nDo not treat popularity as proof of quality. Weight low-sample signals cautiously, but do not suppress a new card merely because adoption is young when its mechanics and synergy fit are strong.\n${signals}`;
-};
 const formatMetaEvidence = (format: string) => {
   if (format !== "Standard") return "No verified format-wide tournament snapshot is connected for this format. Do not invent a field claim.";
   const meta = getMetaIntelligence();
@@ -1056,70 +1047,6 @@ const BASIC_LANDS: Record<string, string> = {
 const BASIC_LAND_KEYS = new Set(
   [...Object.values(BASIC_LANDS), "Wastes"].map(cardFactKey),
 );
-const normalizeCommanderDeck = (
-  text: string,
-  commander: CommanderOption | null,
-  format: string,
-  secondCommander: CommanderOption | null = null,
-) => {
-  if (!commander || !isCommanderFormat(format)) return null;
-  const target = targetDeckSize(format);
-  const parsed = parseDeckRows(text).filter(
-    (row) => Number.isFinite(row.quantity) && row.quantity > 0 && row.name,
-  );
-  const commanders = [commander, ...(secondCommander ? [secondCommander] : [])];
-  const commanderKeys = new Set(
-    commanders.flatMap((entry) => [entry.name, entry.name.split(" // ")[0]].map(cardFactKey)),
-  );
-  const merged = new Map<string, DeckRow>();
-  for (const row of parsed) {
-    const key = cardFactKey(row.name);
-    if (commanderKeys.has(key)) continue;
-    const basic = BASIC_LAND_KEYS.has(key);
-    const existing = merged.get(key);
-    if (existing) {
-      if (basic) existing.quantity += row.quantity;
-      continue;
-    }
-    merged.set(key, {
-      name: row.name,
-      quantity: basic ? row.quantity : 1,
-    });
-  }
-  const rows: DeckRow[] = [
-    ...commanders.map((entry) => ({ quantity: 1, name: entry.name })),
-    ...merged.values(),
-  ];
-  let total = rows.reduce((sum, row) => sum + row.quantity, 0);
-
-  // A near-complete list is repairable deterministically. A genuinely empty or
-  // abbreviated answer should still retry instead of becoming a pile of basics.
-  if (total < target - 20) return null;
-
-  for (let index = rows.length - 1; total > target && index >= commanders.length; index -= 1) {
-    const row = rows[index];
-    const removable = BASIC_LAND_KEYS.has(cardFactKey(row.name))
-      ? row.quantity
-      : 1;
-    const cut = Math.min(removable, total - target);
-    row.quantity -= cut;
-    total -= cut;
-    if (row.quantity === 0) rows.splice(index, 1);
-  }
-
-  const combinedColors = [
-    ...new Set(commanders.flatMap((entry) => entry.colors)),
-  ];
-  const colors = combinedColors.length ? combinedColors : ["C"];
-  for (let index = 0; total < target; index += 1) {
-    const land = BASIC_LANDS[colors[index % colors.length]] || "Wastes";
-    const existing = rows.find((row) => cardFactKey(row.name) === cardFactKey(land));
-    if (existing) existing.quantity += 1;
-    else rows.push({ quantity: 1, name: land });
-    total += 1;
-  }
-  return rows.map((row) => `${row.quantity} ${row.name}`).join("\n");
-};
 const indexCardFact = (
   target: Record<string, CardFact>,
   fact: CardFact,
@@ -1754,9 +1681,15 @@ export default function Home() {
   const [forgeStartedAt, setForgeStartedAt] = useState<number | null>(null);
   const [forgeElapsedSeconds, setForgeElapsedSeconds] = useState(0);
   const [replacementRecommendations, setReplacementRecommendations] = useState<
-    CardSearchResult[]
+    ReplacementCandidate[]
   >([]);
   const [replacementLoading, setReplacementLoading] = useState(false);
+  // Scoped entirely to this optional workbench tool — never written by, or
+  // read into, forgeGenerationError/hasValidatedDeck. A lookup failing here
+  // must never make an already-complete deck look like it disappeared.
+  const [replacementError, setReplacementError] = useState<
+    "" | "no-legal-replacement" | "operational"
+  >("");
   const [lastCutCard, setLastCutCard] = useState("");
   const [metaBreakerExperiments, setMetaBreakerExperiments] = useState<MetaBreakerExperiment[]>([]);
   const [metaBreakerLoading, setMetaBreakerLoading] = useState(false);
@@ -2701,27 +2634,6 @@ export default function Home() {
   const interventionLearning = activeStructuralReport.interventionLearning;
   const coachingDiagnosis = activeStructuralReport.coachingDiagnosis;
   const provingGrounds = activeStructuralReport.provingGrounds;
-  const verifiedDeckFacts = useMemo(
-    () =>
-      [
-        ...new Map(
-          Object.values(cardFacts).map((fact) => [fact.name, fact]),
-        ).values(),
-      ]
-        .map((fact) => {
-          const faces = fact.card_faces
-            ?.map(
-              (face) =>
-                `${face.name || fact.name} ${face.mana_cost || ""} · ${face.type_line || ""}\n${face.oracle_text || ""}`,
-            )
-            .join("\nTRANSFORMS TO\n");
-          return `${fact.name} · ${fact.mana_cost || ""} · ${fact.type_line || ""} · Set: ${fact.set_name || "Unknown"} · Games: ${(fact.games || []).join(", ")} · ${format} legality: ${fact.legalities?.[scryfallLegality(format)] || "ruleset review required"}\n${faces || fact.oracle_text || ""}`;
-        })
-        .join("\n\n")
-        .slice(0, 10000),
-    [cardFacts, format],
-  );
-
   useEffect(() => {
     const names = [
       ...new Set(parseDeckRows(forgedDeck).map((row) => row.name)),
@@ -3149,59 +3061,74 @@ export default function Home() {
   async function recommendReplacements(cut: DeckRow, nextDeck: string) {
     setLastCutCard(cut.name);
     setReplacementRecommendations([]);
+    setReplacementError("");
     setReplacementLoading(true);
+    // deckRows here is this render's pre-edit snapshot: stageDeckCard calls
+    // preserveDeckEdit (which schedules the post-cut state for the *next*
+    // render) immediately before calling this function, and everything
+    // below runs synchronously up to the first await — so deckRows still
+    // includes the cut card, exactly matching what /api/forge/multi-refill
+    // expects to validate and subtract the cut against.
+    const currentRows = deckRows.map((row) => ({ name: row.name, quantity: row.quantity }));
     try {
-      const prompt = `A player cut ${cut.name} from this ${format} deck. Recommend exactly three legal one-card replacements that best preserve or deliberately improve its role in this specific deck. Respect the commander, color identity, strategy, and current list. Return ONLY three lines formatted exactly as: 1 Card Name.`;
-      const response = await fetch("/api/forge/chat", {
+      const response = await fetch("/api/forge/multi-refill", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          depth: "balanced",
-          messages: [{ role: "user", content: prompt }],
-          context: {
-            game: "mtg",
-            deckName: chosenWork.name,
-            format,
-            deckText: nextDeck,
-            verifiedFacts:
-              verifiedDeckFacts ||
-              selectedCommander?.verifiedFacts ||
-              "Use conservative legal candidates.",
-            coachingProfile: `Strategy: ${strategy}`,
-          },
+          generationId: nativeMasterworkContext?.generationId,
+          currentRows,
+          cuts: [{ name: cut.name, quantity: cut.quantity }],
         }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error();
-      const names = parseDeckRows(String(data.answer || ""))
-        .map((row) => row.name)
-        .slice(0, 3);
-      const resolved: CardSearchResult[] = [];
-      for (const name of names) {
-        const cardResponse = await fetch(
-          `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`,
-        );
-        if (!cardResponse.ok) continue;
-        const card = await cardResponse.json();
-        if (
-          card.legalities?.[scryfallLegality(format)] !== "legal" ||
-          ((format === "Brawl" || format === "Standard Brawl") &&
-            !(card.games || []).includes("arena")) ||
-          (format === "Standard Brawl" && card.legalities?.standard !== "legal")
-        )
-          continue;
+      const data = await response.json().catch(() => null);
+      // 422 is the engine's own honest "no legal card can fill this slot"
+      // verdict (worker/forge-multi-refill.ts) — a real strategic result,
+      // distinct from a transport/parse failure below.
+      if (response.status === 422) {
+        setReplacementError("no-legal-replacement");
+        return;
+      }
+      if (!response.ok || !data || !Array.isArray(data.packages)) {
+        setReplacementError("operational");
+        return;
+      }
+      // Structured engine output only — never free-text prose, never run
+      // through parseDeckRows. Legality and role fit are already real,
+      // engine-verified facts on each package; nothing here re-derives or
+      // guesses at them.
+      const resolved: ReplacementCandidate[] = [];
+      for (const pkg of data.packages as Array<{ additions?: Array<{ name?: string; roles?: string[] }>; context?: { summary?: string } }>) {
+        const addition = pkg?.additions?.[0];
+        if (!addition?.name || resolved.some((candidate) => candidate.name === addition.name)) continue;
         resolved.push({
-          name: card.name,
-          typeLine: card.type_line || "Card",
-          image:
-            card.image_uris?.small ||
-            card.card_faces?.[0]?.image_uris?.small ||
-            "",
+          name: addition.name,
+          typeLine: "Card",
+          image: "",
+          reason: pkg.context?.summary || "",
+          roles: Array.isArray(addition.roles) ? addition.roles : [],
         });
       }
+      if (!resolved.length) {
+        setReplacementError("no-legal-replacement");
+        return;
+      }
+      // Display polish only, run after the real candidates are already
+      // decided — a slow or failed image lookup must never drop an
+      // otherwise-legal, already-engine-verified candidate from the list.
+      await Promise.all(resolved.map(async (candidate) => {
+        try {
+          const cardResponse = await fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(candidate.name)}`);
+          if (!cardResponse.ok) return;
+          const card = await cardResponse.json();
+          candidate.typeLine = card.type_line || "Card";
+          candidate.image = card.image_uris?.small || card.card_faces?.[0]?.image_uris?.small || "";
+        } catch {
+          /* image/type line stay blank; the candidate remains legal and usable without them */
+        }
+      }));
       setReplacementRecommendations(resolved.slice(0, 3));
     } catch {
-      setReplacementRecommendations([]);
+      setReplacementError("operational");
     } finally {
       setReplacementLoading(false);
     }
@@ -4017,56 +3944,6 @@ export default function Home() {
         block: "start",
       });
     });
-  }
-
-  async function repairDeckIntegrity() {
-    if (benchStatus === "forging" || deckIntegrity.checking || !deckRows.length) return;
-    setBenchStatus("forging");
-    setForgeGenerationError("");
-    const failedCards = [
-      ...deckIntegrity.illegal,
-      ...deckIntegrity.identityBreaks,
-      ...deckIntegrity.copyBreaks,
-      ...deckIntegrity.unresolved,
-    ].map((row) => row.name);
-    const prompt = `Repair this ${format} deck so every hard constraint passes. Preserve ${chosenWork.name}, its ${chosenWork.path} plan, and ${selectedCommander?.name || chosenPreview.card}. Problems detected by the deterministic validator: ${deckIntegrity.issues.join(" ")} Failed or unresolved card names: ${[...new Set(failedCards)].join(", ") || "none"}. Return the entire corrected import-ready list. Every decklist line must begin with a numeric quantity. Use exactly ${deckIntegrity.target} total cards. Do not include an incomplete alternative.`;
-    try {
-      const response = await fetch("/api/forge/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          task: "deck_generation",
-          depth: "deep",
-          messages: [{ role: "user", content: prompt }],
-          context: {
-            game: "mtg",
-            deckName: chosenWork.name,
-            format,
-            deckText: forgedDeck,
-            verifiedFacts: `${selectedCommander?.verifiedFacts || ""}\n\n${verifiedDeckFacts}\n\n${formatEdhrecEvidence(edhrecEvidence, format)}`,
-            coachingProfile: `Repair only failed constraints; preserve the player's ${strategy} intent.`,
-          },
-        }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data?.error || "Repair unavailable");
-      let repaired = String(data.answer || "");
-      const normalized = normalizeCommanderDeck(repaired, selectedCommander, format, selectedSecondCommander);
-      if (normalized) repaired = normalized;
-      const total = parseDeckRows(repaired).reduce((sum, row) => sum + row.quantity, 0);
-      if (total !== deckIntegrity.target) throw new Error("Repair remained incomplete");
-      const next = [
-        ...revisions,
-        { deck: repaired, note: `Deterministic integrity repair after revision ${revisions.length || 1}`, createdAt: new Date().toISOString() },
-      ];
-      setForgedDeck(repaired);
-      setRevisions(next);
-      void persistStoryBench(next, record);
-    } catch {
-      setForgeGenerationError("The repair did not clear every hard constraint. The current revision is preserved; strike the repair again or edit the flagged slots manually.");
-    } finally {
-      setBenchStatus("idle");
-    }
   }
 
   async function forgeMetaBreakerExperiments() {
@@ -6759,9 +6636,17 @@ export default function Home() {
                   {!deckIntegrity.checking && deckIntegrity.issues.length > 0 && (
                     <footer>
                       <ul>{deckIntegrity.issues.map((issue) => <li key={issue}>{issue}</li>)}</ul>
-                      <button onClick={repairDeckIntegrity} disabled={benchStatus === "forging"}>
-                        {benchStatus === "forging" ? "Reforging failed slots…" : "Reforge failed constraints"}
-                      </button>
+                      {/* Automatic repair used to route through /api/forge/chat's
+                          now-deliberately-retired "deck_generation" task (that
+                          endpoint has hardcoded a 503 for it since the native
+                          engine migration — see worker/forge-chat.ts). The old
+                          button always failed, and its failure wrote into
+                          forgeGenerationError, which made an already-valid deck
+                          disappear behind "No deck was completed." No automatic
+                          repair exists today; this is the honest state instead. */}
+                      <p className="deck-integrity-manual-note">
+                        Automatic repair isn&rsquo;t available for these — open the Editing Anvil to fix the flagged slots by hand.
+                      </p>
                     </footer>
                   )}
                 </section>
@@ -8186,6 +8071,7 @@ export default function Home() {
       {chamber === "workbench" &&
         (replacementLoading ||
           replacementRecommendations.length > 0 ||
+          replacementError ||
           lastCutCard) && (
           <section className="forge-replacements">
             <header>
@@ -8195,14 +8081,19 @@ export default function Home() {
                   {replacementLoading
                     ? `Studying what ${lastCutCard} was doing…`
                     : replacementRecommendations.length
-                      ? `Three paths can fill ${lastCutCard}'s place.`
-                      : `Search the Archive for ${lastCutCard}'s successor.`}
+                      ? `${replacementRecommendations.length} path${replacementRecommendations.length === 1 ? "" : "s"} can fill ${lastCutCard}'s place.`
+                      : replacementError === "no-legal-replacement"
+                        ? `No legal replacement for ${lastCutCard}.`
+                        : replacementError === "operational"
+                          ? "The replacement engine didn't respond."
+                          : `Search the Archive for ${lastCutCard}'s successor.`}
                 </h2>
               </div>
               <button
                 onClick={() => {
                   setLastCutCard("");
                   setReplacementRecommendations([]);
+                  setReplacementError("");
                 }}
               >
                 Dismiss
@@ -8247,9 +8138,10 @@ export default function Home() {
                     <div>
                       <b>{card.name}</b>
                       <small>{card.typeLine}</small>
-                      <p>
-                        Drag this option into the deck, or add it immediately.
-                      </p>
+                      {card.reason && <p className="replacement-reason">{card.reason}</p>}
+                      {card.roles.length > 0 && (
+                        <small className="replacement-roles">{card.roles.join(" · ")}</small>
+                      )}
                       <button
                         onClick={() =>
                           addCardToDeck(
@@ -8294,10 +8186,15 @@ export default function Home() {
                   <span>The candidate becomes part of this revision.</span>
                 </aside>
               </div>
+            ) : replacementError === "operational" ? (
+              <p className="replacement-empty replacement-error">
+                We couldn&rsquo;t reach the replacement engine. Try again, or use
+                the legal card search above to choose the replacement yourself.
+              </p>
             ) : (
               <p className="replacement-empty">
-                The Forge did not force a weak suggestion. Use the legal card
-                search above to choose the replacement yourself.
+                No legal replacement was found for this slot. Use the legal
+                card search above to choose the replacement yourself.
               </p>
             )}
           </section>
