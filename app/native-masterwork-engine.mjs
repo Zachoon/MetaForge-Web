@@ -727,7 +727,14 @@ function prepareForgeAnalysis(input, evidenceByName) {
     context,
     cards,
     spells: eligible.filter((entry) => !entry.roles.includes("land") && !commanderNames.has(normalized(entry.card.name))),
-    lands: eligible.filter((entry) => entry.roles.includes("land")).map((entry) => entry.card),
+    // Kept as full analyzed entries, not stripped to bare cards — same
+    // shape `spells` already uses. This used to be
+    // `.map((entry) => entry.card)`, which discarded budgetScore/
+    // powerTierScore/complexityScore before buildManaBase ever ran,
+    // silently exempting every land from every player preference that
+    // isn't the numeric maxCardPrice/commonsOnly hard filter (that filter
+    // already ran above, in `eligible`, so it was never the gap).
+    lands: eligible.filter((entry) => entry.roles.includes("land")),
   };
 }
 
@@ -750,7 +757,10 @@ function relaxAnalysisPreferences(analysis, input) {
   return {
     ...analysis,
     spells: eligible.filter((entry) => !entry.roles.includes("land") && !commanderNames.has(normalized(entry.card.name))),
-    lands: eligible.filter((entry) => entry.roles.includes("land")).map((entry) => entry.card),
+    // Same analyzed-entry shape as prepareForgeAnalysis's `lands` above —
+    // relaxation only widens which entries are eligible, never changes
+    // what shape they are.
+    lands: eligible.filter((entry) => entry.roles.includes("land")),
   };
 }
 
@@ -1143,6 +1153,22 @@ function unusedEnginePartnersFor(selected, input) {
   return findUnusedEnginePartners(deckCardObjects, input.cards || []);
 }
 
+// Applied only to a land's own already-computed budgetScore (reused as-is
+// from analyzeCard/scoreCard — the exact same computation the working
+// multi-refill replacement path already scores lands with, see
+// forgeMultiSlotRefills) when combining it into buildManaBase's ranking
+// sum below. Not a second budget formula — budgetScoreFor itself is
+// untouched, so spell scoring and multi-refill are unaffected. It exists
+// because this sum's other dominant term, popularity, tops out at +9 for
+// the single most-played land in the pool — exactly the kind of
+// universally-adopted utility land "Budget conscious" is meant to push
+// back on — and budgetScoreFor's log-scaled penalty for a real $20-80
+// utility land (roughly -6 to -9) can't outweigh a near-max popularity
+// term unscaled. This weight brings a genuinely expensive land's own
+// penalty above that popularity ceiling, so budget becomes a real
+// counterweight in land ranking instead of a token one.
+const LAND_BUDGET_WEIGHT = 1.5;
+
 function buildManaBase(input, landSlots, lands, variant, presetLands = [], pipTotals = {}, spellRows = []) {
   const colors = commanderColors(input).length ? commanderColors(input) : input.colors?.length ? input.colors : ["W", "U", "B", "R", "G"];
   const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
@@ -1179,27 +1205,48 @@ function buildManaBase(input, landSlots, lands, variant, presetLands = [], pipTo
     return produced.reduce((sum, color) => sum + (pipTotals[color] || 0), 0) / totalPips;
   };
   const rankedLands = lands
-    .filter((card) => {
-      const identity = card.colorIdentity || card.color_identity || [];
-      return identity.every((color) => colors.includes(color)) && !presetLandNames.has(normalized(card.name));
+    .filter((entry) => {
+      const identity = entry.card.colorIdentity || entry.card.color_identity || [];
+      return identity.every((color) => colors.includes(color)) && !presetLandNames.has(normalized(entry.card.name));
     })
     .sort((left, right) => {
-      const leftText = normalized(cardText(left));
-      const rightText = normalized(cardText(right));
+      const leftText = normalized(cardText(left.card));
+      const rightText = normalized(cardText(right.card));
       // Lands ride through the same edhrec-ordered fetch as spells and
       // already carry a popularityRank from it — a well-adopted dual
       // (Godless Shrine) previously ranked identically to an obscure
       // equal-color-fit land nobody plays, since only color fit and text
       // heuristics were scored. Same signal, same scale, as spell scoring.
-      const leftScore = (leftText.includes("enters the battlefield tapped") ? -4 : 2) + (leftText.includes("add") ? 2 : 0) + colorFit(left) * 4 + popularityScoreFromRank(left.popularityRank) + (hash(`${input.seed}|${variant.id}|${left.name}`) % 100) / 10000;
-      const rightScore = (rightText.includes("enters the battlefield tapped") ? -4 : 2) + (rightText.includes("add") ? 2 : 0) + colorFit(right) * 4 + popularityScoreFromRank(right.popularityRank) + (hash(`${input.seed}|${variant.id}|${right.name}`) % 100) / 10000;
-      return rightScore - leftScore || left.name.localeCompare(right.name);
+      // popularityScore/budgetScore are reused directly from analyzeCard —
+      // real preference-aware evidence, not re-derived here — see
+      // LAND_BUDGET_WEIGHT above for why budgetScore is weighted going in.
+      const leftScore = (leftText.includes("enters the battlefield tapped") ? -4 : 2) + (leftText.includes("add") ? 2 : 0) + colorFit(left.card) * 4 + left.popularityScore + left.budgetScore * LAND_BUDGET_WEIGHT + (hash(`${input.seed}|${variant.id}|${left.card.name}`) % 100) / 10000;
+      const rightScore = (rightText.includes("enters the battlefield tapped") ? -4 : 2) + (rightText.includes("add") ? 2 : 0) + colorFit(right.card) * 4 + right.popularityScore + right.budgetScore * LAND_BUDGET_WEIGHT + (hash(`${input.seed}|${variant.id}|${right.card.name}`) % 100) / 10000;
+      return rightScore - leftScore || left.card.name.localeCompare(right.card.name);
     });
   const nonbasicLimit = Math.min(lands.length, singleton ? Math.min(landSlots - 18, 18) : 6);
+
+  // Land-side scarcity mirrors chooseSpells' own "could not fill N spell
+  // slot(s)" signal (see buildCandidate's recovery ladder below), but for
+  // lands specifically: unlike spells, a nonbasic shortfall never makes
+  // the deck illegal — proportionalBasicCounts below is an infinite legal
+  // fallback — so completing silently would hide a real quality tradeoff
+  // a hard price/rarity filter just forced: fewer real fixing lands than
+  // the format wanted, quietly replaced with plain basics the player
+  // never asked for. Only fires when a hard filter is actually active:
+  // the soft "Budget conscious" preference never removes a land from
+  // `lands` at all (it only nudges rankedLands' order above), so it can
+  // never by itself cause this — the same asymmetry the existing
+  // spell-scarcity check already has against "Budget conscious" alone.
+  const hardFilterActive = Number.isFinite(input.maxCardPrice) || input.commonsOnly === true;
+  if (hardFilterActive && rankedLands.length < nonbasicLimit) {
+    throw new Error(`could not fill ${nonbasicLimit - rankedLands.length} legal land slot(s)`);
+  }
+
   for (const land of rankedLands.slice(0, nonbasicLimit)) {
     const used = rows.reduce((sum, row) => sum + row.quantity, 0);
     if (used >= landSlots) break;
-    rows.push({ quantity: singleton ? 1 : Math.min(4, landSlots - used), name: land.name, roles: ["land"], score: 0, cmc: 0, colorIdentity: producedColorsOf(land) });
+    rows.push({ quantity: singleton ? 1 : Math.min(4, landSlots - used), name: land.card.name, roles: ["land"], score: 0, cmc: 0, colorIdentity: producedColorsOf(land.card) });
   }
   const remaining = landSlots - rows.reduce((sum, row) => sum + row.quantity, 0);
   const basicCounts = proportionalBasicCounts(colors, pipTotals, remaining);
@@ -1663,23 +1710,36 @@ function buildCandidate(input, variant, analysis) {
   try {
     return { ...buildCandidateAttempt(input, variant, analysis), recoveryStage: "ideal" };
   } catch (error) {
-    if (!(error instanceof Error) || !/could not fill \d+ spell slot/.test(error.message)) throw error;
-    const missingSlots = Number(error.message.match(/could not fill (\d+) spell slot/)?.[1]) || null;
+    if (!(error instanceof Error)) throw error;
+    // Same ladder, two possible triggers: chooseSpells' spell-scarcity
+    // message, or buildManaBase's land-scarcity one (only thrown when a
+    // hard price/rarity filter is active — see buildManaBase). Both bend
+    // the exact same lever (relaxAnalysisPreferences), just checked
+    // against the pool the error actually came from.
+    const spellMatch = error.message.match(/could not fill (\d+) spell slot/);
+    const landMatch = spellMatch ? null : error.message.match(/could not fill (\d+) legal land slot/);
+    if (!spellMatch && !landMatch) throw error;
+    const missingSlots = Number((spellMatch || landMatch)[1]) || null;
     const relaxed = relaxAnalysisPreferences(analysis, input);
     // If relaxing budget/commons-only preferences didn't actually grow the
     // eligible pool, the scarcity is structural (a genuinely thin color
     // identity, or a hard exclusion doing the work) — retrying would fail
     // identically. Let the original, more specific error surface instead
     // of masking it with a second identical failure.
-    if (relaxed.spells.length <= analysis.spells.length) throw error;
+    const grew = spellMatch ? relaxed.spells.length > analysis.spells.length : relaxed.lands.length > analysis.lands.length;
+    if (!grew) throw error;
     const recovered = buildCandidateAttempt(input, variant, relaxed);
     return {
       ...recovered,
       recoveryStage: "relaxed-preferences",
-      recoveryNote: "Budget or rarity preferences were relaxed to complete this deck. Format legality, color identity, and your commander were never affected.",
+      recoveryNote: spellMatch
+        ? "Budget or rarity preferences were relaxed to complete this deck. Format legality, color identity, and your commander were never affected."
+        : "Budget or rarity preferences were relaxed to complete the mana base. Format legality, color identity, and your commander were never affected.",
       // Server-side observability only (worker/forge-generate.ts logs
       // this) — never surfaced to the player as-is.
-      recoveryDiagnostics: { missingSlots, initialEligibleCount: analysis.spells.length, relaxedEligibleCount: relaxed.spells.length },
+      recoveryDiagnostics: spellMatch
+        ? { kind: "spells", missingSlots, initialEligibleCount: analysis.spells.length, relaxedEligibleCount: relaxed.spells.length }
+        : { kind: "lands", missingSlots, initialEligibleCount: analysis.lands.length, relaxedEligibleCount: relaxed.lands.length },
     };
   }
 }
@@ -1695,7 +1755,7 @@ function buildImportedCandidateAttempt(input, analysis) {
   const commanderNames = commanderNamesNormalized(input);
 
   const spellByName = new Map(analysis.spells.map((entry) => [normalized(entry.card.name), entry]));
-  const landByName = new Map(analysis.lands.map((card) => [normalized(card.name), card]));
+  const landByName = new Map(analysis.lands.map((entry) => [normalized(entry.card.name), entry.card]));
   const presetSpellRows = [];
   const presetLandRows = [];
   for (const row of input.importedRows) {
@@ -1782,16 +1842,24 @@ function buildImportedCandidate(input, analysis) {
   try {
     return { ...buildImportedCandidateAttempt(input, analysis), recoveryStage: "ideal" };
   } catch (error) {
-    if (!(error instanceof Error) || !/could not fill \d+ spell slot/.test(error.message)) throw error;
-    const missingSlots = Number(error.message.match(/could not fill (\d+) spell slot/)?.[1]) || null;
+    if (!(error instanceof Error)) throw error;
+    const spellMatch = error.message.match(/could not fill (\d+) spell slot/);
+    const landMatch = spellMatch ? null : error.message.match(/could not fill (\d+) legal land slot/);
+    if (!spellMatch && !landMatch) throw error;
+    const missingSlots = Number((spellMatch || landMatch)[1]) || null;
     const relaxed = relaxAnalysisPreferences(analysis, input);
-    if (relaxed.spells.length <= analysis.spells.length) throw error;
+    const grew = spellMatch ? relaxed.spells.length > analysis.spells.length : relaxed.lands.length > analysis.lands.length;
+    if (!grew) throw error;
     const recovered = buildImportedCandidateAttempt(input, relaxed);
     return {
       ...recovered,
       recoveryStage: "relaxed-preferences",
-      recoveryNote: "Budget or rarity preferences were relaxed to complete this deck. Format legality, color identity, your commander, and every card you submitted were never affected.",
-      recoveryDiagnostics: { missingSlots, initialEligibleCount: analysis.spells.length, relaxedEligibleCount: relaxed.spells.length },
+      recoveryNote: spellMatch
+        ? "Budget or rarity preferences were relaxed to complete this deck. Format legality, color identity, your commander, and every card you submitted were never affected."
+        : "Budget or rarity preferences were relaxed to complete the mana base. Format legality, color identity, your commander, and every card you submitted were never affected.",
+      recoveryDiagnostics: spellMatch
+        ? { kind: "spells", missingSlots, initialEligibleCount: analysis.spells.length, relaxedEligibleCount: relaxed.spells.length }
+        : { kind: "lands", missingSlots, initialEligibleCount: analysis.lands.length, relaxedEligibleCount: relaxed.lands.length },
     };
   }
 }
@@ -1990,6 +2058,45 @@ export function forgeMultiSlotRefills(input, currentRows, requestedCuts) {
   return Object.freeze({ packages });
 }
 
+// Phase 1E: candidate-level budget observability. Deliberately not a hard
+// deck-dollar cap — no product rule defines one, and inventing one here
+// would go beyond what "Budget conscious" was scoped to mean (see
+// relaxAnalysisPreferences and LAND_BUDGET_WEIGHT above for where budget
+// actually acts, as a ranking/eligibility preference). This exists so the
+// team can measure what a delivered deck actually costs and whether
+// recovery had to relax budget/rarity to complete it — the same
+// server-side-only observability pattern as recoveryDiagnostics.
+const PRICE_BANDS_USD = [10, 25, 50];
+
+function budgetDiagnosticsFor(candidate, input) {
+  const priceByName = new Map(
+    (input.cards || [])
+      .filter((card) => Number.isFinite(card.priceUsd))
+      .map((card) => [normalized(card.name), card.priceUsd]),
+  );
+  let knownDeckPriceUsd = 0;
+  let knownLandPriceUsd = 0;
+  let mostExpensiveCard = null;
+  const cardsAbovePriceBand = Object.fromEntries(PRICE_BANDS_USD.map((band) => [band, 0]));
+  for (const row of candidate.rows) {
+    const price = priceByName.get(normalized(row.name));
+    if (!Number.isFinite(price)) continue;
+    knownDeckPriceUsd += price * row.quantity;
+    if (row.roles?.includes("land")) knownLandPriceUsd += price * row.quantity;
+    for (const band of PRICE_BANDS_USD) {
+      if (price > band) cardsAbovePriceBand[band] += row.quantity;
+    }
+    if (!mostExpensiveCard || price > mostExpensiveCard.priceUsd) mostExpensiveCard = { name: row.name, priceUsd: price };
+  }
+  return {
+    knownDeckPriceUsd: Number(knownDeckPriceUsd.toFixed(2)),
+    knownLandPriceUsd: Number(knownLandPriceUsd.toFixed(2)),
+    mostExpensiveCard,
+    cardsAbovePriceBand,
+    budgetRecoveryOccurred: candidate.recoveryStage === "relaxed-preferences",
+  };
+}
+
 export function forgeNativeMasterwork(input) {
   if (!input || !Array.isArray(input.cards) || !input.cards.length) throw new Error("Native Forge requires a verified card pool");
   const evidenceByName = new Map((input.evidence || []).map((entry) => [normalized(entry.name), entry]));
@@ -2159,6 +2266,7 @@ export function forgeNativeMasterwork(input) {
     manaConsistency: manaConsistencyReport(selected.rows, input.target),
     unusedEnginePartners: unusedEnginePartnersFor(selected, input),
     blueprintIntent: analysis.context.blueprint,
+    budgetDiagnostics: budgetDiagnosticsFor(selected, input),
   diagnostics: Object.freeze({
     analysisPasses: 1,
     cardsAnalyzed:
@@ -2271,6 +2379,7 @@ export function forgeImportedMasterwork(input) {
     manaConsistency: manaConsistencyReport(selected.rows, input.target),
     unusedEnginePartners: unusedEnginePartnersFor(selected, input),
     blueprintIntent: analysis.context.blueprint,
+    budgetDiagnostics: budgetDiagnosticsFor(selected, input),
     changes: Object.freeze(changes),
     diagnostics: Object.freeze({
       analysisPasses: 1,

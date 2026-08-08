@@ -5677,6 +5677,12 @@ export default function Home() {
                   <em>{nativeMasterworkContext.practicalTiebreak.reason}</em>
                 </span>
               )}
+              {nativeMasterworkContext?.selected?.recoveryNote && (
+                <span className="slot-justification">
+                  <small>A PREFERENCE WAS RELAXED TO COMPLETE THIS DECK</small>
+                  <em>{nativeMasterworkContext.selected.recoveryNote}</em>
+                </span>
+              )}
               <section className="forge-understanding-bridge" aria-label="Essential deck understanding">
                 <header>
                   <small>CHAPTER III · UNDERSTAND THE MASTERWORK</small>
