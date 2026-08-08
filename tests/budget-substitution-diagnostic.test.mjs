@@ -129,3 +129,27 @@ test("survivability across three budget settings: the premium card currently sur
   assert.equal(moderate.conclusion, "budget preference is being ignored relative to a small structural gain");
   assert.ok(budgetConscious.scoreDifference > 0 && moderate.scoreDifference > 0, "the structural edge must still net positive under both budget-aware settings");
 });
+
+// --- Budget debt ---
+
+test("budgetDebt sums avoidable spend only for unjustified offenders, and lists them worst-first", () => {
+  const input = {
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 21,
+    commander: ayula, budget: "Budget conscious", cards: [...abundantProtection, premiumSmallEdge, cheapSameRoleAlt],
+  };
+  const audit = auditBudgetSubstitutions(input, { priceThresholdUsd: 15 });
+  const offender = audit.offenders.find((entry) => entry.name === "Test Premium Bear");
+  assert.equal(audit.budgetDebt.totalAvoidableSpendUsd, offender.priceDifferenceUsd);
+  assert.deepEqual(audit.budgetDebt.topOffenders, [{ name: "Test Premium Bear", avoidableCostUsd: offender.priceDifferenceUsd }]);
+});
+
+test("a structurally-justified offender contributes nothing to budget debt", () => {
+  const input = {
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 21,
+    commander: ayula, budget: "Budget conscious", cards: [...scarceProtection, premiumSmallEdge, cheapSameRoleAlt],
+  };
+  const audit = auditBudgetSubstitutions(input, { priceThresholdUsd: 15 });
+  assert.equal(audit.offenders.find((e) => e.name === "Test Premium Bear").conclusion, "expensive inclusion has a structural justification");
+  assert.equal(audit.budgetDebt.totalAvoidableSpendUsd, 0);
+  assert.deepEqual(audit.budgetDebt.topOffenders, []);
+});

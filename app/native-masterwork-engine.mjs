@@ -2107,6 +2107,7 @@ function budgetDiagnosticsFor(candidate, input) {
 // substitute for a dozen unrelated offenders in the first real-generation
 // audit pass. Only these six count as a load-bearing slot to protect.
 const TRACKED_LOAD_BEARING_ROLES = ["ramp", "draw", "interaction", "protection", "recursion", "sweeper"];
+const BUDGET_IGNORED_CONCLUSION = "budget preference is being ignored relative to a small structural gain";
 
 // Phase 2A: budget substitution diagnostic — server-side/dev observability
 // only, not wired into any player-facing report yet. The land fix (Phase 1)
@@ -2263,9 +2264,25 @@ export function auditBudgetSubstitutions(input, options = {}) {
         ? hardGateImpact
         : hardGateImpact !== "none"
           ? "expensive inclusion has a structural justification"
-          : "budget preference is being ignored relative to a small structural gain",
+          : BUDGET_IGNORED_CONCLUSION,
     };
   });
+
+  // Budget debt: the sum of price gaps for every offender whose premium
+  // wasn't earned — each one's own `alternative` already passed the
+  // load-bearing-role/hard-gate-safe swap check above, so this is the
+  // real, already-verified cost of the cards budget preference should
+  // have declined but didn't. A "structurally justified" offender
+  // contributes nothing here; its price bought something real. This is a
+  // measurement, not a target embedded in scoring — Phase 2B tunes
+  // against watching this number fall, not the other way around.
+  const debtOffenders = results
+    .filter((offender) => offender.conclusion === BUDGET_IGNORED_CONCLUSION && Number.isFinite(offender.priceDifferenceUsd))
+    .sort((a, b) => b.priceDifferenceUsd - a.priceDifferenceUsd);
+  const budgetDebt = {
+    totalAvoidableSpendUsd: Number(debtOffenders.reduce((sum, offender) => sum + offender.priceDifferenceUsd, 0).toFixed(2)),
+    topOffenders: debtOffenders.map((offender) => ({ name: offender.name, avoidableCostUsd: offender.priceDifferenceUsd })),
+  };
 
   return {
     budget: input.budget || null,
@@ -2273,6 +2290,7 @@ export function auditBudgetSubstitutions(input, options = {}) {
     variantId: variant.id,
     offenderCount: results.length,
     offenders: results,
+    budgetDebt,
   };
 }
 
