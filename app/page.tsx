@@ -1850,14 +1850,19 @@ export default function Home() {
     const previous = previousChamberRef.current;
     previousChamberRef.current = chamber;
     if (previous === "forging" && chamber === "masterworks") {
+      // The gate-filtering audit (native-masterwork-engine.mjs) confirmed
+      // candidates can honestly survive as 1 or 2, not just 3 — this must
+      // never claim "three" when fewer construction attempts passed their
+      // own gate, or it's promising a choice that isn't actually there.
+      const survivorCount = pendingCandidateChoice?.nativeReport?.candidates?.length || 1;
       setMilestoneMotion({
         kind: "masterwork-ready",
         eyebrow: "THE GREAT FORGE ANSWERS",
-        label: "Three Masterworks Survived",
+        label: survivorCount === 1 ? "Your Masterwork Survived" : `${survivorCount} Masterworks Survived`,
         glyph: "ᛞ",
       });
     }
-  }, [chamber]);
+  }, [chamber, pendingCandidateChoice]);
 
   useEffect(() => {
     window.localStorage.setItem("metaforge.resultViewMode", resultViewMode);
@@ -5290,7 +5295,17 @@ export default function Home() {
                   <i /> THE GREAT FORGE ANSWERS <i />
                 </span>
                 <h1>
-                  Three real builds. You choose.
+                  {(() => {
+                    // Gate filtering (native-masterwork-engine.mjs) can
+                    // honestly leave 1, 2, or 3 candidates standing — this
+                    // heading must say what actually survived, never a
+                    // hardcoded "three" that promises a choice the player
+                    // won't actually see below.
+                    const survivorCount = pendingCandidateChoice.nativeReport.candidates?.length || 1;
+                    return survivorCount === 1
+                      ? "One real build. It's yours."
+                      : `${survivorCount} real builds. You choose.`;
+                  })()}
                 </h1>
                 <p>
                   Every card below is already verified and legal for your {format} commission —

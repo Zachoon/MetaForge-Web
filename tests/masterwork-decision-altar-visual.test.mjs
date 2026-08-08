@@ -14,7 +14,12 @@ const [page, polish] = await Promise.all([
 // recommended, entering any of them an explicit click with zero further
 // network calls. This test now pins that shape instead of the old one.
 test("Masterwork picker presents one recommendation and two real alternatives, already built", () => {
-  assert.match(page, /Three real builds\. You choose\./);
+  // P0 follow-up: gate filtering can honestly leave 1 or 2 candidates
+  // standing, not just 3 — the heading now reflects the real survivor
+  // count instead of a hardcoded "Three", so this pins the dynamic form
+  // rather than the literal old string.
+  assert.match(page, /`\$\{survivorCount\} real builds\. You choose\.`/);
+  assert.match(page, /"One real build\. It's yours\."/);
   assert.match(page, /THE GREAT FORGE ANSWERS/);
   assert.doesNotMatch(page, /The Forge has chosen/);
   assert.match(page, /\{isRecommended && <em>RECOMMENDED<\/em>\}/);

@@ -14,7 +14,7 @@ test("the public Forge verifies Turnstile server-side and never trusts the brows
 
 test("a guest receives a claim token but not the reusable generation handle", async () => {
   const source = await read("worker/guest-forge.ts");
-  assert.match(source, /delete responseBody\.generationId/);
+  assert.match(source, /const \{ generationId, \.\.\.storedBody \} = generation\.body/);
   assert.match(source, /claimToken, guestPreview: true/);
   assert.match(source, /claimed_by IS NULL/);
 });
@@ -23,7 +23,7 @@ test("the authenticated Forge retains its existing account boundary", async () =
   const source = await read("worker/forge-generate.ts");
   assert.match(source, /const key = await userKey\(request, env\)/);
   assert.match(source, /Authenticated account required/);
-  assert.match(source, /handleForgeGenerateForKey\(request, env, key\)/);
+  assert.match(source, /generateForgeResult\(request, env, key\)/);
 });
 
 test("guest UI uses the guest endpoint and suppresses persistence and structural analysis", async () => {
@@ -165,12 +165,20 @@ test("NETWORK_RATE_LIMITED is a 429 that explicitly denies the preview was ever 
 
 test("GUEST_PREVIEW_ALREADY_USED stays a 409 and is the only server response allowed to say the preview was used", async () => {
   const source = await read("worker/guest-forge.ts");
-  const block = source.match(/if \(Number\(reserved\.meta\?\.changes \|\| 0\) !== 1\) \{[\s\S]*?409,\n\s*\);/)?.[0];
+  const block = source.match(/if \(!holdsReservation\) \{[\s\S]*?409,\n\s*\);/)?.[0];
   assert.ok(block, "expected the already-reserved response block");
   assert.match(block, /409/);
   assert.match(block, /"GUEST_PREVIEW_ALREADY_USED"/);
   assert.match(block, /already been used/);
   assert.match(block, /claimToken/);
+});
+
+test("a stale pending reservation can be reclaimed only via one atomic UPDATE guarded by status and staleness, never by deleting or reading-then-writing", async () => {
+  const source = await read("worker/guest-forge.ts");
+  const block = source.match(/const reclaim = await env\.DB\.prepare\([\s\S]*?\.run\(\);/)?.[0];
+  assert.ok(block, "expected the reclaim UPDATE statement");
+  assert.match(block, /UPDATE guest_forge_sessions SET created_at = \?, expires_at = \?/);
+  assert.match(block, /WHERE session_key = \? AND status = 'pending' AND created_at < \?/, "reclaim must never match a 'used' row, and must require staleness");
 });
 
 test("normalizeForgeFailure maps every code to its retry/preview/verification meaning exactly once, defaulting unknown codes to GENERATION_FAILED's meta (never to already-used)", async () => {

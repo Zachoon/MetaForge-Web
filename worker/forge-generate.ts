@@ -109,6 +109,13 @@ const SCRYFALL_HEADERS = { Accept: "application/json", "User-Agent": "MetaForge/
 
 const CATALOG_UNAVAILABLE_MESSAGE = "The verified card catalog is unavailable";
 
+// A plain mutable counter, not a class, so call sites that don't care
+// about it can omit it entirely. Threaded through loadNativeForgePool/
+// resolveImportedDecklist/fetchScryfallWithRetry so generateForgeResult
+// can report scryfall_request_count without every fetch call needing to
+// return its own count up the stack.
+type ScryfallCounter = { count: number };
+
 // A single flaky Scryfall request (a rate-limit response under real load,
 // or a transient 5xx) used to end the whole commission immediately — the
 // pool-loading loop below threw CATALOG_UNAVAILABLE_MESSAGE on the very
@@ -119,9 +126,10 @@ const CATALOG_UNAVAILABLE_MESSAGE = "The verified card catalog is unavailable";
 // budget. A non-transient failure (a malformed query, 404) is returned
 // immediately on the first try; retrying it would just waste the budget
 // reproducing the same result.
-async function fetchScryfallWithRetry(url: string, init: RequestInit = {}, attempts = 3): Promise<Response> {
+async function fetchScryfallWithRetry(url: string, init: RequestInit = {}, attempts = 3, counter?: ScryfallCounter): Promise<Response> {
   let lastResponse: Response | null = null;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
+    if (counter) counter.count += 1;
     const response = await fetch(url, { ...init, headers: { ...SCRYFALL_HEADERS, ...init.headers } });
     if (response.ok) return response;
     lastResponse = response;
@@ -224,10 +232,11 @@ async function loadNativeForgePool(
   lynchpin: string,
   note: string,
   secondCommander: CommanderInput,
+  counter?: ScryfallCounter,
 ) {
   let anchor: any = null;
   if (!commander && lynchpin) {
-    const anchorResponse = await fetchScryfallWithRetry(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(lynchpin)}`);
+    const anchorResponse = await fetchScryfallWithRetry(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(lynchpin)}`, {}, 3, counter);
     if (anchorResponse.ok) anchor = await anchorResponse.json();
   }
   const noteColors = colorsFromNote(note);
@@ -264,7 +273,7 @@ async function loadNativeForgePool(
   // .mjs) more room to actually succeed instead of hitting the same wall.
   let popularityRank = 0;
   for (let page = 0; nextUrl && page < 6; page += 1) {
-    const response = await fetchScryfallWithRetry(nextUrl);
+    const response = await fetchScryfallWithRetry(nextUrl, {}, 3, counter);
     if (!response.ok) throw new Error(CATALOG_UNAVAILABLE_MESSAGE);
     const result: any = await response.json();
     for (const rawCard of result.data || []) {
@@ -286,7 +295,7 @@ async function loadNativeForgePool(
   ].slice(0, 6);
   for (const identityQuery of identityQueries) {
     const targetedUrl = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`${scryfallFormatTerms(format)}${colorQuery} ${identityQuery} -is:funny`)}&order=name&unique=cards`;
-    const response = await fetchScryfallWithRetry(targetedUrl);
+    const response = await fetchScryfallWithRetry(targetedUrl, {}, 3, counter);
     if (!response.ok) continue;
     const result: any = await response.json();
     for (const rawCard of result.data || []) addRawCard(rawCard);
@@ -300,7 +309,7 @@ async function loadNativeForgePool(
   return { cards, colors };
 }
 
-async function resolveImportedDecklist(text: string, poolCards: NativeForgeCard[], format: string, commander: CommanderInput) {
+async function resolveImportedDecklist(text: string, poolCards: NativeForgeCard[], format: string, commander: CommanderInput, counter?: ScryfallCounter) {
   const parsed = parseDeckRows(text).filter((row: DeckRow) => Number.isFinite(row.quantity) && row.quantity > 0 && row.name);
   const commanderKeys = commander ? new Set([commander.name, commander.name.split(" // ")[0]].map(cardFactKey)) : new Set<string>();
   const merged = new Map<string, DeckRow>();
@@ -327,7 +336,7 @@ async function resolveImportedDecklist(text: string, poolCards: NativeForgeCard[
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ identifiers: chunk.map((row) => ({ name: row.name })) }),
-      });
+      }, 3, counter);
       const data: any = await response.json();
       for (const rawCard of data.data || []) rawByKey.set(cardFactKey(rawCard.name), rawCard);
     } catch {
@@ -472,50 +481,103 @@ function logConstructionOutcome(event: {
   }));
 }
 
+// Phase timing for observability only — never sent to the browser, only
+// logged (worker/guest-forge.ts folds these into its own structured event).
+// candidateCount/targetSize/finalSize are null wherever generation never
+// reached that point (e.g. a rate-limit or validation-body rejection).
+export type ForgeGenerationTiming = {
+  catalogMs: number;
+  generationMs: number;
+  validationMs: number;
+  persistenceMs: number;
+  scryfallRequestCount: number;
+  candidateCount: number | null;
+  targetSize: number | null;
+  finalSize: number | null;
+};
+
+// Structured result of a generation attempt: an HTTP status/body pair
+// that the caller serializes itself, plus timing metadata that never goes
+// over the wire. Replaces the old design where this function returned a
+// Response and its only caller inside this same Worker (guest-forge.ts)
+// immediately parsed that Response back into an object — a full parse and
+// re-serialize of the single largest object in the request, for no reason
+// beyond "that's what the function signature returned."
+export type ForgeGenerationResult = {
+  status: number;
+  headers?: Record<string, string>;
+  body: Record<string, unknown>;
+  timing: ForgeGenerationTiming;
+};
+
+const emptyTiming = (scryfallRequestCount = 0): ForgeGenerationTiming => ({
+  catalogMs: 0, generationMs: 0, validationMs: 0, persistenceMs: 0,
+  scryfallRequestCount, candidateCount: null, targetSize: null, finalSize: null,
+});
+
 export async function handleForgeGenerate(request: Request, env: Env): Promise<Response> {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
 
   const key = await userKey(request, env);
   if (!key) return json({ error: "Authenticated account required" }, 401);
 
-  return handleForgeGenerateForKey(request, env, key);
+  const result = await generateForgeResult(request, env, key);
+  return json(result.body, result.status, result.headers);
 }
 
 // Guest forging has its own Turnstile, one-use-session, and rate-limit
-// boundary. Once that boundary authorizes a request it calls this same
-// construction path, ensuring guest previews and account builds never
-// drift into two different engines.
+// boundary (worker/guest-forge.ts). Once that boundary authorizes a
+// request it calls generateForgeResult below directly — using the same
+// construction path as this function, so guest previews and account
+// builds never drift into two different engines — without ever going
+// through this Response wrapper. This function exists only so the
+// authenticated /api/forge/generate endpoint keeps exactly the same
+// external contract it always had: one JSON serialization, at this one
+// HTTP boundary.
 export async function handleForgeGenerateForKey(request: Request, env: Env, key: string): Promise<Response> {
-  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
+  const result = await generateForgeResult(request, env, key);
+  return json(result.body, result.status, result.headers);
+}
+
+export async function generateForgeResult(request: Request, env: Env, key: string): Promise<ForgeGenerationResult> {
+  if (request.method !== "POST") {
+    return { status: 405, headers: { Allow: "POST" }, body: { error: "Method not allowed" }, timing: emptyTiming() };
+  }
 
   let limitResult;
   try {
     limitResult = await checkRateLimit(env, key, "forge-generate", RATE_LIMIT, RATE_WINDOW_MS);
   } catch (error) {
     console.error("forge-generate rate limit check failed", error);
-    return json({ error: "The native Forge could not complete this candidate. Try again or adjust the commission.", code: "GENERATION_FAILED" }, 500);
+    return { status: 500, body: { error: "The native Forge could not complete this candidate. Try again or adjust the commission.", code: "GENERATION_FAILED" }, timing: emptyTiming() };
   }
   if (!limitResult.allowed) {
-    return json(
-      { error: "Rate limit exceeded", retryAfterSeconds: limitResult.retryAfterSeconds },
-      429,
-      { "Retry-After": String(limitResult.retryAfterSeconds) },
-    );
+    return {
+      status: 429,
+      headers: { "Retry-After": String(limitResult.retryAfterSeconds) },
+      body: { error: "Rate limit exceeded", retryAfterSeconds: limitResult.retryAfterSeconds },
+      timing: emptyTiming(),
+    };
   }
 
   const bodyResult = await readJsonWithLimit(request, MAX_BODY_BYTES);
-  if (!bodyResult.ok) return json({ error: bodyResult.error }, bodyResult.status);
+  if (!bodyResult.ok) return { status: bodyResult.status, body: { error: bodyResult.error }, timing: emptyTiming() };
 
   const validated = validateRequest(bodyResult.data);
-  if (!validated.ok) return json({ error: validated.error }, 400);
+  if (!validated.ok) return { status: 400, body: { error: validated.error }, timing: emptyTiming() };
   const body = validated.value;
+  const target = targetDeckSize(body.format);
+  const counter: ScryfallCounter = { count: 0 };
 
   try {
-    const target = targetDeckSize(body.format);
-    const pool = await loadNativeForgePool(body.format, body.commander, body.lynchpin || "", body.note || "", body.secondCommander);
+    const catalogStart = Date.now();
+    const pool = await loadNativeForgePool(body.format, body.commander, body.lynchpin || "", body.note || "", body.secondCommander, counter);
 
     if (body.mode === "imported") {
-      const resolution = await resolveImportedDecklist(body.deck!, pool.cards, body.format, body.commander);
+      const resolution = await resolveImportedDecklist(body.deck!, pool.cards, body.format, body.commander, counter);
+      const catalogMs = Date.now() - catalogStart;
+
+      const generationStart = Date.now();
       const nativeReport = forgeImportedMasterwork({
         format: body.format,
         target,
@@ -532,13 +594,22 @@ export async function handleForgeGenerateForKey(request: Request, env: Env, key:
         budget: body.budget,
         complexity: body.complexity,
       });
+      const generationMs = Date.now() - generationStart;
+
+      const validationStart = Date.now();
       const resultCheck = validateGeneratedResult(nativeReport, body.format) as GeneratedResultValidation;
+      const validationMs = Date.now() - validationStart;
+      const candidateCount = nativeReport.candidates?.length ?? null;
       if (!resultCheck.ok) {
         logConstructionOutcome({
           outcome: "incomplete", format: body.format, commanderName: body.commander?.name, target,
           failureCategory: resultCheck.code, failureMessage: resultCheck.message,
         });
-        return json({ error: resultCheck.message, code: resultCheck.code }, 422);
+        return {
+          status: 422,
+          body: { error: resultCheck.message, code: resultCheck.code },
+          timing: { catalogMs, generationMs, validationMs, persistenceMs: 0, scryfallRequestCount: counter.count, candidateCount, targetSize: target, finalSize: null },
+        };
       }
       logConstructionOutcome({
         outcome: "success", format: body.format, commanderName: body.commander?.name, target,
@@ -546,6 +617,7 @@ export async function handleForgeGenerateForKey(request: Request, env: Env, key:
         finalSize: (nativeReport.selected as any)?.rows.reduce((sum: number, row: any) => sum + row.quantity, 0),
         recoveryDiagnostics: (nativeReport.selected as any)?.recoveryDiagnostics,
       });
+      const persistenceStart = Date.now();
       const generationId = await storeGeneration(env, key, {
         selected: nativeReport.selected,
         candidates: nativeReport.candidates,
@@ -559,24 +631,33 @@ export async function handleForgeGenerateForKey(request: Request, env: Env, key:
           commonsOnly: body.commonsOnly, targetPowerTier: isCommanderFormat(body.format) ? body.targetPowerTier || undefined : undefined,
         },
       });
-      return json({
-        nativeReport,
-        cardPool: resolution.pool,
-        colors: pool.colors,
-        generationId,
-        importWarnings: { unresolvedNames: resolution.unresolvedNames, illegalNames: resolution.illegalNames },
-        // Only the imported/refine path carries a reviewFocus selection
-        // today (the entrance chip only renders in that chamber — see
-        // app/review-focus.mjs and app/page.tsx). evaluateReviewFocus
-        // reads real fields already present on nativeReport above; it
-        // never re-runs or duplicates the construction algorithm.
-        reviewFocusResult: evaluateReviewFocus(body.reviewFocus, nativeReport),
-      });
+      const persistenceMs = Date.now() - persistenceStart;
+      const finalSize = (nativeReport.selected as any)?.rows.reduce((sum: number, row: any) => sum + row.quantity, 0) ?? null;
+      return {
+        status: 200,
+        body: {
+          nativeReport,
+          cardPool: resolution.pool,
+          colors: pool.colors,
+          generationId,
+          importWarnings: { unresolvedNames: resolution.unresolvedNames, illegalNames: resolution.illegalNames },
+          // Only the imported/refine path carries a reviewFocus selection
+          // today (the entrance chip only renders in that chamber — see
+          // app/review-focus.mjs and app/page.tsx). evaluateReviewFocus
+          // reads real fields already present on nativeReport above; it
+          // never re-runs or duplicates the construction algorithm.
+          reviewFocusResult: evaluateReviewFocus(body.reviewFocus, nativeReport),
+        },
+        timing: { catalogMs, generationMs, validationMs, persistenceMs, scryfallRequestCount: counter.count, candidateCount, targetSize: target, finalSize },
+      };
     }
+
+    const catalogMs = Date.now() - catalogStart;
 
     // "native" (three-masterwork reveal) and "direct" (locked commander,
     // no reveal) both run the same generation — they only differ in
     // lynchpin/path, already folded into the request above.
+    const generationStart = Date.now();
     const nativeReport = forgeNativeMasterwork({
       format: body.format,
       target,
@@ -595,21 +676,35 @@ export async function handleForgeGenerateForKey(request: Request, env: Env, key:
       commonsOnly: body.commonsOnly,
       targetPowerTier: isCommanderFormat(body.format) ? body.targetPowerTier || undefined : undefined,
     });
+    const generationMs = Date.now() - generationStart;
+
+    const validationStart = Date.now();
     const resultCheck = validateGeneratedResult(nativeReport, body.format) as GeneratedResultValidation;
+    const candidateCount = nativeReport.candidates?.length ?? null;
     if (!resultCheck.ok) {
+      const validationMs = Date.now() - validationStart;
       logConstructionOutcome({
         outcome: "incomplete", format: body.format, commanderName: body.commander?.name, target,
         failureCategory: resultCheck.code, failureMessage: resultCheck.message,
       });
-      return json({ error: resultCheck.message, code: resultCheck.code }, 422);
+      return {
+        status: 422,
+        body: { error: resultCheck.message, code: resultCheck.code },
+        timing: { catalogMs, generationMs, validationMs, persistenceMs: 0, scryfallRequestCount: counter.count, candidateCount, targetSize: target, finalSize: null },
+      };
     }
     const candidatesCheck = validateAllCandidatesComplete(nativeReport, body.format) as GeneratedResultValidation;
+    const validationMs = Date.now() - validationStart;
     if (!candidatesCheck.ok) {
       logConstructionOutcome({
         outcome: "incomplete", format: body.format, commanderName: body.commander?.name, target,
         failureCategory: candidatesCheck.code, failureMessage: candidatesCheck.message,
       });
-      return json({ error: candidatesCheck.message, code: candidatesCheck.code }, 422);
+      return {
+        status: 422,
+        body: { error: candidatesCheck.message, code: candidatesCheck.code },
+        timing: { catalogMs, generationMs, validationMs, persistenceMs: 0, scryfallRequestCount: counter.count, candidateCount, targetSize: target, finalSize: null },
+      };
     }
     logConstructionOutcome({
       outcome: "success", format: body.format, commanderName: body.commander?.name, target,
@@ -617,6 +712,7 @@ export async function handleForgeGenerateForKey(request: Request, env: Env, key:
       finalSize: (nativeReport.selected as any)?.rows.reduce((sum: number, row: any) => sum + row.quantity, 0),
       recoveryDiagnostics: (nativeReport.selected as any)?.recoveryDiagnostics,
     });
+    const persistenceStart = Date.now();
     const generationId = await storeGeneration(env, key, {
       selected: nativeReport.selected,
       candidates: nativeReport.candidates,
@@ -630,16 +726,23 @@ export async function handleForgeGenerateForKey(request: Request, env: Env, key:
         commonsOnly: body.commonsOnly, targetPowerTier: isCommanderFormat(body.format) ? body.targetPowerTier || undefined : undefined,
       },
     });
-    return json({ nativeReport, cardPool: pool.cards, colors: pool.colors, generationId });
+    const persistenceMs = Date.now() - persistenceStart;
+    const finalSize = (nativeReport.selected as any)?.rows.reduce((sum: number, row: any) => sum + row.quantity, 0) ?? null;
+    return {
+      status: 200,
+      body: { nativeReport, cardPool: pool.cards, colors: pool.colors, generationId },
+      timing: { catalogMs, generationMs, validationMs, persistenceMs, scryfallRequestCount: counter.count, candidateCount, targetSize: target, finalSize },
+    };
   } catch (error) {
+    const timing = emptyTiming(counter.count);
     // Never echo a raw exception message — it can contain internal
     // implementation detail. The one exception: the catalog-unavailable
     // message is written by this file itself specifically for players
     // to see when Scryfall is unreachable, a real and expected failure
     // mode worth surfacing plainly rather than masking.
     if (error instanceof Error && error.message === CATALOG_UNAVAILABLE_MESSAGE) {
-      logConstructionOutcome({ outcome: "incomplete", format: body.format, commanderName: body.commander?.name, target: targetDeckSize(body.format), failureCategory: "CATALOG_UNAVAILABLE" });
-      return json({ error: CATALOG_UNAVAILABLE_MESSAGE, code: "CATALOG_UNAVAILABLE" }, 503);
+      logConstructionOutcome({ outcome: "incomplete", format: body.format, commanderName: body.commander?.name, target, failureCategory: "CATALOG_UNAVAILABLE" });
+      return { status: 503, body: { error: CATALOG_UNAVAILABLE_MESSAGE, code: "CATALOG_UNAVAILABLE" }, timing };
     }
     // Everything past the recovery ladder (relaxAnalysisPreferences)
     // throwing again, or every candidate failing its own hard gate —
@@ -651,11 +754,11 @@ export async function handleForgeGenerateForKey(request: Request, env: Env, key:
       outcome: "incomplete",
       format: body.format,
       commanderName: body.commander?.name,
-      target: targetDeckSize(body.format),
+      target,
       failureCategory: structuralExhaustion ? "CONSTRUCTION_EXHAUSTED" : "UNEXPECTED_EXCEPTION",
       failureMessage: error instanceof Error ? error.message : String(error),
     });
     if (!structuralExhaustion) console.error("forge-generate failed", error);
-    return json({ error: "The native Forge could not complete this candidate. Try again or adjust the commission.", code: "GENERATION_FAILED" }, 500);
+    return { status: 500, body: { error: "The native Forge could not complete this candidate. Try again or adjust the commission.", code: "GENERATION_FAILED" }, timing };
   }
 }

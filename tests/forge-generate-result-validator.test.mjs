@@ -125,7 +125,7 @@ test("forge-generate.ts runs both validators before returning success, for every
   const source = await read("worker/forge-generate.ts");
   const importedBranch = source.slice(source.indexOf('if (body.mode === "imported")'), source.indexOf('// "native" (three-masterwork reveal)'));
   assert.match(importedBranch, /validateGeneratedResult\(nativeReport, body\.format\)/);
-  assert.match(importedBranch, /return json\(\{ error: resultCheck\.message, code: resultCheck\.code \}, 422\)/);
+  assert.match(importedBranch, /body: \{ error: resultCheck\.message, code: resultCheck\.code \},\s*\n\s*timing: \{[\s\S]*?\},\s*\n\s*\};/);
 
   const nativeBranch = source.slice(source.indexOf('// "native" (three-masterwork reveal)'));
   assert.match(nativeBranch, /validateGeneratedResult\(nativeReport, body\.format\)/);
@@ -134,17 +134,20 @@ test("forge-generate.ts runs both validators before returning success, for every
 });
 
 // guest-forge.ts needed no logic change for this fix: it already only
-// marks a guest session "used" and creates a claimable result when
-// forgeResponse.ok is true, and forge-generate.ts's validator now makes
-// that status code honest. This test pins that guest-forge.ts still
-// branches the same way, so a future edit can't silently reintroduce
-// "mark used regardless of what forge-generate.ts actually returned."
+// marks a guest session "used" and creates a claimable result when the
+// generation result's status is 200, and forge-generate.ts's validator
+// now makes that status code honest. This test pins that guest-forge.ts
+// still branches the same way (now against generateForgeResult's
+// structured {status, body} rather than a Response's .ok, after the
+// P0 finalization refactor removed the Response round-trip entirely), so
+// a future edit can't silently reintroduce "mark used regardless of what
+// forge-generate.ts actually returned."
 test("guest-forge.ts only marks a session used and persists a claimable result on a successful (2xx) forge response", async () => {
   const source = await read("worker/guest-forge.ts");
   assert.match(
     source,
-    /if \(!forgeResponse\.ok\) \{\s*await env\.DB\.prepare\(`DELETE FROM guest_forge_sessions WHERE session_key = \? AND status = 'pending'`\)/,
-    "a non-ok forge response must release the pending reservation, not consume it",
+    /if \(generation\.status !== 200\) \{\s*await env\.DB\.prepare\(`DELETE FROM guest_forge_sessions WHERE session_key = \? AND status = 'pending'`\)/,
+    "a non-200 generation result must release the pending reservation, not consume it",
   );
   assert.match(
     source,

@@ -1,6 +1,6 @@
 import { userKey } from "./account-bench";
 import { checkRateLimit, readJsonWithLimit } from "./api-hardening";
-import { handleForgeGenerateForKey } from "./forge-generate";
+import { generateForgeResult } from "./forge-generate";
 import { loadGeneration, storeGeneration } from "./forge-generation-store";
 
 interface Env {
@@ -75,14 +75,30 @@ async function validateTurnstile(request: Request, secret: string, token: unknow
 const NETWORK_RATE_LIMIT_PER_DAY = 50;
 const NETWORK_RATE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
+// A pending guest_forge_sessions row is a lease on this signed identity's
+// one preview, not a permanent lock. A local reproduction of the exact
+// production request (Commander/Atraxa, native mode, real Scryfall data)
+// completed in ~12s end to end; production load, Scryfall retries, or a
+// platform-level termination could push that further, but nothing about
+// a legitimate single Forge attempt should approach minutes. 3 minutes
+// gives generous headroom above any real generation while remaining
+// drastically shorter than the 24h TTL a stuck 'pending' row used to
+// block a guest for — see the reclaim logic below.
+const PENDING_SESSION_LEASE_MS = 3 * 60 * 1000;
+
 // Non-PII structured logging so a support/observability pass can tell
 // which gate actually fired without reproducing it by hand — never the
-// raw IP, cookie value, or session key, only operational counters.
+// raw IP, cookie value, session key, or full deck/nativeReport, only
+// operational counters and phase timing. This is what should make the
+// *next* "the Forge did nothing" report immediately legible: which phase
+// (catalog/generation/validation/persistence/finalization) the time went
+// into, without needing to reproduce it by hand.
 function logGuestGateEvent(event: Record<string, unknown>) {
   console.log(JSON.stringify({ event: "guest_forge_gate", ...event }));
 }
 
 export async function handleGuestForge(request: Request, env: Env): Promise<Response> {
+  const totalStart = Date.now();
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
   if (!env.TURNSTILE_SECRET_KEY || !env.GUEST_SESSION_SECRET) {
     return json({ error: "Guest forging is not available yet" }, 503);
@@ -99,6 +115,7 @@ export async function handleGuestForge(request: Request, env: Env): Promise<Resp
 
   const session = await sessionFromRequest(request, env.GUEST_SESSION_SECRET);
   const now = Date.now();
+  const gateStart = Date.now();
 
   // Gate A — anti-abuse only. See the module-level note above: this must
   // never imply a specific player's preview was consumed, because it has
@@ -127,17 +144,42 @@ export async function handleGuestForge(request: Request, env: Env): Promise<Resp
   }
 
   // Gate B — the real entitlement. A conflict here means this exact
-  // signed browser identity already has a 'pending' or 'used' row —
-  // genuinely already used, not a network-sharing false positive.
+  // signed browser identity already has a 'pending' or 'used' row.
   const reserved = await env.DB.prepare(
     `INSERT INTO guest_forge_sessions (session_key, status, created_at, expires_at)
      VALUES (?, 'pending', ?, ?)
      ON CONFLICT(session_key) DO NOTHING`,
   ).bind(session.id, now, now + TTL_MS).run();
-  if (Number(reserved.meta?.changes || 0) !== 1) {
+  let holdsReservation = Number(reserved.meta?.changes || 0) === 1;
+  let reclaimedStaleLease = false;
+  if (!holdsReservation) {
+    // A 'pending' row is a lease, not a permanent lock. It normally
+    // transitions to 'used' (success) or gets deleted (any caught
+    // failure) within seconds — see below. A row that's still 'pending'
+    // well past PENDING_SESSION_LEASE_MS means whatever held it never
+    // got the chance to do either, almost certainly because the request
+    // was terminated in a way no try/catch in this file or worker/
+    // index.ts's outer safety net could intercept. Reclaim is one atomic
+    // UPDATE guarded by both status='pending' and staleness, so two
+    // concurrent requests can never both believe they reclaimed it, and
+    // a 'used' row (a real, completed entitlement) can never match this
+    // WHERE clause at all.
+    const reclaim = await env.DB.prepare(
+      `UPDATE guest_forge_sessions SET created_at = ?, expires_at = ?
+       WHERE session_key = ? AND status = 'pending' AND created_at < ?`,
+    ).bind(now, now + TTL_MS, session.id, now - PENDING_SESSION_LEASE_MS).run();
+    if (Number(reclaim.meta?.changes || 0) === 1) {
+      holdsReservation = true;
+      reclaimedStaleLease = true;
+    }
+  }
+  if (!holdsReservation) {
     // A genuinely-used entitlement may still have a real, unclaimed
     // result sitting behind it — surface the claim path instead of a
-    // dead end wherever one exists.
+    // dead end wherever one exists. (A fresh, not-yet-stale 'pending' row
+    // — a second concurrent request for the same guest — lands here too;
+    // that guest has no claimable result yet either, so the response is
+    // the same either way.)
     const existingClaim = await env.DB.prepare(
       `SELECT claim_token FROM guest_forges WHERE session_key = ? AND claimed_by IS NULL AND expires_at >= ? ORDER BY created_at DESC LIMIT 1`,
     ).bind(session.id, now).first<{ claim_token: string }>();
@@ -151,6 +193,7 @@ export async function handleGuestForge(request: Request, env: Env): Promise<Resp
       409,
     );
   }
+  const gate_ms = Date.now() - gateStart;
 
   try {
     const forgeBody = { ...body };
@@ -161,38 +204,101 @@ export async function handleGuestForge(request: Request, env: Env): Promise<Resp
       body: JSON.stringify(forgeBody),
     });
     const guestKey = `guest:${session.id}`;
-    const forgeResponse = await handleForgeGenerateForKey(internalRequest, env, guestKey);
-    const responseBody = await forgeResponse.json<Record<string, unknown>>();
-    if (!forgeResponse.ok) {
+    // generateForgeResult returns structured data, not a Response — the
+    // old code called handleForgeGenerateForKey (which built a Response)
+    // and then immediately forgeResponse.json()'d it back apart in this
+    // same isolate: a full parse of the single largest object in the
+    // request, for no reason beyond the old function signature. Using the
+    // object directly removes that parse entirely.
+    const generation = await generateForgeResult(internalRequest, env, guestKey);
+    const t = generation.timing;
+    if (generation.status !== 200) {
       await env.DB.prepare(`DELETE FROM guest_forge_sessions WHERE session_key = ? AND status = 'pending'`).bind(session.id).run();
       logGuestGateEvent({
         outcome: "retryable_generation_failure",
         hadGuestCookie,
-        status: forgeResponse.status,
-        code: typeof responseBody.code === "string" ? responseBody.code : null,
+        reclaimedStaleLease,
+        status: generation.status,
+        code: typeof generation.body.code === "string" ? generation.body.code : null,
+        gate_ms,
+        catalog_ms: t.catalogMs,
+        generation_ms: t.generationMs,
+        validation_ms: t.validationMs,
+        persistence_ms: t.persistenceMs,
+        scryfall_request_count: t.scryfallRequestCount,
+        candidate_count: t.candidateCount,
+        target_size: t.targetSize,
+        total_ms: Date.now() - totalStart,
       });
-      return json(responseBody, forgeResponse.status);
+      return json(generation.body, generation.status);
     }
 
-    const generationId = String(responseBody.generationId || "");
-    delete responseBody.generationId;
+    const finalizationStart = Date.now();
+    const { generationId, ...storedBody } = generation.body as Record<string, unknown> & { generationId?: unknown };
     const claimToken = crypto.randomUUID();
+    // Stored once, as the exact bytes written to D1 — never reparsed to
+    // build the client response below, since the two shapes deliberately
+    // differ (see the comment on the final return). If nativeReport ever
+    // becomes genuinely non-serializable, JSON.stringify throws here and
+    // falls into this function's own catch below, which already returns
+    // a typed GENERATION_FAILED response — the one real serialization
+    // boundary this now has, in place of the throwaway probe that used
+    // to run inside validateGeneratedResult for no downstream benefit.
+    const storedJson = JSON.stringify(storedBody);
     await env.DB.batch([
       env.DB.prepare(`UPDATE guest_forge_sessions SET status = 'used' WHERE session_key = ? AND status = 'pending'`).bind(session.id),
       env.DB.prepare(
         `INSERT INTO guest_forges (claim_token, session_key, generation_id, response_json, created_at, expires_at)
          VALUES (?, ?, ?, ?, ?, ?)`,
-      ).bind(claimToken, session.id, generationId, JSON.stringify(responseBody), now, now + TTL_MS),
+      ).bind(claimToken, session.id, String(generationId || ""), storedJson, now, now + TTL_MS),
     ]);
-    logGuestGateEvent({ outcome: "success", hadGuestCookie });
-    return json(
-      { ...responseBody, claimToken, guestPreview: true },
-      200,
-      { "Set-Cookie": `${COOKIE}=${encodeURIComponent(session.value)}; Max-Age=86400; Path=/; HttpOnly; Secure; SameSite=Lax` },
-    );
+    // The client response carries two fields the stored copy deliberately
+    // omits: claimToken (regenerated fresh on every claim lookup, not
+    // this request's problem to persist) and guestPreview:true (a marker
+    // for THIS response; handleGuestClaim later spreads the stored copy
+    // directly into its own response, and neither field belongs in a
+    // claimed-by-an-account result). Different shape, so it needs its own
+    // stringify — the one genuinely unavoidable serialization boundary,
+    // since it IS the outgoing HTTP body.
+    const clientBody = { ...storedBody, claimToken, guestPreview: true };
+    const responseString = JSON.stringify(clientBody);
+    const finalization_ms = Date.now() - finalizationStart;
+    logGuestGateEvent({
+      outcome: "success",
+      hadGuestCookie,
+      reclaimedStaleLease,
+      gate_ms,
+      catalog_ms: t.catalogMs,
+      generation_ms: t.generationMs,
+      validation_ms: t.validationMs,
+      persistence_ms: t.persistenceMs,
+      finalization_ms,
+      total_ms: Date.now() - totalStart,
+      response_bytes: responseString.length,
+      scryfall_request_count: t.scryfallRequestCount,
+      candidate_count: t.candidateCount,
+      target_size: t.targetSize,
+      final_size: t.finalSize,
+    });
+    return new Response(responseString, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+        "Set-Cookie": `${COOKIE}=${encodeURIComponent(session.value)}; Max-Age=86400; Path=/; HttpOnly; Secure; SameSite=Lax`,
+      },
+    });
   } catch (error) {
     await env.DB.prepare(`DELETE FROM guest_forge_sessions WHERE session_key = ? AND status = 'pending'`).bind(session.id).run();
-    logGuestGateEvent({ outcome: "retryable_generation_failure", hadGuestCookie, status: 500, code: "GENERATION_FAILED" });
+    logGuestGateEvent({
+      outcome: "retryable_generation_failure",
+      hadGuestCookie,
+      reclaimedStaleLease,
+      status: 500,
+      code: "GENERATION_FAILED",
+      gate_ms,
+      total_ms: Date.now() - totalStart,
+    });
     console.error("guest forge failed", error);
     return json({ error: "The Forge could not complete this preview. Please try again.", code: "GENERATION_FAILED" }, 500);
   }

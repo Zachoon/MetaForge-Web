@@ -82,11 +82,16 @@ export function validateGeneratedResult(nativeReport, format) {
   if (!Array.isArray(nativeReport.candidates) || !nativeReport.candidates.length) {
     return incomplete("The Forge did not return any evaluated candidates. Your preview has not been used.");
   }
-  try {
-    JSON.stringify(nativeReport);
-  } catch {
-    return incomplete("The Forge result could not be safely stored. Your preview has not been used.");
-  }
+  // A JSON.stringify(nativeReport) serializability probe used to run here,
+  // purely to discover in advance whether the object could be serialized —
+  // then discarded the result and let storeGeneration/the HTTP response
+  // stringify the same multi-megabyte object again moments later. Every
+  // field on nativeReport is built by this codebase's own engine from
+  // plain strings/numbers/arrays (see native-masterwork-engine.mjs); there
+  // is no real invariant this was protecting. Non-serializable output
+  // would now surface at the one real serialization boundary (the actual
+  // HTTP response) as a catchable exception, returned as GENERATION_FAILED
+  // like any other unexpected construction error.
   return { ok: true };
 }
 
