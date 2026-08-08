@@ -2097,6 +2097,126 @@ function budgetDiagnosticsFor(candidate, input) {
   };
 }
 
+// Phase 2A: budget substitution diagnostic — server-side/dev observability
+// only, not wired into any player-facing report yet. The land fix (Phase 1)
+// showed that a real preference term can exist and still lose every
+// decision because it's summed unweighted alongside far larger structural
+// terms; before guessing a SPELL_BUDGET_WEIGHT the same way, this measures
+// whether that's actually what's happening for a given expensive selected
+// card, or whether the price is buying something real (a role floor or
+// hard gate the deck would otherwise miss). Phase 2B tunes weights from
+// these numbers; this step only answers "why did this card survive?" —
+// see auditBudgetSubstitutions' offenders[].conclusion.
+export function auditBudgetSubstitutions(input, options = {}) {
+  const priceThresholdUsd = Number.isFinite(options.priceThresholdUsd) ? options.priceThresholdUsd : 15;
+  const variant = VARIANTS.find((entry) => entry.id === options.variantId) || VARIANTS[1];
+  const evidenceByName = new Map((input.evidence || []).map((entry) => [normalized(entry.name), entry]));
+  const analysis = prepareForgeAnalysis(input, evidenceByName);
+  const candidate = options.candidate || buildCandidateAttempt(input, variant, analysis);
+
+  const analyzedByName = new Map(analysis.cards.map((entry) => [normalized(entry.card.name), entry]));
+  const scored = analysis.cards.map((entry) => ({ entry, scored: scoreCard(entry, input, variant, analysis.context) }));
+  const scoredByName = new Map(scored.map((item) => [normalized(item.entry.card.name), item]));
+  // Only cards that actually passed eligibility (legality, exclusions, any
+  // active hard price/rarity cap) are legitimate substitution candidates —
+  // matches what real construction could have picked instead.
+  const spellNames = new Set(analysis.spells.map((entry) => normalized(entry.card.name)));
+
+  const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
+  const copyLimit = singleton ? 1 : 4;
+  const targets = roleTargets(input.format, input.strategy);
+  const quantityByName = new Map(candidate.rows.map((row) => [normalized(row.name), row.quantity]));
+  const roleCounts = new Map();
+  for (const row of candidate.rows) for (const role of row.roles || []) roleCounts.set(role, (roleCounts.get(role) || 0) + row.quantity);
+
+  const offenders = candidate.rows.filter((row) => {
+    if (row.roles.includes("land") || row.roles.includes("commander")) return false;
+    const entry = analyzedByName.get(normalized(row.name));
+    return entry && Number.isFinite(entry.card.priceUsd) && entry.card.priceUsd >= priceThresholdUsd;
+  });
+
+  const results = offenders.map((row) => {
+    const key = normalized(row.name);
+    const entry = analyzedByName.get(key);
+    const own = scoredByName.get(key);
+    const roles = entry.roles.filter((role) => role !== "land");
+
+    // Same slot/role context: shares at least one real role, actually
+    // cheaper, legal, and not already at its copy limit.
+    const alternatives = scored.filter(({ entry: candidateEntry }) => {
+      const candidateKey = normalized(candidateEntry.card.name);
+      if (candidateKey === key || !spellNames.has(candidateKey)) return false;
+      if (!Number.isFinite(candidateEntry.card.priceUsd) || candidateEntry.card.priceUsd >= entry.card.priceUsd) return false;
+      if ((quantityByName.get(candidateKey) || 0) >= copyLimit) return false;
+      return roles.some((role) => candidateEntry.roles.includes(role));
+    });
+    let best = null;
+    for (const option of alternatives) {
+      if (!best || option.scored.score > best.scored.score) best = option;
+    }
+
+    let hardGateImpact = "no cheaper legal alternative in this role context";
+    let scoreDifference = null;
+    let alternative = null;
+    if (best) {
+      const bestKey = normalized(best.entry.card.name);
+      const trialRoleCounts = new Map(roleCounts);
+      for (const role of entry.roles) trialRoleCounts.set(role, (trialRoleCounts.get(role) || 0) - 1);
+      for (const role of best.entry.roles) trialRoleCounts.set(role, (trialRoleCounts.get(role) || 0) + 1);
+      const alreadyPresent = quantityByName.has(bestKey);
+      const trialRows = candidate.rows
+        .map((r) => {
+          const rKey = normalized(r.name);
+          if (rKey === key) return { ...r, quantity: r.quantity - 1 };
+          if (alreadyPresent && rKey === bestKey) return { ...r, quantity: r.quantity + 1 };
+          return r;
+        })
+        .filter((r) => r.quantity > 0);
+      if (!alreadyPresent) {
+        trialRows.push({ name: best.entry.card.name, quantity: 1, roles: best.entry.roles, cmc: best.entry.cmc, colorPips: best.entry.colorPips });
+      }
+      const trialEvaluation = evaluateCandidate(trialRows, trialRoleCounts, input, variant);
+      const brokenRole = Object.entries(targets).find(
+        ([role, target]) => (roleCounts.get(role) || 0) >= target && (trialRoleCounts.get(role) || 0) < target,
+      );
+      hardGateImpact = brokenRole
+        ? `role floor: ${brokenRole[0]} would fall below ${brokenRole[1]}`
+        : trialEvaluation.roleCoverage < 0.45
+          ? "structural gate: role coverage would fall below the 45% floor"
+          : trialEvaluation.curveHealth < 45
+            ? "structural gate: curve health would fall below the 45/100 floor"
+            : "none";
+      scoreDifference = Number((own.scored.score - best.scored.score).toFixed(2));
+      alternative = { name: best.entry.card.name, priceUsd: best.entry.card.priceUsd, score: Number(best.scored.score.toFixed(2)) };
+    }
+
+    return {
+      name: row.name,
+      priceUsd: entry.card.priceUsd,
+      roles,
+      score: Number(own.scored.score.toFixed(2)),
+      budgetContribution: Number(entry.budgetScore.toFixed(2)),
+      alternative,
+      priceDifferenceUsd: alternative ? Number((entry.card.priceUsd - alternative.priceUsd).toFixed(2)) : null,
+      scoreDifference,
+      hardGateImpact,
+      conclusion: !alternative
+        ? "no cheaper legal alternative exists for this role context"
+        : hardGateImpact !== "none"
+          ? "expensive inclusion has a structural justification"
+          : "budget preference is being ignored relative to a small structural gain",
+    };
+  });
+
+  return {
+    budget: input.budget || null,
+    priceThresholdUsd,
+    variantId: variant.id,
+    offenderCount: results.length,
+    offenders: results,
+  };
+}
+
 export function forgeNativeMasterwork(input) {
   if (!input || !Array.isArray(input.cards) || !input.cards.length) throw new Error("Native Forge requires a verified card pool");
   const evidenceByName = new Map((input.evidence || []).map((entry) => [normalized(entry.name), entry]));
