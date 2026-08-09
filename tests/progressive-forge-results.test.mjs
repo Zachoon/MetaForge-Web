@@ -104,6 +104,13 @@ test("turns the result into one active chapter instead of a continuous instrumen
   assert.match(css, /\.chapter-1-active \.forge-intelligence-vault/);
 });
 
+test("keeps the deck list stable while card types are still loading", () => {
+  assert.match(page, /cardFactsLoading \? \(/);
+  assert.match(page, /Putting every card into its proper section/);
+  assert.match(page, /It will appear once, in its stable order/);
+  assert.match(page, /organizing card types/);
+});
+
 test("each workspace stage exposes one clear contextual next action instead of another control cluster", () => {
   assert.match(page, /className="forge-next-step" aria-label="Recommended next step"/);
   assert.match(page, /Improve this deck →/);

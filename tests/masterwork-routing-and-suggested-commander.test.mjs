@@ -157,7 +157,7 @@ test("none of the reported success strings can render outside hasValidatedDeck: 
   // deck controls inside the deck-manuscript header
   assert.match(
     page,
-    /: hasValidatedDeck\s*\n\s*\? `\$\{deckRows\.reduce\(\(sum, row\) => sum \+ row\.quantity, 0\)\} cards · \$\{Object\.keys\(groupedDeck\)\.length\} sections`\s*\n\s*: "Build not completed"/,
+    /: hasValidatedDeck\s*\n\s*\? cardFactsLoading[\s\S]*?Object\.keys\(groupedDeck\)\.length\} sections`\s*\n\s*: "Build not completed"/,
   );
   assert.match(page, /\{hasValidatedDeck && \(\s*<div className="deck-header-actions">/);
   // The raw Forge-response viewer and the "begin testing" trigger

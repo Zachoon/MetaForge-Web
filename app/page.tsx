@@ -1579,6 +1579,7 @@ export default function Home() {
   } | null>(null);
   const [coachingGoal, setCoachingGoal] = useState("");
   const [cardFacts, setCardFacts] = useState<Record<string, CardFact>>({});
+  const [cardFactsLoading, setCardFactsLoading] = useState(false);
   const [hoveredCard, setHoveredCard] = useState("");
   const [inspectedCard, setInspectedCard] = useState("");
   const [cardActionMenu, setCardActionMenu] = useState<{
@@ -2626,8 +2627,10 @@ export default function Home() {
     ];
     if (!names.length) {
       setCardFacts({});
+      setCardFactsLoading(false);
       return;
     }
+    setCardFactsLoading(true);
     let cancelled = false;
     (async () => {
       const next: Record<string, CardFact> = {};
@@ -2669,7 +2672,10 @@ export default function Home() {
         if (index + 75 < names.length)
           await new Promise((resolve) => window.setTimeout(resolve, 120));
       }
-      if (!cancelled) setCardFacts(next);
+      if (!cancelled) {
+        setCardFacts(next);
+        setCardFactsLoading(false);
+      }
     })();
     return () => {
       cancelled = true;
@@ -5417,7 +5423,9 @@ export default function Home() {
                     {benchStatus === "forging"
                       ? "The Forge is producing your deck…"
                       : hasValidatedDeck
-                        ? `${deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards · ${Object.keys(groupedDeck).length} sections`
+                        ? cardFactsLoading
+                          ? `${deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards · organizing card types…`
+                          : `${deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards · ${Object.keys(groupedDeck).length} sections`
                         : "Build not completed"}
                   </h2>
                 </div>
@@ -6768,7 +6776,16 @@ export default function Home() {
                     )}
                   </section>
                 )}
-                <div className="deck-gallery">
+                {cardFactsLoading ? (
+                  <section className="deck-gallery-loading" role="status" aria-live="polite">
+                    <span aria-hidden="true" />
+                    <div>
+                      <small>ORGANIZING YOUR DECK</small>
+                      <strong>Putting every card into its proper section…</strong>
+                      <p>The complete list is preserved. It will appear once, in its stable order.</p>
+                    </div>
+                  </section>
+                ) : <div className="deck-gallery">
                   <aside className="card-preview-stage">
                     <button
                       type="button"
@@ -6992,7 +7009,7 @@ export default function Home() {
                         </section>
                       ))}
                   </div>
-                </div>
+                </div>}
                 </>
               ) : forgeGenerationError ? (
                 <div className="forge-generation-failure" role="alert">
