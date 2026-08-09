@@ -56,7 +56,7 @@ test("keeps the authenticated app out of search results", async () => {
 });
 
 test("publishes canonical URLs for public legal pages", async () => {
-  const response = await render("https://www.metaforge.gg/privacy");
+  const response = await render("https://metaforge.gg/privacy");
   const html = await response.text();
   assert.match(html, /<title>Privacy Policy \| MetaForge<\/title>/i);
   assert.match(html, /How MetaForge handles guest Forge previews/i);
@@ -69,6 +69,14 @@ test("publishes canonical URLs for public legal pages", async () => {
   assert.match(termsHtml, /public-alpha Magic: The Gathering deckbuilding/i);
   assert.match(termsHtml, /<link rel="canonical" href="https:\/\/metaforge\.gg\/terms"\s*\/>/i);
   assert.equal(termsHtml.match(/rel="canonical"/gi)?.length, 1);
+});
+
+test("permanently redirects every www duplicate to the apex canonical without losing its path or query", async () => {
+  const response = await render("https://www.metaforge.gg/academy/why-cant-i-cast-my-spells?utm_source=search");
+  assert.equal(response.status, 308);
+  assert.equal(response.headers.get("location"), "https://metaforge.gg/academy/why-cant-i-cast-my-spells?utm_source=search");
+  assert.match(response.headers.get("cache-control") || "", /max-age=86400/);
+  assert.equal(await response.text(), "");
 });
 
 test("publishes a crawlable public robots file and sitemap", async () => {

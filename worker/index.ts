@@ -16,7 +16,7 @@ import { cleanupExpiredGenerations } from "./forge-generation-store";
 import { cleanupExpiredGuestForges, handleGuestClaim, handleGuestForge } from "./guest-forge";
 const BUILD_ID = "2026.07.16-workspace1";
 const IMPACT_SITE_VERIFICATION = "05208696-7452-434e-89b1-d6be551c7505";
-const PUBLIC_HOSTS = new Set(["metaforge.gg", "www.metaforge.gg"]);
+const PUBLIC_HOSTS = new Set(["metaforge.gg"]);
 const SEO_HEADERS = { "Cache-Control": "public, max-age=3600", "Content-Type": "text/plain; charset=utf-8" };
 
 function robotsResponse(url: URL): Response {
@@ -136,6 +136,22 @@ const worker = {
       });
     }
     const url = new URL(request.url);
+
+    // Serve one crawlable public origin. Previously www returned a complete
+    // 200 duplicate whose canonical pointed to the apex, which Search Console
+    // correctly classified as "Alternate page with proper canonical tag".
+    // A permanent redirect removes the duplicate document entirely while
+    // preserving deep links and campaign parameters.
+    if (url.hostname === "www.metaforge.gg") {
+      url.hostname = "metaforge.gg";
+      return new Response(null, {
+        status: 308,
+        headers: {
+          Location: url.href,
+          "Cache-Control": "public, max-age=86400",
+        },
+      });
+    }
 
     if (url.pathname === "/robots.txt") return robotsResponse(url);
     if (url.pathname === "/sitemap.xml") return sitemapResponse(url);
