@@ -69,25 +69,13 @@ type MilestoneMotion = {
 } | null;
 
 const FORGING_STAGES = [
-  ["The blueprint is sealed", "The commission enters the crucible.", "SEAL"],
-  ["Awakening the Great Furnace", "Heat gathers around the chosen intent.", "IGNITE"],
-  [
-    "Consulting the Archive",
-    "Past masterworks sharpen the first lines of the build.",
-    "ALIGN",
-  ],
-  [
-    "Shaping the strategic core",
-    "Every card is drawn toward the commission's purpose.",
-    "SHAPE",
-  ],
-  ["Tempering the mana lattice", "The foundation is balanced under heat.", "TEMPER"],
-  [
-    "Testing structural integrity",
-    "The design is pressed against hostile plans.",
-    "PROVE",
-  ],
-  ["Cooling the masterwork", "The finished weapon takes its final form.", "REVEAL"],
+  ["Reading your choices", "Confirming your format, commander, goals, and preferences.", "SETUP"],
+  ["Finding cards that fit", "Matching legal cards to the jobs your deck needs.", "CARD FIT"],
+  ["Building complete options", "Creating several playable 100-card decks to compare.", "DECKS"],
+  ["Balancing the mana", "Checking lands, color access, and when your spells can be cast.", "MANA"],
+  ["Checking the whole deck", "Verifying legality, deck size, curve, and essential roles.", "VERIFY"],
+  ["Comparing the strongest builds", "Measuring which complete deck best matches your goal.", "COMPARE"],
+  ["Finishing your deck", "Preparing the list and your first coaching step.", "READY"],
 ] as const;
 
 type DeckPreview = { card: string; role: string; theme: string; win: string };
@@ -491,33 +479,28 @@ const ForgeCeremonyMotion = ({
 }) => {
   return (
     <div
-      className={`forge-cinematic-forge${motionMode === "quiet" ? " is-quiet" : ""}`}
+      className={`forge-deck-assembly${motionMode === "quiet" ? " is-quiet" : ""}`}
       data-phase={stage + 1}
       aria-hidden="true"
     >
-      <video
-        className="forge-cinematic-aperture"
-        src="/assets/forge/vfx/entrance-aperture.mp4"
-        autoPlay={motionMode === "full"}
-        muted
-        loop
-        playsInline
-        preload="auto"
-      />
-      <video
-        className="forge-cinematic-embers"
-        src="/assets/forge/vfx/entrance-embers.mp4"
-        autoPlay={motionMode === "full"}
-        muted
-        loop
-        playsInline
-        preload="auto"
-      />
-      <span className="forge-cinematic-vignette" />
-      <span className="forge-cinematic-halo" />
-      <span className="forge-cinematic-index" />
-      <span className="forge-cinematic-core"><i /><b /></span>
-      <span className="forge-cinematic-sparks"><i /><i /><i /><i /><i /><i /></span>
+      <span className="assembly-light" />
+      <span className="assembly-table" />
+      <div className="assembly-cards">
+        {[0, 1, 2, 3, 4, 5, 6].map((index) => (
+          <i key={index} style={{
+            "--card-index": index,
+            "--card-offset": `${(index - 3) * 38}%`,
+            "--card-lift": `${Math.abs(index - 3) * 8}%`,
+            "--card-angle": `${(index - 3) * 9}deg`,
+          } as React.CSSProperties}>
+            <b>MF</b><span />
+          </i>
+        ))}
+      </div>
+      <span className="assembly-deck"><i>MF</i><b /></span>
+      <span className="assembly-scan" />
+      <span className="assembly-progress"><b style={{ width: `${((stage + 1) / FORGING_STAGES.length) * 100}%` }} /></span>
+      <small>{stage + 1} / {FORGING_STAGES.length}</small>
     </div>
   );
 };
@@ -5219,7 +5202,7 @@ export default function Home() {
             <h1>{FORGING_STAGES[stage][0]}</h1>
             <p>{FORGING_STAGES[stage][1]}</p>
             <div className="ceremony-phase">
-              <small>CRAFT PHASE {stage + 1} / {FORGING_STAGES.length}</small>
+              <small>STEP {stage + 1} OF {FORGING_STAGES.length}</small>
               <strong>{FORGING_STAGES[stage][2]}</strong>
             </div>
             <div className="ceremony-progress">
@@ -5227,7 +5210,7 @@ export default function Home() {
                 <b style={{ width: `${progress}%` }} />
               </span>
               <small>
-                CHECKING CARDS, RULES, AND YOUR STRATEGY
+                YOU CAN LEAVE THIS TAB OPEN — YOUR DECK WILL APPEAR HERE
               </small>
             </div>
           </div>
