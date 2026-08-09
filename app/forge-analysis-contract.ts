@@ -123,6 +123,7 @@ export interface ForgeAnalysisReport {
   coachingDiagnosis: {
     engine: string;
     revision: number;
+    playerGoal: string | null;
     sampleSize: number;
     primary: {
       category: "construction-pressure" | "piloting-decision" | "matchup-pressure" | "ordinary-variance" | "revision-effect" | "collect-more-evidence";
@@ -133,17 +134,26 @@ export interface ForgeAnalysisReport {
       measurement: string;
     };
     alternatives: readonly any[];
+    retiredHypotheses: readonly string[];
+    activeIntervention: null | { id: string; kind: string; summary?: string; targetCategory: string | null; hypothesisId: string | null };
     evidenceBoundary: string;
     confidence: number;
   };
   provingGrounds: {
     engine: string;
+    hypothesisId: string;
+    revision: number;
+    playerGoal: string | null;
     source: string;
+    diagnosisCategory: string;
     question: string;
     watchFor: string;
     why: string;
     successPrompt: string;
     missedPrompt: string;
+    evidence: { supporting: number; contradicting: number; uninformative: number };
+    status: "testing" | "supported" | "mixed" | "retired";
+    nextAction: string;
     boundary: string;
   };
   methodology: string;
@@ -243,6 +253,7 @@ export const EMPTY_FORGE_ANALYSIS_REPORT: ForgeAnalysisReport = {
   coachingDiagnosis: {
     engine: "metaforge-exact-revision-coach-v1",
     revision: 1,
+    playerGoal: null,
     sampleSize: 0,
     primary: {
       category: "collect-more-evidence",
@@ -253,17 +264,26 @@ export const EMPTY_FORGE_ANALYSIS_REPORT: ForgeAnalysisReport = {
       measurement: "Two repeated issue signals, two explicit decision moments, or four concentrated matchup games can open a diagnosis.",
     },
     alternatives: [],
+    retiredHypotheses: [],
+    activeIntervention: null,
     evidenceBoundary: "MetaForge diagnoses repeated evidence attached to this exact revision. A loss alone never proves a bad deck or a piloting mistake, and observed samples are not predicted win rates.",
     confidence: 0,
   },
   provingGrounds: {
-    engine: "metaforge-proving-grounds-v1",
+    engine: "metaforge-proving-grounds-v2",
+    hypothesisId: "coach-empty",
+    revision: 1,
+    playerGoal: null,
     source: "collect-more-evidence",
+    diagnosisCategory: "collect-more-evidence",
     question: "What is the first repeatable reason this deck succeeds or stalls?",
     watchFor: "Notice the first decisive turn and name only the clearest observable lesson.",
     why: "There is not enough exact-revision evidence for an honest diagnosis yet.",
     successPrompt: "Yes — the thing I watched happened",
     missedPrompt: "No — it did not happen",
+    evidence: { supporting: 0, contradicting: 0, uninformative: 0 },
+    status: "testing",
+    nextAction: "Run this exact question in the next relevant game.",
     boundary: "One game supplies one clue, not a verdict. The Forge will preserve the exact revision and look for repetition before recommending a change.",
   },
   methodology: "MetaForge converts verified card text into an interaction graph, interprets repeatable systems, and then forms bounded structural-impact hypotheses. These results do not prove real-game causation or predict match outcomes.",

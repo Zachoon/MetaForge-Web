@@ -52,6 +52,24 @@ test("records dismissals without treating them as performance evidence", () => {
   assert.equal(report.reusable.length, 0);
 });
 
+test("attributes an intervention to its named coaching target before aggregate wins", () => {
+  const targetMatch = (revision, outcome, result) => ({
+    id: `${revision}-${outcome}-${result}`,
+    revision,
+    result,
+    fieldTest: { source: "construction-pressure", outcome },
+  });
+  const report = learnFromForgeInterventions(
+    [{ id: "targeted", kind: "one-slot repair", decision: "accepted", revision: 2, targetCategory: "construction-pressure" }],
+    [
+      targetMatch(1, "observed", "win"), targetMatch(1, "observed", "win"),
+      targetMatch(2, "missed", "loss"), targetMatch(2, "missed", "loss"),
+    ],
+  );
+  assert.equal(report.experiments[0].targetComparable, true);
+  assert.equal(report.experiments[0].verdict, "promising", "the named problem improved even though aggregate match results did not");
+});
+
 test("returns deterministic immutable reports", () => {
   const input = [{ id: "one", kind: "resilience", decision: "accepted", revision: 2 }];
   const evidence = [...matches(1, ["loss", "loss", "loss", "win"]), ...matches(2, ["win", "win", "win", "loss"])];

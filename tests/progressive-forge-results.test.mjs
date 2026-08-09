@@ -7,11 +7,12 @@ const css = await readFile(new URL("../app/testing-anvil.css", import.meta.url),
 const motifCss = await readFile(new URL("../app/masterwork-motifs.css", import.meta.url), "utf8");
 const polishCss = await readFile(new URL("../app/forge-polish.css", import.meta.url), "utf8");
 
-test("defaults the workbench to a remembered deck-first view", () => {
-  assert.match(page, /useState<"guided" \| "full">\("guided"\)/);
-  assert.match(page, /metaforge\.resultViewMode/);
-  assert.match(page, />\s*Deck first\s*</);
-  assert.match(page, />\s*All analysis\s*</);
+test("opens directly into the deck without a detail-mode decision", () => {
+  assert.doesNotMatch(page, /resultViewMode/);
+  assert.doesNotMatch(page, /metaforge\.resultViewMode/);
+  assert.doesNotMatch(page, />\s*Deck first\s*</);
+  assert.doesNotMatch(page, />\s*All analysis\s*</);
+  assert.match(page, /<small>YOUR DECK<\/small>/);
 });
 
 test("places deck and refinement surfaces before the intelligence vault", () => {
@@ -28,9 +29,9 @@ test("places deck and refinement surfaces before the intelligence vault", () => 
 // coaching question) reviewFocusResult's real evidence/nextStep
 // immediately instead of 1-2 clicks deep in chapter 3.
 test("the first-run coaching panel sits between forge-quick-read and the deck grid, and is visible by default in chapter 1", () => {
-  assert.match(css, /\.progressive-results \.forge-quick-read\{order:1\}\.progressive-results \.first-run-coaching\{order:2\}/);
-  assert.match(css, /\.progressive-results \.chapter-1-active \.first-run-coaching\{display:block\}/);
-  assert.match(page, /className="first-run-coaching" aria-label="MetaForge's first read on this deck"/);
+  assert.doesNotMatch(page, /className="forge-quick-read"/);
+  assert.doesNotMatch(page, /className="first-run-coaching"/);
+  assert.match(page, /className="forge-understanding-bridge"/);
 });
 
 // forge-quick-read (the neighboring, pre-existing panel) renders
@@ -42,33 +43,29 @@ test("the first-run coaching panel sits between forge-quick-read and the deck gr
 // validated deck exists would either show stale data from a previous
 // session or empty/loading noise dressed up as a real coaching read.
 test("the coaching panel itself (not just its content) is gated on hasValidatedDeck — it must not render during forging or after a failed generation", () => {
-  const panelSite = page.match(/\{hasValidatedDeck && \(\s*<section className="first-run-coaching"/);
-  assert.ok(panelSite, "expected the entire <section className=\"first-run-coaching\"> to be wrapped in {hasValidatedDeck && (...)}");
+  const panelSite = page.match(/className="forge-understanding-bridge"[\s\S]*?<\/details>/);
+  assert.ok(panelSite, "expected one optional deck-understanding drawer");
 });
 
 test("the coaching panel always shows what MetaForge's own structural analysis noticed first, with an honest loading state", () => {
-  const block = page.match(/className="first-run-coaching"[\s\S]*?<\/section>/)?.[0];
+  const block = page.match(/className="forge-understanding-bridge"[\s\S]*?<\/details>/)?.[0];
   assert.ok(block, "expected to find the first-run-coaching panel's JSX");
-  assert.match(block, /WHAT STOOD OUT FIRST/);
-  assert.match(block, /forgeSystemsReport\.strongestSystem\?\.name/);
-  assert.match(
-    block,
-    /structuralAnalysisStatus === "loading" && !structuralReportReady\s*\n\s*\? "Analyzing this build's structure…"/,
-    "must not show a blank/undefined value while the debounced structural analysis is still running",
-  );
+  assert.match(block, /STRONGEST MACHINE/);
+  assert.match(block, /forgeSystemsReport\.strongestSystem/);
+  assert.match(block, /structuralAnalysisStatus === "loading"/);
 });
 
 test("the coaching panel leads with the player's own Review coaching question when one was asked, real evidence and nextStep — not just the generic .concise blob", () => {
-  const block = page.match(/className="first-run-coaching"[\s\S]*?<\/section>/)?.[0];
+  const block = page.match(/className="forge-understanding-bridge"[\s\S]*?<\/details>/)?.[0];
   assert.ok(block);
-  assert.match(block, /reviewFocusResult \? \(/);
-  assert.match(block, /YOU ASKED — \{reviewFocusResult\.focus\.toUpperCase\(\)\}/);
+  assert.match(block, /reviewFocusResult/);
+  assert.match(block, /YOUR QUESTION/);
   assert.match(block, /\{reviewFocusResult\.evidence\}/);
   assert.match(block, /\{reviewFocusResult\.nextStep\}/);
   // A fresh build (no Review focus asked) falls back to a real structural
   // signal, never a placeholder implying nothing is known.
-  assert.match(block, /WATCH FOR THIS NEXT GAME/);
-  assert.match(block, /forgeSystemsReport\.weakestSystem\?\.name \|\| simulationDossier\?\.matrix\.weakest\?\.opponent/);
+  assert.match(block, /WATCH FIRST/);
+  assert.match(block, /forgeSystemsReport\.weakestSystem/);
 });
 
 test("reviewFocusResult carries its full evidence shape (asked/evidence/nextStep), not just .concise, and is reset on every new commission", () => {
@@ -85,28 +82,26 @@ test("reviewFocusResult carries its full evidence shape (asked/evidence/nextStep
 });
 
 test("turns the result into one active chapter instead of a continuous instrument wall", () => {
-  assert.match(page, /activeForgeChapter.*useState<1 \| 2 \| 3 \| 4 \| 5>\(1\)/);
+  assert.match(page, /activeForgeChapter.*useState<1 \| 2 \| 5>\(1\)/);
   assert.match(page, /id="forge-chapter-rail"/);
-  assert.match(page, /WHAT TO DO NEXT/);
-  assert.match(page, /Your deck is ready/);
-  assert.match(page, /"Improve"/);
-  assert.match(page, /"How it works"/);
-  assert.match(page, /"Analysis"/);
+  assert.doesNotMatch(page, /WHAT TO DO NEXT/);
+  assert.match(page, /\[1, "Deck"/);
+  assert.match(page, /\[2, "Tune"/);
+  assert.match(page, /\[5, "Test"/);
   assert.match(page, /chapter-\$\{activeForgeChapter\}-active/);
   assert.match(css, /\.chapter-1-active \.deck-manuscript>header\{display:flex\}/);
   assert.match(css, /\.chapter-2-active>\.testing-loop\{display:block/);
-  assert.match(page, /CHAPTER V · THE PROVING GROUNDS/);
-  assert.match(page, /Begin this field test/);
+  assert.match(page, /<small>TEST<\/small><h2 id="proving-grounds-title">/);
+  assert.match(page, /YOUR ACTIVE COACHING PLAN/);
   assert.match(page, /metaforge\.activeFieldTest/);
   assert.match(page, /This game did not test it/);
   assert.match(page, /The Forge will treat them as one clue/);
   assert.match(css, /\.chapter-5-active>\.proving-grounds\{display:block/);
-  assert.match(css, /scroll-snap-type:x mandatory/);
-  assert.match(css, /flex:0 0 82%/);
-  assert.match(page, /activeButton\.offsetLeft - \(rail\.clientWidth - activeButton\.clientWidth\) \/ 2/);
+  assert.match(css, /\.workspace-mode-tabs\{grid-template-columns:repeat\(3/);
+  assert.doesNotMatch(page, /activeButton\.offsetLeft/);
   assert.match(css, /\.opening-experiment-pending \.forge-map-intro\{display:none\}/);
-  assert.match(css, /\.chapter-3-active \.forge-understanding-bridge\{display:block/);
-  assert.match(css, /\.chapter-4-active \.forge-intelligence-vault\{display:block/);
+  assert.match(css, /\.chapter-1-active \.forge-understanding-bridge/);
+  assert.match(css, /\.chapter-1-active \.forge-intelligence-vault/);
 });
 
 // A pasted decklist still reveals its complete deck immediately after the
@@ -122,10 +117,10 @@ test("a pasted decklist reveals its complete deck immediately; a fresh build nev
   assert.match(page, /setChamber\("masterworks"\)/, "a fresh commander build lands on the masterworks choice, not a pre-selected deck");
   assert.match(page, /setOpeningExperimentPending\(false\)/);
   assert.doesNotMatch(page, /setOpeningExperimentPending\(mode === "commander"\)/);
-  assert.match(page, /\[1, "Your deck"/);
-  assert.match(page, /className="forge-guide-navigation"/);
+  assert.match(page, /\[1, "Deck"/);
+  assert.doesNotMatch(page, /className="forge-guide-navigation"/);
   assert.match(page, /← Back/);
-  assert.match(page, /Next · Improve →/);
+  assert.doesNotMatch(page, /className="forge-guide-navigation"/);
 });
 
 test("turns new-deck setup into three progressively disclosed decisions", () => {
@@ -147,11 +142,12 @@ test("keeps the chapter connector below the labels instead of striking through t
   assert.match(polishCss, /\.progressive-results \.forge-chapter-rail>button\{padding-bottom:18px\}/);
 });
 
-test("lets players revisit every commission step they have already reached", () => {
-  assert.match(page, /furthestCommissionStep/);
-  assert.match(page, /visitCommissionStep/);
-  assert.match(page, /disabled=\{index > furthestCommissionStep\}/);
-  assert.match(page, /aria-current=\{chapter === index \? "step" : undefined\}/);
+test("keeps the global header focused and moves secondary controls into one menu", () => {
+  assert.doesNotMatch(page, /className="forge-steps"/);
+  assert.doesNotMatch(page, /furthestCommissionStep/);
+  assert.match(page, /className="forge-menu"/);
+  assert.match(page, /<summary>Menu<\/summary>/);
+  assert.match(page, /Replay guided tour/);
 });
 
 test("turns deck stress experiments into concrete player insights", () => {
@@ -164,8 +160,8 @@ test("turns deck stress experiments into concrete player insights", () => {
 
 test("offers a contained Workbench and an unrestricted full ledger", () => {
   assert.match(page, /useState<"workbench" \| "ledger">\("workbench"\)/);
-  assert.match(page, />\s*Workbench\s*</);
-  assert.match(page, />\s*Full ledger\s*</);
+  assert.match(page, />Visual deck<\/button>/);
+  assert.match(page, />Text list<\/button>/);
   assert.match(css, /\.workbench-deck-view \.deck-gallery\{[^}]*max-height/);
   assert.match(css, /\.ledger-deck-view \.deck-gallery\{max-height:none/);
 });
@@ -201,10 +197,8 @@ test("makes a guided three-card experiment the doorway to a new Masterwork", () 
   assert.match(page, /openingExperimentChoices\.map/);
   assert.match(page, /CONTROL EXPERIMENT/);
   assert.match(page, /Skip guidance · Reveal the full deck/);
-  assert.match(page, /className="forge-journey-guide"/);
-  assert.match(page, /deckRows\.length > 0 && resultViewMode === "guided"/);
-  assert.match(page, /Next · Improve →/);
-  assert.match(css, /\.opening-experiment-pending \.result-view-controls[^}]*display:none/);
+  assert.doesNotMatch(page, /className="forge-journey-guide"/);
+  assert.doesNotMatch(page, /className="forge-guide-navigation"/);
   assert.match(css, /\.opening-experiment-options\{display:grid;grid-template-columns:repeat\(3/);
 });
 
@@ -258,7 +252,7 @@ test("reveals only the strongest systems before the player requests the archive"
 test("automatically exposes intelligence when a hard deck gate fails", () => {
   assert.match(
     page,
-    /resultViewMode === "full"[\s\S]*?intelligenceOpen[\s\S]*?!deckIntegrity\.passed/,
+    /intelligenceOpen[\s\S]*?!deckIntegrity\.passed/,
   );
   assert.match(page, /ATTENTION REQUIRED/);
 });

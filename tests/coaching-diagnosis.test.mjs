@@ -47,6 +47,17 @@ test("piloting pressure requires explicit repeated decision evidence", () => {
   assert.match(report.primary.recommendation, /keep the deck stable/i);
 });
 
+test("piloting diagnosis preserves the chosen and alternative branches", () => {
+  const coachDebrief = (chosenLine, alternativeLine) => ({ decisionMoments: [{ window: "sequencing", chosenLine, alternativeLine }] });
+  const report = buildCoachingDiagnosis({ matches: [
+    match("one", { coachDebrief: coachDebrief("Cast first", "Hold mana") }),
+    match("two", { coachDebrief: coachDebrief("Attack all", "Leave a blocker") }),
+  ], currentRevision: 2 });
+  assert.equal(report.primary.category, "piloting-decision");
+  assert.match(report.primary.evidence.join(" "), /Cast first/);
+  assert.match(report.primary.evidence.join(" "), /Leave a blocker/);
+});
+
 test("a concentrated matchup needs at least four classified games", () => {
   const early = buildCoachingDiagnosis({
     matches: [0, 1, 2].map((index) => match(`e${index}`, { opponent: "Aggro" })),
@@ -85,6 +96,52 @@ test("a comparable accepted revision effect outranks secondary diagnoses", () =>
   });
   assert.equal(report.primary.category, "revision-effect");
   assert.equal(report.alternatives[0].category, "construction-pressure");
+});
+
+test("focused field-test results become diagnosis evidence", () => {
+  const report = buildCoachingDiagnosis({
+    matches: [
+      match("one", { signal: "I needed more early interaction", fieldTest: { source: "construction-pressure", outcome: "observed" } }),
+      match("two", { signal: "I needed more early interaction", fieldTest: { source: "construction-pressure", outcome: "observed" } }),
+    ],
+    currentRevision: 2,
+  });
+  assert.equal(report.primary.category, "construction-pressure");
+  assert.equal(report.primary.fieldEvidence.observed, 2);
+  assert.equal(report.primary.confidence, "repeated focused observation");
+});
+
+test("two clean contradictions retire the exact coaching hypothesis", () => {
+  const report = buildCoachingDiagnosis({
+    matches: [
+      match("one", { signal: "I needed more early interaction", fieldTest: { source: "construction-pressure", outcome: "missed" } }),
+      match("two", { signal: "I needed more early interaction", fieldTest: { source: "construction-pressure", outcome: "missed" } }),
+    ],
+    currentRevision: 2,
+  });
+  assert.equal(report.primary.category, "collect-more-evidence");
+  assert.deepEqual(report.retiredHypotheses, ["construction-pressure"]);
+  assert.match(report.primary.recommendation, /retire that question/i);
+});
+
+test("the player's stated goal remains attached without overriding evidence", () => {
+  const report = buildCoachingDiagnosis({ matches: [match("one")], currentRevision: 2, playerGoal: "Closing games" });
+  assert.equal(report.playerGoal, "Closing games");
+  assert.equal(report.primary.category, "collect-more-evidence");
+});
+
+test("an accepted revision keeps testing its named intervention target", () => {
+  const report = buildCoachingDiagnosis({
+    matches: [],
+    currentRevision: 3,
+    interventionLearning: { experiments: [{
+      id: "change", kind: "one-slot repair", summary: "Swap one answer", decision: "accepted", revision: 3,
+      comparable: false, targetCategory: "construction-pressure", targetMeasurement: "Watch whether the answer arrives on time.",
+    }] },
+  });
+  assert.equal(report.primary.category, "revision-effect");
+  assert.equal(report.activeIntervention.targetCategory, "construction-pressure");
+  assert.match(report.primary.measurement, /answer arrives on time/i);
 });
 
 test("diagnosis implementation remains server-only", () => {

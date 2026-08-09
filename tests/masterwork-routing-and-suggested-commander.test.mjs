@@ -90,8 +90,8 @@ test("entering a Masterwork is only reachable through an explicit player click o
   assert.match(page, /onClick=\{\(\) => enterMasterwork\(candidate\.id\)\}/);
   // No automatic call anywhere in the file.
   const autoCalls = [...page.matchAll(/enterMasterwork\(/g)];
-  // One definition + one JSX call site = 2 occurrences of the bare name.
-  assert.equal(autoCalls.length, 2, "enterMasterwork should only be referenced by its own definition and the one explicit button click");
+  // One definition + the recommended shortcut + each candidate's entry button.
+  assert.equal(autoCalls.length, 3, "enterMasterwork should only be referenced by its definition and explicit player-click handlers");
 });
 
 test("recommended candidate is visually marked but not auto-selected — every candidate gets its own explicit entry button", () => {
@@ -110,7 +110,7 @@ test("the workbench's own UI success/failure boundary: a hasValidatedDeck predic
   );
   // The header's "ready to play" framing, the detail-level nav, the "what
   // to do next" intro, and the chapter rail are all gated on it.
-  assert.match(page, /\{hasValidatedDeck\s*\?\s*"YOUR COMPLETE DECK · READY TO PLAY"/);
+  assert.match(page, /\{hasValidatedDeck\s*\?\s*"READY TO PLAY"/);
   assert.match(page, /\{hasValidatedDeck \? \(\s*<>/);
   // The main deck-content branch (card list, prices, copy actions, multi-
   // refill, ...) only renders for a validated deck, not merely a non-empty
@@ -148,9 +148,9 @@ test("hasValidatedDeck is definitionally false whenever forgeGenerationError is 
 
 test("none of the reported success strings can render outside hasValidatedDeck: header framing, chapter rail, deck stats, Workbench/ledger/copy, raw response, begin-testing", () => {
   // "YOUR COMPLETE DECK · READY TO PLAY" / the workbench header framing
-  assert.match(page, /\{hasValidatedDeck\s*\n\s*\? "YOUR COMPLETE DECK · READY TO PLAY"/);
+  assert.match(page, /\{hasValidatedDeck\s*\n\s*\? "READY TO PLAY"/);
   // The chapter rail, "Your deck is ready" intro, and detail-level nav
-  assert.match(page, /\{hasValidatedDeck \? \(\s*<>\s*<nav className="result-view-controls"/);
+  assert.match(page, /\{hasValidatedDeck \? \(\s*<>\s*<nav\s+id="forge-chapter-rail"/);
   // The deck-reference-strip (card art, name, "N cards · format" chip)
   assert.match(page, /\{hasValidatedDeck && \(\s*<div className="deck-reference-strip">/);
   // The "N cards · N sections" count and the Workbench/Full ledger/Copy

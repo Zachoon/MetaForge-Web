@@ -12,6 +12,17 @@ const observedRate = (matches) => {
 const revisionMatches = (matches, revision) =>
   matches.filter((match) => Number(match.revision || 1) === Number(revision));
 
+const targetedIssueRead = (matches, targetCategory) => {
+  if (!targetCategory) return { sample: 0, issueRate: 0 };
+  const outcomes = matches
+    .map((match) => match?.fieldTest)
+    .filter((test) => test?.source === targetCategory && ["observed", "missed"].includes(test?.outcome));
+  return {
+    sample: outcomes.length,
+    issueRate: outcomes.length ? outcomes.filter((test) => test.outcome === "observed").length / outcomes.length : 0,
+  };
+};
+
 export function learnFromForgeInterventions(interventions = [], matches = []) {
   const experiments = interventions
     .filter((intervention) => intervention?.id && intervention?.kind)
@@ -21,12 +32,17 @@ export function learnFromForgeInterventions(interventions = [], matches = []) {
       const before = revisionMatches(matches, Math.max(1, revision - 1));
       const afterRate = observedRate(after);
       const beforeRate = observedRate(before);
-      const comparable =
+      const targetedBefore = targetedIssueRead(before, intervention.targetCategory);
+      const targetedAfter = targetedIssueRead(after, intervention.targetCategory);
+      const targetComparable = intervention.decision === "accepted" && targetedBefore.sample >= 2 && targetedAfter.sample >= 2;
+      const targetDelta = targetComparable ? targetedAfter.issueRate - targetedBefore.issueRate : 0;
+      const aggregateComparable =
         intervention.decision === "accepted" &&
         revision > 1 &&
         before.length >= MIN_REVISION_SAMPLE &&
         after.length >= MIN_REVISION_SAMPLE;
-      const delta = comparable ? afterRate - beforeRate : 0;
+      const comparable = targetComparable || aggregateComparable;
+      const delta = aggregateComparable ? afterRate - beforeRate : 0;
 
       return {
         ...intervention,
@@ -36,10 +52,23 @@ export function learnFromForgeInterventions(interventions = [], matches = []) {
         beforeRate: clamp(beforeRate),
         afterRate: clamp(afterRate),
         delta,
+        targetCategory: intervention.targetCategory || null,
+        targetBeforeSample: targetedBefore.sample,
+        targetAfterSample: targetedAfter.sample,
+        targetIssueRateBefore: clamp(targetedBefore.issueRate),
+        targetIssueRateAfter: clamp(targetedAfter.issueRate),
+        targetComparable,
+        targetDelta,
         comparable,
         verdict:
           intervention.decision === "dismissed"
             ? "player-declined"
+            : targetComparable
+              ? targetDelta <= -0.5
+                ? "promising"
+                : targetDelta >= 0.5
+                  ? "regressed"
+                  : "inconclusive"
             : !comparable
               ? "collecting-evidence"
               : delta >= 0.1
@@ -101,7 +130,7 @@ export function learnFromForgeInterventions(interventions = [], matches = []) {
     reusable: Object.freeze(reusable.map((pattern) => Object.freeze({ ...pattern }))),
     reusableGuidance,
     evidenceBoundary:
-      "MetaForge never rewrites its own rules from one result. An intervention needs four matches before and after, and the same kind must improve twice before it becomes a reusable player prior.",
+      "MetaForge never rewrites its own rules from one result. It prefers repeated before/after observations of the intervention's named target; otherwise it requires four matches before and after. The same kind must improve twice before it becomes a reusable player prior.",
   });
 }
 

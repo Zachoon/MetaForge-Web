@@ -5,11 +5,30 @@ import { riftboundMetaContext } from "../app/riftbound-meta-context.mjs";
 
 function riftRows(text:string){return text.split(/\r?\n/).map(line=>line.trim()).filter(Boolean).map(line=>{const match=line.match(/^(\d+)\s+(.+)$/);return match?{quantity:Number(match[1]),name:match[2]}:{quantity:1,name:line}})}
 
+function activeCoachingPlan(context:any){
+  const diagnosis=context?.coachingDiagnosis?.primary, test=context?.provingGrounds;
+  if(!diagnosis||!test)return "";
+  const goal=context?.coachingDiagnosis?.playerGoal?`\nPlayer goal: ${context.coachingDiagnosis.playerGoal}.`:"";
+  const evidence=Array.isArray(diagnosis.evidence)&&diagnosis.evidence.length?diagnosis.evidence.join(" · "):"No evidence has crossed a coaching threshold yet.";
+  return `Active coaching plan${goal}\n\nDiagnosis: ${diagnosis.label || diagnosis.category}.\nEvidence: ${evidence}\nNext question: ${test.question}\nWatch for: ${test.watchFor}\nNext action: ${test.nextAction}\nBoundary: ${test.boundary}`;
+}
+
+function capturedDecisionReview(context:any){
+  const moment=context?.latestMatch?.coachDebrief?.decisionMoments?.[0];
+  if(!moment?.chosenLine||!moment?.alternativeLine)return "";
+  const known=moment.knownInformation?` Known at the time: ${moment.knownInformation}`:"";
+  const punishment=moment.observedPunishment?` Observed punishment: ${moment.observedPunishment}`:"";
+  return `Captured ${moment.window||"decision"} branch: you chose “${moment.chosenLine}”; the recorded alternative was “${moment.alternativeLine}.” Your stated role was ${moment.role||"uncertain"}.${known}${punishment}\n\nCoaching question: compare those lines using only information available at the decision point. Which line better served your role while preserving the safest response to the opponent's credible punishment? The match result alone does not answer that.`;
+}
+
 export function nativeCoachAnswer(messages:Array<{role:string;content:string}>,context:any){
   const question=String(messages.at(-1)?.content||"").trim(),deckText=String(context?.deckText||"").trim();
   const game=/riftbound/i.test(String(context?.game||""))?"riftbound":"mtg";
+  const coachingPlan=activeCoachingPlan(context);
+  if(coachingPlan&&/what (?:should|do) i (?:work on|do) next|what(?:'s| is) next|coach me|current plan|what are we testing/i.test(question))return coachingPlan;
   if(/last match|last game|misplay|turning point|kept a risky|ran out of cards|lacked an answer/i.test(question)){
-    return `I can review that without pretending the result proves the decision. Start with the decision window: what legal lines were available, what role were you playing (pressure, defense, or pivot), and what opponent cards or resources were actually known? I will compare the strongest line and alternative against tempo, cards, board position, downside, and the most credible punishment. If Companion captured alternatives, Forge will use them; otherwise this remains a bounded reflection, not a verdict.`;
+    const captured=capturedDecisionReview(context);
+    return `${coachingPlan?`${coachingPlan}\n\n`:""}${captured||"I can review that without pretending the result proves the decision. Start with the decision window: what legal lines were available, what role were you playing (pressure, defense, or pivot), and what opponent cards or resources were actually known? I will compare the strongest line and alternative against tempo, cards, board position, downside, and the most credible punishment. If Companion captured alternatives, Forge will use them; otherwise this remains a bounded reflection, not a verdict."}`;
   }
   if(!deckText){
     if(game==="riftbound"){

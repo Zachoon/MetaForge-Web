@@ -47,6 +47,8 @@ import { resolveMasterworkVisualProfile } from "./masterwork-visual-profile.mjs"
 import { MOTIF_ICONS } from "./masterwork-motif-icons";
 import { buildTcgplayerLink, AFFILIATE_DISCLOSURE_TEXT } from "./affiliate-links.mjs";
 import { deckFingerprint } from "./deck-fingerprint.mjs";
+import { createPilotingDebrief } from "./piloting-debrief.mjs";
+import { buildCoachingSession } from "./coaching-session.mjs";
 
 type Chamber =
   | "entrance"
@@ -144,6 +146,10 @@ type ForgeIntervention = {
   decision: "accepted" | "dismissed";
   revision: number;
   createdAt: string;
+  hypothesisId?: string;
+  targetCategory?: string;
+  targetGoal?: string | null;
+  targetMeasurement?: string;
 };
 type MultiRefillPackage = {
   id: string;
@@ -199,6 +205,8 @@ type SavedFamily = {
   // cached so identity reads (here and on /profile) never have to re-run
   // the Scryfall fetch + classification just to know the dominant motif.
   motifWeights?: Record<string, number>;
+  playerGoal?: string | null;
+  forgeInterventions?: ForgeIntervention[];
   revisions: Array<{
     deckText: string;
     note: string;
@@ -212,6 +220,8 @@ type SavedFamily = {
       playedAt: string;
       revision?: number;
       deckFingerprint?: string;
+      fieldTest?: { hypothesisId?: string; question: string; outcome: string; source: string };
+      coachDebrief?: ReturnType<typeof createPilotingDebrief>;
     }>;
   }>;
 };
@@ -1450,6 +1460,10 @@ export default function Home() {
   >("idle");
   const [record, setRecord] = useState({ wins: 0, losses: 0 });
   const [pendingMatchResult, setPendingMatchResult] = useState<"win" | "loss" | null>(null);
+  const [pendingDecisionSignal, setPendingDecisionSignal] = useState("");
+  const [pilotingDebrief, setPilotingDebrief] = useState({
+    window: "mulligan", role: "uncertain", knownInformation: "", chosenLine: "", alternativeLine: "", observedPunishment: "",
+  });
   const [opponentArchetype, setOpponentArchetype] = useState("Unknown / not sure");
   const [matchLog, setMatchLog] = useState<Array<{
     id: string;
@@ -1459,7 +1473,8 @@ export default function Home() {
     playedAt: string;
     revision?: number;
     deckFingerprint?: string;
-    fieldTest?: { question: string; outcome: string; source: string };
+    fieldTest?: { hypothesisId?: string; question: string; outcome: string; source: string };
+    coachDebrief?: ReturnType<typeof createPilotingDebrief>;
   }>>([]);
   const [activeFieldTest, setActiveFieldTest] = useState<null | {
     deckId: string;
@@ -1468,6 +1483,7 @@ export default function Home() {
     watchFor: string;
     why: string;
     source: string;
+    hypothesisId: string;
     startedAt: string;
   }>(null);
   const [fieldTestResult, setFieldTestResult] = useState<"win" | "loss" | null>(null);
@@ -1559,6 +1575,7 @@ export default function Home() {
     insufficientEvidence?: boolean;
     concise: string;
   } | null>(null);
+  const [coachingGoal, setCoachingGoal] = useState("");
   const [cardFacts, setCardFacts] = useState<Record<string, CardFact>>({});
   const [hoveredCard, setHoveredCard] = useState("");
   const [inspectedCard, setInspectedCard] = useState("");
@@ -1694,24 +1711,18 @@ export default function Home() {
   const [metaBreakerExperiments, setMetaBreakerExperiments] = useState<MetaBreakerExperiment[]>([]);
   const [metaBreakerLoading, setMetaBreakerLoading] = useState(false);
   const [selectedSystemId, setSelectedSystemId] = useState("");
-  const [resultViewMode, setResultViewMode] = useState<"guided" | "full">("guided");
   const [intelligenceOpen, setIntelligenceOpen] = useState(false);
   const [forgeInterventions, setForgeInterventions] = useState<ForgeIntervention[]>([]);
   const [interventionLearningReady, setInterventionLearningReady] = useState(false);
   const [showAllSystems, setShowAllSystems] = useState(false);
   const [matchEvidenceOpen, setMatchEvidenceOpen] = useState(false);
-  const [activeForgeChapter, setActiveForgeChapter] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [activeForgeChapter, setActiveForgeChapter] = useState<1 | 2 | 5>(1);
   const [deckViewMode, setDeckViewMode] = useState<"workbench" | "ledger">("workbench");
   const [openingExperimentPending, setOpeningExperimentPending] = useState(false);
   const [openingExperimentFocus, setOpeningExperimentFocus] = useState("");
-  const [furthestCommissionStep, setFurthestCommissionStep] = useState(0);
 
   useEffect(() => {
     try {
-      const preferredView = window.localStorage.getItem("metaforge.resultViewMode");
-      if (preferredView === "full" || preferredView === "guided") {
-        setResultViewMode(preferredView);
-      }
       const preferredReadingSize = window.localStorage.getItem("metaforge.readingSize");
       if (["compact", "comfortable", "large"].includes(preferredReadingSize || "")) {
         setReadingSize(preferredReadingSize as ReadingSize);
@@ -1736,7 +1747,7 @@ export default function Home() {
   useEffect(() => {
     try {
       const saved = JSON.parse(window.localStorage.getItem("metaforge.activeFieldTest") || "null");
-      if (saved?.deckId === (deckId || "unsaved-masterwork") && Number(saved?.revision) === Math.max(1, revisions.length)) {
+      if (saved?.hypothesisId && saved?.deckId === (deckId || "unsaved-masterwork") && Number(saved?.revision) === Math.max(1, revisions.length)) {
         setActiveFieldTest(saved);
       } else {
         setActiveFieldTest(null);
@@ -1749,18 +1760,6 @@ export default function Home() {
   useEffect(() => {
     window.localStorage.setItem("metaforge.readingSize", readingSize);
   }, [readingSize]);
-
-  useEffect(() => {
-    if (!window.matchMedia("(max-width: 560px)").matches) return;
-    const rail = document.getElementById("forge-chapter-rail");
-    const activeButton = rail?.querySelector<HTMLElement>("button.active");
-    if (!rail || !activeButton) return;
-    const left = activeButton.offsetLeft - (rail.clientWidth - activeButton.clientWidth) / 2;
-    rail.scrollTo({
-      left: Math.max(0, left),
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
-    });
-  }, [activeForgeChapter]);
 
   useEffect(() => {
     window.localStorage.setItem("metaforge.motionMode", motionMode);
@@ -1796,12 +1795,6 @@ export default function Home() {
       });
     }
   }, [chamber, pendingCandidateChoice]);
-
-  useEffect(() => {
-    window.localStorage.setItem("metaforge.resultViewMode", resultViewMode);
-    setIntelligenceOpen(resultViewMode === "full");
-    setMatchEvidenceOpen(resultViewMode === "full");
-  }, [resultViewMode]);
 
   useEffect(() => {
     if (!interventionLearningReady) return;
@@ -1961,23 +1954,6 @@ export default function Home() {
     else if (button.closest(".masterwork-card")) wakeForge("select");
     else if (button.closest(".experiment-tablets, .testing-anvil")) wakeForge("refine");
     else if (button.closest(".awaken-button")) wakeForge("forge");
-  };
-  useEffect(() => {
-    setFurthestCommissionStep((current) => Math.max(current, chapter));
-  }, [chapter]);
-  const visitCommissionStep = (step: number) => {
-    if (step > furthestCommissionStep) return;
-    if (step === 0) setChamber("entrance");
-    if (step === 1) setChamber(deck.trim() ? "refine" : "commission");
-    if (step === 2) {
-      setStage(Math.max(0, FORGING_STAGES.length - 1));
-      setChamber("forging");
-    }
-    // Masterworks is a one-time choice gate, not a revisitable screen: once
-    // a candidate has been entered, pendingCandidateChoice is cleared and
-    // the real deck lives in the workbench, so "Your deck" must point there
-    // instead of back at an empty, already-resolved selection screen.
-    if (step === 3) setChamber(pendingCandidateChoice ? "masterworks" : "workbench");
   };
   // createMasterworks/workFor/previewFor now serve one purpose only: a
   // safe, non-null default for chosenWork/chosenPreview before any real
@@ -2442,6 +2418,7 @@ export default function Home() {
         matchLog,
         forgeInterventions,
         revisionsCount: revisions.length,
+        playerGoal: coachingGoal || undefined,
       },
       onLoading: () => setStructuralAnalysisStatus("loading"),
       onSuccess: (data: { report: ForgeAnalysisReport }) => {
@@ -2450,7 +2427,7 @@ export default function Home() {
       },
       onError: () => setStructuralAnalysisStatus("error"),
     });
-  }, [guestMode, structuralCards, chosenPreview.card, strategy, deckIntegrity.passed, matchLog, forgeInterventions, revisions.length]);
+  }, [guestMode, structuralCards, chosenPreview.card, strategy, deckIntegrity.passed, matchLog, forgeInterventions, revisions.length, coachingGoal]);
 
   const forgeFailureAnalysis = activeStructuralReport.failureAnalysis;
 
@@ -2634,6 +2611,12 @@ export default function Home() {
   const interventionLearning = activeStructuralReport.interventionLearning;
   const coachingDiagnosis = activeStructuralReport.coachingDiagnosis;
   const provingGrounds = activeStructuralReport.provingGrounds;
+  const coachingSession = useMemo(() => buildCoachingSession({
+    coachingDiagnosis,
+    provingGrounds,
+    experimentTablets,
+    activeFieldTest,
+  }), [coachingDiagnosis, provingGrounds, experimentTablets, activeFieldTest]);
   useEffect(() => {
     const names = [
       ...new Set(parseDeckRows(forgedDeck).map((row) => row.name)),
@@ -3570,6 +3553,7 @@ export default function Home() {
           ...(importWarnings?.illegalNames || []).map((name) => `"${name}" is not legal in ${format} and was left out.`),
         ]);
         setReviewFocusResult(reviewFocusResult || null);
+        setCoachingGoal(reviewFocusResult?.focus || reviewFocus || "");
         await applyForgeResult(nativeReport, {
           generationId,
           work: directWork,
@@ -3678,6 +3662,8 @@ export default function Home() {
     setMatchLog(
       family.revisions.flatMap((revision) => revision.matches || []),
     );
+    setForgeInterventions(Array.isArray(family.forgeInterventions) ? family.forgeInterventions : []);
+    setCoachingGoal(family.playerGoal || "");
     setForgeReply("");
     setSwapFlourish(null);
     setImportWarnings([]);
@@ -3823,6 +3809,8 @@ export default function Home() {
     setCommissionNote("");
     setDeck("");
     setReviewFocus("");
+    setCoachingGoal("");
+    setForgeInterventions([]);
     setRecord({ wins: 0, losses: 0 });
     setMatchLog([]);
     setOpponentArchetype("Unknown / not sure");
@@ -3912,6 +3900,8 @@ export default function Home() {
           serializedRevisions.at(-1)?.fingerprint ||
           existingFamily?.promotedFingerprint ||
           "",
+        playerGoal: coachingGoal || null,
+        forgeInterventions,
         revisions: serializedRevisions,
       };
       const families = [
@@ -4059,23 +4049,51 @@ export default function Home() {
     decision: "accepted" | "dismissed",
     revision = Math.max(1, revisions.length),
   ) {
-    setForgeInterventions((current) => [
-      ...current,
+    const next = [
+      ...forgeInterventions,
       {
         id: crypto.randomUUID(),
         kind,
         summary,
         decision,
         revision,
+        hypothesisId: provingGrounds.hypothesisId,
+        targetCategory: coachingDiagnosis.primary.category,
+        targetGoal: coachingDiagnosis.playerGoal,
+        targetMeasurement: coachingDiagnosis.primary.measurement,
         createdAt: new Date().toISOString(),
       },
-    ]);
+    ];
+    setForgeInterventions(next);
+    window.localStorage.setItem("metaforge.interventionLearning", JSON.stringify(next.slice(-80)));
+    void persistInterventionHistory(next);
+  }
+
+  async function persistInterventionHistory(next: ForgeIntervention[]) {
+    if (!deckId) return;
+    try {
+      const response = await fetch("/api/account/deck-bench", { cache: "no-store" });
+      if (!response.ok) return;
+      const current = await response.json();
+      const families = (current.bench?.families || []).map((family: SavedFamily) =>
+        family.id === deckId ? { ...family, forgeInterventions: next, playerGoal: coachingGoal || family.playerGoal || null, updatedAt: new Date().toISOString() } : family,
+      );
+      const saved = await fetch("/api/account/deck-bench", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bench: { schemaVersion: 1, families }, baseRevision: current.revision || 0 }),
+      });
+      if (saved.ok) setSavedMasterworks(families as SavedFamily[]);
+    } catch {
+      /* Local coaching history remains available when account sync is interrupted. */
+    }
   }
 
   async function recordMatch(
     result: "win" | "loss",
     signal = "No single lesson isolated",
-    fieldTest?: { question: string; outcome: string; source: string },
+    fieldTest?: { hypothesisId?: string; question: string; outcome: string; source: string },
+    coachDebrief?: ReturnType<typeof createPilotingDebrief>,
   ) {
     const activeFingerprint = await deckFingerprint(parseDeckRows(forgedDeck));
     const activeRevision = Math.max(1, revisions.length);
@@ -4101,11 +4119,14 @@ export default function Home() {
         revision: activeRevision,
         deckFingerprint: activeFingerprint,
         ...(fieldTest ? { fieldTest } : {}),
+        ...(coachDebrief ? { coachDebrief } : {}),
       },
     ];
     setRevisions(fingerprintedRevisions);
     setMatchLog(nextMatches);
     setPendingMatchResult(null);
+    setPendingDecisionSignal("");
+    setPilotingDebrief({ window: "mulligan", role: "uncertain", knownInformation: "", chosenLine: "", alternativeLine: "", observedPunishment: "" });
     setMilestoneMotion({
       kind: "evidence-recorded",
       eyebrow: "EVIDENCE PRESERVED",
@@ -4123,6 +4144,7 @@ export default function Home() {
       watchFor: provingGrounds.watchFor,
       why: provingGrounds.why,
       source: provingGrounds.source,
+      hypothesisId: provingGrounds.hypothesisId,
       startedAt: new Date().toISOString(),
     };
     setActiveFieldTest(next);
@@ -4135,6 +4157,7 @@ export default function Home() {
   async function finishProvingGroundsTest(outcome: "observed" | "missed" | "not-tested" | "unsure") {
     if (!activeFieldTest || !fieldTestResult) return;
     await recordMatch(fieldTestResult, "No single lesson isolated", {
+      hypothesisId: activeFieldTest.hypothesisId,
       question: activeFieldTest.question,
       outcome,
       source: activeFieldTest.source,
@@ -4337,7 +4360,7 @@ export default function Home() {
         <mark />
         <q />
       </div>
-      {guestMode && !forgedDeck && (
+      {guestMode && !forgedDeck && !pendingCandidateChoice && (
         <aside
           className={`guest-forge-pass${turnstileToken ? " verified" : ""}${walkthroughActive ? " tour-hidden" : ""}`}
           aria-label="Free Forge preview verification"
@@ -4352,7 +4375,7 @@ export default function Home() {
           />
         </aside>
       )}
-      {guestMode && forgedDeck && guestClaimToken && (
+      {guestMode && forgedDeck && guestClaimToken && chamber !== "workbench" && (
         <aside className="guest-result-gate" role="region" aria-label="Save this Masterwork">
           <div>
             <small>YOUR PREVIEW MASTERWORK IS READY</small>
@@ -4409,75 +4432,25 @@ export default function Home() {
             METAFORGE<small>THE GREAT FORGE</small>
           </span>
         </button>
-        <nav className="forge-steps" aria-label="Commission progress">
-          {[
-            ["01", "Start"],
-            ["02", "Build choices"],
-            ["03", "Building"],
-            ["04", "Your deck"],
-          ].map(([number, label], index) => (
-            <button
-              type="button"
-              className={`${chapter >= index ? "lit" : ""} ${chapter === index ? "current" : ""}`}
-              key={label}
-              disabled={index > furthestCommissionStep}
-              aria-current={chapter === index ? "step" : undefined}
-              onClick={() => visitCommissionStep(index)}
-            >
-              <b>{number}</b>
-              {label}
-            </button>
-          ))}
-        </nav>
-        <div className="forge-reading-tools">
-          <span>TEXT</span>
-          {(["compact", "comfortable", "large"] as ReadingSize[]).map((size, index) => (
-            <button
-              type="button"
-              key={size}
-              className={readingSize === size ? "active" : ""}
-              aria-label={`Use ${size} text`}
-              aria-pressed={readingSize === size}
-              onClick={() => setReadingSize(size)}
-            >
-              A{index === 0 ? "−" : index === 2 ? "+" : ""}
-            </button>
-          ))}
-          <button
-            type="button"
-            className={`motion-toggle ${motionMode === "full" ? "active" : ""}`}
-            aria-label={motionMode === "full" ? "Use quiet Forge motion" : "Use full Forge motion"}
-            aria-pressed={motionMode === "full"}
-            title={motionMode === "full" ? "Quiet Forge motion" : "Full Forge motion"}
-            onClick={() => setMotionMode((current) => current === "full" ? "quiet" : "full")}
-          >
-            FX
-          </button>
-          <button
-            type="button"
-            className="motion-toggle"
-            aria-label="Replay the guided tour"
-            title="Replay the guided tour"
-            onClick={() => setWalkthroughActive(true)}
-          >
-            ?
-          </button>
-          <IdentityBadge
-            depth={playerIdentity.depth}
-            totalMilestones={playerIdentity.allMilestones.length}
-            dominantMotif={playerIdentity.dominantMotif}
-            accent={playerIdentity.accent}
-            celebrating={Boolean(identityCelebration)}
-            celebrationLabel={identityCelebration?.label ?? null}
-          />
-          <button className="quiet-action" onClick={() => setChamber("entrance")}>
-            New commission
-          </button>
-        </div>
+        <details className="forge-menu">
+          <summary>Menu</summary>
+          <div>
+            <section aria-label="Text size">
+              <small>TEXT SIZE</small>
+              {(["compact", "comfortable", "large"] as ReadingSize[]).map((size, index) => (
+                <button type="button" key={size} className={readingSize === size ? "active" : ""} aria-label={`Use ${size} text`} aria-pressed={readingSize === size} onClick={() => setReadingSize(size)}>
+                  A{index === 0 ? "−" : index === 2 ? "+" : ""}
+                </button>
+              ))}
+            </section>
+            <button type="button" onClick={() => setMotionMode((current) => current === "full" ? "quiet" : "full")}>{motionMode === "full" ? "Reduce motion" : "Use full motion"}</button>
+            <button type="button" onClick={() => setWalkthroughActive(true)}>Replay guided tour</button>
+            <IdentityBadge depth={playerIdentity.depth} totalMilestones={playerIdentity.allMilestones.length} dominantMotif={playerIdentity.dominantMotif} accent={playerIdentity.accent} celebrating={Boolean(identityCelebration)} celebrationLabel={identityCelebration?.label ?? null} />
+            <button type="button" onClick={() => setChamber("entrance")}>Start a new deck</button>
+            <nav aria-label="Legal and support"><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="mailto:support@metaforge.gg">Support</a></nav>
+          </div>
+        </details>
       </header>
-      <nav className="launch-legal-nav" aria-label="Legal and support">
-        <a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="mailto:support@metaforge.gg">Support</a>
-      </nav>
 
       <ForgeWalkthrough
         active={walkthroughActive}
@@ -5185,65 +5158,50 @@ export default function Home() {
                   })()}
                 </h1>
                 <p>
-                  Every card below is already verified and legal for your {format} commission —
-                  nothing here is a preview or a guess. The Forge recommends one, with its reasoning
-                  underneath it, but entering a Masterwork is always your call.
+                  {pendingCandidateChoice.nativeReport.candidates?.length === 1 ? "This build" : "These builds"} already use verified, legal cards for your {format} commission.
+                  The Forge marks its recommendation, but the final choice is yours.
                 </p>
+                <button className="open-recommended-masterwork" type="button" onClick={() => enterMasterwork(pendingCandidateChoice.nativeReport.selected.id)}>
+                  Open the recommended deck →
+                </button>
               </header>
               {commissionNote.trim() && (
-                <section className="blueprint-promise" aria-label="Blueprint promise">
-                  <span>
-                    <small>THE FORGE HEARD YOU</small>
-                    <b>{commissionNote.trim()}</b>
-                  </span>
-                  <p>
-                    Every candidate below honors this identity before general optimization. If the
-                    verified legal pool couldn&rsquo;t support part of it, the Forge says so instead of
-                    silently replacing it.
-                  </p>
-                </section>
+                <details className="blueprint-promise" aria-label="Blueprint promise">
+                  <summary><small>WHAT THE FORGE HEARD</small><b>{commissionNote.trim()}</b></summary>
+                  <p>The verified builds preserve this identity wherever the legal card pool supports it.</p>
+                </details>
               )}
-              <div className="masterwork-grid">
-                {(pendingCandidateChoice.nativeReport.candidates || [pendingCandidateChoice.nativeReport.selected]).map((candidate: any) => {
-                  const isRecommended = candidate.id === pendingCandidateChoice.nativeReport.selected.id;
-                  const cardCount = candidate.rows.reduce((sum: number, row: any) => sum + row.quantity, 0);
-                  return (
-                    <article
-                      key={candidate.id}
-                      className={`masterwork-card${isRecommended ? " is-featured" : ""}`}
-                    >
-                      <header>
-                        {isRecommended && <em>RECOMMENDED</em>}
-                        <strong>{candidate.label}</strong>
-                        <span>{cardCount} cards</span>
-                      </header>
-                      <dl>
-                        <div>
-                          <dt>Cohesion</dt>
-                          <dd>{candidate.evaluation.cohesion}/100</dd>
-                        </div>
-                        <div>
-                          <dt>Resilience</dt>
-                          <dd>{candidate.evaluation.resilience}/100</dd>
-                        </div>
-                        <div>
-                          <dt>Curve health</dt>
-                          <dd>{candidate.evaluation.curveHealth}/100</dd>
-                        </div>
-                      </dl>
-                      {isRecommended && pendingCandidateChoice.nativeReport.selected.tournament?.reason && (
-                        <p className="masterwork-card-reason">
-                          {pendingCandidateChoice.nativeReport.selected.tournament.reason}
-                        </p>
-                      )}
-                      <small>{candidate.boundary}</small>
-                      <button type="button" onClick={() => enterMasterwork(candidate.id)}>
-                        Enter this Masterwork →
-                      </button>
-                    </article>
-                  );
-                })}
-              </div>
+              {(pendingCandidateChoice.nativeReport.candidates?.length || 1) > 1 && (
+                <details className="candidate-alternatives">
+                  <summary>
+                    <span><small>WANT MORE CONTROL?</small><b>Compare all {pendingCandidateChoice.nativeReport.candidates?.length || 1} builds</b></span>
+                    <strong>SHOW OPTIONS</strong>
+                  </summary>
+                  <div className="masterwork-grid">
+                    {(pendingCandidateChoice.nativeReport.candidates || [pendingCandidateChoice.nativeReport.selected]).map((candidate: any) => {
+                      const isRecommended = candidate.id === pendingCandidateChoice.nativeReport.selected.id;
+                      const cardCount = candidate.rows.reduce((sum: number, row: any) => sum + row.quantity, 0);
+                      return (
+                        <article key={candidate.id} className={`masterwork-card${isRecommended ? " is-featured" : ""}`}>
+                          <header>
+                            {isRecommended && <em>RECOMMENDED</em>}
+                            <strong>{candidate.label}</strong>
+                            <span>{cardCount} cards</span>
+                          </header>
+                          <dl>
+                            <div><dt>Cohesion</dt><dd>{candidate.evaluation.cohesion}/100</dd></div>
+                            <div><dt>Resilience</dt><dd>{candidate.evaluation.resilience}/100</dd></div>
+                            <div><dt>Curve health</dt><dd>{candidate.evaluation.curveHealth}/100</dd></div>
+                          </dl>
+                          {isRecommended && pendingCandidateChoice.nativeReport.selected.tournament?.reason && <p className="masterwork-card-reason">{pendingCandidateChoice.nativeReport.selected.tournament.reason}</p>}
+                          <small>{candidate.boundary}</small>
+                          <button type="button" onClick={() => enterMasterwork(candidate.id)}>Choose this build →</button>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </details>
+              )}
               <footer>
                 <button
                   onClick={() => {
@@ -5267,18 +5225,18 @@ export default function Home() {
       )}
 
       {chamber === "workbench" && (
-        <section className={`testing-anvil progressive-results ${resultViewMode}-results ${openingExperimentGateActive ? "opening-experiment-pending" : ""}`}>
+        <section className={`testing-anvil progressive-results ${openingExperimentGateActive ? "opening-experiment-pending" : ""}`}>
           <button
             className="back-link"
             onClick={() => setChamber(deck.trim() ? "refine" : "commission")}
           >
-            ← Back to build choices
+            ← Change build
           </button>
           <header>
             <span className="forge-eyebrow">
               <i />{" "}
               {hasValidatedDeck
-                ? "YOUR COMPLETE DECK · READY TO PLAY"
+                ? "READY TO PLAY"
                 : benchStatus === "forging"
                   ? "BUILDING YOUR DECK · NOT READY YET"
                   : "BUILD NOT COMPLETED"}
@@ -5370,64 +5328,23 @@ export default function Home() {
           )}
           {hasValidatedDeck ? (
             <>
-              <nav className="result-view-controls" aria-label="Forge result detail level">
-                <span>
-                  <small>DETAIL LEVEL</small>
-                  <b>
-                    {resultViewMode === "guided"
-                      ? "Deck first. Deeper intelligence opens when you ask."
-                      : "Every Forge instrument is awake."}
-                  </b>
-                </span>
-                <div>
-                  <button
-                    type="button"
-                    className={resultViewMode === "guided" ? "active" : ""}
-                    aria-pressed={resultViewMode === "guided"}
-                    onClick={() => setResultViewMode("guided")}
-                  >
-                    Deck first
-                  </button>
-                  <button
-                    type="button"
-                    className={resultViewMode === "full" ? "active" : ""}
-                    aria-pressed={resultViewMode === "full"}
-                    onClick={() => setResultViewMode("full")}
-                  >
-                    All analysis
-                  </button>
-                </div>
-              </nav>
-              <div className="forge-map-intro">
-                <span>WHAT TO DO NEXT</span>
-                <p>Your deck is ready. Review it first, then explore improvements, explanations, analysis, and playtesting when you want them.</p>
-              </div>
-              <p
-                className="forge-chapter-rail-eyebrow"
-                style={{ margin: "0 0 4px", textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.65 }}
-              >
-                <small>The Masterwork</small>
-              </p>
               <nav
                 id="forge-chapter-rail"
-                className="forge-chapter-rail"
-                aria-label="Masterwork journey chapters"
+                className="forge-chapter-rail workspace-mode-tabs"
+                aria-label="Deck workspace"
               >
                 {[
-                  [1, "Your deck", `${deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards`],
-                  [2, "Improve", forgeReply ? "Suggested changes" : benchStatus === "testing" ? "Test active" : "Compare one change"],
-                  [3, "How it works", forgeSystemsReport.strongestSystem?.name || "Deck plan"],
-                  [4, "Analysis", deckIntegrity.passed ? "Rules and deck checks" : "Needs attention"],
-                  [5, "Playtest", activeFieldTest ? "Playtest active" : revisionLearning.sampleSize ? `${revisionLearning.sampleSize} results recorded` : "Try it in a game"],
+                  [1, "Deck", `${deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards`],
+                  [2, "Tune", forgeReply ? "Suggested change" : "Try one change"],
+                  [5, "Test", activeFieldTest ? "Test active" : revisionLearning.sampleSize ? `${revisionLearning.sampleSize} results` : "Play and learn"],
                 ].map(([chapterNumber, label, status]) => (
                   <button
                     type="button"
                     key={chapterNumber}
                     className={activeForgeChapter === chapterNumber ? "active" : ""}
                     aria-current={activeForgeChapter === chapterNumber ? "step" : undefined}
-                    onClick={() => setActiveForgeChapter(chapterNumber as 1 | 2 | 3 | 4 | 5)}
+                    onClick={() => setActiveForgeChapter(chapterNumber as 1 | 2 | 5)}
                   >
-                    <small>CHAPTER {chapterNumber}</small>
                     <b>{label}</b>
                     <span>{status}</span>
                   </button>
@@ -5443,95 +5360,6 @@ export default function Home() {
               </p>
             )
           )}
-          {!openingExperimentGateActive && benchStatus !== "forging" && deckRows.length > 0 && resultViewMode === "guided" && (
-            <aside className="forge-journey-guide" aria-live="polite">
-              <span>
-                <small>GUIDED FORGE · STEP {activeForgeChapter} OF 5</small>
-                <strong>
-                  {activeForgeChapter === 1 && (openingExperimentFocus ? `Your ${openingExperimentFocus} experiment is set. Review the complete build it lives inside.` : "Start here: review the finished list, its roles, and the plan the deck is built to execute.")}
-                  {activeForgeChapter === 2 && (openingExperimentFocus ? `Compare the controlled ${openingExperimentFocus} experiment without changing unrelated parts of the deck.` : "Use the Testing Anvil when you want to compare one small, controlled change.")}
-                  {activeForgeChapter === 3 && "See how the deck's cards support one another before judging a single card in isolation."}
-                  {activeForgeChapter === 4 && "Open the Evidence Vault for legality checks, structural analysis, and the evidence behind the recommendation."}
-                  {activeForgeChapter === 5 && "Take one clear question to the table, then bring back one honest clue."}
-                </strong>
-              </span>
-              <div className="forge-guide-navigation">
-                {activeForgeChapter > 1 && (
-                  <button type="button" onClick={() => setActiveForgeChapter((activeForgeChapter - 1) as 1 | 2 | 3 | 4 | 5)}>
-                    ← Back
-                  </button>
-                )}
-                {activeForgeChapter < 5 ? (
-                  <button type="button" onClick={() => setActiveForgeChapter((activeForgeChapter + 1) as 1 | 2 | 3 | 4 | 5)}>
-                    {activeForgeChapter === 1 ? "Next · Improve →" : activeForgeChapter === 2 ? "Next · How it works →" : activeForgeChapter === 3 ? "Next · Analysis →" : "Next · Playtest →"}
-                  </button>
-                ) : (
-                  <button type="button" onClick={() => setActiveForgeChapter(1)}>Return to your deck →</button>
-                )}
-              </div>
-            </aside>
-          )}
-          {!openingExperimentGateActive && benchStatus !== "forging" && deckRows.length > 0 && (
-            <section className="forge-path" aria-labelledby="forge-path-title">
-              <header>
-                <span>
-                  <small>YOUR FORGE PATH</small>
-                  <strong id="forge-path-title">
-                    {currentFamilyArchived
-                      ? "This Masterwork is sealed."
-                      : revisionLearning.sampleSize > 0
-                        ? "Evidence is on the anvil."
-                        : benchStatus === "testing"
-                          ? "The experiment is ready for the table."
-                          : openingExperimentFocus
-                            ? "Your first experiment is set."
-                            : "Begin with the complete Masterwork."}
-                  </strong>
-                </span>
-                <b>{currentFamilyArchived ? "5 OF 5" : revisionLearning.sampleSize > 0 ? "4 OF 5" : benchStatus === "testing" ? "3 OF 5" : openingExperimentFocus ? "2 OF 5" : "1 OF 5"}</b>
-              </header>
-              <ol>
-                {[
-                  ["Masterwork", true],
-                  ["Experiment", Boolean(openingExperimentFocus) || benchStatus === "testing" || revisionLearning.sampleSize > 0 || currentFamilyArchived],
-                  ["Table test", benchStatus === "testing" || revisionLearning.sampleSize > 0 || currentFamilyArchived],
-                  ["Evidence", revisionLearning.sampleSize > 0 || currentFamilyArchived],
-                  ["Seal", currentFamilyArchived],
-                ].map(([label, complete], index) => {
-                  const active = !complete && [
-                    true,
-                    Boolean(openingExperimentFocus) || benchStatus === "testing" || revisionLearning.sampleSize > 0 || currentFamilyArchived,
-                    benchStatus === "testing" || revisionLearning.sampleSize > 0 || currentFamilyArchived,
-                    revisionLearning.sampleSize > 0 || currentFamilyArchived,
-                    currentFamilyArchived,
-                  ].slice(0, index).every(Boolean);
-                  return <li key={String(label)} className={complete ? "complete" : active ? "active" : ""}><i>{complete ? "✓" : index + 1}</i><span>{label}</span></li>;
-                })}
-              </ol>
-              <footer>
-                <p>
-                  {currentFamilyArchived
-                    ? "The full journey is preserved on your private Bench."
-                    : revisionLearning.sampleSize > 0
-                      ? `${revisionLearning.sampleSize} match ${revisionLearning.sampleSize === 1 ? "result is" : "results are"} attached to this exact revision. Seal it when the lesson feels complete.`
-                      : benchStatus === "testing"
-                        ? "Play the list, then record the result. One honest match is more useful than a guessed conclusion."
-                        : openingExperimentFocus
-                          ? `Carry ${openingExperimentFocus} into a match as a question—not a verdict.`
-                          : "Read the finished list, then begin a recorded test when you understand what it is trying to do."}
-                </p>
-                {currentFamilyArchived ? (
-                  <button type="button" onClick={startNewForge}>Start another Forge →</button>
-                ) : revisionLearning.sampleSize > 0 ? (
-                  <button type="button" onClick={finishCurrentMasterwork}>Seal this Masterwork →</button>
-                ) : benchStatus === "testing" ? (
-                  <button type="button" onClick={() => setActiveForgeChapter(5)}>Return to the Proving Grounds →</button>
-                ) : (
-                  <button type="button" disabled={!deckIntegrity.passed} onClick={() => setActiveForgeChapter(5)}>Prepare the first table test →</button>
-                )}
-              </footer>
-            </section>
-          )}
           <div className={`testing-layout chapter-${activeForgeChapter}-active ${deckViewMode}-deck-view`}>
             {hasValidatedDeck && (
               <div className="deck-reference-strip">
@@ -5546,7 +5374,7 @@ export default function Home() {
             <article className="deck-manuscript">
               <header>
                 <div>
-                  <small>CHAPTER I · THE MASTERWORK</small>
+                  <small>YOUR DECK</small>
                   <h2>
                     {benchStatus === "forging"
                       ? "The Forge is producing your deck…"
@@ -5557,29 +5385,17 @@ export default function Home() {
                 </div>
                 {hasValidatedDeck && (
                   <div className="deck-header-actions">
-                    <span className="deck-view-toggle" aria-label="Deck presentation">
-                      <button
-                        type="button"
-                        className={deckViewMode === "workbench" ? "active" : ""}
-                        aria-pressed={deckViewMode === "workbench"}
-                        onClick={() => setDeckViewMode("workbench")}
-                      >
-                        Workbench
-                      </button>
-                      <button
-                        type="button"
-                        className={deckViewMode === "ledger" ? "active" : ""}
-                        aria-pressed={deckViewMode === "ledger"}
-                        onClick={() => setDeckViewMode("ledger")}
-                      >
-                        Full ledger
-                      </button>
-                    </span>
                     <button
                       onClick={() => navigator.clipboard.writeText(forgedDeck)}
                     >
                       Copy deck
                     </button>
+                    <details className="deck-view-options">
+                      <summary>View options</summary>
+                      <button type="button" className={deckViewMode === "workbench" ? "active" : ""} onClick={() => setDeckViewMode("workbench")}>Visual deck</button>
+                      <button type="button" className={deckViewMode === "ledger" ? "active" : ""} onClick={() => setDeckViewMode("ledger")}>Text list</button>
+                    </details>
+                    {guestMode && guestClaimToken && <a className="save-masterwork-link" href={`https://app.metaforge.gg/?claim=${encodeURIComponent(guestClaimToken)}`}>Save deck</a>}
                   </div>
                 )}
               </header>
@@ -5623,54 +5439,6 @@ export default function Home() {
                   </div>
                 </div>
               )}
-              <section className="forge-quick-read" aria-label="Why the Forge built this deck">
-                <span>
-                  <small>WHY THIS MASTERWORK</small>
-                  <b>{chosenWork.verdict}</b>
-                </span>
-                <span>
-                  <small>PLAN</small>
-                  <b>{chosenWork.path}</b>
-                </span>
-                <span>
-                  <small>PLAYER INTENT</small>
-                  <b>{strategy}</b>
-                </span>
-              </section>
-              {hasValidatedDeck && (
-              <section className="first-run-coaching" aria-label="MetaForge's first read on this deck">
-                <header>
-                  <small>METAFORGE'S FIRST READ</small>
-                  <h2>What stood out, and what to watch for.</h2>
-                </header>
-                <div>
-                  <span>
-                    <small>WHAT STOOD OUT FIRST</small>
-                    <b>
-                      {structuralAnalysisStatus === "loading" && !structuralReportReady
-                        ? "Analyzing this build's structure…"
-                        : forgeSystemsReport.strongestSystem?.name || "No single repeatable system stood out yet — every card is doing its own job."}
-                    </b>
-                  </span>
-                  {reviewFocusResult ? (
-                    <span>
-                      <small>YOU ASKED — {reviewFocusResult.focus.toUpperCase()}</small>
-                      <b>{reviewFocusResult.evidence}</b>
-                      <em>{reviewFocusResult.nextStep}</em>
-                    </span>
-                  ) : (
-                    <span>
-                      <small>WATCH FOR THIS NEXT GAME</small>
-                      <b>
-                        {structuralAnalysisStatus === "loading" && !structuralReportReady
-                          ? "Still resolving"
-                          : forgeSystemsReport.weakestSystem?.name || simulationDossier?.matrix.weakest?.opponent || "Play a game and record the result — that's the fastest way to find one."}
-                      </b>
-                    </span>
-                  )}
-                </div>
-              </section>
-              )}
               {nativeMasterworkContext?.practicalTiebreak?.overridden && (
                 <span className="slot-justification">
                   <small>PRACTICAL SIMULATION SETTLED A CLOSE CALL</small>
@@ -5683,10 +5451,13 @@ export default function Home() {
                   <em>{nativeMasterworkContext.selected.recoveryNote}</em>
                 </span>
               )}
-              <section className="forge-understanding-bridge" aria-label="Essential deck understanding">
+              <details className="forge-understanding-bridge" aria-label="Essential deck understanding">
+                <summary>
+                  <span><small>INSIDE THE DECK</small><b>How this deck works</b></span>
+                  <strong>OPEN</strong>
+                </summary>
                 <header>
-                  <small>CHAPTER III · UNDERSTAND THE MASTERWORK</small>
-                  <h2>The essential reading, without the instrument panel.</h2>
+                  <h2>The essential reading.</h2>
                   {structuralAnalysisStatus === "loading" && !structuralReportReady && (
                     <p className="structural-analysis-pending" role="status">
                       Analyzing this build's structure…
@@ -5699,16 +5470,18 @@ export default function Home() {
                   )}
                 </header>
                 <div>
+                  <span><small>PLAN</small><b>{chosenWork.path}</b></span>
+                  <span><small>PLAYER INTENT</small><b>{strategy}</b></span>
                   <span><small>LEGALITY</small><b>{deckIntegrity.passed ? "Verified" : deckIntegrity.checking ? "Checking" : "Attention required"}</b></span>
                   <span><small>OPENING HANDS</small><b>{simulationDossier ? `${(simulationDossier.goldfish.expert.keepableRate * 100).toFixed(0)}% keepable` : "Awaiting trials"}</b></span>
                   <span><small>STRONGEST MACHINE</small><b>{forgeSystemsReport.strongestSystem?.name || "Still resolving"}</b></span>
                   <span><small>WATCH FIRST</small><b>{forgeSystemsReport.weakestSystem?.name || simulationDossier?.matrix.weakest?.opponent || "Collect match evidence"}</b></span>
+                  {reviewFocusResult && <span><small>YOUR QUESTION · {reviewFocusResult.focus.toUpperCase()}</small><b>{reviewFocusResult.evidence}</b><em>{reviewFocusResult.nextStep}</em></span>}
                 </div>
-              </section>
+              </details>
               <details
                 className="forge-intelligence-vault"
                 open={
-                  resultViewMode === "full" ||
                   intelligenceOpen ||
                   (!deckIntegrity.checking && !deckIntegrity.passed)
                 }
@@ -5718,17 +5491,24 @@ export default function Home() {
               >
                 <summary>
                   <span>
-                    <small>CHAPTER IV · ENTER THE DEEP FORGE</small>
-                    <b>Deck health, systems, causality, field pressure, and experiments</b>
+                    <small>DEEP FORGE</small>
+                    <b>Detailed analysis, evidence, and deck statistics</b>
                   </span>
                   <strong>
                     {!deckIntegrity.checking && !deckIntegrity.passed
                       ? "ATTENTION REQUIRED"
-                      : resultViewMode === "full" || intelligenceOpen
+                      : intelligenceOpen
                         ? "HIDE DETAILS"
                         : "EXPLORE DETAILS"}
                   </strong>
                 </summary>
+              <div className="deep-forge-quick-stats">
+                <span><small>MARKET TOTAL</small><b>${deckPriceTotal.total.toFixed(2)}</b></span>
+                {nativeMasterworkContext?.powerSignal && <span><small>POWER</small><b>{nativeMasterworkContext.powerSignal.tier}</b></span>}
+                <span><small>COHESION</small><b>{nativeMasterworkContext?.selected?.evaluation?.cohesion ?? "—"}</b></span>
+                <span><small>RESILIENCE</small><b>{nativeMasterworkContext?.selected?.evaluation?.resilience ?? "—"}</b></span>
+                <button type="button" className={cheapestPrintings ? "active" : ""} aria-pressed={cheapestPrintings} onClick={() => setCheapestPrintings((current) => !current)}>Compare cheapest printings</button>
+              </div>
               {deckRows.length > 0 && (
                 <section className={`integrity-dossier ${deckIntegrity.passed ? "passed" : deckIntegrity.checking ? "checking" : "held"}`}>
                   <header>
@@ -7404,13 +7184,18 @@ export default function Home() {
                     onClick={beginTesting}
                   >
                     {benchStatus === "testing"
-                      ? "Testing is active ✓"
-                      : "Choose this deck & begin testing"}
+                      ? "Tune this deck →"
+                      : "Try one improvement →"}
                   </button>
                 </footer>
               )}
             </article>
             <aside className="testing-loop">
+              <header>
+                <small>TUNE</small>
+                <h2>Try one evidence-led change.</h2>
+                <p>Start with MetaForge&rsquo;s strongest safe experiment. Generation reasoning and match history stay optional.</p>
+              </header>
               {forgeReply && (
                 <details className="why-this-masterwork">
                   <summary>
@@ -7464,8 +7249,12 @@ export default function Home() {
                   A second, independent set of gated one-card tests compares
                   this exact build against its closest tournament rival from
                   generation. Find it in{" "}
-                  <button type="button" className="deep-forge-redirect-link" onClick={() => setActiveForgeChapter(4)}>
-                    Chapter IV · Deep Forge
+                  <button type="button" className="deep-forge-redirect-link" onClick={() => {
+                    setActiveForgeChapter(1);
+                    setIntelligenceOpen(true);
+                    window.requestAnimationFrame(() => document.querySelector(".forge-intelligence-vault")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+                  }}>
+                    Deep Forge
                   </button>.
                 </p>
               </details>
@@ -7505,9 +7294,37 @@ export default function Home() {
                     <fieldset>
                       <legend>STEP 3 · WHAT WAS THE CLEAREST LESSON?</legend>
                       {["The plan came together", "Too slow to stabilize", "Mana helped or hurt", "Interaction arrived at the wrong time", "My mulligan decision mattered", "I found a sequencing mistake", "A key card overperformed", "No single lesson isolated"].map((signal) => (
-                        <button type="button" key={signal} onClick={() => recordMatch(pendingMatchResult, signal)}>{signal}<i>→</i></button>
+                        <button type="button" key={signal} onClick={() => {
+                          if (/mulligan|sequencing/i.test(signal)) {
+                            setPendingDecisionSignal(signal);
+                            setPilotingDebrief((current) => ({ ...current, window: /mulligan/i.test(signal) ? "mulligan" : "sequencing" }));
+                          } else {
+                            void recordMatch(pendingMatchResult, signal);
+                          }
+                        }}>{signal}<i>→</i></button>
                       ))}
                     </fieldset>
+                    {pendingDecisionSignal && (
+                      <section className="piloting-debrief" aria-label="Capture the decision for coaching">
+                        <header><small>DECISION REVIEW</small><b>Give the coach the branch—not just the result.</b></header>
+                        <div>
+                          <label><span>Decision window</span><select value={pilotingDebrief.window} onChange={(event) => setPilotingDebrief((current) => ({ ...current, window: event.target.value }))}>{["mulligan", "sequencing", "combat", "resource", "interaction", "other"].map((option) => <option key={option} value={option}>{option}</option>)}</select></label>
+                          <label><span>Your role</span><select value={pilotingDebrief.role} onChange={(event) => setPilotingDebrief((current) => ({ ...current, role: event.target.value }))}>{["uncertain", "pressure", "defense", "pivot"].map((option) => <option key={option} value={option}>{option}</option>)}</select></label>
+                        </div>
+                        <label><span>What did you know at the time?</span><textarea value={pilotingDebrief.knownInformation} onChange={(event) => setPilotingDebrief((current) => ({ ...current, knownInformation: event.target.value }))} maxLength={800} /></label>
+                        <label><span>What line did you choose?</span><textarea value={pilotingDebrief.chosenLine} onChange={(event) => setPilotingDebrief((current) => ({ ...current, chosenLine: event.target.value }))} maxLength={500} /></label>
+                        <label><span>Name one legal alternative.</span><textarea value={pilotingDebrief.alternativeLine} onChange={(event) => setPilotingDebrief((current) => ({ ...current, alternativeLine: event.target.value }))} maxLength={500} /></label>
+                        <label><span>What punished the choice, if anything?</span><textarea value={pilotingDebrief.observedPunishment} onChange={(event) => setPilotingDebrief((current) => ({ ...current, observedPunishment: event.target.value }))} maxLength={800} /></label>
+                        <footer>
+                          <button type="button" onClick={() => setPendingDecisionSignal("")}>Cancel</button>
+                          <button type="button" disabled={!pilotingDebrief.chosenLine.trim() || !pilotingDebrief.alternativeLine.trim()} onClick={() => {
+                            const debrief = createPilotingDebrief({ ...pilotingDebrief, read: pendingDecisionSignal });
+                            void recordMatch(pendingMatchResult, pendingDecisionSignal, undefined, debrief);
+                          }}>Save decision review →</button>
+                        </footer>
+                        <small>A loss does not make the chosen line wrong. MetaForge preserves the alternative so repeated decision pressure can be coached without rewriting the deck.</small>
+                      </section>
+                    )}
                     <small>Choose the closest honest observation. The Forge preserves it as one clue—not a verdict.</small>
                   </div>
                 )}
@@ -7612,9 +7429,37 @@ export default function Home() {
             </aside>
             <section className="proving-grounds" aria-labelledby="proving-grounds-title">
               <header>
-                <span><small>CHAPTER V · THE PROVING GROUNDS</small><h2 id="proving-grounds-title">Your guide stays with you after the Forge.</h2></span>
+                <span><small>TEST</small><h2 id="proving-grounds-title">Take one clear question into your next game.</h2></span>
                 <em>REVISION {Math.max(1, revisions.length)}</em>
               </header>
+              <article className={`unified-coaching-session mode-${coachingSession.mode}`} aria-labelledby="coaching-session-title">
+                <header>
+                  <span><small>YOUR ACTIVE COACHING PLAN</small><h3 id="coaching-session-title">{coachingSession.title}</h3></span>
+                  <em>{coachingSession.confidence}</em>
+                </header>
+                {coachingSession.goal && <p><b>Your goal</b><span>{coachingSession.goal}</span></p>}
+                <p><b>Current read</b><span>{coachingSession.diagnosis}</span></p>
+                <p><b>Evidence</b><span>{coachingSession.evidence.join(" · ") || "No coaching threshold has been crossed yet."}</span></p>
+                <p><b>One next action</b><span>{coachingSession.action}</span></p>
+                {coachingSession.change && <p><b>Exact experiment</b><span>−1 {coachingSession.change.cut} · +1 {coachingSession.change.add}</span></p>}
+                {coachingSession.expectedBenefit && <p><b>Expected gain</b><span>{coachingSession.expectedBenefit}</span></p>}
+                {coachingSession.tradeoff && <p><b>Tradeoff</b><span>{coachingSession.tradeoff}</span></p>}
+                <p><b>How progress is judged</b><span>{coachingSession.measurement}</span></p>
+                <footer>
+                  <small>{coachingSession.progress.supporting} supporting · {coachingSession.progress.contradicting} contradicting · {coachingSession.progress.uninformative} inconclusive</small>
+                  {coachingSession.mode === "experiment" && coachingSession.change ? (
+                    <button type="button" onClick={() => {
+                      const tablet = experimentTablets?.tablets.find((entry) => entry.id === coachingSession.change?.tabletId);
+                      if (tablet?.change) void applyExperimentTablet(tablet as any);
+                    }}>Accept this controlled experiment →</button>
+                  ) : activeFieldTest ? (
+                    <button type="button" onClick={() => document.querySelector(".active-field-test")?.scrollIntoView({ behavior: "smooth", block: "center" })}>Return with the result →</button>
+                  ) : (
+                    <button type="button" disabled={!deckIntegrity.passed} onClick={beginProvingGroundsTest}>{coachingSession.cta} →</button>
+                  )}
+                </footer>
+                <aside>{coachingSession.boundary}</aside>
+              </article>
               {fieldTestRead ? (
                 <article className="field-test-read" aria-live="polite">
                   <small>IMMEDIATE COACHING READ</small>
@@ -7646,16 +7491,7 @@ export default function Home() {
                     </div>}
                   </section>
                 </article>
-              ) : (
-                <article className="field-test-brief">
-                  <small>THE FORGE’S NEXT QUESTION</small>
-                  <h3>{provingGrounds.question}</h3>
-                  <p className="field-test-why"><b>Why this question</b><span>{provingGrounds.why}</span></p>
-                  <p className="field-test-watch"><b>Watch only this</b><span>{provingGrounds.watchFor}</span></p>
-                  <aside>{provingGrounds.boundary}</aside>
-                  <button type="button" disabled={!deckIntegrity.passed} onClick={beginProvingGroundsTest}>Begin this field test →</button>
-                </article>
-              )}
+              ) : null}
               <footer>
                 <span><b>{revisionLearning.sampleSize}</b> exact-revision clue{revisionLearning.sampleSize === 1 ? "" : "s"} preserved</span>
                 <button type="button" onClick={() => { setActiveForgeChapter(2); setMatchEvidenceOpen(true); window.requestAnimationFrame(() => document.getElementById("match-evidence")?.scrollIntoView({ behavior: "smooth", block: "center" })); }}>Open full match history & coaching →</button>
@@ -7664,7 +7500,7 @@ export default function Home() {
           </div>
         </section>
       )}
-      {chamber !== "forging" && (
+      {chamber !== "forging" && savedMasterworks.length > 0 && (
         <aside
           className={`bench-dock ${benchOpen ? "open" : ""}`}
           aria-label="Your Masterwork Bench"

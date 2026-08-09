@@ -28,6 +28,7 @@ import { learnRevisionPreferences } from "../app/revision-learning.mjs";
 import { learnFromForgeInterventions } from "../app/forge-intervention-learning.mjs";
 import { buildCoachingDiagnosis } from "../app/coaching-diagnosis.mjs";
 import { buildProvingGroundsBrief } from "../app/proving-grounds.mjs";
+import { isValidReviewFocus } from "../app/review-focus.mjs";
 import type { ForgeAnalysisReport } from "../app/forge-analysis-contract";
 import { userKey } from "./account-bench";
 import { checkRateLimit, readJsonWithLimit } from "./api-hardening";
@@ -104,7 +105,24 @@ function sanitizeHistoryEntry(raw: any) {
   if (!raw || typeof raw !== "object") return null;
   const clipped: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(raw)) {
-    clipped[k] = typeof v === "string" ? v.slice(0, MAX_SHORT_STRING) : v;
+    if (k === "coachDebrief" && v && typeof v === "object") {
+      const debrief: any = v;
+      clipped[k] = {
+        read: String(debrief.read || "").slice(0, MAX_SHORT_STRING),
+        detail: String(debrief.detail || "").slice(0, 1_000),
+        boundary: String(debrief.boundary || "").slice(0, 1_000),
+        decisionMoments: Array.isArray(debrief.decisionMoments) ? debrief.decisionMoments.slice(0, 4).map((moment: any) => ({
+          window: String(moment?.window || "other").slice(0, 40),
+          role: String(moment?.role || "uncertain").slice(0, 40),
+          knownInformation: String(moment?.knownInformation || "").slice(0, 800),
+          chosenLine: String(moment?.chosenLine || "").slice(0, 500),
+          alternativeLine: String(moment?.alternativeLine || "").slice(0, 500),
+          observedPunishment: String(moment?.observedPunishment || "").slice(0, 800),
+        })) : [],
+      };
+    } else {
+      clipped[k] = typeof v === "string" ? v.slice(0, MAX_SHORT_STRING) : v;
+    }
   }
   return clipped;
 }
@@ -159,6 +177,7 @@ export async function handleForgeStructuralAnalyze(request: Request, env: Env): 
   const matchLog = sanitizeHistoryArray(payload?.matchLog, MAX_MATCH_LOG);
   const forgeInterventions = sanitizeHistoryArray(payload?.forgeInterventions, MAX_INTERVENTIONS);
   const revisionsCount = Number.isFinite(payload?.revisionsCount) ? Math.max(1, Math.trunc(payload.revisionsCount)) : 1;
+  const playerGoal = isValidReviewFocus(payload?.playerGoal) ? payload.playerGoal : "";
 
   try {
     let simulationDossier: ForgeAnalysisReport["simulationDossier"] = null;
@@ -220,11 +239,13 @@ export async function handleForgeStructuralAnalyze(request: Request, env: Env): 
       matches: matchLog,
       currentRevision: revisionsCount,
       interventionLearning,
+      playerGoal,
     });
     const provingGrounds = buildProvingGroundsBrief({
       coachingDiagnosis,
       failureAnalysis,
       simulationDossier,
+      matches: matchLog,
     });
 
     const report: ForgeAnalysisReport = {

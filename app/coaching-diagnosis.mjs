@@ -45,6 +45,12 @@ function explicitDecisionEvidence(match) {
   return moments.length > 0 || /mulligan|sequenc|misplay|kept (?:the |a )?.{0,24}hand|wrong line|missed line/i.test(text);
 }
 
+function decisionBranchSummary(match) {
+  const moment = match?.coachDebrief?.decisionMoments?.[0];
+  if (!moment?.chosenLine || !moment?.alternativeLine) return null;
+  return `${moment.window || "decision"}: chose “${String(moment.chosenLine).slice(0, 120)}”; alternative “${String(moment.alternativeLine).slice(0, 120)}”`;
+}
+
 function diagnosis(category, confidence, evidence, recommendation, measurement) {
   return Object.freeze({
     category,
@@ -56,10 +62,40 @@ function diagnosis(category, confidence, evidence, recommendation, measurement) 
   });
 }
 
+function fieldTestEvidence(matches, category) {
+  const categoryTests = matches
+    .map((match) => match?.fieldTest)
+    .filter((test) => test?.source === category && ["observed", "missed", "not-tested", "unsure"].includes(test?.outcome));
+  const currentHypothesisId = [...categoryTests].reverse().find((test) => test?.hypothesisId)?.hypothesisId;
+  const tests = currentHypothesisId
+    ? categoryTests.filter((test) => test?.hypothesisId === currentHypothesisId)
+    : categoryTests.filter((test) => !test?.hypothesisId);
+  const observed = tests.filter((test) => test.outcome === "observed").length;
+  const missed = tests.filter((test) => test.outcome === "missed").length;
+  return Object.freeze({ total: tests.length, observed, missed, uninformative: tests.length - observed - missed });
+}
+
+function applyFieldTestEvidence(candidate, matches) {
+  const fieldEvidence = fieldTestEvidence(matches, candidate.category);
+  if (!fieldEvidence.total) return Object.freeze({ ...candidate, fieldEvidence });
+  const evidence = [...candidate.evidence];
+  evidence.push(`${fieldEvidence.observed} supporting and ${fieldEvidence.missed} contradicting focused field-test result${fieldEvidence.observed + fieldEvidence.missed === 1 ? "" : "s"}`);
+  if (fieldEvidence.uninformative) evidence.push(`${fieldEvidence.uninformative} field test${fieldEvidence.uninformative === 1 ? " was" : "s were"} not informative`);
+  return Object.freeze({
+    ...candidate,
+    confidence: fieldEvidence.observed >= 2 && fieldEvidence.observed > fieldEvidence.missed
+      ? "repeated focused observation"
+      : candidate.confidence,
+    evidence: Object.freeze(evidence),
+    fieldEvidence,
+  });
+}
+
 export function buildCoachingDiagnosis({
   matches = [],
   currentRevision = 1,
   interventionLearning = null,
+  playerGoal = "",
 } = {}) {
   const scoped = revisionMatches(matches, currentRevision);
   const losses = scoped.filter((match) => match?.result === "loss");
@@ -68,6 +104,9 @@ export function buildCoachingDiagnosis({
   const latestComparable = [...(interventionLearning?.experiments || [])]
     .reverse()
     .find((experiment) => experiment?.comparable && Number(experiment.revision) === Number(currentRevision));
+  const activeIntervention = [...(interventionLearning?.experiments || [])]
+    .reverse()
+    .find((experiment) => experiment?.decision === "accepted" && Number(experiment.revision) === Number(currentRevision) && !experiment?.comparable);
   if (latestComparable) {
     const direction = latestComparable.verdict === "promising"
       ? "improved"
@@ -89,13 +128,23 @@ export function buildCoachingDiagnosis({
       "Compare the same targeted issue and opponent mix across the next four exact-revision matches.",
     ));
   }
+  if (!latestComparable && activeIntervention) {
+    candidates.push(diagnosis(
+      "revision-effect",
+      "controlled test in progress",
+      [`Revision ${currentRevision} accepted ${activeIntervention.summary || activeIntervention.kind}`],
+      "Keep this exact revision stable until the named intervention target has a comparable before-and-after read.",
+      activeIntervention.targetMeasurement || `Watch whether ${activeIntervention.targetCategory || "the named pressure"} improves without creating a new repeatable failure.`,
+    ));
+  }
 
   const decisionMatches = scoped.filter(explicitDecisionEvidence);
   if (decisionMatches.length >= 2) {
+    const capturedBranches = decisionMatches.map(decisionBranchSummary).filter(Boolean).slice(-2);
     candidates.push(diagnosis(
       "piloting-decision",
       decisionMatches.length >= 4 ? "developing pattern" : "repeated explicit clue",
-      [`${decisionMatches.length} exact-revision reports captured a mulligan, sequencing, or alternative-line decision`],
+      [`${decisionMatches.length} exact-revision reports captured a mulligan, sequencing, or alternative-line decision`, ...capturedBranches],
       "Keep the deck stable and test the decision point before changing construction.",
       "Record the alternative line and whether it changes the same failure in at least two comparable games.",
     ));
@@ -175,14 +224,43 @@ export function buildCoachingDiagnosis({
     ["ordinary-variance", 1],
     ["collect-more-evidence", 0],
   ]);
-  candidates.sort((left, right) => (priority.get(right.category) || 0) - (priority.get(left.category) || 0));
+  const retiredCategories = new Set(
+    candidates
+      .filter((candidate) => {
+        const fieldEvidence = fieldTestEvidence(scoped, candidate.category);
+        return fieldEvidence.missed >= 2 && fieldEvidence.observed === 0;
+      })
+      .map((candidate) => candidate.category),
+  );
+  const activeCandidates = candidates
+    .filter((candidate) => !retiredCategories.has(candidate.category))
+    .map((candidate) => applyFieldTestEvidence(candidate, scoped));
+  if (!activeCandidates.length) {
+    activeCandidates.push(diagnosis(
+      "collect-more-evidence",
+      "focused hypothesis weakened",
+      [`Two focused field tests contradicted the prior ${[...retiredCategories][0] || "coaching"} hypothesis`],
+      "Retire that question, keep the exact revision stable, and observe the next repeatable pressure before prescribing a new change.",
+      "Record the next decisive moment without forcing it into the retired hypothesis.",
+    ));
+  }
+  activeCandidates.sort((left, right) => (priority.get(right.category) || 0) - (priority.get(left.category) || 0));
 
   return Object.freeze({
     engine: "metaforge-exact-revision-coach-v1",
     revision: Number(currentRevision) || 1,
+    playerGoal: String(playerGoal || "").trim() || null,
     sampleSize: scoped.length,
-    primary: candidates[0],
-    alternatives: Object.freeze(candidates.slice(1)),
+    primary: activeCandidates[0],
+    alternatives: Object.freeze(activeCandidates.slice(1)),
+    retiredHypotheses: Object.freeze([...retiredCategories]),
+    activeIntervention: activeIntervention ? Object.freeze({
+      id: activeIntervention.id,
+      kind: activeIntervention.kind,
+      summary: activeIntervention.summary,
+      targetCategory: activeIntervention.targetCategory || null,
+      hypothesisId: activeIntervention.hypothesisId || null,
+    }) : null,
     evidenceBoundary: "MetaForge diagnoses repeated evidence attached to this exact revision. A loss alone never proves a bad deck or a piloting mistake, and observed samples are not predicted win rates.",
     confidence: clamp(scoped.length / 8),
   });

@@ -21,8 +21,12 @@ test("Masterwork picker presents one recommendation and two real alternatives, a
   assert.match(page, /`\$\{survivorCount\} real builds\. You choose\.`/);
   assert.match(page, /"One real build\. It's yours\."/);
   assert.match(page, /THE GREAT FORGE ANSWERS/);
+  assert.match(page, /"These builds"/);
+  assert.doesNotMatch(page, /Every card below is already verified/);
   assert.doesNotMatch(page, /The Forge has chosen/);
   assert.match(page, /\{isRecommended && <em>RECOMMENDED<\/em>\}/);
+  assert.match(page, /className="candidate-alternatives"/);
+  assert.match(page, /Open the recommended deck/);
   assert.doesNotMatch(page, /Reveal this Masterwork/, "the sealed/revealed ceremony is retired — every candidate is shown immediately");
   assert.match(polish, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(polish, /content:"FORGE'S READ"/);

@@ -7,8 +7,8 @@ const [page, css] = await Promise.all([
   readFile(new URL("../app/testing-anvil.css", import.meta.url), "utf8"),
 ]);
 
-test("the final Forge Path step becomes a deliberate preservation ritual", () => {
-  assert.match(page, /Seal this Masterwork/);
+test("a tested revision retains a deliberate preservation action", () => {
+  assert.doesNotMatch(page, /className="forge-path"/);
   assert.match(page, /This Is The One — Preserve as Finished Masterwork/);
   assert.match(css, /Finished Masterwork preservation/);
   assert.match(css, /READY TO SEAL/);

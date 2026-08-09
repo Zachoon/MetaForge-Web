@@ -62,16 +62,14 @@ test("major player milestones use choreographed sequences while reduced motion s
   assert.match(motionCss, /prefers-reduced-motion:reduce[^}]*\.forge-milestone-motion\{display:none!important\}/s);
 });
 
-test("the workbench keeps one explicit next action visible through the full Forge Path", () => {
-  assert.match(page, /className="forge-path"/);
-  assert.match(page, /YOUR FORGE PATH/);
-  assert.match(page, /Prepare the first table test/);
-  assert.match(page, /Return to the Proving Grounds/);
-  assert.match(page, /Seal this Masterwork/);
-  assert.match(page, /Start another Forge/);
+test("the workbench replaces the long Forge Path with three task-focused destinations", () => {
+  assert.doesNotMatch(page, /className="forge-path"/);
+  assert.doesNotMatch(page, /YOUR FORGE PATH/);
+  assert.match(page, /\[1, "Deck"/);
+  assert.match(page, /\[2, "Tune"/);
+  assert.match(page, /\[5, "Test"/);
+  assert.match(page, /YOUR ACTIVE COACHING PLAN/);
   assert.match(page, /id="match-evidence"/);
-  assert.match(journeyCss, /\.forge-path li\.active/);
-  assert.match(journeyCss, /prefers-reduced-motion:reduce[^}]*\.forge-path:before/s);
 });
 
 test("the Private Bench reads as a living archive instead of a plain saved-deck list", () => {

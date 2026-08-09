@@ -7,8 +7,8 @@ const [page, css] = await Promise.all([
   readFile(new URL("../app/testing-anvil.css", import.meta.url), "utf8"),
 ]);
 
-test("Chapter III turns four real deck truths into a machine schematic", () => {
-  assert.match(page, /CHAPTER III · UNDERSTAND THE MASTERWORK/);
+test("the optional deck-understanding drawer retains four real deck truths", () => {
+  assert.match(page, /How this deck works/);
   assert.match(page, /LEGALITY/);
   assert.match(page, /OPENING HANDS/);
   assert.match(page, /STRONGEST MACHINE/);

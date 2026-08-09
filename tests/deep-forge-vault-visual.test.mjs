@@ -7,9 +7,9 @@ const [page, css] = await Promise.all([
   readFile(new URL("../app/testing-anvil.css", import.meta.url), "utf8"),
 ]);
 
-test("Chapter IV opens as a sealed intelligence vault", () => {
-  assert.match(page, /CHAPTER IV · ENTER THE DEEP FORGE/);
-  assert.match(page, /Deck health, systems, causality, field pressure, and experiments/);
+test("Deep Forge remains an optional intelligence vault", () => {
+  assert.match(page, /<small>DEEP FORGE<\/small>/);
+  assert.match(page, /Detailed analysis, evidence, and deck statistics/);
   assert.match(css, /Chapter IV intelligence vault/);
   assert.match(css, /SEALED INSTRUMENT CHAMBER/);
   assert.match(css, /INSTRUMENT CHAMBER OPEN/);

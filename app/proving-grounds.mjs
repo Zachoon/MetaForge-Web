@@ -4,8 +4,17 @@
 
 const clean = (value) => String(value || "").trim();
 
-export function buildProvingGroundsBrief({ coachingDiagnosis, failureAnalysis, simulationDossier } = {}) {
+const stableHypothesisId = (revision, category, measurement) => {
+  const input = `${Number(revision) || 1}|${category}|${clean(measurement).toLowerCase()}`;
+  let hash = 2166136261;
+  for (const character of input) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619);
+  return `coach-${(hash >>> 0).toString(36)}`;
+};
+
+export function buildProvingGroundsBrief({ coachingDiagnosis, failureAnalysis, simulationDossier, matches = [] } = {}) {
   const primary = coachingDiagnosis?.primary || {};
+  const activeIntervention = coachingDiagnosis?.activeIntervention || null;
+  const playerGoal = clean(coachingDiagnosis?.playerGoal);
   const category = clean(primary.category) || "collect-more-evidence";
   const weakest = clean(simulationDossier?.matrix?.weakest?.opponent);
   const structuralTest = clean(failureAnalysis?.nextTest);
@@ -43,14 +52,47 @@ export function buildProvingGroundsBrief({ coachingDiagnosis, failureAnalysis, s
     },
   };
   const selected = briefs[category] || briefs["collect-more-evidence"];
+  const revision = Number(coachingDiagnosis?.revision) || 1;
+  const evidenceSource = clean(activeIntervention?.targetCategory) || category;
+  const hypothesisId = stableHypothesisId(revision, evidenceSource, primary.measurement || selected.watchFor);
+  const results = matches
+    .filter((match) => Number(match?.revision || revision) === revision)
+    .map((match) => match?.fieldTest)
+    .filter((test) => test?.source === evidenceSource && (!test.hypothesisId || test.hypothesisId === hypothesisId));
+  const supporting = results.filter((test) => test.outcome === "observed").length;
+  const contradicting = results.filter((test) => test.outcome === "missed").length;
+  const informative = supporting + contradicting;
+  const status = supporting >= 2 && supporting > contradicting
+    ? "supported"
+    : contradicting >= 2 && supporting === 0
+      ? "retired"
+      : supporting && contradicting
+        ? "mixed"
+        : "testing";
+  const nextAction = status === "supported"
+    ? clean(primary.recommendation) || "Use the repeated observation to choose the smallest relevant intervention."
+    : status === "retired"
+      ? "Retire this question and keep the revision stable until a different pressure repeats."
+      : status === "mixed"
+        ? "Repeat the exact question once more without changing the deck."
+        : informative === 1
+          ? "Repeat the exact question once more before changing the deck."
+          : "Run this exact question in the next relevant game.";
   return Object.freeze({
-    engine: "metaforge-proving-grounds-v1",
-    source: category,
+    engine: "metaforge-proving-grounds-v2",
+    hypothesisId,
+    revision,
+    playerGoal: playerGoal || null,
+    source: evidenceSource,
+    diagnosisCategory: category,
     question: selected.question,
     watchFor: selected.watchFor,
-    why: selected.why,
+    why: playerGoal ? `${selected.why} Player goal: ${playerGoal}.` : selected.why,
     successPrompt: "Yes — the thing I watched happened",
     missedPrompt: "No — it did not happen",
+    evidence: Object.freeze({ supporting, contradicting, uninformative: results.length - informative }),
+    status,
+    nextAction,
     boundary: "One game supplies one clue, not a verdict. The Forge will preserve the exact revision and look for repetition before recommending a change.",
   });
 }

@@ -35,12 +35,12 @@ test("server-renders the MetaForge product experience", async () => {
   assert.match(html, /data-motion="full"/);
   assert.match(html, /class="forge-motion-layer"/);
   assert.match(html, /class="forge-action-burst"/);
-  assert.match(html, /Use quiet Forge motion/);
+  assert.match(html, /<summary>Menu<\/summary>/);
+  assert.match(html, /Reduce motion/);
   assert.match(html, /Build a deck/);
   assert.match(html, /Review my decklist/);
-  assert.match(html, /THE PRIVATE BENCH/);
-  assert.match(html, /Your preserved Masterworks/);
-  assert.match(html, /Start a New Forge/);
+  assert.doesNotMatch(html, /THE PRIVATE BENCH/);
+  assert.doesNotMatch(html, /Your preserved Masterworks/);
   assert.doesNotMatch(html, /RELEASE GATE|LIVE ACCEPTANCE/);
   assert.match(html, /A DECK COACH FOR EVERY FORMAT/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);

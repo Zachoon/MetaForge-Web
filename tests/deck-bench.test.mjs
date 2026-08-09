@@ -52,6 +52,15 @@ test("syncs a Coach Pulse debrief onto its exact match", () => {
   assert.equal(match.coachDebrief.read, "Their speed");
 });
 
+test("merge preserves the coaching goal and combines intervention history", () => {
+  const base = { id: "family", game: "mtg", name: "Coach", format: "Standard", revisions: [] };
+  const remote = { schemaVersion: 1, families: [{ ...base, playerGoal: "Faster starts", forgeInterventions: [{ id: "a", createdAt: "2026-01-01" }] }] };
+  const local = { schemaVersion: 1, families: [{ ...base, playerGoal: "Better interaction", forgeInterventions: [{ id: "b", createdAt: "2026-01-02" }] }] };
+  const merged = mergeDeckBenches(local, remote).families[0];
+  assert.equal(merged.playerGoal, "Better interaction");
+  assert.deepEqual(merged.forgeInterventions.map((item) => item.id), ["a", "b"]);
+});
+
 test("never attaches MTG Arena evidence to a Riftbound family",()=>{
   const experiment={id:"rift",deckName:"Lanes",originalDeck:"old",proposedDeck:"new",originalFingerprint:"a".repeat(24),proposedFingerprint:"b".repeat(24),status:"testing",startedAt:"2026-07-16T00:00:00Z"};
   const bench=recordExperiment(emptyDeckBench(),experiment,"Constructed","riftbound");

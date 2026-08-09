@@ -27,6 +27,14 @@ export function mergeDeckBenches(localValue, remoteValue) {
     }
     family.archived = Boolean(family.archived && localFamily.archived);
     family.promotedFingerprint = localFamily.promotedFingerprint || family.promotedFingerprint;
+    family.playerGoal = localFamily.playerGoal || family.playerGoal || null;
+    const interventions = new Map((family.forgeInterventions || []).map((item) => [item.id, item]));
+    for (const intervention of localFamily.forgeInterventions || []) {
+      if (intervention?.id) interventions.set(intervention.id, { ...(interventions.get(intervention.id) || {}), ...intervention });
+    }
+    family.forgeInterventions = [...interventions.values()].sort((left, right) =>
+      String(left.createdAt || "").localeCompare(String(right.createdAt || "")) || String(left.id).localeCompare(String(right.id)),
+    );
     for (const localRevision of localFamily.revisions || []) {
       const remoteRevision = family.revisions.find((revision) => revision.fingerprint === localRevision.fingerprint);
       if (!remoteRevision) {
