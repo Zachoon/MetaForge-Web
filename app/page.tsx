@@ -1071,6 +1071,19 @@ const indexCardFact = (
   ];
   for (const alias of aliases) if (alias) target[cardFactKey(alias)] = fact;
 };
+const cardFactFromNativeRow = (row: any): CardFact | null => {
+  const card = row?.card;
+  if (!row?.name || !card) return null;
+  return {
+    name: String(card.name || row.name),
+    cmc: Number(card.cmc ?? row.cmc ?? 0),
+    color_identity: Array.isArray(card.colorIdentity) ? card.colorIdentity : card.color_identity || [],
+    mana_cost: String(card.manaCost || card.mana_cost || ""),
+    oracle_text: String(card.oracleText || card.oracle_text || ""),
+    type_line: String(card.typeLine || card.type_line || ""),
+    ...(Number.isFinite(Number(card.priceUsd)) ? { prices: { usd: String(card.priceUsd) } } : {}),
+  };
+};
 const cardGroup = (fact?: CardFact, isCommander = false) => {
   const type = [
     fact?.type_line,
@@ -2634,6 +2647,27 @@ export default function Home() {
     let cancelled = false;
     (async () => {
       const next: Record<string, CardFact> = {};
+      // A native generation already carries the verified card record used by
+      // construction. Seed the gallery from it so a partial supplemental
+      // Scryfall response can never turn known cards into "Other".
+      for (const row of nativeMasterworkContext?.selected?.rows || []) {
+        const fact = cardFactFromNativeRow(row);
+        if (fact) indexCardFact(next, fact, row.name);
+      }
+      if (selectedCommander) {
+        indexCardFact(next, {
+          name: selectedCommander.name,
+          type_line: selectedCommander.typeLine,
+          color_identity: selectedCommander.colors,
+        }, selectedCommander.name);
+      }
+      if (selectedSecondCommander) {
+        indexCardFact(next, {
+          name: selectedSecondCommander.name,
+          type_line: selectedSecondCommander.typeLine,
+          color_identity: selectedSecondCommander.colors,
+        }, selectedSecondCommander.name);
+      }
       for (let index = 0; index < names.length; index += 75) {
         try {
           const response = await fetch(
@@ -2680,7 +2714,7 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [forgedDeck]);
+  }, [forgedDeck, nativeMasterworkContext, selectedCommander, selectedSecondCommander]);
 
   useEffect(() => {
     setCardOrder(deckRows.map((row) => row.name));

@@ -111,6 +111,12 @@ test("keeps the deck list stable while card types are still loading", () => {
   assert.match(page, /organizing card types/);
 });
 
+test("uses the Forge's verified card types before supplemental gallery lookups", () => {
+  assert.match(page, /const cardFactFromNativeRow/);
+  assert.match(page, /for \(const row of nativeMasterworkContext\?\.selected\?\.rows \|\| \[\]\)/);
+  assert.match(page, /type_line: String\(card\.typeLine \|\| card\.type_line \|\| ""\)/);
+});
+
 test("each workspace stage exposes one clear contextual next action instead of another control cluster", () => {
   assert.match(page, /className="forge-next-step" aria-label="Recommended next step"/);
   assert.match(page, /Improve this deck →/);
