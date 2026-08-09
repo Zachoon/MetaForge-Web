@@ -5351,6 +5351,30 @@ export default function Home() {
                   </button>
                 ))}
               </nav>
+              <section className="forge-next-step" aria-label="Recommended next step">
+                <div>
+                  <small>RECOMMENDED NEXT STEP</small>
+                  <strong>
+                    {activeForgeChapter === 1
+                      ? "Keep the finished list intact and explore one useful improvement."
+                      : activeForgeChapter === 2
+                        ? "Take the change you understand to a real game."
+                        : "Use one guided game to learn what this deck actually needs next."}
+                  </strong>
+                </div>
+                {activeForgeChapter === 1 ? (
+                  <button type="button" onClick={() => setActiveForgeChapter(2)}>Improve this deck →</button>
+                ) : activeForgeChapter === 2 ? (
+                  <button type="button" onClick={() => setActiveForgeChapter(5)}>Test this deck →</button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById("proving-grounds-title")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  >
+                    Start the guided test ↓
+                  </button>
+                )}
+              </section>
             </>
           ) : (
             !openingExperimentGateActive &&

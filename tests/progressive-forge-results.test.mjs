@@ -104,6 +104,17 @@ test("turns the result into one active chapter instead of a continuous instrumen
   assert.match(css, /\.chapter-1-active \.forge-intelligence-vault/);
 });
 
+test("each workspace stage exposes one clear contextual next action instead of another control cluster", () => {
+  assert.match(page, /className="forge-next-step" aria-label="Recommended next step"/);
+  assert.match(page, /Improve this deck →/);
+  assert.match(page, /Test this deck →/);
+  assert.match(page, /Start the guided test ↓/);
+  assert.match(page, /setActiveForgeChapter\(2\)/);
+  assert.match(page, /setActiveForgeChapter\(5\)/);
+  assert.match(page, /getElementById\("proving-grounds-title"\)/);
+  assert.match(css, /\.forge-next-step\{display:flex/);
+});
+
 // A pasted decklist still reveals its complete deck immediately after the
 // forge ceremony (no ambiguity to resolve — there's only ever one legal
 // adaptation of the player's own list). A fresh commander build no longer
