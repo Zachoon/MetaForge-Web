@@ -9,6 +9,15 @@
   },
   "workers_dev": true,
   "preview_urls": false,
+  // Native deck construction performs bounded, CPU-heavy analysis across
+  // three complete candidates. Cloudflare's default 30s CPU ceiling can
+  // terminate a legitimate Forge before our typed failure/cleanup path runs,
+  // leaving the guest reservation pending and returning platform HTML to the
+  // browser. Keep a finite denial-of-wallet ceiling, but give a real build
+  // enough room to complete.
+  "limits": {
+    "cpu_ms": 120000
+  },
   "routes": [
     { "pattern": "metaforge.gg", "custom_domain": true },
     { "pattern": "www.metaforge.gg", "custom_domain": true },
