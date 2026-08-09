@@ -2032,6 +2032,13 @@ export default function Home() {
     [deckRows, cardOrder],
   );
   const groupedDeck = useMemo(() => {
+    // Card metadata improves the presentation, but it must never gate access to
+    // a finished deck. Restored decks can open while the external catalog is
+    // unavailable, so keep their stable deck order in one honest section until
+    // every card can be classified.
+    if (cardFactsLoading || cardFactsError || orderedDeckRows.some((row) => !cardFacts[cardFactKey(row.name)])) {
+      return { "Complete deck": orderedDeckRows };
+    }
     const commanderKeys = new Set(
       [chosenPreview.card, selectedSecondCommander?.name]
         .filter(Boolean)
@@ -2046,7 +2053,7 @@ export default function Home() {
       (groups[group] ||= []).push(row);
     }
     return groups;
-  }, [orderedDeckRows, cardFacts, format, chosenPreview.card, selectedSecondCommander?.name]);
+  }, [orderedDeckRows, cardFacts, cardFactsLoading, cardFactsError, format, chosenPreview.card, selectedSecondCommander?.name]);
   // The card fact used for pricing: the player's chosen specific printing
   // (right-click on a row) if they picked one, otherwise whatever printing
   // Scryfall returned by default. Only the prices differ; everything else
@@ -2677,7 +2684,7 @@ export default function Home() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ names }),
-          signal: AbortSignal.timeout(20000),
+          signal: AbortSignal.timeout(7000),
         });
         if (!response.ok) throw new Error("catalog unavailable");
         const data = await response.json();
@@ -5439,11 +5446,7 @@ export default function Home() {
                     {benchStatus === "forging"
                       ? "The Forge is producing your deck…"
                       : hasValidatedDeck
-                        ? cardFactsLoading
-                          ? `${deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards · organizing card types…`
-                          : cardFactsError
-                            ? `${deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards · card details unavailable`
-                          : `${deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards · ${Object.keys(groupedDeck).length} sections`
+                        ? `${deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards · ${Object.keys(groupedDeck).length} ${Object.keys(groupedDeck).length === 1 ? "section" : "sections"}`
                         : "Build not completed"}
                   </h2>
                 </div>
@@ -6794,17 +6797,13 @@ export default function Home() {
                     )}
                   </section>
                 )}
-                {cardFactsLoading || cardFactsError ? (
-                  <section className="deck-gallery-loading" role="status" aria-live="polite">
-                    <span aria-hidden="true" />
-                    <div>
-                      <small>{cardFactsError ? "THE ARCHIVE IS TEMPORARILY UNAVAILABLE" : "ORGANIZING YOUR DECK"}</small>
-                      <strong>{cardFactsError || "Putting every card into its proper section…"}</strong>
-                      <p>{cardFactsError ? "MetaForge will not mislabel those cards as Other." : "The complete list is preserved. It will appear once, in its stable order."}</p>
-                      {cardFactsError && <button type="button" onClick={() => setCardFactsRetry((current) => current + 1)}>Retry card details</button>}
-                    </div>
-                  </section>
-                ) : <div className="deck-gallery">
+                {(cardFactsLoading || cardFactsError) && (
+                  <div className="deck-gallery-notice" role="status" aria-live="polite">
+                    <span>{cardFactsLoading ? "Organizing card types in the background…" : "Showing the complete deck in its saved order while card details reconnect."}</span>
+                    {cardFactsError && <button type="button" onClick={() => setCardFactsRetry((current) => current + 1)}>Retry details</button>}
+                  </div>
+                )}
+                <div className="deck-gallery">
                   <aside className="card-preview-stage">
                     <button
                       type="button"
@@ -6837,6 +6836,7 @@ export default function Home() {
                   </aside>
                   <div className="type-columns">
                     {[
+                      "Complete deck",
                       "Commander",
                       "Creatures",
                       "Planeswalkers",
@@ -7028,7 +7028,7 @@ export default function Home() {
                         </section>
                       ))}
                   </div>
-                </div>}
+                </div>
                 </>
               ) : forgeGenerationError ? (
                 <div className="forge-generation-failure" role="alert">

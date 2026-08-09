@@ -105,10 +105,10 @@ test("turns the result into one active chapter instead of a continuous instrumen
 });
 
 test("keeps the deck list stable while card types are still loading", () => {
-  assert.match(page, /cardFactsLoading \|\| cardFactsError \? \(/);
-  assert.match(page, /Putting every card into its proper section/);
-  assert.match(page, /It will appear once, in its stable order/);
-  assert.match(page, /organizing card types/);
+  assert.match(page, /return \{ "Complete deck": orderedDeckRows \}/);
+  assert.match(page, /Organizing card types in the background/);
+  assert.match(page, /Showing the complete deck in its saved order/);
+  assert.match(page, /"Complete deck",\s*"Commander"/);
 });
 
 test("uses the Forge's verified card types before supplemental gallery lookups", () => {
@@ -116,9 +116,8 @@ test("uses the Forge's verified card types before supplemental gallery lookups",
   assert.match(page, /for \(const row of nativeMasterworkContext\?\.selected\?\.rows \|\| \[\]\)/);
   assert.match(page, /type_line: String\(card\.typeLine \|\| card\.type_line \|\| ""\)/);
   assert.match(page, /fetch\("\/api\/cards\/facts"/);
-  assert.match(page, /MetaForge will not mislabel those cards as Other/);
-  assert.match(page, /Retry card details/);
-  assert.match(page, /card details unavailable/);
+  assert.match(page, /Retry details/);
+  assert.match(page, /AbortSignal\.timeout\(7000\)/);
 });
 
 test("each workspace stage exposes one clear contextual next action instead of another control cluster", () => {
