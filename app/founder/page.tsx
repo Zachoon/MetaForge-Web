@@ -9,6 +9,11 @@ type Overview = {
   totals: { testers: number; decks: number; revisions: number; matches: number; wins: number; losses: number; feedback: number };
   testers: Array<{ id: string; firstSeen: string; lastSeen: string; syncRevision: number; decks: number; revisions: number; matches: number; wins: number; losses: number; validData: boolean }>;
   feedback: Array<{ id: number; testerId: string; category: string; message: string; status: string; createdAt: string; context: Record<string, unknown> }>;
+  launch: {
+    funnel: Record<string, { events: number; sessions: number }>;
+    reliability: { succeeded: number; failed: number; successRate: number | null; averageMs: number };
+    campaigns: Array<{ source: string; medium: string; campaign: string; sessions: number; completed: number }>;
+  };
 };
 type KnowledgeClaim = { id:string; game:string; sourceUrl:string; sourceTitle:string; author:string; publishedAt:string; sourceType:string; summary:string; principle:string; format:string; stance:string; tags:string[]; cards:string[]; status:string; createdAt:string };
 
@@ -33,6 +38,9 @@ export default function FounderCommandCenter() {
   if (status === "denied") return <main className="founder-state"><b>FOUNDER ACCESS REQUIRED</b><h1>This command center belongs to the MetaForge founder.</h1><a href="/">Return to MetaForge</a></main>;
   if (!data) return <main className="founder-state"><b>METAFORGE COMMAND CENTER</b><h1>{status === "error" ? "The telemetry forge did not answer." : "Heating the telemetry forge…"}</h1>{status === "error" && <button onClick={load}>Try again</button>}</main>;
   const rate = data.totals.matches ? Math.round(data.totals.wins / data.totals.matches * 100) : 0;
+  const funnel = data.launch?.funnel || {};
+  const visitors = funnel.landing_view?.sessions || 0;
+  const completed = funnel.forge_succeeded?.sessions || 0;
   return <main className="founder-command">
     <header><a href="/" className="founder-brand"><i>MF</i><span>METAFORGE</span></a><div><small>PRIVATE · FOUNDER ONLY</small><h1>Command Center</h1><p>Your alpha’s pulse—without raw Arena logs or readable tester identities.</p></div><button onClick={load}>Refresh signals</button></header>
     <section className="founder-metrics">
@@ -41,6 +49,17 @@ export default function FounderCommandCenter() {
       <article><span>OBSERVED WIN RATE</span><b>{rate}%</b><em>Descriptive, not causal</em></article>
       <article><span>DECK EVOLUTIONS</span><b>{data.totals.revisions}</b><em>{data.totals.decks} deck families</em></article>
       <article><span>FOUNDER SIGNALS</span><b>{data.totals.feedback}</b><em>Feedback reports</em></article>
+    </section>
+    <section className="founder-panel"><header><div><small>LAUNCH READINESS · LAST 30 DAYS</small><h2>Visitor journey</h2></div><b>{visitors ? Math.round(completed / visitors * 100) : 0}% VISIT → DECK</b></header>
+      <div className="founder-metrics">
+        {[['landing_view','CONSENTED VISITORS'],['forge_started','FORGES STARTED'],['forge_succeeded','DECKS RETURNED'],['coaching_opened','COACHING OPENED'],['experiment_started','TESTS STARTED'],['save_continue_clicked','SAVE INTENT']].map(([event,label])=><article key={event}><span>{label}</span><b>{funnel[event]?.sessions || 0}</b><em>{funnel[event]?.events || 0} total events</em></article>)}
+      </div>
+    </section>
+    <section className="founder-panel"><header><div><small>GENERATION HEALTH · LAST 7 DAYS</small><h2>Production reliability</h2></div><b>{data.launch?.reliability.successRate ?? '—'}% SUCCESS</b></header>
+      <div className="founder-metrics"><article><span>COMPLETED</span><b>{data.launch?.reliability.succeeded || 0}</b><em>Server-confirmed generations</em></article><article><span>FAILED</span><b>{data.launch?.reliability.failed || 0}</b><em>All HTTP failure responses</em></article><article><span>AVERAGE TIME</span><b>{data.launch?.reliability.averageMs ? `${Math.round(data.launch.reliability.averageMs / 1000)}s` : '—'}</b><em>Successful generations</em></article></div>
+    </section>
+    <section className="founder-panel"><header><div><small>CAMPAIGN ATTRIBUTION · LAST 30 DAYS</small><h2>What brings builders</h2></div><b>CONSENTED · ANONYMOUS</b></header>
+      <div className="founder-table"><div className="table-head"><span>SOURCE</span><span>MEDIUM</span><span>CAMPAIGN</span><span>VISITORS</span><span>DECKS</span><span>RATE</span></div>{(data.launch?.campaigns || []).map((item,index)=><article key={`${item.source}-${item.campaign}-${index}`}><b>{item.source}</b><span>{item.medium}</span><span>{item.campaign}</span><span>{item.sessions}</span><span>{item.completed}</span><em>{item.sessions ? Math.round(item.completed/item.sessions*100) : 0}%</em></article>)}{!data.launch?.campaigns.length&&<p className="empty">Campaign results will appear after visitors allow anonymous measurement.</p>}</div>
     </section>
     <section className="founder-panel"><header><div><small>ALPHA ACTIVITY</small><h2>Tester pulse</h2></div><time>Updated {new Date(data.generatedAt).toLocaleString()}</time></header>
       <div className="founder-table"><div className="table-head"><span>TESTER</span><span>LAST SYNC</span><span>DECKS</span><span>VERSIONS</span><span>RECORD</span><span>DATA</span></div>{data.testers.map((tester) => <article key={tester.id}><b>Tester {tester.id}</b><time>{new Date(tester.lastSeen).toLocaleString()}</time><span>{tester.decks}</span><span>{tester.revisions}</span><span>{tester.wins}–{tester.losses}</span><em className={tester.validData ? "good" : "bad"}>{tester.validData ? "HEALTHY" : "REVIEW"}</em></article>)}{!data.testers.length && <p className="empty">No synchronized tester data yet. This panel will populate automatically.</p>}</div>

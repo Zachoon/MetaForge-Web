@@ -49,6 +49,7 @@ import { buildTcgplayerLink, AFFILIATE_DISCLOSURE_TEXT } from "./affiliate-links
 import { deckFingerprint } from "./deck-fingerprint.mjs";
 import { createPilotingDebrief } from "./piloting-debrief.mjs";
 import { buildCoachingSession } from "./coaching-session.mjs";
+import { trackLaunchEvent } from "./launch-telemetry";
 
 type Chamber =
   | "entrance"
@@ -3463,6 +3464,7 @@ export default function Home() {
   // commander already locked in gives the Forge one clear thing to build,
   // so there's no real ambiguity to resolve with three alternates.
   async function commitDirectForge(mode: "decklist" | "commander") {
+    const launchStartedAt = Date.now();
     const commander = selectedCommander;
     const secondCommander = selectedSecondCommander;
     const generationId = crypto.randomUUID();
@@ -3496,6 +3498,7 @@ export default function Home() {
     setOpeningExperimentFocus("");
     setActiveForgeChapter(1);
     setDeckViewMode("workbench");
+    trackLaunchEvent("forge_started", { mode, format, budget, targetPowerTier });
 
     let evidence: EdhrecEvidence | null = null;
     if (!guestMode && commander && isCommanderFormat(format)) {
@@ -3549,6 +3552,7 @@ export default function Home() {
           evidenceCards: evidence?.cards || [],
           reviewFocus: reviewFocus || undefined,
         });
+        trackLaunchEvent("forge_succeeded", { mode, format, durationMs: Date.now() - launchStartedAt });
         setImportWarnings([
           ...(importWarnings?.unresolvedNames || []).map((name) => `"${name}" could not be verified and was left out.`),
           ...(importWarnings?.illegalNames || []).map((name) => `"${name}" is not legal in ${format} and was left out.`),
@@ -3588,6 +3592,7 @@ export default function Home() {
           commonsOnly,
           targetPowerTier: isCommanderFormat(format) ? targetPowerTier || undefined : undefined,
         });
+        trackLaunchEvent("forge_succeeded", { mode, format, durationMs: Date.now() - launchStartedAt });
         // A fresh build never auto-enters a Masterwork. The one generation
         // call above already produced all three real candidates
         // (nativeReport.candidates — the same synergy/resilience/precision
@@ -3610,6 +3615,7 @@ export default function Home() {
     } catch (error) {
       const failure = normalizeForgeFailure(error);
       setForgedDeck("");
+      trackLaunchEvent("forge_failed", { mode, format, code: failure.code, retryable: failure.retryable });
       setNativeMasterworkContext(null);
       // A Turnstile token is single-use server-side the moment it's
       // checked, spent whether or not the attempt that follows it
@@ -4153,6 +4159,7 @@ export default function Home() {
     setFieldTestRead(null);
     window.localStorage.setItem("metaforge.activeFieldTest", JSON.stringify(next));
     setBenchStatus("testing");
+    trackLaunchEvent("experiment_started", { format, source: provingGrounds.source });
   }
 
   async function finishProvingGroundsTest(outcome: "observed" | "missed" | "not-tested" | "unsure") {
@@ -4382,7 +4389,7 @@ export default function Home() {
             <small>YOUR PREVIEW MASTERWORK IS READY</small>
             <b>Create your free account to save it, edit cards, run experiments, and record matches.</b>
           </div>
-          <a href={`https://app.metaforge.gg/?claim=${encodeURIComponent(guestClaimToken)}`}>Save and continue →</a>
+          <a onClick={() => trackLaunchEvent("save_continue_clicked", { format })} href={`https://app.metaforge.gg/?claim=${encodeURIComponent(guestClaimToken)}`}>Save and continue →</a>
         </aside>
       )}
       <div className="forge-motion-layer" aria-hidden="true" key={`${chamber}-${stage}-${actionPulse}`}>
@@ -5344,7 +5351,10 @@ export default function Home() {
                     key={chapterNumber}
                     className={activeForgeChapter === chapterNumber ? "active" : ""}
                     aria-current={activeForgeChapter === chapterNumber ? "step" : undefined}
-                    onClick={() => setActiveForgeChapter(chapterNumber as 1 | 2 | 5)}
+                    onClick={() => {
+                      setActiveForgeChapter(chapterNumber as 1 | 2 | 5);
+                      if (chapterNumber === 2) trackLaunchEvent("coaching_opened", { format });
+                    }}
                   >
                     <b>{label}</b>
                     <span>{status}</span>
@@ -5363,7 +5373,7 @@ export default function Home() {
                   </strong>
                 </div>
                 {activeForgeChapter === 1 ? (
-                  <button type="button" onClick={() => setActiveForgeChapter(2)}>Improve this deck →</button>
+                  <button type="button" onClick={() => { setActiveForgeChapter(2); trackLaunchEvent("coaching_opened", { format }); }}>Improve this deck →</button>
                 ) : activeForgeChapter === 2 ? (
                   <button type="button" onClick={() => setActiveForgeChapter(5)}>Test this deck →</button>
                 ) : (
@@ -5420,7 +5430,7 @@ export default function Home() {
                       <button type="button" className={deckViewMode === "workbench" ? "active" : ""} onClick={() => setDeckViewMode("workbench")}>Visual deck</button>
                       <button type="button" className={deckViewMode === "ledger" ? "active" : ""} onClick={() => setDeckViewMode("ledger")}>Text list</button>
                     </details>
-                    {guestMode && guestClaimToken && <a className="save-masterwork-link" href={`https://app.metaforge.gg/?claim=${encodeURIComponent(guestClaimToken)}`}>Save deck</a>}
+                    {guestMode && guestClaimToken && <a onClick={() => trackLaunchEvent("save_continue_clicked", { format })} className="save-masterwork-link" href={`https://app.metaforge.gg/?claim=${encodeURIComponent(guestClaimToken)}`}>Save deck</a>}
                   </div>
                 )}
               </header>

@@ -28,6 +28,8 @@ test("server-renders the MetaForge product experience", async () => {
   assert.match(html, /<script type="application\/ld\+json">.*"WebApplication".*<\/script>/i);
   assert.match(html, /<meta name="robots" content="index, follow">/i);
   assert.doesNotMatch(html, /content="noindex/i);
+  assert.match(html, /Help us improve MetaForge\?/i);
+  assert.doesNotMatch(html, /utt\.impactcdn\.com/i);
   assert.match(html, /<meta property="og:image" content="https:\/\/metaforge\.gg\/og\.png"/i);
   assert.doesNotMatch(html, /20eee0f8-1f57-4304-a32d-17bba0f1ec2a/i);
   assert.match(html, /data-forge-state="dormant"/);

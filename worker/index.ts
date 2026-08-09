@@ -14,6 +14,7 @@ import { handleForgeMultiRefill } from "./forge-multi-refill";
 import { cleanupExpiredRateLimits } from "./api-hardening";
 import { cleanupExpiredGenerations } from "./forge-generation-store";
 import { cleanupExpiredGuestForges, handleGuestClaim, handleGuestForge } from "./guest-forge";
+import { handleLaunchTelemetry, recordOperationalGeneration } from "./launch-telemetry";
 const BUILD_ID = "2026.07.16-workspace1";
 const IMPACT_SITE_VERIFICATION = "05208696-7452-434e-89b1-d6be551c7505";
 const PUBLIC_HOSTS = new Set(["metaforge.gg"]);
@@ -168,9 +169,19 @@ const worker = {
         return await handleFounderOverview(request, env);
       }
       if (url.pathname === "/api/forge/chat") return await handleForgeChat(request, env);
+      if (url.pathname === "/api/telemetry") return await handleLaunchTelemetry(request, env);
       if (url.pathname === "/api/forge/edhrec") return await handleEdhrecEvidence(request, env);
-      if (url.pathname === "/api/forge/generate") return await handleForgeGenerate(request, env);
-      if (url.pathname === "/api/forge/guest-generate") return await handleGuestForge(request, env);
+      if (url.pathname === "/api/forge/generate" || url.pathname === "/api/forge/guest-generate") {
+        const startedAt = Date.now();
+        const isGuest = url.pathname.includes("guest-");
+        const response = isGuest ? await handleGuestForge(request, env) : await handleForgeGenerate(request, env);
+        ctx.waitUntil(recordOperationalGeneration(env, response.ok ? "generation_succeeded" : "generation_failed", {
+          endpoint: isGuest ? "guest" : "account",
+          status: response.status,
+          durationMs: Date.now() - startedAt,
+        }).catch((error) => console.error("launch telemetry write failed", error)));
+        return response;
+      }
       if (url.pathname === "/api/account/claim-guest") return await handleGuestClaim(request, env);
       if (url.pathname === "/api/forge/structural-analyze") return await handleForgeStructuralAnalyze(request, env);
       if (url.pathname === "/api/forge/one-slot-experiment") return await handleForgeOneSlot(request, env);
