@@ -22,6 +22,7 @@ import {
   forgeNativeMasterwork,
   forgeImportedMasterwork,
   parseNativeBlueprintIntent,
+  blueprintMechanicQueryFor,
 } from "../app/native-masterwork-engine.mjs";
 import { userKey } from "./account-bench";
 import { checkRateLimit, readJsonWithLimit } from "./api-hardening";
@@ -293,11 +294,9 @@ async function loadNativeForgePool(
   };
   const identityQueries = [
     ...blueprint.tribalTypes.map((term: string) => `(t:"${term}" OR o:"${term}" OR name:"${term}")`),
-    ...blueprint.requestedMechanics.map((mechanic: string) => mechanic === "power-up"
-      ? '(kw:"Power-Up" OR o:"Power-Up")'
-      : mechanic === "creature-activated-ability"
-        ? "t:creature o:\":\""
-        : null).filter(Boolean),
+    ...blueprint.requestedMechanics.map((mechanic: string) => mechanic === "creature_activated_ability"
+      ? "t:creature o:\":\""
+      : blueprintMechanicQueryFor(mechanic)),
     ...blueprint.desiredRoles.map((role: string) => roleQueries[role]).filter(Boolean),
   ].slice(0, 6);
   for (const identityQuery of identityQueries) {

@@ -502,7 +502,7 @@ test("recognizes a Power-Up focus and creature activated abilities as explicit m
   const intent = parseNativeBlueprintIntent({
     note: "Creature Activated abilities, with a focus on Power-Up activated abilities",
   });
-  assert.deepEqual(intent.requestedMechanics, ["power-up", "creature-activated-ability"]);
+  assert.deepEqual(intent.requestedMechanics, ["power_up", "creature_activated_ability"]);
   assert.deepEqual(intent.promises, ["Power-Up", "creature activated abilities"]);
 });
 
@@ -526,9 +526,9 @@ test("reserves supported Power-Up and creature activated-ability cards ahead of 
 
   const names = new Set(report.selected.rows.map((row) => row.name));
   assert.ok(powerUpCards.every(({ name }) => names.has(name)));
-  assert.equal(report.selected.blueprintAlignment.availableMechanicCoverage["power-up"], 8);
-  assert.equal(report.selected.blueprintAlignment.requestedMechanicCoverage["power-up"], 8);
-  assert.ok(report.selected.blueprintAlignment.requestedMechanicCoverage["creature-activated-ability"] >= 10);
+  assert.equal(report.selected.blueprintAlignment.availableMechanicCoverage.power_up, 8);
+  assert.equal(report.selected.blueprintAlignment.requestedMechanicCoverage.power_up, 8);
+  assert.ok(report.selected.blueprintAlignment.requestedMechanicCoverage.creature_activated_ability >= 10);
   assert.equal(report.selected.blueprintAlignment.status, "honored-best-effort");
   assert.match(report.selected.blueprintAlignment.boundary, /8 legal Power-Up cards and selected 8/i);
 });
@@ -542,6 +542,47 @@ test("admits when a named requested mechanic is absent instead of calling generi
   });
   assert.equal(report.selected.blueprintAlignment.status, "unsupported-mechanic-in-verified-pool");
   assert.match(report.selected.blueprintAlignment.boundary, /No legal Power-Up card was present/i);
+});
+
+test("compiles different official mechanics and plain-language archetypes without one-off parser branches", () => {
+  assert.deepEqual(parseNativeBlueprintIntent({ note: "Landfall with Cycling" }).requestedMechanics, ["landfall", "cycling"]);
+  assert.deepEqual(parseNativeBlueprintIntent({ note: "Mutate and Toxic" }).requestedMechanics, ["mutate", "toxic"]);
+  assert.deepEqual(parseNativeBlueprintIntent({ note: "Blink creatures and copy spells" }).requestedMechanics, ["blink", "spell_copying"]);
+  assert.deepEqual(parseNativeBlueprintIntent({ note: "An Aristocrats deck" }).requestedMechanics, ["aristocrats"]);
+  assert.deepEqual(parseNativeBlueprintIntent({ note: "Play cards from exile" }).requestedMechanics, ["cast_from_exile"]);
+});
+
+test("the generalized mechanic contract reserves official keyword packages such as Landfall", () => {
+  const landfallCards = Array.from({ length: 9 }, (_, index) => ({
+    ...card(`Landfall Scout ${index}`, "Landfall — Whenever a land enters under your control, put a +1/+1 counter on this creature.", "Creature — Scout", "{2}{G}", ["G"]),
+    keywords: ["Landfall"],
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange",
+    note: "Focus on Landfall", seed: 820,
+    commander: { name: "Landfall Mentor", colors: ["G", "U"], oracleText: "Whenever a land enters, draw a card." },
+    cards: [...pool, ...landfallCards],
+  });
+  const names = new Set(report.selected.rows.map((row) => row.name));
+  assert.ok(landfallCards.every(({ name }) => names.has(name)));
+  assert.equal(report.selected.blueprintAlignment.requestedMechanicCoverage.landfall, 9);
+  assert.equal(report.selected.blueprintAlignment.status, "honored-best-effort");
+});
+
+test("plain-language concepts such as blink are grounded in rules text and shape construction", () => {
+  const blinkCards = Array.from({ length: 8 }, (_, index) =>
+    card(`Blink Guide ${index}`, "Exile another target creature you control, then return that card to the battlefield under its owner's control.", "Creature — Wizard"),
+  );
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange",
+    note: "I want to blink creatures", seed: 821,
+    commander: { name: "Blink Mentor", colors: ["U"], oracleText: "Whenever a creature enters, draw a card." },
+    cards: [...pool, ...blinkCards],
+  });
+  const names = new Set(report.selected.rows.map((row) => row.name));
+  assert.ok(blinkCards.every(({ name }) => names.has(name)));
+  assert.equal(report.selected.blueprintAlignment.requestedMechanicCoverage.blink, 8);
+  assert.equal(report.selected.blueprintAlignment.status, "honored-best-effort");
 });
 
 test("recognizes plain-language role requests, not just rules-text phrasing", () => {
