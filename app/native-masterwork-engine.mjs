@@ -721,13 +721,21 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
     ...mechanics.rewards.filter((signal) => context.commanderMechanics.produces.includes(signal)),
     ...mechanics.produces.filter((signal) => context.commanderMechanics.rewards.includes(signal)),
   ]);
+  const cmc = manaValueFromCost(card.manaCost || card.mana_cost, card.cmc);
+  const sequenceStages = unique([
+    ...(cmc <= 3 && roles.some((role) => ["ramp", "draw", "selection"].includes(role)) ? ["setup"] : []),
+    ...(cmc <= 3 && roles.some((role) => ["interaction", "protection"].includes(role)) ? ["stabilize"] : []),
+    ...(commanderConnectionSignals.length || mechanics.rewards.length ? ["convert"] : []),
+    ...(roles.some((role) => ["recursion", "draw", "protection"].includes(role)) ? ["recover"] : []),
+    ...((cmc >= 4 && roles.includes("threat")) || roles.includes("combat") || mechanics.rewards.includes("combat") ? ["close"] : []),
+  ]);
   const excludedRoleHits = roles.filter((role) => context.blueprint.excludedRoles.includes(role));
   const fieldPressureHits = roles.filter((role) => context.fieldCounterRoles.includes(role)).length;
   return {
     card,
     roles,
     text,
-    cmc: manaValueFromCost(card.manaCost || card.mana_cost, card.cmc),
+    cmc,
     roleScore: roles.reduce((sum, role) => {
       const weight = context.weights[role] || (role === "threat" ? 7 : 2);
       const quality = role === "interaction" ? interactionQualityFor(text) : 1;
@@ -750,6 +758,7 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
     blueprintRoleHits,
     blueprintMechanicHits,
     commanderConnectionSignals,
+    sequenceStages,
     excludedRoleHits,
     mechanics: mechanics || { signals: [], produces: [], rewards: [] },
     colorPips: colorPipsFromCost(card.manaCost || card.mana_cost),
@@ -853,6 +862,7 @@ function scoreCard(entry, input, variant, context) {
     blueprintRoleHits: entry.blueprintRoleHits,
     blueprintMechanicHits: entry.blueprintMechanicHits,
     commanderConnectionSignals: entry.commanderConnectionSignals,
+    sequenceStages: entry.sequenceStages,
     mechanics: entry.mechanics,
     colorPips: entry.colorPips,
   };
@@ -912,6 +922,10 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
   const producedSoFar = new Map();
   const rewardedSoFar = new Map();
   const cmcCounts = new Map();
+  const sequenceCounts = new Map();
+  const sequenceGoals = singleton
+    ? { setup: 10, stabilize: 7, convert: 8, recover: 7, close: 6 }
+    : { setup: 8, stabilize: 6, convert: 6, recover: 5, close: 5 };
   const copies = singleton ? 1 : 4;
   let remaining = slots;
 
@@ -934,6 +948,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
     selected.push({ ...row, quantity });
     selectedNames.add(normalized(row.name));
     for (const role of row.roles) roleCounts.set(role, (roleCounts.get(role) || 0) + quantity);
+    for (const stage of row.sequenceStages || []) sequenceCounts.set(stage, (sequenceCounts.get(stage) || 0) + quantity);
     trackMechanics(row.mechanics);
     trackCmc(row.cmc, quantity);
     remaining -= quantity;
@@ -954,6 +969,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       blueprintRoleHits: candidate.blueprintRoleHits,
       blueprintMechanicHits: candidate.blueprintMechanicHits,
       commanderConnectionSignals: candidate.commanderConnectionSignals,
+      sequenceStages: candidate.sequenceStages,
       mechanics: candidate.mechanics,
       colorPips: candidate.colorPips,
       // Scryfall's produced_mana exists on any permanent, not just lands —
@@ -964,6 +980,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
     });
     selectedNames.add(normalized(candidate.card.name));
     for (const role of candidate.roles) roleCounts.set(role, (roleCounts.get(role) || 0) + quantity);
+    for (const stage of candidate.sequenceStages || []) sequenceCounts.set(stage, (sequenceCounts.get(stage) || 0) + quantity);
     trackMechanics(candidate.mechanics);
     trackCmc(candidate.cmc, quantity);
     remaining -= quantity;
@@ -1031,6 +1048,8 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       // soon as a matching producer is selected.
       const orphanPayoffPenalty = entry.powerTierScore > 0 ? 0 : entry.mechanics.rewards.reduce((sum, signal) =>
         sum + (poolProducerSignals.has(signal) && !(producedSoFar.get(signal) || 0) ? 8 : 0), 0);
+      const sequenceDeficit = entry.sequenceStages.reduce((sum, stage) =>
+        sum + Math.max(0, (sequenceGoals[stage] || 0) - (sequenceCounts.get(stage) || 0)), 0);
       // Same fair-fill idea as the role deficit above, applied to mana cost:
       // a bucket already past its share stops competing for more (but never
       // goes punitive the way the role deficit can — a spread that's merely
@@ -1038,7 +1057,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       // the way an excluded role would).
       const bucket = curveBucket(entry.cmc);
       const curveDeficit = Math.max(0, (curveGoals[bucket] || 0) - (cmcCounts.get(bucket) || 0)) * 3;
-      const adjusted = entry.score + deficit + inDeckSynergy * 2 + requestedPackageSynergy * 4 + curveDeficit - orphanPayoffPenalty;
+      const adjusted = entry.score + deficit + inDeckSynergy * 2 + requestedPackageSynergy * 4 + sequenceDeficit * 2 + curveDeficit - orphanPayoffPenalty;
       if (adjusted > bestAdjusted || (adjusted === bestAdjusted && candidate && entry.card.name.localeCompare(candidate.card.name) < 0)) {
         candidate = entry;
         bestAdjusted = adjusted;
@@ -1509,6 +1528,25 @@ function computeStrategicCoherence(analysis, selected) {
   });
 }
 
+function computeStrategicSequence(selected, singleton) {
+  const goals = singleton
+    ? { setup: 10, stabilize: 7, convert: 8, recover: 7, close: 6 }
+    : { setup: 8, stabilize: 6, convert: 6, recover: 5, close: 5 };
+  const counts = Object.fromEntries(Object.keys(goals).map((stage) => [
+    stage,
+    selected.filter((entry) => entry.sequenceStages?.includes(stage)).reduce((sum, entry) => sum + entry.quantity, 0),
+  ]));
+  const coverage = Object.fromEntries(Object.entries(goals).map(([stage, goal]) => [stage, Number(Math.min(1, counts[stage] / goal).toFixed(3))]));
+  const weakestStage = Object.keys(goals).sort((left, right) => coverage[left] - coverage[right] || left.localeCompare(right))[0];
+  const overall = Number((Object.values(coverage).reduce((sum, value) => sum + value, 0) / Object.keys(coverage).length).toFixed(3));
+  return Object.freeze({
+    stages: Object.freeze(Object.fromEntries(Object.keys(goals).map((stage) => [stage, Object.freeze({ count: counts[stage], floor: goals[stage], coverage: coverage[stage] })]))),
+    weakestStage,
+    overallCoverage: overall,
+    status: overall === 1 ? "complete-sequence" : "sequence-needs-support",
+  });
+}
+
 // A Commander deck's real land needs move with its actual curve and ramp
 // density, not a flat 37% — the well-known deckbuilding guidance (Frank
 // Karsten's land-count tables) scales land count up with average CMC and
@@ -1871,6 +1909,7 @@ function buildCandidateAttempt(input, variant, analysis) {
   const blueprintAlignment = computeBlueprintAlignment(analysis, selected, singleton);
   const commanderCompatibility = computeCommanderCompatibility(analysis, selected);
   const strategicCoherence = computeStrategicCoherence(analysis, selected);
+  const strategicSequence = computeStrategicSequence(selected, singleton);
   return {
     id: variant.id,
     label: variant.label,
@@ -1880,6 +1919,7 @@ function buildCandidateAttempt(input, variant, analysis) {
     blueprintAlignment,
     commanderCompatibility,
     strategicCoherence,
+    strategicSequence,
     score: evaluation.score,
     sideboard: sideboardFor(scored, selected, singleton),
     boundary: "Native structural candidate. Legality and simulations are hard gates; real match performance remains unproven.",
@@ -2022,6 +2062,7 @@ function buildImportedCandidateAttempt(input, analysis) {
   const blueprintAlignment = computeBlueprintAlignment(analysis, selected, singleton);
   const commanderCompatibility = computeCommanderCompatibility(analysis, selected);
   const strategicCoherence = computeStrategicCoherence(analysis, selected);
+  const strategicSequence = computeStrategicSequence(selected, singleton);
   return {
     id: variant.id,
     label: variant.label,
@@ -2031,6 +2072,7 @@ function buildImportedCandidateAttempt(input, analysis) {
     blueprintAlignment,
     commanderCompatibility,
     strategicCoherence,
+    strategicSequence,
     score: evaluation.score,
     sideboard: sideboardFor(scored, selected, singleton),
     boundary: "Adapted directly from your submitted list. Legality and simulations are hard gates; real match performance remains unproven.",

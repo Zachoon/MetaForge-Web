@@ -2,6 +2,19 @@
 
 Player-facing changes to MetaForge are recorded here. Add new releases at the top and describe what changed in plain language.
 
+## 2026-08-09 — Strategic Sequencing
+
+### Decks now need an order of operations
+
+- Construction now tracks five strategic stages: setup, stabilization, engine conversion, recovery, and closing pressure.
+- Each stage receives a bounded target during selection, allowing strategically missing cards to compete with individually stronger cards.
+- Early ramp, card access, and selection contribute to setup rather than being treated as interchangeable generic value.
+- Cheap interaction and protection contribute to stabilization.
+- Commander connections and supported payoffs contribute to converting the engine into advantage.
+- Draw, protection, and recursion contribute to recovery after disruption.
+- Meaningful threats and combat payoffs contribute to closing the game.
+- Finished candidates report each stage's count, target, coverage, overall sequence health, and weakest stage.
+
 ## 2026-08-09 — Commander Compatibility and Strategic Coherence
 
 ### The commander is now part of construction strategy

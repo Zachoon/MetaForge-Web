@@ -617,6 +617,9 @@ test("reserves cards that consume a resource the commander itself produces", () 
   assert.ok(report.selected.commanderCompatibility.commanderProduces.includes("tokens"));
   assert.ok(report.selected.strategicCoherence.connectedSignals.includes("tokens"));
   assert.ok(report.selected.strategicCoherence.connectedCardCount >= 8);
+  assert.ok(report.selected.strategicSequence.stages.setup.count >= 10);
+  assert.ok(report.selected.strategicSequence.stages.convert.count >= 8);
+  assert.equal(report.selected.strategicSequence.weakestStage, "close");
 });
 
 test("recognizes plain-language role requests, not just rules-text phrasing", () => {
