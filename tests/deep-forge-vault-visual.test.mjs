@@ -8,8 +8,9 @@ const [page, css] = await Promise.all([
 ]);
 
 test("Deep Forge remains an optional intelligence vault", () => {
-  assert.match(page, /<small>DEEP FORGE<\/small>/);
-  assert.match(page, /Detailed analysis, evidence, and deck statistics/);
+  assert.match(page, /<small>DEEP FORGE · EVIDENCE APPENDIX<\/small>/);
+  assert.match(page, /Exact numbers, detected relationships, and methodology/);
+  assert.match(page, /Open Deep Forge evidence →/);
   assert.match(css, /Chapter IV intelligence vault/);
   assert.match(css, /SEALED INSTRUMENT CHAMBER/);
   assert.match(css, /INSTRUMENT CHAMBER OPEN/);

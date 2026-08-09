@@ -31,7 +31,7 @@ test("places deck and refinement surfaces before the intelligence vault", () => 
 test("the first-run coaching panel sits between forge-quick-read and the deck grid, and is visible by default in chapter 1", () => {
   assert.doesNotMatch(page, /className="forge-quick-read"/);
   assert.doesNotMatch(page, /className="first-run-coaching"/);
-  assert.match(page, /className="forge-understanding-bridge"/);
+  assert.match(page, /className="forge-understanding-bridge coach-brief"/);
 });
 
 // forge-quick-read (the neighboring, pre-existing panel) renders
@@ -43,20 +43,20 @@ test("the first-run coaching panel sits between forge-quick-read and the deck gr
 // validated deck exists would either show stale data from a previous
 // session or empty/loading noise dressed up as a real coaching read.
 test("the coaching panel itself (not just its content) is gated on hasValidatedDeck — it must not render during forging or after a failed generation", () => {
-  const panelSite = page.match(/className="forge-understanding-bridge"[\s\S]*?<\/details>/);
-  assert.ok(panelSite, "expected one optional deck-understanding drawer");
+  const panelSite = page.match(/\{hasValidatedDeck && \(\s*<section className="forge-understanding-bridge coach-brief"[\s\S]*?<\/section>\s*\)\}/);
+  assert.ok(panelSite, "expected one validated-deck-only coaching brief");
 });
 
 test("the coaching panel always shows what MetaForge's own structural analysis noticed first, with an honest loading state", () => {
-  const block = page.match(/className="forge-understanding-bridge"[\s\S]*?<\/details>/)?.[0];
+  const block = page.match(/className="forge-understanding-bridge coach-brief"[\s\S]*?<\/section>/)?.[0];
   assert.ok(block, "expected to find the first-run-coaching panel's JSX");
-  assert.match(block, /STRONGEST MACHINE/);
+  assert.match(block, /BUILD MOMENTUM/);
   assert.match(block, /forgeSystemsReport\.strongestSystem/);
   assert.match(block, /structuralAnalysisStatus === "loading"/);
 });
 
 test("the coaching panel leads with the player's own Review coaching question when one was asked, real evidence and nextStep — not just the generic .concise blob", () => {
-  const block = page.match(/className="forge-understanding-bridge"[\s\S]*?<\/details>/)?.[0];
+  const block = page.match(/className="forge-understanding-bridge coach-brief"[\s\S]*?<\/section>/)?.[0];
   assert.ok(block);
   assert.match(block, /reviewFocusResult/);
   assert.match(block, /YOUR QUESTION/);
@@ -64,7 +64,7 @@ test("the coaching panel leads with the player's own Review coaching question wh
   assert.match(block, /\{reviewFocusResult\.nextStep\}/);
   // A fresh build (no Review focus asked) falls back to a real structural
   // signal, never a placeholder implying nothing is known.
-  assert.match(block, /WATCH FIRST/);
+  assert.match(block, /WATCH THIS FIRST/);
   assert.match(block, /forgeSystemsReport\.weakestSystem/);
 });
 
@@ -113,6 +113,22 @@ test("each workspace stage exposes one clear contextual next action instead of a
   assert.match(page, /setActiveForgeChapter\(5\)/);
   assert.match(page, /getElementById\("proving-grounds-title"\)/);
   assert.match(css, /\.forge-next-step\{display:flex/);
+});
+
+test("deck understanding leads with a plain-language coach brief and contains raw evidence in Deep Forge", () => {
+  assert.match(page, /className="forge-understanding-bridge coach-brief"/);
+  assert.match(page, /Your deck in plain language\./);
+  assert.match(page, /YOUR PLAN/);
+  assert.match(page, /GET ESTABLISHED/);
+  assert.match(page, /BUILD MOMENTUM/);
+  assert.match(page, /WATCH THIS FIRST/);
+  assert.match(page, /className="coach-deck-sequence"/);
+  assert.match(page, /Open Deep Forge evidence →/);
+  assert.match(page, /DEEP FORGE · EVIDENCE APPENDIX/);
+  assert.match(page, /Exact numbers, detected relationships, and methodology/);
+  assert.doesNotMatch(page, /The essential reading\./);
+  assert.match(css, /\.coach-brief-grid\{display:grid!important/);
+  assert.match(css, /\.coach-deck-sequence\{display:grid/);
 });
 
 // A pasted decklist still reveals its complete deck immediately after the

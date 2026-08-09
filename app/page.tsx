@@ -5476,13 +5476,12 @@ export default function Home() {
                   <em>{nativeMasterworkContext.selected.recoveryNote}</em>
                 </span>
               )}
-              <details className="forge-understanding-bridge" aria-label="Essential deck understanding">
-                <summary>
-                  <span><small>INSIDE THE DECK</small><b>How this deck works</b></span>
-                  <strong>OPEN</strong>
-                </summary>
+              {hasValidatedDeck && (
+              <section className="forge-understanding-bridge coach-brief" aria-label="Coach's brief">
                 <header>
-                  <h2>The essential reading.</h2>
+                  <small>COACH&apos;S BRIEF</small>
+                  <h2>Your deck in plain language.</h2>
+                  <p>Start with the plan, the setup, and the one pressure point worth watching. Exact scores and card-by-card evidence stay available in Deep Forge.</p>
                   {structuralAnalysisStatus === "loading" && !structuralReportReady && (
                     <p className="structural-analysis-pending" role="status">
                       Analyzing this build's structure…
@@ -5494,16 +5493,67 @@ export default function Home() {
                     </p>
                   )}
                 </header>
-                <div>
-                  <span><small>PLAN</small><b>{chosenWork.path}</b></span>
-                  <span><small>PLAYER INTENT</small><b>{strategy}</b></span>
-                  <span><small>LEGALITY</small><b>{deckIntegrity.passed ? "Verified" : deckIntegrity.checking ? "Checking" : "Attention required"}</b></span>
-                  <span><small>OPENING HANDS</small><b>{simulationDossier ? `${(simulationDossier.goldfish.expert.keepableRate * 100).toFixed(0)}% keepable` : "Awaiting trials"}</b></span>
-                  <span><small>STRONGEST MACHINE</small><b>{forgeSystemsReport.strongestSystem?.name || "Still resolving"}</b></span>
-                  <span><small>WATCH FIRST</small><b>{forgeSystemsReport.weakestSystem?.name || simulationDossier?.matrix.weakest?.opponent || "Collect match evidence"}</b></span>
-                  {reviewFocusResult && <span><small>YOUR QUESTION · {reviewFocusResult.focus.toUpperCase()}</small><b>{reviewFocusResult.evidence}</b><em>{reviewFocusResult.nextStep}</em></span>}
+                <div className="coach-brief-grid">
+                  <article>
+                    <i aria-hidden="true">01</i>
+                    <small>YOUR PLAN</small>
+                    <h3>{chosenWork.path}</h3>
+                    <p>This list is shaped around your {strategy.toLowerCase()} approach.</p>
+                  </article>
+                  <article>
+                    <i aria-hidden="true">02</i>
+                    <small>GET ESTABLISHED</small>
+                    <h3>
+                      {simulationDossier
+                        ? simulationDossier.goldfish.expert.keepableRate >= 0.8
+                          ? "Reliable opening hands"
+                          : simulationDossier.goldfish.expert.keepableRate >= 0.65
+                            ? "Playable opening hands"
+                            : "Opening hands need attention"
+                        : "Opening trials are still resolving"}
+                    </h3>
+                    <p>{simulationDossier ? "The Forge tested whether the deck can begin its plan with functional mana and sequencing." : `Develop mana, then bring ${chosenPreview.card} into the plan.`}</p>
+                  </article>
+                  <article>
+                    <i aria-hidden="true">03</i>
+                    <small>BUILD MOMENTUM</small>
+                    <h3>{forgeSystemsReport.strongestSystem?.name || "Advance the main game plan"}</h3>
+                    <p>{forgeSystemsReport.strongestSystem ? "This is the clearest repeatable engine detected in the finished list." : "The deck is complete; named engine evidence is still being resolved."}</p>
+                  </article>
+                  <article className="coach-brief-watch">
+                    <i aria-hidden="true">!</i>
+                    <small>WATCH THIS FIRST</small>
+                    <h3>{forgeSystemsReport.weakestSystem?.name || simulationDossier?.matrix.weakest?.opponent || "Protect the plan under pressure"}</h3>
+                    <p>{forgeSystemsReport.weakestSystem ? "This system has the least structural support, so it is the best place to watch during real games." : "Record what interrupts the deck first; that evidence should drive the next change."}</p>
+                  </article>
                 </div>
-              </details>
+                <ol className="coach-deck-sequence" aria-label="Typical deck sequence">
+                  <li><span>1</span><b>Develop mana</b></li>
+                  <li><span>2</span><b>Deploy {chosenPreview.card}</b></li>
+                  <li><span>3</span><b>Establish {forgeSystemsReport.strongestSystem?.name || "the plan"}</b></li>
+                  <li><span>4</span><b>Turn momentum into pressure</b></li>
+                </ol>
+                {reviewFocusResult && (
+                  <aside className="coach-question">
+                    <small>YOUR QUESTION · {reviewFocusResult.focus.toUpperCase()}</small>
+                    <strong>{reviewFocusResult.evidence}</strong>
+                    <p>{reviewFocusResult.nextStep}</p>
+                  </aside>
+                )}
+                <footer>
+                  <span><small>WANT THE RECEIPTS?</small><b>Open exact scores, detected relationships, card lists, and methodology only when you need them.</b></span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIntelligenceOpen(true);
+                      window.requestAnimationFrame(() => document.querySelector(".forge-intelligence-vault")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+                    }}
+                  >
+                    Open Deep Forge evidence →
+                  </button>
+                </footer>
+              </section>
+              )}
               <details
                 className="forge-intelligence-vault"
                 open={
@@ -5516,8 +5566,8 @@ export default function Home() {
               >
                 <summary>
                   <span>
-                    <small>DEEP FORGE</small>
-                    <b>Detailed analysis, evidence, and deck statistics</b>
+                    <small>DEEP FORGE · EVIDENCE APPENDIX</small>
+                    <b>Exact numbers, detected relationships, and methodology</b>
                   </span>
                   <strong>
                     {!deckIntegrity.checking && !deckIntegrity.passed
