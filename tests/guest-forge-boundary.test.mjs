@@ -54,6 +54,11 @@ test("the published Sites hostname stays on the public guest Forge instead of th
   assert.match(source, /const isGuest = isPublicForgeHost \|\|/);
 });
 
+test("production gives bounded native construction enough CPU to reach its cleanup and response path", async () => {
+  const config = await read("wrangler.jsonc");
+  assert.match(config, /"limits"\s*:\s*\{\s*"cpu_ms"\s*:\s*120000\s*\}/);
+});
+
 // A Turnstile siteverify token is single-use server-side (worker/guest-
 // forge.ts's validateTurnstile spends it the moment it's checked) whether
 // or not the deck-construction attempt that follows succeeds. Before this

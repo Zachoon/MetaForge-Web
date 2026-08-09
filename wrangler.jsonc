@@ -9,6 +9,12 @@
   },
   "workers_dev": true,
   "preview_urls": false,
+  // Native construction evaluates three complete candidates and runs bounded
+  // validation/repair passes. Keep a finite per-request cost ceiling while
+  // allowing legitimate builds to reach their response and cleanup path.
+  "limits": {
+    "cpu_ms": 120000
+  },
   "routes": [
     { "pattern": "metaforge.gg", "custom_domain": true },
     { "pattern": "www.metaforge.gg", "custom_domain": true },
