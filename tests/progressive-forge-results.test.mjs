@@ -129,9 +129,18 @@ test("uses the Forge's verified card types before supplemental gallery lookups",
 });
 
 test("keeps the commander outside the other 99 cards even when its details are pending", () => {
-  assert.match(page, /\[selectedCommander\?\.name, selectedSecondCommander\?\.name, chosenPreview\.card\]/);
+  assert.match(page, /\[activeCommanderName, selectedSecondCommander\?\.name\]/);
   assert.match(page, /const group = isCommanderRow\(row\)\s*\? "Commander"/);
   assert.match(page, /: "Details pending"/);
+});
+
+test("uses the commander in the current deck instead of stale setup metadata", () => {
+  assert.match(page, /nativeMasterworkContext\?\.selected\?\.rows\?\.find/);
+  assert.match(page, /selected && rowNames\.has\(cardFactKey\(selected\)\)/);
+  assert.match(page, /chosenWork\.name\.endsWith\(", Forged"\)/);
+  assert.match(page, /<b>\{activeCommanderName \|\| "Not identified"\}<\/b>/);
+  assert.match(page, /activeCommander = meta \? meta\.commander : selectedCommander/);
+  assert.doesNotMatch(page, /<b>\{chosenPreview\.card\}<\/b>/);
 });
 
 test("each workspace stage exposes one clear contextual next action instead of another control cluster", () => {

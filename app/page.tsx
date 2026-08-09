@@ -2016,6 +2016,26 @@ export default function Home() {
     savedMasterworks.find((family) => family.id === deckId)?.archived,
   );
   const deckRows = useMemo(() => parseDeckRows(forgedDeck), [forgedDeck]);
+  const activeCommanderName = useMemo(() => {
+    if (!isCommanderFormat(format)) return "";
+    const rowNames = new Map(deckRows.map((row) => [cardFactKey(row.name), row.name]));
+    const engineCommander = nativeMasterworkContext?.selected?.rows?.find((row: any) =>
+      Array.isArray(row.roles) && row.roles.includes("commander"),
+    )?.name;
+    if (engineCommander && rowNames.has(cardFactKey(engineCommander))) return rowNames.get(cardFactKey(engineCommander)) || engineCommander;
+    for (const selected of [selectedCommander?.name, selectedSecondCommander?.name]) {
+      if (selected && rowNames.has(cardFactKey(selected))) return rowNames.get(cardFactKey(selected)) || selected;
+    }
+    // Older preserved decks can carry stale setup metadata. A commander-direct
+    // Masterwork's title records the chosen commander, so use it only when that
+    // exact card is present in the currently opened deck.
+    const titleCandidate = chosenWork.name.endsWith(", Forged")
+      ? chosenWork.name.slice(0, -", Forged".length)
+      : "";
+    return titleCandidate && rowNames.has(cardFactKey(titleCandidate))
+      ? rowNames.get(cardFactKey(titleCandidate)) || titleCandidate
+      : "";
+  }, [format, deckRows, nativeMasterworkContext, selectedCommander?.name, selectedSecondCommander?.name, chosenWork.name]);
   // The success/failure boundary itself: chamber === "workbench" only means
   // a build was requested, not that a real, complete deck exists — it's
   // also true for the few seconds a generation is still in flight, and
@@ -2039,7 +2059,7 @@ export default function Home() {
   );
   const groupedDeck = useMemo(() => {
     const commanderKeys = new Set(
-      [selectedCommander?.name, selectedSecondCommander?.name, chosenPreview.card]
+      [activeCommanderName, selectedSecondCommander?.name]
         .filter(Boolean)
         .map((name) => cardFactKey(name as string)),
     );
@@ -2068,7 +2088,7 @@ export default function Home() {
       (groups[group] ||= []).push(row);
     }
     return groups;
-  }, [orderedDeckRows, cardFacts, cardFactsLoading, cardFactsError, format, selectedCommander?.name, selectedSecondCommander?.name, chosenPreview.card]);
+  }, [orderedDeckRows, cardFacts, cardFactsLoading, cardFactsError, format, activeCommanderName, selectedSecondCommander?.name]);
   // The card fact used for pricing: the player's chosen specific printing
   // (right-click on a row) if they picked one, otherwise whatever printing
   // Scryfall returned by default. Only the prices differ; everything else
@@ -2105,7 +2125,7 @@ export default function Home() {
     return { total, pricedCards, unpricedCards };
   }, [deckRows, cardFacts, foilCards, cheapestPrintings, printingOverrides]);
   const activeCard =
-    hoveredCard || chosenPreview.card || deckRows[0]?.name || "";
+    hoveredCard || activeCommanderName || deckRows[0]?.name || "";
   const activeFact = cardFacts[cardFactKey(activeCard)];
   const activePrinting = printingOverrides[cardFactKey(activeCard)];
   const activeImage =
@@ -2135,7 +2155,7 @@ export default function Home() {
         (format === "Standard Brawl" && fact.legalities?.standard !== "legal")
       );
     });
-    const commanderKey = cardFactKey(chosenPreview.card);
+    const commanderKey = cardFactKey(activeCommanderName);
     const commanderQuantity = deckRows
       .filter((row) => cardFactKey(row.name) === commanderKey)
       .reduce((sum, row) => sum + row.quantity, 0);
@@ -2193,7 +2213,7 @@ export default function Home() {
       averageCmc: spellCount ? cmcTotal / spellCount : 0,
       passed: Boolean(deckRows.length && !unresolved.length && !issues.length),
     };
-  }, [deckRows, cardFacts, format, chosenPreview.card, selectedCommander, selectedSecondCommander]);
+  }, [deckRows, cardFacts, format, activeCommanderName, selectedCommander, selectedSecondCommander]);
   const activeRole = cardRole(activeFact);
   const structuralCards = useMemo(
     () =>
@@ -2223,7 +2243,7 @@ export default function Home() {
           isCommander:
             isCommanderFormat(format) &&
             cardFactKey(row.name) ===
-              cardFactKey(chosenPreview.card),
+              cardFactKey(activeCommanderName),
           colorIdentity: fact?.color_identity || [],
           manaCost: fact?.mana_cost || "",
         };
@@ -2232,7 +2252,7 @@ export default function Home() {
       deckRows,
       cardFacts,
       format,
-      chosenPreview.card,
+      activeCommanderName,
     ],
   );
 
@@ -2364,7 +2384,7 @@ export default function Home() {
                 ? "Preserves a commander, engine, or decisive threat through interaction."
               : "Advances the primary plan while maintaining useful battlefield presence.";
   const inspectedRole = inspectedCard ? cardRole(inspectedFact) : "";
-  const inspectedIsCommander = isCommanderFormat(format) && [chosenPreview.card, selectedSecondCommander?.name]
+  const inspectedIsCommander = isCommanderFormat(format) && [activeCommanderName, selectedSecondCommander?.name]
     .filter(Boolean)
     .some((name) => cardFactKey(name as string) === cardFactKey(inspectedCard));
   const inspectedConnections = inspectedCard
@@ -2453,7 +2473,7 @@ export default function Home() {
       fetchImpl: fetch,
       requestBody: {
         cards: structuralCards,
-        commanderName: chosenPreview.card,
+        commanderName: activeCommanderName,
         strategy,
         computeSimulation: deckIntegrity.passed,
         matchLog,
@@ -2468,7 +2488,7 @@ export default function Home() {
       },
       onError: () => setStructuralAnalysisStatus("error"),
     });
-  }, [guestMode, structuralCards, chosenPreview.card, strategy, deckIntegrity.passed, matchLog, forgeInterventions, revisions.length, coachingGoal]);
+  }, [guestMode, structuralCards, activeCommanderName, strategy, deckIntegrity.passed, matchLog, forgeInterventions, revisions.length, coachingGoal]);
 
   const forgeFailureAnalysis = activeStructuralReport.failureAnalysis;
 
@@ -3911,7 +3931,9 @@ export default function Home() {
     const activeId = idOverride || deckId || crypto.randomUUID();
     if (!deckId) setDeckId(activeId);
     const activeWork = meta?.work || chosenWork,
-      activeCommander = meta?.commander ?? selectedCommander,
+      // An explicit null means this deck has no confirmed commander metadata.
+      // Do not replace it with a commander left over from the previous deck.
+      activeCommander = meta ? meta.commander : selectedCommander,
       activeIndex = meta?.index ?? selectedWork;
     const snapshot = {
       id: activeId,
@@ -7372,7 +7394,7 @@ export default function Home() {
                     {format === "Commander" || format === "Brawl"
                       ? "commander"
                       : "lynchpin"}
-                    : <b>{chosenPreview.card}</b>
+                    : <b>{activeCommanderName || "Not identified"}</b>
                   </span>
                   <button
                     disabled={!deckIntegrity.passed}
