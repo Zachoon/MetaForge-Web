@@ -31,3 +31,11 @@ test("deck rows open a keyboard-accessible action menu before the contextual ins
   assert.match(page, /ORACLE TEXT/);
   assert.match(page, /cardEvaluations\.methodology/);
 });
+
+test("deck preview selection is pinned by intent and cannot change while crossing other rows", () => {
+  const rowBlock = page.match(/role="button"[\s\S]*?className=\{\[[\s\S]*?\.join\(" "\)\}/)?.[0];
+  assert.ok(rowBlock, "expected to find the interactive deck-row block");
+  assert.doesNotMatch(rowBlock, /onMouseEnter=\{\(\) => setHoveredCard/);
+  assert.match(rowBlock, /onFocus=\{\(\) => setHoveredCard\(row\.name\)\}/);
+  assert.match(rowBlock, /onClick=\{\(event\) => \{\s*setHoveredCard\(row\.name\);\s*setCardActionMenu/);
+});

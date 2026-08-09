@@ -6762,11 +6762,11 @@ export default function Home() {
                                     row.name,
                                   );
                                 }}
-                                onMouseEnter={() => setHoveredCard(row.name)}
                                 onFocus={() => setHoveredCard(row.name)}
                                 aria-haspopup="menu"
                                 aria-expanded={cardActionMenu?.name === row.name}
                                 onClick={(event) => {
+                                  setHoveredCard(row.name);
                                   setCardActionMenu({
                                     name: row.name,
                                     x: Math.min(event.clientX, window.innerWidth - 250),
