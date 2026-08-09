@@ -601,6 +601,24 @@ test("plain-language concepts such as blink are grounded in rules text and shape
   assert.equal(report.selected.blueprintAlignment.status, "honored-best-effort");
 });
 
+test("reserves cards that consume a resource the commander itself produces", () => {
+  const tokenPayoffs = Array.from({ length: 8 }, (_, index) =>
+    card(`Commander Token Payoff ${index}`, "Creature tokens you control get +1/+1 and have vigilance.", "Enchantment", "{2}{U}"),
+  );
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", note: "", seed: 822,
+    commander: { name: "Token Mentor", colors: ["U"], oracleText: "At the beginning of your end step, create a 1/1 blue Creature token." },
+    cards: [...pool, ...tokenPayoffs],
+  });
+  const selectedPayoffs = report.selected.rows.filter((row) => row.name.startsWith("Commander Token Payoff"));
+  assert.equal(selectedPayoffs.length, 8);
+  assert.equal(report.selected.commanderCompatibility.status, "connected");
+  assert.equal(report.selected.commanderCompatibility.bySignal.tokens, 8);
+  assert.ok(report.selected.commanderCompatibility.commanderProduces.includes("tokens"));
+  assert.ok(report.selected.strategicCoherence.connectedSignals.includes("tokens"));
+  assert.ok(report.selected.strategicCoherence.connectedCardCount >= 8);
+});
+
 test("recognizes plain-language role requests, not just rules-text phrasing", () => {
   const intent = parseNativeBlueprintIntent({ note: "I want removal, ramp, and card draw" });
   assert.deepEqual(intent.desiredRoles, ["ramp", "draw", "interaction"]);
@@ -1444,12 +1462,15 @@ const powerTierEngineCards = [
   card("Test Chronicle Thief", "Whenever you cast a legendary spell, search your library for a card, put it onto the battlefield, then shuffle.", "Creature — Test", "{3}{U}{U}"),
 ];
 const powerTierPool = [...pool, ...powerTierEngineCards];
-const powerTierCommander = { name: "Scholar of Tests", colors: ["U"], oracleText: "Draw a card." };
+// Deliberately carries no producer/payoff edge into the four high-ceiling
+// fixture cards. Commander compatibility is tested separately above; this
+// fixture's contract is specifically that the pool cannot reach Maximum.
+const powerTierCommander = { name: "Scholar of Tests", colors: ["U"], oracleText: "This creature has vigilance." };
 
 test("a Maximum target that the pool can't fully reach is disclosed honestly, not silently relabeled", () => {
   const report = forgeNativeMasterwork({
     format: "Commander", target: 100, strategy: "Balanced midrange", seed: 7,
-    commander: powerTierCommander, cards: powerTierPool, targetPowerTier: "Maximum",
+    commander: powerTierCommander, cards: [...pool, powerTierEngineCards[0]], targetPowerTier: "Maximum",
   });
   assert.ok(powerTierEngineCards.some((c) => report.selected.rows.some((row) => row.name === c.name)), "the bias should actually pull in at least one flagged card when targeting Maximum");
   assert.equal(report.powerAudit.requested, "Maximum");

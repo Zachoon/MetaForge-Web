@@ -717,6 +717,10 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
   const identityHits = unique([...directTribes, ...tribalSupport]);
   const blueprintRoleHits = roles.filter((role) => context.blueprint.desiredRoles.includes(role));
   const blueprintMechanicHits = blueprintMechanicHitsFor(card, context.blueprint.requestedMechanics);
+  const commanderConnectionSignals = unique([
+    ...mechanics.rewards.filter((signal) => context.commanderMechanics.produces.includes(signal)),
+    ...mechanics.produces.filter((signal) => context.commanderMechanics.rewards.includes(signal)),
+  ]);
   const excludedRoleHits = roles.filter((role) => context.blueprint.excludedRoles.includes(role));
   const fieldPressureHits = roles.filter((role) => context.fieldCounterRoles.includes(role)).length;
   return {
@@ -745,6 +749,7 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
     identityHits,
     blueprintRoleHits,
     blueprintMechanicHits,
+    commanderConnectionSignals,
     excludedRoleHits,
     mechanics: mechanics || { signals: [], produces: [], rewards: [] },
     colorPips: colorPipsFromCost(card.manaCost || card.mana_cost),
@@ -753,9 +758,14 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
 
 function prepareForgeAnalysis(input, evidenceByName) {
   const blueprint = parseNativeBlueprintIntent(input);
+  const commanderMechanicRows = allCommanders(input).map((commander) => extractMechanicalSignals(commander));
   const context = {
     weights: STRATEGY_WEIGHTS[input.strategy] || STRATEGY_WEIGHTS["Balanced midrange"],
     commanderSignals: unique(allCommanders(input).flatMap((commander) => conceptSignals(commander))),
+    commanderMechanics: Object.freeze({
+      produces: unique(commanderMechanicRows.flatMap((mechanics) => mechanics.produces)),
+      rewards: unique(commanderMechanicRows.flatMap((mechanics) => mechanics.rewards)),
+    }),
     terms: preferenceTerms(input),
     ideal: /Aggressive|Tempo/i.test(input.strategy) ? 2.4 : /Control/i.test(input.strategy) ? 3.2 : 2.9,
     blueprint,
@@ -832,7 +842,7 @@ function scoreCard(entry, input, variant, context) {
     card: entry.card,
     roles: entry.roles,
     cmc: entry.cmc,
-    score: entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.blueprintMechanicHits.reduce((sum, mechanic) => sum + blueprintMechanicDefinition(mechanic).score, 0) + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + entry.budgetScore + entry.complexityScore + entry.powerTierScore + deterministicTieBreak,
+    score: entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.commanderConnectionSignals.length * 14 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.blueprintMechanicHits.reduce((sum, mechanic) => sum + blueprintMechanicDefinition(mechanic).score, 0) + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + entry.budgetScore + entry.complexityScore + entry.powerTierScore + deterministicTieBreak,
     synergyHits: entry.synergyHits,
     synergyPotential: entry.synergyPotential,
     preferenceHits: entry.preferenceHits,
@@ -842,6 +852,7 @@ function scoreCard(entry, input, variant, context) {
     identityHits: entry.identityHits,
     blueprintRoleHits: entry.blueprintRoleHits,
     blueprintMechanicHits: entry.blueprintMechanicHits,
+    commanderConnectionSignals: entry.commanderConnectionSignals,
     mechanics: entry.mechanics,
     colorPips: entry.colorPips,
   };
@@ -942,6 +953,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       identityHits: candidate.identityHits,
       blueprintRoleHits: candidate.blueprintRoleHits,
       blueprintMechanicHits: candidate.blueprintMechanicHits,
+      commanderConnectionSignals: candidate.commanderConnectionSignals,
       mechanics: candidate.mechanics,
       colorPips: candidate.colorPips,
       // Scryfall's produced_mana exists on any permanent, not just lands —
@@ -958,6 +970,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
     return true;
   };
   const ranked = [...scored].sort((left, right) => right.score - left.score || left.card.name.localeCompare(right.card.name));
+  const poolProducerSignals = new Set(scored.flatMap((entry) => entry.mechanics.produces));
 
   // Explicit identity requests are construction anchors, not flavor text.
   // Direct tribe members are reserved first, then cards that support that tribe,
@@ -978,6 +991,11 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
     for (const candidate of ranked.filter((entry) => entry.mechanics.produces.includes(signal)).slice(0, packageAnchorLimit)) addCandidate(candidate);
     for (const candidate of ranked.filter((entry) => entry.mechanics.rewards.includes(signal)).slice(0, packageAnchorLimit)) addCandidate(candidate);
   }
+  // The commander is itself part of the engine. Preserve a bounded core of
+  // cards with a real producer/payoff edge to its verified rules text so a
+  // generic staple cannot crowd every commander-specific connection out.
+  const commanderAnchorLimit = singleton ? 8 : 4;
+  for (const candidate of ranked.filter((entry) => entry.commanderConnectionSignals.length).slice(0, commanderAnchorLimit)) addCandidate(candidate);
   const roleAnchorLimit = singleton ? 10 : 4;
   for (const role of blueprint.desiredRoles) {
     for (const candidate of ranked.filter((entry) => entry.blueprintRoleHits.includes(role)).slice(0, roleAnchorLimit)) addCandidate(candidate);
@@ -1006,6 +1024,13 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       const requestedPackageSynergy = blueprint.packageSignals.reduce((sum, signal) => sum
         + (entry.mechanics.rewards.includes(signal) ? Math.min(4, producedSoFar.get(signal) || 0) : 0)
         + (entry.mechanics.produces.includes(signal) ? Math.min(4, rewardedSoFar.get(signal) || 0) : 0), 0);
+      // A payoff with no enabler in the current deck is speculative. When
+      // the pool contains a real producer, defer that payoff until its
+      // resource exists instead of letting standalone card quality create
+      // an orphaned mini-package. The penalty disappears automatically as
+      // soon as a matching producer is selected.
+      const orphanPayoffPenalty = entry.powerTierScore > 0 ? 0 : entry.mechanics.rewards.reduce((sum, signal) =>
+        sum + (poolProducerSignals.has(signal) && !(producedSoFar.get(signal) || 0) ? 8 : 0), 0);
       // Same fair-fill idea as the role deficit above, applied to mana cost:
       // a bucket already past its share stops competing for more (but never
       // goes punitive the way the role deficit can — a spread that's merely
@@ -1013,7 +1038,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       // the way an excluded role would).
       const bucket = curveBucket(entry.cmc);
       const curveDeficit = Math.max(0, (curveGoals[bucket] || 0) - (cmcCounts.get(bucket) || 0)) * 3;
-      const adjusted = entry.score + deficit + inDeckSynergy * 2 + requestedPackageSynergy * 4 + curveDeficit;
+      const adjusted = entry.score + deficit + inDeckSynergy * 2 + requestedPackageSynergy * 4 + curveDeficit - orphanPayoffPenalty;
       if (adjusted > bestAdjusted || (adjusted === bestAdjusted && candidate && entry.card.name.localeCompare(candidate.card.name) < 0)) {
         candidate = entry;
         bestAdjusted = adjusted;
@@ -1438,6 +1463,52 @@ function computeBlueprintAlignment(analysis, selected, singleton) {
   });
 }
 
+function computeCommanderCompatibility(analysis, selected) {
+  const connected = selected.filter((entry) => entry.commanderConnectionSignals?.length);
+  const bySignal = Object.fromEntries(unique(connected.flatMap((entry) => entry.commanderConnectionSignals)).map((signal) => [
+    signal,
+    connected.filter((entry) => entry.commanderConnectionSignals.includes(signal)).reduce((sum, entry) => sum + entry.quantity, 0),
+  ]));
+  return Object.freeze({
+    commanderProduces: analysis.context.commanderMechanics.produces,
+    commanderRewards: analysis.context.commanderMechanics.rewards,
+    connectedCardCount: connected.reduce((sum, entry) => sum + entry.quantity, 0),
+    connectedUniqueCards: connected.length,
+    bySignal,
+    status: !analysis.context.commanderMechanics.produces.length && !analysis.context.commanderMechanics.rewards.length
+      ? "no-detectable-commander-package"
+      : connected.length
+        ? "connected"
+        : "no-supported-connection-in-pool",
+  });
+}
+
+function computeStrategicCoherence(analysis, selected) {
+  const producerCounts = new Map();
+  const payoffCounts = new Map();
+  for (const signal of analysis.context.commanderMechanics.produces) producerCounts.set(signal, 1);
+  for (const signal of analysis.context.commanderMechanics.rewards) payoffCounts.set(signal, 1);
+  for (const entry of selected) {
+    for (const signal of entry.mechanics?.produces || []) producerCounts.set(signal, (producerCounts.get(signal) || 0) + entry.quantity);
+    for (const signal of entry.mechanics?.rewards || []) payoffCounts.set(signal, (payoffCounts.get(signal) || 0) + entry.quantity);
+  }
+  const connectedSignals = unique([...producerCounts.keys()].filter((signal) => payoffCounts.has(signal)));
+  const connectedNames = new Set(selected.filter((entry) =>
+    connectedSignals.some((signal) => entry.mechanics?.produces?.includes(signal) || entry.mechanics?.rewards?.includes(signal)))
+    .map((entry) => entry.name));
+  const orphanPayoffs = selected.filter((entry) =>
+    entry.mechanics?.rewards?.some((signal) => !producerCounts.has(signal)))
+    .map((entry) => entry.name)
+    .sort((left, right) => left.localeCompare(right));
+  return Object.freeze({
+    connectedSignals,
+    connectedCardCount: connectedNames.size,
+    connectionDensity: Number((connectedNames.size / Math.max(1, selected.length)).toFixed(3)),
+    orphanPayoffs,
+    status: connectedSignals.length ? (orphanPayoffs.length ? "connected-with-isolated-payoffs" : "connected") : "no-detected-package",
+  });
+}
+
 // A Commander deck's real land needs move with its actual curve and ramp
 // density, not a flat 37% — the well-known deckbuilding guidance (Frank
 // Karsten's land-count tables) scales land count up with average CMC and
@@ -1798,6 +1869,8 @@ function buildCandidateAttempt(input, variant, analysis) {
   ];
   const evaluation = evaluateCandidate(rows, roleCounts, input, variant);
   const blueprintAlignment = computeBlueprintAlignment(analysis, selected, singleton);
+  const commanderCompatibility = computeCommanderCompatibility(analysis, selected);
+  const strategicCoherence = computeStrategicCoherence(analysis, selected);
   return {
     id: variant.id,
     label: variant.label,
@@ -1805,6 +1878,8 @@ function buildCandidateAttempt(input, variant, analysis) {
     deckText: rows.map((row) => `${row.quantity} ${row.name}`).join("\n"),
     evaluation,
     blueprintAlignment,
+    commanderCompatibility,
+    strategicCoherence,
     score: evaluation.score,
     sideboard: sideboardFor(scored, selected, singleton),
     boundary: "Native structural candidate. Legality and simulations are hard gates; real match performance remains unproven.",
@@ -1945,6 +2020,8 @@ function buildImportedCandidateAttempt(input, analysis) {
   ];
   const evaluation = evaluateCandidate(rows, roleCounts, input, variant);
   const blueprintAlignment = computeBlueprintAlignment(analysis, selected, singleton);
+  const commanderCompatibility = computeCommanderCompatibility(analysis, selected);
+  const strategicCoherence = computeStrategicCoherence(analysis, selected);
   return {
     id: variant.id,
     label: variant.label,
@@ -1952,6 +2029,8 @@ function buildImportedCandidateAttempt(input, analysis) {
     deckText: rows.map((row) => `${row.quantity} ${row.name}`).join("\n"),
     evaluation,
     blueprintAlignment,
+    commanderCompatibility,
+    strategicCoherence,
     score: evaluation.score,
     sideboard: sideboardFor(scored, selected, singleton),
     boundary: "Adapted directly from your submitted list. Legality and simulations are hard gates; real match performance remains unproven.",
@@ -2957,7 +3036,7 @@ export function forgeNativeMasterwork(input) {
       ...audit,
       rebuildAttempted: Boolean(repair?.attempted),
       rebuildImproved: Boolean(repair?.appliedCount),
-      rebuildReachedTarget: powerSignal.signalScore <= 2,
+      rebuildReachedTarget: !audit.mismatch,
       ...(repair?.attempted ? { originalMeasuredTier: repair.tierBefore } : {}),
     };
   }

@@ -2,6 +2,26 @@
 
 Player-facing changes to MetaForge are recorded here. Add new releases at the top and describe what changed in plain language.
 
+## 2026-08-09 — Commander Compatibility and Strategic Coherence
+
+### The commander is now part of construction strategy
+
+- MetaForge now evaluates the commander's verified producer/payoff relationships directly.
+- Cards gain meaningful priority when they consume a resource the commander creates or create a resource the commander rewards.
+- A bounded commander-connected core is reserved before generic card quality fills the remaining slots.
+- Finished candidates report the commander's detected resources, rewards, connected cards, and connection types.
+
+### Fewer disconnected mini-packages
+
+- Payoffs are temporarily deprioritized when their required enabler exists in the pool but has not entered the deck.
+- That penalty disappears as soon as a compatible producer is selected.
+- Finished candidates now report connected strategy signals, connection density, and isolated payoffs.
+- Explicit power targets remain authoritative and are not overridden by the orphan-payoff safeguard.
+
+### Honest power reporting
+
+- Fixed an edge case where a Casual measured deck could incorrectly say it reached an unmet Maximum request.
+
 ## 2026-08-09 — Connected Package Engine
 
 ### Themes now build as relationships
