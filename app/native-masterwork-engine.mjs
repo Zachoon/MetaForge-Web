@@ -1707,8 +1707,9 @@ function buildCandidateAttempt(input, variant, analysis) {
 // commander, singleton rules, and any stated hard exclusion are never
 // touched by either attempt — only this one soft-preference lever bends.
 function buildCandidate(input, variant, analysis) {
+  let built;
   try {
-    return { ...buildCandidateAttempt(input, variant, analysis), recoveryStage: "ideal" };
+    built = { ...buildCandidateAttempt(input, variant, analysis), recoveryStage: "ideal" };
   } catch (error) {
     if (!(error instanceof Error)) throw error;
     // Same ladder, two possible triggers: chooseSpells' spell-scarcity
@@ -1729,7 +1730,7 @@ function buildCandidate(input, variant, analysis) {
     const grew = spellMatch ? relaxed.spells.length > analysis.spells.length : relaxed.lands.length > analysis.lands.length;
     if (!grew) throw error;
     const recovered = buildCandidateAttempt(input, variant, relaxed);
-    return {
+    built = {
       ...recovered,
       recoveryStage: "relaxed-preferences",
       recoveryNote: spellMatch
@@ -1742,6 +1743,13 @@ function buildCandidate(input, variant, analysis) {
         : { kind: "lands", missingSlots, initialEligibleCount: analysis.lands.length, relaxedEligibleCount: relaxed.lands.length },
     };
   }
+  // Phase 2B: a bounded, one-shot pass that only ever removes a card the
+  // budget audit itself flagged unjustified, and only ever runs at all
+  // when the player actually asked for Budget conscious — see
+  // repairBudgetOffenders. Applied last, after either recovery branch
+  // above, so it always sees the real, complete, legal candidate that's
+  // about to be delivered.
+  return applyBudgetRepair(input, built);
 }
 
 // Reserves the player's own imported card names first (capped at the copy
@@ -2121,7 +2129,17 @@ const BUDGET_IGNORED_CONCLUSION = "budget preference is being ignored relative t
 // see auditBudgetSubstitutions' offenders[].conclusion.
 export function auditBudgetSubstitutions(input, options = {}) {
   const priceThresholdUsd = Number.isFinite(options.priceThresholdUsd) ? options.priceThresholdUsd : 15;
-  const variant = VARIANTS.find((entry) => entry.id === options.variantId) || VARIANTS[1];
+  // A real built candidate is authoritative about its own variant — it
+  // must never be silently audited under a different one. Auditing a
+  // "cohesion" candidate as if it were "resilience" (the old unconditional
+  // default) produced a real wrong verdict on a live generation: a card
+  // that was genuinely role-floor-justified under its actual variant
+  // looked unjustified under the wrong one. Only when no real candidate is
+  // supplied (ad-hoc/investigation use) does this fall back to an explicit
+  // variantId or the historical default.
+  const variant = options.candidate
+    ? VARIANTS.find((entry) => entry.id === options.candidate.id) || VARIANTS.find((entry) => entry.id === options.variantId) || VARIANTS[1]
+    : VARIANTS.find((entry) => entry.id === options.variantId) || VARIANTS[1];
   const evidenceByName = new Map((input.evidence || []).map((entry) => [normalized(entry.name), entry]));
   const analysis = prepareForgeAnalysis(input, evidenceByName);
   const candidate = options.candidate || buildCandidateAttempt(input, variant, analysis);
@@ -2214,6 +2232,19 @@ export function auditBudgetSubstitutions(input, options = {}) {
       return { hardGateImpact, deckScoreDelta: trialEvaluation.score - candidate.evaluation.score };
     };
 
+    // The top 5 are evaluated up front so compatibleAlternatives can carry
+    // each one's own hardGateImpact — Phase 2B's repair pass walks this
+    // list directly and needs to know, per candidate, whether swapping it
+    // in is safe, without re-running this whole audit for every offender
+    // it repairs (see repairBudgetOffenders below: "one static snapshot").
+    const topFive = pool.slice(0, 5).map((option) => ({ option, swap: evaluateSwap(option) }));
+    const compatibleAlternatives = topFive.map(({ option, swap }) => ({
+      name: option.entry.card.name,
+      priceUsd: option.entry.card.priceUsd,
+      score: Number(option.scored.score.toFixed(2)),
+      hardGateImpact: swap.hardGateImpact,
+    }));
+
     let best = null;
     let hardGateImpact;
     if (!pool.length) {
@@ -2221,27 +2252,28 @@ export function auditBudgetSubstitutions(input, options = {}) {
         ? "no cheaper legal alternative exists"
         : "no cheaper legal alternative shares a tracked load-bearing role";
     } else if (isLuxuryCard) {
-      // Walk cheapest-restriction-free candidates best-score-first; the
-      // first one that doesn't cost the deck's own overall score or trip
-      // a hard-gate/role-floor metric is the fallback rule's answer. A
-      // luxury card has nothing of its own to defend, so a candidate that
-      // WOULD regress the deck isn't a fair swap and is skipped, not
-      // reported.
-      for (const option of pool) {
-        const swap = evaluateSwap(option);
-        if (swap.hardGateImpact === "none" && swap.deckScoreDelta >= 0) { best = option; hardGateImpact = "none"; break; }
+      // Walk cheapest-restriction-free candidates best-score-first (the
+      // already-evaluated top 5 first, then the rest of the pool only if
+      // none of those clear the bar); the first one that doesn't cost the
+      // deck's own overall score or trip a hard-gate/role-floor metric is
+      // the fallback rule's answer. A luxury card has nothing of its own
+      // to defend, so a candidate that WOULD regress the deck isn't a fair
+      // swap and is skipped, not reported.
+      const safeInTopFive = topFive.find(({ swap }) => swap.hardGateImpact === "none" && swap.deckScoreDelta >= 0);
+      if (safeInTopFive) {
+        best = safeInTopFive.option;
+        hardGateImpact = "none";
+      } else {
+        for (const option of pool.slice(5)) {
+          const swap = evaluateSwap(option);
+          if (swap.hardGateImpact === "none" && swap.deckScoreDelta >= 0) { best = option; hardGateImpact = "none"; break; }
+        }
+        if (!best) hardGateImpact = "no cheaper legal alternative preserves this deck's overall score without breaking a hard-gate metric";
       }
-      if (!best) hardGateImpact = "no cheaper legal alternative preserves this deck's overall score without breaking a hard-gate metric";
     } else {
       best = pool[0];
-      hardGateImpact = evaluateSwap(best).hardGateImpact;
+      hardGateImpact = topFive[0].swap.hardGateImpact;
     }
-
-    const compatibleAlternatives = pool.slice(0, 5).map((option) => ({
-      name: option.entry.card.name,
-      priceUsd: option.entry.card.priceUsd,
-      score: Number(option.scored.score.toFixed(2)),
-    }));
     const alternative = best
       ? { name: best.entry.card.name, priceUsd: best.entry.card.priceUsd, score: Number(best.scored.score.toFixed(2)) }
       : null;
@@ -2292,6 +2324,208 @@ export function auditBudgetSubstitutions(input, options = {}) {
     offenders: results,
     budgetDebt,
   };
+}
+
+// Phase 2B: which budget preferences actually warrant a repair pass. No
+// existing product rule defines a narrower Moderate-investment threshold,
+// and inventing one here would be exactly the kind of guessed magic
+// number this whole investigation existed to avoid — so this first
+// implementation only repairs under Budget conscious. Moderate investment
+// and no stated preference are both left completely untouched.
+function budgetIntentWarrantsRepair(budget) {
+  return budget === "Budget conscious";
+}
+
+// Locked from a real parameter sweep against the stored Ayula generation
+// (2026-08-08) comparing $15/$10/$7.50/$5, same input/seed, no other
+// logic changed between runs. $15 was too permissive (15 remaining
+// offenders, $78.10 residual debt). $5 started attempting replacements
+// with no safe alternative on 9 different cards — a sign it was pushing
+// into structural choices, not just price. $7.50 was the strongest
+// balance: real reduction ($61.43 residual debt vs $78.10), hard gates
+// and the "cohesion" variant's own identity essentially untouched
+// (roleCoverage 0.900, curveHealth 80, cohesion 97 vs baseline 92), and
+// exactly one remaining $10+ card (Surrak and Goreclaw, $11.60) — the
+// engine tried to replace it and correctly found no safe alternative,
+// which is the behavior "Budget conscious" is actually supposed to mean:
+// scrutinized and kept on its merits, not exempted by being under a line.
+const BUDGET_CONSCIOUS_REPAIR_THRESHOLD_USD = 7.5;
+
+// Phase 2B: bounded, claim-aware, one-shot budget repair — investigated
+// before it was written, not guessed. An inline per-pick construction-time
+// gate has no natural insertion point in chooseSpells' live deficit-
+// tracking loop; separately simulating an iterate-to-convergence repair
+// (re-auditing after every individual swap) against a real production
+// generation showed it thrashing — cutting and re-adding the same cards
+// across iterations, and cutting a genuinely role-floor-justified card
+// purely because intermediate state made it look replaceable. This
+// instead audits the finished candidate exactly once, decides every swap
+// against that ONE static snapshot, applies them as a single batch, and
+// revalidates the whole resulting candidate exactly once. It never
+// iterates further. If the batch doesn't clear the deck-level hard-gate
+// floors, the entire batch is discarded and the original candidate comes
+// back untouched — no partial application.
+//
+// The one-pass contract is enforced structurally, not just by convention:
+// every return path stamps budgetRepair.completed (with the exact budget
+// intent and threshold it ran under) directly onto the returned
+// candidate. A later call carrying that same candidate for the same
+// intent/threshold short-circuits immediately — no re-audit, no second
+// decision round — so genuine idempotence never depends on a future
+// caller happening to invoke this only once. This is deliberately NOT
+// "re-run until nothing changes": the sweep proved iterating this same
+// logic to convergence thrashes and can cut a genuinely safe card. A
+// second call is a no-op by construction, never a second optimization
+// pass.
+//
+// Exported for direct testing with a hand-built candidate — the same
+// {rows, evaluation, id} shape auditBudgetSubstitutions' own options.candidate
+// already accepts. buildCandidate is still the only real caller in
+// production (wired in as the last step of every native construction).
+export function repairBudgetOffenders(input, candidate) {
+  const already = candidate.budgetRepair;
+  if (already?.completed && already.budgetIntent === (input.budget || null) && already.thresholdUsd === BUDGET_CONSCIOUS_REPAIR_THRESHOLD_USD) {
+    return { candidate, budgetRepair: already };
+  }
+
+  const diagnostics = {
+    attempted: false,
+    completed: false,
+    thresholdUsd: BUDGET_CONSCIOUS_REPAIR_THRESHOLD_USD,
+    budgetIntent: input.budget || null,
+    appliedCount: 0,
+    avoidableSpendBeforeUsd: 0,
+    avoidableSpendAfterUsd: 0,
+    savingsAppliedUsd: 0,
+    skippedNoSafeAlternative: 0,
+    revertedByFinalValidation: false,
+  };
+  if (!budgetIntentWarrantsRepair(input.budget)) {
+    diagnostics.completed = true;
+    return { candidate: { ...candidate, budgetRepair: diagnostics }, budgetRepair: diagnostics };
+  }
+
+  const audit = auditBudgetSubstitutions(input, { candidate, priceThresholdUsd: BUDGET_CONSCIOUS_REPAIR_THRESHOLD_USD });
+  diagnostics.attempted = true;
+  diagnostics.avoidableSpendBeforeUsd = audit.budgetDebt.totalAvoidableSpendUsd;
+  diagnostics.avoidableSpendAfterUsd = audit.budgetDebt.totalAvoidableSpendUsd;
+
+  // Every per-offender hardGateImpact above was checked against THIS one
+  // static snapshot — never against an evolving mid-batch state. Two (or
+  // three) individually-safe swaps can still combine to break a role
+  // floor neither one would have broken alone; the aggregate roleCoverage/
+  // curveHealth gate below is too coarse to reliably catch that on its
+  // own (a single role's count moving by 1-2 barely nudges a 6-role
+  // average). The final revalidation re-checks every tracked role
+  // specifically for exactly this reason.
+  const originalRoleCounts = new Map();
+  for (const row of candidate.rows) for (const role of row.roles || []) originalRoleCounts.set(role, (originalRoleCounts.get(role) || 0) + row.quantity);
+  const originalTargets = roleTargets(input.format, input.strategy);
+
+  // Deterministic order: highest avoidable spend first, stable name
+  // tiebreak — exactly budgetDebt.topOffenders' own ordering.
+  const offendersByName = new Map(audit.offenders.map((entry) => [entry.name, entry]));
+  const orderedOffenders = audit.budgetDebt.topOffenders
+    .map((entry) => offendersByName.get(entry.name))
+    .sort((a, b) => b.priceDifferenceUsd - a.priceDifferenceUsd || a.name.localeCompare(b.name));
+
+  // Only a name present here was ever eligible to be removed; only a name
+  // this loop actually claims was ever eligible to be added. Every other
+  // selected row — anything not in `orderedOffenders` at all — is
+  // structurally protected: it can never appear on either side of a swap
+  // decided by this loop.
+  const claimed = new Set();
+  const cut = new Set();
+  const swaps = [];
+  for (const offender of orderedOffenders) {
+    const pick = (offender.compatibleAlternatives || []).find(
+      (alt) => alt.hardGateImpact === "none" && !claimed.has(alt.name) && !cut.has(alt.name),
+    );
+    if (!pick) { diagnostics.skippedNoSafeAlternative += 1; continue; }
+    claimed.add(pick.name);
+    cut.add(offender.name);
+    swaps.push({ offenderName: offender.name, pickName: pick.name, savedUsd: offender.priceDifferenceUsd });
+  }
+  if (!swaps.length) {
+    diagnostics.completed = true;
+    return { candidate: { ...candidate, budgetRepair: diagnostics }, budgetRepair: diagnostics };
+  }
+
+  // Building each new row needs the same analyzed shape (roles/cmc/
+  // colorPips) every other row already carries — an independent lookup,
+  // not a reuse of anything auditBudgetSubstitutions computed internally.
+  const evidenceByName = new Map((input.evidence || []).map((entry) => [normalized(entry.name), entry]));
+  const analysis = prepareForgeAnalysis(input, evidenceByName);
+  const analyzedByName = new Map(analysis.cards.map((entry) => [normalized(entry.card.name), entry]));
+
+  let rows = candidate.rows.map((row) => ({ ...row }));
+  for (const swap of swaps) {
+    rows = rows
+      .map((row) => (row.name === swap.offenderName ? { ...row, quantity: row.quantity - 1 } : row))
+      .filter((row) => row.quantity > 0);
+    const entry = analyzedByName.get(normalized(swap.pickName));
+    rows.push({
+      quantity: 1,
+      name: entry.card.name,
+      roles: entry.roles,
+      score: Number(entry.roleScore.toFixed(3)),
+      cmc: entry.cmc,
+      directTribes: entry.directTribes,
+      tribalSupport: entry.tribalSupport,
+      identityHits: entry.identityHits,
+      blueprintRoleHits: entry.blueprintRoleHits,
+      mechanics: entry.mechanics,
+      colorPips: entry.colorPips,
+      producesColors: nonlandProducedColorsOf(entry.card),
+    });
+  }
+
+  const roleCounts = new Map();
+  for (const row of rows) for (const role of row.roles || []) roleCounts.set(role, (roleCounts.get(role) || 0) + row.quantity);
+  const variant = VARIANTS.find((entry) => entry.id === candidate.id);
+  const evaluation = evaluateCandidate(rows, roleCounts, input, variant);
+
+  // The revalidation gate: the same two metrics hardGate itself enforces
+  // (native-masterwork-tournament.mjs) — deck size and land share are
+  // structurally unaffected, since every swap here is a 1-for-1 nonland-
+  // for-nonland trade, and copy limits/singleton were already respected
+  // by construction (the claimed/cut sets) — PLUS a per-role floor check
+  // covering exactly the combined-effect gap the aggregate metrics alone
+  // would miss: any tracked role that met its target before this batch
+  // must still meet it after.
+  const brokenByBatch = Object.entries(originalTargets).find(
+    ([role, target]) => (originalRoleCounts.get(role) || 0) >= target && (roleCounts.get(role) || 0) < target,
+  );
+  if (evaluation.roleCoverage < 0.45 || evaluation.curveHealth < 45 || brokenByBatch) {
+    diagnostics.revertedByFinalValidation = true;
+    diagnostics.completed = true;
+    return { candidate: { ...candidate, budgetRepair: diagnostics }, budgetRepair: diagnostics };
+  }
+
+  const repaired = {
+    ...candidate,
+    rows,
+    deckText: rows.map((row) => `${row.quantity} ${row.name}`).join("\n"),
+    evaluation,
+    score: evaluation.score,
+  };
+  // One more audit call — against the now-repaired candidate — to report
+  // the real remaining debt honestly (skipped offenders still owe it, and
+  // a newly-added replacement could itself cross the threshold) rather
+  // than assuming applied savings subtract cleanly. This is the one
+  // revalidation the design calls for, not a second repair attempt.
+  const after = auditBudgetSubstitutions(input, { candidate: repaired, priceThresholdUsd: BUDGET_CONSCIOUS_REPAIR_THRESHOLD_USD });
+  diagnostics.appliedCount = swaps.length;
+  diagnostics.savingsAppliedUsd = Number(swaps.reduce((sum, swap) => sum + swap.savedUsd, 0).toFixed(2));
+  diagnostics.avoidableSpendAfterUsd = after.budgetDebt.totalAvoidableSpendUsd;
+  diagnostics.completed = true;
+
+  const finished = { ...repaired, budgetRepair: diagnostics };
+  return { candidate: finished, budgetRepair: diagnostics };
+}
+
+function applyBudgetRepair(input, built) {
+  return repairBudgetOffenders(input, built).candidate;
 }
 
 export function forgeNativeMasterwork(input) {

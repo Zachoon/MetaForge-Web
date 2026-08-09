@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { auditBudgetSubstitutions, forgeNativeMasterwork } from "../app/native-masterwork-engine.mjs";
+import { auditBudgetSubstitutions } from "../app/native-masterwork-engine.mjs";
 
 // Phase 2A: before touching any spell-budget weight (Phase 2B), measure
 // whether an expensive selected nonland card is actually earning its price
@@ -49,7 +49,11 @@ test("a role-headroom offender is reported as budget being ignored relative to a
     format: "Commander", target: 100, strategy: "Balanced midrange", seed: 21,
     commander: ayula, budget: "Budget conscious", cards: [...abundantProtection, premiumSmallEdge, cheapSameRoleAlt],
   };
-  assert.ok(forgeNativeMasterwork(input).selected.rows.some((row) => row.name === "Test Premium Bear"), "fixture sanity: the premium card must actually be selected");
+  // auditBudgetSubstitutions builds its own candidate internally via
+  // buildCandidateAttempt directly — not through buildCandidate, so this
+  // is unaffected by the Phase 2B repair pass wired into buildCandidate/
+  // forgeNativeMasterwork. Finding it as an offender below is itself the
+  // fixture-sanity proof that it was really selected.
   const audit = auditBudgetSubstitutions(input, { priceThresholdUsd: 15 });
   const offender = audit.offenders.find((entry) => entry.name === "Test Premium Bear");
   assert.ok(offender, "expected the premium card to be flagged as an offender above the price threshold");
