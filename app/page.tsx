@@ -1587,6 +1587,7 @@ export default function Home() {
     y: number;
   } | null>(null);
   const [refillCuts, setRefillCuts] = useState<Record<string, number>>({});
+  const [multiRefillSelecting, setMultiRefillSelecting] = useState(false);
   const [multiRefillStatus, setMultiRefillStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [multiRefillError, setMultiRefillError] = useState("");
   const [multiRefillResult, setMultiRefillResult] = useState<{
@@ -4306,6 +4307,7 @@ export default function Home() {
     setRevisions(nextRevisions);
     recordForgeIntervention("multi-slot refill", `${cutSummary}; ${addSummary}`, "accepted", nextRevisions.length);
     setRefillCuts({});
+    setMultiRefillSelecting(false);
     setMultiRefillResult(null);
     setMultiRefillStatus("idle");
     setInspectedCard("");
@@ -6251,10 +6253,10 @@ export default function Home() {
 
                             <div className="causality-vitals">
                               {[
-                                ["Structural Resilience", forgeCausalityReport.structuralResilience, false],
-                                ["Collapse Risk", forgeCausalityReport.collapseRisk, true],
-                                ["Recovery Potential", forgeCausalityReport.recoveryPotential, false],
-                                ["System Redundancy", activeCausalitySystem?.redundancy || 0, false],
+                                ["Survives disruption", forgeCausalityReport.structuralResilience, false],
+                                ["Depends on key cards", forgeCausalityReport.collapseRisk, true],
+                                ["Can rebuild", forgeCausalityReport.recoveryPotential, false],
+                                ["Has backup pieces", activeCausalitySystem?.redundancy || 0, false],
                               ].map(([label, value, risk]) => (
                                 <article className={risk ? "causality-risk" : ""} key={String(label)}>
                                   <span><small>{label}</small><b>{Number(value)}</b></span>
@@ -6266,19 +6268,19 @@ export default function Home() {
                             {activeCausalitySystem && (
                               <div className="causality-machine-summary">
                                 <span>
-                                  <small>ACTIVE MACHINE</small>
+                                  <small>ACTIVE CARD GROUP</small>
                                   <strong>{activeCausalitySystem.name}</strong>
                                   <em>{activeCausalitySystem.status.toUpperCase()} · {activeCausalitySystem.confidence}</em>
                                 </span>
-                                <span><small>RESILIENCE</small><b>{activeCausalitySystem.structuralResilience}</b></span>
-                                <span><small>COLLAPSE RISK</small><b>{activeCausalitySystem.collapseRisk}</b></span>
-                                <span><small>RECOVERY</small><b>{activeCausalitySystem.recoveryPotential}</b></span>
+                                <span><small>SURVIVES DISRUPTION</small><b>{activeCausalitySystem.structuralResilience}</b></span>
+                                <span><small>KEY-CARD DEPENDENCE</small><b>{activeCausalitySystem.collapseRisk}</b></span>
+                                <span><small>CAN REBUILD</small><b>{activeCausalitySystem.recoveryPotential}</b></span>
                               </div>
                             )}
 
                             <div className="causality-panels">
                               <article className="causality-panel critical-nodes-panel">
-                                <header><span>⚒</span><div><small>CRITICAL NODES</small><strong>Components carrying structural load</strong></div></header>
+                                <header><span>⚒</span><div><small>CARDS THIS PLAN LEANS ON</small><strong>The hardest pieces to lose or replace</strong></div></header>
                                 <div>
                                   {(activeCausalitySystem?.criticalNodes || []).length ? (
                                     activeCausalitySystem?.criticalNodes.map((card) => (
@@ -6287,12 +6289,12 @@ export default function Home() {
                                         <em>{card.collapseRisk}<small> RISK</small></em>
                                       </button>
                                     ))
-                                  ) : <p>No card in this machine crosses the critical-node threshold.</p>}
+                                  ) : <p>No single card appears essential to keeping this plan working.</p>}
                                 </div>
                               </article>
 
                               <article className="causality-panel amplifier-panel">
-                                <header><span>✦</span><div><small>AMPLIFIERS</small><strong>Cards strengthening multiple roles</strong></div></header>
+                                <header><span>✦</span><div><small>CARDS THAT HELP SEVERAL PIECES</small><strong>One card improving more than one part of the plan</strong></div></header>
                                 <div>
                                   {(activeCausalitySystem?.amplifiers || []).length ? (
                                     activeCausalitySystem?.amplifiers.map((card) => (
@@ -6301,12 +6303,12 @@ export default function Home() {
                                         <em>{card.amplifierScore}<small> AMP</small></em>
                                       </button>
                                     ))
-                                  ) : <p>No concentrated amplifier is currently supported by this model.</p>}
+                                  ) : <p>No single card is clearly boosting several parts of this plan at once.</p>}
                                 </div>
                               </article>
 
                               <article className="causality-panel bottleneck-panel">
-                                <header><span>⛓</span><div><small>BOTTLENECKS</small><strong>Responsibility concentrated in one slot</strong></div></header>
+                                <header><span>⛓</span><div><small>JOBS WITH TOO FEW BACKUPS</small><strong>Important work handled by only one or two cards</strong></div></header>
                                 <div>
                                   {(activeCausalitySystem?.bottlenecks || []).length ? (
                                     activeCausalitySystem?.bottlenecks.map((card) => (
@@ -6315,7 +6317,7 @@ export default function Home() {
                                         <em>{card.bottleneckScore}<small> LOAD</small></em>
                                       </button>
                                     ))
-                                  ) : <p>No responsibility bottleneck crosses the current threshold.</p>}
+                                  ) : <p>No important job appears to depend on too few cards.</p>}
                                 </div>
                               </article>
                             </div>
@@ -6722,19 +6724,24 @@ export default function Home() {
                 {!guestMode && nativeMasterworkContext?.generationId && (
                   <section className="multi-refill-workbench" aria-label="Multi-card cut and refill experiment">
                     <div>
-                      <small>MULTI-SLOT EXPERIMENT</small>
+                      <small>TEST SEVERAL CHANGES TOGETHER</small>
                       <strong>
                         {Object.keys(refillCuts).length
                           ? `${Object.values(refillCuts).reduce((sum, quantity) => sum + quantity, 0)} slot${Object.values(refillCuts).reduce((sum, quantity) => sum + quantity, 0) === 1 ? "" : "s"} marked for replacement`
-                          : "Inspect cards and mark every slot you want replaced."}
+                          : multiRefillSelecting
+                            ? "Select every card you want the Forge to replace."
+                            : "Choose several cards, then compare complete replacement groups."}
                       </strong>
-                      <span>Cut cards stay excluded from incoming recommendations.</span>
+                      <span>Selected cards will stay out of every suggested replacement group.</span>
                     </div>
-                    <button type="button" disabled={!Object.keys(refillCuts).length || multiRefillStatus === "loading"} onClick={() => void forgeMultiRefill()}>
-                      {multiRefillStatus === "loading" ? "Forging replacements…" : "Forge replacement packages"}
+                    <button type="button" disabled={multiRefillStatus === "loading"} onClick={() => {
+                      if (Object.keys(refillCuts).length) void forgeMultiRefill();
+                      else setMultiRefillSelecting((current) => !current);
+                    }}>
+                      {multiRefillStatus === "loading" ? "Finding safe groups…" : Object.keys(refillCuts).length ? "Compare replacement groups" : multiRefillSelecting ? "Stop choosing cards" : "Choose cards to replace"}
                     </button>
                     {Object.keys(refillCuts).length > 0 && (
-                      <button type="button" className="multi-refill-clear" onClick={() => { setRefillCuts({}); setMultiRefillResult(null); setMultiRefillStatus("idle"); }}>
+                      <button type="button" className="multi-refill-clear" onClick={() => { setRefillCuts({}); setMultiRefillResult(null); setMultiRefillStatus("idle"); setMultiRefillSelecting(false); }}>
                         Clear
                       </button>
                     )}
@@ -6744,12 +6751,12 @@ export default function Home() {
                         <p>{multiRefillResult.summary}</p>
                         {multiRefillResult.packages.map((refill) => (
                           <article key={refill.id}>
-                            <header><b>{refill.label}</b><span>{refill.context?.preservationScore?.toFixed?.(0) || "—"}% footprint kept</span></header>
+                            <header><b>{refill.label}</b><span>{refill.context?.preservationScore?.toFixed?.(0) || "—"}% of the original plan kept</span></header>
                             <p>{refill.additions.map((row) => `+${row.quantity} ${row.name}`).join(" · ")}</p>
                             {refill.context && (
                               <div className="multi-refill-context">
                                 <strong>{refill.context.summary}</strong>
-                                <span>{refill.context.rolePreservation.toFixed(0)}% roles · {refill.context.systemPreservation.toFixed(0)}% affected systems</span>
+                                <span>{refill.context.rolePreservation.toFixed(0)}% of deck jobs kept · {refill.context.systemPreservation.toFixed(0)}% of card groups kept</span>
                               </div>
                             )}
                             <small>{multiRefillResult.boundary}</small>
@@ -6834,6 +6841,11 @@ export default function Home() {
                               tcgplayerProductId: rowPrinting?.tcgplayerId ?? null,
                               enabled: tcgplayerAffiliateEnabled,
                             });
+                            const isCommanderRow = [selectedCommander?.name, selectedSecondCommander?.name]
+                              .filter(Boolean)
+                              .some((name) => cardFactKey(name as string) === rowKey);
+                            const refillSelected = Boolean(refillCuts[row.name]);
+                            const canSelectForRefill = multiRefillSelecting && !guestMode && Boolean(nativeMasterworkContext?.generationId) && !isCommanderRow;
                             return (
                               <div
                                 role="button"
@@ -6851,6 +6863,15 @@ export default function Home() {
                                 aria-expanded={cardActionMenu?.name === row.name}
                                 onClick={(event) => {
                                   setHoveredCard(row.name);
+                                  if (canSelectForRefill) {
+                                    setRefillCuts((current) => {
+                                      const next = { ...current };
+                                      if (next[row.name]) delete next[row.name];
+                                      else next[row.name] = row.quantity;
+                                      return next;
+                                    });
+                                    return;
+                                  }
                                   setCardActionMenu({
                                     name: row.name,
                                     x: Math.min(event.clientX, window.innerWidth - 250),
@@ -6880,6 +6901,8 @@ export default function Home() {
                                 className={[
                                   "type-column-row",
                                   activeCard === row.name ? "active" : "",
+                                  refillSelected ? "refill-selected" : "",
+                                  canSelectForRefill ? "refill-selectable" : "",
                                   swapFlourish?.stage === "out" && row.name === swapFlourish.cut ? "card-row-cutting" : "",
                                   swapFlourish?.stage === "in" && row.name === swapFlourish.add ? "card-row-materializing" : "",
                                 ].filter(Boolean).join(" ")}
@@ -6907,7 +6930,23 @@ export default function Home() {
                                     .type-column-row's four-column grid in
                                     app/testing-anvil.css. */}
                                 <span className="card-row-actions">
-                                  <button
+                                  {canSelectForRefill ? (
+                                    <button
+                                      type="button"
+                                      className="card-row-refill-toggle"
+                                      aria-pressed={refillSelected}
+                                      aria-label={`${refillSelected ? "Keep" : "Replace"} ${row.name}`}
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        setRefillCuts((current) => {
+                                          const next = { ...current };
+                                          if (next[row.name]) delete next[row.name];
+                                          else next[row.name] = row.quantity;
+                                          return next;
+                                        });
+                                      }}
+                                    >{refillSelected ? "✓" : "+"}</button>
+                                  ) : <><button
                                     type="button"
                                     className={`card-row-foil-toggle${isFoil ? " active" : ""}`}
                                     aria-pressed={isFoil}
@@ -6944,7 +6983,7 @@ export default function Home() {
                                     >
                                       ↗
                                     </a>
-                                  )}
+                                  )}</>}
                                 </span>
                               </div>
                             );

@@ -55,14 +55,14 @@ function pressurePointFor(cardName, causalityReport) {
   const name = normalized(cardName);
   const criticalNode = causalityReport.criticalNodes?.find((entry) => normalized(entry.name) === name);
   if (criticalNode) {
-    return `${criticalNode.name} is a modeled critical node in ${criticalNode.systemName}, with ${criticalNode.collapseRisk ?? 0}/100 modeled collapse risk.`;
+    return `${criticalNode.name} appears to be one of the cards ${criticalNode.systemName} leans on most. If it is removed, that part of the plan may be harder to keep working.`;
   }
   const bottleneck = causalityReport.bottlenecks?.find((entry) => normalized(entry.name) === name);
   if (bottleneck) {
-    return `${bottleneck.name} is a modeled bottleneck in ${bottleneck.systemName}, with ${bottleneck.bottleneckScore ?? 0}/100 modeled bottleneck pressure.`;
+    return `${bottleneck.name} is doing an important job in ${bottleneck.systemName} with too few obvious backups.`;
   }
   if (causalityReport.mostFragileSystem) {
-    return causalityReport.headline || `${causalityReport.mostFragileSystem.name} is the current structural-risk hypothesis.`;
+    return causalityReport.headline || `${causalityReport.mostFragileSystem.name} is the part of the plan most worth watching when a key card is removed.`;
   }
   return null;
 }
@@ -70,15 +70,15 @@ function pressurePointFor(cardName, causalityReport) {
 function describeBenefit(delta) {
   const roleCoveragePct = (delta.roleCoverage * 100).toFixed(1);
   const curveSign = delta.curveHealth >= 0 ? "+" : "";
-  const cohesionNote = delta.cohesion > 0 ? ` Deck cohesion improves by ${(delta.cohesion * 100).toFixed(1)}%.` : "";
-  return `Modeled structural score improves by ${delta.score.toFixed(1)} (role coverage ${delta.roleCoverage >= 0 ? "+" : ""}${roleCoveragePct}%, curve health ${curveSign}${delta.curveHealth.toFixed(1)}).${cohesionNote}`;
+  const cohesionNote = delta.cohesion > 0 ? ` More cards now contribute to the same plan (${(delta.cohesion * 100).toFixed(1)}% improvement).` : "";
+  return `The replacement covers more of the deck's important jobs (${delta.roleCoverage >= 0 ? "+" : ""}${roleCoveragePct}%) and changes the mana curve by ${curveSign}${delta.curveHealth.toFixed(1)}.${cohesionNote}`;
 }
 
 function describeTradeoff(delta) {
   if (delta.resilienceDensity < 0) {
-    return `Interaction, protection, and recursion density drops by ${Math.abs(delta.resilienceDensity * 100).toFixed(1)}%.`;
+    return `The deck would have ${Math.abs(delta.resilienceDensity * 100).toFixed(1)}% less interaction, protection, and graveyard recovery.`;
   }
-  return "No measured resilience-density cost; the open tradeoff is unproven match performance until tested.";
+  return "No obvious defensive job is lost, but only real games can show whether the change actually feels better.";
 }
 
 // causalityReport: output of buildForgeStructuralAnalysis (forge-causality-engine.mjs), or null.
@@ -114,7 +114,7 @@ export function buildExperimentTablets({ selected, candidates, causalityReport =
     confident: experiment.confident,
     fieldObservation,
     pressurePoint: pressurePointFor(experiment.cut, causalityReport)
-      || "No structural-risk hypothesis currently isolates this card; the case rests on modeled role coverage and curve.",
+      || "No single weakness points directly at this card. The case for changing it comes from the jobs the replacement covers and where it fits on the mana curve.",
     change: { cut: experiment.cut, add: experiment.add },
     // The motif the card being added belongs to (same vocabulary as the deck
     // identity badge) — real, from the engine's own role classification.

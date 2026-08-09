@@ -37,5 +37,6 @@ test("deck preview selection is pinned by intent and cannot change while crossin
   assert.ok(rowBlock, "expected to find the interactive deck-row block");
   assert.doesNotMatch(rowBlock, /onMouseEnter=\{\(\) => setHoveredCard/);
   assert.match(rowBlock, /onFocus=\{\(\) => setHoveredCard\(row\.name\)\}/);
-  assert.match(rowBlock, /onClick=\{\(event\) => \{\s*setHoveredCard\(row\.name\);\s*setCardActionMenu/);
+  assert.match(rowBlock, /onClick=\{\(event\) => \{\s*setHoveredCard\(row\.name\);[\s\S]*?setCardActionMenu/);
+  assert.match(rowBlock, /if \(canSelectForRefill\)/, "multi-select mode may deliberately select a row without opening its action menu");
 });

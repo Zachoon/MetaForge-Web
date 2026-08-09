@@ -86,7 +86,7 @@ test("names the structural pressure point when the causality report identifies a
   };
   const report = buildExperimentTablets({ selected, candidates, causalityReport, matchLog: [], options });
   const tablet = report.tablets.find((entry) => entry.change.cut === "Slow Threat");
-  assert.match(tablet.pressurePoint, /critical node/i);
+  assert.match(tablet.pressurePoint, /leans on most/i);
   assert.match(tablet.pressurePoint, /Aggro Core/);
 });
 
@@ -106,7 +106,7 @@ test("falls back to the most fragile system when no node names the cut card", ()
 test("is honest that no structural hypothesis exists when no causality report is supplied", () => {
   const report = buildExperimentTablets({ selected, candidates, matchLog: [], options });
   for (const tablet of report.tablets) {
-    assert.match(tablet.pressurePoint, /no structural-risk hypothesis/i);
+    assert.match(tablet.pressurePoint, /no single weakness/i);
   }
 });
 

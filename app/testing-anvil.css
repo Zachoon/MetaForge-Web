@@ -351,6 +351,7 @@ step that's actually in focus. */
    by default — these only ever render once the server confirms the
    feature is on, so this styling is inert until then. */
 .card-row-actions{display:flex;align-items:center;gap:5px}
+.type-column>.type-column-row.refill-selectable{cursor:pointer;background:#101b18}.type-column>.type-column-row.refill-selectable:hover{background:#173027}.type-column>.type-column-row.refill-selected{background:#17372e;color:#f3fbf7;box-shadow:inset 3px 0 #62d0b6}.card-row-refill-toggle{display:grid;width:24px;height:24px;place-items:center;border:1px solid #5a8d80;border-radius:50%;background:#0d1916;color:#8fd8c6;font-weight:900;cursor:pointer}.card-row-refill-toggle[aria-pressed=true]{border-color:#7de2c9;background:#245e4f;color:#fff}
 .card-row-purchase-link{display:inline-flex;align-items:center;justify-content:center;min-width:20px;padding:2px 5px;border:1px solid #3a534c;border-radius:3px;background:#0e1a18;color:#5d766e;font-size:calc(11px * var(--forge-reading-scale));line-height:1;text-decoration:none;cursor:pointer;transition:.15s}
 .card-row-purchase-link:hover,.card-row-purchase-link:focus-visible{outline:0;border-color:#6fb3a0;color:#9fd9c8}
 .card-row-purchase-link.exact-printing{color:#7ed7c5}

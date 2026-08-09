@@ -89,7 +89,7 @@ export async function handleForgeMultiRefill(request: Request, env: Env): Promis
       slots: subtracted.total,
       packages: candidates,
       summary: `The Forge filled ${subtracted.total} open slot${subtracted.total === 1 ? "" : "s"} while preserving deck size, legality, the remaining list, and every explicit exclusion.`,
-      boundary: "These are modeled replacement packages. Test the chosen revision before treating it as an improvement.",
+      boundary: "These groups pass the Forge's deck checks, but only a real game can show whether the chosen revision plays better.",
     });
   } catch (error) {
     console.error("forge-multi-refill failed", error);
