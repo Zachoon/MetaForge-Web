@@ -2,6 +2,24 @@
 
 Player-facing changes to MetaForge are recorded here. Add new releases at the top and describe what changed in plain language.
 
+## 2026-08-09 — Connected Package Engine
+
+### Themes now build as relationships
+
+- Requested mechanics now compile into the resources they produce and the payoffs they enable.
+- Construction reserves a bounded mix of producers and payoffs instead of merely collecting cards that share a theme word.
+- Player requests can combine multiple stages, such as lands → tokens → sacrifice value.
+- Cards completing an in-deck requested package receive additional priority over disconnected generic cards.
+- Finished builds now report producer counts, payoff counts, connected-card counts, and whether each requested package forms a real connection.
+
+### Initial connected packages
+
+- Landfall connects to additional land access and land-entry payoffs.
+- Blink connects repeatable exile-and-return effects to enter-the-battlefield payoffs.
+- Aristocrats connects fodder, sacrifice outlets, and death payoffs.
+- Spell copying and casting from exile connect to spell-based enablers and payoffs.
+- Counter, graveyard, token, artifact, life, combat, protection, and Equipment requests now carry their relevant package signals into construction.
+
 ## 2026-08-09 — Blueprint Intent and Smoother Deckbuilding
 
 ### Decks follow the player's requested theme

@@ -357,13 +357,25 @@ const BLUEPRINT_FILLER_WORDS = new Set([
 ]);
 
 const BLUEPRINT_MECHANICS = Object.freeze({
-  power_up: Object.freeze({ label: "Power-Up", aliases: [/\bpower[\s-]?up\b/i], anchorLimit: { singleton: 14, constructed: 4 }, score: 34 }),
+  power_up: Object.freeze({ label: "Power-Up", aliases: [/\bpower[\s-]?up\b/i], packageSignals: ["counters"], anchorLimit: { singleton: 14, constructed: 4 }, score: 34 }),
   creature_activated_ability: Object.freeze({ label: "creature activated abilities", aliases: [/\b(?:creature(?:s|['’]s)?\s+)?activated\s+abilit(?:y|ies)\b/i], anchorLimit: { singleton: 10, constructed: 4 }, score: 12 }),
-  blink: Object.freeze({ label: "blink", aliases: [/\bblink(?:ing)?\b/i, /\bflicker(?:ing)?\b/i], tags: ["blink"], oracle: [/exile .{0,70}(?:return|battlefield)/i, /exile .{0,60}until/i], query: '(o:"exile" o:"return" o:"battlefield")', anchorLimit: { singleton: 12, constructed: 4 }, score: 26 }),
-  aristocrats: Object.freeze({ label: "sacrifice and death payoffs", aliases: [/\baristocrats?\b/i], tags: ["sacrifice_outlet", "death_payoff"], query: '(o:"sacrifice" OR o:"dies")', anchorLimit: { singleton: 14, constructed: 4 }, score: 28 }),
-  voltron: Object.freeze({ label: "commander enhancement", aliases: [/\bvoltron\b/i], tags: ["equip", "enchant", "protection"], query: '(kw:equip OR t:aura OR o:"commander creature")', anchorLimit: { singleton: 14, constructed: 4 }, score: 26 }),
-  spell_copying: Object.freeze({ label: "spell copying", aliases: [/\bcopy(?:ing)? (?:my |your )?(?:spells?|instants?|sorceries?)\b/i, /\bspell cop(?:y|ies|ying)\b/i], tags: ["copy"], oracle: [/copy target .{0,35}spell/i, /copy (?:that|it|this) spell/i], query: 'o:"copy" o:"spell"', anchorLimit: { singleton: 12, constructed: 4 }, score: 26 }),
-  cast_from_exile: Object.freeze({ label: "casting from exile", aliases: [/\bcast(?:ing)?(?: cards?)? from exile\b/i, /\bplay(?:ing)?(?: cards?)? from exile\b/i], tags: ["exile_payoff"], oracle: [/(?:cast|play) .{0,65}from exile/i], query: '(o:"cast" o:"from exile")', anchorLimit: { singleton: 12, constructed: 4 }, score: 26 }),
+  blink: Object.freeze({ label: "blink", aliases: [/\bblink(?:ing)?\b/i, /\bflicker(?:ing)?\b/i], tags: ["blink"], oracle: [/exile .{0,70}(?:return|battlefield)/i, /exile .{0,60}until/i], query: '(o:"exile" o:"return" o:"battlefield")', packageSignals: ["etb"], anchorLimit: { singleton: 12, constructed: 4 }, score: 26 }),
+  aristocrats: Object.freeze({ label: "sacrifice and death payoffs", aliases: [/\baristocrats?\b/i], tags: ["sacrifice_outlet", "death_payoff"], query: '(o:"sacrifice" OR o:"dies")', packageSignals: ["sacrifice", "tokens"], anchorLimit: { singleton: 14, constructed: 4 }, score: 28 }),
+  voltron: Object.freeze({ label: "commander enhancement", aliases: [/\bvoltron\b/i], tags: ["equip", "enchant", "protection"], query: '(kw:equip OR t:aura OR o:"commander creature")', packageSignals: ["evasion", "protection"], anchorLimit: { singleton: 14, constructed: 4 }, score: 26 }),
+  spell_copying: Object.freeze({ label: "spell copying", aliases: [/\bcopy(?:ing)? (?:my |your )?(?:spells?|instants?|sorceries?)\b/i, /\bspell cop(?:y|ies|ying)\b/i], tags: ["copy"], oracle: [/copy target .{0,35}spell/i, /copy (?:that|it|this) spell/i], query: 'o:"copy" o:"spell"', packageSignals: ["spells"], anchorLimit: { singleton: 12, constructed: 4 }, score: 26 }),
+  cast_from_exile: Object.freeze({ label: "casting from exile", aliases: [/\bcast(?:ing)?(?: cards?)? from exile\b/i, /\bplay(?:ing)?(?: cards?)? from exile\b/i], tags: ["exile_payoff"], oracle: [/(?:cast|play) .{0,65}from exile/i], query: '(o:"cast" o:"from exile")', packageSignals: ["spells"], anchorLimit: { singleton: 12, constructed: 4 }, score: 26 }),
+});
+
+const PACKAGE_SIGNAL_BY_MECHANIC = Object.freeze({
+  landfall: ["lands"], tokens: ["tokens"], treasure: ["treasure", "artifacts"],
+  proliferate: ["counters"], counters: ["counters"], cycling: ["draw", "graveyard"],
+  lifelink: ["life"], magecraft: ["spells"], prowess: ["spells"], flashback: ["graveyard", "spells"],
+  disturb: ["graveyard"], escape: ["graveyard"], reconfigure: ["artifacts", "evasion"], equip: ["artifacts", "evasion"],
+});
+const PACKAGE_SIGNAL_BY_ROLE = Object.freeze({
+  tokens: ["tokens"], sacrifice: ["sacrifice", "tokens"], counters: ["counters"],
+  graveyard: ["graveyard"], spells: ["spells"], lifegain: ["life"], artifacts: ["artifacts"],
+  draw: ["draw"], combat: ["combat"], protection: ["protection"],
 });
 
 const NON_REQUEST_MECHANIC_TAGS = new Set([
@@ -376,7 +388,7 @@ const KNOWN_MECHANIC_TAGS = unique(Object.values(CARD_MECHANICS).flat())
 function blueprintMechanicDefinition(mechanic) {
   return BLUEPRINT_MECHANICS[mechanic] || Object.freeze({
     label: mechanic.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()),
-    tags: [mechanic], anchorLimit: { singleton: 12, constructed: 4 }, score: 26,
+    tags: [mechanic], packageSignals: PACKAGE_SIGNAL_BY_MECHANIC[mechanic] || [], anchorLimit: { singleton: 12, constructed: 4 }, score: 26,
   });
 }
 
@@ -434,6 +446,10 @@ export function parseNativeBlueprintIntent(input = {}) {
   const desiredRoles = roleSignals.desired;
   const excludedRoles = roleSignals.excluded;
   const requestedMechanics = requestedBlueprintMechanics(source);
+  const packageSignals = unique([
+    ...requestedMechanics.flatMap((mechanic) => blueprintMechanicDefinition(mechanic).packageSignals || []),
+    ...desiredRoles.flatMap((role) => PACKAGE_SIGNAL_BY_ROLE[role] || []),
+  ]);
   const requestedTerms = unique(
     source
       .split(/[^a-z0-9+'/-]+/)
@@ -444,7 +460,7 @@ export function parseNativeBlueprintIntent(input = {}) {
     ...desiredRoles.map((role) => role === "counters" ? "+1/+1 counter growth" : role),
     ...requestedMechanics.map((mechanic) => blueprintMechanicDefinition(mechanic).label),
   ];
-  return Object.freeze({ source, tribalTypes, desiredRoles, excludedRoles, requestedMechanics, requestedTerms, promises: unique(promises) });
+  return Object.freeze({ source, tribalTypes, desiredRoles, excludedRoles, requestedMechanics, packageSignals, requestedTerms, promises: unique(promises) });
 }
 
 function manaValueFromCost(cost = "", fallback = 0) {
@@ -950,13 +966,21 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
   for (const candidate of ranked.filter((entry) => entry.directTribes.length).slice(0, tribeAnchorLimit)) addCandidate(candidate);
   const supportLimit = singleton ? 12 : 4;
   for (const candidate of ranked.filter((entry) => entry.tribalSupport.length && !entry.directTribes.length).slice(0, supportLimit)) addCandidate(candidate);
-  const roleAnchorLimit = singleton ? 10 : 4;
-  for (const role of blueprint.desiredRoles) {
-    for (const candidate of ranked.filter((entry) => entry.blueprintRoleHits.includes(role)).slice(0, roleAnchorLimit)) addCandidate(candidate);
-  }
   for (const mechanic of blueprint.requestedMechanics) {
     const limit = blueprintMechanicDefinition(mechanic).anchorLimit[singleton ? "singleton" : "constructed"];
     for (const candidate of ranked.filter((entry) => entry.blueprintMechanicHits.includes(mechanic)).slice(0, limit)) addCandidate(candidate);
+  }
+  // A named theme needs both halves of an engine, not just cards carrying
+  // the requested word. Reserve a small, bounded producer/payoff package
+  // for each relationship the request implies before generic filling.
+  const packageAnchorLimit = singleton ? 5 : 4;
+  for (const signal of blueprint.packageSignals) {
+    for (const candidate of ranked.filter((entry) => entry.mechanics.produces.includes(signal)).slice(0, packageAnchorLimit)) addCandidate(candidate);
+    for (const candidate of ranked.filter((entry) => entry.mechanics.rewards.includes(signal)).slice(0, packageAnchorLimit)) addCandidate(candidate);
+  }
+  const roleAnchorLimit = singleton ? 10 : 4;
+  for (const role of blueprint.desiredRoles) {
+    for (const candidate of ranked.filter((entry) => entry.blueprintRoleHits.includes(role)).slice(0, roleAnchorLimit)) addCandidate(candidate);
   }
 
   while (remaining > 0) {
@@ -979,6 +1003,9 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       // signal so one prolific pairing can't dominate every remaining pick.
       const inDeckSynergy = entry.mechanics.rewards.reduce((sum, signal) => sum + Math.min(4, producedSoFar.get(signal) || 0), 0)
         + entry.mechanics.produces.reduce((sum, signal) => sum + Math.min(4, rewardedSoFar.get(signal) || 0), 0);
+      const requestedPackageSynergy = blueprint.packageSignals.reduce((sum, signal) => sum
+        + (entry.mechanics.rewards.includes(signal) ? Math.min(4, producedSoFar.get(signal) || 0) : 0)
+        + (entry.mechanics.produces.includes(signal) ? Math.min(4, rewardedSoFar.get(signal) || 0) : 0), 0);
       // Same fair-fill idea as the role deficit above, applied to mana cost:
       // a bucket already past its share stops competing for more (but never
       // goes punitive the way the role deficit can — a spread that's merely
@@ -986,7 +1013,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       // the way an excluded role would).
       const bucket = curveBucket(entry.cmc);
       const curveDeficit = Math.max(0, (curveGoals[bucket] || 0) - (cmcCounts.get(bucket) || 0)) * 3;
-      const adjusted = entry.score + deficit + inDeckSynergy * 2 + curveDeficit;
+      const adjusted = entry.score + deficit + inDeckSynergy * 2 + requestedPackageSynergy * 4 + curveDeficit;
       if (adjusted > bestAdjusted || (adjusted === bestAdjusted && candidate && entry.card.name.localeCompare(candidate.card.name) < 0)) {
         candidate = entry;
         bestAdjusted = adjusted;
@@ -1366,6 +1393,17 @@ function computeBlueprintAlignment(analysis, selected, singleton) {
   const unsupportedMechanic = analysis.context.blueprint.requestedMechanics.find(
     (mechanic) => availableMechanicCoverage[mechanic] === 0,
   );
+  const packageCoverage = Object.fromEntries(analysis.context.blueprint.packageSignals.map((signal) => {
+    const producers = selected.filter((entry) => entry.mechanics?.produces?.includes(signal));
+    const rewards = selected.filter((entry) => entry.mechanics?.rewards?.includes(signal));
+    const connectedNames = new Set([...producers, ...rewards].map((entry) => entry.name));
+    return [signal, Object.freeze({
+      producers: producers.reduce((sum, entry) => sum + entry.quantity, 0),
+      payoffs: rewards.reduce((sum, entry) => sum + entry.quantity, 0),
+      connectedCards: connectedNames.size,
+      connected: producers.length > 0 && rewards.length > 0,
+    })];
+  }));
   return Object.freeze({
     requested: analysis.context.blueprint.promises,
     tribalTypes: analysis.context.blueprint.tribalTypes,
@@ -1378,6 +1416,7 @@ function computeBlueprintAlignment(analysis, selected, singleton) {
     requestedRoleCoverage,
     availableMechanicCoverage,
     requestedMechanicCoverage,
+    packageCoverage,
     status: !analysis.context.blueprint.promises.length
       ? "no-explicit-theme"
       : analysis.context.blueprint.tribalTypes.length && !availableIdentityCards

@@ -550,6 +550,10 @@ test("compiles different official mechanics and plain-language archetypes withou
   assert.deepEqual(parseNativeBlueprintIntent({ note: "Blink creatures and copy spells" }).requestedMechanics, ["blink", "spell_copying"]);
   assert.deepEqual(parseNativeBlueprintIntent({ note: "An Aristocrats deck" }).requestedMechanics, ["aristocrats"]);
   assert.deepEqual(parseNativeBlueprintIntent({ note: "Play cards from exile" }).requestedMechanics, ["cast_from_exile"]);
+  assert.deepEqual(
+    parseNativeBlueprintIntent({ note: "Use Landfall to create tokens, then sacrifice those tokens for value" }).packageSignals,
+    ["lands", "tokens", "sacrifice"],
+  );
 });
 
 test("the generalized mechanic contract reserves official keyword packages such as Landfall", () => {
@@ -557,15 +561,21 @@ test("the generalized mechanic contract reserves official keyword packages such 
     ...card(`Landfall Scout ${index}`, "Landfall — Whenever a land enters under your control, put a +1/+1 counter on this creature.", "Creature — Scout", "{2}{G}", ["G"]),
     keywords: ["Landfall"],
   }));
+  const landEnablers = Array.from({ length: 6 }, (_, index) =>
+    card(`Land Guide ${index}`, "Search your library for a basic land card, put it onto the battlefield, then shuffle.", "Sorcery", "{2}{G}", ["G"]),
+  );
   const report = forgeNativeMasterwork({
     format: "Commander", target: 100, strategy: "Balanced midrange",
     note: "Focus on Landfall", seed: 820,
     commander: { name: "Landfall Mentor", colors: ["G", "U"], oracleText: "Whenever a land enters, draw a card." },
-    cards: [...pool, ...landfallCards],
+    cards: [...pool, ...landfallCards, ...landEnablers],
   });
   const names = new Set(report.selected.rows.map((row) => row.name));
   assert.ok(landfallCards.every(({ name }) => names.has(name)));
   assert.equal(report.selected.blueprintAlignment.requestedMechanicCoverage.landfall, 9);
+  assert.ok(report.selected.blueprintAlignment.packageCoverage.lands.producers >= 5);
+  assert.ok(report.selected.blueprintAlignment.packageCoverage.lands.payoffs >= 9);
+  assert.equal(report.selected.blueprintAlignment.packageCoverage.lands.connected, true);
   assert.equal(report.selected.blueprintAlignment.status, "honored-best-effort");
 });
 
@@ -573,15 +583,21 @@ test("plain-language concepts such as blink are grounded in rules text and shape
   const blinkCards = Array.from({ length: 8 }, (_, index) =>
     card(`Blink Guide ${index}`, "Exile another target creature you control, then return that card to the battlefield under its owner's control.", "Creature — Wizard"),
   );
+  const etbPayoffs = Array.from({ length: 6 }, (_, index) =>
+    card(`Arrival Student ${index}`, "Whenever another creature enters the battlefield under your control, draw a card.", "Creature — Wizard"),
+  );
   const report = forgeNativeMasterwork({
     format: "Commander", target: 100, strategy: "Balanced midrange",
     note: "I want to blink creatures", seed: 821,
     commander: { name: "Blink Mentor", colors: ["U"], oracleText: "Whenever a creature enters, draw a card." },
-    cards: [...pool, ...blinkCards],
+    cards: [...pool, ...blinkCards, ...etbPayoffs],
   });
   const names = new Set(report.selected.rows.map((row) => row.name));
   assert.ok(blinkCards.every(({ name }) => names.has(name)));
   assert.equal(report.selected.blueprintAlignment.requestedMechanicCoverage.blink, 8);
+  assert.ok(report.selected.blueprintAlignment.packageCoverage.etb.producers >= 5);
+  assert.ok(report.selected.blueprintAlignment.packageCoverage.etb.payoffs >= 5);
+  assert.equal(report.selected.blueprintAlignment.packageCoverage.etb.connected, true);
   assert.equal(report.selected.blueprintAlignment.status, "honored-best-effort");
 });
 
