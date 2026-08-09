@@ -1598,6 +1598,7 @@ export default function Home() {
   const [cardFacts, setCardFacts] = useState<Record<string, CardFact>>({});
   const [cardFactsLoading, setCardFactsLoading] = useState(false);
   const [cardFactsError, setCardFactsError] = useState("");
+  const [cardFactsPending, setCardFactsPending] = useState(0);
   const [cardFactsRetry, setCardFactsRetry] = useState(0);
   const [hoveredCard, setHoveredCard] = useState("");
   const [inspectedCard, setInspectedCard] = useState("");
@@ -2040,7 +2041,7 @@ export default function Home() {
     // a finished deck. Restored decks can open while the external catalog is
     // unavailable, so keep their stable deck order in one honest section until
     // every card can be classified.
-    if (cardFactsLoading || cardFactsError || orderedDeckRows.some((row) => !cardFacts[cardFactKey(row.name)])) {
+    if (cardFactsLoading || cardFactsError) {
       return { "Complete deck": orderedDeckRows };
     }
     const commanderKeys = new Set(
@@ -2050,10 +2051,10 @@ export default function Home() {
     );
     const groups: Record<string, DeckRow[]> = {};
     for (const row of orderedDeckRows) {
-      const group = cardGroup(
-        cardFacts[cardFactKey(row.name)],
-        isCommanderFormat(format) && commanderKeys.has(cardFactKey(row.name)),
-      );
+      const fact = cardFacts[cardFactKey(row.name)];
+      const group = fact
+        ? cardGroup(fact, isCommanderFormat(format) && commanderKeys.has(cardFactKey(row.name)))
+        : "Details pending";
       (groups[group] ||= []).push(row);
     }
     return groups;
@@ -2655,11 +2656,18 @@ export default function Home() {
       setCardFacts({});
       setCardFactsLoading(false);
       setCardFactsError("");
+      setCardFactsPending(0);
       return;
     }
     setCardFactsLoading(true);
     setCardFactsError("");
     let cancelled = false;
+    let retryTimer: number | undefined;
+    const scheduleDetailsRetry = () => {
+      if (cardFactsRetry < 3) {
+        retryTimer = window.setTimeout(() => setCardFactsRetry((current) => current + 1), 8000);
+      }
+    };
     (async () => {
       const next: Record<string, CardFact> = {};
       // A native generation already carries the verified card record used by
@@ -2693,10 +2701,14 @@ export default function Home() {
         if (!response.ok) throw new Error("catalog unavailable");
         const data = await response.json();
         for (const fact of data.cards || []) indexCardFact(next, fact);
-        if (names.some((name) => !next[cardFactKey(name)])) throw new Error("incomplete catalog");
+        const missing = names.filter((name) => !next[cardFactKey(name)]).length;
+        if (!cancelled) setCardFactsPending(missing);
+        if (missing > 0) scheduleDetailsRetry();
       } catch {
         if (!cancelled && names.some((name) => !next[cardFactKey(name)])) {
           setCardFactsError("Card details are temporarily unavailable. Your deck is safe; retry when the Archive reconnects.");
+          setCardFactsPending(names.filter((name) => !next[cardFactKey(name)]).length);
+          scheduleDetailsRetry();
         }
       }
       if (!cancelled) {
@@ -2706,11 +2718,14 @@ export default function Home() {
     })();
     return () => {
       cancelled = true;
+      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
     };
   }, [forgedDeck, nativeMasterworkContext, selectedCommander, selectedSecondCommander, cardFactsRetry]);
 
   useEffect(() => {
     setCardOrder(deckRows.map((row) => row.name));
+    setCardFactsRetry(0);
+    setCardFactsPending(0);
   }, [forgedDeck]);
 
   useEffect(() => {
@@ -6807,6 +6822,11 @@ export default function Home() {
                     {cardFactsError && <button type="button" onClick={() => setCardFactsRetry((current) => current + 1)}>Retry details</button>}
                   </div>
                 )}
+                {!cardFactsLoading && !cardFactsError && cardFactsPending > 0 && (
+                  <div className="deck-gallery-notice" role="status" aria-live="polite">
+                    <span>{cardFactsPending} card detail{cardFactsPending === 1 ? " is" : "s are"} still being matched. The rest of your deck is fully organized.</span>
+                  </div>
+                )}
                 <div className="deck-gallery">
                   <aside className="card-preview-stage">
                     <button
@@ -6841,6 +6861,7 @@ export default function Home() {
                   <div className="type-columns">
                     {[
                       "Complete deck",
+                      "Details pending",
                       "Commander",
                       "Creatures",
                       "Planeswalkers",
