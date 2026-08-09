@@ -1537,14 +1537,16 @@ const tierPool = [
   ...Array.from({ length: 16 }, (_, i) => card(`Flow ${i}`, "When this enters, draw a card. Scry 1.")),
   ...Array.from({ length: 16 }, (_, i) => card(`Answer ${i}`, "Exile target nonland permanent.")),
   ...Array.from({ length: 16 }, (_, i) => card(`Shield ${i}`, "Target creature gains hexproof and indestructible until end of turn.")),
+  ...Array.from({ length: 16 }, (_, i) => card(`Ordinary Bear ${i}`, "This creature has vigilance.", "Creature — Bear", "{2}{U}")),
   ...Array.from({ length: 6 }, (_, i) => quickRock(i)),
   ...Array.from({ length: 10 }, (_, i) => card(`Island Utility ${i}`, "{T}: Add {U}.", "Land", "", ["U"])),
 ];
 const quickRockCount = (report) => report.selected.rows.filter((row) => row.name.startsWith("Quick Rock")).reduce((sum, row) => sum + row.quantity, 0);
 
 test("targetPowerTier actually changes real construction, not just an isolated card score", () => {
-  const casual = forgeNativeMasterwork({ format: "Standard", target: 60, strategy: "Balanced midrange", seed: 21, colors: ["U"], cards: tierPool, targetPowerTier: "Casual" });
-  const maximum = forgeNativeMasterwork({ format: "Standard", target: 60, strategy: "Balanced midrange", seed: 21, colors: ["U"], cards: tierPool, targetPowerTier: "Maximum" });
+  const commander = { name: "Scholar of Tests", colors: ["U"], oracleText: "Draw a card." };
+  const casual = forgeNativeMasterwork({ format: "Commander", target: 100, strategy: "Balanced midrange", seed: 21, colors: ["U"], commander, cards: tierPool, targetPowerTier: "Casual" });
+  const maximum = forgeNativeMasterwork({ format: "Commander", target: 100, strategy: "Balanced midrange", seed: 21, colors: ["U"], commander, cards: tierPool, targetPowerTier: "Maximum" });
   assert.ok(
     quickRockCount(maximum) > quickRockCount(casual),
     `expected targeting Maximum (${quickRockCount(maximum)} fast-mana rocks) to select strictly more than targeting Casual (${quickRockCount(casual)}) from the same scarce, competitive pool`,
