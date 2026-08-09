@@ -28,8 +28,19 @@ test("rejects an unbounded card-facts proxy request", async () => {
   assert.equal(response.status, 400);
 });
 
-test("reports an upstream failure instead of returning a partial deck", async (t) => {
+test("uses the internal type catalog when the upstream archive is down", async (t) => {
   t.mock.method(globalThis, "fetch", async () => new Response("no", { status: 400 }));
-  const response = await handleCardFacts(request({ names: ["Sol Ring"] }));
-  assert.equal(response.status, 503);
+  const response = await handleCardFacts(request({ names: ["Pacifism"] }));
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(body.cards[0].type_line, "Enchantment — Aura");
+  assert.deepEqual(body.unresolved, []);
+});
+
+test("names absent from both catalogs remain explicitly unresolved", async (t) => {
+  t.mock.method(globalThis, "fetch", async () => new Response("no", { status: 400 }));
+  const response = await handleCardFacts(request({ names: ["Definitely Not A Real Card"] }));
+  const body = await response.json();
+  assert.deepEqual(body.cards, []);
+  assert.deepEqual(body.unresolved, ["Definitely Not A Real Card"]);
 });

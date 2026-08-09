@@ -2682,6 +2682,7 @@ export default function Home() {
         if (!response.ok) throw new Error("catalog unavailable");
         const data = await response.json();
         for (const fact of data.cards || []) indexCardFact(next, fact);
+        if (names.some((name) => !next[cardFactKey(name)])) throw new Error("incomplete catalog");
       } catch {
         if (!cancelled && names.some((name) => !next[cardFactKey(name)])) {
           setCardFactsError("Card details are temporarily unavailable. Your deck is safe; retry when the Archive reconnects.");
@@ -5440,6 +5441,8 @@ export default function Home() {
                       : hasValidatedDeck
                         ? cardFactsLoading
                           ? `${deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards · organizing card types…`
+                          : cardFactsError
+                            ? `${deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards · card details unavailable`
                           : `${deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards · ${Object.keys(groupedDeck).length} sections`
                         : "Build not completed"}
                   </h2>

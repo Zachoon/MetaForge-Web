@@ -118,6 +118,7 @@ test("uses the Forge's verified card types before supplemental gallery lookups",
   assert.match(page, /fetch\("\/api\/cards\/facts"/);
   assert.match(page, /MetaForge will not mislabel those cards as Other/);
   assert.match(page, /Retry card details/);
+  assert.match(page, /card details unavailable/);
 });
 
 test("each workspace stage exposes one clear contextual next action instead of another control cluster", () => {
