@@ -5,8 +5,9 @@ const clamp = (value, minimum = 0, maximum = 1) =>
   Math.min(maximum, Math.max(minimum, Number(value) || 0));
 
 const observedRate = (matches) => {
-  if (!matches.length) return 0;
-  return matches.filter((match) => match.result === "win").length / matches.length;
+  const resultMatches = matches.filter((match) => match.result === "win" || match.result === "loss");
+  if (!resultMatches.length) return 0;
+  return resultMatches.filter((match) => match.result === "win").length / resultMatches.length;
 };
 
 const revisionMatches = (matches, revision) =>
@@ -36,11 +37,13 @@ export function learnFromForgeInterventions(interventions = [], matches = []) {
       const targetedAfter = targetedIssueRead(after, intervention.targetCategory);
       const targetComparable = intervention.decision === "accepted" && targetedBefore.sample >= 2 && targetedAfter.sample >= 2;
       const targetDelta = targetComparable ? targetedAfter.issueRate - targetedBefore.issueRate : 0;
+      const beforeResults = before.filter((match) => match.result === "win" || match.result === "loss");
+      const afterResults = after.filter((match) => match.result === "win" || match.result === "loss");
       const aggregateComparable =
         intervention.decision === "accepted" &&
         revision > 1 &&
-        before.length >= MIN_REVISION_SAMPLE &&
-        after.length >= MIN_REVISION_SAMPLE;
+        beforeResults.length >= MIN_REVISION_SAMPLE &&
+        afterResults.length >= MIN_REVISION_SAMPLE;
       const comparable = targetComparable || aggregateComparable;
       const delta = aggregateComparable ? afterRate - beforeRate : 0;
 

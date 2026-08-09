@@ -1,6 +1,7 @@
 export function evaluateExperiment(matches) {
-  const sampleSize = matches.length;
-  const wins = matches.filter((match) => match.result === "win").length;
+  const resultMatches = matches.filter((match) => match.result === "win" || match.result === "loss");
+  const sampleSize = resultMatches.length;
+  const wins = resultMatches.filter((match) => match.result === "win").length;
   const losses = sampleSize - wins;
   const posteriorMean = (wins + 2) / (sampleSize + 4);
   const z = 1.96;

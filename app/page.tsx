@@ -215,7 +215,7 @@ type SavedFamily = {
     evidence?: { wins?: number; losses?: number };
     matches?: Array<{
       id: string;
-      result: "win" | "loss";
+      result: "win" | "loss" | "not-recorded";
       opponent: string;
       signal: string;
       playedAt: string;
@@ -1469,7 +1469,7 @@ export default function Home() {
   const [opponentArchetype, setOpponentArchetype] = useState("Unknown / not sure");
   const [matchLog, setMatchLog] = useState<Array<{
     id: string;
-    result: "win" | "loss";
+    result: "win" | "loss" | "not-recorded";
     opponent: string;
     signal: string;
     playedAt: string;
@@ -4098,7 +4098,7 @@ export default function Home() {
   }
 
   async function recordMatch(
-    result: "win" | "loss",
+    result: "win" | "loss" | "not-recorded",
     signal = "No single lesson isolated",
     fieldTest?: { hypothesisId?: string; question: string; outcome: string; source: string },
     coachDebrief?: ReturnType<typeof createPilotingDebrief>,
@@ -4110,10 +4110,11 @@ export default function Home() {
         ? { ...revision, fingerprint: activeFingerprint }
         : revision,
     );
-    const next =
-      result === "win"
-        ? { ...record, wins: record.wins + 1 }
-        : { ...record, losses: record.losses + 1 };
+    const next = result === "win"
+      ? { ...record, wins: record.wins + 1 }
+      : result === "loss"
+        ? { ...record, losses: record.losses + 1 }
+        : record;
     setRecord(next);
     wakeForge("grow");
     const nextMatches = [
@@ -4138,7 +4139,7 @@ export default function Home() {
     setMilestoneMotion({
       kind: "evidence-recorded",
       eyebrow: "EVIDENCE PRESERVED",
-      label: `${result === "win" ? "WIN" : "LOSS"} · ${opponentArchetype}`,
+      label: result === "not-recorded" ? "TABLE QUESTION RECORDED" : `${result === "win" ? "WIN" : "LOSS"} · ${opponentArchetype}`,
       glyph: "ᛇ",
     });
     void persistStoryBench(fingerprintedRevisions, next, "", undefined, nextMatches);
@@ -4164,8 +4165,8 @@ export default function Home() {
   }
 
   async function finishProvingGroundsTest(outcome: "observed" | "missed" | "not-tested" | "unsure") {
-    if (!activeFieldTest || !fieldTestResult) return;
-    await recordMatch(fieldTestResult, "No single lesson isolated", {
+    if (!activeFieldTest) return;
+    await recordMatch(fieldTestResult || "not-recorded", "No single lesson isolated", {
       hypothesisId: activeFieldTest.hypothesisId,
       question: activeFieldTest.question,
       outcome,
@@ -7559,7 +7560,7 @@ export default function Home() {
               <article className={`unified-coaching-session mode-${coachingSession.mode}`} aria-labelledby="coaching-session-title">
                 <header>
                   <span><small>YOUR ACTIVE COACHING PLAN</small><h3 id="coaching-session-title">{coachingSession.title}</h3></span>
-                  <em>{coachingSession.confidence}</em>
+                  <em>{String(coachingSession.confidence).replaceAll("-", " ")}</em>
                 </header>
                 {coachingSession.goal && <p><b>Your goal</b><span>{coachingSession.goal}</span></p>}
                 <p><b>Current read</b><span>{coachingSession.diagnosis}</span></p>
@@ -7579,7 +7580,11 @@ export default function Home() {
                   ) : activeFieldTest ? (
                     <button type="button" onClick={() => document.querySelector(".active-field-test")?.scrollIntoView({ behavior: "smooth", block: "center" })}>Return with the result →</button>
                   ) : (
-                    <button type="button" disabled={!deckIntegrity.passed} onClick={beginProvingGroundsTest}>{coachingSession.cta} →</button>
+                    <button
+                      type="button"
+                      disabled={!(deckIntegrity.passed || Boolean(nativeMasterworkContext?.generationId))}
+                      onClick={beginProvingGroundsTest}
+                    >{coachingSession.cta} →</button>
                   )}
                 </footer>
                 <aside>{coachingSession.boundary}</aside>
@@ -7602,17 +7607,13 @@ export default function Home() {
                   <aside>{provingGrounds.boundary}</aside>
                   <section>
                     <h4>Back from the game?</h4>
-                    <p>Two answers. No essay. The Forge will treat them as one clue.</p>
-                    <div className="field-test-result">
-                      <button type="button" className={fieldTestResult === "win" ? "selected" : ""} onClick={() => setFieldTestResult("win")}>I won</button>
-                      <button type="button" className={fieldTestResult === "loss" ? "selected" : ""} onClick={() => setFieldTestResult("loss")}>I lost</button>
-                    </div>
-                    {fieldTestResult && <div className="field-test-outcome">
+                    <p>One tap. No match report or essay required.</p>
+                    <div className="field-test-outcome">
                       <button type="button" onClick={() => finishProvingGroundsTest("observed")}>{provingGrounds.successPrompt}</button>
                       <button type="button" onClick={() => finishProvingGroundsTest("missed")}>{provingGrounds.missedPrompt}</button>
                       <button type="button" onClick={() => finishProvingGroundsTest("not-tested")}>This game did not test it</button>
                       <button type="button" onClick={() => finishProvingGroundsTest("unsure")}>I’m not sure</button>
-                    </div>}
+                    </div>
                   </section>
                 </article>
               ) : null}

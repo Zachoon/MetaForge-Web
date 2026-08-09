@@ -95,7 +95,7 @@ test("turns the result into one active chapter instead of a continuous instrumen
   assert.match(page, /YOUR ACTIVE COACHING PLAN/);
   assert.match(page, /metaforge\.activeFieldTest/);
   assert.match(page, /This game did not test it/);
-  assert.match(page, /The Forge will treat them as one clue/);
+  assert.match(page, /One tap\. No match report or essay required\./);
   assert.match(css, /\.chapter-5-active>\.proving-grounds\{display:block/);
   assert.match(css, /\.workspace-mode-tabs\{grid-template-columns:repeat\(3/);
   assert.doesNotMatch(page, /activeButton\.offsetLeft/);

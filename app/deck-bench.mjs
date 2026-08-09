@@ -105,6 +105,7 @@ export function revisionEvidence(revision) {
   const evidence = evaluateExperiment(matches);
   const matchups = {};
   for (const match of matches) {
+    if (match.result !== "win" && match.result !== "loss") continue;
     const label = classifyRevealedOpponent(match.revealedOpponentCards).strategy;
     matchups[label] ||= { wins: 0, losses: 0 };
     matchups[label][match.result === "win" ? "wins" : "losses"] += 1;

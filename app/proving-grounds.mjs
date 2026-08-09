@@ -18,12 +18,17 @@ export function buildProvingGroundsBrief({ coachingDiagnosis, failureAnalysis, s
   const category = clean(primary.category) || "collect-more-evidence";
   const weakest = clean(simulationDossier?.matrix?.weakest?.opponent);
   const structuralTest = clean(failureAnalysis?.nextTest);
+  const repeatedFocus = clean(primary.focus);
 
   const briefs = {
     "construction-pressure": {
-      question: "Does the same construction pressure appear again in a real game?",
-      watchFor: clean(primary.measurement) || structuralTest,
-      why: clean(primary.evidence?.[0]) || "A repeated deck-level signal is ready for a controlled table check.",
+      question: repeatedFocus ? `Does “${repeatedFocus}” happen again?` : "Does the same deck problem appear again in a real game?",
+      watchFor: repeatedFocus
+        ? `Play normally. Afterward, answer only this: did “${repeatedFocus}” meaningfully affect the game?`
+        : clean(primary.measurement) || structuralTest,
+      why: repeatedFocus
+        ? `You reported “${repeatedFocus}” in ${Number(primary.occurrences) || 2} games with this exact deck revision.`
+        : clean(primary.evidence?.[0]) || "A repeated deck problem is ready for one focused table check.",
     },
     "piloting-decision": {
       question: "Can one different mulligan or sequencing decision change the critical turn?",
@@ -88,8 +93,8 @@ export function buildProvingGroundsBrief({ coachingDiagnosis, failureAnalysis, s
     question: selected.question,
     watchFor: selected.watchFor,
     why: playerGoal ? `${selected.why} Player goal: ${playerGoal}.` : selected.why,
-    successPrompt: "Yes — the thing I watched happened",
-    missedPrompt: "No — it did not happen",
+    successPrompt: repeatedFocus ? `Yes — “${repeatedFocus}” affected the game` : "Yes — the thing I watched happened",
+    missedPrompt: repeatedFocus ? `No — “${repeatedFocus}” did not affect the game` : "No — it did not happen",
     evidence: Object.freeze({ supporting, contradicting, uninformative: results.length - informative }),
     status,
     nextAction,

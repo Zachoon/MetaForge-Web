@@ -7,11 +7,19 @@ export function buildCoachingSession({ coachingDiagnosis, provingGrounds, experi
     tablet?.type === "experiment" && tablet?.confident !== false && tablet?.change?.cut && tablet?.change?.add,
   ) || null;
   const evidence = Array.isArray(primary.evidence) ? primary.evidence : [];
+  const plainRead = {
+    "lower curve / faster deployment": "The deck may take too long to get started",
+    "more early interaction": "The deck may not have enough early answers",
+    "more card advantage": "The deck may run out of useful cards",
+    "more resilience": "The deck may struggle to recover",
+    "more protection": "Your key cards may need more protection",
+    "mana repair": "The deck may not find the right mana reliably",
+  }[clean(primary.focus).toLowerCase()];
   const base = {
     engine: "metaforge-coaching-session-v1",
     goal: coachingDiagnosis?.playerGoal || null,
-    diagnosis: primary.label || category,
-    confidence: primary.confidence || "insufficient",
+    diagnosis: plainRead || primary.label || category,
+    confidence: primary.occurrences ? `SEEN IN ${primary.occurrences} GAMES` : primary.confidence || "insufficient",
     evidence,
     hypothesisId: provingGrounds?.hypothesisId || null,
     progress: provingGrounds?.evidence || { supporting: 0, contradicting: 0, uninformative: 0 },
@@ -50,8 +58,8 @@ export function buildCoachingSession({ coachingDiagnosis, provingGrounds, experi
     ...base,
     mode: category === "revision-effect" ? "hold" : "observe",
     title: category === "revision-effect" ? "Hold this revision while its intended effect is measured." : "The evidence does not justify a deck change yet.",
-    action: provingGrounds?.nextAction || primary.recommendation,
+    action: provingGrounds?.question || primary.recommendation,
     change: null,
-    cta: category === "revision-effect" ? "Continue the controlled test" : "Begin the next table question",
+    cta: category === "revision-effect" ? "Continue this one-question test" : "Start this one-question test",
   });
 }

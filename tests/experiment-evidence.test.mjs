@@ -21,3 +21,10 @@ test("supports a strategy only after a meaningful positive sample", () => {
   assert.equal(result.decision, "support");
   assert.ok(result.interval[0] > .5);
 });
+
+test("coaching-only answers never become phantom losses", () => {
+  const result = evaluateExperiment([...matches(1, 0), { id: "coach", result: "not-recorded", fieldTest: { outcome: "observed" } }]);
+  assert.equal(result.sampleSize, 1);
+  assert.equal(result.wins, 1);
+  assert.equal(result.losses, 0);
+});

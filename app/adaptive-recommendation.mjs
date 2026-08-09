@@ -134,6 +134,11 @@ export function buildSideboard(pool, mainDeckNames, options = {}) {
 
 export function evaluateLastMatchSignal(match, candidate) {
   if (!match) return { status: "waiting", narrative: "Complete an Arena match with this test version and Forge will update its coaching signal here." };
+  if (match.result !== "win" && match.result !== "loss") return {
+    status: "coaching-only",
+    result: match.result,
+    narrative: "The table question was recorded without changing your win/loss record.",
+  };
   const opponent = classifyRevealedOpponent(match.revealedOpponentCards);
   if (opponent.strategy === "Unknown") return {
     status: "low-information",
@@ -160,6 +165,7 @@ export function evaluateLastMatchSignal(match, candidate) {
 export function evaluateMatchupEvidence(matches = [], candidate) {
   const groups = new Map();
   for (const match of matches) {
+    if (match.result !== "win" && match.result !== "loss") continue;
     const opponent = classifyRevealedOpponent(match.revealedOpponentCards);
     if (opponent.strategy === "Unknown") continue;
     const group = groups.get(opponent.strategy) || { strategy: opponent.strategy, matches: 0, wins: 0, losses: 0, revealedCards: 0 };

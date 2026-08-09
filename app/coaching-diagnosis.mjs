@@ -51,7 +51,7 @@ function decisionBranchSummary(match) {
   return `${moment.window || "decision"}: chose “${String(moment.chosenLine).slice(0, 120)}”; alternative “${String(moment.alternativeLine).slice(0, 120)}”`;
 }
 
-function diagnosis(category, confidence, evidence, recommendation, measurement) {
+function diagnosis(category, confidence, evidence, recommendation, measurement, details = {}) {
   return Object.freeze({
     category,
     label: CATEGORY_LABELS[category],
@@ -59,6 +59,7 @@ function diagnosis(category, confidence, evidence, recommendation, measurement) 
     evidence: Object.freeze(evidence),
     recommendation,
     measurement,
+    ...details,
   });
 }
 
@@ -165,7 +166,8 @@ export function buildCoachingDiagnosis({
       repeatedSignal[1] >= 4 ? "developing pattern" : "repeated player signal",
       [`${repeatedSignal[1]} exact-revision matches independently reported ${repeatedSignal[0]}`],
       `Run the smallest controlled construction test aimed at ${repeatedSignal[0]}; preserve unrelated packages.`,
-      `The signal should stop repeating across at least three matches on the proposed revision before the change is called promising.`,
+      `After a change, record whether “${repeatedSignal[0]}” still happens. Call the change promising only if that exact problem stops appearing in at least three relevant games.`,
+      { focus: repeatedSignal[0], occurrences: repeatedSignal[1] },
     ));
   }
 

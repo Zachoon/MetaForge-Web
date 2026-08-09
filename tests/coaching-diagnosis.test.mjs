@@ -33,6 +33,10 @@ test("repeated exact-revision function failures open a bounded construction test
   assert.equal(report.primary.category, "construction-pressure");
   assert.equal(report.sampleSize, 2, "neighboring revisions must not contaminate the read");
   assert.match(report.primary.recommendation, /smallest controlled construction test/i);
+  assert.equal(report.primary.focus, "more early interaction");
+  assert.equal(report.primary.occurrences, 2);
+  assert.match(report.primary.measurement, /more early interaction/i);
+  assert.doesNotMatch(report.primary.measurement, /the signal/i);
 });
 
 test("piloting pressure requires explicit repeated decision evidence", () => {

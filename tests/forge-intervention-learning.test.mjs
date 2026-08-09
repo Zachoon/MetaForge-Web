@@ -21,6 +21,14 @@ test("does not learn from one accepted change or an undersized sample", () => {
   assert.match(report.reusableGuidance, /earned reuse/i);
 });
 
+test("coaching-only answers do not satisfy the aggregate match threshold", () => {
+  const report = learnFromForgeInterventions(
+    [{ id: "one", kind: "more interaction", decision: "accepted", revision: 2 }],
+    [...matches(1, ["loss", "loss", "loss", "loss"]), ...matches(2, ["win", "win", "win"]), ...matches(2, ["not-recorded"])],
+  );
+  assert.equal(report.experiments[0].comparable, false);
+});
+
 test("requires repeated controlled improvement before reusing a pattern", () => {
   const report = learnFromForgeInterventions(
     [

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import fs from "node:fs";
 import { buildCoachingSession } from "../app/coaching-session.mjs";
 
 const provingGrounds = { hypothesisId: "coach-one", question: "Does it repeat?", watchFor: "The critical turn", nextAction: "Run the question", evidence: { supporting: 1, contradicting: 0, uninformative: 0 }, boundary: "One clue is not a verdict." };
@@ -25,4 +26,22 @@ test("an active field test always outranks a new recommendation", () => {
 test("speculative experiments never become the primary coaching action", () => {
   const session = buildCoachingSession({ coachingDiagnosis: { primary: { category: "construction-pressure", evidence: [] } }, provingGrounds, experimentTablets: { tablets: [{ id: "one", type: "experiment", confident: false, change: { cut: "A", add: "B" } }] } });
   assert.equal(session.change, null);
+});
+
+test("repeated construction feedback is translated into plain language", () => {
+  const session = buildCoachingSession({
+    coachingDiagnosis: { primary: { category: "construction-pressure", focus: "lower curve / faster deployment", occurrences: 2, evidence: [] } },
+    provingGrounds,
+  });
+  assert.equal(session.diagnosis, "The deck may take too long to get started");
+  assert.equal(session.confidence, "SEEN IN 2 GAMES");
+  assert.equal(session.cta, "Start this one-question test");
+});
+
+test("the coaching return path is one tap and accepts a server-validated generation", () => {
+  const page = fs.readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.match(page, /deckIntegrity\.passed \|\| Boolean\(nativeMasterworkContext\?\.generationId\)/);
+  assert.match(page, /fieldTestResult \|\| "not-recorded"/);
+  assert.match(page, /One tap\. No match report or essay required\./);
+  assert.doesNotMatch(page, /Two answers\. No essay/);
 });

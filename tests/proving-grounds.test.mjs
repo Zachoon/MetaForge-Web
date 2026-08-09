@@ -22,6 +22,19 @@ test("Proving Grounds uses a real structural next test while evidence is sparse"
   assert.equal(brief.watchFor, "Watch whether the draw engine stalls before turn five.");
 });
 
+test("repeated deck feedback becomes one plain, card-game question", () => {
+  const brief = buildProvingGroundsBrief({ coachingDiagnosis: { revision: 2, primary: {
+    category: "construction-pressure",
+    focus: "lower curve / faster deployment",
+    occurrences: 2,
+    measurement: "technical fallback",
+  } } });
+  assert.equal(brief.question, "Does “lower curve / faster deployment” happen again?");
+  assert.match(brief.watchFor, /answer only this/i);
+  assert.match(brief.why, /2 games/i);
+  assert.match(brief.successPrompt, /lower curve \/ faster deployment/i);
+});
+
 test("Proving Grounds result reads remain cautious", () => {
   assert.match(interpretProvingGroundsResult("observed").guidance, /once more/i);
   assert.match(interpretProvingGroundsResult("not-tested").headline, /did not test/i);

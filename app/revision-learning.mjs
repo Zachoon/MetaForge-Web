@@ -103,6 +103,7 @@ export function learnRevisionPreferences(
   const matchupMap = new Map();
 
   for (const match of scoped) {
+    if (match.result !== "win" && match.result !== "loss") continue;
     const opponent =
       match.opponent ||
       "Unknown / not sure";
