@@ -95,7 +95,7 @@ test("turns the result into one active chapter instead of a continuous instrumen
   assert.match(page, /YOUR ACTIVE COACHING PLAN/);
   assert.match(page, /metaforge\.activeFieldTest/);
   assert.match(page, /This game did not test it/);
-  assert.match(page, /One tap\. No match report or essay required\./);
+  assert.match(page, /Three quick taps\. MetaForge handles the interpretation\./);
   assert.match(css, /\.chapter-5-active>\.proving-grounds\{display:block/);
   assert.match(css, /\.workspace-mode-tabs\{grid-template-columns:repeat\(3/);
   assert.doesNotMatch(page, /activeButton\.offsetLeft/);
@@ -122,10 +122,9 @@ test("uses the Forge's verified card types before supplemental gallery lookups",
 
 test("each workspace stage exposes one clear contextual next action instead of another control cluster", () => {
   assert.match(page, /className="forge-next-step" aria-label="Recommended next step"/);
-  assert.match(page, /Improve this deck →/);
-  assert.match(page, /Test this deck →/);
-  assert.match(page, /Start the guided test ↓/);
-  assert.match(page, /setActiveForgeChapter\(2\)/);
+  assert.match(page, /Prepare my next game →/);
+  assert.match(page, /Continue coaching →/);
+  assert.match(page, /if \(!activeFieldTest\) beginProvingGroundsTest\(\)/);
   assert.match(page, /setActiveForgeChapter\(5\)/);
   assert.match(page, /getElementById\("proving-grounds-title"\)/);
   assert.match(css, /\.forge-next-step\{display:flex/);

@@ -1,4 +1,9 @@
 const clean = (value) => String(value || "").trim();
+const playerLanguage = (value) => clean(value)
+  .replace(/repeated player signal/gi, "pattern seen in your games")
+  .replace(/construction pressure/gi, "a deck-building issue")
+  .replace(/the signal/gi, "the issue")
+  .replace(/signal/gi, "pattern");
 
 export function buildCoachingSession({ coachingDiagnosis, provingGrounds, experimentTablets, activeFieldTest = null } = {}) {
   const primary = coachingDiagnosis?.primary || {};
@@ -18,28 +23,28 @@ export function buildCoachingSession({ coachingDiagnosis, provingGrounds, experi
   const base = {
     engine: "metaforge-coaching-session-v1",
     goal: coachingDiagnosis?.playerGoal || null,
-    diagnosis: plainRead || primary.label || category,
+    diagnosis: plainRead || playerLanguage(primary.label) || (category === "construction-pressure" ? "The deck may need one focused adjustment" : "We need one more useful game"),
     confidence: primary.occurrences ? `SEEN IN ${primary.occurrences} GAMES` : primary.confidence || "insufficient",
-    evidence,
+    evidence: evidence.map(playerLanguage),
     hypothesisId: provingGrounds?.hypothesisId || null,
     progress: provingGrounds?.evidence || { supporting: 0, contradicting: 0, uninformative: 0 },
-    measurement: provingGrounds?.watchFor || primary.measurement || "Record the next honest result.",
-    boundary: provingGrounds?.boundary || coachingDiagnosis?.evidenceBoundary || "One result is one clue.",
+    measurement: playerLanguage(provingGrounds?.watchFor || primary.measurement || "Notice whether the same issue appears again."),
+    boundary: playerLanguage(provingGrounds?.boundary || coachingDiagnosis?.evidenceBoundary || "One game is one clue."),
   };
 
   if (activeFieldTest) return Object.freeze({
     ...base,
     mode: "observe",
-    title: "Finish the active table question before changing anything.",
-    action: activeFieldTest.question,
+    title: "Your next game has one clear focus.",
+    action: playerLanguage(activeFieldTest.question),
     change: null,
     cta: "Return with the result",
   });
   if (category === "piloting-decision") return Object.freeze({
     ...base,
     mode: "practice",
-    title: "Coach the decision; hold the deck steady.",
-    action: provingGrounds?.question || primary.recommendation,
+    title: "Practice one decision before changing the deck.",
+    action: playerLanguage(provingGrounds?.question || primary.recommendation),
     change: null,
     cta: "Begin the decision test",
   });
@@ -58,7 +63,7 @@ export function buildCoachingSession({ coachingDiagnosis, provingGrounds, experi
     ...base,
     mode: category === "revision-effect" ? "hold" : "observe",
     title: category === "revision-effect" ? "Hold this revision while its intended effect is measured." : "The evidence does not justify a deck change yet.",
-    action: provingGrounds?.question || primary.recommendation,
+    action: playerLanguage(provingGrounds?.question || primary.recommendation),
     change: null,
     cta: category === "revision-effect" ? "Continue this one-question test" : "Start this one-question test",
   });

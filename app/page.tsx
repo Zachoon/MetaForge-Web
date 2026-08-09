@@ -221,7 +221,7 @@ type SavedFamily = {
       playedAt: string;
       revision?: number;
       deckFingerprint?: string;
-      fieldTest?: { hypothesisId?: string; question: string; outcome: string; source: string };
+      fieldTest?: { hypothesisId?: string; question: string; outcome: string; source: string; checkIn?: { issue: string; handled: string; overall: string } };
       coachDebrief?: ReturnType<typeof createPilotingDebrief>;
     }>;
   }>;
@@ -1503,6 +1503,10 @@ export default function Home() {
   }>(null);
   const [fieldTestResult, setFieldTestResult] = useState<"win" | "loss" | null>(null);
   const [fieldTestRead, setFieldTestRead] = useState<null | { headline: string; guidance: string }>(null);
+  const [coachingCheckin, setCoachingCheckin] = useState<{
+    issue: "yes" | "no" | null;
+    handled: "better" | "same" | "unsure" | null;
+  }>({ issue: null, handled: null });
   const [revisions, setRevisions] = useState<
     Array<{ deck: string; note: string; createdAt: string; fingerprint?: string; recommendationRecord?: any }>
   >([]);
@@ -4129,7 +4133,7 @@ export default function Home() {
   async function recordMatch(
     result: "win" | "loss" | "not-recorded",
     signal = "No single lesson isolated",
-    fieldTest?: { hypothesisId?: string; question: string; outcome: string; source: string },
+    fieldTest?: { hypothesisId?: string; question: string; outcome: string; source: string; checkIn?: { issue: string; handled: string; overall: string } },
     coachDebrief?: ReturnType<typeof createPilotingDebrief>,
   ) {
     const activeFingerprint = await deckFingerprint(parseDeckRows(forgedDeck));
@@ -4188,18 +4192,20 @@ export default function Home() {
     setActiveFieldTest(next);
     setFieldTestResult(null);
     setFieldTestRead(null);
+    setCoachingCheckin({ issue: null, handled: null });
     window.localStorage.setItem("metaforge.activeFieldTest", JSON.stringify(next));
     setBenchStatus("testing");
     trackLaunchEvent("experiment_started", { format, source: provingGrounds.source });
   }
 
-  async function finishProvingGroundsTest(outcome: "observed" | "missed" | "not-tested" | "unsure") {
+  async function finishProvingGroundsTest(outcome: "observed" | "missed" | "not-tested" | "unsure", checkIn?: { issue: string; handled: string; overall: string }) {
     if (!activeFieldTest) return;
     await recordMatch(fieldTestResult || "not-recorded", "No single lesson isolated", {
       hypothesisId: activeFieldTest.hypothesisId,
       question: activeFieldTest.question,
       outcome,
       source: activeFieldTest.source,
+      ...(checkIn ? { checkIn } : {}),
     });
     const read = outcome === "observed"
       ? { headline: "The test produced a supporting clue.", guidance: "Keep this revision stable and look for the same observation once more before acting on it." }
@@ -4210,6 +4216,7 @@ export default function Home() {
           : { headline: "The clue was not clear enough to classify.", guidance: "Keep the deck unchanged. Next game, watch only the named moment instead of diagnosing everything at once." };
     setFieldTestRead(read);
     setFieldTestResult(null);
+    setCoachingCheckin({ issue: null, handled: null });
     setActiveFieldTest(null);
     window.localStorage.removeItem("metaforge.activeFieldTest");
   }
@@ -5395,27 +5402,24 @@ export default function Home() {
               </nav>
               <section className="forge-next-step" aria-label="Recommended next step">
                 <div>
-                  <small>RECOMMENDED NEXT STEP</small>
+                  <small>YOUR COACH IS READY</small>
                   <strong>
-                    {activeForgeChapter === 1
-                      ? "Keep the finished list intact and explore one useful improvement."
-                      : activeForgeChapter === 2
-                        ? "Take the change you understand to a real game."
-                        : "Use one guided game to learn what this deck actually needs next."}
+                    {activeFieldTest
+                      ? "Play when you are ready, then come back for a three-tap check-in."
+                      : "MetaForge has prepared the single most useful question for your next game."}
                   </strong>
                 </div>
-                {activeForgeChapter === 1 ? (
-                  <button type="button" onClick={() => { setActiveForgeChapter(2); trackLaunchEvent("coaching_opened", { format }); }}>Improve this deck →</button>
-                ) : activeForgeChapter === 2 ? (
-                  <button type="button" onClick={() => setActiveForgeChapter(5)}>Test this deck →</button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => document.getElementById("proving-grounds-title")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                  >
-                    Start the guided test ↓
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!activeFieldTest) beginProvingGroundsTest();
+                    setActiveForgeChapter(5);
+                    trackLaunchEvent("coaching_opened", { format });
+                    window.requestAnimationFrame(() => document.getElementById("proving-grounds-title")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+                  }}
+                >
+                  {activeFieldTest ? "Continue coaching →" : "Prepare my next game →"}
+                </button>
               </section>
             </>
           ) : (
@@ -7596,18 +7600,18 @@ export default function Home() {
               <article className={`unified-coaching-session mode-${coachingSession.mode}`} aria-labelledby="coaching-session-title">
                 <header>
                   <span><small>YOUR ACTIVE COACHING PLAN</small><h3 id="coaching-session-title">{coachingSession.title}</h3></span>
-                  <em>{String(coachingSession.confidence).replaceAll("-", " ")}</em>
+                  <em>{coachingSession.progress.supporting + coachingSession.progress.contradicting > 0 ? `BASED ON ${coachingSession.progress.supporting + coachingSession.progress.contradicting} USEFUL GAME${coachingSession.progress.supporting + coachingSession.progress.contradicting === 1 ? "" : "S"}` : "READY FOR YOUR FIRST USEFUL GAME"}</em>
                 </header>
                 {coachingSession.goal && <p><b>Your goal</b><span>{coachingSession.goal}</span></p>}
                 <p><b>Current read</b><span>{coachingSession.diagnosis}</span></p>
-                <p><b>Evidence</b><span>{coachingSession.evidence.join(" · ") || "No coaching threshold has been crossed yet."}</span></p>
+                <p><b>What we know</b><span>{coachingSession.evidence.join(" · ") || "We need one focused game before recommending a change."}</span></p>
                 <p><b>One next action</b><span>{coachingSession.action}</span></p>
                 {coachingSession.change && <p><b>Exact experiment</b><span>−1 {coachingSession.change.cut} · +1 {coachingSession.change.add}</span></p>}
                 {coachingSession.expectedBenefit && <p><b>Expected gain</b><span>{coachingSession.expectedBenefit}</span></p>}
                 {coachingSession.tradeoff && <p><b>Tradeoff</b><span>{coachingSession.tradeoff}</span></p>}
                 <p><b>How progress is judged</b><span>{coachingSession.measurement}</span></p>
                 <footer>
-                  <small>{coachingSession.progress.supporting} supporting · {coachingSession.progress.contradicting} contradicting · {coachingSession.progress.uninformative} inconclusive</small>
+                  <small>{coachingSession.progress.supporting + coachingSession.progress.contradicting > 0 ? `This appeared in ${coachingSession.progress.supporting} of ${coachingSession.progress.supporting + coachingSession.progress.contradicting} useful games.` : "No homework—MetaForge remembers the deck and the question for you."}</small>
                   {coachingSession.mode === "experiment" && coachingSession.change ? (
                     <button type="button" onClick={() => {
                       const tablet = experimentTablets?.tablets.find((entry) => entry.id === coachingSession.change?.tabletId);
@@ -7637,19 +7641,38 @@ export default function Home() {
                 </article>
               ) : activeFieldTest ? (
                 <article className="active-field-test">
-                  <small>FIELD TEST ACTIVE · PRESERVED ON THIS DEVICE</small>
-                  <h3>{activeFieldTest.question}</h3>
-                  <p><b>Watch only this:</b> {activeFieldTest.watchFor}</p>
+                  <small>NEXT-GAME QUESTION · SAVED AUTOMATICALLY</small>
+                  <h3>{coachingSession.action}</h3>
+                  <p><b>Watch only this:</b> {coachingSession.measurement}</p>
                   <aside>{provingGrounds.boundary}</aside>
                   <section>
                     <h4>Back from the game?</h4>
-                    <p>One tap. No match report or essay required.</p>
-                    <div className="field-test-outcome">
-                      <button type="button" onClick={() => finishProvingGroundsTest("observed")}>{provingGrounds.successPrompt}</button>
-                      <button type="button" onClick={() => finishProvingGroundsTest("missed")}>{provingGrounds.missedPrompt}</button>
-                      <button type="button" onClick={() => finishProvingGroundsTest("not-tested")}>This game did not test it</button>
-                      <button type="button" onClick={() => finishProvingGroundsTest("unsure")}>I’m not sure</button>
-                    </div>
+                    <p>Three quick taps. MetaForge handles the interpretation.</p>
+                    {!coachingCheckin.issue ? (
+                      <div className="field-test-outcome coaching-checkin">
+                        <b>1 of 3 · Did the issue appear?</b>
+                        <button type="button" onClick={() => setCoachingCheckin({ issue: "yes", handled: null })}>Yes, I noticed it</button>
+                        <button type="button" onClick={() => setCoachingCheckin({ issue: "no", handled: null })}>No, it did not</button>
+                        <button type="button" onClick={() => finishProvingGroundsTest("not-tested")}>This game did not test it</button>
+                      </div>
+                    ) : !coachingCheckin.handled ? (
+                      <div className="field-test-outcome coaching-checkin">
+                        <b>2 of 3 · How did the deck handle that moment?</b>
+                        <button type="button" onClick={() => setCoachingCheckin((current) => ({ ...current, handled: "better" }))}>Better than before</button>
+                        <button type="button" onClick={() => setCoachingCheckin((current) => ({ ...current, handled: "same" }))}>About the same</button>
+                        <button type="button" onClick={() => setCoachingCheckin((current) => ({ ...current, handled: "unsure" }))}>I’m not sure</button>
+                      </div>
+                    ) : (
+                      <div className="field-test-outcome coaching-checkin">
+                        <b>3 of 3 · How did the deck feel overall?</b>
+                        {(["Better", "About the same", "Worse"] as const).map((label) => (
+                          <button key={label} type="button" onClick={() => finishProvingGroundsTest(
+                            coachingCheckin.issue === "yes" ? "observed" : "missed",
+                            { issue: coachingCheckin.issue!, handled: coachingCheckin.handled!, overall: label.toLowerCase() },
+                          )}>{label}</button>
+                        ))}
+                      </div>
+                    )}
                   </section>
                 </article>
               ) : null}
