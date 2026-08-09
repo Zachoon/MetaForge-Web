@@ -17,6 +17,15 @@ test("mobile tour uses a stable bottom sheet and a bounded form target", () => {
   assert.match(page, /walkthroughActive \? " tour-hidden" : ""/);
 });
 
+test("the tour follows reordered targets and avoids covering them", () => {
+  assert.match(walkthrough, /if \(el && !positionedTarget\)/);
+  assert.match(walkthrough, /tooltipRef\.current\?\.getBoundingClientRect\(\)/);
+  assert.match(walkthrough, /window\.innerWidth - rect\.right >= tooltipSize\.width/);
+  assert.match(walkthrough, /rect\.left >= tooltipSize\.width/);
+  assert.match(walkthrough, /Deck to review it, Tune to try a useful change, and Test for one clear next-game question/);
+  assert.doesNotMatch(walkthrough, /four-chapter Testing Anvil|Chapter 4/);
+});
+
 test("mobile Blueprint keeps inline definitions and removes overlapping question controls", () => {
   assert.match(journeyStyles, /@media\(max-width:700px\)[^{]*\{[\s\S]*?\.blueprint-glossary-tip\{display:none\}/);
   assert.doesNotMatch(journeyStyles, /@media\(max-width:700px\)[\s\S]*?\.blueprint-choice-definition\{display:none\}/);

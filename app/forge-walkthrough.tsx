@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 // A first-time guided tour: the gap identified directly from player
 // feedback was the jump from "two buttons" to "a form" to "the Forge is
-// working" straight into a dense, four-chapter Testing Anvil with no
+// working" straight into a focused Deck / Tune / Test workspace with no
 // explanation of what any of it is. Live-spotlights real elements on the
 // Entrance and Blueprint screens (the only ones that exist before a
 // generation is even requested), then closes with an informational,
@@ -27,7 +27,7 @@ const STEPS: WalkthroughStep[] = [
   {
     id: "welcome",
     title: "Welcome to the Forge",
-    body: "A quick tour before you start — four short stops, skip anytime. The Forge builds real, evidence-backed decks; this just shows you where things live.",
+    body: "A quick tour before you start — five short stops, skip anytime. MetaForge builds the deck, then keeps coaching one useful game at a time.",
   },
   {
     id: "entrance-choices",
@@ -54,8 +54,8 @@ const STEPS: WalkthroughStep[] = [
   },
   {
     id: "after-forging",
-    title: "What happens after you forge",
-    body: "You'll land on the Testing Anvil: Chapter 1 is the finished Masterwork itself, Chapter 2 lets you test a real card swap, Chapter 3 explains the essentials in plain language, and Chapter 4 — Deep Forge — holds every deeper number if you want it. Nothing there is required reading; the deck works either way.",
+    title: "Your coach takes it from here",
+    body: "You'll land on your finished deck with three simple places: Deck to review it, Tune to try a useful change, and Test for one clear next-game question. The highlighted coaching button always takes you to the right next step; deeper numbers stay optional.",
   },
 ];
 
@@ -93,7 +93,9 @@ export function ForgeWalkthrough({
 }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
+  const [tooltipSize, setTooltipSize] = useState({ width: 360, height: 280 });
   const [mobileLayout, setMobileLayout] = useState(false);
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
   const step = STEPS[stepIndex];
   const isFirst = stepIndex === 0;
   const isLast = stepIndex === STEPS.length - 1;
@@ -129,13 +131,19 @@ export function ForgeWalkthrough({
     let positionTimer: number | undefined;
     const measure = () => {
       const el = document.querySelector(targetSelector);
-      if (el && mobileLayout && !positionedTarget) {
+      if (el && !positionedTarget) {
         positionedTarget = true;
         positionTimer = window.setTimeout(() => {
           el.scrollIntoView({ behavior: "auto", block: "center", inline: "nearest" });
         }, 60);
       }
       setRect(el ? el.getBoundingClientRect() : null);
+      const tooltip = tooltipRef.current?.getBoundingClientRect();
+      if (tooltip) setTooltipSize((current) =>
+        current.width === tooltip.width && current.height === tooltip.height
+          ? current
+          : { width: tooltip.width, height: tooltip.height },
+      );
     };
     // Polls on an interval rather than requestAnimationFrame: rAF only
     // fires on an actual compositor paint, which real background/inactive
@@ -159,12 +167,23 @@ export function ForgeWalkthrough({
 
   const tooltipStyle = useMemo(() => {
     if (!rect || mobileLayout) return undefined;
-    const preferBelow = rect.bottom + 220 < window.innerHeight;
-    return {
-      top: preferBelow ? rect.bottom + 16 : Math.max(16, rect.top - 220),
-      left: Math.min(Math.max(16, rect.left), window.innerWidth - 380),
-    };
-  }, [rect, mobileLayout]);
+    const gap = 16;
+    const edge = 16;
+    const maxLeft = Math.max(edge, window.innerWidth - tooltipSize.width - edge);
+    const maxTop = Math.max(edge, window.innerHeight - tooltipSize.height - edge);
+    const clampLeft = (left: number) => Math.min(Math.max(edge, left), maxLeft);
+    const clampTop = (top: number) => Math.min(Math.max(edge, top), maxTop);
+    if (window.innerWidth - rect.right >= tooltipSize.width + gap) {
+      return { top: clampTop(rect.top), left: rect.right + gap };
+    }
+    if (rect.left >= tooltipSize.width + gap) {
+      return { top: clampTop(rect.top), left: rect.left - tooltipSize.width - gap };
+    }
+    if (window.innerHeight - rect.bottom >= tooltipSize.height + gap) {
+      return { top: rect.bottom + gap, left: clampLeft(rect.left) };
+    }
+    return { top: clampTop(rect.top - tooltipSize.height - gap), left: clampLeft(rect.left) };
+  }, [rect, mobileLayout, tooltipSize]);
 
   if (!active) return null;
 
@@ -209,6 +228,7 @@ export function ForgeWalkthrough({
         <div className="forge-walkthrough-dim" />
       )}
       <div
+        ref={tooltipRef}
         className="forge-walkthrough-tooltip"
         style={tooltipStyle}
         data-centered={!rect}
