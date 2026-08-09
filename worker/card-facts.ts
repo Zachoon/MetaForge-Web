@@ -10,11 +10,19 @@ const json = (body: unknown, status = 200) => Response.json(body, {
 
 async function fetchCollection(names: string[]) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const response = await fetch("https://api.scryfall.com/cards/collection", {
-      method: "POST",
-      headers: { ...SCRYFALL_HEADERS, "Content-Type": "application/json" },
-      body: JSON.stringify({ identifiers: names.map((name) => ({ name })) }),
-    });
+    let response: Response;
+    try {
+      response = await fetch("https://api.scryfall.com/cards/collection", {
+        method: "POST",
+        headers: { ...SCRYFALL_HEADERS, "Content-Type": "application/json" },
+        body: JSON.stringify({ identifiers: names.map((name) => ({ name })) }),
+        signal: AbortSignal.timeout(6000),
+      });
+    } catch {
+      if (attempt === 2) return null;
+      await new Promise((resolve) => setTimeout(resolve, 200 * 2 ** attempt));
+      continue;
+    }
     if (response.ok) return response;
     if (response.status !== 429 && response.status < 500) return response;
     if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 200 * 2 ** attempt));

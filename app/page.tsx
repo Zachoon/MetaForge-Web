@@ -1593,6 +1593,8 @@ export default function Home() {
   const [coachingGoal, setCoachingGoal] = useState("");
   const [cardFacts, setCardFacts] = useState<Record<string, CardFact>>({});
   const [cardFactsLoading, setCardFactsLoading] = useState(false);
+  const [cardFactsError, setCardFactsError] = useState("");
+  const [cardFactsRetry, setCardFactsRetry] = useState(0);
   const [hoveredCard, setHoveredCard] = useState("");
   const [inspectedCard, setInspectedCard] = useState("");
   const [cardActionMenu, setCardActionMenu] = useState<{
@@ -2641,9 +2643,11 @@ export default function Home() {
     if (!names.length) {
       setCardFacts({});
       setCardFactsLoading(false);
+      setCardFactsError("");
       return;
     }
     setCardFactsLoading(true);
+    setCardFactsError("");
     let cancelled = false;
     (async () => {
       const next: Record<string, CardFact> = {};
@@ -2673,13 +2677,15 @@ export default function Home() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ names }),
+          signal: AbortSignal.timeout(20000),
         });
-        if (response.ok) {
-          const data = await response.json();
-          for (const fact of data.cards || []) indexCardFact(next, fact);
-        }
+        if (!response.ok) throw new Error("catalog unavailable");
+        const data = await response.json();
+        for (const fact of data.cards || []) indexCardFact(next, fact);
       } catch {
-        /* Native facts still classify fresh builds; a later load can retry restored decks. */
+        if (!cancelled && names.some((name) => !next[cardFactKey(name)])) {
+          setCardFactsError("Card details are temporarily unavailable. Your deck is safe; retry when the Archive reconnects.");
+        }
       }
       if (!cancelled) {
         setCardFacts(next);
@@ -2689,7 +2695,7 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [forgedDeck, nativeMasterworkContext, selectedCommander, selectedSecondCommander]);
+  }, [forgedDeck, nativeMasterworkContext, selectedCommander, selectedSecondCommander, cardFactsRetry]);
 
   useEffect(() => {
     setCardOrder(deckRows.map((row) => row.name));
@@ -6785,13 +6791,14 @@ export default function Home() {
                     )}
                   </section>
                 )}
-                {cardFactsLoading ? (
+                {cardFactsLoading || cardFactsError ? (
                   <section className="deck-gallery-loading" role="status" aria-live="polite">
                     <span aria-hidden="true" />
                     <div>
-                      <small>ORGANIZING YOUR DECK</small>
-                      <strong>Putting every card into its proper section…</strong>
-                      <p>The complete list is preserved. It will appear once, in its stable order.</p>
+                      <small>{cardFactsError ? "THE ARCHIVE IS TEMPORARILY UNAVAILABLE" : "ORGANIZING YOUR DECK"}</small>
+                      <strong>{cardFactsError || "Putting every card into its proper section…"}</strong>
+                      <p>{cardFactsError ? "MetaForge will not mislabel those cards as Other." : "The complete list is preserved. It will appear once, in its stable order."}</p>
+                      {cardFactsError && <button type="button" onClick={() => setCardFactsRetry((current) => current + 1)}>Retry card details</button>}
                     </div>
                   </section>
                 ) : <div className="deck-gallery">
