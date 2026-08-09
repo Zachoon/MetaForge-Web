@@ -44,6 +44,16 @@ test("guest UI uses the guest endpoint and suppresses persistence and structural
   assert.match(styles, /\.great-forge\[data-guest-mode="true"\][\s\S]*?padding-bottom/);
 });
 
+test("the published Sites hostname stays on the public guest Forge instead of the authenticated endpoint", async () => {
+  const source = await read("app/page.tsx");
+  assert.match(
+    source,
+    /host\.endsWith\("\.chatgpt\.site"\)/,
+    "a published Sites build must remain usable before the visitor creates an account",
+  );
+  assert.match(source, /const isGuest = isPublicForgeHost \|\|/);
+});
+
 // A Turnstile siteverify token is single-use server-side (worker/guest-
 // forge.ts's validateTurnstile spends it the moment it's checked) whether
 // or not the deck-construction attempt that follows succeeds. Before this

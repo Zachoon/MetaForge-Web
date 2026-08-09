@@ -1251,7 +1251,8 @@ export default function Home() {
   const turnstileWidgetRef = useRef<string | null>(null);
   useEffect(() => {
     const host = window.location.hostname.toLowerCase();
-    const isGuest = host === "metaforge.gg" || host === "www.metaforge.gg" || new URLSearchParams(window.location.search).get("guest") === "1";
+    const isPublicForgeHost = host === "metaforge.gg" || host === "www.metaforge.gg" || host.endsWith(".chatgpt.site");
+    const isGuest = isPublicForgeHost || new URLSearchParams(window.location.search).get("guest") === "1";
     queueMicrotask(() => setGuestMode(isGuest));
   }, []);
   useEffect(() => {
