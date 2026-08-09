@@ -2668,43 +2668,18 @@ export default function Home() {
           color_identity: selectedSecondCommander.colors,
         }, selectedSecondCommander.name);
       }
-      for (let index = 0; index < names.length; index += 75) {
-        try {
-          const response = await fetch(
-            "https://api.scryfall.com/cards/collection",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Accept: "application/json",
-              },
-              body: JSON.stringify({
-                identifiers: names
-                  .slice(index, index + 75)
-                  .map((name) => ({ name })),
-              }),
-            },
-          );
+      try {
+        const response = await fetch("/api/cards/facts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ names }),
+        });
+        if (response.ok) {
           const data = await response.json();
-          for (const fact of data.data || []) indexCardFact(next, fact);
-          for (const requestedName of names.slice(index, index + 75)) {
-            if (next[cardFactKey(requestedName)]) continue;
-            try {
-              const fallback = await fetch(
-                `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(requestedName)}`,
-              );
-              if (fallback.ok)
-                indexCardFact(next, await fallback.json(), requestedName);
-            } catch {
-              /* A later deck refresh can retry this individual card. */
-            }
-            await new Promise((resolve) => window.setTimeout(resolve, 80));
-          }
-        } catch {
-          /* Named image fallback remains available. */
+          for (const fact of data.cards || []) indexCardFact(next, fact);
         }
-        if (index + 75 < names.length)
-          await new Promise((resolve) => window.setTimeout(resolve, 120));
+      } catch {
+        /* Native facts still classify fresh builds; a later load can retry restored decks. */
       }
       if (!cancelled) {
         setCardFacts(next);
