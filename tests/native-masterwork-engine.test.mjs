@@ -498,6 +498,52 @@ test("normalizes ordinary-language counter requests", () => {
   );
 });
 
+test("recognizes a Power-Up focus and creature activated abilities as explicit mechanics", () => {
+  const intent = parseNativeBlueprintIntent({
+    note: "Creature Activated abilities, with a focus on Power-Up activated abilities",
+  });
+  assert.deepEqual(intent.requestedMechanics, ["power-up", "creature-activated-ability"]);
+  assert.deepEqual(intent.promises, ["Power-Up", "creature activated abilities"]);
+});
+
+test("reserves supported Power-Up and creature activated-ability cards ahead of generic good-card filler", () => {
+  const powerUpCards = Array.from({ length: 8 }, (_, index) => ({
+    ...card(`Power-Up Hero ${index}`, `Power-Up — {${index % 3 + 1}}: Put a +1/+1 counter on this creature.`, "Creature — Hero", "{2}{U}"),
+    keywords: ["Power-Up"],
+  }));
+  const activatedCards = Array.from({ length: 14 }, (_, index) =>
+    card(`Ability Hero ${index}`, "{1}: This creature gains flying until end of turn.", "Creature — Hero", "{2}{U}"),
+  );
+  const report = forgeNativeMasterwork({
+    format: "Commander",
+    target: 100,
+    strategy: "Balanced midrange",
+    note: "Creature Activated abilities, with a focus on Power-Up activated abilities",
+    seed: 818,
+    commander: { name: "Ability Mentor", colors: ["U"], oracleText: "Activated abilities you activate cost {1} less to activate." },
+    cards: [...pool, ...powerUpCards, ...activatedCards],
+  });
+
+  const names = new Set(report.selected.rows.map((row) => row.name));
+  assert.ok(powerUpCards.every(({ name }) => names.has(name)));
+  assert.equal(report.selected.blueprintAlignment.availableMechanicCoverage["power-up"], 8);
+  assert.equal(report.selected.blueprintAlignment.requestedMechanicCoverage["power-up"], 8);
+  assert.ok(report.selected.blueprintAlignment.requestedMechanicCoverage["creature-activated-ability"] >= 10);
+  assert.equal(report.selected.blueprintAlignment.status, "honored-best-effort");
+  assert.match(report.selected.blueprintAlignment.boundary, /8 legal Power-Up cards and selected 8/i);
+});
+
+test("admits when a named requested mechanic is absent instead of calling generic soup aligned", () => {
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange",
+    note: "Focus on Power-Up", seed: 819,
+    commander: { name: "Scholar of Tests", colors: ["U"], oracleText: "Whenever you draw your second card, create a token." },
+    cards: pool,
+  });
+  assert.equal(report.selected.blueprintAlignment.status, "unsupported-mechanic-in-verified-pool");
+  assert.match(report.selected.blueprintAlignment.boundary, /No legal Power-Up card was present/i);
+});
+
 test("recognizes plain-language role requests, not just rules-text phrasing", () => {
   const intent = parseNativeBlueprintIntent({ note: "I want removal, ramp, and card draw" });
   assert.deepEqual(intent.desiredRoles, ["ramp", "draw", "interaction"]);

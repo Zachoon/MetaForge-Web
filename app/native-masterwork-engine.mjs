@@ -356,6 +356,32 @@ const BLUEPRINT_FILLER_WORDS = new Set([
   "build", "around", "plus", "counters", "counter", "and", "or", "with",
 ]);
 
+const BLUEPRINT_MECHANICS = Object.freeze({
+  "power-up": Object.freeze({ label: "Power-Up", anchorLimit: { singleton: 14, constructed: 4 }, score: 34 }),
+  "creature-activated-ability": Object.freeze({ label: "creature activated abilities", anchorLimit: { singleton: 10, constructed: 4 }, score: 12 }),
+});
+
+function requestedBlueprintMechanics(source = "") {
+  const requested = [];
+  // The narrower named mechanic is intentionally first: “with a focus on
+  // Power-Up” must not be diluted by the much larger generic activated-
+  // ability pool before Power-Up cards are reserved.
+  if (/\bpower[\s-]?up\b/i.test(source)) requested.push("power-up");
+  if (/\b(?:creature(?:s|['’]s)?\s+)?activated\s+abilit(?:y|ies)\b/i.test(source)) requested.push("creature-activated-ability");
+  return requested;
+}
+
+function blueprintMechanicHitsFor(card, requestedMechanics = []) {
+  const oracle = String(card.oracleText || card.oracle_text || "");
+  const typeLine = String(card.typeLine || card.type_line || "");
+  const keywords = (card.keywords || []).map((keyword) => normalized(keyword));
+  return requestedMechanics.filter((mechanic) => {
+    if (mechanic === "power-up") return keywords.includes("power-up") || /\bpower[\s-]?up\b/i.test(oracle);
+    if (mechanic === "creature-activated-ability") return /\bcreature\b/i.test(typeLine) && /(^|\n)[^\n]{0,180}:/m.test(oracle);
+    return false;
+  });
+}
+
 function normalizeBlueprintText(value = "") {
   return normalized(value)
     .replace(/\+\s*1\s*(?:\+|\/)\s*1\s*counters?/g, "+1/+1 counter")
@@ -371,6 +397,7 @@ export function parseNativeBlueprintIntent(input = {}) {
   const roleSignals = noteRoleSignals(source);
   const desiredRoles = roleSignals.desired;
   const excludedRoles = roleSignals.excluded;
+  const requestedMechanics = requestedBlueprintMechanics(source);
   const requestedTerms = unique(
     source
       .split(/[^a-z0-9+'/-]+/)
@@ -379,8 +406,9 @@ export function parseNativeBlueprintIntent(input = {}) {
   const promises = [
     ...tribalTypes.map((type) => `${type} typal`),
     ...desiredRoles.map((role) => role === "counters" ? "+1/+1 counter growth" : role),
+    ...requestedMechanics.map((mechanic) => BLUEPRINT_MECHANICS[mechanic].label),
   ];
-  return Object.freeze({ source, tribalTypes, desiredRoles, excludedRoles, requestedTerms, promises: unique(promises) });
+  return Object.freeze({ source, tribalTypes, desiredRoles, excludedRoles, requestedMechanics, requestedTerms, promises: unique(promises) });
 }
 
 function manaValueFromCost(cost = "", fallback = 0) {
@@ -636,6 +664,7 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
   );
   const identityHits = unique([...directTribes, ...tribalSupport]);
   const blueprintRoleHits = roles.filter((role) => context.blueprint.desiredRoles.includes(role));
+  const blueprintMechanicHits = blueprintMechanicHitsFor(card, context.blueprint.requestedMechanics);
   const excludedRoleHits = roles.filter((role) => context.blueprint.excludedRoles.includes(role));
   const fieldPressureHits = roles.filter((role) => context.fieldCounterRoles.includes(role)).length;
   return {
@@ -663,6 +692,7 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
     tribalSupport,
     identityHits,
     blueprintRoleHits,
+    blueprintMechanicHits,
     excludedRoleHits,
     mechanics: mechanics || { signals: [], produces: [], rewards: [] },
     colorPips: colorPipsFromCost(card.manaCost || card.mana_cost),
@@ -750,7 +780,7 @@ function scoreCard(entry, input, variant, context) {
     card: entry.card,
     roles: entry.roles,
     cmc: entry.cmc,
-    score: entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + entry.budgetScore + entry.complexityScore + entry.powerTierScore + deterministicTieBreak,
+    score: entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.blueprintMechanicHits.reduce((sum, mechanic) => sum + BLUEPRINT_MECHANICS[mechanic].score, 0) + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + entry.budgetScore + entry.complexityScore + entry.powerTierScore + deterministicTieBreak,
     synergyHits: entry.synergyHits,
     synergyPotential: entry.synergyPotential,
     preferenceHits: entry.preferenceHits,
@@ -759,6 +789,7 @@ function scoreCard(entry, input, variant, context) {
     tribalSupport: entry.tribalSupport,
     identityHits: entry.identityHits,
     blueprintRoleHits: entry.blueprintRoleHits,
+    blueprintMechanicHits: entry.blueprintMechanicHits,
     mechanics: entry.mechanics,
     colorPips: entry.colorPips,
   };
@@ -858,6 +889,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       tribalSupport: candidate.tribalSupport,
       identityHits: candidate.identityHits,
       blueprintRoleHits: candidate.blueprintRoleHits,
+      blueprintMechanicHits: candidate.blueprintMechanicHits,
       mechanics: candidate.mechanics,
       colorPips: candidate.colorPips,
       // Scryfall's produced_mana exists on any permanent, not just lands —
@@ -885,6 +917,10 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
   const roleAnchorLimit = singleton ? 10 : 4;
   for (const role of blueprint.desiredRoles) {
     for (const candidate of ranked.filter((entry) => entry.blueprintRoleHits.includes(role)).slice(0, roleAnchorLimit)) addCandidate(candidate);
+  }
+  for (const mechanic of blueprint.requestedMechanics) {
+    const limit = BLUEPRINT_MECHANICS[mechanic].anchorLimit[singleton ? "singleton" : "constructed"];
+    for (const candidate of ranked.filter((entry) => entry.blueprintMechanicHits.includes(mechanic)).slice(0, limit)) addCandidate(candidate);
   }
 
   while (remaining > 0) {
@@ -1275,6 +1311,25 @@ function computeBlueprintAlignment(analysis, selected, singleton) {
       selected.filter((entry) => entry.blueprintRoleHits.includes(role)).reduce((sum, entry) => sum + entry.quantity, 0),
     ]),
   );
+  const availableMechanicCoverage = Object.fromEntries(
+    analysis.context.blueprint.requestedMechanics.map((mechanic) => [
+      mechanic,
+      analysis.spells.filter((entry) => entry.blueprintMechanicHits.includes(mechanic)).length,
+    ]),
+  );
+  const requestedMechanicCoverage = Object.fromEntries(
+    analysis.context.blueprint.requestedMechanics.map((mechanic) => [
+      mechanic,
+      selected.filter((entry) => entry.blueprintMechanicHits?.includes(mechanic)).reduce((sum, entry) => sum + entry.quantity, 0),
+    ]),
+  );
+  const missedMechanic = analysis.context.blueprint.requestedMechanics.find((mechanic) => {
+    const limit = BLUEPRINT_MECHANICS[mechanic].anchorLimit[singleton ? "singleton" : "constructed"];
+    return requestedMechanicCoverage[mechanic] < Math.min(availableMechanicCoverage[mechanic], limit);
+  });
+  const unsupportedMechanic = analysis.context.blueprint.requestedMechanics.find(
+    (mechanic) => availableMechanicCoverage[mechanic] === 0,
+  );
   return Object.freeze({
     requested: analysis.context.blueprint.promises,
     tribalTypes: analysis.context.blueprint.tribalTypes,
@@ -1285,18 +1340,26 @@ function computeBlueprintAlignment(analysis, selected, singleton) {
     requiredIdentityCards,
     availableRoleCoverage,
     requestedRoleCoverage,
+    availableMechanicCoverage,
+    requestedMechanicCoverage,
     status: !analysis.context.blueprint.promises.length
       ? "no-explicit-theme"
       : analysis.context.blueprint.tribalTypes.length && !availableIdentityCards
         ? "unsupported-identity-in-verified-pool"
-        : selectedIdentityCards < requiredIdentityCards || analysis.context.blueprint.desiredRoles.some(
+        : unsupportedMechanic
+          ? "unsupported-mechanic-in-verified-pool"
+        : selectedIdentityCards < requiredIdentityCards || missedMechanic || analysis.context.blueprint.desiredRoles.some(
           (role) => requestedRoleCoverage[role] < Math.min(availableRoleCoverage[role], singleton ? 8 : 4),
         )
           ? "missed-supported-blueprint"
           : "honored-best-effort",
     boundary: analysis.context.blueprint.tribalTypes.length && !availableIdentityCards
       ? `No legal card naming or carrying the ${analysis.context.blueprint.tribalTypes.join("/")} identity was present in the verified pool; the Forge preserved legality and must say so instead of inventing support.`
-      : `Blueprint contract reserved ${selectedIdentityCards}/${requiredIdentityCards} required identity cards before general optimization; legality and minimum deck function remained binding.`,
+      : unsupportedMechanic
+        ? `No legal ${BLUEPRINT_MECHANICS[unsupportedMechanic].label} card was present in the verified pool; the Forge preserved legality and must say so instead of pretending the requested focus was honored.`
+      : analysis.context.blueprint.requestedMechanics.length
+        ? `Mechanic contract found ${analysis.context.blueprint.requestedMechanics.map((mechanic) => `${availableMechanicCoverage[mechanic]} legal ${BLUEPRINT_MECHANICS[mechanic].label} cards and selected ${requestedMechanicCoverage[mechanic]}`).join("; ")}; legality and minimum deck function remained binding.`
+        : `Blueprint contract reserved ${selectedIdentityCards}/${requiredIdentityCards} required identity cards before general optimization; legality and minimum deck function remained binding.`,
   });
 }
 
