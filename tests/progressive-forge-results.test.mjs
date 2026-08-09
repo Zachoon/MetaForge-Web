@@ -105,10 +105,13 @@ test("turns the result into one active chapter instead of a continuous instrumen
 });
 
 test("keeps the deck list stable while card types are still loading", () => {
-  assert.match(page, /return \{ "Complete deck": orderedDeckRows \}/);
+  assert.match(page, /commanderRows = orderedDeckRows\.filter\(isCommanderRow\)/);
+  assert.match(page, /mainDeckRows = orderedDeckRows\.filter\(\(row\) => !isCommanderRow\(row\)\)/);
+  assert.match(page, /Commander: commanderRows/);
+  assert.match(page, /"Complete deck": mainDeckRows/);
   assert.match(page, /Organizing card types in the background/);
   assert.match(page, /Showing the complete deck in its saved order/);
-  assert.match(page, /"Complete deck",\s*"Details pending",\s*"Commander"/);
+  assert.match(page, /"Commander",\s*"Complete deck",\s*"Details pending"/);
 });
 
 test("uses the Forge's verified card types before supplemental gallery lookups", () => {
@@ -123,6 +126,12 @@ test("uses the Forge's verified card types before supplemental gallery lookups",
   assert.match(page, /The rest of your deck is fully organized/);
   assert.match(page, /scheduleDetailsRetry/);
   assert.doesNotMatch(page, /throw new Error\("incomplete catalog"\)/);
+});
+
+test("keeps the commander outside the other 99 cards even when its details are pending", () => {
+  assert.match(page, /\[selectedCommander\?\.name, selectedSecondCommander\?\.name, chosenPreview\.card\]/);
+  assert.match(page, /const group = isCommanderRow\(row\)\s*\? "Commander"/);
+  assert.match(page, /: "Details pending"/);
 });
 
 test("each workspace stage exposes one clear contextual next action instead of another control cluster", () => {

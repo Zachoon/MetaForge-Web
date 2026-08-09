@@ -2037,28 +2037,37 @@ export default function Home() {
     [deckRows, cardOrder],
   );
   const groupedDeck = useMemo(() => {
-    // Card metadata improves the presentation, but it must never gate access to
-    // a finished deck. Restored decks can open while the external catalog is
-    // unavailable, so keep their stable deck order in one honest section until
-    // every card can be classified.
-    if (cardFactsLoading || cardFactsError) {
-      return { "Complete deck": orderedDeckRows };
-    }
     const commanderKeys = new Set(
-      [chosenPreview.card, selectedSecondCommander?.name]
+      [selectedCommander?.name, selectedSecondCommander?.name, chosenPreview.card]
         .filter(Boolean)
         .map((name) => cardFactKey(name as string)),
     );
+    const isCommanderRow = (row: DeckRow) =>
+      isCommanderFormat(format) && commanderKeys.has(cardFactKey(row.name));
+    // Card metadata improves the presentation, but it must never gate access to
+    // a finished deck. Restored decks can open while the external catalog is
+    // unavailable. The commander remains separate from the other 99 cards even
+    // while the rest stay in one honest, stable-order section.
+    if (cardFactsLoading || cardFactsError) {
+      const commanderRows = orderedDeckRows.filter(isCommanderRow);
+      const mainDeckRows = orderedDeckRows.filter((row) => !isCommanderRow(row));
+      return {
+        ...(commanderRows.length ? { Commander: commanderRows } : {}),
+        "Complete deck": mainDeckRows,
+      };
+    }
     const groups: Record<string, DeckRow[]> = {};
     for (const row of orderedDeckRows) {
       const fact = cardFacts[cardFactKey(row.name)];
-      const group = fact
-        ? cardGroup(fact, isCommanderFormat(format) && commanderKeys.has(cardFactKey(row.name)))
+      const group = isCommanderRow(row)
+        ? "Commander"
+        : fact
+        ? cardGroup(fact, false)
         : "Details pending";
       (groups[group] ||= []).push(row);
     }
     return groups;
-  }, [orderedDeckRows, cardFacts, cardFactsLoading, cardFactsError, format, chosenPreview.card, selectedSecondCommander?.name]);
+  }, [orderedDeckRows, cardFacts, cardFactsLoading, cardFactsError, format, selectedCommander?.name, selectedSecondCommander?.name, chosenPreview.card]);
   // The card fact used for pricing: the player's chosen specific printing
   // (right-click on a row) if they picked one, otherwise whatever printing
   // Scryfall returned by default. Only the prices differ; everything else
@@ -6860,9 +6869,9 @@ export default function Home() {
                   </aside>
                   <div className="type-columns">
                     {[
+                      "Commander",
                       "Complete deck",
                       "Details pending",
-                      "Commander",
                       "Creatures",
                       "Planeswalkers",
                       "Instants",
