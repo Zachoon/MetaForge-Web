@@ -1048,6 +1048,7 @@ const cardFactKey = (name: string) =>
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
+const scryfallLookupName = (name: string) => String(name || "").split(/\s*\/\/\s*/)[0].trim();
 const BASIC_LANDS: Record<string, string> = {
   W: "Plains",
   U: "Island",
@@ -4021,7 +4022,7 @@ export default function Home() {
           const response = await fetch("https://api.scryfall.com/cards/collection", {
             method: "POST",
             headers: { "Content-Type": "application/json", Accept: "application/json" },
-            body: JSON.stringify({ identifiers: names.map((name) => ({ name })) }),
+            body: JSON.stringify({ identifiers: names.map((name) => ({ name: scryfallLookupName(name) })) }),
           });
           const data = await response.json();
           candidates = data.data || [];

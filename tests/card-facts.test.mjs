@@ -44,3 +44,38 @@ test("names absent from both catalogs remain explicitly unresolved", async (t) =
   assert.deepEqual(body.cards, []);
   assert.deepEqual(body.unresolved, ["Definitely Not A Real Card"]);
 });
+
+test("queries double-faced cards by the front face and returns the canonical full card", async (t) => {
+  let requestedName = "";
+  t.mock.method(globalThis, "fetch", async (_url, init) => {
+    requestedName = JSON.parse(init.body).identifiers[0].name;
+    return Response.json({
+      data: [{
+        name: "Etali, Primal Conqueror // Etali, Primal Sickness",
+        type_line: "Legendary Creature — Elder Dinosaur // Legendary Creature — Phyrexian Elder Dinosaur",
+        card_faces: [{ name: "Etali, Primal Conqueror" }, { name: "Etali, Primal Sickness" }],
+      }],
+      not_found: [],
+    });
+  });
+  const response = await handleCardFacts(request({ names: ["Etali, Primal Conqueror // Etali, Primal Sickness"] }));
+  const body = await response.json();
+  assert.equal(requestedName, "Etali, Primal Conqueror");
+  assert.equal(body.cards[0].name, "Etali, Primal Conqueror // Etali, Primal Sickness");
+  assert.deepEqual(body.unresolved, []);
+});
+
+test("accepts an Arena front-face name when Scryfall returns the canonical double-faced name", async (t) => {
+  t.mock.method(globalThis, "fetch", async () => Response.json({
+    data: [{
+      name: "Etali, Primal Conqueror // Etali, Primal Sickness",
+      type_line: "Legendary Creature — Elder Dinosaur // Legendary Creature — Phyrexian Elder Dinosaur",
+      card_faces: [{ name: "Etali, Primal Conqueror" }, { name: "Etali, Primal Sickness" }],
+    }],
+    not_found: [],
+  }));
+  const response = await handleCardFacts(request({ names: ["Etali, Primal Conqueror"] }));
+  const body = await response.json();
+  assert.equal(body.cards[0].name, "Etali, Primal Conqueror // Etali, Primal Sickness");
+  assert.deepEqual(body.unresolved, []);
+});

@@ -50,7 +50,8 @@ export function commanderOptionFromCard(card) {
 export async function resolvePastedCommanderCandidate({ deckText, formatTerms, mapCard, fetchImpl = fetch }) {
   const candidateName = extractPastedCommanderName(deckText);
   if (!candidateName) return null;
-  const query = encodeURIComponent(`${formatTerms} is:commander !"${candidateName}"`);
+  const lookupName = candidateName.split(/\s*\/\/\s*/)[0].trim();
+  const query = encodeURIComponent(`${formatTerms} is:commander !"${lookupName}"`);
   const response = await fetchImpl(`https://api.scryfall.com/cards/search?q=${query}`);
   if (!response.ok) return null;
   const data = await response.json();

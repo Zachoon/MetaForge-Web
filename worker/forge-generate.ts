@@ -191,6 +191,8 @@ const cardFactKey = (name: string) =>
     .trim()
     .toLowerCase();
 
+const scryfallLookupName = (name: string) => String(name || "").split(/\s*\/\/\s*/)[0].trim();
+
 const BASIC_LANDS: Record<string, string> = { W: "Plains", U: "Island", B: "Swamp", R: "Mountain", G: "Forest" };
 const BASIC_LAND_KEYS = new Set([...Object.values(BASIC_LANDS), "Wastes"].map(cardFactKey));
 
@@ -335,10 +337,17 @@ async function resolveImportedDecklist(text: string, poolCards: NativeForgeCard[
       const response = await fetchScryfallWithRetry("https://api.scryfall.com/cards/collection", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifiers: chunk.map((row) => ({ name: row.name })) }),
+        body: JSON.stringify({ identifiers: chunk.map((row) => ({ name: scryfallLookupName(row.name) })) }),
       }, 3, counter);
       const data: any = await response.json();
-      for (const rawCard of data.data || []) rawByKey.set(cardFactKey(rawCard.name), rawCard);
+      for (const rawCard of data.data || []) {
+        const aliases = [
+          rawCard.name,
+          scryfallLookupName(rawCard.name),
+          ...(rawCard.card_faces || []).map((face: any) => face.name),
+        ].filter(Boolean);
+        for (const alias of aliases) rawByKey.set(cardFactKey(alias), rawCard);
+      }
     } catch {
       /* Unresolved names are reported below via the unresolvedNames list. */
     }

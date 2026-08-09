@@ -86,6 +86,22 @@ test("resolvePastedCommanderCandidate resolves a double-faced commander and stor
   assert.deepEqual(resolved.colors, ["R", "U"]);
 });
 
+test("an Arena-style full double-faced commander name is queried by its front face", async () => {
+  let requestedUrl = "";
+  const resolved = await resolvePastedCommanderCandidate({
+    deckText: `1 Sol Ring\n\n1 Etali, Primal Conqueror // Etali, Primal Sickness`,
+    formatTerms: "legal:commander",
+    mapCard: commanderOptionFromCard,
+    fetchImpl: async (url) => {
+      requestedUrl = url;
+      return { ok: true, json: async () => ({ data: [{ name: "Etali, Primal Conqueror // Etali, Primal Sickness", color_identity: ["G", "R"] }] }) };
+    },
+  });
+  assert.ok(requestedUrl.includes(encodeURIComponent('!"Etali, Primal Conqueror"')));
+  assert.ok(!decodeURIComponent(requestedUrl).includes("Primal Sickness"));
+  assert.equal(resolved.name, "Etali, Primal Conqueror // Etali, Primal Sickness");
+});
+
 test("resolvePastedCommanderCandidate resolves to null when the isolated trailing card isn't actually commander-eligible", async () => {
   const resolved = await resolvePastedCommanderCandidate({
     deckText: IRON_MAN_LIST,

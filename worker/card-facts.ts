@@ -10,6 +10,8 @@ const json = (body: unknown, status = 200) => Response.json(body, {
   headers: { "Cache-Control": "private, max-age=300" },
 });
 
+const scryfallLookupName = (name: string) => String(name || "").split(/\s*\/\/\s*/)[0].trim();
+
 async function fetchCollection(names: string[]) {
   for (let attempt = 0; attempt < 1; attempt += 1) {
     let response: Response;
@@ -17,7 +19,11 @@ async function fetchCollection(names: string[]) {
       response = await fetch("https://api.scryfall.com/cards/collection", {
         method: "POST",
         headers: { ...SCRYFALL_HEADERS, "Content-Type": "application/json" },
-        body: JSON.stringify({ identifiers: names.map((name) => ({ name })) }),
+        // Scryfall's collection endpoint rejects canonical transform names in
+        // "Front // Back" form even though its response uses that full name.
+        // Query the castable/front face and preserve the canonical record it
+        // returns so the client can index both faces and the full display name.
+        body: JSON.stringify({ identifiers: names.map((name) => ({ name: scryfallLookupName(name) })) }),
         signal: AbortSignal.timeout(6000),
       });
     } catch {
@@ -61,9 +67,16 @@ export async function handleCardFacts(request: Request): Promise<Response> {
     }
     const payload: any = await response.json();
     cards.push(...(Array.isArray(payload?.data) ? payload.data : []));
-    unresolved.push(...(Array.isArray(payload?.not_found) ? payload.not_found.map((entry: any) => String(entry?.name || "")).filter(Boolean) : []));
+    const originalByLookup = new Map(chunk.map((name) => [scryfallLookupName(name).toLowerCase(), name]));
+    unresolved.push(...(Array.isArray(payload?.not_found) ? payload.not_found
+      .map((entry: any) => originalByLookup.get(String(entry?.name || "").toLowerCase()) || String(entry?.name || ""))
+      .filter(Boolean) : []));
   }
-  const resolvedNames = new Set(cards.map((card) => String(card?.name || "").toLowerCase()));
+  const resolvedNames = new Set(cards.flatMap((card) => [
+    card?.name,
+    scryfallLookupName(card?.name),
+    ...(Array.isArray(card?.card_faces) ? card.card_faces.map((face: any) => face?.name) : []),
+  ]).filter(Boolean).map((name) => String(name).toLowerCase()));
   for (const name of names) {
     if (resolvedNames.has(name.toLowerCase())) continue;
     const local = (CARD_TYPE_INDEX as Record<string, [string, string]>)[name.toLowerCase()];
