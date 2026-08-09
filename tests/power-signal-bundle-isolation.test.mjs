@@ -37,7 +37,7 @@ const ENGINE_INTERNAL_IDENTIFIERS = [
   "isResourceMultiplier",
   "CATEGORY_WEIGHT",
   "POWER_TIER_INDEX",
-  "rebuildExcludingHighCeilingCards",
+  "repairPowerOffenders",
   "commanderAmplifiesSpells",
   "auditPowerTier",
 ];
@@ -53,7 +53,7 @@ test("power-signal engine internals never reach the client bundle", () => {
 test("power-signal engine internals are present server-side, confirming the check above isn't vacuous", () => {
   assert.ok(fs.existsSync(new URL("../dist/server/", import.meta.url)), "dist/server must exist — run `npm run build` first");
   const serverSource = fs.readFileSync(SERVER_FILE, "utf8");
-  for (const identifier of ["isRepeatableValueEngine", "CATEGORY_WEIGHT", "rebuildExcludingHighCeilingCards", "commanderAmplifiesSpells"]) {
+  for (const identifier of ["isRepeatableValueEngine", "CATEGORY_WEIGHT", "repairPowerOffenders", "commanderAmplifiesSpells"]) {
     assert.match(serverSource, new RegExp(identifier), `${identifier} should be present in the server bundle — if this fails, the client-side check above may be passing vacuously`);
   }
 });

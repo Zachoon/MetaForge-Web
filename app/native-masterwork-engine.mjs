@@ -489,27 +489,6 @@ function auditPowerTier(powerSignal, requestedTier) {
   };
 }
 
-// Only ever called for a requested Casual build that measured materially
-// higher (see forgeNativeMasterwork) — never for imported decks, whose
-// contract preserves the player's submitted list unconditionally.
-// Excludes exactly the cards evaluateCommanderPowerSignal itself flagged
-// as high-ceiling from the eligible spell pool, then re-runs the same
-// pure selection function for the same variant. If the commander itself
-// is the (or the only) flagged card, no nonland exclusion can fix that —
-// this returns null rather than pretending a rebuild happened, and the
-// caller falls back to an honest disclosed mismatch.
-function rebuildExcludingHighCeilingCards(input, variant, analysis, excludedNames) {
-  if (!variant || !excludedNames?.length) return null;
-  const excluded = new Set(excludedNames.map(normalized));
-  const filteredSpells = analysis.spells.filter((entry) => !excluded.has(normalized(entry.card.name)));
-  if (filteredSpells.length === analysis.spells.length) return null;
-  try {
-    return buildCandidate(input, variant, { ...analysis, spells: filteredSpells });
-  } catch {
-    return null;
-  }
-}
-
 // Same broken-promise shape as budget above: the Blueprint's complexity
 // selector ("Accessible", "Technical", "Maximum depth") was never read past
 // its own form state. Word count is a blunt but honest proxy for how much a
@@ -2326,6 +2305,168 @@ export function auditBudgetSubstitutions(input, options = {}) {
   };
 }
 
+// Phase 2C's read-only audit, mirroring auditBudgetSubstitutions'
+// architecture exactly. The bounded repair below consumes this static
+// snapshot; the audit itself changes no scoring or construction. Identifies every selected
+// nonland card the engine ALREADY recognizes as a power signal
+// (powerSignalCategoryFor — the same detector powerTierScoreFor and the
+// post-hoc evaluateCommanderPowerSignal both use), and for each asks
+// whether a same-slot, strictly-lower-power (or power-neutral)
+// alternative exists that doesn't cost a tracked role floor or hard
+// gate — the exact same question auditBudgetSubstitutions asks about
+// price, asked here about power instead.
+export function auditPowerSubstitutions(input, options = {}) {
+  const variant = options.candidate
+    ? VARIANTS.find((entry) => entry.id === options.candidate.id) || VARIANTS.find((entry) => entry.id === options.variantId) || VARIANTS[1]
+    : VARIANTS.find((entry) => entry.id === options.variantId) || VARIANTS[1];
+  const evidenceByName = new Map((input.evidence || []).map((entry) => [normalized(entry.name), entry]));
+  const analysis = prepareForgeAnalysis(input, evidenceByName);
+  const candidate = options.candidate || buildCandidateAttempt(input, variant, analysis);
+
+  const analyzedByName = new Map(analysis.cards.map((entry) => [normalized(entry.card.name), entry]));
+  const scored = analysis.cards.map((entry) => ({ entry, scored: scoreCard(entry, input, variant, analysis.context) }));
+  const scoredByName = new Map(scored.map((item) => [normalized(item.entry.card.name), item]));
+  const spellNames = new Set(analysis.spells.map((entry) => normalized(entry.card.name)));
+  const excludedAlternativeNames = new Set((options.excludedNames || []).map(normalized));
+
+  const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
+  const copyLimit = singleton ? 1 : 4;
+  const targets = roleTargets(input.format, input.strategy);
+  const quantityByName = new Map(candidate.rows.map((row) => [normalized(row.name), row.quantity]));
+  const roleCounts = new Map();
+  for (const row of candidate.rows) for (const role of row.roles || []) roleCounts.set(role, (roleCounts.get(role) || 0) + row.quantity);
+
+  const offenders = candidate.rows.filter((row) => {
+    if (row.roles.includes("land") || row.roles.includes("commander")) return false;
+    const entry = analyzedByName.get(normalized(row.name));
+    return entry && powerSignalCategoryFor(entry.card) != null;
+  });
+
+  const results = offenders.map((row) => {
+    const key = normalized(row.name);
+    const entry = analyzedByName.get(key);
+    const own = scoredByName.get(key);
+    const category = powerSignalCategoryFor(entry.card);
+    const ownWeight = POWER_CATEGORY_WEIGHT[category] || 1;
+    const roles = entry.roles.filter((role) => role !== "land");
+    const trackedRoles = roles.filter((role) => TRACKED_LOAD_BEARING_ROLES.includes(role));
+    const isLuxuryCard = trackedRoles.length === 0;
+
+    // "Lower power" = no recognized category at all, or a category whose
+    // CATEGORY_WEIGHT is strictly less than this card's own — the same
+    // weight table powerTierScoreFor itself reads, so "lower power" here
+    // means exactly what the construction-time bias already means by it.
+    const lowerPowerAndLegal = (candidateEntry, candidateKey) => {
+      if (candidateKey === key || !spellNames.has(candidateKey)) return false;
+      if (excludedAlternativeNames.has(candidateKey)) return false;
+      if ((quantityByName.get(candidateKey) || 0) >= copyLimit) return false;
+      const altCategory = powerSignalCategoryFor(candidateEntry.card);
+      const altWeight = altCategory ? (POWER_CATEGORY_WEIGHT[altCategory] || 1) : 0;
+      return altWeight < ownWeight;
+    };
+
+    const pool = scored
+      .filter(({ entry: candidateEntry }) => {
+        const candidateKey = normalized(candidateEntry.card.name);
+        if (!lowerPowerAndLegal(candidateEntry, candidateKey)) return false;
+        return isLuxuryCard || trackedRoles.some((role) => candidateEntry.roles.includes(role));
+      })
+      .sort((a, b) => b.scored.score - a.scored.score);
+
+    const evaluateSwap = (option) => {
+      const optionKey = normalized(option.entry.card.name);
+      const trialRoleCounts = new Map(roleCounts);
+      for (const role of entry.roles) trialRoleCounts.set(role, (trialRoleCounts.get(role) || 0) - 1);
+      for (const role of option.entry.roles) trialRoleCounts.set(role, (trialRoleCounts.get(role) || 0) + 1);
+      const alreadyPresent = quantityByName.has(optionKey);
+      const trialRows = candidate.rows
+        .map((r) => {
+          const rKey = normalized(r.name);
+          if (rKey === key) return { ...r, quantity: r.quantity - 1 };
+          if (alreadyPresent && rKey === optionKey) return { ...r, quantity: r.quantity + 1 };
+          return r;
+        })
+        .filter((r) => r.quantity > 0);
+      if (!alreadyPresent) {
+        trialRows.push({ name: option.entry.card.name, quantity: 1, roles: option.entry.roles, cmc: option.entry.cmc, colorPips: option.entry.colorPips });
+      }
+      const trialEvaluation = evaluateCandidate(trialRows, trialRoleCounts, input, variant);
+      const brokenRole = Object.entries(targets).find(
+        ([role, target]) => (roleCounts.get(role) || 0) >= target && (trialRoleCounts.get(role) || 0) < target,
+      );
+      const hardGateImpact = brokenRole
+        ? `role floor: ${brokenRole[0]} would fall below ${brokenRole[1]}`
+        : trialEvaluation.roleCoverage < 0.45
+          ? "structural gate: role coverage would fall below the 45% floor"
+          : trialEvaluation.curveHealth < 45
+            ? "structural gate: curve health would fall below the 45/100 floor"
+            : "none";
+      return { hardGateImpact, deckScoreDelta: trialEvaluation.score - candidate.evaluation.score };
+    };
+
+    const evaluatedPool = pool.map((option) => ({ option, swap: evaluateSwap(option) }));
+    const compatibleAlternatives = evaluatedPool.map(({ option, swap }) => ({
+      name: option.entry.card.name,
+      powerCategory: powerSignalCategoryFor(option.entry.card),
+      score: Number(option.scored.score.toFixed(2)),
+      hardGateImpact: swap.hardGateImpact,
+    }));
+
+    let best = null;
+    let hardGateImpact;
+    if (!pool.length) {
+      hardGateImpact = isLuxuryCard ? "no lower-power legal alternative exists" : "no lower-power legal alternative shares a tracked load-bearing role";
+    } else if (isLuxuryCard) {
+      const safe = evaluatedPool.find(({ swap }) => swap.hardGateImpact === "none");
+      if (safe) {
+        best = safe.option;
+        hardGateImpact = "none";
+      } else {
+        if (!best) hardGateImpact = "no lower-power legal alternative preserves this deck's hard-gate metrics";
+      }
+    } else {
+      const safe = evaluatedPool.find(({ swap }) => swap.hardGateImpact === "none");
+      best = safe?.option || pool[0];
+      hardGateImpact = safe?.swap.hardGateImpact || evaluatedPool[0].swap.hardGateImpact;
+    }
+
+    const alternative = best
+      ? { name: best.entry.card.name, powerCategory: powerSignalCategoryFor(best.entry.card), score: Number(best.scored.score.toFixed(2)) }
+      : null;
+    const scoreDifference = best ? Number((own.scored.score - best.scored.score).toFixed(2)) : null;
+    const structurallyRequired = !alternative || hardGateImpact !== "none";
+
+    return {
+      name: row.name,
+      priceUsd: entry.card.priceUsd ?? null,
+      powerCategory: category,
+      powerCategoryWeight: ownWeight,
+      powerContribution: Number((entry.powerTierScore || 0).toFixed(2)),
+      roles,
+      trackedRoles,
+      luxuryCard: isLuxuryCard,
+      score: Number(own.scored.score.toFixed(2)),
+      alternative,
+      compatibleAlternatives,
+      scoreDifference,
+      hardGateImpact,
+      structurallyRequired,
+      conclusion: !alternative
+        ? hardGateImpact
+        : structurallyRequired
+          ? "structurally required for Casual"
+          : "unjustified high-power inclusion for Casual",
+    };
+  });
+
+  return {
+    targetPowerTier: input.targetPowerTier || null,
+    variantId: variant.id,
+    offenderCount: results.length,
+    offenders: results,
+  };
+}
+
 // Phase 2B: which budget preferences actually warrant a repair pass. No
 // existing product rule defines a narrower Moderate-investment threshold,
 // and inventing one here would be exactly the kind of guessed magic
@@ -2399,6 +2540,8 @@ export function repairBudgetOffenders(input, candidate) {
     savingsAppliedUsd: 0,
     skippedNoSafeAlternative: 0,
     revertedByFinalValidation: false,
+    removedNames: [],
+    alternativesAddedNames: [],
   };
   if (!budgetIntentWarrantsRepair(input.budget)) {
     diagnostics.completed = true;
@@ -2516,6 +2659,8 @@ export function repairBudgetOffenders(input, candidate) {
   // revalidation the design calls for, not a second repair attempt.
   const after = auditBudgetSubstitutions(input, { candidate: repaired, priceThresholdUsd: BUDGET_CONSCIOUS_REPAIR_THRESHOLD_USD });
   diagnostics.appliedCount = swaps.length;
+  diagnostics.removedNames = swaps.map((swap) => swap.offenderName);
+  diagnostics.alternativesAddedNames = swaps.map((swap) => swap.pickName);
   diagnostics.savingsAppliedUsd = Number(swaps.reduce((sum, swap) => sum + swap.savedUsd, 0).toFixed(2));
   diagnostics.avoidableSpendAfterUsd = after.budgetDebt.totalAvoidableSpendUsd;
   diagnostics.completed = true;
@@ -2528,11 +2673,129 @@ function applyBudgetRepair(input, built) {
   return repairBudgetOffenders(input, built).candidate;
 }
 
+function powerSignalForCandidate(candidate, input) {
+  const structuralCards = buildSelectedStructuralCards(candidate, input);
+  const structuralAnalysis = buildForgeStructuralAnalysis(structuralCards, { commanderName: input.commander?.name || "" });
+  return evaluateCommanderPowerSignal(structuralCards, structuralAnalysis.graph);
+}
+
+// Phase 2C: one static, claim-aware repair snapshot. It runs only after
+// Phase 2B has completed, never invokes construction or budget analysis,
+// and therefore cannot undo a budget cut through a second pool rebuild.
+export function repairPowerOffenders(input, candidate) {
+  const already = candidate.powerRepair;
+  if (already?.completed && already.targetTier === (input.targetPowerTier || null)) return { candidate, powerRepair: already };
+
+  const before = ["Commander", "Brawl", "Standard Brawl"].includes(input.format) ? powerSignalForCandidate(candidate, input) : null;
+  const diagnostics = {
+    attempted: false,
+    completed: false,
+    targetTier: input.targetPowerTier || null,
+    signalScoreBefore: before?.signalScore ?? null,
+    signalScoreAfter: before?.signalScore ?? null,
+    tierBefore: before?.tier ?? null,
+    tierAfter: before?.tier ?? null,
+    appliedCount: 0,
+    skippedNoSafeAlternative: 0,
+    revertedByFinalValidation: false,
+    revertedBecauseNoPowerImprovement: false,
+    removedNames: [],
+    alternativesAddedNames: [],
+  };
+  if (input.targetPowerTier !== "Casual" || !before || before.signalScore <= 2) {
+    diagnostics.completed = true;
+    return { candidate: { ...candidate, powerRepair: diagnostics }, powerRepair: diagnostics };
+  }
+
+  diagnostics.attempted = true;
+  const budgetRemoved = candidate.budgetRepair?.removedNames || [];
+  const audit = auditPowerSubstitutions(input, { candidate, excludedNames: budgetRemoved });
+  diagnostics.skippedNoSafeAlternative = audit.offenders.filter(
+    (entry) => entry.conclusion !== "unjustified high-power inclusion for Casual",
+  ).length;
+  const orderedOffenders = audit.offenders
+    .filter((entry) => entry.conclusion === "unjustified high-power inclusion for Casual")
+    .sort((a, b) => b.powerCategoryWeight - a.powerCategoryWeight || a.name.localeCompare(b.name));
+
+  const originalRoleCounts = new Map();
+  for (const row of candidate.rows) for (const role of row.roles || []) originalRoleCounts.set(role, (originalRoleCounts.get(role) || 0) + row.quantity);
+  const targets = roleTargets(input.format, input.strategy);
+  const selected = new Set(candidate.rows.map((row) => normalized(row.name)));
+  const forbidden = new Set(budgetRemoved.map(normalized));
+  const claimed = new Set();
+  const cut = new Set();
+  const swaps = [];
+  for (const offender of orderedOffenders) {
+    const pick = (offender.compatibleAlternatives || []).find((alt) => {
+      const key = normalized(alt.name);
+      return alt.hardGateImpact === "none" && !selected.has(key) && !claimed.has(key) && !cut.has(key) && !forbidden.has(key);
+    });
+    if (!pick) { diagnostics.skippedNoSafeAlternative += 1; continue; }
+    claimed.add(normalized(pick.name));
+    cut.add(normalized(offender.name));
+    swaps.push({ offenderName: offender.name, pickName: pick.name });
+  }
+  if (!swaps.length) {
+    diagnostics.completed = true;
+    return { candidate: { ...candidate, powerRepair: diagnostics }, powerRepair: diagnostics };
+  }
+
+  const evidenceByName = new Map((input.evidence || []).map((entry) => [normalized(entry.name), entry]));
+  const analysis = prepareForgeAnalysis(input, evidenceByName);
+  const analyzedByName = new Map(analysis.cards.map((entry) => [normalized(entry.card.name), entry]));
+  let rows = candidate.rows.map((row) => ({ ...row }));
+  for (const swap of swaps) {
+    rows = rows.map((row) => normalized(row.name) === normalized(swap.offenderName) ? { ...row, quantity: row.quantity - 1 } : row).filter((row) => row.quantity > 0);
+    const entry = analyzedByName.get(normalized(swap.pickName));
+    rows.push({
+      quantity: 1, name: entry.card.name, roles: entry.roles, score: Number(entry.roleScore.toFixed(3)), cmc: entry.cmc,
+      directTribes: entry.directTribes, tribalSupport: entry.tribalSupport, identityHits: entry.identityHits,
+      blueprintRoleHits: entry.blueprintRoleHits, mechanics: entry.mechanics, colorPips: entry.colorPips,
+      producesColors: nonlandProducedColorsOf(entry.card),
+    });
+  }
+
+  const roleCounts = new Map();
+  for (const row of rows) for (const role of row.roles || []) roleCounts.set(role, (roleCounts.get(role) || 0) + row.quantity);
+  const variant = VARIANTS.find((entry) => entry.id === candidate.id);
+  const evaluation = evaluateCandidate(rows, roleCounts, input, variant);
+  const brokenRole = Object.entries(targets).find(([role, target]) => (originalRoleCounts.get(role) || 0) >= target && (roleCounts.get(role) || 0) < target);
+  if (!variant || evaluation.roleCoverage < 0.45 || evaluation.curveHealth < 45 || brokenRole) {
+    diagnostics.revertedByFinalValidation = true;
+    diagnostics.completed = true;
+    return { candidate: { ...candidate, powerRepair: diagnostics }, powerRepair: diagnostics };
+  }
+
+  const repaired = { ...candidate, rows, deckText: rows.map((row) => `${row.quantity} ${row.name}`).join("\n"), evaluation, score: evaluation.score };
+  const after = powerSignalForCandidate(repaired, input);
+  diagnostics.signalScoreAfter = after.signalScore;
+  diagnostics.tierAfter = after.tier;
+  const improved = after.signalScore < before.signalScore || POWER_TIER_INDEX[after.tier] < POWER_TIER_INDEX[before.tier];
+  if (!improved) {
+    diagnostics.revertedBecauseNoPowerImprovement = true;
+    diagnostics.completed = true;
+    diagnostics.signalScoreAfter = before.signalScore;
+    diagnostics.tierAfter = before.tier;
+    return { candidate: { ...candidate, powerRepair: diagnostics }, powerRepair: diagnostics };
+  }
+
+  diagnostics.appliedCount = swaps.length;
+  diagnostics.removedNames = swaps.map((swap) => swap.offenderName);
+  diagnostics.alternativesAddedNames = swaps.map((swap) => swap.pickName);
+  diagnostics.completed = true;
+  const finished = { ...repaired, powerRepair: diagnostics };
+  return { candidate: finished, powerRepair: diagnostics };
+}
+
+function applyPowerRepair(input, candidate) {
+  return repairPowerOffenders(input, candidate).candidate;
+}
+
 export function forgeNativeMasterwork(input) {
   if (!input || !Array.isArray(input.cards) || !input.cards.length) throw new Error("Native Forge requires a verified card pool");
   const evidenceByName = new Map((input.evidence || []).map((entry) => [normalized(entry.name), entry]));
   const analysis = prepareForgeAnalysis(input, evidenceByName);
-  const candidates = VARIANTS.map((variant) => buildCandidate(input, variant, analysis));
+  const candidates = VARIANTS.map((variant) => applyPowerRepair(input, buildCandidate(input, variant, analysis)));
   const structuralTournament = runNativeMasterworkTournament(candidates, { format: input.format, target: input.target });
   const { tournament, practicalTiebreak } = applyPracticalTiebreak(structuralTournament, candidates, input);
   const verdictById = new Map(tournament.results.map((result) => [result.id, result]));
@@ -2546,52 +2809,19 @@ export function forgeNativeMasterwork(input) {
   let powerSignal = ["Commander", "Brawl", "Standard Brawl"].includes(input.format) ? evaluateCommanderPowerSignal(structuralCards, structuralAnalysis.graph) : null;
   let powerAudit = null;
 
-  // Requested tier is a construction-time bias (powerTierScoreFor above),
-  // never a hard exclusion — so a thin pool, or role/curve requirements
-  // that outweigh the bias, can still finish somewhere other than
-  // requested. A Casual request that measured materially higher gets one
-  // real rebuild attempt, excluding exactly the flagged high-ceiling
-  // cards from the eligible pool and re-selecting for the same variant.
-  // Any other direction of mismatch (a High-Power/Maximum request that
-  // measured lower, say — often just an honest reflection of a thin
-  // pool, not a defect) is disclosed, never silently forced upward.
+  // Requested tier remains a construction-time bias, while the bounded
+  // per-variant repair above is the only corrective pass. Other target
+  // tiers are disclosed honestly and are never forced upward.
   if (powerSignal && input.targetPowerTier) {
     const audit = auditPowerTier(powerSignal, input.targetPowerTier);
-    powerAudit = audit;
-    if (audit?.mismatch && audit.direction === "higherThanRequested" && input.targetPowerTier === "Casual") {
-      const variant = VARIANTS.find((entry) => entry.id === selected.id);
-      const rebuilt = rebuildExcludingHighCeilingCards(input, variant, analysis, powerSignal.highCeilingCards);
-      if (rebuilt) {
-        const rebuiltStructuralCards = buildSelectedStructuralCards(rebuilt, input);
-        const rebuiltStructuralAnalysis = buildForgeStructuralAnalysis(rebuiltStructuralCards, { commanderName: input.commander?.name || "" });
-        const rebuiltPowerSignal = evaluateCommanderPowerSignal(rebuiltStructuralCards, rebuiltStructuralAnalysis.graph);
-        const rebuiltAudit = auditPowerTier(rebuiltPowerSignal, input.targetPowerTier);
-        const improved = POWER_TIER_INDEX[rebuiltPowerSignal.tier] < POWER_TIER_INDEX[powerSignal.tier];
-        if (improved) {
-          // The rebuilt candidate replaces the delivered decklist even
-          // when it only partially closes the gap (Maximum -> High-Power
-          // while targeting Casual, say) — "rebuild within the
-          // constraint when possible" means take the real improvement,
-          // never discard it just because it fell short. rebuildImproved
-          // and rebuildReachedTarget stay independently honest either way.
-          const rebuiltCandidate = { ...selected, ...rebuilt, id: selected.id, tournament: selected.tournament };
-          ranked = ranked.map((candidate) => (candidate.id === selected.id ? rebuiltCandidate : candidate));
-          selected = rebuiltCandidate;
-          structuralCards = rebuiltStructuralCards;
-          structuralAnalysis = rebuiltStructuralAnalysis;
-          powerSignal = rebuiltPowerSignal;
-          powerAudit = { ...rebuiltAudit, rebuildAttempted: true, rebuildImproved: true, rebuildReachedTarget: !rebuiltAudit.mismatch, originalMeasuredTier: audit.measured };
-        } else {
-          // The rebuild ran but produced no real improvement (a thin
-          // pool with no legal alternative worth shipping) — the
-          // original, pre-rebuild candidate stays delivered, and the
-          // audit says so honestly rather than claiming any progress.
-          powerAudit = { ...audit, rebuildAttempted: true, rebuildImproved: false, rebuildReachedTarget: false };
-        }
-      } else {
-        powerAudit = { ...audit, rebuildAttempted: false, rebuildImproved: false, rebuildReachedTarget: false };
-      }
-    }
+    const repair = selected.powerRepair;
+    powerAudit = {
+      ...audit,
+      rebuildAttempted: Boolean(repair?.attempted),
+      rebuildImproved: Boolean(repair?.appliedCount),
+      rebuildReachedTarget: powerSignal.signalScore <= 2,
+      ...(repair?.attempted ? { originalMeasuredTier: repair.tierBefore } : {}),
+    };
   }
 
   const reasoning = explainNativeMasterworkDecision(ranked, tournament);

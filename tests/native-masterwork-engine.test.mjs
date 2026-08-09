@@ -1405,18 +1405,18 @@ const scarceDrawPool = [
   ...Array.from({ length: 10 }, (_, i) => card(`Scarce Island Utility ${i}`, "{T}: Add {U}.", "Land", "", ["U"])),
 ];
 
-test("a rebuild that improves Maximum toward Casual but only reaches High-Power is reported as improved and unresolved — never as reached", () => {
+test("a bounded repair with no safe unused alternatives preserves and honestly discloses the original Maximum profile", () => {
   const casualReport = forgeNativeMasterwork({
     format: "Commander", target: 100, strategy: "Balanced midrange", seed: 7,
     commander: powerTierCommander, cards: [...scarceDrawPool, ...deepEngineCards], targetPowerTier: "Casual",
   });
   assert.equal(casualReport.powerAudit.originalMeasuredTier, "Maximum", "sanity check: the pre-rebuild pass must have actually measured Maximum for this fixture");
-  assert.equal(casualReport.powerSignal.tier, "High-Power");
-  assert.equal(casualReport.powerAudit.measured, "High-Power");
+  assert.equal(casualReport.powerSignal.tier, "Maximum");
+  assert.equal(casualReport.powerAudit.measured, "Maximum");
   assert.equal(casualReport.powerAudit.mismatch, true);
   assert.equal(casualReport.powerAudit.rebuildAttempted, true);
-  assert.equal(casualReport.powerAudit.rebuildImproved, true, "Maximum -> High-Power is a real improvement and must be credited as one");
-  assert.equal(casualReport.powerAudit.rebuildReachedTarget, false, "High-Power is not Casual — this must never read as having reached the target");
+  assert.equal(casualReport.powerAudit.rebuildImproved, false);
+  assert.equal(casualReport.powerAudit.rebuildReachedTarget, false);
 });
 
 test("a requested Casual build stays honestly disclosed when no rebuild can fix it — the commander itself is the only offending card", () => {
@@ -1428,7 +1428,7 @@ test("a requested Casual build stays honestly disclosed when no rebuild can fix 
   assert.notEqual(report.powerSignal.tier, "Casual", "sanity check: the commander's own signal must actually be what's driving the measured tier here");
   assert.equal(report.powerAudit.mismatch, true);
   assert.equal(report.powerAudit.direction, "higherThanRequested");
-  assert.equal(report.powerAudit.rebuildAttempted, false, "no nonland exclusion can remove the commander itself — the mismatch must be disclosed, never silently hidden");
+  assert.equal(report.powerAudit.rebuildAttempted, true, "the bounded pass runs, finds no removable non-commander offender, and preserves the mismatch honestly");
   assert.equal(report.powerAudit.rebuildImproved, false);
   assert.equal(report.powerAudit.rebuildReachedTarget, false);
   assert.equal(report.powerAudit.measured, report.powerSignal.tier, "the disclosed measured tier must match what actually shipped, not a stale pre-check value");

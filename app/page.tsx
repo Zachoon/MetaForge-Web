@@ -1516,7 +1516,7 @@ export default function Home() {
     // (never rebuilt, never audited against a target that doesn't exist
     // for that path) and for non-Commander-family formats. See
     // native-masterwork-engine.mjs's auditPowerTier/
-    // rebuildExcludingHighCeilingCards.
+    // the bounded server-side Casual power repair.
     powerAudit?: {
       requested: string;
       measured: string;
