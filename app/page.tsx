@@ -45,7 +45,7 @@ import { ForgeWalkthrough, hasSeenWalkthrough } from "./forge-walkthrough";
 import { prepareStoryBenchRevisions, serializeStoryBenchRevision, restoreStoryBenchRevisions } from "./story-bench-recommendation-ledger.mjs";
 import { resolveMasterworkVisualProfile } from "./masterwork-visual-profile.mjs";
 import { MOTIF_ICONS } from "./masterwork-motif-icons";
-import { buildTcgplayerLink, AFFILIATE_DISCLOSURE_TEXT } from "./affiliate-links.mjs";
+import { buildTcgplayerDeckLink, buildTcgplayerLink, AFFILIATE_DISCLOSURE_TEXT } from "./affiliate-links.mjs";
 import { deckFingerprint } from "./deck-fingerprint.mjs";
 import { createPilotingDebrief } from "./piloting-debrief.mjs";
 import { buildCoachingSession } from "./coaching-session.mjs";
@@ -2034,8 +2034,12 @@ export default function Home() {
       : "";
     return titleCandidate && rowNames.has(cardFactKey(titleCandidate))
       ? rowNames.get(cardFactKey(titleCandidate)) || titleCandidate
-      : "";
+      : deckRows[0]?.name || "";
   }, [format, deckRows, nativeMasterworkContext, selectedCommander?.name, selectedSecondCommander?.name, chosenWork.name]);
+  const displayDeckName = activeCommanderName
+    ? `${activeCommanderName} deck`
+    : chosenWork.name;
+  const deckPurchaseLink = buildTcgplayerDeckLink({ rows: deckRows, enabled: tcgplayerAffiliateEnabled });
   // The success/failure boundary itself: chamber === "workbench" only means
   // a build was requested, not that a real, complete deck exists — it's
   // also true for the few seconds a generation is still in flight, and
@@ -5350,10 +5354,10 @@ export default function Home() {
                 </span>
               )}
               <div>
-                <h1>{hasValidatedDeck ? chosenWork.name : benchStatus === "forging" ? "Forging your Masterwork…" : "No deck was completed"}</h1>
+                <h1>{hasValidatedDeck ? displayDeckName : benchStatus === "forging" ? "Building your deck…" : "No deck was completed"}</h1>
                 {hasValidatedDeck ? (
                   <p>
-                    {chosenWork.path} · {format} · Revision{" "}
+                    {activeCommanderName ? `Built around ${activeCommanderName}` : "Your completed deck"} · {format} · Revision{" "}
                     {Math.max(1, revisions.length)}
                   </p>
                 ) : (
@@ -5481,9 +5485,9 @@ export default function Home() {
           <div className={`testing-layout chapter-${activeForgeChapter}-active ${deckViewMode}-deck-view`}>
             {hasValidatedDeck && (
               <div className="deck-reference-strip">
-                <img src={cardImage(chosenPreview.card)} alt="" />
+                <img src={cardImage(activeCommanderName || chosenPreview.card)} alt="" />
                 <div>
-                  <strong>{chosenWork.name}</strong>
+                  <strong>{displayDeckName}</strong>
                   <span>{deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards · {format}</span>
                 </div>
                 <button type="button" onClick={() => setActiveForgeChapter(1)}>View full deck →</button>
@@ -5503,6 +5507,21 @@ export default function Home() {
                 </div>
                 {hasValidatedDeck && (
                   <div className="deck-header-actions">
+                    <span className="deck-header-price" aria-label="Estimated deck market price">
+                      <small>ESTIMATED MARKET PRICE</small>
+                      <strong>${deckPriceTotal.total.toFixed(2)}</strong>
+                      {deckPriceTotal.unpricedCards > 0 && <em>{deckPriceTotal.unpricedCards} card{deckPriceTotal.unpricedCards === 1 ? "" : "s"} still pricing</em>}
+                    </span>
+                    {deckPurchaseLink && (
+                      <a
+                        className="buy-deck-link"
+                        href={deckPurchaseLink.url}
+                        target={deckPurchaseLink.target}
+                        rel={deckPurchaseLink.rel}
+                      >
+                        Buy this deck →
+                      </a>
+                    )}
                     <button
                       onClick={() => navigator.clipboard.writeText(forgedDeck)}
                     >

@@ -42,6 +42,7 @@ const IMPACT_TRACKING_BASE_URL = "https://partner.tcgplayer.com/c/7552660/178096
 
 const TCGPLAYER_PRODUCT_BASE = "https://www.tcgplayer.com/product/";
 const TCGPLAYER_SEARCH_BASE = "https://www.tcgplayer.com/search/magic/product";
+const TCGPLAYER_MASS_ENTRY_BASE = "https://www.tcgplayer.com/massentry";
 
 // The rel value every external MetaForge affiliate-adjacent link must
 // carry: "sponsored" discloses commercial intent to search engines,
@@ -104,6 +105,25 @@ export function buildTcgplayerLink({ cardName, tcgplayerProductId, enabled }) {
     url: buildImpactTrackingUrl(`${TCGPLAYER_SEARCH_BASE}?q=${encodeURIComponent(name)}`),
     label: "Search TCGplayer",
     isExactPrinting: false,
+    target: "_blank",
+    rel: EXTERNAL_LINK_REL,
+  });
+}
+
+// TCGplayer's Mass Entry accepts one `quantity name` item per `||`
+// separator and lets the shopper review printings/conditions before adding
+// anything to their cart. This is a shopping handoff, never a claim that the
+// displayed market estimate is a guaranteed cart total.
+export function buildTcgplayerDeckLink({ rows, enabled }) {
+  if (!enabled || !Array.isArray(rows)) return null;
+  const items = rows
+    .map((row) => ({ quantity: Number(row?.quantity), name: String(row?.name || "").trim() }))
+    .filter((row) => Number.isInteger(row.quantity) && row.quantity > 0 && row.name)
+    .map((row) => `${row.quantity} ${row.name}`);
+  if (!items.length) return null;
+  return Object.freeze({
+    url: buildImpactTrackingUrl(`${TCGPLAYER_MASS_ENTRY_BASE}?c=${encodeURIComponent(items.join("||"))}`),
+    label: "Buy this deck on TCGplayer",
     target: "_blank",
     rel: EXTERNAL_LINK_REL,
   });

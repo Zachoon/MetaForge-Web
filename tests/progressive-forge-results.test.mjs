@@ -143,6 +143,12 @@ test("uses the commander in the current deck instead of stale setup metadata", (
   assert.doesNotMatch(page, /<b>\{chosenPreview\.card\}<\/b>/);
 });
 
+test("names the finished deck in player language instead of an unexplained temper label", () => {
+  assert.match(page, /const displayDeckName = activeCommanderName\s*\? `\$\{activeCommanderName\} deck`/);
+  assert.match(page, /<h1>\{hasValidatedDeck \? displayDeckName/);
+  assert.match(page, /`Built around \$\{activeCommanderName\}`/);
+});
+
 test("each workspace stage exposes one clear contextual next action instead of another control cluster", () => {
   assert.match(page, /className="forge-next-step" aria-label="Recommended next step"/);
   assert.match(page, /Prepare my next game →/);

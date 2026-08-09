@@ -1,9 +1,24 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildTcgplayerLink, buildImpactTrackingUrl, isValidTcgplayerProductId, AFFILIATE_DISCLOSURE_TEXT } from "../app/affiliate-links.mjs";
+import { buildTcgplayerDeckLink, buildTcgplayerLink, buildImpactTrackingUrl, isValidTcgplayerProductId, AFFILIATE_DISCLOSURE_TEXT } from "../app/affiliate-links.mjs";
 
 const EXPECTED_REL = "sponsored nofollow noopener noreferrer";
 const IMPACT_BASE = "https://partner.tcgplayer.com/c/7552660/1780961/21018";
+
+test("builds one affiliate-tracked Mass Entry link for a complete deck", () => {
+  const link = buildTcgplayerDeckLink({
+    enabled: true,
+    rows: [{ quantity: 1, name: "Thanos, the Mad Titan" }, { quantity: 2, name: "Island" }],
+  });
+  assert.ok(link);
+  assert.equal(destinationOf(link.url), `https://www.tcgplayer.com/massentry?c=${encodeURIComponent("1 Thanos, the Mad Titan||2 Island")}`);
+  assert.equal(link.rel, EXPECTED_REL);
+});
+
+test("does not create a deck purchase link when affiliate shopping is disabled or the list is empty", () => {
+  assert.equal(buildTcgplayerDeckLink({ enabled: false, rows: [{ quantity: 1, name: "Sol Ring" }] }), null);
+  assert.equal(buildTcgplayerDeckLink({ enabled: true, rows: [] }), null);
+});
 
 // Decodes a wrapped link's real destination the same way a browser
 // following the redirect would — via the URL/URLSearchParams APIs

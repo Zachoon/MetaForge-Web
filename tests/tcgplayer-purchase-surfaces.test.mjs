@@ -157,9 +157,14 @@ test("\"Accept this experiment\" remains present and untouched as the tablet's p
 });
 
 test("no deck-level \"Shop Missing Cards\"\\/\"Buy on TCGplayer\" CTA exists near the deck price bar — deferred pending cart-deep-link verification", () => {
-  const priceBarBlock = page.match(/className="deck-price-bar"[\s\S]{0,800}/)?.[0];
-  assert.ok(priceBarBlock, "expected to find the deck-price-bar block");
-  assert.doesNotMatch(priceBarBlock, /buildTcgplayerLink|Shop Missing Cards|Buy on TCGplayer/i);
+  assert.match(page, /const deckPurchaseLink = buildTcgplayerDeckLink\(\{ rows: deckRows, enabled: tcgplayerAffiliateEnabled \}\)/);
+  const headerBlock = page.match(/className="deck-header-actions"[\s\S]{0,1800}/)?.[0];
+  assert.ok(headerBlock, "expected to find the deck header actions");
+  assert.match(headerBlock, /ESTIMATED MARKET PRICE/);
+  assert.match(headerBlock, /deckPriceTotal\.total\.toFixed\(2\)/);
+  assert.match(headerBlock, /className="buy-deck-link"/);
+  assert.match(headerBlock, /href=\{deckPurchaseLink\.url\}/);
+  assert.match(headerBlock, />\s*Buy this deck →\s*<\/a>/);
 });
 
 test("no analytics/event-tracking call exists anywhere near the purchase links — explicitly out of scope for this batch", () => {
