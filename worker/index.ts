@@ -12,6 +12,7 @@ import { handleForgeStructuralAnalyze } from "./forge-structural-analyze";
 import { handleForgeOneSlot } from "./forge-one-slot";
 import { handleForgeMultiRefill } from "./forge-multi-refill";
 import { handleCardFacts } from "./card-facts";
+import { handleCommanderSearch } from "./commander-search";
 import { cleanupExpiredRateLimits } from "./api-hardening";
 import { cleanupExpiredGenerations } from "./forge-generation-store";
 import { cleanupExpiredGuestForges, handleGuestClaim, handleGuestForge } from "./guest-forge";
@@ -188,6 +189,7 @@ const worker = {
       if (url.pathname === "/api/forge/one-slot-experiment") return await handleForgeOneSlot(request, env);
       if (url.pathname === "/api/forge/multi-refill") return await handleForgeMultiRefill(request, env);
       if (url.pathname === "/api/cards/facts") return await handleCardFacts(request);
+      if (url.pathname === "/api/cards/commanders") return await handleCommanderSearch(request);
       if (url.pathname === "/api/forge/status") {ctx.waitUntil(ensureDataGoblinsStarted(env));return Response.json({ready:true,build:BUILD_ID,modelReady:false,mode:"native",fallback:"MetaForge Native Coach remains available without a model call",tcgplayerAffiliateEnabled:env.TCGPLAYER_AFFILIATE_ENABLED === "true"},{headers:{"Cache-Control":"no-store"}})}
       if (url.pathname === "/api/founder/knowledge") return await handleCoachingKnowledge(request, env, true);
       if (url.pathname === "/api/coach/knowledge") return await handleCoachingKnowledge(request, env, false);

@@ -25,6 +25,11 @@ test("extractPastedCommanderName strips a trailing set/collector-number annotati
   assert.equal(extractPastedCommanderName(withAnnotation), "Tony Stark");
 });
 
+test("extractPastedCommanderName recognizes common Commander section headers", () => {
+  assert.equal(extractPastedCommanderName(`Commander\n1 Atraxa, Praetors' Voice\n\nDeck\n1 Sol Ring`), "Atraxa, Praetors' Voice");
+  assert.equal(extractPastedCommanderName(`[Commander]\n1 Thanos, the Mad Titan\n\n1 Arcane Signet`), "Thanos, the Mad Titan");
+});
+
 test("extractPastedCommanderName does not falsely detect a normal final maindeck card when no separated commander block exists", () => {
   const noSeparation = `1 Sol Ring\n1 Arcane Signet\n1 Wurmcoil Engine`;
   assert.equal(extractPastedCommanderName(noSeparation), null);
@@ -44,7 +49,7 @@ test("resolvePastedCommanderCandidate never calls the network when no candidate 
   let fetchCalled = false;
   const resolved = await resolvePastedCommanderCandidate({
     deckText: "1 Sol Ring\n1 Wurmcoil Engine",
-    formatTerms: "legal:commander",
+    format: "Commander",
     mapCard: commanderOptionFromCard,
     fetchImpl: async () => {
       fetchCalled = true;
@@ -73,15 +78,15 @@ test("resolvePastedCommanderCandidate resolves a double-faced commander and stor
   let requestedUrl = "";
   const resolved = await resolvePastedCommanderCandidate({
     deckText: IRON_MAN_LIST,
-    formatTerms: "legal:commander",
+    format: "Commander",
     mapCard: commanderOptionFromCard,
     fetchImpl: async (url) => {
       requestedUrl = url;
-      return { ok: true, json: async () => ({ data: [tonyStarkCard] }) };
+      return { ok: true, json: async () => ({ cards: [tonyStarkCard] }) };
     },
   });
-  assert.ok(requestedUrl.includes("is%3Acommander"), "queries Scryfall's own commander-eligibility filter");
-  assert.ok(requestedUrl.includes(encodeURIComponent('!"Tony Stark"')), "queries an exact-name match on the detected candidate");
+  assert.ok(requestedUrl.includes("/api/cards/commanders"), "uses MetaForge's resilient commander index endpoint");
+  assert.ok(requestedUrl.includes("exact=true"), "requests an exact-name match on the detected candidate");
   assert.equal(resolved.name, "Tony Stark // The Invincible Iron Man", "the canonical two-faced name is stored, not just the front face");
   assert.deepEqual(resolved.colors, ["R", "U"]);
 });
@@ -90,14 +95,14 @@ test("an Arena-style full double-faced commander name is queried by its front fa
   let requestedUrl = "";
   const resolved = await resolvePastedCommanderCandidate({
     deckText: `1 Sol Ring\n\n1 Etali, Primal Conqueror // Etali, Primal Sickness`,
-    formatTerms: "legal:commander",
+    format: "Commander",
     mapCard: commanderOptionFromCard,
     fetchImpl: async (url) => {
       requestedUrl = url;
-      return { ok: true, json: async () => ({ data: [{ name: "Etali, Primal Conqueror // Etali, Primal Sickness", color_identity: ["G", "R"] }] }) };
+      return { ok: true, json: async () => ({ cards: [{ name: "Etali, Primal Conqueror // Etali, Primal Sickness", color_identity: ["G", "R"] }] }) };
     },
   });
-  assert.ok(requestedUrl.includes(encodeURIComponent('!"Etali, Primal Conqueror"')));
+  assert.ok(requestedUrl.includes(encodeURIComponent("Etali, Primal Conqueror")));
   assert.ok(!decodeURIComponent(requestedUrl).includes("Primal Sickness"));
   assert.equal(resolved.name, "Etali, Primal Conqueror // Etali, Primal Sickness");
 });
@@ -105,9 +110,9 @@ test("an Arena-style full double-faced commander name is queried by its front fa
 test("resolvePastedCommanderCandidate resolves to null when the isolated trailing card isn't actually commander-eligible", async () => {
   const resolved = await resolvePastedCommanderCandidate({
     deckText: IRON_MAN_LIST,
-    formatTerms: "legal:commander",
+    format: "Commander",
     mapCard: commanderOptionFromCard,
-    fetchImpl: async () => ({ ok: true, json: async () => ({ data: [] }) }),
+    fetchImpl: async () => ({ ok: true, json: async () => ({ cards: [] }) }),
   });
   assert.equal(resolved, null);
 });
@@ -115,7 +120,7 @@ test("resolvePastedCommanderCandidate resolves to null when the isolated trailin
 test("resolvePastedCommanderCandidate resolves to null when the Scryfall request itself fails", async () => {
   const resolved = await resolvePastedCommanderCandidate({
     deckText: IRON_MAN_LIST,
-    formatTerms: "legal:commander",
+    format: "Commander",
     mapCard: commanderOptionFromCard,
     fetchImpl: async () => ({ ok: false }),
   });

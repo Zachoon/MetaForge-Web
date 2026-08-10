@@ -7,6 +7,13 @@
 // doesn't take this shape returns null; callers fall back to the manual
 // commander picker rather than guessing.
 export function extractPastedCommanderName(deckText) {
+  const lines = String(deckText || "").split("\n").map((line) => line.trim());
+  const headerIndex = lines.findIndex((line) => /^(?:\[?commanders?\]?|commanders?\s*:?)$/i.test(line));
+  if (headerIndex >= 0) {
+    const commanderLine = lines.slice(headerIndex + 1).find((line) => line && !/^[A-Za-z][A-Za-z ]+:$/.test(line));
+    const headerMatch = commanderLine?.match(/^(?:\d+\s+)?(.+?)(?:\s+\([A-Z0-9]{2,6}\)\s+\d+\w*)?$/);
+    if (headerMatch) return headerMatch[1].trim();
+  }
   const blocks = String(deckText || "")
     .split(/\n\s*\n/)
     .map((block) => block.trim())
@@ -47,14 +54,13 @@ export function commanderOptionFromCard(card) {
 // to null rather than a false positive. formatTerms/mapCard/fetchImpl are
 // injected so this is testable without a live network call or page.tsx's
 // own React state.
-export async function resolvePastedCommanderCandidate({ deckText, formatTerms, mapCard, fetchImpl = fetch }) {
+export async function resolvePastedCommanderCandidate({ deckText, format = "Commander", mapCard, fetchImpl = fetch }) {
   const candidateName = extractPastedCommanderName(deckText);
   if (!candidateName) return null;
   const lookupName = candidateName.split(/\s*\/\/\s*/)[0].trim();
-  const query = encodeURIComponent(`${formatTerms} is:commander !"${lookupName}"`);
-  const response = await fetchImpl(`https://api.scryfall.com/cards/search?q=${query}`);
+  const response = await fetchImpl(`/api/cards/commanders?format=${encodeURIComponent(format)}&q=${encodeURIComponent(lookupName)}&exact=true`);
   if (!response.ok) return null;
   const data = await response.json();
-  const card = (data.data || [])[0];
+  const card = (data.cards || [])[0];
   return card ? mapCard(card) : null;
 }

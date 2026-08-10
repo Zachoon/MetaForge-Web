@@ -2,6 +2,12 @@
 
 ## 2026-08-09 — Import and Coaching Reliability
 
+### Commander discovery no longer mistakes an outage for “no commanders”
+
+- Commander search now runs through MetaForge's server with a bounded retry and short-lived successful-result cache instead of depending on every player's browser reaching Scryfall directly.
+- A temporary commander-index failure now presents an honest retry action instead of falsely claiming that no legal commander matches.
+- Pasted lists now recognize common `Commander`, `Commanders`, and `[Commander]` section headers in addition to the existing separated trailing-card export shape.
+
 ### Strategy now outranks generic card strength
 
 - Explicit themes now become a whole-deck strategy contract with a measurable relevant-card floor and final density.

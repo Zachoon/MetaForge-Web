@@ -24,6 +24,14 @@ test("refine mode auto-detects a commander from the pasted list — commission m
   );
   assert.match(source, /resolvePastedCommanderCandidate\(\{/);
   assert.match(source, /if \(resolved\) setSelectedCommander\(resolved\);/);
+  assert.match(source, /format,\s*\n\s*mapCard: commanderOption/);
+});
+
+test("commander discovery uses MetaForge's resilient endpoint and distinguishes an outage from zero matches", async () => {
+  const source = await read("app/page.tsx");
+  assert.match(source, /\/api\/cards\/commanders\?format=/);
+  assert.match(source, /The commander index is temporarily unavailable/);
+  assert.match(source, /Retry commander search/);
 });
 
 test("a detected or selected commander renders the selected-commander summary, not the discovery UI, in either chamber", async () => {

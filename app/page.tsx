@@ -1379,6 +1379,8 @@ export default function Home() {
   const [selectedCommander, setSelectedCommander] =
     useState<CommanderOption | null>(null);
   const [commanderSearching, setCommanderSearching] = useState(false);
+  const [commanderSearchError, setCommanderSearchError] = useState("");
+  const [commanderSearchRetry, setCommanderSearchRetry] = useState(0);
   // A second card in the command zone — a Partner commander or a
   // Background — combines its color identity and physical slot with the
   // primary commander rather than replacing it. Optional and independent
@@ -2891,27 +2893,28 @@ export default function Home() {
       selectedCommander?.name === commanderQuery.trim()
     ) {
       setCommanderResults([]);
+      setCommanderSearchError("");
       return;
     }
     const timer = window.setTimeout(async () => {
       setCommanderSearching(true);
+      setCommanderSearchError("");
       try {
-        const query = encodeURIComponent(
-          `${scryfallFormatTerms(format)} is:commander name:${commanderQuery.trim()}`,
-        );
         const response = await fetch(
-          `https://api.scryfall.com/cards/search?q=${query}&order=name`,
+          `/api/cards/commanders?format=${encodeURIComponent(format)}&q=${encodeURIComponent(commanderQuery.trim())}`,
         );
+        if (!response.ok) throw new Error("Commander search unavailable");
         const data = await response.json();
-        setCommanderResults((data.data || []).slice(0, 8).map(commanderOption));
+        setCommanderResults((data.cards || []).slice(0, 8).map(commanderOption));
       } catch {
         setCommanderResults([]);
+        setCommanderSearchError("The commander index is temporarily unavailable. Your search is preserved—try again in a moment.");
       } finally {
         setCommanderSearching(false);
       }
     }, 320);
     return () => window.clearTimeout(timer);
-  }, [commanderQuery, format, selectedCommander?.name]);
+  }, [commanderQuery, format, selectedCommander?.name, commanderSearchRetry]);
 
   // Reviewing a pasted decklist (chamber "refine") never asks the player to
   // choose or discover a commander the way a fresh build does — if their
@@ -2927,7 +2930,7 @@ export default function Home() {
       try {
         const resolved = await resolvePastedCommanderCandidate({
           deckText: deck,
-          formatTerms: scryfallFormatTerms(format),
+          format,
           mapCard: commanderOption,
         });
         if (resolved) setSelectedCommander(resolved);
@@ -4972,6 +4975,7 @@ export default function Home() {
                       </div>
                     )}
                     {commanderSearchOpen && (commanderSearching ||
+                      commanderSearchError ||
                       commanderResults.length > 0 ||
                       commanderQuery.trim().length > 1) &&
                       commanderSearchRect &&
@@ -4988,6 +4992,11 @@ export default function Home() {
                         >
                           {commanderSearching ? (
                             <p>The Archive is searching…</p>
+                          ) : commanderSearchError ? (
+                            <div className="commander-search-recovery" role="status">
+                              <p>{commanderSearchError}</p>
+                              <button type="button" onClick={() => setCommanderSearchRetry((value) => value + 1)}>Retry commander search</button>
+                            </div>
                           ) : commanderResults.length ? (
                             commanderResults.map((option) => (
                               <button
