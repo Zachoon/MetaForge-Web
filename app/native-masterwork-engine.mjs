@@ -868,6 +868,25 @@ function scoreCard(entry, input, variant, context) {
   };
 }
 
+// An explicit Blueprint is a deck-level contract, not merely another
+// additive card bonus. This predicate deliberately asks whether a card
+// advances that contract through identity, the requested mechanic/role,
+// the requested producer/payoff package, or a verified commander edge.
+// Generic structural cards can still enter through unmet role floors in
+// chooseSpells; they simply stop beating connected alternatives on raw
+// popularity or standalone rate once those floors are satisfied.
+function advancesStrategyContract(entry, blueprint) {
+  return Boolean(
+    entry.directTribes?.length ||
+    entry.tribalSupport?.length ||
+    entry.blueprintRoleHits?.length ||
+    entry.blueprintMechanicHits?.length ||
+    entry.commanderConnectionSignals?.length ||
+    blueprint.packageSignals.some((signal) =>
+      entry.mechanics?.produces?.includes(signal) || entry.mechanics?.rewards?.includes(signal)),
+  );
+}
+
 function roleTargets(format, strategy) {
   const commander = format === "Commander" || format === "Brawl";
   const scale = commander ? 1 : 0.55;
@@ -989,6 +1008,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
   };
   const ranked = [...scored].sort((left, right) => right.score - left.score || left.card.name.localeCompare(right.card.name));
   const poolProducerSignals = new Set(scored.flatMap((entry) => entry.mechanics.produces));
+  const explicitStrategyContract = blueprint.promises.length > 0;
 
   // Explicit identity requests are construction anchors, not flavor text.
   // Direct tribe members are reserved first, then cards that support that tribe,
@@ -1034,6 +1054,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       // naturally carries would accrue an ever-growing penalty as the deck
       // fills in and start losing to genuinely empty filler.
       const deficit = entry.roles.reduce((sum, role) => (role in targets ? sum + ((targets[role] || 0) - (roleCounts.get(role) || 0)) * 4 : sum), 0);
+      const protectsUnmetDeckFunction = entry.roles.some((role) => role in targets && (roleCounts.get(role) || 0) < targets[role]);
       // Rewards a candidate for connecting to cards that actually made the
       // deck so far, not just ones that existed in the pool. Capped per
       // signal so one prolific pairing can't dominate every remaining pick.
@@ -1058,7 +1079,15 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       // the way an excluded role would).
       const bucket = curveBucket(entry.cmc);
       const curveDeficit = Math.max(0, (curveGoals[bucket] || 0) - (cmcCounts.get(bucket) || 0)) * 3;
-      const adjusted = entry.score + deficit + inDeckSynergy * 2 + requestedPackageSynergy * 4 + sequenceDeficit * 2 + curveDeficit - orphanPayoffPenalty;
+      // The previous additive scorer could reserve a small thematic core,
+      // then immediately revert to generic staples for every remaining
+      // slot. A bounded disconnected tax changes the ordering only after
+      // minimum deck function is protected: necessary ramp, draw,
+      // interaction, protection, recursion, and sweepers remain eligible,
+      // while nonessential good-card filler must yield to a card that
+      // actually advances the player's stated plan.
+      const disconnectedStrategyTax = explicitStrategyContract && !protectsUnmetDeckFunction && !advancesStrategyContract(entry, blueprint) ? 22 : 0;
+      const adjusted = entry.score + deficit + inDeckSynergy * 2 + requestedPackageSynergy * 4 + sequenceDeficit * 2 + curveDeficit - orphanPayoffPenalty - disconnectedStrategyTax;
       if (adjusted > bestAdjusted || (adjusted === bestAdjusted && candidate && entry.card.name.localeCompare(candidate.card.name) < 0)) {
         candidate = entry;
         bestAdjusted = adjusted;
@@ -1453,6 +1482,26 @@ function computeBlueprintAlignment(analysis, selected, singleton) {
       connected: producers.length > 0 && rewards.length > 0,
     })];
   }));
+  const explicitStrategyContract = analysis.context.blueprint.promises.length > 0;
+  const copyCapacity = singleton ? 1 : 4;
+  const selectedSpellQuantity = selected.reduce((sum, entry) => sum + entry.quantity, 0);
+  const availableContractCapacity = explicitStrategyContract
+    ? analysis.spells.filter((entry) => advancesStrategyContract(entry, analysis.context.blueprint)).length * copyCapacity
+    : 0;
+  const selectedContractCards = explicitStrategyContract
+    ? selected.filter((entry) => advancesStrategyContract(entry, analysis.context.blueprint)).reduce((sum, entry) => sum + entry.quantity, 0)
+    : 0;
+  // Forty percent is a meaningful center of gravity, not a demand that
+  // every utility spell carry theme text. The target is capped by what the
+  // verified legal pool can actually supply, so thin or novel mechanics
+  // remain honest best-effort requests rather than impossible gates.
+  const requiredContractCards = explicitStrategyContract
+    ? Math.min(availableContractCapacity, Math.ceil(selectedSpellQuantity * 0.4))
+    : 0;
+  const strategyDensity = explicitStrategyContract
+    ? Number((selectedContractCards / Math.max(1, selectedSpellQuantity)).toFixed(3))
+    : 0;
+  const missedStrategyDensity = explicitStrategyContract && selectedContractCards < requiredContractCards;
   return Object.freeze({
     requested: analysis.context.blueprint.promises,
     tribalTypes: analysis.context.blueprint.tribalTypes,
@@ -1466,13 +1515,17 @@ function computeBlueprintAlignment(analysis, selected, singleton) {
     availableMechanicCoverage,
     requestedMechanicCoverage,
     packageCoverage,
+    availableContractCapacity,
+    selectedContractCards,
+    requiredContractCards,
+    strategyDensity,
     status: !analysis.context.blueprint.promises.length
       ? "no-explicit-theme"
       : analysis.context.blueprint.tribalTypes.length && !availableIdentityCards
         ? "unsupported-identity-in-verified-pool"
         : unsupportedMechanic
           ? "unsupported-mechanic-in-verified-pool"
-        : selectedIdentityCards < requiredIdentityCards || missedMechanic || analysis.context.blueprint.desiredRoles.some(
+        : selectedIdentityCards < requiredIdentityCards || missedMechanic || missedStrategyDensity || analysis.context.blueprint.desiredRoles.some(
           (role) => requestedRoleCoverage[role] < Math.min(availableRoleCoverage[role], singleton ? 8 : 4),
         )
           ? "missed-supported-blueprint"
@@ -1482,7 +1535,7 @@ function computeBlueprintAlignment(analysis, selected, singleton) {
       : unsupportedMechanic
         ? `No legal ${blueprintMechanicDefinition(unsupportedMechanic).label} card was present in the verified pool; the Forge preserved legality and must say so instead of pretending the requested focus was honored.`
       : analysis.context.blueprint.requestedMechanics.length
-        ? `Mechanic contract found ${analysis.context.blueprint.requestedMechanics.map((mechanic) => `${availableMechanicCoverage[mechanic]} legal ${blueprintMechanicDefinition(mechanic).label} cards and selected ${requestedMechanicCoverage[mechanic]}`).join("; ")}; legality and minimum deck function remained binding.`
+        ? `Mechanic contract found ${analysis.context.blueprint.requestedMechanics.map((mechanic) => `${availableMechanicCoverage[mechanic]} legal ${blueprintMechanicDefinition(mechanic).label} cards and selected ${requestedMechanicCoverage[mechanic]}`).join("; ")}. ${selectedContractCards}/${requiredContractCards} required strategy-contract cards were selected; legality and minimum deck function remained binding.`
         : `Blueprint contract reserved ${selectedIdentityCards}/${requiredIdentityCards} required identity cards before general optimization; legality and minimum deck function remained binding.`,
   });
 }
@@ -3217,7 +3270,7 @@ export function forgeNativeMasterwork(input) {
         .length,
 }),
 
-    methodology: `MetaForge analyzed each verified card once, reserved explicit Blueprint identity before general optimization, filled minimum deck-function requirements, assembled three complete structural tempers, applied hard rejection gates, advanced a nondominated Blueprint tradeoff, compared it with the closest viable rival, and exhaustively gated exact one-slot experiments.${selected.blueprintAlignment.requested.length ? ` Blueprint promise: ${selected.blueprintAlignment.requested.join(", ")} — ${selected.blueprintAlignment.status.replaceAll("-", " ")}.` : ""}`,
+    methodology: `MetaForge analyzed each verified card once, compiled explicit Blueprint requests into a strategy contract, protected minimum deck-function requirements, enforced a meaningful contract-card density, assembled three complete structural tempers, applied hard rejection gates, advanced a nondominated Blueprint tradeoff, compared it with the closest viable rival, and exhaustively gated exact one-slot experiments.${selected.blueprintAlignment.requested.length ? ` Blueprint promise: ${selected.blueprintAlignment.requested.join(", ")} — ${selected.blueprintAlignment.status.replaceAll("-", " ")}; ${selected.blueprintAlignment.selectedContractCards}/${selected.blueprintAlignment.requiredContractCards} required strategy-contract cards selected.` : ""}`,
   });
 }
 

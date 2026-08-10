@@ -533,6 +533,30 @@ test("reserves supported Power-Up and creature activated-ability cards ahead of 
   assert.match(report.selected.blueprintAlignment.boundary, /8 legal Power-Up cards and selected 8/i);
 });
 
+test("keeps an explicit strategy as the deck's center of gravity after structural role floors are met", () => {
+  const strategyCards = Array.from({ length: 36 }, (_, index) =>
+    card(`Connected Ability Piece ${index}`, `{1}: Put a +1/+1 counter on this creature. Activate only as a sorcery.`, "Creature — Artificer", `{${index % 3 + 1}}{U}`),
+  );
+  const famousButDisconnected = Array.from({ length: 36 }, (_, index) => ({
+    ...card(`Famous Generic Staple ${index}`, "When this creature enters, draw a card. It has ward {1}.", "Creature — Wizard", "{2}{U}"),
+    popularityRank: 0,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange",
+    note: "Focus on creature activated abilities", seed: 820,
+    commander: { name: "Ability Mentor", colors: ["U"], oracleText: "Activated abilities you activate cost {1} less to activate." },
+    cards: [...pool, ...famousButDisconnected, ...strategyCards],
+  });
+
+  const alignment = report.selected.blueprintAlignment;
+  const chosenStrategyCards = report.selected.rows.filter((row) => row.name.startsWith("Connected Ability Piece"));
+  const chosenGenericStaples = report.selected.rows.filter((row) => row.name.startsWith("Famous Generic Staple"));
+  assert.ok(alignment.selectedContractCards >= alignment.requiredContractCards);
+  assert.ok(alignment.strategyDensity >= 0.4);
+  assert.ok(chosenStrategyCards.length > chosenGenericStaples.length);
+  assert.equal(alignment.status, "honored-best-effort");
+});
+
 test("admits when a named requested mechanic is absent instead of calling generic soup aligned", () => {
   const report = forgeNativeMasterwork({
     format: "Commander", target: 100, strategy: "Balanced midrange",

@@ -2,6 +2,13 @@
 
 ## 2026-08-09 — Import and Coaching Reliability
 
+### Strategy now outranks generic card strength
+
+- Explicit themes now become a whole-deck strategy contract with a measurable relevant-card floor and final density.
+- Once essential ramp, draw, interaction, protection, recursion, sweepers, and curve needs are protected, disconnected staples yield to cards that advance the requested mechanic, package, identity, or commander plan.
+- Raw popularity and standalone strength remain useful tiebreakers between strategically appropriate cards, but can no longer pull the rest of a themed deck back into generic good-card soup.
+- A new adversarial construction test pits highly popular generic staples against less-famous connected cards and requires the connected strategy to remain the deck's center of gravity.
+
 ### A clearer first coaching handoff
 
 - Imported-deck results now explain immediately that MetaForge is reviewing the player's deck rather than replacing it.
