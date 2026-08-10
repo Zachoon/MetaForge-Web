@@ -105,3 +105,41 @@ export {
   synthesizeLevelAFindings,
   selectHighestConfidenceBrainV2Candidate,
 } from "./level-a-synthesis.mjs";
+
+// Field Intelligence v1.3 — Strategic Relationship Mining (observation only)
+export {
+  STRATEGIC_TOPOLOGY_VERSION,
+  STRONG_EDGE_TYPES,
+  WEAK_EDGE_TYPES,
+  ALL_STRATEGIC_EDGE_TYPES,
+  classifyEdgeStrength,
+  edgeConfidence,
+  isStrongEdge,
+  EDGE_STRENGTH,
+  CONSTRUCTIVE_ROLES,
+} from "./strategic-edge-ontology.mjs";
+export {
+  buildDeckStrategicTopology,
+  buildCorpusStrategicTopologies,
+} from "./strategic-topology.mjs";
+export {
+  deriveTopologyMetrics,
+  deriveCorpusTopologyMetrics,
+} from "./topology-metrics.mjs";
+export {
+  compareLevelATopology,
+  buildAllLevelATopology,
+} from "./level-a-topology.mjs";
+export { mineStrategicSequences } from "./strategic-sequences.mjs";
+export { mineContextualCardFunctions } from "./contextual-card-function.mjs";
+export { mineSubstitutionEvidence } from "./substitution-evidence.mjs";
+export { buildTopologyDiscoveryQueue } from "./topology-discovery.mjs";
+export {
+  researchFingerprint,
+  appendResearchObservations,
+  readResearchStore,
+  defaultResearchStorePath,
+  observationsFromArtifact,
+  writeResearchIndex,
+} from "./research-store.mjs";
+export { measureCorpusGrowth } from "./corpus-growth.mjs";

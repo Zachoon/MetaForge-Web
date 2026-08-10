@@ -9,10 +9,10 @@ const freeze = (value) => Object.freeze(value);
 const normalized = (value = "") => String(value).normalize("NFKC").trim().toLocaleLowerCase("en");
 
 export const DEFAULT_LIVE_SAMPLE = Object.freeze({
-  lastDays: 30,
+  lastDays: 60,
   participantMin: 16,
-  maxEvents: 25,
-  maxDecksPerEvent: 16,
+  maxEvents: 40,
+  maxDecksPerEvent: 20,
   // Prefer converters + a comparison sample from the same event.
   preferTopCut: true,
   includeLowerComparison: true,

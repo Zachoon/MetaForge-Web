@@ -8,7 +8,7 @@
 
 export const CORPUS_SCHEMA_VERSION = "corpus-deck-record-v1";
 export const CORPUS_ANALYSIS_VERSION = "corpus-deck-analysis-v1";
-export const CORPUS_INTELLIGENCE_VERSION = "corpus-intelligence-v1.2";
+export const CORPUS_INTELLIGENCE_VERSION = "corpus-intelligence-v1.3";
 
 /** Teaching hierarchy — lower index = stronger strategic teacher. */
 export const EVIDENCE_TIERS = Object.freeze([
