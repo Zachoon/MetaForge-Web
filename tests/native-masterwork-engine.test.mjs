@@ -1005,6 +1005,15 @@ test("scores mana consistency from real land color sources against each spell's 
   assert.deepEqual(report.sourcesByColor, { W: 4, U: 0, B: 12, R: 0, G: 0 });
 });
 
+test("an X spell uses a meaningful casting window instead of treating X as zero", () => {
+  const report = manaConsistencyReport([
+    { quantity: 20, name: "Mountain", roles: ["land"], colorIdentity: ["R"] },
+    { quantity: 1, name: "Nahiri's Lithoforming", roles: [], cmc: 2, manaCost: "{X}{R}{R}", colorPips: { R: 2 } },
+  ], 60);
+  const nahiri = report.cards.find((entry) => entry.name === "Nahiri's Lithoforming");
+  assert.equal(nahiri.turn, 4);
+});
+
 test("a nonland card with color identity but no real producedMana is never credited as a source", () => {
   // The land-oriented helper falls back to colorIdentity when producedMana
   // is absent — reusing it for nonland rows would wrongly turn every

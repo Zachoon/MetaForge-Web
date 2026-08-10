@@ -972,6 +972,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       sequenceStages: candidate.sequenceStages,
       mechanics: candidate.mechanics,
       colorPips: candidate.colorPips,
+      manaCost: candidate.card.manaCost || candidate.card.mana_cost || "",
       // Scryfall's produced_mana exists on any permanent, not just lands —
       // a mana rock or dork is a real color source the consistency math
       // should credit, same as a land. Empty for the vast majority of
@@ -1188,7 +1189,11 @@ export function manaConsistencyReport(rows, deckSize) {
     if (row.roles?.includes("land")) continue;
     const neededColors = Object.entries(row.colorPips || {}).filter(([, count]) => count > 0);
     if (!neededColors.length) continue;
-    const turn = Math.max(1, Math.round(row.cmc));
+    // Printed mana value treats X as zero, but an X spell is almost never
+    // intended to be fired for X=0. Model its first meaningful window two
+    // turns after the fixed portion (and never before turn four).
+    const hasVariableCost = /\{[XYZ]\}/i.test(row.manaCost || row.mana_cost || "");
+    const turn = hasVariableCost ? Math.max(4, Math.round(row.cmc) + 2) : Math.max(1, Math.round(row.cmc));
     const draws = cardsSeenByTurn(turn);
     const probability = Math.min(
       ...neededColors.map(([color, count]) => hypergeometricAtLeast(deckSize, sourcesByColor[color] || 0, draws, count)),
@@ -1901,7 +1906,7 @@ function buildCandidateAttempt(input, variant, analysis) {
     : chooseSpells(scored, spellSlots, singleton, targets, analysis.context.blueprint, [], curveTargets(input.strategy, spellSlots));
   const mana = buildManaBase(input, landSlots, lands, variant, [], aggregatePipTotals(selected), selected);
   const rows = [
-    ...allCommanders(input).map((commander) => ({ quantity: 1, name: commander.name, roles: ["commander"], score: 100, cmc: manaValueFromCost(commander.manaCost, commander.cmc) })),
+    ...allCommanders(input).map((commander) => ({ quantity: 1, name: commander.name, roles: ["commander"], score: 100, cmc: manaValueFromCost(commander.manaCost, commander.cmc), manaCost: commander.manaCost || "" })),
     ...selected,
     ...mana,
   ];
@@ -2025,9 +2030,13 @@ function buildImportedCandidateAttempt(input, analysis) {
       tribalSupport: spellEntry.tribalSupport,
       identityHits: spellEntry.identityHits,
       blueprintRoleHits: spellEntry.blueprintRoleHits,
+      blueprintMechanicHits: spellEntry.blueprintMechanicHits,
+      commanderConnectionSignals: spellEntry.commanderConnectionSignals,
+      sequenceStages: spellEntry.sequenceStages,
       mechanics: spellEntry.mechanics,
       colorPips: spellEntry.colorPips,
       producesColors: nonlandProducedColorsOf(spellEntry.card),
+      manaCost: spellEntry.card.manaCost || spellEntry.card.mana_cost || "",
     });
   }
   if (!presetSpellRows.length && !presetLandRows.length) {
@@ -2037,14 +2046,19 @@ function buildImportedCandidateAttempt(input, analysis) {
   // The player's own submitted spells are the real curve/ramp signal here
   // — more precise than the candidate-pool estimate buildCandidate has to
   // fall back on, since we already know exactly what's going in the deck.
+  const presetLandQuantity = presetLandRows.reduce((sum, row) => sum + row.quantity, 0);
+  const presetSpellQuantity = presetSpellRows.reduce((sum, row) => sum + row.quantity, 0);
+  const completeSubmittedDeck = presetLandQuantity + presetSpellQuantity === target - commanderSlots;
   const baselineLandSlots = singleton ? Math.round(target * 0.37) : Math.round(target * 0.4);
-  const landSlots = singleton
-    ? clamp(
-        baselineLandSlots + curveAwareLandAdjustment(presetSpellRows),
-        Math.round(target * 0.32),
-        Math.round(target * 0.42),
-      )
+  const suggestedLandSlots = singleton
+    ? clamp(baselineLandSlots + curveAwareLandAdjustment(presetSpellRows), Math.round(target * 0.32), Math.round(target * 0.42))
     : baselineLandSlots;
+  // A complete list is evidence, not a sketch: retain its actual land/spell
+  // split exactly. Incomplete lists may be filled, but never by allocating
+  // fewer slots than the player already submitted.
+  const landSlots = completeSubmittedDeck
+    ? presetLandQuantity
+    : Math.min(target - commanderSlots - presetSpellQuantity, Math.max(presetLandQuantity, suggestedLandSlots));
 
   // Preset rows are reserved unconditionally, so this variant only shapes
   // which cards fill any slots the player's list didn't already occupy.
@@ -2054,7 +2068,7 @@ function buildImportedCandidateAttempt(input, analysis) {
   const { selected, roleCounts } = chooseSpells(scored, spellSlots, singleton, roleTargets(input.format, input.strategy), analysis.context.blueprint, presetSpellRows, curveTargets(input.strategy, spellSlots));
   const mana = buildManaBase(input, landSlots, analysis.lands, variant, presetLandRows, aggregatePipTotals(selected), selected);
   const rows = [
-    ...allCommanders(input).map((commander) => ({ quantity: 1, name: commander.name, roles: ["commander"], score: 100, cmc: manaValueFromCost(commander.manaCost, commander.cmc) })),
+    ...allCommanders(input).map((commander) => ({ quantity: 1, name: commander.name, roles: ["commander"], score: 100, cmc: manaValueFromCost(commander.manaCost, commander.cmc), manaCost: commander.manaCost || "" })),
     ...selected,
     ...mana,
   ];
@@ -3223,15 +3237,17 @@ export function forgeImportedMasterwork(input) {
 
   const tournament = runNativeMasterworkTournament([imported, baseline], { format: input.format, target: input.target });
   const importedResult = tournament.results.find((result) => result.id === imported.id);
-  if (!importedResult?.gate.passed) {
-    throw new Error(`Native Forge could not adapt your list into a legal ${input.format} deck: ${importedResult?.gate.reasons.join(" ") || "an unexpected structural gate failure"}`);
+  const blockingImportedReasons = (importedResult?.gate.reasons || []).filter((reason) =>
+    /Deck size|Copy limit|Mana-base share/i.test(reason));
+  if (blockingImportedReasons.length) {
+    throw new Error(`Native Forge could not preserve your list as a legal ${input.format} deck: ${blockingImportedReasons.join(" ")}`);
   }
 
   const forcedTournament = tournament.selectedId === imported.id ? tournament : Object.freeze({
     ...tournament,
     selectedId: imported.id,
     results: tournament.results.map((result) => result.id === imported.id
-      ? { ...result, verdict: "advance", reason: `${imported.label} is adapted directly from your submitted list; the Forge preserves it rather than substituting its own optimization.` }
+      ? { ...result, gate: { ...result.gate, passed: true }, verdict: "advance", reason: `${imported.label} is your submitted list, preserved exactly; structural weaknesses remain coaching evidence rather than permission to substitute another deck.` }
       : { ...result, verdict: "hold" }),
   });
 

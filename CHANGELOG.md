@@ -1,5 +1,19 @@
 # MetaForge Changelog
 
+## 2026-08-09 — Import and Coaching Reliability
+
+### An imported deck now stays your deck
+
+- Complete imported lists preserve every submitted card and the submitted land count instead of silently replacing cards to satisfy MetaForge's preferred structure.
+- Structural weaknesses in a complete import are now coaching evidence, not permission to rebuild the player's list.
+- Incomplete lists can still be completed without dropping cards the player already supplied.
+
+### Coaching claims now require stronger evidence
+
+- Two cards sharing a broad resource is no longer enough to call them a loop or combo-like engine.
+- Reciprocal engine claims now require distinct, complementary directions of interaction.
+- X-cost spells use a realistic first meaningful casting window for colored-mana guidance instead of treating X as zero and recommending an implausible early turn.
+
 Player-facing changes to MetaForge are recorded here. Add new releases at the top and describe what changed in plain language.
 
 ## 2026-08-09 — Strategic Sequencing

@@ -30,6 +30,16 @@ test("adapts a short pasted list into one legal, complete deck", () => {
   assert.equal(first.tournament.selectedId, first.selected.id, "the imported build is always the selected candidate");
 });
 
+test("preserves every card and the exact land split of a complete submitted deck", () => {
+  const submittedSpells = Array.from({ length: 9 }, (_, index) => ({ quantity: 4, name: `Flow ${index}` }));
+  const importedRows = [...submittedSpells, { quantity: 24, name: "Island" }];
+  const report = forgeImportedMasterwork({ ...baseInput, importedRows });
+  const selectedByName = new Map(report.selected.rows.map((row) => [row.name, row.quantity]));
+  for (const row of importedRows) assert.equal(selectedByName.get(row.name), row.quantity, `${row.name} must be preserved exactly`);
+  assert.deepEqual(report.changes.added, []);
+  assert.deepEqual(report.changes.trimmed, []);
+});
+
 test("trims a copy-limit violation instead of silently dropping the whole card", () => {
   const input = { ...baseInput, importedRows: [
     { quantity: 8, name: "Flow 0" }, // over Standard's 4-copy limit

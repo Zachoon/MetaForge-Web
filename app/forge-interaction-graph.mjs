@@ -234,7 +234,12 @@ export function buildInteractionGraph(cards, options = {}) {
       // investigate, never as a guaranteed interaction — unless the curated
       // mechanics database confirms both ends, in which case it's labeled
       // verified rather than inferred.
-      const mutual = forward.length > 0 && reverse.length > 0;
+      // A reciprocal engine needs different directional resources: A feeds
+      // B through one signal and B feeds A through another. Two cards that
+      // merely produce and reward the same broad resource are related, but
+      // do not form a loop or justify combo language.
+      const mutual = forward.some((signal) => !reverse.includes(signal))
+        && reverse.some((signal) => !forward.includes(signal));
       if (reasons.length) edges.push({
         from: left.name,
         to: right.name,

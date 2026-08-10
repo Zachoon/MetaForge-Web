@@ -178,6 +178,15 @@ test("flags a genuine two-way loop as an engine pair, distinct from an ordinary 
   assert.match(graph.enginePairs[0].reason, /two-way loop/i);
 });
 
+test("Fear of Missing Out and Trading Post are related cards, not a reciprocal combo loop", () => {
+  const graph = buildInteractionGraph([
+    { name: "Fear of Missing Out", typeLine: "Enchantment Creature — Nightmare", oracleText: "When this creature enters, discard a card, then draw a card. Delirium — Whenever this creature attacks for the first time each turn, if there are four or more card types among cards in your graveyard, untap target creature. After this phase, there is an additional combat phase." },
+    { name: "Trading Post", typeLine: "Artifact", oracleText: "{1}, {T}, Discard a card: You gain 4 life. {1}, {T}, Pay 1 life: Create a 0/1 white Goat creature token. {1}, {T}, Sacrifice a creature: Return target artifact card from your graveyard to your hand. {1}, {T}, Sacrifice an artifact: Draw a card." },
+  ]);
+  assert.ok(graph.edges.length > 0, "their genuine shared mechanical relationship remains visible");
+  assert.equal(graph.enginePairs.length, 0, "sharing broad graveyard/draw signals is not a closed loop");
+});
+
 test("connects an evasion grantor to a payoff that specifically rewards flying creatures", () => {
   const grantor = { name: "Sky Blessing", typeLine: "Aura", oracleText: "Enchant creature. Enchanted creature gains flying." };
   const payoff = { name: "Wind Marshal", typeLine: "Creature", oracleText: "Creatures you control with flying get +1/+1." };
