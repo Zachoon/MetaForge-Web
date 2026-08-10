@@ -164,16 +164,79 @@ export function observationsFromArtifact(artifact = {}) {
     });
   }
 
+  observations.push(...observationsFromPrincipleRegistry(artifact.strategicPrincipleRegistry, { generatedAt }));
+
   observations.push({
     kind: "corpus_snapshot",
     decksAnalyzed: artifact.corpus?.decksAnalyzed,
     eventsRepresented: artifact.corpus?.eventsRepresented,
     usableLevelATopology: artifact.levelATopology?.usableCohorts,
+    principleCount: artifact.strategicPrincipleRegistry?.principleCount || 0,
     fingerprint: researchFingerprint({
       deckId: `corpus:${generatedAt.slice(0, 10)}:${artifact.corpus?.decksAnalyzed}:${artifact.corpus?.eventsRepresented}`,
     }),
     generatedAt,
   });
+
+  return observations;
+}
+
+/**
+ * Persist principle snapshots + evidence deltas for longitudinal confidence.
+ */
+export function observationsFromPrincipleRegistry(registry = null, options = {}) {
+  if (!registry) return [];
+  const generatedAt = options.generatedAt || registry.generatedAt || new Date().toISOString();
+  const observations = [];
+
+  for (const principle of registry.principles || []) {
+    observations.push({
+      kind: "strategic_principle",
+      principleId: principle.id,
+      status: principle.status,
+      confidence: principle.confidence,
+      kindPrinciple: principle.kind,
+      principle: {
+        id: principle.id,
+        title: principle.title,
+        description: principle.description,
+        kind: principle.kind,
+        status: principle.status,
+        feature: principle.feature,
+        featureFamily: principle.featureFamily,
+        observedDirection: principle.observedDirection,
+        confidence: principle.confidence,
+        confidenceHistory: principle.confidenceHistory,
+        evidence: principle.evidence,
+        origins: principle.origins,
+        whatBrainV1Understands: principle.whatBrainV1Understands,
+        whatAppearsMissing: principle.whatAppearsMissing,
+        lesson: principle.lesson,
+        writesToBrain: false,
+        activated: false,
+        promoted: false,
+        rejected: principle.rejected,
+      },
+      fingerprint: researchFingerprint({
+        deckId: `principle:${principle.id}:${generatedAt.slice(0, 10)}:${principle.confidence}`,
+        commanders: principle.evidence?.commanderFamilies || [],
+      }),
+      generatedAt,
+    });
+
+    observations.push({
+      kind: "principle_evidence_delta",
+      principleId: principle.id,
+      supportingEvents: principle.evidence?.supportingEvents || [],
+      contradictingEvents: principle.evidence?.contradictingEvents || [],
+      confidence: principle.confidence,
+      status: principle.status,
+      fingerprint: researchFingerprint({
+        deckId: `principle-delta:${principle.id}:${(principle.evidence?.supportingEvents || []).join(",")}:${(principle.evidence?.contradictingEvents || []).join(",")}`,
+      }),
+      generatedAt,
+    });
+  }
 
   return observations;
 }

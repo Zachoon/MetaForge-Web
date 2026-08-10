@@ -1,7 +1,7 @@
-# MetaForge Field Intelligence v1.3 — Strategic Relationship Mining
+# MetaForge Field Intelligence — Strategic Principles + Relationship Mining
 
-Brain v1 remains frozen. No construction policy changes in this batch.
-Discovery queue does not write into Brain. Exp001 remains rejected.
+Brain v1 remains frozen. Principles never activate construction. Exp001 remains rejected.
+Success criterion: discover strategic principles no human explicitly taught MetaForge.
 
 ## North star
 Learn how elite players connect cards into functioning strategic systems — not merely which cards, roles, or quantities appear in winning decks.
@@ -15,6 +15,112 @@ Learn how elite players connect cards into functioning strategic systems — not
 - Live sample: `{"lastDays":60,"participantMin":16,"maxEvents":40,"maxDecksPerEvent":20,"preferTopCut":true,"includeLowerComparison":true,"lowerComparisonSlots":6,"topCutSlots":8,"formats":["EDH"],"spicerackFormats":["COMMANDER2"]}`
 - Performance class distribution: `{"repeated_converter":48,"tournament_participant":80}`
 
+## Forge Academy — Principle lessons
+- Principle count: **71**
+- By status: `{"candidate":25,"replicated_candidate":6,"promotable":40,"mixed":0,"contradicted":0,"rejected":0}`
+- writesToBrain: **false**
+- activateBrain: **false**
+
+### Observation #1 — Structural signal on commanderConnectedCount
+- Status: **promotable** (candidate only)
+- Confidence: **0.96**
+- Independent events: **4**
+- Families: Pearl-Ear, Imperial Advisor
+- Transfer: cross_family
+- Finding: Converters show more/better commanderConnectedCount than lower placers in controlled same-commander comparisons. within Pearl-Ear, Imperial Advisor
+- Lesson: Academy lesson within Pearl-Ear, Imperial Advisor: Structural signal on commanderConnectedCount. Converters show more/better commanderConnectedCount than lower placers in controlled same-commander comparisons. Do not learn a staple list — learn the structural rule that produced the density advantage. This remains a candidate principle until a Validation Harness experiment earns promotion.
+
+### Observation #2 — Structural signal on curveLow
+- Status: **promotable** (candidate only)
+- Confidence: **0.96**
+- Independent events: **4**
+- Families: Pearl-Ear, Imperial Advisor
+- Transfer: mixed
+- Finding: Converters show more/better curveLow than lower placers in controlled same-commander comparisons. within Pearl-Ear, Imperial Advisor
+- Lesson: Academy lesson within Pearl-Ear, Imperial Advisor: Structural signal on curveLow. Converters show more/better curveLow than lower placers in controlled same-commander comparisons. Do not learn a staple list — learn the structural rule that produced the density advantage. This remains a candidate principle until a Validation Harness experiment earns promotion.
+
+### Observation #3 — Connected interaction beats raw interaction count
+- Status: **promotable** (candidate only)
+- Confidence: **0.96**
+- Independent events: **4**
+- Families: Pearl-Ear, Imperial Advisor
+- Transfer: mixed
+- Finding: Successful lists distinguish themselves by how interaction wires into the plan, not by packing more counters and removal. within Pearl-Ear, Imperial Advisor
+- Lesson: Academy lesson within Pearl-Ear, Imperial Advisor: Connected interaction beats raw interaction count. Successful lists distinguish themselves by how interaction wires into the plan, not by packing more counters and removal. Do not learn a staple list — learn the structural rule that produced the density advantage. This remains a candidate principle until a Validation Harness experiment earns promotion.
+
+### Observation #4 — Structural signal on ix_commander_connected
+- Status: **promotable** (candidate only)
+- Confidence: **0.96**
+- Independent events: **4**
+- Families: Pearl-Ear, Imperial Advisor
+- Transfer: cross_family
+- Finding: Converters show more/better ix_commander_connected than lower placers in controlled same-commander comparisons. within Pearl-Ear, Imperial Advisor
+- Lesson: Academy lesson within Pearl-Ear, Imperial Advisor: Structural signal on ix_commander_connected. Converters show more/better ix_commander_connected than lower placers in controlled same-commander comparisons. Do not learn a staple list — learn the structural rule that produced the density advantage. This remains a candidate principle until a Validation Harness experiment earns promotion.
+
+### Observation #5 — Structural signal on packageCore
+- Status: **promotable** (candidate only)
+- Confidence: **0.96**
+- Independent events: **4**
+- Families: Pearl-Ear, Imperial Advisor
+- Transfer: mixed
+- Finding: Converters show more/better packageCore than lower placers in controlled same-commander comparisons. within Pearl-Ear, Imperial Advisor
+- Lesson: Academy lesson within Pearl-Ear, Imperial Advisor: Structural signal on packageCore. Converters show more/better packageCore than lower placers in controlled same-commander comparisons. Do not learn a staple list — learn the structural rule that produced the density advantage. This remains a candidate principle until a Validation Harness experiment earns promotion.
+
+### Observation #6 — Structural signal on ix_protection
+- Status: **promotable** (candidate only)
+- Confidence: **0.96**
+- Independent events: **4**
+- Families: Pearl-Ear, Imperial Advisor
+- Transfer: cross_family
+- Finding: Converters show more/better ix_protection than lower placers in controlled same-commander comparisons. within Pearl-Ear, Imperial Advisor
+- Lesson: Academy lesson within Pearl-Ear, Imperial Advisor: Structural signal on ix_protection. Converters show more/better ix_protection than lower placers in controlled same-commander comparisons. Do not learn a staple list — learn the structural rule that produced the density advantage. This remains a candidate principle until a Validation Harness experiment earns promotion.
+
+### Observation #7 — Structural signal on redundancy
+- Status: **promotable** (candidate only)
+- Confidence: **0.96**
+- Independent events: **4**
+- Families: Pearl-Ear, Imperial Advisor
+- Transfer: mixed
+- Finding: Converters show more/better redundancy than lower placers in controlled same-commander comparisons. within Pearl-Ear, Imperial Advisor
+- Lesson: Academy lesson within Pearl-Ear, Imperial Advisor: Structural signal on redundancy. Converters show more/better redundancy than lower placers in controlled same-commander comparisons. Do not learn a staple list — learn the structural rule that produced the density advantage. This remains a candidate principle until a Validation Harness experiment earns promotion.
+
+### Observation #8 — Graveyard plans need fill, reanimation, and protection together
+- Status: **candidate** (candidate only)
+- Confidence: **0.92**
+- Independent events: **0**
+- Families: n/a
+- Transfer: commander_specific
+- Finding: Reanimator-shaped success covers the full structural chain rather than isolated recursion pieces.
+- Lesson: Academy lesson: Graveyard plans need fill, reanimation, and protection together. Reanimator-shaped success covers the full structural chain rather than isolated recursion pieces. Structural sequence dependencies are not reconstructed game orders. Candidate only — Brain unchanged.
+
+### Observation #9 — Mana acceleration should unlock commander-linked payoffs
+- Status: **candidate** (candidate only)
+- Confidence: **0.92**
+- Independent events: **0**
+- Families: n/a
+- Transfer: cross_family
+- Finding: Acceleration without a convert/close path is a weaker structural signal than sequenced mana → commander → payoff.
+- Lesson: Academy lesson: Mana acceleration should unlock commander-linked payoffs. Acceleration without a convert/close path is a weaker structural signal than sequenced mana → commander → payoff. Structural sequence dependencies are not reconstructed game orders. Candidate only — Brain unchanged.
+
+### Observation #10 — Setup must reach an engine before a payoff
+- Status: **candidate** (candidate only)
+- Confidence: **0.92**
+- Independent events: **0**
+- Families: n/a
+- Transfer: cross_family
+- Finding: Structural chains of setup → engine → payoff recur in successful lists; decklist order is not play order.
+- Lesson: Academy lesson: Setup must reach an engine before a payoff. Structural chains of setup → engine → payoff recur in successful lists; decklist order is not play order. Structural sequence dependencies are not reconstructed game orders. Candidate only — Brain unchanged.
+
+## Promotable principles (NOT activated)
+- sp:structure::commanderconnectedcount::high_greater::pearl-ear, imperial advisor: conf=0.96 events=4 — Structural signal on commanderConnectedCount
+- sp:structure::curvelow::high_greater::pearl-ear, imperial advisor: conf=0.96 events=4 — Structural signal on curveLow
+- sp:structure::interaction::high_greater::pearl-ear, imperial advisor: conf=0.96 events=4 — Connected interaction beats raw interaction count
+- sp:structure::ix_commander_connected::high_greater::pearl-ear, imperial advisor: conf=0.96 events=4 — Structural signal on ix_commander_connected
+- sp:structure::package::high_greater::pearl-ear, imperial advisor: conf=0.96 events=4 — Structural signal on packageCore
+- sp:structure::protection::high_greater::pearl-ear, imperial advisor: conf=0.96 events=4 — Structural signal on ix_protection
+- sp:structure::redundancy::high_greater::pearl-ear, imperial advisor: conf=0.96 events=4 — Structural signal on redundancy
+- sp:structure::commanderconnectedcount::high_greater::test grave tutor: conf=0.81 events=2 — Structural signal on commanderConnectedCount
+
 ## Corpus growth / marginal evidence
 ```json
 {
@@ -27,7 +133,9 @@ Learn how elite players connect cards into functioning strategic systems — not
     "levelACohorts": 16,
     "levelATopologyCohorts": 16,
     "replicatedHypotheses": 46,
-    "discoveryCandidates": 78
+    "discoveryCandidates": 78,
+    "principles": 71,
+    "promotablePrinciples": 12
   },
   "prior": {
     "events": 0,
@@ -36,7 +144,9 @@ Learn how elite players connect cards into functioning strategic systems — not
     "levelACohorts": 0,
     "levelATopologyCohorts": 0,
     "replicatedHypotheses": 0,
-    "discoveryCandidates": 0
+    "discoveryCandidates": 0,
+    "principles": 0,
+    "promotablePrinciples": 0
   },
   "deltas": {
     "events": 16,
@@ -45,13 +155,16 @@ Learn how elite players connect cards into functioning strategic systems — not
     "levelACohorts": 16,
     "levelATopologyCohorts": 16,
     "replicatedHypotheses": 46,
-    "discoveryCandidates": 78
+    "discoveryCandidates": 78,
+    "principles": 71,
+    "promotablePrinciples": 12
   },
   "marginalEvidencePerNewEvent": {
     "levelACohorts": 1,
     "levelATopologyCohorts": 1,
     "replicatedHypotheses": 2.875,
     "discoveryCandidates": 4.875,
+    "principles": 4.438,
     "decks": 8
   },
   "preferControlledComparisonsOverVolume": true
@@ -269,4 +382,4 @@ Prefer interaction that closes an uncovered strategic dependency (protects unpro
 - EDHREC — https://edhrec.com
 - EDHTop16 — https://edhtop16.com
 
-North star: accumulate strategic relationship evidence over years — not heuristics.
+North star: accumulate strategic principles over years — not heuristics.

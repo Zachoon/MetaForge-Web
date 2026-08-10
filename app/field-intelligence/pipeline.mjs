@@ -62,6 +62,8 @@ import { mineSubstitutionEvidence } from "./substitution-evidence.mjs";
 import { buildTopologyDiscoveryQueue } from "./topology-discovery.mjs";
 import { measureCorpusGrowth } from "./corpus-growth.mjs";
 import { STRATEGIC_TOPOLOGY_VERSION, ALL_STRATEGIC_EDGE_TYPES } from "./strategic-edge-ontology.mjs";
+import { buildPrincipleRegistry } from "./principle-registry.mjs";
+import { PRINCIPLE_REGISTRY_VERSION } from "./strategic-principle-schema.mjs";
 
 const freeze = (value) => Object.freeze(value);
 const unique = (values) => [...new Set(values)];
@@ -172,6 +174,7 @@ export async function buildCorpusIntelligenceArtifact({
   comparedToFixture = null,
   enrich = false,
   enrichOptions = {},
+  priorStoreRows = [],
 } = {}) {
   let workingRecords = records;
   let enrichmentStats = null;
@@ -255,6 +258,16 @@ export async function buildCorpusIntelligenceArtifact({
     analyses,
     records: workingRecords,
   });
+
+  // Strategic Principle Engine — observation only; never activates Brain.
+  const strategicPrincipleRegistry = buildPrincipleRegistry({
+    performanceHypotheses,
+    topologyDiscovery,
+    brainClassifications,
+    crossCommanderTransfer,
+    priorStoreRows,
+  });
+
   const corpusGrowth = measureCorpusGrowth({
     currentArtifact: {
       corpus: {
@@ -266,6 +279,7 @@ export async function buildCorpusIntelligenceArtifact({
       levelATopology,
       performanceHypotheses,
       topologyDiscovery,
+      strategicPrincipleRegistry,
     },
     priorSnapshot: comparedToFixture?.priorGrowthSnapshot || null,
   });
@@ -286,6 +300,13 @@ export async function buildCorpusIntelligenceArtifact({
       edgeOntology: ALL_STRATEGIC_EDGE_TYPES,
       recommendedExp002: "Prefer interaction that closes an uncovered strategic dependency (protects unprotected engine/combo/commander, or bridges a missing sequence stage) over interaction that merely increases interaction count/density.",
     }),
+    strategicPrincipleEngine: freeze({
+      version: PRINCIPLE_REGISTRY_VERSION,
+      writesToBrain: false,
+      activateBrain: false,
+      successCriteria: "discover_strategic_principles_not_taught_explicitly",
+    }),
+    strategicPrincipleRegistry,
     attribution: freeze([
       TOPDECK_ATTRIBUTION,
       SPICERACK_ATTRIBUTION,
@@ -545,6 +566,7 @@ export async function runFieldIntelligenceV1(options = {}) {
     liveCoverage,
     dedupeStats: deduped.stats,
     comparedToFixture,
+    priorStoreRows: options.priorStoreRows || [],
     // Live decks need Scryfall enrichment; fixture decks are already annotated.
     enrich: useLive || options.enrich === true,
     enrichOptions: {

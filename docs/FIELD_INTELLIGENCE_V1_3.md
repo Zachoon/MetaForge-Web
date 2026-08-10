@@ -51,9 +51,15 @@ Static topology (supports / protects / enables) is this release.
 
 > Prefer interaction that closes an uncovered strategic dependency (protects unprotected engine/combo/commander, or bridges a missing sequence stage) over interaction that merely increases interaction count/density.
 
+## Strategic Principle Engine
+
+FI v1.3 feeds the observation-only [Strategic Principle Engine](STRATEGIC_PRINCIPLE_ENGINE.md).
+Principles accumulate in the research store and registry; they never activate Brain construction.
+
 ## Related
 
 - `docs/INTERACTION_TOPOLOGY_RESEARCH.md`
 - `docs/REJECTED_EXPERIMENTS.md`
 - `docs/FIELD_INTELLIGENCE_V1.md`
 - `docs/BRAIN_V1_ENGINEERING_RELEASE.md`
+- `docs/STRATEGIC_PRINCIPLE_ENGINE.md`

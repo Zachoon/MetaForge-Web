@@ -42,23 +42,30 @@ loadLocalEnv();
 const tryLive = process.argv.includes("--live");
 const persistResearch = tryLive || process.argv.includes("--persist-research");
 
+const storePath = defaultResearchStorePath(outDir);
+const priorStore = readResearchStore(storePath);
+
 const result = await runFieldIntelligenceV1({
   tryLive,
   fixtureOnly: !tryLive,
   topdeckApiKey: process.env.TOPDECK_API_KEY,
   spicerackApiKey: process.env.SPICERACK_API_KEY,
+  priorStoreRows: priorStore.rows,
 });
 
 mkdirSync(outDir, { recursive: true });
 const artifactPath = join(outDir, "corpus-intelligence-v1.json");
 const reportPath = join(outDir, "FIELD_INTELLIGENCE_REPORT.md");
+const registryPath = join(outDir, "strategic-principles-registry.json");
 
 writeFileSync(artifactPath, JSON.stringify(result.artifact, null, 2));
 writeFileSync(reportPath, renderReport(result));
+if (result.artifact.strategicPrincipleRegistry) {
+  writeFileSync(registryPath, JSON.stringify(result.artifact.strategicPrincipleRegistry, null, 2));
+}
 
 let researchPersist = null;
 if (persistResearch) {
-  const storePath = defaultResearchStorePath(outDir);
   researchPersist = appendResearchObservations(storePath, observationsFromArtifact(result.artifact));
   writeResearchIndex(join(outDir, "research-store"), {
     lastRun: result.artifact.generatedAt,
@@ -66,12 +73,15 @@ if (persistResearch) {
     written: researchPersist.written,
     skipped: researchPersist.skipped,
     totalRows: readResearchStore(storePath).count,
+    principleCount: result.artifact.strategicPrincipleRegistry?.principleCount || 0,
+    promotableCount: result.artifact.strategicPrincipleRegistry?.promotable?.length || 0,
   });
 }
 
 console.log(renderReport(result));
 console.log(`\nWrote ${artifactPath}`);
 console.log(`Wrote ${reportPath}`);
+if (result.artifact.strategicPrincipleRegistry) console.log(`Wrote ${registryPath}`);
 if (researchPersist) {
   console.log(`Research store append: written=${researchPersist.written} skipped=${researchPersist.skipped} path=${researchPersist.path}`);
 }
@@ -81,10 +91,10 @@ function renderReport(result) {
   const c = a.corpus;
   const rec = result.recommendation;
   const lines = [];
-  lines.push("# MetaForge Field Intelligence v1.3 — Strategic Relationship Mining");
+  lines.push("# MetaForge Field Intelligence — Strategic Principles + Relationship Mining");
   lines.push("");
-  lines.push("Brain v1 remains frozen. No construction policy changes in this batch.");
-  lines.push("Discovery queue does not write into Brain. Exp001 remains rejected.");
+  lines.push("Brain v1 remains frozen. Principles never activate construction. Exp001 remains rejected.");
+  lines.push("Success criterion: discover strategic principles no human explicitly taught MetaForge.");
   lines.push("");
   lines.push("## North star");
   lines.push("Learn how elite players connect cards into functioning strategic systems — not merely which cards, roles, or quantities appear in winning decks.");
@@ -97,6 +107,32 @@ function renderReport(result) {
   lines.push(`- Artifact version: **${a.version}**`);
   lines.push(`- Live sample: \`${JSON.stringify(result.liveSample)}\``);
   lines.push(`- Performance class distribution: \`${JSON.stringify(c.performanceClassDistribution)}\``);
+  lines.push("");
+  lines.push("## Forge Academy — Principle lessons");
+  lines.push(`- Principle count: **${a.strategicPrincipleRegistry?.principleCount ?? 0}**`);
+  lines.push(`- By status: \`${JSON.stringify(a.strategicPrincipleRegistry?.byStatus)}\``);
+  lines.push(`- writesToBrain: **${a.strategicPrincipleRegistry?.writesToBrain}**`);
+  lines.push(`- activateBrain: **${a.strategicPrincipleRegistry?.recommendations?.activateBrain}**`);
+  for (const lesson of (a.strategicPrincipleRegistry?.academyLessons || []).slice(0, 10)) {
+    lines.push("");
+    lines.push(`### Observation #${lesson.observationNumber} — ${lesson.title}`);
+    lines.push(`- Status: **${lesson.status}** (candidate only)`);
+    lines.push(`- Confidence: **${lesson.confidence}**`);
+    lines.push(`- Independent events: **${lesson.independentEvents}**`);
+    lines.push(`- Families: ${(lesson.commanderFamilies || []).join("; ") || "n/a"}`);
+    lines.push(`- Transfer: ${lesson.transferClass}`);
+    lines.push(`- Finding: ${lesson.finding}`);
+    lines.push(`- Lesson: ${lesson.lesson}`);
+  }
+  if (!(a.strategicPrincipleRegistry?.academyLessons || []).length) {
+    lines.push("- (no academy lessons above confidence floor)");
+  }
+  lines.push("");
+  lines.push("## Promotable principles (NOT activated)");
+  for (const p of (a.strategicPrincipleRegistry?.promotable || []).slice(0, 8)) {
+    lines.push(`- ${p.id}: conf=${p.confidence} events=${p.evidence?.independentEvents} — ${p.title}`);
+  }
+  if (!(a.strategicPrincipleRegistry?.promotable || []).length) lines.push("- (none)");
   lines.push("");
   lines.push("## Corpus growth / marginal evidence");
   lines.push("```json");
@@ -187,6 +223,6 @@ function renderReport(result) {
     lines.push(`- ${attr.name}${attr.url ? ` — ${attr.url}` : ""}`);
   }
   lines.push("");
-  lines.push("North star: accumulate strategic relationship evidence over years — not heuristics.");
+  lines.push("North star: accumulate strategic principles over years — not heuristics.");
   return lines.join("\n");
 }

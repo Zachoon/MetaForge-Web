@@ -140,6 +140,33 @@ export {
   readResearchStore,
   defaultResearchStorePath,
   observationsFromArtifact,
+  observationsFromPrincipleRegistry,
   writeResearchIndex,
 } from "./research-store.mjs";
 export { measureCorpusGrowth } from "./corpus-growth.mjs";
+
+// Strategic Principle Engine — observation only
+export {
+  STRATEGIC_PRINCIPLE_VERSION,
+  PRINCIPLE_REGISTRY_VERSION,
+  PRINCIPLE_KINDS,
+  PRINCIPLE_STATUSES,
+  TRANSFER_CLASSES,
+  principleFingerprint,
+  createStrategicPrinciple,
+  createConfidencePoint,
+  derivePrincipleStatus,
+  isInactivePrinciple,
+} from "./strategic-principle-schema.mjs";
+export {
+  liftPrinciplesFromHypotheses,
+  liftPrinciplesFromDiscovery,
+  liftStrategicPrinciples,
+  rejectFrequencyOnlyPrinciple,
+} from "./principle-lift.mjs";
+export {
+  mergePrincipleEvidence,
+  priorPrinciplesFromStore,
+  renderAcademyLessons,
+  buildPrincipleRegistry,
+} from "./principle-registry.mjs";

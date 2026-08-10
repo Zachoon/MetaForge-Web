@@ -24,6 +24,8 @@ export function measureCorpusGrowth({
     levelATopologyCohorts: currentArtifact?.levelATopology?.usableCohorts || 0,
     replicatedHypotheses: currentArtifact?.performanceHypotheses?.byStatus?.replicated || 0,
     discoveryCandidates: currentArtifact?.topologyDiscovery?.candidates?.length || 0,
+    principles: currentArtifact?.strategicPrincipleRegistry?.principleCount || 0,
+    promotablePrinciples: currentArtifact?.strategicPrincipleRegistry?.promotable?.length || 0,
   };
 
   const prior = priorSnapshot || {
@@ -34,6 +36,8 @@ export function measureCorpusGrowth({
     levelATopologyCohorts: 0,
     replicatedHypotheses: 0,
     discoveryCandidates: 0,
+    principles: 0,
+    promotablePrinciples: 0,
   };
 
   const deltaEvents = Math.max(0, current.events - (prior.events || 0));
@@ -41,6 +45,7 @@ export function measureCorpusGrowth({
   const deltaTopo = current.levelATopologyCohorts - (prior.levelATopologyCohorts || 0);
   const deltaReplicated = current.replicatedHypotheses - (prior.replicatedHypotheses || 0);
   const deltaDiscovery = current.discoveryCandidates - (prior.discoveryCandidates || 0);
+  const deltaPrinciples = current.principles - (prior.principles || 0);
 
   const marginalPerEvent = deltaEvents > 0
     ? freeze({
@@ -48,6 +53,7 @@ export function measureCorpusGrowth({
       levelATopologyCohorts: round(deltaTopo / deltaEvents),
       replicatedHypotheses: round(deltaReplicated / deltaEvents),
       discoveryCandidates: round(deltaDiscovery / deltaEvents),
+      principles: round(deltaPrinciples / deltaEvents),
       decks: round((current.decks - (prior.decks || 0)) / deltaEvents),
     })
     : freeze({
@@ -55,6 +61,7 @@ export function measureCorpusGrowth({
       levelATopologyCohorts: 0,
       replicatedHypotheses: 0,
       discoveryCandidates: 0,
+      principles: 0,
       decks: 0,
       note: "No new events vs prior snapshot — marginal gains undefined.",
     });
@@ -72,6 +79,8 @@ export function measureCorpusGrowth({
       levelATopologyCohorts: deltaTopo,
       replicatedHypotheses: deltaReplicated,
       discoveryCandidates: deltaDiscovery,
+      principles: deltaPrinciples,
+      promotablePrinciples: current.promotablePrinciples - (prior.promotablePrinciples || 0),
     }),
     marginalEvidencePerNewEvent: marginalPerEvent,
     preferControlledComparisonsOverVolume: true,
