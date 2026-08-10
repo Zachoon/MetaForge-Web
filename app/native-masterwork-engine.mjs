@@ -33,10 +33,17 @@ import { evaluateMatchupMatrix } from "./matchup-simulation.mjs";
 const BASIC_BY_COLOR = Object.freeze({
   W: "Plains", U: "Island", B: "Swamp", R: "Mountain", G: "Forest", C: "Wastes",
 });
-const BASIC_LAND_NAMES = Object.freeze(["Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes"]);
+const SNOW_BASIC_BY_COLOR = Object.freeze({
+  W: "Snow-Covered Plains", U: "Snow-Covered Island", B: "Snow-Covered Swamp", R: "Snow-Covered Mountain", G: "Snow-Covered Forest", C: "Wastes",
+});
+const BASIC_LAND_NAMES = Object.freeze([
+  "Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes",
+  "Snow-Covered Plains", "Snow-Covered Island", "Snow-Covered Swamp", "Snow-Covered Mountain", "Snow-Covered Forest",
+]);
 const isBasicLandName = (name = "") => BASIC_LAND_NAMES.some((basic) => basic.toLowerCase() === String(name).trim().toLowerCase());
 const BASIC_COLOR_BY_NAME = Object.freeze({
   Plains: ["W"], Island: ["U"], Swamp: ["B"], Mountain: ["R"], Forest: ["G"], Wastes: [],
+  "Snow-Covered Plains": ["W"], "Snow-Covered Island": ["U"], "Snow-Covered Swamp": ["B"], "Snow-Covered Mountain": ["R"], "Snow-Covered Forest": ["G"],
 });
 
 const ROLE_PATTERNS = Object.freeze({
@@ -247,6 +254,11 @@ const BASIC_LAND_FACTS = Object.freeze({
     typeLine: "Basic Land — Wastes",
     oracleText: "{T}: Add {C}.",
   },
+  "Snow-Covered Plains": { typeLine: "Basic Snow Land — Plains", oracleText: "{T}: Add {W}." },
+  "Snow-Covered Island": { typeLine: "Basic Snow Land — Island", oracleText: "{T}: Add {U}." },
+  "Snow-Covered Swamp": { typeLine: "Basic Snow Land — Swamp", oracleText: "{T}: Add {B}." },
+  "Snow-Covered Mountain": { typeLine: "Basic Snow Land — Mountain", oracleText: "{T}: Add {R}." },
+  "Snow-Covered Forest": { typeLine: "Basic Snow Land — Forest", oracleText: "{T}: Add {G}." },
 });
 
 
@@ -762,6 +774,7 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
     excludedRoleHits,
     mechanics: mechanics || { signals: [], produces: [], rewards: [] },
     colorPips: colorPipsFromCost(card.manaCost || card.mana_cost),
+    needsSnowSupport: /\bsnow (?:land|permanent|mana)|\{S\}/i.test(String(card.oracleText || card.oracle_text || "")),
   };
 }
 
@@ -865,6 +878,7 @@ function scoreCard(entry, input, variant, context) {
     sequenceStages: entry.sequenceStages,
     mechanics: entry.mechanics,
     colorPips: entry.colorPips,
+    needsSnowSupport: entry.needsSnowSupport,
   };
 }
 
@@ -992,6 +1006,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       mechanics: candidate.mechanics,
       colorPips: candidate.colorPips,
       manaCost: candidate.card.manaCost || candidate.card.mana_cost || "",
+      needsSnowSupport: candidate.needsSnowSupport,
       // Scryfall's produced_mana exists on any permanent, not just lands —
       // a mana rock or dork is a real color source the consistency math
       // should credit, same as a land. Empty for the vast majority of
@@ -1068,8 +1083,15 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       // resource exists instead of letting standalone card quality create
       // an orphaned mini-package. The penalty disappears automatically as
       // soon as a matching producer is selected.
-      const orphanPayoffPenalty = entry.powerTierScore > 0 ? 0 : entry.mechanics.rewards.reduce((sum, signal) =>
-        sum + (poolProducerSignals.has(signal) && !(producedSoFar.get(signal) || 0) ? 8 : 0), 0);
+      const orphanPayoffPenalty = entry.mechanics.rewards.reduce((sum, signal) => {
+        if (producedSoFar.get(signal)) return sum;
+        // A payoff cannot buy its way past a missing engine merely because
+        // it is popular or individually powerful. If a producer exists in
+        // the pool, defer the payoff decisively until one is selected. If
+        // none exists at all, retain a smaller skepticism penalty rather
+        // than pretending the unsupported text is a full-strength synergy.
+        return sum + (poolProducerSignals.has(signal) ? 24 : 6);
+      }, 0);
       const sequenceDeficit = entry.sequenceStages.reduce((sum, stage) =>
         sum + Math.max(0, (sequenceGoals[stage] || 0) - (sequenceCounts.get(stage) || 0)), 0);
       // Same fair-fill idea as the role deficit above, applied to mana cost:
@@ -1086,7 +1108,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       // interaction, protection, recursion, and sweepers remain eligible,
       // while nonessential good-card filler must yield to a card that
       // actually advances the player's stated plan.
-      const disconnectedStrategyTax = explicitStrategyContract && !protectsUnmetDeckFunction && !advancesStrategyContract(entry, blueprint) ? 22 : 0;
+      const disconnectedStrategyTax = explicitStrategyContract && !protectsUnmetDeckFunction && !advancesStrategyContract(entry, blueprint) ? 35 : 0;
       const adjusted = entry.score + deficit + inDeckSynergy * 2 + requestedPackageSynergy * 4 + sequenceDeficit * 2 + curveDeficit - orphanPayoffPenalty - disconnectedStrategyTax;
       if (adjusted > bestAdjusted || (adjusted === bestAdjusted && candidate && entry.card.name.localeCompare(candidate.card.name) < 0)) {
         candidate = entry;
@@ -1405,10 +1427,16 @@ function buildManaBase(input, landSlots, lands, variant, presetLands = [], pipTo
     rows.push({ quantity: singleton ? 1 : Math.min(4, landSlots - used), name: land.card.name, roles: ["land"], score: 0, cmc: 0, colorIdentity: producedColorsOf(land.card) });
   }
   const remaining = landSlots - rows.reduce((sum, row) => sum + row.quantity, 0);
+  const needsSnowManaBase = spellRows.some((row) => row.needsSnowSupport);
   const basicCounts = proportionalBasicCounts(colors, pipTotals, remaining);
   for (const [color, count] of Object.entries(basicCounts)) {
     if (!count) continue;
-    const name = BASIC_BY_COLOR[color] || "Wastes";
+    // A selected snow payoff is a hard deckbuilding dependency, not flavor
+    // text. Basic snow lands have the same color production and unlimited
+    // basic-land copy allowance, so using them here preserves the mana math
+    // while ensuring cards such as Spirit of the Aldergard are never paired
+    // with a mana base that makes their rules text nonfunctional.
+    const name = (needsSnowManaBase ? SNOW_BASIC_BY_COLOR : BASIC_BY_COLOR)[color] || "Wastes";
     const existing = rows.find((row) => row.name === name);
     if (existing) existing.quantity += count;
     else rows.push({ quantity: count, name, roles: ["land"], score: 0, cmc: 0, colorIdentity: [color] });
@@ -1541,6 +1569,7 @@ function computeBlueprintAlignment(analysis, selected, singleton) {
 }
 
 function computeCommanderCompatibility(analysis, selected) {
+  const availableConnected = analysis.spells.filter((entry) => entry.commanderConnectionSignals?.length);
   const connected = selected.filter((entry) => entry.commanderConnectionSignals?.length);
   const bySignal = Object.fromEntries(unique(connected.flatMap((entry) => entry.commanderConnectionSignals)).map((signal) => [
     signal,
@@ -1549,6 +1578,7 @@ function computeCommanderCompatibility(analysis, selected) {
   return Object.freeze({
     commanderProduces: analysis.context.commanderMechanics.produces,
     commanderRewards: analysis.context.commanderMechanics.rewards,
+    availableConnectedCardCount: availableConnected.length,
     connectedCardCount: connected.reduce((sum, entry) => sum + entry.quantity, 0),
     connectedUniqueCards: connected.length,
     bySignal,
@@ -2088,6 +2118,7 @@ function buildImportedCandidateAttempt(input, analysis) {
       sequenceStages: spellEntry.sequenceStages,
       mechanics: spellEntry.mechanics,
       colorPips: spellEntry.colorPips,
+      needsSnowSupport: spellEntry.needsSnowSupport,
       producesColors: nonlandProducedColorsOf(spellEntry.card),
       manaCost: spellEntry.card.manaCost || spellEntry.card.mana_cost || "",
     });

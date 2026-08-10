@@ -1040,7 +1040,10 @@ const BASIC_LANDS: Record<string, string> = {
   G: "Forest",
 };
 const BASIC_LAND_KEYS = new Set(
-  [...Object.values(BASIC_LANDS), "Wastes"].map(cardFactKey),
+  [
+    ...Object.values(BASIC_LANDS), "Wastes",
+    "Snow-Covered Plains", "Snow-Covered Island", "Snow-Covered Swamp", "Snow-Covered Mountain", "Snow-Covered Forest",
+  ].map(cardFactKey),
 );
 const indexCardFact = (
   target: Record<string, CardFact>,

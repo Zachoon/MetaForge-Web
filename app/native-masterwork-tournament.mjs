@@ -33,7 +33,7 @@ function hardGate(candidate, options) {
     .reduce((sum, row) => sum + Number(row.quantity || 0), 0);
   const landShare = total ? landCount / total : 0;
   const illegalCopies = candidate.rows.filter((row) => {
-    if (row.roles.includes("land") && /^(Plains|Island|Swamp|Mountain|Forest|Wastes)$/i.test(row.name)) return false;
+    if (row.roles.includes("land") && /^(?:(?:Snow-Covered )?(?:Plains|Island|Swamp|Mountain|Forest)|Wastes)$/i.test(row.name)) return false;
     return Number(row.quantity || 0) > (singleton ? 1 : 4);
   });
 
@@ -44,18 +44,33 @@ function hardGate(candidate, options) {
   if (candidate.blueprintAlignment?.status === "missed-supported-blueprint") {
     reasons.push("A supported explicit Blueprint promise fell below its required identity or mechanical floor.");
   }
+  const commanderCompatibility = candidate.commanderCompatibility;
+  if (singleton && commanderCompatibility?.availableConnectedCardCount >= 6 && commanderCompatibility.connectedCardCount < 6) {
+    reasons.push("Commander package support is below the six-card floor despite sufficient verified support being available.");
+  }
   if (landShare < 0.28 || landShare > 0.5) reasons.push(`Mana-base share ${(landShare * 100).toFixed(0)}% is outside the bounded 28–50% gate.`);
   return { passed: reasons.length === 0, reasons, total, landCount, landShare: round(landShare) };
 }
 
 function axes(candidate) {
   const evaluation = candidate.evaluation;
+  const commanderCompatibility = candidate.commanderCompatibility;
+  const blueprintAlignment = candidate.blueprintAlignment;
+  const commanderStrategy = commanderCompatibility?.availableConnectedCardCount >= 6
+    ? clamp((commanderCompatibility.connectedCardCount / Math.min(8, commanderCompatibility.availableConnectedCardCount)) * 100)
+    : 100;
+  const blueprintStrategy = blueprintAlignment?.requested?.length
+    ? clamp((blueprintAlignment.strategyDensity / 0.4) * 100)
+    : 100;
+  const selectedSpellCount = candidate.rows.filter((row) => !row.roles.includes("land") && !row.roles.includes("commander")).length;
+  const packageCoherence = clamp(100 - ((candidate.strategicCoherence?.orphanPayoffs?.length || 0) / Math.max(1, selectedSpellCount)) * 300);
   return {
     coverage: round(evaluation.roleCoverage * 100),
     curve: round(evaluation.curveHealth),
     flexibility: round(evaluation.multiRoleDensity * 100),
     cohesion: round(evaluation.cohesion || 0),
     resilience: round(evaluation.resilience || 0),
+    strategy: round(Math.min(commanderStrategy, blueprintStrategy, packageCoherence)),
   };
 }
 
@@ -90,8 +105,8 @@ export function runNativeMasterworkTournament(candidates, options = {}) {
 
   const frontier = eligible.filter((entry) => !eligible.some((other) => other !== entry && dominates(other.axes, entry.axes)));
   const weighted = (entry) => round(
-    entry.axes.coverage * 0.34 + entry.axes.curve * 0.23 + entry.axes.flexibility * 0.18 +
-    entry.axes.cohesion * 0.13 + entry.axes.resilience * 0.12,
+    entry.axes.strategy * 0.22 + entry.axes.coverage * 0.27 + entry.axes.curve * 0.18 + entry.axes.flexibility * 0.13 +
+    entry.axes.cohesion * 0.1 + entry.axes.resilience * 0.1,
   );
   const rankedFrontier = [...frontier].sort((left, right) => weighted(right) - weighted(left) || right.candidate.score - left.candidate.score || left.candidate.id.localeCompare(right.candidate.id));
   const winner = rankedFrontier[0];
@@ -107,5 +122,5 @@ export function runNativeMasterworkTournament(candidates, options = {}) {
   for (let i = 0; i < candidates.length; i += 1) for (let j = i + 1; j < candidates.length; j += 1) {
     similarities.push({ pair: [candidates[i].id, candidates[j].id], similarity: candidateSimilarity(candidates[i], candidates[j]) });
   }
-  return Object.freeze({ selectedId: winner.candidate.id, results, frontier: results.filter((result) => result.onFrontier).map((result) => result.id), similarities, methodology: "MetaForge applied exact-size, copy-limit, Blueprint-contract, mana-share, role-coverage, and curve gates; then compared nondominated structural tradeoffs. No tournament score is a predicted win rate." });
+  return Object.freeze({ selectedId: winner.candidate.id, results, frontier: results.filter((result) => result.onFrontier).map((result) => result.id), similarities, methodology: "MetaForge applied exact-size, copy-limit, Blueprint-contract, commander-package, mana-share, role-coverage, and curve gates; then compared nondominated structural tradeoffs. No tournament score is a predicted win rate." });
 }

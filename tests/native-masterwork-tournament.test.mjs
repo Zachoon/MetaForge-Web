@@ -30,6 +30,52 @@ test("rejects singleton copy-limit violations", () => {
   assert.match(result.results.find((entry) => entry.id === "bad").reason, /Deck size|Copy limit/i);
 });
 
+test("treats snow-covered basics as real unlimited basic lands", () => {
+  const rows = [
+    { quantity: 37, name: "Snow-Covered Forest", roles: ["land"] },
+    ...Array.from({ length: 63 }, (_, i) => ({ quantity: 1, name: `Bear ${i}`, roles: ["threat"] })),
+  ];
+  const report = runNativeMasterworkTournament([candidate("snow", {}, rows)], { format: "Commander", target: 100 });
+  assert.equal(report.selectedId, "snow");
+});
+
+test("rejects generic soup when a real commander package was available but not selected", () => {
+  const rows = [
+    { quantity: 37, name: "Forest", roles: ["land"] },
+    ...Array.from({ length: 63 }, (_, i) => ({ quantity: 1, name: `Generic ${i}`, roles: ["threat"] })),
+  ];
+  const disconnected = {
+    ...candidate("disconnected", {}, rows),
+    commanderCompatibility: { availableConnectedCardCount: 12, connectedCardCount: 2 },
+  };
+  const connected = {
+    ...candidate("connected", { cohesion: 69 }, rows.map((row, index) => ({ ...row, name: index ? `${row.name} Connected` : row.name }))),
+    commanderCompatibility: { availableConnectedCardCount: 12, connectedCardCount: 8 },
+  };
+  const report = runNativeMasterworkTournament([disconnected, connected], { format: "Commander", target: 100 });
+  const verdict = report.results.find((entry) => entry.id === "disconnected");
+  assert.equal(verdict.verdict, "reject");
+  assert.match(verdict.reason, /Commander package support/i);
+});
+
+test("strategy connection outranks a small generic-stat advantage once both candidates pass hard floors", () => {
+  const singletonRows = (prefix) => [
+    { quantity: 37, name: "Island", roles: ["land"] },
+    ...Array.from({ length: 63 }, (_, index) => ({ quantity: 1, name: `${prefix} ${index}`, roles: ["draw"] })),
+  ];
+  const generic = {
+    ...candidate("generic", { roleCoverage: 0.72, curveHealth: 82, cohesion: 74 }, singletonRows("Generic")),
+    commanderCompatibility: { availableConnectedCardCount: 16, connectedCardCount: 6 },
+  };
+  const coherent = {
+    ...candidate("coherent", { roleCoverage: 0.7, curveHealth: 80, cohesion: 70 }, singletonRows("Coherent")),
+    commanderCompatibility: { availableConnectedCardCount: 16, connectedCardCount: 8 },
+  };
+  const report = runNativeMasterworkTournament([generic, coherent], { format: "Commander", target: 100 });
+  assert.equal(report.selectedId, "coherent");
+  assert.ok(report.results.find((entry) => entry.id === "coherent").axes.strategy > report.results.find((entry) => entry.id === "generic").axes.strategy);
+});
+
 test("measures candidate diversity without claiming performance", () => {
   const a = candidate("a", {}); const b = candidate("b", {});
   const report = runNativeMasterworkTournament([a, b], { format: "Standard", target: 60 });

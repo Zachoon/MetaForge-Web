@@ -195,7 +195,10 @@ const cardFactKey = (name: string) =>
 const scryfallLookupName = (name: string) => String(name || "").split(/\s*\/\/\s*/)[0].trim();
 
 const BASIC_LANDS: Record<string, string> = { W: "Plains", U: "Island", B: "Swamp", R: "Mountain", G: "Forest" };
-const BASIC_LAND_KEYS = new Set([...Object.values(BASIC_LANDS), "Wastes"].map(cardFactKey));
+const BASIC_LAND_KEYS = new Set([
+  ...Object.values(BASIC_LANDS), "Wastes",
+  "Snow-Covered Plains", "Snow-Covered Island", "Snow-Covered Swamp", "Snow-Covered Mountain", "Snow-Covered Forest",
+].map(cardFactKey));
 
 type NativeForgeCard = {
   name: string;

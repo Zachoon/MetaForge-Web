@@ -1,5 +1,17 @@
 # MetaForge Changelog
 
+## 2026-08-10 — Strategy Reliability
+
+### Functional decks now outrank impressive-looking piles
+
+- Candidate selection applies a stronger penalty to cards that do not advance the player's stated strategy after essential deck functions are covered.
+- Unsupported payoffs are now deferred behind their actual enablers and can no longer escape that check merely because the payoff is popular or individually powerful.
+- Final candidate comparison now treats commander and Blueprint connection as a first-class ranking axis, rather than judging primarily by generic role coverage and curve.
+- A Commander-family candidate is rejected when a meaningful commander package exists in the verified pool but the finished deck includes fewer than six connected cards.
+- Snow-dependent cards now produce a matching snow basic-land mana base, so cards such as Spirit of the Aldergard cannot be selected alongside ordinary basics that leave their snow text unsupported.
+- Snow-covered basics retain the real unlimited copy allowance of basic lands throughout construction, imports, validation, and display reconciliation.
+- New regressions reject generic good-card soup, require strategy connection to beat marginal raw-stat advantages, and reproduce the reported unsupported snow-payoff failure.
+
 ## 2026-08-09 — Import and Coaching Reliability
 
 ### Commander discovery no longer mistakes an outage for “no commanders”

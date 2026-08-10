@@ -460,6 +460,30 @@ test("treats an explicit typal and mechanical Blueprint as a construction promis
   assert.match(report.methodology, /Blueprint promise: gamma typal, \+1\/\+1 counter growth/i);
 });
 
+test("a selected snow payoff receives a functional snow mana base instead of dead ordinary basics", () => {
+  const snowPayoff = card(
+    "Spirit of the Aldergard",
+    "When Spirit of the Aldergard enters the battlefield, search your library for a snow land card, reveal it, put it into your hand, then shuffle. Spirit of the Aldergard gets +1/+0 for each other snow permanent you control.",
+    "Snow Creature — Bear Spirit",
+    "{3}{G}",
+    ["G"],
+  );
+  const bearPool = Array.from({ length: 30 }, (_, index) =>
+    card(`Bear ${index}`, "When this enters, draw a card.", "Creature — Bear", "{2}{G}", ["G"]),
+  );
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange",
+    note: "Bear tribal", seed: 620,
+    commander: { name: "Ayula, Queen Among Bears", colors: ["G"], oracleText: "Whenever another Bear enters, put two +1/+1 counters on target Bear." },
+    cards: [...pool, ...bearPool, snowPayoff],
+  });
+
+  const names = new Set(report.selected.rows.map((row) => row.name));
+  assert.ok(names.has("Spirit of the Aldergard"), "the reported payoff must actually be selected for this regression");
+  assert.ok(names.has("Snow-Covered Forest"), "snow-dependent cards must cause the generated basics to become snow basics");
+  assert.ok(!names.has("Forest"), "the generated mana base must not leave the selected snow payoff unsupported");
+});
+
 test("reports an unsupported requested tribe instead of pretending it was honored", () => {
   const report = forgeNativeMasterwork({
     format: "Commander",
