@@ -162,21 +162,34 @@ function normalizePerformance(input = {}) {
   if (!input.performance && !Number.isFinite(input.placement) && !input.matchRecord) return null;
   const placement = Number.isFinite(input.placement) ? input.placement : input.performance?.placement ?? null;
   const eventSize = Number.isFinite(input.eventSize) ? input.eventSize : input.performance?.eventSize ?? null;
+  const topCutSize = Number.isFinite(input.topCutSize)
+    ? input.topCutSize
+    : (Number.isFinite(input.performance?.topCutSize) ? input.performance.topCutSize : null);
   const topCut = input.topCut === true || input.topCut === false
     ? input.topCut
     : input.performance?.topCut ?? null;
   const wins = input.matchRecord?.wins ?? input.performance?.wins ?? null;
+  // Do not invent top-cut / strong-finish from placement<=4 when cut is unknown.
+  const strongFinish = input.performance?.strongFinish === true
+    || topCut === true
+    || placement === 1
+    || (
+      Number.isFinite(topCutSize)
+      && topCutSize > 0
+      && Number.isFinite(placement)
+      && placement > 0
+      && placement <= topCutSize
+    );
   return freeze({
     placement,
     eventSize,
     topCut,
+    topCutSize,
     wins,
-    strongFinish: Boolean(
-      topCut === true
-      || (Number.isFinite(placement) && Number.isFinite(eventSize) && placement <= Math.max(1, Math.ceil(eventSize * 0.15)))
-      || (Number.isFinite(placement) && placement <= 4),
-    ),
-    ...((input.performance && typeof input.performance === "object") ? input.performance : {}),
+    strongFinish: Boolean(strongFinish),
+    ...((input.performance && typeof input.performance === "object")
+      ? Object.fromEntries(Object.entries(input.performance).filter(([key]) => key !== "strongFinish"))
+      : {}),
   });
 }
 

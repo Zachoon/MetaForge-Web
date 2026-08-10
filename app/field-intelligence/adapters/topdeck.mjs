@@ -18,7 +18,7 @@ import {
   rowsFromDeckObj,
 } from "../decklist-parse.mjs";
 import { liveFetch } from "../live-http.mjs";
-import { DEFAULT_LIVE_SAMPLE, selectContrastStandings } from "../live-sample.mjs";
+import { DEFAULT_LIVE_SAMPLE, selectContrastStandings, resolveTopCutStatus } from "../live-sample.mjs";
 
 const freeze = (value) => Object.freeze(value);
 const TOPDECK_BASE = "https://topdeck.gg/api";
@@ -222,7 +222,7 @@ export function normalizeTopDeckTournament(tournament = {}, options = {}) {
       winRate: Number.isFinite(standing.winRate) ? standing.winRate : null,
     });
 
-    const topCut = topCutSize > 0 ? placement <= topCutSize : placement <= 4;
+    const topCut = resolveTopCutStatus(placement, topCutSize);
     const draft = {
       id: `topdeck:${eventId}:${standing.id || standing.name || i}:${placement}`,
       commanders: resolved.commanders,
@@ -239,7 +239,7 @@ export function normalizeTopDeckTournament(tournament = {}, options = {}) {
       eventSize,
       placement,
       topCut,
-      topCutSize: topCutSize || null,
+      topCutSize: topCutSize > 0 ? topCutSize : null,
       matchRecord,
       tournamentSource: "topdeck",
       authorKey: standing.id ? `topdeck-player:${standing.id}` : null,

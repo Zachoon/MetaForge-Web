@@ -307,7 +307,7 @@ export async function enrichCorpusRecords(records = [], options = {}) {
     decksDiscounted: 0,
   };
 
-  // Shared name cache across decks for fewer Scryfall calls.
+  // Shared name cache across decks — resolve once, apply per deck.
   const allNames = [...new Set(records.flatMap((record) => [
     ...(record.commanders || []).map((c) => c.name),
     ...(record.rows || []).map((r) => r.name),
@@ -315,14 +315,6 @@ export async function enrichCorpusRecords(records = [], options = {}) {
   const shared = await resolveCardNames(allNames, options);
 
   for (const record of records) {
-    const result = await enrichCorpusRecord(record, {
-      ...options,
-      // Reuse shared map by short-circuiting resolve via preloaded byRequested
-      fetchImpl: options.fetchImpl,
-      // Pass a synthetic resolve using shared cache:
-      _sharedResolution: shared,
-    });
-    // If shared resolution exists, re-apply from shared for consistency/speed.
     const applied = applySharedResolution(record, shared, options);
     out.push(applied.record);
     aggregate.requested += applied.enrichment.requested;
@@ -335,7 +327,6 @@ export async function enrichCorpusRecords(records = [], options = {}) {
       aggregate.decksFullyResolved += 1;
     }
     if (applied.confidenceDiscount < 1) aggregate.decksDiscounted += 1;
-    void result;
   }
 
   const semanticCoverageRate = aggregate.requested
@@ -356,6 +347,9 @@ export async function enrichCorpusRecords(records = [], options = {}) {
       decks: aggregate.decks,
       decksFullyResolved: aggregate.decksFullyResolved,
       decksDiscounted: aggregate.decksDiscounted,
+      // Shared batch size — not sum of per-deck re-resolves.
+      sharedResolutionRequested: shared.requested,
+      sharedResolutionResolved: shared.resolved,
       source: shared.source,
     }),
   });

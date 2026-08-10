@@ -18,10 +18,19 @@ export function normalizeCommanderIdentity(commanders = []) {
 }
 
 export function isHighPerformer(record) {
-  return record.topCut === true
-    || record.placement === 1
-    || (Number.isFinite(record.placement) && record.placement <= 4)
-    || Boolean(record.performance?.strongFinish);
+  if (record.topCut === true) return true;
+  if (record.placement === 1) return true;
+  if (Boolean(record.performance?.strongFinish)) return true;
+  if (
+    Number.isFinite(record.topCutSize)
+    && record.topCutSize > 0
+    && Number.isFinite(record.placement)
+    && record.placement > 0
+    && record.placement <= record.topCutSize
+  ) {
+    return true;
+  }
+  return false;
 }
 
 function nonlandSlots(record) {
@@ -491,33 +500,34 @@ function aggregateInteractionDecomp(vectors) {
 
 /**
  * Enumerate all usable Level-A cohorts and forensic each.
+ * Nested Maps — never reconstruct event/identity from delimiter keys.
  */
 export function buildAllLevelAForensics(records = [], analyses = []) {
   const analysisById = new Map(analyses.map((a) => [a.deckId, a]));
-  const groups = new Map();
+  const byEventIdentity = new Map(); // eventId -> Map(identity -> records[])
   for (const record of records) {
     if (!record.eventId || !analysisById.has(record.id)) continue;
     const identity = normalizeCommanderIdentity(record.commanders);
     if (!identity) continue;
-    const key = `${record.eventId}::${identity}`;
-    groups.set(key, (groups.get(key) || []).concat([record]));
+    if (!byEventIdentity.has(record.eventId)) byEventIdentity.set(record.eventId, new Map());
+    const byIdentity = byEventIdentity.get(record.eventId);
+    byIdentity.set(identity, (byIdentity.get(identity) || []).concat([record]));
   }
 
   const forensics = [];
-  for (const [key, cohort] of groups) {
-    const sep = key.indexOf("::");
-    const eventId = key.slice(0, sep);
-    const identity = key.slice(sep + 2);
-    const high = cohort.filter(isHighPerformer).length;
-    const low = cohort.length - high;
-    if (cohort.length < 2 || high < 1 || low < 1) continue;
-    const artifact = buildLevelACohortForensics({
-      eventId,
-      commanderIdentity: identity,
-      records: cohort,
-      analyses,
-    });
-    if (artifact.ok) forensics.push(artifact);
+  for (const [eventId, byIdentity] of byEventIdentity) {
+    for (const [identity, cohort] of byIdentity) {
+      const high = cohort.filter(isHighPerformer).length;
+      const low = cohort.length - high;
+      if (cohort.length < 2 || high < 1 || low < 1) continue;
+      const artifact = buildLevelACohortForensics({
+        eventId,
+        commanderIdentity: identity,
+        records: cohort,
+        analyses,
+      });
+      if (artifact.ok) forensics.push(artifact);
+    }
   }
 
   return freeze({

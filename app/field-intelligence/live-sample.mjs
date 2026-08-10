@@ -23,13 +23,29 @@ export const DEFAULT_LIVE_SAMPLE = Object.freeze({
 });
 
 /**
- * Select standings for contrast learning: top-cut/winners + lower placers.
+ * Resolve whether a placement is inside an *explicit* top cut.
+ * Returns true / false / null (unknown — never invent a cut size).
+ */
+export function resolveTopCutStatus(placement, topCutSize) {
+  const place = Number(placement);
+  const cut = Number(topCutSize);
+  if (!Number.isFinite(place) || place <= 0) return null;
+  if (Number.isFinite(cut) && cut > 0) return place <= cut;
+  return null;
+}
+
+/**
+ * Select standings for contrast learning: explicit converters / high placers + lower placers.
+ * When topCutSize is unknown, sample by placement for coverage only — adapters must still
+ * leave topCut=null rather than inventing tournament structure.
  */
 export function selectContrastStandings(standings = [], options = {}) {
   const topCutSize = Number(options.topCutSize) || 0;
   const topCutSlots = options.topCutSlots ?? DEFAULT_LIVE_SAMPLE.topCutSlots;
   const lowerSlots = options.lowerComparisonSlots ?? DEFAULT_LIVE_SAMPLE.lowerComparisonSlots;
   const maxDecks = options.maxDecksPerEvent ?? DEFAULT_LIVE_SAMPLE.maxDecksPerEvent;
+  // Sampling window when cut is unknown — not a claim that these are top-cut.
+  const highPlacementSample = options.highPlacementSample ?? 4;
 
   const ranked = standings.map((standing, index) => ({
     standing,
@@ -38,7 +54,9 @@ export function selectContrastStandings(standings = [], options = {}) {
   }));
 
   const converters = ranked.filter((row) => (
-    (topCutSize > 0 && row.placement <= topCutSize) || row.placement <= 4
+    topCutSize > 0
+      ? row.placement <= topCutSize
+      : row.placement <= highPlacementSample
   )).slice(0, topCutSlots);
 
   const converterIds = new Set(converters.map((row) => row.index));
@@ -54,7 +72,9 @@ export function selectContrastStandings(standings = [], options = {}) {
   return freeze(selected.map((row) => freeze({
     ...row.standing,
     standing: row.placement,
-    _selectedAs: converters.includes(row) ? "converter_or_top" : "lower_comparison",
+    _selectedAs: converters.includes(row)
+      ? (topCutSize > 0 ? "explicit_top_cut" : "high_placement_sample")
+      : "lower_comparison",
   })));
 }
 
@@ -161,7 +181,10 @@ export function dedupeCorpusRecords(records = [], options = {}) {
 export function annotatePerformanceClasses(records = []) {
   const converterEventsByCommander = new Map();
   for (const record of records) {
-    if (!record.topCut && record.placement !== 1) continue;
+    // Only explicit top-cut / winners seed converter-event counting.
+    // Unknown topCut (null) must not promote Swiss placers into converters.
+    const isConverter = record.topCut === true || record.placement === 1;
+    if (!isConverter) continue;
     const commanderKey = (record.commanders || []).map((c) => normalized(c.name)).sort().join("+");
     if (!commanderKey || !record.eventId) continue;
     const set = converterEventsByCommander.get(commanderKey) || new Set();

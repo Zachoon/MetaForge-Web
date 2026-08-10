@@ -31,6 +31,7 @@ import {
   resolveCommanderFamily,
   resolveCorpusFamilies,
   enrichCorpusRecord,
+  enrichCorpusRecords,
   scryfallLookupName,
   buildComparableCohorts,
   LEVEL_CONFIDENCE,
@@ -44,8 +45,11 @@ import {
   buildPerformanceStructureHypotheses,
   classifyHypothesesAgainstBrain,
   selectHighestConfidenceBrainV2Candidate,
+  resolveTopCutStatus,
+  isHighPerformerRecord,
 } from "../app/field-intelligence/index.mjs";
 import { parseTournamentDeckText } from "../app/field-intelligence/decklist-parse.mjs";
+import { PHASE_WEIGHT_POLICY, PHASE_REDUNDANCY_POLICY_NOTE, applyPhaseWeights } from "../app/construction-phase.mjs";
 
 test("corpus records normalize deterministically", () => {
   const rows = [
@@ -917,4 +921,157 @@ test("artifact includes Level-A forensics surfaces and leaves Brain untouched", 
   assert.ok(artifact.performanceHypotheses);
   assert.ok(artifact.brainV2EvidenceGate.implementBrainV2 === false);
   assert.ok(artifact.levelASynthesis.rograkhThrasiosThreat);
+});
+
+test("batched enrichment resolves shared names once (no per-deck duplicate Scryfall)", async () => {
+  let collectionPosts = 0;
+  const fetchImpl = async (url) => {
+    if (String(url).includes("/cards/collection")) collectionPosts += 1;
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: [
+          {
+            name: "Shared Staple",
+            type_line: "Instant",
+            oracle_text: "Counter target spell.",
+            mana_cost: "{1}{U}",
+            cmc: 2,
+            color_identity: ["U"],
+            id: "scry-1",
+          },
+        ],
+        not_found: [],
+      }),
+    };
+  };
+  const records = [
+    createCorpusDeckRecord({
+      id: "enr-1",
+      commanders: [{ name: "Shared Staple" }],
+      rows: [{ quantity: 1, name: "Shared Staple" }],
+      evidenceTier: "tournament_performance",
+      sourceType: "topdeck_tournament",
+    }),
+    createCorpusDeckRecord({
+      id: "enr-2",
+      commanders: [{ name: "Shared Staple" }],
+      rows: [{ quantity: 1, name: "Shared Staple" }],
+      evidenceTier: "tournament_performance",
+      sourceType: "topdeck_tournament",
+    }),
+  ];
+  const result = await enrichCorpusRecords(records, { fetchImpl, force: true, allowNetwork: true });
+  assert.equal(collectionPosts, 1);
+  assert.equal(result.stats.sharedResolutionRequested, 1);
+  assert.equal(result.records.length, 2);
+  assert.ok(result.records.every((r) => r.rows[0].oracleText.includes("Counter")));
+});
+
+test("cohort grouping preserves event/commander identity when ids contain delimiter text", () => {
+  const mk = (id, eventId, commander, placement, topCut) => createCorpusDeckRecord({
+    id,
+    commanders: [{ name: commander, oracleText: "draw a card", typeLine: "Legendary Creature" }],
+    rows: [{ quantity: 1, name: "Piece", typeLine: "Instant", oracleText: "Draw a card.", cmc: 1 }],
+    evidenceTier: "tournament_performance",
+    eventId,
+    placement,
+    topCut,
+    topCutSize: topCut ? 8 : null,
+    sourceType: "topdeck_tournament",
+  });
+  const eventId = "series::cup::finals";
+  const commander = "Pilot::Echo";
+  const records = [
+    mk("d1", eventId, commander, 1, true),
+    mk("d2", eventId, commander, 16, false),
+  ];
+  const analyses = analyzeCorpus(records);
+  const cohorts = buildComparableCohorts(records, analyses);
+  assert.equal(cohorts.counts.A, 1);
+  assert.equal(cohorts.cohorts[0].eventId, eventId);
+  assert.equal(cohorts.cohorts[0].commanderFamily, commander);
+});
+
+test("unknown top-cut stays null and does not invent converter status", () => {
+  assert.equal(resolveTopCutStatus(4, 0), null);
+  assert.equal(resolveTopCutStatus(4, null), null);
+  assert.equal(resolveTopCutStatus(4, 8), true);
+  assert.equal(resolveTopCutStatus(9, 8), false);
+
+  const tournament = {
+    TID: "swiss-only-big",
+    tournamentName: "Swiss Only",
+    players: 64,
+    topCut: 0,
+    startDate: Math.floor(Date.UTC(2026, 5, 1) / 1000),
+    format: "EDH",
+    standings: [
+      {
+        standing: 4,
+        name: "Player Four",
+        deckObj: {
+          Commanders: { "Test Commander": { id: "c1", count: 1 } },
+          Mainboard: { "Sol Ring": { id: "s1", count: 1 } },
+        },
+      },
+      {
+        standing: 40,
+        name: "Player Forty",
+        deckObj: {
+          Commanders: { "Test Commander": { id: "c1", count: 1 } },
+          Mainboard: { "Sol Ring": { id: "s1", count: 1 } },
+        },
+      },
+    ],
+  };
+  const normalized = normalizeTopDeckTournament(tournament, { selectContrast: false, allowEmptyDecklists: true });
+  const fourth = normalized.records.find((r) => r.placement === 4);
+  assert.ok(fourth);
+  assert.equal(fourth.topCut, null);
+  assert.equal(fourth.topCutSize, null);
+  const annotated = annotatePerformanceClasses(normalized.records);
+  const fourthClass = annotated.find((r) => r.placement === 4);
+  assert.equal(fourthClass.performanceClass, "tournament_participant");
+  assert.equal(isHighPerformerRecord(fourth), false);
+});
+
+test("explicit Top 8 still marks placements 1-8 as top-cut", () => {
+  const tournament = {
+    TID: "cut-8",
+    players: 64,
+    topCut: 8,
+    startDate: Math.floor(Date.UTC(2026, 5, 1) / 1000),
+    format: "EDH",
+    standings: [1, 8, 9].map((placement) => ({
+      standing: placement,
+      name: `P${placement}`,
+      deckObj: {
+        Commanders: { "Test Commander": { id: "c1", count: 1 } },
+        Mainboard: { "Sol Ring": { id: "s1", count: 1 } },
+      },
+    })),
+  };
+  const normalized = normalizeTopDeckTournament(tournament, { selectContrast: false, allowEmptyDecklists: true });
+  assert.equal(normalized.records.find((r) => r.placement === 1).topCut, true);
+  assert.equal(normalized.records.find((r) => r.placement === 8).topCut, true);
+  assert.equal(normalized.records.find((r) => r.placement === 9).topCut, false);
+});
+
+test("phase redundancyPenalty is intentionally absent (Brain v1 freeze)", () => {
+  for (const phase of Object.values(PHASE_WEIGHT_POLICY)) {
+    assert.equal(Object.hasOwn(phase, "redundancyPenalty"), false);
+  }
+  assert.equal(PHASE_REDUNDANCY_POLICY_NOTE.status, "intentionally_absent");
+  const applied = applyPhaseWeights({
+    rawScore: 10,
+    prospectiveDelta: 10,
+    synergy: 0,
+    orphanPenalty: 0,
+    disconnectTax: 0,
+    phase: "foundation",
+  });
+  assert.ok(Number.isFinite(applied.adjusted));
+  assert.equal(Object.hasOwn(applied.weights, "redundancyPenalty"), false);
 });

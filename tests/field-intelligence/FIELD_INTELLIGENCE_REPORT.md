@@ -11,138 +11,140 @@ Repeated converter > single-event converter > tournament participant > curated e
 Level-A (same commander + same event) is the primary controlled comparison.
 
 ## Corpus coverage
-- Records ingested: **207**
-- Decks analyzed: **207**
+- Records ingested: **201**
+- Decks analyzed: **201**
 - Events represented: **20**
-- Unique commanders: **90**
-- Top-cut decks: **122**
+- Unique commanders: **95**
+- Top-cut decks: **107**
 - Winning decks (placement 1): **20**
-- Lower-performing comparison decks: **85**
-- Repeated converters: **91**
-- Single-event converters: **31**
-- Tournament participants: **85**
+- Lower-performing comparison decks: **83**
+- Repeated converters: **77**
+- Single-event converters: **34**
+- Tournament participants: **90**
 - EDHREC aggregates (secondary): **6**
-- Evidence tier distribution: `{"tournament_performance":207}`
-- Performance class distribution: `{"repeated_converter":91,"tournament_participant":85,"single_event_converter":31}`
-- Placement distribution: `{"top1":20,"topCut":102,"mid":8,"lower":77,"unknown":0}`
-- Event-size distribution: `{"n":207,"min":16,"p50":37,"max":78,"mean":40.758}`
-- Source distribution: `{"topdeck_tournament":207}`
-- Dedupe: `{"input":207,"output":207,"fingerprintDuplicates":0,"eventPlayerDuplicates":0,"duplicateRate":0}`
+- Evidence tier distribution: `{"tournament_performance":201}`
+- Performance class distribution: `{"repeated_converter":77,"tournament_participant":90,"single_event_converter":34}`
+- Placement distribution: `{"top1":20,"topCut":91,"mid":16,"lower":74,"unknown":0}`
+- Event-size distribution: `{"n":201,"min":16,"p50":37,"max":78,"mean":40.96}`
+- Source distribution: `{"topdeck_tournament":201}`
+- Dedupe: `{"input":201,"output":201,"fingerprintDuplicates":0,"eventPlayerDuplicates":0,"duplicateRate":0}`
 
 ## Corpus quality / semantic bridge
 ```json
 {
   "version": "corpus-quality-v1",
-  "decks": 207,
+  "decks": 201,
   "semanticCoverageRate": 0.999,
   "commanderResolutionRate": 1,
-  "familyResolutionRate": 0.86,
+  "familyResolutionRate": 0.861,
   "packageDetectionRate": 0.333,
   "interactionCoverageRate": 1,
   "roleCoverageRate": 1,
-  "commanderAlignmentRate": 0.821,
+  "commanderAlignmentRate": 0.826,
   "meanConfidenceDiscount": 1,
   "decksDiscounted": 0,
   "excludedDecks": 0,
   "exclusionReasons": {},
   "enrichment": {
-    "requestedCards": 20367,
-    "resolvedCards": 20346,
+    "requestedCards": 19658,
+    "resolvedCards": 19638,
     "unresolvedCards": [],
     "unresolvedCount": 0,
     "aliasFailures": [],
     "dfcFailures": [],
     "splitFailures": [],
     "semanticCoverageRate": 0.999,
-    "decks": 207,
-    "decksFullyResolved": 207,
+    "decks": 201,
+    "decksFullyResolved": 201,
     "decksDiscounted": 0,
+    "sharedResolutionRequested": 2555,
+    "sharedResolutionResolved": 2555,
     "source": "complete"
   },
   "family": {
-    "structurallyTyped": 178,
+    "structurallyTyped": 173,
     "unresolved": 0,
     "unresolvedDetails": [],
     "familyDistributionTop": [
       {
         "key": "produce:evasion",
-        "count": 90
+        "count": 92
       },
       {
         "key": "concept:ramp",
-        "count": 75
-      },
-      {
-        "key": "concept:draw",
-        "count": 64
+        "count": 73
       },
       {
         "key": "reward:combat",
-        "count": 64
-      },
-      {
-        "key": "concept:combat",
         "count": 63
       },
       {
-        "key": "produce:draw",
-        "count": 56
+        "key": "concept:combat",
+        "count": 62
+      },
+      {
+        "key": "concept:draw",
+        "count": 59
       },
       {
         "key": "concept:artifacts",
-        "count": 54
+        "count": 53
+      },
+      {
+        "key": "produce:draw",
+        "count": 51
       },
       {
         "key": "produce:etb",
-        "count": 50
+        "count": 47
       },
       {
         "key": "produce:sacrifice",
-        "count": 43
+        "count": 41
       },
       {
         "key": "produce:life",
-        "count": 40
-      },
-      {
-        "key": "concept:lifegain",
         "count": 38
       },
       {
+        "key": "concept:lifegain",
+        "count": 36
+      },
+      {
         "key": "package:tokens",
-        "count": 36
-      },
-      {
-        "key": "produce:tokens",
-        "count": 36
-      },
-      {
-        "key": "concept:graveyard",
         "count": 34
       },
       {
-        "key": "concept:tokens",
+        "key": "produce:tokens",
+        "count": 34
+      },
+      {
+        "key": "concept:graveyard",
         "count": 33
       },
       {
-        "key": "produce:combat",
-        "count": 32
+        "key": "produce:counters",
+        "count": 33
       },
       {
-        "key": "concept:selection",
+        "key": "concept:tokens",
         "count": 31
+      },
+      {
+        "key": "produce:combat",
+        "count": 31
+      },
+      {
+        "key": "concept:counters",
+        "count": 30
       },
       {
         "key": "concept:spells",
-        "count": 31
+        "count": 29
       },
       {
-        "key": "produce:counters",
-        "count": 31
-      },
-      {
-        "key": "reward:spells",
-        "count": 30
+        "key": "concept:selection",
+        "count": 28
       }
     ]
   },
@@ -157,58 +159,58 @@ Level-A (same commander + same event) is the primary controlled comparison.
 ```json
 {
   "commanderResolutionRate": 1,
-  "familyResolutionRate": 0.86,
-  "structurallyTyped": 178,
+  "familyResolutionRate": 0.861,
+  "structurallyTyped": 173,
   "unresolved": 0,
   "unresolvedDetails": [],
   "familyDistributionTop": [
     [
       "produce:evasion",
-      90
+      92
     ],
     [
       "concept:ramp",
-      75
-    ],
-    [
-      "concept:draw",
-      64
+      73
     ],
     [
       "reward:combat",
-      64
-    ],
-    [
-      "concept:combat",
       63
     ],
     [
-      "produce:draw",
-      56
+      "concept:combat",
+      62
+    ],
+    [
+      "concept:draw",
+      59
     ],
     [
       "concept:artifacts",
-      54
+      53
+    ],
+    [
+      "produce:draw",
+      51
     ],
     [
       "produce:etb",
-      50
+      47
     ],
     [
       "produce:sacrifice",
-      43
+      41
     ],
     [
       "produce:life",
-      40
-    ],
-    [
-      "concept:lifegain",
       38
     ],
     [
-      "package:tokens",
+      "concept:lifegain",
       36
+    ],
+    [
+      "package:tokens",
+      34
     ]
   ]
 }
@@ -435,7 +437,7 @@ Level-A (same commander + same event) is the primary controlled comparison.
 - brain_missing_concept psh:kinnan, bonder prodigy:spell_other: concept not found in Brain v1 encoded surfaces
 
 ## Comparable cohorts (A→D summary)
-- Counts: `{"A":9,"B":2,"C":14,"D":19}`
+- Counts: `{"A":9,"B":2,"C":12,"D":19}`
 - Level A conf=1 family=Kinnan, Bonder Prodigy high=2 low=2 topDelta=spells:4
 - Level A conf=1 family=Rograkh, Son of Rohgahh / Silas Renn, Seeker Adept high=2 low=2 topDelta=artifacts:1.5
 - Level A conf=1 family=Dargo, the Shipwrecker / Tymna the Weaver high=1 low=1 topDelta=artifacts:6
@@ -453,61 +455,61 @@ Level-A (same commander + same event) is the primary controlled comparison.
   "groups": {
     "repeated_converter": {
       "className": "repeated_converter",
-      "n": 91,
-      "packageCoreDensity": 5.659,
-      "packageHealth": 27.088,
-      "packageDetectionRate": 0.341,
-      "interactionDensity": 768.451,
-      "weakSlotDensity": 0.091,
-      "redundancy": 2.571,
-      "commanderAlignment": 0.162,
-      "curveHigh": 5.011,
+      "n": 77,
+      "packageCoreDensity": 2.87,
+      "packageHealth": 23.649,
+      "packageDetectionRate": 0.299,
+      "interactionDensity": 710.714,
+      "weakSlotDensity": 0.1,
+      "redundancy": 1,
+      "commanderAlignment": 0.12,
+      "curveHigh": 4.714,
       "legMeans": {
-        "reanimator::reanimation": 0.11,
-        "reanimator::graveyard_enabler": 0.231,
-        "reanimator::reanimation_target": 0.011
+        "reanimator::reanimation": 0.13,
+        "reanimator::graveyard_enabler": 0.273,
+        "reanimator::reanimation_target": 0.013
       }
     },
     "single_event_converter": {
       "className": "single_event_converter",
-      "n": 31,
-      "packageCoreDensity": 7.581,
-      "packageHealth": 22.129,
-      "packageDetectionRate": 0.29,
-      "interactionDensity": 701.903,
-      "weakSlotDensity": 0.085,
-      "redundancy": 4.71,
-      "commanderAlignment": 0.23,
-      "curveHigh": 4.516,
+      "n": 34,
+      "packageCoreDensity": 9.971,
+      "packageHealth": 24.647,
+      "packageDetectionRate": 0.324,
+      "interactionDensity": 775.676,
+      "weakSlotDensity": 0.073,
+      "redundancy": 6.059,
+      "commanderAlignment": 0.257,
+      "curveHigh": 4.912,
       "legMeans": {
-        "reanimator::reanimation": 0.258,
-        "reanimator::graveyard_enabler": 0.29,
-        "reanimator::reanimation_target": 0.032
+        "reanimator::reanimation": 0.235,
+        "reanimator::graveyard_enabler": 0.265,
+        "reanimator::reanimation_target": 0.029
       }
     },
     "tournament_participant": {
       "className": "tournament_participant",
-      "n": 85,
-      "packageCoreDensity": 4.706,
-      "packageHealth": 28.047,
-      "packageDetectionRate": 0.341,
-      "interactionDensity": 695.847,
-      "weakSlotDensity": 0.096,
-      "redundancy": 1.847,
-      "commanderAlignment": 0.171,
-      "curveHigh": 4.635,
+      "n": 90,
+      "packageCoreDensity": 5.756,
+      "packageHealth": 30.133,
+      "packageDetectionRate": 0.367,
+      "interactionDensity": 697.133,
+      "weakSlotDensity": 0.092,
+      "redundancy": 2.2,
+      "commanderAlignment": 0.186,
+      "curveHigh": 5.144,
       "legMeans": {
-        "reanimator::reanimation": 0.059,
-        "reanimator::graveyard_enabler": 0.153,
-        "reanimator::reanimation_target": 0
+        "reanimator::reanimation": 0.144,
+        "reanimator::graveyard_enabler": 0.333,
+        "reanimator::reanimation_target": 0.078
       }
     }
   },
   "deltas": {
-    "coreDensity_repeated_minus_participant": 0.953,
-    "interaction_repeated_minus_participant": 72.604,
-    "weakSlot_repeated_minus_participant": -0.005,
-    "coreDensity_repeated_minus_single": -1.922
+    "coreDensity_repeated_minus_participant": -2.886,
+    "interaction_repeated_minus_participant": 13.581,
+    "weakSlot_repeated_minus_participant": 0.008,
+    "coreDensity_repeated_minus_single": -7.101
   },
   "note": "associative_not_causal"
 }
@@ -516,9 +518,11 @@ Level-A (same commander + same event) is the primary controlled comparison.
 ## Agreement diagnosis
 ```json
 {
-  "agreementCount": 1,
+  "agreementCount": 0,
   "packageDetectionRate": 0.333,
-  "causes": [],
+  "causes": [
+    "genuine_disagreement_or_sparse_overlap"
+  ],
   "thresholdLowered": false
 }
 ```
@@ -558,9 +562,9 @@ Level-A (same commander + same event) is the primary controlled comparison.
     "status": "ok",
     "reason": null,
     "actionable": null,
-    "elapsedMs": 18735,
+    "elapsedMs": 19001,
     "tournaments": 25,
-    "decks": 207,
+    "decks": 201,
     "skippedExternal": 0,
     "errors": null,
     "commanders": null,
@@ -588,7 +592,7 @@ Level-A (same commander + same event) is the primary controlled comparison.
         "note": "Docs describe public access to completed tournament decklists/results, but the documented curl example sends an API key. Treat SPICERACK_API_KEY as required until Spicerack confirms unauthenticated access."
       }
     },
-    "elapsedMs": 0,
+    "elapsedMs": 1,
     "tournaments": 0,
     "decks": 0,
     "skippedExternal": 0,
@@ -632,7 +636,7 @@ Level-A (same commander + same event) is the primary controlled comparison.
         "note": "EDHTop16 aggregates competitive EDH data and exposes GraphQL. Schema fields evolve; soft-fail on GraphQL errors and never scrape HTML as a fallback."
       }
     },
-    "elapsedMs": 280,
+    "elapsedMs": 346,
     "tournaments": 0,
     "decks": 0,
     "skippedExternal": 0,
@@ -681,14 +685,14 @@ Level-A (same commander + same event) is the primary controlled comparison.
 {
   "liveMode": true,
   "liveTournamentsRetrieved": 25,
-  "liveDecklistsRetrieved": 207,
+  "liveDecklistsRetrieved": 201,
   "fixtureDecks": 136,
   "note": "Compare live structural contrasts against the offline fixture-shaped baseline before proposing Brain v2."
 }
 ```
 
 ## Strongest Brain ↔ human agreements
-- reanimator: brain 6 vs corpus 7.286 (n=8)
+- (none above threshold in this sample)
 
 ## Strongest disagreements / blind spots
 - DISAGREEMENT: brain_expects_more_than_corpus_median_investigate (tokens)
@@ -706,10 +710,10 @@ Level-A (same commander + same event) is the primary controlled comparison.
 - level=A conf=1 event=the-stack-council-proving-grounds family=Sisay, Weatherlight Captain high=1 low=1 topDelta=spells:4
 
 ## Hold-out generalization
-- train=165 holdout=42
-- package band hit rate: 0.722
+- train=162 holdout=39
+- package band hit rate: 0.706
 - package band null reason: null
-- family transfer hit rate: 0.889
+- family transfer hit rate: 0.748
 - family transfer null reason: null
 
 ## Anti-netdeck safeguards
@@ -721,16 +725,7 @@ Level-A (same commander + same event) is the primary controlled comparison.
   "implementBrainV2": false,
   "brainV1RemainsFrozen": true,
   "candidateChangedBecauseOfBridge": false,
-  "strongestAgreement": {
-    "kind": "package_core_density",
-    "packageId": "reanimator",
-    "brainTheory": 6,
-    "corpusWeightedMean": 7.286,
-    "corpusP25": 6,
-    "corpusP75": 8,
-    "n": 8,
-    "note": "human_and_brain_converge"
-  },
+  "strongestAgreement": null,
   "firstCandidate": {
     "kind": "replicated_level_a_structure",
     "hypothesisId": "psh:kraum, ludevic's opus / tymna the weaver:interaction",
