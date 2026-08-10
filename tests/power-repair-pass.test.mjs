@@ -82,7 +82,12 @@ test("whole-batch role-floor failure rolls every proposed swap back", () => {
   const nonlands = [...base, ...interactionFiller.map(row), ...interactionEngines.map(row)];
   const rows = [...nonlands, { quantity: 100 - nonlands.length, name: "Forest", roles: ["land"], cmc: 0 }];
   const original = { ...candidate(), rows };
-  const result = repairPowerOffenders(input([...interactionFiller, ...interactionEngines, ...drawAlts]), original);
+  // Keep the alternative pool intentionally limited to the already-selected
+  // interaction cards plus draw-only replacements. The shared fixture's
+  // unused `Answer 10/11` cards would be genuinely safe role-preserving
+  // alternatives, which makes this a successful repair rather than the
+  // whole-batch rollback this test is specifically meant to exercise.
+  const result = repairPowerOffenders(input([], { cards: [...interactionFiller, ...interactionEngines, ...drawAlts] }), original);
   assert.equal(result.powerRepair.revertedByFinalValidation, true, JSON.stringify(result.powerRepair));
   assert.equal(result.powerRepair.appliedCount, 0);
   assert.deepEqual(result.candidate.rows, original.rows);

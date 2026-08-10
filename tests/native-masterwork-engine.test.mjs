@@ -1,6 +1,6 @@
 ﻿import assert from "node:assert/strict";
 import test from "node:test";
-import { applyPracticalTiebreak, budgetScoreFor, classifyNativeCard, colorPipsFromCost, comparePracticalImpact, complexityScoreFor, conceptSignals, curveAwareLandAdjustment, curveTargets, evaluatePracticalImpact, fieldCounterRolesFor, forgeNativeMasterwork, hypergeometricAtLeast, interactionQualityFor, manaConsistencyReport, oracleTextComplexity, parseNativeBlueprintIntent, poolMechanicalSignals, popularityScoreFromRank, powerTierScoreFor, practicalOutranks, proportionalBasicCounts, rankPracticalOneSlotCounterfactuals, runPracticalOneSlotCounterfactualLab, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
+import { applyPracticalTiebreak, budgetScoreFor, classifyNativeCard, colorPipsFromCost, commanderConnectionSignalsFor, commanderMechanicalScopes, comparePracticalImpact, complexityScoreFor, conceptSignals, curveAwareLandAdjustment, curveTargets, evaluatePracticalImpact, fieldCounterRolesFor, forgeNativeMasterwork, hypergeometricAtLeast, interactionQualityFor, manaConsistencyReport, oracleTextComplexity, parseNativeBlueprintIntent, poolMechanicalSignals, popularityScoreFromRank, powerTierScoreFor, practicalOutranks, proportionalBasicCounts, rankPracticalOneSlotCounterfactuals, runPracticalOneSlotCounterfactualLab, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
 import { runOneSlotCounterfactualLab } from "../app/native-one-slot-lab.mjs";
 
 const card = (name, oracleText, typeLine = "Creature — Test", manaCost = "{2}{U}", colorIdentity = ["U"]) => ({ name, oracleText, typeLine, manaCost, colorIdentity });
@@ -83,6 +83,37 @@ test("conceptSignals reads a commander's own database-confirmed roles, not just 
 
 test("conceptSignals never calls a commander printed on a basic land \"ramp\" from the mana_acceleration tag", () => {
   assert.deepEqual(conceptSignals(card("Island", "", "Basic Land — Island")), []);
+});
+
+test("commander connections preserve Ayula's Bear-only counter and ETB scope", () => {
+  const ayula = card(
+    "Ayula, Queen Among Bears",
+    "Whenever another Bear you control enters, choose one — Put two +1/+1 counters on target Bear. Target Bear you control fights target creature you don't control.",
+    "Legendary Creature — Bear",
+    "{1}{G}",
+    ["G"],
+  );
+  const scopes = commanderMechanicalScopes(ayula);
+  const commanderMechanics = { produces: ["counters"], rewards: ["etb"] };
+  assert.deepEqual(scopes.produces.counters, ["bear"]);
+  assert.deepEqual(scopes.rewards.etb, ["bear"]);
+
+  assert.deepEqual(commanderConnectionSignalsFor(
+    card("Basking Broodscale", "Whenever one or more +1/+1 counters are put on this creature, create a token.", "Creature — Eldrazi Lizard"),
+    { produces: [], rewards: ["counters"] }, commanderMechanics, scopes,
+  ), [], "a non-Bear self-counter payoff is not an Ayula connection");
+  assert.deepEqual(commanderConnectionSignalsFor(
+    card("Bear Counter Student", "Whenever one or more +1/+1 counters are put on this creature, draw a card.", "Creature — Bear"),
+    { produces: [], rewards: ["counters"] }, commanderMechanics, scopes,
+  ), ["counters", "etb"], "a Bear permanent both receives Ayula's counters and triggers her Bear ETB ability");
+  assert.deepEqual(commanderConnectionSignalsFor(
+    card("Plant Parade", "Create three 0/1 green Plant creature tokens.", "Sorcery"),
+    { produces: ["etb"], rewards: [] }, commanderMechanics, scopes,
+  ), [], "generic creature tokens do not trigger Ayula");
+  assert.deepEqual(commanderConnectionSignalsFor(
+    card("Bear Parade", "Create three 2/2 green Bear creature tokens.", "Sorcery"),
+    { produces: ["etb"], rewards: [] }, commanderMechanics, scopes,
+  ), ["etb"]);
 });
 
 test("interactionQualityFor scores unconditional removal at full quality", () => {
@@ -482,6 +513,40 @@ test("a selected snow payoff receives a functional snow mana base instead of dea
   assert.ok(names.has("Spirit of the Aldergard"), "the reported payoff must actually be selected for this regression");
   assert.ok(names.has("Snow-Covered Forest"), "snow-dependent cards must cause the generated basics to become snow basics");
   assert.ok(!names.has("Forest"), "the generated mana base must not leave the selected snow payoff unsupported");
+});
+
+test("Ayula Bear tribal cannot fill its commander package with unrelated counter and token cards", () => {
+  const bears = Array.from({ length: 48 }, (_, index) => ({
+    ...card(`Bear Cohort ${index}`, index % 2 ? "When this enters, draw a card." : "Put a +1/+1 counter on target Bear.", "Creature — Bear", `{${index % 4 + 1}}{G}`, ["G"]),
+    popularityRank: 700 + index,
+  }));
+  const unrelated = Array.from({ length: 30 }, (_, index) => ({
+    ...card(
+      `Generic Counter Engine ${index}`,
+      index % 2
+        ? "Create three 0/1 green Plant creature tokens."
+        : "Whenever one or more +1/+1 counters are put on this creature, create a 0/1 colorless Eldrazi Spawn creature token.",
+      index % 2 ? "Sorcery" : "Creature — Eldrazi Lizard",
+      "{2}{G}",
+      ["G"],
+    ),
+    popularityRank: index,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange",
+    note: "Bear Tribal", seed: 621,
+    commander: {
+      name: "Ayula, Queen Among Bears", colors: ["G"],
+      oracleText: "Whenever another Bear you control enters, choose one — Put two +1/+1 counters on target Bear. Target Bear you control fights target creature you don't control.",
+    },
+    cards: [...pool, ...bears, ...unrelated],
+  });
+
+  assert.ok(report.selected.blueprintAlignment.selectedIdentityCards >= 40, "Bear tribal must remain the deck's center of gravity");
+  assert.ok(report.selected.commanderCompatibility.connectedCardCount >= 8);
+  for (const row of report.selected.rows.filter((entry) => entry.name.startsWith("Generic Counter Engine"))) {
+    assert.deepEqual(row.commanderConnectionSignals, [], `${row.name} must not masquerade as an Ayula connection`);
+  }
 });
 
 test("reports an unsupported requested tribe instead of pretending it was honored", () => {

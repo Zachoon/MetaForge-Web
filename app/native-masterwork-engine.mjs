@@ -657,6 +657,57 @@ function preferenceTerms(input) {
     .split(/[^a-z0-9+'-]+/).filter((term) => term.length >= 4 && !ignored.has(term)));
 }
 
+const GENERIC_SCOPE_WORDS = new Set(["card", "creature", "permanent", "player", "opponent", "spell", "token"]);
+
+// Producer/payoff labels are intentionally broad, but commander text often
+// narrows them: Ayula does not reward every ETB and cannot place counters on
+// every creature; both clauses are Bear-only. Preserve that rules-text scope
+// so a Plant token maker or non-Bear counter card cannot claim a commander
+// connection merely because it shares the words "enters" or "counter."
+export function commanderMechanicalScopes(card = {}) {
+  const oracle = String(card.oracleText || card.oracle_text || "");
+  const collect = (patterns) => unique(patterns.flatMap((pattern) => [...oracle.matchAll(pattern)].map((match) => normalized(match[1]))))
+    .filter((term) => term && !GENERIC_SCOPE_WORDS.has(term));
+  return Object.freeze({
+    produces: Object.freeze({
+      counters: collect([/put [^.]*?counters? on target ([a-z][a-z'-]+)/gi]),
+    }),
+    rewards: Object.freeze({
+      etb: collect([/whenever another ([a-z][a-z'-]+)(?: you control)? enters/gi, /whenever (?:a|one or more) ([a-z][a-z'-]+)s?(?: you control)? enter/gi]),
+    }),
+  });
+}
+
+function cardFitsMechanicalScope(card, signal, tribes = []) {
+  if (!tribes.length) return true;
+  const typeLine = normalized(card.typeLine || card.type_line || "");
+  const oracle = normalized(card.oracleText || card.oracle_text || "");
+  if (tribes.some((tribe) => new RegExp(`(?:^|[^a-z])${tribe}(?:s)?(?:$|[^a-z])`, "i").test(typeLine))) return true;
+  if (tribes.some((tribe) => new RegExp(`create[^.]{0,80}${tribe}[^.]{0,30}token`, "i").test(oracle))) return true;
+  // Broad counter replacement/doubling effects genuinely support counters
+  // placed on a scoped tribe even when the support card is not that tribe.
+  if (signal === "counters" && /counters? would be put on (?:a|one or more|each|target) (?:creature|permanent)|put twice that many counters/i.test(oracle)) return true;
+  return false;
+}
+
+export function commanderConnectionSignalsFor(card, mechanics, commanderMechanics, commanderScopes) {
+  const typeLine = String(card.typeLine || card.type_line || "");
+  const effectiveProduces = unique([
+    ...mechanics.produces,
+    // A permanent entering is itself a real ETB event. This matters for a
+    // scoped commander such as Ayula: every Bear creature is a true engine
+    // piece even if its own rules text has no ETB ability, while the scope
+    // check below still rejects Plants, Eldrazi, and other unrelated bodies.
+    ...(!/\bInstant\b|\bSorcery\b/i.test(typeLine) ? ["etb"] : []),
+  ]);
+  return unique([
+    ...mechanics.rewards.filter((signal) =>
+      commanderMechanics.produces.includes(signal) && cardFitsMechanicalScope(card, signal, commanderScopes.produces?.[signal] || [])),
+    ...effectiveProduces.filter((signal) =>
+      commanderMechanics.rewards.includes(signal) && cardFitsMechanicalScope(card, signal, commanderScopes.rewards?.[signal] || [])),
+  ]);
+}
+
 // The same producer/payoff vocabulary that powers the post-build interaction
 // graph (forge-interaction-graph.mjs), applied one pool-wide pass ahead of
 // scoring instead of after construction. A single pass is O(n): count how
@@ -729,10 +780,7 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
   const identityHits = unique([...directTribes, ...tribalSupport]);
   const blueprintRoleHits = roles.filter((role) => context.blueprint.desiredRoles.includes(role));
   const blueprintMechanicHits = blueprintMechanicHitsFor(card, context.blueprint.requestedMechanics);
-  const commanderConnectionSignals = unique([
-    ...mechanics.rewards.filter((signal) => context.commanderMechanics.produces.includes(signal)),
-    ...mechanics.produces.filter((signal) => context.commanderMechanics.rewards.includes(signal)),
-  ]);
+  const commanderConnectionSignals = commanderConnectionSignalsFor(card, mechanics, context.commanderMechanics, context.commanderScopes);
   const cmc = manaValueFromCost(card.manaCost || card.mana_cost, card.cmc);
   const sequenceStages = unique([
     ...(cmc <= 3 && roles.some((role) => ["ramp", "draw", "selection"].includes(role)) ? ["setup"] : []),
@@ -781,12 +829,17 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
 function prepareForgeAnalysis(input, evidenceByName) {
   const blueprint = parseNativeBlueprintIntent(input);
   const commanderMechanicRows = allCommanders(input).map((commander) => extractMechanicalSignals(commander));
+  const commanderScopeRows = allCommanders(input).map((commander) => commanderMechanicalScopes(commander));
   const context = {
     weights: STRATEGY_WEIGHTS[input.strategy] || STRATEGY_WEIGHTS["Balanced midrange"],
     commanderSignals: unique(allCommanders(input).flatMap((commander) => conceptSignals(commander))),
     commanderMechanics: Object.freeze({
       produces: unique(commanderMechanicRows.flatMap((mechanics) => mechanics.produces)),
       rewards: unique(commanderMechanicRows.flatMap((mechanics) => mechanics.rewards)),
+    }),
+    commanderScopes: Object.freeze({
+      produces: Object.freeze({ counters: unique(commanderScopeRows.flatMap((scope) => scope.produces.counters || [])) }),
+      rewards: Object.freeze({ etb: unique(commanderScopeRows.flatMap((scope) => scope.rewards.etb || [])) }),
     }),
     terms: preferenceTerms(input),
     ideal: /Aggressive|Tempo/i.test(input.strategy) ? 2.4 : /Control/i.test(input.strategy) ? 3.2 : 2.9,
@@ -2453,6 +2506,72 @@ function budgetDiagnosticsFor(candidate, input) {
 const TRACKED_LOAD_BEARING_ROLES = ["ramp", "draw", "interaction", "protection", "recursion", "sweeper"];
 const BUDGET_IGNORED_CONCLUSION = "budget preference is being ignored relative to a small structural gain";
 
+// Persistent repair intent. Later stages used to rebuild their own eligible
+// pools and could silently reintroduce cards an earlier stage had already
+// cut (the confirmed budget-after-power leak). Every substitution audit and
+// repair pass must honor this shared exclusion set instead of asking only
+// "is there another legal card?"
+export function collectRepairExcludedNames(candidate = {}, extraNames = []) {
+  return new Set(
+    unique([
+      ...(candidate.budgetRepair?.removedNames || []),
+      ...(candidate.powerRepair?.removedNames || []),
+      ...extraNames,
+    ].map((name) => normalized(name)).filter(Boolean)),
+  );
+}
+
+export function repairForbidsPowerSignals(input = {}) {
+  return input.targetPowerTier === "Casual";
+}
+
+function alternativeHonorsRepairIntent(entry, constraints = {}) {
+  const key = normalized(entry.card?.name || entry.name || "");
+  if (!key) return false;
+  if (constraints.excludedNames?.has(key)) return false;
+  if (constraints.forbidPowerSignals && powerSignalCategoryFor(entry.card || entry) != null) return false;
+  return true;
+}
+
+function rowFromAnalyzedEntry(entry, score = entry.roleScore) {
+  return {
+    quantity: 1,
+    name: entry.card.name,
+    roles: entry.roles,
+    score: Number((Number(score) || 0).toFixed(3)),
+    cmc: entry.cmc,
+    directTribes: entry.directTribes,
+    tribalSupport: entry.tribalSupport,
+    identityHits: entry.identityHits,
+    blueprintRoleHits: entry.blueprintRoleHits,
+    blueprintMechanicHits: entry.blueprintMechanicHits,
+    commanderConnectionSignals: entry.commanderConnectionSignals,
+    sequenceStages: entry.sequenceStages,
+    mechanics: entry.mechanics,
+    colorPips: entry.colorPips,
+    manaCost: entry.card.manaCost || entry.card.mana_cost || "",
+    needsSnowSupport: entry.needsSnowSupport,
+    producesColors: nonlandProducedColorsOf(entry.card),
+  };
+}
+
+function refreshCandidateStrategyMetrics(candidate, analysis, input) {
+  const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
+  const selected = candidate.rows.filter((row) => !row.roles?.includes("land") && !row.roles?.includes("commander"));
+  return {
+    ...candidate,
+    blueprintAlignment: computeBlueprintAlignment(analysis, selected, singleton),
+    commanderCompatibility: computeCommanderCompatibility(analysis, selected),
+    strategicCoherence: computeStrategicCoherence(analysis, selected),
+    strategicSequence: computeStrategicSequence(selected, singleton),
+  };
+}
+
+function rowsLeakExcludedNames(rows, excludedNames) {
+  if (!excludedNames?.size) return [];
+  return rows.filter((row) => excludedNames.has(normalized(row.name))).map((row) => row.name);
+}
+
 // Phase 2A: budget substitution diagnostic — server-side/dev observability
 // only, not wired into any player-facing report yet. The land fix (Phase 1)
 // showed that a real preference term can exist and still lose every
@@ -2487,6 +2606,11 @@ export function auditBudgetSubstitutions(input, options = {}) {
   // active hard price/rarity cap) are legitimate substitution candidates —
   // matches what real construction could have picked instead.
   const spellNames = new Set(analysis.spells.map((entry) => normalized(entry.card.name)));
+  const excludedAlternativeNames = options.excludedNames instanceof Set
+    ? options.excludedNames
+    : new Set((options.excludedNames || []).map(normalized));
+  const forbidPowerSignals = Boolean(options.forbidPowerSignals);
+  const repairConstraints = { excludedNames: excludedAlternativeNames, forbidPowerSignals };
 
   const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
   const copyLimit = singleton ? 1 : 4;
@@ -2520,7 +2644,8 @@ export function auditBudgetSubstitutions(input, options = {}) {
       spellNames.has(candidateKey) &&
       Number.isFinite(candidateEntry.card.priceUsd) &&
       candidateEntry.card.priceUsd < entry.card.priceUsd &&
-      (quantityByName.get(candidateKey) || 0) < copyLimit;
+      (quantityByName.get(candidateKey) || 0) < copyLimit &&
+      alternativeHonorsRepairIntent(candidateEntry, repairConstraints);
 
     // Tracked-role cards: only a card sharing one of ITS tracked roles is
     // a fair "same slot" comparison. Luxury cards: no role requirement —

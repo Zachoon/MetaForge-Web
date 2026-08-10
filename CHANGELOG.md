@@ -11,6 +11,9 @@
 - Snow-dependent cards now produce a matching snow basic-land mana base, so cards such as Spirit of the Aldergard cannot be selected alongside ordinary basics that leave their snow text unsupported.
 - Snow-covered basics retain the real unlimited copy allowance of basic lands throughout construction, imports, validation, and display reconciliation.
 - New regressions reject generic good-card soup, require strategy connection to beat marginal raw-stat advantages, and reproduce the reported unsupported snow-payoff failure.
+- Commander connections now preserve rules-text scope: Ayula's Bear-only ETB and counter abilities no longer make unrelated Plant, Eldrazi, artifact-token, or self-counter cards look like commander engine pieces.
+- A card that merely places counters is no longer mislabeled as also rewarding counters, and a one-shot self-ETB ability is no longer treated as a repeatable ETB payoff.
+- The reported Ayula canary now moves from 33 to 46 Bear-connected cards, while all three construction variants remain distinct enough to offer a real choice.
 
 ## 2026-08-09 — Import and Coaching Reliability
 

@@ -87,14 +87,22 @@ const PAYOFFS = {
   tokens: /token(?:s)? you control|for each token|sacrifice a token/i,
   treasure: /treasures? you control|sacrifice a treasure/i,
   artifacts: /artifact(?:s)? you control|whenever (?:you cast |an? )?artifact|sacrifice an artifact/i,
-  counters: /counter(?:s)? on|remove [^.]* counter|modified creature/i,
+  // "Put counters on target X" is a producer, not a payoff. The old broad
+  // `counters on` branch classified Ayula as both sides of a counter engine,
+  // letting any unrelated counter producer masquerade as commander synergy.
+  // A payoff must react to, scale from, replace, or spend existing counters.
+  counters: /whenever [^,.;]*counter|if [^,.;]*counter|for each [^.]*counter|remove [^.]* counter|modified creature/i,
   graveyard: /from your graveyard|in your graveyard|delirium|threshold/i,
   sacrifice: /whenever [^.]* dies|whenever you sacrifice|sacrifice another/i,
   draw: /whenever you draw|second card|cards? in your hand/i,
   spells: /whenever you cast|magecraft|instant and sorcery/i,
   lands: /landfall|whenever a land enters|lands you control/i,
   life: /whenever you gain life|if your life total|life you gained/i,
-  etb: /whenever another [^.]* enters|when [^.]* enters/i,
+  // A permanent's own one-shot "When this enters" ability is not an ETB
+  // payoff package. Payoffs must repeatedly watch other or categorized
+  // permanents entering; otherwise every ordinary ETB creature appears to
+  // reward every token maker in the deck.
+  etb: /whenever another [^.]* enters|whenever (?:a|an|one or more|nontoken) [^.]* enters/i,
   combat: /whenever [^.]* attacks|combat damage|attacking creatures/i,
   // Deliberately narrower than PRODUCERS.evasion — this is cards that
   // specifically reward flying/menace/unblocked creatures (an anthem

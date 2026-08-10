@@ -13,6 +13,16 @@ test("connects producers to payoffs and forms packages", () => {
   assert.ok(graph.commanderLinks.length > 0);
 });
 
+test("placing counters is production, not evidence the same card rewards counters", () => {
+  const ayula = extractMechanicalSignals({
+    name: "Ayula, Queen Among Bears",
+    typeLine: "Legendary Creature — Bear",
+    oracleText: "Whenever another Bear enters the battlefield under your control, put two +1/+1 counters on target Bear.",
+  });
+  assert.ok(ayula.produces.includes("counters"));
+  assert.ok(!ayula.rewards.includes("counters"));
+});
+
 test("detects true symmetrical nonbos but ignores opponent-only hate", () => {
   const base = { name: "Reanimator", typeLine: "Creature", oracleText: "Return target creature card from your graveyard to the battlefield." };
   const symmetrical = buildInteractionGraph([base, { name: "Void", typeLine: "Artifact", oracleText: "If a card would be put into a graveyard, exile it instead." }]);
