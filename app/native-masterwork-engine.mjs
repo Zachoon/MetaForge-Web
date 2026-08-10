@@ -2,6 +2,7 @@
 import { explainNativeMasterworkDecision } from "./native-masterwork-reasoning.mjs";
 import { rankOneSlotCounterfactuals, runOneSlotCounterfactualLab } from "./native-one-slot-lab.mjs";
 import { evaluateCommanderPowerSignal, POWER_TIERS, powerSignalCategoryFor, CATEGORY_WEIGHT as POWER_CATEGORY_WEIGHT } from "./commander-power-signal.mjs";
+import { activeInteractionWiring, resolveBrainPolicy, BRAIN_POLICY_V1_CONTROL } from "./brain-policy.mjs";
 
 import {
   buildForgeStructuralAnalysis,
@@ -15,6 +16,67 @@ import {
   extractMechanicalSignals,
   findUnusedEnginePartners,
 } from "./forge-interaction-graph.mjs";
+
+import {
+  buildStrategicIntent,
+  cardSatisfiesPackageCore,
+  cardSatisfiesPackageSupport,
+  expensiveThreatSupport,
+  replacementCompatible,
+  strategicSemanticsFor,
+  validateStrategicCohesion,
+} from "./strategic-intent.mjs";
+
+import {
+  attachSlotJustificationLedger,
+  buildJustificationFootprint,
+  buildSlotJustificationLedger,
+  compareReplacementJustification,
+  justificationPreservationScore,
+} from "./slot-justification-ledger.mjs";
+
+import {
+  buildLiveDeficitState,
+  counterfactualSwapDelta,
+  prospectiveSlotDelta,
+} from "./prospective-slot-delta.mjs";
+
+import {
+  createDeficitClosureMemory,
+  observeDeficitClosure,
+} from "./deficit-closure-memory.mjs";
+
+import {
+  optimizePackagePlan,
+} from "./package-plan-optimizer.mjs";
+
+import {
+  applyPhaseWeights,
+  constructionPhase,
+  createConstructionPhaseTracker,
+} from "./construction-phase.mjs";
+
+import {
+  compactDeficitSnapshot,
+  createConstructionTraceSession,
+  recordConstructionPick,
+  sealConstructionTrace,
+} from "./construction-trace.mjs";
+
+import {
+  attachSelfEvaluationToCandidate,
+} from "./reasoning-drift.mjs";
+
+import {
+  attachWeakSlotForensics,
+  repairWeaklyJustifiedSlots,
+} from "./weak-slot-forensics.mjs";
+
+import {
+  applyStrategicPlanToAnalysis,
+  realizeStrategicPlanScore,
+  selectStrategicPlans,
+} from "./strategic-plan-competition.mjs";
 
 import CARD_MECHANICS from "./card-mechanics.mjs";
 
@@ -448,8 +510,28 @@ function normalizeBlueprintText(value = "") {
     .replace(/\bplus one plus one counters?\b/g, "+1/+1 counter");
 }
 
+const GENERIC_SCOPE_WORDS = new Set(["card", "creature", "permanent", "player", "opponent", "spell", "token", "target"]);
+const TRIBAL_STOP_WORDS = new Set(["target", "equipped", "enchanted", "attacking", "blocking", "tapped", "untapped", "nontoken", "other", "another", "each", "all", ...GENERIC_SCOPE_WORDS]);
+
+/**
+ * Tribes implied by commander rules text ("another Bear you control").
+ * Used for scoring/semantics/package membership — NOT for Blueprint identity
+ * floors, which remain note-explicit ("bear tribal").
+ */
+export function commanderTribesFromOracle(commanders = []) {
+  const oracle = commanders.map((commander) => String(commander?.oracleText || commander?.oracle_text || "")).join(" ");
+  return unique([
+    ...[...oracle.matchAll(/\banother ([A-Za-z][A-Za-z'-]+)s? you control\b/g)].map((match) => normalized(match[1])),
+    ...[...oracle.matchAll(/\b([A-Za-z][A-Za-z'-]+) creatures you control\b/g)].map((match) => normalized(match[1])),
+  ]).filter((term) => term && !BLUEPRINT_FILLER_WORDS.has(term) && !TRIBAL_STOP_WORDS.has(term));
+}
+
 export function parseNativeBlueprintIntent(input = {}) {
   const source = normalizeBlueprintText(input.note || "");
+  // Tribe identity floors come from explicit note requests ("bear tribal").
+  // Commander oracle still activates the typal PACKAGE via detectCommander
+  // ("another Bear you control") without silently raising Blueprint identity
+  // floors on every tribal-shaped commander.
   const tribalTypes = unique([
     ...[...source.matchAll(/\b([a-z][a-z0-9'-]{2,})\s+(?:tribal|typal)\b/g)].map((match) => match[1]),
     ...[...source.matchAll(/\b(?:tribal|typal)\s+([a-z][a-z0-9'-]{2,})\b/g)].map((match) => match[1]),
@@ -657,8 +739,6 @@ function preferenceTerms(input) {
     .split(/[^a-z0-9+'-]+/).filter((term) => term.length >= 4 && !ignored.has(term)));
 }
 
-const GENERIC_SCOPE_WORDS = new Set(["card", "creature", "permanent", "player", "opponent", "spell", "token"]);
-
 // Producer/payoff labels are intentionally broad, but commander text often
 // narrows them: Ayula does not reward every ETB and cannot place counters on
 // every creature; both clauses are Bear-only. Preserve that rules-text scope
@@ -673,7 +753,12 @@ export function commanderMechanicalScopes(card = {}) {
       counters: collect([/put [^.]*?counters? on target ([a-z][a-z'-]+)/gi]),
     }),
     rewards: Object.freeze({
-      etb: collect([/whenever another ([a-z][a-z'-]+)(?: you control)? enters/gi, /whenever (?:a|one or more) ([a-z][a-z'-]+)s?(?: you control)? enter/gi]),
+      etb: collect([
+        /whenever another ([a-z][a-z'-]+)(?: you control)? enters/gi,
+        /whenever (?:a|one or more) ([a-z][a-z'-]+)s?(?: you control)? enter/gi,
+        // Ayula-class: "Whenever NAME or another Bear you control enters"
+        /whenever [^.]+ or another ([a-z][a-z'-]+)(?: you control)? enters/gi,
+      ]),
     }),
   });
 }
@@ -770,10 +855,11 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
   const text = normalized(cardText(card));
   const evidence = evidenceByName.get(normalized(card.name)) || {};
   const typeLine = normalized(card.typeLine || card.type_line || "");
-  const directTribes = context.blueprint.tribalTypes.filter((tribe) =>
+  const tribeLens = unique([...(context.blueprint.tribalTypes || []), ...(context.commanderTribes || [])]);
+  const directTribes = tribeLens.filter((tribe) =>
     new RegExp(`(?:^|[^a-z])${tribe}(?:$|[^a-z])`, "i").test(typeLine),
   );
-  const tribalSupport = context.blueprint.tribalTypes.filter((tribe) =>
+  const tribalSupport = tribeLens.filter((tribe) =>
     (!directTribes.includes(tribe) && text.includes(tribe)) ||
     /choose a creature type|creature type of your choice|creatures? you control of the chosen type|changeling|kindred/i.test(text),
   );
@@ -791,6 +877,11 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
   ]);
   const excludedRoleHits = roles.filter((role) => context.blueprint.excludedRoles.includes(role));
   const fieldPressureHits = roles.filter((role) => context.fieldCounterRoles.includes(role)).length;
+  const strategicSemantics = strategicSemanticsFor(card);
+  // Typal membership is type-line precise; oracle-only tribe mentions are
+  // false friends that must never satisfy typal density.
+  if (directTribes.length) strategicSemantics.add("typal_member");
+  if (tribalSupport.length && !directTribes.length) strategicSemantics.add("typal_mention");
   return {
     card,
     roles,
@@ -820,6 +911,7 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
     commanderConnectionSignals,
     sequenceStages,
     excludedRoleHits,
+    strategicSemantics,
     mechanics: mechanics || { signals: [], produces: [], rewards: [] },
     colorPips: colorPipsFromCost(card.manaCost || card.mana_cost),
     needsSnowSupport: /\bsnow (?:land|permanent|mana)|\{S\}/i.test(String(card.oracleText || card.oracle_text || "")),
@@ -841,6 +933,7 @@ function prepareForgeAnalysis(input, evidenceByName) {
       produces: Object.freeze({ counters: unique(commanderScopeRows.flatMap((scope) => scope.produces.counters || [])) }),
       rewards: Object.freeze({ etb: unique(commanderScopeRows.flatMap((scope) => scope.rewards.etb || [])) }),
     }),
+    commanderTribes: Object.freeze(commanderTribesFromOracle(allCommanders(input))),
     terms: preferenceTerms(input),
     ideal: /Aggressive|Tempo/i.test(input.strategy) ? 2.4 : /Control/i.test(input.strategy) ? 3.2 : 2.9,
     blueprint,
@@ -869,8 +962,14 @@ function prepareForgeAnalysis(input, evidenceByName) {
     !entry.excludedRoleHits.length &&
     !(Number.isFinite(input.maxCardPrice) && Number.isFinite(entry.card.priceUsd) && entry.card.priceUsd > input.maxCardPrice) &&
     !(input.commonsOnly && entry.card.rarity && entry.card.rarity !== "common"));
+  const strategicIntent = buildStrategicIntent(input, {
+    ...context,
+    roleTargets: roleTargets(input.format, input.strategy),
+  });
+  context.strategicIntent = strategicIntent;
   return {
     context,
+    strategicIntent,
     cards,
     spells: eligible.filter((entry) => !entry.roles.includes("land") && !commanderNames.has(normalized(entry.card.name))),
     // Kept as full analyzed entries, not stripped to bare cards — same
@@ -929,6 +1028,7 @@ function scoreCard(entry, input, variant, context) {
     blueprintMechanicHits: entry.blueprintMechanicHits,
     commanderConnectionSignals: entry.commanderConnectionSignals,
     sequenceStages: entry.sequenceStages,
+    strategicSemantics: entry.strategicSemantics,
     mechanics: entry.mechanics,
     colorPips: entry.colorPips,
     needsSnowSupport: entry.needsSnowSupport,
@@ -996,7 +1096,7 @@ export function curveTargets(strategy, slots) {
   return Object.fromEntries(Object.entries(shape).map(([bucket, ratio]) => [bucket, Math.round(ratio * slots)]));
 }
 
-function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [], curveGoals = {}) {
+function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [], curveGoals = {}, strategicIntent = null, traceMeta = null) {
   const selected = [];
   const selectedNames = new Set();
   const roleCounts = new Map();
@@ -1014,6 +1114,58 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
     : { setup: 8, stabilize: 6, convert: 6, recover: 5, close: 5 };
   const copies = singleton ? 1 : 4;
   let remaining = slots;
+  const traceEnabled = traceMeta?.enabled !== false;
+  const traceSession = traceEnabled
+    ? createConstructionTraceSession({
+      planId: strategicIntent?.activePlan?.id || traceMeta?.planId || null,
+      planLabel: strategicIntent?.activePlan?.label || traceMeta?.planLabel || null,
+      packageIds: (strategicIntent?.packageIds || []).slice(),
+      variantId: traceMeta?.variantId || null,
+    })
+    : null;
+  // Temporal memory of recently closed needs — drives saturation-aware
+  // prospective scoring without a new planning abstraction.
+  const closureMemory = createDeficitClosureMemory();
+  const noteClosure = (entryOrRow, delta = null) => {
+    const afterState = buildLiveDeficitState(selected, strategicIntent || {}, {
+      roleTargets: targets,
+      curveGoals,
+      sequenceGoals,
+    });
+    const name = entryOrRow?.card?.name || entryOrRow?.name;
+    let deficitsFilled = delta?.deficitsFilled || [];
+    let surplusIntroduced = delta?.surplusIntroduced || [];
+    if (!delta && strategicIntent?.packages?.length) {
+      deficitsFilled = [];
+      surplusIntroduced = [];
+      for (const packageSpec of strategicIntent.packages) {
+        if (cardSatisfiesPackageCore(entryOrRow, packageSpec.id)) {
+          const core = afterState.packages?.[packageSpec.id]?.core;
+          if (core?.deficit > 0) deficitsFilled.push(`package_core:${packageSpec.id}`);
+          else surplusIntroduced.push(`package_core:${packageSpec.id}`);
+        } else if (cardSatisfiesPackageSupport(entryOrRow, packageSpec.id)) {
+          const support = afterState.packages?.[packageSpec.id]?.support;
+          if (support?.deficit > 0) deficitsFilled.push(`package_support:${packageSpec.id}`);
+          else surplusIntroduced.push(`package_support:${packageSpec.id}`);
+        }
+      }
+      for (const role of entryOrRow.roles || []) {
+        if (!["ramp", "draw", "interaction", "protection", "recursion", "sweeper"].includes(role)) continue;
+        const roleState = afterState.roles?.[role];
+        if (!roleState || roleState.status === "untracked") continue;
+        if (roleState.deficit > 0) deficitsFilled.push(`role:${role}`);
+        else surplusIntroduced.push(`role:${role}`);
+      }
+    }
+    observeDeficitClosure(closureMemory, {
+      pickIndex: selected.length,
+      name,
+      deficitsFilled,
+      surplusIntroduced,
+      deficitState: afterState,
+      footprintSig: delta?.footprintSignature || null,
+    });
+  };
 
   const trackMechanics = (mechanics) => {
     for (const signal of mechanics?.produces || []) producedSoFar.set(signal, (producedSoFar.get(signal) || 0) + 1);
@@ -1038,9 +1190,27 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
     trackMechanics(row.mechanics);
     trackCmc(row.cmc, quantity);
     remaining -= quantity;
+    if (traceSession) {
+      recordConstructionPick(traceSession, {
+        source: "preset",
+        name: row.name,
+        constructionPhase: "foundation",
+        rawScore: row.score,
+        adjustedScore: row.score,
+        roles: row.roles,
+        cmc: row.cmc,
+        commanderConnectionSignals: row.commanderConnectionSignals,
+        sequenceStages: row.sequenceStages,
+        prospectiveDelta: row.prospectiveDelta || { total: 0, deficitsFilled: [], surplusIntroduced: [], positives: [], negatives: [] },
+        deficitBefore: compactDeficitSnapshot({}),
+        shortlistSize: 0,
+        rejectedAlternatives: [],
+      });
+    }
+    noteClosure(row, row.prospectiveDelta || null);
   }
 
-  const addCandidate = (candidate) => {
+  const addCandidate = (candidate, traceOptions = null) => {
     if (!candidate || remaining <= 0 || selectedNames.has(normalized(candidate.card.name))) return false;
     const quantity = Math.min(copies, remaining);
     selected.push({
@@ -1056,6 +1226,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       blueprintMechanicHits: candidate.blueprintMechanicHits,
       commanderConnectionSignals: candidate.commanderConnectionSignals,
       sequenceStages: candidate.sequenceStages,
+      strategicSemantics: candidate.strategicSemantics,
       mechanics: candidate.mechanics,
       colorPips: candidate.colorPips,
       manaCost: candidate.card.manaCost || candidate.card.mana_cost || "",
@@ -1072,6 +1243,31 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
     trackMechanics(candidate.mechanics);
     trackCmc(candidate.cmc, quantity);
     remaining -= quantity;
+    if (traceSession && traceOptions) {
+      recordConstructionPick(traceSession, {
+        source: traceOptions.source || "anchor",
+        name: candidate.card.name,
+        constructionPhase: traceOptions.constructionPhase || "foundation",
+        rawScore: candidate.score,
+        adjustedScore: traceOptions.adjustedScore ?? candidate.score,
+        roles: candidate.roles,
+        cmc: candidate.cmc,
+        commanderConnectionSignals: candidate.commanderConnectionSignals,
+        sequenceStages: candidate.sequenceStages,
+        prospectiveDelta: traceOptions.prospectiveDelta || {
+          total: 0,
+          deficitsFilled: [],
+          surplusIntroduced: [],
+          positives: [],
+          negatives: [],
+        },
+        deficitBefore: traceOptions.deficitBefore || compactDeficitSnapshot({}),
+        shortlistSize: traceOptions.shortlistSize || 0,
+        shortlistRank: traceOptions.shortlistRank ?? null,
+        rejectedAlternatives: traceOptions.rejectedAlternatives || [],
+      });
+    }
+    noteClosure(candidate, traceOptions?.prospectiveDelta || null);
     return true;
   };
   const ranked = [...scored].sort((left, right) => right.score - left.score || left.card.name.localeCompare(right.card.name));
@@ -1082,97 +1278,198 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
   // Direct tribe members are reserved first, then cards that support that tribe,
   // then a meaningful floor for each requested mechanical package.
   const tribeAnchorLimit = singleton ? 24 : 8;
-  for (const candidate of ranked.filter((entry) => entry.directTribes.length).slice(0, tribeAnchorLimit)) addCandidate(candidate);
+  for (const candidate of ranked.filter((entry) => entry.directTribes.length).slice(0, tribeAnchorLimit)) {
+    addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
+  }
   const supportLimit = singleton ? 12 : 4;
-  for (const candidate of ranked.filter((entry) => entry.tribalSupport.length && !entry.directTribes.length).slice(0, supportLimit)) addCandidate(candidate);
+  for (const candidate of ranked.filter((entry) => entry.tribalSupport.length && !entry.directTribes.length).slice(0, supportLimit)) {
+    addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
+  }
   for (const mechanic of blueprint.requestedMechanics) {
     const limit = blueprintMechanicDefinition(mechanic).anchorLimit[singleton ? "singleton" : "constructed"];
-    for (const candidate of ranked.filter((entry) => entry.blueprintMechanicHits.includes(mechanic)).slice(0, limit)) addCandidate(candidate);
+    for (const candidate of ranked.filter((entry) => entry.blueprintMechanicHits.includes(mechanic)).slice(0, limit)) {
+      addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
+    }
   }
   // A named theme needs both halves of an engine, not just cards carrying
   // the requested word. Reserve a small, bounded producer/payoff package
   // for each relationship the request implies before generic filling.
   const packageAnchorLimit = singleton ? 5 : 4;
   for (const signal of blueprint.packageSignals) {
-    for (const candidate of ranked.filter((entry) => entry.mechanics.produces.includes(signal)).slice(0, packageAnchorLimit)) addCandidate(candidate);
-    for (const candidate of ranked.filter((entry) => entry.mechanics.rewards.includes(signal)).slice(0, packageAnchorLimit)) addCandidate(candidate);
+    for (const candidate of ranked.filter((entry) => entry.mechanics.produces.includes(signal)).slice(0, packageAnchorLimit)) {
+      addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
+    }
+    for (const candidate of ranked.filter((entry) => entry.mechanics.rewards.includes(signal)).slice(0, packageAnchorLimit)) {
+      addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
+    }
+  }
+  // Precise package cores (Aura ≠ enchantment, Equipment ≠ artifact, etc.)
+  // are reserved from strategic intent, not from broad producer/payoff words.
+  for (const packageSpec of strategicIntent?.packages || []) {
+    const coreLimit = Math.min(packageSpec.coreMin, singleton ? 20 : 10);
+    for (const candidate of ranked.filter((entry) => cardSatisfiesPackageCore(entry, packageSpec.id)).slice(0, coreLimit)) {
+      addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
+    }
   }
   // The commander is itself part of the engine. Preserve a bounded core of
   // cards with a real producer/payoff edge to its verified rules text so a
   // generic staple cannot crowd every commander-specific connection out.
   const commanderAnchorLimit = singleton ? 8 : 4;
-  for (const candidate of ranked.filter((entry) => entry.commanderConnectionSignals.length).slice(0, commanderAnchorLimit)) addCandidate(candidate);
+  for (const candidate of ranked.filter((entry) => entry.commanderConnectionSignals.length).slice(0, commanderAnchorLimit)) {
+    addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
+  }
   const roleAnchorLimit = singleton ? 10 : 4;
   for (const role of blueprint.desiredRoles) {
-    for (const candidate of ranked.filter((entry) => entry.blueprintRoleHits.includes(role)).slice(0, roleAnchorLimit)) addCandidate(candidate);
+    for (const candidate of ranked.filter((entry) => entry.blueprintRoleHits.includes(role)).slice(0, roleAnchorLimit)) {
+      addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
+    }
   }
 
+  const phaseTracker = createConstructionPhaseTracker();
   while (remaining > 0) {
     let candidate = null;
     let bestAdjusted = Number.NEGATIVE_INFINITY;
-    for (const entry of scored) {
-      if (selectedNames.has(normalized(entry.card.name))) continue;
-      // Unmet targets reward a candidate; roles already well past their
-      // target actively penalize one, or a strongly-weighted requested role
-      // (e.g. "interaction" boosted by both strategy weight and the note
-      // bonus) can win every round indefinitely and crowd out roles with no
-      // note support of their own, like ramp or protection. This only
-      // applies to roles that actually have a target — "threat" and every
-      // other untracked role must stay neutral, or a role every creature
-      // naturally carries would accrue an ever-growing penalty as the deck
-      // fills in and start losing to genuinely empty filler.
-      const deficit = entry.roles.reduce((sum, role) => (role in targets ? sum + ((targets[role] || 0) - (roleCounts.get(role) || 0)) * 4 : sum), 0);
+    let bestDelta = null;
+    let bestPhaseInfo = null;
+    let bestShortlistRank = null;
+    const rejectedPool = [];
+    // Prospective deficit state is recomputed once per pick so every
+    // remaining candidate is judged against the same live deck, not a
+    // stale snapshot from the start of construction.
+    const deficitState = buildLiveDeficitState(selected, strategicIntent || {}, {
+      roleTargets: targets,
+      curveGoals,
+      sequenceGoals,
+    });
+    const phaseInfo = constructionPhase(deficitState, selected, strategicIntent || {}, { spellTarget: slots });
+    const footprintCache = new Map();
+    const selectedFootprints = selected.map((row) => {
+      const key = normalized(row.name);
+      const footprint = buildJustificationFootprint(row, strategicIntent || {});
+      footprintCache.set(key, footprint);
+      return footprint;
+    });
+    // Bounded shortlist: top raw-score candidates plus every card that
+    // still fills an open package/role deficit. Avoids O(pool) full delta
+    // work once the deck is already mostly shaped.
+    const remainingEntries = scored.filter((entry) => !selectedNames.has(normalized(entry.card.name)));
+    const byScore = [...remainingEntries].sort((left, right) => right.score - left.score || left.card.name.localeCompare(right.card.name));
+    const shortlist = new Map();
+    const shortlistLimit = Math.min(56, Math.max(24, remainingEntries.length));
+    for (const entry of byScore.slice(0, 32)) shortlist.set(normalized(entry.card.name), entry);
+    for (const entry of remainingEntries) {
+      if (shortlist.size >= shortlistLimit) break;
+      const key = normalized(entry.card.name);
+      if (shortlist.has(key)) continue;
+      const fillsPackage = (strategicIntent?.packages || []).some((pkg) => {
+        const state = deficitState.packages[pkg.id];
+        if (!state) return false;
+        if (state.core.deficit > 0 && cardSatisfiesPackageCore(entry, pkg.id)) return true;
+        if ((pkg.requireBalancedLegs || []).some((leg) => state.legs?.[leg]?.deficit > 0 && entry.strategicSemantics?.has?.(leg))) return true;
+        return false;
+      });
+      const fillsRole = entry.roles.some((role) => (deficitState.roles[role]?.deficit || 0) > 0);
+      if (fillsPackage || fillsRole || (entry.commanderConnectionSignals || []).length) {
+        shortlist.set(key, entry);
+      }
+    }
+    if (shortlist.size < Math.min(16, remainingEntries.length)) {
+      for (const entry of byScore) {
+        shortlist.set(normalized(entry.card.name), entry);
+        if (shortlist.size >= shortlistLimit) break;
+      }
+    }
+    const evaluatePool = shortlist.size ? [...shortlist.values()] : remainingEntries;
+    let evalIndex = 0;
+    for (const entry of evaluatePool) {
+      evalIndex += 1;
       const protectsUnmetDeckFunction = entry.roles.some((role) => role in targets && (roleCounts.get(role) || 0) < targets[role]);
-      // Rewards a candidate for connecting to cards that actually made the
-      // deck so far, not just ones that existed in the pool. Capped per
-      // signal so one prolific pairing can't dominate every remaining pick.
       const inDeckSynergy = entry.mechanics.rewards.reduce((sum, signal) => sum + Math.min(4, producedSoFar.get(signal) || 0), 0)
         + entry.mechanics.produces.reduce((sum, signal) => sum + Math.min(4, rewardedSoFar.get(signal) || 0), 0);
       const requestedPackageSynergy = blueprint.packageSignals.reduce((sum, signal) => sum
         + (entry.mechanics.rewards.includes(signal) ? Math.min(4, producedSoFar.get(signal) || 0) : 0)
         + (entry.mechanics.produces.includes(signal) ? Math.min(4, rewardedSoFar.get(signal) || 0) : 0), 0);
-      // A payoff with no enabler in the current deck is speculative. When
-      // the pool contains a real producer, defer that payoff until its
-      // resource exists instead of letting standalone card quality create
-      // an orphaned mini-package. The penalty disappears automatically as
-      // soon as a matching producer is selected.
       const orphanPayoffPenalty = entry.mechanics.rewards.reduce((sum, signal) => {
         if (producedSoFar.get(signal)) return sum;
-        // A payoff cannot buy its way past a missing engine merely because
-        // it is popular or individually powerful. If a producer exists in
-        // the pool, defer the payoff decisively until one is selected. If
-        // none exists at all, retain a smaller skepticism penalty rather
-        // than pretending the unsupported text is a full-strength synergy.
         return sum + (poolProducerSignals.has(signal) ? 24 : 6);
       }, 0);
-      const sequenceDeficit = entry.sequenceStages.reduce((sum, stage) =>
-        sum + Math.max(0, (sequenceGoals[stage] || 0) - (sequenceCounts.get(stage) || 0)), 0);
-      // Same fair-fill idea as the role deficit above, applied to mana cost:
-      // a bucket already past its share stops competing for more (but never
-      // goes punitive the way the role deficit can — a spread that's merely
-      // a little heavy somewhere shouldn't get treated like a broken promise
-      // the way an excluded role would).
-      const bucket = curveBucket(entry.cmc);
-      const curveDeficit = Math.max(0, (curveGoals[bucket] || 0) - (cmcCounts.get(bucket) || 0)) * 3;
-      // The previous additive scorer could reserve a small thematic core,
-      // then immediately revert to generic staples for every remaining
-      // slot. A bounded disconnected tax changes the ordering only after
-      // minimum deck function is protected: necessary ramp, draw,
-      // interaction, protection, recursion, and sweepers remain eligible,
-      // while nonessential good-card filler must yield to a card that
-      // actually advances the player's stated plan.
       const disconnectedStrategyTax = explicitStrategyContract && !protectsUnmetDeckFunction && !advancesStrategyContract(entry, blueprint) ? 35 : 0;
-      const adjusted = entry.score + deficit + inDeckSynergy * 2 + requestedPackageSynergy * 4 + sequenceDeficit * 2 + curveDeficit - orphanPayoffPenalty - disconnectedStrategyTax;
+      const delta = prospectiveSlotDelta(selected, entry, strategicIntent || {}, {
+        deficitState,
+        roleTargets: targets,
+        curveGoals,
+        sequenceGoals,
+        footprintCache,
+        selectedFootprints,
+        closureMemory,
+        brainPolicy: strategicIntent?.brainPolicy || BRAIN_POLICY_V1_CONTROL,
+        targetPowerTier: strategicIntent?.targetPowerTier ?? null,
+      });
+      const wiring = activeInteractionWiring(
+        strategicIntent?.brainPolicy,
+        strategicIntent?.targetPowerTier ?? null,
+      );
+      const synergy = inDeckSynergy * wiring.liveSynergyMultiplier + requestedPackageSynergy * 3;
+      const phased = applyPhaseWeights({
+        rawScore: entry.score,
+        prospectiveDelta: delta.total,
+        synergy,
+        orphanPenalty: orphanPayoffPenalty * 0.65,
+        disconnectTax: disconnectedStrategyTax,
+        phase: phaseInfo,
+      });
+      const adjusted = phased.adjusted;
+      rejectedPool.push({
+        name: entry.card.name,
+        rawScore: entry.score,
+        adjusted,
+        prospectiveTotal: delta.total,
+        deficitsFilled: delta.deficitsFilled,
+        rank: evalIndex,
+      });
       if (adjusted > bestAdjusted || (adjusted === bestAdjusted && candidate && entry.card.name.localeCompare(candidate.card.name) < 0)) {
         candidate = entry;
         bestAdjusted = adjusted;
+        bestDelta = delta;
+        bestPhaseInfo = phaseInfo;
+        bestShortlistRank = evalIndex;
       }
     }
     if (!candidate) break;
-    addCandidate(candidate);
+    const rejectedAlternatives = rejectedPool
+      .filter((entry) => normalized(entry.name) !== normalized(candidate.card.name))
+      .sort((left, right) => right.adjusted - left.adjusted || left.name.localeCompare(right.name));
+    addCandidate(candidate, {
+      source: "live_fill",
+      constructionPhase: bestPhaseInfo?.phase || phaseInfo.phase,
+      adjustedScore: bestAdjusted,
+      prospectiveDelta: bestDelta,
+      deficitBefore: compactDeficitSnapshot(deficitState),
+      shortlistSize: evaluatePool.length,
+      shortlistRank: bestShortlistRank,
+      rejectedAlternatives,
+    });
+    if (bestDelta && bestPhaseInfo) {
+      phaseTracker.observe(bestPhaseInfo, candidate, bestDelta);
+      const last = selected[selected.length - 1];
+      last.prospectiveDelta = {
+        total: bestDelta.total,
+        deficitsFilled: bestDelta.deficitsFilled,
+        surplusIntroduced: bestDelta.surplusIntroduced,
+        falseFriendRisk: bestDelta.falseFriendRisk,
+        unsupportedAnchorRisk: bestDelta.unsupportedAnchorRisk,
+        unsupportedHighCmcRisk: bestDelta.unsupportedHighCmcRisk,
+      };
+      last.constructionPhase = bestPhaseInfo.phase;
+    }
   }
   if (remaining) throw new Error(`Native Forge could not fill ${remaining} spell slot(s)`);
-  return { selected, roleCounts };
+  return {
+    selected,
+    roleCounts,
+    constructionPhaseDiagnostics: phaseTracker.snapshot(),
+    constructionTrace: sealConstructionTrace(traceSession),
+  };
 }
 
 function aggregatePipTotals(rows) {
@@ -1946,7 +2243,7 @@ export function rankPracticalOneSlotCounterfactuals(selected, candidates, input,
   // in this file derives them — callers of the practical wrappers supply
   // `options` only for the extra knobs (limit, preferredRoles,
   // matchupOpponent), not a second, easy-to-drift copy of the format.
-  const theoreticalOptions = { format: input.format, strategy: input.strategy, target: input.target, ...options, limit: Math.min(PRACTICAL_POOL_CAP, limit + 3) };
+  const theoreticalOptions = { format: input.format, strategy: input.strategy, target: input.target, strategicIntent: selected.strategicIntent || input.strategicIntent || null, ...options, limit: Math.min(PRACTICAL_POOL_CAP, limit + 3) };
   const theoretical = rankOneSlotCounterfactuals(selected, candidates, theoreticalOptions);
   if (theoretical.verdict !== "advance" || !theoretical.experiments.length) {
     return { ...theoretical, experiments: theoretical.experiments.map((experiment) => ({ ...experiment, practical: null })) };
@@ -1991,7 +2288,7 @@ export function rankPracticalOneSlotCounterfactuals(selected, candidates, input,
 export function runPracticalOneSlotCounterfactualLab(selected, candidates, reasoning, input, options = {}) {
   // Same reasoning as rankPracticalOneSlotCounterfactuals above:
   // format/strategy/target come from `input`, not a second copy in options.
-  const theoreticalOptions = { format: input.format, strategy: input.strategy, target: input.target, ...options };
+  const theoreticalOptions = { format: input.format, strategy: input.strategy, target: input.target, strategicIntent: selected.strategicIntent || input.strategicIntent || null, ...options };
   const theoretical = runOneSlotCounterfactualLab(selected, candidates, reasoning, theoreticalOptions);
   if (theoretical.verdict !== "advance") return { ...theoretical, practical: null };
 
@@ -2027,7 +2324,7 @@ function buildCandidateAttempt(input, variant, analysis) {
   // instead measures a real preliminary selection (curve targets already
   // applied) and only re-runs selection if that changes the land count.
   const preliminary = singleton
-    ? chooseSpells(scored, baselineSpellSlots, singleton, targets, analysis.context.blueprint, [], curveTargets(input.strategy, baselineSpellSlots))
+    ? chooseSpells(scored, baselineSpellSlots, singleton, targets, analysis.context.blueprint, [], curveTargets(input.strategy, baselineSpellSlots), analysis.strategicIntent, { enabled: false })
     : null;
   const landSlots = singleton
     ? clamp(
@@ -2037,9 +2334,20 @@ function buildCandidateAttempt(input, variant, analysis) {
       )
     : baselineLandSlots;
   const spellSlots = target - landSlots - commanderSlots;
-  const { selected, roleCounts } = spellSlots === baselineSpellSlots && preliminary
-    ? preliminary
-    : chooseSpells(scored, spellSlots, singleton, targets, analysis.context.blueprint, [], curveTargets(input.strategy, spellSlots));
+  const spellResult = spellSlots === baselineSpellSlots && preliminary
+    ? chooseSpells(scored, spellSlots, singleton, targets, analysis.context.blueprint, [], curveTargets(input.strategy, spellSlots), analysis.strategicIntent, {
+      enabled: true,
+      variantId: variant.id,
+      planId: analysis.strategicIntent?.activePlan?.id || null,
+      planLabel: analysis.strategicIntent?.activePlan?.label || null,
+    })
+    : chooseSpells(scored, spellSlots, singleton, targets, analysis.context.blueprint, [], curveTargets(input.strategy, spellSlots), analysis.strategicIntent, {
+      enabled: true,
+      variantId: variant.id,
+      planId: analysis.strategicIntent?.activePlan?.id || null,
+      planLabel: analysis.strategicIntent?.activePlan?.label || null,
+    });
+  const { selected, roleCounts, constructionPhaseDiagnostics, constructionTrace } = spellResult;
   const mana = buildManaBase(input, landSlots, lands, variant, [], aggregatePipTotals(selected), selected);
   const rows = [
     ...allCommanders(input).map((commander) => ({ quantity: 1, name: commander.name, roles: ["commander"], score: 100, cmc: manaValueFromCost(commander.manaCost, commander.cmc), manaCost: commander.manaCost || "" })),
@@ -2061,6 +2369,9 @@ function buildCandidateAttempt(input, variant, analysis) {
     commanderCompatibility,
     strategicCoherence,
     strategicSequence,
+    constructionPhaseDiagnostics,
+    constructionTrace,
+    strategicPlan: analysis.strategicIntent?.activePlan || null,
     score: evaluation.score,
     sideboard: sideboardFor(scored, selected, singleton),
     boundary: "Native structural candidate. Legality and simulations are hard gates; real match performance remains unproven.",
@@ -2121,8 +2432,14 @@ function buildCandidate(input, variant, analysis) {
   // when the player actually asked for Budget conscious — see
   // repairBudgetOffenders. Applied last, after either recovery branch
   // above, so it always sees the real, complete, legal candidate that's
-  // about to be delivered.
-  return applyBudgetRepair(input, built);
+  // about to be delivered. Strategic cohesion is attached immediately
+  // after so later power repair and the tournament see the same contract.
+  // Weak-slot cleanup is deferred until after power repair (see
+  // forgeNativeMasterwork) so Casual exclusions are not undone, and so
+  // power repair still sees the pre-cleanup list.
+  return finalizeCandidateStrategy(input, applyBudgetRepair(input, built), analysis, {
+    skipWeakSlotRepair: true,
+  });
 }
 
 // Reserves the player's own imported card names first (capped at the copy
@@ -2202,7 +2519,7 @@ function buildImportedCandidateAttempt(input, analysis) {
   const variant = { id: "imported", label: "Your List", synergy: 1, resilience: 1, curve: 1 };
   const scored = analysis.spells.map((entry) => scoreCard(entry, input, variant, analysis.context));
   const spellSlots = target - landSlots - commanderSlots;
-  const { selected, roleCounts } = chooseSpells(scored, spellSlots, singleton, roleTargets(input.format, input.strategy), analysis.context.blueprint, presetSpellRows, curveTargets(input.strategy, spellSlots));
+  const { selected, roleCounts } = chooseSpells(scored, spellSlots, singleton, roleTargets(input.format, input.strategy), analysis.context.blueprint, presetSpellRows, curveTargets(input.strategy, spellSlots), analysis.strategicIntent);
   const mana = buildManaBase(input, landSlots, analysis.lands, variant, presetLandRows, aggregatePipTotals(selected), selected);
   const rows = [
     ...allCommanders(input).map((commander) => ({ quantity: 1, name: commander.name, roles: ["commander"], score: 100, cmc: manaValueFromCost(commander.manaCost, commander.cmc), manaCost: commander.manaCost || "" })),
@@ -2237,7 +2554,7 @@ function buildImportedCandidateAttempt(input, analysis) {
 // — it can never drop or substitute a card the player actually pasted in.
 function buildImportedCandidate(input, analysis) {
   try {
-    return { ...buildImportedCandidateAttempt(input, analysis), recoveryStage: "ideal" };
+    return finalizeCandidateStrategy(input, { ...buildImportedCandidateAttempt(input, analysis), recoveryStage: "ideal" }, analysis);
   } catch (error) {
     if (!(error instanceof Error)) throw error;
     const spellMatch = error.message.match(/could not fill (\d+) spell slot/);
@@ -2248,7 +2565,7 @@ function buildImportedCandidate(input, analysis) {
     const grew = spellMatch ? relaxed.spells.length > analysis.spells.length : relaxed.lands.length > analysis.lands.length;
     if (!grew) throw error;
     const recovered = buildImportedCandidateAttempt(input, relaxed);
-    return {
+    return finalizeCandidateStrategy(input, {
       ...recovered,
       recoveryStage: "relaxed-preferences",
       recoveryNote: spellMatch
@@ -2257,7 +2574,7 @@ function buildImportedCandidate(input, analysis) {
       recoveryDiagnostics: spellMatch
         ? { kind: "spells", missingSlots, initialEligibleCount: analysis.spells.length, relaxedEligibleCount: relaxed.spells.length }
         : { kind: "lands", missingSlots, initialEligibleCount: analysis.lands.length, relaxedEligibleCount: relaxed.lands.length },
-    };
+    }, analysis);
   }
 }
 
@@ -2378,7 +2695,28 @@ export function forgeMultiSlotRefills(input, currentRows, requestedCuts) {
           const scarcity = 1 / Math.max(1, cutRoleNeeds.get(role));
           return sum + 180 + scarcity * 40;
         }, 0);
-        const merit = evaluation.score * 100 + candidate.scored.score + restorationMerit;
+        const cutEntries = requestedCuts.map((cut) => analyzedByName.get(normalized(cut.name))).filter(Boolean);
+        const packageMerit = cutEntries.some((cutEntry) =>
+          replacementCompatible(cutEntry, candidate.entry, analysis.strategicIntent, {
+            trackedRoles: TRACKED_LOAD_BEARING_ROLES,
+          }).compatible,
+        ) ? 220 : 0;
+        const falseFriendPenalty = cutEntries.some((cutEntry) => {
+          const result = replacementCompatible(cutEntry, candidate.entry, analysis.strategicIntent, {
+            trackedRoles: TRACKED_LOAD_BEARING_ROLES,
+          });
+          return result.reasons.some((reason) => /false-friend/i.test(reason));
+        }) ? 400 : 0;
+        // Prefer replacements that preserve the cut card's full justification
+        // footprint, not merely one overlapping role label.
+        const preservationMerit = cutEntries.reduce((sum, cutEntry) => {
+          const score = justificationPreservationScore(
+            buildJustificationFootprint(cutEntry, analysis.strategicIntent),
+            buildJustificationFootprint(candidate.entry, analysis.strategicIntent),
+          );
+          return sum + Math.round(score * 320);
+        }, 0);
+        const merit = evaluation.score * 100 + candidate.scored.score + restorationMerit + packageMerit + preservationMerit - falseFriendPenalty;
         if (!best || merit > best.merit || (merit === best.merit && candidate.entry.card.name.localeCompare(best.candidate.entry.card.name) < 0)) {
           best = { candidate, merit, evaluation };
         }
@@ -2425,7 +2763,7 @@ export function forgeMultiSlotRefills(input, currentRows, requestedCuts) {
     }
     if (!summaryParts.length) summaryParts.push("Preserves the cut cards' structural footprint");
     if (rows.reduce((sum, row) => sum + row.quantity, 0) !== target) throw new Error("A refill package changed deck size");
-    return {
+    const packageCandidate = attachStrategicCohesion({
       id: variant.id,
       label: variant.label,
       rows,
@@ -2445,7 +2783,11 @@ export function forgeMultiSlotRefills(input, currentRows, requestedCuts) {
         summary: `${summaryParts.join("; ")}.`,
       },
       boundary: "Exact-size, constraint-preserving modeled refill. Real match performance remains unproven.",
-    };
+    }, analysis);
+    return attachSlotJustificationLedger(packageCandidate, analysis.strategicIntent, {
+      budgetConstraint: input.budget === "Budget conscious",
+      powerConstraint: input.targetPowerTier === "Casual",
+    });
   });
   packages.sort((left, right) =>
     right.context.preservationScore - left.context.preservationScore ||
@@ -2547,6 +2889,7 @@ function rowFromAnalyzedEntry(entry, score = entry.roleScore) {
     blueprintMechanicHits: entry.blueprintMechanicHits,
     commanderConnectionSignals: entry.commanderConnectionSignals,
     sequenceStages: entry.sequenceStages,
+    strategicSemantics: entry.strategicSemantics,
     mechanics: entry.mechanics,
     colorPips: entry.colorPips,
     manaCost: entry.card.manaCost || entry.card.mana_cost || "",
@@ -2557,7 +2900,33 @@ function rowFromAnalyzedEntry(entry, score = entry.roleScore) {
 
 function refreshCandidateStrategyMetrics(candidate, analysis, input) {
   const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
-  const selected = candidate.rows.filter((row) => !row.roles?.includes("land") && !row.roles?.includes("commander"));
+  const analyzedByName = new Map(analysis.cards.map((entry) => [normalized(entry.card.name), entry]));
+  // Hand-built repair fixtures and older row shapes may omit strategy
+  // metadata. Rehydrate every nonland from the current analysis so
+  // alignment/coherence math never crashes on missing arrays and always
+  // reflects the deck after the swap batch.
+  const selected = candidate.rows
+    .filter((row) => !row.roles?.includes("land") && !row.roles?.includes("commander"))
+    .map((row) => {
+      const entry = analyzedByName.get(normalized(row.name));
+      if (!entry) {
+        return {
+          ...row,
+          directTribes: row.directTribes || [],
+          tribalSupport: row.tribalSupport || [],
+          identityHits: row.identityHits || [],
+          blueprintRoleHits: row.blueprintRoleHits || [],
+          blueprintMechanicHits: row.blueprintMechanicHits || [],
+          commanderConnectionSignals: row.commanderConnectionSignals || [],
+          sequenceStages: row.sequenceStages || [],
+          mechanics: row.mechanics || { produces: [], rewards: [] },
+        };
+      }
+      return {
+        ...rowFromAnalyzedEntry(entry, row.score),
+        quantity: row.quantity,
+      };
+    });
   return {
     ...candidate,
     blueprintAlignment: computeBlueprintAlignment(analysis, selected, singleton),
@@ -2565,6 +2934,78 @@ function refreshCandidateStrategyMetrics(candidate, analysis, input) {
     strategicCoherence: computeStrategicCoherence(analysis, selected),
     strategicSequence: computeStrategicSequence(selected, singleton),
   };
+}
+
+function cohesionOptionsFor(analysis) {
+  const intent = analysis.strategicIntent;
+  return {
+    availablePackageCore: Object.fromEntries((intent?.packages || []).map((pkg) => [
+      pkg.id,
+      analysis.spells.filter((entry) => cardSatisfiesPackageCore(entry, pkg.id)).length,
+    ])),
+    availableCommanderConnections: analysis.spells.filter((entry) => entry.commanderConnectionSignals?.length).length,
+    requireCommanderFloor: true,
+  };
+}
+
+function attachStrategicCohesion(candidate, analysis) {
+  const intent = analysis.strategicIntent;
+  const strategicCohesionGate = validateStrategicCohesion(candidate, intent, cohesionOptionsFor(analysis));
+  return {
+    ...candidate,
+    strategicIntent: intent,
+    strategicCohesionGate,
+  };
+}
+
+function repairUnsupportedBombs(input, candidate, analysis) {
+  const intent = analysis.strategicIntent;
+  const gate = candidate.strategicCohesionGate || validateStrategicCohesion(candidate, intent, cohesionOptionsFor(analysis));
+  if (!gate.unsupportedBombs?.length) return attachStrategicCohesion(candidate, analysis);
+
+  const bombNames = new Set(gate.unsupportedBombs.map(normalized));
+  let rows = candidate.rows.map((row) => ({ ...row }));
+  let freed = 0;
+  rows = rows.map((row) => {
+    if (!bombNames.has(normalized(row.name))) return row;
+    freed += row.quantity;
+    return { ...row, quantity: 0 };
+  }).filter((row) => row.quantity > 0);
+
+  const selectedNames = new Set(rows.map((row) => normalized(row.name)));
+  const variant = VARIANTS.find((entry) => entry.id === candidate.id) || VARIANTS[0];
+  const scored = analysis.spells
+    .map((entry) => scoreCard(entry, input, variant, analysis.context))
+    .filter((entry) => !selectedNames.has(normalized(entry.card.name)))
+    .filter((entry) => !(entry.strategicSemantics?.has?.("bomb_cmc") || entry.cmc >= 10)
+      || (entry.commanderConnectionSignals || []).length
+      || (intent?.packageIds || []).some((id) => cardSatisfiesPackageCore(entry, id)))
+    .sort((left, right) => {
+      const leftPackage = (intent?.packageIds || []).some((id) => cardSatisfiesPackageCore(left, id)) ? 1 : 0;
+      const rightPackage = (intent?.packageIds || []).some((id) => cardSatisfiesPackageCore(right, id)) ? 1 : 0;
+      return rightPackage - leftPackage || right.score - left.score || left.card.name.localeCompare(right.card.name);
+    });
+
+  for (const entry of scored) {
+    if (freed <= 0) break;
+    rows.push(rowFromAnalyzedEntry(entry));
+    selectedNames.add(normalized(entry.card.name));
+    freed -= 1;
+  }
+  if (freed > 0) return attachStrategicCohesion(candidate, analysis);
+
+  const roleCounts = new Map();
+  for (const row of rows) for (const role of row.roles || []) roleCounts.set(role, (roleCounts.get(role) || 0) + row.quantity);
+  const evaluation = evaluateCandidate(rows, roleCounts, input, variant);
+  const repaired = refreshCandidateStrategyMetrics({
+    ...candidate,
+    rows,
+    deckText: rows.map((row) => `${row.quantity} ${row.name}`).join("\n"),
+    evaluation,
+    score: evaluation.score,
+    cohesionBombRepair: Object.freeze({ removedNames: [...gate.unsupportedBombs] }),
+  }, analysis, input);
+  return attachStrategicCohesion(repaired, analysis);
 }
 
 function rowsLeakExcludedNames(rows, excludedNames) {
@@ -2654,9 +3095,22 @@ export function auditBudgetSubstitutions(input, options = {}) {
       .filter(({ entry: candidateEntry }) => {
         const candidateKey = normalized(candidateEntry.card.name);
         if (!cheaperAndLegal(candidateEntry, candidateKey)) return false;
-        return isLuxuryCard || trackedRoles.some((role) => candidateEntry.roles.includes(role));
+        if (!(isLuxuryCard || trackedRoles.some((role) => candidateEntry.roles.includes(role)))) return false;
+        return replacementCompatible(entry, candidateEntry, analysis.strategicIntent, {
+          excludedNames: excludedAlternativeNames,
+          forbidPowerSignals,
+          powerSignalCategoryFor,
+          trackedRoles: TRACKED_LOAD_BEARING_ROLES,
+        }).compatible;
       })
-      .sort((a, b) => b.scored.score - a.scored.score);
+      .map((option) => ({
+        ...option,
+        justification: compareReplacementJustification(entry, option.entry, analysis.strategicIntent),
+      }))
+      .sort((a, b) =>
+        b.justification.score - a.justification.score
+        || b.scored.score - a.scored.score
+        || a.entry.card.name.localeCompare(b.entry.card.name));
 
     // Simulates cutting `row` for `option` and reports both the
     // load-bearing-floor/hard-gate impact and how the swap moves the
@@ -2703,6 +3157,7 @@ export function auditBudgetSubstitutions(input, options = {}) {
       name: option.entry.card.name,
       priceUsd: option.entry.card.priceUsd,
       score: Number(option.scored.score.toFixed(2)),
+      justificationPreservation: option.justification?.score ?? null,
       hardGateImpact: swap.hardGateImpact,
     }));
 
@@ -2809,7 +3264,10 @@ export function auditPowerSubstitutions(input, options = {}) {
   const scored = analysis.cards.map((entry) => ({ entry, scored: scoreCard(entry, input, variant, analysis.context) }));
   const scoredByName = new Map(scored.map((item) => [normalized(item.entry.card.name), item]));
   const spellNames = new Set(analysis.spells.map((entry) => normalized(entry.card.name)));
-  const excludedAlternativeNames = new Set((options.excludedNames || []).map(normalized));
+  const excludedAlternativeNames = options.excludedNames instanceof Set
+    ? options.excludedNames
+    : collectRepairExcludedNames(options.candidate, options.excludedNames || []);
+  const repairConstraints = { excludedNames: excludedAlternativeNames, forbidPowerSignals: false };
 
   const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
   const copyLimit = singleton ? 1 : 4;
@@ -2840,8 +3298,8 @@ export function auditPowerSubstitutions(input, options = {}) {
     // means exactly what the construction-time bias already means by it.
     const lowerPowerAndLegal = (candidateEntry, candidateKey) => {
       if (candidateKey === key || !spellNames.has(candidateKey)) return false;
-      if (excludedAlternativeNames.has(candidateKey)) return false;
       if ((quantityByName.get(candidateKey) || 0) >= copyLimit) return false;
+      if (!alternativeHonorsRepairIntent(candidateEntry, repairConstraints)) return false;
       const altCategory = powerSignalCategoryFor(candidateEntry.card);
       const altWeight = altCategory ? (POWER_CATEGORY_WEIGHT[altCategory] || 1) : 0;
       return altWeight < ownWeight;
@@ -2851,9 +3309,20 @@ export function auditPowerSubstitutions(input, options = {}) {
       .filter(({ entry: candidateEntry }) => {
         const candidateKey = normalized(candidateEntry.card.name);
         if (!lowerPowerAndLegal(candidateEntry, candidateKey)) return false;
-        return isLuxuryCard || trackedRoles.some((role) => candidateEntry.roles.includes(role));
+        if (!(isLuxuryCard || trackedRoles.some((role) => candidateEntry.roles.includes(role)))) return false;
+        return replacementCompatible(entry, candidateEntry, analysis.strategicIntent, {
+          excludedNames: excludedAlternativeNames,
+          trackedRoles: TRACKED_LOAD_BEARING_ROLES,
+        }).compatible;
       })
-      .sort((a, b) => b.scored.score - a.scored.score);
+      .map((option) => ({
+        ...option,
+        justification: compareReplacementJustification(entry, option.entry, analysis.strategicIntent),
+      }))
+      .sort((a, b) =>
+        b.justification.score - a.justification.score
+        || b.scored.score - a.scored.score
+        || a.entry.card.name.localeCompare(b.entry.card.name));
 
     const evaluateSwap = (option) => {
       const optionKey = normalized(option.entry.card.name);
@@ -2891,6 +3360,7 @@ export function auditPowerSubstitutions(input, options = {}) {
       name: option.entry.card.name,
       powerCategory: powerSignalCategoryFor(option.entry.card),
       score: Number(option.scored.score.toFixed(2)),
+      justificationPreservation: option.justification?.score ?? null,
       hardGateImpact: swap.hardGateImpact,
     }));
 
@@ -3030,7 +3500,17 @@ export function repairBudgetOffenders(input, candidate) {
     return { candidate: { ...candidate, budgetRepair: diagnostics }, budgetRepair: diagnostics };
   }
 
-  const audit = auditBudgetSubstitutions(input, { candidate, priceThresholdUsd: BUDGET_CONSCIOUS_REPAIR_THRESHOLD_USD });
+  // Honor exclusions already established by a prior power repair (or any
+  // caller-supplied strategic cut list). Rebuilding eligibility from the
+  // raw pool without this set is the confirmed intent-leak pathway.
+  const excludedNames = collectRepairExcludedNames(candidate);
+  const forbidPowerSignals = repairForbidsPowerSignals(input);
+  const audit = auditBudgetSubstitutions(input, {
+    candidate,
+    priceThresholdUsd: BUDGET_CONSCIOUS_REPAIR_THRESHOLD_USD,
+    excludedNames,
+    forbidPowerSignals,
+  });
   diagnostics.attempted = true;
   diagnostics.avoidableSpendBeforeUsd = audit.budgetDebt.totalAvoidableSpendUsd;
   diagnostics.avoidableSpendAfterUsd = audit.budgetDebt.totalAvoidableSpendUsd;
@@ -3063,9 +3543,13 @@ export function repairBudgetOffenders(input, candidate) {
   const cut = new Set();
   const swaps = [];
   for (const offender of orderedOffenders) {
-    const pick = (offender.compatibleAlternatives || []).find(
-      (alt) => alt.hardGateImpact === "none" && !claimed.has(alt.name) && !cut.has(alt.name),
-    );
+    const pick = (offender.compatibleAlternatives || []).find((alt) => {
+      const key = normalized(alt.name);
+      return alt.hardGateImpact === "none"
+        && !claimed.has(alt.name)
+        && !cut.has(alt.name)
+        && !excludedNames.has(key);
+    });
     if (!pick) { diagnostics.skippedNoSafeAlternative += 1; continue; }
     claimed.add(pick.name);
     cut.add(offender.name);
@@ -3089,20 +3573,13 @@ export function repairBudgetOffenders(input, candidate) {
       .map((row) => (row.name === swap.offenderName ? { ...row, quantity: row.quantity - 1 } : row))
       .filter((row) => row.quantity > 0);
     const entry = analyzedByName.get(normalized(swap.pickName));
-    rows.push({
-      quantity: 1,
-      name: entry.card.name,
-      roles: entry.roles,
-      score: Number(entry.roleScore.toFixed(3)),
-      cmc: entry.cmc,
-      directTribes: entry.directTribes,
-      tribalSupport: entry.tribalSupport,
-      identityHits: entry.identityHits,
-      blueprintRoleHits: entry.blueprintRoleHits,
-      mechanics: entry.mechanics,
-      colorPips: entry.colorPips,
-      producesColors: nonlandProducedColorsOf(entry.card),
-    });
+    rows.push(rowFromAnalyzedEntry(entry));
+  }
+
+  if (rowsLeakExcludedNames(rows, excludedNames).length) {
+    diagnostics.revertedByFinalValidation = true;
+    diagnostics.completed = true;
+    return { candidate: { ...candidate, budgetRepair: diagnostics }, budgetRepair: diagnostics };
   }
 
   const roleCounts = new Map();
@@ -3127,19 +3604,24 @@ export function repairBudgetOffenders(input, candidate) {
     return { candidate: { ...candidate, budgetRepair: diagnostics }, budgetRepair: diagnostics };
   }
 
-  const repaired = {
+  const repaired = refreshCandidateStrategyMetrics({
     ...candidate,
     rows,
     deckText: rows.map((row) => `${row.quantity} ${row.name}`).join("\n"),
     evaluation,
     score: evaluation.score,
-  };
+  }, analysis, input);
   // One more audit call — against the now-repaired candidate — to report
   // the real remaining debt honestly (skipped offenders still owe it, and
   // a newly-added replacement could itself cross the threshold) rather
   // than assuming applied savings subtract cleanly. This is the one
   // revalidation the design calls for, not a second repair attempt.
-  const after = auditBudgetSubstitutions(input, { candidate: repaired, priceThresholdUsd: BUDGET_CONSCIOUS_REPAIR_THRESHOLD_USD });
+  const after = auditBudgetSubstitutions(input, {
+    candidate: repaired,
+    priceThresholdUsd: BUDGET_CONSCIOUS_REPAIR_THRESHOLD_USD,
+    excludedNames,
+    forbidPowerSignals,
+  });
   diagnostics.appliedCount = swaps.length;
   diagnostics.removedNames = swaps.map((swap) => swap.offenderName);
   diagnostics.alternativesAddedNames = swaps.map((swap) => swap.pickName);
@@ -3147,12 +3629,132 @@ export function repairBudgetOffenders(input, candidate) {
   diagnostics.avoidableSpendAfterUsd = after.budgetDebt.totalAvoidableSpendUsd;
   diagnostics.completed = true;
 
-  const finished = { ...repaired, budgetRepair: diagnostics };
+  const finished = refreshLedgerAfterRepair(input, { ...repaired, budgetRepair: diagnostics }, analysis);
   return { candidate: finished, budgetRepair: diagnostics };
 }
 
 function applyBudgetRepair(input, built) {
   return repairBudgetOffenders(input, built).candidate;
+}
+
+function refreshLedgerAfterRepair(input, candidate, analysis) {
+  const withCohesion = attachStrategicCohesion(candidate, analysis);
+  return attachSlotJustificationLedger(withCohesion, analysis.strategicIntent, {
+    budgetConstraint: input.budget === "Budget conscious",
+    powerConstraint: input.targetPowerTier === "Casual",
+  });
+}
+
+function finalizeCandidateStrategy(input, candidate, analysis, options = {}) {
+  const withCohesion = attachStrategicCohesion(candidate, analysis);
+  const repaired = repairUnsupportedBombs(input, withCohesion, analysis);
+  const optimized = optimizePackagePlan(repaired, analysis, input, {
+    powerSignalCategoryFor,
+    cohesionOptions: cohesionOptionsFor(analysis),
+  });
+  const refreshed = optimized.packagePlanOptimization?.applied
+    ? refreshCandidateStrategyMetrics(optimized, analysis, input)
+    : optimized;
+  const audited = attachStrategicCohesion(refreshed, analysis);
+  const withLedger = attachSlotJustificationLedger(audited, analysis.strategicIntent, {
+    budgetConstraint: input.budget === "Budget conscious",
+    powerConstraint: input.targetPowerTier === "Casual",
+  });
+  // Forensic baseline showed ~90% of weakly justified final slots were
+  // avoidable live-fill survivors with superior eligible alternatives.
+  // Bounded cleanup only — never raw-score-only, capped attempts.
+  // Skipped on the pre-power-repair finalize so Casual power exclusions
+  // remain authoritative and cleanup runs once on the delivered list.
+  const cleaned = options.skipWeakSlotRepair
+    ? {
+      ...withLedger,
+      weakSlotRepair: Object.freeze({
+        version: "weak-slot-forensics-v1",
+        attempted: false,
+        applied: false,
+        appliedCount: 0,
+        considered: 0,
+        skippedPackageCritical: 0,
+        skippedNoAlternative: 0,
+        skippedFloorRegression: 0,
+        skippedBlueprintRegression: 0,
+        skippedForbiddenAdd: 0,
+        removedNames: Object.freeze([]),
+        alternativesAddedNames: Object.freeze([]),
+        swaps: Object.freeze([]),
+        runtimeMs: 0,
+        reason: "deferred-until-after-power-repair",
+      }),
+    }
+    : repairWeaklyJustifiedSlots(withLedger, {
+      intent: analysis.strategicIntent,
+      poolEntries: analysis.spells || [],
+      format: input.format,
+      strategy: input.strategy,
+      target: input.target,
+      budgetConstraint: input.budget === "Budget conscious",
+      powerConstraint: input.targetPowerTier === "Casual",
+      maxRepairs: 6,
+      buildSlotJustificationLedger,
+      validateCohesion: (probe) => validateStrategicCohesion(
+        probe,
+        analysis.strategicIntent,
+        cohesionOptionsFor(analysis),
+      ),
+      blueprintAlignmentFor: (rows) => {
+        const selected = rows.filter((row) => !(row.roles || []).includes("land") && !(row.roles || []).includes("commander"));
+        const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
+        return computeBlueprintAlignment(analysis, selected, singleton);
+      },
+      isProtectedCut: (row) => {
+        if (!row) return false;
+        if ((row.blueprintMechanicHits || []).length > 0) return true;
+        if ((row.directTribes || []).length > 0 && (analysis.context?.blueprint?.tribalTypes || []).length) return true;
+        if ((row.blueprintRoleHits || []).length > 0) return true;
+        return false;
+      },
+      isForbiddenAdd: (entry) => {
+        const excluded = collectRepairExcludedNames(withLedger);
+        const nameKey = normalized(entry?.card?.name || entry?.name || "");
+        if (excluded.has(nameKey)) return true;
+        if (repairForbidsPowerSignals(input) && powerSignalCategoryFor(entry?.card || entry) != null) return true;
+        return false;
+      },
+    });
+  let afterCleanup = cleaned;
+  if (cleaned.weakSlotRepair?.applied) {
+    const variant = VARIANTS.find((entry) => entry.id === cleaned.id) || VARIANTS[0];
+    const roleCounts = new Map();
+    for (const row of cleaned.rows) {
+      for (const role of row.roles || []) {
+        roleCounts.set(role, (roleCounts.get(role) || 0) + Number(row.quantity || 0));
+      }
+    }
+    const evaluation = evaluateCandidate(cleaned.rows, roleCounts, input, variant);
+    afterCleanup = refreshCandidateStrategyMetrics({
+      ...cleaned,
+      evaluation,
+      score: evaluation.score,
+    }, analysis, input);
+    afterCleanup = attachStrategicCohesion(afterCleanup, analysis);
+    afterCleanup = attachSlotJustificationLedger(afterCleanup, analysis.strategicIntent, {
+      budgetConstraint: input.budget === "Budget conscious",
+      powerConstraint: input.targetPowerTier === "Casual",
+    });
+  }
+  // Self-Evaluation v1: observational only — attaches construction-trace
+  // outcomes + reasoning drift without changing construction weights.
+  const withSelfEval = attachSelfEvaluationToCandidate(afterCleanup);
+  // Weak-slot forensics: explain residual weaklyJustified final cards.
+  return attachWeakSlotForensics(withSelfEval, {
+    intent: analysis.strategicIntent,
+    poolEntries: analysis.spells || [],
+    format: input.format,
+    strategy: input.strategy,
+    target: input.target,
+    budgetConstraint: input.budget === "Budget conscious",
+    powerConstraint: input.targetPowerTier === "Casual",
+  });
 }
 
 function powerSignalForCandidate(candidate, input) {
@@ -3190,8 +3792,8 @@ export function repairPowerOffenders(input, candidate) {
   }
 
   diagnostics.attempted = true;
-  const budgetRemoved = candidate.budgetRepair?.removedNames || [];
-  const audit = auditPowerSubstitutions(input, { candidate, excludedNames: budgetRemoved });
+  const excludedNames = collectRepairExcludedNames(candidate);
+  const audit = auditPowerSubstitutions(input, { candidate, excludedNames });
   diagnostics.skippedNoSafeAlternative = audit.offenders.filter(
     (entry) => entry.conclusion !== "unjustified high-power inclusion for Casual",
   ).length;
@@ -3203,14 +3805,13 @@ export function repairPowerOffenders(input, candidate) {
   for (const row of candidate.rows) for (const role of row.roles || []) originalRoleCounts.set(role, (originalRoleCounts.get(role) || 0) + row.quantity);
   const targets = roleTargets(input.format, input.strategy);
   const selected = new Set(candidate.rows.map((row) => normalized(row.name)));
-  const forbidden = new Set(budgetRemoved.map(normalized));
   const claimed = new Set();
   const cut = new Set();
   const swaps = [];
   for (const offender of orderedOffenders) {
     const pick = (offender.compatibleAlternatives || []).find((alt) => {
       const key = normalized(alt.name);
-      return alt.hardGateImpact === "none" && !selected.has(key) && !claimed.has(key) && !cut.has(key) && !forbidden.has(key);
+      return alt.hardGateImpact === "none" && !selected.has(key) && !claimed.has(key) && !cut.has(key) && !excludedNames.has(key);
     });
     if (!pick) { diagnostics.skippedNoSafeAlternative += 1; continue; }
     claimed.add(normalized(pick.name));
@@ -3229,12 +3830,13 @@ export function repairPowerOffenders(input, candidate) {
   for (const swap of swaps) {
     rows = rows.map((row) => normalized(row.name) === normalized(swap.offenderName) ? { ...row, quantity: row.quantity - 1 } : row).filter((row) => row.quantity > 0);
     const entry = analyzedByName.get(normalized(swap.pickName));
-    rows.push({
-      quantity: 1, name: entry.card.name, roles: entry.roles, score: Number(entry.roleScore.toFixed(3)), cmc: entry.cmc,
-      directTribes: entry.directTribes, tribalSupport: entry.tribalSupport, identityHits: entry.identityHits,
-      blueprintRoleHits: entry.blueprintRoleHits, mechanics: entry.mechanics, colorPips: entry.colorPips,
-      producesColors: nonlandProducedColorsOf(entry.card),
-    });
+    rows.push(rowFromAnalyzedEntry(entry));
+  }
+
+  if (rowsLeakExcludedNames(rows, excludedNames).length) {
+    diagnostics.revertedByFinalValidation = true;
+    diagnostics.completed = true;
+    return { candidate: { ...candidate, powerRepair: diagnostics }, powerRepair: diagnostics };
   }
 
   const roleCounts = new Map();
@@ -3248,7 +3850,13 @@ export function repairPowerOffenders(input, candidate) {
     return { candidate: { ...candidate, powerRepair: diagnostics }, powerRepair: diagnostics };
   }
 
-  const repaired = { ...candidate, rows, deckText: rows.map((row) => `${row.quantity} ${row.name}`).join("\n"), evaluation, score: evaluation.score };
+  const repaired = refreshCandidateStrategyMetrics({
+    ...candidate,
+    rows,
+    deckText: rows.map((row) => `${row.quantity} ${row.name}`).join("\n"),
+    evaluation,
+    score: evaluation.score,
+  }, analysis, input);
   const after = powerSignalForCandidate(repaired, input);
   diagnostics.signalScoreAfter = after.signalScore;
   diagnostics.tierAfter = after.tier;
@@ -3265,7 +3873,7 @@ export function repairPowerOffenders(input, candidate) {
   diagnostics.removedNames = swaps.map((swap) => swap.offenderName);
   diagnostics.alternativesAddedNames = swaps.map((swap) => swap.pickName);
   diagnostics.completed = true;
-  const finished = { ...repaired, powerRepair: diagnostics };
+  const finished = refreshLedgerAfterRepair(input, { ...repaired, powerRepair: diagnostics }, analysis);
   return { candidate: finished, powerRepair: diagnostics };
 }
 
@@ -3273,18 +3881,162 @@ function applyPowerRepair(input, candidate) {
   return repairPowerOffenders(input, candidate).candidate;
 }
 
+/**
+ * After weak-slot cleanup (and the primary power-repair pass), residual
+ * Casual power-signal cards may remain when the strict role-matched audit
+ * found no alternative. Sweep them with a looser but still floor-safe
+ * replacement so Casual exclusions stay authoritative.
+ */
+function sweepResidualCasualPowerCards(input, candidate, analysis) {
+  if (!repairForbidsPowerSignals(input)) return candidate;
+  // Only tidy residuals after a successful Casual rebuild — never force a
+  // deeper cut when the primary power repair already disclosed it cannot
+  // reach Casual without unsafe swaps.
+  if (candidate.powerRepair?.tierAfter !== "Casual") return candidate;
+  const analyzedByName = new Map(analysis.cards.map((entry) => [normalized(entry.card.name), entry]));
+  const present = new Set(candidate.rows.map((row) => normalized(row.name)));
+  const offenders = candidate.rows.filter((row) => {
+    if ((row.roles || []).includes("land") || (row.roles || []).includes("commander")) return false;
+    const entry = analyzedByName.get(normalized(row.name));
+    return entry && powerSignalCategoryFor(entry.card) != null;
+  });
+  if (!offenders.length) return candidate;
+
+  const excluded = collectRepairExcludedNames(candidate);
+  const nonPowerPool = (analysis.spells || [])
+    .filter((entry) => !present.has(normalized(entry.card.name)))
+    .filter((entry) => !excluded.has(normalized(entry.card.name)))
+    .filter((entry) => powerSignalCategoryFor(entry.card) == null)
+    .sort((left, right) => (right.score || 0) - (left.score || 0) || left.card.name.localeCompare(right.card.name));
+
+  let rows = candidate.rows.map((row) => ({ ...row, roles: [...(row.roles || [])] }));
+  const removed = [];
+  const added = [];
+  const beforeGate = candidate.strategicCohesionGate;
+
+  for (const offender of offenders.sort((a, b) => a.name.localeCompare(b.name))) {
+    let swapped = false;
+    for (const alt of nonPowerPool) {
+      if (rows.some((row) => normalized(row.name) === normalized(alt.card.name))) continue;
+      const next = rows.map((row) => ({ ...row, roles: [...(row.roles || [])] }));
+      const cut = next.find((row) => normalized(row.name) === normalized(offender.name));
+      if (!cut) break;
+      cut.quantity -= 1;
+      const existing = next.find((row) => normalized(row.name) === normalized(alt.card.name));
+      if (existing) existing.quantity += 1;
+      else next.push(rowFromAnalyzedEntry(alt));
+      const filtered = next.filter((row) => row.quantity > 0);
+      const roleCounts = new Map();
+      for (const row of filtered) {
+        for (const role of row.roles || []) roleCounts.set(role, (roleCounts.get(role) || 0) + row.quantity);
+      }
+      const variant = VARIANTS.find((entry) => entry.id === candidate.id) || VARIANTS[0];
+      const evaluation = evaluateCandidate(filtered, roleCounts, input, variant);
+      if (evaluation.roleCoverage < 0.45 || evaluation.curveHealth < 45) continue;
+      const cohesion = validateStrategicCohesion({ ...candidate, rows: filtered }, analysis.strategicIntent, cohesionOptionsFor(analysis));
+      if (beforeGate?.passed && cohesion.passed === false) continue;
+      rows = filtered;
+      removed.push(offender.name);
+      added.push(alt.card.name);
+      present.add(normalized(alt.card.name));
+      swapped = true;
+      break;
+    }
+    void swapped;
+  }
+
+  if (!removed.length) return candidate;
+
+  const roleCounts = new Map();
+  for (const row of rows) for (const role of row.roles || []) roleCounts.set(role, (roleCounts.get(role) || 0) + row.quantity);
+  const variant = VARIANTS.find((entry) => entry.id === candidate.id) || VARIANTS[0];
+  const evaluation = evaluateCandidate(rows, roleCounts, input, variant);
+  const refreshed = refreshCandidateStrategyMetrics({
+    ...candidate,
+    rows,
+    deckText: rows.map((row) => `${row.quantity} ${row.name}`).join("\n"),
+    evaluation,
+    score: evaluation.score,
+    casualPowerSweep: Object.freeze({
+      applied: true,
+      removedNames: Object.freeze(removed),
+      alternativesAddedNames: Object.freeze(added),
+    }),
+  }, analysis, input);
+  const withCohesion = attachStrategicCohesion(refreshed, analysis);
+  const withLedger = attachSlotJustificationLedger(withCohesion, analysis.strategicIntent, {
+    budgetConstraint: input.budget === "Budget conscious",
+    powerConstraint: true,
+  });
+  return attachWeakSlotForensics(attachSelfEvaluationToCandidate(withLedger), {
+    intent: analysis.strategicIntent,
+    poolEntries: analysis.spells || [],
+    format: input.format,
+    strategy: input.strategy,
+    target: input.target,
+    budgetConstraint: input.budget === "Budget conscious",
+    powerConstraint: true,
+  });
+}
+
 export function forgeNativeMasterwork(input) {
   if (!input || !Array.isArray(input.cards) || !input.cards.length) throw new Error("Native Forge requires a verified card pool");
   const evidenceByName = new Map((input.evidence || []).map((entry) => [normalized(entry.name), entry]));
   const analysis = prepareForgeAnalysis(input, evidenceByName);
-  const candidates = VARIANTS.map((variant) => applyPowerRepair(input, buildCandidate(input, variant, analysis)));
+  const planSelection = selectStrategicPlans(analysis, analysis.strategicIntent, input, {
+    spellTarget: Math.round((input.target || 100) * 0.63),
+    limits: { maxBuilt: 3, maxGenerated: 8 },
+  });
+  // Bind up to three diverse plans onto the three tempers. If fewer plans
+  // survive evidence gates, remaining variants reuse the best plan rather
+  // than inventing unsupported strategies.
+  const buildSpecs = VARIANTS.map((variant, index) => {
+    const selectedPlan = planSelection.selected[index] || planSelection.selected[0] || null;
+    return {
+      variant,
+      planEntry: selectedPlan,
+      analysis: selectedPlan ? applyStrategicPlanToAnalysis(analysis, selectedPlan.plan) : analysis,
+    };
+  });
+  const buildStarted = Date.now();
+  const candidates = buildSpecs.map(({ variant, planEntry, analysis: planAnalysis }) => {
+    const powered = applyPowerRepair(input, buildCandidate(input, variant, planAnalysis));
+    const finished = finalizeCandidateStrategy(input, powered, planAnalysis);
+    const swept = sweepResidualCasualPowerCards(input, finished, planAnalysis);
+    const realization = planEntry
+      ? realizeStrategicPlanScore(swept, planEntry.plan, planEntry.prediction, planAnalysis.strategicIntent)
+      : null;
+    // Predicted-vs-realized gate: a plan that collapses cohesion after build
+    // is marked underperformed for tournament diagnostics.
+    return {
+      ...swept,
+      strategicPlanPrediction: planEntry?.prediction || null,
+      strategicPlanRealization: realization,
+      planCompetition: {
+        planId: planEntry?.plan?.id || null,
+        label: planEntry?.plan?.label || null,
+        underperformed: Boolean(realization?.underperformed),
+      },
+    };
+  });
+  const planBuildMs = Date.now() - buildStarted;
   const structuralTournament = runNativeMasterworkTournament(candidates, { format: input.format, target: input.target });
   const { tournament, practicalTiebreak } = applyPracticalTiebreak(structuralTournament, candidates, input);
   const verdictById = new Map(tournament.results.map((result) => [result.id, result]));
   let ranked = candidates
     .map((candidate) => ({ ...candidate, tournament: verdictById.get(candidate.id) }))
-    .sort((left, right) => right.tournament.tournamentScore - left.tournament.tournamentScore || left.id.localeCompare(right.id));
+    .sort((left, right) => {
+      // Soft demote plans whose realized cohesion/plan quality collapsed.
+      const leftPenalty = left.planCompetition?.underperformed ? -8 : 0;
+      const rightPenalty = right.planCompetition?.underperformed ? -8 : 0;
+      return (right.tournament.tournamentScore + rightPenalty) - (left.tournament.tournamentScore + leftPenalty)
+        || left.id.localeCompare(right.id);
+    });
   let selected = ranked.find((candidate) => candidate.id === tournament.selectedId);
+  if (selected?.planCompetition?.underperformed) {
+    const healthier = ranked.find((candidate) => !candidate.planCompetition?.underperformed && candidate.strategicCohesionGate?.passed !== false);
+    if (healthier) selected = healthier;
+  }
 
   let structuralCards = buildSelectedStructuralCards(selected, input);
   let structuralAnalysis = buildForgeStructuralAnalysis(structuralCards, { commanderName: input.commander?.name || "" });
@@ -3315,6 +4067,7 @@ export function forgeNativeMasterwork(input) {
       format: input.format,
       strategy: input.strategy,
       target: input.target,
+      strategicIntent: selected.strategicIntent || analysis.strategicIntent,
     },
   );
 
@@ -3410,6 +4163,22 @@ export function forgeNativeMasterwork(input) {
     unusedEnginePartners: unusedEnginePartnersFor(selected, input),
     blueprintIntent: analysis.context.blueprint,
     budgetDiagnostics: budgetDiagnosticsFor(selected, input),
+    planCompetition: Object.freeze({
+      version: planSelection.version,
+      generated: planSelection.generated,
+      pruned: planSelection.pruned,
+      built: planSelection.instrumentation.built,
+      predictionMs: planSelection.instrumentation.predictionMs,
+      buildMs: planBuildMs,
+      selectedPlanId: selected.planCompetition?.planId || null,
+      plans: Object.freeze(planSelection.selected.map((entry) => Object.freeze({
+        id: entry.plan.id,
+        label: entry.plan.label,
+        predictedScore: entry.prediction.predictedScore,
+        confidence: entry.prediction.confidence,
+        supportingProfiles: entry.plan.supportingProfiles,
+      }))),
+    }),
   diagnostics: Object.freeze({
     analysisPasses: 1,
     cardsAnalyzed:
@@ -3426,7 +4195,9 @@ export function forgeNativeMasterwork(input) {
         .length,
 }),
 
-    methodology: `MetaForge analyzed each verified card once, compiled explicit Blueprint requests into a strategy contract, protected minimum deck-function requirements, enforced a meaningful contract-card density, assembled three complete structural tempers, applied hard rejection gates, advanced a nondominated Blueprint tradeoff, compared it with the closest viable rival, and exhaustively gated exact one-slot experiments.${selected.blueprintAlignment.requested.length ? ` Blueprint promise: ${selected.blueprintAlignment.requested.join(", ")} — ${selected.blueprintAlignment.status.replaceAll("-", " ")}; ${selected.blueprintAlignment.selectedContractCards}/${selected.blueprintAlignment.requiredContractCards} required strategy-contract cards selected.` : ""}`,
+    methodology: `MetaForge analyzed each verified card once, compiled explicit Blueprint requests into a strategy contract, competed evidence-backed strategic plans, built phase-aware tempers, protected minimum deck-function requirements, enforced a meaningful contract-card density, assembled distinct structural variants, applied hard rejection gates, advanced a nondominated Blueprint tradeoff, compared it with the closest viable rival, and exhaustively gated exact one-slot experiments.${selected.blueprintAlignment.requested.length ? ` Blueprint promise: ${selected.blueprintAlignment.requested.join(", ")} — ${selected.blueprintAlignment.status.replaceAll("-", " ")}; ${selected.blueprintAlignment.selectedContractCards}/${selected.blueprintAlignment.requiredContractCards} required strategy-contract cards selected.` : ""}`,
+    selfEvaluation: selected.selfEvaluation || null,
+    weakSlotForensics: selected.weakSlotForensics || null,
   });
 }
 
@@ -3470,6 +4241,7 @@ export function forgeImportedMasterwork(input) {
     format: input.format,
     strategy: input.strategy,
     target: input.target,
+    strategicIntent: selected.strategicIntent || analysis.strategicIntent,
   });
 
   const structuralCards = buildSelectedStructuralCards(selected, input);
