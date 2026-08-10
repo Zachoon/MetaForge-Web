@@ -14,7 +14,7 @@ import { createCorpusDeckRecord } from "../corpus-schema.mjs";
 import { calculateCompetitiveEvidenceWeight } from "../evidence-quality.mjs";
 import { detectImportSource, parseTournamentDeckText } from "../decklist-parse.mjs";
 import { liveFetch } from "../live-http.mjs";
-import { DEFAULT_LIVE_SAMPLE, selectContrastStandings } from "../live-sample.mjs";
+import { DEFAULT_LIVE_SAMPLE, selectContrastStandings, resolveTopCutStatus } from "../live-sample.mjs";
 
 const freeze = (value) => Object.freeze(value);
 const SPICERACK_EXPORT = "https://api.spicerack.gg/api/export-decklists/";
@@ -205,7 +205,7 @@ export function normalizeSpicerackTournament(tournament = {}, options = {}) {
       winsBracket: Number.isFinite(standing.winsBracket) ? standing.winsBracket : null,
       lossesBracket: Number.isFinite(standing.lossesBracket) ? standing.lossesBracket : null,
     });
-    const topCut = topCutSize > 0 ? placement <= topCutSize : placement <= 4;
+    const topCut = resolveTopCutStatus(placement, topCutSize);
 
     const draft = {
       id: `spicerack:${eventId}:${standing.name || i}:${placement}`,
@@ -223,7 +223,7 @@ export function normalizeSpicerackTournament(tournament = {}, options = {}) {
       eventSize,
       placement,
       topCut,
-      topCutSize: topCutSize || null,
+      topCutSize: topCutSize > 0 ? topCutSize : null,
       matchRecord,
       tournamentSource: "spicerack",
       authorKey: standing.name ? `spicerack-player:${standing.name}` : null,

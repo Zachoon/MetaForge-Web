@@ -63,6 +63,7 @@ export { liveFetch, isolateSource } from "./live-http.mjs";
 export {
   DEFAULT_LIVE_SAMPLE,
   selectContrastStandings,
+  resolveTopCutStatus,
   dedupeCorpusRecords,
   annotatePerformanceClasses,
 } from "./live-sample.mjs";
@@ -79,7 +80,7 @@ export {
   cardFromScryfall,
 } from "./card-enrichment.mjs";
 export { resolveCommanderFamily, resolveCorpusFamilies } from "./commander-family.mjs";
-export { buildComparableCohorts, LEVEL_CONFIDENCE } from "./comparable-cohorts.mjs";
+export { buildComparableCohorts, LEVEL_CONFIDENCE, isHighPerformerRecord } from "./comparable-cohorts.mjs";
 export { analyzeRepeatedConverters } from "./repeated-converter-analysis.mjs";
 export { buildCorpusQualityReport } from "./corpus-quality.mjs";
 export {

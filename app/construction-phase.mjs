@@ -19,6 +19,11 @@ export const CONSTRUCTION_PHASE_VERSION = "construction-phase-v1";
  *
  * Foundation maximizes structural fit. Completion restores room for card
  * quality once mandatory floors are already satisfied.
+ *
+ * Redundancy is enforced inside prospectiveSlotDelta (justification_overlap +
+ * oversupply_guardrail) and the slot justification ledger — not here.
+ * Do not reintroduce a phase-level redundancyPenalty into applyPhaseWeights
+ * without a Validation Harness report (Brain v1 freeze).
  */
 export const PHASE_WEIGHT_POLICY = Object.freeze({
   foundation: Object.freeze({
@@ -27,7 +32,6 @@ export const PHASE_WEIGHT_POLICY = Object.freeze({
     synergy: 0.85,
     orphanTax: 1.25,
     disconnectTax: 1.35,
-    redundancyPenalty: 1.2,
     description: "Mandatory floors, commander support, and critical roles dominate.",
   }),
   development: Object.freeze({
@@ -36,7 +40,6 @@ export const PHASE_WEIGHT_POLICY = Object.freeze({
     synergy: 1.05,
     orphanTax: 1.1,
     disconnectTax: 1.15,
-    redundancyPenalty: 1.05,
     description: "Balance package legs, engines, curve, and interaction density.",
   }),
   refinement: Object.freeze({
@@ -45,7 +48,6 @@ export const PHASE_WEIGHT_POLICY = Object.freeze({
     synergy: 1.0,
     orphanTax: 0.95,
     disconnectTax: 1.0,
-    redundancyPenalty: 0.95,
     description: "Improve multifunction quality and resilience without reopening floors.",
   }),
   completion: Object.freeze({
@@ -54,9 +56,21 @@ export const PHASE_WEIGHT_POLICY = Object.freeze({
     synergy: 0.9,
     orphanTax: 0.85,
     disconnectTax: 0.9,
-    redundancyPenalty: 0.9,
     description: "Close residual gaps; prefer efficient high-quality occupants.",
   }),
+});
+
+/** Documented: unused stale field removed from PHASE_WEIGHT_POLICY (issue diagnosis). */
+export const PHASE_REDUNDANCY_POLICY_NOTE = Object.freeze({
+  status: "intentionally_absent",
+  reason: "redundancy_handled_in_prospective_delta_and_ledger",
+  doNotWireIntoDefaultBrain: true,
+  see: [
+    "prospective-slot-delta.mjs justification_overlap",
+    "prospective-slot-delta.mjs oversupply_guardrail",
+    "deficit-closure-memory.mjs isPrimaryOversupplyChase",
+    "slot-justification-ledger.mjs redundant flags",
+  ],
 });
 
 const PHASE_ORDER = Object.freeze(["foundation", "development", "refinement", "completion"]);

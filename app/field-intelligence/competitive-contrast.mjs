@@ -6,14 +6,14 @@
 // Correlation ≠ causation — results are flagged as associative evidence only.
 // =============================================================================
 
+import { isHighPerformerRecord } from "./comparable-cohorts.mjs";
+
 const freeze = (value) => Object.freeze(value);
 const round = (value, digits = 3) => Number(Number(value).toFixed(digits));
 const mean = (values) => (values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0);
 
 function isHighPerformer(record) {
-  if (record.topCut === true) return true;
-  if (Number.isFinite(record.placement) && record.placement <= 4) return true;
-  return Boolean(record.performance?.strongFinish);
+  return isHighPerformerRecord(record);
 }
 
 function packageLegSnapshot(analysis) {
