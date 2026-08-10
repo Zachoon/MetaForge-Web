@@ -1995,6 +1995,7 @@ export default function Home() {
   };
   const chosenPreview = previewFor(selectedWork);
   const chosenWork = restoredWork || workFor(selectedWork);
+  const isImportedDeckReview = chosenWork.path === "Adapted From Your List";
   const currentFamilyArchived = Boolean(
     savedMasterworks.find((family) => family.id === deckId)?.archived,
   );
@@ -5436,23 +5437,30 @@ export default function Home() {
               </nav>
               <section className="forge-next-step" aria-label="Recommended next step">
                 <div>
-                  <small>YOUR COACH IS READY</small>
+                  <small>{isImportedDeckReview ? "YOUR DECK REVIEW IS READY" : "YOUR COACH IS READY"}</small>
                   <strong>
                     {activeFieldTest
                       ? "Play when you are ready, then come back for a three-tap check-in."
-                      : "MetaForge has prepared the single most useful question for your next game."}
+                      : isImportedDeckReview
+                        ? "See what your deck is trying to do, how it gets started, and the first weakness worth testing."
+                        : "MetaForge has prepared the single most useful question for your next game."}
                   </strong>
                 </div>
                 <button
                   type="button"
                   onClick={() => {
+                    if (isImportedDeckReview && !activeFieldTest) {
+                      window.requestAnimationFrame(() => document.getElementById("coach-brief")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+                      trackLaunchEvent("coaching_opened", { format });
+                      return;
+                    }
                     if (!activeFieldTest) beginProvingGroundsTest();
                     setActiveForgeChapter(5);
                     trackLaunchEvent("coaching_opened", { format });
                     window.requestAnimationFrame(() => document.getElementById("proving-grounds-title")?.scrollIntoView({ behavior: "smooth", block: "start" }));
                   }}
                 >
-                  {activeFieldTest ? "Continue coaching →" : "Prepare my next game →"}
+                  {activeFieldTest ? "Continue coaching →" : isImportedDeckReview ? "Show me what you found →" : "Prepare my next game →"}
                 </button>
               </section>
             </>
@@ -5572,11 +5580,13 @@ export default function Home() {
                 </span>
               )}
               {hasValidatedDeck && (
-              <section className="forge-understanding-bridge coach-brief" aria-label="Coach's brief">
+              <section className="forge-understanding-bridge coach-brief" id="coach-brief" aria-label="Coach's brief">
                 <header>
                   <small>COACH&apos;S BRIEF</small>
-                  <h2>Your deck in plain language.</h2>
-                  <p>Start with the plan, the setup, and the one pressure point worth watching. Exact scores and card-by-card evidence stay available in Deep Forge.</p>
+                  <h2>{isImportedDeckReview ? "What MetaForge found in your deck." : "Your deck in plain language."}</h2>
+                  <p>{isImportedDeckReview
+                    ? "This is a coaching review, not a replacement deck. Start with the plan MetaForge sees, how the deck gets moving, and the first pressure point to watch in a real game."
+                    : "Start with the plan, the setup, and the one pressure point worth watching. Exact scores and card-by-card evidence stay available in Deep Forge."}</p>
                   {structuralAnalysisStatus === "loading" && !structuralReportReady && (
                     <p className="structural-analysis-pending" role="status">
                       Analyzing this build's structure…

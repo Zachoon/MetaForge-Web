@@ -2,6 +2,11 @@
 
 ## 2026-08-09 — Import and Coaching Reliability
 
+### A clearer first coaching handoff
+
+- Imported-deck results now explain immediately that MetaForge is reviewing the player's deck rather than replacing it.
+- The first action is now “Show me what you found,” taking the player directly to the deck's plan, setup, and first pressure point instead of asking them to begin a game before explaining the review.
+
 ### An imported deck now stays your deck
 
 - Complete imported lists preserve every submitted card and the submitted land count instead of silently replacing cards to satisfy MetaForge's preferred structure.

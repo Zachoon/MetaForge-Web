@@ -151,6 +151,9 @@ test("names the finished deck in player language instead of an unexplained tempe
 
 test("each workspace stage exposes one clear contextual next action instead of another control cluster", () => {
   assert.match(page, /className="forge-next-step" aria-label="Recommended next step"/);
+  assert.match(page, /YOUR DECK REVIEW IS READY/);
+  assert.match(page, /Show me what you found/);
+  assert.match(page, /getElementById\("coach-brief"\)/);
   assert.match(page, /Prepare my next game →/);
   assert.match(page, /Continue coaching →/);
   assert.match(page, /if \(!activeFieldTest\) beginProvingGroundsTest\(\)/);
@@ -160,7 +163,9 @@ test("each workspace stage exposes one clear contextual next action instead of a
 });
 
 test("deck understanding leads with a plain-language coach brief and contains raw evidence in Deep Forge", () => {
-  assert.match(page, /className="forge-understanding-bridge coach-brief"/);
+  assert.match(page, /className="forge-understanding-bridge coach-brief" id="coach-brief"/);
+  assert.match(page, /What MetaForge found in your deck/);
+  assert.match(page, /This is a coaching review, not a replacement deck/);
   assert.match(page, /Your deck in plain language\./);
   assert.match(page, /YOUR PLAN/);
   assert.match(page, /GET ESTABLISHED/);
