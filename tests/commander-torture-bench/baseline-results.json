@@ -1,0 +1,467 @@
+{
+  "generatedAt": "2026-08-10T08:09:55.962Z",
+  "aggregate": {
+    "total": 13,
+    "passed": 8,
+    "failed": 5,
+    "byArchetype": {
+      "aura_voltron": "PARTIAL",
+      "equipment_voltron": "PARTIAL",
+      "typal": "FAIL",
+      "tokens": "PARTIAL",
+      "aristocrats": "PARTIAL",
+      "reanimator": "PARTIAL",
+      "spellslinger": "FAIL",
+      "landfall": "PASS",
+      "blink": "FAIL",
+      "artifacts": "PARTIAL",
+      "stax": "FAIL",
+      "combo": "FAIL",
+      "multi_direction": "PARTIAL"
+    },
+    "failureClassCounts": {
+      "interaction_graph_failure": 10,
+      "package_catalog_or_leg_gap": 4,
+      "commander_role_misunderstanding": 5,
+      "justification_quality": 1
+    },
+    "runtime": {
+      "medianMs": 1288,
+      "p95Ms": 2762,
+      "slowest": [
+        {
+          "id": "aristocrats",
+          "ms": 2762
+        },
+        {
+          "id": "pearl-ear-auras",
+          "ms": 1595
+        },
+        {
+          "id": "reanimator",
+          "ms": 1502
+        },
+        {
+          "id": "spellslinger",
+          "ms": 1381
+        },
+        {
+          "id": "artifacts",
+          "ms": 1370
+        }
+      ]
+    }
+  },
+  "scorecards": [
+    {
+      "id": "pearl-ear-auras",
+      "archetype": "aura_voltron",
+      "why": "Canonical Aura payoff commander; regression lock for subtype precision.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "thin_interaction_graph_0",
+        "prospective_retrospective_warnings_9"
+      ],
+      "failureClasses": [
+        "interaction_graph_failure"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.754,
+        "weaklyJustified": 5,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 10,
+        "warnings": 9
+      },
+      "plan": {
+        "predicted": 72,
+        "realized": 82.713,
+        "gap": 10.713,
+        "underperformed": false
+      },
+      "runtimeMs": 1595
+    },
+    {
+      "id": "equipment-voltron",
+      "archetype": "equipment_voltron",
+      "why": "Equipment subtype precision vs generic artifacts.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "thin_interaction_graph_0"
+      ],
+      "failureClasses": [
+        "interaction_graph_failure"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.462,
+        "weaklyJustified": 7,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 13,
+        "warnings": 5
+      },
+      "plan": {
+        "predicted": 64.3,
+        "realized": 82.405,
+        "gap": 18.105,
+        "underperformed": false
+      },
+      "runtimeMs": 1332
+    },
+    {
+      "id": "ayula-typal",
+      "archetype": "typal",
+      "why": "Typal density must require actual tribe members, not cards that merely mention Bears.",
+      "passed": false,
+      "hardFailures": [
+        "payoff_commander_missing_enablers_in_99",
+        "commander_connections_0_below_4"
+      ],
+      "warnings": [
+        "weakly_justified_22",
+        "thin_interaction_graph_0"
+      ],
+      "failureClasses": [
+        "package_catalog_or_leg_gap",
+        "commander_role_misunderstanding",
+        "interaction_graph_failure",
+        "justification_quality"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.477,
+        "weaklyJustified": 22,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 15,
+        "warnings": 4
+      },
+      "plan": {
+        "predicted": 42.1,
+        "realized": 67.488,
+        "gap": 25.388,
+        "underperformed": false
+      },
+      "runtimeMs": 733
+    },
+    {
+      "id": "token-go-wide",
+      "archetype": "tokens",
+      "why": "Token producers vs token payoffs must stay distinct.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "thin_interaction_graph_0",
+        "prospective_retrospective_warnings_12"
+      ],
+      "failureClasses": [
+        "interaction_graph_failure"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.576,
+        "weaklyJustified": 6,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 16,
+        "warnings": 12
+      },
+      "plan": {
+        "predicted": 72,
+        "realized": 80.501,
+        "gap": 8.501,
+        "underperformed": false
+      },
+      "runtimeMs": 1206
+    },
+    {
+      "id": "aristocrats",
+      "archetype": "aristocrats",
+      "why": "Requires balanced outlets, payoffs, and fodder — classic leg-balance stress.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "prospective_retrospective_warnings_9"
+      ],
+      "failureClasses": [],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.773,
+        "weaklyJustified": 5,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 22,
+        "warnings": 9
+      },
+      "plan": {
+        "predicted": 91.6,
+        "realized": 85.847,
+        "gap": -5.753,
+        "underperformed": false
+      },
+      "runtimeMs": 2762
+    },
+    {
+      "id": "reanimator",
+      "archetype": "reanimator",
+      "why": "Targets, enablers, and reanimation effects must all exist.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "unsupported_anchors_8",
+        "prospective_retrospective_warnings_14"
+      ],
+      "failureClasses": [],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.719,
+        "weaklyJustified": 6,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 27,
+        "warnings": 14
+      },
+      "plan": {
+        "predicted": 52.667,
+        "realized": 83.1,
+        "gap": 30.433,
+        "underperformed": false
+      },
+      "runtimeMs": 1502
+    },
+    {
+      "id": "spellslinger",
+      "archetype": "spellslinger",
+      "why": "Cheap spell density vs spell payoffs are different obligations.",
+      "passed": false,
+      "hardFailures": [
+        "payoff_commander_missing_enablers_in_99",
+        "commander_connections_0_below_3"
+      ],
+      "warnings": [
+        "thin_interaction_graph_0"
+      ],
+      "failureClasses": [
+        "package_catalog_or_leg_gap",
+        "commander_role_misunderstanding",
+        "interaction_graph_failure"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.621,
+        "weaklyJustified": 4,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 14,
+        "warnings": 4
+      },
+      "plan": {
+        "predicted": 54,
+        "realized": 73.147,
+        "gap": 19.147,
+        "underperformed": false
+      },
+      "runtimeMs": 1381
+    },
+    {
+      "id": "landfall",
+      "archetype": "landfall",
+      "why": "Landfall payoffs need land-drop/enabler support, not just random creatures.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [],
+      "failureClasses": [],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.742,
+        "weaklyJustified": 5,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 12,
+        "warnings": 5
+      },
+      "plan": {
+        "predicted": 90.667,
+        "realized": 88.26,
+        "gap": -2.407,
+        "underperformed": false
+      },
+      "runtimeMs": 1288
+    },
+    {
+      "id": "blink-etb",
+      "archetype": "blink",
+      "why": "Blink effects vs valuable ETB targets are distinct.",
+      "passed": false,
+      "hardFailures": [
+        "enabler_commander_missing_payoffs_in_99",
+        "commander_connections_0_below_2"
+      ],
+      "warnings": [
+        "thin_interaction_graph_0"
+      ],
+      "failureClasses": [
+        "package_catalog_or_leg_gap",
+        "commander_role_misunderstanding",
+        "interaction_graph_failure"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.53,
+        "weaklyJustified": 9,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 8,
+        "warnings": 6
+      },
+      "plan": {
+        "predicted": 46.4,
+        "realized": 69.346,
+        "gap": 22.946,
+        "underperformed": false
+      },
+      "runtimeMs": 915
+    },
+    {
+      "id": "artifacts",
+      "archetype": "artifacts",
+      "why": "Artifact synergy package with producers and payoffs.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "thin_interaction_graph_0"
+      ],
+      "failureClasses": [
+        "interaction_graph_failure"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.667,
+        "weaklyJustified": 0,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 10,
+        "warnings": 0
+      },
+      "plan": {
+        "predicted": 54,
+        "realized": 76.85,
+        "gap": 22.85,
+        "underperformed": false
+      },
+      "runtimeMs": 1370
+    },
+    {
+      "id": "stax",
+      "archetype": "stax",
+      "why": "Stax needs asymmetric support; raw disruption alone is not a plan.",
+      "passed": false,
+      "hardFailures": [
+        "payoff_commander_missing_enablers_in_99",
+        "commander_connections_0_below_2"
+      ],
+      "warnings": [
+        "thin_interaction_graph_0"
+      ],
+      "failureClasses": [
+        "package_catalog_or_leg_gap",
+        "commander_role_misunderstanding",
+        "interaction_graph_failure"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.531,
+        "weaklyJustified": 10,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 1,
+        "warnings": 1
+      },
+      "plan": {
+        "predicted": 42.1,
+        "realized": 68.493,
+        "gap": 26.393,
+        "underperformed": false
+      },
+      "runtimeMs": 842
+    },
+    {
+      "id": "combo-partners",
+      "archetype": "combo",
+      "why": "Combo pieces must not be treated as independent goodstuff without partners.",
+      "passed": false,
+      "hardFailures": [
+        "commander_connections_0_below_4"
+      ],
+      "warnings": [
+        "thin_interaction_graph_0"
+      ],
+      "failureClasses": [
+        "commander_role_misunderstanding",
+        "interaction_graph_failure"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.708,
+        "weaklyJustified": 7,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 4,
+        "warnings": 4
+      },
+      "plan": {
+        "predicted": 46.4,
+        "realized": 71.325,
+        "gap": 24.925,
+        "underperformed": false
+      },
+      "runtimeMs": 989
+    },
+    {
+      "id": "multiplan-commander",
+      "archetype": "multi_direction",
+      "why": "Commander with multiple legitimate support directions stresses plan competition.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "thin_interaction_graph_0"
+      ],
+      "failureClasses": [
+        "interaction_graph_failure"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.769,
+        "weaklyJustified": 5,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 17,
+        "warnings": 5
+      },
+      "plan": {
+        "predicted": 70.4,
+        "realized": 82.466,
+        "gap": 12.066,
+        "underperformed": false
+      },
+      "runtimeMs": 938
+    }
+  ]
+}

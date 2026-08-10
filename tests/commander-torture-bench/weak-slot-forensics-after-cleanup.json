@@ -1,0 +1,61 @@
+{
+  "generatedAt": "2026-08-10T14:30:00.000Z",
+  "note": "After bounded repairWeaklyJustifiedSlots + Casual residual sweep. Compare to weak-slot-forensics-baseline.json.",
+  "weakSlotAggregate": {
+    "version": "weak-slot-forensics-v1",
+    "weakSlotCount": 31,
+    "causalClassCounts": {
+      "became_weak_downstream": 18,
+      "weak_at_selection": 13
+    },
+    "sourceCounts": {
+      "live_fill": 31
+    },
+    "phaseCounts": {
+      "foundation": 25,
+      "development": 6
+    },
+    "avoidableCount": 2,
+    "constraintForcedCount": 25,
+    "lowCandidateDepthCount": 25,
+    "meanCandidateDepth": 1.419,
+    "highestImpactCausalClass": "became_weak_downstream"
+  },
+  "selfEvaluationControls": {
+    "driftClassCounts": {
+      "early_scaffolding_matured": 337,
+      "downstream_repair_invalidated_pick": 52,
+      "later_package_oversupply": 33,
+      "curve_need_disappeared": 6,
+      "unclassified": 246,
+      "stable_good_prediction": 9,
+      "retrospective_gain_not_seen_prospectively": 146,
+      "final_weak_justification": 18,
+      "unsupported_anchor_emerged": 2
+    },
+    "controlCaseCounts": {
+      "early_scaffolding_matured": 337,
+      "invalidated_by_later_decisions": 89,
+      "ambiguous": 261,
+      "stable": 9,
+      "beneficial_emergence": 146,
+      "genuine_bad_belief": 7
+    },
+    "totalTracedPicks": 849
+  },
+  "byArchetypeWeakCounts": {
+    "pearl-ear-auras": 0,
+    "equipment-voltron": 4,
+    "ayula-typal": 0,
+    "token-go-wide": 8,
+    "aristocrats": 2,
+    "reanimator": 2,
+    "spellslinger": 0,
+    "landfall": 2,
+    "blink-etb": 6,
+    "artifacts": 0,
+    "stax": 0,
+    "combo-partners": 7,
+    "multiplan-commander": 0
+  }
+}

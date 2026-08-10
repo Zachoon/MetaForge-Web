@@ -1,0 +1,1532 @@
+{
+  "generatedAt": "2026-08-10T13:55:26.058Z",
+  "aggregate": {
+    "total": 13,
+    "passed": 13,
+    "failed": 0,
+    "byArchetype": {
+      "aura_voltron": "PARTIAL",
+      "equipment_voltron": "PARTIAL",
+      "typal": "PARTIAL",
+      "tokens": "PARTIAL",
+      "aristocrats": "PARTIAL",
+      "reanimator": "PARTIAL",
+      "spellslinger": "PARTIAL",
+      "landfall": "PASS",
+      "blink": "PARTIAL",
+      "artifacts": "PARTIAL",
+      "stax": "PARTIAL",
+      "combo": "PARTIAL",
+      "multi_direction": "PARTIAL"
+    },
+    "failureClassCounts": {
+      "interaction_graph_failure": 9,
+      "justification_quality": 2
+    },
+    "runtime": {
+      "medianMs": 1404,
+      "p95Ms": 3577,
+      "slowest": [
+        {
+          "id": "aristocrats",
+          "ms": 3577
+        },
+        {
+          "id": "spellslinger",
+          "ms": 2687
+        },
+        {
+          "id": "pearl-ear-auras",
+          "ms": 2415
+        },
+        {
+          "id": "equipment-voltron",
+          "ms": 1822
+        },
+        {
+          "id": "reanimator",
+          "ms": 1676
+        }
+      ]
+    }
+  },
+  "selfEvaluationAggregate": {
+    "version": "self-evaluation-aggregate-v1",
+    "forgeCount": 13,
+    "totalTracedPicks": 849,
+    "totalMeaningfulDisagreements": 242,
+    "driftClassCounts": {
+      "early_scaffolding_matured": 337,
+      "downstream_repair_invalidated_pick": 1,
+      "later_package_oversupply": 33,
+      "curve_need_disappeared": 6,
+      "unclassified": 261,
+      "final_weak_justification": 54,
+      "stable_good_prediction": 9,
+      "retrospective_gain_not_seen_prospectively": 146,
+      "unsupported_anchor_emerged": 2
+    },
+    "driftByPhase": {
+      "foundation": {
+        "count": 614,
+        "meanAbsDrift": 44.236
+      },
+      "development": {
+        "count": 235,
+        "meanAbsDrift": 55.791
+      }
+    },
+    "driftByPackage": {
+      "auras": {
+        "count": 130,
+        "disagreements": 124
+      },
+      "equipment": {
+        "count": 65,
+        "disagreements": 57
+      },
+      "typal": {
+        "count": 65,
+        "disagreements": 63
+      },
+      "tokens": {
+        "count": 198,
+        "disagreements": 176
+      },
+      "aristocrats": {
+        "count": 66,
+        "disagreements": 60
+      },
+      "reanimator": {
+        "count": 64,
+        "disagreements": 61
+      },
+      "spellslinger": {
+        "count": 66,
+        "disagreements": 62
+      },
+      "landfall": {
+        "count": 66,
+        "disagreements": 59
+      },
+      "blink": {
+        "count": 66,
+        "disagreements": 63
+      },
+      "stax": {
+        "count": 64,
+        "disagreements": 58
+      }
+    },
+    "controlCaseCounts": {
+      "early_scaffolding_matured": 337,
+      "invalidated_by_later_decisions": 38,
+      "ambiguous": 298,
+      "genuine_bad_belief": 21,
+      "stable": 9,
+      "beneficial_emergence": 146
+    },
+    "meanPredictionError": 32.898,
+    "meanAbsPredictionError": 47.434,
+    "topRecurrentDisagreementClasses": [
+      {
+        "class": "early_scaffolding_matured",
+        "count": 337
+      },
+      {
+        "class": "unclassified",
+        "count": 261
+      },
+      {
+        "class": "retrospective_gain_not_seen_prospectively",
+        "count": 146
+      },
+      {
+        "class": "final_weak_justification",
+        "count": 54
+      },
+      {
+        "class": "later_package_oversupply",
+        "count": 33
+      },
+      {
+        "class": "curve_need_disappeared",
+        "count": 6
+      },
+      {
+        "class": "unsupported_anchor_emerged",
+        "count": 2
+      },
+      {
+        "class": "downstream_repair_invalidated_pick",
+        "count": 1
+      }
+    ],
+    "byArchetype": {
+      "aura_voltron": {
+        "forges": 1,
+        "picks": 65,
+        "disagreements": 22,
+        "byClass": {
+          "early_scaffolding_matured": 36,
+          "downstream_repair_invalidated_pick": 1,
+          "later_package_oversupply": 1,
+          "curve_need_disappeared": 1,
+          "unclassified": 6,
+          "final_weak_justification": 5,
+          "stable_good_prediction": 1,
+          "retrospective_gain_not_seen_prospectively": 14
+        },
+        "meanAbsDrift": 60.418,
+        "topClasses": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 36
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 14
+          },
+          {
+            "class": "unclassified",
+            "count": 6
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 5
+          },
+          {
+            "class": "curve_need_disappeared",
+            "count": 1
+          }
+        ]
+      },
+      "equipment_voltron": {
+        "forges": 1,
+        "picks": 65,
+        "disagreements": 15,
+        "byClass": {
+          "early_scaffolding_matured": 26,
+          "unclassified": 24,
+          "retrospective_gain_not_seen_prospectively": 10,
+          "final_weak_justification": 5
+        },
+        "meanAbsDrift": 31.107,
+        "topClasses": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 26
+          },
+          {
+            "class": "unclassified",
+            "count": 24
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 10
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 5
+          }
+        ]
+      },
+      "typal": {
+        "forges": 1,
+        "picks": 65,
+        "disagreements": 16,
+        "byClass": {
+          "early_scaffolding_matured": 29,
+          "unclassified": 20,
+          "retrospective_gain_not_seen_prospectively": 12,
+          "final_weak_justification": 4
+        },
+        "meanAbsDrift": 50.163,
+        "topClasses": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 29
+          },
+          {
+            "class": "unclassified",
+            "count": 20
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 12
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 4
+          }
+        ]
+      },
+      "tokens": {
+        "forges": 1,
+        "picks": 66,
+        "disagreements": 18,
+        "byClass": {
+          "early_scaffolding_matured": 18,
+          "later_package_oversupply": 6,
+          "unclassified": 28,
+          "stable_good_prediction": 2,
+          "retrospective_gain_not_seen_prospectively": 7,
+          "final_weak_justification": 5
+        },
+        "meanAbsDrift": 43.43,
+        "topClasses": [
+          {
+            "class": "unclassified",
+            "count": 28
+          },
+          {
+            "class": "early_scaffolding_matured",
+            "count": 18
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 7
+          },
+          {
+            "class": "later_package_oversupply",
+            "count": 6
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 5
+          }
+        ]
+      },
+      "aristocrats": {
+        "forges": 1,
+        "picks": 66,
+        "disagreements": 23,
+        "byClass": {
+          "early_scaffolding_matured": 27,
+          "later_package_oversupply": 3,
+          "unclassified": 15,
+          "stable_good_prediction": 1,
+          "retrospective_gain_not_seen_prospectively": 15,
+          "final_weak_justification": 5
+        },
+        "meanAbsDrift": 53.547,
+        "topClasses": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 27
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 15
+          },
+          {
+            "class": "unclassified",
+            "count": 15
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 5
+          },
+          {
+            "class": "later_package_oversupply",
+            "count": 3
+          }
+        ]
+      },
+      "reanimator": {
+        "forges": 1,
+        "picks": 64,
+        "disagreements": 24,
+        "byClass": {
+          "early_scaffolding_matured": 19,
+          "later_package_oversupply": 7,
+          "unclassified": 21,
+          "final_weak_justification": 5,
+          "retrospective_gain_not_seen_prospectively": 12
+        },
+        "meanAbsDrift": 49.931,
+        "topClasses": [
+          {
+            "class": "unclassified",
+            "count": 21
+          },
+          {
+            "class": "early_scaffolding_matured",
+            "count": 19
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 12
+          },
+          {
+            "class": "later_package_oversupply",
+            "count": 7
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 5
+          }
+        ]
+      },
+      "spellslinger": {
+        "forges": 1,
+        "picks": 66,
+        "disagreements": 48,
+        "byClass": {
+          "early_scaffolding_matured": 16,
+          "later_package_oversupply": 16,
+          "unsupported_anchor_emerged": 2,
+          "curve_need_disappeared": 5,
+          "retrospective_gain_not_seen_prospectively": 21,
+          "final_weak_justification": 4,
+          "unclassified": 2
+        },
+        "meanAbsDrift": 63.804,
+        "topClasses": [
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 21
+          },
+          {
+            "class": "early_scaffolding_matured",
+            "count": 16
+          },
+          {
+            "class": "later_package_oversupply",
+            "count": 16
+          },
+          {
+            "class": "curve_need_disappeared",
+            "count": 5
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 4
+          }
+        ]
+      },
+      "landfall": {
+        "forges": 1,
+        "picks": 66,
+        "disagreements": 12,
+        "byClass": {
+          "early_scaffolding_matured": 31,
+          "unclassified": 22,
+          "stable_good_prediction": 1,
+          "final_weak_justification": 5,
+          "retrospective_gain_not_seen_prospectively": 7
+        },
+        "meanAbsDrift": 54.935,
+        "topClasses": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 31
+          },
+          {
+            "class": "unclassified",
+            "count": 22
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 7
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 5
+          },
+          {
+            "class": "stable_good_prediction",
+            "count": 1
+          }
+        ]
+      },
+      "blink": {
+        "forges": 1,
+        "picks": 66,
+        "disagreements": 9,
+        "byClass": {
+          "early_scaffolding_matured": 29,
+          "stable_good_prediction": 1,
+          "unclassified": 27,
+          "final_weak_justification": 6,
+          "retrospective_gain_not_seen_prospectively": 3
+        },
+        "meanAbsDrift": 40.331,
+        "topClasses": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 29
+          },
+          {
+            "class": "unclassified",
+            "count": 27
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 6
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 3
+          },
+          {
+            "class": "stable_good_prediction",
+            "count": 1
+          }
+        ]
+      },
+      "artifacts": {
+        "forges": 1,
+        "picks": 66,
+        "disagreements": 16,
+        "byClass": {
+          "early_scaffolding_matured": 18,
+          "unclassified": 30,
+          "stable_good_prediction": 2,
+          "retrospective_gain_not_seen_prospectively": 16
+        },
+        "meanAbsDrift": 56.716,
+        "topClasses": [
+          {
+            "class": "unclassified",
+            "count": 30
+          },
+          {
+            "class": "early_scaffolding_matured",
+            "count": 18
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 16
+          },
+          {
+            "class": "stable_good_prediction",
+            "count": 2
+          }
+        ]
+      },
+      "stax": {
+        "forges": 1,
+        "picks": 64,
+        "disagreements": 5,
+        "byClass": {
+          "early_scaffolding_matured": 32,
+          "unclassified": 27,
+          "retrospective_gain_not_seen_prospectively": 4,
+          "final_weak_justification": 1
+        },
+        "meanAbsDrift": 29.845,
+        "topClasses": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 32
+          },
+          {
+            "class": "unclassified",
+            "count": 27
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 4
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 1
+          }
+        ]
+      },
+      "combo": {
+        "forges": 1,
+        "picks": 65,
+        "disagreements": 15,
+        "byClass": {
+          "early_scaffolding_matured": 21,
+          "unclassified": 29,
+          "final_weak_justification": 4,
+          "retrospective_gain_not_seen_prospectively": 11
+        },
+        "meanAbsDrift": 32.887,
+        "topClasses": [
+          {
+            "class": "unclassified",
+            "count": 29
+          },
+          {
+            "class": "early_scaffolding_matured",
+            "count": 21
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 11
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 4
+          }
+        ]
+      },
+      "multi_direction": {
+        "forges": 1,
+        "picks": 65,
+        "disagreements": 19,
+        "byClass": {
+          "early_scaffolding_matured": 35,
+          "unclassified": 10,
+          "stable_good_prediction": 1,
+          "retrospective_gain_not_seen_prospectively": 14,
+          "final_weak_justification": 5
+        },
+        "meanAbsDrift": 48.867,
+        "topClasses": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 35
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 14
+          },
+          {
+            "class": "unclassified",
+            "count": 10
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 5
+          },
+          {
+            "class": "stable_good_prediction",
+            "count": 1
+          }
+        ]
+      }
+    }
+  },
+  "scorecards": [
+    {
+      "id": "pearl-ear-auras",
+      "archetype": "aura_voltron",
+      "why": "Canonical Aura payoff commander; regression lock for subtype precision.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "thin_interaction_graph_0"
+      ],
+      "failureClasses": [
+        "interaction_graph_failure"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.923,
+        "weaklyJustified": 5,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 13,
+        "warnings": 6
+      },
+      "selfEvaluation": {
+        "totalTracedPicks": 65,
+        "liveFillPicks": 41,
+        "agreementRate": 0.569,
+        "meanAbsDrift": 60.418,
+        "disagreementsByClass": {
+          "early_scaffolding_matured": 36,
+          "downstream_repair_invalidated_pick": 1,
+          "later_package_oversupply": 1,
+          "curve_need_disappeared": 1,
+          "unclassified": 6,
+          "final_weak_justification": 5,
+          "stable_good_prediction": 1,
+          "retrospective_gain_not_seen_prospectively": 14
+        },
+        "controlCaseCounts": {
+          "early_scaffolding_matured": 36,
+          "invalidated_by_later_decisions": 3,
+          "ambiguous": 9,
+          "genuine_bad_belief": 2,
+          "stable": 1,
+          "beneficial_emergence": 14
+        },
+        "strongestRecurringWarningSignals": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 36
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 14
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 5
+          },
+          {
+            "class": "curve_need_disappeared",
+            "count": 1
+          },
+          {
+            "class": "downstream_repair_invalidated_pick",
+            "count": 1
+          },
+          {
+            "class": "later_package_oversupply",
+            "count": 1
+          }
+        ],
+        "timing": {
+          "finalizeMs": 2,
+          "recordMs": 1
+        },
+        "artifactBytes": 210157
+      },
+      "plan": {
+        "predicted": 72,
+        "realized": 86.271,
+        "gap": 14.271,
+        "underperformed": false
+      },
+      "runtimeMs": 2415
+    },
+    {
+      "id": "equipment-voltron",
+      "archetype": "equipment_voltron",
+      "why": "Equipment subtype precision vs generic artifacts.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "strong_justification_ratio_0.431",
+        "thin_interaction_graph_0"
+      ],
+      "failureClasses": [
+        "interaction_graph_failure",
+        "justification_quality"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.431,
+        "weaklyJustified": 8,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 11,
+        "warnings": 5
+      },
+      "selfEvaluation": {
+        "totalTracedPicks": 65,
+        "liveFillPicks": 53,
+        "agreementRate": 0.4,
+        "meanAbsDrift": 31.107,
+        "disagreementsByClass": {
+          "early_scaffolding_matured": 26,
+          "unclassified": 24,
+          "retrospective_gain_not_seen_prospectively": 10,
+          "final_weak_justification": 5
+        },
+        "controlCaseCounts": {
+          "early_scaffolding_matured": 26,
+          "ambiguous": 27,
+          "beneficial_emergence": 10,
+          "genuine_bad_belief": 2
+        },
+        "strongestRecurringWarningSignals": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 26
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 10
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 5
+          }
+        ],
+        "timing": {
+          "finalizeMs": 4,
+          "recordMs": 1
+        },
+        "artifactBytes": 197953
+      },
+      "plan": {
+        "predicted": 64.3,
+        "realized": 83.414,
+        "gap": 19.114,
+        "underperformed": false
+      },
+      "runtimeMs": 1822
+    },
+    {
+      "id": "ayula-typal",
+      "archetype": "typal",
+      "why": "Typal density must require actual tribe members, not cards that merely mention Bears.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "thin_interaction_graph_0"
+      ],
+      "failureClasses": [
+        "interaction_graph_failure"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.754,
+        "weaklyJustified": 4,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 16,
+        "warnings": 4
+      },
+      "selfEvaluation": {
+        "totalTracedPicks": 65,
+        "liveFillPicks": 37,
+        "agreementRate": 0.446,
+        "meanAbsDrift": 50.163,
+        "disagreementsByClass": {
+          "early_scaffolding_matured": 29,
+          "unclassified": 20,
+          "retrospective_gain_not_seen_prospectively": 12,
+          "final_weak_justification": 4
+        },
+        "controlCaseCounts": {
+          "early_scaffolding_matured": 29,
+          "ambiguous": 22,
+          "beneficial_emergence": 12,
+          "genuine_bad_belief": 2
+        },
+        "strongestRecurringWarningSignals": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 29
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 12
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 4
+          }
+        ],
+        "timing": {
+          "finalizeMs": 4,
+          "recordMs": 1
+        },
+        "artifactBytes": 185400
+      },
+      "plan": {
+        "predicted": 63.029,
+        "realized": 82.081,
+        "gap": 19.052,
+        "underperformed": false
+      },
+      "runtimeMs": 1469
+    },
+    {
+      "id": "token-go-wide",
+      "archetype": "tokens",
+      "why": "Token producers vs token payoffs must stay distinct.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "thin_interaction_graph_0",
+        "prospective_retrospective_warnings_11"
+      ],
+      "failureClasses": [
+        "interaction_graph_failure"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.576,
+        "weaklyJustified": 8,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 16,
+        "warnings": 11
+      },
+      "selfEvaluation": {
+        "totalTracedPicks": 66,
+        "liveFillPicks": 56,
+        "agreementRate": 0.303,
+        "meanAbsDrift": 43.43,
+        "disagreementsByClass": {
+          "early_scaffolding_matured": 18,
+          "later_package_oversupply": 6,
+          "unclassified": 28,
+          "stable_good_prediction": 2,
+          "retrospective_gain_not_seen_prospectively": 7,
+          "final_weak_justification": 5
+        },
+        "controlCaseCounts": {
+          "early_scaffolding_matured": 18,
+          "invalidated_by_later_decisions": 6,
+          "ambiguous": 31,
+          "stable": 2,
+          "beneficial_emergence": 7,
+          "genuine_bad_belief": 2
+        },
+        "strongestRecurringWarningSignals": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 18
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 7
+          },
+          {
+            "class": "later_package_oversupply",
+            "count": 6
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 5
+          }
+        ],
+        "timing": {
+          "finalizeMs": 3,
+          "recordMs": 1
+        },
+        "artifactBytes": 211249
+      },
+      "plan": {
+        "predicted": 72,
+        "realized": 81.789,
+        "gap": 9.789,
+        "underperformed": false
+      },
+      "runtimeMs": 1346
+    },
+    {
+      "id": "aristocrats",
+      "archetype": "aristocrats",
+      "why": "Requires balanced outlets, payoffs, and fodder — classic leg-balance stress.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "prospective_retrospective_warnings_8"
+      ],
+      "failureClasses": [],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.727,
+        "weaklyJustified": 8,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 23,
+        "warnings": 8
+      },
+      "selfEvaluation": {
+        "totalTracedPicks": 66,
+        "liveFillPicks": 46,
+        "agreementRate": 0.424,
+        "meanAbsDrift": 53.547,
+        "disagreementsByClass": {
+          "early_scaffolding_matured": 27,
+          "later_package_oversupply": 3,
+          "unclassified": 15,
+          "stable_good_prediction": 1,
+          "retrospective_gain_not_seen_prospectively": 15,
+          "final_weak_justification": 5
+        },
+        "controlCaseCounts": {
+          "early_scaffolding_matured": 27,
+          "invalidated_by_later_decisions": 3,
+          "ambiguous": 18,
+          "stable": 1,
+          "beneficial_emergence": 15,
+          "genuine_bad_belief": 2
+        },
+        "strongestRecurringWarningSignals": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 27
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 15
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 5
+          },
+          {
+            "class": "later_package_oversupply",
+            "count": 3
+          }
+        ],
+        "timing": {
+          "finalizeMs": 6,
+          "recordMs": 2
+        },
+        "artifactBytes": 236522
+      },
+      "plan": {
+        "predicted": 91.6,
+        "realized": 83.34,
+        "gap": -8.26,
+        "underperformed": false
+      },
+      "runtimeMs": 3577
+    },
+    {
+      "id": "reanimator",
+      "archetype": "reanimator",
+      "why": "Targets, enablers, and reanimation effects must all exist.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "unsupported_anchors_8",
+        "prospective_retrospective_warnings_12"
+      ],
+      "failureClasses": [],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.719,
+        "weaklyJustified": 6,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 24,
+        "warnings": 12
+      },
+      "selfEvaluation": {
+        "totalTracedPicks": 64,
+        "liveFillPicks": 56,
+        "agreementRate": 0.297,
+        "meanAbsDrift": 49.931,
+        "disagreementsByClass": {
+          "early_scaffolding_matured": 19,
+          "later_package_oversupply": 7,
+          "unclassified": 21,
+          "final_weak_justification": 5,
+          "retrospective_gain_not_seen_prospectively": 12
+        },
+        "controlCaseCounts": {
+          "early_scaffolding_matured": 19,
+          "invalidated_by_later_decisions": 7,
+          "ambiguous": 26,
+          "beneficial_emergence": 12
+        },
+        "strongestRecurringWarningSignals": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 19
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 12
+          },
+          {
+            "class": "later_package_oversupply",
+            "count": 7
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 5
+          }
+        ],
+        "timing": {
+          "finalizeMs": 2,
+          "recordMs": 1
+        },
+        "artifactBytes": 227923
+      },
+      "plan": {
+        "predicted": 72.567,
+        "realized": 87.286,
+        "gap": 14.719,
+        "underperformed": false
+      },
+      "runtimeMs": 1676
+    },
+    {
+      "id": "spellslinger",
+      "archetype": "spellslinger",
+      "why": "Cheap spell density vs spell payoffs are different obligations.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "unsupported_anchors_6",
+        "prospective_retrospective_warnings_19"
+      ],
+      "failureClasses": [],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.909,
+        "weaklyJustified": 6,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 32,
+        "warnings": 19
+      },
+      "selfEvaluation": {
+        "totalTracedPicks": 66,
+        "liveFillPicks": 52,
+        "agreementRate": 0.242,
+        "meanAbsDrift": 63.804,
+        "disagreementsByClass": {
+          "early_scaffolding_matured": 16,
+          "later_package_oversupply": 16,
+          "unsupported_anchor_emerged": 2,
+          "curve_need_disappeared": 5,
+          "retrospective_gain_not_seen_prospectively": 21,
+          "final_weak_justification": 4,
+          "unclassified": 2
+        },
+        "controlCaseCounts": {
+          "early_scaffolding_matured": 16,
+          "invalidated_by_later_decisions": 19,
+          "ambiguous": 8,
+          "beneficial_emergence": 21,
+          "genuine_bad_belief": 2
+        },
+        "strongestRecurringWarningSignals": [
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 21
+          },
+          {
+            "class": "early_scaffolding_matured",
+            "count": 16
+          },
+          {
+            "class": "later_package_oversupply",
+            "count": 16
+          },
+          {
+            "class": "curve_need_disappeared",
+            "count": 5
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 4
+          },
+          {
+            "class": "unsupported_anchor_emerged",
+            "count": 2
+          }
+        ],
+        "timing": {
+          "finalizeMs": 4,
+          "recordMs": 1
+        },
+        "artifactBytes": 238646
+      },
+      "plan": {
+        "predicted": 74.667,
+        "realized": 89.907,
+        "gap": 15.24,
+        "underperformed": false
+      },
+      "runtimeMs": 2687
+    },
+    {
+      "id": "landfall",
+      "archetype": "landfall",
+      "why": "Landfall payoffs need land-drop/enabler support, not just random creatures.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [],
+      "failureClasses": [],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.697,
+        "weaklyJustified": 8,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 12,
+        "warnings": 5
+      },
+      "selfEvaluation": {
+        "totalTracedPicks": 66,
+        "liveFillPicks": 43,
+        "agreementRate": 0.485,
+        "meanAbsDrift": 54.935,
+        "disagreementsByClass": {
+          "early_scaffolding_matured": 31,
+          "unclassified": 22,
+          "stable_good_prediction": 1,
+          "final_weak_justification": 5,
+          "retrospective_gain_not_seen_prospectively": 7
+        },
+        "controlCaseCounts": {
+          "early_scaffolding_matured": 31,
+          "ambiguous": 25,
+          "stable": 1,
+          "genuine_bad_belief": 2,
+          "beneficial_emergence": 7
+        },
+        "strongestRecurringWarningSignals": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 31
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 7
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 5
+          }
+        ],
+        "timing": {
+          "finalizeMs": 3,
+          "recordMs": 1
+        },
+        "artifactBytes": 213502
+      },
+      "plan": {
+        "predicted": 90.667,
+        "realized": 89.491,
+        "gap": -1.176,
+        "underperformed": false
+      },
+      "runtimeMs": 1393
+    },
+    {
+      "id": "blink-etb",
+      "archetype": "blink",
+      "why": "Blink effects vs valuable ETB targets are distinct.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "weakly_justified_12",
+        "thin_interaction_graph_0"
+      ],
+      "failureClasses": [
+        "interaction_graph_failure",
+        "justification_quality"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.636,
+        "weaklyJustified": 12,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 8,
+        "warnings": 6
+      },
+      "selfEvaluation": {
+        "totalTracedPicks": 66,
+        "liveFillPicks": 56,
+        "agreementRate": 0.455,
+        "meanAbsDrift": 40.331,
+        "disagreementsByClass": {
+          "early_scaffolding_matured": 29,
+          "stable_good_prediction": 1,
+          "unclassified": 27,
+          "final_weak_justification": 6,
+          "retrospective_gain_not_seen_prospectively": 3
+        },
+        "controlCaseCounts": {
+          "early_scaffolding_matured": 29,
+          "stable": 1,
+          "ambiguous": 31,
+          "genuine_bad_belief": 2,
+          "beneficial_emergence": 3
+        },
+        "strongestRecurringWarningSignals": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 29
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 6
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 3
+          }
+        ],
+        "timing": {
+          "finalizeMs": 2,
+          "recordMs": 2
+        },
+        "artifactBytes": 209064
+      },
+      "plan": {
+        "predicted": 65.9,
+        "realized": 83.21,
+        "gap": 17.31,
+        "underperformed": false
+      },
+      "runtimeMs": 1333
+    },
+    {
+      "id": "artifacts",
+      "archetype": "artifacts",
+      "why": "Artifact synergy package with producers and payoffs.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "thin_interaction_graph_0"
+      ],
+      "failureClasses": [
+        "interaction_graph_failure"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.697,
+        "weaklyJustified": 0,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 10,
+        "warnings": 0
+      },
+      "selfEvaluation": {
+        "totalTracedPicks": 66,
+        "liveFillPicks": 56,
+        "agreementRate": 0.303,
+        "meanAbsDrift": 56.716,
+        "disagreementsByClass": {
+          "early_scaffolding_matured": 18,
+          "unclassified": 30,
+          "stable_good_prediction": 2,
+          "retrospective_gain_not_seen_prospectively": 16
+        },
+        "controlCaseCounts": {
+          "early_scaffolding_matured": 18,
+          "ambiguous": 30,
+          "stable": 2,
+          "beneficial_emergence": 16
+        },
+        "strongestRecurringWarningSignals": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 18
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 16
+          }
+        ],
+        "timing": {
+          "finalizeMs": 1,
+          "recordMs": 0
+        },
+        "artifactBytes": 211301
+      },
+      "plan": {
+        "predicted": 54,
+        "realized": 77.816,
+        "gap": 23.816,
+        "underperformed": false
+      },
+      "runtimeMs": 1404
+    },
+    {
+      "id": "stax",
+      "archetype": "stax",
+      "why": "Stax needs asymmetric support; raw disruption alone is not a plan.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "thin_interaction_graph_0"
+      ],
+      "failureClasses": [
+        "interaction_graph_failure"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.609,
+        "weaklyJustified": 2,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 1,
+        "warnings": 1
+      },
+      "selfEvaluation": {
+        "totalTracedPicks": 64,
+        "liveFillPicks": 56,
+        "agreementRate": 0.5,
+        "meanAbsDrift": 29.845,
+        "disagreementsByClass": {
+          "early_scaffolding_matured": 32,
+          "unclassified": 27,
+          "retrospective_gain_not_seen_prospectively": 4,
+          "final_weak_justification": 1
+        },
+        "controlCaseCounts": {
+          "early_scaffolding_matured": 32,
+          "ambiguous": 27,
+          "beneficial_emergence": 4,
+          "genuine_bad_belief": 1
+        },
+        "strongestRecurringWarningSignals": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 32
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 4
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 1
+          }
+        ],
+        "timing": {
+          "finalizeMs": 1,
+          "recordMs": 0
+        },
+        "artifactBytes": 203834
+      },
+      "plan": {
+        "predicted": 61.6,
+        "realized": 84.633,
+        "gap": 23.033,
+        "underperformed": false
+      },
+      "runtimeMs": 1059
+    },
+    {
+      "id": "combo-partners",
+      "archetype": "combo",
+      "why": "Combo pieces must not be treated as independent goodstuff without partners.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "thin_interaction_graph_0"
+      ],
+      "failureClasses": [
+        "interaction_graph_failure"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.662,
+        "weaklyJustified": 10,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 9,
+        "warnings": 4
+      },
+      "selfEvaluation": {
+        "totalTracedPicks": 65,
+        "liveFillPicks": 65,
+        "agreementRate": 0.323,
+        "meanAbsDrift": 32.887,
+        "disagreementsByClass": {
+          "early_scaffolding_matured": 21,
+          "unclassified": 29,
+          "final_weak_justification": 4,
+          "retrospective_gain_not_seen_prospectively": 11
+        },
+        "controlCaseCounts": {
+          "early_scaffolding_matured": 21,
+          "ambiguous": 31,
+          "genuine_bad_belief": 2,
+          "beneficial_emergence": 11
+        },
+        "strongestRecurringWarningSignals": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 21
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 11
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 4
+          }
+        ],
+        "timing": {
+          "finalizeMs": 1,
+          "recordMs": 1
+        },
+        "artifactBytes": 208185
+      },
+      "plan": {
+        "predicted": 46.4,
+        "realized": 72.422,
+        "gap": 26.022,
+        "underperformed": false
+      },
+      "runtimeMs": 1112
+    },
+    {
+      "id": "multiplan-commander",
+      "archetype": "multi_direction",
+      "why": "Commander with multiple legitimate support directions stresses plan competition.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "thin_interaction_graph_0"
+      ],
+      "failureClasses": [
+        "interaction_graph_failure"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.769,
+        "weaklyJustified": 5,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 19,
+        "warnings": 5
+      },
+      "selfEvaluation": {
+        "totalTracedPicks": 65,
+        "liveFillPicks": 39,
+        "agreementRate": 0.554,
+        "meanAbsDrift": 48.867,
+        "disagreementsByClass": {
+          "early_scaffolding_matured": 35,
+          "unclassified": 10,
+          "stable_good_prediction": 1,
+          "retrospective_gain_not_seen_prospectively": 14,
+          "final_weak_justification": 5
+        },
+        "controlCaseCounts": {
+          "early_scaffolding_matured": 35,
+          "ambiguous": 13,
+          "stable": 1,
+          "beneficial_emergence": 14,
+          "genuine_bad_belief": 2
+        },
+        "strongestRecurringWarningSignals": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 35
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 14
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 5
+          }
+        ],
+        "timing": {
+          "finalizeMs": 2,
+          "recordMs": 0
+        },
+        "artifactBytes": 188905
+      },
+      "plan": {
+        "predicted": 70.4,
+        "realized": 84.1,
+        "gap": 13.7,
+        "underperformed": false
+      },
+      "runtimeMs": 1114
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "generatedAt": "2026-08-10T14:06:11.889Z",
+  "note": "Diagnostic baseline for final_weak_justification BEFORE repairWeaklyJustifiedSlots — no production fix applied.",
+  "weakSlotAggregate": {
+    "version": "weak-slot-forensics-v1",
+    "weakSlotCount": 82,
+    "causalClassCounts": {
+      "became_weak_downstream": 54,
+      "weak_at_selection": 27,
+      "ambiguous": 1
+    },
+    "sourceCounts": {
+      "live_fill": 82
+    },
+    "phaseCounts": {
+      "foundation": 50,
+      "development": 32
+    },
+    "avoidableCount": 74,
+    "constraintForcedCount": 8,
+    "lowCandidateDepthCount": 8,
+    "meanCandidateDepth": 6.866,
+    "highestImpactCausalClass": "became_weak_downstream"
+  },
+  "selfEvaluationControls": {
+    "driftClassCounts": {
+      "early_scaffolding_matured": 337,
+      "downstream_repair_invalidated_pick": 1,
+      "later_package_oversupply": 33,
+      "curve_need_disappeared": 6,
+      "unclassified": 261,
+      "final_weak_justification": 54,
+      "stable_good_prediction": 9,
+      "retrospective_gain_not_seen_prospectively": 146,
+      "unsupported_anchor_emerged": 2
+    },
+    "controlCaseCounts": {
+      "early_scaffolding_matured": 337,
+      "invalidated_by_later_decisions": 38,
+      "ambiguous": 298,
+      "genuine_bad_belief": 21,
+      "stable": 9,
+      "beneficial_emergence": 146
+    },
+    "totalTracedPicks": 849
+  }
+}

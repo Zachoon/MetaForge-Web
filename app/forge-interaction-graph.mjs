@@ -40,6 +40,10 @@ const SIGNALS = [
   ["tokens", /create(?:s)? [^.]* token|token(?:s)? you control/i],
   ["treasure", /treasure token|treasures? you control/i],
   ["artifacts", /artifact(?:s)? you control|artifact spell|artifact enters|sacrifice an artifact/i],
+  // Aura is deliberately narrower than enchantment: Pearl-Ear-class
+  // commanders reward Auras specifically, and generic enchantments must
+  // not form a false synergy edge merely by sharing the enchantment type.
+  ["auras", /\bAura\b|affinity for auras|auras? you control|whenever [^.]*\baura\b/i],
   ["counters", /(?:put|remove|double)[^.]* counter|counter(?:s)? on/i],
   ["graveyard", /from your graveyard|in your graveyard|mill [a-z\d]|surveil/i],
   ["sacrifice", /sacrifice (?:a|another|one|any number)|whenever [^.]* dies/i],
@@ -60,6 +64,10 @@ const PRODUCERS = {
   tokens: /create(?:s)? [^.]* token/i,
   treasure: /create(?:s)? [^.]* treasure|treasure token/i,
   artifacts: /create(?:s)? [^.]* artifact token|artifact spell/i,
+  // Only the Aura subtype produces this signal — "Enchantment" alone does not,
+  // and oracle phrases like "affinity for Auras" must not mark the commander
+  // itself as an Aura producer. Type-line membership is applied in
+  // extractMechanicalSignals.
   counters: /put [^.]* counter|proliferate/i,
   graveyard: /mill [a-z\d]|surveil|discard [^.]* card/i,
   sacrifice: /create(?:s)? [^.]* token|when [^.]* dies/i,
@@ -87,6 +95,7 @@ const PAYOFFS = {
   tokens: /token(?:s)? you control|for each token|sacrifice a token/i,
   treasure: /treasures? you control|sacrifice a treasure/i,
   artifacts: /artifact(?:s)? you control|whenever (?:you cast |an? )?artifact|sacrifice an artifact/i,
+  auras: /affinity for auras|whenever [^.]*\baura\b|auras? you control|enchanted creature you control/i,
   // "Put counters on target X" is a producer, not a payoff. The old broad
   // `counters on` branch classified Ayula as both sides of a counter engine,
   // letting any unrelated counter producer masquerade as commander synergy.
@@ -102,7 +111,9 @@ const PAYOFFS = {
   // payoff package. Payoffs must repeatedly watch other or categorized
   // permanents entering; otherwise every ordinary ETB creature appears to
   // reward every token maker in the deck.
-  etb: /whenever another [^.]* enters|whenever (?:a|an|one or more|nontoken) [^.]* enters/i,
+  // Also match "Whenever NAME or another TRIBE enters" (Ayula-class), which
+  // does not contain the contiguous phrase "whenever another".
+  etb: /whenever another [^.]* enters|whenever (?:a|an|one or more|nontoken) [^.]* enters|whenever [^.]+ or another [^.]* enters/i,
   combat: /whenever [^.]* attacks|combat damage|attacking creatures/i,
   // Deliberately narrower than PRODUCERS.evasion — this is cards that
   // specifically reward flying/menace/unblocked creatures (an anthem
@@ -192,13 +203,22 @@ function textOf(card) {
 
 export function extractMechanicalSignals(card) {
   const text = textOf(card);
+  const typeLine = String(card?.typeLine || card?.type_line || "");
   const signals = SIGNALS.filter(([, pattern]) => pattern.test(text)).map(([name]) => name);
   const regexProduces = Object.entries(PRODUCERS).filter(([, pattern]) => pattern.test(text)).map(([name]) => name);
   const regexRewards = Object.entries(PAYOFFS).filter(([, pattern]) => pattern.test(text)).map(([name]) => name);
   const tagProduces = tagSignalsFor(card, TAG_PRODUCERS);
   const tagRewards = tagSignalsFor(card, TAG_PAYOFFS);
-  const produces = [...new Set([...regexProduces, ...tagProduces])];
+  // Aura production is subtype-precise: only cards printed as Aura.
+  const auraProducer = /\bAura\b/i.test(typeLine) ? ["auras"] : [];
+  // Instant/Sorcery type line produces the "spells" signal the same way Aura
+  // subtype produces "auras": a spellslinger payoff rewards cast events, and
+  // the actual castable spells are the producers — not only copy/cheat effects.
+  const spellProducer = /\bInstant\b|\bSorcery\b/i.test(typeLine) ? ["spells"] : [];
+  const produces = [...new Set([...regexProduces, ...tagProduces, ...auraProducer, ...spellProducer])];
   const rewards = [...new Set([...regexRewards, ...tagRewards])];
+  if (auraProducer.length && !signals.includes("auras")) signals.push("auras");
+  if (spellProducer.length && !signals.includes("spells")) signals.push("spells");
   return { signals, produces, rewards, tagProduces, tagRewards };
 }
 

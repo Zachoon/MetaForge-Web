@@ -1,0 +1,1756 @@
+{
+  "generatedAt": "2026-08-10T14:33:18.064Z",
+  "aggregate": {
+    "total": 13,
+    "passed": 13,
+    "failed": 0,
+    "byArchetype": {
+      "aura_voltron": "PARTIAL",
+      "equipment_voltron": "PARTIAL",
+      "typal": "PARTIAL",
+      "tokens": "PARTIAL",
+      "aristocrats": "PASS",
+      "reanimator": "PARTIAL",
+      "spellslinger": "PARTIAL",
+      "landfall": "PASS",
+      "blink": "PARTIAL",
+      "artifacts": "PARTIAL",
+      "stax": "PARTIAL",
+      "combo": "PARTIAL",
+      "multi_direction": "PARTIAL"
+    },
+    "failureClassCounts": {
+      "interaction_graph_failure": 9
+    },
+    "runtime": {
+      "medianMs": 2389,
+      "p95Ms": 6151,
+      "slowest": [
+        {
+          "id": "aristocrats",
+          "ms": 6151
+        },
+        {
+          "id": "spellslinger",
+          "ms": 4986
+        },
+        {
+          "id": "equipment-voltron",
+          "ms": 4042
+        },
+        {
+          "id": "pearl-ear-auras",
+          "ms": 3702
+        },
+        {
+          "id": "blink-etb",
+          "ms": 2635
+        }
+      ]
+    }
+  },
+  "selfEvaluationAggregate": {
+    "version": "self-evaluation-aggregate-v1",
+    "forgeCount": 13,
+    "totalTracedPicks": 849,
+    "totalMeaningfulDisagreements": 257,
+    "driftClassCounts": {
+      "early_scaffolding_matured": 337,
+      "downstream_repair_invalidated_pick": 52,
+      "later_package_oversupply": 33,
+      "curve_need_disappeared": 6,
+      "unclassified": 246,
+      "stable_good_prediction": 9,
+      "retrospective_gain_not_seen_prospectively": 146,
+      "final_weak_justification": 18,
+      "unsupported_anchor_emerged": 2
+    },
+    "driftByPhase": {
+      "foundation": {
+        "count": 614,
+        "meanAbsDrift": 44.549
+      },
+      "development": {
+        "count": 235,
+        "meanAbsDrift": 56.451
+      }
+    },
+    "driftByPackage": {
+      "auras": {
+        "count": 130,
+        "disagreements": 124
+      },
+      "equipment": {
+        "count": 65,
+        "disagreements": 57
+      },
+      "typal": {
+        "count": 65,
+        "disagreements": 63
+      },
+      "tokens": {
+        "count": 198,
+        "disagreements": 176
+      },
+      "aristocrats": {
+        "count": 66,
+        "disagreements": 60
+      },
+      "reanimator": {
+        "count": 64,
+        "disagreements": 61
+      },
+      "spellslinger": {
+        "count": 66,
+        "disagreements": 62
+      },
+      "landfall": {
+        "count": 66,
+        "disagreements": 59
+      },
+      "blink": {
+        "count": 66,
+        "disagreements": 63
+      },
+      "stax": {
+        "count": 64,
+        "disagreements": 58
+      }
+    },
+    "controlCaseCounts": {
+      "early_scaffolding_matured": 337,
+      "invalidated_by_later_decisions": 89,
+      "ambiguous": 261,
+      "stable": 9,
+      "beneficial_emergence": 146,
+      "genuine_bad_belief": 7
+    },
+    "meanPredictionError": 32.324,
+    "meanAbsPredictionError": 47.844,
+    "topRecurrentDisagreementClasses": [
+      {
+        "class": "early_scaffolding_matured",
+        "count": 337
+      },
+      {
+        "class": "unclassified",
+        "count": 246
+      },
+      {
+        "class": "retrospective_gain_not_seen_prospectively",
+        "count": 146
+      },
+      {
+        "class": "downstream_repair_invalidated_pick",
+        "count": 52
+      },
+      {
+        "class": "later_package_oversupply",
+        "count": 33
+      },
+      {
+        "class": "final_weak_justification",
+        "count": 18
+      },
+      {
+        "class": "curve_need_disappeared",
+        "count": 6
+      },
+      {
+        "class": "unsupported_anchor_emerged",
+        "count": 2
+      }
+    ],
+    "byArchetype": {
+      "aura_voltron": {
+        "forges": 1,
+        "picks": 65,
+        "disagreements": 22,
+        "byClass": {
+          "early_scaffolding_matured": 36,
+          "downstream_repair_invalidated_pick": 6,
+          "later_package_oversupply": 1,
+          "curve_need_disappeared": 1,
+          "unclassified": 6,
+          "stable_good_prediction": 1,
+          "retrospective_gain_not_seen_prospectively": 14
+        },
+        "meanAbsDrift": 61.38,
+        "topClasses": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 36
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 14
+          },
+          {
+            "class": "downstream_repair_invalidated_pick",
+            "count": 6
+          },
+          {
+            "class": "unclassified",
+            "count": 6
+          },
+          {
+            "class": "curve_need_disappeared",
+            "count": 1
+          }
+        ]
+      },
+      "equipment_voltron": {
+        "forges": 1,
+        "picks": 65,
+        "disagreements": 18,
+        "byClass": {
+          "early_scaffolding_matured": 26,
+          "unclassified": 21,
+          "retrospective_gain_not_seen_prospectively": 10,
+          "downstream_repair_invalidated_pick": 4,
+          "final_weak_justification": 4
+        },
+        "meanAbsDrift": 31.068,
+        "topClasses": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 26
+          },
+          {
+            "class": "unclassified",
+            "count": 21
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 10
+          },
+          {
+            "class": "downstream_repair_invalidated_pick",
+            "count": 4
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 4
+          }
+        ]
+      },
+      "typal": {
+        "forges": 1,
+        "picks": 65,
+        "disagreements": 16,
+        "byClass": {
+          "early_scaffolding_matured": 29,
+          "unclassified": 20,
+          "retrospective_gain_not_seen_prospectively": 12,
+          "downstream_repair_invalidated_pick": 4
+        },
+        "meanAbsDrift": 50.701,
+        "topClasses": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 29
+          },
+          {
+            "class": "unclassified",
+            "count": 20
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 12
+          },
+          {
+            "class": "downstream_repair_invalidated_pick",
+            "count": 4
+          }
+        ]
+      },
+      "tokens": {
+        "forges": 1,
+        "picks": 66,
+        "disagreements": 18,
+        "byClass": {
+          "early_scaffolding_matured": 18,
+          "later_package_oversupply": 6,
+          "unclassified": 28,
+          "stable_good_prediction": 2,
+          "retrospective_gain_not_seen_prospectively": 7,
+          "final_weak_justification": 5
+        },
+        "meanAbsDrift": 43.43,
+        "topClasses": [
+          {
+            "class": "unclassified",
+            "count": 28
+          },
+          {
+            "class": "early_scaffolding_matured",
+            "count": 18
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 7
+          },
+          {
+            "class": "later_package_oversupply",
+            "count": 6
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 5
+          }
+        ]
+      },
+      "aristocrats": {
+        "forges": 1,
+        "picks": 66,
+        "disagreements": 25,
+        "byClass": {
+          "early_scaffolding_matured": 27,
+          "later_package_oversupply": 3,
+          "unclassified": 13,
+          "stable_good_prediction": 1,
+          "retrospective_gain_not_seen_prospectively": 15,
+          "downstream_repair_invalidated_pick": 6,
+          "final_weak_justification": 1
+        },
+        "meanAbsDrift": 54.153,
+        "topClasses": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 27
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 15
+          },
+          {
+            "class": "unclassified",
+            "count": 13
+          },
+          {
+            "class": "downstream_repair_invalidated_pick",
+            "count": 6
+          },
+          {
+            "class": "later_package_oversupply",
+            "count": 3
+          }
+        ]
+      },
+      "reanimator": {
+        "forges": 1,
+        "picks": 64,
+        "disagreements": 25,
+        "byClass": {
+          "early_scaffolding_matured": 19,
+          "later_package_oversupply": 7,
+          "unclassified": 20,
+          "downstream_repair_invalidated_pick": 4,
+          "final_weak_justification": 2,
+          "retrospective_gain_not_seen_prospectively": 12
+        },
+        "meanAbsDrift": 50.478,
+        "topClasses": [
+          {
+            "class": "unclassified",
+            "count": 20
+          },
+          {
+            "class": "early_scaffolding_matured",
+            "count": 19
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 12
+          },
+          {
+            "class": "later_package_oversupply",
+            "count": 7
+          },
+          {
+            "class": "downstream_repair_invalidated_pick",
+            "count": 4
+          }
+        ]
+      },
+      "spellslinger": {
+        "forges": 1,
+        "picks": 66,
+        "disagreements": 50,
+        "byClass": {
+          "early_scaffolding_matured": 16,
+          "later_package_oversupply": 16,
+          "unsupported_anchor_emerged": 2,
+          "curve_need_disappeared": 5,
+          "retrospective_gain_not_seen_prospectively": 21,
+          "downstream_repair_invalidated_pick": 6
+        },
+        "meanAbsDrift": 64.41,
+        "topClasses": [
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 21
+          },
+          {
+            "class": "early_scaffolding_matured",
+            "count": 16
+          },
+          {
+            "class": "later_package_oversupply",
+            "count": 16
+          },
+          {
+            "class": "downstream_repair_invalidated_pick",
+            "count": 6
+          },
+          {
+            "class": "curve_need_disappeared",
+            "count": 5
+          }
+        ]
+      },
+      "landfall": {
+        "forges": 1,
+        "picks": 66,
+        "disagreements": 15,
+        "byClass": {
+          "early_scaffolding_matured": 31,
+          "unclassified": 19,
+          "stable_good_prediction": 1,
+          "downstream_repair_invalidated_pick": 6,
+          "final_weak_justification": 2,
+          "retrospective_gain_not_seen_prospectively": 7
+        },
+        "meanAbsDrift": 55.276,
+        "topClasses": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 31
+          },
+          {
+            "class": "unclassified",
+            "count": 19
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 7
+          },
+          {
+            "class": "downstream_repair_invalidated_pick",
+            "count": 6
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 2
+          }
+        ]
+      },
+      "blink": {
+        "forges": 1,
+        "picks": 66,
+        "disagreements": 9,
+        "byClass": {
+          "early_scaffolding_matured": 29,
+          "stable_good_prediction": 1,
+          "unclassified": 27,
+          "downstream_repair_invalidated_pick": 6,
+          "retrospective_gain_not_seen_prospectively": 3
+        },
+        "meanAbsDrift": 41.24,
+        "topClasses": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 29
+          },
+          {
+            "class": "unclassified",
+            "count": 27
+          },
+          {
+            "class": "downstream_repair_invalidated_pick",
+            "count": 6
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 3
+          },
+          {
+            "class": "stable_good_prediction",
+            "count": 1
+          }
+        ]
+      },
+      "artifacts": {
+        "forges": 1,
+        "picks": 66,
+        "disagreements": 16,
+        "byClass": {
+          "early_scaffolding_matured": 18,
+          "unclassified": 30,
+          "stable_good_prediction": 2,
+          "retrospective_gain_not_seen_prospectively": 16
+        },
+        "meanAbsDrift": 56.716,
+        "topClasses": [
+          {
+            "class": "unclassified",
+            "count": 30
+          },
+          {
+            "class": "early_scaffolding_matured",
+            "count": 18
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 16
+          },
+          {
+            "class": "stable_good_prediction",
+            "count": 2
+          }
+        ]
+      },
+      "stax": {
+        "forges": 1,
+        "picks": 64,
+        "disagreements": 6,
+        "byClass": {
+          "early_scaffolding_matured": 32,
+          "unclassified": 26,
+          "retrospective_gain_not_seen_prospectively": 4,
+          "downstream_repair_invalidated_pick": 2
+        },
+        "meanAbsDrift": 29.962,
+        "topClasses": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 32
+          },
+          {
+            "class": "unclassified",
+            "count": 26
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 4
+          },
+          {
+            "class": "downstream_repair_invalidated_pick",
+            "count": 2
+          }
+        ]
+      },
+      "combo": {
+        "forges": 1,
+        "picks": 65,
+        "disagreements": 18,
+        "byClass": {
+          "early_scaffolding_matured": 21,
+          "unclassified": 26,
+          "final_weak_justification": 4,
+          "retrospective_gain_not_seen_prospectively": 11,
+          "downstream_repair_invalidated_pick": 3
+        },
+        "meanAbsDrift": 32.657,
+        "topClasses": [
+          {
+            "class": "unclassified",
+            "count": 26
+          },
+          {
+            "class": "early_scaffolding_matured",
+            "count": 21
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 11
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 4
+          },
+          {
+            "class": "downstream_repair_invalidated_pick",
+            "count": 3
+          }
+        ]
+      },
+      "multi_direction": {
+        "forges": 1,
+        "picks": 65,
+        "disagreements": 19,
+        "byClass": {
+          "early_scaffolding_matured": 35,
+          "unclassified": 10,
+          "stable_good_prediction": 1,
+          "retrospective_gain_not_seen_prospectively": 14,
+          "downstream_repair_invalidated_pick": 5
+        },
+        "meanAbsDrift": 49.829,
+        "topClasses": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 35
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 14
+          },
+          {
+            "class": "unclassified",
+            "count": 10
+          },
+          {
+            "class": "downstream_repair_invalidated_pick",
+            "count": 5
+          },
+          {
+            "class": "stable_good_prediction",
+            "count": 1
+          }
+        ]
+      }
+    }
+  },
+  "scorecards": [
+    {
+      "id": "pearl-ear-auras",
+      "archetype": "aura_voltron",
+      "why": "Canonical Aura payoff commander; regression lock for subtype precision.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "thin_interaction_graph_0"
+      ],
+      "failureClasses": [
+        "interaction_graph_failure"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 1,
+        "weaklyJustified": 0,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 8,
+        "warnings": 1
+      },
+      "selfEvaluation": {
+        "totalTracedPicks": 65,
+        "liveFillPicks": 41,
+        "agreementRate": 0.569,
+        "meanAbsDrift": 61.38,
+        "disagreementsByClass": {
+          "early_scaffolding_matured": 36,
+          "downstream_repair_invalidated_pick": 6,
+          "later_package_oversupply": 1,
+          "curve_need_disappeared": 1,
+          "unclassified": 6,
+          "stable_good_prediction": 1,
+          "retrospective_gain_not_seen_prospectively": 14
+        },
+        "controlCaseCounts": {
+          "early_scaffolding_matured": 36,
+          "invalidated_by_later_decisions": 8,
+          "ambiguous": 6,
+          "stable": 1,
+          "beneficial_emergence": 14
+        },
+        "strongestRecurringWarningSignals": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 36
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 14
+          },
+          {
+            "class": "downstream_repair_invalidated_pick",
+            "count": 6
+          },
+          {
+            "class": "curve_need_disappeared",
+            "count": 1
+          },
+          {
+            "class": "later_package_oversupply",
+            "count": 1
+          }
+        ],
+        "timing": {
+          "finalizeMs": 4,
+          "recordMs": 4
+        },
+        "artifactBytes": 217193
+      },
+      "weakSlotForensics": {
+        "weakSlotCount": 0,
+        "causalClassCounts": {},
+        "sourceCounts": {},
+        "phaseCounts": {},
+        "avoidableCount": 0,
+        "constraintForcedCount": 0
+      },
+      "weakSlotRepair": {
+        "applied": true,
+        "appliedCount": 5
+      },
+      "plan": {
+        "predicted": 72,
+        "realized": 87.819,
+        "gap": 15.819,
+        "underperformed": false
+      },
+      "runtimeMs": 3702
+    },
+    {
+      "id": "equipment-voltron",
+      "archetype": "equipment_voltron",
+      "why": "Equipment subtype precision vs generic artifacts.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "thin_interaction_graph_0"
+      ],
+      "failureClasses": [
+        "interaction_graph_failure"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.492,
+        "weaklyJustified": 4,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 10,
+        "warnings": 4
+      },
+      "selfEvaluation": {
+        "totalTracedPicks": 65,
+        "liveFillPicks": 53,
+        "agreementRate": 0.4,
+        "meanAbsDrift": 31.068,
+        "disagreementsByClass": {
+          "early_scaffolding_matured": 26,
+          "unclassified": 21,
+          "retrospective_gain_not_seen_prospectively": 10,
+          "downstream_repair_invalidated_pick": 4,
+          "final_weak_justification": 4
+        },
+        "controlCaseCounts": {
+          "early_scaffolding_matured": 26,
+          "ambiguous": 23,
+          "beneficial_emergence": 10,
+          "invalidated_by_later_decisions": 4,
+          "genuine_bad_belief": 2
+        },
+        "strongestRecurringWarningSignals": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 26
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 10
+          },
+          {
+            "class": "downstream_repair_invalidated_pick",
+            "count": 4
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 4
+          }
+        ],
+        "timing": {
+          "finalizeMs": 7,
+          "recordMs": 3
+        },
+        "artifactBytes": 203913
+      },
+      "weakSlotForensics": {
+        "weakSlotCount": 4,
+        "causalClassCounts": {
+          "became_weak_downstream": 4
+        },
+        "sourceCounts": {
+          "live_fill": 4
+        },
+        "phaseCounts": {
+          "foundation": 4
+        },
+        "avoidableCount": 0,
+        "constraintForcedCount": 0
+      },
+      "weakSlotRepair": {
+        "applied": true,
+        "appliedCount": 4
+      },
+      "plan": {
+        "predicted": 64.3,
+        "realized": 84.443,
+        "gap": 20.143,
+        "underperformed": false
+      },
+      "runtimeMs": 4042
+    },
+    {
+      "id": "ayula-typal",
+      "archetype": "typal",
+      "why": "Typal density must require actual tribe members, not cards that merely mention Bears.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "thin_interaction_graph_0"
+      ],
+      "failureClasses": [
+        "interaction_graph_failure"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.815,
+        "weaklyJustified": 0,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 12,
+        "warnings": 0
+      },
+      "selfEvaluation": {
+        "totalTracedPicks": 65,
+        "liveFillPicks": 37,
+        "agreementRate": 0.446,
+        "meanAbsDrift": 50.701,
+        "disagreementsByClass": {
+          "early_scaffolding_matured": 29,
+          "unclassified": 20,
+          "retrospective_gain_not_seen_prospectively": 12,
+          "downstream_repair_invalidated_pick": 4
+        },
+        "controlCaseCounts": {
+          "early_scaffolding_matured": 29,
+          "ambiguous": 20,
+          "beneficial_emergence": 12,
+          "invalidated_by_later_decisions": 4
+        },
+        "strongestRecurringWarningSignals": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 29
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 12
+          },
+          {
+            "class": "downstream_repair_invalidated_pick",
+            "count": 4
+          }
+        ],
+        "timing": {
+          "finalizeMs": 3,
+          "recordMs": 1
+        },
+        "artifactBytes": 190760
+      },
+      "weakSlotForensics": {
+        "weakSlotCount": 0,
+        "causalClassCounts": {},
+        "sourceCounts": {},
+        "phaseCounts": {},
+        "avoidableCount": 0,
+        "constraintForcedCount": 0
+      },
+      "weakSlotRepair": {
+        "applied": true,
+        "appliedCount": 4
+      },
+      "plan": {
+        "predicted": 63.029,
+        "realized": 82.966,
+        "gap": 19.937,
+        "underperformed": false
+      },
+      "runtimeMs": 2219
+    },
+    {
+      "id": "token-go-wide",
+      "archetype": "tokens",
+      "why": "Token producers vs token payoffs must stay distinct.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "thin_interaction_graph_0",
+        "prospective_retrospective_warnings_11"
+      ],
+      "failureClasses": [
+        "interaction_graph_failure"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.576,
+        "weaklyJustified": 8,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 16,
+        "warnings": 11
+      },
+      "selfEvaluation": {
+        "totalTracedPicks": 66,
+        "liveFillPicks": 56,
+        "agreementRate": 0.303,
+        "meanAbsDrift": 43.43,
+        "disagreementsByClass": {
+          "early_scaffolding_matured": 18,
+          "later_package_oversupply": 6,
+          "unclassified": 28,
+          "stable_good_prediction": 2,
+          "retrospective_gain_not_seen_prospectively": 7,
+          "final_weak_justification": 5
+        },
+        "controlCaseCounts": {
+          "early_scaffolding_matured": 18,
+          "invalidated_by_later_decisions": 6,
+          "ambiguous": 31,
+          "stable": 2,
+          "beneficial_emergence": 7,
+          "genuine_bad_belief": 2
+        },
+        "strongestRecurringWarningSignals": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 18
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 7
+          },
+          {
+            "class": "later_package_oversupply",
+            "count": 6
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 5
+          }
+        ],
+        "timing": {
+          "finalizeMs": 3,
+          "recordMs": 4
+        },
+        "artifactBytes": 211249
+      },
+      "weakSlotForensics": {
+        "weakSlotCount": 8,
+        "causalClassCounts": {
+          "weak_at_selection": 3,
+          "became_weak_downstream": 5
+        },
+        "sourceCounts": {
+          "live_fill": 8
+        },
+        "phaseCounts": {
+          "foundation": 8
+        },
+        "avoidableCount": 0,
+        "constraintForcedCount": 8
+      },
+      "weakSlotRepair": {
+        "applied": false,
+        "appliedCount": 0
+      },
+      "plan": {
+        "predicted": 72,
+        "realized": 81.789,
+        "gap": 9.789,
+        "underperformed": false
+      },
+      "runtimeMs": 1748
+    },
+    {
+      "id": "aristocrats",
+      "archetype": "aristocrats",
+      "why": "Requires balanced outlets, payoffs, and fodder — classic leg-balance stress.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [],
+      "failureClasses": [],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.818,
+        "weaklyJustified": 2,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 19,
+        "warnings": 4
+      },
+      "selfEvaluation": {
+        "totalTracedPicks": 66,
+        "liveFillPicks": 46,
+        "agreementRate": 0.424,
+        "meanAbsDrift": 54.153,
+        "disagreementsByClass": {
+          "early_scaffolding_matured": 27,
+          "later_package_oversupply": 3,
+          "unclassified": 13,
+          "stable_good_prediction": 1,
+          "retrospective_gain_not_seen_prospectively": 15,
+          "downstream_repair_invalidated_pick": 6,
+          "final_weak_justification": 1
+        },
+        "controlCaseCounts": {
+          "early_scaffolding_matured": 27,
+          "invalidated_by_later_decisions": 9,
+          "ambiguous": 14,
+          "stable": 1,
+          "beneficial_emergence": 15
+        },
+        "strongestRecurringWarningSignals": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 27
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 15
+          },
+          {
+            "class": "downstream_repair_invalidated_pick",
+            "count": 6
+          },
+          {
+            "class": "later_package_oversupply",
+            "count": 3
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 1
+          }
+        ],
+        "timing": {
+          "finalizeMs": 7,
+          "recordMs": 4
+        },
+        "artifactBytes": 243523
+      },
+      "weakSlotForensics": {
+        "weakSlotCount": 2,
+        "causalClassCounts": {
+          "weak_at_selection": 1,
+          "became_weak_downstream": 1
+        },
+        "sourceCounts": {
+          "live_fill": 2
+        },
+        "phaseCounts": {
+          "development": 2
+        },
+        "avoidableCount": 2,
+        "constraintForcedCount": 0
+      },
+      "weakSlotRepair": {
+        "applied": true,
+        "appliedCount": 6
+      },
+      "plan": {
+        "predicted": 91.6,
+        "realized": 87.002,
+        "gap": -4.598,
+        "underperformed": false
+      },
+      "runtimeMs": 6151
+    },
+    {
+      "id": "reanimator",
+      "archetype": "reanimator",
+      "why": "Targets, enablers, and reanimation effects must all exist.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "unsupported_anchors_8",
+        "prospective_retrospective_warnings_9"
+      ],
+      "failureClasses": [],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.781,
+        "weaklyJustified": 2,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 21,
+        "warnings": 9
+      },
+      "selfEvaluation": {
+        "totalTracedPicks": 64,
+        "liveFillPicks": 56,
+        "agreementRate": 0.297,
+        "meanAbsDrift": 50.478,
+        "disagreementsByClass": {
+          "early_scaffolding_matured": 19,
+          "later_package_oversupply": 7,
+          "unclassified": 20,
+          "downstream_repair_invalidated_pick": 4,
+          "final_weak_justification": 2,
+          "retrospective_gain_not_seen_prospectively": 12
+        },
+        "controlCaseCounts": {
+          "early_scaffolding_matured": 19,
+          "invalidated_by_later_decisions": 11,
+          "ambiguous": 22,
+          "beneficial_emergence": 12
+        },
+        "strongestRecurringWarningSignals": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 19
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 12
+          },
+          {
+            "class": "later_package_oversupply",
+            "count": 7
+          },
+          {
+            "class": "downstream_repair_invalidated_pick",
+            "count": 4
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 2
+          }
+        ],
+        "timing": {
+          "finalizeMs": 3,
+          "recordMs": 0
+        },
+        "artifactBytes": 233303
+      },
+      "weakSlotForensics": {
+        "weakSlotCount": 2,
+        "causalClassCounts": {
+          "became_weak_downstream": 2
+        },
+        "sourceCounts": {
+          "live_fill": 2
+        },
+        "phaseCounts": {
+          "development": 2
+        },
+        "avoidableCount": 0,
+        "constraintForcedCount": 2
+      },
+      "weakSlotRepair": {
+        "applied": true,
+        "appliedCount": 4
+      },
+      "plan": {
+        "predicted": 72.567,
+        "realized": 88.058,
+        "gap": 15.491,
+        "underperformed": false
+      },
+      "runtimeMs": 2462
+    },
+    {
+      "id": "spellslinger",
+      "archetype": "spellslinger",
+      "why": "Cheap spell density vs spell payoffs are different obligations.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "unsupported_anchors_6",
+        "prospective_retrospective_warnings_15"
+      ],
+      "failureClasses": [],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 1,
+        "weaklyJustified": 0,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 28,
+        "warnings": 15
+      },
+      "selfEvaluation": {
+        "totalTracedPicks": 66,
+        "liveFillPicks": 52,
+        "agreementRate": 0.242,
+        "meanAbsDrift": 64.41,
+        "disagreementsByClass": {
+          "early_scaffolding_matured": 16,
+          "later_package_oversupply": 16,
+          "unsupported_anchor_emerged": 2,
+          "curve_need_disappeared": 5,
+          "retrospective_gain_not_seen_prospectively": 21,
+          "downstream_repair_invalidated_pick": 6
+        },
+        "controlCaseCounts": {
+          "early_scaffolding_matured": 16,
+          "invalidated_by_later_decisions": 25,
+          "ambiguous": 4,
+          "beneficial_emergence": 21
+        },
+        "strongestRecurringWarningSignals": [
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 21
+          },
+          {
+            "class": "early_scaffolding_matured",
+            "count": 16
+          },
+          {
+            "class": "later_package_oversupply",
+            "count": 16
+          },
+          {
+            "class": "downstream_repair_invalidated_pick",
+            "count": 6
+          },
+          {
+            "class": "curve_need_disappeared",
+            "count": 5
+          },
+          {
+            "class": "unsupported_anchor_emerged",
+            "count": 2
+          }
+        ],
+        "timing": {
+          "finalizeMs": 8,
+          "recordMs": 1
+        },
+        "artifactBytes": 247157
+      },
+      "weakSlotForensics": {
+        "weakSlotCount": 0,
+        "causalClassCounts": {},
+        "sourceCounts": {},
+        "phaseCounts": {},
+        "avoidableCount": 0,
+        "constraintForcedCount": 0
+      },
+      "weakSlotRepair": {
+        "applied": true,
+        "appliedCount": 6
+      },
+      "plan": {
+        "predicted": 74.667,
+        "realized": 91.574,
+        "gap": 16.907,
+        "underperformed": false
+      },
+      "runtimeMs": 4986
+    },
+    {
+      "id": "landfall",
+      "archetype": "landfall",
+      "why": "Landfall payoffs need land-drop/enabler support, not just random creatures.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [],
+      "failureClasses": [],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.788,
+        "weaklyJustified": 2,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 9,
+        "warnings": 2
+      },
+      "selfEvaluation": {
+        "totalTracedPicks": 66,
+        "liveFillPicks": 43,
+        "agreementRate": 0.485,
+        "meanAbsDrift": 55.276,
+        "disagreementsByClass": {
+          "early_scaffolding_matured": 31,
+          "unclassified": 19,
+          "stable_good_prediction": 1,
+          "downstream_repair_invalidated_pick": 6,
+          "final_weak_justification": 2,
+          "retrospective_gain_not_seen_prospectively": 7
+        },
+        "controlCaseCounts": {
+          "early_scaffolding_matured": 31,
+          "ambiguous": 20,
+          "stable": 1,
+          "invalidated_by_later_decisions": 6,
+          "genuine_bad_belief": 1,
+          "beneficial_emergence": 7
+        },
+        "strongestRecurringWarningSignals": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 31
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 7
+          },
+          {
+            "class": "downstream_repair_invalidated_pick",
+            "count": 6
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 2
+          }
+        ],
+        "timing": {
+          "finalizeMs": 3,
+          "recordMs": 1
+        },
+        "artifactBytes": 222043
+      },
+      "weakSlotForensics": {
+        "weakSlotCount": 2,
+        "causalClassCounts": {
+          "became_weak_downstream": 2
+        },
+        "sourceCounts": {
+          "live_fill": 2
+        },
+        "phaseCounts": {
+          "development": 2
+        },
+        "avoidableCount": 0,
+        "constraintForcedCount": 2
+      },
+      "weakSlotRepair": {
+        "applied": true,
+        "appliedCount": 6
+      },
+      "plan": {
+        "predicted": 90.667,
+        "realized": 90.429,
+        "gap": -0.238,
+        "underperformed": false
+      },
+      "runtimeMs": 2389
+    },
+    {
+      "id": "blink-etb",
+      "archetype": "blink",
+      "why": "Blink effects vs valuable ETB targets are distinct.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "thin_interaction_graph_0"
+      ],
+      "failureClasses": [
+        "interaction_graph_failure"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.727,
+        "weaklyJustified": 6,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 2,
+        "warnings": 0
+      },
+      "selfEvaluation": {
+        "totalTracedPicks": 66,
+        "liveFillPicks": 56,
+        "agreementRate": 0.455,
+        "meanAbsDrift": 41.24,
+        "disagreementsByClass": {
+          "early_scaffolding_matured": 29,
+          "stable_good_prediction": 1,
+          "unclassified": 27,
+          "downstream_repair_invalidated_pick": 6,
+          "retrospective_gain_not_seen_prospectively": 3
+        },
+        "controlCaseCounts": {
+          "early_scaffolding_matured": 29,
+          "stable": 1,
+          "ambiguous": 27,
+          "invalidated_by_later_decisions": 6,
+          "beneficial_emergence": 3
+        },
+        "strongestRecurringWarningSignals": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 29
+          },
+          {
+            "class": "downstream_repair_invalidated_pick",
+            "count": 6
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 3
+          }
+        ],
+        "timing": {
+          "finalizeMs": 3,
+          "recordMs": 0
+        },
+        "artifactBytes": 216621
+      },
+      "weakSlotForensics": {
+        "weakSlotCount": 6,
+        "causalClassCounts": {
+          "weak_at_selection": 6
+        },
+        "sourceCounts": {
+          "live_fill": 6
+        },
+        "phaseCounts": {
+          "foundation": 6
+        },
+        "avoidableCount": 0,
+        "constraintForcedCount": 6
+      },
+      "weakSlotRepair": {
+        "applied": true,
+        "appliedCount": 6
+      },
+      "plan": {
+        "predicted": 65.9,
+        "realized": 84.157,
+        "gap": 18.257,
+        "underperformed": false
+      },
+      "runtimeMs": 2635
+    },
+    {
+      "id": "artifacts",
+      "archetype": "artifacts",
+      "why": "Artifact synergy package with producers and payoffs.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "thin_interaction_graph_0"
+      ],
+      "failureClasses": [
+        "interaction_graph_failure"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.697,
+        "weaklyJustified": 0,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 10,
+        "warnings": 0
+      },
+      "selfEvaluation": {
+        "totalTracedPicks": 66,
+        "liveFillPicks": 56,
+        "agreementRate": 0.303,
+        "meanAbsDrift": 56.716,
+        "disagreementsByClass": {
+          "early_scaffolding_matured": 18,
+          "unclassified": 30,
+          "stable_good_prediction": 2,
+          "retrospective_gain_not_seen_prospectively": 16
+        },
+        "controlCaseCounts": {
+          "early_scaffolding_matured": 18,
+          "ambiguous": 30,
+          "stable": 2,
+          "beneficial_emergence": 16
+        },
+        "strongestRecurringWarningSignals": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 18
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 16
+          }
+        ],
+        "timing": {
+          "finalizeMs": 2,
+          "recordMs": 0
+        },
+        "artifactBytes": 211301
+      },
+      "weakSlotForensics": {
+        "weakSlotCount": 0,
+        "causalClassCounts": {},
+        "sourceCounts": {},
+        "phaseCounts": {},
+        "avoidableCount": 0,
+        "constraintForcedCount": 0
+      },
+      "weakSlotRepair": {
+        "applied": false,
+        "appliedCount": 0
+      },
+      "plan": {
+        "predicted": 54,
+        "realized": 77.816,
+        "gap": 23.816,
+        "underperformed": false
+      },
+      "runtimeMs": 1862
+    },
+    {
+      "id": "stax",
+      "archetype": "stax",
+      "why": "Stax needs asymmetric support; raw disruption alone is not a plan.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "thin_interaction_graph_0"
+      ],
+      "failureClasses": [
+        "interaction_graph_failure"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.641,
+        "weaklyJustified": 0,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 0,
+        "warnings": 0
+      },
+      "selfEvaluation": {
+        "totalTracedPicks": 64,
+        "liveFillPicks": 56,
+        "agreementRate": 0.5,
+        "meanAbsDrift": 29.962,
+        "disagreementsByClass": {
+          "early_scaffolding_matured": 32,
+          "unclassified": 26,
+          "retrospective_gain_not_seen_prospectively": 4,
+          "downstream_repair_invalidated_pick": 2
+        },
+        "controlCaseCounts": {
+          "early_scaffolding_matured": 32,
+          "ambiguous": 26,
+          "beneficial_emergence": 4,
+          "invalidated_by_later_decisions": 2
+        },
+        "strongestRecurringWarningSignals": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 32
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 4
+          },
+          {
+            "class": "downstream_repair_invalidated_pick",
+            "count": 2
+          }
+        ],
+        "timing": {
+          "finalizeMs": 2,
+          "recordMs": 2
+        },
+        "artifactBytes": 206431
+      },
+      "weakSlotForensics": {
+        "weakSlotCount": 0,
+        "causalClassCounts": {},
+        "sourceCounts": {},
+        "phaseCounts": {},
+        "avoidableCount": 0,
+        "constraintForcedCount": 0
+      },
+      "weakSlotRepair": {
+        "applied": true,
+        "appliedCount": 2
+      },
+      "plan": {
+        "predicted": 61.6,
+        "realized": 84.955,
+        "gap": 23.355,
+        "underperformed": false
+      },
+      "runtimeMs": 1418
+    },
+    {
+      "id": "combo-partners",
+      "archetype": "combo",
+      "why": "Combo pieces must not be treated as independent goodstuff without partners.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "thin_interaction_graph_0"
+      ],
+      "failureClasses": [
+        "interaction_graph_failure"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.708,
+        "weaklyJustified": 7,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 9,
+        "warnings": 4
+      },
+      "selfEvaluation": {
+        "totalTracedPicks": 65,
+        "liveFillPicks": 65,
+        "agreementRate": 0.323,
+        "meanAbsDrift": 32.657,
+        "disagreementsByClass": {
+          "early_scaffolding_matured": 21,
+          "unclassified": 26,
+          "final_weak_justification": 4,
+          "retrospective_gain_not_seen_prospectively": 11,
+          "downstream_repair_invalidated_pick": 3
+        },
+        "controlCaseCounts": {
+          "early_scaffolding_matured": 21,
+          "ambiguous": 28,
+          "genuine_bad_belief": 2,
+          "beneficial_emergence": 11,
+          "invalidated_by_later_decisions": 3
+        },
+        "strongestRecurringWarningSignals": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 21
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 11
+          },
+          {
+            "class": "final_weak_justification",
+            "count": 4
+          },
+          {
+            "class": "downstream_repair_invalidated_pick",
+            "count": 3
+          }
+        ],
+        "timing": {
+          "finalizeMs": 1,
+          "recordMs": 1
+        },
+        "artifactBytes": 212048
+      },
+      "weakSlotForensics": {
+        "weakSlotCount": 7,
+        "causalClassCounts": {
+          "weak_at_selection": 3,
+          "became_weak_downstream": 4
+        },
+        "sourceCounts": {
+          "live_fill": 7
+        },
+        "phaseCounts": {
+          "foundation": 7
+        },
+        "avoidableCount": 0,
+        "constraintForcedCount": 7
+      },
+      "weakSlotRepair": {
+        "applied": true,
+        "appliedCount": 3
+      },
+      "plan": {
+        "predicted": 46.4,
+        "realized": 72.941,
+        "gap": 26.541,
+        "underperformed": false
+      },
+      "runtimeMs": 1676
+    },
+    {
+      "id": "multiplan-commander",
+      "archetype": "multi_direction",
+      "why": "Commander with multiple legitimate support directions stresses plan competition.",
+      "passed": true,
+      "hardFailures": [],
+      "warnings": [
+        "thin_interaction_graph_0"
+      ],
+      "failureClasses": [
+        "interaction_graph_failure"
+      ],
+      "strategicCohesion": true,
+      "justification": {
+        "strongRatio": 0.846,
+        "weaklyJustified": 0,
+        "rawPowerDominant": 0
+      },
+      "disagreement": {
+        "count": 14,
+        "warnings": 0
+      },
+      "selfEvaluation": {
+        "totalTracedPicks": 65,
+        "liveFillPicks": 39,
+        "agreementRate": 0.554,
+        "meanAbsDrift": 49.829,
+        "disagreementsByClass": {
+          "early_scaffolding_matured": 35,
+          "unclassified": 10,
+          "stable_good_prediction": 1,
+          "retrospective_gain_not_seen_prospectively": 14,
+          "downstream_repair_invalidated_pick": 5
+        },
+        "controlCaseCounts": {
+          "early_scaffolding_matured": 35,
+          "ambiguous": 10,
+          "stable": 1,
+          "beneficial_emergence": 14,
+          "invalidated_by_later_decisions": 5
+        },
+        "strongestRecurringWarningSignals": [
+          {
+            "class": "early_scaffolding_matured",
+            "count": 35
+          },
+          {
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 14
+          },
+          {
+            "class": "downstream_repair_invalidated_pick",
+            "count": 5
+          }
+        ],
+        "timing": {
+          "finalizeMs": 4,
+          "recordMs": 0
+        },
+        "artifactBytes": 195383
+      },
+      "weakSlotForensics": {
+        "weakSlotCount": 0,
+        "causalClassCounts": {},
+        "sourceCounts": {},
+        "phaseCounts": {},
+        "avoidableCount": 0,
+        "constraintForcedCount": 0
+      },
+      "weakSlotRepair": {
+        "applied": true,
+        "appliedCount": 5
+      },
+      "plan": {
+        "predicted": 70.4,
+        "realized": 85.245,
+        "gap": 14.845,
+        "underperformed": false
+      },
+      "runtimeMs": 1970
+    }
+  ]
+}
