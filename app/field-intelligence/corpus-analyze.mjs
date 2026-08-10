@@ -317,6 +317,41 @@ export function analyzeCorpusDeck(record, options = {}) {
     interactionGraph: freeze({
       edgeCount: (interactionGraph.edges || []).length,
       nodeCount: (interactionGraph.nodes || interactionGraph.cards || graphCards).length || graphCards.length,
+      coverage: interactionGraph.coverage ?? null,
+      confidence: interactionGraph.confidence ?? null,
+      isolated: freeze([...(interactionGraph.isolated || [])]),
+      enginePairs: freeze((interactionGraph.enginePairs || []).slice(0, 24).map((pair) => freeze({
+        cards: freeze([...(pair.cards || [])]),
+        strength: pair.strength,
+        evidence: pair.evidence,
+      }))),
+      amplifiers: freeze((interactionGraph.amplifiers || []).slice(0, 16).map((row) => freeze({
+        source: row.source,
+        signal: row.signal,
+        amplifies: freeze([...(row.amplifies || [])].slice(0, 12)),
+        evidence: row.evidence,
+      }))),
+      nonbos: freeze((interactionGraph.nonbos || []).slice(0, 12).map((row) => freeze({
+        source: row.source,
+        signal: row.signal,
+        conflicts: freeze([...(row.conflicts || [])].slice(0, 8)),
+        evidence: row.evidence,
+      }))),
+      // Fuller edge list for v1.3 topology mining (still capped).
+      edges: freeze((interactionGraph.edges || [])
+        .slice()
+        .sort((a, b) => (b.strength || 0) - (a.strength || 0) || a.from.localeCompare(b.from))
+        .slice(0, 80)
+        .map((edge) => freeze({
+          from: edge.from,
+          to: edge.to,
+          signals: freeze([...(edge.signals || [])]),
+          strength: edge.strength,
+          evidence: edge.evidence,
+          mutual: Boolean(edge.mutual),
+          forwardSignals: freeze([...(edge.forwardSignals || [])]),
+          reverseSignals: freeze([...(edge.reverseSignals || [])]),
+        }))),
       topEdges: freeze((interactionGraph.edges || [])
         .slice()
         .sort((a, b) => (b.strength || 0) - (a.strength || 0) || a.from.localeCompare(b.from))
@@ -329,6 +364,23 @@ export function analyzeCorpusDeck(record, options = {}) {
           evidence: edge.evidence,
         }))),
     }),
+    // Annotated nonland rows retained for topology / sequence / context mining.
+    annotatedRows: freeze(annotated.map((row) => freeze({
+      name: row.name,
+      quantity: row.quantity,
+      roles: row.roles,
+      cmc: row.cmc,
+      typeLine: row.typeLine,
+      oracleText: row.oracleText,
+      mechanics: row.mechanics,
+      commanderConnectionSignals: row.commanderConnectionSignals,
+      sequenceStages: row.sequenceStages,
+      strategicSemantics: freeze([
+        ...(row.strategicSemantics instanceof Set
+          ? row.strategicSemantics
+          : (row.strategicSemantics || [])),
+      ]),
+    }))),
     justification: freeze(draft.justification),
     packages: freeze(packages),
     cohesion: freeze(draft.cohesion),

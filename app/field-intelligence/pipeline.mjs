@@ -53,6 +53,17 @@ import {
   synthesizeLevelAFindings,
   selectHighestConfidenceBrainV2Candidate,
 } from "./level-a-synthesis.mjs";
+import { buildCorpusStrategicTopologies } from "./strategic-topology.mjs";
+import { deriveCorpusTopologyMetrics } from "./topology-metrics.mjs";
+import { buildAllLevelATopology } from "./level-a-topology.mjs";
+import { mineStrategicSequences } from "./strategic-sequences.mjs";
+import { mineContextualCardFunctions } from "./contextual-card-function.mjs";
+import { mineSubstitutionEvidence } from "./substitution-evidence.mjs";
+import { buildTopologyDiscoveryQueue } from "./topology-discovery.mjs";
+import { measureCorpusGrowth } from "./corpus-growth.mjs";
+import { STRATEGIC_TOPOLOGY_VERSION, ALL_STRATEGIC_EDGE_TYPES } from "./strategic-edge-ontology.mjs";
+import { buildPrincipleRegistry } from "./principle-registry.mjs";
+import { PRINCIPLE_REGISTRY_VERSION } from "./strategic-principle-schema.mjs";
 
 const freeze = (value) => Object.freeze(value);
 const unique = (values) => [...new Set(values)];
@@ -163,6 +174,7 @@ export async function buildCorpusIntelligenceArtifact({
   comparedToFixture = null,
   enrich = false,
   enrichOptions = {},
+  priorStoreRows = [],
 } = {}) {
   let workingRecords = records;
   let enrichmentStats = null;
@@ -199,7 +211,6 @@ export async function buildCorpusIntelligenceArtifact({
   const packageDiscovery = discoverPackageCandidates(analyses, workingRecords);
   const semanticBlindSpots = discoverSemanticBlindSpots(analyses, cohorts.strongestControlled.map((c) => c.contrast));
   const holdout = runHoldoutValidation(workingRecords, analyses);
-  const repeatedConverters = analyzeRepeatedConverters(workingRecords, analyses);
   const quality = buildCorpusQualityReport({
     records: workingRecords,
     analyses,
@@ -225,6 +236,54 @@ export async function buildCorpusIntelligenceArtifact({
     structuralBeatsPopular: assertStructuralBeatsPopular(),
   });
 
+  // --- Field Intelligence v1.3: strategic relationship mining (observation only) ---
+  const strategicTopologies = buildCorpusStrategicTopologies(analyses, workingRecords);
+  const topologyMetrics = deriveCorpusTopologyMetrics(strategicTopologies);
+  const repeatedConverters = analyzeRepeatedConverters(workingRecords, analyses, {
+    topologyMetrics,
+  });
+  const levelATopology = buildAllLevelATopology(workingRecords, strategicTopologies, { metrics: topologyMetrics });
+  const strategicSequences = mineStrategicSequences(strategicTopologies, analyses, workingRecords);
+  const contextualCardFunctions = mineContextualCardFunctions(strategicTopologies, analyses);
+  const substitutionEvidence = mineSubstitutionEvidence(strategicTopologies, analyses, workingRecords);
+  const topologyDiscovery = buildTopologyDiscoveryQueue({
+    topologies: strategicTopologies,
+    topologyMetrics,
+    levelATopology,
+    sequences: strategicSequences,
+    substitutions: substitutionEvidence,
+    contextualFunctions: contextualCardFunctions,
+    packageCandidates: packageDiscovery.candidates,
+    semanticBlindSpots: semanticBlindSpots.candidates,
+    analyses,
+    records: workingRecords,
+  });
+
+  // Strategic Principle Engine — observation only; never activates Brain.
+  const strategicPrincipleRegistry = buildPrincipleRegistry({
+    performanceHypotheses,
+    topologyDiscovery,
+    brainClassifications,
+    crossCommanderTransfer,
+    priorStoreRows,
+  });
+
+  const corpusGrowth = measureCorpusGrowth({
+    currentArtifact: {
+      corpus: {
+        decksAnalyzed: analyses.length,
+        eventsRepresented: unique(workingRecords.map((r) => r.eventId).filter(Boolean)).length,
+        uniqueCommanders: unique(workingRecords.flatMap((r) => (r.commanders || []).map((c) => c.name))).length,
+      },
+      levelAForensics: { usableCohorts: levelAForensics.usableCohorts },
+      levelATopology,
+      performanceHypotheses,
+      topologyDiscovery,
+      strategicPrincipleRegistry,
+    },
+    priorSnapshot: comparedToFixture?.priorGrowthSnapshot || null,
+  });
+
   const events = unique(workingRecords.map((r) => r.eventId).filter(Boolean));
   const commanders = unique(workingRecords.flatMap((r) => (r.commanders || []).map((c) => c.name)));
 
@@ -233,6 +292,21 @@ export async function buildCorpusIntelligenceArtifact({
     generatedAt: new Date().toISOString(),
     brainPolicyTouched: false,
     constructionMutated: false,
+    strategicRelationshipMining: freeze({
+      version: STRATEGIC_TOPOLOGY_VERSION,
+      layer: "static",
+      dynamicPressureDeferred: true,
+      writesToBrain: false,
+      edgeOntology: ALL_STRATEGIC_EDGE_TYPES,
+      recommendedExp002: "Prefer interaction that closes an uncovered strategic dependency (protects unprotected engine/combo/commander, or bridges a missing sequence stage) over interaction that merely increases interaction count/density.",
+    }),
+    strategicPrincipleEngine: freeze({
+      version: PRINCIPLE_REGISTRY_VERSION,
+      writesToBrain: false,
+      activateBrain: false,
+      successCriteria: "discover_strategic_principles_not_taught_explicitly",
+    }),
+    strategicPrincipleRegistry,
     attribution: freeze([
       TOPDECK_ATTRIBUTION,
       SPICERACK_ATTRIBUTION,
@@ -268,6 +342,7 @@ export async function buildCorpusIntelligenceArtifact({
       dedupe: dedupeStats,
     }),
     corpusQuality: quality,
+    corpusGrowth,
     familyResolution: freeze({
       commanderResolutionRate: familyResolution.commanderResolutionRate,
       familyResolutionRate: familyResolution.familyResolutionRate,
@@ -293,6 +368,41 @@ export async function buildCorpusIntelligenceArtifact({
       // Full cohort forensics — primary v1.2 deliverable surface.
       cohorts: levelAForensics.cohorts,
     }),
+    levelATopology,
+    topologyMetricsSummary: freeze({
+      decks: topologyMetrics.length,
+      meanMeaningfulEdgeDensity: round(
+        topologyMetrics.reduce((s, m) => s + (m.meaningfulEdgeDensity || 0), 0) / Math.max(1, topologyMetrics.length),
+      ),
+      meanPlanConnectedRatio: round(
+        topologyMetrics.reduce((s, m) => s + (m.planConnectedInteractionRatio || 0), 0) / Math.max(1, topologyMetrics.length),
+      ),
+      meanIsolatedRatio: round(
+        topologyMetrics.reduce((s, m) => s + (m.isolatedInteractiveRatio || 0), 0) / Math.max(1, topologyMetrics.length),
+      ),
+      meanMultifunctionRatio: round(
+        topologyMetrics.reduce((s, m) => s + (m.multifunctionInteractionRatio || 0), 0) / Math.max(1, topologyMetrics.length),
+      ),
+    }),
+    strategicTopologies: freeze(strategicTopologies.map((t) => freeze({
+      deckId: t.deckId,
+      commanders: t.commanders,
+      eventId: t.eventId,
+      performanceClass: t.performanceClass,
+      strongEdgeCount: t.strongEdgeCount,
+      weakEdgeCount: t.weakEdgeCount,
+      interactiveCardCount: t.interactiveCardCount,
+      isolatedInteractiveCount: t.isolatedInteractiveCount,
+      multifunctionInteractiveCount: t.multifunctionInteractiveCount,
+      planConnectedInteractiveCount: t.planConnectedInteractiveCount,
+      meanStrategicDegree: t.meanStrategicDegree,
+      // Cap per-deck edges in the artifact for size; full edges available in-module.
+      edges: freeze((t.edges || []).filter((e) => e.strength === "strong").slice(0, 24)),
+    }))),
+    strategicSequences,
+    contextualCardFunctions,
+    substitutionEvidence,
+    topologyDiscovery,
     performanceHypotheses,
     brainV1Classifications: brainClassifications,
     packageBlindSpotCandidates: packageBlindSpots.candidates,
@@ -456,6 +566,7 @@ export async function runFieldIntelligenceV1(options = {}) {
     liveCoverage,
     dedupeStats: deduped.stats,
     comparedToFixture,
+    priorStoreRows: options.priorStoreRows || [],
     // Live decks need Scryfall enrichment; fixture decks are already annotated.
     enrich: useLive || options.enrich === true,
     enrichOptions: {

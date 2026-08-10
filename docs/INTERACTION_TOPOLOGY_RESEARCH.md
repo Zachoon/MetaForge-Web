@@ -1,6 +1,7 @@
 # Interaction Topology Research
 
 **Status:** research agenda — observation / collection only  
+**Implemented surfaces:** Field Intelligence v1.3 (`docs/FIELD_INTELLIGENCE_V1_3.md`)  
 **Not:** a Brain v2 construction experiment  
 **Not:** coefficient tuning
 
@@ -37,6 +38,22 @@ From live Level-A forensics + Exp001:
 
 ---
 
+## FI v1.3 implemented (static topology)
+
+Observation-only modules now emit:
+
+- Per-deck strategic topology edges (`protects_*`, `enables`, `clears_path_for`, …)
+- Topology metrics beyond `interactionDensity`
+- Level-A topology comparisons (same commander + same event)
+- Structural sequence evidence (not play order)
+- Contextual card functions and substitution evidence
+- Discovery-queue candidates with **no write path into Brain**
+- Append-only JSONL research store for longitudinal evidence
+
+**Deferred:** dynamic pressure topology (what becomes critical once X exists). See `FIELD_INTELLIGENCE_V1_3.md`.
+
+---
+
 ## Research questions (relationships, not scores)
 
 Collect evidence for labels such as:
@@ -64,10 +81,11 @@ Every Field Intelligence / live corpus run should accumulate, without teaching B
 1. Level-A cohort forensics (same commander + same event)
 2. Interaction composition decomps (stack / removal / protection / silence / flexible / …)
 3. Interaction graph snapshots (producer↔payoff edges, orphans, unsupported anchors)
-4. Repeated-converter vs participant structural deltas
-5. Cross-commander transfer results (support / contradict / mixed)
-6. Power-tier tags when known
-7. Explicit train vs held-out partitions so future experiments do not contaminate validation
+4. Strategic topology + Level-A topology metrics (v1.3)
+5. Repeated-converter vs participant structural deltas
+6. Cross-commander transfer results (support / contradict / mixed) — never automatic
+7. Power-tier tags when known
+8. Explicit train vs held-out partitions so future experiments do not contaminate validation
 
 Preferred artifact direction: a growing **interaction topology research dataset** keyed by event, commander identity, performance class, and graph features — not card frequency tables.
 
@@ -101,6 +119,7 @@ Until then: **collect, decompose, refuse to promote vibes.**
 
 ## Related
 
+- `docs/FIELD_INTELLIGENCE_V1_3.md` — v1.3 charter
 - `docs/REJECTED_EXPERIMENTS.md` — Exp001
 - `docs/BRAIN_V2_EXP001_INTERACTION.md` — experiment detail
 - `docs/FIELD_INTELLIGENCE_V1.md` — Level-A forensics pipeline

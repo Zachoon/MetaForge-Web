@@ -78,6 +78,7 @@ function unique(values) {
  */
 export function analyzeRepeatedConverters(records = [], analyses = [], options = {}) {
   const analysesById = new Map(analyses.map((a) => [a.deckId, a]));
+  const topologyById = new Map((options.topologyMetrics || []).map((m) => [m.deckId, m]));
   const control = options.controlFamilyId || options.controlCommander || null;
 
   let scoped = records;
@@ -94,6 +95,23 @@ export function analyzeRepeatedConverters(records = [], analyses = [], options =
     single_event_converter: aggregateClass(scoped, analysesById, "single_event_converter"),
     tournament_participant: aggregateClass(scoped, analysesById, "tournament_participant"),
   });
+
+  const topologySignatures = freeze(Object.fromEntries(
+    ["repeated_converter", "single_event_converter", "tournament_participant"].map((className) => {
+      const subset = scoped.filter((r) => classOf(r) === className);
+      const metrics = subset.map((r) => topologyById.get(r.id)).filter(Boolean);
+      if (!metrics.length) return [className, freeze({ n: 0 })];
+      return [className, freeze({
+        n: metrics.length,
+        meanPlanConnectedRatio: round(mean(metrics.map((m) => m.planConnectedInteractionRatio || 0))),
+        meanIsolatedRatio: round(mean(metrics.map((m) => m.isolatedInteractiveRatio || 0))),
+        meanMultifunctionRatio: round(mean(metrics.map((m) => m.multifunctionInteractionRatio || 0))),
+        meanMeaningfulEdgeDensity: round(mean(metrics.map((m) => m.meaningfulEdgeDensity || 0))),
+        meanCommanderProtection: round(mean(metrics.map((m) => m.commanderProtectionCoverage || 0))),
+        meanEngineProtection: round(mean(metrics.map((m) => m.engineProtectionCoverage || 0))),
+      })];
+    }),
+  ));
 
   const deltas = freeze({
     coreDensity_repeated_minus_participant: round(
@@ -112,12 +130,17 @@ export function analyzeRepeatedConverters(records = [], analyses = [], options =
       (groups.repeated_converter.packageCoreDensity || 0)
       - (groups.single_event_converter.packageCoreDensity || 0),
     ),
+    planConnected_repeated_minus_participant: round(
+      (topologySignatures.repeated_converter.meanPlanConnectedRatio || 0)
+      - (topologySignatures.tournament_participant.meanPlanConnectedRatio || 0),
+    ),
   });
 
   return freeze({
-    version: "repeated-converter-analysis-v1",
+    version: "repeated-converter-analysis-v1.3",
     control,
     groups,
+    topologySignatures,
     deltas,
     note: "associative_not_causal",
   });
