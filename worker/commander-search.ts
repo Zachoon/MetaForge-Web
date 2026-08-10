@@ -19,7 +19,7 @@ export function commanderSearchQuery(format: string, name: string, exact = false
 
 const json = (body: unknown, status = 200) => Response.json(body, {
   status,
-  headers: { "Cache-Control": status === 200 ? "public, max-age=300" : "no-store" },
+  headers: { "Cache-Control": status === 200 ? "public, max-age=2592000, stale-while-revalidate=31536000" : "no-store" },
 });
 
 async function fetchScryfall(url: string): Promise<Response | null> {
@@ -33,6 +33,53 @@ async function fetchScryfall(url: string): Promise<Response | null> {
     }
   }
   return null;
+}
+
+function mtgApiCardIsLegal(card: any, format: string): boolean {
+  const accepted = format === "Commander" ? ["commander"] : format === "Standard Brawl" ? ["brawl", "standardbrawl"] : ["brawl"];
+  return (Array.isArray(card?.legalities) ? card.legalities : []).some((entry: any) =>
+    accepted.includes(String(entry?.format || "").toLowerCase()) && String(entry?.legality || "").toLowerCase() === "legal");
+}
+
+function mtgApiCommanderCard(card: any) {
+  return {
+    name: card.name,
+    mana_cost: card.manaCost || "",
+    cmc: Number(card.cmc || 0),
+    type_line: card.type || "Legendary card",
+    color_identity: Array.isArray(card.colorIdentity) ? card.colorIdentity : [],
+    oracle_text: card.text || "",
+    image_uris: card.imageUrl ? { small: String(card.imageUrl).replace(/^http:/, "https:") } : undefined,
+    set_name: card.setName || "",
+    set: String(card.set || "").toLowerCase(),
+    games: ["paper"],
+    legalities: Object.fromEntries((card.legalities || []).map((entry: any) => [String(entry.format || "").toLowerCase(), String(entry.legality || "").toLowerCase()])),
+  };
+}
+
+async function fetchSecondaryCommanderIndex(format: string, query: string, exact: boolean): Promise<any[] | null> {
+  try {
+    const response = await fetch(`https://api.magicthegathering.io/v1/cards?name=${encodeURIComponent(query)}&pageSize=100`, {
+      headers: SCRYFALL_HEADERS,
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!response.ok) return null;
+    const payload: any = await response.json();
+    const seen = new Set<string>();
+    return (Array.isArray(payload?.cards) ? payload.cards : [])
+      .filter((card: any) => {
+        const name = String(card?.name || "");
+        const commanderType = /Legendary (?:Artifact )?Creature/i.test(card?.type || "") || /can be your commander/i.test(card?.text || "");
+        const nameMatches = exact ? name.split(/\s*\/\/\s*/)[0].toLowerCase() === query.toLowerCase() : name.toLowerCase().includes(query.toLowerCase());
+        if (!nameMatches || !commanderType || !mtgApiCardIsLegal(card, format) || seen.has(name.toLowerCase())) return false;
+        seen.add(name.toLowerCase());
+        return true;
+      })
+      .slice(0, 8)
+      .map(mtgApiCommanderCard);
+  } catch {
+    return null;
+  }
 }
 
 export async function handleCommanderSearch(request: Request): Promise<Response> {
@@ -50,11 +97,19 @@ export async function handleCommanderSearch(request: Request): Promise<Response>
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
   const response = await fetchScryfall(scryfallUrl);
-  if (!response) return json({ error: "Commander index is temporarily unavailable", retryable: true }, 503);
-  if (response.status === 404) return json({ cards: [] });
-  if (!response.ok) return json({ error: "Commander search failed", retryable: response.status === 429 || response.status >= 500 }, 502);
-  const data: any = await response.json();
-  const result = json({ cards: (Array.isArray(data?.data) ? data.data : []).slice(0, 8) });
+  let cards: any[] | null = null;
+  let source = "scryfall";
+  if (response?.ok) {
+    const data: any = await response.json();
+    cards = (Array.isArray(data?.data) ? data.data : []).slice(0, 8);
+  } else if (response?.status === 404) {
+    cards = [];
+  } else {
+    cards = await fetchSecondaryCommanderIndex(format, query, exact);
+    source = "secondary-index";
+  }
+  if (cards === null) return json({ error: "Commander index is temporarily unavailable", retryable: true }, 503);
+  const result = json({ cards, source });
   await cache.put(cacheKey, result.clone());
   return result;
 }

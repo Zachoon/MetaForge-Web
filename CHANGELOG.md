@@ -4,7 +4,8 @@
 
 ### Commander discovery no longer mistakes an outage for “no commanders”
 
-- Commander search now runs through MetaForge's server with a bounded retry and short-lived successful-result cache instead of depending on every player's browser reaching Scryfall directly.
+- Commander search now runs through MetaForge's server with a bounded retry and month-long edge cache instead of depending on every player's browser reaching Scryfall directly.
+- If Scryfall is unavailable and a search is not cached yet, MetaForge automatically queries an independent Magic card index and normalizes the legal commander results into the same verified shape.
 - A temporary commander-index failure now presents an honest retry action instead of falsely claiming that no legal commander matches.
 - Pasted lists now recognize common `Commander`, `Commanders`, and `[Commander]` section headers in addition to the existing separated trailing-card export shape.
 
