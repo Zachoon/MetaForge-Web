@@ -220,4 +220,199 @@ describe("Honest Coach v0.2 — unmissable + measurable", () => {
     assert.equal(summary.confidence.level, "limited");
     assert.match(summary.confidence.reason, /competing plans|thin/i);
   });
+
+  it("surfaces the engine's weakest construction stage as a named weakness and observed finding", () => {
+    const summary = buildHonestCoachSummary({
+      selected: {
+        ...selectedFixture,
+        strategicSequence: {
+          status: "sequence-needs-support",
+          weakestStage: "close",
+          overallCoverage: 0.8,
+          stages: {
+            setup: { count: 33, floor: 10, coverage: 1 },
+            stabilize: { count: 12, floor: 7, coverage: 1 },
+            convert: { count: 18, floor: 8, coverage: 1 },
+            recover: { count: 21, floor: 7, coverage: 1 },
+            close: { count: 0, floor: 6, coverage: 0 },
+          },
+        },
+      },
+      isImported: true,
+    });
+    assert.ok(
+      summary.weaknesses.some((line) => /closing out a game you're ahead in/i.test(line) && /0 of the ~6/.test(line)),
+      `expected a weakest-stage weakness, got: ${JSON.stringify(summary.weaknesses)}`,
+    );
+    assert.ok(
+      summary.observedFindings.some((line) => /thinnest construction stage/i.test(line)),
+      `expected a weakest-stage observed finding, got: ${JSON.stringify(summary.observedFindings)}`,
+    );
+    assertNoResearchLeak(JSON.stringify(summary));
+  });
+
+  it("stays silent about construction sequence when the deck has full stage coverage", () => {
+    const summary = buildHonestCoachSummary({
+      selected: {
+        ...selectedFixture,
+        strategicSequence: { status: "complete-sequence", weakestStage: "close", overallCoverage: 1, stages: {} },
+      },
+      isImported: true,
+    });
+    assert.ok(!summary.weaknesses.some((line) => /thinnest construction stage/i.test(line)));
+    assert.ok(!summary.observedFindings.some((line) => /thinnest construction stage/i.test(line)));
+  });
+
+  it("names a commander package that had no supported piece in the legal pool", () => {
+    const summary = buildHonestCoachSummary({
+      selected: {
+        ...selectedFixture,
+        commanderCompatibility: { status: "no-supported-connection-in-pool" },
+      },
+      isImported: true,
+    });
+    assert.ok(
+      summary.weaknesses.some((line) => /none of it was available in this legal pool/i.test(line)),
+      `expected a commander-connection weakness, got: ${JSON.stringify(summary.weaknesses)}`,
+    );
+    assert.ok(summary.observedFindings.some((line) => /no supported piece was legal in this pool/i.test(line)));
+    assertNoResearchLeak(JSON.stringify(summary));
+  });
+
+  it("stays silent about commander connection when a supported piece was legal and connected", () => {
+    const summary = buildHonestCoachSummary({
+      selected: {
+        ...selectedFixture,
+        commanderCompatibility: { status: "connected" },
+      },
+      isImported: true,
+    });
+    assert.ok(!summary.weaknesses.some((line) => /legal pool/i.test(line)));
+  });
+
+  it("names orphan payoffs with no supporting producer in the deck", () => {
+    const summary = buildHonestCoachSummary({
+      selected: {
+        ...selectedFixture,
+        strategicCoherence: { status: "connected-with-isolated-payoffs", orphanPayoffs: ["Lonely Reaper", "Stranded Idol"] },
+      },
+      isImported: true,
+    });
+    assert.ok(
+      summary.weaknesses.some((line) => /Lonely Reaper/.test(line) && /Stranded Idol/.test(line) && /supporting producer/i.test(line)),
+      `expected an orphan-payoff weakness, got: ${JSON.stringify(summary.weaknesses)}`,
+    );
+    assert.ok(summary.observedFindings.some((line) => /2 orphan payoffs/i.test(line)));
+    assertNoResearchLeak(JSON.stringify(summary));
+  });
+
+  it("stays silent about orphan payoffs when there are none", () => {
+    const summary = buildHonestCoachSummary({
+      selected: {
+        ...selectedFixture,
+        strategicCoherence: { status: "connected", orphanPayoffs: [] },
+      },
+      isImported: true,
+    });
+    assert.ok(!summary.weaknesses.some((line) => /orphan|producer elsewhere/i.test(line)));
+  });
+
+  const emptyCritique = { weaklyJustified: [], redundant: [], overSupported: [], underSupportedAnchors: [], rawPowerDominant: [], packageCritical: [] };
+
+  it("fixFirst and interpretive guidance fall back to a named orphan payoff when no card is flagged", () => {
+    const summary = buildHonestCoachSummary({
+      selected: {
+        ...selectedFixture,
+        slotJustificationLedger: { critique: emptyCritique },
+        strategicCoherence: { status: "connected-with-isolated-payoffs", orphanPayoffs: ["Lonely Reaper"] },
+      },
+      isImported: true,
+    });
+    assert.equal(summary.fixFirst, "Lonely Reaper");
+    assert.ok(
+      summary.interpretiveGuidance.some((line) => /Lonely Reaper/.test(line) && /before adding more raw power/i.test(line)),
+      `expected structural interpretive guidance, got: ${JSON.stringify(summary.interpretiveGuidance)}`,
+    );
+  });
+
+  it("fixFirst falls back to the weakest construction stage when there are no flagged cards or orphan payoffs", () => {
+    const summary = buildHonestCoachSummary({
+      selected: {
+        ...selectedFixture,
+        slotJustificationLedger: { critique: emptyCritique },
+        strategicSequence: {
+          status: "sequence-needs-support",
+          weakestStage: "close",
+          overallCoverage: 0.8,
+          stages: { close: { count: 0, floor: 6, coverage: 0 } },
+        },
+      },
+      isImported: true,
+    });
+    assert.equal(summary.fixFirst, "Closing out a game you're ahead in");
+  });
+
+  it("fixFirst falls back to commander connection only when nothing more specific is flagged", () => {
+    const summary = buildHonestCoachSummary({
+      selected: {
+        ...selectedFixture,
+        slotJustificationLedger: { critique: emptyCritique },
+        commanderCompatibility: { status: "no-supported-connection-in-pool" },
+      },
+      isImported: true,
+    });
+    assert.equal(summary.fixFirst, "commander connection");
+  });
+
+  it("prefers a flagged card over structural signals for fixFirst when both exist", () => {
+    const summary = buildHonestCoachSummary({
+      selected: {
+        ...selectedFixture,
+        strategicCoherence: { status: "connected-with-isolated-payoffs", orphanPayoffs: ["Lonely Reaper"] },
+      },
+      isImported: true,
+    });
+    assert.equal(summary.fixFirst, "Filler Charm");
+  });
+
+  it("locks in weakness priority order when every signal fires at once (push order wins the 5-slot cap)", () => {
+    const summary = buildHonestCoachSummary({
+      selected: {
+        evaluation: { cohesion: 72, roleCoverage: 0.8, resilience: 60 },
+        strategicIntent: {
+          strategy: "Focused",
+          packages: [{ id: "aura", label: "Aura package" }],
+          commanders: [{ name: "Light-Paws" }],
+        },
+        strategicCohesionGate: { ok: false, reasons: ["Gate failure reason."] },
+        slotJustificationLedger: {
+          critique: {
+            weaklyJustified: ["Weak Card"],
+            redundant: ["Redundant Card"],
+            overSupported: ["OverSupported Card"],
+            underSupportedAnchors: ["Anchor Card"],
+            rawPowerDominant: ["Power Card"],
+            packageCritical: [],
+          },
+        },
+        strategicSequence: {
+          status: "sequence-needs-support",
+          weakestStage: "close",
+          overallCoverage: 0.8,
+          stages: { close: { count: 0, floor: 6, coverage: 0 } },
+        },
+        commanderCompatibility: { status: "no-supported-connection-in-pool" },
+        strategicCoherence: { status: "connected-with-isolated-payoffs", orphanPayoffs: ["Orphan Card"] },
+      },
+      structuralSystems: { weakestSystem: { name: "Weakest System" } },
+      isImported: true,
+    });
+    assert.deepEqual([...summary.weaknesses], [
+      "1 card look weakly justified for the plan (including Weak Card).",
+      "Redundant package pieces: Redundant Card.",
+      "Package density may be over-supported: OverSupported Card.",
+      "High-cost package anchors lack enough support: Anchor Card.",
+      "Some expensive cards read more like raw power than plan support: Power Card.",
+    ]);
+  });
 });

@@ -179,6 +179,52 @@ const PACKAGE_PLAN_STORY = freeze({
   }),
 });
 
+// Deep Forge may say "Treasure Engine". Coach default must not.
+const SYSTEM_PLAYER_PHRASE = freeze({
+  "Token Engine": "your token makers",
+  "Treasure Engine": "your treasure and ramp pieces",
+  "Artifact Engine": "your artifact pieces",
+  "Counter Engine": "your counters and proliferate pieces",
+  "Graveyard Engine": "your graveyard pieces",
+  "Sacrifice Engine": "your sacrifice outlets and fodder",
+  "Card-Flow Engine": "your card-draw pieces",
+  "Spellcraft Engine": "your spell payoffs",
+  "Land Engine": "your landfall pieces",
+  "Life Engine": "your lifegain payoffs",
+  "Enter-the-Battlefield Engine": "your enter-the-battlefield value",
+  "Combat Engine": "your combat payoffs",
+  "Evasion Engine": "your evasion pieces",
+  "Protection Engine": "your protection pieces",
+});
+
+/** Translate internal system labels into player-facing coach language. */
+export function playerFacingSystemPhrase(name = "") {
+  const raw = String(name || "").trim();
+  if (!raw) return "";
+  if (SYSTEM_PLAYER_PHRASE[raw]) return SYSTEM_PLAYER_PHRASE[raw];
+  const engine = raw.match(/^(.+?)\s+Engine$/i);
+  if (engine) return `your ${engine[1].toLowerCase()} pieces`;
+  return raw;
+}
+
+function isInternalSystemLabel(name = "") {
+  const raw = String(name || "").trim();
+  if (!raw) return false;
+  return Boolean(SYSTEM_PLAYER_PHRASE[raw] || /\bEngine\b/i.test(raw));
+}
+
+/** Append a watch target without leaking Engine taxonomy or repeating the soft spot. */
+function appendFixFirstWatch(stop, fixFirst) {
+  if (!fixFirst) return stop;
+  const raw = String(fixFirst).trim();
+  if (!raw) return stop;
+  const phrase = playerFacingSystemPhrase(raw);
+  if (String(stop).includes(raw) || String(stop).includes(phrase)) return stop;
+  return isInternalSystemLabel(raw)
+    ? `${stop} Soft spot on paper: ${phrase}.`
+    : `${stop} The first card I'd watch in real games is ${raw}.`;
+}
+
 function sampleNames(names = [], limit = 3) {
   const list = [...names].filter(Boolean);
   if (!list.length) return "";
@@ -212,10 +258,13 @@ export function buildCoachPlanStory({
     : null;
   const story = primary || artifactFallback;
 
+  const strongestPhrase = playerFacingSystemPhrase(strongestSystemName);
+  const weakestPhrase = playerFacingSystemPhrase(weakestSystemName);
+
   let title = story?.title || null;
   if (!title && labels[0]) title = String(labels[0]).replace(/\s+package$/i, " Plan");
   if (!title && strategy) title = `${String(strategy)} Plan`;
-  if (!title && strongestSystemName) title = strongestSystemName;
+  if (!title && strongestPhrase) title = strongestPhrase.replace(/^your\s+/i, "").replace(/^\w/, (c) => c.toUpperCase());
   if (!title) title = "Commander Plan";
 
   const plan = story
@@ -232,17 +281,17 @@ export function buildCoachPlanStory({
 
   const mid = story
     ? story.mid(commander)
-    : strongestSystemName
-      ? `The deck becomes dangerous once ${strongestSystemName} is online and ${commander} has survived long enough to convert that structure into pressure.`
+    : strongestPhrase
+      ? `The deck becomes dangerous once you have ${strongestPhrase} online and ${commander} has survived long enough to convert that structure into pressure.`
       : `The deck becomes dangerous once ${commander} has been on board for a few turns and your support pieces start chaining into each other.`;
 
   let stop = story
     ? story.stop(commander)
     : `Removal aimed at ${commander}, plus sweepers that reset your setup, will slow the plan dramatically. If you expect those effects, hold one key piece instead of committing everything.`;
-  if (weakestSystemName) {
-    stop = `${stop} Right now the clearest soft spot on paper is ${weakestSystemName}.`;
-  } else if (fixFirst) {
-    stop = `${stop} The first card I'd watch in real games is ${fixFirst}.`;
+  if (weakestPhrase) {
+    stop = `${stop} Right now the clearest soft spot on paper is ${weakestPhrase}.`;
+  } else {
+    stop = appendFixFirstWatch(stop, fixFirst);
   }
   if (secondaryLabel && story) {
     stop = `${stop} You also have ${secondaryLabel} support — clarify which package should dominate before thickening both.`;
@@ -278,13 +327,12 @@ export function buildCoachPlanStoryFromRecognition({
   const mid = pilot?.whenDangerous
     || pilot?.compound
     || `The deck becomes dangerous once ${commanderName} and the primary support system are both online.`;
-  let stop = recognition?.hierarchy?.pressurePoint
-    ? `Watch ${recognition.hierarchy.pressurePoint} first — if that soft spot collapses, the primary plan loses its support. ${pilot?.protect || ""}`.trim()
+  const pressurePhrase = playerFacingSystemPhrase(recognition?.hierarchy?.pressurePoint);
+  let stop = pressurePhrase
+    ? `Watch ${pressurePhrase} first — if that soft spot collapses, the primary plan loses its support. ${pilot?.protect || ""}`.trim()
     : (pilot?.protect
       || `Removal aimed at ${commanderName}, plus sweepers that reset your setup, will slow the plan dramatically.`);
-  if (fixFirst && !String(stop).includes(String(fixFirst))) {
-    stop = `${stop} The first card I'd watch in real games is ${fixFirst}.`;
-  }
+  stop = appendFixFirstWatch(stop, fixFirst);
   return freeze({
     title,
     plan,
@@ -388,6 +436,15 @@ function planIdentity(selected = {}) {
   });
 }
 
+/** Plain-language labels for Brain v1's five deckbuilding stages. */
+const SEQUENCE_STAGE_LABELS = freeze({
+  setup: "Getting your engine online early",
+  stabilize: "Surviving early pressure",
+  convert: "Turning your engine into advantage",
+  recover: "Bouncing back after disruption",
+  close: "Closing out a game you're ahead in",
+});
+
 function strengthsAndWeaknesses(selected = {}, structuralSystems = null, commissionContract = null) {
   const ledger = selected.slotJustificationLedger;
   const critique = ledger?.critique || {};
@@ -469,9 +526,37 @@ function strengthsAndWeaknesses(selected = {}, structuralSystems = null, commiss
   if (gate && gate.ok === false && (gate.reasons || []).length) {
     weaknesses.push(gate.reasons[0]);
   }
-  if (!fantasy && structuralSystems?.weakestSystem?.name) {
-    weaknesses.push(`Least supported system right now: ${structuralSystems.weakestSystem.name}.`);
+  const sequence = selected.strategicSequence;
+  const weakestStageInfo = sequence?.weakestStage ? sequence.stages?.[sequence.weakestStage] : null;
+  const stageLabel = weakestStageInfo ? (SEQUENCE_STAGE_LABELS[sequence.weakestStage] || sequence.weakestStage) : null;
+  if (sequence?.status === "sequence-needs-support" && weakestStageInfo) {
+    weaknesses.push(
+      `${stageLabel} is this deck's thinnest construction stage — ${weakestStageInfo.count} of the ~${weakestStageInfo.floor} cards that usually cover it made the cut.`,
+    );
   }
+  const commanderConnection = selected.commanderCompatibility;
+  const commanderConnectionGap = commanderConnection?.status === "no-supported-connection-in-pool";
+  if (commanderConnectionGap) {
+    weaknesses.push(
+      "Your commander has a real card package built around it, but none of it was available in this legal pool, so nothing in this build connects back to it directly.",
+    );
+  }
+  const coherence = selected.strategicCoherence;
+  const orphanPayoffs = coherence?.orphanPayoffs || [];
+  if (orphanPayoffs.length) {
+    weaknesses.push(`Some payoffs don't have a supporting producer elsewhere in the deck: ${sampleNames(orphanPayoffs)}.`);
+  }
+  if (!fantasy && structuralSystems?.weakestSystem?.name) {
+    weaknesses.push(`Least supported system right now: ${playerFacingSystemPhrase(structuralSystems.weakestSystem.name)}.`);
+  }
+
+  // Structural "what to fix first" fallback for decks whose only real issue
+  // isn't a single flagged card — checked in this order because a named
+  // orphan payoff is the most concrete (one card to look at), a thin
+  // construction stage is the next most specific (one named job), and "no
+  // commander connection" is the least actionable single pointer (nothing
+  // legal existed to include, so there is no one card to point at).
+  const structuralFocus = orphanPayoffs[0] || stageLabel || (commanderConnectionGap ? "commander connection" : null);
 
   if (!strengths.length) strengths.push("The finished list is complete; named package strengths are still thin in the evidence.");
   if (!weaknesses.length) weaknesses.push("No major weakly justified slots stood out in the ledger — watch real games for the first pressure point.");
@@ -481,8 +566,8 @@ function strengthsAndWeaknesses(selected = {}, structuralSystems = null, commiss
     weaknesses: freeze(weaknesses.slice(0, 5)),
     weaklyJustified: freeze(weak),
     fixFirst: fantasyGrade?.status === "partial" || fantasyGrade?.status === "missed"
-      ? fantasy?.label || weak[0] || redundant[0] || overSupported[0] || underAnchors[0] || rawPower[0] || structuralSystems?.weakestSystem?.name || null
-      : weak[0] || redundant[0] || overSupported[0] || underAnchors[0] || rawPower[0] || structuralSystems?.weakestSystem?.name || null,
+      ? fantasy?.label || weak[0] || redundant[0] || overSupported[0] || underAnchors[0] || rawPower[0] || structuralFocus || structuralSystems?.weakestSystem?.name || null
+      : weak[0] || redundant[0] || overSupported[0] || underAnchors[0] || rawPower[0] || structuralFocus || structuralSystems?.weakestSystem?.name || null,
     observedFindings: freeze([
       ...(fantasy?.label ? [`Observed: commissioned fantasy ${fantasy.label}.`] : []),
       ...(packageLabels.length ? [`Observed: package support for ${packageLabels.slice(0, 3).join(", ")}.`] : []),
@@ -491,7 +576,16 @@ function strengthsAndWeaknesses(selected = {}, structuralSystems = null, commiss
       ...(Number.isFinite(Number(evaluation.roleCoverage))
         ? [`Observed: role coverage about ${Math.round(Number(evaluation.roleCoverage) * 100)}%.`]
         : []),
-    ].slice(0, 4)),
+      ...(sequence?.status === "sequence-needs-support" && weakestStageInfo
+        ? [`Observed: thinnest construction stage is "${SEQUENCE_STAGE_LABELS[sequence.weakestStage] || sequence.weakestStage}" (${Math.round((sequence.overallCoverage || 0) * 100)}% overall stage coverage).`]
+        : []),
+      ...(commanderConnection?.status === "no-supported-connection-in-pool"
+        ? ["Observed: commander package detected but no supported piece was legal in this pool."]
+        : []),
+      ...(orphanPayoffs.length
+        ? [`Observed: ${orphanPayoffs.length} orphan payoff${orphanPayoffs.length === 1 ? "" : "s"} with no producer in this list.`]
+        : []),
+    ].slice(0, 5)),
     interpretiveGuidance: freeze([
       ...(fantasyGrade?.status === "partial" || fantasyGrade?.status === "missed"
         ? [`I'd treat the ${fantasy.label} commission grade as the first honesty check before thickening secondary engines.`]
@@ -502,10 +596,13 @@ function strengthsAndWeaknesses(selected = {}, structuralSystems = null, commiss
       ...(packageLabels.length >= 2
         ? ["I'd clarify which package should dominate before thickening both sides."]
         : []),
+      ...(!fantasy && !weak[0] && !redundant[0] && !overSupported[0] && structuralFocus
+        ? [`I'd look at ${structuralFocus} before adding more raw power.`]
+        : []),
       ...(!fantasy && structuralSystems?.weakestSystem?.name
         ? [`I'd watch ${structuralSystems.weakestSystem.name} first in real games.`]
         : []),
-    ].slice(0, 3)),
+    ].slice(0, 4)),
   });
 }
 
@@ -708,7 +805,10 @@ export function buildHonestCoachSummary({
   const whatToFixFirst = planStory.stop;
   const why = sw.weaknesses[0];
   const observedLead = sw.observedFindings[0] || why;
-  const inferredLead = sw.interpretiveGuidance[0] || (sw.fixFirst ? `I would look at ${sw.fixFirst} first.` : planStory.stop);
+  const inferredLead = sw.interpretiveGuidance[0]
+    || (sw.fixFirst
+      ? `I would look at ${playerFacingSystemPhrase(sw.fixFirst)} first.`
+      : planStory.stop);
   const uncertaintyLead = deckUnderstanding?.cardsUnresolved
     ? `${deckUnderstanding.cardsUnresolved} unresolved card${deckUnderstanding.cardsUnresolved === 1 ? "" : "s"} may strengthen or change that conclusion.`
     : recognition.ambiguous && !commissionContract?.playerFantasy
