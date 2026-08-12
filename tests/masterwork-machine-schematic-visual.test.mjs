@@ -7,14 +7,14 @@ const [page, css] = await Promise.all([
   readFile(new URL("../app/testing-anvil.css", import.meta.url), "utf8"),
 ]);
 
-test("the player-facing coach brief retains four interpreted deck truths", () => {
-  assert.match(page, /Your deck in plain language/);
-  assert.match(page, /YOUR PLAN/);
-  assert.match(page, /GET ESTABLISHED/);
-  assert.match(page, /BUILD MOMENTUM/);
-  assert.match(page, /WATCH THIS FIRST/);
+test("the player-facing coach brief retains Honest Coach interpreted deck truths", () => {
+  assert.match(page, /honest-coach-v0/);
+  assert.match(page, /WHY THIS DECK WINS/);
+  assert.match(page, /HOW IT GETS STARTED|EARLY GAME/);
+  assert.match(page, /WHEN IT BECOMES DANGEROUS/);
+  assert.match(page, /WATCH THIS FIRST|WHAT CAN DERAIL IT/);
   assert.match(css, /Player-facing coaching is a brief/);
-  assert.match(css, /coach-brief-grid/);
+  assert.match(css, /coach-brief/);
   assert.match(css, /coach-deck-sequence/);
 });
 

@@ -164,6 +164,173 @@ step that's actually in focus. */
 @media(max-width:980px){.coach-brief-grid{grid-template-columns:1fr 1fr}.coach-deck-sequence{grid-template-columns:1fr 1fr}.coach-deck-sequence li:nth-child(3){border-left:0}.coach-deck-sequence li:not(:last-child):after{display:none}}
 @media(max-width:620px){.coach-brief-grid,.coach-deck-sequence{grid-template-columns:1fr}.coach-deck-sequence li+li{border-left:0}.coach-brief>footer{align-items:stretch;flex-direction:column}.coach-brief>footer button{width:100%}}
 
+/* Honest Coach v0.2 — unmissable + measurable (Product Sprint Alpha A2) */
+.honest-coach-v0 .honest-coach-confidence{display:block;margin:14px 0 0;padding:10px 12px;border:1px solid #3d524b;background:#0c1613}
+.honest-coach-v0 .honest-coach-confidence>summary{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:baseline;cursor:pointer;list-style:none}
+.honest-coach-v0 .honest-coach-confidence>summary::-webkit-details-marker{display:none}
+.honest-coach-v0 .honest-coach-confidence strong{color:#8fd4c3;font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.honest-coach-v0 .honest-coach-confidence span{color:#93a49d;font-size:12px;line-height:1.45}
+.honest-coach-v0 .honest-coach-confidence>p{margin:10px 0 0;color:#b7c4be;font-size:12px;line-height:1.5}
+.honest-coach-v0 .honest-coach-confidence.limited{border-color:#6a4e33}.honest-coach-v0 .honest-coach-confidence.limited strong{color:#e0a066}
+.honest-coach-v0 .honest-coach-confidence.high{border-color:#3f6a5c}
+.honest-coach-understanding{margin:14px 0 0;padding:12px 14px;border:1px solid #3d524b;background:#0c1613}
+.honest-coach-understanding strong{display:block;color:#8fd4c3;font-size:12px;letter-spacing:.04em}
+.honest-coach-understanding p{margin:6px 0 0;color:#93a49d;font-size:12px;line-height:1.45}
+.honest-coach-understanding ul{margin:8px 0 0;padding-left:18px;color:#c5d0cb;font-size:12px}
+.honest-coach-understanding.insufficient{border-color:#6a4e33}
+.honest-coach-understanding.limited{border-color:#6a4e33}
+.honest-coach-insufficient{margin:12px 0 0;padding:12px 14px;border:1px solid #6a4e33;background:#1a120c;color:#e0a066;font-size:13px;line-height:1.5}
+.honest-coach-strategy-vs-system{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin-top:16px;padding:1px;background:#405048}
+.honest-coach-strategy-vs-system>article{padding:14px 16px;background:linear-gradient(155deg,#111b18,#0b1210)}
+.honest-coach-strategy-vs-system small{display:block;color:#72c7b5;font-size:9px;font-weight:900;letter-spacing:.12em}
+.honest-coach-strategy-vs-system strong{display:block;margin-top:8px;color:#e7ece8;font:600 16px/1.25 Newsreader,Georgia,serif}
+.honest-coach-strategy-vs-system span{display:block;margin-top:6px;color:#8fa099;font-size:11px;text-transform:capitalize}
+.honest-coach-strategy-vs-system p{margin:8px 0 0;color:#b7c4be;font-size:12px;line-height:1.45}
+.honest-coach-claim-uncertainty em{color:#e0a066}
+@media(max-width:620px){.honest-coach-strategy-vs-system{grid-template-columns:1fr}}
+
+/* Founder Issue #023 — Request Recognition (Did I hear you?) */
+.request-recognition{margin:14px 0 0;padding:14px 16px;border:1px solid #4a5f57;background:linear-gradient(155deg,#111b18,#0c1411)}
+.request-recognition>header{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline}
+.request-recognition>header small{color:#72c7b5;font-size:9px;font-weight:900;letter-spacing:.14em}
+.request-recognition>header strong{color:#e7ece8;font:600 16px/1.2 Newsreader,Georgia,serif}
+.request-recognition-heard{display:grid;gap:8px;margin:12px 0 0;padding:0;list-style:none}
+.request-recognition-heard li{padding:8px 10px;border:1px solid #30433d;background:#0a1210}
+.request-recognition-heard b{display:block;color:#cfe7df;font-size:12px}
+.request-recognition-heard span{display:block;margin-top:4px;color:#8fa099;font-size:11px;line-height:1.45}
+.request-recognition-heard .status-partial b{color:#e0c08a}
+.request-recognition-adjustment{margin-top:12px;padding:12px;border-left:2px solid #d9843d;background:#171008}
+.request-recognition-adjustment small{display:block;color:#e89848;font-size:9px;font-weight:900;letter-spacing:.14em}
+.request-recognition-adjustment p{margin:6px 0 0;color:#c9d5d0;font-size:12px;line-height:1.55}
+.request-recognition-fidelity{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.request-recognition-fidelity>span{padding:10px;border:1px solid #334a43;background:#081311}
+.request-recognition-fidelity small{display:block;color:#879a93;font-size:8px;font-weight:900;letter-spacing:.1em}
+.request-recognition-fidelity b{display:block;margin-top:5px;color:#8ee0cd;font:700 18px/1 ui-monospace,monospace}
+.request-recognition-fidelity i{display:block;height:3px;margin-top:7px;overflow:hidden;background:#21342f}
+.request-recognition-fidelity em{display:block;height:100%;background:linear-gradient(90deg,#3b796c,#e09247)}
+.request-recognition-fidelity>p{grid-column:1/-1;margin:0;color:#9aaba5;font-size:11px;line-height:1.45}
+@media(max-width:620px){.request-recognition-fidelity{grid-template-columns:1fr}}
+.request-recognition-note{margin:12px 0 0;padding:10px 11px;border:1px solid #30433d;background:#0a1210;color:#c9d5d0;font-size:13px;line-height:1.45}
+.masterworks-request-recognition.is-loud{margin:18px 0 0;padding:18px 20px;border-color:#6d9e8f;box-shadow:inset 0 0 0 1px rgba(114,199,181,.18)}
+.masterworks-request-recognition.is-loud>header strong{font:650 26px/1.2 Newsreader,Georgia,serif;color:#f2f7f4}
+.request-recognition-checklist{display:grid;gap:10px;margin:16px 0 0;padding:0;list-style:none}
+.request-recognition-checklist li{padding:12px 14px;border:1px solid #3d5a50;background:linear-gradient(120deg,#12201b,#0b1411)}
+.request-recognition-checklist b{display:block;color:#e8f6f0;font:650 18px/1.25 Newsreader,Georgia,serif}
+.request-recognition-receipts{margin-top:14px}
+.request-recognition-receipts>summary{cursor:pointer;color:#72c7b5;font-size:11px;font-weight:800;letter-spacing:.04em}
+.coach-next-game-focus{margin:18px 0 0;padding:16px 18px;border:1px solid #4a5f57;background:linear-gradient(155deg,#141c14,#0d1510)}
+.coach-next-game-focus small{display:block;color:#72c7b5;font-size:9px;font-weight:900;letter-spacing:.14em}
+.coach-next-game-focus strong{display:block;margin-top:8px;color:#f2f7f4;font:650 22px/1.25 Newsreader,Georgia,serif}
+.coach-next-game-focus p{margin:8px 0 0;color:#c9d5d0;font-size:14px;line-height:1.5}
+.coach-next-game-focus button{margin-top:14px;padding:10px 14px;border:1px solid #6d9e8f;background:#10201b;color:#dff5ee;font:700 12px/1 ui-sans-serif,system-ui,sans-serif;letter-spacing:.04em;cursor:pointer}
+.honest-coach-plan-chip{display:inline-block;margin:8px 0 0;padding:4px 8px;border:1px solid #334a43;background:#0a1411;color:#8ee0cd;font-size:11px;font-weight:700;letter-spacing:.04em}
+.commission-contract .commission-clause-role{display:block;margin-top:4px;color:#7f948c;font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+.commission-built{margin-top:16px;padding-top:14px;border-top:1px solid #30433d}
+.commission-built>header{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:baseline;justify-content:space-between}
+.commission-built>header strong{color:#e7ece8;font:600 16px/1.2 Newsreader,Georgia,serif}
+.commission-match{color:#8ee0cd;font:700 12px/1.2 ui-monospace,monospace}
+.commission-match-honesty{margin:10px 0 0;color:#9aaca5;font-size:12px;line-height:1.45}
+.commission-contract.is-mismatch{border-color:#a86a4a;box-shadow:0 0 0 1px #a86a4a55}
+.commission-contract.is-mismatch>header strong{color:#f0c2a8}
+.commission-built-list{margin-top:12px}
+.commission-built-list .status-missed b{color:#d7a08a}
+.commission-built-list .status-partial b{color:#e0c08a}
+.commission-fantasy-support{margin:14px 0 0;padding:10px 12px;border-left:2px solid #72c7b5;background:#0c1512;color:#c9d5d0;font-size:13px;line-height:1.5}
+.request-recognition-note small{display:block;margin-bottom:5px;color:#72c7b5;font-size:9px;font-weight:900;letter-spacing:.12em}
+.masterworks-request-recognition{max-width:920px;margin:18px auto 0}
+.conversation-evidence-link{
+  display:inline-flex;
+  margin-top:12px;
+  padding:0;
+  border:0;
+  background:transparent;
+  color:#8fd4c3;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.04em;
+  cursor:pointer;
+  text-decoration:underline;
+  text-underline-offset:3px;
+}
+.conversation-evidence-link:hover,
+.conversation-evidence-link:focus-visible{
+  outline:0;
+  color:#c8ece2;
+}
+.honest-coach-strategy-vs-system .strategy-vs-system-evidence{
+  grid-column:1/-1;
+  justify-self:start;
+  margin-top:0;
+  padding:12px 16px;
+  background:#0b1210;
+}
+
+.honest-coach-priority-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;margin-top:22px;padding:1px;background:#405048}
+.honest-coach-priority-grid>article{min-height:150px;padding:18px;background:linear-gradient(155deg,#111b18,#0b1210)}
+.honest-coach-priority-grid>article.coach-brief-watch{background:linear-gradient(155deg,#25190f,#111713)}
+.honest-coach-priority-grid small{display:block;color:#72c7b5;font-size:9px;font-weight:900;letter-spacing:.12em}
+.honest-coach-priority-grid>.coach-brief-watch small{color:#e49a51}
+.honest-coach-priority-grid p{margin:12px 0 0;color:#c5d0cb;font:500 13px/1.55 Inter,system-ui,sans-serif}
+.honest-coach-claim-observed,.honest-coach-claim-inferred{margin:10px 0 0}
+.honest-coach-claim-observed em,.honest-coach-claim-inferred em{display:block;margin-bottom:4px;color:#72c7b5;font:900 9px/1.2 Inter,system-ui,sans-serif;letter-spacing:.12em;font-style:normal;text-transform:uppercase}
+.honest-coach-claim-inferred em{color:#e49a51}
+.honest-coach-drilldown{margin-top:18px;padding:12px 14px;border:1px solid #35463f;background:#0b1311;color:#9aaba4}
+.honest-coach-drilldown>summary{cursor:pointer;color:#8fcfbe;font-size:12px;font-weight:700}
+.honest-coach-drilldown-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px}
+.honest-coach-drilldown-grid small{display:block;margin-bottom:6px;color:#72c7b5;font-size:9px;font-weight:900;letter-spacing:.12em}
+.honest-coach-drilldown-grid ul{margin:0;padding-left:18px;color:#b7c4be;font-size:12px;line-height:1.5}
+.honest-coach-packages{margin:12px 0 0;color:#8fa099;font-size:12px}
+.honest-coach-id-chip{display:inline-block;margin-top:10px;color:#6f837c;font:500 10px/1.3 ui-monospace,monospace;letter-spacing:.04em}
+.honest-coach-feedback{margin-top:18px;padding:16px 18px;border:1px solid #3d524b;background:#0c1613}
+.honest-coach-feedback>small{display:block;color:#78cfbd;font-size:9px;font-weight:900;letter-spacing:.13em}
+.honest-coach-feedback>b{display:block;margin-top:6px;color:#e7ece8;font-size:13px}
+.honest-coach-feedback-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.honest-coach-feedback-actions button{padding:8px 10px;border:1px solid #526b63;background:#10201c;color:#8fcfbe;font-size:10px;font-weight:800;cursor:pointer}
+.honest-coach-feedback-actions button:hover:not(:disabled),.honest-coach-feedback-actions button:focus-visible{outline:0;border-color:#75cdb9;color:#d7fff4}
+.honest-coach-feedback-actions button:disabled{opacity:.55;cursor:default}
+.honest-coach-not-helpful-reasons{margin-top:12px;padding-top:12px;border-top:1px solid #35463f}
+.honest-coach-not-helpful-reasons>small{display:block;color:#e0a066;font-size:10px;font-weight:800;letter-spacing:.08em}
+.honest-coach-feedback-note{display:grid;gap:6px;margin-top:12px;color:#8fa099;font-size:11px}
+.honest-coach-feedback-note textarea{width:100%;padding:8px 10px;border:1px solid #35463f;background:#0a1210;color:#d5dfda;font:500 12px/1.4 Inter,system-ui,sans-serif;resize:vertical}
+.honest-coach-feedback p[role="status"]{margin:10px 0 0;color:#93b5aa;font-size:12px}
+.honest-why dt{color:#e0a066!important}
+.honest-why dd p{margin:0 0 8px}
+.honest-coach-tablet-feedback{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px;padding-top:10px;border-top:1px solid #35463f}
+.honest-coach-tablet-feedback small{width:100%;color:#8fa099;font-size:10px}
+.honest-coach-tablet-feedback button{padding:6px 8px;border:1px solid #526b63;background:#10201c;color:#8fcfbe;font-size:9px;font-weight:800;cursor:pointer}
+/* Coach brief visible on Deck + Tune chapters (was gated to unused chapter-3). */
+.progressive-results .chapter-1-active .forge-understanding-bridge.honest-coach-v0,
+.progressive-results .chapter-2-active .forge-understanding-bridge.honest-coach-v0{display:block;order:-1;margin-top:0}
+.progressive-results .testing-layout.imported-deck-review.chapter-1-active .forge-understanding-bridge.honest-coach-v0{order:-2}
+.honest-coach-plan h3{margin:10px 0 8px;color:#e7ece8;font:600 20px/1.2 Newsreader,Georgia,serif}
+.honest-coach-priority-grid>.honest-coach-plan{background:linear-gradient(155deg,#14221d,#0b1210)}
+.deck-reference-strip img.commander-art-crop,.commander-art-crop{width:56px;height:56px;border-radius:8px;object-fit:cover;object-position:center 18%;flex-shrink:0}
+@media(max-width:980px){.honest-coach-priority-grid,.honest-coach-drilldown-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:620px){.honest-coach-priority-grid,.honest-coach-drilldown-grid{grid-template-columns:1fr}.honest-coach-v0 .honest-coach-confidence>summary{flex-direction:column;align-items:flex-start}.honest-coach-feedback-actions button{flex:1 1 calc(50% - 8px)}}
+
+/* Mobile: stop fighting the phone with a desktop split-pane deck preview. */
+@media(max-width:760px){
+  .progressive-results .forge-next-step-secondary{display:none}
+  .progressive-results .testing-layout.imported-deck-review.chapter-1-active .forge-understanding-bridge.honest-coach-v0{order:-3;margin-bottom:14px}
+  .deck-gallery,.workbench-deck-view .deck-gallery,.ledger-deck-view .deck-gallery{
+    display:flex!important;
+    flex-direction:column;
+    gap:12px;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+    padding:12px!important;
+  }
+  .card-preview-stage{
+    position:static!important;
+    top:auto!important;
+    z-index:auto!important;
+    display:none!important;
+  }
+  .type-columns{columns:1!important;width:100%}
+  .type-column>.type-column-row{grid-template-columns:28px minmax(0,1fr) auto auto;padding-block:10px}
+}
+
 /* First Experiment Gate: the player's first decision precedes the deck reveal. */
 .opening-experiment-pending .result-view-controls,.opening-experiment-pending .forge-chapter-rail,.opening-experiment-pending .testing-layout{display:none}
 .opening-experiment-gate{width:min(1480px,100%);margin:0 auto;border:1px solid #6c593f;background:radial-gradient(circle at 50% -10%,#83471d35,transparent 35%),linear-gradient(145deg,#111713,#0a100e 68%,#17110b);box-shadow:0 34px 90px #000c}
@@ -389,3 +556,177 @@ step that's actually in focus. */
 .deck-gallery-loading{display:flex;min-height:500px;align-items:center;justify-content:center;gap:18px;padding:36px;border-inline:1px solid #485650;background:#070d0ee8;text-align:left}.deck-gallery-loading>span{width:34px;height:34px;flex:0 0 auto;border:2px solid #29443d;border-top-color:var(--ember);border-radius:50%;animation:deck-organizing-spin .8s linear infinite}.deck-gallery-loading small,.deck-gallery-loading strong,.deck-gallery-loading p{display:block}.deck-gallery-loading small{color:var(--ember);font-size:11px;font-weight:900;letter-spacing:.16em}.deck-gallery-loading strong{margin-top:7px;color:#edf2ed;font:600 21px Newsreader,Georgia,serif}.deck-gallery-loading p{margin:6px 0 0;color:#91a19c;font-size:12px}@keyframes deck-organizing-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.deck-gallery-loading>span{animation:none}}
 .deck-gallery-loading button{margin-top:14px;padding:10px 14px;border:1px solid #5d8d81;background:#10211f;color:var(--teal);font-weight:800}.deck-gallery-loading:has(button)>span{animation:none;border-color:#6b4932}
 .deck-gallery-notice{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 16px;border:1px solid #3d574f;background:#0c1714;color:#a9bbb5;font-size:12px}.deck-gallery-notice button{flex:0 0 auto;padding:8px 11px;border:1px solid #52776d;background:#10211d;color:var(--teal);font-weight:800}
+
+/* Founder Issue #021 — context-preserving card inspection.
+   When Deep Forge scrolls the gallery preview off-screen, card clicks open
+   a floating inspector beside the reading position instead of a silent
+   off-screen update. */
+.forge-card-ref{
+  display:inline;
+  margin:0;
+  padding:0;
+  border:0;
+  background:transparent;
+  color:inherit;
+  font:inherit;
+  text-decoration:underline;
+  text-decoration-color:#6f503580;
+  text-underline-offset:2px;
+  cursor:pointer;
+}
+.forge-card-ref:hover,
+.forge-card-ref:focus-visible{
+  color:#f0d2a8;
+  text-decoration-color:#f0d2a8;
+  outline:none;
+}
+.forge-context-card-inspector{
+  position:fixed;
+  z-index:220;
+  right:max(16px,env(safe-area-inset-right));
+  bottom:max(16px,env(safe-area-inset-bottom));
+  width:min(280px,calc(100vw - 32px));
+  overflow:hidden;
+  border:1px solid #6f5035;
+  border-radius:10px;
+  background:linear-gradient(160deg,#0d1412f7,#15100cf5);
+  box-shadow:0 22px 70px #000e,0 0 0 1px #0006;
+  color:#dbe5e1;
+  animation:forge-context-inspect-in .28s ease-out;
+}
+.forge-context-card-inspector>header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px 12px;
+  border-bottom:1px solid #3a453e;
+  background:#0a1110;
+}
+.forge-context-card-inspector>header small{
+  color:#dc8b3c;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.16em;
+}
+.forge-context-card-inspector-close{
+  width:30px;
+  height:30px;
+  border:1px solid #5d4a39;
+  border-radius:50%;
+  background:#090d0c;
+  color:#f3e5d2;
+  font-size:20px;
+  line-height:1;
+  cursor:pointer;
+}
+.forge-context-card-inspector-close:hover,
+.forge-context-card-inspector-close:focus-visible{
+  outline:2px solid var(--ember);
+  color:#fff;
+}
+.forge-context-card-inspector-art{
+  display:grid;
+  width:100%;
+  padding:14px 14px 0;
+  border:0;
+  background:transparent;
+  cursor:zoom-in;
+  place-items:center;
+}
+.forge-context-card-inspector-art img{
+  display:block;
+  width:min(100%,210px);
+  border-radius:4.75% / 3.5%;
+  box-shadow:0 14px 36px #000c;
+}
+.forge-context-card-inspector-art span{
+  padding:36px 12px;
+  color:#80968e;
+  font-size:12px;
+}
+.forge-context-card-inspector-body{
+  padding:12px 14px 16px;
+}
+.forge-context-card-inspector-body>strong{
+  display:block;
+  color:#f4eee6;
+  font:600 18px/1.2 Newsreader,Georgia,serif;
+}
+.forge-context-card-inspector-body>span{
+  display:block;
+  margin-top:4px;
+  color:#84968f;
+  font-size:11px;
+  line-height:1.4;
+}
+.forge-context-card-inspector-body>small{
+  display:block;
+  margin-top:14px;
+  color:#dc8b3c;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.14em;
+}
+.forge-context-card-inspector-body ul{
+  display:grid;
+  gap:5px;
+  margin:8px 0 0;
+  padding:0;
+  list-style:none;
+}
+.forge-context-card-inspector-body li{
+  padding:7px 9px;
+  border:1px solid #30433d;
+  background:#0a1210;
+  color:#c8d5d0;
+  font-size:12px;
+  line-height:1.35;
+}
+.forge-context-card-inspector-body>p{
+  margin:8px 0 0;
+  color:#9aaba5;
+  font-size:12px;
+  line-height:1.45;
+}
+.forge-context-card-inspector-dossier{
+  width:100%;
+  margin-top:14px;
+  padding:10px 12px;
+  border:1px solid #a76832;
+  background:#3b2112;
+  color:#f8d8b2;
+  font-size:11px;
+  font-weight:800;
+  cursor:pointer;
+}
+.forge-context-card-inspector-dossier:hover,
+.forge-context-card-inspector-dossier:focus-visible{
+  outline:0;
+  border-color:#e09a55;
+  background:#5a3018;
+  color:#fff;
+}
+@keyframes forge-context-inspect-in{
+  from{opacity:0;transform:translateY(12px) scale(.98)}
+  to{opacity:1;transform:none}
+}
+@media(prefers-reduced-motion:reduce){
+  .forge-context-card-inspector{animation:none}
+}
+@media(max-width:560px){
+  .forge-context-card-inspector{
+    right:10px;
+    left:10px;
+    bottom:max(10px,env(safe-area-inset-bottom));
+    width:auto;
+    display:grid;
+    grid-template-columns:88px minmax(0,1fr);
+    grid-template-rows:auto 1fr;
+  }
+  .forge-context-card-inspector>header{grid-column:1/-1}
+  .forge-context-card-inspector-art{padding:10px 0 12px 12px;align-self:start}
+  .forge-context-card-inspector-art img{width:88px}
+  .forge-context-card-inspector-body{padding:10px 12px 12px 8px}
+}
+

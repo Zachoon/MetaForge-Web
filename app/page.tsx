@@ -50,6 +50,26 @@ import { deckFingerprint } from "./deck-fingerprint.mjs";
 import { createPilotingDebrief } from "./piloting-debrief.mjs";
 import { buildCoachingSession } from "./coaching-session.mjs";
 import { trackLaunchEvent } from "./launch-telemetry";
+import {
+  buildIntegrityGuardedCoachSummary,
+  enrichTabletWithHonestWhy,
+  HONEST_COACH_FEEDBACK_OPTIONS,
+  HONEST_COACH_NOT_HELPFUL_REASONS,
+} from "./honest-coach-summary.mjs";
+import {
+  bindStructuralSystemsForCoach,
+  deckFingerprintFromRows,
+  stampStructuralReportBinding,
+} from "./narrative-integrity.mjs";
+import { deckDisplaySection } from "./deck-display-classification.mjs";
+import {
+  reasonsCardMatters,
+  shouldUseContextCardInspector,
+} from "./context-card-inspector.mjs";
+import { ForgeCardRef, ForgeCardRefList } from "./forge-card-ref";
+import { buildPreChoiceCoaching } from "./strategy-build-comparison.mjs";
+import { buildCommissionContract } from "./commission-contract.mjs";
+import { tableMeaningFor } from "./strategic-recognition.mjs";
 
 type Chamber =
   | "entrance"
@@ -195,6 +215,8 @@ type SavedFamily = {
   // the Scryfall fetch + classification just to know the dominant motif.
   motifWeights?: Record<string, number>;
   playerGoal?: string | null;
+  /** Optional commission note — Conversation Contract Stage 1 persistence. */
+  commissionNote?: string | null;
   forgeInterventions?: ForgeIntervention[];
   revisions: Array<{
     deckText: string;
@@ -908,6 +930,9 @@ const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
 };
 const cardImage = (name: string) =>
   `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=normal`;
+/** Square illustration crop for commander portraits — intentional, readable on mobile. */
+const cardArtCrop = (name: string) =>
+  `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=art_crop`;
 const isCommanderFormat = (format: string) =>
   ["Commander", "Brawl", "Standard Brawl"].includes(format);
 // The commission chamber's own copy must never claim every format needs a
@@ -1071,24 +1096,10 @@ const cardFactFromNativeRow = (row: any): CardFact | null => {
     ...(Number.isFinite(Number(card.priceUsd)) ? { prices: { usd: String(card.priceUsd) } } : {}),
   };
 };
-const cardGroup = (fact?: CardFact, isCommander = false) => {
-  const type = [
-    fact?.type_line,
-    ...(fact?.card_faces || []).map((face) => face.type_line),
-  ]
-    .filter(Boolean)
-    .join(" // ");
-  if (isCommander) return "Commander";
-  if (/Land/i.test(type)) return "Lands";
-  if (/Enchantment/i.test(type)) return "Enchantments";
-  if (/Creature/i.test(type)) return "Creatures";
-  if (/Planeswalker/i.test(type)) return "Planeswalkers";
-  if (/Instant/i.test(type)) return "Instants";
-  if (/Sorcery/i.test(type)) return "Sorceries";
-  if (/Artifact/i.test(type)) return "Artifacts";
-  if (/Battle/i.test(type)) return "Battles";
-  return "Other";
-};
+const cardGroup = (fact?: CardFact, isCommander = false) =>
+  // Founder #017: primary (front) face drives display sections — not joined
+  // Oracle faces. Analysis still uses full type lines elsewhere.
+  deckDisplaySection(fact || {}, isCommander);
 // Reads whichever price the player actually wants — foil or nonfoil — and
 // falls back to the other printing's price only when the requested one
 // doesn't exist at all (foil-only promos have no usd price; some older or
@@ -1562,12 +1573,17 @@ export default function Home() {
     // Blueprint's own state) so it stays accurate even if the player
     // changes the selector afterward without regenerating.
     requestedPowerTier?: string;
+    // Free-text commission note for this generation — kept so Request
+    // Recognition (#023) can answer "Did I hear you?" after the note
+    // field is cleared by a later New Forge.
+    commissionNote?: string;
   } | null>(null);
   // Non-fatal disclosure for the decklist-import path: names the Forge could
   // not verify or that aren't legal in this format, left out rather than
   // silently dropped or auto-corrected. Distinct from forgeGenerationError,
   // which means generation failed entirely.
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
+  const [deckUnderstanding, setDeckUnderstanding] = useState<any>(null);
   // The server's real, evidence-backed answer to the coaching focus the
   // player picked in the Review chamber (worker/review-focus-reasoning
   // .mjs's evaluateReviewFocus) — previously only its .concise field was
@@ -1583,6 +1599,15 @@ export default function Home() {
     insufficientEvidence?: boolean;
     concise: string;
   } | null>(null);
+  const [coachFeedbackStatus, setCoachFeedbackStatus] = useState<
+    "idle" | "saving" | "saved" | "error" | "auth" | "need-reason"
+  >("idle");
+  const [coachFeedbackNote, setCoachFeedbackNote] = useState("");
+  const [coachFeedbackPendingOption, setCoachFeedbackPendingOption] = useState<string | null>(null);
+  const [coachFeedbackTargetTablet, setCoachFeedbackTargetTablet] = useState<any>(null);
+  const [coachWhyOpen, setCoachWhyOpen] = useState(false);
+  const [coachConfidenceOpen, setCoachConfidenceOpen] = useState(false);
+  const coachBriefViewedRef = useRef(false);
   const [coachingGoal, setCoachingGoal] = useState("");
   const [cardFacts, setCardFacts] = useState<Record<string, CardFact>>({});
   const [cardFactsLoading, setCardFactsLoading] = useState(false);
@@ -1590,6 +1615,9 @@ export default function Home() {
   const [cardFactsPending, setCardFactsPending] = useState(0);
   const [cardFactsRetry, setCardFactsRetry] = useState(0);
   const [hoveredCard, setHoveredCard] = useState("");
+  const [contextInspectCard, setContextInspectCard] = useState("");
+  const [deckPreviewInView, setDeckPreviewInView] = useState(true);
+  const contextInspectDismissedRef = useRef("");
   const [inspectedCard, setInspectedCard] = useState("");
   const [cardActionMenu, setCardActionMenu] = useState<{
     name: string;
@@ -1808,6 +1836,68 @@ export default function Home() {
       });
     }
   }, [chamber, pendingCandidateChoice]);
+
+  const strategyBuildComparison = useMemo(() => {
+    const candidates = pendingCandidateChoice?.nativeReport?.candidates;
+    if (!candidates?.length) return null;
+    const selected = pendingCandidateChoice.nativeReport.selected;
+    const note = String(commissionNote || "").trim();
+    const contract = note
+      ? buildCommissionContract({
+          note,
+          commanderName:
+            selected?.strategicIntent?.commanders?.[0]?.name
+            || selectedCommander
+            || "",
+          selected,
+          deckCardNames: (selected?.rows || []).map((row: any) => row.name),
+        })
+      : null;
+    return buildPreChoiceCoaching({
+      candidates,
+      recommendedId: selected?.id || "",
+      commanderName:
+        selected?.strategicIntent?.commanders?.[0]?.name
+        || selectedCommander
+        || "",
+      fantasyLabel: contract?.playerFantasy?.label || "",
+      priorities: (contract?.youAskedFor || [])
+        .filter((entry: any) => entry.role === "priority")
+        .map((entry: any) => entry.label),
+    });
+  }, [pendingCandidateChoice, selectedCommander, commissionNote]);
+
+  const masterworksCommissionContract = useMemo(() => {
+    if (!pendingCandidateChoice?.nativeReport?.selected) return null;
+    const note = String(commissionNote || "").trim();
+    if (!note) return null;
+    const selected = pendingCandidateChoice.nativeReport.selected;
+    return buildCommissionContract({
+      note,
+      commanderName:
+        selected?.strategicIntent?.commanders?.[0]?.name
+        || selectedCommander
+        || "",
+      blueprint:
+        selected?.strategicIntent?.blueprint ||
+        pendingCandidateChoice.nativeReport.blueprintIntent ||
+        null,
+      selected,
+      deckCardNames: (selected?.rows || []).map((row: any) => row.name),
+    });
+  }, [pendingCandidateChoice, commissionNote, selectedCommander]);
+
+  const masterworksRequestRecognition = masterworksCommissionContract?.requestRecognition
+    || null;
+
+  const openDeepForgeEvidence = () => {
+    setIntelligenceOpen(true);
+    window.requestAnimationFrame(() =>
+      document
+        .querySelector(".forge-intelligence-vault")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
+  };
 
   useEffect(() => {
     if (!interventionLearningReady) return;
@@ -2267,8 +2357,29 @@ export default function Home() {
     useState<ForgeAnalysisReport | null>(null);
 
   const structuralReportReady = structuralAnalysisReport !== null;
+  const activeDeckFingerprint = useMemo(
+    () => deckFingerprintFromRows(deckRows),
+    [deckRows],
+  );
+  const boundStructural = useMemo(
+    () =>
+      bindStructuralSystemsForCoach({
+        report: structuralAnalysisReport,
+        generationId: nativeMasterworkContext?.generationId || "",
+        commanderName: activeCommanderName,
+        deckFingerprint: activeDeckFingerprint,
+      }),
+    [
+      structuralAnalysisReport,
+      nativeMasterworkContext?.generationId,
+      activeCommanderName,
+      activeDeckFingerprint,
+    ],
+  );
   const activeStructuralReport =
-    structuralAnalysisReport ?? EMPTY_FORGE_ANALYSIS_REPORT;
+    boundStructural.ok && structuralAnalysisReport
+      ? structuralAnalysisReport
+      : EMPTY_FORGE_ANALYSIS_REPORT;
 
   const interactionGraph =
     activeStructuralReport.graph;
@@ -2276,6 +2387,236 @@ export default function Home() {
   const forgeSystemsReport =
     activeStructuralReport.systems;
 
+  const showContextCardInspector =
+    Boolean(contextInspectCard) &&
+    shouldUseContextCardInspector({
+      previewInView: deckPreviewInView,
+      activeForgeChapter,
+    });
+  const contextCardReasons = useMemo(
+    () => reasonsCardMatters(contextInspectCard || hoveredCard, forgeSystemsReport),
+    [contextInspectCard, hoveredCard, forgeSystemsReport],
+  );
+  const contextInspectFact = cardFacts[cardFactKey(contextInspectCard)];
+  const contextInspectPrinting = printingOverrides[cardFactKey(contextInspectCard)];
+  const contextInspectImage =
+    contextInspectPrinting?.image ||
+    contextInspectFact?.image_uris?.normal ||
+    contextInspectFact?.card_faces?.[0]?.image_uris?.normal ||
+    (contextInspectCard ? cardImage(contextInspectCard) : "");
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !hasValidatedDeck) {
+      setDeckPreviewInView(true);
+      return;
+    }
+    const stage = document.querySelector(".card-preview-stage");
+    if (!stage) {
+      setDeckPreviewInView(false);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => setDeckPreviewInView(Boolean(entry?.isIntersecting)),
+      { threshold: 0.18, rootMargin: "-48px 0px 0px 0px" },
+    );
+    observer.observe(stage);
+    return () => observer.disconnect();
+  }, [hasValidatedDeck, deckViewMode, activeForgeChapter, forgedDeck]);
+
+  useEffect(() => {
+    if (deckPreviewInView && activeForgeChapter === 1) {
+      setContextInspectCard("");
+    }
+  }, [deckPreviewInView, activeForgeChapter]);
+
+  useEffect(() => {
+    if (!hoveredCard) return;
+    if (contextInspectDismissedRef.current === hoveredCard) return;
+    if (
+      !shouldUseContextCardInspector({
+        previewInView: deckPreviewInView,
+        activeForgeChapter,
+      })
+    ) {
+      return;
+    }
+    // Also reopen when the gallery scrolls away with a live selection —
+    // Founder #021: never leave the reader staring at an off-screen pane.
+    setContextInspectCard(hoveredCard);
+  }, [hoveredCard, deckPreviewInView, activeForgeChapter]);
+
+  useEffect(() => {
+    if (hoveredCard && hoveredCard !== contextInspectDismissedRef.current) {
+      contextInspectDismissedRef.current = "";
+    }
+  }, [hoveredCard]);
+
+  const closeContextCardInspector = () => {
+    contextInspectDismissedRef.current = contextInspectCard;
+    setContextInspectCard("");
+  };
+
+  const foreignSuspectNames = useMemo(() => {
+    const suspects = [
+      selectedCommander?.name,
+      selectedSecondCommander?.name,
+      structuralAnalysisReport?.commanderName,
+      structuralAnalysisReport?._boundCommander,
+      ...(FORMAT_PREVIEWS.Commander || []).map((preview) => preview.card),
+    ].filter(Boolean) as string[];
+    const activeKey = String(activeCommanderName || "").toLocaleLowerCase("en");
+    return [...new Set(suspects)].filter(
+      (name) => String(name).toLocaleLowerCase("en") !== activeKey,
+    );
+  }, [
+    selectedCommander?.name,
+    selectedSecondCommander?.name,
+    structuralAnalysisReport,
+    activeCommanderName,
+  ]);
+
+  const honestCoachSummary = useMemo(
+    () =>
+      buildIntegrityGuardedCoachSummary({
+        selected: nativeMasterworkContext?.selected || null,
+        structuralSystems: boundStructural.ok ? forgeSystemsReport : null,
+        reviewFocusResult,
+        isImported: isImportedDeckReview,
+        generationId: nativeMasterworkContext?.generationId || "",
+        deckUnderstanding,
+        activeCommanderName,
+        deckCardNames: deckRows.map((row) => row.name),
+        foreignSuspectNames,
+        allowedSystemNames: boundStructural.ok
+          ? [
+              forgeSystemsReport.strongestSystem?.name,
+              forgeSystemsReport.weakestSystem?.name,
+              ...(forgeSystemsReport.systems || []).map((system: any) => system?.name),
+            ].filter(Boolean)
+          : [],
+        commissionNote: nativeMasterworkContext?.commissionNote || commissionNote,
+        cardFacts,
+      }),
+    [
+      nativeMasterworkContext?.selected,
+      nativeMasterworkContext?.generationId,
+      nativeMasterworkContext?.commissionNote,
+      boundStructural.ok,
+      forgeSystemsReport,
+      reviewFocusResult,
+      isImportedDeckReview,
+      deckUnderstanding,
+      activeCommanderName,
+      deckRows,
+      foreignSuspectNames,
+      commissionNote,
+      cardFacts,
+    ],
+  );
+
+  useEffect(() => {
+    coachBriefViewedRef.current = false;
+  }, [nativeMasterworkContext?.generationId]);
+
+  // Narrative Integrity: never keep a previous analysis's structural report
+  // when the active generation changes. Keep-last-value is only valid within
+  // the same analysis (edit debounce), not across deck/commander switches.
+  useEffect(() => {
+    setStructuralAnalysisReport(null);
+    setStructuralAnalysisStatus("idle");
+    setExperimentTablets(null);
+    setExperimentReportStatus("idle");
+  }, [nativeMasterworkContext?.generationId]);
+
+  useEffect(() => {
+    if (!hasValidatedDeck || !honestCoachSummary.analysisIds?.analysisId) return;
+    if (coachBriefViewedRef.current) return;
+    coachBriefViewedRef.current = true;
+    trackLaunchEvent("coach_brief_viewed", {
+      format,
+      imported: isImportedDeckReview ? "yes" : "no",
+      confidence: honestCoachSummary.confidence.level,
+    });
+  }, [
+    hasValidatedDeck,
+    honestCoachSummary.analysisIds?.analysisId,
+    honestCoachSummary.confidence.level,
+    format,
+    isImportedDeckReview,
+  ]);
+
+  useEffect(() => {
+    if (!hasValidatedDeck || !isImportedDeckReview) return;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById("coach-brief")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [hasValidatedDeck, isImportedDeckReview, nativeMasterworkContext?.generationId]);
+
+  async function submitHonestCoachFeedback(
+    optionId: string,
+    tablet: any = null,
+    notHelpfulReason: string | null = null,
+  ) {
+    const option = HONEST_COACH_FEEDBACK_OPTIONS.find((entry) => entry.id === optionId);
+    if (!option) return;
+    if (option.needsFollowUp && !notHelpfulReason) {
+      setCoachFeedbackPendingOption(optionId);
+      setCoachFeedbackTargetTablet(tablet);
+      setCoachFeedbackStatus("need-reason");
+      return;
+    }
+    setCoachFeedbackStatus("saving");
+    try {
+      const recommendationIds = tablet?.recommendationIds || null;
+      const response = await fetch("/api/coach/feedback", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          optionId: option.id,
+          note: coachFeedbackNote.trim() || undefined,
+          notHelpfulReason: notHelpfulReason || undefined,
+          analysisId: honestCoachSummary.analysisIds.analysisId,
+          recommendationId: recommendationIds?.recommendationId || undefined,
+          diagnosticClass: recommendationIds?.diagnosticClass || undefined,
+          reasonClass: recommendationIds?.reasonClass || undefined,
+          brainVersion: "brain_v1",
+          confidence: honestCoachSummary.confidence.level,
+          commander: activeCommanderName || honestCoachSummary.identity.commanders[0] || undefined,
+          packageLabels: honestCoachSummary.identity.packageLabels,
+          context: {
+            analysisId: honestCoachSummary.analysisIds.analysisId,
+            recommendationId: recommendationIds?.recommendationId || null,
+            generationId: nativeMasterworkContext?.generationId || null,
+            brainVersion: "brain_v1",
+            confidence: honestCoachSummary.confidence.level,
+            commander: activeCommanderName || honestCoachSummary.identity.commanders[0] || null,
+            packageLabels: honestCoachSummary.identity.packageLabels,
+          },
+        }),
+      });
+      if (!response.ok) {
+        if (response.status === 401) {
+          setCoachFeedbackStatus("auth");
+          return;
+        }
+        setCoachFeedbackStatus("error");
+        return;
+      }
+      trackLaunchEvent("coach_feedback_submitted", {
+        format,
+        option: option.id,
+        reason: notHelpfulReason || "none",
+        guest: "unknown",
+      });
+      setCoachFeedbackStatus("saved");
+      setCoachFeedbackNote("");
+      setCoachFeedbackPendingOption(null);
+      setCoachFeedbackTargetTablet(null);
+    } catch {
+      setCoachFeedbackStatus("error");
+    }
+  }
 
   const activeSystem = useMemo(
     () =>
@@ -2476,12 +2817,18 @@ export default function Home() {
       },
       onLoading: () => setStructuralAnalysisStatus("loading"),
       onSuccess: (data: { report: ForgeAnalysisReport }) => {
-        setStructuralAnalysisReport(data.report);
+        setStructuralAnalysisReport(
+          stampStructuralReportBinding(data.report, {
+            generationId: nativeMasterworkContext?.generationId || "",
+            commanderName: activeCommanderName,
+            deckFingerprint: activeDeckFingerprint,
+          }) as ForgeAnalysisReport,
+        );
         setStructuralAnalysisStatus("ready");
       },
       onError: () => setStructuralAnalysisStatus("error"),
     });
-  }, [guestMode, structuralCards, activeCommanderName, strategy, deckIntegrity.passed, matchLog, forgeInterventions, revisions.length, coachingGoal]);
+  }, [guestMode, structuralCards, activeCommanderName, strategy, deckIntegrity.passed, matchLog, forgeInterventions, revisions.length, coachingGoal, nativeMasterworkContext?.generationId, activeDeckFingerprint]);
 
   const forgeFailureAnalysis = activeStructuralReport.failureAnalysis;
 
@@ -2503,7 +2850,7 @@ export default function Home() {
   const [experimentReportStatus, setExperimentReportStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
 
   useEffect(() => {
-    if (!nativeMasterworkContext?.generationId || !structuralReportReady) {
+    if (!nativeMasterworkContext?.generationId || !boundStructural.ok) {
       setExperimentTablets(null);
       setExperimentReportStatus("idle");
       return;
@@ -2528,7 +2875,15 @@ export default function Home() {
       },
       onError: () => setExperimentReportStatus("error"),
     });
-  }, [nativeMasterworkContext, forgeCausalityReport, matchLog, structuralReportReady]);
+  }, [nativeMasterworkContext, forgeCausalityReport, matchLog, boundStructural.ok]);
+
+  const honestCoachTablets = useMemo(() => {
+    if (!experimentTablets?.tablets?.length) return [];
+    const selected = nativeMasterworkContext?.selected || {};
+    return experimentTablets.tablets.map((tablet: any) =>
+      enrichTabletWithHonestWhy(tablet, selected, honestCoachSummary.analysisIds),
+    );
+  }, [experimentTablets, nativeMasterworkContext?.selected, honestCoachSummary.analysisIds]);
 
   const openingExperimentChoices = useMemo(() => {
     if (!nativeMasterworkContext || !experimentTablets) return [];
@@ -3298,6 +3653,7 @@ export default function Home() {
       powerSignal: nativeReport.powerSignal || null,
       powerAudit: nativeReport.powerAudit || null,
       requestedPowerTier: isCommanderFormat(format) && targetPowerTier ? targetPowerTier : undefined,
+      commissionNote: String(commissionNote || "").trim() || undefined,
     });
     if (opts.persist !== false) {
       void persistStoryBench(
@@ -3399,7 +3755,8 @@ export default function Home() {
     cardPool: any[];
     colors: string[];
     generationId?: string;
-    importWarnings?: { unresolvedNames: string[]; illegalNames: string[] };
+    importWarnings?: { unresolvedNames: string[]; illegalNames: string[]; unresolvedDetails?: Array<{ name: string; reasonCode: string }> };
+    deckUnderstanding?: any;
     claimToken?: string;
     reviewFocusResult?: {
       focus: string;
@@ -3611,7 +3968,7 @@ export default function Home() {
         // intent) — sending it as text there risked exactly that
         // misreading. The server evaluates it against this generation's
         // own evidence and returns reviewFocusResult, rendered below.
-        const { nativeReport, cardPool, generationId: newGenerationId, importWarnings, reviewFocusResult } = await callForgeGenerate({
+        const { nativeReport, cardPool, generationId: newGenerationId, importWarnings, reviewFocusResult, deckUnderstanding: understanding } = await callForgeGenerate({
           mode: "imported",
           format,
           strategy,
@@ -3630,6 +3987,7 @@ export default function Home() {
           ...(importWarnings?.unresolvedNames || []).map((name) => `"${name}" could not be verified and was left out.`),
           ...(importWarnings?.illegalNames || []).map((name) => `"${name}" is not legal in ${format} and was left out.`),
         ]);
+        setDeckUnderstanding(understanding || null);
         setReviewFocusResult(reviewFocusResult || null);
         setCoachingGoal(reviewFocusResult?.focus || reviewFocus || "");
         await applyForgeResult(nativeReport, {
@@ -3744,6 +4102,8 @@ export default function Home() {
     );
     setForgeInterventions(Array.isArray(family.forgeInterventions) ? family.forgeInterventions : []);
     setCoachingGoal(family.playerGoal || "");
+    const restoredNote = String(family.commissionNote || "").trim();
+    if (restoredNote) setCommissionNote(restoredNote);
     setForgeReply("");
     setSwapFlourish(null);
     setImportWarnings([]);
@@ -3983,6 +4343,7 @@ export default function Home() {
           existingFamily?.promotedFingerprint ||
           "",
         playerGoal: coachingGoal || null,
+        commissionNote: String(commissionNote || "").trim() || null,
         forgeInterventions,
         revisions: serializedRevisions,
       };
@@ -4535,7 +4896,7 @@ export default function Home() {
             <button type="button" onClick={() => setWalkthroughActive(true)}>Replay guided tour</button>
             <IdentityBadge depth={playerIdentity.depth} totalMilestones={playerIdentity.allMilestones.length} dominantMotif={playerIdentity.dominantMotif} accent={playerIdentity.accent} celebrating={Boolean(identityCelebration)} celebrationLabel={identityCelebration?.label ?? null} />
             <button type="button" onClick={() => setChamber("entrance")}>Start a new deck</button>
-            <nav aria-label="Legal and support"><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="mailto:support@metaforge.gg">Support</a></nav>
+            <nav aria-label="Learn, legal, and support"><a href="/academy">Academy</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="mailto:support@metaforge.gg">Support</a></nav>
           </div>
         </details>
       </header>
@@ -4600,6 +4961,7 @@ export default function Home() {
                 className="entrance-ember-film"
                 src="/assets/forge/vfx/entrance-embers.mp4"
                 poster="/forge-hero.webp"
+                preload="metadata"
                 autoPlay
                 loop
                 muted
@@ -4608,6 +4970,7 @@ export default function Home() {
               <video
                 className="entrance-aperture-film"
                 src="/assets/forge/vfx/entrance-aperture.mp4"
+                preload="none"
                 autoPlay
                 loop
                 muted
@@ -4879,7 +5242,11 @@ export default function Home() {
                 </header>
                 {selectedCommander ? (
                   <article>
-                    <img src={selectedCommander.image} alt="" />
+                    <img
+                      className="commander-art-crop"
+                      src={cardArtCrop(selectedCommander.name)}
+                      alt=""
+                    />
                     <div>
                       <b>{selectedCommander.name}</b>
                       <span>{selectedCommander.typeLine}</span>
@@ -5234,68 +5601,222 @@ export default function Home() {
         <section className="masterwork-reveal">
           {pendingCandidateChoice ? (
             <>
-              <header>
-                <span className="forge-eyebrow">
-                  <i /> THE GREAT FORGE ANSWERS <i />
-                </span>
-                <h1>
-                  {(() => {
-                    // Gate filtering (native-masterwork-engine.mjs) can
-                    // honestly leave 1, 2, or 3 candidates standing — this
-                    // heading must say what actually survived, never a
-                    // hardcoded "three" that promises a choice the player
-                    // won't actually see below.
-                    const survivorCount = pendingCandidateChoice.nativeReport.candidates?.length || 1;
-                    return survivorCount === 1
-                      ? "One real build. It's yours."
-                      : `${survivorCount} real builds. You choose.`;
-                  })()}
-                </h1>
-                <p>
-                  {pendingCandidateChoice.nativeReport.candidates?.length === 1 ? "This build" : "These builds"} already use verified, legal cards for your {format} commission.
-                  The Forge marks its recommendation, but the final choice is yours.
-                </p>
-                <button className="open-recommended-masterwork" type="button" onClick={() => enterMasterwork(pendingCandidateChoice.nativeReport.selected.id)}>
-                  Open the recommended deck →
-                </button>
-              </header>
-              {commissionNote.trim() && (
-                <details className="blueprint-promise" aria-label="Blueprint promise">
-                  <summary><small>WHAT THE FORGE HEARD</small><b>{commissionNote.trim()}</b></summary>
-                  <p>The verified builds preserve this identity wherever the legal card pool supports it.</p>
-                </details>
+                <header>
+                  <span className="forge-eyebrow">
+                    <i /> THE GREAT FORGE ANSWERS <i />
+                  </span>
+                  <h1>
+                    {(() => {
+                      const survivorCount = pendingCandidateChoice.nativeReport.candidates?.length || 1;
+                      return survivorCount === 1
+                        ? "One philosophy survived. Confirm it fits you."
+                        : `${survivorCount} philosophies. Choose how you want to play.`;
+                    })()}
+                  </h1>
+                  <p>
+                    {pendingCandidateChoice.nativeReport.candidates?.length === 1
+                      ? "Before you open the deck — is this the experience you want with this commander?"
+                      : "Each card below is a different way to experience the same commission. Pick the feel first; the list comes after."}
+                  </p>
+                </header>
+              {(masterworksCommissionContract?.hasContract || commissionNote.trim()) && (
+                <aside className="request-recognition masterworks-request-recognition is-loud commission-contract" aria-label="Commission contract">
+                  <header>
+                    <small>1 · COMMISSION CONTRACT</small>
+                    <strong>You asked for</strong>
+                  </header>
+                  {masterworksCommissionContract?.youAskedFor?.length > 0 ? (
+                    <ul className="request-recognition-checklist">
+                      {masterworksCommissionContract.youAskedFor
+                        .filter((clause: any) => clause.role !== "commander")
+                        .map((clause: any) => (
+                          <li key={clause.id} className="status-detected">
+                            <b>✓ {clause.label}</b>
+                            <span className="commission-clause-role">{clause.role}</span>
+                          </li>
+                        ))}
+                    </ul>
+                  ) : (
+                    <p className="request-recognition-note">
+                      <small>YOUR REQUEST</small>
+                      {commissionNote.trim()}
+                    </p>
+                  )}
+                  {masterworksCommissionContract?.whatIBuilt?.length > 0 && (
+                    <div className="commission-built">
+                      <header>
+                        <strong>What I built</strong>
+                        {(Number.isFinite(masterworksCommissionContract.matchPercent) || masterworksCommissionContract.matchLabel) && (
+                          <b className="commission-match">
+                            {Number.isFinite(masterworksCommissionContract.matchPercent)
+                              ? `${masterworksCommissionContract.matchPercent}% match · ${masterworksCommissionContract.matchLabel}`
+                              : masterworksCommissionContract.matchLabel}
+                          </b>
+                        )}
+                      </header>
+                      <ul className="request-recognition-checklist commission-built-list">
+                        {masterworksCommissionContract.whatIBuilt.map((entry: any) => (
+                          <li key={entry.id} className={`status-${entry.status}`}>
+                            <b>{entry.status === "met" ? "✓" : entry.status === "partial" ? "~" : "·"} {entry.label}</b>
+                            <span>{entry.detail}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      {masterworksCommissionContract.matchHonesty && (
+                        <p className="commission-match-honesty">{masterworksCommissionContract.matchHonesty}</p>
+                      )}
+                    </div>
+                  )}
+                  {masterworksRequestRecognition?.adjustments?.length > 0 && (
+                    <div className="request-recognition-adjustment">
+                      <small>{masterworksRequestRecognition.adjustments[0].headline}</small>
+                      <p>{masterworksRequestRecognition.adjustments[0].reason}</p>
+                    </div>
+                  )}
+                  {(Number.isFinite(masterworksRequestRecognition?.fidelity?.themeFidelity)
+                    || Number.isFinite(masterworksRequestRecognition?.fidelity?.competitiveHealth)) && (
+                    <details className="request-recognition-receipts">
+                      <summary>How closely this build matched →</summary>
+                      <div className="request-recognition-fidelity" aria-label="Theme fidelity versus list health">
+                        <span>
+                          <small>THEME FIDELITY</small>
+                          <b>{Number.isFinite(masterworksRequestRecognition.fidelity.themeFidelity) ? `${masterworksRequestRecognition.fidelity.themeFidelity}%` : "—"}</b>
+                          <i><em style={{ width: `${masterworksRequestRecognition.fidelity.themeFidelityFill || 0}%` }} /></i>
+                        </span>
+                        <span>
+                          <small>LIST HEALTH</small>
+                          <b>{Number.isFinite(masterworksRequestRecognition.fidelity.competitiveHealth) ? `${masterworksRequestRecognition.fidelity.competitiveHealth}%` : "—"}</b>
+                          <i><em style={{ width: `${masterworksRequestRecognition.fidelity.competitiveHealthFill || 0}%` }} /></i>
+                        </span>
+                      </div>
+                    </details>
+                  )}
+                </aside>
               )}
-              {(pendingCandidateChoice.nativeReport.candidates?.length || 1) > 1 && (
-                <details className="candidate-alternatives">
-                  <summary>
-                    <span><small>WANT MORE CONTROL?</small><b>Compare all {pendingCandidateChoice.nativeReport.candidates?.length || 1} builds</b></span>
-                    <strong>SHOW OPTIONS</strong>
-                  </summary>
+              <section className="candidate-alternatives pre-choice-coaching" aria-label="Pre-choice coaching">
+                  <header className="pre-choice-coaching-heading">
+                    <small>2 · HERE ARE THE PHILOSOPHIES</small>
+                    <b>
+                      {(pendingCandidateChoice.nativeReport.candidates?.length || 1) > 1
+                        ? "Choose the way you want to experience this commander"
+                        : "Does this experience fit how you want to play?"}
+                    </b>
+                  </header>
                   <div className="masterwork-grid">
-                    {(pendingCandidateChoice.nativeReport.candidates || [pendingCandidateChoice.nativeReport.selected]).map((candidate: any) => {
-                      const isRecommended = candidate.id === pendingCandidateChoice.nativeReport.selected.id;
-                      const cardCount = candidate.rows.reduce((sum: number, row: any) => sum + row.quantity, 0);
+                    {(strategyBuildComparison?.builds || []).map((build: any) => {
+                      const candidate = (pendingCandidateChoice.nativeReport.candidates || []).find(
+                        (entry: any) => entry.id === build.id,
+                      );
+                      if (!candidate) return null;
+                      const singleSurvivor = (pendingCandidateChoice.nativeReport.candidates?.length || 1) === 1;
                       return (
-                        <article key={candidate.id} className={`masterwork-card${isRecommended ? " is-featured" : ""}`}>
+                        <article key={build.id} className={`masterwork-card strategy-identity-card${build.recommended ? " is-featured" : ""}`}>
                           <header>
-                            {isRecommended && <em>RECOMMENDED</em>}
-                            <strong>{candidate.label}</strong>
-                            <span>{cardCount} cards</span>
+                            {build.recommended && !singleSurvivor && <em>RECOMMENDED</em>}
+                            {singleSurvivor && <em>THIS EXPERIENCE</em>}
+                            <strong>{build.label}</strong>
                           </header>
-                          <dl>
-                            <div><dt>Cohesion</dt><dd>{candidate.evaluation.cohesion}/100</dd></div>
-                            <div><dt>Resilience</dt><dd>{candidate.evaluation.resilience}/100</dd></div>
-                            <div><dt>Curve health</dt><dd>{candidate.evaluation.curveHealth}/100</dd></div>
-                          </dl>
-                          {isRecommended && pendingCandidateChoice.nativeReport.selected.tournament?.reason && <p className="masterwork-card-reason">{pendingCandidateChoice.nativeReport.selected.tournament.reason}</p>}
-                          <small>{candidate.boundary}</small>
-                          <button type="button" onClick={() => enterMasterwork(candidate.id)}>Choose this build →</button>
+                          <div className="pre-choice-identity">
+                            <p className="pre-choice-built-for">
+                              <small>BUILT FOR PLAYERS WHO…</small>
+                              {build.builtForPlayersWho}
+                            </p>
+                            {build.prioritizes?.length > 0 && (
+                              <div className="pre-choice-prioritizes">
+                                <small>PRIORITIZES</small>
+                                <ul>
+                                  {build.prioritizes.map((item: string) => (
+                                    <li key={item}>{item}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            <p className="pre-choice-feel">
+                              <small>FEEL</small>
+                              {build.feel}
+                            </p>
+                            <p className="pre-choice-tradeoff">
+                              <small>EXPECTED TRADEOFF</small>
+                              {build.expectedTradeoff}
+                            </p>
+                            {build.currentUnderstanding?.paragraph && (
+                              <p className="pre-choice-understanding">
+                                {build.currentUnderstanding.badge && (
+                                  <small className="understanding-badge">{build.currentUnderstanding.badge}</small>
+                                )}
+                                {build.currentUnderstanding.paragraph}
+                              </p>
+                            )}
+                            {build.principleUnderstanding?.paragraph && (
+                              <p className="pre-choice-understanding pre-choice-principle">
+                                {build.principleUnderstanding.badge && (
+                                  <small className="understanding-badge">{build.principleUnderstanding.badge}</small>
+                                )}
+                                {build.principleUnderstanding.paragraph}
+                              </p>
+                            )}
+                          </div>
+                          <button type="button" onClick={() => enterMasterwork(candidate.id)}>
+                            {singleSurvivor ? "This is how I want to play →" : "Choose this experience →"}
+                          </button>
+                          <details className="strategy-identity-full-diff">
+                            <summary>Compare details</summary>
+                            <div>
+                              {(build.keyDifferences?.adds?.length > 0 || build.keyDifferences?.cuts?.length > 0) && (
+                                <div className="strategy-identity-keys">
+                                  <small>KEY DIFFERENCES{build.keyDifferences.versus ? ` · vs ${build.keyDifferences.versus}` : ""}</small>
+                                  <ul>
+                                    {build.keyDifferences.adds.map((name: string) => (
+                                      <li key={`add-${name}`} className="add">
+                                        +{" "}
+                                        <ForgeCardRef
+                                          name={name}
+                                          surface="pre-choice-diff"
+                                          onInspect={setHoveredCard}
+                                        />
+                                      </li>
+                                    ))}
+                                    {build.keyDifferences.cuts.map((name: string) => (
+                                      <li key={`cut-${name}`} className="cut">
+                                        −{" "}
+                                        <ForgeCardRef
+                                          name={name}
+                                          surface="pre-choice-diff"
+                                          onInspect={setHoveredCard}
+                                        />
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              <dl className="pre-choice-scores">
+                                <div><dt>Cohesion</dt><dd>{build.scores.cohesion ?? "—"}/100</dd></div>
+                                <div><dt>Resilience</dt><dd>{build.scores.resilience ?? "—"}/100</dd></div>
+                                <div><dt>Curve</dt><dd>{build.scores.curveHealth ?? "—"}/100</dd></div>
+                              </dl>
+                              {build.whyBuilt && (
+                                <p className="strategy-identity-why">
+                                  <small>WHY FORGE BUILT THIS</small>
+                                  {build.whyBuilt}
+                                </p>
+                              )}
+                              {(build.fullComparison?.adds?.length > 0 || build.fullComparison?.cuts?.length > 0) && (
+                                <>
+                                  {build.fullComparison.adds.length > 0 && (
+                                    <p><b>Only in this build</b> · {build.fullComparison.adds.join(" · ")}</p>
+                                  )}
+                                  {build.fullComparison.cuts.length > 0 && (
+                                    <p><b>Not in this build</b> · {build.fullComparison.cuts.join(" · ")}</p>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </details>
                         </article>
                       );
                     })}
                   </div>
-                </details>
-              )}
+                </section>
               <footer>
                 <button
                   onClick={() => {
@@ -5353,8 +5874,12 @@ export default function Home() {
                 <h1>{hasValidatedDeck ? displayDeckName : benchStatus === "forging" ? "Building your deck…" : "No deck was completed"}</h1>
                 {hasValidatedDeck ? (
                   <p>
-                    {activeCommanderName ? `Built around ${activeCommanderName}` : "Your completed deck"} · {format} · Revision{" "}
-                    {Math.max(1, revisions.length)}
+                    {honestCoachSummary.planStory?.title
+                      ? `${honestCoachSummary.planStory.title}${activeCommanderName ? ` · ${activeCommanderName}` : ""}`
+                      : activeCommanderName
+                        ? `${activeCommanderName}`
+                        : "Your completed deck"}{" "}
+                    · {format} · Revision {Math.max(1, revisions.length)}
                   </p>
                 ) : (
                   <p>{format}</p>
@@ -5422,6 +5947,374 @@ export default function Home() {
           )}
           {hasValidatedDeck ? (
             <>
+              <section className="forge-understanding-bridge coach-brief honest-coach-v0" id="coach-brief" aria-label="Coach's brief">
+                <header>
+                  <small>HONEST COACH · BRAIN v1</small>
+                  <h2>{honestCoachSummary.headline}</h2>
+                  {honestCoachSummary.commissionContract?.hasContract && (
+                    <aside
+                      className={`request-recognition commission-contract is-loud${honestCoachSummary.commissionMismatch ? " is-mismatch" : ""}`}
+                      aria-label="Commission contract"
+                    >
+                      <header>
+                        <small>1 · COMMISSION CONTRACT</small>
+                        <strong>You asked for</strong>
+                      </header>
+                      <ul className="request-recognition-checklist">
+                        {honestCoachSummary.commissionContract.youAskedFor
+                          .filter((clause: any) => clause.role !== "commander")
+                          .map((clause: any) => (
+                            <li key={clause.id} className="status-detected">
+                              <b>✓ {clause.label}</b>
+                            </li>
+                          ))}
+                      </ul>
+                      <div className="commission-built">
+                        <header>
+                          <strong>What I built</strong>
+                          {(Number.isFinite(honestCoachSummary.commissionContract.matchPercent)
+                            || honestCoachSummary.commissionContract.matchLabel) && (
+                            <b className="commission-match">
+                              {Number.isFinite(honestCoachSummary.commissionContract.matchPercent)
+                                ? `${honestCoachSummary.commissionContract.matchPercent}% match · ${honestCoachSummary.commissionContract.matchLabel}`
+                                : honestCoachSummary.commissionContract.matchLabel}
+                            </b>
+                          )}
+                        </header>
+                        <ul className="request-recognition-checklist commission-built-list">
+                          {honestCoachSummary.commissionContract.whatIBuilt.map((entry: any) => (
+                            <li key={entry.id} className={`status-${entry.status}`}>
+                              <b>{entry.status === "met" ? "✓" : entry.status === "partial" ? "~" : "·"} {entry.label}</b>
+                              <span>{entry.detail}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        {honestCoachSummary.commissionContract.matchHonesty && (
+                          <p className="commission-match-honesty">
+                            {honestCoachSummary.commissionContract.matchHonesty}
+                          </p>
+                        )}
+                      </div>
+                      {honestCoachSummary.commissionContract.playerFantasy?.supportLine && (
+                        <p className="commission-fantasy-support">
+                          {honestCoachSummary.commissionContract.playerFantasy.supportLine}
+                        </p>
+                      )}
+                      {honestCoachSummary.requestRecognition?.adjustments?.length > 0 && (
+                        <div className="request-recognition-adjustment">
+                          <small>{honestCoachSummary.requestRecognition.adjustments[0].headline}</small>
+                          <p>{honestCoachSummary.requestRecognition.adjustments[0].reason}</p>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        className="conversation-evidence-link"
+                        onClick={openDeepForgeEvidence}
+                      >
+                        How do you know? → Deep Forge evidence
+                      </button>
+                    </aside>
+                  )}
+                  {!honestCoachSummary.commissionContract?.hasContract
+                    && honestCoachSummary.requestRecognition?.heard?.length > 0 && (
+                    <aside className="request-recognition" aria-label="Request recognition">
+                      <header>
+                        <small>1 · I HEARD YOU</small>
+                        <strong>Did I hear you?</strong>
+                      </header>
+                      <ul className="request-recognition-heard">
+                        {honestCoachSummary.requestRecognition.heard.map((theme: any) => (
+                          <li key={theme.id} className={`status-${theme.status}`}>
+                            <b>{theme.status === "present" || theme.status === "partial" || theme.status === "detected" ? "✓" : "·"} {theme.label}</b>
+                            <span>{theme.detail}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      {honestCoachSummary.requestRecognition.adjustments?.length > 0 && (
+                        <div className="request-recognition-adjustment">
+                          <small>{honestCoachSummary.requestRecognition.adjustments[0].headline}</small>
+                          <p>{honestCoachSummary.requestRecognition.adjustments[0].reason}</p>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        className="conversation-evidence-link"
+                        onClick={openDeepForgeEvidence}
+                      >
+                        How do you know? → Deep Forge evidence
+                      </button>
+                    </aside>
+                  )}
+                  {honestCoachSummary.deckUnderstanding && (
+                    <aside className={`honest-coach-understanding ${honestCoachSummary.deckUnderstanding.reliability.state}`} aria-label="Deck understanding">
+                      <strong>{honestCoachSummary.deckUnderstanding.playerSummary.headline}</strong>
+                      <p>{honestCoachSummary.deckUnderstanding.playerSummary.detail}</p>
+                      {honestCoachSummary.deckUnderstanding.playerSummary.unresolvedNames?.length > 0 && (
+                        <ul>
+                          {honestCoachSummary.deckUnderstanding.playerSummary.unresolvedNames.map((name: string) => (
+                            <li key={name}>{name}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </aside>
+                  )}
+                  {!honestCoachSummary.coachingAllowed ? (
+                    <p className="honest-coach-insufficient" role="status">
+                      I don&apos;t understand enough of this list yet to coach it responsibly. Deterministic checks like deck size and verified mana math can still help while card records catch up.
+                    </p>
+                  ) : (
+                    <p className="honest-coach-guide">{honestCoachSummary.guideLine}</p>
+                  )}
+                  {honestCoachSummary.strategyVsSystem && (
+                    <div className="honest-coach-strategy-vs-system" aria-label="Strategy versus verified systems">
+                      <article>
+                        <small>WHAT I THINK YOU&apos;RE BUILDING</small>
+                        <strong>{honestCoachSummary.planStory?.title || honestCoachSummary.strategyVsSystem.strategy.label}</strong>
+                        <span>Confidence: {honestCoachSummary.strategyVsSystem.strategy.confidence}</span>
+                      </article>
+                      <article>
+                        <small>REPEATABLE SYSTEMS</small>
+                        <strong>{honestCoachSummary.strategyVsSystem.engine.label}</strong>
+                        <span>Confidence: {honestCoachSummary.strategyVsSystem.engine.confidence}</span>
+                        <p>{honestCoachSummary.strategyVsSystem.engine.why}</p>
+                      </article>
+                      <button
+                        type="button"
+                        className="conversation-evidence-link strategy-vs-system-evidence"
+                        onClick={openDeepForgeEvidence}
+                      >
+                        How do you know? → Deep Forge evidence
+                      </button>
+                    </div>
+                  )}
+                  <details
+                    className={`honest-coach-confidence ${honestCoachSummary.confidence.level}`}
+                    open={coachConfidenceOpen}
+                    onToggle={(event) => {
+                      const open = (event.currentTarget as HTMLDetailsElement).open;
+                      setCoachConfidenceOpen(open);
+                      if (open) {
+                        trackLaunchEvent("coach_confidence_opened", {
+                          format,
+                          confidence: honestCoachSummary.confidence.level,
+                        });
+                      }
+                    }}
+                  >
+                    <summary>
+                      <strong>{honestCoachSummary.confidence.label}</strong>
+                      <span>{honestCoachSummary.confidence.detail}</span>
+                    </summary>
+                    <p>{honestCoachSummary.confidence.reason}</p>
+                  </details>
+                  {structuralAnalysisStatus === "loading" && !boundStructural.ok && (
+                    <p className="structural-analysis-pending" role="status">
+                      Analyzing this build&apos;s structure…
+                    </p>
+                  )}
+                  {structuralAnalysisStatus === "error" && !boundStructural.ok && (
+                    <p className="structural-analysis-pending" role="status">
+                      Structural analysis is temporarily unavailable. Deck editing and testing remain unaffected.
+                    </p>
+                  )}
+                  {honestCoachSummary.narrativeIntegrity?.regenerated && (
+                    <p className="structural-analysis-pending" role="status">
+                      Coach narrative was regenerated to match this analysis only.
+                    </p>
+                  )}
+                </header>
+                {honestCoachSummary.coachingAllowed && (
+                <div className="honest-coach-priority-grid" aria-label="Honest Coach priorities">
+                  <article className="honest-coach-plan">
+                    <small>WHY THIS DECK WINS</small>
+                    <h3>{honestCoachSummary.planStory?.title || honestCoachSummary.intentions.title}</h3>
+                    {honestCoachSummary.planStory?.planLabel && (
+                      <span className="honest-coach-plan-chip">{honestCoachSummary.planStory.planLabel}</span>
+                    )}
+                    <p>{honestCoachSummary.intentions.accomplish}</p>
+                  </article>
+                  <article>
+                    <small>{honestCoachSummary.planStory?.fromRecognition ? "HOW IT GETS STARTED" : "EARLY GAME"}</small>
+                    <p>{honestCoachSummary.intentions.establish}</p>
+                  </article>
+                  <article>
+                    <small>WHEN IT BECOMES DANGEROUS</small>
+                    <p>{honestCoachSummary.intentions.dependsOn}</p>
+                  </article>
+                  <article className="coach-brief-watch">
+                    <small>{honestCoachSummary.planStory?.fromRecognition ? "WHAT CAN DERAIL IT" : "WATCH THIS FIRST"}</small>
+                    <p>{honestCoachSummary.intentions.firstVulnerability}</p>
+                    {honestCoachSummary.watchingVoice?.paragraph && (
+                      <p className="honest-coach-watching">
+                        <em>{honestCoachSummary.watchingVoice.label || "One thing we're watching"}</em>
+                        {honestCoachSummary.watchingVoice.badge?.title && (
+                          <span className="understanding-badge"> {honestCoachSummary.watchingVoice.badge.title}</span>
+                        )}
+                        {" "}
+                        {honestCoachSummary.watchingVoice.paragraph}
+                      </p>
+                    )}
+                    {honestCoachSummary.principleVoice?.paragraph && (
+                      <p className="honest-coach-watching honest-coach-principle">
+                        <em>{honestCoachSummary.principleVoice.label || "One principle we're watching"}</em>
+                        {honestCoachSummary.principleVoice.badge?.title && (
+                          <span className="understanding-badge"> {honestCoachSummary.principleVoice.badge.title}</span>
+                        )}
+                        {" "}
+                        {honestCoachSummary.principleVoice.paragraph}
+                      </p>
+                    )}
+                    <p className="honest-coach-claim-observed">
+                      <em>Observed</em>
+                      {honestCoachSummary.observedLead}
+                    </p>
+                    <p className="honest-coach-claim-inferred">
+                      <em>Interpretation</em>
+                      {honestCoachSummary.inferredLead}
+                    </p>
+                    {honestCoachSummary.uncertaintyLead && (
+                      <p className="honest-coach-claim-uncertainty">
+                        <em>Uncertainty</em>
+                        {honestCoachSummary.uncertaintyLead}
+                      </p>
+                    )}
+                  </article>
+                </div>
+                )}
+                {honestCoachSummary.coachingAllowed && !isImportedDeckReview && (
+                  <aside className="coach-next-game-focus" aria-label="Next game focus">
+                    <small>TAKE ONE THING WITH YOU</small>
+                    <strong>Your next game has one clear focus.</strong>
+                    <p>
+                      {honestCoachSummary.intentions.firstVulnerability
+                        || "Play one focused game, then come back and tell MetaForge what actually happened."}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!activeFieldTest) beginProvingGroundsTest();
+                        setActiveForgeChapter(5);
+                        trackLaunchEvent("coaching_opened", { format });
+                        window.requestAnimationFrame(() =>
+                          document.getElementById("proving-grounds-title")?.scrollIntoView({ behavior: "smooth", block: "start" }),
+                        );
+                      }}
+                    >
+                      Prepare my next game →
+                    </button>
+                  </aside>
+                )}
+                {honestCoachSummary.coachingAllowed && (
+                <details
+                  className="honest-coach-drilldown"
+                  open={coachWhyOpen}
+                  onToggle={(event) => {
+                    const open = (event.currentTarget as HTMLDetailsElement).open;
+                    setCoachWhyOpen(open);
+                    if (open) {
+                      trackLaunchEvent("coach_why_opened", {
+                        format,
+                        analysis: honestCoachSummary.analysisIds.analysisId,
+                      });
+                    }
+                  }}
+                >
+                  <summary>{honestCoachSummary.whyPrompt}</summary>
+                  <div className="honest-coach-drilldown-grid">
+                    <div>
+                      <small>OBSERVED</small>
+                      <ul>
+                        {honestCoachSummary.observedFindings.map((line) => (
+                          <li key={line}>{line}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <small>INTERPRETIVE</small>
+                      <ul>
+                        {honestCoachSummary.interpretiveGuidance.map((line) => (
+                          <li key={line}>{line}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                  {honestCoachSummary.identity.packageLabels.length > 0 && (
+                    <p className="honest-coach-packages">
+                      Packages detected: {honestCoachSummary.identity.packageLabels.join(" · ")}
+                    </p>
+                  )}
+                  <p className="honest-coach-id-chip" aria-label="Analysis id">
+                    Analysis {honestCoachSummary.analysisIds.analysisId}
+                  </p>
+                </details>
+                )}
+                {reviewFocusResult && (
+                  <aside className="coach-question">
+                    <small>YOUR QUESTION · {reviewFocusResult.focus.toUpperCase()}</small>
+                    <strong>{reviewFocusResult.evidence}</strong>
+                    <p>{reviewFocusResult.nextStep}</p>
+                  </aside>
+                )}
+                <aside className="honest-coach-feedback" aria-label="Was this analysis helpful?">
+                  <small>ALPHA FEEDBACK</small>
+                  <b>Was this coaching read helpful?</b>
+                  <div className="honest-coach-feedback-actions">
+                    {HONEST_COACH_FEEDBACK_OPTIONS.map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        disabled={coachFeedbackStatus === "saving" || coachFeedbackStatus === "saved"}
+                        onClick={() => submitHonestCoachFeedback(option.id)}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                  {coachFeedbackStatus === "need-reason" && coachFeedbackPendingOption === "not-helpful" && (
+                    <div className="honest-coach-not-helpful-reasons" role="group" aria-label="Why was this not helpful?">
+                      <small>What went wrong?</small>
+                      <div className="honest-coach-feedback-actions">
+                        {HONEST_COACH_NOT_HELPFUL_REASONS.map((reason) => (
+                          <button
+                            key={reason.id}
+                            type="button"
+                            disabled={coachFeedbackStatus === "saving"}
+                            onClick={() =>
+                              submitHonestCoachFeedback(
+                                "not-helpful",
+                                coachFeedbackTargetTablet,
+                                reason.id,
+                              )
+                            }
+                          >
+                            {reason.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <label className="honest-coach-feedback-note">
+                    <span>Optional note</span>
+                    <textarea
+                      value={coachFeedbackNote}
+                      onChange={(event) => setCoachFeedbackNote(event.target.value)}
+                      rows={2}
+                      maxLength={500}
+                      placeholder="Tell us what felt right or wrong about this read."
+                    />
+                  </label>
+                  {coachFeedbackStatus === "saved" && <p role="status">Thanks — feedback saved for this analysis.</p>}
+                  {coachFeedbackStatus === "auth" && <p role="status">Could not verify account. Guest feedback may still work — try again.</p>}
+                  {coachFeedbackStatus === "error" && <p role="status">Could not save feedback just now. Try again in a moment.</p>}
+                </aside>
+                <footer>
+                  <span><small>WANT THE RECEIPTS?</small><b>Open exact scores, detected relationships, card lists, and methodology only when you need them.</b></span>
+                  <button type="button" onClick={openDeepForgeEvidence}>
+                    How do you know? → Deep Forge evidence
+                  </button>
+                </footer>
+              </section>
+
               <nav
                 id="forge-chapter-rail"
                 className="forge-chapter-rail workspace-mode-tabs"
@@ -5447,14 +6340,14 @@ export default function Home() {
                   </button>
                 ))}
               </nav>
-              <section className="forge-next-step" aria-label="Recommended next step">
+              <section className="forge-next-step forge-next-step-secondary" aria-label="Recommended next step">
                 <div>
-                  <small>{isImportedDeckReview ? "YOUR DECK REVIEW IS READY" : "YOUR COACH IS READY"}</small>
+                  <small>{isImportedDeckReview ? "NEXT" : "YOUR COACH IS READY"}</small>
                   <strong>
                     {activeFieldTest
                       ? "Play when you are ready, then come back for a three-tap check-in."
                       : isImportedDeckReview
-                        ? "See what your deck is trying to do, how it gets started, and the first weakness worth testing."
+                        ? "When you're ready, open the deck list or start a focused test."
                         : "MetaForge has prepared the single most useful question for your next game."}
                   </strong>
                 </div>
@@ -5462,7 +6355,8 @@ export default function Home() {
                   type="button"
                   onClick={() => {
                     if (isImportedDeckReview && !activeFieldTest) {
-                      window.requestAnimationFrame(() => document.getElementById("coach-brief")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+                      setActiveForgeChapter(1);
+                      window.requestAnimationFrame(() => document.getElementById("deck-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" }));
                       trackLaunchEvent("coaching_opened", { format });
                       return;
                     }
@@ -5472,7 +6366,7 @@ export default function Home() {
                     window.requestAnimationFrame(() => document.getElementById("proving-grounds-title")?.scrollIntoView({ behavior: "smooth", block: "start" }));
                   }}
                 >
-                  {activeFieldTest ? "Continue coaching →" : isImportedDeckReview ? "Show me what you found →" : "Prepare my next game →"}
+                  {activeFieldTest ? "Continue coaching →" : isImportedDeckReview ? "View deck list →" : "Prepare my next game →"}
                 </button>
               </section>
             </>
@@ -5485,13 +6379,22 @@ export default function Home() {
               </p>
             )
           )}
-          <div className={`testing-layout chapter-${activeForgeChapter}-active ${deckViewMode}-deck-view`}>
+          <div className={`testing-layout chapter-${activeForgeChapter}-active ${deckViewMode}-deck-view${isImportedDeckReview ? " imported-deck-review" : ""}`}>
             {hasValidatedDeck && (
               <div className="deck-reference-strip">
-                <img src={cardImage(activeCommanderName || chosenPreview.card)} alt="" />
+                <img
+                  className="commander-art-crop"
+                  src={cardArtCrop(activeCommanderName || chosenPreview.card)}
+                  alt=""
+                />
                 <div>
                   <strong>{displayDeckName}</strong>
-                  <span>{deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards · {format}</span>
+                  <span>
+                    {honestCoachSummary.planStory?.title
+                      ? `${honestCoachSummary.planStory.title} · `
+                      : ""}
+                    {deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards · {format}
+                  </span>
                 </div>
                 <button type="button" onClick={() => setActiveForgeChapter(1)}>View full deck →</button>
               </div>
@@ -5591,86 +6494,7 @@ export default function Home() {
                   <em>{nativeMasterworkContext.selected.recoveryNote}</em>
                 </span>
               )}
-              {hasValidatedDeck && (
-              <section className="forge-understanding-bridge coach-brief" id="coach-brief" aria-label="Coach's brief">
-                <header>
-                  <small>COACH&apos;S BRIEF</small>
-                  <h2>{isImportedDeckReview ? "What MetaForge found in your deck." : "Your deck in plain language."}</h2>
-                  <p>{isImportedDeckReview
-                    ? "This is a coaching review, not a replacement deck. Start with the plan MetaForge sees, how the deck gets moving, and the first pressure point to watch in a real game."
-                    : "Start with the plan, the setup, and the one pressure point worth watching. Exact scores and card-by-card evidence stay available in Deep Forge."}</p>
-                  {structuralAnalysisStatus === "loading" && !structuralReportReady && (
-                    <p className="structural-analysis-pending" role="status">
-                      Analyzing this build's structure…
-                    </p>
-                  )}
-                  {structuralAnalysisStatus === "error" && !structuralReportReady && (
-                    <p className="structural-analysis-pending" role="status">
-                      Structural analysis is temporarily unavailable. Deck editing and testing remain unaffected.
-                    </p>
-                  )}
-                </header>
-                <div className="coach-brief-grid">
-                  <article>
-                    <i aria-hidden="true">01</i>
-                    <small>YOUR PLAN</small>
-                    <h3>{chosenWork.path}</h3>
-                    <p>This list is shaped around your {strategy.toLowerCase()} approach.</p>
-                  </article>
-                  <article>
-                    <i aria-hidden="true">02</i>
-                    <small>GET ESTABLISHED</small>
-                    <h3>
-                      {simulationDossier
-                        ? simulationDossier.goldfish.expert.keepableRate >= 0.8
-                          ? "Reliable opening hands"
-                          : simulationDossier.goldfish.expert.keepableRate >= 0.65
-                            ? "Playable opening hands"
-                            : "Opening hands need attention"
-                        : "Opening trials are still resolving"}
-                    </h3>
-                    <p>{simulationDossier ? "The Forge tested whether the deck can begin its plan with functional mana and sequencing." : `Develop mana, then bring ${chosenPreview.card} into the plan.`}</p>
-                  </article>
-                  <article>
-                    <i aria-hidden="true">03</i>
-                    <small>BUILD MOMENTUM</small>
-                    <h3>{forgeSystemsReport.strongestSystem?.name || "Advance the main game plan"}</h3>
-                    <p>{forgeSystemsReport.strongestSystem ? "This is the clearest repeatable engine detected in the finished list." : "The deck is complete; named engine evidence is still being resolved."}</p>
-                  </article>
-                  <article className="coach-brief-watch">
-                    <i aria-hidden="true">!</i>
-                    <small>WATCH THIS FIRST</small>
-                    <h3>{forgeSystemsReport.weakestSystem?.name || simulationDossier?.matrix.weakest?.opponent || "Protect the plan under pressure"}</h3>
-                    <p>{forgeSystemsReport.weakestSystem ? "This system has the least structural support, so it is the best place to watch during real games." : "Record what interrupts the deck first; that evidence should drive the next change."}</p>
-                  </article>
-                </div>
-                <ol className="coach-deck-sequence" aria-label="Typical deck sequence">
-                  <li><span>1</span><b>Develop mana</b></li>
-                  <li><span>2</span><b>Deploy {chosenPreview.card}</b></li>
-                  <li><span>3</span><b>Establish {forgeSystemsReport.strongestSystem?.name || "the plan"}</b></li>
-                  <li><span>4</span><b>Turn momentum into pressure</b></li>
-                </ol>
-                {reviewFocusResult && (
-                  <aside className="coach-question">
-                    <small>YOUR QUESTION · {reviewFocusResult.focus.toUpperCase()}</small>
-                    <strong>{reviewFocusResult.evidence}</strong>
-                    <p>{reviewFocusResult.nextStep}</p>
-                  </aside>
-                )}
-                <footer>
-                  <span><small>WANT THE RECEIPTS?</small><b>Open exact scores, detected relationships, card lists, and methodology only when you need them.</b></span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIntelligenceOpen(true);
-                      window.requestAnimationFrame(() => document.querySelector(".forge-intelligence-vault")?.scrollIntoView({ behavior: "smooth", block: "start" }));
-                    }}
-                  >
-                    Open Deep Forge evidence →
-                  </button>
-                </footer>
-              </section>
-              )}
+              
               <details
                 className="forge-intelligence-vault"
                 open={
@@ -5683,7 +6507,7 @@ export default function Home() {
               >
                 <summary>
                   <span>
-                    <small>DEEP FORGE · EVIDENCE APPENDIX</small>
+                    <small>DEEP FORGE · HOW DO YOU KNOW?</small>
                     <b>Exact numbers, detected relationships, and methodology</b>
                   </span>
                   <strong>
@@ -5701,6 +6525,100 @@ export default function Home() {
                 <span><small>RESILIENCE</small><b>{nativeMasterworkContext?.selected?.evaluation?.resilience ?? "—"}</b></span>
                 <button type="button" className={cheapestPrintings ? "active" : ""} aria-pressed={cheapestPrintings} onClick={() => setCheapestPrintings((current) => !current)}>Compare cheapest printings</button>
               </div>
+              {honestCoachSummary.deepForgeUnderstanding?.entries?.length > 0 && (
+                <section className="deep-forge-understanding" aria-label="Current understanding research">
+                  <header>
+                    <small>CURRENT UNDERSTANDING · RESEARCH</small>
+                    <b>{honestCoachSummary.deepForgeUnderstanding.title}</b>
+                    <em>{honestCoachSummary.deepForgeUnderstanding.note}</em>
+                  </header>
+                  {honestCoachSummary.deepForgeUnderstanding.entries.map((entry: any) => (
+                    <details key={entry.id} className="deep-forge-hypothesis">
+                      <summary>
+                        <span className="understanding-badge">{entry.badge?.title || entry.state}</span>
+                        {" "}
+                        {entry.claim}
+                      </summary>
+                      <div>
+                        <p><small>EVIDENCE</small> Tournament {entry.evidence?.tournament} · Experts {entry.evidence?.experts} · Shadow {entry.evidence?.shadow} · Simulation {entry.evidence?.simulation}</p>
+                        {(entry.evidence?.notes || []).length > 0 && (
+                          <ul>
+                            {entry.evidence.notes.map((note: string) => (
+                              <li key={note}>{note}</li>
+                            ))}
+                          </ul>
+                        )}
+                        {entry.prediction?.expectToObserve?.length > 0 && (
+                          <p>
+                            <small>PREDICTION ({entry.prediction.windowDays}d)</small>
+                            {" "}
+                            {entry.prediction.expectToObserve.join(" · ")}
+                          </p>
+                        )}
+                        {(entry.retirementCriteria || []).length > 0 && (
+                          <p>
+                            <small>WHAT WOULD CHANGE OUR MIND</small>
+                            {" "}
+                            {entry.retirementCriteria.join(" · ")}
+                          </p>
+                        )}
+                        {entry.uniquenessAngle && (
+                          <p><small>UNIQUE ANGLE (NOT BRAIN)</small> {entry.uniquenessAngle}</p>
+                        )}
+                      </div>
+                    </details>
+                  ))}
+                  {(honestCoachSummary.deepForgeUnderstanding.retiredEntries || []).length > 0 && (
+                    <div className="deep-forge-retired">
+                      <small>RETIRED UNDERSTANDING</small>
+                      {honestCoachSummary.deepForgeUnderstanding.retiredEntries.map((entry: any) => (
+                        <details key={entry.id}>
+                          <summary>{entry.badge?.title || "Retired"} — {entry.claim}</summary>
+                          <p><small>WHY WE BELIEVED IT</small> {(entry.whyBelieved || []).join(" · ") || "—"}</p>
+                          <p><small>WHY WE NO LONGER DO</small> {(entry.whyRetired || []).join(" · ") || "—"}</p>
+                        </details>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              )}
+              {honestCoachSummary.deepForgePrinciples?.entries?.length > 0 && (
+                <section className="deep-forge-understanding deep-forge-principles" aria-label="Strategic principles research">
+                  <header>
+                    <small>STRATEGIC PRINCIPLES · RESEARCH</small>
+                    <b>{honestCoachSummary.deepForgePrinciples.title}</b>
+                    <em>{honestCoachSummary.deepForgePrinciples.note}</em>
+                  </header>
+                  {honestCoachSummary.deepForgePrinciples.entries.map((entry: any) => (
+                    <details key={entry.id} className="deep-forge-hypothesis">
+                      <summary>
+                        <span className="understanding-badge">{entry.badge?.title || entry.status}</span>
+                        {" "}
+                        <b>{entry.name}</b>
+                        {" — "}
+                        {entry.description}
+                      </summary>
+                      <div>
+                        <p>
+                          <small>EVIDENCE</small>
+                          {" "}
+                          Experts {entry.evidence?.experts} · Tournament {entry.evidence?.tournament} · Fixtures {entry.evidence?.fixtures}
+                        </p>
+                        {(entry.implementations || []).length > 0 && (
+                          <p><small>IMPLEMENTATIONS</small> {entry.implementations.join(" · ")}</p>
+                        )}
+                        {(entry.retirementCriteria || []).length > 0 && (
+                          <p>
+                            <small>WHAT WOULD CHANGE OUR MIND</small>
+                            {" "}
+                            {entry.retirementCriteria.join(" · ")}
+                          </p>
+                        )}
+                      </div>
+                    </details>
+                  ))}
+                </section>
+              )}
               {deckRows.length > 0 && (
                 <section className={`integrity-dossier ${deckIntegrity.passed ? "passed" : deckIntegrity.checking ? "checking" : "held"}`}>
                   <header>
@@ -5733,7 +6651,13 @@ export default function Home() {
                       {nativeMasterworkContext.manaConsistency.risky.slice(0, 3).map((entry: { name: string; turn: number; colors: string[]; probability: number }) => (
                         <span key={entry.name}>
                           <small>{entry.colors.join("")} by turn {entry.turn}</small>
-                          <b>{entry.name}</b>
+                          <b>
+                            <ForgeCardRef
+                              name={entry.name}
+                              surface="mana-risky"
+                              onInspect={setHoveredCard}
+                            />
+                          </b>
                           <em>{(entry.probability * 100).toFixed(0)}% chance on time</em>
                         </span>
                       ))}
@@ -5868,7 +6792,9 @@ export default function Home() {
                           <h2>
                             {forgeSystemsReport.systems.length
                               ? "The deck's internal machinery is awake."
-                              : "The machinery has not connected yet."}
+                              : honestCoachSummary.strategyVsSystem?.incompleteEvidence
+                                ? "Repeatable systems are not fully verified yet."
+                                : "No repeatable system can be verified on this complete card set."}
                           </h2>
                           <p>
                             {forgeSystemsReport.systems.length
@@ -5879,7 +6805,7 @@ export default function Home() {
                                 } detected across ${Math.round(
                                   forgeSystemsReport.systemCoverage * 100,
                                 )}% of nonland cards.`
-                              : "Resolve more card records or strengthen connected packages before the Forge names an engine."}
+                              : honestCoachSummary.deepForgeEmpty.system}
                           </p>
                         </div>
 
@@ -5895,16 +6821,37 @@ export default function Home() {
                       {forgeSystemsReport.systems.length > 0 ? (
                         <>
                           <section className="systems-overview">
+                            {honestCoachSummary.strategicRecognition?.primaryPlan
+                              && !honestCoachSummary.strategicRecognition?.ambiguous && (
+                              <article className="systems-primary-plan">
+                                <small>WHAT THIS MEANS AT THE TABLE</small>
+                                <strong>
+                                  {honestCoachSummary.strategicRecognition.tableWhy
+                                    || honestCoachSummary.strategicRecognition.planLabel}
+                                </strong>
+                                <p>{honestCoachSummary.strategicRecognition.primaryPlan}</p>
+                                <span>
+                                  Supporting evidence · powered by{" "}
+                                  {[
+                                    honestCoachSummary.strategicRecognition.hierarchy?.primary?.name,
+                                    ...(honestCoachSummary.strategicRecognition.hierarchy?.supporting || [])
+                                      .slice(0, 2)
+                                      .map((entry: any) => entry.name),
+                                  ].filter(Boolean).join(" · ") || "verified systems"}
+                                </span>
+                              </article>
+                            )}
                             <article>
-                              <small>STRONGEST MACHINE</small>
+                              <small>STRONGEST AT THE TABLE</small>
                               <strong>
-                                {forgeSystemsReport.strongestSystem?.name ||
-                                  "Unresolved"}
+                                {honestCoachSummary.strategicRecognition?.tableMeaning
+                                  || honestCoachSummary.strategicRecognition?.playerSystemLines?.[0]
+                                  || forgeSystemsReport.strongestSystem?.name
+                                  || "Unresolved"}
                               </strong>
                               <span>
-                                {forgeSystemsReport.strongestSystem?.health
-                                  ?.overall || 0}
-                                /100 structural health
+                                Supporting evidence · {forgeSystemsReport.strongestSystem?.name || "system"} ·{" "}
+                                {forgeSystemsReport.strongestSystem?.health?.overall || 0}/100 health
                               </span>
                             </article>
 
@@ -6021,12 +6968,17 @@ export default function Home() {
 
                                       <span className="system-identity">
                                         <small>
-                                          SYSTEM {String(systemIndex + 1).padStart(2, "0")}
+                                          WHAT THIS MEANS · SYSTEM {String(systemIndex + 1).padStart(2, "0")}
                                         </small>
-                                        <strong>{system.name}</strong>
+                                        <strong>
+                                          {tableMeaningFor(system.signal)
+                                            || system.name}
+                                        </strong>
                                         <em>
-                                          {system.members.length} components ·{" "}
-                                          {system.edges.length} internal links
+                                          Supporting evidence · {system.name} ·{" "}
+                                          {system.members.length} cards ·{" "}
+                                          {system.edges.length} links · Health{" "}
+                                          {system.health?.overall ?? 0}
                                         </em>
                                       </span>
 
@@ -6091,6 +7043,7 @@ export default function Home() {
                                               <button
                                                 type="button"
                                                 key={name}
+                                                data-card-inspect-surface="system-core"
                                                 className={
                                                   forgeSystemsReport.bridgeCards.some(
                                                     (bridge) =>
@@ -6118,6 +7071,7 @@ export default function Home() {
                                                 <button
                                                   type="button"
                                                   key={name}
+                                                  data-card-inspect-surface="system-support"
                                                   onClick={() =>
                                                     setHoveredCard(name)
                                                   }
@@ -6141,6 +7095,7 @@ export default function Home() {
                                                 <button
                                                   type="button"
                                                   key={name}
+                                                  data-card-inspect-surface="system-producers"
                                                   onClick={() =>
                                                     setHoveredCard(name)
                                                   }
@@ -6164,6 +7119,7 @@ export default function Home() {
                                                 <button
                                                   type="button"
                                                   key={name}
+                                                  data-card-inspect-surface="system-payoffs"
                                                   onClick={() =>
                                                     setHoveredCard(name)
                                                   }
@@ -6302,6 +7258,7 @@ export default function Home() {
                                     <button
                                       type="button"
                                       key={bridge.name}
+                                      data-card-inspect-surface="bridge-card"
                                       className={
                                         activeSystem &&
                                         bridge.systems.includes(
@@ -6389,7 +7346,7 @@ export default function Home() {
                                 <div>
                                   {(activeCausalitySystem?.criticalNodes || []).length ? (
                                     activeCausalitySystem?.criticalNodes.map((card) => (
-                                      <button type="button" key={card.name} onClick={() => setHoveredCard(card.name)}>
+                                      <button type="button" key={card.name} data-card-inspect-surface="causality-critical" onClick={() => setHoveredCard(card.name)}>
                                         <span><b>{card.name}</b><small>{card.primaryRole}</small></span>
                                         <em>{card.collapseRisk}<small> RISK</small></em>
                                       </button>
@@ -6403,7 +7360,7 @@ export default function Home() {
                                 <div>
                                   {(activeCausalitySystem?.amplifiers || []).length ? (
                                     activeCausalitySystem?.amplifiers.map((card) => (
-                                      <button type="button" key={card.name} onClick={() => setHoveredCard(card.name)}>
+                                      <button type="button" key={card.name} data-card-inspect-surface="causality-amplifier" onClick={() => setHoveredCard(card.name)}>
                                         <span><b>{card.name}</b><small>{card.systems.join(" · ")}</small></span>
                                         <em>{card.amplifierScore}<small> AMP</small></em>
                                       </button>
@@ -6417,7 +7374,7 @@ export default function Home() {
                                 <div>
                                   {(activeCausalitySystem?.bottlenecks || []).length ? (
                                     activeCausalitySystem?.bottlenecks.map((card) => (
-                                      <button type="button" key={card.name} onClick={() => setHoveredCard(card.name)}>
+                                      <button type="button" key={card.name} data-card-inspect-surface="causality-bottleneck" onClick={() => setHoveredCard(card.name)}>
                                         <span><b>{card.name}</b><small>{card.alternatives.length} modeled alternative{card.alternatives.length === 1 ? "" : "s"}</small></span>
                                         <em>{card.bottleneckScore}<small> LOAD</small></em>
                                       </button>
@@ -6496,11 +7453,11 @@ export default function Home() {
                       ) : (
                         <div className="systems-empty-state">
                           <i>ᛞ</i>
-                          <strong>No repeatable system can be named honestly.</strong>
+                          <strong>{honestCoachSummary.deepForgeEmpty.system}</strong>
                           <p>
-                            The Forge will not manufacture an engine claim from
-                            isolated cards. Complete the card record and strengthen
-                            producer-to-payoff relationships first.
+                            {honestCoachSummary.strategyVsSystem?.incompleteEvidence
+                              ? "Unknown is not absent: missing or unresolved card records prevent naming a repeatable engine. Strategy recognition can still be stronger than system verification."
+                              : "The Forge will not manufacture an engine claim from isolated cards on a complete verified set."}
                           </p>
                         </div>
                       )}
@@ -6587,25 +7544,69 @@ export default function Home() {
                         <article>
                           <small>STRONGEST PACKAGES</small>
                           {focusedInteractionGraph.packages.slice(0, 4).map((group) => (
-                            <p key={group.signal}><b>{group.signal.toUpperCase()}</b><span>{group.members.slice(0, 4).join(" · ")}{group.members.length > 4 ? ` +${group.members.length - 4}` : ""}</span></p>
+                            <p key={group.signal}>
+                              <b>{group.signal.toUpperCase()}</b>
+                              <span>
+                                <ForgeCardRefList
+                                  names={group.members}
+                                  surface="graph-package"
+                                  onInspect={setHoveredCard}
+                                  limit={4}
+                                />
+                                {group.members.length > 4 ? ` +${group.members.length - 4}` : ""}
+                              </span>
+                            </p>
                           ))}
-                          {!focusedInteractionGraph.packages.length && <em>No multi-card package is verified yet.</em>}
+                          {!focusedInteractionGraph.packages.length && <em>{honestCoachSummary.deepForgeEmpty.package}</em>}
                         </article>
                         <article>
                           <small>STRONGEST RELATIONSHIPS</small>
                           {focusedInteractionGraph.edges.slice(0, 3).map((edge) => (
-                            <p key={`${edge.from}-${edge.to}`}><b>{edge.strength}% · {edge.signals.join(" + ")}</b><span>{edge.from} ↔ {edge.to}</span></p>
+                            <p key={`${edge.from}-${edge.to}`}>
+                              <b>{edge.strength}% · {edge.signals.join(" + ")}</b>
+                              <span>
+                                <ForgeCardRef name={edge.from} surface="graph-edge" onInspect={setHoveredCard} />
+                                {" ↔ "}
+                                <ForgeCardRef name={edge.to} surface="graph-edge" onInspect={setHoveredCard} />
+                              </span>
+                            </p>
                           ))}
-                          {!focusedInteractionGraph.edges.length && <em>No oracle-derived relationship is strong enough to claim.</em>}
+                          {!focusedInteractionGraph.edges.length && <em>{honestCoachSummary.deepForgeEmpty.relationship}</em>}
                         </article>
                         <article className={focusedInteractionGraph.nonbos.length ? "graph-warning" : ""}>
                           <small>RULES AUDIT + ISOLATION</small>
-                          {focusedInteractionGraph.nonbos.slice(0, 2).map((conflict) => <p key={`${conflict.source}-${conflict.signal}`}><b>NONBO · {conflict.source}</b><span>{conflict.reason}</span></p>)}
+                          {focusedInteractionGraph.nonbos.slice(0, 2).map((conflict) => (
+                            <p key={`${conflict.source}-${conflict.signal}`}>
+                              <b>
+                                NONBO ·{" "}
+                                <ForgeCardRef name={conflict.source} surface="graph-nonbo" onInspect={setHoveredCard} />
+                              </b>
+                              <span>{conflict.reason}</span>
+                            </p>
+                          ))}
                           {!focusedInteractionGraph.nonbos.length && <p><b>NO VERIFIED NONBO</b><span>No symmetrical oracle-text conflict was detected.</span></p>}
                           {focusedInteractionGraph.amplifiers.slice(0, 2).map((amplifier: { source: string; reason: string }) => (
-                            <p key={amplifier.source}><b>AMPLIFIER · {amplifier.source}</b><span>{amplifier.reason}</span></p>
+                            <p key={amplifier.source}>
+                              <b>
+                                AMPLIFIER ·{" "}
+                                <ForgeCardRef name={amplifier.source} surface="graph-amplifier" onInspect={setHoveredCard} />
+                              </b>
+                              <span>{amplifier.reason}</span>
+                            </p>
                           ))}
-                          <em>{focusedInteractionGraph.isolated.length ? `${focusedInteractionGraph.isolated.length} isolated slot${focusedInteractionGraph.isolated.length === 1 ? "" : "s"}: ${focusedInteractionGraph.isolated.slice(0, 4).join(" · ")}` : activeSystem ? "Every card in this machine has at least one modeled relationship." : "Every nonland slot has at least one modeled relationship."}</em>
+                          <em>
+                            {focusedInteractionGraph.isolated.length ? (
+                              <>
+                                {`${focusedInteractionGraph.isolated.length} isolated slot${focusedInteractionGraph.isolated.length === 1 ? "" : "s"}: `}
+                                <ForgeCardRefList
+                                  names={focusedInteractionGraph.isolated}
+                                  surface="graph-isolated"
+                                  onInspect={setHoveredCard}
+                                  limit={4}
+                                />
+                              </>
+                            ) : activeSystem ? "Every card in this machine has at least one modeled relationship." : "Every nonland slot has at least one modeled relationship."}
+                          </em>
                         </article>
                       </div>
                       <footer>{interactionGraph.methodology}</footer>
@@ -6635,8 +7636,8 @@ export default function Home() {
                   <b>A second, independent read: this exact build vs. its closest rival from generation.</b>
                 </header>
                 <div className="refinement-starters experiment-tablets" aria-label="Three evidence-led controlled experiments">
-                  {experimentTablets && experimentTablets.status === "advance" ? (
-                    experimentTablets.tablets.map((tablet: any, index: number) => {
+                  {honestCoachTablets.length > 0 ? (
+                    honestCoachTablets.map((tablet: any, index: number) => {
                       if (tablet.type === "confidence") {
                         return (
                           <article
@@ -6722,6 +7723,31 @@ export default function Home() {
                                 </figure>
                               </div>
                               <dl>
+                                {tablet.honestWhy?.summary && (
+                                  <div className="honest-why">
+                                    <dt>Why this change</dt>
+                                    <dd>
+                                      {tablet.honestWhy.observed && (
+                                        <p className="honest-coach-claim-observed">
+                                          <em>Observed</em>
+                                          {tablet.honestWhy.observed}
+                                        </p>
+                                      )}
+                                      {tablet.honestWhy.inferred && (
+                                        <p className="honest-coach-claim-inferred">
+                                          <em>I&apos;d recommend</em>
+                                          {tablet.honestWhy.inferred}
+                                        </p>
+                                      )}
+                                      {!tablet.honestWhy.observed && !tablet.honestWhy.inferred && tablet.honestWhy.summary}
+                                      {tablet.recommendationIds?.recommendationId && (
+                                        <small className="honest-coach-id-chip">
+                                          Rec {tablet.recommendationIds.recommendationId}
+                                        </small>
+                                      )}
+                                    </dd>
+                                  </div>
+                                )}
                                 <div>
                                   <dt>Field observation</dt>
                                   <dd>{tablet.fieldObservation}</dd>
@@ -6757,10 +7783,22 @@ export default function Home() {
                                 type="button"
                                 className="tablet-accept"
                                 disabled={!!swapFlourish}
-                                onClick={() => applyExperimentTablet(tablet)}
+                                onClick={() => {
+                                  trackLaunchEvent("coach_recommendation_viewed", {
+                                    format,
+                                    recommendation: tablet.recommendationIds?.recommendationId || "unknown",
+                                  });
+                                  applyExperimentTablet(tablet);
+                                }}
                               >
                                 {applying ? "Applying…" : "Accept this experiment →"}
                               </button>
+                              <div className="honest-coach-tablet-feedback">
+                                <small>Was this recommendation helpful?</small>
+                                <button type="button" onClick={() => submitHonestCoachFeedback("helpful", tablet)}>Helpful</button>
+                                <button type="button" onClick={() => submitHonestCoachFeedback("not-helpful", tablet)}>Not helpful</button>
+                                <button type="button" onClick={() => submitHonestCoachFeedback("misunderstands-plan", tablet)}>Misreads my plan</button>
+                              </div>
                             </div>
                             <div className="tablet-face tablet-face-back">
                               {Icon && (
@@ -6883,7 +7921,7 @@ export default function Home() {
                     <span>{cardFactsPending} card detail{cardFactsPending === 1 ? " is" : "s are"} still being matched. The rest of your deck is fully organized.</span>
                   </div>
                 )}
-                <div className="deck-gallery">
+                <div className="deck-gallery" id="deck-gallery">
                   <aside className="card-preview-stage">
                     <button
                       type="button"
@@ -6910,7 +7948,14 @@ export default function Home() {
                       <small>SLOT DUTY · {activeRole.toUpperCase()}</small>
                       {activeSlotReason}
                       {activeGraphEdges.map((edge) => (
-                        <em key={`${edge.from}-${edge.to}`}>{edge.signals.join(" + ")} · {edge.from === activeCard ? edge.to : edge.from}</em>
+                        <em key={`${edge.from}-${edge.to}`}>
+                          {edge.signals.join(" + ")} ·{" "}
+                          <ForgeCardRef
+                            name={edge.from === activeCard ? edge.to : edge.from}
+                            surface="gallery-companion"
+                            onInspect={setHoveredCard}
+                          />
+                        </em>
                       ))}
                     </span>
                   </aside>
@@ -7173,6 +8218,74 @@ export default function Home() {
               ) : (
                 <pre>The Forge is waiting for a valid commission.</pre>
               )}
+              {showContextCardInspector &&
+                contextInspectCard &&
+                createPortal(
+                  <aside
+                    key={contextInspectCard}
+                    className="forge-context-card-inspector"
+                    role="complementary"
+                    aria-label={`Inspecting ${contextInspectCard}`}
+                  >
+                    <header>
+                      <small>CARD IN CONTEXT</small>
+                      <button
+                        type="button"
+                        className="forge-context-card-inspector-close"
+                        onClick={closeContextCardInspector}
+                        aria-label="Close contextual card inspector"
+                      >
+                        ×
+                      </button>
+                    </header>
+                    <button
+                      type="button"
+                      className="forge-context-card-inspector-art"
+                      onClick={() => {
+                        setInspectedCard(contextInspectCard);
+                        closeContextCardInspector();
+                      }}
+                      aria-label={`Open full dossier for ${contextInspectCard}`}
+                    >
+                      {contextInspectImage ? (
+                        <img
+                          src={contextInspectImage}
+                          alt={`${contextInspectCard} card`}
+                        />
+                      ) : (
+                        <span>Art loading…</span>
+                      )}
+                    </button>
+                    <div className="forge-context-card-inspector-body">
+                      <strong>{contextInspectCard}</strong>
+                      <span>
+                        {contextInspectFact?.type_line ||
+                          "Card details awaken on inspection"}
+                      </span>
+                      <small>WHY IT MATTERS</small>
+                      {contextCardReasons.length ? (
+                        <ul>
+                          {contextCardReasons.map((reason) => (
+                            <li key={reason}>{reason}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p>Referenced in Deep Forge evidence for this build.</p>
+                      )}
+                      <button
+                        type="button"
+                        className="forge-context-card-inspector-dossier"
+                        onClick={() => {
+                          setInspectedCard(contextInspectCard);
+                          closeContextCardInspector();
+                        }}
+                      >
+                        Open full dossier →
+                      </button>
+                    </div>
+                  </aside>,
+                  document.body,
+                )}
               {inspectedCard && createPortal(
                 <div
                   className="card-inspector-backdrop"
@@ -7294,12 +8407,24 @@ export default function Home() {
                         <small>DECK CONNECTIONS</small>
                         {inspectedConnections.length ? (
                           <ul>
-                            {inspectedConnections.slice(0, 6).map((edge) => (
-                              <li key={`${edge.from}-${edge.to}`}>
-                                <b>{edge.from === inspectedCard ? edge.to : edge.from}</b>
-                                <span>{edge.signals.join(" + ")}</span>
-                              </li>
-                            ))}
+                            {inspectedConnections.slice(0, 6).map((edge) => {
+                              const counterpart = edge.from === inspectedCard ? edge.to : edge.from;
+                              return (
+                                <li key={`${edge.from}-${edge.to}`}>
+                                  <b>
+                                    <ForgeCardRef
+                                      name={counterpart}
+                                      surface="dossier-connection"
+                                      onInspect={(name) => {
+                                        setHoveredCard(name);
+                                        setInspectedCard(name);
+                                      }}
+                                    />
+                                  </b>
+                                  <span>{edge.signals.join(" + ")}</span>
+                                </li>
+                              );
+                            })}
                           </ul>
                         ) : (
                           <p>No direct mechanical connection is currently verified. That is evidence to inspect—not proof that the card is useless.</p>

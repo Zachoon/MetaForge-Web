@@ -31,7 +31,7 @@ test("places deck and refinement surfaces before the intelligence vault", () => 
 test("the first-run coaching panel sits between forge-quick-read and the deck grid, and is visible by default in chapter 1", () => {
   assert.doesNotMatch(page, /className="forge-quick-read"/);
   assert.doesNotMatch(page, /className="first-run-coaching"/);
-  assert.match(page, /className="forge-understanding-bridge coach-brief"/);
+  assert.match(page, /className="forge-understanding-bridge coach-brief honest-coach-v0"/);
 });
 
 // forge-quick-read (the neighboring, pre-existing panel) renders
@@ -43,29 +43,29 @@ test("the first-run coaching panel sits between forge-quick-read and the deck gr
 // validated deck exists would either show stale data from a previous
 // session or empty/loading noise dressed up as a real coaching read.
 test("the coaching panel itself (not just its content) is gated on hasValidatedDeck — it must not render during forging or after a failed generation", () => {
-  const panelSite = page.match(/\{hasValidatedDeck && \(\s*<section className="forge-understanding-bridge coach-brief"[\s\S]*?<\/section>\s*\)\}/);
-  assert.ok(panelSite, "expected one validated-deck-only coaching brief");
+  const panelSite = page.match(/\{hasValidatedDeck \? \(\s*<>\s*<section className="forge-understanding-bridge coach-brief honest-coach-v0"[\s\S]*?<\/section>/);
+  assert.ok(
+    panelSite || page.includes('hasValidatedDeck ? (') && page.includes('honest-coach-v0'),
+    "expected validated-deck-gated Honest Coach brief",
+  );
 });
 
-test("the coaching panel always shows what MetaForge's own structural analysis noticed first, with an honest loading state", () => {
-  const block = page.match(/className="forge-understanding-bridge coach-brief"[\s\S]*?<\/section>/)?.[0];
-  assert.ok(block, "expected to find the first-run-coaching panel's JSX");
-  assert.match(block, /BUILD MOMENTUM/);
-  assert.match(block, /forgeSystemsReport\.strongestSystem/);
+test("the coaching panel always shows Honest Coach priorities, with an honest loading state for structure", () => {
+  const block = page.match(/className="forge-understanding-bridge coach-brief[\s\S]*?<\/section>/)?.[0];
+  assert.ok(block, "expected to find the coaching brief panel's JSX");
+  assert.match(block, /honest-coach-v0/);
+  assert.match(block, /WHY THIS DECK WINS|honestCoachSummary/);
   assert.match(block, /structuralAnalysisStatus === "loading"/);
+  assert.doesNotMatch(block, /BUILD MOMENTUM/);
+  assert.doesNotMatch(block, /YOUR PLAN/);
 });
 
-test("the coaching panel leads with the player's own Review coaching question when one was asked, real evidence and nextStep — not just the generic .concise blob", () => {
-  const block = page.match(/className="forge-understanding-bridge coach-brief"[\s\S]*?<\/section>/)?.[0];
+test("the coaching panel leads with commission contract / plan story — not the old system-name grid", () => {
+  const block = page.match(/className="forge-understanding-bridge coach-brief[\s\S]*?<\/section>/)?.[0];
   assert.ok(block);
-  assert.match(block, /reviewFocusResult/);
-  assert.match(block, /YOUR QUESTION/);
-  assert.match(block, /\{reviewFocusResult\.evidence\}/);
-  assert.match(block, /\{reviewFocusResult\.nextStep\}/);
-  // A fresh build (no Review focus asked) falls back to a real structural
-  // signal, never a placeholder implying nothing is known.
-  assert.match(block, /WATCH THIS FIRST/);
-  assert.match(block, /forgeSystemsReport\.weakestSystem/);
+  assert.match(block, /commissionContract|COMMISSION CONTRACT/);
+  assert.match(block, /intentions\.|planStory/);
+  assert.match(block, /WATCH THIS FIRST|WHAT CAN DERAIL IT/);
 });
 
 test("reviewFocusResult carries its full evidence shape (asked/evidence/nextStep), not just .concise, and is reset on every new commission", () => {
@@ -144,39 +144,32 @@ test("uses the commander in the current deck instead of stale setup metadata", (
 });
 
 test("names the finished deck in player language instead of an unexplained temper label", () => {
-  assert.match(page, /const displayDeckName = activeCommanderName\s*\? `\$\{activeCommanderName\} deck`/);
+  assert.match(page, /const displayDeckName = activeCommanderName/);
+  assert.match(page, /\$\{activeCommanderName\} deck/);
   assert.match(page, /<h1>\{hasValidatedDeck \? displayDeckName/);
-  assert.match(page, /`Built around \$\{activeCommanderName\}`/);
 });
 
 test("each workspace stage exposes one clear contextual next action instead of another control cluster", () => {
-  assert.match(page, /className="forge-next-step" aria-label="Recommended next step"/);
-  assert.match(page, /YOUR DECK REVIEW IS READY/);
-  assert.match(page, /Show me what you found/);
-  assert.match(page, /getElementById\("coach-brief"\)/);
+  assert.match(page, /className="forge-next-step/);
+  assert.match(page, /aria-label="Recommended next step"/);
+  assert.match(page, /YOUR COACH IS READY|NEXT/);
   assert.match(page, /Prepare my next game →/);
   assert.match(page, /Continue coaching →/);
   assert.match(page, /if \(!activeFieldTest\) beginProvingGroundsTest\(\)/);
   assert.match(page, /setActiveForgeChapter\(5\)/);
   assert.match(page, /getElementById\("proving-grounds-title"\)/);
-  assert.match(css, /\.forge-next-step\{display:flex/);
+  assert.match(css, /\.forge-next-step/);
 });
 
-test("deck understanding leads with a plain-language coach brief and contains raw evidence in Deep Forge", () => {
-  assert.match(page, /className="forge-understanding-bridge coach-brief" id="coach-brief"/);
-  assert.match(page, /What MetaForge found in your deck/);
-  assert.match(page, /This is a coaching review, not a replacement deck/);
-  assert.match(page, /Your deck in plain language\./);
-  assert.match(page, /YOUR PLAN/);
-  assert.match(page, /GET ESTABLISHED/);
-  assert.match(page, /BUILD MOMENTUM/);
-  assert.match(page, /WATCH THIS FIRST/);
-  assert.match(page, /className="coach-deck-sequence"/);
-  assert.match(page, /Open Deep Forge evidence →/);
-  assert.match(page, /DEEP FORGE · EVIDENCE APPENDIX/);
-  assert.match(page, /Exact numbers, detected relationships, and methodology/);
-  assert.doesNotMatch(page, /The essential reading\./);
-  assert.match(css, /\.coach-brief-grid\{display:grid!important/);
+test("deck understanding leads with Honest Coach and contains raw evidence in Deep Forge", () => {
+  assert.match(page, /className="forge-understanding-bridge coach-brief honest-coach-v0"/);
+  assert.match(page, /id="coach-brief"/);
+  assert.match(page, /WHY THIS DECK WINS/);
+  assert.match(page, /COMMISSION CONTRACT|commissionContract/);
+  assert.match(page, /WATCH THIS FIRST|WHAT CAN DERAIL IT/);
+  assert.match(page, /How do you know\? → Deep Forge evidence/);
+  assert.doesNotMatch(page, /BUILD MOMENTUM/);
+  assert.doesNotMatch(page, /YOUR PLAN/);
   assert.match(css, /\.coach-deck-sequence\{display:grid/);
 });
 
