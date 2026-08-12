@@ -97,4 +97,31 @@ describe("Founder Issue #023 — Intent vs Recommendation Transparency", () => {
     assert.match(page, /How do you know\? → Deep Forge evidence/);
     assert.match(css, /\.request-recognition\b/);
   });
+
+  it("surfaces a blueprint-missed adjustment using the engine's own boundary explanation", () => {
+    const report = buildRequestRecognition({
+      note: "",
+      selected: {
+        ...jaySelected(),
+        blueprintAlignment: {
+          status: "missed-supported-blueprint",
+          boundary: "Blueprint contract reserved 8/12 required identity cards before general optimization; legality and minimum deck function remained binding.",
+        },
+      },
+    });
+    const adjustment = report.adjustments.find((entry) => entry.id === "blueprint-missed");
+    assert.ok(adjustment, `expected a blueprint-missed adjustment, got: ${JSON.stringify(report.adjustments)}`);
+    assert.equal(adjustment.reason, "Blueprint contract reserved 8/12 required identity cards before general optimization; legality and minimum deck function remained binding.");
+  });
+
+  it("never surfaces a blueprint-missed adjustment when the blueprint was honored", () => {
+    const report = buildRequestRecognition({
+      note: "",
+      selected: {
+        ...jaySelected(),
+        blueprintAlignment: { status: "honored-best-effort", boundary: "Should never be read." },
+      },
+    });
+    assert.equal(report.adjustments.some((entry) => entry.id === "blueprint-missed"), false);
+  });
 });

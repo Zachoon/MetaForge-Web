@@ -396,19 +396,17 @@ export function buildRequestRecognition({
 
   if (
     blueprintAlignment?.status === "missed-supported-blueprint" &&
-    (blueprintAlignment?.missed || []).length
+    blueprintAlignment?.boundary
   ) {
-    const missed = (blueprintAlignment.missed || []).slice(0, 2).join(", ");
     adjustments.push(
       freeze({
         id: "blueprint-missed",
         themeId: "blueprint",
         mode: "blueprint_miss",
         headline: "Adjustment made",
-        reason: `Blueprint missed supported themes: ${missed}.`,
+        reason: blueprintAlignment.boundary,
         observed: freeze({
           status: blueprintAlignment.status,
-          missed: freeze([...(blueprintAlignment.missed || [])].slice(0, 5)),
         }),
       }),
     );
