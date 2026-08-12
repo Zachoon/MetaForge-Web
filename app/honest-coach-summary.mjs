@@ -213,16 +213,22 @@ function isInternalSystemLabel(name = "") {
   return Boolean(SYSTEM_PLAYER_PHRASE[raw] || /\bEngine\b/i.test(raw));
 }
 
-/** Append a watch target without leaking Engine taxonomy or repeating the soft spot. */
-function appendFixFirstWatch(stop, fixFirst) {
+/**
+ * Append a watch target without leaking Engine taxonomy, repeating the soft
+ * spot, or claiming a non-card (fantasy label, construction stage, "commander
+ * connection") is a card — fixFirstKind is required precisely because the
+ * string alone can't be trusted to tell those apart.
+ */
+function appendFixFirstWatch(stop, fixFirst, fixFirstKind = null) {
   if (!fixFirst) return stop;
   const raw = String(fixFirst).trim();
   if (!raw) return stop;
   const phrase = playerFacingSystemPhrase(raw);
   if (String(stop).includes(raw) || String(stop).includes(phrase)) return stop;
-  return isInternalSystemLabel(raw)
-    ? `${stop} Soft spot on paper: ${phrase}.`
-    : `${stop} The first card I'd watch in real games is ${raw}.`;
+  const kind = fixFirstKind || (isInternalSystemLabel(raw) ? "system" : "card");
+  if (kind === "system") return `${stop} Soft spot on paper: ${phrase}.`;
+  if (kind === "card") return `${stop} The first card I'd watch in real games is ${raw}.`;
+  return `${stop} Worth watching first: ${raw}.`;
 }
 
 function sampleNames(names = [], limit = 3) {
@@ -243,6 +249,7 @@ export function buildCoachPlanStory({
   strongestSystemName = null,
   weakestSystemName = null,
   fixFirst = null,
+  fixFirstKind = null,
 } = {}) {
   const commander = commanders[0] || "your commander";
   const labels = [...(packageLabels || [])].filter(Boolean);
@@ -291,7 +298,7 @@ export function buildCoachPlanStory({
   if (weakestPhrase) {
     stop = `${stop} Right now the clearest soft spot on paper is ${weakestPhrase}.`;
   } else {
-    stop = appendFixFirstWatch(stop, fixFirst);
+    stop = appendFixFirstWatch(stop, fixFirst, fixFirstKind);
   }
   if (secondaryLabel && story) {
     stop = `${stop} You also have ${secondaryLabel} support — clarify which package should dominate before thickening both.`;
@@ -316,6 +323,7 @@ export function buildCoachPlanStoryFromRecognition({
   pilot = null,
   commanders = [],
   fixFirst = null,
+  fixFirstKind = null,
 } = {}) {
   const commander = commanders[0] || recognition?.hierarchy?.primary || "your commander";
   const commanderName = typeof commander === "string" ? commander : "your commander";
@@ -332,7 +340,7 @@ export function buildCoachPlanStoryFromRecognition({
     ? `Watch ${pressurePhrase} first — if that soft spot collapses, the primary plan loses its support. ${pilot?.protect || ""}`.trim()
     : (pilot?.protect
       || `Removal aimed at ${commanderName}, plus sweepers that reset your setup, will slow the plan dramatically.`);
-  stop = appendFixFirstWatch(stop, fixFirst);
+  stop = appendFixFirstWatch(stop, fixFirst, fixFirstKind);
   return freeze({
     title,
     plan,
@@ -555,19 +563,50 @@ function strengthsAndWeaknesses(selected = {}, structuralSystems = null, commiss
   // orphan payoff is the most concrete (one card to look at), a thin
   // construction stage is the next most specific (one named job), and "no
   // commander connection" is the least actionable single pointer (nothing
-  // legal existed to include, so there is no one card to point at).
-  const structuralFocus = orphanPayoffs[0] || stageLabel || (commanderConnectionGap ? "commander connection" : null);
+  // legal existed to include, so there is no one card to point at). `kind`
+  // travels with the value so consumers (appendFixFirstWatch,
+  // claimedCoachCardNames) never have to guess a card vs. non-card shape
+  // from the string alone — see fixFirst below for why that guessing broke.
+  const structuralFocusEntry = orphanPayoffs[0]
+    ? { value: orphanPayoffs[0], kind: "card" }
+    : stageLabel
+      ? { value: stageLabel, kind: "stage" }
+      : commanderConnectionGap
+        ? { value: "commander connection", kind: "connection" }
+        : null;
+  const structuralFocus = structuralFocusEntry?.value || null;
 
   if (!strengths.length) strengths.push("The finished list is complete; named package strengths are still thin in the evidence.");
   if (!weaknesses.length) weaknesses.push("No major weakly justified slots stood out in the ledger — watch real games for the first pressure point.");
+
+  // fixFirst is not always a card — it can resolve to a fantasy/theme label,
+  // a construction-stage label, or the fixed "commander connection" phrase
+  // (see structuralFocusEntry above), same as the weakestSystem fallback is
+  // a system label, not a card. Every consumer of fixFirst needs the kind,
+  // not just the string, or it wrongly narrates a theme name as a card (or
+  // — worse — the Narrative Integrity gate flags it as a foreign card and
+  // fails the whole coach narrative closed for a deck that did nothing
+  // wrong).
+  const fixFirstCandidates = [
+    ...(fantasyGrade?.status === "partial" || fantasyGrade?.status === "missed"
+      ? [fantasy?.label ? { value: fantasy.label, kind: "fantasy" } : null]
+      : []),
+    weak[0] ? { value: weak[0], kind: "card" } : null,
+    redundant[0] ? { value: redundant[0], kind: "card" } : null,
+    overSupported[0] ? { value: overSupported[0], kind: "card" } : null,
+    underAnchors[0] ? { value: underAnchors[0], kind: "card" } : null,
+    rawPower[0] ? { value: rawPower[0], kind: "card" } : null,
+    structuralFocusEntry,
+    structuralSystems?.weakestSystem?.name ? { value: structuralSystems.weakestSystem.name, kind: "system" } : null,
+  ];
+  const fixFirstResolved = fixFirstCandidates.find(Boolean) || null;
 
   return freeze({
     strengths: freeze(strengths.slice(0, 4)),
     weaknesses: freeze(weaknesses.slice(0, 5)),
     weaklyJustified: freeze(weak),
-    fixFirst: fantasyGrade?.status === "partial" || fantasyGrade?.status === "missed"
-      ? fantasy?.label || weak[0] || redundant[0] || overSupported[0] || underAnchors[0] || rawPower[0] || structuralFocus || structuralSystems?.weakestSystem?.name || null
-      : weak[0] || redundant[0] || overSupported[0] || underAnchors[0] || rawPower[0] || structuralFocus || structuralSystems?.weakestSystem?.name || null,
+    fixFirst: fixFirstResolved?.value || null,
+    fixFirstKind: fixFirstResolved?.kind || null,
     observedFindings: freeze([
       ...(fantasy?.label ? [`Observed: commissioned fantasy ${fantasy.label}.`] : []),
       ...(packageLabels.length ? [`Observed: package support for ${packageLabels.slice(0, 3).join(", ")}.`] : []),
@@ -792,6 +831,7 @@ export function buildHonestCoachSummary({
       pilot,
       commanders: authoritativeCommanders,
       fixFirst: sw.fixFirst,
+      fixFirstKind: sw.fixFirstKind,
     })
     : buildCoachPlanStory({
       packageLabels: identity.packageLabels,
@@ -800,6 +840,7 @@ export function buildHonestCoachSummary({
       strongestSystemName: structuralSystems?.strongestSystem?.name || null,
       weakestSystemName: structuralSystems?.weakestSystem?.name || null,
       fixFirst: sw.fixFirst,
+      fixFirstKind: sw.fixFirstKind,
     });
   const whatIThink = planStory.plan;
   const whatToFixFirst = planStory.stop;
@@ -918,6 +959,7 @@ export function buildHonestCoachSummary({
       ...sw.interpretiveGuidance,
     ].filter(Boolean)),
     fixFirst: sw.fixFirst,
+    fixFirstKind: sw.fixFirstKind,
     confidence,
     analysisIds,
     reviewFocus: reviewFocusResult

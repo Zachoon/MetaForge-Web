@@ -324,15 +324,22 @@ export function evaluateNarrativeIntegrity({
  */
 export function claimedCoachCardNames(summary = {}, selected = {}) {
   const critique = selected?.slotJustificationLedger?.critique || {};
+  // fixFirst is only ever a card claim when its own producer said so —
+  // it can also resolve to a fantasy/theme label, a construction-stage
+  // label, or "commander connection", none of which appear in any deck's
+  // card list and would otherwise false-positive as a foreign card and
+  // fail-close a legitimate narrative. Fall back to the old KNOWN_SYSTEM_LABELS
+  // guess only when an older summary shape has no fixFirstKind at all.
+  const fixFirstIsCard = "fixFirstKind" in summary
+    ? summary.fixFirstKind === "card"
+    : Boolean(summary.fixFirst) && !KNOWN_SYSTEM_LABELS.includes(summary.fixFirst);
   return [
     ...(critique.weaklyJustified || []),
     ...(critique.redundant || []),
     ...(critique.overSupported || []),
     ...(critique.underSupportedAnchors || []),
     ...(critique.rawPowerDominant || []),
-    summary.fixFirst && !KNOWN_SYSTEM_LABELS.includes(summary.fixFirst)
-      ? summary.fixFirst
-      : null,
+    fixFirstIsCard ? summary.fixFirst : null,
   ].filter(Boolean);
 }
 

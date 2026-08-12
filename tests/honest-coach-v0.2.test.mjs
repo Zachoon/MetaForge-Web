@@ -443,4 +443,37 @@ describe("Honest Coach v0.2 — unmissable + measurable", () => {
     assert.equal(withPriority.principleVoice?.conceptId, "plan-integrity");
     assertNoResearchLeak(JSON.stringify(withPriority));
   });
+
+  it("never narrates a fantasy label, construction stage, or connection gap as a card to watch", () => {
+    const structuralSystems = {
+      systems: [
+        { name: "Token Engine", signal: "tokens", health: { overall: 80 }, members: Array(6).fill("x") },
+        { name: "Counter Engine", signal: "counters", health: { overall: 70 }, members: Array(4).fill("x") },
+        { name: "Treasure Engine", signal: "treasure", health: { overall: 30 }, members: Array(2).fill("x") },
+      ],
+      strongestSystem: { name: "Token Engine" },
+      weakestSystem: { name: "Treasure Engine" },
+    };
+    const selected = {
+      evaluation: { cohesion: 72, roleCoverage: 0.8, resilience: 60 },
+      strategicIntent: { strategy: "Focused", packages: [], commanders: [{ name: "Atraxa, Praetors' Voice" }] },
+      strategicCohesionGate: { ok: true, reasons: [] },
+      slotJustificationLedger: { critique: emptyCritique },
+    };
+    const summary = buildHonestCoachSummary({
+      selected,
+      isImported: true,
+      structuralSystems,
+      activeCommanderName: "Atraxa, Praetors' Voice",
+      commissionNote: "superfriends and counters please",
+    });
+    assert.equal(summary.fixFirst, "Superfriends");
+    assert.equal(summary.fixFirstKind, "fantasy");
+    assert.doesNotMatch(
+      summary.planStory.stop,
+      /first card I'd watch in real games is Superfriends/i,
+      `fixFirst is a fantasy label, not a card: ${summary.planStory.stop}`,
+    );
+    assert.match(summary.planStory.stop, /Worth watching first: Superfriends/);
+  });
 });

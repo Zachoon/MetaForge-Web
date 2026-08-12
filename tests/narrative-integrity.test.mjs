@@ -187,4 +187,36 @@ describe("Narrative Integrity Gate — cross-analysis contamination", () => {
     });
     assert.equal(gate.ok, true);
   });
+
+  // Real regression: a partial-match fantasy commission with no card-level
+  // critique flags resolves fixFirst to the fantasy label itself (e.g.
+  // "Superfriends") rather than a card or a known Engine system label.
+  // claimedCoachCardNames used to treat any fixFirst outside
+  // KNOWN_SYSTEM_LABELS as a claimed card, so it flagged the fantasy label
+  // as a "foreign_card" and fail-closed a completely legitimate narrative.
+  it("does not fail-close a legitimate narrative when fixFirst is a fantasy label, not a card", () => {
+    const selected = {
+      evaluation: { cohesion: 72, roleCoverage: 0.8, resilience: 60 },
+      strategicIntent: { strategy: "Focused", packages: [], commanders: [{ name: "Atraxa, Praetors' Voice" }] },
+      strategicCohesionGate: { ok: true, reasons: [] },
+      slotJustificationLedger: { critique: { weaklyJustified: [], redundant: [], overSupported: [], underSupportedAnchors: [], rawPowerDominant: [], packageCritical: [] } },
+      rows: [{ name: "Atraxa, Praetors' Voice", quantity: 1, roles: ["commander"] }],
+    };
+    const summary = buildHonestCoachSummary({
+      selected,
+      isImported: true,
+      activeCommanderName: "Atraxa, Praetors' Voice",
+      commissionNote: "superfriends please",
+      generationId: "gen-fantasy-fixfirst",
+    });
+    assert.equal(summary.fixFirst, "Superfriends");
+    assert.equal(summary.fixFirstKind, "fantasy");
+    const integrity = evaluateNarrativeIntegrityForCoach({
+      summary,
+      selected,
+      activeCommanderNames: ["Atraxa, Praetors' Voice"],
+      deckCardNames: selected.rows.map((row) => row.name),
+    });
+    assert.equal(integrity.ok, true, `expected no false foreign_card violation, got: ${JSON.stringify(integrity.violations)}`);
+  });
 });
