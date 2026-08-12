@@ -1940,18 +1940,36 @@ function computeCommanderCompatibility(analysis, selected) {
   });
 }
 
+// A permanent entering is itself a real ETB event, whether or not its own
+// rules text says anything about entering — the same fact
+// commanderConnectionSignalsFor already accounts for (see its comment on the
+// Ayula case: every Bear is a true engine piece even with vanilla rules
+// text). Without this, any "whenever a creature enters" payoff reads as an
+// orphan payoff whenever its actual fuel is ordinary vanilla creatures
+// rather than cards whose own oracle text happens to mention "enters" —
+// confirmed against a synthetic 40-creature enters-payoff deck: without this
+// boost the payoff was flagged orphaned and the whole package read as
+// "no-detected-package" despite commanderCompatibility correctly finding 42
+// genuinely connected cards.
+function effectiveProducesForCoherence(entry) {
+  const produces = entry.mechanics?.produces || [];
+  const typeLine = String(entry.typeLine || entry.type_line || "");
+  if (produces.includes("etb") || /\bInstant\b|\bSorcery\b/i.test(typeLine)) return produces;
+  return unique([...produces, "etb"]);
+}
+
 function computeStrategicCoherence(analysis, selected) {
   const producerCounts = new Map();
   const payoffCounts = new Map();
   for (const signal of analysis.context.commanderMechanics.produces) producerCounts.set(signal, 1);
   for (const signal of analysis.context.commanderMechanics.rewards) payoffCounts.set(signal, 1);
   for (const entry of selected) {
-    for (const signal of entry.mechanics?.produces || []) producerCounts.set(signal, (producerCounts.get(signal) || 0) + entry.quantity);
+    for (const signal of effectiveProducesForCoherence(entry)) producerCounts.set(signal, (producerCounts.get(signal) || 0) + entry.quantity);
     for (const signal of entry.mechanics?.rewards || []) payoffCounts.set(signal, (payoffCounts.get(signal) || 0) + entry.quantity);
   }
   const connectedSignals = unique([...producerCounts.keys()].filter((signal) => payoffCounts.has(signal)));
   const connectedNames = new Set(selected.filter((entry) =>
-    connectedSignals.some((signal) => entry.mechanics?.produces?.includes(signal) || entry.mechanics?.rewards?.includes(signal)))
+    connectedSignals.some((signal) => effectiveProducesForCoherence(entry).includes(signal) || entry.mechanics?.rewards?.includes(signal)))
     .map((entry) => entry.name));
   const orphanPayoffs = selected.filter((entry) =>
     entry.mechanics?.rewards?.some((signal) => !producerCounts.has(signal)))

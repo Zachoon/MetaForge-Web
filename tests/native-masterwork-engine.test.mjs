@@ -735,6 +735,31 @@ test("reserves cards that consume a resource the commander itself produces", () 
   assert.equal(report.selected.strategicSequence.weakestStage, "close");
 });
 
+test("strategicCoherence never flags a real enters-payoff as orphaned just because its fuel is vanilla creatures", () => {
+  // Real regression: commanderConnectionSignalsFor already treats any
+  // permanent entering as a real ETB event (see its own comment on Ayula —
+  // every Bear is a true engine piece even with vanilla rules text), but
+  // computeStrategicCoherence read entry.mechanics.produces directly and
+  // missed that same fact, so a genuine "whenever a creature enters" payoff
+  // read as an orphan payoff whenever its actual fuel was ordinary
+  // creatures with no oracle text of their own mentioning "enters".
+  const vanillaCreatures = Array.from({ length: 40 }, (_, index) =>
+    card(`Vanilla Beast ${index}`, "Vigilance", "Creature — Beast", "{3}"),
+  );
+  const enterPayoff = card("Arrival Watcher", "Whenever another creature you control enters, draw a card.", "Creature — Human Wizard", "{2}");
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", note: "", seed: 823,
+    commander: { name: "Enters Mentor", colors: ["G"], oracleText: "Whenever another creature you control enters, put a +1/+1 counter on it." },
+    cards: [...pool, ...vanillaCreatures, enterPayoff],
+  });
+  assert.ok(report.selected.rows.some((row) => row.name === "Arrival Watcher"), "payoff must actually be in the finished deck for this assertion to mean anything");
+  assert.ok(
+    !report.selected.strategicCoherence.orphanPayoffs.includes("Arrival Watcher"),
+    `Arrival Watcher has real vanilla-creature fuel and must not be flagged orphaned: ${JSON.stringify(report.selected.strategicCoherence.orphanPayoffs)}`,
+  );
+  assert.equal(report.selected.strategicCoherence.status, "connected");
+});
+
 test("recognizes plain-language role requests, not just rules-text phrasing", () => {
   const intent = parseNativeBlueprintIntent({ note: "I want removal, ramp, and card draw" });
   assert.deepEqual(intent.desiredRoles, ["ramp", "draw", "interaction"]);
