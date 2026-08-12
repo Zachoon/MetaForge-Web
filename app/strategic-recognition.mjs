@@ -381,6 +381,7 @@ export function buildStrategicRecognition({
         playerSystemLines: freeze([]),
         evidenceSources: freeze(["packageLabels", "strategy"]),
         ambiguous: true,
+        resolvedSignal: null,
       });
     }
     const synthetic = freeze({
@@ -402,6 +403,7 @@ export function buildStrategicRecognition({
       playerSystemLines: freeze([lang?.playerSystem?.(commander)].filter(Boolean)),
       evidenceSources: freeze(["packageLabels"]),
       ambiguous: false,
+      resolvedSignal: narrativeSignal({ hierarchy: synthetic, commander, packageLabels }),
     });
   }
 
@@ -446,5 +448,13 @@ export function buildStrategicRecognition({
     systemCount: systems.length,
     strongestSystemName: structuralSystems?.strongestSystem?.name || hierarchy.primary?.name || null,
     weakestSystemName: structuralSystems?.weakestSystem?.name || hierarchy.pressurePoint || null,
+    // The signal composeTableWhy/composePrimaryPlan actually told the story
+    // with — may differ from hierarchy.primary.signal (e.g. a counters-shaped
+    // commander leads with counters even when a different system measured
+    // higher). Downstream consumers that generate more narrative text off
+    // "the deck's signal" (pilot-model.mjs) must read this, not
+    // hierarchy.primary.signal directly, or they silently tell a different
+    // story than the one just rendered above.
+    resolvedSignal: narrative,
   });
 }

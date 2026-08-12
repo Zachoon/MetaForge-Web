@@ -84,6 +84,13 @@ const STAGE_BY_SIGNAL = freeze({
     protect: () => `Do not overvalue treasure if the primary combat or token engine is offline.`,
     close: () => `Convert extra mana into the finish the primary plan already wants.`,
   }),
+  counters: freeze({
+    establish: (c) => `Develop mana and early counter or proliferate pieces before forcing ${c} onto an empty board.`,
+    deploy: (c) => `Land ${c} once counters are already accumulating on the board.`,
+    compound: () => `Proliferate existing counters so surviving creatures and planeswalkers keep escalating.`,
+    protect: () => `Protect the permanents already carrying counters — losing them resets the snowball.`,
+    close: () => `Convert an escalating board of counters and planeswalkers into lethal pressure.`,
+  }),
 });
 
 const DEFAULT_STAGES = freeze({
@@ -114,7 +121,12 @@ export function buildPilotModel({
   commanderName = "",
 } = {}) {
   const commander = commanderName || "your commander";
-  const signal = recognition?.hierarchy?.primary?.signal || null;
+  // Prefer the signal Strategic Recognition actually told its story with —
+  // it can differ from the raw measured hierarchy.primary.signal (e.g. a
+  // counters-shaped commander leads with counters even when a different
+  // system scored higher) — so the pilot sequence stays consistent with the
+  // table-why/primary-plan text instead of narrating a different plan.
+  const signal = recognition?.resolvedSignal || recognition?.hierarchy?.primary?.signal || null;
   const stages = stagesFor(signal);
   const ambiguous = Boolean(recognition?.ambiguous || recognition?.confidence?.level === "limited" && !signal);
 
