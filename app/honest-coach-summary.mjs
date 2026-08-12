@@ -834,10 +834,9 @@ export function buildHonestCoachSummary({
   const fantasyForVoice = commissionContract?.playerFantasy?.label
     || commissionContract?.fantasyLabel
     || "";
-  const prioritiesForVoice = [
-    ...(commissionContract?.playerFantasy?.priorities || []),
-    ...(commissionContract?.priorities || []),
-  ];
+  const prioritiesForVoice = (commissionContract?.youAskedFor || [])
+    .filter((entry) => entry.role === "priority")
+    .map((entry) => entry.label);
   const watchingVoice = buildHonestCoachWatchingVoice({
     commanderName: commanderForVoice,
     hypotheses: strategicHypotheses,

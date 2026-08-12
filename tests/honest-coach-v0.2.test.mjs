@@ -415,4 +415,32 @@ describe("Honest Coach v0.2 — unmissable + measurable", () => {
       "Some expensive cards read more like raw power than plan support: Power Card.",
     ]);
   });
+
+  it("feeds real commission priorities into concept selection instead of always reading them as empty", () => {
+    const selected = {
+      evaluation: { cohesion: 72, roleCoverage: 0.8, resilience: 60 },
+      strategicIntent: { strategy: "Focused", packages: [], commanders: [{ name: "Light-Paws" }] },
+      strategicCohesionGate: { ok: true, reasons: [] },
+      slotJustificationLedger: { critique: emptyCritique },
+    };
+    const withoutPriority = buildHonestCoachSummary({
+      selected,
+      isImported: true,
+      commissionNote: "",
+      activeCommanderName: "Light-Paws",
+    });
+    const withPriority = buildHonestCoachSummary({
+      selected,
+      isImported: true,
+      commissionNote: "theme over optimization please",
+      activeCommanderName: "Light-Paws",
+    });
+    // No priority clause: falls back to the concept library's default gravity.
+    assert.equal(withoutPriority.principleVoice?.conceptId, "commitment-timing");
+    // A real "Theme over optimization" priority clause should pull concept
+    // selection toward Plan Integrity (the theme-matching concept) instead
+    // of leaving it stuck on the same default every time.
+    assert.equal(withPriority.principleVoice?.conceptId, "plan-integrity");
+    assertNoResearchLeak(JSON.stringify(withPriority));
+  });
 });
