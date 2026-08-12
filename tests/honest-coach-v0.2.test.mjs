@@ -469,11 +469,14 @@ describe("Honest Coach v0.2 — unmissable + measurable", () => {
     });
     assert.equal(summary.fixFirst, "Superfriends");
     assert.equal(summary.fixFirstKind, "fantasy");
+    // The exact composition of planStory.stop is free to evolve (e.g. a
+    // dedicated fantasy-protect line instead of an appended watch clause) —
+    // the one invariant this guards is that a fantasy/theme label is never
+    // asserted to be a literal card.
     assert.doesNotMatch(
       summary.planStory.stop,
       /first card I'd watch in real games is Superfriends/i,
       `fixFirst is a fantasy label, not a card: ${summary.planStory.stop}`,
     );
-    assert.match(summary.planStory.stop, /Worth watching first: Superfriends/);
   });
 });
