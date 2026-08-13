@@ -16,14 +16,14 @@ Product / presentation / structural-understanding issues may ship surgically.
 
 | Metric | Count |
 |--------|------:|
-| Issues on register | **13** |
+| Issues on register | **14** |
 | Shipped (tests green) | **10** |
-| **Live Founder Trial** | **2 scored runs** (2026-08-11 · conversation cycle) |
-| **Founder Confirmed** | **6** |
-| Open / Planned | 0 |
+| **Live Founder Trial** | **3 scored runs** (latest: 2026-08-12 · #021/#024) |
+| **Founder Confirmed** | **8** |
+| Open / Planned | 1 (#025) |
 | Watch (hypothesis only) | 1 (Eldrazi) |
-| Awaiting founder confirmation | 5 (#018, #020, #022, #023, **#024**) |
-| Live Founder Trial (not confirmed) | **#021** — every clickable card reference must work |
+| Awaiting founder confirmation | 4 (#018, #020, #022, #023) |
+| Live Founder Trial (not confirmed) | 0 |
 | Needs reproduction | 0 |
 
 **Shipped** = tests green.  
@@ -44,7 +44,7 @@ Phase 1 verification: **passed** (2026-08-11).
 > Concepts · play captures · simulation witness · stance voice. Brain: 0.  
 > Continuous observation + Friday heartbeat. **Brain changes: 0.**
 >
-> #024 Commission Contract ✅ shipped. #021 stays Live Founder Trial.
+> #021 and #024 Founder Confirmed on live production (2026-08-12). Next surgical issue: #025.
 
 ### Live Founder Trial — re-run (2026-08-11, post-surgical)
 
@@ -390,10 +390,11 @@ Compatible with governance: deterministic interpreter / presentation only. Not B
 | 018 | Relationship evidence: Explicit Oracle | Structural | ✅ **Shipped — awaiting founder** | `oracle_explicit` in interaction graph |
 | 019 | Mobile deck preview clipping | UX | ✅ **Founder Confirmed** | ≤760px gallery |
 | **020** | **Kastral — speak Commander (Recognition + Pilot Model)** | **Strategic** | ✅ **Shipped → Live Founder Trial** | Interpreter; Brain frozen |
-| **021** | **Context-preserving card inspection** | **UX** | ✅ **Shipped → Live Founder Trial** (inventory green; not Confirmed) | Every named inspect surface · `ForgeCardRef` |
+| **021** | **Context-preserving card inspection** | **UX** | ✅ **Founder Confirmed** (2026-08-12 live trial) | Every named inspect surface · `ForgeCardRef` |
 | **022** | **Pre-Choice Coaching** | **Product / UX** | ✅ **Shipped → Live Founder Trial** | Confidence before commitment |
 | **023** | **Intent vs Recommendation Transparency** | **Strategic / Narrative** | ✅ **Shipped → Live Founder Trial** | Request Recognition; hears — does not yet grade fulfillment |
-| **024** | **Commission Contract** | **Strategic / Narrative** | ✅ **Shipped → Live Founder Trial** | Optional note = design constraints; Player Fantasy narrator; soft-credit honesty; **no Brain** |
+| **024** | **Commission Contract** | **Strategic / Narrative** | ✅ **Founder Confirmed** (2026-08-12 live trial) | Optional note = design constraints; Player Fantasy narrator; soft-credit honesty; **no Brain** |
+| **025** | **Commission-Aware Philosophy Comparison** | **Product / UX** | **Open** | Attribute commission fit per philosophy; **no Brain** |
 | — | Prioritize Theme vs Performance | Strategic / UX | ⏸ **Deferred** | Needs trial evidence of choice-block, not understanding-block |
 | — | Eldrazi / default rec priorities | Strategic | 🟡 Watch | One founder = hypothesis |
 
@@ -506,7 +507,7 @@ No learning. No weights. No hallucination. Better interpretation.
 | | |
 |---|---|
 | **Layer** | UX / Experience |
-| **Status** | ✅ **Shipped → Live Founder Trial** — engineering inventory green; **not Founder Confirmed** |
+| **Status** | ✅ **Founder Confirmed** — live `app.metaforge.gg`, 2026-08-12 |
 | **Brain impact** | **None.** Presentation only. |
 | **Module** | `context-card-inspector.mjs` · `forge-card-ref.tsx` |
 | **Test** | `npm run validate:founder-021` · inventory in `validate:era3-complete` |
@@ -522,7 +523,7 @@ No learning. No weights. No hallucination. Better interpretation.
 > Never make the user leave the paragraph they’re reading.  
 > **Every** clickable card reference must behave consistently — not just some.
 
-Until that bar is met in a Live Founder Trial, #021 stays open. Do not mark Founder Confirmed.
+**Live confirmation:** Clicking Ayara inside the Deep Forge mana evidence opened the floating `CARD IN CONTEXT` inspector without taking the player away from the evidence paragraph.
 
 **Root cause:** Card inspection bound to a single preview pane near the top; sticky gallery dies when Deep Forge scrolls it away; some reference surfaces may not yet route through the floating inspector.
 
@@ -689,7 +690,7 @@ protection for a large planeswalker package.
 | | |
 |---|---|
 | **Layer** | Strategic / Narrative *(contract + grading + fantasy narrator — not construction)* |
-| **Status** | ✅ **Shipped** — Live Founder Trial next |
+| **Status** | ✅ **Founder Confirmed** — live `app.metaforge.gg`, 2026-08-12 |
 | **Brain impact** | **None.** No Brain changes. No card-evaluation / recommendation tweaks. |
 | **Module** | `commission-contract.mjs` · Honest Coach v0.8 |
 | **Test** | `npm run validate:founder-024` |
@@ -786,6 +787,27 @@ This trial exposed the next skill: prove it can faithfully **fulfill a commissio
 That is a different skill than analysis. Earn it before touching recommendation logic.
 
 **Shipped v1.1:** Parse fantasy / anchors / priority · Stage 1 + Coach **You asked for / What I built / match %** · Player Fantasy filters coach `tableWhy` · soft-heard clauses labeled and **excluded from match %** · Stax narrator · mechanisms demoted to support lines. Brain untouched.
+
+**Live confirmation:** The Jay-class commission was repeated before choice, then the finished three-planeswalker list was honestly graded `68% · Partial match`; Doubling Season was present and Superfriends was named as the remaining shortfall. The original “did it ignore me?” failure did not recur.
+
+### #025 — Commission-Aware Philosophy Comparison
+
+| | |
+|---|---|
+| **Layer** | Product / UX |
+| **Status** | **Open — live reproduction captured 2026-08-12** |
+| **Brain impact** | **None.** Attribution and choice framing only. |
+| **Evidence** | The choice screen showed two philosophies beside one global `50% · Weak match`. Neither card said whether that score belonged to it or which option better honored Superfriends / Doubling Season / theme-over-optimization. |
+
+**Player question:** “Which philosophy is the 50% score for, and which one stays closer to what I asked for?”
+
+**Surgical outcome:**
+
+1. A match grade is attributed to a specific candidate/philosophy, never floating globally between options.
+2. Each philosophy summarizes its commission fit using already-computed contract facts.
+3. The recommended badge explains whether it means stronger play structure, stronger commission fit, or both.
+4. No Theme vs Performance rebuild fork; this issue only makes the existing choice legible.
+5. No Brain, graph, card evaluation, or construction-weight changes.
 
 ### Eldrazi / recommendation priorities — Watch
 
