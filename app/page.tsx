@@ -73,6 +73,13 @@ import { tableMeaningFor } from "./strategic-recognition.mjs";
 import { LivingWorkbench, type WorkbenchMode } from "./living-workbench";
 import { Tabletop, type MatchupCardAdvice, type TabletopCard } from "./tabletop";
 import { ProvingGroundsEra } from "./proving-grounds-era";
+import {
+  ForgeCeremonyMotion,
+  ForgeProcessingLoader,
+  FORGING_PHASES,
+  FORGING_STAGES,
+  type MotionMode,
+} from "./components/forge/forge-ceremony";
 
 type Chamber =
   | "entrance"
@@ -82,7 +89,6 @@ type Chamber =
   | "masterworks"
   | "workbench";
 
-type MotionMode = "full" | "quiet";
 type ForgeAction = "none" | "forge" | "reveal" | "select" | "refine" | "grow";
 type MilestoneMotion = {
   kind: "ignition" | "masterwork-ready" | "masterwork-selected" | "experiment-chosen" | "revision-accepted" | "evidence-recorded";
@@ -90,18 +96,6 @@ type MilestoneMotion = {
   label: string;
   glyph: string;
 } | null;
-
-const FORGING_STAGES = [
-  ["Reading your choices", "Confirming your format, commander, goals, and preferences.", "SETUP"],
-  ["Finding cards that fit", "Matching legal cards to the jobs your deck needs.", "CARD FIT"],
-  ["Building complete options", "Creating several playable 100-card decks to compare.", "DECKS"],
-  ["Balancing the mana", "Checking lands, color access, and when your spells can be cast.", "MANA"],
-  ["Checking the whole deck", "Verifying legality, deck size, curve, and essential roles.", "VERIFY"],
-  ["Comparing the strongest builds", "Measuring which complete deck best matches your goal.", "COMPARE"],
-  ["Finishing your deck", "Preparing the list and your first coaching step.", "READY"],
-] as const;
-
-const FORGING_PHASES = ["Blueprint", "Card pool", "Candidates", "Mana", "Integrity", "Tournament", "Masterwork"] as const;
 
 // The real request and the ceremony run concurrently. This is not a delay
 // before construction: it is the minimum amount of time the transition gets
@@ -464,104 +458,6 @@ const ForgeConfirmationSeal = ({ motionMode }: { motionMode: MotionMode }) => {
       <img src="/assets/forge/animations/forge-confirmation-seal.svg" alt="" />
       <span className="forge-seal-flare" />
       <span className="forge-seal-sparks"><i /><i /><i /><i /><i /><i /></span>
-    </div>
-  );
-};
-
-const ForgeProcessingLoader = ({ motionMode }: { motionMode: MotionMode }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    let disposed = false;
-    let rive: {
-      cleanup: () => void;
-      resizeDrawingSurfaceToCanvas: () => void;
-      viewModelInstance: { boolean: (name: string) => { value: boolean } | null } | null;
-    } | null = null;
-    let resizeObserver: ResizeObserver | null = null;
-
-    void import("@rive-app/canvas").then(({ Alignment, Fit, Layout, Rive }) => {
-      if (disposed) return;
-      rive = new Rive({
-        src: "/assets/forge/animations/metaforge-forging-loader.riv",
-        canvas,
-        // The exported .riv asset's actual internal state machine is named
-        // "State Machine 1" (Rive's default auto-generated name) — verified
-        // directly against the binary's own string table, not assumed.
-        // asset-registry.json's own notes describe it as "Forge Loader
-        // Machine", but that name doesn't exist in what was actually
-        // exported, which is why this always fell back with a console
-        // error live ("State Machine with name Forge Loader Machine not
-        // found"). Matching the real asset here rather than editing the
-        // .riv file itself, which is the owner's separate animation work.
-        // If a future re-export renames the state machine to match the
-        // documented name, update this string to match — don't let it
-        // silently drift again.
-        stateMachines: "State Machine 1",
-        autoBind: true,
-        autoplay: true,
-        layout: new Layout({ fit: Fit.Contain, alignment: Alignment.Center }),
-        onLoad: () => {
-          if (disposed) return;
-          rive?.resizeDrawingSurfaceToCanvas();
-          const processing = rive?.viewModelInstance?.boolean("IsProcessing");
-          if (processing) processing.value = motionMode === "full";
-          setLoaded(true);
-        },
-      });
-      resizeObserver = new ResizeObserver(() => rive?.resizeDrawingSurfaceToCanvas());
-      resizeObserver.observe(canvas);
-    });
-
-    return () => {
-      disposed = true;
-      resizeObserver?.disconnect();
-      rive?.cleanup();
-    };
-  }, [motionMode]);
-
-  return (
-    <div className={`forging-motion forging-motion--rive${loaded ? " is-loaded" : ""}`} aria-hidden="true">
-      <span className="processing-crucible" />
-      <span className="processing-index-ring" />
-      <span className="processing-heat-ring" />
-      <canvas ref={canvasRef} />
-      <i>ᛟ</i>
-      <span className="processing-sparks"><b /><b /><b /><b /><b /><b /></span>
-    </div>
-  );
-};
-
-const ForgeCeremonyMotion = ({
-  stage,
-  motionMode,
-}: {
-  stage: number;
-  motionMode: MotionMode;
-}) => {
-  return (
-    <div
-      className={`forge-process-focus${motionMode === "quiet" ? " is-quiet" : ""}`}
-      data-phase={stage + 1}
-      style={{ "--forge-progress": `${((stage + 1) / FORGING_STAGES.length) * 100}%` } as React.CSSProperties}
-      aria-hidden="true"
-    >
-      <div className="forge-card-pipeline">
-        {Array.from({ length: 7 }, (_, index) => (
-          <i key={index} style={{ "--pipeline-index": index } as React.CSSProperties}>
-            <b>MF</b><span /><em />
-          </i>
-        ))}
-      </div>
-      <span className="forge-process-core"><i>MF</i><b /></span>
-      <div className="forge-process-materials">
-        {FORGING_PHASES.map((phase, index) => <i key={phase} className={index < stage ? "is-complete" : index === stage ? "is-active" : ""} />)}
-      </div>
-      <small>STRUCTURAL PASS {stage + 1} OF {FORGING_STAGES.length}</small>
     </div>
   );
 };

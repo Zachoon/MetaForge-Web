@@ -84,7 +84,7 @@
     "validate:era2-complete": "node --test tests/knowledge/era2-complete.test.mjs tests/concept-stance-voice.test.mjs tests/knowledge/era2-founding.test.mjs",
     "report:era2-complete": "node tests/knowledge/run-era2-complete.mjs",
     "report:alpha-coach": "node tests/alpha-coach/report-shape.mjs",
-    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
+    "lint": "eslint .",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
