@@ -40,6 +40,8 @@ type Overview = {
   };
 };
 type KnowledgeClaim = { id:string; game:string; sourceUrl:string; sourceTitle:string; author:string; publishedAt:string; sourceType:string; summary:string; principle:string; format:string; stance:string; tags:string[]; cards:string[]; status:string; createdAt:string };
+type OpinionQuestion = { opinionKey:string; label:string; playerQuestion:string; commanderName:string; subject:string; deckRevision:string; fantasy:string; cardIdentity:{ card:string; roles:string[]; earliestRealisticWindow:string; setupRequirements:string[]; floor:string; ceiling:string; opportunityCost:string; dependencies:string[]; replaceability:string; goodStates:string[]; badStates:string[] } };
+type OpinionResult = { constructionReadOnly:boolean; writesToBrain:boolean; opinion:{ headline:string; answer:string; why:string; strongestCounterargument:string; confidence:{level:string;score:number}; applicableWhen:string[]; whatWouldChangeMyMind:string[]; proposedTest?:{instruction?:string;minimumComparableObservations?:number} }; lineage:{opinionId:string;revision:number;archived:boolean} };
 
 export default function FounderCommandCenter() {
   const [data, setData] = useState<Overview | null>(null);
@@ -47,6 +49,9 @@ export default function FounderCommandCenter() {
   const [knowledge, setKnowledge] = useState<KnowledgeClaim[]>([]);
   const [knowledgeStatus, setKnowledgeStatus] = useState("loading");
   const [goblins,setGoblins]=useState<any>({runs:[],totals:[],readiness:{}});
+  const [opinionQuestions,setOpinionQuestions]=useState<OpinionQuestion[]>([]);
+  const [opinionResults,setOpinionResults]=useState<Record<string,OpinionResult>>({});
+  const [opinionLoading,setOpinionLoading]=useState<string | null>(null);
   const load = async () => {
     setStatus("loading");
     try {
@@ -56,6 +61,7 @@ export default function FounderCommandCenter() {
       setData(await response.json()); setStatus("ready");
       const knowledgeResponse=await fetch("/api/founder/knowledge",{cache:"no-store"});if(knowledgeResponse.ok){setKnowledge((await knowledgeResponse.json()).claims);setKnowledgeStatus("ready")}else setKnowledgeStatus("error");
       const goblinResponse=await fetch("/api/founder/goblins",{cache:"no-store"});if(goblinResponse.ok)setGoblins(await goblinResponse.json());
+      const opinionResponse=await fetch("/api/coach/opinion",{cache:"no-store"});if(opinionResponse.ok)setOpinionQuestions((await opinionResponse.json()).questions||[]);
     } catch { setStatus("error"); }
   };
   useEffect(() => { load(); const timer = window.setInterval(load, 60_000); return () => window.clearInterval(timer); }, []);
@@ -65,6 +71,13 @@ export default function FounderCommandCenter() {
   const funnel = data.launch?.funnel || {};
   const visitors = funnel.landing_view?.sessions || 0;
   const completed = funnel.forge_succeeded?.sessions || 0;
+  const runOpinion = async (question: OpinionQuestion) => {
+    setOpinionLoading(question.opinionKey);
+    try {
+      const response=await fetch("/api/coach/opinion",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:question.playerQuestion,commanderName:question.commanderName,subject:question.subject,deckRevision:question.deckRevision,opinionKey:question.opinionKey})});
+      if(response.ok){const result=await response.json();setOpinionResults((current)=>({...current,[question.opinionKey]:result}))}
+    } finally { setOpinionLoading(null); }
+  };
   return <main className="founder-command">
     <header><a href="/" className="founder-brand"><i>MF</i><span>METAFORGE</span></a><div><small>PRIVATE · FOUNDER ONLY</small><h1>Command Center</h1><p>Your alpha’s pulse—without raw Arena logs or readable tester identities.</p></div><button onClick={load}>Refresh signals</button></header>
     <section className="founder-metrics">
@@ -73,6 +86,17 @@ export default function FounderCommandCenter() {
       <article><span>OBSERVED WIN RATE</span><b>{rate}%</b><em>Descriptive, not causal</em></article>
       <article><span>DECK EVOLUTIONS</span><b>{data.totals.revisions}</b><em>{data.totals.decks} deck families</em></article>
       <article><span>FOUNDER SIGNALS</span><b>{data.totals.feedback}</b><em>Feedback reports</em></article>
+    </section>
+    <section className="founder-panel opinion-lab" id="opinion-lab"><header><div><small>OPINION ENGINE V0.3 · EXACT-REVISION TRIAL</small><h2>Why is this card here—and should I keep it?</h2><p>Same card, three player contexts. Claims are server-owned; construction remains untouched.</p></div><b>{opinionQuestions.length} REGISTERED QUESTIONS</b></header>
+      <div className="opinion-context-grid">{opinionQuestions.map((question)=>{const result=opinionResults[question.opinionKey],identity=question.cardIdentity;return <article key={question.opinionKey}>
+        <header><div><small>{question.deckRevision}</small><h3>{question.label}</h3></div><span>{question.fantasy}</span></header>
+        <p className="opinion-question">{question.playerQuestion}</p>
+        <div className="card-job"><small>JOB IN CONTEXT</small><b>{identity.roles.join(" · ")}</b><p>{identity.earliestRealisticWindow}</p></div>
+        <dl><div><dt>Floor</dt><dd>{identity.floor}</dd></div><div><dt>Ceiling</dt><dd>{identity.ceiling}</dd></div><div><dt>Opportunity cost</dt><dd>{identity.opportunityCost}</dd></div></dl>
+        <button disabled={opinionLoading===question.opinionKey} onClick={()=>runOpinion(question)}>{opinionLoading===question.opinionKey?"FORMING STANCE…":result?"RE-RUN OPINION":"FORM OPINION"}</button>
+        {result&&<div className={`opinion-verdict ${result.opinion.headline.includes("against")?"against":result.opinion.headline.includes("does not")?"unresolved":"recommend"}`}><small>{result.opinion.confidence.level.toUpperCase()} CONFIDENCE · REVISION {result.lineage.revision}</small><h4>{result.opinion.headline}</h4><p>{result.opinion.answer}</p><details><summary>Reasoning and strongest objection</summary><p><b>Why:</b> {result.opinion.why}</p><p><b>Strongest objection:</b> {result.opinion.strongestCounterargument}</p><p><b>What changes the opinion:</b> {result.opinion.whatWouldChangeMyMind.join(" · ")||"More applicable evidence."}</p>{result.opinion.proposedTest?.instruction&&<p><b>Next test:</b> {result.opinion.proposedTest.instruction}</p>}</details></div>}
+      </article>})}{!opinionQuestions.length&&<p className="empty">Opinion registry is unavailable. No stance will be invented.</p>}</div>
+      <footer className="opinion-lock">APPEND-ONLY LINEAGE · CALLERS CANNOT SUBMIT CLAIMS · FIXTURES ARE NOT LIVE TRUTH · WRITES TO BRAIN: FALSE</footer>
     </section>
     <section className="founder-panel"><header><div><small>LAUNCH READINESS · LAST 30 DAYS</small><h2>Visitor journey</h2></div><b>{visitors ? Math.round(completed / visitors * 100) : 0}% VISIT → DECK</b></header>
       <div className="founder-metrics">
