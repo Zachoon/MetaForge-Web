@@ -15,13 +15,13 @@ export const MATCHUP_ROLES = freeze({
 
 export const MATCHUP_GUIDANCE = freeze({
   Aggro: freeze({
-    goal: "Survive the opening rush, then turn the corner once their hand is depleted.",
+    goal: "Survive the opening rush, then take over once their hand runs dry.",
     watchFor: "Keep hands that interact early. Spend removal before damage snowballs; save protection for the card that stabilizes the board.",
     roles: freeze({
       Interaction: "Use early to stop their fastest threat.",
       "Board reset": "Hold until it catches multiple threats, unless you would otherwise fall behind.",
       "Mana source": "Prioritize untapped sources so your answers arrive on time.",
-      Protection: "Protect your stabilizer, not a replaceable early card.",
+      Protection: "Protect the card that stops the bleed, not a replaceable early play.",
     }),
   }),
   Control: freeze({
@@ -57,7 +57,7 @@ export const MATCHUP_GUIDANCE = freeze({
 });
 
 const SECONDARY_CHANGE =
-  "Not the focus this matchup — develop after the priority tools (answers, stabilization, and the deciding package) are online.";
+  "Not the focus this matchup — develop after answers and stabilization are online.";
 
 /**
  * Role × matchup coaching. Honest about seat-level advice, not per-card telepathy.

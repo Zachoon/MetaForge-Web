@@ -28,7 +28,8 @@ import { readFile } from "node:fs/promises";
 // engine verdict (422, "no legal replacement") from a transport/parse
 // failure (network/5xx) instead of collapsing both into one lie.
 
-const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+// Source-contract checks should not depend on the host editor's newline style.
+const page = (await readFile(new URL("../app/page.tsx", import.meta.url), "utf8")).replace(/\r\n/g, "\n");
 
 // --- Hotfix A: dead repair control removed ---
 

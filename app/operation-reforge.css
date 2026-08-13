@@ -6,7 +6,7 @@
 .forge-steps button.current{color:#fff;background:#18312f}
 .commission-heading p{max-width:720px;font-size:17px;line-height:1.6}
 .chamber-commission .commission-heading:after{content:"THREE QUICK STEPS\A Commander, strategy, then optional preferences."}
-.mark-grid>label:after{display:none}.commission-note:before{content:"OPTIONAL NOTE"}.awaken-button:not(:disabled):after{content:"READY TO BUILD"}.awaken-button:disabled:after{content:"CHOOSE A COMMANDER"}
+.mark-grid>label:after{display:none}.commission-note:before{content:"OPTIONAL NOTE"}.awaken-button:not(:disabled):after{content:"READY TO BUILD"}.awaken-button:disabled[data-block-reason="commander"]:after{content:"CHOOSE A COMMANDER"}.awaken-button:disabled[data-block-reason="verification"]:after{content:"CONFIRM YOU'RE HUMAN"}.awaken-button:disabled[data-block-reason="deck"]:after{content:"PASTE A DECKLIST"}.awaken-button:disabled:not([data-block-reason]):after{content:""}
 .commission-note{border-top:1px solid #294246;padding-top:24px}
 .build-stepper{display:grid;grid-template-columns:repeat(3,1fr);max-width:720px;margin:0 auto 30px;border:1px solid #294246;background:#091416}
 .build-stepper button{display:flex;align-items:center;gap:10px;padding:14px 16px;border:0;border-right:1px solid #294246;background:transparent;color:#829895;text-align:left}.build-stepper button:last-child{border-right:0}.build-stepper button.current{background:#18312f;color:#fff}.build-stepper button.complete{color:#75dbc4}

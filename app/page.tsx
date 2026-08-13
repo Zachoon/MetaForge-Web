@@ -1190,6 +1190,7 @@ export default function Home() {
   const [chamber, setChamber] = useState<Chamber>("entrance");
   const [guestMode, setGuestMode] = useState(true);
   const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileError, setTurnstileError] = useState("");
   const [guestClaimToken, setGuestClaimToken] = useState("");
   // The claim response mirrors the server-owned Forge report contract.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1199,7 +1200,7 @@ export default function Home() {
   const turnstileWidgetRef = useRef<string | null>(null);
   useEffect(() => {
     const host = window.location.hostname.toLowerCase();
-    const isPublicForgeHost = host === "metaforge.gg" || host === "www.metaforge.gg" || host.endsWith(".chatgpt.site");
+    const isPublicForgeHost = host === "metaforge.gg" || host === "www.metaforge.gg" || host === "app.metaforge.gg" || host.endsWith(".chatgpt.site");
     const isGuest = isPublicForgeHost || new URLSearchParams(window.location.search).get("guest") === "1";
     queueMicrotask(() => setGuestMode(isGuest));
   }, []);
@@ -1213,11 +1214,16 @@ export default function Home() {
       const turnstile = (window as any).turnstile;
       if (cancelled || !turnstile || !turnstileHostRef.current || turnstileWidgetRef.current) return;
       turnstileWidgetRef.current = turnstile.render(turnstileHostRef.current, {
+        // Public sitekey. Cloudflare error 110200 means this hostname is not
+        // in the widget's Hostname Management allowlist (Dashboard → Turnstile
+        // → this widget). Code cannot authorize domains; add metaforge.gg,
+        // www.metaforge.gg, and app.metaforge.gg there. Alternate Sites hosts
+        // need their own allowlist entries or they will keep failing.
         sitekey: "0x4AAAAAAEEl7173Degrwsrc",
         theme: "dark",
         size: "flexible",
         appearance: "interaction-only",
-        callback: (token: string) => setTurnstileToken(token),
+        callback: (token: string) => { setTurnstileToken(token); setTurnstileError(""); },
         // A token that expires while the player is still configuring their
         // build (Cloudflare's own ~5-minute window) used to only clear
         // React state here — the widget itself could be left showing a
@@ -1233,6 +1239,8 @@ export default function Home() {
         },
         "error-callback": () => {
           setTurnstileToken("");
+          // Cloudflare error 110200 = hostname not authorized for this sitekey.
+          setTurnstileError("Verification could not load on this domain. Use metaforge.gg, or ask an admin to authorize this hostname for Turnstile.");
           if (turnstileWidgetRef.current) turnstile.reset(turnstileWidgetRef.current);
         },
       });
@@ -2302,7 +2310,11 @@ export default function Home() {
           ]
             .filter(Boolean)
             .join(" // "),
-          cmc: Number(fact?.cmc || 0),
+          cmc: (() => {
+            const raw = fact?.cmc;
+            const value = raw == null || raw === "" ? NaN : Number(raw);
+            return Number.isFinite(value) ? value : 0;
+          })(),
           isCommander:
             isCommanderFormat(format) &&
             cardFactKey(row.name) ===
@@ -2703,12 +2715,14 @@ export default function Home() {
       const isCommander = isCommanderFormat(format) && [activeCommanderName, selectedSecondCommander?.name]
         .filter(Boolean)
         .some((name) => cardFactKey(name as string) === cardFactKey(row.name));
+      const rawCmc = fact?.cmc;
+      const cmc = rawCmc == null || rawCmc === "" ? null : Number(rawCmc);
       return {
         name: row.name,
         quantity: row.quantity,
         role: isCommander ? "Commander" : cardRole(fact),
         image: fact?.image_uris?.normal || fact?.card_faces?.[0]?.image_uris?.normal || cardImage(row.name),
-        cmc: Number(fact?.cmc || 0),
+        cmc: cmc != null && Number.isFinite(cmc) ? cmc : null,
       };
     }),
     [orderedDeckRows, cardFacts, format, activeCommanderName, selectedSecondCommander?.name],
@@ -3076,7 +3090,7 @@ export default function Home() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ names }),
-          signal: AbortSignal.timeout(7000),
+          signal: AbortSignal.timeout(25000),
         });
         if (!response.ok) throw new Error("catalog unavailable");
         const data = await response.json();
@@ -4825,6 +4839,7 @@ export default function Home() {
           <div>
             <small>ONE FREE FORGE · NO ACCOUNT REQUIRED</small>
             <b>{turnstileToken ? "The Forge is ready for you." : "Confirm you’re human, then build your Blueprint."}</b>
+            {turnstileError ? <p className="guest-turnstile-error" role="alert">{turnstileError}</p> : null}
           </div>
           <div
             className={`turnstile-host${turnstileToken ? " verified" : ""}`}
@@ -5561,6 +5576,15 @@ export default function Home() {
             )}
             <button
               className="awaken-button"
+              data-block-reason={
+                isCommanderFormat(format) && !selectedCommander
+                  ? "commander"
+                  : guestMode && !turnstileToken
+                    ? "verification"
+                    : chamber === "refine" && !deck.trim()
+                      ? "deck"
+                      : ""
+              }
               disabled={
                 (chamber === "refine" && !deck.trim()) ||
                 (isCommanderFormat(format) && !selectedCommander) ||

@@ -17,7 +17,7 @@ describe("Tabletop Matchup lens — answers, not highlights", () => {
     assert.equal(advice.priority, true);
     assert.match(advice.verdict, /Priority vs Aggro/i);
     assert.match(advice.change, /early|stop|threat/i);
-    assert.match(advice.why, /Survive|rush|corner/i);
+    assert.match(advice.why, /Survive|rush|take over/i);
   });
 
   it("non-priority Engine piece vs Aggro is marked secondary with hold-back copy", () => {

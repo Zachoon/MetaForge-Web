@@ -130,7 +130,7 @@ export function simulateGoldfish(deck, strategy="Midrange", games=1000, seed=812
 export function evaluateSimulationGate(deck,strategy="Midrange",games=2000,seed=8128){const expert=simulateGoldfish(deck,strategy,games,seed,"expert"),greedy=simulateGoldfish(deck,strategy,games,seed,"greedy");const sensitivity=Math.max(0,expert.planRealizationRate-greedy.planRealizationRate);return {expert,greedy,pilotSensitivity:sensitivity,sensitivityLabel:sensitivity>.12?"high":sensitivity>.05?"moderate":"low",gate:expert.modelCoverage<.8?"unsupported":expert.keepableRate<.65?"consistency-fail":expert.planRealizationRate<.55?"goldfish-fail":"goldfish-pass",warning:"Goldfish results model sequencing without an opponent. They are a viability gate, not a predicted match win rate."};}
 function priority(card,strategy,policy,rng){const base=(STRATEGY_WEIGHTS[strategy]?.[card.role]||1)*10-(card.cmc||0);return policy==="greedy"?base+(card.role==="finisher"?8:0)+rng()*8:base;}
 function roleValue(role,strategy){return (STRATEGY_WEIGHTS[strategy]?.[role]||1);}
-function isLand(card){return card.role?.includes("land")||card.cmc===undefined;}
+function isLand(card){const role=String(card?.role||"");if(role==="land"||role==="Mana source"||/\bland\b/i.test(role))return true;const type=String(card?.typeLine||card?.type_line||"");if(/\bLand\b/i.test(type))return true;return false;}
 function landColors(card){return card?.colorIdentity||[];}
 function shuffle(a,r){for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]];}}
 function mulberry32(seed){return()=>{let v=seed+=0x6D2B79F5;v=Math.imul(v^v>>>15,v|1);v^=v+Math.imul(v^v>>>7,v|61);return((v^v>>>14)>>>0)/4294967296;};}

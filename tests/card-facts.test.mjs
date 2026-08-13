@@ -24,7 +24,7 @@ test("resolves a complete deck in bounded Scryfall collection batches", async (t
 });
 
 test("rejects an unbounded card-facts proxy request", async () => {
-  const response = await handleCardFacts(request({ names: Array.from({ length: 101 }, (_, index) => `Card ${index}`) }));
+  const response = await handleCardFacts(request({ names: Array.from({ length: 121 }, (_, index) => `Card ${index}`) }));
   assert.equal(response.status, 400);
 });
 
@@ -34,6 +34,7 @@ test("uses the internal type catalog when the upstream archive is down", async (
   const body = await response.json();
   assert.equal(response.status, 200);
   assert.equal(body.cards[0].type_line, "Enchantment — Aura");
+  assert.equal("cmc" in body.cards[0], false, "nonland local fallback must not invent cmc 0");
   assert.deepEqual(body.unresolved, []);
 });
 

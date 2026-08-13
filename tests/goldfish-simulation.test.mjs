@@ -101,3 +101,9 @@ test("a ramp spell mechanically adds a mana source starting next turn, accelerat
     `expected ramp to spend more total mana over 8 turns than an equivalent non-ramp card, got ${withRamp.averageManaSpent} vs ${withoutRamp.averageManaSpent}`,
   );
 });
+
+test("isKeepable treats display Mana source roles as lands", () => {
+  const mana = (name) => ({ card: name, role: "Mana source", cmc: 0 });
+  assert.equal(isKeepable([mana("Command Tower"), mana("Reliquary Tower"), spell("A", 2)]), true);
+  assert.equal(isKeepable([mana("Command Tower"), spell("A", 2)]), false);
+});

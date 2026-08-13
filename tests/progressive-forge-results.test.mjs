@@ -122,7 +122,7 @@ test("uses the Forge's verified card types before supplemental gallery lookups",
   assert.match(page, /type_line: String\(card\.typeLine \|\| card\.type_line \|\| ""\)/);
   assert.match(page, /fetch\("\/api\/cards\/facts"/);
   assert.match(page, /Retry details/);
-  assert.match(page, /AbortSignal\.timeout\(7000\)/);
+  assert.match(page, /AbortSignal\.timeout\(25000\)/);
   assert.match(page, /: "Details pending"/);
   assert.match(page, /cardFactsPending > 0/);
   assert.match(page, /The rest of your deck is fully organized/);

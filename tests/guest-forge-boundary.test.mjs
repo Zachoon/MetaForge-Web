@@ -135,7 +135,7 @@ test("a naturally expired or errored Turnstile token also forces an explicit wid
   );
   assert.match(
     renderBlock,
-    /"error-callback": \(\) => \{\s*setTurnstileToken\(""\);\s*if \(turnstileWidgetRef\.current\) turnstile\.reset\(turnstileWidgetRef\.current\);\s*\}/,
+    /"error-callback": \(\) => \{\s*setTurnstileToken\(""\);[\s\S]*?setTurnstileError\("Verification could not load on this domain\.[\s\S]*?"\);\s*if \(turnstileWidgetRef\.current\) turnstile\.reset\(turnstileWidgetRef\.current\);\s*\}/,
   );
 });
 

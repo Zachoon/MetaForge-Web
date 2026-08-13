@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-13T02:03:14.700Z",
+  "generatedAt": "2026-08-13T04:24:50.103Z",
   "aggregate": {
     "total": 13,
     "passed": 13,
@@ -23,28 +23,28 @@
       "interaction_graph_failure": 9
     },
     "runtime": {
-      "medianMs": 2919,
-      "p95Ms": 9319,
+      "medianMs": 3227,
+      "p95Ms": 10187,
       "slowest": [
         {
           "id": "aristocrats",
-          "ms": 9319
+          "ms": 10187
         },
         {
           "id": "spellslinger",
-          "ms": 5742
+          "ms": 6607
         },
         {
           "id": "equipment-voltron",
-          "ms": 5325
+          "ms": 5897
         },
         {
           "id": "pearl-ear-auras",
-          "ms": 4736
+          "ms": 4878
         },
         {
           "id": "reanimator",
-          "ms": 3051
+          "ms": 4246
         }
       ]
     }
@@ -679,8 +679,8 @@
           }
         ],
         "timing": {
-          "finalizeMs": 5,
-          "recordMs": 4
+          "finalizeMs": 4,
+          "recordMs": 2
         },
         "artifactBytes": 217193
       },
@@ -702,7 +702,7 @@
         "gap": 15.819,
         "underperformed": false
       },
-      "runtimeMs": 4736
+      "runtimeMs": 4878
     },
     {
       "id": "equipment-voltron",
@@ -764,8 +764,8 @@
           }
         ],
         "timing": {
-          "finalizeMs": 4,
-          "recordMs": 6
+          "finalizeMs": 7,
+          "recordMs": 0
         },
         "artifactBytes": 203913
       },
@@ -793,7 +793,7 @@
         "gap": 20.143,
         "underperformed": false
       },
-      "runtimeMs": 5325
+      "runtimeMs": 5897
     },
     {
       "id": "ayula-typal",
@@ -850,7 +850,7 @@
         ],
         "timing": {
           "finalizeMs": 4,
-          "recordMs": 2
+          "recordMs": 0
         },
         "artifactBytes": 190760
       },
@@ -872,7 +872,7 @@
         "gap": 19.937,
         "underperformed": false
       },
-      "runtimeMs": 3005
+      "runtimeMs": 3227
     },
     {
       "id": "token-go-wide",
@@ -937,8 +937,8 @@
           }
         ],
         "timing": {
-          "finalizeMs": 7,
-          "recordMs": 1
+          "finalizeMs": 6,
+          "recordMs": 9
         },
         "artifactBytes": 211249
       },
@@ -967,7 +967,7 @@
         "gap": 9.789,
         "underperformed": false
       },
-      "runtimeMs": 2919
+      "runtimeMs": 3295
     },
     {
       "id": "aristocrats",
@@ -1031,8 +1031,8 @@
           }
         ],
         "timing": {
-          "finalizeMs": 12,
-          "recordMs": 3
+          "finalizeMs": 13,
+          "recordMs": 1
         },
         "artifactBytes": 243524
       },
@@ -1061,7 +1061,7 @@
         "gap": -4.598,
         "underperformed": false
       },
-      "runtimeMs": 9319
+      "runtimeMs": 10187
     },
     {
       "id": "reanimator",
@@ -1126,8 +1126,8 @@
           }
         ],
         "timing": {
-          "finalizeMs": 2,
-          "recordMs": 1
+          "finalizeMs": 3,
+          "recordMs": 3
         },
         "artifactBytes": 233303
       },
@@ -1155,7 +1155,7 @@
         "gap": 15.491,
         "underperformed": false
       },
-      "runtimeMs": 3051
+      "runtimeMs": 4246
     },
     {
       "id": "spellslinger",
@@ -1224,10 +1224,10 @@
           }
         ],
         "timing": {
-          "finalizeMs": 6,
-          "recordMs": 2
+          "finalizeMs": 10,
+          "recordMs": 1
         },
-        "artifactBytes": 247157
+        "artifactBytes": 247158
       },
       "weakSlotForensics": {
         "weakSlotCount": 0,
@@ -1247,7 +1247,7 @@
         "gap": 16.907,
         "underperformed": false
       },
-      "runtimeMs": 5742
+      "runtimeMs": 6607
     },
     {
       "id": "landfall",
@@ -1336,7 +1336,7 @@
         "gap": -0.238,
         "underperformed": false
       },
-      "runtimeMs": 2644
+      "runtimeMs": 3208
     },
     {
       "id": "blink-etb",
@@ -1394,8 +1394,8 @@
           }
         ],
         "timing": {
-          "finalizeMs": 4,
-          "recordMs": 5
+          "finalizeMs": 2,
+          "recordMs": 3
         },
         "artifactBytes": 216621
       },
@@ -1423,7 +1423,7 @@
         "gap": 18.257,
         "underperformed": false
       },
-      "runtimeMs": 2555
+      "runtimeMs": 2924
     },
     {
       "id": "artifacts",
@@ -1476,7 +1476,7 @@
         ],
         "timing": {
           "finalizeMs": 1,
-          "recordMs": 0
+          "recordMs": 2
         },
         "artifactBytes": 211301
       },
@@ -1498,7 +1498,7 @@
         "gap": 23.816,
         "underperformed": false
       },
-      "runtimeMs": 1826
+      "runtimeMs": 2113
     },
     {
       "id": "stax",
@@ -1554,8 +1554,8 @@
           }
         ],
         "timing": {
-          "finalizeMs": 1,
-          "recordMs": 2
+          "finalizeMs": 2,
+          "recordMs": 3
         },
         "artifactBytes": 206431
       },
@@ -1577,7 +1577,7 @@
         "gap": 23.355,
         "underperformed": false
       },
-      "runtimeMs": 1493
+      "runtimeMs": 1522
     },
     {
       "id": "combo-partners",
@@ -1639,8 +1639,8 @@
           }
         ],
         "timing": {
-          "finalizeMs": 1,
-          "recordMs": 0
+          "finalizeMs": 0,
+          "recordMs": 2
         },
         "artifactBytes": 212048
       },
@@ -1669,7 +1669,7 @@
         "gap": 26.541,
         "underperformed": false
       },
-      "runtimeMs": 1617
+      "runtimeMs": 1716
     },
     {
       "id": "multiplan-commander",
@@ -1728,7 +1728,7 @@
         ],
         "timing": {
           "finalizeMs": 2,
-          "recordMs": 2
+          "recordMs": 5
         },
         "artifactBytes": 195383
       },
@@ -1750,7 +1750,7 @@
         "gap": 14.845,
         "underperformed": false
       },
-      "runtimeMs": 1954
+      "runtimeMs": 2042
     }
   ]
 }

@@ -12,7 +12,8 @@ export type TabletopCard = {
   quantity: number;
   role: string;
   image: string;
-  cmc: number;
+  /** null when catalog hydration has type/role but no verified mana value yet */
+  cmc: number | null;
 };
 
 export type TabletopEdge = { from: string; to: string; signals?: string[] };
@@ -88,7 +89,7 @@ export function Tabletop({
   onOpenList,
   onMatchupContext,
 }: TabletopProps) {
-  const [lens, setLens] = useState<Lens>("packages");
+  const [lens, setLens] = useState<Lens>("hand");
   const [matchup, setMatchup] = useState<Matchup>("Aggro");
   const [handSalt, setHandSalt] = useState(1);
   const [showRevision, setShowRevision] = useState(false);
@@ -127,13 +128,15 @@ export function Tabletop({
     };
   }, [selectedMatchupAdvice, onMatchupContext]);
 
+  const knownCmc = (card: TabletopCard) => typeof card.cmc === "number" && Number.isFinite(card.cmc);
   const turns = [
-    { label: "TURN 1", cards: cards.filter((card) => card.cmc <= 1 && card.role !== "Mana source") },
-    { label: "TURN 2", cards: cards.filter((card) => card.cmc > 1 && card.cmc <= 2) },
-    { label: "TURN 3", cards: cards.filter((card) => card.cmc > 2 && card.cmc <= 3) },
-    { label: "TURN 4", cards: cards.filter((card) => card.cmc > 3 && card.cmc <= 4) },
-    { label: "TURN 5+", cards: cards.filter((card) => card.cmc > 4) },
-  ];
+    { label: "TURN 1", cards: cards.filter((card) => knownCmc(card) && (card.cmc as number) <= 1 && card.role !== "Mana source") },
+    { label: "TURN 2", cards: cards.filter((card) => knownCmc(card) && (card.cmc as number) > 1 && (card.cmc as number) <= 2) },
+    { label: "TURN 3", cards: cards.filter((card) => knownCmc(card) && (card.cmc as number) > 2 && (card.cmc as number) <= 3) },
+    { label: "TURN 4", cards: cards.filter((card) => knownCmc(card) && (card.cmc as number) > 3 && (card.cmc as number) <= 4) },
+    { label: "TURN 5+", cards: cards.filter((card) => knownCmc(card) && (card.cmc as number) > 4) },
+    { label: "CMC UNKNOWN", cards: cards.filter((card) => !knownCmc(card) && card.role !== "Mana source") },
+  ].filter((turn) => turn.label !== "CMC UNKNOWN" || turn.cards.length > 0);
 
   const tile = (card: TabletopCard, showQuantity = true) => (
     <CardTile
@@ -223,7 +226,7 @@ export function Tabletop({
           </div>
           <footer>
             <span>{hand.filter((card) => card.role === "Mana source").length} mana sources</span>
-            <span>{hand.filter((card) => card.cmc <= 2 && card.role !== "Mana source").length} early plays</span>
+            <span>{hand.filter((card) => knownCmc(card) && (card.cmc as number) <= 2 && card.role !== "Mana source").length} early plays</span>
             <span>{hand.filter((card) => ["Interaction", "Protection"].includes(card.role)).length} responses</span>
           </footer>
         </div>
@@ -267,7 +270,7 @@ export function Tabletop({
               ))}
             </div>
             <p className="tabletop-matchup-key">
-              <i /> Bright cards are priority tools for this job. Dim cards are secondary this matchup — still useful, not the deciding package. Teal outlines are connections to your selection, not “play now.”
+              <i /> Bright cards are priority tools for this job. Dim cards are secondary this matchup — still useful, not the focus for this seat. Teal outlines are connections to your selection, not “play now.”
             </p>
           </section>
 
