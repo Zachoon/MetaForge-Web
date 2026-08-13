@@ -152,6 +152,21 @@ describe("Founder Issue #025 — Commission-Aware Philosophy Comparison", () => 
       },
     ]);
     assert.match(structureOnly, /another option may stay closer to your commission/i);
+
+    const tied = explainRecommendedBadge([
+      {
+        recommended: true,
+        scores: { cohesion: 90, resilience: 88, curveHealth: 84 },
+        commissionFit: { matchPercent: 50 },
+      },
+      {
+        recommended: false,
+        scores: { cohesion: 70, resilience: 64, curveHealth: 72 },
+        commissionFit: { matchPercent: 50 },
+      },
+    ]);
+    assert.match(tied, /commission fit is tied/i);
+    assert.doesNotMatch(tied, /closer commission fit/i);
   });
 
   it("wires per-philosophy commission fit into the choice screen", () => {

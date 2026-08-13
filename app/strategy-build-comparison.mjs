@@ -268,16 +268,25 @@ export function explainRecommendedBadge(builds = []) {
   if (!hasCommissionGrades) {
     return "Recommended for stronger play structure among these philosophies.";
   }
-  const closerFit = Number.isFinite(recFit) && (bestOtherFit == null || recFit + 2 >= bestOtherFit);
-  const weakerFit = Number.isFinite(recFit) && bestOtherFit != null && recFit + 5 < bestOtherFit;
+  // Founder Trial 2026-08-12: "closer commission fit" requires a strictly
+  // higher attributable score. Equal percentages are a tie — never "closer."
+  const closerFit = Number.isFinite(recFit) && (bestOtherFit == null || recFit > bestOtherFit);
+  const tiedFit = Number.isFinite(recFit) && bestOtherFit != null && recFit === bestOtherFit;
+  const weakerFit = Number.isFinite(recFit) && bestOtherFit != null && recFit < bestOtherFit;
   if (closerFit && strongerStructure) {
     return "Recommended for stronger play structure and closer commission fit.";
+  }
+  if (tiedFit && strongerStructure) {
+    return "Recommended for stronger play structure — commission fit is tied across these philosophies.";
   }
   if (weakerFit) {
     return "Recommended for stronger play structure — another option may stay closer to your commission.";
   }
   if (closerFit) {
     return "Recommended for closer commission fit.";
+  }
+  if (tiedFit) {
+    return "Commission fit is tied — recommended for play structure among these philosophies.";
   }
   return "Recommended for stronger play structure among these philosophies.";
 }
