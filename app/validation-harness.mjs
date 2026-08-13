@@ -12,6 +12,7 @@ import {
   aggregateTortureResults,
   buildTortureScorecard,
 } from "./torture-bench-audit.mjs";
+import { summarizeCorpusObservation } from "./validation-harness-corpus.mjs";
 
 export const VALIDATION_HARNESS_VERSION = "validation-harness-v1";
 export const VALIDATION_REPORT_VERSION = "validation-report-v1";
@@ -483,6 +484,13 @@ export function buildValidationReport(records = [], options = {}) {
     `Next focus: ${nextFocus.primary.id} — ${nextFocus.primary.rationale}`,
   ];
 
+  const corpusObservation = summarizeCorpusObservation(records);
+  if (corpusObservation.present) {
+    summaryLines.push(
+      `Corpus observation: ${corpusObservation.cases} lists (${corpusObservation.topCutCases} top-cut) via ${corpusObservation.forgePath} path.`,
+    );
+  }
+
   return freeze({
     version: VALIDATION_REPORT_VERSION,
     harnessVersion: VALIDATION_HARNESS_VERSION,
@@ -493,6 +501,7 @@ export function buildValidationReport(records = [], options = {}) {
     aggregate,
     comparison,
     nextFocus,
+    corpusObservation,
     records: options.includeRecords === false
       ? freeze([])
       : freeze(records.map((record) => freeze({
@@ -509,6 +518,8 @@ export function buildValidationReport(records = [], options = {}) {
         controlCaseCounts: record.selfEvaluation?.controlCaseCounts || null,
         disagreementsByClass: record.selfEvaluation?.disagreementsByClass || null,
         cleanupApplied: record.weakSlotRepair?.applied || false,
+        corpus: record.corpus || null,
+        forgePath: record.forgePath || null,
       }))),
   });
 }
@@ -572,6 +583,16 @@ export function renderValidationReportMarkdown(report) {
     lines.push(`- ${name}: runs=${stats.runs} pass=${stats.passes} weak=${stats.weakSlots} avoidable=${stats.avoidableWeak} forced=${stats.constraintForcedWeak}`);
   }
   lines.push("");
+  if (report.corpusObservation?.present) {
+    lines.push("## Corpus observation");
+    lines.push(`- Cases: ${report.corpusObservation.cases} (top-cut ${report.corpusObservation.topCutCases})`);
+    lines.push(`- Forge path: ${report.corpusObservation.forgePath}`);
+    lines.push(`- ${report.corpusObservation.honesty}`);
+    for (const [tier, count] of Object.entries(report.corpusObservation.evidenceTierDistribution || {})) {
+      lines.push(`- evidenceTier ${tier}: ${count}`);
+    }
+    lines.push("");
+  }
   lines.push("_This report does not authorize new planning layers. Evidence first._");
   lines.push("");
   return lines.join("\n");

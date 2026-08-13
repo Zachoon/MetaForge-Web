@@ -102,9 +102,13 @@ node tests/validation-harness/run.mjs --mode field --limit 104 \
 Not another reasoning layer.
 
 1. **Golden commander canaries** with stable expected rates — `npm run validate:golden`  
-2. Real Commander / EDHREC corpora into the **same report shape**  
+2. **Real / tournament-shaped corpus into the same report shape** — `npm run validate:harness:real-corpus`
+   - Adapter: `app/validation-harness-corpus.mjs`
+   - Offline default: competitive fixture corpus (tournament-shaped; provenance disclosed — not live EDHREC truth)
+   - Same `validation-report-v1` contract as smoke/field; import path observation only
 3. Weekly trend reports once real corpora are representative  
 4. Nightly automation last  
+
 
 ### Golden canaries (Brain v1)
 

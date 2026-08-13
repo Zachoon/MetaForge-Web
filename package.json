@@ -12,6 +12,8 @@
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
     "validate:harness": "node tests/validation-harness/run.mjs --mode smoke",
     "validate:harness:field": "node tests/validation-harness/run.mjs --mode field --limit 104 --baseline tests/validation-harness/brain-v1-frozen-benchmark.json",
+    "validate:harness:real-corpus": "node tests/validation-harness/run-real-corpus.mjs --limit 8",
+    "validate:opinion-corpus-contract": "node --test tests/knowledge/opinion-corpus-consumer-contract.test.mjs",
     "validate:golden": "node tests/validation-harness/run-golden.mjs",
     "validate:field-intelligence": "node --test tests/field-intelligence.test.mjs",
     "validate:brain-v2-exp001": "node --test tests/brain-v2-exp001.test.mjs",

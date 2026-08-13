@@ -74,7 +74,7 @@ Required answers:
 **Milestone: MetaForge Field Validation**
 
 1. Golden commander canaries (stable expected rates) — started  
-2. Real Commander corpus in the **same harness report shape**  
+2. Real / tournament-shaped Commander corpus in the **same harness report shape** — started (`npm run validate:harness:real-corpus`)
 3. Community corpora (EDHREC / Moxfield / Archidekt / tournament lists) for disagreement analysis  
 4. Weekly trend reports — after real corpora are representative  
 5. Nightly automation — last, not first  
