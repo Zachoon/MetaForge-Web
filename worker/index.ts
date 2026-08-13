@@ -19,6 +19,7 @@ import { cleanupExpiredGenerations } from "./forge-generation-store";
 import { cleanupExpiredGuestForges, handleGuestClaim, handleGuestForge } from "./guest-forge";
 import { handleLaunchTelemetry, recordOperationalGeneration } from "./launch-telemetry";
 import { handleOpinionQuery } from "./opinion-query";
+import { handleRevisionOpinion } from "./revision-opinion";
 const BUILD_ID = "2026.07.16-workspace1";
 const IMPACT_SITE_VERIFICATION = "05208696-7452-434e-89b1-d6be551c7505";
 const PUBLIC_HOSTS = new Set(["metaforge.gg"]);
@@ -207,6 +208,7 @@ const worker = {
       }
       if (url.pathname === "/api/forge/chat") return await handleForgeChat(request, env);
       if (url.pathname === "/api/coach/opinion") return await handleOpinionQuery(request, env);
+      if (url.pathname === "/api/coach/revision-opinion") return await handleRevisionOpinion(request, env);
       if (url.pathname === "/api/telemetry") return await handleLaunchTelemetry(request, env);
       if (url.pathname === "/api/forge/edhrec") return await handleEdhrecEvidence(request, env);
       if (url.pathname === "/api/forge/generate" || url.pathname === "/api/forge/guest-generate") {

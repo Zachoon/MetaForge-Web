@@ -73,6 +73,7 @@
     "validate:strategic-hypothesis-v0": "node --test tests/knowledge/strategic-hypothesis-v0.test.mjs",
     "validate:opinion-engine-v0": "node --test tests/knowledge/opinion-engine-v0.test.mjs",
     "validate:opinion-engine-v0.2": "node --test tests/knowledge/opinion-engine-v0.test.mjs tests/knowledge/opinion-engine-v0.2.test.mjs tests/knowledge/opinion-claim-registry-v0.test.mjs tests/knowledge/opinion-corpus-consumer-contract.test.mjs tests/opinion-query-api.test.mjs",
+    "validate:opinion-engine-v0.4": "node --test tests/knowledge/opinion-eligibility-v0.test.mjs tests/revision-opinion-api.test.mjs",
     "report:strategic-hypothesis-v0": "node tests/knowledge/run-strategic-hypothesis-v0.mjs",
     "observe:strategic-hypothesis-v0": "node tests/knowledge/run-strategic-hypothesis-v0.mjs",
     "validate:stance-voice": "node --test tests/strategic-stance-voice.test.mjs",
