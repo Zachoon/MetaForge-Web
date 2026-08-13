@@ -61,15 +61,16 @@ test("the suggested-commander picker renders the drawn options with a dismiss-an
 });
 
 test("a fresh commander build routes through the masterworks chamber, never straight to a chosen deck", () => {
-  const start = page.indexOf('async function commitDirectForge(mode: "decklist" | "commander")');
+  const start = page.indexOf('async function commitDirectForge(mode: "decklist" | "commander"');
   const end = page.indexOf("function openSavedMasterwork", start);
   const body = page.slice(start, end);
-  const elseBranchStart = body.indexOf("} else {");
+  assert.ok(body.length > 0, "expected to find commitDirectForge");
+  const elseBranchStart = body.lastIndexOf("} else {");
   const elseBranch = body.slice(elseBranchStart);
   assert.match(elseBranch, /setPendingCandidateChoice\(\{/);
   assert.match(elseBranch, /setChamber\("masterworks"\)/);
   assert.doesNotMatch(elseBranch, /applyForgeResult/, "the commander branch must not apply a result directly — only enterMasterwork does, on explicit choice");
-  // Exactly one callForgeGenerate call in the whole function (shared by
+  // Exactly two callForgeGenerate calls in the whole function (shared by
   // both the decklist and commander branches) — no second network call
   // happens anywhere downstream of it.
   const generateCalls = [...body.matchAll(/await callForgeGenerate\(\{/g)];
@@ -90,17 +91,18 @@ test("entering a Masterwork is only reachable through an explicit player click o
   assert.match(page, /onClick=\{\(\) => enterMasterwork\(candidate\.id\)\}/);
   // No automatic call anywhere in the file.
   const autoCalls = [...page.matchAll(/enterMasterwork\(/g)];
-  // One definition + the recommended shortcut + each candidate's entry button.
-  assert.equal(autoCalls.length, 3, "enterMasterwork should only be referenced by its definition and explicit player-click handlers");
+  // One definition + each philosophy card's entry button (single map site).
+  assert.equal(autoCalls.length, 2, "enterMasterwork should only be referenced by its definition and explicit player-click handlers");
 });
 
 test("recommended candidate is visually marked but not auto-selected — every candidate gets its own explicit entry button", () => {
-  assert.match(page, /isRecommended && <em>RECOMMENDED<\/em>/);
+  assert.match(page, /build\.recommended && !singleSurvivor && <em>RECOMMENDED<\/em>/);
   assert.match(
     page,
-    /\{\(pendingCandidateChoice\.nativeReport\.candidates \|\| \[pendingCandidateChoice\.nativeReport\.selected\]\)\.map\(\(candidate: any\) => \{/,
-    "every candidate in the array gets mapped to its own card+button, not just the recommended one",
+    /strategyBuildComparison\?\.builds|\(pendingCandidateChoice\.nativeReport\.candidates/,
+    "every candidate/build gets mapped to its own card+button, not just the recommended one",
   );
+  assert.match(page, /enterMasterwork\(candidate\.id\)/);
 });
 
 test("the workbench's own UI success/failure boundary: a hasValidatedDeck predicate, not chamber alone, gates success chrome", () => {
@@ -149,8 +151,9 @@ test("hasValidatedDeck is definitionally false whenever forgeGenerationError is 
 test("none of the reported success strings can render outside hasValidatedDeck: header framing, chapter rail, deck stats, Workbench/ledger/copy, raw response, begin-testing", () => {
   // "YOUR COMPLETE DECK · READY TO PLAY" / the workbench header framing
   assert.match(page, /\{hasValidatedDeck\s*\n\s*\? "READY TO PLAY"/);
-  // The chapter rail, "Your deck is ready" intro, and detail-level nav
-  assert.match(page, /\{hasValidatedDeck \? \(\s*<>\s*<nav\s+id="forge-chapter-rail"/);
+  // Living Workbench owns the chapter rail; it only mounts beside a validated deck path.
+  assert.match(page, /\{hasValidatedDeck \? \(\s*<>/);
+  assert.match(page, /<LivingWorkbench/);
   // The deck-reference-strip (card art, name, "N cards · format" chip)
   assert.match(page, /\{hasValidatedDeck && \(\s*<div className="deck-reference-strip">/);
   // The "N cards · N sections" count and the Workbench/Full ledger/Copy

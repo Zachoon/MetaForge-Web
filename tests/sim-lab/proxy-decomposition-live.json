@@ -1,0 +1,367 @@
+{
+  "version": "proxy-decomposition-v0.1",
+  "paper": "Interaction Count Doesn't Win",
+  "paperSubtitle": "It Merely Reveals Strategic Coverage",
+  "academyConcept": "Strategic Coverage",
+  "question": "What information does interaction count contain that current topology throws away?",
+  "decksAnalyzed": 283,
+  "eventsRepresented": 35,
+  "corpusMode": "live",
+  "syntheticFixtures": "NOT_USED",
+  "interactionCountCorrWithRecovery": 0.2955,
+  "rankedCandidates": [
+    {
+      "variable": "multifunctionCount",
+      "corrWithRecovery": 0.5148,
+      "corrWithInteractionCount": 0.4552,
+      "partialCorrRecoveryGivenIx": 0.4471,
+      "partialCorrIxGivenVariable": 0.0801,
+      "absRecovery": 0.5148,
+      "proxyScore": 0.4796
+    },
+    {
+      "variable": "recoverySeatCount",
+      "corrWithRecovery": 0.5161,
+      "corrWithInteractionCount": 0.3898,
+      "partialCorrRecoveryGivenIx": 0.4557,
+      "partialCorrIxGivenVariable": 0.1196,
+      "absRecovery": 0.5161,
+      "proxyScore": 0.4664
+    },
+    {
+      "variable": "disruptionSeatCount",
+      "corrWithRecovery": -0.1732,
+      "corrWithInteractionCount": 0.7676,
+      "partialCorrRecoveryGivenIx": -0.6533,
+      "partialCorrIxGivenVariable": 0.6787,
+      "absRecovery": 0.1732,
+      "proxyScore": 0.4658
+    },
+    {
+      "variable": "uniqueRoleCount",
+      "corrWithRecovery": 0.5176,
+      "corrWithInteractionCount": 0.3653,
+      "partialCorrRecoveryGivenIx": 0.4606,
+      "partialCorrIxGivenVariable": 0.1336,
+      "absRecovery": 0.5176,
+      "proxyScore": 0.4624
+    },
+    {
+      "variable": "nodeCount",
+      "corrWithRecovery": 0.255,
+      "corrWithInteractionCount": 0.9925,
+      "partialCorrRecoveryGivenIx": -0.3278,
+      "partialCorrIxGivenVariable": 0.3588,
+      "absRecovery": 0.255,
+      "proxyScore": 0.4612
+    },
+    {
+      "variable": "interactionRedundancy",
+      "corrWithRecovery": -0.1688,
+      "corrWithInteractionCount": 0.7603,
+      "partialCorrRecoveryGivenIx": -0.6341,
+      "partialCorrIxGivenVariable": 0.662,
+      "absRecovery": 0.1688,
+      "proxyScore": 0.4563
+    },
+    {
+      "variable": "roleEntropy",
+      "corrWithRecovery": 0.5765,
+      "corrWithInteractionCount": 0.0411,
+      "partialCorrRecoveryGivenIx": 0.5912,
+      "partialCorrIxGivenVariable": 0.3329,
+      "absRecovery": 0.5765,
+      "proxyScore": 0.4471
+    },
+    {
+      "variable": "lowCmcInteractionCoverage",
+      "corrWithRecovery": -0.4741,
+      "corrWithInteractionCount": 0.1078,
+      "partialCorrRecoveryGivenIx": -0.5327,
+      "partialCorrIxGivenVariable": 0.396,
+      "absRecovery": 0.4741,
+      "proxyScore": 0.4001
+    },
+    {
+      "variable": "interactionCount",
+      "corrWithRecovery": 0.2955,
+      "corrWithInteractionCount": 1,
+      "partialCorrRecoveryGivenIx": null,
+      "partialCorrIxGivenVariable": null,
+      "absRecovery": 0.2955,
+      "proxyScore": 0.383
+    },
+    {
+      "variable": "interactiveDenom",
+      "corrWithRecovery": 0.2955,
+      "corrWithInteractionCount": 1,
+      "partialCorrRecoveryGivenIx": null,
+      "partialCorrIxGivenVariable": null,
+      "absRecovery": 0.2955,
+      "proxyScore": 0.383
+    },
+    {
+      "variable": "meaningfulEdgeDensity",
+      "corrWithRecovery": -0.2541,
+      "corrWithInteractionCount": -0.8402,
+      "partialCorrRecoveryGivenIx": -0.0112,
+      "partialCorrIxGivenVariable": 0.1564,
+      "absRecovery": 0.2541,
+      "proxyScore": 0.3278
+    },
+    {
+      "variable": "multifunctionRatio",
+      "corrWithRecovery": 0.3983,
+      "corrWithInteractionCount": 0.0041,
+      "partialCorrRecoveryGivenIx": 0.4157,
+      "partialCorrIxGivenVariable": 0.3204,
+      "absRecovery": 0.3983,
+      "proxyScore": 0.305
+    },
+    {
+      "variable": "planConnectedCount",
+      "corrWithRecovery": 0.2149,
+      "corrWithInteractionCount": 0.7407,
+      "partialCorrRecoveryGivenIx": -0.0062,
+      "partialCorrIxGivenVariable": 0.2078,
+      "absRecovery": 0.2149,
+      "proxyScore": 0.2837
+    },
+    {
+      "variable": "meanStrategicDegree",
+      "corrWithRecovery": 0.2319,
+      "corrWithInteractionCount": 0.2876,
+      "partialCorrRecoveryGivenIx": 0.1606,
+      "partialCorrIxGivenVariable": 0.2456,
+      "absRecovery": 0.2319,
+      "proxyScore": 0.2244
+    },
+    {
+      "variable": "winSequenceProtectionCoverage",
+      "corrWithRecovery": 0.2771,
+      "corrWithInteractionCount": -0.0218,
+      "partialCorrRecoveryGivenIx": 0.2969,
+      "partialCorrIxGivenVariable": 0.3139,
+      "absRecovery": 0.2771,
+      "proxyScore": 0.2192
+    },
+    {
+      "variable": "interactionDiversity",
+      "corrWithRecovery": -0.1888,
+      "corrWithInteractionCount": -0.2535,
+      "partialCorrRecoveryGivenIx": -0.1232,
+      "partialCorrIxGivenVariable": 0.2607,
+      "absRecovery": 0.1888,
+      "proxyScore": 0.1853
+    },
+    {
+      "variable": "planConnectedRatio",
+      "corrWithRecovery": 0.1541,
+      "corrWithInteractionCount": 0.3845,
+      "partialCorrRecoveryGivenIx": 0.0459,
+      "partialCorrIxGivenVariable": 0.259,
+      "absRecovery": 0.1541,
+      "proxyScore": 0.1792
+    },
+    {
+      "variable": "isolatedRatio",
+      "corrWithRecovery": -0.0771,
+      "corrWithInteractionCount": -0.3588,
+      "partialCorrRecoveryGivenIx": 0.0324,
+      "partialCorrIxGivenVariable": 0.2878,
+      "absRecovery": 0.0771,
+      "proxyScore": 0.1341
+    },
+    {
+      "variable": "deadNarrowInteractionRisk",
+      "corrWithRecovery": -0.0771,
+      "corrWithInteractionCount": -0.3588,
+      "partialCorrRecoveryGivenIx": 0.0324,
+      "partialCorrIxGivenVariable": 0.2878,
+      "absRecovery": 0.0771,
+      "proxyScore": 0.1341
+    },
+    {
+      "variable": "strongEdgeCount",
+      "corrWithRecovery": -0.0812,
+      "corrWithInteractionCount": 0.0173,
+      "partialCorrRecoveryGivenIx": -0.0904,
+      "partialCorrIxGivenVariable": 0.2979,
+      "absRecovery": 0.0812,
+      "proxyScore": 0.068
+    },
+    {
+      "variable": "protectionSeatCount",
+      "corrWithRecovery": 0.0571,
+      "corrWithInteractionCount": -0.0409,
+      "partialCorrRecoveryGivenIx": 0.0725,
+      "partialCorrIxGivenVariable": 0.2986,
+      "absRecovery": 0.0571,
+      "proxyScore": 0.0577
+    },
+    {
+      "variable": "engineProtectionCoverage",
+      "corrWithRecovery": 0.0234,
+      "corrWithInteractionCount": -0.1154,
+      "partialCorrRecoveryGivenIx": 0.0606,
+      "partialCorrIxGivenVariable": 0.3003,
+      "absRecovery": 0.0234,
+      "proxyScore": 0.0576
+    },
+    {
+      "variable": "commanderProtectionCoverage",
+      "corrWithRecovery": -0.0075,
+      "corrWithInteractionCount": -0.1,
+      "partialCorrRecoveryGivenIx": 0.0232,
+      "partialCorrIxGivenVariable": 0.2962,
+      "absRecovery": 0.0075,
+      "proxyScore": 0.0353
+    }
+  ],
+  "latentLeads": [
+    {
+      "variable": "multifunctionCount",
+      "corrWithRecovery": 0.5148,
+      "corrWithInteractionCount": 0.4552,
+      "partialCorrRecoveryGivenIx": 0.4471,
+      "partialCorrIxGivenVariable": 0.0801,
+      "absRecovery": 0.5148,
+      "proxyScore": 0.4796
+    },
+    {
+      "variable": "recoverySeatCount",
+      "corrWithRecovery": 0.5161,
+      "corrWithInteractionCount": 0.3898,
+      "partialCorrRecoveryGivenIx": 0.4557,
+      "partialCorrIxGivenVariable": 0.1196,
+      "absRecovery": 0.5161,
+      "proxyScore": 0.4664
+    },
+    {
+      "variable": "uniqueRoleCount",
+      "corrWithRecovery": 0.5176,
+      "corrWithInteractionCount": 0.3653,
+      "partialCorrRecoveryGivenIx": 0.4606,
+      "partialCorrIxGivenVariable": 0.1336,
+      "absRecovery": 0.5176,
+      "proxyScore": 0.4624
+    },
+    {
+      "variable": "roleEntropy",
+      "corrWithRecovery": 0.5765,
+      "corrWithInteractionCount": 0.0411,
+      "partialCorrRecoveryGivenIx": 0.5912,
+      "partialCorrIxGivenVariable": 0.3329,
+      "absRecovery": 0.5765,
+      "proxyScore": 0.4471
+    },
+    {
+      "variable": "multifunctionRatio",
+      "corrWithRecovery": 0.3983,
+      "corrWithInteractionCount": 0.0041,
+      "partialCorrRecoveryGivenIx": 0.4157,
+      "partialCorrIxGivenVariable": 0.3204,
+      "absRecovery": 0.3983,
+      "proxyScore": 0.305
+    },
+    {
+      "variable": "meanStrategicDegree",
+      "corrWithRecovery": 0.2319,
+      "corrWithInteractionCount": 0.2876,
+      "partialCorrRecoveryGivenIx": 0.1606,
+      "partialCorrIxGivenVariable": 0.2456,
+      "absRecovery": 0.2319,
+      "proxyScore": 0.2244
+    },
+    {
+      "variable": "winSequenceProtectionCoverage",
+      "corrWithRecovery": 0.2771,
+      "corrWithInteractionCount": -0.0218,
+      "partialCorrRecoveryGivenIx": 0.2969,
+      "partialCorrIxGivenVariable": 0.3139,
+      "absRecovery": 0.2771,
+      "proxyScore": 0.2192
+    }
+  ],
+  "pureProxiesOfInteractionCount": [
+    {
+      "variable": "interactiveDenom",
+      "corrWithRecovery": 0.2955,
+      "corrWithInteractionCount": 1,
+      "partialCorrRecoveryGivenIx": null,
+      "partialCorrIxGivenVariable": null,
+      "absRecovery": 0.2955,
+      "proxyScore": 0.383
+    },
+    {
+      "variable": "planConnectedCount",
+      "corrWithRecovery": 0.2149,
+      "corrWithInteractionCount": 0.7407,
+      "partialCorrRecoveryGivenIx": -0.0062,
+      "partialCorrIxGivenVariable": 0.2078,
+      "absRecovery": 0.2149,
+      "proxyScore": 0.2837
+    },
+    {
+      "variable": "planConnectedRatio",
+      "corrWithRecovery": 0.1541,
+      "corrWithInteractionCount": 0.3845,
+      "partialCorrRecoveryGivenIx": 0.0459,
+      "partialCorrIxGivenVariable": 0.259,
+      "absRecovery": 0.1541,
+      "proxyScore": 0.1792
+    }
+  ],
+  "currentTopologySlice": [
+    {
+      "variable": "meaningfulEdgeDensity",
+      "corrWithRecovery": -0.2541,
+      "corrWithInteractionCount": -0.8402,
+      "partialCorrRecoveryGivenIx": -0.0112,
+      "partialCorrIxGivenVariable": 0.1564,
+      "absRecovery": 0.2541,
+      "proxyScore": 0.3278
+    },
+    {
+      "variable": "meanStrategicDegree",
+      "corrWithRecovery": 0.2319,
+      "corrWithInteractionCount": 0.2876,
+      "partialCorrRecoveryGivenIx": 0.1606,
+      "partialCorrIxGivenVariable": 0.2456,
+      "absRecovery": 0.2319,
+      "proxyScore": 0.2244
+    },
+    {
+      "variable": "planConnectedRatio",
+      "corrWithRecovery": 0.1541,
+      "corrWithInteractionCount": 0.3845,
+      "partialCorrRecoveryGivenIx": 0.0459,
+      "partialCorrIxGivenVariable": 0.259,
+      "absRecovery": 0.1541,
+      "proxyScore": 0.1792
+    },
+    {
+      "variable": "isolatedRatio",
+      "corrWithRecovery": -0.0771,
+      "corrWithInteractionCount": -0.3588,
+      "partialCorrRecoveryGivenIx": 0.0324,
+      "partialCorrIxGivenVariable": 0.2878,
+      "absRecovery": 0.0771,
+      "proxyScore": 0.1341
+    }
+  ],
+  "primaryHypothesis": "latent_lead:multifunctionCount",
+  "openQuestions": [
+    "Is interaction count encoding answer optionality / redundancy rather than 'more interaction'?",
+    "Which latent lead survives Level-A same-commander deltas?",
+    "Can a new representation beat interaction count without collapsing back into quantity?"
+  ],
+  "recommendation": {
+    "promoteToBrain": false,
+    "runSimLab002": false,
+    "next": "Strategic Coverage Project (Academy): which capabilities remain predictive after controlling for commander, archetype, and interaction count; multidimensional profiles — not a single coverageScore; then Laboratory with a new representation."
+  },
+  "writesToBrain": false,
+  "constructionMutated": false,
+  "generatedAt": "2026-08-13T01:54:02.410Z"
+}

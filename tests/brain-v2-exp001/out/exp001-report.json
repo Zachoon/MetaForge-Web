@@ -1,25 +1,25 @@
 {
   "version": "validation-report-v1",
   "harnessVersion": "validation-harness-v1",
-  "generatedAt": "2026-08-10T19:12:56.192Z",
-  "mode": "field-exp001",
+  "generatedAt": "2026-08-13T01:53:25.289Z",
+  "mode": "smoke-exp001",
   "architectureFrozen": true,
   "summary": [
-    "Validation harness validation-report-v1: 104 forges, pass rate 100%.",
+    "Validation harness validation-report-v1: 13 forges, pass rate 100%.",
     "Hard-failure runs: 0.",
-    "Ledger weak slots: 248 (avoidable 16, constraint-forced 200) — 2.385/forge.",
-    "SE per forge: weak-final 1.385, oversupply 2.731, genuine_bad 0.538, emergence 10.923.",
-    "Next focus: regression:beneficial_emergence — Baseline regression on beneficial_emergence (11.24 → 10.923 per forge)."
+    "Ledger weak slots: 31 (avoidable 2, constraint-forced 25) — 2.385/forge.",
+    "SE per forge: weak-final 1.385, oversupply 2.769, genuine_bad 0.538, emergence 10.923.",
+    "Next focus: pool_scarcity_and_real_corpora — Remaining weakness is mostly constraint-forced — synthetic pools may be the ceiling; field-test real lists next."
   ],
   "aggregate": {
     "version": "validation-harness-v1",
-    "runCount": 104,
-    "passCount": 104,
+    "runCount": 13,
+    "passCount": 13,
     "hardFailureRunCount": 0,
     "passRate": 1,
     "tortureAggregate": {
-      "total": 104,
-      "passed": 104,
+      "total": 13,
+      "passed": 13,
       "failed": 0,
       "byArchetype": {
         "aura_voltron": "PARTIAL",
@@ -37,599 +37,599 @@
         "multi_direction": "PARTIAL"
       },
       "failureClassCounts": {
-        "interaction_graph_failure": 72
+        "interaction_graph_failure": 9
       },
       "runtime": {
-        "medianMs": 1975,
-        "p95Ms": 4558,
+        "medianMs": 3564,
+        "p95Ms": 8723,
         "slowest": [
           {
+            "id": "aristocrats",
+            "ms": 8723
+          },
+          {
             "id": "spellslinger",
-            "ms": 5236
+            "ms": 7287
           },
           {
-            "id": "aristocrats",
-            "ms": 5135
+            "id": "equipment-voltron",
+            "ms": 4584
           },
           {
-            "id": "aristocrats",
-            "ms": 4869
+            "id": "blink-etb",
+            "ms": 4229
           },
           {
-            "id": "aristocrats",
-            "ms": 4816
-          },
-          {
-            "id": "aristocrats",
-            "ms": 4652
+            "id": "pearl-ear-auras",
+            "ms": 4077
           }
         ]
       }
     },
     "selfEvaluationAggregate": {
       "version": "self-evaluation-aggregate-v1",
-      "forgeCount": 104,
-      "totalTracedPicks": 6792,
-      "totalMeaningfulDisagreements": 2058,
+      "forgeCount": 13,
+      "totalTracedPicks": 849,
+      "totalMeaningfulDisagreements": 258,
       "driftClassCounts": {
-        "early_scaffolding_matured": 2686,
-        "downstream_repair_invalidated_pick": 416,
-        "later_package_oversupply": 284,
-        "curve_need_disappeared": 55,
-        "unclassified": 1984,
-        "stable_good_prediction": 64,
-        "retrospective_gain_not_seen_prospectively": 1136,
-        "final_weak_justification": 144,
-        "became_redundant": 8,
-        "unsupported_anchor_emerged": 15
+        "early_scaffolding_matured": 335,
+        "downstream_repair_invalidated_pick": 52,
+        "later_package_oversupply": 36,
+        "curve_need_disappeared": 7,
+        "unclassified": 248,
+        "stable_good_prediction": 8,
+        "retrospective_gain_not_seen_prospectively": 142,
+        "final_weak_justification": 18,
+        "became_redundant": 1,
+        "unsupported_anchor_emerged": 2
       },
       "driftByPhase": {
         "foundation": {
-          "count": 4912,
-          "meanAbsDrift": 44.655
+          "count": 614,
+          "meanAbsDrift": 44.626
         },
         "development": {
-          "count": 1880,
-          "meanAbsDrift": 55.574
+          "count": 235,
+          "meanAbsDrift": 55.568
         }
       },
       "driftByPackage": {
         "auras": {
-          "count": 1040,
-          "disagreements": 992
+          "count": 130,
+          "disagreements": 124
         },
         "equipment": {
-          "count": 520,
-          "disagreements": 456
+          "count": 65,
+          "disagreements": 57
         },
         "typal": {
-          "count": 520,
-          "disagreements": 504
+          "count": 65,
+          "disagreements": 63
         },
         "tokens": {
-          "count": 1584,
-          "disagreements": 1408
+          "count": 198,
+          "disagreements": 176
         },
         "aristocrats": {
-          "count": 528,
-          "disagreements": 480
+          "count": 66,
+          "disagreements": 60
         },
         "reanimator": {
-          "count": 512,
-          "disagreements": 472
+          "count": 64,
+          "disagreements": 59
         },
         "spellslinger": {
-          "count": 528,
-          "disagreements": 497
+          "count": 66,
+          "disagreements": 62
         },
         "landfall": {
-          "count": 528,
-          "disagreements": 472
+          "count": 66,
+          "disagreements": 59
         },
         "blink": {
-          "count": 528,
-          "disagreements": 504
+          "count": 66,
+          "disagreements": 63
         },
         "stax": {
-          "count": 512,
-          "disagreements": 464
+          "count": 64,
+          "disagreements": 58
         }
       },
       "controlCaseCounts": {
-        "early_scaffolding_matured": 2686,
-        "invalidated_by_later_decisions": 745,
-        "ambiguous": 2105,
-        "stable": 64,
-        "beneficial_emergence": 1136,
-        "genuine_bad_belief": 56
+        "early_scaffolding_matured": 335,
+        "invalidated_by_later_decisions": 94,
+        "ambiguous": 263,
+        "stable": 8,
+        "beneficial_emergence": 142,
+        "genuine_bad_belief": 7
       },
-      "meanPredictionError": 32.213,
-      "meanAbsPredictionError": 47.677,
+      "meanPredictionError": 32.19,
+      "meanAbsPredictionError": 47.655,
       "topRecurrentDisagreementClasses": [
         {
           "class": "early_scaffolding_matured",
-          "count": 2686
+          "count": 335
         },
         {
           "class": "unclassified",
-          "count": 1984
+          "count": 248
         },
         {
           "class": "retrospective_gain_not_seen_prospectively",
-          "count": 1136
+          "count": 142
         },
         {
           "class": "downstream_repair_invalidated_pick",
-          "count": 416
+          "count": 52
         },
         {
           "class": "later_package_oversupply",
-          "count": 284
+          "count": 36
         },
         {
           "class": "final_weak_justification",
-          "count": 144
+          "count": 18
         },
         {
           "class": "curve_need_disappeared",
-          "count": 55
+          "count": 7
         },
         {
           "class": "unsupported_anchor_emerged",
-          "count": 15
+          "count": 2
         },
         {
           "class": "became_redundant",
-          "count": 8
+          "count": 1
         }
       ],
       "byArchetype": {
         "aura_voltron": {
-          "forges": 8,
-          "picks": 520,
-          "disagreements": 175,
+          "forges": 1,
+          "picks": 65,
+          "disagreements": 22,
           "byClass": {
-            "early_scaffolding_matured": 289,
-            "downstream_repair_invalidated_pick": 48,
-            "later_package_oversupply": 8,
-            "curve_need_disappeared": 7,
-            "unclassified": 48,
-            "stable_good_prediction": 8,
-            "retrospective_gain_not_seen_prospectively": 112
+            "early_scaffolding_matured": 36,
+            "downstream_repair_invalidated_pick": 6,
+            "later_package_oversupply": 1,
+            "curve_need_disappeared": 1,
+            "unclassified": 6,
+            "stable_good_prediction": 1,
+            "retrospective_gain_not_seen_prospectively": 14
           },
           "meanAbsDrift": 61.38,
           "topClasses": [
             {
               "class": "early_scaffolding_matured",
-              "count": 289
+              "count": 36
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 112
+              "count": 14
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 48
+              "count": 6
             },
             {
               "class": "unclassified",
-              "count": 48
+              "count": 6
             },
             {
-              "class": "later_package_oversupply",
-              "count": 8
+              "class": "curve_need_disappeared",
+              "count": 1
             }
           ]
         },
         "equipment_voltron": {
-          "forges": 8,
-          "picks": 520,
-          "disagreements": 144,
+          "forges": 1,
+          "picks": 65,
+          "disagreements": 18,
           "byClass": {
-            "early_scaffolding_matured": 208,
-            "unclassified": 168,
-            "retrospective_gain_not_seen_prospectively": 80,
-            "downstream_repair_invalidated_pick": 32,
-            "final_weak_justification": 32
+            "early_scaffolding_matured": 26,
+            "unclassified": 21,
+            "retrospective_gain_not_seen_prospectively": 10,
+            "downstream_repair_invalidated_pick": 4,
+            "final_weak_justification": 4
           },
           "meanAbsDrift": 31.068,
           "topClasses": [
             {
               "class": "early_scaffolding_matured",
-              "count": 208
+              "count": 26
             },
             {
               "class": "unclassified",
-              "count": 168
+              "count": 21
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 80
+              "count": 10
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 32
+              "count": 4
             },
             {
               "class": "final_weak_justification",
-              "count": 32
+              "count": 4
             }
           ]
         },
         "typal": {
-          "forges": 8,
-          "picks": 520,
-          "disagreements": 128,
+          "forges": 1,
+          "picks": 65,
+          "disagreements": 16,
           "byClass": {
-            "early_scaffolding_matured": 232,
-            "unclassified": 160,
-            "retrospective_gain_not_seen_prospectively": 96,
-            "downstream_repair_invalidated_pick": 32
+            "early_scaffolding_matured": 29,
+            "unclassified": 20,
+            "retrospective_gain_not_seen_prospectively": 12,
+            "downstream_repair_invalidated_pick": 4
           },
           "meanAbsDrift": 50.701,
           "topClasses": [
             {
               "class": "early_scaffolding_matured",
-              "count": 232
+              "count": 29
             },
             {
               "class": "unclassified",
-              "count": 160
+              "count": 20
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 96
+              "count": 12
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 32
+              "count": 4
             }
           ]
         },
         "tokens": {
-          "forges": 8,
-          "picks": 528,
-          "disagreements": 144,
+          "forges": 1,
+          "picks": 66,
+          "disagreements": 18,
           "byClass": {
-            "early_scaffolding_matured": 144,
-            "later_package_oversupply": 48,
-            "unclassified": 224,
-            "stable_good_prediction": 16,
-            "retrospective_gain_not_seen_prospectively": 56,
-            "final_weak_justification": 40
+            "early_scaffolding_matured": 18,
+            "later_package_oversupply": 6,
+            "unclassified": 28,
+            "stable_good_prediction": 2,
+            "retrospective_gain_not_seen_prospectively": 7,
+            "final_weak_justification": 5
           },
           "meanAbsDrift": 43.43,
           "topClasses": [
             {
               "class": "unclassified",
-              "count": 224
+              "count": 28
             },
             {
               "class": "early_scaffolding_matured",
-              "count": 144
+              "count": 18
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 56
+              "count": 7
             },
             {
               "class": "later_package_oversupply",
-              "count": 48
+              "count": 6
             },
             {
               "class": "final_weak_justification",
-              "count": 40
+              "count": 5
             }
           ]
         },
         "aristocrats": {
-          "forges": 8,
-          "picks": 528,
-          "disagreements": 192,
+          "forges": 1,
+          "picks": 66,
+          "disagreements": 24,
           "byClass": {
-            "early_scaffolding_matured": 224,
-            "later_package_oversupply": 16,
-            "unclassified": 112,
-            "became_redundant": 8,
-            "retrospective_gain_not_seen_prospectively": 112,
-            "downstream_repair_invalidated_pick": 48,
-            "final_weak_justification": 8
+            "early_scaffolding_matured": 28,
+            "later_package_oversupply": 2,
+            "unclassified": 14,
+            "became_redundant": 1,
+            "retrospective_gain_not_seen_prospectively": 14,
+            "downstream_repair_invalidated_pick": 6,
+            "final_weak_justification": 1
           },
           "meanAbsDrift": 53.318,
           "topClasses": [
             {
               "class": "early_scaffolding_matured",
-              "count": 224
+              "count": 28
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 112
+              "count": 14
             },
             {
               "class": "unclassified",
-              "count": 112
+              "count": 14
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 48
+              "count": 6
             },
             {
               "class": "later_package_oversupply",
-              "count": 16
+              "count": 2
             }
           ]
         },
         "reanimator": {
-          "forges": 8,
-          "picks": 512,
-          "disagreements": 216,
+          "forges": 1,
+          "picks": 64,
+          "disagreements": 27,
           "byClass": {
-            "early_scaffolding_matured": 128,
-            "later_package_oversupply": 64,
-            "unclassified": 168,
-            "downstream_repair_invalidated_pick": 32,
-            "final_weak_justification": 16,
-            "retrospective_gain_not_seen_prospectively": 96,
-            "unsupported_anchor_emerged": 8
+            "early_scaffolding_matured": 16,
+            "later_package_oversupply": 8,
+            "unclassified": 21,
+            "downstream_repair_invalidated_pick": 4,
+            "final_weak_justification": 2,
+            "retrospective_gain_not_seen_prospectively": 12,
+            "unsupported_anchor_emerged": 1
           },
           "meanAbsDrift": 50.056,
           "topClasses": [
             {
               "class": "unclassified",
-              "count": 168
+              "count": 21
             },
             {
               "class": "early_scaffolding_matured",
-              "count": 128
+              "count": 16
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 96
+              "count": 12
             },
             {
               "class": "later_package_oversupply",
-              "count": 64
+              "count": 8
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 32
+              "count": 4
             }
           ]
         },
         "spellslinger": {
-          "forges": 8,
-          "picks": 528,
-          "disagreements": 395,
+          "forges": 1,
+          "picks": 66,
+          "disagreements": 50,
           "byClass": {
-            "early_scaffolding_matured": 133,
-            "later_package_oversupply": 148,
-            "curve_need_disappeared": 48,
-            "unsupported_anchor_emerged": 7,
-            "retrospective_gain_not_seen_prospectively": 144,
-            "downstream_repair_invalidated_pick": 48
+            "early_scaffolding_matured": 16,
+            "later_package_oversupply": 19,
+            "curve_need_disappeared": 6,
+            "unsupported_anchor_emerged": 1,
+            "retrospective_gain_not_seen_prospectively": 18,
+            "downstream_repair_invalidated_pick": 6
           },
-          "meanAbsDrift": 63.549,
+          "meanAbsDrift": 63.222,
           "topClasses": [
             {
               "class": "later_package_oversupply",
-              "count": 148
+              "count": 19
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 144
+              "count": 18
             },
             {
               "class": "early_scaffolding_matured",
-              "count": 133
+              "count": 16
             },
             {
               "class": "curve_need_disappeared",
-              "count": 48
+              "count": 6
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 48
+              "count": 6
             }
           ]
         },
         "landfall": {
-          "forges": 8,
-          "picks": 528,
-          "disagreements": 120,
+          "forges": 1,
+          "picks": 66,
+          "disagreements": 15,
           "byClass": {
-            "early_scaffolding_matured": 248,
-            "unclassified": 152,
-            "stable_good_prediction": 8,
-            "retrospective_gain_not_seen_prospectively": 56,
-            "downstream_repair_invalidated_pick": 48,
-            "final_weak_justification": 16
+            "early_scaffolding_matured": 31,
+            "unclassified": 19,
+            "stable_good_prediction": 1,
+            "retrospective_gain_not_seen_prospectively": 7,
+            "downstream_repair_invalidated_pick": 6,
+            "final_weak_justification": 2
           },
           "meanAbsDrift": 55.276,
           "topClasses": [
             {
               "class": "early_scaffolding_matured",
-              "count": 248
+              "count": 31
             },
             {
               "class": "unclassified",
-              "count": 152
+              "count": 19
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 56
+              "count": 7
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 48
+              "count": 6
             },
             {
               "class": "final_weak_justification",
-              "count": 16
+              "count": 2
             }
           ]
         },
         "blink": {
-          "forges": 8,
-          "picks": 528,
-          "disagreements": 72,
+          "forges": 1,
+          "picks": 66,
+          "disagreements": 9,
           "byClass": {
-            "early_scaffolding_matured": 232,
-            "stable_good_prediction": 8,
-            "unclassified": 216,
-            "downstream_repair_invalidated_pick": 48,
-            "retrospective_gain_not_seen_prospectively": 24
+            "early_scaffolding_matured": 29,
+            "stable_good_prediction": 1,
+            "unclassified": 27,
+            "downstream_repair_invalidated_pick": 6,
+            "retrospective_gain_not_seen_prospectively": 3
           },
           "meanAbsDrift": 41.24,
           "topClasses": [
             {
               "class": "early_scaffolding_matured",
-              "count": 232
+              "count": 29
             },
             {
               "class": "unclassified",
-              "count": 216
+              "count": 27
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 48
+              "count": 6
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 24
+              "count": 3
             },
             {
               "class": "stable_good_prediction",
-              "count": 8
+              "count": 1
             }
           ]
         },
         "artifacts": {
-          "forges": 8,
-          "picks": 528,
-          "disagreements": 128,
+          "forges": 1,
+          "picks": 66,
+          "disagreements": 16,
           "byClass": {
-            "early_scaffolding_matured": 144,
-            "unclassified": 240,
-            "stable_good_prediction": 16,
-            "retrospective_gain_not_seen_prospectively": 128
+            "early_scaffolding_matured": 18,
+            "unclassified": 30,
+            "stable_good_prediction": 2,
+            "retrospective_gain_not_seen_prospectively": 16
           },
-          "meanAbsDrift": 56.682,
+          "meanAbsDrift": 56.716,
           "topClasses": [
             {
               "class": "unclassified",
-              "count": 240
+              "count": 30
             },
             {
               "class": "early_scaffolding_matured",
-              "count": 144
+              "count": 18
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 128
+              "count": 16
             },
             {
               "class": "stable_good_prediction",
-              "count": 16
+              "count": 2
             }
           ]
         },
         "stax": {
-          "forges": 8,
-          "picks": 512,
-          "disagreements": 48,
+          "forges": 1,
+          "picks": 64,
+          "disagreements": 6,
           "byClass": {
-            "early_scaffolding_matured": 256,
-            "unclassified": 208,
-            "retrospective_gain_not_seen_prospectively": 32,
-            "downstream_repair_invalidated_pick": 16
+            "early_scaffolding_matured": 32,
+            "unclassified": 26,
+            "retrospective_gain_not_seen_prospectively": 4,
+            "downstream_repair_invalidated_pick": 2
           },
           "meanAbsDrift": 29.962,
           "topClasses": [
             {
               "class": "early_scaffolding_matured",
-              "count": 256
-            },
-            {
-              "class": "unclassified",
-              "count": 208
-            },
-            {
-              "class": "retrospective_gain_not_seen_prospectively",
               "count": 32
             },
             {
+              "class": "unclassified",
+              "count": 26
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 4
+            },
+            {
               "class": "downstream_repair_invalidated_pick",
-              "count": 16
+              "count": 2
             }
           ]
         },
         "combo": {
-          "forges": 8,
-          "picks": 520,
-          "disagreements": 144,
+          "forges": 1,
+          "picks": 65,
+          "disagreements": 18,
           "byClass": {
-            "early_scaffolding_matured": 168,
-            "unclassified": 208,
-            "final_weak_justification": 32,
-            "retrospective_gain_not_seen_prospectively": 88,
-            "downstream_repair_invalidated_pick": 24
+            "early_scaffolding_matured": 21,
+            "unclassified": 26,
+            "final_weak_justification": 4,
+            "retrospective_gain_not_seen_prospectively": 11,
+            "downstream_repair_invalidated_pick": 3
           },
           "meanAbsDrift": 32.657,
           "topClasses": [
             {
               "class": "unclassified",
-              "count": 208
+              "count": 26
             },
             {
               "class": "early_scaffolding_matured",
-              "count": 168
+              "count": 21
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 88
+              "count": 11
             },
             {
               "class": "final_weak_justification",
-              "count": 32
+              "count": 4
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 24
+              "count": 3
             }
           ]
         },
         "multi_direction": {
-          "forges": 8,
-          "picks": 520,
-          "disagreements": 152,
+          "forges": 1,
+          "picks": 65,
+          "disagreements": 19,
           "byClass": {
-            "early_scaffolding_matured": 280,
-            "unclassified": 80,
-            "stable_good_prediction": 8,
-            "retrospective_gain_not_seen_prospectively": 112,
-            "downstream_repair_invalidated_pick": 40
+            "early_scaffolding_matured": 35,
+            "unclassified": 10,
+            "stable_good_prediction": 1,
+            "retrospective_gain_not_seen_prospectively": 14,
+            "downstream_repair_invalidated_pick": 5
           },
           "meanAbsDrift": 49.829,
           "topClasses": [
             {
               "class": "early_scaffolding_matured",
-              "count": 280
+              "count": 35
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 112
+              "count": 14
             },
             {
               "class": "unclassified",
-              "count": 80
+              "count": 10
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 40
+              "count": 5
             },
             {
               "class": "stable_good_prediction",
-              "count": 8
+              "count": 1
             }
           ]
         }
@@ -637,44 +637,44 @@
     },
     "weakSlotAggregate": {
       "version": "weak-slot-forensics-v1",
-      "weakSlotCount": 248,
+      "weakSlotCount": 31,
       "causalClassCounts": {
-        "became_weak_downstream": 144,
-        "weak_at_selection": 104
+        "became_weak_downstream": 18,
+        "weak_at_selection": 13
       },
       "sourceCounts": {
-        "live_fill": 248
+        "live_fill": 31
       },
       "phaseCounts": {
-        "foundation": 200,
-        "development": 48
+        "foundation": 25,
+        "development": 6
       },
-      "avoidableCount": 16,
-      "constraintForcedCount": 200,
-      "lowCandidateDepthCount": 200,
+      "avoidableCount": 2,
+      "constraintForcedCount": 25,
+      "lowCandidateDepthCount": 25,
       "meanCandidateDepth": 1.419,
       "highestImpactCausalClass": "became_weak_downstream"
     },
     "controlMetrics": {
-      "final_weak_justification": 144,
-      "later_package_oversupply": 284,
-      "invalidated_by_later_decisions": 745,
-      "genuine_bad_belief": 56,
-      "beneficial_emergence": 1136,
-      "early_scaffolding_matured": 2686,
-      "unclassified": 1984,
-      "ledger_weak_slots": 248,
-      "avoidable_weak_slots": 16,
-      "constraint_forced_weak_slots": 200,
+      "final_weak_justification": 18,
+      "later_package_oversupply": 36,
+      "invalidated_by_later_decisions": 94,
+      "genuine_bad_belief": 7,
+      "beneficial_emergence": 142,
+      "early_scaffolding_matured": 335,
+      "unclassified": 248,
+      "ledger_weak_slots": 31,
+      "avoidable_weak_slots": 2,
+      "constraint_forced_weak_slots": 25,
       "hard_failure_runs": 0
     },
     "controlRates": {
       "final_weak_justification": 1.385,
-      "later_package_oversupply": 2.731,
-      "invalidated_by_later_decisions": 7.163,
+      "later_package_oversupply": 2.769,
+      "invalidated_by_later_decisions": 7.231,
       "genuine_bad_belief": 0.538,
       "beneficial_emergence": 10.923,
-      "early_scaffolding_matured": 25.827,
+      "early_scaffolding_matured": 25.769,
       "unclassified": 19.077,
       "ledger_weak_slots": 2.385,
       "avoidable_weak_slots": 0.154,
@@ -683,89 +683,89 @@
     },
     "byArchetype": {
       "aura_voltron": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
         "weakSlots": 0,
         "avoidableWeak": 0,
         "constraintForcedWeak": 0,
-        "cleanupApplied": 8
+        "cleanupApplied": 1
       },
       "equipment_voltron": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
-        "weakSlots": 32,
+        "weakSlots": 4,
         "avoidableWeak": 0,
         "constraintForcedWeak": 0,
-        "cleanupApplied": 8
+        "cleanupApplied": 1
       },
       "typal": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
         "weakSlots": 0,
         "avoidableWeak": 0,
         "constraintForcedWeak": 0,
-        "cleanupApplied": 8
+        "cleanupApplied": 1
       },
       "tokens": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
-        "weakSlots": 64,
+        "weakSlots": 8,
         "avoidableWeak": 0,
-        "constraintForcedWeak": 64,
+        "constraintForcedWeak": 8,
         "cleanupApplied": 0
       },
       "aristocrats": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
-        "weakSlots": 16,
-        "avoidableWeak": 16,
+        "weakSlots": 2,
+        "avoidableWeak": 2,
         "constraintForcedWeak": 0,
-        "cleanupApplied": 8
+        "cleanupApplied": 1
       },
       "reanimator": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
-        "weakSlots": 16,
+        "weakSlots": 2,
         "avoidableWeak": 0,
-        "constraintForcedWeak": 16,
-        "cleanupApplied": 8
+        "constraintForcedWeak": 2,
+        "cleanupApplied": 1
       },
       "spellslinger": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
         "weakSlots": 0,
         "avoidableWeak": 0,
         "constraintForcedWeak": 0,
-        "cleanupApplied": 8
+        "cleanupApplied": 1
       },
       "landfall": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
-        "weakSlots": 16,
+        "weakSlots": 2,
         "avoidableWeak": 0,
-        "constraintForcedWeak": 16,
-        "cleanupApplied": 8
+        "constraintForcedWeak": 2,
+        "cleanupApplied": 1
       },
       "blink": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
-        "weakSlots": 48,
+        "weakSlots": 6,
         "avoidableWeak": 0,
-        "constraintForcedWeak": 48,
-        "cleanupApplied": 8
+        "constraintForcedWeak": 6,
+        "cleanupApplied": 1
       },
       "artifacts": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
         "weakSlots": 0,
         "avoidableWeak": 0,
@@ -773,188 +773,107 @@
         "cleanupApplied": 0
       },
       "stax": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
         "weakSlots": 0,
         "avoidableWeak": 0,
         "constraintForcedWeak": 0,
-        "cleanupApplied": 8
+        "cleanupApplied": 1
       },
       "combo": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
-        "weakSlots": 56,
+        "weakSlots": 7,
         "avoidableWeak": 0,
-        "constraintForcedWeak": 56,
-        "cleanupApplied": 8
+        "constraintForcedWeak": 7,
+        "cleanupApplied": 1
       },
       "multi_direction": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
         "weakSlots": 0,
         "avoidableWeak": 0,
         "constraintForcedWeak": 0,
-        "cleanupApplied": 8
+        "cleanupApplied": 1
       }
     },
     "topDriftClasses": [
       {
         "key": "early_scaffolding_matured",
-        "count": 2686
+        "count": 335
       },
       {
         "key": "unclassified",
-        "count": 1984
+        "count": 248
       },
       {
         "key": "retrospective_gain_not_seen_prospectively",
-        "count": 1136
+        "count": 142
       },
       {
         "key": "downstream_repair_invalidated_pick",
-        "count": 416
+        "count": 52
       },
       {
         "key": "later_package_oversupply",
-        "count": 284
+        "count": 36
       },
       {
         "key": "final_weak_justification",
-        "count": 144
+        "count": 18
       },
       {
         "key": "stable_good_prediction",
-        "count": 64
+        "count": 8
       },
       {
         "key": "curve_need_disappeared",
-        "count": 55
+        "count": 7
       },
       {
         "key": "unsupported_anchor_emerged",
-        "count": 15
+        "count": 2
       },
       {
         "key": "became_redundant",
-        "count": 8
+        "count": 1
       }
     ],
     "topWeakCausalClasses": [
       {
         "key": "became_weak_downstream",
-        "count": 144
+        "count": 18
       },
       {
         "key": "weak_at_selection",
-        "count": 104
+        "count": 13
       }
     ],
     "topWeakSources": [
       {
         "key": "live_fill",
-        "count": 248
+        "count": 31
       }
     ],
-    "meanRuntimeMs": 2208.788
+    "meanRuntimeMs": 4024.231
   },
   "comparison": {
-    "compared": true,
-    "normalized": true,
-    "regressions": [
-      {
-        "metric": "beneficial_emergence",
-        "before": 11.24,
-        "after": 10.923,
-        "delta": -0.317,
-        "note": "per-forge rate collapsed (bad)"
-      },
-      {
-        "metric": "later_package_oversupply",
-        "before": 2.481,
-        "after": 2.731,
-        "delta": 0.25,
-        "note": "per-forge rate increased (bad)"
-      }
-    ],
+    "compared": false,
+    "normalized": false,
+    "regressions": [],
     "improvements": [],
-    "deltas": {
-      "hard_failure_runs": {
-        "before": 0,
-        "after": 0,
-        "delta": 0,
-        "unit": "per_forge"
-      },
-      "ledger_weak_slots": {
-        "before": 2.385,
-        "after": 2.385,
-        "delta": 0,
-        "unit": "per_forge"
-      },
-      "avoidable_weak_slots": {
-        "before": 0.154,
-        "after": 0.154,
-        "delta": 0,
-        "unit": "per_forge"
-      },
-      "final_weak_justification": {
-        "before": 1.385,
-        "after": 1.385,
-        "delta": 0,
-        "unit": "per_forge"
-      },
-      "later_package_oversupply": {
-        "before": 2.481,
-        "after": 2.731,
-        "delta": 0.25,
-        "unit": "per_forge"
-      },
-      "genuine_bad_belief": {
-        "before": 0.538,
-        "after": 0.538,
-        "delta": 0,
-        "unit": "per_forge"
-      },
-      "beneficial_emergence": {
-        "before": 11.24,
-        "after": 10.923,
-        "delta": -0.317,
-        "unit": "per_forge"
-      },
-      "constraint_forced_weak_slots": {
-        "before": 1.923,
-        "after": 1.923,
-        "delta": 0,
-        "unit": "per_forge"
-      },
-      "invalidated_by_later_decisions": {
-        "before": 6.779,
-        "after": 7.163,
-        "delta": 0.384,
-        "unit": "per_forge"
-      },
-      "unclassified": {
-        "before": 18.923,
-        "after": 19.077,
-        "delta": 0.154,
-        "unit": "per_forge"
-      }
-    }
+    "deltas": {}
   },
   "nextFocus": {
     "primary": {
-      "id": "regression:beneficial_emergence",
-      "score": 531.7,
-      "rationale": "Baseline regression on beneficial_emergence (11.24 → 10.923 per forge)."
+      "id": "pool_scarcity_and_real_corpora",
+      "score": 90,
+      "rationale": "Remaining weakness is mostly constraint-forced — synthetic pools may be the ceiling; field-test real lists next."
     },
     "alternates": [
-      {
-        "id": "pool_scarcity_and_real_corpora",
-        "score": 90,
-        "rationale": "Remaining weakness is mostly constraint-forced — synthetic pools may be the ceiling; field-test real lists next."
-      },
       {
         "id": "taxonomy_expansion_for_unclassified",
         "score": 40,
@@ -974,7 +893,7 @@
       "warnings": [
         "thin_interaction_graph_0"
       ],
-      "runtimeMs": 2201,
+      "runtimeMs": 4077,
       "weakSlotCount": 0,
       "avoidableWeak": 0,
       "controlCaseCounts": {
@@ -1005,7 +924,7 @@
       "warnings": [
         "thin_interaction_graph_0"
       ],
-      "runtimeMs": 2415,
+      "runtimeMs": 4584,
       "weakSlotCount": 4,
       "avoidableWeak": 0,
       "controlCaseCounts": {
@@ -1034,7 +953,7 @@
       "warnings": [
         "thin_interaction_graph_0"
       ],
-      "runtimeMs": 1400,
+      "runtimeMs": 2550,
       "weakSlotCount": 0,
       "avoidableWeak": 0,
       "controlCaseCounts": {
@@ -1062,7 +981,7 @@
         "thin_interaction_graph_0",
         "prospective_retrospective_warnings_11"
       ],
-      "runtimeMs": 1330,
+      "runtimeMs": 2564,
       "weakSlotCount": 8,
       "avoidableWeak": 0,
       "controlCaseCounts": {
@@ -1091,7 +1010,7 @@
       "passed": true,
       "hardFailures": [],
       "warnings": [],
-      "runtimeMs": 4558,
+      "runtimeMs": 8723,
       "weakSlotCount": 2,
       "avoidableWeak": 2,
       "controlCaseCounts": {
@@ -1122,7 +1041,7 @@
         "unsupported_anchors_8",
         "prospective_retrospective_warnings_10"
       ],
-      "runtimeMs": 1996,
+      "runtimeMs": 3604,
       "weakSlotCount": 2,
       "avoidableWeak": 0,
       "controlCaseCounts": {
@@ -1153,7 +1072,7 @@
         "unsupported_anchors_6",
         "prospective_retrospective_warnings_16"
       ],
-      "runtimeMs": 3957,
+      "runtimeMs": 7287,
       "weakSlotCount": 0,
       "avoidableWeak": 0,
       "controlCaseCounts": {
@@ -1180,7 +1099,7 @@
       "passed": true,
       "hardFailures": [],
       "warnings": [],
-      "runtimeMs": 1974,
+      "runtimeMs": 3564,
       "weakSlotCount": 2,
       "avoidableWeak": 0,
       "controlCaseCounts": {
@@ -1211,7 +1130,7 @@
       "warnings": [
         "thin_interaction_graph_0"
       ],
-      "runtimeMs": 2075,
+      "runtimeMs": 4229,
       "weakSlotCount": 6,
       "avoidableWeak": 0,
       "controlCaseCounts": {
@@ -1240,7 +1159,7 @@
       "warnings": [
         "thin_interaction_graph_0"
       ],
-      "runtimeMs": 1589,
+      "runtimeMs": 3003,
       "weakSlotCount": 0,
       "avoidableWeak": 0,
       "controlCaseCounts": {
@@ -1267,7 +1186,7 @@
       "warnings": [
         "thin_interaction_graph_0"
       ],
-      "runtimeMs": 1196,
+      "runtimeMs": 2397,
       "weakSlotCount": 0,
       "avoidableWeak": 0,
       "controlCaseCounts": {
@@ -1294,7 +1213,7 @@
       "warnings": [
         "thin_interaction_graph_0"
       ],
-      "runtimeMs": 1355,
+      "runtimeMs": 2717,
       "weakSlotCount": 7,
       "avoidableWeak": 0,
       "controlCaseCounts": {
@@ -1323,2651 +1242,7 @@
       "warnings": [
         "thin_interaction_graph_0"
       ],
-      "runtimeMs": 1684,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 35,
-        "ambiguous": 10,
-        "stable": 1,
-        "beneficial_emergence": 14,
-        "invalidated_by_later_decisions": 5
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 35,
-        "unclassified": 10,
-        "stable_good_prediction": 1,
-        "retrospective_gain_not_seen_prospectively": 14,
-        "downstream_repair_invalidated_pick": 5
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "pearl-ear-auras::seed-13",
-      "fixtureId": "pearl-ear-auras",
-      "archetype": "aura_voltron",
-      "seed": 13,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 2172,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 36,
-        "invalidated_by_later_decisions": 8,
-        "ambiguous": 6,
-        "stable": 1,
-        "beneficial_emergence": 14
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 36,
-        "downstream_repair_invalidated_pick": 6,
-        "later_package_oversupply": 1,
-        "curve_need_disappeared": 1,
-        "unclassified": 6,
-        "stable_good_prediction": 1,
-        "retrospective_gain_not_seen_prospectively": 14
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "equipment-voltron::seed-13",
-      "fixtureId": "equipment-voltron",
-      "archetype": "equipment_voltron",
-      "seed": 13,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 2415,
-      "weakSlotCount": 4,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 26,
-        "ambiguous": 23,
-        "beneficial_emergence": 10,
-        "invalidated_by_later_decisions": 4,
-        "genuine_bad_belief": 2
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 26,
-        "unclassified": 21,
-        "retrospective_gain_not_seen_prospectively": 10,
-        "downstream_repair_invalidated_pick": 4,
-        "final_weak_justification": 4
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "ayula-typal::seed-13",
-      "fixtureId": "ayula-typal",
-      "archetype": "typal",
-      "seed": 13,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1416,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 29,
-        "ambiguous": 20,
-        "beneficial_emergence": 12,
-        "invalidated_by_later_decisions": 4
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 29,
-        "unclassified": 20,
-        "retrospective_gain_not_seen_prospectively": 12,
-        "downstream_repair_invalidated_pick": 4
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "token-go-wide::seed-13",
-      "fixtureId": "token-go-wide",
-      "archetype": "tokens",
-      "seed": 13,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0",
-        "prospective_retrospective_warnings_11"
-      ],
-      "runtimeMs": 1328,
-      "weakSlotCount": 8,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 18,
-        "invalidated_by_later_decisions": 6,
-        "ambiguous": 31,
-        "stable": 2,
-        "beneficial_emergence": 7,
-        "genuine_bad_belief": 2
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 18,
-        "later_package_oversupply": 6,
-        "unclassified": 28,
-        "stable_good_prediction": 2,
-        "retrospective_gain_not_seen_prospectively": 7,
-        "final_weak_justification": 5
-      },
-      "cleanupApplied": false
-    },
-    {
-      "runId": "aristocrats::seed-13",
-      "fixtureId": "aristocrats",
-      "archetype": "aristocrats",
-      "seed": 13,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [],
-      "runtimeMs": 4533,
-      "weakSlotCount": 2,
-      "avoidableWeak": 2,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 28,
-        "invalidated_by_later_decisions": 8,
-        "ambiguous": 16,
-        "beneficial_emergence": 14
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 28,
-        "later_package_oversupply": 2,
-        "unclassified": 14,
-        "became_redundant": 1,
-        "retrospective_gain_not_seen_prospectively": 14,
-        "downstream_repair_invalidated_pick": 6,
-        "final_weak_justification": 1
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "reanimator::seed-13",
-      "fixtureId": "reanimator",
-      "archetype": "reanimator",
-      "seed": 13,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "unsupported_anchors_8",
-        "prospective_retrospective_warnings_10"
-      ],
-      "runtimeMs": 1963,
-      "weakSlotCount": 2,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 16,
-        "invalidated_by_later_decisions": 13,
-        "ambiguous": 23,
-        "beneficial_emergence": 12
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 16,
-        "later_package_oversupply": 8,
-        "unclassified": 21,
-        "downstream_repair_invalidated_pick": 4,
-        "final_weak_justification": 2,
-        "retrospective_gain_not_seen_prospectively": 12,
-        "unsupported_anchor_emerged": 1
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "spellslinger::seed-13",
-      "fixtureId": "spellslinger",
-      "archetype": "spellslinger",
-      "seed": 13,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "unsupported_anchors_6",
-        "prospective_retrospective_warnings_16"
-      ],
-      "runtimeMs": 3941,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 17,
-        "invalidated_by_later_decisions": 28,
-        "ambiguous": 3,
-        "beneficial_emergence": 18
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 17,
-        "later_package_oversupply": 19,
-        "unsupported_anchor_emerged": 1,
-        "curve_need_disappeared": 5,
-        "retrospective_gain_not_seen_prospectively": 18,
-        "downstream_repair_invalidated_pick": 6
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "landfall::seed-13",
-      "fixtureId": "landfall",
-      "archetype": "landfall",
-      "seed": 13,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [],
-      "runtimeMs": 1975,
-      "weakSlotCount": 2,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 31,
-        "ambiguous": 20,
-        "stable": 1,
-        "beneficial_emergence": 7,
-        "invalidated_by_later_decisions": 6,
-        "genuine_bad_belief": 1
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 31,
-        "unclassified": 19,
-        "stable_good_prediction": 1,
-        "retrospective_gain_not_seen_prospectively": 7,
-        "downstream_repair_invalidated_pick": 6,
-        "final_weak_justification": 2
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "blink-etb::seed-13",
-      "fixtureId": "blink-etb",
-      "archetype": "blink",
-      "seed": 13,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 2069,
-      "weakSlotCount": 6,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 29,
-        "stable": 1,
-        "ambiguous": 27,
-        "invalidated_by_later_decisions": 6,
-        "beneficial_emergence": 3
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 29,
-        "stable_good_prediction": 1,
-        "unclassified": 27,
-        "downstream_repair_invalidated_pick": 6,
-        "retrospective_gain_not_seen_prospectively": 3
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "artifacts::seed-13",
-      "fixtureId": "artifacts",
-      "archetype": "artifacts",
-      "seed": 13,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1488,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 18,
-        "ambiguous": 30,
-        "stable": 2,
-        "beneficial_emergence": 16
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 18,
-        "unclassified": 30,
-        "stable_good_prediction": 2,
-        "retrospective_gain_not_seen_prospectively": 16
-      },
-      "cleanupApplied": false
-    },
-    {
-      "runId": "stax::seed-13",
-      "fixtureId": "stax",
-      "archetype": "stax",
-      "seed": 13,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1312,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 32,
-        "ambiguous": 26,
-        "beneficial_emergence": 4,
-        "invalidated_by_later_decisions": 2
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 32,
-        "unclassified": 26,
-        "retrospective_gain_not_seen_prospectively": 4,
-        "downstream_repair_invalidated_pick": 2
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "combo-partners::seed-13",
-      "fixtureId": "combo-partners",
-      "archetype": "combo",
-      "seed": 13,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1406,
-      "weakSlotCount": 7,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 21,
-        "ambiguous": 28,
-        "genuine_bad_belief": 2,
-        "beneficial_emergence": 11,
-        "invalidated_by_later_decisions": 3
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 21,
-        "unclassified": 26,
-        "final_weak_justification": 4,
-        "retrospective_gain_not_seen_prospectively": 11,
-        "downstream_repair_invalidated_pick": 3
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "multiplan-commander::seed-13",
-      "fixtureId": "multiplan-commander",
-      "archetype": "multi_direction",
-      "seed": 13,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1652,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 35,
-        "ambiguous": 10,
-        "stable": 1,
-        "beneficial_emergence": 14,
-        "invalidated_by_later_decisions": 5
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 35,
-        "unclassified": 10,
-        "stable_good_prediction": 1,
-        "retrospective_gain_not_seen_prospectively": 14,
-        "downstream_repair_invalidated_pick": 5
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "pearl-ear-auras::seed-17",
-      "fixtureId": "pearl-ear-auras",
-      "archetype": "aura_voltron",
-      "seed": 17,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 2182,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 36,
-        "invalidated_by_later_decisions": 8,
-        "ambiguous": 6,
-        "stable": 1,
-        "beneficial_emergence": 14
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 36,
-        "downstream_repair_invalidated_pick": 6,
-        "later_package_oversupply": 1,
-        "curve_need_disappeared": 1,
-        "unclassified": 6,
-        "stable_good_prediction": 1,
-        "retrospective_gain_not_seen_prospectively": 14
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "equipment-voltron::seed-17",
-      "fixtureId": "equipment-voltron",
-      "archetype": "equipment_voltron",
-      "seed": 17,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 2421,
-      "weakSlotCount": 4,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 26,
-        "ambiguous": 23,
-        "beneficial_emergence": 10,
-        "invalidated_by_later_decisions": 4,
-        "genuine_bad_belief": 2
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 26,
-        "unclassified": 21,
-        "retrospective_gain_not_seen_prospectively": 10,
-        "downstream_repair_invalidated_pick": 4,
-        "final_weak_justification": 4
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "ayula-typal::seed-17",
-      "fixtureId": "ayula-typal",
-      "archetype": "typal",
-      "seed": 17,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1419,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 29,
-        "ambiguous": 20,
-        "beneficial_emergence": 12,
-        "invalidated_by_later_decisions": 4
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 29,
-        "unclassified": 20,
-        "retrospective_gain_not_seen_prospectively": 12,
-        "downstream_repair_invalidated_pick": 4
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "token-go-wide::seed-17",
-      "fixtureId": "token-go-wide",
-      "archetype": "tokens",
-      "seed": 17,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0",
-        "prospective_retrospective_warnings_11"
-      ],
-      "runtimeMs": 1329,
-      "weakSlotCount": 8,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 18,
-        "invalidated_by_later_decisions": 6,
-        "ambiguous": 31,
-        "stable": 2,
-        "beneficial_emergence": 7,
-        "genuine_bad_belief": 2
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 18,
-        "later_package_oversupply": 6,
-        "unclassified": 28,
-        "stable_good_prediction": 2,
-        "retrospective_gain_not_seen_prospectively": 7,
-        "final_weak_justification": 5
-      },
-      "cleanupApplied": false
-    },
-    {
-      "runId": "aristocrats::seed-17",
-      "fixtureId": "aristocrats",
-      "archetype": "aristocrats",
-      "seed": 17,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [],
-      "runtimeMs": 4525,
-      "weakSlotCount": 2,
-      "avoidableWeak": 2,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 28,
-        "invalidated_by_later_decisions": 8,
-        "ambiguous": 16,
-        "beneficial_emergence": 14
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 28,
-        "later_package_oversupply": 2,
-        "unclassified": 14,
-        "became_redundant": 1,
-        "retrospective_gain_not_seen_prospectively": 14,
-        "downstream_repair_invalidated_pick": 6,
-        "final_weak_justification": 1
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "reanimator::seed-17",
-      "fixtureId": "reanimator",
-      "archetype": "reanimator",
-      "seed": 17,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "unsupported_anchors_8",
-        "prospective_retrospective_warnings_10"
-      ],
-      "runtimeMs": 1960,
-      "weakSlotCount": 2,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 16,
-        "invalidated_by_later_decisions": 13,
-        "ambiguous": 23,
-        "beneficial_emergence": 12
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 16,
-        "later_package_oversupply": 8,
-        "unclassified": 21,
-        "downstream_repair_invalidated_pick": 4,
-        "final_weak_justification": 2,
-        "retrospective_gain_not_seen_prospectively": 12,
-        "unsupported_anchor_emerged": 1
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "spellslinger::seed-17",
-      "fixtureId": "spellslinger",
-      "archetype": "spellslinger",
-      "seed": 17,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "unsupported_anchors_6",
-        "prospective_retrospective_warnings_15"
-      ],
-      "runtimeMs": 3935,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 17,
-        "invalidated_by_later_decisions": 28,
-        "ambiguous": 3,
-        "beneficial_emergence": 18
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 17,
-        "later_package_oversupply": 18,
-        "curve_need_disappeared": 6,
-        "unsupported_anchor_emerged": 1,
-        "retrospective_gain_not_seen_prospectively": 18,
-        "downstream_repair_invalidated_pick": 6
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "landfall::seed-17",
-      "fixtureId": "landfall",
-      "archetype": "landfall",
-      "seed": 17,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [],
-      "runtimeMs": 1981,
-      "weakSlotCount": 2,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 31,
-        "ambiguous": 20,
-        "stable": 1,
-        "beneficial_emergence": 7,
-        "invalidated_by_later_decisions": 6,
-        "genuine_bad_belief": 1
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 31,
-        "unclassified": 19,
-        "stable_good_prediction": 1,
-        "retrospective_gain_not_seen_prospectively": 7,
-        "downstream_repair_invalidated_pick": 6,
-        "final_weak_justification": 2
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "blink-etb::seed-17",
-      "fixtureId": "blink-etb",
-      "archetype": "blink",
-      "seed": 17,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 2057,
-      "weakSlotCount": 6,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 29,
-        "stable": 1,
-        "ambiguous": 27,
-        "invalidated_by_later_decisions": 6,
-        "beneficial_emergence": 3
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 29,
-        "stable_good_prediction": 1,
-        "unclassified": 27,
-        "downstream_repair_invalidated_pick": 6,
-        "retrospective_gain_not_seen_prospectively": 3
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "artifacts::seed-17",
-      "fixtureId": "artifacts",
-      "archetype": "artifacts",
-      "seed": 17,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1483,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 18,
-        "ambiguous": 30,
-        "stable": 2,
-        "beneficial_emergence": 16
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 18,
-        "unclassified": 30,
-        "stable_good_prediction": 2,
-        "retrospective_gain_not_seen_prospectively": 16
-      },
-      "cleanupApplied": false
-    },
-    {
-      "runId": "stax::seed-17",
-      "fixtureId": "stax",
-      "archetype": "stax",
-      "seed": 17,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1174,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 32,
-        "ambiguous": 26,
-        "beneficial_emergence": 4,
-        "invalidated_by_later_decisions": 2
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 32,
-        "unclassified": 26,
-        "retrospective_gain_not_seen_prospectively": 4,
-        "downstream_repair_invalidated_pick": 2
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "combo-partners::seed-17",
-      "fixtureId": "combo-partners",
-      "archetype": "combo",
-      "seed": 17,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1351,
-      "weakSlotCount": 7,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 21,
-        "ambiguous": 28,
-        "genuine_bad_belief": 2,
-        "beneficial_emergence": 11,
-        "invalidated_by_later_decisions": 3
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 21,
-        "unclassified": 26,
-        "final_weak_justification": 4,
-        "retrospective_gain_not_seen_prospectively": 11,
-        "downstream_repair_invalidated_pick": 3
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "multiplan-commander::seed-17",
-      "fixtureId": "multiplan-commander",
-      "archetype": "multi_direction",
-      "seed": 17,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1776,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 35,
-        "ambiguous": 10,
-        "stable": 1,
-        "beneficial_emergence": 14,
-        "invalidated_by_later_decisions": 5
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 35,
-        "unclassified": 10,
-        "stable_good_prediction": 1,
-        "retrospective_gain_not_seen_prospectively": 14,
-        "downstream_repair_invalidated_pick": 5
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "pearl-ear-auras::seed-19",
-      "fixtureId": "pearl-ear-auras",
-      "archetype": "aura_voltron",
-      "seed": 19,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 2167,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 36,
-        "invalidated_by_later_decisions": 8,
-        "ambiguous": 6,
-        "stable": 1,
-        "beneficial_emergence": 14
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 36,
-        "downstream_repair_invalidated_pick": 6,
-        "later_package_oversupply": 1,
-        "curve_need_disappeared": 1,
-        "unclassified": 6,
-        "stable_good_prediction": 1,
-        "retrospective_gain_not_seen_prospectively": 14
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "equipment-voltron::seed-19",
-      "fixtureId": "equipment-voltron",
-      "archetype": "equipment_voltron",
-      "seed": 19,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 2630,
-      "weakSlotCount": 4,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 26,
-        "ambiguous": 23,
-        "beneficial_emergence": 10,
-        "invalidated_by_later_decisions": 4,
-        "genuine_bad_belief": 2
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 26,
-        "unclassified": 21,
-        "retrospective_gain_not_seen_prospectively": 10,
-        "downstream_repair_invalidated_pick": 4,
-        "final_weak_justification": 4
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "ayula-typal::seed-19",
-      "fixtureId": "ayula-typal",
-      "archetype": "typal",
-      "seed": 19,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1562,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 29,
-        "ambiguous": 20,
-        "beneficial_emergence": 12,
-        "invalidated_by_later_decisions": 4
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 29,
-        "unclassified": 20,
-        "retrospective_gain_not_seen_prospectively": 12,
-        "downstream_repair_invalidated_pick": 4
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "token-go-wide::seed-19",
-      "fixtureId": "token-go-wide",
-      "archetype": "tokens",
-      "seed": 19,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0",
-        "prospective_retrospective_warnings_11"
-      ],
-      "runtimeMs": 1336,
-      "weakSlotCount": 8,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 18,
-        "invalidated_by_later_decisions": 6,
-        "ambiguous": 31,
-        "stable": 2,
-        "beneficial_emergence": 7,
-        "genuine_bad_belief": 2
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 18,
-        "later_package_oversupply": 6,
-        "unclassified": 28,
-        "stable_good_prediction": 2,
-        "retrospective_gain_not_seen_prospectively": 7,
-        "final_weak_justification": 5
-      },
-      "cleanupApplied": false
-    },
-    {
-      "runId": "aristocrats::seed-19",
-      "fixtureId": "aristocrats",
-      "archetype": "aristocrats",
-      "seed": 19,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [],
-      "runtimeMs": 4869,
-      "weakSlotCount": 2,
-      "avoidableWeak": 2,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 28,
-        "invalidated_by_later_decisions": 8,
-        "ambiguous": 16,
-        "beneficial_emergence": 14
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 28,
-        "later_package_oversupply": 2,
-        "unclassified": 14,
-        "became_redundant": 1,
-        "retrospective_gain_not_seen_prospectively": 14,
-        "downstream_repair_invalidated_pick": 6,
-        "final_weak_justification": 1
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "reanimator::seed-19",
-      "fixtureId": "reanimator",
-      "archetype": "reanimator",
-      "seed": 19,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "unsupported_anchors_8",
-        "prospective_retrospective_warnings_10"
-      ],
-      "runtimeMs": 1971,
-      "weakSlotCount": 2,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 16,
-        "invalidated_by_later_decisions": 13,
-        "ambiguous": 23,
-        "beneficial_emergence": 12
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 16,
-        "later_package_oversupply": 8,
-        "unclassified": 21,
-        "downstream_repair_invalidated_pick": 4,
-        "final_weak_justification": 2,
-        "retrospective_gain_not_seen_prospectively": 12,
-        "unsupported_anchor_emerged": 1
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "spellslinger::seed-19",
-      "fixtureId": "spellslinger",
-      "archetype": "spellslinger",
-      "seed": 19,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "unsupported_anchors_6",
-        "prospective_retrospective_warnings_16"
-      ],
-      "runtimeMs": 4019,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 16,
-        "invalidated_by_later_decisions": 29,
-        "ambiguous": 3,
-        "beneficial_emergence": 18
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 16,
-        "later_package_oversupply": 19,
-        "curve_need_disappeared": 6,
-        "unsupported_anchor_emerged": 1,
-        "retrospective_gain_not_seen_prospectively": 18,
-        "downstream_repair_invalidated_pick": 6
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "landfall::seed-19",
-      "fixtureId": "landfall",
-      "archetype": "landfall",
-      "seed": 19,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [],
-      "runtimeMs": 2016,
-      "weakSlotCount": 2,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 31,
-        "ambiguous": 20,
-        "stable": 1,
-        "beneficial_emergence": 7,
-        "invalidated_by_later_decisions": 6,
-        "genuine_bad_belief": 1
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 31,
-        "unclassified": 19,
-        "stable_good_prediction": 1,
-        "retrospective_gain_not_seen_prospectively": 7,
-        "downstream_repair_invalidated_pick": 6,
-        "final_weak_justification": 2
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "blink-etb::seed-19",
-      "fixtureId": "blink-etb",
-      "archetype": "blink",
-      "seed": 19,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 2065,
-      "weakSlotCount": 6,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 29,
-        "stable": 1,
-        "ambiguous": 27,
-        "invalidated_by_later_decisions": 6,
-        "beneficial_emergence": 3
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 29,
-        "stable_good_prediction": 1,
-        "unclassified": 27,
-        "downstream_repair_invalidated_pick": 6,
-        "retrospective_gain_not_seen_prospectively": 3
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "artifacts::seed-19",
-      "fixtureId": "artifacts",
-      "archetype": "artifacts",
-      "seed": 19,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1487,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 18,
-        "ambiguous": 30,
-        "stable": 2,
-        "beneficial_emergence": 16
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 18,
-        "unclassified": 30,
-        "stable_good_prediction": 2,
-        "retrospective_gain_not_seen_prospectively": 16
-      },
-      "cleanupApplied": false
-    },
-    {
-      "runId": "stax::seed-19",
-      "fixtureId": "stax",
-      "archetype": "stax",
-      "seed": 19,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1190,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 32,
-        "ambiguous": 26,
-        "beneficial_emergence": 4,
-        "invalidated_by_later_decisions": 2
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 32,
-        "unclassified": 26,
-        "retrospective_gain_not_seen_prospectively": 4,
-        "downstream_repair_invalidated_pick": 2
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "combo-partners::seed-19",
-      "fixtureId": "combo-partners",
-      "archetype": "combo",
-      "seed": 19,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1353,
-      "weakSlotCount": 7,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 21,
-        "ambiguous": 28,
-        "genuine_bad_belief": 2,
-        "beneficial_emergence": 11,
-        "invalidated_by_later_decisions": 3
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 21,
-        "unclassified": 26,
-        "final_weak_justification": 4,
-        "retrospective_gain_not_seen_prospectively": 11,
-        "downstream_repair_invalidated_pick": 3
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "multiplan-commander::seed-19",
-      "fixtureId": "multiplan-commander",
-      "archetype": "multi_direction",
-      "seed": 19,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1654,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 35,
-        "ambiguous": 10,
-        "stable": 1,
-        "beneficial_emergence": 14,
-        "invalidated_by_later_decisions": 5
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 35,
-        "unclassified": 10,
-        "stable_good_prediction": 1,
-        "retrospective_gain_not_seen_prospectively": 14,
-        "downstream_repair_invalidated_pick": 5
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "pearl-ear-auras::seed-23",
-      "fixtureId": "pearl-ear-auras",
-      "archetype": "aura_voltron",
-      "seed": 23,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 2187,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 36,
-        "invalidated_by_later_decisions": 8,
-        "ambiguous": 6,
-        "stable": 1,
-        "beneficial_emergence": 14
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 36,
-        "downstream_repair_invalidated_pick": 6,
-        "later_package_oversupply": 1,
-        "curve_need_disappeared": 1,
-        "unclassified": 6,
-        "stable_good_prediction": 1,
-        "retrospective_gain_not_seen_prospectively": 14
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "equipment-voltron::seed-23",
-      "fixtureId": "equipment-voltron",
-      "archetype": "equipment_voltron",
-      "seed": 23,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 2422,
-      "weakSlotCount": 4,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 26,
-        "ambiguous": 23,
-        "beneficial_emergence": 10,
-        "invalidated_by_later_decisions": 4,
-        "genuine_bad_belief": 2
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 26,
-        "unclassified": 21,
-        "retrospective_gain_not_seen_prospectively": 10,
-        "downstream_repair_invalidated_pick": 4,
-        "final_weak_justification": 4
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "ayula-typal::seed-23",
-      "fixtureId": "ayula-typal",
-      "archetype": "typal",
-      "seed": 23,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1399,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 29,
-        "ambiguous": 20,
-        "beneficial_emergence": 12,
-        "invalidated_by_later_decisions": 4
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 29,
-        "unclassified": 20,
-        "retrospective_gain_not_seen_prospectively": 12,
-        "downstream_repair_invalidated_pick": 4
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "token-go-wide::seed-23",
-      "fixtureId": "token-go-wide",
-      "archetype": "tokens",
-      "seed": 23,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0",
-        "prospective_retrospective_warnings_11"
-      ],
-      "runtimeMs": 1368,
-      "weakSlotCount": 8,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 18,
-        "invalidated_by_later_decisions": 6,
-        "ambiguous": 31,
-        "stable": 2,
-        "beneficial_emergence": 7,
-        "genuine_bad_belief": 2
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 18,
-        "later_package_oversupply": 6,
-        "unclassified": 28,
-        "stable_good_prediction": 2,
-        "retrospective_gain_not_seen_prospectively": 7,
-        "final_weak_justification": 5
-      },
-      "cleanupApplied": false
-    },
-    {
-      "runId": "aristocrats::seed-23",
-      "fixtureId": "aristocrats",
-      "archetype": "aristocrats",
-      "seed": 23,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [],
-      "runtimeMs": 4652,
-      "weakSlotCount": 2,
-      "avoidableWeak": 2,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 28,
-        "invalidated_by_later_decisions": 8,
-        "ambiguous": 16,
-        "beneficial_emergence": 14
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 28,
-        "later_package_oversupply": 2,
-        "unclassified": 14,
-        "became_redundant": 1,
-        "retrospective_gain_not_seen_prospectively": 14,
-        "downstream_repair_invalidated_pick": 6,
-        "final_weak_justification": 1
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "reanimator::seed-23",
-      "fixtureId": "reanimator",
-      "archetype": "reanimator",
-      "seed": 23,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "unsupported_anchors_8",
-        "prospective_retrospective_warnings_10"
-      ],
-      "runtimeMs": 1999,
-      "weakSlotCount": 2,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 16,
-        "invalidated_by_later_decisions": 13,
-        "ambiguous": 23,
-        "beneficial_emergence": 12
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 16,
-        "later_package_oversupply": 8,
-        "unclassified": 21,
-        "downstream_repair_invalidated_pick": 4,
-        "final_weak_justification": 2,
-        "retrospective_gain_not_seen_prospectively": 12,
-        "unsupported_anchor_emerged": 1
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "spellslinger::seed-23",
-      "fixtureId": "spellslinger",
-      "archetype": "spellslinger",
-      "seed": 23,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "unsupported_anchors_6",
-        "prospective_retrospective_warnings_16"
-      ],
-      "runtimeMs": 3980,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 16,
-        "invalidated_by_later_decisions": 29,
-        "ambiguous": 3,
-        "beneficial_emergence": 18
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 16,
-        "later_package_oversupply": 19,
-        "curve_need_disappeared": 6,
-        "unsupported_anchor_emerged": 1,
-        "retrospective_gain_not_seen_prospectively": 18,
-        "downstream_repair_invalidated_pick": 6
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "landfall::seed-23",
-      "fixtureId": "landfall",
-      "archetype": "landfall",
-      "seed": 23,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [],
-      "runtimeMs": 2000,
-      "weakSlotCount": 2,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 31,
-        "ambiguous": 20,
-        "stable": 1,
-        "beneficial_emergence": 7,
-        "invalidated_by_later_decisions": 6,
-        "genuine_bad_belief": 1
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 31,
-        "unclassified": 19,
-        "stable_good_prediction": 1,
-        "retrospective_gain_not_seen_prospectively": 7,
-        "downstream_repair_invalidated_pick": 6,
-        "final_weak_justification": 2
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "blink-etb::seed-23",
-      "fixtureId": "blink-etb",
-      "archetype": "blink",
-      "seed": 23,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 2094,
-      "weakSlotCount": 6,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 29,
-        "stable": 1,
-        "ambiguous": 27,
-        "invalidated_by_later_decisions": 6,
-        "beneficial_emergence": 3
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 29,
-        "stable_good_prediction": 1,
-        "unclassified": 27,
-        "downstream_repair_invalidated_pick": 6,
-        "retrospective_gain_not_seen_prospectively": 3
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "artifacts::seed-23",
-      "fixtureId": "artifacts",
-      "archetype": "artifacts",
-      "seed": 23,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1554,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 18,
-        "ambiguous": 30,
-        "stable": 2,
-        "beneficial_emergence": 16
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 18,
-        "unclassified": 30,
-        "stable_good_prediction": 2,
-        "retrospective_gain_not_seen_prospectively": 16
-      },
-      "cleanupApplied": false
-    },
-    {
-      "runId": "stax::seed-23",
-      "fixtureId": "stax",
-      "archetype": "stax",
-      "seed": 23,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1190,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 32,
-        "ambiguous": 26,
-        "beneficial_emergence": 4,
-        "invalidated_by_later_decisions": 2
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 32,
-        "unclassified": 26,
-        "retrospective_gain_not_seen_prospectively": 4,
-        "downstream_repair_invalidated_pick": 2
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "combo-partners::seed-23",
-      "fixtureId": "combo-partners",
-      "archetype": "combo",
-      "seed": 23,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1344,
-      "weakSlotCount": 7,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 21,
-        "ambiguous": 28,
-        "genuine_bad_belief": 2,
-        "beneficial_emergence": 11,
-        "invalidated_by_later_decisions": 3
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 21,
-        "unclassified": 26,
-        "final_weak_justification": 4,
-        "retrospective_gain_not_seen_prospectively": 11,
-        "downstream_repair_invalidated_pick": 3
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "multiplan-commander::seed-23",
-      "fixtureId": "multiplan-commander",
-      "archetype": "multi_direction",
-      "seed": 23,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1660,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 35,
-        "ambiguous": 10,
-        "stable": 1,
-        "beneficial_emergence": 14,
-        "invalidated_by_later_decisions": 5
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 35,
-        "unclassified": 10,
-        "stable_good_prediction": 1,
-        "retrospective_gain_not_seen_prospectively": 14,
-        "downstream_repair_invalidated_pick": 5
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "pearl-ear-auras::seed-29",
-      "fixtureId": "pearl-ear-auras",
-      "archetype": "aura_voltron",
-      "seed": 29,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 2149,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 37,
-        "invalidated_by_later_decisions": 7,
-        "ambiguous": 6,
-        "stable": 1,
-        "beneficial_emergence": 14
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 37,
-        "downstream_repair_invalidated_pick": 6,
-        "later_package_oversupply": 1,
-        "unclassified": 6,
-        "stable_good_prediction": 1,
-        "retrospective_gain_not_seen_prospectively": 14
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "equipment-voltron::seed-29",
-      "fixtureId": "equipment-voltron",
-      "archetype": "equipment_voltron",
-      "seed": 29,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 2556,
-      "weakSlotCount": 4,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 26,
-        "ambiguous": 23,
-        "beneficial_emergence": 10,
-        "invalidated_by_later_decisions": 4,
-        "genuine_bad_belief": 2
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 26,
-        "unclassified": 21,
-        "retrospective_gain_not_seen_prospectively": 10,
-        "downstream_repair_invalidated_pick": 4,
-        "final_weak_justification": 4
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "ayula-typal::seed-29",
-      "fixtureId": "ayula-typal",
-      "archetype": "typal",
-      "seed": 29,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1631,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 29,
-        "ambiguous": 20,
-        "beneficial_emergence": 12,
-        "invalidated_by_later_decisions": 4
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 29,
-        "unclassified": 20,
-        "retrospective_gain_not_seen_prospectively": 12,
-        "downstream_repair_invalidated_pick": 4
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "token-go-wide::seed-29",
-      "fixtureId": "token-go-wide",
-      "archetype": "tokens",
-      "seed": 29,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0",
-        "prospective_retrospective_warnings_11"
-      ],
-      "runtimeMs": 1307,
-      "weakSlotCount": 8,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 18,
-        "invalidated_by_later_decisions": 6,
-        "ambiguous": 31,
-        "stable": 2,
-        "beneficial_emergence": 7,
-        "genuine_bad_belief": 2
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 18,
-        "later_package_oversupply": 6,
-        "unclassified": 28,
-        "stable_good_prediction": 2,
-        "retrospective_gain_not_seen_prospectively": 7,
-        "final_weak_justification": 5
-      },
-      "cleanupApplied": false
-    },
-    {
-      "runId": "aristocrats::seed-29",
-      "fixtureId": "aristocrats",
-      "archetype": "aristocrats",
-      "seed": 29,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [],
-      "runtimeMs": 4513,
-      "weakSlotCount": 2,
-      "avoidableWeak": 2,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 28,
-        "invalidated_by_later_decisions": 8,
-        "ambiguous": 16,
-        "beneficial_emergence": 14
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 28,
-        "later_package_oversupply": 2,
-        "unclassified": 14,
-        "became_redundant": 1,
-        "retrospective_gain_not_seen_prospectively": 14,
-        "downstream_repair_invalidated_pick": 6,
-        "final_weak_justification": 1
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "reanimator::seed-29",
-      "fixtureId": "reanimator",
-      "archetype": "reanimator",
-      "seed": 29,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "unsupported_anchors_8",
-        "prospective_retrospective_warnings_10"
-      ],
-      "runtimeMs": 2088,
-      "weakSlotCount": 2,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 16,
-        "invalidated_by_later_decisions": 13,
-        "ambiguous": 23,
-        "beneficial_emergence": 12
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 16,
-        "later_package_oversupply": 8,
-        "unclassified": 21,
-        "downstream_repair_invalidated_pick": 4,
-        "final_weak_justification": 2,
-        "retrospective_gain_not_seen_prospectively": 12,
-        "unsupported_anchor_emerged": 1
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "spellslinger::seed-29",
-      "fixtureId": "spellslinger",
-      "archetype": "spellslinger",
-      "seed": 29,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "unsupported_anchors_6",
-        "prospective_retrospective_warnings_13"
-      ],
-      "runtimeMs": 3999,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 18,
-        "invalidated_by_later_decisions": 26,
-        "ambiguous": 4,
-        "beneficial_emergence": 18
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 18,
-        "later_package_oversupply": 17,
-        "curve_need_disappeared": 7,
-        "retrospective_gain_not_seen_prospectively": 18,
-        "downstream_repair_invalidated_pick": 6
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "landfall::seed-29",
-      "fixtureId": "landfall",
-      "archetype": "landfall",
-      "seed": 29,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [],
-      "runtimeMs": 1946,
-      "weakSlotCount": 2,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 31,
-        "ambiguous": 20,
-        "stable": 1,
-        "beneficial_emergence": 7,
-        "invalidated_by_later_decisions": 6,
-        "genuine_bad_belief": 1
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 31,
-        "unclassified": 19,
-        "stable_good_prediction": 1,
-        "retrospective_gain_not_seen_prospectively": 7,
-        "downstream_repair_invalidated_pick": 6,
-        "final_weak_justification": 2
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "blink-etb::seed-29",
-      "fixtureId": "blink-etb",
-      "archetype": "blink",
-      "seed": 29,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 2054,
-      "weakSlotCount": 6,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 29,
-        "stable": 1,
-        "ambiguous": 27,
-        "invalidated_by_later_decisions": 6,
-        "beneficial_emergence": 3
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 29,
-        "stable_good_prediction": 1,
-        "unclassified": 27,
-        "downstream_repair_invalidated_pick": 6,
-        "retrospective_gain_not_seen_prospectively": 3
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "artifacts::seed-29",
-      "fixtureId": "artifacts",
-      "archetype": "artifacts",
-      "seed": 29,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1576,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 18,
-        "ambiguous": 30,
-        "stable": 2,
-        "beneficial_emergence": 16
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 18,
-        "unclassified": 30,
-        "stable_good_prediction": 2,
-        "retrospective_gain_not_seen_prospectively": 16
-      },
-      "cleanupApplied": false
-    },
-    {
-      "runId": "stax::seed-29",
-      "fixtureId": "stax",
-      "archetype": "stax",
-      "seed": 29,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1210,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 32,
-        "ambiguous": 26,
-        "beneficial_emergence": 4,
-        "invalidated_by_later_decisions": 2
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 32,
-        "unclassified": 26,
-        "retrospective_gain_not_seen_prospectively": 4,
-        "downstream_repair_invalidated_pick": 2
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "combo-partners::seed-29",
-      "fixtureId": "combo-partners",
-      "archetype": "combo",
-      "seed": 29,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1492,
-      "weakSlotCount": 7,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 21,
-        "ambiguous": 28,
-        "genuine_bad_belief": 2,
-        "beneficial_emergence": 11,
-        "invalidated_by_later_decisions": 3
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 21,
-        "unclassified": 26,
-        "final_weak_justification": 4,
-        "retrospective_gain_not_seen_prospectively": 11,
-        "downstream_repair_invalidated_pick": 3
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "multiplan-commander::seed-29",
-      "fixtureId": "multiplan-commander",
-      "archetype": "multi_direction",
-      "seed": 29,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1686,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 35,
-        "ambiguous": 10,
-        "stable": 1,
-        "beneficial_emergence": 14,
-        "invalidated_by_later_decisions": 5
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 35,
-        "unclassified": 10,
-        "stable_good_prediction": 1,
-        "retrospective_gain_not_seen_prospectively": 14,
-        "downstream_repair_invalidated_pick": 5
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "pearl-ear-auras::seed-31",
-      "fixtureId": "pearl-ear-auras",
-      "archetype": "aura_voltron",
-      "seed": 31,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 2416,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 36,
-        "invalidated_by_later_decisions": 8,
-        "ambiguous": 6,
-        "stable": 1,
-        "beneficial_emergence": 14
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 36,
-        "downstream_repair_invalidated_pick": 6,
-        "later_package_oversupply": 1,
-        "curve_need_disappeared": 1,
-        "unclassified": 6,
-        "stable_good_prediction": 1,
-        "retrospective_gain_not_seen_prospectively": 14
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "equipment-voltron::seed-31",
-      "fixtureId": "equipment-voltron",
-      "archetype": "equipment_voltron",
-      "seed": 31,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 2390,
-      "weakSlotCount": 4,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 26,
-        "ambiguous": 23,
-        "beneficial_emergence": 10,
-        "invalidated_by_later_decisions": 4,
-        "genuine_bad_belief": 2
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 26,
-        "unclassified": 21,
-        "retrospective_gain_not_seen_prospectively": 10,
-        "downstream_repair_invalidated_pick": 4,
-        "final_weak_justification": 4
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "ayula-typal::seed-31",
-      "fixtureId": "ayula-typal",
-      "archetype": "typal",
-      "seed": 31,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1715,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 29,
-        "ambiguous": 20,
-        "beneficial_emergence": 12,
-        "invalidated_by_later_decisions": 4
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 29,
-        "unclassified": 20,
-        "retrospective_gain_not_seen_prospectively": 12,
-        "downstream_repair_invalidated_pick": 4
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "token-go-wide::seed-31",
-      "fixtureId": "token-go-wide",
-      "archetype": "tokens",
-      "seed": 31,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0",
-        "prospective_retrospective_warnings_11"
-      ],
-      "runtimeMs": 1460,
-      "weakSlotCount": 8,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 18,
-        "invalidated_by_later_decisions": 6,
-        "ambiguous": 31,
-        "stable": 2,
-        "beneficial_emergence": 7,
-        "genuine_bad_belief": 2
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 18,
-        "later_package_oversupply": 6,
-        "unclassified": 28,
-        "stable_good_prediction": 2,
-        "retrospective_gain_not_seen_prospectively": 7,
-        "final_weak_justification": 5
-      },
-      "cleanupApplied": false
-    },
-    {
-      "runId": "aristocrats::seed-31",
-      "fixtureId": "aristocrats",
-      "archetype": "aristocrats",
-      "seed": 31,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [],
-      "runtimeMs": 5135,
-      "weakSlotCount": 2,
-      "avoidableWeak": 2,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 28,
-        "invalidated_by_later_decisions": 8,
-        "ambiguous": 16,
-        "beneficial_emergence": 14
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 28,
-        "later_package_oversupply": 2,
-        "unclassified": 14,
-        "became_redundant": 1,
-        "retrospective_gain_not_seen_prospectively": 14,
-        "downstream_repair_invalidated_pick": 6,
-        "final_weak_justification": 1
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "reanimator::seed-31",
-      "fixtureId": "reanimator",
-      "archetype": "reanimator",
-      "seed": 31,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "unsupported_anchors_8",
-        "prospective_retrospective_warnings_10"
-      ],
-      "runtimeMs": 2277,
-      "weakSlotCount": 2,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 16,
-        "invalidated_by_later_decisions": 13,
-        "ambiguous": 23,
-        "beneficial_emergence": 12
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 16,
-        "later_package_oversupply": 8,
-        "unclassified": 21,
-        "downstream_repair_invalidated_pick": 4,
-        "final_weak_justification": 2,
-        "retrospective_gain_not_seen_prospectively": 12,
-        "unsupported_anchor_emerged": 1
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "spellslinger::seed-31",
-      "fixtureId": "spellslinger",
-      "archetype": "spellslinger",
-      "seed": 31,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "unsupported_anchors_6",
-        "prospective_retrospective_warnings_16"
-      ],
-      "runtimeMs": 5236,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 16,
-        "invalidated_by_later_decisions": 29,
-        "ambiguous": 3,
-        "beneficial_emergence": 18
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 16,
-        "later_package_oversupply": 19,
-        "curve_need_disappeared": 6,
-        "unsupported_anchor_emerged": 1,
-        "retrospective_gain_not_seen_prospectively": 18,
-        "downstream_repair_invalidated_pick": 6
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "landfall::seed-31",
-      "fixtureId": "landfall",
-      "archetype": "landfall",
-      "seed": 31,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [],
-      "runtimeMs": 2908,
-      "weakSlotCount": 2,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 31,
-        "ambiguous": 20,
-        "stable": 1,
-        "beneficial_emergence": 7,
-        "invalidated_by_later_decisions": 6,
-        "genuine_bad_belief": 1
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 31,
-        "unclassified": 19,
-        "stable_good_prediction": 1,
-        "retrospective_gain_not_seen_prospectively": 7,
-        "downstream_repair_invalidated_pick": 6,
-        "final_weak_justification": 2
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "blink-etb::seed-31",
-      "fixtureId": "blink-etb",
-      "archetype": "blink",
-      "seed": 31,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 2978,
-      "weakSlotCount": 6,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 29,
-        "stable": 1,
-        "ambiguous": 27,
-        "invalidated_by_later_decisions": 6,
-        "beneficial_emergence": 3
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 29,
-        "stable_good_prediction": 1,
-        "unclassified": 27,
-        "downstream_repair_invalidated_pick": 6,
-        "retrospective_gain_not_seen_prospectively": 3
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "artifacts::seed-31",
-      "fixtureId": "artifacts",
-      "archetype": "artifacts",
-      "seed": 31,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 2015,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 18,
-        "ambiguous": 30,
-        "stable": 2,
-        "beneficial_emergence": 16
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 18,
-        "unclassified": 30,
-        "stable_good_prediction": 2,
-        "retrospective_gain_not_seen_prospectively": 16
-      },
-      "cleanupApplied": false
-    },
-    {
-      "runId": "stax::seed-31",
-      "fixtureId": "stax",
-      "archetype": "stax",
-      "seed": 31,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1531,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 32,
-        "ambiguous": 26,
-        "beneficial_emergence": 4,
-        "invalidated_by_later_decisions": 2
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 32,
-        "unclassified": 26,
-        "retrospective_gain_not_seen_prospectively": 4,
-        "downstream_repair_invalidated_pick": 2
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "combo-partners::seed-31",
-      "fixtureId": "combo-partners",
-      "archetype": "combo",
-      "seed": 31,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1568,
-      "weakSlotCount": 7,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 21,
-        "ambiguous": 28,
-        "genuine_bad_belief": 2,
-        "beneficial_emergence": 11,
-        "invalidated_by_later_decisions": 3
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 21,
-        "unclassified": 26,
-        "final_weak_justification": 4,
-        "retrospective_gain_not_seen_prospectively": 11,
-        "downstream_repair_invalidated_pick": 3
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "multiplan-commander::seed-31",
-      "fixtureId": "multiplan-commander",
-      "archetype": "multi_direction",
-      "seed": 31,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1909,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 35,
-        "ambiguous": 10,
-        "stable": 1,
-        "beneficial_emergence": 14,
-        "invalidated_by_later_decisions": 5
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 35,
-        "unclassified": 10,
-        "stable_good_prediction": 1,
-        "retrospective_gain_not_seen_prospectively": 14,
-        "downstream_repair_invalidated_pick": 5
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "pearl-ear-auras::seed-37",
-      "fixtureId": "pearl-ear-auras",
-      "archetype": "aura_voltron",
-      "seed": 37,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 2456,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 36,
-        "invalidated_by_later_decisions": 8,
-        "ambiguous": 6,
-        "stable": 1,
-        "beneficial_emergence": 14
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 36,
-        "downstream_repair_invalidated_pick": 6,
-        "later_package_oversupply": 1,
-        "curve_need_disappeared": 1,
-        "unclassified": 6,
-        "stable_good_prediction": 1,
-        "retrospective_gain_not_seen_prospectively": 14
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "equipment-voltron::seed-37",
-      "fixtureId": "equipment-voltron",
-      "archetype": "equipment_voltron",
-      "seed": 37,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 2632,
-      "weakSlotCount": 4,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 26,
-        "ambiguous": 23,
-        "beneficial_emergence": 10,
-        "invalidated_by_later_decisions": 4,
-        "genuine_bad_belief": 2
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 26,
-        "unclassified": 21,
-        "retrospective_gain_not_seen_prospectively": 10,
-        "downstream_repair_invalidated_pick": 4,
-        "final_weak_justification": 4
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "ayula-typal::seed-37",
-      "fixtureId": "ayula-typal",
-      "archetype": "typal",
-      "seed": 37,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1476,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 29,
-        "ambiguous": 20,
-        "beneficial_emergence": 12,
-        "invalidated_by_later_decisions": 4
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 29,
-        "unclassified": 20,
-        "retrospective_gain_not_seen_prospectively": 12,
-        "downstream_repair_invalidated_pick": 4
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "token-go-wide::seed-37",
-      "fixtureId": "token-go-wide",
-      "archetype": "tokens",
-      "seed": 37,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0",
-        "prospective_retrospective_warnings_11"
-      ],
-      "runtimeMs": 1585,
-      "weakSlotCount": 8,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 18,
-        "invalidated_by_later_decisions": 6,
-        "ambiguous": 31,
-        "stable": 2,
-        "beneficial_emergence": 7,
-        "genuine_bad_belief": 2
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 18,
-        "later_package_oversupply": 6,
-        "unclassified": 28,
-        "stable_good_prediction": 2,
-        "retrospective_gain_not_seen_prospectively": 7,
-        "final_weak_justification": 5
-      },
-      "cleanupApplied": false
-    },
-    {
-      "runId": "aristocrats::seed-37",
-      "fixtureId": "aristocrats",
-      "archetype": "aristocrats",
-      "seed": 37,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [],
-      "runtimeMs": 4816,
-      "weakSlotCount": 2,
-      "avoidableWeak": 2,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 28,
-        "invalidated_by_later_decisions": 8,
-        "ambiguous": 16,
-        "beneficial_emergence": 14
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 28,
-        "later_package_oversupply": 2,
-        "unclassified": 14,
-        "became_redundant": 1,
-        "retrospective_gain_not_seen_prospectively": 14,
-        "downstream_repair_invalidated_pick": 6,
-        "final_weak_justification": 1
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "reanimator::seed-37",
-      "fixtureId": "reanimator",
-      "archetype": "reanimator",
-      "seed": 37,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "unsupported_anchors_8",
-        "prospective_retrospective_warnings_10"
-      ],
-      "runtimeMs": 2031,
-      "weakSlotCount": 2,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 16,
-        "invalidated_by_later_decisions": 13,
-        "ambiguous": 23,
-        "beneficial_emergence": 12
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 16,
-        "later_package_oversupply": 8,
-        "unclassified": 21,
-        "downstream_repair_invalidated_pick": 4,
-        "final_weak_justification": 2,
-        "retrospective_gain_not_seen_prospectively": 12,
-        "unsupported_anchor_emerged": 1
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "spellslinger::seed-37",
-      "fixtureId": "spellslinger",
-      "archetype": "spellslinger",
-      "seed": 37,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "unsupported_anchors_6",
-        "prospective_retrospective_warnings_15"
-      ],
-      "runtimeMs": 3925,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 17,
-        "invalidated_by_later_decisions": 28,
-        "ambiguous": 3,
-        "beneficial_emergence": 18
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 17,
-        "later_package_oversupply": 18,
-        "curve_need_disappeared": 6,
-        "unsupported_anchor_emerged": 1,
-        "retrospective_gain_not_seen_prospectively": 18,
-        "downstream_repair_invalidated_pick": 6
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "landfall::seed-37",
-      "fixtureId": "landfall",
-      "archetype": "landfall",
-      "seed": 37,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [],
-      "runtimeMs": 2102,
-      "weakSlotCount": 2,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 31,
-        "ambiguous": 20,
-        "stable": 1,
-        "beneficial_emergence": 7,
-        "invalidated_by_later_decisions": 6,
-        "genuine_bad_belief": 1
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 31,
-        "unclassified": 19,
-        "stable_good_prediction": 1,
-        "retrospective_gain_not_seen_prospectively": 7,
-        "downstream_repair_invalidated_pick": 6,
-        "final_weak_justification": 2
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "blink-etb::seed-37",
-      "fixtureId": "blink-etb",
-      "archetype": "blink",
-      "seed": 37,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 2074,
-      "weakSlotCount": 6,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 29,
-        "stable": 1,
-        "ambiguous": 27,
-        "invalidated_by_later_decisions": 6,
-        "beneficial_emergence": 3
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 29,
-        "stable_good_prediction": 1,
-        "unclassified": 27,
-        "downstream_repair_invalidated_pick": 6,
-        "retrospective_gain_not_seen_prospectively": 3
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "artifacts::seed-37",
-      "fixtureId": "artifacts",
-      "archetype": "artifacts",
-      "seed": 37,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1533,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 18,
-        "ambiguous": 30,
-        "stable": 2,
-        "beneficial_emergence": 16
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 18,
-        "unclassified": 30,
-        "stable_good_prediction": 2,
-        "retrospective_gain_not_seen_prospectively": 16
-      },
-      "cleanupApplied": false
-    },
-    {
-      "runId": "stax::seed-37",
-      "fixtureId": "stax",
-      "archetype": "stax",
-      "seed": 37,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1170,
-      "weakSlotCount": 0,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 32,
-        "ambiguous": 26,
-        "beneficial_emergence": 4,
-        "invalidated_by_later_decisions": 2
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 32,
-        "unclassified": 26,
-        "retrospective_gain_not_seen_prospectively": 4,
-        "downstream_repair_invalidated_pick": 2
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "combo-partners::seed-37",
-      "fixtureId": "combo-partners",
-      "archetype": "combo",
-      "seed": 37,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1349,
-      "weakSlotCount": 7,
-      "avoidableWeak": 0,
-      "controlCaseCounts": {
-        "early_scaffolding_matured": 21,
-        "ambiguous": 28,
-        "genuine_bad_belief": 2,
-        "beneficial_emergence": 11,
-        "invalidated_by_later_decisions": 3
-      },
-      "disagreementsByClass": {
-        "early_scaffolding_matured": 21,
-        "unclassified": 26,
-        "final_weak_justification": 4,
-        "retrospective_gain_not_seen_prospectively": 11,
-        "downstream_repair_invalidated_pick": 3
-      },
-      "cleanupApplied": true
-    },
-    {
-      "runId": "multiplan-commander::seed-37",
-      "fixtureId": "multiplan-commander",
-      "archetype": "multi_direction",
-      "seed": 37,
-      "passed": true,
-      "hardFailures": [],
-      "warnings": [
-        "thin_interaction_graph_0"
-      ],
-      "runtimeMs": 1659,
+      "runtimeMs": 3016,
       "weakSlotCount": 0,
       "avoidableWeak": 0,
       "controlCaseCounts": {

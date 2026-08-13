@@ -1,6 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildInteractionGraph, extractMechanicalSignals, findUnusedEnginePartners } from "../app/forge-interaction-graph.mjs";
+import {
+  buildInteractionGraph,
+  extractMechanicalSignals,
+  findUnusedEnginePartners,
+  findExplicitOracleReferences,
+  oracleExplicitlyNames,
+  RELATIONSHIP_EVIDENCE,
+} from "../app/forge-interaction-graph.mjs";
 
 test("connects producers to payoffs and forms packages", () => {
   const graph = buildInteractionGraph([
@@ -285,4 +292,86 @@ test("ignores lands in the pool and respects the limit option", () => {
   const suggestions = findUnusedEnginePartners(deck, pool, { limit: 2 });
   assert.equal(suggestions.length, 2);
   assert.ok(suggestions.every((entry) => entry.card !== "Unused Land"));
+});
+
+// --- Founder #018 — Relationship Evidence: Explicit Oracle ---
+
+test("oracle_explicit: named CardName in Oracle links to that card in the deck", () => {
+  const tutor = {
+    name: "Blech Tutor",
+    typeLine: "Sorcery",
+    oracleText: "Search your library for a card named Blech, reveal it, put it into your hand, then shuffle.",
+  };
+  const target = {
+    name: "Blech",
+    typeLine: "Legendary Creature — Alien",
+    oracleText: "Flying",
+  };
+  const graph = buildInteractionGraph([tutor, target]);
+  const edge = graph.edges.find(
+    (entry) => entry.evidence === RELATIONSHIP_EVIDENCE.ORACLE_EXPLICIT
+      || entry.evidenceClass === RELATIONSHIP_EVIDENCE.ORACLE_EXPLICIT,
+  );
+  assert.ok(edge, "expected an oracle_explicit edge");
+  assert.equal(edge.from, "Blech Tutor");
+  assert.equal(edge.to, "Blech");
+  assert.ok(edge.signals.includes("oracle_explicit"));
+  assert.match(edge.reason, /explicitly names Blech/i);
+  assert.ok(graph.explicitReferences.some((ref) => ref.from === "Blech Tutor" && ref.to === "Blech"));
+  assert.ok(graph.packages.some((group) => group.signal === "oracle_explicit"));
+});
+
+test("oracle_explicit: Partner with creates an authoritative edge", () => {
+  const graph = buildInteractionGraph([
+    {
+      name: "Reyhan, Last of the Abzan",
+      typeLine: "Legendary Creature",
+      oracleText: "Partner with Pako, Arcane Retriever",
+    },
+    {
+      name: "Pako, Arcane Retriever",
+      typeLine: "Legendary Creature",
+      oracleText: "Partner with Reyhan, Last of the Abzan",
+    },
+  ]);
+  const refs = findExplicitOracleReferences(graph.nodes);
+  assert.ok(refs.some((ref) => ref.from === "Reyhan, Last of the Abzan" && ref.to === "Pako, Arcane Retriever"));
+  assert.ok(refs.some((ref) => ref.from === "Pako, Arcane Retriever" && ref.to === "Reyhan, Last of the Abzan"));
+});
+
+test("oracle_explicit: does not invent edges from bare name mentions or arbitrary nicknames", () => {
+  assert.equal(oracleExplicitlyNames("Create a Sol Ring token.", "Sol Ring"), false);
+  assert.equal(oracleExplicitlyNames("Search your library for a card named Blech.", "Tony's Favorite Rock"), false);
+
+  const graph = buildInteractionGraph([
+    {
+      name: "Loose Talker",
+      typeLine: "Creature",
+      oracleText: "Whenever you cast Sol Ring, draw a card.",
+    },
+    { name: "Sol Ring", typeLine: "Artifact", oracleText: "{T}: Add {C}{C}." },
+  ]);
+  assert.ok(!graph.edges.some((edge) => edge.evidenceClass === RELATIONSHIP_EVIDENCE.ORACLE_EXPLICIT));
+  assert.equal(graph.explicitReferences.length, 0);
+});
+
+test("oracle_explicit: ignores self-references via named own name", () => {
+  const graph = buildInteractionGraph([
+    {
+      name: "Self Referencer",
+      typeLine: "Creature",
+      oracleText: "Search your library for a card named Self Referencer and put it onto the battlefield.",
+    },
+    { name: "Unrelated", typeLine: "Creature", oracleText: "Flying" },
+  ]);
+  assert.equal(graph.explicitReferences.length, 0);
+});
+
+test("oracle_explicit: mechanical edges still form without named references", () => {
+  const graph = buildInteractionGraph([
+    { name: "Smith", typeLine: "Legendary Creature", oracleText: "Whenever you cast an artifact spell, create a 1/1 colorless Servo artifact creature token.", isCommander: true },
+    { name: "Foundry", typeLine: "Artifact", oracleText: "Whenever an artifact enters the battlefield under your control, draw a card." },
+  ]);
+  assert.ok(graph.edges.some((edge) => edge.from === "Smith" && edge.to === "Foundry"));
+  assert.ok(graph.edges.every((edge) => edge.evidenceClass !== RELATIONSHIP_EVIDENCE.ORACLE_EXPLICIT));
 });

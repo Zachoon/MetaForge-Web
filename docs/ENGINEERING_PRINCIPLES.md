@@ -116,7 +116,24 @@ not:
 Until then: **Brain v1 stays frozen.** Harness, golden canaries, corpus ingestion, and reports may grow freely.
 
 Rejected construction experiments are institutional knowledge — see `docs/REJECTED_EXPERIMENTS.md`.  
-The open research agenda after Exp001 is interaction **topology**, not interaction **weights** — see `docs/INTERACTION_TOPOLOGY_RESEARCH.md`.
+The open research agenda after Exp001 / Sim-Lab-001 is **Strategic Coverage** (capabilities / seats under controls) — not interaction weights and not another topology composite. See `docs/STRATEGIC_COVERAGE.md` and `docs/ATLAS.md`. Topology research remains historical context in `docs/INTERACTION_TOPOLOGY_RESEARCH.md`.
+
+**Language-phase freeze:** prefer Atlas + Academy observation over new Brain/Lab subsystems until Capability / Seat / Coverage are stable under the Coverage charter’s controls. Active era: [Age of Vocabulary](AGE_OF_VOCABULARY.md). Mentor explains; it does not build. **Elegance is not evidence.**
+
+---
+
+## 8. Unknown is not absent
+
+Product and research both fail the same way when incompleteness is rendered as emptiness.
+
+> **Unknown is not absent.**  
+> **Alternate identity is not unknown.**
+
+If MetaForge cannot verify a card, package, or engine, say that the claim is **unverified** or **incomplete** — never imply the strategy or machinery does not exist.
+
+Printed / flavor / reskin names that authoritatively map to an Oracle card are **resolved identities**, not holes.
+
+Earned by Product Sprint Alpha Track A4 (Tony Stark founder run): unresolved Universes Beyond / flavor-name cards produced a false “no engine” reading.
 
 ---
 
@@ -124,6 +141,17 @@ The open research agenda after Exp001 is interaction **topology**, not interacti
 
 | Document | Role |
 |---|---|
+| `docs/CONVERSATION_CONTRACT.md` | **Product conversation** — I heard you → philosophies → deck → pilot; collaborative deck coach |
+| `docs/FOUNDER_ISSUES.md` | Living founder scoreboard (evidence → issue → fix → verify) |
+| `docs/STRATEGIC_COGNITION.md` | **North star** — observe strategic thought; research-platform flywheel (knowledge → sim → Lab → Harness → Brain); construction as consequence |
+| `docs/INTELLIGENCE_CONSTITUTION.md` | Academy / Laboratory / Harness / Brain / Archive / Atlas / Mentor — single jobs + ladder |
+| `docs/AGE_OF_VOCABULARY.md` | Discipline layer — Atlas admits only earned words |
+| `docs/ATLAS.md` | Vocabulary **and** equivalence → Concept Graph destination |
+| `docs/MENTOR.md` | Understanding / explanations — not discovery, not construction |
+| `docs/BRAIN_V2_STRATEGIC_REASONING.md` | Brain v2 initiative — earned under Cognition; never “complete v2” by coding heuristics |
+| `docs/INSTITUTIONAL_STATUS.md` | What is live vs promoted |
+| `docs/STRATEGIC_COVERAGE.md` | Academy observation: capabilities under commander / archetype / ix-count controls |
+| `docs/STRATEGIC_SIMULATION_ENGINE.md` | Sim-Lab — isolated “what if?” sandbox (not Brain) |
 | `docs/BRAIN_V1_ENGINEERING_RELEASE.md` | Engineering release record |
 | `docs/REASONING_PIPELINE.md` | Authoritative pipeline map |
 | `docs/VALIDATION_HARNESS.md` | Field-test / freeze charter |

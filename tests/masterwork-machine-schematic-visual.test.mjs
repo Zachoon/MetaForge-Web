@@ -7,15 +7,18 @@ const [page, css] = await Promise.all([
   readFile(new URL("../app/testing-anvil.css", import.meta.url), "utf8"),
 ]);
 
-test("the player-facing coach brief retains four interpreted deck truths", () => {
-  assert.match(page, /Your deck in plain language/);
-  assert.match(page, /YOUR PLAN/);
-  assert.match(page, /GET ESTABLISHED/);
-  assert.match(page, /BUILD MOMENTUM/);
-  assert.match(page, /WATCH THIS FIRST/);
+test("the player-facing coach brief retains Honest Coach interpreted deck truths", () => {
+  // Player Surface Law: default brief is Verdict → Why → Change (not the
+  // older "WHY THIS DECK WINS / WATCH THIS FIRST" grid labels).
+  assert.match(page, /honest-coach-v0/);
+  assert.match(page, /YOUR COACH/);
+  assert.match(page, /honest-coach-brief-stream/);
+  assert.match(page, />\s*VERDICT\s*</);
+  assert.match(page, /WHY · OPENING PRIORITIES|CHANGE/);
+  assert.match(page, /commissionContract|1 · I HEARD YOU/);
   assert.match(css, /Player-facing coaching is a brief/);
-  assert.match(css, /coach-brief-grid/);
-  assert.match(css, /coach-deck-sequence/);
+  assert.match(css, /coach-brief/);
+  assert.match(css, /honest-coach-brief-stream|coach-deck-sequence/);
 });
 
 test("the coach brief separates the watchpoint and stays responsive", () => {

@@ -374,7 +374,15 @@ test("forges three deterministic personalized candidates without a model", () =>
   const input = { format: "Commander", target: 100, strategy: "Control", path: "Reactive Precision", note: "I love card draw and protection", seed: 42, commander: { name: "Scholar of Tests", colors: ["U"], oracleText: "Whenever you draw your second card, create a token." }, cards: pool };
   const first = forgeNativeMasterwork(input);
   const second = forgeNativeMasterwork(input);
-  assert.deepEqual(first, second);
+  // Timing / recommendation-id fields are observational and may differ
+  // across runs; construction identity must not.
+  assert.equal(first.engine, second.engine);
+  assert.equal(first.selected.id, second.selected.id);
+  assert.deepEqual(first.selected.rows, second.selected.rows);
+  assert.deepEqual(
+    first.candidates.map((c) => ({ id: c.id, rows: c.rows })),
+    second.candidates.map((c) => ({ id: c.id, rows: c.rows })),
+  );
   assert.equal(
     first.engine,
     "metaforge-native-masterwork-v6",
@@ -733,6 +741,31 @@ test("reserves cards that consume a resource the commander itself produces", () 
   assert.ok(report.selected.strategicSequence.stages.setup.count >= 10);
   assert.ok(report.selected.strategicSequence.stages.convert.count >= 8);
   assert.equal(report.selected.strategicSequence.weakestStage, "close");
+});
+
+test("strategicCoherence never flags a real enters-payoff as orphaned just because its fuel is vanilla creatures", () => {
+  // Real regression: commanderConnectionSignalsFor already treats any
+  // permanent entering as a real ETB event (see its own comment on Ayula —
+  // every Bear is a true engine piece even with vanilla rules text), but
+  // computeStrategicCoherence read entry.mechanics.produces directly and
+  // missed that same fact, so a genuine "whenever a creature enters" payoff
+  // read as an orphan payoff whenever its actual fuel was ordinary
+  // creatures with no oracle text of their own mentioning "enters".
+  const vanillaCreatures = Array.from({ length: 40 }, (_, index) =>
+    card(`Vanilla Beast ${index}`, "Vigilance", "Creature — Beast", "{3}"),
+  );
+  const enterPayoff = card("Arrival Watcher", "Whenever another creature you control enters, draw a card.", "Creature — Human Wizard", "{2}");
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", note: "", seed: 823,
+    commander: { name: "Enters Mentor", colors: ["G"], oracleText: "Whenever another creature you control enters, put a +1/+1 counter on it." },
+    cards: [...pool, ...vanillaCreatures, enterPayoff],
+  });
+  assert.ok(report.selected.rows.some((row) => row.name === "Arrival Watcher"), "payoff must actually be in the finished deck for this assertion to mean anything");
+  assert.ok(
+    !report.selected.strategicCoherence.orphanPayoffs.includes("Arrival Watcher"),
+    `Arrival Watcher has real vanilla-creature fuel and must not be flagged orphaned: ${JSON.stringify(report.selected.strategicCoherence.orphanPayoffs)}`,
+  );
+  assert.equal(report.selected.strategicCoherence.status, "connected");
 });
 
 test("recognizes plain-language role requests, not just rules-text phrasing", () => {

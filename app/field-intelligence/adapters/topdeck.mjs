@@ -19,9 +19,20 @@ import {
 } from "../decklist-parse.mjs";
 import { liveFetch } from "../live-http.mjs";
 import { DEFAULT_LIVE_SAMPLE, selectContrastStandings, resolveTopCutStatus } from "../live-sample.mjs";
+import {
+  DEFAULT_CHUNK_DAYS,
+  isChunkCacheComplete,
+  planDayChunks,
+  readCachedTopDeckChunk,
+  readTopDeckCheckpoint,
+  topdeckChunkCacheKey,
+  writeCachedTopDeckChunk,
+  writeTopDeckCheckpoint,
+} from "../live-ingest-cache.mjs";
 
 const freeze = (value) => Object.freeze(value);
 const TOPDECK_BASE = "https://topdeck.gg/api";
+const CHUNK_TIMEOUT_MS = 45_000;
 
 export const TOPDECK_ATTRIBUTION = Object.freeze({
   name: "TopDeck.gg",
@@ -56,16 +67,20 @@ export async function fetchTopDeckTournaments(options = {}) {
   const body = {
     game: options.game || "Magic: The Gathering",
     format: options.format || "EDH",
-    last: options.lastDays ?? DEFAULT_LIVE_SAMPLE.lastDays,
     participantMin: options.participantMin ?? DEFAULT_LIVE_SAMPLE.participantMin,
     columns: options.columns || [
       "name", "id", "decklist", "wins", "draws", "losses",
       "winsSwiss", "lossesSwiss", "winsBracket", "lossesBracket", "winRate",
     ],
   };
+  // Chunked path uses start/end only. Single-window path may use lastDays.
+  if (Number.isFinite(options.start) && Number.isFinite(options.end)) {
+    body.start = options.start;
+    body.end = options.end;
+  } else {
+    body.last = options.lastDays ?? DEFAULT_LIVE_SAMPLE.lastDays;
+  }
   if (Number.isFinite(options.participantMax)) body.participantMax = options.participantMax;
-  if (Number.isFinite(options.start)) body.start = options.start;
-  if (Number.isFinite(options.end)) body.end = options.end;
 
   try {
     const response = await liveFetch(`${TOPDECK_BASE}/v2/tournaments`, {
@@ -80,6 +95,7 @@ export async function fetchTopDeckTournaments(options = {}) {
       fetchImpl: options.fetchImpl,
       minIntervalMs: options.minIntervalMs,
       maxRetries: options.maxRetries,
+      timeoutMs: options.timeoutMs,
     });
 
     if (!response.ok) {
@@ -110,7 +126,9 @@ export async function fetchTopDeckTournaments(options = {}) {
       requestEcho: freeze({
         game: body.game,
         format: body.format,
-        last: body.last,
+        last: body.last ?? null,
+        start: body.start ?? null,
+        end: body.end ?? null,
         participantMin: body.participantMin,
         // Never echo Authorization.
       }),
@@ -125,6 +143,213 @@ export async function fetchTopDeckTournaments(options = {}) {
       attribution: TOPDECK_ATTRIBUTION,
     });
   }
+}
+
+function tournamentId(tournament = {}) {
+  return String(tournament.TID || tournament.tid || tournament.id || "");
+}
+
+function mergeTournamentsById(lists = []) {
+  const byId = new Map();
+  for (const list of lists) {
+    for (const tournament of list || []) {
+      const id = tournamentId(tournament);
+      if (!id) continue;
+      if (!byId.has(id)) byId.set(id, tournament);
+    }
+  }
+  return [...byId.values()];
+}
+
+/**
+ * Chunked / resumable / cached TopDeck ingest.
+ * Oldest→newest 30-day windows by default. Newest chunk always refreshed unless refreshAll.
+ */
+export async function fetchTopDeckTournamentsChunked(options = {}) {
+  const apiKey = options.apiKey || process.env.TOPDECK_API_KEY;
+  if (!apiKey) return TOPDECK_MISSING_KEY;
+
+  const lastDays = options.lastDays ?? DEFAULT_LIVE_SAMPLE.lastDays;
+  const chunkDays = options.chunkDays ?? DEFAULT_CHUNK_DAYS;
+  const participantMin = options.participantMin ?? DEFAULT_LIVE_SAMPLE.participantMin;
+  const format = options.format || "EDH";
+  const cacheDir = options.liveCacheDir || null;
+  const log = typeof options.onProgress === "function" ? options.onProgress : () => {};
+  const nowMs = options.nowMs ?? Date.now();
+  const chunks = planDayChunks(lastDays, chunkDays, nowMs);
+  const refreshAll = options.refreshAll === true;
+
+  let checkpoint = cacheDir
+    ? readTopDeckCheckpoint(cacheDir)
+    : freeze({ version: "topdeck-checkpoint-v1", completed: freeze([]), chunks: freeze({}) });
+
+  const chunkReports = [];
+  const tournamentLists = [];
+  let fetchedChunks = 0;
+  let cacheHits = 0;
+  let failedChunk = null;
+
+  for (const chunk of chunks) {
+    const key = topdeckChunkCacheKey({
+      startUnix: chunk.startUnix,
+      endUnix: chunk.endUnix,
+      participantMin,
+      format,
+    });
+    const useCache = Boolean(cacheDir)
+      && !refreshAll
+      && !chunk.isNewest
+      && isChunkCacheComplete(cacheDir, key, checkpoint);
+
+    if (useCache) {
+      const cached = readCachedTopDeckChunk(cacheDir, key);
+      const tournaments = Array.isArray(cached?.tournaments) ? cached.tournaments : [];
+      tournamentLists.push(tournaments);
+      cacheHits += 1;
+      chunkReports.push(freeze({
+        ...chunk,
+        key,
+        status: "cache_hit",
+        tournaments: tournaments.length,
+      }));
+      log(`${chunk.label} ✓ complete (cache)`);
+      continue;
+    }
+
+    const fetched = await fetchTopDeckTournaments({
+      apiKey,
+      format,
+      participantMin,
+      start: chunk.startUnix,
+      end: chunk.endUnix,
+      // Cap per-chunk only when this is a single-chunk window; final cap applied after merge.
+      maxEvents: chunks.length === 1 ? options.maxEvents : undefined,
+      fetchImpl: options.fetchImpl,
+      minIntervalMs: options.minIntervalMs,
+      maxRetries: options.maxRetries ?? 3,
+      timeoutMs: options.timeoutMs ?? CHUNK_TIMEOUT_MS,
+    });
+
+    if (!fetched.ok) {
+      failedChunk = freeze({ ...chunk, key, status: fetched.status, reason: fetched.reason });
+      chunkReports.push(freeze({
+        ...chunk,
+        key,
+        status: fetched.status || "error",
+        reason: fetched.reason,
+        tournaments: 0,
+      }));
+      log(`${chunk.label} ✗ ${fetched.status || "error"} (${fetched.reason || "failed"})`);
+      // Resume-friendly: keep prior completed chunks; abort remaining.
+      break;
+    }
+
+    const tournaments = fetched.tournaments || [];
+    tournamentLists.push(tournaments);
+    fetchedChunks += 1;
+
+    if (cacheDir) {
+      writeCachedTopDeckChunk(cacheDir, key, {
+        key,
+        fetchedAt: new Date().toISOString(),
+        startUnix: chunk.startUnix,
+        endUnix: chunk.endUnix,
+        participantMin,
+        format,
+        tournamentCount: tournaments.length,
+        tournaments,
+      });
+      const completed = new Set(checkpoint.completed || []);
+      completed.add(key);
+      const chunkMeta = {
+        ...(checkpoint.chunks || {}),
+        [key]: {
+          label: chunk.label,
+          status: "complete",
+          completedAt: new Date().toISOString(),
+          tournaments: tournaments.length,
+          dayOffsetStart: chunk.dayOffsetStart,
+          dayOffsetEnd: chunk.dayOffsetEnd,
+          isNewest: chunk.isNewest,
+        },
+      };
+      writeTopDeckCheckpoint(cacheDir, {
+        window: freeze({ lastDays, chunkDays, participantMin, format }),
+        completed: [...completed],
+        chunks: chunkMeta,
+      });
+      checkpoint = readTopDeckCheckpoint(cacheDir);
+    }
+
+    chunkReports.push(freeze({
+      ...chunk,
+      key,
+      status: "fetched",
+      tournaments: tournaments.length,
+    }));
+    log(`${chunk.label} ✓ complete`);
+  }
+
+  let tournaments = mergeTournamentsById(tournamentLists);
+  if (Number.isFinite(options.maxEvents)) {
+    tournaments = tournaments.slice(0, options.maxEvents);
+  }
+
+  const allPlannedComplete = chunkReports.length === chunks.length
+    && chunkReports.every((c) => c.status === "cache_hit" || c.status === "fetched");
+
+  if (!allPlannedComplete && tournaments.length === 0) {
+    return freeze({
+      ok: false,
+      status: failedChunk?.status || "network_error",
+      reason: failedChunk?.reason || "chunked_fetch_incomplete",
+      actionable: freeze({
+        summary: "TopDeck chunked ingest failed before any tournaments were retrieved. Retry — completed chunks remain checkpointed.",
+        failedChunk,
+      }),
+      tournaments: freeze([]),
+      attribution: TOPDECK_ATTRIBUTION,
+      chunking: freeze({
+        lastDays,
+        chunkDays,
+        chunks: freeze(chunkReports),
+        fetchedChunks,
+        cacheHits,
+        failedChunk,
+      }),
+    });
+  }
+
+  return freeze({
+    ok: true,
+    status: allPlannedComplete ? "ok" : "partial",
+    reason: allPlannedComplete ? null : "chunked_fetch_partial",
+    actionable: allPlannedComplete ? null : freeze({
+      summary: "TopDeck returned a partial window; Academy continues with retrieved tournaments.",
+      failedChunk,
+    }),
+    tournaments: freeze(tournaments),
+    attribution: TOPDECK_ATTRIBUTION,
+    chunking: freeze({
+      lastDays,
+      chunkDays,
+      chunks: freeze(chunkReports),
+      fetchedChunks,
+      cacheHits,
+      failedChunk,
+      progressLine: chunkReports
+        .map((c) => `${c.label} ${c.status === "cache_hit" || c.status === "fetched" ? "✓" : "✗"}`)
+        .join(" / "),
+    }),
+    requestEcho: freeze({
+      mode: "chunked",
+      lastDays,
+      chunkDays,
+      participantMin,
+      format,
+      // Never echo Authorization.
+    }),
+  });
 }
 
 function standingPlacement(standing, index) {

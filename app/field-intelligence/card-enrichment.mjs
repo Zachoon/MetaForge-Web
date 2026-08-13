@@ -105,7 +105,9 @@ export async function resolveCardNames(names = [], options = {}) {
         const keys = [
           card.name,
           scryfallLookupName(card.name),
-          ...(card.card_faces || []).map((face) => face.name),
+          card.flavor_name,
+          card.printed_name,
+          ...(card.card_faces || []).flatMap((face) => [face.name, face.flavor_name, face.printed_name]),
         ].filter(Boolean);
         for (const key of keys) {
           byLookup.set(normalized(key), enriched);

@@ -233,9 +233,9 @@ test("only requiresVerification failures reset the Turnstile widget; NETWORK_RAT
 // boundary. The heading strings are each unique in the file and appear in
 // source order, so slicing between them isolates exactly one branch's JSX.
 function forgeFailureBranches(source) {
-  const alreadyUsedStart = source.indexOf("YOUR FREE PREVIEW IS SPENT");
-  const networkStart = source.indexOf("TOO MANY ATTEMPTS FROM THIS NETWORK");
-  const retryableStart = source.indexOf("THE METAL DID NOT SET");
+  const alreadyUsedStart = source.indexOf("This free preview Forge has already been used");
+  const networkStart = source.indexOf("This network has reached today's Forge limit");
+  const retryableStart = source.indexOf("No incomplete deck was saved");
   const blockEnd = source.indexOf("The Forge is waiting for a valid commission");
   assert.ok(alreadyUsedStart > 0 && networkStart > alreadyUsedStart, "expected the GUEST_PREVIEW_ALREADY_USED branch heading before the NETWORK_RATE_LIMITED heading");
   assert.ok(retryableStart > networkStart && blockEnd > retryableStart, "expected the retryable-branch heading before the end of the failure block");
@@ -258,7 +258,7 @@ test("the failure UI renders a distinct, non-contradictory branch per error code
   assert.doesNotMatch(network, /Strike the Anvil Again/, "the network limiter must never present a retry button pretending an immediate retry can work");
   assert.doesNotMatch(network, /card-data|catalog/i, "the network limiter must never render catalog/card-data failure language");
   assert.doesNotMatch(network, /No incomplete deck was saved/i, "the network limiter must never render incomplete-generation language");
-  assert.match(network, /Sign in \/ create account/, "the network limiter must offer the sign-in path");
+  assert.match(network, /Sign in/, "the network limiter must offer the sign-in path");
 
   assert.match(retryable, /Strike the Anvil Again/);
   assert.doesNotMatch(retryable, /already been used|preview is spent/i, "retryable failures must never claim the preview was already used");

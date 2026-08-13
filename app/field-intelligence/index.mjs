@@ -41,6 +41,7 @@ export {
 
 export {
   fetchTopDeckTournaments,
+  fetchTopDeckTournamentsChunked,
   normalizeTopDeckTournament,
   normalizeTopDeckCorpus,
   TOPDECK_MISSING_KEY,
@@ -142,8 +143,21 @@ export {
   observationsFromArtifact,
   observationsFromPrincipleRegistry,
   writeResearchIndex,
+  readResearchIndex,
+  summarizeResearchDelta,
 } from "./research-store.mjs";
 export { measureCorpusGrowth } from "./corpus-growth.mjs";
+export {
+  planDayChunks,
+  defaultLiveCacheDir,
+  topdeckChunkCacheKey,
+  DEFAULT_CHUNK_DAYS,
+} from "./live-ingest-cache.mjs";
+export {
+  buildSourceHealthDashboard,
+  provenanceSourceLabel,
+  STATUS_LABEL,
+} from "./source-health.mjs";
 
 // Strategic Principle Engine — observation only
 export {

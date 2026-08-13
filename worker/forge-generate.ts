@@ -26,7 +26,7 @@ import {
 } from "../app/native-masterwork-engine.mjs";
 import { userKey } from "./account-bench";
 import { checkRateLimit, readJsonWithLimit } from "./api-hardening";
-import { storeGeneration } from "./forge-generation-store";
+import { buildClientNativeReport, storeGeneration } from "./forge-generation-store";
 import { isValidReviewFocus } from "../app/review-focus.mjs";
 import { evaluateReviewFocus } from "../app/review-focus-reasoning.mjs";
 import {
@@ -634,6 +634,10 @@ export async function generateForgeResult(request: Request, env: Env, key: strin
         recoveryDiagnostics: (nativeReport.selected as any)?.recoveryDiagnostics,
       });
       const persistenceStart = Date.now();
+      // Persistence is best-effort: a finished nativeReport must still
+      // reach the browser if forge_generations cannot accept the blob
+      // (D1 size / transient write). Missing generationId only degrades
+      // Testing Anvil / multi-refill — never the Masterwork itself.
       const generationId = await storeGeneration(env, key, {
         selected: nativeReport.selected,
         candidates: nativeReport.candidates,
@@ -649,13 +653,16 @@ export async function generateForgeResult(request: Request, env: Env, key: strin
       });
       const persistenceMs = Date.now() - persistenceStart;
       const finalSize = (nativeReport.selected as any)?.rows.reduce((sum: number, row: any) => sum + row.quantity, 0) ?? null;
+      // Slim the wire payload: structuralAnalysis / forensics are multi-MB
+      // and the client re-fetches analysis separately. cardPool stays
+      // server-side under generationId; only echo it when persistence
+      // failed so the browser still has a degraded local pool.
       return {
         status: 200,
         body: {
-          nativeReport,
-          cardPool: resolution.pool,
+          nativeReport: buildClientNativeReport(nativeReport),
           colors: pool.colors,
-          generationId,
+          ...(generationId ? { generationId } : { cardPool: resolution.pool }),
           importWarnings: { unresolvedNames: resolution.unresolvedNames, illegalNames: resolution.illegalNames },
           // Only the imported/refine path carries a reviewFocus selection
           // today (the entrance chip only renders in that chamber — see
@@ -729,6 +736,7 @@ export async function generateForgeResult(request: Request, env: Env, key: strin
       recoveryDiagnostics: (nativeReport.selected as any)?.recoveryDiagnostics,
     });
     const persistenceStart = Date.now();
+    // Persistence is best-effort — see imported-path comment above.
     const generationId = await storeGeneration(env, key, {
       selected: nativeReport.selected,
       candidates: nativeReport.candidates,
@@ -746,7 +754,11 @@ export async function generateForgeResult(request: Request, env: Env, key: strin
     const finalSize = (nativeReport.selected as any)?.rows.reduce((sum: number, row: any) => sum + row.quantity, 0) ?? null;
     return {
       status: 200,
-      body: { nativeReport, cardPool: pool.cards, colors: pool.colors, generationId },
+      body: {
+        nativeReport: buildClientNativeReport(nativeReport),
+        colors: pool.colors,
+        ...(generationId ? { generationId } : { cardPool: pool.cards }),
+      },
       timing: { catalogMs, generationMs, validationMs, persistenceMs, scryfallRequestCount: counter.count, candidateCount, targetSize: target, finalSize },
     };
   } catch (error) {
@@ -766,15 +778,24 @@ export async function generateForgeResult(request: Request, env: Env, key: strin
     // from a genuine unhandled exception so the two failure classes
     // don't drown each other out in logs.
     const structuralExhaustion = error instanceof Error && /could not fill \d+ spell slot|failed a hard gate|could not adapt your list/.test(error.message);
+    const failureCategory = structuralExhaustion ? "CONSTRUCTION_EXHAUSTED" : "UNEXPECTED_EXCEPTION";
     logConstructionOutcome({
       outcome: "incomplete",
       format: body.format,
       commanderName: body.commander?.name,
       target,
-      failureCategory: structuralExhaustion ? "CONSTRUCTION_EXHAUSTED" : "UNEXPECTED_EXCEPTION",
+      failureCategory,
       failureMessage: error instanceof Error ? error.message : String(error),
     });
     if (!structuralExhaustion) console.error("forge-generate failed", error);
-    return { status: 500, body: { error: "The native Forge could not complete this candidate. Try again or adjust the commission.", code: "GENERATION_FAILED" }, timing };
+    return {
+      status: 500,
+      body: {
+        error: "The native Forge could not complete this candidate. Try again or adjust the commission.",
+        code: "GENERATION_FAILED",
+        failureCategory,
+      },
+      timing,
+    };
   }
 }

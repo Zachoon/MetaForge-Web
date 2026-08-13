@@ -18,11 +18,12 @@ const benchCss = fs.readFileSync(new URL("../app/deck-bench-dock.css", import.me
 test("the masterworks chamber renders the engine's own real candidates, not a templated MasterworkCard", () => {
   assert.doesNotMatch(page, /function MasterworkCard\(/, "the templated reveal-ceremony component is retired");
   assert.match(page, /pendingCandidateChoice\.nativeReport\.candidates/);
-  assert.match(page, /key={candidate\.id}/);
+  assert.match(page, /key=\{build\.id\}/);
+  assert.match(page, /enterMasterwork\(candidate\.id\)/);
 });
 
 test("entering a Masterwork is a real, keyboard-focusable button, not a bare clickable div", () => {
-  assert.match(page, /<button type="button" onClick={\(\) => enterMasterwork\(candidate\.id\)}>/);
+  assert.match(page, /<button type="button" onClick=\{\(\) => enterMasterwork\(candidate\.id\)\}>/);
 });
 
 test("reduced motion is honored for every new animation, not just some", () => {
@@ -65,10 +66,8 @@ test("major player milestones use choreographed sequences while reduced motion s
 test("the workbench replaces the long Forge Path with three task-focused destinations", () => {
   assert.doesNotMatch(page, /className="forge-path"/);
   assert.doesNotMatch(page, /YOUR FORGE PATH/);
-  assert.match(page, /\[1, "Deck"/);
-  assert.match(page, /\[2, "Tune"/);
-  assert.match(page, /\[5, "Test"/);
-  assert.match(page, /YOUR ACTIVE COACHING PLAN/);
+  assert.match(page, /LivingWorkbench/);
+  assert.match(page, /activeForgeChapter.*1 \| 2 \| 5/);
   assert.match(page, /id="match-evidence"/);
 });
 

@@ -1,0 +1,20 @@
+{
+  "version": "alpha-coach-metrics-v1",
+  "analysesCompleted": 0,
+  "coachBriefViewRate": 0,
+  "whyExplanationOpenRate": 0,
+  "confidenceDrilldownRate": 0,
+  "recommendationViewRate": 0,
+  "helpfulNotHelpfulRatio": 0,
+  "feedbackTotal": 0,
+  "wrongPlanFeedbackCount": 0,
+  "confidenceDistribution": {
+    "high": 0,
+    "moderate": 0,
+    "limited": 0
+  },
+  "guestVsSignedInFeedback": {
+    "guest": 0,
+    "signedIn": 0
+  }
+}

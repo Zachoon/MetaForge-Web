@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /founder
+Disallow: /profile
+Sitemap: https://metaforge.gg/sitemap.xml
+Host: metaforge.gg

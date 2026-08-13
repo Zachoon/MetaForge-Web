@@ -276,7 +276,7 @@ test("one-slot lab ranks by whole-deck delta rather than isolated card score", (
     { format: "Commander", strategy: "Balanced midrange", target: 100, strategicIntent: intent, limit: 3 },
   );
   assert.ok(ranked.experiments.length >= 1);
-  assert.ok(ranked.experiments[0].strategicDelta);
+  assert.ok(ranked.experiments[0].delta);
 });
 
 test("swapping a package-critical card shows strongly negative counterfactual delta", () => {

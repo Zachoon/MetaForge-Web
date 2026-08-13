@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-10T14:33:18.064Z",
+  "generatedAt": "2026-08-13T02:03:14.700Z",
   "aggregate": {
     "total": 13,
     "passed": 13,
@@ -23,28 +23,28 @@
       "interaction_graph_failure": 9
     },
     "runtime": {
-      "medianMs": 2389,
-      "p95Ms": 6151,
+      "medianMs": 2919,
+      "p95Ms": 9319,
       "slowest": [
         {
           "id": "aristocrats",
-          "ms": 6151
+          "ms": 9319
         },
         {
           "id": "spellslinger",
-          "ms": 4986
+          "ms": 5742
         },
         {
           "id": "equipment-voltron",
-          "ms": 4042
+          "ms": 5325
         },
         {
           "id": "pearl-ear-auras",
-          "ms": 3702
+          "ms": 4736
         },
         {
-          "id": "blink-etb",
-          "ms": 2635
+          "id": "reanimator",
+          "ms": 3051
         }
       ]
     }
@@ -679,7 +679,7 @@
           }
         ],
         "timing": {
-          "finalizeMs": 4,
+          "finalizeMs": 5,
           "recordMs": 4
         },
         "artifactBytes": 217193
@@ -702,7 +702,7 @@
         "gap": 15.819,
         "underperformed": false
       },
-      "runtimeMs": 3702
+      "runtimeMs": 4736
     },
     {
       "id": "equipment-voltron",
@@ -764,8 +764,8 @@
           }
         ],
         "timing": {
-          "finalizeMs": 7,
-          "recordMs": 3
+          "finalizeMs": 4,
+          "recordMs": 6
         },
         "artifactBytes": 203913
       },
@@ -793,7 +793,7 @@
         "gap": 20.143,
         "underperformed": false
       },
-      "runtimeMs": 4042
+      "runtimeMs": 5325
     },
     {
       "id": "ayula-typal",
@@ -849,8 +849,8 @@
           }
         ],
         "timing": {
-          "finalizeMs": 3,
-          "recordMs": 1
+          "finalizeMs": 4,
+          "recordMs": 2
         },
         "artifactBytes": 190760
       },
@@ -872,7 +872,7 @@
         "gap": 19.937,
         "underperformed": false
       },
-      "runtimeMs": 2219
+      "runtimeMs": 3005
     },
     {
       "id": "token-go-wide",
@@ -937,8 +937,8 @@
           }
         ],
         "timing": {
-          "finalizeMs": 3,
-          "recordMs": 4
+          "finalizeMs": 7,
+          "recordMs": 1
         },
         "artifactBytes": 211249
       },
@@ -967,7 +967,7 @@
         "gap": 9.789,
         "underperformed": false
       },
-      "runtimeMs": 1748
+      "runtimeMs": 2919
     },
     {
       "id": "aristocrats",
@@ -1031,10 +1031,10 @@
           }
         ],
         "timing": {
-          "finalizeMs": 7,
-          "recordMs": 4
+          "finalizeMs": 12,
+          "recordMs": 3
         },
-        "artifactBytes": 243523
+        "artifactBytes": 243524
       },
       "weakSlotForensics": {
         "weakSlotCount": 2,
@@ -1061,7 +1061,7 @@
         "gap": -4.598,
         "underperformed": false
       },
-      "runtimeMs": 6151
+      "runtimeMs": 9319
     },
     {
       "id": "reanimator",
@@ -1126,8 +1126,8 @@
           }
         ],
         "timing": {
-          "finalizeMs": 3,
-          "recordMs": 0
+          "finalizeMs": 2,
+          "recordMs": 1
         },
         "artifactBytes": 233303
       },
@@ -1155,7 +1155,7 @@
         "gap": 15.491,
         "underperformed": false
       },
-      "runtimeMs": 2462
+      "runtimeMs": 3051
     },
     {
       "id": "spellslinger",
@@ -1224,8 +1224,8 @@
           }
         ],
         "timing": {
-          "finalizeMs": 8,
-          "recordMs": 1
+          "finalizeMs": 6,
+          "recordMs": 2
         },
         "artifactBytes": 247157
       },
@@ -1247,7 +1247,7 @@
         "gap": 16.907,
         "underperformed": false
       },
-      "runtimeMs": 4986
+      "runtimeMs": 5742
     },
     {
       "id": "landfall",
@@ -1307,8 +1307,8 @@
           }
         ],
         "timing": {
-          "finalizeMs": 3,
-          "recordMs": 1
+          "finalizeMs": 5,
+          "recordMs": 2
         },
         "artifactBytes": 222043
       },
@@ -1336,7 +1336,7 @@
         "gap": -0.238,
         "underperformed": false
       },
-      "runtimeMs": 2389
+      "runtimeMs": 2644
     },
     {
       "id": "blink-etb",
@@ -1394,8 +1394,8 @@
           }
         ],
         "timing": {
-          "finalizeMs": 3,
-          "recordMs": 0
+          "finalizeMs": 4,
+          "recordMs": 5
         },
         "artifactBytes": 216621
       },
@@ -1423,7 +1423,7 @@
         "gap": 18.257,
         "underperformed": false
       },
-      "runtimeMs": 2635
+      "runtimeMs": 2555
     },
     {
       "id": "artifacts",
@@ -1475,7 +1475,7 @@
           }
         ],
         "timing": {
-          "finalizeMs": 2,
+          "finalizeMs": 1,
           "recordMs": 0
         },
         "artifactBytes": 211301
@@ -1498,7 +1498,7 @@
         "gap": 23.816,
         "underperformed": false
       },
-      "runtimeMs": 1862
+      "runtimeMs": 1826
     },
     {
       "id": "stax",
@@ -1554,7 +1554,7 @@
           }
         ],
         "timing": {
-          "finalizeMs": 2,
+          "finalizeMs": 1,
           "recordMs": 2
         },
         "artifactBytes": 206431
@@ -1577,7 +1577,7 @@
         "gap": 23.355,
         "underperformed": false
       },
-      "runtimeMs": 1418
+      "runtimeMs": 1493
     },
     {
       "id": "combo-partners",
@@ -1640,7 +1640,7 @@
         ],
         "timing": {
           "finalizeMs": 1,
-          "recordMs": 1
+          "recordMs": 0
         },
         "artifactBytes": 212048
       },
@@ -1669,7 +1669,7 @@
         "gap": 26.541,
         "underperformed": false
       },
-      "runtimeMs": 1676
+      "runtimeMs": 1617
     },
     {
       "id": "multiplan-commander",
@@ -1727,8 +1727,8 @@
           }
         ],
         "timing": {
-          "finalizeMs": 4,
-          "recordMs": 0
+          "finalizeMs": 2,
+          "recordMs": 2
         },
         "artifactBytes": 195383
       },
@@ -1750,7 +1750,7 @@
         "gap": 14.845,
         "underperformed": false
       },
-      "runtimeMs": 1970
+      "runtimeMs": 1954
     }
   ]
 }

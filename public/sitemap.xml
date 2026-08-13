@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://metaforge.gg/</loc>
-    <lastmod>2026-08-02</lastmod>
+    <lastmod>2026-08-11</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
@@ -18,4 +18,11 @@
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
+  <url><loc>https://metaforge.gg/academy</loc><lastmod>2026-08-07</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://metaforge.gg/academy/why-cant-i-cast-my-spells</loc><lastmod>2026-08-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/academy/why-do-i-run-out-of-cards</loc><lastmod>2026-08-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/academy/why-does-my-deck-start-so-slowly</loc><lastmod>2026-08-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/academy/how-much-interaction-do-i-actually-need</loc><lastmod>2026-08-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/academy/why-do-i-lose-after-getting-ahead</loc><lastmod>2026-08-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/academy/what-is-my-deck-actually-trying-to-do</loc><lastmod>2026-08-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
 </urlset>

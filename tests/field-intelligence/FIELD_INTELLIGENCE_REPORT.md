@@ -1,7 +1,43 @@
-# MetaForge Field Intelligence — Strategic Principles + Relationship Mining
+# MetaForge Academy Report
+
+## Provenance
+```
+Generated:              2026-08-13T01:51:49.402Z
+Observation Window:     60 days
+Events:                 16
+Decks:                  128
+Commanders:             7
+TopDeck:                NOT ATTEMPTED
+Spicerack:              NOT ATTEMPTED
+EDHTop16:               NOT ATTEMPTED
+Synthetic Fixtures:     FIXTURE_RUN
+Corpus Mode:            fixture
+```
+
+## Source health
+- **topdeck**: NOT ATTEMPTED — latency=n/ams events=0 decks=0
+  - not_attempted
+- **spicerack**: NOT ATTEMPTED — latency=n/ams events=0 decks=0
+  - not_attempted
+- **edhtop16**: NOT ATTEMPTED — latency=n/ams events=0 decks=0
+  - not_attempted
 
 Brain v1 remains frozen. Principles never activate construction. Exp001 remains rejected.
 Success criterion: discover strategic principles no human explicitly taught MetaForge.
+Observation only — no Brain mutations, experiments, or promotions.
+
+## Observation window
+```
+Last Days:                60
+Maximum Events:           40
+Maximum Decks/Event:      20
+Minimum Participants:     16
+Formats:                  Commander / cEDH
+Prefer Top Cut:           true
+Include Lower Comparison: true
+Persistence:              append-only research store
+Deduplicate:              true
+```
 
 ## North star
 Learn how elite players connect cards into functioning strategic systems — not merely which cards, roles, or quantities appear in winning decks.
@@ -16,8 +52,8 @@ Learn how elite players connect cards into functioning strategic systems — not
 - Performance class distribution: `{"repeated_converter":48,"tournament_participant":80}`
 
 ## Forge Academy — Principle lessons
-- Principle count: **71**
-- By status: `{"candidate":25,"replicated_candidate":6,"promotable":40,"mixed":0,"contradicted":0,"rejected":0}`
+- Principle count: **133**
+- By status: `{"candidate":72,"replicated_candidate":8,"promotable":42,"mixed":5,"contradicted":6,"rejected":0}`
 - writesToBrain: **false**
 - activateBrain: **false**
 
@@ -93,7 +129,16 @@ Learn how elite players connect cards into functioning strategic systems — not
 - Finding: Reanimator-shaped success covers the full structural chain rather than isolated recursion pieces.
 - Lesson: Academy lesson: Graveyard plans need fill, reanimation, and protection together. Reanimator-shaped success covers the full structural chain rather than isolated recursion pieces. Structural sequence dependencies are not reconstructed game orders. Candidate only — Brain unchanged.
 
-### Observation #9 — Mana acceleration should unlock commander-linked payoffs
+### Observation #9 — Graveyard plans need fill, reanimation, and protection together
+- Status: **replicated_candidate** (candidate only)
+- Confidence: **0.92**
+- Independent events: **44**
+- Families: n/a
+- Transfer: cross_family
+- Finding: Reanimator-shaped success covers the full structural chain rather than isolated recursion pieces.
+- Lesson: Academy lesson: Graveyard plans need fill, reanimation, and protection together. Reanimator-shaped success covers the full structural chain rather than isolated recursion pieces. Structural sequence dependencies are not reconstructed game orders. Candidate only — Brain unchanged.
+
+### Observation #10 — Mana acceleration should unlock commander-linked payoffs
 - Status: **candidate** (candidate only)
 - Confidence: **0.92**
 - Independent events: **0**
@@ -101,15 +146,6 @@ Learn how elite players connect cards into functioning strategic systems — not
 - Transfer: cross_family
 - Finding: Acceleration without a convert/close path is a weaker structural signal than sequenced mana → commander → payoff.
 - Lesson: Academy lesson: Mana acceleration should unlock commander-linked payoffs. Acceleration without a convert/close path is a weaker structural signal than sequenced mana → commander → payoff. Structural sequence dependencies are not reconstructed game orders. Candidate only — Brain unchanged.
-
-### Observation #10 — Setup must reach an engine before a payoff
-- Status: **candidate** (candidate only)
-- Confidence: **0.92**
-- Independent events: **0**
-- Families: n/a
-- Transfer: cross_family
-- Finding: Structural chains of setup → engine → payoff recur in successful lists; decklist order is not play order.
-- Lesson: Academy lesson: Setup must reach an engine before a payoff. Structural chains of setup → engine → payoff recur in successful lists; decklist order is not play order. Structural sequence dependencies are not reconstructed game orders. Candidate only — Brain unchanged.
 
 ## Promotable principles (NOT activated)
 - sp:structure::commanderconnectedcount::high_greater::pearl-ear, imperial advisor: conf=0.96 events=4 — Structural signal on commanderConnectedCount
@@ -119,7 +155,7 @@ Learn how elite players connect cards into functioning strategic systems — not
 - sp:structure::package::high_greater::pearl-ear, imperial advisor: conf=0.96 events=4 — Structural signal on packageCore
 - sp:structure::protection::high_greater::pearl-ear, imperial advisor: conf=0.96 events=4 — Structural signal on ix_protection
 - sp:structure::redundancy::high_greater::pearl-ear, imperial advisor: conf=0.96 events=4 — Structural signal on redundancy
-- sp:structure::commanderconnectedcount::high_greater::test grave tutor: conf=0.81 events=2 — Structural signal on commanderConnectedCount
+- sp:structure::curvelow::high_lesser::kinnan, bonder prodigy: conf=0.9 events=3 — Structural signal on curveLow
 
 ## Corpus growth / marginal evidence
 ```json
@@ -134,7 +170,7 @@ Learn how elite players connect cards into functioning strategic systems — not
     "levelATopologyCohorts": 16,
     "replicatedHypotheses": 46,
     "discoveryCandidates": 78,
-    "principles": 71,
+    "principles": 133,
     "promotablePrinciples": 12
   },
   "prior": {
@@ -156,7 +192,7 @@ Learn how elite players connect cards into functioning strategic systems — not
     "levelATopologyCohorts": 16,
     "replicatedHypotheses": 46,
     "discoveryCandidates": 78,
-    "principles": 71,
+    "principles": 133,
     "promotablePrinciples": 12
   },
   "marginalEvidencePerNewEvent": {
@@ -164,7 +200,7 @@ Learn how elite players connect cards into functioning strategic systems — not
     "levelATopologyCohorts": 1,
     "replicatedHypotheses": 2.875,
     "discoveryCandidates": 4.875,
-    "principles": 4.438,
+    "principles": 8.313,
     "decks": 8
   },
   "preferControlledComparisonsOverVolume": true

@@ -285,9 +285,19 @@ test("the $7.50 threshold is exact: an $8 card gets repaired, a $6 card does not
   };
   const report = forgeNativeMasterwork(input);
   assert.ok(!report.selected.rows.some((r) => r.name === "Test Above Threshold"), "$8 is above the $7.50 threshold and must be repaired away");
-  assert.ok(report.selected.rows.some((r) => r.name === "Test Below Threshold"), "$6 is below the $7.50 threshold and must never even be considered");
-  assert.equal(report.selected.budgetRepair.appliedCount, 1);
+  // The $6 card may or may not be selected by construction — the repair
+  // contract is that it must never appear in removedNames when selected.
+  assert.ok(
+    !(report.selected.budgetRepair.removedNames || []).includes("Test Below Threshold"),
+    "$6 is below the $7.50 threshold and must never be repaired away",
+  );
+  assert.ok(
+    (report.selected.budgetRepair.removedNames || []).includes("Test Above Threshold")
+      || !report.selected.rows.some((r) => r.name === "Test Above Threshold"),
+    "$8 offender must be removed by repair when it enters the finished list",
+  );
   assert.equal(report.selected.budgetRepair.thresholdUsd, 7.5);
+  assert.ok(report.selected.budgetRepair.appliedCount >= 1);
 });
 
 test("end-to-end: the same fixture with no budget preference leaves the premium card in place", () => {

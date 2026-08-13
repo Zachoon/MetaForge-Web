@@ -136,10 +136,10 @@ test("the experiment tablet's purchase link builds a name-only search link for t
 });
 
 test("the tablet purchase link renders only inside the ADD figure, never the CUT figure", () => {
-  const cutFigure = page.match(/<figure>\s*<img src=\{cardImage\(tablet\.change\.cut\)\}[\s\S]*?<\/figure>/)?.[0];
+  const cutFigure = page.match(/<figure>\s*<button[\s\S]*?cardImage\(tablet\.change\.cut\)[\s\S]*?<\/figure>/)?.[0];
   assert.ok(cutFigure, "expected to find the CUT figure");
   assert.doesNotMatch(cutFigure, /tablet-purchase-link|buildTcgplayerLink|TCGplayer/i);
-  const addFigure = page.match(/<figure>\s*<img src=\{cardImage\(tablet\.change\.add\)\}[\s\S]*?<\/figure>/)?.[0];
+  const addFigure = page.match(/<figure>\s*<button[\s\S]*?cardImage\(tablet\.change\.add\)[\s\S]*?<\/figure>/)?.[0];
   assert.ok(addFigure, "expected to find the ADD figure");
   assert.match(addFigure, /className="tablet-purchase-link"/);
   assert.match(addFigure, />\s*Buy on TCGplayer\s*<\/a>/);
@@ -150,10 +150,10 @@ test("the tablet purchase link renders only inside the ADD figure, never the CUT
 });
 
 test("\"Accept this experiment\" remains present and untouched as the tablet's primary action", () => {
-  const tabletCardBlock = page.match(/const tabletPurchaseLink[\s\S]{0,5000}Accept this experiment/)?.[0];
+  const tabletCardBlock = page.match(/const tabletPurchaseLink[\s\S]{0,12000}Accept this experiment/)?.[0];
   assert.ok(tabletCardBlock, "expected to find the Accept button within the same tablet card as the purchase link");
   assert.match(tabletCardBlock, /className="tablet-accept"/);
-  assert.match(tabletCardBlock, /onClick=\{\(\) => applyExperimentTablet\(tablet\)\}/);
+  assert.match(tabletCardBlock, /onClick=\{\(\) => \{[\s\S]*?applyExperimentTablet\(tablet\)/);
 });
 
 test("no deck-level \"Shop Missing Cards\"\\/\"Buy on TCGplayer\" CTA exists near the deck price bar — deferred pending cart-deep-link verification", () => {

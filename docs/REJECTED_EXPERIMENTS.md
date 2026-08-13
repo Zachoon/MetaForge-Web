@@ -96,3 +96,27 @@ New evidence supports a **representational** change (interaction topology / rela
 
 See: `docs/INTERACTION_TOPOLOGY_RESEARCH.md`  
 See: `docs/BRAIN_V2_EXP001_INTERACTION.md`
+
+---
+
+## Sim-Lab-001 — Topology vs interaction count (recovery)
+
+| Field | Value |
+|---|---|
+| ID | `Sim-Lab-001` |
+| Date | 2026-08-11 |
+| Status | **rejected** for promotion (sandbox Laboratory) |
+| Control | interaction-count predictor |
+| Brain | unchanged (`writesToBrain: false`) |
+
+### Precise rejection
+
+Rejected because the **current topology abstraction** does not outperform interaction count for structural recovery on live elite Commander — **not** because topology cannot matter.
+
+Fixture-negative survived on live evidence.
+
+Full Archive card: `docs/archive/SIM_LAB_001_REJECTION.md`  
+Academy follow-on (Proxy Decomposition, complete): `tests/field-intelligence/ACADEMY_INTERACTION_COUNT_DOESNT_WIN.md`  
+(alias: `ACADEMY_WHY_INTERACTION_COUNT_STILL_WINS.md`)  
+Named latent: **Strategic Coverage** · primary residual label `latent_lead:multifunctionCount`  
+Next Academy sprint: `docs/STRATEGIC_COVERAGE.md` (observation only). Sim-Lab-002 not run. Brain unchanged.

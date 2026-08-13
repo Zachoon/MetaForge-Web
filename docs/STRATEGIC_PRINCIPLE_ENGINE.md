@@ -44,6 +44,7 @@ After each FI run:
 
 ## Related
 
+- `docs/INTELLIGENCE_CONSTITUTION.md` — Academy vs Laboratory vs Harness vs Brain vs Archive
 - `docs/FIELD_INTELLIGENCE_V1_3.md`
 - `docs/INTERACTION_TOPOLOGY_RESEARCH.md`
 - `docs/REJECTED_EXPERIMENTS.md`

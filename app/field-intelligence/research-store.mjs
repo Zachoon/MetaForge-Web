@@ -251,3 +251,61 @@ export function writeResearchIndex(storeDir, summary = {}) {
   }, null, 2));
   return path;
 }
+
+export function readResearchIndex(storeDir) {
+  const path = join(storeDir, "index.json");
+  if (!existsSync(path)) return null;
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Answer: "What changed since last run?"
+ */
+export function summarizeResearchDelta({
+  priorIndex = null,
+  appendResult = null,
+  currentArtifact = null,
+} = {}) {
+  const current = {
+    events: currentArtifact?.corpus?.eventsRepresented || 0,
+    decks: currentArtifact?.corpus?.decksAnalyzed || 0,
+    commanders: currentArtifact?.corpus?.uniqueCommanders || 0,
+    principles: currentArtifact?.strategicPrincipleRegistry?.principleCount || 0,
+    corpusMode: currentArtifact?.provenance?.corpusMode || null,
+    generatedAt: currentArtifact?.generatedAt || null,
+  };
+  const prior = {
+    events: priorIndex?.snapshot?.events ?? priorIndex?.events ?? 0,
+    decks: priorIndex?.snapshot?.decks ?? priorIndex?.decks ?? 0,
+    commanders: priorIndex?.snapshot?.commanders ?? 0,
+    principles: priorIndex?.snapshot?.principles ?? priorIndex?.principleCount ?? 0,
+    totalRows: priorIndex?.totalRows ?? 0,
+    generatedAt: priorIndex?.lastRun || priorIndex?.updatedAt || null,
+    corpusMode: priorIndex?.snapshot?.corpusMode || priorIndex?.corpusMode || null,
+  };
+
+  return freeze({
+    version: "research-delta-v1",
+    questionAnswered: "What changed since last run?",
+    priorRunAt: prior.generatedAt,
+    currentRunAt: current.generatedAt,
+    append: freeze({
+      written: appendResult?.written ?? 0,
+      skipped: appendResult?.skipped ?? 0,
+      path: appendResult?.path || null,
+    }),
+    deltas: freeze({
+      events: current.events - prior.events,
+      decks: current.decks - prior.decks,
+      commanders: current.commanders - prior.commanders,
+      principles: current.principles - prior.principles,
+      storeRowsWritten: appendResult?.written ?? 0,
+    }),
+    current: freeze(current),
+    prior: freeze(prior),
+  });
+}

@@ -4,15 +4,18 @@ import PrivacyControls from "./privacy-controls";
 
 export function generateMetadata(): Metadata {
   const metadataBase = new URL("https://metaforge.gg");
-  const title = "MetaForge — Forge a Better Deck";
-  const description = "Choose a Magic: The Gathering commander and strategy. Get a complete deck, clear explanations, and optional improvements.";
+  const title = "MetaForge — Your Collaborative MTG Deck Coach";
+  const description = "Understand your Commander or MTG deck, find pressure points, and test confident improvements with an explainable, collaborative deck coach.";
 
   return {
     metadataBase,
     title,
     description,
+    alternates: { canonical: "/" },
+    robots: { index: true, follow: true },
+    category: "games",
     icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
-    openGraph: { title, description, type: "website", images: [{ url: "/og.png", width: 1200, height: 630, alt: "MetaForge — Stop guessing. Forge a better deck." }] },
+    openGraph: { title, description, type: "website", url: "/", siteName: "MetaForge", locale: "en_US", images: [{ url: "/og.png", width: 1200, height: 630, alt: "MetaForge — collaborative MTG deck coaching" }] },
     twitter: { card: "summary_large_image", title, description, images: ["/og.png"] },
   };
 }

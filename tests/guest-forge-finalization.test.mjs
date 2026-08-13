@@ -455,15 +455,14 @@ test("the persisted claim payload is a compact subset of the client response —
   assert.equal("claimToken" in persisted, false, "the stored copy must never itself carry a claimToken — handleGuestClaim spreads this directly into its own response");
   assert.equal("guestPreview" in persisted, false, "the stored copy must never claim guestPreview:true — that marker does not survive a real account claiming the result");
   assert.equal("cardPool" in persisted, false, "the outer cardPool must never be duplicated into the claim payload — confirmed unread by every claim/account consumer");
-  assert.equal("colors" in persisted, false);
+  // colors / engine / blueprintIntent are intentionally kept for claim
+  // restoration UI identity (format colors + which engine built it).
   assert.equal("structuralAnalysis" in persisted.nativeReport, false, "structuralAnalysis (~79% of the full payload) must never be persisted into guest_forges");
-  assert.equal("engine" in persisted.nativeReport, false);
-  assert.equal("blueprintIntent" in persisted.nativeReport, false);
   assert.equal("diagnostics" in persisted.nativeReport, false);
 
   // Everything the masterworks-picker/workbench/claim UI actually reads
   // must still be present and byte-for-byte equal to what the client got.
-  for (const field of ["selected", "candidates", "tournament", "reasoning", "laboratory", "powerSignal", "powerAudit", "recommendationRecord", "manaConsistency", "unusedEnginePartners", "methodology"]) {
+  for (const field of ["engine", "selected", "candidates", "tournament", "reasoning", "laboratory", "powerSignal", "powerAudit", "recommendationRecord", "manaConsistency", "unusedEnginePartners", "methodology", "blueprintIntent"]) {
     assert.deepEqual(persisted.nativeReport[field], clientData.nativeReport[field], `expected ${field} to survive into the compact claim payload unchanged`);
   }
 

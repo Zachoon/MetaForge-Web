@@ -10,7 +10,10 @@ import {
   observationsFromArtifact,
   writeResearchIndex,
   readResearchStore,
+  readResearchIndex,
+  summarizeResearchDelta,
 } from "../../app/field-intelligence/research-store.mjs";
+import { defaultLiveCacheDir } from "../../app/field-intelligence/live-ingest-cache.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const outDir = __dirname;
@@ -39,11 +42,57 @@ function loadLocalEnv() {
 
 loadLocalEnv();
 
+/** Parse `--flag value` or `--flag=value` from argv. */
+function argValue(flag) {
+  const argv = process.argv.slice(2);
+  const eq = argv.find((a) => a.startsWith(`${flag}=`));
+  if (eq) return eq.slice(flag.length + 1);
+  const idx = argv.indexOf(flag);
+  if (idx >= 0 && argv[idx + 1] && !argv[idx + 1].startsWith("--")) return argv[idx + 1];
+  return null;
+}
+
+function argInt(flag, fallback) {
+  const raw = argValue(flag);
+  if (raw == null || raw === "") return fallback;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 const tryLive = process.argv.includes("--live");
 const persistResearch = tryLive || process.argv.includes("--persist-research");
 
+// Phase 1 Academy observation defaults (live). Fixture runs keep pipeline defaults.
+const observationWindow = Object.freeze({
+  lastDays: argInt("--last-days", tryLive ? 90 : undefined),
+  maxEvents: argInt("--max-events", tryLive ? 75 : undefined),
+  maxDecksPerEvent: argInt("--max-decks-per-event", tryLive ? 24 : undefined),
+  participantMin: argInt("--participant-min", tryLive ? 16 : undefined),
+});
+
 const storePath = defaultResearchStorePath(outDir);
+const storeDir = join(outDir, "research-store");
 const priorStore = readResearchStore(storePath);
+const priorIndex = readResearchIndex(storeDir);
+const liveCacheDir = defaultLiveCacheDir(outDir);
+
+console.log("MetaForge Academy — Observation Window");
+console.log("--------------------------------------");
+console.log(`Mode:                      ${tryLive ? "LIVE observation" : "fixture"}`);
+console.log(`Last Days:                 ${observationWindow.lastDays ?? "(pipeline default)"}`);
+console.log(`Maximum Events:            ${observationWindow.maxEvents ?? "(pipeline default)"}`);
+console.log(`Maximum Decks/Event:       ${observationWindow.maxDecksPerEvent ?? "(pipeline default)"}`);
+console.log(`Minimum Participants:      ${observationWindow.participantMin ?? "(pipeline default)"}`);
+console.log("Formats:                   Commander / cEDH");
+console.log("Prefer Top Cut:            true");
+console.log("Include Lower Comparison:  true");
+console.log(`Persistence:               ${persistResearch}`);
+console.log("Deduplicate:               true");
+console.log("Incremental Store:         true (append-only JSONL)");
+console.log(`Live cache:                ${liveCacheDir}`);
+console.log("Brain mutations:           NONE");
+console.log("Experiments / promotions:  NONE");
+console.log("");
 
 const result = await runFieldIntelligenceV1({
   tryLive,
@@ -51,6 +100,12 @@ const result = await runFieldIntelligenceV1({
   topdeckApiKey: process.env.TOPDECK_API_KEY,
   spicerackApiKey: process.env.SPICERACK_API_KEY,
   priorStoreRows: priorStore.rows,
+  liveCacheDir: tryLive ? liveCacheDir : null,
+  onTopDeckProgress: (line) => console.log(`TopDeck: ${line}`),
+  ...(observationWindow.lastDays != null ? { lastDays: observationWindow.lastDays } : {}),
+  ...(observationWindow.maxEvents != null ? { maxEvents: observationWindow.maxEvents } : {}),
+  ...(observationWindow.maxDecksPerEvent != null ? { maxDecksPerEvent: observationWindow.maxDecksPerEvent } : {}),
+  ...(observationWindow.participantMin != null ? { participantMin: observationWindow.participantMin } : {}),
 });
 
 mkdirSync(outDir, { recursive: true });
@@ -58,16 +113,16 @@ const artifactPath = join(outDir, "corpus-intelligence-v1.json");
 const reportPath = join(outDir, "FIELD_INTELLIGENCE_REPORT.md");
 const registryPath = join(outDir, "strategic-principles-registry.json");
 
-writeFileSync(artifactPath, JSON.stringify(result.artifact, null, 2));
-writeFileSync(reportPath, renderReport(result));
-if (result.artifact.strategicPrincipleRegistry) {
-  writeFileSync(registryPath, JSON.stringify(result.artifact.strategicPrincipleRegistry, null, 2));
-}
-
 let researchPersist = null;
+let researchDelta = null;
 if (persistResearch) {
   researchPersist = appendResearchObservations(storePath, observationsFromArtifact(result.artifact));
-  writeResearchIndex(join(outDir, "research-store"), {
+  researchDelta = summarizeResearchDelta({
+    priorIndex,
+    appendResult: researchPersist,
+    currentArtifact: result.artifact,
+  });
+  writeResearchIndex(storeDir, {
     lastRun: result.artifact.generatedAt,
     live: tryLive,
     written: researchPersist.written,
@@ -75,26 +130,97 @@ if (persistResearch) {
     totalRows: readResearchStore(storePath).count,
     principleCount: result.artifact.strategicPrincipleRegistry?.principleCount || 0,
     promotableCount: result.artifact.strategicPrincipleRegistry?.promotable?.length || 0,
+    corpusMode: result.artifact.provenance?.corpusMode || null,
+    snapshot: {
+      events: result.artifact.corpus?.eventsRepresented || 0,
+      decks: result.artifact.corpus?.decksAnalyzed || 0,
+      commanders: result.artifact.corpus?.uniqueCommanders || 0,
+      principles: result.artifact.strategicPrincipleRegistry?.principleCount || 0,
+      corpusMode: result.artifact.provenance?.corpusMode || null,
+    },
+    researchDelta,
   });
 }
 
-console.log(renderReport(result));
+const reportResult = { ...result, researchDelta };
+
+writeFileSync(artifactPath, JSON.stringify(result.artifact, null, 2));
+writeFileSync(reportPath, renderReport(reportResult));
+if (result.artifact.strategicPrincipleRegistry) {
+  writeFileSync(registryPath, JSON.stringify(result.artifact.strategicPrincipleRegistry, null, 2));
+}
+
+console.log(renderReport(reportResult));
 console.log(`\nWrote ${artifactPath}`);
 console.log(`Wrote ${reportPath}`);
 if (result.artifact.strategicPrincipleRegistry) console.log(`Wrote ${registryPath}`);
 if (researchPersist) {
   console.log(`Research store append: written=${researchPersist.written} skipped=${researchPersist.skipped} path=${researchPersist.path}`);
+  if (researchDelta) {
+    console.log(`What changed since last run: eventsΔ=${researchDelta.deltas.events} decksΔ=${researchDelta.deltas.decks} principlesΔ=${researchDelta.deltas.principles} written=${researchDelta.append.written}`);
+  }
 }
 
 function renderReport(result) {
   const a = result.artifact;
   const c = a.corpus;
   const rec = result.recommendation;
+  const p = a.provenance || result.provenance || {};
+  const health = a.sourceHealth || result.sourceHealth;
   const lines = [];
-  lines.push("# MetaForge Field Intelligence — Strategic Principles + Relationship Mining");
+
+  lines.push("# MetaForge Academy Report");
   lines.push("");
+  lines.push("## Provenance");
+  lines.push("```");
+  lines.push(`Generated:              ${p.generatedAt || a.generatedAt || "n/a"}`);
+  lines.push(`Observation Window:     ${p.observationWindowDays ?? result.liveSample?.lastDays ?? "n/a"} days`);
+  lines.push(`Events:                 ${p.events ?? c.eventsRepresented ?? 0}`);
+  lines.push(`Decks:                  ${p.decks ?? c.decksAnalyzed ?? 0}`);
+  lines.push(`Commanders:             ${p.commanders ?? c.uniqueCommanders ?? 0}`);
+  lines.push(`TopDeck:                ${p.topdeck || "n/a"}`);
+  lines.push(`Spicerack:              ${p.spicerack || "n/a"}`);
+  lines.push(`EDHTop16:               ${p.edhtop16 || "n/a"}`);
+  lines.push(`Synthetic Fixtures:     ${p.syntheticFixtures || "n/a"}`);
+  lines.push(`Corpus Mode:            ${p.corpusMode || "n/a"}`);
+  if (p.chunkProgress) lines.push(`Chunk Progress:         ${p.chunkProgress}`);
+  lines.push("```");
+  lines.push("");
+
+  lines.push("## Source health");
+  for (const src of health?.sources || []) {
+    lines.push(`- **${src.id}**: ${src.label} — latency=${src.latencyMs ?? "n/a"}ms events=${src.coverageEvents} decks=${src.coverageDecks}`);
+    if (src.detail) lines.push(`  - ${src.detail}`);
+  }
+  if (!(health?.sources || []).length) lines.push("- (no live sources attempted)");
+  lines.push("");
+
+  if (result.researchDelta) {
+    const d = result.researchDelta;
+    lines.push("## What changed since last run");
+    lines.push(`- Question: ${d.questionAnswered}`);
+    lines.push(`- Prior run: ${d.priorRunAt || "(none)"}`);
+    lines.push(`- Store append: written=${d.append.written} skipped=${d.append.skipped}`);
+    lines.push(`- Deltas: events=${d.deltas.events} decks=${d.deltas.decks} commanders=${d.deltas.commanders} principles=${d.deltas.principles}`);
+    lines.push("");
+  }
+
   lines.push("Brain v1 remains frozen. Principles never activate construction. Exp001 remains rejected.");
   lines.push("Success criterion: discover strategic principles no human explicitly taught MetaForge.");
+  lines.push("Observation only — no Brain mutations, experiments, or promotions.");
+  lines.push("");
+  lines.push("## Observation window");
+  lines.push("```");
+  lines.push(`Last Days:                ${result.liveSample?.lastDays ?? "n/a"}`);
+  lines.push(`Maximum Events:           ${result.liveSample?.maxEvents ?? "n/a"}`);
+  lines.push(`Maximum Decks/Event:      ${result.liveSample?.maxDecksPerEvent ?? "n/a"}`);
+  lines.push(`Minimum Participants:     ${result.liveSample?.participantMin ?? "n/a"}`);
+  lines.push("Formats:                  Commander / cEDH");
+  lines.push(`Prefer Top Cut:           ${result.liveSample?.preferTopCut ?? true}`);
+  lines.push(`Include Lower Comparison: ${result.liveSample?.includeLowerComparison ?? true}`);
+  lines.push("Persistence:              append-only research store");
+  lines.push("Deduplicate:              true");
+  lines.push("```");
   lines.push("");
   lines.push("## North star");
   lines.push("Learn how elite players connect cards into functioning strategic systems — not merely which cards, roles, or quantities appear in winning decks.");
@@ -129,8 +255,8 @@ function renderReport(result) {
   }
   lines.push("");
   lines.push("## Promotable principles (NOT activated)");
-  for (const p of (a.strategicPrincipleRegistry?.promotable || []).slice(0, 8)) {
-    lines.push(`- ${p.id}: conf=${p.confidence} events=${p.evidence?.independentEvents} — ${p.title}`);
+  for (const pRow of (a.strategicPrincipleRegistry?.promotable || []).slice(0, 8)) {
+    lines.push(`- ${pRow.id}: conf=${pRow.confidence} events=${pRow.evidence?.independentEvents} — ${pRow.title}`);
   }
   if (!(a.strategicPrincipleRegistry?.promotable || []).length) lines.push("- (none)");
   lines.push("");
@@ -179,7 +305,7 @@ function renderReport(result) {
   lines.push("");
   lines.push("## Contextual card functions (context-dependent)");
   lines.push(`- Context-dependent cards: **${a.contextualCardFunctions?.contextDependentCards ?? 0}**`);
-  for (const row of (a.contextualCardFunctions?.cards || []).filter((c) => c.contextDependent).slice(0, 10)) {
+  for (const row of (a.contextualCardFunctions?.cards || []).filter((card) => card.contextDependent).slice(0, 10)) {
     lines.push(`- ${row.cardName}: functions=${JSON.stringify(row.functionDistribution)}`);
   }
   lines.push("");

@@ -1,7 +1,7 @@
 import { userKey } from "./account-bench";
 import { checkRateLimit, readJsonWithLimit } from "./api-hardening";
 import { generateForgeResult, type ForgeGenerationResult } from "./forge-generate";
-import { loadGeneration, storeGeneration } from "./forge-generation-store";
+import { buildClientNativeReport, loadGeneration, storeGeneration } from "./forge-generation-store";
 
 interface Env {
   DB: D1Database;
@@ -101,28 +101,31 @@ const PENDING_SESSION_LEASE_MS = 3 * 60 * 1000;
 // the masterworks picker, workbench, and claim-restoration UI genuinely
 // render, matching the field-by-field trace in the P0 finalization report.
 //
-// The immediate browser response (clientBody, below) is intentionally left
-// untouched by this hotfix — buildClientForgePayload is a pass-through, a
-// named seam for a future lazy-loaded-structural-analysis change, not a
-// behavior change today. Only what gets WRITTEN to D1 shrinks.
+// The immediate browser response must stay small enough to survive the
+// Worker→browser hop. Live Commander builds measured ~3.8MB when the full
+// nativeReport (dominated by structuralAnalysis) and cardPool were echoed
+// wholesale — enough to discard an otherwise-finished Masterwork. Analysis
+// is re-fetched via structural-analyze; the pool lives under generationId.
 function buildClientForgePayload(body: Record<string, unknown>): Record<string, unknown> {
-  return body;
+  const nativeReport = body.nativeReport;
+  const clientBody: Record<string, unknown> = {
+    ...body,
+    nativeReport: buildClientNativeReport(nativeReport),
+  };
+  // Prefer the opaque generation handle; only keep cardPool when the
+  // generate path had to skip persistence and already included a pool.
+  if (body.generationId) delete clientBody.cardPool;
+  return clientBody;
 }
 
 function buildGuestClaimPayload(body: Record<string, unknown>): Record<string, unknown> {
-  const nativeReport = (body.nativeReport || {}) as Record<string, unknown>;
-  const compactReport: Record<string, unknown> = {};
-  for (const field of [
-    "selected", "candidates", "tournament", "practicalTiebreak", "reasoning",
-    "laboratory", "powerSignal", "powerAudit", "recommendationRecord",
-    "manaConsistency", "unusedEnginePartners", "methodology",
-  ]) {
-    if (field in nativeReport) compactReport[field] = nativeReport[field];
-  }
-  const claimPayload: Record<string, unknown> = { nativeReport: compactReport };
+  const nativeReport = buildClientNativeReport(body.nativeReport || {});
+  const claimPayload: Record<string, unknown> = { nativeReport };
   // Only present for the imported/refine path; harmless to omit otherwise.
   if ("importWarnings" in body) claimPayload.importWarnings = body.importWarnings;
+  if ("deckUnderstanding" in body) claimPayload.deckUnderstanding = body.deckUnderstanding;
   if ("reviewFocusResult" in body) claimPayload.reviewFocusResult = body.reviewFocusResult;
+  if ("colors" in body) claimPayload.colors = body.colors;
   return claimPayload;
 }
 
@@ -408,8 +411,16 @@ export async function handleGuestClaim(request: Request, env: Env): Promise<Resp
   ).bind(accountKey, Date.now(), claimToken, Date.now()).run();
   if (Number(claimed.meta?.changes || 0) !== 1) return json({ error: "This preview is no longer available" }, 404);
 
+  // Best-effort re-key under the account. Claim restoration still returns
+  // the compact guest response even if forge_generations cannot accept a
+  // second copy — labs degrade without generationId; the deck does not.
   const generationId = await storeGeneration(env, accountKey, loaded.payload);
-  return json({ ...JSON.parse(row.response_json), generationId, claimed: true, claimContext: loaded.payload.options });
+  return json({
+    ...JSON.parse(row.response_json),
+    ...(generationId ? { generationId } : {}),
+    claimed: true,
+    claimContext: loaded.payload.options,
+  });
 }
 
 export async function cleanupExpiredGuestForges(env: Env): Promise<void> {

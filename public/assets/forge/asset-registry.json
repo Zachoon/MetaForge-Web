@@ -122,6 +122,58 @@
       "load": "processing",
       "fallback": "Static rune glyph while loading and in unsupported runtimes",
       "notes": "Forge Loader Machine uses the IsProcessing Boolean to transition between Idle and Forge Processing Loop."
+    },
+    {
+      "id": "mf-ceremony-environment-01",
+      "role": "forge-ceremony-environment",
+      "path": "/assets/forge/ceremony-forge-environment.png",
+      "sourceRelativePath": "OpenAI image generation output exec-9d082307-a051-4f5b-b419-eb3e81157457.png",
+      "license": "project-generated",
+      "licenseEvidence": "Original image generated specifically for MetaForge with OpenAI image generation on 2026-08-12.",
+      "status": "approved",
+      "width": 1680,
+      "height": 945,
+      "load": "forge-ceremony",
+      "fallback": "Existing CSS dark-stone gradients and dimensional forge geometry"
+    },
+    {
+      "id": "mf-ceremony-quaternius-forge-props-01",
+      "role": "forge-ceremony-webgl-models",
+      "path": "/assets/forge/models/quaternius/Anvil.gltf",
+      "sourceRelativePath": "Quaternius Fantasy Props MegaKit Standard/Exports/glTF (Anvil, Workbench, Chain_Coil and shared texture atlases)",
+      "sourceUrl": "https://quaternius.com/packs/fantasypropsmegakit.html",
+      "license": "CC0-1.0",
+      "licenseEvidence": "/assets/forge/models/quaternius/LICENSE.txt",
+      "status": "approved",
+      "load": "lazy-forge-ceremony",
+      "fallback": "Generated forge environment plate plus CSS dimensional forge geometry",
+      "notes": "Only three relevant low-poly models are shipped. Shared PBR atlases were reduced to 512px; total model and texture payload is under 800KB before transfer compression."
+    },
+    {
+      "id": "mf-ceremony-quaternius-fantasy-cards-01",
+      "role": "forge-ceremony-card-models",
+      "path": "/assets/forge/models/quaternius-cards/1_Fireball.gltf",
+      "sourceRelativePath": "3D Card Kit - Fantasy Standard/glTF (seven elemental card scenes and shared atlas)",
+      "sourceUrl": "https://quaternius.com/packs/3dcardkitfantasy.html",
+      "license": "CC0-1.0",
+      "licenseEvidence": "/assets/forge/models/quaternius-cards/LICENSE.txt",
+      "status": "approved",
+      "load": "lazy-forge-ceremony",
+      "fallback": "Generated forge environment plate plus CSS card geometry",
+      "notes": "Seven compact authored card scenes replace procedural canvas faces. The selected glTF payload is approximately 500KB plus one 28KB atlas."
+    },
+    {
+      "id": "mf-ceremony-polyhaven-foundry-01",
+      "role": "forge-ceremony-image-based-lighting",
+      "path": "/assets/forge/environment/industrial-workshop-foundry-1k.hdr",
+      "sourceRelativePath": "industrial_workshop_foundry_1k.hdr",
+      "sourceUrl": "https://polyhaven.com/a/industrial_workshop_foundry",
+      "license": "CC0-1.0",
+      "licenseEvidence": "/assets/forge/environment/LICENSE.txt",
+      "status": "approved",
+      "load": "lazy-forge-ceremony",
+      "fallback": "Authored directional, point, and ambient lights",
+      "notes": "The 1K HDR is used for reflections and natural workshop illumination without exposing the photographic environment as the scene background."
     }
   ]
 }

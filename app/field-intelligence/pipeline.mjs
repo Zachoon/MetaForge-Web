@@ -13,7 +13,7 @@ import { runHoldoutValidation } from "./holdout.mjs";
 import { antiNetdeckPolicy, assertStructuralBeatsPopular } from "./anti-netdeck.mjs";
 import { materializeCompetitiveFixtureCorpus } from "./fixtures/competitive-corpus.mjs";
 import {
-  fetchTopDeckTournaments,
+  fetchTopDeckTournamentsChunked,
   normalizeTopDeckCorpus,
   TOPDECK_ATTRIBUTION,
   TOPDECK_MISSING_KEY,
@@ -53,6 +53,8 @@ import {
   synthesizeLevelAFindings,
   selectHighestConfidenceBrainV2Candidate,
 } from "./level-a-synthesis.mjs";
+import { buildSourceHealthDashboard, provenanceSourceLabel } from "./source-health.mjs";
+import { defaultLiveCacheDir } from "./live-ingest-cache.mjs";
 import { buildCorpusStrategicTopologies } from "./strategic-topology.mjs";
 import { deriveCorpusTopologyMetrics } from "./topology-metrics.mjs";
 import { buildAllLevelATopology } from "./level-a-topology.mjs";
@@ -465,6 +467,7 @@ function summarizeLiveCoverageEntry(isolated, normalized = null) {
 /**
  * Fixture corpus always; live adapters when requested.
  * Source failures are isolated — one down source cannot kill the run.
+ * Live empty → explicit synthetic fallback provenance (never silent).
  */
 export async function runFieldIntelligenceV1(options = {}) {
   const fixture = materializeCompetitiveFixtureCorpus();
@@ -486,23 +489,45 @@ export async function runFieldIntelligenceV1(options = {}) {
   let corroborationResult = null;
   let liveEvents = 0;
   let liveDecklists = 0;
+  let topdeckChunking = null;
 
   if (options.tryLive) {
-    const topdeckIsolated = await isolateSource("topdeck", () => fetchTopDeckTournaments({
+    const liveCacheDir = options.liveCacheDir
+      || (options.liveCacheBaseDir ? defaultLiveCacheDir(options.liveCacheBaseDir) : null);
+
+    const topdeckIsolated = await isolateSource("topdeck", () => fetchTopDeckTournamentsChunked({
       apiKey: options.topdeckApiKey,
       lastDays: sample.lastDays,
       participantMin: sample.participantMin,
       maxEvents: sample.maxEvents,
+      chunkDays: options.chunkDays,
+      liveCacheDir,
+      refreshAll: options.refreshAll === true,
       fetchImpl: options.fetchImpl,
+      onProgress: options.onTopDeckProgress,
+      nowMs: options.nowMs,
+      maxRetries: options.maxRetries,
+      timeoutMs: options.timeoutMs,
+      minIntervalMs: options.minIntervalMs ?? 0,
     }));
     let topdeckNormalized = null;
-    if (topdeckIsolated.ok && topdeckIsolated.result?.ok) {
+    topdeckChunking = topdeckIsolated.result?.chunking || null;
+    if (topdeckIsolated.ok && topdeckIsolated.result?.ok && (topdeckIsolated.result.tournaments || []).length) {
+      topdeckNormalized = normalizeTopDeckCorpus(topdeckIsolated.result.tournaments, sample);
+      liveRecords = liveRecords.concat(topdeckNormalized.records);
+      liveEvents += topdeckNormalized.events.length;
+      liveDecklists += topdeckNormalized.records.length;
+    } else if (topdeckIsolated.ok && topdeckIsolated.result?.ok && topdeckIsolated.result.status === "partial"
+      && (topdeckIsolated.result.tournaments || []).length) {
       topdeckNormalized = normalizeTopDeckCorpus(topdeckIsolated.result.tournaments, sample);
       liveRecords = liveRecords.concat(topdeckNormalized.records);
       liveEvents += topdeckNormalized.events.length;
       liveDecklists += topdeckNormalized.records.length;
     }
-    liveCoverage.topdeck = summarizeLiveCoverageEntry(topdeckIsolated, topdeckNormalized);
+    liveCoverage.topdeck = freeze({
+      ...summarizeLiveCoverageEntry(topdeckIsolated, topdeckNormalized),
+      chunking: topdeckChunking,
+    });
 
     const spicerackIsolated = await isolateSource("spicerack", () => fetchSpicerackTournaments({
       apiKey: options.spicerackApiKey,
@@ -531,10 +556,23 @@ export async function runFieldIntelligenceV1(options = {}) {
   }
 
   const useLive = options.fixtureOnly === false && liveRecords.length > 0;
+  const syntheticFallback = options.tryLive === true && !useLive;
   const combined = useLive ? liveRecords : fixture.records;
   const classified = annotatePerformanceClasses(combined);
   const deduped = dedupeCorpusRecords(classified);
   const records = deduped.records;
+
+  let corpusMode = "fixture";
+  let syntheticFixtures = "FIXTURE_RUN";
+  if (options.tryLive) {
+    if (useLive) {
+      corpusMode = "live";
+      syntheticFixtures = "NOT_USED";
+    } else {
+      corpusMode = "synthetic_fallback";
+      syntheticFixtures = "USED_AS_FALLBACK";
+    }
+  }
 
   const comparedToFixture = useLive
     ? freeze({
@@ -548,7 +586,10 @@ export async function runFieldIntelligenceV1(options = {}) {
     })
     : freeze({
       liveMode: false,
-      note: "Offline fixture-shaped sample only. Set TOPDECK_API_KEY and re-run with --live for real tournament evidence.",
+      syntheticFallback,
+      note: syntheticFallback
+        ? "LIVE REQUESTED BUT NO LIVE DECKS RETRIEVED — analyzing synthetic fixtures as explicit fallback. Do not treat this as a live Academy observation."
+        : "Offline fixture-shaped sample only. Set TOPDECK_API_KEY and re-run with --live for real tournament evidence.",
     });
 
   const corroboration = corroborationResult
@@ -567,8 +608,8 @@ export async function runFieldIntelligenceV1(options = {}) {
     dedupeStats: deduped.stats,
     comparedToFixture,
     priorStoreRows: options.priorStoreRows || [],
-    // Live decks need Scryfall enrichment; fixture decks are already annotated.
-    enrich: useLive || options.enrich === true,
+    // Live decks need Scryfall enrichment unless explicitly disabled (tests / offline).
+    enrich: options.enrich === false ? false : (useLive || options.enrich === true),
     enrichOptions: {
       allowNetwork: options.allowNetwork !== false,
       fetchImpl: options.fetchImpl,
@@ -576,11 +617,45 @@ export async function runFieldIntelligenceV1(options = {}) {
     },
   });
 
+  const sourceHealth = buildSourceHealthDashboard(liveCoverage, {
+    generatedAt: artifact.generatedAt,
+  });
+
+  const provenance = freeze({
+    version: "academy-provenance-v1",
+    generatedAt: artifact.generatedAt,
+    observationWindowDays: sample.lastDays,
+    events: artifact.corpus?.eventsRepresented ?? 0,
+    decks: artifact.corpus?.decksAnalyzed ?? 0,
+    commanders: artifact.corpus?.uniqueCommanders ?? 0,
+    corpusMode,
+    syntheticFixtures,
+    topdeck: provenanceSourceLabel(sourceHealth.byId.topdeck),
+    spicerack: provenanceSourceLabel(sourceHealth.byId.spicerack),
+    edhtop16: provenanceSourceLabel(sourceHealth.byId.edhtop16),
+    chunkProgress: topdeckChunking?.progressLine || null,
+    topdeckChunking,
+    contributingSources: freeze([
+      liveCoverage.topdeck?.ok ? "topdeck" : null,
+      liveCoverage.spicerack?.ok ? "spicerack" : null,
+      liveCoverage.edhtop16?.ok ? "edhtop16" : null,
+      corpusMode === "live" ? null : "synthetic_fixture",
+    ].filter(Boolean)),
+  });
+
+  const artifactWithProvenance = freeze({
+    ...artifact,
+    provenance,
+    sourceHealth,
+  });
+
   return freeze({
-    artifact,
+    artifact: artifactWithProvenance,
     fixtureStats: fixture.stats,
     liveSample: freeze(sample),
-    recommendation: recommendFirstBrainV2Candidate(artifact),
+    provenance,
+    sourceHealth,
+    recommendation: recommendFirstBrainV2Candidate(artifactWithProvenance),
   });
 }
 

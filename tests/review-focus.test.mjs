@@ -61,7 +61,8 @@ test("the coaching result is rendered inside the existing reply/results experien
 // --- UI presence / absence by chamber ---
 
 test("the chip picker renders only when chamber is \"refine\"", () => {
-  assert.match(page, /\{chamber === "refine" && \(\s*<div className="review-focus-picker">/);
+  assert.match(page, /\{chamber === "refine" \? \(\s*<details className="review-context-disclosure">/);
+  assert.match(page, /className="review-focus-picker"/);
 });
 
 test("chips do not appear in commission/build mode — no second render site outside the refine guard", () => {
@@ -70,7 +71,7 @@ test("chips do not appear in commission/build mode — no second render site out
 });
 
 test("exact UI copy is present", () => {
-  assert.match(page, /BEFORE WE DIVE IN/);
+  assert.match(page, /Tell us what feels wrong/);
   assert.match(page, /WHAT’S HAPPENING WHEN YOU PLAY THIS DECK\?/);
 });
 
@@ -81,7 +82,7 @@ test("each chip button is explicitly type=\"button\" (never submits/gates a form
     /<div className="review-focus-picker">[\s\S]*?<label className="commission-note">/,
   );
   assert.ok(block, "expected to find the review-focus-picker block");
-  assert.match(block[0], /<button\s+type="button"\s*\n\s*key=\{option\}/);
+  assert.match(block[0], /<button\s+type="button"\s+key=\{option\}/);
 });
 
 test("aria-pressed is driven directly off the current selection, not a static value", () => {
@@ -92,7 +93,7 @@ test("the chip group has an explicit accessible label tied to the question text"
   assert.match(page, /<p id="review-focus-question">WHAT’S HAPPENING WHEN YOU PLAY THIS DECK\?<\/p>/);
   assert.match(
     page,
-    /className="review-focus-chips"\s*\n\s*role="group"\s*\n\s*aria-labelledby="review-focus-question"/,
+    /className="review-focus-chips"\s+role="group"\s+aria-labelledby="review-focus-question"/,
   );
 });
 
@@ -131,7 +132,7 @@ test("the chip renders the plain-language label, not the raw canonical value, as
 });
 
 test("selection state, aria-pressed, and the toggle call still key off the canonical value, not the label", () => {
-  assert.match(page, /reviewFocus === option\s*\n\s*\?\s*"review-focus-chip is-selected"/);
+  assert.match(page, /reviewFocus === option \? "review-focus-chip is-selected"/);
   assert.match(page, /aria-pressed=\{reviewFocus === option\}/);
   assert.match(page, /toggleReviewFocus\(current, option\)/);
 });
