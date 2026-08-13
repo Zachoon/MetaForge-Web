@@ -5415,6 +5415,14 @@ export default function Home() {
                                 type="button"
                                 role="option"
                                 key={option.name}
+                                // Touch browsers can blur the search input with
+                                // relatedTarget === null before synthesizing the
+                                // click. The blur handler would then close and
+                                // unmount this portal, swallowing the player's
+                                // tap. Keep focus in place until click selects
+                                // the option; keyboard activation still uses the
+                                // normal click path.
+                                onPointerDown={(event) => event.preventDefault()}
                                 onClick={() => selectCommander(option)}
                               >
                                 <span>
