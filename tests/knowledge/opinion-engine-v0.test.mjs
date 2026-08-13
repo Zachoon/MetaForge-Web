@@ -97,5 +97,18 @@ describe("Opinion Engine v0", () => {
     assert.equal(presentation.writesToBrain, false);
     assert.ok(presentation.strongestCounterargument);
   });
+
+  it("does not present insufficient confidence as a settled recommendation", async () => {
+    const { buildRegisteredOpinion } = await import("../../app/knowledge/opinion-claim-registry.mjs");
+    const opinion = buildRegisteredOpinion("speed-atraxa-superfriends-doubling-season");
+    assert.equal(opinion.verdict, "do_not_recommend");
+    assert.equal(opinion.confidence.level, "insufficient");
+    const presentation = presentOpinionForMentor(opinion);
+    assert.equal(
+      presentation.headline,
+      "MetaForge currently leans against this, but needs exact-revision evidence.",
+    );
+    assert.doesNotMatch(presentation.headline, /recommends against/i);
+  });
 });
 

@@ -22,6 +22,8 @@ Player question
 
 Every opinion preserves its verdict, confidence, strongest counterargument, applicable context, falsifiers, evidence provenance, independence discount, and revision lineage. Copied claims from one source do not masquerade as independent confirmation.
 
+When confidence is `insufficient`, Mentor headlines use lean language (“leans toward / leans against … but needs exact-revision evidence”) instead of settled “recommends / recommends against.” Weak evidence may still preserve direction without reading as a settled recommendation.
+
 ## Evidence authority
 
 Source authority is explicit and contextual. Oracle mechanics and the player's commission are strong evidence for what a card does and what the deck must honor. Tournament, expert, play, structural, and simulation evidence answer different questions and remain distinguishable.

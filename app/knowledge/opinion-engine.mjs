@@ -265,6 +265,21 @@ export function reviseStrategicOpinion(previous, { claims = [], proposedTest, no
   });
 }
 
+function mentorHeadlineFor(opinion) {
+  const insufficient = opinion?.confidence?.level === "insufficient";
+  if (opinion.verdict === "recommend") {
+    return insufficient
+      ? "MetaForge currently leans toward this, but needs exact-revision evidence."
+      : "MetaForge currently recommends this in the stated context.";
+  }
+  if (opinion.verdict === "do_not_recommend") {
+    return insufficient
+      ? "MetaForge currently leans against this, but needs exact-revision evidence."
+      : "MetaForge currently recommends against this in the stated context.";
+  }
+  return "MetaForge does not have enough separation to recommend either way yet.";
+}
+
 export function presentOpinionForMentor(opinion) {
   if (!opinion?.opinionId) return null;
   return freeze({
@@ -273,11 +288,7 @@ export function presentOpinionForMentor(opinion) {
     writesToBrain: false,
     opinionId: opinion.opinionId,
     revision: opinion.revision,
-    headline: opinion.verdict === "recommend"
-      ? "MetaForge currently recommends this in the stated context."
-      : opinion.verdict === "do_not_recommend"
-        ? "MetaForge currently recommends against this in the stated context."
-        : "MetaForge does not have enough separation to recommend either way yet.",
+    headline: mentorHeadlineFor(opinion),
     answer: opinion.answer,
     why: opinion.why,
     strongestCounterargument: opinion.strongestCounterargument,
