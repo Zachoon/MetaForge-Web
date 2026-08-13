@@ -1,6 +1,6 @@
 # Opinion Engine v0
 
-**Status:** first vertical slice · shadow only · `writesToBrain: false`
+**Status:** v0.3 **Founder Confirmed** (2026-08-13) · v0.4 player surface in progress · shadow only · `writesToBrain: false`
 
 The Opinion Engine joins MetaForge's existing observation and judgment layers into a persistent, contextual stance. It answers:
 
@@ -44,9 +44,13 @@ Completed in v0.2:
 2. Opinion revisions have an append-only Archive contract and D1 schema.
 3. Authenticated `POST /api/coach/opinion` returns `MentorOpinionPresentation`, archives lineage, and declares `constructionReadOnly: true`. Registered evidence is selected by a server-owned opinion key; matching a card name cannot borrow another player's commission.
 
-Still next:
+## Founder Confirmed — v0.3
 
-1. Expand the server-owned claim registry beyond the Jay / Atraxa proof path. Unknown questions deliberately return `unresolved`; callers cannot submit evidence and manufacture a MetaForge belief.
-2. Add the product question surface and exact-revision selectors.
-3. Evaluate consistency, context sensitivity, calibration, contradiction handling, and reversal quality.
-4. Only propose a Laboratory construction experiment after an opinion has replicated. Brain promotion remains a separate reviewed act.
+Live Founder Trial on `metaforge.gg` confirmed commission-sensitive opinions, concrete card jobs, visible falsifiers, Archive lineage, and the insufficient-confidence lean-language fix (`10cd6cf`). Construction remained untouched.
+
+## Still next (v0.4+)
+
+1. Ship one authenticated player path: exact saved revision → server eligibility → Mentor presentation → Archive lineage (no client-submitted claims; no registry expansion for its own sake).
+2. Evaluate consistency, context sensitivity, calibration, contradiction handling, and reversal quality.
+3. Only propose a Laboratory construction experiment after an opinion has replicated. Brain promotion remains a separate reviewed act.
+4. Expand the server-owned claim registry only after a second commander/context pair earns a live trial — unknown questions stay unresolved.

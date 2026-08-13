@@ -80,6 +80,7 @@ import {
   FORGING_STAGES,
   type MotionMode,
 } from "./components/forge/forge-ceremony";
+import { RevisionOpinionPanel } from "./components/forge/revision-opinion";
 
 type Chamber =
   | "entrance"
@@ -6466,6 +6467,22 @@ export default function Home() {
                   </button>
                 </footer>
               </section>
+
+              <RevisionOpinionPanel
+                familyId={deckId || null}
+                fingerprint={
+                  revisions.at(-1)?.fingerprint
+                  || (savedMasterworks.find((family) => family.id === deckId)?.revisions?.at(-1) as { fingerprint?: string; id?: string } | undefined)?.fingerprint
+                  || (savedMasterworks.find((family) => family.id === deckId)?.revisions?.at(-1) as { fingerprint?: string; id?: string } | undefined)?.id
+                  || null
+                }
+                revisionId={
+                  (savedMasterworks.find((family) => family.id === deckId)?.revisions?.at(-1) as { id?: string } | undefined)?.id
+                  || null
+                }
+                signedIn={!guestMode}
+                enabled={hasValidatedDeck}
+              />
 
             </>
           ) : (
