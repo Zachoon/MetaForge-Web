@@ -79,6 +79,9 @@ Required answers:
 4. Weekly trend reports — after real corpora are representative  
 5. Nightly automation — last, not first  
 
+**Parallel (does not modify Brain v1):** [Brain v2 — Strategic Reasoning Initiative](BRAIN_V2_STRATEGIC_REASONING.md).  
+Brain v2 is earned via Academy → Atlas → Laboratory → Harness — not written as a scoring upgrade. **0% promoted.**
+
 ## The rule that earned this release
 
 ```

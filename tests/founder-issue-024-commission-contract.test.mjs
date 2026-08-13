@@ -141,6 +141,9 @@ describe("Founder Issue #024 — Commission Contract", () => {
     const narrated = applyFantasyNarrator({ recognition, commissionContract: contract });
     assert.match(narrated.tableWhy, /planeswalker|Doubling Season/i);
     assert.doesNotMatch(narrated.tableWhy, /^Evasion Engine$/i);
+    assert.equal(narrated.hierarchy.pressurePoint, null, "Treasure must not headline coach CHANGE under Superfriends");
+    assert.equal(narrated.hierarchy.supportSoftSpot, "Treasure Engine");
+    assert.equal(narrated.resolvedSignal, "counters", "Pilot must follow Superfriends, not measured Treasure/Evasion");
 
     const summary = buildHonestCoachSummary({
       selected: jaySelected(),
@@ -156,17 +159,36 @@ describe("Founder Issue #024 — Commission Contract", () => {
     assert.equal(summary.commissionMismatch, true);
     assert.match(summary.headline, /Superfriends|partly kept/i);
     assert.doesNotMatch(summary.strengths.join(" "), /Clearest engine so far: Evasion/i);
+    // Default coach beats must not mention Treasure/ramp at all.
+    assert.doesNotMatch(summary.intentions.firstVulnerability, /Watch your treasure and ramp pieces first/i);
+    assert.doesNotMatch(
+      [
+        summary.intentions.accomplish,
+        summary.intentions.establish,
+        summary.intentions.dependsOn,
+        summary.intentions.firstVulnerability,
+        summary.planStory?.stop,
+        summary.planStory?.early,
+      ].join("\n"),
+      /Treasure Engine|treasure and ramp|overvalue treasure|treasure is support/i,
+    );
+    assert.match(summary.intentions.establish, /counter|proliferate|planeswalker/i);
+    assert.match(
+      summary.intentions.firstVulnerability,
+      /protect|planeswalker|Superfriends|counter|Doubling Season/i,
+    );
   });
 
   it("wires Commission Contract into masterworks + coach UI", () => {
     const page = readFileSync(join(root, "app/page.tsx"), "utf8");
     const css = readFileSync(join(root, "app/testing-anvil.css"), "utf8");
-    assert.match(page, /COMMISSION CONTRACT/);
+    assert.match(page, /1 · I HEARD YOU/);
     assert.match(page, /You asked for/);
-    assert.match(page, /What I built/);
+    assert.match(page, /WHAT STILL NEEDS WORK|Full commission breakdown/);
     assert.match(page, /buildCommissionContract/);
     assert.match(page, /commissionContract/);
-    assert.match(css, /\.commission-built\b/);
-    assert.match(css, /\.commission-match\b/);
+    assert.match(page, /commission-verdict/);
+    assert.match(css, /\.commission-verdict\b/);
+    assert.match(css, /\.commission-built-list\b/);
   });
 });

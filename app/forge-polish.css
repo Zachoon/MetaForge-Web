@@ -396,7 +396,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .masterwork-card:not(.is-featured) { opacity: .78; }
 .masterwork-card:not(.is-featured):hover,.masterwork-card:not(.is-featured):focus-within { opacity: 1; transform: translateY(-2px); }
 
-/* Founder Issue #022 — Pre-Choice Coaching (confidence before commitment) */
+/* Founder Issue #022 � Pre-Choice Coaching (confidence before commitment) */
 .pre-choice-coaching{margin-top:22px}
 .pre-choice-coaching-heading{margin:0 0 14px}
 .pre-choice-coaching-heading small{display:block;color:#72c7b5;font-size:9px;font-weight:900;letter-spacing:.14em}
@@ -412,6 +412,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .pre-choice-prioritizes li{padding:6px 9px;border:1px solid #30433d;background:#0a1210;color:#c9d5d0;font-size:12px}
 .pre-choice-tradeoff{margin-top:0!important;padding:10px 11px;border-left:2px solid #d9843d;background:#171008}
 .pre-choice-tradeoff small{color:#e89848}
+.pre-choice-why-survived{margin:0;padding:10px 11px;border-left:2px solid #72c7b5;background:#0c1512;color:#c9d5d0;font-size:13px;line-height:1.45}
+.pre-choice-why-survived small{display:block;margin-bottom:5px;color:#72c7b5;font-size:9px;font-weight:900;letter-spacing:.12em}
 .strategy-identity-tradeoffs{display:grid;gap:5px;margin:12px 0 0;padding:0;list-style:none}
 .strategy-identity-tradeoffs li{padding:7px 9px;border:1px solid #30433d;background:#0a1210;color:#c9d5d0;font-size:12px;line-height:1.35}
 .strategy-identity-keys{margin-top:12px}
@@ -525,7 +527,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .masterwork-card[data-state="sealed"] .masterwork-seal:after{inset:50% auto auto 50%;width:150px;height:150px;transform:translate(-50%,-50%);border-color:#72d8c23b;box-shadow:0 0 35px #64d2be14,inset 0 0 28px #64d2be0d}
 .masterwork-card[data-state="sealed"] .masterwork-seal i{position:relative;z-index:1;font-size:calc(78px * var(--forge-reading-scale))}
 .masterwork-card[data-state="sealed"] .masterwork-seal b{position:relative;overflow:hidden;min-width:220px;background:linear-gradient(90deg,#10231f,#142b26)}
-.masterwork-card[data-state="sealed"] .masterwork-seal b:after{content:"  →";color:#79dbc8}
+.masterwork-card[data-state="sealed"] .masterwork-seal b:after{content:"  ?";color:#79dbc8}
 .masterwork-card[data-state="sealed"]:hover,.masterwork-card[data-state="sealed"]:focus-within{border-color:#6b9e92;box-shadow:0 22px 65px #000a,0 0 42px #5ad0b91a;transform:translateY(-3px)}
 .masterwork-glimpse,.masterwork-plan,.masterwork-stats{border-color:#40544e}.masterwork-plan small,.masterwork-stats small{font-family:ui-monospace,monospace;letter-spacing:.1em}
 @media(max-width:900px){.masterwork-reveal>.masterwork-grid{grid-template-columns:1fr}.masterwork-card.is-featured .masterwork-card-kicker{padding-right:0}.masterwork-card.is-featured:after{display:none}}
@@ -567,7 +569,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 /* Real-candidate Masterwork picker (Bug 1B): three already-generated, fully
    legal decks the player chooses between explicitly. Reuses .masterwork-card/
    .masterwork-grid/.blueprint-promise's base look above, but the card body
-   itself (plain header/dl/reason/caption) is new — no reveal ceremony, no
+   itself (plain header/dl/reason/caption) is new � no reveal ceremony, no
    templated glimpse/plan/stats, since every field here is real engine output. */
 .masterwork-card > header {
   display: flex;
@@ -652,7 +654,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .masterwork-card > header span { margin-left: 0; }
 }
 
-/* Stance voice � permeates coach copy; never a titled Strategic Stance section */
+/* Stance voice � permeates coach copy; never a titled Strategic Stance section */
 .understanding-badge{display:inline-block;margin:0 6px 4px 0;color:#d9a05f;font-size:calc(10px * var(--forge-reading-scale));font-weight:900;letter-spacing:.08em}
 .pre-choice-understanding{margin:12px 0 0;padding:10px 12px;border-left:2px solid #8b673f;background:#100d09;color:#c9d5d0;font-size:calc(13px * var(--forge-reading-scale));line-height:1.55}
 .honest-coach-watching{margin:10px 0;padding:10px 12px;border-left:2px solid #43a58f;background:#0a1211;color:#c8ddd6;font-size:calc(13px * var(--forge-reading-scale));line-height:1.55}

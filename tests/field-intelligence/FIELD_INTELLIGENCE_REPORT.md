@@ -1,23 +1,66 @@
-# MetaForge Field Intelligence — Strategic Principles + Relationship Mining
+# MetaForge Academy Report
+
+## Provenance
+```
+Generated:              2026-08-11T00:58:35.360Z
+Observation Window:     90 days
+Events:                 44
+Decks:                  359
+Commanders:             118
+TopDeck:                SUCCESS
+Spicerack:              MISSING KEY
+EDHTop16:               SCHEMA MISMATCH
+Synthetic Fixtures:     NOT_USED
+Corpus Mode:            live
+Chunk Progress:         Days 1–30 ✓ / Days 31–60 ✓ / Days 61–90 ✓
+```
+
+## Source health
+- **topdeck**: SUCCESS — latency=60915ms events=75 decks=359
+  - ok
+- **spicerack**: MISSING KEY — latency=0ms events=0 decks=0
+  - missing_SPICERACK_API_KEY
+- **edhtop16**: SCHEMA MISMATCH — latency=247ms events=0 decks=0
+  - graphql_errors
+
+## What changed since last run
+- Question: What changed since last run?
+- Prior run: 2026-08-10T21:54:13.778Z
+- Store append: written=289 skipped=75
+- Deltas: events=44 decks=359 commanders=118 principles=62
 
 Brain v1 remains frozen. Principles never activate construction. Exp001 remains rejected.
 Success criterion: discover strategic principles no human explicitly taught MetaForge.
+Observation only — no Brain mutations, experiments, or promotions.
+
+## Observation window
+```
+Last Days:                90
+Maximum Events:           75
+Maximum Decks/Event:      24
+Minimum Participants:     16
+Formats:                  Commander / cEDH
+Prefer Top Cut:           true
+Include Lower Comparison: true
+Persistence:              append-only research store
+Deduplicate:              true
+```
 
 ## North star
 Learn how elite players connect cards into functioning strategic systems — not merely which cards, roles, or quantities appear in winning decks.
 
 ## Corpus coverage
-- Records ingested: **128**
-- Decks analyzed: **128**
-- Events represented: **16**
-- Unique commanders: **7**
+- Records ingested: **359**
+- Decks analyzed: **359**
+- Events represented: **44**
+- Unique commanders: **118**
 - Artifact version: **corpus-intelligence-v1.3**
-- Live sample: `{"lastDays":60,"participantMin":16,"maxEvents":40,"maxDecksPerEvent":20,"preferTopCut":true,"includeLowerComparison":true,"lowerComparisonSlots":6,"topCutSlots":8,"formats":["EDH"],"spicerackFormats":["COMMANDER2"]}`
-- Performance class distribution: `{"repeated_converter":48,"tournament_participant":80}`
+- Live sample: `{"lastDays":90,"participantMin":16,"maxEvents":75,"maxDecksPerEvent":24,"preferTopCut":true,"includeLowerComparison":true,"lowerComparisonSlots":6,"topCutSlots":8,"formats":["EDH"],"spicerackFormats":["COMMANDER2"]}`
+- Performance class distribution: `{"tournament_participant":175,"repeated_converter":146,"single_event_converter":38}`
 
 ## Forge Academy — Principle lessons
-- Principle count: **71**
-- By status: `{"candidate":25,"replicated_candidate":6,"promotable":40,"mixed":0,"contradicted":0,"rejected":0}`
+- Principle count: **133**
+- By status: `{"candidate":71,"replicated_candidate":2,"promotable":49,"mixed":5,"contradicted":6,"rejected":0}`
 - writesToBrain: **false**
 - activateBrain: **false**
 
@@ -85,15 +128,24 @@ Learn how elite players connect cards into functioning strategic systems — not
 - Lesson: Academy lesson within Pearl-Ear, Imperial Advisor: Structural signal on redundancy. Converters show more/better redundancy than lower placers in controlled same-commander comparisons. Do not learn a staple list — learn the structural rule that produced the density advantage. This remains a candidate principle until a Validation Harness experiment earns promotion.
 
 ### Observation #8 — Graveyard plans need fill, reanimation, and protection together
-- Status: **candidate** (candidate only)
+- Status: **promotable** (candidate only)
 - Confidence: **0.92**
-- Independent events: **0**
+- Independent events: **2**
 - Families: n/a
 - Transfer: commander_specific
 - Finding: Reanimator-shaped success covers the full structural chain rather than isolated recursion pieces.
 - Lesson: Academy lesson: Graveyard plans need fill, reanimation, and protection together. Reanimator-shaped success covers the full structural chain rather than isolated recursion pieces. Structural sequence dependencies are not reconstructed game orders. Candidate only — Brain unchanged.
 
-### Observation #9 — Mana acceleration should unlock commander-linked payoffs
+### Observation #9 — Graveyard plans need fill, reanimation, and protection together
+- Status: **replicated_candidate** (candidate only)
+- Confidence: **0.92**
+- Independent events: **44**
+- Families: n/a
+- Transfer: cross_family
+- Finding: Reanimator-shaped success covers the full structural chain rather than isolated recursion pieces.
+- Lesson: Academy lesson: Graveyard plans need fill, reanimation, and protection together. Reanimator-shaped success covers the full structural chain rather than isolated recursion pieces. Structural sequence dependencies are not reconstructed game orders. Candidate only — Brain unchanged.
+
+### Observation #10 — Mana acceleration should unlock commander-linked payoffs
 - Status: **candidate** (candidate only)
 - Confidence: **0.92**
 - Independent events: **0**
@@ -101,15 +153,6 @@ Learn how elite players connect cards into functioning strategic systems — not
 - Transfer: cross_family
 - Finding: Acceleration without a convert/close path is a weaker structural signal than sequenced mana → commander → payoff.
 - Lesson: Academy lesson: Mana acceleration should unlock commander-linked payoffs. Acceleration without a convert/close path is a weaker structural signal than sequenced mana → commander → payoff. Structural sequence dependencies are not reconstructed game orders. Candidate only — Brain unchanged.
-
-### Observation #10 — Setup must reach an engine before a payoff
-- Status: **candidate** (candidate only)
-- Confidence: **0.92**
-- Independent events: **0**
-- Families: n/a
-- Transfer: cross_family
-- Finding: Structural chains of setup → engine → payoff recur in successful lists; decklist order is not play order.
-- Lesson: Academy lesson: Setup must reach an engine before a payoff. Structural chains of setup → engine → payoff recur in successful lists; decklist order is not play order. Structural sequence dependencies are not reconstructed game orders. Candidate only — Brain unchanged.
 
 ## Promotable principles (NOT activated)
 - sp:structure::commanderconnectedcount::high_greater::pearl-ear, imperial advisor: conf=0.96 events=4 — Structural signal on commanderConnectedCount
@@ -119,7 +162,7 @@ Learn how elite players connect cards into functioning strategic systems — not
 - sp:structure::package::high_greater::pearl-ear, imperial advisor: conf=0.96 events=4 — Structural signal on packageCore
 - sp:structure::protection::high_greater::pearl-ear, imperial advisor: conf=0.96 events=4 — Structural signal on ix_protection
 - sp:structure::redundancy::high_greater::pearl-ear, imperial advisor: conf=0.96 events=4 — Structural signal on redundancy
-- sp:structure::commanderconnectedcount::high_greater::test grave tutor: conf=0.81 events=2 — Structural signal on commanderConnectedCount
+- sp:sequence::gy_fill_reanimate_protect::signal::commander_specific: conf=0.92 events=2 — Graveyard plans need fill, reanimation, and protection together
 
 ## Corpus growth / marginal evidence
 ```json
@@ -127,14 +170,14 @@ Learn how elite players connect cards into functioning strategic systems — not
   "version": "corpus-growth-v1",
   "liveSample": null,
   "current": {
-    "events": 16,
-    "decks": 128,
-    "commanders": 7,
-    "levelACohorts": 16,
-    "levelATopologyCohorts": 16,
-    "replicatedHypotheses": 46,
-    "discoveryCandidates": 78,
-    "principles": 71,
+    "events": 44,
+    "decks": 359,
+    "commanders": 118,
+    "levelACohorts": 12,
+    "levelATopologyCohorts": 12,
+    "replicatedHypotheses": 2,
+    "discoveryCandidates": 80,
+    "principles": 133,
     "promotablePrinciples": 12
   },
   "prior": {
@@ -149,23 +192,23 @@ Learn how elite players connect cards into functioning strategic systems — not
     "promotablePrinciples": 0
   },
   "deltas": {
-    "events": 16,
-    "decks": 128,
-    "commanders": 7,
-    "levelACohorts": 16,
-    "levelATopologyCohorts": 16,
-    "replicatedHypotheses": 46,
-    "discoveryCandidates": 78,
-    "principles": 71,
+    "events": 44,
+    "decks": 359,
+    "commanders": 118,
+    "levelACohorts": 12,
+    "levelATopologyCohorts": 12,
+    "replicatedHypotheses": 2,
+    "discoveryCandidates": 80,
+    "principles": 133,
     "promotablePrinciples": 12
   },
   "marginalEvidencePerNewEvent": {
-    "levelACohorts": 1,
-    "levelATopologyCohorts": 1,
-    "replicatedHypotheses": 2.875,
-    "discoveryCandidates": 4.875,
-    "principles": 4.438,
-    "decks": 8
+    "levelACohorts": 0.273,
+    "levelATopologyCohorts": 0.273,
+    "replicatedHypotheses": 0.045,
+    "discoveryCandidates": 1.818,
+    "principles": 3.023,
+    "decks": 8.159
   },
   "preferControlledComparisonsOverVolume": true
 }
@@ -203,133 +246,151 @@ Learn how elite players connect cards into functioning strategic systems — not
 ## Topology metrics summary
 ```json
 {
-  "decks": 128,
-  "meanMeaningfulEdgeDensity": 16.6,
-  "meanPlanConnectedRatio": 0.745,
-  "meanIsolatedRatio": 0.48,
-  "meanMultifunctionRatio": 0
+  "decks": 359,
+  "meanMeaningfulEdgeDensity": 26.858,
+  "meanPlanConnectedRatio": 0.618,
+  "meanIsolatedRatio": 0.449,
+  "meanMultifunctionRatio": 0.206
 }
 ```
 
 ## Level-A topology (same commander + same event)
-- Usable Level-A topology cohorts: **16**
-- **Test Grave Tutor** @ `fixture-cedh-reanimator-0` high=3 low=5
-  - strongest topology: strongEdgeCount:178 (high_greater); meaningfulEdgeDensity:14.833 (high_greater); meanStrategicDegree:-7.25 (high_lesser); interactionDiversity:-1 (high_lesser)
-- **Test Grave Tutor** @ `fixture-cedh-reanimator-1` high=3 low=5
-  - strongest topology: strongEdgeCount:178 (high_greater); meaningfulEdgeDensity:14.833 (high_greater); meanStrategicDegree:-7.25 (high_lesser); interactionDiversity:-1 (high_lesser)
-- **Test Equipment Marshal** @ `fixture-cedh-equipment-voltron-0` high=3 low=5
-  - strongest topology: strongEdgeCount:111 (high_greater); meaningfulEdgeDensity:5.059 (high_greater); interactionRedundancy:4 (high_greater); meanStrategicDegree:-3.103 (high_lesser)
-- **Test Equipment Marshal** @ `fixture-cedh-equipment-voltron-1` high=3 low=5
-  - strongest topology: strongEdgeCount:111 (high_greater); meaningfulEdgeDensity:5.059 (high_greater); interactionRedundancy:4 (high_greater); meanStrategicDegree:-3.103 (high_lesser)
-- **Test Flicker Guide** @ `fixture-cedh-blink-etb-0` high=3 low=5
-  - strongest topology: strongEdgeCount:100 (high_greater); meaningfulEdgeDensity:3.333 (high_greater); interactionDiversity:1 (high_greater); isolatedInteractiveRatio:0 (similar)
-- **Test Flicker Guide** @ `fixture-cedh-blink-etb-1` high=3 low=5
-  - strongest topology: strongEdgeCount:100 (high_greater); meaningfulEdgeDensity:3.333 (high_greater); interactionDiversity:1 (high_greater); isolatedInteractiveRatio:0 (similar)
-- **Pearl-Ear, Imperial Advisor** @ `sp-fixture-cedh-pearl-ear-auras-0` high=3 low=5
-  - strongest topology: interactionRedundancy:18 (high_greater); meaningfulEdgeDensity:-3.737 (high_lesser); interactionDiversity:-1 (high_lesser); winSequenceProtectionCoverage:-0.76 (high_lesser)
-- **Pearl-Ear, Imperial Advisor** @ `sp-fixture-cedh-pearl-ear-auras-1` high=3 low=5
-  - strongest topology: interactionRedundancy:18 (high_greater); meaningfulEdgeDensity:-3.737 (high_lesser); interactionDiversity:-1 (high_lesser); winSequenceProtectionCoverage:-0.76 (high_lesser)
-- **Pearl-Ear, Imperial Advisor** @ `fixture-cedh-pearl-ear-auras-0` high=3 low=5
-  - strongest topology: interactionRedundancy:18 (high_greater); meaningfulEdgeDensity:-3.737 (high_lesser); interactionDiversity:-1 (high_lesser); winSequenceProtectionCoverage:-0.76 (high_lesser)
-- **Pearl-Ear, Imperial Advisor** @ `fixture-cedh-pearl-ear-auras-1` high=3 low=5
-  - strongest topology: interactionRedundancy:18 (high_greater); meaningfulEdgeDensity:-3.737 (high_lesser); interactionDiversity:-1 (high_lesser); winSequenceProtectionCoverage:-0.76 (high_lesser)
-- **Test Spell Echo** @ `fixture-cedh-spellslinger-0` high=3 low=5
-  - strongest topology: meaningfulEdgeDensity:-17.778 (high_lesser); interactionRedundancy:8 (high_greater); interactionDiversity:3 (high_greater); meanStrategicDegree:-1.311 (high_lesser)
-- **Test Spell Echo** @ `fixture-cedh-spellslinger-1` high=3 low=5
-  - strongest topology: meaningfulEdgeDensity:-17.778 (high_lesser); interactionRedundancy:8 (high_greater); interactionDiversity:3 (high_greater); meanStrategicDegree:-1.311 (high_lesser)
+- Usable Level-A topology cohorts: **12**
+- **Kinnan, Bonder Prodigy** @ `asgard-monthly-cedh-tournament-june-2026` high=1 low=1
+  - strongest topology: meaningfulEdgeDensity:13.333 (high_greater); interactionRedundancy:-5 (high_lesser); meanStrategicDegree:-1.45 (high_lesser); interactionDiversity:1 (high_greater)
+- **Rograkh, Son of Rohgahh / Silas Renn, Seeker Adept** @ `asgard-monthly-cedh-tournament-june-2026` high=1 low=1
+  - strongest topology: meaningfulEdgeDensity:6.818 (high_greater); interactionRedundancy:-4 (high_lesser); isolatedInteractiveRatio:0.245 (high_greater); deadNarrowInteractionRisk:0.245 (high_greater)
+- **Rograkh, Son of Rohgahh / Thrasios, Triton Hero** @ `cedh-singularity-series-4` high=1 low=1
+  - strongest topology: meaningfulEdgeDensity:6.349 (high_greater); interactionRedundancy:-4 (high_lesser); meanStrategicDegree:-0.921 (high_lesser); winSequenceProtectionCoverage:-0.077 (high_lesser)
+- **Kediss, Emberclaw Familiar / Malcolm, Keen-Eyed Navigator** @ `mulligan-championship-series-june-w-guaranteed-volcanic` high=1 low=1
+  - strongest topology: interactionDiversity:-5 (high_lesser); meaningfulEdgeDensity:-1.282 (high_lesser); commanderProtectionCoverage:-1 (high_lesser); engineProtectionCoverage:-0.9 (high_lesser)
+- **Kinnan, Bonder Prodigy** @ `huddersfield-june-cedh-1` high=1 low=2
+  - strongest topology: meaningfulEdgeDensity:4.474 (high_greater); interactionDiversity:3 (high_greater); commanderProtectionCoverage:0.5 (high_greater); interactionRedundancy:-0.5 (high_lesser)
+- **Dargo, the Shipwrecker / Tymna the Weaver** @ `ddm-monthly-league-2` high=1 low=1
+  - strongest topology: meaningfulEdgeDensity:4.444 (high_greater); interactionRedundancy:-2 (high_lesser); meanStrategicDegree:0.922 (high_greater); winSequenceProtectionCoverage:0.27 (high_greater)
+- **Rograkh, Son of Rohgahh / Silas Renn, Seeker Adept** @ `rockys-birthday-and-vtg-charity-tournament` high=1 low=2
+  - strongest topology: meaningfulEdgeDensity:-2.778 (high_lesser); interactionRedundancy:1.5 (high_greater); meanStrategicDegree:-0.489 (high_lesser); isolatedInteractiveRatio:0.163 (high_greater)
+- **Rograkh, Son of Rohgahh / Silas Renn, Seeker Adept** @ `goblin-con-euros-qualifier-win-a-dual` high=1 low=1
+  - strongest topology: meaningfulEdgeDensity:-2.476 (high_lesser); interactionRedundancy:2 (high_greater); isolatedInteractiveRatio:-0.318 (high_lesser); planConnectedInteractionRatio:0.318 (high_greater)
+- **Kinnan, Bonder Prodigy** @ `goblin-con-euros-qualifier-win-a-dual` high=2 low=1
+  - strongest topology: interactionDiversity:-2 (high_lesser); meaningfulEdgeDensity:-1.765 (high_lesser); meanStrategicDegree:-1.42 (high_lesser); engineProtectionCoverage:-0.395 (high_lesser)
+- **Thrasios, Triton Hero / Tymna the Weaver** @ `1er-clasificatorio-nacional-cedh-2026-lista-reservada` high=1 low=1
+  - strongest topology: meanStrategicDegree:1.729 (high_greater); meaningfulEdgeDensity:1.307 (high_greater); lowCmcInteractionCoverage:0.16 (high_greater); multifunctionInteractionRatio:0.072 (high_greater)
+- **Rograkh, Son of Rohgahh / Silas Renn, Seeker Adept** @ `take-the-crown-03-bff` high=1 low=1
+  - strongest topology: interactionRedundancy:-1 (high_lesser); meanStrategicDegree:0.313 (high_greater); isolatedInteractiveRatio:-0.125 (high_lesser); planConnectedInteractionRatio:0.125 (high_greater)
+- **Ral, Monsoon Mage // Ral, Leyline Prodigy** @ `huddersfield-june-cedh-1` high=1 low=1
+  - strongest topology: meaningfulEdgeDensity:0 (similar); isolatedInteractiveRatio:0 (similar); multifunctionInteractionRatio:0 (similar); planConnectedInteractionRatio:0 (similar)
 
 ### Kraum/Tymna topology focus
 - (no usable Kraum/Tymna Level-A topology cohorts in this sample)
 
 ## Strategic sequences (structural, not play order)
-- setup_engine_payoff: decks=32 events=4 conf=0.92 elite=common_tournament impliesGameOrder=false
-- mana_commander_payoff: decks=32 events=4 conf=0.92 elite=common_tournament impliesGameOrder=false
-- tutor_win_protection: decks=26 events=6 conf=0.92 elite=common_tournament impliesGameOrder=false
-- gy_fill_reanimate_protect: decks=16 events=2 conf=0.92 elite=common_tournament impliesGameOrder=false
+- setup_engine_payoff: decks=357 events=44 conf=0.92 elite=common_tournament impliesGameOrder=false
+- gy_fill_reanimate_protect: decks=346 events=44 conf=0.92 elite=common_tournament impliesGameOrder=false
+- tutor_win_protection: decks=294 events=44 conf=0.92 elite=common_tournament impliesGameOrder=false
+- silence_combo_sequence: decks=291 events=44 conf=0.92 elite=common_tournament impliesGameOrder=false
+- mana_commander_payoff: decks=257 events=41 conf=0.92 elite=common_tournament impliesGameOrder=false
 
 ## Substitution evidence
-- (none)
+- Geistwave ↔ Daze @ Ral, Monsoon Mage // Ral, Leyline Prodigy: xor=1 conf=0.88
+- Grapeshot ↔ Volcanic Spite @ Ral, Monsoon Mage // Ral, Leyline Prodigy: xor=1 conf=0.88
+- Lightning Bolt ↔ Volcanic Spite @ Ral, Monsoon Mage // Ral, Leyline Prodigy: xor=1 conf=0.88
+- Tibalt's Trickery ↔ Volcanic Spite @ Ral, Monsoon Mage // Ral, Leyline Prodigy: xor=1 conf=0.88
+- Untimely Malfunction ↔ Swan Song @ Ral, Monsoon Mage // Ral, Leyline Prodigy: xor=1 conf=0.88
+- Chain of Vapor ↔ Miscast @ Kinnan, Bonder Prodigy: xor=1 conf=0.88
+- Swan Song ↔ Snap @ Kinnan, Bonder Prodigy: xor=1 conf=0.88
+- Mana Vault ↔ Sylvan Caryatid @ Kinnan, Bonder Prodigy: xor=0.96 conf=0.88
+- Talisman of Curiosity ↔ Sylvan Caryatid @ Kinnan, Bonder Prodigy: xor=0.96 conf=0.88
+- Mental Misstep ↔ Snap @ Kinnan, Bonder Prodigy: xor=0.958 conf=0.88
+- Flusterstorm ↔ Snap @ Kinnan, Bonder Prodigy: xor=0.957 conf=0.88
+- Thassa's Oracle ↔ Flamescroll Celebrant // Revel in Silence @ Kraum, Ludevic's Opus / Tymna the Weaver: xor=0.955 conf=0.88
 
 ## Contextual card functions (context-dependent)
-- Context-dependent cards: **19**
-- Aura Piece 21: functions={"combo_protection":20,"engine_protection":12}
-- Aura Piece 3: functions={"combo_protection":40,"commander_protection":24}
-- Aura Piece 4: functions={"combo_protection":40,"commander_protection":24}
-- Aura Piece 5: functions={"combo_protection":40,"commander_protection":24}
-- Aura Piece 6: functions={"commander_protection":24,"combo_protection":20}
-- Aura Piece 7: functions={"commander_protection":24,"combo_protection":20}
-- Aura Piece 8: functions={"commander_protection":24,"combo_protection":20}
-- Aura Piece 9: functions={"commander_protection":24,"combo_protection":20}
-- Ward 0: functions={"commander_protection":12,"engine_protection":6}
-- Ward 1: functions={"commander_protection":12,"engine_protection":6}
+- Context-dependent cards: **83**
+- Flusterstorm: functions={"path_clear_for_win":161,"payoff_for":55,"sequence_precedes":21,"supports":2}
+- The One Ring: functions={"engine_protection":58,"combo_protection":30,"payoff_for":6,"sequence_precedes":1}
+- Swan Song: functions={"plan_preserving_disruption":160,"sequence_precedes":33,"payoff_for":1}
+- An Offer You Can't Refuse: functions={"plan_preserving_disruption":164,"sequence_precedes":9,"engine_enabler":8}
+- Chain of Vapor: functions={"plan_preserving_disruption":143,"recovery_for_plan_piece":9,"sequence_precedes":1}
+- Agatha's Soul Cauldron: functions={"plan_preserving_disruption":46,"sequence_precedes":5,"engine_enabler":1}
+- Legolas's Quick Reflexes: functions={"path_clear_for_win":22,"engine_protection":14,"combo_protection":2}
+- Roaming Throne: functions={"combo_protection":12,"engine_protection":12,"unclassified":1}
+- Colossal Skyturtle: functions={"engine_protection":9,"combo_protection":6,"plan_preserving_disruption":6}
+- Archdruid's Charm: functions={"plan_preserving_disruption":11,"tutor_for_plan_piece":4,"engine_enabler":3}
 
 ## Topology discovery queue (no Brain writes)
-- By kind: `{"topology_blind_spot_candidate":46,"sequence_blind_spot_candidate":4,"semantic_blind_spot_candidate":28,"substitution_candidate":0,"package_candidate":0}`
+- By kind: `{"topology_blind_spot_candidate":44,"sequence_blind_spot_candidate":5,"semantic_blind_spot_candidate":20,"substitution_candidate":59,"package_candidate":5}`
 - writesToBrain: **false**
 - sequence_blind_spot_candidate seq_blind_setup_engine_payoff: conf=0.92 missing=construction_preference_for_covered_strategic_sequences
-- sequence_blind_spot_candidate seq_blind_mana_commander_payoff: conf=0.92 missing=construction_preference_for_covered_strategic_sequences
-- sequence_blind_spot_candidate seq_blind_tutor_win_protection: conf=0.92 missing=construction_preference_for_covered_strategic_sequences
 - sequence_blind_spot_candidate seq_blind_gy_fill_reanimate_protect: conf=0.92 missing=construction_preference_for_covered_strategic_sequences
-- topology_blind_spot_candidate topo_blind_test grave tutor_strongEdgeCount_fixture-cedh-reanimator-0: conf=0.9 missing=strategic_topology_metric:strongEdgeCount
-- topology_blind_spot_candidate topo_blind_test grave tutor_meaningfulEdgeDensity_fixture-cedh-reanimator-0: conf=0.9 missing=strategic_topology_metric:meaningfulEdgeDensity
-- topology_blind_spot_candidate topo_blind_test grave tutor_meanStrategicDegree_fixture-cedh-reanimator-0: conf=0.9 missing=strategic_topology_metric:meanStrategicDegree
-- topology_blind_spot_candidate topo_blind_test grave tutor_interactionDiversity_fixture-cedh-reanimator-0: conf=0.9 missing=strategic_topology_metric:interactionDiversity
-- topology_blind_spot_candidate topo_blind_test grave tutor_strongEdgeCount_fixture-cedh-reanimator-1: conf=0.9 missing=strategic_topology_metric:strongEdgeCount
-- topology_blind_spot_candidate topo_blind_test grave tutor_meaningfulEdgeDensity_fixture-cedh-reanimator-1: conf=0.9 missing=strategic_topology_metric:meaningfulEdgeDensity
-- topology_blind_spot_candidate topo_blind_test grave tutor_meanStrategicDegree_fixture-cedh-reanimator-1: conf=0.9 missing=strategic_topology_metric:meanStrategicDegree
-- topology_blind_spot_candidate topo_blind_test grave tutor_interactionDiversity_fixture-cedh-reanimator-1: conf=0.9 missing=strategic_topology_metric:interactionDiversity
-- topology_blind_spot_candidate topo_blind_test equipment marshal_strongEdgeCount_fixture-cedh-equipment-voltron-0: conf=0.9 missing=strategic_topology_metric:strongEdgeCount
-- topology_blind_spot_candidate topo_blind_test equipment marshal_meaningfulEdgeDensity_fixture-cedh-equipment-voltron-0: conf=0.9 missing=strategic_topology_metric:meaningfulEdgeDensity
-- topology_blind_spot_candidate topo_blind_test equipment marshal_interactionRedundancy_fixture-cedh-equipment-voltron-0: conf=0.9 missing=strategic_topology_metric:interactionRedundancy
-- topology_blind_spot_candidate topo_blind_test equipment marshal_meanStrategicDegree_fixture-cedh-equipment-voltron-0: conf=0.9 missing=strategic_topology_metric:meanStrategicDegree
+- sequence_blind_spot_candidate seq_blind_tutor_win_protection: conf=0.92 missing=construction_preference_for_covered_strategic_sequences
+- sequence_blind_spot_candidate seq_blind_silence_combo_sequence: conf=0.92 missing=construction_preference_for_covered_strategic_sequences
+- sequence_blind_spot_candidate seq_blind_mana_commander_payoff: conf=0.92 missing=construction_preference_for_covered_strategic_sequences
+- substitution_candidate subst_geistwave__daze: conf=0.88 missing=strategic_footprint_substitution_clusters
+- substitution_candidate subst_grapeshot__volcanic spite: conf=0.88 missing=strategic_footprint_substitution_clusters
+- substitution_candidate subst_lightning bolt__volcanic spite: conf=0.88 missing=strategic_footprint_substitution_clusters
+- substitution_candidate subst_tibalt's trickery__volcanic spite: conf=0.88 missing=strategic_footprint_substitution_clusters
+- substitution_candidate subst_untimely malfunction__swan song: conf=0.88 missing=strategic_footprint_substitution_clusters
+- substitution_candidate subst_chain of vapor__miscast: conf=0.88 missing=strategic_footprint_substitution_clusters
+- substitution_candidate subst_swan song__snap: conf=0.88 missing=strategic_footprint_substitution_clusters
+- substitution_candidate subst_mana vault__sylvan caryatid: conf=0.88 missing=strategic_footprint_substitution_clusters
+- substitution_candidate subst_talisman of curiosity__sylvan caryatid: conf=0.88 missing=strategic_footprint_substitution_clusters
+- substitution_candidate subst_mental misstep__snap: conf=0.88 missing=strategic_footprint_substitution_clusters
+- substitution_candidate subst_flusterstorm__snap: conf=0.88 missing=strategic_footprint_substitution_clusters
 
 ## Cross-commander topology transfer (never automatic)
 - automaticTransfer: **false**
-- disrupts_for: decks=128 events=16 class=cross_family
-- sequence_precedes: decks=54 events=8 class=cross_family
-- protects_commander: decks=38 events=6 class=cross_family
-- protects_engine: decks=38 events=6 class=cross_family
-- enables: decks=38 events=6 class=cross_family
-- feeds: decks=38 events=6 class=cross_family
-- payoff_for: decks=38 events=6 class=cross_family
-- protects_combo_or_close: decks=26 events=6 class=cross_family
-- recovers: decks=16 events=2 class=commander_specific
-- supports: decks=10 events=2 class=commander_specific
+- disrupts_for: decks=359 events=44 class=cross_family
+- enables: decks=359 events=44 class=cross_family
+- feeds: decks=359 events=44 class=cross_family
+- payoff_for: decks=359 events=44 class=cross_family
+- multifunction_with: decks=353 events=44 class=cross_family
+- clears_path_for: decks=347 events=44 class=cross_family
+- recovers: decks=312 events=42 class=cross_family
+- protects_combo_or_close: decks=303 events=44 class=cross_family
+- protects_commander: decks=299 events=44 class=cross_family
+- protects_engine: decks=297 events=44 class=cross_family
 
 ## Level-A forensics (v1.2 quantity/shape)
-- Usable Level-A cohorts: **16**
-- **Pearl-Ear, Imperial Advisor** @ `fixture-cedh-pearl-ear-auras-0`: interactionDensity:123; commanderConnectedCount:18; ix_commander_connected:18
-- **Pearl-Ear, Imperial Advisor** @ `fixture-cedh-pearl-ear-auras-1`: interactionDensity:123; commanderConnectedCount:18; ix_commander_connected:18
-- **Pearl-Ear, Imperial Advisor** @ `sp-fixture-cedh-pearl-ear-auras-0`: interactionDensity:123; commanderConnectedCount:18; ix_commander_connected:18
-- **Pearl-Ear, Imperial Advisor** @ `sp-fixture-cedh-pearl-ear-auras-1`: interactionDensity:123; commanderConnectedCount:18; ix_commander_connected:18
-- **Test Aristocrat** @ `fixture-cedh-aristocrats-0`: interactionDensity:30; packageHealth:10; threat_value_engine:8
-- **Test Aristocrat** @ `fixture-cedh-aristocrats-1`: interactionDensity:30; packageHealth:10; threat_value_engine:8
-- **Test Equipment Marshal** @ `fixture-cedh-equipment-voltron-0`: interactionDensity:130; packageHealth:18; ramp:-10
-- **Test Equipment Marshal** @ `fixture-cedh-equipment-voltron-1`: interactionDensity:130; packageHealth:18; ramp:-10
+- Usable Level-A cohorts: **12**
+- **Kinnan, Bonder Prodigy** @ `goblin-con-euros-qualifier-win-a-dual`: interactionDensity:26.5; curveLow:-1.5; roleDiversity:1.5
+- **Kinnan, Bonder Prodigy** @ `huddersfield-june-cedh-1`: interactionDensity:-49.5; curveHigh:-2.5; curveLow:-2
+- **Rograkh, Son of Rohgahh / Silas Renn, Seeker Adept** @ `rockys-birthday-and-vtg-charity-tournament`: interactionDensity:-11; curveLow:5; commanderConnectedCount:1.5
+- **Dargo, the Shipwrecker / Tymna the Weaver** @ `ddm-monthly-league-2`: interactionDensity:-42; curveLow:-3; interactionCount:-3
+- **Kediss, Emberclaw Familiar / Malcolm, Keen-Eyed Navigator** @ `mulligan-championship-series-june-w-guaranteed-volcanic`: interactionDensity:23; commanderConnectedCount:4; curveLow:-3
+- **Kinnan, Bonder Prodigy** @ `asgard-monthly-cedh-tournament-june-2026`: interactionDensity:-147; curveHigh:20; curveLow:-16
+- **Ral, Monsoon Mage // Ral, Leyline Prodigy** @ `huddersfield-june-cedh-1`: commanderAlignment:0; commanderConnectedCount:0; curveHigh:0
+- **Rograkh, Son of Rohgahh / Silas Renn, Seeker Adept** @ `asgard-monthly-cedh-tournament-june-2026`: interactionDensity:112; interactionCount:-4; spell_interaction:-3
 
 ## Repeated converter topology signatures
 ```json
 {
   "repeated_converter": {
-    "n": 48,
-    "meanPlanConnectedRatio": 0.75,
-    "meanIsolatedRatio": 0.519,
-    "meanMultifunctionRatio": 0,
-    "meanMeaningfulEdgeDensity": 16.441,
-    "meanCommanderProtection": 0.375,
-    "meanEngineProtection": 0.372
+    "n": 146,
+    "meanPlanConnectedRatio": 0.618,
+    "meanIsolatedRatio": 0.416,
+    "meanMultifunctionRatio": 0.221,
+    "meanMeaningfulEdgeDensity": 26.223,
+    "meanCommanderProtection": 0.863,
+    "meanEngineProtection": 0.788
   },
   "single_event_converter": {
-    "n": 0
+    "n": 38,
+    "meanPlanConnectedRatio": 0.631,
+    "meanIsolatedRatio": 0.474,
+    "meanMultifunctionRatio": 0.188,
+    "meanMeaningfulEdgeDensity": 30.121,
+    "meanCommanderProtection": 0.816,
+    "meanEngineProtection": 0.732
   },
   "tournament_participant": {
-    "n": 80,
-    "meanPlanConnectedRatio": 0.743,
-    "meanIsolatedRatio": 0.457,
-    "meanMultifunctionRatio": 0,
-    "meanMeaningfulEdgeDensity": 16.695,
-    "meanCommanderProtection": 0.25,
-    "meanEngineProtection": 0.249
+    "n": 175,
+    "meanPlanConnectedRatio": 0.615,
+    "meanIsolatedRatio": 0.47,
+    "meanMultifunctionRatio": 0.198,
+    "meanMeaningfulEdgeDensity": 26.679,
+    "meanCommanderProtection": 0.811,
+    "meanEngineProtection": 0.748
   }
 }
 ```
@@ -343,15 +404,24 @@ Prefer interaction that closes an uncovered strategic dependency (protects unpro
   "implementBrainV2": false,
   "brainV1RemainsFrozen": true,
   "candidateChangedBecauseOfBridge": false,
-  "strongestAgreement": null,
+  "strongestAgreement": {
+    "kind": "package_core_density",
+    "packageId": "reanimator",
+    "brainTheory": 6,
+    "corpusWeightedMean": 6.79,
+    "corpusP25": 7,
+    "corpusP75": 7,
+    "n": 5,
+    "note": "human_and_brain_converge"
+  },
   "firstCandidate": {
     "kind": "replicated_level_a_structure",
-    "hypothesisId": "psh:test spell echo:interaction",
-    "feature": "interactionDensity",
-    "classification": "brain_underweights",
+    "hypothesisId": "psh:kinnan, bonder prodigy:curveLow",
+    "feature": "curveLow",
+    "classification": "brain_missing_concept",
     "confidence": 0.9,
-    "weightedEffect": 680.5,
-    "summary": "Replicated Level-A signal on interaction: Brain classification brain_underweights",
+    "weightedEffect": -5.313,
+    "summary": "Replicated Level-A signal on curveLow: Brain classification brain_missing_concept",
     "priority": "high"
   },
   "evidenceGate": {
@@ -362,8 +432,8 @@ Prefer interaction that closes an uncovered strategic dependency (protects unpro
     "requiresAntiNetdeck": true,
     "singleEventIsLeadOnly": true
   },
-  "levelAUsableCohorts": 16,
-  "replicatedHypotheses": 46,
+  "levelAUsableCohorts": 12,
+  "replicatedHypotheses": 2,
   "rationale": [
     "Evidence system first; construction policy unchanged.",
     "Level-A same-commander + same-event is the primary controlled comparison.",

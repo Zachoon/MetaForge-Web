@@ -19,22 +19,81 @@ const CONCEPT_BADGE = freeze({
   retired: freeze({ emoji: "⚫", label: "Retired Principle" }),
 });
 
-export function badgeForConcept(concept = null) {
+// Player surfaces (philosophy picker, Honest Coach) — no research jargon.
+const PLAYER_CONCEPT_BADGE = freeze({
+  strongly_supported: freeze({ emoji: "🟢", label: "A principle that keeps holding up" }),
+  emerging: freeze({ emoji: "🟡", label: "A principle worth watching" }),
+  candidate: freeze({ emoji: "🟡", label: "A principle worth watching" }),
+  contradicted: freeze({ emoji: "🔴", label: "A contested principle" }),
+  retired: freeze({ emoji: "⚫", label: "A retired principle" }),
+});
+
+const PLAYER_CONCEPT_COPY = freeze({
+  "commitment-timing": freeze({
+    observation:
+      "Good pilots decide when to spend an answer now versus hold it for a bigger turn. Firing everything early can feel active, but it often leaves you empty when the real threat finally shows up.",
+    forward:
+      "We're watching whether that patience keeps paying off when you don't know what's in opponents' hands.",
+  }),
+  "plan-integrity": freeze({
+    observation:
+      "Strong decks protect one clear winning plan. Tempting side quests can still make the deck feel worse if they pull you off that line.",
+    forward:
+      "We're watching whether lists that stay loyal to their main plan keep feeling more coherent at the table.",
+  }),
+  "seat-pressure": freeze({
+    observation:
+      "In multiplayer, who you pressure matters as much as what you cast. Ending the game usually means targeting the seat that actually wins — not only the one that annoyed you last.",
+    forward:
+      "We're watching whether pilots who rank threats that way convert more often than grievance-targeting.",
+  }),
+  "information-asymmetry": freeze({
+    observation:
+      "When you don't know what opponents are holding, treat that unknown as real. Play around the dangerous cards, and change plans when information finally shows up.",
+    forward:
+      "We're watching whether that discipline beats guessing as if missing information were free.",
+  }),
+});
+
+export function badgeForConcept(concept = null, { playerFacing = false } = {}) {
   if (!concept) return null;
-  const badge = CONCEPT_BADGE[concept.status] || CONCEPT_BADGE.candidate;
+  const table = playerFacing ? PLAYER_CONCEPT_BADGE : CONCEPT_BADGE;
+  const badge = table[concept.status] || table.candidate;
   return freeze({
     ...badge,
     status: concept.status,
-    title: `${badge.emoji} ${badge.label}`,
+    title: playerFacing ? badge.label : `${badge.emoji} ${badge.label}`,
   });
 }
 
 /**
  * Present a Strategic Concept as product stance language.
  */
-export function presentAsConceptStance(concept = null) {
+export function presentAsConceptStance(concept = null, { playerFacing = false } = {}) {
   if (!concept) return null;
-  const badge = badgeForConcept(concept);
+  const badge = badgeForConcept(concept, { playerFacing });
+  const player = PLAYER_CONCEPT_COPY[concept.id];
+  if (playerFacing && player) {
+    return freeze({
+      writesToBrain: false,
+      kind: "ConceptStance",
+      conceptId: concept.id,
+      name: concept.name,
+      status: concept.status,
+      badge,
+      leadIn: null,
+      statement: `${player.observation} ${player.forward}`.trim(),
+      whyWeBelieve: freeze([
+        `experts=${concept.evidence?.experts || "none"}`,
+        `tournament=${concept.evidence?.tournament || "none"}`,
+        `fixtures=${concept.evidence?.fixtures?.length || 0}`,
+        ...(concept.evidence?.notes || []).slice(0, 2),
+      ]),
+      whatWouldChangeOurMind: freeze(concept.retirementCriteria || concept.contradictions || []),
+      brainInheritance: concept.brainInheritance || "none",
+    });
+  }
+
   const description = String(concept.description || "").replace(/\s+/g, " ").trim();
   const observation = `Current understanding suggests ${description.charAt(0).toLowerCase()}${description.slice(1)}`;
   const forward = concept.predictions?.[0]
@@ -104,9 +163,9 @@ export function buildPhilosophyConceptVoice({
 } = {}) {
   const [concept] = selectRelevantConcepts({ fantasyLabel, priorities, concepts, limit: 1 });
   if (!concept) return null;
-  const stance = presentAsConceptStance(concept);
+  const stance = presentAsConceptStance(concept, { playerFacing: true });
   const themeBit = fantasyLabel
-    ? ` Under a "${fantasyLabel}" commission, that principle is load-bearing.`
+    ? ` Under a "${fantasyLabel}" commission, staying true to that fantasy is part of the plan.`
     : "";
   return freeze({
     writesToBrain: false,
@@ -133,11 +192,16 @@ export function buildHonestCoachConceptVoice({
   // Prefer emerging / contested for "watching"
   const concept = picked.find((c) => c.status === "emerging" || c.status === "contradicted") || picked[0];
   if (!concept) return null;
-  const stance = presentAsConceptStance(concept);
-  const observation = `Current understanding of ${concept.name.toLowerCase()}: ${String(concept.description).charAt(0).toLowerCase()}${String(concept.description).slice(1)}`;
-  const forward = concept.knownCorrectImmediateSpends?.[0]
-    ? ` Exception worth watching: ${String(concept.knownCorrectImmediateSpends[0]).charAt(0).toLowerCase()}${String(concept.knownCorrectImmediateSpends[0]).slice(1)}.`
-    : "";
+  const stance = presentAsConceptStance(concept, { playerFacing: true });
+  const player = PLAYER_CONCEPT_COPY[concept.id];
+  const observation = player
+    ? player.observation
+    : `${concept.name}: ${String(concept.description).charAt(0).toLowerCase()}${String(concept.description).slice(1)}`;
+  const forward = player
+    ? ` ${player.forward}`
+    : concept.knownCorrectImmediateSpends?.[0]
+      ? ` Exception worth watching: ${String(concept.knownCorrectImmediateSpends[0]).charAt(0).toLowerCase()}${String(concept.knownCorrectImmediateSpends[0]).slice(1)}.`
+      : "";
   return freeze({
     writesToBrain: false,
     surface: "honest_coach",

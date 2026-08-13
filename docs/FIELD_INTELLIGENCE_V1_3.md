@@ -35,6 +35,15 @@ Learn how elite players connect cards into functioning strategic systems — not
 
 Live sample defaults: **60 days / 40 events / 20 decks per event** (CLI overrides preserved).
 
+## Academy infrastructure reliability
+
+Live TopDeck ingest is **chunked (30-day windows), checkpointed, and disk-cached** under `tests/field-intelligence/live-cache/` (gitignored). Academy reports open with an explicit **provenance header** and **source health dashboard** so synthetic fixture fallback is never mistaken for live observation.
+
+- Chunked entrypoint: `fetchTopDeckTournamentsChunked`
+- Cache / checkpoints: `live-ingest-cache.mjs`
+- Source health: `source-health.mjs`
+- Research delta: `summarizeResearchDelta` ("What changed since last run?")
+
 ## Confidence model
 
 - Co-occurrence alone → weak (`commonly_cooccurs`)
@@ -55,6 +64,8 @@ Static topology (supports / protects / enables) is this release.
 
 FI v1.3 feeds the observation-only [Strategic Principle Engine](STRATEGIC_PRINCIPLE_ENGINE.md).
 Principles accumulate in the research store and registry; they never activate Brain construction.
+
+Institutional framing: [Intelligence Constitution](INTELLIGENCE_CONSTITUTION.md) (Academy discovers; Laboratory tests; Harness gates; Brain embodies; Archive remembers).
 
 ## Related
 

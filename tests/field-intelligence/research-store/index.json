@@ -1,0 +1,54 @@
+{
+  "version": "research-store-index-v1",
+  "updatedAt": "2026-08-11T00:58:35.383Z",
+  "lastRun": "2026-08-11T00:58:35.360Z",
+  "live": true,
+  "written": 289,
+  "skipped": 75,
+  "totalRows": 596,
+  "principleCount": 133,
+  "promotableCount": 12,
+  "corpusMode": "live",
+  "snapshot": {
+    "events": 44,
+    "decks": 359,
+    "commanders": 118,
+    "principles": 133,
+    "corpusMode": "live"
+  },
+  "researchDelta": {
+    "version": "research-delta-v1",
+    "questionAnswered": "What changed since last run?",
+    "priorRunAt": "2026-08-10T21:54:13.778Z",
+    "currentRunAt": "2026-08-11T00:58:35.360Z",
+    "append": {
+      "written": 289,
+      "skipped": 75,
+      "path": "C:\\Projects\\MetaForge\\web\\tests\\field-intelligence\\research-store\\observations.jsonl"
+    },
+    "deltas": {
+      "events": 44,
+      "decks": 359,
+      "commanders": 118,
+      "principles": 62,
+      "storeRowsWritten": 289
+    },
+    "current": {
+      "events": 44,
+      "decks": 359,
+      "commanders": 118,
+      "principles": 133,
+      "corpusMode": "live",
+      "generatedAt": "2026-08-11T00:58:35.360Z"
+    },
+    "prior": {
+      "events": 0,
+      "decks": 0,
+      "commanders": 0,
+      "principles": 71,
+      "totalRows": 307,
+      "generatedAt": "2026-08-10T21:54:13.778Z",
+      "corpusMode": null
+    }
+  }
+}

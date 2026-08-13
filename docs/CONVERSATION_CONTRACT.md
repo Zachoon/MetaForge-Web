@@ -104,6 +104,51 @@ Honest Coach stays short. Deep Forge holds the dissertation. That separation is 
 
 ---
 
+## Player Surface Law (locked)
+
+Intelligence may grow without bound in the background.  
+**Player surfaces may not.**
+
+```text
+Background (unlimited):   Academy · Atlas · tournament · theory · Mentor · Brain shadow
+Player default (three beats):  Verdict → Change → Why
+Deep Forge (opt-in):      How do you know? / full research
+```
+
+### The three beats (default UI)
+
+| Beat | Voice | Example |
+|------|-------|---------|
+| **Verdict** | How this stands | “This experience fits an aggressive table.” / “Theme match is weak.” |
+| **Change** | What to do next | “Choose this experience” / “Add more planeswalker payoffs” |
+| **Why** | One friend-length reason | “It forces answers early, but recovers poorly after disruption.” |
+
+If a block cannot be said in those three beats, it does **not** belong on the default surface.
+
+### Hard bans on player-default surfaces
+
+Do not show unless the player opens Deep Forge / Compare details / an explicit “How do you know?”:
+
+- Internal system names (`Brain v1`, feature keys like `curveLow`, “elite converters”)
+- Research badges (“Emerging Principle”, “Current Understanding”, confidence ladders)
+- Hypothesis / concept / Academy vocabulary as product copy
+- Multi-paragraph theorycrafting on choice cards
+
+### Where each layer lives
+
+| Layer | Home |
+|-------|------|
+| Tournament / Academy / Mentor / concepts / hypotheses | Background compute + Deep Forge |
+| Philosophy choice | Feel · tradeoff · choose (Compare details optional) |
+| Honest Coach | Verdict · change · why (friend-length) |
+| Commission Contract | “You asked / we built” — short; meters behind disclosure |
+
+**Rule of thumb:** If a founder could mistake the screen for an engineering dashboard, demote it.
+
+Naming is not promotion. Background intelligence is not a UI entitlement.
+
+---
+
 ## Product narrative (user questions)
 
 | Stage | User question |

@@ -25,6 +25,14 @@ const STATE_BADGE = freeze({
   retired: freeze({ emoji: "⚫", label: "Retired Understanding" }),
 });
 
+// Philosophy / coach surfaces speak to players. Deep Forge keeps research badges.
+const PLAYER_STATE_BADGE = freeze({
+  strongly_supported: freeze({ emoji: "🟢", label: "Worth trusting" }),
+  emerging: freeze({ emoji: "🟡", label: "Worth noticing" }),
+  contradicted: freeze({ emoji: "🔴", label: "Still contested" }),
+  retired: freeze({ emoji: "⚫", label: "Retired for now" }),
+});
+
 function normalize(value = "") {
   return String(value || "")
     .toLocaleLowerCase("en")
@@ -53,12 +61,15 @@ export function badgeForHypothesis(hypothesis = null) {
 }
 
 /**
- * Pick hypotheses relevant to a commander (or general meta if none match).
+ * Pick hypotheses relevant to a commander (or general meta if allowed).
+ * Philosophy selection should pass includeGeneral:false — otherwise every
+ * build gets unrelated lab features like curveLow / Brain-shadow notes.
  */
 export function selectRelevantHypotheses({
   commanderName = "",
   hypotheses = null,
   limit = 2,
+  includeGeneral = true,
 } = {}) {
   const pool = hypotheses || defaultHypothesisSnapshot().hypotheses || [];
   const needle = normalize(commanderName);
@@ -69,12 +80,55 @@ export function selectRelevantHypotheses({
     const subject = normalize(hyp.subject || "");
     if (needle && subject && (subject.includes(needle) || needle.includes(subject.split(" ")[0] || ""))) {
       matched.push(hyp);
-    } else if (!hyp.subject || /curve|sequencing|interaction|shadow|expert/i.test(hyp.subject)) {
+    } else if (includeGeneral && (!hyp.subject || /curve|sequencing|interaction|shadow|expert/i.test(hyp.subject))) {
       general.push(hyp);
     }
   }
-  const picked = [...matched, ...general].slice(0, limit);
+  const picked = [...matched, ...(includeGeneral ? general : [])].slice(0, limit);
   return freeze(picked);
+}
+
+export function playerBadgeForHypothesis(hypothesis = null) {
+  if (!hypothesis) return null;
+  const badge = PLAYER_STATE_BADGE[hypothesis.state] || PLAYER_STATE_BADGE.emerging;
+  return freeze({
+    ...badge,
+    state: hypothesis.state,
+    title: badge.label,
+  });
+}
+
+/**
+ * Translate research claims into Commander-coach language.
+ * Keeps the evidence object intact; only changes what players read.
+ */
+export function playerFacingHypothesisLine(hyp, philosophyLabel = "") {
+  const claim = String(hyp?.claim || "").replace(/\s+/g, " ").trim();
+  const subject = hyp?.subject || "this commander";
+  if (!claim) return null;
+
+  // Internal Brain-shadow / feature-key claims must never reach player UI raw.
+  if (/brain v1|brain_missing|curveLow|curveHigh|elite converter structure surfaces/i.test(claim)) {
+    if (/curveLow/i.test(claim) || /curveLow/i.test(subject)) {
+      return "Strong tournament lists often care about how many cheap early plays they run. MetaForge doesn't force that as a build rule yet — treat it as a feel to check at the table.";
+    }
+    return "We're still comparing what strong tournament lists do versus what MetaForge currently builds. That gap is something to notice, not a finished rule.";
+  }
+
+  if (hyp.state === "contradicted" && /vs/.test(claim)) {
+    return `Successful ${subject} pilots are still split across competing plans rather than one settled shell.${philosophyLabel ? ` This philosophy is one of those live branches.` : ""}`;
+  }
+
+  let line = claim
+    .replace(/^[^:]+:\s*/, "")
+    .replace(/elite converters repeatedly center on /gi, "recent high-finishing lists often center on ")
+    .replace(/elite converters/gi, "high-finishing lists")
+    .replace(/\brole:threat\b/gi, "a clear threat package")
+    .replace(/\breplicated in (\d+)\/(\d+) decks\b/gi, "showing up in $1 of $2 recent lists");
+
+  line = line.charAt(0).toUpperCase() + line.slice(1);
+  if (!/[.!?]$/.test(line)) line += ".";
+  return line;
 }
 
 /**
@@ -86,17 +140,24 @@ export function buildPhilosophyStanceVoice({
   philosophyLabel = "",
   hypotheses = null,
 } = {}) {
-  const [hyp] = selectRelevantHypotheses({ commanderName, hypotheses, limit: 1 });
+  // Commander-matched only. Generic lab hyps (curveLow, Brain shadow) are
+  // research objects for Deep Forge — not copy for "choose this experience."
+  const [hyp] = selectRelevantHypotheses({
+    commanderName,
+    hypotheses,
+    limit: 1,
+    includeGeneral: false,
+  });
   if (!hyp) return null;
-  const badge = badgeForHypothesis(hyp);
+  const badge = playerBadgeForHypothesis(hyp);
   const stance = presentAsStrategicStance(hyp);
-  const observation = groundedObservationLine(hyp, philosophyLabel);
+  const observation = playerFacingHypothesisLine(hyp, philosophyLabel);
+  if (!observation) return null;
   const forward = hyp.uniquenessAngle
-    ? ` We're watching that tradeoff because the evidence is still ${hyp.state === "contradicted" ? "mixed" : hyp.confidence.level}.`
+    ? ` Evidence here is still ${hyp.state === "contradicted" ? "mixed" : hyp.confidence?.level || "early"}.`
     : hyp.state === "contradicted"
-      ? " Tournament evidence is still mixed on which plan settles."
+      ? " Tournament results still disagree on which plan settles."
       : "";
-  // ~90% observation, ~10% forward (single hedge clause).
   const paragraph = `${observation}${forward}`.trim();
 
   return freeze({
@@ -104,28 +165,12 @@ export function buildPhilosophyStanceVoice({
     surface: "philosophy_selection",
     hypothesisId: hyp.id,
     badge,
-    leadIn: "Current understanding suggests",
+    leadIn: null,
     paragraph,
     whyWeBelieve: freeze(hyp.evidence.notes || []),
     whatWouldChangeOurMind: freeze(hyp.retirementCriteria || []),
     stanceStatement: stance?.statement || null,
   });
-}
-
-function groundedObservationLine(hyp, philosophyLabel = "") {
-  const claim = String(hyp.claim || "").replace(/\s+/g, " ").trim();
-  // Soften research phrasing into coach voice.
-  if (hyp.state === "contradicted" && /vs/.test(claim)) {
-    const subject = hyp.subject || "this commander";
-    return `Current understanding suggests successful ${subject} pilots are still split across competing plans rather than a single settled shell.${philosophyLabel ? ` This philosophy is one of those live branches.` : ""}`;
-  }
-  if (/spellslinger|threat|ramp|artifacts|tokens/i.test(claim)) {
-    return `Current understanding suggests ${claim.replace(/^[^:]+:\s*/, "").replace(/elite converters repeatedly center on /i, "recent high-performing lists often center on ")}.`;
-  }
-  if (hyp.evidence.tournament === "high") {
-    return `Current understanding suggests ${claim.charAt(0).toLowerCase()}${claim.slice(1)}`;
-  }
-  return `Current understanding suggests ${claim.charAt(0).toLowerCase()}${claim.slice(1)}`;
 }
 
 /**
@@ -141,9 +186,10 @@ export function buildHonestCoachWatchingVoice({
   if (!hyp) return null;
   const badge = badgeForHypothesis(hyp);
   const observation = hyp.state === "contradicted"
-    ? `Current tournament evidence suggests ${hyp.subject} lists still disagree on the primary plan.`
-    : `Current tournament evidence suggests ${String(hyp.claim).replace(/^[^:]+:\s*/, "").replace(/\.$/, "")}.`;
+    ? `${hyp.subject} lists still disagree on the primary plan.`
+    : playerFacingHypothesisLine(hyp) || String(hyp.claim || "").trim();
   const forward = hyp.prediction?.expectToObserve?.[0]
+    && !/brain|curveLow|elite converter/i.test(String(hyp.prediction.expectToObserve[0]))
     ? ` If that holds, we should keep seeing ${String(hyp.prediction.expectToObserve[0]).replace(/^Continued /i, "").toLowerCase()}.`
     : "";
 
@@ -151,7 +197,7 @@ export function buildHonestCoachWatchingVoice({
     writesToBrain: false,
     surface: "honest_coach",
     hypothesisId: hyp.id,
-    badge,
+    badge: playerBadgeForHypothesis(hyp) || badge,
     label: "One thing we're watching",
     paragraph: `${observation}${forward}`.trim(),
     whyWeBelieve: freeze(hyp.evidence.notes || []),

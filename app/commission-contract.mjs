@@ -442,9 +442,56 @@ export function buildCommissionContract(args) {
   return gradeCommissionContract(args);
 }
 
+/** Systems that may headline CHANGE when this fantasy is the commission. */
+const FANTASY_PRIMARY_SYSTEMS = freeze({
+  superfriends: freeze(["Counter Engine", "Protection Engine"]),
+  proliferate: freeze(["Counter Engine", "Protection Engine"]),
+  tokens: freeze(["Token Engine", "Combat Engine", "Enter-the-Battlefield Engine"]),
+  aristocrats: freeze(["Sacrifice Engine", "Token Engine", "Graveyard Engine"]),
+  reanimator: freeze(["Graveyard Engine"]),
+  spellslinger: freeze(["Spellcraft Engine", "Card-Flow Engine"]),
+  voltron: freeze(["Combat Engine", "Evasion Engine", "Protection Engine", "Artifact Engine"]),
+  landfall: freeze(["Land Engine"]),
+  blink: freeze(["Enter-the-Battlefield Engine"]),
+  stax: freeze(["Protection Engine", "Artifact Engine"]),
+});
+
+/** Pilot / recognition signal that matches the commissioned fantasy protagonist. */
+export const FANTASY_PILOT_SIGNAL = freeze({
+  superfriends: "counters",
+  proliferate: "counters",
+  tokens: "tokens",
+  aristocrats: "sacrifice",
+  reanimator: "graveyard",
+  spellslinger: "spells",
+  voltron: "combat",
+  landfall: "lands",
+  blink: "etb",
+  stax: "artifacts",
+});
+
+/**
+ * True when a structural soft spot is support scaffolding — not the
+ * commissioned protagonist. Treasure under Superfriends is the classic miss.
+ */
+export function isIncidentalSupportPressure(systemName = "", fantasy = null) {
+  const pressure = String(systemName || "").trim();
+  if (!pressure || !fantasy) return false;
+  const fantasyId = fantasy.id || fantasy.themeId || "";
+  const primary = FANTASY_PRIMARY_SYSTEMS[fantasyId] || [];
+  if (primary.includes(pressure)) return false;
+  // Any named fantasy: if we know primary systems and this isn't one, demote.
+  if (primary.length) return true;
+  // Unknown fantasy id — still demote classic mana-support soft spots when a
+  // thematic protagonist exists.
+  return /Treasure Engine|Land Engine|Card-Flow Engine/i.test(pressure);
+}
+
 /**
  * Prefer Player Fantasy narration when a contract fantasy exists.
- * Mechanisms remain available as supporting evidence.
+ * Mechanisms remain available as supporting evidence — never CHANGE headlines.
+ * Also retargets resolvedSignal so Pilot Model speaks the fantasy, not an
+ * incidental Treasure / Evasion measurement.
  */
 export function applyFantasyNarrator({
   recognition = null,
@@ -453,6 +500,11 @@ export function applyFantasyNarrator({
   const fantasy = commissionContract?.playerFantasy;
   if (!fantasy?.tableWhy || !recognition) return recognition;
 
+  const hierarchy = recognition.hierarchy || {};
+  const pressure = hierarchy.pressurePoint || null;
+  const incidental = isIncidentalSupportPressure(pressure, fantasy);
+  const fantasySignal = FANTASY_PILOT_SIGNAL[fantasy.id] || null;
+
   return freeze({
     ...recognition,
     tableWhy: fantasy.tableWhy,
@@ -460,5 +512,13 @@ export function applyFantasyNarrator({
     primaryPlan: fantasy.tableWhy,
     playerFantasy: fantasy,
     fantasySupportLine: fantasy.supportLine || null,
+    // Pilot Model reads this first — keep Superfriends on counters, not treasure.
+    resolvedSignal: fantasySignal || recognition.resolvedSignal || null,
+    hierarchy: freeze({
+      ...hierarchy,
+      // Coach CHANGE must not lead with support scaffolding.
+      pressurePoint: incidental ? null : pressure,
+      supportSoftSpot: incidental ? pressure : hierarchy.supportSoftSpot || null,
+    }),
   });
 }

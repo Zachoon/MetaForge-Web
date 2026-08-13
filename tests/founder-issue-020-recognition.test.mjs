@@ -267,5 +267,8 @@ describe("Founder Issue #020 — Strategic Recognition + Pilot Model", () => {
     assert.ok(summary.intentions.establish.length < 220);
     assert.ok(summary.intentions.dependsOn.length < 220);
     assert.ok(summary.intentions.firstVulnerability.length < 320);
+    // Player Surface Law: Engine taxonomy stays off the coach default stop line.
+    assert.doesNotMatch(summary.intentions.firstVulnerability, /Treasure Engine|Evasion Engine/);
+    assert.match(summary.intentions.firstVulnerability, /treasure and ramp pieces|Watch your/i);
   });
 });

@@ -1,4 +1,5 @@
 import { userKey } from "./account-bench";
+import { buildTrustCalibrationReport } from "../app/trust-calibration.mjs";
 
 interface FounderEnv { DB: D1Database; METAFORGE_FOUNDER_USER_KEY?: string }
 
@@ -19,7 +20,7 @@ export async function handleFounderOverview(request: Request, env: FounderEnv) {
 
   const [benchesResult, feedbackResult, funnelResult, reliabilityResult, campaignResult] = await Promise.all([
     env.DB.prepare("SELECT user_key, bench_json, revision, created_at, updated_at FROM account_deck_benches ORDER BY updated_at DESC LIMIT 500").all<BenchRow>(),
-    env.DB.prepare("SELECT id, user_key, category, message, context_json, status, created_at FROM founder_feedback ORDER BY created_at DESC LIMIT 100").all<FeedbackRow>(),
+    env.DB.prepare("SELECT id, user_key, category, message, context_json, status, created_at FROM founder_feedback ORDER BY created_at DESC LIMIT 500").all<FeedbackRow>(),
     env.DB.prepare(`SELECT event_name, COUNT(*) events, COUNT(DISTINCT session_id) sessions
       FROM launch_events WHERE session_id IS NOT NULL AND occurred_at >= ? GROUP BY event_name`).bind(Date.now() - 30 * 86400000).all<FunnelRow>(),
     env.DB.prepare(`SELECT event_name, COUNT(*) events,
@@ -69,6 +70,11 @@ export async function handleFounderOverview(request: Request, env: FounderEnv) {
   const succeeded = reliabilityRows.find((row) => row.event_name === "generation_succeeded")?.events || 0;
   const failed = reliabilityRows.find((row) => row.event_name === "generation_failed")?.events || 0;
   const averageMs = reliabilityRows.find((row) => row.event_name === "generation_succeeded")?.average_ms || 0;
+  const trustCalibration = buildTrustCalibrationReport({
+    feedback,
+    funnel,
+    generatedAt: new Date().toISOString(),
+  });
   return response({
     generatedAt: new Date().toISOString(),
     totals: { testers: testers.length, feedback: feedback.length, ...totals }, testers, feedback,
@@ -77,5 +83,6 @@ export async function handleFounderOverview(request: Request, env: FounderEnv) {
       reliability: { succeeded, failed, successRate: succeeded + failed ? Math.round(succeeded / (succeeded + failed) * 1000) / 10 : null, averageMs: Math.round(averageMs) },
       campaigns: campaignResult.results || [],
     },
+    trustCalibration,
   });
 }

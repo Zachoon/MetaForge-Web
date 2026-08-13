@@ -1,0 +1,2938 @@
+# Brain v2 Experiment 001 — Interaction Structure
+
+Brain v1 remains the default/control. Exp001 is **not** promoted automatically.
+
+## Hypothesis
+```json
+{
+  "id": "psh:kraum, ludevic's opus / tymna the weaver:interaction",
+  "feature": "interactionDensity",
+  "underweightLocation": "prospective.interaction_present + live_fill.inDeckSynergy (G/F denser wiring under-rewarded vs package weights)",
+  "policy": {
+    "id": "brain_v2_exp001_interaction",
+    "partnerPresentWeight": 6.5,
+    "partnerPresentCap": 24,
+    "partnerMissingWeight": 5,
+    "partnerMissingCap": 18,
+    "liveSynergyMultiplier": 2.35,
+    "multifunctionConnectedBonus": 3.5,
+    "efficientConnectedCmcBonus": 2,
+    "efficientCmcThreshold": 2,
+    "applyPowerTiers": [
+      "High-Power",
+      "Maximum",
+      null
+    ],
+    "raiseRoleInteractionFloor": 0,
+    "trackedRoleInteractionBaseWeight": 10,
+    "evidenceHypothesisId": "psh:kraum, ludevic's opus / tymna the weaver:interaction",
+    "evidenceFeature": "interactionDensity",
+    "underweightLocation": "prospective.interaction_present + live_fill.inDeckSynergy (G/F denser wiring under-rewarded vs package weights)"
+  }
+}
+```
+
+## Promotion verdict
+**needs_more_evidence**
+- regressions: []
+- heldOutImproved: false
+
+## Control vs Experiment aggregates
+### Control (Brain v1)
+```json
+{
+  "aggregate": {
+    "version": "validation-harness-v1",
+    "runCount": 104,
+    "passCount": 104,
+    "hardFailureRunCount": 0,
+    "passRate": 1,
+    "tortureAggregate": {
+      "total": 104,
+      "passed": 104,
+      "failed": 0,
+      "byArchetype": {
+        "aura_voltron": "PARTIAL",
+        "equipment_voltron": "PARTIAL",
+        "typal": "PARTIAL",
+        "tokens": "PARTIAL",
+        "aristocrats": "PASS",
+        "reanimator": "PARTIAL",
+        "spellslinger": "PARTIAL",
+        "landfall": "PASS",
+        "blink": "PARTIAL",
+        "artifacts": "PARTIAL",
+        "stax": "PARTIAL",
+        "combo": "PARTIAL",
+        "multi_direction": "PARTIAL"
+      },
+      "failureClassCounts": {
+        "interaction_graph_failure": 72
+      },
+      "runtime": {
+        "medianMs": 1958,
+        "p95Ms": 4538,
+        "slowest": [
+          {
+            "id": "aristocrats",
+            "ms": 4762
+          },
+          {
+            "id": "aristocrats",
+            "ms": 4741
+          },
+          {
+            "id": "aristocrats",
+            "ms": 4720
+          },
+          {
+            "id": "aristocrats",
+            "ms": 4615
+          },
+          {
+            "id": "aristocrats",
+            "ms": 4591
+          }
+        ]
+      }
+    },
+    "selfEvaluationAggregate": {
+      "version": "self-evaluation-aggregate-v1",
+      "forgeCount": 104,
+      "totalTracedPicks": 6792,
+      "totalMeaningfulDisagreements": 2051,
+      "driftClassCounts": {
+        "early_scaffolding_matured": 2701,
+        "downstream_repair_invalidated_pick": 416,
+        "later_package_oversupply": 258,
+        "curve_need_disappeared": 48,
+        "unclassified": 1968,
+        "stable_good_prediction": 72,
+        "retrospective_gain_not_seen_prospectively": 1169,
+        "final_weak_justification": 144,
+        "unsupported_anchor_emerged": 16
+      },
+      "driftByPhase": {
+        "foundation": {
+          "count": 4912,
+          "meanAbsDrift": 44.572
+        },
+        "development": {
+          "count": 1880,
+          "meanAbsDrift": 56.461
+        }
+      },
+      "driftByPackage": {
+        "auras": {
+          "count": 1040,
+          "disagreements": 992
+        },
+        "equipment": {
+          "count": 520,
+          "disagreements": 456
+        },
+        "typal": {
+          "count": 520,
+          "disagreements": 504
+        },
+        "tokens": {
+          "count": 1584,
+          "disagreements": 1408
+        },
+        "aristocrats": {
+          "count": 528,
+          "disagreements": 480
+        },
+        "reanimator": {
+          "count": 512,
+          "disagreements": 488
+        },
+        "spellslinger": {
+          "count": 528,
+          "disagreements": 497
+        },
+        "landfall": {
+          "count": 528,
+          "disagreements": 472
+        },
+        "blink": {
+          "count": 528,
+          "disagreements": 504
+        },
+        "stax": {
+          "count": 512,
+          "disagreements": 464
+        }
+      },
+      "controlCaseCounts": {
+        "early_scaffolding_matured": 2701,
+        "invalidated_by_later_decisions": 705,
+        "ambiguous": 2089,
+        "stable": 72,
+        "beneficial_emergence": 1169,
+        "genuine_bad_belief": 56
+      },
+      "meanPredictionError": 32.345,
+      "meanAbsPredictionError": 47.863,
+      "topRecurrentDisagreementClasses": [
+        {
+          "class": "early_scaffolding_matured",
+          "count": 2701
+        },
+        {
+          "class": "unclassified",
+          "count": 1968
+        },
+        {
+          "class": "retrospective_gain_not_seen_prospectively",
+          "count": 1169
+        },
+        {
+          "class": "downstream_repair_invalidated_pick",
+          "count": 416
+        },
+        {
+          "class": "later_package_oversupply",
+          "count": 258
+        },
+        {
+          "class": "final_weak_justification",
+          "count": 144
+        },
+        {
+          "class": "curve_need_disappeared",
+          "count": 48
+        },
+        {
+          "class": "unsupported_anchor_emerged",
+          "count": 16
+        }
+      ],
+      "byArchetype": {
+        "aura_voltron": {
+          "forges": 8,
+          "picks": 520,
+          "disagreements": 175,
+          "byClass": {
+            "early_scaffolding_matured": 289,
+            "downstream_repair_invalidated_pick": 48,
+            "later_package_oversupply": 8,
+            "curve_need_disappeared": 7,
+            "unclassified": 48,
+            "stable_good_prediction": 8,
+            "retrospective_gain_not_seen_prospectively": 112
+          },
+          "meanAbsDrift": 61.38,
+          "topClasses": [
+            {
+              "class": "early_scaffolding_matured",
+              "count": 289
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 112
+            },
+            {
+              "class": "downstream_repair_invalidated_pick",
+              "count": 48
+            },
+            {
+              "class": "unclassified",
+              "count": 48
+            },
+            {
+              "class": "later_package_oversupply",
+              "count": 8
+            }
+          ]
+        },
+        "equipment_voltron": {
+          "forges": 8,
+          "picks": 520,
+          "disagreements": 144,
+          "byClass": {
+            "early_scaffolding_matured": 208,
+            "unclassified": 168,
+            "retrospective_gain_not_seen_prospectively": 80,
+            "downstream_repair_invalidated_pick": 32,
+            "final_weak_justification": 32
+          },
+          "meanAbsDrift": 31.068,
+          "topClasses": [
+            {
+              "class": "early_scaffolding_matured",
+              "count": 208
+            },
+            {
+              "class": "unclassified",
+              "count": 168
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 80
+            },
+            {
+              "class": "downstream_repair_invalidated_pick",
+              "count": 32
+            },
+            {
+              "class": "final_weak_justification",
+              "count": 32
+            }
+          ]
+        },
+        "typal": {
+          "forges": 8,
+          "picks": 520,
+          "disagreements": 128,
+          "byClass": {
+            "early_scaffolding_matured": 232,
+            "unclassified": 160,
+            "retrospective_gain_not_seen_prospectively": 96,
+            "downstream_repair_invalidated_pick": 32
+          },
+          "meanAbsDrift": 50.701,
+          "topClasses": [
+            {
+              "class": "early_scaffolding_matured",
+              "count": 232
+            },
+            {
+              "class": "unclassified",
+              "count": 160
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 96
+            },
+            {
+              "class": "downstream_repair_invalidated_pick",
+              "count": 32
+            }
+          ]
+        },
+        "tokens": {
+          "forges": 8,
+          "picks": 528,
+          "disagreements": 144,
+          "byClass": {
+            "early_scaffolding_matured": 144,
+            "later_package_oversupply": 48,
+            "unclassified": 224,
+            "stable_good_prediction": 16,
+            "retrospective_gain_not_seen_prospectively": 56,
+            "final_weak_justification": 40
+          },
+          "meanAbsDrift": 43.43,
+          "topClasses": [
+            {
+              "class": "unclassified",
+              "count": 224
+            },
+            {
+              "class": "early_scaffolding_matured",
+              "count": 144
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 56
+            },
+            {
+              "class": "later_package_oversupply",
+              "count": 48
+            },
+            {
+              "class": "final_weak_justification",
+              "count": 40
+            }
+          ]
+        },
+        "aristocrats": {
+          "forges": 8,
+          "picks": 528,
+          "disagreements": 200,
+          "byClass": {
+            "early_scaffolding_matured": 216,
+            "later_package_oversupply": 24,
+            "unclassified": 104,
+            "stable_good_prediction": 8,
+            "retrospective_gain_not_seen_prospectively": 120,
+            "downstream_repair_invalidated_pick": 48,
+            "final_weak_justification": 8
+          },
+          "meanAbsDrift": 54.153,
+          "topClasses": [
+            {
+              "class": "early_scaffolding_matured",
+              "count": 216
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 120
+            },
+            {
+              "class": "unclassified",
+              "count": 104
+            },
+            {
+              "class": "downstream_repair_invalidated_pick",
+              "count": 48
+            },
+            {
+              "class": "later_package_oversupply",
+              "count": 24
+            }
+          ]
+        },
+        "reanimator": {
+          "forges": 8,
+          "picks": 512,
+          "disagreements": 200,
+          "byClass": {
+            "early_scaffolding_matured": 152,
+            "later_package_oversupply": 56,
+            "unclassified": 160,
+            "downstream_repair_invalidated_pick": 32,
+            "final_weak_justification": 16,
+            "retrospective_gain_not_seen_prospectively": 96
+          },
+          "meanAbsDrift": 50.478,
+          "topClasses": [
+            {
+              "class": "unclassified",
+              "count": 160
+            },
+            {
+              "class": "early_scaffolding_matured",
+              "count": 152
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 96
+            },
+            {
+              "class": "later_package_oversupply",
+              "count": 56
+            },
+            {
+              "class": "downstream_repair_invalidated_pick",
+              "count": 32
+            }
+          ]
+        },
+        "spellslinger": {
+          "forges": 8,
+          "picks": 528,
+          "disagreements": 396,
+          "byClass": {
+            "early_scaffolding_matured": 132,
+            "later_package_oversupply": 122,
+            "unsupported_anchor_emerged": 16,
+            "curve_need_disappeared": 41,
+            "retrospective_gain_not_seen_prospectively": 169,
+            "downstream_repair_invalidated_pick": 48
+          },
+          "meanAbsDrift": 64.696,
+          "topClasses": [
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 169
+            },
+            {
+              "class": "early_scaffolding_matured",
+              "count": 132
+            },
+            {
+              "class": "later_package_oversupply",
+              "count": 122
+            },
+            {
+              "class": "downstream_repair_invalidated_pick",
+              "count": 48
+            },
+            {
+              "class": "curve_need_disappeared",
+              "count": 41
+            }
+          ]
+        },
+        "landfall": {
+          "forges": 8,
+          "picks": 528,
+          "disagreements": 120,
+          "byClass": {
+            "early_scaffolding_matured": 248,
+            "unclassified": 152,
+            "stable_good_prediction": 8,
+            "downstream_repair_invalidated_pick": 48,
+            "final_weak_justification": 16,
+            "retrospective_gain_not_seen_prospectively": 56
+          },
+          "meanAbsDrift": 55.276,
+          "topClasses": [
+            {
+              "class": "early_scaffolding_matured",
+              "count": 248
+            },
+            {
+              "class": "unclassified",
+              "count": 152
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 56
+            },
+            {
+              "class": "downstream_repair_invalidated_pick",
+              "count": 48
+            },
+            {
+              "class": "final_weak_justification",
+              "count": 16
+            }
+          ]
+        },
+        "blink": {
+          "forges": 8,
+          "picks": 528,
+          "disagreements": 72,
+          "byClass": {
+            "early_scaffolding_matured": 232,
+            "stable_good_prediction": 8,
+            "unclassified": 216,
+            "downstream_repair_invalidated_pick": 48,
+            "retrospective_gain_not_seen_prospectively": 24
+          },
+          "meanAbsDrift": 41.24,
+          "topClasses": [
+            {
+              "class": "early_scaffolding_matured",
+              "count": 232
+            },
+            {
+              "class": "unclassified",
+              "count": 216
+            },
+            {
+              "class": "downstream_repair_invalidated_pick",
+              "count": 48
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 24
+            },
+            {
+              "class": "stable_good_prediction",
+              "count": 8
+            }
+          ]
+        },
+        "artifacts": {
+          "forges": 8,
+          "picks": 528,
+          "disagreements": 128,
+          "byClass": {
+            "early_scaffolding_matured": 144,
+            "unclassified": 240,
+            "stable_good_prediction": 16,
+            "retrospective_gain_not_seen_prospectively": 128
+          },
+          "meanAbsDrift": 56.682,
+          "topClasses": [
+            {
+              "class": "unclassified",
+              "count": 240
+            },
+            {
+              "class": "early_scaffolding_matured",
+              "count": 144
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 128
+            },
+            {
+              "class": "stable_good_prediction",
+              "count": 16
+            }
+          ]
+        },
+        "stax": {
+          "forges": 8,
+          "picks": 512,
+          "disagreements": 48,
+          "byClass": {
+            "early_scaffolding_matured": 256,
+            "unclassified": 208,
+            "retrospective_gain_not_seen_prospectively": 32,
+            "downstream_repair_invalidated_pick": 16
+          },
+          "meanAbsDrift": 29.962,
+          "topClasses": [
+            {
+              "class": "early_scaffolding_matured",
+              "count": 256
+            },
+            {
+              "class": "unclassified",
+              "count": 208
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 32
+            },
+            {
+              "class": "downstream_repair_invalidated_pick",
+              "count": 16
+            }
+          ]
+        },
+        "combo": {
+          "forges": 8,
+          "picks": 520,
+          "disagreements": 144,
+          "byClass": {
+            "early_scaffolding_matured": 168,
+            "unclassified": 208,
+            "final_weak_justification": 32,
+            "retrospective_gain_not_seen_prospectively": 88,
+            "downstream_repair_invalidated_pick": 24
+          },
+          "meanAbsDrift": 32.657,
+          "topClasses": [
+            {
+              "class": "unclassified",
+              "count": 208
+            },
+            {
+              "class": "early_scaffolding_matured",
+              "count": 168
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 88
+            },
+            {
+              "class": "final_weak_justification",
+              "count": 32
+            },
+            {
+              "class": "downstream_repair_invalidated_pick",
+              "count": 24
+            }
+          ]
+        },
+        "multi_direction": {
+          "forges": 8,
+          "picks": 520,
+          "disagreements": 152,
+          "byClass": {
+            "early_scaffolding_matured": 280,
+            "unclassified": 80,
+            "stable_good_prediction": 8,
+            "retrospective_gain_not_seen_prospectively": 112,
+            "downstream_repair_invalidated_pick": 40
+          },
+          "meanAbsDrift": 49.829,
+          "topClasses": [
+            {
+              "class": "early_scaffolding_matured",
+              "count": 280
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 112
+            },
+            {
+              "class": "unclassified",
+              "count": 80
+            },
+            {
+              "class": "downstream_repair_invalidated_pick",
+              "count": 40
+            },
+            {
+              "class": "stable_good_prediction",
+              "count": 8
+            }
+          ]
+        }
+      }
+    },
+    "weakSlotAggregate": {
+      "version": "weak-slot-forensics-v1",
+      "weakSlotCount": 248,
+      "causalClassCounts": {
+        "became_weak_downstream": 144,
+        "weak_at_selection": 104
+      },
+      "sourceCounts": {
+        "live_fill": 248
+      },
+      "phaseCounts": {
+        "foundation": 200,
+        "development": 48
+      },
+      "avoidableCount": 16,
+      "constraintForcedCount": 200,
+      "lowCandidateDepthCount": 200,
+      "meanCandidateDepth": 1.419,
+      "highestImpactCausalClass": "became_weak_downstream"
+    },
+    "controlMetrics": {
+      "final_weak_justification": 144,
+      "later_package_oversupply": 258,
+      "invalidated_by_later_decisions": 705,
+      "genuine_bad_belief": 56,
+      "beneficial_emergence": 1169,
+      "early_scaffolding_matured": 2701,
+      "unclassified": 1968,
+      "ledger_weak_slots": 248,
+      "avoidable_weak_slots": 16,
+      "constraint_forced_weak_slots": 200,
+      "hard_failure_runs": 0
+    },
+    "controlRates": {
+      "final_weak_justification": 1.385,
+      "later_package_oversupply": 2.481,
+      "invalidated_by_later_decisions": 6.779,
+      "genuine_bad_belief": 0.538,
+      "beneficial_emergence": 11.24,
+      "early_scaffolding_matured": 25.971,
+      "unclassified": 18.923,
+      "ledger_weak_slots": 2.385,
+      "avoidable_weak_slots": 0.154,
+      "constraint_forced_weak_slots": 1.923,
+      "hard_failure_runs": 0
+    },
+    "byArchetype": {
+      "aura_voltron": {
+        "runs": 8,
+        "passes": 8,
+        "hardFailureRuns": 0,
+        "weakSlots": 0,
+        "avoidableWeak": 0,
+        "constraintForcedWeak": 0,
+        "cleanupApplied": 8
+      },
+      "equipment_voltron": {
+        "runs": 8,
+        "passes": 8,
+        "hardFailureRuns": 0,
+        "weakSlots": 32,
+        "avoidableWeak": 0,
+        "constraintForcedWeak": 0,
+        "cleanupApplied": 8
+      },
+      "typal": {
+        "runs": 8,
+        "passes": 8,
+        "hardFailureRuns": 0,
+        "weakSlots": 0,
+        "avoidableWeak": 0,
+        "constraintForcedWeak": 0,
+        "cleanupApplied": 8
+      },
+      "tokens": {
+        "runs": 8,
+        "passes": 8,
+        "hardFailureRuns": 0,
+        "weakSlots": 64,
+        "avoidableWeak": 0,
+        "constraintForcedWeak": 64,
+        "cleanupApplied": 0
+      },
+      "aristocrats": {
+        "runs": 8,
+        "passes": 8,
+        "hardFailureRuns": 0,
+        "weakSlots": 16,
+        "avoidableWeak": 16,
+        "constraintForcedWeak": 0,
+        "cleanupApplied": 8
+      },
+      "reanimator": {
+        "runs": 8,
+        "passes": 8,
+        "hardFailureRuns": 0,
+        "weakSlots": 16,
+        "avoidableWeak": 0,
+        "constraintForcedWeak": 16,
+        "cleanupApplied": 8
+      },
+      "spellslinger": {
+        "runs": 8,
+        "passes": 8,
+        "hardFailureRuns": 0,
+        "weakSlots": 0,
+        "avoidableWeak": 0,
+        "constraintForcedWeak": 0,
+        "cleanupApplied": 8
+      },
+      "landfall": {
+        "runs": 8,
+        "passes": 8,
+        "hardFailureRuns": 0,
+        "weakSlots": 16,
+        "avoidableWeak": 0,
+        "constraintForcedWeak": 16,
+        "cleanupApplied": 8
+      },
+      "blink": {
+        "runs": 8,
+        "passes": 8,
+        "hardFailureRuns": 0,
+        "weakSlots": 48,
+        "avoidableWeak": 0,
+        "constraintForcedWeak": 48,
+        "cleanupApplied": 8
+      },
+      "artifacts": {
+        "runs": 8,
+        "passes": 8,
+        "hardFailureRuns": 0,
+        "weakSlots": 0,
+        "avoidableWeak": 0,
+        "constraintForcedWeak": 0,
+        "cleanupApplied": 0
+      },
+      "stax": {
+        "runs": 8,
+        "passes": 8,
+        "hardFailureRuns": 0,
+        "weakSlots": 0,
+        "avoidableWeak": 0,
+        "constraintForcedWeak": 0,
+        "cleanupApplied": 8
+      },
+      "combo": {
+        "runs": 8,
+        "passes": 8,
+        "hardFailureRuns": 0,
+        "weakSlots": 56,
+        "avoidableWeak": 0,
+        "constraintForcedWeak": 56,
+        "cleanupApplied": 8
+      },
+      "multi_direction": {
+        "runs": 8,
+        "passes": 8,
+        "hardFailureRuns": 0,
+        "weakSlots": 0,
+        "avoidableWeak": 0,
+        "constraintForcedWeak": 0,
+        "cleanupApplied": 8
+      }
+    },
+    "topDriftClasses": [
+      {
+        "key": "early_scaffolding_matured",
+        "count": 2701
+      },
+      {
+        "key": "unclassified",
+        "count": 1968
+      },
+      {
+        "key": "retrospective_gain_not_seen_prospectively",
+        "count": 1169
+      },
+      {
+        "key": "downstream_repair_invalidated_pick",
+        "count": 416
+      },
+      {
+        "key": "later_package_oversupply",
+        "count": 258
+      },
+      {
+        "key": "final_weak_justification",
+        "count": 144
+      },
+      {
+        "key": "stable_good_prediction",
+        "count": 72
+      },
+      {
+        "key": "curve_need_disappeared",
+        "count": 48
+      },
+      {
+        "key": "unsupported_anchor_emerged",
+        "count": 16
+      }
+    ],
+    "topWeakCausalClasses": [
+      {
+        "key": "became_weak_downstream",
+        "count": 144
+      },
+      {
+        "key": "weak_at_selection",
+        "count": 104
+      }
+    ],
+    "topWeakSources": [
+      {
+        "key": "live_fill",
+        "count": 248
+      }
+    ],
+    "meanRuntimeMs": 2155.24
+  },
+  "comparison": {
+    "compared": true,
+    "normalized": true,
+    "regressions": [],
+    "improvements": [],
+    "deltas": {
+      "hard_failure_runs": {
+        "before": 0,
+        "after": 0,
+        "delta": 0,
+        "unit": "per_forge"
+      },
+      "ledger_weak_slots": {
+        "before": 2.385,
+        "after": 2.385,
+        "delta": 0,
+        "unit": "per_forge"
+      },
+      "avoidable_weak_slots": {
+        "before": 0.154,
+        "after": 0.154,
+        "delta": 0,
+        "unit": "per_forge"
+      },
+      "final_weak_justification": {
+        "before": 1.385,
+        "after": 1.385,
+        "delta": 0,
+        "unit": "per_forge"
+      },
+      "later_package_oversupply": {
+        "before": 2.481,
+        "after": 2.481,
+        "delta": 0,
+        "unit": "per_forge"
+      },
+      "genuine_bad_belief": {
+        "before": 0.538,
+        "after": 0.538,
+        "delta": 0,
+        "unit": "per_forge"
+      },
+      "beneficial_emergence": {
+        "before": 11.24,
+        "after": 11.24,
+        "delta": 0,
+        "unit": "per_forge"
+      },
+      "constraint_forced_weak_slots": {
+        "before": 1.923,
+        "after": 1.923,
+        "delta": 0,
+        "unit": "per_forge"
+      },
+      "invalidated_by_later_decisions": {
+        "before": 6.779,
+        "after": 6.779,
+        "delta": 0,
+        "unit": "per_forge"
+      },
+      "unclassified": {
+        "before": 18.923,
+        "after": 18.923,
+        "delta": 0,
+        "unit": "per_forge"
+      }
+    }
+  }
+}
+```
+### Experiment 001
+```json
+{
+  "aggregate": {
+    "version": "validation-harness-v1",
+    "runCount": 104,
+    "passCount": 104,
+    "hardFailureRunCount": 0,
+    "passRate": 1,
+    "tortureAggregate": {
+      "total": 104,
+      "passed": 104,
+      "failed": 0,
+      "byArchetype": {
+        "aura_voltron": "PARTIAL",
+        "equipment_voltron": "PARTIAL",
+        "typal": "PARTIAL",
+        "tokens": "PARTIAL",
+        "aristocrats": "PASS",
+        "reanimator": "PARTIAL",
+        "spellslinger": "PARTIAL",
+        "landfall": "PASS",
+        "blink": "PARTIAL",
+        "artifacts": "PARTIAL",
+        "stax": "PARTIAL",
+        "combo": "PARTIAL",
+        "multi_direction": "PARTIAL"
+      },
+      "failureClassCounts": {
+        "interaction_graph_failure": 72
+      },
+      "runtime": {
+        "medianMs": 1975,
+        "p95Ms": 4558,
+        "slowest": [
+          {
+            "id": "spellslinger",
+            "ms": 5236
+          },
+          {
+            "id": "aristocrats",
+            "ms": 5135
+          },
+          {
+            "id": "aristocrats",
+            "ms": 4869
+          },
+          {
+            "id": "aristocrats",
+            "ms": 4816
+          },
+          {
+            "id": "aristocrats",
+            "ms": 4652
+          }
+        ]
+      }
+    },
+    "selfEvaluationAggregate": {
+      "version": "self-evaluation-aggregate-v1",
+      "forgeCount": 104,
+      "totalTracedPicks": 6792,
+      "totalMeaningfulDisagreements": 2058,
+      "driftClassCounts": {
+        "early_scaffolding_matured": 2686,
+        "downstream_repair_invalidated_pick": 416,
+        "later_package_oversupply": 284,
+        "curve_need_disappeared": 55,
+        "unclassified": 1984,
+        "stable_good_prediction": 64,
+        "retrospective_gain_not_seen_prospectively": 1136,
+        "final_weak_justification": 144,
+        "became_redundant": 8,
+        "unsupported_anchor_emerged": 15
+      },
+      "driftByPhase": {
+        "foundation": {
+          "count": 4912,
+          "meanAbsDrift": 44.655
+        },
+        "development": {
+          "count": 1880,
+          "meanAbsDrift": 55.574
+        }
+      },
+      "driftByPackage": {
+        "auras": {
+          "count": 1040,
+          "disagreements": 992
+        },
+        "equipment": {
+          "count": 520,
+          "disagreements": 456
+        },
+        "typal": {
+          "count": 520,
+          "disagreements": 504
+        },
+        "tokens": {
+          "count": 1584,
+          "disagreements": 1408
+        },
+        "aristocrats": {
+          "count": 528,
+          "disagreements": 480
+        },
+        "reanimator": {
+          "count": 512,
+          "disagreements": 472
+        },
+        "spellslinger": {
+          "count": 528,
+          "disagreements": 497
+        },
+        "landfall": {
+          "count": 528,
+          "disagreements": 472
+        },
+        "blink": {
+          "count": 528,
+          "disagreements": 504
+        },
+        "stax": {
+          "count": 512,
+          "disagreements": 464
+        }
+      },
+      "controlCaseCounts": {
+        "early_scaffolding_matured": 2686,
+        "invalidated_by_later_decisions": 745,
+        "ambiguous": 2105,
+        "stable": 64,
+        "beneficial_emergence": 1136,
+        "genuine_bad_belief": 56
+      },
+      "meanPredictionError": 32.213,
+      "meanAbsPredictionError": 47.677,
+      "topRecurrentDisagreementClasses": [
+        {
+          "class": "early_scaffolding_matured",
+          "count": 2686
+        },
+        {
+          "class": "unclassified",
+          "count": 1984
+        },
+        {
+          "class": "retrospective_gain_not_seen_prospectively",
+          "count": 1136
+        },
+        {
+          "class": "downstream_repair_invalidated_pick",
+          "count": 416
+        },
+        {
+          "class": "later_package_oversupply",
+          "count": 284
+        },
+        {
+          "class": "final_weak_justification",
+          "count": 144
+        },
+        {
+          "class": "curve_need_disappeared",
+          "count": 55
+        },
+        {
+          "class": "unsupported_anchor_emerged",
+          "count": 15
+        },
+        {
+          "class": "became_redundant",
+          "count": 8
+        }
+      ],
+      "byArchetype": {
+        "aura_voltron": {
+          "forges": 8,
+          "picks": 520,
+          "disagreements": 175,
+          "byClass": {
+            "early_scaffolding_matured": 289,
+            "downstream_repair_invalidated_pick": 48,
+            "later_package_oversupply": 8,
+            "curve_need_disappeared": 7,
+            "unclassified": 48,
+            "stable_good_prediction": 8,
+            "retrospective_gain_not_seen_prospectively": 112
+          },
+          "meanAbsDrift": 61.38,
+          "topClasses": [
+            {
+              "class": "early_scaffolding_matured",
+              "count": 289
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 112
+            },
+            {
+              "class": "downstream_repair_invalidated_pick",
+              "count": 48
+            },
+            {
+              "class": "unclassified",
+              "count": 48
+            },
+            {
+              "class": "later_package_oversupply",
+              "count": 8
+            }
+          ]
+        },
+        "equipment_voltron": {
+          "forges": 8,
+          "picks": 520,
+          "disagreements": 144,
+          "byClass": {
+            "early_scaffolding_matured": 208,
+            "unclassified": 168,
+            "retrospective_gain_not_seen_prospectively": 80,
+            "downstream_repair_invalidated_pick": 32,
+            "final_weak_justification": 32
+          },
+          "meanAbsDrift": 31.068,
+          "topClasses": [
+            {
+              "class": "early_scaffolding_matured",
+              "count": 208
+            },
+            {
+              "class": "unclassified",
+              "count": 168
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 80
+            },
+            {
+              "class": "downstream_repair_invalidated_pick",
+              "count": 32
+            },
+            {
+              "class": "final_weak_justification",
+              "count": 32
+            }
+          ]
+        },
+        "typal": {
+          "forges": 8,
+          "picks": 520,
+          "disagreements": 128,
+          "byClass": {
+            "early_scaffolding_matured": 232,
+            "unclassified": 160,
+            "retrospective_gain_not_seen_prospectively": 96,
+            "downstream_repair_invalidated_pick": 32
+          },
+          "meanAbsDrift": 50.701,
+          "topClasses": [
+            {
+              "class": "early_scaffolding_matured",
+              "count": 232
+            },
+            {
+              "class": "unclassified",
+              "count": 160
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 96
+            },
+            {
+              "class": "downstream_repair_invalidated_pick",
+              "count": 32
+            }
+          ]
+        },
+        "tokens": {
+          "forges": 8,
+          "picks": 528,
+          "disagreements": 144,
+          "byClass": {
+            "early_scaffolding_matured": 144,
+            "later_package_oversupply": 48,
+            "unclassified": 224,
+            "stable_good_prediction": 16,
+            "retrospective_gain_not_seen_prospectively": 56,
+            "final_weak_justification": 40
+          },
+          "meanAbsDrift": 43.43,
+          "topClasses": [
+            {
+              "class": "unclassified",
+              "count": 224
+            },
+            {
+              "class": "early_scaffolding_matured",
+              "count": 144
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 56
+            },
+            {
+              "class": "later_package_oversupply",
+              "count": 48
+            },
+            {
+              "class": "final_weak_justification",
+              "count": 40
+            }
+          ]
+        },
+        "aristocrats": {
+          "forges": 8,
+          "picks": 528,
+          "disagreements": 192,
+          "byClass": {
+            "early_scaffolding_matured": 224,
+            "later_package_oversupply": 16,
+            "unclassified": 112,
+            "became_redundant": 8,
+            "retrospective_gain_not_seen_prospectively": 112,
+            "downstream_repair_invalidated_pick": 48,
+            "final_weak_justification": 8
+          },
+          "meanAbsDrift": 53.318,
+          "topClasses": [
+            {
+              "class": "early_scaffolding_matured",
+              "count": 224
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 112
+            },
+            {
+              "class": "unclassified",
+              "count": 112
+            },
+            {
+              "class": "downstream_repair_invalidated_pick",
+              "count": 48
+            },
+            {
+              "class": "later_package_oversupply",
+              "count": 16
+            }
+          ]
+        },
+        "reanimator": {
+          "forges": 8,
+          "picks": 512,
+          "disagreements": 216,
+          "byClass": {
+            "early_scaffolding_matured": 128,
+            "later_package_oversupply": 64,
+            "unclassified": 168,
+            "downstream_repair_invalidated_pick": 32,
+            "final_weak_justification": 16,
+            "retrospective_gain_not_seen_prospectively": 96,
+            "unsupported_anchor_emerged": 8
+          },
+          "meanAbsDrift": 50.056,
+          "topClasses": [
+            {
+              "class": "unclassified",
+              "count": 168
+            },
+            {
+              "class": "early_scaffolding_matured",
+              "count": 128
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 96
+            },
+            {
+              "class": "later_package_oversupply",
+              "count": 64
+            },
+            {
+              "class": "downstream_repair_invalidated_pick",
+              "count": 32
+            }
+          ]
+        },
+        "spellslinger": {
+          "forges": 8,
+          "picks": 528,
+          "disagreements": 395,
+          "byClass": {
+            "early_scaffolding_matured": 133,
+            "later_package_oversupply": 148,
+            "curve_need_disappeared": 48,
+            "unsupported_anchor_emerged": 7,
+            "retrospective_gain_not_seen_prospectively": 144,
+            "downstream_repair_invalidated_pick": 48
+          },
+          "meanAbsDrift": 63.549,
+          "topClasses": [
+            {
+              "class": "later_package_oversupply",
+              "count": 148
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 144
+            },
+            {
+              "class": "early_scaffolding_matured",
+              "count": 133
+            },
+            {
+              "class": "curve_need_disappeared",
+              "count": 48
+            },
+            {
+              "class": "downstream_repair_invalidated_pick",
+              "count": 48
+            }
+          ]
+        },
+        "landfall": {
+          "forges": 8,
+          "picks": 528,
+          "disagreements": 120,
+          "byClass": {
+            "early_scaffolding_matured": 248,
+            "unclassified": 152,
+            "stable_good_prediction": 8,
+            "retrospective_gain_not_seen_prospectively": 56,
+            "downstream_repair_invalidated_pick": 48,
+            "final_weak_justification": 16
+          },
+          "meanAbsDrift": 55.276,
+          "topClasses": [
+            {
+              "class": "early_scaffolding_matured",
+              "count": 248
+            },
+            {
+              "class": "unclassified",
+              "count": 152
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 56
+            },
+            {
+              "class": "downstream_repair_invalidated_pick",
+              "count": 48
+            },
+            {
+              "class": "final_weak_justification",
+              "count": 16
+            }
+          ]
+        },
+        "blink": {
+          "forges": 8,
+          "picks": 528,
+          "disagreements": 72,
+          "byClass": {
+            "early_scaffolding_matured": 232,
+            "stable_good_prediction": 8,
+            "unclassified": 216,
+            "downstream_repair_invalidated_pick": 48,
+            "retrospective_gain_not_seen_prospectively": 24
+          },
+          "meanAbsDrift": 41.24,
+          "topClasses": [
+            {
+              "class": "early_scaffolding_matured",
+              "count": 232
+            },
+            {
+              "class": "unclassified",
+              "count": 216
+            },
+            {
+              "class": "downstream_repair_invalidated_pick",
+              "count": 48
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 24
+            },
+            {
+              "class": "stable_good_prediction",
+              "count": 8
+            }
+          ]
+        },
+        "artifacts": {
+          "forges": 8,
+          "picks": 528,
+          "disagreements": 128,
+          "byClass": {
+            "early_scaffolding_matured": 144,
+            "unclassified": 240,
+            "stable_good_prediction": 16,
+            "retrospective_gain_not_seen_prospectively": 128
+          },
+          "meanAbsDrift": 56.682,
+          "topClasses": [
+            {
+              "class": "unclassified",
+              "count": 240
+            },
+            {
+              "class": "early_scaffolding_matured",
+              "count": 144
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 128
+            },
+            {
+              "class": "stable_good_prediction",
+              "count": 16
+            }
+          ]
+        },
+        "stax": {
+          "forges": 8,
+          "picks": 512,
+          "disagreements": 48,
+          "byClass": {
+            "early_scaffolding_matured": 256,
+            "unclassified": 208,
+            "retrospective_gain_not_seen_prospectively": 32,
+            "downstream_repair_invalidated_pick": 16
+          },
+          "meanAbsDrift": 29.962,
+          "topClasses": [
+            {
+              "class": "early_scaffolding_matured",
+              "count": 256
+            },
+            {
+              "class": "unclassified",
+              "count": 208
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 32
+            },
+            {
+              "class": "downstream_repair_invalidated_pick",
+              "count": 16
+            }
+          ]
+        },
+        "combo": {
+          "forges": 8,
+          "picks": 520,
+          "disagreements": 144,
+          "byClass": {
+            "early_scaffolding_matured": 168,
+            "unclassified": 208,
+            "final_weak_justification": 32,
+            "retrospective_gain_not_seen_prospectively": 88,
+            "downstream_repair_invalidated_pick": 24
+          },
+          "meanAbsDrift": 32.657,
+          "topClasses": [
+            {
+              "class": "unclassified",
+              "count": 208
+            },
+            {
+              "class": "early_scaffolding_matured",
+              "count": 168
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 88
+            },
+            {
+              "class": "final_weak_justification",
+              "count": 32
+            },
+            {
+              "class": "downstream_repair_invalidated_pick",
+              "count": 24
+            }
+          ]
+        },
+        "multi_direction": {
+          "forges": 8,
+          "picks": 520,
+          "disagreements": 152,
+          "byClass": {
+            "early_scaffolding_matured": 280,
+            "unclassified": 80,
+            "stable_good_prediction": 8,
+            "retrospective_gain_not_seen_prospectively": 112,
+            "downstream_repair_invalidated_pick": 40
+          },
+          "meanAbsDrift": 49.829,
+          "topClasses": [
+            {
+              "class": "early_scaffolding_matured",
+              "count": 280
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 112
+            },
+            {
+              "class": "unclassified",
+              "count": 80
+            },
+            {
+              "class": "downstream_repair_invalidated_pick",
+              "count": 40
+            },
+            {
+              "class": "stable_good_prediction",
+              "count": 8
+            }
+          ]
+        }
+      }
+    },
+    "weakSlotAggregate": {
+      "version": "weak-slot-forensics-v1",
+      "weakSlotCount": 248,
+      "causalClassCounts": {
+        "became_weak_downstream": 144,
+        "weak_at_selection": 104
+      },
+      "sourceCounts": {
+        "live_fill": 248
+      },
+      "phaseCounts": {
+        "foundation": 200,
+        "development": 48
+      },
+      "avoidableCount": 16,
+      "constraintForcedCount": 200,
+      "lowCandidateDepthCount": 200,
+      "meanCandidateDepth": 1.419,
+      "highestImpactCausalClass": "became_weak_downstream"
+    },
+    "controlMetrics": {
+      "final_weak_justification": 144,
+      "later_package_oversupply": 284,
+      "invalidated_by_later_decisions": 745,
+      "genuine_bad_belief": 56,
+      "beneficial_emergence": 1136,
+      "early_scaffolding_matured": 2686,
+      "unclassified": 1984,
+      "ledger_weak_slots": 248,
+      "avoidable_weak_slots": 16,
+      "constraint_forced_weak_slots": 200,
+      "hard_failure_runs": 0
+    },
+    "controlRates": {
+      "final_weak_justification": 1.385,
+      "later_package_oversupply": 2.731,
+      "invalidated_by_later_decisions": 7.163,
+      "genuine_bad_belief": 0.538,
+      "beneficial_emergence": 10.923,
+      "early_scaffolding_matured": 25.827,
+      "unclassified": 19.077,
+      "ledger_weak_slots": 2.385,
+      "avoidable_weak_slots": 0.154,
+      "constraint_forced_weak_slots": 1.923,
+      "hard_failure_runs": 0
+    },
+    "byArchetype": {
+      "aura_voltron": {
+        "runs": 8,
+        "passes": 8,
+        "hardFailureRuns": 0,
+        "weakSlots": 0,
+        "avoidableWeak": 0,
+        "constraintForcedWeak": 0,
+        "cleanupApplied": 8
+      },
+      "equipment_voltron": {
+        "runs": 8,
+        "passes": 8,
+        "hardFailureRuns": 0,
+        "weakSlots": 32,
+        "avoidableWeak": 0,
+        "constraintForcedWeak": 0,
+        "cleanupApplied": 8
+      },
+      "typal": {
+        "runs": 8,
+        "passes": 8,
+        "hardFailureRuns": 0,
+        "weakSlots": 0,
+        "avoidableWeak": 0,
+        "constraintForcedWeak": 0,
+        "cleanupApplied": 8
+      },
+      "tokens": {
+        "runs": 8,
+        "passes": 8,
+        "hardFailureRuns": 0,
+        "weakSlots": 64,
+        "avoidableWeak": 0,
+        "constraintForcedWeak": 64,
+        "cleanupApplied": 0
+      },
+      "aristocrats": {
+        "runs": 8,
+        "passes": 8,
+        "hardFailureRuns": 0,
+        "weakSlots": 16,
+        "avoidableWeak": 16,
+        "constraintForcedWeak": 0,
+        "cleanupApplied": 8
+      },
+      "reanimator": {
+        "runs": 8,
+        "passes": 8,
+        "hardFailureRuns": 0,
+        "weakSlots": 16,
+        "avoidableWeak": 0,
+        "constraintForcedWeak": 16,
+        "cleanupApplied": 8
+      },
+      "spellslinger": {
+        "runs": 8,
+        "passes": 8,
+        "hardFailureRuns": 0,
+        "weakSlots": 0,
+        "avoidableWeak": 0,
+        "constraintForcedWeak": 0,
+        "cleanupApplied": 8
+      },
+      "landfall": {
+        "runs": 8,
+        "passes": 8,
+        "hardFailureRuns": 0,
+        "weakSlots": 16,
+        "avoidableWeak": 0,
+        "constraintForcedWeak": 16,
+        "cleanupApplied": 8
+      },
+      "blink": {
+        "runs": 8,
+        "passes": 8,
+        "hardFailureRuns": 0,
+        "weakSlots": 48,
+        "avoidableWeak": 0,
+        "constraintForcedWeak": 48,
+        "cleanupApplied": 8
+      },
+      "artifacts": {
+        "runs": 8,
+        "passes": 8,
+        "hardFailureRuns": 0,
+        "weakSlots": 0,
+        "avoidableWeak": 0,
+        "constraintForcedWeak": 0,
+        "cleanupApplied": 0
+      },
+      "stax": {
+        "runs": 8,
+        "passes": 8,
+        "hardFailureRuns": 0,
+        "weakSlots": 0,
+        "avoidableWeak": 0,
+        "constraintForcedWeak": 0,
+        "cleanupApplied": 8
+      },
+      "combo": {
+        "runs": 8,
+        "passes": 8,
+        "hardFailureRuns": 0,
+        "weakSlots": 56,
+        "avoidableWeak": 0,
+        "constraintForcedWeak": 56,
+        "cleanupApplied": 8
+      },
+      "multi_direction": {
+        "runs": 8,
+        "passes": 8,
+        "hardFailureRuns": 0,
+        "weakSlots": 0,
+        "avoidableWeak": 0,
+        "constraintForcedWeak": 0,
+        "cleanupApplied": 8
+      }
+    },
+    "topDriftClasses": [
+      {
+        "key": "early_scaffolding_matured",
+        "count": 2686
+      },
+      {
+        "key": "unclassified",
+        "count": 1984
+      },
+      {
+        "key": "retrospective_gain_not_seen_prospectively",
+        "count": 1136
+      },
+      {
+        "key": "downstream_repair_invalidated_pick",
+        "count": 416
+      },
+      {
+        "key": "later_package_oversupply",
+        "count": 284
+      },
+      {
+        "key": "final_weak_justification",
+        "count": 144
+      },
+      {
+        "key": "stable_good_prediction",
+        "count": 64
+      },
+      {
+        "key": "curve_need_disappeared",
+        "count": 55
+      },
+      {
+        "key": "unsupported_anchor_emerged",
+        "count": 15
+      },
+      {
+        "key": "became_redundant",
+        "count": 8
+      }
+    ],
+    "topWeakCausalClasses": [
+      {
+        "key": "became_weak_downstream",
+        "count": 144
+      },
+      {
+        "key": "weak_at_selection",
+        "count": 104
+      }
+    ],
+    "topWeakSources": [
+      {
+        "key": "live_fill",
+        "count": 248
+      }
+    ],
+    "meanRuntimeMs": 2208.788
+  },
+  "comparison": {
+    "compared": true,
+    "normalized": true,
+    "regressions": [
+      {
+        "metric": "beneficial_emergence",
+        "before": 11.24,
+        "after": 10.923,
+        "delta": -0.317,
+        "note": "per-forge rate collapsed (bad)"
+      },
+      {
+        "metric": "later_package_oversupply",
+        "before": 2.481,
+        "after": 2.731,
+        "delta": 0.25,
+        "note": "per-forge rate increased (bad)"
+      }
+    ],
+    "improvements": [],
+    "deltas": {
+      "hard_failure_runs": {
+        "before": 0,
+        "after": 0,
+        "delta": 0,
+        "unit": "per_forge"
+      },
+      "ledger_weak_slots": {
+        "before": 2.385,
+        "after": 2.385,
+        "delta": 0,
+        "unit": "per_forge"
+      },
+      "avoidable_weak_slots": {
+        "before": 0.154,
+        "after": 0.154,
+        "delta": 0,
+        "unit": "per_forge"
+      },
+      "final_weak_justification": {
+        "before": 1.385,
+        "after": 1.385,
+        "delta": 0,
+        "unit": "per_forge"
+      },
+      "later_package_oversupply": {
+        "before": 2.481,
+        "after": 2.731,
+        "delta": 0.25,
+        "unit": "per_forge"
+      },
+      "genuine_bad_belief": {
+        "before": 0.538,
+        "after": 0.538,
+        "delta": 0,
+        "unit": "per_forge"
+      },
+      "beneficial_emergence": {
+        "before": 11.24,
+        "after": 10.923,
+        "delta": -0.317,
+        "unit": "per_forge"
+      },
+      "constraint_forced_weak_slots": {
+        "before": 1.923,
+        "after": 1.923,
+        "delta": 0,
+        "unit": "per_forge"
+      },
+      "invalidated_by_later_decisions": {
+        "before": 6.779,
+        "after": 7.163,
+        "delta": 0.384,
+        "unit": "per_forge"
+      },
+      "unclassified": {
+        "before": 18.923,
+        "after": 19.077,
+        "delta": 0.154,
+        "unit": "per_forge"
+      }
+    }
+  }
+}
+```
+
+## Held-out proxy
+```json
+{
+  "kind": "torture_held_out_proxy",
+  "contaminated": false,
+  "trainEventsExcluded": [
+    "4-onslaught-invasion-2026-event-series",
+    "tq1-sweater-series-nr2"
+  ],
+  "trainCommanderExcluded": "Kraum, Ludevic's Opus / Tymna the Weaver",
+  "note": "Torture fixtures are not the Level-A evidence cohort (Kraum/Tymna). Live tournament held-out still preferred for promotion.",
+  "densityImproved": false,
+  "densityWins": 0,
+  "densityLosses": 0,
+  "weakImproved": false,
+  "weakWins": 0,
+  "weakLosses": 0,
+  "perArchetype": [
+    {
+      "fixtureId": "pearl-ear-auras",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "equipment-voltron",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "ayula-typal",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "token-go-wide",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "aristocrats",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": -1,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "reanimator",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "spellslinger",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": -3,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "landfall",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "blink-etb",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "artifacts",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "stax",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "combo-partners",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "multiplan-commander",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "pearl-ear-auras",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "equipment-voltron",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "ayula-typal",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "token-go-wide",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "aristocrats",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": -1,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "reanimator",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "spellslinger",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": -3,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "landfall",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "blink-etb",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "artifacts",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "stax",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "combo-partners",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "multiplan-commander",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "pearl-ear-auras",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "equipment-voltron",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "ayula-typal",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "token-go-wide",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "aristocrats",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": -1,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "reanimator",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "spellslinger",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": -3,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "landfall",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "blink-etb",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "artifacts",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "stax",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "combo-partners",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "multiplan-commander",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "pearl-ear-auras",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "equipment-voltron",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "ayula-typal",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "token-go-wide",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "aristocrats",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": -1,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "reanimator",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "spellslinger",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": -3,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "landfall",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "blink-etb",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "artifacts",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "stax",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "combo-partners",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "multiplan-commander",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "pearl-ear-auras",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "equipment-voltron",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "ayula-typal",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "token-go-wide",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "aristocrats",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": -1,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "reanimator",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "spellslinger",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": -3,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "landfall",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "blink-etb",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "artifacts",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "stax",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "combo-partners",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "multiplan-commander",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "pearl-ear-auras",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "equipment-voltron",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "ayula-typal",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "token-go-wide",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "aristocrats",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": -1,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "reanimator",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "spellslinger",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": -4,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "landfall",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "blink-etb",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "artifacts",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "stax",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "combo-partners",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "multiplan-commander",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "pearl-ear-auras",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "equipment-voltron",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "ayula-typal",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "token-go-wide",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "aristocrats",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": -1,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "reanimator",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "spellslinger",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": -3,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "landfall",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "blink-etb",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "artifacts",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "stax",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "combo-partners",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "multiplan-commander",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "pearl-ear-auras",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "equipment-voltron",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "ayula-typal",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "token-go-wide",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "aristocrats",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": -1,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "reanimator",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "spellslinger",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": -3,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "landfall",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "blink-etb",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "artifacts",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "stax",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "combo-partners",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    },
+    {
+      "fixtureId": "multiplan-commander",
+      "densityDelta": 0,
+      "interactionCountDelta": 0,
+      "avoidableWeakDelta": 0,
+      "beneficialEmergenceDelta": 0,
+      "unsupportedAnchorsDelta": 0
+    }
+  ]
+}
+```
+
+## Power-tier Casual gate
+```json
+{
+  "fixtureId": "pearl-ear-auras",
+  "casualControlDensity": 0,
+  "casualExpDensity": 0,
+  "casualControlInteraction": 11,
+  "casualExpInteraction": 11,
+  "casualListsIdentical": true,
+  "casualInheritedCedhDensity": false
+}
+```
+
+## Counterfactual picks
+```json
+{
+  "fixtureId": "spellslinger",
+  "seed": 13,
+  "controlMetrics": {
+    "finalWeak": 0,
+    "avoidableWeak": 0,
+    "constraintForcedWeak": 0,
+    "beneficialEmergence": 21,
+    "genuineBadBelief": null,
+    "laterPackageOversupply": null,
+    "unsupportedAnchors": 6,
+    "cohesionPassed": true,
+    "interactionDensity": 0,
+    "interactionRoleCount": 18
+  },
+  "expMetrics": {
+    "finalWeak": 0,
+    "avoidableWeak": 0,
+    "constraintForcedWeak": 0,
+    "beneficialEmergence": 18,
+    "genuineBadBelief": null,
+    "laterPackageOversupply": null,
+    "unsupportedAnchors": 6,
+    "cohesionPassed": true,
+    "interactionDensity": 0,
+    "interactionRoleCount": 18
+  },
+  "picks": {
+    "cardsOnlyInControl": 1,
+    "cardsOnlyInExp": 1,
+    "overlap": 68,
+    "examples": [
+      {
+        "brainV1Card": "Spell Answer 7",
+        "exp001Card": "Spell Answer 8"
+      }
+    ]
+  }
+}
+```
+
+## Runtime delta
+meanMs delta (exp - control): 0
+
+# MetaForge Validation Report
+
+Generated: 2026-08-10T19:12:56.190Z
+Mode: field-control
+Architecture frozen: yes
+
+## Summary
+- Validation harness validation-report-v1: 104 forges, pass rate 100%.
+- Hard-failure runs: 0.
+- Ledger weak slots: 248 (avoidable 16, constraint-forced 200) — 2.385/forge.
+- SE per forge: weak-final 1.385, oversupply 2.481, genuine_bad 0.538, emergence 11.24.
+- Next focus: pool_scarcity_and_real_corpora — Remaining weakness is mostly constraint-forced — synthetic pools may be the ceiling; field-test real lists next.
+
+## Control metrics
+- final_weak_justification: 144 (1.385/forge)
+- later_package_oversupply: 258 (2.481/forge)
+- invalidated_by_later_decisions: 705 (6.779/forge)
+- genuine_bad_belief: 56 (0.538/forge)
+- beneficial_emergence: 1169 (11.24/forge)
+- early_scaffolding_matured: 2701 (25.971/forge)
+- unclassified: 1968 (18.923/forge)
+- ledger_weak_slots: 248 (2.385/forge)
+- avoidable_weak_slots: 16 (0.154/forge)
+- constraint_forced_weak_slots: 200 (1.923/forge)
+- hard_failure_runs: 0 (0/forge)
+
+## Top drift classes
+- early_scaffolding_matured: 2701
+- unclassified: 1968
+- retrospective_gain_not_seen_prospectively: 1169
+- downstream_repair_invalidated_pick: 416
+- later_package_oversupply: 258
+- final_weak_justification: 144
+- stable_good_prediction: 72
+- curve_need_disappeared: 48
+- unsupported_anchor_emerged: 16
+
+## Weak-slot causal / source
+- causal became_weak_downstream: 144
+- causal weak_at_selection: 104
+- source live_fill: 248
+
+## Baseline comparison (per-forge normalized)
+- No hard regressions flagged.
+
+## Suggested next focus
+- **pool_scarcity_and_real_corpora**: Remaining weakness is mostly constraint-forced — synthetic pools may be the ceiling; field-test real lists next.
+- alternate taxonomy_expansion_for_unclassified: Only after concrete quality defects are quiet — expand drift taxonomy carefully.
+
+## Archetype snapshot
+- aristocrats: runs=8 pass=8 weak=16 avoidable=16 forced=0
+- artifacts: runs=8 pass=8 weak=0 avoidable=0 forced=0
+- aura_voltron: runs=8 pass=8 weak=0 avoidable=0 forced=0
+- blink: runs=8 pass=8 weak=48 avoidable=0 forced=48
+- combo: runs=8 pass=8 weak=56 avoidable=0 forced=56
+- equipment_voltron: runs=8 pass=8 weak=32 avoidable=0 forced=0
+- landfall: runs=8 pass=8 weak=16 avoidable=0 forced=16
+- multi_direction: runs=8 pass=8 weak=0 avoidable=0 forced=0
+- reanimator: runs=8 pass=8 weak=16 avoidable=0 forced=16
+- spellslinger: runs=8 pass=8 weak=0 avoidable=0 forced=0
+- stax: runs=8 pass=8 weak=0 avoidable=0 forced=0
+- tokens: runs=8 pass=8 weak=64 avoidable=0 forced=64
+- typal: runs=8 pass=8 weak=0 avoidable=0 forced=0
+
+_This report does not authorize new planning layers. Evidence first._
+
+
+# MetaForge Validation Report
+
+Generated: 2026-08-10T19:12:56.192Z
+Mode: field-exp001
+Architecture frozen: yes
+
+## Summary
+- Validation harness validation-report-v1: 104 forges, pass rate 100%.
+- Hard-failure runs: 0.
+- Ledger weak slots: 248 (avoidable 16, constraint-forced 200) — 2.385/forge.
+- SE per forge: weak-final 1.385, oversupply 2.731, genuine_bad 0.538, emergence 10.923.
+- Next focus: regression:beneficial_emergence — Baseline regression on beneficial_emergence (11.24 → 10.923 per forge).
+
+## Control metrics
+- final_weak_justification: 144 (1.385/forge)
+- later_package_oversupply: 284 (2.731/forge)
+- invalidated_by_later_decisions: 745 (7.163/forge)
+- genuine_bad_belief: 56 (0.538/forge)
+- beneficial_emergence: 1136 (10.923/forge)
+- early_scaffolding_matured: 2686 (25.827/forge)
+- unclassified: 1984 (19.077/forge)
+- ledger_weak_slots: 248 (2.385/forge)
+- avoidable_weak_slots: 16 (0.154/forge)
+- constraint_forced_weak_slots: 200 (1.923/forge)
+- hard_failure_runs: 0 (0/forge)
+
+## Top drift classes
+- early_scaffolding_matured: 2686
+- unclassified: 1984
+- retrospective_gain_not_seen_prospectively: 1136
+- downstream_repair_invalidated_pick: 416
+- later_package_oversupply: 284
+- final_weak_justification: 144
+- stable_good_prediction: 64
+- curve_need_disappeared: 55
+- unsupported_anchor_emerged: 15
+- became_redundant: 8
+
+## Weak-slot causal / source
+- causal became_weak_downstream: 144
+- causal weak_at_selection: 104
+- source live_fill: 248
+
+## Baseline comparison (per-forge normalized)
+- REGRESSION beneficial_emergence: 11.24 → 10.923 (-0.317)
+- REGRESSION later_package_oversupply: 2.481 → 2.731 (0.25)
+
+## Suggested next focus
+- **regression:beneficial_emergence**: Baseline regression on beneficial_emergence (11.24 → 10.923 per forge).
+- alternate pool_scarcity_and_real_corpora: Remaining weakness is mostly constraint-forced — synthetic pools may be the ceiling; field-test real lists next.
+- alternate taxonomy_expansion_for_unclassified: Only after concrete quality defects are quiet — expand drift taxonomy carefully.
+
+## Archetype snapshot
+- aristocrats: runs=8 pass=8 weak=16 avoidable=16 forced=0
+- artifacts: runs=8 pass=8 weak=0 avoidable=0 forced=0
+- aura_voltron: runs=8 pass=8 weak=0 avoidable=0 forced=0
+- blink: runs=8 pass=8 weak=48 avoidable=0 forced=48
+- combo: runs=8 pass=8 weak=56 avoidable=0 forced=56
+- equipment_voltron: runs=8 pass=8 weak=32 avoidable=0 forced=0
+- landfall: runs=8 pass=8 weak=16 avoidable=0 forced=16
+- multi_direction: runs=8 pass=8 weak=0 avoidable=0 forced=0
+- reanimator: runs=8 pass=8 weak=16 avoidable=0 forced=16
+- spellslinger: runs=8 pass=8 weak=0 avoidable=0 forced=0
+- stax: runs=8 pass=8 weak=0 avoidable=0 forced=0
+- tokens: runs=8 pass=8 weak=64 avoidable=0 forced=64
+- typal: runs=8 pass=8 weak=0 avoidable=0 forced=0
+
+_This report does not authorize new planning layers. Evidence first._

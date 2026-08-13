@@ -1,6 +1,108 @@
 import CARD_MECHANICS from "./card-mechanics.mjs";
+import { normalizeCardLookupKey } from "./deck-understanding.mjs";
 
 const normalizeCardName = (name = "") => String(name).normalize("NFKC").trim().toLocaleLowerCase("en");
+
+/** Evidence classes for relationship edges (Founder #018 grows this set). */
+export const RELATIONSHIP_EVIDENCE = Object.freeze({
+  ORACLE_EXPLICIT: "oracle_explicit",
+  ORACLE_MECHANICAL_VERIFIED: "verified card-database mechanic",
+  ORACLE_MECHANICAL_INFERRED: "inferred mechanical edge",
+  ORACLE_SHARED_SIGNAL: "shared oracle signal",
+  ORACLE_CONFLICT: "verified oracle-derived conflict",
+  ORACLE_AMPLIFIER: "verified rules-text trigger amplifier",
+  ORACLE_MUTUAL_LOOP: "inferred mutual mechanical loop",
+});
+
+/**
+ * Display / face names a card may be referred to by in Oracle text.
+ */
+export function referenceNamesForCard(card = {}) {
+  const raw = [
+    card.name,
+    ...String(card.name || "").split(/\s*\/\/\s*/),
+    ...(card.card_faces || []).map((face) => face?.name),
+  ].filter(Boolean).map((name) => String(name).trim());
+  const unique = [];
+  const seen = new Set();
+  for (const name of raw) {
+    const key = normalizeCardLookupKey(name);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    unique.push(name);
+  }
+  return unique;
+}
+
+/**
+ * True when Oracle text explicitly references targetName via authoritative
+ * phrasing (named / Partner with / Meld with). Not a bare name mention.
+ */
+export function oracleExplicitlyNames(oracleText = "", targetName = "") {
+  const text = String(oracleText || "");
+  const target = String(targetName || "").trim();
+  if (!text || !target) return false;
+  const escaped = target.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // Allow flexible internal whitespace; require the explicit cue words.
+  const nameBody = escaped.replace(/\s+/g, "\\s+");
+  const patterns = [
+    new RegExp(`\\bnamed\\s+${nameBody}(?=$|[\\s.,;:!?)"'\\]])`, "i"),
+    new RegExp(`\\bpartner with\\s+${nameBody}(?=$|[\\s.,;:!?)"'\\]])`, "i"),
+    new RegExp(`\\bmeld with\\s+${nameBody}(?=$|[\\s.,;:!?)"'\\]])`, "i"),
+  ];
+  return patterns.some((pattern) => pattern.test(text));
+}
+
+/**
+ * Explicit Oracle name references from source → other cards in the same set.
+ * Self-references are ignored. Only matches cards present in `cards`.
+ */
+export function findExplicitOracleReferences(cards = []) {
+  const nodes = cards.filter((card) => card?.name);
+  const catalog = [];
+  for (const card of nodes) {
+    for (const displayName of referenceNamesForCard(card)) {
+      catalog.push({
+        key: normalizeCardLookupKey(displayName),
+        displayName,
+        cardName: card.name,
+      });
+    }
+  }
+  // Longer names first so "Sword of Fire and Ice" wins over accidental shorts.
+  catalog.sort((a, b) => b.displayName.length - a.displayName.length);
+
+  const refs = [];
+  const seen = new Set();
+  for (const source of nodes) {
+    const sourceText = textOf(source);
+    const sourceKeys = new Set(referenceNamesForCard(source).map((name) => normalizeCardLookupKey(name)));
+    for (const entry of catalog) {
+      if (sourceKeys.has(entry.key)) continue;
+      if (!oracleExplicitlyNames(sourceText, entry.displayName)) continue;
+      const pairKey = `${normalizeCardLookupKey(source.name)}→${entry.key}`;
+      if (seen.has(pairKey)) continue;
+      seen.add(pairKey);
+      refs.push({
+        from: source.name,
+        to: entry.cardName,
+        namedAs: entry.displayName,
+        evidence: RELATIONSHIP_EVIDENCE.ORACLE_EXPLICIT,
+        evidenceClass: RELATIONSHIP_EVIDENCE.ORACLE_EXPLICIT,
+        reason: `${source.name}'s Oracle text explicitly names ${entry.displayName}.`,
+      });
+    }
+  }
+  return refs;
+}
+
+function tagSignalsFor(card, table) {
+  const tags = CARD_MECHANICS[normalizeCardName(card?.name)];
+  if (!tags) return [];
+  return Object.entries(table)
+    .filter(([, tagNames]) => tagNames.some((tag) => tags.includes(tag)))
+    .map(([signal]) => signal);
+}
 
 // Curated tags from the offline card-mechanics database confirm a producer or
 // payoff role with certainty an oracle-text regex can't match — no keyword
@@ -27,14 +129,6 @@ const TAG_PAYOFFS = {
   life: ["lifegain_payoff"],
   spells: ["spell_payoff"],
 };
-
-function tagSignalsFor(card, table) {
-  const tags = CARD_MECHANICS[normalizeCardName(card?.name)];
-  if (!tags) return [];
-  return Object.entries(table)
-    .filter(([, tagNames]) => tagNames.some((tag) => tags.includes(tag)))
-    .map(([signal]) => signal);
-}
 
 const SIGNALS = [
   ["tokens", /create(?:s)? [^.]* token|token(?:s)? you control/i],
@@ -198,7 +292,12 @@ const DOUBLER_PATTERNS = [
 ];
 
 function textOf(card) {
-  return [card.typeLine, card.oracleText].filter(Boolean).join(" ");
+  return [
+    card.typeLine,
+    card.type_line,
+    card.oracleText,
+    card.oracle_text,
+  ].filter(Boolean).join(" ");
 }
 
 export function extractMechanicalSignals(card) {
@@ -274,13 +373,62 @@ export function buildInteractionGraph(cards, options = {}) {
         signals: reasons,
         strength: Math.min(100, 52 + reasons.length * 14 + (forward.length + reverse.length) * 9 + tagConfirmed * 6),
         reason: `${left.name} and ${right.name} connect through ${reasons.join(", ")}.`,
-        evidence: tagConfirmed ? "verified card-database mechanic" : forward.length || reverse.length ? "inferred mechanical edge" : "shared oracle signal",
+        evidence: tagConfirmed
+          ? RELATIONSHIP_EVIDENCE.ORACLE_MECHANICAL_VERIFIED
+          : forward.length || reverse.length
+            ? RELATIONSHIP_EVIDENCE.ORACLE_MECHANICAL_INFERRED
+            : RELATIONSHIP_EVIDENCE.ORACLE_SHARED_SIGNAL,
+        evidenceClass: tagConfirmed
+          ? RELATIONSHIP_EVIDENCE.ORACLE_MECHANICAL_VERIFIED
+          : forward.length || reverse.length
+            ? RELATIONSHIP_EVIDENCE.ORACLE_MECHANICAL_INFERRED
+            : RELATIONSHIP_EVIDENCE.ORACLE_SHARED_SIGNAL,
         mutual,
         forwardSignals: forward,
         reverseSignals: reverse,
       });
     }
   }
+
+  // Founder #018 — Relationship Evidence: Explicit Oracle.
+  // Cards whose Oracle literally names another deck card (named X /
+  // Partner with X / Meld with X). Authoritative, not inferred synergy.
+  const explicitReferences = findExplicitOracleReferences(nodes);
+  const edgeKey = (from, to) => {
+    const a = normalizeCardLookupKey(from);
+    const b = normalizeCardLookupKey(to);
+    return a < b ? `${a}||${b}` : `${b}||${a}`;
+  };
+  const edgesByPair = new Map(edges.map((edge) => [edgeKey(edge.from, edge.to), edge]));
+  for (const ref of explicitReferences) {
+    const key = edgeKey(ref.from, ref.to);
+    const existing = edgesByPair.get(key);
+    if (existing) {
+      if (!existing.signals.includes("oracle_explicit")) existing.signals = [...existing.signals, "oracle_explicit"];
+      existing.evidence = RELATIONSHIP_EVIDENCE.ORACLE_EXPLICIT;
+      existing.evidenceClass = RELATIONSHIP_EVIDENCE.ORACLE_EXPLICIT;
+      existing.namedAs = ref.namedAs;
+      existing.strength = Math.max(existing.strength, 94);
+      existing.reason = `${existing.reason} ${ref.reason}`;
+      continue;
+    }
+    const edge = {
+      from: ref.from,
+      to: ref.to,
+      signals: ["oracle_explicit"],
+      strength: 94,
+      reason: ref.reason,
+      evidence: RELATIONSHIP_EVIDENCE.ORACLE_EXPLICIT,
+      evidenceClass: RELATIONSHIP_EVIDENCE.ORACLE_EXPLICIT,
+      namedAs: ref.namedAs,
+      mutual: false,
+      forwardSignals: ["oracle_explicit"],
+      reverseSignals: [],
+    };
+    edges.push(edge);
+    edgesByPair.set(key, edge);
+  }
+
   edges.sort((a, b) => b.strength - a.strength || a.from.localeCompare(b.from));
 
   const packageMap = new Map();
@@ -288,9 +436,20 @@ export function buildInteractionGraph(cards, options = {}) {
     if (!packageMap.has(signal)) packageMap.set(signal, []);
     packageMap.get(signal).push(card.name);
   }
+  if (explicitReferences.length) {
+    const namedMembers = [...new Set(explicitReferences.flatMap((ref) => [ref.from, ref.to]))];
+    if (namedMembers.length >= 2) {
+      packageMap.set("oracle_explicit", namedMembers);
+    }
+  }
   const packages = [...packageMap.entries()]
     .filter(([, members]) => members.length >= 2)
-    .map(([signal, members]) => ({ signal, members, count: members.length, evidence: "modeled package" }))
+    .map(([signal, members]) => ({
+      signal,
+      members,
+      count: members.length,
+      evidence: signal === "oracle_explicit" ? RELATIONSHIP_EVIDENCE.ORACLE_EXPLICIT : "modeled package",
+    }))
     .sort((a, b) => b.count - a.count || a.signal.localeCompare(b.signal));
 
   const connected = new Set(edges.flatMap((edge) => [edge.from, edge.to]));
@@ -301,7 +460,7 @@ export function buildInteractionGraph(cards, options = {}) {
   for (const source of nonlands) for (const [signal, denial, reason] of NEGATIVE_RULES) {
     if (!denial.test(textOf(source)) || /your opponents?|opponents? can(?:'|’)t/i.test(textOf(source))) continue;
     const conflicts = nonlands.filter((card) => card.name !== source.name && (card.mechanics.produces.includes(signal) || card.mechanics.rewards.includes(signal)));
-    if (conflicts.length) nonbos.push({ source: source.name, signal, conflicts: conflicts.map((card) => card.name), reason, evidence: "verified oracle-derived conflict" });
+    if (conflicts.length) nonbos.push({ source: source.name, signal, conflicts: conflicts.map((card) => card.name), reason, evidence: RELATIONSHIP_EVIDENCE.ORACLE_CONFLICT });
   }
   // A trigger doubler amplifies every card with a real "whenever X enters"
   // payoff already in the deck — not just cards it shares a produces/
@@ -324,7 +483,7 @@ export function buildInteractionGraph(cards, options = {}) {
       side,
       amplifies: amplified.map((card) => card.name),
       reason: `${source.name} ${verb} — a certain rules fact, not an inferred pattern.`,
-      evidence: "verified rules-text trigger amplifier",
+      evidence: RELATIONSHIP_EVIDENCE.ORACLE_AMPLIFIER,
     });
   }
   const commander = nonlands.find((card) => card.isCommander);
@@ -337,7 +496,7 @@ export function buildInteractionGraph(cards, options = {}) {
       cards: [edge.from, edge.to],
       strength: edge.strength,
       reason: `${edge.from} feeds ${edge.to}'s ${edge.forwardSignals.join("/")} payoff, while ${edge.to} feeds ${edge.from}'s ${edge.reverseSignals.join("/")} payoff back — a genuine two-way loop, not just a shared theme.`,
-      evidence: "inferred mutual mechanical loop",
+      evidence: RELATIONSHIP_EVIDENCE.ORACLE_MUTUAL_LOOP,
     }))
     .sort((a, b) => b.strength - a.strength);
   return {
@@ -349,9 +508,10 @@ export function buildInteractionGraph(cards, options = {}) {
     amplifiers,
     enginePairs,
     commanderLinks,
+    explicitReferences,
     coverage,
     confidence,
-    methodology: "Relationships are inferred from current oracle text and type lines; they are not adoption claims or guaranteed combos.",
+    methodology: "Relationships come from oracle text and type lines: mechanical producer/payoff inference, plus oracle_explicit edges when Oracle literally names another card in the deck. Not adoption claims or guaranteed combos.",
     commanderName: options.commanderName || commander?.name || "",
   };
 }

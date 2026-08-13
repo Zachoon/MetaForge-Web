@@ -34,6 +34,14 @@ describe("Era 2.1 — Concept Stance voice", () => {
     assert.ok(stance.whatWouldChangeOurMind.length >= 1);
   });
 
+  it("player-facing concept stance drops research jargon", () => {
+    const concept = buildStrategicConceptLibrary().byId["commitment-timing"];
+    const stance = presentAsConceptStance(concept, { playerFacing: true });
+    assert.match(stance.statement, /spend an answer|hold it/i);
+    assert.doesNotMatch(stance.statement, /reflex spenders|incomplete-information|Current understanding suggests/i);
+    assert.equal(stance.badge.title, "A principle worth watching");
+  });
+
   it("selects Plan Integrity for theme commissions and Commitment Timing for interaction language", () => {
     const [theme] = selectRelevantConcepts({
       fantasyLabel: "Doubling Season Superfriends",
@@ -87,9 +95,14 @@ describe("Era 2.1 — Concept Stance voice", () => {
       ],
       recommendedId: "a",
     });
+    // Research objects may still exist in the report for Deep Forge —
+    // the player-default philosophy card must not render them (page test).
     assert.ok(coaching.builds[0].principleUnderstanding?.paragraph);
-    assert.match(coaching.builds[0].principleUnderstanding.paragraph, /Current understanding suggests/i);
-    assert.doesNotMatch(coaching.builds[0].principleUnderstanding.paragraph, /Strategic Concepts/i);
+    assert.doesNotMatch(
+      coaching.builds[0].principleUnderstanding.paragraph,
+      /Strategic Concepts|Brain v1|curveLow|reflex spenders|incomplete-information/i,
+    );
+    assert.equal(coaching.builds[0].currentUnderstanding, null);
   });
 
   it("honest coach summary exposes principleVoice and deepForgePrinciples", () => {

@@ -70,6 +70,9 @@ import { ForgeCardRef, ForgeCardRefList } from "./forge-card-ref";
 import { buildPreChoiceCoaching } from "./strategy-build-comparison.mjs";
 import { buildCommissionContract } from "./commission-contract.mjs";
 import { tableMeaningFor } from "./strategic-recognition.mjs";
+import { LivingWorkbench, type WorkbenchMode } from "./living-workbench";
+import { Tabletop, type MatchupCardAdvice, type TabletopCard } from "./tabletop";
+import { ProvingGroundsEra } from "./proving-grounds-era";
 
 type Chamber =
   | "entrance"
@@ -97,6 +100,13 @@ const FORGING_STAGES = [
   ["Comparing the strongest builds", "Measuring which complete deck best matches your goal.", "COMPARE"],
   ["Finishing your deck", "Preparing the list and your first coaching step.", "READY"],
 ] as const;
+
+const FORGING_PHASES = ["Blueprint", "Card pool", "Candidates", "Mana", "Integrity", "Tournament", "Masterwork"] as const;
+
+// The real request and the ceremony run concurrently. This is not a delay
+// before construction: it is the minimum amount of time the transition gets
+// to tell the build story before a fast result is revealed.
+const FORGE_CEREMONY_MINIMUM_MS = 9_000;
 
 type DeckPreview = { card: string; role: string; theme: string; win: string };
 type DeckRow = { quantity: number; name: string };
@@ -188,6 +198,40 @@ type CommanderOption = {
   image: string;
   verifiedFacts: string;
 };
+type ForgeResumeBrief = {
+  version: 1;
+  format: string;
+  strategy: string;
+  complexity: string;
+  budget: string;
+  maxCardPriceInput: string;
+  commonsOnly: boolean;
+  targetPowerTier: string;
+  commissionNote: string;
+  reviewFocus: string;
+  deck: string;
+  commander: CommanderOption | null;
+  secondCommander: CommanderOption | null;
+};
+
+function encodeForgeResumeBrief(brief: ForgeResumeBrief) {
+  const bytes = new TextEncoder().encode(JSON.stringify(brief));
+  let binary = "";
+  bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function decodeForgeResumeBrief(value: string): ForgeResumeBrief | null {
+  try {
+    const padded = value.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
+    const binary = atob(padded);
+    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    const parsed = JSON.parse(new TextDecoder().decode(bytes));
+    return parsed?.version === 1 ? parsed as ForgeResumeBrief : null;
+  } catch {
+    return null;
+  }
+}
 type Masterwork = {
   rune: string;
   name: string;
@@ -501,28 +545,23 @@ const ForgeCeremonyMotion = ({
 }) => {
   return (
     <div
-      className={`forge-deck-assembly${motionMode === "quiet" ? " is-quiet" : ""}`}
+      className={`forge-process-focus${motionMode === "quiet" ? " is-quiet" : ""}`}
       data-phase={stage + 1}
+      style={{ "--forge-progress": `${((stage + 1) / FORGING_STAGES.length) * 100}%` } as React.CSSProperties}
       aria-hidden="true"
     >
-      <span className="assembly-light" />
-      <span className="assembly-table" />
-      <div className="assembly-cards">
-        {[0, 1, 2, 3, 4, 5, 6].map((index) => (
-          <i key={index} style={{
-            "--card-index": index,
-            "--card-offset": `${(index - 3) * 38}%`,
-            "--card-lift": `${Math.abs(index - 3) * 8}%`,
-            "--card-angle": `${(index - 3) * 9}deg`,
-          } as React.CSSProperties}>
-            <b>MF</b><span />
+      <div className="forge-card-pipeline">
+        {Array.from({ length: 7 }, (_, index) => (
+          <i key={index} style={{ "--pipeline-index": index } as React.CSSProperties}>
+            <b>MF</b><span /><em />
           </i>
         ))}
       </div>
-      <span className="assembly-deck"><i>MF</i><b /></span>
-      <span className="assembly-scan" />
-      <span className="assembly-progress"><b style={{ width: `${((stage + 1) / FORGING_STAGES.length) * 100}%` }} /></span>
-      <small>{stage + 1} / {FORGING_STAGES.length}</small>
+      <span className="forge-process-core"><i>MF</i><b /></span>
+      <div className="forge-process-materials">
+        {FORGING_PHASES.map((phase, index) => <i key={phase} className={index < stage ? "is-complete" : index === stage ? "is-active" : ""} />)}
+      </div>
+      <small>STRUCTURAL PASS {stage + 1} OF {FORGING_STAGES.length}</small>
     </div>
   );
 };
@@ -1259,6 +1298,7 @@ export default function Home() {
   // The claim response mirrors the server-owned Forge report contract.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [pendingClaimResult, setPendingClaimResult] = useState<any>(null);
+  const [resumeForgeAfterAuth, setResumeForgeAfterAuth] = useState(false);
   const turnstileHostRef = useRef<HTMLDivElement>(null);
   const turnstileWidgetRef = useRef<string | null>(null);
   useEffect(() => {
@@ -1405,6 +1445,35 @@ export default function Home() {
   >([]);
   const [selectedSecondCommander, setSelectedSecondCommander] =
     useState<CommanderOption | null>(null);
+
+  // Authentication used to return players to an empty app root. Carry the
+  // compact commission brief through Cloudflare Access in the original URL,
+  // restore it once the authenticated app loads, then continue the strike.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const encoded = params.get("resumeForge");
+    if (!encoded) return;
+    const brief = decodeForgeResumeBrief(encoded);
+    params.delete("resumeForge");
+    const cleanQuery = params.toString();
+    window.history.replaceState({}, "", `${window.location.pathname}${cleanQuery ? `?${cleanQuery}` : ""}`);
+    if (!brief) return;
+    setFormat(brief.format);
+    setStrategy(brief.strategy);
+    setComplexity(brief.complexity);
+    setBudget(brief.budget);
+    setMaxCardPriceInput(brief.maxCardPriceInput);
+    setCommonsOnly(brief.commonsOnly);
+    setTargetPowerTier(brief.targetPowerTier);
+    setCommissionNote(brief.commissionNote);
+    setReviewFocus(brief.reviewFocus);
+    setDeck(brief.deck);
+    setSelectedCommander(brief.commander);
+    setSelectedSecondCommander(brief.secondCommander);
+    setBuildStep(2);
+    setChamber("commission");
+    setResumeForgeAfterAuth(true);
+  }, []);
   const [secondCommanderSearching, setSecondCommanderSearching] =
     useState(false);
   // Same portal treatment as commanderSearchRef above, for the same reason:
@@ -1616,6 +1685,7 @@ export default function Home() {
   const [cardFactsRetry, setCardFactsRetry] = useState(0);
   const [hoveredCard, setHoveredCard] = useState("");
   const [contextInspectCard, setContextInspectCard] = useState("");
+  const [matchupCardAdvice, setMatchupCardAdvice] = useState<MatchupCardAdvice | null>(null);
   const [deckPreviewInView, setDeckPreviewInView] = useState(true);
   const contextInspectDismissedRef = useRef("");
   const [inspectedCard, setInspectedCard] = useState("");
@@ -1831,7 +1901,7 @@ export default function Home() {
       setMilestoneMotion({
         kind: "masterwork-ready",
         eyebrow: "THE GREAT FORGE ANSWERS",
-        label: survivorCount === 1 ? "Your Masterwork Survived" : `${survivorCount} Masterworks Survived`,
+        label: survivorCount === 1 ? "Your experience is ready" : `${survivorCount} experiences survived`,
         glyph: "ᛞ",
       });
     }
@@ -1909,27 +1979,12 @@ export default function Home() {
 
   useEffect(() => {
     if (chamber !== "forging") return;
-    if (stage >= FORGING_STAGES.length - 1) {
-      const reveal = window.setTimeout(() => {
-        // A pasted decklist has no real ambiguity to resolve — adapt the
-        // one list the player actually submitted. Every other build
-        // (commander chosen manually, chosen from a suggestion, or no
-        // commander at all for a non-Commander format) runs the exact same
-        // single generation call and lands on an explicit Masterwork
-        // choice before anything is committed — see commitDirectForge's
-        // "commander" branch and pendingCandidateChoice below. Nothing
-        // here auto-selects a design; the player always does.
-        if (deck.trim()) {
-          void commitDirectForge("decklist");
-          return;
-        }
-        void commitDirectForge("commander");
-      }, 1500);
-      return () => window.clearTimeout(reveal);
-    }
+    // Narrative progress only: awaken() starts the real build immediately.
+    // Animation timing must never become a second loading gate.
+    if (stage >= FORGING_STAGES.length - 1) return;
     const timer = window.setTimeout(() => setStage((value) => value + 1), 1150);
     return () => window.clearTimeout(timer);
-  }, [chamber, stage, deck, format, selectedCommander]);
+  }, [chamber, stage]);
 
   useEffect(() => {
     if (benchStatus !== "forging" || forgeStartedAt === null) return;
@@ -1986,12 +2041,41 @@ export default function Home() {
   }, [chamber, stage, motionMode]);
 
   const awaken = () => {
+    const seed = Date.now();
     setMilestoneMotion({ kind: "ignition", eyebrow: "BLUEPRINT SEALED", label: "Awakening the Great Forge", glyph: "ᚠ" });
-    setCommissionSeed(Date.now());
+    setCommissionSeed(seed);
     setStage(0);
     setSelectedWork(0);
     setChamber("forging");
+    void commitDirectForge(deck.trim() ? "decklist" : "commander", seed);
   };
+  useEffect(() => {
+    if (!resumeForgeAfterAuth || guestMode) return;
+    setResumeForgeAfterAuth(false);
+    awaken();
+    // State restored from the handoff has landed by this render; awaken now
+    // uses that exact brief and the authenticated generation endpoint.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeForgeAfterAuth, guestMode]);
+
+  const signInResumeHref = (() => {
+    const brief: ForgeResumeBrief = {
+      version: 1,
+      format,
+      strategy,
+      complexity,
+      budget,
+      maxCardPriceInput,
+      commonsOnly,
+      targetPowerTier,
+      commissionNote,
+      reviewFocus,
+      deck,
+      commander: selectedCommander,
+      secondCommander: selectedSecondCommander,
+    };
+    return `https://app.metaforge.gg/?resumeForge=${encodeURIComponent(encodeForgeResumeBrief(brief))}`;
+  })();
   const chapter =
     chamber === "entrance"
       ? 0
@@ -2717,6 +2801,28 @@ export default function Home() {
               : activeRole === "Protection"
                 ? "Preserves a commander, engine, or decisive threat through interaction."
               : "Advances the primary plan while maintaining useful battlefield presence.";
+  const tabletopCards = useMemo<TabletopCard[]>(
+    () => orderedDeckRows.map((row) => {
+      const fact = cardFacts[cardFactKey(row.name)];
+      const isCommander = isCommanderFormat(format) && [activeCommanderName, selectedSecondCommander?.name]
+        .filter(Boolean)
+        .some((name) => cardFactKey(name as string) === cardFactKey(row.name));
+      return {
+        name: row.name,
+        quantity: row.quantity,
+        role: isCommander ? "Commander" : cardRole(fact),
+        image: fact?.image_uris?.normal || fact?.card_faces?.[0]?.image_uris?.normal || cardImage(row.name),
+        cmc: Number(fact?.cmc || 0),
+      };
+    }),
+    [orderedDeckRows, cardFacts, format, activeCommanderName, selectedSecondCommander?.name],
+  );
+  const previousRevisionCardNames = useMemo(
+    () => revisions.length > 1
+      ? parseDeckRows(revisions[revisions.length - 2]?.deck || "").map((row) => row.name)
+      : [],
+    [revisions],
+  );
   const inspectedRole = inspectedCard ? cardRole(inspectedFact) : "";
   const inspectedIsCommander = isCommanderFormat(format) && [activeCommanderName, selectedSecondCommander?.name]
     .filter(Boolean)
@@ -3752,7 +3858,7 @@ export default function Home() {
   // crosses back over the network.
   async function callForgeGenerate(payload: Record<string, unknown>): Promise<{
     nativeReport: any;
-    cardPool: any[];
+    cardPool?: any[];
     colors: string[];
     generationId?: string;
     importWarnings?: { unresolvedNames: string[]; illegalNames: string[]; unresolvedDetails?: Array<{ name: string; reasonCode: string }> };
@@ -3893,8 +3999,11 @@ export default function Home() {
   // Skips the three-masterwork reveal entirely: a pasted decklist or a
   // commander already locked in gives the Forge one clear thing to build,
   // so there's no real ambiguity to resolve with three alternates.
-  async function commitDirectForge(mode: "decklist" | "commander") {
+  async function commitDirectForge(mode: "decklist" | "commander", seed = commissionSeed) {
     const launchStartedAt = Date.now();
+    const ceremonyReady = new Promise<void>((resolve) => {
+      window.setTimeout(resolve, FORGE_CEREMONY_MINIMUM_MS);
+    });
     const commander = selectedCommander;
     const secondCommander = selectedSecondCommander;
     const generationId = crypto.randomUUID();
@@ -3911,7 +4020,6 @@ export default function Home() {
     setRestoredWork(directWork);
     setDeckId(generationId);
     setSelectedWork(0);
-    setChamber("workbench");
     setBenchStatus("forging");
     setForgeStartedAt(Date.now());
     setForgeElapsedSeconds(0);
@@ -3975,7 +4083,7 @@ export default function Home() {
           complexity,
           budget,
           note: `${commissionNote}\n${interventionLearning.reusableGuidance}`.trim(),
-          seed: hashText(`${commissionSeed}|import|${deck.length}`),
+          seed: hashText(`${seed}|import|${deck.length}`),
           commander: commanderInput,
           secondCommander: secondCommanderInput,
           deck,
@@ -4001,6 +4109,8 @@ export default function Home() {
           serverGenerationId: newGenerationId,
           persist: !guestMode,
         });
+        await ceremonyReady;
+        setChamber("workbench");
       } else {
         const { nativeReport, cardPool, generationId: newGenerationId } = await callForgeGenerate({
           mode: "direct",
@@ -4009,7 +4119,7 @@ export default function Home() {
           complexity,
           budget,
           note: `${commissionNote}\n${interventionLearning.reusableGuidance}`.trim(),
-          seed: hashText(`${commissionSeed}|commander|${commander?.name || ""}`),
+          seed: hashText(`${seed}|commander|${commander?.name || ""}`),
           commander: commanderInput,
           secondCommander: secondCommanderInput,
           // Only meaningful when there's no commander to anchor color/pool
@@ -4041,6 +4151,7 @@ export default function Home() {
           commander,
           persist: !guestMode,
         });
+        await ceremonyReady;
         setChamber("masterworks");
       }
     } catch (error) {
@@ -4061,6 +4172,7 @@ export default function Home() {
           ? `${failure.message} Your commission is safe—strike the anvil again when verified card data is available.`
           : failure.message,
       );
+      setChamber("workbench");
     } finally {
       setBenchStatus("idle");
       setForgeStartedAt(null);
@@ -5096,13 +5208,28 @@ export default function Home() {
             )}
             {chamber === "refine" && (
               <label className="deck-offering">
-                <span>YOUR CURRENT DECKLIST</span>
+                <span>1 · YOUR CURRENT DECKLIST</span>
                 <textarea
                   value={deck}
                   onChange={(event) => setDeck(event.target.value)}
                   placeholder="Paste your Arena, MTGO, or Moxfield list here…"
                 />
               </label>
+            )}
+            {chamber === "refine" && (
+              <div className="review-required-heading">
+                <span>2 · CONFIRM THE BASICS</span>
+                <p>We only need the format, game plan, and commander to begin. The rest is optional.</p>
+              </div>
+            )}
+            {chamber === "refine" && (
+              <details className="review-preferences-disclosure">
+                <summary>
+                  <span><b>Fine-tune the review</b><small>Optional · complexity, budget, price limits, rarity, and power</small></span>
+                  <i aria-hidden="true">+</i>
+                </summary>
+                <p>Use these only when the deck must follow a specific table, budget, or power constraint.</p>
+              </details>
             )}
             <div className="mark-grid">
               <label className="build-choice-format">
@@ -5497,47 +5624,34 @@ export default function Home() {
                 )}
               </section>
             )}
-            {chamber === "refine" && (
-              <div className="review-focus-picker">
-                <span className="forge-eyebrow">
-                  <i /> BEFORE WE DIVE IN
-                </span>
-                <p id="review-focus-question">WHAT’S HAPPENING WHEN YOU PLAY THIS DECK?</p>
-                <div
-                  className="review-focus-chips"
-                  role="group"
-                  aria-labelledby="review-focus-question"
-                >
-                  {REVIEW_FOCUS_OPTIONS.map((option) => (
-                    <button
-                      type="button"
-                      key={option}
-                      className={
-                        reviewFocus === option
-                          ? "review-focus-chip is-selected"
-                          : "review-focus-chip"
-                      }
-                      aria-pressed={reviewFocus === option}
-                      onClick={() => setReviewFocus((current) => toggleReviewFocus(current, option))}
-                    >
-                      {REVIEW_FOCUS_LABELS[option]}
-                    </button>
-                  ))}
+            {chamber === "refine" ? (
+              <details className="review-context-disclosure">
+                <summary>
+                  <span><b>3 · Tell us what feels wrong</b><small>Optional · helps the coach focus its first answer</small></span>
+                  <i aria-hidden="true">+</i>
+                </summary>
+                <div className="review-focus-picker">
+                  <p id="review-focus-question">WHAT’S HAPPENING WHEN YOU PLAY THIS DECK?</p>
+                  <div className="review-focus-chips" role="group" aria-labelledby="review-focus-question">
+                    {REVIEW_FOCUS_OPTIONS.map((option) => (
+                      <button type="button" key={option} className={reviewFocus === option ? "review-focus-chip is-selected" : "review-focus-chip"} aria-pressed={reviewFocus === option} onClick={() => setReviewFocus((current) => toggleReviewFocus(current, option))}>
+                        {REVIEW_FOCUS_LABELS[option]}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="review-focus-academy-link">Not sure what the problem is? That is a valid starting point—or <a href="/academy">browse the guides →</a></p>
                 </div>
-                <p className="review-focus-academy-link">
-                  Not sure where to start? Learn the most common Commander deckbuilding problems in the
-                  MetaForge Academy. <a href="/academy">Browse guides →</a>
-                </p>
-              </div>
+                <label className="commission-note">
+                  <span>ANYTHING THE COACH SHOULD PRESERVE OR AVOID?</span>
+                  <textarea value={commissionNote} onChange={(event) => setCommissionNote(event.target.value)} placeholder="Favorite cards, play patterns you love, or anything this deck must never become…" />
+                </label>
+              </details>
+            ) : (
+              <label className="commission-note">
+                <span>OPTIONAL · CARDS OR PLAY STYLES YOU WANT</span>
+                <textarea value={commissionNote} onChange={(event) => setCommissionNote(event.target.value)} placeholder="Favorite cards, play patterns you love, or anything this deck must never become…" />
+              </label>
             )}
-            <label className="commission-note">
-              <span>OPTIONAL · CARDS OR PLAY STYLES YOU WANT</span>
-              <textarea
-                value={commissionNote}
-                onChange={(event) => setCommissionNote(event.target.value)}
-                placeholder="Favorite cards, play patterns you love, or anything this deck must never become…"
-              />
-            </label>
             {chamber === "commission" && buildStep < 2 && (
               <div className="build-step-actions">
                 {buildStep > 0 && <button type="button" className="build-back" onClick={() => setBuildStep((buildStep - 1) as 0 | 1)}>← Back</button>}
@@ -5575,15 +5689,23 @@ export default function Home() {
       {chamber === "forging" && (
         <section className="forging-ceremony" aria-live="polite">
           <ForgeCeremonyMotion stage={stage} motionMode={motionMode} />
-          <div className="ceremony-copy">
+          <div className="ceremony-copy" data-phase={stage + 1}>
             <span className="forge-eyebrow">
               <i /> BUILDING YOUR DECK
             </span>
-            <h1>{FORGING_STAGES[stage][0]}</h1>
-            <p>{FORGING_STAGES[stage][1]}</p>
+            <div className="ceremony-stage-copy" key={stage}>
+              <h1>{FORGING_STAGES[stage][0]}</h1>
+              <p>{FORGING_STAGES[stage][1]}</p>
+            </div>
             <div className="ceremony-phase">
               <small>STEP {stage + 1} OF {FORGING_STAGES.length}</small>
-              <strong>{FORGING_STAGES[stage][2]}</strong>
+              <strong>
+                {FORGING_STAGES[stage][2]}
+                <time dateTime={`PT${forgeElapsedSeconds}S`}>
+                  {String(Math.floor(forgeElapsedSeconds / 60)).padStart(2, "0")}:
+                  {String(forgeElapsedSeconds % 60).padStart(2, "0")}
+                </time>
+              </strong>
             </div>
             <div className="ceremony-progress">
               <span>
@@ -5593,6 +5715,14 @@ export default function Home() {
                 YOU CAN LEAVE THIS TAB OPEN — YOUR DECK WILL APPEAR HERE
               </small>
             </div>
+            <ol className="ceremony-phase-rail" aria-label="Forge build phases">
+              {FORGING_PHASES.map((phase, index) => (
+                <li key={phase} className={index < stage ? "is-complete" : index === stage ? "is-active" : ""}>
+                  <i>{index < stage ? "✓" : index + 1}</i>
+                  <span>{phase}</span>
+                </li>
+              ))}
+            </ol>
           </div>
         </section>
       )}
@@ -5609,7 +5739,7 @@ export default function Home() {
                     {(() => {
                       const survivorCount = pendingCandidateChoice.nativeReport.candidates?.length || 1;
                       return survivorCount === 1
-                        ? "One philosophy survived. Confirm it fits you."
+                        ? "One experience made the cut. Confirm it fits you."
                         : `${survivorCount} philosophies. Choose how you want to play.`;
                     })()}
                   </h1>
@@ -5622,17 +5752,16 @@ export default function Home() {
               {(masterworksCommissionContract?.hasContract || commissionNote.trim()) && (
                 <aside className="request-recognition masterworks-request-recognition is-loud commission-contract" aria-label="Commission contract">
                   <header>
-                    <small>1 · COMMISSION CONTRACT</small>
+                    <small>1 · I HEARD YOU</small>
                     <strong>You asked for</strong>
                   </header>
                   {masterworksCommissionContract?.youAskedFor?.length > 0 ? (
-                    <ul className="request-recognition-checklist">
+                    <ul className="request-recognition-checklist commission-ask-chips">
                       {masterworksCommissionContract.youAskedFor
                         .filter((clause: any) => clause.role !== "commander")
                         .map((clause: any) => (
                           <li key={clause.id} className="status-detected">
                             <b>✓ {clause.label}</b>
-                            <span className="commission-clause-role">{clause.role}</span>
                           </li>
                         ))}
                     </ul>
@@ -5642,53 +5771,68 @@ export default function Home() {
                       {commissionNote.trim()}
                     </p>
                   )}
-                  {masterworksCommissionContract?.whatIBuilt?.length > 0 && (
-                    <div className="commission-built">
-                      <header>
-                        <strong>What I built</strong>
-                        {(Number.isFinite(masterworksCommissionContract.matchPercent) || masterworksCommissionContract.matchLabel) && (
-                          <b className="commission-match">
-                            {Number.isFinite(masterworksCommissionContract.matchPercent)
-                              ? `${masterworksCommissionContract.matchPercent}% match · ${masterworksCommissionContract.matchLabel}`
-                              : masterworksCommissionContract.matchLabel}
-                          </b>
-                        )}
-                      </header>
+                  {(masterworksCommissionContract?.matchHonesty
+                    || masterworksCommissionContract?.matchLabel
+                    || Number.isFinite(masterworksCommissionContract?.matchPercent)) && (
+                    <p className="commission-verdict">
+                      <small>VERDICT</small>
+                      {masterworksCommissionContract.matchHonesty
+                        || (Number.isFinite(masterworksCommissionContract.matchPercent)
+                          ? `${masterworksCommissionContract.matchPercent}% match · ${masterworksCommissionContract.matchLabel || "heard"}`
+                          : masterworksCommissionContract.matchLabel)}
+                    </p>
+                  )}
+                  {masterworksCommissionContract?.whatIBuilt?.some((entry: any) => entry.status !== "met") && (
+                    <div className="commission-change">
+                      <small>WHAT STILL NEEDS WORK</small>
                       <ul className="request-recognition-checklist commission-built-list">
-                        {masterworksCommissionContract.whatIBuilt.map((entry: any) => (
-                          <li key={entry.id} className={`status-${entry.status}`}>
-                            <b>{entry.status === "met" ? "✓" : entry.status === "partial" ? "~" : "·"} {entry.label}</b>
-                            <span>{entry.detail}</span>
-                          </li>
-                        ))}
+                        {masterworksCommissionContract.whatIBuilt
+                          .filter((entry: any) => entry.status !== "met")
+                          .map((entry: any) => (
+                            <li key={entry.id} className={`status-${entry.status}`}>
+                              <b>{entry.status === "partial" ? "~" : "·"} {entry.label}</b>
+                            </li>
+                          ))}
                       </ul>
-                      {masterworksCommissionContract.matchHonesty && (
-                        <p className="commission-match-honesty">{masterworksCommissionContract.matchHonesty}</p>
-                      )}
                     </div>
                   )}
                   {masterworksRequestRecognition?.adjustments?.length > 0 && (
-                    <div className="request-recognition-adjustment">
-                      <small>{masterworksRequestRecognition.adjustments[0].headline}</small>
-                      <p>{masterworksRequestRecognition.adjustments[0].reason}</p>
-                    </div>
+                    <p className="commission-why">
+                      <small>WHY</small>
+                      {masterworksRequestRecognition.adjustments[0].reason
+                        || masterworksRequestRecognition.adjustments[0].headline}
+                    </p>
                   )}
-                  {(Number.isFinite(masterworksRequestRecognition?.fidelity?.themeFidelity)
+                  {(masterworksCommissionContract?.whatIBuilt?.length > 0
+                    || Number.isFinite(masterworksRequestRecognition?.fidelity?.themeFidelity)
                     || Number.isFinite(masterworksRequestRecognition?.fidelity?.competitiveHealth)) && (
                     <details className="request-recognition-receipts">
-                      <summary>How closely this build matched →</summary>
-                      <div className="request-recognition-fidelity" aria-label="Theme fidelity versus list health">
-                        <span>
-                          <small>THEME FIDELITY</small>
-                          <b>{Number.isFinite(masterworksRequestRecognition.fidelity.themeFidelity) ? `${masterworksRequestRecognition.fidelity.themeFidelity}%` : "—"}</b>
-                          <i><em style={{ width: `${masterworksRequestRecognition.fidelity.themeFidelityFill || 0}%` }} /></i>
-                        </span>
-                        <span>
-                          <small>LIST HEALTH</small>
-                          <b>{Number.isFinite(masterworksRequestRecognition.fidelity.competitiveHealth) ? `${masterworksRequestRecognition.fidelity.competitiveHealth}%` : "—"}</b>
-                          <i><em style={{ width: `${masterworksRequestRecognition.fidelity.competitiveHealthFill || 0}%` }} /></i>
-                        </span>
-                      </div>
+                      <summary>Full commission breakdown →</summary>
+                      {masterworksCommissionContract?.whatIBuilt?.length > 0 && (
+                        <ul className="request-recognition-checklist commission-built-list">
+                          {masterworksCommissionContract.whatIBuilt.map((entry: any) => (
+                            <li key={entry.id} className={`status-${entry.status}`}>
+                              <b>{entry.status === "met" ? "✓" : entry.status === "partial" ? "~" : "·"} {entry.label}</b>
+                              <span>{entry.detail}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {(Number.isFinite(masterworksRequestRecognition?.fidelity?.themeFidelity)
+                        || Number.isFinite(masterworksRequestRecognition?.fidelity?.competitiveHealth)) && (
+                        <div className="request-recognition-fidelity" aria-label="Theme fidelity versus list health">
+                          <span>
+                            <small>THEME FIDELITY</small>
+                            <b>{Number.isFinite(masterworksRequestRecognition.fidelity.themeFidelity) ? `${masterworksRequestRecognition.fidelity.themeFidelity}%` : "—"}</b>
+                            <i><em style={{ width: `${masterworksRequestRecognition.fidelity.themeFidelityFill || 0}%` }} /></i>
+                          </span>
+                          <span>
+                            <small>LIST HEALTH</small>
+                            <b>{Number.isFinite(masterworksRequestRecognition.fidelity.competitiveHealth) ? `${masterworksRequestRecognition.fidelity.competitiveHealth}%` : "—"}</b>
+                            <i><em style={{ width: `${masterworksRequestRecognition.fidelity.competitiveHealthFill || 0}%` }} /></i>
+                          </span>
+                        </div>
+                      )}
                     </details>
                   )}
                 </aside>
@@ -5739,22 +5883,17 @@ export default function Home() {
                               <small>EXPECTED TRADEOFF</small>
                               {build.expectedTradeoff}
                             </p>
-                            {build.currentUnderstanding?.paragraph && (
-                              <p className="pre-choice-understanding">
-                                {build.currentUnderstanding.badge && (
-                                  <small className="understanding-badge">{build.currentUnderstanding.badge}</small>
-                                )}
-                                {build.currentUnderstanding.paragraph}
+                            {/* Single survivor: why this direction lived must be
+                                on the default card — stage-2 pass sound. */}
+                            {singleSurvivor && (build.whySurvived || build.whyBuilt) && (
+                              <p className="pre-choice-why-survived">
+                                <small>WHY THIS DIRECTION</small>
+                                {build.whySurvived || build.whyBuilt}
                               </p>
                             )}
-                            {build.principleUnderstanding?.paragraph && (
-                              <p className="pre-choice-understanding pre-choice-principle">
-                                {build.principleUnderstanding.badge && (
-                                  <small className="understanding-badge">{build.principleUnderstanding.badge}</small>
-                                )}
-                                {build.principleUnderstanding.paragraph}
-                              </p>
-                            )}
+                            {/* Player Surface Law: research voice (hypotheses /
+                                principles) stays out of the default card.
+                                Compare details / Deep Forge hold the depth. */}
                           </div>
                           <button type="button" onClick={() => enterMasterwork(candidate.id)}>
                             {singleSurvivor ? "This is how I want to play →" : "Choose this experience →"}
@@ -5762,6 +5901,12 @@ export default function Home() {
                           <details className="strategy-identity-full-diff">
                             <summary>Compare details</summary>
                             <div>
+                              {build.whyBuilt && !singleSurvivor && (
+                                <p className="strategy-identity-why">
+                                  <small>WHY THIS DIRECTION</small>
+                                  {build.whyBuilt}
+                                </p>
+                              )}
                               {(build.keyDifferences?.adds?.length > 0 || build.keyDifferences?.cuts?.length > 0) && (
                                 <div className="strategy-identity-keys">
                                   <small>KEY DIFFERENCES{build.keyDifferences.versus ? ` · vs ${build.keyDifferences.versus}` : ""}</small>
@@ -5794,12 +5939,6 @@ export default function Home() {
                                 <div><dt>Resilience</dt><dd>{build.scores.resilience ?? "—"}/100</dd></div>
                                 <div><dt>Curve</dt><dd>{build.scores.curveHealth ?? "—"}/100</dd></div>
                               </dl>
-                              {build.whyBuilt && (
-                                <p className="strategy-identity-why">
-                                  <small>WHY FORGE BUILT THIS</small>
-                                  {build.whyBuilt}
-                                </p>
-                              )}
                               {(build.fullComparison?.adds?.length > 0 || build.fullComparison?.cuts?.length > 0) && (
                                 <>
                                   {build.fullComparison.adds.length > 0 && (
@@ -5887,6 +6026,49 @@ export default function Home() {
               </div>
             </div>
           </header>
+          {hasValidatedDeck && (
+            <LivingWorkbench
+              mode={(activeForgeChapter === 2 ? "tune" : activeForgeChapter === 5 ? "test" : "deck") as WorkbenchMode}
+              onModeChange={(mode) => {
+                const chapter = mode === "deck" ? 1 : mode === "tune" ? 2 : 5;
+                setActiveForgeChapter(chapter);
+                if (mode === "tune") trackLaunchEvent("coaching_opened", { format });
+                window.requestAnimationFrame(() => {
+                  const target = mode === "deck"
+                    ? document.getElementById("deck-gallery")
+                    : mode === "test"
+                      ? document.getElementById("proving-grounds-title")
+                      : document.querySelector(".testing-loop");
+                  target?.scrollIntoView({ behavior: "smooth", block: "start" });
+                });
+              }}
+              deckName={displayDeckName}
+              deckSubtitle={`${honestCoachSummary.planStory?.title || honestCoachSummary.intentions.title}${activeCommanderName ? ` · ${activeCommanderName}` : ""}`}
+              cardCount={deckRows.reduce((sum, row) => sum + row.quantity, 0)}
+              revisionCount={revisions.length}
+              revisions={revisions}
+              coachHeadline={honestCoachSummary.headline}
+              coachFocus={honestCoachSummary.intentions.firstVulnerability}
+              activeTest={Boolean(activeFieldTest)}
+              hasSuggestion={Boolean(forgeReply)}
+              onPrimaryAction={() => {
+                if (activeForgeChapter === 1) {
+                  document.getElementById("deck-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  return;
+                }
+                if (activeForgeChapter === 2) {
+                  document.querySelector(".testing-loop")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  return;
+                }
+                if (!activeFieldTest) beginProvingGroundsTest();
+                setActiveForgeChapter(5);
+                trackLaunchEvent("coaching_opened", { format });
+                window.requestAnimationFrame(() =>
+                  document.getElementById("proving-grounds-title")?.scrollIntoView({ behavior: "smooth", block: "start" }),
+                );
+              }}
+            />
+          )}
           {openingExperimentGateActive && (
             <section className="opening-experiment-gate" aria-labelledby="opening-experiment-title">
               <header>
@@ -5949,7 +6131,7 @@ export default function Home() {
             <>
               <section className="forge-understanding-bridge coach-brief honest-coach-v0" id="coach-brief" aria-label="Coach's brief">
                 <header>
-                  <small>HONEST COACH · BRAIN v1</small>
+                  <small>YOUR COACH</small>
                   <h2>{honestCoachSummary.headline}</h2>
                   {honestCoachSummary.commissionContract?.hasContract && (
                     <aside
@@ -5957,10 +6139,10 @@ export default function Home() {
                       aria-label="Commission contract"
                     >
                       <header>
-                        <small>1 · COMMISSION CONTRACT</small>
+                        <small>1 · I HEARD YOU</small>
                         <strong>You asked for</strong>
                       </header>
-                      <ul className="request-recognition-checklist">
+                      <ul className="request-recognition-checklist commission-ask-chips">
                         {honestCoachSummary.commissionContract.youAskedFor
                           .filter((clause: any) => clause.role !== "commander")
                           .map((clause: any) => (
@@ -5969,42 +6151,51 @@ export default function Home() {
                             </li>
                           ))}
                       </ul>
-                      <div className="commission-built">
-                        <header>
-                          <strong>What I built</strong>
-                          {(Number.isFinite(honestCoachSummary.commissionContract.matchPercent)
-                            || honestCoachSummary.commissionContract.matchLabel) && (
-                            <b className="commission-match">
-                              {Number.isFinite(honestCoachSummary.commissionContract.matchPercent)
-                                ? `${honestCoachSummary.commissionContract.matchPercent}% match · ${honestCoachSummary.commissionContract.matchLabel}`
-                                : honestCoachSummary.commissionContract.matchLabel}
-                            </b>
-                          )}
-                        </header>
-                        <ul className="request-recognition-checklist commission-built-list">
-                          {honestCoachSummary.commissionContract.whatIBuilt.map((entry: any) => (
-                            <li key={entry.id} className={`status-${entry.status}`}>
-                              <b>{entry.status === "met" ? "✓" : entry.status === "partial" ? "~" : "·"} {entry.label}</b>
-                              <span>{entry.detail}</span>
-                            </li>
-                          ))}
-                        </ul>
-                        {honestCoachSummary.commissionContract.matchHonesty && (
-                          <p className="commission-match-honesty">
-                            {honestCoachSummary.commissionContract.matchHonesty}
-                          </p>
-                        )}
-                      </div>
-                      {honestCoachSummary.commissionContract.playerFantasy?.supportLine && (
-                        <p className="commission-fantasy-support">
-                          {honestCoachSummary.commissionContract.playerFantasy.supportLine}
+                      {(honestCoachSummary.commissionContract.matchHonesty
+                        || honestCoachSummary.commissionContract.matchLabel
+                        || Number.isFinite(honestCoachSummary.commissionContract.matchPercent)) && (
+                        <p className="commission-verdict">
+                          <small>VERDICT</small>
+                          {honestCoachSummary.commissionContract.matchHonesty
+                            || (Number.isFinite(honestCoachSummary.commissionContract.matchPercent)
+                              ? `${honestCoachSummary.commissionContract.matchPercent}% match · ${honestCoachSummary.commissionContract.matchLabel || "heard"}`
+                              : honestCoachSummary.commissionContract.matchLabel)}
                         </p>
                       )}
-                      {honestCoachSummary.requestRecognition?.adjustments?.length > 0 && (
-                        <div className="request-recognition-adjustment">
-                          <small>{honestCoachSummary.requestRecognition.adjustments[0].headline}</small>
-                          <p>{honestCoachSummary.requestRecognition.adjustments[0].reason}</p>
+                      {honestCoachSummary.commissionContract.whatIBuilt?.some((entry: any) => entry.status !== "met") && (
+                        <div className="commission-change">
+                          <small>WHAT STILL NEEDS WORK</small>
+                          <ul className="request-recognition-checklist commission-built-list">
+                            {honestCoachSummary.commissionContract.whatIBuilt
+                              .filter((entry: any) => entry.status !== "met")
+                              .map((entry: any) => (
+                                <li key={entry.id} className={`status-${entry.status}`}>
+                                  <b>{entry.status === "partial" ? "~" : "·"} {entry.label}</b>
+                                </li>
+                              ))}
+                          </ul>
                         </div>
+                      )}
+                      {(honestCoachSummary.commissionContract.playerFantasy?.supportLine
+                        || honestCoachSummary.requestRecognition?.adjustments?.[0]?.reason) && (
+                        <p className="commission-why">
+                          <small>WHY</small>
+                          {honestCoachSummary.commissionContract.playerFantasy?.supportLine
+                            || honestCoachSummary.requestRecognition.adjustments[0].reason}
+                        </p>
+                      )}
+                      {honestCoachSummary.commissionContract.whatIBuilt?.length > 0 && (
+                        <details className="request-recognition-receipts">
+                          <summary>Full commission breakdown →</summary>
+                          <ul className="request-recognition-checklist commission-built-list">
+                            {honestCoachSummary.commissionContract.whatIBuilt.map((entry: any) => (
+                              <li key={entry.id} className={`status-${entry.status}`}>
+                                <b>{entry.status === "met" ? "✓" : entry.status === "partial" ? "~" : "·"} {entry.label}</b>
+                                <span>{entry.detail}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </details>
                       )}
                       <button
                         type="button"
@@ -6026,15 +6217,15 @@ export default function Home() {
                         {honestCoachSummary.requestRecognition.heard.map((theme: any) => (
                           <li key={theme.id} className={`status-${theme.status}`}>
                             <b>{theme.status === "present" || theme.status === "partial" || theme.status === "detected" ? "✓" : "·"} {theme.label}</b>
-                            <span>{theme.detail}</span>
                           </li>
                         ))}
                       </ul>
                       {honestCoachSummary.requestRecognition.adjustments?.length > 0 && (
-                        <div className="request-recognition-adjustment">
-                          <small>{honestCoachSummary.requestRecognition.adjustments[0].headline}</small>
-                          <p>{honestCoachSummary.requestRecognition.adjustments[0].reason}</p>
-                        </div>
+                        <p className="commission-why">
+                          <small>WHY</small>
+                          {honestCoachSummary.requestRecognition.adjustments[0].reason
+                            || honestCoachSummary.requestRecognition.adjustments[0].headline}
+                        </p>
                       )}
                       <button
                         type="button"
@@ -6065,27 +6256,17 @@ export default function Home() {
                   ) : (
                     <p className="honest-coach-guide">{honestCoachSummary.guideLine}</p>
                   )}
-                  {honestCoachSummary.strategyVsSystem && (
-                    <div className="honest-coach-strategy-vs-system" aria-label="Strategy versus verified systems">
-                      <article>
-                        <small>WHAT I THINK YOU&apos;RE BUILDING</small>
-                        <strong>{honestCoachSummary.planStory?.title || honestCoachSummary.strategyVsSystem.strategy.label}</strong>
-                        <span>Confidence: {honestCoachSummary.strategyVsSystem.strategy.confidence}</span>
-                      </article>
-                      <article>
-                        <small>REPEATABLE SYSTEMS</small>
-                        <strong>{honestCoachSummary.strategyVsSystem.engine.label}</strong>
-                        <span>Confidence: {honestCoachSummary.strategyVsSystem.engine.confidence}</span>
-                        <p>{honestCoachSummary.strategyVsSystem.engine.why}</p>
-                      </article>
-                      <button
-                        type="button"
-                        className="conversation-evidence-link strategy-vs-system-evidence"
-                        onClick={openDeepForgeEvidence}
-                      >
-                        How do you know? → Deep Forge evidence
-                      </button>
-                    </div>
+                  {/* Player Surface Law: system counts / Engine names
+                      (Counter Engine, Treasure Engine, "14 systems verified")
+                      live in Deep Forge — not the coach brief default. */}
+                  {honestCoachSummary.coachingAllowed && (
+                    <button
+                      type="button"
+                      className="conversation-evidence-link strategy-vs-system-evidence"
+                      onClick={openDeepForgeEvidence}
+                    >
+                      How do you know? → Deep Forge evidence
+                    </button>
                   )}
                   <details
                     className={`honest-coach-confidence ${honestCoachSummary.confidence.level}`}
@@ -6124,85 +6305,75 @@ export default function Home() {
                   )}
                 </header>
                 {honestCoachSummary.coachingAllowed && (
-                <div className="honest-coach-priority-grid" aria-label="Honest Coach priorities">
-                  <article className="honest-coach-plan">
-                    <small>WHY THIS DECK WINS</small>
+                <div className="honest-coach-brief-stream" aria-label="Coach priorities">
+                  <article className="honest-coach-plan commission-verdict">
+                    <small>VERDICT</small>
                     <h3>{honestCoachSummary.planStory?.title || honestCoachSummary.intentions.title}</h3>
-                    {honestCoachSummary.planStory?.planLabel && (
-                      <span className="honest-coach-plan-chip">{honestCoachSummary.planStory.planLabel}</span>
-                    )}
                     <p>{honestCoachSummary.intentions.accomplish}</p>
                   </article>
-                  <article>
-                    <small>{honestCoachSummary.planStory?.fromRecognition ? "HOW IT GETS STARTED" : "EARLY GAME"}</small>
+                  <article className="commission-why">
+                    <small>WHY · OPENING PRIORITIES</small>
                     <p>{honestCoachSummary.intentions.establish}</p>
                   </article>
-                  <article>
-                    <small>WHEN IT BECOMES DANGEROUS</small>
-                    <p>{honestCoachSummary.intentions.dependsOn}</p>
-                  </article>
-                  <article className="coach-brief-watch">
-                    <small>{honestCoachSummary.planStory?.fromRecognition ? "WHAT CAN DERAIL IT" : "WATCH THIS FIRST"}</small>
+                  <article className="coach-brief-watch commission-change">
+                    <small>CHANGE</small>
+                    <strong>Take one thing into the next game.</strong>
                     <p>{honestCoachSummary.intentions.firstVulnerability}</p>
-                    {honestCoachSummary.watchingVoice?.paragraph && (
-                      <p className="honest-coach-watching">
-                        <em>{honestCoachSummary.watchingVoice.label || "One thing we're watching"}</em>
-                        {honestCoachSummary.watchingVoice.badge?.title && (
-                          <span className="understanding-badge"> {honestCoachSummary.watchingVoice.badge.title}</span>
-                        )}
-                        {" "}
-                        {honestCoachSummary.watchingVoice.paragraph}
+                    {honestCoachSummary.fixFirst
+                      && !/Engine$/i.test(String(honestCoachSummary.fixFirst))
+                      && (
+                      <p className="coach-fix-first-ref">
+                        <small>INSPECT</small>
+                        <ForgeCardRef
+                          name={honestCoachSummary.fixFirst}
+                          surface="coach-fix-first"
+                          onInspect={setHoveredCard}
+                        />
                       </p>
                     )}
-                    {honestCoachSummary.principleVoice?.paragraph && (
-                      <p className="honest-coach-watching honest-coach-principle">
-                        <em>{honestCoachSummary.principleVoice.label || "One principle we're watching"}</em>
-                        {honestCoachSummary.principleVoice.badge?.title && (
-                          <span className="understanding-badge"> {honestCoachSummary.principleVoice.badge.title}</span>
+                    {/* Player Surface Law: hypothesis/principle research voice
+                        stays in Deep Forge, not the coach brief default. */}
+                    {(honestCoachSummary.observedLead || honestCoachSummary.inferredLead) && (
+                      <details className="coach-brief-certainty">
+                        <summary>How sure is this read? →</summary>
+                        {honestCoachSummary.observedLead && (
+                          <p className="honest-coach-claim-observed">
+                            <em>What we can see</em>
+                            {honestCoachSummary.observedLead}
+                          </p>
                         )}
-                        {" "}
-                        {honestCoachSummary.principleVoice.paragraph}
-                      </p>
+                        {honestCoachSummary.inferredLead && (
+                          <p className="honest-coach-claim-inferred">
+                            <em>What that likely means</em>
+                            {honestCoachSummary.inferredLead}
+                          </p>
+                        )}
+                        {honestCoachSummary.uncertaintyLead && (
+                          <p className="honest-coach-claim-uncertainty">
+                            <em>What we&apos;re not sure of yet</em>
+                            {honestCoachSummary.uncertaintyLead}
+                          </p>
+                        )}
+                      </details>
                     )}
-                    <p className="honest-coach-claim-observed">
-                      <em>Observed</em>
-                      {honestCoachSummary.observedLead}
-                    </p>
-                    <p className="honest-coach-claim-inferred">
-                      <em>Interpretation</em>
-                      {honestCoachSummary.inferredLead}
-                    </p>
-                    {honestCoachSummary.uncertaintyLead && (
-                      <p className="honest-coach-claim-uncertainty">
-                        <em>Uncertainty</em>
-                        {honestCoachSummary.uncertaintyLead}
-                      </p>
+                    {!isImportedDeckReview && (
+                      <button
+                        type="button"
+                        className="coach-change-cta"
+                        onClick={() => {
+                          if (!activeFieldTest) beginProvingGroundsTest();
+                          setActiveForgeChapter(5);
+                          trackLaunchEvent("coaching_opened", { format });
+                          window.requestAnimationFrame(() =>
+                            document.getElementById("proving-grounds-title")?.scrollIntoView({ behavior: "smooth", block: "start" }),
+                          );
+                        }}
+                      >
+                        Prepare my next game →
+                      </button>
                     )}
                   </article>
                 </div>
-                )}
-                {honestCoachSummary.coachingAllowed && !isImportedDeckReview && (
-                  <aside className="coach-next-game-focus" aria-label="Next game focus">
-                    <small>TAKE ONE THING WITH YOU</small>
-                    <strong>Your next game has one clear focus.</strong>
-                    <p>
-                      {honestCoachSummary.intentions.firstVulnerability
-                        || "Play one focused game, then come back and tell MetaForge what actually happened."}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!activeFieldTest) beginProvingGroundsTest();
-                        setActiveForgeChapter(5);
-                        trackLaunchEvent("coaching_opened", { format });
-                        window.requestAnimationFrame(() =>
-                          document.getElementById("proving-grounds-title")?.scrollIntoView({ behavior: "smooth", block: "start" }),
-                        );
-                      }}
-                    >
-                      Prepare my next game →
-                    </button>
-                  </aside>
                 )}
                 {honestCoachSummary.coachingAllowed && (
                 <details
@@ -6238,6 +6409,16 @@ export default function Home() {
                       </ul>
                     </div>
                   </div>
+                  {honestCoachSummary.intentions?.dependsOn && (
+                    <p className="honest-coach-packages">
+                      When it becomes dangerous: {honestCoachSummary.intentions.dependsOn}
+                    </p>
+                  )}
+                  {honestCoachSummary.planStory?.planLabel && (
+                    <p className="honest-coach-packages">
+                      Plan label: {honestCoachSummary.planStory.planLabel}
+                    </p>
+                  )}
                   {honestCoachSummary.identity.packageLabels.length > 0 && (
                     <p className="honest-coach-packages">
                       Packages detected: {honestCoachSummary.identity.packageLabels.join(" · ")}
@@ -6315,60 +6496,6 @@ export default function Home() {
                 </footer>
               </section>
 
-              <nav
-                id="forge-chapter-rail"
-                className="forge-chapter-rail workspace-mode-tabs"
-                aria-label="Deck workspace"
-              >
-                {[
-                  [1, "Deck", `${deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards`],
-                  [2, "Tune", forgeReply ? "Suggested change" : "Try one change"],
-                  [5, "Test", activeFieldTest ? "Test active" : revisionLearning.sampleSize ? `${revisionLearning.sampleSize} results` : "Play and learn"],
-                ].map(([chapterNumber, label, status]) => (
-                  <button
-                    type="button"
-                    key={chapterNumber}
-                    className={activeForgeChapter === chapterNumber ? "active" : ""}
-                    aria-current={activeForgeChapter === chapterNumber ? "step" : undefined}
-                    onClick={() => {
-                      setActiveForgeChapter(chapterNumber as 1 | 2 | 5);
-                      if (chapterNumber === 2) trackLaunchEvent("coaching_opened", { format });
-                    }}
-                  >
-                    <b>{label}</b>
-                    <span>{status}</span>
-                  </button>
-                ))}
-              </nav>
-              <section className="forge-next-step forge-next-step-secondary" aria-label="Recommended next step">
-                <div>
-                  <small>{isImportedDeckReview ? "NEXT" : "YOUR COACH IS READY"}</small>
-                  <strong>
-                    {activeFieldTest
-                      ? "Play when you are ready, then come back for a three-tap check-in."
-                      : isImportedDeckReview
-                        ? "When you're ready, open the deck list or start a focused test."
-                        : "MetaForge has prepared the single most useful question for your next game."}
-                  </strong>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (isImportedDeckReview && !activeFieldTest) {
-                      setActiveForgeChapter(1);
-                      window.requestAnimationFrame(() => document.getElementById("deck-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" }));
-                      trackLaunchEvent("coaching_opened", { format });
-                      return;
-                    }
-                    if (!activeFieldTest) beginProvingGroundsTest();
-                    setActiveForgeChapter(5);
-                    trackLaunchEvent("coaching_opened", { format });
-                    window.requestAnimationFrame(() => document.getElementById("proving-grounds-title")?.scrollIntoView({ behavior: "smooth", block: "start" }));
-                  }}
-                >
-                  {activeFieldTest ? "Continue coaching →" : isImportedDeckReview ? "View deck list →" : "Prepare my next game →"}
-                </button>
-              </section>
             </>
           ) : (
             !openingExperimentGateActive &&
@@ -6494,7 +6621,7 @@ export default function Home() {
                   <em>{nativeMasterworkContext.selected.recoveryNote}</em>
                 </span>
               )}
-              
+
               <details
                 className="forge-intelligence-vault"
                 open={
@@ -7702,13 +7829,43 @@ export default function Home() {
                               </header>
                               <div className="tablet-swap-art">
                                 <figure>
-                                  <img src={cardImage(tablet.change.cut)} alt={tablet.change.cut} loading="lazy" />
-                                  <figcaption>CUT · {tablet.change.cut}</figcaption>
+                                  <button
+                                    type="button"
+                                    className="tablet-inspect-art"
+                                    data-card-inspect-surface="experiment-tablet"
+                                    onClick={() => setHoveredCard(tablet.change.cut)}
+                                    aria-label={`Inspect ${tablet.change.cut}`}
+                                  >
+                                    <img src={cardImage(tablet.change.cut)} alt={tablet.change.cut} loading="lazy" />
+                                  </button>
+                                  <figcaption>
+                                    CUT ·{" "}
+                                    <ForgeCardRef
+                                      name={tablet.change.cut}
+                                      surface="experiment-tablet"
+                                      onInspect={setHoveredCard}
+                                    />
+                                  </figcaption>
                                 </figure>
                                 <span className="tablet-swap-arrow">→</span>
                                 <figure>
-                                  <img src={cardImage(tablet.change.add)} alt={tablet.change.add} loading="lazy" />
-                                  <figcaption>ADD · {tablet.change.add}</figcaption>
+                                  <button
+                                    type="button"
+                                    className="tablet-inspect-art"
+                                    data-card-inspect-surface="experiment-tablet"
+                                    onClick={() => setHoveredCard(tablet.change.add)}
+                                    aria-label={`Inspect ${tablet.change.add}`}
+                                  >
+                                    <img src={cardImage(tablet.change.add)} alt={tablet.change.add} loading="lazy" />
+                                  </button>
+                                  <figcaption>
+                                    ADD ·{" "}
+                                    <ForgeCardRef
+                                      name={tablet.change.add}
+                                      surface="experiment-tablet"
+                                      onInspect={setHoveredCard}
+                                    />
+                                  </figcaption>
                                   {tabletPurchaseLink && (
                                     <a
                                       className="tablet-purchase-link"
@@ -7920,6 +8077,20 @@ export default function Home() {
                   <div className="deck-gallery-notice" role="status" aria-live="polite">
                     <span>{cardFactsPending} card detail{cardFactsPending === 1 ? " is" : "s are"} still being matched. The rest of your deck is fully organized.</span>
                   </div>
+                )}
+                {deckViewMode === "workbench" && (
+                  <Tabletop
+                    cards={tabletopCards}
+                    edges={interactionGraph.edges}
+                    previousCardNames={previousRevisionCardNames}
+                    activeCard={activeCard}
+                    onSelectCard={(name) => {
+                      setHoveredCard(name);
+                      setContextInspectCard(name);
+                    }}
+                    onMatchupContext={setMatchupCardAdvice}
+                    onOpenList={() => setDeckViewMode("ledger")}
+                  />
                 )}
                 <div className="deck-gallery" id="deck-gallery">
                   <aside className="card-preview-stage">
@@ -8173,7 +8344,7 @@ export default function Home() {
                             Open your saved result →
                           </a>
                         )}
-                        <a href="https://app.metaforge.gg/">Sign in / create account →</a>
+                        <a href={signInResumeHref}>Sign in and continue this Forge →</a>
                       </div>
                     </>
                   ) : forgeGenerationFailure?.code === "NETWORK_RATE_LIMITED" ? (
@@ -8187,7 +8358,7 @@ export default function Home() {
                           this player's own preview — a fresh Turnstile token
                           changes nothing about it, so no retry is offered. */}
                       <div className="forge-generation-failure-actions">
-                        <a href="https://app.metaforge.gg/">Sign in / create account →</a>
+                        <a href={signInResumeHref}>Sign in and continue this Forge →</a>
                       </div>
                     </>
                   ) : (
@@ -8262,15 +8433,55 @@ export default function Home() {
                         {contextInspectFact?.type_line ||
                           "Card details awaken on inspection"}
                       </span>
-                      <small>WHY IT MATTERS</small>
-                      {contextCardReasons.length ? (
-                        <ul>
-                          {contextCardReasons.map((reason) => (
-                            <li key={reason}>{reason}</li>
-                          ))}
-                        </ul>
+                      {matchupCardAdvice
+                        && matchupCardAdvice.cardName === contextInspectCard && (
+                        <div className={`forge-context-matchup-coach${matchupCardAdvice.priority ? " is-priority" : " is-secondary"}`}>
+                          <small>VS {matchupCardAdvice.matchup.toUpperCase()}</small>
+                          <p>
+                            <em>Verdict</em>
+                            {matchupCardAdvice.verdict}
+                          </p>
+                          <p>
+                            <em>Change</em>
+                            {matchupCardAdvice.change}
+                          </p>
+                          <p>
+                            <em>Why</em>
+                            {matchupCardAdvice.why}
+                          </p>
+                        </div>
+                      )}
+                      {matchupCardAdvice
+                        && matchupCardAdvice.cardName === contextInspectCard
+                        && contextCardReasons.length > 0 ? (
+                        <details className="forge-context-structural-evidence">
+                          <summary>Structural evidence →</summary>
+                          <ul>
+                            {contextCardReasons.map((reason) => (
+                              <li key={reason}>{reason}</li>
+                            ))}
+                          </ul>
+                        </details>
                       ) : (
-                        <p>Referenced in Deep Forge evidence for this build.</p>
+                        <>
+                          <small>WHY IT MATTERS</small>
+                          {contextCardReasons.length ? (
+                            <ul>
+                              {contextCardReasons.map((reason) => (
+                                <li key={reason}>{reason}</li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p>Referenced in Deep Forge evidence for this build.</p>
+                          )}
+                        </>
+                      )}
+                      {matchupCardAdvice
+                        && matchupCardAdvice.cardName === contextInspectCard
+                        && contextCardReasons.length === 0 && (
+                        <p className="forge-context-structural-empty">
+                          No structural engines tagged yet — matchup seat advice above still applies.
+                        </p>
                       )}
                       <button
                         type="button"
@@ -8794,95 +9005,29 @@ export default function Home() {
                 </div>
               )}
             </aside>
-            <section className="proving-grounds" aria-labelledby="proving-grounds-title">
-              <header>
-                <span><small>TEST</small><h2 id="proving-grounds-title">Take one clear question into your next game.</h2></span>
-                <em>REVISION {Math.max(1, revisions.length)}</em>
-              </header>
-              <article className={`unified-coaching-session mode-${coachingSession.mode}`} aria-labelledby="coaching-session-title">
-                <header>
-                  <span><small>YOUR ACTIVE COACHING PLAN</small><h3 id="coaching-session-title">{coachingSession.title}</h3></span>
-                  <em>{coachingSession.progress.supporting + coachingSession.progress.contradicting > 0 ? `BASED ON ${coachingSession.progress.supporting + coachingSession.progress.contradicting} USEFUL GAME${coachingSession.progress.supporting + coachingSession.progress.contradicting === 1 ? "" : "S"}` : "READY FOR YOUR FIRST USEFUL GAME"}</em>
-                </header>
-                {coachingSession.goal && <p><b>Your goal</b><span>{coachingSession.goal}</span></p>}
-                <p><b>Current read</b><span>{coachingSession.diagnosis}</span></p>
-                <p><b>What we know</b><span>{coachingSession.evidence.join(" · ") || "We need one focused game before recommending a change."}</span></p>
-                <p><b>One next action</b><span>{coachingSession.action}</span></p>
-                {coachingSession.change && <p><b>Exact experiment</b><span>−1 {coachingSession.change.cut} · +1 {coachingSession.change.add}</span></p>}
-                {coachingSession.expectedBenefit && <p><b>Expected gain</b><span>{coachingSession.expectedBenefit}</span></p>}
-                {coachingSession.tradeoff && <p><b>Tradeoff</b><span>{coachingSession.tradeoff}</span></p>}
-                <p><b>How progress is judged</b><span>{coachingSession.measurement}</span></p>
-                <footer>
-                  <small>{coachingSession.progress.supporting + coachingSession.progress.contradicting > 0 ? `This appeared in ${coachingSession.progress.supporting} of ${coachingSession.progress.supporting + coachingSession.progress.contradicting} useful games.` : "No homework—MetaForge remembers the deck and the question for you."}</small>
-                  {coachingSession.mode === "experiment" && coachingSession.change ? (
-                    <button type="button" onClick={() => {
-                      const tablet = experimentTablets?.tablets.find((entry) => entry.id === coachingSession.change?.tabletId);
-                      if (tablet?.change) void applyExperimentTablet(tablet as any);
-                    }}>Accept this controlled experiment →</button>
-                  ) : activeFieldTest ? (
-                    <button type="button" onClick={() => document.querySelector(".active-field-test")?.scrollIntoView({ behavior: "smooth", block: "center" })}>Return with the result →</button>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={!(deckIntegrity.passed || Boolean(nativeMasterworkContext?.generationId))}
-                      onClick={beginProvingGroundsTest}
-                    >{coachingSession.cta} →</button>
-                  )}
-                </footer>
-                <aside>{coachingSession.boundary}</aside>
-              </article>
-              {fieldTestRead ? (
-                <article className="field-test-read" aria-live="polite">
-                  <small>IMMEDIATE COACHING READ</small>
-                  <h3>{fieldTestRead.headline}</h3>
-                  <p>{fieldTestRead.guidance}</p>
-                  <div>
-                    <button type="button" onClick={() => { setFieldTestRead(null); beginProvingGroundsTest(); }}>Run this question again</button>
-                    <button type="button" onClick={() => { setFieldTestRead(null); setActiveForgeChapter(2); }}>Return to the Testing Anvil</button>
-                  </div>
-                </article>
-              ) : activeFieldTest ? (
-                <article className="active-field-test">
-                  <small>NEXT-GAME QUESTION · SAVED AUTOMATICALLY</small>
-                  <h3>{coachingSession.action}</h3>
-                  <p><b>Watch only this:</b> {coachingSession.measurement}</p>
-                  <aside>{provingGrounds.boundary}</aside>
-                  <section>
-                    <h4>Back from the game?</h4>
-                    <p>Three quick taps. MetaForge handles the interpretation.</p>
-                    {!coachingCheckin.issue ? (
-                      <div className="field-test-outcome coaching-checkin">
-                        <b>1 of 3 · Did the issue appear?</b>
-                        <button type="button" onClick={() => setCoachingCheckin({ issue: "yes", handled: null })}>Yes, I noticed it</button>
-                        <button type="button" onClick={() => setCoachingCheckin({ issue: "no", handled: null })}>No, it did not</button>
-                        <button type="button" onClick={() => finishProvingGroundsTest("not-tested")}>This game did not test it</button>
-                      </div>
-                    ) : !coachingCheckin.handled ? (
-                      <div className="field-test-outcome coaching-checkin">
-                        <b>2 of 3 · How did the deck handle that moment?</b>
-                        <button type="button" onClick={() => setCoachingCheckin((current) => ({ ...current, handled: "better" }))}>Better than before</button>
-                        <button type="button" onClick={() => setCoachingCheckin((current) => ({ ...current, handled: "same" }))}>About the same</button>
-                        <button type="button" onClick={() => setCoachingCheckin((current) => ({ ...current, handled: "unsure" }))}>I’m not sure</button>
-                      </div>
-                    ) : (
-                      <div className="field-test-outcome coaching-checkin">
-                        <b>3 of 3 · How did the deck feel overall?</b>
-                        {(["Better", "About the same", "Worse"] as const).map((label) => (
-                          <button key={label} type="button" onClick={() => finishProvingGroundsTest(
-                            coachingCheckin.issue === "yes" ? "observed" : "missed",
-                            { issue: coachingCheckin.issue!, handled: coachingCheckin.handled!, overall: label.toLowerCase() },
-                          )}>{label}</button>
-                        ))}
-                      </div>
-                    )}
-                  </section>
-                </article>
-              ) : null}
-              <footer>
-                <span><b>{revisionLearning.sampleSize}</b> exact-revision clue{revisionLearning.sampleSize === 1 ? "" : "s"} preserved</span>
-                <button type="button" onClick={() => { setActiveForgeChapter(2); setMatchEvidenceOpen(true); window.requestAnimationFrame(() => document.getElementById("match-evidence")?.scrollIntoView({ behavior: "smooth", block: "center" })); }}>Open full match history & coaching →</button>
-              </footer>
-            </section>
+            <ProvingGroundsEra
+              revision={Math.max(1, revisions.length)}
+              title={coachingSession.title}
+              question={activeFieldTest?.question || coachingSession.action || provingGrounds.question}
+              watchFor={activeFieldTest?.watchFor || coachingSession.measurement || provingGrounds.watchFor}
+              boundary={provingGrounds.boundary}
+              active={Boolean(activeFieldTest)}
+              read={fieldTestRead}
+              checkIn={coachingCheckin}
+              evidence={matchLog.filter((entry) => entry.revision === Math.max(1, revisions.length))}
+              supporting={coachingSession.progress.supporting}
+              contradicting={coachingSession.progress.contradicting}
+              canBegin={deckIntegrity.passed || Boolean(nativeMasterworkContext?.generationId)}
+              onBegin={beginProvingGroundsTest}
+              onIssue={(issue) => setCoachingCheckin({ issue, handled: null })}
+              onHandled={(handled) => setCoachingCheckin((current) => ({ ...current, handled }))}
+              onFinish={(overall) => finishProvingGroundsTest(
+                coachingCheckin.issue === "yes" ? "observed" : "missed",
+                { issue: coachingCheckin.issue!, handled: coachingCheckin.handled!, overall },
+              )}
+              onRerun={() => { setFieldTestRead(null); beginProvingGroundsTest(); }}
+              onOpenHistory={() => { setActiveForgeChapter(2); setMatchEvidenceOpen(true); window.requestAnimationFrame(() => document.getElementById("match-evidence")?.scrollIntoView({ behavior: "smooth", block: "center" })); }}
+            />
           </div>
         </section>
       )}

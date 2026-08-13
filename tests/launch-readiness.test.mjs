@@ -18,7 +18,19 @@ test("optional tracking waits for an explicit visitor choice", async () => {
 test("launch funnel covers the complete visitor journey without deck contents", async () => {
   const telemetry = await source("app/launch-telemetry.ts");
   const page = await source("app/page.tsx");
-  for (const event of ["forge_started", "forge_succeeded", "forge_failed", "coaching_opened", "experiment_started", "save_continue_clicked"]) {
+  for (const event of [
+    "forge_started",
+    "forge_succeeded",
+    "forge_failed",
+    "coaching_opened",
+    "experiment_started",
+    "save_continue_clicked",
+    "coach_brief_viewed",
+    "coach_why_opened",
+    "coach_recommendation_viewed",
+    "coach_feedback_submitted",
+    "coach_confidence_opened",
+  ]) {
     assert.match(page, new RegExp(`trackLaunchEvent\\(\\"${event}\\"`));
   }
   assert.doesNotMatch(telemetry, /decklist|cardChoices|email/i);
@@ -41,4 +53,6 @@ test("founder dashboard reports funnel, reliability, and campaign outcomes", asy
   assert.match(founder, /Production reliability/);
   assert.match(founder, /What brings builders/);
   assert.match(founder, /VISIT → DECK/);
+  assert.match(founder, /Trust Calibration/);
+  assert.match(founder, /BRAIN CONFUSION MAP|Brain Confusion Map/);
 });

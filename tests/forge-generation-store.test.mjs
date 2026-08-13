@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { storeGeneration, loadGeneration, cleanupExpiredGenerations, GENERATION_SCHEMA_VERSION } from "../worker/forge-generation-store.ts";
+import { storeGeneration, loadGeneration, cleanupExpiredGenerations, compactGenerationPayload, GENERATION_SCHEMA_VERSION } from "../worker/forge-generation-store.ts";
 
 // A minimal FakeD1 exercising exactly the queries forge-generation-store.ts
 // issues against forge_generations: INSERT (storeGeneration), SELECT by
@@ -115,4 +115,83 @@ test("cleanup deletes only generations past their expiry and reports how many", 
   assert.equal(changes, 1);
   assert.equal(DB.rows.has(expired), false);
   assert.equal(DB.rows.has(fresh), true);
+});
+
+test("strips construction forensics before persisting lab context", () => {
+  const heavy = {
+    ...payload,
+    selected: {
+      id: "s",
+      score: 12,
+      rows: [{ name: "Sol Ring", quantity: 1, roles: ["Ramp"], cmc: 1 }],
+      weakSlotForensics: { huge: true },
+      recoveryDiagnostics: { steps: ["a", "b"] },
+      structuralAnalysis: { graph: { nodes: 999 } },
+    },
+  };
+  const compact = compactGenerationPayload(heavy);
+  assert.equal(compact.selected.weakSlotForensics, undefined);
+  assert.equal(compact.selected.recoveryDiagnostics, undefined);
+  assert.equal(compact.selected.structuralAnalysis, undefined);
+  assert.equal(compact.selected.id, "s");
+  assert.equal(compact.selected.rows[0].name, "Sol Ring");
+});
+
+test("buildClientNativeReport drops structuralAnalysis and keeps picker fields", async () => {
+  const { buildClientNativeReport } = await import("../worker/forge-generation-store.ts");
+  const report = {
+    methodology: "m",
+    reasoning: { summary: "s", boundary: "b" },
+    laboratory: { summary: "l", boundary: "lb", verdict: "advance", contract: "c" },
+    structuralAnalysis: { graph: { nodes: Array.from({ length: 1000 }, (_, i) => i) } },
+    selected: {
+      id: "s",
+      deckText: "1 Sol Ring",
+      evaluation: { cohesion: 1, resilience: 2 },
+      tournament: { reason: "r" },
+      weakSlotForensics: { x: 1 },
+      rows: [{ name: "Sol Ring", quantity: 1, roles: ["Ramp"], oracleText: "huge".repeat(100) }],
+    },
+    candidates: [],
+  };
+  const client = buildClientNativeReport(report);
+  assert.equal(client.structuralAnalysis, undefined);
+  assert.equal(client.selected.weakSlotForensics, undefined);
+  assert.equal(client.selected.deckText, "1 Sol Ring");
+  assert.equal(client.selected.evaluation.cohesion, 1);
+  assert.equal(client.selected.rows[0].oracleText, undefined);
+  assert.ok(JSON.stringify(client).length < JSON.stringify(report).length);
+});
+
+test("refuses oversized payloads instead of throwing into GENERATION_FAILED", async () => {
+  const DB = new FakeD1();
+  const oversized = {
+    ...payload,
+    cardPool: Array.from({ length: 50_000 }, (_, i) => ({ name: `Card ${i}`, oracleText: "x".repeat(40) })),
+  };
+  const generationId = await storeGeneration({ DB }, "owner-key", oversized);
+  assert.equal(generationId, null);
+  assert.equal(DB.rows.size, 0);
+});
+
+test("returns null when D1 insert fails rather than throwing", async () => {
+  const DB = new FakeD1();
+  const original = DB.prepare.bind(DB);
+  DB.prepare = (sql) => {
+    const stmt = original(sql);
+    if (sql.startsWith("INSERT INTO forge_generations")) {
+      return {
+        bind() {
+          return {
+            async run() {
+              throw new Error("SQLITE_TOOBIG: string or blob too big");
+            },
+          };
+        },
+      };
+    }
+    return stmt;
+  };
+  const generationId = await storeGeneration({ DB }, "owner-key", payload);
+  assert.equal(generationId, null);
 });

@@ -22,7 +22,7 @@ const TEMPER_IDENTITY = freeze({
     prioritizes: freeze(["Consistency", "Interaction", "Stable mana"]),
     feel: "Forgiving. Strong even after setbacks.",
     expectedTradeoff: "You'll usually win later than the more explosive builds.",
-    whyBuilt: "Prioritized consistency over explosiveness.",
+    whyBuilt: "This direction kept winning longer games when interaction showed up.",
     pitch: "Built for longer games.",
   }),
   precision: freeze({
@@ -30,7 +30,7 @@ const TEMPER_IDENTITY = freeze({
     prioritizes: freeze(["Fast pressure", "High ceiling", "Aggressive sequencing"]),
     feel: "High risk, high reward.",
     expectedTradeoff: "Recovery after disruption is much harder.",
-    whyBuilt: "Prioritized a cleaner curve and sequencing.",
+    whyBuilt: "This direction was the clearest way to force answers on a schedule.",
     pitch: "Built to win on schedule.",
   }),
   synergy: freeze({
@@ -38,7 +38,7 @@ const TEMPER_IDENTITY = freeze({
     prioritizes: freeze(["Commander synergy", "Engine density", "Tight sequencing"]),
     feel: "Highest ceiling when the engine clicks.",
     expectedTradeoff: "Lower floor if sequencing slips.",
-    whyBuilt: "Prioritized interlocking synergy over flexible answers.",
+    whyBuilt: "This direction leaned hardest into the commander's interlocking pieces.",
     pitch: "Built around commander interactions.",
   }),
   imported: freeze({
@@ -46,7 +46,7 @@ const TEMPER_IDENTITY = freeze({
     prioritizes: freeze(["Your card choices", "Legality", "Familiar lines"]),
     feel: "Closest to what you already brought.",
     expectedTradeoff: "Less tournament exploration than a from-scratch forge.",
-    whyBuilt: "Preserved your submitted list as closely as legality allowed.",
+    whyBuilt: "This kept your submitted list as the experience — refined, not replaced.",
     pitch: "Built from your submitted list.",
   }),
   default: freeze({
@@ -54,7 +54,7 @@ const TEMPER_IDENTITY = freeze({
     prioritizes: freeze(["Structural alternate", "Same commission", "Different temper"]),
     feel: "Same rules, different personality.",
     expectedTradeoff: "Tradeoffs depend on the table.",
-    whyBuilt: "A structural alternate on the same commission.",
+    whyBuilt: "This was the clearest alternate personality on the same commission.",
     pitch: "A structural alternate on this commission.",
   }),
 });
@@ -235,16 +235,23 @@ export function buildPreChoiceCoaching({
         fantasyLabel: fantasyLabel || candidate.label || "",
         priorities,
       });
+    const alone = list.length === 1;
 
     return freeze({
       id: candidate.id,
       label: candidate.label || "Build",
       recommended: Boolean(recommended && candidate.id === recommended.id),
+      alone,
       builtForPlayersWho: identity.builtForPlayersWho,
       prioritizes: freeze([...(identity.prioritizes || [])]),
       feel: identity.feel,
       expectedTradeoff: identity.expectedTradeoff,
       whyBuilt: identity.whyBuilt,
+      // Single survivor: default-surface explanation (stage-2 pass sound).
+      whySurvived: alone
+        ? (identity.whyBuilt
+          || `This was the clearest experience that matched the commission${commanderName ? ` for ${commanderName}` : ""}.`)
+        : null,
       pitch: identity.pitch,
       // Stance voice permeates context — not a titled section
       currentUnderstanding: understanding
@@ -280,10 +287,11 @@ export function buildPreChoiceCoaching({
 
   return freeze({
     writesToBrain: false,
-    version: "pre-choice-coaching-v1.1",
+    version: "pre-choice-coaching-v1.2",
     principle:
       "The Forge should explain enough for a player to choose confidently before asking them to commit to a build.",
     recommendedId: recommended?.id || null,
+    alone: list.length === 1,
     builds: freeze(builds),
   });
 }

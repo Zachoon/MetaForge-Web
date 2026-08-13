@@ -51,3 +51,27 @@ dev-server.pid
 # Local MetaForge safety snapshots
 backups/
 batch-backups/
+
+# Academy live observatory cache (raw TopDeck chunks + checkpoints)
+/tests/field-intelligence/live-cache/
+
+# Claude Code local tool config
+/.claude/
+
+# Local preview/codex logs
+.codex-forge-preview*.log
+.codex-preview-latest*.log
+
+# Local sites-package staging builds and their upload archives
+/.sites-package-stage-*/
+/.sites-upload-*.tar.gz
+
+# Build/trace caches and run-output dumps
+tsconfig.tsbuildinfo
+native_revision_capture.txt
+torture-bench-run.txt
+/tests/knowledge/out/
+/tests/**/*.log
+
+# Manual pre-edit backup copies (naming convention: <file>.before-<change>)
+*.before-*

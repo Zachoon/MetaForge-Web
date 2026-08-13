@@ -230,6 +230,15 @@ step that's actually in focus. */
 .commission-built>header strong{color:#e7ece8;font:600 16px/1.2 Newsreader,Georgia,serif}
 .commission-match{color:#8ee0cd;font:700 12px/1.2 ui-monospace,monospace}
 .commission-match-honesty{margin:10px 0 0;color:#9aaca5;font-size:12px;line-height:1.45}
+.commission-verdict,.commission-change,.commission-why{margin:14px 0 0}
+.commission-verdict small,.commission-change small,.commission-why small{display:block;margin-bottom:6px;color:#72c7b5;font-size:9px;font-weight:900;letter-spacing:.12em}
+.commission-verdict,.commission-why{color:#c9d5d0;font-size:14px;line-height:1.5}
+.commission-ask-chips{display:flex;flex-wrap:wrap;gap:8px;list-style:none;padding:0;margin:10px 0 0}
+.commission-ask-chips li{margin:0;padding:6px 10px;border:1px solid #334a43;background:#0a1411}
+.commission-ask-chips li span{display:none}
+.coach-brief-certainty{margin-top:12px}
+.coach-brief-certainty>summary{cursor:pointer;color:#72c7b5;font-size:11px;font-weight:800;letter-spacing:.04em}
+.coach-brief-certainty p{margin:10px 0 0}
 .commission-contract.is-mismatch{border-color:#a86a4a;box-shadow:0 0 0 1px #a86a4a55}
 .commission-contract.is-mismatch>header strong{color:#f0c2a8}
 .commission-built-list{margin-top:12px}
@@ -265,12 +274,18 @@ step that's actually in focus. */
   background:#0b1210;
 }
 
-.honest-coach-priority-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;margin-top:22px;padding:1px;background:#405048}
-.honest-coach-priority-grid>article{min-height:150px;padding:18px;background:linear-gradient(155deg,#111b18,#0b1210)}
-.honest-coach-priority-grid>article.coach-brief-watch{background:linear-gradient(155deg,#25190f,#111713)}
-.honest-coach-priority-grid small{display:block;color:#72c7b5;font-size:9px;font-weight:900;letter-spacing:.12em}
-.honest-coach-priority-grid>.coach-brief-watch small{color:#e49a51}
-.honest-coach-priority-grid p{margin:12px 0 0;color:#c5d0cb;font:500 13px/1.55 Inter,system-ui,sans-serif}
+.honest-coach-brief-stream{display:grid;gap:14px;margin-top:22px}
+.honest-coach-brief-stream>article{padding:18px 20px;border:1px solid #35463f;background:linear-gradient(155deg,#111b18,#0b1210)}
+.honest-coach-brief-stream>article.coach-brief-watch{border-color:#6a4e33;background:linear-gradient(155deg,#25190f,#111713)}
+.honest-coach-brief-stream small{display:block;color:#72c7b5;font-size:9px;font-weight:900;letter-spacing:.12em}
+.honest-coach-brief-stream>.coach-brief-watch small{color:#e49a51}
+.honest-coach-brief-stream h3{margin:10px 0 8px;color:#e7ece8;font:600 22px/1.2 Newsreader,Georgia,serif}
+.honest-coach-brief-stream p{margin:10px 0 0;color:#c5d0cb;font:500 14px/1.55 Inter,system-ui,sans-serif}
+.honest-coach-brief-stream .coach-brief-watch strong{display:block;margin-top:10px;color:#f2f7f4;font:650 18px/1.3 Newsreader,Georgia,serif}
+.honest-coach-brief-stream .coach-change-cta{margin-top:14px;padding:10px 14px;border:1px solid #6d9e8f;background:#10201b;color:#dff5ee;font:700 12px/1 ui-sans-serif,system-ui,sans-serif;letter-spacing:.04em;cursor:pointer}
+.coach-fix-first-ref{margin:12px 0 0;display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
+.coach-fix-first-ref small{color:#e49a51;font-size:9px;font-weight:900;letter-spacing:.12em}
+.coach-fix-first-ref .forge-card-ref{color:#f0ece4;font-size:13px;font-weight:700}
 .honest-coach-claim-observed,.honest-coach-claim-inferred{margin:10px 0 0}
 .honest-coach-claim-observed em,.honest-coach-claim-inferred em{display:block;margin-bottom:4px;color:#72c7b5;font:900 9px/1.2 Inter,system-ui,sans-serif;letter-spacing:.12em;font-style:normal;text-transform:uppercase}
 .honest-coach-claim-inferred em{color:#e49a51}
@@ -302,11 +317,9 @@ step that's actually in focus. */
 .progressive-results .chapter-1-active .forge-understanding-bridge.honest-coach-v0,
 .progressive-results .chapter-2-active .forge-understanding-bridge.honest-coach-v0{display:block;order:-1;margin-top:0}
 .progressive-results .testing-layout.imported-deck-review.chapter-1-active .forge-understanding-bridge.honest-coach-v0{order:-2}
-.honest-coach-plan h3{margin:10px 0 8px;color:#e7ece8;font:600 20px/1.2 Newsreader,Georgia,serif}
-.honest-coach-priority-grid>.honest-coach-plan{background:linear-gradient(155deg,#14221d,#0b1210)}
 .deck-reference-strip img.commander-art-crop,.commander-art-crop{width:56px;height:56px;border-radius:8px;object-fit:cover;object-position:center 18%;flex-shrink:0}
-@media(max-width:980px){.honest-coach-priority-grid,.honest-coach-drilldown-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:620px){.honest-coach-priority-grid,.honest-coach-drilldown-grid{grid-template-columns:1fr}.honest-coach-v0 .honest-coach-confidence>summary{flex-direction:column;align-items:flex-start}.honest-coach-feedback-actions button{flex:1 1 calc(50% - 8px)}}
+@media(max-width:980px){.honest-coach-drilldown-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:620px){.honest-coach-drilldown-grid{grid-template-columns:1fr}.honest-coach-v0 .honest-coach-confidence>summary{flex-direction:column;align-items:flex-start}.honest-coach-feedback-actions button{flex:1 1 calc(50% - 8px)}}
 
 /* Mobile: stop fighting the phone with a desktop split-pane deck preview. */
 @media(max-width:760px){
@@ -689,6 +702,42 @@ step that's actually in focus. */
   font-size:12px;
   line-height:1.45;
 }
+.forge-context-matchup-coach{
+  margin-top:12px;
+  padding:10px 11px;
+  border:1px solid #4a5f57;
+  background:#0c1512;
+}
+.forge-context-matchup-coach.is-secondary{border-color:#6a4e33;background:#171008}
+.forge-context-matchup-coach>small{
+  display:block;
+  color:#72c7b5;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.12em;
+}
+.forge-context-matchup-coach.is-secondary>small{color:#e49a51}
+.forge-context-matchup-coach p{margin:8px 0 0;color:#c5d0cb;font-size:12px;line-height:1.45}
+.forge-context-matchup-coach em{
+  display:block;
+  margin-bottom:3px;
+  color:#72c7b5;
+  font:900 9px/1.2 Inter,system-ui,sans-serif;
+  letter-spacing:.12em;
+  font-style:normal;
+  text-transform:uppercase;
+}
+.forge-context-matchup-coach.is-secondary em{color:#e49a51}
+.forge-context-structural-evidence{margin-top:12px}
+.forge-context-structural-evidence>summary{
+  cursor:pointer;
+  color:#8fcfbe;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.04em;
+}
+.forge-context-structural-evidence ul{margin-top:8px}
+.forge-context-structural-empty{margin:10px 0 0;color:#8fa099;font-size:11px;line-height:1.4}
 .forge-context-card-inspector-dossier{
   width:100%;
   margin-top:14px;

@@ -1,4 +1,16 @@
-export type LaunchEvent = "landing_view" | "forge_started" | "forge_succeeded" | "forge_failed" | "coaching_opened" | "experiment_started" | "save_continue_clicked";
+export type LaunchEvent =
+  | "landing_view"
+  | "forge_started"
+  | "forge_succeeded"
+  | "forge_failed"
+  | "coaching_opened"
+  | "experiment_started"
+  | "save_continue_clicked"
+  | "coach_brief_viewed"
+  | "coach_why_opened"
+  | "coach_recommendation_viewed"
+  | "coach_feedback_submitted"
+  | "coach_confidence_opened";
 
 const CONSENT_KEY = "metaforge-measurement-consent";
 const SESSION_KEY = "metaforge-launch-session";

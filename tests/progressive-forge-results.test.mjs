@@ -63,9 +63,11 @@ test("the coaching panel always shows Honest Coach priorities, with an honest lo
 test("the coaching panel leads with commission contract / plan story — not the old system-name grid", () => {
   const block = page.match(/className="forge-understanding-bridge coach-brief[\s\S]*?<\/section>/)?.[0];
   assert.ok(block);
-  assert.match(block, /commissionContract|COMMISSION CONTRACT/);
+  assert.match(block, /commissionContract|1 · I HEARD YOU|You asked for/);
   assert.match(block, /intentions\.|planStory/);
   assert.match(block, /WATCH THIS FIRST|WHAT CAN DERAIL IT/);
+  assert.match(block, /YOUR COACH/);
+  assert.doesNotMatch(block, /watchingVoice\?\.paragraph|principleVoice\?\.paragraph/);
 });
 
 test("reviewFocusResult carries its full evidence shape (asked/evidence/nextStep), not just .concise, and is reset on every new commission", () => {

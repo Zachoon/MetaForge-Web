@@ -2,6 +2,7 @@
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
 import { handleAccountBench, handleFounderFeedback, handlePlayerProfile } from "./account-bench";
+import { handleCoachFeedback } from "./coach-feedback";
 import { handleFounderOverview } from "./founder-dashboard";
 import { handleForgeChat } from "./forge-chat";
 import { handleCoachingKnowledge } from "./coaching-knowledge";
@@ -21,6 +22,14 @@ const BUILD_ID = "2026.07.16-workspace1";
 const IMPACT_SITE_VERIFICATION = "05208696-7452-434e-89b1-d6be551c7505";
 const PUBLIC_HOSTS = new Set(["metaforge.gg"]);
 const SEO_HEADERS = { "Cache-Control": "public, max-age=3600", "Content-Type": "text/plain; charset=utf-8" };
+const ACADEMY_GUIDES: Record<string, { headline: string; description: string; datePublished: string }> = {
+  "/academy/why-cant-i-cast-my-spells": { headline: "Why Can't I Cast My Spells?", description: "Diagnose land count, color access, mana curve, dependencies, and opening-hand problems in Commander.", datePublished: "2026-08-02" },
+  "/academy/why-do-i-run-out-of-cards": { headline: "Why Do I Always Run Out of Cards?", description: "Learn whether a Commander deck needs more cards or more useful card flow.", datePublished: "2026-08-07" },
+  "/academy/why-does-my-deck-start-so-slowly": { headline: "Why Does My Deck Start So Slowly?", description: "Separate the common causes of slow Commander starts and identify what to watch next.", datePublished: "2026-08-07" },
+  "/academy/how-much-interaction-do-i-actually-need": { headline: "How Much Interaction Do I Actually Need?", description: "Balance answers with your own game plan instead of relying on a universal removal count.", datePublished: "2026-08-07" },
+  "/academy/why-do-i-lose-after-getting-ahead": { headline: "Why Do I Lose After Getting Ahead?", description: "Distinguish getting ahead, protecting a lead, and closing a Commander game.", datePublished: "2026-08-07" },
+  "/academy/what-is-my-deck-actually-trying-to-do": { headline: "What Is My Deck Actually Trying to Do?", description: "Tell the difference between a theme, synergy, a repeatable plan, and its supporting cards.", datePublished: "2026-08-07" },
+};
 
 function robotsResponse(url: URL): Response {
   const body = PUBLIC_HOSTS.has(url.hostname)
@@ -43,26 +52,48 @@ function sitemapResponse(url: URL): Response {
     "https://metaforge.gg/academy/why-do-i-lose-after-getting-ahead",
     "https://metaforge.gg/academy/what-is-my-deck-actually-trying-to-do",
   ];
-  const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map((pageUrl, index) => `\n  <url><loc>${pageUrl}</loc><lastmod>${index >= urls.length - 5 ? "2026-08-07" : "2026-08-02"}</lastmod><changefreq>${index === 0 ? "weekly" : "monthly"}</changefreq><priority>${index === 0 ? "1.0" : "0.3"}</priority></url>`).join("")}\n</urlset>\n`;
+  const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map((pageUrl, index) => `\n  <url><loc>${pageUrl}</loc><lastmod>${index === 0 ? "2026-08-11" : index >= 4 ? "2026-08-07" : "2026-08-02"}</lastmod><changefreq>${index === 0 ? "weekly" : "monthly"}</changefreq><priority>${index === 0 ? "1.0" : index === 3 ? "0.8" : index >= 4 ? "0.7" : "0.3"}</priority></url>`).join("")}\n</urlset>\n`;
   return new Response(body, { headers: { ...SEO_HEADERS, "Content-Type": "application/xml; charset=utf-8" } });
 }
 
 function seoMarkup(url: URL, html: string): string {
   const canonicalUrl = new URL(url.pathname === "/" ? "/" : url.pathname, "https://metaforge.gg").href;
   const canonical = /<link\s+rel=["']canonical["']/i.test(html) ? "" : `<link rel="canonical" href="${canonicalUrl}">`;
-  if (url.pathname !== "/") return canonical;
-
-  const structuredData = JSON.stringify({
+  const schemas: Record<string, unknown>[] = [];
+  if (url.pathname === "/") schemas.push({
     "@context": "https://schema.org",
-    "@type": "WebApplication",
+    "@type": "SoftwareApplication",
     name: "MetaForge",
     url: "https://metaforge.gg/",
-    description: "Explainable Magic: The Gathering deck analysis that finds pressure points and gives you changes worth testing.",
+    description: "A collaborative Magic: The Gathering and Commander deck coach that explains pressure points and helps players test confident improvements.",
     applicationCategory: "GameApplication",
     operatingSystem: "Any modern web browser",
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-  }).replace(/</g, "\\u003c");
-  return `${canonical}<script type="application/ld+json">${structuredData}</script>`;
+  });
+  if (url.pathname === "/academy") schemas.push({
+    "@context": "https://schema.org", "@type": "CollectionPage",
+    name: "MetaForge Commander Deckbuilding Academy", url: canonicalUrl,
+    description: "Plain-language guides to real Commander deckbuilding problems.",
+  });
+  const guide = ACADEMY_GUIDES[url.pathname];
+  if (guide) schemas.push({
+    "@context": "https://schema.org", "@type": "Article",
+    headline: guide.headline, description: guide.description,
+    datePublished: guide.datePublished, dateModified: guide.datePublished,
+    mainEntityOfPage: canonicalUrl,
+    author: { "@type": "Organization", name: "MetaForge" },
+    publisher: { "@type": "Organization", name: "MetaForge", url: "https://metaforge.gg/" },
+  });
+  if (url.pathname === "/academy" || guide) {
+    const items = [
+      { "@type": "ListItem", position: 1, name: "MetaForge", item: "https://metaforge.gg/" },
+      { "@type": "ListItem", position: 2, name: "Academy", item: "https://metaforge.gg/academy" },
+    ];
+    if (guide) items.push({ "@type": "ListItem", position: 3, name: guide.headline, item: canonicalUrl });
+    schemas.push({ "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: items });
+  }
+  const structuredData = schemas.map((schema) => `<script type="application/ld+json">${JSON.stringify(schema).replace(/</g, "\\u003c")}</script>`).join("");
+  return `${canonical}${structuredData}`;
 }
 
 async function addDocumentMetadata(response: Response, requestUrl: string): Promise<Response> {
@@ -165,6 +196,9 @@ const worker = {
       }
       if (url.pathname === "/api/account/feedback") {
         return await handleFounderFeedback(request, env);
+      }
+      if (url.pathname === "/api/coach/feedback") {
+        return await handleCoachFeedback(request, env);
       }
       if (url.pathname === "/api/account/player-profile") return await handlePlayerProfile(request, env);
       if (url.pathname === "/api/founder/overview") {

@@ -9,16 +9,19 @@ Rubric source: `FOUNDER_ISSUES.md` · Conversation Contract.
 
 | Field | Fill in |
 |-------|---------|
-| Date | |
-| Founder | |
-| Deploy / commit (or “local”) | |
-| Commission (exact note) | |
+| Date | 2026-08-12 |
+| Founder | Zach |
+| Deploy / commit (or “local”) | `acee7f8f` (Matchup answers, not highlights) |
+| Commission (exact note) | Jay-class (below) |
 | Commander | |
 
 **Jay-class commission (recommended):**
 
 > Build me a Commander deck around Doubling Season Superfriends.  
 > I don't mind if it isn't the strongest version. I want the deck to feel like a true Superfriends deck where Doubling Season is one of the stars of the show.
+
+**Run rules:** no Discord narration · watch the conversation · record false positives even if zero.  
+**Do not invent** Theme vs Performance or walker stuffing from this sheet alone.
 
 ---
 
@@ -43,8 +46,8 @@ Rubric source: `FOUNDER_ISSUES.md` · Conversation Contract.
 | 1 | I heard you / Commission Contract | |
 | 2 | Philosophies (Pre-Choice) | |
 | 3 | Here’s the deck | |
-| 4 | Honest Coach | |
-| 5 | Deep Forge | |
+| 4 | Honest Coach | Pass sound: can answer opening priorities *and* one next-game focus |
+| 5 | Deep Forge | Also spot-check #021: click a card ref mid-paragraph without losing place |
 
 ---
 

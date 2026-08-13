@@ -26,6 +26,7 @@ import { buildRequestRecognition } from "./request-recognition.mjs";
 import {
   applyFantasyNarrator,
   buildCommissionContract,
+  isIncidentalSupportPressure,
 } from "./commission-contract.mjs";
 import {
   buildDeepForgeUnderstandingDossier,
@@ -317,6 +318,8 @@ export function buildCoachPlanStory({
 
 /**
  * Four-beat story from Strategic Recognition + Pilot Model (#020).
+ * When a Player Fantasy is active (#024), CHANGE leads with how that fantasy
+ * derails — not with incidental support soft spots (Treasure under Superfriends).
  */
 export function buildCoachPlanStoryFromRecognition({
   recognition = null,
@@ -335,12 +338,35 @@ export function buildCoachPlanStoryFromRecognition({
   const mid = pilot?.whenDangerous
     || pilot?.compound
     || `The deck becomes dangerous once ${commanderName} and the primary support system are both online.`;
+
+  const fantasy = recognition?.playerFantasy || null;
   const pressurePhrase = playerFacingSystemPhrase(recognition?.hierarchy?.pressurePoint);
-  let stop = pressurePhrase
-    ? `Watch ${pressurePhrase} first — if that soft spot collapses, the primary plan loses its support. ${pilot?.protect || ""}`.trim()
-    : (pilot?.protect
-      || `Removal aimed at ${commanderName}, plus sweepers that reset your setup, will slow the plan dramatically.`);
-  stop = appendFixFirstWatch(stop, fixFirst, fixFirstKind);
+  const fantasyProtect = pilot?.protect
+    || recognition?.fantasySupportLine
+    || (fantasy?.label
+      ? `Protect the pieces that keep your ${fantasy.label} plan online — losing them resets the fantasy.`
+      : null);
+
+  let stop;
+  if (fantasy && fantasyProtect) {
+    // Player Surface Law: support soft spots (Treasure under Superfriends) stay
+    // in Deep Forge / drilldown — never on the default CHANGE beat.
+    stop = String(fantasyProtect).trim();
+  } else if (pressurePhrase) {
+    stop = `Watch ${pressurePhrase} first — if that soft spot collapses, the primary plan loses its support. ${pilot?.protect || ""}`.trim();
+  } else {
+    stop = pilot?.protect
+      || `Removal aimed at ${commanderName}, plus sweepers that reset your setup, will slow the plan dramatically.`;
+  }
+
+  // Never re-inject incidental support systems as the card/system to watch.
+  const skipSupportFix = fantasy
+    && fixFirstKind === "system"
+    && isIncidentalSupportPressure(fixFirst, fantasy);
+  if (!skipSupportFix) {
+    stop = appendFixFirstWatch(stop, fixFirst, fixFirstKind);
+  }
+
   return freeze({
     title,
     plan,
@@ -597,7 +623,10 @@ function strengthsAndWeaknesses(selected = {}, structuralSystems = null, commiss
     underAnchors[0] ? { value: underAnchors[0], kind: "card" } : null,
     rawPower[0] ? { value: rawPower[0], kind: "card" } : null,
     structuralFocusEntry,
-    structuralSystems?.weakestSystem?.name ? { value: structuralSystems.weakestSystem.name, kind: "system" } : null,
+    structuralSystems?.weakestSystem?.name
+      && !(fantasy && isIncidentalSupportPressure(structuralSystems.weakestSystem.name, fantasy))
+      ? { value: structuralSystems.weakestSystem.name, kind: "system" }
+      : null,
   ];
   const fixFirstResolved = fixFirstCandidates.find(Boolean) || null;
 
@@ -837,8 +866,12 @@ export function buildHonestCoachSummary({
       packageLabels: identity.packageLabels,
       commanders: authoritativeCommanders,
       strategy: isGenericStrategyLabel(identity.strategy) ? null : identity.strategy,
-      strongestSystemName: structuralSystems?.strongestSystem?.name || null,
-      weakestSystemName: structuralSystems?.weakestSystem?.name || null,
+      strongestSystemName: commissionContract?.playerFantasy
+        ? null
+        : (structuralSystems?.strongestSystem?.name || null),
+      weakestSystemName: commissionContract?.playerFantasy
+        ? null
+        : (structuralSystems?.weakestSystem?.name || null),
       fixFirst: sw.fixFirst,
       fixFirstKind: sw.fixFirstKind,
     });
@@ -848,6 +881,9 @@ export function buildHonestCoachSummary({
   const observedLead = sw.observedFindings[0] || why;
   const inferredLead = sw.interpretiveGuidance[0]
     || (sw.fixFirst
+      && !(commissionContract?.playerFantasy
+        && sw.fixFirstKind === "system"
+        && isIncidentalSupportPressure(sw.fixFirst, commissionContract.playerFantasy))
       ? `I would look at ${playerFacingSystemPhrase(sw.fixFirst)} first.`
       : planStory.stop);
   const uncertaintyLead = deckUnderstanding?.cardsUnresolved

@@ -25,17 +25,27 @@ describe("Strategic Stance voice (product)", () => {
   it("philosophy voice hedges and stays coach-like", () => {
     const voice = buildPhilosophyStanceVoice({ commanderName: "Kinnan, Bonder Prodigy" });
     assert.ok(voice);
-    assert.match(voice.paragraph, /Current understanding suggests/i);
+    assert.ok(voice.paragraph.length > 20);
     assert.ok(voice.badge?.title);
     assert.ok(voice.whatWouldChangeOurMind.length >= 1);
     assert.doesNotMatch(voice.paragraph, /^## /);
+    assert.doesNotMatch(voice.paragraph, /Brain v1|curveLow|elite converter structure/i);
+  });
+
+  it("philosophy voice omits unrelated lab hypotheses when the commander has no match", () => {
+    const voice = buildPhilosophyStanceVoice({ commanderName: "Atraxa, Praetors' Voice" });
+    // No Atraxa-specific hyp in the snapshot → better silence than curveLow jargon.
+    if (voice) {
+      assert.doesNotMatch(voice.paragraph, /Brain v1|curveLow|elite converter structure/i);
+    }
   });
 
   it("honest coach watching voice uses observation-first language", () => {
     const voice = buildHonestCoachWatchingVoice({ commanderName: "Kinnan, Bonder Prodigy" });
     assert.ok(voice);
     assert.equal(voice.label, "One thing we're watching");
-    assert.match(voice.paragraph, /Current tournament evidence suggests|Current understanding/i);
+    assert.ok(voice.paragraph.length > 20);
+    assert.doesNotMatch(voice.paragraph, /Brain v1 does not encode/i);
   });
 
   it("deep forge carries full research object", () => {
@@ -57,6 +67,8 @@ describe("Strategic Stance voice (product)", () => {
   it("pre-choice coaching permeates understanding without a Stance section", () => {
     const coaching = buildPreChoiceCoaching({
       commanderName: "Kinnan, Bonder Prodigy",
+      fantasyLabel: "value engine",
+      priorities: ["interaction"],
       candidates: [
         {
           id: "a",
@@ -67,8 +79,10 @@ describe("Strategic Stance voice (product)", () => {
       ],
       recommendedId: "a",
     });
-    assert.ok(coaching.builds[0].currentUnderstanding?.paragraph);
-    assert.match(coaching.builds[0].currentUnderstanding.paragraph, /Current understanding suggests/i);
+    const build = coaching.builds[0];
+    assert.ok(build.principleUnderstanding?.paragraph || build.currentUnderstanding?.paragraph);
+    const text = `${build.currentUnderstanding?.paragraph || ""} ${build.principleUnderstanding?.paragraph || ""}`;
+    assert.doesNotMatch(text, /Strategic Stance|Strategic Concepts|Brain v1|curveLow|reflex spenders|incomplete-information/i);
   });
 
   it("honest coach summary exposes watching + deep forge understanding", () => {

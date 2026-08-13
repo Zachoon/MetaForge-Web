@@ -30,19 +30,22 @@ export const ERA3_CARD_INSPECT_SURFACES = freeze([
   "dossier-connection",
   "pre-choice-diff",
   "mana-risky",
+  "coach-fix-first",
+  "experiment-tablet",
 ]);
 
 /**
  * True when the deck-gallery preview is not the reading surface.
- * Progressive chapter 3/4 (if re-enabled) hide the gallery; otherwise the
- * gallery may still be scrolled off-screen while reading Deep Forge.
+ * Progressive chapter 2 = Deep Forge / Tuning evidence (gallery may still be
+ * sticky and "in view" while the reader is far down the page).
+ * Legacy 3/4 hid the gallery entirely.
  */
 export function shouldUseContextCardInspector({
   previewInView = true,
   activeForgeChapter = 1,
 } = {}) {
   const chapter = Number(activeForgeChapter) || 1;
-  if (chapter === 3 || chapter === 4) return true;
+  if (chapter === 2 || chapter === 3 || chapter === 4) return true;
   return previewInView === false;
 }
 

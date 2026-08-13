@@ -272,7 +272,7 @@ test("transient Scryfall failure resilience: a single 429 that recovers on retry
   assert.ok(searchCalls >= 2, "expected the retry to actually re-request the same page, not just accept the first failure");
 });
 
-test("engine/storage exception: a failure while persisting a real generation still returns sanitized JSON 500, never the raw exception", async () => {
+test("engine/storage exception: a finished generation still returns the Masterwork when forge_generations cannot persist", async () => {
   const worker = await loadWorker();
   await withMockedFetch(mockExternalFetch(), async () => {
     const response = await worker.fetch(
@@ -280,10 +280,15 @@ test("engine/storage exception: a failure while persisting a real generation sti
       env(new ForgeD1({ failOn: "INSERT INTO forge_generations" })),
       ctx,
     );
-    assert.equal(response.status, 500);
+    // Persistence is best-effort. Discarding a finished deck because D1
+    // rejected the lab context is worse than returning the Masterwork
+    // without a generationId (Testing Anvil degrades; the list does not).
+    assert.equal(response.status, 200);
     assert.ok((response.headers.get("content-type") || "").includes("application/json"));
     const body = await response.json();
-    assert.equal(body.error, "The native Forge could not complete this candidate. Try again or adjust the commission.");
+    assert.ok(body.nativeReport?.selected?.deckText);
+    assert.equal(body.generationId, undefined);
+    assert.ok(Array.isArray(body.cardPool), "without generationId the client still receives a degraded local pool");
   });
 });
 

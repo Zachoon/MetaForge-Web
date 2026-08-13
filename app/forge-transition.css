@@ -1,0 +1,403 @@
+/* The forge ceremony is real build time, so each narrative phase should feel
+   active without pretending its timer controls construction. */
+.forging-ceremony {
+  background:
+    linear-gradient(90deg, #0407061c 0 48%, #050706c9 67%, #050706f5 100%),
+    linear-gradient(180deg, #02040338, #050807c7),
+    url('/assets/forge/ceremony-forge-environment.png') center / cover no-repeat,
+    #050807;
+}
+
+.forging-ceremony::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 31% 61%, #ff7c2b2c, transparent 24%);
+  mix-blend-mode: screen;
+  animation: ceremony-environment-breathe 3.2s ease-in-out infinite;
+}
+
+.ceremony-stage-copy {
+  min-height: 190px;
+  animation: forge-stage-arrive .62s cubic-bezier(.16, .84, .22, 1) both;
+}
+
+/* Dimensional forge scene. Every surface is composited CSS geometry so it
+   stays crisp at any viewport size and does not add a WebGL payload. */
+.forge-deck-assembly {
+  transform-style: preserve-3d;
+  perspective: 1050px;
+  animation: forge-camera-drift 7.2s cubic-bezier(.22,.72,.2,1) both;
+}
+
+.forge-webgl-scene {
+  position: absolute;
+  z-index: 9;
+  inset: -8% -12% 2%;
+  opacity: 0;
+  animation: forge-webgl-reveal .8s .12s ease-out forwards;
+  filter: drop-shadow(0 34px 38px #000c);
+}
+.forge-webgl-scene canvas { display: block; width: 100%!important; height: 100%!important; }
+.forge-deck-assembly:has(.forge-webgl-scene.is-ready) > .forge-machine,
+.forge-deck-assembly:has(.forge-webgl-scene.is-ready) > .assembly-cards,
+.forge-deck-assembly:has(.forge-webgl-scene.is-ready) > .assembly-deck,
+.forge-deck-assembly:has(.forge-webgl-scene.is-ready) > .ceremony-atmosphere,
+.forge-deck-assembly:has(.forge-webgl-scene.is-ready) > .assembly-light,
+.forge-deck-assembly:has(.forge-webgl-scene.is-ready) > .assembly-table,
+.forge-deck-assembly:has(.forge-webgl-scene.is-ready) > .assembly-scan,
+.forge-deck-assembly:has(.forge-webgl-scene.is-ready) > .assembly-progress,
+.forge-deck-assembly:has(.forge-webgl-scene.is-ready) > small {
+  visibility: hidden;
+  animation: none!important;
+}
+
+.ceremony-atmosphere,
+.forge-machine {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform-style: preserve-3d;
+}
+
+.forge-vault {
+  position: absolute;
+  inset: 1% 4% 10%;
+  border: 2px solid #6d554040;
+  border-bottom: 0;
+  border-radius: 48% 48% 8% 8% / 56% 56% 8% 8%;
+  background:
+    radial-gradient(ellipse at 50% 78%, #ff873133, transparent 43%),
+    repeating-linear-gradient(104deg, #ffffff08 0 1px, transparent 1px 28px),
+    linear-gradient(125deg, #18201d88, #080a09 62%);
+  box-shadow: inset 0 0 70px #000, inset 0 -35px 50px #d25d1a18, 0 25px 60px #000b;
+  transform: translateZ(-120px) rotateX(3deg);
+  overflow: hidden;
+}
+
+.forge-vault::before,
+.forge-vault::after {
+  content: "";
+  position: absolute;
+  top: 8%;
+  bottom: 9%;
+  width: 10%;
+  border: 1px solid #725d4938;
+  background: linear-gradient(90deg, #0a0d0c, #2a251e70, #090b0a);
+  box-shadow: inset 0 0 18px #000, 0 0 24px #000;
+}
+.forge-vault::before { left: 7%; transform: skewY(-7deg); }
+.forge-vault::after { right: 7%; transform: skewY(7deg); }
+
+.forge-vault > i {
+  position: absolute;
+  inset: 18% 23% 20%;
+  border: 1px solid #e37e3448;
+  border-radius: 50% 50% 12% 12%;
+  background: radial-gradient(ellipse at 50% 76%, #ffd18d, #f1712c 9%, #7e2718 25%, #130b08 61%);
+  box-shadow: inset 0 0 45px #000, 0 0 50px #e7692833;
+  animation: furnace-mouth 1.8s ease-in-out infinite;
+}
+
+.forge-vault > b {
+  position: absolute;
+  right: 20%; bottom: 17%; left: 20%; height: 5%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, #ffdda0, #f06c26 28%, transparent 72%);
+  filter: blur(3px);
+}
+
+.forge-godray {
+  position: absolute;
+  z-index: 1;
+  top: -8%; left: 50%; width: 48%; height: 92%;
+  background: linear-gradient(180deg, #8fe1d51c, #f5aa5c18 57%, transparent 90%);
+  clip-path: polygon(44% 0, 56% 0, 100% 100%, 0 100%);
+  filter: blur(13px);
+  transform: translateX(-50%) translateZ(70px);
+  animation: godray-breathe 3.6s ease-in-out infinite;
+}
+
+.forge-cinders { position: absolute; z-index: 8; inset: 3% 10% 18%; overflow: hidden; }
+.forge-cinders > i {
+  --x: calc((var(--cinder) * 37) % 97);
+  position: absolute;
+  left: calc(var(--x) * 1%);
+  bottom: -4%;
+  width: calc(2px + (var(--cinder) % 3) * 1px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #ffd49a;
+  box-shadow: 0 0 7px #ff8b3d, 0 0 14px #ff5928;
+  animation: cinder-rise calc(2.4s + (var(--cinder) % 5) * .34s) linear infinite;
+  animation-delay: calc(var(--cinder) * -.41s);
+}
+
+.forge-machine { z-index: 3; transform: translateZ(42px); }
+.forge-anvil-model {
+  position: absolute;
+  z-index: 4;
+  left: 50%; bottom: 16%;
+  width: 38%; height: 31%;
+  transform: translateX(-50%) rotateX(2deg);
+  transform-style: preserve-3d;
+  filter: drop-shadow(0 28px 18px #000c);
+}
+.forge-anvil-model i { position: absolute; display: block; }
+.anvil-top {
+  top: 0; left: 4%; width: 92%; height: 25%;
+  clip-path: polygon(0 20%, 28% 0, 100% 14%, 86% 82%, 28% 100%, 8% 77%);
+  background: linear-gradient(170deg, #a79a83, #514c43 25%, #171b19 72%, #090b0a);
+  box-shadow: inset 0 3px #d7c9ad, inset 0 -8px 10px #050706;
+}
+.anvil-body {
+  top: 19%; left: 31%; width: 40%; height: 59%;
+  clip-path: polygon(10% 0, 90% 0, 76% 100%, 22% 100%);
+  background: linear-gradient(100deg, #111412, #625d50 44%, #242723 65%, #090b0a);
+  box-shadow: inset 7px 0 9px #ffffff12, inset -8px 0 12px #000;
+}
+.anvil-foot {
+  right: 14%; bottom: 0; left: 14%; height: 25%;
+  clip-path: polygon(12% 0, 88% 0, 100% 76%, 88% 100%, 10% 100%, 0 73%);
+  background: linear-gradient(175deg, #4e4b42, #161a17 44%, #080a09);
+  box-shadow: inset 0 2px #958b76, 0 8px 12px #000;
+}
+.anvil-rune {
+  position: absolute;
+  z-index: 2;
+  top: 37%; left: 50%;
+  color: #ef9c51;
+  font: 700 clamp(15px, 2.2vw, 29px) Georgia, serif;
+  text-shadow: 0 0 7px #ff863d, 0 0 18px #e95e29;
+  transform: translateX(-50%);
+  animation: anvil-rune-pulse 1.8s ease-in-out infinite;
+}
+
+.forge-hammer {
+  position: absolute;
+  z-index: 7;
+  top: 11%; left: 56%;
+  width: 13%; height: 46%;
+  transform-origin: 50% 8%;
+  transform: rotate(-24deg) translateZ(80px);
+  animation: forge-hammer-strike 2.3s cubic-bezier(.7,.02,.28,1) infinite;
+}
+.forge-hammer > i {
+  position: absolute; top: 0; left: 39%; width: 22%; height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #25150d, #91522c 34%, #c47742 52%, #432316 78%, #130d09);
+  box-shadow: inset 2px 0 #e7a66c38, 5px 8px 14px #000a;
+}
+.forge-hammer > b {
+  position: absolute; top: 70%; left: 7%; width: 86%; height: 21%;
+  border: 1px solid #827b6b;
+  clip-path: polygon(6% 0, 92% 7%, 100% 48%, 88% 100%, 5% 92%, 0 42%);
+  background: linear-gradient(155deg, #aaa08b, #3e423c 30%, #111513 75%);
+  box-shadow: inset 0 3px #d2c5a9, 8px 12px 18px #000b;
+}
+
+.molten-channel {
+  position: absolute;
+  z-index: 2;
+  right: 13%; bottom: 9%; left: 13%; height: 18%;
+  border: 1px solid #67472e55;
+  clip-path: polygon(0 72%, 38% 59%, 46% 20%, 54% 20%, 62% 58%, 100% 72%, 96% 100%, 4% 100%);
+  background: linear-gradient(180deg, #0b0d0c, #21160f 70%);
+  transform: rotateX(64deg) translateZ(-10px);
+}
+.molten-channel > i {
+  position: absolute; inset: 42% 4% 18%;
+  background: linear-gradient(90deg, transparent, #f15f29 18%, #ffd395 49%, #ed652c 82%, transparent);
+  filter: blur(2px);
+  box-shadow: 0 0 15px #ed5e28, 0 0 35px #bd3d1e;
+  animation: molten-flow 1.7s ease-in-out infinite alternate;
+}
+
+.forge-deck-assembly[data-phase="1"] .forge-hammer,
+.forge-deck-assembly[data-phase="2"] .forge-hammer { opacity: .5; }
+.forge-deck-assembly[data-phase="4"] .forge-vault > i,
+.forge-deck-assembly[data-phase="5"] .forge-vault > i { filter: brightness(1.22) saturate(1.18); }
+.forge-deck-assembly[data-phase="6"] .forge-hammer { animation-duration: 1.55s; }
+.forge-deck-assembly[data-phase="7"] .forge-hammer { animation-play-state: paused; }
+
+.ceremony-stage-copy h1 { margin-bottom: 16px; }
+.ceremony-stage-copy p {
+  margin: 0;
+  color: #c1c9c6;
+  font: 18px/1.7 Newsreader, Georgia, serif;
+}
+
+.ceremony-phase strong {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.ceremony-phase time {
+  min-width: 54px;
+  padding-left: 15px;
+  border-left: 1px solid #805b3d;
+  color: #87d9ca;
+  font: 800 11px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: .1em;
+  text-shadow: 0 0 16px #6dd3c070;
+}
+
+.ceremony-phase-rail {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.ceremony-phase-rail li {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  color: #52615d;
+  font: 800 7px/1.15 ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: .06em;
+  text-align: center;
+  text-transform: uppercase;
+}
+.ceremony-phase-rail li::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 11px;
+  right: 50%;
+  left: -50%;
+  height: 1px;
+  background: #2a3531;
+}
+.ceremony-phase-rail li:first-child::before { display: none; }
+.ceremony-phase-rail i {
+  display: grid;
+  width: 23px;
+  height: 23px;
+  place-items: center;
+  border: 1px solid #34423e;
+  border-radius: 50%;
+  background: #0a100e;
+  color: #61706b;
+  font-style: normal;
+}
+.ceremony-phase-rail .is-complete::before,
+.ceremony-phase-rail .is-active::before { background: linear-gradient(90deg, #b96831, #63c8b6); }
+.ceremony-phase-rail .is-complete i { border-color: #578d82; color: #78d3c1; }
+.ceremony-phase-rail .is-active { color: #e8b477; }
+.ceremony-phase-rail .is-active i {
+  border-color: #e09650;
+  color: #ffd29d;
+  box-shadow: 0 0 0 4px #d9823120, 0 0 20px #d9823150;
+  animation: ceremony-phase-current 1.65s ease-in-out infinite;
+}
+
+.ceremony-progress > span b { position: relative; }
+.ceremony-progress > span b::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  right: -1px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #dffdf6;
+  box-shadow: 0 0 9px #73dac8, 0 0 20px #73dac8;
+  animation: forge-progress-spark 1.15s ease-in-out infinite;
+}
+
+.forge-deck-assembly[data-phase="7"] .assembly-deck {
+  filter: brightness(1.15);
+  box-shadow: -5px 5px #080b0a, -9px 9px #121a17,
+    -10px 10px #4e6c6359, 0 30px 50px #000c,
+    inset 0 0 0 5px #080d0c, inset 0 0 0 6px #e9aa6a80,
+    0 0 82px #6dd3c050;
+}
+
+@keyframes forge-stage-arrive {
+  from { opacity: 0; transform: translateY(14px); filter: blur(4px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+
+@keyframes forge-progress-spark {
+  50% { transform: scale(1.45); opacity: .72; }
+}
+
+@keyframes forge-camera-drift {
+  from { transform: rotateX(2.4deg) scale(.965); opacity: .15; }
+  12% { opacity: 1; }
+  to { transform: rotateX(0) scale(1); opacity: 1; }
+}
+@keyframes furnace-mouth { 50% { filter: brightness(1.25) saturate(1.15); box-shadow: inset 0 0 36px #000, 0 0 68px #e7692848; } }
+@keyframes godray-breathe { 50% { opacity: .54; transform: translateX(-50%) translateZ(70px) scaleX(1.08); } }
+@keyframes cinder-rise { 0% { opacity: 0; transform: translate3d(0, 12px, 0) scale(.5); } 15% { opacity: 1; } 100% { opacity: 0; transform: translate3d(calc((var(--cinder) % 3 - 1) * 32px), -390px, 90px) scale(1.5); } }
+@keyframes forge-hammer-strike { 0%, 58%, 100% { transform: rotate(-24deg) translateZ(80px); } 70% { transform: rotate(5deg) translate(-7%, 22%) translateZ(80px); } 74% { transform: rotate(1deg) translate(-4%, 16%) translateZ(80px); } }
+@keyframes anvil-rune-pulse { 50% { color: #fff1c0; text-shadow: 0 0 9px #fff1c0, 0 0 26px #ff732e, 0 0 44px #e14720; } }
+@keyframes molten-flow { to { opacity: .68; transform: scaleX(.94); filter: blur(3px) brightness(1.35); } }
+@keyframes ceremony-environment-breathe { 50% { opacity: .58; filter: brightness(1.18); } }
+@keyframes forge-webgl-reveal { from { opacity: 0; transform: translateY(16px) scale(.97); filter: blur(5px) drop-shadow(0 34px 38px #000c); } to { opacity: 1; transform: none; filter: drop-shadow(0 34px 38px #000c); } }
+@keyframes ceremony-phase-current { 50% { box-shadow: 0 0 0 7px #d9823111, 0 0 28px #d9823166; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ceremony-stage-copy,
+  .ceremony-progress > span b::after,
+  .forge-deck-assembly,
+  .forge-vault > i,
+  .forge-godray,
+  .forge-cinders > i,
+  .forge-hammer,
+  .anvil-rune,
+  .molten-channel > i { animation: none; }
+  .forging-ceremony::after { animation: none; }
+  .forge-webgl-scene { display: none; }
+  .ceremony-phase-rail .is-active i { animation: none; }
+}
+
+@media (max-width: 720px) {
+  .ceremony-phase-rail span { display: none; }
+  .ceremony-phase-rail { margin-top: 18px; }
+}
+
+/* Honest Coach is a document-style report inside the same structural bridge
+   component. The generic machine-diagram header grid must not auto-place its
+   report panels into narrow implicit columns. */
+.progressive-results .forge-understanding-bridge.honest-coach-v0 > header {
+  display: block;
+  max-width: none;
+  margin: 0 0 28px;
+}
+
+.progressive-results .forge-understanding-bridge.honest-coach-v0 > header::after {
+  display: none;
+}
+
+.progressive-results .forge-understanding-bridge.honest-coach-v0 > header > h2 {
+  max-width: 900px;
+  margin: 8px 0 0;
+  text-wrap: balance;
+}
+
+.progressive-results .forge-understanding-bridge.honest-coach-v0 > header > aside,
+.progressive-results .forge-understanding-bridge.honest-coach-v0 > header > div,
+.progressive-results .forge-understanding-bridge.honest-coach-v0 > header > details,
+.progressive-results .forge-understanding-bridge.honest-coach-v0 > header > p {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+
+.progressive-results .forge-understanding-bridge.honest-coach-v0 .honest-coach-strategy-vs-system {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 760px) {
+  .progressive-results .forge-understanding-bridge.honest-coach-v0 .honest-coach-strategy-vs-system {
+    grid-template-columns: 1fr;
+  }
+}

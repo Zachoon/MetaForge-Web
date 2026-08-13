@@ -15,10 +15,12 @@ describe("Era 3 Complete — Speak like a strategist", () => {
     assert.match(contract, /I heard you/i);
     assert.match(contract, /philosophies/i);
     assert.match(contract, /how to win|how to pilot/i);
-    assert.match(page, /COMMISSION CONTRACT/);
+    assert.match(contract, /Player Surface Law/);
+    assert.match(page, /1 · I HEARD YOU|You asked for/);
     assert.match(page, /HERE ARE THE PHILOSOPHIES/);
-    assert.match(page, /honest-coach-v0|HONEST COACH/i);
+    assert.match(page, /honest-coach-v0|YOUR COACH/);
     assert.match(page, /Deep Forge|deep-forge|openDeepForgeEvidence/i);
+    assert.doesNotMatch(page, /HONEST COACH · BRAIN v1/);
   });
 
   it("marks #021 inventory complete without claiming Founder Confirmed", () => {

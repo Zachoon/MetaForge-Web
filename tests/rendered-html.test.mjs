@@ -17,15 +17,15 @@ test("server-renders the MetaForge product experience", async () => {
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   const html = await response.text();
-  assert.match(html, /<title>MetaForge — Forge a Better Deck<\/title>/i);
+  assert.match(html, /<title>MetaForge — Your Collaborative MTG Deck Coach<\/title>/i);
   assert.match(html, /MAGIC: THE GATHERING · DECK COACH/);
   assert.match(html, /Understand your deck/);
   assert.match(html, /MetaForge explains how your\s*\n?\s*deck works, shows what to improve, and helps you make\s*\n?\s*confident changes\./);
   assert.match(html, /class="forge-brand-logo"[^>]+src="\/assets\/brand\/metaforge-mf-anvil\.webp"/i);
   assert.doesNotMatch(html, /<i>MF<\/i>/i);
   assert.match(html, /<meta name="impact-site-verification" value="05208696-7452-434e-89b1-d6be551c7505">/i);
-  assert.match(html, /<link rel="canonical" href="https:\/\/metaforge\.gg\/">/i);
-  assert.match(html, /<script type="application\/ld\+json">.*"WebApplication".*<\/script>/i);
+  assert.match(html, /<link rel="canonical" href="https:\/\/metaforge\.gg\/"\s*\/?\s*>/i);
+  assert.match(html, /<script type="application\/ld\+json">.*"SoftwareApplication".*<\/script>/i);
   assert.match(html, /<meta name="robots" content="index, follow">/i);
   assert.doesNotMatch(html, /content="noindex/i);
   assert.match(html, /Help us improve MetaForge\?/i);
@@ -38,6 +38,7 @@ test("server-renders the MetaForge product experience", async () => {
   assert.match(html, /class="forge-motion-layer"/);
   assert.match(html, /class="forge-action-burst"/);
   assert.match(html, /<summary>Menu<\/summary>/);
+  assert.match(html, /href="\/academy"/i);
   assert.match(html, /Reduce motion/);
   assert.match(html, /Build a deck/);
   assert.match(html, /Review my decklist/);
@@ -81,6 +82,23 @@ test("permanently redirects every www duplicate to the apex canonical without lo
   assert.equal(await response.text(), "");
 });
 
+test("publishes unique Academy metadata and valid editorial schema", async () => {
+  const academy = await render("https://metaforge.gg/academy");
+  const academyHtml = await academy.text();
+  assert.match(academyHtml, /<title>MetaForge Academy — Commander Deckbuilding Guides<\/title>/i);
+  assert.match(academyHtml, /<link rel="canonical" href="https:\/\/metaforge\.gg\/academy"/i);
+  assert.match(academyHtml, /"@type":"CollectionPage"/i);
+  assert.match(academyHtml, /"@type":"BreadcrumbList"/i);
+
+  const guide = await render("https://metaforge.gg/academy/why-cant-i-cast-my-spells");
+  const guideHtml = await guide.text();
+  assert.match(guideHtml, /Why Can(?:'|&#x27;)t I Cast My Spells in Commander\? \| MetaForge/i);
+  assert.match(guideHtml, /"@type":"Article"/i);
+  assert.match(guideHtml, /"headline":"Why Can't I Cast My Spells\?"/i);
+  assert.match(guideHtml, /"@type":"BreadcrumbList"/i);
+  assert.doesNotMatch(guideHtml, /"@type":"FAQPage"|"@type":"HowTo"/i);
+});
+
 test("publishes a crawlable public robots file and sitemap", async () => {
   const robots = await render("https://metaforge.gg/robots.txt");
   assert.equal(robots.status, 200);
@@ -94,6 +112,8 @@ test("publishes a crawlable public robots file and sitemap", async () => {
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/<\/loc>/);
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/terms<\/loc>/);
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/privacy<\/loc>/);
+  assert.match(xml, /<loc>https:\/\/metaforge\.gg\/academy<\/loc>/);
+  assert.match(xml, /<loc>https:\/\/metaforge\.gg\/academy\/what-is-my-deck-actually-trying-to-do<\/loc>/);
 });
 
 test("blocks crawler discovery on the authenticated host", async () => {

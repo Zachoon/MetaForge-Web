@@ -40,7 +40,12 @@ export function commanderOptionFromCard(card) {
     name: card.name,
     colors: card.color_identity || [],
     typeLine: card.type_line || "Legendary card",
-    image: card.image_uris?.small || card.card_faces?.[0]?.image_uris?.small || "",
+    image:
+      card.image_uris?.art_crop
+      || card.card_faces?.[0]?.image_uris?.art_crop
+      || card.image_uris?.small
+      || card.card_faces?.[0]?.image_uris?.small
+      || "",
     verifiedFacts: `LIVE SCRYFALL RECORD\nName: ${card.name}\nMana cost: ${card.mana_cost || card.card_faces?.[0]?.mana_cost || "None"}\nType: ${card.type_line || ""}\nColor identity: ${(card.color_identity || []).join("") || "Colorless"}\nSet: ${card.set_name || ""} (${card.set || ""})\nAvailable games: ${(card.games || []).join(", ")}\nBrawl legality: ${card.legalities?.brawl || "unknown"}\nCommander legality: ${card.legalities?.commander || "unknown"}\nOracle text:\n${faceFacts || card.oracle_text || ""}`,
   };
 }

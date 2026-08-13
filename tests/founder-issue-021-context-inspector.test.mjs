@@ -23,6 +23,13 @@ describe("Founder Issue #021 — context-preserving card inspection", () => {
     );
   });
 
+  it("uses contextual inspector on Deep Forge chapter 2 even if gallery is in view", () => {
+    assert.equal(
+      shouldUseContextCardInspector({ previewInView: true, activeForgeChapter: 2 }),
+      true,
+    );
+  });
+
   it("uses contextual inspector on legacy Deep Forge chapters 3/4", () => {
     assert.equal(
       shouldUseContextCardInspector({ previewInView: true, activeForgeChapter: 3 }),

@@ -1,0 +1,1377 @@
+{
+  "version": "academy-coverage-observation-001-v0.1",
+  "paper": "What Is Strategic Coverage?",
+  "era": "Age of Vocabulary",
+  "question": "Which strategic capabilities remain predictive of elite resilience after controlling for commander, archetype, and interaction count?",
+  "primaryVerdict": "PARTIAL_SIGNAL_NO_UMBRELLA_ADMISSION",
+  "provenance": {
+    "corpusMode": "live",
+    "syntheticFixtures": "NOT_USED",
+    "decks": 283,
+    "events": 35,
+    "levelACohorts": 11,
+    "levelACohortsFromComparableBundle": 11,
+    "analyses": 283
+  },
+  "institutionalConstraints": {
+    "brainV1Frozen": true,
+    "brainV2Implementation": false,
+    "simLab002": false,
+    "constructionPolicyChanges": false,
+    "coverageScore": false,
+    "mentorProductionExplanations": false,
+    "writesToBrain": false,
+    "namingIsNotPromotion": true,
+    "eleganceIsNotEvidence": true
+  },
+  "candidateCapabilities": [
+    {
+      "id": "cap:commander_protection",
+      "label": "Commander Protection",
+      "family": "protection",
+      "definition": "Ability to keep the commander alive or untargetable long enough for plan execution.",
+      "semanticEvidence": [
+        "protects_commander edges",
+        "contextual commander_protection",
+        "protection roles on commander-connected nodes"
+      ],
+      "inclusion": "Strong protects_commander edge OR contextual function commander_protection OR (protection role + commanderConnected).",
+      "exclusion": "Generic interaction without commander connection. Static 'protection' role alone is insufficient.",
+      "positiveExamples": [
+        "Lightning Greaves in commander-connected topology",
+        "Flawless Maneuver with protects_commander"
+      ],
+      "counterexamples": [
+        "Generic Counterspell with no commander edge",
+        "Fog with no commander connection"
+      ],
+      "ambiguity": "open",
+      "writesToBrain": false
+    },
+    {
+      "id": "cap:engine_protection",
+      "label": "Engine Protection",
+      "family": "protection",
+      "definition": "Ability to preserve a value/combo engine under disruption.",
+      "semanticEvidence": [
+        "protects_engine",
+        "contextual engine_protection"
+      ],
+      "inclusion": "Strong protects_engine edge OR contextual engine_protection.",
+      "exclusion": "Commander protection only; raw interaction count.",
+      "positiveExamples": [
+        "Silence protecting a combo engine sequence"
+      ],
+      "counterexamples": [
+        "Removal with no engine edge"
+      ],
+      "ambiguity": "open",
+      "writesToBrain": false
+    },
+    {
+      "id": "cap:close_protection",
+      "label": "Closing Sequence Protection",
+      "family": "protection",
+      "definition": "Ability to protect the path from conversion to close.",
+      "semanticEvidence": [
+        "protects_combo_or_close",
+        "contextual combo_protection",
+        "winSequenceProtectionCoverage"
+      ],
+      "inclusion": "protects_combo_or_close OR combo_protection contextual function.",
+      "exclusion": "Early-game interaction only.",
+      "positiveExamples": [
+        "Grand Abolisher on close turn"
+      ],
+      "counterexamples": [
+        "Early spot removal"
+      ],
+      "ambiguity": "open",
+      "writesToBrain": false
+    },
+    {
+      "id": "cap:plan_recovery",
+      "label": "Plan Recovery",
+      "family": "recovery",
+      "definition": "Ability to re-occupy a vacated plan seat or restore a disrupted line.",
+      "semanticEvidence": [
+        "recovers edges",
+        "recovery plan-graph kind",
+        "sequence stage recover"
+      ],
+      "inclusion": "recovery kind node OR recovers edge OR recover stage with plan connection.",
+      "exclusion": "Any recursion role without plan/recover context.",
+      "positiveExamples": [
+        "Eternal Witness recovering a removed engine piece"
+      ],
+      "counterexamples": [
+        "Regrowth with no recover edge / stage"
+      ],
+      "ambiguity": "open",
+      "writesToBrain": false
+    },
+    {
+      "id": "cap:resource_recovery",
+      "label": "Resource Recovery",
+      "family": "recovery",
+      "definition": "Ability to refill cards/mana after attrition.",
+      "semanticEvidence": [
+        "draw+recover stages",
+        "recursion into hand/board"
+      ],
+      "inclusion": "draw/selection with recover stage OR recursion into plan pathway.",
+      "exclusion": "Raw draw role alone.",
+      "positiveExamples": [
+        "Timetwister-style refill in recover pathway"
+      ],
+      "counterexamples": [
+        "Cantrip with setup-only stage"
+      ],
+      "ambiguity": "high",
+      "writesToBrain": false
+    },
+    {
+      "id": "cap:path_clearing",
+      "label": "Path Clearing",
+      "family": "disruption",
+      "definition": "Ability to clear hate/blockers so a win line can resolve.",
+      "semanticEvidence": [
+        "clears_path_for",
+        "path_clear_for_win"
+      ],
+      "inclusion": "clears_path_for edge OR path_clear_for_win contextual function.",
+      "exclusion": "Generic removal role without path/close context.",
+      "positiveExamples": [
+        "Silence clearing stack path for combo"
+      ],
+      "counterexamples": [
+        "Swords to Plowshares with no clears_path_for edge"
+      ],
+      "ambiguity": "open",
+      "writesToBrain": false
+    },
+    {
+      "id": "cap:plan_disruption",
+      "label": "Plan-Preserving Disruption",
+      "family": "disruption",
+      "definition": "Interaction that protects own plan timing rather than raw answer density.",
+      "semanticEvidence": [
+        "disrupts_for",
+        "plan_preserving_disruption"
+      ],
+      "inclusion": "disrupts_for edge OR plan_preserving_disruption function.",
+      "exclusion": "interaction role alone.",
+      "positiveExamples": [
+        "Force of Will protecting own commit window"
+      ],
+      "counterexamples": [
+        "Generic Doom Blade"
+      ],
+      "ambiguity": "open",
+      "writesToBrain": false
+    },
+    {
+      "id": "cap:selection_access",
+      "label": "Selection / Access",
+      "family": "information",
+      "definition": "Ability to find or assemble plan pieces (tutors/selection in plan context).",
+      "semanticEvidence": [
+        "tutors_for",
+        "tutor_for_plan_piece",
+        "tutor/selection kinds"
+      ],
+      "inclusion": "tutors_for edge OR tutor plan kind OR tutor_for_plan_piece.",
+      "exclusion": "draw role alone; selection without tutor/plan context is weak.",
+      "positiveExamples": [
+        "Demonic Tutor fetching win piece"
+      ],
+      "counterexamples": [
+        "Brainstorm as pure cantrip with no tutor edge"
+      ],
+      "ambiguity": "open",
+      "writesToBrain": false
+    },
+    {
+      "id": "cap:strategic_flexibility",
+      "label": "Strategic Flexibility",
+      "family": "flexibility",
+      "definition": "A card occupies multiple distinct strategic seats/capabilities in context — not merely many tags.",
+      "semanticEvidence": [
+        "multifunction plan nodes with planConnected",
+        "≥2 distinct contextual functions across contexts"
+      ],
+      "inclusion": "plan-connected multifunction node OR card with ≥2 distinct contextual functions in THIS deck's topology.",
+      "exclusion": "Many static roles/tags without plan connection. Multifunction flag alone without constructive+wired evidence.",
+      "positiveExamples": [
+        "Multifunction interaction that also protects/recovers"
+      ],
+      "counterexamples": [
+        "Card with 5 role tags but isolated / no edges"
+      ],
+      "ambiguity": "high — must survive quality/ix controls",
+      "writesToBrain": false
+    }
+  ],
+  "candidateSeats": [
+    {
+      "id": "seat:protect_commander",
+      "capabilityId": "cap:commander_protection",
+      "label": "Protect Commander"
+    },
+    {
+      "id": "seat:protect_engine",
+      "capabilityId": "cap:engine_protection",
+      "label": "Protect Engine"
+    },
+    {
+      "id": "seat:protect_close",
+      "capabilityId": "cap:close_protection",
+      "label": "Protect Closing Sequence"
+    },
+    {
+      "id": "seat:recover_plan",
+      "capabilityId": "cap:plan_recovery",
+      "label": "Recover Plan"
+    },
+    {
+      "id": "seat:recover_resources",
+      "capabilityId": "cap:resource_recovery",
+      "label": "Recover Resources"
+    },
+    {
+      "id": "seat:clear_path",
+      "capabilityId": "cap:path_clearing",
+      "label": "Clear Blocking Hate"
+    },
+    {
+      "id": "seat:access_win",
+      "capabilityId": "cap:selection_access",
+      "label": "Access Win Piece"
+    },
+    {
+      "id": "seat:preserve_timing",
+      "capabilityId": "cap:plan_disruption",
+      "label": "Preserve Plan Timing"
+    }
+  ],
+  "competingResiduals": [
+    "roleEntropy",
+    "uniqueRoleCount",
+    "recoverySeatCount",
+    "multifunctionCount",
+    "multifunctionRatio",
+    "protectionSeatCount",
+    "winSequenceProtectionCoverage",
+    "meaningfulEdgeDensity",
+    "interactionCount"
+  ],
+  "interactionCountControlled": [
+    {
+      "variable": "roleEntropy",
+      "corrWithRecovery": 0.5765,
+      "corrWithInteractionCount": 0.0411,
+      "partialCorrRecoveryGivenIx": 0.5912
+    },
+    {
+      "variable": "independentlyCoveredCount",
+      "corrWithRecovery": 0.5101,
+      "corrWithInteractionCount": 0.306,
+      "partialCorrRecoveryGivenIx": 0.4614
+    },
+    {
+      "variable": "uniqueRoleCount",
+      "corrWithRecovery": 0.5176,
+      "corrWithInteractionCount": 0.3653,
+      "partialCorrRecoveryGivenIx": 0.4606
+    },
+    {
+      "variable": "recoverySeatCount",
+      "corrWithRecovery": 0.5161,
+      "corrWithInteractionCount": 0.3898,
+      "partialCorrRecoveryGivenIx": 0.4557
+    },
+    {
+      "variable": "multifunctionCount",
+      "corrWithRecovery": 0.5148,
+      "corrWithInteractionCount": 0.4552,
+      "partialCorrRecoveryGivenIx": 0.4471
+    },
+    {
+      "variable": "multifunctionRatio",
+      "corrWithRecovery": 0.3983,
+      "corrWithInteractionCount": 0.0041,
+      "partialCorrRecoveryGivenIx": 0.4157
+    },
+    {
+      "variable": "winSequenceProtectionCoverage",
+      "corrWithRecovery": 0.2771,
+      "corrWithInteractionCount": -0.0218,
+      "partialCorrRecoveryGivenIx": 0.2969
+    },
+    {
+      "variable": "singlePointOfFailureCount",
+      "corrWithRecovery": -0.2585,
+      "corrWithInteractionCount": -0.1774,
+      "partialCorrRecoveryGivenIx": -0.2192
+    },
+    {
+      "variable": "protectionSeatCount",
+      "corrWithRecovery": 0.0571,
+      "corrWithInteractionCount": -0.0409,
+      "partialCorrRecoveryGivenIx": 0.0725
+    },
+    {
+      "variable": "meaningfulEdgeDensity",
+      "corrWithRecovery": -0.2541,
+      "corrWithInteractionCount": -0.8402,
+      "partialCorrRecoveryGivenIx": -0.0112
+    }
+  ],
+  "levelAControlled": [
+    {
+      "variable": "multifunctionCount",
+      "levelACohorts": 11,
+      "meanDeltaHighMinusLow": -0.7727,
+      "meanHigh": 2.8636,
+      "meanLow": 3.6364,
+      "direction": "low_greater"
+    },
+    {
+      "variable": "uniqueRoleCount",
+      "levelACohorts": 11,
+      "meanDeltaHighMinusLow": -0.3182,
+      "meanHigh": 9.1818,
+      "meanLow": 9.5,
+      "direction": "low_greater"
+    },
+    {
+      "variable": "independentlyCoveredCount",
+      "levelACohorts": 11,
+      "meanDeltaHighMinusLow": -0.3182,
+      "meanHigh": 2.9091,
+      "meanLow": 3.2273,
+      "direction": "low_greater"
+    },
+    {
+      "variable": "meaningfulEdgeDensity",
+      "levelACohorts": 11,
+      "meanDeltaHighMinusLow": 0.2717,
+      "meanHigh": 27.7293,
+      "meanLow": 27.4575,
+      "direction": "high_greater"
+    },
+    {
+      "variable": "interactionCount",
+      "levelACohorts": 11,
+      "meanDeltaHighMinusLow": -0.1818,
+      "meanHigh": 14.9091,
+      "meanLow": 15.0909,
+      "direction": "low_greater"
+    },
+    {
+      "variable": "singlePointOfFailureCount",
+      "levelACohorts": 11,
+      "meanDeltaHighMinusLow": 0.1818,
+      "meanHigh": 2.2727,
+      "meanLow": 2.0909,
+      "direction": "high_greater"
+    },
+    {
+      "variable": "protectionSeatCount",
+      "levelACohorts": 11,
+      "meanDeltaHighMinusLow": 0.0909,
+      "meanHigh": 0.0909,
+      "meanLow": 0,
+      "direction": "high_greater"
+    },
+    {
+      "variable": "winSequenceProtectionCoverage",
+      "levelACohorts": 11,
+      "meanDeltaHighMinusLow": -0.081,
+      "meanHigh": 0.7239,
+      "meanLow": 0.8049,
+      "direction": "low_greater"
+    },
+    {
+      "variable": "roleEntropy",
+      "levelACohorts": 11,
+      "meanDeltaHighMinusLow": -0.0688,
+      "meanHigh": 2.6303,
+      "meanLow": 2.699,
+      "direction": "low_greater"
+    },
+    {
+      "variable": "multifunctionRatio",
+      "levelACohorts": 11,
+      "meanDeltaHighMinusLow": -0.0598,
+      "meanHigh": 0.1824,
+      "meanLow": 0.2422,
+      "direction": "low_greater"
+    },
+    {
+      "variable": "recoverySeatCount",
+      "levelACohorts": 11,
+      "meanDeltaHighMinusLow": 0,
+      "meanHigh": 1.8636,
+      "meanLow": 1.8636,
+      "direction": "flat"
+    }
+  ],
+  "capabilityCandidateEvidence": [
+    {
+      "candidate": "cap:commander_protection",
+      "operationalDefinition": "Ability to keep the commander alive or untargetable long enough for plan execution.",
+      "levelASupport": {
+        "variable": "winSequenceProtectionCoverage",
+        "levelACohorts": 11,
+        "meanDeltaHighMinusLow": -0.081,
+        "meanHigh": 0.7239,
+        "meanLow": 0.8049,
+        "direction": "low_greater"
+      },
+      "levelBSupport": null,
+      "crossEventReplication": null,
+      "interactionCountControlled": {
+        "partialCorrRecoveryGivenIx": 0.2969,
+        "corrWithRecovery": 0.2771,
+        "corrWithInteractionCount": -0.0218
+      },
+      "commanderControlled": {
+        "meanDeltaHighMinusLow": -0.081,
+        "cohorts": 11
+      },
+      "contradictions": [
+        "Level-A same-commander contrast reverses the global recovery association (or SPOF sign fails)."
+      ],
+      "confidence": 0.3212,
+      "verdict": "contradicted",
+      "writesToBrain": false,
+      "promoted": false,
+      "activated": false
+    },
+    {
+      "candidate": "cap:engine_protection",
+      "operationalDefinition": "Ability to preserve a value/combo engine under disruption.",
+      "levelASupport": {
+        "variable": "winSequenceProtectionCoverage",
+        "levelACohorts": 11,
+        "meanDeltaHighMinusLow": -0.081,
+        "meanHigh": 0.7239,
+        "meanLow": 0.8049,
+        "direction": "low_greater"
+      },
+      "levelBSupport": null,
+      "crossEventReplication": null,
+      "interactionCountControlled": {
+        "partialCorrRecoveryGivenIx": 0.2969,
+        "corrWithRecovery": 0.2771,
+        "corrWithInteractionCount": -0.0218
+      },
+      "commanderControlled": {
+        "meanDeltaHighMinusLow": -0.081,
+        "cohorts": 11
+      },
+      "contradictions": [
+        "Level-A same-commander contrast reverses the global recovery association (or SPOF sign fails)."
+      ],
+      "confidence": 0.3212,
+      "verdict": "contradicted",
+      "writesToBrain": false,
+      "promoted": false,
+      "activated": false
+    },
+    {
+      "candidate": "cap:close_protection",
+      "operationalDefinition": "Ability to protect the path from conversion to close.",
+      "levelASupport": {
+        "variable": "winSequenceProtectionCoverage",
+        "levelACohorts": 11,
+        "meanDeltaHighMinusLow": -0.081,
+        "meanHigh": 0.7239,
+        "meanLow": 0.8049,
+        "direction": "low_greater"
+      },
+      "levelBSupport": null,
+      "crossEventReplication": null,
+      "interactionCountControlled": {
+        "partialCorrRecoveryGivenIx": 0.2969,
+        "corrWithRecovery": 0.2771,
+        "corrWithInteractionCount": -0.0218
+      },
+      "commanderControlled": {
+        "meanDeltaHighMinusLow": -0.081,
+        "cohorts": 11
+      },
+      "contradictions": [
+        "Level-A same-commander contrast reverses the global recovery association (or SPOF sign fails)."
+      ],
+      "confidence": 0.3212,
+      "verdict": "contradicted",
+      "writesToBrain": false,
+      "promoted": false,
+      "activated": false
+    },
+    {
+      "candidate": "cap:plan_recovery",
+      "operationalDefinition": "Ability to re-occupy a vacated plan seat or restore a disrupted line.",
+      "levelASupport": {
+        "variable": "independentlyCoveredCount",
+        "levelACohorts": 11,
+        "meanDeltaHighMinusLow": -0.3182,
+        "meanHigh": 2.9091,
+        "meanLow": 3.2273,
+        "direction": "low_greater"
+      },
+      "levelBSupport": null,
+      "crossEventReplication": null,
+      "interactionCountControlled": {
+        "partialCorrRecoveryGivenIx": 0.4614,
+        "corrWithRecovery": 0.5101,
+        "corrWithInteractionCount": 0.306
+      },
+      "commanderControlled": {
+        "meanDeltaHighMinusLow": -0.3182,
+        "cohorts": 11
+      },
+      "contradictions": [
+        "Level-A same-commander contrast reverses the global recovery association (or SPOF sign fails)."
+      ],
+      "confidence": 0.5568599999999999,
+      "verdict": "contradicted",
+      "writesToBrain": false,
+      "promoted": false,
+      "activated": false
+    },
+    {
+      "candidate": "cap:resource_recovery",
+      "operationalDefinition": "Ability to refill cards/mana after attrition.",
+      "levelASupport": {
+        "variable": "independentlyCoveredCount",
+        "levelACohorts": 11,
+        "meanDeltaHighMinusLow": -0.3182,
+        "meanHigh": 2.9091,
+        "meanLow": 3.2273,
+        "direction": "low_greater"
+      },
+      "levelBSupport": null,
+      "crossEventReplication": null,
+      "interactionCountControlled": {
+        "partialCorrRecoveryGivenIx": 0.4614,
+        "corrWithRecovery": 0.5101,
+        "corrWithInteractionCount": 0.306
+      },
+      "commanderControlled": {
+        "meanDeltaHighMinusLow": -0.3182,
+        "cohorts": 11
+      },
+      "contradictions": [
+        "Level-A same-commander contrast reverses the global recovery association (or SPOF sign fails)."
+      ],
+      "confidence": 0.5568599999999999,
+      "verdict": "contradicted",
+      "writesToBrain": false,
+      "promoted": false,
+      "activated": false
+    },
+    {
+      "candidate": "cap:path_clearing",
+      "operationalDefinition": "Ability to clear hate/blockers so a win line can resolve.",
+      "levelASupport": null,
+      "levelBSupport": null,
+      "crossEventReplication": null,
+      "interactionCountControlled": null,
+      "commanderControlled": null,
+      "contradictions": [],
+      "confidence": 0,
+      "verdict": "unresolved",
+      "writesToBrain": false,
+      "promoted": false,
+      "activated": false
+    },
+    {
+      "candidate": "cap:plan_disruption",
+      "operationalDefinition": "Interaction that protects own plan timing rather than raw answer density.",
+      "levelASupport": null,
+      "levelBSupport": null,
+      "crossEventReplication": null,
+      "interactionCountControlled": null,
+      "commanderControlled": null,
+      "contradictions": [],
+      "confidence": 0,
+      "verdict": "unresolved",
+      "writesToBrain": false,
+      "promoted": false,
+      "activated": false
+    },
+    {
+      "candidate": "cap:selection_access",
+      "operationalDefinition": "Ability to find or assemble plan pieces (tutors/selection in plan context).",
+      "levelASupport": {
+        "variable": "roleEntropy",
+        "levelACohorts": 11,
+        "meanDeltaHighMinusLow": -0.0688,
+        "meanHigh": 2.6303,
+        "meanLow": 2.699,
+        "direction": "low_greater"
+      },
+      "levelBSupport": null,
+      "crossEventReplication": null,
+      "interactionCountControlled": {
+        "partialCorrRecoveryGivenIx": 0.5912,
+        "corrWithRecovery": 0.5765,
+        "corrWithInteractionCount": 0.0411
+      },
+      "commanderControlled": {
+        "meanDeltaHighMinusLow": -0.0688,
+        "cohorts": 11
+      },
+      "contradictions": [
+        "Level-A same-commander contrast reverses the global recovery association (or SPOF sign fails)."
+      ],
+      "confidence": 0.6118399999999999,
+      "verdict": "contradicted",
+      "writesToBrain": false,
+      "promoted": false,
+      "activated": false
+    },
+    {
+      "candidate": "cap:strategic_flexibility",
+      "operationalDefinition": "A card occupies multiple distinct strategic seats/capabilities in context — not merely many tags.",
+      "levelASupport": {
+        "variable": "multifunctionCount",
+        "levelACohorts": 11,
+        "meanDeltaHighMinusLow": -0.7727,
+        "meanHigh": 2.8636,
+        "meanLow": 3.6364,
+        "direction": "low_greater"
+      },
+      "levelBSupport": null,
+      "crossEventReplication": null,
+      "interactionCountControlled": {
+        "partialCorrRecoveryGivenIx": 0.4471,
+        "corrWithRecovery": 0.5148,
+        "corrWithInteractionCount": 0.4552
+      },
+      "commanderControlled": {
+        "meanDeltaHighMinusLow": -0.7727,
+        "cohorts": 11
+      },
+      "contradictions": [
+        "Level-A same-commander contrast reverses the global recovery association (or SPOF sign fails).",
+        "Multifunction quality/tag-inflation controls incomplete."
+      ],
+      "confidence": 0.67891,
+      "verdict": "contradicted",
+      "writesToBrain": false,
+      "promoted": false,
+      "activated": false
+    }
+  ],
+  "residualCandidateEvidence": [
+    {
+      "candidate": "roleEntropy",
+      "operationalDefinition": "Residual / structural measure from Coverage Observation 001: roleEntropy",
+      "levelASupport": {
+        "variable": "roleEntropy",
+        "levelACohorts": 11,
+        "meanDeltaHighMinusLow": -0.0688,
+        "meanHigh": 2.6303,
+        "meanLow": 2.699,
+        "direction": "low_greater"
+      },
+      "levelBSupport": null,
+      "crossEventReplication": null,
+      "interactionCountControlled": {
+        "partialCorrRecoveryGivenIx": 0.5912,
+        "corrWithRecovery": 0.5765,
+        "corrWithInteractionCount": 0.0411
+      },
+      "commanderControlled": {
+        "meanDeltaHighMinusLow": -0.0688,
+        "cohorts": 11
+      },
+      "contradictions": [],
+      "confidence": 0.6118399999999999,
+      "verdict": "contradicted",
+      "writesToBrain": false,
+      "promoted": false,
+      "activated": false
+    },
+    {
+      "candidate": "independentlyCoveredCount",
+      "operationalDefinition": "Residual / structural measure from Coverage Observation 001: independentlyCoveredCount",
+      "levelASupport": {
+        "variable": "independentlyCoveredCount",
+        "levelACohorts": 11,
+        "meanDeltaHighMinusLow": -0.3182,
+        "meanHigh": 2.9091,
+        "meanLow": 3.2273,
+        "direction": "low_greater"
+      },
+      "levelBSupport": null,
+      "crossEventReplication": null,
+      "interactionCountControlled": {
+        "partialCorrRecoveryGivenIx": 0.4614,
+        "corrWithRecovery": 0.5101,
+        "corrWithInteractionCount": 0.306
+      },
+      "commanderControlled": {
+        "meanDeltaHighMinusLow": -0.3182,
+        "cohorts": 11
+      },
+      "contradictions": [],
+      "confidence": 0.5568599999999999,
+      "verdict": "contradicted",
+      "writesToBrain": false,
+      "promoted": false,
+      "activated": false
+    },
+    {
+      "candidate": "uniqueRoleCount",
+      "operationalDefinition": "Residual / structural measure from Coverage Observation 001: uniqueRoleCount",
+      "levelASupport": {
+        "variable": "uniqueRoleCount",
+        "levelACohorts": 11,
+        "meanDeltaHighMinusLow": -0.3182,
+        "meanHigh": 9.1818,
+        "meanLow": 9.5,
+        "direction": "low_greater"
+      },
+      "levelBSupport": null,
+      "crossEventReplication": null,
+      "interactionCountControlled": {
+        "partialCorrRecoveryGivenIx": 0.4606,
+        "corrWithRecovery": 0.5176,
+        "corrWithInteractionCount": 0.3653
+      },
+      "commanderControlled": {
+        "meanDeltaHighMinusLow": -0.3182,
+        "cohorts": 11
+      },
+      "contradictions": [],
+      "confidence": 0.55606,
+      "verdict": "contradicted",
+      "writesToBrain": false,
+      "promoted": false,
+      "activated": false
+    },
+    {
+      "candidate": "recoverySeatCount",
+      "operationalDefinition": "Residual / structural measure from Coverage Observation 001: recoverySeatCount",
+      "levelASupport": {
+        "variable": "recoverySeatCount",
+        "levelACohorts": 11,
+        "meanDeltaHighMinusLow": 0,
+        "meanHigh": 1.8636,
+        "meanLow": 1.8636,
+        "direction": "flat"
+      },
+      "levelBSupport": null,
+      "crossEventReplication": null,
+      "interactionCountControlled": {
+        "partialCorrRecoveryGivenIx": 0.4557,
+        "corrWithRecovery": 0.5161,
+        "corrWithInteractionCount": 0.3898
+      },
+      "commanderControlled": {
+        "meanDeltaHighMinusLow": 0,
+        "cohorts": 11
+      },
+      "contradictions": [],
+      "confidence": 0.4557,
+      "verdict": "needs_more_evidence",
+      "writesToBrain": false,
+      "promoted": false,
+      "activated": false
+    },
+    {
+      "candidate": "multifunctionCount",
+      "operationalDefinition": "Residual / structural measure from Coverage Observation 001: multifunctionCount",
+      "levelASupport": {
+        "variable": "multifunctionCount",
+        "levelACohorts": 11,
+        "meanDeltaHighMinusLow": -0.7727,
+        "meanHigh": 2.8636,
+        "meanLow": 3.6364,
+        "direction": "low_greater"
+      },
+      "levelBSupport": null,
+      "crossEventReplication": null,
+      "interactionCountControlled": {
+        "partialCorrRecoveryGivenIx": 0.4471,
+        "corrWithRecovery": 0.5148,
+        "corrWithInteractionCount": 0.4552
+      },
+      "commanderControlled": {
+        "meanDeltaHighMinusLow": -0.7727,
+        "cohorts": 11
+      },
+      "contradictions": [],
+      "confidence": 0.67891,
+      "verdict": "contradicted",
+      "writesToBrain": false,
+      "promoted": false,
+      "activated": false
+    },
+    {
+      "candidate": "multifunctionRatio",
+      "operationalDefinition": "Residual / structural measure from Coverage Observation 001: multifunctionRatio",
+      "levelASupport": {
+        "variable": "multifunctionRatio",
+        "levelACohorts": 11,
+        "meanDeltaHighMinusLow": -0.0598,
+        "meanHigh": 0.1824,
+        "meanLow": 0.2422,
+        "direction": "low_greater"
+      },
+      "levelBSupport": null,
+      "crossEventReplication": null,
+      "interactionCountControlled": {
+        "partialCorrRecoveryGivenIx": 0.4157,
+        "corrWithRecovery": 0.3983,
+        "corrWithInteractionCount": 0.0041
+      },
+      "commanderControlled": {
+        "meanDeltaHighMinusLow": -0.0598,
+        "cohorts": 11
+      },
+      "contradictions": [],
+      "confidence": 0.43364,
+      "verdict": "contradicted",
+      "writesToBrain": false,
+      "promoted": false,
+      "activated": false
+    },
+    {
+      "candidate": "winSequenceProtectionCoverage",
+      "operationalDefinition": "Residual / structural measure from Coverage Observation 001: winSequenceProtectionCoverage",
+      "levelASupport": {
+        "variable": "winSequenceProtectionCoverage",
+        "levelACohorts": 11,
+        "meanDeltaHighMinusLow": -0.081,
+        "meanHigh": 0.7239,
+        "meanLow": 0.8049,
+        "direction": "low_greater"
+      },
+      "levelBSupport": null,
+      "crossEventReplication": null,
+      "interactionCountControlled": {
+        "partialCorrRecoveryGivenIx": 0.2969,
+        "corrWithRecovery": 0.2771,
+        "corrWithInteractionCount": -0.0218
+      },
+      "commanderControlled": {
+        "meanDeltaHighMinusLow": -0.081,
+        "cohorts": 11
+      },
+      "contradictions": [],
+      "confidence": 0.3212,
+      "verdict": "contradicted",
+      "writesToBrain": false,
+      "promoted": false,
+      "activated": false
+    },
+    {
+      "candidate": "singlePointOfFailureCount",
+      "operationalDefinition": "Residual / structural measure from Coverage Observation 001: singlePointOfFailureCount",
+      "levelASupport": {
+        "variable": "singlePointOfFailureCount",
+        "levelACohorts": 11,
+        "meanDeltaHighMinusLow": 0.1818,
+        "meanHigh": 2.2727,
+        "meanLow": 2.0909,
+        "direction": "high_greater"
+      },
+      "levelBSupport": null,
+      "crossEventReplication": null,
+      "interactionCountControlled": {
+        "partialCorrRecoveryGivenIx": -0.2192,
+        "corrWithRecovery": -0.2585,
+        "corrWithInteractionCount": -0.1774
+      },
+      "commanderControlled": {
+        "meanDeltaHighMinusLow": 0.1818,
+        "cohorts": 11
+      },
+      "contradictions": [],
+      "confidence": 0.27374,
+      "verdict": "contradicted",
+      "writesToBrain": false,
+      "promoted": false,
+      "activated": false
+    },
+    {
+      "candidate": "protectionSeatCount",
+      "operationalDefinition": "Residual / structural measure from Coverage Observation 001: protectionSeatCount",
+      "levelASupport": {
+        "variable": "protectionSeatCount",
+        "levelACohorts": 11,
+        "meanDeltaHighMinusLow": 0.0909,
+        "meanHigh": 0.0909,
+        "meanLow": 0,
+        "direction": "high_greater"
+      },
+      "levelBSupport": null,
+      "crossEventReplication": null,
+      "interactionCountControlled": {
+        "partialCorrRecoveryGivenIx": 0.0725,
+        "corrWithRecovery": 0.0571,
+        "corrWithInteractionCount": -0.0409
+      },
+      "commanderControlled": {
+        "meanDeltaHighMinusLow": 0.0909,
+        "cohorts": 11
+      },
+      "contradictions": [],
+      "confidence": 0.09977,
+      "verdict": "needs_more_evidence",
+      "writesToBrain": false,
+      "promoted": false,
+      "activated": false
+    },
+    {
+      "candidate": "meaningfulEdgeDensity",
+      "operationalDefinition": "Residual / structural measure from Coverage Observation 001: meaningfulEdgeDensity",
+      "levelASupport": {
+        "variable": "meaningfulEdgeDensity",
+        "levelACohorts": 11,
+        "meanDeltaHighMinusLow": 0.2717,
+        "meanHigh": 27.7293,
+        "meanLow": 27.4575,
+        "direction": "high_greater"
+      },
+      "levelBSupport": null,
+      "crossEventReplication": null,
+      "interactionCountControlled": {
+        "partialCorrRecoveryGivenIx": -0.0112,
+        "corrWithRecovery": -0.2541,
+        "corrWithInteractionCount": -0.8402
+      },
+      "commanderControlled": {
+        "meanDeltaHighMinusLow": 0.2717,
+        "cohorts": 11
+      },
+      "contradictions": [],
+      "confidence": 0.09271,
+      "verdict": "contradicted",
+      "writesToBrain": false,
+      "promoted": false,
+      "activated": false
+    }
+  ],
+  "counterexamples": [
+    {
+      "type": "coverage_counterexample",
+      "reason": "high_performer_with_many_single_points_of_failure",
+      "deckId": "topdeck:2do-clasificatorio-nacional-cedh-2026-iquique:d6E7MglDAqTSj8QNhyH64ox5tol1:4",
+      "eventId": "2do-clasificatorio-nacional-cedh-2026-iquique",
+      "singlePointOfFailureCount": 3,
+      "independentlyCoveredCount": 2
+    },
+    {
+      "type": "coverage_counterexample",
+      "reason": "high_performer_with_many_single_points_of_failure",
+      "deckId": "topdeck:4-onslaught-invasion-2026-event-series:362DEo1Jr6Xqwhv0mTNi2z2P4wH3:2",
+      "eventId": "4-onslaught-invasion-2026-event-series",
+      "singlePointOfFailureCount": 6,
+      "independentlyCoveredCount": 1
+    },
+    {
+      "type": "coverage_counterexample",
+      "reason": "high_performer_with_many_single_points_of_failure",
+      "deckId": "topdeck:4-onslaught-invasion-2026-event-series:3tVf144vfkZ2uXne2Xs6QtJkMXZ2:8",
+      "eventId": "4-onslaught-invasion-2026-event-series",
+      "singlePointOfFailureCount": 3,
+      "independentlyCoveredCount": 2
+    },
+    {
+      "type": "coverage_counterexample",
+      "reason": "high_performer_with_many_single_points_of_failure",
+      "deckId": "topdeck:4-onslaught-invasion-2026-event-series:Xy0qdXdYhhcBFb2ACGCriwYsLEn1:6",
+      "eventId": "4-onslaught-invasion-2026-event-series",
+      "singlePointOfFailureCount": 4,
+      "independentlyCoveredCount": 4
+    },
+    {
+      "type": "coverage_counterexample",
+      "reason": "high_performer_with_many_single_points_of_failure",
+      "deckId": "topdeck:4-onslaught-invasion-2026-event-series:ZzyvmToyDkbhBLwtVEStb9OQuvj1:7",
+      "eventId": "4-onslaught-invasion-2026-event-series",
+      "singlePointOfFailureCount": 3,
+      "independentlyCoveredCount": 3
+    },
+    {
+      "type": "coverage_counterexample",
+      "reason": "low_performer_with_high_independent_coverage",
+      "deckId": "topdeck:2do-clasificatorio-nacional-cedh-2026-iquique:k1iBN3gul4a5otzKSEK8iR7PBT43:32",
+      "eventId": "2do-clasificatorio-nacional-cedh-2026-iquique",
+      "singlePointOfFailureCount": 0,
+      "independentlyCoveredCount": 3
+    },
+    {
+      "type": "coverage_counterexample",
+      "reason": "low_performer_with_high_independent_coverage",
+      "deckId": "topdeck:2do-clasificatorio-nacional-cedh-2026-iquique:O81M9FWjX5hf5UKAyOV8jaMuIPg2:36",
+      "eventId": "2do-clasificatorio-nacional-cedh-2026-iquique",
+      "singlePointOfFailureCount": 1,
+      "independentlyCoveredCount": 6
+    },
+    {
+      "type": "coverage_counterexample",
+      "reason": "low_performer_with_high_independent_coverage",
+      "deckId": "topdeck:2do-clasificatorio-nacional-cedh-2026-iquique:qSBtJ7iHTsgZgf6sMVllJOTgsia2:33",
+      "eventId": "2do-clasificatorio-nacional-cedh-2026-iquique",
+      "singlePointOfFailureCount": 3,
+      "independentlyCoveredCount": 3
+    },
+    {
+      "type": "coverage_counterexample",
+      "reason": "low_performer_with_high_independent_coverage",
+      "deckId": "topdeck:4-onslaught-invasion-2026-event-series:6ZXBjJcbOuUXt8Hw246LXdvtVZ33:31",
+      "eventId": "4-onslaught-invasion-2026-event-series",
+      "singlePointOfFailureCount": 1,
+      "independentlyCoveredCount": 5
+    },
+    {
+      "type": "coverage_counterexample",
+      "reason": "low_performer_with_high_independent_coverage",
+      "deckId": "topdeck:4-onslaught-invasion-2026-event-series:pbGmxpFJSgWedcCYH6ZM32LA32w1:34",
+      "eventId": "4-onslaught-invasion-2026-event-series",
+      "singlePointOfFailureCount": 0,
+      "independentlyCoveredCount": 7
+    }
+  ],
+  "atlasAdmission": {
+    "candidateVocabulary": [
+      "cap:commander_protection",
+      "cap:engine_protection",
+      "cap:close_protection",
+      "cap:plan_recovery",
+      "cap:resource_recovery",
+      "cap:path_clearing",
+      "cap:plan_disruption",
+      "cap:selection_access",
+      "cap:strategic_flexibility"
+    ],
+    "candidateSeats": [
+      "seat:protect_commander",
+      "seat:protect_engine",
+      "seat:protect_close",
+      "seat:recover_plan",
+      "seat:recover_resources",
+      "seat:clear_path",
+      "seat:access_win",
+      "seat:preserve_timing"
+    ],
+    "admittedVocabulary": [],
+    "admittedResidualMeasures": [],
+    "rejectedVocabulary": [
+      {
+        "id": "cap:commander_protection",
+        "verdict": "contradicted",
+        "contradictions": [
+          "Level-A same-commander contrast reverses the global recovery association (or SPOF sign fails)."
+        ],
+        "writesToBrain": false
+      },
+      {
+        "id": "cap:engine_protection",
+        "verdict": "contradicted",
+        "contradictions": [
+          "Level-A same-commander contrast reverses the global recovery association (or SPOF sign fails)."
+        ],
+        "writesToBrain": false
+      },
+      {
+        "id": "cap:close_protection",
+        "verdict": "contradicted",
+        "contradictions": [
+          "Level-A same-commander contrast reverses the global recovery association (or SPOF sign fails)."
+        ],
+        "writesToBrain": false
+      },
+      {
+        "id": "cap:plan_recovery",
+        "verdict": "contradicted",
+        "contradictions": [
+          "Level-A same-commander contrast reverses the global recovery association (or SPOF sign fails)."
+        ],
+        "writesToBrain": false
+      },
+      {
+        "id": "cap:resource_recovery",
+        "verdict": "contradicted",
+        "contradictions": [
+          "Level-A same-commander contrast reverses the global recovery association (or SPOF sign fails)."
+        ],
+        "writesToBrain": false
+      },
+      {
+        "id": "cap:selection_access",
+        "verdict": "contradicted",
+        "contradictions": [
+          "Level-A same-commander contrast reverses the global recovery association (or SPOF sign fails)."
+        ],
+        "writesToBrain": false
+      },
+      {
+        "id": "cap:strategic_flexibility",
+        "verdict": "contradicted",
+        "contradictions": [
+          "Level-A same-commander contrast reverses the global recovery association (or SPOF sign fails).",
+          "Multifunction quality/tag-inflation controls incomplete."
+        ],
+        "writesToBrain": false
+      }
+    ],
+    "ambiguousVocabulary": [
+      {
+        "id": "cap:path_clearing",
+        "reason": "unresolved",
+        "writesToBrain": false
+      },
+      {
+        "id": "cap:plan_disruption",
+        "reason": "unresolved",
+        "writesToBrain": false
+      }
+    ],
+    "writesToBrain": false
+  },
+  "mentorLanguageValidation": {
+    "samples": [
+      {
+        "deckId": "topdeck:2do-clasificatorio-nacional-cedh-2026-iquique:5LKssYVzGfhmmoMfgfGSNTOwuoJ2:2",
+        "check": {
+          "explanations": [
+            "Protect Commander appears independently covered (2 holders).",
+            "Protect Engine appears independently covered (2 holders).",
+            "Protect Closing Sequence appears independently covered (2 holders).",
+            "Recover Plan appears independently covered (4 holders).",
+            "This deck appears to have a single holder for Recover Resources.",
+            "Clear Blocking Hate appears independently covered (3 holders).",
+            "No verified holders detected for Access Win Piece under current evidence.",
+            "Preserve Plan Timing appears independently covered (15 holders)."
+          ],
+          "recommendsCards": false,
+          "mutatesDeck": false,
+          "ranksAlternatives": false,
+          "productionCoaching": false,
+          "purpose": "language_validation_only",
+          "writesToBrain": false
+        }
+      },
+      {
+        "deckId": "topdeck:2do-clasificatorio-nacional-cedh-2026-iquique:5LzNwRMry0UoPDgO5RLuLUyWFL93:1",
+        "check": {
+          "explanations": [
+            "Protect Commander appears independently covered (3 holders).",
+            "Protect Engine appears independently covered (1 holders).",
+            "Protect Closing Sequence appears independently covered (3 holders).",
+            "Recover Plan appears independently covered (4 holders).",
+            "This deck appears to have a single holder for Recover Resources.",
+            "This deck appears to have a single holder for Access Win Piece.",
+            "Preserve Plan Timing appears independently covered (6 holders)."
+          ],
+          "recommendsCards": false,
+          "mutatesDeck": false,
+          "ranksAlternatives": false,
+          "productionCoaching": false,
+          "purpose": "language_validation_only",
+          "writesToBrain": false
+        }
+      },
+      {
+        "deckId": "topdeck:2do-clasificatorio-nacional-cedh-2026-iquique:d6E7MglDAqTSj8QNhyH64ox5tol1:4",
+        "check": {
+          "explanations": [
+            "This deck appears to have a single holder for Protect Engine.",
+            "Recover Plan appears independently covered (2 holders).",
+            "This deck appears to have a single holder for Recover Resources.",
+            "This deck appears to have a single holder for Access Win Piece.",
+            "Preserve Plan Timing appears independently covered (12 holders)."
+          ],
+          "recommendsCards": false,
+          "mutatesDeck": false,
+          "ranksAlternatives": false,
+          "productionCoaching": false,
+          "purpose": "language_validation_only",
+          "writesToBrain": false
+        }
+      },
+      {
+        "deckId": "topdeck:2do-clasificatorio-nacional-cedh-2026-iquique:GvsgOunLDiRBsCA88X2VQE82y142:34",
+        "check": {
+          "explanations": [
+            "No verified holders detected for Recover Plan under current evidence.",
+            "No verified holders detected for Recover Resources under current evidence.",
+            "No verified holders detected for Clear Blocking Hate under current evidence.",
+            "No verified holders detected for Access Win Piece under current evidence.",
+            "Preserve Plan Timing appears independently covered (2 holders)."
+          ],
+          "recommendsCards": false,
+          "mutatesDeck": false,
+          "ranksAlternatives": false,
+          "productionCoaching": false,
+          "purpose": "language_validation_only",
+          "writesToBrain": false
+        }
+      },
+      {
+        "deckId": "topdeck:2do-clasificatorio-nacional-cedh-2026-iquique:H89L2wv02qNWGByOMlUHOgFWRvm1:3",
+        "check": {
+          "explanations": [
+            "Protect Commander appears independently covered (2 holders).",
+            "Protect Engine appears independently covered (2 holders).",
+            "Protect Closing Sequence appears independently covered (2 holders).",
+            "Recover Plan appears independently covered (3 holders).",
+            "Recover Resources appears independently covered (2 holders).",
+            "Clear Blocking Hate appears independently covered (2 holders).",
+            "No verified holders detected for Access Win Piece under current evidence.",
+            "Preserve Plan Timing appears independently covered (11 holders)."
+          ],
+          "recommendsCards": false,
+          "mutatesDeck": false,
+          "ranksAlternatives": false,
+          "productionCoaching": false,
+          "purpose": "language_validation_only",
+          "writesToBrain": false
+        }
+      }
+    ],
+    "recommendsCards": false,
+    "mutatesDeck": false
+  },
+  "invariants": {
+    "roleAloneCannotMintCapability": true,
+    "hasCoverageScore": false,
+    "coverageIsMultidimensional": true
+  },
+  "researchAnswers": {
+    "q1_explainsBeyondInteractionCount": "PARTIAL_YES — roleEntropy, independentlyCoveredCount, uniqueRoleCount, recoverySeatCount, multifunctionCount, multifunctionRatio, winSequenceProtectionCoverage, singlePointOfFailureCount retain |partial r|≥0.15",
+    "q2_survivesCommanderControls": [
+      "protectionSeatCount"
+    ],
+    "q2_commanderControlReversals": [
+      "multifunctionCount",
+      "uniqueRoleCount",
+      "independentlyCoveredCount",
+      "meaningfulEdgeDensity",
+      "singlePointOfFailureCount",
+      "winSequenceProtectionCoverage",
+      "roleEntropy",
+      "multifunctionRatio"
+    ],
+    "q3_survivesArchetypeControls": "INSUFFICIENT_EVIDENCE — Level-B/C family resolution not fully wired in this pass",
+    "q4_levelAComparisons": [
+      {
+        "variable": "multifunctionCount",
+        "levelACohorts": 11,
+        "meanDeltaHighMinusLow": -0.7727,
+        "meanHigh": 2.8636,
+        "meanLow": 3.6364,
+        "direction": "low_greater"
+      },
+      {
+        "variable": "uniqueRoleCount",
+        "levelACohorts": 11,
+        "meanDeltaHighMinusLow": -0.3182,
+        "meanHigh": 9.1818,
+        "meanLow": 9.5,
+        "direction": "low_greater"
+      },
+      {
+        "variable": "independentlyCoveredCount",
+        "levelACohorts": 11,
+        "meanDeltaHighMinusLow": -0.3182,
+        "meanHigh": 2.9091,
+        "meanLow": 3.2273,
+        "direction": "low_greater"
+      },
+      {
+        "variable": "meaningfulEdgeDensity",
+        "levelACohorts": 11,
+        "meanDeltaHighMinusLow": 0.2717,
+        "meanHigh": 27.7293,
+        "meanLow": 27.4575,
+        "direction": "high_greater"
+      },
+      {
+        "variable": "interactionCount",
+        "levelACohorts": 11,
+        "meanDeltaHighMinusLow": -0.1818,
+        "meanHigh": 14.9091,
+        "meanLow": 15.0909,
+        "direction": "low_greater"
+      },
+      {
+        "variable": "singlePointOfFailureCount",
+        "levelACohorts": 11,
+        "meanDeltaHighMinusLow": 0.1818,
+        "meanHigh": 2.2727,
+        "meanLow": 2.0909,
+        "direction": "high_greater"
+      },
+      {
+        "variable": "protectionSeatCount",
+        "levelACohorts": 11,
+        "meanDeltaHighMinusLow": 0.0909,
+        "meanHigh": 0.0909,
+        "meanLow": 0,
+        "direction": "high_greater"
+      },
+      {
+        "variable": "winSequenceProtectionCoverage",
+        "levelACohorts": 11,
+        "meanDeltaHighMinusLow": -0.081,
+        "meanHigh": 0.7239,
+        "meanLow": 0.8049,
+        "direction": "low_greater"
+      }
+    ],
+    "q5_multifunctionSurvives": {
+      "multifunctionCount": {
+        "variable": "multifunctionCount",
+        "corrWithRecovery": 0.5148,
+        "corrWithInteractionCount": 0.4552,
+        "partialCorrRecoveryGivenIx": 0.4471
+      },
+      "multifunctionRatio": {
+        "variable": "multifunctionRatio",
+        "corrWithRecovery": 0.3983,
+        "corrWithInteractionCount": 0.0041,
+        "partialCorrRecoveryGivenIx": 0.4157
+      },
+      "note": "Tag-inflation control incomplete; treat flexibility as high-ambiguity until quality proxies exist."
+    },
+    "q6_independentSeatsAssociate": {
+      "variable": "independentlyCoveredCount",
+      "corrWithRecovery": 0.5101,
+      "corrWithInteractionCount": 0.306,
+      "partialCorrRecoveryGivenIx": 0.4614
+    },
+    "q7_spofEnrichedInLow": {
+      "variable": "singlePointOfFailureCount",
+      "levelACohorts": 11,
+      "meanDeltaHighMinusLow": 0.1818,
+      "meanHigh": 2.2727,
+      "meanLow": 2.0909,
+      "direction": "high_greater"
+    },
+    "q8_equivalenceStability": "INSUFFICIENT_EVIDENCE — equivalence candidates observational only this pass",
+    "q9_collapsesUnderCounterexamples": 10,
+    "q10_coverageUmbrella": "SEVERAL_RELATED_SIGNALS — not yet proven as one coherent Strategic Coverage primitive"
+  },
+  "strongestUnexplainedResidual": {
+    "variable": "roleEntropy",
+    "corrWithRecovery": 0.5765,
+    "corrWithInteractionCount": 0.0411,
+    "partialCorrRecoveryGivenIx": 0.5912
+  },
+  "recommendedNextAcademyQuestion": "Why do several coverage residuals correlate with structural recovery globally but reverse under Level-A same-commander contrasts?",
+  "laboratoryAuthorized": false,
+  "brainImplementationRecommended": false,
+  "writesToBrain": false,
+  "constructionMutated": false,
+  "generatedAt": "2026-08-11T02:10:24.922Z"
+}
