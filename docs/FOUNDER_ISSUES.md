@@ -18,8 +18,8 @@ Product / presentation / structural-understanding issues may ship surgically.
 |--------|------:|
 | Issues on register | **14** |
 | Shipped (tests green) | **11** |
-| **Live Founder Trial** | **3 scored runs** (latest: 2026-08-12 · #021/#024) |
-| **Founder Confirmed** | **8** |
+| **Live Founder Trial** | **4 scored runs** (latest: 2026-08-13 · #025 re-trial) |
+| **Founder Confirmed** | **9** |
 | Open / Planned | **0** |
 | Watch (hypothesis only) | 1 (Eldrazi) |
 | Awaiting founder confirmation | 4 (#018, #020, #022, #023) |
@@ -394,7 +394,7 @@ Compatible with governance: deterministic interpreter / presentation only. Not B
 | **022** | **Pre-Choice Coaching** | **Product / UX** | ✅ **Shipped → Live Founder Trial** | Confidence before commitment |
 | **023** | **Intent vs Recommendation Transparency** | **Strategic / Narrative** | ✅ **Shipped → Live Founder Trial** | Request Recognition; hears — does not yet grade fulfillment |
 | **024** | **Commission Contract** | **Strategic / Narrative** | ✅ **Founder Confirmed** (2026-08-12 live trial) | Optional note = design constraints; Player Fantasy narrator; soft-credit honesty; **no Brain** |
-| **025** | **Commission-Aware Philosophy Comparison** | **Product / UX** | **Partial — live trial found false tie language** | Per-card fit works; Recommended must not call equal scores “closer” · **no Brain** |
+| **025** | **Commission-Aware Philosophy Comparison** | **Product / UX** | ✅ **Founder Confirmed** (2026-08-13 live re-trial) | Per-card fit and honest Recommended attribution · **no Brain** |
 | — | Prioritize Theme vs Performance | Strategic / UX | ⏸ **Deferred** | Needs trial evidence of choice-block, not understanding-block |
 | — | Eldrazi / default rec priorities | Strategic | 🟡 Watch | One founder = hypothesis |
 
@@ -795,7 +795,7 @@ That is a different skill than analysis. Earn it before touching recommendation 
 | | |
 |---|---|
 | **Layer** | Product / UX |
-| **Status** | **Partial — live trial 2026-08-12; not Founder Confirmed** |
+| **Status** | ✅ **Founder Confirmed** — authenticated live re-trial, 2026-08-13 |
 | **Brain impact** | **None.** Attribution and choice framing only. |
 | **Evidence** | The choice screen showed two philosophies beside one global `50% · Weak match`. Neither card said whether that score belonged to it or which option better honored Superfriends / Doubling Season / theme-over-optimization. |
 
@@ -812,6 +812,8 @@ That is a different skill than analysis. Earn it before touching recommendation 
 5. No Brain, graph, card evaluation, or construction-weight changes.
 
 **Live trial:** Both philosophy cards correctly showed their own `50% · Weak match` line. The Recommended explanation failed the honesty bar by saying “closer commission fit” even though the two fit scores were equal. Keep the per-card surface; require a strictly higher score before using “closer,” and describe ties as ties.
+
+**Live re-trial (2026-08-13):** Pass. The same Jay commission produced Resilient Temper and Synergy Temper; each card showed its own `50% · Weak match`. Recommended rendered: “Recommended for stronger play structure — commission fit is tied across these philosophies.” The score attribution and recommendation explanation were both accurate.
 
 ### Eldrazi / recommendation priorities — Watch
 

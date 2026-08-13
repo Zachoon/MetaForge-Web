@@ -29,3 +29,12 @@ Keep the per-card match lines. Tighten Recommended attribution so:
 
 Brain impact: none.
 
+## Live re-trial — 2026-08-13
+
+Authenticated production run with the same commander and exact commission:
+
+- Two philosophies: Resilient Temper and Synergy Temper.
+- Each card: `50% · Weak match` with its own commission-fit label.
+- Recommended: “Recommended for stronger play structure — commission fit is tied across these philosophies.”
+
+**Final verdict: Founder Confirmed.** The rendered explanation now matches the rendered scores.
