@@ -9,6 +9,7 @@
 
 import { buildPhilosophyStanceVoice } from "./strategic-stance-voice.mjs";
 import { buildPhilosophyConceptVoice } from "./concept-stance-voice.mjs";
+import { buildCommissionContract } from "./commission-contract.mjs";
 
 const freeze = (value) => Object.freeze(value);
 
@@ -192,6 +193,95 @@ function fullCardDiff(candidate, baseline) {
  * Pre-choice coaching cards for candidate builds.
  * Alias kept: buildStrategyBuildComparison
  */
+
+function structureAverage(scores = {}) {
+  const parts = [scores.cohesion, scores.resilience, scores.curveHealth]
+    .map(Number)
+    .filter(Number.isFinite);
+  if (!parts.length) return null;
+  return parts.reduce((sum, value) => sum + value, 0) / parts.length;
+}
+
+/**
+ * Grade one philosophy's finished candidate against the same commission note.
+ * Presentation only — never mutates construction.
+ */
+export function commissionFitForCandidate({
+  note = "",
+  commanderName = "",
+  candidate = null,
+} = {}) {
+  if (!String(note || "").trim() || !candidate) return null;
+  const contract = buildCommissionContract({
+    note,
+    commanderName,
+    selected: candidate,
+    deckCardNames: (candidate.rows || []).map((row) => row.name).filter(Boolean),
+    blueprint: candidate?.strategicIntent?.blueprint || null,
+  });
+  if (!contract?.hasContract) return null;
+  const shortfalls = (contract.whatIBuilt || []).filter((entry) => entry.status !== "met");
+  const headline = Number.isFinite(contract.matchPercent)
+    ? `${contract.matchPercent}% · ${contract.matchLabel}`
+    : (contract.matchLabel || "Heard");
+  const detail = shortfalls
+    .slice(0, 2)
+    .map((entry) => entry.detail || entry.label)
+    .filter(Boolean)
+    .join(" · ") || null;
+  return freeze({
+    matchPercent: contract.matchPercent,
+    matchLabel: contract.matchLabel,
+    headline,
+    detail,
+    shortfalls: freeze(shortfalls.map((entry) => entry.label)),
+  });
+}
+
+/**
+ * Explain whether RECOMMENDED means play structure, commission fit, or both.
+ */
+export function explainRecommendedBadge(builds = []) {
+  const list = Array.isArray(builds) ? builds.filter(Boolean) : [];
+  const recommended = list.find((build) => build.recommended) || null;
+  if (!recommended) return null;
+  if (list.length <= 1) {
+    return "This is the experience that survived construction for your commission.";
+  }
+  const others = list.filter((build) => !build.recommended);
+  const recStructure = structureAverage(recommended.scores || {});
+  const otherStructures = others
+    .map((build) => structureAverage(build.scores || {}))
+    .filter((value) => value != null);
+  const bestOtherStructure = otherStructures.length ? Math.max(...otherStructures) : null;
+  const strongerStructure =
+    recStructure == null
+      ? true
+      : bestOtherStructure == null || recStructure + 0.5 >= bestOtherStructure;
+
+  const recFit = recommended.commissionFit?.matchPercent;
+  const otherFits = others
+    .map((build) => build.commissionFit?.matchPercent)
+    .filter((value) => Number.isFinite(value));
+  const bestOtherFit = otherFits.length ? Math.max(...otherFits) : null;
+  const hasCommissionGrades = Number.isFinite(recFit) || bestOtherFit != null;
+  if (!hasCommissionGrades) {
+    return "Recommended for stronger play structure among these philosophies.";
+  }
+  const closerFit = Number.isFinite(recFit) && (bestOtherFit == null || recFit + 2 >= bestOtherFit);
+  const weakerFit = Number.isFinite(recFit) && bestOtherFit != null && recFit + 5 < bestOtherFit;
+  if (closerFit && strongerStructure) {
+    return "Recommended for stronger play structure and closer commission fit.";
+  }
+  if (weakerFit) {
+    return "Recommended for stronger play structure — another option may stay closer to your commission.";
+  }
+  if (closerFit) {
+    return "Recommended for closer commission fit.";
+  }
+  return "Recommended for stronger play structure among these philosophies.";
+}
+
 export function buildPreChoiceCoaching({
   candidates = [],
   recommendedId = "",
@@ -200,6 +290,7 @@ export function buildPreChoiceCoaching({
   fantasyLabel = "",
   philosophyLabel = "",
   priorities = [],
+  commissionNote = "",
 } = {}) {
   const list = Array.isArray(candidates) ? candidates.filter(Boolean) : [];
   const recommended =
@@ -282,17 +373,31 @@ export function buildPreChoiceCoaching({
       keyDifferences: diffs,
       fullComparison: full,
       boundary: candidate.boundary || null,
+      commissionFit: commissionFitForCandidate({
+        note: commissionNote,
+        commanderName,
+        candidate,
+      }),
+      recommendedWhy: null,
     });
   });
 
+  const recommendedWhy = explainRecommendedBadge(builds);
+  const buildsWithWhy = builds.map((build) => (
+    build.recommended
+      ? freeze({ ...build, recommendedWhy })
+      : freeze({ ...build, recommendedWhy: null })
+  ));
+
   return freeze({
     writesToBrain: false,
-    version: "pre-choice-coaching-v1.2",
+    version: "pre-choice-coaching-v1.3",
     principle:
       "The Forge should explain enough for a player to choose confidently before asking them to commit to a build.",
     recommendedId: recommended?.id || null,
+    recommendedWhy,
     alone: list.length === 1,
-    builds: freeze(builds),
+    builds: freeze(buildsWithWhy),
   });
 }
 

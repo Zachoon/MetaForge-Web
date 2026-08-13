@@ -17,10 +17,10 @@ Product / presentation / structural-understanding issues may ship surgically.
 | Metric | Count |
 |--------|------:|
 | Issues on register | **14** |
-| Shipped (tests green) | **10** |
+| Shipped (tests green) | **11** |
 | **Live Founder Trial** | **3 scored runs** (latest: 2026-08-12 · #021/#024) |
 | **Founder Confirmed** | **8** |
-| Open / Planned | 1 (#025) |
+| Open / Planned | **0** |
 | Watch (hypothesis only) | 1 (Eldrazi) |
 | Awaiting founder confirmation | 4 (#018, #020, #022, #023) |
 | Live Founder Trial (not confirmed) | 0 |
@@ -44,7 +44,7 @@ Phase 1 verification: **passed** (2026-08-11).
 > Concepts · play captures · simulation witness · stance voice. Brain: 0.  
 > Continuous observation + Friday heartbeat. **Brain changes: 0.**
 >
-> #021 and #024 Founder Confirmed on live production (2026-08-12). Next surgical issue: #025.
+> #021 and #024 Founder Confirmed (2026-08-12). **#025 shipped (tests)** — awaiting Live Founder Trial.
 
 ### Live Founder Trial — re-run (2026-08-11, post-surgical)
 
@@ -394,7 +394,7 @@ Compatible with governance: deterministic interpreter / presentation only. Not B
 | **022** | **Pre-Choice Coaching** | **Product / UX** | ✅ **Shipped → Live Founder Trial** | Confidence before commitment |
 | **023** | **Intent vs Recommendation Transparency** | **Strategic / Narrative** | ✅ **Shipped → Live Founder Trial** | Request Recognition; hears — does not yet grade fulfillment |
 | **024** | **Commission Contract** | **Strategic / Narrative** | ✅ **Founder Confirmed** (2026-08-12 live trial) | Optional note = design constraints; Player Fantasy narrator; soft-credit honesty; **no Brain** |
-| **025** | **Commission-Aware Philosophy Comparison** | **Product / UX** | **Open** | Attribute commission fit per philosophy; **no Brain** |
+| **025** | **Commission-Aware Philosophy Comparison** | **Product / UX** | **Shipped (tests)** | Attribute commission fit per philosophy; **no Brain** |
 | — | Prioritize Theme vs Performance | Strategic / UX | ⏸ **Deferred** | Needs trial evidence of choice-block, not understanding-block |
 | — | Eldrazi / default rec priorities | Strategic | 🟡 Watch | One founder = hypothesis |
 
@@ -795,11 +795,13 @@ That is a different skill than analysis. Earn it before touching recommendation 
 | | |
 |---|---|
 | **Layer** | Product / UX |
-| **Status** | **Open — live reproduction captured 2026-08-12** |
+| **Status** | **Shipped (tests) — awaiting Live Founder Trial** |
 | **Brain impact** | **None.** Attribution and choice framing only. |
 | **Evidence** | The choice screen showed two philosophies beside one global `50% · Weak match`. Neither card said whether that score belonged to it or which option better honored Superfriends / Doubling Season / theme-over-optimization. |
 
 **Player question:** “Which philosophy is the 50% score for, and which one stays closer to what I asked for?”
+
+**Test:** `npm run validate:founder-025`
 
 **Surgical outcome:**
 

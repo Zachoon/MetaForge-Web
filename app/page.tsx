@@ -1838,6 +1838,9 @@ export default function Home() {
       priorities: (contract?.youAskedFor || [])
         .filter((entry: any) => entry.role === "priority")
         .map((entry: any) => entry.label),
+      // Founder #025: grade each philosophy against the same note — never one
+      // floating verdict between cards.
+      commissionNote: note,
     });
   }, [pendingCandidateChoice, selectedCommander, commissionNote]);
 
@@ -5691,31 +5694,69 @@ export default function Home() {
                       {commissionNote.trim()}
                     </p>
                   )}
-                  {(masterworksCommissionContract?.matchHonesty
-                    || masterworksCommissionContract?.matchLabel
-                    || Number.isFinite(masterworksCommissionContract?.matchPercent)) && (
-                    <p className="commission-verdict">
-                      <small>VERDICT</small>
-                      {masterworksCommissionContract.matchHonesty
-                        || (Number.isFinite(masterworksCommissionContract.matchPercent)
-                          ? `${masterworksCommissionContract.matchPercent}% match · ${masterworksCommissionContract.matchLabel || "heard"}`
-                          : masterworksCommissionContract.matchLabel)}
-                    </p>
-                  )}
-                  {masterworksCommissionContract?.whatIBuilt?.some((entry: any) => entry.status !== "met") && (
-                    <div className="commission-change">
-                      <small>WHAT STILL NEEDS WORK</small>
-                      <ul className="request-recognition-checklist commission-built-list">
-                        {masterworksCommissionContract.whatIBuilt
-                          .filter((entry: any) => entry.status !== "met")
-                          .map((entry: any) => (
-                            <li key={entry.id} className={`status-${entry.status}`}>
-                              <b>{entry.status === "partial" ? "~" : "·"} {entry.label}</b>
-                            </li>
-                          ))}
-                      </ul>
-                    </div>
-                  )}
+                  {/* Founder #025: multi-philosophy commission fit is per card, not a floating global grade. */}
+
+                  {((pendingCandidateChoice.nativeReport.candidates?.length || 1) <= 1) && (masterworksCommissionContract?.matchHonesty
+
+                                      || masterworksCommissionContract?.matchLabel
+
+                                      || Number.isFinite(masterworksCommissionContract?.matchPercent)) && (
+
+                                      <p className="commission-verdict">
+
+                                        <small>VERDICT · THIS EXPERIENCE</small>
+
+                                        {masterworksCommissionContract.matchHonesty
+
+                                          || (Number.isFinite(masterworksCommissionContract.matchPercent)
+
+                                            ? `${masterworksCommissionContract.matchPercent}% match · ${masterworksCommissionContract.matchLabel || "heard"}`
+
+                                            : masterworksCommissionContract.matchLabel)}
+
+                                      </p>
+
+                                    )}
+
+                  {((pendingCandidateChoice.nativeReport.candidates?.length || 1) > 1) && masterworksCommissionContract?.hasContract && (
+
+                                      <p className="commission-verdict commission-fit-per-philosophy">
+
+                                        <small>COMMISSION FIT</small>
+
+                                        Each philosophy below is graded against your contract. The score is never shared across options.
+
+                                      </p>
+
+                                    )}
+
+                  {((pendingCandidateChoice.nativeReport.candidates?.length || 1) <= 1) && masterworksCommissionContract?.whatIBuilt?.some((entry: any) => entry.status !== "met") && (
+
+                                      <div className="commission-change">
+
+                                        <small>WHAT STILL NEEDS WORK</small>
+
+                                        <ul className="request-recognition-checklist commission-built-list">
+
+                                          {masterworksCommissionContract.whatIBuilt
+
+                                            .filter((entry: any) => entry.status !== "met")
+
+                                            .map((entry: any) => (
+
+                                              <li key={entry.id} className={`status-${entry.status}`}>
+
+                                                <b>{entry.status === "partial" ? "~" : "×"} {entry.label}</b>
+
+                                              </li>
+
+                                            ))}
+
+                                        </ul>
+
+                                      </div>
+
+                                    )}
                   {masterworksRequestRecognition?.adjustments?.length > 0 && (
                     <p className="commission-why">
                       <small>WHY</small>
@@ -5779,7 +5820,17 @@ export default function Home() {
                             {build.recommended && !singleSurvivor && <em>RECOMMENDED</em>}
                             {singleSurvivor && <em>THIS EXPERIENCE</em>}
                             <strong>{build.label}</strong>
+                            {build.recommended && !singleSurvivor && build.recommendedWhy && (
+                              <p className="pre-choice-recommended-why">{build.recommendedWhy}</p>
+                            )}
                           </header>
+                          {build.commissionFit && (
+                            <p className="pre-choice-commission-fit" aria-label={`Commission fit for ${build.label}`}>
+                              <small>COMMISSION FIT · THIS PHILOSOPHY</small>
+                              <b>{build.commissionFit.headline}</b>
+                              {build.commissionFit.detail ? <span>{build.commissionFit.detail}</span> : null}
+                            </p>
+                          )}
                           <div className="pre-choice-identity">
                             <p className="pre-choice-built-for">
                               <small>BUILT FOR PLAYERS WHO…</small>
