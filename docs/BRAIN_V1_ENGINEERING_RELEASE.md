@@ -75,7 +75,7 @@ Required answers:
 
 1. Golden commander canaries (stable expected rates) — started  
 2. Real / tournament-shaped Commander corpus in the **same harness report shape** — started (`npm run validate:harness:real-corpus`)
-3. Community corpora (EDHREC / Moxfield / Archidekt / tournament lists) for disagreement analysis  
+3. Community corpora for disagreement analysis — started (`npm run validate:harness:disagreement`; fixture corpus offline)
 4. Weekly trend reports — after real corpora are representative  
 5. Nightly automation — last, not first  
 

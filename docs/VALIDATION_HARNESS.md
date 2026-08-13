@@ -106,8 +106,9 @@ Not another reasoning layer.
    - Adapter: `app/validation-harness-corpus.mjs`
    - Offline default: competitive fixture corpus (tournament-shaped; provenance disclosed — not live EDHREC truth)
    - Same `validation-report-v1` contract as smoke/field; import path observation only
-3. Weekly trend reports once real corpora are representative  
-4. Nightly automation last  
+3. **Brain-built vs corpus list disagreement** — `npm run validate:harness:disagreement` (same report shape; observational)
+4. Weekly trend reports once real corpora are representative  
+5. Nightly automation last  
 
 
 ### Golden canaries (Brain v1)

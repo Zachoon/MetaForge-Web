@@ -13,6 +13,7 @@ import {
   buildTortureScorecard,
 } from "./torture-bench-audit.mjs";
 import { summarizeCorpusObservation } from "./validation-harness-corpus.mjs";
+import { summarizeListDisagreement } from "./validation-harness-disagreement.mjs";
 
 export const VALIDATION_HARNESS_VERSION = "validation-harness-v1";
 export const VALIDATION_REPORT_VERSION = "validation-report-v1";
@@ -490,6 +491,12 @@ export function buildValidationReport(records = [], options = {}) {
       `Corpus observation: ${corpusObservation.cases} lists (${corpusObservation.topCutCases} top-cut) via ${corpusObservation.forgePath} path.`,
     );
   }
+  const listDisagreement = summarizeListDisagreement(records);
+  if (listDisagreement.present) {
+    summaryLines.push(
+      `List disagreement: mean Jaccard ${listDisagreement.meanJaccard} across ${listDisagreement.cases} Brain-vs-corpus pairs.`,
+    );
+  }
 
   return freeze({
     version: VALIDATION_REPORT_VERSION,
@@ -502,6 +509,7 @@ export function buildValidationReport(records = [], options = {}) {
     comparison,
     nextFocus,
     corpusObservation,
+    listDisagreement,
     records: options.includeRecords === false
       ? freeze([])
       : freeze(records.map((record) => freeze({
@@ -520,6 +528,15 @@ export function buildValidationReport(records = [], options = {}) {
         cleanupApplied: record.weakSlotRepair?.applied || false,
         corpus: record.corpus || null,
         forgePath: record.forgePath || null,
+        listDisagreement: record.listDisagreement
+          ? freeze({
+              jaccard: record.listDisagreement.jaccard ?? null,
+              sharedCount: record.listDisagreement.sharedCount ?? null,
+              onlyBrainCount: record.listDisagreement.onlyBrainCount ?? null,
+              onlyCorpusCount: record.listDisagreement.onlyCorpusCount ?? null,
+              unavailable: record.listDisagreement.unavailable === true,
+            })
+          : null,
       }))),
   });
 }
@@ -590,6 +607,18 @@ export function renderValidationReportMarkdown(report) {
     lines.push(`- ${report.corpusObservation.honesty}`);
     for (const [tier, count] of Object.entries(report.corpusObservation.evidenceTierDistribution || {})) {
       lines.push(`- evidenceTier ${tier}: ${count}`);
+    }
+    lines.push("");
+  }
+  if (report.listDisagreement?.present) {
+    lines.push("## List disagreement (Brain-built vs corpus)");
+    lines.push(`- Cases: ${report.listDisagreement.cases}`);
+    lines.push(`- Mean Jaccard: ${report.listDisagreement.meanJaccard}`);
+    lines.push(`- Mean Brain coverage of corpus: ${report.listDisagreement.meanBrainCoverageOfCorpus}`);
+    lines.push(`- Mean corpus coverage of Brain: ${report.listDisagreement.meanCorpusCoverageOfBrain}`);
+    lines.push(`- ${report.listDisagreement.honesty}`);
+    for (const sample of report.listDisagreement.lowOverlapSamples || []) {
+      lines.push(`- low-overlap ${sample.commanderName || "unknown"}: jaccard=${sample.jaccard} onlyBrain=${sample.onlyBrainCount} onlyCorpus=${sample.onlyCorpusCount}`);
     }
     lines.push("");
   }

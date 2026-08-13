@@ -14,6 +14,7 @@
     "validate:harness:field": "node tests/validation-harness/run.mjs --mode field --limit 104 --baseline tests/validation-harness/brain-v1-frozen-benchmark.json",
     "validate:harness:real-corpus": "node tests/validation-harness/run-real-corpus.mjs --limit 8",
     "validate:opinion-corpus-contract": "node --test tests/knowledge/opinion-corpus-consumer-contract.test.mjs",
+    "validate:harness:disagreement": "node tests/validation-harness/run-disagreement.mjs --limit 4",
     "validate:golden": "node tests/validation-harness/run-golden.mjs",
     "validate:field-intelligence": "node --test tests/field-intelligence.test.mjs",
     "validate:brain-v2-exp001": "node --test tests/brain-v2-exp001.test.mjs",
