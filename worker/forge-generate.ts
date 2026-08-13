@@ -29,6 +29,7 @@ import { checkRateLimit, readJsonWithLimit } from "./api-hardening";
 import { buildClientNativeReport, storeGeneration } from "./forge-generation-store";
 import { isValidReviewFocus } from "../app/review-focus.mjs";
 import { evaluateReviewFocus } from "../app/review-focus-reasoning.mjs";
+import { buildPreChoiceCoaching } from "../app/strategy-build-comparison.mjs";
 import {
   targetDeckSize,
   isCommanderFormat,
@@ -61,6 +62,7 @@ type GenerateRequest = {
   lynchpin?: string;
   deck?: string;
   reviewFocus?: string;
+  playerCompass?: unknown;
 };
 
 const json = (value: unknown, status = 200, headers: Record<string, string> = {}) =>
@@ -447,6 +449,7 @@ function validateRequest(body: any): { ok: true; value: GenerateRequest } | { ok
     lynchpin: typeof body.lynchpin === "string" ? body.lynchpin.slice(0, MAX_SHORT_STRING) : undefined,
     deck: typeof body.deck === "string" ? body.deck : undefined,
     reviewFocus: typeof body.reviewFocus === "string" && body.reviewFocus ? body.reviewFocus : undefined,
+    playerCompass: body.playerCompass && typeof body.playerCompass === "object" ? body.playerCompass : undefined,
   };
   return { ok: true, value };
 }
@@ -459,6 +462,19 @@ function validateRequest(body: any): { ok: true; value: GenerateRequest } | { ok
 // discriminated union — annotated explicitly at each call site below so
 // `if (!resultCheck.ok)` still narrows to the failure branch's fields.
 type GeneratedResultValidation = { ok: true } | { ok: false; code: string; message: string };
+
+function buildServerPreChoice(
+  nativeReport: { candidates?: unknown[]; selected?: { id?: string } },
+  body: GenerateRequest,
+) {
+  return buildPreChoiceCoaching({
+    candidates: nativeReport.candidates || [],
+    recommendedId: nativeReport.selected?.id || "",
+    commanderName: body.commander?.name || "",
+    commissionNote: body.note || "",
+    playerCompass: body.playerCompass || null,
+  });
+}
 
 // Structured, log-only observability for construction recovery — never
 // returned to the player, never includes anything about who they are.
@@ -661,6 +677,7 @@ export async function generateForgeResult(request: Request, env: Env, key: strin
         status: 200,
         body: {
           nativeReport: buildClientNativeReport(nativeReport),
+          preChoiceCoaching: buildServerPreChoice(nativeReport, body),
           colors: pool.colors,
           ...(generationId ? { generationId } : { cardPool: resolution.pool }),
           importWarnings: { unresolvedNames: resolution.unresolvedNames, illegalNames: resolution.illegalNames },
@@ -756,6 +773,7 @@ export async function generateForgeResult(request: Request, env: Env, key: strin
       status: 200,
       body: {
         nativeReport: buildClientNativeReport(nativeReport),
+        preChoiceCoaching: buildServerPreChoice(nativeReport, body),
         colors: pool.colors,
         ...(generationId ? { generationId } : { cardPool: pool.cards }),
       },

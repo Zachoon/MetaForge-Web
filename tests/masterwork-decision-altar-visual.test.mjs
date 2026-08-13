@@ -2,8 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [page, polish] = await Promise.all([
+const [page, comparison, polish] = await Promise.all([
   readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../app/components/forge/philosophy-compare.tsx", import.meta.url), "utf8"),
   readFile(new URL("../app/forge-polish.css", import.meta.url), "utf8"),
 ]);
 
@@ -13,12 +14,12 @@ const [page, polish] = await Promise.all([
 // own already-built candidates — never a second generation call.
 test("Masterwork picker presents real already-built philosophies for explicit choice", () => {
   assert.match(page, /THE GREAT FORGE ANSWERS/);
-  assert.match(page, /philosophies\. Choose how you want to play|One experience made the cut/);
-  assert.match(page, /HERE ARE THE PHILOSOPHIES/);
+  assert.match(comparison, /Choose how you want this deck to play/);
+  assert.match(comparison, /CHOOSE YOUR EXPERIENCE/);
   assert.match(page, /strategyBuildComparison|\.builds/);
-  assert.match(page, /build\.recommended && !singleSurvivor && <em>RECOMMENDED<\/em>/);
-  assert.match(page, /className="candidate-alternatives/);
-  assert.match(page, /Choose this experience →|This is how I want to play →/);
+  assert.match(comparison, /build\.badge \|\| "BEST FIT FOR YOU"/);
+  assert.match(comparison, /philosophy-alt-grid/);
+  assert.match(comparison, /Choose \$\{build\.label\}/);
   assert.doesNotMatch(page, /Reveal this Masterwork/, "the sealed/revealed ceremony is retired — every candidate is shown immediately");
   assert.match(polish, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
 });

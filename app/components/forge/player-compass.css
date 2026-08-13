@@ -1,0 +1,409 @@
+/* Player Compass + philosophy comparison (UI lane) -------------------- */
+
+.player-compass-card,
+.philosophy-compare {
+  width: min(920px, 100%);
+  margin: 18px auto 0;
+  color: #e6ece8;
+}
+
+.player-compass-card {
+  padding: 18px 20px 16px;
+  border: 1px solid #2d4541;
+  background: linear-gradient(160deg, #0d1614, #090f0e 78%);
+}
+
+.player-compass-card.is-open {
+  width: min(760px, 100%);
+}
+
+.player-compass-card > header small,
+.philosophy-compare-heading small,
+.philosophy-card small,
+.philosophy-side-by-side small,
+.philosophy-commission-fit small {
+  display: block;
+  color: #70e2c0;
+  font: 800 9px/1.3 ui-monospace, monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.player-compass-card h2,
+.philosophy-compare-heading h2 {
+  margin: 8px 0;
+  color: #e8eeea;
+  font: 500 clamp(22px, 3vw, 30px)/1.15 Newsreader, Georgia, serif;
+}
+
+.player-compass-card > header p,
+.philosophy-compare-heading p {
+  margin: 0;
+  max-width: 42rem;
+  color: #8ea19b;
+  font-size: calc(13px * var(--forge-reading-scale, 1));
+  line-height: 1.55;
+}
+
+.player-compass-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.player-compass-actions > button,
+.philosophy-card > button,
+.philosophy-side-by-side button,
+.philosophy-compare-toggle button {
+  min-height: 48px;
+  padding: 12px 16px;
+  border: 1px solid #70e2c0;
+  background: linear-gradient(90deg, #10241f, #14302a);
+  color: #d7fff4;
+  font: 800 12px/1.1 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.player-compass-actions > button.is-quiet,
+.philosophy-compare-toggle button.is-quiet {
+  border-color: #3d534c;
+  background: transparent;
+  color: #9eb0ab;
+}
+
+.player-compass-actions > button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.player-compass-questions {
+  display: grid;
+  gap: 16px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.player-compass-questions > li > p {
+  margin: 0 0 8px;
+  color: #d5e0db;
+  font: 500 16px/1.35 Newsreader, Georgia, serif;
+}
+
+.player-compass-options {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.player-compass-progress {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.player-compass-progress > i {
+  display: block;
+  width: 28px;
+  height: 4px;
+  border-radius: 999px;
+  background: #314741;
+}
+
+.player-compass-progress > i.is-filled,
+.player-compass-progress > i.is-current {
+  background: #70e2c0;
+}
+
+.player-compass-card.is-draft {
+  border-color: #4a5f58;
+}
+
+.player-compass-card.is-synced {
+  border-color: rgba(112, 226, 192, 0.45);
+}
+
+.philosophy-provenance,
+.philosophy-report-provenance {
+  margin: 8px 0 0;
+  color: #70e2c0;
+  font-size: calc(13px * var(--forge-reading-scale, 1));
+  line-height: 1.45;
+}
+
+.philosophy-report-provenance {
+  margin-top: 10px;
+}
+
+.philosophy-alternative-because {
+  margin: 10px 0 0;
+  color: #c9d5d0;
+  font-size: calc(14px * var(--forge-reading-scale, 1));
+  line-height: 1.5;
+}
+
+.philosophy-card.is-preference-alt {
+  border-color: #4a5f58;
+}
+
+.philosophy-card.is-preference-alt > header em,
+.philosophy-side-by-side > article.is-preference-alt header em {
+  border-color: rgba(201, 213, 208, 0.35);
+  color: #c9d5d0;
+}
+
+.player-compass-options > button {
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1px solid #314741;
+  background: #0a1210;
+  color: #c9d5d0;
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.player-compass-options > button.is-selected,
+.player-compass-options > button[aria-checked="true"] {
+  border-color: #70e2c0;
+  box-shadow: inset 3px 0 #70e2c0;
+  background: #10201c;
+  color: #e8eeea;
+}
+
+.philosophy-compare {
+  display: grid;
+  gap: 14px;
+}
+
+.philosophy-compare-heading {
+  margin: 0;
+  padding-bottom: 8px;
+}
+
+.philosophy-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid #35534c;
+  background: linear-gradient(155deg, #101816, #080d0c 72%);
+  overflow: hidden;
+}
+
+.philosophy-card.is-best-fit {
+  border-color: rgba(112, 226, 192, 0.62);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35), inset 0 2px rgba(112, 226, 192, 0.35);
+}
+
+.philosophy-card > header {
+  padding: 18px 20px 16px;
+  border-bottom: 1px solid #1d3432;
+}
+
+.philosophy-card > header em {
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 5px 7px;
+  border: 1px solid rgba(112, 226, 192, 0.45);
+  color: #70e2c0;
+  font: 800 10px/1 ui-monospace, monospace;
+  letter-spacing: 0.08em;
+  font-style: normal;
+}
+
+.philosophy-card > header strong {
+  display: block;
+  color: #e8eeea;
+  font: 500 clamp(22px, 2.6vw, 28px)/1.15 Newsreader, Georgia, serif;
+}
+
+.philosophy-recommended-because {
+  margin: 10px 0 0;
+  color: #c9d5d0;
+  font-size: calc(14px * var(--forge-reading-scale, 1));
+  line-height: 1.5;
+}
+
+.philosophy-commission-fit {
+  margin: 0;
+  padding: 12px 20px;
+  border-bottom: 1px solid #1d3432;
+  background: #0a1412;
+}
+
+.philosophy-commission-fit b {
+  display: block;
+  margin-top: 4px;
+  color: #e8eeea;
+  font: 600 15px/1.3 Newsreader, Georgia, serif;
+}
+
+.philosophy-commission-fit span {
+  display: block;
+  margin-top: 6px;
+  color: #9eb0ab;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.philosophy-card-body {
+  display: grid;
+  gap: 14px;
+  padding: 16px 20px 8px;
+}
+
+.philosophy-card-body p {
+  margin: 6px 0 0;
+  color: #c9d5d0;
+  font-size: calc(13px * var(--forge-reading-scale, 1));
+  line-height: 1.45;
+}
+
+.philosophy-card-body ul {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.philosophy-card-body li {
+  padding: 7px 9px;
+  border: 1px solid #30433d;
+  background: #09100e;
+  color: #c9d5d0;
+  font-size: 12px;
+}
+
+.philosophy-tradeoff {
+  padding: 10px 11px;
+  border-left: 2px solid #d88a48;
+  background: rgba(83, 43, 19, 0.18);
+}
+
+.philosophy-tradeoff small {
+  color: #e89848 !important;
+}
+
+.philosophy-card > button {
+  width: calc(100% - 40px);
+  margin: 8px 20px 18px;
+}
+
+.philosophy-alt-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 12px;
+}
+
+.philosophy-compare-toggle {
+  display: flex;
+  justify-content: center;
+}
+
+.philosophy-side-by-side {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 12px;
+}
+
+.philosophy-side-by-side > article {
+  padding: 14px;
+  border: 1px solid #314741;
+  background: #0a1210;
+}
+
+.philosophy-side-by-side > article.is-best-fit {
+  border-color: rgba(112, 226, 192, 0.55);
+}
+
+.philosophy-side-by-side header em {
+  display: inline-block;
+  margin-bottom: 6px;
+  color: #70e2c0;
+  font: 800 9px ui-monospace, monospace;
+  letter-spacing: 0.1em;
+  font-style: normal;
+}
+
+.philosophy-side-by-side strong {
+  display: block;
+  margin-bottom: 10px;
+  font: 500 18px/1.2 Newsreader, Georgia, serif;
+}
+
+.philosophy-side-by-side dl {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.philosophy-side-by-side dt {
+  color: #70e2c0;
+  font: 800 8px ui-monospace, monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.philosophy-side-by-side dd {
+  margin: 4px 0 0;
+  color: #9eb0ab;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.philosophy-key-diffs {
+  display: grid;
+  gap: 4px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: #b7c4be;
+}
+
+.philosophy-key-diffs .add { color: #8ee0cd; }
+.philosophy-key-diffs .cut { color: #e0a88e; }
+
+.philosophy-side-by-side button {
+  width: 100%;
+  margin-top: 14px;
+}
+
+/* Compact the philosophy chamber: less empty vertical copper frame. */
+.masterwork-reveal:has(.philosophy-compare) {
+  padding-top: clamp(22px, 3vw, 36px);
+  background:
+    radial-gradient(ellipse at 50% -4%, rgba(112, 226, 192, 0.08), transparent 28%),
+    linear-gradient(180deg, #080c0b, #050807);
+}
+
+.masterwork-reveal:has(.philosophy-compare) .masterworks-request-recognition {
+  margin-top: 12px;
+  margin-bottom: 8px;
+  box-shadow: none;
+}
+
+@media (max-width: 980px) {
+  .player-compass-card,
+  .philosophy-compare,
+  .philosophy-card,
+  .philosophy-alt-grid,
+  .philosophy-side-by-side {
+    width: 100%;
+  }
+
+  .player-compass-actions > button,
+  .philosophy-card > button,
+  .philosophy-side-by-side button {
+    width: 100%;
+  }
+
+  .philosophy-alt-grid,
+  .philosophy-side-by-side {
+    grid-template-columns: 1fr;
+  }
+}

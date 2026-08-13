@@ -87,20 +87,23 @@ describe("Founder Issue #022 — Pre-Choice Coaching", () => {
   });
 
   it("wires Pre-Choice Coaching into the masterworks chamber", () => {
-    const page = readFileSync(join(root, "app/page.tsx"), "utf8");
+    const page = [
+      readFileSync(join(root, "app/page.tsx"), "utf8"),
+      readFileSync(join(root, "app/components/forge/philosophy-compare.tsx"), "utf8"),
+    ].join("\n");
     const polish = readFileSync(join(root, "app/forge-polish.css"), "utf8");
     const anvil = readFileSync(join(root, "app/testing-anvil.css"), "utf8");
     const contract = readFileSync(join(root, "docs/CONVERSATION_CONTRACT.md"), "utf8");
-    assert.match(page, /PRE-CHOICE COACHING|HERE ARE THE PHILOSOPHIES/);
-    assert.match(page, /BUILT FOR PLAYERS WHO/);
-    assert.match(page, /EXPECTED TRADEOFF/);
-    assert.match(page, /pre-choice-why-survived|whySurvived/);
+    assert.match(page, /PRE-CHOICE COACHING|HERE ARE THE PHILOSOPHIES|CHOOSE YOUR EXPERIENCE/);
+    assert.match(page, /BUILT FOR PLAYERS WHO|BEST FIT FOR YOU/);
+    assert.match(page, /EXPECTED TRADEOFF|TRADEOFF/);
+    assert.match(page, /whySurvived|whyBuilt/);
     assert.match(page, /One experience made the cut/);
-    assert.match(page, /Compare details/);
+    assert.match(page, /Compare details|Compare both|Compare all three/);
     assert.match(page, /1 · I HEARD YOU/);
     assert.match(page, /I heard you asking for|You asked for/);
-    assert.match(page, /Choose the way you want to experience this commander|Does this experience fit how you want to play/);
-    assert.match(page, /This is how I want to play/);
+    assert.match(page, /Choose the way you want to experience this commander|Does this experience fit how you want to play|Choose how you want this deck to play/);
+    assert.match(page, /This is how I want to play|Choose \$\{build\.label\}/);
     assert.doesNotMatch(page, /\(pendingCandidateChoice\.nativeReport\.candidates\?\.length \|\| 1\) > 1 && \(/);
     assert.match(page, /masterworksRequestRecognition|buildRequestRecognition/);
     assert.match(page, /How do you know\?/);

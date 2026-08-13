@@ -10,6 +10,7 @@
 import { buildPhilosophyStanceVoice } from "./strategic-stance-voice.mjs";
 import { buildPhilosophyConceptVoice } from "./concept-stance-voice.mjs";
 import { buildCommissionContract } from "./commission-contract.mjs";
+import { matchPlayerCompassCandidates, playerCompassFitForTemper } from "./player-compass.mjs";
 
 const freeze = (value) => Object.freeze(value);
 
@@ -202,6 +203,33 @@ function structureAverage(scores = {}) {
   return parts.reduce((sum, value) => sum + value, 0) / parts.length;
 }
 
+const STRUCTURE_LANGUAGE = freeze({
+  curveHealth: "more reliable early plays and smoother mana development",
+  resilience: "more ways to recover after removal or a setback",
+  cohesion: "more cards working together toward the same plan",
+});
+
+/** Turn internal structural scores into consequences a player can recognize. */
+export function explainPlayConsequences(recommended, others = []) {
+  if (!recommended) return null;
+  const scores = recommended.scores || recommended.evaluation || {};
+  const peers = Array.isArray(others) ? others.filter(Boolean) : [];
+  const advantages = Object.keys(STRUCTURE_LANGUAGE)
+    .map((key) => {
+      const value = Number(scores[key]);
+      if (!Number.isFinite(value)) return null;
+      const peerValues = peers.map((peer) => Number((peer.scores || peer.evaluation || {})[key])).filter(Number.isFinite);
+      const bestPeer = peerValues.length ? Math.max(...peerValues) : null;
+      return { key, value, lead: bestPeer == null ? 0 : value - bestPeer };
+    })
+    .filter(Boolean)
+    .sort((left, right) => right.lead - left.lead || right.value - left.value);
+  const meaningful = advantages.filter((entry) => entry.lead >= 0.5);
+  const chosen = (meaningful.length ? meaningful : advantages).slice(0, 2);
+  if (!chosen.length) return "it gives you the clearest complete plan among these options";
+  return chosen.map((entry) => STRUCTURE_LANGUAGE[entry.key]).join(" and ");
+}
+
 /**
  * Grade one philosophy's finished candidate against the same commission note.
  * Presentation only — never mutates construction.
@@ -238,9 +266,7 @@ export function commissionFitForCandidate({
   });
 }
 
-/**
- * Explain whether RECOMMENDED means play structure, commission fit, or both.
- */
+/** Explain RECOMMENDED using consequences a player can recognize. */
 export function explainRecommendedBadge(builds = []) {
   const list = Array.isArray(builds) ? builds.filter(Boolean) : [];
   const recommended = list.find((build) => build.recommended) || null;
@@ -265,8 +291,9 @@ export function explainRecommendedBadge(builds = []) {
     .filter((value) => Number.isFinite(value));
   const bestOtherFit = otherFits.length ? Math.max(...otherFits) : null;
   const hasCommissionGrades = Number.isFinite(recFit) || bestOtherFit != null;
+  const consequences = explainPlayConsequences(recommended, others);
   if (!hasCommissionGrades) {
-    return "Recommended for stronger play structure among these philosophies.";
+    return `Recommended because it offers ${consequences}.`;
   }
   // Founder Trial 2026-08-12: "closer commission fit" requires a strictly
   // higher attributable score. Equal percentages are a tie — never "closer."
@@ -274,21 +301,21 @@ export function explainRecommendedBadge(builds = []) {
   const tiedFit = Number.isFinite(recFit) && bestOtherFit != null && recFit === bestOtherFit;
   const weakerFit = Number.isFinite(recFit) && bestOtherFit != null && recFit < bestOtherFit;
   if (closerFit && strongerStructure) {
-    return "Recommended for stronger play structure and closer commission fit.";
+    return `Recommended because it stays closest to what you asked for and offers ${consequences}.`;
   }
   if (tiedFit && strongerStructure) {
-    return "Recommended for stronger play structure — commission fit is tied across these philosophies.";
+    return `Both options fit your request equally well. This one is recommended because it offers ${consequences}.`;
   }
   if (weakerFit) {
-    return "Recommended for stronger play structure — another option may stay closer to your commission.";
+    return `Recommended because it offers ${consequences}. Another option stays closer to what you asked for, so compare that tradeoff before choosing.`;
   }
   if (closerFit) {
-    return "Recommended for closer commission fit.";
+    return "Recommended because it stays closest to the experience you asked MetaForge to build.";
   }
   if (tiedFit) {
-    return "Commission fit is tied — recommended for play structure among these philosophies.";
+    return `Both options fit your request equally well. This one is recommended because it offers ${consequences}.`;
   }
-  return "Recommended for stronger play structure among these philosophies.";
+  return `Recommended because it offers ${consequences}.`;
 }
 
 export function buildPreChoiceCoaching({
@@ -300,6 +327,7 @@ export function buildPreChoiceCoaching({
   philosophyLabel = "",
   priorities = [],
   commissionNote = "",
+  playerCompass = null,
 } = {}) {
   const list = Array.isArray(candidates) ? candidates.filter(Boolean) : [];
   const recommended =
@@ -387,23 +415,78 @@ export function buildPreChoiceCoaching({
         commanderName,
         candidate,
       }),
+      playerFitEvidence: playerCompassFitForTemper(playerCompass, temperKey(candidate.label)),
+      playerFit: playerCompassFitForTemper(playerCompass, temperKey(candidate.label))?.explanation
+        || identity.builtForPlayersWho,
+      whatThisFeelsLike: identity.feel,
+      whyNotTheAlternative: identity.expectedTradeoff,
       recommendedWhy: null,
     });
   });
 
-  const recommendedWhy = explainRecommendedBadge(builds);
-  const buildsWithWhy = builds.map((build) => (
+  const graded = builds.filter((build) => Number.isFinite(build.commissionFit?.matchPercent));
+  const bestCommissionFit = graded.length
+    ? Math.max(...graded.map((build) => build.commissionFit.matchPercent))
+    : null;
+  const commissionPool = bestCommissionFit == null
+    ? builds
+    : builds.filter((build) => build.commissionFit?.matchPercent === bestCommissionFit);
+  let selectedId = recommended?.id || null;
+  let decidedBy = list.length === 1 ? "only_legal_option" : "structural_evidence";
+  let compassMatch = null;
+
+  if (bestCommissionFit != null && commissionPool.length === 1) {
+    selectedId = commissionPool[0].id;
+    decidedBy = "commission";
+  } else if (commissionPool.length > 1) {
+    compassMatch = matchPlayerCompassCandidates(
+      playerCompass,
+      commissionPool.map((build) => ({ id: build.id, temper: temperKey(build.label) })),
+    );
+    if (compassMatch) {
+      selectedId = compassMatch.winnerId;
+      decidedBy = compassMatch.trueTie ? "true_tie" : "player_compass";
+    }
+  }
+
+  const selectedBuilds = builds.map((build) => freeze({
+    ...build,
+    recommended: build.id === selectedId,
+  }));
+  const selectedBuild = selectedBuilds.find((build) => build.recommended) || null;
+  const others = selectedBuilds.filter((build) => !build.recommended);
+  const consequences = explainPlayConsequences(selectedBuild, others);
+  const recommendedWhy = decidedBy === "commission"
+    ? `Recommended from what you asked MetaForge to build. It offers ${consequences}.`
+    : decidedBy === "player_compass"
+      ? `Best match for how you said you enjoy playing. It offers ${consequences}.`
+      : decidedBy === "only_legal_option"
+        ? `This was the only direction that satisfied the request. It offers ${consequences}.`
+        : decidedBy === "true_tie"
+          ? `These options fit how you like to play equally well. This one is shown first for consistency and offers ${consequences}.`
+          : `Recommended from how this deck is built. It offers ${consequences}.`;
+  const buildsWithWhy = selectedBuilds.map((build) => (
     build.recommended
-      ? freeze({ ...build, recommendedWhy })
-      : freeze({ ...build, recommendedWhy: null })
+      ? freeze({ ...build, decidedBy, recommendedWhy, recommendedBecause: recommendedWhy })
+      : freeze({
+          ...build,
+          decidedBy: null,
+          recommendedWhy: null,
+          recommendedBecause: null,
+          alternativeBecause: decidedBy === "commission" && build.playerFitEvidence
+            ? "This direction may be closer to your usual play preferences, but it did not match your explicit request as closely."
+            : null,
+        })
   ));
 
   return freeze({
     writesToBrain: false,
-    version: "pre-choice-coaching-v1.3",
+    version: "pre-choice-coaching-v1.5",
     principle:
       "The Forge should explain enough for a player to choose confidently before asking them to commit to a build.",
-    recommendedId: recommended?.id || null,
+    recommendedId: selectedId,
+    decidedBy,
+    compassMatch,
     recommendedWhy,
     alone: list.length === 1,
     builds: freeze(buildsWithWhy),

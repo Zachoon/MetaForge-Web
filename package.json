@@ -93,7 +93,8 @@
     "report:alpha-coach": "node tests/alpha-coach/report-shape.mjs",
     "lint": "eslint .",
     "db:generate": "drizzle-kit generate",
-    "validate:revision-opinion-ui": "node --test tests/revision-opinion-ui.test.mjs"
+    "validate:revision-opinion-ui": "node --test tests/revision-opinion-ui.test.mjs",
+    "validate:player-compass-ui": "node --test tests/player-compass-ui.test.mjs"
   },
   "dependencies": {
     "@react-three/fiber": "^9.7.0",

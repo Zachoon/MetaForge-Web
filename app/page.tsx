@@ -67,7 +67,6 @@ import {
   shouldUseContextCardInspector,
 } from "./context-card-inspector.mjs";
 import { ForgeCardRef, ForgeCardRefList } from "./forge-card-ref";
-import { buildPreChoiceCoaching } from "./strategy-build-comparison.mjs";
 import { buildCommissionContract } from "./commission-contract.mjs";
 import { tableMeaningFor } from "./strategic-recognition.mjs";
 import { LivingWorkbench, type WorkbenchMode } from "./living-workbench";
@@ -81,6 +80,14 @@ import {
   type MotionMode,
 } from "./components/forge/forge-ceremony";
 import { RevisionOpinionPanel } from "./components/forge/revision-opinion";
+import { PlayerCompassCard } from "./components/forge/player-compass-card";
+import { PhilosophyCompare } from "./components/forge/philosophy-compare";
+import {
+  playerCompassFromBench,
+  readLocalPlayerCompass,
+  withPlayerCompassOnBench,
+  writeLocalPlayerCompass,
+} from "./player-compass.mjs";
 
 type Chamber =
   | "entrance"
@@ -1190,6 +1197,8 @@ function normalizeForgeFailure(error: unknown): NormalizedForgeFailure {
 export default function Home() {
   const [chamber, setChamber] = useState<Chamber>("entrance");
   const [guestMode, setGuestMode] = useState(true);
+  const [playerCompass, setPlayerCompass] = useState(() => readLocalPlayerCompass());
+  const [playerCompassSynced, setPlayerCompassSynced] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileError, setTurnstileError] = useState("");
   const [guestClaimToken, setGuestClaimToken] = useState("");
@@ -1696,6 +1705,7 @@ export default function Home() {
     work: Masterwork;
     commander: CommanderOption | null;
     persist: boolean;
+    preChoiceCoaching: any;
   } | null>(null);
   const [benchOpen, setBenchOpen] = useState(false);
   const [cardSearch, setCardSearch] = useState("");
@@ -1812,38 +1822,7 @@ export default function Home() {
     }
   }, [chamber, pendingCandidateChoice]);
 
-  const strategyBuildComparison = useMemo(() => {
-    const candidates = pendingCandidateChoice?.nativeReport?.candidates;
-    if (!candidates?.length) return null;
-    const selected = pendingCandidateChoice.nativeReport.selected;
-    const note = String(commissionNote || "").trim();
-    const contract = note
-      ? buildCommissionContract({
-          note,
-          commanderName:
-            selected?.strategicIntent?.commanders?.[0]?.name
-            || selectedCommander
-            || "",
-          selected,
-          deckCardNames: (selected?.rows || []).map((row: any) => row.name),
-        })
-      : null;
-    return buildPreChoiceCoaching({
-      candidates,
-      recommendedId: selected?.id || "",
-      commanderName:
-        selected?.strategicIntent?.commanders?.[0]?.name
-        || selectedCommander
-        || "",
-      fantasyLabel: contract?.playerFantasy?.label || "",
-      priorities: (contract?.youAskedFor || [])
-        .filter((entry: any) => entry.role === "priority")
-        .map((entry: any) => entry.label),
-      // Founder #025: grade each philosophy against the same note — never one
-      // floating verdict between cards.
-      commissionNote: note,
-    });
-  }, [pendingCandidateChoice, selectedCommander, commissionNote]);
+  const strategyBuildComparison = pendingCandidateChoice?.preChoiceCoaching || null;
 
   const masterworksCommissionContract = useMemo(() => {
     if (!pendingCandidateChoice?.nativeReport?.selected) return null;
@@ -3145,11 +3124,40 @@ export default function Home() {
               ),
             ),
         );
+        if (data.bench?.playerCompass) {
+          const fromBench = playerCompassFromBench(data.bench);
+          writeLocalPlayerCompass(fromBench);
+          setPlayerCompass(fromBench);
+          setPlayerCompassSynced(true);
+        }
       } catch {
         /* History remains available after the account reconnects. */
       }
     })();
   }, []);
+
+  async function persistPlayerCompass(nextCompass: ReturnType<typeof readLocalPlayerCompass>) {
+    const saved = writeLocalPlayerCompass(nextCompass);
+    setPlayerCompass(saved);
+    setPlayerCompassSynced(false);
+    try {
+      const response = await fetch("/api/account/deck-bench", { cache: "no-store" });
+      if (!response.ok) return;
+      const current = await response.json();
+      const bench = withPlayerCompassOnBench(
+        current.bench || { schemaVersion: 1, families: [] },
+        saved,
+      );
+      const savedResponse = await fetch("/api/account/deck-bench", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bench, baseRevision: current.revision || 0 }),
+      });
+      if (savedResponse.ok) setPlayerCompassSynced(true);
+    } catch {
+      /* Local Compass remains available if account sync is interrupted. */
+    }
+  }
 
   useEffect(() => {
     if (chamber !== "workbench" || cardSearch.trim().length < 2) {
@@ -3786,6 +3794,7 @@ export default function Home() {
       insufficientEvidence?: boolean;
       concise: string;
     } | null;
+    preChoiceCoaching?: any;
   }> {
     if (guestMode && !turnstileToken) throw new ForgeGenerationError("Complete the human verification before striking the Forge", "HUMAN_VERIFICATION_REQUIRED");
     const response = await fetch(guestMode ? "/api/forge/guest-generate" : "/api/forge/generate", {
@@ -4026,7 +4035,7 @@ export default function Home() {
         await ceremonyReady;
         setChamber("workbench");
       } else {
-        const { nativeReport, cardPool, generationId: newGenerationId } = await callForgeGenerate({
+        const { nativeReport, cardPool, generationId: newGenerationId, preChoiceCoaching } = await callForgeGenerate({
           mode: "direct",
           format,
           strategy,
@@ -4046,6 +4055,7 @@ export default function Home() {
           maxCardPrice,
           commonsOnly,
           targetPowerTier: isCommanderFormat(format) ? targetPowerTier || undefined : undefined,
+          playerCompass,
         });
         trackLaunchEvent("forge_succeeded", { mode, format, durationMs: Date.now() - launchStartedAt });
         // A fresh build never auto-enters a Masterwork. The one generation
@@ -4064,6 +4074,7 @@ export default function Home() {
           work: directWork,
           commander,
           persist: !guestMode,
+          preChoiceCoaching,
         });
         await ceremonyReady;
         setChamber("masterworks");
@@ -4981,6 +4992,12 @@ export default function Home() {
                 onActivate={() => setChamber("refine")}
               />
             </div>
+            <PlayerCompassCard
+              value={playerCompass}
+              signedIn={!guestMode}
+              synced={playerCompassSynced}
+              onChange={(next) => { void persistPlayerCompass(next); }}
+            />
           </div>
           <div className="entrance-visual" aria-label="The Great Forge, ever-burning">
             <div className="entrance-living-forge" aria-hidden="true">
@@ -5663,24 +5680,6 @@ export default function Home() {
         <section className="masterwork-reveal">
           {pendingCandidateChoice ? (
             <>
-                <header>
-                  <span className="forge-eyebrow">
-                    <i /> THE GREAT FORGE ANSWERS <i />
-                  </span>
-                  <h1>
-                    {(() => {
-                      const survivorCount = pendingCandidateChoice.nativeReport.candidates?.length || 1;
-                      return survivorCount === 1
-                        ? "One experience made the cut. Confirm it fits you."
-                        : `${survivorCount} philosophies. Choose how you want to play.`;
-                    })()}
-                  </h1>
-                  <p>
-                    {pendingCandidateChoice.nativeReport.candidates?.length === 1
-                      ? "Before you open the deck — is this the experience you want with this commander?"
-                      : "Each card below is a different way to experience the same commission. Pick the feel first; the list comes after."}
-                  </p>
-                </header>
               {(masterworksCommissionContract?.hasContract || commissionNote.trim()) && (
                 <aside className="request-recognition masterworks-request-recognition is-loud commission-contract" aria-label="Commission contract">
                   <header>
@@ -5703,69 +5702,23 @@ export default function Home() {
                       {commissionNote.trim()}
                     </p>
                   )}
-                  {/* Founder #025: multi-philosophy commission fit is per card, not a floating global grade. */}
-
                   {((pendingCandidateChoice.nativeReport.candidates?.length || 1) <= 1) && (masterworksCommissionContract?.matchHonesty
-
-                                      || masterworksCommissionContract?.matchLabel
-
-                                      || Number.isFinite(masterworksCommissionContract?.matchPercent)) && (
-
-                                      <p className="commission-verdict">
-
-                                        <small>VERDICT · THIS EXPERIENCE</small>
-
-                                        {masterworksCommissionContract.matchHonesty
-
-                                          || (Number.isFinite(masterworksCommissionContract.matchPercent)
-
-                                            ? `${masterworksCommissionContract.matchPercent}% match · ${masterworksCommissionContract.matchLabel || "heard"}`
-
-                                            : masterworksCommissionContract.matchLabel)}
-
-                                      </p>
-
-                                    )}
-
+                    || masterworksCommissionContract?.matchLabel
+                    || Number.isFinite(masterworksCommissionContract?.matchPercent)) && (
+                    <p className="commission-verdict">
+                      <small>VERDICT · THIS EXPERIENCE</small>
+                      {masterworksCommissionContract.matchHonesty
+                        || (Number.isFinite(masterworksCommissionContract.matchPercent)
+                          ? `${masterworksCommissionContract.matchPercent}% match · ${masterworksCommissionContract.matchLabel || "heard"}`
+                          : masterworksCommissionContract.matchLabel)}
+                    </p>
+                  )}
                   {((pendingCandidateChoice.nativeReport.candidates?.length || 1) > 1) && masterworksCommissionContract?.hasContract && (
-
-                                      <p className="commission-verdict commission-fit-per-philosophy">
-
-                                        <small>COMMISSION FIT</small>
-
-                                        Each philosophy below is graded against your contract. The score is never shared across options.
-
-                                      </p>
-
-                                    )}
-
-                  {((pendingCandidateChoice.nativeReport.candidates?.length || 1) <= 1) && masterworksCommissionContract?.whatIBuilt?.some((entry: any) => entry.status !== "met") && (
-
-                                      <div className="commission-change">
-
-                                        <small>WHAT STILL NEEDS WORK</small>
-
-                                        <ul className="request-recognition-checklist commission-built-list">
-
-                                          {masterworksCommissionContract.whatIBuilt
-
-                                            .filter((entry: any) => entry.status !== "met")
-
-                                            .map((entry: any) => (
-
-                                              <li key={entry.id} className={`status-${entry.status}`}>
-
-                                                <b>{entry.status === "partial" ? "~" : "×"} {entry.label}</b>
-
-                                              </li>
-
-                                            ))}
-
-                                        </ul>
-
-                                      </div>
-
-                                    )}
+                    <p className="commission-verdict commission-fit-per-philosophy">
+                      <small>COMMISSION FIT</small>
+                      Each philosophy below is graded against your contract. The score is never shared across options.
+                    </p>
+                  )}
                   {masterworksRequestRecognition?.adjustments?.length > 0 && (
                     <p className="commission-why">
                       <small>WHY</small>
@@ -5773,169 +5726,22 @@ export default function Home() {
                         || masterworksRequestRecognition.adjustments[0].headline}
                     </p>
                   )}
-                  {(masterworksCommissionContract?.whatIBuilt?.length > 0
-                    || Number.isFinite(masterworksRequestRecognition?.fidelity?.themeFidelity)
-                    || Number.isFinite(masterworksRequestRecognition?.fidelity?.competitiveHealth)) && (
-                    <details className="request-recognition-receipts">
-                      <summary>Full commission breakdown →</summary>
-                      {masterworksCommissionContract?.whatIBuilt?.length > 0 && (
-                        <ul className="request-recognition-checklist commission-built-list">
-                          {masterworksCommissionContract.whatIBuilt.map((entry: any) => (
-                            <li key={entry.id} className={`status-${entry.status}`}>
-                              <b>{entry.status === "met" ? "✓" : entry.status === "partial" ? "~" : "·"} {entry.label}</b>
-                              <span>{entry.detail}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      {(Number.isFinite(masterworksRequestRecognition?.fidelity?.themeFidelity)
-                        || Number.isFinite(masterworksRequestRecognition?.fidelity?.competitiveHealth)) && (
-                        <div className="request-recognition-fidelity" aria-label="Theme fidelity versus list health">
-                          <span>
-                            <small>THEME FIDELITY</small>
-                            <b>{Number.isFinite(masterworksRequestRecognition.fidelity.themeFidelity) ? `${masterworksRequestRecognition.fidelity.themeFidelity}%` : "—"}</b>
-                            <i><em style={{ width: `${masterworksRequestRecognition.fidelity.themeFidelityFill || 0}%` }} /></i>
-                          </span>
-                          <span>
-                            <small>LIST HEALTH</small>
-                            <b>{Number.isFinite(masterworksRequestRecognition.fidelity.competitiveHealth) ? `${masterworksRequestRecognition.fidelity.competitiveHealth}%` : "—"}</b>
-                            <i><em style={{ width: `${masterworksRequestRecognition.fidelity.competitiveHealthFill || 0}%` }} /></i>
-                          </span>
-                        </div>
-                      )}
-                    </details>
-                  )}
                 </aside>
               )}
-              <section className="candidate-alternatives pre-choice-coaching" aria-label="Pre-choice coaching">
-                  <header className="pre-choice-coaching-heading">
-                    <small>2 · HERE ARE THE PHILOSOPHIES</small>
-                    <b>
-                      {(pendingCandidateChoice.nativeReport.candidates?.length || 1) > 1
-                        ? "Choose the way you want to experience this commander"
-                        : "Does this experience fit how you want to play?"}
-                    </b>
-                  </header>
-                  <div className="masterwork-grid">
-                    {(strategyBuildComparison?.builds || []).map((build: any) => {
-                      const candidate = (pendingCandidateChoice.nativeReport.candidates || []).find(
-                        (entry: any) => entry.id === build.id,
-                      );
-                      if (!candidate) return null;
-                      const singleSurvivor = (pendingCandidateChoice.nativeReport.candidates?.length || 1) === 1;
-                      return (
-                        <article key={build.id} className={`masterwork-card strategy-identity-card${build.recommended ? " is-featured" : ""}`}>
-                          <header>
-                            {build.recommended && !singleSurvivor && <em>RECOMMENDED</em>}
-                            {singleSurvivor && <em>THIS EXPERIENCE</em>}
-                            <strong>{build.label}</strong>
-                            {build.recommended && !singleSurvivor && build.recommendedWhy && (
-                              <p className="pre-choice-recommended-why">{build.recommendedWhy}</p>
-                            )}
-                          </header>
-                          {build.commissionFit && (
-                            <p className="pre-choice-commission-fit" aria-label={`Commission fit for ${build.label}`}>
-                              <small>COMMISSION FIT · THIS PHILOSOPHY</small>
-                              <b>{build.commissionFit.headline}</b>
-                              {build.commissionFit.detail ? <span>{build.commissionFit.detail}</span> : null}
-                            </p>
-                          )}
-                          <div className="pre-choice-identity">
-                            <p className="pre-choice-built-for">
-                              <small>BUILT FOR PLAYERS WHO…</small>
-                              {build.builtForPlayersWho}
-                            </p>
-                            {build.prioritizes?.length > 0 && (
-                              <div className="pre-choice-prioritizes">
-                                <small>PRIORITIZES</small>
-                                <ul>
-                                  {build.prioritizes.map((item: string) => (
-                                    <li key={item}>{item}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                            <p className="pre-choice-feel">
-                              <small>FEEL</small>
-                              {build.feel}
-                            </p>
-                            <p className="pre-choice-tradeoff">
-                              <small>EXPECTED TRADEOFF</small>
-                              {build.expectedTradeoff}
-                            </p>
-                            {/* Single survivor: why this direction lived must be
-                                on the default card — stage-2 pass sound. */}
-                            {singleSurvivor && (build.whySurvived || build.whyBuilt) && (
-                              <p className="pre-choice-why-survived">
-                                <small>WHY THIS DIRECTION</small>
-                                {build.whySurvived || build.whyBuilt}
-                              </p>
-                            )}
-                            {/* Player Surface Law: research voice (hypotheses /
-                                principles) stays out of the default card.
-                                Compare details / Deep Forge hold the depth. */}
-                          </div>
-                          <button type="button" onClick={() => enterMasterwork(candidate.id)}>
-                            {singleSurvivor ? "This is how I want to play →" : "Choose this experience →"}
-                          </button>
-                          <details className="strategy-identity-full-diff">
-                            <summary>Compare details</summary>
-                            <div>
-                              {build.whyBuilt && !singleSurvivor && (
-                                <p className="strategy-identity-why">
-                                  <small>WHY THIS DIRECTION</small>
-                                  {build.whyBuilt}
-                                </p>
-                              )}
-                              {(build.keyDifferences?.adds?.length > 0 || build.keyDifferences?.cuts?.length > 0) && (
-                                <div className="strategy-identity-keys">
-                                  <small>KEY DIFFERENCES{build.keyDifferences.versus ? ` · vs ${build.keyDifferences.versus}` : ""}</small>
-                                  <ul>
-                                    {build.keyDifferences.adds.map((name: string) => (
-                                      <li key={`add-${name}`} className="add">
-                                        +{" "}
-                                        <ForgeCardRef
-                                          name={name}
-                                          surface="pre-choice-diff"
-                                          onInspect={setHoveredCard}
-                                        />
-                                      </li>
-                                    ))}
-                                    {build.keyDifferences.cuts.map((name: string) => (
-                                      <li key={`cut-${name}`} className="cut">
-                                        −{" "}
-                                        <ForgeCardRef
-                                          name={name}
-                                          surface="pre-choice-diff"
-                                          onInspect={setHoveredCard}
-                                        />
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
-                              <dl className="pre-choice-scores">
-                                <div><dt>Cohesion</dt><dd>{build.scores.cohesion ?? "—"}/100</dd></div>
-                                <div><dt>Resilience</dt><dd>{build.scores.resilience ?? "—"}/100</dd></div>
-                                <div><dt>Curve</dt><dd>{build.scores.curveHealth ?? "—"}/100</dd></div>
-                              </dl>
-                              {(build.fullComparison?.adds?.length > 0 || build.fullComparison?.cuts?.length > 0) && (
-                                <>
-                                  {build.fullComparison.adds.length > 0 && (
-                                    <p><b>Only in this build</b> · {build.fullComparison.adds.join(" · ")}</p>
-                                  )}
-                                  {build.fullComparison.cuts.length > 0 && (
-                                    <p><b>Not in this build</b> · {build.fullComparison.cuts.join(" · ")}</p>
-                                  )}
-                                </>
-                              )}
-                            </div>
-                          </details>
-                        </article>
-                      );
-                    })}
-                  </div>
-                </section>
+              {(strategyBuildComparison?.builds?.length > 0) && (
+                <PhilosophyCompare
+                  builds={strategyBuildComparison.builds}
+                  decidedBy={strategyBuildComparison.decidedBy || null}
+                  commanderName={
+                    pendingCandidateChoice.nativeReport.selected?.strategicIntent?.commanders?.[0]?.name
+                    || activeCommanderName
+                    || selectedCommander?.name
+                    || ""
+                  }
+                  onChoose={(candidateId) => enterMasterwork(candidateId)}
+                  onInspectCard={setHoveredCard}
+                />
+              )}
               <footer>
                 <button
                   onClick={() => {

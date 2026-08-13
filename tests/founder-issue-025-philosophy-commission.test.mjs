@@ -106,21 +106,25 @@ describe("Founder Issue #025 — Commission-Aware Philosophy Comparison", () => 
       recommendedId: "resilience",
       commanderName: "Atraxa, Praetors' Voice",
       commissionNote: JAY_NOTE,
+      playerCompass: {
+        pace: "long-game",
+        risk: "recoverable",
+        interaction: "reactive",
+        complexity: "meaningful",
+      },
     });
 
-    assert.equal(report.version, "pre-choice-coaching-v1.3");
+    assert.equal(report.version, "pre-choice-coaching-v1.5");
     assert.equal(report.builds.length, 2);
     for (const build of report.builds) {
       assert.ok(build.commissionFit?.headline, `${build.label} must carry its own commission fit`);
     }
     const recommended = report.builds.find((build) => build.recommended);
+    assert.equal(recommended.id, "synergy", "the explicit commission outranks the earlier structural pick");
+    assert.equal(report.decidedBy, "commission");
     assert.match(
       recommended.recommendedWhy,
-      /play structure|commission fit/i,
-    );
-    assert.match(
-      recommended.recommendedWhy,
-      /another option may stay closer|play structure/i,
+      /recommended from what you asked metaforge to build/i,
     );
   });
 
@@ -137,7 +141,7 @@ describe("Founder Issue #025 — Commission-Aware Philosophy Comparison", () => 
         commissionFit: { matchPercent: 50 },
       },
     ]);
-    assert.match(both, /play structure and closer commission fit/i);
+    assert.match(both, /stays closest to what you asked for/i);
 
     const structureOnly = explainRecommendedBadge([
       {
@@ -151,7 +155,7 @@ describe("Founder Issue #025 — Commission-Aware Philosophy Comparison", () => 
         commissionFit: { matchPercent: 70 },
       },
     ]);
-    assert.match(structureOnly, /another option may stay closer to your commission/i);
+    assert.match(structureOnly, /another option stays closer to what you asked for/i);
 
     const tied = explainRecommendedBadge([
       {
@@ -165,18 +169,21 @@ describe("Founder Issue #025 — Commission-Aware Philosophy Comparison", () => 
         commissionFit: { matchPercent: 50 },
       },
     ]);
-    assert.match(tied, /commission fit is tied/i);
+    assert.match(tied, /fit your request equally well/i);
     assert.doesNotMatch(tied, /closer commission fit/i);
   });
 
   it("wires per-philosophy commission fit into the choice screen", () => {
     const page = readFileSync(join(root, "app/page.tsx"), "utf8");
-    const polish = readFileSync(join(root, "app/forge-polish.css"), "utf8");
-    assert.match(page, /commissionNote:\s*note/);
-    assert.match(page, /COMMISSION FIT · THIS PHILOSOPHY/);
-    assert.match(page, /pre-choice-recommended-why/);
-    assert.match(page, /score is never shared across options/);
-    assert.match(polish, /\.pre-choice-commission-fit\b/);
-    assert.match(polish, /\.pre-choice-recommended-why\b/);
+    const compare = readFileSync(join(root, "app/components/forge/philosophy-compare.tsx"), "utf8");
+    const worker = readFileSync(join(root, "worker/forge-generate.ts"), "utf8");
+    assert.match(worker, /commissionNote:\s*body\.note/);
+    assert.match(worker, /preChoiceCoaching:\s*buildServerPreChoice/);
+    assert.match(page, /playerCompass/);
+    assert.doesNotMatch(page, /buildPreChoiceCoaching/);
+    assert.match(page, /PhilosophyCompare/);
+    assert.match(compare, /COMMISSION FIT/);
+    assert.match(compare, /philosophy-recommended-because/);
+    assert.doesNotMatch(compare, /stronger play structure/i);
   });
 });
