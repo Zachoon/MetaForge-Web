@@ -20,7 +20,7 @@ const debouncedAnalysisRequest = fs.readFileSync(new URL("../app/debounced-analy
 // "direct" both run the identical forgeNativeMasterwork construction, they
 // only ever differed in lynchpin/path), and enterMasterwork applies
 // whichever the player explicitly picks with zero further network calls.
-const commitStart = page.indexOf('async function commitDirectForge(mode: "decklist" | "commander")');
+const commitStart = page.indexOf('async function commitDirectForge(mode: "decklist" | "commander"');
 const commitEnd = page.indexOf("function openSavedMasterwork", commitStart);
 const commitDirectForgeSource = page.slice(commitStart, commitEnd);
 const enterStart = page.indexOf("function enterMasterwork(candidateId: string)");

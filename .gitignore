@@ -70,8 +70,10 @@ batch-backups/
 tsconfig.tsbuildinfo
 native_revision_capture.txt
 torture-bench-run.txt
+/_brain_residual.txt
 /tests/knowledge/out/
 /tests/**/*.log
+/tests/brain-v2-exp001/out/exp001-smoke-*
 
 # Manual pre-edit backup copies (naming convention: <file>.before-<change>)
 *.before-*

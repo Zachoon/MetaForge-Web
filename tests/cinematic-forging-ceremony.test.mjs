@@ -1,14 +1,18 @@
+import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import test from "node:test";
 
-const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
-const css = await readFile(new URL("../app/forge-polish.css", import.meta.url), "utf8");
+const [page, css] = await Promise.all([
+  readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../app/forge-polish.css", import.meta.url), "utf8"),
+]);
 
 test("shows a deck visibly assembling instead of a generic reactor animation", () => {
-  assert.match(page, /className={`forge-deck-assembly/);
-  assert.match(page, /className="assembly-cards"/);
-  assert.match(page, /className="assembly-deck"/);
+  // Current ceremony: forge-process-focus pipeline (retired forge-deck-assembly
+  // class name, same job — visible structural pass, not a reactor swirl).
+  assert.match(page, /className=\{`forge-process-focus/);
+  assert.match(page, /className="forge-card-pipeline"/);
+  assert.match(page, /className="forge-process-materials"/);
   assert.doesNotMatch(page, /forge-cinematic-core|cinematic-ingot-float/);
   const processingBlock = page.match(/const ForgeCeremonyMotion[\s\S]*?const ForgeCommissionCard/)?.[0];
   assert.ok(processingBlock);
@@ -24,6 +28,6 @@ test("does not present invented candidate countdown numbers", () => {
 });
 
 test("provides quiet and reduced-motion versions of the ceremony", () => {
-  assert.match(css, /\.forge-deck-assembly\.is-quiet \*\{animation:none!important\}/);
-  assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
+  assert.match(page, /forge-process-focus\$\{motionMode === "quiet" \? " is-quiet"/);
+  assert.match(css, /prefers-reduced-motion:reduce/);
 });

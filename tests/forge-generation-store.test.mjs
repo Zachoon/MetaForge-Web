@@ -140,6 +140,7 @@ test("strips construction forensics before persisting lab context", () => {
 test("buildClientNativeReport drops structuralAnalysis and keeps picker fields", async () => {
   const { buildClientNativeReport } = await import("../worker/forge-generation-store.ts");
   const report = {
+    engine: "metaforge-native-import-v1",
     methodology: "m",
     reasoning: { summary: "s", boundary: "b" },
     laboratory: { summary: "l", boundary: "lb", verdict: "advance", contract: "c" },
@@ -155,6 +156,7 @@ test("buildClientNativeReport drops structuralAnalysis and keeps picker fields",
     candidates: [],
   };
   const client = buildClientNativeReport(report);
+  assert.equal(client.engine, "metaforge-native-import-v1");
   assert.equal(client.structuralAnalysis, undefined);
   assert.equal(client.selected.weakSlotForensics, undefined);
   assert.equal(client.selected.deckText, "1 Sol Ring");

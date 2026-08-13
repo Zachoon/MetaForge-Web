@@ -6037,7 +6037,7 @@ export default function Home() {
                   const target = mode === "deck"
                     ? document.getElementById("deck-gallery")
                     : mode === "test"
-                      ? document.getElementById("proving-grounds-title")
+                      ? document.getElementById("proving-era-title")
                       : document.querySelector(".testing-loop");
                   target?.scrollIntoView({ behavior: "smooth", block: "start" });
                 });
@@ -6064,7 +6064,7 @@ export default function Home() {
                 setActiveForgeChapter(5);
                 trackLaunchEvent("coaching_opened", { format });
                 window.requestAnimationFrame(() =>
-                  document.getElementById("proving-grounds-title")?.scrollIntoView({ behavior: "smooth", block: "start" }),
+                  document.getElementById("proving-era-title")?.scrollIntoView({ behavior: "smooth", block: "start" }),
                 );
               }}
             />
@@ -6365,7 +6365,7 @@ export default function Home() {
                           setActiveForgeChapter(5);
                           trackLaunchEvent("coaching_opened", { format });
                           window.requestAnimationFrame(() =>
-                            document.getElementById("proving-grounds-title")?.scrollIntoView({ behavior: "smooth", block: "start" }),
+                            document.getElementById("proving-era-title")?.scrollIntoView({ behavior: "smooth", block: "start" }),
                           );
                         }}
                       >

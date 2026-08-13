@@ -81,7 +81,10 @@ describe("Era 2 — Situational Strategic Evaluation v0.1", () => {
     if (evaluation.witness) {
       assert.match(evaluation.witness.note, /witness only/i);
     }
-    assert.equal(evaluation.evidence.simulation, "none");
+    // Heuristic witness may report a low band when checks fire; it is still
+    // witness-only — never a play engine or Brain inheritance claim.
+    assert.ok(["none", "low"].includes(evaluation.evidence.simulation));
+    assert.equal(evaluation.brainInheritance, "none");
   });
 
   it("evaluates the stack-priority fixture as a respond decision", () => {

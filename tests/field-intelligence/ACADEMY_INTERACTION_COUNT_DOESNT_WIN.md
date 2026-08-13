@@ -4,8 +4,7 @@
 **Status:** observation / Proxy Decomposition · causal discovery  
 **Corpus:** live Academy cohort · Synthetic fixtures **NOT USED**  
 **Brain changes:** 0 · **Sim-Lab-002:** not run · **Harness:** not requested  
-**Next Academy sprint:** [Strategic Coverage Project](../../docs/STRATEGIC_COVERAGE.md)  
-**Vocabulary:** [Atlas](../../docs/ATLAS.md)
+**Next Academy sprint:** [Strategic Coverage Project](../../docs/STRATEGIC_COVERAGE.md)
 
 ---
 
@@ -20,8 +19,6 @@ Proxy Decomposition then asked why interaction count still predicts recovery. Th
 So the honest title is not “why interaction count still wins.”  
 It is: **interaction count doesn't win — it merely reveals coverage.**
 
----
-
 ## Provenance
 
 - Decks analyzed: **283**
@@ -31,8 +28,6 @@ It is: **interaction count doesn't win — it merely reveals coverage.**
 - Primary hypothesis label: **latent_lead:multifunctionCount**
 - Named discovery: **Strategic Coverage** (Academy concept — not a Brain feature)
 
----
-
 ## Causal discovery
 
 ```
@@ -41,10 +36,6 @@ Observed:     InteractionCount    → Recovery
 Suspect:      InteractionCount    → (latent) → Recovery
 Academy name: InteractionCount    → Strategic Coverage → Recovery
 ```
-
-This is a causal discovery from a failed topology trial — not a salvage of topology, and not a promotion of interaction count into the Brain.
-
----
 
 ## What Sim-Lab-001 actually taught
 
@@ -58,17 +49,13 @@ This is a causal discovery from a failed topology trial — not a salvage of top
 
 Archive: `docs/archive/SIM_LAB_001_REJECTION.md`
 
----
-
 ## Method — Proxy Decomposition
 
 For each live deck, measure structural recovery (Sim-Lab seat deletions) and a bank of candidate explanatory variables. Rank by:
 
-1. Correlation with recovery  
-2. Correlation with interaction count (is it entangled?)  
+1. Correlation with recovery
+2. Correlation with interaction count (is it entangled?)
 3. Partial correlation with recovery **given** interaction count (does signal survive?)
-
----
 
 ## Ranked candidates (top 15)
 
@@ -90,87 +77,56 @@ For each live deck, measure structural recovery (Sim-Lab seat deletions) and a b
 | meanStrategicDegree | 0.2319 | 0.2876 | 0.1606 | 0.2456 | 0.2244 |
 | winSequenceProtectionCoverage | 0.2771 | -0.0218 | 0.2969 | 0.3139 | 0.2192 |
 
----
-
 ## The residual cluster screams one concept
 
 Top residuals that survive conditioning on interaction count:
 
 | Variable | Read |
 |---|---|
-| **roleEntropy** | How many different strategic jobs the deck can accomplish (almost orthogonal to ix count) |
+| **roleEntropy** | How many different strategic jobs the deck can accomplish |
 | **uniqueRoleCount** | Capability breadth |
 | **recoverySeatCount** | Interchangeable answer seats |
-| **multifunctionCount** / **multifunctionRatio** | Cards that solve multiple problems — flexibility, not “more interaction” |
+| **multifunctionCount** / **multifunctionRatio** | Cards that solve multiple problems — flexibility |
 
-These are not measuring interaction.  
-They are not measuring the current topology composite.  
-They are measuring **strategic optionality / coverage**.
+These measure **strategic optionality / coverage**, not interaction quantity and not the current topology composite.
 
-### Deck A vs Deck B (intuition)
+## Latent leads (raw)
 
-Same interaction count can hide opposite coverage:
-
-- Deck A: ten counterspells (one job, high quantity)  
-- Deck B: protect · bounce · recursion · silence · stax answer · spot removal · wipe · sac · hexproof · tax  
-
-Recovery cares about B’s kind of breadth — seats that can still be filled when one piece dies.
-
----
+- **multifunctionCount** — r(rec)=0.5148, partial(rec|ix)=0.4471, r(ix)=0.4552
+- **recoverySeatCount** — r(rec)=0.5161, partial(rec|ix)=0.4557, r(ix)=0.3898
+- **uniqueRoleCount** — r(rec)=0.5176, partial(rec|ix)=0.4606, r(ix)=0.3653
+- **roleEntropy** — r(rec)=0.5765, partial(rec|ix)=0.5912, r(ix)=0.0411
+- **multifunctionRatio** — r(rec)=0.3983, partial(rec|ix)=0.4157, r(ix)=0.0041
+- **meanStrategicDegree** — r(rec)=0.2319, partial(rec|ix)=0.1606, r(ix)=0.2876
+- **winSequenceProtectionCoverage** — r(rec)=0.2771, partial(rec|ix)=0.2969, r(ix)=-0.0218
 
 ## Pure proxies of interaction count
 
-Variables entangled with interaction count whose recovery signal mostly disappears after partialling:
-
-- **interactiveDenom** — r(rec)=0.2955, r(ix)=1, partial(rec|ix)=null  
-- **planConnectedCount** — r(rec)=0.2149, r(ix)=0.7407, partial(rec|ix)=-0.0062  
-- **planConnectedRatio** — r(rec)=0.1541, r(ix)=0.3845, partial(rec|ix)=0.0459  
-
----
+- **interactiveDenom** — r(rec)=0.2955, r(ix)=1, partial(rec|ix)=null
+- **planConnectedCount** — r(rec)=0.2149, r(ix)=0.7407, partial(rec|ix)=-0.0062
+- **planConnectedRatio** — r(rec)=0.1541, r(ix)=0.3845, partial(rec|ix)=0.0459
 
 ## Current topology slice
 
-- **meaningfulEdgeDensity**: r(rec)=-0.2541, r(ix)=-0.8402, partial(rec|ix)=-0.0112  
-- **meanStrategicDegree**: r(rec)=0.2319, r(ix)=0.2876, partial(rec|ix)=0.1606  
-- **planConnectedRatio**: r(rec)=0.1541, r(ix)=0.3845, partial(rec|ix)=0.0459  
-- **isolatedRatio**: r(rec)=-0.0771, r(ix)=-0.3588, partial(rec|ix)=0.0324  
+- **meaningfulEdgeDensity**: r(rec)=-0.2541, r(ix)=-0.8402, partial(rec|ix)=-0.0112
+- **meanStrategicDegree**: r(rec)=0.2319, r(ix)=0.2876, partial(rec|ix)=0.1606
+- **planConnectedRatio**: r(rec)=0.1541, r(ix)=0.3845, partial(rec|ix)=0.0459
+- **isolatedRatio**: r(rec)=-0.0771, r(ix)=-0.3588, partial(rec|ix)=0.0324
 
-Topology is not “wrong.” It is **incomplete**: it is not yet measuring latent coverage / seat optionality.
-
-Specification, not failure: stop adding edges until the graph can represent **strategic seats**.
-
----
-
-## Working ontology — Strategic Seats
-
-```
-Seat: Commander Protection
-Filled by: Greaves | Flawless Maneuver | Skrelv | Dauntless Escort | …
-```
-
-Recovery is not “card removed.”  
-Recovery is “**seat vacated — can another seat-holder assume the role?**”
-
-`recoverySeatCount` is begging to become a first-class Academy concept under that ontology.
-
----
+Topology is not wrong — it is **incomplete**. Stop adding edges until the graph can represent strategic seats.
 
 ## Open questions
 
-- Is interaction count encoding answer optionality / redundancy rather than ‘more interaction’?  
-- Which coverage lead survives Level-A same-commander deltas?  
-- What is the **smallest** set of strategic capabilities that predicts elite resilience?  
-- Can a seat/coverage representation beat interaction count without collapsing back into quantity?
-
----
+- Is interaction count encoding answer optionality / redundancy rather than 'more interaction'?
+- Which latent lead survives Level-A same-commander deltas?
+- Can a new representation beat interaction count without collapsing back into quantity?
+- What is the smallest set of strategic capabilities that predicts elite resilience? (Strategic Coverage Project)
 
 ## Recommendation
 
-- promoteToBrain: **false**  
-- runSimLab002: **false**  
-- next: **Strategic Coverage Project** (Academy observation) — which capabilities remain predictive after controlling for commander, archetype, and interaction count; multidimensional profiles, not a single coverage score; then a Laboratory trial with a **new representation**, not another topology composite.
-
----
+- promoteToBrain: **false**
+- runSimLab002: **false**
+- next: **Strategic Coverage Project** (Academy observation) — coverage candidates compete; then a Laboratory trial with a **new representation**, not another topology composite.
 
 ## North star
 

@@ -85,7 +85,7 @@ function main() {
     "",
     "## Deferred",
     "",
-    ...library.era2Founding.deferred.map((d) => `- ${d}`),
+    ...(library.era2Founding.deferredToLaterEras || library.era2Founding.deferred || []).map((d) => `- ${d}`),
     "",
     "## Fixture → concept",
     "",

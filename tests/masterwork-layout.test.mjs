@@ -38,6 +38,7 @@ test("derives Masterwork titles, tone, and plain-language paths from one design 
 });
 
 test("keeps Masterwork cards stable instead of replaying reveal animation on updates", () => {
-  assert.match(page, /key={candidate\.id}/);
+  // Philosophy cards key off the comparison build id (same as candidate.id).
+  assert.match(page, /key=\{build\.id\}/);
   assert.match(journeyCss, /\.masterwork-card\{animation:none!important;contain:layout\}/);
 });

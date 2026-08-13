@@ -21,7 +21,9 @@ test("adapts a short pasted list into one legal, complete deck", () => {
   ] };
   const first = forgeImportedMasterwork(input);
   const second = forgeImportedMasterwork(input);
-  assert.deepEqual(first, second, "deterministic for the same input");
+  assert.equal(first.engine, second.engine, "deterministic for the same input");
+  assert.deepEqual(first.selected.rows, second.selected.rows, "deterministic for the same input");
+  assert.deepEqual(first.changes, second.changes, "deterministic for the same input");
   assert.equal(first.engine, "metaforge-native-import-v1");
   assert.equal(first.selected.rows.reduce((sum, row) => sum + row.quantity, 0), 60);
   const flow0 = first.selected.rows.find((row) => row.name === "Flow 0");

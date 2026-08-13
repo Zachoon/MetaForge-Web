@@ -8,14 +8,17 @@ const [page, css] = await Promise.all([
 ]);
 
 test("the player-facing coach brief retains Honest Coach interpreted deck truths", () => {
+  // Player Surface Law: default brief is Verdict → Why → Change (not the
+  // older "WHY THIS DECK WINS / WATCH THIS FIRST" grid labels).
   assert.match(page, /honest-coach-v0/);
-  assert.match(page, /WHY THIS DECK WINS/);
-  assert.match(page, /HOW IT GETS STARTED|EARLY GAME/);
-  assert.match(page, /WHEN IT BECOMES DANGEROUS/);
-  assert.match(page, /WATCH THIS FIRST|WHAT CAN DERAIL IT/);
+  assert.match(page, /YOUR COACH/);
+  assert.match(page, /honest-coach-brief-stream/);
+  assert.match(page, />\s*VERDICT\s*</);
+  assert.match(page, /WHY · OPENING PRIORITIES|CHANGE/);
+  assert.match(page, /commissionContract|1 · I HEARD YOU/);
   assert.match(css, /Player-facing coaching is a brief/);
   assert.match(css, /coach-brief/);
-  assert.match(css, /coach-deck-sequence/);
+  assert.match(css, /honest-coach-brief-stream|coach-deck-sequence/);
 });
 
 test("the coach brief separates the watchpoint and stays responsive", () => {

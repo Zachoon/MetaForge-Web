@@ -40,11 +40,12 @@ test("repeated construction feedback is translated into plain language", () => {
 
 test("the coaching return path is a three-tap check-in and accepts a server-validated generation", () => {
   const page = fs.readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const era = fs.readFileSync(new URL("../app/proving-grounds-era.tsx", import.meta.url), "utf8");
   assert.match(page, /deckIntegrity\.passed \|\| Boolean\(nativeMasterworkContext\?\.generationId\)/);
   assert.match(page, /fieldTestResult \|\| "not-recorded"/);
-  assert.match(page, /Three quick taps\. MetaForge handles the interpretation\./);
-  assert.match(page, /1 of 3 · Did the issue appear/);
-  assert.match(page, /2 of 3 · How did the deck handle that moment/);
-  assert.match(page, /3 of 3 · How did the deck feel overall/);
+  assert.match(era, /Three taps\. Keep the memory fresh/);
+  assert.match(era, /Did the issue appear\?/);
+  assert.match(era, /How did the deck handle that moment\?/);
+  assert.match(era, /How did the deck feel overall\?/);
   assert.doesNotMatch(page, /One tap\. No match report or essay required/);
 });

@@ -33,9 +33,10 @@ Brain v1 remains the default/control. Exp001 is **not** promoted automatically.
 ```
 
 ## Promotion verdict
-**needs_more_evidence**
-- regressions: []
+**reject**
+- regressions: ["beneficial_emergence_lost","later_package_oversupply_increased"]
 - heldOutImproved: false
+- note: Failed promotion gate (frozen-benchmark / quality regressions). Experiment remains opt-in for research only.
 
 ## Control vs Experiment aggregates
 ### Control (Brain v1)
@@ -43,13 +44,13 @@ Brain v1 remains the default/control. Exp001 is **not** promoted automatically.
 {
   "aggregate": {
     "version": "validation-harness-v1",
-    "runCount": 104,
-    "passCount": 104,
+    "runCount": 13,
+    "passCount": 13,
     "hardFailureRunCount": 0,
     "passRate": 1,
     "tortureAggregate": {
-      "total": 104,
-      "passed": 104,
+      "total": 13,
+      "passed": 13,
       "failed": 0,
       "byArchetype": {
         "aura_voltron": "PARTIAL",
@@ -67,593 +68,593 @@ Brain v1 remains the default/control. Exp001 is **not** promoted automatically.
         "multi_direction": "PARTIAL"
       },
       "failureClassCounts": {
-        "interaction_graph_failure": 72
+        "interaction_graph_failure": 9
       },
       "runtime": {
-        "medianMs": 1958,
-        "p95Ms": 4538,
+        "medianMs": 3755,
+        "p95Ms": 9466,
         "slowest": [
           {
             "id": "aristocrats",
-            "ms": 4762
+            "ms": 9466
           },
           {
-            "id": "aristocrats",
-            "ms": 4741
+            "id": "spellslinger",
+            "ms": 7921
           },
           {
-            "id": "aristocrats",
-            "ms": 4720
+            "id": "equipment-voltron",
+            "ms": 5982
           },
           {
-            "id": "aristocrats",
-            "ms": 4615
+            "id": "pearl-ear-auras",
+            "ms": 5865
           },
           {
-            "id": "aristocrats",
-            "ms": 4591
+            "id": "reanimator",
+            "ms": 4422
           }
         ]
       }
     },
     "selfEvaluationAggregate": {
       "version": "self-evaluation-aggregate-v1",
-      "forgeCount": 104,
-      "totalTracedPicks": 6792,
-      "totalMeaningfulDisagreements": 2051,
+      "forgeCount": 13,
+      "totalTracedPicks": 849,
+      "totalMeaningfulDisagreements": 257,
       "driftClassCounts": {
-        "early_scaffolding_matured": 2701,
-        "downstream_repair_invalidated_pick": 416,
-        "later_package_oversupply": 258,
-        "curve_need_disappeared": 48,
-        "unclassified": 1968,
-        "stable_good_prediction": 72,
-        "retrospective_gain_not_seen_prospectively": 1169,
-        "final_weak_justification": 144,
-        "unsupported_anchor_emerged": 16
+        "early_scaffolding_matured": 337,
+        "downstream_repair_invalidated_pick": 52,
+        "later_package_oversupply": 33,
+        "curve_need_disappeared": 6,
+        "unclassified": 246,
+        "stable_good_prediction": 9,
+        "retrospective_gain_not_seen_prospectively": 146,
+        "final_weak_justification": 18,
+        "unsupported_anchor_emerged": 2
       },
       "driftByPhase": {
         "foundation": {
-          "count": 4912,
-          "meanAbsDrift": 44.572
+          "count": 614,
+          "meanAbsDrift": 44.549
         },
         "development": {
-          "count": 1880,
-          "meanAbsDrift": 56.461
+          "count": 235,
+          "meanAbsDrift": 56.451
         }
       },
       "driftByPackage": {
         "auras": {
-          "count": 1040,
-          "disagreements": 992
+          "count": 130,
+          "disagreements": 124
         },
         "equipment": {
-          "count": 520,
-          "disagreements": 456
+          "count": 65,
+          "disagreements": 57
         },
         "typal": {
-          "count": 520,
-          "disagreements": 504
+          "count": 65,
+          "disagreements": 63
         },
         "tokens": {
-          "count": 1584,
-          "disagreements": 1408
+          "count": 198,
+          "disagreements": 176
         },
         "aristocrats": {
-          "count": 528,
-          "disagreements": 480
+          "count": 66,
+          "disagreements": 60
         },
         "reanimator": {
-          "count": 512,
-          "disagreements": 488
+          "count": 64,
+          "disagreements": 61
         },
         "spellslinger": {
-          "count": 528,
-          "disagreements": 497
+          "count": 66,
+          "disagreements": 62
         },
         "landfall": {
-          "count": 528,
-          "disagreements": 472
+          "count": 66,
+          "disagreements": 59
         },
         "blink": {
-          "count": 528,
-          "disagreements": 504
+          "count": 66,
+          "disagreements": 63
         },
         "stax": {
-          "count": 512,
-          "disagreements": 464
+          "count": 64,
+          "disagreements": 58
         }
       },
       "controlCaseCounts": {
-        "early_scaffolding_matured": 2701,
-        "invalidated_by_later_decisions": 705,
-        "ambiguous": 2089,
-        "stable": 72,
-        "beneficial_emergence": 1169,
-        "genuine_bad_belief": 56
+        "early_scaffolding_matured": 337,
+        "invalidated_by_later_decisions": 89,
+        "ambiguous": 261,
+        "stable": 9,
+        "beneficial_emergence": 146,
+        "genuine_bad_belief": 7
       },
-      "meanPredictionError": 32.345,
-      "meanAbsPredictionError": 47.863,
+      "meanPredictionError": 32.324,
+      "meanAbsPredictionError": 47.844,
       "topRecurrentDisagreementClasses": [
         {
           "class": "early_scaffolding_matured",
-          "count": 2701
+          "count": 337
         },
         {
           "class": "unclassified",
-          "count": 1968
+          "count": 246
         },
         {
           "class": "retrospective_gain_not_seen_prospectively",
-          "count": 1169
+          "count": 146
         },
         {
           "class": "downstream_repair_invalidated_pick",
-          "count": 416
+          "count": 52
         },
         {
           "class": "later_package_oversupply",
-          "count": 258
+          "count": 33
         },
         {
           "class": "final_weak_justification",
-          "count": 144
+          "count": 18
         },
         {
           "class": "curve_need_disappeared",
-          "count": 48
+          "count": 6
         },
         {
           "class": "unsupported_anchor_emerged",
-          "count": 16
+          "count": 2
         }
       ],
       "byArchetype": {
         "aura_voltron": {
-          "forges": 8,
-          "picks": 520,
-          "disagreements": 175,
+          "forges": 1,
+          "picks": 65,
+          "disagreements": 22,
           "byClass": {
-            "early_scaffolding_matured": 289,
-            "downstream_repair_invalidated_pick": 48,
-            "later_package_oversupply": 8,
-            "curve_need_disappeared": 7,
-            "unclassified": 48,
-            "stable_good_prediction": 8,
-            "retrospective_gain_not_seen_prospectively": 112
+            "early_scaffolding_matured": 36,
+            "downstream_repair_invalidated_pick": 6,
+            "later_package_oversupply": 1,
+            "curve_need_disappeared": 1,
+            "unclassified": 6,
+            "stable_good_prediction": 1,
+            "retrospective_gain_not_seen_prospectively": 14
           },
           "meanAbsDrift": 61.38,
           "topClasses": [
             {
               "class": "early_scaffolding_matured",
-              "count": 289
+              "count": 36
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 112
+              "count": 14
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 48
+              "count": 6
             },
             {
               "class": "unclassified",
-              "count": 48
+              "count": 6
             },
             {
-              "class": "later_package_oversupply",
-              "count": 8
+              "class": "curve_need_disappeared",
+              "count": 1
             }
           ]
         },
         "equipment_voltron": {
-          "forges": 8,
-          "picks": 520,
-          "disagreements": 144,
+          "forges": 1,
+          "picks": 65,
+          "disagreements": 18,
           "byClass": {
-            "early_scaffolding_matured": 208,
-            "unclassified": 168,
-            "retrospective_gain_not_seen_prospectively": 80,
-            "downstream_repair_invalidated_pick": 32,
-            "final_weak_justification": 32
+            "early_scaffolding_matured": 26,
+            "unclassified": 21,
+            "retrospective_gain_not_seen_prospectively": 10,
+            "downstream_repair_invalidated_pick": 4,
+            "final_weak_justification": 4
           },
           "meanAbsDrift": 31.068,
           "topClasses": [
             {
               "class": "early_scaffolding_matured",
-              "count": 208
+              "count": 26
             },
             {
               "class": "unclassified",
-              "count": 168
+              "count": 21
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 80
+              "count": 10
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 32
+              "count": 4
             },
             {
               "class": "final_weak_justification",
-              "count": 32
+              "count": 4
             }
           ]
         },
         "typal": {
-          "forges": 8,
-          "picks": 520,
-          "disagreements": 128,
+          "forges": 1,
+          "picks": 65,
+          "disagreements": 16,
           "byClass": {
-            "early_scaffolding_matured": 232,
-            "unclassified": 160,
-            "retrospective_gain_not_seen_prospectively": 96,
-            "downstream_repair_invalidated_pick": 32
+            "early_scaffolding_matured": 29,
+            "unclassified": 20,
+            "retrospective_gain_not_seen_prospectively": 12,
+            "downstream_repair_invalidated_pick": 4
           },
           "meanAbsDrift": 50.701,
           "topClasses": [
             {
               "class": "early_scaffolding_matured",
-              "count": 232
+              "count": 29
             },
             {
               "class": "unclassified",
-              "count": 160
+              "count": 20
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 96
+              "count": 12
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 32
+              "count": 4
             }
           ]
         },
         "tokens": {
-          "forges": 8,
-          "picks": 528,
-          "disagreements": 144,
+          "forges": 1,
+          "picks": 66,
+          "disagreements": 18,
           "byClass": {
-            "early_scaffolding_matured": 144,
-            "later_package_oversupply": 48,
-            "unclassified": 224,
-            "stable_good_prediction": 16,
-            "retrospective_gain_not_seen_prospectively": 56,
-            "final_weak_justification": 40
+            "early_scaffolding_matured": 18,
+            "later_package_oversupply": 6,
+            "unclassified": 28,
+            "stable_good_prediction": 2,
+            "retrospective_gain_not_seen_prospectively": 7,
+            "final_weak_justification": 5
           },
           "meanAbsDrift": 43.43,
           "topClasses": [
             {
               "class": "unclassified",
-              "count": 224
+              "count": 28
             },
             {
               "class": "early_scaffolding_matured",
-              "count": 144
+              "count": 18
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 56
+              "count": 7
             },
             {
               "class": "later_package_oversupply",
-              "count": 48
+              "count": 6
             },
             {
               "class": "final_weak_justification",
-              "count": 40
+              "count": 5
             }
           ]
         },
         "aristocrats": {
-          "forges": 8,
-          "picks": 528,
-          "disagreements": 200,
+          "forges": 1,
+          "picks": 66,
+          "disagreements": 25,
           "byClass": {
-            "early_scaffolding_matured": 216,
-            "later_package_oversupply": 24,
-            "unclassified": 104,
-            "stable_good_prediction": 8,
-            "retrospective_gain_not_seen_prospectively": 120,
-            "downstream_repair_invalidated_pick": 48,
-            "final_weak_justification": 8
+            "early_scaffolding_matured": 27,
+            "later_package_oversupply": 3,
+            "unclassified": 13,
+            "stable_good_prediction": 1,
+            "retrospective_gain_not_seen_prospectively": 15,
+            "downstream_repair_invalidated_pick": 6,
+            "final_weak_justification": 1
           },
           "meanAbsDrift": 54.153,
           "topClasses": [
             {
               "class": "early_scaffolding_matured",
-              "count": 216
+              "count": 27
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 120
+              "count": 15
             },
             {
               "class": "unclassified",
-              "count": 104
+              "count": 13
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 48
+              "count": 6
             },
             {
               "class": "later_package_oversupply",
-              "count": 24
+              "count": 3
             }
           ]
         },
         "reanimator": {
-          "forges": 8,
-          "picks": 512,
-          "disagreements": 200,
+          "forges": 1,
+          "picks": 64,
+          "disagreements": 25,
           "byClass": {
-            "early_scaffolding_matured": 152,
-            "later_package_oversupply": 56,
-            "unclassified": 160,
-            "downstream_repair_invalidated_pick": 32,
-            "final_weak_justification": 16,
-            "retrospective_gain_not_seen_prospectively": 96
+            "early_scaffolding_matured": 19,
+            "later_package_oversupply": 7,
+            "unclassified": 20,
+            "downstream_repair_invalidated_pick": 4,
+            "final_weak_justification": 2,
+            "retrospective_gain_not_seen_prospectively": 12
           },
           "meanAbsDrift": 50.478,
           "topClasses": [
             {
               "class": "unclassified",
-              "count": 160
+              "count": 20
             },
             {
               "class": "early_scaffolding_matured",
-              "count": 152
+              "count": 19
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 96
+              "count": 12
             },
             {
               "class": "later_package_oversupply",
-              "count": 56
+              "count": 7
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 32
+              "count": 4
             }
           ]
         },
         "spellslinger": {
-          "forges": 8,
-          "picks": 528,
-          "disagreements": 396,
+          "forges": 1,
+          "picks": 66,
+          "disagreements": 50,
           "byClass": {
-            "early_scaffolding_matured": 132,
-            "later_package_oversupply": 122,
-            "unsupported_anchor_emerged": 16,
-            "curve_need_disappeared": 41,
-            "retrospective_gain_not_seen_prospectively": 169,
-            "downstream_repair_invalidated_pick": 48
+            "early_scaffolding_matured": 16,
+            "later_package_oversupply": 16,
+            "unsupported_anchor_emerged": 2,
+            "curve_need_disappeared": 5,
+            "retrospective_gain_not_seen_prospectively": 21,
+            "downstream_repair_invalidated_pick": 6
           },
-          "meanAbsDrift": 64.696,
+          "meanAbsDrift": 64.41,
           "topClasses": [
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 169
+              "count": 21
             },
             {
               "class": "early_scaffolding_matured",
-              "count": 132
+              "count": 16
             },
             {
               "class": "later_package_oversupply",
-              "count": 122
+              "count": 16
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 48
+              "count": 6
             },
             {
               "class": "curve_need_disappeared",
-              "count": 41
+              "count": 5
             }
           ]
         },
         "landfall": {
-          "forges": 8,
-          "picks": 528,
-          "disagreements": 120,
+          "forges": 1,
+          "picks": 66,
+          "disagreements": 15,
           "byClass": {
-            "early_scaffolding_matured": 248,
-            "unclassified": 152,
-            "stable_good_prediction": 8,
-            "downstream_repair_invalidated_pick": 48,
-            "final_weak_justification": 16,
-            "retrospective_gain_not_seen_prospectively": 56
+            "early_scaffolding_matured": 31,
+            "unclassified": 19,
+            "stable_good_prediction": 1,
+            "downstream_repair_invalidated_pick": 6,
+            "final_weak_justification": 2,
+            "retrospective_gain_not_seen_prospectively": 7
           },
           "meanAbsDrift": 55.276,
           "topClasses": [
             {
               "class": "early_scaffolding_matured",
-              "count": 248
+              "count": 31
             },
             {
               "class": "unclassified",
-              "count": 152
+              "count": 19
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 56
+              "count": 7
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 48
+              "count": 6
             },
             {
               "class": "final_weak_justification",
-              "count": 16
+              "count": 2
             }
           ]
         },
         "blink": {
-          "forges": 8,
-          "picks": 528,
-          "disagreements": 72,
+          "forges": 1,
+          "picks": 66,
+          "disagreements": 9,
           "byClass": {
-            "early_scaffolding_matured": 232,
-            "stable_good_prediction": 8,
-            "unclassified": 216,
-            "downstream_repair_invalidated_pick": 48,
-            "retrospective_gain_not_seen_prospectively": 24
+            "early_scaffolding_matured": 29,
+            "stable_good_prediction": 1,
+            "unclassified": 27,
+            "downstream_repair_invalidated_pick": 6,
+            "retrospective_gain_not_seen_prospectively": 3
           },
           "meanAbsDrift": 41.24,
           "topClasses": [
             {
               "class": "early_scaffolding_matured",
-              "count": 232
+              "count": 29
             },
             {
               "class": "unclassified",
-              "count": 216
+              "count": 27
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 48
+              "count": 6
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 24
+              "count": 3
             },
             {
               "class": "stable_good_prediction",
-              "count": 8
+              "count": 1
             }
           ]
         },
         "artifacts": {
-          "forges": 8,
-          "picks": 528,
-          "disagreements": 128,
+          "forges": 1,
+          "picks": 66,
+          "disagreements": 16,
           "byClass": {
-            "early_scaffolding_matured": 144,
-            "unclassified": 240,
-            "stable_good_prediction": 16,
-            "retrospective_gain_not_seen_prospectively": 128
+            "early_scaffolding_matured": 18,
+            "unclassified": 30,
+            "stable_good_prediction": 2,
+            "retrospective_gain_not_seen_prospectively": 16
           },
-          "meanAbsDrift": 56.682,
+          "meanAbsDrift": 56.716,
           "topClasses": [
             {
               "class": "unclassified",
-              "count": 240
+              "count": 30
             },
             {
               "class": "early_scaffolding_matured",
-              "count": 144
+              "count": 18
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 128
+              "count": 16
             },
             {
               "class": "stable_good_prediction",
-              "count": 16
+              "count": 2
             }
           ]
         },
         "stax": {
-          "forges": 8,
-          "picks": 512,
-          "disagreements": 48,
+          "forges": 1,
+          "picks": 64,
+          "disagreements": 6,
           "byClass": {
-            "early_scaffolding_matured": 256,
-            "unclassified": 208,
-            "retrospective_gain_not_seen_prospectively": 32,
-            "downstream_repair_invalidated_pick": 16
+            "early_scaffolding_matured": 32,
+            "unclassified": 26,
+            "retrospective_gain_not_seen_prospectively": 4,
+            "downstream_repair_invalidated_pick": 2
           },
           "meanAbsDrift": 29.962,
           "topClasses": [
             {
               "class": "early_scaffolding_matured",
-              "count": 256
-            },
-            {
-              "class": "unclassified",
-              "count": 208
-            },
-            {
-              "class": "retrospective_gain_not_seen_prospectively",
               "count": 32
             },
             {
+              "class": "unclassified",
+              "count": 26
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 4
+            },
+            {
               "class": "downstream_repair_invalidated_pick",
-              "count": 16
+              "count": 2
             }
           ]
         },
         "combo": {
-          "forges": 8,
-          "picks": 520,
-          "disagreements": 144,
+          "forges": 1,
+          "picks": 65,
+          "disagreements": 18,
           "byClass": {
-            "early_scaffolding_matured": 168,
-            "unclassified": 208,
-            "final_weak_justification": 32,
-            "retrospective_gain_not_seen_prospectively": 88,
-            "downstream_repair_invalidated_pick": 24
+            "early_scaffolding_matured": 21,
+            "unclassified": 26,
+            "final_weak_justification": 4,
+            "retrospective_gain_not_seen_prospectively": 11,
+            "downstream_repair_invalidated_pick": 3
           },
           "meanAbsDrift": 32.657,
           "topClasses": [
             {
               "class": "unclassified",
-              "count": 208
+              "count": 26
             },
             {
               "class": "early_scaffolding_matured",
-              "count": 168
+              "count": 21
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 88
+              "count": 11
             },
             {
               "class": "final_weak_justification",
-              "count": 32
+              "count": 4
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 24
+              "count": 3
             }
           ]
         },
         "multi_direction": {
-          "forges": 8,
-          "picks": 520,
-          "disagreements": 152,
+          "forges": 1,
+          "picks": 65,
+          "disagreements": 19,
           "byClass": {
-            "early_scaffolding_matured": 280,
-            "unclassified": 80,
-            "stable_good_prediction": 8,
-            "retrospective_gain_not_seen_prospectively": 112,
-            "downstream_repair_invalidated_pick": 40
+            "early_scaffolding_matured": 35,
+            "unclassified": 10,
+            "stable_good_prediction": 1,
+            "retrospective_gain_not_seen_prospectively": 14,
+            "downstream_repair_invalidated_pick": 5
           },
           "meanAbsDrift": 49.829,
           "topClasses": [
             {
               "class": "early_scaffolding_matured",
-              "count": 280
+              "count": 35
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 112
+              "count": 14
             },
             {
               "class": "unclassified",
-              "count": 80
+              "count": 10
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 40
+              "count": 5
             },
             {
               "class": "stable_good_prediction",
-              "count": 8
+              "count": 1
             }
           ]
         }
@@ -661,44 +662,44 @@ Brain v1 remains the default/control. Exp001 is **not** promoted automatically.
     },
     "weakSlotAggregate": {
       "version": "weak-slot-forensics-v1",
-      "weakSlotCount": 248,
+      "weakSlotCount": 31,
       "causalClassCounts": {
-        "became_weak_downstream": 144,
-        "weak_at_selection": 104
+        "became_weak_downstream": 18,
+        "weak_at_selection": 13
       },
       "sourceCounts": {
-        "live_fill": 248
+        "live_fill": 31
       },
       "phaseCounts": {
-        "foundation": 200,
-        "development": 48
+        "foundation": 25,
+        "development": 6
       },
-      "avoidableCount": 16,
-      "constraintForcedCount": 200,
-      "lowCandidateDepthCount": 200,
+      "avoidableCount": 2,
+      "constraintForcedCount": 25,
+      "lowCandidateDepthCount": 25,
       "meanCandidateDepth": 1.419,
       "highestImpactCausalClass": "became_weak_downstream"
     },
     "controlMetrics": {
-      "final_weak_justification": 144,
-      "later_package_oversupply": 258,
-      "invalidated_by_later_decisions": 705,
-      "genuine_bad_belief": 56,
-      "beneficial_emergence": 1169,
-      "early_scaffolding_matured": 2701,
-      "unclassified": 1968,
-      "ledger_weak_slots": 248,
-      "avoidable_weak_slots": 16,
-      "constraint_forced_weak_slots": 200,
+      "final_weak_justification": 18,
+      "later_package_oversupply": 33,
+      "invalidated_by_later_decisions": 89,
+      "genuine_bad_belief": 7,
+      "beneficial_emergence": 146,
+      "early_scaffolding_matured": 337,
+      "unclassified": 246,
+      "ledger_weak_slots": 31,
+      "avoidable_weak_slots": 2,
+      "constraint_forced_weak_slots": 25,
       "hard_failure_runs": 0
     },
     "controlRates": {
       "final_weak_justification": 1.385,
-      "later_package_oversupply": 2.481,
-      "invalidated_by_later_decisions": 6.779,
+      "later_package_oversupply": 2.538,
+      "invalidated_by_later_decisions": 6.846,
       "genuine_bad_belief": 0.538,
-      "beneficial_emergence": 11.24,
-      "early_scaffolding_matured": 25.971,
+      "beneficial_emergence": 11.231,
+      "early_scaffolding_matured": 25.923,
       "unclassified": 18.923,
       "ledger_weak_slots": 2.385,
       "avoidable_weak_slots": 0.154,
@@ -707,89 +708,89 @@ Brain v1 remains the default/control. Exp001 is **not** promoted automatically.
     },
     "byArchetype": {
       "aura_voltron": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
         "weakSlots": 0,
         "avoidableWeak": 0,
         "constraintForcedWeak": 0,
-        "cleanupApplied": 8
+        "cleanupApplied": 1
       },
       "equipment_voltron": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
-        "weakSlots": 32,
+        "weakSlots": 4,
         "avoidableWeak": 0,
         "constraintForcedWeak": 0,
-        "cleanupApplied": 8
+        "cleanupApplied": 1
       },
       "typal": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
         "weakSlots": 0,
         "avoidableWeak": 0,
         "constraintForcedWeak": 0,
-        "cleanupApplied": 8
+        "cleanupApplied": 1
       },
       "tokens": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
-        "weakSlots": 64,
+        "weakSlots": 8,
         "avoidableWeak": 0,
-        "constraintForcedWeak": 64,
+        "constraintForcedWeak": 8,
         "cleanupApplied": 0
       },
       "aristocrats": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
-        "weakSlots": 16,
-        "avoidableWeak": 16,
+        "weakSlots": 2,
+        "avoidableWeak": 2,
         "constraintForcedWeak": 0,
-        "cleanupApplied": 8
+        "cleanupApplied": 1
       },
       "reanimator": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
-        "weakSlots": 16,
+        "weakSlots": 2,
         "avoidableWeak": 0,
-        "constraintForcedWeak": 16,
-        "cleanupApplied": 8
+        "constraintForcedWeak": 2,
+        "cleanupApplied": 1
       },
       "spellslinger": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
         "weakSlots": 0,
         "avoidableWeak": 0,
         "constraintForcedWeak": 0,
-        "cleanupApplied": 8
+        "cleanupApplied": 1
       },
       "landfall": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
-        "weakSlots": 16,
+        "weakSlots": 2,
         "avoidableWeak": 0,
-        "constraintForcedWeak": 16,
-        "cleanupApplied": 8
+        "constraintForcedWeak": 2,
+        "cleanupApplied": 1
       },
       "blink": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
-        "weakSlots": 48,
+        "weakSlots": 6,
         "avoidableWeak": 0,
-        "constraintForcedWeak": 48,
-        "cleanupApplied": 8
+        "constraintForcedWeak": 6,
+        "cleanupApplied": 1
       },
       "artifacts": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
         "weakSlots": 0,
         "avoidableWeak": 0,
@@ -797,156 +798,95 @@ Brain v1 remains the default/control. Exp001 is **not** promoted automatically.
         "cleanupApplied": 0
       },
       "stax": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
         "weakSlots": 0,
         "avoidableWeak": 0,
         "constraintForcedWeak": 0,
-        "cleanupApplied": 8
+        "cleanupApplied": 1
       },
       "combo": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
-        "weakSlots": 56,
+        "weakSlots": 7,
         "avoidableWeak": 0,
-        "constraintForcedWeak": 56,
-        "cleanupApplied": 8
+        "constraintForcedWeak": 7,
+        "cleanupApplied": 1
       },
       "multi_direction": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
         "weakSlots": 0,
         "avoidableWeak": 0,
         "constraintForcedWeak": 0,
-        "cleanupApplied": 8
+        "cleanupApplied": 1
       }
     },
     "topDriftClasses": [
       {
         "key": "early_scaffolding_matured",
-        "count": 2701
+        "count": 337
       },
       {
         "key": "unclassified",
-        "count": 1968
+        "count": 246
       },
       {
         "key": "retrospective_gain_not_seen_prospectively",
-        "count": 1169
+        "count": 146
       },
       {
         "key": "downstream_repair_invalidated_pick",
-        "count": 416
+        "count": 52
       },
       {
         "key": "later_package_oversupply",
-        "count": 258
+        "count": 33
       },
       {
         "key": "final_weak_justification",
-        "count": 144
+        "count": 18
       },
       {
         "key": "stable_good_prediction",
-        "count": 72
+        "count": 9
       },
       {
         "key": "curve_need_disappeared",
-        "count": 48
+        "count": 6
       },
       {
         "key": "unsupported_anchor_emerged",
-        "count": 16
+        "count": 2
       }
     ],
     "topWeakCausalClasses": [
       {
         "key": "became_weak_downstream",
-        "count": 144
+        "count": 18
       },
       {
         "key": "weak_at_selection",
-        "count": 104
+        "count": 13
       }
     ],
     "topWeakSources": [
       {
         "key": "live_fill",
-        "count": 248
+        "count": 31
       }
     ],
-    "meanRuntimeMs": 2155.24
+    "meanRuntimeMs": 4481.846
   },
   "comparison": {
-    "compared": true,
-    "normalized": true,
+    "compared": false,
+    "normalized": false,
     "regressions": [],
     "improvements": [],
-    "deltas": {
-      "hard_failure_runs": {
-        "before": 0,
-        "after": 0,
-        "delta": 0,
-        "unit": "per_forge"
-      },
-      "ledger_weak_slots": {
-        "before": 2.385,
-        "after": 2.385,
-        "delta": 0,
-        "unit": "per_forge"
-      },
-      "avoidable_weak_slots": {
-        "before": 0.154,
-        "after": 0.154,
-        "delta": 0,
-        "unit": "per_forge"
-      },
-      "final_weak_justification": {
-        "before": 1.385,
-        "after": 1.385,
-        "delta": 0,
-        "unit": "per_forge"
-      },
-      "later_package_oversupply": {
-        "before": 2.481,
-        "after": 2.481,
-        "delta": 0,
-        "unit": "per_forge"
-      },
-      "genuine_bad_belief": {
-        "before": 0.538,
-        "after": 0.538,
-        "delta": 0,
-        "unit": "per_forge"
-      },
-      "beneficial_emergence": {
-        "before": 11.24,
-        "after": 11.24,
-        "delta": 0,
-        "unit": "per_forge"
-      },
-      "constraint_forced_weak_slots": {
-        "before": 1.923,
-        "after": 1.923,
-        "delta": 0,
-        "unit": "per_forge"
-      },
-      "invalidated_by_later_decisions": {
-        "before": 6.779,
-        "after": 6.779,
-        "delta": 0,
-        "unit": "per_forge"
-      },
-      "unclassified": {
-        "before": 18.923,
-        "after": 18.923,
-        "delta": 0,
-        "unit": "per_forge"
-      }
-    }
+    "deltas": {}
   }
 }
 ```
@@ -955,13 +895,13 @@ Brain v1 remains the default/control. Exp001 is **not** promoted automatically.
 {
   "aggregate": {
     "version": "validation-harness-v1",
-    "runCount": 104,
-    "passCount": 104,
+    "runCount": 13,
+    "passCount": 13,
     "hardFailureRunCount": 0,
     "passRate": 1,
     "tortureAggregate": {
-      "total": 104,
-      "passed": 104,
+      "total": 13,
+      "passed": 13,
       "failed": 0,
       "byArchetype": {
         "aura_voltron": "PARTIAL",
@@ -979,599 +919,599 @@ Brain v1 remains the default/control. Exp001 is **not** promoted automatically.
         "multi_direction": "PARTIAL"
       },
       "failureClassCounts": {
-        "interaction_graph_failure": 72
+        "interaction_graph_failure": 9
       },
       "runtime": {
-        "medianMs": 1975,
-        "p95Ms": 4558,
+        "medianMs": 3564,
+        "p95Ms": 8723,
         "slowest": [
           {
+            "id": "aristocrats",
+            "ms": 8723
+          },
+          {
             "id": "spellslinger",
-            "ms": 5236
+            "ms": 7287
           },
           {
-            "id": "aristocrats",
-            "ms": 5135
+            "id": "equipment-voltron",
+            "ms": 4584
           },
           {
-            "id": "aristocrats",
-            "ms": 4869
+            "id": "blink-etb",
+            "ms": 4229
           },
           {
-            "id": "aristocrats",
-            "ms": 4816
-          },
-          {
-            "id": "aristocrats",
-            "ms": 4652
+            "id": "pearl-ear-auras",
+            "ms": 4077
           }
         ]
       }
     },
     "selfEvaluationAggregate": {
       "version": "self-evaluation-aggregate-v1",
-      "forgeCount": 104,
-      "totalTracedPicks": 6792,
-      "totalMeaningfulDisagreements": 2058,
+      "forgeCount": 13,
+      "totalTracedPicks": 849,
+      "totalMeaningfulDisagreements": 258,
       "driftClassCounts": {
-        "early_scaffolding_matured": 2686,
-        "downstream_repair_invalidated_pick": 416,
-        "later_package_oversupply": 284,
-        "curve_need_disappeared": 55,
-        "unclassified": 1984,
-        "stable_good_prediction": 64,
-        "retrospective_gain_not_seen_prospectively": 1136,
-        "final_weak_justification": 144,
-        "became_redundant": 8,
-        "unsupported_anchor_emerged": 15
+        "early_scaffolding_matured": 335,
+        "downstream_repair_invalidated_pick": 52,
+        "later_package_oversupply": 36,
+        "curve_need_disappeared": 7,
+        "unclassified": 248,
+        "stable_good_prediction": 8,
+        "retrospective_gain_not_seen_prospectively": 142,
+        "final_weak_justification": 18,
+        "became_redundant": 1,
+        "unsupported_anchor_emerged": 2
       },
       "driftByPhase": {
         "foundation": {
-          "count": 4912,
-          "meanAbsDrift": 44.655
+          "count": 614,
+          "meanAbsDrift": 44.626
         },
         "development": {
-          "count": 1880,
-          "meanAbsDrift": 55.574
+          "count": 235,
+          "meanAbsDrift": 55.568
         }
       },
       "driftByPackage": {
         "auras": {
-          "count": 1040,
-          "disagreements": 992
+          "count": 130,
+          "disagreements": 124
         },
         "equipment": {
-          "count": 520,
-          "disagreements": 456
+          "count": 65,
+          "disagreements": 57
         },
         "typal": {
-          "count": 520,
-          "disagreements": 504
+          "count": 65,
+          "disagreements": 63
         },
         "tokens": {
-          "count": 1584,
-          "disagreements": 1408
+          "count": 198,
+          "disagreements": 176
         },
         "aristocrats": {
-          "count": 528,
-          "disagreements": 480
+          "count": 66,
+          "disagreements": 60
         },
         "reanimator": {
-          "count": 512,
-          "disagreements": 472
+          "count": 64,
+          "disagreements": 59
         },
         "spellslinger": {
-          "count": 528,
-          "disagreements": 497
+          "count": 66,
+          "disagreements": 62
         },
         "landfall": {
-          "count": 528,
-          "disagreements": 472
+          "count": 66,
+          "disagreements": 59
         },
         "blink": {
-          "count": 528,
-          "disagreements": 504
+          "count": 66,
+          "disagreements": 63
         },
         "stax": {
-          "count": 512,
-          "disagreements": 464
+          "count": 64,
+          "disagreements": 58
         }
       },
       "controlCaseCounts": {
-        "early_scaffolding_matured": 2686,
-        "invalidated_by_later_decisions": 745,
-        "ambiguous": 2105,
-        "stable": 64,
-        "beneficial_emergence": 1136,
-        "genuine_bad_belief": 56
+        "early_scaffolding_matured": 335,
+        "invalidated_by_later_decisions": 94,
+        "ambiguous": 263,
+        "stable": 8,
+        "beneficial_emergence": 142,
+        "genuine_bad_belief": 7
       },
-      "meanPredictionError": 32.213,
-      "meanAbsPredictionError": 47.677,
+      "meanPredictionError": 32.19,
+      "meanAbsPredictionError": 47.655,
       "topRecurrentDisagreementClasses": [
         {
           "class": "early_scaffolding_matured",
-          "count": 2686
+          "count": 335
         },
         {
           "class": "unclassified",
-          "count": 1984
+          "count": 248
         },
         {
           "class": "retrospective_gain_not_seen_prospectively",
-          "count": 1136
+          "count": 142
         },
         {
           "class": "downstream_repair_invalidated_pick",
-          "count": 416
+          "count": 52
         },
         {
           "class": "later_package_oversupply",
-          "count": 284
+          "count": 36
         },
         {
           "class": "final_weak_justification",
-          "count": 144
+          "count": 18
         },
         {
           "class": "curve_need_disappeared",
-          "count": 55
+          "count": 7
         },
         {
           "class": "unsupported_anchor_emerged",
-          "count": 15
+          "count": 2
         },
         {
           "class": "became_redundant",
-          "count": 8
+          "count": 1
         }
       ],
       "byArchetype": {
         "aura_voltron": {
-          "forges": 8,
-          "picks": 520,
-          "disagreements": 175,
+          "forges": 1,
+          "picks": 65,
+          "disagreements": 22,
           "byClass": {
-            "early_scaffolding_matured": 289,
-            "downstream_repair_invalidated_pick": 48,
-            "later_package_oversupply": 8,
-            "curve_need_disappeared": 7,
-            "unclassified": 48,
-            "stable_good_prediction": 8,
-            "retrospective_gain_not_seen_prospectively": 112
+            "early_scaffolding_matured": 36,
+            "downstream_repair_invalidated_pick": 6,
+            "later_package_oversupply": 1,
+            "curve_need_disappeared": 1,
+            "unclassified": 6,
+            "stable_good_prediction": 1,
+            "retrospective_gain_not_seen_prospectively": 14
           },
           "meanAbsDrift": 61.38,
           "topClasses": [
             {
               "class": "early_scaffolding_matured",
-              "count": 289
+              "count": 36
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 112
+              "count": 14
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 48
+              "count": 6
             },
             {
               "class": "unclassified",
-              "count": 48
+              "count": 6
             },
             {
-              "class": "later_package_oversupply",
-              "count": 8
+              "class": "curve_need_disappeared",
+              "count": 1
             }
           ]
         },
         "equipment_voltron": {
-          "forges": 8,
-          "picks": 520,
-          "disagreements": 144,
+          "forges": 1,
+          "picks": 65,
+          "disagreements": 18,
           "byClass": {
-            "early_scaffolding_matured": 208,
-            "unclassified": 168,
-            "retrospective_gain_not_seen_prospectively": 80,
-            "downstream_repair_invalidated_pick": 32,
-            "final_weak_justification": 32
+            "early_scaffolding_matured": 26,
+            "unclassified": 21,
+            "retrospective_gain_not_seen_prospectively": 10,
+            "downstream_repair_invalidated_pick": 4,
+            "final_weak_justification": 4
           },
           "meanAbsDrift": 31.068,
           "topClasses": [
             {
               "class": "early_scaffolding_matured",
-              "count": 208
+              "count": 26
             },
             {
               "class": "unclassified",
-              "count": 168
+              "count": 21
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 80
+              "count": 10
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 32
+              "count": 4
             },
             {
               "class": "final_weak_justification",
-              "count": 32
+              "count": 4
             }
           ]
         },
         "typal": {
-          "forges": 8,
-          "picks": 520,
-          "disagreements": 128,
+          "forges": 1,
+          "picks": 65,
+          "disagreements": 16,
           "byClass": {
-            "early_scaffolding_matured": 232,
-            "unclassified": 160,
-            "retrospective_gain_not_seen_prospectively": 96,
-            "downstream_repair_invalidated_pick": 32
+            "early_scaffolding_matured": 29,
+            "unclassified": 20,
+            "retrospective_gain_not_seen_prospectively": 12,
+            "downstream_repair_invalidated_pick": 4
           },
           "meanAbsDrift": 50.701,
           "topClasses": [
             {
               "class": "early_scaffolding_matured",
-              "count": 232
+              "count": 29
             },
             {
               "class": "unclassified",
-              "count": 160
+              "count": 20
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 96
+              "count": 12
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 32
+              "count": 4
             }
           ]
         },
         "tokens": {
-          "forges": 8,
-          "picks": 528,
-          "disagreements": 144,
+          "forges": 1,
+          "picks": 66,
+          "disagreements": 18,
           "byClass": {
-            "early_scaffolding_matured": 144,
-            "later_package_oversupply": 48,
-            "unclassified": 224,
-            "stable_good_prediction": 16,
-            "retrospective_gain_not_seen_prospectively": 56,
-            "final_weak_justification": 40
+            "early_scaffolding_matured": 18,
+            "later_package_oversupply": 6,
+            "unclassified": 28,
+            "stable_good_prediction": 2,
+            "retrospective_gain_not_seen_prospectively": 7,
+            "final_weak_justification": 5
           },
           "meanAbsDrift": 43.43,
           "topClasses": [
             {
               "class": "unclassified",
-              "count": 224
+              "count": 28
             },
             {
               "class": "early_scaffolding_matured",
-              "count": 144
+              "count": 18
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 56
+              "count": 7
             },
             {
               "class": "later_package_oversupply",
-              "count": 48
+              "count": 6
             },
             {
               "class": "final_weak_justification",
-              "count": 40
+              "count": 5
             }
           ]
         },
         "aristocrats": {
-          "forges": 8,
-          "picks": 528,
-          "disagreements": 192,
+          "forges": 1,
+          "picks": 66,
+          "disagreements": 24,
           "byClass": {
-            "early_scaffolding_matured": 224,
-            "later_package_oversupply": 16,
-            "unclassified": 112,
-            "became_redundant": 8,
-            "retrospective_gain_not_seen_prospectively": 112,
-            "downstream_repair_invalidated_pick": 48,
-            "final_weak_justification": 8
+            "early_scaffolding_matured": 28,
+            "later_package_oversupply": 2,
+            "unclassified": 14,
+            "became_redundant": 1,
+            "retrospective_gain_not_seen_prospectively": 14,
+            "downstream_repair_invalidated_pick": 6,
+            "final_weak_justification": 1
           },
           "meanAbsDrift": 53.318,
           "topClasses": [
             {
               "class": "early_scaffolding_matured",
-              "count": 224
+              "count": 28
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 112
+              "count": 14
             },
             {
               "class": "unclassified",
-              "count": 112
+              "count": 14
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 48
+              "count": 6
             },
             {
               "class": "later_package_oversupply",
-              "count": 16
+              "count": 2
             }
           ]
         },
         "reanimator": {
-          "forges": 8,
-          "picks": 512,
-          "disagreements": 216,
+          "forges": 1,
+          "picks": 64,
+          "disagreements": 27,
           "byClass": {
-            "early_scaffolding_matured": 128,
-            "later_package_oversupply": 64,
-            "unclassified": 168,
-            "downstream_repair_invalidated_pick": 32,
-            "final_weak_justification": 16,
-            "retrospective_gain_not_seen_prospectively": 96,
-            "unsupported_anchor_emerged": 8
+            "early_scaffolding_matured": 16,
+            "later_package_oversupply": 8,
+            "unclassified": 21,
+            "downstream_repair_invalidated_pick": 4,
+            "final_weak_justification": 2,
+            "retrospective_gain_not_seen_prospectively": 12,
+            "unsupported_anchor_emerged": 1
           },
           "meanAbsDrift": 50.056,
           "topClasses": [
             {
               "class": "unclassified",
-              "count": 168
+              "count": 21
             },
             {
               "class": "early_scaffolding_matured",
-              "count": 128
+              "count": 16
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 96
+              "count": 12
             },
             {
               "class": "later_package_oversupply",
-              "count": 64
+              "count": 8
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 32
+              "count": 4
             }
           ]
         },
         "spellslinger": {
-          "forges": 8,
-          "picks": 528,
-          "disagreements": 395,
+          "forges": 1,
+          "picks": 66,
+          "disagreements": 50,
           "byClass": {
-            "early_scaffolding_matured": 133,
-            "later_package_oversupply": 148,
-            "curve_need_disappeared": 48,
-            "unsupported_anchor_emerged": 7,
-            "retrospective_gain_not_seen_prospectively": 144,
-            "downstream_repair_invalidated_pick": 48
+            "early_scaffolding_matured": 16,
+            "later_package_oversupply": 19,
+            "curve_need_disappeared": 6,
+            "unsupported_anchor_emerged": 1,
+            "retrospective_gain_not_seen_prospectively": 18,
+            "downstream_repair_invalidated_pick": 6
           },
-          "meanAbsDrift": 63.549,
+          "meanAbsDrift": 63.222,
           "topClasses": [
             {
               "class": "later_package_oversupply",
-              "count": 148
+              "count": 19
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 144
+              "count": 18
             },
             {
               "class": "early_scaffolding_matured",
-              "count": 133
+              "count": 16
             },
             {
               "class": "curve_need_disappeared",
-              "count": 48
+              "count": 6
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 48
+              "count": 6
             }
           ]
         },
         "landfall": {
-          "forges": 8,
-          "picks": 528,
-          "disagreements": 120,
+          "forges": 1,
+          "picks": 66,
+          "disagreements": 15,
           "byClass": {
-            "early_scaffolding_matured": 248,
-            "unclassified": 152,
-            "stable_good_prediction": 8,
-            "retrospective_gain_not_seen_prospectively": 56,
-            "downstream_repair_invalidated_pick": 48,
-            "final_weak_justification": 16
+            "early_scaffolding_matured": 31,
+            "unclassified": 19,
+            "stable_good_prediction": 1,
+            "retrospective_gain_not_seen_prospectively": 7,
+            "downstream_repair_invalidated_pick": 6,
+            "final_weak_justification": 2
           },
           "meanAbsDrift": 55.276,
           "topClasses": [
             {
               "class": "early_scaffolding_matured",
-              "count": 248
+              "count": 31
             },
             {
               "class": "unclassified",
-              "count": 152
+              "count": 19
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 56
+              "count": 7
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 48
+              "count": 6
             },
             {
               "class": "final_weak_justification",
-              "count": 16
+              "count": 2
             }
           ]
         },
         "blink": {
-          "forges": 8,
-          "picks": 528,
-          "disagreements": 72,
+          "forges": 1,
+          "picks": 66,
+          "disagreements": 9,
           "byClass": {
-            "early_scaffolding_matured": 232,
-            "stable_good_prediction": 8,
-            "unclassified": 216,
-            "downstream_repair_invalidated_pick": 48,
-            "retrospective_gain_not_seen_prospectively": 24
+            "early_scaffolding_matured": 29,
+            "stable_good_prediction": 1,
+            "unclassified": 27,
+            "downstream_repair_invalidated_pick": 6,
+            "retrospective_gain_not_seen_prospectively": 3
           },
           "meanAbsDrift": 41.24,
           "topClasses": [
             {
               "class": "early_scaffolding_matured",
-              "count": 232
+              "count": 29
             },
             {
               "class": "unclassified",
-              "count": 216
+              "count": 27
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 48
+              "count": 6
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 24
+              "count": 3
             },
             {
               "class": "stable_good_prediction",
-              "count": 8
+              "count": 1
             }
           ]
         },
         "artifacts": {
-          "forges": 8,
-          "picks": 528,
-          "disagreements": 128,
+          "forges": 1,
+          "picks": 66,
+          "disagreements": 16,
           "byClass": {
-            "early_scaffolding_matured": 144,
-            "unclassified": 240,
-            "stable_good_prediction": 16,
-            "retrospective_gain_not_seen_prospectively": 128
+            "early_scaffolding_matured": 18,
+            "unclassified": 30,
+            "stable_good_prediction": 2,
+            "retrospective_gain_not_seen_prospectively": 16
           },
-          "meanAbsDrift": 56.682,
+          "meanAbsDrift": 56.716,
           "topClasses": [
             {
               "class": "unclassified",
-              "count": 240
+              "count": 30
             },
             {
               "class": "early_scaffolding_matured",
-              "count": 144
+              "count": 18
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 128
+              "count": 16
             },
             {
               "class": "stable_good_prediction",
-              "count": 16
+              "count": 2
             }
           ]
         },
         "stax": {
-          "forges": 8,
-          "picks": 512,
-          "disagreements": 48,
+          "forges": 1,
+          "picks": 64,
+          "disagreements": 6,
           "byClass": {
-            "early_scaffolding_matured": 256,
-            "unclassified": 208,
-            "retrospective_gain_not_seen_prospectively": 32,
-            "downstream_repair_invalidated_pick": 16
+            "early_scaffolding_matured": 32,
+            "unclassified": 26,
+            "retrospective_gain_not_seen_prospectively": 4,
+            "downstream_repair_invalidated_pick": 2
           },
           "meanAbsDrift": 29.962,
           "topClasses": [
             {
               "class": "early_scaffolding_matured",
-              "count": 256
-            },
-            {
-              "class": "unclassified",
-              "count": 208
-            },
-            {
-              "class": "retrospective_gain_not_seen_prospectively",
               "count": 32
             },
             {
+              "class": "unclassified",
+              "count": 26
+            },
+            {
+              "class": "retrospective_gain_not_seen_prospectively",
+              "count": 4
+            },
+            {
               "class": "downstream_repair_invalidated_pick",
-              "count": 16
+              "count": 2
             }
           ]
         },
         "combo": {
-          "forges": 8,
-          "picks": 520,
-          "disagreements": 144,
+          "forges": 1,
+          "picks": 65,
+          "disagreements": 18,
           "byClass": {
-            "early_scaffolding_matured": 168,
-            "unclassified": 208,
-            "final_weak_justification": 32,
-            "retrospective_gain_not_seen_prospectively": 88,
-            "downstream_repair_invalidated_pick": 24
+            "early_scaffolding_matured": 21,
+            "unclassified": 26,
+            "final_weak_justification": 4,
+            "retrospective_gain_not_seen_prospectively": 11,
+            "downstream_repair_invalidated_pick": 3
           },
           "meanAbsDrift": 32.657,
           "topClasses": [
             {
               "class": "unclassified",
-              "count": 208
+              "count": 26
             },
             {
               "class": "early_scaffolding_matured",
-              "count": 168
+              "count": 21
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 88
+              "count": 11
             },
             {
               "class": "final_weak_justification",
-              "count": 32
+              "count": 4
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 24
+              "count": 3
             }
           ]
         },
         "multi_direction": {
-          "forges": 8,
-          "picks": 520,
-          "disagreements": 152,
+          "forges": 1,
+          "picks": 65,
+          "disagreements": 19,
           "byClass": {
-            "early_scaffolding_matured": 280,
-            "unclassified": 80,
-            "stable_good_prediction": 8,
-            "retrospective_gain_not_seen_prospectively": 112,
-            "downstream_repair_invalidated_pick": 40
+            "early_scaffolding_matured": 35,
+            "unclassified": 10,
+            "stable_good_prediction": 1,
+            "retrospective_gain_not_seen_prospectively": 14,
+            "downstream_repair_invalidated_pick": 5
           },
           "meanAbsDrift": 49.829,
           "topClasses": [
             {
               "class": "early_scaffolding_matured",
-              "count": 280
+              "count": 35
             },
             {
               "class": "retrospective_gain_not_seen_prospectively",
-              "count": 112
+              "count": 14
             },
             {
               "class": "unclassified",
-              "count": 80
+              "count": 10
             },
             {
               "class": "downstream_repair_invalidated_pick",
-              "count": 40
+              "count": 5
             },
             {
               "class": "stable_good_prediction",
-              "count": 8
+              "count": 1
             }
           ]
         }
@@ -1579,44 +1519,44 @@ Brain v1 remains the default/control. Exp001 is **not** promoted automatically.
     },
     "weakSlotAggregate": {
       "version": "weak-slot-forensics-v1",
-      "weakSlotCount": 248,
+      "weakSlotCount": 31,
       "causalClassCounts": {
-        "became_weak_downstream": 144,
-        "weak_at_selection": 104
+        "became_weak_downstream": 18,
+        "weak_at_selection": 13
       },
       "sourceCounts": {
-        "live_fill": 248
+        "live_fill": 31
       },
       "phaseCounts": {
-        "foundation": 200,
-        "development": 48
+        "foundation": 25,
+        "development": 6
       },
-      "avoidableCount": 16,
-      "constraintForcedCount": 200,
-      "lowCandidateDepthCount": 200,
+      "avoidableCount": 2,
+      "constraintForcedCount": 25,
+      "lowCandidateDepthCount": 25,
       "meanCandidateDepth": 1.419,
       "highestImpactCausalClass": "became_weak_downstream"
     },
     "controlMetrics": {
-      "final_weak_justification": 144,
-      "later_package_oversupply": 284,
-      "invalidated_by_later_decisions": 745,
-      "genuine_bad_belief": 56,
-      "beneficial_emergence": 1136,
-      "early_scaffolding_matured": 2686,
-      "unclassified": 1984,
-      "ledger_weak_slots": 248,
-      "avoidable_weak_slots": 16,
-      "constraint_forced_weak_slots": 200,
+      "final_weak_justification": 18,
+      "later_package_oversupply": 36,
+      "invalidated_by_later_decisions": 94,
+      "genuine_bad_belief": 7,
+      "beneficial_emergence": 142,
+      "early_scaffolding_matured": 335,
+      "unclassified": 248,
+      "ledger_weak_slots": 31,
+      "avoidable_weak_slots": 2,
+      "constraint_forced_weak_slots": 25,
       "hard_failure_runs": 0
     },
     "controlRates": {
       "final_weak_justification": 1.385,
-      "later_package_oversupply": 2.731,
-      "invalidated_by_later_decisions": 7.163,
+      "later_package_oversupply": 2.769,
+      "invalidated_by_later_decisions": 7.231,
       "genuine_bad_belief": 0.538,
       "beneficial_emergence": 10.923,
-      "early_scaffolding_matured": 25.827,
+      "early_scaffolding_matured": 25.769,
       "unclassified": 19.077,
       "ledger_weak_slots": 2.385,
       "avoidable_weak_slots": 0.154,
@@ -1625,89 +1565,89 @@ Brain v1 remains the default/control. Exp001 is **not** promoted automatically.
     },
     "byArchetype": {
       "aura_voltron": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
         "weakSlots": 0,
         "avoidableWeak": 0,
         "constraintForcedWeak": 0,
-        "cleanupApplied": 8
+        "cleanupApplied": 1
       },
       "equipment_voltron": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
-        "weakSlots": 32,
+        "weakSlots": 4,
         "avoidableWeak": 0,
         "constraintForcedWeak": 0,
-        "cleanupApplied": 8
+        "cleanupApplied": 1
       },
       "typal": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
         "weakSlots": 0,
         "avoidableWeak": 0,
         "constraintForcedWeak": 0,
-        "cleanupApplied": 8
+        "cleanupApplied": 1
       },
       "tokens": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
-        "weakSlots": 64,
+        "weakSlots": 8,
         "avoidableWeak": 0,
-        "constraintForcedWeak": 64,
+        "constraintForcedWeak": 8,
         "cleanupApplied": 0
       },
       "aristocrats": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
-        "weakSlots": 16,
-        "avoidableWeak": 16,
+        "weakSlots": 2,
+        "avoidableWeak": 2,
         "constraintForcedWeak": 0,
-        "cleanupApplied": 8
+        "cleanupApplied": 1
       },
       "reanimator": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
-        "weakSlots": 16,
+        "weakSlots": 2,
         "avoidableWeak": 0,
-        "constraintForcedWeak": 16,
-        "cleanupApplied": 8
+        "constraintForcedWeak": 2,
+        "cleanupApplied": 1
       },
       "spellslinger": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
         "weakSlots": 0,
         "avoidableWeak": 0,
         "constraintForcedWeak": 0,
-        "cleanupApplied": 8
+        "cleanupApplied": 1
       },
       "landfall": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
-        "weakSlots": 16,
+        "weakSlots": 2,
         "avoidableWeak": 0,
-        "constraintForcedWeak": 16,
-        "cleanupApplied": 8
+        "constraintForcedWeak": 2,
+        "cleanupApplied": 1
       },
       "blink": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
-        "weakSlots": 48,
+        "weakSlots": 6,
         "avoidableWeak": 0,
-        "constraintForcedWeak": 48,
-        "cleanupApplied": 8
+        "constraintForcedWeak": 6,
+        "cleanupApplied": 1
       },
       "artifacts": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
         "weakSlots": 0,
         "avoidableWeak": 0,
@@ -1715,175 +1655,99 @@ Brain v1 remains the default/control. Exp001 is **not** promoted automatically.
         "cleanupApplied": 0
       },
       "stax": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
         "weakSlots": 0,
         "avoidableWeak": 0,
         "constraintForcedWeak": 0,
-        "cleanupApplied": 8
+        "cleanupApplied": 1
       },
       "combo": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
-        "weakSlots": 56,
+        "weakSlots": 7,
         "avoidableWeak": 0,
-        "constraintForcedWeak": 56,
-        "cleanupApplied": 8
+        "constraintForcedWeak": 7,
+        "cleanupApplied": 1
       },
       "multi_direction": {
-        "runs": 8,
-        "passes": 8,
+        "runs": 1,
+        "passes": 1,
         "hardFailureRuns": 0,
         "weakSlots": 0,
         "avoidableWeak": 0,
         "constraintForcedWeak": 0,
-        "cleanupApplied": 8
+        "cleanupApplied": 1
       }
     },
     "topDriftClasses": [
       {
         "key": "early_scaffolding_matured",
-        "count": 2686
+        "count": 335
       },
       {
         "key": "unclassified",
-        "count": 1984
+        "count": 248
       },
       {
         "key": "retrospective_gain_not_seen_prospectively",
-        "count": 1136
+        "count": 142
       },
       {
         "key": "downstream_repair_invalidated_pick",
-        "count": 416
+        "count": 52
       },
       {
         "key": "later_package_oversupply",
-        "count": 284
+        "count": 36
       },
       {
         "key": "final_weak_justification",
-        "count": 144
+        "count": 18
       },
       {
         "key": "stable_good_prediction",
-        "count": 64
+        "count": 8
       },
       {
         "key": "curve_need_disappeared",
-        "count": 55
+        "count": 7
       },
       {
         "key": "unsupported_anchor_emerged",
-        "count": 15
+        "count": 2
       },
       {
         "key": "became_redundant",
-        "count": 8
+        "count": 1
       }
     ],
     "topWeakCausalClasses": [
       {
         "key": "became_weak_downstream",
-        "count": 144
+        "count": 18
       },
       {
         "key": "weak_at_selection",
-        "count": 104
+        "count": 13
       }
     ],
     "topWeakSources": [
       {
         "key": "live_fill",
-        "count": 248
+        "count": 31
       }
     ],
-    "meanRuntimeMs": 2208.788
+    "meanRuntimeMs": 4024.231
   },
   "comparison": {
-    "compared": true,
-    "normalized": true,
-    "regressions": [
-      {
-        "metric": "beneficial_emergence",
-        "before": 11.24,
-        "after": 10.923,
-        "delta": -0.317,
-        "note": "per-forge rate collapsed (bad)"
-      },
-      {
-        "metric": "later_package_oversupply",
-        "before": 2.481,
-        "after": 2.731,
-        "delta": 0.25,
-        "note": "per-forge rate increased (bad)"
-      }
-    ],
+    "compared": false,
+    "normalized": false,
+    "regressions": [],
     "improvements": [],
-    "deltas": {
-      "hard_failure_runs": {
-        "before": 0,
-        "after": 0,
-        "delta": 0,
-        "unit": "per_forge"
-      },
-      "ledger_weak_slots": {
-        "before": 2.385,
-        "after": 2.385,
-        "delta": 0,
-        "unit": "per_forge"
-      },
-      "avoidable_weak_slots": {
-        "before": 0.154,
-        "after": 0.154,
-        "delta": 0,
-        "unit": "per_forge"
-      },
-      "final_weak_justification": {
-        "before": 1.385,
-        "after": 1.385,
-        "delta": 0,
-        "unit": "per_forge"
-      },
-      "later_package_oversupply": {
-        "before": 2.481,
-        "after": 2.731,
-        "delta": 0.25,
-        "unit": "per_forge"
-      },
-      "genuine_bad_belief": {
-        "before": 0.538,
-        "after": 0.538,
-        "delta": 0,
-        "unit": "per_forge"
-      },
-      "beneficial_emergence": {
-        "before": 11.24,
-        "after": 10.923,
-        "delta": -0.317,
-        "unit": "per_forge"
-      },
-      "constraint_forced_weak_slots": {
-        "before": 1.923,
-        "after": 1.923,
-        "delta": 0,
-        "unit": "per_forge"
-      },
-      "invalidated_by_later_decisions": {
-        "before": 6.779,
-        "after": 7.163,
-        "delta": 0.384,
-        "unit": "per_forge"
-      },
-      "unclassified": {
-        "before": 18.923,
-        "after": 19.077,
-        "delta": 0.154,
-        "unit": "per_forge"
-      }
-    }
+    "deltas": {}
   }
 }
 ```
@@ -2009,734 +1873,6 @@ Brain v1 remains the default/control. Exp001 is **not** promoted automatically.
       "avoidableWeakDelta": 0,
       "beneficialEmergenceDelta": 0,
       "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "pearl-ear-auras",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "equipment-voltron",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "ayula-typal",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "token-go-wide",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "aristocrats",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": -1,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "reanimator",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "spellslinger",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": -3,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "landfall",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "blink-etb",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "artifacts",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "stax",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "combo-partners",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "multiplan-commander",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "pearl-ear-auras",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "equipment-voltron",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "ayula-typal",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "token-go-wide",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "aristocrats",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": -1,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "reanimator",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "spellslinger",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": -3,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "landfall",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "blink-etb",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "artifacts",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "stax",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "combo-partners",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "multiplan-commander",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "pearl-ear-auras",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "equipment-voltron",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "ayula-typal",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "token-go-wide",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "aristocrats",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": -1,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "reanimator",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "spellslinger",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": -3,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "landfall",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "blink-etb",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "artifacts",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "stax",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "combo-partners",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "multiplan-commander",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "pearl-ear-auras",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "equipment-voltron",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "ayula-typal",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "token-go-wide",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "aristocrats",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": -1,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "reanimator",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "spellslinger",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": -3,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "landfall",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "blink-etb",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "artifacts",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "stax",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "combo-partners",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "multiplan-commander",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "pearl-ear-auras",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "equipment-voltron",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "ayula-typal",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "token-go-wide",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "aristocrats",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": -1,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "reanimator",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "spellslinger",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": -4,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "landfall",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "blink-etb",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "artifacts",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "stax",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "combo-partners",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "multiplan-commander",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "pearl-ear-auras",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "equipment-voltron",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "ayula-typal",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "token-go-wide",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "aristocrats",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": -1,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "reanimator",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "spellslinger",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": -3,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "landfall",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "blink-etb",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "artifacts",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "stax",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "combo-partners",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "multiplan-commander",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "pearl-ear-auras",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "equipment-voltron",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "ayula-typal",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "token-go-wide",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "aristocrats",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": -1,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "reanimator",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "spellslinger",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": -3,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "landfall",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "blink-etb",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "artifacts",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "stax",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "combo-partners",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
-    },
-    {
-      "fixtureId": "multiplan-commander",
-      "densityDelta": 0,
-      "interactionCountDelta": 0,
-      "avoidableWeakDelta": 0,
-      "beneficialEmergenceDelta": 0,
-      "unsupportedAnchorsDelta": 0
     }
   ]
 }
@@ -2757,182 +1893,136 @@ Brain v1 remains the default/control. Exp001 is **not** promoted automatically.
 
 ## Counterfactual picks
 ```json
-{
-  "fixtureId": "spellslinger",
-  "seed": 13,
-  "controlMetrics": {
-    "finalWeak": 0,
-    "avoidableWeak": 0,
-    "constraintForcedWeak": 0,
-    "beneficialEmergence": 21,
-    "genuineBadBelief": null,
-    "laterPackageOversupply": null,
-    "unsupportedAnchors": 6,
-    "cohesionPassed": true,
-    "interactionDensity": 0,
-    "interactionRoleCount": 18
-  },
-  "expMetrics": {
-    "finalWeak": 0,
-    "avoidableWeak": 0,
-    "constraintForcedWeak": 0,
-    "beneficialEmergence": 18,
-    "genuineBadBelief": null,
-    "laterPackageOversupply": null,
-    "unsupportedAnchors": 6,
-    "cohesionPassed": true,
-    "interactionDensity": 0,
-    "interactionRoleCount": 18
-  },
-  "picks": {
-    "cardsOnlyInControl": 1,
-    "cardsOnlyInExp": 1,
-    "overlap": 68,
-    "examples": [
-      {
-        "brainV1Card": "Spell Answer 7",
-        "exp001Card": "Spell Answer 8"
-      }
-    ]
-  }
-}
+null
 ```
 
 ## Runtime delta
-meanMs delta (exp - control): 0
+meanMs delta (exp - control): -457.6149999999993
 
 # MetaForge Validation Report
 
-Generated: 2026-08-10T19:12:56.190Z
-Mode: field-control
+Generated: 2026-08-13T01:53:25.287Z
+Mode: smoke-control
 Architecture frozen: yes
 
 ## Summary
-- Validation harness validation-report-v1: 104 forges, pass rate 100%.
+- Validation harness validation-report-v1: 13 forges, pass rate 100%.
 - Hard-failure runs: 0.
-- Ledger weak slots: 248 (avoidable 16, constraint-forced 200) — 2.385/forge.
-- SE per forge: weak-final 1.385, oversupply 2.481, genuine_bad 0.538, emergence 11.24.
+- Ledger weak slots: 31 (avoidable 2, constraint-forced 25) — 2.385/forge.
+- SE per forge: weak-final 1.385, oversupply 2.538, genuine_bad 0.538, emergence 11.231.
 - Next focus: pool_scarcity_and_real_corpora — Remaining weakness is mostly constraint-forced — synthetic pools may be the ceiling; field-test real lists next.
 
 ## Control metrics
-- final_weak_justification: 144 (1.385/forge)
-- later_package_oversupply: 258 (2.481/forge)
-- invalidated_by_later_decisions: 705 (6.779/forge)
-- genuine_bad_belief: 56 (0.538/forge)
-- beneficial_emergence: 1169 (11.24/forge)
-- early_scaffolding_matured: 2701 (25.971/forge)
-- unclassified: 1968 (18.923/forge)
-- ledger_weak_slots: 248 (2.385/forge)
-- avoidable_weak_slots: 16 (0.154/forge)
-- constraint_forced_weak_slots: 200 (1.923/forge)
+- final_weak_justification: 18 (1.385/forge)
+- later_package_oversupply: 33 (2.538/forge)
+- invalidated_by_later_decisions: 89 (6.846/forge)
+- genuine_bad_belief: 7 (0.538/forge)
+- beneficial_emergence: 146 (11.231/forge)
+- early_scaffolding_matured: 337 (25.923/forge)
+- unclassified: 246 (18.923/forge)
+- ledger_weak_slots: 31 (2.385/forge)
+- avoidable_weak_slots: 2 (0.154/forge)
+- constraint_forced_weak_slots: 25 (1.923/forge)
 - hard_failure_runs: 0 (0/forge)
 
 ## Top drift classes
-- early_scaffolding_matured: 2701
-- unclassified: 1968
-- retrospective_gain_not_seen_prospectively: 1169
-- downstream_repair_invalidated_pick: 416
-- later_package_oversupply: 258
-- final_weak_justification: 144
-- stable_good_prediction: 72
-- curve_need_disappeared: 48
-- unsupported_anchor_emerged: 16
+- early_scaffolding_matured: 337
+- unclassified: 246
+- retrospective_gain_not_seen_prospectively: 146
+- downstream_repair_invalidated_pick: 52
+- later_package_oversupply: 33
+- final_weak_justification: 18
+- stable_good_prediction: 9
+- curve_need_disappeared: 6
+- unsupported_anchor_emerged: 2
 
 ## Weak-slot causal / source
-- causal became_weak_downstream: 144
-- causal weak_at_selection: 104
-- source live_fill: 248
-
-## Baseline comparison (per-forge normalized)
-- No hard regressions flagged.
+- causal became_weak_downstream: 18
+- causal weak_at_selection: 13
+- source live_fill: 31
 
 ## Suggested next focus
 - **pool_scarcity_and_real_corpora**: Remaining weakness is mostly constraint-forced — synthetic pools may be the ceiling; field-test real lists next.
 - alternate taxonomy_expansion_for_unclassified: Only after concrete quality defects are quiet — expand drift taxonomy carefully.
 
 ## Archetype snapshot
-- aristocrats: runs=8 pass=8 weak=16 avoidable=16 forced=0
-- artifacts: runs=8 pass=8 weak=0 avoidable=0 forced=0
-- aura_voltron: runs=8 pass=8 weak=0 avoidable=0 forced=0
-- blink: runs=8 pass=8 weak=48 avoidable=0 forced=48
-- combo: runs=8 pass=8 weak=56 avoidable=0 forced=56
-- equipment_voltron: runs=8 pass=8 weak=32 avoidable=0 forced=0
-- landfall: runs=8 pass=8 weak=16 avoidable=0 forced=16
-- multi_direction: runs=8 pass=8 weak=0 avoidable=0 forced=0
-- reanimator: runs=8 pass=8 weak=16 avoidable=0 forced=16
-- spellslinger: runs=8 pass=8 weak=0 avoidable=0 forced=0
-- stax: runs=8 pass=8 weak=0 avoidable=0 forced=0
-- tokens: runs=8 pass=8 weak=64 avoidable=0 forced=64
-- typal: runs=8 pass=8 weak=0 avoidable=0 forced=0
+- aristocrats: runs=1 pass=1 weak=2 avoidable=2 forced=0
+- artifacts: runs=1 pass=1 weak=0 avoidable=0 forced=0
+- aura_voltron: runs=1 pass=1 weak=0 avoidable=0 forced=0
+- blink: runs=1 pass=1 weak=6 avoidable=0 forced=6
+- combo: runs=1 pass=1 weak=7 avoidable=0 forced=7
+- equipment_voltron: runs=1 pass=1 weak=4 avoidable=0 forced=0
+- landfall: runs=1 pass=1 weak=2 avoidable=0 forced=2
+- multi_direction: runs=1 pass=1 weak=0 avoidable=0 forced=0
+- reanimator: runs=1 pass=1 weak=2 avoidable=0 forced=2
+- spellslinger: runs=1 pass=1 weak=0 avoidable=0 forced=0
+- stax: runs=1 pass=1 weak=0 avoidable=0 forced=0
+- tokens: runs=1 pass=1 weak=8 avoidable=0 forced=8
+- typal: runs=1 pass=1 weak=0 avoidable=0 forced=0
 
 _This report does not authorize new planning layers. Evidence first._
 
 
 # MetaForge Validation Report
 
-Generated: 2026-08-10T19:12:56.192Z
-Mode: field-exp001
+Generated: 2026-08-13T01:53:25.289Z
+Mode: smoke-exp001
 Architecture frozen: yes
 
 ## Summary
-- Validation harness validation-report-v1: 104 forges, pass rate 100%.
+- Validation harness validation-report-v1: 13 forges, pass rate 100%.
 - Hard-failure runs: 0.
-- Ledger weak slots: 248 (avoidable 16, constraint-forced 200) — 2.385/forge.
-- SE per forge: weak-final 1.385, oversupply 2.731, genuine_bad 0.538, emergence 10.923.
-- Next focus: regression:beneficial_emergence — Baseline regression on beneficial_emergence (11.24 → 10.923 per forge).
+- Ledger weak slots: 31 (avoidable 2, constraint-forced 25) — 2.385/forge.
+- SE per forge: weak-final 1.385, oversupply 2.769, genuine_bad 0.538, emergence 10.923.
+- Next focus: pool_scarcity_and_real_corpora — Remaining weakness is mostly constraint-forced — synthetic pools may be the ceiling; field-test real lists next.
 
 ## Control metrics
-- final_weak_justification: 144 (1.385/forge)
-- later_package_oversupply: 284 (2.731/forge)
-- invalidated_by_later_decisions: 745 (7.163/forge)
-- genuine_bad_belief: 56 (0.538/forge)
-- beneficial_emergence: 1136 (10.923/forge)
-- early_scaffolding_matured: 2686 (25.827/forge)
-- unclassified: 1984 (19.077/forge)
-- ledger_weak_slots: 248 (2.385/forge)
-- avoidable_weak_slots: 16 (0.154/forge)
-- constraint_forced_weak_slots: 200 (1.923/forge)
+- final_weak_justification: 18 (1.385/forge)
+- later_package_oversupply: 36 (2.769/forge)
+- invalidated_by_later_decisions: 94 (7.231/forge)
+- genuine_bad_belief: 7 (0.538/forge)
+- beneficial_emergence: 142 (10.923/forge)
+- early_scaffolding_matured: 335 (25.769/forge)
+- unclassified: 248 (19.077/forge)
+- ledger_weak_slots: 31 (2.385/forge)
+- avoidable_weak_slots: 2 (0.154/forge)
+- constraint_forced_weak_slots: 25 (1.923/forge)
 - hard_failure_runs: 0 (0/forge)
 
 ## Top drift classes
-- early_scaffolding_matured: 2686
-- unclassified: 1984
-- retrospective_gain_not_seen_prospectively: 1136
-- downstream_repair_invalidated_pick: 416
-- later_package_oversupply: 284
-- final_weak_justification: 144
-- stable_good_prediction: 64
-- curve_need_disappeared: 55
-- unsupported_anchor_emerged: 15
-- became_redundant: 8
+- early_scaffolding_matured: 335
+- unclassified: 248
+- retrospective_gain_not_seen_prospectively: 142
+- downstream_repair_invalidated_pick: 52
+- later_package_oversupply: 36
+- final_weak_justification: 18
+- stable_good_prediction: 8
+- curve_need_disappeared: 7
+- unsupported_anchor_emerged: 2
+- became_redundant: 1
 
 ## Weak-slot causal / source
-- causal became_weak_downstream: 144
-- causal weak_at_selection: 104
-- source live_fill: 248
-
-## Baseline comparison (per-forge normalized)
-- REGRESSION beneficial_emergence: 11.24 → 10.923 (-0.317)
-- REGRESSION later_package_oversupply: 2.481 → 2.731 (0.25)
+- causal became_weak_downstream: 18
+- causal weak_at_selection: 13
+- source live_fill: 31
 
 ## Suggested next focus
-- **regression:beneficial_emergence**: Baseline regression on beneficial_emergence (11.24 → 10.923 per forge).
-- alternate pool_scarcity_and_real_corpora: Remaining weakness is mostly constraint-forced — synthetic pools may be the ceiling; field-test real lists next.
+- **pool_scarcity_and_real_corpora**: Remaining weakness is mostly constraint-forced — synthetic pools may be the ceiling; field-test real lists next.
 - alternate taxonomy_expansion_for_unclassified: Only after concrete quality defects are quiet — expand drift taxonomy carefully.
 
 ## Archetype snapshot
-- aristocrats: runs=8 pass=8 weak=16 avoidable=16 forced=0
-- artifacts: runs=8 pass=8 weak=0 avoidable=0 forced=0
-- aura_voltron: runs=8 pass=8 weak=0 avoidable=0 forced=0
-- blink: runs=8 pass=8 weak=48 avoidable=0 forced=48
-- combo: runs=8 pass=8 weak=56 avoidable=0 forced=56
-- equipment_voltron: runs=8 pass=8 weak=32 avoidable=0 forced=0
-- landfall: runs=8 pass=8 weak=16 avoidable=0 forced=16
-- multi_direction: runs=8 pass=8 weak=0 avoidable=0 forced=0
-- reanimator: runs=8 pass=8 weak=16 avoidable=0 forced=16
-- spellslinger: runs=8 pass=8 weak=0 avoidable=0 forced=0
-- stax: runs=8 pass=8 weak=0 avoidable=0 forced=0
-- tokens: runs=8 pass=8 weak=64 avoidable=0 forced=64
-- typal: runs=8 pass=8 weak=0 avoidable=0 forced=0
+- aristocrats: runs=1 pass=1 weak=2 avoidable=2 forced=0
+- artifacts: runs=1 pass=1 weak=0 avoidable=0 forced=0
+- aura_voltron: runs=1 pass=1 weak=0 avoidable=0 forced=0
+- blink: runs=1 pass=1 weak=6 avoidable=0 forced=6
+- combo: runs=1 pass=1 weak=7 avoidable=0 forced=7
+- equipment_voltron: runs=1 pass=1 weak=4 avoidable=0 forced=0
+- landfall: runs=1 pass=1 weak=2 avoidable=0 forced=2
+- multi_direction: runs=1 pass=1 weak=0 avoidable=0 forced=0
+- reanimator: runs=1 pass=1 weak=2 avoidable=0 forced=2
+- spellslinger: runs=1 pass=1 weak=0 avoidable=0 forced=0
+- stax: runs=1 pass=1 weak=0 avoidable=0 forced=0
+- tokens: runs=1 pass=1 weak=8 avoidable=0 forced=8
+- typal: runs=1 pass=1 weak=0 avoidable=0 forced=0
 
 _This report does not authorize new planning layers. Evidence first._

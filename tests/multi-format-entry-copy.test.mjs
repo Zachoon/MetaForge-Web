@@ -116,5 +116,5 @@ test("the Target Power Tier preference also stays Commander-format-only — conf
 test("the Review chamber's own heading, supporting copy, and Academy link are untouched", () => {
   assert.match(page, /"Paste the deck you want to improve\."/);
   assert.match(page, /"MetaForge keeps what works, checks the list, and suggests one clear change at a time\."/);
-  assert.match(page, /Not sure where to start\? Learn the most common Commander deckbuilding problems in the/);
+  assert.match(page, /browse the guides|Not sure what the problem is/i);
 });

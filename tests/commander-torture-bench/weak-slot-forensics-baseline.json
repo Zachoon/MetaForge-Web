@@ -1,47 +1,781 @@
 {
-  "generatedAt": "2026-08-10T14:06:11.889Z",
-  "note": "Diagnostic baseline for final_weak_justification BEFORE repairWeaklyJustifiedSlots — no production fix applied.",
+  "generatedAt": "2026-08-13T01:53:11.744Z",
+  "note": "Diagnostic baseline for final_weak_justification — no production fix applied yet.",
   "weakSlotAggregate": {
     "version": "weak-slot-forensics-v1",
-    "weakSlotCount": 82,
+    "weakSlotCount": 31,
     "causalClassCounts": {
-      "became_weak_downstream": 54,
-      "weak_at_selection": 27,
-      "ambiguous": 1
+      "became_weak_downstream": 18,
+      "weak_at_selection": 13
     },
     "sourceCounts": {
-      "live_fill": 82
+      "live_fill": 31
     },
     "phaseCounts": {
-      "foundation": 50,
-      "development": 32
+      "foundation": 25,
+      "development": 6
     },
-    "avoidableCount": 74,
-    "constraintForcedCount": 8,
-    "lowCandidateDepthCount": 8,
-    "meanCandidateDepth": 6.866,
+    "avoidableCount": 2,
+    "constraintForcedCount": 25,
+    "lowCandidateDepthCount": 25,
+    "meanCandidateDepth": 1.419,
     "highestImpactCausalClass": "became_weak_downstream"
   },
   "selfEvaluationControls": {
     "driftClassCounts": {
       "early_scaffolding_matured": 337,
-      "downstream_repair_invalidated_pick": 1,
+      "downstream_repair_invalidated_pick": 52,
       "later_package_oversupply": 33,
       "curve_need_disappeared": 6,
-      "unclassified": 261,
-      "final_weak_justification": 54,
+      "unclassified": 246,
       "stable_good_prediction": 9,
       "retrospective_gain_not_seen_prospectively": 146,
+      "final_weak_justification": 18,
       "unsupported_anchor_emerged": 2
     },
     "controlCaseCounts": {
       "early_scaffolding_matured": 337,
-      "invalidated_by_later_decisions": 38,
-      "ambiguous": 298,
-      "genuine_bad_belief": 21,
+      "invalidated_by_later_decisions": 89,
+      "ambiguous": 261,
       "stable": 9,
-      "beneficial_emergence": 146
+      "beneficial_emergence": 146,
+      "genuine_bad_belief": 7
     },
     "totalTracedPicks": 849
-  }
+  },
+  "byArchetype": [
+    {
+      "id": "pearl-ear-auras",
+      "archetype": "aura_voltron",
+      "runtimeMs": 4010,
+      "weakSlotCount": 0,
+      "aggregate": {
+        "version": "weak-slot-forensics-v1",
+        "weakSlotCount": 0,
+        "causalClassCounts": {},
+        "sourceCounts": {},
+        "phaseCounts": {},
+        "avoidableCount": 0,
+        "constraintForcedCount": 0,
+        "lowCandidateDepthCount": 0,
+        "meanCandidateDepth": null,
+        "highestImpactCausalClass": null
+      },
+      "records": []
+    },
+    {
+      "id": "equipment-voltron",
+      "archetype": "equipment_voltron",
+      "runtimeMs": 4715,
+      "weakSlotCount": 4,
+      "aggregate": {
+        "version": "weak-slot-forensics-v1",
+        "weakSlotCount": 4,
+        "causalClassCounts": {
+          "became_weak_downstream": 4
+        },
+        "sourceCounts": {
+          "live_fill": 4
+        },
+        "phaseCounts": {
+          "foundation": 4
+        },
+        "avoidableCount": 0,
+        "constraintForcedCount": 0,
+        "lowCandidateDepthCount": 0,
+        "meanCandidateDepth": 9,
+        "highestImpactCausalClass": "became_weak_downstream"
+      },
+      "records": [
+        {
+          "card": "Equip Threat 2",
+          "source": "live_fill",
+          "constructionPhase": "foundation",
+          "causalClass": "became_weak_downstream",
+          "avoidable": false,
+          "constraintForced": false,
+          "pickTimeProspectiveTotal": 34.3,
+          "pickTimeRawScore": 19.954,
+          "finalJustificationStrength": 12.5,
+          "bestAlternative": null,
+          "candidateDepth": 9,
+          "driftPrimaryClass": "final_weak_justification"
+        },
+        {
+          "card": "Equip Threat 4",
+          "source": "live_fill",
+          "constructionPhase": "foundation",
+          "causalClass": "became_weak_downstream",
+          "avoidable": false,
+          "constraintForced": false,
+          "pickTimeProspectiveTotal": 35.2,
+          "pickTimeRawScore": 22.834,
+          "finalJustificationStrength": 12.5,
+          "bestAlternative": null,
+          "candidateDepth": 9,
+          "driftPrimaryClass": "final_weak_justification"
+        },
+        {
+          "card": "Equip Threat 5",
+          "source": "live_fill",
+          "constructionPhase": "foundation",
+          "causalClass": "became_weak_downstream",
+          "avoidable": false,
+          "constraintForced": false,
+          "pickTimeProspectiveTotal": 32.2,
+          "pickTimeRawScore": 19.954,
+          "finalJustificationStrength": 12.5,
+          "bestAlternative": null,
+          "candidateDepth": 9,
+          "driftPrimaryClass": "final_weak_justification"
+        },
+        {
+          "card": "Equip Threat 7",
+          "source": "live_fill",
+          "constructionPhase": "foundation",
+          "causalClass": "became_weak_downstream",
+          "avoidable": false,
+          "constraintForced": false,
+          "pickTimeProspectiveTotal": 35.2,
+          "pickTimeRawScore": 22.834,
+          "finalJustificationStrength": 12.5,
+          "bestAlternative": null,
+          "candidateDepth": 9,
+          "driftPrimaryClass": "final_weak_justification"
+        }
+      ]
+    },
+    {
+      "id": "ayula-typal",
+      "archetype": "typal",
+      "runtimeMs": 2582,
+      "weakSlotCount": 0,
+      "aggregate": {
+        "version": "weak-slot-forensics-v1",
+        "weakSlotCount": 0,
+        "causalClassCounts": {},
+        "sourceCounts": {},
+        "phaseCounts": {},
+        "avoidableCount": 0,
+        "constraintForcedCount": 0,
+        "lowCandidateDepthCount": 0,
+        "meanCandidateDepth": null,
+        "highestImpactCausalClass": null
+      },
+      "records": []
+    },
+    {
+      "id": "token-go-wide",
+      "archetype": "tokens",
+      "runtimeMs": 2457,
+      "weakSlotCount": 8,
+      "aggregate": {
+        "version": "weak-slot-forensics-v1",
+        "weakSlotCount": 8,
+        "causalClassCounts": {
+          "weak_at_selection": 3,
+          "became_weak_downstream": 5
+        },
+        "sourceCounts": {
+          "live_fill": 8
+        },
+        "phaseCounts": {
+          "foundation": 8
+        },
+        "avoidableCount": 0,
+        "constraintForcedCount": 8,
+        "lowCandidateDepthCount": 8,
+        "meanCandidateDepth": 0,
+        "highestImpactCausalClass": "became_weak_downstream"
+      },
+      "records": [
+        {
+          "card": "Token Threat 0",
+          "source": "live_fill",
+          "constructionPhase": "foundation",
+          "causalClass": "weak_at_selection",
+          "avoidable": false,
+          "constraintForced": true,
+          "pickTimeProspectiveTotal": -97,
+          "pickTimeRawScore": 25.72,
+          "finalJustificationStrength": 5,
+          "bestAlternative": null,
+          "candidateDepth": 0,
+          "driftPrimaryClass": "unclassified"
+        },
+        {
+          "card": "Token Threat 1",
+          "source": "live_fill",
+          "constructionPhase": "foundation",
+          "causalClass": "became_weak_downstream",
+          "avoidable": false,
+          "constraintForced": true,
+          "pickTimeProspectiveTotal": 35.2,
+          "pickTimeRawScore": 22.84,
+          "finalJustificationStrength": 12.5,
+          "bestAlternative": null,
+          "candidateDepth": 0,
+          "driftPrimaryClass": "final_weak_justification"
+        },
+        {
+          "card": "Token Threat 2",
+          "source": "live_fill",
+          "constructionPhase": "foundation",
+          "causalClass": "became_weak_downstream",
+          "avoidable": false,
+          "constraintForced": true,
+          "pickTimeProspectiveTotal": 34.3,
+          "pickTimeRawScore": 19.96,
+          "finalJustificationStrength": 12.5,
+          "bestAlternative": null,
+          "candidateDepth": 0,
+          "driftPrimaryClass": "final_weak_justification"
+        },
+        {
+          "card": "Token Threat 3",
+          "source": "live_fill",
+          "constructionPhase": "foundation",
+          "causalClass": "weak_at_selection",
+          "avoidable": false,
+          "constraintForced": true,
+          "pickTimeProspectiveTotal": -98,
+          "pickTimeRawScore": 25.72,
+          "finalJustificationStrength": 5,
+          "bestAlternative": null,
+          "candidateDepth": 0,
+          "driftPrimaryClass": "unclassified"
+        },
+        {
+          "card": "Token Threat 4",
+          "source": "live_fill",
+          "constructionPhase": "foundation",
+          "causalClass": "became_weak_downstream",
+          "avoidable": false,
+          "constraintForced": true,
+          "pickTimeProspectiveTotal": 35.2,
+          "pickTimeRawScore": 22.84,
+          "finalJustificationStrength": 12.5,
+          "bestAlternative": null,
+          "candidateDepth": 0,
+          "driftPrimaryClass": "final_weak_justification"
+        },
+        {
+          "card": "Token Threat 5",
+          "source": "live_fill",
+          "constructionPhase": "foundation",
+          "causalClass": "became_weak_downstream",
+          "avoidable": false,
+          "constraintForced": true,
+          "pickTimeProspectiveTotal": 32.2,
+          "pickTimeRawScore": 19.96,
+          "finalJustificationStrength": 12.5,
+          "bestAlternative": null,
+          "candidateDepth": 0,
+          "driftPrimaryClass": "final_weak_justification"
+        },
+        {
+          "card": "Token Threat 6",
+          "source": "live_fill",
+          "constructionPhase": "foundation",
+          "causalClass": "weak_at_selection",
+          "avoidable": false,
+          "constraintForced": true,
+          "pickTimeProspectiveTotal": -99,
+          "pickTimeRawScore": 25.72,
+          "finalJustificationStrength": 5,
+          "bestAlternative": null,
+          "candidateDepth": 0,
+          "driftPrimaryClass": "unclassified"
+        },
+        {
+          "card": "Token Threat 7",
+          "source": "live_fill",
+          "constructionPhase": "foundation",
+          "causalClass": "became_weak_downstream",
+          "avoidable": false,
+          "constraintForced": true,
+          "pickTimeProspectiveTotal": 35.2,
+          "pickTimeRawScore": 22.84,
+          "finalJustificationStrength": 12.5,
+          "bestAlternative": null,
+          "candidateDepth": 0,
+          "driftPrimaryClass": "final_weak_justification"
+        }
+      ]
+    },
+    {
+      "id": "aristocrats",
+      "archetype": "aristocrats",
+      "runtimeMs": 8390,
+      "weakSlotCount": 2,
+      "aggregate": {
+        "version": "weak-slot-forensics-v1",
+        "weakSlotCount": 2,
+        "causalClassCounts": {
+          "weak_at_selection": 1,
+          "became_weak_downstream": 1
+        },
+        "sourceCounts": {
+          "live_fill": 2
+        },
+        "phaseCounts": {
+          "development": 2
+        },
+        "avoidableCount": 2,
+        "constraintForcedCount": 0,
+        "lowCandidateDepthCount": 0,
+        "meanCandidateDepth": 4,
+        "highestImpactCausalClass": "became_weak_downstream"
+      },
+      "records": [
+        {
+          "card": "Aristo Threat 6",
+          "source": "live_fill",
+          "constructionPhase": "development",
+          "causalClass": "weak_at_selection",
+          "avoidable": true,
+          "constraintForced": false,
+          "pickTimeProspectiveTotal": -31.154,
+          "pickTimeRawScore": 22.218,
+          "finalJustificationStrength": 5,
+          "bestAlternative": "Aristo Flow 8",
+          "candidateDepth": 4,
+          "driftPrimaryClass": "unclassified"
+        },
+        {
+          "card": "Aristo Threat 7",
+          "source": "live_fill",
+          "constructionPhase": "development",
+          "causalClass": "became_weak_downstream",
+          "avoidable": true,
+          "constraintForced": false,
+          "pickTimeProspectiveTotal": 35.2,
+          "pickTimeRawScore": 19.338,
+          "finalJustificationStrength": 12.5,
+          "bestAlternative": "Aristo Flow 8",
+          "candidateDepth": 4,
+          "driftPrimaryClass": "final_weak_justification"
+        }
+      ]
+    },
+    {
+      "id": "reanimator",
+      "archetype": "reanimator",
+      "runtimeMs": 3694,
+      "weakSlotCount": 2,
+      "aggregate": {
+        "version": "weak-slot-forensics-v1",
+        "weakSlotCount": 2,
+        "causalClassCounts": {
+          "became_weak_downstream": 2
+        },
+        "sourceCounts": {
+          "live_fill": 2
+        },
+        "phaseCounts": {
+          "development": 2
+        },
+        "avoidableCount": 0,
+        "constraintForcedCount": 2,
+        "lowCandidateDepthCount": 2,
+        "meanCandidateDepth": 0,
+        "highestImpactCausalClass": "became_weak_downstream"
+      },
+      "records": [
+        {
+          "card": "Reanim Threat 4",
+          "source": "live_fill",
+          "constructionPhase": "development",
+          "causalClass": "became_weak_downstream",
+          "avoidable": false,
+          "constraintForced": true,
+          "pickTimeProspectiveTotal": 34.3,
+          "pickTimeRawScore": 19.339,
+          "finalJustificationStrength": 12.5,
+          "bestAlternative": null,
+          "candidateDepth": 0,
+          "driftPrimaryClass": "final_weak_justification"
+        },
+        {
+          "card": "Reanim Threat 5",
+          "source": "live_fill",
+          "constructionPhase": "development",
+          "causalClass": "became_weak_downstream",
+          "avoidable": false,
+          "constraintForced": true,
+          "pickTimeProspectiveTotal": 30.1,
+          "pickTimeRawScore": 16.459,
+          "finalJustificationStrength": 12.5,
+          "bestAlternative": null,
+          "candidateDepth": 0,
+          "driftPrimaryClass": "final_weak_justification"
+        }
+      ]
+    },
+    {
+      "id": "spellslinger",
+      "archetype": "spellslinger",
+      "runtimeMs": 7935,
+      "weakSlotCount": 0,
+      "aggregate": {
+        "version": "weak-slot-forensics-v1",
+        "weakSlotCount": 0,
+        "causalClassCounts": {},
+        "sourceCounts": {},
+        "phaseCounts": {},
+        "avoidableCount": 0,
+        "constraintForcedCount": 0,
+        "lowCandidateDepthCount": 0,
+        "meanCandidateDepth": null,
+        "highestImpactCausalClass": null
+      },
+      "records": []
+    },
+    {
+      "id": "landfall",
+      "archetype": "landfall",
+      "runtimeMs": 3713,
+      "weakSlotCount": 2,
+      "aggregate": {
+        "version": "weak-slot-forensics-v1",
+        "weakSlotCount": 2,
+        "causalClassCounts": {
+          "became_weak_downstream": 2
+        },
+        "sourceCounts": {
+          "live_fill": 2
+        },
+        "phaseCounts": {
+          "development": 2
+        },
+        "avoidableCount": 0,
+        "constraintForcedCount": 2,
+        "lowCandidateDepthCount": 2,
+        "meanCandidateDepth": 0,
+        "highestImpactCausalClass": "became_weak_downstream"
+      },
+      "records": [
+        {
+          "card": "Land Threat 5",
+          "source": "live_fill",
+          "constructionPhase": "development",
+          "causalClass": "became_weak_downstream",
+          "avoidable": false,
+          "constraintForced": true,
+          "pickTimeProspectiveTotal": 32.2,
+          "pickTimeRawScore": 19.958,
+          "finalJustificationStrength": 12.5,
+          "bestAlternative": null,
+          "candidateDepth": 0,
+          "driftPrimaryClass": "final_weak_justification"
+        },
+        {
+          "card": "Land Threat 7",
+          "source": "live_fill",
+          "constructionPhase": "development",
+          "causalClass": "became_weak_downstream",
+          "avoidable": false,
+          "constraintForced": true,
+          "pickTimeProspectiveTotal": 35.2,
+          "pickTimeRawScore": 22.838,
+          "finalJustificationStrength": 12.5,
+          "bestAlternative": null,
+          "candidateDepth": 0,
+          "driftPrimaryClass": "final_weak_justification"
+        }
+      ]
+    },
+    {
+      "id": "blink-etb",
+      "archetype": "blink",
+      "runtimeMs": 3850,
+      "weakSlotCount": 6,
+      "aggregate": {
+        "version": "weak-slot-forensics-v1",
+        "weakSlotCount": 6,
+        "causalClassCounts": {
+          "weak_at_selection": 6
+        },
+        "sourceCounts": {
+          "live_fill": 6
+        },
+        "phaseCounts": {
+          "foundation": 6
+        },
+        "avoidableCount": 0,
+        "constraintForcedCount": 6,
+        "lowCandidateDepthCount": 6,
+        "meanCandidateDepth": 0,
+        "highestImpactCausalClass": "weak_at_selection"
+      },
+      "records": [
+        {
+          "card": "Vanilla 0",
+          "source": "live_fill",
+          "constructionPhase": "foundation",
+          "causalClass": "weak_at_selection",
+          "avoidable": false,
+          "constraintForced": true,
+          "pickTimeProspectiveTotal": -13.319,
+          "pickTimeRawScore": 19.912,
+          "finalJustificationStrength": 15,
+          "bestAlternative": null,
+          "candidateDepth": 0,
+          "driftPrimaryClass": "unclassified"
+        },
+        {
+          "card": "Vanilla 1",
+          "source": "live_fill",
+          "constructionPhase": "foundation",
+          "causalClass": "weak_at_selection",
+          "avoidable": false,
+          "constraintForced": true,
+          "pickTimeProspectiveTotal": -87,
+          "pickTimeRawScore": 19.912,
+          "finalJustificationStrength": 15,
+          "bestAlternative": null,
+          "candidateDepth": 0,
+          "driftPrimaryClass": "unclassified"
+        },
+        {
+          "card": "Vanilla 2",
+          "source": "live_fill",
+          "constructionPhase": "foundation",
+          "causalClass": "weak_at_selection",
+          "avoidable": false,
+          "constraintForced": true,
+          "pickTimeProspectiveTotal": -98,
+          "pickTimeRawScore": 19.911,
+          "finalJustificationStrength": 15,
+          "bestAlternative": null,
+          "candidateDepth": 0,
+          "driftPrimaryClass": "unclassified"
+        },
+        {
+          "card": "Vanilla 3",
+          "source": "live_fill",
+          "constructionPhase": "foundation",
+          "causalClass": "weak_at_selection",
+          "avoidable": false,
+          "constraintForced": true,
+          "pickTimeProspectiveTotal": -99,
+          "pickTimeRawScore": 19.911,
+          "finalJustificationStrength": 15,
+          "bestAlternative": null,
+          "candidateDepth": 0,
+          "driftPrimaryClass": "unclassified"
+        },
+        {
+          "card": "Vanilla 4",
+          "source": "live_fill",
+          "constructionPhase": "foundation",
+          "causalClass": "weak_at_selection",
+          "avoidable": false,
+          "constraintForced": true,
+          "pickTimeProspectiveTotal": -100,
+          "pickTimeRawScore": 19.911,
+          "finalJustificationStrength": 15,
+          "bestAlternative": null,
+          "candidateDepth": 0,
+          "driftPrimaryClass": "unclassified"
+        },
+        {
+          "card": "Vanilla 5",
+          "source": "live_fill",
+          "constructionPhase": "foundation",
+          "causalClass": "weak_at_selection",
+          "avoidable": false,
+          "constraintForced": true,
+          "pickTimeProspectiveTotal": -100,
+          "pickTimeRawScore": 19.911,
+          "finalJustificationStrength": 15,
+          "bestAlternative": null,
+          "candidateDepth": 0,
+          "driftPrimaryClass": "unclassified"
+        }
+      ]
+    },
+    {
+      "id": "artifacts",
+      "archetype": "artifacts",
+      "runtimeMs": 2852,
+      "weakSlotCount": 0,
+      "aggregate": {
+        "version": "weak-slot-forensics-v1",
+        "weakSlotCount": 0,
+        "causalClassCounts": {},
+        "sourceCounts": {},
+        "phaseCounts": {},
+        "avoidableCount": 0,
+        "constraintForcedCount": 0,
+        "lowCandidateDepthCount": 0,
+        "meanCandidateDepth": null,
+        "highestImpactCausalClass": null
+      },
+      "records": []
+    },
+    {
+      "id": "stax",
+      "archetype": "stax",
+      "runtimeMs": 2217,
+      "weakSlotCount": 0,
+      "aggregate": {
+        "version": "weak-slot-forensics-v1",
+        "weakSlotCount": 0,
+        "causalClassCounts": {},
+        "sourceCounts": {},
+        "phaseCounts": {},
+        "avoidableCount": 0,
+        "constraintForcedCount": 0,
+        "lowCandidateDepthCount": 0,
+        "meanCandidateDepth": null,
+        "highestImpactCausalClass": null
+      },
+      "records": []
+    },
+    {
+      "id": "combo-partners",
+      "archetype": "combo",
+      "runtimeMs": 2490,
+      "weakSlotCount": 7,
+      "aggregate": {
+        "version": "weak-slot-forensics-v1",
+        "weakSlotCount": 7,
+        "causalClassCounts": {
+          "weak_at_selection": 3,
+          "became_weak_downstream": 4
+        },
+        "sourceCounts": {
+          "live_fill": 7
+        },
+        "phaseCounts": {
+          "foundation": 7
+        },
+        "avoidableCount": 0,
+        "constraintForcedCount": 7,
+        "lowCandidateDepthCount": 7,
+        "meanCandidateDepth": 0,
+        "highestImpactCausalClass": "became_weak_downstream"
+      },
+      "records": [
+        {
+          "card": "Combo A 3",
+          "source": "live_fill",
+          "constructionPhase": "foundation",
+          "causalClass": "weak_at_selection",
+          "avoidable": false,
+          "constraintForced": true,
+          "pickTimeProspectiveTotal": -31.43,
+          "pickTimeRawScore": 22.22,
+          "finalJustificationStrength": 5,
+          "bestAlternative": null,
+          "candidateDepth": 0,
+          "driftPrimaryClass": "unclassified"
+        },
+        {
+          "card": "Combo Threat 0",
+          "source": "live_fill",
+          "constructionPhase": "foundation",
+          "causalClass": "weak_at_selection",
+          "avoidable": false,
+          "constraintForced": true,
+          "pickTimeProspectiveTotal": -30.89,
+          "pickTimeRawScore": 22.221,
+          "finalJustificationStrength": 5,
+          "bestAlternative": null,
+          "candidateDepth": 0,
+          "driftPrimaryClass": "unclassified"
+        },
+        {
+          "card": "Combo Threat 1",
+          "source": "live_fill",
+          "constructionPhase": "foundation",
+          "causalClass": "became_weak_downstream",
+          "avoidable": false,
+          "constraintForced": true,
+          "pickTimeProspectiveTotal": 19.822,
+          "pickTimeRawScore": 19.341,
+          "finalJustificationStrength": 12.5,
+          "bestAlternative": null,
+          "candidateDepth": 0,
+          "driftPrimaryClass": "final_weak_justification"
+        },
+        {
+          "card": "Combo Threat 2",
+          "source": "live_fill",
+          "constructionPhase": "foundation",
+          "causalClass": "became_weak_downstream",
+          "avoidable": false,
+          "constraintForced": true,
+          "pickTimeProspectiveTotal": 22.31,
+          "pickTimeRawScore": 16.461,
+          "finalJustificationStrength": 12.5,
+          "bestAlternative": null,
+          "candidateDepth": 0,
+          "driftPrimaryClass": "final_weak_justification"
+        },
+        {
+          "card": "Combo Threat 3",
+          "source": "live_fill",
+          "constructionPhase": "foundation",
+          "causalClass": "weak_at_selection",
+          "avoidable": false,
+          "constraintForced": true,
+          "pickTimeProspectiveTotal": -86,
+          "pickTimeRawScore": 22.221,
+          "finalJustificationStrength": 5,
+          "bestAlternative": null,
+          "candidateDepth": 0,
+          "driftPrimaryClass": "unclassified"
+        },
+        {
+          "card": "Combo Threat 4",
+          "source": "live_fill",
+          "constructionPhase": "foundation",
+          "causalClass": "became_weak_downstream",
+          "avoidable": false,
+          "constraintForced": true,
+          "pickTimeProspectiveTotal": 18.477,
+          "pickTimeRawScore": 19.341,
+          "finalJustificationStrength": 12.5,
+          "bestAlternative": null,
+          "candidateDepth": 0,
+          "driftPrimaryClass": "final_weak_justification"
+        },
+        {
+          "card": "Combo Threat 5",
+          "source": "live_fill",
+          "constructionPhase": "foundation",
+          "causalClass": "became_weak_downstream",
+          "avoidable": false,
+          "constraintForced": true,
+          "pickTimeProspectiveTotal": 22.217,
+          "pickTimeRawScore": 16.461,
+          "finalJustificationStrength": 12.5,
+          "bestAlternative": null,
+          "candidateDepth": 0,
+          "driftPrimaryClass": "final_weak_justification"
+        }
+      ]
+    },
+    {
+      "id": "multiplan-commander",
+      "archetype": "multi_direction",
+      "runtimeMs": 3191,
+      "weakSlotCount": 0,
+      "aggregate": {
+        "version": "weak-slot-forensics-v1",
+        "weakSlotCount": 0,
+        "causalClassCounts": {},
+        "sourceCounts": {},
+        "phaseCounts": {},
+        "avoidableCount": 0,
+        "constraintForcedCount": 0,
+        "lowCandidateDepthCount": 0,
+        "meanCandidateDepth": null,
+        "highestImpactCausalClass": null
+      },
+      "records": []
+    }
+  ]
 }

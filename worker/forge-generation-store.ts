@@ -138,6 +138,9 @@ export function compactGenerationPayload(payload: StoredGenerationPayload): Stor
 // measurements: full response ~3.8MB, without structuralAnalysis ~2.2MB,
 // client-slim report alone well under 500KB.
 const CLIENT_REPORT_KEYS = [
+  // Identity — client + e2e contracts key off engine name to distinguish
+  // import vs native construction without re-fetching the full report.
+  "engine",
   "selected",
   "candidates",
   "tournament",
