@@ -27,3 +27,27 @@
 .tabletop-hand .tabletop-card:hover,.tabletop-hand .tabletop-card:focus-visible{transform:translateY(-10px) scale(1.13);box-shadow:0 24px 45px #000c,0 0 24px #65bea933}
 @media(max-width:900px){.tabletop-hand>div{grid-template-columns:repeat(4,minmax(105px,1fr));max-width:720px}}
 @media(max-width:560px){.tabletop-hand>div>div{flex-basis:148px!important}.tabletop-hand .tabletop-card strong{font-size:11px}}
+
+/* Review-first journey: the finished list is the orientation step, then the
+   player deliberately enters the opening-hand trainer. */
+.tabletop-deck-review>header{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px 26px;border-bottom:1px solid #344941;background:linear-gradient(120deg,#101b18,#0a100e)}
+.tabletop-deck-review>header small,.tabletop-deck-review>header strong{display:block}
+.tabletop-deck-review>header small{color:#d89252;font-size:9px;font-weight:900;letter-spacing:.14em}
+.tabletop-deck-review>header strong{margin-top:6px;color:#edf0ec;font:600 24px Newsreader,Georgia,serif}
+.tabletop-deck-review>header p{margin:6px 0 0;color:#91a49d;font-size:12px}
+.tabletop-deck-review>header button,.tabletop-deck-review>footer button{min-height:48px;padding:11px 16px;border:1px solid #66aa99;background:#153027;color:#b9e7dc;font-weight:800}
+.tabletop-deck-review>footer{display:flex;justify-content:flex-end;padding:20px 24px;border-top:1px solid #344941;background:#09100e}
+.tabletop-deck-review .tabletop-zones{grid-template-columns:repeat(auto-fit,minmax(330px,1fr))}
+.tabletop-deck-review .tabletop-zone{padding:18px}
+.tabletop-deck-review .tabletop-zone>div{grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:12px;margin-top:15px}
+.tabletop-hand-actions{display:flex;gap:8px}
+@media(max-width:560px){
+  .tabletop-toolbar nav{grid-template-columns:repeat(2,1fr)}
+  .tabletop-deck-review>header{align-items:stretch;flex-direction:column;padding:18px 15px}
+  .tabletop-deck-review>footer button{width:100%}
+  .tabletop-deck-review .tabletop-zones{display:block;padding:0}
+  .tabletop-deck-review .tabletop-zone{width:100%;padding:15px}
+  .tabletop-deck-review .tabletop-zone>div{display:flex;gap:12px;overflow-x:auto;padding:4px 2px 14px;scroll-snap-type:x proximity}
+  .tabletop-deck-review .tabletop-zone>div>.tabletop-card{flex:0 0 132px;scroll-snap-align:start}
+  .tabletop-hand-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}
+}

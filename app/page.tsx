@@ -7819,6 +7819,19 @@ export default function Home() {
                       setContextInspectCard(name);
                     }}
                     onMatchupContext={setMatchupCardAdvice}
+                    onMulliganDecision={(result) => trackLaunchEvent("mulligan_coach_decision", {
+                      format,
+                      strategy,
+                      decision: result.decision,
+                      coachVerdict: result.verdict,
+                      confidence: result.confidence,
+                      aligned: result.aligned,
+                      lands: result.counts.lands,
+                      otherMana: result.counts.otherMana,
+                      earlyPlays: result.counts.earlyPlays,
+                      responses: result.counts.responses,
+                      writesToBrain: false,
+                    })}
                     onOpenList={() => setDeckViewMode("ledger")}
                     strategy={strategy}
                   />

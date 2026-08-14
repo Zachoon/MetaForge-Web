@@ -44,7 +44,7 @@ export function getMatchupCardAdvice(args: {
 
 export { MATCHUP_GUIDANCE, MATCHUP_ROLES };
 
-type Lens = "packages" | "hand" | "turns" | "matchup";
+type Lens = "deck" | "hand" | "turns" | "matchup";
 
 type TabletopProps = {
   cards: TabletopCard[];
@@ -55,10 +55,32 @@ type TabletopProps = {
   onOpenList: () => void;
   /** Reports matchup coaching for the active card, or null when not on Matchup lens. */
   onMatchupContext?: (context: MatchupCardAdvice | null) => void;
+  /** Observation-only product evidence. Never writes to construction or Brain state. */
+  onMulliganDecision?: (result: {
+    decision: "keep" | "mulligan";
+    verdict: "keep" | "mulligan" | "close";
+    confidence: string;
+    aligned: boolean;
+    counts: { lands: number; otherMana: number; earlyPlays: number; responses: number };
+  }) => void;
   strategy?: string;
 };
 
-const ROLE_ORDER = ["Commander", "Mana source", "Acceleration", "Card advantage", "Interaction", "Protection", "Engine piece", "Board reset", "Threat", "Utility"];
+const TYPE_ORDER = ["Commander", "Creatures", "Planeswalkers", "Instants", "Sorceries", "Artifacts", "Enchantments", "Battles", "Lands", "Other"];
+
+export function tabletopCardType(card: TabletopCard) {
+  if (card.role === "Commander") return "Commander";
+  const typeLine = String(card.typeLine || "").toLowerCase();
+  if (typeLine.includes("creature")) return "Creatures";
+  if (typeLine.includes("planeswalker")) return "Planeswalkers";
+  if (typeLine.includes("instant")) return "Instants";
+  if (typeLine.includes("sorcery")) return "Sorceries";
+  if (typeLine.includes("artifact")) return "Artifacts";
+  if (typeLine.includes("enchantment")) return "Enchantments";
+  if (typeLine.includes("battle")) return "Battles";
+  if (typeLine.includes("land")) return "Lands";
+  return "Other";
+}
 
 function seededHand(cards: TabletopCard[], salt = 0) {
   const pool = cards.flatMap((card) => Array.from({ length: Math.min(card.quantity, 20) }, () => card));
@@ -93,9 +115,10 @@ export function Tabletop({
   onSelectCard,
   onOpenList,
   onMatchupContext,
+  onMulliganDecision,
   strategy = "Balanced midrange",
 }: TabletopProps) {
-  const [lens, setLens] = useState<Lens>("hand");
+  const [lens, setLens] = useState<Lens>("deck");
   const [matchup, setMatchup] = useState<Matchup>("Aggro");
   const [handSalt, setHandSalt] = useState(1);
   const [handDecision, setHandDecision] = useState<"keep" | "mulligan" | null>(null);
@@ -107,10 +130,13 @@ export function Tabletop({
   const removedCards = [...previous].filter((name) => !cards.some((card) => card.name.toLowerCase() === name));
   const zones = useMemo(() => {
     const grouped = new Map<string, TabletopCard[]>();
-    cards.forEach((card) => grouped.set(card.role, [...(grouped.get(card.role) || []), card]));
+    cards.forEach((card) => {
+      const type = tabletopCardType(card);
+      grouped.set(type, [...(grouped.get(type) || []), card]);
+    });
     return [...grouped.entries()].sort(([a], [b]) => {
-      const ai = ROLE_ORDER.indexOf(a);
-      const bi = ROLE_ORDER.indexOf(b);
+      const ai = TYPE_ORDER.indexOf(a);
+      const bi = TYPE_ORDER.indexOf(b);
       return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
     });
   }, [cards]);
@@ -125,6 +151,7 @@ export function Tabletop({
     setHandDecision(decision);
     const aligned = handEvaluation.verdict === "close" || handEvaluation.verdict === decision;
     setDecisionScore((score) => ({ aligned: score.aligned + (aligned ? 1 : 0), total: score.total + 1 }));
+    onMulliganDecision?.({ decision, verdict: handEvaluation.verdict, confidence: handEvaluation.confidence, aligned, counts: handEvaluation.counts });
   };
   const matchupGuidance = MATCHUP_GUIDANCE[matchup];
   const activeTabletopCard = useMemo(
@@ -178,9 +205,9 @@ export function Tabletop({
           <strong>See how the deck holds together.</strong>
         </div>
         <nav aria-label="Tabletop lens">
-          {(["packages", "hand", "turns", "matchup"] as Lens[]).map((item) => (
+          {(["deck", "hand", "turns", "matchup"] as Lens[]).map((item) => (
             <button type="button" key={item} className={lens === item ? "active" : ""} onClick={() => setLens(item)}>
-              {item}
+              {item === "deck" ? "Deck review" : item === "hand" ? "Goldfish hands" : item}
             </button>
           ))}
         </nav>
@@ -213,17 +240,30 @@ export function Tabletop({
         </aside>
       )}
 
-      {lens === "packages" && (
-        <div className="tabletop-zones">
-          {zones.map(([role, roleCards]) => (
-            <section key={role} className="tabletop-zone">
-              <header>
-                <strong>{role}</strong>
-                <span>{roleCards.reduce((sum, card) => sum + card.quantity, 0)}</span>
-              </header>
-              <div>{roleCards.map(tile)}</div>
-            </section>
-          ))}
+      {lens === "deck" && (
+        <div className="tabletop-deck-review">
+          <header>
+            <div>
+              <small>STEP 1 · REVIEW YOUR DECK</small>
+              <strong>Know what is in the finished build.</strong>
+              <p>Cards are grouped by printed card type. Select any card to inspect why it belongs.</p>
+            </div>
+            <button type="button" onClick={() => setLens("hand")}>Next: goldfish opening hands →</button>
+          </header>
+          <div className="tabletop-zones">
+            {zones.map(([type, typeCards]) => (
+              <section key={type} className="tabletop-zone">
+                <header>
+                  <strong>{type}</strong>
+                  <span>{typeCards.reduce((sum, card) => sum + card.quantity, 0)}</span>
+                </header>
+                <div>{typeCards.map(tile)}</div>
+              </section>
+            ))}
+          </div>
+          <footer>
+            <button type="button" onClick={() => setLens("hand")}>I&apos;ve reviewed the deck · Start goldfishing →</button>
+          </footer>
         </div>
       )}
 
@@ -231,12 +271,13 @@ export function Tabletop({
         <div className="tabletop-hand">
           <header>
             <span>
-              <small>OPENING SEVEN</small>
+              <small>STEP 2 · GOLDFISH YOUR OPENING SEVEN</small>
               <strong>Would you keep this hand?</strong>
             </span>
-            <button type="button" onClick={drawAnotherHand}>
-              Draw another seven ↻
-            </button>
+            <div className="tabletop-hand-actions">
+              <button type="button" onClick={() => setLens("deck")}>← Review deck</button>
+              <button type="button" onClick={drawAnotherHand}>Draw another seven ↻</button>
+            </div>
           </header>
           <div>
             {hand.map((card, index) => (
