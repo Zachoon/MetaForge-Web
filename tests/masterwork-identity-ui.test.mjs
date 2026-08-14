@@ -10,6 +10,9 @@ test("a completed deck receives a customizable Masterwork identity", async () =>
   assert.match(page, /YOUR MASTERWORK/);
   assert.match(page, /Personalize Masterwork/);
   assert.match(page, /Masterwork Identity/);
+  assert.match(page, /Masterwork name/);
+  assert.match(page, /masterwork-commander-medallion/);
+  assert.match(page, /masterwork-identity-marks/);
   assert.match(page, /Featured art/);
   assert.match(page, /Stained Glass/);
   assert.match(page, /Etched Metal/);
@@ -31,6 +34,8 @@ test("the deck hero keeps art atmospheric and content readable", async () => {
   assert.match(css, /\.masterwork-glass/);
   assert.match(css, /\.masterwork-deck-hero:after/);
   assert.match(css, /\.masterwork-identity-panel/);
+  assert.match(css, /grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+  assert.match(css, /repeating-conic-gradient/);
   assert.match(css, /@media\(max-width:560px\).*masterwork-deck-hero/s);
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
 });

@@ -1750,6 +1750,7 @@ export default function Home() {
   const [deckViewMode, setDeckViewMode] = useState<"workbench" | "ledger">("ledger");
   const [masterworkIdentityOpen, setMasterworkIdentityOpen] = useState(false);
   const [masterworkIdentity, setMasterworkIdentity] = useState({
+    title: "",
     featuredCard: "",
     treatment: "stained" as "stained" | "etched" | "clean",
     focus: "center" as "left" | "center" | "right",
@@ -2140,11 +2141,12 @@ export default function Home() {
       const next = saved && typeof saved === "object"
         ? {
             featuredCard: typeof saved.featuredCard === "string" ? saved.featuredCard : "",
+            title: typeof saved.title === "string" ? saved.title : "",
             treatment: ["stained", "etched", "clean"].includes(saved.treatment) ? saved.treatment : "stained",
             focus: ["left", "center", "right"].includes(saved.focus) ? saved.focus : "center",
             glow: Math.max(0, Math.min(100, Number(saved.glow) || 36)),
           }
-        : { featuredCard: "", treatment: "stained", focus: "center", glow: 36 };
+        : { title: "", featuredCard: "", treatment: "stained", focus: "center", glow: 36 };
       setMasterworkIdentity(next as typeof masterworkIdentity);
       setMasterworkIdentityDraft(next as typeof masterworkIdentity);
     } catch {
@@ -6433,12 +6435,18 @@ export default function Home() {
               >
                 {hasValidatedDeck && <span className="masterwork-glass" aria-hidden="true" />}
                 <div className="masterwork-deck-title">
-                  <small>{hasValidatedDeck ? "YOUR MASTERWORK" : "YOUR DECK"}</small>
-                  <h2>{hasValidatedDeck ? chosenWork.name.replace(/, Forged$/, "") : benchStatus === "forging" ? "The Forge is producing your deck…" : "Build not completed"}</h2>
-                  {hasValidatedDeck && (
-                    <p>{activeCommanderName || featuredMasterworkCard} · {honestCoachSummary.planStory?.title || honestCoachSummary.intentions.title} · Revision {Math.max(1, revisions.length)}</p>
-                  )}
-                  {hasValidatedDeck && <span className="masterwork-ready">✓ READY TO TEST</span>}
+                  {hasValidatedDeck && <img className="masterwork-commander-medallion" src={cardArtCrop(activeCommanderName || featuredMasterworkCard)} alt="" />}
+                  <div>
+                    <small>{hasValidatedDeck ? "YOUR MASTERWORK" : "YOUR DECK"}</small>
+                    <h2>{hasValidatedDeck ? masterworkIdentity.title || chosenWork.name.replace(/, Forged$/, "") : benchStatus === "forging" ? "The Forge is producing your deck…" : "Build not completed"}</h2>
+                    {hasValidatedDeck && (
+                      <p>{activeCommanderName || featuredMasterworkCard} · {honestCoachSummary.planStory?.title || honestCoachSummary.intentions.title} · Revision {Math.max(1, revisions.length)}</p>
+                    )}
+                    {hasValidatedDeck && <div className="masterwork-identity-marks" aria-label={`${selectedCommander?.colors?.join(", ") || "colorless"} color identity`}>
+                      {(selectedCommander?.colors?.length ? selectedCommander.colors : ["C"]).map((color) => <i key={color} data-color={color}>{color}</i>)}
+                      <span className="masterwork-ready">✓ READY TO TEST</span>
+                    </div>}
+                  </div>
                 </div>
                 {hasValidatedDeck && (
                   <div className="deck-header-actions">
@@ -6489,6 +6497,10 @@ export default function Home() {
                       <button type="button" aria-label="Close personalization" onClick={() => setMasterworkIdentityOpen(false)}>×</button>
                     </header>
                     <label>
+                      <span>Masterwork name</span>
+                      <input type="text" maxLength={60} placeholder={chosenWork.name.replace(/, Forged$/, "")} value={masterworkIdentityDraft.title} onChange={(event) => setMasterworkIdentityDraft((current) => ({ ...current, title: event.target.value }))} />
+                    </label>
+                    <label>
                       <span>Featured art</span>
                       <select value={masterworkIdentityDraft.featuredCard || activeCommanderName} onChange={(event) => setMasterworkIdentityDraft((current) => ({ ...current, featuredCard: event.target.value }))}>
                         {deckRows.map((row) => <option key={row.name} value={row.name}>{row.name}</option>)}
@@ -6516,6 +6528,7 @@ export default function Home() {
                     </label>
                     <footer>
                       <button type="button" onClick={() => setMasterworkIdentityOpen(false)}>Cancel</button>
+                      <button type="button" onClick={() => setMasterworkIdentity(masterworkIdentityDraft)}>Preview</button>
                       <button type="button" className="save-masterwork-identity" onClick={() => {
                         setMasterworkIdentity(masterworkIdentityDraft);
                         try { window.localStorage.setItem(masterworkIdentityKey, JSON.stringify(masterworkIdentityDraft)); } catch { /* local preference only */ }
