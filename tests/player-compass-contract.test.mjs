@@ -96,7 +96,11 @@ test("pre-choice contract exposes presentation-ready Compass and tradeoff fields
   assert.ok(safe.playerFitEvidence);
   assert.equal(safe.recommendedBecause, report.recommendedWhy);
   assert.equal(safe.whatThisFeelsLike, safe.feel);
-  assert.equal(safe.whyNotTheAlternative, safe.expectedTradeoff);
+  // "Why not the alternative" must say something the standalone Tradeoff line
+  // doesn't already say — a real comparison against the actual alternative,
+  // not a restated copy of this build's own cost.
+  assert.notEqual(safe.whyNotTheAlternative, safe.expectedTradeoff);
+  assert.match(safe.whyNotTheAlternative, /Precision Temper/);
   assert.doesNotMatch(report.recommendedWhy, /play structure/i);
 });
 
@@ -126,7 +130,7 @@ test("only a completed Compass can replace the structural fallback", () => {
   });
   assert.equal(completed.recommendedId, "compass-pick");
   assert.equal(completed.decidedBy, "player_compass");
-  assert.match(completed.recommendedWhy, /how you said you enjoy playing/i);
+  assert.match(completed.recommendedWhy, /way you told us you enjoy/i);
 });
 
 test("LANG-2/4 and EDGE-1: provenance stays honest with no usable Compass", () => {
@@ -142,7 +146,7 @@ test("LANG-2/4 and EDGE-1: provenance stays honest with no usable Compass", () =
     playerCompass: { skipped: true },
   });
   assert.equal(skipped.decidedBy, "structural_evidence");
-  assert.match(skipped.recommendedWhy, /how this deck is built/i);
+  assert.match(skipped.recommendedWhy, /how this particular list came together/i);
   assert.match(skipped.recommendedWhy, / and /i);
   assert.ok(skipped.builds.every((build) => build.expectedTradeoff));
 });

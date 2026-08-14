@@ -50,7 +50,7 @@
 
 /* Progressive Forge Results: clarity first, complete intelligence on demand. */
 .result-view-controls{display:flex;align-items:center;justify-content:space-between;gap:18px;max-width:1480px;margin:0 auto 18px;padding:12px 14px;border:1px solid #38504a;background:#091312e8}.result-view-controls span small,.result-view-controls span b{display:block}.result-view-controls span small{color:var(--mint);font-size:calc(10px * var(--forge-reading-scale));font-weight:900;letter-spacing:.14em}.result-view-controls span b{margin-top:4px;color:#aebdb8;font-size:calc(11px * var(--forge-reading-scale))}.result-view-controls>div{display:flex;gap:7px}.result-view-controls button{padding:9px 12px;border:1px solid #3d514c;background:#0b1716;color:#849691;font-size:calc(11px * var(--forge-reading-scale));font-weight:800}.result-view-controls button.active{border-color:var(--mint);background:#14302a;color:#dff9f1;box-shadow:inset 0 0 18px #4ed5b514}
-.progressive-results .testing-layout{display:flex;max-width:1480px;flex-direction:column;gap:0}.progressive-results .deck-manuscript{display:contents}.progressive-results .deck-manuscript>header{order:0;border:1px solid #485650;border-bottom:0;background:#0b1213ed url('/assets/forge/hammered_iron.svg') center/cover}.progressive-results .forge-quick-read{order:1}.progressive-results .first-run-coaching{order:2}.progressive-results .masterwork-forging-progress,.progressive-results .deck-gallery,.progressive-results .forge-generation-failure,.progressive-results .deck-manuscript>pre{order:3;border-inline:1px solid #485650}.progressive-results .deck-manuscript>footer{order:4;border:1px solid #485650;border-top:1px solid #394844;background:#0b1213ed}.progressive-results .testing-loop{order:5;margin-top:76px}.progressive-results .forge-understanding-bridge{order:6;margin-top:76px}.progressive-results .forge-intelligence-vault{order:7;margin-top:28px}.progressive-results .raw-decklist{order:8;margin-top:18px;border:1px solid #354641;background:#0b1213ed}
+.progressive-results .testing-layout{display:flex;max-width:1480px;flex-direction:column;gap:0}.progressive-results .deck-manuscript{display:flex;flex-direction:column}.progressive-results .deck-manuscript>header{order:0;border:1px solid #485650;border-bottom:0;background:#0b1213ed url('/assets/forge/hammered_iron.svg') center/cover}.progressive-results .forge-quick-read{order:1}.progressive-results .first-run-coaching{order:2}.progressive-results .masterwork-forging-progress,.progressive-results .deck-gallery,.progressive-results .forge-generation-failure,.progressive-results .deck-manuscript>pre{order:3;border-inline:1px solid #485650}.progressive-results .deck-manuscript>footer{order:4;border:1px solid #485650;border-top:1px solid #394844;background:#0b1213ed}.progressive-results .testing-loop{order:5;margin-top:76px}.progressive-results .forge-understanding-bridge{order:6;margin-top:76px}.progressive-results .forge-intelligence-vault{order:7;margin-top:28px}.progressive-results .raw-decklist{order:8;margin-top:18px;border:1px solid #354641;background:#0b1213ed}
 .forge-quick-read{display:grid;grid-template-columns:1.6fr .8fr .8fr;gap:1px;border:1px solid #4b5d57;background:#31423d}.forge-quick-read>span{padding:12px 14px;background:#0b1515}.forge-quick-read small,.forge-quick-read b{display:block}.forge-quick-read small{color:var(--ember);font-size:calc(10px * var(--forge-reading-scale));font-weight:900;letter-spacing:.12em}.forge-quick-read b{margin-top:5px;color:#bac7c2;font-size:calc(12px * var(--forge-reading-scale));line-height:1.45}
 /* First-run coaching (chapter 1): the same evidence forge-understanding-
    bridge shows in chapter 3, and reviewFocusResult's real evidence-backed
@@ -313,10 +313,9 @@ step that's actually in focus. */
 .honest-coach-tablet-feedback{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px;padding-top:10px;border-top:1px solid #35463f}
 .honest-coach-tablet-feedback small{width:100%;color:#8fa099;font-size:10px}
 .honest-coach-tablet-feedback button{padding:6px 8px;border:1px solid #526b63;background:#10201c;color:#8fcfbe;font-size:9px;font-weight:800;cursor:pointer}
-/* Coach brief visible on Deck + Tune chapters (was gated to unused chapter-3). */
+/* Coach brief lives below the deck gallery. Never order:-1 on chapter 1. */
 .progressive-results .chapter-1-active .forge-understanding-bridge.honest-coach-v0,
-.progressive-results .chapter-2-active .forge-understanding-bridge.honest-coach-v0{display:block;order:-1;margin-top:0}
-.progressive-results .testing-layout.imported-deck-review.chapter-1-active .forge-understanding-bridge.honest-coach-v0{order:-2}
+.progressive-results .chapter-2-active .forge-understanding-bridge.honest-coach-v0{display:block;margin-top:0}
 .deck-reference-strip img.commander-art-crop,.commander-art-crop{width:56px;height:56px;border-radius:8px;object-fit:cover;object-position:center 18%;flex-shrink:0}
 @media(max-width:980px){.honest-coach-drilldown-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:620px){.honest-coach-drilldown-grid{grid-template-columns:1fr}.honest-coach-v0 .honest-coach-confidence>summary{flex-direction:column;align-items:flex-start}.honest-coach-feedback-actions button{flex:1 1 calc(50% - 8px)}}
@@ -324,7 +323,6 @@ step that's actually in focus. */
 /* Mobile: stop fighting the phone with a desktop split-pane deck preview. */
 @media(max-width:760px){
   .progressive-results .forge-next-step-secondary{display:none}
-  .progressive-results .testing-layout.imported-deck-review.chapter-1-active .forge-understanding-bridge.honest-coach-v0{order:-3;margin-bottom:14px}
   .deck-gallery,.workbench-deck-view .deck-gallery,.ledger-deck-view .deck-gallery{
     display:flex!important;
     flex-direction:column;
@@ -842,36 +840,40 @@ step that's actually in focus. */
 @media(hover:none){.ledger-deck-view .type-column>.type-column-row{padding-right:72px}.ledger-deck-view .card-row-actions{opacity:1;box-shadow:-8px 0 12px #13221e}}
 @media(max-width:760px){.ledger-deck-view .type-columns{grid-template-columns:1fr}.masterwork-deck-title{padding:25px 20px}.masterwork-deck-hero:before{background-position:center top;background-size:auto 74%;opacity:.5}}
 
-/* The approved mockup's complete frame: top bar, left rail, workspace, footer. */
-.masterwork-shell-top,.masterwork-shell-rail,.masterwork-shell-bottom{display:none}
-.progressive-results .testing-layout:has(.masterwork-shell-top){display:grid;grid-template-columns:82px minmax(0,1fr);gap:0;max-width:1480px;border:1px solid #4c4b40;overflow:visible;background:#080d0c;box-shadow:0 34px 90px #000c}
-.progressive-results .testing-layout:has(.masterwork-shell-top)>*{grid-column:2;min-width:0}
-.progressive-results .testing-layout:has(.masterwork-shell-top) .masterwork-shell-top{display:flex;grid-column:1/-1;grid-row:1;align-items:center;justify-content:space-between;min-height:58px;padding:0 18px;border-bottom:1px solid #403f37;background:#070a09;color:#9da8a3}
-.masterwork-shell-top button{min-height:58px;padding:0 15px;border:0;border-bottom:2px solid transparent;background:transparent;color:#aab3af;font-size:11px;font-weight:800;cursor:pointer}.masterwork-shell-top button:hover,.masterwork-shell-top button:focus-visible,.masterwork-shell-top button.active{outline:0;border-bottom-color:#e59444;color:#f4eee5}.masterwork-shell-top .masterwork-wordmark{padding-left:0;color:#dca05d;font:700 18px Newsreader,Georgia,serif;letter-spacing:.1em}.masterwork-wordmark b{margin-right:8px;color:#f18d34}.masterwork-shell-top>div{display:flex;align-self:stretch}.masterwork-shell-top>span{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
-.progressive-results .testing-layout:has(.masterwork-shell-top) .masterwork-shell-rail{display:flex;grid-column:1;grid-row:2/40;align-self:stretch;flex-direction:column;border-right:1px solid #343d38;background:linear-gradient(#0a0e0d,#080b0a);z-index:8}.masterwork-shell-rail button{display:grid;min-height:67px;padding:9px 4px;place-items:center;border:0;border-left:2px solid transparent;background:transparent;color:#75817c;font-size:9px;cursor:pointer}.masterwork-shell-rail button i{font:normal 20px/1 system-ui}.masterwork-shell-rail button span{margin-top:5px}.masterwork-shell-rail button:hover,.masterwork-shell-rail button:focus-visible,.masterwork-shell-rail button.active{outline:0;border-left-color:#e08e3e;background:#171812;color:#f0c58f}.masterwork-shell-rail button:last-child{margin-top:auto}
-.progressive-results .testing-layout:has(.masterwork-shell-top) .deck-manuscript>header.masterwork-deck-hero{grid-column:2;grid-row:2;border-top:0!important;border-inline:0!important}
-.progressive-results .testing-layout:has(.masterwork-shell-top) .masterwork-shell-bottom{display:flex;grid-column:2;align-items:center;justify-content:space-between;min-height:62px;padding:10px 18px;border-top:1px solid #3c4842;background:#080c0b;color:#8d9a95;font-size:11px}.masterwork-shell-bottom span{display:flex;align-items:center;gap:8px}.masterwork-shell-bottom span b{color:#e6d5bb}.masterwork-shell-bottom span i{width:1px;height:18px;background:#3d4944}.masterwork-shell-bottom>div{display:flex;gap:8px}.masterwork-shell-bottom button,.masterwork-shell-bottom a{display:inline-flex;min-height:40px;box-sizing:border-box;align-items:center;padding:9px 14px;border:1px solid #45544e;background:#0c1311;color:#c8d2ce;font-size:10px;font-weight:800;text-decoration:none}.masterwork-shell-bottom .masterwork-playtest{border-color:#c97c37;background:linear-gradient(90deg,#76391b,#4e2c1a);color:#fff0df}
-.progressive-results .testing-layout:has(.masterwork-shell-top) .deck-gallery,.progressive-results .testing-layout:has(.masterwork-shell-top) .deck-manuscript>footer{border-inline:0}
-@media(max-width:760px){.progressive-results .testing-layout:has(.masterwork-shell-top){grid-template-columns:1fr}.progressive-results .testing-layout:has(.masterwork-shell-top)>*{grid-column:1}.progressive-results .testing-layout:has(.masterwork-shell-top) .masterwork-shell-top{grid-column:1;overflow-x:auto}.masterwork-shell-top .masterwork-wordmark{font-size:15px}.masterwork-shell-top>span{display:none}.progressive-results .testing-layout:has(.masterwork-shell-top) .masterwork-shell-rail{position:sticky;z-index:30;bottom:0;grid-column:1;grid-row:auto;flex-direction:row;order:99;border:1px solid #3c4943}.masterwork-shell-rail button{min-width:62px;min-height:58px;flex:1;border-left:0;border-bottom:2px solid transparent}.masterwork-shell-rail button.active{border-bottom-color:#e08e3e}.masterwork-shell-rail button:last-child{margin:0}.progressive-results .testing-layout:has(.masterwork-shell-top) .deck-manuscript>header.masterwork-deck-hero{grid-column:1;grid-row:auto}.progressive-results .testing-layout:has(.masterwork-shell-top) .masterwork-shell-bottom{grid-column:1;align-items:stretch;flex-direction:column}.masterwork-shell-bottom>div{display:grid;grid-template-columns:1fr 1fr}.masterwork-shell-bottom .masterwork-playtest{grid-column:1/-1;justify-content:center}}
-
-/* A completed Masterwork is an application canvas, not a centered article. */
-.testing-anvil:has(.masterwork-shell-top){padding-inline:0}
-.progressive-results .testing-layout:has(.masterwork-shell-top){width:100%;max-width:none;margin-inline:0}
-@media(max-width:760px){.testing-anvil:has(.masterwork-shell-top){padding-inline:0}}
-
-/* One permanent Masterwork frame: the deck leads and the deeper Forge follows. */
+/* In-panel Masterwork chrome is retired. Never re-display shell-top/rail —
+   those :has() rules used to paint a second Explore/Decks/Academy header and
+   a full-height Overview/Decklist column over an empty pane. */
+.masterwork-shell-top,.masterwork-shell-rail{display:none!important}
+.masterwork-shell-bottom{display:flex;align-items:center;justify-content:space-between;min-height:62px;padding:10px 18px;border-top:1px solid #3c4842;background:#080c0b;color:#8d9a95;font-size:11px}
+.masterwork-shell-bottom span{display:flex;align-items:center;gap:8px}.masterwork-shell-bottom span b{color:#e6d5bb}.masterwork-shell-bottom span i{width:1px;height:18px;background:#3d4944}.masterwork-shell-bottom>div{display:flex;gap:8px}.masterwork-shell-bottom button,.masterwork-shell-bottom a{display:inline-flex;min-height:40px;box-sizing:border-box;align-items:center;padding:9px 14px;border:1px solid #45544e;background:#0c1311;color:#c8d2ce;font-size:10px;font-weight:800;text-decoration:none}.masterwork-shell-bottom .masterwork-playtest{border-color:#c97c37;background:linear-gradient(90deg,#76391b,#4e2c1a);color:#fff0df}
 .edit-anvil-launcher,.forge-edit-workbench,.deck-price-bar{display:none!important}
-.progressive-results .testing-layout:has(.masterwork-shell-top) .masterwork-shell-top{position:sticky;top:0;z-index:70}
-.masterwork-shell-top a{display:inline-flex;align-items:center;min-height:58px;padding:0 15px;border-bottom:2px solid transparent;color:#aab3af;font-size:11px;font-weight:800;text-decoration:none}
-.masterwork-shell-top a:hover,.masterwork-shell-top a:focus-visible{outline:0;border-bottom-color:#e59444;color:#f4eee5}
-.progressive-results .testing-layout:has(.masterwork-shell-top) .masterwork-shell-rail{position:sticky;top:58px;height:calc(100vh - 58px);align-self:start}
 .ledger-deck-view .type-columns{display:block!important;columns:4;column-gap:9px}
 .ledger-deck-view .type-column{display:inline-block!important;width:100%;margin:0 0 9px!important;break-inside:avoid;vertical-align:top}
-.progressive-results .testing-layout:has(.masterwork-shell-top) .deck-gallery{order:1}
-.progressive-results .testing-layout:has(.masterwork-shell-top) .masterwork-shell-bottom{order:2}
-.progressive-results .testing-layout:has(.masterwork-shell-top) .forge-quick-read{order:5}
-.progressive-results .testing-layout:has(.masterwork-shell-top) .first-run-coaching{order:6}
-.progressive-results .testing-layout:has(.masterwork-shell-top) .deck-manuscript>footer:not(.masterwork-shell-bottom){order:7}
 @media(max-width:1250px){.ledger-deck-view .type-columns{columns:3}}
 @media(max-width:900px){.ledger-deck-view .type-columns{columns:2}}
-@media(max-width:760px){.progressive-results .testing-layout:has(.masterwork-shell-top) .masterwork-shell-rail{position:sticky;top:auto;height:auto}.masterwork-shell-top a{min-height:58px;padding:0 12px}.ledger-deck-view .type-columns{columns:1}}
+@media(max-width:760px){.masterwork-shell-bottom{align-items:stretch;flex-direction:column}.masterwork-shell-bottom>div{display:grid;grid-template-columns:1fr 1fr}.masterwork-shell-bottom .masterwork-playtest{grid-column:1/-1;justify-content:center}.ledger-deck-view .type-columns{columns:1}}
+
+/* Site chrome (global rail is position:fixed). In-panel shell is gone from
+   the DOM; leftover shell classes must never paint a second frame. */
+.great-forge{padding-left:82px}
+.forge-bar{position:sticky;z-index:90;top:0;min-height:58px;padding:0 18px}
+.forge-global-nav{display:flex;height:58px;align-items:stretch;justify-content:center}
+.forge-global-nav button,.forge-global-nav a{display:inline-flex;align-items:center;padding:0 16px;border:0;border-bottom:2px solid transparent;background:transparent;color:#9ca9a4;font-size:11px;font-weight:800;text-decoration:none}
+.forge-global-nav button:hover,.forge-global-nav button:focus-visible,.forge-global-nav button.active,.forge-global-nav a:hover,.forge-global-nav a:focus-visible{outline:0;border-bottom-color:#e59444;color:#f3eee6}
+.forge-global-nav button:disabled{opacity:.34}
+.forge-global-rail{position:fixed;z-index:89;top:0;bottom:0;left:0;display:flex;width:82px;flex-direction:column;padding-top:58px;border-right:1px solid #343d38;background:linear-gradient(#090d0c,#070a09)}
+.forge-global-rail button{display:grid;min-height:67px;padding:9px 4px;place-items:center;border:0;border-left:2px solid transparent;background:transparent;color:#75817c;font-size:9px}
+.forge-global-rail button i{font:normal 20px/1 system-ui}.forge-global-rail button span{margin-top:5px}
+.forge-global-rail button:hover,.forge-global-rail button:focus-visible,.forge-global-rail button.active{outline:0;border-left-color:#e08e3e;background:#171812;color:#f0c58f}.forge-global-rail button:disabled{cursor:not-allowed;opacity:.3}.forge-global-rail button:last-child{margin-top:auto}
+.masterwork-shell-top,.masterwork-shell-rail{display:none!important}
+.progressive-results.forge-descent{display:flex;flex-direction:column}
+.progressive-results.forge-descent>.testing-layout{order:3}
+.progressive-results.forge-descent>.workbench-coach-stack{order:8}
+.workbench-coach-stack{display:none;margin:18px 0 0}
+.progressive-results:has(.chapter-1-active) .workbench-coach-stack{display:none}
+.progressive-results:has(.chapter-2-active) .workbench-coach-stack,
+.progressive-results:has(.chapter-5-active) .workbench-coach-stack{display:block}
+.coach-below-deck{border:1px solid #3e554f;background:#0a1514}
+.coach-below-deck>summary{cursor:pointer;padding:14px 18px;color:#d7fff4;font:800 12px/1.2 ui-sans-serif,system-ui,sans-serif}
+.workbench-coach-stack .forge-understanding-bridge{margin-top:0}
+@media(max-width:760px){.great-forge{padding-left:0;padding-bottom:58px}.forge-global-nav{display:none}.forge-global-rail{top:auto;right:0;bottom:0;width:auto;height:58px;flex-direction:row;padding:0;border-top:1px solid #3c4943}.forge-global-rail button{min-width:56px;min-height:58px;flex:1;border-left:0;border-bottom:2px solid transparent}.forge-global-rail button.active{border-bottom-color:#e08e3e}.forge-global-rail button:last-child{margin:0}.forge-bar{padding-inline:12px}}

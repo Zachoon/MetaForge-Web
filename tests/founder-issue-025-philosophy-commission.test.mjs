@@ -124,7 +124,7 @@ describe("Founder Issue #025 — Commission-Aware Philosophy Comparison", () => 
     assert.equal(report.decidedBy, "commission");
     assert.match(
       recommended.recommendedWhy,
-      /recommended from what you asked metaforge to build/i,
+      /what you asked metaforge to build/i,
     );
   });
 

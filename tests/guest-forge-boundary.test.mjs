@@ -119,7 +119,7 @@ test("the Forge trigger (awaken) and its retry are both disabled in guest mode u
     "the button's own status text must explain why it's blocked, not just go dark",
   );
 
-  const retryBlock = source.match(/forge-generation-failure" role="alert"[\s\S]*?Strike the Anvil Again/)?.[0];
+  const retryBlock = source.match(/THE METAL DID NOT SET[\s\S]*?Strike the Anvil Again/)?.[0];
   assert.ok(retryBlock, "expected to find the failure-state retry block");
   assert.match(retryBlock, /disabled=\{guestMode && !turnstileToken\}/, "retry must not be clickable without a live guest token");
   assert.match(
@@ -189,14 +189,15 @@ test("NETWORK_RATE_LIMITED is a 429 that explicitly denies the preview was ever 
   assert.doesNotMatch(block, /has used its preview/i, "the network limiter must never claim a preview was used — a network is not a player");
 });
 
-test("GUEST_PREVIEW_ALREADY_USED stays a 409 and is the only server response allowed to say the preview was used", async () => {
+test("GUEST_PREVIEW_ALREADY_USED is only a 409 for an in-progress pending lease, never for a used guest who wants to keep forging", async () => {
   const source = await read("worker/guest-forge.ts");
-  const block = source.match(/if \(!holdsReservation\) \{[\s\S]*?409,\n\s*\);/)?.[0];
-  assert.ok(block, "expected the already-reserved response block");
+  const block = source.match(/if \(!holdsReservation\) \{[\s\S]*?ephemeralContinue = true;/)?.[0];
+  assert.ok(block, "expected the already-reserved branch to continue as ephemeral when used");
   assert.match(block, /409/);
   assert.match(block, /"GUEST_PREVIEW_ALREADY_USED"/);
-  assert.match(block, /already been used/);
-  assert.match(block, /claimToken/);
+  assert.match(block, /sessionRow\?\.status !== "used"/);
+  assert.match(block, /keep forging without an account/);
+  assert.doesNotMatch(block, /Create an account to keep forging/);
 });
 
 test("a stale pending reservation can be reclaimed only via one atomic UPDATE guarded by status and staleness, never by deleting or reading-then-writing", async () => {
@@ -211,7 +212,7 @@ test("normalizeForgeFailure maps every code to its retry/preview/verification me
   const source = await read("app/page.tsx");
   const table = source.match(/const GUEST_FORGE_ERROR_META[\s\S]*?\n\};/)?.[0];
   assert.ok(table, "expected the GUEST_FORGE_ERROR_META table");
-  assert.match(table, /GUEST_PREVIEW_ALREADY_USED: \{ retryable: false, previewConsumed: true, requiresVerification: false \}/);
+  assert.match(table, /GUEST_PREVIEW_ALREADY_USED: \{ retryable: true, previewConsumed: false, requiresVerification: true \}/);
   assert.match(table, /NETWORK_RATE_LIMITED: \{ retryable: false, previewConsumed: false, requiresVerification: false \}/);
   assert.match(table, /HUMAN_VERIFICATION_REQUIRED: \{ retryable: true, previewConsumed: false, requiresVerification: true \}/);
   assert.match(table, /INCOMPLETE_GENERATION: \{ retryable: true, previewConsumed: false, requiresVerification: true \}/);
@@ -227,7 +228,7 @@ test("normalizeForgeFailure maps every code to its retry/preview/verification me
   );
 });
 
-test("only requiresVerification failures reset the Turnstile widget; NETWORK_RATE_LIMITED and GUEST_PREVIEW_ALREADY_USED do not", async () => {
+test("only requiresVerification failures reset the Turnstile widget; NETWORK_RATE_LIMITED does not", async () => {
   const source = await read("app/page.tsx");
   const catchBlock = source.match(/\} catch \(error\) \{\s*const failure = normalizeForgeFailure\(error\);[\s\S]*?\} finally \{/)?.[0];
   assert.ok(catchBlock, "expected the commitDirectForge catch block");
@@ -244,7 +245,7 @@ test("only requiresVerification failures reset the Turnstile widget; NETWORK_RAT
 // boundary. The heading strings are each unique in the file and appear in
 // source order, so slicing between them isolates exactly one branch's JSX.
 function forgeFailureBranches(source) {
-  const alreadyUsedStart = source.indexOf("This free preview Forge has already been used");
+  const alreadyUsedStart = source.indexOf("This Forge is already running");
   const networkStart = source.indexOf("This network has reached today's Forge limit");
   const retryableStart = source.indexOf("No incomplete deck was saved");
   const blockEnd = source.indexOf("The Forge is waiting for a valid commission");
@@ -261,8 +262,9 @@ test("the failure UI renders a distinct, non-contradictory branch per error code
   const source = await read("app/page.tsx");
   const { alreadyUsed, network, retryable } = forgeFailureBranches(source);
 
-  assert.match(alreadyUsed, /already been used/);
-  assert.doesNotMatch(alreadyUsed, /Strike the Anvil Again/, "an already-used preview must never offer a retry — retry cannot succeed under the same guest identity");
+  assert.match(alreadyUsed, /already running/);
+  assert.match(alreadyUsed, /Strike the Anvil Again/, "an in-progress forge must offer a retry once it finishes — guests keep forging without signing in");
+  assert.doesNotMatch(alreadyUsed, /YOUR FREE PREVIEW IS SPENT|Sign in and continue this Forge/i);
   assert.doesNotMatch(alreadyUsed, /preview was not used/i, "an already-used preview must never simultaneously claim the preview was not used");
 
   assert.match(network, /reached today's Forge limit/);
@@ -272,7 +274,7 @@ test("the failure UI renders a distinct, non-contradictory branch per error code
   assert.match(network, /Sign in/, "the network limiter must offer the sign-in path");
 
   assert.match(retryable, /Strike the Anvil Again/);
-  assert.doesNotMatch(retryable, /already been used|preview is spent/i, "retryable failures must never claim the preview was already used");
+  assert.doesNotMatch(retryable, /YOUR FREE PREVIEW IS SPENT|already been used|preview is spent/i, "retryable failures must never claim the preview was already used");
 });
 
 // Hard regression lock for the exact production video: a NETWORK_RATE_LIMITED

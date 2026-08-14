@@ -72,6 +72,13 @@ test("guest_forges persistence goes through buildGuestClaimPayload, never the ra
   assert.doesNotMatch(source, /\.bind\(claimToken, session\.id, String\(generationId \|\| ""\), JSON\.stringify\(storedBody\)/, "the full storedBody must never be bound directly into the guest_forges insert again");
 });
 
+test("a used guest keeps forging as an ephemeral preview; only a fresh pending lease 409s", async () => {
+  const source = await read("worker/guest-forge.ts");
+  assert.match(source, /ephemeralContinue = true/);
+  assert.match(source, /sessionRow\?\.status !== "used"/);
+  assert.match(source, /keep forging without an account/);
+});
+
 test("a size guard runs before any D1 write is attempted, and the ceiling is well below D1's own hard limit", async () => {
   const source = await read("worker/guest-forge.ts");
   assert.match(source, /const MAX_CLAIM_PAYLOAD_BYTES = 500_000;/);
@@ -128,6 +135,11 @@ class FinalizationD1 {
                 .filter(([, row]) => row.sessionKey === sessionKey && row.claimedBy === null)
                 .sort((a, b) => b[1].createdAt - a[1].createdAt)[0];
               return match ? { claim_token: match[0] } : null;
+            }
+            if (sql.includes("SELECT status FROM guest_forge_sessions")) {
+              const [sessionKey] = values;
+              const row = db.sessions.get(sessionKey);
+              return row ? { status: row.status } : null;
             }
             if (sql.includes("SELECT session_key, generation_id, response_json, expires_at, claimed_by FROM guest_forges")) {
               const [claimToken] = values;
@@ -348,9 +360,7 @@ test("a used session can never be reclaimed, no matter how old", async () => {
   db.sessions.set(id, { status: "used", createdAt: ancientCreatedAt, expiresAt: ancientCreatedAt + 86400000 });
 
   await withMockedFetch(true, async () => {
-    const response = await worker.fetch(guestRequest(cookie), guestEnv(db), ctx);
-    assert.equal(response.status, 409);
-    assert.equal((await response.json()).code, "GUEST_PREVIEW_ALREADY_USED");
+    await worker.fetch(guestRequest(cookie), guestEnv(db), ctx);
   });
   assert.equal(db.sessions.get(id).status, "used", "a used row's status must never change via the reclaim path");
 });

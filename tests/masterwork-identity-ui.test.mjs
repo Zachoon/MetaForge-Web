@@ -13,8 +13,10 @@ test("a completed deck receives a customizable Masterwork identity", async () =>
   assert.match(page, /Masterwork name/);
   assert.match(page, /masterwork-commander-medallion/);
   assert.match(page, /masterwork-identity-marks/);
-  assert.match(page, /masterwork-shell-top/);
-  assert.match(page, /masterwork-shell-rail/);
+  assert.match(page, /className="forge-global-rail"/);
+  assert.doesNotMatch(page, /className="masterwork-shell-top"/);
+  assert.doesNotMatch(page, /className="masterwork-shell-rail"/);
+  assert.doesNotMatch(page, /aria-label="Masterwork workspace"/);
   assert.match(page, /masterwork-shell-bottom/);
   assert.match(page, /Goldfish this deck/);
   assert.match(page, /Featured art/);
@@ -40,10 +42,9 @@ test("the deck hero keeps art atmospheric and content readable", async () => {
   assert.match(css, /\.masterwork-identity-panel/);
   assert.match(css, /grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
   assert.match(css, /repeating-conic-gradient/);
-  assert.match(css, /testing-layout:has\(\.masterwork-shell-top\)/);
-  assert.match(css, /grid-template-columns:82px minmax\(0,1fr\)/);
-  assert.match(css, /\.testing-anvil:has\(\.masterwork-shell-top\)\{padding-inline:0\}/);
-  assert.match(css, /width:100%;max-width:none;margin-inline:0/);
+  assert.match(css, /masterwork-shell-top,.masterwork-shell-rail\{display:none!important\}/);
+  assert.doesNotMatch(css, /\.masterwork-shell-top\{display:flex/);
+  assert.doesNotMatch(css, /:has\(\.masterwork-shell-top\)/);
   assert.match(css, /@media\(max-width:560px\).*masterwork-deck-hero/s);
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
 });

@@ -44,7 +44,7 @@ test("the first-run coaching panel sits between forge-quick-read and the deck gr
 // validated deck exists would either show stale data from a previous
 // session or empty/loading noise dressed up as a real coaching read.
 test("the coaching panel itself (not just its content) is gated on hasValidatedDeck — it must not render during forging or after a failed generation", () => {
-  const panelSite = page.match(/\{hasValidatedDeck \? \(\s*<>\s*<section className="forge-understanding-bridge coach-brief honest-coach-v0"[\s\S]*?<\/section>/);
+  const panelSite = page.match(/\{hasValidatedDeck \? \(\s*(?:<>|<div className="workbench-coach-stack">)\s*(?:<details[\s\S]*?>)?\s*<section className="forge-understanding-bridge coach-brief honest-coach-v0"[\s\S]*?<\/section>/);
   assert.ok(
     panelSite || page.includes('hasValidatedDeck ? (') && page.includes('honest-coach-v0'),
     "expected validated-deck-gated Honest Coach brief",

@@ -428,6 +428,22 @@ function confidenceBand({ cohesion = null, weaklyJustifiedCount = 0, packageCoun
   });
 }
 
+/**
+ * When the weakest signal is a system, not a card, CHANGE used to fall back to
+ * a generic system phrase ("watch your artifact pieces") with no card to
+ * actually inspect. A system's own `criticalFailures` (the member whose
+ * removal costs the system the most modeled connections) is real evidence
+ * already computed elsewhere — surfacing it gives CHANGE a named card and a
+ * concrete next-game action ("watch X") instead of prose about an engine.
+ */
+function weakestSystemCardFocus(structuralSystems) {
+  const system = structuralSystems?.weakestSystem;
+  if (!system) return null;
+  const cardName = system.criticalFailures?.[0]?.name || system.core?.[0] || system.members?.[0] || null;
+  if (!cardName) return null;
+  return { value: cardName, kind: "card" };
+}
+
 function isGenericStrategyLabel(strategy = "") {
   return /^(balanced\s+)?midrange$|^aggro$|^control$|^combo$|^tempo$|^value$|^focused$/i.test(
     String(strategy || "").trim(),
@@ -623,6 +639,10 @@ function strengthsAndWeaknesses(selected = {}, structuralSystems = null, commiss
     underAnchors[0] ? { value: underAnchors[0], kind: "card" } : null,
     rawPower[0] ? { value: rawPower[0], kind: "card" } : null,
     structuralFocusEntry,
+    structuralSystems?.weakestSystem?.name
+      && !(fantasy && isIncidentalSupportPressure(structuralSystems.weakestSystem.name, fantasy))
+      ? weakestSystemCardFocus(structuralSystems)
+      : null,
     structuralSystems?.weakestSystem?.name
       && !(fantasy && isIncidentalSupportPressure(structuralSystems.weakestSystem.name, fantasy))
       ? { value: structuralSystems.weakestSystem.name, kind: "system" }

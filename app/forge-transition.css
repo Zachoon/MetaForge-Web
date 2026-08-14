@@ -247,22 +247,43 @@
 
 .ceremony-phase-rail {
   display: grid;
+  grid-column: 1 / -1;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 0;
-  margin: 24px 0 0;
+  gap: 0 10px;
+  width: 100%;
+  margin: 8px 0 0;
   padding: 0;
   list-style: none;
 }
 .ceremony-phase-rail li {
   position: relative;
   display: grid;
+  min-width: 0;
   justify-items: center;
+  align-content: start;
   gap: 8px;
+  overflow: hidden;
   color: #52615d;
-  font: 800 7px/1.15 ui-monospace, SFMono-Regular, Consolas, monospace;
-  letter-spacing: .06em;
+  font: 800 8px/1.25 ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: .01em;
   text-align: center;
   text-transform: uppercase;
+}
+.ceremony-phase-rail span,
+.ceremony-phase-rail em {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  color: inherit;
+  font: inherit;
+  font-style: normal;
+  letter-spacing: inherit;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .ceremony-phase-rail li::before {
   content: "";

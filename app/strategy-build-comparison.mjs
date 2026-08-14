@@ -146,6 +146,24 @@ function tradeoffsVersus(candidate, baseline) {
   return freeze(lines.slice(0, 3));
 }
 
+/**
+ * "Why not the alternative" must say something a standalone tradeoff line
+ * doesn't already say — the actual comparison against the specific build
+ * being passed over, not a restated copy of this build's own cost.
+ */
+function describeWhyNotAlternative(candidate, baseline, tradeoffLines) {
+  if (!baseline || candidate.id === baseline.id) {
+    return identityForLabel(candidate.label).whyBuilt;
+  }
+  const advantages = tradeoffLines
+    .filter((line) => line.startsWith("+"))
+    .map((line) => line.slice(1).trim().replace(/^./, (c) => c.toLowerCase()));
+  if (advantages.length) {
+    return `Compared with ${baseline.label}: ${advantages.join(", ")}.`;
+  }
+  return `${identityForLabel(candidate.label).whyBuilt} ${baseline.label} is built around a different bet.`;
+}
+
 function tradeoffsVersusPeers(candidate) {
   const identity = identityForLabel(candidate.label);
   if (/Resilient/i.test(candidate.label)) {
@@ -353,6 +371,7 @@ export function buildPreChoiceCoaching({
     const identity = identityForLabel(candidate.label);
     const diffs = keyDifferences(candidate, baseline);
     const full = fullCardDiff(candidate, baseline);
+    const tradeoffLines = tradeoffsVersus(candidate, baseline);
     const understanding = philosophyVoice
       || buildPhilosophyStanceVoice({
         commanderName,
@@ -406,7 +425,7 @@ export function buildPreChoiceCoaching({
         resilience: Number(evaluation.resilience) || null,
         curveHealth: Number(evaluation.curveHealth) || null,
       }),
-      tradeoffs: tradeoffsVersus(candidate, baseline),
+      tradeoffs: tradeoffLines,
       keyDifferences: diffs,
       fullComparison: full,
       boundary: candidate.boundary || null,
@@ -419,7 +438,7 @@ export function buildPreChoiceCoaching({
       playerFit: playerCompassFitForTemper(playerCompass, temperKey(candidate.label))?.explanation
         || identity.builtForPlayersWho,
       whatThisFeelsLike: identity.feel,
-      whyNotTheAlternative: identity.expectedTradeoff,
+      whyNotTheAlternative: describeWhyNotAlternative(candidate, baseline, tradeoffLines),
       recommendedWhy: null,
     });
   });
@@ -456,15 +475,18 @@ export function buildPreChoiceCoaching({
   const selectedBuild = selectedBuilds.find((build) => build.recommended) || null;
   const others = selectedBuilds.filter((build) => !build.recommended);
   const consequences = explainPlayConsequences(selectedBuild, others);
+  // The "why" line sits directly under the provenance label (DECIDED_BY_LABELS),
+  // which already states the reason as a short tag — this must add something
+  // that tag doesn't, not restate it in full-sentence form.
   const recommendedWhy = decidedBy === "commission"
-    ? `Recommended from what you asked MetaForge to build. It offers ${consequences}.`
+    ? `This is what you asked MetaForge to build, and it offers ${consequences}.`
     : decidedBy === "player_compass"
-      ? `Best match for how you said you enjoy playing. It offers ${consequences}.`
+      ? `This plays the way you told us you enjoy, and it offers ${consequences}.`
       : decidedBy === "only_legal_option"
         ? `This was the only direction that satisfied the request. It offers ${consequences}.`
         : decidedBy === "true_tie"
-          ? `These options fit how you like to play equally well. This one is shown first for consistency and offers ${consequences}.`
-          : `Recommended from how this deck is built. It offers ${consequences}.`;
+          ? `Shown first for consistency between equally good fits. It offers ${consequences}.`
+          : `This is how this particular list came together, offering ${consequences}.`;
   const buildsWithWhy = selectedBuilds.map((build) => (
     build.recommended
       ? freeze({ ...build, decidedBy, recommendedWhy, recommendedBecause: recommendedWhy })

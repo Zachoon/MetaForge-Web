@@ -12,13 +12,13 @@ test("the deck review is ordered immediately after the Living Workbench", async 
   assert.match(css, /display:flex;flex-direction:column/);
 });
 
-test("scroll depth drives a decorative, noninteractive forge atmosphere", async () => {
+test("post-ceremony result pages do not keep a fire atmosphere that shoves the decklist down", async () => {
   const page = await read("app/page.tsx");
   const css = await read("app/forge-descent.css");
-  assert.match(page, /--forge-depth/);
-  assert.match(page, /requestAnimationFrame\(updateForgeDepth\)/);
-  assert.match(page, /forge-descent-atmosphere/);
+  const frame = await read("app/site-frame.css");
+  assert.doesNotMatch(page, /forge-descent-atmosphere/);
+  assert.match(page, /chamber === "forging" && \(/);
   assert.match(css, /pointer-events:none/);
   assert.doesNotMatch(css, /molten-metal-cc0\.jpg/);
-  assert.match(css, /prefers-reduced-motion:reduce/);
+  assert.match(frame, /\.forge-descent-atmosphere,/);
 });

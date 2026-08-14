@@ -226,25 +226,33 @@ export async function handleGuestForge(request: Request, env: Env): Promise<Resp
       reclaimedStaleLease = true;
     }
   }
+  let ephemeralContinue = false;
   if (!holdsReservation) {
     // A genuinely-used entitlement may still have a real, unclaimed
-    // result sitting behind it — surface the claim path instead of a
-    // dead end wherever one exists. (A fresh, not-yet-stale 'pending' row
-    // — a second concurrent request for the same guest — lands here too;
-    // that guest has no claimable result yet either, so the response is
-    // the same either way.)
+    // result sitting behind it. A fresh, not-yet-stale 'pending' row is a
+    // second concurrent request for the same guest — do not steal that
+    // in-flight forge. A 'used' row means this guest already got their
+    // one persisted preview: they can keep forging (ephemeral), and sign
+    // in only if they want to SAVE.
     const existingClaim = await env.DB.prepare(
       `SELECT claim_token FROM guest_forges WHERE session_key = ? AND claimed_by IS NULL AND expires_at >= ? ORDER BY created_at DESC LIMIT 1`,
     ).bind(session.id, now).first<{ claim_token: string }>();
-    logGuestGateEvent({ outcome: "preview_already_used", hadGuestCookie, hasClaimableResult: Boolean(existingClaim) });
-    return json(
-      {
-        error: "Your free preview Forge has already been used. Create an account to keep forging.",
-        code: "GUEST_PREVIEW_ALREADY_USED",
-        claimToken: existingClaim?.claim_token || undefined,
-      },
-      409,
-    );
+    const sessionRow = await env.DB.prepare(
+      `SELECT status FROM guest_forge_sessions WHERE session_key = ?`,
+    ).bind(session.id).first<{ status: string }>();
+    if (sessionRow?.status !== "used") {
+      logGuestGateEvent({ outcome: "preview_already_used", hadGuestCookie, hasClaimableResult: Boolean(existingClaim) });
+      return json(
+        {
+          error: "This Forge is already in progress. Wait a moment and try again. You can keep forging without an account.",
+          code: "GUEST_PREVIEW_ALREADY_USED",
+          claimToken: existingClaim?.claim_token || undefined,
+        },
+        409,
+      );
+    }
+    ephemeralContinue = true;
+    logGuestGateEvent({ outcome: "ephemeral_continue", hadGuestCookie, hasClaimableResult: Boolean(existingClaim) });
   }
   const gate_ms = Date.now() - gateStart;
 
@@ -285,7 +293,9 @@ export async function handleGuestForge(request: Request, env: Env): Promise<Resp
     // object directly removes that parse entirely.
     generation = await generateForgeResult(internalRequest, env, guestKey);
     if (generation.status !== 200) {
-      await env.DB.prepare(`DELETE FROM guest_forge_sessions WHERE session_key = ? AND status = 'pending'`).bind(session.id).run();
+      if (!ephemeralContinue) {
+        await env.DB.prepare(`DELETE FROM guest_forge_sessions WHERE session_key = ? AND status = 'pending'`).bind(session.id).run();
+      }
       logGuestGateEvent({
         outcome: "retryable_generation_failure",
         hadGuestCookie,
@@ -317,7 +327,9 @@ export async function handleGuestForge(request: Request, env: Env): Promise<Resp
     const claimJson = JSON.stringify(claimBody);
     const claim_payload_bytes = byteLength(claimJson);
     if (claim_payload_bytes > MAX_CLAIM_PAYLOAD_BYTES) {
-      await env.DB.prepare(`DELETE FROM guest_forge_sessions WHERE session_key = ? AND status = 'pending'`).bind(session.id).run();
+      if (!ephemeralContinue) {
+        await env.DB.prepare(`DELETE FROM guest_forge_sessions WHERE session_key = ? AND status = 'pending'`).bind(session.id).run();
+      }
       logGuestGateEvent({
         outcome: "claim_payload_too_large",
         hadGuestCookie,
@@ -333,13 +345,20 @@ export async function handleGuestForge(request: Request, env: Env): Promise<Resp
       console.error("guest forge claim payload exceeded the application size ceiling", { claim_payload_bytes, ceiling: MAX_CLAIM_PAYLOAD_BYTES });
       return json({ error: "The Forge could not complete this preview. Please try again.", code: "GENERATION_FAILED" }, 500);
     }
-    await env.DB.batch([
-      env.DB.prepare(`UPDATE guest_forge_sessions SET status = 'used' WHERE session_key = ? AND status = 'pending'`).bind(session.id),
-      env.DB.prepare(
+    if (ephemeralContinue) {
+      await env.DB.prepare(
         `INSERT INTO guest_forges (claim_token, session_key, generation_id, response_json, created_at, expires_at)
          VALUES (?, ?, ?, ?, ?, ?)`,
-      ).bind(claimToken, session.id, String(generationId || ""), claimJson, now, now + TTL_MS),
-    ]);
+      ).bind(claimToken, session.id, String(generationId || ""), claimJson, now, now + TTL_MS).run();
+    } else {
+      await env.DB.batch([
+        env.DB.prepare(`UPDATE guest_forge_sessions SET status = 'used' WHERE session_key = ? AND status = 'pending'`).bind(session.id),
+        env.DB.prepare(
+          `INSERT INTO guest_forges (claim_token, session_key, generation_id, response_json, created_at, expires_at)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+        ).bind(claimToken, session.id, String(generationId || ""), claimJson, now, now + TTL_MS),
+      ]);
+    }
     // The browser response stays the FULL body (buildClientForgePayload is
     // a pass-through for this hotfix — see its own comment) plus two
     // fields the stored copy deliberately omits: claimToken (regenerated
@@ -374,7 +393,9 @@ export async function handleGuestForge(request: Request, env: Env): Promise<Resp
       },
     });
   } catch (error) {
-    await env.DB.prepare(`DELETE FROM guest_forge_sessions WHERE session_key = ? AND status = 'pending'`).bind(session.id).run();
+    if (!ephemeralContinue) {
+      await env.DB.prepare(`DELETE FROM guest_forge_sessions WHERE session_key = ? AND status = 'pending'`).bind(session.id).run();
+    }
     logGuestGateEvent({
       outcome: "retryable_generation_failure",
       hadGuestCookie,

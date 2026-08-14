@@ -6,6 +6,7 @@ import { displayRoleFor } from "./adaptive-recommendation.mjs";
 import { REVIEW_FOCUS_OPTIONS, REVIEW_FOCUS_LABELS, toggleReviewFocus } from "./review-focus.mjs";
 import { resolveAcademyGuideEntry } from "./academy-guide-entry.mjs";
 import { getMetaIntelligence } from "./meta-intelligence.mjs";
+import { cardImage, cardArtCrop } from "./card-art";
 // The interaction graph, systems intelligence, causality engine, bounded
 // failure analysis, goldfish/matchup simulation, and revision/
 // intervention learning all now run server-side
@@ -75,6 +76,7 @@ import {
   ForgeCeremonyMotion,
   ForgeProcessingLoader,
   FORGING_PHASES,
+  FORGING_PHASE_RAIL_LABELS,
   FORGING_STAGES,
   type MotionMode,
 } from "./components/forge/forge-ceremony";
@@ -116,6 +118,7 @@ type CardFact = {
   name: string;
   cmc?: number;
   color_identity?: string[];
+  produced_mana?: string[];
   mana_cost?: string;
   oracle_text?: string;
   type_line?: string;
@@ -871,11 +874,6 @@ const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
     },
   ],
 };
-const cardImage = (name: string) =>
-  `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=normal`;
-/** Square illustration crop for commander portraits — intentional, readable on mobile. */
-const cardArtCrop = (name: string) =>
-  `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=art_crop`;
 const isCommanderFormat = (format: string) =>
   ["Commander", "Brawl", "Standard Brawl"].includes(format);
 // The commission chamber's own copy must never claim every format needs a
@@ -1153,17 +1151,15 @@ type NormalizedForgeFailure = {
   message: string;
   claimToken?: string;
   // Whether "Strike the Anvil Again" may ever work against this exact
-  // failure. GUEST_PREVIEW_ALREADY_USED and NETWORK_RATE_LIMITED are both
-  // permanent-for-now rejections under the same guest identity/network —
-  // no fresh Turnstile token changes that, so retry must not be offered.
+  // failure. NETWORK_RATE_LIMITED is a network anti-abuse brake — retry
+  // cannot help. GUEST_PREVIEW_ALREADY_USED is only an in-progress lease;
+  // retry is offered after a fresh Turnstile token.
   retryable: boolean;
   // Whether this specific response means the guest's one free preview
-  // was actually spent. Only GUEST_PREVIEW_ALREADY_USED may ever say so —
-  // every other code, including the network limiter, must say the
-  // opposite plainly.
+  // was actually spent. Used guests keep forging; sign-in is only to SAVE.
   previewConsumed: boolean;
   // Whether a fresh Turnstile challenge is the correct next step. False
-  // for both non-retryable codes (retrying can't work regardless of
+  // for NETWORK_RATE_LIMITED (retrying can't work regardless of
   // verification) and true for every retryable one (a Turnstile token is
   // single-use server-side the moment it's checked, spent whether or not
   // the attempt that follows succeeds).
@@ -1171,7 +1167,7 @@ type NormalizedForgeFailure = {
 };
 
 const GUEST_FORGE_ERROR_META: Record<GuestForgeErrorCode, Omit<NormalizedForgeFailure, "code" | "message" | "claimToken">> = {
-  GUEST_PREVIEW_ALREADY_USED: { retryable: false, previewConsumed: true, requiresVerification: false },
+  GUEST_PREVIEW_ALREADY_USED: { retryable: true, previewConsumed: false, requiresVerification: true },
   NETWORK_RATE_LIMITED: { retryable: false, previewConsumed: false, requiresVerification: false },
   HUMAN_VERIFICATION_REQUIRED: { retryable: true, previewConsumed: false, requiresVerification: true },
   INCOMPLETE_GENERATION: { retryable: true, previewConsumed: false, requiresVerification: true },
@@ -1746,6 +1742,8 @@ export default function Home() {
   const [showAllSystems, setShowAllSystems] = useState(false);
   const [matchEvidenceOpen, setMatchEvidenceOpen] = useState(false);
   const [activeForgeChapter, setActiveForgeChapter] = useState<1 | 2 | 5>(1);
+  const [siteRail, setSiteRail] = useState<"overview" | "decklist" | "analysis" | "playtest">("decklist");
+  const coachBriefDetailsRef = useRef<HTMLDetailsElement | null>(null);
   const [deckViewMode, setDeckViewMode] = useState<"workbench" | "ledger">("ledger");
   const [masterworkIdentityOpen, setMasterworkIdentityOpen] = useState(false);
   const [masterworkIdentity, setMasterworkIdentity] = useState({
@@ -2789,6 +2787,8 @@ export default function Home() {
         typeLine: fact?.type_line || fact?.card_faces?.map((face) => face.type_line).filter(Boolean).join(" // ") || "",
         manaCost: fact?.mana_cost || fact?.card_faces?.map((face) => face.mana_cost).filter(Boolean).join(" // ") || "",
         colorIdentity: fact?.color_identity || [],
+        oracleText: fact?.oracle_text || fact?.card_faces?.map((face) => face.oracle_text).filter(Boolean).join(" // ") || "",
+        producedMana: fact?.produced_mana || [],
       };
     }),
     [orderedDeckRows, cardFacts, format, activeCommanderName, selectedSecondCommander?.name],
@@ -3794,6 +3794,16 @@ export default function Home() {
   // clears the rest rather than showing analysis for a deck that isn't
   // this one — the workbench's own downstream structural/consistency
   // panels already re-derive fresh from whatever deck is actually loaded.
+  function landOnCompletedDecklist() {
+    setActiveForgeChapter(1);
+    setDeckViewMode("ledger");
+    setSiteRail("decklist");
+    if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = false;
+    window.requestAnimationFrame(() =>
+      document.getElementById("deck-gallery")?.scrollIntoView({ behavior: "auto", block: "start" }),
+    );
+  }
+
   function enterMasterwork(candidateId: string) {
     if (!pendingCandidateChoice) return;
     const { nativeReport, cardPool, generationId, serverGenerationId, work, commander, persist } = pendingCandidateChoice;
@@ -3813,6 +3823,7 @@ export default function Home() {
           recommendationRecord: null,
         };
     setChamber("workbench");
+    landOnCompletedDecklist();
     setBenchStatus("idle");
     void applyForgeResult(reportForChosen, {
       generationId,
@@ -3989,7 +4000,7 @@ export default function Home() {
     setRestoredWork(claimedWork);
     setSelectedWork(0);
     setChamber("workbench");
-    setActiveForgeChapter(1);
+    landOnCompletedDecklist();
     void applyForgeResult(claimed.nativeReport, {
       generationId: localGenerationId,
       work: claimedWork,
@@ -4117,6 +4128,7 @@ export default function Home() {
         });
         await ceremonyReady;
         setChamber("workbench");
+        landOnCompletedDecklist();
       } else {
         const { nativeReport, cardPool, generationId: newGenerationId, preChoiceCoaching } = await callForgeGenerate({
           mode: "direct",
@@ -4232,6 +4244,7 @@ export default function Home() {
     setOpeningExperimentPending(false);
     setOpeningExperimentFocus("");
     setMilestoneMotion({ kind: "masterwork-selected", eyebrow: "MASTERWORK REOPENED", label: family.name, glyph: "ᛞ" });
+    landOnCompletedDecklist();
     setChamber("workbench");
   }
 
@@ -4954,6 +4967,7 @@ export default function Home() {
           <a onClick={() => trackLaunchEvent("save_continue_clicked", { format })} href={`https://app.metaforge.gg/?claim=${encodeURIComponent(guestClaimToken)}`}>Save and continue →</a>
         </aside>
       )}
+      {chamber === "forging" && (
       <div className="forge-motion-layer" aria-hidden="true" key={`${chamber}-${stage}-${actionPulse}`}>
         <div className="forge-heat-haze" />
         <div className="forge-ash-field">
@@ -4963,12 +4977,12 @@ export default function Home() {
           <i>ᛟ</i><i>ᚱ</i><i>ᛞ</i><i>ᚷ</i><i>ᛏ</i><i>ᚲ</i>
         </div>
         <div className="forge-energy-rails"><i /><i /><i /></div>
-        <div className="forge-impact-wave" />
         <div className="forge-action-burst">
           <i /><i /><i /><i /><i /><i /><b />
         </div>
         <div className="forge-vignette" />
       </div>
+      )}
       {milestoneMotion && motionMode === "full" && (
         <div className={`forge-milestone-motion milestone-${milestoneMotion.kind}`} role="status" aria-live="polite">
           <div className="milestone-shutter milestone-shutter-left" />
@@ -5002,8 +5016,24 @@ export default function Home() {
             METAFORGE<small>THE GREAT FORGE</small>
           </span>
         </button>
+        <nav className="forge-global-nav" aria-label="MetaForge workspace">
+          <button type="button" onClick={() => setChamber("entrance")}>Explore</button>
+          <button type="button" className={chamber === "workbench" && activeForgeChapter === 1 && siteRail !== "overview" && siteRail !== "playtest" ? "active" : ""} disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode("ledger"); setSiteRail("decklist"); if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = false; window.requestAnimationFrame(() => document.getElementById("deck-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}>Decks</button>
+          <button type="button" className={chamber === "workbench" && activeForgeChapter === 2 ? "active" : ""} disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(2); setSiteRail("analysis"); }}>Analyze</button>
+          <button type="button" disabled={!hasValidatedDeck} onClick={openDeepForgeEvidence}>Database</button>
+          <button type="button" className="coming-soon" disabled>Community</button>
+          <button type="button" className="coming-soon" disabled>Premium</button>
+        </nav>
+        <label className="forge-global-search">
+          <i aria-hidden="true">⌕</i>
+          <input type="search" placeholder="Search cards, decks, users…" aria-label="Search cards, decks, and users" />
+        </label>
+        <div className="forge-global-utilities" aria-label="Account tools">
+          <button type="button" aria-label="Notifications">♧</button>
+          <button type="button" aria-label="Messages">□</button>
+        </div>
         <details className="forge-menu">
-          <summary>Menu</summary>
+          <summary><i>✦</i><span>Forgemaster</span><b>⌄</b></summary>
           <div>
             <section aria-label="Text size">
               <small>TEXT SIZE</small>
@@ -5021,6 +5051,29 @@ export default function Home() {
           </div>
         </details>
       </header>
+      <aside className="forge-global-rail" aria-label="Site navigation">
+        <button type="button" className={(!hasValidatedDeck && chamber === "entrance") || (hasValidatedDeck && chamber === "workbench" && siteRail === "overview") ? "active" : ""} onClick={() => {
+          if (!hasValidatedDeck) {
+            setChamber("entrance");
+            return;
+          }
+          setChamber("workbench");
+          setActiveForgeChapter(1);
+          setSiteRail("overview");
+          window.requestAnimationFrame(() => {
+            if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = true;
+            document.getElementById("coach-brief")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          });
+        }}><i>⌂</i><span>Overview</span></button>
+        <button type="button" className={chamber === "workbench" && activeForgeChapter === 1 && siteRail === "decklist" ? "active" : ""} disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode("ledger"); setSiteRail("decklist"); if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = false; window.requestAnimationFrame(() => document.getElementById("deck-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>☷</i><span>Decklist</span></button>
+        <button type="button" className={chamber === "workbench" && activeForgeChapter === 2 ? "active" : ""} disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(2); setSiteRail("analysis"); }}><i>◇</i><span>Analysis</span></button>
+        <button type="button" disabled={!savedMasterworks.length} onClick={() => setBenchOpen(true)}><i>↺</i><span>History</span></button>
+        <button type="button" disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode("workbench"); setSiteRail("playtest"); window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>⚔</i><span>Playtest</span></button>
+        <button type="button" disabled={!hasValidatedDeck} onClick={() => navigator.clipboard.writeText(forgedDeck)}><i>⌁</i><span>Share</span></button>
+        <button type="button" disabled={!hasValidatedDeck} onClick={() => { setMasterworkIdentityDraft(masterworkIdentity); setMasterworkIdentityOpen(true); }}><i>⚙</i><span>Settings</span></button>
+        <div className="forge-rail-embers" aria-hidden="true"><i /><i /><i /></div>
+        <div className="forge-rail-version" aria-label="MetaForge version 2.1.0"><i>MF</i><span>v2.1.0</span></div>
+      </aside>
 
       <ForgeWalkthrough
         active={walkthroughActive}
@@ -5747,15 +5800,19 @@ export default function Home() {
                 YOU CAN LEAVE THIS TAB OPEN — YOUR DECK WILL APPEAR HERE
               </small>
             </div>
-            <ol className="ceremony-phase-rail" aria-label="Forge build phases">
-              {FORGING_PHASES.map((phase, index) => (
-                <li key={phase} className={index < stage ? "is-complete" : index === stage ? "is-active" : ""}>
-                  <i>{index < stage ? "✓" : index + 1}</i>
-                  <span>{phase}</span>
-                </li>
-              ))}
-            </ol>
           </div>
+          <ol className="ceremony-phase-rail" aria-label="Forge build phases">
+            {FORGING_PHASES.map((phase, index) => (
+              <li key={phase} className={index < stage ? "is-complete" : index === stage ? "is-active" : ""}>
+                <i>{index < stage ? "✓" : index + 1}</i>
+                <span>
+                  {FORGING_PHASE_RAIL_LABELS[index].map((line, lineIndex) => (
+                    <em key={line}>{lineIndex > 0 ? <br /> : null}{line}</em>
+                  ))}
+                </span>
+              </li>
+            ))}
+          </ol>
         </section>
       )}
 
@@ -5893,22 +5950,6 @@ export default function Home() {
               </div>
             </div>
           </header>}
-          {hasValidatedDeck && (
-            <div className="forge-descent-atmosphere" aria-hidden="true">
-              <div className="forge-heat-haze" />
-              <div className="forge-molten-seam" />
-              <div className="forge-embers">
-                {Array.from({ length: 18 }, (_, index) => (
-                  <i key={index} style={{
-                    "--ember-x": `${(index * 37 + 11) % 100}%`,
-                    "--ember-delay": `${-(index % 9) * 0.63}s`,
-                    "--ember-speed": `${4.5 + (index % 6) * 0.7}s`,
-                    "--ember-size": `${2 + (index % 4)}px`,
-                  } as CSSProperties} />
-                ))}
-              </div>
-            </div>
-          )}
           {openingExperimentGateActive && (
             <section className="opening-experiment-gate" aria-labelledby="opening-experiment-title">
               <header>
@@ -5968,7 +6009,10 @@ export default function Home() {
             </section>
           )}
           {hasValidatedDeck ? (
-            <>
+            siteRail !== "decklist" && (
+            <div className="workbench-coach-stack">
+              <details className="coach-below-deck" ref={coachBriefDetailsRef}>
+              <summary>Here&rsquo;s the read →</summary>
               <section className="forge-understanding-bridge coach-brief honest-coach-v0" id="coach-brief" aria-label="Coach's brief">
                 <header>
                   <small>YOUR COACH</small>
@@ -6335,24 +6379,10 @@ export default function Home() {
                   </button>
                 </footer>
               </section>
+              </details>
 
-              <RevisionOpinionPanel
-                familyId={deckId || null}
-                fingerprint={
-                  revisions.at(-1)?.fingerprint
-                  || (savedMasterworks.find((family) => family.id === deckId)?.revisions?.at(-1) as { fingerprint?: string; id?: string } | undefined)?.fingerprint
-                  || (savedMasterworks.find((family) => family.id === deckId)?.revisions?.at(-1) as { fingerprint?: string; id?: string } | undefined)?.id
-                  || null
-                }
-                revisionId={
-                  (savedMasterworks.find((family) => family.id === deckId)?.revisions?.at(-1) as { id?: string } | undefined)?.id
-                  || null
-                }
-                signedIn={!guestMode}
-                enabled={hasValidatedDeck}
-              />
-
-            </>
+            </div>
+            )
           ) : (
             !openingExperimentGateActive &&
             benchStatus !== "forging" &&
@@ -6362,33 +6392,9 @@ export default function Home() {
               </p>
             )
           )}
+          {/* Global chrome is only .forge-bar + .forge-global-rail. Never remount masterwork-shell-top/rail (Academy header) inside this pane. */}
           <div className={`testing-layout chapter-${activeForgeChapter}-active ${deckViewMode}-deck-view${isImportedDeckReview ? " imported-deck-review" : ""}`}>
             <article className="deck-manuscript">
-              {hasValidatedDeck && (
-                <>
-                  <nav className="masterwork-shell-top" aria-label="Masterwork workspace">
-                    <button type="button" className="masterwork-wordmark" onClick={() => setActiveForgeChapter(1)}><b>✦</b> METAFORGE</button>
-                    <div>
-                      <button type="button" onClick={() => setChamber(deck.trim() ? "refine" : "commission")}>Explore</button>
-                      <button type="button" className={activeForgeChapter === 1 ? "active" : ""} onClick={() => { setActiveForgeChapter(1); setDeckViewMode("ledger"); }}>Decks</button>
-                      <button type="button" className={activeForgeChapter === 2 ? "active" : ""} onClick={() => setActiveForgeChapter(2)}>Analyze</button>
-                      <button type="button" onClick={openDeepForgeEvidence}>Database</button>
-                      <button type="button" onClick={() => setActiveForgeChapter(5)}>Community</button>
-                      <a href="/academy">Academy</a>
-                    </div>
-                    <span>Forgemaster · Revision {Math.max(1, revisions.length)}</span>
-                  </nav>
-                  <aside className="masterwork-shell-rail" aria-label="Deck tools">
-                    <button type="button" onClick={() => document.querySelector(".masterwork-deck-hero")?.scrollIntoView({ behavior: "smooth", block: "start" })}><i>⌂</i><span>Overview</span></button>
-                    <button type="button" className={activeForgeChapter === 1 && deckViewMode === "ledger" ? "active" : ""} onClick={() => { setActiveForgeChapter(1); setDeckViewMode("ledger"); window.requestAnimationFrame(() => document.getElementById("deck-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>☷</i><span>Decklist</span></button>
-                    <button type="button" onClick={() => setActiveForgeChapter(2)}><i>◇</i><span>Analysis</span></button>
-                    <button type="button" onClick={() => setBenchOpen(true)}><i>↺</i><span>History</span></button>
-                    <button type="button" onClick={() => { setActiveForgeChapter(1); setDeckViewMode("workbench"); window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>⚔</i><span>Playtest</span></button>
-                    <button type="button" onClick={() => navigator.clipboard.writeText(forgedDeck)}><i>⌁</i><span>Share</span></button>
-                    <button type="button" onClick={() => { setMasterworkIdentityDraft(masterworkIdentity); setMasterworkIdentityOpen(true); }}><i>⚙</i><span>Settings</span></button>
-                  </aside>
-                </>
-              )}
               <header
                 className={hasValidatedDeck ? `masterwork-deck-hero treatment-${masterworkIdentity.treatment} focus-${masterworkIdentity.focus}` : undefined}
                 style={hasValidatedDeck ? ({
@@ -7931,7 +7937,7 @@ export default function Home() {
                 {deckViewMode === "workbench" && (
                   <Tabletop
                     key="goldfish-tabletop"
-                    initialLens="hand"
+                    initialLens="deck"
                     cards={tabletopCards}
                     edges={interactionGraph.edges}
                     previousCardNames={previousRevisionCardNames}
@@ -8230,20 +8236,27 @@ export default function Home() {
                 <div className="forge-generation-failure" role="alert">
                   {forgeGenerationFailure?.code === "GUEST_PREVIEW_ALREADY_USED" ? (
                     <>
-                      <small>YOUR FREE PREVIEW IS SPENT</small>
-                      <h3>This free preview Forge has already been used.</h3>
-                      <p>{forgeGenerationError}</p>
-                      {/* Non-retryable: a fresh Turnstile token cannot make an
-                          already-consumed guest entitlement available again,
-                          so no retry action is offered here — only a real
-                          path forward (open the saved result, or sign in). */}
+                      <small>FORGE ALREADY IN PROGRESS</small>
+                      <h3>This Forge is already running.</h3>
+                      <p>Wait a moment, then strike the anvil again. You can keep forging without an account. Sign in only if you want to save a deck.</p>
                       <div className="forge-generation-failure-actions">
                         {forgeGenerationFailure.claimToken && (
                           <a href={`https://app.metaforge.gg/?claim=${encodeURIComponent(forgeGenerationFailure.claimToken)}`}>
-                            Open your saved result →
+                            Sign in to save your last preview →
                           </a>
                         )}
-                        <a href={signInResumeHref}>Sign in and continue this Forge →</a>
+                        <button
+                          disabled={guestMode && !turnstileToken}
+                          onClick={() => {
+                            if (deck.trim()) {
+                              void commitDirectForge("decklist");
+                              return;
+                            }
+                            void commitDirectForge("commander");
+                          }}
+                        >
+                          Strike the Anvil Again
+                        </button>
                       </div>
                     </>
                   ) : forgeGenerationFailure?.code === "NETWORK_RATE_LIMITED" ? (
@@ -8928,6 +8941,23 @@ export default function Home() {
               onOpenHistory={() => { setActiveForgeChapter(2); setMatchEvidenceOpen(true); window.requestAnimationFrame(() => document.getElementById("match-evidence")?.scrollIntoView({ behavior: "smooth", block: "center" })); }}
             />
           </div>
+          {hasValidatedDeck && siteRail !== "decklist" && (
+            <RevisionOpinionPanel
+              familyId={deckId || null}
+              fingerprint={
+                revisions.at(-1)?.fingerprint
+                || (savedMasterworks.find((family) => family.id === deckId)?.revisions?.at(-1) as { fingerprint?: string; id?: string } | undefined)?.fingerprint
+                || (savedMasterworks.find((family) => family.id === deckId)?.revisions?.at(-1) as { fingerprint?: string; id?: string } | undefined)?.id
+                || null
+              }
+              revisionId={
+                (savedMasterworks.find((family) => family.id === deckId)?.revisions?.at(-1) as { id?: string } | undefined)?.id
+                || null
+              }
+              signedIn={!guestMode}
+              enabled={hasValidatedDeck}
+            />
+          )}
         </section>
       )}
       {chamber !== "forging" && savedMasterworks.length > 0 && benchOpen && (

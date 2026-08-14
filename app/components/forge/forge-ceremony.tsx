@@ -24,6 +24,18 @@ export const FORGING_PHASES = [
   "Masterwork",
 ] as const;
 
+/** Short / two-line rail labels. Full words like TOURNAMENT+MASTERWORK collide
+ *  when this rail is squeezed into the ceremony copy column. */
+export const FORGING_PHASE_RAIL_LABELS = [
+  ["Blueprint"],
+  ["Card", "pool"],
+  ["Builds"],
+  ["Mana"],
+  ["Check"],
+  ["Field"],
+  ["Seal"],
+] as const;
+
 export function ForgeProcessingLoader({ motionMode }: { motionMode: MotionMode }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [loaded, setLoaded] = useState(false);
@@ -70,12 +82,8 @@ export function ForgeProcessingLoader({ motionMode }: { motionMode: MotionMode }
 
   return (
     <div className={`forging-motion forging-motion--rive${loaded ? " is-loaded" : ""}`} aria-hidden="true">
-      <span className="processing-crucible" />
-      <span className="processing-index-ring" />
-      <span className="processing-heat-ring" />
       <canvas ref={canvasRef} />
       <i>ᛟ</i>
-      <span className="processing-sparks"><b /><b /><b /><b /><b /><b /></span>
     </div>
   );
 }

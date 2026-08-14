@@ -3,6 +3,9 @@
 import { useMemo, useState } from "react";
 import { presentPhilosophyComparison } from "../../philosophy-presentation.mjs";
 import { ForgeCardRef } from "../../forge-card-ref";
+import { cardArtCrop } from "../../card-art";
+
+const SIGNATURE_CARD_LIMIT = 3;
 
 type PhilosophyCompareProps = {
   builds: Parameters<typeof presentPhilosophyComparison>[0];
@@ -16,11 +19,16 @@ function PhilosophyCard({
   build,
   featured = false,
   onChoose,
+  onInspectCard,
 }: {
   build: ReturnType<typeof presentPhilosophyComparison>["all"][number];
   featured?: boolean;
   onChoose: (id: string) => void;
+  onInspectCard?: (name: string) => void;
 }) {
+  // Real, evidence-backed vibe cards for this direction — the cards that
+  // actually make it different from the alternative, not the full ~99.
+  const signatureCards = (build.keyDifferences?.adds || []).slice(0, SIGNATURE_CARD_LIMIT);
   return (
     <article
       className={`philosophy-card${featured || build.recommended ? " is-best-fit" : ""}${build.recommended ? " is-selected" : ""}${build.alternativeBecause ? " is-preference-alt" : ""}`}
@@ -40,6 +48,23 @@ function PhilosophyCard({
           <p className="philosophy-alternative-because">{build.alternativeBecause}</p>
         )}
       </header>
+
+      {signatureCards.length > 0 && (
+        <div className="philosophy-signature-cards" aria-label={`Signature cards for ${build.label}`}>
+          {signatureCards.map((name: string) => (
+            <button
+              key={name}
+              type="button"
+              className="philosophy-signature-card"
+              onClick={() => onInspectCard?.(name)}
+              aria-label={`Inspect ${name}`}
+            >
+              <img src={cardArtCrop(name)} alt="" loading="lazy" />
+              <span>{name}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {build.commissionFit && (
         <p className="philosophy-commission-fit">
@@ -115,6 +140,10 @@ export function PhilosophyCompare({
   );
   const [compareOpen, setCompareOpen] = useState(false);
   const count = comparison.all.length;
+  // Recommended stays first (a stronger edge via is-best-fit on the card
+  // itself), but all directions share one grid — no full-width takeover
+  // that pushes the alternatives below the fold.
+  const orderedBuilds = [comparison.recommended, ...comparison.alternatives].filter(Boolean);
   const compareLabel = count === 2 ? "Compare both" : "Compare all three";
   const title = count === 1
     ? "One experience made the cut. Confirm it fits you."
@@ -134,17 +163,10 @@ export function PhilosophyCompare({
         )}
       </header>
 
-      {comparison.recommended && (
-        <div className="philosophy-recommended-first" aria-label="MetaForge recommended experience">
-          <small>METAFORGE RECOMMENDS STARTING HERE</small>
-          <PhilosophyCard build={comparison.recommended} featured onChoose={onChoose} />
-        </div>
-      )}
-
-      {comparison.alternatives.length > 0 && (
-        <div className="philosophy-alt-grid">
-          {comparison.alternatives.map((build) => (
-            <PhilosophyCard key={build.id} build={build} onChoose={onChoose} />
+      {orderedBuilds.length > 0 && (
+        <div className="philosophy-alt-grid" aria-label="Available directions, recommended first">
+          {orderedBuilds.map((build) => (
+            <PhilosophyCard key={build.id} build={build} onChoose={onChoose} onInspectCard={onInspectCard} />
           ))}
         </div>
       )}
