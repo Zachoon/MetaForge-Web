@@ -2133,6 +2133,9 @@ export default function Home() {
     ? masterworkIdentity.featuredCard
     : activeCommanderName || deckRows[0]?.name || chosenPreview.card;
   const featuredMasterworkArt = featuredMasterworkCard ? cardArtCrop(featuredMasterworkCard) : "";
+  const masterworkFeaturedChoices = [activeCommanderName, ...deckRows.map((row) => row.name)]
+    .filter((name, index, names): name is string => Boolean(name) && names.indexOf(name) === index)
+    .slice(0, 3);
 
   useEffect(() => {
     if (!hasValidatedDeck) return;
@@ -6426,6 +6429,28 @@ export default function Home() {
               </div>
             )}
             <article className="deck-manuscript">
+              {hasValidatedDeck && (
+                <>
+                  <nav className="masterwork-shell-top" aria-label="Masterwork workspace">
+                    <button type="button" className="masterwork-wordmark" onClick={() => setActiveForgeChapter(1)}><b>✦</b> METAFORGE</button>
+                    <div>
+                      <button type="button" className={activeForgeChapter === 1 ? "active" : ""} onClick={() => setActiveForgeChapter(1)}>Deck</button>
+                      <button type="button" className={activeForgeChapter === 2 ? "active" : ""} onClick={() => setActiveForgeChapter(2)}>Coach</button>
+                      <button type="button" className={activeForgeChapter === 5 ? "active" : ""} onClick={() => setActiveForgeChapter(5)}>Goldfish</button>
+                      <button type="button" onClick={openDeepForgeEvidence}>Deep Forge</button>
+                    </div>
+                    <span>Revision {Math.max(1, revisions.length)}</span>
+                  </nav>
+                  <aside className="masterwork-shell-rail" aria-label="Deck tools">
+                    <button type="button" onClick={() => setActiveForgeChapter(1)}><i>⌂</i><span>Overview</span></button>
+                    <button type="button" className={activeForgeChapter === 1 ? "active" : ""} onClick={() => setActiveForgeChapter(1)}><i>☷</i><span>Decklist</span></button>
+                    <button type="button" onClick={() => setActiveForgeChapter(2)}><i>◇</i><span>Coach</span></button>
+                    <button type="button" onClick={() => setActiveForgeChapter(5)}><i>◴</i><span>Playtest</span></button>
+                    <button type="button" onClick={() => setBenchOpen(true)}><i>↺</i><span>History</span></button>
+                    <button type="button" onClick={() => { setMasterworkIdentityDraft(masterworkIdentity); setMasterworkIdentityOpen(true); }}><i>⚙</i><span>Identity</span></button>
+                  </aside>
+                </>
+              )}
               <header
                 className={hasValidatedDeck ? `masterwork-deck-hero treatment-${masterworkIdentity.treatment} focus-${masterworkIdentity.focus}` : undefined}
                 style={hasValidatedDeck ? ({
@@ -6502,6 +6527,14 @@ export default function Home() {
                     </label>
                     <label>
                       <span>Featured art</span>
+                      <div className="identity-featured-art" role="group" aria-label="Featured artwork shortcuts">
+                        {masterworkFeaturedChoices.map((name) => (
+                          <button type="button" key={name} className={(masterworkIdentityDraft.featuredCard || activeCommanderName) === name ? "active" : ""} aria-label={`Use ${name} artwork`} onClick={() => setMasterworkIdentityDraft((current) => ({ ...current, featuredCard: name }))}>
+                            <img src={cardArtCrop(name)} alt="" />
+                            <i aria-hidden="true">✓</i>
+                          </button>
+                        ))}
+                      </div>
                       <select value={masterworkIdentityDraft.featuredCard || activeCommanderName} onChange={(event) => setMasterworkIdentityDraft((current) => ({ ...current, featuredCard: event.target.value }))}>
                         {deckRows.map((row) => <option key={row.name} value={row.name}>{row.name}</option>)}
                       </select>
@@ -8244,6 +8277,14 @@ export default function Home() {
                       ))}
                   </div>
                 </div>
+                <footer className="masterwork-shell-bottom">
+                  <span><b>{deckRows.reduce((sum, row) => sum + row.quantity, 0)}</b> cards <i /> {activeCommanderName || "Complete deck"}</span>
+                  <div>
+                    <button type="button" onClick={() => navigator.clipboard.writeText(forgedDeck)}>Copy deck</button>
+                    {deckPurchaseLink && <a href={deckPurchaseLink.url} target={deckPurchaseLink.target} rel={deckPurchaseLink.rel}>Buy deck</a>}
+                    <button type="button" className="masterwork-playtest" onClick={() => setActiveForgeChapter(5)}>Goldfish this deck →</button>
+                  </div>
+                </footer>
                 </>
               ) : forgeGenerationError ? (
                 <div className="forge-generation-failure" role="alert">
