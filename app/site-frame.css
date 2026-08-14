@@ -79,6 +79,39 @@
   white-space:nowrap!important;
 }
 .forge-global-rail button i{color:#aeb9b3;font:normal 17px/1 system-ui!important}
+.forge-global-rail button i.forge-rail-cardback{
+  position:relative;
+  display:grid;
+  width:15px;
+  height:21px;
+  place-items:center;
+  border:1px solid #8d6234;
+  border-radius:2px;
+  background:linear-gradient(165deg,#2c1c12 0%,#14110d 58%,#1c140e 100%);
+  box-shadow:inset 0 0 0 1px #c4985828,0 0 8px #d17d2d22;
+  color:#d4a05a;
+  font:700 5px/1 Newsreader,Georgia,serif!important;
+  letter-spacing:.08em;
+  text-shadow:0 0 6px #e08a3640;
+}
+.forge-global-rail button i.forge-rail-cardback::before,
+.forge-global-rail button i.forge-rail-cardback::after{
+  content:"";
+  position:absolute;
+  border:1px solid #6d4d2c;
+  border-radius:2px;
+  background:#120e0a;
+  z-index:-1;
+}
+.forge-global-rail button i.forge-rail-cardback::before{inset:2px -3px -3px 3px}
+.forge-global-rail button i.forge-rail-cardback::after{inset:1px -2px -2px 2px;border-color:#7d582f;background:#18120c}
+.forge-global-rail button:hover i.forge-rail-cardback,
+.forge-global-rail button:focus-visible i.forge-rail-cardback,
+.forge-global-rail button.active i.forge-rail-cardback{
+  color:#f0c48a!important;
+  border-color:#c9843c;
+  box-shadow:inset 0 0 0 1px #e2b56a40,0 0 10px #e0893640;
+}
 .forge-global-rail button span{display:block!important;width:125%!important;max-width:none!important;margin-top:5px!important;overflow:visible!important;font-size:7px!important;letter-spacing:-.025em!important;transform:scale(.76)!important;transform-origin:center!important}
 .forge-global-rail button:hover,.forge-global-rail button:focus-visible,.forge-global-rail button.active{
   outline:0!important;border-left-color:#e09a3e!important;background:linear-gradient(90deg,#302013cc,transparent)!important;color:#f1c48e!important;box-shadow:inset 4px 0 14px #d47a2820!important

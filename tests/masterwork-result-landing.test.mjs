@@ -62,7 +62,7 @@ test("Explore/home is a no-scroll hero; saved Masterworks live on Decks", async 
   assert.match(page, /className="masterwork-archive"/);
   assert.match(page, /className="masterwork-history"/);
   assert.match(page, /onClick=\{openPrivateArchive\}>Decks<\/button>/);
-  assert.match(page, /onClick=\{openPrivateArchive\}><i>↺<\/i><span>Decks<\/span><\/button>/);
+  assert.match(page, /onClick=\{openPrivateArchive\}><i className="forge-rail-cardback" aria-hidden="true">MF<\/i><span>Decks<\/span><\/button>/);
   assert.doesNotMatch(page, /disabled=\{!hasValidatedDeck\} onClick=\{\(\) => \{ setChamber\("workbench"\);[\s\S]*?\}>Decks<\/button>/);
   assert.match(frame, /\.great-forge\.chamber-entrance\{height:100svh!important;overflow:hidden!important\}/);
   assert.match(frame, /\.great-forge\.chamber-archive\{height:100svh!important;overflow:hidden!important\}/);
