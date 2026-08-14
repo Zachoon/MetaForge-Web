@@ -1,0 +1,21 @@
+.forge-descent{--forge-depth:0;position:relative;isolation:isolate;transition:background-color .2s linear}
+.progressive-results.forge-descent:has(>.living-workbench){display:flex;flex-direction:column}
+.progressive-results.forge-descent:has(>.living-workbench)>*{order:4}
+.progressive-results.forge-descent>.back-link{order:0}
+.progressive-results.forge-descent>header{order:1}
+.progressive-results.forge-descent>.living-workbench{order:2}
+.progressive-results.forge-descent>.opening-experiment-gate{order:3}
+.progressive-results.forge-descent>.testing-layout{order:3}
+.forge-descent-atmosphere{position:absolute!important;z-index:0!important;top:min(760px,42vw);right:0;bottom:0;left:0;order:initial!important;overflow:hidden;pointer-events:none;opacity:calc(.12 + var(--forge-depth))}
+.forge-descent-atmosphere:before{position:absolute;inset:8% 0 0;content:"";background:linear-gradient(180deg,#090d0bf5 0%,#160b06dc 43%,#381406ba 72%,#7d260785 100%),url('/assets/forge/molten-metal-cc0.jpg') center bottom/cover no-repeat;filter:saturate(calc(.55 + var(--forge-depth))) contrast(1.14);mix-blend-mode:screen;opacity:.38;transform:scale(1.035);transform-origin:50% 100%}
+.forge-descent-atmosphere:after{position:absolute;inset:0;content:"";background:radial-gradient(ellipse at 50% 100%,rgba(255,92,8,.48),transparent 58%),linear-gradient(180deg,transparent 15%,rgba(132,37,3,.2) 100%);box-shadow:inset 0 -140px 180px rgba(255,71,0,.16)}
+.forge-molten-seam{position:absolute;right:6%;bottom:6%;left:6%;height:clamp(34px,7vw,95px);border-radius:50%;background:radial-gradient(ellipse,#fff4b4 0 3%,#ffb12c 8%,#f15b08 26%,#6d1b05 52%,transparent 73%);filter:blur(5px);opacity:.68;transform:scaleX(.94);box-shadow:0 -15px 70px rgba(255,89,9,.42)}
+.forge-heat-haze{position:absolute;inset:32% 0 0;background:repeating-linear-gradient(178deg,transparent 0 24px,rgba(255,184,99,.035) 26px,transparent 30px);opacity:.75;animation:forge-heat-drift 7s ease-in-out infinite alternate}
+.forge-embers{position:absolute;inset:0;overflow:hidden;opacity:calc(.12 + var(--forge-depth))}
+.forge-embers i{position:absolute;bottom:-10px;left:var(--ember-x);width:var(--ember-size);height:var(--ember-size);border-radius:50%;background:#ffd28a;box-shadow:0 0 5px #ffb13b,0 0 13px #f15b0a;animation:forge-ember-rise var(--ember-speed) linear var(--ember-delay) infinite}
+@keyframes forge-ember-rise{0%{opacity:0;transform:translate3d(0,0,0) scale(.5)}12%{opacity:.9}70%{opacity:.65}100%{opacity:0;transform:translate3d(34px,-70vh,0) scale(.1)}}
+@keyframes forge-heat-drift{from{transform:translateY(0) skewY(-.3deg)}to{transform:translateY(-28px) skewY(.4deg)}}
+.forge-descent>.testing-layout,.forge-descent>.testing-layout~*{position:relative;z-index:1}
+.forge-descent>.testing-layout:after{display:block;width:min(720px,86%);height:1px;margin:28px auto 0;content:"";background:linear-gradient(90deg,transparent,rgba(255,151,55,.7),transparent);box-shadow:0 0 24px rgba(255,91,15,.32);opacity:calc(.18 + var(--forge-depth))}
+@media(max-width:700px){.forge-descent-atmosphere{top:680px}.forge-descent-atmosphere:before{background-size:auto 72%;background-position:center bottom}.forge-embers i:nth-child(2n){display:none}}
+@media(prefers-reduced-motion:reduce){.forge-descent{--forge-depth:.45}.forge-descent-atmosphere,.forge-descent-atmosphere:before,.forge-molten-seam{transition:none}.forge-embers i,.forge-heat-haze{animation:none}.forge-embers{display:none}}

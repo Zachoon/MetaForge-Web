@@ -1748,6 +1748,7 @@ export default function Home() {
   const [matchEvidenceOpen, setMatchEvidenceOpen] = useState(false);
   const [activeForgeChapter, setActiveForgeChapter] = useState<1 | 2 | 5>(1);
   const [deckViewMode, setDeckViewMode] = useState<"workbench" | "ledger">("workbench");
+  const forgeDescentRef = useRef<HTMLElement | null>(null);
   const [openingExperimentPending, setOpeningExperimentPending] = useState(false);
   const [openingExperimentFocus, setOpeningExperimentFocus] = useState("");
 
@@ -2117,6 +2118,31 @@ export default function Home() {
     !forgeGenerationError &&
     deckRows.length > 0 &&
     deckRows.reduce((sum, row) => sum + row.quantity, 0) === targetDeckSize(format);
+  useEffect(() => {
+    if (chamber !== "workbench") return;
+    const section = forgeDescentRef.current;
+    if (!section) return;
+    let frame = 0;
+    const updateForgeDepth = () => {
+      frame = 0;
+      const rect = section.getBoundingClientRect();
+      const traveled = Math.max(0, -rect.top + window.innerHeight * 0.3);
+      const available = Math.max(1, section.scrollHeight - window.innerHeight * 0.7);
+      const depth = Math.min(1, traveled / available);
+      section.style.setProperty("--forge-depth", depth.toFixed(3));
+    };
+    const requestUpdate = () => {
+      if (!frame) frame = window.requestAnimationFrame(updateForgeDepth);
+    };
+    updateForgeDepth();
+    window.addEventListener("scroll", requestUpdate, { passive: true });
+    window.addEventListener("resize", requestUpdate);
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", requestUpdate);
+      window.removeEventListener("resize", requestUpdate);
+    };
+  }, [chamber, activeForgeChapter, hasValidatedDeck]);
   const orderedDeckRows = useMemo(
     () =>
       [...deckRows].sort((a, b) => {
@@ -5783,7 +5809,7 @@ export default function Home() {
       )}
 
       {chamber === "workbench" && (
-        <section className={`testing-anvil progressive-results ${openingExperimentGateActive ? "opening-experiment-pending" : ""}`}>
+        <section ref={forgeDescentRef} className={`testing-anvil progressive-results forge-descent ${openingExperimentGateActive ? "opening-experiment-pending" : ""}`}>
           <button
             className="back-link"
             onClick={() => setChamber(deck.trim() ? "refine" : "commission")}
@@ -5872,6 +5898,22 @@ export default function Home() {
                 );
               }}
             />
+          )}
+          {hasValidatedDeck && (
+            <div className="forge-descent-atmosphere" aria-hidden="true">
+              <div className="forge-heat-haze" />
+              <div className="forge-molten-seam" />
+              <div className="forge-embers">
+                {Array.from({ length: 18 }, (_, index) => (
+                  <i key={index} style={{
+                    "--ember-x": `${(index * 37 + 11) % 100}%`,
+                    "--ember-delay": `${-(index % 9) * 0.63}s`,
+                    "--ember-speed": `${4.5 + (index % 6) * 0.7}s`,
+                    "--ember-size": `${2 + (index % 4)}px`,
+                  } as CSSProperties} />
+                ))}
+              </div>
+            </div>
           )}
           {openingExperimentGateActive && (
             <section className="opening-experiment-gate" aria-labelledby="opening-experiment-title">
