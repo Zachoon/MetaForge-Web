@@ -54,6 +54,17 @@ test("the published Sites hostname stays on the public guest Forge instead of th
   assert.match(source, /const isGuest = isPublicForgeHost \|\|/);
 });
 
+test("the Access-protected app hostname enters account mode after sign-in", async () => {
+  const source = await read("app/page.tsx");
+  const hostBoundary = source.match(/const isPublicForgeHost = [^;]+;/)?.[0];
+  assert.ok(hostBoundary, "expected an explicit public-host boundary");
+  assert.doesNotMatch(
+    hostBoundary,
+    /app\.metaforge\.gg/,
+    "app.metaforge.gg must not be forced back into guest mode after Cloudflare Access returns",
+  );
+});
+
 test("production gives bounded native construction enough CPU to reach its cleanup and response path", async () => {
   const config = await read("wrangler.jsonc");
   assert.match(config, /"limits"\s*:\s*\{\s*"cpu_ms"\s*:\s*120000\s*\}/);

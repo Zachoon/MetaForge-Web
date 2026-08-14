@@ -1210,7 +1210,10 @@ export default function Home() {
   const turnstileWidgetRef = useRef<string | null>(null);
   useEffect(() => {
     const host = window.location.hostname.toLowerCase();
-    const isPublicForgeHost = host === "metaforge.gg" || host === "www.metaforge.gg" || host === "app.metaforge.gg" || host.endsWith(".chatgpt.site");
+    // app.metaforge.gg is the Cloudflare Access-protected account surface.
+    // Treating it as public guest mode discards the authenticated UI state
+    // immediately after Access sends the player back, creating a sign-in loop.
+    const isPublicForgeHost = host === "metaforge.gg" || host === "www.metaforge.gg" || host.endsWith(".chatgpt.site");
     const isGuest = isPublicForgeHost || new URLSearchParams(window.location.search).get("guest") === "1";
     queueMicrotask(() => setGuestMode(isGuest));
   }, []);
