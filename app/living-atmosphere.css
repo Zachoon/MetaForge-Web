@@ -1,0 +1,322 @@
+/* Living Tabletop / Warm Forge -------------------------------------------------
+   Atmosphere belongs to the room; legibility belongs to the interface.
+   This file intentionally loads last and remaps the legacy teal-black system
+   onto warm neutral surfaces with semantic accents. */
+:root {
+  --mf-void: #0d0d0e;
+  --mf-iron: #141415;
+  --mf-iron-raised: #1b1b1d;
+  --mf-iron-bright: #242427;
+  --mf-edge: rgba(245, 241, 232, .16);
+  --mf-edge-strong: rgba(245, 241, 232, .27);
+  --mf-verdigris: #45d6b5;
+  --mf-verdigris-bright: #8cebd5;
+  --mf-copper: #c6814d;
+  --mf-copper-bright: #e8a869;
+  --mf-ember: #ef8e42;
+  --mf-ivory: #f5f1e8;
+  --mf-mist: #bbb6ad;
+  --mf-faint: #8e8a84;
+  --ink: #0d0d0e;
+  --panel: #1b1b1d;
+  --panel2: #232325;
+  --line: rgba(245, 241, 232, .16);
+  --mint: #45d6b5;
+  --mint2: #8cebd5;
+  --amber: #ef8e42;
+  --paper: #f5f1e8;
+  --muted: #bbb6ad;
+}
+
+html { scrollbar-color: #59544e #111112; }
+body {
+  background-color: var(--mf-void);
+  color: var(--mf-ivory);
+}
+
+.great-forge {
+  --teal: var(--mf-verdigris);
+  --ember: var(--mf-ember);
+  --forge-proof: var(--mf-verdigris);
+  --forge-ember: var(--mf-ember);
+  --forge-ember-soft: #ffc184;
+  --forge-ivory: var(--mf-ivory);
+  --forge-dim: var(--mf-mist);
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(180deg, rgba(13,13,14,.74), rgba(13,13,14,.94) 70%),
+    url('/forge-corridor.webp') center top / cover fixed no-repeat,
+    var(--mf-void);
+}
+
+.great-forge::before {
+  z-index: -1;
+  opacity: .55;
+  background:
+    radial-gradient(circle at 82% 12%, rgba(239,142,66,.17), transparent 29rem),
+    linear-gradient(90deg, rgba(8,8,9,.72), transparent 30%, transparent 70%, rgba(8,8,9,.64));
+  mix-blend-mode: normal;
+}
+
+/* A scene change carries the theme between rooms without adding UI chrome. */
+.great-forge:has(.commission-chamber)::before {
+  background:
+    linear-gradient(90deg, rgba(10,9,9,.9), rgba(10,9,9,.46) 54%, rgba(10,9,9,.8)),
+    radial-gradient(circle at 82% 24%, rgba(239,142,66,.2), transparent 28rem),
+    url('/forge-steel.webp') center / 760px auto repeat;
+  opacity: .72;
+}
+
+.great-forge:has(.masterwork-reveal)::before {
+  background:
+    linear-gradient(180deg, rgba(11,10,10,.68), rgba(11,10,10,.94)),
+    radial-gradient(circle at 70% 10%, rgba(239,142,66,.19), transparent 30rem),
+    url('/forge-hero.webp') center 34% / cover no-repeat;
+  opacity: .78;
+}
+
+.great-forge:has(.testing-anvil)::before,
+.great-forge:has(.living-workbench)::before {
+  background:
+    linear-gradient(180deg, rgba(12,12,13,.62), rgba(12,12,13,.95)),
+    url('/forge-corridor.webp') center / cover fixed no-repeat;
+  opacity: .7;
+}
+
+/* Navigation and primary reading surfaces. */
+.forge-bar {
+  border-color: var(--mf-edge);
+  background: rgba(17,17,18,.88);
+  box-shadow: 0 18px 55px rgba(0,0,0,.32);
+  backdrop-filter: blur(20px) saturate(.9);
+}
+.forge-brand span { color: var(--mf-ivory); }
+.forge-brand small { color: var(--mf-faint); }
+.quiet-action {
+  border-color: var(--mf-edge);
+  background: rgba(28,28,30,.72);
+  color: var(--mf-mist);
+}
+.quiet-action:hover,.quiet-action:focus-visible {
+  border-color: var(--mf-edge-strong);
+  background: #282729;
+  color: var(--mf-ivory);
+}
+
+.commission-scroll,
+.forge-app-frame,
+.forge-story,
+.workspace > article,
+.masterwork-card,
+.masterwork-summary,
+.result-panel,
+.deck-bench,
+.player-compass-card,
+.philosophy-card,
+.philosophy-side-by-side > article {
+  border-color: var(--mf-edge) !important;
+  background: linear-gradient(165deg, rgba(35,35,37,.97), rgba(22,22,24,.98)) !important;
+  color: var(--mf-ivory);
+  box-shadow: 0 20px 58px rgba(0,0,0,.26), inset 0 1px rgba(255,255,255,.025);
+}
+
+/* High-contrast supporting copy. */
+.great-forge p,
+.great-forge dd,
+.great-forge li,
+.great-forge .forge-card-description,
+.great-forge .blueprint-choice-definition,
+.great-forge .philosophy-card-body p,
+.great-forge .philosophy-recommended-because,
+.great-forge .player-compass-card header p {
+  color: var(--mf-mist);
+}
+.great-forge small { color: var(--mf-faint); }
+.great-forge h1,.great-forge h2,.great-forge h3,.great-forge strong,.great-forge b { color: var(--mf-ivory); }
+
+/* Teal is proof/selection, not wallpaper. */
+.is-selected,
+.is-complete,
+.is-synced,
+.philosophy-card.is-best-fit {
+  --state-accent: var(--mf-verdigris);
+}
+.philosophy-card.is-best-fit,
+.philosophy-side-by-side > article.is-best-fit,
+.player-compass-card.is-complete {
+  border-color: rgba(69,214,181,.7) !important;
+  box-shadow: 0 22px 60px rgba(0,0,0,.34), inset 0 3px rgba(69,214,181,.72);
+}
+.philosophy-card > header em,
+.philosophy-side-by-side header em,
+.player-compass-card header small {
+  border-color: rgba(69,214,181,.34);
+  color: var(--mf-verdigris);
+  background: rgba(69,214,181,.07);
+}
+
+/* Copper belongs to costs and tradeoffs. */
+.philosophy-tradeoff,
+.philosophy-commission-fit,
+.pre-choice-tradeoff {
+  border-color: rgba(198,129,77,.5) !important;
+  background: rgba(108,58,27,.18) !important;
+}
+.philosophy-tradeoff small,
+.philosophy-commission-fit small,
+.pre-choice-tradeoff small { color: var(--mf-copper-bright) !important; }
+
+/* Primary action: warm and unmistakable. Secondary action stays neutral. */
+.great-forge .build-next,
+.great-forge .philosophy-card > button,
+.great-forge .philosophy-side-by-side > article > button,
+.great-forge .player-compass-actions > button:not(.is-quiet),
+.great-forge .commission-actions > button,
+.great-forge .primary,
+.great-forge .analyze {
+  border-color: rgba(255,193,132,.52);
+  background: linear-gradient(180deg, #f3a45f, #df7d34);
+  color: #21120a;
+  box-shadow: 0 10px 26px rgba(177,82,25,.2), inset 0 1px rgba(255,255,255,.28);
+}
+.great-forge .build-next:hover,
+.great-forge .build-next:focus-visible,
+.great-forge .philosophy-card > button:hover,
+.great-forge .philosophy-card > button:focus-visible,
+.great-forge .player-compass-actions > button:not(.is-quiet):hover,
+.great-forge .player-compass-actions > button:not(.is-quiet):focus-visible,
+.great-forge .primary:hover,
+.great-forge .primary:focus-visible {
+  background: linear-gradient(180deg, #ffb875, #ee8e43);
+  color: #190d07;
+  filter: none;
+}
+.great-forge button.is-quiet,
+.great-forge [role='radio'] {
+  border-color: var(--mf-edge-strong);
+  background: #262628;
+  color: var(--mf-mist);
+}
+.great-forge [role='radio'].is-selected {
+  border-color: var(--mf-verdigris);
+  background: rgba(69,214,181,.1);
+  color: var(--mf-ivory);
+  box-shadow: inset 3px 0 var(--mf-verdigris);
+}
+
+/* Philosophy room: fewer floating boxes, stronger grouping, less dead space. */
+.masterwork-reveal:has(.philosophy-compare) {
+  width: min(1180px, calc(100% - 32px));
+  margin-inline: auto;
+  padding: clamp(24px,4vw,48px);
+  border: 1px solid var(--mf-edge);
+  border-radius: 18px;
+  background: rgba(17,17,18,.82) !important;
+  box-shadow: 0 34px 90px rgba(0,0,0,.42);
+  backdrop-filter: blur(18px) saturate(.85);
+}
+.philosophy-compare { gap: 18px; }
+.philosophy-compare-heading {
+  max-width: 760px;
+  padding: 0 0 18px;
+  border-bottom: 1px solid var(--mf-edge);
+}
+.philosophy-card { border-radius: 14px; overflow: hidden; }
+.philosophy-card > header { border-bottom-color: var(--mf-edge); }
+.philosophy-card-body li {
+  border-color: rgba(245,241,232,.1);
+  background: #202022;
+  color: var(--mf-mist);
+}
+.philosophy-side-by-side > article { border-radius: 12px; }
+
+/* The entrance still has its living forge, but the copy side is warmer. */
+.forge-entrance { background: linear-gradient(105deg,#151414 0 48%,#0d0d0e 48% 100%); }
+.entrance-copy h1 em { color: #ffc184; text-shadow: 0 0 44px rgba(239,142,66,.16); }
+.entrance-copy > p { color: var(--mf-mist); }
+.entrance-actions > button {
+  border-color: var(--mf-edge) !important;
+  background: linear-gradient(155deg,#29282a,#1a1a1c) !important;
+}
+.entrance-actions > button:hover { border-color: var(--mf-edge-strong) !important; background: #2d2b2b !important; }
+.entrance-actions > button b { color: #ffc184; }
+
+/* Existing tabletop becomes the visual foundation for Forge Trials. */
+.tabletop-surface {
+  border-color: var(--mf-edge);
+  background:
+    linear-gradient(180deg, rgba(19,18,18,.52), rgba(15,15,16,.9)),
+    radial-gradient(ellipse at 50% 112%, rgba(239,142,66,.19), transparent 45%),
+    url('/forge-corridor.webp') center / cover no-repeat;
+  box-shadow: inset 0 0 120px rgba(0,0,0,.62), 0 24px 70px rgba(0,0,0,.3);
+}
+.tabletop-surface::before {
+  opacity: .38;
+  background:
+    linear-gradient(90deg, transparent 49.9%, rgba(245,241,232,.08) 50%, transparent 50.1%),
+    linear-gradient(transparent 49.9%, rgba(245,241,232,.06) 50%, transparent 50.1%),
+    url('/assets/forge/dark_stone.svg') center / 720px;
+}
+.tabletop-toolbar,.tabletop-threads,.tabletop-legend {
+  border-color: var(--mf-edge);
+  background: rgba(22,22,24,.9);
+  backdrop-filter: blur(18px);
+}
+.tabletop-toolbar nav,.tabletop-toolbar nav button,.tabletop-toolbar-actions > button {
+  border-color: var(--mf-edge);
+}
+.tabletop-toolbar nav button,.tabletop-toolbar-actions > button {
+  background: #242426;
+  color: var(--mf-faint);
+}
+.tabletop-toolbar nav button.active,.tabletop-toolbar-actions > button.active {
+  border-color: rgba(69,214,181,.55);
+  background: rgba(69,214,181,.1);
+  color: var(--mf-verdigris-bright);
+  box-shadow: inset 0 -2px var(--mf-verdigris);
+}
+.tabletop-zones { gap: 10px; padding: 10px; background: rgba(10,10,11,.48); }
+.tabletop-zone,.tabletop-turns > section,.tabletop-matchup-guide,.tabletop-matchup-card-coach {
+  border: 1px solid var(--mf-edge);
+  border-radius: 10px;
+  background: rgba(29,29,31,.94);
+  box-shadow: 0 15px 38px rgba(0,0,0,.22);
+}
+.tabletop-card {
+  border-color: rgba(245,241,232,.2);
+  background: #19191a;
+}
+.tabletop-card:hover,.tabletop-card:focus-visible,.tabletop-card.related {
+  border-color: var(--mf-verdigris);
+  box-shadow: 0 18px 32px rgba(0,0,0,.5), 0 0 0 1px rgba(69,214,181,.25);
+}
+.tabletop-hand footer span {
+  border: 1px solid rgba(245,241,232,.1);
+  background: rgba(29,29,31,.9);
+  color: var(--mf-mist);
+}
+.tabletop-matchup > nav,.tabletop-matchup > nav button { border-color: var(--mf-edge); }
+.tabletop-matchup > nav button { background: #242426; color: var(--mf-faint); }
+.tabletop-matchup > nav button.active {
+  background: rgba(239,142,66,.12);
+  color: #ffc184;
+  box-shadow: inset 0 -2px var(--mf-ember);
+}
+
+@media (max-width: 760px) {
+  .great-forge { background-attachment: scroll; }
+  .great-forge::before { background-attachment: scroll; }
+  .masterwork-reveal:has(.philosophy-compare) {
+    width: calc(100% - 16px);
+    padding: 18px 12px;
+    border-radius: 12px;
+  }
+  .commission-scroll,
+  .player-compass-card,
+  .philosophy-card { box-shadow: 0 14px 34px rgba(0,0,0,.24); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .great-forge,.great-forge::before { background-attachment: scroll; }
+}
