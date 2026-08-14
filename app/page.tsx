@@ -1747,7 +1747,7 @@ export default function Home() {
   const [showAllSystems, setShowAllSystems] = useState(false);
   const [matchEvidenceOpen, setMatchEvidenceOpen] = useState(false);
   const [activeForgeChapter, setActiveForgeChapter] = useState<1 | 2 | 5>(1);
-  const [deckViewMode, setDeckViewMode] = useState<"workbench" | "ledger">("workbench");
+  const [deckViewMode, setDeckViewMode] = useState<"workbench" | "ledger">("ledger");
   const [tabletopReviewActive, setTabletopReviewActive] = useState(true);
   const forgeDescentRef = useRef<HTMLElement | null>(null);
   const [openingExperimentPending, setOpeningExperimentPending] = useState(false);
@@ -4005,7 +4005,7 @@ export default function Home() {
     setOpeningExperimentPending(false);
     setOpeningExperimentFocus("");
     setActiveForgeChapter(1);
-    setDeckViewMode("workbench");
+    setDeckViewMode("ledger");
     trackLaunchEvent("forge_started", { mode, format, budget, targetPowerTier });
 
     let evidence: EdhrecEvidence | null = null;
@@ -7994,9 +7994,8 @@ export default function Home() {
                                   );
                                 }}
                                 onFocus={() => setHoveredCard(row.name)}
-                                aria-haspopup="menu"
-                                aria-expanded={cardActionMenu?.name === row.name}
-                                onClick={(event) => {
+                                onMouseEnter={() => setHoveredCard(row.name)}
+                                onClick={() => {
                                   setHoveredCard(row.name);
                                   if (canSelectForRefill) {
                                     setRefillCuts((current) => {
@@ -8007,21 +8006,19 @@ export default function Home() {
                                     });
                                     return;
                                   }
-                                  setCardActionMenu({
-                                    name: row.name,
-                                    x: Math.min(event.clientX, window.innerWidth - 250),
-                                    y: Math.min(event.clientY, window.innerHeight - 260),
-                                  });
+                                  setInspectedCard(row.name);
                                 }}
                                 onKeyDown={(event) => {
                                   if (event.key === "Enter" || event.key === " ") {
                                     event.preventDefault();
-                                    const bounds = event.currentTarget.getBoundingClientRect();
-                                    setCardActionMenu({
-                                      name: row.name,
-                                      x: Math.min(bounds.left + 20, window.innerWidth - 250),
-                                      y: Math.min(bounds.bottom + 6, window.innerHeight - 260),
-                                    });
+                                    if (canSelectForRefill) {
+                                      setRefillCuts((current) => {
+                                        const next = { ...current };
+                                        if (next[row.name]) delete next[row.name];
+                                        else next[row.name] = row.quantity;
+                                        return next;
+                                      });
+                                    } else setInspectedCard(row.name);
                                   }
                                 }}
                                 onContextMenu={(event) => {
@@ -8082,6 +8079,22 @@ export default function Home() {
                                       }}
                                     >{refillSelected ? "✓" : "+"}</button>
                                   ) : <><button
+                                    type="button"
+                                    className="card-row-more"
+                                    aria-haspopup="menu"
+                                    aria-expanded={cardActionMenu?.name === row.name}
+                                    aria-label={`More options for ${row.name}`}
+                                    title="More card options"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      const bounds = event.currentTarget.getBoundingClientRect();
+                                      setCardActionMenu({
+                                        name: row.name,
+                                        x: Math.min(bounds.right - 12, window.innerWidth - 250),
+                                        y: Math.min(bounds.bottom + 6, window.innerHeight - 260),
+                                      });
+                                    }}
+                                  >•••</button><button
                                     type="button"
                                     className={`card-row-foil-toggle${isFoil ? " active" : ""}`}
                                     aria-pressed={isFoil}

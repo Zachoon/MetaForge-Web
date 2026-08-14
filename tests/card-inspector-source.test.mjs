@@ -32,11 +32,11 @@ test("deck rows open a keyboard-accessible action menu before the contextual ins
   assert.match(page, /cardEvaluations\.methodology/);
 });
 
-test("deck preview selection is pinned by intent and cannot change while crossing other rows", () => {
+test("deck rows preview naturally while click remains an intentional inspection action", () => {
   const rowBlock = page.match(/role="button"[\s\S]*?className=\{\[[\s\S]*?\.join\(" "\)\}/)?.[0];
   assert.ok(rowBlock, "expected to find the interactive deck-row block");
-  assert.doesNotMatch(rowBlock, /onMouseEnter=\{\(\) => setHoveredCard/);
+  assert.match(rowBlock, /onMouseEnter=\{\(\) => setHoveredCard\(row\.name\)\}/);
   assert.match(rowBlock, /onFocus=\{\(\) => setHoveredCard\(row\.name\)\}/);
-  assert.match(rowBlock, /onClick=\{\(event\) => \{\s*setHoveredCard\(row\.name\);[\s\S]*?setCardActionMenu/);
+  assert.match(rowBlock, /onClick=\{\(\) => \{\s*setHoveredCard\(row\.name\);[\s\S]*?setInspectedCard\(row\.name\)/);
   assert.match(rowBlock, /if \(canSelectForRefill\)/, "multi-select mode may deliberately select a row without opening its action menu");
 });
