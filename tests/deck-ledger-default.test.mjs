@@ -21,3 +21,9 @@ test("ledger rows preview on hover, open readable details on click, and retain e
   assert.match(css, /ledger-deck-view \.type-columns\{columns:4 220px/);
   assert.match(css, /card-row-more:hover/);
 });
+
+test("the ledger preview remains visible while the player scrolls its card columns", async () => {
+  const css = await read("app/testing-anvil.css");
+  assert.match(css, /\.progressive-results \.testing-layout\.chapter-1-active\{overflow:visible\}/);
+  assert.match(css, /\.ledger-deck-view \.card-preview-stage\{top:82px;z-index:6\}/);
+});

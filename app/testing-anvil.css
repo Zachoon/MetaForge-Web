@@ -782,7 +782,8 @@ step that's actually in focus. */
 /* The default deck ledger is a dense reading surface: hover previews, the row
    opens the readable card, and a separate ellipsis owns secondary actions. */
 .ledger-deck-view .deck-gallery{grid-template-columns:230px minmax(0,1fr);min-height:0;max-height:none;padding:16px;overflow:visible}
-.ledger-deck-view .card-preview-stage{top:82px}
+.progressive-results .testing-layout.chapter-1-active{overflow:visible}
+.ledger-deck-view .card-preview-stage{top:82px;z-index:6}
 .ledger-deck-view .type-columns{columns:4 220px;column-gap:10px}
 .ledger-deck-view .type-column{margin-bottom:10px;border-radius:7px;overflow:hidden}
 .ledger-deck-view .type-column>.type-column-row{grid-template-columns:22px minmax(0,1fr) auto auto;gap:6px;padding:7px 8px;transition:background .14s ease,color .14s ease,box-shadow .14s ease}
