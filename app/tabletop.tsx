@@ -52,6 +52,9 @@ type TabletopProps = {
   previousCardNames: string[];
   activeCard: string;
   onSelectCard: (name: string) => void;
+  onReviewSelectCard?: (name: string) => void;
+  onInspectCard?: (name: string) => void;
+  onLensChange?: (lens: Lens) => void;
   onOpenList: () => void;
   /** Reports matchup coaching for the active card, or null when not on Matchup lens. */
   onMatchupContext?: (context: MatchupCardAdvice | null) => void;
@@ -113,6 +116,9 @@ export function Tabletop({
   previousCardNames,
   activeCard,
   onSelectCard,
+  onReviewSelectCard,
+  onInspectCard,
+  onLensChange,
   onOpenList,
   onMatchupContext,
   onMulliganDecision,
@@ -124,6 +130,10 @@ export function Tabletop({
   const [handDecision, setHandDecision] = useState<"keep" | "mulligan" | null>(null);
   const [decisionScore, setDecisionScore] = useState({ aligned: 0, total: 0 });
   const [showRevision, setShowRevision] = useState(false);
+  const changeLens = (nextLens: Lens) => {
+    setLens(nextLens);
+    onLensChange?.(nextLens);
+  };
   const previous = useMemo(() => new Set(previousCardNames.map((name) => name.toLowerCase())), [previousCardNames]);
   const relatedNames = useMemo(() => new Set(edges.flatMap((edge) => (edge.from === activeCard ? [edge.to] : edge.to === activeCard ? [edge.from] : []))), [activeCard, edges]);
   const activeEdges = edges.filter((edge) => edge.from === activeCard || edge.to === activeCard).slice(0, 5);
@@ -193,7 +203,7 @@ export function Tabletop({
       ghost={showRevision && previous.size > 0 && !previous.has(card.name.toLowerCase())}
       emphasized={lens !== "matchup" || MATCHUP_ROLES[matchup].includes(card.role)}
       showQuantity={showQuantity}
-      onSelect={() => onSelectCard(card.name)}
+      onSelect={() => lens === "deck" && onReviewSelectCard ? onReviewSelectCard(card.name) : onSelectCard(card.name)}
     />
   );
 
@@ -206,7 +216,7 @@ export function Tabletop({
         </div>
         <nav aria-label="Tabletop lens">
           {(["deck", "hand", "turns", "matchup"] as Lens[]).map((item) => (
-            <button type="button" key={item} className={lens === item ? "active" : ""} onClick={() => setLens(item)}>
+            <button type="button" key={item} className={lens === item ? "active" : ""} onClick={() => changeLens(item)}>
               {item === "deck" ? "Deck review" : item === "hand" ? "Goldfish hands" : item}
             </button>
           ))}
@@ -248,21 +258,34 @@ export function Tabletop({
               <strong>Know what is in the finished build.</strong>
               <p>Cards are grouped by printed card type. Select any card to inspect why it belongs.</p>
             </div>
-            <button type="button" onClick={() => setLens("hand")}>Next: goldfish opening hands →</button>
+            <button type="button" onClick={() => changeLens("hand")}>Next: goldfish opening hands →</button>
           </header>
-          <div className="tabletop-zones">
-            {zones.map(([type, typeCards]) => (
-              <section key={type} className="tabletop-zone">
-                <header>
-                  <strong>{type}</strong>
-                  <span>{typeCards.reduce((sum, card) => sum + card.quantity, 0)}</span>
-                </header>
-                <div>{typeCards.map(tile)}</div>
-              </section>
-            ))}
+          <div className="tabletop-deck-review-body">
+            <aside className="tabletop-selected-card" aria-live="polite">
+              <small>SELECTED CARD</small>
+              <button type="button" onClick={() => activeTabletopCard && onInspectCard?.(activeTabletopCard.name)} disabled={!activeTabletopCard}>
+                {activeTabletopCard?.image ? <img src={activeTabletopCard.image} alt={`${activeTabletopCard.name} card`} /> : <span>Choose a card</span>}
+              </button>
+              <strong>{activeTabletopCard?.name || "Choose a card to preview it"}</strong>
+              {activeTabletopCard && <p>{activeTabletopCard.typeLine || activeTabletopCard.role}</p>}
+              {activeTabletopCard && onInspectCard && (
+                <button type="button" className="tabletop-selected-card-details" onClick={() => onInspectCard(activeTabletopCard.name)}>Open readable card →</button>
+              )}
+            </aside>
+            <div className="tabletop-zones">
+              {zones.map(([type, typeCards]) => (
+                <section key={type} className="tabletop-zone">
+                  <header>
+                    <strong>{type}</strong>
+                    <span>{typeCards.reduce((sum, card) => sum + card.quantity, 0)}</span>
+                  </header>
+                  <div>{typeCards.map(tile)}</div>
+                </section>
+              ))}
+            </div>
           </div>
           <footer>
-            <button type="button" onClick={() => setLens("hand")}>I&apos;ve reviewed the deck · Start goldfishing →</button>
+            <button type="button" onClick={() => changeLens("hand")}>I&apos;ve reviewed the deck · Start goldfishing →</button>
           </footer>
         </div>
       )}
@@ -275,7 +298,7 @@ export function Tabletop({
               <strong>Would you keep this hand?</strong>
             </span>
             <div className="tabletop-hand-actions">
-              <button type="button" onClick={() => setLens("deck")}>← Review deck</button>
+              <button type="button" onClick={() => changeLens("deck")}>← Review deck</button>
               <button type="button" onClick={drawAnotherHand}>Draw another seven ↻</button>
             </div>
           </header>

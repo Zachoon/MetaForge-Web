@@ -19,6 +19,6 @@ test("scroll depth drives a decorative, noninteractive forge atmosphere", async 
   assert.match(page, /requestAnimationFrame\(updateForgeDepth\)/);
   assert.match(page, /forge-descent-atmosphere/);
   assert.match(css, /pointer-events:none/);
-  assert.match(css, /molten-metal-cc0\.jpg/);
+  assert.doesNotMatch(css, /molten-metal-cc0\.jpg/);
   assert.match(css, /prefers-reduced-motion:reduce/);
 });

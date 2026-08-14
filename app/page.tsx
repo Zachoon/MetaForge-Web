@@ -1748,6 +1748,7 @@ export default function Home() {
   const [matchEvidenceOpen, setMatchEvidenceOpen] = useState(false);
   const [activeForgeChapter, setActiveForgeChapter] = useState<1 | 2 | 5>(1);
   const [deckViewMode, setDeckViewMode] = useState<"workbench" | "ledger">("workbench");
+  const [tabletopReviewActive, setTabletopReviewActive] = useState(true);
   const forgeDescentRef = useRef<HTMLElement | null>(null);
   const [openingExperimentPending, setOpeningExperimentPending] = useState(false);
   const [openingExperimentFocus, setOpeningExperimentFocus] = useState("");
@@ -2405,6 +2406,7 @@ export default function Home() {
 
   const showContextCardInspector =
     Boolean(contextInspectCard) &&
+    !(activeForgeChapter === 1 && tabletopReviewActive) &&
     shouldUseContextCardInspector({
       previewInView: deckPreviewInView,
       activeForgeChapter,
@@ -2447,6 +2449,7 @@ export default function Home() {
 
   useEffect(() => {
     if (!hoveredCard) return;
+    if (activeForgeChapter === 1 && tabletopReviewActive) return;
     if (contextInspectDismissedRef.current === hoveredCard) return;
     if (
       !shouldUseContextCardInspector({
@@ -2459,7 +2462,7 @@ export default function Home() {
     // Also reopen when the gallery scrolls away with a live selection —
     // Founder #021: never leave the reader staring at an off-screen pane.
     setContextInspectCard(hoveredCard);
-  }, [hoveredCard, deckPreviewInView, activeForgeChapter]);
+  }, [hoveredCard, deckPreviewInView, activeForgeChapter, tabletopReviewActive]);
 
   useEffect(() => {
     if (hoveredCard && hoveredCard !== contextInspectDismissedRef.current) {
@@ -7860,6 +7863,15 @@ export default function Home() {
                       setHoveredCard(name);
                       setContextInspectCard(name);
                     }}
+                    onReviewSelectCard={(name) => {
+                      setHoveredCard(name);
+                      setContextInspectCard("");
+                    }}
+                    onInspectCard={(name) => {
+                      setContextInspectCard("");
+                      setInspectedCard(name);
+                    }}
+                    onLensChange={(lens) => setTabletopReviewActive(lens === "deck")}
                     onMatchupContext={setMatchupCardAdvice}
                     onMulliganDecision={(result) => trackLaunchEvent("mulligan_coach_decision", {
                       format,
@@ -7874,7 +7886,10 @@ export default function Home() {
                       responses: result.counts.responses,
                       writesToBrain: false,
                     })}
-                    onOpenList={() => setDeckViewMode("ledger")}
+                    onOpenList={() => {
+                      setTabletopReviewActive(false);
+                      setDeckViewMode("ledger");
+                    }}
                     strategy={strategy}
                   />
                 )}

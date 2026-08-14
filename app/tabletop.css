@@ -37,15 +37,20 @@
 .tabletop-deck-review>header p{margin:6px 0 0;color:#91a49d;font-size:12px}
 .tabletop-deck-review>header button,.tabletop-deck-review>footer button{min-height:48px;padding:11px 16px;border:1px solid #66aa99;background:#153027;color:#b9e7dc;font-weight:800}
 .tabletop-deck-review>footer{display:flex;justify-content:flex-end;padding:20px 24px;border-top:1px solid #344941;background:#09100e}
-.tabletop-deck-review .tabletop-zones{grid-template-columns:repeat(auto-fit,minmax(330px,1fr))}
-.tabletop-deck-review .tabletop-zone{padding:18px}
-.tabletop-deck-review .tabletop-zone>div{grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:12px;margin-top:15px}
+.tabletop-deck-review-body{display:grid;grid-template-columns:220px minmax(0,1fr);gap:14px;padding:14px;background:linear-gradient(145deg,#111614,#0b0e0d)}
+.tabletop-deck-review .tabletop-zones{display:block;columns:4 285px;column-gap:12px;padding:0;background:transparent}
+.tabletop-deck-review .tabletop-zone{display:inline-block;width:100%;margin:0 0 12px;padding:14px;break-inside:avoid;border-radius:7px;vertical-align:top}
+.tabletop-deck-review .tabletop-zone>div{grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:10px;margin-top:12px}
+.tabletop-selected-card{position:sticky;top:82px;align-self:start;min-height:0;padding:14px;border:1px solid #46534e;border-radius:8px;background:#151817;box-shadow:0 16px 36px #0007}
+.tabletop-selected-card>small,.tabletop-selected-card>strong,.tabletop-selected-card>p{display:block}.tabletop-selected-card>small{color:#d89252;font-size:9px;font-weight:900;letter-spacing:.14em}.tabletop-selected-card>button:first-of-type{display:grid;width:100%;margin-top:10px;padding:0;aspect-ratio:488/680;place-items:center;overflow:hidden;border:1px solid #596660;border-radius:9px;background:#0a0d0c}.tabletop-selected-card>button:first-of-type img{display:block;width:100%;height:100%;object-fit:contain}.tabletop-selected-card>button:first-of-type span{color:#80928b;font-size:12px}.tabletop-selected-card>strong{margin-top:11px;color:#f1eee7;font:600 17px/1.25 Newsreader,Georgia,serif}.tabletop-selected-card>p{margin:5px 0 0;color:#899a94;font-size:11px;line-height:1.4}.tabletop-selected-card-details{width:100%;min-height:42px;margin-top:12px;border:1px solid #5f8177;background:#17221f;color:#a9ded1;font-size:11px;font-weight:800}.lens-deck .tabletop-card{transition:border-color .15s ease,box-shadow .15s ease,opacity .15s ease}.lens-deck .tabletop-card:hover,.lens-deck .tabletop-card:focus-visible{transform:none}.lens-deck.tabletop-surface{background:linear-gradient(155deg,#171a19,#0c0f0e 70%);box-shadow:inset 0 0 90px #0008,0 24px 70px #0005}.lens-deck.tabletop-surface:before{opacity:.12;background:linear-gradient(90deg,transparent 49.9%,#ffffff0b 50%,transparent 50.1%),linear-gradient(transparent 49.9%,#ffffff08 50%,transparent 50.1%)}
 .tabletop-hand-actions{display:flex;gap:8px}
 @media(max-width:560px){
   .tabletop-toolbar nav{grid-template-columns:repeat(2,1fr)}
   .tabletop-deck-review>header{align-items:stretch;flex-direction:column;padding:18px 15px}
   .tabletop-deck-review>footer button{width:100%}
-  .tabletop-deck-review .tabletop-zones{display:block;padding:0}
+  .tabletop-deck-review-body{display:block;padding:10px}
+  .tabletop-selected-card{position:relative;top:auto;display:grid;grid-template-columns:96px minmax(0,1fr);gap:0 12px;margin-bottom:12px}.tabletop-selected-card>small{grid-column:1/-1;margin-bottom:8px}.tabletop-selected-card>button:first-of-type{grid-row:2/6;width:96px;margin:0}.tabletop-selected-card>strong{grid-column:2;margin-top:0}.tabletop-selected-card>p{grid-column:2}.tabletop-selected-card-details{grid-column:2}
+  .tabletop-deck-review .tabletop-zones{display:block;columns:auto;padding:0}
   .tabletop-deck-review .tabletop-zone{width:100%;padding:15px}
   .tabletop-deck-review .tabletop-zone>div{display:flex;gap:12px;overflow-x:auto;padding:4px 2px 14px;scroll-snap-type:x proximity}
   .tabletop-deck-review .tabletop-zone>div>.tabletop-card{flex:0 0 132px;scroll-snap-align:start}

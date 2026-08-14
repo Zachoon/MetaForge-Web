@@ -25,7 +25,18 @@ test("mulligan decisions emit observation-only evidence", async () => {
 
 test("deck review cards are larger on desktop and remain readable on mobile", async () => {
   const css = await read("app/tabletop.css");
-  assert.match(css, /minmax\(96px,1fr\)/);
+  assert.match(css, /minmax\(92px,1fr\)/);
   assert.match(css, /flex:0 0 132px/);
   assert.match(css, /min-height:48px/);
+});
+
+test("deck review uses compact columns and a stable in-place preview", async () => {
+  const source = await read("app/tabletop.tsx");
+  const css = await read("app/tabletop.css");
+  assert.match(source, /tabletop-selected-card/);
+  assert.match(source, /onReviewSelectCard/);
+  assert.match(source, /onLensChange/);
+  assert.match(css, /columns:4 285px/);
+  assert.match(css, /lens-deck \.tabletop-card:hover[^}]*transform:none/);
+  assert.doesNotMatch(css, /lens-deck\.tabletop-surface[^}]*forge-corridor/);
 });
