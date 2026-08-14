@@ -9,7 +9,8 @@ test("recommends keeping a functional hand and explains the playable start", () 
   const result = evaluateMulliganHand([land("A"), land("B"), land("C"), spell("One", 1), spell("Two", 2), spell("Answer", 2, "Interaction"), spell("Top", 5)]);
   assert.equal(result.verdict, "keep");
   assert.match(result.headline, /keep/i);
-  assert.equal(result.counts.manaSources, 3);
+  assert.equal(result.counts.lands, 3);
+  assert.equal(result.counts.otherMana, 0);
   assert.equal(result.counts.earlyPlays, 3);
   assert.equal(result.writesToBrain, false);
 });
@@ -31,3 +32,19 @@ test("calls a mana-functional but action-light hand close", () => {
   assert.equal(result.verdict, "close");
 });
 
+test("never counts a nonland mana card as an opening land", () => {
+  const manaSpell = { name: "Archdruid's Charm", role: "Mana source", typeLine: "Instant", colorIdentity: ["G"], manaCost: "{G}{G}{G}", cmc: 3 };
+  const hand = [manaSpell, ...Array.from({ length: 6 }, (_, i) => spell(`S${i}`, i + 1))];
+  const result = evaluateMulliganHand(hand);
+  assert.equal(result.counts.lands, 0);
+  assert.equal(result.counts.otherMana, 1);
+  assert.equal(result.verdict, "mulligan");
+  assert.equal(result.confidence, "high");
+  assert.match(result.warnings.join(" "), /no lands/i);
+});
+
+test("treats five lands and only one early play as close, not a confident keep", () => {
+  const result = evaluateMulliganHand([land("A"), land("B"), land("C"), land("D"), land("E"), spell("Early", 2), spell("Late", 6)]);
+  assert.equal(result.verdict, "close");
+  assert.match(result.warnings.join(" "), /Five lands/);
+});

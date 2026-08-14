@@ -244,7 +244,8 @@ export function Tabletop({
             ))}
           </div>
           <footer>
-            <span>{handEvaluation.counts.manaSources} mana sources</span>
+            <span>{handEvaluation.counts.lands} land{handEvaluation.counts.lands === 1 ? "" : "s"}</span>
+            <span>{handEvaluation.counts.otherMana} other mana card{handEvaluation.counts.otherMana === 1 ? "" : "s"}</span>
             <span>{handEvaluation.counts.earlyPlays} early plays</span>
             <span>{handEvaluation.counts.responses} responses</span>
           </footer>

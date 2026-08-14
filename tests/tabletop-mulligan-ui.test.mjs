@@ -24,6 +24,8 @@ test("the player sees teaching, uncertainty, and a non-predictive boundary", asy
   const coach = await read("app/mulligan-coach.mjs");
   assert.match(source, /METAFORGE CONFIDENCE/);
   assert.match(source, /decisions aligned/);
+  assert.match(source, /counts\.lands/);
+  assert.match(source, /counts\.otherMana/);
   assert.match(coach, /This is a close decision/);
   assert.match(coach, /not a prediction that the game will be won/);
   assert.match(coach, /writesToBrain: false/);
@@ -32,5 +34,6 @@ test("the player sees teaching, uncertainty, and a non-predictive boundary", asy
 test("mobile decisions remain full-size tap targets", async () => {
   const css = await read("app/tabletop.css");
   assert.match(css, /\.mulligan-trainer button\{[^}]*min-height:48px/);
+  assert.match(css, /grid-template-columns:repeat\(7,minmax\(112px,1fr\)\)/);
+  assert.match(css, /flex-basis:148px/);
 });
-
