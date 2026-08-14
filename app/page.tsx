@@ -82,6 +82,7 @@ import {
 import { RevisionOpinionPanel } from "./components/forge/revision-opinion";
 import { PlayerCompassCard } from "./components/forge/player-compass-card";
 import { PhilosophyCompare } from "./components/forge/philosophy-compare";
+import { DeepForgeDossier } from "./components/forge/deep-forge-dossier";
 import {
   playerCompassFromBench,
   readLocalPlayerCompass,
@@ -2709,6 +2710,9 @@ export default function Home() {
         role: isCommander ? "Commander" : cardRole(fact),
         image: fact?.image_uris?.normal || fact?.card_faces?.[0]?.image_uris?.normal || cardImage(row.name),
         cmc: cmc != null && Number.isFinite(cmc) ? cmc : null,
+        typeLine: fact?.type_line || fact?.card_faces?.map((face) => face.type_line).filter(Boolean).join(" // ") || "",
+        manaCost: fact?.mana_cost || fact?.card_faces?.map((face) => face.mana_cost).filter(Boolean).join(" // ") || "",
+        colorIdentity: fact?.color_identity || [],
       };
     }),
     [orderedDeckRows, cardFacts, format, activeCommanderName, selectedSecondCommander?.name],
@@ -6440,7 +6444,7 @@ export default function Home() {
                 <summary>
                   <span>
                     <small>DEEP FORGE · HOW DO YOU KNOW?</small>
-                    <b>Exact numbers, detected relationships, and methodology</b>
+                    <b>What MetaForge noticed — and how sure it is</b>
                   </span>
                   <strong>
                     {!deckIntegrity.checking && !deckIntegrity.passed
@@ -6457,100 +6461,10 @@ export default function Home() {
                 <span><small>RESILIENCE</small><b>{nativeMasterworkContext?.selected?.evaluation?.resilience ?? "—"}</b></span>
                 <button type="button" className={cheapestPrintings ? "active" : ""} aria-pressed={cheapestPrintings} onClick={() => setCheapestPrintings((current) => !current)}>Compare cheapest printings</button>
               </div>
-              {honestCoachSummary.deepForgeUnderstanding?.entries?.length > 0 && (
-                <section className="deep-forge-understanding" aria-label="Current understanding research">
-                  <header>
-                    <small>CURRENT UNDERSTANDING · RESEARCH</small>
-                    <b>{honestCoachSummary.deepForgeUnderstanding.title}</b>
-                    <em>{honestCoachSummary.deepForgeUnderstanding.note}</em>
-                  </header>
-                  {honestCoachSummary.deepForgeUnderstanding.entries.map((entry: any) => (
-                    <details key={entry.id} className="deep-forge-hypothesis">
-                      <summary>
-                        <span className="understanding-badge">{entry.badge?.title || entry.state}</span>
-                        {" "}
-                        {entry.claim}
-                      </summary>
-                      <div>
-                        <p><small>EVIDENCE</small> Tournament {entry.evidence?.tournament} · Experts {entry.evidence?.experts} · Shadow {entry.evidence?.shadow} · Simulation {entry.evidence?.simulation}</p>
-                        {(entry.evidence?.notes || []).length > 0 && (
-                          <ul>
-                            {entry.evidence.notes.map((note: string) => (
-                              <li key={note}>{note}</li>
-                            ))}
-                          </ul>
-                        )}
-                        {entry.prediction?.expectToObserve?.length > 0 && (
-                          <p>
-                            <small>PREDICTION ({entry.prediction.windowDays}d)</small>
-                            {" "}
-                            {entry.prediction.expectToObserve.join(" · ")}
-                          </p>
-                        )}
-                        {(entry.retirementCriteria || []).length > 0 && (
-                          <p>
-                            <small>WHAT WOULD CHANGE OUR MIND</small>
-                            {" "}
-                            {entry.retirementCriteria.join(" · ")}
-                          </p>
-                        )}
-                        {entry.uniquenessAngle && (
-                          <p><small>UNIQUE ANGLE (NOT BRAIN)</small> {entry.uniquenessAngle}</p>
-                        )}
-                      </div>
-                    </details>
-                  ))}
-                  {(honestCoachSummary.deepForgeUnderstanding.retiredEntries || []).length > 0 && (
-                    <div className="deep-forge-retired">
-                      <small>RETIRED UNDERSTANDING</small>
-                      {honestCoachSummary.deepForgeUnderstanding.retiredEntries.map((entry: any) => (
-                        <details key={entry.id}>
-                          <summary>{entry.badge?.title || "Retired"} — {entry.claim}</summary>
-                          <p><small>WHY WE BELIEVED IT</small> {(entry.whyBelieved || []).join(" · ") || "—"}</p>
-                          <p><small>WHY WE NO LONGER DO</small> {(entry.whyRetired || []).join(" · ") || "—"}</p>
-                        </details>
-                      ))}
-                    </div>
-                  )}
-                </section>
-              )}
-              {honestCoachSummary.deepForgePrinciples?.entries?.length > 0 && (
-                <section className="deep-forge-understanding deep-forge-principles" aria-label="Strategic principles research">
-                  <header>
-                    <small>STRATEGIC PRINCIPLES · RESEARCH</small>
-                    <b>{honestCoachSummary.deepForgePrinciples.title}</b>
-                    <em>{honestCoachSummary.deepForgePrinciples.note}</em>
-                  </header>
-                  {honestCoachSummary.deepForgePrinciples.entries.map((entry: any) => (
-                    <details key={entry.id} className="deep-forge-hypothesis">
-                      <summary>
-                        <span className="understanding-badge">{entry.badge?.title || entry.status}</span>
-                        {" "}
-                        <b>{entry.name}</b>
-                        {" — "}
-                        {entry.description}
-                      </summary>
-                      <div>
-                        <p>
-                          <small>EVIDENCE</small>
-                          {" "}
-                          Experts {entry.evidence?.experts} · Tournament {entry.evidence?.tournament} · Fixtures {entry.evidence?.fixtures}
-                        </p>
-                        {(entry.implementations || []).length > 0 && (
-                          <p><small>IMPLEMENTATIONS</small> {entry.implementations.join(" · ")}</p>
-                        )}
-                        {(entry.retirementCriteria || []).length > 0 && (
-                          <p>
-                            <small>WHAT WOULD CHANGE OUR MIND</small>
-                            {" "}
-                            {entry.retirementCriteria.join(" · ")}
-                          </p>
-                        )}
-                      </div>
-                    </details>
-                  ))}
-                </section>
-              )}
+              <DeepForgeDossier
+                understanding={honestCoachSummary.deepForgeUnderstanding}
+                principles={honestCoachSummary.deepForgePrinciples}
+              />
               {deckRows.length > 0 && (
                 <section className={`integrity-dossier ${deckIntegrity.passed ? "passed" : deckIntegrity.checking ? "checking" : "held"}`}>
                   <header>
@@ -7895,6 +7809,7 @@ export default function Home() {
                     }}
                     onMatchupContext={setMatchupCardAdvice}
                     onOpenList={() => setDeckViewMode("ledger")}
+                    strategy={strategy}
                   />
                 )}
                 <div className="deck-gallery" id="deck-gallery">

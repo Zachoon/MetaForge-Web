@@ -1,0 +1,188 @@
+.deep-forge-dossier {
+  display: grid;
+  gap: 16px;
+  margin: 0 18px 18px;
+}
+
+.deep-forge-player-panel {
+  padding: 16px 18px;
+  border: 1px solid #4a4234;
+  background: linear-gradient(160deg, #14110e, #0c1210 78%);
+}
+
+.deep-forge-player-panel > header {
+  margin-bottom: 12px;
+}
+
+.deep-forge-player-panel > header small {
+  display: block;
+  color: #70e2c0;
+  font: 800 9px/1.3 ui-monospace, monospace;
+  letter-spacing: 0.14em;
+}
+
+.deep-forge-player-panel > header b {
+  display: block;
+  margin-top: 6px;
+  color: #efe6d8;
+  font: 500 20px/1.2 Newsreader, Georgia, serif;
+}
+
+.deep-forge-player-panel > header em {
+  display: block;
+  margin-top: 6px;
+  color: #9aa79f;
+  font: normal 12px/1.5 Inter, system-ui, sans-serif;
+}
+
+.deep-forge-insight {
+  margin-top: 10px;
+  padding: 14px;
+  border: 1px solid #3a4640;
+  background: #0a100e;
+}
+
+.deep-forge-insight > header em {
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 4px 7px;
+  border: 1px solid rgba(112, 226, 192, 0.35);
+  color: #70e2c0;
+  font: 800 9px ui-monospace, monospace;
+  letter-spacing: 0.08em;
+  font-style: normal;
+}
+
+.deep-forge-insight.is-contradicted > header em {
+  border-color: rgba(224, 168, 142, 0.45);
+  color: #e0a88e;
+}
+
+.deep-forge-insight.is-retired > header em {
+  border-color: #5a635e;
+  color: #9aa79f;
+}
+
+.deep-forge-insight h3 {
+  margin: 0;
+  color: #efe6d8;
+  font: 500 16px/1.35 Newsreader, Georgia, serif;
+}
+
+.deep-forge-insight dl {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 0;
+}
+
+.deep-forge-insight dt {
+  color: #d88a48;
+  font: 800 8px ui-monospace, monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.deep-forge-insight dd {
+  margin: 4px 0 0;
+  color: #b7c4be;
+  font-size: calc(12px * var(--forge-reading-scale, 1));
+  line-height: 1.5;
+}
+
+.deep-forge-research-disclosure {
+  margin-top: 12px;
+  border-top: 1px solid #2f3b36;
+  padding-top: 10px;
+}
+
+.deep-forge-research-disclosure > summary {
+  cursor: pointer;
+  color: #70e2c0;
+  font: 800 10px/1.4 ui-monospace, monospace;
+  letter-spacing: 0.08em;
+  list-style: none;
+}
+
+.deep-forge-research-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.deep-forge-research-body {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  color: #8fa19a;
+  font-size: calc(11px * var(--forge-reading-scale, 1));
+  line-height: 1.5;
+}
+
+.deep-forge-research-body small {
+  display: block;
+  margin-bottom: 3px;
+  color: #c7ad76;
+  font: 800 8px ui-monospace, monospace;
+  letter-spacing: 0.1em;
+}
+
+.deep-forge-retired-player {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #3a4640;
+}
+
+.deep-forge-retired-player > small {
+  display: block;
+  margin-bottom: 8px;
+  color: #e2a778;
+  font: 800 9px ui-monospace, monospace;
+  letter-spacing: 0.12em;
+}
+
+.deep-forge-retired-card {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid #343d39;
+  background: #090e0c;
+}
+
+.deep-forge-retired-card summary {
+  cursor: pointer;
+  color: #d7e0db;
+  font-size: calc(13px * var(--forge-reading-scale, 1));
+  line-height: 1.4;
+}
+
+.deep-forge-retired-card summary em {
+  margin-right: 6px;
+  color: #9aa79f;
+  font-style: normal;
+  font-weight: 800;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.deep-forge-retired-card p {
+  margin: 8px 0 0;
+  color: #9aa79f;
+  font-size: calc(12px * var(--forge-reading-scale, 1));
+  line-height: 1.45;
+}
+
+.deep-forge-retired-card p small {
+  display: block;
+  margin-bottom: 3px;
+  color: #c7ad76;
+  font: 800 8px ui-monospace, monospace;
+  letter-spacing: 0.1em;
+}
+
+@media (max-width: 760px) {
+  .deep-forge-dossier {
+    margin-inline: 12px;
+  }
+
+  .deep-forge-insight,
+  .deep-forge-player-panel {
+    padding-inline: 14px;
+  }
+}

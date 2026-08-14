@@ -2,14 +2,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [page, css] = await Promise.all([
+const [page, css, dossier] = await Promise.all([
   readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
   readFile(new URL("../app/testing-anvil.css", import.meta.url), "utf8"),
+  readFile(new URL("../app/components/forge/deep-forge-dossier.tsx", import.meta.url), "utf8"),
 ]);
 
 test("Deep Forge remains an optional intelligence vault", () => {
   assert.match(page, /<small>DEEP FORGE · HOW DO YOU KNOW\?<\/small>/);
-  assert.match(page, /Exact numbers, detected relationships, and methodology/);
+  assert.match(page, /What MetaForge noticed — and how sure it is/);
+  assert.match(page, /<DeepForgeDossier/);
+  assert.match(dossier, /What that could mean for this deck/);
+  assert.match(dossier, /See the research evidence/);
   assert.match(page, /How do you know\? → Deep Forge evidence/);
   assert.match(css, /Chapter IV intelligence vault/);
   assert.match(css, /SEALED INSTRUMENT CHAMBER/);

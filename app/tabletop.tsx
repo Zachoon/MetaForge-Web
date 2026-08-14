@@ -6,6 +6,7 @@ import {
   MATCHUP_GUIDANCE,
   MATCHUP_ROLES,
 } from "./tabletop-matchup.mjs";
+import { evaluateMulliganHand } from "./mulligan-coach.mjs";
 
 export type TabletopCard = {
   name: string;
@@ -14,6 +15,9 @@ export type TabletopCard = {
   image: string;
   /** null when catalog hydration has type/role but no verified mana value yet */
   cmc: number | null;
+  typeLine?: string;
+  manaCost?: string;
+  colorIdentity?: string[];
 };
 
 export type TabletopEdge = { from: string; to: string; signals?: string[] };
@@ -51,6 +55,7 @@ type TabletopProps = {
   onOpenList: () => void;
   /** Reports matchup coaching for the active card, or null when not on Matchup lens. */
   onMatchupContext?: (context: MatchupCardAdvice | null) => void;
+  strategy?: string;
 };
 
 const ROLE_ORDER = ["Commander", "Mana source", "Acceleration", "Card advantage", "Interaction", "Protection", "Engine piece", "Board reset", "Threat", "Utility"];
@@ -88,10 +93,13 @@ export function Tabletop({
   onSelectCard,
   onOpenList,
   onMatchupContext,
+  strategy = "Balanced midrange",
 }: TabletopProps) {
   const [lens, setLens] = useState<Lens>("hand");
   const [matchup, setMatchup] = useState<Matchup>("Aggro");
   const [handSalt, setHandSalt] = useState(1);
+  const [handDecision, setHandDecision] = useState<"keep" | "mulligan" | null>(null);
+  const [decisionScore, setDecisionScore] = useState({ aligned: 0, total: 0 });
   const [showRevision, setShowRevision] = useState(false);
   const previous = useMemo(() => new Set(previousCardNames.map((name) => name.toLowerCase())), [previousCardNames]);
   const relatedNames = useMemo(() => new Set(edges.flatMap((edge) => (edge.from === activeCard ? [edge.to] : edge.to === activeCard ? [edge.from] : []))), [activeCard, edges]);
@@ -106,7 +114,18 @@ export function Tabletop({
       return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
     });
   }, [cards]);
-  const hand = useMemo(() => seededHand(cards, handSalt), [cards, handSalt]);
+  const hand = useMemo(() => seededHand(cards.filter((card) => card.role !== "Commander"), handSalt), [cards, handSalt]);
+  const handEvaluation = useMemo(() => evaluateMulliganHand(hand, { strategy }), [hand, strategy]);
+  const drawAnotherHand = () => {
+    setHandDecision(null);
+    setHandSalt((value) => value + 1);
+  };
+  const answerHand = (decision: "keep" | "mulligan") => {
+    if (handDecision) return;
+    setHandDecision(decision);
+    const aligned = handEvaluation.verdict === "close" || handEvaluation.verdict === decision;
+    setDecisionScore((score) => ({ aligned: score.aligned + (aligned ? 1 : 0), total: score.total + 1 }));
+  };
   const matchupGuidance = MATCHUP_GUIDANCE[matchup];
   const activeTabletopCard = useMemo(
     () => cards.find((card) => card.name === activeCard) || null,
@@ -215,7 +234,7 @@ export function Tabletop({
               <small>OPENING SEVEN</small>
               <strong>Would you keep this hand?</strong>
             </span>
-            <button type="button" onClick={() => setHandSalt((value) => value + 1)}>
+            <button type="button" onClick={drawAnotherHand}>
               Draw another seven ↻
             </button>
           </header>
@@ -225,10 +244,32 @@ export function Tabletop({
             ))}
           </div>
           <footer>
-            <span>{hand.filter((card) => card.role === "Mana source").length} mana sources</span>
-            <span>{hand.filter((card) => knownCmc(card) && (card.cmc as number) <= 2 && card.role !== "Mana source").length} early plays</span>
-            <span>{hand.filter((card) => ["Interaction", "Protection"].includes(card.role)).length} responses</span>
+            <span>{handEvaluation.counts.manaSources} mana sources</span>
+            <span>{handEvaluation.counts.earlyPlays} early plays</span>
+            <span>{handEvaluation.counts.responses} responses</span>
           </footer>
+          <section className="mulligan-trainer" aria-label="Mulligan trainer">
+            {!handDecision ? (
+              <>
+                <p>Make your call before MetaForge reveals its read.</p>
+                <div>
+                  <button type="button" onClick={() => answerHand("keep")}>Yes, keep it</button>
+                  <button type="button" onClick={() => answerHand("mulligan")}>No, take a mulligan</button>
+                </div>
+              </>
+            ) : (
+              <div className={`mulligan-reveal verdict-${handEvaluation.verdict}`} aria-live="polite">
+                <small>YOU CHOSE {handDecision.toUpperCase()} · METAFORGE CONFIDENCE: {handEvaluation.confidence.toUpperCase()}</small>
+                <strong>{handEvaluation.headline}</strong>
+                {[...handEvaluation.reasons, ...handEvaluation.warnings].map((line: string) => <p key={line}>{line}</p>)}
+                <p className="mulligan-disclaimer">{handEvaluation.disclaimer}</p>
+                <footer>
+                  <span>{decisionScore.aligned} of {decisionScore.total} decisions aligned</span>
+                  <button type="button" onClick={drawAnotherHand}>Try another hand →</button>
+                </footer>
+              </div>
+            )}
+          </section>
         </div>
       )}
 
