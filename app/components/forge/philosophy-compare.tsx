@@ -135,7 +135,10 @@ export function PhilosophyCompare({
       </header>
 
       {comparison.recommended && (
-        <PhilosophyCard build={comparison.recommended} featured onChoose={onChoose} />
+        <div className="philosophy-recommended-first" aria-label="MetaForge recommended experience">
+          <small>METAFORGE RECOMMENDS STARTING HERE</small>
+          <PhilosophyCard build={comparison.recommended} featured onChoose={onChoose} />
+        </div>
       )}
 
       {comparison.alternatives.length > 0 && (

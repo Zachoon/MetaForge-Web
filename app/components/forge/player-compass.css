@@ -6,6 +6,7 @@
   margin: 18px auto 0;
   color: #e6ece8;
 }
+.philosophy-recommended-first>small{display:block;margin:0 0 8px;color:#8fdec9;font-size:10px;font-weight:900;letter-spacing:.14em}
 
 .player-compass-card {
   padding: 18px 20px 16px;

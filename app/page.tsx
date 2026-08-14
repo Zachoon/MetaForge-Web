@@ -1808,6 +1808,17 @@ export default function Home() {
   }, [milestoneMotion]);
 
   const previousChamberRef = useRef<Chamber>(chamber);
+  useLayoutEffect(() => {
+    if (chamber !== "masterworks" || !pendingCandidateChoice) return;
+    // The forging ceremony is much taller than the decision screen. Browsers
+    // preserve that old scroll offset across the React chamber swap, which can
+    // strand the player halfway through a philosophy card with its heading and
+    // recommendation context above the viewport. Reset before paint, then once
+    // more after layout settles so the result always opens at its true start.
+    window.scrollTo(0, 0);
+    const settle = window.requestAnimationFrame(() => window.scrollTo(0, 0));
+    return () => window.cancelAnimationFrame(settle);
+  }, [chamber, pendingCandidateChoice]);
   useEffect(() => {
     const previous = previousChamberRef.current;
     previousChamberRef.current = chamber;
@@ -5684,7 +5695,7 @@ export default function Home() {
       )}
 
       {chamber === "masterworks" && (
-        <section className="masterwork-reveal">
+        <section className="masterwork-reveal" id="masterwork-choice-start">
           {pendingCandidateChoice ? (
             <>
               {(masterworksCommissionContract?.hasContract || commissionNote.trim()) && (
