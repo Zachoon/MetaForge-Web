@@ -69,7 +69,6 @@ import {
 import { ForgeCardRef, ForgeCardRefList } from "./forge-card-ref";
 import { buildCommissionContract } from "./commission-contract.mjs";
 import { tableMeaningFor } from "./strategic-recognition.mjs";
-import { LivingWorkbench, type WorkbenchMode } from "./living-workbench";
 import { Tabletop, type MatchupCardAdvice, type TabletopCard } from "./tabletop";
 import { ProvingGroundsEra } from "./proving-grounds-era";
 import {
@@ -5850,13 +5849,11 @@ export default function Home() {
 
       {chamber === "workbench" && (
         <section ref={forgeDescentRef} className={`testing-anvil progressive-results forge-descent ${openingExperimentGateActive ? "opening-experiment-pending" : ""}`}>
-          <button
+          {!hasValidatedDeck && <button
             className="back-link"
             onClick={() => setChamber(deck.trim() ? "refine" : "commission")}
-          >
-            ← Change build
-          </button>
-          <header>
+          >← Change build</button>}
+          {!hasValidatedDeck && <header>
             <span className="forge-eyebrow">
               <i />{" "}
               {hasValidatedDeck
@@ -5895,50 +5892,7 @@ export default function Home() {
                 )}
               </div>
             </div>
-          </header>
-          {hasValidatedDeck && (
-            <LivingWorkbench
-              mode={(activeForgeChapter === 2 ? "tune" : activeForgeChapter === 5 ? "test" : "deck") as WorkbenchMode}
-              onModeChange={(mode) => {
-                const chapter = mode === "deck" ? 1 : mode === "tune" ? 2 : 5;
-                setActiveForgeChapter(chapter);
-                if (mode === "tune") trackLaunchEvent("coaching_opened", { format });
-                window.requestAnimationFrame(() => {
-                  const target = mode === "deck"
-                    ? document.getElementById("deck-gallery")
-                    : mode === "test"
-                      ? document.getElementById("proving-era-title")
-                      : document.querySelector(".testing-loop");
-                  target?.scrollIntoView({ behavior: "smooth", block: "start" });
-                });
-              }}
-              deckName={displayDeckName}
-              deckSubtitle={`${honestCoachSummary.planStory?.title || honestCoachSummary.intentions.title}${activeCommanderName ? ` · ${activeCommanderName}` : ""}`}
-              cardCount={deckRows.reduce((sum, row) => sum + row.quantity, 0)}
-              revisionCount={revisions.length}
-              revisions={revisions}
-              coachHeadline={honestCoachSummary.headline}
-              coachFocus={honestCoachSummary.intentions.firstVulnerability}
-              activeTest={Boolean(activeFieldTest)}
-              hasSuggestion={Boolean(forgeReply)}
-              onPrimaryAction={() => {
-                if (activeForgeChapter === 1) {
-                  document.getElementById("deck-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" });
-                  return;
-                }
-                if (activeForgeChapter === 2) {
-                  document.querySelector(".testing-loop")?.scrollIntoView({ behavior: "smooth", block: "start" });
-                  return;
-                }
-                if (!activeFieldTest) beginProvingGroundsTest();
-                setActiveForgeChapter(5);
-                trackLaunchEvent("coaching_opened", { format });
-                window.requestAnimationFrame(() =>
-                  document.getElementById("proving-era-title")?.scrollIntoView({ behavior: "smooth", block: "start" }),
-                );
-              }}
-            />
-          )}
+          </header>}
           {hasValidatedDeck && (
             <div className="forge-descent-atmosphere" aria-hidden="true">
               <div className="forge-heat-haze" />
@@ -6409,45 +6363,29 @@ export default function Home() {
             )
           )}
           <div className={`testing-layout chapter-${activeForgeChapter}-active ${deckViewMode}-deck-view${isImportedDeckReview ? " imported-deck-review" : ""}`}>
-            {hasValidatedDeck && (
-              <div className="deck-reference-strip">
-                <img
-                  className="commander-art-crop"
-                  src={cardArtCrop(activeCommanderName || chosenPreview.card)}
-                  alt=""
-                />
-                <div>
-                  <strong>{displayDeckName}</strong>
-                  <span>
-                    {honestCoachSummary.planStory?.title
-                      ? `${honestCoachSummary.planStory.title} · `
-                      : ""}
-                    {deckRows.reduce((sum, row) => sum + row.quantity, 0)} cards · {format}
-                  </span>
-                </div>
-                <button type="button" onClick={() => setActiveForgeChapter(1)}>View full deck →</button>
-              </div>
-            )}
             <article className="deck-manuscript">
               {hasValidatedDeck && (
                 <>
                   <nav className="masterwork-shell-top" aria-label="Masterwork workspace">
                     <button type="button" className="masterwork-wordmark" onClick={() => setActiveForgeChapter(1)}><b>✦</b> METAFORGE</button>
                     <div>
-                      <button type="button" className={activeForgeChapter === 1 ? "active" : ""} onClick={() => setActiveForgeChapter(1)}>Deck</button>
-                      <button type="button" className={activeForgeChapter === 2 ? "active" : ""} onClick={() => setActiveForgeChapter(2)}>Coach</button>
-                      <button type="button" className={activeForgeChapter === 5 ? "active" : ""} onClick={() => setActiveForgeChapter(5)}>Goldfish</button>
-                      <button type="button" onClick={openDeepForgeEvidence}>Deep Forge</button>
+                      <button type="button" onClick={() => setChamber(deck.trim() ? "refine" : "commission")}>Explore</button>
+                      <button type="button" className={activeForgeChapter === 1 ? "active" : ""} onClick={() => { setActiveForgeChapter(1); setDeckViewMode("ledger"); }}>Decks</button>
+                      <button type="button" className={activeForgeChapter === 2 ? "active" : ""} onClick={() => setActiveForgeChapter(2)}>Analyze</button>
+                      <button type="button" onClick={openDeepForgeEvidence}>Database</button>
+                      <button type="button" onClick={() => setActiveForgeChapter(5)}>Community</button>
+                      <a href="/academy">Academy</a>
                     </div>
-                    <span>Revision {Math.max(1, revisions.length)}</span>
+                    <span>Forgemaster · Revision {Math.max(1, revisions.length)}</span>
                   </nav>
                   <aside className="masterwork-shell-rail" aria-label="Deck tools">
-                    <button type="button" onClick={() => setActiveForgeChapter(1)}><i>⌂</i><span>Overview</span></button>
-                    <button type="button" className={activeForgeChapter === 1 ? "active" : ""} onClick={() => setActiveForgeChapter(1)}><i>☷</i><span>Decklist</span></button>
-                    <button type="button" onClick={() => setActiveForgeChapter(2)}><i>◇</i><span>Coach</span></button>
-                    <button type="button" onClick={() => setActiveForgeChapter(5)}><i>◴</i><span>Playtest</span></button>
+                    <button type="button" onClick={() => document.querySelector(".masterwork-deck-hero")?.scrollIntoView({ behavior: "smooth", block: "start" })}><i>⌂</i><span>Overview</span></button>
+                    <button type="button" className={activeForgeChapter === 1 && deckViewMode === "ledger" ? "active" : ""} onClick={() => { setActiveForgeChapter(1); setDeckViewMode("ledger"); window.requestAnimationFrame(() => document.getElementById("deck-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>☷</i><span>Decklist</span></button>
+                    <button type="button" onClick={() => setActiveForgeChapter(2)}><i>◇</i><span>Analysis</span></button>
                     <button type="button" onClick={() => setBenchOpen(true)}><i>↺</i><span>History</span></button>
-                    <button type="button" onClick={() => { setMasterworkIdentityDraft(masterworkIdentity); setMasterworkIdentityOpen(true); }}><i>⚙</i><span>Identity</span></button>
+                    <button type="button" onClick={() => { setActiveForgeChapter(1); setDeckViewMode("workbench"); window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>⚔</i><span>Playtest</span></button>
+                    <button type="button" onClick={() => navigator.clipboard.writeText(forgedDeck)}><i>⌁</i><span>Share</span></button>
+                    <button type="button" onClick={() => { setMasterworkIdentityDraft(masterworkIdentity); setMasterworkIdentityOpen(true); }}><i>⚙</i><span>Settings</span></button>
                   </aside>
                 </>
               )}
@@ -7992,6 +7930,8 @@ export default function Home() {
                 )}
                 {deckViewMode === "workbench" && (
                   <Tabletop
+                    key="goldfish-tabletop"
+                    initialLens="hand"
                     cards={tabletopCards}
                     edges={interactionGraph.edges}
                     previousCardNames={previousRevisionCardNames}
@@ -8282,7 +8222,7 @@ export default function Home() {
                   <div>
                     <button type="button" onClick={() => navigator.clipboard.writeText(forgedDeck)}>Copy deck</button>
                     {deckPurchaseLink && <a href={deckPurchaseLink.url} target={deckPurchaseLink.target} rel={deckPurchaseLink.rel}>Buy deck</a>}
-                    <button type="button" className="masterwork-playtest" onClick={() => setActiveForgeChapter(5)}>Goldfish this deck →</button>
+                    <button type="button" className="masterwork-playtest" onClick={() => { setActiveForgeChapter(1); setDeckViewMode("workbench"); window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}>Goldfish this deck →</button>
                   </div>
                 </footer>
                 </>
@@ -8990,7 +8930,7 @@ export default function Home() {
           </div>
         </section>
       )}
-      {chamber !== "forging" && savedMasterworks.length > 0 && (
+      {chamber !== "forging" && savedMasterworks.length > 0 && benchOpen && (
         <aside
           className={`bench-dock ${benchOpen ? "open" : ""}`}
           aria-label="Your Masterwork Bench"

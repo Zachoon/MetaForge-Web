@@ -858,3 +858,20 @@ step that's actually in focus. */
 .testing-anvil:has(.masterwork-shell-top){padding-inline:0}
 .progressive-results .testing-layout:has(.masterwork-shell-top){width:100%;max-width:none;margin-inline:0}
 @media(max-width:760px){.testing-anvil:has(.masterwork-shell-top){padding-inline:0}}
+
+/* One permanent Masterwork frame: the deck leads and the deeper Forge follows. */
+.edit-anvil-launcher,.forge-edit-workbench,.deck-price-bar{display:none!important}
+.progressive-results .testing-layout:has(.masterwork-shell-top) .masterwork-shell-top{position:sticky;top:0;z-index:70}
+.masterwork-shell-top a{display:inline-flex;align-items:center;min-height:58px;padding:0 15px;border-bottom:2px solid transparent;color:#aab3af;font-size:11px;font-weight:800;text-decoration:none}
+.masterwork-shell-top a:hover,.masterwork-shell-top a:focus-visible{outline:0;border-bottom-color:#e59444;color:#f4eee5}
+.progressive-results .testing-layout:has(.masterwork-shell-top) .masterwork-shell-rail{position:sticky;top:58px;height:calc(100vh - 58px);align-self:start}
+.ledger-deck-view .type-columns{display:block!important;columns:4;column-gap:9px}
+.ledger-deck-view .type-column{display:inline-block!important;width:100%;margin:0 0 9px!important;break-inside:avoid;vertical-align:top}
+.progressive-results .testing-layout:has(.masterwork-shell-top) .deck-gallery{order:1}
+.progressive-results .testing-layout:has(.masterwork-shell-top) .masterwork-shell-bottom{order:2}
+.progressive-results .testing-layout:has(.masterwork-shell-top) .forge-quick-read{order:5}
+.progressive-results .testing-layout:has(.masterwork-shell-top) .first-run-coaching{order:6}
+.progressive-results .testing-layout:has(.masterwork-shell-top) .deck-manuscript>footer:not(.masterwork-shell-bottom){order:7}
+@media(max-width:1250px){.ledger-deck-view .type-columns{columns:3}}
+@media(max-width:900px){.ledger-deck-view .type-columns{columns:2}}
+@media(max-width:760px){.progressive-results .testing-layout:has(.masterwork-shell-top) .masterwork-shell-rail{position:sticky;top:auto;height:auto}.masterwork-shell-top a{min-height:58px;padding:0 12px}.ledger-deck-view .type-columns{columns:1}}

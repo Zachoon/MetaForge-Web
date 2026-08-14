@@ -67,6 +67,7 @@ type TabletopProps = {
     counts: { lands: number; otherMana: number; earlyPlays: number; responses: number };
   }) => void;
   strategy?: string;
+  initialLens?: Lens;
 };
 
 const TYPE_ORDER = ["Commander", "Creatures", "Planeswalkers", "Instants", "Sorceries", "Artifacts", "Enchantments", "Battles", "Lands", "Other"];
@@ -123,6 +124,7 @@ export function Tabletop({
   onMatchupContext,
   onMulliganDecision,
   strategy = "Balanced midrange",
+  initialLens = "deck",
 }: TabletopProps) {
   const [lens, setLens] = useState<Lens>("deck");
   const [matchup, setMatchup] = useState<Matchup>("Aggro");
@@ -134,6 +136,12 @@ export function Tabletop({
     setLens(nextLens);
     onLensChange?.(nextLens);
   };
+  useEffect(() => {
+    if (initialLens !== "deck") {
+      setLens(initialLens);
+      onLensChange?.(initialLens);
+    }
+  }, [initialLens, onLensChange]);
   const previous = useMemo(() => new Set(previousCardNames.map((name) => name.toLowerCase())), [previousCardNames]);
   const relatedNames = useMemo(() => new Set(edges.flatMap((edge) => (edge.from === activeCard ? [edge.to] : edge.to === activeCard ? [edge.from] : []))), [activeCard, edges]);
   const activeEdges = edges.filter((edge) => edge.from === activeCard || edge.to === activeCard).slice(0, 5);
