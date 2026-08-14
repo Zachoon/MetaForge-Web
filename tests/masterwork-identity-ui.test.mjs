@@ -42,6 +42,8 @@ test("the deck hero keeps art atmospheric and content readable", async () => {
   assert.match(css, /repeating-conic-gradient/);
   assert.match(css, /testing-layout:has\(\.masterwork-shell-top\)/);
   assert.match(css, /grid-template-columns:82px minmax\(0,1fr\)/);
+  assert.match(css, /\.testing-anvil:has\(\.masterwork-shell-top\)\{padding-inline:0\}/);
+  assert.match(css, /width:100%;max-width:none;margin-inline:0/);
   assert.match(css, /@media\(max-width:560px\).*masterwork-deck-hero/s);
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
 });
