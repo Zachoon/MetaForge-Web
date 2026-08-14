@@ -90,21 +90,32 @@
 .forge-rail-version{position:relative;z-index:1;display:grid;padding-top:8px;place-items:center;border-top:1px solid #222b27;color:#77817c;font-size:7px;letter-spacing:.08em}.forge-rail-version i{display:grid;width:24px;height:24px;margin-bottom:5px;place-items:center;border:1px solid #72552f;border-radius:50%;background:#11120e;color:#b98a4d;font:700 7px/1 Newsreader,Georgia,serif;letter-spacing:.08em;box-shadow:0 0 9px #b66e2820}.forge-rail-version span{display:block}
 @keyframes rail-ember-rise{0%{opacity:0;transform:translateY(0) scale(.7)}18%{opacity:.8}100%{opacity:0;transform:translateY(-72px) translateX(8px) scale(1.2)}}
 
-/* The entrance is a complete first screen, not a page that asks for an
-   orientation scroll before the player can choose what to do. */
-.great-forge.chamber-entrance{height:100svh!important;overflow:hidden!important}
-.chamber-entrance>.forge-entrance{
-  height:calc(100svh - var(--mf-frame-top))!important;
-  min-height:0!important;
-  overflow:hidden!important;
+/* Home/Explore must scroll. A 100svh + overflow:hidden lock clipped the
+   private archive under the hero and hid the page scrollbar. The framed
+   app shell stays on workbench/commission; entrance is a normal page. */
+.great-forge.chamber-entrance{height:auto!important;min-height:100svh!important;overflow:visible!important}
+html:has(.great-forge.chamber-entrance),
+body:has(.great-forge.chamber-entrance){
+  height:auto!important;
+  max-height:none!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
 }
-.chamber-entrance .entrance-copy{justify-content:center!important;padding:clamp(22px,3.5vh,42px) clamp(26px,5vw,82px)!important}
-.chamber-entrance .entrance-copy h1{margin:12px 0 15px!important;font-size:clamp(42px,min(5vw,7.2vh),72px)!important;line-height:.96!important}
+.chamber-entrance>.forge-entrance{
+  height:auto!important;
+  min-height:0!important;
+  overflow:visible!important;
+  align-content:start!important;
+}
+.chamber-entrance .entrance-copy{justify-content:flex-start!important;padding:clamp(18px,2.6vh,32px) clamp(26px,5vw,82px) 8px!important}
+.chamber-entrance .entrance-copy h1{margin:10px 0 12px!important;font-size:clamp(36px,min(4.6vw,6.2vh),62px)!important;line-height:.96!important}
 .chamber-entrance .entrance-copy>p{font-size:clamp(13px,1.1vw,16px)!important;line-height:1.45!important}
-.chamber-entrance .entrance-actions{margin-top:clamp(14px,2.4vh,24px)!important}
-.chamber-entrance .entrance-actions>button{min-height:clamp(128px,18vh,158px)!important;padding:17px 20px!important}
-.chamber-entrance .entrance-actions>button strong{margin-top:15px!important;font-size:18px!important}
-.chamber-entrance .entrance-actions>button b{padding-top:10px!important}
+.chamber-entrance .entrance-actions{margin-top:clamp(12px,2vh,18px)!important}
+.chamber-entrance .entrance-actions>button{min-height:clamp(92px,13vh,118px)!important;padding:14px 18px!important}
+.chamber-entrance .entrance-actions>button strong{margin-top:10px!important;font-size:17px!important}
+.chamber-entrance .entrance-actions>button b{padding-top:8px!important}
+.chamber-entrance .entrance-visual{min-height:min(48vh,380px)!important;align-self:stretch!important}
+.chamber-entrance .masterwork-history{margin-top:8px!important;margin-bottom:48px!important}
 .chamber-entrance .player-compass-card:not(.is-open){display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:14px!important;margin-top:12px!important;padding:10px 12px!important}
 .chamber-entrance .player-compass-card:not(.is-open)>header{min-width:0!important}
 .chamber-entrance .player-compass-card:not(.is-open)>header h2{margin:4px 0 0!important;font-size:17px!important;line-height:1.1!important}
@@ -116,7 +127,7 @@
   .chamber-entrance .entrance-copy h1{font-size:clamp(36px,6.5vh,50px)!important;margin-block:8px 10px!important}
   .chamber-entrance .entrance-copy>p{font-size:12px!important;line-height:1.35!important}
   .chamber-entrance .entrance-actions{margin-top:12px!important}
-  .chamber-entrance .entrance-actions>button{min-height:112px!important;padding:13px 16px!important}
+  .chamber-entrance .entrance-actions>button{min-height:88px!important;padding:12px 14px!important}
   .chamber-entrance .entrance-actions>button strong{margin-top:10px!important;font-size:16px!important}
   .chamber-entrance .entrance-actions>button .forge-card-description{font-size:10px!important;line-height:1.3!important}
   .chamber-entrance .player-compass-card:not(.is-open){margin-top:8px!important;padding-block:7px!important}
@@ -270,8 +281,8 @@
   .forge-global-rail button.active{border-bottom-color:#df9148!important}
   .forge-global-rail button:last-child{margin:0!important}
   .forge-rail-embers,.forge-rail-version{display:none!important}
-  .great-forge.chamber-entrance{height:auto!important;min-height:100svh!important;overflow:clip!important}
-  .chamber-entrance>.forge-entrance{height:auto!important;min-height:calc(100svh - var(--mf-frame-top) - var(--mf-frame-rail))!important;overflow:visible!important}
+  .great-forge.chamber-entrance{height:auto!important;min-height:100svh!important;overflow:visible!important}
+  .chamber-entrance>.forge-entrance{height:auto!important;min-height:0!important;overflow:visible!important}
   .chamber-entrance .player-compass-card:not(.is-open){grid-template-columns:1fr!important}
   .chamber-entrance .player-compass-card:not(.is-open) .player-compass-actions{flex-wrap:wrap!important}
 }

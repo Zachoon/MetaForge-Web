@@ -46,6 +46,18 @@ test("the mockup navigation frame is site-level rather than deck-only", async ()
   assert.match(frame, /masterwork-shell-top,\s*\r?\n\.masterwork-shell-rail\{display:none!important\}/);
 });
 
+test("Explore/home scrolls so the private archive is reachable", async () => {
+  const frame = await read("app/site-frame.css");
+  assert.doesNotMatch(
+    frame,
+    /\.great-forge\.chamber-entrance\{height:100svh!important;overflow:hidden!important\}/,
+    "entrance must not lock to the viewport",
+  );
+  assert.match(frame, /\.great-forge\.chamber-entrance\{height:auto!important;min-height:100svh!important;overflow:visible!important\}/);
+  assert.match(frame, /\.chamber-entrance>\.forge-entrance\{[\s\S]*?overflow:visible!important/);
+  assert.match(frame, /\.chamber-entrance \.masterwork-history\{margin-top:8px!important/);
+});
+
 test("a completed Forge lands on Decklist with the card gallery first in the pane", async () => {
   const page = await read("app/page.tsx");
   const frame = await read("app/site-frame.css");
