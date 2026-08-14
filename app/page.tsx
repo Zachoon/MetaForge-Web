@@ -93,6 +93,7 @@ import {
 
 type Chamber =
   | "entrance"
+  | "archive"
   | "commission"
   | "refine"
   | "forging"
@@ -1987,7 +1988,7 @@ export default function Home() {
     return `https://app.metaforge.gg/?resumeForge=${encodeURIComponent(encodeForgeResumeBrief(brief))}`;
   })();
   const chapter =
-    chamber === "entrance"
+    chamber === "entrance" || chamber === "archive"
       ? 0
       : chamber === "commission" || chamber === "refine"
         ? 1
@@ -2001,7 +2002,7 @@ export default function Home() {
         ? "reveal"
         : chamber === "commission" || chamber === "refine"
           ? "thinking"
-          : chamber === "entrance"
+          : chamber === "entrance" || chamber === "archive"
             ? "dormant"
             : "idle";
   const wakeForge = (action: Exclude<ForgeAction, "none">) => {
@@ -4392,16 +4393,9 @@ export default function Home() {
     setDeckId("");
     setChamber("commission");
   }
-  function showFullArchive() {
+  function openPrivateArchive() {
     setBenchOpen(false);
-    setChamber("entrance");
-    window.setTimeout(
-      () =>
-        document
-          .querySelector(".masterwork-history")
-          ?.scrollIntoView({ behavior: "smooth", block: "start" }),
-      80,
-    );
+    setChamber("archive");
   }
 
   async function persistStoryBench(
@@ -5017,8 +5011,8 @@ export default function Home() {
           </span>
         </button>
         <nav className="forge-global-nav" aria-label="MetaForge workspace">
-          <button type="button" onClick={() => setChamber("entrance")}>Explore</button>
-          <button type="button" className={chamber === "workbench" && activeForgeChapter === 1 && siteRail !== "overview" && siteRail !== "playtest" ? "active" : ""} disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode("ledger"); setSiteRail("decklist"); if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = false; window.requestAnimationFrame(() => document.getElementById("deck-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}>Decks</button>
+          <button type="button" className={chamber === "entrance" ? "active" : ""} onClick={() => setChamber("entrance")}>Explore</button>
+          <button type="button" className={chamber === "archive" ? "active" : ""} onClick={openPrivateArchive}>Decks</button>
           <button type="button" className={chamber === "workbench" && activeForgeChapter === 2 ? "active" : ""} disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(2); setSiteRail("analysis"); }}>Analyze</button>
           <button type="button" disabled={!hasValidatedDeck} onClick={openDeepForgeEvidence}>Database</button>
           <button type="button" className="coming-soon" disabled>Community</button>
@@ -5067,7 +5061,7 @@ export default function Home() {
         }}><i>⌂</i><span>Overview</span></button>
         <button type="button" className={chamber === "workbench" && activeForgeChapter === 1 && siteRail === "decklist" ? "active" : ""} disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode("ledger"); setSiteRail("decklist"); if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = false; window.requestAnimationFrame(() => document.getElementById("deck-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>☷</i><span>Decklist</span></button>
         <button type="button" className={chamber === "workbench" && activeForgeChapter === 2 ? "active" : ""} disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(2); setSiteRail("analysis"); }}><i>◇</i><span>Analysis</span></button>
-        <button type="button" disabled={!savedMasterworks.length} onClick={() => setBenchOpen(true)}><i>↺</i><span>History</span></button>
+        <button type="button" className={chamber === "archive" ? "active" : ""} onClick={openPrivateArchive}><i>↺</i><span>Decks</span></button>
         <button type="button" disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode("workbench"); setSiteRail("playtest"); window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>⚔</i><span>Playtest</span></button>
         <button type="button" disabled={!hasValidatedDeck} onClick={() => navigator.clipboard.writeText(forgedDeck)}><i>⌁</i><span>Share</span></button>
         <button type="button" disabled={!hasValidatedDeck} onClick={() => { setMasterworkIdentityDraft(masterworkIdentity); setMasterworkIdentityOpen(true); }}><i>⚙</i><span>Settings</span></button>
@@ -5170,15 +5164,20 @@ export default function Home() {
               <small>Complete deck first. Clear reasons second.</small>
             </p>
           </div>
-          {savedMasterworks.length > 0 && (
-            <section className="masterwork-history">
-              <header>
-                <div>
-                  <small>YOUR PRIVATE ARCHIVE</small>
-                  <h2>Return to a Masterwork</h2>
-                </div>
-                <span>{savedMasterworks.length} PRESERVED</span>
-              </header>
+        </section>
+      )}
+
+      {chamber === "archive" && (
+        <section className="masterwork-archive" aria-label="Your private archive">
+          <section className="masterwork-history">
+            <header>
+              <div>
+                <small>YOUR PRIVATE ARCHIVE</small>
+                <h2>Return to a Masterwork</h2>
+              </div>
+              <span>{savedMasterworks.length} PRESERVED</span>
+            </header>
+            {savedMasterworks.length > 0 ? (
               <div>
                 {savedMasterworks.map((family) => {
                   const evidence =
@@ -5230,8 +5229,17 @@ export default function Home() {
                   );
                 })}
               </div>
-            </section>
-          )}
+            ) : (
+              <p className="empty-archive">
+                No Masterworks preserved yet. Build or review a deck and it will live here.
+              </p>
+            )}
+            <footer>
+              <button type="button" className="new-forge" onClick={startNewForge}>
+                ＋ Start a New Forge
+              </button>
+            </footer>
+          </section>
         </section>
       )}
 
@@ -9050,7 +9058,7 @@ export default function Home() {
               </p>
             )}
             <footer>
-              <button onClick={showFullArchive}>View full Archive</button>
+              <button onClick={openPrivateArchive}>View full Archive</button>
               <button className="new-forge" onClick={startNewForge}>
                 ＋ Start a New Forge
               </button>

@@ -90,22 +90,52 @@
 .forge-rail-version{position:relative;z-index:1;display:grid;padding-top:8px;place-items:center;border-top:1px solid #222b27;color:#77817c;font-size:7px;letter-spacing:.08em}.forge-rail-version i{display:grid;width:24px;height:24px;margin-bottom:5px;place-items:center;border:1px solid #72552f;border-radius:50%;background:#11120e;color:#b98a4d;font:700 7px/1 Newsreader,Georgia,serif;letter-spacing:.08em;box-shadow:0 0 9px #b66e2820}.forge-rail-version span{display:block}
 @keyframes rail-ember-rise{0%{opacity:0;transform:translateY(0) scale(.7)}18%{opacity:.8}100%{opacity:0;transform:translateY(-72px) translateX(8px) scale(1.2)}}
 
-/* Home/Explore must scroll. A 100svh + overflow:hidden lock clipped the
-   private archive under the hero and hid the page scrollbar. The framed
-   app shell stays on workbench/commission; entrance is a normal page. */
-.great-forge.chamber-entrance{height:auto!important;min-height:100svh!important;overflow:visible!important}
+/* Explore/home is a framed hero: no page scroll. Saved Masterworks live on
+   the Decks/archive chamber, which scrolls inside the frame instead. */
+.great-forge.chamber-entrance{height:100svh!important;overflow:hidden!important}
+.great-forge.chamber-archive{height:100svh!important;overflow:hidden!important}
 html:has(.great-forge.chamber-entrance),
-body:has(.great-forge.chamber-entrance){
-  height:auto!important;
-  max-height:none!important;
-  overflow-x:hidden!important;
-  overflow-y:auto!important;
+body:has(.great-forge.chamber-entrance),
+html:has(.great-forge.chamber-archive),
+body:has(.great-forge.chamber-archive){
+  height:100%!important;
+  max-height:100svh!important;
+  overflow:hidden!important;
 }
 .chamber-entrance>.forge-entrance{
-  height:auto!important;
+  height:calc(100svh - var(--mf-frame-top))!important;
   min-height:0!important;
-  overflow:visible!important;
-  align-content:start!important;
+  overflow:hidden!important;
+  align-content:stretch!important;
+}
+.chamber-archive>.masterwork-archive{
+  height:calc(100svh - var(--mf-frame-top))!important;
+  min-height:0!important;
+  overflow:auto!important;
+  padding:18px clamp(20px,4vw,48px) 36px!important;
+}
+.chamber-archive .masterwork-history{
+  width:min(1180px,100%)!important;
+  margin:0 auto!important;
+}
+.chamber-archive .empty-archive{
+  margin:18px 0 0!important;
+  color:#8d9d98!important;
+  font:15px/1.6 Newsreader,Georgia,serif!important;
+}
+.chamber-archive .masterwork-history>footer{
+  display:flex!important;
+  justify-content:flex-end!important;
+  margin-top:18px!important;
+}
+.chamber-archive .masterwork-history>footer .new-forge{
+  min-height:38px!important;
+  padding:8px 14px!important;
+  border:1px solid #bc793e!important;
+  background:linear-gradient(90deg,#77391e,#3e251b)!important;
+  color:#fff!important;
+  font-size:11px!important;
+  letter-spacing:.08em!important;
 }
 .chamber-entrance .entrance-copy{justify-content:flex-start!important;padding:clamp(18px,2.6vh,32px) clamp(26px,5vw,82px) 8px!important}
 .chamber-entrance .entrance-copy h1{margin:10px 0 12px!important;font-size:clamp(36px,min(4.6vw,6.2vh),62px)!important;line-height:.96!important}
@@ -115,7 +145,6 @@ body:has(.great-forge.chamber-entrance){
 .chamber-entrance .entrance-actions>button strong{margin-top:10px!important;font-size:17px!important}
 .chamber-entrance .entrance-actions>button b{padding-top:8px!important}
 .chamber-entrance .entrance-visual{min-height:min(48vh,380px)!important;align-self:stretch!important}
-.chamber-entrance .masterwork-history{margin-top:8px!important;margin-bottom:48px!important}
 .chamber-entrance .player-compass-card:not(.is-open){display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:14px!important;margin-top:12px!important;padding:10px 12px!important}
 .chamber-entrance .player-compass-card:not(.is-open)>header{min-width:0!important}
 .chamber-entrance .player-compass-card:not(.is-open)>header h2{margin:4px 0 0!important;font-size:17px!important;line-height:1.1!important}
@@ -281,8 +310,10 @@ body:has(.great-forge.chamber-entrance){
   .forge-global-rail button.active{border-bottom-color:#df9148!important}
   .forge-global-rail button:last-child{margin:0!important}
   .forge-rail-embers,.forge-rail-version{display:none!important}
-  .great-forge.chamber-entrance{height:auto!important;min-height:100svh!important;overflow:visible!important}
-  .chamber-entrance>.forge-entrance{height:auto!important;min-height:0!important;overflow:visible!important}
+  .great-forge.chamber-entrance{height:100svh!important;overflow:hidden!important}
+  .great-forge.chamber-archive{height:100svh!important;overflow:hidden!important}
+  .chamber-entrance>.forge-entrance{height:calc(100svh - var(--mf-frame-top) - var(--mf-frame-rail))!important;min-height:0!important;overflow:hidden!important}
+  .chamber-archive>.masterwork-archive{height:calc(100svh - var(--mf-frame-top) - var(--mf-frame-rail))!important;overflow:auto!important}
   .chamber-entrance .player-compass-card:not(.is-open){grid-template-columns:1fr!important}
   .chamber-entrance .player-compass-card:not(.is-open) .player-compass-actions{flex-wrap:wrap!important}
 }

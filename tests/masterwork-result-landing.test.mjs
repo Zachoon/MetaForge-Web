@@ -46,16 +46,27 @@ test("the mockup navigation frame is site-level rather than deck-only", async ()
   assert.match(frame, /masterwork-shell-top,\s*\r?\n\.masterwork-shell-rail\{display:none!important\}/);
 });
 
-test("Explore/home scrolls so the private archive is reachable", async () => {
+test("Explore/home is a no-scroll hero; saved Masterworks live on Decks", async () => {
+  const page = await read("app/page.tsx");
   const frame = await read("app/site-frame.css");
-  assert.doesNotMatch(
-    frame,
-    /\.great-forge\.chamber-entrance\{height:100svh!important;overflow:hidden!important\}/,
-    "entrance must not lock to the viewport",
-  );
-  assert.match(frame, /\.great-forge\.chamber-entrance\{height:auto!important;min-height:100svh!important;overflow:visible!important\}/);
-  assert.match(frame, /\.chamber-entrance>\.forge-entrance\{[\s\S]*?overflow:visible!important/);
-  assert.match(frame, /\.chamber-entrance \.masterwork-history\{margin-top:8px!important/);
+  const entranceStart = page.indexOf('{chamber === "entrance" && (');
+  const archiveStart = page.indexOf('{chamber === "archive" && (');
+  assert.ok(entranceStart > 0 && archiveStart > entranceStart);
+  const homeChunk = page.slice(entranceStart, archiveStart);
+  assert.match(homeChunk, /className="forge-entrance"/);
+  assert.doesNotMatch(homeChunk, /masterwork-history/);
+  assert.doesNotMatch(homeChunk, /Return to a Masterwork/);
+  assert.match(page, /function openPrivateArchive\(/);
+  assert.match(page, /setChamber\("archive"\)/);
+  assert.match(page, /\{chamber === "archive" && \(/);
+  assert.match(page, /className="masterwork-archive"/);
+  assert.match(page, /className="masterwork-history"/);
+  assert.match(page, /onClick=\{openPrivateArchive\}>Decks<\/button>/);
+  assert.match(page, /onClick=\{openPrivateArchive\}><i>↺<\/i><span>Decks<\/span><\/button>/);
+  assert.doesNotMatch(page, /disabled=\{!hasValidatedDeck\} onClick=\{\(\) => \{ setChamber\("workbench"\);[\s\S]*?\}>Decks<\/button>/);
+  assert.match(frame, /\.great-forge\.chamber-entrance\{height:100svh!important;overflow:hidden!important\}/);
+  assert.match(frame, /\.great-forge\.chamber-archive\{height:100svh!important;overflow:hidden!important\}/);
+  assert.match(frame, /\.chamber-archive>\.masterwork-archive\{[\s\S]*?overflow:auto!important/);
 });
 
 test("a completed Forge lands on Decklist with the card gallery first in the pane", async () => {
