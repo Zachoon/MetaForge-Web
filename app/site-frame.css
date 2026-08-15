@@ -384,11 +384,46 @@ body:has(.great-forge.chamber-archive){
   .forge-global-rail button.active{border-bottom-color:#df9148!important}
   .forge-global-rail button:last-child{margin:0!important}
   .forge-rail-embers,.forge-rail-version{display:none!important}
-  .great-forge.chamber-entrance{height:100svh!important;overflow:hidden!important}
-  .great-forge.chamber-archive{height:100svh!important;overflow:hidden!important}
-  .chamber-entrance>.forge-entrance{height:calc(100svh - var(--mf-frame-top) - var(--mf-frame-rail))!important;min-height:0!important;overflow:hidden!important}
-  .chamber-archive>.masterwork-archive{height:calc(100svh - var(--mf-frame-top) - var(--mf-frame-rail))!important;overflow:auto!important}
+  /* Desktop Explore is a non-scrolling framed hero. On a phone the stacked
+     copy, CTAs, compass, and visual are taller than the remaining viewport,
+     so the pane itself must scroll. Keep html/body locked; do not clip the
+     entrance contents. Absolute inset beats iOS nested-overflow:hidden
+     traps where a height:calc child never becomes a scrollport. */
+  .great-forge.chamber-entrance,.great-forge.chamber-archive{height:100svh!important;overflow:hidden!important}
+  .great-forge:not(.chamber-entrance):not(.chamber-archive){height:auto!important;overflow:visible!important}
+  .chamber-entrance>.forge-entrance{
+    position:absolute!important;
+    inset:var(--mf-frame-top) 0 var(--mf-frame-rail)!important;
+    height:auto!important;
+    min-height:0!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+    touch-action:pan-y;
+  }
+  .chamber-archive>.masterwork-archive{
+    position:absolute!important;
+    inset:var(--mf-frame-top) 0 var(--mf-frame-rail)!important;
+    height:auto!important;
+    min-height:0!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+    touch-action:pan-y;
+  }
+  .chamber-entrance .entrance-visual{min-height:min(28vh,200px)!important}
+  .chamber-entrance .entrance-actions>button{min-height:72px!important;padding:12px 14px!important}
   .chamber-entrance .player-compass-card:not(.is-open){grid-template-columns:1fr!important}
   .chamber-entrance .player-compass-card:not(.is-open) .player-compass-actions{flex-wrap:wrap!important}
+  .testing-anvil,.masterwork-reveal,.commission-chamber{overflow:visible!important}
+  /* Workspace docks used to sit on the bottom of the viewport. The mobile
+     rail now owns that edge, so lift them or they eat scroll and nav taps. */
+  .deck-price-bar{bottom:var(--mf-frame-rail)!important}
+  .living-workbench-modes{bottom:calc(var(--mf-frame-rail) + 8px)!important}
+  .testing-anvil{padding-bottom:calc(var(--mf-frame-rail) + 88px)!important}
+  .forge-edit-workbench{bottom:calc(var(--mf-frame-rail) + 8px)!important}
+  .edit-anvil-launcher{bottom:calc(var(--mf-frame-rail) + 72px)!important}
 }
 @media(prefers-reduced-motion:reduce){.forge-rail-embers i{animation:none}}
