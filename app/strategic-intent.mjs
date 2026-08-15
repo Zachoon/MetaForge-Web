@@ -197,6 +197,9 @@ const PACKAGE_CATALOG = Object.freeze({
     falseFriendSemantics: Object.freeze([]),
     supportSemantics: Object.freeze([]),
     packageSignals: Object.freeze(["lands"]),
+    // Occupancy is not a catalog false-friend list. Landfall / land-enters
+    // payoffs and extra land drops occupy core; fetch/ramp that puts a land
+    // into play is support; a bare "land card" mention is not occupancy.
     detectCommander: (oracle) => /\blandfall\b/i.test(oracle) || /whenever a land enters/i.test(oracle),
     detectBlueprint: (blueprint) => blueprint.requestedMechanics?.includes("landfall") || blueprint.packageSignals?.includes("lands"),
     density: Object.freeze({ singletonCore: 8, constructedCore: 4, singletonSupport: 6, constructedSupport: 3 }),
@@ -363,6 +366,21 @@ function cardSatisfiesReanimatorCore(entry) {
   return semantics.has("graveyard_enabler");
 }
 
+function cardSatisfiesLandfallCore(entry) {
+  const oracle = oracleOf(entryCard(entry));
+  if (/\blandfall\b/i.test(oracle)) return true;
+  if (/whenever a land (?:you control )?enters/i.test(oracle)) return true;
+  if (/play an additional land/i.test(oracle)) return true;
+  return false;
+}
+
+function cardSatisfiesLandfallSupport(entry) {
+  if (cardSatisfiesLandfallCore(entry)) return true;
+  const oracle = oracleOf(entryCard(entry));
+  return /search your library for [^.]* land/i.test(oracle)
+    || /put [^.]* land [^.]* onto the battlefield/i.test(oracle);
+}
+
 export function cardSatisfiesPackageCore(entry, packageId, intent) {
   const definition = PACKAGE_CATALOG[packageId];
   if (!definition) return false;
@@ -372,6 +390,7 @@ export function cardSatisfiesPackageCore(entry, packageId, intent) {
   }
   if (packageId === "aristocrats") return cardSatisfiesAristocratsCore(entry);
   if (packageId === "reanimator") return cardSatisfiesReanimatorCore(entry);
+  if (packageId === "landfall") return cardSatisfiesLandfallCore(entry);
   const semantics = entrySemantics(entry);
   if (definition.coreSemantics.some((semantic) => semantics.has(semantic))) return true;
   if (definition.packageSignals?.length) {
@@ -387,6 +406,7 @@ export function cardSatisfiesPackageSupport(entry, packageId, intent) {
   if (!definition) return false;
   if (packageId === "aristocrats") return cardSatisfiesAristocratsCore(entry);
   if (packageId === "reanimator") return cardSatisfiesReanimatorCore(entry);
+  if (packageId === "landfall") return cardSatisfiesLandfallSupport(entry);
   const semantics = entrySemantics(entry);
   return definition.supportSemantics.some((semantic) => semantics.has(semantic))
     || cardSatisfiesPackageCore(entry, packageId, intent);
