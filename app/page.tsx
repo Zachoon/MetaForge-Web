@@ -68,6 +68,7 @@ import {
   shouldUseContextCardInspector,
 } from "./context-card-inspector.mjs";
 import { ForgeCardRef, ForgeCardRefList } from "./forge-card-ref";
+import { ImportedDeckComparison } from "./components/forge/imported-deck-comparison";
 import { buildCommissionContract } from "./commission-contract.mjs";
 import { tableMeaningFor } from "./strategic-recognition.mjs";
 import { Tabletop, type MatchupCardAdvice, type TabletopCard } from "./tabletop";
@@ -1560,6 +1561,10 @@ export default function Home() {
     generationId?: string;
     manaConsistency?: any;
     unusedEnginePartners?: any[];
+    // Imported-list comparison surface: the engine's exact, gated one-slot
+    // experiment plus its complete accounting of additions/trims.
+    laboratory?: any;
+    changes?: { added?: string[]; trimmed?: Array<{ name: string; cut: number }> } | null;
     // The exact verified pool this generation used — needed so a later
     // refinement pass (buildExperimentTablets' practical simulation gate)
     // can reconnect a swap's rows back to real card text, the same
@@ -2132,6 +2137,32 @@ export default function Home() {
     savedMasterworks.find((family) => family.id === deckId)?.archived,
   );
   const deckRows = useMemo(() => parseDeckRows(forgedDeck), [forgedDeck]);
+  const importedOriginalRows = useMemo(() => parseDeckRows(deck), [deck]);
+  const importedComparisonExperiment = nativeMasterworkContext?.laboratory?.verdict === "advance"
+    ? nativeMasterworkContext.laboratory.experiment
+    : null;
+  const importedProposedRows = useMemo(
+    () => importedComparisonExperiment?.rows?.length
+      ? importedComparisonExperiment.rows.map((row: any) => ({ name: row.name, quantity: Number(row.quantity || 1), roles: row.roles || [] }))
+      : deckRows,
+    [importedComparisonExperiment, deckRows],
+  );
+  const importedComparisonSwaps = useMemo(() => importedComparisonExperiment
+    ? [{
+        cut: importedComparisonExperiment.cut,
+        add: importedComparisonExperiment.add,
+        reason: nativeMasterworkContext?.laboratory?.summary || "This one-slot revision improved the structural read while preserving the deck's required floors.",
+        confident: true,
+      }]
+    : [], [importedComparisonExperiment, nativeMasterworkContext?.laboratory?.summary]);
+  const importedComparisonAdjustments = useMemo(() => {
+    const additions = nativeMasterworkContext?.changes?.added || [];
+    const trims = nativeMasterworkContext?.changes?.trimmed || [];
+    return [
+      ...additions.map((name: string) => `Added ${name} while completing the submitted list to the format's legal deck size.`),
+      ...trims.map((entry: { name: string; cut: number }) => `Trimmed ${entry.cut} ${entry.cut === 1 ? "copy" : "copies"} of ${entry.name} to satisfy deck-size or copy-limit rules.`),
+    ];
+  }, [nativeMasterworkContext?.changes]);
   const activeCommanderName = useMemo(() => {
     if (!isCommanderFormat(format)) return "";
     const rowNames = new Map(deckRows.map((row) => [cardFactKey(row.name), row.name]));
@@ -3902,6 +3933,8 @@ export default function Home() {
       options: { format, strategy, target: targetDeckSize(format) },
       manaConsistency: nativeReport.manaConsistency,
       unusedEnginePartners: nativeReport.unusedEnginePartners,
+      laboratory: nativeReport.laboratory || null,
+      changes: nativeReport.changes || null,
       cardPool: opts.cardPool,
       generationId: opts.serverGenerationId,
       practicalTiebreak: nativeReport.practicalTiebreak || null,
@@ -6544,6 +6577,17 @@ export default function Home() {
             )
           )}
           {/* Global chrome is only .forge-bar + .forge-global-rail. Never remount masterwork-shell-top/rail (Academy header) inside this pane. */}
+          {hasValidatedDeck && isImportedDeckReview && siteRail === "decklist" && (
+            <ImportedDeckComparison
+              originalRows={importedOriginalRows}
+              proposedRows={importedProposedRows}
+              swaps={importedComparisonSwaps}
+              adjustments={importedComparisonAdjustments}
+              strategyTitle={honestCoachSummary.planStory?.title || honestCoachSummary.intentions.title}
+              strategySummary={honestCoachSummary.deckUnderstanding?.playerSummary?.detail || honestCoachSummary.intentions.accomplish}
+              coreSummary={honestCoachSummary.intentions.establish || honestCoachSummary.planStory?.planLabel || "Retain the cards carrying the deck's primary engine and required structural roles."}
+            />
+          )}
           <div className={`testing-layout chapter-${activeForgeChapter}-active ${deckViewMode}-deck-view${isImportedDeckReview ? " imported-deck-review" : ""}`}>
             <article className="deck-manuscript">
               <header
