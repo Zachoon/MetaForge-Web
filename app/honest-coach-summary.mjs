@@ -450,15 +450,28 @@ function isGenericStrategyLabel(strategy = "") {
   );
 }
 
-function planIdentity(selected = {}) {
+function planIdentity(selected = {}, restored = null) {
   const intent = selected.strategicIntent || {};
   const packages = intent.packages || [];
   const plan = selected.strategicPlan || intent.activePlan || null;
-  const packageLabels = packages.map((p) => p.label).filter(Boolean);
-  const strategy = intent.strategy || selected.strategy || null;
-  const commanderNames = (intent.commanders || [])
+  let packageLabels = packages.map((p) => p.label).filter(Boolean);
+  let strategy = intent.strategy || selected.strategy || null;
+  let commanderNames = (intent.commanders || [])
     .map((c) => (typeof c === "string" ? c : c.name))
     .filter(Boolean);
+  let planLabel = plan?.label || plan?.id || null;
+
+  // A reopened saved Masterwork carries no live Brain construction context
+  // (openSavedMasterwork in page.tsx has no fresh generation to read from) —
+  // fall back to the plan identity snapshot captured the last time this
+  // exact deck actually had one, rather than reading as "no dominant
+  // package" for every deck a player ever returns to.
+  if (!packageLabels.length && !strategy && !commanderNames.length && !planLabel && restored) {
+    packageLabels = restored.packages || [];
+    strategy = restored.strategy || null;
+    commanderNames = restored.commanders || [];
+    planLabel = restored.planLabel || null;
+  }
 
   let identityLine = "This list does not yet show a single dominant package.";
   if (packageLabels.length === 1) {
@@ -479,7 +492,7 @@ function planIdentity(selected = {}) {
   return freeze({
     identityLine,
     competitionNote,
-    planLabel: plan?.label || plan?.id || null,
+    planLabel,
     packageLabels: freeze(packageLabels),
     strategy,
     commanders: freeze(commanderNames),
@@ -789,9 +802,10 @@ export function buildHonestCoachSummary({
   commissionNote = "",
   cardFacts = null,
   strategicHypotheses = null,
+  restoredPlanIdentity = null,
 } = {}) {
   const deck = selected || nativeReport?.selected || {};
-  const baseIdentity = planIdentity(deck);
+  const baseIdentity = planIdentity(deck, restoredPlanIdentity);
   const deckSet = new Set(
     [...(deckCardNames || (deck.rows || []).map((row) => row.name) || [])]
       .filter(Boolean)
@@ -1086,9 +1100,13 @@ export function buildIntegrityGuardedCoachSummary({
   commissionNote = "",
   cardFacts = null,
   strategicHypotheses = null,
+  restoredPlanIdentity = null,
 } = {}) {
   const deck = selected || nativeReport?.selected || {};
-  const packageLabels = (deck.strategicIntent?.packages || []).map((p) => p.label).filter(Boolean);
+  const packageLabels = [
+    ...(deck.strategicIntent?.packages || []).map((p) => p.label),
+    ...(restoredPlanIdentity?.packages || []),
+  ].filter(Boolean);
   const cards = deckCardNames.length
     ? deckCardNames
     : (deck.rows || []).map((row) => row.name).filter(Boolean);
@@ -1112,6 +1130,7 @@ export function buildIntegrityGuardedCoachSummary({
     commissionNote,
     cardFacts,
     strategicHypotheses,
+    restoredPlanIdentity,
   });
 
   const gateFor = (summary, systemsAllowlist) => evaluateNarrativeIntegrityForCoach({

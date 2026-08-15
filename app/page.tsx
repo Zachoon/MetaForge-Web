@@ -268,6 +268,18 @@ type SavedFamily = {
   /** Optional commission note — Conversation Contract Stage 1 persistence. */
   commissionNote?: string | null;
   forgeInterventions?: ForgeIntervention[];
+  // A small snapshot of Brain's own construction-time plan identity
+  // (package labels, strategy, plan label, commanders) captured whenever a
+  // live generation context is available. Reopening a saved Masterwork from
+  // the archive has no live Brain context to read (see openSavedMasterwork)
+  // — this is the only way the coach summary can still describe a real
+  // plan instead of a generic placeholder for a previously-saved deck.
+  planIdentity?: {
+    packages: string[];
+    strategy: string | null;
+    planLabel: string | null;
+    commanders: string[];
+  } | null;
   revisions: Array<{
     deckText: string;
     note: string;
@@ -933,6 +945,30 @@ const hashText = (value: string) =>
     (hash, char) => (hash * 31 + char.charCodeAt(0)) >>> 0,
     2166136261,
   );
+/**
+ * A small, honest snapshot of Brain's own construction-time plan identity
+ * (never fabricated — only ever what Brain itself produced), captured at
+ * save time so it can survive a reopen from the archive, where the live
+ * generation context is gone. Returns null when there's nothing real to
+ * capture, so callers can fall back to whatever was captured previously.
+ */
+const extractPlanIdentitySnapshot = (selected: any, commanderName: string) => {
+  const intent = selected?.strategicIntent || {};
+  const packages = (intent.packages || []).map((p: any) => p?.label).filter(Boolean);
+  const plan = selected?.strategicPlan || intent.activePlan || null;
+  const strategy = intent.strategy || selected?.strategy || null;
+  const commanders = (intent.commanders || [])
+    .map((c: any) => (typeof c === "string" ? c : c?.name))
+    .filter(Boolean);
+  const planLabel = plan?.label || plan?.id || null;
+  if (!packages.length && !strategy && !commanders.length && !planLabel) return null;
+  return {
+    packages,
+    strategy,
+    planLabel,
+    commanders: commanders.length ? commanders : commanderName ? [commanderName] : [],
+  };
+};
 /** Coarse "updated N ago" for a saved family's real updatedAt timestamp. */
 const relativeUpdatedLabel = (isoTimestamp?: string | null): string | null => {
   if (!isoTimestamp) return null;
@@ -1683,6 +1719,11 @@ export default function Home() {
   // featuredCard, stored per-deck under the same key format used for the
   // active deck), falling back to its commander when never personalized.
   const [archiveFeaturedArt, setArchiveFeaturedArt] = useState<Record<string, string>>({});
+  // Brain's own plan identity from the last time this deck had a live
+  // generation context — see extractPlanIdentitySnapshot. Only relevant
+  // when nativeMasterworkContext is null (a reopened saved deck); a fresh
+  // generation always has real, live data and never needs this fallback.
+  const [restoredPlanIdentity, setRestoredPlanIdentity] = useState<SavedFamily["planIdentity"]>(null);
   // motifWeightsByFamily/playerIdentity are computed straight from the
   // already-loaded savedMasterworks state — no extra fetch. This mirrors
   // /profile's own computation exactly, so the two never disagree.
@@ -2585,6 +2626,7 @@ export default function Home() {
           : [],
         commissionNote: nativeMasterworkContext?.commissionNote || commissionNote,
         cardFacts,
+        restoredPlanIdentity,
       }),
     [
       nativeMasterworkContext?.selected,
@@ -2600,6 +2642,7 @@ export default function Home() {
       foreignSuspectNames,
       commissionNote,
       cardFacts,
+      restoredPlanIdentity,
     ],
   );
 
@@ -3850,6 +3893,9 @@ export default function Home() {
     setForgedDeck(answer);
     setForgeReply(opts.replyText);
     setRevisions(firstRevision);
+    // A brand-new generation always has real, live Brain data — never let a
+    // previously-reopened deck's restored plan identity leak into this one.
+    setRestoredPlanIdentity(null);
     setNativeMasterworkContext({
       selected: nativeReport.selected,
       candidates: nativeReport.candidates,
@@ -4324,6 +4370,7 @@ export default function Home() {
     setForgedDeck(latest?.deck || "");
     setRevisions(restoredRevisions);
     setNativeMasterworkContext(null);
+    setRestoredPlanIdentity(family.planIdentity || null);
     setRecord(
       family.record || {
         wins: Number(family.revisions.at(-1)?.evidence?.wins || 0),
@@ -4571,6 +4618,10 @@ export default function Home() {
         playerGoal: coachingGoal || null,
         commissionNote: String(commissionNote || "").trim() || null,
         forgeInterventions,
+        planIdentity:
+          extractPlanIdentitySnapshot(nativeMasterworkContext?.selected, activeCommander?.name || "")
+          || existingFamily?.planIdentity
+          || null,
         revisions: serializedRevisions,
       };
       const families = [
