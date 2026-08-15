@@ -231,6 +231,9 @@ const PACKAGE_CATALOG = Object.freeze({
     falseFriendSemantics: Object.freeze([]),
     supportSemantics: Object.freeze(["spell_payoff"]),
     packageSignals: Object.freeze(["spells"]),
+    // Occupancy is not a catalog false-friend list. Cheap instants/sorceries
+    // occupy core; spell payoffs (whenever you cast / magecraft) are support;
+    // a generic "spells" produce/reward must not occupy cheap-spell density.
     detectCommander: (oracle) => /whenever you cast (?:an? )?(?:instant|sorcery|noncreature)/i.test(oracle) || /\bmagecraft\b/i.test(oracle),
     detectBlueprint: (blueprint) => blueprint.requestedMechanics?.includes("spellslinger") || /\bspells?\b/i.test(blueprint.source || ""),
     density: Object.freeze({ singletonCore: 14, constructedCore: 8, singletonSupport: 3, constructedSupport: 2 }),
@@ -381,6 +384,15 @@ function cardSatisfiesLandfallSupport(entry) {
     || /put [^.]* land [^.]* onto the battlefield/i.test(oracle);
 }
 
+function cardSatisfiesSpellslingerCore(entry) {
+  return entrySemantics(entry).has("cheap_spell");
+}
+
+function cardSatisfiesSpellslingerSupport(entry) {
+  if (cardSatisfiesSpellslingerCore(entry)) return true;
+  return entrySemantics(entry).has("spell_payoff");
+}
+
 export function cardSatisfiesPackageCore(entry, packageId, intent) {
   const definition = PACKAGE_CATALOG[packageId];
   if (!definition) return false;
@@ -391,6 +403,7 @@ export function cardSatisfiesPackageCore(entry, packageId, intent) {
   if (packageId === "aristocrats") return cardSatisfiesAristocratsCore(entry);
   if (packageId === "reanimator") return cardSatisfiesReanimatorCore(entry);
   if (packageId === "landfall") return cardSatisfiesLandfallCore(entry);
+  if (packageId === "spellslinger") return cardSatisfiesSpellslingerCore(entry);
   const semantics = entrySemantics(entry);
   if (definition.coreSemantics.some((semantic) => semantics.has(semantic))) return true;
   if (definition.packageSignals?.length) {
@@ -407,6 +420,7 @@ export function cardSatisfiesPackageSupport(entry, packageId, intent) {
   if (packageId === "aristocrats") return cardSatisfiesAristocratsCore(entry);
   if (packageId === "reanimator") return cardSatisfiesReanimatorCore(entry);
   if (packageId === "landfall") return cardSatisfiesLandfallSupport(entry);
+  if (packageId === "spellslinger") return cardSatisfiesSpellslingerSupport(entry);
   const semantics = entrySemantics(entry);
   return definition.supportSemantics.some((semantic) => semantics.has(semantic))
     || cardSatisfiesPackageCore(entry, packageId, intent);
