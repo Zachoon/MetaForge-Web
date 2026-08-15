@@ -933,6 +933,19 @@ const hashText = (value: string) =>
     (hash, char) => (hash * 31 + char.charCodeAt(0)) >>> 0,
     2166136261,
   );
+/** Coarse "updated N ago" for a saved family's real updatedAt timestamp. */
+const relativeUpdatedLabel = (isoTimestamp?: string | null): string | null => {
+  if (!isoTimestamp) return null;
+  const then = new Date(isoTimestamp).getTime();
+  if (!Number.isFinite(then)) return null;
+  const minutes = Math.max(0, Math.round((Date.now() - then) / 60000));
+  if (minutes < 1) return "Deck updated just now";
+  if (minutes < 60) return `Deck updated ${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `Deck updated ${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.round(hours / 24);
+  return `Deck updated ${days} day${days === 1 ? "" : "s"} ago`;
+};
 const masterworkIdentityWord = (commander = "", note = "") => {
   const promise = parseNativeBlueprintIntent({ note }).tribalTypes[0];
   if (promise) return promise.charAt(0).toUpperCase() + promise.slice(1);
@@ -2220,6 +2233,25 @@ export default function Home() {
     }
     return groups;
   }, [orderedDeckRows, cardFacts, cardFactsLoading, cardFactsError, format, activeCommanderName, selectedSecondCommander?.name]);
+  // Real WUBRG pip totals across the list (mana symbols × row quantity, hybrid
+  // and Phyrexian symbols counted toward every color they name) — not a
+  // stand-in for color identity, which the commander badge already covers.
+  const colorPipCounts = useMemo(() => {
+    const totals: Record<"W" | "U" | "B" | "R" | "G", number> = { W: 0, U: 0, B: 0, R: 0, G: 0 };
+    for (const row of deckRows) {
+      const fact = cardFacts[cardFactKey(row.name)];
+      const cost = fact?.mana_cost
+        || fact?.card_faces?.map((face) => face.mana_cost).filter(Boolean).join("")
+        || "";
+      const symbols = cost.match(/\{[^}]+\}/g) || [];
+      for (const symbol of symbols) {
+        for (const color of ["W", "U", "B", "R", "G"] as const) {
+          if (symbol.includes(color)) totals[color] += row.quantity;
+        }
+      }
+    }
+    return totals;
+  }, [deckRows, cardFacts]);
   // The card fact used for pricing: the player's chosen specific printing
   // (right-click on a row) if they picked one, otherwise whatever printing
   // Scryfall returned by default. Only the prices differ; everything else
@@ -6523,6 +6555,20 @@ export default function Home() {
                   </section>
                 </div>
               )}
+              {hasValidatedDeck && (
+                <div className="masterwork-stats-bar" aria-label="Deck summary">
+                  <span><b>{deckRows.reduce((sum, row) => sum + row.quantity, 0)}</b> Cards</span>
+                  <span>{isCommanderFormat(format) ? "Commander" : format}</span>
+                  <span>${deckPriceTotal.total.toFixed(2)}</span>
+                  <div className="masterwork-pip-counts" aria-label="Mana pip totals">
+                    {(["W", "U", "B", "R", "G"] as const)
+                      .filter((color) => colorPipCounts[color] > 0)
+                      .map((color) => (
+                        <i key={color} data-color={color}>{colorPipCounts[color]}</i>
+                      ))}
+                  </div>
+                </div>
+              )}
               {postAcceptChoice && (
                 <div className="post-accept-choice" role="status">
                   <span>
@@ -8232,8 +8278,28 @@ export default function Home() {
                   </div>
                 </div>
                 <footer className="masterwork-shell-bottom">
-                  <span><b>{deckRows.reduce((sum, row) => sum + row.quantity, 0)}</b> cards <i /> {activeCommanderName || "Complete deck"}</span>
+                  <span>
+                    <b>{deckRows.reduce((sum, row) => sum + row.quantity, 0)}</b> cards <i /> {activeCommanderName || "Complete deck"}
+                    {(() => {
+                      const label = relativeUpdatedLabel(savedMasterworks.find((family) => family.id === deckId)?.updatedAt);
+                      return label ? <em className="masterwork-updated-label"> · {label}</em> : null;
+                    })()}
+                  </span>
                   <div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const blob = new Blob([forgedDeck], { type: "text/plain;charset=utf-8" });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement("a");
+                        link.href = url;
+                        link.download = `${(activeCommanderName || chosenWork.name || "metaforge-deck").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.txt`;
+                        link.click();
+                        URL.revokeObjectURL(url);
+                      }}
+                    >
+                      Export
+                    </button>
                     <button type="button" onClick={() => navigator.clipboard.writeText(forgedDeck)}>Copy deck</button>
                     {deckPurchaseLink && <a href={deckPurchaseLink.url} target={deckPurchaseLink.target} rel={deckPurchaseLink.rel}>Buy deck</a>}
                     <button type="button" className="masterwork-playtest" onClick={() => { setActiveForgeChapter(1); setDeckViewMode("workbench"); window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}>Goldfish this deck →</button>

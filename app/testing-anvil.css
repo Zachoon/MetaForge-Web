@@ -840,6 +840,18 @@ step that's actually in focus. */
 @media(hover:none){.ledger-deck-view .type-column>.type-column-row{padding-right:72px}.ledger-deck-view .card-row-actions{opacity:1;box-shadow:-8px 0 12px #13221e}}
 @media(max-width:760px){.ledger-deck-view .type-columns{grid-template-columns:1fr}.masterwork-deck-title{padding:25px 20px}.masterwork-deck-hero:before{background-position:center top;background-size:auto 74%;opacity:.5}}
 
+.masterwork-stats-bar{display:flex;align-items:center;gap:18px;padding:12px 28px;border-bottom:1px solid #2a3733;background:#0a0f0e;color:#aeb8b2;font:600 12px ui-monospace,monospace}
+.masterwork-stats-bar>span{white-space:nowrap}
+.masterwork-stats-bar>span>b{color:#f2ede2;font-weight:800}
+.masterwork-pip-counts{display:flex;align-items:center;gap:6px;margin-left:auto}
+.masterwork-pip-counts>i{display:grid;min-width:22px;height:22px;padding:0 6px;place-items:center;border-radius:50%;font:800 10px ui-monospace,monospace;font-style:normal}
+.masterwork-pip-counts>i[data-color=W]{background:#ded7b9;color:#3a3429}
+.masterwork-pip-counts>i[data-color=U]{background:#173f62;color:#a9d9ff}
+.masterwork-pip-counts>i[data-color=B]{background:#211c25;color:#d4c5db}
+.masterwork-pip-counts>i[data-color=R]{background:#61291c;color:#ffc1a3}
+.masterwork-pip-counts>i[data-color=G]{background:#1e4e31;color:#bce7c8}
+@media(max-width:560px){.masterwork-stats-bar{flex-wrap:wrap;gap:8px 14px;padding:10px 18px}}
+
 /* In-panel Masterwork chrome is retired. Never re-display shell-top/rail —
    those :has() rules used to paint a second Explore/Decks/Academy header and
    a full-height Overview/Decklist column over an empty pane. */
