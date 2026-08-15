@@ -6538,7 +6538,6 @@ export default function Home() {
                 <div className="masterwork-stats-bar" aria-label="Deck summary">
                   <span><b>{deckRows.reduce((sum, row) => sum + row.quantity, 0)}</b> Cards</span>
                   <span>{isCommanderFormat(format) ? "Commander" : format}</span>
-                  <span>${deckPriceTotal.total.toFixed(2)}</span>
                   <div className="masterwork-pip-counts" aria-label="Mana pip totals">
                     {(["W", "U", "B", "R", "G"] as const)
                       .filter((color) => colorPipCounts[color] > 0)
@@ -8009,6 +8008,7 @@ export default function Home() {
                     strategy={strategy}
                   />
                 )}
+                {deckViewMode === "ledger" && (
                 <div className="deck-gallery" id="deck-gallery">
                   <aside className="card-preview-stage">
                     <button
@@ -8256,6 +8256,7 @@ export default function Home() {
                       ))}
                   </div>
                 </div>
+                )}
                 <footer className="masterwork-shell-bottom">
                   <span>
                     <b>{deckRows.reduce((sum, row) => sum + row.quantity, 0)}</b> cards <i /> {activeCommanderName || "Complete deck"}
