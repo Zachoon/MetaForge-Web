@@ -63,6 +63,18 @@ describe("Mentor Shadow v0", () => {
     assert.match(explanation.paragraph, /not mill/);
   });
 
+  it("names mill as a graveyard dump, not surveil", () => {
+    const explanation = explainCardAsMentor({
+      cardName: "Tome Scour",
+      oracleText: "Target player mills two cards.",
+    });
+    assert.equal(explanation.writesToBrain, false);
+    assert.equal(explanation.graveyardSeating[0].kind, "mill");
+    assert.match(explanation.paragraph, /Mill Dump/);
+    assert.match(explanation.paragraph, /not surveil/);
+    assert.doesNotMatch(explanation.paragraph, /Surveil Filter/);
+  });
+
   it("names a reset pair as a closed loop, not a verified infinite", () => {
     const explanation = explainPairAsMentor({
       left: { name: "Basalt Monolith", oracleText: "{T}: Add {C}{C}{C}. {3}: Untap this artifact." },

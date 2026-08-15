@@ -119,6 +119,26 @@ export function classifySelectionKinds(oracle = "") {
   return kinds;
 }
 
+export const GRAVEYARD_KINDS = Object.freeze({
+  MILL: "mill",
+});
+
+const MILL_KEYWORD = /\bmills?\b/i;
+const MILL_PUT = /puts? the top .{0,60}(?:card|cards) of .{0,80} library into .{0,40} graveyard/i;
+
+/**
+ * How a card dumps cards into a graveyard. Observation only.
+ * Mill is not surveil. Surveil stays a selection kind.
+ * These labels must not become produces/rewards until a harness earns that.
+ */
+export function classifyGraveyardKinds(oracle = "") {
+  const text = String(oracle || "");
+  const kinds = [];
+  if (/\bsurveil\b/i.test(text)) return kinds;
+  if (MILL_KEYWORD.test(text) || MILL_PUT.test(text)) kinds.push(GRAVEYARD_KINDS.MILL);
+  return kinds;
+}
+
 export function findResetPayPairs(cards = []) {
   const nodes = (cards || []).filter((card) => card?.name && !/\bLand\b/i.test(card.typeLine || card.type_line || ""));
   const pairs = [];
@@ -476,8 +496,10 @@ export function extractMechanicalSignals(card) {
   const rewards = [...new Set([...regexRewards, ...tagRewards])].filter((signal) => !(signal === "combat" && attackToProduceOnly));
   if (auraProducer.length && !signals.includes("auras")) signals.push("auras");
   if (spellProducer.length && !signals.includes("spells")) signals.push("spells");
-  const selectionKinds = classifySelectionKinds(card.oracleText || card.oracle_text || text);
-  return { signals, produces, rewards, tagProduces, tagRewards, selectionKinds };
+  const oracle = card.oracleText || card.oracle_text || text;
+  const selectionKinds = classifySelectionKinds(oracle);
+  const graveyardKinds = classifyGraveyardKinds(oracle);
+  return { signals, produces, rewards, tagProduces, tagRewards, selectionKinds, graveyardKinds };
 }
 
 export function buildInteractionGraph(cards, options = {}) {
@@ -682,7 +704,7 @@ export function buildInteractionGraph(cards, options = {}) {
     explicitReferences,
     coverage,
     confidence,
-    methodology: "Relationships come from oracle text and type lines: mechanical producer/payoff inference, plus oracle_explicit edges when Oracle literally names another card in the deck. Mutual pairs are labeled engine / closed_loop / conditional_win as vocabulary. Reset/pay shapes are a separate observation pass — not verified infinites and not construction credit. Selection kinds (scry / surveil / rummage / connive / impulse / draw) are observation labels on a card's own filter — they do not form edges and are not construction credit.",
+    methodology: "Relationships come from oracle text and type lines: mechanical producer/payoff inference, plus oracle_explicit edges when Oracle literally names another card in the deck. Mutual pairs are labeled engine / closed_loop / conditional_win as vocabulary. Reset/pay shapes are a separate observation pass — not verified infinites and not construction credit. Selection kinds (scry / surveil / rummage / connive / impulse / draw) are observation labels on a card's own filter — they do not form edges and are not construction credit. Graveyard kinds name mill as a dump, distinct from surveil; they also do not form edges or construction credit.",
     commanderName: options.commanderName || commander?.name || "",
   };
 }

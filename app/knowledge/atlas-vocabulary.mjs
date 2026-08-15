@@ -1,6 +1,7 @@
 // =============================================================================
 
 import {
+  classifyGraveyardKinds,
   classifyLoopKind,
   classifySelectionKinds,
   extractMechanicalSignals,
@@ -261,6 +262,49 @@ export function seatSelectionImplementation(card = {}) {
 }
 
 /**
+ * Descriptive seating for mill as a graveyard dump.
+ * Consumes graph `graveyardKinds` — no second oracle regex family.
+ * Mill is not surveil. Not a Capability admission. Never construction input.
+ */
+export const ATLAS_GRAVEYARD_SEATS = freeze([
+  freeze({
+    kind: "mill",
+    capability: freeze({
+      id: "cap:mill_graveyard_dump",
+      label: "Graveyard Dump",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:mill_dump", label: "Mill Dump" }),
+    contrast: "not surveil",
+    writesToBrain: false,
+  }),
+]);
+
+export function seatGraveyardImplementation(card = {}) {
+  const mechanics = card.mechanics || extractMechanicalSignals(card);
+  const kinds = mechanics.graveyardKinds
+    || classifyGraveyardKinds(card.oracleText || card.oracle_text || "");
+  const rows = [];
+  for (const definition of ATLAS_GRAVEYARD_SEATS) {
+    if (!kinds.includes(definition.kind)) continue;
+    rows.push(freeze({
+      kind: definition.kind,
+      capability: definition.capability,
+      seat: definition.seat,
+      contrast: definition.contrast,
+      implementation: freeze({
+        card: String(card.name || "Unknown card"),
+        roles: freeze(["dumper"]),
+        evidenceSignals: freeze([definition.kind]),
+      }),
+      writesToBrain: false,
+    }));
+  }
+  return freeze(rows);
+}
+
+/**
  * Descriptive seating for mutual loops and reset/pay shapes.
  * Consumes graph `loopKind` / `shape` — no second oracle regex family.
  * Pair observation only. Not a combo solver. Never construction inputs.
@@ -401,6 +445,10 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
     date: "2026-08-15",
     change: "Seated graph loop kinds and reset/pay shapes; still 0 Capability admissions",
   }),
+  freeze({
+    date: "2026-08-15",
+    change: "Seated mill as a graveyard dump, distinct from surveil; still 0 Capability admissions",
+  }),
 ]);
 
 export function seatsImplementedBy(cardName = "") {
@@ -443,6 +491,7 @@ export function buildAtlasVocabularyRegistry() {
     equivalenceIllustrative: ATLAS_EQUIVALENCE_ILLUSTRATIVE,
     namedResourceSeats: ATLAS_NAMED_RESOURCE_SEATS,
     selectionSeats: ATLAS_SELECTION_SEATS,
+    graveyardSeats: ATLAS_GRAVEYARD_SEATS,
     loopSeats: ATLAS_LOOP_SEATS,
     resetShapeSeats: ATLAS_RESET_SHAPE_SEATS,
     observation001: ATLAS_OBSERVATION_001,
@@ -455,6 +504,7 @@ export function buildAtlasVocabularyRegistry() {
       equivalenceBindingCount: ATLAS_EQUIVALENCE_ILLUSTRATIVE.length,
       namedResourceSeatCount: ATLAS_NAMED_RESOURCE_SEATS.length,
       selectionSeatCount: ATLAS_SELECTION_SEATS.length,
+      graveyardSeatCount: ATLAS_GRAVEYARD_SEATS.length,
       loopSeatCount: ATLAS_LOOP_SEATS.length,
       resetShapeSeatCount: ATLAS_RESET_SHAPE_SEATS.length,
       coverageScoreExists: false,

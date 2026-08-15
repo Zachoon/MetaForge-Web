@@ -6,6 +6,7 @@ import {
   cardsImplementingSeat,
   seatNamedResourceImplementation,
   seatSelectionImplementation,
+  seatGraveyardImplementation,
   seatLoopImplementation,
 } from "../../app/knowledge/atlas-vocabulary.mjs";
 
@@ -109,6 +110,36 @@ describe("Atlas Vocabulary Registry v0", () => {
     });
     assert.equal(fromGraph[0].kind, "impulse");
     assert.equal(fromGraph[0].contrast, "not a Junk token");
+  });
+
+  it("seats mill as a graveyard dump, distinct from surveil, without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.graveyardSeatCount, 1);
+    assert.equal(registry.summary.capabilityAdmittedCount, 0);
+    assert.ok(registry.graveyardSeats.every((row) => row.writesToBrain === false && row.capability.atlasAdmitted === false));
+
+    const mill = seatGraveyardImplementation({
+      name: "Tome Scour",
+      oracleText: "Target player mills two cards.",
+    });
+    assert.equal(mill.length, 1);
+    assert.equal(mill[0].kind, "mill");
+    assert.equal(mill[0].seat.label, "Mill Dump");
+    assert.equal(mill[0].contrast, "not surveil");
+    assert.equal(mill[0].writesToBrain, false);
+
+    const surveil = seatGraveyardImplementation({
+      name: "Street Wraith",
+      oracleText: "When this enters, surveil 1.",
+    });
+    assert.deepEqual(surveil, [], "surveil is selection, not a mill dump");
+
+    const fromGraph = seatGraveyardImplementation({
+      name: "Pre-classified",
+      mechanics: { graveyardKinds: ["mill"], produces: ["graveyard"], rewards: [], signals: [] },
+    });
+    assert.equal(fromGraph[0].kind, "mill");
+    assert.equal(fromGraph[0].writesToBrain, false);
   });
 
   it("seats loop kinds and reset shapes from graph labels without admitting Capabilities", () => {

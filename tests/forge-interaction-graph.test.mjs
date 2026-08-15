@@ -8,9 +8,11 @@ import {
   oracleExplicitlyNames,
   classifyLoopKind,
   classifySelectionKinds,
+  classifyGraveyardKinds,
   findResetPayPairs,
   LOOP_KINDS,
   SELECTION_KINDS,
+  GRAVEYARD_KINDS,
   RESET_SHAPES,
   RELATIONSHIP_EVIDENCE,
 } from "../app/forge-interaction-graph.mjs";
@@ -584,6 +586,36 @@ test("surveil is a selector into the graveyard, not mill", () => {
   assert.deepEqual(surveilSignals.selectionKinds, [SELECTION_KINDS.SURVEIL]);
   assert.deepEqual(millSignals.selectionKinds, []);
   assert.ok(millSignals.produces.includes("graveyard"), "mill remains graveyard production");
+});
+
+test("mill is a graveyard dump, distinct from surveil", () => {
+  assert.deepEqual(classifyGraveyardKinds("Target player mills two cards."), [GRAVEYARD_KINDS.MILL]);
+  assert.deepEqual(
+    classifyGraveyardKinds("Target player puts the top two cards of their library into their graveyard."),
+    [GRAVEYARD_KINDS.MILL],
+  );
+  assert.deepEqual(classifyGraveyardKinds("Surveil 2."), []);
+  assert.deepEqual(classifyGraveyardKinds("Scry 2."), []);
+  const millSignals = extractMechanicalSignals({
+    name: "Tome Scour",
+    typeLine: "Sorcery",
+    oracleText: "Target player mills two cards.",
+  });
+  const oldMill = extractMechanicalSignals({
+    name: "Old Mill",
+    typeLine: "Sorcery",
+    oracleText: "Target player puts the top two cards of their library into their graveyard.",
+  });
+  const surveilSignals = extractMechanicalSignals({
+    name: "Street Familiar",
+    typeLine: "Creature",
+    oracleText: "When this enters, surveil 1.",
+  });
+  assert.deepEqual(millSignals.graveyardKinds, [GRAVEYARD_KINDS.MILL]);
+  assert.deepEqual(oldMill.graveyardKinds, [GRAVEYARD_KINDS.MILL]);
+  assert.deepEqual(surveilSignals.graveyardKinds, []);
+  assert.equal(millSignals.selectionKinds.includes(SELECTION_KINDS.SURVEIL), false);
+  assert.ok(millSignals.produces.includes("graveyard"), "mill still produces graveyard");
 });
 
 test("rummage filters the hand and is not net draw", () => {
