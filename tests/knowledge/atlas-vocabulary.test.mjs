@@ -282,10 +282,11 @@ describe("Atlas Vocabulary Registry v0", () => {
 
   it("seats enter and cast as a card's own trigger condition, without admitting Capabilities", () => {
     const registry = buildAtlasVocabularyRegistry();
-    assert.equal(registry.summary.triggerSeatCount, 2);
+    assert.equal(registry.summary.triggerSeatCount, 3);
     assert.equal(registry.summary.capabilityAdmittedCount, 0);
     assert.ok(registry.triggerSeats.every((row) => row.writesToBrain === false && row.capability.atlasAdmitted === false));
     assert.ok(registry.revisions.some((row) => row.date === "2026-08-15" && /enter and cast/i.test(row.change)));
+    assert.ok(registry.revisions.some((row) => row.date === "2026-08-15" && /attack/i.test(row.change) && /trigger/i.test(row.change)));
 
     const enter = seatTriggerImplementation({
       name: "Bauble",
@@ -304,6 +305,15 @@ describe("Atlas Vocabulary Registry v0", () => {
     assert.equal(cast[0].kind, "cast");
     assert.equal(cast[0].seat.label, "Cast Trigger");
     assert.equal(cast[0].contrast, "not spellslinger construction occupancy");
+
+    const attack = seatTriggerImplementation({
+      name: "Bloodthirsty Aerialist",
+      oracleText: "Whenever this creature attacks, draw a card.",
+    });
+    assert.equal(attack.length, 1);
+    assert.equal(attack[0].kind, "attack");
+    assert.equal(attack[0].seat.label, "Attack Trigger");
+    assert.equal(attack[0].contrast, "not extra-combat amplification or stax construction occupancy");
 
     // A flashback/escape "you may cast" permission is not a Cast Trigger.
     const flashback = seatTriggerImplementation({

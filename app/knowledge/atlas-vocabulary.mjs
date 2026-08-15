@@ -440,7 +440,8 @@ export function seatSacrificeImplementation(card = {}) {
  * Descriptive seating for a card's own trigger condition.
  * Consumes graph `triggerKinds` — no second oracle regex family.
  * Enter is not a blink/flicker recursion pattern. Cast is not spellslinger
- * construction occupancy — both are named trigger conditions only.
+ * construction occupancy. Attack is not extra-combat amplification and not
+ * stax construction occupancy — all three are named trigger conditions only.
  * Not Capability admissions. Never construction inputs.
  */
 export const ATLAS_TRIGGER_SEATS = freeze([
@@ -468,6 +469,19 @@ export const ATLAS_TRIGGER_SEATS = freeze([
     seat: freeze({ id: "seat:cast_trigger", label: "Cast Trigger" }),
     contrast: "not spellslinger construction occupancy",
     role: "cast_trigger",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "attack",
+    capability: freeze({
+      id: "cap:attack_trigger",
+      label: "Attack Trigger",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:attack_trigger", label: "Attack Trigger" }),
+    contrast: "not extra-combat amplification or stax construction occupancy",
+    role: "attack_trigger",
     writesToBrain: false,
   }),
 ]);
@@ -655,6 +669,10 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
   freeze({
     date: "2026-08-15",
     change: "Named enter and cast as a card's own trigger condition, distinct from blink/flicker and from spellslinger occupancy; still 0 Capability admissions",
+  }),
+  freeze({
+    date: "2026-08-15",
+    change: "Added attack as a third trigger kind, distinct from extra-combat amplification and from stax occupancy; still 0 Capability admissions",
   }),
 ]);
 

@@ -167,6 +167,17 @@ describe("Mentor Shadow v0", () => {
     assert.match(cast.paragraph, /not spellslinger construction occupancy/);
   });
 
+  it("names attack as a third trigger kind, not extra-combat amplification or stax occupancy", () => {
+    const attack = explainCardAsMentor({
+      cardName: "Bloodthirsty Aerialist",
+      oracleText: "Whenever this creature attacks, draw a card.",
+    });
+    assert.equal(attack.writesToBrain, false);
+    assert.equal(attack.triggerSeating[0].kind, "attack");
+    assert.match(attack.paragraph, /Attack Trigger/);
+    assert.match(attack.paragraph, /not extra-combat amplification or stax construction occupancy/);
+  });
+
   it("names a reset pair as a closed loop, not a verified infinite", () => {
     const explanation = explainPairAsMentor({
       left: { name: "Basalt Monolith", oracleText: "{T}: Add {C}{C}{C}. {3}: Untap this artifact." },

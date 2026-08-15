@@ -891,3 +891,49 @@ test("trigger kinds name enter vs cast as a card's own trigger condition", () =>
   assert.match(graph.methodology, /blink\/flicker/i);
   assert.match(graph.methodology, /spellslinger/i);
 });
+
+test("attack is a third trigger kind, distinct from extra-combat amplification and stax occupancy", () => {
+  const attackOracle = "Whenever this creature attacks, draw a card.";
+  const combatDamageOracle = "Whenever this creature deals combat damage to a player, create a Treasure token.";
+  const extraCombatOracle = "Untap all creatures you control. After this main phase, there is an additional combat phase.";
+
+  assert.deepEqual(classifyTriggerKinds(attackOracle), [TRIGGER_KINDS.ATTACK]);
+
+  // Combat damage and "attacking creatures" reward text are not attack
+  // triggers — only "whenever ~ attacks" is.
+  assert.deepEqual(classifyTriggerKinds(combatDamageOracle), []);
+  assert.deepEqual(classifyTriggerKinds("Creatures you control get +1/+0 as long as they're attacking."), []);
+
+  // The extra-combat-phase amplifier is a separate mechanism entirely — it
+  // grants a second phase, it does not itself read as a "whenever ~ attacks"
+  // trigger on the card that grants it.
+  assert.deepEqual(classifyTriggerKinds(extraCombatOracle), []);
+
+  // Attack can combine with enter or cast on the same card.
+  assert.deepEqual(
+    classifyTriggerKinds(`When this enters the battlefield, draw a card. ${attackOracle}`),
+    [TRIGGER_KINDS.ENTER, TRIGGER_KINDS.ATTACK],
+  );
+
+  const raider = extractMechanicalSignals({
+    name: "Bloodthirsty Aerialist",
+    typeLine: "Creature — Human Warrior",
+    oracleText: attackOracle,
+  });
+  assert.deepEqual(raider.triggerKinds, [TRIGGER_KINDS.ATTACK]);
+  assert.equal(raider.produces.includes(TRIGGER_KINDS.ATTACK), false, "trigger kinds are observation labels, not production");
+  assert.equal(raider.rewards.includes(TRIGGER_KINDS.ATTACK), false, "trigger kinds are observation labels, not a payoff");
+
+  const graph = buildInteractionGraph([
+    { name: "Bloodthirsty Aerialist", typeLine: "Creature", oracleText: attackOracle },
+    { name: "Aggravated Assault", typeLine: "Artifact", oracleText: extraCombatOracle },
+  ]);
+  assert.equal(
+    graph.edges.some((edge) => edge.signals.includes(TRIGGER_KINDS.ATTACK)),
+    false,
+    "trigger kinds do not form graph edges",
+  );
+  assert.match(graph.methodology, /attack/i);
+  assert.match(graph.methodology, /extra-combat/i);
+  assert.match(graph.methodology, /stax/i);
+});
