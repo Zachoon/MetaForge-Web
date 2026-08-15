@@ -1261,11 +1261,11 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       deficitsFilled = [];
       surplusIntroduced = [];
       for (const packageSpec of strategicIntent.packages) {
-        if (cardSatisfiesPackageCore(entryOrRow, packageSpec.id)) {
+        if (cardSatisfiesPackageCore(entryOrRow, packageSpec.id, strategicIntent)) {
           const core = afterState.packages?.[packageSpec.id]?.core;
           if (core?.deficit > 0) deficitsFilled.push(`package_core:${packageSpec.id}`);
           else surplusIntroduced.push(`package_core:${packageSpec.id}`);
-        } else if (cardSatisfiesPackageSupport(entryOrRow, packageSpec.id)) {
+        } else if (cardSatisfiesPackageSupport(entryOrRow, packageSpec.id, strategicIntent)) {
           const support = afterState.packages?.[packageSpec.id]?.support;
           if (support?.deficit > 0) deficitsFilled.push(`package_support:${packageSpec.id}`);
           else surplusIntroduced.push(`package_support:${packageSpec.id}`);
@@ -1442,7 +1442,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
   // are reserved from strategic intent, not from broad producer/payoff words.
   for (const packageSpec of strategicIntent?.packages || []) {
     const coreLimit = Math.min(packageSpec.coreMin, singleton ? 20 : 10);
-    for (const candidate of payable.filter((entry) => cardSatisfiesPackageCore(entry, packageSpec.id)).slice(0, coreLimit)) {
+    for (const candidate of payable.filter((entry) => cardSatisfiesPackageCore(entry, packageSpec.id, strategicIntent)).slice(0, coreLimit)) {
       addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
     }
   }
@@ -1501,7 +1501,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       const fillsPackage = (strategicIntent?.packages || []).some((pkg) => {
         const state = deficitState.packages[pkg.id];
         if (!state) return false;
-        if (state.core.deficit > 0 && cardSatisfiesPackageCore(entry, pkg.id)) return true;
+        if (state.core.deficit > 0 && cardSatisfiesPackageCore(entry, pkg.id, strategicIntent)) return true;
         if ((pkg.requireBalancedLegs || []).some((leg) => state.legs?.[leg]?.deficit > 0 && entry.strategicSemantics?.has?.(leg))) return true;
         return false;
       });
@@ -3129,7 +3129,7 @@ function cohesionOptionsFor(analysis) {
   return {
     availablePackageCore: Object.fromEntries((intent?.packages || []).map((pkg) => [
       pkg.id,
-      analysis.spells.filter((entry) => cardSatisfiesPackageCore(entry, pkg.id)).length,
+      analysis.spells.filter((entry) => cardSatisfiesPackageCore(entry, pkg.id, intent)).length,
     ])),
     availableCommanderConnections: analysis.spells.filter((entry) => entry.commanderConnectionSignals?.length).length,
     requireCommanderFloor: true,
@@ -3167,10 +3167,10 @@ function repairUnsupportedBombs(input, candidate, analysis) {
     .filter((entry) => !selectedNames.has(normalized(entry.card.name)))
     .filter((entry) => !(entry.strategicSemantics?.has?.("bomb_cmc") || entry.cmc >= 10)
       || (entry.commanderConnectionSignals || []).length
-      || (intent?.packageIds || []).some((id) => cardSatisfiesPackageCore(entry, id)))
+      || (intent?.packageIds || []).some((id) => cardSatisfiesPackageCore(entry, id, intent)))
     .sort((left, right) => {
-      const leftPackage = (intent?.packageIds || []).some((id) => cardSatisfiesPackageCore(left, id)) ? 1 : 0;
-      const rightPackage = (intent?.packageIds || []).some((id) => cardSatisfiesPackageCore(right, id)) ? 1 : 0;
+      const leftPackage = (intent?.packageIds || []).some((id) => cardSatisfiesPackageCore(left, id, intent)) ? 1 : 0;
+      const rightPackage = (intent?.packageIds || []).some((id) => cardSatisfiesPackageCore(right, id, intent)) ? 1 : 0;
       return rightPackage - leftPackage || right.score - left.score || left.card.name.localeCompare(right.card.name);
     });
 

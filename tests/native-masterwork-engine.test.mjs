@@ -163,6 +163,29 @@ test("commander connections preserve named Food production without granting Trea
   ), [], "a Food commander does not grant a Treasure-only commander edge");
 });
 
+test("commander connections preserve named Blood production without granting Food payoffs", () => {
+  const anje = card(
+    "Anje, Maid of Dishonor",
+    "Whenever Anje or one or more other Vampires enter under your control, create a Blood token. This ability triggers only once each turn.",
+    "Legendary Creature — Vampire",
+    "{2}{B}{R}",
+    ["B", "R"],
+  );
+  const scopes = commanderMechanicalScopes(anje);
+  const commanderMechanics = { produces: ["tokens", "artifacts", "blood"], rewards: [] };
+  assert.deepEqual(scopes.produces.artifacts, ["blood"]);
+  assert.deepEqual(scopes.produces.blood, ["blood"]);
+
+  assert.deepEqual(commanderConnectionSignalsFor(
+    card("Blood Celebrant", "Whenever you sacrifice a Blood token, draw a card.", "Creature — Vampire"),
+    { produces: [], rewards: ["blood"] }, commanderMechanics, scopes,
+  ), ["blood"]);
+  assert.deepEqual(commanderConnectionSignalsFor(
+    card("Feast Celebrant", "Whenever you sacrifice a Food, draw a card.", "Creature — Halfling"),
+    { produces: [], rewards: ["food"] }, commanderMechanics, scopes,
+  ), [], "a Blood commander does not grant a Food-only commander edge");
+});
+
 test("interactionQualityFor scores unconditional removal at full quality", () => {
   assert.equal(interactionQualityFor("Destroy target creature."), 1);
   assert.equal(interactionQualityFor("Exile target permanent."), 1);

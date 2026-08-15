@@ -637,6 +637,57 @@ test("Founder #026: a Food commander selects Food makers and Food payoffs as eng
   assert.ok(names.includes("Feast Outlet"), "the Food payoff is selected as an engine piece");
 });
 
+test("Founder #026: a Blood commander selects Blood makers and Blood payoffs as engine pieces", () => {
+  const bloodHost = {
+    name: "Blood Host",
+    colors: ["B", "R"],
+    oracleText: "Whenever Blood Host or one or more other Vampires enter under your control, create a Blood token. This ability triggers only once each turn.",
+  };
+  const bloodMaker = {
+    name: "Voldaren Guest",
+    oracleText: "When this creature enters, create a Blood token.",
+    typeLine: "Creature — Vampire",
+    manaCost: "{2}{R}",
+    colorIdentity: ["R"],
+    popularityRank: 1,
+  };
+  const bloodPayoff = {
+    name: "Blood Reveler",
+    oracleText: "Whenever you sacrifice a Blood token, draw a card.",
+    typeLine: "Creature — Vampire",
+    manaCost: "{1}{B}",
+    colorIdentity: ["B"],
+    popularityRank: 1,
+  };
+  const rbSpells = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Blood Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Vampire", manaCost: "{2}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Blood Answer ${i}`, oracleText: "Destroy target creature.", typeLine: "Instant", manaCost: "{1}{B}", colorIdentity: ["B"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Blood Shield ${i}`, oracleText: "Target creature gains indestructible until end of turn.", typeLine: "Instant", manaCost: "{1}{B}", colorIdentity: ["B"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Blood Stone ${i}`, oracleText: "{T}: Add one mana.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+  ];
+  const rbDuals = Array.from({ length: 20 }, (_, i) => ({
+    name: `Blood Crypt ${i}`,
+    oracleText: "This land enters the battlefield tapped. {T}: Add {B} or {R}.",
+    typeLine: "Land",
+    manaCost: "",
+    colorIdentity: ["B", "R"],
+    producedMana: ["B", "R"],
+    popularityRank: 5,
+    priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander",
+    target: 100,
+    strategy: "Balanced midrange",
+    seed: 11,
+    commander: bloodHost,
+    cards: [...rbSpells, bloodMaker, bloodPayoff, ...rbDuals],
+  });
+  const names = report.selected.rows.map((row) => row.name);
+  assert.ok(names.includes("Voldaren Guest"), "the Blood maker is selected as an engine piece");
+  assert.ok(names.includes("Blood Reveler"), "the Blood payoff is selected as an engine piece");
+});
+
 test("Founder #026: a GW artifact/counters commander does not select the colorless nonartifact toolbox", () => {
   const report = forgeNativeMasterwork({
     format: "Commander",

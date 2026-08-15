@@ -276,6 +276,20 @@ test("Food production connects to Food payoffs and artifact outlets without masq
   assert.equal(clueEdge?.signals.includes("clues") || false, false, "Food and Clues remain distinct resources");
 });
 
+test("Blood production connects to Blood payoffs and artifact outlets without masquerading as Food", () => {
+  const socialite = { name: "Voldaren Socialite", typeLine: "Creature — Vampire", oracleText: "When this creature enters, create a Blood token." };
+  const bloodPayoff = { name: "Blood Hypnotist", typeLine: "Creature — Vampire", oracleText: "Whenever you sacrifice a Blood token, target creature can't block this turn." };
+  const artifactOutlet = { name: "Artifact Furnace", typeLine: "Artifact", oracleText: "Sacrifice an artifact: Add {R}." };
+  const foodPayoff = { name: "Feast Reward", typeLine: "Enchantment", oracleText: "Whenever you sacrifice a Food, draw a card." };
+  const graph = buildInteractionGraph([socialite, bloodPayoff, artifactOutlet, foodPayoff]);
+  const bloodEdge = graph.edges.find((entry) => entry.from === "Voldaren Socialite" && entry.to === "Blood Hypnotist");
+  const artifactEdge = graph.edges.find((entry) => entry.from === "Voldaren Socialite" && entry.to === "Artifact Furnace");
+  const foodEdge = graph.edges.find((entry) => entry.from === "Voldaren Socialite" && entry.to === "Feast Reward");
+  assert.ok(bloodEdge?.signals.includes("blood"), "Blood production must feed Blood-specific rewards");
+  assert.ok(artifactEdge?.signals.includes("artifacts"), "Blood is an artifact token and feeds generic artifact outlets");
+  assert.equal(foodEdge?.signals.includes("food") || false, false, "Blood and Food remain distinct resources");
+});
+
 test("Fear of Missing Out and Trading Post are related cards, not a reciprocal combo loop", () => {
   const graph = buildInteractionGraph([
     { name: "Fear of Missing Out", typeLine: "Enchantment Creature — Nightmare", oracleText: "When this creature enters, discard a card, then draw a card. Delirium — Whenever this creature attacks for the first time each turn, if there are four or more card types among cards in your graveyard, untap target creature. After this phase, there is an additional combat phase." },
