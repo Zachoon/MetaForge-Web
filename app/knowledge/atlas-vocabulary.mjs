@@ -264,7 +264,9 @@ export function seatSelectionImplementation(card = {}) {
 /**
  * Descriptive seating for graveyard kinds.
  * Consumes graph `graveyardKinds` — no second oracle regex family.
- * Mill is not surveil. Dredge is not mill.
+ * Mill is not surveil. Dredge is not mill. Flashback and Escape are casts
+ * from the yard, distinct from dredge's return-to-hand. Unearth is a
+ * temporary battlefield return, not permanent reanimation.
  * Not Capability admissions. Never construction inputs.
  */
 export const ATLAS_GRAVEYARD_SEATS = freeze([
@@ -292,6 +294,45 @@ export const ATLAS_GRAVEYARD_SEATS = freeze([
     seat: freeze({ id: "seat:dredge_recursion", label: "Dredge Recursion" }),
     contrast: "not mill",
     role: "recurring_filter",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "flashback",
+    capability: freeze({
+      id: "cap:flashback_recast",
+      label: "Flashback Recast",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:flashback_recast", label: "Flashback Recast" }),
+    contrast: "not dredge-to-hand",
+    role: "recaster",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "unearth",
+    capability: freeze({
+      id: "cap:unearth_temporary_return",
+      label: "Unearth Return",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:unearth_return", label: "Unearth Return" }),
+    contrast: "temporary, not permanent reanimation",
+    role: "temporary_returner",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "escape",
+    capability: freeze({
+      id: "cap:escape_recast",
+      label: "Escape Recast",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:escape_recast", label: "Escape Recast" }),
+    contrast: "not dredge-to-hand",
+    role: "recaster",
     writesToBrain: false,
   }),
 ]);
@@ -467,6 +508,10 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
   freeze({
     date: "2026-08-15",
     change: "Seated dredge as a graveyard filter/engine, distinct from mill dump; still 0 Capability admissions",
+  }),
+  freeze({
+    date: "2026-08-15",
+    change: "Seated flashback, unearth, and escape as graveyard returns, distinct from mill dump and dredge-to-hand; still 0 Capability admissions",
   }),
 ]);
 

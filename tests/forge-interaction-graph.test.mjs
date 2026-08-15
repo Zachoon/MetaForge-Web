@@ -664,6 +664,63 @@ test("dredge is a graveyard filter/engine, distinct from a mill dump", () => {
   assert.match(graph.methodology, /dredge/i);
 });
 
+test("flashback, unearth, and escape are graveyard returns, distinct from mill and dredge", () => {
+  const flashbackOracle = "Draw two cards, then discard two cards. Flashback {2}{R} (You may cast this card from your graveyard for its flashback cost. Then exile it.)";
+  const unearthOracle = "Unearth {1}{B} (Pay {1}{B}: Return this card from your graveyard to the battlefield. Sacrifice it at the beginning of the next end step. Unearth only as a sorcery.)";
+  const escapeOracle = "Escape—{4}{G}{U}, Exile five other cards from your graveyard. (You may cast this card from your graveyard for its escape cost. Then exile it.)";
+
+  assert.deepEqual(classifyGraveyardKinds(flashbackOracle), [GRAVEYARD_KINDS.FLASHBACK]);
+  assert.deepEqual(classifyGraveyardKinds(unearthOracle), [GRAVEYARD_KINDS.UNEARTH]);
+  assert.deepEqual(classifyGraveyardKinds(escapeOracle), [GRAVEYARD_KINDS.ESCAPE]);
+
+  // None of the three collide with mill or with each other, and none give
+  // dredge's reminder-mill clause a free ride into a Mill Dump.
+  assert.deepEqual(classifyGraveyardKinds("Target player mills two cards."), [GRAVEYARD_KINDS.MILL]);
+  assert.equal(classifyGraveyardKinds(flashbackOracle).includes(GRAVEYARD_KINDS.MILL), false);
+  assert.equal(classifyGraveyardKinds(unearthOracle).includes(GRAVEYARD_KINDS.MILL), false);
+  assert.equal(classifyGraveyardKinds(escapeOracle).includes(GRAVEYARD_KINDS.MILL), false);
+  const dredgeOracle = "Dredge 6 (If you would draw a card, you may mill six cards instead. If you do, return this card from your graveyard to your hand.)";
+  assert.deepEqual(classifyGraveyardKinds(dredgeOracle), [GRAVEYARD_KINDS.DREDGE], "dredge does not also read as flashback/unearth/escape");
+
+  // Unlike dredge, flashback/unearth/escape still read through a surveil guard clause.
+  assert.deepEqual(classifyGraveyardKinds(`Surveil 1. ${flashbackOracle}`), [GRAVEYARD_KINDS.FLASHBACK]);
+
+  const looting = extractMechanicalSignals({
+    name: "Faithless Looting",
+    typeLine: "Sorcery",
+    oracleText: flashbackOracle,
+  });
+  const skeleton = extractMechanicalSignals({
+    name: "Reassembling Skeleton",
+    typeLine: "Artifact Creature — Skeleton",
+    oracleText: unearthOracle,
+  });
+  const uro = extractMechanicalSignals({
+    name: "Uro, Titan of Nature's Wrath",
+    typeLine: "Legendary Enchantment Creature — Titan",
+    oracleText: escapeOracle,
+  });
+  assert.deepEqual(looting.graveyardKinds, [GRAVEYARD_KINDS.FLASHBACK]);
+  assert.deepEqual(skeleton.graveyardKinds, [GRAVEYARD_KINDS.UNEARTH]);
+  assert.deepEqual(uro.graveyardKinds, [GRAVEYARD_KINDS.ESCAPE]);
+  // "Draw two cards, then discard two cards" is the existing rummage shape —
+  // the flashback keyword must not disturb that pre-existing classification.
+  assert.deepEqual(looting.selectionKinds, [SELECTION_KINDS.RUMMAGE]);
+
+  const graph = buildInteractionGraph([
+    { name: "Faithless Looting", typeLine: "Sorcery", oracleText: flashbackOracle },
+    { name: "Tome Scour", typeLine: "Sorcery", oracleText: "Target player mills two cards." },
+  ]);
+  assert.equal(
+    graph.edges.some((edge) => edge.signals.includes(GRAVEYARD_KINDS.FLASHBACK) || edge.signals.includes(GRAVEYARD_KINDS.MILL)),
+    false,
+    "graveyard kinds do not form graph edges",
+  );
+  assert.match(graph.methodology, /flashback/i);
+  assert.match(graph.methodology, /unearth/i);
+  assert.match(graph.methodology, /escape/i);
+});
+
 test("rummage filters the hand and is not net draw", () => {
   const loot = classifySelectionKinds("Discard a card, then draw a card.");
   const faithless = classifySelectionKinds("Draw two cards, then discard two cards.");

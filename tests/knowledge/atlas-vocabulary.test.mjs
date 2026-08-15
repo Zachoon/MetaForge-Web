@@ -114,7 +114,7 @@ describe("Atlas Vocabulary Registry v0", () => {
 
   it("seats mill as a graveyard dump, distinct from surveil, without admitting Capabilities", () => {
     const registry = buildAtlasVocabularyRegistry();
-    assert.equal(registry.summary.graveyardSeatCount, 2);
+    assert.equal(registry.summary.graveyardSeatCount, 5);
     assert.equal(registry.summary.capabilityAdmittedCount, 0);
     assert.ok(registry.graveyardSeats.every((row) => row.writesToBrain === false && row.capability.atlasAdmitted === false));
 
@@ -170,6 +170,62 @@ describe("Atlas Vocabulary Registry v0", () => {
       mechanics: { graveyardKinds: ["dredge"], produces: [], rewards: [], signals: [] },
     });
     assert.equal(fromGraph[0].seat.label, "Dredge Recursion");
+    assert.equal(fromGraph[0].writesToBrain, false);
+  });
+
+  it("seats flashback, unearth, and escape as graveyard returns, distinct from mill dump and dredge-to-hand, without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    const flashbackSeat = registry.graveyardSeats.find((row) => row.kind === "flashback");
+    const unearthSeat = registry.graveyardSeats.find((row) => row.kind === "unearth");
+    const escapeSeat = registry.graveyardSeats.find((row) => row.kind === "escape");
+    assert.equal(flashbackSeat.seat.label, "Flashback Recast");
+    assert.equal(flashbackSeat.contrast, "not dredge-to-hand");
+    assert.equal(unearthSeat.seat.label, "Unearth Return");
+    assert.equal(unearthSeat.contrast, "temporary, not permanent reanimation");
+    assert.equal(escapeSeat.seat.label, "Escape Recast");
+    assert.equal(escapeSeat.contrast, "not dredge-to-hand");
+    for (const seat of [flashbackSeat, unearthSeat, escapeSeat]) {
+      assert.equal(seat.capability.status, "descriptive_not_admitted");
+      assert.equal(seat.capability.atlasAdmitted, false);
+      assert.equal(seat.writesToBrain, false);
+    }
+    assert.equal(registry.summary.capabilityAdmittedCount, 0);
+    assert.ok(registry.revisions.some((row) => row.date === "2026-08-15" && /flashback, unearth, and escape/i.test(row.change)));
+
+    const flashback = seatGraveyardImplementation({
+      name: "Faithless Looting",
+      oracleText: "Draw two cards, then discard two cards. Flashback {2}{R}",
+    });
+    assert.equal(flashback.some((row) => row.kind === "flashback"), true);
+    assert.equal(flashback.some((row) => row.kind === "mill"), false, "flashback is not a mill dump");
+
+    const unearth = seatGraveyardImplementation({
+      name: "Reassembling Skeleton",
+      oracleText: "Unearth {1}{B} (Pay {1}{B}: Return this card from your graveyard to the battlefield. It gains \"Sacrifice this creature: Return this card to its owner's hand\" and \"Sacrifice this creature at the beginning of the next end step.\" Cast this ability only as a sorcery.)",
+    });
+    assert.equal(unearth.length, 1);
+    assert.equal(unearth[0].kind, "unearth");
+    assert.equal(unearth[0].seat.label, "Unearth Return");
+
+    const escape = seatGraveyardImplementation({
+      name: "Uro, Titan of Nature's Wrath",
+      oracleText: "Escape—{4}{G}{U}, Exile five other cards from your graveyard. (You may cast this card from your graveyard for its escape cost.)",
+    });
+    assert.equal(escape.length, 1);
+    assert.equal(escape[0].kind, "escape");
+    assert.equal(escape[0].seat.label, "Escape Recast");
+
+    const dredgeStaysDredge = seatGraveyardImplementation({
+      name: "Golgari Grave-Troll",
+      oracleText: "Dredge 6 (If you would draw a card, you may mill six cards instead. If you do, return this card from your graveyard to your hand.)",
+    });
+    assert.deepEqual(dredgeStaysDredge.map((row) => row.kind), ["dredge"], "dredge does not also earn flashback/unearth/escape");
+
+    const fromGraph = seatGraveyardImplementation({
+      name: "Pre-classified",
+      mechanics: { graveyardKinds: ["flashback"], produces: [], rewards: [], signals: [] },
+    });
+    assert.equal(fromGraph[0].seat.label, "Flashback Recast");
     assert.equal(fromGraph[0].writesToBrain, false);
   });
 

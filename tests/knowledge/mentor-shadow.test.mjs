@@ -91,6 +91,35 @@ describe("Mentor Shadow v0", () => {
     assert.doesNotMatch(explanation.paragraph, /Net Draw/);
   });
 
+  it("names flashback, unearth, and escape as graveyard returns, not a mill dump or dredge-to-hand", () => {
+    const flashback = explainCardAsMentor({
+      cardName: "Faithless Looting",
+      oracleText: "Draw two cards, then discard two cards. Flashback {2}{R} (You may cast this card from your graveyard for its flashback cost. Then exile it.)",
+    });
+    assert.equal(flashback.writesToBrain, false);
+    assert.equal(flashback.graveyardSeating[0].kind, "flashback");
+    assert.match(flashback.paragraph, /Flashback Recast/);
+    assert.match(flashback.paragraph, /not dredge-to-hand/);
+    assert.doesNotMatch(flashback.paragraph, /Mill Dump/);
+    assert.doesNotMatch(flashback.paragraph, /Dredge Recursion/);
+
+    const unearth = explainCardAsMentor({
+      cardName: "Reassembling Skeleton",
+      oracleText: "Unearth {1}{B} (Pay {1}{B}: Return this card from your graveyard to the battlefield. Sacrifice it at the beginning of the next end step. Unearth only as a sorcery.)",
+    });
+    assert.equal(unearth.graveyardSeating[0].kind, "unearth");
+    assert.match(unearth.paragraph, /Unearth Return/);
+    assert.match(unearth.paragraph, /not permanent reanimation/);
+
+    const escape = explainCardAsMentor({
+      cardName: "Uro, Titan of Nature's Wrath",
+      oracleText: "Escape—{4}{G}{U}, Exile five other cards from your graveyard. (You may cast this card from your graveyard for its escape cost. Then exile it.)",
+    });
+    assert.equal(escape.graveyardSeating[0].kind, "escape");
+    assert.match(escape.paragraph, /Escape Recast/);
+    assert.match(escape.paragraph, /not dredge-to-hand/);
+  });
+
   it("names a reset pair as a closed loop, not a verified infinite", () => {
     const explanation = explainPairAsMentor({
       left: { name: "Basalt Monolith", oracleText: "{T}: Add {C}{C}{C}. {3}: Untap this artifact." },
