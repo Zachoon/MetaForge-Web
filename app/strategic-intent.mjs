@@ -71,7 +71,10 @@ export function strategicSemanticsFor(card = {}) {
   if (tags.includes("graveyard_recursion") || /return target [^.]* from (?:your |a )?graveyard to the battlefield/i.test(oracle) || /\breanimate\b/i.test(oracle)) {
     semantics.add("reanimation");
   }
-  if (tags.includes("graveyard_setup") || /\bmill\b/i.test(oracle) || /\bsurveil\b/i.test(oracle) || /discard [^.]* card/i.test(oracle)) {
+  // Dredge reminder prints "mill N" — that is a replacement draw, not
+  // graveyard setup. Only rules text can name mill / surveil / discard.
+  const rulesText = oracle.replace(/\([^)]*\)/g, " ");
+  if (tags.includes("graveyard_setup") || /\bmill\b/i.test(rulesText) || /\bsurveil\b/i.test(rulesText) || /discard [^.]* card/i.test(rulesText)) {
     semantics.add("graveyard_enabler");
   }
   if (isCreature && cmc >= 6) semantics.add("reanimation_target");
@@ -168,6 +171,8 @@ const PACKAGE_CATALOG = Object.freeze({
     falseFriendSemantics: Object.freeze([]),
     supportSemantics: Object.freeze(["graveyard_enabler", "reanimation"]),
     detectCommander: (oracle) => /from (?:your )?graveyard to the battlefield/i.test(oracle) || /\breanimat/i.test(oracle),
+    // Occupancy is not a catalog false-friend list. Mill/discard setup and
+    // real reanimation occupy core; dredge-to-hand does not.
     detectBlueprint: (blueprint) => blueprint.desiredRoles?.includes("graveyard") || blueprint.desiredRoles?.includes("recursion") || /\breanimat/i.test(blueprint.source || ""),
     density: Object.freeze({ singletonCore: 6, constructedCore: 4, singletonSupport: 6, constructedSupport: 3 }),
     requireBalancedLegs: Object.freeze(["reanimation", "graveyard_enabler", "reanimation_target"]),
@@ -338,12 +343,24 @@ function cardIsCreatureTokenFactory(entry) {
   return /create[^.]*creature token/i.test(oracleOf(entryCard(entry)));
 }
 
+function cardHasDredge(entry) {
+  return /\bdredge\b/i.test(oracleOf(entryCard(entry)));
+}
+
 function cardSatisfiesAristocratsCore(entry) {
   const semantics = entrySemantics(entry);
   if (semantics.has("sacrifice_outlet") || semantics.has("death_payoff")) return true;
   // Fodder is creature tokens. Mill dumps and named artifact tokens
   // (Clue / Treasure / Food / …) are not aristocrats occupancy.
   return semantics.has("token_generator") && cardIsCreatureTokenFactory(entry);
+}
+
+function cardSatisfiesReanimatorCore(entry) {
+  const semantics = entrySemantics(entry);
+  if (semantics.has("reanimation") || semantics.has("reanimation_target")) return true;
+  // Dredge returns to hand. Reminder mill does not make it a mill enabler.
+  if (cardHasDredge(entry)) return false;
+  return semantics.has("graveyard_enabler");
 }
 
 export function cardSatisfiesPackageCore(entry, packageId, intent) {
@@ -354,6 +371,7 @@ export function cardSatisfiesPackageCore(entry, packageId, intent) {
     return cardIsNamedArtifactTokenMaker(entry, scope);
   }
   if (packageId === "aristocrats") return cardSatisfiesAristocratsCore(entry);
+  if (packageId === "reanimator") return cardSatisfiesReanimatorCore(entry);
   const semantics = entrySemantics(entry);
   if (definition.coreSemantics.some((semantic) => semantics.has(semantic))) return true;
   if (definition.packageSignals?.length) {
@@ -368,6 +386,7 @@ export function cardSatisfiesPackageSupport(entry, packageId, intent) {
   const definition = PACKAGE_CATALOG[packageId];
   if (!definition) return false;
   if (packageId === "aristocrats") return cardSatisfiesAristocratsCore(entry);
+  if (packageId === "reanimator") return cardSatisfiesReanimatorCore(entry);
   const semantics = entrySemantics(entry);
   return definition.supportSemantics.some((semantic) => semantics.has(semantic))
     || cardSatisfiesPackageCore(entry, packageId, intent);
