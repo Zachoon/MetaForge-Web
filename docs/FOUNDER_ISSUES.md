@@ -843,7 +843,9 @@ Two manifestations, same class:
 
 1. **Restricted rainbow lands.** `buildManaBase` withholds full color-fit when mana is type-restricted unless the list is typal. Path of Ancestry keeps full credit because it also taps for unrestricted commander-identity colors.
 2. **Modal toolbox role-stacking / restricted colorless casting.** Classification still unions modes. Scoring counts only the modes you can fire. Role floors and prospective deficit-closure count modal cards at 0.4. `{C}` pips are visible to mana consistency **and** selection. Artifact-only `{C}` does not pay nonartifact spells. "Whenever you cast an artifact spell" is not spellslinger.
-3. **Conditional rainbow lands, same class.** Devotion-scaled any-color (Nykthos class) is not a dual unless the commander is mono-color. Type-count scaled any-color (Three Tree City class) is not a dual unless the list is typal. Not a card deny-list.
+3. **Conditional rainbow lands, same class.** Devotion-scaled any-color (Nykthos class) is not a dual unless the commander is mono-color. Type-count scaled any-color (Three Tree City class) is not a dual unless the list is typal. Land-type scaled mana (Coffers class) is not a dual in a split identity. A land that produces none of the commander’s colors is a utility slot, not fixing.
+4. **X is not a 1-drop.** Printed mana value treats X as zero; construction curve does not.
+5. **Colorless rocks in a colored list.** 2+ mana `{C}` rocks do not close the colored ramp quota. 0–1 mana rocks still accelerate. Any-color rocks still fix.
 
 T'Challa’s Vibranium mana cannot be spent on nonartifact spells — so these colorless instants/planeswalkers are not even a free `{C}` outlet. That is the same restriction-blindness, not a commander-specific branch.
 
@@ -870,4 +872,4 @@ Harness-gated construction change that withholds full credit unless the conditio
 
 ---
 
-*Last updated: 2026-08-15 — #026 follow-up: restricted colorless casting now gates selection (live trial failed 2026-08-14). 104-forge field quality-identical to frozen.*
+*Last updated: 2026-08-15 — #026 playable-mana follow-up: utility lands, Coffers-class scaling, X curve, colorless rocks. 104-forge field quality-identical to frozen.*

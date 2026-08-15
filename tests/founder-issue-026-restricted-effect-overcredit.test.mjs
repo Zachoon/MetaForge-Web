@@ -13,6 +13,8 @@ import {
   listHasTypalDensity,
   manaConsistencyReport,
   modalAwareRoleScore,
+  curveManaValue,
+  colorlessFixingCredit,
   restrictedEffectCastingFactor,
   parseNativeBlueprintIntent,
   roleFloorCredit,
@@ -99,6 +101,17 @@ test("Founder #026: type-restricted rainbow is not full color-fixing unless the 
   assert.equal(landColoredManaFixingFactor(threeTreeOracle, { typal: false }), 0.12);
   assert.equal(landColoredManaFixingFactor(threeTreeOracle, { typal: true }), 1);
   assert.equal(landRestrictedFixingPenalty(threeTreeOracle, { typal: false }), -6);
+
+  const coffersOracle = "{T}: Add {C}. {2}, {T}: Add {B} for each Swamp you control.";
+  const castleOracle = "This land enters tapped unless you control a Forest. {T}: Add {G}. {2}{G}{G}, {T}: Add {G} for each creature you control.";
+  const cradleOracle = "{T}: Add {G} for each creature you control.";
+  const towerOracle = "You have no maximum hand size. {T}: Add {C}.";
+  assert.equal(landColoredManaFixingFactor(coffersOracle, { colorCount: 1 }), 1);
+  assert.equal(landColoredManaFixingFactor(coffersOracle, { colorCount: 3 }), 0.12);
+  assert.equal(landColoredManaFixingFactor(castleOracle, { colorCount: 2 }), 1, "an unrestricted {G} tap is still a Forest");
+  assert.equal(landColoredManaFixingFactor(cradleOracle, { colorCount: 2, producedMana: ["G"], commanderColors: ["G", "W"] }), 1);
+  assert.equal(landColoredManaFixingFactor(towerOracle, { producedMana: ["C"], commanderColors: ["G", "W"] }), 0.12);
+  assert.equal(landRestrictedFixingPenalty(towerOracle, { producedMana: ["C"], commanderColors: ["G", "W"] }), -6);
 });
 
 test("Founder #026: type-restricted rainbow does not beat in-color duals in a non-typal GW mana base", () => {
@@ -465,3 +478,166 @@ test("Founder #026: a GW artifact/counters commander does not select the colorle
   }
   assert.ok(names.includes("Sol Ring"), "generic artifact mana still belongs in the list");
 });
+
+test("Founder #026: X is not a 1-drop on the construction curve", () => {
+  assert.equal(curveManaValue("{X}{C}"), 4);
+  assert.equal(curveManaValue("{X}{G}{W}"), 4);
+  assert.equal(curveManaValue("{X}{X}{G}"), 4);
+  assert.equal(curveManaValue("{1}{C}"), 2);
+  assert.equal(curveManaValue("{2}{G}{W}"), 4);
+});
+
+test("Founder #026: colorless-only rocks do not close colored ramp floors", () => {
+  assert.equal(roleFloorCredit("{T}: Add {C}{C}.", { colorIdentity: [], commanderColors: ["G", "W"] }), 0.4);
+  assert.equal(roleFloorCredit("{T}: Add one mana of any color in your commander's color identity.", { colorIdentity: [], commanderColors: ["G", "W"] }), 1);
+  assert.equal(roleFloorCredit("{T}: Add {C}{C}.", { colorIdentity: [], commanderColors: [] }), 1, "a colorless commander still counts colorless rocks at full ramp");
+  assert.equal(colorlessFixingCredit({
+    oracle: "{T}: Add {C}{C}.",
+    colorIdentity: [],
+    manaCost: "{1}",
+    commanderColors: ["G", "W"],
+  }), 1, "1-mana colorless rocks are still real acceleration");
+  assert.equal(colorlessFixingCredit({
+    oracle: "{T}: Add {C}. {1}, {T}, Sacrifice this artifact: Draw a card.",
+    colorIdentity: [],
+    manaCost: "{2}",
+    commanderColors: ["G", "W"],
+  }), 0.12, "2+ mana colorless rocks do not pay WUBRG pips");
+});
+
+test("Founder #026: a land that produces none of the commander's colors loses to in-color duals", () => {
+  const tower = {
+    name: "Reliquary Tower",
+    oracleText: "You have no maximum hand size. {T}: Add {C}.",
+    typeLine: "Land",
+    manaCost: "",
+    colorIdentity: [],
+    producedMana: ["C"],
+    popularityRank: 1,
+    priceUsd: 3,
+  };
+  const report = forgeNativeMasterwork({
+    format: "Commander",
+    target: 100,
+    strategy: "Balanced midrange",
+    seed: 11,
+    commander: vibraniumSovereign,
+    cards: [...gwSpells, tower, ...tappedDuals],
+  });
+  assert.ok(
+    !report.selected.rows.some((row) => row.name === "Reliquary Tower"),
+    "Reliquary Tower is a utility slot, not a GW dual",
+  );
+  assert.ok(report.selected.rows.some((row) => String(row.name).startsWith("Canopy Gate")));
+});
+
+test("Founder #026: swamp-scaled mana is not a dual in a multicolor identity", () => {
+  const coffers = {
+    name: "Cabal Coffers",
+    oracleText: "{T}: Add {C}. {2}, {T}: Add {B} for each Swamp you control.",
+    typeLine: "Land",
+    manaCost: "",
+    colorIdentity: ["B"],
+    producedMana: ["B", "C"],
+    popularityRank: 1,
+    priceUsd: 30,
+  };
+  const esper = {
+    name: "Esper Sovereign",
+    colors: ["W", "U", "B"],
+    oracleText: "Whenever this attacks, draw a card.",
+  };
+  const esperSpells = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Advisor", manaCost: "{2}{W}{U}", colorIdentity: ["W", "U"] })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Exile target nonland permanent.", typeLine: "Instant", manaCost: "{1}{W}{B}", colorIdentity: ["W", "B"] })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof until end of turn.", typeLine: "Instant", manaCost: "{1}{U}", colorIdentity: ["U"] })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [] })),
+  ];
+  const esperDuals = Array.from({ length: 20 }, (_, i) => ({
+    name: `Esper Gate ${i}`,
+    oracleText: "This land enters the battlefield tapped. {T}: Add {W} or {U} or {B}.",
+    typeLine: "Land",
+    manaCost: "",
+    colorIdentity: ["W", "U", "B"],
+    producedMana: ["W", "U", "B"],
+    popularityRank: 5,
+    priceUsd: 0.5,
+  }));
+  const multi = forgeNativeMasterwork({
+    format: "Commander",
+    target: 100,
+    strategy: "Balanced midrange",
+    seed: 11,
+    commander: esper,
+    cards: [...esperSpells, coffers, ...esperDuals],
+  });
+  assert.ok(
+    !multi.selected.rows.some((row) => row.name === "Cabal Coffers"),
+    "Coffers needs a swamp-dense mono identity, not a three-color split",
+  );
+
+  const monoBlack = {
+    name: "Black Sovereign",
+    colors: ["B"],
+    oracleText: "Whenever this attacks, draw a card.",
+  };
+  const bSpells = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Horror", manaCost: "{2}{B}", colorIdentity: ["B"] })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Destroy target creature.", typeLine: "Instant", manaCost: "{1}{B}", colorIdentity: ["B"] })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof until end of turn.", typeLine: "Instant", manaCost: "{B}", colorIdentity: ["B"] })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [] })),
+  ];
+  const bGates = Array.from({ length: 20 }, (_, i) => ({
+    name: `Black Gate ${i}`,
+    oracleText: "This land enters the battlefield tapped. {T}: Add {B}.",
+    typeLine: "Land",
+    manaCost: "",
+    colorIdentity: ["B"],
+    producedMana: ["B"],
+    popularityRank: 5,
+    priceUsd: 0.5,
+  }));
+  const mono = forgeNativeMasterwork({
+    format: "Commander",
+    target: 100,
+    strategy: "Balanced midrange",
+    seed: 11,
+    commander: monoBlack,
+    cards: [...bSpells, coffers, ...bGates],
+  });
+  assert.ok(mono.selected.rows.some((row) => row.name === "Cabal Coffers"), "mono-black swamp scaling is the condition Coffers actually pays");
+});
+
+test("Founder #026: colored land-search ramp still beats a pile of colorless rocks", () => {
+  const rocks = Array.from({ length: 8 }, (_, i) => ({
+    name: `Mind Stone ${i}`,
+    oracleText: "{T}: Add {C}. {1}, {T}, Sacrifice this artifact: Draw a card.",
+    typeLine: "Artifact",
+    manaCost: "{2}",
+    colorIdentity: [],
+    popularityRank: 1,
+  }));
+  const reaches = Array.from({ length: 18 }, (_, i) => ({
+    name: `Reach ${i}`,
+    oracleText: "Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.",
+    typeLine: "Sorcery",
+    manaCost: "{2}{G}",
+    colorIdentity: ["G"],
+    popularityRank: 20,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander",
+    target: 100,
+    strategy: "Balanced midrange",
+    seed: 11,
+    commander: vibraniumSovereign,
+    cards: [...gwSpells, solRing, ...rocks, ...reaches, ...tappedDuals],
+  });
+  const names = report.selected.rows.map((row) => row.name);
+  const rockCount = names.filter((name) => String(name).startsWith("Mind Stone")).length;
+  const reachCount = names.filter((name) => String(name).startsWith("Reach")).length;
+  assert.ok(names.includes("Sol Ring"), "Sol Ring may still make the list");
+  assert.ok(reachCount >= 2, "colored land-search still fills ramp once colorless rocks stop closing the floor");
+  assert.ok(rockCount <= 3, "a pile of colorless rocks must not consume the ramp quota");
+});
+
