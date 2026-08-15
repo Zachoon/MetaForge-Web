@@ -578,6 +578,65 @@ test("Founder #026: a Clue commander selects investigate and artifact outlets as
   assert.ok(names.includes("Artifact Dispute"), "an artifact sacrifice spell is a Clue outlet");
 });
 
+test("Founder #026: a Food commander selects Food makers and Food payoffs as engine pieces", () => {
+  const foodChef = {
+    name: "Food Chef",
+    colors: ["B", "G"],
+    oracleText: "At the beginning of your end step, create a Food token for each nontoken creature you controlled that entered this turn.",
+  };
+  const foodMaker = {
+    name: "Provisioner",
+    oracleText: "When this creature enters, create a Food token.",
+    typeLine: "Creature — Halfling",
+    manaCost: "{2}{G}",
+    colorIdentity: ["G"],
+    popularityRank: 1,
+  };
+  const foodOutlet = {
+    name: "Feast Outlet",
+    oracleText: "Whenever you sacrifice a Food, draw a card.",
+    typeLine: "Enchantment",
+    manaCost: "{1}{B}",
+    colorIdentity: ["B"],
+    popularityRank: 1,
+  };
+  const treasureReward = {
+    name: "Coin Reward",
+    oracleText: "Whenever you sacrifice a Treasure, draw a card.",
+    typeLine: "Enchantment",
+    manaCost: "{1}{B}",
+    colorIdentity: ["B"],
+    popularityRank: 999999,
+  };
+  const gbSpells = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Meal Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Halfling", manaCost: "{2}{G}", colorIdentity: ["G"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Meal Answer ${i}`, oracleText: "Destroy target nonland permanent.", typeLine: "Instant", manaCost: "{1}{B}{G}", colorIdentity: ["B", "G"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Meal Shield ${i}`, oracleText: "Target creature gains hexproof until end of turn.", typeLine: "Instant", manaCost: "{1}{G}", colorIdentity: ["G"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Meal Stone ${i}`, oracleText: "{T}: Add one mana.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+  ];
+  const gbDuals = Array.from({ length: 20 }, (_, i) => ({
+    name: `Golgari Gate ${i}`,
+    oracleText: "This land enters the battlefield tapped. {T}: Add {B} or {G}.",
+    typeLine: "Land",
+    manaCost: "",
+    colorIdentity: ["B", "G"],
+    producedMana: ["B", "G"],
+    popularityRank: 5,
+    priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander",
+    target: 100,
+    strategy: "Balanced midrange",
+    seed: 11,
+    commander: foodChef,
+    cards: [...gbSpells, foodMaker, foodOutlet, treasureReward, ...gbDuals],
+  });
+  const names = report.selected.rows.map((row) => row.name);
+  assert.ok(names.includes("Provisioner"), "the Food maker is selected as an engine piece");
+  assert.ok(names.includes("Feast Outlet"), "the Food payoff is selected as an engine piece");
+});
+
 test("Founder #026: a GW artifact/counters commander does not select the colorless nonartifact toolbox", () => {
   const report = forgeNativeMasterwork({
     format: "Commander",
@@ -1058,4 +1117,3 @@ test("Founder #026: a conditional wincon is not a threat unless the commander pr
   });
   assert.ok(treasureReport.selected.rows.some((row) => row.name === "Revel in Riches"), "a treasure-producing commander makes the treasure win real");
 });
-

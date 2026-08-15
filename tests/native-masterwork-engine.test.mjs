@@ -140,6 +140,29 @@ test("commander connections preserve named Clue production while admitting real 
   ), [], "Treasure-specific text gets no false Clue credit or generic-token shortcut");
 });
 
+test("commander connections preserve named Food production without granting Treasure payoffs", () => {
+  const cook = card(
+    "Gyome, Master Chef",
+    "At the beginning of your end step, create a Food token for each nontoken creature you controlled that entered this turn.",
+    "Legendary Creature — Troll Warlock",
+    "{2}{B}{G}",
+    ["B", "G"],
+  );
+  const scopes = commanderMechanicalScopes(cook);
+  const commanderMechanics = { produces: ["tokens", "artifacts", "food"], rewards: [] };
+  assert.deepEqual(scopes.produces.artifacts, ["food"]);
+  assert.deepEqual(scopes.produces.food, ["food"]);
+
+  assert.deepEqual(commanderConnectionSignalsFor(
+    card("Feast Celebrant", "Whenever you sacrifice a Food, draw a card.", "Creature — Halfling"),
+    { produces: [], rewards: ["food"] }, commanderMechanics, scopes,
+  ), ["food"]);
+  assert.deepEqual(commanderConnectionSignalsFor(
+    card("Treasure Celebrant", "Whenever you sacrifice a Treasure, draw a card.", "Creature — Human"),
+    { produces: [], rewards: ["treasure"] }, commanderMechanics, scopes,
+  ), [], "a Food commander does not grant a Treasure-only commander edge");
+});
+
 test("interactionQualityFor scores unconditional removal at full quality", () => {
   assert.equal(interactionQualityFor("Destroy target creature."), 1);
   assert.equal(interactionQualityFor("Exile target permanent."), 1);

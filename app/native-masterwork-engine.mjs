@@ -800,6 +800,7 @@ export function commanderMechanicalScopes(card = {}) {
       tokens: collect([/create [^.]*?([a-z][a-z'-]+) creature token/gi]).filter((term) => !MANA_COLOR_WORDS.has(term)),
       artifacts: namedArtifactTokens,
       clues: namedArtifactTokens.filter((term) => term === "clue"),
+      food: namedArtifactTokens.filter((term) => term === "food"),
     }),
     rewards: Object.freeze({
       etb: collect([
@@ -813,6 +814,7 @@ export function commanderMechanicalScopes(card = {}) {
         ...collect([/whenever a(?:n)? (clue|treasure|food) you control/gi]),
       ]),
       clues: collect([/whenever a(?:n)? (clue) you control/gi]),
+      food: collect([/whenever a(?:n)? (food) you control/gi]),
     }),
   });
 }
@@ -1016,12 +1018,14 @@ function prepareForgeAnalysis(input, evidenceByName) {
         tokens: unique(commanderScopeRows.flatMap((scope) => scope.produces.tokens || [])),
         artifacts: unique(commanderScopeRows.flatMap((scope) => scope.produces.artifacts || [])),
         clues: unique(commanderScopeRows.flatMap((scope) => scope.produces.clues || [])),
+        food: unique(commanderScopeRows.flatMap((scope) => scope.produces.food || [])),
       }),
       rewards: Object.freeze({
         etb: unique(commanderScopeRows.flatMap((scope) => scope.rewards.etb || [])),
         spells: unique(commanderScopeRows.flatMap((scope) => scope.rewards.spells || [])),
         artifacts: unique(commanderScopeRows.flatMap((scope) => scope.rewards.artifacts || [])),
         clues: unique(commanderScopeRows.flatMap((scope) => scope.rewards.clues || [])),
+        food: unique(commanderScopeRows.flatMap((scope) => scope.rewards.food || [])),
       }),
     }),
     commanderTribes: Object.freeze(commanderTribesFromOracle(allCommanders(input))),

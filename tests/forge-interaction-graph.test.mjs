@@ -262,6 +262,20 @@ test("Clue production connects to Clue payoffs without masquerading as Treasure 
   assert.equal(treasureEdge?.signals.includes("treasure") || false, false, "Clues and Treasure remain distinct resources");
 });
 
+test("Food production connects to Food payoffs and artifact outlets without masquerading as Clues", () => {
+  const cook = { name: "Trail Cook", typeLine: "Creature — Halfling", oracleText: "Whenever this creature attacks, create a Food token." };
+  const foodPayoff = { name: "Feast Reward", typeLine: "Enchantment", oracleText: "Whenever you sacrifice a Food, draw a card." };
+  const artifactOutlet = { name: "Foundry Outlet", typeLine: "Artifact", oracleText: "Sacrifice an artifact: Add one mana of any color." };
+  const cluePayoff = { name: "Case Reward", typeLine: "Enchantment", oracleText: "Whenever you sacrifice a Clue, draw a card." };
+  const graph = buildInteractionGraph([cook, foodPayoff, artifactOutlet, cluePayoff]);
+  const foodEdge = graph.edges.find((entry) => entry.from === "Trail Cook" && entry.to === "Feast Reward");
+  const artifactEdge = graph.edges.find((entry) => entry.from === "Trail Cook" && entry.to === "Foundry Outlet");
+  const clueEdge = graph.edges.find((entry) => entry.from === "Trail Cook" && entry.to === "Case Reward");
+  assert.ok(foodEdge?.signals.includes("food"), "Food production must feed Food-specific rewards");
+  assert.ok(artifactEdge?.signals.includes("artifacts"), "Food is an artifact token and feeds generic artifact outlets");
+  assert.equal(clueEdge?.signals.includes("clues") || false, false, "Food and Clues remain distinct resources");
+});
+
 test("Fear of Missing Out and Trading Post are related cards, not a reciprocal combo loop", () => {
   const graph = buildInteractionGraph([
     { name: "Fear of Missing Out", typeLine: "Enchantment Creature — Nightmare", oracleText: "When this creature enters, discard a card, then draw a card. Delirium — Whenever this creature attacks for the first time each turn, if there are four or more card types among cards in your graveyard, untap target creature. After this phase, there is an additional combat phase." },
