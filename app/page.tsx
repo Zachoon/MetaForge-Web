@@ -1679,6 +1679,10 @@ export default function Home() {
   const [commissionSeed, setCommissionSeed] = useState(() => Date.now());
   const [deckId, setDeckId] = useState("");
   const [savedMasterworks, setSavedMasterworks] = useState<SavedFamily[]>([]);
+  // Each saved family's own chosen banner art (Personalize Masterwork's
+  // featuredCard, stored per-deck under the same key format used for the
+  // active deck), falling back to its commander when never personalized.
+  const [archiveFeaturedArt, setArchiveFeaturedArt] = useState<Record<string, string>>({});
   // motifWeightsByFamily/playerIdentity are computed straight from the
   // already-loaded savedMasterworks state — no extra fetch. This mirrors
   // /profile's own computation exactly, so the two never disagree.
@@ -2149,6 +2153,21 @@ export default function Home() {
       /* Personalization must never block access to a finished deck. */
     }
   }, [hasValidatedDeck, masterworkIdentityKey]);
+  useEffect(() => {
+    if (chamber !== "archive" || !savedMasterworks.length) return;
+    const next: Record<string, string> = {};
+    for (const family of savedMasterworks) {
+      let art = family.commander?.name || "";
+      try {
+        const saved = JSON.parse(window.localStorage.getItem(`metaforge.masterworkIdentity.${family.id}`) || "null");
+        if (saved && typeof saved.featuredCard === "string" && saved.featuredCard) art = saved.featuredCard;
+      } catch {
+        /* Archive art is cosmetic only — never block the list on a bad localStorage value. */
+      }
+      if (art) next[family.id] = art;
+    }
+    setArchiveFeaturedArt(next);
+  }, [chamber, savedMasterworks]);
   useEffect(() => {
     if (chamber !== "workbench") return;
     const section = forgeDescentRef.current;
@@ -5199,6 +5218,9 @@ export default function Home() {
                         className="history-open"
                         onClick={() => openSavedMasterwork(family)}
                       >
+                        {archiveFeaturedArt[family.id] && (
+                          <img src={cardArtCrop(archiveFeaturedArt[family.id])} alt="" />
+                        )}
                         <small>
                           {family.archived ? "FINISHED MASTERWORK · " : ""}
                           {family.format} · {family.path || "FORGED DECK"}
