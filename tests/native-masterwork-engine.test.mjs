@@ -186,6 +186,29 @@ test("commander connections preserve named Blood production without granting Foo
   ), [], "a Blood commander does not grant a Food-only commander edge");
 });
 
+test("commander connections preserve named Gold production without granting Treasure payoffs", () => {
+  const king = card(
+    "King Macar, the Gold-Cursed",
+    "Whenever King Macar becomes untapped, you may exile target creature. If you do, create a Gold token.",
+    "Legendary Creature — Human",
+    "{2}{B}{B}",
+    ["B"],
+  );
+  const scopes = commanderMechanicalScopes(king);
+  const commanderMechanics = { produces: ["tokens", "artifacts", "gold"], rewards: [] };
+  assert.deepEqual(scopes.produces.artifacts, ["gold"]);
+  assert.deepEqual(scopes.produces.gold, ["gold"]);
+
+  assert.deepEqual(commanderConnectionSignalsFor(
+    card("Gold Celebrant", "Whenever you sacrifice a Gold token, draw a card.", "Creature — Human"),
+    { produces: [], rewards: ["gold"] }, commanderMechanics, scopes,
+  ), ["gold"]);
+  assert.deepEqual(commanderConnectionSignalsFor(
+    card("Treasure Celebrant", "Whenever you sacrifice a Treasure, draw a card.", "Creature — Human"),
+    { produces: [], rewards: ["treasure"] }, commanderMechanics, scopes,
+  ), [], "a Gold commander does not grant a Treasure-only commander edge");
+});
+
 test("interactionQualityFor scores unconditional removal at full quality", () => {
   assert.equal(interactionQualityFor("Destroy target creature."), 1);
   assert.equal(interactionQualityFor("Exile target permanent."), 1);
