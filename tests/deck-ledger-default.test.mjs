@@ -18,7 +18,10 @@ test("ledger rows preview on hover, open readable details on click, and retain e
   assert.match(page, /else setInspectedCard\(row\.name\)/);
   assert.match(page, /className="card-row-more"/);
   assert.match(page, /More options for \$\{row\.name\}/);
-  assert.match(css, /ledger-deck-view \.type-columns\{columns:4 220px/);
+  // CSS multi-column (columns:N) doesn't reliably fill all N columns when
+  // content is short, leaving dead space — a real grid guarantees exactly
+  // 4 even-width tracks regardless of content length.
+  assert.match(css, /ledger-deck-view \.type-columns\{display:grid;grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
   assert.match(css, /card-row-more:hover/);
 });
 

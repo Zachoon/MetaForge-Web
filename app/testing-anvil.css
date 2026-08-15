@@ -782,15 +782,13 @@ step that's actually in focus. */
 .ledger-deck-view .deck-gallery{grid-template-columns:230px minmax(0,1fr);min-height:0;max-height:none;padding:16px;overflow:visible}
 .progressive-results .testing-layout.chapter-1-active{overflow:visible}
 .ledger-deck-view .card-preview-stage{top:82px;z-index:6}
-.ledger-deck-view .type-columns{columns:4 220px;column-gap:10px}
 .ledger-deck-view .type-column{margin-bottom:10px;border-radius:7px;overflow:hidden}
 .ledger-deck-view .type-column>.type-column-row{grid-template-columns:22px minmax(0,1fr) auto auto;gap:6px;padding:7px 8px;transition:background .14s ease,color .14s ease,box-shadow .14s ease}
 .ledger-deck-view .type-column>.type-column-row:hover{transform:none}
 .card-row-actions{display:flex;align-items:center;justify-content:flex-end;gap:4px}
 .card-row-more{min-width:28px;height:26px;padding:0 5px;border:1px solid transparent;border-radius:4px;background:transparent;color:#71857e;font-size:10px;font-weight:900;letter-spacing:-1px;cursor:pointer}
 .card-row-more:hover,.card-row-more:focus-visible{outline:0;border-color:#638a7f;background:#15231f;color:#b9e8dc}
-@media(max-width:900px){.ledger-deck-view .type-columns{columns:2 240px}}
-@media(max-width:560px){.ledger-deck-view .deck-gallery{display:block;padding:10px}.ledger-deck-view .type-columns{columns:1}.card-row-more{min-width:32px;height:32px}}
+@media(max-width:560px){.ledger-deck-view .deck-gallery{display:block;padding:10px}.card-row-more{min-width:32px;height:32px}}
 
 /* Masterwork Identity: player-owned atmosphere around the practical deck list. */
 .progressive-results .deck-manuscript>header.masterwork-deck-hero{position:relative;isolation:isolate;min-height:250px;align-items:flex-end;overflow:hidden;padding:34px 28px;border-color:#765538;background:#080d0c}
@@ -859,11 +857,8 @@ step that's actually in focus. */
 .masterwork-shell-bottom{display:flex;align-items:center;justify-content:space-between;min-height:62px;padding:10px 18px;border-top:1px solid #3c4842;background:#080c0b;color:#8d9a95;font-size:11px}
 .masterwork-shell-bottom span{display:flex;align-items:center;gap:8px}.masterwork-shell-bottom span b{color:#e6d5bb}.masterwork-shell-bottom span i{width:1px;height:18px;background:#3d4944}.masterwork-shell-bottom>div{display:flex;gap:8px}.masterwork-shell-bottom button,.masterwork-shell-bottom a{display:inline-flex;min-height:40px;box-sizing:border-box;align-items:center;padding:9px 14px;border:1px solid #45544e;background:#0c1311;color:#c8d2ce;font-size:10px;font-weight:800;text-decoration:none}.masterwork-shell-bottom .masterwork-playtest{border-color:#c97c37;background:linear-gradient(90deg,#76391b,#4e2c1a);color:#fff0df}
 .edit-anvil-launcher,.forge-edit-workbench,.deck-price-bar{display:none!important}
-.ledger-deck-view .type-columns{display:block!important;columns:4;column-gap:9px}
 .ledger-deck-view .type-column{display:inline-block!important;width:100%;margin:0 0 9px!important;break-inside:avoid;vertical-align:top}
-@media(max-width:1250px){.ledger-deck-view .type-columns{columns:3}}
-@media(max-width:900px){.ledger-deck-view .type-columns{columns:2}}
-@media(max-width:760px){.masterwork-shell-bottom{align-items:stretch;flex-direction:column}.masterwork-shell-bottom>div{display:grid;grid-template-columns:1fr 1fr}.masterwork-shell-bottom .masterwork-playtest{grid-column:1/-1;justify-content:center}.ledger-deck-view .type-columns{columns:1}}
+@media(max-width:760px){.masterwork-shell-bottom{align-items:stretch;flex-direction:column}.masterwork-shell-bottom>div{display:grid;grid-template-columns:1fr 1fr}.masterwork-shell-bottom .masterwork-playtest{grid-column:1/-1;justify-content:center}}
 
 /* Site chrome (global rail is position:fixed). In-panel shell is gone from
    the DOM; leftover shell classes must never paint a second frame. */
