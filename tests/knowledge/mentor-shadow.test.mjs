@@ -28,4 +28,17 @@ describe("Mentor Shadow v0", () => {
     assert.equal(report.explanations.length, 3);
     assert.equal(report.brainInheritance, "none");
   });
+
+  it("names a Clue engine without calling it a generic go-wide tokens deck", () => {
+    const explanation = explainCardAsMentor({
+      cardName: "Investigate Scout",
+      oracleText: "When this enters, investigate.",
+      commanderName: "Clue Oligarch",
+      activeResources: ["clue"],
+    });
+    assert.equal(explanation.writesToBrain, false);
+    assert.equal(explanation.resourceSeating[0].resource, "clue");
+    assert.match(explanation.paragraph, /Clue Engine Piece/);
+    assert.match(explanation.paragraph, /not evidence of a generic go-wide tokens plan/);
+  });
 });

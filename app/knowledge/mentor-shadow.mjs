@@ -9,6 +9,7 @@ import {
   buildAtlasVocabularyRegistry,
   seatsImplementedBy,
   cardsImplementingSeat,
+  seatNamedResourceImplementation,
 } from "./atlas-vocabulary.mjs";
 import { getStrategicConcept, buildStrategicConceptLibrary } from "./strategic-concept.mjs";
 
@@ -20,6 +21,10 @@ const freeze = (value) => Object.freeze(value);
  */
 export function explainCardAsMentor({
   cardName = "",
+  oracleText = "",
+  typeLine = "",
+  mechanics,
+  activeResources = [],
   commanderName = "",
   fantasyLabel = "",
   commissionMismatch = false,
@@ -35,6 +40,7 @@ export function explainCardAsMentor({
   }
 
   const seats = seatsImplementedBy(card);
+  const resourceSeating = seatNamedResourceImplementation({ name: card, oracleText, typeLine, mechanics }, { activeResources });
   const atlas = buildAtlasVocabularyRegistry();
   const alternatives = seats.length
     ? freeze([...new Set(seats.flatMap((seat) => cardsImplementingSeat(seat).filter((name) => name !== card)))])
@@ -50,12 +56,21 @@ export function explainCardAsMentor({
     if (commit) conceptHints.push(commit.name);
   }
 
+  const resourceSeatLine = resourceSeating.length
+    ? resourceSeating.map((row) => {
+      const roles = row.implementation.roles.join(" + ");
+      return `It is seated as a ${row.seat.label} (${roles}).`;
+    }).join(" ")
+    : "";
+
   const seatLine = seats.length
     ? `It fills ${seats.join(" · ")}.`
-    : "Atlas has no illustrative seat binding for this card yet — unknown is not absent.";
+    : resourceSeatLine || "Atlas has no illustrative seat binding for this card yet — unknown is not absent.";
 
   const vacancy = seats.length
     ? `If ${seats[0]} vacates, ask whether ${alternatives.slice(0, 3).join(" / ") || "another holder"} can assume that seat.`
+    : resourceSeating.length
+      ? `This is ${resourceSeating.map((row) => `a ${row.resource[0].toUpperCase()}${row.resource.slice(1)} engine implementation`).join(" and ")}, not evidence of a generic go-wide tokens plan.`
     : "Seat language is still open for this card — do not invent a score.";
 
   const timing = /teferi'?s protection|flawless maneuver/i.test(card)
@@ -90,6 +105,7 @@ export function explainCardAsMentor({
     brainInheritance: "none",
     card,
     seats: freeze([...seats]),
+    resourceSeating,
     planContext: fantasyLabel
       ? `${fantasyLabel} commission context`
       : commanderName
@@ -97,7 +113,7 @@ export function explainCardAsMentor({
         : "Finished-list explanation",
     timingPosture: timing,
     vacancyRisk: vacancy,
-    openQuestion: seats.length
+    openQuestion: seats.length || resourceSeating.length
       ? "Still contested whether these seat labels survive Academy controls beyond illustrative Atlas bindings."
       : "No Atlas seat yet — wait for observation rather than inventing one.",
     conceptHints: freeze(conceptHints),

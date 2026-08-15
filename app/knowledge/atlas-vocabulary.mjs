@@ -1,4 +1,6 @@
 // =============================================================================
+
+import { extractMechanicalSignals } from "../forge-interaction-graph.mjs";
 // Atlas Vocabulary Registry v0 — Age of Vocabulary engineering surface
 // =============================================================================
 // Stable meanings + illustrative equivalence. Naming is not promotion.
@@ -78,6 +80,76 @@ export const ATLAS_EQUIVALENCE_ILLUSTRATIVE = freeze([
   freeze({ card: "Doubling Season", seats: freeze(["Pressure Conversion", "Acceleration"]) }),
 ]);
 
+/**
+ * Descriptive seating for the closed named-artifact-token vocabulary.
+ * These are not Capability admissions and never become construction inputs.
+ * Atlas consumes the interaction graph's language instead of maintaining a
+ * second set of oracle regexes that could drift from the engine.
+ */
+export const ATLAS_NAMED_RESOURCE_SEATS = freeze([
+  ["clue", "clues", "Clue"],
+  ["treasure", "treasure", "Treasure"],
+  ["food", "food", "Food"],
+  ["blood", "blood", "Blood"],
+  ["gold", "gold", "Gold"],
+  ["map", "maps", "Map"],
+  ["junk", "junk", "Junk"],
+  ["powerstone", "powerstones", "Powerstone"],
+].map(([resource, signal, label]) => freeze({
+  resource,
+  signal,
+  capability: freeze({
+    id: `cap:${resource}_resource_engine`,
+    label: `${label} Resource Engine`,
+    status: "descriptive_not_admitted",
+    atlasAdmitted: false,
+  }),
+  seat: freeze({
+    id: `seat:${resource}_engine_piece`,
+    label: `${label} Engine Piece`,
+  }),
+  writesToBrain: false,
+})));
+
+function normalizedResources(resources = []) {
+  return [...new Set((resources || []).map((value) => String(value || "").trim().toLocaleLowerCase("en")).filter(Boolean))];
+}
+
+/** Capability → Seat → Implementation, observed from already-shipped graph signals. */
+export function seatNamedResourceImplementation(card = {}, { activeResources = [] } = {}) {
+  const mechanics = card.mechanics || extractMechanicalSignals(card);
+  const active = normalizedResources(activeResources);
+  const rows = [];
+  for (const definition of ATLAS_NAMED_RESOURCE_SEATS) {
+    const produces = mechanics.produces?.includes(definition.signal) || false;
+    const rewards = mechanics.rewards?.includes(definition.signal) || false;
+    const genericArtifactOutlet = active.includes(definition.resource)
+      && mechanics.rewards?.includes("artifacts")
+      && !produces
+      && !rewards;
+    if (!produces && !rewards && !genericArtifactOutlet) continue;
+    rows.push(freeze({
+      resource: definition.resource,
+      capability: definition.capability,
+      seat: definition.seat,
+      implementation: freeze({
+        card: String(card.name || "Unknown card"),
+        roles: freeze([
+          ...(produces ? ["producer"] : []),
+          ...(rewards ? ["payoff"] : []),
+          ...(genericArtifactOutlet ? ["generic_artifact_outlet"] : []),
+        ]),
+        evidenceSignals: freeze([
+          ...(produces || rewards ? [definition.signal] : []),
+          ...(genericArtifactOutlet ? ["artifacts"] : []),
+        ]),
+      }),
+      writesToBrain: false,
+    }));
+  }
+  return freeze(rows);
+}
+
 /** Coverage Observation 001 — honest Age of Vocabulary result. */
 export const ATLAS_OBSERVATION_001 = freeze({
   paper: "What Is Strategic Coverage?",
@@ -139,6 +211,7 @@ export function buildAtlasVocabularyRegistry() {
     capabilityDraft: ATLAS_CAPABILITY_DRAFT,
     coverageDimensions: ATLAS_COVERAGE_DIMENSIONS,
     equivalenceIllustrative: ATLAS_EQUIVALENCE_ILLUSTRATIVE,
+    namedResourceSeats: ATLAS_NAMED_RESOURCE_SEATS,
     observation001: ATLAS_OBSERVATION_001,
     revisions: ATLAS_VOCABULARY_REVISIONS,
     summary: freeze({
@@ -147,6 +220,7 @@ export function buildAtlasVocabularyRegistry() {
       capabilityAdmittedCount: ATLAS_CAPABILITY_DRAFT.filter((c) => c.atlasAdmitted).length,
       coverageDimensionCount: ATLAS_COVERAGE_DIMENSIONS.length,
       equivalenceBindingCount: ATLAS_EQUIVALENCE_ILLUSTRATIVE.length,
+      namedResourceSeatCount: ATLAS_NAMED_RESOURCE_SEATS.length,
       coverageScoreExists: false,
     }),
     brainInheritance: "none",
