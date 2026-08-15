@@ -3814,9 +3814,8 @@ export default function Home() {
     setDeckViewMode("ledger");
     setSiteRail("decklist");
     if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = false;
-    window.requestAnimationFrame(() =>
-      document.getElementById("deck-gallery")?.scrollIntoView({ behavior: "auto", block: "start" }),
-    );
+    window.scrollTo(0, 0);
+    window.requestAnimationFrame(() => window.scrollTo(0, 0));
   }
 
   function enterMasterwork(candidateId: string) {
