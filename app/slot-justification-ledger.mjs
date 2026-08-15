@@ -1,6 +1,7 @@
 import {
   cardSatisfiesPackageCore,
   cardSatisfiesPackageSupport,
+  cardIsPackageFalseFriend,
   expensiveThreatSupport,
   strategicSemanticsFor,
 } from "./strategic-intent.mjs";
@@ -65,13 +66,11 @@ function packageMembership(entry, intent = {}) {
   const support = [];
   const falseFriend = [];
   for (const packageSpec of intent.packages || []) {
-    const semantics = entrySemantics(entry);
-    const isCore = cardSatisfiesPackageCore(entry, packageSpec.id);
-    const isSupport = !isCore && cardSatisfiesPackageSupport(entry, packageSpec.id);
+    const isCore = cardSatisfiesPackageCore(entry, packageSpec.id, intent);
+    const isSupport = !isCore && cardSatisfiesPackageSupport(entry, packageSpec.id, intent);
     if (isCore) core.push(packageSpec.id);
     else if (isSupport) support.push(packageSpec.id);
-    if ((packageSpec.falseFriendSemantics || []).some((semantic) => semantics.has(semantic))
-      && !(packageSpec.coreSemantics || []).some((semantic) => semantics.has(semantic))) {
+    if (cardIsPackageFalseFriend(entry, packageSpec.id, intent)) {
       falseFriend.push(packageSpec.id);
     }
   }
@@ -216,20 +215,16 @@ function reasonEntriesFromFootprint(footprint) {
   return Object.freeze(reasons);
 }
 
-function countPackageCores(rows, packageId) {
-  return rows.reduce((sum, row) => sum + (cardSatisfiesPackageCore(row, packageId) ? Number(row.quantity || 1) : 0), 0);
+function countPackageCores(rows, packageId, intent) {
+  return rows.reduce((sum, row) => sum + (cardSatisfiesPackageCore(row, packageId, intent) ? Number(row.quantity || 1) : 0), 0);
 }
 
 function densityContributionFor(entry, intent, quantity = 1) {
   const contribution = {};
   for (const packageSpec of intent.packages || []) {
-    const core = cardSatisfiesPackageCore(entry, packageSpec.id) ? quantity : 0;
-    const support = !core && cardSatisfiesPackageSupport(entry, packageSpec.id) ? quantity : 0;
-    const semantics = entrySemantics(entry);
-    const falseFriend = (packageSpec.falseFriendSemantics || []).some((semantic) => semantics.has(semantic))
-      && !(packageSpec.coreSemantics || []).some((semantic) => semantics.has(semantic))
-      ? quantity
-      : 0;
+    const core = cardSatisfiesPackageCore(entry, packageSpec.id, intent) ? quantity : 0;
+    const support = !core && cardSatisfiesPackageSupport(entry, packageSpec.id, intent) ? quantity : 0;
+    const falseFriend = cardIsPackageFalseFriend(entry, packageSpec.id, intent) ? quantity : 0;
     if (core || support || falseFriend) {
       contribution[packageSpec.id] = Object.freeze({ core, support, falseFriend });
     }
@@ -261,8 +256,8 @@ function removalConsequenceFor(entry, intent, rows, footprint, quantity = 1) {
     .map((reason) => reason.kind + (reason.packageId ? `:${reason.packageId}` : reason.signal ? `:${reason.signal}` : reason.role ? `:${reason.role}` : reason.semantic ? `:${reason.semantic}` : ""));
   const packageCollapses = [];
   for (const packageSpec of intent.packages || []) {
-    if (!cardSatisfiesPackageCore(entry, packageSpec.id)) continue;
-    const before = countPackageCores(rows, packageSpec.id);
+    if (!cardSatisfiesPackageCore(entry, packageSpec.id, intent)) continue;
+    const before = countPackageCores(rows, packageSpec.id, intent);
     const after = before - quantity;
     if (before >= packageSpec.coreMin && after < packageSpec.coreMin) {
       packageCollapses.push(packageSpec.id);

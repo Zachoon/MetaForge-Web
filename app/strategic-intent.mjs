@@ -177,6 +177,8 @@ const PACKAGE_CATALOG = Object.freeze({
     coreSemantics: Object.freeze(["token_generator"]),
     falseFriendSemantics: Object.freeze([]),
     supportSemantics: Object.freeze(["token_payoff"]),
+    // Occupancy is not a catalog false-friend list. Named artifact-token
+    // commanders specialize core membership via intent.tokenScope.
     detectCommander: (oracle) => /create [^.]* token/i.test(oracle) && /token/i.test(oracle),
     detectBlueprint: (blueprint) => blueprint.desiredRoles?.includes("tokens") || blueprint.packageSignals?.includes("tokens"),
     density: Object.freeze({ singletonCore: 10, constructedCore: 6, singletonSupport: 4, constructedSupport: 2 }),
@@ -275,9 +277,72 @@ function countPackageSignal(rows, signal) {
   }, 0);
 }
 
-export function cardSatisfiesPackageCore(entry, packageId) {
+// Named artifact-token types the graph already distinguishes. Occupancy
+// consumes this vocabulary; it does not invent new token families.
+const NAMED_ARTIFACT_TOKENS = Object.freeze(new Set([
+  "clue", "treasure", "food", "blood", "gold", "map", "junk", "powerstone",
+]));
+const NAMED_ARTIFACT_TOKEN_PRODUCES = Object.freeze({
+  clue: "clues",
+  treasure: "treasure",
+  food: "food",
+  blood: "blood",
+  gold: "gold",
+  map: "maps",
+  junk: "junk",
+  powerstone: "powerstones",
+});
+
+export function namedArtifactTokenScopeFromIntent(intent = {}) {
+  const produces = intent.commanderScopes?.produces || {};
+  // Creature-token riders (Spirit, Plant, Citizen) never specialize the
+  // tokens package. A landfall Plant or go-wide Citizen commander stays
+  // on the generic tokens contract.
+  return unique([
+    ...(produces.artifacts || []),
+    ...(produces.clues || []),
+    ...(produces.treasure || []),
+    ...(produces.food || []),
+    ...(produces.blood || []),
+    ...(produces.gold || []),
+    ...(produces.maps || []),
+    ...(produces.junk || []),
+    ...(produces.powerstones || []),
+  ].map(normalized)).filter((term) => NAMED_ARTIFACT_TOKENS.has(term));
+}
+
+function tokenScopeFor(packageId, intent) {
+  if (packageId !== "tokens") return [];
+  const attached = (intent?.packages || []).find((pkg) => pkg.id === "tokens")?.tokenScope;
+  if (Array.isArray(attached)) return attached.filter((term) => NAMED_ARTIFACT_TOKENS.has(normalized(term)));
+  return namedArtifactTokenScopeFromIntent(intent);
+}
+
+function cardIsNamedArtifactTokenMaker(entry, scope) {
+  if (!scope.length) return false;
+  const oracle = oracleOf(entryCard(entry));
+  const produces = new Set(entry.mechanics?.produces || []);
+  for (const tribe of scope) {
+    const produceKey = NAMED_ARTIFACT_TOKEN_PRODUCES[tribe];
+    if (produceKey && produces.has(produceKey)) return true;
+    if (tribe === "clue" && /\binvestigate\b/i.test(oracle)) return true;
+    const escaped = tribe.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (new RegExp(`create[^.]{0,80}${escaped}[^.]{0,40}token`, "i").test(oracle)) return true;
+  }
+  return false;
+}
+
+function cardIsCreatureTokenFactory(entry) {
+  return /create[^.]*creature token/i.test(oracleOf(entryCard(entry)));
+}
+
+export function cardSatisfiesPackageCore(entry, packageId, intent) {
   const definition = PACKAGE_CATALOG[packageId];
   if (!definition) return false;
+  const scope = tokenScopeFor(packageId, intent);
+  if (packageId === "tokens" && scope.length) {
+    return cardIsNamedArtifactTokenMaker(entry, scope);
+  }
   const semantics = entrySemantics(entry);
   if (definition.coreSemantics.some((semantic) => semantics.has(semantic))) return true;
   if (definition.packageSignals?.length) {
@@ -288,12 +353,23 @@ export function cardSatisfiesPackageCore(entry, packageId) {
   return false;
 }
 
-export function cardSatisfiesPackageSupport(entry, packageId) {
+export function cardSatisfiesPackageSupport(entry, packageId, intent) {
   const definition = PACKAGE_CATALOG[packageId];
   if (!definition) return false;
   const semantics = entrySemantics(entry);
   return definition.supportSemantics.some((semantic) => semantics.has(semantic))
-    || cardSatisfiesPackageCore(entry, packageId);
+    || cardSatisfiesPackageCore(entry, packageId, intent);
+}
+
+export function cardIsPackageFalseFriend(entry, packageId, intent) {
+  const definition = PACKAGE_CATALOG[packageId];
+  if (!definition) return false;
+  if (cardSatisfiesPackageCore(entry, packageId, intent)) return false;
+  const semantics = entrySemantics(entry);
+  if ((definition.falseFriendSemantics || []).some((tag) => semantics.has(tag))) return true;
+  const scope = tokenScopeFor(packageId, intent);
+  if (packageId === "tokens" && scope.length && cardIsCreatureTokenFactory(entry)) return true;
+  return false;
 }
 
 /**
@@ -317,6 +393,7 @@ export function buildStrategicIntent(input = {}, analysisContext = {}) {
       supportSemantics: definition.supportSemantics || [],
       packageSignals: definition.packageSignals || [],
       requireBalancedLegs: definition.requireBalancedLegs || [],
+      tokenScope: Object.freeze(definition.id === "tokens" ? namedArtifactTokenScopeFromIntent(analysisContext) : []),
       ...targets,
       source: definition.detectBlueprint?.(blueprint) && definition.detectCommander?.(oracleOf(commanders[0] || {}))
         ? "commander+blueprint"
@@ -365,20 +442,15 @@ function trackedRoleOverlap(offenderRoles = [], candidateRoles = [], trackedRole
 function packageOverlap(offenderEntry, candidateEntry, intent) {
   const packageIds = intent?.packageIds || [];
   if (!packageIds.length) return { required: false, ok: true, shared: [] };
-  const offenderPackages = packageIds.filter((id) => cardSatisfiesPackageCore(offenderEntry, id) || cardSatisfiesPackageSupport(offenderEntry, id));
+  const offenderPackages = packageIds.filter((id) => cardSatisfiesPackageCore(offenderEntry, id, intent) || cardSatisfiesPackageSupport(offenderEntry, id, intent));
   if (!offenderPackages.length) return { required: false, ok: true, shared: [] };
-  const shared = offenderPackages.filter((id) => cardSatisfiesPackageCore(candidateEntry, id) || cardSatisfiesPackageSupport(candidateEntry, id));
+  const shared = offenderPackages.filter((id) => cardSatisfiesPackageCore(candidateEntry, id, intent) || cardSatisfiesPackageSupport(candidateEntry, id, intent));
   // False-friend trap: a non-aura enchantment must not replace an Aura core.
   for (const id of offenderPackages) {
     const definition = PACKAGE_CATALOG[id];
     if (!definition) continue;
-    const offenderSemantics = entrySemantics(offenderEntry);
-    const candidateSemantics = entrySemantics(candidateEntry);
-    if (definition.coreSemantics.some((semantic) => offenderSemantics.has(semantic))) {
-      if (definition.falseFriendSemantics.some((semantic) => candidateSemantics.has(semantic))
-        && !definition.coreSemantics.some((semantic) => candidateSemantics.has(semantic))) {
-        return { required: true, ok: false, shared, reason: `${definition.label} core cannot be replaced by false-friend semantics` };
-      }
+    if (cardSatisfiesPackageCore(offenderEntry, id, intent) && cardIsPackageFalseFriend(candidateEntry, id, intent)) {
+      return { required: true, ok: false, shared, reason: `${definition.label} core cannot be replaced by false-friend semantics` };
     }
   }
   return { required: true, ok: shared.length > 0, shared, reason: shared.length ? null : "replacement loses required package membership" };
@@ -448,7 +520,7 @@ export function expensiveThreatSupport(entry, selectedRows = [], intent = {}) {
   const reanimation = countSemantics(rows, "reanimation");
   const cheat = countSemantics(rows, "cost_cheat");
   const commanderConnected = (entry.commanderConnectionSignals || []).length > 0;
-  const packageCore = (intent.packageIds || []).some((id) => cardSatisfiesPackageCore(entry, id));
+  const packageCore = (intent.packageIds || []).some((id) => cardSatisfiesPackageCore(entry, id, intent));
   const activePackages = (intent.packageIds || []).length > 0;
   // When the deck has an active precise package (Auras, aristocrats, etc.),
   // generic ramp is not enough to justify an unrelated 10-drop. The bomb

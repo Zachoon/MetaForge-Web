@@ -1,6 +1,7 @@
 import {
   cardSatisfiesPackageCore,
   cardSatisfiesPackageSupport,
+  cardIsPackageFalseFriend,
   strategicSemanticsFor,
 } from "./strategic-intent.mjs";
 import {
@@ -64,14 +65,14 @@ function countRole(rows, role) {
   return rows.reduce((sum, row) => sum + roleCountContribution(row, role), 0);
 }
 
-function countPackageCore(rows, packageId) {
-  return rows.reduce((sum, row) => sum + (cardSatisfiesPackageCore(row, packageId) ? Number(row.quantity || 1) : 0), 0);
+function countPackageCore(rows, packageId, intent) {
+  return rows.reduce((sum, row) => sum + (cardSatisfiesPackageCore(row, packageId, intent) ? Number(row.quantity || 1) : 0), 0);
 }
 
-function countPackageSupport(rows, packageId) {
+function countPackageSupport(rows, packageId, intent) {
   return rows.reduce((sum, row) => {
-    if (cardSatisfiesPackageCore(row, packageId)) return sum;
-    return sum + (cardSatisfiesPackageSupport(row, packageId) ? Number(row.quantity || 1) : 0);
+    if (cardSatisfiesPackageCore(row, packageId, intent)) return sum;
+    return sum + (cardSatisfiesPackageSupport(row, packageId, intent) ? Number(row.quantity || 1) : 0);
   }, 0);
 }
 
@@ -115,8 +116,8 @@ export function buildLiveDeficitState(partialRows = [], intent = {}, options = {
 
   const packages = {};
   for (const packageSpec of intent.packages || []) {
-    const coreCurrent = countPackageCore(rows, packageSpec.id);
-    const supportCurrent = countPackageSupport(rows, packageSpec.id);
+    const coreCurrent = countPackageCore(rows, packageSpec.id, intent);
+    const supportCurrent = countPackageSupport(rows, packageSpec.id, intent);
     const legs = {};
     for (const leg of packageSpec.requireBalancedLegs || []) {
       const current = countSemantic(rows, leg);
@@ -264,10 +265,9 @@ export function prospectiveSlotDelta(partialRows = [], candidate = {}, intent = 
   for (const packageSpec of intent.packages || []) {
     const pkg = state.packages[packageSpec.id];
     if (!pkg) continue;
-    const isCore = cardSatisfiesPackageCore(candidate, packageSpec.id);
-    const isSupport = !isCore && cardSatisfiesPackageSupport(candidate, packageSpec.id);
-    const isFalseFriend = (packageSpec.falseFriendSemantics || []).some((tag) => semantics.has(tag))
-      && !(packageSpec.coreSemantics || []).some((tag) => semantics.has(tag));
+    const isCore = cardSatisfiesPackageCore(candidate, packageSpec.id, intent);
+    const isSupport = !isCore && cardSatisfiesPackageSupport(candidate, packageSpec.id, intent);
+    const isFalseFriend = cardIsPackageFalseFriend(candidate, packageSpec.id, intent);
     const coreNeed = `package_core:${packageSpec.id}`;
     const supportNeed = `package_support:${packageSpec.id}`;
     const coreNovelty = incrementalFootprintNovelty(candidateSig, getNeedClosureView(closureMemory, coreNeed, state));
@@ -419,7 +419,7 @@ export function prospectiveSlotDelta(partialRows = [], candidate = {}, intent = 
   }
 
   // Unsupported anchor: high-CMC package/commander piece with no partners, or orphan payoff
-  const isPackageCore = (intent.packages || []).some((pkg) => cardSatisfiesPackageCore(candidate, pkg.id));
+  const isPackageCore = (intent.packages || []).some((pkg) => cardSatisfiesPackageCore(candidate, pkg.id, intent));
   const becomesUnsupportedAnchor = (cmc >= 5 && (isPackageCore || commanderSignals.length) && partnersPresent === 0)
     || (rewards.length > 0 && partnersPresent === 0 && produces.length === 0);
   if (becomesUnsupportedAnchor) {

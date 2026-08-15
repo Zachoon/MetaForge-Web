@@ -1,6 +1,7 @@
 import {
   cardSatisfiesPackageCore,
   cardSatisfiesPackageSupport,
+  cardIsPackageFalseFriend,
   validateStrategicCohesion,
 } from "./strategic-intent.mjs";
 import {
@@ -52,11 +53,10 @@ function curveBucket(cmc) {
   return String(Math.round(Number(cmc) || 0));
 }
 
-function memberKind(entry, packageSpec) {
-  if (cardSatisfiesPackageCore(entry, packageSpec.id)) return "core";
-  if (cardSatisfiesPackageSupport(entry, packageSpec.id)) return "support";
-  const semantics = entrySemantics(entry);
-  if ((packageSpec.falseFriendSemantics || []).some((tag) => semantics.has(tag))) return "falseFriend";
+function memberKind(entry, packageSpec, intent) {
+  if (cardSatisfiesPackageCore(entry, packageSpec.id, intent)) return "core";
+  if (cardSatisfiesPackageSupport(entry, packageSpec.id, intent)) return "support";
+  if (cardIsPackageFalseFriend(entry, packageSpec.id, intent)) return "falseFriend";
   return null;
 }
 
@@ -72,7 +72,7 @@ export function buildPackageState(rows, packageSpec, intent = {}, options = {}) 
   const nonlands = nonlandRows(rows);
   const members = [];
   for (const row of nonlands) {
-    const kind = memberKind(row, packageSpec);
+    const kind = memberKind(row, packageSpec, intent);
     if (!kind) continue;
     const justification = options.justifications?.byName?.[normalized(row.name)]
       || buildSlotJustification(row, intent, rows);
@@ -383,10 +383,10 @@ export function counterfactualPackageDelta(currentRows, removeSet, addSet, inten
   });
 }
 
-function rankedLegCandidates(pool, packageSpec, leg, deckNames, limit) {
+function rankedLegCandidates(pool, packageSpec, leg, deckNames, limit, intent) {
   return pool
     .filter((entry) => !deckNames.has(normalized(entry.card?.name || entry.name)))
-    .filter((entry) => entrySemantics(entry).has(leg) || (leg === "core" && cardSatisfiesPackageCore(entry, packageSpec.id)))
+    .filter((entry) => entrySemantics(entry).has(leg) || (leg === "core" && cardSatisfiesPackageCore(entry, packageSpec.id, intent)))
     .sort((left, right) => (right.score || right.roleScore || 0) - (left.score || left.roleScore || 0) || (left.card?.name || left.name).localeCompare(right.card?.name || right.name))
     .slice(0, limit);
 }
@@ -483,14 +483,14 @@ export function optimizePackagePlan(candidate, analysis, input = {}, options = {
       if (!preferLeg) continue;
       additionPools.push({
         leg,
-        candidates: rankedLegCandidates(pool, packageSpec, leg, deckNames, limits.topKPerLeg),
+        candidates: rankedLegCandidates(pool, packageSpec, leg, deckNames, limits.topKPerLeg, intent),
       });
     }
     if (!additionPools.length && state.density.deficit > 0) {
       additionPools.push({
         leg: "core",
         candidates: pool
-          .filter((entry) => !deckNames.has(normalized(entry.card.name)) && cardSatisfiesPackageCore(entry, packageSpec.id))
+          .filter((entry) => !deckNames.has(normalized(entry.card.name)) && cardSatisfiesPackageCore(entry, packageSpec.id, intent))
           .sort((left, right) => right.score - left.score || left.card.name.localeCompare(right.card.name))
           .slice(0, limits.topKPerLeg),
       });
@@ -511,7 +511,7 @@ export function optimizePackagePlan(candidate, analysis, input = {}, options = {
             }
             // Protect critical members unless an add restores same package core.
             if (removeCombo.some((member) => member.packageCritical)
-              && !addCombo.some((entry) => cardSatisfiesPackageCore(entry, packageSpec.id))) {
+              && !addCombo.some((entry) => cardSatisfiesPackageCore(entry, packageSpec.id, intent))) {
               instrumentation.candidatesPruned += 1;
               continue;
             }
