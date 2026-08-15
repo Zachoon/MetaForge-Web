@@ -79,6 +79,46 @@ export function classifyLoopKind(leftOracle = "", rightOracle = "") {
   return LOOP_KINDS.ENGINE;
 }
 
+export const SELECTION_KINDS = Object.freeze({
+  SCRY: "scry",
+  SURVEIL: "surveil",
+  RUMMAGE: "rummage",
+  CONNIVE: "connive",
+  IMPULSE: "impulse",
+  DRAW: "draw",
+});
+
+const RUMMAGE = /draw (?:a card|one card|two cards|\d+ cards), then discard|(?:you )?discard (?:a card|one card|two cards|\d+ cards), then draw/i;
+const IMPULSE = /look at the top .{0,80}exile/i;
+const IMPULSE_PLAY = /(?:play|cast) [^.]* (?:this turn|until end of turn|from exile)/i;
+const JUNK_TOKEN = /create[^.]*junk token/i;
+
+/**
+ * How a card filters or replaces cards. Observation only.
+ * Scry is not mill. Surveil is not mill. Rummage is not net draw.
+ * Impulse is look-at-top exile-play, not a Junk token.
+ * Connive is a mixed selector, not a draw engine.
+ * These labels must not become produces/rewards until a harness earns that.
+ */
+export function classifySelectionKinds(oracle = "") {
+  const text = String(oracle || "");
+  const kinds = [];
+  if (/\bconniv(?:e|es|ed|ing)\b/i.test(text)) kinds.push(SELECTION_KINDS.CONNIVE);
+  if (IMPULSE.test(text) && IMPULSE_PLAY.test(text) && !JUNK_TOKEN.test(text)) {
+    kinds.push(SELECTION_KINDS.IMPULSE);
+  }
+  if (/\bsurveil\b/i.test(text)) kinds.push(SELECTION_KINDS.SURVEIL);
+  if (/\bscry\b/i.test(text)) kinds.push(SELECTION_KINDS.SCRY);
+  if (RUMMAGE.test(text) && !kinds.includes(SELECTION_KINDS.CONNIVE)) {
+    kinds.push(SELECTION_KINDS.RUMMAGE);
+  }
+  const rummageOrConnive = kinds.includes(SELECTION_KINDS.RUMMAGE) || kinds.includes(SELECTION_KINDS.CONNIVE);
+  if (/draw (?:a|one|two|three|\d+)/i.test(text) && !rummageOrConnive) {
+    kinds.push(SELECTION_KINDS.DRAW);
+  }
+  return kinds;
+}
+
 export function findResetPayPairs(cards = []) {
   const nodes = (cards || []).filter((card) => card?.name && !/\bLand\b/i.test(card.typeLine || card.type_line || ""));
   const pairs = [];
@@ -436,7 +476,8 @@ export function extractMechanicalSignals(card) {
   const rewards = [...new Set([...regexRewards, ...tagRewards])].filter((signal) => !(signal === "combat" && attackToProduceOnly));
   if (auraProducer.length && !signals.includes("auras")) signals.push("auras");
   if (spellProducer.length && !signals.includes("spells")) signals.push("spells");
-  return { signals, produces, rewards, tagProduces, tagRewards };
+  const selectionKinds = classifySelectionKinds(card.oracleText || card.oracle_text || text);
+  return { signals, produces, rewards, tagProduces, tagRewards, selectionKinds };
 }
 
 export function buildInteractionGraph(cards, options = {}) {
@@ -641,7 +682,7 @@ export function buildInteractionGraph(cards, options = {}) {
     explicitReferences,
     coverage,
     confidence,
-    methodology: "Relationships come from oracle text and type lines: mechanical producer/payoff inference, plus oracle_explicit edges when Oracle literally names another card in the deck. Mutual pairs are labeled engine / closed_loop / conditional_win as vocabulary. Reset/pay shapes are a separate observation pass — not verified infinites and not construction credit.",
+    methodology: "Relationships come from oracle text and type lines: mechanical producer/payoff inference, plus oracle_explicit edges when Oracle literally names another card in the deck. Mutual pairs are labeled engine / closed_loop / conditional_win as vocabulary. Reset/pay shapes are a separate observation pass — not verified infinites and not construction credit. Selection kinds (scry / surveil / rummage / connive / impulse / draw) are observation labels on a card's own filter — they do not form edges and are not construction credit.",
     commanderName: options.commanderName || commander?.name || "",
   };
 }

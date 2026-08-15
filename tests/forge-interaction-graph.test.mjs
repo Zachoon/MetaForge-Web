@@ -7,8 +7,10 @@ import {
   findExplicitOracleReferences,
   oracleExplicitlyNames,
   classifyLoopKind,
+  classifySelectionKinds,
   findResetPayPairs,
   LOOP_KINDS,
+  SELECTION_KINDS,
   RESET_SHAPES,
   RELATIONSHIP_EVIDENCE,
 } from "../app/forge-interaction-graph.mjs";
@@ -553,4 +555,80 @@ test("investigate/clue is a producer-payoff axis, not generic Angel tokens", () 
   const graph = buildInteractionGraph([oligarch, scout, host]);
   assert.ok(graph.edges.some((edge) => edge.signals.includes("clues") && [edge.from, edge.to].includes("Scout")));
   assert.ok(!graph.edges.some((edge) => [edge.from, edge.to].includes("Host") && edge.signals.includes("tokens")));
+});
+
+test("scry is library selection, not mill", () => {
+  const scry = classifySelectionKinds("Scry 2.");
+  const mill = classifySelectionKinds("Target player mills two cards.");
+  assert.deepEqual(scry, [SELECTION_KINDS.SCRY]);
+  assert.equal(mill.includes(SELECTION_KINDS.SCRY), false);
+  assert.equal(mill.includes(SELECTION_KINDS.SURVEIL), false);
+  assert.deepEqual(mill, []);
+});
+
+test("surveil is a selector into the graveyard, not mill", () => {
+  const surveil = classifySelectionKinds("Surveil 2.");
+  const mill = classifySelectionKinds("Mill two cards.");
+  assert.deepEqual(surveil, [SELECTION_KINDS.SURVEIL]);
+  assert.equal(mill.includes(SELECTION_KINDS.SURVEIL), false);
+  const surveilSignals = extractMechanicalSignals({
+    name: "Street Familiar",
+    typeLine: "Creature",
+    oracleText: "When this enters, surveil 1.",
+  });
+  const millSignals = extractMechanicalSignals({
+    name: "Tome Scour",
+    typeLine: "Sorcery",
+    oracleText: "Target player mills two cards.",
+  });
+  assert.deepEqual(surveilSignals.selectionKinds, [SELECTION_KINDS.SURVEIL]);
+  assert.deepEqual(millSignals.selectionKinds, []);
+  assert.ok(millSignals.produces.includes("graveyard"), "mill remains graveyard production");
+});
+
+test("rummage filters the hand and is not net draw", () => {
+  const loot = classifySelectionKinds("Discard a card, then draw a card.");
+  const faithless = classifySelectionKinds("Draw two cards, then discard two cards.");
+  const mulldrifter = classifySelectionKinds("When this enters, draw two cards.");
+  assert.deepEqual(loot, [SELECTION_KINDS.RUMMAGE]);
+  assert.deepEqual(faithless, [SELECTION_KINDS.RUMMAGE]);
+  assert.deepEqual(mulldrifter, [SELECTION_KINDS.DRAW]);
+  const lootSignals = extractMechanicalSignals({
+    name: "Looter",
+    typeLine: "Creature",
+    oracleText: "Whenever this deals combat damage to a player, discard a card, then draw a card.",
+  });
+  assert.deepEqual(lootSignals.selectionKinds, [SELECTION_KINDS.RUMMAGE]);
+  assert.ok(lootSignals.produces.includes("draw"), "the draw clause still exists; vocabulary names the filter");
+});
+
+test("connive is a mixed selector, not a draw engine", () => {
+  const kinds = classifySelectionKinds("This creature connives. (Draw a card, then discard a card. If you discarded a nonland card, put a +1/+1 counter on this creature.)");
+  assert.deepEqual(kinds, [SELECTION_KINDS.CONNIVE]);
+  assert.equal(kinds.includes(SELECTION_KINDS.DRAW), false);
+  assert.equal(kinds.includes(SELECTION_KINDS.RUMMAGE), false);
+});
+
+test("impulse is look-at-top exile-play, not a Junk token", () => {
+  const impulse = classifySelectionKinds("Look at the top two cards of your library. Exile one of them, then put the rest on the bottom. You may play the exiled card this turn.");
+  const junk = classifySelectionKinds("When this enters, create a Junk token.");
+  assert.deepEqual(impulse, [SELECTION_KINDS.IMPULSE]);
+  assert.equal(junk.includes(SELECTION_KINDS.IMPULSE), false);
+  const junkSignals = extractMechanicalSignals({
+    name: "Junk Maker",
+    typeLine: "Creature",
+    oracleText: "When this enters, create a Junk token.",
+  });
+  assert.ok(junkSignals.produces.includes("junk") || junkSignals.produces.includes("exile_play"));
+  assert.equal(junkSignals.selectionKinds.includes(SELECTION_KINDS.IMPULSE), false);
+});
+
+test("scry then draw keeps both labels, and selection kinds do not form graph edges", () => {
+  const kinds = classifySelectionKinds("Scry 2, then draw a card.");
+  assert.deepEqual(kinds, [SELECTION_KINDS.SCRY, SELECTION_KINDS.DRAW]);
+  const seer = { name: "Seer", typeLine: "Creature", oracleText: "When this enters, scry 2." };
+  const miller = { name: "Miller", typeLine: "Sorcery", oracleText: "Target player mills two cards." };
+  const graph = buildInteractionGraph([seer, miller]);
+  assert.deepEqual(extractMechanicalSignals(seer).selectionKinds, [SELECTION_KINDS.SCRY]);
+  assert.equal(graph.edges.length, 0, "scry and mill do not share a producer/payoff edge");
 });
