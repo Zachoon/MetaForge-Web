@@ -73,6 +73,22 @@ describe("Mentor Shadow v0", () => {
     assert.match(explanation.paragraph, /Mill Dump/);
     assert.match(explanation.paragraph, /not surveil/);
     assert.doesNotMatch(explanation.paragraph, /Surveil Filter/);
+    assert.doesNotMatch(explanation.paragraph, /Dredge Recursion/);
+  });
+
+  it("names dredge as graveyard recursion, not a mill dump", () => {
+    const explanation = explainCardAsMentor({
+      cardName: "Golgari Grave-Troll",
+      oracleText: "Dredge 6 (If you would draw a card, you may mill six cards instead. If you do, return this card from your graveyard to your hand.)",
+    });
+    assert.equal(explanation.writesToBrain, false);
+    assert.equal(explanation.graveyardSeating.length, 1);
+    assert.equal(explanation.graveyardSeating[0].kind, "dredge");
+    assert.match(explanation.paragraph, /Dredge Recursion/);
+    assert.match(explanation.paragraph, /not mill/);
+    assert.doesNotMatch(explanation.paragraph, /Mill Dump/);
+    assert.doesNotMatch(explanation.paragraph, /Surveil Filter/);
+    assert.doesNotMatch(explanation.paragraph, /Net Draw/);
   });
 
   it("names a reset pair as a closed loop, not a verified infinite", () => {

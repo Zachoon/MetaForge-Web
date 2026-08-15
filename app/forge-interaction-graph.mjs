@@ -92,6 +92,7 @@ const RUMMAGE = /draw (?:a card|one card|two cards|\d+ cards), then discard|(?:y
 const IMPULSE = /look at the top .{0,80}exile/i;
 const IMPULSE_PLAY = /(?:play|cast) [^.]* (?:this turn|until end of turn|from exile)/i;
 const JUNK_TOKEN = /create[^.]*junk token/i;
+const REMINDER_TEXT = /\([^)]*\)/g;
 
 /**
  * How a card filters or replaces cards. Observation only.
@@ -113,7 +114,10 @@ export function classifySelectionKinds(oracle = "") {
     kinds.push(SELECTION_KINDS.RUMMAGE);
   }
   const rummageOrConnive = kinds.includes(SELECTION_KINDS.RUMMAGE) || kinds.includes(SELECTION_KINDS.CONNIVE);
-  if (/draw (?:a|one|two|three|\d+)/i.test(text) && !rummageOrConnive) {
+  // Dredge reminder prints "If you would draw a card" — that is a replacement,
+  // not net draw. Only rules text can name draw.
+  const rulesText = text.replace(REMINDER_TEXT, " ");
+  if (/draw (?:a|one|two|three|\d+)/i.test(rulesText) && !rummageOrConnive) {
     kinds.push(SELECTION_KINDS.DRAW);
   }
   return kinds;
@@ -121,21 +125,28 @@ export function classifySelectionKinds(oracle = "") {
 
 export const GRAVEYARD_KINDS = Object.freeze({
   MILL: "mill",
+  DREDGE: "dredge",
 });
 
 const MILL_KEYWORD = /\bmills?\b/i;
 const MILL_PUT = /puts? the top .{0,60}(?:card|cards) of .{0,80} library into .{0,40} graveyard/i;
+const DREDGE_KEYWORD = /\bdredge\b/i;
 
 /**
- * How a card dumps cards into a graveyard. Observation only.
- * Mill is not surveil. Surveil stays a selection kind.
+ * How a card fills or feeds off a graveyard. Observation only.
+ * Mill is not surveil. Dredge is not mill. Surveil stays a selection kind.
  * These labels must not become produces/rewards until a harness earns that.
  */
 export function classifyGraveyardKinds(oracle = "") {
   const text = String(oracle || "");
   const kinds = [];
   if (/\bsurveil\b/i.test(text)) return kinds;
-  if (MILL_KEYWORD.test(text) || MILL_PUT.test(text)) kinds.push(GRAVEYARD_KINDS.MILL);
+  if (DREDGE_KEYWORD.test(text)) kinds.push(GRAVEYARD_KINDS.DREDGE);
+  // Dredge prints "mill N" inside its own reminder text — that clause is the
+  // replacement draw, not a mill dump. Only rules text can name mill, so a
+  // card that dredges and separately mills still earns both labels.
+  const rulesText = text.replace(REMINDER_TEXT, " ");
+  if (MILL_KEYWORD.test(rulesText) || MILL_PUT.test(rulesText)) kinds.push(GRAVEYARD_KINDS.MILL);
   return kinds;
 }
 
@@ -704,7 +715,7 @@ export function buildInteractionGraph(cards, options = {}) {
     explicitReferences,
     coverage,
     confidence,
-    methodology: "Relationships come from oracle text and type lines: mechanical producer/payoff inference, plus oracle_explicit edges when Oracle literally names another card in the deck. Mutual pairs are labeled engine / closed_loop / conditional_win as vocabulary. Reset/pay shapes are a separate observation pass — not verified infinites and not construction credit. Selection kinds (scry / surveil / rummage / connive / impulse / draw) are observation labels on a card's own filter — they do not form edges and are not construction credit. Graveyard kinds name mill as a dump, distinct from surveil; they also do not form edges or construction credit.",
+    methodology: "Relationships come from oracle text and type lines: mechanical producer/payoff inference, plus oracle_explicit edges when Oracle literally names another card in the deck. Mutual pairs are labeled engine / closed_loop / conditional_win as vocabulary. Reset/pay shapes are a separate observation pass — not verified infinites and not construction credit. Selection kinds (scry / surveil / rummage / connive / impulse / draw) are observation labels on a card's own filter — they do not form edges and are not construction credit. Graveyard kinds name mill as a dump and dredge as a graveyard filter/engine, each distinct from surveil and from each other; they also do not form edges or construction credit.",
     commanderName: options.commanderName || commander?.name || "",
   };
 }

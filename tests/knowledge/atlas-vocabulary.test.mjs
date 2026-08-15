@@ -114,7 +114,7 @@ describe("Atlas Vocabulary Registry v0", () => {
 
   it("seats mill as a graveyard dump, distinct from surveil, without admitting Capabilities", () => {
     const registry = buildAtlasVocabularyRegistry();
-    assert.equal(registry.summary.graveyardSeatCount, 1);
+    assert.equal(registry.summary.graveyardSeatCount, 2);
     assert.equal(registry.summary.capabilityAdmittedCount, 0);
     assert.ok(registry.graveyardSeats.every((row) => row.writesToBrain === false && row.capability.atlasAdmitted === false));
 
@@ -139,6 +139,37 @@ describe("Atlas Vocabulary Registry v0", () => {
       mechanics: { graveyardKinds: ["mill"], produces: ["graveyard"], rewards: [], signals: [] },
     });
     assert.equal(fromGraph[0].kind, "mill");
+    assert.equal(fromGraph[0].writesToBrain, false);
+  });
+
+  it("seats dredge as graveyard recursion, distinct from a mill dump, without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    const dredgeSeat = registry.graveyardSeats.find((row) => row.kind === "dredge");
+    const millSeat = registry.graveyardSeats.find((row) => row.kind === "mill");
+    assert.equal(dredgeSeat.seat.label, "Dredge Recursion");
+    assert.equal(dredgeSeat.contrast, "not mill");
+    assert.equal(dredgeSeat.capability.status, "descriptive_not_admitted");
+    assert.equal(dredgeSeat.capability.atlasAdmitted, false);
+    assert.equal(dredgeSeat.writesToBrain, false);
+    assert.equal(millSeat.seat.label, "Mill Dump", "the mill seat is unchanged");
+    assert.equal(millSeat.contrast, "not surveil", "the mill seat is unchanged");
+    assert.equal(registry.summary.capabilityAdmittedCount, 0);
+    assert.ok(registry.revisions.some((row) => row.date === "2026-08-15" && /dredge/i.test(row.change)));
+
+    const dredge = seatGraveyardImplementation({
+      name: "Golgari Grave-Troll",
+      oracleText: "Dredge 6 (If you would draw a card, you may mill six cards instead. If you do, return this card from your graveyard to your hand.)",
+    });
+    assert.equal(dredge.length, 1, "dredge's reminder mill clause does not add a Mill Dump row");
+    assert.equal(dredge[0].kind, "dredge");
+    assert.equal(dredge[0].seat.label, "Dredge Recursion");
+    assert.equal(dredge[0].writesToBrain, false);
+
+    const fromGraph = seatGraveyardImplementation({
+      name: "Pre-classified",
+      mechanics: { graveyardKinds: ["dredge"], produces: [], rewards: [], signals: [] },
+    });
+    assert.equal(fromGraph[0].seat.label, "Dredge Recursion");
     assert.equal(fromGraph[0].writesToBrain, false);
   });
 

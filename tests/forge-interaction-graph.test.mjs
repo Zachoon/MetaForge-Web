@@ -618,6 +618,52 @@ test("mill is a graveyard dump, distinct from surveil", () => {
   assert.ok(millSignals.produces.includes("graveyard"), "mill still produces graveyard");
 });
 
+test("dredge is a graveyard filter/engine, distinct from a mill dump", () => {
+  const dredgeOracle = "Dredge 6 (If you would draw a card, you may mill six cards instead. If you do, return this card from your graveyard to your hand.)";
+  assert.deepEqual(classifyGraveyardKinds(dredgeOracle), [GRAVEYARD_KINDS.DREDGE]);
+  assert.deepEqual(classifyGraveyardKinds("Dredge 5"), [GRAVEYARD_KINDS.DREDGE]);
+  // A mill dump never becomes dredge, and dredge's reminder mill clause never
+  // makes Grave-Troll a Mill Dump.
+  assert.deepEqual(classifyGraveyardKinds("Target player mills two cards."), [GRAVEYARD_KINDS.MILL]);
+  assert.equal(classifyGraveyardKinds("Target player mills two cards.").includes(GRAVEYARD_KINDS.DREDGE), false);
+  assert.equal(classifyGraveyardKinds("Surveil 2.").includes(GRAVEYARD_KINDS.DREDGE), false);
+  assert.deepEqual(classifyGraveyardKinds("Surveil 2."), []);
+  // Rules text that actually mills alongside dredge earns both labels.
+  assert.deepEqual(
+    classifyGraveyardKinds(`Target player mills two cards. ${dredgeOracle}`),
+    [GRAVEYARD_KINDS.DREDGE, GRAVEYARD_KINDS.MILL],
+  );
+
+  const troll = extractMechanicalSignals({
+    name: "Golgari Grave-Troll",
+    typeLine: "Creature — Skeleton Troll",
+    oracleText: dredgeOracle,
+  });
+  const scour = extractMechanicalSignals({
+    name: "Tome Scour",
+    typeLine: "Sorcery",
+    oracleText: "Target player mills two cards.",
+  });
+  assert.deepEqual(troll.graveyardKinds, [GRAVEYARD_KINDS.DREDGE]);
+  assert.deepEqual(scour.graveyardKinds, [GRAVEYARD_KINDS.MILL]);
+  assert.equal(troll.selectionKinds.includes(GRAVEYARD_KINDS.DREDGE), false, "dredge is not a selection kind");
+  assert.equal(troll.selectionKinds.includes(SELECTION_KINDS.DRAW), false, "dredge reminder is not net draw");
+  assert.equal(troll.produces.includes(GRAVEYARD_KINDS.DREDGE), false, "dredge is an observation label, not production");
+  assert.equal(troll.rewards.includes(GRAVEYARD_KINDS.DREDGE), false, "dredge is an observation label, not a payoff");
+  assert.ok(scour.produces.includes("graveyard"), "mill still produces graveyard");
+
+  const graph = buildInteractionGraph([
+    { name: "Golgari Grave-Troll", typeLine: "Creature — Skeleton Troll", oracleText: dredgeOracle },
+    { name: "Tome Scour", typeLine: "Sorcery", oracleText: "Target player mills two cards." },
+  ]);
+  assert.equal(
+    graph.edges.some((edge) => edge.signals.includes(GRAVEYARD_KINDS.DREDGE) || edge.signals.includes(GRAVEYARD_KINDS.MILL)),
+    false,
+    "graveyard kinds do not form graph edges",
+  );
+  assert.match(graph.methodology, /dredge/i);
+});
+
 test("rummage filters the hand and is not net draw", () => {
   const loot = classifySelectionKinds("Discard a card, then draw a card.");
   const faithless = classifySelectionKinds("Draw two cards, then discard two cards.");

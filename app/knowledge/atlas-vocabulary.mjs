@@ -262,9 +262,10 @@ export function seatSelectionImplementation(card = {}) {
 }
 
 /**
- * Descriptive seating for mill as a graveyard dump.
+ * Descriptive seating for graveyard kinds.
  * Consumes graph `graveyardKinds` — no second oracle regex family.
- * Mill is not surveil. Not a Capability admission. Never construction input.
+ * Mill is not surveil. Dredge is not mill.
+ * Not Capability admissions. Never construction inputs.
  */
 export const ATLAS_GRAVEYARD_SEATS = freeze([
   freeze({
@@ -277,6 +278,20 @@ export const ATLAS_GRAVEYARD_SEATS = freeze([
     }),
     seat: freeze({ id: "seat:mill_dump", label: "Mill Dump" }),
     contrast: "not surveil",
+    role: "dumper",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "dredge",
+    capability: freeze({
+      id: "cap:dredge_graveyard_recursion",
+      label: "Graveyard Recursion",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:dredge_recursion", label: "Dredge Recursion" }),
+    contrast: "not mill",
+    role: "recurring_filter",
     writesToBrain: false,
   }),
 ]);
@@ -295,7 +310,7 @@ export function seatGraveyardImplementation(card = {}) {
       contrast: definition.contrast,
       implementation: freeze({
         card: String(card.name || "Unknown card"),
-        roles: freeze(["dumper"]),
+        roles: freeze([definition.role]),
         evidenceSignals: freeze([definition.kind]),
       }),
       writesToBrain: false,
@@ -448,6 +463,10 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
   freeze({
     date: "2026-08-15",
     change: "Seated mill as a graveyard dump, distinct from surveil; still 0 Capability admissions",
+  }),
+  freeze({
+    date: "2026-08-15",
+    change: "Seated dredge as a graveyard filter/engine, distinct from mill dump; still 0 Capability admissions",
   }),
 ]);
 
