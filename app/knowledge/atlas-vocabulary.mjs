@@ -5,6 +5,7 @@ import {
   classifyLoopKind,
   classifySacrificeKinds,
   classifySelectionKinds,
+  classifyTriggerKinds,
   extractMechanicalSignals,
   LOOP_KINDS,
   resetPayShape,
@@ -436,6 +437,65 @@ export function seatSacrificeImplementation(card = {}) {
 }
 
 /**
+ * Descriptive seating for a card's own trigger condition.
+ * Consumes graph `triggerKinds` — no second oracle regex family.
+ * Enter is not a blink/flicker recursion pattern. Cast is not spellslinger
+ * construction occupancy — both are named trigger conditions only.
+ * Not Capability admissions. Never construction inputs.
+ */
+export const ATLAS_TRIGGER_SEATS = freeze([
+  freeze({
+    kind: "enter",
+    capability: freeze({
+      id: "cap:enter_trigger",
+      label: "Enter Trigger",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:enter_trigger", label: "Enter Trigger" }),
+    contrast: "not a blink/flicker effect",
+    role: "entry_trigger",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "cast",
+    capability: freeze({
+      id: "cap:cast_trigger",
+      label: "Cast Trigger",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:cast_trigger", label: "Cast Trigger" }),
+    contrast: "not spellslinger construction occupancy",
+    role: "cast_trigger",
+    writesToBrain: false,
+  }),
+]);
+
+export function seatTriggerImplementation(card = {}) {
+  const mechanics = card.mechanics || extractMechanicalSignals(card);
+  const kinds = mechanics.triggerKinds
+    || classifyTriggerKinds(card.oracleText || card.oracle_text || "");
+  const rows = [];
+  for (const definition of ATLAS_TRIGGER_SEATS) {
+    if (!kinds.includes(definition.kind)) continue;
+    rows.push(freeze({
+      kind: definition.kind,
+      capability: definition.capability,
+      seat: definition.seat,
+      contrast: definition.contrast,
+      implementation: freeze({
+        card: String(card.name || "Unknown card"),
+        roles: freeze([definition.role]),
+        evidenceSignals: freeze([definition.kind]),
+      }),
+      writesToBrain: false,
+    }));
+  }
+  return freeze(rows);
+}
+
+/**
  * Descriptive seating for mutual loops and reset/pay shapes.
  * Consumes graph `loopKind` / `shape` — no second oracle regex family.
  * Pair observation only. Not a combo solver. Never construction inputs.
@@ -592,6 +652,10 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
     date: "2026-08-15",
     change: "Split the blended sacrifice signal into outlet / death payoff / incidental yard seats; still 0 Capability admissions",
   }),
+  freeze({
+    date: "2026-08-15",
+    change: "Named enter and cast as a card's own trigger condition, distinct from blink/flicker and from spellslinger occupancy; still 0 Capability admissions",
+  }),
 ]);
 
 export function seatsImplementedBy(cardName = "") {
@@ -636,6 +700,7 @@ export function buildAtlasVocabularyRegistry() {
     selectionSeats: ATLAS_SELECTION_SEATS,
     graveyardSeats: ATLAS_GRAVEYARD_SEATS,
     sacrificeSeats: ATLAS_SACRIFICE_SEATS,
+    triggerSeats: ATLAS_TRIGGER_SEATS,
     loopSeats: ATLAS_LOOP_SEATS,
     resetShapeSeats: ATLAS_RESET_SHAPE_SEATS,
     observation001: ATLAS_OBSERVATION_001,
@@ -650,6 +715,7 @@ export function buildAtlasVocabularyRegistry() {
       selectionSeatCount: ATLAS_SELECTION_SEATS.length,
       graveyardSeatCount: ATLAS_GRAVEYARD_SEATS.length,
       sacrificeSeatCount: ATLAS_SACRIFICE_SEATS.length,
+      triggerSeatCount: ATLAS_TRIGGER_SEATS.length,
       loopSeatCount: ATLAS_LOOP_SEATS.length,
       resetShapeSeatCount: ATLAS_RESET_SHAPE_SEATS.length,
       coverageScoreExists: false,

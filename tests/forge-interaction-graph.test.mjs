@@ -10,11 +10,13 @@ import {
   classifySelectionKinds,
   classifyGraveyardKinds,
   classifySacrificeKinds,
+  classifyTriggerKinds,
   findResetPayPairs,
   LOOP_KINDS,
   SELECTION_KINDS,
   GRAVEYARD_KINDS,
   SACRIFICE_KINDS,
+  TRIGGER_KINDS,
   RESET_SHAPES,
   RELATIONSHIP_EVIDENCE,
 } from "../app/forge-interaction-graph.mjs";
@@ -824,4 +826,68 @@ test("sacrifice kinds split outlet / death payoff / incidental yard from the ble
   );
   assert.match(graph.methodology, /outlet/i);
   assert.match(graph.methodology, /incidental yard/i);
+});
+
+test("trigger kinds name enter vs cast as a card's own trigger condition", () => {
+  const enterOracle = "When this enters the battlefield, draw a card.";
+  const castOracle = "Whenever you cast an instant or sorcery spell, draw a card.";
+  const flashbackOracle = "Draw two cards, then discard two cards. Flashback {2}{R} (You may cast this card from your graveyard for its flashback cost. Then exile it.)";
+
+  assert.deepEqual(classifyTriggerKinds(enterOracle), [TRIGGER_KINDS.ENTER]);
+  assert.deepEqual(classifyTriggerKinds(castOracle), [TRIGGER_KINDS.CAST]);
+
+  // A "you may cast" permission (flashback/escape reminder) is not a
+  // "whenever you cast" trigger — no false positive on the other axis.
+  assert.deepEqual(classifyTriggerKinds(flashbackOracle), []);
+
+  // Prowess/magecraft-shaped triggers read as cast without minting a
+  // separate name for either keyword.
+  assert.deepEqual(
+    classifyTriggerKinds("Prowess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)"),
+    [TRIGGER_KINDS.CAST],
+  );
+  assert.deepEqual(
+    classifyTriggerKinds("Magecraft — Whenever you cast or copy an instant or sorcery spell, target creature gets -1/-1 until end of turn."),
+    [TRIGGER_KINDS.CAST],
+  );
+
+  // ETB on another permanent still reads as enter — not restricted to self.
+  assert.deepEqual(
+    classifyTriggerKinds("Whenever another creature enters the battlefield under your control, you gain 1 life."),
+    [TRIGGER_KINDS.ENTER],
+  );
+
+  // A card can hold both at once.
+  assert.deepEqual(
+    classifyTriggerKinds(`${enterOracle} ${castOracle}`),
+    [TRIGGER_KINDS.ENTER, TRIGGER_KINDS.CAST],
+  );
+
+  const bauble = extractMechanicalSignals({
+    name: "Bauble",
+    typeLine: "Artifact",
+    oracleText: enterOracle,
+  });
+  const prowessCreature = extractMechanicalSignals({
+    name: "Prowess Creature",
+    typeLine: "Creature",
+    oracleText: castOracle,
+  });
+  assert.deepEqual(bauble.triggerKinds, [TRIGGER_KINDS.ENTER]);
+  assert.deepEqual(prowessCreature.triggerKinds, [TRIGGER_KINDS.CAST]);
+  assert.equal(bauble.produces.includes(TRIGGER_KINDS.ENTER), false, "trigger kinds are observation labels, not production");
+  assert.equal(prowessCreature.rewards.includes(TRIGGER_KINDS.CAST), false, "trigger kinds are observation labels, not a payoff");
+
+  const graph = buildInteractionGraph([
+    { name: "Bauble", typeLine: "Artifact", oracleText: enterOracle },
+    { name: "Prowess Creature", typeLine: "Creature", oracleText: castOracle },
+  ]);
+  assert.equal(
+    graph.edges.some((edge) => edge.signals.includes(TRIGGER_KINDS.ENTER) || edge.signals.includes(TRIGGER_KINDS.CAST)),
+    false,
+    "trigger kinds do not form graph edges",
+  );
+  assert.match(graph.methodology, /enter/i);
+  assert.match(graph.methodology, /blink\/flicker/i);
+  assert.match(graph.methodology, /spellslinger/i);
 });

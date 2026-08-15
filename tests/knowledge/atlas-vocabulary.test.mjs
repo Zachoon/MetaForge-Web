@@ -8,6 +8,7 @@ import {
   seatSelectionImplementation,
   seatGraveyardImplementation,
   seatSacrificeImplementation,
+  seatTriggerImplementation,
   seatLoopImplementation,
 } from "../../app/knowledge/atlas-vocabulary.mjs";
 
@@ -276,6 +277,46 @@ describe("Atlas Vocabulary Registry v0", () => {
       mechanics: { sacrificeKinds: ["outlet"], produces: [], rewards: [], signals: [] },
     });
     assert.equal(fromGraph[0].seat.label, "Sacrifice Outlet");
+    assert.equal(fromGraph[0].writesToBrain, false);
+  });
+
+  it("seats enter and cast as a card's own trigger condition, without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.triggerSeatCount, 2);
+    assert.equal(registry.summary.capabilityAdmittedCount, 0);
+    assert.ok(registry.triggerSeats.every((row) => row.writesToBrain === false && row.capability.atlasAdmitted === false));
+    assert.ok(registry.revisions.some((row) => row.date === "2026-08-15" && /enter and cast/i.test(row.change)));
+
+    const enter = seatTriggerImplementation({
+      name: "Bauble",
+      oracleText: "When this enters the battlefield, draw a card.",
+    });
+    assert.equal(enter.length, 1);
+    assert.equal(enter[0].kind, "enter");
+    assert.equal(enter[0].seat.label, "Enter Trigger");
+    assert.equal(enter[0].contrast, "not a blink/flicker effect");
+
+    const cast = seatTriggerImplementation({
+      name: "Prowess Creature",
+      oracleText: "Whenever you cast an instant or sorcery spell, draw a card.",
+    });
+    assert.equal(cast.length, 1);
+    assert.equal(cast[0].kind, "cast");
+    assert.equal(cast[0].seat.label, "Cast Trigger");
+    assert.equal(cast[0].contrast, "not spellslinger construction occupancy");
+
+    // A flashback/escape "you may cast" permission is not a Cast Trigger.
+    const flashback = seatTriggerImplementation({
+      name: "Faithless Looting",
+      oracleText: "Draw two cards, then discard two cards. Flashback {2}{R} (You may cast this card from your graveyard for its flashback cost. Then exile it.)",
+    });
+    assert.deepEqual(flashback, []);
+
+    const fromGraph = seatTriggerImplementation({
+      name: "Pre-classified",
+      mechanics: { triggerKinds: ["cast"], produces: [], rewards: [], signals: [] },
+    });
+    assert.equal(fromGraph[0].seat.label, "Cast Trigger");
     assert.equal(fromGraph[0].writesToBrain, false);
   });
 

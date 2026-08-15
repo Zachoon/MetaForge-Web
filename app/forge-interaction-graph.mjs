@@ -200,6 +200,33 @@ export function classifySacrificeKinds(oracle = "") {
   return kinds;
 }
 
+export const TRIGGER_KINDS = Object.freeze({
+  ENTER: "enter",
+  CAST: "cast",
+});
+
+// Same shape as the existing "etb" signal — a card's own "enters the
+// battlefield" trigger clause, on itself or on another permanent.
+const ENTER_TRIGGER = /enters the battlefield|when(?:ever)? [^.]* enters/i;
+// "Whenever you cast" covers prowess/magecraft-shaped triggers without
+// minting a separate name for either keyword this phase.
+const CAST_TRIGGER = /whenever you cast|whenever [^.]* casts\b/i;
+
+/**
+ * What condition fires a card's own trigger — entering the battlefield or
+ * casting a spell. Observation only, and deliberately narrow: this names
+ * the trigger condition, not a blink/flicker recursion pattern and not a
+ * spellslinger construction package.
+ * These labels must not become produces/rewards until a harness earns that.
+ */
+export function classifyTriggerKinds(oracle = "") {
+  const text = String(oracle || "");
+  const kinds = [];
+  if (ENTER_TRIGGER.test(text)) kinds.push(TRIGGER_KINDS.ENTER);
+  if (CAST_TRIGGER.test(text)) kinds.push(TRIGGER_KINDS.CAST);
+  return kinds;
+}
+
 export function findResetPayPairs(cards = []) {
   const nodes = (cards || []).filter((card) => card?.name && !/\bLand\b/i.test(card.typeLine || card.type_line || ""));
   const pairs = [];
@@ -561,7 +588,8 @@ export function extractMechanicalSignals(card) {
   const selectionKinds = classifySelectionKinds(oracle);
   const graveyardKinds = classifyGraveyardKinds(oracle);
   const sacrificeKinds = classifySacrificeKinds(oracle);
-  return { signals, produces, rewards, tagProduces, tagRewards, selectionKinds, graveyardKinds, sacrificeKinds };
+  const triggerKinds = classifyTriggerKinds(oracle);
+  return { signals, produces, rewards, tagProduces, tagRewards, selectionKinds, graveyardKinds, sacrificeKinds, triggerKinds };
 }
 
 export function buildInteractionGraph(cards, options = {}) {
@@ -766,7 +794,7 @@ export function buildInteractionGraph(cards, options = {}) {
     explicitReferences,
     coverage,
     confidence,
-    methodology: "Relationships come from oracle text and type lines: mechanical producer/payoff inference, plus oracle_explicit edges when Oracle literally names another card in the deck. Mutual pairs are labeled engine / closed_loop / conditional_win as vocabulary. Reset/pay shapes are a separate observation pass — not verified infinites and not construction credit. Selection kinds (scry / surveil / rummage / connive / impulse / draw) are observation labels on a card's own filter — they do not form edges and are not construction credit. Graveyard kinds name mill as a dump, dredge as a graveyard filter/engine, flashback and escape as casts from the yard, and unearth as a temporary battlefield return — each distinct from surveil and from each other; they also do not form edges or construction credit. Sacrifice kinds split the blended sacrifice signal into outlet (a cost that can sacrifice a creature or permanent), death payoff (reacts to a creature dying or being sacrificed), and incidental yard (a named resource or discarded card leaving for the graveyard as a side effect, distinct from a Mill Dump); they also do not form edges or construction credit.",
+    methodology: "Relationships come from oracle text and type lines: mechanical producer/payoff inference, plus oracle_explicit edges when Oracle literally names another card in the deck. Mutual pairs are labeled engine / closed_loop / conditional_win as vocabulary. Reset/pay shapes are a separate observation pass — not verified infinites and not construction credit. Selection kinds (scry / surveil / rummage / connive / impulse / draw) are observation labels on a card's own filter — they do not form edges and are not construction credit. Graveyard kinds name mill as a dump, dredge as a graveyard filter/engine, flashback and escape as casts from the yard, and unearth as a temporary battlefield return — each distinct from surveil and from each other; they also do not form edges or construction credit. Sacrifice kinds split the blended sacrifice signal into outlet (a cost that can sacrifice a creature or permanent), death payoff (reacts to a creature dying or being sacrificed), and incidental yard (a named resource or discarded card leaving for the graveyard as a side effect, distinct from a Mill Dump); they also do not form edges or construction credit. Trigger kinds name a card's own trigger condition as enter (the battlefield) or cast, distinct from a blink/flicker recursion pattern and from spellslinger construction occupancy; they also do not form edges or construction credit.",
     commanderName: options.commanderName || commander?.name || "",
   };
 }

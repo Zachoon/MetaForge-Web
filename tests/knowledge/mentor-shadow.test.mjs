@@ -148,6 +148,25 @@ describe("Mentor Shadow v0", () => {
     assert.doesNotMatch(incidental.paragraph, /Mill Dump/);
   });
 
+  it("names enter and cast as a card's own trigger condition, not blink/flicker or spellslinger occupancy", () => {
+    const enter = explainCardAsMentor({
+      cardName: "Bauble",
+      oracleText: "When this enters the battlefield, draw a card.",
+    });
+    assert.equal(enter.writesToBrain, false);
+    assert.equal(enter.triggerSeating[0].kind, "enter");
+    assert.match(enter.paragraph, /Enter Trigger/);
+    assert.match(enter.paragraph, /not a blink\/flicker effect/);
+
+    const cast = explainCardAsMentor({
+      cardName: "Prowess Creature",
+      oracleText: "Whenever you cast an instant or sorcery spell, draw a card.",
+    });
+    assert.equal(cast.triggerSeating[0].kind, "cast");
+    assert.match(cast.paragraph, /Cast Trigger/);
+    assert.match(cast.paragraph, /not spellslinger construction occupancy/);
+  });
+
   it("names a reset pair as a closed loop, not a verified infinite", () => {
     const explanation = explainPairAsMentor({
       left: { name: "Basalt Monolith", oracleText: "{T}: Add {C}{C}{C}. {3}: Untap this artifact." },

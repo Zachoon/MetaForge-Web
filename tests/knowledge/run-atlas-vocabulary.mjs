@@ -26,6 +26,7 @@ function main() {
     `| Selection seats | ${registry.summary.selectionSeatCount} |`,
     `| Graveyard seats | ${registry.summary.graveyardSeatCount} |`,
     `| Sacrifice seats | ${registry.summary.sacrificeSeatCount} |`,
+    `| Trigger seats | ${registry.summary.triggerSeatCount} |`,
     `| Loop seats | ${registry.summary.loopSeatCount} |`,
     `| Reset shape seats | ${registry.summary.resetShapeSeatCount} |`,
     `| coverageScore | ${registry.summary.coverageScoreExists} |`,
