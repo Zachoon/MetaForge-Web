@@ -152,6 +152,8 @@ const PACKAGE_CATALOG = Object.freeze({
     coreSemantics: Object.freeze(["sacrifice_outlet", "death_payoff", "token_generator"]),
     falseFriendSemantics: Object.freeze([]),
     supportSemantics: Object.freeze(["token_generator", "sacrifice_outlet", "death_payoff"]),
+    // Occupancy is not a catalog false-friend list. Creature-token fodder
+    // may occupy core; mill dumps and named artifact tokens may not.
     detectCommander: (oracle) => /whenever [^.]* dies/i.test(oracle) && /sacrifice/i.test(oracle),
     detectBlueprint: (blueprint) => blueprint.requestedMechanics?.includes("aristocrats") || blueprint.desiredRoles?.includes("sacrifice"),
     density: Object.freeze({ singletonCore: 8, constructedCore: 4, singletonSupport: 8, constructedSupport: 4 }),
@@ -336,6 +338,14 @@ function cardIsCreatureTokenFactory(entry) {
   return /create[^.]*creature token/i.test(oracleOf(entryCard(entry)));
 }
 
+function cardSatisfiesAristocratsCore(entry) {
+  const semantics = entrySemantics(entry);
+  if (semantics.has("sacrifice_outlet") || semantics.has("death_payoff")) return true;
+  // Fodder is creature tokens. Mill dumps and named artifact tokens
+  // (Clue / Treasure / Food / …) are not aristocrats occupancy.
+  return semantics.has("token_generator") && cardIsCreatureTokenFactory(entry);
+}
+
 export function cardSatisfiesPackageCore(entry, packageId, intent) {
   const definition = PACKAGE_CATALOG[packageId];
   if (!definition) return false;
@@ -343,6 +353,7 @@ export function cardSatisfiesPackageCore(entry, packageId, intent) {
   if (packageId === "tokens" && scope.length) {
     return cardIsNamedArtifactTokenMaker(entry, scope);
   }
+  if (packageId === "aristocrats") return cardSatisfiesAristocratsCore(entry);
   const semantics = entrySemantics(entry);
   if (definition.coreSemantics.some((semantic) => semantics.has(semantic))) return true;
   if (definition.packageSignals?.length) {
@@ -356,6 +367,7 @@ export function cardSatisfiesPackageCore(entry, packageId, intent) {
 export function cardSatisfiesPackageSupport(entry, packageId, intent) {
   const definition = PACKAGE_CATALOG[packageId];
   if (!definition) return false;
+  if (packageId === "aristocrats") return cardSatisfiesAristocratsCore(entry);
   const semantics = entrySemantics(entry);
   return definition.supportSemantics.some((semantic) => semantics.has(semantic))
     || cardSatisfiesPackageCore(entry, packageId, intent);
