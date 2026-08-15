@@ -1829,7 +1829,6 @@ export default function Home() {
     return () => window.clearTimeout(reset);
   }, [milestoneMotion]);
 
-  const previousChamberRef = useRef<Chamber>(chamber);
   useLayoutEffect(() => {
     if (chamber !== "masterworks" || !pendingCandidateChoice) return;
     // The forging ceremony is much taller than the decision screen. Browsers
@@ -1840,23 +1839,6 @@ export default function Home() {
     window.scrollTo(0, 0);
     const settle = window.requestAnimationFrame(() => window.scrollTo(0, 0));
     return () => window.cancelAnimationFrame(settle);
-  }, [chamber, pendingCandidateChoice]);
-  useEffect(() => {
-    const previous = previousChamberRef.current;
-    previousChamberRef.current = chamber;
-    if (previous === "forging" && chamber === "masterworks") {
-      // The gate-filtering audit (native-masterwork-engine.mjs) confirmed
-      // candidates can honestly survive as 1 or 2, not just 3 — this must
-      // never claim "three" when fewer construction attempts passed their
-      // own gate, or it's promising a choice that isn't actually there.
-      const survivorCount = pendingCandidateChoice?.nativeReport?.candidates?.length || 1;
-      setMilestoneMotion({
-        kind: "masterwork-ready",
-        eyebrow: "THE GREAT FORGE ANSWERS",
-        label: survivorCount === 1 ? "Your experience is ready" : `${survivorCount} experiences survived`,
-        glyph: "ᛞ",
-      });
-    }
   }, [chamber, pendingCandidateChoice]);
 
   const strategyBuildComparison = pendingCandidateChoice?.preChoiceCoaching || null;
@@ -4995,7 +4977,6 @@ export default function Home() {
       )}
       {chamber === "forging" && (
       <div className="forge-motion-layer" aria-hidden="true" key={`${chamber}-${stage}-${actionPulse}`}>
-        <div className="forge-heat-haze" />
         <div className="forge-ash-field">
           {Array.from({ length: 14 }, (_, index) => <i key={index} />)}
         </div>
@@ -5044,7 +5025,6 @@ export default function Home() {
         </button>
         <nav className="forge-global-nav" aria-label="MetaForge workspace">
           <button type="button" className={chamber === "entrance" ? "active" : ""} onClick={() => setChamber("entrance")}>Explore</button>
-          <button type="button" className={chamber === "archive" ? "active" : ""} onClick={openPrivateArchive}>Decks</button>
           <button type="button" className={chamber === "workbench" && activeForgeChapter === 2 ? "active" : ""} disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(2); setSiteRail("analysis"); }}>Analyze</button>
           <button type="button" disabled={!hasValidatedDeck} onClick={openDeepForgeEvidence}>Database</button>
           <button type="button" className="coming-soon" disabled>Community</button>

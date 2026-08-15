@@ -51,15 +51,13 @@ test("the workbench sigil is driven by the deterministic resolver, not invented 
 test("major player milestones use choreographed sequences while reduced motion stays quiet", () => {
   assert.match(page, /type MilestoneMotion/);
   assert.match(page, /className={`forge-milestone-motion milestone-\$\{milestoneMotion\.kind\}`}/);
-  assert.match(page, /kind: "masterwork-ready"/);
+  assert.doesNotMatch(page, /setMilestoneMotion\(\{[\s\S]*?kind: "masterwork-ready"/);
   assert.match(page, /kind: "experiment-chosen"/);
   assert.match(page, /kind: "revision-accepted"/);
   assert.match(motionCss, /\.milestone-shutter/);
   assert.match(motionCss, /\.milestone-smoke/);
   assert.match(motionCss, /\.milestone-flare/);
   assert.match(motionCss, /\.milestone-sparks/);
-  assert.match(motionCss, /\.milestone-masterwork-ready:before/);
-  assert.match(motionCss, /@keyframes furnace-roar-envelope/);
   assert.match(motionCss, /prefers-reduced-motion:reduce[^}]*\.forge-milestone-motion\{display:none!important\}/s);
 });
 

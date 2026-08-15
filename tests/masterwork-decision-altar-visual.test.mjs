@@ -13,7 +13,7 @@ const [page, comparison, polish] = await Promise.all([
 // language (built for / feel / tradeoff) while still mapping the engine's
 // own already-built candidates — never a second generation call.
 test("Masterwork picker presents real already-built philosophies for explicit choice", () => {
-  assert.match(page, /THE GREAT FORGE ANSWERS/);
+  assert.match(page, /id="masterwork-choice-start"/);
   assert.match(comparison, /Choose how you want this deck to play/);
   assert.match(comparison, /CHOOSE YOUR EXPERIENCE/);
   assert.match(page, /strategyBuildComparison|\.builds/);

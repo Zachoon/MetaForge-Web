@@ -61,8 +61,9 @@ test("Explore/home is a no-scroll hero; saved Masterworks live on Decks", async 
   assert.match(page, /\{chamber === "archive" && \(/);
   assert.match(page, /className="masterwork-archive"/);
   assert.match(page, /className="masterwork-history"/);
-  assert.match(page, /onClick=\{openPrivateArchive\}>Decks<\/button>/);
+  // Decks lives once, on the left rail — the top nav no longer duplicates it.
   assert.match(page, /onClick=\{openPrivateArchive\}><i className="forge-rail-cardback" aria-hidden="true">MF<\/i><span>Decks<\/span><\/button>/);
+  assert.doesNotMatch(page, /<nav className="forge-global-nav"[\s\S]*?onClick=\{openPrivateArchive\}>Decks<\/button>[\s\S]*?<\/nav>/);
   assert.doesNotMatch(page, /disabled=\{!hasValidatedDeck\} onClick=\{\(\) => \{ setChamber\("workbench"\);[\s\S]*?\}>Decks<\/button>/);
   assert.match(frame, /\.great-forge\.chamber-entrance\{height:100svh!important;overflow:hidden!important\}/);
   assert.match(frame, /\.great-forge\.chamber-archive\{height:100svh!important;overflow:hidden!important\}/);
@@ -83,6 +84,10 @@ test("a completed Forge lands on Decklist with the card gallery first in the pan
   assert.ok(galleryAt > 0 && mentorAt > galleryAt, "Mentor must mount after #deck-gallery, never above the Decklist");
   assert.doesNotMatch(page, /forge-descent-atmosphere/);
   assert.match(page, /chamber === "forging" && \(/);
+  assert.doesNotMatch(page, /forge-heat-haze/);
+  assert.doesNotMatch(page, /setMilestoneMotion\(\{[\s\S]*?kind: "masterwork-ready"/);
+  assert.match(frame, /\.forge-heat-haze,/);
+  assert.match(frame, /\.milestone-masterwork-ready,/);
   assert.doesNotMatch(page, /YOUR FREE PREVIEW IS SPENT/);
   assert.doesNotMatch(page, /Create an account to keep forging/);
   assert.match(frame, /:has\(\.chapter-1-active\) \.workbench-coach-stack\{display:none!important\}/);

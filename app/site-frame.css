@@ -236,8 +236,16 @@ body:has(.great-forge.chamber-archive){
 .chamber-commission .commission-note:before,
 .chamber-commission .deck-offering:before{display:none!important}
 
-/* SS2: no expanding orange ceremony ring. Every circular halo/O is retired. */
+/* SS2: no expanding orange ceremony ring. Heat-haze is concentric ellipses
+   that scale from the bottom-center — off-center from the ceremony book. */
 .great-forge .forge-impact-wave,
+.forge-heat-haze,
+.forge-awareness-pulse,
+.forge-awareness-pulse:before,
+.forge-awareness-pulse:after,
+.furnace-core>div,
+.forging-motion b,
+.forging-motion span,
 .forge-process-focus:before,
 .forge-process-focus:after,
 .forge-process-ring,
@@ -257,13 +265,39 @@ body:has(.great-forge.chamber-archive){
 .furnace-core>div:before,
 .furnace-core>div:after,
 .forge-descent-atmosphere,
-.forge-descent>.testing-layout:after{
+.forge-descent>.testing-layout:after,
+.great-forge[data-forge-state="forging"]::after,
+.great-forge[data-forge-state="reveal"]::after{
   display:none!important;
   content:none!important;
   animation:none!important;
   box-shadow:none!important;
   border:0!important;
   background:none!important;
+}
+
+/* After the ceremony: no leftover furnace roar, steam shove, or circular seal. */
+.great-forge:not(.chamber-forging) .forge-textures>i,
+.great-forge:not(.chamber-forging) .forge-textures>b,
+.great-forge:not(.chamber-forging) .forge-textures>u,
+.great-forge:not(.chamber-forging) .forge-textures>s,
+.great-forge:not(.chamber-forging) .forge-textures>em,
+.great-forge:not(.chamber-forging) .forge-textures>mark,
+.great-forge:not(.chamber-forging) .forge-textures>q,
+.great-forge:not(.chamber-forging) .forge-textures:before,
+.great-forge:not(.chamber-forging) .forge-textures:after,
+.milestone-masterwork-ready,
+.milestone-masterwork-ready:before,
+.milestone-masterwork-ready:after,
+.milestone-masterwork-ready .milestone-flare,
+.milestone-masterwork-ready .milestone-flare:before,
+.milestone-masterwork-ready .milestone-flare:after,
+.milestone-masterwork-ready .milestone-seal,
+.milestone-masterwork-ready .milestone-seal:before,
+.milestone-masterwork-ready .milestone-seal:after{
+  display:none!important;
+  content:none!important;
+  animation:none!important;
 }
 
 /* SS2b: ceremony rail is a full-width row under both columns, not 7
