@@ -31,6 +31,11 @@ test("the player sees teaching, uncertainty, and a non-predictive boundary", asy
   assert.match(coach, /writesToBrain: false/);
 });
 
+test("a newly forged deck opens on deck review before goldfishing", async () => {
+  const page = await read("app/page.tsx");
+  assert.match(page, /key="goldfish-tabletop"[\s\S]*?initialLens="deck"/);
+});
+
 test("mobile decisions remain full-size tap targets", async () => {
   const css = await read("app/tabletop.css");
   assert.match(css, /\.mulligan-trainer button\{[^}]*min-height:48px/);

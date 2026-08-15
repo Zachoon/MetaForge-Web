@@ -19,6 +19,22 @@ function pipsIn(cost = "") {
   return pips;
 }
 
+function manaColors(card) {
+  const explicit = Array.isArray(card?.producedMana) ? card.producedMana : [];
+  const oracle = String(card?.oracleText || "");
+  const colors = new Set([...(card?.colorIdentity || []), ...explicit]);
+  // Color identity is not a mana-production contract. Lands such as City of
+  // Brass and Mana Confluence must be credited from their verified rules text
+  // even if catalog identity metadata is absent or incomplete.
+  if (/add one mana of any colou?r/i.test(oracle) || /add one mana of any type/i.test(oracle)) {
+    for (const color of COLORS) colors.add(color);
+  }
+  for (const color of COLORS) {
+    if (new RegExp(`add[^.]*\\{${color}\\}`, "i").test(oracle)) colors.add(color);
+  }
+  return [...colors];
+}
+
 export function evaluateMulliganHand(hand, { strategy = "Balanced midrange" } = {}) {
   const lands = hand.filter(isLand);
   const otherMana = hand.filter(isOtherManaCard);
@@ -26,7 +42,7 @@ export function evaluateMulliganHand(hand, { strategy = "Balanced midrange" } = 
   const early = spells.filter((card) => Number.isFinite(card?.cmc) && card.cmc <= 2);
   const interaction = spells.filter((card) => ["Interaction", "Protection"].includes(card?.role));
   const unknown = spells.filter((card) => !Number.isFinite(card?.cmc));
-  const availableColors = new Set(lands.flatMap((card) => card.colorIdentity || []));
+  const availableColors = new Set(lands.flatMap(manaColors));
   const neededColors = new Set(spells.flatMap((card) => [...pipsIn(card.manaCost)]));
   const missingColors = [...neededColors].filter((color) => !availableColors.has(color));
   const landCount = lands.length;

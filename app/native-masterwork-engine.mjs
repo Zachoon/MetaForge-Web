@@ -3,6 +3,25 @@ import { explainNativeMasterworkDecision } from "./native-masterwork-reasoning.m
 import { rankOneSlotCounterfactuals, runOneSlotCounterfactualLab } from "./native-one-slot-lab.mjs";
 import { evaluateCommanderPowerSignal, POWER_TIERS, powerSignalCategoryFor, CATEGORY_WEIGHT as POWER_CATEGORY_WEIGHT } from "./commander-power-signal.mjs";
 import { activeInteractionWiring, resolveBrainPolicy, BRAIN_POLICY_V1_CONTROL } from "./brain-policy.mjs";
+import {
+  colorlessPipsFromCost,
+  isModalToolbox,
+  landColoredManaFixingFactor,
+  landRestrictedFixingPenalty,
+  listHasTypalDensity,
+  modalAwareRoleScore,
+  oracleOf,
+  roleFloorCredit,
+} from "./conditional-effect-credit.mjs";
+export {
+  colorlessPipsFromCost,
+  isModalToolbox,
+  landColoredManaFixingFactor,
+  landRestrictedFixingPenalty,
+  listHasTypalDensity,
+  modalAwareRoleScore,
+  roleFloorCredit,
+};
 
 import {
   buildForgeStructuralAnalysis,
@@ -887,11 +906,11 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
     roles,
     text,
     cmc,
-    roleScore: roles.reduce((sum, role) => {
+    roleScore: modalAwareRoleScore(roles.map((role) => {
       const weight = context.weights[role] || (role === "threat" ? 7 : 2);
       const quality = role === "interaction" ? interactionQualityFor(text) : 1;
-      return sum + weight * quality;
-    }, 0),
+      return weight * quality;
+    }), text),
     synergyHits: roles.filter((role) => context.commanderSignals.includes(role)).length,
     synergyPotential: synergyPotentialFor(mechanics, poolSignals),
     preferenceHits: context.terms.filter((term) => text.includes(term)).length,
@@ -1012,6 +1031,7 @@ function relaxAnalysisPreferences(analysis, input) {
 function scoreCard(entry, input, variant, context) {
   const curveScore = Math.max(0, 10 - Math.abs(entry.cmc - context.ideal) * 3.2) * variant.curve;
   const deterministicTieBreak = (hash(`${input.seed}|${variant.id}|${entry.card.name}`) % 1000) / 100000;
+  const oracleText = entry.card.oracleText || entry.card.oracle_text || entry.text || "";
   return {
     card: entry.card,
     roles: entry.roles,
@@ -1031,6 +1051,8 @@ function scoreCard(entry, input, variant, context) {
     strategicSemantics: entry.strategicSemantics,
     mechanics: entry.mechanics,
     colorPips: entry.colorPips,
+    oracleText,
+    roleFloorCredit: roleFloorCredit(oracleText),
     needsSnowSupport: entry.needsSnowSupport,
   };
 }
@@ -1185,7 +1207,8 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
     if (quantity <= 0) continue;
     selected.push({ ...row, quantity });
     selectedNames.add(normalized(row.name));
-    for (const role of row.roles) roleCounts.set(role, (roleCounts.get(role) || 0) + quantity);
+    const presetCredit = roleFloorCredit(oracleOf(row));
+    for (const role of row.roles) roleCounts.set(role, (roleCounts.get(role) || 0) + quantity * presetCredit);
     for (const stage of row.sequenceStages || []) sequenceCounts.set(stage, (sequenceCounts.get(stage) || 0) + quantity);
     trackMechanics(row.mechanics);
     trackCmc(row.cmc, quantity);
@@ -1229,7 +1252,12 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       strategicSemantics: candidate.strategicSemantics,
       mechanics: candidate.mechanics,
       colorPips: candidate.colorPips,
+      colorlessPips: colorlessPipsFromCost(candidate.card.manaCost || candidate.card.mana_cost || ""),
       manaCost: candidate.card.manaCost || candidate.card.mana_cost || "",
+      oracleText: candidate.oracleText || candidate.card.oracleText || candidate.card.oracle_text || candidate.text || "",
+      roleFloorCredit: Number.isFinite(candidate.roleFloorCredit)
+        ? candidate.roleFloorCredit
+        : roleFloorCredit(candidate.card.oracleText || candidate.card.oracle_text || candidate.text || ""),
       needsSnowSupport: candidate.needsSnowSupport,
       // Scryfall's produced_mana exists on any permanent, not just lands —
       // a mana rock or dork is a real color source the consistency math
@@ -1238,7 +1266,10 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       producesColors: nonlandProducedColorsOf(candidate.card),
     });
     selectedNames.add(normalized(candidate.card.name));
-    for (const role of candidate.roles) roleCounts.set(role, (roleCounts.get(role) || 0) + quantity);
+    const floorCredit = Number.isFinite(candidate.roleFloorCredit)
+      ? candidate.roleFloorCredit
+      : roleFloorCredit(candidate.card.oracleText || candidate.card.oracle_text || candidate.text || "");
+    for (const role of candidate.roles) roleCounts.set(role, (roleCounts.get(role) || 0) + quantity * floorCredit);
     for (const stage of candidate.sequenceStages || []) sequenceCounts.set(stage, (sequenceCounts.get(stage) || 0) + quantity);
     trackMechanics(candidate.mechanics);
     trackCmc(candidate.cmc, quantity);
@@ -1578,7 +1609,7 @@ function cardsSeenByTurn(turn) {
 // distribution (the two draws aren't independent) — deliberately
 // conservative-leaning, not exact.
 export function manaConsistencyReport(rows, deckSize) {
-  const sourcesByColor = { W: 0, U: 0, B: 0, R: 0, G: 0 };
+  const sourcesByColor = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
   for (const row of rows) {
     const produces = row.roles?.includes("land") ? row.colorIdentity : row.producesColors;
     for (const color of produces || []) {
@@ -1589,6 +1620,8 @@ export function manaConsistencyReport(rows, deckSize) {
   for (const row of rows) {
     if (row.roles?.includes("land")) continue;
     const neededColors = Object.entries(row.colorPips || {}).filter(([, count]) => count > 0);
+    const colorlessPips = Number(row.colorlessPips || colorlessPipsFromCost(row.manaCost || row.mana_cost || ""));
+    if (colorlessPips > 0) neededColors.push(["C", colorlessPips]);
     if (!neededColors.length) continue;
     // Printed mana value treats X as zero, but an X spell is almost never
     // intended to be fired for X=0. Model its first meaningful window two
@@ -1657,7 +1690,13 @@ function refineBasicSplitForConsistency(rows, colors, spellRows, deckSize, itera
 // predate this field being threaded through (imported/preset rows, test
 // fixtures) so nothing regresses when the richer data isn't available.
 function producedColorsOf(card) {
-  return card.producedMana || card.colorIdentity || card.color_identity || [];
+  const produced = [...(card.producedMana || card.colorIdentity || card.color_identity || [])];
+  const oracle = String(card.oracleText || card.oracle_text || "");
+  // {C} is a real mana type Scryfall sometimes omits from produced_mana on
+  // lands whose headline identity is "any color." An explicit Add {C} ability
+  // is still a colorless source for {C} pip math.
+  if (/add \{C\}/i.test(oracle) && !produced.includes("C")) produced.push("C");
+  return produced;
 }
 
 // The colorIdentity/color_identity fallback above is only sound for lands
@@ -1728,9 +1767,15 @@ function buildManaBase(input, landSlots, lands, variant, presetLands = [], pipTo
   // same rough 0-4 scale as the existing untapped/fixing-text terms below, so
   // it nudges the ranking rather than swamping it.
   const totalPips = Object.values(pipTotals).reduce((sum, count) => sum + count, 0) || 1;
+  const typalManaBase = listHasTypalDensity(
+    spellRows,
+    parseNativeBlueprintIntent(input),
+    commanderTribesFromOracle(allCommanders(input)),
+  );
   const colorFit = (card) => {
     const produced = producedColorsOf(card);
-    return produced.reduce((sum, color) => sum + (pipTotals[color] || 0), 0) / totalPips;
+    const raw = produced.reduce((sum, color) => sum + (pipTotals[color] || 0), 0) / totalPips;
+    return raw * landColoredManaFixingFactor(card.oracleText || card.oracle_text || "", { typal: typalManaBase });
   };
   const rankedLands = lands
     .filter((entry) => {
@@ -1740,6 +1785,8 @@ function buildManaBase(input, landSlots, lands, variant, presetLands = [], pipTo
     .sort((left, right) => {
       const leftText = normalized(cardText(left.card));
       const rightText = normalized(cardText(right.card));
+      const leftOracle = left.card.oracleText || left.card.oracle_text || "";
+      const rightOracle = right.card.oracleText || right.card.oracle_text || "";
       // Lands ride through the same edhrec-ordered fetch as spells and
       // already carry a popularityRank from it — a well-adopted dual
       // (Godless Shrine) previously ranked identically to an obscure
@@ -1748,8 +1795,8 @@ function buildManaBase(input, landSlots, lands, variant, presetLands = [], pipTo
       // popularityScore/budgetScore are reused directly from analyzeCard —
       // real preference-aware evidence, not re-derived here — see
       // LAND_BUDGET_WEIGHT above for why budgetScore is weighted going in.
-      const leftScore = (leftText.includes("enters the battlefield tapped") ? -4 : 2) + (leftText.includes("add") ? 2 : 0) + colorFit(left.card) * 4 + left.popularityScore + left.budgetScore * LAND_BUDGET_WEIGHT + (hash(`${input.seed}|${variant.id}|${left.card.name}`) % 100) / 10000;
-      const rightScore = (rightText.includes("enters the battlefield tapped") ? -4 : 2) + (rightText.includes("add") ? 2 : 0) + colorFit(right.card) * 4 + right.popularityScore + right.budgetScore * LAND_BUDGET_WEIGHT + (hash(`${input.seed}|${variant.id}|${right.card.name}`) % 100) / 10000;
+      const leftScore = (leftText.includes("enters the battlefield tapped") ? -4 : 2) + (leftText.includes("add") ? 2 : 0) + colorFit(left.card) * 4 + landRestrictedFixingPenalty(leftOracle, { typal: typalManaBase }) + left.popularityScore + left.budgetScore * LAND_BUDGET_WEIGHT + (hash(`${input.seed}|${variant.id}|${left.card.name}`) % 100) / 10000;
+      const rightScore = (rightText.includes("enters the battlefield tapped") ? -4 : 2) + (rightText.includes("add") ? 2 : 0) + colorFit(right.card) * 4 + landRestrictedFixingPenalty(rightOracle, { typal: typalManaBase }) + right.popularityScore + right.budgetScore * LAND_BUDGET_WEIGHT + (hash(`${input.seed}|${variant.id}|${right.card.name}`) % 100) / 10000;
       return rightScore - leftScore || left.card.name.localeCompare(right.card.name);
     });
   const nonbasicLimit = Math.min(lands.length, singleton ? Math.min(landSlots - 18, 18) : 6);
@@ -2910,7 +2957,10 @@ function rowFromAnalyzedEntry(entry, score = entry.roleScore) {
     strategicSemantics: entry.strategicSemantics,
     mechanics: entry.mechanics,
     colorPips: entry.colorPips,
+    colorlessPips: colorlessPipsFromCost(entry.card.manaCost || entry.card.mana_cost || ""),
     manaCost: entry.card.manaCost || entry.card.mana_cost || "",
+    oracleText: entry.card.oracleText || entry.card.oracle_text || entry.text || "",
+    roleFloorCredit: roleFloorCredit(entry.card.oracleText || entry.card.oracle_text || entry.text || ""),
     needsSnowSupport: entry.needsSnowSupport,
     producesColors: nonlandProducedColorsOf(entry.card),
   };

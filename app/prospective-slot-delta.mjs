@@ -16,6 +16,7 @@ import {
   saturationMultiplier,
 } from "./deficit-closure-memory.mjs";
 import { activeInteractionWiring } from "./brain-policy.mjs";
+import { oracleOf, roleCountContribution, roleFloorCredit } from "./conditional-effect-credit.mjs";
 
 // =============================================================================
 // Prospective Slot Delta
@@ -60,7 +61,7 @@ function curveBucket(cmc) {
 }
 
 function countRole(rows, role) {
-  return rows.reduce((sum, row) => sum + ((row.roles || []).includes(role) ? Number(row.quantity || 1) : 0), 0);
+  return rows.reduce((sum, row) => sum + roleCountContribution(row, role), 0);
 }
 
 function countPackageCore(rows, packageId) {
@@ -324,12 +325,16 @@ export function prospectiveSlotDelta(partialRows = [], candidate = {}, intent = 
     const roleBase = role === "interaction"
       ? (wiring.trackedRoleInteractionBaseWeight ?? 10)
       : 10;
+    const credit = Number.isFinite(candidate.roleFloorCredit)
+      ? candidate.roleFloorCredit
+      : roleFloorCredit(oracleOf(candidate));
     const weight = marginalUtility(roleState.deficit, roleState.surplus, roleBase, needOptions(
       closureMemory, roleNeed, state, roleNovelty, false,
-    ));
+    )) * credit;
     pushDelta(positives, "tracked_role", role, weight);
-    if (roleState.deficit > 0) deficitsFilled.push(roleNeed);
-    else if (roleState.surplus > 0 || roleState.status === "satisfied") surplusIntroduced.push(roleNeed);
+    // Modal / mutually exclusive modes must not mark a live deficit closed.
+    if (credit >= 0.75 && roleState.deficit > 0) deficitsFilled.push(roleNeed);
+    else if (credit >= 0.75 && (roleState.surplus > 0 || roleState.status === "satisfied")) surplusIntroduced.push(roleNeed);
   }
 
   // Sequence stages

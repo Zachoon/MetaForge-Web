@@ -16,13 +16,13 @@ Product / presentation / structural-understanding issues may ship surgically.
 
 | Metric | Count |
 |--------|------:|
-| Issues on register | **14** |
-| Shipped (tests green) | **11** |
+| Issues on register | **15** |
+| Shipped (tests green) | **12** |
 | **Live Founder Trial** | **4 scored runs** (latest: 2026-08-13 · #025 re-trial) |
 | **Founder Confirmed** | **9** |
 | Open / Planned | **0** |
-| Watch (hypothesis only) | 1 (Eldrazi) |
-| Awaiting founder confirmation | 4 (#018, #020, #022, #023) |
+| Watch (hypothesis only) | 0 |
+| Awaiting founder confirmation | 5 (#018, #020, #022, #023, **#026**) |
 | Live Founder Trial (not confirmed) | 0 |
 | Needs reproduction | 0 |
 
@@ -41,10 +41,10 @@ Phase 1 verification: **passed** (2026-08-11).
 > **Era 1 active:** Strategic Evaluation v0 (construction judgment without construction mutation).  
 > Stance = voice · Hypothesis = research · Evaluation = “was this list decision coherent?”  
 > **Era 2 COMPLETE.** Charter: `ERA2_COMPLETE.md`.  
-> Concepts · play captures · simulation witness · stance voice. Brain: 0.  
-> Continuous observation + Friday heartbeat. **Brain changes: 0.**
+> Concepts · play captures · simulation witness · stance voice.  
+> Continuous observation + Friday heartbeat.  
 >
-> #021 and #024 Founder Confirmed (2026-08-12). **#025 shipped (tests)** — awaiting Live Founder Trial.
+> #026 restricted-effect overcredit **shipped** (2026-08-14) — 104-forge quality identical to frozen. Awaiting Live Founder Trial.
 
 ### Live Founder Trial — re-run (2026-08-11, post-surgical)
 
@@ -318,7 +318,7 @@ One founder = **hypothesis**. Three unrelated founders = **pattern**. Ten = **pr
 | Classification | 0 | 1 (#017) ✅ Confirmed |
 | Narrative | 0 | 2 (#013, #016) ✅ Confirmed |
 | Structural | 0 | 2 (#015 confirmed, #018 shipped) |
-| Strategic | 1 (Eldrazi watch) | 3 (#020, #023, **#024** shipped) |
+| Strategic | 0 | 4 (#020, #023, **#024** shipped, **#026** shipped) |
 | UX / Product | **1 open trial (#021)** | 2 (#019 confirmed, #022 shipped) |
 | Unknown | 0 | 0 |
 
@@ -368,7 +368,8 @@ People don’t ask for explanations from tools they don’t trust.
 1. ~~**#024** — fulfillment fidelity surface~~ shipped  
 2. ~~**#021** — every named card-inspect surface wired~~ shipped (inventory gate)  
 3. **Founder Confirmed** on #020–#024 only after Live Founder Trial clears them  
-4. Eldrazi / rec priorities stay Watch until repeated signal  
+4. ~~**#026** restricted-effect overcredit~~ shipped (tests + 104-forge harness) — awaiting Live Founder Trial  
+
 5. Optional later: Prioritize Theme rebuild — only if trial shows choice-block  
 6. If #024 grading repeatedly fails loudly → harness-gated construction conversation (not silent stuffing)  
 
@@ -395,8 +396,8 @@ Compatible with governance: deterministic interpreter / presentation only. Not B
 | **023** | **Intent vs Recommendation Transparency** | **Strategic / Narrative** | ✅ **Shipped → Live Founder Trial** | Request Recognition; hears — does not yet grade fulfillment |
 | **024** | **Commission Contract** | **Strategic / Narrative** | ✅ **Founder Confirmed** (2026-08-12 live trial) | Optional note = design constraints; Player Fantasy narrator; soft-credit honesty; **no Brain** |
 | **025** | **Commission-Aware Philosophy Comparison** | **Product / UX** | ✅ **Founder Confirmed** (2026-08-13 live re-trial) | Per-card fit and honest Recommended attribution · **no Brain** |
+| **026** | **Restricted-effect overcredit** (Cavern / colorless modal toolbox) | **Strategic / Construction** | ✅ **Shipped (tests + harness)** | 104-forge field identical to frozen quality · `validate:founder-026` · Brain changed |
 | — | Prioritize Theme vs Performance | Strategic / UX | ⏸ **Deferred** | Needs trial evidence of choice-block, not understanding-block |
-| — | Eldrazi / default rec priorities | Strategic | 🟡 Watch | One founder = hypothesis |
 
 Tony Stark asked: can the Forge **see**?  
 Kastral asks: can the Forge **explain what it sees** the way a Commander player thinks?  
@@ -819,6 +820,42 @@ That is a different skill than analysis. Earn it before touching recommendation 
 
 Related strategic layer, separate ticket. One signal = hypothesis.
 
+**Update (2026-08-14):** Second independent list (Selesnya T'Challa) reproduced colorless modal / Eldrazi-shaped overcredit. Folded into **#026**.
+
+### #026 — Restricted-effect overcredit
+
+| | |
+|---|---|
+| **Layer** | Strategic / Construction |
+| **Status** | ✅ Shipped (tests + Validation Harness). Awaiting Live Founder Trial. |
+| **Brain impact** | Yes — representation fix in default construction. Report: [`BRAIN_V1_FOUNDER_026_HARNESS.md`](./BRAIN_V1_FOUNDER_026_HARNESS.md) |
+
+**Player evidence**
+
+1. Prior Eldrazi / default-rec watch (one founder = hypothesis).
+2. 2026-08-14 Selesnya **T'Challa, the Black Panther** 99: **Cavern of Souls** in a non-typal list; **Ugin, the Ineffable**, **Ugin, Eye of the Storms**, **Kozilek's Command**, **Warping Wail**, **Glaring Fleshraker** as if they were auto-includes.
+
+**Class of failure** (not a T'Challa patch, not an Eldrazi ban list):
+
+> Conditional / mutually exclusive effects are scored as if they were unconditional full-role contributions.
+
+Two manifestations, same class (fixed 2026-08-14):
+
+1. **Restricted rainbow lands.** `buildManaBase` now withholds full color-fit when mana is type-restricted unless the list is typal. Path of Ancestry keeps full credit because it also taps for unrestricted commander-identity colors.
+2. **Modal toolbox role-stacking.** Classification still unions modes. Scoring keeps the primary mode plus a small flexibility remainder. Role floors and prospective deficit-closure count modal cards at 0.4 and do not mark a live deficit closed. `{C}` pips are visible to mana consistency.
+
+T'Challa’s Vibranium mana cannot be spent on nonartifact spells — so these colorless instants/planeswalkers are not even a free `{C}` outlet. That is the same restriction-blindness, not a commander-specific branch.
+
+**Do not fix as**
+
+- `if (commander === "T'Challa")`
+- an Eldrazi / Ugin / Cavern deny-list
+- a coefficient nudge to make this screenshot prettier
+
+**Legal next step (done 2026-08-14)**
+
+Harness-gated construction change that withholds full credit unless the condition holds in *this* list (tribe density for type-restricted mana; a mode you can actually fire for role floors; `{C}` as a real pip). Tests: `npm run validate:founder-026`. Field: `npm run validate:harness:field`.
+
 ---
 
 ## How to add the next issue
@@ -830,4 +867,4 @@ Related strategic layer, separate ticket. One signal = hypothesis.
 
 ---
 
-*Last updated: 2026-08-12 — Live Founder Trial rubric locked (Understanding · Trust · Discovery · Conversation quality · False positives). Observation sprint closed. Production deploy + rubric-backed trial still open. Brain: 0.*
+*Last updated: 2026-08-14 — #026 restricted-effect overcredit shipped (104-forge harness quality-identical to frozen). Awaiting Live Founder Trial.*

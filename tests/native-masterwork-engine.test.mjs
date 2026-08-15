@@ -1148,7 +1148,7 @@ test("scores mana consistency from real land color sources against each spell's 
   assert.ok(easy.probability > hard.probability, "a single black pip off 12 Swamps should be far more reliable than double-white off only 4 Plains");
   assert.ok(report.risky.some((entry) => entry.name === "Hard White Double-Pip"));
   assert.ok(report.overall > 0 && report.overall <= 1);
-  assert.deepEqual(report.sourcesByColor, { W: 4, U: 0, B: 12, R: 0, G: 0 });
+  assert.deepEqual(report.sourcesByColor, { W: 4, U: 0, B: 12, R: 0, G: 0, C: 0 });
 });
 
 test("an X spell uses a meaningful casting window instead of treating X as zero", () => {
@@ -1172,7 +1172,7 @@ test("a nonland card with color identity but no real producedMana is never credi
     { name: "Vanilla Blue Bear", quantity: 4, roles: ["threat"], colorIdentity: ["U"], cmc: 2, colorPips: { W: 0, U: 1, B: 0, R: 0, G: 0 } },
   ];
   const report = manaConsistencyReport(rows, 60);
-  assert.deepEqual(report.sourcesByColor, { W: 0, U: 4, B: 0, R: 0, G: 0 });
+  assert.deepEqual(report.sourcesByColor, { W: 0, U: 4, B: 0, R: 0, G: 0, C: 0 });
 });
 
 test("a mana rock or dork counts as a real color source, same as a land", () => {
@@ -1186,7 +1186,7 @@ test("a mana rock or dork counts as a real color source, same as a land", () => 
     { name: "Hard Green Double-Pip", quantity: 4, roles: ["threat"], colorIdentity: [], cmc: 2, colorPips: { W: 0, U: 0, B: 0, R: 0, G: 2 } },
   ];
   const report = manaConsistencyReport(rows, 60);
-  assert.deepEqual(report.sourcesByColor, { W: 0, U: 0, B: 10, R: 0, G: 1 });
+  assert.deepEqual(report.sourcesByColor, { W: 0, U: 0, B: 10, R: 0, G: 1, C: 1 });
 });
 
 test("mana-rock-aware sourcing raises consistency vs. the same deck without crediting the rock", () => {

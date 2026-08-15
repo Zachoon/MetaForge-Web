@@ -42,6 +42,7 @@
     "validate:founder-023": "node --test tests/founder-issue-023-request-recognition.test.mjs",
     "validate:founder-024": "node --test tests/founder-issue-024-commission-contract.test.mjs",
     "validate:founder-025": "node --test tests/founder-issue-025-philosophy-commission.test.mjs",
+    "validate:founder-026": "node --test tests/founder-issue-026-restricted-effect-overcredit.test.mjs",
     "validate:era3-complete": "node --test tests/knowledge/era3-complete.test.mjs tests/founder-issue-020-recognition.test.mjs tests/founder-issue-021-context-inspector.test.mjs tests/founder-issue-022-build-comparison.test.mjs tests/founder-issue-023-request-recognition.test.mjs tests/founder-issue-024-commission-contract.test.mjs",
     "report:era3-complete": "node tests/knowledge/run-era3-complete.mjs",
     "validate:knowledge-era1-complete": "node --test tests/knowledge/knowledge-era1-complete.test.mjs tests/strategic-evaluation-v0.test.mjs",

@@ -27,6 +27,21 @@ test("flags a color trap without pretending the game is decided", () => {
   assert.match(result.disclaimer, /not a prediction/i);
 });
 
+test("credits verified any-color lands instead of inventing a color screw", () => {
+  const city = { ...land("City of Brass", []), oracleText: "Whenever City of Brass becomes tapped, it deals 1 damage to you. Add one mana of any color." };
+  const result = evaluateMulliganHand([
+    city,
+    land("Forest 1"),
+    land("Forest 2"),
+    spell("White spell", 2, "Threat", "{1}{W}"),
+    spell("Black spell", 2, "Threat", "{1}{B}"),
+    spell("Green spell", 2),
+    spell("Top", 5),
+  ]);
+  assert.equal(result.verdict, "keep");
+  assert.doesNotMatch(result.warnings.join(" "), /cannot currently cast every color/i);
+});
+
 test("calls a mana-functional but action-light hand close", () => {
   const result = evaluateMulliganHand([land("A"), land("B"), land("C"), spell("Three", 3), spell("Four", 4), spell("Five", 5), spell("Six", 6)]);
   assert.equal(result.verdict, "close");

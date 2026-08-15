@@ -18,6 +18,8 @@ export type TabletopCard = {
   typeLine?: string;
   manaCost?: string;
   colorIdentity?: string[];
+  oracleText?: string;
+  producedMana?: string[];
 };
 
 export type TabletopEdge = { from: string; to: string; signals?: string[] };
