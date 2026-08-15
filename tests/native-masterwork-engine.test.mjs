@@ -209,6 +209,29 @@ test("commander connections preserve named Gold production without granting Trea
   ), [], "a Gold commander does not grant a Treasure-only commander edge");
 });
 
+test("commander connections preserve named Map production without granting Treasure payoffs", () => {
+  const sentinel = card(
+    "Sentinel of the Nameless City",
+    "Whenever Sentinel of the Nameless City enters or attacks, create a Map token.",
+    "Legendary Creature — Merfolk Warrior Scout",
+    "{2}{G}",
+    ["G"],
+  );
+  const scopes = commanderMechanicalScopes(sentinel);
+  const commanderMechanics = { produces: ["tokens", "artifacts", "maps", "explore"], rewards: [] };
+  assert.deepEqual(scopes.produces.artifacts, ["map"]);
+  assert.deepEqual(scopes.produces.maps, ["map"]);
+
+  assert.deepEqual(commanderConnectionSignalsFor(
+    card("Map Archivist", "Whenever you sacrifice a Map, draw a card.", "Creature — Merfolk"),
+    { produces: [], rewards: ["maps"] }, commanderMechanics, scopes,
+  ), ["maps"]);
+  assert.deepEqual(commanderConnectionSignalsFor(
+    card("Treasure Archivist", "Whenever you sacrifice a Treasure, draw a card.", "Creature — Human"),
+    { produces: [], rewards: ["treasure"] }, commanderMechanics, scopes,
+  ), [], "a Map commander does not grant a Treasure-only commander edge");
+});
+
 test("interactionQualityFor scores unconditional removal at full quality", () => {
   assert.equal(interactionQualityFor("Destroy target creature."), 1);
   assert.equal(interactionQualityFor("Exile target permanent."), 1);

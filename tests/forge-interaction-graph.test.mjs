@@ -304,6 +304,20 @@ test("Gold production feeds artifact outlets without masquerading as Treasure", 
   assert.equal(treasureEdge?.signals.includes("treasure") || false, false, "Gold and Treasure remain distinct resources");
 });
 
+test("Map production feeds explore payoffs and artifact outlets without masquerading as Treasure", () => {
+  const cartographer = { name: "River Cartographer", typeLine: "Creature — Merfolk Scout", oracleText: "When this creature enters, create a Map token." };
+  const explorePayoff = { name: "Deep Surveyor", typeLine: "Creature — Merfolk", oracleText: "Whenever a creature you control explores, put a +1/+1 counter on Deep Surveyor." };
+  const artifactOutlet = { name: "Artifact Furnace", typeLine: "Artifact", oracleText: "Sacrifice an artifact: Draw a card." };
+  const treasurePayoff = { name: "Treasure Tribute", typeLine: "Enchantment", oracleText: "Whenever you sacrifice a Treasure, each opponent loses 1 life." };
+  const graph = buildInteractionGraph([cartographer, explorePayoff, artifactOutlet, treasurePayoff]);
+  const exploreEdge = graph.edges.find((entry) => entry.from === "River Cartographer" && entry.to === "Deep Surveyor");
+  const artifactEdge = graph.edges.find((entry) => entry.from === "River Cartographer" && entry.to === "Artifact Furnace");
+  const treasureEdge = graph.edges.find((entry) => entry.from === "River Cartographer" && entry.to === "Treasure Tribute");
+  assert.ok(exploreEdge?.signals.includes("explore"), "a Map provides a future explore activation");
+  assert.ok(artifactEdge?.signals.includes("artifacts"), "Maps are artifact tokens and feed generic artifact outlets");
+  assert.equal(treasureEdge?.signals.includes("treasure") || false, false, "Maps and Treasure remain distinct resources");
+});
+
 test("Fear of Missing Out and Trading Post are related cards, not a reciprocal combo loop", () => {
   const graph = buildInteractionGraph([
     { name: "Fear of Missing Out", typeLine: "Enchantment Creature — Nightmare", oracleText: "When this creature enters, discard a card, then draw a card. Delirium — Whenever this creature attacks for the first time each turn, if there are four or more card types among cards in your graveyard, untap target creature. After this phase, there is an additional combat phase." },

@@ -791,7 +791,7 @@ export function commanderMechanicalScopes(card = {}) {
   const collect = (patterns) => unique(patterns.flatMap((pattern) => [...oracle.matchAll(pattern)].map((match) => normalized(match[1]))))
     .filter((term) => term && !BLUEPRINT_FILLER_WORDS.has(term) && !TRIBAL_STOP_WORDS.has(term) && !GENERIC_SCOPE_WORDS.has(term));
   const namedArtifactTokens = unique([
-    ...collect([/create [^.]*?(clue|treasure|food|blood|gold) (?:artifact )?token/gi]),
+    ...collect([/create [^.]*?(clue|treasure|food|blood|gold|map) (?:artifact )?token/gi]),
     ...(/investigate/i.test(oracle) ? ["clue"] : []),
   ]);
   return Object.freeze({
@@ -803,6 +803,7 @@ export function commanderMechanicalScopes(card = {}) {
       food: namedArtifactTokens.filter((term) => term === "food"),
       blood: namedArtifactTokens.filter((term) => term === "blood"),
       gold: namedArtifactTokens.filter((term) => term === "gold"),
+      maps: namedArtifactTokens.filter((term) => term === "map"),
     }),
     rewards: Object.freeze({
       etb: collect([
@@ -813,12 +814,13 @@ export function commanderMechanicalScopes(card = {}) {
       spells: collect([/whenever you cast (?:an?|one or more) ([a-z][a-z'-]+) spells?/gi]),
       artifacts: unique([
         ...collect([/whenever you cast (?:an?|one or more) ([a-z][a-z'-]+) spells?/gi]),
-        ...collect([/whenever a(?:n)? (clue|treasure|food|blood|gold) you control/gi]),
+        ...collect([/whenever a(?:n)? (clue|treasure|food|blood|gold|map) you control/gi]),
       ]),
       clues: collect([/whenever a(?:n)? (clue) you control/gi]),
       food: collect([/whenever a(?:n)? (food) you control/gi]),
       blood: collect([/whenever a(?:n)? (blood) you control/gi]),
       gold: collect([/whenever a(?:n)? (gold) you control/gi]),
+      maps: collect([/whenever a(?:n)? (map) you control/gi]),
     }),
   });
 }
@@ -839,6 +841,7 @@ function cardFitsMechanicalScope(card, signal, tribes = []) {
   if (tribes.includes("food") && /food token|sacrifice a food/i.test(oracle)) return true;
   if (tribes.includes("blood") && /blood token|sacrifice a blood/i.test(oracle)) return true;
   if (tribes.includes("gold") && /gold token|sacrifice a gold/i.test(oracle)) return true;
+  if (tribes.includes("map") && /map token|sacrifice a map/i.test(oracle)) return true;
   return false;
 }
 
@@ -1027,6 +1030,7 @@ function prepareForgeAnalysis(input, evidenceByName) {
         food: unique(commanderScopeRows.flatMap((scope) => scope.produces.food || [])),
         blood: unique(commanderScopeRows.flatMap((scope) => scope.produces.blood || [])),
         gold: unique(commanderScopeRows.flatMap((scope) => scope.produces.gold || [])),
+        maps: unique(commanderScopeRows.flatMap((scope) => scope.produces.maps || [])),
       }),
       rewards: Object.freeze({
         etb: unique(commanderScopeRows.flatMap((scope) => scope.rewards.etb || [])),
@@ -1036,6 +1040,7 @@ function prepareForgeAnalysis(input, evidenceByName) {
         food: unique(commanderScopeRows.flatMap((scope) => scope.rewards.food || [])),
         blood: unique(commanderScopeRows.flatMap((scope) => scope.rewards.blood || [])),
         gold: unique(commanderScopeRows.flatMap((scope) => scope.rewards.gold || [])),
+        maps: unique(commanderScopeRows.flatMap((scope) => scope.rewards.maps || [])),
       }),
     }),
     commanderTribes: Object.freeze(commanderTribesFromOracle(allCommanders(input))),

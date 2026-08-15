@@ -223,6 +223,8 @@ const SIGNALS = [
   ["food", /food token|foods? you control/i],
   ["blood", /blood token|blood tokens? you control/i],
   ["gold", /gold token|gold tokens? you control/i],
+  ["maps", /map token|maps? you control/i],
+  ["explore", /\bexplores?\b/i],
   ["artifacts", /artifact(?:s)? you control|artifact spell|artifact enters|sacrifice an artifact/i],
   // Aura is deliberately narrower than enchantment: Pearl-Ear-class
   // commanders reward Auras specifically, and generic enchantments must
@@ -251,7 +253,9 @@ const PRODUCERS = {
   food: /create(?:s)? [^.]* food|food token/i,
   blood: /create(?:s)? [^.]* blood token/i,
   gold: /create(?:s)? [^.]* gold token/i,
-  artifacts: /create(?:s)? [^.]* (?:artifact|clue|treasure|food|blood|gold) token|artifact spell|investigate/i,
+  maps: /create(?:s)? [^.]* map token/i,
+  explore: /create(?:s)? [^.]* map token|target creature explores?|creatures? you control explore/i,
+  artifacts: /create(?:s)? [^.]* (?:artifact|clue|treasure|food|blood|gold|map) token|artifact spell|investigate/i,
   // Only the Aura subtype produces this signal — "Enchantment" alone does not,
   // and oracle phrases like "affinity for Auras" must not mark the commander
   // itself as an Aura producer. Type-line membership is applied in
@@ -286,6 +290,8 @@ const PAYOFFS = {
   food: /foods? you control|sacrifice a food|whenever you (?:sacrifice|create) (?:a|one or more) food/i,
   blood: /blood tokens? you control|sacrifice a blood|whenever you (?:sacrifice|create) (?:a|one or more) blood token/i,
   gold: /gold tokens? you control|sacrifice a gold|whenever you (?:sacrifice|create) (?:a|one or more) gold token/i,
+  maps: /maps? you control|sacrifice a map|whenever you (?:sacrifice|create) (?:a|one or more) map token/i,
+  explore: /whenever [^.]* explores?|if [^.]* explored|creatures? you control that explored/i,
   artifacts: /artifact(?:s)? you control|whenever (?:you cast |an? )?artifact|sacrifice an artifact/i,
   auras: /affinity for auras|whenever [^.]*\baura\b|auras? you control|enchanted creature you control/i,
   // "Put counters on target X" is a producer, not a payoff. The old broad
@@ -449,7 +455,7 @@ export function buildInteractionGraph(cards, options = {}) {
       // Merely making tokens on both cards is too broad to be a relationship:
       // a Clue engine and an unrelated Angel-token spell do not support each
       // other. Token edges require a real producer/payoff direction.
-      const reasons = [...new Set([...forward, ...reverse, ...shared.filter((signal) => ["spells", "graveyard", "counters", "artifacts", "clues", "food", "blood", "gold", "combat"].includes(signal))])];
+      const reasons = [...new Set([...forward, ...reverse, ...shared.filter((signal) => ["spells", "graveyard", "counters", "artifacts", "clues", "food", "blood", "gold", "maps", "explore", "combat"].includes(signal))])];
       // A signal counts as database-confirmed only when the producing side's
       // tag AND the rewarding side's tag both come from the curated
       // card-mechanics database rather than a regex guess — e.g. a real
