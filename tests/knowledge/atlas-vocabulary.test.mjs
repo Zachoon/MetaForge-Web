@@ -5,6 +5,7 @@ import {
   seatsImplementedBy,
   cardsImplementingSeat,
   seatNamedResourceImplementation,
+  seatSelectionImplementation,
 } from "../../app/knowledge/atlas-vocabulary.mjs";
 
 describe("Atlas Vocabulary Registry v0", () => {
@@ -70,5 +71,42 @@ describe("Atlas Vocabulary Registry v0", () => {
       assert.deepEqual(seating.implementation.roles, ["producer"]);
       assert.equal(seating.writesToBrain, false);
     }
+  });
+
+  it("seats selection kinds from graph labels without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.selectionSeatCount, 6);
+    assert.equal(registry.summary.capabilityAdmittedCount, 0);
+    assert.ok(registry.selectionSeats.every((row) => row.writesToBrain === false && row.capability.atlasAdmitted === false));
+
+    const loot = seatSelectionImplementation({
+      name: "Looter",
+      oracleText: "Whenever this deals combat damage to a player, discard a card, then draw a card.",
+    });
+    assert.equal(loot.length, 1);
+    assert.equal(loot[0].kind, "rummage");
+    assert.equal(loot[0].seat.label, "Rummage Filter");
+    assert.equal(loot[0].contrast, "not net draw");
+    assert.equal(loot[0].writesToBrain, false);
+
+    const mill = seatSelectionImplementation({
+      name: "Tome Scour",
+      oracleText: "Target player mills two cards.",
+    });
+    assert.deepEqual(mill, [], "mill is not a selection seat");
+
+    const seer = seatSelectionImplementation({
+      name: "Seer",
+      oracleText: "When this enters, scry 2.",
+    });
+    assert.equal(seer[0].kind, "scry");
+    assert.equal(seer[0].contrast, "not mill");
+
+    const fromGraph = seatSelectionImplementation({
+      name: "Pre-classified",
+      mechanics: { selectionKinds: ["impulse"], produces: [], rewards: [], signals: [] },
+    });
+    assert.equal(fromGraph[0].kind, "impulse");
+    assert.equal(fromGraph[0].contrast, "not a Junk token");
   });
 });

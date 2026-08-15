@@ -1,6 +1,6 @@
 // =============================================================================
 
-import { extractMechanicalSignals } from "../forge-interaction-graph.mjs";
+import { classifySelectionKinds, extractMechanicalSignals } from "../forge-interaction-graph.mjs";
 // Atlas Vocabulary Registry v0 — Age of Vocabulary engineering surface
 // =============================================================================
 // Stable meanings + illustrative equivalence. Naming is not promotion.
@@ -150,6 +150,109 @@ export function seatNamedResourceImplementation(card = {}, { activeResources = [
   return freeze(rows);
 }
 
+/**
+ * Descriptive seating for selection that is not draw.
+ * Consumes graph `selectionKinds` — no second oracle regex family.
+ * Not Capability admissions. Never construction inputs.
+ */
+export const ATLAS_SELECTION_SEATS = freeze([
+  freeze({
+    kind: "scry",
+    capability: freeze({
+      id: "cap:scry_library_selection",
+      label: "Library Selection",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:scry_filter", label: "Scry Filter" }),
+    contrast: "not mill",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "surveil",
+    capability: freeze({
+      id: "cap:surveil_graveyard_selection",
+      label: "Graveyard Selection",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:surveil_filter", label: "Surveil Filter" }),
+    contrast: "not mill",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "rummage",
+    capability: freeze({
+      id: "cap:rummage_hand_filter",
+      label: "Hand Filter",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:rummage_filter", label: "Rummage Filter" }),
+    contrast: "not net draw",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "connive",
+    capability: freeze({
+      id: "cap:connive_mixed_selector",
+      label: "Mixed Selector",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:connive_filter", label: "Connive Selector" }),
+    contrast: "not a draw engine",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "impulse",
+    capability: freeze({
+      id: "cap:impulse_exile_selection",
+      label: "Impulse Selection",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:impulse_filter", label: "Impulse Filter" }),
+    contrast: "not a Junk token",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "draw",
+    capability: freeze({
+      id: "cap:net_draw",
+      label: "Net Draw",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:net_draw", label: "Net Draw" }),
+    contrast: null,
+    writesToBrain: false,
+  }),
+]);
+
+export function seatSelectionImplementation(card = {}) {
+  const mechanics = card.mechanics || extractMechanicalSignals(card);
+  const kinds = mechanics.selectionKinds
+    || classifySelectionKinds(card.oracleText || card.oracle_text || "");
+  const rows = [];
+  for (const definition of ATLAS_SELECTION_SEATS) {
+    if (!kinds.includes(definition.kind)) continue;
+    rows.push(freeze({
+      kind: definition.kind,
+      capability: definition.capability,
+      seat: definition.seat,
+      contrast: definition.contrast,
+      implementation: freeze({
+        card: String(card.name || "Unknown card"),
+        roles: freeze(["selector"]),
+        evidenceSignals: freeze([definition.kind]),
+      }),
+      writesToBrain: false,
+    }));
+  }
+  return freeze(rows);
+}
+
 /** Coverage Observation 001 — honest Age of Vocabulary result. */
 export const ATLAS_OBSERVATION_001 = freeze({
   paper: "What Is Strategic Coverage?",
@@ -170,6 +273,10 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
   freeze({
     date: "2026-08-12",
     change: "Registry v0 engineering surface — stable core terms + illustrative equivalence; still 0 Capability admissions",
+  }),
+  freeze({
+    date: "2026-08-15",
+    change: "Seated graph selection kinds (scry / surveil / rummage / connive / impulse / draw); still 0 Capability admissions",
   }),
 ]);
 
@@ -212,6 +319,7 @@ export function buildAtlasVocabularyRegistry() {
     coverageDimensions: ATLAS_COVERAGE_DIMENSIONS,
     equivalenceIllustrative: ATLAS_EQUIVALENCE_ILLUSTRATIVE,
     namedResourceSeats: ATLAS_NAMED_RESOURCE_SEATS,
+    selectionSeats: ATLAS_SELECTION_SEATS,
     observation001: ATLAS_OBSERVATION_001,
     revisions: ATLAS_VOCABULARY_REVISIONS,
     summary: freeze({
@@ -221,6 +329,7 @@ export function buildAtlasVocabularyRegistry() {
       coverageDimensionCount: ATLAS_COVERAGE_DIMENSIONS.length,
       equivalenceBindingCount: ATLAS_EQUIVALENCE_ILLUSTRATIVE.length,
       namedResourceSeatCount: ATLAS_NAMED_RESOURCE_SEATS.length,
+      selectionSeatCount: ATLAS_SELECTION_SEATS.length,
       coverageScoreExists: false,
     }),
     brainInheritance: "none",

@@ -41,4 +41,25 @@ describe("Mentor Shadow v0", () => {
     assert.match(explanation.paragraph, /Clue Engine Piece/);
     assert.match(explanation.paragraph, /not evidence of a generic go-wide tokens plan/);
   });
+
+  it("names rummage as a hand filter, not net draw", () => {
+    const explanation = explainCardAsMentor({
+      cardName: "Faithless Looting",
+      oracleText: "Draw two cards, then discard two cards.",
+    });
+    assert.equal(explanation.writesToBrain, false);
+    assert.equal(explanation.selectionSeating[0].kind, "rummage");
+    assert.match(explanation.paragraph, /Rummage Filter/);
+    assert.match(explanation.paragraph, /not net draw/);
+  });
+
+  it("names scry as library selection, not mill", () => {
+    const explanation = explainCardAsMentor({
+      cardName: "Preordain",
+      oracleText: "Scry 2, then draw a card.",
+    });
+    assert.equal(explanation.selectionSeating.some((row) => row.kind === "scry"), true);
+    assert.match(explanation.paragraph, /Scry Filter/);
+    assert.match(explanation.paragraph, /not mill/);
+  });
 });
