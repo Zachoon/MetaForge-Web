@@ -106,7 +106,9 @@ export function strategicSemanticsFor(card = {}) {
   }
 
   // Stax: raw tax vs asymmetric support that lets you play through it.
-  if (/players can(?:'|’)t|each player|can(?:'|’)t cast more than|cost \{[^}]+\} more to (?:cast|activate)|unless (?:its|their) controller pays|skip (?:their|the) (?:untap|draw)/i.test(oracle)) {
+  // Bare "each player draws" is group hug, not a tax.
+  if (/players can(?:'|’)t|can(?:'|’)t cast more than|cost \{[^}]+\} more to (?:cast|activate)|unless (?:its|their) controller pays|skip (?:their|the) (?:untap|draw)/i.test(oracle)
+    || /each player[^.]* (?:sacrifices?|discards?)/i.test(oracle)) {
     semantics.add("stax_piece");
   }
   if (/your opponents?|opponents? (?:can(?:'|’)t|get|control|pay)|creatures your opponents control|you may cast[^.]*as though|creatures you control have flash|spells you cast have flash/i.test(oracle)
@@ -254,6 +256,9 @@ const PACKAGE_CATALOG = Object.freeze({
     coreSemantics: Object.freeze(["stax_piece"]),
     falseFriendSemantics: Object.freeze([]),
     supportSemantics: Object.freeze(["asymmetric_stax"]),
+    // Occupancy is not a catalog false-friend list. Tax / restriction and
+    // each-player sacrifice or discard occupy core; asymmetric hosers are
+    // support; a bare "each player draws" group-hug clause is not occupancy.
     detectCommander: (oracle) => /players can(?:'|’)t|can(?:'|’)t cast more than|cost \{[^}]+\} more to (?:cast|activate)|unless (?:its|their) controller pays/i.test(oracle),
     detectBlueprint: (blueprint) => /\bstax\b|resource denial/i.test(blueprint.source || ""),
     density: Object.freeze({ singletonCore: 8, constructedCore: 4, singletonSupport: 4, constructedSupport: 2 }),
@@ -393,6 +398,22 @@ function cardSatisfiesSpellslingerSupport(entry) {
   return entrySemantics(entry).has("spell_payoff");
 }
 
+function cardSatisfiesStaxCore(entry) {
+  const oracle = oracleOf(entryCard(entry));
+  if (/players can(?:'|’)t/i.test(oracle)) return true;
+  if (/can(?:'|’)t cast more than/i.test(oracle)) return true;
+  if (/cost \{[^}]+\} more to (?:cast|activate)/i.test(oracle)) return true;
+  if (/unless (?:its|their) controller pays/i.test(oracle)) return true;
+  if (/skip (?:their|the) (?:untap|draw)/i.test(oracle)) return true;
+  if (/each player[^.]* (?:sacrifices?|discards?)/i.test(oracle)) return true;
+  return false;
+}
+
+function cardSatisfiesStaxSupport(entry) {
+  if (cardSatisfiesStaxCore(entry)) return true;
+  return entrySemantics(entry).has("asymmetric_stax");
+}
+
 export function cardSatisfiesPackageCore(entry, packageId, intent) {
   const definition = PACKAGE_CATALOG[packageId];
   if (!definition) return false;
@@ -404,6 +425,7 @@ export function cardSatisfiesPackageCore(entry, packageId, intent) {
   if (packageId === "reanimator") return cardSatisfiesReanimatorCore(entry);
   if (packageId === "landfall") return cardSatisfiesLandfallCore(entry);
   if (packageId === "spellslinger") return cardSatisfiesSpellslingerCore(entry);
+  if (packageId === "stax") return cardSatisfiesStaxCore(entry);
   const semantics = entrySemantics(entry);
   if (definition.coreSemantics.some((semantic) => semantics.has(semantic))) return true;
   if (definition.packageSignals?.length) {
@@ -421,6 +443,7 @@ export function cardSatisfiesPackageSupport(entry, packageId, intent) {
   if (packageId === "reanimator") return cardSatisfiesReanimatorCore(entry);
   if (packageId === "landfall") return cardSatisfiesLandfallSupport(entry);
   if (packageId === "spellslinger") return cardSatisfiesSpellslingerSupport(entry);
+  if (packageId === "stax") return cardSatisfiesStaxSupport(entry);
   const semantics = entrySemantics(entry);
   return definition.supportSemantics.some((semantic) => semantics.has(semantic))
     || cardSatisfiesPackageCore(entry, packageId, intent);
