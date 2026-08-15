@@ -18,10 +18,11 @@ test("ledger rows preview on hover, open readable details on click, and retain e
   assert.match(page, /else setInspectedCard\(row\.name\)/);
   assert.match(page, /className="card-row-more"/);
   assert.match(page, /More options for \$\{row\.name\}/);
-  // CSS multi-column (columns:N) doesn't reliably fill all N columns when
-  // content is short, leaving dead space — a real grid guarantees exactly
-  // 4 even-width tracks regardless of content length.
-  assert.match(css, /ledger-deck-view \.type-columns\{display:grid;grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+  // Multi-column (not CSS grid) is deliberate here: card-type groups have
+  // very different heights (1-card Commander vs. 30-card Creatures), and
+  // grid forces every column in the same row to match its tallest sibling,
+  // leaving huge blank space under short groups once scrolled past them.
+  assert.match(css, /ledger-deck-view \.type-columns\{display:block;columns:4/);
   assert.match(css, /card-row-more:hover/);
 });
 
