@@ -44,7 +44,7 @@ Phase 1 verification: **passed** (2026-08-11).
 > Concepts · play captures · simulation witness · stance voice.  
 > Continuous observation + Friday heartbeat.  
 >
-> #026 restricted-effect overcredit **shipped** (2026-08-14) — follow-ups 2026-08-15 (playable mana, rainbow lands, named-type lands, conditional wincons). Awaiting Live Founder Trial.
+> #026 restricted-effect overcredit **shipped** (2026-08-14) — follow-ups 2026-08-15 (playable mana, rainbow lands, named-type lands, conditional wincons, Clue/token scope). Awaiting Live Founder Trial.
 
 ### Live Founder Trial — re-run (2026-08-11, post-surgical)
 
@@ -847,6 +847,7 @@ Two manifestations, same class:
 4. **X is not a 1-drop.** Printed mana value treats X as zero; construction curve does not.
 5. **Colorless rocks in a colored list.** 2+ mana `{C}` rocks do not close the colored ramp quota. 0–1 mana rocks still accelerate. Any-color rocks still fix.
 6. **Conditional wincons, same class.** “You win the game if [board condition]” is not an unconditional threat. A ten-treasure close is real when the commander produces treasures; it is not a Clue engine’s win. This is not a combo solver and does not claim loops go infinite.
+7. **Named token / Clue scope, same class.** Investigate produces Clues. “Whenever a Clue you control” is not generic token-maker synergy and not a flying-matters payoff. Artifact payoffs still count because Clues are artifacts. Angel token factories do not inherit the commander edge.
 
 T'Challa’s Vibranium mana cannot be spent on nonartifact spells — so these colorless instants/planeswalkers are not even a free `{C}` outlet. That is the same restriction-blindness, not a commander-specific branch.
 
@@ -863,7 +864,7 @@ Harness-gated construction change that withholds full credit unless the conditio
 
 **Live trial (2026-08-14):** Failed. T'Challa Revision 1 still showed Kozilek's Command, Ugin, Glaring Fleshraker. First ship never gated selection. Follow-up does.
 
-**Live evidence (2026-08-15):** Teysa, Opulent Oligarch 99. Build was coherent (clues / drain / artifact-sac). Remaining class holes: City of Brass / Mana Confluence in two-color; Haven / Maelstrom of the Spirit Dragon as fake duals; Revel in Riches as a treasure close without a treasure commander.
+**Live evidence (2026-08-15):** Teysa, Opulent Oligarch 99. Build was coherent (clues / drain / artifact-sac). Remaining class holes after mana/wincon follow-up: generic Angel / token bodies inheriting a Clue commander’s edge. Follow-up scopes Investigate/Clue production and withholds token-with-flying as an evasion payoff.
 
 ---
 
@@ -876,4 +877,4 @@ Harness-gated construction change that withholds full credit unless the conditio
 
 ---
 
-*Last updated: 2026-08-15 — #026 mana-base + conditional-wincon follow-up: City of Brass class, named-type Dragon lands, treasure wincons. 104-forge field: pass 100%, avoidable weak identical, emergence 11.317 vs 11.24 frozen.*
+*Last updated: 2026-08-15 — #026 Clue/token-scope follow-up: investigate is not generic tokens; artifact outlets stay. 104-forge field: pass 100%, avoidable weak identical, emergence 11.317 vs 11.24 frozen.*

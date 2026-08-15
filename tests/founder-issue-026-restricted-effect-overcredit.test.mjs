@@ -493,6 +493,91 @@ test("Founder #026: 'cast an artifact spell' is not a spellslinger connection fo
   assert.ok(connectionSignals(thunderhulk, vibraniumSovereign).length > 0, "an artifact that feeds the commander's artifact trigger remains connected");
 });
 
+const clueOligarch = {
+  name: "Clue Oligarch",
+  colors: ["W", "B"],
+  oracleText: "Deathtouch. At the beginning of your end step, investigate for each opponent who lost life this turn. Whenever a Clue you control is put into a graveyard from the battlefield, create a 1/1 white and black Spirit creature token with flying.",
+};
+
+const investigateScout = {
+  name: "Investigate Scout",
+  oracleText: "When this enters, investigate. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this artifact: Draw a card.\")",
+  typeLine: "Creature — Human Advisor",
+  manaCost: "{2}{W}",
+  colorIdentity: ["W"],
+  popularityRank: 1,
+};
+
+const angelHost = {
+  name: "Angel Host",
+  oracleText: "At the beginning of combat on your turn, create a 4/4 white Angel creature token with flying.",
+  typeLine: "Creature — Angel",
+  manaCost: "{3}{W}",
+  colorIdentity: ["W"],
+  popularityRank: 1,
+};
+
+const artifactDispute = {
+  name: "Artifact Dispute",
+  oracleText: "As an additional cost to cast this spell, sacrifice an artifact or creature. Draw two cards and create a Treasure token.",
+  typeLine: "Instant",
+  manaCost: "{1}{B}",
+  colorIdentity: ["B"],
+  popularityRank: 1,
+};
+
+test("Founder #026: investigate/clue is not generic token-maker synergy", () => {
+  const scopes = commanderMechanicalScopes(clueOligarch);
+  assert.deepEqual(scopes.produces.clues, ["clue"]);
+  assert.deepEqual(scopes.produces.artifacts, ["clue"]);
+  assert.deepEqual(scopes.produces.tokens, ["spirit"]);
+  assert.deepEqual(scopes.rewards.clues, ["clue"]);
+  assert.ok(!scopes.rewards.tokens?.length, "creating a Spirit is production, not a token-maker payoff");
+
+  const commanderMechanics = extractMechanicalSignals(clueOligarch);
+  assert.ok(commanderMechanics.produces.includes("clues"));
+  assert.ok(commanderMechanics.rewards.includes("clues"));
+  assert.ok(!commanderMechanics.rewards.includes("evasion"), "a token with flying is not a flying-matters payoff");
+
+  const investigateLinks = connectionSignals(investigateScout, clueOligarch);
+  const disputeLinks = connectionSignals(artifactDispute, clueOligarch);
+  const angelLinks = connectionSignals(angelHost, clueOligarch);
+  assert.ok(investigateLinks.includes("clues"), "investigate produces the resource the commander actually rewards");
+  assert.ok(disputeLinks.length > 0, "sacrificing an artifact is a real Clue outlet");
+  assert.ok(!angelLinks.includes("clues") && !angelLinks.includes("tokens"), "an Angel token factory is not the Clue engine");
+  assert.equal(angelLinks.length, 0, "token-with-flying must not connect every flier");
+});
+
+test("Founder #026: a Clue commander selects investigate and artifact outlets as engine pieces", () => {
+  const wbSpells = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Advisor", manaCost: "{2}{W}", colorIdentity: ["W"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Exile target nonland permanent.", typeLine: "Instant", manaCost: "{1}{W}{B}", colorIdentity: ["W", "B"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof until end of turn.", typeLine: "Instant", manaCost: "{1}{W}", colorIdentity: ["W"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+  ];
+  const wbDuals = Array.from({ length: 20 }, (_, i) => ({
+    name: `Orzhov Gate ${i}`,
+    oracleText: "This land enters the battlefield tapped. {T}: Add {W} or {B}.",
+    typeLine: "Land",
+    manaCost: "",
+    colorIdentity: ["W", "B"],
+    producedMana: ["W", "B"],
+    popularityRank: 5,
+    priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander",
+    target: 100,
+    strategy: "Balanced midrange",
+    seed: 11,
+    commander: clueOligarch,
+    cards: [...wbSpells, investigateScout, angelHost, artifactDispute, ...wbDuals],
+  });
+  const names = report.selected.rows.map((row) => row.name);
+  assert.ok(names.includes("Investigate Scout"), "the Clue producer is an engine piece");
+  assert.ok(names.includes("Artifact Dispute"), "an artifact sacrifice spell is a Clue outlet");
+});
+
 test("Founder #026: a GW artifact/counters commander does not select the colorless nonartifact toolbox", () => {
   const report = forgeNativeMasterwork({
     format: "Commander",

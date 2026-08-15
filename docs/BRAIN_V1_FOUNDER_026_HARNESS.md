@@ -1,6 +1,6 @@
 # Founder #026 — Restricted-effect overcredit (harness report)
 
-**Date:** 2026-08-14 (ship) · **Follow-up:** 2026-08-15 (live trial failed; playable-mana, rainbow, named-type, conditional wincon)  
+**Date:** 2026-08-14 (ship) · **Follow-up:** 2026-08-15 (live trial failed; playable-mana, rainbow, named-type, conditional wincon, Clue/token scope)  
 **Policy:** default Brain v1 construction (not an opt-in experiment)  
 **Class:** Conditional / mutually exclusive effects were scored as unconditional full-job cards  
 **Evidence:** T'Challa Selesnya list + Teysa, Opulent Oligarch 99 + prior Eldrazi watch  
@@ -23,6 +23,7 @@ This is a representation fix, not a new planning layer and not a card deny-list.
 11. **Unconditional rainbow lands** — City of Brass / Mana Confluence class is 4–5 color reach. Two- and three-color lists cover pips with duals. Command Tower (identity) and Exotic Orchard (opponent-gated) keep full credit.
 12. **Named-type mana** — Haven / Maelstrom of the Spirit Dragon class is not “chosen type.” Full credit only when that printed type is in the tribe lens. A Bear list does not make Dragon lands into duals. “A land you control” is not a creature tribe.
 13. **Conditional wincons** — “You win the game if [board condition]” is not an unconditional threat. A ten-treasure close needs a treasure-producing commander or commission. This is not a combo solver and does not claim loops go infinite.
+14. **Named token / Clue scope** — Investigate produces Clues, not generic tokens. “Whenever a Clue you control” is not a token-maker payoff and not a flying-matters payoff. Spirit token production stays Spirit-scoped. Artifact payoffs and artifact-sac outlets still count because Clues are artifacts. Angel token factories do not inherit the commander edge.
 
 ## Gate answers
 
@@ -37,7 +38,7 @@ This is a representation fix, not a new planning layer and not a card deny-list.
 
 ### Field vs frozen (per-forge)
 
-Follow-up field artifact: `tests/validation-harness/out/report-field-2026-08-15T094553Z.json`
+Follow-up field artifact: `tests/validation-harness/out/report-field-2026-08-15T160036Z.json`
 
 | Metric | Frozen | #026 rainbow / named-type / wincon field |
 |---|---:|---:|
@@ -74,6 +75,7 @@ Torture fixtures do not contain Cavern / Warping Wail / Kozilek's Command, so fi
 - Named-type Dragon land loses in non-Dragon and Bear lists; stays when the commander implies Dragons
 - Conditional treasure win loses under a Clue commander; stays under a treasure-producing commander
 - “A land you control” / “a Clue you control” are not creature tribes
+- Investigate/Clue commanders connect to investigate and artifact outlets; Angel token factories do not inherit that commander edge; “token with flying” is not a flying-matters payoff
 
 ## Live trial (2026-08-14)
 

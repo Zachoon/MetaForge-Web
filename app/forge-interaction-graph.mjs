@@ -219,6 +219,7 @@ const TAG_PAYOFFS = {
 const SIGNALS = [
   ["tokens", /create(?:s)? [^.]* token|token(?:s)? you control/i],
   ["treasure", /treasure token|treasures? you control/i],
+  ["clues", /clue token|investigate|clues? you control/i],
   ["artifacts", /artifact(?:s)? you control|artifact spell|artifact enters|sacrifice an artifact/i],
   // Aura is deliberately narrower than enchantment: Pearl-Ear-class
   // commanders reward Auras specifically, and generic enchantments must
@@ -243,7 +244,8 @@ const SIGNALS = [
 const PRODUCERS = {
   tokens: /create(?:s)? [^.]* token/i,
   treasure: /create(?:s)? [^.]* treasure|treasure token/i,
-  artifacts: /create(?:s)? [^.]* artifact token|artifact spell/i,
+  clues: /investigate|create(?:s)? [^.]* clue/i,
+  artifacts: /create(?:s)? [^.]* artifact token|artifact spell|investigate/i,
   // Only the Aura subtype produces this signal — "Enchantment" alone does not,
   // and oracle phrases like "affinity for Auras" must not mark the commander
   // itself as an Aura producer. Type-line membership is applied in
@@ -274,6 +276,7 @@ const PRODUCERS = {
 const PAYOFFS = {
   tokens: /token(?:s)? you control|for each token|sacrifice a token/i,
   treasure: /treasures? you control|sacrifice a treasure/i,
+  clues: /clues? you control|sacrifice a clue|clue token|whenever you (?:sacrifice|create) a clue/i,
   artifacts: /artifact(?:s)? you control|whenever (?:you cast |an? )?artifact|sacrifice an artifact/i,
   auras: /affinity for auras|whenever [^.]*\baura\b|auras? you control|enchanted creature you control/i,
   // "Put counters on target X" is a producer, not a payoff. The old broad
@@ -297,8 +300,8 @@ const PAYOFFS = {
   combat: /whenever [^.]* attacks|combat damage|attacking creatures/i,
   // Deliberately narrower than PRODUCERS.evasion — this is cards that
   // specifically reward flying/menace/unblocked creatures (an anthem
-  // that only boosts fliers), not any card that merely has the keyword.
-  evasion: /with flying|with menace|unblocked|can(?:'|’)t be blocked except/i,
+  // that only boosts fliers), not a token that happens to have flying.
+  evasion: /creatures? you control with (?:flying|menace)|with (?:flying|menace) get |unblocked|can(?:'|’)t be blocked except/i,
   // Real "protection matters" payoffs are rare (protection is mostly a
   // standalone defensive tool, not a two-card engine axis) — this stays
   // narrow on purpose rather than over-matching unrelated text.
@@ -434,7 +437,10 @@ export function buildInteractionGraph(cards, options = {}) {
       // signals only ever form an edge through genuine producer/payoff
       // wiring below (an aura granting flying feeding an anthem that
       // rewards fliers), never merely by both mentioning the same keyword.
-      const reasons = [...new Set([...forward, ...reverse, ...shared.filter((signal) => ["spells", "graveyard", "counters", "tokens", "artifacts", "combat"].includes(signal))])];
+      // Merely making tokens on both cards is too broad to be a relationship:
+      // a Clue engine and an unrelated Angel-token spell do not support each
+      // other. Token edges require a real producer/payoff direction.
+      const reasons = [...new Set([...forward, ...reverse, ...shared.filter((signal) => ["spells", "graveyard", "counters", "artifacts", "clues", "combat"].includes(signal))])];
       // A signal counts as database-confirmed only when the producing side's
       // tag AND the rewarding side's tag both come from the curated
       // card-mechanics database rather than a regex guess — e.g. a real

@@ -116,6 +116,30 @@ test("commander connections preserve Ayula's Bear-only counter and ETB scope", (
   ), ["etb"]);
 });
 
+test("commander connections preserve named Clue production while admitting real artifact payoffs", () => {
+  const malcolm = card(
+    "Malcolm, the Eyes",
+    "Whenever you cast your second spell each turn, investigate. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+    "Legendary Creature — Siren Pirate",
+    "{U}{R}",
+    ["U", "R"],
+  );
+  const scopes = commanderMechanicalScopes(malcolm);
+  const commanderMechanics = { produces: ["tokens", "artifacts", "clues"], rewards: ["spells"] };
+  assert.deepEqual(scopes.produces.artifacts, ["clue"]);
+  assert.deepEqual(scopes.produces.clues, ["clue"]);
+  assert.ok(!scopes.produces.tokens.includes("colorless"), "reminder-text colors are not token identities");
+
+  assert.deepEqual(commanderConnectionSignalsFor(
+    card("Clue Archivist", "Whenever an artifact enters under your control, draw a card.", "Creature — Human Artificer"),
+    { produces: [], rewards: ["artifacts"] }, commanderMechanics, scopes,
+  ), ["artifacts"], "a generic artifact payoff genuinely rewards every Clue Malcolm makes");
+  assert.deepEqual(commanderConnectionSignalsFor(
+    card("Treasure Clerk", "Whenever you sacrifice a Treasure, create a 1/1 token.", "Creature — Human"),
+    { produces: ["tokens"], rewards: ["treasure"] }, commanderMechanics, scopes,
+  ), [], "Treasure-specific text gets no false Clue credit or generic-token shortcut");
+});
+
 test("interactionQualityFor scores unconditional removal at full quality", () => {
   assert.equal(interactionQualityFor("Destroy target creature."), 1);
   assert.equal(interactionQualityFor("Exile target permanent."), 1);

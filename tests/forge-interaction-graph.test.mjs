@@ -251,6 +251,17 @@ test("reset/pay shapes are found even when the pair is not a producer/payoff eng
   assert.equal(findResetPayPairs([tokenHerald, cardHerald]).length, 0, "an ordinary engine pair is not a reset shape");
 });
 
+test("Clue production connects to Clue payoffs without masquerading as Treasure support", () => {
+  const investigator = { name: "Case Maker", typeLine: "Creature — Detective", oracleText: "Whenever this creature attacks, investigate." };
+  const cluePayoff = { name: "Case Reward", typeLine: "Enchantment", oracleText: "Whenever you sacrifice a Clue, draw a card." };
+  const treasurePayoff = { name: "Coin Reward", typeLine: "Enchantment", oracleText: "Whenever you sacrifice a Treasure, draw a card." };
+  const graph = buildInteractionGraph([investigator, cluePayoff, treasurePayoff]);
+  const clueEdge = graph.edges.find((entry) => entry.from === "Case Maker" && entry.to === "Case Reward");
+  const treasureEdge = graph.edges.find((entry) => entry.from === "Case Maker" && entry.to === "Coin Reward");
+  assert.ok(clueEdge?.signals.includes("clues"), "investigate must produce the named Clue resource");
+  assert.equal(treasureEdge?.signals.includes("treasure") || false, false, "Clues and Treasure remain distinct resources");
+});
+
 test("Fear of Missing Out and Trading Post are related cards, not a reciprocal combo loop", () => {
   const graph = buildInteractionGraph([
     { name: "Fear of Missing Out", typeLine: "Enchantment Creature — Nightmare", oracleText: "When this creature enters, discard a card, then draw a card. Delirium — Whenever this creature attacks for the first time each turn, if there are four or more card types among cards in your graveyard, untap target creature. After this phase, there is an additional combat phase." },
@@ -431,4 +442,31 @@ test("oracle_explicit: mechanical edges still form without named references", ()
   ]);
   assert.ok(graph.edges.some((edge) => edge.from === "Smith" && edge.to === "Foundry"));
   assert.ok(graph.edges.every((edge) => edge.evidenceClass !== RELATIONSHIP_EVIDENCE.ORACLE_EXPLICIT));
+});
+
+test("investigate/clue is a producer-payoff axis, not generic Angel tokens", () => {
+  const oligarch = {
+    name: "Oligarch",
+    typeLine: "Legendary Creature",
+    oracleText: "At the beginning of your end step, investigate. Whenever a Clue you control is put into a graveyard from the battlefield, create a 1/1 white and black Spirit creature token with flying.",
+    isCommander: true,
+  };
+  const scout = {
+    name: "Scout",
+    typeLine: "Creature",
+    oracleText: "When this enters, investigate.",
+  };
+  const host = {
+    name: "Host",
+    typeLine: "Creature — Angel",
+    oracleText: "Create a 4/4 white Angel creature token with flying.",
+  };
+  const mechanics = extractMechanicalSignals(oligarch);
+  assert.ok(mechanics.produces.includes("clues"));
+  assert.ok(mechanics.rewards.includes("clues"));
+  assert.ok(!mechanics.rewards.includes("evasion"));
+
+  const graph = buildInteractionGraph([oligarch, scout, host]);
+  assert.ok(graph.edges.some((edge) => edge.signals.includes("clues") && [edge.from, edge.to].includes("Scout")));
+  assert.ok(!graph.edges.some((edge) => [edge.from, edge.to].includes("Host") && edge.signals.includes("tokens")));
 });

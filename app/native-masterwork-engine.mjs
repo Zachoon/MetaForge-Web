@@ -784,25 +784,35 @@ function preferenceTerms(input) {
 // every creature; both clauses are Bear-only. Preserve that rules-text scope
 // so a Plant token maker or non-Bear counter card cannot claim a commander
 // connection merely because it shares the words "enters" or "counter."
+const MANA_COLOR_WORDS = new Set(["white", "blue", "black", "red", "green", "colorless", "gold"]);
+
 export function commanderMechanicalScopes(card = {}) {
   const oracle = String(card.oracleText || card.oracle_text || "");
   const collect = (patterns) => unique(patterns.flatMap((pattern) => [...oracle.matchAll(pattern)].map((match) => normalized(match[1]))))
-    .filter((term) => term && !GENERIC_SCOPE_WORDS.has(term));
+    .filter((term) => term && !BLUEPRINT_FILLER_WORDS.has(term) && !TRIBAL_STOP_WORDS.has(term) && !GENERIC_SCOPE_WORDS.has(term));
+  const namedArtifactTokens = unique([
+    ...collect([/create [^.]*?(clue|treasure|food) (?:artifact )?token/gi]),
+    ...(/investigate/i.test(oracle) ? ["clue"] : []),
+  ]);
   return Object.freeze({
     produces: Object.freeze({
       counters: collect([/put [^.]*?counters? on target ([a-z][a-z'-]+)/gi]),
+      tokens: collect([/create [^.]*?([a-z][a-z'-]+) creature token/gi]).filter((term) => !MANA_COLOR_WORDS.has(term)),
+      artifacts: namedArtifactTokens,
+      clues: namedArtifactTokens.filter((term) => term === "clue"),
     }),
     rewards: Object.freeze({
       etb: collect([
         /whenever another ([a-z][a-z'-]+)(?: you control)? enters/gi,
         /whenever (?:a|one or more) ([a-z][a-z'-]+)s?(?: you control)? enter/gi,
-        // Ayula-class: "Whenever NAME or another Bear you control enters"
         /whenever [^.]+ or another ([a-z][a-z'-]+)(?: you control)? enters/gi,
       ]),
-      // "Whenever you cast an artifact spell" is not spellslinger. Kozilek's
-      // Command is an instant, not an artifact, and must not claim that edge.
       spells: collect([/whenever you cast (?:an?|one or more) ([a-z][a-z'-]+) spells?/gi]),
-      artifacts: collect([/whenever you cast (?:an?|one or more) ([a-z][a-z'-]+) spells?/gi]),
+      artifacts: unique([
+        ...collect([/whenever you cast (?:an?|one or more) ([a-z][a-z'-]+) spells?/gi]),
+        ...collect([/whenever a(?:n)? (clue|treasure|food) you control/gi]),
+      ]),
+      clues: collect([/whenever a(?:n)? (clue) you control/gi]),
     }),
   });
 }
@@ -813,9 +823,14 @@ function cardFitsMechanicalScope(card, signal, tribes = []) {
   const oracle = normalized(card.oracleText || card.oracle_text || "");
   if (tribes.some((tribe) => new RegExp(`(?:^|[^a-z])${tribe}(?:s)?(?:$|[^a-z])`, "i").test(typeLine))) return true;
   if (tribes.some((tribe) => new RegExp(`create[^.]{0,80}${tribe}[^.]{0,30}token`, "i").test(oracle))) return true;
-  // Broad counter replacement/doubling effects genuinely support counters
-  // placed on a scoped tribe even when the support card is not that tribe.
   if (signal === "counters" && /counters? would be put on (?:a|one or more|each|target) (?:creature|permanent)|put twice that many counters/i.test(oracle)) return true;
+  // Generic token payoffs still support a scoped token producer (Spirits
+  // are tokens). Named artifact tokens need their own maker or outlet.
+  if (signal === "tokens" && /tokens? you control|for each token/i.test(oracle)) return true;
+  if (signal === "artifacts" && /artifacts? you control|artifact enters|sacrifice an artifact/i.test(oracle)) return true;
+  if (tribes.includes("clue") && /investigate|clue token|sacrifice an artifact/i.test(oracle)) return true;
+  if (tribes.includes("treasure") && /treasure token|sacrifice a treasure/i.test(oracle)) return true;
+  if (tribes.includes("food") && /food token|sacrifice a food/i.test(oracle)) return true;
   return false;
 }
 
@@ -996,11 +1011,17 @@ function prepareForgeAnalysis(input, evidenceByName) {
       rewards: unique(commanderMechanicRows.flatMap((mechanics) => mechanics.rewards)),
     }),
     commanderScopes: Object.freeze({
-      produces: Object.freeze({ counters: unique(commanderScopeRows.flatMap((scope) => scope.produces.counters || [])) }),
+      produces: Object.freeze({
+        counters: unique(commanderScopeRows.flatMap((scope) => scope.produces.counters || [])),
+        tokens: unique(commanderScopeRows.flatMap((scope) => scope.produces.tokens || [])),
+        artifacts: unique(commanderScopeRows.flatMap((scope) => scope.produces.artifacts || [])),
+        clues: unique(commanderScopeRows.flatMap((scope) => scope.produces.clues || [])),
+      }),
       rewards: Object.freeze({
         etb: unique(commanderScopeRows.flatMap((scope) => scope.rewards.etb || [])),
         spells: unique(commanderScopeRows.flatMap((scope) => scope.rewards.spells || [])),
         artifacts: unique(commanderScopeRows.flatMap((scope) => scope.rewards.artifacts || [])),
+        clues: unique(commanderScopeRows.flatMap((scope) => scope.rewards.clues || [])),
       }),
     }),
     commanderTribes: Object.freeze(commanderTribesFromOracle(allCommanders(input))),
