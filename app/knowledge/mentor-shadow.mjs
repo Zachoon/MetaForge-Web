@@ -11,6 +11,7 @@ import {
   cardsImplementingSeat,
   seatNamedResourceImplementation,
   seatSelectionImplementation,
+  seatLoopImplementation,
 } from "./atlas-vocabulary.mjs";
 import { getStrategicConcept, buildStrategicConceptLibrary } from "./strategic-concept.mjs";
 
@@ -135,6 +136,58 @@ export function explainCardAsMentor({
     mustNotSay: freeze([
       "Protection score",
       "This card has a score of",
+      "Brain selected this because",
+    ]),
+  });
+}
+
+/**
+ * Pair commentary for a graph-labeled loop or reset shape.
+ * Parallel only — never a construction input, never a combo claim.
+ */
+export function explainPairAsMentor({
+  left = {},
+  right = {},
+  cards = [],
+  loopKind,
+  shape,
+  leftOracle = "",
+  rightOracle = "",
+} = {}) {
+  const seating = seatLoopImplementation({
+    left: { name: left.name || cards[0], oracleText: left.oracleText || left.oracle_text || leftOracle },
+    right: { name: right.name || cards[1], oracleText: right.oracleText || right.oracle_text || rightOracle },
+    cards,
+    loopKind,
+    shape,
+  });
+  if (!seating.length) {
+    return freeze({
+      ok: false,
+      writesToBrain: false,
+      reason: "no_loop_seat",
+      note: "Atlas has no loop seat for this pair yet — unknown is not absent.",
+    });
+  }
+  const row = seating[0];
+  const names = row.implementation.cards.join(" / ");
+  const resetLine = row.resetSeat ? ` Reset shape: ${row.resetSeat.label}.` : "";
+  const paragraph = `${names} is seated as a ${row.seat.label}, ${row.contrast}.${resetLine} Not a verified infinite.`;
+  return freeze({
+    ok: true,
+    kind: "MentorPairExplanation",
+    version: "mentor-shadow-v0",
+    writesToBrain: false,
+    activated: false,
+    promoted: false,
+    brainInheritance: "none",
+    cards: row.implementation.cards,
+    loopSeating: seating,
+    paragraph,
+    openQuestion: "Still contested whether these loop labels survive Academy controls beyond illustrative Atlas bindings.",
+    mustNotSay: freeze([
+      "verified infinite",
+      "this combo wins",
       "Brain selected this because",
     ]),
   });

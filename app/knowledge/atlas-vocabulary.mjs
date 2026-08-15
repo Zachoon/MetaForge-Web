@@ -1,6 +1,13 @@
 // =============================================================================
 
-import { classifySelectionKinds, extractMechanicalSignals } from "../forge-interaction-graph.mjs";
+import {
+  classifyLoopKind,
+  classifySelectionKinds,
+  extractMechanicalSignals,
+  LOOP_KINDS,
+  resetPayShape,
+  RESET_SHAPES,
+} from "../forge-interaction-graph.mjs";
 // Atlas Vocabulary Registry v0 — Age of Vocabulary engineering surface
 // =============================================================================
 // Stable meanings + illustrative equivalence. Naming is not promotion.
@@ -253,6 +260,118 @@ export function seatSelectionImplementation(card = {}) {
   return freeze(rows);
 }
 
+/**
+ * Descriptive seating for mutual loops and reset/pay shapes.
+ * Consumes graph `loopKind` / `shape` — no second oracle regex family.
+ * Pair observation only. Not a combo solver. Never construction inputs.
+ */
+export const ATLAS_LOOP_SEATS = freeze([
+  freeze({
+    kind: LOOP_KINDS.ENGINE,
+    capability: freeze({
+      id: "cap:mutual_engine_loop",
+      label: "Mutual Engine",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:mutual_engine", label: "Mutual Engine" }),
+    contrast: "not a verified infinite",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: LOOP_KINDS.CLOSED_LOOP,
+    capability: freeze({
+      id: "cap:reset_closed_loop",
+      label: "Reset Closed Loop",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:reset_closed_loop", label: "Reset Closed Loop" }),
+    contrast: "investigate, not a verified infinite",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: LOOP_KINDS.CONDITIONAL_WIN,
+    capability: freeze({
+      id: "cap:conditional_board_win",
+      label: "Conditional Board Win",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:conditional_board_win", label: "Conditional Board Win" }),
+    contrast: "a board-state win, not a loop",
+    writesToBrain: false,
+  }),
+]);
+
+export const ATLAS_RESET_SHAPE_SEATS = freeze([
+  freeze({
+    shape: RESET_SHAPES.ARTIFACT_UNTAP,
+    seat: freeze({ id: "seat:artifact_untap_reset", label: "Artifact Untap Reset" }),
+    writesToBrain: false,
+  }),
+  freeze({
+    shape: RESET_SHAPES.COPY_ACTIVATED,
+    seat: freeze({ id: "seat:copy_activated_reset", label: "Copy-Activated Reset" }),
+    writesToBrain: false,
+  }),
+  freeze({
+    shape: RESET_SHAPES.COPY_ETB_UNTAP,
+    seat: freeze({ id: "seat:copy_etb_untap_reset", label: "Copy Enter Untap Reset" }),
+    writesToBrain: false,
+  }),
+  freeze({
+    shape: RESET_SHAPES.IMPRINT_UNTAP_ALL,
+    seat: freeze({ id: "seat:imprint_untap_reset", label: "Imprint Untap Reset" }),
+    writesToBrain: false,
+  }),
+]);
+
+function oracleOf(card = {}) {
+  return String(card.oracleText || card.oracle_text || "");
+}
+
+/**
+ * Seat a graph-labeled pair. Engine requires an explicit `loopKind` from
+ * the graph so two unrelated oracles are not seated as engines by default.
+ */
+export function seatLoopImplementation(pair = {}) {
+  const left = pair.left || {};
+  const right = pair.right || {};
+  const leftOracle = oracleOf(left) || String(pair.leftOracle || "");
+  const rightOracle = oracleOf(right) || String(pair.rightOracle || "");
+  const shape = pair.shape || resetPayShape(leftOracle, rightOracle) || null;
+  let loopKind = pair.loopKind || null;
+  if (!loopKind) {
+    if (shape) loopKind = LOOP_KINDS.CLOSED_LOOP;
+    else {
+      const classified = classifyLoopKind(leftOracle, rightOracle);
+      if (classified !== LOOP_KINDS.ENGINE) loopKind = classified;
+    }
+  }
+  const loopDef = ATLAS_LOOP_SEATS.find((row) => row.kind === loopKind);
+  if (!loopDef) return freeze([]);
+  const shapeDef = ATLAS_RESET_SHAPE_SEATS.find((row) => row.shape === shape) || null;
+  const cards = freeze([
+    left.name || pair.cards?.[0] || "Unknown card",
+    right.name || pair.cards?.[1] || "Unknown card",
+  ].map((name) => String(name)));
+  return freeze([freeze({
+    kind: loopDef.kind,
+    shape: shape || null,
+    capability: loopDef.capability,
+    seat: loopDef.seat,
+    resetSeat: shapeDef?.seat || null,
+    contrast: loopDef.contrast,
+    implementation: freeze({
+      cards,
+      roles: freeze(shape ? ["reset_shape"] : ["mutual_loop"]),
+      evidenceSignals: freeze([loopDef.kind, ...(shape ? [shape] : [])]),
+    }),
+    writesToBrain: false,
+  })]);
+}
+
 /** Coverage Observation 001 — honest Age of Vocabulary result. */
 export const ATLAS_OBSERVATION_001 = freeze({
   paper: "What Is Strategic Coverage?",
@@ -277,6 +396,10 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
   freeze({
     date: "2026-08-15",
     change: "Seated graph selection kinds (scry / surveil / rummage / connive / impulse / draw); still 0 Capability admissions",
+  }),
+  freeze({
+    date: "2026-08-15",
+    change: "Seated graph loop kinds and reset/pay shapes; still 0 Capability admissions",
   }),
 ]);
 
@@ -320,6 +443,8 @@ export function buildAtlasVocabularyRegistry() {
     equivalenceIllustrative: ATLAS_EQUIVALENCE_ILLUSTRATIVE,
     namedResourceSeats: ATLAS_NAMED_RESOURCE_SEATS,
     selectionSeats: ATLAS_SELECTION_SEATS,
+    loopSeats: ATLAS_LOOP_SEATS,
+    resetShapeSeats: ATLAS_RESET_SHAPE_SEATS,
     observation001: ATLAS_OBSERVATION_001,
     revisions: ATLAS_VOCABULARY_REVISIONS,
     summary: freeze({
@@ -330,6 +455,8 @@ export function buildAtlasVocabularyRegistry() {
       equivalenceBindingCount: ATLAS_EQUIVALENCE_ILLUSTRATIVE.length,
       namedResourceSeatCount: ATLAS_NAMED_RESOURCE_SEATS.length,
       selectionSeatCount: ATLAS_SELECTION_SEATS.length,
+      loopSeatCount: ATLAS_LOOP_SEATS.length,
+      resetShapeSeatCount: ATLAS_RESET_SHAPE_SEATS.length,
       coverageScoreExists: false,
     }),
     brainInheritance: "none",

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { explainCardAsMentor, buildMentorShadowReport } from "../../app/knowledge/mentor-shadow.mjs";
+import { explainCardAsMentor, explainPairAsMentor, buildMentorShadowReport } from "../../app/knowledge/mentor-shadow.mjs";
 
 describe("Mentor Shadow v0", () => {
   it("explains seats without scores or Brain writes", () => {
@@ -61,5 +61,30 @@ describe("Mentor Shadow v0", () => {
     assert.equal(explanation.selectionSeating.some((row) => row.kind === "scry"), true);
     assert.match(explanation.paragraph, /Scry Filter/);
     assert.match(explanation.paragraph, /not mill/);
+  });
+
+  it("names a reset pair as a closed loop, not a verified infinite", () => {
+    const explanation = explainPairAsMentor({
+      left: { name: "Basalt Monolith", oracleText: "{T}: Add {C}{C}{C}. {3}: Untap this artifact." },
+      right: { name: "Voltaic Key", oracleText: "{1}, {T}: Untap target artifact." },
+    });
+    assert.equal(explanation.ok, true);
+    assert.equal(explanation.writesToBrain, false);
+    assert.equal(explanation.loopSeating[0].kind, "closed_loop");
+    assert.match(explanation.paragraph, /Reset Closed Loop/);
+    assert.match(explanation.paragraph, /Artifact Untap Reset/);
+    assert.match(explanation.paragraph, /Not a verified infinite/);
+    assert.doesNotMatch(explanation.paragraph, /this combo wins/i);
+  });
+
+  it("names a graph engine pair without claiming it goes infinite", () => {
+    const explanation = explainPairAsMentor({
+      left: { name: "Token Herald" },
+      right: { name: "Card Herald" },
+      loopKind: "engine",
+    });
+    assert.equal(explanation.loopSeating[0].kind, "engine");
+    assert.match(explanation.paragraph, /Mutual Engine/);
+    assert.match(explanation.paragraph, /not a verified infinite/);
   });
 });

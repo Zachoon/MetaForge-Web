@@ -6,6 +6,7 @@ import {
   cardsImplementingSeat,
   seatNamedResourceImplementation,
   seatSelectionImplementation,
+  seatLoopImplementation,
 } from "../../app/knowledge/atlas-vocabulary.mjs";
 
 describe("Atlas Vocabulary Registry v0", () => {
@@ -108,5 +109,55 @@ describe("Atlas Vocabulary Registry v0", () => {
     });
     assert.equal(fromGraph[0].kind, "impulse");
     assert.equal(fromGraph[0].contrast, "not a Junk token");
+  });
+
+  it("seats loop kinds and reset shapes from graph labels without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.loopSeatCount, 3);
+    assert.equal(registry.summary.resetShapeSeatCount, 4);
+    assert.equal(registry.summary.capabilityAdmittedCount, 0);
+    assert.ok(registry.loopSeats.every((row) => row.writesToBrain === false && row.capability.atlasAdmitted === false));
+
+    const engine = seatLoopImplementation({
+      left: { name: "Token Herald", oracleText: "Whenever you draw your second card each turn, create a 1/1 colorless Servo artifact creature token." },
+      right: { name: "Card Herald", oracleText: "Draw two cards. Whenever a token you control attacks, this creature gets +1/+0 until end of turn." },
+      loopKind: "engine",
+    });
+    assert.equal(engine[0].kind, "engine");
+    assert.equal(engine[0].seat.label, "Mutual Engine");
+    assert.equal(engine[0].contrast, "not a verified infinite");
+    assert.equal(engine[0].writesToBrain, false);
+
+    const unlabeled = seatLoopImplementation({
+      left: { name: "Vanilla A", oracleText: "Vigilance." },
+      right: { name: "Vanilla B", oracleText: "Reach." },
+    });
+    assert.deepEqual(unlabeled, [], "unlabeled pairs stay unknown rather than defaulting to engine");
+
+    const reset = seatLoopImplementation({
+      left: { name: "Basalt Monolith", oracleText: "{T}: Add {C}{C}{C}. {3}: Untap this artifact." },
+      right: { name: "Voltaic Key", oracleText: "{1}, {T}: Untap target artifact." },
+    });
+    assert.equal(reset[0].kind, "closed_loop");
+    assert.equal(reset[0].shape, "artifact_untap");
+    assert.equal(reset[0].resetSeat.label, "Artifact Untap Reset");
+    assert.equal(reset[0].contrast, "investigate, not a verified infinite");
+
+    const fromGraph = seatLoopImplementation({
+      cards: ["Isochron Scepter", "Dramatic Reversal"],
+      loopKind: "closed_loop",
+      shape: "imprint_untap_all",
+    });
+    assert.equal(fromGraph[0].resetSeat.label, "Imprint Untap Reset");
+    assert.deepEqual(fromGraph[0].implementation.roles, ["reset_shape"]);
+
+    const win = seatLoopImplementation({
+      leftOracle: "Whenever an opponent dies, create a Treasure token. At the beginning of your upkeep, if you control ten or more Treasures, you win the game.",
+      rightOracle: "Whenever you attack, create a Treasure token.",
+      cards: ["Revel in Riches", "Dockside Extortionist"],
+    });
+    assert.equal(win[0].kind, "conditional_win");
+    assert.equal(win[0].seat.label, "Conditional Board Win");
+    assert.equal(win[0].contrast, "a board-state win, not a loop");
   });
 });
