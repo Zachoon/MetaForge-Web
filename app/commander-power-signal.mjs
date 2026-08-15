@@ -402,7 +402,11 @@ export function evaluateCommanderPowerSignal(cards, interactionGraph = null) {
       comboLoops: Object.freeze(comboLoops),
       comboLoopTotal: allComboLoops.length,
       amplifiers: Object.freeze(amplifiers),
-      evidence: "Every real mutual mechanical loop and verified rules-text trigger amplifier from this build's own interaction graph — informational, not counted toward the power tier above (see comboProximity for the subset that is), and not a claim that any loop goes infinite.",
+      resetShapes: Object.freeze(
+        [...new Set((interactionGraph?.resetPairs || []).map((pair) => pair.cards.join(" + ")))].slice(0, 5),
+      ),
+      resetShapeTotal: (interactionGraph?.resetPairs || []).length,
+      evidence: "Every real mutual mechanical loop and verified rules-text trigger amplifier from this build's own interaction graph — informational, not counted toward the power tier above (see comboProximity for the subset that is), and not a claim that any loop goes infinite. Reset/pay shapes are a separate observation pass and are also not counted.",
     }),
     evidence: "Forge Theory: a bounded heuristic over real, quoted oracle-text signals and this build's own verified interaction graph — no named-card dataset of any kind, so this generalizes across every commander, theme, and card pool rather than only cards on a fixed list. Not a claim to match any official bracket system's named-card criteria, and not a guarantee this deck fits a given pod.",
   });

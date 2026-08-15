@@ -324,6 +324,13 @@ export function analyzeCorpusDeck(record, options = {}) {
         cards: freeze([...(pair.cards || [])]),
         strength: pair.strength,
         evidence: pair.evidence,
+        loopKind: pair.loopKind || null,
+      }))),
+      resetPairs: freeze((interactionGraph.resetPairs || []).slice(0, 16).map((pair) => freeze({
+        cards: freeze([...(pair.cards || [])]),
+        shape: pair.shape || null,
+        evidence: pair.evidence,
+        loopKind: pair.loopKind || null,
       }))),
       amplifiers: freeze((interactionGraph.amplifiers || []).slice(0, 16).map((row) => freeze({
         source: row.source,

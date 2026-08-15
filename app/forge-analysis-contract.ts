@@ -24,7 +24,8 @@ export interface ForgeAnalysisReport {
     isolated: string[];
     nonbos: any[];
     amplifiers: any[];
-    enginePairs: Array<{ cards: string[]; strength: number; reason: string; evidence: string }>;
+    enginePairs: Array<{ cards: string[]; strength: number; reason: string; evidence: string; loopKind?: string }>;
+    resetPairs: Array<{ cards: string[]; loopKind: string; shape: string; reason: string; evidence: string }>;
     commanderLinks: unknown[];
     coverage: number;
     confidence: string;
@@ -178,6 +179,7 @@ export const EMPTY_FORGE_ANALYSIS_REPORT: ForgeAnalysisReport = {
     nonbos: [],
     amplifiers: [],
     enginePairs: [],
+    resetPairs: [],
     commanderLinks: [],
     coverage: 0,
     confidence: "LOW · INCOMPLETE CARD SET",

@@ -1927,7 +1927,7 @@ export default function Home() {
 
     const revealTargets = Array.from(
       root.querySelectorAll<HTMLElement>(
-        ".entrance-copy, .entrance-visual, .masterwork-history, .commission-panel, .forging-ceremony > *, .masterwork-reveal > header, .masterwork-reveal > section, .masterwork-reveal > div",
+        ".entrance-copy, .entrance-visual, .masterwork-history, .commission-panel, .forging-ceremony > :not(.ceremony-commander-emergence), .masterwork-reveal > header, .masterwork-reveal > section, .masterwork-reveal > div",
       ),
     );
     revealTargets.forEach((target, index) => {
@@ -1952,7 +1952,9 @@ export default function Home() {
 
   const awaken = () => {
     const seed = Date.now();
-    setMilestoneMotion({ kind: "ignition", eyebrow: "BLUEPRINT SEALED", label: "Awakening the Great Forge", glyph: "ᚠ" });
+    // Enter the ceremony directly. The former ignition milestone painted a
+    // full-screen rune, crosshair, smoke, and spark burst over the first step.
+    setMilestoneMotion(null);
     setCommissionSeed(seed);
     setStage(0);
     setSelectedWork(0);
@@ -3360,6 +3362,68 @@ export default function Home() {
       cancelled = true;
     };
   }, [printingMenu]);
+
+  // A card's default printing sometimes has no market price at all (promo,
+  // Secret Lair, other online-only prints Scryfall hasn't priced). Rather
+  // than leave it permanently "still pricing", walk that card's real
+  // printings (same unique=prints query the manual picker uses, newest
+  // first) and adopt the most recent one that actually has a price — same
+  // mechanism as a player manually choosing an older printing, just applied
+  // automatically. Cards with no priced printing anywhere (basics, truly
+  // unreleased/unpriced cards) correctly stay unpriced.
+  // printingOverrides is intentionally read via the functional updater
+  // below, not listed as a dependency — including it would re-run this
+  // effect (and re-scan every card) on every single card it fixes.
+  useEffect(() => {
+    if (guestMode || !deckRows.length || !Object.keys(cardFacts).length) return;
+    const unpriced = deckRows.filter((row) => {
+      const key = cardFactKey(row.name);
+      if (printingOverrides[key]) return false;
+      const fact = cardFacts[key];
+      return Boolean(fact) && cardPriceUsd(fact) === null;
+    });
+    if (!unpriced.length) return;
+    let cancelled = false;
+    (async () => {
+      for (const row of unpriced) {
+        if (cancelled) return;
+        try {
+          const query = encodeURIComponent(`!"${row.name}"`);
+          const response = await fetch(
+            `https://api.scryfall.com/cards/search?q=${query}&unique=prints&order=released&dir=desc`,
+          );
+          const data = await response.json();
+          const priced = (data.data || []).find(
+            (card: any) => card.prices?.usd != null || card.prices?.usd_foil != null,
+          );
+          if (!priced || cancelled) continue;
+          const key = cardFactKey(row.name);
+          setPrintingOverrides((current) =>
+            current[key]
+              ? current
+              : {
+                  ...current,
+                  [key]: {
+                    id: priced.id,
+                    setCode: (priced.set || "").toUpperCase(),
+                    setName: priced.set_name || priced.set || "",
+                    collectorNumber: priced.collector_number || "",
+                    image: priced.image_uris?.small || priced.card_faces?.[0]?.image_uris?.small || "",
+                    usd: priced.prices?.usd ?? null,
+                    usd_foil: priced.prices?.usd_foil ?? null,
+                    tcgplayerId: Number.isInteger(priced.tcgplayer_id) ? priced.tcgplayer_id : null,
+                  },
+                },
+          );
+        } catch {
+          /* Best-effort background repricing — leave the card unpriced on failure. */
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [deckRows, cardFacts, guestMode]);
 
   useEffect(() => {
     if (!printingMenu) return;
@@ -4996,21 +5060,6 @@ export default function Home() {
           <a onClick={() => trackLaunchEvent("save_continue_clicked", { format })} href={`https://app.metaforge.gg/?claim=${encodeURIComponent(guestClaimToken)}`}>Save and continue →</a>
         </aside>
       )}
-      {chamber === "forging" && (
-      <div className="forge-motion-layer" aria-hidden="true" key={`${chamber}-${stage}-${actionPulse}`}>
-        <div className="forge-ash-field">
-          {Array.from({ length: 14 }, (_, index) => <i key={index} />)}
-        </div>
-        <div className="forge-rune-current">
-          <i>ᛟ</i><i>ᚱ</i><i>ᛞ</i><i>ᚷ</i><i>ᛏ</i><i>ᚲ</i>
-        </div>
-        <div className="forge-energy-rails"><i /><i /><i /></div>
-        <div className="forge-action-burst">
-          <i /><i /><i /><i /><i /><i /><b />
-        </div>
-        <div className="forge-vignette" />
-      </div>
-      )}
       {milestoneMotion && motionMode === "full" && (
         <div className={`forge-milestone-motion milestone-${milestoneMotion.kind}`} role="status" aria-live="polite">
           <div className="milestone-shutter milestone-shutter-left" />
@@ -6460,7 +6509,7 @@ export default function Home() {
                     <small>{hasValidatedDeck ? "YOUR MASTERWORK" : "YOUR DECK"}</small>
                     <h2>{hasValidatedDeck ? masterworkIdentity.title || chosenWork.name.replace(/, Forged$/, "") : benchStatus === "forging" ? "The Forge is producing your deck…" : "Build not completed"}</h2>
                     {hasValidatedDeck && (
-                      <p>{activeCommanderName || featuredMasterworkCard} · {honestCoachSummary.planStory?.title || honestCoachSummary.intentions.title} · Revision {Math.max(1, revisions.length)}</p>
+                      <p>{honestCoachSummary.planStory?.title || honestCoachSummary.intentions.title} · Revision {Math.max(1, revisions.length)}</p>
                     )}
                     {hasValidatedDeck && <div className="masterwork-identity-marks" aria-label={`${selectedCommander?.colors?.join(", ") || "colorless"} color identity`}>
                       {(selectedCommander?.colors?.length ? selectedCommander.colors : ["C"]).map((color) => <i key={color} data-color={color}>{color}</i>)}
@@ -6778,15 +6827,20 @@ export default function Home() {
                           <em>Verified from the commander's own text and this build's actual composition — counted toward the tier above</em>
                         </span>
                       )}
-                      {(nativeMasterworkContext.powerSignal.interconnection.comboLoopTotal > 0 || nativeMasterworkContext.powerSignal.interconnection.amplifiers.length > 0) && (
+                      {(nativeMasterworkContext.powerSignal.interconnection.comboLoopTotal > 0 || nativeMasterworkContext.powerSignal.interconnection.amplifiers.length > 0 || (nativeMasterworkContext.powerSignal.interconnection.resetShapeTotal || 0) > 0) && (
                         <span>
                           <small>REAL INTERCONNECTION</small>
                           <b>
                             {nativeMasterworkContext.powerSignal.interconnection.comboLoopTotal} mutual loop{nativeMasterworkContext.powerSignal.interconnection.comboLoopTotal === 1 ? "" : "s"}
                             {nativeMasterworkContext.powerSignal.interconnection.amplifiers.length ? ` · ${nativeMasterworkContext.powerSignal.interconnection.amplifiers.length} amplifier${nativeMasterworkContext.powerSignal.interconnection.amplifiers.length === 1 ? "" : "s"}` : ""}
+                            {(nativeMasterworkContext.powerSignal.interconnection.resetShapeTotal || 0) > 0 ? ` · ${nativeMasterworkContext.powerSignal.interconnection.resetShapeTotal} reset shape${nativeMasterworkContext.powerSignal.interconnection.resetShapeTotal === 1 ? "" : "s"}` : ""}
                           </b>
                           <em>
-                            {[...nativeMasterworkContext.powerSignal.interconnection.amplifiers, ...nativeMasterworkContext.powerSignal.interconnection.comboLoops].slice(0, 3).join(" · ") || "Detected"} · informational only, not counted toward the tier above (see Compact Combo Proximity for the subset that is)
+                            {[
+                              ...nativeMasterworkContext.powerSignal.interconnection.amplifiers,
+                              ...nativeMasterworkContext.powerSignal.interconnection.comboLoops,
+                              ...(nativeMasterworkContext.powerSignal.interconnection.resetShapes || []),
+                            ].slice(0, 3).join(" · ") || "Detected"} · informational only, not counted toward the tier above (see Compact Combo Proximity for the subset that is). Reset shapes are not verified infinites.
                           </em>
                         </span>
                       )}
@@ -6934,7 +6988,20 @@ export default function Home() {
                           {interactionGraph.enginePairs.length > 0 && (
                             <span className="slot-justification">
                               <small>POTENTIAL TWO-CARD ENGINES · PATTERN-INFERRED, NOT A VERIFIED COMBO</small>
-                              {interactionGraph.enginePairs.slice(0, 3).map((pair: { cards: string[]; reason: string }) => (
+                              {interactionGraph.enginePairs.slice(0, 3).map((pair: { cards: string[]; reason: string; loopKind?: string }) => (
+                                <em key={pair.cards.join("+")}>
+                                  {pair.cards.join(" + ")}
+                                  {pair.loopKind && pair.loopKind !== "engine" ? ` · ${pair.loopKind.replaceAll("_", " ")}` : ""}
+                                  {" — "}
+                                  {pair.reason}
+                                </em>
+                              ))}
+                            </span>
+                          )}
+                          {(interactionGraph.resetPairs || []).length > 0 && (
+                            <span className="slot-justification">
+                              <small>RESET SHAPES · INVESTIGATE, NOT A VERIFIED INFINITE</small>
+                              {interactionGraph.resetPairs.slice(0, 3).map((pair: { cards: string[]; reason: string }) => (
                                 <em key={pair.cards.join("+")}>{pair.cards.join(" + ")} — {pair.reason}</em>
                               ))}
                             </span>

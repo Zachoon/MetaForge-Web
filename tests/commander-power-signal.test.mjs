@@ -117,6 +117,8 @@ test("evaluateCommanderPowerSignal reports an empty interconnection section when
   const result = evaluateCommanderPowerSignal([solRing, vanillaBear, plains]);
   assert.deepEqual(result.interconnection.comboLoops, []);
   assert.deepEqual(result.interconnection.amplifiers, []);
+  assert.deepEqual(result.interconnection.resetShapes, []);
+  assert.equal(result.interconnection.resetShapeTotal, 0);
   assert.deepEqual(result.fastMana, ["Sol Ring"], "every other signal must be unaffected by a missing graph");
 });
 
@@ -133,6 +135,17 @@ test("evaluateCommanderPowerSignal surfaces a real mutual engine-pair loop from 
   const result = evaluateCommanderPowerSignal([tokenHerald, cardHerald], graph);
   assert.deepEqual(result.interconnection.comboLoops, ["Token Herald + Card Herald"]);
   assert.equal(result.interconnection.comboLoopTotal, 1);
+});
+
+test("reset/pay shapes are informational and do not count toward combo proximity", () => {
+  const monolith = { name: "Basalt Monolith", typeLine: "Artifact", oracleText: "{T}: Add {C}{C}{C}. {3}: Untap this artifact.", cmc: 2 };
+  const rings = { name: "Rings of Brighthearth", typeLine: "Artifact", oracleText: "{1}, {T}: Copy target activated or triggered ability you control. You may choose new targets for the copy.", cmc: 3 };
+  const graph = buildInteractionGraph([monolith, rings]);
+  const result = evaluateCommanderPowerSignal([monolith, rings], graph);
+  assert.equal(graph.resetPairs.length, 1);
+  assert.equal(result.interconnection.resetShapeTotal, 1);
+  assert.deepEqual(result.interconnection.resetShapes, ["Basalt Monolith + Rings of Brighthearth"]);
+  assert.equal(result.comboProximity.count, 0, "reset shapes must not enter the scored combo-proximity bar");
 });
 
 // A real 100-card Commander build fetched from live Scryfall data returned

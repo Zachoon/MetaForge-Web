@@ -6,6 +6,10 @@ import {
   findUnusedEnginePartners,
   findExplicitOracleReferences,
   oracleExplicitlyNames,
+  classifyLoopKind,
+  findResetPayPairs,
+  LOOP_KINDS,
+  RESET_SHAPES,
   RELATIONSHIP_EVIDENCE,
 } from "../app/forge-interaction-graph.mjs";
 
@@ -192,7 +196,59 @@ test("flags a genuine two-way loop as an engine pair, distinct from an ordinary 
   assert.equal(edge.mutual, true);
   assert.equal(graph.enginePairs.length, 1);
   assert.deepEqual(graph.enginePairs[0].cards, ["Token Herald", "Card Herald"]);
+  assert.equal(graph.enginePairs[0].loopKind, LOOP_KINDS.ENGINE);
   assert.match(graph.enginePairs[0].reason, /two-way loop/i);
+});
+
+test("loop kinds distinguish engines, closed reset shapes, and conditional wins without claiming infinites", () => {
+  assert.equal(
+    classifyLoopKind(tokenHerald.oracleText, cardHerald.oracleText),
+    LOOP_KINDS.ENGINE,
+  );
+  assert.equal(
+    classifyLoopKind(
+      "{T}: Add {C}{C}{C}. {3}: Untap this artifact.",
+      "{1}, {T}: Untap target artifact.",
+    ),
+    LOOP_KINDS.CLOSED_LOOP,
+  );
+  assert.equal(
+    classifyLoopKind(
+      "Whenever an opponent dies, create a Treasure token. At the beginning of your upkeep, if you control ten or more Treasures, you win the game.",
+      "Whenever you attack, create a Treasure token.",
+    ),
+    LOOP_KINDS.CONDITIONAL_WIN,
+  );
+});
+
+test("reset/pay shapes are found even when the pair is not a producer/payoff engine", () => {
+  const monolith = { name: "Basalt Monolith", typeLine: "Artifact", oracleText: "{T}: Add {C}{C}{C}. {3}: Untap this artifact." };
+  const key = { name: "Voltaic Key", typeLine: "Artifact", oracleText: "{1}, {T}: Untap target artifact." };
+  const rings = { name: "Rings of Brighthearth", typeLine: "Artifact", oracleText: "{1}, {T}: Copy target activated or triggered ability you control. You may choose new targets for the copy." };
+  const kiki = { name: "Kiki-Jiki, Mirror Breaker", typeLine: "Legendary Creature — Goblin Shaman", oracleText: "{T}: Create a token that's a copy of target nonlegendary creature you control, except it has haste. Sacrifice it at the beginning of the next end step." };
+  const pestermite = { name: "Pestermite", typeLine: "Creature — Faerie Rogue", oracleText: "Flash, flying. When this creature enters, you may tap or untap target permanent." };
+  const scepter = { name: "Isochron Scepter", typeLine: "Artifact", oracleText: "Imprint — When this artifact enters, you may exile an instant card with mana value 2 or less from your hand. {2}, {T}: You may copy the exiled card. If you do, you may cast the copy without paying its mana cost." };
+  const reversal = { name: "Dramatic Reversal", typeLine: "Instant", oracleText: "Untap all nonland permanents you control." };
+
+  const keyGraph = buildInteractionGraph([monolith, key]);
+  assert.equal(keyGraph.resetPairs.length, 1);
+  assert.deepEqual(keyGraph.resetPairs[0].cards, ["Basalt Monolith", "Voltaic Key"]);
+  assert.equal(keyGraph.resetPairs[0].shape, RESET_SHAPES.ARTIFACT_UNTAP);
+  assert.equal(keyGraph.resetPairs[0].loopKind, LOOP_KINDS.CLOSED_LOOP);
+
+  const ringsGraph = buildInteractionGraph([monolith, rings]);
+  assert.equal(ringsGraph.resetPairs.length, 1);
+  assert.equal(ringsGraph.resetPairs[0].shape, RESET_SHAPES.COPY_ACTIVATED);
+
+  const kikiGraph = buildInteractionGraph([kiki, pestermite]);
+  assert.equal(kikiGraph.resetPairs.length, 1);
+  assert.equal(kikiGraph.resetPairs[0].shape, RESET_SHAPES.COPY_ETB_UNTAP);
+
+  const scepterGraph = buildInteractionGraph([scepter, reversal]);
+  assert.equal(scepterGraph.resetPairs.length, 1);
+  assert.equal(scepterGraph.resetPairs[0].shape, RESET_SHAPES.IMPRINT_UNTAP_ALL);
+
+  assert.equal(findResetPayPairs([tokenHerald, cardHerald]).length, 0, "an ordinary engine pair is not a reset shape");
 });
 
 test("Fear of Missing Out and Trading Post are related cards, not a reciprocal combo loop", () => {
@@ -252,6 +308,7 @@ test("suggests a pool card that would form a genuine two-way loop with something
   assert.equal(suggestions.length, 1);
   assert.equal(suggestions[0].card, "Card Herald");
   assert.equal(suggestions[0].partner, "Token Herald");
+  assert.equal(suggestions[0].loopKind, LOOP_KINDS.ENGINE);
   assert.match(suggestions[0].reason, /sitting unused in your pool/i);
 });
 

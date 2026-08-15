@@ -12,7 +12,93 @@ export const RELATIONSHIP_EVIDENCE = Object.freeze({
   ORACLE_CONFLICT: "verified oracle-derived conflict",
   ORACLE_AMPLIFIER: "verified rules-text trigger amplifier",
   ORACLE_MUTUAL_LOOP: "inferred mutual mechanical loop",
+  ORACLE_RESET_SHAPE: "inferred oracle reset shape",
 });
+
+export const LOOP_KINDS = Object.freeze({
+  ENGINE: "engine",
+  CLOSED_LOOP: "closed_loop",
+  CONDITIONAL_WIN: "conditional_win",
+});
+
+export const RESET_SHAPES = Object.freeze({
+  ARTIFACT_UNTAP: "artifact_untap",
+  COPY_ACTIVATED: "copy_activated",
+  COPY_ETB_UNTAP: "copy_etb_untap",
+  IMPRINT_UNTAP_ALL: "imprint_untap_all",
+});
+
+const RESET_SHAPE_REASON = Object.freeze({
+  [RESET_SHAPES.ARTIFACT_UNTAP]: "One card untaps itself for mana; the other untaps an artifact. Reset shape — investigate, not a verified infinite.",
+  [RESET_SHAPES.COPY_ACTIVATED]: "One card untaps itself; the other copies an activated ability. Reset shape — investigate, not a verified infinite.",
+  [RESET_SHAPES.COPY_ETB_UNTAP]: "One card copies a creature; the other untaps a permanent on enter. Reset shape — investigate, not a verified infinite.",
+  [RESET_SHAPES.IMPRINT_UNTAP_ALL]: "One card can recast an imprinted instant; the other untaps nonlands. Reset shape — investigate, not a verified infinite.",
+});
+
+const SELF_UNTAP = /\{[^}]+\}: Untap this(?: artifact| creature| permanent)?/i;
+const TAP_ADD = /\{T\}: Add \{/;
+const UNTAP_TARGET_ARTIFACT = /untap target artifact/i;
+const COPY_ACTIVATED = /copy target activated/i;
+const COPIES_CREATURE = /create a token that's a copy of[^.]*creature/i;
+const ETB_UNTAP_TARGET = /enters(?: the battlefield)?[^.]*untap target (?:creature|permanent|artifact)/i;
+const IMPRINTS_INSTANT = /imprint|you may copy the exiled card/i;
+const UNTAP_ALL_NONLANDS = /untap all nonland permanents you control/i;
+
+/**
+ * Two-card oracle shapes that can reset a tap or restage a spell.
+ * Observation only. Not a combo solver and not a claim the loop goes infinite.
+ */
+export function resetPayShape(leftOracle = "", rightOracle = "") {
+  const left = String(leftOracle || "");
+  const right = String(rightOracle || "");
+  const pair = (leftTest, rightTest) =>
+    (leftTest.test(left) && rightTest.test(right)) || (leftTest.test(right) && rightTest.test(left));
+
+  if (pair(SELF_UNTAP, UNTAP_TARGET_ARTIFACT)) return RESET_SHAPES.ARTIFACT_UNTAP;
+  if (pair(SELF_UNTAP, COPY_ACTIVATED) && (TAP_ADD.test(left) || TAP_ADD.test(right))) {
+    return RESET_SHAPES.COPY_ACTIVATED;
+  }
+  if (pair(COPIES_CREATURE, ETB_UNTAP_TARGET)) return RESET_SHAPES.COPY_ETB_UNTAP;
+  if (pair(IMPRINTS_INSTANT, UNTAP_ALL_NONLANDS)) return RESET_SHAPES.IMPRINT_UNTAP_ALL;
+  return null;
+}
+
+/**
+ * Vocabulary on a pair of oracles. Engine is the default for ordinary
+ * producer/payoff loops. Closed_loop is a reset shape. Conditional_win is
+ * a board-state win, not a loop.
+ */
+export function classifyLoopKind(leftOracle = "", rightOracle = "") {
+  const left = String(leftOracle || "");
+  const right = String(rightOracle || "");
+  const combined = `${left}\n${right}`;
+  if (/you win the game/i.test(combined) && /if you (?:control|have|own)|, if you /i.test(combined)) {
+    return LOOP_KINDS.CONDITIONAL_WIN;
+  }
+  if (resetPayShape(left, right)) return LOOP_KINDS.CLOSED_LOOP;
+  return LOOP_KINDS.ENGINE;
+}
+
+export function findResetPayPairs(cards = []) {
+  const nodes = (cards || []).filter((card) => card?.name && !/\bLand\b/i.test(card.typeLine || card.type_line || ""));
+  const pairs = [];
+  for (let leftIndex = 0; leftIndex < nodes.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < nodes.length; rightIndex += 1) {
+      const left = nodes[leftIndex];
+      const right = nodes[rightIndex];
+      const shape = resetPayShape(textOf(left), textOf(right));
+      if (!shape) continue;
+      pairs.push({
+        cards: [left.name, right.name],
+        loopKind: LOOP_KINDS.CLOSED_LOOP,
+        shape,
+        reason: RESET_SHAPE_REASON[shape],
+        evidence: RELATIONSHIP_EVIDENCE.ORACLE_RESET_SHAPE,
+      });
+    }
+  }
+  return pairs;
+}
 
 /**
  * Display / face names a card may be referred to by in Oracle text.
@@ -495,15 +581,23 @@ export function buildInteractionGraph(cards, options = {}) {
   const commanderLinks = commander ? edges.filter((edge) => edge.from === commander.name || edge.to === commander.name) : [];
   const coverage = nonlands.length ? connected.size / nonlands.length : 0;
   const confidence = nonlands.length < 8 ? "LOW · INCOMPLETE CARD SET" : coverage >= .75 ? "HIGH · ORACLE-DERIVED" : coverage >= .45 ? "MEDIUM · PARTIAL PACKAGE COVERAGE" : "LOW · MANY ISOLATED SLOTS";
+  const byName = new Map(nonlands.map((card) => [card.name, card]));
   const enginePairs = edges
     .filter((edge) => edge.mutual)
-    .map((edge) => ({
-      cards: [edge.from, edge.to],
-      strength: edge.strength,
-      reason: `${edge.from} feeds ${edge.to}'s ${edge.forwardSignals.join("/")} payoff, while ${edge.to} feeds ${edge.from}'s ${edge.reverseSignals.join("/")} payoff back — a genuine two-way loop, not just a shared theme.`,
-      evidence: RELATIONSHIP_EVIDENCE.ORACLE_MUTUAL_LOOP,
-    }))
+    .map((edge) => {
+      const left = byName.get(edge.from);
+      const right = byName.get(edge.to);
+      const loopKind = classifyLoopKind(textOf(left || {}), textOf(right || {}));
+      return {
+        cards: [edge.from, edge.to],
+        strength: edge.strength,
+        loopKind,
+        reason: `${edge.from} feeds ${edge.to}'s ${edge.forwardSignals.join("/")} payoff, while ${edge.to} feeds ${edge.from}'s ${edge.reverseSignals.join("/")} payoff back — a genuine two-way loop, not just a shared theme.`,
+        evidence: RELATIONSHIP_EVIDENCE.ORACLE_MUTUAL_LOOP,
+      };
+    })
     .sort((a, b) => b.strength - a.strength);
+  const resetPairs = findResetPayPairs(nonlands);
   return {
     nodes,
     edges,
@@ -512,11 +606,12 @@ export function buildInteractionGraph(cards, options = {}) {
     nonbos,
     amplifiers,
     enginePairs,
+    resetPairs,
     commanderLinks,
     explicitReferences,
     coverage,
     confidence,
-    methodology: "Relationships come from oracle text and type lines: mechanical producer/payoff inference, plus oracle_explicit edges when Oracle literally names another card in the deck. Not adoption claims or guaranteed combos.",
+    methodology: "Relationships come from oracle text and type lines: mechanical producer/payoff inference, plus oracle_explicit edges when Oracle literally names another card in the deck. Mutual pairs are labeled engine / closed_loop / conditional_win as vocabulary. Reset/pay shapes are a separate observation pass — not verified infinites and not construction credit.",
     commanderName: options.commanderName || commander?.name || "",
   };
 }
@@ -548,13 +643,14 @@ export function findUnusedEnginePartners(deckCards, poolCards, options = {}) {
       const reverse = deckCard.mechanics.produces.filter((signal) => poolCard.mechanics.rewards.includes(signal));
       if (!forward.length || !reverse.length) continue;
       const strength = Math.min(100, 52 + (forward.length + reverse.length) * 14);
-      if (!best || strength > best.strength) best = { partner: deckCard.name, strength, forward, reverse };
+      if (!best || strength > best.strength) best = { partner: deckCard.name, partnerCard: deckCard, strength, forward, reverse };
     }
     if (best) {
       suggestions.push({
         card: poolCard.name,
         partner: best.partner,
         strength: best.strength,
+        loopKind: classifyLoopKind(textOf(poolCard), textOf(best.partnerCard || {})),
         reason: `${poolCard.name} feeds ${best.partner}'s ${best.forward.join("/")} payoff, while ${best.partner} feeds ${poolCard.name}'s ${best.reverse.join("/")} payoff back — sitting unused in your pool.`,
         evidence: "inferred mutual mechanical loop",
       });
