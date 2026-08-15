@@ -44,7 +44,7 @@ Phase 1 verification: **passed** (2026-08-11).
 > Concepts · play captures · simulation witness · stance voice.  
 > Continuous observation + Friday heartbeat.  
 >
-> #026 restricted-effect overcredit **shipped** (2026-08-14) — 104-forge quality identical to frozen. Awaiting Live Founder Trial.
+> #026 restricted-effect overcredit **shipped** (2026-08-14) — follow-ups 2026-08-15 (playable mana, rainbow lands, named-type lands, conditional wincons). Awaiting Live Founder Trial.
 
 ### Live Founder Trial — re-run (2026-08-11, post-surgical)
 
@@ -843,23 +843,27 @@ Two manifestations, same class:
 
 1. **Restricted rainbow lands.** `buildManaBase` withholds full color-fit when mana is type-restricted unless the list is typal. Path of Ancestry keeps full credit because it also taps for unrestricted commander-identity colors.
 2. **Modal toolbox role-stacking / restricted colorless casting.** Classification still unions modes. Scoring counts only the modes you can fire. Role floors and prospective deficit-closure count modal cards at 0.4. `{C}` pips are visible to mana consistency **and** selection. Artifact-only `{C}` does not pay nonartifact spells. "Whenever you cast an artifact spell" is not spellslinger.
-3. **Conditional rainbow lands, same class.** Devotion-scaled any-color (Nykthos class) is not a dual unless the commander is mono-color. Type-count scaled any-color (Three Tree City class) is not a dual unless the list is typal. Land-type scaled mana (Coffers class) is not a dual in a split identity. A land that produces none of the commander’s colors is a utility slot, not fixing.
+3. **Conditional rainbow lands, same class.** Devotion-scaled any-color (Nykthos class) is not a dual unless the commander is mono-color. Type-count scaled any-color (Three Tree City class) is not a dual unless the list is typal. Land-type scaled mana (Coffers class) is not a dual in a split identity. A land that produces none of the commander’s colors is a utility slot, not fixing. Unconditional rainbow (City of Brass / Mana Confluence class) is 4–5 color reach, not a two- or three-color dual. Named-type mana (Haven of the Spirit Dragon class) is not a dual unless that printed type is in the tribe lens — Bear typal does not make Dragon lands into duals. Command Tower and Exotic Orchard keep full credit.
 4. **X is not a 1-drop.** Printed mana value treats X as zero; construction curve does not.
 5. **Colorless rocks in a colored list.** 2+ mana `{C}` rocks do not close the colored ramp quota. 0–1 mana rocks still accelerate. Any-color rocks still fix.
+6. **Conditional wincons, same class.** “You win the game if [board condition]” is not an unconditional threat. A ten-treasure close is real when the commander produces treasures; it is not a Clue engine’s win. This is not a combo solver and does not claim loops go infinite.
 
 T'Challa’s Vibranium mana cannot be spent on nonartifact spells — so these colorless instants/planeswalkers are not even a free `{C}` outlet. That is the same restriction-blindness, not a commander-specific branch.
 
 **Do not fix as**
 
-- `if (commander === "T'Challa")`
-- an Eldrazi / Ugin / Cavern deny-list
+- `if (commander === "T'Challa")` / `if (commander === "Teysa")`
+- an Eldrazi / Ugin / Cavern / City of Brass / Revel deny-list
 - a coefficient nudge to make this screenshot prettier
+- a new combo-search planning layer
 
 **Legal next step (done 2026-08-14, follow-up 2026-08-15)**
 
-Harness-gated construction change that withholds full credit unless the condition holds in *this* list (tribe density for type-restricted or type-count mana; mono-color for devotion-scaled mana; a mode you can actually fire; `{C}` / artifact-only mana as real payment; scoped artifact-spell payoffs). Tests: `npm run validate:founder-026`. Field: `npm run validate:harness:field`.
+Harness-gated construction change that withholds full credit unless the condition holds in *this* list (tribe density for type-restricted or type-count mana; the printed type for named-type mana; identity width for rainbow pain lands; mono-color for devotion-scaled mana; a mode you can actually fire; `{C}` / artifact-only mana as real payment; scoped artifact-spell payoffs; commander/commission support for a conditional win). Tests: `npm run validate:founder-026`. Field: `npm run validate:harness:field`.
 
 **Live trial (2026-08-14):** Failed. T'Challa Revision 1 still showed Kozilek's Command, Ugin, Glaring Fleshraker. First ship never gated selection. Follow-up does.
+
+**Live evidence (2026-08-15):** Teysa, Opulent Oligarch 99. Build was coherent (clues / drain / artifact-sac). Remaining class holes: City of Brass / Mana Confluence in two-color; Haven / Maelstrom of the Spirit Dragon as fake duals; Revel in Riches as a treasure close without a treasure commander.
 
 ---
 
@@ -872,4 +876,4 @@ Harness-gated construction change that withholds full credit unless the conditio
 
 ---
 
-*Last updated: 2026-08-15 — #026 playable-mana follow-up: utility lands, Coffers-class scaling, X curve, colorless rocks. 104-forge field quality-identical to frozen.*
+*Last updated: 2026-08-15 — #026 mana-base + conditional-wincon follow-up: City of Brass class, named-type Dragon lands, treasure wincons. 104-forge field: pass 100%, avoidable weak identical, emergence 11.317 vs 11.24 frozen.*

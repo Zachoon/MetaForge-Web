@@ -305,6 +305,15 @@ body:has(.great-forge.chamber-archive){
   grid-template-rows:minmax(0,1fr) auto!important;
   align-items:stretch!important;
 }
+
+/* The ceremony now owns its full-frame, phase-driven heat treatment. Hide the
+   old molten floor strip and flare sprites so no copper band sits underneath
+   the emerging commander artwork. */
+.chamber-forging .forge-textures>u,
+.chamber-forging .forge-textures>s,
+.chamber-forging .forge-textures>b{
+  display:none!important;
+}
 .forging-ceremony>.ceremony-phase-rail{
   display:grid!important;
   grid-column:1/-1!important;

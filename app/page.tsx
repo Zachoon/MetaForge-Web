@@ -3829,6 +3829,10 @@ export default function Home() {
   // this one — the workbench's own downstream structural/consistency
   // panels already re-derive fresh from whatever deck is actually loaded.
   function landOnCompletedDecklist() {
+    // Opening a deck should be immediate. In particular, do not carry a
+    // forge milestone overlay (rune, crosshair, smoke, flare, or sparks)
+    // across the transition into either a new or a saved Masterwork.
+    setMilestoneMotion(null);
     setActiveForgeChapter(1);
     setDeckViewMode("ledger");
     setSiteRail("decklist");
@@ -4276,7 +4280,6 @@ export default function Home() {
     setBenchStatus("testing");
     setOpeningExperimentPending(false);
     setOpeningExperimentFocus("");
-    setMilestoneMotion({ kind: "masterwork-selected", eyebrow: "MASTERWORK REOPENED", label: family.name, glyph: "ᛞ" });
     landOnCompletedDecklist();
     setChamber("workbench");
   }
@@ -5813,7 +5816,14 @@ export default function Home() {
       )}
 
       {chamber === "forging" && (
-        <section className="forging-ceremony" aria-live="polite">
+        <section className="forging-ceremony" data-phase={stage + 1} aria-live="polite">
+          {selectedCommander ? (
+            <div
+              className="ceremony-commander-emergence"
+              style={{ backgroundImage: `url("${cardArtCrop(selectedCommander.name)}")` }}
+              aria-hidden="true"
+            />
+          ) : null}
           <ForgeCeremonyMotion stage={stage} motionMode={motionMode} />
           <div className="ceremony-copy" data-phase={stage + 1}>
             <span className="forge-eyebrow">

@@ -1,9 +1,9 @@
 # Founder #026 — Restricted-effect overcredit (harness report)
 
-**Date:** 2026-08-14 (ship) · **Follow-up:** 2026-08-15 (live trial failed)  
+**Date:** 2026-08-14 (ship) · **Follow-up:** 2026-08-15 (live trial failed; playable-mana, rainbow, named-type, conditional wincon)  
 **Policy:** default Brain v1 construction (not an opt-in experiment)  
 **Class:** Conditional / mutually exclusive effects were scored as unconditional full-job cards  
-**Evidence:** T'Challa Selesnya list + prior Eldrazi watch  
+**Evidence:** T'Challa Selesnya list + Teysa, Opulent Oligarch 99 + prior Eldrazi watch  
 **Corpus:** 13 fixtures × 8 seeds = **104 forges** vs `tests/validation-harness/brain-v1-frozen-benchmark.json`
 
 This is a representation fix, not a new planning layer and not a card deny-list.
@@ -20,6 +20,9 @@ This is a representation fix, not a new planning layer and not a card deny-list.
 8. **Land-type scaled mana** — Coffers class is full credit in mono; split identities do not stack enough basics.
 9. **X is not a 1-drop** — construction curve uses the same first-meaningful window as mana consistency.
 10. **Colorless rocks in a colored list** — 2+ mana `{C}` rocks do not close or consume the colored ramp quota. Sol Ring-class 0–1 mana rocks still accelerate. Arcane Signet-class any-color rocks still fix.
+11. **Unconditional rainbow lands** — City of Brass / Mana Confluence class is 4–5 color reach. Two- and three-color lists cover pips with duals. Command Tower (identity) and Exotic Orchard (opponent-gated) keep full credit.
+12. **Named-type mana** — Haven / Maelstrom of the Spirit Dragon class is not “chosen type.” Full credit only when that printed type is in the tribe lens. A Bear list does not make Dragon lands into duals. “A land you control” is not a creature tribe.
+13. **Conditional wincons** — “You win the game if [board condition]” is not an unconditional threat. A ten-treasure close needs a treasure-producing commander or commission. This is not a combo solver and does not claim loops go infinite.
 
 ## Gate answers
 
@@ -28,22 +31,22 @@ This is a representation fix, not a new planning layer and not a card deny-list.
 | 1 | Pass rate improve or stay 100% on golden / field? | **100%** (104/104). Unchanged. |
 | 2 | Hard failures stay zero? | **0**. Unchanged. |
 | 3 | Avoidable weak slots per forge ≤ frozen? | **0.154**. Identical to frozen. |
-| 4 | Beneficial emergence collapse? | **11.24 / forge**. Identical to frozen. Floor is 10.5. |
-| 5 | Runtime regress materially? | Quality-identical to frozen. Host runtime vs 2026-08-10 benchmark machine still fails the golden `mean_runtime_ms` 1.75× gate. No new search layer. |
-| 6 | Any golden archetype regress? | **No.** Per-archetype weak ceilings identical across all 8 seeds (Pearl-Ear 0, typal 0, tokens 8, combo 7, …). |
+| 4 | Beneficial emergence collapse? | **11.317 / forge** vs frozen **11.24**. Did not collapse. Floor is 10.5. |
+| 5 | Runtime regress materially? | No new search layer. Host runtime vs 2026-08-10 benchmark machine still fails the golden `mean_runtime_ms` 1.75× gate. |
+| 6 | Any golden archetype regress? | **No.** Per-archetype weak ceilings match frozen (Pearl-Ear 0, typal 0, tokens 8, combo 7, landfall 2, …). |
 
 ### Field vs frozen (per-forge)
 
-Follow-up field artifact: `tests/validation-harness/out/report-field-2026-08-15T084908Z.json`
+Follow-up field artifact: `tests/validation-harness/out/report-field-2026-08-15T094553Z.json`
 
-| Metric | Frozen | #026 follow-up field |
+| Metric | Frozen | #026 rainbow / named-type / wincon field |
 |---|---:|---:|
 | Pass rate | 1.000 | 1.000 |
 | Hard failures | 0 | 0 |
 | Ledger weak | 2.385 | 2.385 |
 | Avoidable weak | 0.154 | 0.154 |
 | Constraint-forced weak | 1.923 | 1.923 |
-| Beneficial emergence | 11.24 | 11.24 |
+| Beneficial emergence | 11.24 | 11.317 |
 | Later package oversupply | 2.481 | 2.481 |
 | Genuine bad belief | 0.538 | 0.538 |
 
@@ -67,6 +70,10 @@ Torture fixtures do not contain Cavern / Warping Wail / Kozilek's Command, so fi
 - Coffers loses in a three-color identity; stays in mono-black
 - X spells are not 1-drops on the construction curve
 - 2+ mana colorless rocks do not consume the ramp quota; Sol Ring may stay; land-search still fills ramp
+- Two- and three-color: City of Brass / Mana Confluence lose to duals; Command Tower and Exotic Orchard stay; five-color keeps City of Brass
+- Named-type Dragon land loses in non-Dragon and Bear lists; stays when the commander implies Dragons
+- Conditional treasure win loses under a Clue commander; stays under a treasure-producing commander
+- “A land you control” / “a Clue you control” are not creature tribes
 
 ## Live trial (2026-08-14)
 

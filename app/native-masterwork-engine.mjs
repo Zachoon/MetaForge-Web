@@ -15,6 +15,7 @@ import {
   modalAwareRoleScore,
   oracleOf,
   restrictedEffectCastingFactor,
+  restrictedWinconFactor,
   roleFloorCredit,
 } from "./conditional-effect-credit.mjs";
 export {
@@ -28,6 +29,7 @@ export {
   listHasTypalDensity,
   modalAwareRoleScore,
   restrictedEffectCastingFactor,
+  restrictedWinconFactor,
   roleFloorCredit,
 };
 
@@ -540,17 +542,28 @@ function normalizeBlueprintText(value = "") {
 const GENERIC_SCOPE_WORDS = new Set(["card", "creature", "permanent", "player", "opponent", "spell", "token", "target"]);
 const TRIBAL_STOP_WORDS = new Set(["target", "equipped", "enchanted", "attacking", "blocking", "tapped", "untapped", "nontoken", "other", "another", "each", "all", ...GENERIC_SCOPE_WORDS]);
 
+const ARTIFACT_OR_TOKEN_TYPES = new Set([
+  "clue", "treasure", "food", "gold", "blood", "map", "junk", "powerstone",
+  "vehicle", "equipment", "fortification", "aura", "contraption", "attraction",
+  "land", "lands", "nonland", "enchantment", "artifact", "instant", "sorcery",
+  "planeswalker", "battle", "saga", "class", "case", "room", "background", "role",
+]);
+
 /**
- * Tribes implied by commander rules text ("another Bear you control").
+ * Tribes implied by commander rules text ("another Bear you control",
+ * "a Dragon you control", "Dragon spells you cast").
  * Used for scoring/semantics/package membership — NOT for Blueprint identity
  * floors, which remain note-explicit ("bear tribal").
+ * Artifact/token types (Clue, Treasure) are not creature tribes.
  */
 export function commanderTribesFromOracle(commanders = []) {
   const oracle = commanders.map((commander) => String(commander?.oracleText || commander?.oracle_text || "")).join(" ");
   return unique([
     ...[...oracle.matchAll(/\banother ([A-Za-z][A-Za-z'-]+)s? you control\b/g)].map((match) => normalized(match[1])),
     ...[...oracle.matchAll(/\b([A-Za-z][A-Za-z'-]+) creatures you control\b/g)].map((match) => normalized(match[1])),
-  ]).filter((term) => term && !BLUEPRINT_FILLER_WORDS.has(term) && !TRIBAL_STOP_WORDS.has(term));
+    ...[...oracle.matchAll(/\b(?:a|an) ([A-Za-z][A-Za-z'-]+)s? you control\b/g)].map((match) => normalized(match[1])),
+    ...[...oracle.matchAll(/\b([A-Za-z][A-Za-z'-]+) spells? you cast\b/g)].map((match) => normalized(match[1])),
+  ]).filter((term) => term && !BLUEPRINT_FILLER_WORDS.has(term) && !TRIBAL_STOP_WORDS.has(term) && !ARTIFACT_OR_TOKEN_TYPES.has(term));
 }
 
 export function parseNativeBlueprintIntent(input = {}) {
@@ -905,11 +918,18 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
     commanderOracle: context.commanderOracle || "",
     commanderColors: context.commanderColors || [],
   });
+  const winconFactor = restrictedWinconFactor({
+    oracle: card.oracleText || card.oracle_text || "",
+    commanderOracle: context.commanderOracle || "",
+    blueprintText: `${context.blueprint?.source || ""} ${(context.blueprint?.requestedMechanics || []).join(" ")} ${(context.blueprint?.promises || []).join(" ")}`,
+  });
   const printedCmc = manaValueFromCost(card.manaCost || card.mana_cost, card.cmc);
   const cmc = curveManaValue(card.manaCost || card.mana_cost, printedCmc);
   const floorCredit = roleFloorCredit(card.oracleText || card.oracle_text || "", {
     colorIdentity: card.colorIdentity || card.color_identity || [],
     commanderColors: context.commanderColors || [],
+    commanderOracle: context.commanderOracle || "",
+    blueprintText: `${context.blueprint?.source || ""} ${(context.blueprint?.requestedMechanics || []).join(" ")}`,
   });
   const sequenceStages = unique([
     ...(cmc <= 3 && roles.some((role) => ["ramp", "draw", "selection"].includes(role)) ? ["setup"] : []),
@@ -943,6 +963,7 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
     discovery: evidence.newCardPotential ? 2 : 0,
     popularityScore: popularityScoreFromRank(card.popularityRank),
     castingFactor,
+    winconFactor,
     roleFloorCredit: floorCredit,
     budgetScore: budgetScoreFor(card.priceUsd, context.budget),
     complexityScore: complexityScoreFor(oracleTextComplexity(card.oracleText || card.oracle_text), context.complexity),
@@ -1065,10 +1086,11 @@ function scoreCard(entry, input, variant, context) {
   const deterministicTieBreak = (hash(`${input.seed}|${variant.id}|${entry.card.name}`) % 1000) / 100000;
   const oracleText = entry.card.oracleText || entry.card.oracle_text || entry.text || "";
   const castingFactor = Number.isFinite(entry.castingFactor) ? entry.castingFactor : 1;
+  const winconFactor = Number.isFinite(entry.winconFactor) ? entry.winconFactor : 1;
   const fixingCredit = colorlessFixingCredit({
     oracle: oracleText,
     colorIdentity: entry.card.colorIdentity || entry.card.color_identity || [],
-    manaCost: entry.card.manaCost || entry.card.mana_cost || "",
+    manaCost: entry.card.manaCost || entry.manaCost || entry.card.mana_cost || "",
     commanderColors: context.commanderColors || [],
   });
   return {
@@ -1076,8 +1098,9 @@ function scoreCard(entry, input, variant, context) {
     roles: entry.roles,
     cmc: entry.cmc,
     castingFactor,
+    winconFactor,
     fixingCredit,
-    score: (entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.commanderConnectionSignals.length * 14 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.blueprintMechanicHits.reduce((sum, mechanic) => sum + blueprintMechanicDefinition(mechanic).score, 0) + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + entry.budgetScore + entry.complexityScore + entry.powerTierScore + deterministicTieBreak) * castingFactor * fixingCredit,
+    score: (entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.commanderConnectionSignals.length * 14 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.blueprintMechanicHits.reduce((sum, mechanic) => sum + blueprintMechanicDefinition(mechanic).score, 0) + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + entry.budgetScore + entry.complexityScore + entry.powerTierScore + deterministicTieBreak) * castingFactor * fixingCredit * winconFactor,
     synergyHits: entry.synergyHits,
     synergyPotential: entry.synergyPotential,
     preferenceHits: entry.preferenceHits,
@@ -1098,9 +1121,15 @@ function scoreCard(entry, input, variant, context) {
       : roleFloorCredit(oracleText, {
         colorIdentity: entry.card.colorIdentity || entry.card.color_identity || [],
         commanderColors: context.commanderColors || [],
+        commanderOracle: context.commanderOracle || "",
+        blueprintText: context.blueprint?.source || "",
       }),
     needsSnowSupport: entry.needsSnowSupport,
   };
+}
+
+function isUnrestrictedConstructionCredit(entry) {
+  return (entry.castingFactor ?? 1) >= 1 && (entry.fixingCredit ?? 1) >= 1 && (entry.winconFactor ?? 1) >= 1;
 }
 
 // An explicit Blueprint is a deck-level contract, not merely another
@@ -1348,7 +1377,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
     return true;
   };
   const payable = [...scored]
-    .filter((entry) => (entry.castingFactor ?? 1) >= 1 && (entry.fixingCredit ?? 1) >= 1)
+    .filter((entry) => isUnrestrictedConstructionCredit(entry))
     .sort((left, right) => right.score - left.score || left.card.name.localeCompare(right.card.name));
   const poolProducerSignals = new Set(scored.flatMap((entry) => entry.mechanics.produces));
   const explicitStrategyContract = blueprint.promises.length > 0;
@@ -1434,7 +1463,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
     // still fills an open package/role deficit. Avoids O(pool) full delta
     // work once the deck is already mostly shaped.
     const remainingAll = scored.filter((entry) => !selectedNames.has(normalized(entry.card.name)));
-    const remainingPayable = remainingAll.filter((entry) => (entry.castingFactor ?? 1) >= 1 && (entry.fixingCredit ?? 1) >= 1);
+    const remainingPayable = remainingAll.filter((entry) => isUnrestrictedConstructionCredit(entry));
     const remainingEntries = remainingPayable.length ? remainingPayable : remainingAll;
     const byScore = [...remainingEntries].sort((left, right) => right.score - left.score || left.card.name.localeCompare(right.card.name));
     const shortlist = new Map();
@@ -1452,7 +1481,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
         return false;
       });
       const fillsRole = entry.roles.some((role) => (deficitState.roles[role]?.deficit || 0) > 0);
-      if (fillsPackage || fillsRole || ((entry.commanderConnectionSignals || []).length && (entry.castingFactor ?? 1) >= 1)) {
+      if (fillsPackage || fillsRole || ((entry.commanderConnectionSignals || []).length && isUnrestrictedConstructionCredit(entry))) {
         shortlist.set(key, entry);
       }
     }
@@ -1495,9 +1524,10 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       const synergy = inDeckSynergy * wiring.liveSynergyMultiplier + requestedPackageSynergy * 3;
       const castingFactor = Number.isFinite(entry.castingFactor) ? entry.castingFactor : 1;
       const fixingCredit = Number.isFinite(entry.fixingCredit) ? entry.fixingCredit : 1;
+      const winconFactor = Number.isFinite(entry.winconFactor) ? entry.winconFactor : 1;
       const phased = applyPhaseWeights({
         rawScore: entry.score,
-        prospectiveDelta: delta.total * castingFactor * fixingCredit,
+        prospectiveDelta: delta.total * castingFactor * fixingCredit * winconFactor,
         synergy,
         orphanPenalty: orphanPayoffPenalty * 0.65,
         disconnectTax: disconnectedStrategyTax,
@@ -1821,13 +1851,12 @@ function buildManaBase(input, landSlots, lands, variant, presetLands = [], pipTo
   // same rough 0-4 scale as the existing untapped/fixing-text terms below, so
   // it nudges the ranking rather than swamping it.
   const totalPips = Object.values(pipTotals).reduce((sum, count) => sum + count, 0) || 1;
-  const typalManaBase = listHasTypalDensity(
-    spellRows,
-    parseNativeBlueprintIntent(input),
-    commanderTribesFromOracle(allCommanders(input)),
-  );
+  const blueprint = parseNativeBlueprintIntent(input);
+  const commanderTribes = commanderTribesFromOracle(allCommanders(input));
+  const typalManaBase = listHasTypalDensity(spellRows, blueprint, commanderTribes);
   const colorCount = commanderColors(input).length || (input.colors || []).length || 0;
-  const landFixingOptions = { typal: typalManaBase, colorCount, commanderColors: colors };
+  const tribes = unique([...(blueprint.tribalTypes || []), ...commanderTribes]);
+  const landFixingOptions = { typal: typalManaBase, colorCount, commanderColors: colors, tribes };
   const colorFit = (card) => {
     const produced = producedColorsOf(card);
     const raw = produced.reduce((sum, color) => sum + (pipTotals[color] || 0), 0) / totalPips;

@@ -15,6 +15,9 @@ const DEVOTION_SCALED_MANA = /add an amount of mana[\s\S]{0,80}devotion to (?:th
 const LAND_TYPE_SCALED_MANA = /add \{[WUBRG]\} for each (?:basic )?(?:plains|island|swamp|mountain|forest)/i;
 const UNRESTRICTED_COLORED_TAP = /\{T\}: Add \{[WUBRG]\}(?! for each)/i;
 const ANY_COLOR_ADD = /add (?:one mana |an amount of mana )?of any color/i;
+const OPPONENT_OR_CONTROLLED_COLOR = /any color that a land/i;
+const CONDITIONAL_ANY_COLOR_INSTEAD = /any color instead/i;
+const RAINBOW_IDENTITY_FLOOR = 4;
 const MODAL_TOOLBOX = /\bchoose (?:one|two|three|one or both|one or more)\b/i;
 const ARTIFACT_ONLY_COLORLESS_MANA = /can'?t be spent to cast a nonartifact spell|spend this mana only to cast artifact/i;
 const UNRESTRICTED_ADD_C = /add \{C\}/i;
@@ -39,6 +42,71 @@ export function oracleOf(entryOrCard = {}) {
   );
 }
 
+const GENERIC_SPELL_TYPES = new Set([
+  "creature", "artifact", "enchantment", "instant", "sorcery", "planeswalker",
+  "legendary", "historic", "multicolored", "colorless", "permanent", "spell", "token",
+]);
+
+/**
+ * Printed-type mana (Haven of the Spirit Dragon class) is not "chosen type".
+ * Full credit only when that type is actually in the tribe lens.
+ */
+export function namedManaSpendTypes(oracle = "") {
+  const text = String(oracle || "");
+  const types = [];
+  for (const match of text.matchAll(/spend this mana only to cast (?:a |an )?([A-Za-z][A-Za-z'-]+)(?: creature| planeswalker)? spells?/gi)) {
+    const term = String(match[1] || "").toLowerCase();
+    if (term && !GENERIC_SPELL_TYPES.has(term)) types.push(term);
+  }
+  for (const match of text.matchAll(/\b(?:a|an) ([A-Z][a-z]+(?:'[a-z]+)?) spells?\b/g)) {
+    const term = String(match[1] || "").toLowerCase();
+    if (term && !GENERIC_SPELL_TYPES.has(term)) types.push(term);
+  }
+  return [...new Set(types)];
+}
+
+/**
+ * "You win the game if [board condition]" is not an unconditional threat.
+ * Credit the win only when the commander or commission actually produces
+ * the stated resource. This is not a combo solver and does not claim loops
+ * go infinite.
+ */
+export function restrictedWinconFactor({
+  oracle = "",
+  commanderOracle = "",
+  blueprintText = "",
+} = {}) {
+  const text = String(oracle || "");
+  if (!/you win the game/i.test(text)) return 1;
+  if (!/if you (?:control|have|own)|, if you /i.test(text)) return 1;
+  const support = `${commanderOracle} ${blueprintText}`;
+  if (/\btreasures?\b/i.test(text)) return /\btreasure/i.test(support) ? 1 : RESTRICTED_CASTING_FACTOR;
+  if (/\bclues?\b/i.test(text)) return /\b(?:clue|investigate)/i.test(support) ? 1 : RESTRICTED_CASTING_FACTOR;
+  if (/\bfood\b/i.test(text)) return /\bfood\b/i.test(support) ? 1 : RESTRICTED_CASTING_FACTOR;
+  if (/\bpoison/i.test(text)) return /\bpoison/i.test(support) ? 1 : RESTRICTED_CASTING_FACTOR;
+  if (/\d+\s*(?:or more )?life|\blife total\b/i.test(text)) {
+    return /you gain .{0,48}life|lifelink|life total/i.test(support) ? 1 : RESTRICTED_CASTING_FACTOR;
+  }
+  if (/(?:creatures?|permanents?) you control/i.test(text) && /\d+|twenty|ten|fifteen/i.test(text)) {
+    return /create .{0,80}token|creature tokens/i.test(support) ? 1 : RESTRICTED_CASTING_FACTOR;
+  }
+  return RESTRICTED_CASTING_FACTOR;
+}
+
+/**
+ * City of Brass class: any-color tap with no identity, type, or opponent gate.
+ */
+export function isUnconditionalRainbowMana(oracle = "") {
+  const text = String(oracle || "");
+  if (!ANY_COLOR_ADD.test(text)) return false;
+  if (UNRESTRICTED_IDENTITY_ADD.test(text)) return false;
+  if (TYPE_RESTRICTED_SPEND.test(text) || TYPE_RESTRICTED_MANA.test(text)) return false;
+  if (OPPONENT_OR_CONTROLLED_COLOR.test(text)) return false;
+  if (CONDITIONAL_ANY_COLOR_INSTEAD.test(text)) return false;
+  if (DEVOTION_SCALED_MANA.test(text) || TYPE_COUNT_SCALED_MANA.test(text)) return false;
+  return true;
+}
+
 /**
  * How much of a land's produced colors should count as real fixing.
  * Type-restricted rainbow (Cavern / Unclaimed Territory) is not a dual unless
@@ -50,19 +118,29 @@ export function oracleOf(entryOrCard = {}) {
  * chosen-color amount inconsistent. Land-type scaled mana (Coffers class)
  * needs a mono identity so the basic-land count can actually stack.
  * A land that produces none of the commander's colors is a utility slot,
- * not a dual.
+ * not a dual. Unconditional rainbow (City of Brass / Mana Confluence class)
+ * is 4–5 color reach; two- and three-color lists cover pips with duals.
+ * Named-type mana (Haven of the Spirit Dragon class) is not a dual unless
+ * that printed type is in the tribe lens. A Bear list does not make Dragon
+ * lands into duals.
  */
 export function landColoredManaFixingFactor(oracle = "", {
   typal = false,
   colorCount = 1,
   producedMana = null,
   commanderColors = [],
+  tribes = [],
 } = {}) {
   const text = String(oracle || "");
   const typeRestricted = TYPE_RESTRICTED_MANA.test(text) && TYPE_RESTRICTED_SPEND.test(text);
   if (typeRestricted && UNRESTRICTED_IDENTITY_ADD.test(text)) return 1;
   if (typeRestricted) return typal ? 1 : 0.12;
   if (TYPE_RESTRICTED_MANA.test(text) && TYPE_COUNT_SCALED_MANA.test(text)) return typal ? 1 : 0.12;
+  const namedTypes = namedManaSpendTypes(text);
+  if (namedTypes.length) {
+    const tribeSet = new Set((tribes || []).map((tribe) => String(tribe).toLowerCase()));
+    return namedTypes.some((type) => tribeSet.has(type)) ? 1 : 0.12;
+  }
   if (DEVOTION_SCALED_MANA.test(text)) return Number(colorCount) <= 1 ? 1 : 0.12;
   if (LAND_TYPE_SCALED_MANA.test(text) && !UNRESTRICTED_COLORED_TAP.test(text)) {
     return Number(colorCount) <= 1 ? 1 : 0.12;
@@ -72,6 +150,7 @@ export function landColoredManaFixingFactor(oracle = "", {
   if (identity.length && Array.isArray(producedMana) && !producedMana.some((color) => identity.includes(color))) {
     return 0.12;
   }
+  if (isUnconditionalRainbowMana(text) && Number(colorCount) < RAINBOW_IDENTITY_FLOOR) return 0.12;
   return 1;
 }
 
@@ -217,6 +296,12 @@ export function modalAwareRoleScore(roleContributions = [], oracle = "") {
  * close the colored-pip ramp quota by themselves.
  */
 export function roleFloorCredit(oracle = "", extras = {}) {
+  const wincon = restrictedWinconFactor({
+    oracle,
+    commanderOracle: extras.commanderOracle || "",
+    blueprintText: extras.blueprintText || "",
+  });
+  if (wincon < 1) return Math.min(MODAL_FLOOR_CREDIT, wincon);
   if (isModalToolbox(oracle)) return MODAL_FLOOR_CREDIT;
   const commanderColors = extras.commanderColors || [];
   if (

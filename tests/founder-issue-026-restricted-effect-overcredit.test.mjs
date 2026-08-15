@@ -15,7 +15,9 @@ import {
   modalAwareRoleScore,
   curveManaValue,
   colorlessFixingCredit,
+  commanderTribesFromOracle,
   restrictedEffectCastingFactor,
+  restrictedWinconFactor,
   parseNativeBlueprintIntent,
   roleFloorCredit,
 } from "../app/native-masterwork-engine.mjs";
@@ -112,6 +114,43 @@ test("Founder #026: type-restricted rainbow is not full color-fixing unless the 
   assert.equal(landColoredManaFixingFactor(cradleOracle, { colorCount: 2, producedMana: ["G"], commanderColors: ["G", "W"] }), 1);
   assert.equal(landColoredManaFixingFactor(towerOracle, { producedMana: ["C"], commanderColors: ["G", "W"] }), 0.12);
   assert.equal(landRestrictedFixingPenalty(towerOracle, { producedMana: ["C"], commanderColors: ["G", "W"] }), -6);
+
+  const cityOracle = "Whenever this land becomes tapped, it deals 1 damage to you. {T}: Add one mana of any color.";
+  const confluenceOracle = "{T}, Pay 1 life: Add one mana of any color.";
+  const commandTowerOracle = "{T}: Add one mana of any color in your commander's color identity.";
+  const orchardOracle = "{T}: Add one mana of any color that a land an opponent controls could produce.";
+  assert.equal(landColoredManaFixingFactor(cityOracle, { colorCount: 2 }), 0.12);
+  assert.equal(landColoredManaFixingFactor(cityOracle, { colorCount: 3 }), 0.12);
+  assert.equal(landRestrictedFixingPenalty(cityOracle, { colorCount: 2 }), -6);
+  assert.equal(landColoredManaFixingFactor(confluenceOracle, { colorCount: 3 }), 0.12);
+  assert.equal(landColoredManaFixingFactor(cityOracle, { colorCount: 4 }), 1, "four-color lists actually need the extra reach");
+  assert.equal(landColoredManaFixingFactor(cityOracle, { colorCount: 5 }), 1);
+  assert.equal(landColoredManaFixingFactor(commandTowerOracle, { colorCount: 2 }), 1, "identity tap is a dual in two-color");
+  assert.equal(landColoredManaFixingFactor(orchardOracle, { colorCount: 2 }), 1, "opponent-gated orchard is not City of Brass");
+
+  const havenOracle = "{T}: Add {C}. {T}: Add one mana of any color. Spend this mana only to cast a Dragon creature spell.";
+  const maelstromOracle = "{T}: Add {C}. {T}: Add one mana of any color. Spend this mana only to cast a Dragon spell or an Omen spell.";
+  assert.equal(landColoredManaFixingFactor(havenOracle, { typal: true, tribes: ["bear"] }), 0.12, "a Bear list does not make Dragon lands into duals");
+  assert.equal(landColoredManaFixingFactor(havenOracle, { tribes: [] }), 0.12);
+  assert.equal(landRestrictedFixingPenalty(havenOracle, { tribes: [] }), -6);
+  assert.equal(landColoredManaFixingFactor(havenOracle, { tribes: ["dragon"] }), 1);
+  assert.equal(landColoredManaFixingFactor(maelstromOracle, { tribes: ["dragon"] }), 1);
+
+  const revelOracle = "Whenever an opponent dies, create a Treasure token. At the beginning of your upkeep, if you control ten or more Treasures, you win the game.";
+  const felidarOracle = "Vigilance, lifelink. At the beginning of your upkeep, if you have 40 or more life, you win the game.";
+  const clueCommander = "Deathtouch. At the beginning of your end step, investigate for each opponent who lost life this turn. Whenever a Clue you control is put into a graveyard from the battlefield, create a 1/1 white and black Spirit creature token with flying.";
+  assert.equal(restrictedWinconFactor({ oracle: revelOracle, commanderOracle: clueCommander }), 0.12);
+  assert.equal(restrictedWinconFactor({ oracle: revelOracle, commanderOracle: "Whenever you attack, create a Treasure token." }), 1);
+  assert.equal(restrictedWinconFactor({ oracle: felidarOracle, commanderOracle: clueCommander }), 0.12);
+  assert.equal(restrictedWinconFactor({ oracle: felidarOracle, commanderOracle: "At the beginning of your upkeep, you gain 2 life." }), 1);
+  assert.equal(restrictedWinconFactor({ oracle: "Whenever this deals combat damage to a player, you win the game.", commanderOracle: clueCommander }), 1);
+  assert.deepEqual(commanderTribesFromOracle([{ oracleText: clueCommander }]), []);
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Whenever a land you control enters, create a 1/1 green Plant creature token." }]),
+    [],
+    "landfall is not a creature tribe",
+  );
+  assert.ok(commanderTribesFromOracle([{ oracleText: "Whenever a Dragon you control enters, copy it." }]).includes("dragon"));
 });
 
 test("Founder #026: type-restricted rainbow does not beat in-color duals in a non-typal GW mana base", () => {
@@ -531,6 +570,134 @@ test("Founder #026: a land that produces none of the commander's colors loses to
   assert.ok(report.selected.rows.some((row) => String(row.name).startsWith("Canopy Gate")));
 });
 
+const cityOfBrass = {
+  name: "City of Brass",
+  oracleText: "Whenever this land becomes tapped, it deals 1 damage to you. {T}: Add one mana of any color.",
+  typeLine: "Land",
+  manaCost: "",
+  colorIdentity: [],
+  producedMana: ["W", "U", "B", "R", "G"],
+  popularityRank: 1,
+  priceUsd: 12,
+};
+
+const manaConfluence = {
+  name: "Mana Confluence",
+  oracleText: "{T}, Pay 1 life: Add one mana of any color.",
+  typeLine: "Land",
+  manaCost: "",
+  colorIdentity: [],
+  producedMana: ["W", "U", "B", "R", "G"],
+  popularityRank: 1,
+  priceUsd: 30,
+};
+
+const commandTower = {
+  name: "Command Tower",
+  oracleText: "{T}: Add one mana of any color in your commander's color identity.",
+  typeLine: "Land",
+  manaCost: "",
+  colorIdentity: [],
+  producedMana: ["W", "U", "B", "R", "G"],
+  popularityRank: 1,
+  priceUsd: 1,
+};
+
+const exoticOrchard = {
+  name: "Exotic Orchard",
+  oracleText: "{T}: Add one mana of any color that a land an opponent controls could produce.",
+  typeLine: "Land",
+  manaCost: "",
+  colorIdentity: [],
+  producedMana: ["W", "U", "B", "R", "G"],
+  popularityRank: 1,
+  priceUsd: 1,
+};
+
+test("Founder #026: unconditional rainbow loses to in-color duals in two- and three-color; identity and orchard stay", () => {
+  const twoColor = forgeNativeMasterwork({
+    format: "Commander",
+    target: 100,
+    strategy: "Balanced midrange",
+    seed: 11,
+    commander: vibraniumSovereign,
+    cards: [...gwSpells, cityOfBrass, manaConfluence, commandTower, exoticOrchard, ...tappedDuals],
+  });
+  const twoColorNames = twoColor.selected.rows.map((row) => row.name);
+  assert.ok(!twoColorNames.includes("City of Brass"), "City of Brass is 4–5 color reach, not a GW dual");
+  assert.ok(!twoColorNames.includes("Mana Confluence"), "Mana Confluence is 4–5 color reach, not a GW dual");
+  assert.ok(twoColorNames.includes("Command Tower"), "identity tap stays in two-color");
+  assert.ok(twoColorNames.includes("Exotic Orchard"), "opponent-gated orchard stays in two-color");
+  assert.ok(twoColorNames.some((name) => String(name).startsWith("Canopy Gate")));
+
+  const esper = {
+    name: "Esper Sovereign",
+    colors: ["W", "U", "B"],
+    oracleText: "Whenever this attacks, draw a card.",
+  };
+  const esperSpells = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Advisor", manaCost: "{2}{W}{U}", colorIdentity: ["W", "U"] })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Exile target nonland permanent.", typeLine: "Instant", manaCost: "{1}{W}{B}", colorIdentity: ["W", "B"] })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof until end of turn.", typeLine: "Instant", manaCost: "{1}{U}", colorIdentity: ["U"] })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [] })),
+  ];
+  const esperDuals = Array.from({ length: 20 }, (_, i) => ({
+    name: `Esper Gate ${i}`,
+    oracleText: "This land enters the battlefield tapped. {T}: Add {W} or {U} or {B}.",
+    typeLine: "Land",
+    manaCost: "",
+    colorIdentity: ["W", "U", "B"],
+    producedMana: ["W", "U", "B"],
+    popularityRank: 5,
+    priceUsd: 0.5,
+  }));
+  const threeColor = forgeNativeMasterwork({
+    format: "Commander",
+    target: 100,
+    strategy: "Balanced midrange",
+    seed: 11,
+    commander: esper,
+    cards: [...esperSpells, cityOfBrass, manaConfluence, ...esperDuals],
+  });
+  assert.ok(
+    !threeColor.selected.rows.some((row) => row.name === "City of Brass" || row.name === "Mana Confluence"),
+    "three-color still covers pips with duals; rainbow pain is unused reach",
+  );
+});
+
+test("Founder #026: unconditional rainbow stays in a five-color mana base", () => {
+  const sisay = {
+    name: "Five-Color Sovereign",
+    colors: ["W", "U", "B", "R", "G"],
+    oracleText: "Whenever this attacks, draw a card.",
+  };
+  const fiveSpells = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Advisor", manaCost: "{2}{W}{U}", colorIdentity: ["W", "U"] })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Exile target nonland permanent.", typeLine: "Instant", manaCost: "{1}{B}{R}", colorIdentity: ["B", "R"] })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof until end of turn.", typeLine: "Instant", manaCost: "{1}{G}", colorIdentity: ["G"] })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [] })),
+  ];
+  const fiveDuals = Array.from({ length: 20 }, (_, i) => ({
+    name: `Prism Gate ${i}`,
+    oracleText: "This land enters the battlefield tapped. {T}: Add one mana of any color.",
+    typeLine: "Land",
+    manaCost: "",
+    colorIdentity: [],
+    producedMana: ["W", "U", "B", "R", "G"],
+    popularityRank: 5,
+    priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander",
+    target: 100,
+    strategy: "Balanced midrange",
+    seed: 11,
+    commander: sisay,
+    cards: [...fiveSpells, cityOfBrass, ...fiveDuals],
+  });
+  assert.ok(report.selected.rows.some((row) => row.name === "City of Brass"), "five-color lists actually need the extra reach");
+});
+
 test("Founder #026: swamp-scaled mana is not a dual in a multicolor identity", () => {
   const coffers = {
     name: "Cabal Coffers",
@@ -639,5 +806,171 @@ test("Founder #026: colored land-search ramp still beats a pile of colorless roc
   assert.ok(names.includes("Sol Ring"), "Sol Ring may still make the list");
   assert.ok(reachCount >= 2, "colored land-search still fills ramp once colorless rocks stop closing the floor");
   assert.ok(rockCount <= 3, "a pile of colorless rocks must not consume the ramp quota");
+});
+
+const havenOfTheSpiritDragon = {
+  name: "Haven of the Spirit Dragon",
+  oracleText: "{T}: Add {C}. {T}: Add one mana of any color. Spend this mana only to cast a Dragon creature spell. {2}, {T}, Sacrifice this land: Return target Dragon creature card or Ugin planeswalker card from your graveyard to your hand.",
+  typeLine: "Land",
+  manaCost: "",
+  colorIdentity: [],
+  producedMana: ["W", "U", "B", "R", "G"],
+  popularityRank: 1,
+  priceUsd: 2,
+};
+
+test("Founder #026: named-type rainbow is not a dual unless that type is in the tribe lens", () => {
+  const gwReport = forgeNativeMasterwork({
+    format: "Commander",
+    target: 100,
+    strategy: "Balanced midrange",
+    seed: 11,
+    commander: vibraniumSovereign,
+    cards: [...gwSpells, havenOfTheSpiritDragon, ...tappedDuals],
+  });
+  assert.ok(
+    !gwReport.selected.rows.some((row) => row.name === "Haven of the Spirit Dragon"),
+    "Haven must lose to in-color duals when the list is not Dragons",
+  );
+
+  const ayula = {
+    name: "Ayula, Queen Among Bears",
+    colors: ["G"],
+    oracleText: "Whenever Ayula, Queen Among Bears or another Bear you control enters, you may have target Bear you control fight another target creature.",
+  };
+  const gSpells = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Bear", manaCost: "{2}{G}", colorIdentity: ["G"] })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Fight target creature you don't control.", typeLine: "Creature — Bear", manaCost: "{2}{G}", colorIdentity: ["G"] })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof until end of turn.", typeLine: "Instant", manaCost: "{1}{G}", colorIdentity: ["G"] })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [] })),
+  ];
+  const gDuals = Array.from({ length: 20 }, (_, i) => ({
+    name: `Green Gate ${i}`,
+    oracleText: "This land enters the battlefield tapped. {T}: Add {G}.",
+    typeLine: "Land",
+    manaCost: "",
+    colorIdentity: ["G"],
+    producedMana: ["G"],
+    popularityRank: 5,
+    priceUsd: 0.5,
+  }));
+  const bearReport = forgeNativeMasterwork({
+    format: "Commander",
+    target: 100,
+    strategy: "Balanced midrange",
+    seed: 11,
+    commander: ayula,
+    cards: [...gSpells, havenOfTheSpiritDragon, ...gDuals],
+  });
+  assert.ok(
+    !bearReport.selected.rows.some((row) => row.name === "Haven of the Spirit Dragon"),
+    "Bear typal does not turn Dragon-only mana into a dual",
+  );
+
+  const miirym = {
+    name: "Dragon Sentinel",
+    colors: ["G", "U", "R"],
+    oracleText: "Whenever a Dragon you control enters, create a token that's a copy of it except it's not legendary.",
+  };
+  const dragonSpells = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Dragon", manaCost: "{3}{G}{U}", colorIdentity: ["G", "U"] })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Fight target creature you don't control.", typeLine: "Instant", manaCost: "{2}{R}", colorIdentity: ["R"] })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof until end of turn.", typeLine: "Instant", manaCost: "{1}{G}", colorIdentity: ["G"] })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [] })),
+  ];
+  const dragonDuals = Array.from({ length: 20 }, (_, i) => ({
+    name: `Temur Gate ${i}`,
+    oracleText: "This land enters the battlefield tapped. {T}: Add {G} or {U} or {R}.",
+    typeLine: "Land",
+    manaCost: "",
+    colorIdentity: ["G", "U", "R"],
+    producedMana: ["G", "U", "R"],
+    popularityRank: 5,
+    priceUsd: 0.5,
+  }));
+  const dragonReport = forgeNativeMasterwork({
+    format: "Commander",
+    target: 100,
+    strategy: "Balanced midrange",
+    seed: 11,
+    commander: miirym,
+    cards: [...dragonSpells, havenOfTheSpiritDragon, ...dragonDuals],
+  });
+  assert.ok(dragonReport.selected.rows.some((row) => row.name === "Haven of the Spirit Dragon"), "Dragon-typed mana is real when the commander implies Dragons");
+});
+
+test("Founder #026: a conditional wincon is not a threat unless the commander produces the stated resource", () => {
+  const clueOligarch = {
+    name: "Clue Oligarch",
+    colors: ["W", "B"],
+    oracleText: "Deathtouch. At the beginning of your end step, investigate for each opponent who lost life this turn. Whenever a Clue you control is put into a graveyard from the battlefield, create a 1/1 white and black Spirit creature token with flying.",
+  };
+  const wbSpells = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Advisor", manaCost: "{2}{W}", colorIdentity: ["W"] })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Exile target nonland permanent.", typeLine: "Instant", manaCost: "{1}{W}{B}", colorIdentity: ["W", "B"] })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof until end of turn.", typeLine: "Instant", manaCost: "{1}{W}", colorIdentity: ["W"] })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [] })),
+  ];
+  const revel = {
+    name: "Revel in Riches",
+    oracleText: "Whenever an opponent dies, create a Treasure token. At the beginning of your upkeep, if you control ten or more Treasures, you win the game.",
+    typeLine: "Enchantment",
+    manaCost: "{4}{B}",
+    colorIdentity: ["B"],
+    popularityRank: 1,
+  };
+  const wbDuals = Array.from({ length: 20 }, (_, i) => ({
+    name: `Orzhov Gate ${i}`,
+    oracleText: "This land enters the battlefield tapped. {T}: Add {W} or {B}.",
+    typeLine: "Land",
+    manaCost: "",
+    colorIdentity: ["W", "B"],
+    producedMana: ["W", "B"],
+    popularityRank: 5,
+    priceUsd: 0.5,
+  }));
+  const clueReport = forgeNativeMasterwork({
+    format: "Commander",
+    target: 100,
+    strategy: "Balanced midrange",
+    seed: 11,
+    commander: clueOligarch,
+    cards: [...wbSpells, revel, ...wbDuals],
+  });
+  assert.ok(
+    !clueReport.selected.rows.some((row) => row.name === "Revel in Riches"),
+    "ten-treasure win is not a Clue engine's close",
+  );
+
+  const treasureBoss = {
+    name: "Treasure Boss",
+    colors: ["B", "R"],
+    oracleText: "Whenever you attack, create a Treasure token.",
+  };
+  const rbSpells = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Pirate", manaCost: "{2}{R}", colorIdentity: ["R"] })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Destroy target creature.", typeLine: "Instant", manaCost: "{1}{B}", colorIdentity: ["B"] })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof until end of turn.", typeLine: "Instant", manaCost: "{1}{R}", colorIdentity: ["R"] })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [] })),
+  ];
+  const rbDuals = Array.from({ length: 20 }, (_, i) => ({
+    name: `Rakdos Gate ${i}`,
+    oracleText: "This land enters the battlefield tapped. {T}: Add {B} or {R}.",
+    typeLine: "Land",
+    manaCost: "",
+    colorIdentity: ["B", "R"],
+    producedMana: ["B", "R"],
+    popularityRank: 5,
+    priceUsd: 0.5,
+  }));
+  const treasureReport = forgeNativeMasterwork({
+    format: "Commander",
+    target: 100,
+    strategy: "Balanced midrange",
+    seed: 11,
+    commander: treasureBoss,
+    cards: [...rbSpells, revel, ...rbDuals],
+  });
+  assert.ok(treasureReport.selected.rows.some((row) => row.name === "Revel in Riches"), "a treasure-producing commander makes the treasure win real");
 });
 
