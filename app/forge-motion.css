@@ -537,21 +537,13 @@
 .forge-motion-scan{z-index:4}.forge-motion-embers{z-index:5}
 
 .masterwork-forging-progress{overflow:hidden;isolation:isolate}
-.forging-motion--rive{position:relative;width:190px;height:190px;margin:4px auto 24px;filter:drop-shadow(0 26px 35px #000a)}
-.forging-motion--rive:before,.forging-motion--rive:after{content:none!important;display:none!important}
-.processing-crucible,.processing-index-ring,.processing-heat-ring,.processing-sparks{display:none!important}
-.forging-motion--rive canvas{z-index:1;inset:27%!important;width:46%!important;height:46%!important;opacity:.18!important;filter:saturate(.75) contrast(1.14);mix-blend-mode:screen}
-.forging-motion--rive>i{z-index:3;color:#f4d5ad;font-size:37px;text-shadow:0 0 15px #e78c43,0 0 32px #70d7c3;opacity:1!important}
-.processing-sparks{position:absolute;z-index:4;inset:0}.processing-sparks b{position:absolute;left:50%;top:50%;width:3px;height:3px;border-radius:50%;background:#ffd095;box-shadow:0 0 9px #e98638;opacity:0;animation:processing-spark 2.4s ease-out infinite}.processing-sparks b:nth-child(2){animation-delay:-.4s;rotate:55deg}.processing-sparks b:nth-child(3){animation-delay:-.8s;rotate:112deg}.processing-sparks b:nth-child(4){animation-delay:-1.2s;rotate:178deg}.processing-sparks b:nth-child(5){animation-delay:-1.6s;rotate:238deg}.processing-sparks b:nth-child(6){animation-delay:-2s;rotate:302deg}
 @keyframes precision-index-turn{to{transform:rotate(360deg)}}
 @keyframes precision-counter-turn{to{transform:rotate(-360deg)}}
 @keyframes precision-crucible-breathe{50%{box-shadow:inset 0 0 0 8px #101512,inset 0 0 0 9px #65d0bd55,inset 0 0 70px #ed8a343b,0 0 72px #df802b38;transform:scale(1.015)}}
 @keyframes processing-index{to{transform:rotate(360deg)}}
 @keyframes processing-breathe{50%{transform:scale(1.045);box-shadow:inset 0 0 0 7px #0b100e,inset 0 0 0 8px #d890575f,0 0 54px #e1873e4a}}
 @keyframes processing-heat{50%{opacity:.65;transform:scale(.94)}}
-@keyframes processing-spark{0%,28%{opacity:0;transform:translateY(0) scale(.4)}42%{opacity:.9}100%{opacity:0;transform:translateY(-78px) translateX(15px) scale(1.4)}}
-@media(max-width:700px){.forge-ceremony-motion{width:min(84vw,420px)}.forging-motion--rive{width:164px;height:164px}}
-@media(prefers-reduced-motion:reduce){.forge-ceremony-motion:before,.forge-ceremony-motion:after,.forge-motion-crucible,.forge-motion-index,.forging-motion--rive:before,.forging-motion--rive:after,.processing-crucible,.processing-index-ring,.processing-heat-ring,.processing-sparks b{animation:none!important}.processing-sparks{display:none}}
+@media(max-width:700px){.forge-ceremony-motion{width:min(84vw,420px)}}
 /* ========================================================================
    THE SOUL OF THE FORGE — PHASE 1
    Dormant, aware, listening, committed, working, inspecting, presenting.
