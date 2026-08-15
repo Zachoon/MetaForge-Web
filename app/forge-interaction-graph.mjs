@@ -166,6 +166,40 @@ export function classifyGraveyardKinds(oracle = "") {
   return kinds;
 }
 
+export const SACRIFICE_KINDS = Object.freeze({
+  OUTLET: "outlet",
+  DEATH_PAYOFF: "death_payoff",
+  INCIDENTAL_YARD: "incidental_yard",
+});
+
+// A cost-shaped "sacrifice a/an X:" that can pay for a creature or any
+// permanent — the aristocrats-relevant fuel shape, not a reaction.
+const SACRIFICE_OUTLET = /sacrifice (?:a|an|another|one|any number of)[^.:]{0,30}(?:creatures?|permanents?)\b[^:]{0,20}:/i;
+// A reaction to a creature leaving, whether by dying or by your own sacrifice.
+const DEATH_PAYOFF = /whenever [^.]* dies|whenever you sacrifice (?:a|another) creature/i;
+// A named resource (Clue/Treasure/Food/...) or a card leaving hand as a cost
+// or effect — the card lands in the graveyard as a side effect, not as a
+// dedicated Mill Dump and not as aristocrats fuel.
+const INCIDENTAL_YARD = /sacrifice (?:a|an|another|one)[^.:]{0,40}(?:artifact|enchantment|clue|treasure|food|blood|gold|map|junk|powerstone|land)\b[^:]{0,20}:|discard (?:a card|one card|two cards|\d+ cards)/i;
+
+/**
+ * How a card touches sacrifice/death — split from the single blended
+ * `sacrifice` produces/rewards signal above. Observation only.
+ * Outlet is a cost that can sacrifice a creature or permanent, not a
+ * reaction. Death payoff reacts to a creature dying or being sacrificed.
+ * Incidental yard is a named resource or a discarded card leaving for the
+ * graveyard as a side effect — distinct from a Mill Dump.
+ * These labels must not become produces/rewards until a harness earns that.
+ */
+export function classifySacrificeKinds(oracle = "") {
+  const text = String(oracle || "");
+  const kinds = [];
+  if (SACRIFICE_OUTLET.test(text)) kinds.push(SACRIFICE_KINDS.OUTLET);
+  if (DEATH_PAYOFF.test(text)) kinds.push(SACRIFICE_KINDS.DEATH_PAYOFF);
+  if (INCIDENTAL_YARD.test(text)) kinds.push(SACRIFICE_KINDS.INCIDENTAL_YARD);
+  return kinds;
+}
+
 export function findResetPayPairs(cards = []) {
   const nodes = (cards || []).filter((card) => card?.name && !/\bLand\b/i.test(card.typeLine || card.type_line || ""));
   const pairs = [];
@@ -526,7 +560,8 @@ export function extractMechanicalSignals(card) {
   const oracle = card.oracleText || card.oracle_text || text;
   const selectionKinds = classifySelectionKinds(oracle);
   const graveyardKinds = classifyGraveyardKinds(oracle);
-  return { signals, produces, rewards, tagProduces, tagRewards, selectionKinds, graveyardKinds };
+  const sacrificeKinds = classifySacrificeKinds(oracle);
+  return { signals, produces, rewards, tagProduces, tagRewards, selectionKinds, graveyardKinds, sacrificeKinds };
 }
 
 export function buildInteractionGraph(cards, options = {}) {
@@ -731,7 +766,7 @@ export function buildInteractionGraph(cards, options = {}) {
     explicitReferences,
     coverage,
     confidence,
-    methodology: "Relationships come from oracle text and type lines: mechanical producer/payoff inference, plus oracle_explicit edges when Oracle literally names another card in the deck. Mutual pairs are labeled engine / closed_loop / conditional_win as vocabulary. Reset/pay shapes are a separate observation pass — not verified infinites and not construction credit. Selection kinds (scry / surveil / rummage / connive / impulse / draw) are observation labels on a card's own filter — they do not form edges and are not construction credit. Graveyard kinds name mill as a dump, dredge as a graveyard filter/engine, flashback and escape as casts from the yard, and unearth as a temporary battlefield return — each distinct from surveil and from each other; they also do not form edges or construction credit.",
+    methodology: "Relationships come from oracle text and type lines: mechanical producer/payoff inference, plus oracle_explicit edges when Oracle literally names another card in the deck. Mutual pairs are labeled engine / closed_loop / conditional_win as vocabulary. Reset/pay shapes are a separate observation pass — not verified infinites and not construction credit. Selection kinds (scry / surveil / rummage / connive / impulse / draw) are observation labels on a card's own filter — they do not form edges and are not construction credit. Graveyard kinds name mill as a dump, dredge as a graveyard filter/engine, flashback and escape as casts from the yard, and unearth as a temporary battlefield return — each distinct from surveil and from each other; they also do not form edges or construction credit. Sacrifice kinds split the blended sacrifice signal into outlet (a cost that can sacrifice a creature or permanent), death payoff (reacts to a creature dying or being sacrificed), and incidental yard (a named resource or discarded card leaving for the graveyard as a side effect, distinct from a Mill Dump); they also do not form edges or construction credit.",
     commanderName: options.commanderName || commander?.name || "",
   };
 }

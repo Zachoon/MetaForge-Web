@@ -9,10 +9,12 @@ import {
   classifyLoopKind,
   classifySelectionKinds,
   classifyGraveyardKinds,
+  classifySacrificeKinds,
   findResetPayPairs,
   LOOP_KINDS,
   SELECTION_KINDS,
   GRAVEYARD_KINDS,
+  SACRIFICE_KINDS,
   RESET_SHAPES,
   RELATIONSHIP_EVIDENCE,
 } from "../app/forge-interaction-graph.mjs";
@@ -766,4 +768,60 @@ test("scry then draw keeps both labels, and selection kinds do not form graph ed
   const graph = buildInteractionGraph([seer, miller]);
   assert.deepEqual(extractMechanicalSignals(seer).selectionKinds, [SELECTION_KINDS.SCRY]);
   assert.equal(graph.edges.length, 0, "scry and mill do not share a producer/payoff edge");
+});
+
+test("sacrifice kinds split outlet / death payoff / incidental yard from the blended sacrifice signal", () => {
+  const outletOracle = "{1}, Sacrifice a creature: Draw a card.";
+  const deathPayoffOracle = "Whenever a creature you control dies, each opponent loses 1 life and you gain 1 life.";
+  const incidentalOracle = "{1}, Sacrifice a Clue: Draw a card.";
+
+  assert.deepEqual(classifySacrificeKinds(outletOracle), [SACRIFICE_KINDS.OUTLET]);
+  assert.deepEqual(classifySacrificeKinds(deathPayoffOracle), [SACRIFICE_KINDS.DEATH_PAYOFF]);
+  assert.deepEqual(classifySacrificeKinds(incidentalOracle), [SACRIFICE_KINDS.INCIDENTAL_YARD]);
+
+  // Sacrificing a creature never earns incidental yard, and sacrificing a
+  // named resource never earns outlet — the two are disjoint word sets.
+  assert.equal(classifySacrificeKinds(outletOracle).includes(SACRIFICE_KINDS.INCIDENTAL_YARD), false);
+  assert.equal(classifySacrificeKinds(incidentalOracle).includes(SACRIFICE_KINDS.OUTLET), false);
+
+  // "Whenever you sacrifice a creature" reads as a death payoff too, not only "dies".
+  assert.deepEqual(
+    classifySacrificeKinds("Whenever you sacrifice a creature, draw a card."),
+    [SACRIFICE_KINDS.DEATH_PAYOFF],
+  );
+
+  // A generic "sacrifice a permanent" outlet still counts as an outlet — it
+  // can sacrifice a creature even though it isn't restricted to one.
+  assert.deepEqual(
+    classifySacrificeKinds("Sacrifice a permanent: Add one mana of any color."),
+    [SACRIFICE_KINDS.OUTLET],
+  );
+
+  // A discard effect is incidental yard even outside a sacrifice cost.
+  assert.deepEqual(classifySacrificeKinds("Discard a card, then draw a card."), [SACRIFICE_KINDS.INCIDENTAL_YARD]);
+
+  // A card can be both an outlet and a death payoff at once (Viscera Seer-class).
+  const both = classifySacrificeKinds(`${outletOracle} Whenever a creature dies, you gain 1 life.`);
+  assert.deepEqual(both, [SACRIFICE_KINDS.OUTLET, SACRIFICE_KINDS.DEATH_PAYOFF]);
+
+  const bloodArtist = extractMechanicalSignals({
+    name: "Blood Artist",
+    typeLine: "Creature — Vampire",
+    oracleText: deathPayoffOracle,
+  });
+  assert.deepEqual(bloodArtist.sacrificeKinds, [SACRIFICE_KINDS.DEATH_PAYOFF]);
+  assert.equal(bloodArtist.produces.includes(SACRIFICE_KINDS.DEATH_PAYOFF), false, "sacrifice kinds are observation labels, not production");
+  assert.equal(bloodArtist.rewards.includes(SACRIFICE_KINDS.DEATH_PAYOFF), false, "sacrifice kinds are observation labels, not a payoff");
+
+  const graph = buildInteractionGraph([
+    { name: "Outlet", typeLine: "Creature", oracleText: outletOracle },
+    { name: "Blood Artist", typeLine: "Creature — Vampire", oracleText: deathPayoffOracle },
+  ]);
+  assert.equal(
+    graph.edges.some((edge) => edge.signals.includes(SACRIFICE_KINDS.OUTLET) || edge.signals.includes(SACRIFICE_KINDS.DEATH_PAYOFF)),
+    false,
+    "sacrifice kinds do not form graph edges",
+  );
+  assert.match(graph.methodology, /outlet/i);
+  assert.match(graph.methodology, /incidental yard/i);
 });

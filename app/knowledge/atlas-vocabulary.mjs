@@ -3,6 +3,7 @@
 import {
   classifyGraveyardKinds,
   classifyLoopKind,
+  classifySacrificeKinds,
   classifySelectionKinds,
   extractMechanicalSignals,
   LOOP_KINDS,
@@ -361,6 +362,80 @@ export function seatGraveyardImplementation(card = {}) {
 }
 
 /**
+ * Descriptive seating for sacrifice kinds — splits the single blended
+ * `sacrifice` produces/rewards signal into named seats.
+ * Consumes graph `sacrificeKinds` — no second oracle regex family.
+ * Outlet is a cost, not a reaction. Death payoff is not an outlet.
+ * Incidental yard is a named resource or discard leaving the graveyard as a
+ * side effect — distinct from a Mill Dump.
+ * Not Capability admissions. Never construction inputs.
+ */
+export const ATLAS_SACRIFICE_SEATS = freeze([
+  freeze({
+    kind: "outlet",
+    capability: freeze({
+      id: "cap:sacrifice_outlet",
+      label: "Sacrifice Outlet",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:sacrifice_outlet", label: "Sacrifice Outlet" }),
+    contrast: "not a death payoff",
+    role: "outlet",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "death_payoff",
+    capability: freeze({
+      id: "cap:death_payoff",
+      label: "Death Payoff",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:death_payoff", label: "Death Payoff" }),
+    contrast: "not a sacrifice outlet",
+    role: "payoff",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "incidental_yard",
+    capability: freeze({
+      id: "cap:incidental_graveyard_filler",
+      label: "Incidental Graveyard Filler",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:incidental_yard", label: "Incidental Yard" }),
+    contrast: "not a mill dump",
+    role: "incidental_filler",
+    writesToBrain: false,
+  }),
+]);
+
+export function seatSacrificeImplementation(card = {}) {
+  const mechanics = card.mechanics || extractMechanicalSignals(card);
+  const kinds = mechanics.sacrificeKinds
+    || classifySacrificeKinds(card.oracleText || card.oracle_text || "");
+  const rows = [];
+  for (const definition of ATLAS_SACRIFICE_SEATS) {
+    if (!kinds.includes(definition.kind)) continue;
+    rows.push(freeze({
+      kind: definition.kind,
+      capability: definition.capability,
+      seat: definition.seat,
+      contrast: definition.contrast,
+      implementation: freeze({
+        card: String(card.name || "Unknown card"),
+        roles: freeze([definition.role]),
+        evidenceSignals: freeze([definition.kind]),
+      }),
+      writesToBrain: false,
+    }));
+  }
+  return freeze(rows);
+}
+
+/**
  * Descriptive seating for mutual loops and reset/pay shapes.
  * Consumes graph `loopKind` / `shape` — no second oracle regex family.
  * Pair observation only. Not a combo solver. Never construction inputs.
@@ -513,6 +588,10 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
     date: "2026-08-15",
     change: "Seated flashback, unearth, and escape as graveyard returns, distinct from mill dump and dredge-to-hand; still 0 Capability admissions",
   }),
+  freeze({
+    date: "2026-08-15",
+    change: "Split the blended sacrifice signal into outlet / death payoff / incidental yard seats; still 0 Capability admissions",
+  }),
 ]);
 
 export function seatsImplementedBy(cardName = "") {
@@ -556,6 +635,7 @@ export function buildAtlasVocabularyRegistry() {
     namedResourceSeats: ATLAS_NAMED_RESOURCE_SEATS,
     selectionSeats: ATLAS_SELECTION_SEATS,
     graveyardSeats: ATLAS_GRAVEYARD_SEATS,
+    sacrificeSeats: ATLAS_SACRIFICE_SEATS,
     loopSeats: ATLAS_LOOP_SEATS,
     resetShapeSeats: ATLAS_RESET_SHAPE_SEATS,
     observation001: ATLAS_OBSERVATION_001,
@@ -569,6 +649,7 @@ export function buildAtlasVocabularyRegistry() {
       namedResourceSeatCount: ATLAS_NAMED_RESOURCE_SEATS.length,
       selectionSeatCount: ATLAS_SELECTION_SEATS.length,
       graveyardSeatCount: ATLAS_GRAVEYARD_SEATS.length,
+      sacrificeSeatCount: ATLAS_SACRIFICE_SEATS.length,
       loopSeatCount: ATLAS_LOOP_SEATS.length,
       resetShapeSeatCount: ATLAS_RESET_SHAPE_SEATS.length,
       coverageScoreExists: false,

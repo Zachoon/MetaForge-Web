@@ -12,6 +12,7 @@ import {
   seatNamedResourceImplementation,
   seatSelectionImplementation,
   seatGraveyardImplementation,
+  seatSacrificeImplementation,
   seatLoopImplementation,
 } from "./atlas-vocabulary.mjs";
 import { getStrategicConcept, buildStrategicConceptLibrary } from "./strategic-concept.mjs";
@@ -46,6 +47,7 @@ export function explainCardAsMentor({
   const resourceSeating = seatNamedResourceImplementation({ name: card, oracleText, typeLine, mechanics }, { activeResources });
   const selectionSeating = seatSelectionImplementation({ name: card, oracleText, typeLine, mechanics });
   const graveyardSeating = seatGraveyardImplementation({ name: card, oracleText, typeLine, mechanics });
+  const sacrificeSeating = seatSacrificeImplementation({ name: card, oracleText, typeLine, mechanics });
   const atlas = buildAtlasVocabularyRegistry();
   const alternatives = seats.length
     ? freeze([...new Set(seats.flatMap((seat) => cardsImplementingSeat(seat).filter((name) => name !== card)))])
@@ -79,10 +81,16 @@ export function explainCardAsMentor({
       return `It is seated as a ${row.seat.label}${contrast}.`;
     }).join(" ")
     : "";
+  const sacrificeSeatLine = sacrificeSeating.length
+    ? sacrificeSeating.map((row) => {
+      const contrast = row.contrast ? `, ${row.contrast}` : "";
+      return `It is seated as a ${row.seat.label}${contrast}.`;
+    }).join(" ")
+    : "";
 
   const seatLine = seats.length
     ? `It fills ${seats.join(" · ")}.`
-    : [resourceSeatLine, selectionSeatLine, graveyardSeatLine].filter(Boolean).join(" ")
+    : [resourceSeatLine, selectionSeatLine, graveyardSeatLine, sacrificeSeatLine].filter(Boolean).join(" ")
       || "Atlas has no illustrative seat binding for this card yet — unknown is not absent.";
 
   const vacancy = seats.length
@@ -93,6 +101,8 @@ export function explainCardAsMentor({
       ? `This is ${selectionSeating.map((row) => row.seat.label).join(" and ")}${selectionSeating.some((row) => row.contrast) ? `, ${selectionSeating.map((row) => row.contrast).filter(Boolean).join(" and ")}` : ""}.`
     : graveyardSeating.length
       ? `This is ${graveyardSeating.map((row) => row.seat.label).join(" and ")}${graveyardSeating.some((row) => row.contrast) ? `, ${graveyardSeating.map((row) => row.contrast).filter(Boolean).join(" and ")}` : ""}.`
+    : sacrificeSeating.length
+      ? `This is ${sacrificeSeating.map((row) => row.seat.label).join(" and ")}${sacrificeSeating.some((row) => row.contrast) ? `, ${sacrificeSeating.map((row) => row.contrast).filter(Boolean).join(" and ")}` : ""}.`
       : "Seat language is still open for this card — do not invent a score.";
 
   const timing = /teferi'?s protection|flawless maneuver/i.test(card)
@@ -130,6 +140,7 @@ export function explainCardAsMentor({
     resourceSeating,
     selectionSeating,
     graveyardSeating,
+    sacrificeSeating,
     planContext: fantasyLabel
       ? `${fantasyLabel} commission context`
       : commanderName
@@ -137,7 +148,7 @@ export function explainCardAsMentor({
         : "Finished-list explanation",
     timingPosture: timing,
     vacancyRisk: vacancy,
-    openQuestion: seats.length || resourceSeating.length || selectionSeating.length || graveyardSeating.length
+    openQuestion: seats.length || resourceSeating.length || selectionSeating.length || graveyardSeating.length || sacrificeSeating.length
       ? "Still contested whether these seat labels survive Academy controls beyond illustrative Atlas bindings."
       : "No Atlas seat yet — wait for observation rather than inventing one.",
     conceptHints: freeze(conceptHints),

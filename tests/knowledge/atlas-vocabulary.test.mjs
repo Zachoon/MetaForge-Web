@@ -7,6 +7,7 @@ import {
   seatNamedResourceImplementation,
   seatSelectionImplementation,
   seatGraveyardImplementation,
+  seatSacrificeImplementation,
   seatLoopImplementation,
 } from "../../app/knowledge/atlas-vocabulary.mjs";
 
@@ -226,6 +227,55 @@ describe("Atlas Vocabulary Registry v0", () => {
       mechanics: { graveyardKinds: ["flashback"], produces: [], rewards: [], signals: [] },
     });
     assert.equal(fromGraph[0].seat.label, "Flashback Recast");
+    assert.equal(fromGraph[0].writesToBrain, false);
+  });
+
+  it("seats outlet / death payoff / incidental yard, splitting the blended sacrifice signal, without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.sacrificeSeatCount, 3);
+    assert.equal(registry.summary.capabilityAdmittedCount, 0);
+    assert.ok(registry.sacrificeSeats.every((row) => row.writesToBrain === false && row.capability.atlasAdmitted === false));
+    assert.ok(registry.revisions.some((row) => row.date === "2026-08-15" && /outlet.*death payoff.*incidental yard/i.test(row.change)));
+
+    const outlet = seatSacrificeImplementation({
+      name: "Viscera Seer",
+      oracleText: "Sacrifice a creature: Scry 1.",
+    });
+    assert.equal(outlet.length, 1);
+    assert.equal(outlet[0].kind, "outlet");
+    assert.equal(outlet[0].seat.label, "Sacrifice Outlet");
+    assert.equal(outlet[0].contrast, "not a death payoff");
+
+    const deathPayoff = seatSacrificeImplementation({
+      name: "Blood Artist",
+      oracleText: "Whenever Blood Artist or another creature dies, target player loses 1 life and you gain 1 life.",
+    });
+    assert.equal(deathPayoff.length, 1);
+    assert.equal(deathPayoff[0].kind, "death_payoff");
+    assert.equal(deathPayoff[0].seat.label, "Death Payoff");
+    assert.equal(deathPayoff[0].contrast, "not a sacrifice outlet");
+
+    const incidental = seatSacrificeImplementation({
+      name: "Merchant of the Vale",
+      oracleText: "{1}, Sacrifice a Clue: Draw a card.",
+    });
+    assert.equal(incidental.length, 1);
+    assert.equal(incidental[0].kind, "incidental_yard");
+    assert.equal(incidental[0].seat.label, "Incidental Yard");
+    assert.equal(incidental[0].contrast, "not a mill dump");
+
+    // A card can hold multiple sacrifice seats at once (Viscera Seer-class outlet + payoff).
+    const both = seatSacrificeImplementation({
+      name: "Combo",
+      oracleText: "Sacrifice a creature: Draw a card. Whenever a creature dies, you gain 1 life.",
+    });
+    assert.deepEqual(both.map((row) => row.kind), ["outlet", "death_payoff"]);
+
+    const fromGraph = seatSacrificeImplementation({
+      name: "Pre-classified",
+      mechanics: { sacrificeKinds: ["outlet"], produces: [], rewards: [], signals: [] },
+    });
+    assert.equal(fromGraph[0].seat.label, "Sacrifice Outlet");
     assert.equal(fromGraph[0].writesToBrain, false);
   });
 

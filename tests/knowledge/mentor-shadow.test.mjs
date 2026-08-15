@@ -120,6 +120,34 @@ describe("Mentor Shadow v0", () => {
     assert.match(escape.paragraph, /not dredge-to-hand/);
   });
 
+  it("names outlet, death payoff, and incidental yard, not a mill dump", () => {
+    const outlet = explainCardAsMentor({
+      cardName: "Viscera Seer",
+      oracleText: "Sacrifice a creature: Scry 1.",
+    });
+    assert.equal(outlet.writesToBrain, false);
+    assert.equal(outlet.sacrificeSeating[0].kind, "outlet");
+    assert.match(outlet.paragraph, /Sacrifice Outlet/);
+    assert.match(outlet.paragraph, /not a death payoff/);
+
+    const deathPayoff = explainCardAsMentor({
+      cardName: "Blood Artist",
+      oracleText: "Whenever Blood Artist or another creature dies, target player loses 1 life and you gain 1 life.",
+    });
+    assert.equal(deathPayoff.sacrificeSeating[0].kind, "death_payoff");
+    assert.match(deathPayoff.paragraph, /Death Payoff/);
+    assert.match(deathPayoff.paragraph, /not a sacrifice outlet/);
+
+    const incidental = explainCardAsMentor({
+      cardName: "Merchant of the Vale",
+      oracleText: "{1}, Sacrifice a Clue: Draw a card.",
+    });
+    assert.equal(incidental.sacrificeSeating[0].kind, "incidental_yard");
+    assert.match(incidental.paragraph, /Incidental Yard/);
+    assert.match(incidental.paragraph, /not a mill dump/);
+    assert.doesNotMatch(incidental.paragraph, /Mill Dump/);
+  });
+
   it("names a reset pair as a closed loop, not a verified infinite", () => {
     const explanation = explainPairAsMentor({
       left: { name: "Basalt Monolith", oracleText: "{T}: Add {C}{C}{C}. {3}: Untap this artifact." },

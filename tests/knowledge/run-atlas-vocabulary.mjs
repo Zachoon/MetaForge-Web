@@ -25,6 +25,7 @@ function main() {
     `| Named resource seats | ${registry.summary.namedResourceSeatCount} |`,
     `| Selection seats | ${registry.summary.selectionSeatCount} |`,
     `| Graveyard seats | ${registry.summary.graveyardSeatCount} |`,
+    `| Sacrifice seats | ${registry.summary.sacrificeSeatCount} |`,
     `| Loop seats | ${registry.summary.loopSeatCount} |`,
     `| Reset shape seats | ${registry.summary.resetShapeSeatCount} |`,
     `| coverageScore | ${registry.summary.coverageScoreExists} |`,
