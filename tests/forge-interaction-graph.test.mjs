@@ -318,6 +318,34 @@ test("Map production feeds explore payoffs and artifact outlets without masquera
   assert.equal(treasureEdge?.signals.includes("treasure") || false, false, "Maps and Treasure remain distinct resources");
 });
 
+test("Junk production feeds exile-play payoffs and artifact outlets without masquerading as Clues", () => {
+  const scavenger = { name: "Wasteland Scavenger", typeLine: "Creature — Human Rogue", oracleText: "When this creature enters, create a Junk token." };
+  const exilePayoff = { name: "Exile Chronicler", typeLine: "Creature — Human", oracleText: "Whenever you play a card from exile, draw a card." };
+  const artifactOutlet = { name: "Artifact Furnace", typeLine: "Artifact", oracleText: "Sacrifice an artifact: Add {R}." };
+  const cluePayoff = { name: "Case Reward", typeLine: "Enchantment", oracleText: "Whenever you sacrifice a Clue, draw a card." };
+  const graph = buildInteractionGraph([scavenger, exilePayoff, artifactOutlet, cluePayoff]);
+  const exileEdge = graph.edges.find((entry) => entry.from === "Wasteland Scavenger" && entry.to === "Exile Chronicler");
+  const artifactEdge = graph.edges.find((entry) => entry.from === "Wasteland Scavenger" && entry.to === "Artifact Furnace");
+  const clueEdge = graph.edges.find((entry) => entry.from === "Wasteland Scavenger" && entry.to === "Case Reward");
+  assert.ok(exileEdge?.signals.includes("exile_play"), "a Junk token provides a future play-from-exile event");
+  assert.ok(artifactEdge?.signals.includes("artifacts"), "Junk is an artifact token and feeds generic artifact outlets");
+  assert.equal(clueEdge?.signals.includes("clues") || false, false, "Junk and Clues remain distinct resources");
+});
+
+test("Powerstone production feeds Powerstone and artifact payoffs without masquerading as Treasure", () => {
+  const excavator = { name: "Powerstone Excavator", typeLine: "Creature — Artificer", oracleText: "When this creature enters, create a tapped Powerstone token." };
+  const powerstonePayoff = { name: "Powerstone Array", typeLine: "Artifact", oracleText: "Powerstones you control have '{T}: Add {C}{C}.'." };
+  const artifactPayoff = { name: "Artifact Observer", typeLine: "Creature — Artificer", oracleText: "Whenever an artifact enters under your control, draw a card." };
+  const treasurePayoff = { name: "Treasure Tribute", typeLine: "Enchantment", oracleText: "Whenever you sacrifice a Treasure, each opponent loses 1 life." };
+  const graph = buildInteractionGraph([excavator, powerstonePayoff, artifactPayoff, treasurePayoff]);
+  const powerstoneEdge = graph.edges.find((entry) => entry.from === "Powerstone Excavator" && entry.to === "Powerstone Array");
+  const artifactEdge = graph.edges.find((entry) => entry.from === "Powerstone Excavator" && entry.to === "Artifact Observer");
+  const treasureEdge = graph.edges.find((entry) => entry.from === "Powerstone Excavator" && entry.to === "Treasure Tribute");
+  assert.ok(powerstoneEdge?.signals.includes("powerstones"), "Powerstone production must feed Powerstone-specific rewards");
+  assert.ok(artifactEdge?.signals.includes("artifacts"), "Powerstones are artifact tokens and feed artifact payoffs");
+  assert.equal(treasureEdge?.signals.includes("treasure") || false, false, "Powerstones and Treasure remain distinct resources");
+});
+
 test("Fear of Missing Out and Trading Post are related cards, not a reciprocal combo loop", () => {
   const graph = buildInteractionGraph([
     { name: "Fear of Missing Out", typeLine: "Enchantment Creature — Nightmare", oracleText: "When this creature enters, discard a card, then draw a card. Delirium — Whenever this creature attacks for the first time each turn, if there are four or more card types among cards in your graveyard, untap target creature. After this phase, there is an additional combat phase." },

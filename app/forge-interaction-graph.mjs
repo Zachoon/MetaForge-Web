@@ -224,7 +224,10 @@ const SIGNALS = [
   ["blood", /blood token|blood tokens? you control/i],
   ["gold", /gold token|gold tokens? you control/i],
   ["maps", /map token|maps? you control/i],
+  ["junk", /junk token|junk tokens? you control/i],
+  ["powerstones", /powerstone token|powerstones? you control/i],
   ["explore", /\bexplores?\b/i],
+  ["exile_play", /(?:play|cast) [^.]* from exile|play the exiled card/i],
   ["artifacts", /artifact(?:s)? you control|artifact spell|artifact enters|sacrifice an artifact/i],
   // Aura is deliberately narrower than enchantment: Pearl-Ear-class
   // commanders reward Auras specifically, and generic enchantments must
@@ -254,8 +257,11 @@ const PRODUCERS = {
   blood: /create(?:s)? [^.]* blood token/i,
   gold: /create(?:s)? [^.]* gold token/i,
   maps: /create(?:s)? [^.]* map token/i,
+  junk: /create(?:s)? [^.]* junk token/i,
+  powerstones: /create(?:s)? [^.]* powerstone token/i,
   explore: /create(?:s)? [^.]* map token|target creature explores?|creatures? you control explore/i,
-  artifacts: /create(?:s)? [^.]* (?:artifact|clue|treasure|food|blood|gold|map) token|artifact spell|investigate/i,
+  exile_play: /create(?:s)? [^.]* junk token|exile [^.]* you may (?:play|cast)|play the exiled card/i,
+  artifacts: /create(?:s)? [^.]* (?:artifact|clue|treasure|food|blood|gold|map|junk|powerstone) token|artifact spell|investigate/i,
   // Only the Aura subtype produces this signal — "Enchantment" alone does not,
   // and oracle phrases like "affinity for Auras" must not mark the commander
   // itself as an Aura producer. Type-line membership is applied in
@@ -291,7 +297,10 @@ const PAYOFFS = {
   blood: /blood tokens? you control|sacrifice a blood|whenever you (?:sacrifice|create) (?:a|one or more) blood token/i,
   gold: /gold tokens? you control|sacrifice a gold|whenever you (?:sacrifice|create) (?:a|one or more) gold token/i,
   maps: /maps? you control|sacrifice a map|whenever you (?:sacrifice|create) (?:a|one or more) map token/i,
+  junk: /junk tokens? you control|sacrifice a junk|whenever you (?:sacrifice|create) (?:a|one or more) junk token/i,
+  powerstones: /powerstones? you control|sacrifice a powerstone|whenever you (?:sacrifice|create) (?:a|one or more) powerstone token/i,
   explore: /whenever [^.]* explores?|if [^.]* explored|creatures? you control that explored/i,
+  exile_play: /whenever you (?:play|cast) [^.]* from exile|cards? you (?:play|cast) from exile/i,
   artifacts: /artifact(?:s)? you control|whenever (?:you cast |an? )?artifact|sacrifice an artifact/i,
   auras: /affinity for auras|whenever [^.]*\baura\b|auras? you control|enchanted creature you control/i,
   // "Put counters on target X" is a producer, not a payoff. The old broad
@@ -455,7 +464,7 @@ export function buildInteractionGraph(cards, options = {}) {
       // Merely making tokens on both cards is too broad to be a relationship:
       // a Clue engine and an unrelated Angel-token spell do not support each
       // other. Token edges require a real producer/payoff direction.
-      const reasons = [...new Set([...forward, ...reverse, ...shared.filter((signal) => ["spells", "graveyard", "counters", "artifacts", "clues", "food", "blood", "gold", "maps", "explore", "combat"].includes(signal))])];
+      const reasons = [...new Set([...forward, ...reverse, ...shared.filter((signal) => ["spells", "graveyard", "counters", "artifacts", "clues", "food", "blood", "gold", "maps", "junk", "powerstones", "explore", "exile_play", "combat"].includes(signal))])];
       // A signal counts as database-confirmed only when the producing side's
       // tag AND the rewarding side's tag both come from the curated
       // card-mechanics database rather than a regex guess — e.g. a real

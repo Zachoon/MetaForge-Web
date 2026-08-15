@@ -304,6 +304,15 @@ export function roleFloorCredit(oracle = "", extras = {}) {
   if (wincon < 1) return Math.min(MODAL_FLOOR_CREDIT, wincon);
   if (isModalToolbox(oracle)) return MODAL_FLOOR_CREDIT;
   const commanderColors = extras.commanderColors || [];
+  // A Powerstone is genuine acceleration, but its mana cannot cast a
+  // nonartifact spell. In a colored deck it therefore closes only the same
+  // partial ramp floor as an ordinary colorless-only rock.
+  if (
+    commanderColors.some((color) => "WUBRG".includes(String(color)))
+    && /create [^.]*powerstone token/i.test(String(oracle || ""))
+  ) {
+    return MODAL_FLOOR_CREDIT;
+  }
   if (
     commanderColors.some((color) => "WUBRG".includes(String(color)))
     && isColorlessOnlyManaSource(oracle, extras)

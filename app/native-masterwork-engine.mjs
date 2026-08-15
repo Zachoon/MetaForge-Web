@@ -138,7 +138,7 @@ const BASIC_COLOR_BY_NAME = Object.freeze({
 });
 
 const ROLE_PATTERNS = Object.freeze({
-  ramp: [/add .{0,18}mana/i, /create .{0,18}treasure/i, /search your library for .{0,30}land/i, /land card.{0,30}battlefield/i],
+  ramp: [/add .{0,18}mana/i, /create .{0,18}(?:treasure|powerstone)/i, /search your library for .{0,30}land/i, /land card.{0,30}battlefield/i],
   draw: [/draw (?:a|one|two|three|x|that many|cards?)/i, /look at the top .{0,40}(?:hand|exile)/i, /impulse/i],
   interaction: [/destroy target/i, /exile target/i, /counter target/i, /deals? \d+ damage to/i, /return target .{0,25}owner'?s hand/i, /-\d+\/-\d+/i],
   protection: [/hexproof/i, /indestructible/i, /phase out/i, /protection from/i, /counter target spell or ability/i],
@@ -791,7 +791,7 @@ export function commanderMechanicalScopes(card = {}) {
   const collect = (patterns) => unique(patterns.flatMap((pattern) => [...oracle.matchAll(pattern)].map((match) => normalized(match[1]))))
     .filter((term) => term && !BLUEPRINT_FILLER_WORDS.has(term) && !TRIBAL_STOP_WORDS.has(term) && !GENERIC_SCOPE_WORDS.has(term));
   const namedArtifactTokens = unique([
-    ...collect([/create [^.]*?(clue|treasure|food|blood|gold|map) (?:artifact )?token/gi]),
+    ...collect([/create [^.]*?(clue|treasure|food|blood|gold|map|junk|powerstone) (?:artifact )?token/gi]),
     ...(/investigate/i.test(oracle) ? ["clue"] : []),
   ]);
   return Object.freeze({
@@ -799,11 +799,14 @@ export function commanderMechanicalScopes(card = {}) {
       counters: collect([/put [^.]*?counters? on target ([a-z][a-z'-]+)/gi]),
       tokens: collect([/create [^.]*?([a-z][a-z'-]+) creature token/gi]).filter((term) => !MANA_COLOR_WORDS.has(term)),
       artifacts: namedArtifactTokens,
+      treasure: namedArtifactTokens.filter((term) => term === "treasure"),
       clues: namedArtifactTokens.filter((term) => term === "clue"),
       food: namedArtifactTokens.filter((term) => term === "food"),
       blood: namedArtifactTokens.filter((term) => term === "blood"),
       gold: namedArtifactTokens.filter((term) => term === "gold"),
       maps: namedArtifactTokens.filter((term) => term === "map"),
+      junk: namedArtifactTokens.filter((term) => term === "junk"),
+      powerstones: namedArtifactTokens.filter((term) => term === "powerstone"),
     }),
     rewards: Object.freeze({
       etb: collect([
@@ -814,13 +817,16 @@ export function commanderMechanicalScopes(card = {}) {
       spells: collect([/whenever you cast (?:an?|one or more) ([a-z][a-z'-]+) spells?/gi]),
       artifacts: unique([
         ...collect([/whenever you cast (?:an?|one or more) ([a-z][a-z'-]+) spells?/gi]),
-        ...collect([/whenever a(?:n)? (clue|treasure|food|blood|gold|map) you control/gi]),
+        ...collect([/whenever a(?:n)? (clue|treasure|food|blood|gold|map|junk|powerstone) you control/gi]),
       ]),
+      treasure: collect([/whenever a(?:n)? (treasure) you control/gi]),
       clues: collect([/whenever a(?:n)? (clue) you control/gi]),
       food: collect([/whenever a(?:n)? (food) you control/gi]),
       blood: collect([/whenever a(?:n)? (blood) you control/gi]),
       gold: collect([/whenever a(?:n)? (gold) you control/gi]),
       maps: collect([/whenever a(?:n)? (map) you control/gi]),
+      junk: collect([/whenever a(?:n)? (junk) you control/gi]),
+      powerstones: collect([/whenever a(?:n)? (powerstone) you control/gi]),
     }),
   });
 }
@@ -842,6 +848,8 @@ function cardFitsMechanicalScope(card, signal, tribes = []) {
   if (tribes.includes("blood") && /blood token|sacrifice a blood/i.test(oracle)) return true;
   if (tribes.includes("gold") && /gold token|sacrifice a gold/i.test(oracle)) return true;
   if (tribes.includes("map") && /map token|sacrifice a map/i.test(oracle)) return true;
+  if (tribes.includes("junk") && /junk token|sacrifice a junk/i.test(oracle)) return true;
+  if (tribes.includes("powerstone") && /powerstone token|sacrifice a powerstone/i.test(oracle)) return true;
   return false;
 }
 
@@ -1026,21 +1034,27 @@ function prepareForgeAnalysis(input, evidenceByName) {
         counters: unique(commanderScopeRows.flatMap((scope) => scope.produces.counters || [])),
         tokens: unique(commanderScopeRows.flatMap((scope) => scope.produces.tokens || [])),
         artifacts: unique(commanderScopeRows.flatMap((scope) => scope.produces.artifacts || [])),
+        treasure: unique(commanderScopeRows.flatMap((scope) => scope.produces.treasure || [])),
         clues: unique(commanderScopeRows.flatMap((scope) => scope.produces.clues || [])),
         food: unique(commanderScopeRows.flatMap((scope) => scope.produces.food || [])),
         blood: unique(commanderScopeRows.flatMap((scope) => scope.produces.blood || [])),
         gold: unique(commanderScopeRows.flatMap((scope) => scope.produces.gold || [])),
         maps: unique(commanderScopeRows.flatMap((scope) => scope.produces.maps || [])),
+        junk: unique(commanderScopeRows.flatMap((scope) => scope.produces.junk || [])),
+        powerstones: unique(commanderScopeRows.flatMap((scope) => scope.produces.powerstones || [])),
       }),
       rewards: Object.freeze({
         etb: unique(commanderScopeRows.flatMap((scope) => scope.rewards.etb || [])),
         spells: unique(commanderScopeRows.flatMap((scope) => scope.rewards.spells || [])),
         artifacts: unique(commanderScopeRows.flatMap((scope) => scope.rewards.artifacts || [])),
+        treasure: unique(commanderScopeRows.flatMap((scope) => scope.rewards.treasure || [])),
         clues: unique(commanderScopeRows.flatMap((scope) => scope.rewards.clues || [])),
         food: unique(commanderScopeRows.flatMap((scope) => scope.rewards.food || [])),
         blood: unique(commanderScopeRows.flatMap((scope) => scope.rewards.blood || [])),
         gold: unique(commanderScopeRows.flatMap((scope) => scope.rewards.gold || [])),
         maps: unique(commanderScopeRows.flatMap((scope) => scope.rewards.maps || [])),
+        junk: unique(commanderScopeRows.flatMap((scope) => scope.rewards.junk || [])),
+        powerstones: unique(commanderScopeRows.flatMap((scope) => scope.rewards.powerstones || [])),
       }),
     }),
     commanderTribes: Object.freeze(commanderTribesFromOracle(allCommanders(input))),

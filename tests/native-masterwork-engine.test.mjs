@@ -1,6 +1,6 @@
 ﻿import assert from "node:assert/strict";
 import test from "node:test";
-import { applyPracticalTiebreak, budgetScoreFor, classifyNativeCard, colorPipsFromCost, commanderConnectionSignalsFor, commanderMechanicalScopes, comparePracticalImpact, complexityScoreFor, conceptSignals, curveAwareLandAdjustment, curveTargets, evaluatePracticalImpact, fieldCounterRolesFor, forgeNativeMasterwork, hypergeometricAtLeast, interactionQualityFor, manaConsistencyReport, oracleTextComplexity, parseNativeBlueprintIntent, poolMechanicalSignals, popularityScoreFromRank, powerTierScoreFor, practicalOutranks, proportionalBasicCounts, rankPracticalOneSlotCounterfactuals, runPracticalOneSlotCounterfactualLab, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
+import { applyPracticalTiebreak, budgetScoreFor, classifyNativeCard, colorPipsFromCost, commanderConnectionSignalsFor, commanderMechanicalScopes, comparePracticalImpact, complexityScoreFor, conceptSignals, curveAwareLandAdjustment, curveTargets, evaluatePracticalImpact, fieldCounterRolesFor, forgeNativeMasterwork, hypergeometricAtLeast, interactionQualityFor, manaConsistencyReport, oracleTextComplexity, parseNativeBlueprintIntent, poolMechanicalSignals, popularityScoreFromRank, powerTierScoreFor, practicalOutranks, proportionalBasicCounts, rankPracticalOneSlotCounterfactuals, roleFloorCredit, runPracticalOneSlotCounterfactualLab, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
 import { runOneSlotCounterfactualLab } from "../app/native-one-slot-lab.mjs";
 
 const card = (name, oracleText, typeLine = "Creature — Test", manaCost = "{2}{U}", colorIdentity = ["U"]) => ({ name, oracleText, typeLine, manaCost, colorIdentity });
@@ -230,6 +230,29 @@ test("commander connections preserve named Map production without granting Treas
     card("Treasure Archivist", "Whenever you sacrifice a Treasure, draw a card.", "Creature — Human"),
     { produces: [], rewards: ["treasure"] }, commanderMechanics, scopes,
   ), [], "a Map commander does not grant a Treasure-only commander edge");
+});
+
+test("commander scopes complete the named artifact-token vocabulary", () => {
+  const treasureCommander = card("Coin Captain", "Whenever you attack, create a Treasure token.", "Legendary Creature — Pirate", "{2}{R}", ["R"]);
+  const junkCommander = card("Junk Baron", "At the beginning of your end step, create a Junk token.", "Legendary Creature — Human Rogue", "{2}{R}", ["R"]);
+  const powerstoneCommander = card("Stone Architect", "Whenever this creature attacks, create a tapped Powerstone token.", "Legendary Creature — Artificer", "{3}{U}", ["U"]);
+
+  assert.deepEqual(commanderMechanicalScopes(treasureCommander).produces.treasure, ["treasure"]);
+  assert.deepEqual(commanderMechanicalScopes(junkCommander).produces.junk, ["junk"]);
+  assert.deepEqual(commanderMechanicalScopes(powerstoneCommander).produces.powerstones, ["powerstone"]);
+  assert.ok(classifyNativeCard(powerstoneCommander).includes("ramp"), "creating a Powerstone provides restricted but real mana acceleration");
+  assert.equal(roleFloorCredit(powerstoneCommander.oracleText, { commanderColors: ["U"] }), 0.4, "Powerstone makers only partially close a colored ramp floor");
+  assert.equal(roleFloorCredit(powerstoneCommander.oracleText, { commanderColors: [] }), 1, "Powerstones fully support a colorless deck's ramp floor");
+
+  const junkScopes = commanderMechanicalScopes(junkCommander);
+  assert.deepEqual(commanderConnectionSignalsFor(
+    card("Junk Dealer", "Whenever you sacrifice a Junk token, draw a card.", "Creature — Human"),
+    { produces: [], rewards: ["junk"] }, { produces: ["tokens", "artifacts", "junk", "exile_play"], rewards: [] }, junkScopes,
+  ), ["junk"]);
+  assert.deepEqual(commanderConnectionSignalsFor(
+    card("Clue Dealer", "Whenever you sacrifice a Clue, draw a card.", "Creature — Human"),
+    { produces: [], rewards: ["clues"] }, { produces: ["tokens", "artifacts", "junk", "exile_play"], rewards: [] }, junkScopes,
+  ), [], "a Junk commander does not grant a Clue-only commander edge");
 });
 
 test("interactionQualityFor scores unconditional removal at full quality", () => {
