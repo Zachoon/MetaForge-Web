@@ -396,7 +396,7 @@ Compatible with governance: deterministic interpreter / presentation only. Not B
 | **023** | **Intent vs Recommendation Transparency** | **Strategic / Narrative** | ✅ **Shipped → Live Founder Trial** | Request Recognition; hears — does not yet grade fulfillment |
 | **024** | **Commission Contract** | **Strategic / Narrative** | ✅ **Founder Confirmed** (2026-08-12 live trial) | Optional note = design constraints; Player Fantasy narrator; soft-credit honesty; **no Brain** |
 | **025** | **Commission-Aware Philosophy Comparison** | **Product / UX** | ✅ **Founder Confirmed** (2026-08-13 live re-trial) | Per-card fit and honest Recommended attribution · **no Brain** |
-| **026** | **Restricted-effect overcredit** (Cavern / colorless modal toolbox) | **Strategic / Construction** | ✅ **Shipped (tests + harness)** | 104-forge field identical to frozen quality · `validate:founder-026` · Brain changed |
+| **026** | **Restricted-effect overcredit** (Cavern / colorless modal toolbox) | **Strategic / Construction** | 🔁 **Follow-up shipped** (live trial failed) | 104-forge field identical to frozen quality · `validate:founder-026` · Brain changed |
 | — | Prioritize Theme vs Performance | Strategic / UX | ⏸ **Deferred** | Needs trial evidence of choice-block, not understanding-block |
 
 Tony Stark asked: can the Forge **see**?  
@@ -827,7 +827,7 @@ Related strategic layer, separate ticket. One signal = hypothesis.
 | | |
 |---|---|
 | **Layer** | Strategic / Construction |
-| **Status** | ✅ Shipped (tests + Validation Harness). Awaiting Live Founder Trial. |
+| **Status** | 🔁 Follow-up shipped (2026-08-15). Live Founder Trial failed 2026-08-14; first ship did not change selection. |
 | **Brain impact** | Yes — representation fix in default construction. Report: [`BRAIN_V1_FOUNDER_026_HARNESS.md`](./BRAIN_V1_FOUNDER_026_HARNESS.md) |
 
 **Player evidence**
@@ -839,10 +839,11 @@ Related strategic layer, separate ticket. One signal = hypothesis.
 
 > Conditional / mutually exclusive effects are scored as if they were unconditional full-role contributions.
 
-Two manifestations, same class (fixed 2026-08-14):
+Two manifestations, same class:
 
-1. **Restricted rainbow lands.** `buildManaBase` now withholds full color-fit when mana is type-restricted unless the list is typal. Path of Ancestry keeps full credit because it also taps for unrestricted commander-identity colors.
-2. **Modal toolbox role-stacking.** Classification still unions modes. Scoring keeps the primary mode plus a small flexibility remainder. Role floors and prospective deficit-closure count modal cards at 0.4 and do not mark a live deficit closed. `{C}` pips are visible to mana consistency.
+1. **Restricted rainbow lands.** `buildManaBase` withholds full color-fit when mana is type-restricted unless the list is typal. Path of Ancestry keeps full credit because it also taps for unrestricted commander-identity colors.
+2. **Modal toolbox role-stacking / restricted colorless casting.** Classification still unions modes. Scoring counts only the modes you can fire. Role floors and prospective deficit-closure count modal cards at 0.4. `{C}` pips are visible to mana consistency **and** selection. Artifact-only `{C}` does not pay nonartifact spells. "Whenever you cast an artifact spell" is not spellslinger.
+3. **Conditional rainbow lands, same class.** Devotion-scaled any-color (Nykthos class) is not a dual unless the commander is mono-color. Type-count scaled any-color (Three Tree City class) is not a dual unless the list is typal. Not a card deny-list.
 
 T'Challa’s Vibranium mana cannot be spent on nonartifact spells — so these colorless instants/planeswalkers are not even a free `{C}` outlet. That is the same restriction-blindness, not a commander-specific branch.
 
@@ -852,9 +853,11 @@ T'Challa’s Vibranium mana cannot be spent on nonartifact spells — so these c
 - an Eldrazi / Ugin / Cavern deny-list
 - a coefficient nudge to make this screenshot prettier
 
-**Legal next step (done 2026-08-14)**
+**Legal next step (done 2026-08-14, follow-up 2026-08-15)**
 
-Harness-gated construction change that withholds full credit unless the condition holds in *this* list (tribe density for type-restricted mana; a mode you can actually fire for role floors; `{C}` as a real pip). Tests: `npm run validate:founder-026`. Field: `npm run validate:harness:field`.
+Harness-gated construction change that withholds full credit unless the condition holds in *this* list (tribe density for type-restricted or type-count mana; mono-color for devotion-scaled mana; a mode you can actually fire; `{C}` / artifact-only mana as real payment; scoped artifact-spell payoffs). Tests: `npm run validate:founder-026`. Field: `npm run validate:harness:field`.
+
+**Live trial (2026-08-14):** Failed. T'Challa Revision 1 still showed Kozilek's Command, Ugin, Glaring Fleshraker. First ship never gated selection. Follow-up does.
 
 ---
 
@@ -867,4 +870,4 @@ Harness-gated construction change that withholds full credit unless the conditio
 
 ---
 
-*Last updated: 2026-08-14 — #026 restricted-effect overcredit shipped (104-forge harness quality-identical to frozen). Awaiting Live Founder Trial.*
+*Last updated: 2026-08-15 — #026 follow-up: restricted colorless casting now gates selection (live trial failed 2026-08-14). 104-forge field quality-identical to frozen.*

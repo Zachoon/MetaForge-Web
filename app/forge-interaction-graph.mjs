@@ -315,7 +315,12 @@ export function extractMechanicalSignals(card) {
   // the actual castable spells are the producers — not only copy/cheat effects.
   const spellProducer = /\bInstant\b|\bSorcery\b/i.test(typeLine) ? ["spells"] : [];
   const produces = [...new Set([...regexProduces, ...tagProduces, ...auraProducer, ...spellProducer])];
-  const rewards = [...new Set([...regexRewards, ...tagRewards])];
+  // "Whenever this attacks, create a token" is production, not a combat-matters
+  // payoff. Extra-combat amplifiers still see real attack payoffs (draw, pump,
+  // damage) because those do not need a create clause to match.
+  const attackToProduceOnly = /whenever [^.]* attacks[^.]*create/i.test(text)
+    && !/combat damage|attacking creatures|whenever another [^.]* attacks/i.test(text);
+  const rewards = [...new Set([...regexRewards, ...tagRewards])].filter((signal) => !(signal === "combat" && attackToProduceOnly));
   if (auraProducer.length && !signals.includes("auras")) signals.push("auras");
   if (spellProducer.length && !signals.includes("spells")) signals.push("spells");
   return { signals, produces, rewards, tagProduces, tagRewards };

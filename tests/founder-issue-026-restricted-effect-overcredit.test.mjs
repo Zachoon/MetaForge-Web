@@ -4,6 +4,8 @@ import {
   classifyNativeCard,
   colorlessPipsFromCost,
   colorPipsFromCost,
+  commanderConnectionSignalsFor,
+  commanderMechanicalScopes,
   forgeNativeMasterwork,
   interactionQualityFor,
   landColoredManaFixingFactor,
@@ -11,9 +13,11 @@ import {
   listHasTypalDensity,
   manaConsistencyReport,
   modalAwareRoleScore,
+  restrictedEffectCastingFactor,
   parseNativeBlueprintIntent,
   roleFloorCredit,
 } from "../app/native-masterwork-engine.mjs";
+import { extractMechanicalSignals } from "../app/forge-interaction-graph.mjs";
 
 // =============================================================================
 // Founder #026 — Restricted-effect overcredit
@@ -34,7 +38,7 @@ const gwCard = (name, oracleText, typeLine = "Creature — Test", manaCost = "{2
 const vibraniumSovereign = {
   name: "Vibranium Sovereign",
   colors: ["G", "W"],
-  oracleText: "Whenever this enters or attacks, create a tapped artifact token. Whenever you cast an artifact spell with mana value 4 or greater, put two +1/+1 counters on this.",
+  oracleText: "Whenever this enters or attacks, create a tapped Vibranium token. (It's an artifact with indestructible and \"{T}: Add {C}. This mana can't be spent to cast a nonartifact spell.\") Whenever you cast an artifact spell with mana value 4 or greater, put two +1/+1 counters on this.",
 };
 
 const gwSpells = [
@@ -86,6 +90,15 @@ test("Founder #026: type-restricted rainbow is not full color-fixing unless the 
   assert.equal(landColoredManaFixingFactor(pathOracle, { typal: false }), 1);
   assert.equal(listHasTypalDensity([], {}, []), false);
   assert.equal(listHasTypalDensity([], {}, ["bear"]), true);
+
+  const nykthosOracle = "{T}: Add {C}. {2}, {T}: Choose a color. Add an amount of mana of that color equal to your devotion to that color.";
+  const threeTreeOracle = "As this land enters, choose a creature type. {T}: Add {C}. {2}, {T}: Choose a color. Add an amount of mana of that color equal to the number of creatures you control of the chosen type.";
+  assert.equal(landColoredManaFixingFactor(nykthosOracle, { colorCount: 1 }), 1);
+  assert.equal(landColoredManaFixingFactor(nykthosOracle, { colorCount: 2 }), 0.12);
+  assert.equal(landRestrictedFixingPenalty(nykthosOracle, { colorCount: 2, typal: true }), -6, "split devotion is still split in a typal multicolor list");
+  assert.equal(landColoredManaFixingFactor(threeTreeOracle, { typal: false }), 0.12);
+  assert.equal(landColoredManaFixingFactor(threeTreeOracle, { typal: true }), 1);
+  assert.equal(landRestrictedFixingPenalty(threeTreeOracle, { typal: false }), -6);
 });
 
 test("Founder #026: type-restricted rainbow does not beat in-color duals in a non-typal GW mana base", () => {
@@ -137,6 +150,122 @@ test("Founder #026: a typal commander still keeps Cavern over equally popular ta
   assert.ok(report.selected.rows.some((row) => row.name === "Cavern of Souls"), "Cavern remains a real tribal land when the commander implies a tribe");
 });
 
+const nykthos = {
+  name: "Nykthos, Shrine to Nyx",
+  oracleText: "{T}: Add {C}. {2}, {T}: Choose a color. Add an amount of mana of that color equal to your devotion to that color. (Your devotion to a color is the number of mana symbols of that color among the mana costs of permanents you control.)",
+  typeLine: "Legendary Land",
+  manaCost: "",
+  colorIdentity: [],
+  producedMana: ["W", "U", "B", "R", "G"],
+  popularityRank: 1,
+  priceUsd: 40,
+};
+
+const threeTreeCity = {
+  name: "Three Tree City",
+  oracleText: "As this land enters, choose a creature type. {T}: Add {C}. {2}, {T}: Choose a color. Add an amount of mana of that color equal to the number of creatures you control of the chosen type.",
+  typeLine: "Land",
+  manaCost: "",
+  colorIdentity: [],
+  producedMana: ["W", "U", "B", "R", "G"],
+  popularityRank: 1,
+  priceUsd: 20,
+};
+
+test("Founder #026: devotion-scaled rainbow is not a dual in a multicolor mana base", () => {
+  const report = forgeNativeMasterwork({
+    format: "Commander",
+    target: 100,
+    strategy: "Balanced midrange",
+    seed: 11,
+    commander: vibraniumSovereign,
+    cards: [...gwSpells, nykthos, ...tappedDuals],
+  });
+  assert.ok(
+    !report.selected.rows.some((row) => row.name === "Nykthos, Shrine to Nyx"),
+    "Nykthos must lose to in-color duals when devotion is split across two colors",
+  );
+});
+
+test("Founder #026: devotion-scaled rainbow stays in a mono-color mana base", () => {
+  const greenSovereign = {
+    name: "Green Sovereign",
+    colors: ["G"],
+    oracleText: "Whenever this attacks, draw a card.",
+  };
+  const gSpells = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Druid", manaCost: "{2}{G}", colorIdentity: ["G"] })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Fight target creature you don't control.", typeLine: "Instant", manaCost: "{2}{G}", colorIdentity: ["G"] })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof until end of turn.", typeLine: "Instant", manaCost: "{1}{G}", colorIdentity: ["G"] })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [] })),
+  ];
+  const gDuals = Array.from({ length: 20 }, (_, i) => ({
+    name: `Green Gate ${i}`,
+    oracleText: "This land enters the battlefield tapped. {T}: Add {G}.",
+    typeLine: "Land",
+    manaCost: "",
+    colorIdentity: ["G"],
+    producedMana: ["G"],
+    popularityRank: 5,
+    priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander",
+    target: 100,
+    strategy: "Balanced midrange",
+    seed: 11,
+    commander: greenSovereign,
+    cards: [...gSpells, nykthos, ...gDuals],
+  });
+  assert.ok(report.selected.rows.some((row) => row.name === "Nykthos, Shrine to Nyx"), "mono-color devotion is the condition Nykthos actually pays");
+});
+
+test("Founder #026: type-count scaled rainbow is not a dual unless the list is typal", () => {
+  const gwReport = forgeNativeMasterwork({
+    format: "Commander",
+    target: 100,
+    strategy: "Balanced midrange",
+    seed: 11,
+    commander: vibraniumSovereign,
+    cards: [...gwSpells, threeTreeCity, ...tappedDuals],
+  });
+  assert.ok(
+    !gwReport.selected.rows.some((row) => row.name === "Three Tree City"),
+    "Three Tree City must lose to in-color duals when the list is not typal",
+  );
+
+  const ayula = {
+    name: "Ayula, Queen Among Bears",
+    colors: ["G"],
+    oracleText: "Whenever Ayula, Queen Among Bears or another Bear you control enters, you may have target Bear you control fight another target creature.",
+  };
+  const gSpells = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Bear", manaCost: "{2}{G}", colorIdentity: ["G"] })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Fight target creature you don't control.", typeLine: "Creature — Bear", manaCost: "{2}{G}", colorIdentity: ["G"] })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof until end of turn.", typeLine: "Creature — Bear", manaCost: "{1}{G}", colorIdentity: ["G"] })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [] })),
+  ];
+  const gDuals = Array.from({ length: 20 }, (_, i) => ({
+    name: `Green Gate ${i}`,
+    oracleText: "This land enters the battlefield tapped. {T}: Add {G}.",
+    typeLine: "Land",
+    manaCost: "",
+    colorIdentity: ["G"],
+    producedMana: ["G"],
+    popularityRank: 5,
+    priceUsd: 0.5,
+  }));
+  const typalReport = forgeNativeMasterwork({
+    format: "Commander",
+    target: 100,
+    strategy: "Balanced midrange",
+    seed: 11,
+    commander: ayula,
+    cards: [...gSpells, threeTreeCity, ...gDuals],
+  });
+  assert.ok(typalReport.selected.rows.some((row) => row.name === "Three Tree City"), "type-count mana is real when the commander implies a tribe");
+});
+
 test("Founder #026: classification still unions modal modes; scoring and floors do not treat them as simultaneous jobs", () => {
   const kozilekOracle = [
     "Choose two —",
@@ -175,13 +304,12 @@ test("Founder #026: classification still unions modal modes; scoring and floors 
   assert.equal(roleFloorCredit("Destroy target creature."), 1);
 
   const weights = { ramp: 10, draw: 10, interaction: 11, protection: 6, recursion: 6, threat: 10 };
-  const modalTotal = modalAwareRoleScore(
-    kozilekShape.map((role) => (weights[role] || (role === "threat" ? 7 : 2)) * (role === "interaction" ? interactionQualityFor(kozilekOracle) : 1)),
-    kozilekOracle,
-  );
-  const dedicatedRemoval = modalAwareRoleScore([11], "Destroy target creature.");
-  assert.ok(modalTotal < 11 + 10, "modal extra modes must not sum as if they were simultaneous jobs");
-  assert.ok(modalTotal > dedicatedRemoval, "optionality still keeps a flexibility remainder over a single-mode spell");
+  const kozilekParts = kozilekShape.map((role) => (weights[role] || (role === "threat" ? 7 : 2)) * (role === "interaction" ? interactionQualityFor(kozilekOracle) : 1));
+  const modalTotal = modalAwareRoleScore(kozilekParts, kozilekOracle);
+  const topTwo = [...kozilekParts].filter((value) => value > 0).sort((left, right) => right - left).slice(0, 2).reduce((sum, value) => sum + value, 0);
+  assert.equal(modalTotal, topTwo, "choose two scores only the two best modes, not every listed role");
+  assert.equal(modalAwareRoleScore([11, 10, 2], warpingOracle), 11, "choose one scores only the best mode");
+  assert.equal(modalAwareRoleScore([11, 10, 2], "Destroy target creature."), 23, "non-modal cards still sum every real job");
 });
 
 test("Founder #026: interactionQualityFor downweights the narrow exile mode but classification still grants the interaction role", () => {
@@ -222,4 +350,118 @@ test("Founder #026: {C} pip demand is visible to pip math and mana consistency",
   assert.equal(report.cards[0].name, "Modal Colorless Wail");
   assert.ok(report.cards[0].probability < 0.05, "Forests cannot pay {C}, so consistency must collapse");
   assert.equal(report.sourcesByColor.C, 0);
+});
+
+const kozilekCommand = {
+  name: "Kozilek's Command",
+  oracleText: "Choose two — Create two 0/1 colorless creature tokens. They have \"Sacrifice this creature: Add {C}.\" Draw two cards and discard two cards. Exile target player's graveyard. Target player mills four cards.",
+  typeLine: "Instant",
+  manaCost: "{X}{C}",
+  colorIdentity: [],
+  popularityRank: 1,
+};
+
+const warpingWail = {
+  name: "Warping Wail",
+  oracleText: "Choose one — Exile target creature with power or toughness 1 or less. Counter target sorcery spell. Create a 0/1 colorless creature token. It has \"Sacrifice this creature: Add {C}.\"",
+  typeLine: "Instant",
+  manaCost: "{1}{C}",
+  colorIdentity: [],
+  popularityRank: 2,
+};
+
+const uginEye = {
+  name: "Ugin, Eye of the Storms",
+  oracleText: "Whenever you cast a colorless spell, exile up to one target permanent that's one or more colors.",
+  typeLine: "Legendary Planeswalker — Ugin",
+  manaCost: "{7}",
+  colorIdentity: [],
+  popularityRank: 1,
+};
+
+const fleshraker = {
+  name: "Glaring Fleshraker",
+  oracleText: "Whenever you cast a colorless spell, create a 0/1 colorless Eldrazi Spawn creature token. Whenever another colorless creature you control enters, this deals 1 damage to each opponent.",
+  typeLine: "Creature — Eldrazi Drone",
+  manaCost: "{2}{C}",
+  colorIdentity: [],
+  popularityRank: 3,
+};
+
+const solRing = {
+  name: "Sol Ring",
+  oracleText: "{T}: Add {C}{C}.",
+  typeLine: "Artifact",
+  manaCost: "{1}",
+  colorIdentity: [],
+  popularityRank: 1,
+};
+
+const thunderhulk = {
+  name: "Threefold Thunderhulk",
+  oracleText: "This creature enters with three +1/+1 counters on it. Whenever this creature or another artifact you control enters, create a 1/1 colorless Gnome artifact creature token. {2}, Sacrifice another artifact: Put a +1/+1 counter on this creature.",
+  typeLine: "Artifact Creature — Gnome",
+  manaCost: "{7}",
+  colorIdentity: [],
+  popularityRank: 4,
+};
+
+function connectionSignals(card, commander) {
+  const mechanics = extractMechanicalSignals(card);
+  const commanderMechanics = extractMechanicalSignals(commander);
+  return commanderConnectionSignalsFor(
+    card,
+    mechanics,
+    { produces: commanderMechanics.produces, rewards: commanderMechanics.rewards },
+    commanderMechanicalScopes(commander),
+  );
+}
+
+test("Founder #026: artifact-only {C} does not pay colorless nonartifact spells, and does pay artifacts", () => {
+  const gw = { commanderOracle: vibraniumSovereign.oracleText, commanderColors: ["G", "W"] };
+  assert.equal(restrictedEffectCastingFactor({ manaCost: "{X}{C}", colorIdentity: [], typeLine: "Instant", ...gw }), 0.12);
+  assert.equal(restrictedEffectCastingFactor({ manaCost: "{2}{C}", colorIdentity: [], typeLine: "Creature — Eldrazi", ...gw }), 0.12);
+  assert.equal(restrictedEffectCastingFactor({ manaCost: "{7}", colorIdentity: [], typeLine: "Legendary Planeswalker — Ugin", ...gw }), 0.12);
+  assert.equal(restrictedEffectCastingFactor({ manaCost: "{1}", colorIdentity: [], typeLine: "Artifact", ...gw }), 1);
+  assert.equal(restrictedEffectCastingFactor({ manaCost: "{7}", colorIdentity: [], typeLine: "Artifact Creature — Gnome", ...gw }), 1);
+  assert.equal(restrictedEffectCastingFactor({
+    manaCost: "{X}{C}",
+    colorIdentity: [],
+    typeLine: "Instant",
+    commanderOracle: "When you cast this spell, you may pay {C}.",
+    commanderColors: [],
+  }), 1, "a colorless commander still gets full colorless credit");
+});
+
+test("Founder #026: 'cast an artifact spell' is not a spellslinger connection for colorless instants", () => {
+  assert.deepEqual(commanderMechanicalScopes(vibraniumSovereign).rewards.spells, ["artifact"]);
+  assert.equal(connectionSignals(kozilekCommand, vibraniumSovereign).length, 0);
+  assert.equal(connectionSignals(warpingWail, vibraniumSovereign).length, 0);
+  assert.equal(connectionSignals(uginEye, vibraniumSovereign).length, 0);
+  assert.ok(connectionSignals(thunderhulk, vibraniumSovereign).length > 0, "an artifact that feeds the commander's artifact trigger remains connected");
+});
+
+test("Founder #026: a GW artifact/counters commander does not select the colorless nonartifact toolbox", () => {
+  const report = forgeNativeMasterwork({
+    format: "Commander",
+    target: 100,
+    strategy: "Balanced midrange",
+    seed: 11,
+    commander: vibraniumSovereign,
+    cards: [
+      ...gwSpells,
+      kozilekCommand,
+      warpingWail,
+      uginEye,
+      fleshraker,
+      solRing,
+      thunderhulk,
+      ...tappedDuals,
+    ],
+  });
+  const names = report.selected.rows.map((row) => row.name);
+  for (const name of ["Kozilek's Command", "Warping Wail", "Ugin, Eye of the Storms", "Glaring Fleshraker"]) {
+    assert.ok(!names.includes(name), `${name} is not payable with artifact-only {C} and must not beat in-color cards`);
+  }
+  assert.ok(names.includes("Sol Ring"), "generic artifact mana still belongs in the list");
 });

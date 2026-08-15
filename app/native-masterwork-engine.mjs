@@ -11,6 +11,7 @@ import {
   listHasTypalDensity,
   modalAwareRoleScore,
   oracleOf,
+  restrictedEffectCastingFactor,
   roleFloorCredit,
 } from "./conditional-effect-credit.mjs";
 export {
@@ -20,6 +21,7 @@ export {
   landRestrictedFixingPenalty,
   listHasTypalDensity,
   modalAwareRoleScore,
+  restrictedEffectCastingFactor,
   roleFloorCredit,
 };
 
@@ -778,6 +780,10 @@ export function commanderMechanicalScopes(card = {}) {
         // Ayula-class: "Whenever NAME or another Bear you control enters"
         /whenever [^.]+ or another ([a-z][a-z'-]+)(?: you control)? enters/gi,
       ]),
+      // "Whenever you cast an artifact spell" is not spellslinger. Kozilek's
+      // Command is an instant, not an artifact, and must not claim that edge.
+      spells: collect([/whenever you cast (?:an?|one or more) ([a-z][a-z'-]+) spells?/gi]),
+      artifacts: collect([/whenever you cast (?:an?|one or more) ([a-z][a-z'-]+) spells?/gi]),
     }),
   });
 }
@@ -886,6 +892,13 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
   const blueprintRoleHits = roles.filter((role) => context.blueprint.desiredRoles.includes(role));
   const blueprintMechanicHits = blueprintMechanicHitsFor(card, context.blueprint.requestedMechanics);
   const commanderConnectionSignals = commanderConnectionSignalsFor(card, mechanics, context.commanderMechanics, context.commanderScopes);
+  const castingFactor = restrictedEffectCastingFactor({
+    manaCost: card.manaCost || card.mana_cost || "",
+    colorIdentity: card.colorIdentity || card.color_identity || [],
+    typeLine: card.typeLine || card.type_line || "",
+    commanderOracle: context.commanderOracle || "",
+    commanderColors: context.commanderColors || [],
+  });
   const cmc = manaValueFromCost(card.manaCost || card.mana_cost, card.cmc);
   const sequenceStages = unique([
     ...(cmc <= 3 && roles.some((role) => ["ramp", "draw", "selection"].includes(role)) ? ["setup"] : []),
@@ -918,6 +931,7 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
     evidenceScore: clamp(Number(evidence.evidenceScore || 0) * 100) * 0.12,
     discovery: evidence.newCardPotential ? 2 : 0,
     popularityScore: popularityScoreFromRank(card.popularityRank),
+    castingFactor,
     budgetScore: budgetScoreFor(card.priceUsd, context.budget),
     complexityScore: complexityScoreFor(oracleTextComplexity(card.oracleText || card.oracle_text), context.complexity),
     powerTierScore: powerTierScoreFor(card, context.targetPowerTier),
@@ -950,9 +964,15 @@ function prepareForgeAnalysis(input, evidenceByName) {
     }),
     commanderScopes: Object.freeze({
       produces: Object.freeze({ counters: unique(commanderScopeRows.flatMap((scope) => scope.produces.counters || [])) }),
-      rewards: Object.freeze({ etb: unique(commanderScopeRows.flatMap((scope) => scope.rewards.etb || [])) }),
+      rewards: Object.freeze({
+        etb: unique(commanderScopeRows.flatMap((scope) => scope.rewards.etb || [])),
+        spells: unique(commanderScopeRows.flatMap((scope) => scope.rewards.spells || [])),
+        artifacts: unique(commanderScopeRows.flatMap((scope) => scope.rewards.artifacts || [])),
+      }),
     }),
     commanderTribes: Object.freeze(commanderTribesFromOracle(allCommanders(input))),
+    commanderOracle: allCommanders(input).map((commander) => commander.oracleText || commander.oracle_text || "").join(" "),
+    commanderColors: Object.freeze(commanderColors(input)),
     terms: preferenceTerms(input),
     ideal: /Aggressive|Tempo/i.test(input.strategy) ? 2.4 : /Control/i.test(input.strategy) ? 3.2 : 2.9,
     blueprint,
@@ -1032,11 +1052,13 @@ function scoreCard(entry, input, variant, context) {
   const curveScore = Math.max(0, 10 - Math.abs(entry.cmc - context.ideal) * 3.2) * variant.curve;
   const deterministicTieBreak = (hash(`${input.seed}|${variant.id}|${entry.card.name}`) % 1000) / 100000;
   const oracleText = entry.card.oracleText || entry.card.oracle_text || entry.text || "";
+  const castingFactor = Number.isFinite(entry.castingFactor) ? entry.castingFactor : 1;
   return {
     card: entry.card,
     roles: entry.roles,
     cmc: entry.cmc,
-    score: entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.commanderConnectionSignals.length * 14 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.blueprintMechanicHits.reduce((sum, mechanic) => sum + blueprintMechanicDefinition(mechanic).score, 0) + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + entry.budgetScore + entry.complexityScore + entry.powerTierScore + deterministicTieBreak,
+    castingFactor,
+    score: (entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.commanderConnectionSignals.length * 14 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.blueprintMechanicHits.reduce((sum, mechanic) => sum + blueprintMechanicDefinition(mechanic).score, 0) + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + entry.budgetScore + entry.complexityScore + entry.powerTierScore + deterministicTieBreak) * castingFactor,
     synergyHits: entry.synergyHits,
     synergyPotential: entry.synergyPotential,
     preferenceHits: entry.preferenceHits,
@@ -1301,24 +1323,28 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
     noteClosure(candidate, traceOptions?.prospectiveDelta || null);
     return true;
   };
-  const ranked = [...scored].sort((left, right) => right.score - left.score || left.card.name.localeCompare(right.card.name));
+  const payable = [...scored]
+    .filter((entry) => (entry.castingFactor ?? 1) >= 1)
+    .sort((left, right) => right.score - left.score || left.card.name.localeCompare(right.card.name));
   const poolProducerSignals = new Set(scored.flatMap((entry) => entry.mechanics.produces));
   const explicitStrategyContract = blueprint.promises.length > 0;
 
   // Explicit identity requests are construction anchors, not flavor text.
   // Direct tribe members are reserved first, then cards that support that tribe,
   // then a meaningful floor for each requested mechanical package.
+  // Cards the list cannot actually pay for (restricted {C}, artifact-only {C}
+  // on a nonartifact) are not engine anchors.
   const tribeAnchorLimit = singleton ? 24 : 8;
-  for (const candidate of ranked.filter((entry) => entry.directTribes.length).slice(0, tribeAnchorLimit)) {
+  for (const candidate of payable.filter((entry) => entry.directTribes.length).slice(0, tribeAnchorLimit)) {
     addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
   }
   const supportLimit = singleton ? 12 : 4;
-  for (const candidate of ranked.filter((entry) => entry.tribalSupport.length && !entry.directTribes.length).slice(0, supportLimit)) {
+  for (const candidate of payable.filter((entry) => entry.tribalSupport.length && !entry.directTribes.length).slice(0, supportLimit)) {
     addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
   }
   for (const mechanic of blueprint.requestedMechanics) {
     const limit = blueprintMechanicDefinition(mechanic).anchorLimit[singleton ? "singleton" : "constructed"];
-    for (const candidate of ranked.filter((entry) => entry.blueprintMechanicHits.includes(mechanic)).slice(0, limit)) {
+    for (const candidate of payable.filter((entry) => entry.blueprintMechanicHits.includes(mechanic)).slice(0, limit)) {
       addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
     }
   }
@@ -1327,10 +1353,10 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
   // for each relationship the request implies before generic filling.
   const packageAnchorLimit = singleton ? 5 : 4;
   for (const signal of blueprint.packageSignals) {
-    for (const candidate of ranked.filter((entry) => entry.mechanics.produces.includes(signal)).slice(0, packageAnchorLimit)) {
+    for (const candidate of payable.filter((entry) => entry.mechanics.produces.includes(signal)).slice(0, packageAnchorLimit)) {
       addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
     }
-    for (const candidate of ranked.filter((entry) => entry.mechanics.rewards.includes(signal)).slice(0, packageAnchorLimit)) {
+    for (const candidate of payable.filter((entry) => entry.mechanics.rewards.includes(signal)).slice(0, packageAnchorLimit)) {
       addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
     }
   }
@@ -1338,7 +1364,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
   // are reserved from strategic intent, not from broad producer/payoff words.
   for (const packageSpec of strategicIntent?.packages || []) {
     const coreLimit = Math.min(packageSpec.coreMin, singleton ? 20 : 10);
-    for (const candidate of ranked.filter((entry) => cardSatisfiesPackageCore(entry, packageSpec.id)).slice(0, coreLimit)) {
+    for (const candidate of payable.filter((entry) => cardSatisfiesPackageCore(entry, packageSpec.id)).slice(0, coreLimit)) {
       addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
     }
   }
@@ -1346,12 +1372,12 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
   // cards with a real producer/payoff edge to its verified rules text so a
   // generic staple cannot crowd every commander-specific connection out.
   const commanderAnchorLimit = singleton ? 8 : 4;
-  for (const candidate of ranked.filter((entry) => entry.commanderConnectionSignals.length).slice(0, commanderAnchorLimit)) {
+  for (const candidate of payable.filter((entry) => entry.commanderConnectionSignals.length).slice(0, commanderAnchorLimit)) {
     addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
   }
   const roleAnchorLimit = singleton ? 10 : 4;
   for (const role of blueprint.desiredRoles) {
-    for (const candidate of ranked.filter((entry) => entry.blueprintRoleHits.includes(role)).slice(0, roleAnchorLimit)) {
+    for (const candidate of payable.filter((entry) => entry.blueprintRoleHits.includes(role)).slice(0, roleAnchorLimit)) {
       addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
     }
   }
@@ -1383,7 +1409,9 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
     // Bounded shortlist: top raw-score candidates plus every card that
     // still fills an open package/role deficit. Avoids O(pool) full delta
     // work once the deck is already mostly shaped.
-    const remainingEntries = scored.filter((entry) => !selectedNames.has(normalized(entry.card.name)));
+    const remainingAll = scored.filter((entry) => !selectedNames.has(normalized(entry.card.name)));
+    const remainingPayable = remainingAll.filter((entry) => (entry.castingFactor ?? 1) >= 1);
+    const remainingEntries = remainingPayable.length ? remainingPayable : remainingAll;
     const byScore = [...remainingEntries].sort((left, right) => right.score - left.score || left.card.name.localeCompare(right.card.name));
     const shortlist = new Map();
     const shortlistLimit = Math.min(56, Math.max(24, remainingEntries.length));
@@ -1400,7 +1428,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
         return false;
       });
       const fillsRole = entry.roles.some((role) => (deficitState.roles[role]?.deficit || 0) > 0);
-      if (fillsPackage || fillsRole || (entry.commanderConnectionSignals || []).length) {
+      if (fillsPackage || fillsRole || ((entry.commanderConnectionSignals || []).length && (entry.castingFactor ?? 1) >= 1)) {
         shortlist.set(key, entry);
       }
     }
@@ -1441,9 +1469,10 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
         strategicIntent?.targetPowerTier ?? null,
       );
       const synergy = inDeckSynergy * wiring.liveSynergyMultiplier + requestedPackageSynergy * 3;
+      const castingFactor = Number.isFinite(entry.castingFactor) ? entry.castingFactor : 1;
       const phased = applyPhaseWeights({
         rawScore: entry.score,
-        prospectiveDelta: delta.total,
+        prospectiveDelta: delta.total * castingFactor,
         synergy,
         orphanPenalty: orphanPayoffPenalty * 0.65,
         disconnectTax: disconnectedStrategyTax,
@@ -1772,10 +1801,12 @@ function buildManaBase(input, landSlots, lands, variant, presetLands = [], pipTo
     parseNativeBlueprintIntent(input),
     commanderTribesFromOracle(allCommanders(input)),
   );
+  const colorCount = commanderColors(input).length || (input.colors || []).length || 0;
+  const landFixingOptions = { typal: typalManaBase, colorCount };
   const colorFit = (card) => {
     const produced = producedColorsOf(card);
     const raw = produced.reduce((sum, color) => sum + (pipTotals[color] || 0), 0) / totalPips;
-    return raw * landColoredManaFixingFactor(card.oracleText || card.oracle_text || "", { typal: typalManaBase });
+    return raw * landColoredManaFixingFactor(card.oracleText || card.oracle_text || "", landFixingOptions);
   };
   const rankedLands = lands
     .filter((entry) => {
@@ -1795,8 +1826,8 @@ function buildManaBase(input, landSlots, lands, variant, presetLands = [], pipTo
       // popularityScore/budgetScore are reused directly from analyzeCard —
       // real preference-aware evidence, not re-derived here — see
       // LAND_BUDGET_WEIGHT above for why budgetScore is weighted going in.
-      const leftScore = (leftText.includes("enters the battlefield tapped") ? -4 : 2) + (leftText.includes("add") ? 2 : 0) + colorFit(left.card) * 4 + landRestrictedFixingPenalty(leftOracle, { typal: typalManaBase }) + left.popularityScore + left.budgetScore * LAND_BUDGET_WEIGHT + (hash(`${input.seed}|${variant.id}|${left.card.name}`) % 100) / 10000;
-      const rightScore = (rightText.includes("enters the battlefield tapped") ? -4 : 2) + (rightText.includes("add") ? 2 : 0) + colorFit(right.card) * 4 + landRestrictedFixingPenalty(rightOracle, { typal: typalManaBase }) + right.popularityScore + right.budgetScore * LAND_BUDGET_WEIGHT + (hash(`${input.seed}|${variant.id}|${right.card.name}`) % 100) / 10000;
+      const leftScore = (leftText.includes("enters the battlefield tapped") ? -4 : 2) + (leftText.includes("add") ? 2 : 0) + colorFit(left.card) * 4 + landRestrictedFixingPenalty(leftOracle, landFixingOptions) + left.popularityScore + left.budgetScore * LAND_BUDGET_WEIGHT + (hash(`${input.seed}|${variant.id}|${left.card.name}`) % 100) / 10000;
+      const rightScore = (rightText.includes("enters the battlefield tapped") ? -4 : 2) + (rightText.includes("add") ? 2 : 0) + colorFit(right.card) * 4 + landRestrictedFixingPenalty(rightOracle, landFixingOptions) + right.popularityScore + right.budgetScore * LAND_BUDGET_WEIGHT + (hash(`${input.seed}|${variant.id}|${right.card.name}`) % 100) / 10000;
       return rightScore - leftScore || left.card.name.localeCompare(right.card.name);
     });
   const nonbasicLimit = Math.min(lands.length, singleton ? Math.min(landSlots - 18, 18) : 6);
