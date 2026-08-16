@@ -31,6 +31,7 @@ import { applyControlledSwap, experimentAdditionSynergy, rankExperimentAdditions
 // moved out entirely once the simulation dossier that was its only
 // caller became server-side too.
 import { manaConsistencyReport, parseNativeBlueprintIntent } from "./native-masterwork-engine.mjs";
+import { explainCardAsMentor } from "./knowledge/mentor-shadow.mjs";
 import { commanderOptionFromCard, resolvePastedCommanderCandidate } from "./deck-import-commander.mjs";
 import { updateFamily, setFamilyMotifWeights } from "./deck-bench.mjs";
 import {
@@ -2928,6 +2929,29 @@ export default function Home() {
         (evaluation) => cardFactKey(evaluation.name) === cardFactKey(inspectedCard),
       ) || null
     : null;
+  // Atlas seat language, parallel to the construction-native "WHY IT IS
+  // HERE" reasoning above — never a construction input (writesToBrain:
+  // false throughout). Only rendered when Mentor actually has a seat for
+  // this card; "unknown is not absent" means most cards show nothing here.
+  const inspectedMentor = inspectedCard
+    ? explainCardAsMentor({
+        cardName: inspectedCard,
+        oracleText: inspectedFact?.oracle_text
+          || inspectedFact?.card_faces?.map((face: { oracle_text?: string }) => face.oracle_text).filter(Boolean).join("\n\n")
+          || "",
+        typeLine: inspectedFact?.type_line || "",
+      })
+    : null;
+  // Checked dynamically over every "*Seating" array Mentor returns, rather
+  // than naming each axis here, so this stays correct as new seat families
+  // (counter, life, protection, ...) get added on the Atlas side.
+  const inspectedMentorHasSeat = Boolean(
+    inspectedMentor?.ok
+      && (inspectedMentor.seats.length
+        || Object.entries(inspectedMentor).some(
+          ([key, value]) => key.endsWith("Seating") && Array.isArray(value) && value.length > 0,
+        )),
+  );
   // Prefers the exact printing the player already chose via the printing
   // picker (inspectedPrinting.tcgplayerId); falls back to a name-only
   // search when no printing has been selected yet. Same shared helper the
@@ -8756,6 +8780,13 @@ export default function Home() {
                           {inspectedEvaluation.alternatives.length > 0 && (
                             <p className="card-context-alternatives"><b>Detected role alternatives:</b> {inspectedEvaluation.alternatives.join(" · ")}</p>
                           )}
+                        </div>
+                      )}
+                      {inspectedMentorHasSeat && inspectedMentor && (
+                        <div className="card-inspector-section card-inspector-seat">
+                          <small>SEAT LANGUAGE · EXPERIMENTAL</small>
+                          <p>{inspectedMentor.paragraph}</p>
+                          <p className="card-context-alternatives">{inspectedMentor.openQuestion}</p>
                         </div>
                       )}
                       {!guestMode && nativeMasterworkContext?.generationId && (() => {
