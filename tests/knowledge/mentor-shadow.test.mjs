@@ -281,6 +281,70 @@ describe("Mentor Shadow v0", () => {
     assert.match(ward.paragraph, /not hexproof or indestructible/);
   });
 
+  it("names flying, menace, and trample, splitting the blended evasion signal", () => {
+    const flying = explainCardAsMentor({ cardName: "Storm Crow", oracleText: "Flying" });
+    assert.equal(flying.writesToBrain, false);
+    assert.equal(flying.evasionSeating[0].kind, "flying");
+    assert.match(flying.paragraph, /Flying/);
+    assert.match(flying.paragraph, /not menace or trample/);
+
+    const menace = explainCardAsMentor({ cardName: "Boggart Brute", oracleText: "Menace" });
+    assert.equal(menace.evasionSeating[0].kind, "menace");
+    assert.match(menace.paragraph, /Menace/);
+
+    const trample = explainCardAsMentor({ cardName: "Craw Wurm", oracleText: "Trample" });
+    assert.equal(trample.evasionSeating[0].kind, "trample");
+    assert.match(trample.paragraph, /Trample/);
+  });
+
+  it("names landfall, extra land drop, and land search, splitting the blended lands signal", () => {
+    const landfall = explainCardAsMentor({
+      cardName: "Lotus Cobra",
+      oracleText: "Landfall — Whenever a land you control enters, add {G}.",
+    });
+    assert.equal(landfall.landSeating[0].kind, "landfall");
+    assert.match(landfall.paragraph, /Landfall/);
+    assert.match(landfall.paragraph, /not an extra land drop or a land search/);
+
+    const extra = explainCardAsMentor({
+      cardName: "Exploration",
+      oracleText: "You may play an additional land on each of your turns.",
+    });
+    assert.equal(extra.landSeating[0].kind, "extra_drop");
+    assert.match(extra.paragraph, /Extra Land Drop/);
+
+    const search = explainCardAsMentor({
+      cardName: "Rampant Growth",
+      oracleText: "Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
+    });
+    assert.equal(search.landSeating[0].kind, "search");
+    assert.match(search.paragraph, /Land Search/);
+  });
+
+  it("names artifact spell, matters, and outlet, splitting the blended artifacts signal", () => {
+    const spell = explainCardAsMentor({
+      cardName: "Sai, Master Thopterist",
+      oracleText: "Whenever you cast an artifact spell, draw a card.",
+    });
+    assert.equal(spell.artifactSeating[0].kind, "spell");
+    assert.match(spell.paragraph, /Artifact Spell/);
+    assert.match(spell.paragraph, /not artifacts-you-control or an artifact outlet/);
+
+    const matters = explainCardAsMentor({
+      cardName: "Tempered Steel",
+      oracleText: "Artifact creatures you control get +1/+1.",
+    });
+    assert.equal(matters.artifactSeating[0].kind, "matters");
+    assert.match(matters.paragraph, /Artifact Matters/);
+
+    const outlet = explainCardAsMentor({
+      cardName: "Krark-Clan Ironworks",
+      oracleText: "Sacrifice an artifact: Add {C}{C}.",
+    });
+    assert.equal(outlet.artifactSeating[0].kind, "outlet");
+    assert.match(outlet.paragraph, /Artifact Outlet/);
+  });
+
   it("names a reset pair as a closed loop, not a verified infinite", () => {
     const explanation = explainPairAsMentor({
       left: { name: "Basalt Monolith", oracleText: "{T}: Add {C}{C}{C}. {3}: Untap this artifact." },

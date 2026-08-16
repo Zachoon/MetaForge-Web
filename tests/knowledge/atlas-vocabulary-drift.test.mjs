@@ -21,6 +21,9 @@ import {
   ATLAS_COUNTER_SEATS,
   ATLAS_LIFE_SEATS,
   ATLAS_PROTECTION_SEATS,
+  ATLAS_EVASION_SEATS,
+  ATLAS_LAND_SEATS,
+  ATLAS_ARTIFACT_SEATS,
   ATLAS_LOOP_SEATS,
   ATLAS_RESET_SHAPE_SEATS,
 } from "../../app/knowledge/atlas-vocabulary.mjs";
@@ -32,6 +35,9 @@ import {
   COUNTER_KINDS,
   LIFE_KINDS,
   PROTECTION_KINDS,
+  EVASION_KINDS,
+  LAND_KINDS,
+  ARTIFACT_KINDS,
   LOOP_KINDS,
   RESET_SHAPES,
 } from "../../app/forge-interaction-graph.mjs";
@@ -99,6 +105,30 @@ describe("Atlas Vocabulary Registry — drift protection", () => {
     );
   });
 
+  it("seats exactly the graph's evasion kinds, no more, no fewer", () => {
+    assertSameSet(
+      ATLAS_EVASION_SEATS.map((row) => row.kind),
+      Object.values(EVASION_KINDS),
+      "evasion kinds",
+    );
+  });
+
+  it("seats exactly the graph's land kinds, no more, no fewer", () => {
+    assertSameSet(
+      ATLAS_LAND_SEATS.map((row) => row.kind),
+      Object.values(LAND_KINDS),
+      "land kinds",
+    );
+  });
+
+  it("seats exactly the graph's artifact kinds, no more, no fewer", () => {
+    assertSameSet(
+      ATLAS_ARTIFACT_SEATS.map((row) => row.kind),
+      Object.values(ARTIFACT_KINDS),
+      "artifact kinds",
+    );
+  });
+
   it("seats exactly the graph's loop kinds, no more, no fewer", () => {
     assertSameSet(
       ATLAS_LOOP_SEATS.map((row) => row.kind),
@@ -126,6 +156,9 @@ describe("Atlas Vocabulary Registry — drift protection", () => {
       ...registry.counterSeats,
       ...registry.lifeSeats,
       ...registry.protectionSeats,
+      ...registry.evasionSeats,
+      ...registry.landSeats,
+      ...registry.artifactSeats,
       ...registry.loopSeats,
       ...registry.resetShapeSeats,
     ];
@@ -147,6 +180,9 @@ describe("Atlas Vocabulary Registry — drift protection", () => {
       ...registry.counterSeats.map((row) => row.capability),
       ...registry.lifeSeats.map((row) => row.capability),
       ...registry.protectionSeats.map((row) => row.capability),
+      ...registry.evasionSeats.map((row) => row.capability),
+      ...registry.landSeats.map((row) => row.capability),
+      ...registry.artifactSeats.map((row) => row.capability),
       ...registry.loopSeats.map((row) => row.capability),
     ];
     assert.ok(allCapabilities.length > 0);

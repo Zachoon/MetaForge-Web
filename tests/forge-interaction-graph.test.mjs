@@ -14,6 +14,9 @@ import {
   classifyCounterKinds,
   classifyLifeKinds,
   classifyProtectionKinds,
+  classifyEvasionKinds,
+  classifyLandKinds,
+  classifyArtifactKinds,
   findResetPayPairs,
   LOOP_KINDS,
   SELECTION_KINDS,
@@ -23,6 +26,9 @@ import {
   COUNTER_KINDS,
   LIFE_KINDS,
   PROTECTION_KINDS,
+  EVASION_KINDS,
+  LAND_KINDS,
+  ARTIFACT_KINDS,
   RESET_SHAPES,
   RELATIONSHIP_EVIDENCE,
 } from "../app/forge-interaction-graph.mjs";
@@ -1170,4 +1176,106 @@ test("protection kinds split hexproof / indestructible / ward from the blended p
   );
   assert.match(graph.methodology, /hexproof/i);
   assert.match(graph.methodology, /protection-from/i);
+});
+
+test("evasion kinds split flying / menace / trample from the blended evasion signal", () => {
+  const flyingOracle = "Flying";
+  const menaceOracle = "Menace";
+  const trampleOracle = "Trample";
+  const unblockableOracle = "This creature can't be blocked.";
+  const skulkOracle = "Skulk (This creature can't be blocked by creatures with greater power.)";
+
+  assert.deepEqual(classifyEvasionKinds(flyingOracle), [EVASION_KINDS.FLYING]);
+  assert.deepEqual(classifyEvasionKinds(menaceOracle), [EVASION_KINDS.MENACE]);
+  assert.deepEqual(classifyEvasionKinds(trampleOracle), [EVASION_KINDS.TRAMPLE]);
+  assert.deepEqual(classifyEvasionKinds(unblockableOracle), []);
+  assert.deepEqual(classifyEvasionKinds(skulkOracle), []);
+
+  const hawk = extractMechanicalSignals({
+    name: "Storm Crow",
+    typeLine: "Creature — Bird",
+    oracleText: flyingOracle,
+  });
+  assert.deepEqual(hawk.evasionKinds, [EVASION_KINDS.FLYING]);
+  assert.equal(hawk.produces.includes(EVASION_KINDS.FLYING), false, "evasion kinds are observation labels, not production");
+
+  const graph = buildInteractionGraph([
+    { name: "Storm Crow", typeLine: "Creature — Bird", oracleText: flyingOracle },
+    { name: "Goblin War Paint", typeLine: "Enchantment — Aura", oracleText: trampleOracle },
+  ]);
+  assert.equal(
+    graph.edges.some((edge) => edge.signals.includes(EVASION_KINDS.FLYING) || edge.signals.includes(EVASION_KINDS.MENACE) || edge.signals.includes(EVASION_KINDS.TRAMPLE)),
+    false,
+    "evasion kinds do not form graph edges",
+  );
+  assert.match(graph.methodology, /flying/i);
+  assert.match(graph.methodology, /unblockable/i);
+});
+
+test("land kinds split landfall / extra drop / search from the blended lands signal", () => {
+  const landfallOracle = "Landfall — Whenever a land you control enters, add {G}.";
+  const extraOracle = "You may play an additional land on each of your turns.";
+  const searchOracle = "Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.";
+  const tappedOracle = "This land enters tapped.";
+
+  assert.deepEqual(classifyLandKinds(landfallOracle), [LAND_KINDS.LANDFALL]);
+  assert.deepEqual(classifyLandKinds(extraOracle), [LAND_KINDS.EXTRA_DROP]);
+  assert.deepEqual(classifyLandKinds(searchOracle), [LAND_KINDS.SEARCH]);
+  assert.deepEqual(classifyLandKinds(tappedOracle), []);
+  assert.equal(classifyLandKinds(searchOracle).includes(LAND_KINDS.LANDFALL), false);
+  assert.equal(classifyLandKinds(searchOracle).includes(LAND_KINDS.EXTRA_DROP), false);
+
+  const cobra = extractMechanicalSignals({
+    name: "Lotus Cobra",
+    typeLine: "Creature — Snake",
+    oracleText: landfallOracle,
+  });
+  assert.deepEqual(cobra.landKinds, [LAND_KINDS.LANDFALL]);
+  assert.equal(cobra.produces.includes(LAND_KINDS.LANDFALL), false, "land kinds are observation labels, not production");
+
+  const graph = buildInteractionGraph([
+    { name: "Lotus Cobra", typeLine: "Creature — Snake", oracleText: landfallOracle },
+    { name: "Exploration", typeLine: "Enchantment", oracleText: extraOracle },
+  ]);
+  assert.equal(
+    graph.edges.some((edge) => edge.signals.includes(LAND_KINDS.LANDFALL) || edge.signals.includes(LAND_KINDS.EXTRA_DROP) || edge.signals.includes(LAND_KINDS.SEARCH)),
+    false,
+    "land kinds do not form graph edges",
+  );
+  assert.match(graph.methodology, /extra land drop/i);
+  assert.match(graph.methodology, /land search/i);
+});
+
+test("artifact kinds split spell / matters / outlet from the blended artifacts signal", () => {
+  const spellOracle = "Whenever you cast an artifact spell, draw a card.";
+  const mattersOracle = "Artifact creatures you control get +1/+1.";
+  const outletOracle = "Sacrifice an artifact: Add {C}{C}.";
+  const rockOracle = "{T}: Add {C}{C}.";
+
+  assert.deepEqual(classifyArtifactKinds(spellOracle), [ARTIFACT_KINDS.SPELL]);
+  assert.deepEqual(classifyArtifactKinds(mattersOracle), [ARTIFACT_KINDS.MATTERS]);
+  assert.deepEqual(classifyArtifactKinds(outletOracle), [ARTIFACT_KINDS.OUTLET]);
+  assert.deepEqual(classifyArtifactKinds(rockOracle), []);
+  assert.equal(classifyArtifactKinds(spellOracle).includes(ARTIFACT_KINDS.MATTERS), false);
+  assert.equal(classifyArtifactKinds(mattersOracle).includes(ARTIFACT_KINDS.SPELL), false);
+
+  const sai = extractMechanicalSignals({
+    name: "Sai, Master Thopterist",
+    typeLine: "Legendary Creature — Human Artificer",
+    oracleText: spellOracle,
+  });
+  assert.deepEqual(sai.artifactKinds, [ARTIFACT_KINDS.SPELL]);
+  assert.equal(sai.produces.includes(ARTIFACT_KINDS.SPELL), false, "artifact kinds are observation labels, not production");
+
+  const graph = buildInteractionGraph([
+    { name: "Sai, Master Thopterist", typeLine: "Creature", oracleText: spellOracle },
+    { name: "Krark-Clan Ironworks", typeLine: "Artifact", oracleText: outletOracle },
+  ]);
+  assert.equal(
+    graph.edges.some((edge) => edge.signals.includes(ARTIFACT_KINDS.SPELL) || edge.signals.includes(ARTIFACT_KINDS.MATTERS) || edge.signals.includes(ARTIFACT_KINDS.OUTLET)),
+    false,
+    "artifact kinds do not form graph edges",
+  );
+  assert.match(graph.methodology, /artifact-spell/i);
+  assert.match(graph.methodology, /named-resource occupancy/i);
 });

@@ -12,6 +12,9 @@ import {
   seatCounterImplementation,
   seatLifeImplementation,
   seatProtectionImplementation,
+  seatEvasionImplementation,
+  seatLandImplementation,
+  seatArtifactImplementation,
   seatLoopImplementation,
 } from "../../app/knowledge/atlas-vocabulary.mjs";
 
@@ -509,6 +512,110 @@ describe("Atlas Vocabulary Registry v0", () => {
     });
     assert.equal(fromGraph[0].seat.label, "Ward");
     assert.equal(fromGraph[0].writesToBrain, false);
+  });
+
+  it("seats flying / menace / trample, splitting the blended evasion signal, without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.evasionSeatCount, 3);
+    assert.equal(registry.summary.capabilityAdmittedCount, 0);
+    assert.ok(registry.evasionSeats.every((row) => row.writesToBrain === false && row.capability.atlasAdmitted === false));
+    assert.ok(registry.revisions.some((row) => row.date === "2026-08-15" && /flying \/ menace \/ trample/i.test(row.change)));
+
+    const flying = seatEvasionImplementation({ name: "Storm Crow", oracleText: "Flying" });
+    assert.equal(flying.length, 1);
+    assert.equal(flying[0].kind, "flying");
+    assert.equal(flying[0].seat.label, "Flying");
+    assert.equal(flying[0].contrast, "not menace or trample");
+
+    const menace = seatEvasionImplementation({ name: "Boggart Brute", oracleText: "Menace" });
+    assert.equal(menace[0].kind, "menace");
+    assert.equal(menace[0].seat.label, "Menace");
+
+    const trample = seatEvasionImplementation({ name: "Craw Wurm", oracleText: "Trample" });
+    assert.equal(trample[0].kind, "trample");
+    assert.equal(trample[0].seat.label, "Trample");
+
+    const unblockable = seatEvasionImplementation({
+      name: "Whispersilk Cloak",
+      oracleText: "Equipped creature can't be blocked.",
+    });
+    assert.deepEqual(unblockable, []);
+
+    const fromGraph = seatEvasionImplementation({
+      name: "Pre-classified",
+      mechanics: { evasionKinds: ["trample"], produces: [], rewards: [], signals: [] },
+    });
+    assert.equal(fromGraph[0].seat.label, "Trample");
+    assert.equal(fromGraph[0].writesToBrain, false);
+  });
+
+  it("seats landfall / extra drop / search, splitting the blended lands signal, without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.landSeatCount, 3);
+    assert.ok(registry.revisions.some((row) => row.date === "2026-08-15" && /landfall \/ extra land drop \/ search/i.test(row.change)));
+
+    const landfall = seatLandImplementation({
+      name: "Lotus Cobra",
+      oracleText: "Landfall — Whenever a land you control enters, add {G}.",
+    });
+    assert.equal(landfall[0].kind, "landfall");
+    assert.equal(landfall[0].seat.label, "Landfall");
+    assert.equal(landfall[0].contrast, "not an extra land drop or a land search");
+
+    const extra = seatLandImplementation({
+      name: "Exploration",
+      oracleText: "You may play an additional land on each of your turns.",
+    });
+    assert.equal(extra[0].kind, "extra_drop");
+    assert.equal(extra[0].seat.label, "Extra Land Drop");
+
+    const search = seatLandImplementation({
+      name: "Rampant Growth",
+      oracleText: "Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
+    });
+    assert.equal(search[0].kind, "search");
+    assert.equal(search[0].seat.label, "Land Search");
+    assert.equal(search[0].contrast, "not landfall or an extra land drop");
+
+    const tapped = seatLandImplementation({
+      name: "Guildgate",
+      oracleText: "This land enters tapped.",
+    });
+    assert.deepEqual(tapped, []);
+  });
+
+  it("seats spell / matters / outlet, splitting the blended artifacts signal, without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.artifactSeatCount, 3);
+    assert.ok(registry.revisions.some((row) => row.date === "2026-08-15" && /spell \/ matters \/ outlet/i.test(row.change)));
+
+    const spell = seatArtifactImplementation({
+      name: "Sai, Master Thopterist",
+      oracleText: "Whenever you cast an artifact spell, draw a card.",
+    });
+    assert.equal(spell[0].kind, "spell");
+    assert.equal(spell[0].seat.label, "Artifact Spell");
+    assert.equal(spell[0].contrast, "not artifacts-you-control or an artifact outlet");
+
+    const matters = seatArtifactImplementation({
+      name: "Tempered Steel",
+      oracleText: "Artifact creatures you control get +1/+1.",
+    });
+    assert.equal(matters[0].kind, "matters");
+    assert.equal(matters[0].seat.label, "Artifact Matters");
+
+    const outlet = seatArtifactImplementation({
+      name: "Krark-Clan Ironworks",
+      oracleText: "Sacrifice an artifact: Add {C}{C}.",
+    });
+    assert.equal(outlet[0].kind, "outlet");
+    assert.equal(outlet[0].seat.label, "Artifact Outlet");
+
+    const rock = seatArtifactImplementation({
+      name: "Sol Ring",
+      oracleText: "{T}: Add {C}{C}.",
+    });
+    assert.deepEqual(rock, []);
   });
 
   it("seats loop kinds and reset shapes from graph labels without admitting Capabilities", () => {

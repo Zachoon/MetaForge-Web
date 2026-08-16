@@ -1,8 +1,11 @@
 // =============================================================================
 
 import {
+  classifyArtifactKinds,
   classifyCounterKinds,
+  classifyEvasionKinds,
   classifyGraveyardKinds,
+  classifyLandKinds,
   classifyLifeKinds,
   classifyLoopKind,
   classifyProtectionKinds,
@@ -763,6 +766,229 @@ export function seatProtectionImplementation(card = {}) {
 }
 
 /**
+ * Descriptive seating for evasion kinds — splits the single blended
+ * `evasion` produces/rewards signal into named seats.
+ * Consumes graph `evasionKinds` — no second oracle regex family.
+ * Flying, menace, and trample are each the keyword, not the others.
+ * Unblockable and skulk stay unnamed this phase.
+ * Not Capability admissions. Never construction inputs.
+ */
+export const ATLAS_EVASION_SEATS = freeze([
+  freeze({
+    kind: "flying",
+    capability: freeze({
+      id: "cap:flying",
+      label: "Flying",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:flying", label: "Flying" }),
+    contrast: "not menace or trample",
+    role: "flying",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "menace",
+    capability: freeze({
+      id: "cap:menace",
+      label: "Menace",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:menace", label: "Menace" }),
+    contrast: "not flying or trample",
+    role: "menace",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "trample",
+    capability: freeze({
+      id: "cap:trample",
+      label: "Trample",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:trample", label: "Trample" }),
+    contrast: "not flying or menace",
+    role: "trample",
+    writesToBrain: false,
+  }),
+]);
+
+export function seatEvasionImplementation(card = {}) {
+  const mechanics = card.mechanics || extractMechanicalSignals(card);
+  const kinds = mechanics.evasionKinds
+    || classifyEvasionKinds(card.oracleText || card.oracle_text || "");
+  const rows = [];
+  for (const definition of ATLAS_EVASION_SEATS) {
+    if (!kinds.includes(definition.kind)) continue;
+    rows.push(freeze({
+      kind: definition.kind,
+      capability: definition.capability,
+      seat: definition.seat,
+      contrast: definition.contrast,
+      implementation: freeze({
+        card: String(card.name || "Unknown card"),
+        roles: freeze([definition.role]),
+        evidenceSignals: freeze([definition.kind]),
+      }),
+      writesToBrain: false,
+    }));
+  }
+  return freeze(rows);
+}
+
+/**
+ * Descriptive seating for land kinds — splits the single blended `lands`
+ * produces/rewards signal into named seats.
+ * Consumes graph `landKinds` — no second oracle regex family.
+ * Landfall is a land-enters trigger or the landfall keyword, not an extra
+ * land drop and not a land search. Extra land drop is permission to play
+ * more lands, not landfall. Search is tutoring a land from the library,
+ * not landfall.
+ * Not Capability admissions. Never construction inputs.
+ */
+export const ATLAS_LAND_SEATS = freeze([
+  freeze({
+    kind: "landfall",
+    capability: freeze({
+      id: "cap:landfall",
+      label: "Landfall",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:landfall", label: "Landfall" }),
+    contrast: "not an extra land drop or a land search",
+    role: "landfall",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "extra_drop",
+    capability: freeze({
+      id: "cap:extra_land_drop",
+      label: "Extra Land Drop",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:extra_land_drop", label: "Extra Land Drop" }),
+    contrast: "not landfall or a land search",
+    role: "extra_land_drop",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "search",
+    capability: freeze({
+      id: "cap:land_search",
+      label: "Land Search",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:land_search", label: "Land Search" }),
+    contrast: "not landfall or an extra land drop",
+    role: "land_search",
+    writesToBrain: false,
+  }),
+]);
+
+export function seatLandImplementation(card = {}) {
+  const mechanics = card.mechanics || extractMechanicalSignals(card);
+  const kinds = mechanics.landKinds
+    || classifyLandKinds(card.oracleText || card.oracle_text || "");
+  const rows = [];
+  for (const definition of ATLAS_LAND_SEATS) {
+    if (!kinds.includes(definition.kind)) continue;
+    rows.push(freeze({
+      kind: definition.kind,
+      capability: definition.capability,
+      seat: definition.seat,
+      contrast: definition.contrast,
+      implementation: freeze({
+        card: String(card.name || "Unknown card"),
+        roles: freeze([definition.role]),
+        evidenceSignals: freeze([definition.kind]),
+      }),
+      writesToBrain: false,
+    }));
+  }
+  return freeze(rows);
+}
+
+/**
+ * Descriptive seating for artifact kinds — splits the single blended
+ * `artifacts` produces/rewards signal into named seats.
+ * Consumes graph `artifactKinds` — no second oracle regex family.
+ * Spell is casting an artifact, not artifacts-you-control and not an
+ * artifact outlet. Matters is artifacts you control or an artifact-enters
+ * watch, not an artifact-spell trigger. Outlet is sacrificing an artifact,
+ * not named-resource occupancy.
+ * Not Capability admissions. Never construction inputs.
+ */
+export const ATLAS_ARTIFACT_SEATS = freeze([
+  freeze({
+    kind: "spell",
+    capability: freeze({
+      id: "cap:artifact_spell",
+      label: "Artifact Spell",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:artifact_spell", label: "Artifact Spell" }),
+    contrast: "not artifacts-you-control or an artifact outlet",
+    role: "artifact_spell",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "matters",
+    capability: freeze({
+      id: "cap:artifact_matters",
+      label: "Artifact Matters",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:artifact_matters", label: "Artifact Matters" }),
+    contrast: "not an artifact-spell trigger or an artifact outlet",
+    role: "artifact_matters",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "outlet",
+    capability: freeze({
+      id: "cap:artifact_outlet",
+      label: "Artifact Outlet",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:artifact_outlet", label: "Artifact Outlet" }),
+    contrast: "not an artifact spell or artifact-matters",
+    role: "artifact_outlet",
+    writesToBrain: false,
+  }),
+]);
+
+export function seatArtifactImplementation(card = {}) {
+  const mechanics = card.mechanics || extractMechanicalSignals(card);
+  const kinds = mechanics.artifactKinds
+    || classifyArtifactKinds(card.oracleText || card.oracle_text || "");
+  const rows = [];
+  for (const definition of ATLAS_ARTIFACT_SEATS) {
+    if (!kinds.includes(definition.kind)) continue;
+    rows.push(freeze({
+      kind: definition.kind,
+      capability: definition.capability,
+      seat: definition.seat,
+      contrast: definition.contrast,
+      implementation: freeze({
+        card: String(card.name || "Unknown card"),
+        roles: freeze([definition.role]),
+        evidenceSignals: freeze([definition.kind]),
+      }),
+      writesToBrain: false,
+    }));
+  }
+  return freeze(rows);
+}
+
+/**
  * Descriptive seating for mutual loops and reset/pay shapes.
  * Consumes graph `loopKind` / `shape` — no second oracle regex family.
  * Pair observation only. Not a combo solver. Never construction inputs.
@@ -947,6 +1173,18 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
     date: "2026-08-15",
     change: "Split the blended protection signal into hexproof / indestructible / ward seats; still 0 Capability admissions",
   }),
+  freeze({
+    date: "2026-08-15",
+    change: "Split the blended evasion signal into flying / menace / trample seats; still 0 Capability admissions",
+  }),
+  freeze({
+    date: "2026-08-15",
+    change: "Split the blended lands signal into landfall / extra land drop / search seats; still 0 Capability admissions",
+  }),
+  freeze({
+    date: "2026-08-15",
+    change: "Split the blended artifacts signal into spell / matters / outlet seats; still 0 Capability admissions",
+  }),
 ]);
 
 export function seatsImplementedBy(cardName = "") {
@@ -995,6 +1233,9 @@ export function buildAtlasVocabularyRegistry() {
     counterSeats: ATLAS_COUNTER_SEATS,
     lifeSeats: ATLAS_LIFE_SEATS,
     protectionSeats: ATLAS_PROTECTION_SEATS,
+    evasionSeats: ATLAS_EVASION_SEATS,
+    landSeats: ATLAS_LAND_SEATS,
+    artifactSeats: ATLAS_ARTIFACT_SEATS,
     loopSeats: ATLAS_LOOP_SEATS,
     resetShapeSeats: ATLAS_RESET_SHAPE_SEATS,
     observation001: ATLAS_OBSERVATION_001,
@@ -1013,6 +1254,9 @@ export function buildAtlasVocabularyRegistry() {
       counterSeatCount: ATLAS_COUNTER_SEATS.length,
       lifeSeatCount: ATLAS_LIFE_SEATS.length,
       protectionSeatCount: ATLAS_PROTECTION_SEATS.length,
+      evasionSeatCount: ATLAS_EVASION_SEATS.length,
+      landSeatCount: ATLAS_LAND_SEATS.length,
+      artifactSeatCount: ATLAS_ARTIFACT_SEATS.length,
       loopSeatCount: ATLAS_LOOP_SEATS.length,
       resetShapeSeatCount: ATLAS_RESET_SHAPE_SEATS.length,
       coverageScoreExists: false,

@@ -17,6 +17,9 @@ import {
   seatCounterImplementation,
   seatLifeImplementation,
   seatProtectionImplementation,
+  seatEvasionImplementation,
+  seatLandImplementation,
+  seatArtifactImplementation,
   seatLoopImplementation,
 } from "./atlas-vocabulary.mjs";
 import { getStrategicConcept, buildStrategicConceptLibrary } from "./strategic-concept.mjs";
@@ -56,6 +59,9 @@ export function explainCardAsMentor({
   const counterSeating = seatCounterImplementation({ name: card, oracleText, typeLine, mechanics });
   const lifeSeating = seatLifeImplementation({ name: card, oracleText, typeLine, mechanics });
   const protectionSeating = seatProtectionImplementation({ name: card, oracleText, typeLine, mechanics });
+  const evasionSeating = seatEvasionImplementation({ name: card, oracleText, typeLine, mechanics });
+  const landSeating = seatLandImplementation({ name: card, oracleText, typeLine, mechanics });
+  const artifactSeating = seatArtifactImplementation({ name: card, oracleText, typeLine, mechanics });
   const atlas = buildAtlasVocabularyRegistry();
   const alternatives = seats.length
     ? freeze([...new Set(seats.flatMap((seat) => cardsImplementingSeat(seat).filter((name) => name !== card)))])
@@ -119,10 +125,28 @@ export function explainCardAsMentor({
       return `It is seated as a ${row.seat.label}${contrast}.`;
     }).join(" ")
     : "";
+  const evasionSeatLine = evasionSeating.length
+    ? evasionSeating.map((row) => {
+      const contrast = row.contrast ? `, ${row.contrast}` : "";
+      return `It is seated as a ${row.seat.label}${contrast}.`;
+    }).join(" ")
+    : "";
+  const landSeatLine = landSeating.length
+    ? landSeating.map((row) => {
+      const contrast = row.contrast ? `, ${row.contrast}` : "";
+      return `It is seated as a ${row.seat.label}${contrast}.`;
+    }).join(" ")
+    : "";
+  const artifactSeatLine = artifactSeating.length
+    ? artifactSeating.map((row) => {
+      const contrast = row.contrast ? `, ${row.contrast}` : "";
+      return `It is seated as a ${row.seat.label}${contrast}.`;
+    }).join(" ")
+    : "";
 
   const seatLine = seats.length
     ? `It fills ${seats.join(" · ")}.`
-    : [resourceSeatLine, selectionSeatLine, graveyardSeatLine, sacrificeSeatLine, triggerSeatLine, counterSeatLine, lifeSeatLine, protectionSeatLine].filter(Boolean).join(" ")
+    : [resourceSeatLine, selectionSeatLine, graveyardSeatLine, sacrificeSeatLine, triggerSeatLine, counterSeatLine, lifeSeatLine, protectionSeatLine, evasionSeatLine, landSeatLine, artifactSeatLine].filter(Boolean).join(" ")
       || "Atlas has no illustrative seat binding for this card yet — unknown is not absent.";
 
   const vacancy = seats.length
@@ -143,6 +167,12 @@ export function explainCardAsMentor({
       ? `This is ${lifeSeating.map((row) => row.seat.label).join(" and ")}${lifeSeating.some((row) => row.contrast) ? `, ${lifeSeating.map((row) => row.contrast).filter(Boolean).join(" and ")}` : ""}.`
     : protectionSeating.length
       ? `This is ${protectionSeating.map((row) => row.seat.label).join(" and ")}${protectionSeating.some((row) => row.contrast) ? `, ${protectionSeating.map((row) => row.contrast).filter(Boolean).join(" and ")}` : ""}.`
+    : evasionSeating.length
+      ? `This is ${evasionSeating.map((row) => row.seat.label).join(" and ")}${evasionSeating.some((row) => row.contrast) ? `, ${evasionSeating.map((row) => row.contrast).filter(Boolean).join(" and ")}` : ""}.`
+    : landSeating.length
+      ? `This is ${landSeating.map((row) => row.seat.label).join(" and ")}${landSeating.some((row) => row.contrast) ? `, ${landSeating.map((row) => row.contrast).filter(Boolean).join(" and ")}` : ""}.`
+    : artifactSeating.length
+      ? `This is ${artifactSeating.map((row) => row.seat.label).join(" and ")}${artifactSeating.some((row) => row.contrast) ? `, ${artifactSeating.map((row) => row.contrast).filter(Boolean).join(" and ")}` : ""}.`
       : "Seat language is still open for this card — do not invent a score.";
 
   const timing = /teferi'?s protection|flawless maneuver/i.test(card)
@@ -185,6 +215,9 @@ export function explainCardAsMentor({
     counterSeating,
     lifeSeating,
     protectionSeating,
+    evasionSeating,
+    landSeating,
+    artifactSeating,
     planContext: fantasyLabel
       ? `${fantasyLabel} commission context`
       : commanderName
@@ -192,7 +225,7 @@ export function explainCardAsMentor({
         : "Finished-list explanation",
     timingPosture: timing,
     vacancyRisk: vacancy,
-    openQuestion: seats.length || resourceSeating.length || selectionSeating.length || graveyardSeating.length || sacrificeSeating.length || triggerSeating.length || counterSeating.length || lifeSeating.length || protectionSeating.length
+    openQuestion: seats.length || resourceSeating.length || selectionSeating.length || graveyardSeating.length || sacrificeSeating.length || triggerSeating.length || counterSeating.length || lifeSeating.length || protectionSeating.length || evasionSeating.length || landSeating.length || artifactSeating.length
       ? "Still contested whether these seat labels survive Academy controls beyond illustrative Atlas bindings."
       : "No Atlas seat yet — wait for observation rather than inventing one.",
     conceptHints: freeze(conceptHints),
