@@ -721,14 +721,20 @@ describe("Atlas Vocabulary Registry v0", () => {
 
   it("seats haste / extra / vigilance as combat kinds without admitting Capabilities", () => {
     const registry = buildAtlasVocabularyRegistry();
-    assert.equal(registry.summary.combatSeatCount, 3);
+    assert.equal(registry.summary.combatSeatCount, 6);
     const haste = seatCombatImplementation({ name: "Ball Lightning", oracleText: "Trample, haste" });
     assert.equal(haste[0].kind, "haste");
     const extra = seatCombatImplementation({ name: "Aggravated Assault", oracleText: "After this main phase, there is an additional combat phase followed by an additional main phase." });
     assert.equal(extra[0].kind, "extra");
     const vigilance = seatCombatImplementation({ name: "Serra Angel", oracleText: "Flying, vigilance" });
     assert.equal(vigilance[0].kind, "vigilance");
-    assert.deepEqual(seatCombatImplementation({ name: "White Knight", oracleText: "First strike, protection from black" }), []);
+    const first = seatCombatImplementation({ name: "White Knight", oracleText: "First strike" });
+    assert.equal(first[0].kind, "first_strike");
+    const dbl = seatCombatImplementation({ name: "Firesong", oracleText: "Double strike" });
+    assert.equal(dbl[0].kind, "double_strike");
+    const touch = seatCombatImplementation({ name: "Wasteland Viper", oracleText: "Deathtouch" });
+    assert.equal(touch[0].kind, "deathtouch");
+    assert.deepEqual(seatCombatImplementation({ name: "Giant Spider", oracleText: "Reach" }), []);
   });
 
   it("seats loop kinds and reset shapes from graph labels without admitting Capabilities", () => {

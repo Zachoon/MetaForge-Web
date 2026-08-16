@@ -1180,6 +1180,9 @@ export const ATLAS_COMBAT_SEATS = freeze([
   descriptiveKindSeat("haste", "Haste", "not extra combat or vigilance", "combat_haste", "cap:combat_haste"),
   descriptiveKindSeat("extra", "Extra Combat", "not an Attack Trigger and not haste", "combat_extra", "cap:combat_extra"),
   descriptiveKindSeat("vigilance", "Vigilance", "not haste or extra combat", "combat_vigilance", "cap:combat_vigilance"),
+  descriptiveKindSeat("first_strike", "First Strike", "not double strike or deathtouch", "combat_first_strike", "cap:combat_first_strike"),
+  descriptiveKindSeat("double_strike", "Double Strike", "not first strike or deathtouch", "combat_double_strike", "cap:combat_double_strike"),
+  descriptiveKindSeat("deathtouch", "Deathtouch", "not first strike or double strike", "combat_deathtouch", "cap:combat_deathtouch"),
 ]);
 
 export function seatCombatImplementation(card = {}) {
@@ -1416,6 +1419,10 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
   freeze({
     date: "2026-08-15",
     change: "Named shroud / protection-from / phase-out as protection kinds; still 0 Capability admissions",
+  }),
+  freeze({
+    date: "2026-08-15",
+    change: "Named first strike / double strike / deathtouch as combat kinds; still 0 Capability admissions",
   }),
 ]);
 

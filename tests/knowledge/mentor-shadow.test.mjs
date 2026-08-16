@@ -441,6 +441,19 @@ describe("Mentor Shadow v0", () => {
     assert.match(vigilance.paragraph, /Vigilance/);
   });
 
+
+  it("names first strike, double strike, and deathtouch as combat kinds", () => {
+    const first = explainCardAsMentor({ cardName: "White Knight", oracleText: "First strike" });
+    assert.equal(first.combatSeating[0].kind, "first_strike");
+    assert.match(first.paragraph, /First Strike/);
+    const dbl = explainCardAsMentor({ cardName: "Firesong", oracleText: "Double strike" });
+    assert.equal(dbl.combatSeating[0].kind, "double_strike");
+    assert.match(dbl.paragraph, /Double Strike/);
+    const touch = explainCardAsMentor({ cardName: "Wasteland Viper", oracleText: "Deathtouch" });
+    assert.equal(touch.combatSeating[0].kind, "deathtouch");
+    assert.match(touch.paragraph, /Deathtouch/);
+  });
+
   it("names a reset pair as a closed loop, not a verified infinite", () => {
     const explanation = explainPairAsMentor({
       left: { name: "Basalt Monolith", oracleText: "{T}: Add {C}{C}{C}. {3}: Untap this artifact." },

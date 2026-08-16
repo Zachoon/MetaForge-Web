@@ -1436,22 +1436,28 @@ test("combat kinds split haste / extra / vigilance from blended combat posture",
   const extraOracle = "After this main phase, there is an additional combat phase followed by an additional main phase.";
   const vigilanceOracle = "Vigilance";
   const firstStrikeOracle = "First strike";
+  const doubleStrikeOracle = "Double strike";
+  const deathtouchOracle = "Deathtouch";
   const attackOracle = "Whenever this creature attacks, draw a card.";
+  const reachOracle = "Reach";
 
   assert.deepEqual(classifyCombatKinds(hasteOracle), [COMBAT_KINDS.HASTE]);
   assert.deepEqual(classifyCombatKinds(extraOracle), [COMBAT_KINDS.EXTRA]);
   assert.deepEqual(classifyCombatKinds(vigilanceOracle), [COMBAT_KINDS.VIGILANCE]);
-  assert.deepEqual(classifyCombatKinds(firstStrikeOracle), []);
+  assert.deepEqual(classifyCombatKinds(firstStrikeOracle), [COMBAT_KINDS.FIRST_STRIKE]);
+  assert.deepEqual(classifyCombatKinds(doubleStrikeOracle), [COMBAT_KINDS.DOUBLE_STRIKE]);
+  assert.deepEqual(classifyCombatKinds(deathtouchOracle), [COMBAT_KINDS.DEATHTOUCH]);
   assert.deepEqual(classifyCombatKinds(attackOracle), []);
+  assert.deepEqual(classifyCombatKinds(reachOracle), []);
 
   const graph = buildInteractionGraph([
     { name: "Akroma", typeLine: "Creature", oracleText: "Flying, first strike, vigilance, haste" },
     { name: "Aggravated Assault", typeLine: "Enchantment", oracleText: extraOracle },
   ]);
   assert.equal(
-    graph.edges.some((edge) => edge.signals.includes(COMBAT_KINDS.HASTE) || edge.signals.includes(COMBAT_KINDS.EXTRA) || edge.signals.includes(COMBAT_KINDS.VIGILANCE)),
+    graph.edges.some((edge) => edge.signals.includes(COMBAT_KINDS.HASTE) || edge.signals.includes(COMBAT_KINDS.EXTRA) || edge.signals.includes(COMBAT_KINDS.VIGILANCE) || edge.signals.includes(COMBAT_KINDS.FIRST_STRIKE) || edge.signals.includes(COMBAT_KINDS.DOUBLE_STRIKE) || edge.signals.includes(COMBAT_KINDS.DEATHTOUCH)),
     false,
     "combat kinds do not form graph edges",
   );
-  assert.match(graph.methodology, /first strike stays unnamed/i);
+  assert.match(graph.methodology, /reach stays unnamed/i);
 });
