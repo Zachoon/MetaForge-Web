@@ -836,7 +836,7 @@ export function seatProtectionImplementation(card = {}) {
  * `evasion` produces/rewards signal into named seats.
  * Consumes graph `evasionKinds` — no second oracle regex family.
  * Flying, menace, and trample are each the keyword, not the others.
- * Unblockable and skulk stay unnamed this phase.
+ * Unblockable is can't-be-blocked, not skulk. Skulk is the keyword, not unblockable. Reach is the keyword, not flying. Fear and shadow stay unnamed.
  * Not Capability admissions. Never construction inputs.
  */
 export const ATLAS_EVASION_SEATS = freeze([
@@ -877,6 +877,45 @@ export const ATLAS_EVASION_SEATS = freeze([
     seat: freeze({ id: "seat:trample", label: "Trample" }),
     contrast: "not flying or menace",
     role: "trample",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "unblockable",
+    capability: freeze({
+      id: "cap:unblockable",
+      label: "Unblockable",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:unblockable", label: "Unblockable" }),
+    contrast: "not skulk or fear/shadow",
+    role: "unblockable",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "skulk",
+    capability: freeze({
+      id: "cap:skulk",
+      label: "Skulk",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:skulk", label: "Skulk" }),
+    contrast: "not unblockable",
+    role: "skulk",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "reach",
+    capability: freeze({
+      id: "cap:reach",
+      label: "Reach",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:reach", label: "Reach" }),
+    contrast: "not flying",
+    role: "reach",
     writesToBrain: false,
   }),
 ]);
@@ -1423,6 +1462,10 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
   freeze({
     date: "2026-08-15",
     change: "Named first strike / double strike / deathtouch as combat kinds; still 0 Capability admissions",
+  }),
+  freeze({
+    date: "2026-08-16",
+    change: "Named unblockable / skulk / reach as evasion kinds; still 0 Capability admissions",
   }),
 ]);
 

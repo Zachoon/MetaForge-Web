@@ -1196,12 +1196,17 @@ test("evasion kinds split flying / menace / trample from the blended evasion sig
   const trampleOracle = "Trample";
   const unblockableOracle = "This creature can't be blocked.";
   const skulkOracle = "Skulk (This creature can't be blocked by creatures with greater power.)";
+  const reachOracle = "Reach";
+  const fearOracle = "This creature can't be blocked except by artifact creatures and/or black creatures.";
 
   assert.deepEqual(classifyEvasionKinds(flyingOracle), [EVASION_KINDS.FLYING]);
   assert.deepEqual(classifyEvasionKinds(menaceOracle), [EVASION_KINDS.MENACE]);
   assert.deepEqual(classifyEvasionKinds(trampleOracle), [EVASION_KINDS.TRAMPLE]);
-  assert.deepEqual(classifyEvasionKinds(unblockableOracle), []);
-  assert.deepEqual(classifyEvasionKinds(skulkOracle), []);
+  assert.deepEqual(classifyEvasionKinds(unblockableOracle), [EVASION_KINDS.UNBLOCKABLE]);
+  assert.deepEqual(classifyEvasionKinds(skulkOracle), [EVASION_KINDS.SKULK]);
+  assert.equal(classifyEvasionKinds(skulkOracle).includes(EVASION_KINDS.UNBLOCKABLE), false);
+  assert.deepEqual(classifyEvasionKinds(reachOracle), [EVASION_KINDS.REACH]);
+  assert.deepEqual(classifyEvasionKinds(fearOracle), []);
 
   const hawk = extractMechanicalSignals({
     name: "Storm Crow",
@@ -1216,7 +1221,7 @@ test("evasion kinds split flying / menace / trample from the blended evasion sig
     { name: "Goblin War Paint", typeLine: "Enchantment — Aura", oracleText: trampleOracle },
   ]);
   assert.equal(
-    graph.edges.some((edge) => edge.signals.includes(EVASION_KINDS.FLYING) || edge.signals.includes(EVASION_KINDS.MENACE) || edge.signals.includes(EVASION_KINDS.TRAMPLE)),
+    graph.edges.some((edge) => edge.signals.includes(EVASION_KINDS.FLYING) || edge.signals.includes(EVASION_KINDS.MENACE) || edge.signals.includes(EVASION_KINDS.TRAMPLE) || edge.signals.includes(EVASION_KINDS.UNBLOCKABLE) || edge.signals.includes(EVASION_KINDS.SKULK) || edge.signals.includes(EVASION_KINDS.REACH)),
     false,
     "evasion kinds do not form graph edges",
   );
@@ -1459,5 +1464,5 @@ test("combat kinds split haste / extra / vigilance from blended combat posture",
     false,
     "combat kinds do not form graph edges",
   );
-  assert.match(graph.methodology, /reach stays unnamed/i);
+  assert.match(graph.methodology, /reach is an evasion kind/i);
 });

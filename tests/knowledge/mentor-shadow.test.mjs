@@ -310,6 +310,19 @@ describe("Mentor Shadow v0", () => {
     assert.match(trample.paragraph, /Trample/);
   });
 
+
+  it("names unblockable, skulk, and reach as evasion kinds", () => {
+    const unblockable = explainCardAsMentor({ cardName: "Rogue's Passage", oracleText: "Target creature can't be blocked this turn." });
+    assert.equal(unblockable.evasionSeating[0].kind, "unblockable");
+    assert.match(unblockable.paragraph, /Unblockable/);
+    const skulk = explainCardAsMentor({ cardName: "Deadly Visit", oracleText: "Skulk" });
+    assert.equal(skulk.evasionSeating[0].kind, "skulk");
+    assert.match(skulk.paragraph, /Skulk/);
+    const reach = explainCardAsMentor({ cardName: "Giant Spider", oracleText: "Reach" });
+    assert.equal(reach.evasionSeating[0].kind, "reach");
+    assert.match(reach.paragraph, /Reach/);
+  });
+
   it("names landfall, extra land drop, and land search, splitting the blended lands signal", () => {
     const landfall = explainCardAsMentor({
       cardName: "Lotus Cobra",
