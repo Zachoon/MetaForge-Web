@@ -1241,6 +1241,9 @@ export const ATLAS_SPELL_SEATS = freeze([
   descriptiveKindSeat("copy", "Spell Copy", "not casting without paying or an instant-or-sorcery watch", "spell_copy", "cap:spell_copy"),
   descriptiveKindSeat("free", "Free Spell", "not copy or flashback", "spell_free", "cap:spell_free"),
   descriptiveKindSeat("noncreature", "Noncreature Spell", "not a whenever-you-cast trigger kind and not magecraft", "spell_noncreature", "cap:spell_noncreature"),
+  descriptiveKindSeat("storm", "Storm", "not copy", "spell_storm", "cap:spell_storm"),
+  descriptiveKindSeat("cascade", "Cascade", "not free", "spell_cascade", "cap:spell_cascade"),
+  descriptiveKindSeat("rebound", "Rebound", "not free", "spell_rebound", "cap:spell_rebound"),
 ]);
 
 export function seatSpellImplementation(card = {}) {
@@ -1552,6 +1555,10 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
   freeze({
     date: "2026-08-16",
     change: "Named aftermath / madness / retrace as graveyard kinds; still 0 Capability admissions",
+  }),
+  freeze({
+    date: "2026-08-16",
+    change: "Named storm / cascade / rebound as spell kinds; still 0 Capability admissions",
   }),
 ]);
 

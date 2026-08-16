@@ -1412,6 +1412,28 @@ test("spell kinds split copy / free / noncreature from the blended spells signal
   assert.match(buildInteractionGraph([{ name: "Twincast", typeLine: "Instant", oracleText: copyOracle }]).methodology, /magecraft/i);
 });
 
+
+test("spell kinds name storm / cascade / rebound, distinct from copy and free", () => {
+  assert.deepEqual(classifySpellKinds("Storm"), [SPELL_KINDS.STORM]);
+  assert.deepEqual(classifySpellKinds("Cascade"), [SPELL_KINDS.CASCADE]);
+  assert.deepEqual(classifySpellKinds("Rebound"), [SPELL_KINDS.REBOUND]);
+  assert.equal(classifySpellKinds("Storm").includes(SPELL_KINDS.COPY), false);
+  assert.equal(classifySpellKinds("Cascade").includes(SPELL_KINDS.FREE), false);
+  const magecraftOracle = "Magecraft ? Whenever you cast or copy an instant or sorcery spell, scry 1.";
+  assert.equal(classifySpellKinds(magecraftOracle).includes(SPELL_KINDS.STORM), false);
+
+  const graph = buildInteractionGraph([
+    { name: "Grapeshot", typeLine: "Sorcery", oracleText: "Storm" },
+    { name: "Bloodbraid Elf", typeLine: "Creature", oracleText: "Cascade" },
+  ]);
+  assert.equal(
+    graph.edges.some((edge) => edge.signals.includes(SPELL_KINDS.STORM) || edge.signals.includes(SPELL_KINDS.CASCADE) || edge.signals.includes(SPELL_KINDS.REBOUND)),
+    false,
+    "storm/cascade/rebound do not form graph edges",
+  );
+  assert.match(graph.methodology, /magecraft stays unnamed/i);
+});
+
 test("draw kinds split watch / wheel / hand from the blended draw signal", () => {
   const watchOracle = "Whenever you draw a card, put a +1/+1 counter on this creature.";
   const wheelOracle = "Each player discards their hand, then draws seven cards.";

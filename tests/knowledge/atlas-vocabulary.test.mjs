@@ -701,7 +701,7 @@ describe("Atlas Vocabulary Registry v0", () => {
 
   it("seats copy / free / noncreature, splitting the blended spells signal, without admitting Capabilities", () => {
     const registry = buildAtlasVocabularyRegistry();
-    assert.equal(registry.summary.spellSeatCount, 3);
+    assert.equal(registry.summary.spellSeatCount, 6);
     const copy = seatSpellImplementation({ name: "Twincast", oracleText: "Copy target spell." });
     assert.equal(copy[0].kind, "copy");
     assert.equal(copy[0].seat.label, "Spell Copy");
@@ -710,6 +710,19 @@ describe("Atlas Vocabulary Registry v0", () => {
     const noncreature = seatSpellImplementation({ name: "Goblin Electromancer", oracleText: "Instant and sorcery spells you cast cost {1} less to cast." });
     assert.equal(noncreature[0].kind, "noncreature");
     assert.deepEqual(seatSpellImplementation({ name: "Faithless Looting", oracleText: "Flashback {2}{R} (You may cast this card from your graveyard for its flashback cost. Then exile it.)" }), []);
+  });
+
+
+  it("seats storm / cascade / rebound as spell kinds without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.spellSeatCount, 6);
+    const storm = seatSpellImplementation({ name: "Grapeshot", oracleText: "Storm" });
+    assert.equal(storm[0].kind, "storm");
+    assert.equal(storm[0].seat.label, "Storm");
+    const cascade = seatSpellImplementation({ name: "Bloodbraid Elf", oracleText: "Cascade" });
+    assert.equal(cascade[0].kind, "cascade");
+    const rebound = seatSpellImplementation({ name: "Staggershock", oracleText: "Rebound" });
+    assert.equal(rebound[0].kind, "rebound");
   });
 
   it("seats watch / wheel / hand, splitting the blended draw signal, without admitting Capabilities", () => {

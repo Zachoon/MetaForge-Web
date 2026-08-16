@@ -432,6 +432,19 @@ describe("Mentor Shadow v0", () => {
     assert.match(noncreature.paragraph, /Noncreature Spell/);
   });
 
+
+  it("names storm, cascade, and rebound as spell kinds", () => {
+    const storm = explainCardAsMentor({ cardName: "Grapeshot", oracleText: "Storm" });
+    assert.equal(storm.spellSeating[0].kind, "storm");
+    assert.match(storm.paragraph, /Storm/);
+    const cascade = explainCardAsMentor({ cardName: "Bloodbraid Elf", oracleText: "Cascade" });
+    assert.equal(cascade.spellSeating[0].kind, "cascade");
+    assert.match(cascade.paragraph, /Cascade/);
+    const rebound = explainCardAsMentor({ cardName: "Staggershock", oracleText: "Rebound" });
+    assert.equal(rebound.spellSeating[0].kind, "rebound");
+    assert.match(rebound.paragraph, /Rebound/);
+  });
+
   it("names draw watch, wheel, and hand, splitting the blended draw signal", () => {
     const watch = explainCardAsMentor({ cardName: "Toothy", oracleText: "Whenever you draw a card, put a +1/+1 counter on this creature." });
     assert.equal(watch.drawSeating[0].kind, "watch");
