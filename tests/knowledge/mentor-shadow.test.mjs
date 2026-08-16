@@ -127,6 +127,31 @@ describe("Mentor Shadow v0", () => {
     assert.deepEqual(hug.staxSeating, []);
   });
 
+  it("names auras, equipment, and blink engines without calling them generic tokens", () => {
+    const paws = explainCardAsMentor({
+      cardName: "Aura Voice",
+      oracleText: "Whenever an Aura you control becomes attached to a creature you control, draw a card.",
+    });
+    assert.equal(paws.writesToBrain, false);
+    assert.equal(paws.aurasOccupancySeating[0].kind, "auras_engine");
+    assert.match(paws.paragraph, /Auras Engine/);
+
+    const akiri = explainCardAsMentor({
+      cardName: "Line Slinger",
+      oracleText: "Whenever an equipped creature you control attacks, put a +1/+1 counter on it.",
+    });
+    assert.equal(akiri.equipmentOccupancySeating[0].kind, "equipment_engine");
+    assert.match(akiri.paragraph, /Equipment Engine/);
+
+    const flicker = explainCardAsMentor({
+      cardName: "Blink Mage",
+      oracleText: "Exile target creature you control, then return it to the battlefield.",
+    });
+    assert.equal(flicker.blinkSeating[0].kind, "blink_engine");
+    assert.match(flicker.paragraph, /Blink Engine/);
+  });
+
+
 
 
   it("names rummage as a hand filter, not net draw", () => {

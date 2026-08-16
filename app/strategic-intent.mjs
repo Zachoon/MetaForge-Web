@@ -241,6 +241,37 @@ export function detectStaxCommander(oracle = "") {
   return /players can(?:'|’)t|can(?:'|’)t cast more than|cost \{[^}]+\} more to (?:cast|activate)|unless (?:its|their) controller pays/i.test(text);
 }
 
+
+/**
+ * Commander runs an Aura engine. Occupancy only.
+ * Aura attachment / auras-you-control / affinity for auras.
+ * Generic enchantments are not occupancy.
+ */
+export function detectAurasCommander(oracle = "") {
+  const text = String(oracle || "");
+  return /\bauras?\b/i.test(text) && (/\baffinity for auras\b/i.test(text) || /whenever [^.]*\baura\b/i.test(text) || /auras? you control/i.test(text) || /enchanted creature/i.test(text));
+}
+
+/**
+ * Commander runs an Equipment engine. Occupancy only.
+ * Equipment or equipped creature. Generic artifacts are not occupancy.
+ */
+export function detectEquipmentCommander(oracle = "") {
+  const text = String(oracle || "");
+  return /\bequipment\b/i.test(text) || /\bequipped creature\b/i.test(text);
+}
+
+/**
+ * Commander runs a blink engine. Occupancy only.
+ * Exile target/another, then return to battlefield.
+ * Enter Trigger and Magda-style treasure-sac are not occupancy.
+ * "Exile any number" (Brago) stays closed until a live canary earns a widen.
+ */
+export function detectBlinkCommander(oracle = "") {
+  const text = String(oracle || "");
+  return /exile (?:target|another)[^.]*return (?:it|that|them) to the battlefield/i.test(text);
+}
+
 const PACKAGE_CATALOG = Object.freeze({
   auras: Object.freeze({
     id: "auras",
@@ -249,7 +280,7 @@ const PACKAGE_CATALOG = Object.freeze({
     // Generic enchantments must never satisfy Aura density.
     falseFriendSemantics: Object.freeze(["non_aura_enchantment"]),
     supportSemantics: Object.freeze(["aura_payoff", "protection"]),
-    detectCommander: (oracle) => /\bauras?\b/i.test(oracle) && (/\baffinity for auras\b/i.test(oracle) || /whenever [^.]*\baura\b/i.test(oracle) || /auras? you control/i.test(oracle) || /enchanted creature/i.test(oracle)),
+    detectCommander: detectAurasCommander,
     detectBlueprint: (blueprint) => blueprint.requestedMechanics?.includes("voltron") || /\bauras?\b/i.test(blueprint.source || ""),
     density: Object.freeze({ singletonCore: 16, constructedCore: 8, singletonSupport: 4, constructedSupport: 2 }),
   }),
@@ -259,7 +290,7 @@ const PACKAGE_CATALOG = Object.freeze({
     coreSemantics: Object.freeze(["equipment"]),
     falseFriendSemantics: Object.freeze(["non_equipment_artifact"]),
     supportSemantics: Object.freeze(["protection"]),
-    detectCommander: (oracle) => /\bequipment\b/i.test(oracle) || /\bequipped creature\b/i.test(oracle),
+    detectCommander: detectEquipmentCommander,
     detectBlueprint: (blueprint) => blueprint.requestedMechanics?.includes("voltron") || /\bequipment\b/i.test(blueprint.source || ""),
     density: Object.freeze({ singletonCore: 12, constructedCore: 6, singletonSupport: 3, constructedSupport: 2 }),
   }),
@@ -353,7 +384,7 @@ const PACKAGE_CATALOG = Object.freeze({
     coreSemantics: Object.freeze(["blink_effect"]),
     falseFriendSemantics: Object.freeze([]),
     supportSemantics: Object.freeze(["etb_value"]),
-    detectCommander: (oracle) => /exile (?:target|another)[^.]*return (?:it|that|them) to the battlefield/i.test(oracle),
+    detectCommander: detectBlinkCommander,
     detectBlueprint: (blueprint) => /\bblink\b|\bflicker\b|\betb\b/i.test(blueprint.source || ""),
     density: Object.freeze({ singletonCore: 4, constructedCore: 2, singletonSupport: 8, constructedSupport: 4 }),
   }),

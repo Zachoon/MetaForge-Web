@@ -11,6 +11,9 @@ import {
   seatReanimatorImplementation,
   seatLandfallImplementation,
   seatStaxImplementation,
+  seatAurasOccupancyImplementation,
+  seatEquipmentOccupancyImplementation,
+  seatBlinkImplementation,
   seatSelectionImplementation,
   seatGraveyardImplementation,
   seatSacrificeImplementation,
@@ -209,6 +212,40 @@ describe("Atlas Vocabulary Registry v0", () => {
     assert.equal(arbiter[0].kind, "stax_engine");
     assert.deepEqual(seatStaxImplementation({ name: "Group Hug", oracleText: "Each player draws a card." }), []);
   });
+
+  it("seats auras, equipment, and blink engines from occupancy detect without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.aurasOccupancySeatCount, 1);
+    assert.equal(registry.summary.equipmentOccupancySeatCount, 1);
+    assert.equal(registry.summary.blinkSeatCount, 1);
+    assert.equal(registry.summary.capabilityAdmittedCount, 0);
+    assert.ok(registry.revisions.some((row) => /auras \/ equipment \/ blink engines from occupancy detect/i.test(row.change)));
+
+    const paws = seatAurasOccupancyImplementation({
+      name: "Aura Voice",
+      oracleText: "Whenever an Aura you control becomes attached to a creature you control, draw a card.",
+    });
+    assert.equal(paws[0].kind, "auras_engine");
+    assert.deepEqual(seatAurasOccupancyImplementation({ name: "Enchantress Lite", oracleText: "Whenever you cast an enchantment spell, draw a card." }), []);
+
+    const akiri = seatEquipmentOccupancyImplementation({
+      name: "Line Slinger",
+      oracleText: "Whenever an equipped creature you control attacks, put a +1/+1 counter on it.",
+    });
+    assert.equal(akiri[0].kind, "equipment_engine");
+    assert.deepEqual(seatEquipmentOccupancyImplementation({ name: "Artifact Mage", oracleText: "Artifact spells you cast cost {1} less to cast." }), []);
+
+    const flicker = seatBlinkImplementation({
+      name: "Blink Mage",
+      oracleText: "Exile target creature you control, then return it to the battlefield.",
+    });
+    assert.equal(flicker[0].kind, "blink_engine");
+    assert.deepEqual(seatBlinkImplementation({
+      name: "Brago Shape",
+      oracleText: "Whenever this deals combat damage to a player, exile any number of target nonland permanents you control, then return those cards to the battlefield under their owner's control.",
+    }), []);
+  });
+
 
 
 

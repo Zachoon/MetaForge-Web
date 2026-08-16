@@ -27,6 +27,9 @@ import {
 import {
   cardSatisfiesPackageCore,
   detectAristocratsCommander,
+  detectAurasCommander,
+  detectBlinkCommander,
+  detectEquipmentCommander,
   detectLandfallCommander,
   detectReanimatorCommander,
   detectSpellslingerCommander,
@@ -1502,6 +1505,99 @@ export function seatStaxImplementation(card = {}) {
   }
   return freeze(rows);
 }
+
+/**
+ * Descriptive seating for occupancy language already shipped in construction.
+ * Consumes `detectAurasCommander` — no second regex family.
+ * Not Capability admissions. Never construction inputs.
+ */
+export const ATLAS_AURAS_OCCUPANCY_SEATS = freeze([
+  descriptiveKindSeat("auras_engine", "Auras Engine", "not a generic enchantment", "auras_engine", "cap:auras_engine"),
+]);
+
+export function seatAurasOccupancyImplementation(card = {}) {
+  const oracle = card.oracleText || card.oracle_text || "";
+  const kinds = detectAurasCommander(oracle) ? ["auras_engine"] : [];
+  const rows = [];
+  for (const definition of ATLAS_AURAS_OCCUPANCY_SEATS) {
+    if (!kinds.includes(definition.kind)) continue;
+    rows.push(freeze({
+      kind: definition.kind,
+      capability: definition.capability,
+      seat: definition.seat,
+      contrast: definition.contrast,
+      implementation: freeze({
+        card: String(card.name || "Unknown card"),
+        roles: freeze([definition.role]),
+        evidenceSignals: freeze([definition.kind]),
+      }),
+      writesToBrain: false,
+    }));
+  }
+  return freeze(rows);
+}
+
+/**
+ * Descriptive seating for occupancy language already shipped in construction.
+ * Consumes `detectEquipmentCommander` — no second regex family.
+ * Not Capability admissions. Never construction inputs.
+ */
+export const ATLAS_EQUIPMENT_OCCUPANCY_SEATS = freeze([
+  descriptiveKindSeat("equipment_engine", "Equipment Engine", "not a generic artifact", "equipment_engine", "cap:equipment_engine"),
+]);
+
+export function seatEquipmentOccupancyImplementation(card = {}) {
+  const oracle = card.oracleText || card.oracle_text || "";
+  const kinds = detectEquipmentCommander(oracle) ? ["equipment_engine"] : [];
+  const rows = [];
+  for (const definition of ATLAS_EQUIPMENT_OCCUPANCY_SEATS) {
+    if (!kinds.includes(definition.kind)) continue;
+    rows.push(freeze({
+      kind: definition.kind,
+      capability: definition.capability,
+      seat: definition.seat,
+      contrast: definition.contrast,
+      implementation: freeze({
+        card: String(card.name || "Unknown card"),
+        roles: freeze([definition.role]),
+        evidenceSignals: freeze([definition.kind]),
+      }),
+      writesToBrain: false,
+    }));
+  }
+  return freeze(rows);
+}
+
+/**
+ * Descriptive seating for occupancy language already shipped in construction.
+ * Consumes `detectBlinkCommander` — no second regex family.
+ * Not Capability admissions. Never construction inputs.
+ */
+export const ATLAS_BLINK_SEATS = freeze([
+  descriptiveKindSeat("blink_engine", "Blink Engine", "not an Enter Trigger and not exile-any-number until a live canary earns it", "blink_engine", "cap:blink_engine"),
+]);
+
+export function seatBlinkImplementation(card = {}) {
+  const oracle = card.oracleText || card.oracle_text || "";
+  const kinds = detectBlinkCommander(oracle) ? ["blink_engine"] : [];
+  const rows = [];
+  for (const definition of ATLAS_BLINK_SEATS) {
+    if (!kinds.includes(definition.kind)) continue;
+    rows.push(freeze({
+      kind: definition.kind,
+      capability: definition.capability,
+      seat: definition.seat,
+      contrast: definition.contrast,
+      implementation: freeze({
+        card: String(card.name || "Unknown card"),
+        roles: freeze([definition.role]),
+        evidenceSignals: freeze([definition.kind]),
+      }),
+      writesToBrain: false,
+    }));
+  }
+  return freeze(rows);
+}
 /**
  * Descriptive seating for token kinds — splits the single blended `tokens`
  * produces/rewards signal into named seats.
@@ -1899,6 +1995,10 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
     date: "2026-08-16",
     change: "Seated reanimator / landfall / stax engines from occupancy detect; still 0 Capability admissions",
   }),
+  freeze({
+    date: "2026-08-16",
+    change: "Seated auras / equipment / blink engines from occupancy detect; still 0 Capability admissions",
+  }),
 ]);
 
 export function seatsImplementedBy(cardName = "") {
@@ -1946,6 +2046,9 @@ export function buildAtlasVocabularyRegistry() {
     reanimatorSeats: ATLAS_REANIMATOR_SEATS,
     landfallOccupancySeats: ATLAS_LANDFALL_SEATS,
     staxSeats: ATLAS_STAX_SEATS,
+    aurasOccupancySeats: ATLAS_AURAS_OCCUPANCY_SEATS,
+    equipmentOccupancySeats: ATLAS_EQUIPMENT_OCCUPANCY_SEATS,
+    blinkSeats: ATLAS_BLINK_SEATS,
     selectionSeats: ATLAS_SELECTION_SEATS,
     graveyardSeats: ATLAS_GRAVEYARD_SEATS,
     sacrificeSeats: ATLAS_SACRIFICE_SEATS,
@@ -1980,6 +2083,9 @@ export function buildAtlasVocabularyRegistry() {
       reanimatorSeatCount: ATLAS_REANIMATOR_SEATS.length,
       landfallOccupancySeatCount: ATLAS_LANDFALL_SEATS.length,
       staxSeatCount: ATLAS_STAX_SEATS.length,
+      aurasOccupancySeatCount: ATLAS_AURAS_OCCUPANCY_SEATS.length,
+      equipmentOccupancySeatCount: ATLAS_EQUIPMENT_OCCUPANCY_SEATS.length,
+      blinkSeatCount: ATLAS_BLINK_SEATS.length,
       selectionSeatCount: ATLAS_SELECTION_SEATS.length,
       graveyardSeatCount: ATLAS_GRAVEYARD_SEATS.length,
       sacrificeSeatCount: ATLAS_SACRIFICE_SEATS.length,
