@@ -946,7 +946,7 @@ test("combat damage is a fourth trigger kind, distinct from attack and extra-com
   assert.deepEqual(classifyTriggerKinds(combatDamageOracle), [TRIGGER_KINDS.COMBAT_DAMAGE]);
   assert.equal(classifyTriggerKinds(attackOracle).includes(TRIGGER_KINDS.COMBAT_DAMAGE), false);
   assert.deepEqual(classifyTriggerKinds(extraCombatOracle), []);
-  assert.deepEqual(classifyTriggerKinds(nonCombatDamageOracle), []);
+  assert.equal(classifyTriggerKinds(nonCombatDamageOracle).includes(TRIGGER_KINDS.COMBAT_DAMAGE), false);
   assert.deepEqual(classifyTriggerKinds("Creatures you control get +1/+0 as long as they're attacking."), []);
 
   assert.deepEqual(
@@ -974,4 +974,43 @@ test("combat damage is a fourth trigger kind, distinct from attack and extra-com
   );
   assert.match(graph.methodology, /combat damage/i);
   assert.match(graph.methodology, /attack is not combat damage/i);
+});
+
+test("noncombat damage is a fifth trigger kind, distinct from combat damage and the damage-doubling amplifier", () => {
+  const nonCombatDamageOracle = "Whenever this creature deals damage to a player, draw a card.";
+  const combatDamageOracle = "Whenever this creature deals combat damage to a player, create a Treasure token.";
+  const damageDoublerOracle = "If a source you control would deal damage to a permanent or player, it deals double that damage instead.";
+  const extraCombatOracle = "Untap all creatures you control. After this main phase, there is an additional combat phase.";
+
+  assert.deepEqual(classifyTriggerKinds(nonCombatDamageOracle), [TRIGGER_KINDS.NONCOMBAT_DAMAGE]);
+  assert.deepEqual(classifyTriggerKinds(combatDamageOracle), [TRIGGER_KINDS.COMBAT_DAMAGE]);
+  assert.equal(classifyTriggerKinds(combatDamageOracle).includes(TRIGGER_KINDS.NONCOMBAT_DAMAGE), false);
+  assert.deepEqual(classifyTriggerKinds(damageDoublerOracle), []);
+  assert.deepEqual(classifyTriggerKinds(extraCombatOracle), []);
+
+  assert.deepEqual(
+    classifyTriggerKinds(`When this enters the battlefield, draw a card. ${nonCombatDamageOracle}`),
+    [TRIGGER_KINDS.ENTER, TRIGGER_KINDS.NONCOMBAT_DAMAGE],
+  );
+
+  const inquisitor = extractMechanicalSignals({
+    name: "Firebrand Archer",
+    typeLine: "Creature — Human Archer",
+    oracleText: nonCombatDamageOracle,
+  });
+  assert.deepEqual(inquisitor.triggerKinds, [TRIGGER_KINDS.NONCOMBAT_DAMAGE]);
+  assert.equal(inquisitor.produces.includes(TRIGGER_KINDS.NONCOMBAT_DAMAGE), false, "trigger kinds are observation labels, not production");
+  assert.equal(inquisitor.rewards.includes(TRIGGER_KINDS.NONCOMBAT_DAMAGE), false, "trigger kinds are observation labels, not a payoff");
+
+  const graph = buildInteractionGraph([
+    { name: "Firebrand Archer", typeLine: "Creature", oracleText: nonCombatDamageOracle },
+    { name: "Fiery Emancipation", typeLine: "Enchantment", oracleText: damageDoublerOracle },
+  ]);
+  assert.equal(
+    graph.edges.some((edge) => edge.signals.includes(TRIGGER_KINDS.NONCOMBAT_DAMAGE)),
+    false,
+    "trigger kinds do not form graph edges",
+  );
+  assert.match(graph.methodology, /noncombat damage/i);
+  assert.match(graph.methodology, /combat damage is not a generic damage trigger/i);
 });

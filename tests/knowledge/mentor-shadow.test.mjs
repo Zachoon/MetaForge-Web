@@ -189,6 +189,17 @@ describe("Mentor Shadow v0", () => {
     assert.match(combatDamage.paragraph, /not an Attack Trigger or extra-combat amplification/);
   });
 
+  it("names noncombat damage as a fifth trigger kind, not a Combat Damage Trigger or extra-combat amplification", () => {
+    const damage = explainCardAsMentor({
+      cardName: "Firebrand Archer",
+      oracleText: "Whenever this creature deals damage to a player, draw a card.",
+    });
+    assert.equal(damage.writesToBrain, false);
+    assert.equal(damage.triggerSeating[0].kind, "noncombat_damage");
+    assert.match(damage.paragraph, /Damage Trigger/);
+    assert.match(damage.paragraph, /not a Combat Damage Trigger or extra-combat amplification/);
+  });
+
   it("names a reset pair as a closed loop, not a verified infinite", () => {
     const explanation = explainPairAsMentor({
       left: { name: "Basalt Monolith", oracleText: "{T}: Add {C}{C}{C}. {3}: Untap this artifact." },

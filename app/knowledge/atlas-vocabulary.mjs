@@ -442,7 +442,9 @@ export function seatSacrificeImplementation(card = {}) {
  * Enter is not a blink/flicker recursion pattern. Cast is not spellslinger
  * construction occupancy. Attack is not extra-combat amplification and not
  * stax construction occupancy. Combat damage is not an Attack Trigger and
- * not extra-combat amplification — all four are named trigger conditions only.
+ * not extra-combat amplification. Noncombat damage is not a Combat Damage
+ * Trigger and not the damage-doubling amplifier — all five are named
+ * trigger conditions only.
  * Not Capability admissions. Never construction inputs.
  */
 export const ATLAS_TRIGGER_SEATS = freeze([
@@ -496,6 +498,19 @@ export const ATLAS_TRIGGER_SEATS = freeze([
     seat: freeze({ id: "seat:combat_damage_trigger", label: "Combat Damage Trigger" }),
     contrast: "not an Attack Trigger or extra-combat amplification",
     role: "combat_damage_trigger",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "noncombat_damage",
+    capability: freeze({
+      id: "cap:noncombat_damage_trigger",
+      label: "Damage Trigger",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:noncombat_damage_trigger", label: "Damage Trigger" }),
+    contrast: "not a Combat Damage Trigger or extra-combat amplification",
+    role: "noncombat_damage_trigger",
     writesToBrain: false,
   }),
 ]);
@@ -691,6 +706,10 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
   freeze({
     date: "2026-08-15",
     change: "Added combat damage as a fourth trigger kind, distinct from Attack Trigger and from extra-combat amplification; still 0 Capability admissions",
+  }),
+  freeze({
+    date: "2026-08-15",
+    change: "Added noncombat damage as a fifth trigger kind, distinct from Combat Damage Trigger and from the damage-doubling amplifier; still 0 Capability admissions",
   }),
 ]);
 

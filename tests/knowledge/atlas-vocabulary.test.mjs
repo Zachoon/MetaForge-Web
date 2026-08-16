@@ -282,12 +282,13 @@ describe("Atlas Vocabulary Registry v0", () => {
 
   it("seats enter and cast as a card's own trigger condition, without admitting Capabilities", () => {
     const registry = buildAtlasVocabularyRegistry();
-    assert.equal(registry.summary.triggerSeatCount, 4);
+    assert.equal(registry.summary.triggerSeatCount, 5);
     assert.equal(registry.summary.capabilityAdmittedCount, 0);
     assert.ok(registry.triggerSeats.every((row) => row.writesToBrain === false && row.capability.atlasAdmitted === false));
     assert.ok(registry.revisions.some((row) => row.date === "2026-08-15" && /enter and cast/i.test(row.change)));
     assert.ok(registry.revisions.some((row) => row.date === "2026-08-15" && /attack/i.test(row.change) && /trigger/i.test(row.change)));
     assert.ok(registry.revisions.some((row) => row.date === "2026-08-15" && /combat damage/i.test(row.change)));
+    assert.ok(registry.revisions.some((row) => row.date === "2026-08-15" && /noncombat damage/i.test(row.change)));
 
     const enter = seatTriggerImplementation({
       name: "Bauble",
@@ -324,6 +325,22 @@ describe("Atlas Vocabulary Registry v0", () => {
     assert.equal(combatDamage[0].kind, "combat_damage");
     assert.equal(combatDamage[0].seat.label, "Combat Damage Trigger");
     assert.equal(combatDamage[0].contrast, "not an Attack Trigger or extra-combat amplification");
+
+    const noncombatDamage = seatTriggerImplementation({
+      name: "Firebrand Archer",
+      oracleText: "Whenever this creature deals damage to a player, draw a card.",
+    });
+    assert.equal(noncombatDamage.length, 1);
+    assert.equal(noncombatDamage[0].kind, "noncombat_damage");
+    assert.equal(noncombatDamage[0].seat.label, "Damage Trigger");
+    assert.equal(noncombatDamage[0].contrast, "not a Combat Damage Trigger or extra-combat amplification");
+
+    // Damage doubling is not a Damage Trigger.
+    const damageDoubler = seatTriggerImplementation({
+      name: "Fiery Emancipation",
+      oracleText: "If a source you control would deal damage to a permanent or player, it deals double that damage instead.",
+    });
+    assert.deepEqual(damageDoubler, []);
 
     // Extra combat is not a Combat Damage Trigger.
     const extraCombat = seatTriggerImplementation({
