@@ -76,6 +76,7 @@
     "report:knowledge-epic6": "node tests/knowledge/run-epic6-report.mjs",
     "report:knowledge-epic6:live": "node tests/knowledge/run-epic6-live-report.mjs",
     "report:knowledge-epic6:package-level-a": "node tests/knowledge/run-epic6-package-level-a-report.mjs",
+    "report:knowledge-epic6:all-packages": "node tests/knowledge/run-epic6-all-packages-report.mjs",
     "validate:knowledge-live-ingest": "node --test tests/knowledge/live-tournament-ingest.test.mjs",
     "observe:tournament-live": "node tests/knowledge/run-epic2-live-report.mjs",
     "observe:tournament-live:refresh": "node tests/knowledge/run-epic2-live-report.mjs --refresh",
