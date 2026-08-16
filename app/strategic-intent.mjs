@@ -349,14 +349,7 @@ const PACKAGE_CATALOG = Object.freeze({
     // commanders specialize core membership via intent.tokenScope.
     detectCommander: detectTokensCommander,
     detectBlueprint: (blueprint) => blueprint.desiredRoles?.includes("tokens") || blueprint.packageSignals?.includes("tokens"),
-    // singletonCore/constructedCore recalibrated 10/6 -> 5/3 from 262 real
-    // Commander decks (98 commanders): real core density clusters at
-    // p20=5/p25=5/p30=6, vs. the prior floor's 81% below-floor rate across
-    // the full same-commander-controlled sample. constructedCore kept at
-    // the prior 5:3 ratio to singletonCore (no real Constructed-format data
-    // exists to ground it independently). Support floors untouched - no
-    // real-corpus evidence covers them, only core was measured.
-    density: Object.freeze({ singletonCore: 5, constructedCore: 3, singletonSupport: 4, constructedSupport: 2 }),
+    density: Object.freeze({ singletonCore: 10, constructedCore: 6, singletonSupport: 4, constructedSupport: 2 }),
   }),
   landfall: Object.freeze({
     id: "landfall",
@@ -422,15 +415,7 @@ const PACKAGE_CATALOG = Object.freeze({
     // support; a bare "each player draws" group-hug clause is not occupancy.
     detectCommander: detectStaxCommander,
     detectBlueprint: (blueprint) => /\bstax\b|resource denial/i.test(blueprint.source || ""),
-    // singletonCore/constructedCore recalibrated 8/4 -> 4/2 from 73 real
-    // Commander decks (28 commanders): real core density clusters tightly
-    // at p10=p20=p25=p30=4, vs. the prior floor's 93% below-floor rate
-    // across the full same-commander-controlled sample. constructedCore
-    // kept at the prior 2:1 ratio to singletonCore (no real Constructed-
-    // format data exists to ground it independently). Support floors
-    // untouched - no real-corpus evidence covers them, only core was
-    // measured.
-    density: Object.freeze({ singletonCore: 4, constructedCore: 2, singletonSupport: 4, constructedSupport: 2 }),
+    density: Object.freeze({ singletonCore: 8, constructedCore: 4, singletonSupport: 4, constructedSupport: 2 }),
   }),
 });
 
