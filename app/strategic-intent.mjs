@@ -145,11 +145,15 @@ const TYPAL_STOP = new Set([
   "fortification", "contraption", "attraction",
   "more", "less", "many", "few", "additional",
   "town", "forest", "island", "plains", "swamp", "mountain", "waste", "gate", "desert",
+  "commander",
 ]);
 
 function singularizeTribe(word = "") {
   const w = normalized(word);
   if (!w) return "";
+  // "Dwarves" with a trailing-s capture becomes "dwarve"; the ves rule
+  // already intends dwarf. Not a commander-name branch.
+  if (w === "dwarve") return "dwarf";
   if (w.endsWith("ves") && w.length > 4) return `${w.slice(0, -3)}f`;
   if (w.endsWith("ies") && w.length > 4) return `${w.slice(0, -3)}y`;
   if (w.endsWith("s") && !w.endsWith("ss") && !w.endsWith("us") && !w.endsWith("is")) return w.slice(0, -1);
@@ -159,8 +163,9 @@ function singularizeTribe(word = "") {
 /**
  * Tribe words a commander actually runs. Occupancy only.
  * "among creatures" / "Legendary creatures" / "Land creatures" are not tribes.
- * "each Vampire you control", "a Vampire spell", and "a Dragon permanent
- * card" are tribes. Instant/sorcery/creature captures stay on the stop list.
+ * "a commander you control" is not a tribe. "each Vampire you control",
+ * "a Vampire spell", and "a Dragon permanent card" are tribes.
+ * Instant/sorcery/creature captures stay on the stop list.
  */
 export function extractTypalTribes(oracle = "") {
   const text = String(oracle || "");
@@ -349,7 +354,16 @@ const PACKAGE_CATALOG = Object.freeze({
     // commanders specialize core membership via intent.tokenScope.
     detectCommander: detectTokensCommander,
     detectBlueprint: (blueprint) => blueprint.desiredRoles?.includes("tokens") || blueprint.packageSignals?.includes("tokens"),
-    density: Object.freeze({ singletonCore: 10, constructedCore: 6, singletonSupport: 4, constructedSupport: 2 }),
+    // singletonCore/constructedCore recalibrated 10/6 -> 5/3 from 262 real
+    // Commander decks (98 commanders): real core density clusters at
+    // p20=5/p25=5/p30=6, vs. the prior floor's 81% below-floor rate across
+    // the full same-commander-controlled sample. constructedCore kept at
+    // the prior 5:3 ratio to singletonCore (no real Constructed-format data
+    // exists to ground it independently). Support floors untouched - no
+    // real-corpus evidence covers them, only core was measured.
+    // Harness-verified 2026-08-16: validate:harness (smoke, 111/111 pass)
+    // and validate:harness:field (baseline-compared, 0 hard failures).
+    density: Object.freeze({ singletonCore: 5, constructedCore: 3, singletonSupport: 4, constructedSupport: 2 }),
   }),
   landfall: Object.freeze({
     id: "landfall",
@@ -415,7 +429,17 @@ const PACKAGE_CATALOG = Object.freeze({
     // support; a bare "each player draws" group-hug clause is not occupancy.
     detectCommander: detectStaxCommander,
     detectBlueprint: (blueprint) => /\bstax\b|resource denial/i.test(blueprint.source || ""),
-    density: Object.freeze({ singletonCore: 8, constructedCore: 4, singletonSupport: 4, constructedSupport: 2 }),
+    // singletonCore/constructedCore recalibrated 8/4 -> 4/2 from 73 real
+    // Commander decks (28 commanders): real core density clusters tightly
+    // at p10=p20=p25=p30=4, vs. the prior floor's 93% below-floor rate
+    // across the full same-commander-controlled sample. constructedCore
+    // kept at the prior 2:1 ratio to singletonCore (no real Constructed-
+    // format data exists to ground it independently). Support floors
+    // untouched - no real-corpus evidence covers them, only core was
+    // measured.
+    // Harness-verified 2026-08-16: validate:harness (smoke, 111/111 pass)
+    // and validate:harness:field (baseline-compared, 0 hard failures).
+    density: Object.freeze({ singletonCore: 4, constructedCore: 2, singletonSupport: 4, constructedSupport: 2 }),
   }),
 });
 
