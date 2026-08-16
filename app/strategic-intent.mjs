@@ -123,10 +123,51 @@ function entryCard(entry) {
   return entry?.card || entry || {};
 }
 
+
 function entrySemantics(entry) {
   if (entry?.strategicSemantics instanceof Set) return entry.strategicSemantics;
   if (Array.isArray(entry?.strategicSemantics)) return new Set(entry.strategicSemantics);
   return strategicSemanticsFor(entryCard(entry));
+}
+
+const TYPAL_STOP = new Set([
+  "target", "equipped", "enchanted", "attacking", "blocking", "tapped", "untapped",
+  "nontoken", "other", "another", "each", "all", "card", "creature", "permanent",
+  "token", "spell", "among", "legendary", "historic", "modified", "artifact",
+  "land", "enchantment", "instant", "sorcery", "planeswalker", "battle", "kindred",
+  "tribal", "basic", "snow", "world", "white", "blue", "black", "red", "green",
+  "colorless", "monocolored", "multicolored", "flying", "face-down", "facedown",
+  "chosen", "that", "those", "these", "the", "this", "your", "my", "a", "an",
+  "nonlegendary", "noncreature", "counter", "ability", "effect", "clue",
+  "treasure", "food", "blood", "gold", "map", "junk", "powerstone", "emblem",
+  "copy", "it", "them", "aura", "equipment", "vehicle", "saga", "curse",
+  "shrine", "class", "background", "case", "room", "role", "lesson",
+  "fortification", "contraption", "attraction",
+]);
+
+function singularizeTribe(word = "") {
+  const w = normalized(word);
+  if (!w) return "";
+  if (w.endsWith("ves") && w.length > 4) return `${w.slice(0, -3)}f`;
+  if (w.endsWith("ies") && w.length > 4) return `${w.slice(0, -3)}y`;
+  if (w.endsWith("s") && !w.endsWith("ss") && !w.endsWith("us") && !w.endsWith("is")) return w.slice(0, -1);
+  return w;
+}
+
+/**
+ * Tribe words a commander actually runs. Occupancy only.
+ * "among creatures" / "Legendary creatures" / "Land creatures" are not tribes.
+ */
+export function extractTypalTribes(oracle = "") {
+  const text = String(oracle || "");
+  const hits = [
+    ...text.matchAll(/\banother ([A-Za-z][A-Za-z'-]+)s? you control\b/gi),
+    ...text.matchAll(/\bother ([A-Za-z][A-Za-z'-]+)s? you control\b/gi),
+    ...text.matchAll(/\b(?:a|an) ([A-Za-z][A-Za-z'-]+) you control\b/gi),
+    ...text.matchAll(/\b([A-Za-z][A-Za-z'-]+) creatures you control\b/gi),
+    ...text.matchAll(/\b([A-Za-z][A-Za-z'-]+)s you control\b/gi),
+  ].map((match) => singularizeTribe(match[1]));
+  return unique(hits.filter((term) => term && !TYPAL_STOP.has(term)));
 }
 
 const PACKAGE_CATALOG = Object.freeze({
@@ -213,16 +254,11 @@ const PACKAGE_CATALOG = Object.freeze({
     coreSemantics: Object.freeze(["typal_member"]),
     falseFriendSemantics: Object.freeze(["typal_mention"]),
     supportSemantics: Object.freeze(["typal_member"]),
-    detectCommander: (oracle) => {
-      // Require a real tribe word: "another Bear you control", not
-      // "another target creature you control" or "Equipped creatures you control".
-      const hits = [
-        ...oracle.matchAll(/\banother ([A-Za-z][A-Za-z'-]+)s? you control\b/gi),
-        ...oracle.matchAll(/\b([A-Za-z][A-Za-z'-]+) creatures you control\b/gi),
-      ].map((match) => String(match[1] || "").toLocaleLowerCase("en"));
-      const stop = new Set(["target", "equipped", "enchanted", "attacking", "blocking", "tapped", "untapped", "nontoken", "other", "another", "each", "all", "card", "creature", "permanent", "token", "spell"]);
-      return hits.some((term) => term && !stop.has(term));
-    },
+    // Occupancy is not a catalog false-friend list. Type-line members of
+    // the commander's actual tribe occupy core; oracle mentions of that
+    // tribe without membership are false friends. "among / Legendary /
+    // Land creatures you control" must not open the package.
+    detectCommander: (oracle) => extractTypalTribes(oracle).length > 0,
     detectBlueprint: (blueprint) => (blueprint.tribalTypes || []).length > 0,
     density: Object.freeze({ singletonCore: 14, constructedCore: 8, singletonSupport: 2, constructedSupport: 1 }),
   }),
@@ -329,6 +365,40 @@ export function namedArtifactTokenScopeFromIntent(intent = {}) {
   ].map(normalized)).filter((term) => NAMED_ARTIFACT_TOKENS.has(term));
 }
 
+function typalTribesFromIntent(intent) {
+  const attached = (intent?.packages || []).find((pkg) => pkg.id === "typal")?.tribalTypes;
+  return Array.isArray(attached) ? attached.map(normalized).filter(Boolean) : [];
+}
+
+function typeLineCreatureTypes(card = {}) {
+  const line = typeLineOf(card);
+  const subtype = line.includes("—") ? line.split("—")[1] : (line.split(" - ")[1] || "");
+  return unique(String(subtype || "").split(/\s+/).map(normalized).filter(Boolean));
+}
+
+function cardHasChangeling(card = {}) {
+  const oracle = oracleOf(card);
+  return /\bchangeling\b/i.test(oracle) || /every creature type/i.test(oracle);
+}
+
+function cardIsTypalMember(entry, tribes) {
+  if (entrySemantics(entry).has("typal_member")) return true;
+  if (!tribes.length) return false;
+  const card = entryCard(entry);
+  if (cardHasChangeling(card)) return true;
+  const types = typeLineCreatureTypes(card);
+  return tribes.some((tribe) => types.includes(tribe));
+}
+
+function cardMentionsTypalTribe(entry, tribes) {
+  if (!tribes.length) return false;
+  const oracle = oracleOf(entryCard(entry));
+  return tribes.some((tribe) => {
+    const escaped = String(tribe).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`\\b${escaped}s?\\b`, "i").test(oracle);
+  });
+}
+
 function tokenScopeFor(packageId, intent) {
   if (packageId !== "tokens") return [];
   const attached = (intent?.packages || []).find((pkg) => pkg.id === "tokens")?.tokenScope;
@@ -426,6 +496,7 @@ export function cardSatisfiesPackageCore(entry, packageId, intent) {
   if (packageId === "landfall") return cardSatisfiesLandfallCore(entry);
   if (packageId === "spellslinger") return cardSatisfiesSpellslingerCore(entry);
   if (packageId === "stax") return cardSatisfiesStaxCore(entry);
+  if (packageId === "typal") return cardIsTypalMember(entry, typalTribesFromIntent(intent));
   const semantics = entrySemantics(entry);
   if (definition.coreSemantics.some((semantic) => semantics.has(semantic))) return true;
   if (definition.packageSignals?.length) {
@@ -444,6 +515,7 @@ export function cardSatisfiesPackageSupport(entry, packageId, intent) {
   if (packageId === "landfall") return cardSatisfiesLandfallSupport(entry);
   if (packageId === "spellslinger") return cardSatisfiesSpellslingerSupport(entry);
   if (packageId === "stax") return cardSatisfiesStaxSupport(entry);
+  if (packageId === "typal") return cardIsTypalMember(entry, typalTribesFromIntent(intent));
   const semantics = entrySemantics(entry);
   return definition.supportSemantics.some((semantic) => semantics.has(semantic))
     || cardSatisfiesPackageCore(entry, packageId, intent);
@@ -482,6 +554,12 @@ export function buildStrategicIntent(input = {}, analysisContext = {}) {
       packageSignals: definition.packageSignals || [],
       requireBalancedLegs: definition.requireBalancedLegs || [],
       tokenScope: Object.freeze(definition.id === "tokens" ? namedArtifactTokenScopeFromIntent(analysisContext) : []),
+      tribalTypes: Object.freeze(definition.id === "typal"
+        ? unique([
+            ...commanders.flatMap((commander) => extractTypalTribes(oracleOf(commander))),
+            ...(blueprint.tribalTypes || []),
+          ])
+        : []),
       ...targets,
       source: definition.detectBlueprint?.(blueprint) && definition.detectCommander?.(oracleOf(commanders[0] || {}))
         ? "commander+blueprint"
@@ -632,7 +710,16 @@ export function expensiveThreatSupport(entry, selectedRows = [], intent = {}) {
   });
 }
 
-function packageReport(rows, packageSpec) {
+function packageReport(rows, packageSpec, intent) {
+  if (packageSpec.id === "typal") {
+    const qty = (row) => Number(row.quantity || 1);
+    return {
+      coreCount: rows.reduce((sum, row) => sum + (cardSatisfiesPackageCore(row, "typal", intent) ? qty(row) : 0), 0),
+      falseFriendCount: rows.reduce((sum, row) => sum + (cardIsPackageFalseFriend(row, "typal", intent) ? qty(row) : 0), 0),
+      supportCount: rows.reduce((sum, row) => sum + (cardSatisfiesPackageSupport(row, "typal", intent) ? qty(row) : 0), 0),
+      legs: {},
+    };
+  }
   const coreCount = packageSpec.coreSemantics.length
     ? packageSpec.coreSemantics.reduce((sum, semantic) => sum + countSemantics(rows, semantic), 0)
     : (packageSpec.packageSignals || []).reduce((sum, signal) => sum + countPackageSignal(rows, signal), 0);
@@ -658,14 +745,14 @@ export function validateStrategicCohesion(candidate, intent, options = {}) {
         label: packageSpec.label,
         status: "unsupported-in-verified-pool",
         coreCount: 0,
-        falseFriendCount: packageReport(rows, packageSpec).falseFriendCount,
+        falseFriendCount: packageReport(rows, packageSpec, intent).falseFriendCount,
         supportCount: 0,
         legs: {},
         coreTarget: 0,
       }));
       continue;
     }
-    const report = packageReport(rows, packageSpec);
+    const report = packageReport(rows, packageSpec, intent);
     const coreTarget = availableCore == null ? packageSpec.coreMin : Math.min(packageSpec.coreMin, availableCore);
     const failedCore = report.coreCount < coreTarget;
     // False friends can exist, but they must not be the thing that "fills"

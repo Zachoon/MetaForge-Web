@@ -1,0 +1,187 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {
+  buildStrategicIntent,
+  cardIsPackageFalseFriend,
+  cardSatisfiesPackageCore,
+  extractTypalTribes,
+} from "../app/strategic-intent.mjs";
+import {
+  commanderMechanicalScopes,
+  forgeNativeMasterwork,
+} from "../app/native-masterwork-engine.mjs";
+
+const emptyBlueprint = {
+  source: "",
+  requestedMechanics: [],
+  desiredRoles: [],
+  packageSignals: [],
+  promises: [],
+};
+
+function intentFor(commander, extraContext = {}) {
+  return buildStrategicIntent(
+    { format: "Commander", strategy: "Balanced midrange", commander },
+    {
+      blueprint: emptyBlueprint,
+      commanderScopes: commanderMechanicalScopes(commander),
+      ...extraContext,
+    },
+  );
+}
+
+const goblinBoss = {
+  name: "Test Goblin Boss",
+  colors: ["R"],
+  oracleText: "Goblin creatures you control get +1/+1.",
+  typeLine: "Legendary Creature — Goblin Warrior",
+  manaCost: "{2}{R}",
+};
+
+const bearQueen = {
+  name: "Test Bear Queen",
+  colors: ["G"],
+  oracleText: "Other Bears you control get +1/+1.",
+  typeLine: "Legendary Creature — Bear",
+  manaCost: "{1}{G}{G}",
+};
+
+const humanScholar = {
+  name: "Test Human Scholar",
+  colors: ["G", "U"],
+  oracleText: "Whenever a Human you control enters, create a Treasure token.",
+  typeLine: "Legendary Creature — Human Advisor",
+  manaCost: "{1}{G}{U}",
+};
+
+const tayamShape = {
+  name: "Test Counter Sage",
+  colors: ["W", "B", "G"],
+  oracleText: "Remove one or more counters from among creatures you control: Mill that many cards.",
+  typeLine: "Legendary Creature — Elf Beast",
+  manaCost: "{1}{W}{B}{G}",
+};
+
+const esikaShape = {
+  name: "Test God of Legends",
+  colors: ["W", "U", "B", "R", "G"],
+  oracleText: "Legendary creatures you control have vigilance.",
+  typeLine: "Legendary Creature — God",
+  manaCost: "{2}{G}",
+};
+
+const aangShape = {
+  name: "Test Landbender",
+  colors: ["G", "W", "U"],
+  oracleText: "When another creature you control leaves the battlefield, transform this. Land creatures you control have vigilance.",
+  typeLine: "Legendary Creature — Human Avatar Ally",
+  manaCost: "{2}{G}{W}{U}",
+};
+
+const merenShape = {
+  name: "Test Grave Recruiter",
+  colors: ["B", "G"],
+  oracleText: "Whenever another creature you control dies, you may return target creature card from your graveyard to the battlefield.",
+  typeLine: "Legendary Creature — Elf Shaman",
+  manaCost: "{2}{B}{G}",
+};
+
+const goblinWarchief = {
+  name: "Goblin Warchief",
+  oracleText: "Goblin creatures you control have haste.",
+  typeLine: "Creature — Goblin Warrior",
+  manaCost: "{1}{R}{R}",
+};
+
+const goblinGrenade = {
+  name: "Goblin Grenade",
+  oracleText: "As an additional cost to cast this spell, sacrifice a Goblin. Goblin Grenade deals 5 damage to any target.",
+  typeLine: "Sorcery",
+  manaCost: "{R}",
+};
+
+const angelHost = {
+  name: "Angel Host",
+  oracleText: "Create two 4/4 white Angel creature tokens with flying.",
+  typeLine: "Creature — Angel",
+  manaCost: "{5}{W}",
+};
+
+const mistform = {
+  name: "Mistform Shapeshifter",
+  oracleText: "Changeling (This card is every creature type.)",
+  typeLine: "Creature — Shapeshifter",
+  manaCost: "{2}{U}",
+};
+
+test("extractTypalTribes names real tribes and rejects among / legendary / land", () => {
+  assert.deepEqual(extractTypalTribes("Goblin creatures you control get +1/+1."), ["goblin"]);
+  assert.deepEqual(extractTypalTribes("Other Bears you control get +1/+1."), ["bear"]);
+  assert.deepEqual(extractTypalTribes("Whenever a Human you control enters, create a Treasure token."), ["human"]);
+  assert.deepEqual(extractTypalTribes("Remove counters from among creatures you control."), []);
+  assert.deepEqual(extractTypalTribes("Legendary creatures you control have vigilance."), []);
+  assert.deepEqual(extractTypalTribes("Land creatures you control have vigilance."), []);
+  assert.deepEqual(extractTypalTribes("Whenever another creature you control dies, draw a card."), []);
+  assert.deepEqual(extractTypalTribes("Auras you control get +1/+1."), []);
+  assert.deepEqual(extractTypalTribes("Equipment you control have haste."), []);
+});
+
+test("typal occupancy opens only when the commander actually runs a tribe", () => {
+  const goblins = intentFor(goblinBoss);
+  assert.ok(goblins.packageIds.includes("typal"));
+  assert.deepEqual(goblins.packages.find((pkg) => pkg.id === "typal")?.tribalTypes, ["goblin"]);
+  assert.ok(intentFor(bearQueen).packageIds.includes("typal"));
+  assert.ok(intentFor(humanScholar).packageIds.includes("typal"));
+  assert.ok(!intentFor(tayamShape).packageIds.includes("typal"));
+  assert.ok(!intentFor(esikaShape).packageIds.includes("typal"));
+  assert.ok(!intentFor(aangShape).packageIds.includes("typal"));
+  assert.ok(!intentFor(merenShape).packageIds.includes("typal"));
+});
+
+test("typal core is type-line members and changelings, not oracle mentions", () => {
+  const intent = intentFor(goblinBoss);
+  assert.equal(cardSatisfiesPackageCore(goblinWarchief, "typal", intent), true);
+  assert.equal(cardSatisfiesPackageCore(mistform, "typal", intent), true);
+  assert.equal(cardSatisfiesPackageCore(angelHost, "typal", intent), false);
+  assert.equal(cardSatisfiesPackageCore(goblinGrenade, "typal", intent), false);
+  assert.equal(cardIsPackageFalseFriend(goblinGrenade, "typal", intent), false);
+  assert.equal(cardIsPackageFalseFriend(angelHost, "typal", intent), false);
+});
+
+test("a goblin commander forges goblin members, not Angel factories as package core", () => {
+  const redSpells = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Wizard", manaCost: "{2}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Bolt ${i}`, oracleText: "This deals 2 damage to any target.", typeLine: "Instant", manaCost: "{R}", colorIdentity: ["R"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof until end of turn.", typeLine: "Instant", manaCost: "{1}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+    ...Array.from({ length: 16 }, (_, i) => ({ name: `Goblin Recruits ${i}`, oracleText: "Haste.", typeLine: "Creature — Goblin Warrior", manaCost: "{1}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+  ];
+  const redLands = Array.from({ length: 20 }, (_, i) => ({
+    name: `Test Mountain ${i}`,
+    oracleText: "{T}: Add {R}.",
+    typeLine: "Land — Mountain",
+    manaCost: "",
+    colorIdentity: ["R"],
+    producedMana: ["R"],
+    popularityRank: 5,
+    priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander",
+    target: 100,
+    strategy: "Balanced midrange",
+    seed: 11,
+    commander: goblinBoss,
+    cards: [...redSpells, goblinWarchief, mistform, angelHost, goblinGrenade, ...redLands],
+  });
+  const names = report.selected.rows.map((row) => row.name);
+  const intent = report.selected.strategicIntent;
+  assert.ok(names.includes("Goblin Warchief") || names.some((name) => name.startsWith("Goblin Recruits")), "a type-line Goblin is an engine piece");
+  assert.equal(cardSatisfiesPackageCore(goblinWarchief, "typal", intent), true);
+  assert.equal(cardSatisfiesPackageCore(mistform, "typal", intent), true);
+  assert.equal(cardSatisfiesPackageCore(angelHost, "typal", intent), false);
+  const angelRow = report.selected.rows.find((row) => row.name === "Angel Host");
+  if (angelRow) {
+    assert.equal(cardSatisfiesPackageCore(angelRow, "typal", intent), false, "an Angel factory must not occupy Goblin typal core");
+  }
+});
