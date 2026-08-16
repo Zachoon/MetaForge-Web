@@ -124,6 +124,8 @@ test("extractTypalTribes names real tribes and rejects among / legendary / land"
   assert.deepEqual(extractTypalTribes("Whenever another creature you control dies, draw a card."), []);
   assert.deepEqual(extractTypalTribes("Auras you control get +1/+1."), []);
   assert.deepEqual(extractTypalTribes("Equipment you control have haste."), []);
+  assert.deepEqual(extractTypalTribes("Whenever one or more creatures you control become the target of an ability, draw a card."), []);
+  assert.deepEqual(extractTypalTribes("If you control five or more Towns, create a token. Other creatures you control get +X/+X, where X is the number of Towns you control."), []);
 });
 
 test("typal occupancy opens only when the commander actually runs a tribe", () => {
@@ -136,6 +138,20 @@ test("typal occupancy opens only when the commander actually runs a tribe", () =
   assert.ok(!intentFor(esikaShape).packageIds.includes("typal"));
   assert.ok(!intentFor(aangShape).packageIds.includes("typal"));
   assert.ok(!intentFor(merenShape).packageIds.includes("typal"));
+  assert.ok(!intentFor({
+    name: "Test Activated Scholar",
+    colors: ["G"],
+    oracleText: "Whenever one or more creatures you control become the target of an activated ability, draw a card.",
+    typeLine: "Legendary Creature — Human Scientist",
+    manaCost: "{1}{G}",
+  }).packageIds.includes("typal"));
+  assert.ok(!intentFor({
+    name: "Test Town Singer",
+    colors: ["G", "W", "U", "B", "R"],
+    oracleText: "At the beginning of combat on your turn, if you control five or more Towns, create a 2/2 Elemental token. Other creatures you control get +X/+X, where X is the number of Towns you control.",
+    typeLine: "Legendary Creature — Human Bard",
+    manaCost: "{1}{G}",
+  }).packageIds.includes("typal"));
 });
 
 test("typal core is type-line members and changelings, not oracle mentions", () => {

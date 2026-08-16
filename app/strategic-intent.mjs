@@ -143,6 +143,8 @@ const TYPAL_STOP = new Set([
   "copy", "it", "them", "aura", "equipment", "vehicle", "saga", "curse",
   "shrine", "class", "background", "case", "room", "role", "lesson",
   "fortification", "contraption", "attraction",
+  "more", "less", "many", "few", "additional",
+  "town", "forest", "island", "plains", "swamp", "mountain", "waste", "gate", "desert",
 ]);
 
 function singularizeTribe(word = "") {
