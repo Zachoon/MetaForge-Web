@@ -7,6 +7,7 @@ import {
   seatNamedResourceImplementation,
   seatTypalImplementation,
   seatAristocratsImplementation,
+  seatSpellslingerImplementation,
   seatSelectionImplementation,
   seatGraveyardImplementation,
   seatSacrificeImplementation,
@@ -147,6 +148,34 @@ describe("Atlas Vocabulary Registry v0", () => {
     });
     assert.deepEqual(food, []);
   });
+
+  it("seats a spellslinger engine from occupancy detect without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.spellslingerSeatCount, 1);
+    assert.equal(registry.summary.capabilityAdmittedCount, 0);
+    assert.ok(registry.revisions.some((row) => /spellslinger engine from occupancy detect/i.test(row.change)));
+
+    const parun = seatSpellslingerImplementation({
+      name: "Player Cast Dragon",
+      oracleText: "Whenever a player casts an instant or sorcery spell, you may draw a card.",
+    });
+    assert.equal(parun[0].kind, "spellslinger_engine");
+    assert.equal(parun[0].seat.label, "Spellslinger Engine");
+    assert.equal(parun[0].capability.atlasAdmitted, false);
+
+    const stella = seatSpellslingerImplementation({
+      name: "Copy Mage",
+      oracleText: "{T}: Copy target instant or sorcery spell you control.",
+    });
+    assert.equal(stella[0].kind, "spellslinger_engine");
+
+    const drawBurn = seatSpellslingerImplementation({
+      name: "Draw Burn",
+      oracleText: "Whenever you draw a card, this deals 1 damage to any target.",
+    });
+    assert.deepEqual(drawBurn, []);
+  });
+
 
   it("maps each shipped graph signal through Capability to Seat to Implementation", () => {
     const expected = [

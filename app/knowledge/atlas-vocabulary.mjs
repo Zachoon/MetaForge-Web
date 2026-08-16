@@ -27,6 +27,7 @@ import {
 import {
   cardSatisfiesPackageCore,
   detectAristocratsCommander,
+  detectSpellslingerCommander,
   extractTypalTribes,
 } from "../strategic-intent.mjs";
 // Atlas Vocabulary Registry v0 — Age of Vocabulary engineering surface
@@ -1369,6 +1370,42 @@ export function seatAristocratsImplementation(card = {}) {
   return freeze(rows);
 }
 
+
+/**
+ * Descriptive seating for spellslinger occupancy language already shipped
+ * in construction. Consumes `detectSpellslingerCommander` — no second
+ * magecraft regex family.
+ * Engine is a commander that actually runs instants/sorceries.
+ * Draw-damage, creature-cast payoffs, and copy-target-creature do not
+ * open an engine. Card-level copy/free/noncreature seats remain on the
+ * spell axis. Not Capability admissions. Never construction inputs.
+ */
+export const ATLAS_SPELLSLINGER_SEATS = freeze([
+  descriptiveKindSeat("spellslinger_engine", "Spellslinger Engine", "not draw-damage and not generic tokens", "spellslinger_engine", "cap:spellslinger_engine"),
+]);
+
+export function seatSpellslingerImplementation(card = {}) {
+  const oracle = card.oracleText || card.oracle_text || "";
+  const kinds = detectSpellslingerCommander(oracle) ? ["spellslinger_engine"] : [];
+  const rows = [];
+  for (const definition of ATLAS_SPELLSLINGER_SEATS) {
+    if (!kinds.includes(definition.kind)) continue;
+    rows.push(freeze({
+      kind: definition.kind,
+      capability: definition.capability,
+      seat: definition.seat,
+      contrast: definition.contrast,
+      implementation: freeze({
+        card: String(card.name || "Unknown card"),
+        roles: freeze([definition.role]),
+        evidenceSignals: freeze([definition.kind]),
+      }),
+      writesToBrain: false,
+    }));
+  }
+  return freeze(rows);
+}
+
 /**
  * Descriptive seating for token kinds — splits the single blended `tokens`
  * produces/rewards signal into named seats.
@@ -1758,6 +1795,10 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
     date: "2026-08-16",
     change: "Seated aristocrats engine from occupancy detect, rejecting artifact-sac and Food payoffs; still 0 Capability admissions",
   }),
+  freeze({
+    date: "2026-08-16",
+    change: "Seated spellslinger engine from occupancy detect, rejecting draw-damage and creature-cast payoffs; still 0 Capability admissions",
+  }),
 ]);
 
 export function seatsImplementedBy(cardName = "") {
@@ -1801,6 +1842,7 @@ export function buildAtlasVocabularyRegistry() {
     namedResourceSeats: ATLAS_NAMED_RESOURCE_SEATS,
     typalSeats: ATLAS_TYPAL_SEATS,
     aristocratsSeats: ATLAS_ARISTOCRATS_SEATS,
+    spellslingerSeats: ATLAS_SPELLSLINGER_SEATS,
     selectionSeats: ATLAS_SELECTION_SEATS,
     graveyardSeats: ATLAS_GRAVEYARD_SEATS,
     sacrificeSeats: ATLAS_SACRIFICE_SEATS,
@@ -1831,6 +1873,7 @@ export function buildAtlasVocabularyRegistry() {
       namedResourceSeatCount: ATLAS_NAMED_RESOURCE_SEATS.length,
       typalSeatCount: ATLAS_TYPAL_SEATS.length,
       aristocratsSeatCount: ATLAS_ARISTOCRATS_SEATS.length,
+      spellslingerSeatCount: ATLAS_SPELLSLINGER_SEATS.length,
       selectionSeatCount: ATLAS_SELECTION_SEATS.length,
       graveyardSeatCount: ATLAS_GRAVEYARD_SEATS.length,
       sacrificeSeatCount: ATLAS_SACRIFICE_SEATS.length,

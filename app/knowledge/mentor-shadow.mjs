@@ -12,6 +12,7 @@ import {
   seatNamedResourceImplementation,
   seatTypalImplementation,
   seatAristocratsImplementation,
+  seatSpellslingerImplementation,
   seatSelectionImplementation,
   seatGraveyardImplementation,
   seatSacrificeImplementation,
@@ -65,6 +66,7 @@ export function explainCardAsMentor({
   const resourceSeating = seatNamedResourceImplementation({ name: card, oracleText, typeLine, mechanics }, { activeResources });
   const typalSeating = seatTypalImplementation({ name: card, oracleText, typeLine, mechanics }, { tribalTypes, commanderOracleText });
   const aristocratsSeating = seatAristocratsImplementation({ name: card, oracleText, typeLine, mechanics });
+  const spellslingerSeating = seatSpellslingerImplementation({ name: card, oracleText, typeLine, mechanics });
   const selectionSeating = seatSelectionImplementation({ name: card, oracleText, typeLine, mechanics });
   const graveyardSeating = seatGraveyardImplementation({ name: card, oracleText, typeLine, mechanics });
   const sacrificeSeating = seatSacrificeImplementation({ name: card, oracleText, typeLine, mechanics });
@@ -113,6 +115,12 @@ export function explainCardAsMentor({
     : "";
   const aristocratsSeatLine = aristocratsSeating.length
     ? aristocratsSeating.map((row) => {
+      const contrast = row.contrast ? `, ${row.contrast}` : "";
+      return `It is seated as a ${row.seat.label}${contrast}.`;
+    }).join(" ")
+    : "";
+  const spellslingerSeatLine = spellslingerSeating.length
+    ? spellslingerSeating.map((row) => {
       const contrast = row.contrast ? `, ${row.contrast}` : "";
       return `It is seated as a ${row.seat.label}${contrast}.`;
     }).join(" ")
@@ -222,7 +230,7 @@ export function explainCardAsMentor({
 
   const seatLine = seats.length
     ? `It fills ${seats.join(" · ")}.`
-    : [resourceSeatLine, typalSeatLine, aristocratsSeatLine, selectionSeatLine, graveyardSeatLine, sacrificeSeatLine, triggerSeatLine, counterSeatLine, lifeSeatLine, protectionSeatLine, evasionSeatLine, landSeatLine, artifactSeatLine, tokenSeatLine, auraSeatLine, spellSeatLine, drawSeatLine, damageSeatLine, equipmentSeatLine, combatSeatLine].filter(Boolean).join(" ")
+    : [resourceSeatLine, typalSeatLine, aristocratsSeatLine, spellslingerSeatLine, selectionSeatLine, graveyardSeatLine, sacrificeSeatLine, triggerSeatLine, counterSeatLine, lifeSeatLine, protectionSeatLine, evasionSeatLine, landSeatLine, artifactSeatLine, tokenSeatLine, auraSeatLine, spellSeatLine, drawSeatLine, damageSeatLine, equipmentSeatLine, combatSeatLine].filter(Boolean).join(" ")
       || "Atlas has no illustrative seat binding for this card yet — unknown is not absent.";
 
   const vacancy = seats.length
@@ -233,6 +241,8 @@ export function explainCardAsMentor({
       ? `This is ${typalSeating.map((row) => row.seat.label).join(" and ")}${typalSeating.some((row) => row.contrast) ? `, ${typalSeating.map((row) => row.contrast).filter(Boolean).join(" and ")}` : ""}.`
     : aristocratsSeating.length
       ? `This is ${aristocratsSeating.map((row) => row.seat.label).join(" and ")}${aristocratsSeating.some((row) => row.contrast) ? `, ${aristocratsSeating.map((row) => row.contrast).filter(Boolean).join(" and ")}` : ""}.`
+    : spellslingerSeating.length
+      ? `This is ${spellslingerSeating.map((row) => row.seat.label).join(" and ")}${spellslingerSeating.some((row) => row.contrast) ? `, ${spellslingerSeating.map((row) => row.contrast).filter(Boolean).join(" and ")}` : ""}.`
     : selectionSeating.length
       ? `This is ${selectionSeating.map((row) => row.seat.label).join(" and ")}${selectionSeating.some((row) => row.contrast) ? `, ${selectionSeating.map((row) => row.contrast).filter(Boolean).join(" and ")}` : ""}.`
     : graveyardSeating.length
@@ -304,6 +314,7 @@ export function explainCardAsMentor({
     resourceSeating,
     typalSeating,
     aristocratsSeating,
+    spellslingerSeating,
     selectionSeating,
     graveyardSeating,
     sacrificeSeating,
@@ -328,7 +339,7 @@ export function explainCardAsMentor({
         : "Finished-list explanation",
     timingPosture: timing,
     vacancyRisk: vacancy,
-    openQuestion: seats.length || resourceSeating.length || typalSeating.length || aristocratsSeating.length || selectionSeating.length || graveyardSeating.length || sacrificeSeating.length || triggerSeating.length || counterSeating.length || lifeSeating.length || protectionSeating.length || evasionSeating.length || landSeating.length || artifactSeating.length || tokenSeating.length || auraSeating.length || spellSeating.length || drawSeating.length || damageSeating.length || equipmentSeating.length || combatSeating.length
+    openQuestion: seats.length || resourceSeating.length || typalSeating.length || aristocratsSeating.length || spellslingerSeating.length || selectionSeating.length || graveyardSeating.length || sacrificeSeating.length || triggerSeating.length || counterSeating.length || lifeSeating.length || protectionSeating.length || evasionSeating.length || landSeating.length || artifactSeating.length || tokenSeating.length || auraSeating.length || spellSeating.length || drawSeating.length || damageSeating.length || equipmentSeating.length || combatSeating.length
       ? "Still contested whether these seat labels survive Academy controls beyond illustrative Atlas bindings."
       : "No Atlas seat yet — wait for observation rather than inventing one.",
     conceptHints: freeze(conceptHints),

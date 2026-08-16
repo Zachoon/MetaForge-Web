@@ -78,6 +78,24 @@ describe("Mentor Shadow v0", () => {
     assert.deepEqual(outlaw.aristocratsSeating, []);
   });
 
+  it("names a spellslinger engine without calling it generic tokens, and rejects draw-damage", () => {
+    const parun = explainCardAsMentor({
+      cardName: "Player Cast Dragon",
+      oracleText: "Whenever a player casts an instant or sorcery spell, you may draw a card.",
+    });
+    assert.equal(parun.writesToBrain, false);
+    assert.equal(parun.spellslingerSeating[0].kind, "spellslinger_engine");
+    assert.match(parun.paragraph, /Spellslinger Engine/);
+    assert.match(parun.paragraph, /not draw-damage and not generic tokens/);
+
+    const burn = explainCardAsMentor({
+      cardName: "Draw Burn",
+      oracleText: "Whenever you draw a card, this deals 1 damage to any target.",
+    });
+    assert.deepEqual(burn.spellslingerSeating, []);
+  });
+
+
   it("names rummage as a hand filter, not net draw", () => {
     const explanation = explainCardAsMentor({
       cardName: "Faithless Looting",

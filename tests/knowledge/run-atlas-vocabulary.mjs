@@ -25,6 +25,7 @@ function main() {
     `| Named resource seats | ${registry.summary.namedResourceSeatCount} |`,
     `| Typal seats | ${registry.summary.typalSeatCount} |`,
     `| Aristocrats seats | ${registry.summary.aristocratsSeatCount} |`,
+    `| Spellslinger seats | ${registry.summary.spellslingerSeatCount} |`,
     `| Selection seats | ${registry.summary.selectionSeatCount} |`,
     `| Graveyard seats | ${registry.summary.graveyardSeatCount} |`,
     `| Sacrifice seats | ${registry.summary.sacrificeSeatCount} |`,
