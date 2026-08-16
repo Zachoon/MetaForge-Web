@@ -59,6 +59,13 @@ describe("Mentor Shadow v0", () => {
       typeLine: "Legendary Creature — Human Scientist",
     });
     assert.deepEqual(hojo.typalSeating, []);
+
+    const kediss = explainCardAsMentor({
+      cardName: "Emberclaw",
+      oracleText: "Whenever a commander you control deals combat damage to an opponent, it deals that much damage to each other opponent.",
+      typeLine: "Legendary Creature — Elemental Lizard",
+    });
+    assert.deepEqual(kediss.typalSeating, []);
   });
 
   it("names an aristocrats engine without calling it generic tokens, and rejects artifact-sac", () => {

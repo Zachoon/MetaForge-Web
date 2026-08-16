@@ -155,6 +155,23 @@ test("typal occupancy opens only when the commander actually runs a tribe", () =
     typeLine: "Legendary Creature — Human Bard",
     manaCost: "{1}{G}",
   }).packageIds.includes("typal"));
+  const kediss = intentFor({
+    name: "Test Emberclaw",
+    colors: ["R"],
+    oracleText: "Whenever a commander you control deals combat damage to an opponent, it deals that much damage to each other opponent.",
+    typeLine: "Legendary Creature — Elemental Lizard",
+    manaCost: "{1}{R}",
+  });
+  assert.ok(!kediss.packageIds.includes("typal"));
+  const dwarfLord = intentFor({
+    name: "Test Outlaw",
+    colors: ["R"],
+    oracleText: "Other Dwarves you control get +1/+0. Whenever a Dwarf you control becomes tapped, create a Treasure token.",
+    typeLine: "Legendary Creature — Dwarf Berserker",
+    manaCost: "{1}{R}{R}",
+  });
+  assert.ok(dwarfLord.packageIds.includes("typal"));
+  assert.deepEqual(dwarfLord.packages.find((pkg) => pkg.id === "typal")?.tribalTypes, ["dwarf"]);
 });
 
 test("typal core is type-line members and changelings, not oracle mentions", () => {

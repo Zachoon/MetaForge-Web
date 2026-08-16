@@ -121,6 +121,13 @@ describe("Atlas Vocabulary Registry v0", () => {
       typeLine: "Legendary Creature — Human Bard",
     });
     assert.deepEqual(minstrel, []);
+
+    const kediss = seatTypalImplementation({
+      name: "Emberclaw",
+      oracleText: "Whenever a commander you control deals combat damage to an opponent, it deals that much damage to each other opponent.",
+      typeLine: "Legendary Creature — Elemental Lizard",
+    });
+    assert.deepEqual(kediss, []);
   });
 
   it("seats an aristocrats engine from occupancy detect without admitting Capabilities", () => {

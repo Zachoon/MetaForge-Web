@@ -25,6 +25,8 @@ const EMPTY_BLUEPRINT = Object.freeze({
 export const REMAINING_DETECT_REJECTS = Object.freeze({
   aristocrats: Object.freeze(["Magda"]),
   tokens: Object.freeze(["Chatterfang"]),
+  stax: Object.freeze(["Derevi"]),
+  typal: Object.freeze(["Kediss"]),
 });
 
 export const REMAINING_DETECT_CANARIES = Object.freeze({
@@ -32,10 +34,10 @@ export const REMAINING_DETECT_CANARIES = Object.freeze({
   equipment: Object.freeze(["Ardenn, Intrepid Archaeologist", "Nahiri, the Lithomancer", "Wyleth, Soul of Steel", "Balan, Wandering Knight", "Akiri, Line-Slinger"]),
   aristocrats: Object.freeze(["Teysa Karlov", "Korvold", "Prossh", "Chatterfang", "Elenda"]),
   blink: Object.freeze(["Brago", "Yorion", "Preston", "Roon", "Ephara"]),
-  reanimator: Object.freeze(["Meren", "Muldrotha", "Nethroi", "Karador"]),
+  reanimator: Object.freeze(["Tayam", "Lumra", "Tameshi", "Meren", "Muldrotha"]),
   landfall: Object.freeze(["Tatyova", "Aesi", "Omnath"]),
   spellslinger: Object.freeze(["Kess, Dissident Mage", "Stella Lee", "Niv-Mizzet"]),
-  stax: Object.freeze(["Grand Arbiter", "Derevi", "Drannith Magistrate"]),
+  stax: Object.freeze(["Grand Arbiter", "Drannith Magistrate"]),
   tokens: Object.freeze(["Krenko", "Rhys the Redeemed"]),
   typal: Object.freeze(["Sliver", "Edgar Markov", "The Ur-Dragon"]),
 });
