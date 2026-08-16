@@ -19,6 +19,9 @@ import {
   seatAuraImplementation,
   seatSpellImplementation,
   seatDrawImplementation,
+  seatDamageImplementation,
+  seatEquipmentImplementation,
+  seatCombatImplementation,
   seatLoopImplementation,
 } from "../../app/knowledge/atlas-vocabulary.mjs";
 
@@ -678,6 +681,45 @@ describe("Atlas Vocabulary Registry v0", () => {
     assert.equal(hand[0].kind, "hand");
     assert.deepEqual(seatDrawImplementation({ name: "Opt", oracleText: "Draw a card." }), []);
     assert.deepEqual(seatDrawImplementation({ name: "Faithless Looting", oracleText: "Draw two cards, then discard two cards." }), []);
+  });
+
+
+  it("seats deal / drain / prevent as damage kinds without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.damageSeatCount, 3);
+    assert.ok(registry.revisions.some((row) => /deal \/ drain \/ prevent/i.test(row.change)));
+    const deal = seatDamageImplementation({ name: "Lightning Bolt", oracleText: "Lightning Bolt deals 3 damage to any target." });
+    assert.equal(deal[0].kind, "deal");
+    assert.equal(deal[0].seat.label, "Damage Deal");
+    const drain = seatDamageImplementation({ name: "Gray Merchant of Asphodel", oracleText: "Each opponent loses 2 life." });
+    assert.equal(drain[0].kind, "drain");
+    const prevent = seatDamageImplementation({ name: "Fog", oracleText: "Prevent all combat damage that would be dealt this turn." });
+    assert.equal(prevent[0].kind, "prevent");
+    assert.deepEqual(seatDamageImplementation({ name: "Nielth", oracleText: "Whenever this creature deals combat damage to a player, draw a card." }), []);
+  });
+
+  it("seats equip / attach / bonus as equipment kinds without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.equipmentSeatCount, 3);
+    const equip = seatEquipmentImplementation({ name: "Colossus Hammer", oracleText: "Equip {8}" });
+    assert.equal(equip[0].kind, "equip");
+    const attach = seatEquipmentImplementation({ name: "Puresteel Paladin", oracleText: "Whenever an Equipment becomes attached to a creature you control, draw a card." });
+    assert.equal(attach[0].kind, "attach");
+    const bonus = seatEquipmentImplementation({ name: "Bonesplitter", oracleText: "Equipped creature gets +2/+0." });
+    assert.equal(bonus[0].kind, "bonus");
+    assert.deepEqual(seatEquipmentImplementation({ name: "Pacifism", oracleText: "Enchant creature" }), []);
+  });
+
+  it("seats haste / extra / vigilance as combat kinds without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.combatSeatCount, 3);
+    const haste = seatCombatImplementation({ name: "Ball Lightning", oracleText: "Trample, haste" });
+    assert.equal(haste[0].kind, "haste");
+    const extra = seatCombatImplementation({ name: "Aggravated Assault", oracleText: "After this main phase, there is an additional combat phase followed by an additional main phase." });
+    assert.equal(extra[0].kind, "extra");
+    const vigilance = seatCombatImplementation({ name: "Serra Angel", oracleText: "Flying, vigilance" });
+    assert.equal(vigilance[0].kind, "vigilance");
+    assert.deepEqual(seatCombatImplementation({ name: "White Knight", oracleText: "First strike, protection from black" }), []);
   });
 
   it("seats loop kinds and reset shapes from graph labels without admitting Capabilities", () => {

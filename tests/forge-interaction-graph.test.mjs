@@ -21,6 +21,9 @@ import {
   classifyAuraKinds,
   classifySpellKinds,
   classifyDrawKinds,
+  classifyDamageKinds,
+  classifyEquipmentKinds,
+  classifyCombatKinds,
   findResetPayPairs,
   LOOP_KINDS,
   SELECTION_KINDS,
@@ -37,6 +40,9 @@ import {
   AURA_KINDS,
   SPELL_KINDS,
   DRAW_KINDS,
+  DAMAGE_KINDS,
+  EQUIPMENT_KINDS,
+  COMBAT_KINDS,
   RESET_SHAPES,
   RELATIONSHIP_EVIDENCE,
 } from "../app/forge-interaction-graph.mjs";
@@ -1377,4 +1383,77 @@ test("draw kinds split watch / wheel / hand from the blended draw signal", () =>
     "draw kinds do not form graph edges",
   );
   assert.match(graph.methodology, /not rummage/i);
+});
+
+test("damage kinds split deal / drain / prevent from blended damage", () => {
+  const dealOracle = "Lightning Bolt deals 3 damage to any target.";
+  const drainOracle = "Each opponent loses 2 life. You gain life equal to the life lost this way.";
+  const preventOracle = "Prevent all combat damage that would be dealt this turn.";
+  const combatTriggerOracle = "Whenever this creature deals combat damage to a player, draw a card.";
+  const payOracle = "Pay 2 life: Draw a card.";
+
+  assert.deepEqual(classifyDamageKinds(dealOracle), [DAMAGE_KINDS.DEAL]);
+  assert.deepEqual(classifyDamageKinds(drainOracle), [DAMAGE_KINDS.DRAIN]);
+  assert.deepEqual(classifyDamageKinds(preventOracle), [DAMAGE_KINDS.PREVENT]);
+  assert.deepEqual(classifyDamageKinds(combatTriggerOracle), []);
+  assert.deepEqual(classifyDamageKinds(payOracle), []);
+
+  const graph = buildInteractionGraph([
+    { name: "Lightning Bolt", typeLine: "Instant", oracleText: dealOracle },
+    { name: "Gray Merchant", typeLine: "Creature", oracleText: drainOracle },
+  ]);
+  assert.equal(
+    graph.edges.some((edge) => edge.signals.includes(DAMAGE_KINDS.DEAL) || edge.signals.includes(DAMAGE_KINDS.DRAIN) || edge.signals.includes(DAMAGE_KINDS.PREVENT)),
+    false,
+    "damage kinds do not form graph edges",
+  );
+  assert.match(graph.methodology, /not a combat-damage trigger/);
+});
+
+test("equipment kinds split equip / attach / bonus from blended equipment", () => {
+  const equipOracle = "Equip {2}";
+  const attachOracle = "Whenever an Equipment becomes attached to a creature you control, draw a card.";
+  const bonusOracle = "Equipped creature gets +2/+2.";
+  const auraOracle = "Enchant creature. Enchanted creature gets +2/+2.";
+
+  assert.deepEqual(classifyEquipmentKinds(equipOracle), [EQUIPMENT_KINDS.EQUIP]);
+  assert.deepEqual(classifyEquipmentKinds(attachOracle), [EQUIPMENT_KINDS.ATTACH]);
+  assert.deepEqual(classifyEquipmentKinds(bonusOracle), [EQUIPMENT_KINDS.BONUS]);
+  assert.deepEqual(classifyEquipmentKinds(auraOracle), []);
+
+  const graph = buildInteractionGraph([
+    { name: "Sword", typeLine: "Artifact ? Equipment", oracleText: `${bonusOracle} ${equipOracle}` },
+    { name: "Puresteel Watcher", typeLine: "Creature", oracleText: attachOracle },
+  ]);
+  assert.equal(
+    graph.edges.some((edge) => edge.signals.includes(EQUIPMENT_KINDS.EQUIP) || edge.signals.includes(EQUIPMENT_KINDS.ATTACH) || edge.signals.includes(EQUIPMENT_KINDS.BONUS)),
+    false,
+    "equipment kinds do not form graph edges",
+  );
+  assert.match(graph.methodology, /auras stay unnamed here/i);
+});
+
+test("combat kinds split haste / extra / vigilance from blended combat posture", () => {
+  const hasteOracle = "Haste";
+  const extraOracle = "After this main phase, there is an additional combat phase followed by an additional main phase.";
+  const vigilanceOracle = "Vigilance";
+  const firstStrikeOracle = "First strike";
+  const attackOracle = "Whenever this creature attacks, draw a card.";
+
+  assert.deepEqual(classifyCombatKinds(hasteOracle), [COMBAT_KINDS.HASTE]);
+  assert.deepEqual(classifyCombatKinds(extraOracle), [COMBAT_KINDS.EXTRA]);
+  assert.deepEqual(classifyCombatKinds(vigilanceOracle), [COMBAT_KINDS.VIGILANCE]);
+  assert.deepEqual(classifyCombatKinds(firstStrikeOracle), []);
+  assert.deepEqual(classifyCombatKinds(attackOracle), []);
+
+  const graph = buildInteractionGraph([
+    { name: "Akroma", typeLine: "Creature", oracleText: "Flying, first strike, vigilance, haste" },
+    { name: "Aggravated Assault", typeLine: "Enchantment", oracleText: extraOracle },
+  ]);
+  assert.equal(
+    graph.edges.some((edge) => edge.signals.includes(COMBAT_KINDS.HASTE) || edge.signals.includes(COMBAT_KINDS.EXTRA) || edge.signals.includes(COMBAT_KINDS.VIGILANCE)),
+    false,
+    "combat kinds do not form graph edges",
+  );
+  assert.match(graph.methodology, /first strike stays unnamed/i);
 });

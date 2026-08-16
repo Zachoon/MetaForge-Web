@@ -3,8 +3,11 @@
 import {
   classifyArtifactKinds,
   classifyAuraKinds,
+  classifyCombatKinds,
   classifyCounterKinds,
+  classifyDamageKinds,
   classifyDrawKinds,
+  classifyEquipmentKinds,
   classifyEvasionKinds,
   classifyGraveyardKinds,
   classifyLandKinds,
@@ -1110,6 +1113,42 @@ export function seatDrawImplementation(card = {}) {
   return seatKindRows(ATLAS_DRAW_SEATS, kinds, card);
 }
 
+export const ATLAS_DAMAGE_SEATS = freeze([
+  descriptiveKindSeat("deal", "Damage Deal", "not a combat-damage trigger or drain", "damage_deal", "cap:damage_deal"),
+  descriptiveKindSeat("drain", "Life Drain", "not dealing damage or paying your own life", "damage_drain", "cap:damage_drain"),
+  descriptiveKindSeat("prevent", "Damage Prevent", "not dealing damage or drain", "damage_prevent", "cap:damage_prevent"),
+]);
+
+export function seatDamageImplementation(card = {}) {
+  const mechanics = card.mechanics || extractMechanicalSignals(card);
+  const kinds = mechanics.damageKinds || classifyDamageKinds(card.oracleText || card.oracle_text || "");
+  return seatKindRows(ATLAS_DAMAGE_SEATS, kinds, card);
+}
+
+export const ATLAS_EQUIPMENT_SEATS = freeze([
+  descriptiveKindSeat("equip", "Equip", "not an attach trigger or an equipped-creature bonus", "equipment_equip", "cap:equipment_equip"),
+  descriptiveKindSeat("attach", "Equipment Attach", "not the equip keyword or an equipped-creature bonus", "equipment_attach", "cap:equipment_attach"),
+  descriptiveKindSeat("bonus", "Equipped Bonus", "not the equip keyword or an attach trigger", "equipment_bonus", "cap:equipment_bonus"),
+]);
+
+export function seatEquipmentImplementation(card = {}) {
+  const mechanics = card.mechanics || extractMechanicalSignals(card);
+  const kinds = mechanics.equipmentKinds || classifyEquipmentKinds(card.oracleText || card.oracle_text || "");
+  return seatKindRows(ATLAS_EQUIPMENT_SEATS, kinds, card);
+}
+
+export const ATLAS_COMBAT_SEATS = freeze([
+  descriptiveKindSeat("haste", "Haste", "not extra combat or vigilance", "combat_haste", "cap:combat_haste"),
+  descriptiveKindSeat("extra", "Extra Combat", "not an Attack Trigger and not haste", "combat_extra", "cap:combat_extra"),
+  descriptiveKindSeat("vigilance", "Vigilance", "not haste or extra combat", "combat_vigilance", "cap:combat_vigilance"),
+]);
+
+export function seatCombatImplementation(card = {}) {
+  const mechanics = card.mechanics || extractMechanicalSignals(card);
+  const kinds = mechanics.combatKinds || classifyCombatKinds(card.oracleText || card.oracle_text || "");
+  return seatKindRows(ATLAS_COMBAT_SEATS, kinds, card);
+}
+
 /**
  * Descriptive seating for mutual loops and reset/pay shapes.
  * Consumes graph `loopKind` / `shape` — no second oracle regex family.
@@ -1323,6 +1362,18 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
     date: "2026-08-15",
     change: "Split the blended draw signal into watch / wheel / hand seats; still 0 Capability admissions",
   }),
+  freeze({
+    date: "2026-08-15",
+    change: "Named deal / drain / prevent as damage kinds; still 0 Capability admissions",
+  }),
+  freeze({
+    date: "2026-08-15",
+    change: "Named equip / attach / bonus as equipment kinds; still 0 Capability admissions",
+  }),
+  freeze({
+    date: "2026-08-15",
+    change: "Named haste / extra combat / vigilance as combat kinds; still 0 Capability admissions",
+  }),
 ]);
 
 export function seatsImplementedBy(cardName = "") {
@@ -1378,6 +1429,9 @@ export function buildAtlasVocabularyRegistry() {
     auraSeats: ATLAS_AURA_SEATS,
     spellSeats: ATLAS_SPELL_SEATS,
     drawSeats: ATLAS_DRAW_SEATS,
+    damageSeats: ATLAS_DAMAGE_SEATS,
+    equipmentSeats: ATLAS_EQUIPMENT_SEATS,
+    combatSeats: ATLAS_COMBAT_SEATS,
     loopSeats: ATLAS_LOOP_SEATS,
     resetShapeSeats: ATLAS_RESET_SHAPE_SEATS,
     observation001: ATLAS_OBSERVATION_001,
@@ -1403,6 +1457,9 @@ export function buildAtlasVocabularyRegistry() {
       auraSeatCount: ATLAS_AURA_SEATS.length,
       spellSeatCount: ATLAS_SPELL_SEATS.length,
       drawSeatCount: ATLAS_DRAW_SEATS.length,
+      damageSeatCount: ATLAS_DAMAGE_SEATS.length,
+      equipmentSeatCount: ATLAS_EQUIPMENT_SEATS.length,
+      combatSeatCount: ATLAS_COMBAT_SEATS.length,
       loopSeatCount: ATLAS_LOOP_SEATS.length,
       resetShapeSeatCount: ATLAS_RESET_SHAPE_SEATS.length,
       coverageScoreExists: false,

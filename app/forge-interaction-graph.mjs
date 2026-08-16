@@ -519,6 +519,80 @@ export function classifyDrawKinds(oracle = "") {
   return kinds;
 }
 
+export const DAMAGE_KINDS = Object.freeze({
+  DEAL: "deal",
+  DRAIN: "drain",
+  PREVENT: "prevent",
+});
+
+const DAMAGE_DEAL = /deals? (?:\d+|that much) damage/i;
+const DAMAGE_DRAIN = /each opponent loses [^.]*\blife\b|target opponent loses [^.]*\blife\b|(?:an? )?opponents? lose[s]? (?:\d+|that much) life/i;
+const DAMAGE_PREVENT = /prevent (?:the next )?(?:\d+|all)(?: combat)? damage/i;
+
+/**
+ * How a card deals, drains, or prevents damage — observation only.
+ * Deal is numeric/that-much damage, not a combat-damage trigger.
+ * Drain is opponents losing life, not paying your own life.
+ * Prevent is preventing damage, not dealing it.
+ * These labels must not become produces/rewards until a harness earns that.
+ */
+export function classifyDamageKinds(oracle = "") {
+  const text = String(oracle || "");
+  const kinds = [];
+  if (DAMAGE_DEAL.test(text)) kinds.push(DAMAGE_KINDS.DEAL);
+  if (DAMAGE_DRAIN.test(text)) kinds.push(DAMAGE_KINDS.DRAIN);
+  if (DAMAGE_PREVENT.test(text)) kinds.push(DAMAGE_KINDS.PREVENT);
+  return kinds;
+}
+
+export const EQUIPMENT_KINDS = Object.freeze({
+  EQUIP: "equip",
+  ATTACH: "attach",
+  BONUS: "bonus",
+});
+
+const EQUIPMENT_EQUIP = /\bequip\b/i;
+const EQUIPMENT_ATTACH = /becomes attached|whenever [^.]* equipped/i;
+const EQUIPMENT_BONUS = /equipped creature/i;
+
+/**
+ * How a card touches Equipment — observation only.
+ * Equip is the equip keyword, not an attach trigger and not an equipped-creature
+ * bonus. Attach is becoming attached or whenever equipped, not the equip cost.
+ * Bonus is "equipped creature", not the equip keyword. Auras stay unnamed here.
+ * These labels must not become produces/rewards until a harness earns that.
+ */
+export function classifyEquipmentKinds(oracle = "") {
+  const text = String(oracle || "");
+  const kinds = [];
+  if (EQUIPMENT_EQUIP.test(text)) kinds.push(EQUIPMENT_KINDS.EQUIP);
+  if (EQUIPMENT_ATTACH.test(text)) kinds.push(EQUIPMENT_KINDS.ATTACH);
+  if (EQUIPMENT_BONUS.test(text)) kinds.push(EQUIPMENT_KINDS.BONUS);
+  return kinds;
+}
+
+export const COMBAT_KINDS = Object.freeze({
+  HASTE: "haste",
+  EXTRA: "extra",
+  VIGILANCE: "vigilance",
+});
+
+/**
+ * How a card postures in combat — observation only.
+ * Haste is the keyword, not extra combat and not vigilance.
+ * Extra is an additional combat phase, not an attack trigger.
+ * Vigilance is the keyword, not haste. First strike stays unnamed this phase.
+ * These labels must not become produces/rewards until a harness earns that.
+ */
+export function classifyCombatKinds(oracle = "") {
+  const text = String(oracle || "");
+  const kinds = [];
+  if (/\bhaste\b/i.test(text)) kinds.push(COMBAT_KINDS.HASTE);
+  if (/additional combat phase/i.test(text)) kinds.push(COMBAT_KINDS.EXTRA);
+  if (/\bvigilance\b/i.test(text)) kinds.push(COMBAT_KINDS.VIGILANCE);
+  return kinds;
+}
+
 export function findResetPayPairs(cards = []) {
   const nodes = (cards || []).filter((card) => card?.name && !/\bLand\b/i.test(card.typeLine || card.type_line || ""));
   const pairs = [];
@@ -891,7 +965,10 @@ export function extractMechanicalSignals(card) {
   const auraKinds = classifyAuraKinds(oracle);
   const spellKinds = classifySpellKinds(oracle);
   const drawKinds = classifyDrawKinds(oracle);
-  return { signals, produces, rewards, tagProduces, tagRewards, selectionKinds, graveyardKinds, sacrificeKinds, triggerKinds, counterKinds, lifeKinds, protectionKinds, evasionKinds, landKinds, artifactKinds, tokenKinds, auraKinds, spellKinds, drawKinds };
+  const damageKinds = classifyDamageKinds(oracle);
+  const equipmentKinds = classifyEquipmentKinds(oracle);
+  const combatKinds = classifyCombatKinds(oracle);
+  return { signals, produces, rewards, tagProduces, tagRewards, selectionKinds, graveyardKinds, sacrificeKinds, triggerKinds, counterKinds, lifeKinds, protectionKinds, evasionKinds, landKinds, artifactKinds, tokenKinds, auraKinds, spellKinds, drawKinds, damageKinds, equipmentKinds, combatKinds };
 }
 
 export function buildInteractionGraph(cards, options = {}) {
@@ -1096,7 +1173,7 @@ export function buildInteractionGraph(cards, options = {}) {
     explicitReferences,
     coverage,
     confidence,
-    methodology: "Relationships come from oracle text and type lines: mechanical producer/payoff inference, plus oracle_explicit edges when Oracle literally names another card in the deck. Mutual pairs are labeled engine / closed_loop / conditional_win as vocabulary. Reset/pay shapes are a separate observation pass — not verified infinites and not construction credit. Selection kinds (scry / surveil / rummage / connive / impulse / draw) are observation labels on a card's own filter — they do not form edges and are not construction credit. Graveyard kinds name mill as a dump, dredge as a graveyard filter/engine, flashback and escape as casts from the yard, and unearth as a temporary battlefield return — each distinct from surveil and from each other; they also do not form edges or construction credit. Sacrifice kinds split the blended sacrifice signal into outlet (a cost that can sacrifice a creature or permanent), death payoff (reacts to a creature dying or being sacrificed), and incidental yard (a named resource or discarded card leaving for the graveyard as a side effect, distinct from a Mill Dump); they also do not form edges or construction credit. Trigger kinds name a card's own trigger condition as enter (the battlefield), cast, attack, combat damage, or noncombat damage, distinct from a blink/flicker recursion pattern, from spellslinger construction occupancy, from the extra-combat-phase amplifier mechanism, from the damage-doubling replacement amplifier, and from stax construction occupancy; attack is not combat damage; combat damage is not a generic damage trigger; they also do not form edges or construction credit. Counter kinds split the blended counters signal into put (placement), proliferate (its own named keyword, not a synonym for placing a counter), and remove; they also do not form edges or construction credit. Life kinds split the blended life signal into gain (an actual life-gain effect, not a whenever-you-gain-life payoff and not lifelink reminder), lifelink (the keyword, not a lifegain spell), and pay (spending your own life, not opponents losing life); they also do not form edges or construction credit. Protection kinds split the blended protection signal into hexproof (the keyword, not indestructible or ward), indestructible (the keyword, not hexproof or ward), and ward (a tax on targeting, not hexproof); protection-from and phase-out stay unnamed; they also do not form edges or construction credit. Evasion kinds split the blended evasion signal into flying, menace, and trample (each the keyword, not the others); unblockable and skulk stay unnamed; they also do not form edges or construction credit. Land kinds split the blended lands signal into landfall (a land-enters trigger or the landfall keyword, not an extra land drop and not a land search), extra land drop (permission to play more lands, not landfall), and search (tutoring a land from the library, not landfall); they also do not form edges or construction credit. Artifact kinds split the blended artifacts signal into spell (casting an artifact, not artifacts-you-control and not an artifact outlet), matters (artifacts you control or an artifact-enters watch, not an artifact-spell trigger), and outlet (sacrificing an artifact, not named-resource occupancy); they also do not form edges or construction credit. Token kinds split the blended tokens signal into create (making a token, not a go-wide anthem and not sacrificing a token), go-wide (tokens you control or for-each-token, not creation), and sac (sacrificing a token, not a creature outlet); they also do not form edges or construction credit. Aura kinds split the blended auras signal into enchant (the Aura enchant-clause, not auras-you-control and not affinity), matters (auras you control or an Aura-enters watch, not the enchant clause), and affinity (affinity for Auras, not enchanting); equipment stays unnamed; they also do not form edges or construction credit. Spell kinds split the blended spells signal into copy (copying a spell, not casting without paying), free (casting without paying mana, not flashback and not copy), and noncreature (instant-or-sorcery / noncreature spell text, not a whenever-you-cast trigger kind and not magecraft); they also do not form edges or construction credit. Draw kinds split the blended draw signal into watch (a whenever-you-draw or second-card payoff, not net draw and not a wheel), wheel (each-player discard/draw or discard-your-hand-then-draw, not rummage), and hand (cards-in-hand or maximum hand size, not a draw spell); they also do not form edges or construction credit.",
+    methodology: "Relationships come from oracle text and type lines: mechanical producer/payoff inference, plus oracle_explicit edges when Oracle literally names another card in the deck. Mutual pairs are labeled engine / closed_loop / conditional_win as vocabulary. Reset/pay shapes are a separate observation pass — not verified infinites and not construction credit. Selection kinds (scry / surveil / rummage / connive / impulse / draw) are observation labels on a card's own filter — they do not form edges and are not construction credit. Graveyard kinds name mill as a dump, dredge as a graveyard filter/engine, flashback and escape as casts from the yard, and unearth as a temporary battlefield return — each distinct from surveil and from each other; they also do not form edges or construction credit. Sacrifice kinds split the blended sacrifice signal into outlet (a cost that can sacrifice a creature or permanent), death payoff (reacts to a creature dying or being sacrificed), and incidental yard (a named resource or discarded card leaving for the graveyard as a side effect, distinct from a Mill Dump); they also do not form edges or construction credit. Trigger kinds name a card's own trigger condition as enter (the battlefield), cast, attack, combat damage, or noncombat damage, distinct from a blink/flicker recursion pattern, from spellslinger construction occupancy, from the extra-combat-phase amplifier mechanism, from the damage-doubling replacement amplifier, and from stax construction occupancy; attack is not combat damage; combat damage is not a generic damage trigger; they also do not form edges or construction credit. Counter kinds split the blended counters signal into put (placement), proliferate (its own named keyword, not a synonym for placing a counter), and remove; they also do not form edges or construction credit. Life kinds split the blended life signal into gain (an actual life-gain effect, not a whenever-you-gain-life payoff and not lifelink reminder), lifelink (the keyword, not a lifegain spell), and pay (spending your own life, not opponents losing life); they also do not form edges or construction credit. Protection kinds split the blended protection signal into hexproof (the keyword, not indestructible or ward), indestructible (the keyword, not hexproof or ward), and ward (a tax on targeting, not hexproof); protection-from and phase-out stay unnamed; they also do not form edges or construction credit. Evasion kinds split the blended evasion signal into flying, menace, and trample (each the keyword, not the others); unblockable and skulk stay unnamed; they also do not form edges or construction credit. Land kinds split the blended lands signal into landfall (a land-enters trigger or the landfall keyword, not an extra land drop and not a land search), extra land drop (permission to play more lands, not landfall), and search (tutoring a land from the library, not landfall); they also do not form edges or construction credit. Artifact kinds split the blended artifacts signal into spell (casting an artifact, not artifacts-you-control and not an artifact outlet), matters (artifacts you control or an artifact-enters watch, not an artifact-spell trigger), and outlet (sacrificing an artifact, not named-resource occupancy); they also do not form edges or construction credit. Token kinds split the blended tokens signal into create (making a token, not a go-wide anthem and not sacrificing a token), go-wide (tokens you control or for-each-token, not creation), and sac (sacrificing a token, not a creature outlet); they also do not form edges or construction credit. Aura kinds split the blended auras signal into enchant (the Aura enchant-clause, not auras-you-control and not affinity), matters (auras you control or an Aura-enters watch, not the enchant clause), and affinity (affinity for Auras, not enchanting); equipment stays unnamed; they also do not form edges or construction credit. Spell kinds split the blended spells signal into copy (copying a spell, not casting without paying), free (casting without paying mana, not flashback and not copy), and noncreature (instant-or-sorcery / noncreature spell text, not a whenever-you-cast trigger kind and not magecraft); they also do not form edges or construction credit. Draw kinds split the blended draw signal into watch (a whenever-you-draw or second-card payoff, not net draw and not a wheel), wheel (each-player discard/draw or discard-your-hand-then-draw, not rummage), and hand (cards-in-hand or maximum hand size, not a draw spell); they also do not form edges or construction credit. Damage kinds name deal (numeric or that-much damage, not a combat-damage trigger), drain (opponents losing life, not paying your own life), and prevent (preventing damage, not dealing it); they also do not form edges or construction credit. Equipment kinds name equip (the keyword, not an attach trigger), attach (becoming attached or whenever equipped, not the equip cost), and bonus (equipped creature, not the equip keyword); auras stay unnamed here; they also do not form edges or construction credit. Combat kinds name haste, extra combat (an additional combat phase, not an attack trigger), and vigilance; first strike stays unnamed; they also do not form edges or construction credit.",
     commanderName: options.commanderName || commander?.name || "",
   };
 }

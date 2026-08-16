@@ -392,6 +392,42 @@ describe("Mentor Shadow v0", () => {
     assert.match(hand.paragraph, /Hand Size/);
   });
 
+
+  it("names damage deal, drain, and prevent", () => {
+    const deal = explainCardAsMentor({ cardName: "Lightning Bolt", oracleText: "Lightning Bolt deals 3 damage to any target." });
+    assert.equal(deal.damageSeating[0].kind, "deal");
+    assert.match(deal.paragraph, /Damage Deal/);
+    const drain = explainCardAsMentor({ cardName: "Gray Merchant", oracleText: "Each opponent loses 2 life." });
+    assert.equal(drain.damageSeating[0].kind, "drain");
+    assert.match(drain.paragraph, /Life Drain/);
+    const prevent = explainCardAsMentor({ cardName: "Fog", oracleText: "Prevent all combat damage that would be dealt this turn." });
+    assert.equal(prevent.damageSeating[0].kind, "prevent");
+    assert.match(prevent.paragraph, /Damage Prevent/);
+  });
+
+  it("names equipment equip, attach, and bonus", () => {
+    const equip = explainCardAsMentor({ cardName: "Colossus Hammer", oracleText: "Equip {8}" });
+    assert.equal(equip.equipmentSeating[0].kind, "equip");
+    assert.match(equip.paragraph, /Equip/);
+    const attach = explainCardAsMentor({ cardName: "Attach Watcher", oracleText: "Whenever an Equipment becomes attached to a creature you control, draw a card." });
+    assert.equal(attach.equipmentSeating[0].kind, "attach");
+    const bonus = explainCardAsMentor({ cardName: "Bonesplitter", oracleText: "Equipped creature gets +2/+0." });
+    assert.equal(bonus.equipmentSeating[0].kind, "bonus");
+    assert.match(bonus.paragraph, /Equipped Bonus/);
+  });
+
+  it("names combat haste, extra, and vigilance", () => {
+    const haste = explainCardAsMentor({ cardName: "Ball Lightning", oracleText: "Trample, haste" });
+    assert.equal(haste.combatSeating[0].kind, "haste");
+    assert.match(haste.paragraph, /Haste/);
+    const extra = explainCardAsMentor({ cardName: "Aggravated Assault", oracleText: "After this main phase, there is an additional combat phase followed by an additional main phase." });
+    assert.equal(extra.combatSeating[0].kind, "extra");
+    assert.match(extra.paragraph, /Extra Combat/);
+    const vigilance = explainCardAsMentor({ cardName: "Serra Angel", oracleText: "Flying, vigilance" });
+    assert.equal(vigilance.combatSeating[0].kind, "vigilance");
+    assert.match(vigilance.paragraph, /Vigilance/);
+  });
+
   it("names a reset pair as a closed loop, not a verified infinite", () => {
     const explanation = explainPairAsMentor({
       left: { name: "Basalt Monolith", oracleText: "{T}: Add {C}{C}{C}. {3}: Untap this artifact." },

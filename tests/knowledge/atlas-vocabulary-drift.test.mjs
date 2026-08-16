@@ -28,6 +28,9 @@ import {
   ATLAS_AURA_SEATS,
   ATLAS_SPELL_SEATS,
   ATLAS_DRAW_SEATS,
+  ATLAS_DAMAGE_SEATS,
+  ATLAS_EQUIPMENT_SEATS,
+  ATLAS_COMBAT_SEATS,
   ATLAS_LOOP_SEATS,
   ATLAS_RESET_SHAPE_SEATS,
 } from "../../app/knowledge/atlas-vocabulary.mjs";
@@ -46,6 +49,9 @@ import {
   AURA_KINDS,
   SPELL_KINDS,
   DRAW_KINDS,
+  DAMAGE_KINDS,
+  EQUIPMENT_KINDS,
+  COMBAT_KINDS,
   LOOP_KINDS,
   RESET_SHAPES,
 } from "../../app/forge-interaction-graph.mjs";
@@ -169,6 +175,31 @@ describe("Atlas Vocabulary Registry — drift protection", () => {
     );
   });
 
+
+  it("seats exactly the graph's damage kinds, no more, no fewer", () => {
+    assertSameSet(
+      ATLAS_DAMAGE_SEATS.map((row) => row.kind),
+      Object.values(DAMAGE_KINDS),
+      "damage kinds",
+    );
+  });
+
+  it("seats exactly the graph's equipment kinds, no more, no fewer", () => {
+    assertSameSet(
+      ATLAS_EQUIPMENT_SEATS.map((row) => row.kind),
+      Object.values(EQUIPMENT_KINDS),
+      "equipment kinds",
+    );
+  });
+
+  it("seats exactly the graph's combat kinds, no more, no fewer", () => {
+    assertSameSet(
+      ATLAS_COMBAT_SEATS.map((row) => row.kind),
+      Object.values(COMBAT_KINDS),
+      "combat kinds",
+    );
+  });
+
   it("seats exactly the graph's loop kinds, no more, no fewer", () => {
     assertSameSet(
       ATLAS_LOOP_SEATS.map((row) => row.kind),
@@ -203,6 +234,9 @@ describe("Atlas Vocabulary Registry — drift protection", () => {
       ...registry.auraSeats,
       ...registry.spellSeats,
       ...registry.drawSeats,
+      ...registry.damageSeats,
+      ...registry.equipmentSeats,
+      ...registry.combatSeats,
       ...registry.loopSeats,
       ...registry.resetShapeSeats,
     ];
@@ -231,6 +265,9 @@ describe("Atlas Vocabulary Registry — drift protection", () => {
       ...registry.auraSeats.map((row) => row.capability),
       ...registry.spellSeats.map((row) => row.capability),
       ...registry.drawSeats.map((row) => row.capability),
+      ...registry.damageSeats.map((row) => row.capability),
+      ...registry.equipmentSeats.map((row) => row.capability),
+      ...registry.combatSeats.map((row) => row.capability),
       ...registry.loopSeats.map((row) => row.capability),
     ];
     assert.ok(allCapabilities.length > 0);
