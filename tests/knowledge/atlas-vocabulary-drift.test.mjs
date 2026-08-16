@@ -18,6 +18,7 @@ import {
   ATLAS_GRAVEYARD_SEATS,
   ATLAS_SACRIFICE_SEATS,
   ATLAS_TRIGGER_SEATS,
+  ATLAS_COUNTER_SEATS,
   ATLAS_LOOP_SEATS,
   ATLAS_RESET_SHAPE_SEATS,
 } from "../../app/knowledge/atlas-vocabulary.mjs";
@@ -26,6 +27,7 @@ import {
   GRAVEYARD_KINDS,
   SACRIFICE_KINDS,
   TRIGGER_KINDS,
+  COUNTER_KINDS,
   LOOP_KINDS,
   RESET_SHAPES,
 } from "../../app/forge-interaction-graph.mjs";
@@ -69,6 +71,14 @@ describe("Atlas Vocabulary Registry — drift protection", () => {
     );
   });
 
+  it("seats exactly the graph's counter kinds, no more, no fewer", () => {
+    assertSameSet(
+      ATLAS_COUNTER_SEATS.map((row) => row.kind),
+      Object.values(COUNTER_KINDS),
+      "counter kinds",
+    );
+  });
+
   it("seats exactly the graph's loop kinds, no more, no fewer", () => {
     assertSameSet(
       ATLAS_LOOP_SEATS.map((row) => row.kind),
@@ -93,6 +103,7 @@ describe("Atlas Vocabulary Registry — drift protection", () => {
       ...registry.graveyardSeats,
       ...registry.sacrificeSeats,
       ...registry.triggerSeats,
+      ...registry.counterSeats,
       ...registry.loopSeats,
       ...registry.resetShapeSeats,
     ];
@@ -111,6 +122,7 @@ describe("Atlas Vocabulary Registry — drift protection", () => {
       ...registry.graveyardSeats.map((row) => row.capability),
       ...registry.sacrificeSeats.map((row) => row.capability),
       ...registry.triggerSeats.map((row) => row.capability),
+      ...registry.counterSeats.map((row) => row.capability),
       ...registry.loopSeats.map((row) => row.capability),
     ];
     assert.ok(allCapabilities.length > 0);

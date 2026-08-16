@@ -200,6 +200,33 @@ describe("Mentor Shadow v0", () => {
     assert.match(damage.paragraph, /not a Combat Damage Trigger or extra-combat amplification/);
   });
 
+  it("names put, proliferate, and remove, splitting the blended counters signal", () => {
+    const put = explainCardAsMentor({
+      cardName: "Hardened Scales",
+      oracleText: "If one or more +1/+1 counters would be put on a creature you control, that many plus one +1/+1 counters are put on it instead.",
+    });
+    assert.equal(put.writesToBrain, false);
+    assert.equal(put.counterSeating[0].kind, "put");
+    assert.match(put.paragraph, /Counter Placement/);
+    assert.match(put.paragraph, /not proliferate/);
+
+    const proliferate = explainCardAsMentor({
+      cardName: "Evolution Sage",
+      oracleText: "Landfall — Whenever a land enters the battlefield under your control, proliferate.",
+    });
+    assert.equal(proliferate.counterSeating[0].kind, "proliferate");
+    assert.match(proliferate.paragraph, /Proliferate Effect/);
+    assert.match(proliferate.paragraph, /not a single counter placement/);
+
+    const remove = explainCardAsMentor({
+      cardName: "Hapatra, Vizier of Poisons",
+      oracleText: "Remove a -1/-1 counter from a creature you control: Create a 1/1 black Snake creature token.",
+    });
+    assert.equal(remove.counterSeating[0].kind, "remove");
+    assert.match(remove.paragraph, /Counter Removal/);
+    assert.match(remove.paragraph, /not counter placement or proliferate/);
+  });
+
   it("names a reset pair as a closed loop, not a verified infinite", () => {
     const explanation = explainPairAsMentor({
       left: { name: "Basalt Monolith", oracleText: "{T}: Add {C}{C}{C}. {3}: Untap this artifact." },

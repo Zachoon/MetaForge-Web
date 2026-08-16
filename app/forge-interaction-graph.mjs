@@ -243,6 +243,38 @@ export function classifyTriggerKinds(oracle = "") {
   return kinds;
 }
 
+export const COUNTER_KINDS = Object.freeze({
+  PUT: "put",
+  PROLIFERATE: "proliferate",
+  REMOVE: "remove",
+});
+
+// "Put a counter on" is placement — the shape the blended `counters` signal
+// already treats as a producer. Covers both active ("put a counter on
+// target creature") and passive ("counters would be put on it") phrasing.
+const COUNTER_PUT = /\bput [^.]* counters? on\b|\bcounters? [^.]* put on\b/i;
+// Proliferate is a named keyword, not a synonym for placing a counter — its
+// own reminder text says "give each another counter", never "put".
+const COUNTER_PROLIFERATE = /\bproliferate\b/i;
+// Removing a counter, whether as a cost, an effect, or a cleanse.
+const COUNTER_REMOVE = /\bremove [^.]* counters? from\b/i;
+
+/**
+ * How a card touches counters — split from the single blended `counters`
+ * produces/rewards signal. Observation only.
+ * Put is placement, not proliferate. Proliferate is its own keyword, not a
+ * single counter placement. Remove is neither placement nor proliferate.
+ * These labels must not become produces/rewards until a harness earns that.
+ */
+export function classifyCounterKinds(oracle = "") {
+  const text = String(oracle || "");
+  const kinds = [];
+  if (COUNTER_PUT.test(text)) kinds.push(COUNTER_KINDS.PUT);
+  if (COUNTER_PROLIFERATE.test(text)) kinds.push(COUNTER_KINDS.PROLIFERATE);
+  if (COUNTER_REMOVE.test(text)) kinds.push(COUNTER_KINDS.REMOVE);
+  return kinds;
+}
+
 export function findResetPayPairs(cards = []) {
   const nodes = (cards || []).filter((card) => card?.name && !/\bLand\b/i.test(card.typeLine || card.type_line || ""));
   const pairs = [];
@@ -605,7 +637,8 @@ export function extractMechanicalSignals(card) {
   const graveyardKinds = classifyGraveyardKinds(oracle);
   const sacrificeKinds = classifySacrificeKinds(oracle);
   const triggerKinds = classifyTriggerKinds(oracle);
-  return { signals, produces, rewards, tagProduces, tagRewards, selectionKinds, graveyardKinds, sacrificeKinds, triggerKinds };
+  const counterKinds = classifyCounterKinds(oracle);
+  return { signals, produces, rewards, tagProduces, tagRewards, selectionKinds, graveyardKinds, sacrificeKinds, triggerKinds, counterKinds };
 }
 
 export function buildInteractionGraph(cards, options = {}) {
@@ -810,7 +843,7 @@ export function buildInteractionGraph(cards, options = {}) {
     explicitReferences,
     coverage,
     confidence,
-    methodology: "Relationships come from oracle text and type lines: mechanical producer/payoff inference, plus oracle_explicit edges when Oracle literally names another card in the deck. Mutual pairs are labeled engine / closed_loop / conditional_win as vocabulary. Reset/pay shapes are a separate observation pass — not verified infinites and not construction credit. Selection kinds (scry / surveil / rummage / connive / impulse / draw) are observation labels on a card's own filter — they do not form edges and are not construction credit. Graveyard kinds name mill as a dump, dredge as a graveyard filter/engine, flashback and escape as casts from the yard, and unearth as a temporary battlefield return — each distinct from surveil and from each other; they also do not form edges or construction credit. Sacrifice kinds split the blended sacrifice signal into outlet (a cost that can sacrifice a creature or permanent), death payoff (reacts to a creature dying or being sacrificed), and incidental yard (a named resource or discarded card leaving for the graveyard as a side effect, distinct from a Mill Dump); they also do not form edges or construction credit. Trigger kinds name a card's own trigger condition as enter (the battlefield), cast, attack, combat damage, or noncombat damage, distinct from a blink/flicker recursion pattern, from spellslinger construction occupancy, from the extra-combat-phase amplifier mechanism, from the damage-doubling replacement amplifier, and from stax construction occupancy; attack is not combat damage; combat damage is not a generic damage trigger; they also do not form edges or construction credit.",
+    methodology: "Relationships come from oracle text and type lines: mechanical producer/payoff inference, plus oracle_explicit edges when Oracle literally names another card in the deck. Mutual pairs are labeled engine / closed_loop / conditional_win as vocabulary. Reset/pay shapes are a separate observation pass — not verified infinites and not construction credit. Selection kinds (scry / surveil / rummage / connive / impulse / draw) are observation labels on a card's own filter — they do not form edges and are not construction credit. Graveyard kinds name mill as a dump, dredge as a graveyard filter/engine, flashback and escape as casts from the yard, and unearth as a temporary battlefield return — each distinct from surveil and from each other; they also do not form edges or construction credit. Sacrifice kinds split the blended sacrifice signal into outlet (a cost that can sacrifice a creature or permanent), death payoff (reacts to a creature dying or being sacrificed), and incidental yard (a named resource or discarded card leaving for the graveyard as a side effect, distinct from a Mill Dump); they also do not form edges or construction credit. Trigger kinds name a card's own trigger condition as enter (the battlefield), cast, attack, combat damage, or noncombat damage, distinct from a blink/flicker recursion pattern, from spellslinger construction occupancy, from the extra-combat-phase amplifier mechanism, from the damage-doubling replacement amplifier, and from stax construction occupancy; attack is not combat damage; combat damage is not a generic damage trigger; they also do not form edges or construction credit. Counter kinds split the blended counters signal into put (placement), proliferate (its own named keyword, not a synonym for placing a counter), and remove; they also do not form edges or construction credit.",
     commanderName: options.commanderName || commander?.name || "",
   };
 }

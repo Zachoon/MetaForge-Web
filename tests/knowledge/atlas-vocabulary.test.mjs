@@ -9,6 +9,7 @@ import {
   seatGraveyardImplementation,
   seatSacrificeImplementation,
   seatTriggerImplementation,
+  seatCounterImplementation,
   seatLoopImplementation,
 } from "../../app/knowledge/atlas-vocabulary.mjs";
 
@@ -361,6 +362,48 @@ describe("Atlas Vocabulary Registry v0", () => {
       mechanics: { triggerKinds: ["cast"], produces: [], rewards: [], signals: [] },
     });
     assert.equal(fromGraph[0].seat.label, "Cast Trigger");
+    assert.equal(fromGraph[0].writesToBrain, false);
+  });
+
+  it("seats put / proliferate / remove, splitting the blended counters signal, without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.counterSeatCount, 3);
+    assert.equal(registry.summary.capabilityAdmittedCount, 0);
+    assert.ok(registry.counterSeats.every((row) => row.writesToBrain === false && row.capability.atlasAdmitted === false));
+    assert.ok(registry.revisions.some((row) => row.date === "2026-08-15" && /put \/ proliferate \/ remove/i.test(row.change)));
+
+    const put = seatCounterImplementation({
+      name: "Hardened Scales",
+      oracleText: "If one or more +1/+1 counters would be put on a creature you control, that many plus one +1/+1 counters are put on it instead.",
+    });
+    assert.equal(put.length, 1);
+    assert.equal(put[0].kind, "put");
+    assert.equal(put[0].seat.label, "Counter Placement");
+    assert.equal(put[0].contrast, "not proliferate");
+
+    const proliferate = seatCounterImplementation({
+      name: "Evolution Sage",
+      oracleText: "Landfall — Whenever a land enters the battlefield under your control, proliferate.",
+    });
+    assert.equal(proliferate.length, 1);
+    assert.equal(proliferate[0].kind, "proliferate");
+    assert.equal(proliferate[0].seat.label, "Proliferate Effect");
+    assert.equal(proliferate[0].contrast, "not a single counter placement");
+
+    const remove = seatCounterImplementation({
+      name: "Hapatra, Vizier of Poisons",
+      oracleText: "Remove a -1/-1 counter from a creature you control: Create a 1/1 black Snake creature token.",
+    });
+    assert.equal(remove.length, 1);
+    assert.equal(remove[0].kind, "remove");
+    assert.equal(remove[0].seat.label, "Counter Removal");
+    assert.equal(remove[0].contrast, "not counter placement or proliferate");
+
+    const fromGraph = seatCounterImplementation({
+      name: "Pre-classified",
+      mechanics: { counterKinds: ["proliferate"], produces: [], rewards: [], signals: [] },
+    });
+    assert.equal(fromGraph[0].seat.label, "Proliferate Effect");
     assert.equal(fromGraph[0].writesToBrain, false);
   });
 

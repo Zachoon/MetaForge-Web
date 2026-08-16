@@ -11,12 +11,14 @@ import {
   classifyGraveyardKinds,
   classifySacrificeKinds,
   classifyTriggerKinds,
+  classifyCounterKinds,
   findResetPayPairs,
   LOOP_KINDS,
   SELECTION_KINDS,
   GRAVEYARD_KINDS,
   SACRIFICE_KINDS,
   TRIGGER_KINDS,
+  COUNTER_KINDS,
   RESET_SHAPES,
   RELATIONSHIP_EVIDENCE,
 } from "../app/forge-interaction-graph.mjs";
@@ -1013,4 +1015,57 @@ test("noncombat damage is a fifth trigger kind, distinct from combat damage and 
   );
   assert.match(graph.methodology, /noncombat damage/i);
   assert.match(graph.methodology, /combat damage is not a generic damage trigger/i);
+});
+
+test("counter kinds split put / proliferate / remove from the blended counters signal", () => {
+  const putOracle = "Put a +1/+1 counter on target creature.";
+  const proliferateOracle = "Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)";
+  const removeOracle = "Remove a +1/+1 counter from target creature.";
+  const payoffOracle = "Whenever a creature you control with a counter on it attacks, draw a card.";
+
+  assert.deepEqual(classifyCounterKinds(putOracle), [COUNTER_KINDS.PUT]);
+  assert.deepEqual(classifyCounterKinds(proliferateOracle), [COUNTER_KINDS.PROLIFERATE]);
+  assert.deepEqual(classifyCounterKinds(removeOracle), [COUNTER_KINDS.REMOVE]);
+
+  // A generic "counter on it" payoff (rewards having counters) is none of
+  // the three placement/proliferate/removal shapes.
+  assert.deepEqual(classifyCounterKinds(payoffOracle), []);
+
+  // Proliferate's own reminder text never earns "put" — it says "give each
+  // another counter", not "put ~ counter on".
+  assert.equal(classifyCounterKinds(proliferateOracle).includes(COUNTER_KINDS.PUT), false);
+
+  // A card can hold multiple counter kinds at once (a modal or two-ability card).
+  assert.deepEqual(
+    classifyCounterKinds(`${putOracle} ${proliferateOracle}`),
+    [COUNTER_KINDS.PUT, COUNTER_KINDS.PROLIFERATE],
+  );
+
+  const hardenedScales = extractMechanicalSignals({
+    name: "Hardened Scales",
+    typeLine: "Enchantment",
+    oracleText: "If one or more +1/+1 counters would be put on a creature you control, that many plus one +1/+1 counters are put on it instead.",
+  });
+  assert.deepEqual(hardenedScales.counterKinds, [COUNTER_KINDS.PUT]);
+  assert.equal(hardenedScales.produces.includes(COUNTER_KINDS.PUT), false, "counter kinds are observation labels, not production");
+
+  const evolutionSage = extractMechanicalSignals({
+    name: "Evolution Sage",
+    typeLine: "Creature — Human Monk",
+    oracleText: "Landfall — Whenever a land enters the battlefield under your control, proliferate.",
+  });
+  assert.deepEqual(evolutionSage.counterKinds, [COUNTER_KINDS.PROLIFERATE]);
+  assert.equal(evolutionSage.rewards.includes(COUNTER_KINDS.PROLIFERATE), false, "counter kinds are observation labels, not a payoff");
+
+  const graph = buildInteractionGraph([
+    { name: "Hardened Scales", typeLine: "Enchantment", oracleText: "If one or more +1/+1 counters would be put on a creature you control, that many plus one +1/+1 counters are put on it instead." },
+    { name: "Evolution Sage", typeLine: "Creature", oracleText: "Landfall — Whenever a land enters the battlefield under your control, proliferate." },
+  ]);
+  assert.equal(
+    graph.edges.some((edge) => edge.signals.includes(COUNTER_KINDS.PUT) || edge.signals.includes(COUNTER_KINDS.PROLIFERATE)),
+    false,
+    "counter kinds do not form graph edges",
+  );
+  assert.match(graph.methodology, /put \(placement\)/i);
+  assert.match(graph.methodology, /proliferate/i);
 });

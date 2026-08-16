@@ -1,6 +1,7 @@
 // =============================================================================
 
 import {
+  classifyCounterKinds,
   classifyGraveyardKinds,
   classifyLoopKind,
   classifySacrificeKinds,
@@ -539,6 +540,79 @@ export function seatTriggerImplementation(card = {}) {
 }
 
 /**
+ * Descriptive seating for counter kinds — splits the single blended
+ * `counters` produces/rewards signal into named seats.
+ * Consumes graph `counterKinds` — no second oracle regex family.
+ * Put is placement, not proliferate. Proliferate is its own keyword, not a
+ * single counter placement. Remove is neither placement nor proliferate.
+ * Not Capability admissions. Never construction inputs.
+ */
+export const ATLAS_COUNTER_SEATS = freeze([
+  freeze({
+    kind: "put",
+    capability: freeze({
+      id: "cap:counter_placement",
+      label: "Counter Placement",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:counter_placement", label: "Counter Placement" }),
+    contrast: "not proliferate",
+    role: "counter_producer",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "proliferate",
+    capability: freeze({
+      id: "cap:proliferate",
+      label: "Proliferate Effect",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:proliferate", label: "Proliferate Effect" }),
+    contrast: "not a single counter placement",
+    role: "proliferator",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "remove",
+    capability: freeze({
+      id: "cap:counter_removal",
+      label: "Counter Removal",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:counter_removal", label: "Counter Removal" }),
+    contrast: "not counter placement or proliferate",
+    role: "counter_remover",
+    writesToBrain: false,
+  }),
+]);
+
+export function seatCounterImplementation(card = {}) {
+  const mechanics = card.mechanics || extractMechanicalSignals(card);
+  const kinds = mechanics.counterKinds
+    || classifyCounterKinds(card.oracleText || card.oracle_text || "");
+  const rows = [];
+  for (const definition of ATLAS_COUNTER_SEATS) {
+    if (!kinds.includes(definition.kind)) continue;
+    rows.push(freeze({
+      kind: definition.kind,
+      capability: definition.capability,
+      seat: definition.seat,
+      contrast: definition.contrast,
+      implementation: freeze({
+        card: String(card.name || "Unknown card"),
+        roles: freeze([definition.role]),
+        evidenceSignals: freeze([definition.kind]),
+      }),
+      writesToBrain: false,
+    }));
+  }
+  return freeze(rows);
+}
+
+/**
  * Descriptive seating for mutual loops and reset/pay shapes.
  * Consumes graph `loopKind` / `shape` — no second oracle regex family.
  * Pair observation only. Not a combo solver. Never construction inputs.
@@ -711,6 +785,10 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
     date: "2026-08-15",
     change: "Added noncombat damage as a fifth trigger kind, distinct from Combat Damage Trigger and from the damage-doubling amplifier; still 0 Capability admissions",
   }),
+  freeze({
+    date: "2026-08-15",
+    change: "Split the blended counters signal into put / proliferate / remove seats; still 0 Capability admissions",
+  }),
 ]);
 
 export function seatsImplementedBy(cardName = "") {
@@ -756,6 +834,7 @@ export function buildAtlasVocabularyRegistry() {
     graveyardSeats: ATLAS_GRAVEYARD_SEATS,
     sacrificeSeats: ATLAS_SACRIFICE_SEATS,
     triggerSeats: ATLAS_TRIGGER_SEATS,
+    counterSeats: ATLAS_COUNTER_SEATS,
     loopSeats: ATLAS_LOOP_SEATS,
     resetShapeSeats: ATLAS_RESET_SHAPE_SEATS,
     observation001: ATLAS_OBSERVATION_001,
@@ -771,6 +850,7 @@ export function buildAtlasVocabularyRegistry() {
       graveyardSeatCount: ATLAS_GRAVEYARD_SEATS.length,
       sacrificeSeatCount: ATLAS_SACRIFICE_SEATS.length,
       triggerSeatCount: ATLAS_TRIGGER_SEATS.length,
+      counterSeatCount: ATLAS_COUNTER_SEATS.length,
       loopSeatCount: ATLAS_LOOP_SEATS.length,
       resetShapeSeatCount: ATLAS_RESET_SHAPE_SEATS.length,
       coverageScoreExists: false,
