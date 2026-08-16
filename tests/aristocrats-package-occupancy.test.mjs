@@ -5,6 +5,7 @@ import {
   cardIsPackageFalseFriend,
   cardSatisfiesPackageCore,
   cardSatisfiesPackageSupport,
+  detectAristocratsCommander,
 } from "../app/strategic-intent.mjs";
 import {
   commanderMechanicalScopes,
@@ -124,6 +125,51 @@ test("aristocrats occupancy opens on a dies-plus-sacrifice commander", () => {
   assert.ok(!intentFor(landfallTitan).packageIds.includes("aristocrats"));
   assert.ok(!intentFor(equipmentSmith).packageIds.includes("aristocrats"));
   assert.ok(!intentFor(tokenFoundry).packageIds.includes("aristocrats"));
+});
+
+test("aristocrats occupancy opens on sacrifice-payoff and sac-outlet-plus-tokens, not artifact-sac", () => {
+  const korvoldShape = {
+    name: "Test Sacrifice King",
+    colors: ["B", "R", "G"],
+    oracleText: "Whenever this enters or attacks, sacrifice another permanent. Whenever you sacrifice a permanent, draw a card.",
+    typeLine: "Legendary Creature — Dragon Noble",
+    manaCost: "{2}{B}{R}{G}",
+  };
+  const chatterfangShape = {
+    name: "Test Squirrel General",
+    colors: ["B", "G"],
+    oracleText: "If one or more tokens would be created under your control, those tokens plus that many 1/1 green Squirrel creature tokens are created instead. {B}, Sacrifice X Squirrels: Target creature gets +X/-X until end of turn.",
+    typeLine: "Legendary Creature — Squirrel Warrior",
+    manaCost: "{2}{B}{G}",
+  };
+  const magdaShape = {
+    name: "Test Artifact Outlaw",
+    colors: ["R"],
+    oracleText: "Sacrifice an artifact: Create a Treasure token. Other Dwarves you control get +1/+0.",
+    typeLine: "Legendary Creature — Dwarf Berserker",
+    manaCost: "{1}{R}",
+  };
+  const foodPayoff = {
+    name: "Test Food Taster",
+    colors: ["G"],
+    oracleText: "Whenever you sacrifice a Food, you gain 3 life.",
+    typeLine: "Legendary Creature — Human Peasant",
+    manaCost: "{2}{G}",
+  };
+  const loneOutlet = {
+    name: "Test Seer",
+    colors: ["B"],
+    oracleText: "Sacrifice a creature: Scry 1.",
+    typeLine: "Legendary Creature — Vampire Wizard",
+    manaCost: "{B}",
+  };
+  assert.equal(detectAristocratsCommander(korvoldShape.oracleText), true);
+  assert.equal(detectAristocratsCommander(chatterfangShape.oracleText), true);
+  assert.ok(intentFor(korvoldShape).packageIds.includes("aristocrats"));
+  assert.ok(intentFor(chatterfangShape).packageIds.includes("aristocrats"));
+  assert.ok(!intentFor(magdaShape).packageIds.includes("aristocrats"));
+  assert.ok(!intentFor(foodPayoff).packageIds.includes("aristocrats"));
+  assert.ok(!intentFor(loneOutlet).packageIds.includes("aristocrats"));
 });
 
 test("aristocrats core is outlets, death payoffs, and creature-token fodder — not mill or named artifact tokens", () => {

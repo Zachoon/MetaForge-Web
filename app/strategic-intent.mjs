@@ -172,6 +172,23 @@ export function extractTypalTribes(oracle = "") {
   return unique(hits.filter((term) => term && !TYPAL_STOP.has(term)));
 }
 
+/**
+ * Commander runs an aristocrats engine. Occupancy only.
+ * Classic death-plus-sacrifice, sacrifice-as-the-trigger (creature /
+ * permanent / token — not Food/Treasure), or a creature/token outlet plus
+ * a token engine. Artifact-sac commanders are not aristocrats.
+ */
+export function detectAristocratsCommander(oracle = "") {
+  const text = String(oracle || "");
+  const deathPayoff = /whenever [^.]*\bdies\b/i.test(text);
+  const sacrificeVerb = /\bsacrifice\b/i.test(text);
+  if (deathPayoff && sacrificeVerb) return true;
+  if (/whenever you sacrifice (?:a |another )?(?:creature|permanent|token)/i.test(text)) return true;
+  const creatureOrTokenOutlet = /\bsacrifice (?:x )?(?:a |another )?(?:creature|squirrels?|goblins?|tokens?|permanents?)\b/i.test(text);
+  const tokenEngine = /create [^.]* token/i.test(text) || /tokens would be created/i.test(text);
+  return creatureOrTokenOutlet && tokenEngine;
+}
+
 const PACKAGE_CATALOG = Object.freeze({
   auras: Object.freeze({
     id: "auras",
@@ -202,7 +219,7 @@ const PACKAGE_CATALOG = Object.freeze({
     supportSemantics: Object.freeze(["token_generator", "sacrifice_outlet", "death_payoff"]),
     // Occupancy is not a catalog false-friend list. Creature-token fodder
     // may occupy core; mill dumps and named artifact tokens may not.
-    detectCommander: (oracle) => /whenever [^.]* dies/i.test(oracle) && /sacrifice/i.test(oracle),
+    detectCommander: detectAristocratsCommander,
     detectBlueprint: (blueprint) => blueprint.requestedMechanics?.includes("aristocrats") || blueprint.desiredRoles?.includes("sacrifice"),
     density: Object.freeze({ singletonCore: 8, constructedCore: 4, singletonSupport: 8, constructedSupport: 4 }),
     // Aristocrats needs all three legs; core count uses outlet+payoff min.
