@@ -779,12 +779,10 @@ test("graveyard kinds name aftermath / madness / retrace, distinct from flashbac
   const aftermathOracle = "Aftermath (Cast this spell only from your graveyard. Then exile it.)";
   const madnessOracle = "Madness {1}{B}";
   const retraceOracle = "Retrace";
-  const disturbOracle = "Disturb {1}{W}";
 
   assert.deepEqual(classifyGraveyardKinds(aftermathOracle), [GRAVEYARD_KINDS.AFTERMATH]);
   assert.deepEqual(classifyGraveyardKinds(madnessOracle), [GRAVEYARD_KINDS.MADNESS]);
   assert.deepEqual(classifyGraveyardKinds(retraceOracle), [GRAVEYARD_KINDS.RETRACE]);
-  assert.deepEqual(classifyGraveyardKinds(disturbOracle), []);
   assert.equal(classifyGraveyardKinds(aftermathOracle).includes(GRAVEYARD_KINDS.FLASHBACK), false);
   assert.equal(classifyGraveyardKinds(madnessOracle).includes(GRAVEYARD_KINDS.FLASHBACK), false);
 
@@ -797,7 +795,45 @@ test("graveyard kinds name aftermath / madness / retrace, distinct from flashbac
     false,
     "aftermath/madness/retrace do not form graph edges",
   );
-  assert.match(graph.methodology, /disturb stays unnamed/i);
+  assert.match(graph.methodology, /aftermath/i);
+});
+
+test("graveyard kinds name disturb / embalm / eternalize, distinct from flashback, unearth, and each other", () => {
+  const disturbOracle = "Disturb {1}{W} (You may cast this card from your graveyard for its disturb cost.)";
+  const embalmOracle = "Embalm {3}{W} ({3}{W}, Exile this card from your graveyard: Create a token that's a copy of it, except it's a white Zombie in addition to its other types and it has no mana cost. Embalm only as a sorcery.)";
+  const eternalizeOracle = "Eternalize {4}{U}{U} ({4}{U}{U}, Exile this card from your graveyard: Create a token that's a copy of it, except it's a 4/4 black Zombie in addition to its other types and it has no mana cost. Eternalize only as a sorcery.)";
+  const flashbackOracle = "Flashback {1}{R} (You may cast this card from your graveyard for its flashback cost. Then exile it.)";
+  const unearthOracle = "Unearth {B} (Return this card from your graveyard to the battlefield. It gains haste. Exile it at the beginning of the next end step or if it would leave the battlefield.)";
+
+  assert.deepEqual(classifyGraveyardKinds(disturbOracle), [GRAVEYARD_KINDS.DISTURB]);
+  assert.deepEqual(classifyGraveyardKinds(embalmOracle), [GRAVEYARD_KINDS.EMBALM]);
+  assert.deepEqual(classifyGraveyardKinds(eternalizeOracle), [GRAVEYARD_KINDS.ETERNALIZE]);
+  assert.equal(classifyGraveyardKinds(disturbOracle).includes(GRAVEYARD_KINDS.FLASHBACK), false);
+  assert.equal(classifyGraveyardKinds(embalmOracle).includes(GRAVEYARD_KINDS.UNEARTH), false);
+  assert.equal(classifyGraveyardKinds(eternalizeOracle).includes(GRAVEYARD_KINDS.EMBALM), false);
+  assert.equal(classifyGraveyardKinds(flashbackOracle).includes(GRAVEYARD_KINDS.DISTURB), false);
+  assert.equal(classifyGraveyardKinds(unearthOracle).includes(GRAVEYARD_KINDS.EMBALM), false);
+
+  const graph = buildInteractionGraph([
+    { name: "Beloved Princess", typeLine: "Creature", oracleText: disturbOracle },
+    { name: "Trueheart Duelist", typeLine: "Creature", oracleText: embalmOracle },
+    { name: "Champion of Wits", typeLine: "Creature", oracleText: eternalizeOracle },
+  ]);
+  const princess = extractMechanicalSignals({ name: "Beloved Princess", typeLine: "Creature", oracleText: disturbOracle });
+  const duelist = extractMechanicalSignals({ name: "Trueheart Duelist", typeLine: "Creature", oracleText: embalmOracle });
+  const champion = extractMechanicalSignals({ name: "Champion of Wits", typeLine: "Creature", oracleText: eternalizeOracle });
+  assert.deepEqual(princess.graveyardKinds, [GRAVEYARD_KINDS.DISTURB]);
+  assert.deepEqual(duelist.graveyardKinds, [GRAVEYARD_KINDS.EMBALM]);
+  assert.deepEqual(champion.graveyardKinds, [GRAVEYARD_KINDS.ETERNALIZE]);
+  assert.equal(
+    graph.edges.some((edge) => edge.signals.includes(GRAVEYARD_KINDS.DISTURB) || edge.signals.includes(GRAVEYARD_KINDS.EMBALM) || edge.signals.includes(GRAVEYARD_KINDS.ETERNALIZE)),
+    false,
+    "disturb/embalm/eternalize do not form graph edges",
+  );
+  assert.match(graph.methodology, /disturb/i);
+  assert.match(graph.methodology, /embalm/i);
+  assert.match(graph.methodology, /eternalize/i);
+  assert.equal(/disturb stays unnamed/i.test(graph.methodology), false);
 });
 
 test("rummage filters the hand and is not net draw", () => {

@@ -448,6 +448,45 @@ export const ATLAS_GRAVEYARD_SEATS = freeze([
     role: "retrace_recaster",
     writesToBrain: false,
   }),
+  freeze({
+    kind: "disturb",
+    capability: freeze({
+      id: "cap:disturb_recast",
+      label: "Disturb Recast",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:disturb_recast", label: "Disturb Recast" }),
+    contrast: "not flashback",
+    role: "disturb_recaster",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "embalm",
+    capability: freeze({
+      id: "cap:embalm_token",
+      label: "Embalm Token",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:embalm_token", label: "Embalm Token" }),
+    contrast: "not unearth",
+    role: "embalm_token",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "eternalize",
+    capability: freeze({
+      id: "cap:eternalize_token",
+      label: "Eternalize Token",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:eternalize_token", label: "Eternalize Token" }),
+    contrast: "not embalm",
+    role: "eternalize_token",
+    writesToBrain: false,
+  }),
 ]);
 
 export function seatGraveyardImplementation(card = {}) {
@@ -1602,6 +1641,10 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
   freeze({
     date: "2026-08-16",
     change: "Named fear / shadow / intimidate as evasion kinds; still 0 Capability admissions",
+  }),
+  freeze({
+    date: "2026-08-16",
+    change: "Named disturb / embalm / eternalize as graveyard kinds; still 0 Capability admissions",
   }),
 ]);
 

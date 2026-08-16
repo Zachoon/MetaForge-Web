@@ -146,6 +146,18 @@ describe("Mentor Shadow v0", () => {
     assert.match(retrace.paragraph, /Retrace Recast/);
   });
 
+  it("names disturb, embalm, and eternalize as graveyard kinds", () => {
+    const disturb = explainCardAsMentor({ cardName: "Beloved Princess", oracleText: "Disturb {1}{W}" });
+    assert.equal(disturb.graveyardSeating[0].kind, "disturb");
+    assert.match(disturb.paragraph, /Disturb Recast/);
+    const embalm = explainCardAsMentor({ cardName: "Trueheart Duelist", oracleText: "Embalm {3}{W}" });
+    assert.equal(embalm.graveyardSeating[0].kind, "embalm");
+    assert.match(embalm.paragraph, /Embalm Token/);
+    const eternalize = explainCardAsMentor({ cardName: "Champion of Wits", oracleText: "Eternalize {4}{U}{U}" });
+    assert.equal(eternalize.graveyardSeating[0].kind, "eternalize");
+    assert.match(eternalize.paragraph, /Eternalize Token/);
+  });
+
   it("names outlet, death payoff, and incidental yard, not a mill dump", () => {
     const outlet = explainCardAsMentor({
       cardName: "Viscera Seer",
