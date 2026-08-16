@@ -6644,6 +6644,19 @@ export default function Home() {
                     >
                       ✦ Personalize Masterwork
                     </button>
+                    <button
+                      type="button"
+                      className="next-step-cta"
+                      onClick={() => {
+                        setChamber("workbench");
+                        setActiveForgeChapter(1);
+                        setDeckViewMode("workbench");
+                        setSiteRail("playtest");
+                        window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+                      }}
+                    >
+                      Next: test this deck →
+                    </button>
                     <details className="deck-view-options">
                       <summary>View options</summary>
                       <button type="button" className={deckViewMode === "workbench" ? "active" : ""} onClick={() => setDeckViewMode("workbench")}>Visual deck</button>
