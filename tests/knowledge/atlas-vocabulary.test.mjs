@@ -8,6 +8,9 @@ import {
   seatTypalImplementation,
   seatAristocratsImplementation,
   seatSpellslingerImplementation,
+  seatReanimatorImplementation,
+  seatLandfallImplementation,
+  seatStaxImplementation,
   seatSelectionImplementation,
   seatGraveyardImplementation,
   seatSacrificeImplementation,
@@ -175,6 +178,38 @@ describe("Atlas Vocabulary Registry v0", () => {
     });
     assert.deepEqual(drawBurn, []);
   });
+
+  it("seats reanimator, landfall, and stax engines from occupancy detect without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.reanimatorSeatCount, 1);
+    assert.equal(registry.summary.landfallOccupancySeatCount, 1);
+    assert.equal(registry.summary.staxSeatCount, 1);
+    assert.equal(registry.summary.capabilityAdmittedCount, 0);
+    assert.ok(registry.revisions.some((row) => /reanimator \/ landfall \/ stax engines from occupancy detect/i.test(row.change)));
+
+    const meren = seatReanimatorImplementation({
+      name: "Grave Recruiter",
+      oracleText: "Whenever another creature you control dies, return target creature card from your graveyard to the battlefield.",
+    });
+    assert.equal(meren[0].kind, "reanimator_engine");
+    assert.equal(meren[0].capability.atlasAdmitted, false);
+    assert.deepEqual(seatReanimatorImplementation({ name: "Miller", oracleText: "Target player mills two cards." }), []);
+
+    const aesi = seatLandfallImplementation({
+      name: "Land Titan",
+      oracleText: "Landfall — Whenever a land you control enters, draw a card.",
+    });
+    assert.equal(aesi[0].kind, "landfall_engine");
+    assert.deepEqual(seatLandfallImplementation({ name: "Fetcher", oracleText: "Search your library for a land card and put it onto the battlefield." }), []);
+
+    const arbiter = seatStaxImplementation({
+      name: "Tax Collector",
+      oracleText: "Spells your opponents cast cost {1} more to cast.",
+    });
+    assert.equal(arbiter[0].kind, "stax_engine");
+    assert.deepEqual(seatStaxImplementation({ name: "Group Hug", oracleText: "Each player draws a card." }), []);
+  });
+
 
 
   it("maps each shipped graph signal through Capability to Seat to Implementation", () => {

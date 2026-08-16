@@ -95,6 +95,39 @@ describe("Mentor Shadow v0", () => {
     assert.deepEqual(burn.spellslingerSeating, []);
   });
 
+  it("names reanimator, landfall, and stax engines without calling them generic tokens", () => {
+    const meren = explainCardAsMentor({
+      cardName: "Grave Recruiter",
+      oracleText: "Whenever another creature you control dies, return target creature card from your graveyard to the battlefield.",
+    });
+    assert.equal(meren.writesToBrain, false);
+    assert.equal(meren.reanimatorSeating[0].kind, "reanimator_engine");
+    assert.match(meren.paragraph, /Reanimator Engine/);
+    assert.match(meren.paragraph, /not mill dump and not dredge-to-hand/);
+
+    const aesi = explainCardAsMentor({
+      cardName: "Land Titan",
+      oracleText: "Landfall — Whenever a land you control enters, draw a card.",
+    });
+    assert.equal(aesi.landfallOccupancySeating[0].kind, "landfall_engine");
+    assert.match(aesi.paragraph, /Landfall Engine/);
+
+    const arbiter = explainCardAsMentor({
+      cardName: "Tax Collector",
+      oracleText: "Spells your opponents cast cost {1} more to cast.",
+    });
+    assert.equal(arbiter.staxSeating[0].kind, "stax_engine");
+    assert.match(arbiter.paragraph, /Stax Engine/);
+    assert.match(arbiter.paragraph, /not each-player draws and not generic tokens/);
+
+    const hug = explainCardAsMentor({
+      cardName: "Group Hug",
+      oracleText: "Each player draws a card.",
+    });
+    assert.deepEqual(hug.staxSeating, []);
+  });
+
+
 
   it("names rummage as a hand filter, not net draw", () => {
     const explanation = explainCardAsMentor({

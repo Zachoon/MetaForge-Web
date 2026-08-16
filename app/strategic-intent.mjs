@@ -210,6 +210,37 @@ export function detectSpellslingerCommander(oracle = "") {
   return false;
 }
 
+
+/**
+ * Commander runs a reanimator engine. Occupancy only.
+ * Graveyard-to-battlefield or the word reanimate. Mill dumps and
+ * dredge-to-hand are not occupancy.
+ */
+export function detectReanimatorCommander(oracle = "") {
+  const text = String(oracle || "");
+  return /from (?:your )?graveyard to the battlefield/i.test(text) || /\breanimat/i.test(text);
+}
+
+/**
+ * Commander runs a landfall engine. Occupancy only.
+ * Landfall keyword or whenever-a-land-enters. Fetch/ramp that puts a
+ * land onto the battlefield, and a bare "land card" mention, are not.
+ */
+export function detectLandfallCommander(oracle = "") {
+  const text = String(oracle || "");
+  return /\blandfall\b/i.test(text) || /whenever a land enters/i.test(text);
+}
+
+/**
+ * Commander runs a stax engine. Occupancy only.
+ * Tax / restriction / extra cost / unless-pays. Bare each-player draws
+ * (group hug) is not occupancy.
+ */
+export function detectStaxCommander(oracle = "") {
+  const text = String(oracle || "");
+  return /players can(?:'|’)t|can(?:'|’)t cast more than|cost \{[^}]+\} more to (?:cast|activate)|unless (?:its|their) controller pays/i.test(text);
+}
+
 const PACKAGE_CATALOG = Object.freeze({
   auras: Object.freeze({
     id: "auras",
@@ -253,7 +284,7 @@ const PACKAGE_CATALOG = Object.freeze({
     coreSemantics: Object.freeze(["reanimation", "graveyard_enabler", "reanimation_target"]),
     falseFriendSemantics: Object.freeze([]),
     supportSemantics: Object.freeze(["graveyard_enabler", "reanimation"]),
-    detectCommander: (oracle) => /from (?:your )?graveyard to the battlefield/i.test(oracle) || /\breanimat/i.test(oracle),
+    detectCommander: detectReanimatorCommander,
     // Occupancy is not a catalog false-friend list. Mill/discard setup and
     // real reanimation occupy core; dredge-to-hand does not.
     detectBlueprint: (blueprint) => blueprint.desiredRoles?.includes("graveyard") || blueprint.desiredRoles?.includes("recursion") || /\breanimat/i.test(blueprint.source || ""),
@@ -271,7 +302,14 @@ const PACKAGE_CATALOG = Object.freeze({
     // commanders specialize core membership via intent.tokenScope.
     detectCommander: (oracle) => /create [^.]* token/i.test(oracle) && /token/i.test(oracle),
     detectBlueprint: (blueprint) => blueprint.desiredRoles?.includes("tokens") || blueprint.packageSignals?.includes("tokens"),
-    density: Object.freeze({ singletonCore: 10, constructedCore: 6, singletonSupport: 4, constructedSupport: 2 }),
+    // singletonCore/constructedCore recalibrated 10/6 -> 5/3 from 262 real
+    // Commander decks (98 commanders): real core density clusters at
+    // p20=5/p25=5/p30=6, vs. the prior floor's 81% below-floor rate across
+    // the full same-commander-controlled sample. constructedCore kept at
+    // the prior 5:3 ratio to singletonCore (no real Constructed-format data
+    // exists to ground it independently). Support floors untouched - no
+    // real-corpus evidence covers them, only core was measured.
+    density: Object.freeze({ singletonCore: 5, constructedCore: 3, singletonSupport: 4, constructedSupport: 2 }),
   }),
   landfall: Object.freeze({
     id: "landfall",
@@ -283,7 +321,7 @@ const PACKAGE_CATALOG = Object.freeze({
     // Occupancy is not a catalog false-friend list. Landfall / land-enters
     // payoffs and extra land drops occupy core; fetch/ramp that puts a land
     // into play is support; a bare "land card" mention is not occupancy.
-    detectCommander: (oracle) => /\blandfall\b/i.test(oracle) || /whenever a land enters/i.test(oracle),
+    detectCommander: detectLandfallCommander,
     detectBlueprint: (blueprint) => blueprint.requestedMechanics?.includes("landfall") || blueprint.packageSignals?.includes("lands"),
     density: Object.freeze({ singletonCore: 8, constructedCore: 4, singletonSupport: 6, constructedSupport: 3 }),
   }),
@@ -335,7 +373,7 @@ const PACKAGE_CATALOG = Object.freeze({
     // Occupancy is not a catalog false-friend list. Tax / restriction and
     // each-player sacrifice or discard occupy core; asymmetric hosers are
     // support; a bare "each player draws" group-hug clause is not occupancy.
-    detectCommander: (oracle) => /players can(?:'|’)t|can(?:'|’)t cast more than|cost \{[^}]+\} more to (?:cast|activate)|unless (?:its|their) controller pays/i.test(oracle),
+    detectCommander: detectStaxCommander,
     detectBlueprint: (blueprint) => /\bstax\b|resource denial/i.test(blueprint.source || ""),
     density: Object.freeze({ singletonCore: 8, constructedCore: 4, singletonSupport: 4, constructedSupport: 2 }),
   }),
