@@ -24,6 +24,7 @@ const EMPTY_BLUEPRINT = Object.freeze({
 /** Commanders that must stay closed. Not detection misses. */
 export const REMAINING_DETECT_REJECTS = Object.freeze({
   aristocrats: Object.freeze(["Magda"]),
+  tokens: Object.freeze(["Chatterfang"]),
 });
 
 export const REMAINING_DETECT_CANARIES = Object.freeze({
@@ -35,7 +36,7 @@ export const REMAINING_DETECT_CANARIES = Object.freeze({
   landfall: Object.freeze(["Tatyova", "Aesi", "Omnath"]),
   spellslinger: Object.freeze(["Kess, Dissident Mage", "Stella Lee", "Niv-Mizzet"]),
   stax: Object.freeze(["Grand Arbiter", "Derevi", "Drannith Magistrate"]),
-  tokens: Object.freeze(["Chatterfang", "Krenko", "Rhys the Redeemed"]),
+  tokens: Object.freeze(["Krenko", "Rhys the Redeemed"]),
   typal: Object.freeze(["Sliver", "Edgar Markov", "The Ur-Dragon"]),
 });
 

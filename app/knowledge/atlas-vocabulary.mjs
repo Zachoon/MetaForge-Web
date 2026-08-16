@@ -34,6 +34,7 @@ import {
   detectReanimatorCommander,
   detectSpellslingerCommander,
   detectStaxCommander,
+  detectTokensCommander,
   extractTypalTribes,
 } from "../strategic-intent.mjs";
 // Atlas Vocabulary Registry v0 — Age of Vocabulary engineering surface
@@ -1598,6 +1599,41 @@ export function seatBlinkImplementation(card = {}) {
   }
   return freeze(rows);
 }
+
+/**
+ * Descriptive seating for tokens occupancy language already shipped in
+ * construction. Consumes `detectTokensCommander` — no second regex family.
+ * Engine is a commander that actually creates tokens. A lone create paid
+ * by sacrificing named artifact tokens (Magda treasure-sac dragon) is not.
+ * Replacement-without-create (Chatterfang) is not. Card-level create /
+ * go-wide / sac seats remain on the token kinds axis.
+ * Not Capability admissions. Never construction inputs.
+ */
+export const ATLAS_TOKENS_OCCUPANCY_SEATS = freeze([
+  descriptiveKindSeat("tokens_engine", "Tokens Engine", "not a lone named-artifact-token-sac create and not a replacement-without-create", "tokens_engine", "cap:tokens_engine"),
+]);
+
+export function seatTokensOccupancyImplementation(card = {}) {
+  const oracle = card.oracleText || card.oracle_text || "";
+  const kinds = detectTokensCommander(oracle) ? ["tokens_engine"] : [];
+  const rows = [];
+  for (const definition of ATLAS_TOKENS_OCCUPANCY_SEATS) {
+    if (!kinds.includes(definition.kind)) continue;
+    rows.push(freeze({
+      kind: definition.kind,
+      capability: definition.capability,
+      seat: definition.seat,
+      contrast: definition.contrast,
+      implementation: freeze({
+        card: String(card.name || "Unknown card"),
+        roles: freeze([definition.role]),
+        evidenceSignals: freeze([definition.kind]),
+      }),
+      writesToBrain: false,
+    }));
+  }
+  return freeze(rows);
+}
 /**
  * Descriptive seating for token kinds — splits the single blended `tokens`
  * produces/rewards signal into named seats.
@@ -1999,6 +2035,10 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
     date: "2026-08-16",
     change: "Seated auras / equipment / blink engines from occupancy detect; still 0 Capability admissions",
   }),
+  freeze({
+    date: "2026-08-16",
+    change: "Seated tokens occupancy engine from occupancy detect, rejecting Magda-class lone artifact-token-sac creates and replacement-without-create; still 0 Capability admissions",
+  }),
 ]);
 
 export function seatsImplementedBy(cardName = "") {
@@ -2049,6 +2089,7 @@ export function buildAtlasVocabularyRegistry() {
     aurasOccupancySeats: ATLAS_AURAS_OCCUPANCY_SEATS,
     equipmentOccupancySeats: ATLAS_EQUIPMENT_OCCUPANCY_SEATS,
     blinkSeats: ATLAS_BLINK_SEATS,
+    tokensOccupancySeats: ATLAS_TOKENS_OCCUPANCY_SEATS,
     selectionSeats: ATLAS_SELECTION_SEATS,
     graveyardSeats: ATLAS_GRAVEYARD_SEATS,
     sacrificeSeats: ATLAS_SACRIFICE_SEATS,
@@ -2086,6 +2127,7 @@ export function buildAtlasVocabularyRegistry() {
       aurasOccupancySeatCount: ATLAS_AURAS_OCCUPANCY_SEATS.length,
       equipmentOccupancySeatCount: ATLAS_EQUIPMENT_OCCUPANCY_SEATS.length,
       blinkSeatCount: ATLAS_BLINK_SEATS.length,
+      tokensOccupancySeatCount: ATLAS_TOKENS_OCCUPANCY_SEATS.length,
       selectionSeatCount: ATLAS_SELECTION_SEATS.length,
       graveyardSeatCount: ATLAS_GRAVEYARD_SEATS.length,
       sacrificeSeatCount: ATLAS_SACRIFICE_SEATS.length,

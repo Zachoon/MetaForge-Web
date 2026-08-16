@@ -151,6 +151,29 @@ describe("Mentor Shadow v0", () => {
     assert.match(flicker.paragraph, /Blink Engine/);
   });
 
+  it("names a tokens occupancy engine and keeps Magda-class and Chatterfang closed", () => {
+    const foundry = explainCardAsMentor({
+      cardName: "Token Foundry",
+      oracleText: "At the beginning of combat on your turn, create a 1/1 white Citizen creature token.",
+    });
+    assert.equal(foundry.writesToBrain, false);
+    assert.equal(foundry.tokensOccupancySeating[0].kind, "tokens_engine");
+    assert.match(foundry.paragraph, /Tokens Engine/);
+    assert.match(foundry.paragraph, /not a lone named-artifact-token-sac create/);
+
+    const magda = explainCardAsMentor({
+      cardName: "Magda Shape",
+      oracleText: "Other Dwarves you control have haste. Sacrifice five Treasures: Create a 4/4 red Dragon creature token with flying.",
+    });
+    assert.deepEqual(magda.tokensOccupancySeating, []);
+
+    const chatterfang = explainCardAsMentor({
+      cardName: "Chatterfang Shape",
+      oracleText: "If one or more tokens would be created under your control, those tokens plus that many 1/1 green Squirrel creature tokens are created instead.",
+    });
+    assert.deepEqual(chatterfang.tokensOccupancySeating, []);
+  });
+
 
 
 

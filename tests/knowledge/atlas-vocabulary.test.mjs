@@ -14,6 +14,7 @@ import {
   seatAurasOccupancyImplementation,
   seatEquipmentOccupancyImplementation,
   seatBlinkImplementation,
+  seatTokensOccupancyImplementation,
   seatSelectionImplementation,
   seatGraveyardImplementation,
   seatSacrificeImplementation,
@@ -243,6 +244,29 @@ describe("Atlas Vocabulary Registry v0", () => {
     assert.deepEqual(seatBlinkImplementation({
       name: "Brago Shape",
       oracleText: "Whenever this deals combat damage to a player, exile any number of target nonland permanents you control, then return those cards to the battlefield under their owner's control.",
+    }), []);
+  });
+
+  it("seats tokens occupancy engine from occupancy detect without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.tokensOccupancySeatCount, 1);
+    assert.equal(registry.summary.capabilityAdmittedCount, 0);
+    assert.ok(registry.revisions.some((row) => /tokens occupancy engine from occupancy detect/i.test(row.change)));
+
+    const foundry = seatTokensOccupancyImplementation({
+      name: "Token Foundry",
+      oracleText: "At the beginning of combat on your turn, create a 1/1 white Citizen creature token.",
+    });
+    assert.equal(foundry[0].kind, "tokens_engine");
+    assert.equal(foundry[0].capability.atlasAdmitted, false);
+
+    assert.deepEqual(seatTokensOccupancyImplementation({
+      name: "Magda Shape",
+      oracleText: "Other Dwarves you control have haste. Sacrifice five Treasures: Create a 4/4 red Dragon creature token with flying.",
+    }), []);
+    assert.deepEqual(seatTokensOccupancyImplementation({
+      name: "Chatterfang Shape",
+      oracleText: "If one or more tokens would be created under your control, those tokens plus that many 1/1 green Squirrel creature tokens are created instead.",
     }), []);
   });
 

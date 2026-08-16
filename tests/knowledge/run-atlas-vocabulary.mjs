@@ -32,6 +32,7 @@ function main() {
     `| Auras occupancy seats | ${registry.summary.aurasOccupancySeatCount} |`,
     `| Equipment occupancy seats | ${registry.summary.equipmentOccupancySeatCount} |`,
     `| Blink seats | ${registry.summary.blinkSeatCount} |`,
+    `| Tokens occupancy seats | ${registry.summary.tokensOccupancySeatCount} |`,
     `| Selection seats | ${registry.summary.selectionSeatCount} |`,
     `| Graveyard seats | ${registry.summary.graveyardSeatCount} |`,
     `| Sacrifice seats | ${registry.summary.sacrificeSeatCount} |`,

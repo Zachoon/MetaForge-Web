@@ -19,6 +19,7 @@ import {
   seatAurasOccupancyImplementation,
   seatEquipmentOccupancyImplementation,
   seatBlinkImplementation,
+  seatTokensOccupancyImplementation,
   seatSelectionImplementation,
   seatGraveyardImplementation,
   seatSacrificeImplementation,
@@ -79,6 +80,7 @@ export function explainCardAsMentor({
   const aurasOccupancySeating = seatAurasOccupancyImplementation({ name: card, oracleText, typeLine, mechanics });
   const equipmentOccupancySeating = seatEquipmentOccupancyImplementation({ name: card, oracleText, typeLine, mechanics });
   const blinkSeating = seatBlinkImplementation({ name: card, oracleText, typeLine, mechanics });
+  const tokensOccupancySeating = seatTokensOccupancyImplementation({ name: card, oracleText, typeLine, mechanics });
   const selectionSeating = seatSelectionImplementation({ name: card, oracleText, typeLine, mechanics });
   const graveyardSeating = seatGraveyardImplementation({ name: card, oracleText, typeLine, mechanics });
   const sacrificeSeating = seatSacrificeImplementation({ name: card, oracleText, typeLine, mechanics });
@@ -169,6 +171,12 @@ export function explainCardAsMentor({
     : "";
   const blinkSeatLine = blinkSeating.length
     ? blinkSeating.map((row) => {
+      const contrast = row.contrast ? `, ${row.contrast}` : "";
+      return `It is seated as a ${row.seat.label}${contrast}.`;
+    }).join(" ")
+    : "";
+  const tokensOccupancySeatLine = tokensOccupancySeating.length
+    ? tokensOccupancySeating.map((row) => {
       const contrast = row.contrast ? `, ${row.contrast}` : "";
       return `It is seated as a ${row.seat.label}${contrast}.`;
     }).join(" ")
@@ -278,7 +286,7 @@ export function explainCardAsMentor({
 
   const seatLine = seats.length
     ? `It fills ${seats.join(" · ")}.`
-    : [resourceSeatLine, typalSeatLine, aristocratsSeatLine, spellslingerSeatLine, reanimatorSeatLine, landfallOccupancySeatLine, staxSeatLine, aurasOccupancySeatLine, equipmentOccupancySeatLine, blinkSeatLine, selectionSeatLine, graveyardSeatLine, sacrificeSeatLine, triggerSeatLine, counterSeatLine, lifeSeatLine, protectionSeatLine, evasionSeatLine, landSeatLine, artifactSeatLine, tokenSeatLine, auraSeatLine, spellSeatLine, drawSeatLine, damageSeatLine, equipmentSeatLine, combatSeatLine].filter(Boolean).join(" ")
+    : [resourceSeatLine, typalSeatLine, aristocratsSeatLine, spellslingerSeatLine, reanimatorSeatLine, landfallOccupancySeatLine, staxSeatLine, aurasOccupancySeatLine, equipmentOccupancySeatLine, blinkSeatLine, tokensOccupancySeatLine, selectionSeatLine, graveyardSeatLine, sacrificeSeatLine, triggerSeatLine, counterSeatLine, lifeSeatLine, protectionSeatLine, evasionSeatLine, landSeatLine, artifactSeatLine, tokenSeatLine, auraSeatLine, spellSeatLine, drawSeatLine, damageSeatLine, equipmentSeatLine, combatSeatLine].filter(Boolean).join(" ")
       || "Atlas has no illustrative seat binding for this card yet — unknown is not absent.";
 
   const vacancy = seats.length
@@ -303,6 +311,8 @@ export function explainCardAsMentor({
       ? `This is ${equipmentOccupancySeating.map((row) => row.seat.label).join(" and ")}${equipmentOccupancySeating.some((row) => row.contrast) ? `, ${equipmentOccupancySeating.map((row) => row.contrast).filter(Boolean).join(" and ")}` : ""}.`
     : blinkSeating.length
       ? `This is ${blinkSeating.map((row) => row.seat.label).join(" and ")}${blinkSeating.some((row) => row.contrast) ? `, ${blinkSeating.map((row) => row.contrast).filter(Boolean).join(" and ")}` : ""}.`
+    : tokensOccupancySeating.length
+      ? `This is ${tokensOccupancySeating.map((row) => row.seat.label).join(" and ")}${tokensOccupancySeating.some((row) => row.contrast) ? `, ${tokensOccupancySeating.map((row) => row.contrast).filter(Boolean).join(" and ")}` : ""}.`
     : selectionSeating.length
       ? `This is ${selectionSeating.map((row) => row.seat.label).join(" and ")}${selectionSeating.some((row) => row.contrast) ? `, ${selectionSeating.map((row) => row.contrast).filter(Boolean).join(" and ")}` : ""}.`
     : graveyardSeating.length
@@ -381,6 +391,7 @@ export function explainCardAsMentor({
     aurasOccupancySeating,
     equipmentOccupancySeating,
     blinkSeating,
+    tokensOccupancySeating,
     selectionSeating,
     graveyardSeating,
     sacrificeSeating,
@@ -405,7 +416,7 @@ export function explainCardAsMentor({
         : "Finished-list explanation",
     timingPosture: timing,
     vacancyRisk: vacancy,
-    openQuestion: seats.length || resourceSeating.length || typalSeating.length || aristocratsSeating.length || spellslingerSeating.length || reanimatorSeating.length || landfallOccupancySeating.length || staxSeating.length || aurasOccupancySeating.length || equipmentOccupancySeating.length || blinkSeating.length || selectionSeating.length || graveyardSeating.length || sacrificeSeating.length || triggerSeating.length || counterSeating.length || lifeSeating.length || protectionSeating.length || evasionSeating.length || landSeating.length || artifactSeating.length || tokenSeating.length || auraSeating.length || spellSeating.length || drawSeating.length || damageSeating.length || equipmentSeating.length || combatSeating.length
+    openQuestion: seats.length || resourceSeating.length || typalSeating.length || aristocratsSeating.length || spellslingerSeating.length || reanimatorSeating.length || landfallOccupancySeating.length || staxSeating.length || aurasOccupancySeating.length || equipmentOccupancySeating.length || blinkSeating.length || tokensOccupancySeating.length || selectionSeating.length || graveyardSeating.length || sacrificeSeating.length || triggerSeating.length || counterSeating.length || lifeSeating.length || protectionSeating.length || evasionSeating.length || landSeating.length || artifactSeating.length || tokenSeating.length || auraSeating.length || spellSeating.length || drawSeating.length || damageSeating.length || equipmentSeating.length || combatSeating.length
       ? "Still contested whether these seat labels survive Academy controls beyond illustrative Atlas bindings."
       : "No Atlas seat yet — wait for observation rather than inventing one.",
     conceptHints: freeze(conceptHints),
