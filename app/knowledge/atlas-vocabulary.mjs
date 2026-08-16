@@ -26,6 +26,7 @@ import {
 } from "../forge-interaction-graph.mjs";
 import {
   cardSatisfiesPackageCore,
+  detectAristocratsCommander,
   extractTypalTribes,
 } from "../strategic-intent.mjs";
 // Atlas Vocabulary Registry v0 — Age of Vocabulary engineering surface
@@ -1334,6 +1335,41 @@ export function seatTypalImplementation(card = {}, { tribalTypes = [], commander
 }
 
 /**
+ * Descriptive seating for aristocrats occupancy language already shipped
+ * in construction. Consumes `detectAristocratsCommander` — no second
+ * sacrifice regex family.
+ * Engine is a commander that actually runs the death/sacrifice/token loop.
+ * Artifact-sac and Food/Treasure payoffs do not open an engine.
+ * Card-level outlet vs death-payoff seats remain on the sacrifice axis.
+ * Not Capability admissions. Never construction inputs.
+ */
+export const ATLAS_ARISTOCRATS_SEATS = freeze([
+  descriptiveKindSeat("aristocrats_engine", "Aristocrats Engine", "not artifact-sac and not generic tokens", "aristocrats_engine", "cap:aristocrats_engine"),
+]);
+
+export function seatAristocratsImplementation(card = {}) {
+  const oracle = card.oracleText || card.oracle_text || "";
+  const kinds = detectAristocratsCommander(oracle) ? ["aristocrats_engine"] : [];
+  const rows = [];
+  for (const definition of ATLAS_ARISTOCRATS_SEATS) {
+    if (!kinds.includes(definition.kind)) continue;
+    rows.push(freeze({
+      kind: definition.kind,
+      capability: definition.capability,
+      seat: definition.seat,
+      contrast: definition.contrast,
+      implementation: freeze({
+        card: String(card.name || "Unknown card"),
+        roles: freeze([definition.role]),
+        evidenceSignals: freeze([definition.kind]),
+      }),
+      writesToBrain: false,
+    }));
+  }
+  return freeze(rows);
+}
+
+/**
  * Descriptive seating for token kinds — splits the single blended `tokens`
  * produces/rewards signal into named seats.
  * Consumes graph `tokenKinds` — no second oracle regex family.
@@ -1718,6 +1754,10 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
     date: "2026-08-16",
     change: "Seated typal engine / member / mention from occupancy language, rejecting among/legendary/land/more/town false opens; still 0 Capability admissions",
   }),
+  freeze({
+    date: "2026-08-16",
+    change: "Seated aristocrats engine from occupancy detect, rejecting artifact-sac and Food payoffs; still 0 Capability admissions",
+  }),
 ]);
 
 export function seatsImplementedBy(cardName = "") {
@@ -1760,6 +1800,7 @@ export function buildAtlasVocabularyRegistry() {
     equivalenceIllustrative: ATLAS_EQUIVALENCE_ILLUSTRATIVE,
     namedResourceSeats: ATLAS_NAMED_RESOURCE_SEATS,
     typalSeats: ATLAS_TYPAL_SEATS,
+    aristocratsSeats: ATLAS_ARISTOCRATS_SEATS,
     selectionSeats: ATLAS_SELECTION_SEATS,
     graveyardSeats: ATLAS_GRAVEYARD_SEATS,
     sacrificeSeats: ATLAS_SACRIFICE_SEATS,
@@ -1789,6 +1830,7 @@ export function buildAtlasVocabularyRegistry() {
       equivalenceBindingCount: ATLAS_EQUIVALENCE_ILLUSTRATIVE.length,
       namedResourceSeatCount: ATLAS_NAMED_RESOURCE_SEATS.length,
       typalSeatCount: ATLAS_TYPAL_SEATS.length,
+      aristocratsSeatCount: ATLAS_ARISTOCRATS_SEATS.length,
       selectionSeatCount: ATLAS_SELECTION_SEATS.length,
       graveyardSeatCount: ATLAS_GRAVEYARD_SEATS.length,
       sacrificeSeatCount: ATLAS_SACRIFICE_SEATS.length,

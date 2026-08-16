@@ -61,6 +61,23 @@ describe("Mentor Shadow v0", () => {
     assert.deepEqual(hojo.typalSeating, []);
   });
 
+  it("names an aristocrats engine without calling it generic tokens, and rejects artifact-sac", () => {
+    const king = explainCardAsMentor({
+      cardName: "Sacrifice King",
+      oracleText: "Whenever this enters or attacks, sacrifice another permanent. Whenever you sacrifice a permanent, draw a card.",
+    });
+    assert.equal(king.writesToBrain, false);
+    assert.equal(king.aristocratsSeating[0].kind, "aristocrats_engine");
+    assert.match(king.paragraph, /Aristocrats Engine/);
+    assert.match(king.paragraph, /not artifact-sac and not generic tokens/);
+
+    const outlaw = explainCardAsMentor({
+      cardName: "Artifact Outlaw",
+      oracleText: "Sacrifice an artifact: Create a Treasure token.",
+    });
+    assert.deepEqual(outlaw.aristocratsSeating, []);
+  });
+
   it("names rummage as a hand filter, not net draw", () => {
     const explanation = explainCardAsMentor({
       cardName: "Faithless Looting",

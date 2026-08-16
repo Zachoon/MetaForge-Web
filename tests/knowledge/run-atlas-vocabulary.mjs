@@ -23,6 +23,8 @@ function main() {
     `| Coverage dimensions | ${registry.summary.coverageDimensionCount} |`,
     `| Equivalence bindings | ${registry.summary.equivalenceBindingCount} |`,
     `| Named resource seats | ${registry.summary.namedResourceSeatCount} |`,
+    `| Typal seats | ${registry.summary.typalSeatCount} |`,
+    `| Aristocrats seats | ${registry.summary.aristocratsSeatCount} |`,
     `| Selection seats | ${registry.summary.selectionSeatCount} |`,
     `| Graveyard seats | ${registry.summary.graveyardSeatCount} |`,
     `| Sacrifice seats | ${registry.summary.sacrificeSeatCount} |`,

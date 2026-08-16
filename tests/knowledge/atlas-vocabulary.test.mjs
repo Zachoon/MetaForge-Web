@@ -6,6 +6,7 @@ import {
   cardsImplementingSeat,
   seatNamedResourceImplementation,
   seatTypalImplementation,
+  seatAristocratsImplementation,
   seatSelectionImplementation,
   seatGraveyardImplementation,
   seatSacrificeImplementation,
@@ -112,6 +113,39 @@ describe("Atlas Vocabulary Registry v0", () => {
       typeLine: "Legendary Creature — Human Bard",
     });
     assert.deepEqual(minstrel, []);
+  });
+
+  it("seats an aristocrats engine from occupancy detect without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.aristocratsSeatCount, 1);
+    assert.equal(registry.summary.capabilityAdmittedCount, 0);
+    assert.ok(registry.revisions.some((row) => /aristocrats engine from occupancy detect/i.test(row.change)));
+
+    const korvold = seatAristocratsImplementation({
+      name: "Sacrifice King",
+      oracleText: "Whenever this enters or attacks, sacrifice another permanent. Whenever you sacrifice a permanent, draw a card.",
+    });
+    assert.equal(korvold[0].kind, "aristocrats_engine");
+    assert.equal(korvold[0].seat.label, "Aristocrats Engine");
+    assert.equal(korvold[0].capability.atlasAdmitted, false);
+
+    const chatterfang = seatAristocratsImplementation({
+      name: "Squirrel General",
+      oracleText: "If one or more tokens would be created under your control, those tokens plus that many 1/1 green Squirrel creature tokens are created instead. {B}, Sacrifice X Squirrels: Target creature gets +X/-X until end of turn.",
+    });
+    assert.equal(chatterfang[0].kind, "aristocrats_engine");
+
+    const magda = seatAristocratsImplementation({
+      name: "Artifact Outlaw",
+      oracleText: "Sacrifice an artifact: Create a Treasure token.",
+    });
+    assert.deepEqual(magda, []);
+
+    const food = seatAristocratsImplementation({
+      name: "Food Payoff",
+      oracleText: "Whenever you sacrifice a Food, gain 3 life.",
+    });
+    assert.deepEqual(food, []);
   });
 
   it("maps each shipped graph signal through Capability to Seat to Implementation", () => {

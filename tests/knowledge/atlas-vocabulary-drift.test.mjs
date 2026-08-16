@@ -220,6 +220,8 @@ describe("Atlas Vocabulary Registry — drift protection", () => {
     const registry = buildAtlasVocabularyRegistry();
     const seatRows = [
       ...registry.namedResourceSeats,
+      ...registry.typalSeats,
+      ...registry.aristocratsSeats,
       ...registry.selectionSeats,
       ...registry.graveyardSeats,
       ...registry.sacrificeSeats,
@@ -251,6 +253,8 @@ describe("Atlas Vocabulary Registry — drift protection", () => {
     const allCapabilities = [
       ...registry.capabilityDraft,
       ...registry.namedResourceSeats.map((row) => row.capability),
+      ...registry.typalSeats.map((row) => row.capability),
+      ...registry.aristocratsSeats.map((row) => row.capability),
       ...registry.selectionSeats.map((row) => row.capability),
       ...registry.graveyardSeats.map((row) => row.capability),
       ...registry.sacrificeSeats.map((row) => row.capability),
