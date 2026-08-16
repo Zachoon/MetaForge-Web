@@ -301,7 +301,7 @@ export function seatSelectionImplementation(card = {}) {
  * Consumes graph `graveyardKinds` — no second oracle regex family.
  * Mill is not surveil. Dredge is not mill. Flashback and Escape are casts
  * from the yard, distinct from dredge's return-to-hand. Unearth is a
- * temporary battlefield return, not permanent reanimation. Persist is not undying. Jump-start is not flashback. Aftermath stays unnamed.
+ * temporary battlefield return, not permanent reanimation. Persist is not undying. Jump-start is not flashback. Aftermath is not flashback. Madness is not impulse. Retrace is not flashback. Disturb stays unnamed.
  * Not Capability admissions. Never construction inputs.
  */
 export const ATLAS_GRAVEYARD_SEATS = freeze([
@@ -407,6 +407,45 @@ export const ATLAS_GRAVEYARD_SEATS = freeze([
     seat: freeze({ id: "seat:jump_start_recast", label: "Jump-Start Recast" }),
     contrast: "not flashback",
     role: "jump_start_recaster",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "aftermath",
+    capability: freeze({
+      id: "cap:aftermath_recast",
+      label: "Aftermath Recast",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:aftermath_recast", label: "Aftermath Recast" }),
+    contrast: "not flashback",
+    role: "aftermath_recaster",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "madness",
+    capability: freeze({
+      id: "cap:madness_recast",
+      label: "Madness Recast",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:madness_recast", label: "Madness Recast" }),
+    contrast: "not impulse or flashback",
+    role: "madness_recaster",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "retrace",
+    capability: freeze({
+      id: "cap:retrace_recast",
+      label: "Retrace Recast",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:retrace_recast", label: "Retrace Recast" }),
+    contrast: "not flashback",
+    role: "retrace_recaster",
     writesToBrain: false,
   }),
 ]);
@@ -1509,6 +1548,10 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
   freeze({
     date: "2026-08-16",
     change: "Named persist / undying / jump-start as graveyard kinds; still 0 Capability admissions",
+  }),
+  freeze({
+    date: "2026-08-16",
+    change: "Named aftermath / madness / retrace as graveyard kinds; still 0 Capability admissions",
   }),
 ]);
 

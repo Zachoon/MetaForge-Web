@@ -129,7 +129,7 @@ describe("Atlas Vocabulary Registry v0", () => {
 
   it("seats mill as a graveyard dump, distinct from surveil, without admitting Capabilities", () => {
     const registry = buildAtlasVocabularyRegistry();
-    assert.equal(registry.summary.graveyardSeatCount, 8);
+    assert.equal(registry.summary.graveyardSeatCount, 11);
     assert.equal(registry.summary.capabilityAdmittedCount, 0);
     assert.ok(registry.graveyardSeats.every((row) => row.writesToBrain === false && row.capability.atlasAdmitted === false));
 
@@ -247,7 +247,7 @@ describe("Atlas Vocabulary Registry v0", () => {
 
   it("seats persist / undying / jump-start as graveyard kinds without admitting Capabilities", () => {
     const registry = buildAtlasVocabularyRegistry();
-    assert.equal(registry.summary.graveyardSeatCount, 8);
+    assert.equal(registry.summary.graveyardSeatCount, 11);
     const persist = seatGraveyardImplementation({ name: "Kitchen Finks", oracleText: "Persist" });
     assert.equal(persist[0].kind, "persist");
     assert.equal(persist[0].seat.label, "Persist Return");
@@ -255,7 +255,22 @@ describe("Atlas Vocabulary Registry v0", () => {
     assert.equal(undying[0].kind, "undying");
     const jump = seatGraveyardImplementation({ name: "Direct Current", oracleText: "Jump-start" });
     assert.equal(jump[0].kind, "jump_start");
-    assert.deepEqual(seatGraveyardImplementation({ name: "Toil // Trouble", oracleText: "Aftermath (Cast this spell only from your graveyard. Then exile it.)" }), []);
+    const aftermath = seatGraveyardImplementation({ name: "Toil // Trouble", oracleText: "Aftermath (Cast this spell only from your graveyard. Then exile it.)" });
+    assert.equal(aftermath[0].kind, "aftermath");
+  });
+
+
+  it("seats aftermath / madness / retrace as graveyard kinds without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.graveyardSeatCount, 11);
+    const aftermath = seatGraveyardImplementation({ name: "Toil", oracleText: "Aftermath" });
+    assert.equal(aftermath[0].kind, "aftermath");
+    assert.equal(aftermath[0].seat.label, "Aftermath Recast");
+    const madness = seatGraveyardImplementation({ name: "Basking Rootwalla", oracleText: "Madness {1}{G}" });
+    assert.equal(madness[0].kind, "madness");
+    const retrace = seatGraveyardImplementation({ name: "Raven's Crime", oracleText: "Retrace" });
+    assert.equal(retrace[0].kind, "retrace");
+    assert.deepEqual(seatGraveyardImplementation({ name: "Beloved Princess", oracleText: "Disturb {1}{W}" }), []);
   });
 
   it("seats outlet / death payoff / incidental yard, splitting the blended sacrifice signal, without admitting Capabilities", () => {

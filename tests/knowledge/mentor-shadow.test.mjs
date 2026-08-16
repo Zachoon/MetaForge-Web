@@ -133,6 +133,19 @@ describe("Mentor Shadow v0", () => {
     assert.match(jump.paragraph, /Jump-Start Recast/);
   });
 
+
+  it("names aftermath, madness, and retrace as graveyard kinds", () => {
+    const aftermath = explainCardAsMentor({ cardName: "Toil", oracleText: "Aftermath" });
+    assert.equal(aftermath.graveyardSeating[0].kind, "aftermath");
+    assert.match(aftermath.paragraph, /Aftermath Recast/);
+    const madness = explainCardAsMentor({ cardName: "Basking Rootwalla", oracleText: "Madness {1}{G}" });
+    assert.equal(madness.graveyardSeating[0].kind, "madness");
+    assert.match(madness.paragraph, /Madness Recast/);
+    const retrace = explainCardAsMentor({ cardName: "Raven's Crime", oracleText: "Retrace" });
+    assert.equal(retrace.graveyardSeating[0].kind, "retrace");
+    assert.match(retrace.paragraph, /Retrace Recast/);
+  });
+
   it("names outlet, death payoff, and incidental yard, not a mill dump", () => {
     const outlet = explainCardAsMentor({
       cardName: "Viscera Seer",

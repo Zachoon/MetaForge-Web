@@ -756,12 +756,9 @@ test("graveyard kinds name persist / undying / jump-start, distinct from unearth
   const persistOracle = "Persist";
   const undyingOracle = "Undying";
   const jumpOracle = "Jump-start";
-  const aftermathOracle = "Aftermath (Cast this spell only from your graveyard. Then exile it.)";
-
   assert.deepEqual(classifyGraveyardKinds(persistOracle), [GRAVEYARD_KINDS.PERSIST]);
   assert.deepEqual(classifyGraveyardKinds(undyingOracle), [GRAVEYARD_KINDS.UNDYING]);
   assert.deepEqual(classifyGraveyardKinds(jumpOracle), [GRAVEYARD_KINDS.JUMP_START]);
-  assert.deepEqual(classifyGraveyardKinds(aftermathOracle), []);
   assert.equal(classifyGraveyardKinds(jumpOracle).includes(GRAVEYARD_KINDS.FLASHBACK), false);
   assert.equal(classifyGraveyardKinds(persistOracle).includes(GRAVEYARD_KINDS.UNEARTH), false);
 
@@ -774,7 +771,33 @@ test("graveyard kinds name persist / undying / jump-start, distinct from unearth
     false,
     "persist/undying/jump-start do not form graph edges",
   );
-  assert.match(graph.methodology, /aftermath stays unnamed/i);
+  assert.match(graph.methodology, /jump-start/i);
+});
+
+
+test("graveyard kinds name aftermath / madness / retrace, distinct from flashback", () => {
+  const aftermathOracle = "Aftermath (Cast this spell only from your graveyard. Then exile it.)";
+  const madnessOracle = "Madness {1}{B}";
+  const retraceOracle = "Retrace";
+  const disturbOracle = "Disturb {1}{W}";
+
+  assert.deepEqual(classifyGraveyardKinds(aftermathOracle), [GRAVEYARD_KINDS.AFTERMATH]);
+  assert.deepEqual(classifyGraveyardKinds(madnessOracle), [GRAVEYARD_KINDS.MADNESS]);
+  assert.deepEqual(classifyGraveyardKinds(retraceOracle), [GRAVEYARD_KINDS.RETRACE]);
+  assert.deepEqual(classifyGraveyardKinds(disturbOracle), []);
+  assert.equal(classifyGraveyardKinds(aftermathOracle).includes(GRAVEYARD_KINDS.FLASHBACK), false);
+  assert.equal(classifyGraveyardKinds(madnessOracle).includes(GRAVEYARD_KINDS.FLASHBACK), false);
+
+  const graph = buildInteractionGraph([
+    { name: "Toil", typeLine: "Sorcery", oracleText: aftermathOracle },
+    { name: "Basking Rootwalla", typeLine: "Creature", oracleText: madnessOracle },
+  ]);
+  assert.equal(
+    graph.edges.some((edge) => edge.signals.includes(GRAVEYARD_KINDS.AFTERMATH) || edge.signals.includes(GRAVEYARD_KINDS.MADNESS) || edge.signals.includes(GRAVEYARD_KINDS.RETRACE)),
+    false,
+    "aftermath/madness/retrace do not form graph edges",
+  );
+  assert.match(graph.methodology, /disturb stays unnamed/i);
 });
 
 test("rummage filters the hand and is not net draw", () => {
