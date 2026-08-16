@@ -301,7 +301,7 @@ export function seatSelectionImplementation(card = {}) {
  * Consumes graph `graveyardKinds` — no second oracle regex family.
  * Mill is not surveil. Dredge is not mill. Flashback and Escape are casts
  * from the yard, distinct from dredge's return-to-hand. Unearth is a
- * temporary battlefield return, not permanent reanimation. Persist is not undying. Jump-start is not flashback. Aftermath is not flashback. Madness is not impulse. Retrace is not flashback. Disturb stays unnamed.
+ * temporary battlefield return, not permanent reanimation. Persist is not undying. Jump-start is not flashback. Aftermath is not flashback. Madness is not impulse. Retrace is not flashback. Disturb is not flashback. Embalm is not unearth. Eternalize is not embalm.
  * Not Capability admissions. Never construction inputs.
  */
 export const ATLAS_GRAVEYARD_SEATS = freeze([
@@ -1291,7 +1291,7 @@ export function seatTokenImplementation(card = {}) {
  * Consumes graph `auraKinds` — no second oracle regex family.
  * Enchant is the Aura enchant-clause, not auras-you-control. Matters is
  * auras you control, not the enchant clause. Affinity is affinity for
- * Auras, not enchanting. Equipment stays unnamed this phase.
+ * Auras, not enchanting. Equipment is a separate axis, not an Aura kind.
  * Not Capability admissions. Never construction inputs.
  */
 export const ATLAS_AURA_SEATS = freeze([

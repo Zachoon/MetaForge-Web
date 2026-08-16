@@ -496,7 +496,7 @@ const AURA_AFFINITY = /affinity for auras/i;
  * Enchant is the Aura enchant-clause, not an auras-you-control payoff and
  * not affinity. Matters is auras you control or an Aura-enters watch, not
  * the enchant clause. Affinity is affinity for Auras, not enchanting.
- * Equipment stays unnamed this phase.
+ * Equipment is a separate axis, not an Aura kind.
  * These labels must not become produces/rewards until a harness earns that.
  */
 export function classifyAuraKinds(oracle = "") {
