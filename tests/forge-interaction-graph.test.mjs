@@ -12,6 +12,7 @@ import {
   classifySacrificeKinds,
   classifyTriggerKinds,
   classifyCounterKinds,
+  classifyLifeKinds,
   findResetPayPairs,
   LOOP_KINDS,
   SELECTION_KINDS,
@@ -19,6 +20,7 @@ import {
   SACRIFICE_KINDS,
   TRIGGER_KINDS,
   COUNTER_KINDS,
+  LIFE_KINDS,
   RESET_SHAPES,
   RELATIONSHIP_EVIDENCE,
 } from "../app/forge-interaction-graph.mjs";
@@ -1068,4 +1070,54 @@ test("counter kinds split put / proliferate / remove from the blended counters s
   );
   assert.match(graph.methodology, /put \(placement\)/i);
   assert.match(graph.methodology, /proliferate/i);
+});
+
+test("life kinds split gain / lifelink / pay from the blended life signal", () => {
+  const gainOracle = "Whenever another creature enters the battlefield, you gain 1 life.";
+  const lifelinkOracle = "Lifelink (Damage dealt by this creature also causes you to gain that much life.)";
+  const payOracle = "Pay 1 life: Draw a card.";
+  const payoffOracle = "Whenever you gain life, put a +1/+1 counter on this creature.";
+  const drainOracle = "Each opponent loses 2 life.";
+
+  assert.deepEqual(classifyLifeKinds(gainOracle), [LIFE_KINDS.GAIN]);
+  assert.deepEqual(classifyLifeKinds(lifelinkOracle), [LIFE_KINDS.LIFELINK]);
+  assert.deepEqual(classifyLifeKinds(payOracle), [LIFE_KINDS.PAY]);
+
+  // A "whenever you gain life" payoff is none of the three — it watches
+  // gain, it does not itself gain, pay, or have lifelink.
+  assert.deepEqual(classifyLifeKinds(payoffOracle), []);
+
+  // Opponents losing life is not paying your own life.
+  assert.deepEqual(classifyLifeKinds(drainOracle), []);
+
+  // Lifelink reminder "causes you to gain" is not Life Gain.
+  assert.equal(classifyLifeKinds(lifelinkOracle).includes(LIFE_KINDS.GAIN), false);
+
+  const warden = extractMechanicalSignals({
+    name: "Soul Warden",
+    typeLine: "Creature — Human Cleric",
+    oracleText: gainOracle,
+  });
+  assert.deepEqual(warden.lifeKinds, [LIFE_KINDS.GAIN]);
+  assert.equal(warden.produces.includes(LIFE_KINDS.GAIN), false, "life kinds are observation labels, not production");
+
+  const vampire = extractMechanicalSignals({
+    name: "Vampire Nighthawk",
+    typeLine: "Creature — Vampire Shaman",
+    oracleText: lifelinkOracle,
+  });
+  assert.deepEqual(vampire.lifeKinds, [LIFE_KINDS.LIFELINK]);
+  assert.equal(vampire.rewards.includes(LIFE_KINDS.LIFELINK), false, "life kinds are observation labels, not a payoff");
+
+  const graph = buildInteractionGraph([
+    { name: "Soul Warden", typeLine: "Creature", oracleText: gainOracle },
+    { name: "Ajani's Pridemate", typeLine: "Creature", oracleText: payoffOracle },
+  ]);
+  assert.equal(
+    graph.edges.some((edge) => edge.signals.includes(LIFE_KINDS.GAIN) || edge.signals.includes(LIFE_KINDS.LIFELINK) || edge.signals.includes(LIFE_KINDS.PAY)),
+    false,
+    "life kinds do not form graph edges",
+  );
+  assert.match(graph.methodology, /lifelink/i);
+  assert.match(graph.methodology, /whenever-you-gain-life/i);
 });

@@ -227,6 +227,33 @@ describe("Mentor Shadow v0", () => {
     assert.match(remove.paragraph, /not counter placement or proliferate/);
   });
 
+  it("names gain, lifelink, and pay, splitting the blended life signal", () => {
+    const gain = explainCardAsMentor({
+      cardName: "Soul Warden",
+      oracleText: "Whenever another creature enters the battlefield, you gain 1 life.",
+    });
+    assert.equal(gain.writesToBrain, false);
+    assert.equal(gain.lifeSeating[0].kind, "gain");
+    assert.match(gain.paragraph, /Life Gain/);
+    assert.match(gain.paragraph, /not lifelink or a whenever-you-gain-life payoff/);
+
+    const lifelink = explainCardAsMentor({
+      cardName: "Vampire Nighthawk",
+      oracleText: "Lifelink (Damage dealt by this creature also causes you to gain that much life.)",
+    });
+    assert.equal(lifelink.lifeSeating[0].kind, "lifelink");
+    assert.match(lifelink.paragraph, /Lifelink/);
+    assert.match(lifelink.paragraph, /not a lifegain spell/);
+
+    const pay = explainCardAsMentor({
+      cardName: "Necropotence",
+      oracleText: "Pay 1 life: Exile the top card of your library face down.",
+    });
+    assert.equal(pay.lifeSeating[0].kind, "pay");
+    assert.match(pay.paragraph, /Life Payment/);
+    assert.match(pay.paragraph, /not gaining life or opponents losing life/);
+  });
+
   it("names a reset pair as a closed loop, not a verified infinite", () => {
     const explanation = explainPairAsMentor({
       left: { name: "Basalt Monolith", oracleText: "{T}: Add {C}{C}{C}. {3}: Untap this artifact." },

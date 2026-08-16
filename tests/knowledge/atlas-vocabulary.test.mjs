@@ -10,6 +10,7 @@ import {
   seatSacrificeImplementation,
   seatTriggerImplementation,
   seatCounterImplementation,
+  seatLifeImplementation,
   seatLoopImplementation,
 } from "../../app/knowledge/atlas-vocabulary.mjs";
 
@@ -404,6 +405,54 @@ describe("Atlas Vocabulary Registry v0", () => {
       mechanics: { counterKinds: ["proliferate"], produces: [], rewards: [], signals: [] },
     });
     assert.equal(fromGraph[0].seat.label, "Proliferate Effect");
+    assert.equal(fromGraph[0].writesToBrain, false);
+  });
+
+  it("seats gain / lifelink / pay, splitting the blended life signal, without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.lifeSeatCount, 3);
+    assert.equal(registry.summary.capabilityAdmittedCount, 0);
+    assert.ok(registry.lifeSeats.every((row) => row.writesToBrain === false && row.capability.atlasAdmitted === false));
+    assert.ok(registry.revisions.some((row) => row.date === "2026-08-15" && /gain \/ lifelink \/ pay/i.test(row.change)));
+
+    const gain = seatLifeImplementation({
+      name: "Soul Warden",
+      oracleText: "Whenever another creature enters the battlefield, you gain 1 life.",
+    });
+    assert.equal(gain.length, 1);
+    assert.equal(gain[0].kind, "gain");
+    assert.equal(gain[0].seat.label, "Life Gain");
+    assert.equal(gain[0].contrast, "not lifelink or a whenever-you-gain-life payoff");
+
+    const lifelink = seatLifeImplementation({
+      name: "Vampire Nighthawk",
+      oracleText: "Lifelink (Damage dealt by this creature also causes you to gain that much life.)",
+    });
+    assert.equal(lifelink.length, 1);
+    assert.equal(lifelink[0].kind, "lifelink");
+    assert.equal(lifelink[0].seat.label, "Lifelink");
+    assert.equal(lifelink[0].contrast, "not a lifegain spell");
+
+    const pay = seatLifeImplementation({
+      name: "Necropotence",
+      oracleText: "Pay 1 life: Exile the top card of your library face down.",
+    });
+    assert.equal(pay.length, 1);
+    assert.equal(pay[0].kind, "pay");
+    assert.equal(pay[0].seat.label, "Life Payment");
+    assert.equal(pay[0].contrast, "not gaining life or opponents losing life");
+
+    const payoff = seatLifeImplementation({
+      name: "Ajani's Pridemate",
+      oracleText: "Whenever you gain life, put a +1/+1 counter on this creature.",
+    });
+    assert.deepEqual(payoff, []);
+
+    const fromGraph = seatLifeImplementation({
+      name: "Pre-classified",
+      mechanics: { lifeKinds: ["lifelink"], produces: [], rewards: [], signals: [] },
+    });
+    assert.equal(fromGraph[0].seat.label, "Lifelink");
     assert.equal(fromGraph[0].writesToBrain, false);
   });
 

@@ -3,6 +3,7 @@
 import {
   classifyCounterKinds,
   classifyGraveyardKinds,
+  classifyLifeKinds,
   classifyLoopKind,
   classifySacrificeKinds,
   classifySelectionKinds,
@@ -613,6 +614,80 @@ export function seatCounterImplementation(card = {}) {
 }
 
 /**
+ * Descriptive seating for life kinds — splits the single blended `life`
+ * produces/rewards signal into named seats.
+ * Consumes graph `lifeKinds` — no second oracle regex family.
+ * Gain is an actual life-gain effect, not a whenever-you-gain-life payoff
+ * and not lifelink reminder. Lifelink is the keyword, not a lifegain spell.
+ * Pay is spending your own life, not opponents losing life.
+ * Not Capability admissions. Never construction inputs.
+ */
+export const ATLAS_LIFE_SEATS = freeze([
+  freeze({
+    kind: "gain",
+    capability: freeze({
+      id: "cap:life_gain",
+      label: "Life Gain",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:life_gain", label: "Life Gain" }),
+    contrast: "not lifelink or a whenever-you-gain-life payoff",
+    role: "life_gain",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "lifelink",
+    capability: freeze({
+      id: "cap:lifelink",
+      label: "Lifelink",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:lifelink", label: "Lifelink" }),
+    contrast: "not a lifegain spell",
+    role: "lifelink",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "pay",
+    capability: freeze({
+      id: "cap:life_pay",
+      label: "Life Payment",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:life_pay", label: "Life Payment" }),
+    contrast: "not gaining life or opponents losing life",
+    role: "life_pay",
+    writesToBrain: false,
+  }),
+]);
+
+export function seatLifeImplementation(card = {}) {
+  const mechanics = card.mechanics || extractMechanicalSignals(card);
+  const kinds = mechanics.lifeKinds
+    || classifyLifeKinds(card.oracleText || card.oracle_text || "");
+  const rows = [];
+  for (const definition of ATLAS_LIFE_SEATS) {
+    if (!kinds.includes(definition.kind)) continue;
+    rows.push(freeze({
+      kind: definition.kind,
+      capability: definition.capability,
+      seat: definition.seat,
+      contrast: definition.contrast,
+      implementation: freeze({
+        card: String(card.name || "Unknown card"),
+        roles: freeze([definition.role]),
+        evidenceSignals: freeze([definition.kind]),
+      }),
+      writesToBrain: false,
+    }));
+  }
+  return freeze(rows);
+}
+
+/**
  * Descriptive seating for mutual loops and reset/pay shapes.
  * Consumes graph `loopKind` / `shape` — no second oracle regex family.
  * Pair observation only. Not a combo solver. Never construction inputs.
@@ -789,6 +864,10 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
     date: "2026-08-15",
     change: "Split the blended counters signal into put / proliferate / remove seats; still 0 Capability admissions",
   }),
+  freeze({
+    date: "2026-08-15",
+    change: "Split the blended life signal into gain / lifelink / pay seats; still 0 Capability admissions",
+  }),
 ]);
 
 export function seatsImplementedBy(cardName = "") {
@@ -835,6 +914,7 @@ export function buildAtlasVocabularyRegistry() {
     sacrificeSeats: ATLAS_SACRIFICE_SEATS,
     triggerSeats: ATLAS_TRIGGER_SEATS,
     counterSeats: ATLAS_COUNTER_SEATS,
+    lifeSeats: ATLAS_LIFE_SEATS,
     loopSeats: ATLAS_LOOP_SEATS,
     resetShapeSeats: ATLAS_RESET_SHAPE_SEATS,
     observation001: ATLAS_OBSERVATION_001,
@@ -851,6 +931,7 @@ export function buildAtlasVocabularyRegistry() {
       sacrificeSeatCount: ATLAS_SACRIFICE_SEATS.length,
       triggerSeatCount: ATLAS_TRIGGER_SEATS.length,
       counterSeatCount: ATLAS_COUNTER_SEATS.length,
+      lifeSeatCount: ATLAS_LIFE_SEATS.length,
       loopSeatCount: ATLAS_LOOP_SEATS.length,
       resetShapeSeatCount: ATLAS_RESET_SHAPE_SEATS.length,
       coverageScoreExists: false,
