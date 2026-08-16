@@ -469,7 +469,7 @@ describe("Atlas Vocabulary Registry v0", () => {
 
   it("seats hexproof / indestructible / ward, splitting the blended protection signal, without admitting Capabilities", () => {
     const registry = buildAtlasVocabularyRegistry();
-    assert.equal(registry.summary.protectionSeatCount, 3);
+    assert.equal(registry.summary.protectionSeatCount, 6);
     assert.equal(registry.summary.capabilityAdmittedCount, 0);
     assert.ok(registry.protectionSeats.every((row) => row.writesToBrain === false && row.capability.atlasAdmitted === false));
     assert.ok(registry.revisions.some((row) => row.date === "2026-08-15" && /hexproof \/ indestructible \/ ward/i.test(row.change)));
@@ -501,17 +501,26 @@ describe("Atlas Vocabulary Registry v0", () => {
     assert.equal(ward[0].seat.label, "Ward");
     assert.equal(ward[0].contrast, "not hexproof or indestructible");
 
+    const shroud = seatProtectionImplementation({
+      name: "Whispersilk Cloak",
+      oracleText: "Equipped creature has shroud.",
+    });
+    assert.equal(shroud[0].kind, "shroud");
+    assert.equal(shroud[0].seat.label, "Shroud");
+
     const protectionFrom = seatProtectionImplementation({
       name: "Mother of Runes",
       oracleText: "Protection from the color of your choice.",
     });
-    assert.deepEqual(protectionFrom, []);
+    assert.equal(protectionFrom[0].kind, "protection_from");
+    assert.equal(protectionFrom[0].seat.label, "Protection From");
 
     const phaseOut = seatProtectionImplementation({
       name: "Teferi's Protection",
       oracleText: "Permanents you control phase out.",
     });
-    assert.deepEqual(phaseOut, []);
+    assert.equal(phaseOut[0].kind, "phase_out");
+    assert.equal(phaseOut[0].seat.label, "Phase Out");
 
     const fromGraph = seatProtectionImplementation({
       name: "Pre-classified",

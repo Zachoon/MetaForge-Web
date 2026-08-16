@@ -281,6 +281,19 @@ describe("Mentor Shadow v0", () => {
     assert.match(ward.paragraph, /not hexproof or indestructible/);
   });
 
+
+  it("names shroud, protection-from, and phase-out as protection kinds", () => {
+    const shroud = explainCardAsMentor({ cardName: "Whispersilk Cloak", oracleText: "Equipped creature has shroud." });
+    assert.equal(shroud.protectionSeating.some((row) => row.kind === "shroud"), true);
+    assert.match(shroud.paragraph, /Shroud/);
+    const from = explainCardAsMentor({ cardName: "Mother of Runes", oracleText: "Protection from the color of your choice." });
+    assert.equal(from.protectionSeating[0].kind, "protection_from");
+    assert.match(from.paragraph, /Protection From/);
+    const phase = explainCardAsMentor({ cardName: "Teferi's Veil", oracleText: "Permanents you control phase out." });
+    assert.equal(phase.protectionSeating[0].kind, "phase_out");
+    assert.match(phase.paragraph, /Phase Out/);
+  });
+
   it("names flying, menace, and trample, splitting the blended evasion signal", () => {
     const flying = explainCardAsMentor({ cardName: "Storm Crow", oracleText: "Flying" });
     assert.equal(flying.writesToBrain, false);

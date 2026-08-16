@@ -1156,12 +1156,10 @@ test("protection kinds split hexproof / indestructible / ward from the blended p
   assert.deepEqual(classifyProtectionKinds(indestructibleOracle), [PROTECTION_KINDS.INDESTRUCTIBLE]);
   assert.deepEqual(classifyProtectionKinds(wardOracle), [PROTECTION_KINDS.WARD]);
 
-  // Protection-from and phase-out stay unnamed this phase.
-  assert.deepEqual(classifyProtectionKinds(protectionFromOracle), []);
-  assert.deepEqual(classifyProtectionKinds(phaseOutOracle), []);
-
-  // Shroud is not hexproof and is not invented this phase.
-  assert.deepEqual(classifyProtectionKinds(shroudOracle), []);
+  assert.deepEqual(classifyProtectionKinds(protectionFromOracle), [PROTECTION_KINDS.PROTECTION_FROM]);
+  assert.deepEqual(classifyProtectionKinds(phaseOutOracle), [PROTECTION_KINDS.PHASE_OUT]);
+  assert.deepEqual(classifyProtectionKinds(shroudOracle), [PROTECTION_KINDS.SHROUD]);
+  assert.equal(classifyProtectionKinds(hexproofOracle).includes(PROTECTION_KINDS.SHROUD), false);
 
   const boots = extractMechanicalSignals({
     name: "Swiftfoot Boots",
@@ -1184,7 +1182,7 @@ test("protection kinds split hexproof / indestructible / ward from the blended p
     { name: "Darksteel Plate", typeLine: "Artifact — Equipment", oracleText: indestructibleOracle },
   ]);
   assert.equal(
-    graph.edges.some((edge) => edge.signals.includes(PROTECTION_KINDS.HEXPROOF) || edge.signals.includes(PROTECTION_KINDS.INDESTRUCTIBLE) || edge.signals.includes(PROTECTION_KINDS.WARD)),
+    graph.edges.some((edge) => edge.signals.includes(PROTECTION_KINDS.HEXPROOF) || edge.signals.includes(PROTECTION_KINDS.INDESTRUCTIBLE) || edge.signals.includes(PROTECTION_KINDS.WARD) || edge.signals.includes(PROTECTION_KINDS.SHROUD) || edge.signals.includes(PROTECTION_KINDS.PROTECTION_FROM) || edge.signals.includes(PROTECTION_KINDS.PHASE_OUT)),
     false,
     "protection kinds do not form graph edges",
   );

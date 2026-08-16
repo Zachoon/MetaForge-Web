@@ -724,7 +724,7 @@ export function seatLifeImplementation(card = {}) {
  * Consumes graph `protectionKinds` — no second oracle regex family.
  * Hexproof is the keyword, not indestructible or ward. Indestructible is
  * the keyword, not hexproof or ward. Ward is a tax on targeting, not
- * hexproof. Protection-from and phase-out stay unnamed this phase.
+ * hexproof. Shroud is the keyword, not hexproof. Protection-from is the ability, not hexproof or ward. Phase-out is phasing, not blink occupancy.
  * Not Capability admissions. Never construction inputs.
  */
 export const ATLAS_PROTECTION_SEATS = freeze([
@@ -765,6 +765,45 @@ export const ATLAS_PROTECTION_SEATS = freeze([
     seat: freeze({ id: "seat:ward", label: "Ward" }),
     contrast: "not hexproof or indestructible",
     role: "ward",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "shroud",
+    capability: freeze({
+      id: "cap:shroud",
+      label: "Shroud",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:shroud", label: "Shroud" }),
+    contrast: "not hexproof",
+    role: "shroud",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "protection_from",
+    capability: freeze({
+      id: "cap:protection_from",
+      label: "Protection From",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:protection_from", label: "Protection From" }),
+    contrast: "not hexproof or ward",
+    role: "protection_from",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "phase_out",
+    capability: freeze({
+      id: "cap:phase_out",
+      label: "Phase Out",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:phase_out", label: "Phase Out" }),
+    contrast: "not blink occupancy",
+    role: "phase_out",
     writesToBrain: false,
   }),
 ]);
@@ -1373,6 +1412,10 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
   freeze({
     date: "2026-08-15",
     change: "Named haste / extra combat / vigilance as combat kinds; still 0 Capability admissions",
+  }),
+  freeze({
+    date: "2026-08-15",
+    change: "Named shroud / protection-from / phase-out as protection kinds; still 0 Capability admissions",
   }),
 ]);
 
