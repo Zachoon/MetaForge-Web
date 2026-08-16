@@ -264,12 +264,28 @@ export function detectEquipmentCommander(oracle = "") {
 /**
  * Commander runs a blink engine. Occupancy only.
  * Exile target/another, then return to battlefield.
- * Enter Trigger and Magda-style treasure-sac are not occupancy.
+ * Enter Trigger is not occupancy.
  * "Exile any number" (Brago) stays closed until a live canary earns a widen.
  */
 export function detectBlinkCommander(oracle = "") {
   const text = String(oracle || "");
   return /exile (?:target|another)[^.]*return (?:it|that|them) to the battlefield/i.test(text);
+}
+
+/**
+ * Commander runs a tokens engine. Occupancy only.
+ * Create-token still opens. A lone create paid by sacrificing named
+ * artifact tokens (Magda treasure-sac dragon) is not occupancy.
+ * Named-artifact-token producers still open; core membership stays on tokenScope.
+ */
+export function detectTokensCommander(oracle = "") {
+  const text = String(oracle || "");
+  if (!/token/i.test(text)) return false;
+  const creates = text.match(/create [^.]* token/gi) || [];
+  if (!creates.length) return false;
+  const namedSacCreate = /sacrifice [^.]*\b(?:treasures?|food|clues?|gold|blood|maps?|junk|powerstones?)\b[^.]*create [^.]* token/i.test(text);
+  if (namedSacCreate && creates.length === 1) return false;
+  return true;
 }
 
 const PACKAGE_CATALOG = Object.freeze({
@@ -331,9 +347,16 @@ const PACKAGE_CATALOG = Object.freeze({
     supportSemantics: Object.freeze(["token_payoff"]),
     // Occupancy is not a catalog false-friend list. Named artifact-token
     // commanders specialize core membership via intent.tokenScope.
-    detectCommander: (oracle) => /create [^.]* token/i.test(oracle) && /token/i.test(oracle),
+    detectCommander: detectTokensCommander,
     detectBlueprint: (blueprint) => blueprint.desiredRoles?.includes("tokens") || blueprint.packageSignals?.includes("tokens"),
-    density: Object.freeze({ singletonCore: 10, constructedCore: 6, singletonSupport: 4, constructedSupport: 2 }),
+    // singletonCore/constructedCore recalibrated 10/6 -> 5/3 from 262 real
+    // Commander decks (98 commanders): real core density clusters at
+    // p20=5/p25=5/p30=6, vs. the prior floor's 81% below-floor rate across
+    // the full same-commander-controlled sample. constructedCore kept at
+    // the prior 5:3 ratio to singletonCore (no real Constructed-format data
+    // exists to ground it independently). Support floors untouched - no
+    // real-corpus evidence covers them, only core was measured.
+    density: Object.freeze({ singletonCore: 5, constructedCore: 3, singletonSupport: 4, constructedSupport: 2 }),
   }),
   landfall: Object.freeze({
     id: "landfall",
@@ -399,7 +422,15 @@ const PACKAGE_CATALOG = Object.freeze({
     // support; a bare "each player draws" group-hug clause is not occupancy.
     detectCommander: detectStaxCommander,
     detectBlueprint: (blueprint) => /\bstax\b|resource denial/i.test(blueprint.source || ""),
-    density: Object.freeze({ singletonCore: 8, constructedCore: 4, singletonSupport: 4, constructedSupport: 2 }),
+    // singletonCore/constructedCore recalibrated 8/4 -> 4/2 from 73 real
+    // Commander decks (28 commanders): real core density clusters tightly
+    // at p10=p20=p25=p30=4, vs. the prior floor's 93% below-floor rate
+    // across the full same-commander-controlled sample. constructedCore
+    // kept at the prior 2:1 ratio to singletonCore (no real Constructed-
+    // format data exists to ground it independently). Support floors
+    // untouched - no real-corpus evidence covers them, only core was
+    // measured.
+    density: Object.freeze({ singletonCore: 4, constructedCore: 2, singletonSupport: 4, constructedSupport: 2 }),
   }),
 });
 

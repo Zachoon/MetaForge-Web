@@ -5,6 +5,7 @@ import {
   cardIsPackageFalseFriend,
   cardSatisfiesPackageCore,
   namedArtifactTokenScopeFromIntent,
+  detectTokensCommander,
 } from "../app/strategic-intent.mjs";
 import {
   commanderMechanicalScopes,
@@ -118,6 +119,20 @@ const treasureDigger = {
   typeLine: "Creature — Pirate",
   manaCost: "{1}{R}",
 };
+
+test("tokens occupancy rejects treasure-sac dragon creates and still opens go-wide and treasure producers", () => {
+  const magda = {
+    name: "Test Outlaw",
+    colors: ["R"],
+    oracleText: "Other Dwarves you control have haste. Sacrifice five Treasures: Create a 4/4 red Dragon creature token with flying.",
+    typeLine: "Legendary Creature — Dwarf Berserker",
+    manaCost: "{1}{R}{R}",
+  };
+  assert.equal(detectTokensCommander(magda.oracleText), false);
+  assert.ok(!intentFor(magda).packageIds.includes("tokens"));
+  assert.ok(intentFor(tokenFoundry).packageIds.includes("tokens"));
+  assert.ok(intentFor(treasureTrove).packageIds.includes("tokens"));
+});
 
 test("tokens occupancy scopes only named artifact tokens, never creature riders", () => {
   const clueIntent = intentFor(clueOligarch);
