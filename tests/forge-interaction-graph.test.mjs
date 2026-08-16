@@ -13,6 +13,7 @@ import {
   classifyTriggerKinds,
   classifyCounterKinds,
   classifyLifeKinds,
+  classifyProtectionKinds,
   findResetPayPairs,
   LOOP_KINDS,
   SELECTION_KINDS,
@@ -21,6 +22,7 @@ import {
   TRIGGER_KINDS,
   COUNTER_KINDS,
   LIFE_KINDS,
+  PROTECTION_KINDS,
   RESET_SHAPES,
   RELATIONSHIP_EVIDENCE,
 } from "../app/forge-interaction-graph.mjs";
@@ -1120,4 +1122,52 @@ test("life kinds split gain / lifelink / pay from the blended life signal", () =
   );
   assert.match(graph.methodology, /lifelink/i);
   assert.match(graph.methodology, /whenever-you-gain-life/i);
+});
+
+test("protection kinds split hexproof / indestructible / ward from the blended protection signal", () => {
+  const hexproofOracle = "Equipped creature has hexproof and haste.";
+  const indestructibleOracle = "Equipped creature has indestructible.";
+  const wardOracle = "Ward {2} (Whenever this creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)";
+  const protectionFromOracle = "Protection from black.";
+  const phaseOutOracle = "Permanents you control phase out.";
+  const shroudOracle = "Shroud (This creature can't be the target of spells or abilities.)";
+
+  assert.deepEqual(classifyProtectionKinds(hexproofOracle), [PROTECTION_KINDS.HEXPROOF]);
+  assert.deepEqual(classifyProtectionKinds(indestructibleOracle), [PROTECTION_KINDS.INDESTRUCTIBLE]);
+  assert.deepEqual(classifyProtectionKinds(wardOracle), [PROTECTION_KINDS.WARD]);
+
+  // Protection-from and phase-out stay unnamed this phase.
+  assert.deepEqual(classifyProtectionKinds(protectionFromOracle), []);
+  assert.deepEqual(classifyProtectionKinds(phaseOutOracle), []);
+
+  // Shroud is not hexproof and is not invented this phase.
+  assert.deepEqual(classifyProtectionKinds(shroudOracle), []);
+
+  const boots = extractMechanicalSignals({
+    name: "Swiftfoot Boots",
+    typeLine: "Artifact — Equipment",
+    oracleText: hexproofOracle,
+  });
+  assert.deepEqual(boots.protectionKinds, [PROTECTION_KINDS.HEXPROOF]);
+  assert.equal(boots.produces.includes(PROTECTION_KINDS.HEXPROOF), false, "protection kinds are observation labels, not production");
+
+  const plate = extractMechanicalSignals({
+    name: "Darksteel Plate",
+    typeLine: "Artifact — Equipment",
+    oracleText: indestructibleOracle,
+  });
+  assert.deepEqual(plate.protectionKinds, [PROTECTION_KINDS.INDESTRUCTIBLE]);
+  assert.equal(plate.rewards.includes(PROTECTION_KINDS.INDESTRUCTIBLE), false, "protection kinds are observation labels, not a payoff");
+
+  const graph = buildInteractionGraph([
+    { name: "Swiftfoot Boots", typeLine: "Artifact — Equipment", oracleText: hexproofOracle },
+    { name: "Darksteel Plate", typeLine: "Artifact — Equipment", oracleText: indestructibleOracle },
+  ]);
+  assert.equal(
+    graph.edges.some((edge) => edge.signals.includes(PROTECTION_KINDS.HEXPROOF) || edge.signals.includes(PROTECTION_KINDS.INDESTRUCTIBLE) || edge.signals.includes(PROTECTION_KINDS.WARD)),
+    false,
+    "protection kinds do not form graph edges",
+  );
+  assert.match(graph.methodology, /hexproof/i);
+  assert.match(graph.methodology, /protection-from/i);
 });

@@ -29,6 +29,7 @@ function main() {
     `| Trigger seats | ${registry.summary.triggerSeatCount} |`,
     `| Counter seats | ${registry.summary.counterSeatCount} |`,
     `| Life seats | ${registry.summary.lifeSeatCount} |`,
+    `| Protection seats | ${registry.summary.protectionSeatCount} |`,
     `| Loop seats | ${registry.summary.loopSeatCount} |`,
     `| Reset shape seats | ${registry.summary.resetShapeSeatCount} |`,
     `| coverageScore | ${registry.summary.coverageScoreExists} |`,

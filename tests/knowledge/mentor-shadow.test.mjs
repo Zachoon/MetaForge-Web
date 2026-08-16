@@ -254,6 +254,33 @@ describe("Mentor Shadow v0", () => {
     assert.match(pay.paragraph, /not gaining life or opponents losing life/);
   });
 
+  it("names hexproof, indestructible, and ward, splitting the blended protection signal", () => {
+    const hexproof = explainCardAsMentor({
+      cardName: "Swiftfoot Boots",
+      oracleText: "Equipped creature has hexproof and haste.",
+    });
+    assert.equal(hexproof.writesToBrain, false);
+    assert.equal(hexproof.protectionSeating[0].kind, "hexproof");
+    assert.match(hexproof.paragraph, /Hexproof/);
+    assert.match(hexproof.paragraph, /not indestructible or ward/);
+
+    const indestructible = explainCardAsMentor({
+      cardName: "Darksteel Plate",
+      oracleText: "Equipped creature has indestructible.",
+    });
+    assert.equal(indestructible.protectionSeating[0].kind, "indestructible");
+    assert.match(indestructible.paragraph, /Indestructible/);
+    assert.match(indestructible.paragraph, /not hexproof or ward/);
+
+    const ward = explainCardAsMentor({
+      cardName: "Slippery Bogbonder",
+      oracleText: "Ward {2} (Whenever this creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)",
+    });
+    assert.equal(ward.protectionSeating[0].kind, "ward");
+    assert.match(ward.paragraph, /Ward/);
+    assert.match(ward.paragraph, /not hexproof or indestructible/);
+  });
+
   it("names a reset pair as a closed loop, not a verified infinite", () => {
     const explanation = explainPairAsMentor({
       left: { name: "Basalt Monolith", oracleText: "{T}: Add {C}{C}{C}. {3}: Untap this artifact." },

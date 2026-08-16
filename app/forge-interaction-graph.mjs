@@ -306,6 +306,29 @@ export function classifyLifeKinds(oracle = "") {
   return kinds;
 }
 
+export const PROTECTION_KINDS = Object.freeze({
+  HEXPROOF: "hexproof",
+  INDESTRUCTIBLE: "indestructible",
+  WARD: "ward",
+});
+
+/**
+ * How a card stays online — split from the single blended `protection`
+ * produces/rewards signal. Observation only.
+ * Hexproof is the keyword, not indestructible or ward. Indestructible is
+ * the keyword, not hexproof or ward. Ward is a tax on targeting, not
+ * hexproof. Protection-from and phase-out stay unnamed this phase.
+ * These labels must not become produces/rewards until a harness earns that.
+ */
+export function classifyProtectionKinds(oracle = "") {
+  const text = String(oracle || "");
+  const kinds = [];
+  if (/\bhexproof\b/i.test(text)) kinds.push(PROTECTION_KINDS.HEXPROOF);
+  if (/\bindestructible\b/i.test(text)) kinds.push(PROTECTION_KINDS.INDESTRUCTIBLE);
+  if (/\bward\b/i.test(text)) kinds.push(PROTECTION_KINDS.WARD);
+  return kinds;
+}
+
 export function findResetPayPairs(cards = []) {
   const nodes = (cards || []).filter((card) => card?.name && !/\bLand\b/i.test(card.typeLine || card.type_line || ""));
   const pairs = [];
@@ -670,7 +693,8 @@ export function extractMechanicalSignals(card) {
   const triggerKinds = classifyTriggerKinds(oracle);
   const counterKinds = classifyCounterKinds(oracle);
   const lifeKinds = classifyLifeKinds(oracle);
-  return { signals, produces, rewards, tagProduces, tagRewards, selectionKinds, graveyardKinds, sacrificeKinds, triggerKinds, counterKinds, lifeKinds };
+  const protectionKinds = classifyProtectionKinds(oracle);
+  return { signals, produces, rewards, tagProduces, tagRewards, selectionKinds, graveyardKinds, sacrificeKinds, triggerKinds, counterKinds, lifeKinds, protectionKinds };
 }
 
 export function buildInteractionGraph(cards, options = {}) {
@@ -875,7 +899,7 @@ export function buildInteractionGraph(cards, options = {}) {
     explicitReferences,
     coverage,
     confidence,
-    methodology: "Relationships come from oracle text and type lines: mechanical producer/payoff inference, plus oracle_explicit edges when Oracle literally names another card in the deck. Mutual pairs are labeled engine / closed_loop / conditional_win as vocabulary. Reset/pay shapes are a separate observation pass — not verified infinites and not construction credit. Selection kinds (scry / surveil / rummage / connive / impulse / draw) are observation labels on a card's own filter — they do not form edges and are not construction credit. Graveyard kinds name mill as a dump, dredge as a graveyard filter/engine, flashback and escape as casts from the yard, and unearth as a temporary battlefield return — each distinct from surveil and from each other; they also do not form edges or construction credit. Sacrifice kinds split the blended sacrifice signal into outlet (a cost that can sacrifice a creature or permanent), death payoff (reacts to a creature dying or being sacrificed), and incidental yard (a named resource or discarded card leaving for the graveyard as a side effect, distinct from a Mill Dump); they also do not form edges or construction credit. Trigger kinds name a card's own trigger condition as enter (the battlefield), cast, attack, combat damage, or noncombat damage, distinct from a blink/flicker recursion pattern, from spellslinger construction occupancy, from the extra-combat-phase amplifier mechanism, from the damage-doubling replacement amplifier, and from stax construction occupancy; attack is not combat damage; combat damage is not a generic damage trigger; they also do not form edges or construction credit. Counter kinds split the blended counters signal into put (placement), proliferate (its own named keyword, not a synonym for placing a counter), and remove; they also do not form edges or construction credit. Life kinds split the blended life signal into gain (an actual life-gain effect, not a whenever-you-gain-life payoff and not lifelink reminder), lifelink (the keyword, not a lifegain spell), and pay (spending your own life, not opponents losing life); they also do not form edges or construction credit.",
+    methodology: "Relationships come from oracle text and type lines: mechanical producer/payoff inference, plus oracle_explicit edges when Oracle literally names another card in the deck. Mutual pairs are labeled engine / closed_loop / conditional_win as vocabulary. Reset/pay shapes are a separate observation pass — not verified infinites and not construction credit. Selection kinds (scry / surveil / rummage / connive / impulse / draw) are observation labels on a card's own filter — they do not form edges and are not construction credit. Graveyard kinds name mill as a dump, dredge as a graveyard filter/engine, flashback and escape as casts from the yard, and unearth as a temporary battlefield return — each distinct from surveil and from each other; they also do not form edges or construction credit. Sacrifice kinds split the blended sacrifice signal into outlet (a cost that can sacrifice a creature or permanent), death payoff (reacts to a creature dying or being sacrificed), and incidental yard (a named resource or discarded card leaving for the graveyard as a side effect, distinct from a Mill Dump); they also do not form edges or construction credit. Trigger kinds name a card's own trigger condition as enter (the battlefield), cast, attack, combat damage, or noncombat damage, distinct from a blink/flicker recursion pattern, from spellslinger construction occupancy, from the extra-combat-phase amplifier mechanism, from the damage-doubling replacement amplifier, and from stax construction occupancy; attack is not combat damage; combat damage is not a generic damage trigger; they also do not form edges or construction credit. Counter kinds split the blended counters signal into put (placement), proliferate (its own named keyword, not a synonym for placing a counter), and remove; they also do not form edges or construction credit. Life kinds split the blended life signal into gain (an actual life-gain effect, not a whenever-you-gain-life payoff and not lifelink reminder), lifelink (the keyword, not a lifegain spell), and pay (spending your own life, not opponents losing life); they also do not form edges or construction credit. Protection kinds split the blended protection signal into hexproof (the keyword, not indestructible or ward), indestructible (the keyword, not hexproof or ward), and ward (a tax on targeting, not hexproof); protection-from and phase-out stay unnamed; they also do not form edges or construction credit.",
     commanderName: options.commanderName || commander?.name || "",
   };
 }

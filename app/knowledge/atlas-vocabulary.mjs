@@ -5,6 +5,7 @@ import {
   classifyGraveyardKinds,
   classifyLifeKinds,
   classifyLoopKind,
+  classifyProtectionKinds,
   classifySacrificeKinds,
   classifySelectionKinds,
   classifyTriggerKinds,
@@ -688,6 +689,80 @@ export function seatLifeImplementation(card = {}) {
 }
 
 /**
+ * Descriptive seating for protection kinds — splits the single blended
+ * `protection` produces/rewards signal into named seats.
+ * Consumes graph `protectionKinds` — no second oracle regex family.
+ * Hexproof is the keyword, not indestructible or ward. Indestructible is
+ * the keyword, not hexproof or ward. Ward is a tax on targeting, not
+ * hexproof. Protection-from and phase-out stay unnamed this phase.
+ * Not Capability admissions. Never construction inputs.
+ */
+export const ATLAS_PROTECTION_SEATS = freeze([
+  freeze({
+    kind: "hexproof",
+    capability: freeze({
+      id: "cap:hexproof",
+      label: "Hexproof",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:hexproof", label: "Hexproof" }),
+    contrast: "not indestructible or ward",
+    role: "hexproof",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "indestructible",
+    capability: freeze({
+      id: "cap:indestructible",
+      label: "Indestructible",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:indestructible", label: "Indestructible" }),
+    contrast: "not hexproof or ward",
+    role: "indestructible",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "ward",
+    capability: freeze({
+      id: "cap:ward",
+      label: "Ward",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:ward", label: "Ward" }),
+    contrast: "not hexproof or indestructible",
+    role: "ward",
+    writesToBrain: false,
+  }),
+]);
+
+export function seatProtectionImplementation(card = {}) {
+  const mechanics = card.mechanics || extractMechanicalSignals(card);
+  const kinds = mechanics.protectionKinds
+    || classifyProtectionKinds(card.oracleText || card.oracle_text || "");
+  const rows = [];
+  for (const definition of ATLAS_PROTECTION_SEATS) {
+    if (!kinds.includes(definition.kind)) continue;
+    rows.push(freeze({
+      kind: definition.kind,
+      capability: definition.capability,
+      seat: definition.seat,
+      contrast: definition.contrast,
+      implementation: freeze({
+        card: String(card.name || "Unknown card"),
+        roles: freeze([definition.role]),
+        evidenceSignals: freeze([definition.kind]),
+      }),
+      writesToBrain: false,
+    }));
+  }
+  return freeze(rows);
+}
+
+/**
  * Descriptive seating for mutual loops and reset/pay shapes.
  * Consumes graph `loopKind` / `shape` — no second oracle regex family.
  * Pair observation only. Not a combo solver. Never construction inputs.
@@ -868,6 +943,10 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
     date: "2026-08-15",
     change: "Split the blended life signal into gain / lifelink / pay seats; still 0 Capability admissions",
   }),
+  freeze({
+    date: "2026-08-15",
+    change: "Split the blended protection signal into hexproof / indestructible / ward seats; still 0 Capability admissions",
+  }),
 ]);
 
 export function seatsImplementedBy(cardName = "") {
@@ -915,6 +994,7 @@ export function buildAtlasVocabularyRegistry() {
     triggerSeats: ATLAS_TRIGGER_SEATS,
     counterSeats: ATLAS_COUNTER_SEATS,
     lifeSeats: ATLAS_LIFE_SEATS,
+    protectionSeats: ATLAS_PROTECTION_SEATS,
     loopSeats: ATLAS_LOOP_SEATS,
     resetShapeSeats: ATLAS_RESET_SHAPE_SEATS,
     observation001: ATLAS_OBSERVATION_001,
@@ -932,6 +1012,7 @@ export function buildAtlasVocabularyRegistry() {
       triggerSeatCount: ATLAS_TRIGGER_SEATS.length,
       counterSeatCount: ATLAS_COUNTER_SEATS.length,
       lifeSeatCount: ATLAS_LIFE_SEATS.length,
+      protectionSeatCount: ATLAS_PROTECTION_SEATS.length,
       loopSeatCount: ATLAS_LOOP_SEATS.length,
       resetShapeSeatCount: ATLAS_RESET_SHAPE_SEATS.length,
       coverageScoreExists: false,

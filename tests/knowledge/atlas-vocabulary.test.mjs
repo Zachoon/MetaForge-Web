@@ -11,6 +11,7 @@ import {
   seatTriggerImplementation,
   seatCounterImplementation,
   seatLifeImplementation,
+  seatProtectionImplementation,
   seatLoopImplementation,
 } from "../../app/knowledge/atlas-vocabulary.mjs";
 
@@ -453,6 +454,60 @@ describe("Atlas Vocabulary Registry v0", () => {
       mechanics: { lifeKinds: ["lifelink"], produces: [], rewards: [], signals: [] },
     });
     assert.equal(fromGraph[0].seat.label, "Lifelink");
+    assert.equal(fromGraph[0].writesToBrain, false);
+  });
+
+  it("seats hexproof / indestructible / ward, splitting the blended protection signal, without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.protectionSeatCount, 3);
+    assert.equal(registry.summary.capabilityAdmittedCount, 0);
+    assert.ok(registry.protectionSeats.every((row) => row.writesToBrain === false && row.capability.atlasAdmitted === false));
+    assert.ok(registry.revisions.some((row) => row.date === "2026-08-15" && /hexproof \/ indestructible \/ ward/i.test(row.change)));
+
+    const hexproof = seatProtectionImplementation({
+      name: "Swiftfoot Boots",
+      oracleText: "Equipped creature has hexproof and haste.",
+    });
+    assert.equal(hexproof.length, 1);
+    assert.equal(hexproof[0].kind, "hexproof");
+    assert.equal(hexproof[0].seat.label, "Hexproof");
+    assert.equal(hexproof[0].contrast, "not indestructible or ward");
+
+    const indestructible = seatProtectionImplementation({
+      name: "Darksteel Plate",
+      oracleText: "Equipped creature has indestructible.",
+    });
+    assert.equal(indestructible.length, 1);
+    assert.equal(indestructible[0].kind, "indestructible");
+    assert.equal(indestructible[0].seat.label, "Indestructible");
+    assert.equal(indestructible[0].contrast, "not hexproof or ward");
+
+    const ward = seatProtectionImplementation({
+      name: "Slippery Bogbonder",
+      oracleText: "Ward {2} (Whenever this creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)",
+    });
+    assert.equal(ward.length, 1);
+    assert.equal(ward[0].kind, "ward");
+    assert.equal(ward[0].seat.label, "Ward");
+    assert.equal(ward[0].contrast, "not hexproof or indestructible");
+
+    const protectionFrom = seatProtectionImplementation({
+      name: "Mother of Runes",
+      oracleText: "Protection from the color of your choice.",
+    });
+    assert.deepEqual(protectionFrom, []);
+
+    const phaseOut = seatProtectionImplementation({
+      name: "Teferi's Protection",
+      oracleText: "Permanents you control phase out.",
+    });
+    assert.deepEqual(phaseOut, []);
+
+    const fromGraph = seatProtectionImplementation({
+      name: "Pre-classified",
+      mechanics: { protectionKinds: ["ward"], produces: [], rewards: [], signals: [] },
+    });
+    assert.equal(fromGraph[0].seat.label, "Ward");
     assert.equal(fromGraph[0].writesToBrain, false);
   });
 
