@@ -17,6 +17,10 @@ import {
   classifyEvasionKinds,
   classifyLandKinds,
   classifyArtifactKinds,
+  classifyTokenKinds,
+  classifyAuraKinds,
+  classifySpellKinds,
+  classifyDrawKinds,
   findResetPayPairs,
   LOOP_KINDS,
   SELECTION_KINDS,
@@ -29,6 +33,10 @@ import {
   EVASION_KINDS,
   LAND_KINDS,
   ARTIFACT_KINDS,
+  TOKEN_KINDS,
+  AURA_KINDS,
+  SPELL_KINDS,
+  DRAW_KINDS,
   RESET_SHAPES,
   RELATIONSHIP_EVIDENCE,
 } from "../app/forge-interaction-graph.mjs";
@@ -1278,4 +1286,95 @@ test("artifact kinds split spell / matters / outlet from the blended artifacts s
   );
   assert.match(graph.methodology, /artifact-spell/i);
   assert.match(graph.methodology, /named-resource occupancy/i);
+});
+
+test("token kinds split create / go-wide / sac from the blended tokens signal", () => {
+  const createOracle = "Create a 1/1 white Soldier creature token.";
+  const goWideOracle = "Creature tokens you control get +1/+1.";
+  const sacOracle = "Sacrifice a token: Draw a card.";
+  const creatureOutlet = "Sacrifice a creature: Draw a card.";
+
+  assert.deepEqual(classifyTokenKinds(createOracle), [TOKEN_KINDS.CREATE]);
+  assert.deepEqual(classifyTokenKinds(goWideOracle), [TOKEN_KINDS.GO_WIDE]);
+  assert.deepEqual(classifyTokenKinds(sacOracle), [TOKEN_KINDS.SAC]);
+  assert.deepEqual(classifyTokenKinds(creatureOutlet), []);
+
+  const maker = extractMechanicalSignals({ name: "Raise the Alarm", typeLine: "Instant", oracleText: createOracle });
+  assert.deepEqual(maker.tokenKinds, [TOKEN_KINDS.CREATE]);
+  assert.equal(maker.produces.includes(TOKEN_KINDS.CREATE), false, "token kinds are observation labels, not production");
+
+  const graph = buildInteractionGraph([
+    { name: "Raise the Alarm", typeLine: "Instant", oracleText: createOracle },
+    { name: "Intangible Virtue", typeLine: "Enchantment", oracleText: goWideOracle },
+  ]);
+  assert.equal(
+    graph.edges.some((edge) => edge.signals.includes(TOKEN_KINDS.CREATE) || edge.signals.includes(TOKEN_KINDS.GO_WIDE) || edge.signals.includes(TOKEN_KINDS.SAC)),
+    false,
+    "token kinds do not form graph edges",
+  );
+  assert.match(graph.methodology, /go-wide/i);
+});
+
+test("aura kinds split enchant / matters / affinity from the blended auras signal", () => {
+  const enchantOracle = "Enchant creature";
+  const mattersOracle = "Auras you control get +1/+1.";
+  const affinityOracle = "Affinity for Auras";
+  const equipOracle = "Equip {2}";
+
+  assert.deepEqual(classifyAuraKinds(enchantOracle), [AURA_KINDS.ENCHANT]);
+  assert.deepEqual(classifyAuraKinds(mattersOracle), [AURA_KINDS.MATTERS]);
+  assert.deepEqual(classifyAuraKinds(affinityOracle), [AURA_KINDS.AFFINITY]);
+  assert.deepEqual(classifyAuraKinds(equipOracle), []);
+
+  const graph = buildInteractionGraph([
+    { name: "Pacifism", typeLine: "Enchantment — Aura", oracleText: enchantOracle },
+    { name: "Sphere of Safety", typeLine: "Enchantment", oracleText: mattersOracle },
+  ]);
+  assert.equal(
+    graph.edges.some((edge) => edge.signals.includes(AURA_KINDS.ENCHANT) || edge.signals.includes(AURA_KINDS.MATTERS) || edge.signals.includes(AURA_KINDS.AFFINITY)),
+    false,
+    "aura kinds do not form graph edges",
+  );
+  assert.match(graph.methodology, /affinity for Auras/i);
+});
+
+test("spell kinds split copy / free / noncreature from the blended spells signal", () => {
+  const copyOracle = "Copy target spell.";
+  const freeOracle = "You may cast that card without paying its mana cost.";
+  const noncreatureOracle = "Instant and sorcery spells you cast cost {1} less to cast.";
+  const flashbackOracle = "Flashback {2}{R} (You may cast this card from your graveyard for its flashback cost. Then exile it.)";
+  const magecraftOracle = "Magecraft — Whenever you cast or copy an instant or sorcery spell, scry 1.";
+
+  assert.deepEqual(classifySpellKinds(copyOracle), [SPELL_KINDS.COPY]);
+  assert.deepEqual(classifySpellKinds(freeOracle), [SPELL_KINDS.FREE]);
+  assert.deepEqual(classifySpellKinds(noncreatureOracle), [SPELL_KINDS.NONCREATURE]);
+  assert.deepEqual(classifySpellKinds(flashbackOracle), []);
+  assert.equal(classifySpellKinds(magecraftOracle).includes(SPELL_KINDS.NONCREATURE), true);
+  assert.equal(classifySpellKinds(magecraftOracle).includes(SPELL_KINDS.COPY), true);
+  assert.match(buildInteractionGraph([{ name: "Twincast", typeLine: "Instant", oracleText: copyOracle }]).methodology, /magecraft/i);
+});
+
+test("draw kinds split watch / wheel / hand from the blended draw signal", () => {
+  const watchOracle = "Whenever you draw a card, put a +1/+1 counter on this creature.";
+  const wheelOracle = "Each player discards their hand, then draws seven cards.";
+  const handOracle = "This creature gets +1/+1 for each card in your hand.";
+  const cantripOracle = "Draw a card.";
+  const rummageOracle = "Draw two cards, then discard two cards.";
+
+  assert.deepEqual(classifyDrawKinds(watchOracle), [DRAW_KINDS.WATCH]);
+  assert.deepEqual(classifyDrawKinds(wheelOracle), [DRAW_KINDS.WHEEL]);
+  assert.deepEqual(classifyDrawKinds(handOracle), [DRAW_KINDS.HAND]);
+  assert.deepEqual(classifyDrawKinds(cantripOracle), []);
+  assert.deepEqual(classifyDrawKinds(rummageOracle), []);
+
+  const graph = buildInteractionGraph([
+    { name: "Psychosis Crawler", typeLine: "Artifact Creature", oracleText: watchOracle },
+    { name: "Windfall", typeLine: "Sorcery", oracleText: wheelOracle },
+  ]);
+  assert.equal(
+    graph.edges.some((edge) => edge.signals.includes(DRAW_KINDS.WATCH) || edge.signals.includes(DRAW_KINDS.WHEEL) || edge.signals.includes(DRAW_KINDS.HAND)),
+    false,
+    "draw kinds do not form graph edges",
+  );
+  assert.match(graph.methodology, /not rummage/i);
 });

@@ -345,6 +345,53 @@ describe("Mentor Shadow v0", () => {
     assert.match(outlet.paragraph, /Artifact Outlet/);
   });
 
+  it("names token create, go-wide, and sac, splitting the blended tokens signal", () => {
+    const create = explainCardAsMentor({ cardName: "Raise the Alarm", oracleText: "Create a 1/1 white Soldier creature token." });
+    assert.equal(create.tokenSeating[0].kind, "create");
+    assert.match(create.paragraph, /Token Create/);
+    const goWide = explainCardAsMentor({ cardName: "Intangible Virtue", oracleText: "Creature tokens you control get +1/+1." });
+    assert.equal(goWide.tokenSeating[0].kind, "go_wide");
+    assert.match(goWide.paragraph, /Token Go-Wide/);
+    const sac = explainCardAsMentor({ cardName: "Token Altar", oracleText: "Sacrifice a token: Add {C}{C}." });
+    assert.equal(sac.tokenSeating[0].kind, "sac");
+    assert.match(sac.paragraph, /Token Sac/);
+  });
+
+  it("names aura enchant, matters, and affinity, splitting the blended auras signal", () => {
+    const enchant = explainCardAsMentor({ cardName: "Pacifism", oracleText: "Enchant creature" });
+    assert.equal(enchant.auraSeating[0].kind, "enchant");
+    assert.match(enchant.paragraph, /Aura Enchant/);
+    const matters = explainCardAsMentor({ cardName: "Sphere of Safety", oracleText: "Auras you control get +1/+1." });
+    assert.equal(matters.auraSeating[0].kind, "matters");
+    const affinity = explainCardAsMentor({ cardName: "Pearl-Ear Scout", oracleText: "Affinity for Auras" });
+    assert.equal(affinity.auraSeating[0].kind, "affinity");
+    assert.match(affinity.paragraph, /Aura Affinity/);
+  });
+
+  it("names spell copy, free, and noncreature, splitting the blended spells signal", () => {
+    const copy = explainCardAsMentor({ cardName: "Twincast", oracleText: "Copy target spell." });
+    assert.equal(copy.spellSeating[0].kind, "copy");
+    assert.match(copy.paragraph, /Spell Copy/);
+    const free = explainCardAsMentor({ cardName: "Omniscience", oracleText: "You may cast that card without paying its mana cost." });
+    assert.equal(free.spellSeating[0].kind, "free");
+    assert.match(free.paragraph, /Free Spell/);
+    const noncreature = explainCardAsMentor({ cardName: "Goblin Electromancer", oracleText: "Instant and sorcery spells you cast cost {1} less to cast." });
+    assert.equal(noncreature.spellSeating[0].kind, "noncreature");
+    assert.match(noncreature.paragraph, /Noncreature Spell/);
+  });
+
+  it("names draw watch, wheel, and hand, splitting the blended draw signal", () => {
+    const watch = explainCardAsMentor({ cardName: "Toothy", oracleText: "Whenever you draw a card, put a +1/+1 counter on this creature." });
+    assert.equal(watch.drawSeating[0].kind, "watch");
+    assert.match(watch.paragraph, /Draw Watch/);
+    const wheel = explainCardAsMentor({ cardName: "Windfall", oracleText: "Each player discards their hand, then draws seven cards." });
+    assert.equal(wheel.drawSeating[0].kind, "wheel");
+    assert.match(wheel.paragraph, /Wheel/);
+    const hand = explainCardAsMentor({ cardName: "Hand Size Beast", oracleText: "This creature gets +1/+1 for each card in your hand." });
+    assert.equal(hand.drawSeating[0].kind, "hand");
+    assert.match(hand.paragraph, /Hand Size/);
+  });
+
   it("names a reset pair as a closed loop, not a verified infinite", () => {
     const explanation = explainPairAsMentor({
       left: { name: "Basalt Monolith", oracleText: "{T}: Add {C}{C}{C}. {3}: Untap this artifact." },

@@ -15,6 +15,10 @@ import {
   seatEvasionImplementation,
   seatLandImplementation,
   seatArtifactImplementation,
+  seatTokenImplementation,
+  seatAuraImplementation,
+  seatSpellImplementation,
+  seatDrawImplementation,
   seatLoopImplementation,
 } from "../../app/knowledge/atlas-vocabulary.mjs";
 
@@ -616,6 +620,64 @@ describe("Atlas Vocabulary Registry v0", () => {
       oracleText: "{T}: Add {C}{C}.",
     });
     assert.deepEqual(rock, []);
+  });
+
+  it("seats create / go-wide / sac, splitting the blended tokens signal, without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.tokenSeatCount, 3);
+    assert.ok(registry.revisions.some((row) => /create \/ go-wide \/ sac/i.test(row.change)));
+
+    const create = seatTokenImplementation({ name: "Raise the Alarm", oracleText: "Create a 1/1 white Soldier creature token." });
+    assert.equal(create[0].kind, "create");
+    assert.equal(create[0].seat.label, "Token Create");
+
+    const goWide = seatTokenImplementation({ name: "Intangible Virtue", oracleText: "Creature tokens you control get +1/+1." });
+    assert.equal(goWide[0].kind, "go_wide");
+    assert.equal(goWide[0].seat.label, "Token Go-Wide");
+
+    const sac = seatTokenImplementation({ name: "Ashnod's Altar", oracleText: "Sacrifice a token: Add {C}{C}." });
+    assert.equal(sac[0].kind, "sac");
+    assert.deepEqual(seatTokenImplementation({ name: "Altar", oracleText: "Sacrifice a creature: Add {C}{C}." }), []);
+  });
+
+  it("seats enchant / matters / affinity, splitting the blended auras signal, without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.auraSeatCount, 3);
+    const enchant = seatAuraImplementation({ name: "Pacifism", oracleText: "Enchant creature" });
+    assert.equal(enchant[0].kind, "enchant");
+    assert.equal(enchant[0].seat.label, "Aura Enchant");
+    const matters = seatAuraImplementation({ name: "Sphere of Safety", oracleText: "Auras you control get +1/+1." });
+    assert.equal(matters[0].kind, "matters");
+    const affinity = seatAuraImplementation({ name: "Pearl-Ear", oracleText: "Affinity for Auras" });
+    assert.equal(affinity[0].kind, "affinity");
+    assert.deepEqual(seatAuraImplementation({ name: "Sword", oracleText: "Equip {2}" }), []);
+  });
+
+  it("seats copy / free / noncreature, splitting the blended spells signal, without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.spellSeatCount, 3);
+    const copy = seatSpellImplementation({ name: "Twincast", oracleText: "Copy target spell." });
+    assert.equal(copy[0].kind, "copy");
+    assert.equal(copy[0].seat.label, "Spell Copy");
+    const free = seatSpellImplementation({ name: "Omniscience", oracleText: "You may cast that card without paying its mana cost." });
+    assert.equal(free[0].kind, "free");
+    const noncreature = seatSpellImplementation({ name: "Goblin Electromancer", oracleText: "Instant and sorcery spells you cast cost {1} less to cast." });
+    assert.equal(noncreature[0].kind, "noncreature");
+    assert.deepEqual(seatSpellImplementation({ name: "Faithless Looting", oracleText: "Flashback {2}{R} (You may cast this card from your graveyard for its flashback cost. Then exile it.)" }), []);
+  });
+
+  it("seats watch / wheel / hand, splitting the blended draw signal, without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.drawSeatCount, 3);
+    const watch = seatDrawImplementation({ name: "Psychosis Crawler", oracleText: "Whenever you draw a card, put a +1/+1 counter on this creature." });
+    assert.equal(watch[0].kind, "watch");
+    assert.equal(watch[0].seat.label, "Draw Watch");
+    const wheel = seatDrawImplementation({ name: "Windfall", oracleText: "Each player discards their hand, then draws seven cards." });
+    assert.equal(wheel[0].kind, "wheel");
+    const hand = seatDrawImplementation({ name: "Psychosis Crawler", oracleText: "This creature gets +1/+1 for each card in your hand." });
+    assert.equal(hand[0].kind, "hand");
+    assert.deepEqual(seatDrawImplementation({ name: "Opt", oracleText: "Draw a card." }), []);
+    assert.deepEqual(seatDrawImplementation({ name: "Faithless Looting", oracleText: "Draw two cards, then discard two cards." }), []);
   });
 
   it("seats loop kinds and reset shapes from graph labels without admitting Capabilities", () => {

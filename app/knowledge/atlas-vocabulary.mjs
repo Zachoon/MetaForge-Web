@@ -2,7 +2,9 @@
 
 import {
   classifyArtifactKinds,
+  classifyAuraKinds,
   classifyCounterKinds,
+  classifyDrawKinds,
   classifyEvasionKinds,
   classifyGraveyardKinds,
   classifyLandKinds,
@@ -11,6 +13,8 @@ import {
   classifyProtectionKinds,
   classifySacrificeKinds,
   classifySelectionKinds,
+  classifySpellKinds,
+  classifyTokenKinds,
   classifyTriggerKinds,
   extractMechanicalSignals,
   LOOP_KINDS,
@@ -25,6 +29,26 @@ import {
 // =============================================================================
 
 const freeze = (value) => Object.freeze(value);
+
+function seatKindRows(definitions, kinds, card = {}) {
+  const rows = [];
+  for (const definition of definitions) {
+    if (!kinds.includes(definition.kind)) continue;
+    rows.push(freeze({
+      kind: definition.kind,
+      capability: definition.capability,
+      seat: definition.seat,
+      contrast: definition.contrast,
+      implementation: freeze({
+        card: String(card.name || "Unknown card"),
+        roles: freeze([definition.role]),
+        evidenceSignals: freeze([definition.kind]),
+      }),
+      writesToBrain: false,
+    }));
+  }
+  return freeze(rows);
+}
 
 /** Core Atlas terms — working meanings locked for Age of Vocabulary. */
 export const ATLAS_CORE_TERMS = freeze([
@@ -988,6 +1012,104 @@ export function seatArtifactImplementation(card = {}) {
   return freeze(rows);
 }
 
+function descriptiveKindSeat(kind, label, contrast, role, capId = `cap:${kind}`) {
+  return freeze({
+    kind,
+    capability: freeze({
+      id: capId,
+      label,
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: `seat:${kind}`, label }),
+    contrast,
+    role,
+    writesToBrain: false,
+  });
+}
+
+/**
+ * Descriptive seating for token kinds — splits the single blended `tokens`
+ * produces/rewards signal into named seats.
+ * Consumes graph `tokenKinds` — no second oracle regex family.
+ * Create is making a token, not a go-wide anthem. Go-wide is tokens you
+ * control, not creation. Sac is sacrificing a token, not a creature outlet.
+ * Not Capability admissions. Never construction inputs.
+ */
+export const ATLAS_TOKEN_SEATS = freeze([
+  descriptiveKindSeat("create", "Token Create", "not a go-wide anthem or sacrificing a token", "token_create"),
+  descriptiveKindSeat("go_wide", "Token Go-Wide", "not token creation or sacrificing a token", "token_go_wide", "cap:token_go_wide"),
+  descriptiveKindSeat("sac", "Token Sac", "not token creation or a creature outlet", "token_sac", "cap:token_sac"),
+]);
+
+export function seatTokenImplementation(card = {}) {
+  const mechanics = card.mechanics || extractMechanicalSignals(card);
+  const kinds = mechanics.tokenKinds || classifyTokenKinds(card.oracleText || card.oracle_text || "");
+  return seatKindRows(ATLAS_TOKEN_SEATS, kinds, card);
+}
+
+/**
+ * Descriptive seating for aura kinds — splits the single blended `auras`
+ * produces/rewards signal into named seats.
+ * Consumes graph `auraKinds` — no second oracle regex family.
+ * Enchant is the Aura enchant-clause, not auras-you-control. Matters is
+ * auras you control, not the enchant clause. Affinity is affinity for
+ * Auras, not enchanting. Equipment stays unnamed this phase.
+ * Not Capability admissions. Never construction inputs.
+ */
+export const ATLAS_AURA_SEATS = freeze([
+  descriptiveKindSeat("enchant", "Aura Enchant", "not auras-you-control or affinity", "aura_enchant", "cap:aura_enchant"),
+  descriptiveKindSeat("matters", "Aura Matters", "not the enchant clause or affinity", "aura_matters", "cap:aura_matters"),
+  descriptiveKindSeat("affinity", "Aura Affinity", "not the enchant clause or auras-you-control", "aura_affinity", "cap:aura_affinity"),
+]);
+
+export function seatAuraImplementation(card = {}) {
+  const mechanics = card.mechanics || extractMechanicalSignals(card);
+  const kinds = mechanics.auraKinds || classifyAuraKinds(card.oracleText || card.oracle_text || "");
+  return seatKindRows(ATLAS_AURA_SEATS, kinds, card);
+}
+
+/**
+ * Descriptive seating for spell kinds — splits the single blended `spells`
+ * produces/rewards signal into named seats.
+ * Consumes graph `spellKinds` — no second oracle regex family.
+ * Copy is copying a spell, not casting without paying. Free is casting
+ * without paying mana, not flashback. Noncreature is instant-or-sorcery
+ * text, not a whenever-you-cast trigger kind and not magecraft.
+ * Not Capability admissions. Never construction inputs.
+ */
+export const ATLAS_SPELL_SEATS = freeze([
+  descriptiveKindSeat("copy", "Spell Copy", "not casting without paying or an instant-or-sorcery watch", "spell_copy", "cap:spell_copy"),
+  descriptiveKindSeat("free", "Free Spell", "not copy or flashback", "spell_free", "cap:spell_free"),
+  descriptiveKindSeat("noncreature", "Noncreature Spell", "not a whenever-you-cast trigger kind and not magecraft", "spell_noncreature", "cap:spell_noncreature"),
+]);
+
+export function seatSpellImplementation(card = {}) {
+  const mechanics = card.mechanics || extractMechanicalSignals(card);
+  const kinds = mechanics.spellKinds || classifySpellKinds(card.oracleText || card.oracle_text || "");
+  return seatKindRows(ATLAS_SPELL_SEATS, kinds, card);
+}
+
+/**
+ * Descriptive seating for draw kinds — splits the single blended `draw`
+ * produces/rewards signal into named seats.
+ * Consumes graph `drawKinds` — no second oracle regex family.
+ * Watch is a whenever-you-draw payoff, not net draw. Wheel is each-player
+ * discard/draw, not rummage. Hand is cards-in-hand, not a draw spell.
+ * Not Capability admissions. Never construction inputs.
+ */
+export const ATLAS_DRAW_SEATS = freeze([
+  descriptiveKindSeat("watch", "Draw Watch", "not net draw or a wheel", "draw_watch", "cap:draw_watch"),
+  descriptiveKindSeat("wheel", "Wheel", "not rummage or a whenever-you-draw payoff", "draw_wheel", "cap:draw_wheel"),
+  descriptiveKindSeat("hand", "Hand Size", "not a draw spell or a wheel", "draw_hand", "cap:draw_hand"),
+]);
+
+export function seatDrawImplementation(card = {}) {
+  const mechanics = card.mechanics || extractMechanicalSignals(card);
+  const kinds = mechanics.drawKinds || classifyDrawKinds(card.oracleText || card.oracle_text || "");
+  return seatKindRows(ATLAS_DRAW_SEATS, kinds, card);
+}
+
 /**
  * Descriptive seating for mutual loops and reset/pay shapes.
  * Consumes graph `loopKind` / `shape` — no second oracle regex family.
@@ -1185,6 +1307,22 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
     date: "2026-08-15",
     change: "Split the blended artifacts signal into spell / matters / outlet seats; still 0 Capability admissions",
   }),
+  freeze({
+    date: "2026-08-15",
+    change: "Split the blended tokens signal into create / go-wide / sac seats; still 0 Capability admissions",
+  }),
+  freeze({
+    date: "2026-08-15",
+    change: "Split the blended auras signal into enchant / matters / affinity seats; still 0 Capability admissions",
+  }),
+  freeze({
+    date: "2026-08-15",
+    change: "Split the blended spells signal into copy / free / noncreature seats; still 0 Capability admissions",
+  }),
+  freeze({
+    date: "2026-08-15",
+    change: "Split the blended draw signal into watch / wheel / hand seats; still 0 Capability admissions",
+  }),
 ]);
 
 export function seatsImplementedBy(cardName = "") {
@@ -1236,6 +1374,10 @@ export function buildAtlasVocabularyRegistry() {
     evasionSeats: ATLAS_EVASION_SEATS,
     landSeats: ATLAS_LAND_SEATS,
     artifactSeats: ATLAS_ARTIFACT_SEATS,
+    tokenSeats: ATLAS_TOKEN_SEATS,
+    auraSeats: ATLAS_AURA_SEATS,
+    spellSeats: ATLAS_SPELL_SEATS,
+    drawSeats: ATLAS_DRAW_SEATS,
     loopSeats: ATLAS_LOOP_SEATS,
     resetShapeSeats: ATLAS_RESET_SHAPE_SEATS,
     observation001: ATLAS_OBSERVATION_001,
@@ -1257,6 +1399,10 @@ export function buildAtlasVocabularyRegistry() {
       evasionSeatCount: ATLAS_EVASION_SEATS.length,
       landSeatCount: ATLAS_LAND_SEATS.length,
       artifactSeatCount: ATLAS_ARTIFACT_SEATS.length,
+      tokenSeatCount: ATLAS_TOKEN_SEATS.length,
+      auraSeatCount: ATLAS_AURA_SEATS.length,
+      spellSeatCount: ATLAS_SPELL_SEATS.length,
+      drawSeatCount: ATLAS_DRAW_SEATS.length,
       loopSeatCount: ATLAS_LOOP_SEATS.length,
       resetShapeSeatCount: ATLAS_RESET_SHAPE_SEATS.length,
       coverageScoreExists: false,

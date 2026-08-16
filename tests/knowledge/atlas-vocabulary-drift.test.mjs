@@ -24,6 +24,10 @@ import {
   ATLAS_EVASION_SEATS,
   ATLAS_LAND_SEATS,
   ATLAS_ARTIFACT_SEATS,
+  ATLAS_TOKEN_SEATS,
+  ATLAS_AURA_SEATS,
+  ATLAS_SPELL_SEATS,
+  ATLAS_DRAW_SEATS,
   ATLAS_LOOP_SEATS,
   ATLAS_RESET_SHAPE_SEATS,
 } from "../../app/knowledge/atlas-vocabulary.mjs";
@@ -38,6 +42,10 @@ import {
   EVASION_KINDS,
   LAND_KINDS,
   ARTIFACT_KINDS,
+  TOKEN_KINDS,
+  AURA_KINDS,
+  SPELL_KINDS,
+  DRAW_KINDS,
   LOOP_KINDS,
   RESET_SHAPES,
 } from "../../app/forge-interaction-graph.mjs";
@@ -129,6 +137,38 @@ describe("Atlas Vocabulary Registry — drift protection", () => {
     );
   });
 
+  it("seats exactly the graph's token kinds, no more, no fewer", () => {
+    assertSameSet(
+      ATLAS_TOKEN_SEATS.map((row) => row.kind),
+      Object.values(TOKEN_KINDS),
+      "token kinds",
+    );
+  });
+
+  it("seats exactly the graph's aura kinds, no more, no fewer", () => {
+    assertSameSet(
+      ATLAS_AURA_SEATS.map((row) => row.kind),
+      Object.values(AURA_KINDS),
+      "aura kinds",
+    );
+  });
+
+  it("seats exactly the graph's spell kinds, no more, no fewer", () => {
+    assertSameSet(
+      ATLAS_SPELL_SEATS.map((row) => row.kind),
+      Object.values(SPELL_KINDS),
+      "spell kinds",
+    );
+  });
+
+  it("seats exactly the graph's draw kinds, no more, no fewer", () => {
+    assertSameSet(
+      ATLAS_DRAW_SEATS.map((row) => row.kind),
+      Object.values(DRAW_KINDS),
+      "draw kinds",
+    );
+  });
+
   it("seats exactly the graph's loop kinds, no more, no fewer", () => {
     assertSameSet(
       ATLAS_LOOP_SEATS.map((row) => row.kind),
@@ -159,6 +199,10 @@ describe("Atlas Vocabulary Registry — drift protection", () => {
       ...registry.evasionSeats,
       ...registry.landSeats,
       ...registry.artifactSeats,
+      ...registry.tokenSeats,
+      ...registry.auraSeats,
+      ...registry.spellSeats,
+      ...registry.drawSeats,
       ...registry.loopSeats,
       ...registry.resetShapeSeats,
     ];
@@ -183,6 +227,10 @@ describe("Atlas Vocabulary Registry — drift protection", () => {
       ...registry.evasionSeats.map((row) => row.capability),
       ...registry.landSeats.map((row) => row.capability),
       ...registry.artifactSeats.map((row) => row.capability),
+      ...registry.tokenSeats.map((row) => row.capability),
+      ...registry.auraSeats.map((row) => row.capability),
+      ...registry.spellSeats.map((row) => row.capability),
+      ...registry.drawSeats.map((row) => row.capability),
       ...registry.loopSeats.map((row) => row.capability),
     ];
     assert.ok(allCapabilities.length > 0);
