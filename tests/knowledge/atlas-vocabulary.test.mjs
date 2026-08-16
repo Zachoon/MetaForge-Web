@@ -561,7 +561,7 @@ describe("Atlas Vocabulary Registry v0", () => {
 
   it("seats flying / menace / trample, splitting the blended evasion signal, without admitting Capabilities", () => {
     const registry = buildAtlasVocabularyRegistry();
-    assert.equal(registry.summary.evasionSeatCount, 6);
+    assert.equal(registry.summary.evasionSeatCount, 9);
     assert.equal(registry.summary.capabilityAdmittedCount, 0);
     assert.ok(registry.evasionSeats.every((row) => row.writesToBrain === false && row.capability.atlasAdmitted === false));
     assert.ok(registry.revisions.some((row) => row.date === "2026-08-15" && /flying \/ menace \/ trample/i.test(row.change)));
@@ -589,7 +589,13 @@ describe("Atlas Vocabulary Registry v0", () => {
     assert.equal(skulk[0].kind, "skulk");
     const reach = seatEvasionImplementation({ name: "Giant Spider", oracleText: "Reach" });
     assert.equal(reach[0].kind, "reach");
-    assert.deepEqual(seatEvasionImplementation({ name: "Fear Beast", oracleText: "This creature can't be blocked except by artifact creatures and/or black creatures." }), []);
+    const fear = seatEvasionImplementation({ name: "Fear Beast", oracleText: "This creature can't be blocked except by artifact creatures and/or black creatures." });
+    assert.equal(fear[0].kind, "fear");
+    const shadow = seatEvasionImplementation({ name: "Dauthi Horror", oracleText: "Shadow" });
+    assert.equal(shadow[0].kind, "shadow");
+    const intimidate = seatEvasionImplementation({ name: "Boggart Brute", oracleText: "Intimidate" });
+    assert.equal(intimidate[0].kind, "intimidate");
+    assert.deepEqual(seatEvasionImplementation({ name: "Zhalfirin Knight", oracleText: "This creature can't be blocked except by creatures with horsemanship." }), []);
 
     const fromGraph = seatEvasionImplementation({
       name: "Pre-classified",

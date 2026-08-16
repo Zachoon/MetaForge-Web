@@ -914,7 +914,7 @@ export function seatProtectionImplementation(card = {}) {
  * `evasion` produces/rewards signal into named seats.
  * Consumes graph `evasionKinds` — no second oracle regex family.
  * Flying, menace, and trample are each the keyword, not the others.
- * Unblockable is can't-be-blocked, not skulk. Skulk is the keyword, not unblockable. Reach is the keyword, not flying. Fear and shadow stay unnamed.
+ * Unblockable is can't-be-blocked, not skulk. Skulk is the keyword, not unblockable. Reach is the keyword, not flying. Fear is not intimidate. Shadow is not fear. Intimidate is not fear. Horsemanship stays unnamed.
  * Not Capability admissions. Never construction inputs.
  */
 export const ATLAS_EVASION_SEATS = freeze([
@@ -994,6 +994,45 @@ export const ATLAS_EVASION_SEATS = freeze([
     seat: freeze({ id: "seat:reach", label: "Reach" }),
     contrast: "not flying",
     role: "reach",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "fear",
+    capability: freeze({
+      id: "cap:fear",
+      label: "Fear",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:fear", label: "Fear" }),
+    contrast: "not intimidate or unblockable",
+    role: "fear",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "shadow",
+    capability: freeze({
+      id: "cap:shadow",
+      label: "Shadow",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:shadow", label: "Shadow" }),
+    contrast: "not fear",
+    role: "shadow",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "intimidate",
+    capability: freeze({
+      id: "cap:intimidate",
+      label: "Intimidate",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:intimidate", label: "Intimidate" }),
+    contrast: "not fear or unblockable",
+    role: "intimidate",
     writesToBrain: false,
   }),
 ]);
@@ -1559,6 +1598,10 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
   freeze({
     date: "2026-08-16",
     change: "Named storm / cascade / rebound as spell kinds; still 0 Capability admissions",
+  }),
+  freeze({
+    date: "2026-08-16",
+    change: "Named fear / shadow / intimidate as evasion kinds; still 0 Capability admissions",
   }),
 ]);
 

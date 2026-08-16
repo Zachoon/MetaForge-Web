@@ -1247,6 +1247,9 @@ test("evasion kinds split flying / menace / trample from the blended evasion sig
   const skulkOracle = "Skulk (This creature can't be blocked by creatures with greater power.)";
   const reachOracle = "Reach";
   const fearOracle = "This creature can't be blocked except by artifact creatures and/or black creatures.";
+  const shadowOracle = "Shadow";
+  const intimidateOracle = "This creature can't be blocked except by artifact creatures and/or creatures that share a color with it.";
+  const horsemanshipOracle = "This creature can't be blocked except by creatures with horsemanship.";
 
   assert.deepEqual(classifyEvasionKinds(flyingOracle), [EVASION_KINDS.FLYING]);
   assert.deepEqual(classifyEvasionKinds(menaceOracle), [EVASION_KINDS.MENACE]);
@@ -1255,7 +1258,13 @@ test("evasion kinds split flying / menace / trample from the blended evasion sig
   assert.deepEqual(classifyEvasionKinds(skulkOracle), [EVASION_KINDS.SKULK]);
   assert.equal(classifyEvasionKinds(skulkOracle).includes(EVASION_KINDS.UNBLOCKABLE), false);
   assert.deepEqual(classifyEvasionKinds(reachOracle), [EVASION_KINDS.REACH]);
-  assert.deepEqual(classifyEvasionKinds(fearOracle), []);
+  assert.deepEqual(classifyEvasionKinds(fearOracle), [EVASION_KINDS.FEAR]);
+  assert.equal(classifyEvasionKinds(fearOracle).includes(EVASION_KINDS.UNBLOCKABLE), false);
+  assert.equal(classifyEvasionKinds(fearOracle).includes(EVASION_KINDS.INTIMIDATE), false);
+  assert.deepEqual(classifyEvasionKinds(shadowOracle), [EVASION_KINDS.SHADOW]);
+  assert.deepEqual(classifyEvasionKinds(intimidateOracle), [EVASION_KINDS.INTIMIDATE]);
+  assert.equal(classifyEvasionKinds(intimidateOracle).includes(EVASION_KINDS.FEAR), false);
+  assert.deepEqual(classifyEvasionKinds(horsemanshipOracle), []);
 
   const hawk = extractMechanicalSignals({
     name: "Storm Crow",
@@ -1270,12 +1279,12 @@ test("evasion kinds split flying / menace / trample from the blended evasion sig
     { name: "Goblin War Paint", typeLine: "Enchantment — Aura", oracleText: trampleOracle },
   ]);
   assert.equal(
-    graph.edges.some((edge) => edge.signals.includes(EVASION_KINDS.FLYING) || edge.signals.includes(EVASION_KINDS.MENACE) || edge.signals.includes(EVASION_KINDS.TRAMPLE) || edge.signals.includes(EVASION_KINDS.UNBLOCKABLE) || edge.signals.includes(EVASION_KINDS.SKULK) || edge.signals.includes(EVASION_KINDS.REACH)),
+    graph.edges.some((edge) => edge.signals.includes(EVASION_KINDS.FLYING) || edge.signals.includes(EVASION_KINDS.MENACE) || edge.signals.includes(EVASION_KINDS.TRAMPLE) || edge.signals.includes(EVASION_KINDS.UNBLOCKABLE) || edge.signals.includes(EVASION_KINDS.SKULK) || edge.signals.includes(EVASION_KINDS.REACH) || edge.signals.includes(EVASION_KINDS.FEAR) || edge.signals.includes(EVASION_KINDS.SHADOW) || edge.signals.includes(EVASION_KINDS.INTIMIDATE)),
     false,
     "evasion kinds do not form graph edges",
   );
   assert.match(graph.methodology, /flying/i);
-  assert.match(graph.methodology, /unblockable/i);
+  assert.match(graph.methodology, /horsemanship stays unnamed/i);
 });
 
 test("land kinds split landfall / extra drop / search from the blended lands signal", () => {

@@ -349,6 +349,19 @@ describe("Mentor Shadow v0", () => {
     assert.match(reach.paragraph, /Reach/);
   });
 
+
+  it("names fear, shadow, and intimidate as evasion kinds", () => {
+    const fear = explainCardAsMentor({ cardName: "Fear Beast", oracleText: "Fear" });
+    assert.equal(fear.evasionSeating[0].kind, "fear");
+    assert.match(fear.paragraph, /Fear/);
+    const shadow = explainCardAsMentor({ cardName: "Dauthi Horror", oracleText: "Shadow" });
+    assert.equal(shadow.evasionSeating[0].kind, "shadow");
+    assert.match(shadow.paragraph, /Shadow/);
+    const intimidate = explainCardAsMentor({ cardName: "Intimidate Beast", oracleText: "Intimidate" });
+    assert.equal(intimidate.evasionSeating[0].kind, "intimidate");
+    assert.match(intimidate.paragraph, /Intimidate/);
+  });
+
   it("names landfall, extra land drop, and land search, splitting the blended lands signal", () => {
     const landfall = explainCardAsMentor({
       cardName: "Lotus Cobra",
