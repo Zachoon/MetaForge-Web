@@ -154,6 +154,10 @@ export function analyzeCorpusDeck(record, options = {}) {
       desiredRoles: [],
       packageSignals: [],
       promises: [],
+      // Lets buildStrategicIntent's composition trigger see archetypes the
+      // 99 builds but the commander's own text never announces. Real-corpus
+      // analysis only — construction has no decklist yet to pass here.
+      rows: record.rows || [],
     },
   });
 

@@ -320,9 +320,36 @@ const PACKAGE_CATALOG = Object.freeze({
   }),
 });
 
+/**
+ * Composition trigger for packages the commander's own text and any stated
+ * blueprint mechanics never announce — an archetype built entirely by the
+ * 99. Inert unless a caller explicitly supplies blueprint.rows (a real
+ * decklist); parseNativeBlueprintIntent (live fresh-build construction)
+ * never sets it, so this changes nothing for a deck with no 99 yet. Uses
+ * each package's own constructedCore floor as a "does real evidence exist"
+ * bar, not the singleton target used for health scoring later — the same
+ * open-low, evaluate-honestly pattern detectCommander already follows.
+ */
+function detectComposition(definition, blueprint) {
+  const rows = blueprint?.rows;
+  if (!Array.isArray(rows) || !rows.length) return false;
+  const legs = definition.requireBalancedLegs?.length ? definition.requireBalancedLegs : definition.coreSemantics;
+  if (!legs?.length) return false;
+  const floor = definition.balancedLegFloor?.constructed ?? definition.density.constructedCore;
+  const counts = new Map();
+  for (const row of rows) {
+    const qty = Math.max(1, Number(row.quantity) || 1);
+    for (const semantic of strategicSemanticsFor(row)) {
+      counts.set(semantic, (counts.get(semantic) || 0) + qty);
+    }
+  }
+  return legs.every((semantic) => (counts.get(semantic) || 0) >= floor);
+}
+
 function packageTriggered(definition, commanders, blueprint) {
   if (definition.detectBlueprint?.(blueprint)) return true;
-  return commanders.some((commander) => definition.detectCommander?.(oracleOf(commander) || ""));
+  if (commanders.some((commander) => definition.detectCommander?.(oracleOf(commander) || ""))) return true;
+  return detectComposition(definition, blueprint);
 }
 
 function densityFor(definition, singleton) {
