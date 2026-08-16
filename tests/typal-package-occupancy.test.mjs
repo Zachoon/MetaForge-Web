@@ -126,6 +126,9 @@ test("extractTypalTribes names real tribes and rejects among / legendary / land"
   assert.deepEqual(extractTypalTribes("Equipment you control have haste."), []);
   assert.deepEqual(extractTypalTribes("Whenever one or more creatures you control become the target of an ability, draw a card."), []);
   assert.deepEqual(extractTypalTribes("If you control five or more Towns, create a token. Other creatures you control get +X/+X, where X is the number of Towns you control."), []);
+  assert.deepEqual(extractTypalTribes("Whenever you cast another Vampire spell, create a token. Whenever this attacks, put a +1/+1 counter on each Vampire you control."), ["vampire"]);
+  assert.deepEqual(extractTypalTribes("Search your library for a Dragon permanent card and reveal it."), ["dragon"]);
+  assert.deepEqual(extractTypalTribes("Whenever you cast an instant spell, draw a card."), []);
 });
 
 test("typal occupancy opens only when the commander actually runs a tribe", () => {

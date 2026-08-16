@@ -159,6 +159,8 @@ function singularizeTribe(word = "") {
 /**
  * Tribe words a commander actually runs. Occupancy only.
  * "among creatures" / "Legendary creatures" / "Land creatures" are not tribes.
+ * "each Vampire you control", "a Vampire spell", and "a Dragon permanent
+ * card" are tribes. Instant/sorcery/creature captures stay on the stop list.
  */
 export function extractTypalTribes(oracle = "") {
   const text = String(oracle || "");
@@ -166,6 +168,9 @@ export function extractTypalTribes(oracle = "") {
     ...text.matchAll(/\banother ([A-Za-z][A-Za-z'-]+)s? you control\b/gi),
     ...text.matchAll(/\bother ([A-Za-z][A-Za-z'-]+)s? you control\b/gi),
     ...text.matchAll(/\b(?:a|an) ([A-Za-z][A-Za-z'-]+) you control\b/gi),
+    ...text.matchAll(/\beach ([A-Za-z][A-Za-z'-]+) you control\b/gi),
+    ...text.matchAll(/\b(?:a|an|another) ([A-Za-z][A-Za-z'-]+) spell\b/gi),
+    ...text.matchAll(/\b(?:a|an|another) ([A-Za-z][A-Za-z'-]+) permanent card\b/gi),
     ...text.matchAll(/\b([A-Za-z][A-Za-z'-]+) creatures you control\b/gi),
     ...text.matchAll(/\b([A-Za-z][A-Za-z'-]+)s you control\b/gi),
   ].map((match) => singularizeTribe(match[1]));
@@ -187,6 +192,22 @@ export function detectAristocratsCommander(oracle = "") {
   const creatureOrTokenOutlet = /\bsacrifice (?:x )?(?:a |another )?(?:creature|squirrels?|goblins?|tokens?|permanents?)\b/i.test(text);
   const tokenEngine = /create [^.]* token/i.test(text) || /tokens would be created/i.test(text);
   return creatureOrTokenOutlet && tokenEngine;
+}
+
+
+/**
+ * Commander runs a spellslinger engine. Occupancy only.
+ * Magecraft, you-cast instant/sorcery/noncreature, a-player-casts
+ * instant/sorcery (Parun), or copy-target-instant-or-sorcery (Stella).
+ * Draw-damage, creature-cast payoffs, and copy-target-creature are not.
+ */
+export function detectSpellslingerCommander(oracle = "") {
+  const text = String(oracle || "");
+  if (/\bmagecraft\b/i.test(text)) return true;
+  if (/whenever you cast (?:an? )?(?:instant|sorcery|noncreature)/i.test(text)) return true;
+  if (/whenever (?:a |each )?player casts (?:an? )?(?:instant|sorcery)/i.test(text)) return true;
+  if (/copy target instant or sorcery/i.test(text)) return true;
+  return false;
 }
 
 const PACKAGE_CATALOG = Object.freeze({
@@ -291,7 +312,7 @@ const PACKAGE_CATALOG = Object.freeze({
     // Occupancy is not a catalog false-friend list. Cheap instants/sorceries
     // occupy core; spell payoffs (whenever you cast / magecraft) are support;
     // a generic "spells" produce/reward must not occupy cheap-spell density.
-    detectCommander: (oracle) => /whenever you cast (?:an? )?(?:instant|sorcery|noncreature)/i.test(oracle) || /\bmagecraft\b/i.test(oracle),
+    detectCommander: detectSpellslingerCommander,
     detectBlueprint: (blueprint) => blueprint.requestedMechanics?.includes("spellslinger") || /\bspells?\b/i.test(blueprint.source || ""),
     density: Object.freeze({ singletonCore: 14, constructedCore: 8, singletonSupport: 3, constructedSupport: 2 }),
   }),
