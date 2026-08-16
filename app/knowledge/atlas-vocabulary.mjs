@@ -441,7 +441,8 @@ export function seatSacrificeImplementation(card = {}) {
  * Consumes graph `triggerKinds` — no second oracle regex family.
  * Enter is not a blink/flicker recursion pattern. Cast is not spellslinger
  * construction occupancy. Attack is not extra-combat amplification and not
- * stax construction occupancy — all three are named trigger conditions only.
+ * stax construction occupancy. Combat damage is not an Attack Trigger and
+ * not extra-combat amplification — all four are named trigger conditions only.
  * Not Capability admissions. Never construction inputs.
  */
 export const ATLAS_TRIGGER_SEATS = freeze([
@@ -482,6 +483,19 @@ export const ATLAS_TRIGGER_SEATS = freeze([
     seat: freeze({ id: "seat:attack_trigger", label: "Attack Trigger" }),
     contrast: "not extra-combat amplification or stax construction occupancy",
     role: "attack_trigger",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "combat_damage",
+    capability: freeze({
+      id: "cap:combat_damage_trigger",
+      label: "Combat Damage Trigger",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:combat_damage_trigger", label: "Combat Damage Trigger" }),
+    contrast: "not an Attack Trigger or extra-combat amplification",
+    role: "combat_damage_trigger",
     writesToBrain: false,
   }),
 ]);
@@ -673,6 +687,10 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
   freeze({
     date: "2026-08-15",
     change: "Added attack as a third trigger kind, distinct from extra-combat amplification and from stax occupancy; still 0 Capability admissions",
+  }),
+  freeze({
+    date: "2026-08-15",
+    change: "Added combat damage as a fourth trigger kind, distinct from Attack Trigger and from extra-combat amplification; still 0 Capability admissions",
   }),
 ]);
 

@@ -178,6 +178,17 @@ describe("Mentor Shadow v0", () => {
     assert.match(attack.paragraph, /not extra-combat amplification or stax construction occupancy/);
   });
 
+  it("names combat damage as a fourth trigger kind, not an Attack Trigger or extra-combat amplification", () => {
+    const combatDamage = explainCardAsMentor({
+      cardName: "Silent-Blade Oni",
+      oracleText: "Whenever this creature deals combat damage to a player, create a Treasure token.",
+    });
+    assert.equal(combatDamage.writesToBrain, false);
+    assert.equal(combatDamage.triggerSeating[0].kind, "combat_damage");
+    assert.match(combatDamage.paragraph, /Combat Damage Trigger/);
+    assert.match(combatDamage.paragraph, /not an Attack Trigger or extra-combat amplification/);
+  });
+
   it("names a reset pair as a closed loop, not a verified infinite", () => {
     const explanation = explainPairAsMentor({
       left: { name: "Basalt Monolith", oracleText: "{T}: Add {C}{C}{C}. {3}: Untap this artifact." },

@@ -899,9 +899,8 @@ test("attack is a third trigger kind, distinct from extra-combat amplification a
 
   assert.deepEqual(classifyTriggerKinds(attackOracle), [TRIGGER_KINDS.ATTACK]);
 
-  // Combat damage and "attacking creatures" reward text are not attack
-  // triggers — only "whenever ~ attacks" is.
-  assert.deepEqual(classifyTriggerKinds(combatDamageOracle), []);
+  // Combat damage is not an attack trigger — only "whenever ~ attacks" is.
+  assert.equal(classifyTriggerKinds(combatDamageOracle).includes(TRIGGER_KINDS.ATTACK), false);
   assert.deepEqual(classifyTriggerKinds("Creatures you control get +1/+0 as long as they're attacking."), []);
 
   // The extra-combat-phase amplifier is a separate mechanism entirely — it
@@ -936,4 +935,43 @@ test("attack is a third trigger kind, distinct from extra-combat amplification a
   assert.match(graph.methodology, /attack/i);
   assert.match(graph.methodology, /extra-combat/i);
   assert.match(graph.methodology, /stax/i);
+});
+
+test("combat damage is a fourth trigger kind, distinct from attack and extra-combat amplification", () => {
+  const combatDamageOracle = "Whenever this creature deals combat damage to a player, create a Treasure token.";
+  const attackOracle = "Whenever this creature attacks, draw a card.";
+  const extraCombatOracle = "Untap all creatures you control. After this main phase, there is an additional combat phase.";
+  const nonCombatDamageOracle = "Whenever this creature deals damage to a player, draw a card.";
+
+  assert.deepEqual(classifyTriggerKinds(combatDamageOracle), [TRIGGER_KINDS.COMBAT_DAMAGE]);
+  assert.equal(classifyTriggerKinds(attackOracle).includes(TRIGGER_KINDS.COMBAT_DAMAGE), false);
+  assert.deepEqual(classifyTriggerKinds(extraCombatOracle), []);
+  assert.deepEqual(classifyTriggerKinds(nonCombatDamageOracle), []);
+  assert.deepEqual(classifyTriggerKinds("Creatures you control get +1/+0 as long as they're attacking."), []);
+
+  assert.deepEqual(
+    classifyTriggerKinds(`When this enters the battlefield, draw a card. ${combatDamageOracle}`),
+    [TRIGGER_KINDS.ENTER, TRIGGER_KINDS.COMBAT_DAMAGE],
+  );
+
+  const ninja = extractMechanicalSignals({
+    name: "Silent-Blade Oni",
+    typeLine: "Creature — Demon Ninja",
+    oracleText: combatDamageOracle,
+  });
+  assert.deepEqual(ninja.triggerKinds, [TRIGGER_KINDS.COMBAT_DAMAGE]);
+  assert.equal(ninja.produces.includes(TRIGGER_KINDS.COMBAT_DAMAGE), false, "trigger kinds are observation labels, not production");
+  assert.equal(ninja.rewards.includes(TRIGGER_KINDS.COMBAT_DAMAGE), false, "trigger kinds are observation labels, not a payoff");
+
+  const graph = buildInteractionGraph([
+    { name: "Silent-Blade Oni", typeLine: "Creature", oracleText: combatDamageOracle },
+    { name: "Aggravated Assault", typeLine: "Enchantment", oracleText: extraCombatOracle },
+  ]);
+  assert.equal(
+    graph.edges.some((edge) => edge.signals.includes(TRIGGER_KINDS.COMBAT_DAMAGE)),
+    false,
+    "trigger kinds do not form graph edges",
+  );
+  assert.match(graph.methodology, /combat damage/i);
+  assert.match(graph.methodology, /attack is not combat damage/i);
 });

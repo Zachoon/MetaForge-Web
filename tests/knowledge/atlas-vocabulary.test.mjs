@@ -282,11 +282,12 @@ describe("Atlas Vocabulary Registry v0", () => {
 
   it("seats enter and cast as a card's own trigger condition, without admitting Capabilities", () => {
     const registry = buildAtlasVocabularyRegistry();
-    assert.equal(registry.summary.triggerSeatCount, 3);
+    assert.equal(registry.summary.triggerSeatCount, 4);
     assert.equal(registry.summary.capabilityAdmittedCount, 0);
     assert.ok(registry.triggerSeats.every((row) => row.writesToBrain === false && row.capability.atlasAdmitted === false));
     assert.ok(registry.revisions.some((row) => row.date === "2026-08-15" && /enter and cast/i.test(row.change)));
     assert.ok(registry.revisions.some((row) => row.date === "2026-08-15" && /attack/i.test(row.change) && /trigger/i.test(row.change)));
+    assert.ok(registry.revisions.some((row) => row.date === "2026-08-15" && /combat damage/i.test(row.change)));
 
     const enter = seatTriggerImplementation({
       name: "Bauble",
@@ -314,6 +315,22 @@ describe("Atlas Vocabulary Registry v0", () => {
     assert.equal(attack[0].kind, "attack");
     assert.equal(attack[0].seat.label, "Attack Trigger");
     assert.equal(attack[0].contrast, "not extra-combat amplification or stax construction occupancy");
+
+    const combatDamage = seatTriggerImplementation({
+      name: "Silent-Blade Oni",
+      oracleText: "Whenever this creature deals combat damage to a player, create a Treasure token.",
+    });
+    assert.equal(combatDamage.length, 1);
+    assert.equal(combatDamage[0].kind, "combat_damage");
+    assert.equal(combatDamage[0].seat.label, "Combat Damage Trigger");
+    assert.equal(combatDamage[0].contrast, "not an Attack Trigger or extra-combat amplification");
+
+    // Extra combat is not a Combat Damage Trigger.
+    const extraCombat = seatTriggerImplementation({
+      name: "Aggravated Assault",
+      oracleText: "Untap all creatures you control. After this main phase, there is an additional combat phase.",
+    });
+    assert.deepEqual(extraCombat, []);
 
     // A flashback/escape "you may cast" permission is not a Cast Trigger.
     const flashback = seatTriggerImplementation({
