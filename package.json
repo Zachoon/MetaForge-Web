@@ -79,6 +79,7 @@
     "report:knowledge-epic6:all-packages": "node tests/knowledge/run-epic6-all-packages-report.mjs",
     "report:knowledge-epic6:unseen-packages": "node tests/knowledge/run-epic6-unseen-packages-report.mjs",
     "report:knowledge-epic6:aristocrats-detect": "node tests/knowledge/run-epic6-aristocrats-detect-closeout.mjs",
+    "report:knowledge-epic6:remaining-detect": "node tests/knowledge/run-epic6-remaining-detect-closeout.mjs",
     "report:knowledge-epic6:composition-blind-spot": "node tests/knowledge/run-epic6-composition-blind-spot-report.mjs",
     "validate:knowledge-live-ingest": "node --test tests/knowledge/live-tournament-ingest.test.mjs",
     "observe:tournament-live": "node tests/knowledge/run-epic2-live-report.mjs",
