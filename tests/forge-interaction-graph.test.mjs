@@ -751,6 +751,32 @@ test("flashback, unearth, and escape are graveyard returns, distinct from mill a
   assert.match(graph.methodology, /escape/i);
 });
 
+
+test("graveyard kinds name persist / undying / jump-start, distinct from unearth and flashback", () => {
+  const persistOracle = "Persist";
+  const undyingOracle = "Undying";
+  const jumpOracle = "Jump-start";
+  const aftermathOracle = "Aftermath (Cast this spell only from your graveyard. Then exile it.)";
+
+  assert.deepEqual(classifyGraveyardKinds(persistOracle), [GRAVEYARD_KINDS.PERSIST]);
+  assert.deepEqual(classifyGraveyardKinds(undyingOracle), [GRAVEYARD_KINDS.UNDYING]);
+  assert.deepEqual(classifyGraveyardKinds(jumpOracle), [GRAVEYARD_KINDS.JUMP_START]);
+  assert.deepEqual(classifyGraveyardKinds(aftermathOracle), []);
+  assert.equal(classifyGraveyardKinds(jumpOracle).includes(GRAVEYARD_KINDS.FLASHBACK), false);
+  assert.equal(classifyGraveyardKinds(persistOracle).includes(GRAVEYARD_KINDS.UNEARTH), false);
+
+  const graph = buildInteractionGraph([
+    { name: "Kitchen Finks", typeLine: "Creature", oracleText: persistOracle },
+    { name: "Young Wolf", typeLine: "Creature", oracleText: undyingOracle },
+  ]);
+  assert.equal(
+    graph.edges.some((edge) => edge.signals.includes(GRAVEYARD_KINDS.PERSIST) || edge.signals.includes(GRAVEYARD_KINDS.UNDYING) || edge.signals.includes(GRAVEYARD_KINDS.JUMP_START)),
+    false,
+    "persist/undying/jump-start do not form graph edges",
+  );
+  assert.match(graph.methodology, /aftermath stays unnamed/i);
+});
+
 test("rummage filters the hand and is not net draw", () => {
   const loot = classifySelectionKinds("Discard a card, then draw a card.");
   const faithless = classifySelectionKinds("Draw two cards, then discard two cards.");

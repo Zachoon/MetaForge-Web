@@ -120,6 +120,19 @@ describe("Mentor Shadow v0", () => {
     assert.match(escape.paragraph, /not dredge-to-hand/);
   });
 
+
+  it("names persist, undying, and jump-start as graveyard kinds", () => {
+    const persist = explainCardAsMentor({ cardName: "Kitchen Finks", oracleText: "Persist" });
+    assert.equal(persist.graveyardSeating[0].kind, "persist");
+    assert.match(persist.paragraph, /Persist Return/);
+    const undying = explainCardAsMentor({ cardName: "Young Wolf", oracleText: "Undying" });
+    assert.equal(undying.graveyardSeating[0].kind, "undying");
+    assert.match(undying.paragraph, /Undying Return/);
+    const jump = explainCardAsMentor({ cardName: "Direct Current", oracleText: "Jump-start" });
+    assert.equal(jump.graveyardSeating[0].kind, "jump_start");
+    assert.match(jump.paragraph, /Jump-Start Recast/);
+  });
+
   it("names outlet, death payoff, and incidental yard, not a mill dump", () => {
     const outlet = explainCardAsMentor({
       cardName: "Viscera Seer",

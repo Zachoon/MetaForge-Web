@@ -129,7 +129,7 @@ describe("Atlas Vocabulary Registry v0", () => {
 
   it("seats mill as a graveyard dump, distinct from surveil, without admitting Capabilities", () => {
     const registry = buildAtlasVocabularyRegistry();
-    assert.equal(registry.summary.graveyardSeatCount, 5);
+    assert.equal(registry.summary.graveyardSeatCount, 8);
     assert.equal(registry.summary.capabilityAdmittedCount, 0);
     assert.ok(registry.graveyardSeats.every((row) => row.writesToBrain === false && row.capability.atlasAdmitted === false));
 
@@ -242,6 +242,20 @@ describe("Atlas Vocabulary Registry v0", () => {
     });
     assert.equal(fromGraph[0].seat.label, "Flashback Recast");
     assert.equal(fromGraph[0].writesToBrain, false);
+  });
+
+
+  it("seats persist / undying / jump-start as graveyard kinds without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.graveyardSeatCount, 8);
+    const persist = seatGraveyardImplementation({ name: "Kitchen Finks", oracleText: "Persist" });
+    assert.equal(persist[0].kind, "persist");
+    assert.equal(persist[0].seat.label, "Persist Return");
+    const undying = seatGraveyardImplementation({ name: "Young Wolf", oracleText: "Undying" });
+    assert.equal(undying[0].kind, "undying");
+    const jump = seatGraveyardImplementation({ name: "Direct Current", oracleText: "Jump-start" });
+    assert.equal(jump[0].kind, "jump_start");
+    assert.deepEqual(seatGraveyardImplementation({ name: "Toil // Trouble", oracleText: "Aftermath (Cast this spell only from your graveyard. Then exile it.)" }), []);
   });
 
   it("seats outlet / death payoff / incidental yard, splitting the blended sacrifice signal, without admitting Capabilities", () => {

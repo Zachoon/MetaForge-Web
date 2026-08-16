@@ -301,7 +301,7 @@ export function seatSelectionImplementation(card = {}) {
  * Consumes graph `graveyardKinds` — no second oracle regex family.
  * Mill is not surveil. Dredge is not mill. Flashback and Escape are casts
  * from the yard, distinct from dredge's return-to-hand. Unearth is a
- * temporary battlefield return, not permanent reanimation.
+ * temporary battlefield return, not permanent reanimation. Persist is not undying. Jump-start is not flashback. Aftermath stays unnamed.
  * Not Capability admissions. Never construction inputs.
  */
 export const ATLAS_GRAVEYARD_SEATS = freeze([
@@ -368,6 +368,45 @@ export const ATLAS_GRAVEYARD_SEATS = freeze([
     seat: freeze({ id: "seat:escape_recast", label: "Escape Recast" }),
     contrast: "not dredge-to-hand",
     role: "recaster",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "persist",
+    capability: freeze({
+      id: "cap:persist_return",
+      label: "Persist Return",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:persist_return", label: "Persist Return" }),
+    contrast: "not undying or unearth",
+    role: "persist_returner",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "undying",
+    capability: freeze({
+      id: "cap:undying_return",
+      label: "Undying Return",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:undying_return", label: "Undying Return" }),
+    contrast: "not persist or unearth",
+    role: "undying_returner",
+    writesToBrain: false,
+  }),
+  freeze({
+    kind: "jump_start",
+    capability: freeze({
+      id: "cap:jump_start_recast",
+      label: "Jump-Start Recast",
+      status: "descriptive_not_admitted",
+      atlasAdmitted: false,
+    }),
+    seat: freeze({ id: "seat:jump_start_recast", label: "Jump-Start Recast" }),
+    contrast: "not flashback",
+    role: "jump_start_recaster",
     writesToBrain: false,
   }),
 ]);
@@ -1466,6 +1505,10 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
   freeze({
     date: "2026-08-16",
     change: "Named unblockable / skulk / reach as evasion kinds; still 0 Capability admissions",
+  }),
+  freeze({
+    date: "2026-08-16",
+    change: "Named persist / undying / jump-start as graveyard kinds; still 0 Capability admissions",
   }),
 ]);
 
