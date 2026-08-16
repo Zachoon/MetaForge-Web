@@ -42,6 +42,25 @@ describe("Mentor Shadow v0", () => {
     assert.match(explanation.paragraph, /not evidence of a generic go-wide tokens plan/);
   });
 
+  it("names a Dwarf typal engine without calling it generic tokens, and rejects Hojo", () => {
+    const lord = explainCardAsMentor({
+      cardName: "Dwarf Lord",
+      oracleText: "Dwarf creatures you control get +1/+1.",
+      typeLine: "Legendary Creature — Dwarf Noble",
+    });
+    assert.equal(lord.writesToBrain, false);
+    assert.ok(lord.typalSeating.some((row) => row.kind === "engine"));
+    assert.match(lord.paragraph, /Typal Engine/);
+    assert.match(lord.paragraph, /not a false-open and not generic tokens/);
+
+    const hojo = explainCardAsMentor({
+      cardName: "Professor Hojo",
+      oracleText: "Whenever one or more creatures you control become the target of an activated ability, draw a card.",
+      typeLine: "Legendary Creature — Human Scientist",
+    });
+    assert.deepEqual(hojo.typalSeating, []);
+  });
+
   it("names rummage as a hand filter, not net draw", () => {
     const explanation = explainCardAsMentor({
       cardName: "Faithless Looting",

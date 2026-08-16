@@ -24,6 +24,10 @@ import {
   resetPayShape,
   RESET_SHAPES,
 } from "../forge-interaction-graph.mjs";
+import {
+  cardSatisfiesPackageCore,
+  extractTypalTribes,
+} from "../strategic-intent.mjs";
 // Atlas Vocabulary Registry v0 — Age of Vocabulary engineering surface
 // =============================================================================
 // Stable meanings + illustrative equivalence. Naming is not promotion.
@@ -1265,6 +1269,70 @@ function descriptiveKindSeat(kind, label, contrast, role, capId = `cap:${kind}`)
   });
 }
 
+function uniqueNormalized(values = []) {
+  return [...new Set((values || []).map((value) => String(value || "").trim().toLocaleLowerCase("en")).filter(Boolean))];
+}
+
+function typalIntentFor(tribes = []) {
+  return freeze({
+    packages: freeze([freeze({ id: "typal", tribalTypes: freeze([...tribes]) })]),
+  });
+}
+
+function cardMentionsTypalTribe(card = {}, tribes = []) {
+  const oracle = String(card.oracleText || card.oracle_text || "");
+  return tribes.some((tribe) => {
+    const escaped = String(tribe).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`\\b${escaped}s?\\b`, "i").test(oracle);
+  });
+}
+
+/**
+ * Descriptive seating for typal occupancy language already shipped in
+ * construction. Consumes `extractTypalTribes` / type-line membership —
+ * no second tribe regex family.
+ * Engine is a commander that actually runs a tribe. Member is type-line
+ * intersection (or changeling). Mention is oracle text without the type.
+ * Among / legendary / land / more / town do not open an engine.
+ * Not Capability admissions. Never construction inputs.
+ */
+export const ATLAS_TYPAL_SEATS = freeze([
+  descriptiveKindSeat("engine", "Typal Engine", "not a false-open and not generic tokens", "typal_engine", "cap:typal_engine"),
+  descriptiveKindSeat("member", "Typal Member", "not an oracle mention without the type line", "typal_member", "cap:typal_member"),
+  descriptiveKindSeat("mention", "Typal Mention", "not a type-line tribe member", "typal_mention", "cap:typal_mention"),
+]);
+
+export function seatTypalImplementation(card = {}, { tribalTypes = [], commanderOracleText = "" } = {}) {
+  const ownTribes = extractTypalTribes(card.oracleText || card.oracle_text || "");
+  const tribes = uniqueNormalized([
+    ...tribalTypes,
+    ...extractTypalTribes(commanderOracleText),
+    ...ownTribes,
+  ]);
+  const kinds = [];
+  if (ownTribes.length) kinds.push("engine");
+  if (tribes.length && cardSatisfiesPackageCore(card, "typal", typalIntentFor(tribes))) kinds.push("member");
+  else if (tribes.length && cardMentionsTypalTribe(card, tribes)) kinds.push("mention");
+  const rows = [];
+  for (const definition of ATLAS_TYPAL_SEATS) {
+    if (!kinds.includes(definition.kind)) continue;
+    rows.push(freeze({
+      kind: definition.kind,
+      tribes: freeze(definition.kind === "engine" ? [...ownTribes] : [...tribes]),
+      capability: definition.capability,
+      seat: definition.seat,
+      contrast: definition.contrast,
+      implementation: freeze({
+        card: String(card.name || "Unknown card"),
+        roles: freeze([definition.role]),
+        evidenceSignals: freeze([definition.kind, ...(definition.kind === "engine" ? ownTribes : tribes)]),
+      }),
+      writesToBrain: false,
+    }));
+  }
+  return freeze(rows);
+}
+
 /**
  * Descriptive seating for token kinds — splits the single blended `tokens`
  * produces/rewards signal into named seats.
@@ -1646,6 +1714,10 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
     date: "2026-08-16",
     change: "Named disturb / embalm / eternalize as graveyard kinds; still 0 Capability admissions",
   }),
+  freeze({
+    date: "2026-08-16",
+    change: "Seated typal engine / member / mention from occupancy language, rejecting among/legendary/land/more/town false opens; still 0 Capability admissions",
+  }),
 ]);
 
 export function seatsImplementedBy(cardName = "") {
@@ -1687,6 +1759,7 @@ export function buildAtlasVocabularyRegistry() {
     coverageDimensions: ATLAS_COVERAGE_DIMENSIONS,
     equivalenceIllustrative: ATLAS_EQUIVALENCE_ILLUSTRATIVE,
     namedResourceSeats: ATLAS_NAMED_RESOURCE_SEATS,
+    typalSeats: ATLAS_TYPAL_SEATS,
     selectionSeats: ATLAS_SELECTION_SEATS,
     graveyardSeats: ATLAS_GRAVEYARD_SEATS,
     sacrificeSeats: ATLAS_SACRIFICE_SEATS,
@@ -1715,6 +1788,7 @@ export function buildAtlasVocabularyRegistry() {
       coverageDimensionCount: ATLAS_COVERAGE_DIMENSIONS.length,
       equivalenceBindingCount: ATLAS_EQUIVALENCE_ILLUSTRATIVE.length,
       namedResourceSeatCount: ATLAS_NAMED_RESOURCE_SEATS.length,
+      typalSeatCount: ATLAS_TYPAL_SEATS.length,
       selectionSeatCount: ATLAS_SELECTION_SEATS.length,
       graveyardSeatCount: ATLAS_GRAVEYARD_SEATS.length,
       sacrificeSeatCount: ATLAS_SACRIFICE_SEATS.length,

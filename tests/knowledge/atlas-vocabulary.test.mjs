@@ -5,6 +5,7 @@ import {
   seatsImplementedBy,
   cardsImplementingSeat,
   seatNamedResourceImplementation,
+  seatTypalImplementation,
   seatSelectionImplementation,
   seatGraveyardImplementation,
   seatSacrificeImplementation,
@@ -64,6 +65,53 @@ describe("Atlas Vocabulary Registry v0", () => {
 
     const angel = seatNamedResourceImplementation({ name: "Angel Host", oracleText: "Create a 4/4 white Angel creature token with flying." });
     assert.deepEqual(angel, [], "generic creature tokens do not occupy a named-resource Atlas seat");
+  });
+
+  it("seats typal engine / member / mention from occupancy language without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.typalSeatCount, 3);
+    assert.equal(registry.summary.capabilityAdmittedCount, 0);
+    assert.ok(registry.revisions.some((row) => /typal engine \/ member \/ mention/i.test(row.change)));
+
+    const lord = seatTypalImplementation({
+      name: "Dwarf Lord",
+      oracleText: "Dwarf creatures you control get +1/+1.",
+      typeLine: "Legendary Creature — Dwarf Noble",
+    });
+    assert.ok(lord.some((row) => row.kind === "engine"));
+    assert.ok(lord.some((row) => row.kind === "member"));
+    assert.deepEqual(lord.find((row) => row.kind === "engine").tribes, ["dwarf"]);
+    assert.equal(lord.find((row) => row.kind === "engine").capability.atlasAdmitted, false);
+
+    const cub = seatTypalImplementation({
+      name: "Bear Cub",
+      oracleText: "Vigilance.",
+      typeLine: "Creature — Bear",
+    }, { tribalTypes: ["bear"] });
+    assert.equal(cub[0].kind, "member");
+    assert.equal(cub[0].seat.label, "Typal Member");
+
+    const grenade = seatTypalImplementation({
+      name: "Goblin Grenade",
+      oracleText: "As an additional cost to cast this spell, sacrifice a Goblin.",
+      typeLine: "Sorcery",
+    }, { tribalTypes: ["goblin"] });
+    assert.equal(grenade[0].kind, "mention");
+    assert.equal(grenade[0].seat.label, "Typal Mention");
+
+    const hojo = seatTypalImplementation({
+      name: "Professor Hojo",
+      oracleText: "Whenever one or more creatures you control become the target of an activated ability, draw a card.",
+      typeLine: "Legendary Creature — Human Scientist",
+    });
+    assert.deepEqual(hojo, []);
+
+    const minstrel = seatTypalImplementation({
+      name: "The Wandering Minstrel",
+      oracleText: "If you control five or more Towns, create a token. Other creatures you control get +X/+X, where X is the number of Towns you control.",
+      typeLine: "Legendary Creature — Human Bard",
+    });
+    assert.deepEqual(minstrel, []);
   });
 
   it("maps each shipped graph signal through Capability to Seat to Implementation", () => {
