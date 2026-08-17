@@ -238,6 +238,34 @@ describe("Mentor Shadow v0", () => {
     assert.match(explanation.vacancyRisk, /health strain is commentary/);
   });
 
+  it("does not speak unnamed package-health kinds as seats", () => {
+    const explanation = explainPackageAsMentor({
+      packageState: {
+        id: "reanimator",
+        label: "Reanimator",
+        legs: {
+          reanimation_target: { current: 0, target: 2, deficit: 2 },
+          enabler: { current: 9, target: 2, deficit: 0 },
+        },
+        anchors: ["Animate Dead"],
+        curve: {},
+        interactionDensity: 0,
+        commanderContribution: 1,
+        slotCost: 12,
+        weaklyJustified: 0,
+        redundancy: 0,
+        density: { core: 9, floor: 8, surplus: 1, deficit: 0 },
+      },
+      commanderName: "Meren of Clan Nel Toth",
+      commanderOracleText: "Whenever another creature you control dies, you may put a +1/+1 counter on Meren of Clan Nel Toth. At the beginning of your end step, if Meren has counters, return target creature card from your graveyard to the battlefield.",
+    });
+    assert.equal(explanation.ok, true);
+    assert.equal(explanation.writesToBrain, false);
+    assert.deepEqual(explanation.packageHealthSeating.map((row) => row.kind), []);
+    assert.doesNotMatch(explanation.paragraph, /Poor Enabler|Unsupported Anchor|Missing Leg|poor_enabler_payoff_ratio|unsupported_anchor/);
+    assert.match(explanation.paragraph, /no named strain/);
+  });
+
   it("binds occupancy to the package being explained, not the first engine on the commander", () => {
     const oracle = "Other Goblins you control get +1/+1. At the beginning of combat on your turn, create a 1/1 red Goblin creature token.";
     const card = { name: "Goblin Foundry", oracleText: oracle };

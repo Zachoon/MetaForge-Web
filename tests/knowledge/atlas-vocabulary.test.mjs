@@ -336,6 +336,19 @@ describe("Atlas Vocabulary Registry v0", () => {
     assert.equal(redundancy[0].seat.label, "Excessive Redundancy");
     assert.match(redundancy[0].contrast, /not surplus-above-floor/);
     assert.match(redundancy[0].contrast, /not spellslinger occupancy/);
+
+    const unnamed = seatPackageHealthImplementation({
+      ...base,
+      id: "reanimator",
+      anchors: ["Animate Dead"],
+      interactionDensity: 0,
+      legs: {
+        reanimation_target: { current: 0, target: 2, deficit: 2 },
+        enabler: { current: 9, target: 2, deficit: 0 },
+      },
+      density: { core: 9, floor: 8, surplus: 1, deficit: 0 },
+    }, {});
+    assert.deepEqual(unnamed.map((row) => row.kind), []);
   });
 
 

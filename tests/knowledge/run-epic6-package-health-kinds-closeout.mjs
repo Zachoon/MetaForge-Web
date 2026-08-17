@@ -126,6 +126,66 @@ export function tallyUnnamedOccupiedHealthKinds(decks = []) {
   return { occupiedDecks, totals, byPackage };
 }
 
+
+function parseRatioDetail(detail = "") {
+  const match = String(detail || "").match(/^(\d+):(\d+)$/);
+  if (!match) return null;
+  return { min: Number(match[1]), max: Number(match[2]) };
+}
+
+/**
+ * Diagnose the two remaining unnamed kinds on occupancy-opened packages.
+ * Observation only — does not seat, retune floors, or change evaluatePackageHealth.
+ */
+export function diagnoseUnnamedOccupiedHealth(decks = []) {
+  const ratio = {
+    occupied: 0,
+    minZero: 0,
+    withMissingLeg: 0,
+    byPackage: {},
+    byDetail: {},
+  };
+  const anchors = {
+    occupied: 0,
+    byPackage: {},
+    byDetail: {},
+  };
+  for (const deck of decks) {
+    const occupied = new Set(deck.occupiedPackageIds || []);
+    for (const pkg of deck.packages || []) {
+      if (!occupied.has(pkg.id)) continue;
+      const issues = pkg.issues || [];
+      const kinds = new Set(issues.map((issue) => issue.kind || issue));
+      if (kinds.has("poor_enabler_payoff_ratio")) {
+        ratio.occupied += 1;
+        if (!ratio.byPackage[pkg.id]) ratio.byPackage[pkg.id] = { decks: 0, minZero: 0, withMissingLeg: 0 };
+        ratio.byPackage[pkg.id].decks += 1;
+        const issue = issues.find((row) => (row.kind || row) === "poor_enabler_payoff_ratio");
+        const parsed = parseRatioDetail(issue?.detail);
+        const detail = String(issue?.detail || "unknown");
+        ratio.byDetail[detail] = (ratio.byDetail[detail] || 0) + 1;
+        if (parsed?.min === 0) {
+          ratio.minZero += 1;
+          ratio.byPackage[pkg.id].minZero += 1;
+        }
+        if (kinds.has("missing_leg")) {
+          ratio.withMissingLeg += 1;
+          ratio.byPackage[pkg.id].withMissingLeg += 1;
+        }
+      }
+      if (kinds.has("unsupported_anchor")) {
+        anchors.occupied += 1;
+        if (!anchors.byPackage[pkg.id]) anchors.byPackage[pkg.id] = { decks: 0 };
+        anchors.byPackage[pkg.id].decks += 1;
+        const issue = issues.find((row) => (row.kind || row) === "unsupported_anchor");
+        const detail = String(issue?.detail || "unknown");
+        anchors.byDetail[detail] = (anchors.byDetail[detail] || 0) + 1;
+      }
+    }
+  }
+  return { ratio, anchors };
+}
+
 function dominantNamedKinds(bucket) {
   if (!bucket?.decks) return [];
   const ranked = NAMED_PACKAGE_HEALTH_KINDS
@@ -223,6 +283,59 @@ export function formatPackageHealthKindsReport(tally, options = {}) {
     }
   }
   lines.push("");
+  const diagnosis = options.diagnosis || diagnoseUnnamedOccupiedHealth([]);
+  lines.push("## Unnamed diagnosis (observation only)");
+  lines.push("");
+  lines.push("Do not seat. Do not invent a threshold. Do not change evaluatePackageHealth or balancedLegFloor.");
+  lines.push("");
+  lines.push("### poor_enabler_payoff_ratio");
+  lines.push("");
+  if (!diagnosis.ratio?.occupied) {
+    lines.push("No occupancy-opened flags in this sample.");
+  } else {
+    const ratio = diagnosis.ratio;
+    lines.push(`- Occupied flags: **${ratio.occupied}**`);
+    lines.push(`- min=0 (empty-leg shadow): **${ratio.minZero}/${ratio.occupied}**`);
+    lines.push(`- co-occurs with missing_leg: **${ratio.withMissingLeg}/${ratio.occupied}**`);
+    const pkgRows = Object.entries(ratio.byPackage || {}).filter(([, row]) => row.decks);
+    for (const [id, row] of pkgRows.sort((a, b) => a[0].localeCompare(b[0]))) {
+      lines.push(`- **${id}**: ${row.decks} flags, min=0 ${row.minZero}/${row.decks}, with missing_leg ${row.withMissingLeg}/${row.decks}`);
+    }
+    const details = Object.entries(ratio.byDetail || {}).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 8);
+    if (details.length) {
+      lines.push("- Ratio details (top): " + details.map(([name, count]) => `${name} ${count}`).join("; "));
+    }
+    if (ratio.withMissingLeg >= ratio.occupied && ratio.occupied > 0) {
+      lines.push("");
+      lines.push("This kind is missing_leg's shadow on occupancy-opened packages — an empty required leg, not a separate occupancy engine.");
+    } else if (ratio.withMissingLeg >= Math.ceil(ratio.occupied * 0.75) && ratio.occupied > 0) {
+      lines.push("");
+      lines.push("Most occupancy-opened flags travel with missing_leg. That is still not a separate occupancy engine. Do not seat.");
+    } else if (ratio.minZero >= Math.ceil(ratio.occupied * 0.8) && ratio.occupied > 0) {
+      lines.push("");
+      lines.push("Most occupancy-opened flags have min=0. That is an empty required leg, not a new ratio engine. Do not seat.");
+    }
+  }
+  lines.push("");
+  lines.push("### unsupported_anchor");
+  lines.push("");
+  if (!diagnosis.anchors?.occupied) {
+    lines.push("No occupancy-opened flags in this sample.");
+  } else {
+    const anchors = diagnosis.anchors;
+    lines.push(`- Occupied flags: **${anchors.occupied}**`);
+    const pkgRows = Object.entries(anchors.byPackage || {}).filter(([, row]) => row.decks);
+    for (const [id, row] of pkgRows.sort((a, b) => a[0].localeCompare(b[0]))) {
+      lines.push(`- **${id}**: ${row.decks}`);
+    }
+    const details = Object.entries(anchors.byDetail || {}).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 8);
+    if (details.length) {
+      lines.push("- Anchor details (top): " + details.map(([name, count]) => `${name} ${count}`).join("; "));
+    }
+    lines.push("");
+    lines.push("Occupancy-opened unsupported_anchor stays unnamed. A named occupancy engine is not a verified interaction graph.");
+  }
+  lines.push("");
   return lines.join("\n");
 }
 
@@ -251,7 +364,8 @@ async function main() {
   const decks = collectDeckRows(live.records);
   const tally = tallyOccupiedHealthKinds(decks);
   const unnamed = tallyUnnamedOccupiedHealthKinds(decks);
-  const report = formatPackageHealthKindsReport(tally, { deckCount: live.records.length, unnamed });
+  const diagnosis = diagnoseUnnamedOccupiedHealth(decks);
+  const report = formatPackageHealthKindsReport(tally, { deckCount: live.records.length, unnamed, diagnosis });
   writeFileSync(join(outDir, "epic6-package-health-kinds-closeout.md"), report);
   writeFileSync(join(outDir, "epic6-package-health-kinds-closeout.json"), JSON.stringify({
     writesToBrain: false,
@@ -261,6 +375,7 @@ async function main() {
     deckCount: live.records.length,
     tally,
     unnamed,
+    diagnosis,
     generatedAt: new Date().toISOString(),
   }, null, 2));
   console.log(report);
