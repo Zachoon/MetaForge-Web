@@ -435,7 +435,7 @@ export function explainCardAsMentor({
 
 
 
-const OCCUPANCY_PACKAGE_IDS = freeze([
+export const OCCUPANCY_PACKAGE_IDS = freeze([
   "typal", "aristocrats", "spellslinger", "reanimator", "landfall",
   "stax", "auras", "equipment", "blink", "tokens",
 ]);

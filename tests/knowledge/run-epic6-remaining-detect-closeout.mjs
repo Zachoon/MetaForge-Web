@@ -9,6 +9,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { materializeLiveTournamentRecords } from "../../app/knowledge/live-tournament-ingest.mjs";
 import { buildStrategicIntent } from "../../app/strategic-intent.mjs";
 import { STRATEGIC_PACKAGE_IDS } from "./run-epic6-unseen-packages-report.mjs";
+import { occupancySeatingForPackage, OCCUPANCY_PACKAGE_IDS } from "../../app/knowledge/mentor-shadow.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const outDir = join(root, "tests/knowledge/out");
@@ -50,6 +51,10 @@ function packagesOpenedBy(commander = {}) {
   return [...(intent.packageIds || [])];
 }
 
+function atlasOccupiedIds(commander = {}) {
+  return OCCUPANCY_PACKAGE_IDS.filter((id) => occupancySeatingForPackage(id, commander).length);
+}
+
 function canaryHit(name, needle) {
   const hay = String(name || "").toLowerCase();
   const want = String(needle || "").toLowerCase();
@@ -67,6 +72,7 @@ export function classifyRemainingDetect(records = []) {
         name,
         decks: 0,
         packages: packagesOpenedBy(commander),
+        atlasPackages: atlasOccupiedIds(commander),
       };
       entry.decks += 1;
       byCommander.set(name, entry);
@@ -105,6 +111,18 @@ export function classifyRemainingDetect(records = []) {
       packages: row.packages,
     }))];
   }));
+  const atlasWithoutDetect = [];
+  const detectWithoutAtlas = [];
+  for (const row of rows) {
+    const detect = new Set(row.packages || []);
+    const atlas = new Set(row.atlasPackages || []);
+    for (const id of atlas) {
+      if (!detect.has(id)) atlasWithoutDetect.push({ name: row.name, id, decks: row.decks });
+    }
+    for (const id of OCCUPANCY_PACKAGE_IDS) {
+      if (detect.has(id) && !atlas.has(id)) detectWithoutAtlas.push({ name: row.name, id, decks: row.decks });
+    }
+  }
   return {
     commanderCount: rows.length,
     openedCounts: Object.fromEntries(STRATEGIC_PACKAGE_IDS.map((id) => [id, opened[id].length])),
@@ -113,6 +131,8 @@ export function classifyRemainingDetect(records = []) {
     rejects,
     detectionFailures,
     sampleGaps,
+    atlasWithoutDetect,
+    detectWithoutAtlas,
   };
 }
 
@@ -185,6 +205,32 @@ export function formatReport(classification) {
     lines.push("");
   }
   lines.push("Frozen construction non-widens this lane: auras, equipment, blink.");
+  lines.push("");
+  lines.push("## Atlas occupancy vs detectCommander (empty blueprint)");
+  lines.push("");
+  lines.push("Mentor names Atlas occupancy from the same detect family. Divergence is observation, not a widen.");
+  lines.push("");
+  const atlasOnly = classification.atlasWithoutDetect || [];
+  const detectOnly = classification.detectWithoutAtlas || [];
+  if (!atlasOnly.length && !detectOnly.length) {
+    lines.push("No divergence in this sample.");
+  } else {
+    if (atlasOnly.length) {
+      lines.push("Atlas occupancy without detectCommander open:");
+      for (const row of atlasOnly.slice(0, 20)) {
+        lines.push(`- **${row.id}** / ${row.name} (${row.decks})`);
+      }
+      lines.push("");
+    }
+    if (detectOnly.length) {
+      lines.push("detectCommander open without Atlas occupancy engine:");
+      for (const row of detectOnly.slice(0, 20)) {
+        lines.push(`- **${row.id}** / ${row.name} (${row.decks})`);
+      }
+      lines.push("");
+    }
+  }
+  lines.push("Do not widen detectCommander from this table.");
   lines.push("");
   return lines.join("\n");
 }

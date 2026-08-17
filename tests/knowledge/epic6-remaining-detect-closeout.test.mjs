@@ -59,5 +59,9 @@ describe("Epic 6 remaining occupancy detect closeout", () => {
     assert.match(report, /Do not widen detectCommander/);
     assert.match(report, /\*\*auras\*\*/);
     assert.match(report, /Frozen construction non-widens this lane: auras, equipment, blink/);
+    assert.match(report, /Atlas occupancy vs detectCommander/);
+    assert.match(report, /Do not widen detectCommander from this table/);
+    assert.equal(classification.atlasWithoutDetect.some((row) => row.name.startsWith("Magda") && row.id === "tokens"), false);
+    assert.equal(classification.detectWithoutAtlas.some((row) => row.name.startsWith("Korvold") && row.id === "aristocrats"), false);
   });
 });
