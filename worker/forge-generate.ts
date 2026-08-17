@@ -241,7 +241,18 @@ async function loadNativeForgePool(
   note: string,
   secondCommander: CommanderInput,
   counter?: ScryfallCounter,
+  // An imported decklist already supplies most of the 100 slots - this pool
+  // only needs to cover whatever small gap the player's own list leaves
+  // open (resolveImportedDecklist's "reserved first" comment), not build a
+  // whole deck from scratch. The 6-page/identity-query search below was
+  // sized for fresh builds; keeping that same weight for imports means a
+  // dozen-plus sequential Scryfall round-trips for a search whose result is
+  // mostly discarded, and more surface for a slow/rate-limited request to
+  // fail the whole generation. maxPages/includeIdentityQueries default to
+  // the fresh-build values so nothing changes for that path.
+  options: { maxPages?: number; includeIdentityQueries?: boolean } = {},
 ) {
+  const { maxPages = 6, includeIdentityQueries = true } = options;
   let anchor: any = null;
   if (!commander && lynchpin) {
     const anchorResponse = await fetchScryfallWithRetry(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(lynchpin)}`, {}, 3, counter);
@@ -280,7 +291,7 @@ async function loadNativeForgePool(
   // recovery ladder (relaxAnalysisPreferences, native-masterwork-engine
   // .mjs) more room to actually succeed instead of hitting the same wall.
   let popularityRank = 0;
-  for (let page = 0; nextUrl && page < 6; page += 1) {
+  for (let page = 0; nextUrl && page < maxPages; page += 1) {
     const response = await fetchScryfallWithRetry(nextUrl, {}, 3, counter);
     if (!response.ok) throw new Error(CATALOG_UNAVAILABLE_MESSAGE);
     const result: any = await response.json();
@@ -297,13 +308,13 @@ async function loadNativeForgePool(
     artifacts: "(t:artifact OR o:artifact)", spells: '(o:"instant or sorcery" OR o:"noncreature spell")',
     lifegain: '(o:"gain life" OR kw:lifelink)', combat: "(o:combat OR o:attack)", discard: "o:discard",
   };
-  const identityQueries = [
+  const identityQueries = includeIdentityQueries ? [
     ...blueprint.tribalTypes.map((term: string) => `(t:"${term}" OR o:"${term}" OR name:"${term}")`),
     ...blueprint.requestedMechanics.map((mechanic: string) => mechanic === "creature_activated_ability"
       ? "t:creature o:\":\""
       : blueprintMechanicQueryFor(mechanic)),
     ...blueprint.desiredRoles.map((role: string) => roleQueries[role]).filter(Boolean),
-  ].slice(0, 6);
+  ].slice(0, 6) : [];
   for (const identityQuery of identityQueries) {
     const targetedUrl = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`${scryfallFormatTerms(format)}${colorQuery} ${identityQuery} -is:funny`)}&order=name&unique=cards`;
     const response = await fetchScryfallWithRetry(targetedUrl, {}, 3, counter);
@@ -603,7 +614,14 @@ export async function generateForgeResult(request: Request, env: Env, key: strin
 
   try {
     const catalogStart = Date.now();
-    const pool = await loadNativeForgePool(body.format, body.commander, body.lynchpin || "", body.note || "", body.secondCommander, counter);
+    // Imported builds only need this pool to cover the small gap the
+    // player's own list leaves open (resolveImportedDecklist reserves their
+    // cards first) - the fresh-build weight (6 pages + up to 6 targeted
+    // identity queries, a dozen-plus sequential Scryfall round-trips) buys
+    // nothing here but more surface for a slow/rate-limited request to fail
+    // the whole generation.
+    const pool = await loadNativeForgePool(body.format, body.commander, body.lynchpin || "", body.note || "", body.secondCommander, counter,
+      body.mode === "imported" ? { maxPages: 2, includeIdentityQueries: false } : {});
 
     if (body.mode === "imported") {
       const resolution = await resolveImportedDecklist(body.deck!, pool.cards, body.format, body.commander, counter);
