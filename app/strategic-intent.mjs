@@ -829,6 +829,18 @@ function selectedNonlands(rows = []) {
   return rows.filter((row) => !(row.roles || []).includes("land") && !(row.roles || []).includes("commander"));
 }
 
+// The 99-card cost-cheat/reanimation count below deliberately excludes the
+// commander row (selectedNonlands). That is correct for counting how many
+// *support pieces* the player built around a bomb, but a commander whose own
+// ability is itself the deck's cost-cheat or reanimation engine — Tony
+// Stark // The Invincible Iron Man putting an artifact into play each
+// combat, say — is at least as reliable a justification: it is always
+// accessible from the command zone, never a 1-of the player had to draw.
+function commanderSemantics(selectedRows = []) {
+  const commanderRow = selectedRows.find((row) => (row.roles || []).includes("commander"));
+  return commanderRow ? entrySemantics(commanderRow) : null;
+}
+
 export function expensiveThreatSupport(entry, selectedRows = [], intent = {}) {
   const semantics = entrySemantics(entry);
   const cmc = Number(entry.cmc ?? manaValueOf(entryCard(entry)));
@@ -839,6 +851,9 @@ export function expensiveThreatSupport(entry, selectedRows = [], intent = {}) {
   const rampCount = countSemantics(rows, "ramp");
   const reanimation = countSemantics(rows, "reanimation");
   const cheat = countSemantics(rows, "cost_cheat");
+  const commander = commanderSemantics(selectedRows);
+  const commanderCheats = commander?.has("cost_cheat") || false;
+  const commanderReanimates = commander?.has("reanimation") || false;
   const commanderConnected = (entry.commanderConnectionSignals || []).length > 0;
   const packageCore = (intent.packageIds || []).some((id) => cardSatisfiesPackageCore(entry, id, intent));
   const activePackages = (intent.packageIds || []).length > 0;
@@ -850,7 +865,9 @@ export function expensiveThreatSupport(entry, selectedRows = [], intent = {}) {
   if (commanderConnected) reasons.push("commander connection");
   if (packageCore) reasons.push("active package core membership");
   if (reanimation >= 2) reasons.push(`reanimation effects ${reanimation}`);
+  if (commanderReanimates) reasons.push("commander's own reanimation ability");
   if (cheat >= 1) reasons.push(`cost-cheat effects ${cheat}`);
+  if (commanderCheats) reasons.push("commander's own cost-cheat ability");
   if (!activePackages || packageCore || commanderConnected) {
     if (rampCount >= (intent.rampSupportFloor || 8)) reasons.push(`ramp density ${rampCount}`);
   }

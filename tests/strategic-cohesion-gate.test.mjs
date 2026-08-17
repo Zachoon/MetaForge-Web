@@ -155,6 +155,29 @@ test("unsupported 10-mana bomb is rejected; supported bomb is allowed", () => {
   assert.equal(cheated.supported, true, "cost-cheat remains a valid justification even under an Aura package");
 });
 
+test("a commander whose own ability is the deck's cost-cheat engine justifies an otherwise-unsupported bomb", () => {
+  const tonyStark = {
+    name: "Tony Stark // The Invincible Iron Man",
+    typeLine: "Legendary Artifact Creature — Human Hero",
+    oracleText: "At the beginning of combat on your turn, you may put an artifact card from your hand onto the battlefield.",
+    cmc: 2,
+  };
+  const intent = buildStrategicIntent(
+    { format: "Commander", strategy: "Balanced midrange", commander: tonyStark },
+    { blueprint: { source: "", requestedMechanics: [], desiredRoles: [], packageSignals: [], promises: [], excludedRoles: [] }, commanderMechanics: extractMechanicalSignals(tonyStark), ideal: 2.9 },
+  );
+  const bomb = card("Blightsteel Colossus", "Artifact Creature — Golem", "Trample, indestructible, infect.", 12);
+  const commanderRow = { quantity: 1, name: tonyStark.name, roles: ["commander"], cmc: tonyStark.cmc, oracleText: tonyStark.oracleText, typeLine: tonyStark.typeLine };
+  const fillerRows = Array.from({ length: 10 }, (_, i) => rowFrom(draw(`Flow ${i}`)));
+
+  const withoutCommanderRow = expensiveThreatSupport(rowFrom(bomb), [rowFrom(bomb), ...fillerRows], intent);
+  assert.equal(withoutCommanderRow.supported, false, "with no cost-cheat/reanimation/ramp anywhere in scope, the bomb stays unsupported");
+
+  const withCommanderRow = expensiveThreatSupport(rowFrom(bomb), [commanderRow, rowFrom(bomb), ...fillerRows], intent);
+  assert.equal(withCommanderRow.supported, true, "the commander's own cost-cheat ability must justify the bomb even with zero 99-card support pieces");
+  assert.ok(withCommanderRow.reasons.includes("commander's own cost-cheat ability"));
+});
+
 test("final cohesion validator passes a synergistic Aura shell and fails a goodstuff pile", () => {
   const intent = buildStrategicIntent(
     { format: "Commander", strategy: "Balanced midrange", commander: pearlEar },
