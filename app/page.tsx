@@ -5266,6 +5266,11 @@ export default function Home() {
           <div>
             <small>YOUR PREVIEW MASTERWORK IS READY</small>
             <b>Create your free account to save it, edit cards, run experiments, and record matches.</b>
+            {coachOccupancyLabels.length > 0 && (
+              <p className="guest-result-occupancy">
+                Occupancy engines: {coachOccupancyLabels.join(" · ")}. Named from commander oracle, not from the 99.
+              </p>
+            )}
           </div>
           <a onClick={() => trackLaunchEvent("save_continue_clicked", { format })} href={`https://app.metaforge.gg/?claim=${encodeURIComponent(guestClaimToken)}`}>Save and continue →</a>
         </aside>
@@ -6917,6 +6922,9 @@ export default function Home() {
                         <i key={color} data-color={color}>{colorPipCounts[color]}</i>
                       ))}
                   </div>
+                    {coachOccupancyLabels.length > 0 && (
+                      <span className="masterwork-stats-occupancy">{coachOccupancyLabels.join(" · ")}</span>
+                    )}
                 </div>
               )}
               {postAcceptChoice && (

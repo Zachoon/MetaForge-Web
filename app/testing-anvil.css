@@ -841,6 +841,7 @@ step that's actually in focus. */
 .masterwork-stats-bar{display:flex;align-items:center;gap:18px;padding:12px 28px;border-bottom:1px solid #2a3733;background:#0a0f0e;color:#aeb8b2;font:600 12px ui-monospace,monospace}
 .masterwork-stats-bar>span{white-space:nowrap}
 .masterwork-stats-bar>span>b{color:#f2ede2;font-weight:800}
+.masterwork-stats-occupancy{color:#c9b89a;font-weight:600;letter-spacing:.03em}
 .masterwork-pip-counts{display:flex;align-items:center;gap:6px;margin-left:auto}
 .masterwork-pip-counts>i{display:grid;min-width:22px;height:22px;padding:0 6px;place-items:center;border-radius:50%;font:800 10px ui-monospace,monospace;font-style:normal}
 .masterwork-pip-counts>i[data-color=W]{background:#ded7b9;color:#3a3429}

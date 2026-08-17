@@ -9,6 +9,7 @@ const [
   page,
   polish,
   anvil,
+  globalsCss,
   walkthrough,
   proving,
   provingCss,
@@ -20,6 +21,7 @@ const [
   read("app/page.tsx"),
   read("app/forge-polish.css"),
   read("app/testing-anvil.css"),
+  read("app/globals.css"),
   read("app/forge-walkthrough.tsx"),
   read("app/proving-grounds-era.tsx"),
   read("app/proving-grounds-era.css"),
@@ -72,3 +74,10 @@ test("Deep Forge dossier names occupancy without calling it research", () => {
   assert.match(page, /<DeepForgeDossier\s+occupancyEngines=\{coachOccupancyLabels\}/);
 });
 
+
+test("stats bar and guest save gate name occupancy without treating it as proof", () => {
+  assert.match(page, /className="masterwork-stats-occupancy"/);
+  assert.match(page, /className="guest-result-occupancy"/);
+  assert.match(anvil, /\.masterwork-stats-occupancy/);
+  assert.match(globalsCss, /\.guest-result-occupancy/);
+});
