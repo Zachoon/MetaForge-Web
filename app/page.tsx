@@ -711,6 +711,14 @@ const commanderOracleText = (commander?: CommanderOption | null) =>
     .slice(1)
     .join("Oracle text:\n")
     .trim();
+const occupancyLabelsForOption = (option?: CommanderOption | null) => {
+  if (!option?.name) return [];
+  return occupancyEngineLabelsForCommander({
+    name: option.name,
+    typeLine: option.typeLine || "",
+    oracleText: commanderOracleText(option),
+  });
+};
 type ForgeLane = "pressure" | "engine" | "inevitability";
 const FORGE_LANES: ForgeLane[] = ["pressure", "engine", "inevitability"];
 const commanderLaneScores = (commander: CommanderOption) => {
@@ -3015,22 +3023,14 @@ export default function Home() {
         || "",
     });
   }, [inspectedIsCommander, inspectedCard, inspectedFact]);
-  const commissionOccupancyLabels = useMemo(() => {
-    if (!selectedCommander) return [];
-    return occupancyEngineLabelsForCommander({
-      name: selectedCommander.name,
-      typeLine: selectedCommander.typeLine,
-      oracleText: commanderOracleText(selectedCommander),
-    });
-  }, [selectedCommander]);
-  const secondCommissionOccupancyLabels = useMemo(() => {
-    if (!selectedSecondCommander) return [];
-    return occupancyEngineLabelsForCommander({
-      name: selectedSecondCommander.name,
-      typeLine: selectedSecondCommander.typeLine,
-      oracleText: commanderOracleText(selectedSecondCommander),
-    });
-  }, [selectedSecondCommander]);
+  const commissionOccupancyLabels = useMemo(
+    () => occupancyLabelsForOption(selectedCommander),
+    [selectedCommander],
+  );
+  const secondCommissionOccupancyLabels = useMemo(
+    () => occupancyLabelsForOption(selectedSecondCommander),
+    [selectedSecondCommander],
+  );
 
   // Prefers the exact printing the player already chose via the printing
   // picker (inspectedPrinting.tcgplayerId); falls back to a name-only
@@ -5452,6 +5452,7 @@ export default function Home() {
                 {savedMasterworks.map((family) => {
                   const evidence =
                     family.record || family.revisions.at(-1)?.evidence || {};
+                  const occupancy = occupancyLabelsForOption(family.commander);
                   return (
                     <article key={family.id} className={family.archived ? "finished" : ""}>
                       <button
@@ -5467,6 +5468,9 @@ export default function Home() {
                         </small>
                         <strong>{family.name}</strong>
                         <span>{family.commander?.name || "No commander"}</span>
+                        {occupancy.length > 0 && (
+                          <p className="archive-occupancy">Occupancy: {occupancy.join(" · ")}</p>
+                        )}
                         <em>
                           {Number(evidence.wins || 0)}W ·{" "}
                           {Number(evidence.losses || 0)}L ·{" "}
@@ -5733,7 +5737,7 @@ export default function Home() {
                         IDENTITY
                       </em>
                       {commissionOccupancyLabels.length > 0 && (
-                        <small>
+                        <small className="commander-occupancy">
                           Occupancy engines: {commissionOccupancyLabels.join(" · ")}. Named from commander oracle, before the 99 exists.
                         </small>
                       )}
@@ -5796,7 +5800,9 @@ export default function Home() {
                       <div className="commander-suggestions" role="group" aria-label="Suggested commanders">
                         <p>The Forge drew three legal options. Pick one to continue — nothing is chosen yet.</p>
                         <div className="commander-suggestions-grid">
-                          {randomCommanderOptions.map((option) => (
+                          {randomCommanderOptions.map((option) => {
+                            const occupancy = occupancyLabelsForOption(option);
+                            return (
                             <button
                               type="button"
                               key={option.name}
@@ -5813,8 +5819,12 @@ export default function Home() {
                                 <small>{option.typeLine}</small>
                               </b>
                               <em>{option.colors.join("") || "C"}</em>
+                              {occupancy.length > 0 && (
+                                <small className="commander-occupancy">{occupancy.join(" · ")}</small>
+                              )}
                             </button>
-                          ))}
+                            );
+                          })}
                         </div>
                         <button
                           type="button"
@@ -5849,7 +5859,9 @@ export default function Home() {
                               <button type="button" onClick={() => setCommanderSearchRetry((value) => value + 1)}>Retry commander search</button>
                             </div>
                           ) : commanderResults.length ? (
-                            commanderResults.map((option) => (
+                            commanderResults.map((option) => {
+                              const occupancy = occupancyLabelsForOption(option);
+                              return (
                               <button
                                 type="button"
                                 role="option"
@@ -5874,10 +5886,14 @@ export default function Home() {
                                 <b>
                                   {option.name}
                                   <small>{option.typeLine}</small>
+                                  {occupancy.length > 0 && (
+                                    <small className="commander-occupancy">{occupancy.join(" · ")}</small>
+                                  )}
                                 </b>
                                 <em>{option.colors.join("") || "C"}</em>
                               </button>
-                            ))
+                              );
+                            })
                           ) : (
                             <p>
                               No legal {format} commander matches that search.
@@ -5903,7 +5919,7 @@ export default function Home() {
                           <b>{selectedSecondCommander.name}</b>
                           <span>{selectedSecondCommander.typeLine}</span>
                           {secondCommissionOccupancyLabels.length > 0 && (
-                            <small>
+                            <small className="commander-occupancy">
                               Occupancy engines: {secondCommissionOccupancyLabels.join(" · ")}. Named from commander oracle, before the 99 exists.
                             </small>
                           )}
@@ -5956,7 +5972,9 @@ export default function Home() {
                               {secondCommanderSearching ? (
                                 <p>The Archive is searching…</p>
                               ) : (
-                                secondCommanderResults.map((option) => (
+                                secondCommanderResults.map((option) => {
+                                  const occupancy = occupancyLabelsForOption(option);
+                                  return (
                                   <button
                                     type="button"
                                     role="option"
@@ -5977,10 +5995,14 @@ export default function Home() {
                                     <b>
                                       {option.name}
                                       <small>{option.typeLine}</small>
+                                      {occupancy.length > 0 && (
+                                        <small className="commander-occupancy">{occupancy.join(" · ")}</small>
+                                      )}
                                     </b>
                                     <em>{option.colors.join("") || "C"}</em>
                                   </button>
-                                ))
+                                  );
+                                })
                               )}
                             </div>,
                             document.body,
@@ -9432,6 +9454,7 @@ export default function Home() {
                     family.record || family.revisions.at(-1)?.evidence || {};
                   const evidenceCount = Number(evidence.wins || 0) + Number(evidence.losses || 0);
                   const dominantMotif = Object.entries(family.motifWeights || {}).sort((a, b) => b[1] - a[1])[0]?.[0];
+                  const occupancy = occupancyLabelsForOption(family.commander);
                   return (
                     <div
                       key={family.id}
@@ -9462,6 +9485,9 @@ export default function Home() {
                       <span className="bench-card-copy">
                         <b>{family.name}</b>
                         <small>{family.commander?.name || family.format}</small>
+                        {occupancy.length > 0 && (
+                          <small className="bench-occupancy">{occupancy.join(" · ")}</small>
+                        )}
                       </span>
                       <span className="bench-card-vitals">
                         <em><b>{family.revisions.length || 1}</b> revision{family.revisions.length === 1 ? "" : "s"}</em>

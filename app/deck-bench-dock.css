@@ -250,6 +250,12 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.bench-card-copy small.bench-occupancy {
+  color: #c9b89a;
+  font-size: 10px;
+  letter-spacing: .03em;
+  white-space: normal;
+}
 .bench-card-vitals{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin:0 12px;border:1px solid #293d38;background:#081210}.bench-card-vitals em{display:grid;gap:2px;padding:7px;color:#6f837e;font:normal 8px Inter,sans-serif;text-align:center;text-transform:uppercase}.bench-card-vitals em+em{border-left:1px solid #293d38}.bench-card-vitals b{margin:0;color:#b7cbc5;font:700 12px Inter,sans-serif}.bench-card-open{display:flex;align-items:center;justify-content:space-between;margin-top:9px;padding:8px 12px 0;border-top:1px solid #263a35;color:#69cbb8;font-size:calc(9px * var(--forge-reading-scale));font-weight:800;letter-spacing:.08em;text-transform:uppercase}.bench-card-open i{font:normal 14px Inter,sans-serif;transition:transform .2s ease}.bench-decks>.bench-card:hover .bench-card-open i,.bench-decks>.bench-card:focus-visible .bench-card-open i{transform:translateX(3px)}
 .bench-tray > footer {
   justify-content: flex-end;
