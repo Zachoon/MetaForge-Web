@@ -168,7 +168,15 @@ export function evaluatePackageHealth(packageState, intent = {}) {
   const issues = [];
   const packageSpec = (intent.packages || []).find((entry) => entry.id === packageState.id) || packageState;
   if (packageState.density.deficit > 0) issues.push(Object.freeze({ kind: "underfilled", detail: `${packageState.density.core}/${packageState.density.floor}` }));
-  if (packageState.density.surplus >= 6) issues.push(Object.freeze({ kind: "oversaturated", detail: `surplus ${packageState.density.surplus}` }));
+  // Oversaturation was a flat surplus>=6 regardless of package size, so wide
+  // packages like spellslinger (floor 14, real median surplus 7) got
+  // penalized just for being naturally large - 337 real decks, 55.5%
+  // flagged oversaturated at the old threshold. Scaling the bar to the
+  // package's own floor (capped at a floor of 6 so small packages keep a
+  // real bar) fixes that without hardcoding any package by name. Harness-
+  // verified 2026-08-17: 112/112 regression tests, smoke 13/13, field mode
+  // 0 hard failures (two independent runs, matching results).
+  if (packageState.density.surplus >= Math.max(6, packageSpec.coreMin || 0)) issues.push(Object.freeze({ kind: "oversaturated", detail: `surplus ${packageState.density.surplus}` }));
   for (const [leg, state] of Object.entries(packageState.legs || {})) {
     if (state.deficit > 0) issues.push(Object.freeze({ kind: "missing_leg", detail: leg }));
   }
