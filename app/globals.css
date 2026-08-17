@@ -10,7 +10,6 @@
 @import "./forge-transition.css";
 @import "./blueprint-commission-table.css";
 @import "./entrance-living-forge.css";
-@import "./forge-walkthrough.css";
 @import "./operation-reforge.css";
 @import "./living-workbench.css";
 @import "./tabletop.css";
@@ -404,8 +403,7 @@ footer p { font-family:Newsreader, Georgia,serif; font-style:italic; }
   filter: drop-shadow(0 0 7px rgba(232, 112, 34, .2));
 }
 .great-forge[data-guest-mode="true"] { padding-bottom: 104px; }
-.great-forge[data-guest-mode="true"] > .guest-forge-pass.verified,
-.great-forge[data-guest-mode="true"] > .guest-forge-pass.tour-hidden { display: none; }
+.great-forge[data-guest-mode="true"] > .guest-forge-pass.verified { display: none; }
 .guest-forge-pass > div:last-child { flex: 0 0 auto; max-width: 100%; }
 .guest-forge-pass .turnstile-host.verified { display: none; }
 .guest-forge-pass iframe { display: block; max-width: 100%; }

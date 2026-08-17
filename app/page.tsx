@@ -43,7 +43,6 @@ import {
   diffPlayerIdentity,
 } from "./player-identity.mjs";
 import { IdentityBadge } from "./identity-badge";
-import { ForgeWalkthrough, hasSeenWalkthrough } from "./forge-walkthrough";
 import { prepareStoryBenchRevisions, serializeStoryBenchRevision, restoreStoryBenchRevisions } from "./story-bench-recommendation-ledger.mjs";
 import { resolveMasterworkVisualProfile } from "./masterwork-visual-profile.mjs";
 import { MOTIF_ICONS } from "./masterwork-motif-icons";
@@ -1318,13 +1317,6 @@ export default function Home() {
     render();
     return () => { cancelled = true; window.clearInterval(interval); };
   }, [guestMode]);
-  // Auto-opens once per browser (localStorage-gated) for a first-time
-  // visitor landing on the entrance screen; always replayable via the
-  // header's tour button regardless of that flag.
-  const [walkthroughActive, setWalkthroughActive] = useState(false);
-  useEffect(() => {
-    if (!hasSeenWalkthrough()) setWalkthroughActive(true);
-  }, []);
   const [stage, setStage] = useState(0);
   const [buildStep, setBuildStep] = useState<0 | 1 | 2>(0);
   const [format, setFormat] = useState("Commander");
@@ -5247,7 +5239,7 @@ export default function Home() {
       </div>
       {guestMode && !forgedDeck && !pendingCandidateChoice && (
         <aside
-          className={`guest-forge-pass${turnstileToken ? " verified" : ""}${walkthroughActive ? " tour-hidden" : ""}`}
+          className={`guest-forge-pass${turnstileToken ? " verified" : ""}`}
           aria-label="Free Forge preview verification"
         >
           <div>
@@ -5335,7 +5327,6 @@ export default function Home() {
               ))}
             </section>
             <button type="button" onClick={() => setMotionMode((current) => current === "full" ? "quiet" : "full")}>{motionMode === "full" ? "Reduce motion" : "Use full motion"}</button>
-            <button type="button" onClick={() => setWalkthroughActive(true)}>Replay guided tour</button>
             <IdentityBadge depth={playerIdentity.depth} totalMilestones={playerIdentity.allMilestones.length} dominantMotif={playerIdentity.dominantMotif} accent={playerIdentity.accent} celebrating={Boolean(identityCelebration)} celebrationLabel={identityCelebration?.label ?? null} />
             <button type="button" onClick={() => setChamber("entrance")}>Start a new deck</button>
             <nav aria-label="Learn, legal, and support"><a href="/academy">Academy</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="mailto:support@metaforge.gg">Support</a></nav>
@@ -5365,13 +5356,6 @@ export default function Home() {
         <div className="forge-rail-embers" aria-hidden="true"><i /><i /><i /></div>
         <div className="forge-rail-version" aria-label="MetaForge version 2.1.0"><i>MF</i><span>v2.1.0</span></div>
       </aside>
-
-      <ForgeWalkthrough
-        active={walkthroughActive}
-        chamber={chamber}
-        setChamber={setChamber}
-        onClose={() => setWalkthroughActive(false)}
-      />
 
       {chamber === "entrance" && (
         <section className="forge-entrance">

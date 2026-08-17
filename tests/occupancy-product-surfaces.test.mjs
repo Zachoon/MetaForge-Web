@@ -10,7 +10,6 @@ const [
   polish,
   anvil,
   globalsCss,
-  walkthrough,
   proving,
   provingCss,
   opinion,
@@ -22,7 +21,6 @@ const [
   read("app/forge-polish.css"),
   read("app/testing-anvil.css"),
   read("app/globals.css"),
-  read("app/forge-walkthrough.tsx"),
   read("app/proving-grounds-era.tsx"),
   read("app/proving-grounds-era.css"),
   read("app/components/forge/revision-opinion.tsx"),
@@ -50,9 +48,7 @@ test("awaken CTA names occupancy without changing the build button", () => {
   assert.doesNotMatch(page, /awaken-occupancy[\s\S]{0,80}onClick=\{awaken\}/);
 });
 
-test("walkthrough, proving grounds, and revision opinion keep occupancy separate from proof", () => {
-  assert.match(walkthrough, /Occupancy engines are named from commander oracle before the 99 exists/);
-  assert.match(walkthrough, /that is not a verified system map/);
+test("proving grounds and revision opinion keep occupancy separate from proof", () => {
   assert.match(proving, /occupancyEngines = \[\]/);
   assert.match(proving, /This trial does not verify occupancy/);
   assert.match(provingCss, /\.proving-occupancy/);
