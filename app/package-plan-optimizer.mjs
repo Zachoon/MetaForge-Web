@@ -193,7 +193,15 @@ export function evaluatePackageHealth(packageState, intent = {}) {
   if (packageState.commanderContribution === 0 && (intent.commanderMechanics?.rewards?.length || 0) > 0) {
     issues.push(Object.freeze({ kind: "weak_commander_connection", detail: "0 connected members" }));
   }
-  if (packageState.slotCost >= 28 && packageState.density.surplus >= 8) {
+  // The flat slotCost>=28 bar sat at roughly the 65th percentile of real
+  // spellslinger decks (floor 14, real p90 slotCost ~35), so over a third
+  // of ordinary real spellslinger decks were flagged "wasting slots" for
+  // running a normal amount of spells - 121 of 124 total real
+  // slot_inefficient instances this session's diagnostics found were
+  // spellslinger. Scaling to the package's own floor (capped at the
+  // original 28 so small packages keep a real bar) keeps this a genuinely
+  // rare, extreme-tail signal instead of a common false positive.
+  if (packageState.slotCost >= Math.max(28, Math.ceil((packageSpec.coreMin || 0) * 2.5)) && packageState.density.surplus >= 8) {
     issues.push(Object.freeze({ kind: "slot_inefficient", detail: `${packageState.slotCost} slots` }));
   }
   const highCurve = (packageState.curve["5+"] || 0);
