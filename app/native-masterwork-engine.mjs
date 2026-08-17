@@ -2001,7 +2001,29 @@ function evaluateCandidate(rows, roleCounts, input, variant) {
   return { score: Number(score.toFixed(3)), roleCoverage: Number(roleCoverage.toFixed(3)), multiRoleDensity: Number(multiRole.toFixed(3)), averageCmc: Number(averageCmc.toFixed(2)), curveHealth: Math.round(curveHealth), cohesion: Math.round(cohesion), resilience: Math.round(resilience) };
 }
 
-function computeBlueprintAlignment(analysis, selected, singleton) {
+// A row built from an imported decklist (buildImportedCandidateAttempt's
+// presetSpellRows) can reach here without directTribes/identityHits/
+// blueprintRoleHits/blueprintMechanicHits ever having been set, unlike a
+// row that went through analyzeCard's own computation (always a real
+// array via .filter()). Reproduced directly: a real Marvel-set commander
+// deck crashed here with "Cannot read properties of undefined (reading
+// 'length')" during repairWeaklyJustifiedSlots. Normalizing once here
+// matches the same defensive fallback already used in poolEntryToRow
+// (weak-slot-forensics.mjs) and one other site in this file, just applied
+// consistently instead of scattered per-callsite.
+function normalizeBlueprintEntry(entry) {
+  return {
+    ...entry,
+    directTribes: entry.directTribes || [],
+    identityHits: entry.identityHits || [],
+    blueprintRoleHits: entry.blueprintRoleHits || [],
+    blueprintMechanicHits: entry.blueprintMechanicHits || [],
+  };
+}
+
+function computeBlueprintAlignment(analysisIn, selectedIn, singleton) {
+  const analysis = { ...analysisIn, spells: analysisIn.spells.map(normalizeBlueprintEntry) };
+  const selected = selectedIn.map(normalizeBlueprintEntry);
   const availableTribeCards = analysis.spells.filter((entry) => entry.directTribes.length).length;
   const selectedTribeCards = selected.filter((entry) => entry.directTribes.length).length;
   const availableIdentityCards = analysis.spells.filter((entry) => entry.identityHits.length).length;
@@ -2688,13 +2710,17 @@ function buildImportedCandidateAttempt(input, analysis) {
       roles: spellEntry.roles,
       score: Number((spellEntry.roleScore || 0).toFixed(3)),
       cmc: spellEntry.cmc,
-      directTribes: spellEntry.directTribes,
-      tribalSupport: spellEntry.tribalSupport,
-      identityHits: spellEntry.identityHits,
-      blueprintRoleHits: spellEntry.blueprintRoleHits,
-      blueprintMechanicHits: spellEntry.blueprintMechanicHits,
-      commanderConnectionSignals: spellEntry.commanderConnectionSignals,
-      sequenceStages: spellEntry.sequenceStages,
+      // Matches poolEntryToRow's (weak-slot-forensics.mjs) defensive
+      // fallback for the same fields - an imported row otherwise reaches
+      // repair/blueprint-alignment code with these undefined instead of
+      // empty, which crashes rather than just reading as "no hits".
+      directTribes: spellEntry.directTribes || [],
+      tribalSupport: spellEntry.tribalSupport || [],
+      identityHits: spellEntry.identityHits || [],
+      blueprintRoleHits: spellEntry.blueprintRoleHits || [],
+      blueprintMechanicHits: spellEntry.blueprintMechanicHits || [],
+      commanderConnectionSignals: spellEntry.commanderConnectionSignals || [],
+      sequenceStages: spellEntry.sequenceStages || [],
       mechanics: spellEntry.mechanics,
       colorPips: spellEntry.colorPips,
       needsSnowSupport: spellEntry.needsSnowSupport,
