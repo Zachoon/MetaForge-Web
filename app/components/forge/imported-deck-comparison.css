@@ -97,6 +97,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: default;
 }
 .revision-deck-row em {
   padding: 3px 5px;
@@ -194,6 +195,7 @@
   color: #d7e2de;
   font-size: 11px;
   text-overflow: ellipsis;
+  cursor: default;
 }
 .swap-card-note {
   display: block;
@@ -356,5 +358,40 @@
   }
   .swap-reason i {
     transform: rotate(90deg);
+  }
+}
+/* Portal to document.body (see imported-deck-comparison.tsx) so the
+   preview escapes .revision-deck-scroll's own overflow:auto instead of
+   being clipped near the top/edges of the scrolling list. */
+.card-hover-preview {
+  position: fixed;
+  z-index: 200;
+  width: 220px;
+  pointer-events: none;
+  border-radius: 10px;
+  box-shadow: 0 18px 46px #000c;
+  animation: card-hover-preview-in 0.1s ease-out;
+}
+.card-hover-preview img {
+  width: 100%;
+  aspect-ratio: 0.715;
+  display: block;
+  border-radius: 10px;
+  background: #030504;
+  object-fit: cover;
+}
+@keyframes card-hover-preview-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (max-width: 760px) {
+  .card-hover-preview {
+    display: none;
   }
 }

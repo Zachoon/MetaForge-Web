@@ -1,9 +1,16 @@
+"use client";
+
+import { useCallback, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { cardImage } from "../../card-art";
 
 type DeckRow = { name: string; quantity: number; roles?: string[] };
 type Swap = { cut: string; add: string; reason: string; confident?: boolean };
+type HoverPreview = { name: string; x: number; y: number };
 
 const key = (value = "") => value.trim().toLocaleLowerCase("en");
+const PREVIEW_WIDTH = 220;
+const PREVIEW_MARGIN = 18;
 
 function quantities(rows: DeckRow[]) {
   return new Map(rows.map((row) => [key(row.name), Number(row.quantity || 0)]));
@@ -14,14 +21,72 @@ function changedNames(left: DeckRow[], right: DeckRow[]) {
   return new Set(left.filter((row) => row.quantity > (rightQuantities.get(key(row.name)) || 0)).map((row) => key(row.name)));
 }
 
-function DeckColumn({ title, eyebrow, rows, changed, tone }: { title: string; eyebrow: string; rows: DeckRow[]; changed: Set<string>; tone: "cut" | "add" }) {
+/**
+ * Shared hover-preview state for every card name in this comparison view.
+ * A portal to document.body (not a popup positioned relative to its row)
+ * because .revision-deck-scroll clips overflow - anything absolutely
+ * positioned inside it would get cut off near the top/edges of the list.
+ */
+function useCardHoverPreview() {
+  const [preview, setPreview] = useState<HoverPreview | null>(null);
+  const frame = useRef<number | null>(null);
+
+  const move = useCallback((name: string, event: { clientX: number; clientY: number }) => {
+    if (frame.current !== null) cancelAnimationFrame(frame.current);
+    const { clientX, clientY } = event;
+    frame.current = requestAnimationFrame(() => {
+      const maxX = (typeof window !== "undefined" ? window.innerWidth : 1200) - PREVIEW_WIDTH - PREVIEW_MARGIN;
+      const x = Math.min(clientX + PREVIEW_MARGIN, Math.max(PREVIEW_MARGIN, maxX));
+      const y = clientY + PREVIEW_MARGIN;
+      setPreview({ name, x, y });
+    });
+  }, []);
+  const hide = useCallback(() => {
+    if (frame.current !== null) cancelAnimationFrame(frame.current);
+    setPreview(null);
+  }, []);
+
+  const bind = useCallback((name: string) => ({
+    onMouseEnter: (event: React.MouseEvent) => move(name, event),
+    onMouseMove: (event: React.MouseEvent) => move(name, event),
+    onMouseLeave: hide,
+  }), [move, hide]);
+
+  const portal = useMemo(() => {
+    if (!preview || typeof document === "undefined") return null;
+    return createPortal(
+      <div className="card-hover-preview" style={{ left: preview.x, top: preview.y }} aria-hidden="true">
+        <img src={cardImage(preview.name)} alt="" />
+      </div>,
+      document.body,
+    );
+  }, [preview]);
+
+  return { bind, portal };
+}
+
+function DeckColumn({
+  title,
+  eyebrow,
+  rows,
+  changed,
+  tone,
+  bindHover,
+}: {
+  title: string;
+  eyebrow: string;
+  rows: DeckRow[];
+  changed: Set<string>;
+  tone: "cut" | "add";
+  bindHover: (name: string) => { onMouseEnter: (event: React.MouseEvent) => void; onMouseMove: (event: React.MouseEvent) => void; onMouseLeave: () => void };
+}) {
   return (
     <section className={`revision-deck-column is-${tone}`} aria-label={title}>
       <header><small>{eyebrow}</small><h2>{title}</h2><span>{rows.reduce((sum, row) => sum + row.quantity, 0)} cards</span></header>
       <div className="revision-deck-scroll">
         {rows.map((row) => (
           <div key={row.name} className={changed.has(key(row.name)) ? "revision-deck-row is-changed" : "revision-deck-row"}>
-            <b>{row.quantity}</b><span>{row.name}</span>{changed.has(key(row.name)) && <em>{tone === "cut" ? "OUT" : "IN"}</em>}
+            <b>{row.quantity}</b><span {...bindHover(row.name)}>{row.name}</span>{changed.has(key(row.name)) && <em>{tone === "cut" ? "OUT" : "IN"}</em>}
           </div>
         ))}
       </div>
@@ -59,6 +124,7 @@ export function ImportedDeckComparison({
   // the swap card itself says so, instead of leaving it to look like a
   // mismatch between the two panels.
   const originalKeys = new Set(originalRows.map((row) => key(row.name)));
+  const { bind: bindHover, portal: hoverPortal } = useCardHoverPreview();
   return (
     <section className="imported-revision-comparison" aria-labelledby="revision-comparison-title">
       <header className="revision-comparison-heading">
@@ -66,7 +132,7 @@ export function ImportedDeckComparison({
         <p>Red marks cards leaving the submitted list. Green marks cards entering the proposed revision. Everything unmarked is retained.</p>
       </header>
       <div className="revision-comparison-grid">
-        <DeckColumn title="Your submitted list" eyebrow="BEFORE" rows={originalRows} changed={removed} tone="cut" />
+        <DeckColumn title="Your submitted list" eyebrow="BEFORE" rows={originalRows} changed={removed} tone="cut" bindHover={bindHover} />
         <section className="swap-station" aria-label="Swap station and strategy read">
           <header><small>RECOMMENDATION CENTER</small><h2>Swap station</h2><p>Each recommendation preserves deck size and the plan’s required structural floors.</p></header>
           <div className="swap-station-list">
@@ -78,12 +144,12 @@ export function ImportedDeckComparison({
                   <img src={cardImage(swap.cut)} alt="" />
                   <span>
                     <small>REMOVE</small>
-                    <b>{swap.cut}</b>
+                    <b {...bindHover(swap.cut)}>{swap.cut}</b>
                     {cutWasForgeAdded && <em className="swap-card-note">Added to complete your list — not one of your submitted cards</em>}
                   </span>
                 </div>
                 <div className="swap-reason"><i>→</i><p>{swap.reason}</p>{swap.confident === false && <em>Consider, don’t apply yet</em>}</div>
-                <div className="swap-card is-add"><img src={cardImage(swap.add)} alt="" /><span><small>ADD</small><b>{swap.add}</b></span></div>
+                <div className="swap-card is-add"><img src={cardImage(swap.add)} alt="" /><span><small>ADD</small><b {...bindHover(swap.add)}>{swap.add}</b></span></div>
               </article>
               );
             }) : (
@@ -104,9 +170,10 @@ export function ImportedDeckComparison({
             )}
           </footer>
         </section>
-        <DeckColumn title="Forge proposed revision" eyebrow="AFTER" rows={proposedRows} changed={added} tone="add" />
+        <DeckColumn title="Forge proposed revision" eyebrow="AFTER" rows={proposedRows} changed={added} tone="add" bindHover={bindHover} />
       </div>
       <footer className="revision-comparison-boundary">A proposed revision is a controlled test, not proof of improved match performance. Your original list remains preserved.</footer>
+      {hoverPortal}
     </section>
   );
 }
