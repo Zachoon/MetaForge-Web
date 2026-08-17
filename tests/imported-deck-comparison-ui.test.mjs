@@ -37,3 +37,22 @@ test("comparison visually distinguishes cuts and additions without hiding unchan
   assert.match(css, /#123828/);
   assert.match(component, /Everything unmarked is retained/);
 });
+
+test("a double-faced card written by its front face on one side of the diff never reads as a phantom swap", () => {
+  const frontFace = (value = "") => value.split(/\s*\/\/\s*/)[0].trim();
+  const key = (value = "") => value.trim().toLocaleLowerCase("en");
+  const matchKey = (value = "") => key(frontFace(value));
+  const quantities = (rows) => new Map(rows.map((row) => [matchKey(row.name), Number(row.quantity || 0)]));
+  const changedNames = (left, right) => {
+    const rightQuantities = quantities(right);
+    return new Set(left.filter((row) => row.quantity > (rightQuantities.get(matchKey(row.name)) || 0)).map((row) => key(row.name)));
+  };
+  const original = [{ name: "Tony Stark", quantity: 1 }, { name: "The Ten Rings", quantity: 1 }];
+  const proposed = [{ name: "Tony Stark // The Invincible Iron Man", quantity: 1 }, { name: "Snap", quantity: 1 }];
+  assert.equal(changedNames(original, proposed).has("tony stark"), false);
+  assert.equal(changedNames(proposed, original).has("tony stark // the invincible iron man"), false);
+  assert.equal(changedNames(original, proposed).has("the ten rings"), true);
+  assert.equal(changedNames(proposed, original).has("snap"), true);
+  assert.match(component, /frontFace/);
+  assert.match(component, /matchKey/);
+});

@@ -18,13 +18,22 @@ const key = (value = "") => value.trim().toLocaleLowerCase("en");
 const PREVIEW_WIDTH = 220;
 const PREVIEW_MARGIN = 18;
 
+// A double-faced/flip/split card can be written by its front face alone on
+// one side of this diff (whatever the player pasted) and by its full Oracle
+// "Front // Back" name on the other (whatever the Forge's own deck text
+// renders) - same physical card, never a real swap. Match on the front face
+// so a pure naming difference can't masquerade as a change. This is a no-op
+// for every ordinary single-faced card, whose name has no "//" to split.
+const frontFace = (value = "") => value.split(/\s*\/\/\s*/)[0].trim();
+const matchKey = (value = "") => key(frontFace(value));
+
 function quantities(rows: DeckRow[]) {
-  return new Map(rows.map((row) => [key(row.name), Number(row.quantity || 0)]));
+  return new Map(rows.map((row) => [matchKey(row.name), Number(row.quantity || 0)]));
 }
 
 function changedNames(left: DeckRow[], right: DeckRow[]) {
   const rightQuantities = quantities(right);
-  return new Set(left.filter((row) => row.quantity > (rightQuantities.get(key(row.name)) || 0)).map((row) => key(row.name)));
+  return new Set(left.filter((row) => row.quantity > (rightQuantities.get(matchKey(row.name)) || 0)).map((row) => key(row.name)));
 }
 
 /**
