@@ -12,22 +12,62 @@
   background: linear-gradient(160deg, #0d1614, #090f0e 78%);
 }
 
-.player-compass-card.is-open {
-  width: min(760px, 100%);
-  /* The Explore/home chamber is a deliberate fixed-height "framed hero"
-     with no page scroll (site-frame.css: .great-forge.chamber-entrance -
-     overflow:hidden by design, not an oversight). That's fine for the
-     card's collapsed states, but the open question state (prompt +
-     description + progress dots + 3 answer buttons + back/skip actions)
-     can be taller than whatever viewport space remains once the hero
-     graphic and heading above it are accounted for, with no ancestor
-     scroll to fall back on - the third answer and the action buttons
-     could end up permanently below the fold. Scrolling inside the card
-     itself keeps every option reachable without touching the hero's
-     intentional no-page-scroll behavior.
-  */
-  max-height: min(78svh, 620px);
+/* The question flow is a modal now (player-compass-card.tsx), not an
+   inline-expanding card, specifically so it never has to compete with
+   the Explore/home chamber's deliberate fixed-height "framed hero, no
+   page scroll" behavior (site-frame.css). The modal sits above the page
+   entirely via a portal, with its own scroll if it's ever taller than
+   the viewport, so every option and action button stays reachable
+   regardless of chamber layout. */
+.player-compass-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #04070688;
+  backdrop-filter: blur(3px);
+  animation: player-compass-modal-fade-in 0.14s ease-out;
+}
+.player-compass-modal {
+  position: relative;
+  width: min(620px, 100%);
+  max-height: min(88svh, 720px);
+  padding: 24px 26px 20px;
   overflow-y: auto;
+  border: 1px solid #2d4541;
+  border-radius: 8px;
+  background: linear-gradient(160deg, #0d1614, #090f0e 78%);
+  color: #e6ece8;
+  box-shadow: 0 30px 90px #000b;
+  animation: player-compass-modal-rise-in 0.16s ease-out;
+}
+.player-compass-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  border: 1px solid #314741;
+  border-radius: 50%;
+  background: #0a1210;
+  color: #aebcb8;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.player-compass-modal-close:hover {
+  border-color: #70e2c0;
+  color: #e8eeea;
+}
+@keyframes player-compass-modal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes player-compass-modal-rise-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .player-compass-card > header small,
@@ -458,5 +498,13 @@
   .philosophy-alt-grid,
   .philosophy-side-by-side {
     grid-template-columns: 1fr;
+  }
+
+  .player-compass-modal-backdrop {
+    padding: 12px;
+  }
+  .player-compass-modal {
+    max-height: min(92svh, 720px);
+    padding: 20px 18px 16px;
   }
 }
