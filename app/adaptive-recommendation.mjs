@@ -39,14 +39,17 @@ export function displayRoleFor(card) {
     card?.oracleText || card?.oracle_text,
     ...(card?.cardFaces || card?.card_faces || []).flatMap((face) => [face.typeLine || face.type_line, face.oracleText || face.oracle_text]),
   ].filter(Boolean).join(" ");
-  // \b, not a bare /Land/i: "exile target nonland permanent" (Anguished
-  // Unmaking, Vindicate — one of the broadest removal templates in the
-  // game, already called out for the same reason in
+  // Checked against the card's own type line only, not the combined
+  // text blob below: a ramp spell like Cultivate or Rampant Growth
+  // mentions "land" in its effect text ("search your library for up to
+  // two basic land cards") without itself being one, and matching the
+  // combined text would misclassify it as a mana source instead of
+  // Acceleration. \b, not a bare /Land/i, for the same reason
+  // "nonland" (Anguished Unmaking, Vindicate) must never match here —
+  // already called out for the same reason in
   // native-masterwork-engine.mjs's interactionQualityFor and
-  // forge-interaction-graph.mjs's COLOR_TYPE_RESTRICTION) would otherwise
-  // match "land" as a bare substring of "nonland" and get classified as a
-  // mana source instead of removal.
-  if (/\bLand\b/i.test(text)) return "Mana source";
+  // forge-interaction-graph.mjs's COLOR_TYPE_RESTRICTION.
+  if (/\bLand\b/i.test(card?.typeLine || card?.type_line || "")) return "Mana source";
   if (/destroy all|exile all|all creatures|get -\d+\/-\d+/i.test(text)) return "Board reset";
   // Counterspells and removal used to share one "Interaction" bucket that
   // always mapped to "removal" below — meaning "counter" was a role every

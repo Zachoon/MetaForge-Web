@@ -47,9 +47,10 @@ const manaDoubler = card("Test Mana Doubler", "Artifact", "Double the amount of 
 const vanillaBear = card("Grizzly Bears", "Creature — Bear", "", 2);
 const plains = card("Plains", "Basic Land — Plains", "({T}: Add {W}.)", 0);
 const expensiveRemoval = card("Test Expensive Removal", "Instant", "Destroy target creature.", 5);
+const cultivate = card("Cultivate", "Sorcery", "Search your library for up to two basic land cards, reveal them, and put them into your hand. Then shuffle and put a land card from your hand onto the battlefield tapped.", 3);
 
 test("never returns null and always has all five fields, for any real card", () => {
-  for (const fixture of [solRing, demonicTutor, timeWarp, armageddon, efficientBolt, dualSignalCard, manaDoubler, vanillaBear, plains, expensiveRemoval]) {
+  for (const fixture of [solRing, demonicTutor, timeWarp, armageddon, efficientBolt, dualSignalCard, manaDoubler, vanillaBear, plains, expensiveRemoval, cultivate]) {
     const timing = describeCardTiming(fixture);
     assert.ok(timing, `${fixture.name} must never get a null timing read`);
     for (const field of ["intent", "clockLabel", "clock", "whyItMatters", "source"]) {
@@ -126,6 +127,16 @@ test("a plain land falls back to Mana source, never confused for a spell's timin
   const timing = describeCardTiming(plains);
   assert.equal(timing.source, "display-role:Mana source");
   assert.match(timing.intent, /develops your mana base/i);
+});
+
+test("Cultivate is not itself a land just because its own text mentions land — it reads as Acceleration, not Mana source", () => {
+  // Cultivate isn't a land it's ramp. displayRoleFor used to check the
+  // combined type+oracle text for "land," which matched Cultivate's own
+  // effect text ("search your library for ... land cards") and
+  // misclassified it as a mana source instead of Acceleration.
+  const timing = describeCardTiming(cultivate);
+  assert.equal(timing.source, "display-role:Acceleration");
+  assert.match(timing.intent, /extra mana early/i);
 });
 
 test("expensive removal that misses the efficientInteraction cost bar still gets a Reactive clock via its display role, not a fabricated Late-game turn number", () => {

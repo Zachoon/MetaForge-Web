@@ -34,12 +34,12 @@ test("simulationRoleFor classifies into the exact vocabulary PLANS.add already s
   assert.equal(simulationRoleFor({ typeLine: "Land", oracleText: "" }), "land");
   assert.equal(simulationRoleFor({ typeLine: "Sorcery", oracleText: "Destroy all creatures." }), "sweeper");
   assert.equal(simulationRoleFor({ typeLine: "Instant", oracleText: "Destroy target creature." }), "removal");
-  // A land-tutor spell's own text contains the word "land," which the
-  // "Mana source" check above matches first — real, pre-existing behavior
-  // of this classifier (ported unchanged from page.tsx), not something
-  // introduced here. A manarock with no "land" in its text lands on "ramp"
-  // as expected.
-  assert.equal(simulationRoleFor({ typeLine: "Sorcery", oracleText: "Search your library for a land card." }), "land");
+  // A land-tutor spell's own text contains the word "land," but the
+  // "Mana source" check above only looks at the card's own type line —
+  // a Sorcery that merely fetches a land is ramp (Acceleration), not a
+  // land itself. Cultivate and Rampant Growth are the real-card version
+  // of this exact shape.
+  assert.equal(simulationRoleFor({ typeLine: "Sorcery", oracleText: "Search your library for a land card." }), "ramp");
   assert.equal(simulationRoleFor({ typeLine: "Artifact", oracleText: "Add one mana of any color." }), "ramp");
   assert.equal(simulationRoleFor({ typeLine: "Sorcery", oracleText: "Draw two cards." }), "draw");
   assert.equal(simulationRoleFor({ typeLine: "Instant", oracleText: "Target creature gains hexproof." }), "protection");
@@ -52,6 +52,21 @@ test("simulationRoleFor classifies into the exact vocabulary PLANS.add already s
   // interactionQualityFor and forge-interaction-graph.mjs's
   // COLOR_TYPE_RESTRICTION for the same reason.
   assert.equal(simulationRoleFor({ typeLine: "Instant", oracleText: "Exile target nonland permanent." }), "removal");
+});
+
+test("real land-fetch ramp spells classify as ramp, real basic lands still classify as land", () => {
+  // Cultivate and Rampant Growth are real nonland cards whose oracle text
+  // mentions "land" repeatedly — the exact shape that used to falsely
+  // trip the "Mana source" check when it read the combined type+oracle
+  // text instead of the card's own type line.
+  const cultivate = { typeLine: "Sorcery", oracleText: "Search your library for up to two basic land cards, reveal them, and put them into your hand. Then shuffle and put a land card from your hand onto the battlefield tapped." };
+  const rampantGrowth = { typeLine: "Sorcery", oracleText: "Search your library for a basic land card, put it onto the battlefield tapped, then shuffle." };
+  assert.equal(simulationRoleFor(cultivate), "ramp");
+  assert.equal(simulationRoleFor(rampantGrowth), "ramp");
+  // Real basic lands must still classify as land — the fix narrows the
+  // check to the type line, not weakens it.
+  assert.equal(simulationRoleFor({ typeLine: "Basic Land — Forest", oracleText: "({T}: Add {G}.)" }), "land");
+  assert.equal(simulationRoleFor({ typeLine: "Basic Land — Plains", oracleText: "({T}: Add {W}.)" }), "land");
 });
 
 test("strategyArchetypeFor maps a Blueprint strategy string to the exact archetype key matchup-simulation.mjs's PROFILES uses", () => {
