@@ -81,3 +81,16 @@ test("stats bar and guest save gate name occupancy without treating it as proof"
   assert.match(anvil, /\.masterwork-stats-occupancy/);
   assert.match(globalsCss, /\.guest-result-occupancy/);
 });
+
+test("coach brief, experiments, graph, and post-accept keep occupancy off the verified-system path", () => {
+  assert.match(page, /className="honest-coach-occupancy"/);
+  assert.match(page, /Named from commander oracle, not a verified system map/);
+  assert.match(page, /className="experiment-occupancy"/);
+  assert.match(page, /These experiments do not reopen occupancy/);
+  assert.match(page, /className="interaction-graph-occupancy"/);
+  assert.match(page, /Named from commander oracle, not from this graph/);
+  assert.match(page, /className="post-accept-occupancy"/);
+  assert.match(page, /not from this revision/);
+  assert.match(anvil, /\.honest-coach-occupancy/);
+});
+

@@ -295,6 +295,7 @@ step that's actually in focus. */
 .honest-coach-drilldown-grid small{display:block;margin-bottom:6px;color:#72c7b5;font-size:9px;font-weight:900;letter-spacing:.12em}
 .honest-coach-drilldown-grid ul{margin:0;padding-left:18px;color:#b7c4be;font-size:12px;line-height:1.5}
 .honest-coach-packages{margin:12px 0 0;color:#8fa099;font-size:12px}
+.honest-coach-occupancy,.experiment-occupancy,.interaction-graph-occupancy,.post-accept-occupancy{margin:10px 0 0;color:#c9b89a;font:600 12px/1.45 ui-sans-serif,system-ui,sans-serif;font-style:normal}
 .honest-coach-id-chip{display:inline-block;margin-top:10px;color:#6f837c;font:500 10px/1.3 ui-monospace,monospace;letter-spacing:.04em}
 .honest-coach-feedback{margin-top:18px;padding:16px 18px;border:1px solid #3d524b;background:#0c1613}
 .honest-coach-feedback>small{display:block;color:#78cfbd;font-size:9px;font-weight:900;letter-spacing:.13em}

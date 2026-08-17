@@ -6557,6 +6557,11 @@ export default function Home() {
                     <small>VERDICT</small>
                     <h3>{honestCoachSummary.planStory?.title || honestCoachSummary.intentions.title}</h3>
                     <p>{honestCoachSummary.intentions.accomplish}</p>
+                    {coachOccupancyLabels.length > 0 && (
+                      <p className="honest-coach-occupancy">
+                        Occupancy engines: {coachOccupancyLabels.join(" · ")}. Named from commander oracle, not a verified system map.
+                      </p>
+                    )}
                   </article>
                   <article className="commission-why">
                     <small>WHY · OPENING PRIORITIES</small>
@@ -6931,6 +6936,9 @@ export default function Home() {
                 <div className="post-accept-choice" role="status">
                   <span>
                     <strong>Change applied.</strong> What's next for this Masterwork?
+                    {coachOccupancyLabels.length > 0 && (
+                      <em className="post-accept-occupancy"> Occupancy engines stay {coachOccupancyLabels.join(" · ")} — named from commander oracle, not from this revision.</em>
+                    )}
                     {lastAcceptedRevisionCount != null && (
                       <>
                         {" "}
@@ -7954,6 +7962,11 @@ export default function Home() {
                           )}
                         </div>
                       </header>
+                      {coachOccupancyLabels.length > 0 && (
+                        <p className="interaction-graph-occupancy">
+                          Occupancy engines: {coachOccupancyLabels.join(" · ")}. Named from commander oracle, not from this graph.
+                        </p>
+                      )}
 
                       {activeSystem && (
                         <div className="active-system-graph-banner">
@@ -8079,6 +8092,11 @@ export default function Home() {
                 <header className="vault-experiments-header">
                   <small>ADVANCED · TOURNAMENT-RIVAL EXPERIMENTS</small>
                   <b>A second, independent read: this exact build vs. its closest rival from generation.</b>
+                  {coachOccupancyLabels.length > 0 && (
+                    <p className="experiment-occupancy">
+                      Occupancy engines: {coachOccupancyLabels.join(" · ")}. Named from commander oracle. These experiments do not reopen occupancy.
+                    </p>
+                  )}
                 </header>
                 <div className="refinement-starters experiment-tablets" aria-label="Three evidence-led controlled experiments">
                   {honestCoachTablets.length > 0 ? (

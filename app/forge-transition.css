@@ -1,10 +1,10 @@
 /* The forge ceremony is real build time, so each narrative phase should feel
    active without pretending its timer controls construction. */
 .forging-ceremony {
-  --ceremony-art-opacity: .04;
-  --ceremony-art-brightness: .28;
-  --ceremony-art-saturation: .42;
-  --ceremony-heat-opacity: .08;
+  --ceremony-art-opacity: .025;
+  --ceremony-art-brightness: .2;
+  --ceremony-art-saturation: .12;
+  --ceremony-heat-opacity: .035;
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -14,12 +14,12 @@
   transition: background-color 1.1s ease;
 }
 
-.forging-ceremony[data-phase="2"] { --ceremony-art-opacity: .08; --ceremony-art-brightness: .34; --ceremony-art-saturation: .52; --ceremony-heat-opacity: .12; }
-.forging-ceremony[data-phase="3"] { --ceremony-art-opacity: .13; --ceremony-art-brightness: .41; --ceremony-art-saturation: .64; --ceremony-heat-opacity: .17; }
-.forging-ceremony[data-phase="4"] { --ceremony-art-opacity: .19; --ceremony-art-brightness: .49; --ceremony-art-saturation: .76; --ceremony-heat-opacity: .22; }
-.forging-ceremony[data-phase="5"] { --ceremony-art-opacity: .26; --ceremony-art-brightness: .58; --ceremony-art-saturation: .88; --ceremony-heat-opacity: .28; }
-.forging-ceremony[data-phase="6"] { --ceremony-art-opacity: .34; --ceremony-art-brightness: .68; --ceremony-art-saturation: 1; --ceremony-heat-opacity: .34; }
-.forging-ceremony[data-phase="7"] { --ceremony-art-opacity: .43; --ceremony-art-brightness: .8; --ceremony-art-saturation: 1.12; --ceremony-heat-opacity: .42; }
+.forging-ceremony[data-phase="2"] { --ceremony-art-opacity: .055; --ceremony-art-brightness: .25; --ceremony-art-saturation: .24; --ceremony-heat-opacity: .07; }
+.forging-ceremony[data-phase="3"] { --ceremony-art-opacity: .09; --ceremony-art-brightness: .31; --ceremony-art-saturation: .38; --ceremony-heat-opacity: .115; }
+.forging-ceremony[data-phase="4"] { --ceremony-art-opacity: .13; --ceremony-art-brightness: .38; --ceremony-art-saturation: .54; --ceremony-heat-opacity: .17; }
+.forging-ceremony[data-phase="5"] { --ceremony-art-opacity: .18; --ceremony-art-brightness: .45; --ceremony-art-saturation: .7; --ceremony-heat-opacity: .23; }
+.forging-ceremony[data-phase="6"] { --ceremony-art-opacity: .28; --ceremony-art-brightness: .61; --ceremony-art-saturation: .94; --ceremony-heat-opacity: .34; }
+.forging-ceremony[data-phase="7"] { --ceremony-art-opacity: .37; --ceremony-art-brightness: .74; --ceremony-art-saturation: 1.08; --ceremony-heat-opacity: .44; }
 
 .ceremony-commander-emergence {
   position: absolute;
@@ -28,9 +28,9 @@
   background-position: center 22%;
   background-size: cover;
   background-repeat: no-repeat;
-  opacity: var(--ceremony-art-opacity);
+  opacity: var(--ceremony-art-opacity) !important;
   filter: brightness(var(--ceremony-art-brightness)) saturate(var(--ceremony-art-saturation)) sepia(.18);
-  transform: scale(1.035);
+  transform: scale(1.035) !important;
   transition: opacity 1.15s ease, filter 1.15s ease, transform 1.15s ease;
 }
 
