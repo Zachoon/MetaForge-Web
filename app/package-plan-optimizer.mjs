@@ -161,6 +161,35 @@ export function buildPackageState(rows, packageSpec, intent = {}, options = {}) 
   });
 }
 
+// weak_commander_connection used to fire whenever the commander had ANY
+// reward category at all (forge-interaction-graph.mjs's PAYOFFS vocabulary
+// - tokens, treasure, artifacts, auras, sacrifice, graveyard, spells, lands,
+// etb, combat, protection, etc.), regardless of whether that category had
+// anything to do with the package being checked. Confirmed on real data:
+// Urza's only reward category is "artifacts", but every Urza deck's
+// unrelated stax package still got flagged "weak commander connection".
+// stax and typal have no corresponding reward category in that vocabulary
+// at all (tax/tribal synergy isn't a "whenever X, get Y" pattern), so they
+// were structurally guaranteed to almost always false-positive - confirmed
+// empirically: 55 of 84 real weak_commander_connection instances across
+// affected packages were pure category mismatches (0 of 21 stax, 0 of 8
+// typal, 0 of 12 reanimator, 0 of 14 tokens genuinely relevant; only
+// spellslinger kept real signal, 13 of 29). Local to this file rather than
+// added to PACKAGE_CATALOG in strategic-intent.mjs, which is under active
+// concurrent maintenance outside this lane.
+const PACKAGE_RELEVANT_REWARDS = Object.freeze({
+  auras: Object.freeze(["auras"]),
+  equipment: Object.freeze([]),
+  aristocrats: Object.freeze(["sacrifice", "tokens"]),
+  reanimator: Object.freeze(["graveyard"]),
+  tokens: Object.freeze(["tokens", "treasure", "clues", "food", "blood", "gold", "maps", "junk", "powerstones"]),
+  landfall: Object.freeze(["lands"]),
+  typal: Object.freeze([]),
+  spellslinger: Object.freeze(["spells"]),
+  blink: Object.freeze(["etb"]),
+  stax: Object.freeze([]),
+});
+
 /**
  * Machine-readable package health evaluation.
  */
@@ -190,7 +219,9 @@ export function evaluatePackageHealth(packageState, intent = {}) {
     issues.push(Object.freeze({ kind: "unsupported_anchor", detail: packageState.anchors[0] }));
   }
   if (packageState.redundancy >= 3) issues.push(Object.freeze({ kind: "excessive_redundancy", detail: `${packageState.redundancy}` }));
-  if (packageState.commanderContribution === 0 && (intent.commanderMechanics?.rewards?.length || 0) > 0) {
+  const relevantRewards = PACKAGE_RELEVANT_REWARDS[packageState.id] || [];
+  const hasRelevantCommanderReward = (intent.commanderMechanics?.rewards || []).some((reward) => relevantRewards.includes(reward));
+  if (packageState.commanderContribution === 0 && hasRelevantCommanderReward) {
     issues.push(Object.freeze({ kind: "weak_commander_connection", detail: "0 connected members" }));
   }
   // The flat slotCost>=28 bar sat at roughly the 65th percentile of real
