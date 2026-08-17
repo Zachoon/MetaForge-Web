@@ -3023,6 +3023,18 @@ export default function Home() {
         || "",
     });
   }, [inspectedIsCommander, inspectedCard, inspectedFact]);
+  const contextInspectIsCommander = isCommanderFormat(format) && [activeCommanderName, selectedSecondCommander?.name]
+    .filter(Boolean)
+    .some((name) => cardFactKey(name as string) === cardFactKey(contextInspectCard));
+  const contextOccupancyLabels = useMemo(() => {
+    if (!contextInspectIsCommander || !contextInspectCard) return [];
+    return occupancyEngineLabelsForCommander({
+      name: String(contextInspectCard || ""),
+      oracleText: contextInspectFact?.oracle_text
+        || contextInspectFact?.card_faces?.map((face: { oracle_text?: string }) => face.oracle_text).filter(Boolean).join("\n\n")
+        || "",
+    });
+  }, [contextInspectIsCommander, contextInspectCard, contextInspectFact]);
   const commissionOccupancyLabels = useMemo(
     () => occupancyLabelsForOption(selectedCommander),
     [selectedCommander],
@@ -6090,6 +6102,11 @@ export default function Home() {
               <strong>{chamber === "refine" ? "REVIEW MY DECK" : "BUILD MY COMPLETE DECK"}</strong>
               <b>→</b>
             </button>
+            {(chamber !== "commission" || buildStep === 2) && revealOccupancyLabels.length > 0 && (
+              <p className="awaken-occupancy">
+                Occupancy engines: {revealOccupancyLabels.join(" · ")}. Named from commander oracle, before the 99 exists.
+              </p>
+            )}
           </div>
         </section>
       )}
@@ -6112,6 +6129,11 @@ export default function Home() {
               <h1>{FORGING_STAGES[stage][0]}</h1>
               <p>{FORGING_STAGES[stage][1]}</p>
             </div>
+            {revealOccupancyLabels.length > 0 && (
+              <p className="ceremony-occupancy">
+                Occupancy engines: {revealOccupancyLabels.join(" · ")}. Named from commander oracle while the 99 is still being forged.
+              </p>
+            )}
             <div className="ceremony-phase">
               <small>STEP {stage + 1} OF {FORGING_STAGES.length}</small>
               <strong>
@@ -6981,6 +7003,7 @@ export default function Home() {
                 <button type="button" className={cheapestPrintings ? "active" : ""} aria-pressed={cheapestPrintings} onClick={() => setCheapestPrintings((current) => !current)}>Compare cheapest printings</button>
               </div>
               <DeepForgeDossier
+                occupancyEngines={coachOccupancyLabels}
                 understanding={honestCoachSummary.deepForgeUnderstanding}
                 principles={honestCoachSummary.deepForgePrinciples}
               />
@@ -8667,6 +8690,9 @@ export default function Home() {
                       const label = relativeUpdatedLabel(savedMasterworks.find((family) => family.id === deckId)?.updatedAt);
                       return label ? <em className="masterwork-updated-label"> · {label}</em> : null;
                     })()}
+                    {coachOccupancyLabels.length > 0 && (
+                      <em className="masterwork-footer-occupancy"> · {coachOccupancyLabels.join(" · ")}</em>
+                    )}
                   </span>
                   <div>
                     <button
@@ -8802,6 +8828,11 @@ export default function Home() {
                         {contextInspectFact?.type_line ||
                           "Card details awaken on inspection"}
                       </span>
+                      {contextOccupancyLabels.length > 0 && (
+                        <p className="forge-context-occupancy">
+                          Occupancy engines: {contextOccupancyLabels.join(" · ")}
+                        </p>
+                      )}
                       {matchupCardAdvice
                         && matchupCardAdvice.cardName === contextInspectCard && (
                         <div className={`forge-context-matchup-coach${matchupCardAdvice.priority ? " is-priority" : " is-secondary"}`}>
@@ -8852,6 +8883,16 @@ export default function Home() {
                           No structural engines tagged yet — matchup seat advice above still applies.
                         </p>
                       )}
+                      {explainPairsForCardAsMentor({
+                        cardName: contextInspectCard,
+                        enginePairs: interactionGraph.enginePairs || [],
+                        resetPairs: interactionGraph.resetPairs || [],
+                        limit: 1,
+                      }).map((explanation: { cards: string[]; paragraph: string }) => (
+                        <p key={explanation.cards.join("+")} className="forge-context-pair">
+                          {explanation.paragraph}
+                        </p>
+                      ))}
                       <button
                         type="button"
                         className="forge-context-card-inspector-dossier"
@@ -9401,6 +9442,7 @@ export default function Home() {
               )}
             </aside>
             <ProvingGroundsEra
+              occupancyEngines={coachOccupancyLabels}
               revision={Math.max(1, revisions.length)}
               title={coachingSession.title}
               question={activeFieldTest?.question || coachingSession.action || provingGrounds.question}
@@ -9426,6 +9468,7 @@ export default function Home() {
           </div>
           {hasValidatedDeck && siteRail !== "decklist" && (
             <RevisionOpinionPanel
+              occupancyEngines={coachOccupancyLabels}
               familyId={deckId || null}
               fingerprint={
                 revisions.at(-1)?.fingerprint

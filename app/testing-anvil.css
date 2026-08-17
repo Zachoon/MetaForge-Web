@@ -884,3 +884,6 @@ step that's actually in focus. */
 .coach-below-deck>summary{cursor:pointer;padding:14px 18px;color:#d7fff4;font:800 12px/1.2 ui-sans-serif,system-ui,sans-serif}
 .workbench-coach-stack .forge-understanding-bridge{margin-top:0}
 @media(max-width:760px){.great-forge{padding-left:0;padding-bottom:58px}.forge-global-nav{display:none}.forge-global-rail{top:auto;right:0;bottom:0;width:auto;height:58px;flex-direction:row;padding:0;border-top:1px solid #3c4943}.forge-global-rail button{min-width:56px;min-height:58px;flex:1;border-left:0;border-bottom:2px solid transparent}.forge-global-rail button.active{border-bottom-color:#e08e3e}.forge-global-rail button:last-child{margin:0}.forge-bar{padding-inline:12px}}
+
+.masterwork-footer-occupancy{color:#c9b89a;font-style:normal;letter-spacing:.03em}
+.forge-context-occupancy,.forge-context-pair{margin:10px 0 0;color:#c9b89a;font:600 12px/1.45 ui-sans-serif,system-ui,sans-serif}

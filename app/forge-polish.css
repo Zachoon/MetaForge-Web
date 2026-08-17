@@ -359,6 +359,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .ceremony-copy .forge-eyebrow { color: var(--forge-ember-soft); }
 .ceremony-copy h1 { color: #f2eadd; letter-spacing: .01em; text-transform: none; text-wrap: balance; }
 .ceremony-copy > p { color: #9eaaa4; }
+.ceremony-copy > .ceremony-occupancy { margin: 14px 0 0; color: #c9b89a; font: 600 15px/1.55 Newsreader, Georgia, serif; }
+.awaken-occupancy { margin: 10px 0 0; color: #c9b89a; font: 600 13px/1.45 Newsreader, Georgia, serif; }
 .candidate-count { padding-block: 18px; border-block: 1px solid rgba(131,122,103,.24); }
 .candidate-count strong { color: var(--forge-ember-soft); }
 .ceremony-progress > span { height: 3px; background: #212a25; }

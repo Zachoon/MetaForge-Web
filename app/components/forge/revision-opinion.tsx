@@ -34,6 +34,7 @@ export type RevisionOpinionResponse = {
 };
 
 export type RevisionOpinionPanelProps = {
+  occupancyEngines?: string[];
   familyId: string | null;
   /** Server-owned revision id when present on the saved Bench row. */
   revisionId?: string | null;
@@ -90,6 +91,7 @@ export function revisionOpinionStanceTone(headline = ""): "recommend" | "against
  * Consumes server eligibility only — never constructs opinionKey from card or commander names.
  */
 export function RevisionOpinionPanel({
+  occupancyEngines = [],
   familyId,
   revisionId = null,
   fingerprint = null,
@@ -192,6 +194,11 @@ export function RevisionOpinionPanel({
             MetaForge answers only for this saved revision. The server decides eligibility —
             the browser never invents a question from a card or commander name.
           </p>
+          {occupancyEngines.length > 0 && (
+            <p className="revision-opinion-occupancy">
+              Occupancy engines from commander oracle: {occupancyEngines.join(" · ")}. That is not this revision's Mentor stance.
+            </p>
+          )}
         </div>
         <b>{subject ? subject.toUpperCase() : "SAVED REVISION"}</b>
       </header>

@@ -13,6 +13,7 @@ type Evidence = {
 };
 
 export function ProvingGroundsEra({
+  occupancyEngines = [],
   revision,
   title,
   question,
@@ -32,6 +33,7 @@ export function ProvingGroundsEra({
   onRerun,
   onOpenHistory,
 }: {
+  occupancyEngines?: string[];
   revision: number;
   title: string;
   question: string;
@@ -87,6 +89,11 @@ export function ProvingGroundsEra({
             <div><dt>Why this trial</dt><dd>{title}</dd></div>
           </dl>
           <aside>{boundary}</aside>
+          {occupancyEngines.length > 0 && (
+            <p className="proving-occupancy">
+              Occupancy engines from commander oracle: {occupancyEngines.join(" · ")}. This trial does not verify occupancy.
+            </p>
+          )}
           {!active && !read && <button type="button" disabled={!canBegin} onClick={onBegin}>Carry this question into a game <span>→</span></button>}
         </article>
 

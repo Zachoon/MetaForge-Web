@@ -55,7 +55,7 @@ const STEPS: WalkthroughStep[] = [
   {
     id: "after-forging",
     title: "Your coach takes it from here",
-    body: "You'll land on your finished deck with three simple places: Deck to review it, Tune to try a useful change, and Test for one clear next-game question. The highlighted coaching button always takes you to the right next step; deeper numbers stay optional.",
+    body: "You'll land on your finished deck with three simple places: Deck to review it, Tune to try a useful change, and Test for one clear next-game question. Occupancy engines are named from commander oracle before the 99 exists — that is not a verified system map. The highlighted coaching button always takes you to the right next step; deeper numbers stay optional.",
   },
 ];
 

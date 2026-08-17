@@ -32,6 +32,14 @@
   font: 500 clamp(22px, 3vw, 28px) / 1.15 Newsreader, Georgia, serif;
 }
 
+.revision-opinion-occupancy {
+  margin: 10px 0 0;
+  max-width: 42rem;
+  color: #c9b89a;
+  font-size: calc(13px * var(--forge-reading-scale, 1));
+  line-height: 1.45;
+}
+
 .revision-opinion-header p {
   margin: 0;
   max-width: 42rem;

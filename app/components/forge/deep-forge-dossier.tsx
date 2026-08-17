@@ -7,6 +7,7 @@ import {
 } from "../../deep-forge-presentation.mjs";
 
 type DeepForgeDossierProps = {
+  occupancyEngines?: string[];
   understanding?: any;
   principles?: any;
 };
@@ -114,7 +115,7 @@ function PlayerInsightCard({ entry }: { entry: any }) {
 /**
  * Deep Forge research dossier — player language default, raw evidence one click down.
  */
-export function DeepForgeDossier({ understanding = null, principles = null }: DeepForgeDossierProps) {
+export function DeepForgeDossier({ occupancyEngines = [], understanding = null, principles = null }: DeepForgeDossierProps) {
   const playerUnderstanding = useMemo(
     () => presentDeepForgeUnderstanding(understanding),
     [understanding],
@@ -124,10 +125,15 @@ export function DeepForgeDossier({ understanding = null, principles = null }: De
     [principles],
   );
 
-  if (!playerUnderstanding && !playerPrinciples) return null;
+  if (!playerUnderstanding && !playerPrinciples && occupancyEngines.length === 0) return null;
 
   return (
     <div className="deep-forge-dossier" data-writes-to-brain="false">
+      {occupancyEngines.length > 0 && (
+        <p className="deep-forge-occupancy">
+          Occupancy engines from commander oracle: {occupancyEngines.join(" · ")}. That is not Deep Forge research.
+        </p>
+      )}
       {playerUnderstanding && (
         <section className="deep-forge-player-panel" aria-label="What MetaForge noticed">
           <header>
