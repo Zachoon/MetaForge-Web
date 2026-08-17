@@ -98,6 +98,7 @@ export function tallyOccupiedHealthKinds(decks = []) {
 
 export function tallyUnnamedOccupiedHealthKinds(decks = []) {
   const totals = Object.fromEntries(UNNAMED_PACKAGE_HEALTH_KINDS.map((kind) => [kind, 0]));
+  const byPackage = {};
   let occupiedDecks = 0;
   for (const deck of decks) {
     const occupied = new Set(deck.occupiedPackageIds || []);
@@ -108,13 +109,21 @@ export function tallyUnnamedOccupiedHealthKinds(decks = []) {
         occupiedDecks += 1;
         counted = true;
       }
+      if (!byPackage[pkg.id]) {
+        byPackage[pkg.id] = Object.fromEntries(UNNAMED_PACKAGE_HEALTH_KINDS.map((kind) => [kind, 0]));
+        byPackage[pkg.id].decks = 0;
+      }
+      byPackage[pkg.id].decks += 1;
       const kinds = new Set((pkg.issues || []).map((issue) => issue.kind || issue));
       for (const kind of UNNAMED_PACKAGE_HEALTH_KINDS) {
-        if (kinds.has(kind)) totals[kind] += 1;
+        if (kinds.has(kind)) {
+          totals[kind] += 1;
+          byPackage[pkg.id][kind] += 1;
+        }
       }
     }
   }
-  return { occupiedDecks, totals };
+  return { occupiedDecks, totals, byPackage };
 }
 
 function dominantNamedKinds(bucket) {
@@ -202,6 +211,15 @@ export function formatPackageHealthKindsReport(tally, options = {}) {
   } else {
     for (const kind of UNNAMED_PACKAGE_HEALTH_KINDS) {
       lines.push(`- **${kind}**: ${unnamed.totals[kind] || 0}`);
+    }
+    const pkgRows = Object.entries(unnamed.byPackage || {}).filter(([, row]) => row.decks);
+    if (pkgRows.length) {
+      lines.push("");
+      lines.push("Per occupied package:");
+      for (const [id, row] of pkgRows.sort((a, b) => a[0].localeCompare(b[0]))) {
+        const parts = UNNAMED_PACKAGE_HEALTH_KINDS.filter((kind) => row[kind]).map((kind) => `${kind} ${row[kind]}/${row.decks}`);
+        lines.push(`- **${id}**: ${parts.join(", ") || "no unnamed strain"}`);
+      }
     }
   }
   lines.push("");

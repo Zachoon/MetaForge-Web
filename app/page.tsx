@@ -31,7 +31,7 @@ import { applyControlledSwap, experimentAdditionSynergy, rankExperimentAdditions
 // moved out entirely once the simulation dossier that was its only
 // caller became server-side too.
 import { manaConsistencyReport, parseNativeBlueprintIntent } from "./native-masterwork-engine.mjs";
-import { explainCardAsMentor, explainOccupiedPackagesAsMentor, explainPairsForCardAsMentor, occupancyEngineLabelsForCommander } from "./knowledge/mentor-shadow.mjs";
+import { explainCardAsMentor, explainOccupiedPackagesAsMentor, explainPairAsMentor, explainPairsForCardAsMentor, occupancyEngineLabelsForCommander } from "./knowledge/mentor-shadow.mjs";
 import { commanderOptionFromCard, resolvePastedCommanderCandidate } from "./deck-import-commander.mjs";
 import { updateFamily, setFamilyMotifWeights } from "./deck-bench.mjs";
 import {
@@ -7166,33 +7166,59 @@ export default function Home() {
                             </article>
                           </section>
 
+                          {coachOccupancyLabels.length > 0 && (
+                            <span className="slot-justification">
+                              <small>OCCUPANCY ENGINES · COMMANDER ORACLE, NOT COMPOSITION OF THE 99</small>
+                              <em>{coachOccupancyLabels.join(" · ")}</em>
+                            </span>
+                          )}
                           {interactionGraph.enginePairs.length > 0 && (
                             <span className="slot-justification">
                               <small>POTENTIAL TWO-CARD ENGINES · PATTERN-INFERRED, NOT A VERIFIED COMBO</small>
-                              {interactionGraph.enginePairs.slice(0, 3).map((pair: { cards: string[]; reason: string; loopKind?: string }) => (
+                              {interactionGraph.enginePairs.slice(0, 3).map((pair: { cards: string[]; reason: string; loopKind?: string }) => {
+                                const mentor = explainPairAsMentor({ cards: pair.cards, loopKind: pair.loopKind });
+                                return (
                                 <em key={pair.cards.join("+")}>
                                   {pair.cards.join(" + ")}
                                   {pair.loopKind && pair.loopKind !== "engine" ? ` · ${pair.loopKind.replaceAll("_", " ")}` : ""}
+                                  {mentor.ok ? ` · ${mentor.loopSeating[0].seat.label}` : ""}
                                   {" — "}
                                   {pair.reason}
                                 </em>
-                              ))}
+                                );
+                              })}
                             </span>
                           )}
                           {(interactionGraph.resetPairs || []).length > 0 && (
                             <span className="slot-justification">
                               <small>RESET SHAPES · INVESTIGATE, NOT A VERIFIED INFINITE</small>
-                              {interactionGraph.resetPairs.slice(0, 3).map((pair: { cards: string[]; reason: string }) => (
-                                <em key={pair.cards.join("+")}>{pair.cards.join(" + ")} — {pair.reason}</em>
-                              ))}
+                              {interactionGraph.resetPairs.slice(0, 3).map((pair: { cards: string[]; reason: string; loopKind?: string; shape?: string }) => {
+                                const mentor = explainPairAsMentor({ cards: pair.cards, loopKind: pair.loopKind, shape: pair.shape });
+                                return (
+                                <em key={pair.cards.join("+")}>
+                                  {pair.cards.join(" + ")}
+                                  {mentor.ok ? ` · ${mentor.loopSeating[0].seat.label}` : ""}
+                                  {" — "}
+                                  {pair.reason}
+                                </em>
+                                );
+                              })}
                             </span>
                           )}
                           {nativeMasterworkContext?.unusedEnginePartners && nativeMasterworkContext.unusedEnginePartners.length > 0 && (
                             <span className="slot-justification">
                               <small>SITTING UNUSED IN YOUR POOL · SAME PATTERN-INFERRED CAVEAT</small>
-                              {nativeMasterworkContext.unusedEnginePartners.slice(0, 3).map((entry: { card: string; partner: string; reason: string }) => (
-                                <em key={`${entry.card}+${entry.partner}`}>{entry.card} — {entry.reason}</em>
-                              ))}
+                              {nativeMasterworkContext.unusedEnginePartners.slice(0, 3).map((entry: { card: string; partner: string; reason: string; loopKind?: string }) => {
+                                const mentor = explainPairAsMentor({ cards: [entry.card, entry.partner], loopKind: entry.loopKind });
+                                return (
+                                <em key={`${entry.card}+${entry.partner}`}>
+                                  {entry.card}
+                                  {mentor.ok ? ` · ${mentor.loopSeating[0].seat.label}` : ""}
+                                  {" — "}
+                                  {entry.reason}
+                                </em>
+                                );
+                              })}
                             </span>
                           )}
 
@@ -8836,6 +8862,12 @@ export default function Home() {
                           <small>SEAT LANGUAGE · EXPERIMENTAL</small>
                           <p>{inspectedMentor.paragraph}</p>
                           <p className="card-context-alternatives">{inspectedMentor.openQuestion}</p>
+                        </div>
+                      )}
+                      {inspectedIsCommander && coachOccupancyLabels.length > 0 && (
+                        <div className="card-inspector-section card-inspector-seat">
+                          <small>OCCUPANCY LANGUAGE · EXPERIMENTAL</small>
+                          <p>Occupancy engines: {coachOccupancyLabels.join(" · ")}. Named from commander oracle, not from composition of the 99.</p>
                         </div>
                       )}
                       {inspectedPackageMentors.map((explanation) => (

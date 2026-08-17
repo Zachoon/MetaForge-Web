@@ -71,11 +71,15 @@ describe("Epic 6 package health kinds closeout", () => {
     assert.equal(unnamed.occupiedDecks, 1);
     assert.equal(unnamed.totals.missing_leg, 1);
     assert.equal(unnamed.totals.curve_conflict, 0);
+    assert.equal(unnamed.byPackage.tokens.missing_leg, 1);
+    assert.equal(unnamed.byPackage.spellslinger, undefined);
     const report = formatPackageHealthKindsReport({
       tokens: { id: "tokens", decks: 1, underfilled: 1, oversaturated: 0, excessive_redundancy: 0 },
     }, { unnamed });
     assert.match(report, /Unnamed health kinds/);
     assert.match(report, /Do not seat/);
     assert.match(report, /\*\*missing_leg\*\*: 1/);
+    assert.match(report, /Per occupied package/);
+    assert.match(report, /\*\*tokens\*\*: missing_leg 1\/1/);
   });
 });
