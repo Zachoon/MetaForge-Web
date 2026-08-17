@@ -37,6 +37,7 @@ export function ImportedDeckComparison({
   strategyTitle,
   strategySummary,
   coreSummary,
+  occupancyEngines = [],
 }: {
   originalRows: DeckRow[];
   proposedRows: DeckRow[];
@@ -45,6 +46,7 @@ export function ImportedDeckComparison({
   strategyTitle: string;
   strategySummary: string;
   coreSummary: string;
+  occupancyEngines?: string[];
 }) {
   const removed = changedNames(originalRows, proposedRows);
   const added = changedNames(proposedRows, originalRows);
@@ -78,6 +80,9 @@ export function ImportedDeckComparison({
           <footer className="strategy-read">
             <small>WHAT THE FORGE READ</small><h3>{strategyTitle}</h3><p>{strategySummary}</p>
             <div><b>Core to retain</b><span>{coreSummary}</span></div>
+            {occupancyEngines.length > 0 && (
+              <div><b>Occupancy</b><span>{occupancyEngines.join(" · ")}</span></div>
+            )}
           </footer>
         </section>
         <DeckColumn title="Forge proposed revision" eyebrow="AFTER" rows={proposedRows} changed={added} tone="add" />

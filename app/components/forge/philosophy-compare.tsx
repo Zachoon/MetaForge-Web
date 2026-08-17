@@ -11,6 +11,7 @@ type PhilosophyCompareProps = {
   builds: Parameters<typeof presentPhilosophyComparison>[0];
   decidedBy?: string | null;
   commanderName?: string;
+  occupancyEngines?: string[];
   onChoose: (candidateId: string) => void;
   onInspectCard?: (name: string) => void;
 };
@@ -131,6 +132,7 @@ export function PhilosophyCompare({
   builds,
   decidedBy = null,
   commanderName = "",
+  occupancyEngines = [],
   onChoose,
   onInspectCard,
 }: PhilosophyCompareProps) {
@@ -158,6 +160,9 @@ export function PhilosophyCompare({
         <small>CHOOSE YOUR EXPERIENCE</small>
         <h2>{title}</h2>
         <p>{lede}</p>
+        {occupancyEngines.length > 0 && (
+          <p className="philosophy-occupancy">Occupancy engines: {occupancyEngines.join(" · ")}. Named from commander oracle, not from the 99.</p>
+        )}
         {comparison.provenanceLabel && count > 1 && (
           <p className="philosophy-report-provenance">{comparison.provenanceLabel}</p>
         )}

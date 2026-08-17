@@ -3031,6 +3031,16 @@ export default function Home() {
     () => occupancyLabelsForOption(selectedSecondCommander),
     [selectedSecondCommander],
   );
+  const revealOccupancyLabels = useMemo(() => {
+    const seen = new Set<string>();
+    const labels: string[] = [];
+    for (const label of [...commissionOccupancyLabels, ...secondCommissionOccupancyLabels]) {
+      if (seen.has(label)) continue;
+      seen.add(label);
+      labels.push(label);
+    }
+    return labels;
+  }, [commissionOccupancyLabels, secondCommissionOccupancyLabels]);
 
   // Prefers the exact printing the player already chose via the printing
   // picker (inspectedPrinting.tcgplayerId); falls back to a name-only
@@ -6198,6 +6208,7 @@ export default function Home() {
                     || selectedCommander?.name
                     || ""
                   }
+                  occupancyEngines={revealOccupancyLabels}
                   onChoose={(candidateId) => enterMasterwork(candidateId)}
                   onInspectCard={setHoveredCard}
                 />
@@ -6282,6 +6293,11 @@ export default function Home() {
               <p>
                 The Forge has completed the structure, but the final list stays veiled until you choose its first flex decision. Pick the hypothesis you want to carry into your opening matches.
               </p>
+              {coachOccupancyLabels.length > 0 && (
+                <p className="opening-experiment-occupancy">
+                  Occupancy engines: {coachOccupancyLabels.join(" · ")}. Named from commander oracle, not from this first-card choice.
+                </p>
+              )}
               <div className="opening-experiment-options">
                 {openingExperimentChoices.map((choice: any, index: number) => (
                   <article key={choice.id}>
@@ -6727,6 +6743,7 @@ export default function Home() {
               strategyTitle={honestCoachSummary.planStory?.title || honestCoachSummary.intentions.title}
               strategySummary={honestCoachSummary.deckUnderstanding?.playerSummary?.detail || honestCoachSummary.intentions.accomplish}
               coreSummary={honestCoachSummary.intentions.establish || honestCoachSummary.planStory?.planLabel || "Retain the cards carrying the deck's primary engine and required structural roles."}
+              occupancyEngines={coachOccupancyLabels}
             />
           )}
           <div className={`testing-layout chapter-${activeForgeChapter}-active ${deckViewMode}-deck-view${isImportedDeckReview ? " imported-deck-review" : ""}`}>
@@ -8388,6 +8405,7 @@ export default function Home() {
                       setDeckViewMode("ledger");
                     }}
                     strategy={strategy}
+                    occupancyEngines={coachOccupancyLabels}
                   />
                 )}
                 {deckViewMode === "ledger" && (

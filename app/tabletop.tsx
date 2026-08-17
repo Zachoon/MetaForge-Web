@@ -70,6 +70,7 @@ type TabletopProps = {
   }) => void;
   strategy?: string;
   initialLens?: Lens;
+  occupancyEngines?: string[];
 };
 
 const TYPE_ORDER = ["Commander", "Creatures", "Planeswalkers", "Instants", "Sorceries", "Artifacts", "Enchantments", "Battles", "Lands", "Other"];
@@ -127,6 +128,7 @@ export function Tabletop({
   onMulliganDecision,
   strategy = "Balanced midrange",
   initialLens = "deck",
+  occupancyEngines = [],
 }: TabletopProps) {
   const [lens, setLens] = useState<Lens>("deck");
   const [matchup, setMatchup] = useState<Matchup>("Aggro");
@@ -223,6 +225,9 @@ export function Tabletop({
         <div>
           <small>THE TABLETOP</small>
           <strong>See how the deck holds together.</strong>
+          {occupancyEngines.length > 0 && (
+            <em className="tabletop-occupancy">Occupancy: {occupancyEngines.join(" · ")}</em>
+          )}
         </div>
         <nav aria-label="Tabletop lens">
           {(["deck", "hand", "turns", "matchup"] as Lens[]).map((item) => (

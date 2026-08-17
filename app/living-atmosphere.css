@@ -222,6 +222,11 @@ body {
   padding: 0 0 18px;
   border-bottom: 1px solid var(--mf-edge);
 }
+.philosophy-occupancy {
+  margin: 10px 0 0;
+  color: #c9b89a;
+  font: 600 13px/1.45 Newsreader, Georgia, serif;
+}
 .philosophy-card { border-radius: 14px; overflow: hidden; }
 .philosophy-card > header { border-bottom-color: var(--mf-edge); }
 .philosophy-card-body li {
