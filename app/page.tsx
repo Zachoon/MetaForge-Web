@@ -5320,10 +5320,6 @@ export default function Home() {
           <i aria-hidden="true">⌕</i>
           <input type="search" placeholder="Search cards, decks, users…" aria-label="Search cards, decks, and users" />
         </label>
-        <div className="forge-global-utilities" aria-label="Account tools">
-          <button type="button" aria-label="Notifications">♧</button>
-          <button type="button" aria-label="Messages">□</button>
-        </div>
         <details className="forge-menu">
           <summary><i>✦</i><span>Forgemaster</span><b>⌄</b></summary>
           <div>
