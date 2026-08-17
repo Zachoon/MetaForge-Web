@@ -144,6 +144,7 @@ test("buildClientNativeReport drops structuralAnalysis and keeps picker fields",
     methodology: "m",
     reasoning: { summary: "s", boundary: "b" },
     laboratory: { summary: "l", boundary: "lb", verdict: "advance", contract: "c" },
+    changes: { added: ["Snap"], trimmed: [{ name: "The Ten Rings", cut: 1 }] },
     structuralAnalysis: { graph: { nodes: Array.from({ length: 1000 }, (_, i) => i) } },
     selected: {
       id: "s",
@@ -162,6 +163,7 @@ test("buildClientNativeReport drops structuralAnalysis and keeps picker fields",
   assert.equal(client.selected.deckText, "1 Sol Ring");
   assert.equal(client.selected.evaluation.cohesion, 1);
   assert.equal(client.selected.rows[0].oracleText, undefined);
+  assert.deepEqual(client.changes, { added: ["Snap"], trimmed: [{ name: "The Ten Rings", cut: 1 }] });
   assert.ok(JSON.stringify(client).length < JSON.stringify(report).length);
 });
 

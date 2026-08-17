@@ -154,6 +154,12 @@ const CLIENT_REPORT_KEYS = [
   "unusedEnginePartners",
   "methodology",
   "blueprintIntent",
+  // Every deviation from the player's imported list (diffImportedChanges in
+  // native-masterwork-engine.mjs) - small ({added: string[], trimmed:
+  // {name,cut}[]}), but without it the client's revision-comparison stage
+  // only ever sees the one-slot lab's single swap and silently drops every
+  // other real change the Forge made while completing the list.
+  "changes",
 ] as const;
 
 function compactClientMasterwork(deck: any) {
