@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { explainCardAsMentor, explainPackageAsMentor, occupancySeatingForPackage, explainPairAsMentor, explainPairsForCardAsMentor, occupancyEngineLabelsForCommander, buildMentorShadowReport } from "../../app/knowledge/mentor-shadow.mjs";
+import { explainCardAsMentor, explainPackageAsMentor, occupancySeatingForPackage, explainPairAsMentor, explainPairsForCardAsMentor, occupancyEngineLabelsForCommander, occupancyEngineLabelsForCommanders, buildMentorShadowReport } from "../../app/knowledge/mentor-shadow.mjs";
 
 describe("Mentor Shadow v0", () => {
   it("explains seats without scores or Brain writes", () => {
@@ -861,6 +861,19 @@ describe("Mentor Shadow v0", () => {
       oracleText: "Other Dwarves you control have haste. Sacrifice five Treasures: Create a 4/4 red Dragon creature token with flying.",
     });
     assert.ok(!magda.includes("Tokens Engine"));
+  });
+
+  it("unions occupancy engines across partner commanders without inventing a shared score", () => {
+    assert.deepEqual(occupancyEngineLabelsForCommanders([
+      {
+        name: "Aura Voice",
+        oracleText: "Whenever an Aura you control becomes attached to a creature you control, draw a card.",
+      },
+      {
+        name: "Token Foundry",
+        oracleText: "At the beginning of combat on your turn, create a 1/1 white Citizen creature token.",
+      },
+    ]), ["Auras Engine", "Tokens Engine"]);
   });
 
 });

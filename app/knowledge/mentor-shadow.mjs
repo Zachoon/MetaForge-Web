@@ -451,6 +451,23 @@ export function occupancyEngineLabelsForCommander(card = {}) {
 }
 
 /**
+ * Union occupancy labels across partner / background commanders.
+ * Order follows OCCUPANCY_PACKAGE_IDS, then commander order. Deduped.
+ */
+export function occupancyEngineLabelsForCommanders(cards = []) {
+  const seen = new Set();
+  const labels = [];
+  for (const card of cards || []) {
+    for (const label of occupancyEngineLabelsForCommander(card)) {
+      if (seen.has(label)) continue;
+      seen.add(label);
+      labels.push(label);
+    }
+  }
+  return freeze(labels);
+}
+
+/**
  * Occupancy seating for one catalog package id. Typal member/mention are
  * not occupancy. A spellslinger commander does not occupy the tokens
  * package just because another engine opened first.

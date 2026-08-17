@@ -31,7 +31,7 @@ import { applyControlledSwap, experimentAdditionSynergy, rankExperimentAdditions
 // moved out entirely once the simulation dossier that was its only
 // caller became server-side too.
 import { manaConsistencyReport, parseNativeBlueprintIntent } from "./native-masterwork-engine.mjs";
-import { explainCardAsMentor, explainOccupiedPackagesAsMentor, explainPairAsMentor, explainPairsForCardAsMentor, occupancyEngineLabelsForCommander } from "./knowledge/mentor-shadow.mjs";
+import { explainCardAsMentor, explainOccupiedPackagesAsMentor, explainPairAsMentor, explainPairsForCardAsMentor, occupancyEngineLabelsForCommander, occupancyEngineLabelsForCommanders } from "./knowledge/mentor-shadow.mjs";
 import { commanderOptionFromCard, resolvePastedCommanderCandidate } from "./deck-import-commander.mjs";
 import { updateFamily, setFamilyMotifWeights } from "./deck-bench.mjs";
 import {
@@ -2986,15 +2986,24 @@ export default function Home() {
     });
   }, [inspectedCard, cardFacts, interactionGraph.enginePairs, interactionGraph.resetPairs]);
   const coachOccupancyLabels = useMemo(() => {
-    if (!activeCommanderName) return [];
-    const fact = cardFacts[cardFactKey(activeCommanderName)] || {};
-    return occupancyEngineLabelsForCommander({
-      name: activeCommanderName,
-      oracleText: fact.oracle_text
-        || fact.card_faces?.map((face: { oracle_text?: string }) => face.oracle_text).filter(Boolean).join("\n\n")
-        || "",
+    const names = [];
+    for (const row of nativeMasterworkContext?.selected?.rows || []) {
+      if (Array.isArray(row.roles) && row.roles.includes("commander") && row.name) names.push(row.name);
+    }
+    for (const name of [activeCommanderName, selectedSecondCommander?.name]) {
+      if (name && !names.some((existing) => cardFactKey(existing) === cardFactKey(name))) names.push(name);
+    }
+    const cards = names.filter(Boolean).map((name) => {
+      const fact = cardFacts[cardFactKey(name)] || {};
+      return {
+        name,
+        oracleText: fact.oracle_text
+          || fact.card_faces?.map((face: { oracle_text?: string }) => face.oracle_text).filter(Boolean).join("\n\n")
+          || "",
+      };
     });
-  }, [activeCommanderName, cardFacts]);
+    return occupancyEngineLabelsForCommanders(cards);
+  }, [activeCommanderName, selectedSecondCommander, cardFacts, nativeMasterworkContext]);
   // Inspector occupancy is bound to the inspected commander oracle, not
   // the live coach commander — archive reopen can still name occupancy.
   const inspectedOccupancyLabels = useMemo(() => {
