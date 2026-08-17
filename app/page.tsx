@@ -2995,6 +2995,25 @@ export default function Home() {
         || "",
     });
   }, [activeCommanderName, cardFacts]);
+  // Inspector occupancy is bound to the inspected commander oracle, not
+  // the live coach commander — archive reopen can still name occupancy.
+  const inspectedOccupancyLabels = useMemo(() => {
+    if (!inspectedIsCommander || !inspectedCard) return [];
+    return occupancyEngineLabelsForCommander({
+      name: String(inspectedCard || ""),
+      oracleText: inspectedFact?.oracle_text
+        || inspectedFact?.card_faces?.map((face: { oracle_text?: string }) => face.oracle_text).filter(Boolean).join("\n\n")
+        || "",
+    });
+  }, [inspectedIsCommander, inspectedCard, inspectedFact]);
+  const commissionOccupancyLabels = useMemo(() => {
+    if (!selectedCommander) return [];
+    return occupancyEngineLabelsForCommander({
+      name: selectedCommander.name,
+      typeLine: selectedCommander.typeLine,
+      oracleText: commanderOracleText(selectedCommander),
+    });
+  }, [selectedCommander]);
 
   // Prefers the exact printing the player already chose via the printing
   // picker (inspectedPrinting.tcgplayerId); falls back to a name-only
@@ -5696,6 +5715,11 @@ export default function Home() {
                           : "COLORLESS"}{" "}
                         IDENTITY
                       </em>
+                      {commissionOccupancyLabels.length > 0 && (
+                        <small>
+                          Occupancy engines: {commissionOccupancyLabels.join(" · ")}. Named from commander oracle, before the 99 exists.
+                        </small>
+                      )}
                     </div>
                   </article>
                 ) : (
@@ -7780,6 +7804,11 @@ export default function Home() {
                               ? "Unknown is not absent: missing or unresolved card records prevent naming a repeatable engine. Strategy recognition can still be stronger than system verification."
                               : "The Forge will not manufacture an engine claim from isolated cards on a complete verified set."}
                           </p>
+                          {coachOccupancyLabels.length > 0 && (
+                            <p>
+                              Occupancy engines from commander oracle: {coachOccupancyLabels.join(" · ")}. That is not a verified system map.
+                            </p>
+                          )}
                         </div>
                       )}
 
@@ -8864,10 +8893,10 @@ export default function Home() {
                           <p className="card-context-alternatives">{inspectedMentor.openQuestion}</p>
                         </div>
                       )}
-                      {inspectedIsCommander && coachOccupancyLabels.length > 0 && (
+                      {inspectedOccupancyLabels.length > 0 && (
                         <div className="card-inspector-section card-inspector-seat">
                           <small>OCCUPANCY LANGUAGE · EXPERIMENTAL</small>
-                          <p>Occupancy engines: {coachOccupancyLabels.join(" · ")}. Named from commander oracle, not from composition of the 99.</p>
+                          <p>Occupancy engines: {inspectedOccupancyLabels.join(" · ")}. Named from commander oracle, not from composition of the 99.</p>
                         </div>
                       )}
                       {inspectedPackageMentors.map((explanation) => (

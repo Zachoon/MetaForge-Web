@@ -849,4 +849,18 @@ describe("Mentor Shadow v0", () => {
     }), []);
   });
 
+  it("names occupancy engines from commander oracle before the 99 exists", () => {
+    assert.deepEqual(occupancyEngineLabelsForCommander({
+      name: "Aura Voice",
+      typeLine: "Legendary Creature — Fox",
+      oracleText: "Whenever an Aura you control becomes attached to a creature you control, draw a card.",
+    }), ["Auras Engine"]);
+    const magda = occupancyEngineLabelsForCommander({
+      name: "Magda Shape",
+      typeLine: "Legendary Creature — Dwarf Berserker",
+      oracleText: "Other Dwarves you control have haste. Sacrifice five Treasures: Create a 4/4 red Dragon creature token with flying.",
+    });
+    assert.ok(!magda.includes("Tokens Engine"));
+  });
+
 });
