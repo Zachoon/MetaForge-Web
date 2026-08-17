@@ -1159,13 +1159,13 @@ function scoreCard(entry, input, variant, context) {
     synergyPotential: entry.synergyPotential,
     preferenceHits: entry.preferenceHits,
     fieldPressureHits: entry.fieldPressureHits,
-    directTribes: entry.directTribes,
-    tribalSupport: entry.tribalSupport,
-    identityHits: entry.identityHits,
-    blueprintRoleHits: entry.blueprintRoleHits,
-    blueprintMechanicHits: entry.blueprintMechanicHits,
-    commanderConnectionSignals: entry.commanderConnectionSignals,
-    sequenceStages: entry.sequenceStages,
+    directTribes: entry.directTribes || [],
+    tribalSupport: entry.tribalSupport || [],
+    identityHits: entry.identityHits || [],
+    blueprintRoleHits: entry.blueprintRoleHits || [],
+    blueprintMechanicHits: entry.blueprintMechanicHits || [],
+    commanderConnectionSignals: entry.commanderConnectionSignals || [],
+    sequenceStages: entry.sequenceStages || [],
     strategicSemantics: entry.strategicSemantics,
     mechanics: entry.mechanics,
     colorPips: entry.colorPips,
@@ -1371,13 +1371,13 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       roles: candidate.roles,
       score: Number(candidate.score.toFixed(3)),
       cmc: candidate.cmc,
-      directTribes: candidate.directTribes,
-      tribalSupport: candidate.tribalSupport,
-      identityHits: candidate.identityHits,
-      blueprintRoleHits: candidate.blueprintRoleHits,
-      blueprintMechanicHits: candidate.blueprintMechanicHits,
-      commanderConnectionSignals: candidate.commanderConnectionSignals,
-      sequenceStages: candidate.sequenceStages,
+      directTribes: candidate.directTribes || [],
+      tribalSupport: candidate.tribalSupport || [],
+      identityHits: candidate.identityHits || [],
+      blueprintRoleHits: candidate.blueprintRoleHits || [],
+      blueprintMechanicHits: candidate.blueprintMechanicHits || [],
+      commanderConnectionSignals: candidate.commanderConnectionSignals || [],
+      sequenceStages: candidate.sequenceStages || [],
       strategicSemantics: candidate.strategicSemantics,
       mechanics: candidate.mechanics,
       colorPips: candidate.colorPips,
@@ -1442,16 +1442,16 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
   // Cards the list cannot actually pay for (restricted {C}, artifact-only {C}
   // on a nonartifact) are not engine anchors.
   const tribeAnchorLimit = singleton ? 24 : 8;
-  for (const candidate of payable.filter((entry) => entry.directTribes.length).slice(0, tribeAnchorLimit)) {
+  for (const candidate of payable.filter((entry) => (entry.directTribes || []).length).slice(0, tribeAnchorLimit)) {
     addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
   }
   const supportLimit = singleton ? 12 : 4;
-  for (const candidate of payable.filter((entry) => entry.tribalSupport.length && !entry.directTribes.length).slice(0, supportLimit)) {
+  for (const candidate of payable.filter((entry) => (entry.tribalSupport || []).length && !(entry.directTribes || []).length).slice(0, supportLimit)) {
     addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
   }
   for (const mechanic of blueprint.requestedMechanics) {
     const limit = blueprintMechanicDefinition(mechanic).anchorLimit[singleton ? "singleton" : "constructed"];
-    for (const candidate of payable.filter((entry) => entry.blueprintMechanicHits.includes(mechanic)).slice(0, limit)) {
+    for (const candidate of payable.filter((entry) => (entry.blueprintMechanicHits || []).includes(mechanic)).slice(0, limit)) {
       addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
     }
   }
@@ -1479,12 +1479,12 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
   // cards with a real producer/payoff edge to its verified rules text so a
   // generic staple cannot crowd every commander-specific connection out.
   const commanderAnchorLimit = singleton ? 8 : 4;
-  for (const candidate of payable.filter((entry) => entry.commanderConnectionSignals.length).slice(0, commanderAnchorLimit)) {
+  for (const candidate of payable.filter((entry) => (entry.commanderConnectionSignals || []).length).slice(0, commanderAnchorLimit)) {
     addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
   }
   const roleAnchorLimit = singleton ? 10 : 4;
   for (const role of blueprint.desiredRoles) {
-    for (const candidate of payable.filter((entry) => entry.blueprintRoleHits.includes(role)).slice(0, roleAnchorLimit)) {
+    for (const candidate of payable.filter((entry) => (entry.blueprintRoleHits || []).includes(role)).slice(0, roleAnchorLimit)) {
       addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
     }
   }
@@ -3117,13 +3117,13 @@ function rowFromAnalyzedEntry(entry, score = entry.roleScore) {
     roles: entry.roles,
     score: Number((Number(score) || 0).toFixed(3)),
     cmc: entry.cmc,
-    directTribes: entry.directTribes,
-    tribalSupport: entry.tribalSupport,
-    identityHits: entry.identityHits,
-    blueprintRoleHits: entry.blueprintRoleHits,
-    blueprintMechanicHits: entry.blueprintMechanicHits,
-    commanderConnectionSignals: entry.commanderConnectionSignals,
-    sequenceStages: entry.sequenceStages,
+    directTribes: entry.directTribes || [],
+    tribalSupport: entry.tribalSupport || [],
+    identityHits: entry.identityHits || [],
+    blueprintRoleHits: entry.blueprintRoleHits || [],
+    blueprintMechanicHits: entry.blueprintMechanicHits || [],
+    commanderConnectionSignals: entry.commanderConnectionSignals || [],
+    sequenceStages: entry.sequenceStages || [],
     strategicSemantics: entry.strategicSemantics,
     mechanics: entry.mechanics,
     colorPips: entry.colorPips,
