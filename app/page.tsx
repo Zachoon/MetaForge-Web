@@ -2160,8 +2160,17 @@ export default function Home() {
     const additions = nativeMasterworkContext?.changes?.added || [];
     const trims = nativeMasterworkContext?.changes?.trimmed || [];
     return [
-      ...additions.map((name: string) => `Added ${name} while completing the submitted list to the format's legal deck size.`),
-      ...trims.map((entry: { name: string; cut: number }) => `Trimmed ${entry.cut} ${entry.cut === 1 ? "copy" : "copies"} of ${entry.name} to satisfy deck-size or copy-limit rules.`),
+      ...additions.map((name: string) => ({
+        name,
+        kind: "added" as const,
+        reason: "Added while completing the submitted list to the format's legal deck size.",
+      })),
+      ...trims.map((entry: { name: string; cut: number }) => ({
+        name: entry.name,
+        kind: "trimmed" as const,
+        cut: entry.cut,
+        reason: `Trimmed ${entry.cut} ${entry.cut === 1 ? "copy" : "copies"} to satisfy deck-size or copy-limit rules.`,
+      })),
     ];
   }, [nativeMasterworkContext?.changes]);
   const activeCommanderName = useMemo(() => {
