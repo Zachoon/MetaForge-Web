@@ -78,6 +78,7 @@
   display: block;
   color: #70e2c0;
   font: 800 9px/1.3 ui-monospace, monospace;
+  font-size: calc(9px * var(--forge-reading-scale, 1));
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -115,6 +116,7 @@
   background: linear-gradient(90deg, #10241f, #14302a);
   color: #d7fff4;
   font: 800 12px/1.1 ui-sans-serif, system-ui, sans-serif;
+  font-size: calc(12px * var(--forge-reading-scale, 1));
   letter-spacing: 0.04em;
   cursor: pointer;
 }
