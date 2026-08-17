@@ -8474,6 +8474,9 @@ export default function Home() {
                               )}
                             </span>
                           </header>
+                          {group === "Commander" && coachOccupancyLabels.length > 0 && (
+                            <p className="type-column-occupancy">{coachOccupancyLabels.join(" · ")}</p>
+                          )}
                           {groupedDeck[group].map((row) => {
                             const rowKey = cardFactKey(row.name);
                             const isFoil = foilCards.has(rowKey);
