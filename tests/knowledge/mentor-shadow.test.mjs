@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { explainCardAsMentor, explainPackageAsMentor, occupancySeatingForPackage, explainPairAsMentor, buildMentorShadowReport } from "../../app/knowledge/mentor-shadow.mjs";
+import { explainCardAsMentor, explainPackageAsMentor, occupancySeatingForPackage, explainPairAsMentor, explainPairsForCardAsMentor, occupancyEngineLabelsForCommander, buildMentorShadowReport } from "../../app/knowledge/mentor-shadow.mjs";
 
 describe("Mentor Shadow v0", () => {
   it("explains seats without scores or Brain writes", () => {
@@ -811,4 +811,42 @@ describe("Mentor Shadow v0", () => {
     assert.match(explanation.paragraph, /Mutual Engine/);
     assert.match(explanation.paragraph, /not a verified infinite/);
   });
+
+  it("explains graph pairs that include the inspected card without claiming they go infinite", () => {
+    const reset = {
+      cards: ["Basalt Monolith", "Voltaic Key"],
+      loopKind: "closed_loop",
+      shape: "artifact_untap",
+    };
+    const engine = { cards: ["Token Herald", "Card Herald"], loopKind: "engine" };
+    const oracleFor = (name) => ({
+      "Basalt Monolith": "{T}: Add {C}{C}{C}. {3}: Untap this artifact.",
+      "Voltaic Key": "{1}, {T}: Untap target artifact.",
+    }[name] || "");
+
+    const forBasalt = explainPairsForCardAsMentor({
+      cardName: "Basalt Monolith",
+      enginePairs: [engine],
+      resetPairs: [reset],
+      oracleFor,
+      limit: 2,
+    });
+    assert.equal(forBasalt.length, 1);
+    assert.equal(forBasalt[0].loopSeating[0].kind, "closed_loop");
+    assert.match(forBasalt[0].paragraph, /Not a verified infinite/);
+    assert.doesNotMatch(forBasalt[0].paragraph, /this combo wins/i);
+
+    assert.deepEqual(occupancyEngineLabelsForCommander({
+      name: "Goblin Foundry",
+      oracleText: "Other Goblins you control get +1/+1. At the beginning of combat on your turn, create a 1/1 red Goblin creature token.",
+    }), ["Typal Engine", "Tokens Engine"]);
+
+    assert.deepEqual(explainPairsForCardAsMentor({
+      cardName: "Unrelated Stone",
+      enginePairs: [engine],
+      resetPairs: [reset],
+      oracleFor,
+    }), []);
+  });
+
 });

@@ -31,7 +31,7 @@ import { applyControlledSwap, experimentAdditionSynergy, rankExperimentAdditions
 // moved out entirely once the simulation dossier that was its only
 // caller became server-side too.
 import { manaConsistencyReport, parseNativeBlueprintIntent } from "./native-masterwork-engine.mjs";
-import { explainCardAsMentor, explainOccupiedPackagesAsMentor } from "./knowledge/mentor-shadow.mjs";
+import { explainCardAsMentor, explainOccupiedPackagesAsMentor, explainPairsForCardAsMentor, occupancyEngineLabelsForCommander } from "./knowledge/mentor-shadow.mjs";
 import { commanderOptionFromCard, resolvePastedCommanderCandidate } from "./deck-import-commander.mjs";
 import { updateFamily, setFamilyMotifWeights } from "./deck-bench.mjs";
 import {
@@ -2969,6 +2969,33 @@ export default function Home() {
         || "",
     }).filter((row: { commentary?: string }) => Boolean(row.commentary));
   }, [inspectedIsCommander, inspectedCard, inspectedFact, nativeMasterworkContext]);
+  const inspectedPairMentors = useMemo(() => {
+    if (!inspectedCard) return [];
+    const oracleFor = (name: string) => {
+      const fact = cardFacts[cardFactKey(name)] || {};
+      return fact.oracle_text
+        || fact.card_faces?.map((face: { oracle_text?: string }) => face.oracle_text).filter(Boolean).join("\n\n")
+        || "";
+    };
+    return explainPairsForCardAsMentor({
+      cardName: inspectedCard,
+      enginePairs: interactionGraph.enginePairs || [],
+      resetPairs: interactionGraph.resetPairs || [],
+      oracleFor,
+      limit: 2,
+    });
+  }, [inspectedCard, cardFacts, interactionGraph.enginePairs, interactionGraph.resetPairs]);
+  const coachOccupancyLabels = useMemo(() => {
+    if (!activeCommanderName) return [];
+    const fact = cardFacts[cardFactKey(activeCommanderName)] || {};
+    return occupancyEngineLabelsForCommander({
+      name: activeCommanderName,
+      oracleText: fact.oracle_text
+        || fact.card_faces?.map((face: { oracle_text?: string }) => face.oracle_text).filter(Boolean).join("\n\n")
+        || "",
+    });
+  }, [activeCommanderName, cardFacts]);
+
   // Prefers the exact printing the player already chose via the printing
   // picker (inspectedPrinting.tcgplayerId); falls back to a name-only
   // search when no printing has been selected yet. Same shared helper the
@@ -6533,6 +6560,11 @@ export default function Home() {
                       Packages detected: {honestCoachSummary.identity.packageLabels.join(" · ")}
                     </p>
                   )}
+                  {coachOccupancyLabels.length > 0 && (
+                    <p className="honest-coach-packages">
+                      Occupancy engines: {coachOccupancyLabels.join(" · ")}
+                    </p>
+                  )}
                   <p className="honest-coach-id-chip" aria-label="Analysis id">
                     Analysis {honestCoachSummary.analysisIds.analysisId}
                   </p>
@@ -8810,6 +8842,13 @@ export default function Home() {
                         <div key={explanation.packageId} className="card-inspector-section card-inspector-seat">
                           <small>PACKAGE LANGUAGE · EXPERIMENTAL</small>
                           <p>{explanation.commentary}</p>
+                        </div>
+                      ))}
+                      {inspectedPairMentors.map((explanation) => (
+                        <div key={explanation.cards.join("+")} className="card-inspector-section card-inspector-seat">
+                          <small>PAIR LANGUAGE · EXPERIMENTAL</small>
+                          <p>{explanation.paragraph}</p>
+                          <p className="card-context-alternatives">{explanation.openQuestion}</p>
                         </div>
                       ))}
                       {!guestMode && nativeMasterworkContext?.generationId && (() => {

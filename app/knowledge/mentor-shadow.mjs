@@ -435,6 +435,21 @@ export function explainCardAsMentor({
 
 
 
+const OCCUPANCY_PACKAGE_IDS = freeze([
+  "typal", "aristocrats", "spellslinger", "reanimator", "landfall",
+  "stax", "auras", "equipment", "blink", "tokens",
+]);
+
+export function occupancyEngineLabelsForCommander(card = {}) {
+  const labels = [];
+  for (const id of OCCUPANCY_PACKAGE_IDS) {
+    for (const row of occupancySeatingForPackage(id, card)) {
+      if (row.seat?.label) labels.push(row.seat.label);
+    }
+  }
+  return freeze(labels);
+}
+
 /**
  * Occupancy seating for one catalog package id. Typal member/mention are
  * not occupancy. A spellslinger commander does not occupy the tokens
@@ -620,6 +635,39 @@ export function explainPairAsMentor({
 /**
  * Session Mentor shadow — small set of explanations for a finished list.
  */
+
+/**
+ * Pair seats that include this card. Reset shapes before generic engine
+ * pairs. Never claims a verified infinite. Parallel only.
+ */
+export function explainPairsForCardAsMentor({
+  cardName = "",
+  enginePairs = [],
+  resetPairs = [],
+  oracleFor = () => "",
+  limit = 2,
+} = {}) {
+  const want = String(cardName || "").normalize("NFKC").trim().toLocaleLowerCase("en");
+  if (!want) return freeze([]);
+  const involved = (pair = {}) => (pair.cards || []).some((name) => String(name || "").normalize("NFKC").trim().toLocaleLowerCase("en") === want);
+  const rows = [];
+  for (const pair of [...resetPairs, ...enginePairs]) {
+    if (!involved(pair)) continue;
+    const cards = pair.cards || [];
+    const explanation = explainPairAsMentor({
+      cards,
+      loopKind: pair.loopKind,
+      shape: pair.shape,
+      leftOracle: oracleFor(cards[0]) || "",
+      rightOracle: oracleFor(cards[1]) || "",
+    });
+    if (!explanation.ok) continue;
+    rows.push(explanation);
+    if (rows.length >= limit) break;
+  }
+  return freeze(rows);
+}
+
 export function buildMentorShadowReport({
   cardNames = [],
   commanderName = "",
