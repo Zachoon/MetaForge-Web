@@ -1808,6 +1808,11 @@ export default function Home() {
   const [matchEvidenceOpen, setMatchEvidenceOpen] = useState(false);
   const [activeForgeChapter, setActiveForgeChapter] = useState<1 | 2 | 5>(1);
   const [siteRail, setSiteRail] = useState<"overview" | "decklist" | "analysis" | "playtest">("decklist");
+  // An imported review's own step in the flow: submit -> ceremony -> swap
+  // station -> decklist. Resets to false only when a fresh generation lands
+  // (landOnCompletedDecklist) - navigating away and back to the Decklist
+  // rail afterward must not force the player back through it again.
+  const [swapStationReviewed, setSwapStationReviewed] = useState(false);
   const coachBriefDetailsRef = useRef<HTMLDetailsElement | null>(null);
   const [deckViewMode, setDeckViewMode] = useState<"workbench" | "ledger">("ledger");
   const [masterworkIdentityOpen, setMasterworkIdentityOpen] = useState(false);
@@ -4106,6 +4111,7 @@ export default function Home() {
     setActiveForgeChapter(1);
     setDeckViewMode("ledger");
     setSiteRail("decklist");
+    setSwapStationReviewed(false);
     if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = false;
     window.scrollTo(0, 0);
     window.requestAnimationFrame(() => window.scrollTo(0, 0));
@@ -5222,6 +5228,7 @@ export default function Home() {
       data-motion={motionMode}
       data-guest-mode={guestMode ? "true" : "false"}
       data-forge-action={forgeAction}
+      data-swap-station-active={hasValidatedDeck && isImportedDeckReview && siteRail === "decklist" && !swapStationReviewed ? "true" : "false"}
       onClickCapture={captureForgeAction}
       style={{ "--mf-action-x": `${actionPoint.x}%`, "--mf-action-y": `${actionPoint.y}%` } as CSSProperties}
     >
@@ -6755,17 +6762,24 @@ export default function Home() {
             )
           )}
           {/* Global chrome is only .forge-bar + .forge-global-rail. Never remount masterwork-shell-top/rail (Academy header) inside this pane. */}
-          {hasValidatedDeck && isImportedDeckReview && siteRail === "decklist" && (
-            <ImportedDeckComparison
-              originalRows={importedOriginalRows}
-              proposedRows={importedProposedRows}
-              swaps={importedComparisonSwaps}
-              adjustments={importedComparisonAdjustments}
-              strategyTitle={honestCoachSummary.planStory?.title || honestCoachSummary.intentions.title}
-              strategySummary={honestCoachSummary.deckUnderstanding?.playerSummary?.detail || honestCoachSummary.intentions.accomplish}
-              coreSummary={honestCoachSummary.intentions.establish || honestCoachSummary.planStory?.planLabel || "Retain the cards carrying the deck's primary engine and required structural roles."}
-              occupancyEngines={coachOccupancyLabels}
-            />
+          {hasValidatedDeck && isImportedDeckReview && siteRail === "decklist" && !swapStationReviewed && (
+            <>
+              <ImportedDeckComparison
+                originalRows={importedOriginalRows}
+                proposedRows={importedProposedRows}
+                swaps={importedComparisonSwaps}
+                adjustments={importedComparisonAdjustments}
+                strategyTitle={honestCoachSummary.planStory?.title || honestCoachSummary.intentions.title}
+                strategySummary={honestCoachSummary.deckUnderstanding?.playerSummary?.detail || honestCoachSummary.intentions.accomplish}
+                coreSummary={honestCoachSummary.intentions.establish || honestCoachSummary.planStory?.planLabel || "Retain the cards carrying the deck's primary engine and required structural roles."}
+                occupancyEngines={coachOccupancyLabels}
+              />
+              <footer className="revision-continue">
+                <button type="button" onClick={() => { setSwapStationReviewed(true); window.scrollTo(0, 0); }}>
+                  Continue to Decklist <b>→</b>
+                </button>
+              </footer>
+            </>
           )}
           <div className={`testing-layout chapter-${activeForgeChapter}-active ${deckViewMode}-deck-view${isImportedDeckReview ? " imported-deck-review" : ""}`}>
             <article className="deck-manuscript">
