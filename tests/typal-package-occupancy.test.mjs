@@ -129,6 +129,8 @@ test("extractTypalTribes names real tribes and rejects among / legendary / land"
   assert.deepEqual(extractTypalTribes("Whenever you cast another Vampire spell, create a token. Whenever this attacks, put a +1/+1 counter on each Vampire you control."), ["vampire"]);
   assert.deepEqual(extractTypalTribes("Search your library for a Dragon permanent card and reveal it."), ["dragon"]);
   assert.deepEqual(extractTypalTribes("Whenever you cast an instant spell, draw a card."), []);
+  assert.deepEqual(extractTypalTribes("Whenever Maralen or another Elf or Faerie you control enters, draw a card. You may cast a spell with mana value less than or equal to the number of Elves and Faeries you control."), ["elf", "faerie"]);
+  assert.deepEqual(extractTypalTribes("Whenever a creature or artifact you control dies, draw a card."), []);
 });
 
 test("typal occupancy opens only when the commander actually runs a tribe", () => {
@@ -172,6 +174,15 @@ test("typal occupancy opens only when the commander actually runs a tribe", () =
   });
   assert.ok(dwarfLord.packageIds.includes("typal"));
   assert.deepEqual(dwarfLord.packages.find((pkg) => pkg.id === "typal")?.tribalTypes, ["dwarf"]);
+  const maralen = intentFor({
+    name: "Test Fae Ascendant",
+    colors: ["B", "G"],
+    oracleText: "Whenever Maralen or another Elf or Faerie you control enters, exile the top two cards of target opponent's library. Once each turn, you may cast a spell with mana value less than or equal to the number of Elves and Faeries you control from among cards exiled with Maralen.",
+    typeLine: "Legendary Creature — Elf Wizard",
+    manaCost: "{2}{B}{G}",
+  });
+  assert.ok(maralen.packageIds.includes("typal"));
+  assert.deepEqual(maralen.packages.find((pkg) => pkg.id === "typal")?.tribalTypes, ["elf", "faerie"]);
 });
 
 test("typal core is type-line members and changelings, not oracle mentions", () => {

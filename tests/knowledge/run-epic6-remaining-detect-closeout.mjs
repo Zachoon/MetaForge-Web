@@ -39,7 +39,7 @@ export const REMAINING_DETECT_CANARIES = Object.freeze({
   spellslinger: Object.freeze(["Kess, Dissident Mage", "Stella Lee", "Niv-Mizzet"]),
   stax: Object.freeze(["Grand Arbiter", "Drannith Magistrate"]),
   tokens: Object.freeze(["Krenko", "Rhys the Redeemed"]),
-  typal: Object.freeze(["Sliver", "Edgar Markov", "The Ur-Dragon"]),
+  typal: Object.freeze(["Sliver", "Edgar Markov", "The Ur-Dragon", "Maralen"]),
 });
 
 function packagesOpenedBy(commander = {}) {

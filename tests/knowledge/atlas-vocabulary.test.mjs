@@ -128,6 +128,13 @@ describe("Atlas Vocabulary Registry v0", () => {
       typeLine: "Legendary Creature — Elemental Lizard",
     });
     assert.deepEqual(kediss, []);
+
+    const maralen = seatTypalImplementation({
+      name: "Fae Ascendant",
+      oracleText: "Whenever Maralen or another Elf or Faerie you control enters, draw a card. You may cast a spell with mana value less than or equal to the number of Elves and Faeries you control.",
+      typeLine: "Legendary Creature — Elf Wizard",
+    });
+    assert.deepEqual(maralen.find((row) => row.kind === "engine").tribes, ["elf", "faerie"]);
   });
 
   it("seats an aristocrats engine from occupancy detect without admitting Capabilities", () => {

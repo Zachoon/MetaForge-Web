@@ -154,6 +154,7 @@ function singularizeTribe(word = "") {
   // "Dwarves" with a trailing-s capture becomes "dwarve"; the ves rule
   // already intends dwarf. Not a commander-name branch.
   if (w === "dwarve") return "dwarf";
+  if (w === "faeries" || w === "faery") return "faerie";
   if (w.endsWith("ves") && w.length > 4) return `${w.slice(0, -3)}f`;
   if (w.endsWith("ies") && w.length > 4) return `${w.slice(0, -3)}y`;
   if (w.endsWith("s") && !w.endsWith("ss") && !w.endsWith("us") && !w.endsWith("is")) return w.slice(0, -1);
@@ -165,7 +166,8 @@ function singularizeTribe(word = "") {
  * "among creatures" / "Legendary creatures" / "Land creatures" are not tribes.
  * "a commander you control" is not a tribe. "each Vampire you control",
  * "a Vampire spell", and "a Dragon permanent card" are tribes.
- * Instant/sorcery/creature captures stay on the stop list.
+ * "Elf or Faerie you control" and "Elves and Faeries you control" are both
+ * tribes. Instant/sorcery/creature captures stay on the stop list.
  */
 export function extractTypalTribes(oracle = "") {
   const text = String(oracle || "");
@@ -178,8 +180,10 @@ export function extractTypalTribes(oracle = "") {
     ...text.matchAll(/\b(?:a|an|another) ([A-Za-z][A-Za-z'-]+) permanent card\b/gi),
     ...text.matchAll(/\b([A-Za-z][A-Za-z'-]+) creatures you control\b/gi),
     ...text.matchAll(/\b([A-Za-z][A-Za-z'-]+)s you control\b/gi),
-  ].map((match) => singularizeTribe(match[1]));
-  return unique(hits.filter((term) => term && !TYPAL_STOP.has(term)));
+    ...text.matchAll(/\b([A-Za-z][A-Za-z'-]+) or ([A-Za-z][A-Za-z'-]+)s? you control\b/gi),
+    ...text.matchAll(/\b([A-Za-z][A-Za-z'-]+s) and ([A-Za-z][A-Za-z'-]+s) you control\b/gi),
+  ].flatMap((match) => [match[1], match[2]].filter(Boolean).map((term) => singularizeTribe(term)));
+  return unique(hits.filter((term) => term && !TYPAL_STOP.has(term))).sort();
 }
 
 /**
