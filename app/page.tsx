@@ -3014,6 +3014,14 @@ export default function Home() {
       oracleText: commanderOracleText(selectedCommander),
     });
   }, [selectedCommander]);
+  const secondCommissionOccupancyLabels = useMemo(() => {
+    if (!selectedSecondCommander) return [];
+    return occupancyEngineLabelsForCommander({
+      name: selectedSecondCommander.name,
+      typeLine: selectedSecondCommander.typeLine,
+      oracleText: commanderOracleText(selectedSecondCommander),
+    });
+  }, [selectedSecondCommander]);
 
   // Prefers the exact printing the player already chose via the printing
   // picker (inspectedPrinting.tcgplayerId); falls back to a name-only
@@ -5885,6 +5893,11 @@ export default function Home() {
                         <div>
                           <b>{selectedSecondCommander.name}</b>
                           <span>{selectedSecondCommander.typeLine}</span>
+                          {secondCommissionOccupancyLabels.length > 0 && (
+                            <small>
+                              Occupancy engines: {secondCommissionOccupancyLabels.join(" · ")}. Named from commander oracle, before the 99 exists.
+                            </small>
+                          )}
                         </div>
                         <button
                           type="button"
@@ -6706,6 +6719,9 @@ export default function Home() {
                     {hasValidatedDeck && <div className="masterwork-identity-marks" aria-label={`${selectedCommander?.colors?.join(", ") || "colorless"} color identity`}>
                       {(selectedCommander?.colors?.length ? selectedCommander.colors : ["C"]).map((color) => <i key={color} data-color={color}>{color}</i>)}
                       <span className="masterwork-ready">✓ READY TO TEST</span>
+                      {coachOccupancyLabels.length > 0 && (
+                        <span className="masterwork-occupancy">Occupancy: {coachOccupancyLabels.join(" · ")}</span>
+                      )}
                     </div>}
                   </div>
                 </div>

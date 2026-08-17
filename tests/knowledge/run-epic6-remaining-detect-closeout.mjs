@@ -116,7 +116,7 @@ export function classifyRemainingDetect(records = []) {
   };
 }
 
-function formatReport(classification) {
+export function formatReport(classification) {
   const lines = [];
   lines.push("# MetaForge Epic 6 — Remaining Occupancy Detect Closeout");
   lines.push("");
@@ -174,6 +174,18 @@ function formatReport(classification) {
     lines.push("None among watched canaries that are actually in this sample.");
     lines.push("");
   }
+  if ((classification.sampleGaps || []).length) {
+    lines.push("## Sample gaps (not detection misses)");
+    lines.push("");
+    lines.push("No watched canary in this corpus. Mentor can still name Atlas occupancy from commander oracle. Do not widen detectCommander.");
+    lines.push("");
+    for (const id of classification.sampleGaps) {
+      lines.push(`- **${id}**`);
+    }
+    lines.push("");
+  }
+  lines.push("Frozen construction non-widens this lane: auras, equipment, blink.");
+  lines.push("");
   return lines.join("\n");
 }
 

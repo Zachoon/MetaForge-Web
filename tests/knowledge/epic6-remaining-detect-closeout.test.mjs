@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { classifyRemainingDetect } from "./run-epic6-remaining-detect-closeout.mjs";
+import { classifyRemainingDetect, formatReport } from "./run-epic6-remaining-detect-closeout.mjs";
 
 describe("Epic 6 remaining occupancy detect closeout", () => {
   it("opens Korvold aristocrats on oracle-only intent and keeps Magda closed", () => {
@@ -54,5 +54,10 @@ describe("Epic 6 remaining occupancy detect closeout", () => {
     assert.equal(chatterfang.opens, false, "Chatterfang replacement is not tokens occupancy");
     assert.equal(derevi.opens, false, "Derevi tap/untap is not stax occupancy");
     assert.equal(kediss.opens, false, "a commander you control is not a tribe");
+    const report = formatReport(classification);
+    assert.match(report, /Sample gaps \(not detection misses\)/);
+    assert.match(report, /Do not widen detectCommander/);
+    assert.match(report, /\*\*auras\*\*/);
+    assert.match(report, /Frozen construction non-widens this lane: auras, equipment, blink/);
   });
 });
