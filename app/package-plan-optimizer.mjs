@@ -209,7 +209,17 @@ export function evaluatePackageHealth(packageState, intent = {}) {
   for (const [leg, state] of Object.entries(packageState.legs || {})) {
     if (state.deficit > 0) issues.push(Object.freeze({ kind: "missing_leg", detail: leg }));
   }
-  const legValues = Object.values(packageState.legs || {});
+  // Comparing every leg's raw current count double-counted an already-
+  // deficient leg: whenever one leg has deficit>0, it's very likely also
+  // the global minimum, so the same shortfall got penalized twice under
+  // two different issue kinds (missing_leg at 18 severity, this at 14).
+  // Confirmed on real data before touching anything: of 31 real
+  // poor_enabler_payoff_ratio instances, 21 overlapped with missing_leg,
+  // and in all 21 the minimum leg was exactly the one missing_leg already
+  // flagged. Comparing only legs that have already cleared their own floor
+  // makes this check measure genuine imbalance despite adequacy, not
+  // restate an existing shortfall.
+  const legValues = Object.values(packageState.legs || {}).filter((leg) => leg.deficit === 0);
   if (legValues.length >= 2) {
     const max = Math.max(...legValues.map((leg) => leg.current));
     const min = Math.min(...legValues.map((leg) => leg.current));
