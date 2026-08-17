@@ -31,7 +31,7 @@ import { applyControlledSwap, experimentAdditionSynergy, rankExperimentAdditions
 // moved out entirely once the simulation dossier that was its only
 // caller became server-side too.
 import { manaConsistencyReport, parseNativeBlueprintIntent } from "./native-masterwork-engine.mjs";
-import { explainCardAsMentor } from "./knowledge/mentor-shadow.mjs";
+import { explainCardAsMentor, explainOccupiedPackagesAsMentor } from "./knowledge/mentor-shadow.mjs";
 import { commanderOptionFromCard, resolvePastedCommanderCandidate } from "./deck-import-commander.mjs";
 import { updateFamily, setFamilyMotifWeights } from "./deck-bench.mjs";
 import {
@@ -2952,6 +2952,23 @@ export default function Home() {
           ([key, value]) => key.endsWith("Seating") && Array.isArray(value) && value.length > 0,
         )),
   );
+  // Occupancy-opened packages only. Health is commentary, never a cohesion
+  // score, and never shown when live forge rows/intent are gone (reopened
+  // archive) — unknown is not absent.
+  const inspectedPackageMentors = useMemo(() => {
+    if (!inspectedIsCommander) return [];
+    const rows = nativeMasterworkContext?.selected?.rows || [];
+    const intent = nativeMasterworkContext?.selected?.strategicIntent || {};
+    if (!rows.length || !(intent.packages || []).length) return [];
+    return explainOccupiedPackagesAsMentor({
+      rows,
+      intent,
+      commanderName: String(inspectedCard || ""),
+      commanderOracleText: inspectedFact?.oracle_text
+        || inspectedFact?.card_faces?.map((face: { oracle_text?: string }) => face.oracle_text).filter(Boolean).join("\n\n")
+        || "",
+    }).filter((row: { commentary?: string }) => Boolean(row.commentary));
+  }, [inspectedIsCommander, inspectedCard, inspectedFact, nativeMasterworkContext]);
   // Prefers the exact printing the player already chose via the printing
   // picker (inspectedPrinting.tcgplayerId); falls back to a name-only
   // search when no printing has been selected yet. Same shared helper the
@@ -8789,6 +8806,12 @@ export default function Home() {
                           <p className="card-context-alternatives">{inspectedMentor.openQuestion}</p>
                         </div>
                       )}
+                      {inspectedPackageMentors.map((explanation) => (
+                        <div key={explanation.packageId} className="card-inspector-section card-inspector-seat">
+                          <small>PACKAGE LANGUAGE · EXPERIMENTAL</small>
+                          <p>{explanation.commentary}</p>
+                        </div>
+                      ))}
                       {!guestMode && nativeMasterworkContext?.generationId && (() => {
                         const inspectedRow = deckRows.find((row) => row.name === inspectedCard);
                         const selectedQuantity = refillCuts[inspectedCard] || 0;

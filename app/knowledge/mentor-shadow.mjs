@@ -40,6 +40,7 @@ import {
   seatCombatImplementation,
   seatLoopImplementation,
 } from "./atlas-vocabulary.mjs";
+import { buildPackageState } from "../package-plan-optimizer.mjs";
 import { getStrategicConcept, buildStrategicConceptLibrary } from "./strategic-concept.mjs";
 
 const freeze = (value) => Object.freeze(value);
@@ -433,6 +434,29 @@ export function explainCardAsMentor({
 }
 
 
+
+/**
+ * Occupancy seating for one catalog package id. Typal member/mention are
+ * not occupancy. A spellslinger commander does not occupy the tokens
+ * package just because another engine opened first.
+ */
+export function occupancySeatingForPackage(packageId = "", card = {}) {
+  const id = String(packageId || "");
+  if (id === "typal") {
+    return freeze(seatTypalImplementation(card).filter((row) => row.kind === "engine"));
+  }
+  if (id === "aristocrats") return seatAristocratsImplementation(card);
+  if (id === "spellslinger") return seatSpellslingerImplementation(card);
+  if (id === "reanimator") return seatReanimatorImplementation(card);
+  if (id === "landfall") return seatLandfallImplementation(card);
+  if (id === "stax") return seatStaxImplementation(card);
+  if (id === "auras") return seatAurasOccupancyImplementation(card);
+  if (id === "equipment") return seatEquipmentOccupancyImplementation(card);
+  if (id === "blink") return seatBlinkImplementation(card);
+  if (id === "tokens") return seatTokensOccupancyImplementation(card);
+  return freeze([]);
+}
+
 /**
  * Package-level Mentor: occupancy engine first, then health kinds.
  * Health strain is commentary, not a reason to close occupancy.
@@ -455,29 +479,9 @@ export function explainPackageAsMentor({
   }
 
   const card = { name: commanderName || packageId, oracleText: commanderOracleText };
-  const typalSeating = seatTypalImplementation(card);
-  const aristocratsSeating = seatAristocratsImplementation(card);
   const spellslingerSeating = seatSpellslingerImplementation(card);
-  const reanimatorSeating = seatReanimatorImplementation(card);
-  const landfallOccupancySeating = seatLandfallImplementation(card);
-  const staxSeating = seatStaxImplementation(card);
-  const aurasOccupancySeating = seatAurasOccupancyImplementation(card);
-  const equipmentOccupancySeating = seatEquipmentOccupancyImplementation(card);
-  const blinkSeating = seatBlinkImplementation(card);
   const tokensOccupancySeating = seatTokensOccupancyImplementation(card);
-  const occupancyBlocks = [
-    typalSeating,
-    aristocratsSeating,
-    spellslingerSeating,
-    reanimatorSeating,
-    landfallOccupancySeating,
-    staxSeating,
-    aurasOccupancySeating,
-    equipmentOccupancySeating,
-    blinkSeating,
-    tokensOccupancySeating,
-  ];
-  const occupancySeating = occupancyBlocks.find((rows) => rows.length) || freeze([]);
+  const occupancySeating = occupancySeatingForPackage(packageId, card);
   const packageHealthSeating = seatPackageHealthImplementation(packageState, intent);
 
   const occupancyLine = occupancySeating.length
@@ -520,6 +524,9 @@ export function explainPackageAsMentor({
     spellslingerSeating,
     tokensOccupancySeating,
     paragraph,
+    commentary: occupancySeating.length && packageHealthSeating.length
+      ? freeze([healthLine, vacancy].join(" "))
+      : "",
     vacancyRisk: vacancy,
     mustNotSay: freeze([
       "Protection score",
@@ -529,6 +536,33 @@ export function explainPackageAsMentor({
       "this deck is bad because",
     ]),
   });
+}
+
+
+/**
+ * Occupancy-opened packages only, then health from the 99.
+ * Composition-opened packages stay unnamed here — unknown is not absent.
+ */
+export function explainOccupiedPackagesAsMentor({
+  rows = [],
+  intent = {},
+  commanderName = "",
+  commanderOracleText = "",
+} = {}) {
+  const card = { name: commanderName, oracleText: commanderOracleText };
+  const explanations = [];
+  for (const spec of intent.packages || []) {
+    const occupancy = occupancySeatingForPackage(spec.id, card);
+    if (!occupancy.length) continue;
+    const packageState = buildPackageState(rows, spec, intent, {});
+    explanations.push(explainPackageAsMentor({
+      packageState,
+      intent,
+      commanderName,
+      commanderOracleText,
+    }));
+  }
+  return freeze(explanations);
 }
 
 /**

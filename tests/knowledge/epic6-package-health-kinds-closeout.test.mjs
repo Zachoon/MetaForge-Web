@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   tallyOccupiedHealthKinds,
+  tallyUnnamedOccupiedHealthKinds,
   formatPackageHealthKindsReport,
 } from "./run-epic6-package-health-kinds-closeout.mjs";
 
@@ -55,5 +56,26 @@ describe("Epic 6 package health kinds closeout", () => {
     assert.match(report, /writesToBrain:\*\* false/);
     assert.match(report, /STOP — spellslinger did not replicate/);
     assert.doesNotMatch(report, /propose|new floor|surplus >=|coreMin/i);
+  });
+
+  it("counts unnamed health kinds on occupancy-opened packages without seating them", () => {
+    const unnamed = tallyUnnamedOccupiedHealthKinds([
+      {
+        occupiedPackageIds: ["tokens"],
+        packages: [
+          { id: "tokens", issues: [{ kind: "underfilled" }, { kind: "missing_leg" }] },
+          { id: "spellslinger", issues: [{ kind: "curve_conflict" }] },
+        ],
+      },
+    ]);
+    assert.equal(unnamed.occupiedDecks, 1);
+    assert.equal(unnamed.totals.missing_leg, 1);
+    assert.equal(unnamed.totals.curve_conflict, 0);
+    const report = formatPackageHealthKindsReport({
+      tokens: { id: "tokens", decks: 1, underfilled: 1, oversaturated: 0, excessive_redundancy: 0 },
+    }, { unnamed });
+    assert.match(report, /Unnamed health kinds/);
+    assert.match(report, /Do not seat/);
+    assert.match(report, /\*\*missing_leg\*\*: 1/);
   });
 });

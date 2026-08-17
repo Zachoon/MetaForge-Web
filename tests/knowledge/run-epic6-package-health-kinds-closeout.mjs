@@ -22,6 +22,16 @@ export const NAMED_PACKAGE_HEALTH_KINDS = Object.freeze([
   "excessive_redundancy",
 ]);
 
+export const UNNAMED_PACKAGE_HEALTH_KINDS = Object.freeze([
+  "missing_leg",
+  "poor_enabler_payoff_ratio",
+  "unsupported_anchor",
+  "weak_commander_connection",
+  "slot_inefficient",
+  "curve_conflict",
+  "collective_duplication",
+]);
+
 const EMPTY_BLUEPRINT = Object.freeze({
   source: "",
   requestedMechanics: [],
@@ -85,6 +95,28 @@ export function tallyOccupiedHealthKinds(decks = []) {
   return byPackage;
 }
 
+
+export function tallyUnnamedOccupiedHealthKinds(decks = []) {
+  const totals = Object.fromEntries(UNNAMED_PACKAGE_HEALTH_KINDS.map((kind) => [kind, 0]));
+  let occupiedDecks = 0;
+  for (const deck of decks) {
+    const occupied = new Set(deck.occupiedPackageIds || []);
+    let counted = false;
+    for (const pkg of deck.packages || []) {
+      if (!occupied.has(pkg.id)) continue;
+      if (!counted) {
+        occupiedDecks += 1;
+        counted = true;
+      }
+      const kinds = new Set((pkg.issues || []).map((issue) => issue.kind || issue));
+      for (const kind of UNNAMED_PACKAGE_HEALTH_KINDS) {
+        if (kinds.has(kind)) totals[kind] += 1;
+      }
+    }
+  }
+  return { occupiedDecks, totals };
+}
+
 function dominantNamedKinds(bucket) {
   if (!bucket?.decks) return [];
   const ranked = NAMED_PACKAGE_HEALTH_KINDS
@@ -110,7 +142,7 @@ export function formatPackageHealthKindsReport(tally, options = {}) {
   lines.push("");
   lines.push("Occupancy from commander oracles only — empty blueprint, no rows.");
   lines.push("Health from the 99, then filtered to occupancy-opened package ids.");
-  lines.push("Named kinds only: underfilled, oversaturated, excessive_redundancy.");
+  lines.push("Named kinds: underfilled, oversaturated, excessive_redundancy.");
   lines.push("");
   if (options.deckCount != null) {
     lines.push(`Decks observed: **${options.deckCount}**.`);
@@ -159,6 +191,20 @@ export function formatPackageHealthKindsReport(tally, options = {}) {
     lines.push("Spellslinger replicated oversaturated and/or excessive_redundancy. Naming is not a Lab, and not a new ceiling.");
   }
   lines.push("");
+  lines.push("");
+  const unnamed = options.unnamed || tallyUnnamedOccupiedHealthKinds([]);
+  lines.push("## Unnamed health kinds (observation only)");
+  lines.push("");
+  lines.push("Do not seat. Do not invent a threshold.");
+  lines.push("");
+  if (!unnamed.occupiedDecks) {
+    lines.push("No occupancy-opened packages in this sample.");
+  } else {
+    for (const kind of UNNAMED_PACKAGE_HEALTH_KINDS) {
+      lines.push(`- **${kind}**: ${unnamed.totals[kind] || 0}`);
+    }
+  }
+  lines.push("");
   return lines.join("\n");
 }
 
@@ -186,7 +232,8 @@ async function main() {
   }
   const decks = collectDeckRows(live.records);
   const tally = tallyOccupiedHealthKinds(decks);
-  const report = formatPackageHealthKindsReport(tally, { deckCount: live.records.length });
+  const unnamed = tallyUnnamedOccupiedHealthKinds(decks);
+  const report = formatPackageHealthKindsReport(tally, { deckCount: live.records.length, unnamed });
   writeFileSync(join(outDir, "epic6-package-health-kinds-closeout.md"), report);
   writeFileSync(join(outDir, "epic6-package-health-kinds-closeout.json"), JSON.stringify({
     writesToBrain: false,
@@ -195,6 +242,7 @@ async function main() {
     floorProposal: false,
     deckCount: live.records.length,
     tally,
+    unnamed,
     generatedAt: new Date().toISOString(),
   }, null, 2));
   console.log(report);

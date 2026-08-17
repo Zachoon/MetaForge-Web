@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { explainCardAsMentor, explainPackageAsMentor, explainPairAsMentor, buildMentorShadowReport } from "../../app/knowledge/mentor-shadow.mjs";
+import { explainCardAsMentor, explainPackageAsMentor, occupancySeatingForPackage, explainPairAsMentor, buildMentorShadowReport } from "../../app/knowledge/mentor-shadow.mjs";
 
 describe("Mentor Shadow v0", () => {
   it("explains seats without scores or Brain writes", () => {
@@ -237,6 +237,61 @@ describe("Mentor Shadow v0", () => {
     assert.doesNotMatch(explanation.paragraph, /new floor|raise the floor|singletonCore|constructedCore|coreMin/i);
     assert.match(explanation.vacancyRisk, /health strain is commentary/);
   });
+
+  it("binds occupancy to the package being explained, not the first engine on the commander", () => {
+    const oracle = "Other Goblins you control get +1/+1. At the beginning of combat on your turn, create a 1/1 red Goblin creature token.";
+    const card = { name: "Goblin Foundry", oracleText: oracle };
+    assert.equal(occupancySeatingForPackage("typal", card)[0].kind, "engine");
+    assert.equal(occupancySeatingForPackage("tokens", card)[0].kind, "tokens_engine");
+    assert.deepEqual(occupancySeatingForPackage("spellslinger", card), []);
+
+    const tokensOnSlinger = explainPackageAsMentor({
+      packageState: {
+        id: "tokens",
+        label: "Tokens",
+        legs: {},
+        anchors: [],
+        curve: {},
+        interactionDensity: 1,
+        commanderContribution: 1,
+        slotCost: 12,
+        weaklyJustified: 0,
+        redundancy: 0,
+        density: { core: 4, floor: 10, surplus: 0, deficit: 6 },
+      },
+      commanderName: "Player Cast Dragon",
+      commanderOracleText: "Whenever a player casts an instant or sorcery spell, you may draw a card.",
+    });
+    assert.deepEqual(tokensOnSlinger.occupancySeating, []);
+    assert.equal(tokensOnSlinger.commentary, "");
+    assert.match(tokensOnSlinger.paragraph, /Atlas has no occupancy engine seat/);
+    assert.doesNotMatch(tokensOnSlinger.paragraph, /Tokens Engine/);
+  });
+
+  it("exposes occupancy-first health commentary without a cohesion score", () => {
+    const explanation = explainPackageAsMentor({
+      packageState: {
+        id: "spellslinger",
+        label: "Spellslinger",
+        legs: {},
+        anchors: [],
+        curve: {},
+        interactionDensity: 1,
+        commanderContribution: 1,
+        slotCost: 22,
+        weaklyJustified: 0,
+        redundancy: 0,
+        density: { core: 22, floor: 14, surplus: 8, deficit: 0 },
+      },
+      commanderName: "Player Cast Dragon",
+      commanderOracleText: "Whenever a player casts an instant or sorcery spell, you may draw a card.",
+    });
+    assert.match(explanation.commentary, /Oversaturated Package/);
+    assert.match(explanation.commentary, /health strain is commentary/);
+    assert.doesNotMatch(explanation.commentary, /cohesion score|score of/i);
+  });
+
+
 
 
 
