@@ -152,7 +152,14 @@ export function buildPackageState(rows, packageSpec, intent = {}, options = {}) 
     curve: Object.freeze(curve),
     commanderContribution: members.filter((entry) => entry.commanderConnected).length,
     interactionDensity: interactionEdges,
-    anchors: Object.freeze(members.filter((entry) => entry.cmc >= 5 || entry.commanderConnected).map((entry) => entry.name)),
+    // False friends are explicitly NOT real package members (they're
+    // excluded from core/support counts and density for that reason), but
+    // this previously drew from the full members array anyway, so a card
+    // the system had already correctly excluded could still trigger
+    // unsupported_anchor for needing "interaction support" it was never
+    // part of. Confirmed on real data: 3 of 22 real unsupported_anchor
+    // instances were driven by a false-friend anchor, not a genuine one.
+    anchors: Object.freeze(members.filter((entry) => entry.kind !== "falseFriend" && (entry.cmc >= 5 || entry.commanderConnected)).map((entry) => entry.name)),
     packageCritical: Object.freeze(members.filter((entry) => entry.packageCritical).map((entry) => entry.name)),
     redundancy: members.filter((entry) => entry.redundant).length,
     weaklyJustified: members.filter((entry) => entry.weaklyJustified).length,
