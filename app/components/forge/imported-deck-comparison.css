@@ -195,6 +195,14 @@
   font-size: 11px;
   text-overflow: ellipsis;
 }
+.swap-card-note {
+  display: block;
+  margin-top: 3px;
+  color: #be9363;
+  font-size: 8px;
+  font-style: italic;
+  line-height: 1.4;
+}
 .swap-card.is-cut img {
   box-shadow: 0 0 18px #e74f4055;
 }

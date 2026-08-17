@@ -50,6 +50,15 @@ export function ImportedDeckComparison({
 }) {
   const removed = changedNames(originalRows, proposedRows);
   const added = changedNames(proposedRows, originalRows);
+  // The one-slot lab tests swaps against the Forge-completed list, not the
+  // player's raw submission - its "cut" target can be a card the Forge
+  // itself added while filling the list out (never in originalRows), which
+  // can never show as OUT in the BEFORE column (there's no row for it to
+  // decrease from). Both panels were individually correct but looked
+  // contradictory with nothing explaining why. Flagging that case here so
+  // the swap card itself says so, instead of leaving it to look like a
+  // mismatch between the two panels.
+  const originalKeys = new Set(originalRows.map((row) => key(row.name)));
   return (
     <section className="imported-revision-comparison" aria-labelledby="revision-comparison-title">
       <header className="revision-comparison-heading">
@@ -61,13 +70,23 @@ export function ImportedDeckComparison({
         <section className="swap-station" aria-label="Swap station and strategy read">
           <header><small>RECOMMENDATION CENTER</small><h2>Swap station</h2><p>Each recommendation preserves deck size and the plan’s required structural floors.</p></header>
           <div className="swap-station-list">
-            {swaps.length ? swaps.map((swap) => (
+            {swaps.length ? swaps.map((swap) => {
+              const cutWasForgeAdded = !originalKeys.has(key(swap.cut));
+              return (
               <article key={`${swap.cut}-${swap.add}`} className={swap.confident === false ? "is-speculative" : ""}>
-                <div className="swap-card is-cut"><img src={cardImage(swap.cut)} alt="" /><span><small>REMOVE</small><b>{swap.cut}</b></span></div>
+                <div className="swap-card is-cut">
+                  <img src={cardImage(swap.cut)} alt="" />
+                  <span>
+                    <small>REMOVE</small>
+                    <b>{swap.cut}</b>
+                    {cutWasForgeAdded && <em className="swap-card-note">Added to complete your list — not one of your submitted cards</em>}
+                  </span>
+                </div>
                 <div className="swap-reason"><i>→</i><p>{swap.reason}</p>{swap.confident === false && <em>Consider, don’t apply yet</em>}</div>
                 <div className="swap-card is-add"><img src={cardImage(swap.add)} alt="" /><span><small>ADD</small><b>{swap.add}</b></span></div>
               </article>
-            )) : (
+              );
+            }) : (
               <div className="swap-station-empty"><b>No confident swap cleared every gate.</b><p>The Forge retained the submitted list rather than manufacturing a recommendation.</p></div>
             )}
           </div>
