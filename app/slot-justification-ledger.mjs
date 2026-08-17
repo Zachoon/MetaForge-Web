@@ -350,7 +350,16 @@ function markRedundancyAndOverSupport(slots, intent) {
   const overSupported = new Set();
   for (const packageSpec of intent.packages || []) {
     const members = byPackage.get(packageSpec.id) || [];
-    if (members.length <= packageSpec.coreMin) continue;
+    // Redundancy/over-support scanning used to start the moment a package
+    // had even one member past its floor, so naturally wide packages (e.g.
+    // spellslinger: real median 21 members vs. floor 14) triggered a
+    // pairwise near-duplicate scan on nearly every real deck. Reusing the
+    // same "genuinely oversized" bar evaluatePackageHealth's oversaturation
+    // check already uses (coreMin + max(6, coreMin)) keeps both mechanisms
+    // consistent and only scans once a package is substantially past floor,
+    // not the moment it clears it by one card.
+    const oversizedBar = packageSpec.coreMin + Math.max(6, packageSpec.coreMin || 0);
+    if (members.length <= oversizedBar) continue;
     const surplus = members.length - packageSpec.coreMin;
     if (surplus >= 4) {
       const weakest = [...members].sort((a, b) => a.strength - b.strength || a.name.localeCompare(b.name));
