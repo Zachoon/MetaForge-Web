@@ -20,6 +20,7 @@ import {
   seatEquipmentOccupancyImplementation,
   seatBlinkImplementation,
   seatTokensOccupancyImplementation,
+  seatPackageHealthImplementation,
   seatSelectionImplementation,
   seatGraveyardImplementation,
   seatSacrificeImplementation,
@@ -427,6 +428,105 @@ export function explainCardAsMentor({
       "Protection score",
       "This card has a score of",
       "Brain selected this because",
+    ]),
+  });
+}
+
+
+/**
+ * Package-level Mentor: occupancy engine first, then health kinds.
+ * Health strain is commentary, not a reason to close occupancy.
+ * Parallel only — never a construction input, never a cohesion score.
+ */
+export function explainPackageAsMentor({
+  packageState = {},
+  intent = {},
+  commanderOracleText = "",
+  commanderName = "",
+} = {}) {
+  const packageId = String(packageState.id || "");
+  if (!packageId) {
+    return freeze({
+      ok: false,
+      writesToBrain: false,
+      reason: "missing_package",
+      note: "Mentor needs a package to explain — not a scoreboard.",
+    });
+  }
+
+  const card = { name: commanderName || packageId, oracleText: commanderOracleText };
+  const typalSeating = seatTypalImplementation(card);
+  const aristocratsSeating = seatAristocratsImplementation(card);
+  const spellslingerSeating = seatSpellslingerImplementation(card);
+  const reanimatorSeating = seatReanimatorImplementation(card);
+  const landfallOccupancySeating = seatLandfallImplementation(card);
+  const staxSeating = seatStaxImplementation(card);
+  const aurasOccupancySeating = seatAurasOccupancyImplementation(card);
+  const equipmentOccupancySeating = seatEquipmentOccupancyImplementation(card);
+  const blinkSeating = seatBlinkImplementation(card);
+  const tokensOccupancySeating = seatTokensOccupancyImplementation(card);
+  const occupancyBlocks = [
+    typalSeating,
+    aristocratsSeating,
+    spellslingerSeating,
+    reanimatorSeating,
+    landfallOccupancySeating,
+    staxSeating,
+    aurasOccupancySeating,
+    equipmentOccupancySeating,
+    blinkSeating,
+    tokensOccupancySeating,
+  ];
+  const occupancySeating = occupancyBlocks.find((rows) => rows.length) || freeze([]);
+  const packageHealthSeating = seatPackageHealthImplementation(packageState, intent);
+
+  const occupancyLine = occupancySeating.length
+    ? occupancySeating.map((row) => {
+      const contrast = row.contrast ? `, ${row.contrast}` : "";
+      return `It is seated as a ${row.seat.label}${contrast}.`;
+    }).join(" ")
+    : "Atlas has no occupancy engine seat for this commander yet — unknown is not absent.";
+  const healthLine = packageHealthSeating.length
+    ? packageHealthSeating.map((row) => {
+      const contrast = row.contrast ? `, ${row.contrast}` : "";
+      return `Package health is seated as ${row.seat.label}${contrast}.`;
+    }).join(" ")
+    : "Package health has no named strain on the occupied engine.";
+
+  const vacancy = occupancySeating.length
+    ? `This is ${occupancySeating.map((row) => row.seat.label).join(" and ")} first; health strain is commentary, not a reason to close occupancy.`
+    : packageHealthSeating.length
+      ? `This is ${packageHealthSeating.map((row) => row.seat.label).join(" and ")}${packageHealthSeating.some((row) => row.contrast) ? `, ${packageHealthSeating.map((row) => row.contrast).filter(Boolean).join(" and ")}` : ""}.`
+      : "Seat language is still open for this package — do not invent a score.";
+
+  const paragraph = [
+    `${packageState.label || packageId}${commanderName ? ` in a ${commanderName} list` : ""}.`,
+    occupancyLine,
+    healthLine,
+    vacancy,
+  ].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+
+  return freeze({
+    ok: true,
+    kind: "MentorPackageExplanation",
+    version: "mentor-shadow-v0",
+    writesToBrain: false,
+    activated: false,
+    promoted: false,
+    brainInheritance: "none",
+    packageId,
+    occupancySeating,
+    packageHealthSeating,
+    spellslingerSeating,
+    tokensOccupancySeating,
+    paragraph,
+    vacancyRisk: vacancy,
+    mustNotSay: freeze([
+      "Protection score",
+      "cohesion score",
+      "This card has a score of",
+      "Brain selected this because",
+      "this deck is bad because",
     ]),
   });
 }

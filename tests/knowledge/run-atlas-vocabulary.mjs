@@ -33,6 +33,7 @@ function main() {
     `| Equipment occupancy seats | ${registry.summary.equipmentOccupancySeatCount} |`,
     `| Blink seats | ${registry.summary.blinkSeatCount} |`,
     `| Tokens occupancy seats | ${registry.summary.tokensOccupancySeatCount} |`,
+    `| Package health seats | ${registry.summary.packageHealthSeatCount} |`,
     `| Selection seats | ${registry.summary.selectionSeatCount} |`,
     `| Graveyard seats | ${registry.summary.graveyardSeatCount} |`,
     `| Sacrifice seats | ${registry.summary.sacrificeSeatCount} |`,

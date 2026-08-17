@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { explainCardAsMentor, explainPairAsMentor, buildMentorShadowReport } from "../../app/knowledge/mentor-shadow.mjs";
+import { explainCardAsMentor, explainPackageAsMentor, explainPairAsMentor, buildMentorShadowReport } from "../../app/knowledge/mentor-shadow.mjs";
 
 describe("Mentor Shadow v0", () => {
   it("explains seats without scores or Brain writes", () => {
@@ -180,6 +180,65 @@ describe("Mentor Shadow v0", () => {
     });
     assert.deepEqual(chatterfang.tokensOccupancySeating, []);
   });
+
+  it("names Spellslinger Engine before oversaturated health strain", () => {
+    const explanation = explainPackageAsMentor({
+      packageState: {
+        id: "spellslinger",
+        label: "Spellslinger",
+        legs: {},
+        anchors: [],
+        curve: {},
+        interactionDensity: 1,
+        commanderContribution: 1,
+        slotCost: 22,
+        weaklyJustified: 0,
+        redundancy: 0,
+        density: { core: 22, floor: 14, surplus: 8, deficit: 0 },
+      },
+      commanderName: "Player Cast Dragon",
+      commanderOracleText: "Whenever a player casts an instant or sorcery spell, you may draw a card.",
+    });
+    assert.equal(explanation.ok, true);
+    assert.equal(explanation.writesToBrain, false);
+    assert.equal(explanation.occupancySeating[0].kind, "spellslinger_engine");
+    assert.equal(explanation.packageHealthSeating[0].kind, "oversaturated");
+    assert.match(explanation.paragraph, /Spellslinger Engine/);
+    assert.match(explanation.paragraph, /Oversaturated Package/);
+    assert.match(explanation.vacancyRisk, /health strain is commentary, not a reason to close occupancy/);
+    assert.doesNotMatch(explanation.paragraph, /this package should not be open|cohesion score|Brain selected/i);
+    assert.ok(explanation.mustNotSay.some((line) => /cohesion score/i.test(line)));
+  });
+
+  it("names underfilled tokens strain without proposing a new floor", () => {
+    const explanation = explainPackageAsMentor({
+      packageState: {
+        id: "tokens",
+        label: "Tokens",
+        legs: {},
+        anchors: [],
+        curve: {},
+        interactionDensity: 1,
+        commanderContribution: 1,
+        slotCost: 12,
+        weaklyJustified: 0,
+        redundancy: 0,
+        density: { core: 4, floor: 10, surplus: 0, deficit: 6 },
+      },
+      commanderName: "Token Foundry",
+      commanderOracleText: "At the beginning of combat on your turn, create a 1/1 white Citizen creature token.",
+    });
+    assert.equal(explanation.ok, true);
+    assert.equal(explanation.writesToBrain, false);
+    assert.equal(explanation.occupancySeating[0].kind, "tokens_engine");
+    assert.equal(explanation.packageHealthSeating[0].kind, "underfilled");
+    assert.match(explanation.paragraph, /Tokens Engine/);
+    assert.match(explanation.paragraph, /Underfilled Package/);
+    assert.doesNotMatch(explanation.paragraph, /new floor|raise the floor|singletonCore|constructedCore|coreMin/i);
+    assert.match(explanation.vacancyRisk, /health strain is commentary/);
+  });
+
+
 
 
 

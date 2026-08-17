@@ -15,6 +15,7 @@ import {
   seatEquipmentOccupancyImplementation,
   seatBlinkImplementation,
   seatTokensOccupancyImplementation,
+  seatPackageHealthImplementation,
   seatSelectionImplementation,
   seatGraveyardImplementation,
   seatSacrificeImplementation,
@@ -283,6 +284,61 @@ describe("Atlas Vocabulary Registry v0", () => {
       oracleText: "If one or more tokens would be created under your control, those tokens plus that many 1/1 green Squirrel creature tokens are created instead.",
     }), []);
   });
+
+  it("seats package-health underfilled / oversaturated / excessive_redundancy without admitting Capabilities", () => {
+    const registry = buildAtlasVocabularyRegistry();
+    assert.equal(registry.summary.packageHealthSeatCount, 3);
+    assert.equal(registry.summary.capabilityAdmittedCount, 0);
+    assert.ok(registry.packageHealthSeats.every((row) => row.writesToBrain === false && row.capability.atlasAdmitted === false));
+    assert.ok(registry.revisions.some((row) => /package-health underfilled/i.test(row.change)));
+
+    const base = {
+      legs: {},
+      anchors: [],
+      curve: {},
+      interactionDensity: 1,
+      commanderContribution: 1,
+      slotCost: 12,
+      weaklyJustified: 0,
+      redundancy: 0,
+    };
+
+    const underfilled = seatPackageHealthImplementation({
+      ...base,
+      id: "tokens",
+      density: { core: 4, floor: 10, surplus: 0, deficit: 6 },
+    }, {});
+    assert.equal(underfilled.length, 1);
+    assert.equal(underfilled[0].kind, "underfilled");
+    assert.equal(underfilled[0].seat.label, "Underfilled Package");
+    assert.match(underfilled[0].contrast, /not oversaturated/);
+    assert.equal(underfilled[0].writesToBrain, false);
+
+    const oversaturated = seatPackageHealthImplementation({
+      ...base,
+      id: "spellslinger",
+      slotCost: 22,
+      density: { core: 22, floor: 14, surplus: 8, deficit: 0 },
+    }, {});
+    assert.equal(oversaturated.length, 1);
+    assert.equal(oversaturated[0].kind, "oversaturated");
+    assert.equal(oversaturated[0].seat.label, "Oversaturated Package");
+    assert.match(oversaturated[0].contrast, /not occupancy detect/);
+
+    const redundancy = seatPackageHealthImplementation({
+      ...base,
+      id: "spellslinger",
+      redundancy: 3,
+      density: { core: 14, floor: 14, surplus: 0, deficit: 0 },
+    }, {});
+    assert.equal(redundancy.length, 1);
+    assert.equal(redundancy[0].kind, "excessive_redundancy");
+    assert.equal(redundancy[0].seat.label, "Excessive Redundancy");
+    assert.match(redundancy[0].contrast, /not surplus-above-floor/);
+    assert.match(redundancy[0].contrast, /not spellslinger occupancy/);
+  });
+
+
 
 
 

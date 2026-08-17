@@ -37,6 +37,7 @@ import {
   detectTokensCommander,
   extractTypalTribes,
 } from "../strategic-intent.mjs";
+import { evaluatePackageHealth } from "../package-plan-optimizer.mjs";
 // Atlas Vocabulary Registry v0 — Age of Vocabulary engineering surface
 // =============================================================================
 // Stable meanings + illustrative equivalence. Naming is not promotion.
@@ -1634,6 +1635,47 @@ export function seatTokensOccupancyImplementation(card = {}) {
   }
   return freeze(rows);
 }
+
+/**
+ * Descriptive seating for package-health issue kinds already computed by
+ * `evaluatePackageHealth` — no second surplus/redundancy threshold family.
+ * Underfilled is core below the existing floor, not oversaturated.
+ * Oversaturated is surplus above that floor, not an occupancy false-open.
+ * Excessive redundancy is ledger-redundant members, not surplus and not
+ * spellslinger occupancy detect. Other health kinds stay unnamed.
+ * Not Capability admissions. Never construction inputs.
+ */
+export const ATLAS_PACKAGE_HEALTH_KINDS = freeze(["underfilled", "oversaturated", "excessive_redundancy"]);
+
+export const ATLAS_PACKAGE_HEALTH_SEATS = freeze([
+  descriptiveKindSeat("underfilled", "Underfilled Package", "not oversaturated and not a missing occupancy engine", "package_underfilled", "cap:package_underfilled"),
+  descriptiveKindSeat("oversaturated", "Oversaturated Package", "not underfilled and not occupancy detect", "package_oversaturated", "cap:package_oversaturated"),
+  descriptiveKindSeat("excessive_redundancy", "Excessive Redundancy", "not surplus-above-floor and not spellslinger occupancy", "package_excessive_redundancy", "cap:package_excessive_redundancy"),
+]);
+
+export function seatPackageHealthImplementation(packageState = {}, intent = {}) {
+  const health = evaluatePackageHealth(packageState, intent);
+  const kinds = [...new Set((health.issues || []).map((issue) => issue.kind).filter((kind) => ATLAS_PACKAGE_HEALTH_KINDS.includes(kind)))];
+  const rows = [];
+  for (const definition of ATLAS_PACKAGE_HEALTH_SEATS) {
+    if (!kinds.includes(definition.kind)) continue;
+    const issue = (health.issues || []).find((row) => row.kind === definition.kind);
+    rows.push(freeze({
+      kind: definition.kind,
+      capability: definition.capability,
+      seat: definition.seat,
+      contrast: definition.contrast,
+      implementation: freeze({
+        package: String(packageState.id || "unknown"),
+        roles: freeze([definition.role]),
+        evidenceSignals: freeze([definition.kind, issue?.detail].filter(Boolean)),
+      }),
+      writesToBrain: false,
+    }));
+  }
+  return freeze(rows);
+}
+
 /**
  * Descriptive seating for token kinds — splits the single blended `tokens`
  * produces/rewards signal into named seats.
@@ -2039,6 +2081,10 @@ export const ATLAS_VOCABULARY_REVISIONS = freeze([
     date: "2026-08-16",
     change: "Seated tokens occupancy engine from occupancy detect, rejecting Magda-class lone artifact-token-sac creates and replacement-without-create; still 0 Capability admissions",
   }),
+  freeze({
+    date: "2026-08-16",
+    change: "Seated package-health underfilled / oversaturated / excessive_redundancy from evaluatePackageHealth kinds; still 0 Capability admissions",
+  }),
 ]);
 
 export function seatsImplementedBy(cardName = "") {
@@ -2090,6 +2136,7 @@ export function buildAtlasVocabularyRegistry() {
     equipmentOccupancySeats: ATLAS_EQUIPMENT_OCCUPANCY_SEATS,
     blinkSeats: ATLAS_BLINK_SEATS,
     tokensOccupancySeats: ATLAS_TOKENS_OCCUPANCY_SEATS,
+    packageHealthSeats: ATLAS_PACKAGE_HEALTH_SEATS,
     selectionSeats: ATLAS_SELECTION_SEATS,
     graveyardSeats: ATLAS_GRAVEYARD_SEATS,
     sacrificeSeats: ATLAS_SACRIFICE_SEATS,
@@ -2128,6 +2175,7 @@ export function buildAtlasVocabularyRegistry() {
       equipmentOccupancySeatCount: ATLAS_EQUIPMENT_OCCUPANCY_SEATS.length,
       blinkSeatCount: ATLAS_BLINK_SEATS.length,
       tokensOccupancySeatCount: ATLAS_TOKENS_OCCUPANCY_SEATS.length,
+      packageHealthSeatCount: ATLAS_PACKAGE_HEALTH_SEATS.length,
       selectionSeatCount: ATLAS_SELECTION_SEATS.length,
       graveyardSeatCount: ATLAS_GRAVEYARD_SEATS.length,
       sacrificeSeatCount: ATLAS_SACRIFICE_SEATS.length,
