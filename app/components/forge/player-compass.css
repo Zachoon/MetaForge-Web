@@ -14,6 +14,20 @@
 
 .player-compass-card.is-open {
   width: min(760px, 100%);
+  /* The Explore/home chamber is a deliberate fixed-height "framed hero"
+     with no page scroll (site-frame.css: .great-forge.chamber-entrance -
+     overflow:hidden by design, not an oversight). That's fine for the
+     card's collapsed states, but the open question state (prompt +
+     description + progress dots + 3 answer buttons + back/skip actions)
+     can be taller than whatever viewport space remains once the hero
+     graphic and heading above it are accounted for, with no ancestor
+     scroll to fall back on - the third answer and the action buttons
+     could end up permanently below the fold. Scrolling inside the card
+     itself keeps every option reachable without touching the hero's
+     intentional no-page-scroll behavior.
+  */
+  max-height: min(78svh, 620px);
+  overflow-y: auto;
 }
 
 .player-compass-card > header small,
