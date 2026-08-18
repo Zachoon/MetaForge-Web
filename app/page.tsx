@@ -30,7 +30,7 @@ import { applyControlledSwap, experimentAdditionSynergy, rankExperimentAdditions
 // Anvil), not part of the construction algorithm itself. colorPipsFromCost
 // moved out entirely once the simulation dossier that was its only
 // caller became server-side too.
-import { manaConsistencyReport, parseNativeBlueprintIntent } from "./native-masterwork-engine.mjs";
+import { manaConsistencyReport, parseNativeBlueprintIntent } from "./blueprint-note-and-mana.mjs";
 import { explainCardAsMentor, explainOccupiedPackagesAsMentor, explainPairAsMentor, explainPairsForCardAsMentor, occupancyEngineLabelsForCommander, occupancyEngineLabelsForCommanders } from "./knowledge/mentor-shadow.mjs";
 import { commanderOptionFromCard, resolvePastedCommanderCandidate } from "./deck-import-commander.mjs";
 import { updateFamily, setFamilyMotifWeights } from "./deck-bench.mjs";

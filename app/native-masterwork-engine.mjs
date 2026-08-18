@@ -108,6 +108,22 @@ import {
 } from "./strategic-plan-competition.mjs";
 
 import CARD_MECHANICS from "./card-mechanics.mjs";
+// parseNativeBlueprintIntent/manaConsistencyReport/hypergeometricAtLeast and
+// the small helpers they alone need (ROLE_PATTERNS, BLUEPRINT_FILLER_WORDS,
+// blueprintMechanicDefinition) live in blueprint-note-and-mana.mjs, a leaf
+// module with no path back to CARD_MECHANICS or any other server-only
+// construction file — that isolation is what keeps page.tsx's commission-
+// note/mana-consistency UI from pulling the ~1.9MB card-mechanics.mjs
+// database into the client bundle (it used to import them from here).
+import {
+  blueprintMechanicDefinition,
+  BLUEPRINT_FILLER_WORDS,
+  hypergeometricAtLeast,
+  manaConsistencyReport,
+  parseNativeBlueprintIntent,
+  ROLE_PATTERNS,
+} from "./blueprint-note-and-mana.mjs";
+export { hypergeometricAtLeast, manaConsistencyReport, parseNativeBlueprintIntent } from "./blueprint-note-and-mana.mjs";
 
 import {
   getMetaIntelligence,
@@ -137,29 +153,8 @@ const BASIC_COLOR_BY_NAME = Object.freeze({
   "Snow-Covered Plains": ["W"], "Snow-Covered Island": ["U"], "Snow-Covered Swamp": ["B"], "Snow-Covered Mountain": ["R"], "Snow-Covered Forest": ["G"],
 });
 
-const ROLE_PATTERNS = Object.freeze({
-  ramp: [/add .{0,18}mana/i, /create .{0,18}(?:treasure|powerstone)/i, /search your library for .{0,30}land/i, /land card.{0,30}battlefield/i],
-  draw: [/draw (?:a|one|two|three|x|that many|cards?)/i, /look at the top .{0,40}(?:hand|exile)/i, /impulse/i],
-  interaction: [/destroy target/i, /exile target/i, /counter target/i, /deals? \d+ damage to/i, /return target .{0,25}owner'?s hand/i, /-\d+\/-\d+/i],
-  protection: [/hexproof/i, /indestructible/i, /phase out/i, /protection from/i, /counter target spell or ability/i],
-  recursion: [/return target .{0,35}(?:graveyard|battlefield|hand)/i, /cast .{0,30}from your graveyard/i, /reanimate/i],
-  sweeper: [/destroy all/i, /exile all/i, /all creatures get -/i, /deals? \d+ damage to each/i],
-  selection: [/scry/i, /surveil/i, /discard .{0,20}draw/i, /draw .{0,20}discard/i],
-  tokens: [/create (?:a|one|two|three|x|that many|\d+) .{0,45}token/i],
-  sacrifice: [/sacrifice (?:a|another|one|target)/i, /whenever .{0,25} dies/i],
-  counters: [/[+\-]\d+\/[+\-]\d+ counter/i, /one or more counters/i, /proliferate/i],
-  graveyard: [/graveyard/i, /mill /i, /surveil/i, /flashback/i, /escape/i],
-  artifacts: [/artifact/i, /equipment/i, /treasure/i],
-  spells: [/instant or sorcery/i, /noncreature spell/i, /whenever you cast/i, /prowess/i],
-  lifegain: [/you gain .{0,12}life/i, /whenever you gain life/i, /lifelink/i],
-  combat: [/whenever .{0,25} attacks/i, /combat damage/i, /double strike/i, /extra combat/i],
-  // Hand disruption is its own deckbuilding axis, not covered by
-  // "interaction" above (which only matches destroy/exile/counter/damage/
-  // bounce). Scoped to the opponent discarding, not a self-loot effect
-  // ("you may discard a card, then draw"), which "selection" already owns.
-  discard: [/target (?:player|opponent) discards?/i, /each (?:player|opponent) discards?/i, /that player discards?/i],
-});
-
+// ROLE_PATTERNS now lives in blueprint-note-and-mana.mjs (imported above) —
+// noteRoleSignals, the only other consumer, moved there with it.
 // Rules-text regex alone misses real cards that do the same job in an
 // unusual phrasing — a card tagged mana_acceleration in the curated
 // card-mechanics database (app/card-mechanics.mjs) is real evidence a card
@@ -235,51 +230,9 @@ export function interactionQualityFor(text = "") {
   return 1;
 }
 
-// ROLE_PATTERNS matches verified rules text, which speaks in precise oracle
-// phrasing ("destroy target creature"). A player's commission note speaks in
-// plain language ("removal", "board wipes") that never appears in rules text,
-// so notes need their own, looser vocabulary layered on top.
-const NOTE_ROLE_ALIASES = Object.freeze({
-  ramp: [/\bramp\b/i, /\bmana ramp\b/i, /\bacceleration\b/i, /\baccelerate\b/i],
-  draw: [/\bcard draw\b/i, /\bdraw(?:ing)? cards?\b/i, /\bcard advantage\b/i],
-  interaction: [/\bremoval\b/i, /\bcounterspells?\b/i, /\binteraction\b/i, /\bdisruption\b/i, /\bspot removal\b/i],
-  protection: [/\bprotection\b/i, /\bhexproof\b/i, /\bsafety\b/i],
-  recursion: [/\brecursion\b/i, /\breanimator\b/i, /\breanimate\b/i, /\bbring(?:ing)? back\b/i],
-  sweeper: [/\bboard wipes?\b/i, /\bwraths?\b/i, /\bsweepers?\b/i, /\bmass removal\b/i],
-  selection: [/\bcard selection\b/i, /\bfiltering\b/i],
-  tokens: [/\bgo wide\b/i, /\btoken(?:s)? strategy\b/i, /\btokens\b/i, /\bwide board\b/i],
-  sacrifice: [/\baristocrats\b/i, /\bsac(?:rifice)? deck\b/i, /\bsacrifice\b/i, /\bsac(?:s)?\b/i],
-  counters: [/\bcounters strategy\b/i, /\bproliferate\b/i],
-  graveyard: [/\bgraveyard value\b/i, /\bself-?mill\b/i, /\bmill strategy\b/i],
-  artifacts: [/\bartifact synerg(?:y|ies)\b/i, /\bartifacts matter\b/i],
-  spells: [/\bspellslinger\b/i, /\bspells matter\b/i, /\binstants and sorceries\b/i],
-  lifegain: [/\blife ?gain\b/i, /\bgaining life\b/i],
-  combat: [/\bcombat tricks?\b/i, /\bbig combat\b/i],
-  discard: [/\bdiscard\b/i, /\bhand disruption\b/i, /\bhand attack\b/i, /\bdisrupt(?:ion)? (?:their|the opponent'?s) hand\b/i],
-});
-const NOTE_NEGATION_CUE = /\b(no|not|never|avoid|avoiding|without|don'?t want|doesn'?t want|hate|skip|exclude|excluding)\b/i;
-const toGlobal = (pattern) => new RegExp(pattern.source, pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`);
-
-// Every role signal in a note is either something the player asked for or
-// something they explicitly ruled out ("no sacrifice"). A short lookbehind
-// window decides which; "no" flips the nearest role mention, not the whole
-// note, so "no sacrifice but plenty of removal" reads correctly.
-function noteRoleSignals(source = "") {
-  const desired = new Set();
-  const excluded = new Set();
-  for (const role of Object.keys(ROLE_PATTERNS)) {
-    const patterns = [...ROLE_PATTERNS[role], ...(NOTE_ROLE_ALIASES[role] || [])];
-    for (const pattern of patterns) {
-      for (const match of source.matchAll(toGlobal(pattern))) {
-        const windowStart = Math.max(0, match.index - 24);
-        const negated = NOTE_NEGATION_CUE.test(source.slice(windowStart, match.index));
-        (negated ? excluded : desired).add(role);
-      }
-    }
-  }
-  for (const role of excluded) desired.delete(role);
-  return { desired: [...desired], excluded: [...excluded] };
-}
+// NOTE_ROLE_ALIASES/noteRoleSignals (the plain-language note vocabulary
+// layered on top of ROLE_PATTERNS) also moved to blueprint-note-and-mana.mjs
+// with parseNativeBlueprintIntent, their only caller.
 
 const STRATEGY_WEIGHTS = Object.freeze({
   Aggressive: { ramp: 4, draw: 7, interaction: 8, protection: 7, threat: 14, combat: 10 },
@@ -454,67 +407,13 @@ function buildSelectedStructuralCards(
   });
 }
 
-const BLUEPRINT_FILLER_WORDS = new Set([
-  "tribal", "typal", "synergy", "synergies", "theme", "themed", "archetype",
-  "build", "around", "plus", "counters", "counter", "and", "or", "with",
-]);
-
-const BLUEPRINT_MECHANICS = Object.freeze({
-  power_up: Object.freeze({ label: "Power-Up", aliases: [/\bpower[\s-]?up\b/i], packageSignals: ["counters"], anchorLimit: { singleton: 14, constructed: 4 }, score: 34 }),
-  creature_activated_ability: Object.freeze({ label: "creature activated abilities", aliases: [/\b(?:creature(?:s|['’]s)?\s+)?activated\s+abilit(?:y|ies)\b/i], anchorLimit: { singleton: 10, constructed: 4 }, score: 12 }),
-  blink: Object.freeze({ label: "blink", aliases: [/\bblink(?:ing)?\b/i, /\bflicker(?:ing)?\b/i], tags: ["blink"], oracle: [/exile .{0,70}(?:return|battlefield)/i, /exile .{0,60}until/i], query: '(o:"exile" o:"return" o:"battlefield")', packageSignals: ["etb"], anchorLimit: { singleton: 12, constructed: 4 }, score: 26 }),
-  aristocrats: Object.freeze({ label: "sacrifice and death payoffs", aliases: [/\baristocrats?\b/i], tags: ["sacrifice_outlet", "death_payoff"], query: '(o:"sacrifice" OR o:"dies")', packageSignals: ["sacrifice", "tokens"], anchorLimit: { singleton: 14, constructed: 4 }, score: 28 }),
-  voltron: Object.freeze({ label: "commander enhancement", aliases: [/\bvoltron\b/i], tags: ["equip", "enchant", "protection"], query: '(kw:equip OR t:aura OR o:"commander creature")', packageSignals: ["evasion", "protection"], anchorLimit: { singleton: 14, constructed: 4 }, score: 26 }),
-  spell_copying: Object.freeze({ label: "spell copying", aliases: [/\bcopy(?:ing)? (?:my |your )?(?:spells?|instants?|sorceries?)\b/i, /\bspell cop(?:y|ies|ying)\b/i], tags: ["copy"], oracle: [/copy target .{0,35}spell/i, /copy (?:that|it|this) spell/i], query: 'o:"copy" o:"spell"', packageSignals: ["spells"], anchorLimit: { singleton: 12, constructed: 4 }, score: 26 }),
-  cast_from_exile: Object.freeze({ label: "casting from exile", aliases: [/\bcast(?:ing)?(?: cards?)? from exile\b/i, /\bplay(?:ing)?(?: cards?)? from exile\b/i], tags: ["exile_payoff"], oracle: [/(?:cast|play) .{0,65}from exile/i], query: '(o:"cast" o:"from exile")', packageSignals: ["spells"], anchorLimit: { singleton: 12, constructed: 4 }, score: 26 }),
-});
-
-const PACKAGE_SIGNAL_BY_MECHANIC = Object.freeze({
-  landfall: ["lands"], tokens: ["tokens"], treasure: ["treasure", "artifacts"],
-  proliferate: ["counters"], counters: ["counters"], cycling: ["draw", "graveyard"],
-  lifelink: ["life"], magecraft: ["spells"], prowess: ["spells"], flashback: ["graveyard", "spells"],
-  disturb: ["graveyard"], escape: ["graveyard"], reconfigure: ["artifacts", "evasion"], equip: ["artifacts", "evasion"],
-});
-const PACKAGE_SIGNAL_BY_ROLE = Object.freeze({
-  tokens: ["tokens"], sacrifice: ["sacrifice", "tokens"], counters: ["counters"],
-  graveyard: ["graveyard"], spells: ["spells"], lifegain: ["life"], artifacts: ["artifacts"],
-  draw: ["draw"], combat: ["combat"], protection: ["protection"],
-});
-
-const NON_REQUEST_MECHANIC_TAGS = new Set([
-  "artifact", "battle", "card_advantage", "creature", "enchantment", "instant", "interaction", "land",
-  "mana_acceleration", "planeswalker", "protection", "sorcery", "spell_payoff", "token_producer",
-]);
-const KNOWN_MECHANIC_TAGS = unique(Object.values(CARD_MECHANICS).flat())
-  .filter((tag) => tag.length >= 4 && !NON_REQUEST_MECHANIC_TAGS.has(tag) && !/(?:_payoff|_producer|_setup|_recursion|_search|_outlet)$/.test(tag));
-
-function blueprintMechanicDefinition(mechanic) {
-  return BLUEPRINT_MECHANICS[mechanic] || Object.freeze({
-    label: mechanic.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()),
-    tags: [mechanic], packageSignals: PACKAGE_SIGNAL_BY_MECHANIC[mechanic] || [], anchorLimit: { singleton: 12, constructed: 4 }, score: 26,
-  });
-}
-
-function mechanicsMentionedIn(source = "") {
-  const matches = [];
-  for (const [mechanic, definition] of Object.entries(BLUEPRINT_MECHANICS)) {
-    const indexes = definition.aliases.map((pattern) => source.search(pattern)).filter((index) => index >= 0);
-    if (indexes.length) matches.push({ mechanic, index: Math.min(...indexes) });
-  }
-  for (const tag of KNOWN_MECHANIC_TAGS) {
-    const phrase = tag.replaceAll("_", " ");
-    const index = source.search(new RegExp(`\\b${phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i"));
-    if (index >= 0) matches.push({ mechanic: tag, index });
-  }
-  return unique(matches.sort((left, right) => left.index - right.index || left.mechanic.localeCompare(right.mechanic)).map(({ mechanic }) => mechanic));
-}
-
-function requestedBlueprintMechanics(source = "") {
-  // Anything explicitly introduced as the focus is reserved first. The
-  // remaining named mechanics keep their stable mention/dictionary order.
-  const focus = source.match(/\b(?:focus(?:ed)? on|center(?:ed)? (?:on|around)|primarily|especially)\s+(.+)$/i)?.[1] || "";
-  return unique([...mechanicsMentionedIn(focus), ...mechanicsMentionedIn(source)]);
-}
+// BLUEPRINT_FILLER_WORDS, BLUEPRINT_MECHANICS, PACKAGE_SIGNAL_BY_MECHANIC,
+// PACKAGE_SIGNAL_BY_ROLE, KNOWN_MECHANIC_TAGS, blueprintMechanicDefinition,
+// mechanicsMentionedIn, and requestedBlueprintMechanics all moved to
+// blueprint-note-and-mana.mjs with parseNativeBlueprintIntent. What stays
+// here (blueprintMechanicHitsFor, blueprintMechanicQueryFor,
+// commanderTribesFromOracle) needs blueprintMechanicDefinition and
+// BLUEPRINT_FILLER_WORDS back, imported above.
 
 function blueprintMechanicHitsFor(card, requestedMechanics = []) {
   const oracle = String(card.oracleText || card.oracle_text || "");
@@ -533,11 +432,8 @@ export function blueprintMechanicQueryFor(mechanic) {
   return definition.query || `(kw:"${definition.label}" OR o:"${definition.label}")`;
 }
 
-function normalizeBlueprintText(value = "") {
-  return normalized(value)
-    .replace(/\+\s*1\s*(?:\+|\/)\s*1\s*counters?/g, "+1/+1 counter")
-    .replace(/\bplus one plus one counters?\b/g, "+1/+1 counter");
-}
+// normalizeBlueprintText moved to blueprint-note-and-mana.mjs with
+// parseNativeBlueprintIntent, its only caller.
 
 const GENERIC_SCOPE_WORDS = new Set(["card", "creature", "permanent", "player", "opponent", "spell", "token", "target"]);
 const TRIBAL_STOP_WORDS = new Set(["target", "equipped", "enchanted", "attacking", "blocking", "tapped", "untapped", "nontoken", "other", "another", "each", "all", ...GENERIC_SCOPE_WORDS]);
@@ -566,36 +462,9 @@ export function commanderTribesFromOracle(commanders = []) {
   ]).filter((term) => term && !BLUEPRINT_FILLER_WORDS.has(term) && !TRIBAL_STOP_WORDS.has(term) && !ARTIFACT_OR_TOKEN_TYPES.has(term));
 }
 
-export function parseNativeBlueprintIntent(input = {}) {
-  const source = normalizeBlueprintText(input.note || "");
-  // Tribe identity floors come from explicit note requests ("bear tribal").
-  // Commander oracle still activates the typal PACKAGE via detectCommander
-  // ("another Bear you control") without silently raising Blueprint identity
-  // floors on every tribal-shaped commander.
-  const tribalTypes = unique([
-    ...[...source.matchAll(/\b([a-z][a-z0-9'-]{2,})\s+(?:tribal|typal)\b/g)].map((match) => match[1]),
-    ...[...source.matchAll(/\b(?:tribal|typal)\s+([a-z][a-z0-9'-]{2,})\b/g)].map((match) => match[1]),
-  ]).filter((term) => !BLUEPRINT_FILLER_WORDS.has(term));
-  const roleSignals = noteRoleSignals(source);
-  const desiredRoles = roleSignals.desired;
-  const excludedRoles = roleSignals.excluded;
-  const requestedMechanics = requestedBlueprintMechanics(source);
-  const packageSignals = unique([
-    ...requestedMechanics.flatMap((mechanic) => blueprintMechanicDefinition(mechanic).packageSignals || []),
-    ...desiredRoles.flatMap((role) => PACKAGE_SIGNAL_BY_ROLE[role] || []),
-  ]);
-  const requestedTerms = unique(
-    source
-      .split(/[^a-z0-9+'/-]+/)
-      .filter((term) => term.length >= 4 && !BLUEPRINT_FILLER_WORDS.has(term)),
-  );
-  const promises = [
-    ...tribalTypes.map((type) => `${type} typal`),
-    ...desiredRoles.map((role) => role === "counters" ? "+1/+1 counter growth" : role),
-    ...requestedMechanics.map((mechanic) => blueprintMechanicDefinition(mechanic).label),
-  ];
-  return Object.freeze({ source, tribalTypes, desiredRoles, excludedRoles, requestedMechanics, packageSignals, requestedTerms, promises: unique(promises) });
-}
+// parseNativeBlueprintIntent moved to blueprint-note-and-mana.mjs (imported
+// and re-exported above) — internal callers at prepareForgeAnalysis and
+// forgeImportedMasterwork below use the imported binding unchanged.
 
 function manaValueFromCost(cost = "", fallback = 0) {
   const symbols = [...String(cost).matchAll(/\{([^}]+)\}/g)].map((match) => match[1]);
@@ -1716,96 +1585,11 @@ export function proportionalBasicCounts(colors, pipTotals, remaining) {
   return counts;
 }
 
-// log(n!) via a plain cumulative sum rather than a gamma-function
-// approximation — deck sizes never exceed a few hundred cards, so the O(n)
-// loop is cheap and exact enough for probabilities we're going to round to a
-// percent anyway.
-function logFactorial(n) {
-  let sum = 0;
-  for (let index = 2; index <= n; index += 1) sum += Math.log(index);
-  return sum;
-}
-function logChoose(n, k) {
-  if (k < 0 || k > n || n < 0) return -Infinity;
-  return logFactorial(n) - logFactorial(k) - logFactorial(n - k);
-}
-
-// P(X >= minSuccesses) for X ~ Hypergeometric(populationSize, successStates,
-// sampleSize) — e.g. "drawing at least 2 of your 9 black sources in your
-// first 8 cards out of a 60-card deck." Computed in log space term-by-term
-// (rather than naive factorials) so it stays numerically stable at
-// Commander-sized (100-card) populations, where raw binomial coefficients
-// overflow a double long before the final ratio would.
-export function hypergeometricAtLeast(populationSize, successStates, sampleSize, minSuccesses) {
-  const N = Math.max(0, Math.round(Number(populationSize) || 0));
-  const K = Math.max(0, Math.min(N, Math.round(Number(successStates) || 0)));
-  const n = Math.max(0, Math.min(N, Math.round(Number(sampleSize) || 0)));
-  const min = Math.max(0, Math.round(Number(minSuccesses) || 0));
-  if (min <= 0) return 1;
-  const maxK = Math.min(n, K);
-  if (min > maxK) return 0;
-  const logDenominator = logChoose(N, n);
-  let probability = 0;
-  for (let k = min; k <= maxK; k += 1) {
-    probability += Math.exp(logChoose(K, k) + logChoose(N - K, n - k) - logDenominator);
-  }
-  return clamp(probability, 0, 1);
-}
-
-// How many cards a player has seen by the turn they'd naturally cast a spell
-// of this cost — opening hand plus one draw per turn, assuming the play (the
-// more common, slightly less forgiving case; drawing on turn one moves this
-// up by one card and is left as a deliberate simplification, not modeled
-// separately).
-function cardsSeenByTurn(turn) {
-  return 6 + Math.max(1, Math.round(turn));
-}
-
-// Real mana math, not a heuristic: for each colored-pip spell in the built
-// deck, what's the actual probability of having enough sources of every
-// color it needs by the turn it wants to be cast? Land rows count via
-// colorIdentity (a stand-in for "produces this color," accurate for real
-// duals/fetches/basics but would overcredit a land that merely shares a
-// color identity without actually tapping for it — no such lands exist in
-// the current pool-selection logic). Nonland rows count via producesColors
-// (Scryfall's produced_mana, threaded through at selection time) — a mana
-// rock or dork is a real, static color source the same way a land is; this
-// deliberately doesn't model WHEN it came down (a rock cast turn 3 isn't
-// actually a source turn 1), matching the same whole-game simplification
-// already made for lands. Multi-color requirements use the minimum across
-// colors, a marginal-probability approximation rather than a true joint
-// distribution (the two draws aren't independent) — deliberately
-// conservative-leaning, not exact.
-export function manaConsistencyReport(rows, deckSize) {
-  const sourcesByColor = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
-  for (const row of rows) {
-    const produces = row.roles?.includes("land") ? row.colorIdentity : row.producesColors;
-    for (const color of produces || []) {
-      if (color in sourcesByColor) sourcesByColor[color] += row.quantity;
-    }
-  }
-  const cards = [];
-  for (const row of rows) {
-    if (row.roles?.includes("land")) continue;
-    const neededColors = Object.entries(row.colorPips || {}).filter(([, count]) => count > 0);
-    const colorlessPips = Number(row.colorlessPips || colorlessPipsFromCost(row.manaCost || row.mana_cost || ""));
-    if (colorlessPips > 0) neededColors.push(["C", colorlessPips]);
-    if (!neededColors.length) continue;
-    // Printed mana value treats X as zero, but an X spell is almost never
-    // intended to be fired for X=0. Model its first meaningful window two
-    // turns after the fixed portion (and never before turn four).
-    const hasVariableCost = hasVariableGenericCost(row.manaCost || row.mana_cost || "");
-    const turn = Math.max(hasVariableCost ? 4 : 1, Math.round(row.cmc));
-    const draws = cardsSeenByTurn(turn);
-    const probability = Math.min(
-      ...neededColors.map(([color, count]) => hypergeometricAtLeast(deckSize, sourcesByColor[color] || 0, draws, count)),
-    );
-    cards.push({ name: row.name, turn, colors: neededColors.map(([color]) => color), probability: Number(probability.toFixed(3)) });
-  }
-  const overall = cards.length ? cards.reduce((sum, entry) => sum + entry.probability, 0) / cards.length : 1;
-  const risky = [...cards].sort((left, right) => left.probability - right.probability).filter((entry) => entry.probability < 0.8);
-  return { overall: Number(clamp(overall, 0, 1).toFixed(3)), sourcesByColor, cards, risky };
-}
+// logFactorial/logChoose/hypergeometricAtLeast/cardsSeenByTurn/
+// manaConsistencyReport moved to blueprint-note-and-mana.mjs (imported and
+// re-exported above) — internal callers at refineBasicSplitForConsistency,
+// forgeNativeMasterwork, and forgeImportedMasterwork below use the imported
+// binding unchanged.
 
 // Aggregate pip totals capture HOW MUCH of each color a deck needs, but not
 // WHEN — a double-pip 2-drop is far less forgiving than the same pips on a
