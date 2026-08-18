@@ -12,6 +12,7 @@ import {
   auditBudgetSubstitutions,
   classifyNativeCard,
   colorPipsFromCost,
+  curveScoreFor,
   forgeMultiSlotRefills,
   forgeNativeMasterwork,
   repairBudgetOffenders,
@@ -176,6 +177,33 @@ test("a commander whose own ability is the deck's cost-cheat engine justifies an
   const withCommanderRow = expensiveThreatSupport(rowFrom(bomb), [commanderRow, rowFrom(bomb), ...fillerRows], intent);
   assert.equal(withCommanderRow.supported, true, "the commander's own cost-cheat ability must justify the bomb even with zero 99-card support pieces");
   assert.ok(withCommanderRow.reasons.includes("commander's own cost-cheat ability"));
+});
+
+test("curveScoreFor gives an expensive card real curve credit under a cost-cheat commander instead of flooring at 0 like every other wildly-off-curve card", () => {
+  // expensiveThreatSupport only guards a bomb that already made it into the
+  // selected list from being stripped back out at the final cohesion gate.
+  // scoreCard's curve term runs earlier, during ranking/selection itself,
+  // and used to have no idea a commander made an expensive card's printed
+  // mana value a weak signal of its real castability - every wildly-off-
+  // curve card floored at the same 0, cost-cheat commander or not. This is
+  // the direct regression test for that scoring term (an end-to-end
+  // forgeNativeMasterwork test was tried first and abandoned: a real bomb's
+  // own evidence/role scoring is strong enough to win a slot either way,
+  // and a deliberately vanilla stand-in never wins a slot either way - both
+  // confound the curve term with everything else scoreCard adds up).
+  const ideal = 2.9;
+  const withoutCheat = curveScoreFor(12, ideal, false, 1);
+  const withCheat = curveScoreFor(12, ideal, true, 1);
+  assert.equal(withoutCheat, 0, "a 12-mana card floors at 0 with no cost-cheat commander, same as any other wildly-off-curve card");
+  assert.ok(withCheat > 0, "the same card under a cost-cheat commander must register real, non-zero curve credit");
+
+  // A card already cheaper than ideal must gain nothing extra - the cheat
+  // ability doesn't make an already-affordable card any more affordable.
+  assert.equal(curveScoreFor(2, ideal, true, 1), curveScoreFor(2, ideal, false, 1));
+
+  // A card right at the curve's ideal is unaffected either way - there is
+  // no deviation to cap or relax in the first place.
+  assert.equal(curveScoreFor(ideal, ideal, true, 1), curveScoreFor(ideal, ideal, false, 1));
 });
 
 test("final cohesion validator passes a synergistic Aura shell and fails a goodstuff pile", () => {

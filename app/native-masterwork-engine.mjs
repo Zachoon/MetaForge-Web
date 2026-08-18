@@ -1059,6 +1059,15 @@ function prepareForgeAnalysis(input, evidenceByName) {
     }),
     commanderTribes: Object.freeze(commanderTribesFromOracle(allCommanders(input))),
     commanderOracle: allCommanders(input).map((commander) => commander.oracleText || commander.oracle_text || "").join(" "),
+    // Same cost_cheat detection strategic-intent.mjs's expensiveThreatSupport
+    // uses to credit the 99, applied here to the commander's own text. A
+    // commander whose ability puts cards into play without paying for them
+    // (Tony Stark // The Invincible Iron Man cheating an artifact in each
+    // combat, say) makes an expensive payoff's printed mana value a much
+    // weaker signal of how "castable" it really is - scoreCard's curve
+    // term below needs to know that too, not just the final cohesion gate.
+    commanderCostCheat: /cast [^.]* without paying|put [^.]* onto the battlefield|mana value .{0,20} less to cast|costs? \{[^}]+\} less/i
+      .test(allCommanders(input).map((commander) => commander.oracleText || commander.oracle_text || "").join(" ")),
     commanderColors: Object.freeze(commanderColors(input)),
     terms: preferenceTerms(input),
     ideal: /Aggressive|Tempo/i.test(input.strategy) ? 2.4 : /Control/i.test(input.strategy) ? 3.2 : 2.9,
@@ -1135,8 +1144,29 @@ function relaxAnalysisPreferences(analysis, input) {
   };
 }
 
+// Curve-fit contribution to a card's score: how far its CMC sits from the
+// deck's ideal average. A commander that cheats cards into play makes an
+// expensive card's printed mana value a much weaker signal of how hard it
+// really is to get online than a flat per-point deviation penalty assumes.
+// Halving the deviation still floors this term at 0 for anything truly
+// expensive (a 12-drop is still ~4.5 "effective" points above a ~2.9 ideal,
+// past the point of the *10 - x*3.2* formula ever going positive) -
+// capping it instead means a genuine payoff always registers some real,
+// non-zero curve credit rather than reading identically to every other
+// wildly-off-curve card. Only applies above the curve's own ideal; a card
+// already cheaper than ideal gains nothing extra from a commander that
+// skips paying for pricier ones, and it still has to be drawn - this isn't
+// free, just no longer scored as if it always has to be hard-cast. Exposed
+// for direct unit testing, independent of running a full construction
+// (same pattern as poolMechanicalSignals/synergyPotentialFor above).
+export function curveScoreFor(cmc, ideal, commanderCostCheat, curveWeight = 1) {
+  const deviation = Math.abs(cmc - ideal);
+  const effectiveDeviation = commanderCostCheat && cmc > ideal ? Math.min(deviation, 3) : deviation;
+  return Math.max(0, 10 - effectiveDeviation * 3.2) * curveWeight;
+}
+
 function scoreCard(entry, input, variant, context) {
-  const curveScore = Math.max(0, 10 - Math.abs(entry.cmc - context.ideal) * 3.2) * variant.curve;
+  const curveScore = curveScoreFor(entry.cmc, context.ideal, context.commanderCostCheat, variant.curve);
   const deterministicTieBreak = (hash(`${input.seed}|${variant.id}|${entry.card.name}`) % 1000) / 100000;
   const oracleText = entry.card.oracleText || entry.card.oracle_text || entry.text || "";
   const castingFactor = Number.isFinite(entry.castingFactor) ? entry.castingFactor : 1;
