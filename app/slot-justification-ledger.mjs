@@ -91,7 +91,15 @@ export function buildJustificationFootprint(entry, intent = {}, options = {}) {
   const membership = packageMembership(entry, intent);
   const roles = uniqueSorted((entry.roles || []).filter((role) => role !== "land" && role !== "commander"));
   const trackedRoles = roles.filter((role) => TRACKED_ROLES.includes(role));
-  const commanderSignals = uniqueSorted(entry.commanderConnectionSignals || []);
+  // Founder #027: a candidate that actually clears the commander's own
+  // magnitude-qualified payoff condition (mana value / power / toughness N
+  // or greater/less) is at least as real a connection as a produce/reward
+  // signal pairing — folded into the same commander-connection bucket so
+  // repairWeaklyJustifiedSlots doesn't sweep it as unjustified filler.
+  const commanderSignals = uniqueSorted([
+    ...(entry.commanderConnectionSignals || []),
+    ...(Number(entry.payoffMagnitudeHits) > 0 ? ["payoff_magnitude"] : []),
+  ]);
   const produces = uniqueSorted(entry.mechanics?.produces || []);
   const rewards = uniqueSorted(entry.mechanics?.rewards || []);
   const sequenceStages = uniqueSorted(entry.sequenceStages || []);

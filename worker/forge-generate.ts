@@ -214,6 +214,8 @@ type NativeForgeCard = {
   priceUsd?: number;
   producedMana?: string[];
   rarity?: string;
+  power?: string;
+  toughness?: string;
 };
 
 const nativeCardFact = (card: any): NativeForgeCard => {
@@ -229,6 +231,10 @@ const nativeCardFact = (card: any): NativeForgeCard => {
     ...(Number.isFinite(priceUsd) ? { priceUsd } : {}),
     ...(Array.isArray(card.produced_mana) ? { producedMana: card.produced_mana } : {}),
     ...(typeof card.rarity === "string" ? { rarity: card.rarity } : {}),
+    // Founder #027: power/toughness magnitude payoff gates (e.g. "power 4
+    // or greater") need the candidate's own stat to check against.
+    ...(typeof card.power === "string" ? { power: card.power } : {}),
+    ...(typeof card.toughness === "string" ? { toughness: card.toughness } : {}),
   };
 };
 
