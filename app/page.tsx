@@ -2878,9 +2878,18 @@ export default function Home() {
     });
   };
 
-  const activeGraphEdges = interactionGraph.edges
-    .filter((edge) => edge.from === activeCard || edge.to === activeCard)
-    .slice(0, 2);
+  // Was a plain filter over the whole deck's interaction-edge graph, rerun
+  // on every render of this ~9,000-line single component - not just every
+  // hover (activeCard changing is real work), but every unrelated state
+  // change anywhere else on the page too (typing in search, toggling a
+  // setting, anything). Memoized so it only reruns when what it actually
+  // reads changes.
+  const activeGraphEdges = useMemo(
+    () => interactionGraph.edges
+      .filter((edge) => edge.from === activeCard || edge.to === activeCard)
+      .slice(0, 2),
+    [interactionGraph.edges, activeCard],
+  );
   const activeSlotReason =
     activeRole === "Mana source"
       ? "Supports the deck's colored-mana and land-count requirements."
@@ -2928,26 +2937,40 @@ export default function Home() {
   const inspectedIsCommander = isCommanderFormat(format) && [activeCommanderName, selectedSecondCommander?.name]
     .filter(Boolean)
     .some((name) => cardFactKey(name as string) === cardFactKey(inspectedCard));
-  const inspectedConnections = inspectedCard
-    ? interactionGraph.edges.filter(
-        (edge) => edge.from === inspectedCard || edge.to === inspectedCard,
-      )
-    : [];
-  const inspectedSystems = inspectedCard
-    ? forgeSystemsReport.systems.filter((system) =>
-        system.members.includes(inspectedCard),
-      )
-    : [];
-  const inspectedEvaluation = inspectedCard
-    ? activeStructuralReport.cardEvaluations.cards.find(
-        (evaluation) => cardFactKey(evaluation.name) === cardFactKey(inspectedCard),
-      ) || null
-    : null;
+  // The same repeated-filter-over-a-potentially-large-array pattern as
+  // activeGraphEdges above, but for the inspected-card panel: unmemoized,
+  // so leaving a card's readable details open while doing anything else on
+  // the page (typing, scrolling, toggling settings) reran every one of
+  // these on every render, not just when the inspected card itself changed.
+  const inspectedConnections = useMemo(
+    () => inspectedCard
+      ? interactionGraph.edges.filter(
+          (edge) => edge.from === inspectedCard || edge.to === inspectedCard,
+        )
+      : [],
+    [inspectedCard, interactionGraph.edges],
+  );
+  const inspectedSystems = useMemo(
+    () => inspectedCard
+      ? forgeSystemsReport.systems.filter((system) =>
+          system.members.includes(inspectedCard),
+        )
+      : [],
+    [inspectedCard, forgeSystemsReport.systems],
+  );
+  const inspectedEvaluation = useMemo(
+    () => inspectedCard
+      ? activeStructuralReport.cardEvaluations.cards.find(
+          (evaluation) => cardFactKey(evaluation.name) === cardFactKey(inspectedCard),
+        ) || null
+      : null,
+    [inspectedCard, activeStructuralReport.cardEvaluations.cards],
+  );
   // Atlas seat language, parallel to the construction-native "WHY IT IS
   // HERE" reasoning above — never a construction input (writesToBrain:
   // false throughout). Only rendered when Mentor actually has a seat for
   // this card; "unknown is not absent" means most cards show nothing here.
-  const inspectedMentor = inspectedCard
+  const inspectedMentor = useMemo(() => inspectedCard
     ? explainCardAsMentor({
         cardName: inspectedCard,
         oracleText: inspectedFact?.oracle_text
@@ -2955,7 +2978,7 @@ export default function Home() {
           || "",
         typeLine: inspectedFact?.type_line || "",
       })
-    : null;
+    : null, [inspectedCard, inspectedFact]);
   // Checked dynamically over every "*Seating" array Mentor returns, rather
   // than naming each axis here, so this stays correct as new seat families
   // (counter, life, protection, ...) get added on the Atlas side.
