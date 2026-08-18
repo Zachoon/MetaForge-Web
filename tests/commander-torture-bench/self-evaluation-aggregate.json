@@ -1,29 +1,27 @@
 {
-  "generatedAt": "2026-08-15T08:49:44.693Z",
+  "generatedAt": "2026-08-18T14:03:13.601Z",
   "aggregate": {
     "version": "self-evaluation-aggregate-v1",
     "forgeCount": 13,
-    "totalTracedPicks": 849,
-    "totalMeaningfulDisagreements": 257,
+    "totalTracedPicks": 850,
+    "totalMeaningfulDisagreements": 225,
     "driftClassCounts": {
-      "early_scaffolding_matured": 337,
-      "downstream_repair_invalidated_pick": 52,
-      "later_package_oversupply": 33,
-      "curve_need_disappeared": 6,
-      "unclassified": 246,
-      "stable_good_prediction": 9,
-      "retrospective_gain_not_seen_prospectively": 146,
-      "final_weak_justification": 18,
-      "unsupported_anchor_emerged": 2
+      "early_scaffolding_matured": 363,
+      "downstream_repair_invalidated_pick": 48,
+      "unclassified": 252,
+      "stable_good_prediction": 10,
+      "retrospective_gain_not_seen_prospectively": 142,
+      "final_weak_justification": 19,
+      "later_package_oversupply": 16
     },
     "driftByPhase": {
       "foundation": {
-        "count": 614,
-        "meanAbsDrift": 44.549
+        "count": 615,
+        "meanAbsDrift": 46.279
       },
       "development": {
         "count": 235,
-        "meanAbsDrift": 56.451
+        "meanAbsDrift": 55.212
       }
     },
     "driftByPackage": {
@@ -32,8 +30,8 @@
         "disagreements": 124
       },
       "equipment": {
-        "count": 65,
-        "disagreements": 57
+        "count": 66,
+        "disagreements": 55
       },
       "typal": {
         "count": 65,
@@ -53,7 +51,7 @@
       },
       "spellslinger": {
         "count": 66,
-        "disagreements": 62
+        "disagreements": 58
       },
       "landfall": {
         "count": 66,
@@ -69,68 +67,58 @@
       }
     },
     "controlCaseCounts": {
-      "early_scaffolding_matured": 337,
-      "invalidated_by_later_decisions": 89,
-      "ambiguous": 261,
-      "stable": 9,
-      "beneficial_emergence": 146,
+      "early_scaffolding_matured": 363,
+      "invalidated_by_later_decisions": 64,
+      "ambiguous": 264,
+      "stable": 10,
+      "beneficial_emergence": 142,
       "genuine_bad_belief": 7
     },
-    "meanPredictionError": 32.324,
-    "meanAbsPredictionError": 47.844,
+    "meanPredictionError": 33.385,
+    "meanAbsPredictionError": 48.749,
     "topRecurrentDisagreementClasses": [
       {
         "class": "early_scaffolding_matured",
-        "count": 337
+        "count": 363
       },
       {
         "class": "unclassified",
-        "count": 246
+        "count": 252
       },
       {
         "class": "retrospective_gain_not_seen_prospectively",
-        "count": 146
+        "count": 142
       },
       {
         "class": "downstream_repair_invalidated_pick",
-        "count": 52
-      },
-      {
-        "class": "later_package_oversupply",
-        "count": 33
+        "count": 48
       },
       {
         "class": "final_weak_justification",
-        "count": 18
+        "count": 19
       },
       {
-        "class": "curve_need_disappeared",
-        "count": 6
-      },
-      {
-        "class": "unsupported_anchor_emerged",
-        "count": 2
+        "class": "later_package_oversupply",
+        "count": 16
       }
     ],
     "byArchetype": {
       "aura_voltron": {
         "forges": 1,
         "picks": 65,
-        "disagreements": 22,
+        "disagreements": 20,
         "byClass": {
-          "early_scaffolding_matured": 36,
+          "early_scaffolding_matured": 38,
           "downstream_repair_invalidated_pick": 6,
-          "later_package_oversupply": 1,
-          "curve_need_disappeared": 1,
           "unclassified": 6,
           "stable_good_prediction": 1,
           "retrospective_gain_not_seen_prospectively": 14
         },
-        "meanAbsDrift": 61.38,
+        "meanAbsDrift": 62.918,
         "topClasses": [
           {
             "class": "early_scaffolding_matured",
-            "count": 36
+            "count": 38
           },
           {
             "class": "retrospective_gain_not_seen_prospectively",
@@ -145,43 +133,44 @@
             "count": 6
           },
           {
-            "class": "curve_need_disappeared",
+            "class": "stable_good_prediction",
             "count": 1
           }
         ]
       },
       "equipment_voltron": {
         "forges": 1,
-        "picks": 65,
-        "disagreements": 18,
+        "picks": 66,
+        "disagreements": 17,
         "byClass": {
-          "early_scaffolding_matured": 26,
-          "unclassified": 21,
-          "retrospective_gain_not_seen_prospectively": 10,
-          "downstream_repair_invalidated_pick": 4,
-          "final_weak_justification": 4
+          "early_scaffolding_matured": 28,
+          "unclassified": 20,
+          "stable_good_prediction": 1,
+          "retrospective_gain_not_seen_prospectively": 9,
+          "final_weak_justification": 5,
+          "downstream_repair_invalidated_pick": 3
         },
-        "meanAbsDrift": 31.068,
+        "meanAbsDrift": 34.447,
         "topClasses": [
           {
             "class": "early_scaffolding_matured",
-            "count": 26
+            "count": 28
           },
           {
             "class": "unclassified",
-            "count": 21
+            "count": 20
           },
           {
             "class": "retrospective_gain_not_seen_prospectively",
-            "count": 10
-          },
-          {
-            "class": "downstream_repair_invalidated_pick",
-            "count": 4
+            "count": 9
           },
           {
             "class": "final_weak_justification",
-            "count": 4
+            "count": 5
+          },
+          {
+            "class": "downstream_repair_invalidated_pick",
+            "count": 3
           }
         ]
       },
@@ -195,7 +184,7 @@
           "retrospective_gain_not_seen_prospectively": 12,
           "downstream_repair_invalidated_pick": 4
         },
-        "meanAbsDrift": 50.701,
+        "meanAbsDrift": 52.24,
         "topClasses": [
           {
             "class": "early_scaffolding_matured",
@@ -264,7 +253,7 @@
           "downstream_repair_invalidated_pick": 6,
           "final_weak_justification": 1
         },
-        "meanAbsDrift": 54.153,
+        "meanAbsDrift": 54.321,
         "topClasses": [
           {
             "class": "early_scaffolding_matured",
@@ -300,7 +289,7 @@
           "final_weak_justification": 2,
           "retrospective_gain_not_seen_prospectively": 12
         },
-        "meanAbsDrift": 50.478,
+        "meanAbsDrift": 52.196,
         "topClasses": [
           {
             "class": "unclassified",
@@ -327,36 +316,30 @@
       "spellslinger": {
         "forges": 1,
         "picks": 66,
-        "disagreements": 50,
+        "disagreements": 26,
         "byClass": {
-          "early_scaffolding_matured": 16,
-          "later_package_oversupply": 16,
-          "unsupported_anchor_emerged": 2,
-          "curve_need_disappeared": 5,
-          "retrospective_gain_not_seen_prospectively": 21,
+          "early_scaffolding_matured": 37,
+          "unclassified": 3,
+          "retrospective_gain_not_seen_prospectively": 20,
           "downstream_repair_invalidated_pick": 6
         },
-        "meanAbsDrift": 64.41,
+        "meanAbsDrift": 57.87,
         "topClasses": [
           {
-            "class": "retrospective_gain_not_seen_prospectively",
-            "count": 21
-          },
-          {
             "class": "early_scaffolding_matured",
-            "count": 16
+            "count": 37
           },
           {
-            "class": "later_package_oversupply",
-            "count": 16
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 20
           },
           {
             "class": "downstream_repair_invalidated_pick",
             "count": 6
           },
           {
-            "class": "curve_need_disappeared",
-            "count": 5
+            "class": "unclassified",
+            "count": 3
           }
         ]
       },
@@ -368,9 +351,9 @@
           "early_scaffolding_matured": 31,
           "unclassified": 19,
           "stable_good_prediction": 1,
+          "retrospective_gain_not_seen_prospectively": 7,
           "downstream_repair_invalidated_pick": 6,
-          "final_weak_justification": 2,
-          "retrospective_gain_not_seen_prospectively": 7
+          "final_weak_justification": 2
         },
         "meanAbsDrift": 55.276,
         "topClasses": [
@@ -407,7 +390,7 @@
           "downstream_repair_invalidated_pick": 6,
           "retrospective_gain_not_seen_prospectively": 3
         },
-        "meanAbsDrift": 41.24,
+        "meanAbsDrift": 43.058,
         "topClasses": [
           {
             "class": "early_scaffolding_matured",
@@ -434,26 +417,26 @@
       "artifacts": {
         "forges": 1,
         "picks": 66,
-        "disagreements": 16,
+        "disagreements": 13,
         "byClass": {
-          "early_scaffolding_matured": 18,
-          "unclassified": 30,
-          "stable_good_prediction": 2,
-          "retrospective_gain_not_seen_prospectively": 16
+          "early_scaffolding_matured": 19,
+          "unclassified": 32,
+          "retrospective_gain_not_seen_prospectively": 13,
+          "stable_good_prediction": 2
         },
-        "meanAbsDrift": 56.716,
+        "meanAbsDrift": 57.482,
         "topClasses": [
           {
             "class": "unclassified",
-            "count": 30
+            "count": 32
           },
           {
             "class": "early_scaffolding_matured",
-            "count": 18
+            "count": 19
           },
           {
             "class": "retrospective_gain_not_seen_prospectively",
-            "count": 16
+            "count": 13
           },
           {
             "class": "stable_good_prediction",
@@ -471,7 +454,7 @@
           "retrospective_gain_not_seen_prospectively": 4,
           "downstream_repair_invalidated_pick": 2
         },
-        "meanAbsDrift": 29.962,
+        "meanAbsDrift": 31.837,
         "topClasses": [
           {
             "class": "early_scaffolding_matured",
@@ -494,19 +477,18 @@
       "combo": {
         "forges": 1,
         "picks": 65,
-        "disagreements": 18,
+        "disagreements": 16,
         "byClass": {
           "early_scaffolding_matured": 21,
-          "unclassified": 26,
+          "unclassified": 28,
           "final_weak_justification": 4,
-          "retrospective_gain_not_seen_prospectively": 11,
-          "downstream_repair_invalidated_pick": 3
+          "retrospective_gain_not_seen_prospectively": 12
         },
-        "meanAbsDrift": 32.657,
+        "meanAbsDrift": 37.017,
         "topClasses": [
           {
             "class": "unclassified",
-            "count": 26
+            "count": 28
           },
           {
             "class": "early_scaffolding_matured",
@@ -514,15 +496,11 @@
           },
           {
             "class": "retrospective_gain_not_seen_prospectively",
-            "count": 11
+            "count": 12
           },
           {
             "class": "final_weak_justification",
             "count": 4
-          },
-          {
-            "class": "downstream_repair_invalidated_pick",
-            "count": 3
           }
         ]
       },
@@ -537,7 +515,7 @@
           "retrospective_gain_not_seen_prospectively": 14,
           "downstream_repair_invalidated_pick": 5
         },
-        "meanAbsDrift": 49.829,
+        "meanAbsDrift": 51.367,
         "topClasses": [
           {
             "class": "early_scaffolding_matured",
@@ -568,17 +546,15 @@
       "id": "pearl-ear-auras",
       "archetype": "aura_voltron",
       "disagreementsByClass": {
-        "early_scaffolding_matured": 36,
+        "early_scaffolding_matured": 38,
         "downstream_repair_invalidated_pick": 6,
-        "later_package_oversupply": 1,
-        "curve_need_disappeared": 1,
         "unclassified": 6,
         "stable_good_prediction": 1,
         "retrospective_gain_not_seen_prospectively": 14
       },
       "controlCaseCounts": {
-        "early_scaffolding_matured": 36,
-        "invalidated_by_later_decisions": 8,
+        "early_scaffolding_matured": 38,
+        "invalidated_by_later_decisions": 6,
         "ambiguous": 6,
         "stable": 1,
         "beneficial_emergence": 14
@@ -586,7 +562,7 @@
       "topWarnings": [
         {
           "class": "early_scaffolding_matured",
-          "count": 36
+          "count": 38
         },
         {
           "class": "retrospective_gain_not_seen_prospectively",
@@ -595,14 +571,6 @@
         {
           "class": "downstream_repair_invalidated_pick",
           "count": 6
-        },
-        {
-          "class": "curve_need_disappeared",
-          "count": 1
-        },
-        {
-          "class": "later_package_oversupply",
-          "count": 1
         }
       ],
       "examples": [
@@ -615,26 +583,6 @@
           "class": "downstream_repair_invalidated_pick",
           "control": "invalidated_by_later_decisions",
           "laterSameDeficitFills": 5
-        },
-        {
-          "name": "Aura Piece 0",
-          "pickIndex": 36,
-          "phase": "foundation",
-          "expected": 30.457,
-          "realized": 100,
-          "class": "later_package_oversupply",
-          "control": "invalidated_by_later_decisions",
-          "laterSameDeficitFills": 5
-        },
-        {
-          "name": "Aura Piece 12",
-          "pickIndex": 38,
-          "phase": "foundation",
-          "expected": 17.848,
-          "realized": 100,
-          "class": "curve_need_disappeared",
-          "control": "invalidated_by_later_decisions",
-          "laterSameDeficitFills": 4
         },
         {
           "name": "Aura Threat 1",
@@ -665,6 +613,26 @@
           "class": "downstream_repair_invalidated_pick",
           "control": "invalidated_by_later_decisions",
           "laterSameDeficitFills": 2
+        },
+        {
+          "name": "Aura Threat 2",
+          "pickIndex": 43,
+          "phase": "foundation",
+          "expected": 32.2,
+          "realized": 0,
+          "class": "downstream_repair_invalidated_pick",
+          "control": "invalidated_by_later_decisions",
+          "laterSameDeficitFills": 1
+        },
+        {
+          "name": "Aura Threat 5",
+          "pickIndex": 44,
+          "phase": "foundation",
+          "expected": 30.1,
+          "realized": 0,
+          "class": "downstream_repair_invalidated_pick",
+          "control": "invalidated_by_later_decisions",
+          "laterSameDeficitFills": 0
         }
       ]
     },
@@ -732,39 +700,39 @@
         },
         {
           "name": "Aristo Stone 0",
-          "pickIndex": 28,
+          "pickIndex": 34,
           "phase": "foundation",
-          "expected": 44.432,
+          "expected": 36.481,
           "realized": 100,
           "class": "later_package_oversupply",
           "control": "invalidated_by_later_decisions",
-          "laterSameDeficitFills": 11
+          "laterSameDeficitFills": 10
         },
         {
-          "name": "Aristo Stone 10",
+          "name": "Aristo Stone 1",
           "pickIndex": 41,
           "phase": "foundation",
-          "expected": 3.312,
+          "expected": 3.198,
           "realized": 100,
           "class": "retrospective_gain_not_seen_prospectively",
           "control": "beneficial_emergence",
           "laterSameDeficitFills": 8
         },
         {
-          "name": "Aristo Stone 11",
+          "name": "Aristo Stone 10",
           "pickIndex": 43,
           "phase": "foundation",
-          "expected": -4.693,
+          "expected": -4.799,
           "realized": 100,
           "class": "retrospective_gain_not_seen_prospectively",
           "control": "beneficial_emergence",
           "laterSameDeficitFills": 7
         },
         {
-          "name": "Aristo Stone 1",
+          "name": "Aristo Stone 11",
           "pickIndex": 44,
           "phase": "foundation",
-          "expected": -7.595,
+          "expected": -7.694,
           "realized": 100,
           "class": "retrospective_gain_not_seen_prospectively",
           "control": "beneficial_emergence",
@@ -878,105 +846,91 @@
       "id": "spellslinger",
       "archetype": "spellslinger",
       "disagreementsByClass": {
-        "early_scaffolding_matured": 16,
-        "later_package_oversupply": 16,
-        "unsupported_anchor_emerged": 2,
-        "curve_need_disappeared": 5,
-        "retrospective_gain_not_seen_prospectively": 21,
+        "early_scaffolding_matured": 37,
+        "unclassified": 3,
+        "retrospective_gain_not_seen_prospectively": 20,
         "downstream_repair_invalidated_pick": 6
       },
       "controlCaseCounts": {
-        "early_scaffolding_matured": 16,
-        "invalidated_by_later_decisions": 25,
-        "ambiguous": 4,
-        "beneficial_emergence": 21
+        "early_scaffolding_matured": 37,
+        "ambiguous": 3,
+        "beneficial_emergence": 20,
+        "invalidated_by_later_decisions": 6
       },
       "topWarnings": [
         {
-          "class": "retrospective_gain_not_seen_prospectively",
-          "count": 21
-        },
-        {
           "class": "early_scaffolding_matured",
-          "count": 16
+          "count": 37
         },
         {
-          "class": "later_package_oversupply",
-          "count": 16
+          "class": "retrospective_gain_not_seen_prospectively",
+          "count": 20
         },
         {
           "class": "downstream_repair_invalidated_pick",
           "count": 6
-        },
-        {
-          "class": "curve_need_disappeared",
-          "count": 5
-        },
-        {
-          "class": "unsupported_anchor_emerged",
-          "count": 2
         }
       ],
       "examples": [
         {
-          "name": "Spell Flow 0",
-          "pickIndex": 15,
-          "phase": "foundation",
-          "expected": 90.018,
-          "realized": 92.5,
-          "class": "later_package_oversupply",
-          "control": "invalidated_by_later_decisions",
-          "laterSameDeficitFills": 16
-        },
-        {
-          "name": "Cantrip 10",
-          "pickIndex": 16,
-          "phase": "foundation",
-          "expected": 78.36,
-          "realized": 100,
-          "class": "later_package_oversupply",
-          "control": "invalidated_by_later_decisions",
-          "laterSameDeficitFills": 15
-        },
-        {
-          "name": "Spell Flow 1",
-          "pickIndex": 17,
-          "phase": "foundation",
-          "expected": 65.336,
-          "realized": 92.5,
-          "class": "later_package_oversupply",
-          "control": "invalidated_by_later_decisions",
-          "laterSameDeficitFills": 14
-        },
-        {
-          "name": "Spell Flow 2",
-          "pickIndex": 18,
-          "phase": "foundation",
-          "expected": 64.219,
-          "realized": 92.5,
-          "class": "later_package_oversupply",
-          "control": "invalidated_by_later_decisions",
-          "laterSameDeficitFills": 13
-        },
-        {
-          "name": "Spell Flow 3",
-          "pickIndex": 19,
-          "phase": "foundation",
-          "expected": 61.083,
-          "realized": 92.5,
-          "class": "later_package_oversupply",
-          "control": "invalidated_by_later_decisions",
-          "laterSameDeficitFills": 12
-        },
-        {
           "name": "Spell Flow 4",
-          "pickIndex": 20,
-          "phase": "foundation",
-          "expected": 56.788,
+          "pickIndex": 40,
+          "phase": "development",
+          "expected": 10.285,
+          "realized": 72.5,
+          "class": "retrospective_gain_not_seen_prospectively",
+          "control": "beneficial_emergence",
+          "laterSameDeficitFills": 1
+        },
+        {
+          "name": "Spell Flow 5",
+          "pickIndex": 42,
+          "phase": "development",
+          "expected": 9.201,
+          "realized": 72.5,
+          "class": "retrospective_gain_not_seen_prospectively",
+          "control": "beneficial_emergence",
+          "laterSameDeficitFills": 0
+        },
+        {
+          "name": "Cantrip 1",
+          "pickIndex": 43,
+          "phase": "development",
+          "expected": 9.762,
+          "realized": 100,
+          "class": "retrospective_gain_not_seen_prospectively",
+          "control": "beneficial_emergence",
+          "laterSameDeficitFills": 0
+        },
+        {
+          "name": "Spell Stone 10",
+          "pickIndex": 44,
+          "phase": "development",
+          "expected": 11.053,
           "realized": 92.5,
-          "class": "later_package_oversupply",
+          "class": "retrospective_gain_not_seen_prospectively",
+          "control": "beneficial_emergence",
+          "laterSameDeficitFills": 3
+        },
+        {
+          "name": "Spell Stone 11",
+          "pickIndex": 45,
+          "phase": "development",
+          "expected": 9.188,
+          "realized": 92.5,
+          "class": "retrospective_gain_not_seen_prospectively",
+          "control": "beneficial_emergence",
+          "laterSameDeficitFills": 2
+        },
+        {
+          "name": "Spell Threat 1",
+          "pickIndex": 46,
+          "phase": "development",
+          "expected": 35.2,
+          "realized": 0,
+          "class": "downstream_repair_invalidated_pick",
           "control": "invalidated_by_later_decisions",
-          "laterSameDeficitFills": 11
+          "laterSameDeficitFills": 3
         }
       ]
     }

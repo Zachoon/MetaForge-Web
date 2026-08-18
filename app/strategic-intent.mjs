@@ -21,7 +21,8 @@ const clamp = (value, min = 0, max = 100) => Math.min(max, Math.max(min, Number(
 // calls configureCardTagLookup at module load), and entrySemantics() below
 // prefers that precomputed value before ever calling tagsOf.
 let cardTagLookup = null;
-export function configureCardTagLookup(lookup) {
+export function configureCardTagLookup(lookup, { onlyIfMissing = false } = {}) {
+  if (onlyIfMissing && cardTagLookup) return;
   cardTagLookup = lookup;
 }
 

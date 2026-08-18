@@ -1,6 +1,6 @@
 ﻿import assert from "node:assert/strict";
 import test from "node:test";
-import { applyPracticalTiebreak, budgetScoreFor, classifyNativeCard, colorPipsFromCost, commanderConnectionSignalsFor, commanderMechanicalScopes, comparePracticalImpact, complexityScoreFor, conceptSignals, curveAwareLandAdjustment, curveTargets, evaluatePracticalImpact, fieldCounterRolesFor, forgeNativeMasterwork, hypergeometricAtLeast, interactionQualityFor, manaConsistencyReport, oracleTextComplexity, parseNativeBlueprintIntent, poolMechanicalSignals, popularityScoreFromRank, powerTierScoreFor, practicalOutranks, proportionalBasicCounts, rankPracticalOneSlotCounterfactuals, roleFloorCredit, runPracticalOneSlotCounterfactualLab, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
+import { applyPracticalTiebreak, budgetScoreFor, classifyNativeCard, colorPipsFromCost, commanderConnectionSignalsFor, commanderMechanicalScopes, comparePracticalImpact, complexityScoreFor, conceptSignals, curveAwareLandAdjustment, curveTargets, evaluatePracticalImpact, fieldCounterRolesFor, forgeNativeMasterwork, hypergeometricAtLeast, interactionQualityFor, manaConsistencyReport, oracleTextComplexity, parseNativeBlueprintIntent, poolMechanicalSignals, popularityScoreFromRank, powerTierScoreFor, practicalOutranks, proportionalBasicCounts, rankPracticalOneSlotCounterfactuals, roleFloorCredit, roleTargets, runPracticalOneSlotCounterfactualLab, strategyProfileFor, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
 import { runOneSlotCounterfactualLab } from "../app/native-one-slot-lab.mjs";
 
 const card = (name, oracleText, typeLine = "Creature — Test", manaCost = "{2}{U}", colorIdentity = ["U"]) => ({ name, oracleText, typeLine, manaCost, colorIdentity });
@@ -11,6 +11,25 @@ const pool = [
   ...Array.from({ length: 18 }, (_, i) => card(`Stone ${i}`, "Add one mana. Create a Treasure token.", "Artifact", "{2}")),
   ...Array.from({ length: 10 }, (_, i) => card(`Island Utility ${i}`, "{T}: Add {U}.", "Land", "", ["U"])),
 ];
+
+test("descriptive product strategy labels reach their real engine profiles", () => {
+  assert.equal(strategyProfileFor("Aggressive pressure"), "Aggressive");
+  assert.equal(strategyProfileFor("Reactive control"), "Control");
+  assert.equal(strategyProfileFor("Balanced midrange"), "Balanced midrange");
+  assert.deepEqual(curveTargets("Aggressive pressure", 50), curveTargets("Aggressive", 50));
+  assert.deepEqual(curveTargets("Reactive control", 50), curveTargets("Control", 50));
+});
+
+test("role floors express different strategic jobs instead of one generic shell", () => {
+  const aggro = roleTargets("Commander", "Aggressive pressure");
+  const control = roleTargets("Commander", "Reactive control");
+  const combo = roleTargets("Commander", "Combo");
+  assert.ok(aggro.sweeper < control.sweeper);
+  assert.ok(aggro.draw < control.draw);
+  assert.ok(control.interaction > combo.interaction);
+  assert.ok(combo.selection > 0);
+  assert.ok(combo.protection > aggro.protection);
+});
 
 test("classifies native deck-building roles from verified rules text", () => {
   assert.deepEqual(classifyNativeCard(card("Answer", "Destroy target creature. Draw a card.")), ["draw", "interaction", "threat"]);

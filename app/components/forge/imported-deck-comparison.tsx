@@ -65,13 +65,13 @@ const PREVIEW_MARGIN = 18;
 const frontFace = (value = "") => value.split(/\s*\/\/\s*/)[0].trim();
 const matchKey = (value = "") => key(frontFace(value));
 
-function quantities(rows: DeckRow[]) {
-  return new Map(rows.map((row) => [matchKey(row.name), Number(row.quantity || 0)]));
+function quantities(rows: DeckRow[], identityKey: (name: string) => string) {
+  return new Map(rows.map((row) => [identityKey(row.name), Number(row.quantity || 0)]));
 }
 
-function changedNames(left: DeckRow[], right: DeckRow[]) {
-  const rightQuantities = quantities(right);
-  return new Set(left.filter((row) => row.quantity > (rightQuantities.get(matchKey(row.name)) || 0)).map((row) => key(row.name)));
+function changedNames(left: DeckRow[], right: DeckRow[], identityKey: (name: string) => string) {
+  const rightQuantities = quantities(right, identityKey);
+  return new Set(left.filter((row) => row.quantity > (rightQuantities.get(identityKey(row.name)) || 0)).map((row) => key(row.name)));
 }
 
 /**
@@ -132,6 +132,7 @@ function DeckColumn({
   tone,
   bindHover,
   jumpable,
+  identityKey,
   onJump,
 }: {
   title: string;
@@ -141,6 +142,7 @@ function DeckColumn({
   tone: "cut" | "add";
   bindHover: HoverBind;
   jumpable: Map<string, number>;
+  identityKey: (name: string) => string;
   onJump: (name: string) => void;
 }) {
   const changedRows = rows.filter((row) => changed.has(key(row.name)));
@@ -154,7 +156,7 @@ function DeckColumn({
       </header>
       <div className="revision-deck-scroll">
         {changedRows.length ? changedRows.map((row) => {
-          const canJump = jumpable.has(key(row.name));
+          const canJump = jumpable.has(identityKey(row.name));
           return (
             <div
               key={row.name}
@@ -343,6 +345,7 @@ export function ImportedDeckComparison({
   strategySummary,
   coreSummary,
   occupancyEngines = [],
+  identityAliases = {},
   onContinue,
 }: {
   originalRows: DeckRow[];
@@ -353,10 +356,17 @@ export function ImportedDeckComparison({
   strategySummary: string;
   coreSummary: string;
   occupancyEngines?: string[];
+  identityAliases?: Record<string, string>;
   onContinue?: () => void;
 }) {
-  const removed = changedNames(originalRows, proposedRows);
-  const added = changedNames(proposedRows, originalRows);
+  const normalizedAliases = useMemo(() => new Map(
+    Object.entries(identityAliases).map(([alias, canonical]) => [key(alias), matchKey(canonical)]),
+  ), [identityAliases]);
+  const identityKey = useCallback((name: string) => (
+    normalizedAliases.get(key(name)) || matchKey(name)
+  ), [normalizedAliases]);
+  const removed = changedNames(originalRows, proposedRows, identityKey);
+  const added = changedNames(proposedRows, originalRows, identityKey);
   // The one-slot lab tests swaps against the Forge-completed list, not the
   // player's raw submission - its "cut" target can be a card the Forge
   // itself added while filling the list out (never in originalRows), which
@@ -365,7 +375,7 @@ export function ImportedDeckComparison({
   // contradictory with nothing explaining why. Flagging that case here so
   // the swap card itself says so, instead of leaving it to look like a
   // mismatch between the two panels.
-  const originalKeys = new Set(originalRows.map((row) => key(row.name)));
+  const originalKeys = new Set(originalRows.map((row) => identityKey(row.name)));
   const { bind: bindHover, portal: hoverPortal } = useCardHoverPreview();
 
   const hasSwaps = swaps.length > 0;
@@ -376,7 +386,7 @@ export function ImportedDeckComparison({
   const adjustmentSlides = useMemo(() => pairAdjustments(adjustments), [adjustments]);
   const slides: StageSlide[] = [
     { kind: "plan" },
-    ...swaps.map((swap): StageSlide => ({ kind: "swap", swap, cutWasForgeAdded: !originalKeys.has(key(swap.cut)) })),
+    ...swaps.map((swap): StageSlide => ({ kind: "swap", swap, cutWasForgeAdded: !originalKeys.has(identityKey(swap.cut)) })),
     ...adjustmentSlides,
   ];
 
@@ -384,21 +394,21 @@ export function ImportedDeckComparison({
     const map = new Map<string, number>();
     let index = 1; // slide 0 is always the plan
     swaps.forEach((swap) => {
-      map.set(key(swap.cut), index);
-      map.set(key(swap.add), index);
+      map.set(identityKey(swap.cut), index);
+      map.set(identityKey(swap.add), index);
       index += 1;
     });
     adjustmentSlides.forEach((slide) => {
       if (slide.kind === "adjustment") {
-        map.set(key(slide.adjustment.name), index);
+        map.set(identityKey(slide.adjustment.name), index);
       } else if (slide.kind === "adjustmentPair") {
-        map.set(key(slide.trim.name), index);
-        map.set(key(slide.add.name), index);
+        map.set(identityKey(slide.trim.name), index);
+        map.set(identityKey(slide.add.name), index);
       }
       index += 1;
     });
     return map;
-  }, [swaps, adjustmentSlides]);
+  }, [swaps, adjustmentSlides, identityKey]);
 
   const [activeIndex, setActiveIndex] = useState(0);
   const clampedIndex = Math.min(activeIndex, slides.length - 1);
@@ -410,9 +420,9 @@ export function ImportedDeckComparison({
   const goPrev = useCallback(() => goTo(clampedIndex - 1), [goTo, clampedIndex]);
   const goNext = useCallback(() => goTo(clampedIndex + 1), [goTo, clampedIndex]);
   const jumpToCard = useCallback((name: string) => {
-    const index = swapIndexByCard.get(key(name));
+    const index = swapIndexByCard.get(identityKey(name));
     if (index !== undefined) goTo(index);
-  }, [swapIndexByCard, goTo]);
+  }, [swapIndexByCard, goTo, identityKey]);
 
   const labelFor = useCallback((slide: StageSlide) => {
     if (slide.kind === "plan") return "Commander plan";
@@ -431,7 +441,7 @@ export function ImportedDeckComparison({
         <p>Red marks cards leaving the submitted list. Green marks cards entering the proposed revision. Everything unmarked is retained. The pillars below only show what’s changing — step through the stage to see why.</p>
       </header>
       <div className="revision-comparison-grid">
-        <DeckColumn title="Your submitted list" eyebrow="BEFORE" rows={originalRows} changed={removed} tone="cut" bindHover={bindHover} jumpable={swapIndexByCard} onJump={jumpToCard} />
+        <DeckColumn title="Your submitted list" eyebrow="BEFORE" rows={originalRows} changed={removed} tone="cut" bindHover={bindHover} jumpable={swapIndexByCard} identityKey={identityKey} onJump={jumpToCard} />
         <section className="swap-station" aria-label="Swap station and strategy read">
           <header>
             <small>RECOMMENDATION CENTER</small>
@@ -495,7 +505,7 @@ export function ImportedDeckComparison({
           )}
           <p className="stage-step-label">{labelFor(activeSlide)}</p>
         </section>
-        <DeckColumn title="Forge proposed revision" eyebrow="AFTER" rows={proposedRows} changed={added} tone="add" bindHover={bindHover} jumpable={swapIndexByCard} onJump={jumpToCard} />
+        <DeckColumn title="Forge proposed revision" eyebrow="AFTER" rows={proposedRows} changed={added} tone="add" bindHover={bindHover} jumpable={swapIndexByCard} identityKey={identityKey} onJump={jumpToCard} />
       </div>
       <footer className="revision-comparison-boundary">A proposed revision is a controlled test, not proof of improved match performance. Your original list remains preserved.</footer>
       {hoverPortal}

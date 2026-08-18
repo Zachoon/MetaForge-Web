@@ -29,15 +29,30 @@ function canPayPips(battlefieldColors, pips) {
 }
 
 // A hand is a London-mulligan keep candidate if it isn't land-flooded/
-// -screwed and isn't a trap — none of its lands can produce a color its
-// own nonland cards actually need. Only checks presence of a source, not
+// -screwed and isn't a trap — its lands plus affordable persistent mana
+// sources can eventually produce every color its nonland cards need. Only
+// checks presence of a source, not
 // full pip count: with 7 cards you aren't expected to already hold every
 // double-pip requirement, just not be completely locked out of a color
 // your hand wants to play.
 export function isKeepable(hand){
   const openingLandColors=hand.filter(isLand).map(landColors);
   const openingLands=hand.filter(isLand).length;
-  const colorTrapped=hand.some(card=>!isLand(card)&&hasPips(card.colorPips)&&Object.keys(card.colorPips).some(color=>(card.colorPips[color]||0)>0&&!openingLandColors.some(colors=>colors.includes(color))));
+  const reachableColors=[...openingLandColors];
+  const uncreditedSources=hand.filter(card=>!isLand(card)&&producedColors(card).length);
+  let changed=true;
+  while(changed){
+    changed=false;
+    for(let index=uncreditedSources.length-1;index>=0;index-=1){
+      const source=uncreditedSources[index];
+      if((source.cmc??99)<=openingLands&&canPayPips(reachableColors,source.colorPips)){
+        reachableColors.push(producedColors(source));
+        uncreditedSources.splice(index,1);
+        changed=true;
+      }
+    }
+  }
+  const colorTrapped=hand.some(card=>!isLand(card)&&hasPips(card.colorPips)&&Object.keys(card.colorPips).some(color=>(card.colorPips[color]||0)>0&&!reachableColors.some(colors=>colors.includes(color))));
   return openingLands>=2&&openingLands<=5&&!colorTrapped;
 }
 
@@ -104,9 +119,10 @@ export function simulateGoldfish(deck, strategy="Midrange", games=1000, seed=812
     // turn. Modeled as "enters tapped": a ramp spell cast this turn adds a
     // mana source starting next turn, not immediately, matching how the
     // common effects (Rampant Growth, Cultivate) actually resolve.
-    let battlefieldLands=0,pendingRamp=0,spent=0,score=0,turnHit=null,firstColoredCastTurn=null;
+    let battlefieldLands=0,pendingRamp=0,pendingRampColors=[],spent=0,score=0,turnHit=null,firstColoredCastTurn=null;
     for(let turn=1;turn<=8;turn++){
       battlefieldLands+=pendingRamp;pendingRamp=0;
+      battlefieldLandColors.push(...pendingRampColors);pendingRampColors=[];
       if(library.length)hand.push(library.pop());
       const landIndex=hand.findIndex(isLand);
       if(landIndex>=0){const landCard=hand[landIndex];hand.splice(landIndex,1);battlefieldLands++;battlefieldLandColors.push(landColors(landCard));}
@@ -116,7 +132,10 @@ export function simulateGoldfish(deck, strategy="Midrange", games=1000, seed=812
         if(!castable.length)break;
         castable.sort((a,b)=>priority(b,strategy,policy,rng)-priority(a,strategy,policy,rng));
         const chosen=castable[0];hand.splice(hand.indexOf(chosen),1);mana-=chosen.cmc||0;spent+=chosen.cmc||0;score+=roleValue(chosen.role,strategy);
-        if(chosen.role==="ramp")pendingRamp+=1;
+        if(chosen.role==="ramp"){
+          pendingRamp+=1;
+          pendingRampColors.push(producedColors(chosen));
+        }
         if(turnHit===null&&score>=8)turnHit=turn;
         if(firstColoredCastTurn===null&&hasPips(chosen.colorPips))firstColoredCastTurn=turn;
       }
@@ -132,5 +151,6 @@ function priority(card,strategy,policy,rng){const base=(STRATEGY_WEIGHTS[strateg
 function roleValue(role,strategy){return (STRATEGY_WEIGHTS[strategy]?.[role]||1);}
 function isLand(card){const role=String(card?.role||"");if(role==="land"||role==="Mana source"||/\bland\b/i.test(role))return true;const type=String(card?.typeLine||card?.type_line||"");if(/\bLand\b/i.test(type))return true;return false;}
 function landColors(card){return card?.colorIdentity||[];}
+function producedColors(card){return card?.producedMana||[];}
 function shuffle(a,r){for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]];}}
 function mulberry32(seed){return()=>{let v=seed+=0x6D2B79F5;v=Math.imul(v^v>>>15,v|1);v^=v+Math.imul(v^v>>>7,v|61);return((v^v>>>14)>>>0)/4294967296;};}

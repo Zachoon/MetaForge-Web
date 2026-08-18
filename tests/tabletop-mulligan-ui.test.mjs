@@ -23,12 +23,23 @@ test("the player sees teaching, uncertainty, and a non-predictive boundary", asy
   const source = await read("app/tabletop.tsx");
   const coach = await read("app/mulligan-coach.mjs");
   assert.match(source, /METAFORGE CONFIDENCE/);
-  assert.match(source, /decisions aligned/);
+  assert.match(source, /keep calls aligned/);
   assert.match(source, /counts\.lands/);
   assert.match(source, /counts\.otherMana/);
   assert.match(coach, /This is a close decision/);
   assert.match(coach, /not a prediction that the game will be won/);
   assert.match(coach, /writesToBrain: false/);
+});
+
+test("goldfishing adds a card-specific sequencing decision after the mulligan call", async () => {
+  const source = await read("app/tabletop.tsx");
+  const coach = await read("app/mulligan-coach.mjs");
+  assert.match(source, /SEQUENCING CHALLENGE/);
+  assert.match(source, /handEvaluation\.sequence\.options/);
+  assert.match(source, /chooseSequence/);
+  assert.match(coach, /recommendedCard/);
+  assert.match(coach, /Deploy \$\{bridge\.name\}/);
+  assert.doesNotMatch(coach, /make (?:this|the) deck better/i);
 });
 
 test("a newly forged deck opens on deck review before goldfishing", async () => {

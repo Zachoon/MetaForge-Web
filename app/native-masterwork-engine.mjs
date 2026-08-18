@@ -252,6 +252,20 @@ const STRATEGY_WEIGHTS = Object.freeze({
   Tempo: { ramp: 4, draw: 9, interaction: 12, protection: 9, threat: 10, combat: 7 },
 });
 
+// UI copy and persisted decks use descriptive labels ("Aggressive
+// pressure", "Reactive control"), while older engine callers use archetype
+// names. Resolve both here so descriptive labels never silently inherit the
+// Balanced midrange weights while later curve code treats them differently.
+export function strategyProfileFor(strategy = "") {
+  const value = String(strategy).trim();
+  if (/aggro|aggressive|pressure/i.test(value)) return "Aggressive";
+  if (/reactive|control/i.test(value)) return "Control";
+  if (/combo/i.test(value)) return "Combo";
+  if (/tempo/i.test(value)) return "Tempo";
+  if (/^midrange$/i.test(value)) return "Midrange";
+  return "Balanced midrange";
+}
+
 const VARIANTS = Object.freeze([
   { id: "cohesion", label: "Synergy Temper", synergy: 1.35, resilience: 0.8, curve: 0.9 },
   { id: "resilience", label: "Resilient Temper", synergy: 0.9, resilience: 1.4, curve: 0.9 },
@@ -864,7 +878,7 @@ function prepareForgeAnalysis(input, evidenceByName) {
   const commanderMechanicRows = allCommanders(input).map((commander) => extractMechanicalSignals(commander));
   const commanderScopeRows = allCommanders(input).map((commander) => commanderMechanicalScopes(commander));
   const context = {
-    weights: STRATEGY_WEIGHTS[input.strategy] || STRATEGY_WEIGHTS["Balanced midrange"],
+    weights: STRATEGY_WEIGHTS[strategyProfileFor(input.strategy)],
     commanderSignals: unique(allCommanders(input).flatMap((commander) => conceptSignals(commander))),
     commanderMechanics: Object.freeze({
       produces: unique(commanderMechanicRows.flatMap((mechanics) => mechanics.produces)),
@@ -911,7 +925,9 @@ function prepareForgeAnalysis(input, evidenceByName) {
       .test(allCommanders(input).map((commander) => commander.oracleText || commander.oracle_text || "").join(" ")),
     commanderColors: Object.freeze(commanderColors(input)),
     terms: preferenceTerms(input),
-    ideal: /Aggressive|Tempo/i.test(input.strategy) ? 2.4 : /Control/i.test(input.strategy) ? 3.2 : 2.9,
+    ideal: ["Aggressive", "Tempo"].includes(strategyProfileFor(input.strategy))
+      ? 2.4
+      : strategyProfileFor(input.strategy) === "Control" ? 3.2 : 2.9,
     blueprint,
     fieldCounterRoles: fieldCounterRolesFor(input.format, getMetaIntelligence()),
     budget: input.budget,
@@ -1076,18 +1092,20 @@ function advancesStrategyContract(entry, blueprint) {
   );
 }
 
-function roleTargets(format, strategy) {
+const STRATEGY_ROLE_TARGETS = Object.freeze({
+  Aggressive: { ramp: 7, draw: 8, interaction: 8, protection: 7, recursion: 2, sweeper: 1 },
+  Control: { ramp: 9, draw: 13, interaction: 14, protection: 6, recursion: 6, sweeper: 5 },
+  Combo: { ramp: 10, draw: 12, interaction: 7, protection: 10, recursion: 4, sweeper: 1, selection: 10 },
+  Tempo: { ramp: 7, draw: 9, interaction: 11, protection: 9, recursion: 3, sweeper: 1, selection: 5 },
+  Midrange: { ramp: 9, draw: 10, interaction: 10, protection: 6, recursion: 7, sweeper: 2 },
+  "Balanced midrange": { ramp: 10, draw: 10, interaction: 10, protection: 5, recursion: 4, sweeper: 2 },
+});
+
+export function roleTargets(format, strategy) {
   const commander = format === "Commander" || format === "Brawl";
   const scale = commander ? 1 : 0.55;
-  const control = /Control/i.test(strategy);
-  return {
-    ramp: Math.round(10 * scale),
-    draw: Math.round(10 * scale),
-    interaction: Math.round((control ? 13 : 10) * scale),
-    protection: Math.round(5 * scale),
-    recursion: Math.round(4 * scale),
-    sweeper: Math.round((control ? 4 : 2) * scale),
-  };
+  const profile = STRATEGY_ROLE_TARGETS[strategyProfileFor(strategy)];
+  return Object.fromEntries(Object.entries(profile).map(([role, target]) => [role, Math.round(target * scale)]));
 }
 
 // A single "ideal CMC" scored per card (below, in scoreCard) pulls every
@@ -1110,9 +1128,10 @@ function curveBucket(cmc) {
   return String(Math.round(cmc));
 }
 export function curveTargets(strategy, slots) {
-  const shape = /Aggressive|Tempo/i.test(strategy)
+  const profile = strategyProfileFor(strategy);
+  const shape = ["Aggressive", "Tempo"].includes(profile)
     ? CURVE_SHAPES.aggro
-    : /Control/i.test(strategy)
+    : profile === "Control"
       ? CURVE_SHAPES.control
       : CURVE_SHAPES.default;
   return Object.fromEntries(Object.entries(shape).map(([bucket, ratio]) => [bucket, Math.round(ratio * slots)]));
@@ -1779,7 +1798,8 @@ function evaluateCandidate(rows, roleCounts, input, variant) {
   const targets = roleTargets(input.format, input.strategy);
   const roleCoverage = Object.entries(targets).reduce((sum, [role, target]) => sum + Math.min(1, (roleCounts.get(role) || 0) / Math.max(1, target)), 0) / Object.keys(targets).length;
   const multiRole = rows.filter((row) => row.roles.length >= 2).reduce((sum, row) => sum + row.quantity, 0) / nonlands;
-  const curveIdeal = /Aggressive|Tempo/i.test(input.strategy) ? 2.5 : /Control/i.test(input.strategy) ? 3.3 : 3;
+  const strategyProfile = strategyProfileFor(input.strategy);
+  const curveIdeal = ["Aggressive", "Tempo"].includes(strategyProfile) ? 2.5 : strategyProfile === "Control" ? 3.3 : 3;
   const curveHealth = clamp(100 - Math.abs(averageCmc - curveIdeal) * 24);
   const cohesion = clamp(roleCoverage * 70 + multiRole * 30 + variant.synergy * 4);
   const resilience = clamp((roleCounts.get("interaction") || 0) * 2.5 + (roleCounts.get("protection") || 0) * 3 + (roleCounts.get("recursion") || 0) * 2 + variant.resilience * 12);
@@ -2100,6 +2120,7 @@ function buildSimulationModel(rows, input) {
       role: simulationRoleFor(card),
       cmc: Number(row.cmc || 0),
       colorIdentity: isLandRow ? (row.colorIdentity || producedColorsOf(card)) : undefined,
+      producedMana: isLandRow ? undefined : (row.producedMana || nonlandProducedColorsOf(card)),
       colorPips: isLandRow ? undefined : (row.colorPips || colorPipsFromCost(card.manaCost || card.mana_cost)),
     };
   });

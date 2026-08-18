@@ -56,3 +56,17 @@ test("a double-faced card written by its front face on one side of the diff neve
   assert.match(component, /frontFace/);
   assert.match(component, /matchKey/);
 });
+
+test("printed and flavor-name rows jump to their canonical card's comparison slide", () => {
+  assert.match(component, /identityAliases/);
+  assert.match(component, /normalizedAliases\.get\(key\(name\)\) \|\| matchKey\(name\)/);
+  assert.match(component, /jumpable\.has\(identityKey\(row\.name\)\)/);
+  assert.match(component, /swapIndexByCard\.get\(identityKey\(name\)\)/);
+  assert.match(page, /identityAliases=\{nativeMasterworkContext\.identityAliases\}/);
+});
+
+test("dense deck-list hover previews do not synchronously rerender for every crossed row", () => {
+  assert.match(page, /const scheduleDeckHover = useCallback/);
+  assert.match(page, /startTransition\(\(\) => setHoveredCard\(name\)\)/);
+  assert.match(page, /onMouseEnter=\{\(\) => scheduleDeckHover\(row\.name\)\}/);
+});

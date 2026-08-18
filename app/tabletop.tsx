@@ -134,6 +134,8 @@ export function Tabletop({
   const [matchup, setMatchup] = useState<Matchup>("Aggro");
   const [handSalt, setHandSalt] = useState(1);
   const [handDecision, setHandDecision] = useState<"keep" | "mulligan" | null>(null);
+  const [sequenceChoice, setSequenceChoice] = useState<string | null>(null);
+  const [sequenceScore, setSequenceScore] = useState({ aligned: 0, total: 0 });
   const [decisionScore, setDecisionScore] = useState({ aligned: 0, total: 0 });
   const [showRevision, setShowRevision] = useState(false);
   const changeLens = (nextLens: Lens) => {
@@ -166,7 +168,14 @@ export function Tabletop({
   const handEvaluation = useMemo(() => evaluateMulliganHand(hand, { strategy }), [hand, strategy]);
   const drawAnotherHand = () => {
     setHandDecision(null);
+    setSequenceChoice(null);
     setHandSalt((value) => value + 1);
+  };
+  const chooseSequence = (name: string) => {
+    if (sequenceChoice) return;
+    setSequenceChoice(name);
+    const aligned = name === handEvaluation.sequence.recommendedCard;
+    setSequenceScore((score) => ({ aligned: score.aligned + (aligned ? 1 : 0), total: score.total + 1 }));
   };
   const answerHand = (decision: "keep" | "mulligan") => {
     if (handDecision) return;
@@ -342,9 +351,35 @@ export function Tabletop({
                 <small>YOU CHOSE {handDecision.toUpperCase()} · METAFORGE CONFIDENCE: {handEvaluation.confidence.toUpperCase()}</small>
                 <strong>{handEvaluation.headline}</strong>
                 {[...handEvaluation.reasons, ...handEvaluation.warnings].map((line: string) => <p key={line}>{line}</p>)}
+                {handEvaluation.sequence.options.length > 1 && (
+                  <section className="sequence-challenge" aria-label="Opening sequence challenge">
+                    <small>SEQUENCING CHALLENGE</small>
+                    <strong>Assuming normal land drops, what develops this hand first?</strong>
+                    <div>
+                      {handEvaluation.sequence.options.map((name: string) => (
+                        <button
+                          type="button"
+                          key={name}
+                          className={sequenceChoice === name ? "is-chosen" : ""}
+                          aria-pressed={sequenceChoice === name}
+                          onClick={() => chooseSequence(name)}
+                          disabled={Boolean(sequenceChoice)}
+                        >
+                          {name}
+                        </button>
+                      ))}
+                    </div>
+                    {sequenceChoice && (
+                      <p className={sequenceChoice === handEvaluation.sequence.recommendedCard ? "sequence-result is-aligned" : "sequence-result"}>
+                        <b>{sequenceChoice === handEvaluation.sequence.recommendedCard ? "Strong line." : `MetaForge's line starts with ${handEvaluation.sequence.recommendedCard || "a land drop"}.`}</b>{" "}
+                        {handEvaluation.sequence.reason}
+                      </p>
+                    )}
+                  </section>
+                )}
                 <p className="mulligan-disclaimer">{handEvaluation.disclaimer}</p>
                 <footer>
-                  <span>{decisionScore.aligned} of {decisionScore.total} decisions aligned</span>
+                  <span>{decisionScore.aligned} of {decisionScore.total} keep calls aligned{sequenceScore.total ? ` · ${sequenceScore.aligned} of ${sequenceScore.total} lines aligned` : ""}</span>
                   <button type="button" onClick={drawAnotherHand}>Try another hand →</button>
                 </footer>
               </div>

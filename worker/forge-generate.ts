@@ -364,7 +364,13 @@ async function resolveImportedDecklist(text: string, poolCards: NativeForgeCard[
         const aliases = [
           rawCard.name,
           scryfallLookupName(rawCard.name),
-          ...(rawCard.card_faces || []).map((face: any) => face.name),
+          rawCard.flavor_name,
+          rawCard.printed_name,
+          ...(rawCard.card_faces || []).flatMap((face: any) => [
+            face.name,
+            face.flavor_name,
+            face.printed_name,
+          ]),
         ].filter(Boolean);
         for (const alias of aliases) rawByKey.set(cardFactKey(alias), rawCard);
       }
@@ -377,21 +383,32 @@ async function resolveImportedDecklist(text: string, poolCards: NativeForgeCard[
   const arenaRequired = format === "Brawl" || format === "Standard Brawl";
   const importedRows: DeckRow[] = [];
   const additionalPoolCards: NativeForgeCard[] = [];
+  // Keep the player's printed/flavor title connected to the canonical
+  // gameplay name. The engine intentionally constructs with canonical
+  // names, but the comparison UI still renders the submitted title and
+  // needs this bridge to make that row address the same swap slide.
+  const identityAliases: Record<string, string> = {};
   const unresolvedNames: string[] = [];
   const illegalNames: string[] = [];
   for (const row of rows) {
     const key = cardFactKey(row.name);
     if (BASIC_LAND_KEYS.has(key)) { importedRows.push(row); continue; }
-    if (poolByKey.has(key)) { importedRows.push({ name: poolByKey.get(key)!.name, quantity: row.quantity }); continue; }
+    if (poolByKey.has(key)) {
+      const canonicalName = poolByKey.get(key)!.name;
+      importedRows.push({ name: canonicalName, quantity: row.quantity });
+      identityAliases[row.name] = canonicalName;
+      continue;
+    }
     const raw = rawByKey.get(key);
     if (!raw) { unresolvedNames.push(row.name); continue; }
     const legality = raw.legalities?.[legalityKey];
     if (legality !== "legal" || (arenaRequired && !raw.games?.includes("arena"))) { illegalNames.push(row.name); continue; }
     importedRows.push({ name: raw.name, quantity: row.quantity });
+    identityAliases[row.name] = raw.name;
     additionalPoolCards.push(nativeCardFact(raw));
   }
 
-  return { importedRows, pool: [...poolCards, ...additionalPoolCards], unresolvedNames, illegalNames };
+  return { importedRows, pool: [...poolCards, ...additionalPoolCards], unresolvedNames, illegalNames, identityAliases };
 }
 
 function sanitizeCommander(raw: unknown): CommanderInput {
@@ -694,7 +711,10 @@ export async function generateForgeResult(request: Request, env: Env, key: strin
       return {
         status: 200,
         body: {
-          nativeReport: buildClientNativeReport(nativeReport),
+          nativeReport: {
+            ...buildClientNativeReport(nativeReport),
+            identityAliases: resolution.identityAliases,
+          },
           preChoiceCoaching: buildServerPreChoice(nativeReport, body),
           colors: pool.colors,
           ...(generationId ? { generationId } : { cardPool: resolution.pool }),

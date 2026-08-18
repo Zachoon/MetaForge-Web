@@ -27,6 +27,7 @@
 .tabletop-hand .tabletop-card:hover,.tabletop-hand .tabletop-card:focus-visible{transform:translateY(-10px) scale(1.13);box-shadow:0 24px 45px #000c,0 0 24px #65bea933}
 @media(max-width:900px){.tabletop-hand>div{grid-template-columns:repeat(4,minmax(105px,1fr));max-width:720px}}
 @media(max-width:560px){.tabletop-hand>div>div{flex-basis:148px!important}.tabletop-hand .tabletop-card strong{font-size:11px}}
+.sequence-challenge{margin-top:16px;padding:14px;border:1px solid #35574e;background:linear-gradient(135deg,#0d1d19,#0a1210);text-align:left}.sequence-challenge>small,.sequence-challenge>strong{display:block}.sequence-challenge>small{color:#d99651;font-size:9px;font-weight:900;letter-spacing:.12em}.sequence-challenge>strong{margin-top:5px;color:#dce8e3;font-size:13px}.sequence-challenge>div{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}.sequence-challenge>div button{min-height:40px;padding:8px 11px;border-color:#4e7067;background:#10231e;color:#c6e5dd;font-size:10px}.sequence-challenge>div button:disabled{opacity:.58}.sequence-challenge>div button.is-chosen{opacity:1;border-color:#d9914f;background:#372315;color:#ffe0b8}.mulligan-reveal .sequence-result{margin-top:11px;padding:10px;border-left:2px solid #d9914f;background:#1c150f;color:#c8b49f}.mulligan-reveal .sequence-result.is-aligned{border-left-color:#72cbb7;background:#0e211c;color:#b9ddd4}.sequence-result b{color:#f0e8dc}
 
 /* Review-first journey: the finished list is the orientation step, then the
    player deliberately enters the opening-hand trainer. */

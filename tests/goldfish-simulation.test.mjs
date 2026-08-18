@@ -107,3 +107,11 @@ test("isKeepable treats display Mana source roles as lands", () => {
   assert.equal(isKeepable([mana("Command Tower"), mana("Reliquary Tower"), spell("A", 2)]), true);
   assert.equal(isKeepable([mana("Command Tower"), spell("A", 2)]), false);
 });
+
+test("isKeepable recognizes a castable mana rock that unlocks a missing color", () => {
+  const talisman = { card: "Talisman of Creativity", role: "ramp", cmc: 2, producedMana: ["U", "R"] };
+  const redSpell = spell("Curse of Opulence", 1, { R: 1 });
+  const twoIslands = [land("Island", ["U"]), land("Island", ["U"])];
+  assert.equal(isKeepable([...twoIslands, talisman, redSpell]), true, "two lands can cast the Talisman, which then unlocks red");
+  assert.equal(isKeepable([...twoIslands, { ...talisman, cmc: 3 }, redSpell]), false, "an unaffordable source must not rescue the hand");
+});
