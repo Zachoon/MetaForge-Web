@@ -9,15 +9,23 @@ import {
 } from "../app/deep-forge-presentation.mjs";
 
 const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+const researchPage = await readFile(new URL("../app/research/page.tsx", import.meta.url), "utf8");
 const component = await readFile(new URL("../app/components/forge/deep-forge-dossier.tsx", import.meta.url), "utf8");
 const css = await readFile(new URL("../app/components/forge/deep-forge-dossier.css", import.meta.url), "utf8");
 const presentation = await readFile(new URL("../app/deep-forge-presentation.mjs", import.meta.url), "utf8");
 
+// DeepForgeDossier itself, and the "What MetaForge noticed" summary line,
+// now render on /research (moved out of the always-mounted deck page —
+// see app/page.tsx's forge-intelligence-vault-teaser). The jargon-leak
+// checks still apply to page.tsx since it no longer renders any Deep
+// Forge content at all, and now also apply to research/page.tsx.
 test("Deep Forge default view is player language with research one click beneath", () => {
-  assert.match(page, /DeepForgeDossier/);
-  assert.match(page, /What MetaForge noticed — and how sure it is/);
+  assert.match(researchPage, /DeepForgeDossier/);
+  assert.match(researchPage, /What MetaForge noticed — and how sure it is/);
   assert.doesNotMatch(page, /Exact numbers, detected relationships, and methodology/);
   assert.doesNotMatch(page, /CURRENT UNDERSTANDING · RESEARCH/);
+  assert.doesNotMatch(researchPage, /Exact numbers, detected relationships, and methodology/);
+  assert.doesNotMatch(researchPage, /CURRENT UNDERSTANDING · RESEARCH/);
   assert.match(component, /What MetaForge noticed/);
   assert.match(component, /What that could mean for this deck/);
   assert.match(component, /How confident we are/);

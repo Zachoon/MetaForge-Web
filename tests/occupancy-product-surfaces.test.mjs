@@ -16,6 +16,7 @@ const [
   opinionCss,
   dossier,
   dossierCss,
+  researchPage,
 ] = await Promise.all([
   read("app/page.tsx"),
   read("app/forge-polish.css"),
@@ -27,6 +28,7 @@ const [
   read("app/components/forge/revision-opinion.css"),
   read("app/components/forge/deep-forge-dossier.tsx"),
   read("app/components/forge/deep-forge-dossier.css"),
+  read("app/research/page.tsx"),
 ]);
 
 test("ceremony, footer, and context inspector name occupancy from commander oracle", () => {
@@ -67,7 +69,9 @@ test("Share and export stay decklist-only — occupancy is not a list comment", 
 test("Deep Forge dossier names occupancy without calling it research", () => {
   assert.match(dossier, /That is not Deep Forge research/);
   assert.match(dossierCss, /\.deep-forge-occupancy/);
-  assert.match(page, /<DeepForgeDossier\s+occupancyEngines=\{coachOccupancyLabels\}/);
+  // <DeepForgeDossier> itself moved to /research with the rest of the Deep
+  // Forge vault.
+  assert.match(researchPage, /<DeepForgeDossier\s+occupancyEngines=\{coachOccupancyLabels\}/);
 });
 
 
@@ -83,8 +87,10 @@ test("coach brief, experiments, graph, and post-accept keep occupancy off the ve
   assert.match(page, /Named from commander oracle, not a verified system map/);
   assert.match(page, /className="experiment-occupancy"/);
   assert.match(page, /These experiments do not reopen occupancy/);
-  assert.match(page, /className="interaction-graph-occupancy"/);
-  assert.match(page, /Named from commander oracle, not from this graph/);
+  // The interaction graph moved to /research with the rest of the Deep
+  // Forge vault.
+  assert.match(researchPage, /className="interaction-graph-occupancy"/);
+  assert.match(researchPage, /Named from commander oracle, not from this graph/);
   assert.match(page, /className="post-accept-occupancy"/);
   assert.match(page, /not from this revision/);
   assert.match(anvil, /\.honest-coach-occupancy/);

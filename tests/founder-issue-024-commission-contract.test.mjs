@@ -181,12 +181,19 @@ describe("Founder Issue #024 — Commission Contract", () => {
 
   it("wires Commission Contract into masterworks + coach UI", () => {
     const page = readFileSync(join(root, "app/page.tsx"), "utf8");
+    // The coach brief's full commission breakdown ("WHAT STILL NEEDS WORK" /
+    // "Full commission breakdown") moved off the always-mounted deck page
+    // and onto /research (see app/research/page.tsx) — the masterworks
+    // candidate-choice ceremony screen still renders its own "1 · I HEARD
+    // YOU" / "You asked for" / commission-verdict summary directly in
+    // page.tsx, untouched by that move.
+    const researchPage = readFileSync(join(root, "app/research/page.tsx"), "utf8");
     const css = readFileSync(join(root, "app/testing-anvil.css"), "utf8");
     assert.match(page, /1 · I HEARD YOU/);
     assert.match(page, /You asked for/);
-    assert.match(page, /WHAT STILL NEEDS WORK|Full commission breakdown/);
+    assert.match(researchPage, /WHAT STILL NEEDS WORK|Full commission breakdown/);
     assert.match(page, /buildCommissionContract/);
-    assert.match(page, /commissionContract/);
+    assert.match(researchPage, /commissionContract/);
     assert.match(page, /commission-verdict/);
     assert.match(css, /\.commission-verdict\b/);
     assert.match(css, /\.commission-built-list\b/);
