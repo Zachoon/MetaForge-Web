@@ -25,12 +25,17 @@ describe("Era 3 Complete — Speak like a strategist", () => {
 
   it("marks #021 inventory complete without claiming Founder Confirmed", () => {
     const page = readFileSync(join(root, "app/page.tsx"), "utf8");
+    // system-core/support/producers/payoffs, bridge-card, causality-*, and
+    // graph-* moved to app/research/page.tsx with the rest of the Deep
+    // Forge vault — check the union of both files.
+    const researchPage = readFileSync(join(root, "app/research/page.tsx"), "utf8");
+    const combined = `${page}\n${researchPage}`;
     const charter = readFileSync(join(root, "docs/ERA3_COMPLETE.md"), "utf8");
     assert.match(charter, /engineering complete/i);
     assert.match(charter, /Founder Confirmed is not claimed/i);
     assert.doesNotMatch(charter, /Founder Confirmed\*\*/);
     for (const surface of ERA3_CARD_INSPECT_SURFACES) {
-      assert.ok(page.includes(`"${surface}"`), surface);
+      assert.ok(combined.includes(`"${surface}"`), surface);
     }
   });
 

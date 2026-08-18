@@ -18,6 +18,12 @@ test("optional tracking waits for an explicit visitor choice", async () => {
 test("launch funnel covers the complete visitor journey without deck contents", async () => {
   const telemetry = await source("app/launch-telemetry.ts");
   const page = await source("app/page.tsx");
+  // coach_why_opened / coach_confidence_opened fire from the honest-coach
+  // drilldown and confidence disclosures, which moved to /research along
+  // with the rest of the Deep Forge vault — they still fire, just from
+  // that page now.
+  const researchPage = await source("app/research/page.tsx");
+  const combined = `${page}\n${researchPage}`;
   for (const event of [
     "forge_started",
     "forge_succeeded",
@@ -31,7 +37,7 @@ test("launch funnel covers the complete visitor journey without deck contents", 
     "coach_feedback_submitted",
     "coach_confidence_opened",
   ]) {
-    assert.match(page, new RegExp(`trackLaunchEvent\\(\\"${event}\\"`));
+    assert.match(combined, new RegExp(`trackLaunchEvent\\(\\"${event}\\"`));
   }
   assert.doesNotMatch(telemetry, /decklist|cardChoices|email/i);
   assert.match(telemetry, /utm_source/);

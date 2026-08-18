@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+const researchPage = await readFile(new URL("../app/research/page.tsx", import.meta.url), "utf8");
 const css = await readFile(new URL("../app/testing-anvil.css", import.meta.url), "utf8");
 const motifCss = await readFile(new URL("../app/masterwork-motifs.css", import.meta.url), "utf8");
 const polishCss = await readFile(new URL("../app/forge-polish.css", import.meta.url), "utf8");
@@ -62,13 +63,19 @@ test("the coaching panel always shows Honest Coach priorities, with an honest lo
 });
 
 test("the coaching panel leads with commission contract / plan story — not the old system-name grid", () => {
+  // The full commission-contract breakdown moved to /research along with
+  // the rest of the Deep Forge evidence (see the forge-intelligence-vault
+  // teaser in app/page.tsx) — the deck page's coach brief still leads with
+  // plan story and links to the full commission read.
   const block = page.match(/className="forge-understanding-bridge coach-brief[\s\S]*?<\/section>/)?.[0];
   assert.ok(block);
-  assert.match(block, /commissionContract|1 · I HEARD YOU|You asked for/);
   assert.match(block, /intentions\.|planStory/);
   assert.match(block, /VERDICT|CHANGE|WHY · OPENING PRIORITIES/);
   assert.match(block, /YOUR COACH/);
   assert.doesNotMatch(block, /watchingVoice\?\.paragraph|principleVoice\?\.paragraph/);
+  const researchBlock = researchPage.match(/className="forge-understanding-bridge coach-brief[\s\S]*?<\/section>/)?.[0];
+  assert.ok(researchBlock);
+  assert.match(researchBlock, /commissionContract|1 · I HEARD YOU|You asked for/);
 });
 
 test("reviewFocusResult carries its full evidence shape (asked/evidence/nextStep), not just .concise, and is reset on every new commission", () => {
@@ -166,7 +173,10 @@ test("deck understanding leads with Honest Coach and contains raw evidence in De
   assert.match(page, /className="forge-understanding-bridge coach-brief honest-coach-v0"/);
   assert.match(page, /id="coach-brief"/);
   assert.match(page, />\s*VERDICT\s*</);
-  assert.match(page, /COMMISSION CONTRACT|commissionContract/);
+  // The raw commission-contract evidence itself now lives on /research
+  // (moved out of the always-mounted deck page); the deck page still links
+  // to it via "How do you know?".
+  assert.match(researchPage, /COMMISSION CONTRACT|commissionContract/);
   assert.match(page, /CHANGE|WHY · OPENING PRIORITIES/);
   assert.match(page, /How do you know\? → Deep Forge evidence/);
   assert.doesNotMatch(page, /BUILD MOMENTUM/);
@@ -314,15 +324,23 @@ test("keeps the Editing Anvil closed until the player asks for it", () => {
 });
 
 test("reveals only the strongest systems before the player requests the archive", () => {
-  assert.match(page, /const visibleForgeSystems = useMemo/);
-  assert.match(page, /forgeSystemsReport\.systems\.slice\(0, 3\)/);
-  assert.match(page, /Reveal all \$\{forgeSystemsReport\.systems\.length\} detected systems/);
+  // The systems chamber (and its "reveal all" disclosure) moved to
+  // /research with the rest of the Deep Forge vault.
+  assert.match(researchPage, /const visibleForgeSystems = useMemo/);
+  assert.match(researchPage, /forgeSystemsReport\.systems\.slice\(0, 3\)/);
+  assert.match(researchPage, /Reveal all \$\{forgeSystemsReport\.systems\.length\} detected systems/);
 });
 
 test("automatically exposes intelligence when a hard deck gate fails", () => {
+  // The deep-forge vault's own auto-open-on-failure `<details>` moved to
+  // /research; the deck page's own forge-intelligence-vault teaser now
+  // carries the "ATTENTION REQUIRED" alert and the itemized issue list
+  // directly, unconditionally visible (nothing to auto-open) whenever
+  // deckIntegrity has failed — see app/page.tsx's forge-intelligence-vault
+  // section.
   assert.match(
     page,
-    /intelligenceOpen[\s\S]*?!deckIntegrity\.passed/,
+    /!deckIntegrity\.checking && !deckIntegrity\.passed[\s\S]*?ATTENTION REQUIRED/,
   );
   assert.match(page, /ATTENTION REQUIRED/);
 });

@@ -95,12 +95,19 @@ describe("Founder Issue #021 — context-preserving card inspection", () => {
     assert.match(page, /deckPreviewInView, activeForgeChapter/);
   });
 
-  it("inventories every Era 3 card-inspect surface in page.tsx", () => {
+  it("inventories every Era 3 card-inspect surface across page.tsx and /research", () => {
+    // system-core/support/producers/payoffs, bridge-card, causality-*, and
+    // graph-* moved to app/research/page.tsx along with the rest of the
+    // Deep Forge vault (see app/page.tsx's forge-intelligence-vault-teaser).
+    // Checking the union of both files keeps this inventory honest about
+    // where each surface actually lives post-move.
     const page = readFileSync(join(root, "app/page.tsx"), "utf8");
+    const researchPage = readFileSync(join(root, "app/research/page.tsx"), "utf8");
+    const combined = `${page}\n${researchPage}`;
     assert.ok(ERA3_CARD_INSPECT_SURFACES.length >= 15);
     for (const surface of ERA3_CARD_INSPECT_SURFACES) {
       assert.match(
-        page,
+        combined,
         new RegExp(`data-card-inspect-surface="${surface}"|surface="${surface}"`),
         `missing inspect surface: ${surface}`,
       );

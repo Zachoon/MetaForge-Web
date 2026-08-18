@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import { displayRoleFor } from "./adaptive-recommendation.mjs";
 import { REVIEW_FOCUS_OPTIONS, REVIEW_FOCUS_LABELS, toggleReviewFocus } from "./review-focus.mjs";
 import { resolveAcademyGuideEntry } from "./academy-guide-entry.mjs";
@@ -31,7 +32,7 @@ import { applyControlledSwap, experimentAdditionSynergy, rankExperimentAdditions
 // moved out entirely once the simulation dossier that was its only
 // caller became server-side too.
 import { manaConsistencyReport, parseNativeBlueprintIntent } from "./blueprint-note-and-mana.mjs";
-import { explainCardAsMentor, explainOccupiedPackagesAsMentor, explainPairAsMentor, explainPairsForCardAsMentor, occupancyEngineLabelsForCommander, occupancyEngineLabelsForCommanders } from "./knowledge/mentor-shadow.mjs";
+import { explainCardAsMentor, explainOccupiedPackagesAsMentor, explainPairsForCardAsMentor, occupancyEngineLabelsForCommander, occupancyEngineLabelsForCommanders } from "./knowledge/mentor-shadow.mjs";
 import { commanderOptionFromCard, resolvePastedCommanderCandidate } from "./deck-import-commander.mjs";
 import { updateFamily, setFamilyMotifWeights } from "./deck-bench.mjs";
 import {
@@ -67,10 +68,9 @@ import {
   reasonsCardMatters,
   shouldUseContextCardInspector,
 } from "./context-card-inspector.mjs";
-import { ForgeCardRef, ForgeCardRefList } from "./forge-card-ref";
+import { ForgeCardRef } from "./forge-card-ref";
 import { ImportedDeckComparison } from "./components/forge/imported-deck-comparison";
 import { buildCommissionContract } from "./commission-contract.mjs";
-import { tableMeaningFor } from "./strategic-recognition.mjs";
 import { Tabletop, type MatchupCardAdvice, type TabletopCard } from "./tabletop";
 import { ProvingGroundsEra } from "./proving-grounds-era";
 import {
@@ -84,7 +84,6 @@ import {
 import { RevisionOpinionPanel } from "./components/forge/revision-opinion";
 import { PlayerCompassCard } from "./components/forge/player-compass-card";
 import { PhilosophyCompare } from "./components/forge/philosophy-compare";
-import { DeepForgeDossier } from "./components/forge/deep-forge-dossier";
 import {
   playerCompassFromBench,
   readLocalPlayerCompass,
@@ -1250,6 +1249,7 @@ function normalizeForgeFailure(error: unknown): NormalizedForgeFailure {
 
 
 export default function Home() {
+  const router = useRouter();
   const [chamber, setChamber] = useState<Chamber>("entrance");
   const [guestMode, setGuestMode] = useState(true);
   const [playerCompass, setPlayerCompass] = useState(() => readLocalPlayerCompass());
@@ -1643,8 +1643,6 @@ export default function Home() {
   const [coachFeedbackNote, setCoachFeedbackNote] = useState("");
   const [coachFeedbackPendingOption, setCoachFeedbackPendingOption] = useState<string | null>(null);
   const [coachFeedbackTargetTablet, setCoachFeedbackTargetTablet] = useState<any>(null);
-  const [coachWhyOpen, setCoachWhyOpen] = useState(false);
-  const [coachConfidenceOpen, setCoachConfidenceOpen] = useState(false);
   const coachBriefViewedRef = useRef(false);
   const [coachingGoal, setCoachingGoal] = useState("");
   const [cardFacts, setCardFacts] = useState<Record<string, CardFact>>({});
@@ -1800,11 +1798,8 @@ export default function Home() {
   const [lastCutCard, setLastCutCard] = useState("");
   const [metaBreakerExperiments, setMetaBreakerExperiments] = useState<MetaBreakerExperiment[]>([]);
   const [metaBreakerLoading, setMetaBreakerLoading] = useState(false);
-  const [selectedSystemId, setSelectedSystemId] = useState("");
-  const [intelligenceOpen, setIntelligenceOpen] = useState(false);
   const [forgeInterventions, setForgeInterventions] = useState<ForgeIntervention[]>([]);
   const [interventionLearningReady, setInterventionLearningReady] = useState(false);
-  const [showAllSystems, setShowAllSystems] = useState(false);
   const [matchEvidenceOpen, setMatchEvidenceOpen] = useState(false);
   const [activeForgeChapter, setActiveForgeChapter] = useState<1 | 2 | 5>(1);
   const [siteRail, setSiteRail] = useState<"overview" | "decklist" | "analysis" | "playtest">("decklist");
@@ -1923,12 +1918,7 @@ export default function Home() {
     || null;
 
   const openDeepForgeEvidence = () => {
-    setIntelligenceOpen(true);
-    window.requestAnimationFrame(() =>
-      document
-        .querySelector(".forge-intelligence-vault")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" }),
-    );
+    router.push(`/research?deckId=${encodeURIComponent(deckId || "unsaved-masterwork")}`);
   };
 
   useEffect(() => {
@@ -2816,88 +2806,6 @@ export default function Home() {
     }
   }
 
-  const activeSystem = useMemo(
-    () =>
-      forgeSystemsReport.systems.find(
-        (system) => system.id === selectedSystemId,
-      ) || null,
-    [forgeSystemsReport.systems, selectedSystemId],
-  );
-  const visibleForgeSystems = useMemo(() => {
-    if (showAllSystems) return forgeSystemsReport.systems;
-    const strongest = forgeSystemsReport.systems.slice(0, 3);
-    if (activeSystem && !strongest.some((system) => system.id === activeSystem.id)) {
-      return [activeSystem, ...strongest.slice(0, 2)];
-    }
-    return strongest;
-  }, [activeSystem, forgeSystemsReport.systems, showAllSystems]);
-
-  const focusedInteractionGraph = useMemo(() => {
-    if (!activeSystem) {
-      return {
-        packages: interactionGraph.packages,
-        edges: interactionGraph.edges,
-        nonbos: interactionGraph.nonbos,
-        amplifiers: interactionGraph.amplifiers,
-        isolated: interactionGraph.isolated,
-      };
-    }
-
-    const members = new Set(activeSystem.members);
-
-    return {
-      packages: interactionGraph.packages.filter((group) =>
-        group.members.some((name) => members.has(name)),
-      ),
-      edges: interactionGraph.edges.filter(
-        (edge) => members.has(edge.from) || members.has(edge.to),
-      ),
-      nonbos: interactionGraph.nonbos.filter(
-        (conflict) =>
-          members.has(conflict.source) ||
-          ("target" in conflict &&
-            typeof conflict.target === "string" &&
-            members.has(conflict.target)),
-      ),
-      amplifiers: interactionGraph.amplifiers.filter(
-        (amplifier) =>
-          members.has(amplifier.source) ||
-          amplifier.amplifies.some((name) => members.has(name)),
-      ),
-      isolated: interactionGraph.isolated.filter((name) =>
-        members.has(name),
-      ),
-    };
-  }, [activeSystem, interactionGraph]);
-
-  useEffect(() => {
-    if (
-      selectedSystemId &&
-      !forgeSystemsReport.systems.some(
-        (system) => system.id === selectedSystemId,
-      )
-    ) {
-      setSelectedSystemId("");
-    }
-  }, [forgeSystemsReport.systems, selectedSystemId]);
-
-  const inspectSystem = (systemId: string, firstCard = "") => {
-    setSelectedSystemId(systemId);
-
-    if (firstCard) {
-      setHoveredCard(firstCard);
-    }
-
-    window.requestAnimationFrame(() => {
-      document
-        .getElementById("interaction-graph-dossier")
-        ?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-    });
-  };
-
   // Was a plain filter over the whole deck's interaction-edge graph, rerun
   // on every render of this ~9,000-line single component - not just every
   // hover (activeCard changing is real work), but every unrelated state
@@ -3315,14 +3223,6 @@ export default function Home() {
     [nativeMasterworkContext, selectedCommander, revisions.length],
   );
 
-  const activeCausalitySystem = useMemo(
-    () =>
-      forgeCausalityReport.systems.find(
-        (system) => system.id === activeSystem?.id,
-      ) || forgeCausalityReport.mostFragileSystem || null,
-    [forgeCausalityReport, activeSystem],
-  );
-
   const metaBreakerDossier = useMemo(() => {
     if (!simulationDossier) return null;
     const weakestRow = simulationDossier.matrix.weakest;
@@ -3393,6 +3293,81 @@ export default function Home() {
     experimentTablets,
     activeFieldTest,
   }), [coachingDiagnosis, provingGrounds, experimentTablets, activeFieldTest]);
+  // /research reads this mirror instead of recomputing the structural
+  // report client-side — see the comment at the top of this file. Debounced
+  // so it doesn't fire on every keystroke, gated on hasValidatedDeck per
+  // the same success boundary as the rest of the finished-deck chrome.
+  useEffect(() => {
+    if (!hasValidatedDeck) return;
+    const timer = window.setTimeout(() => {
+      try {
+        const bundleDeckId = deckId || "unsaved-masterwork";
+        const bundle = {
+          deckId: bundleDeckId,
+          updatedAt: new Date().toISOString(),
+          commander: activeCommanderName,
+          format,
+          strategy,
+          deckPriceTotal,
+          deckIntegrity: {
+            total: deckIntegrity.total,
+            target: deckIntegrity.target,
+            averageCmc: deckIntegrity.averageCmc,
+            roles: deckIntegrity.roles,
+            checking: deckIntegrity.checking,
+            passed: deckIntegrity.passed,
+            issues: deckIntegrity.issues,
+          },
+          evaluation: nativeMasterworkContext?.selected?.evaluation || null,
+          powerSignal: nativeMasterworkContext?.powerSignal || null,
+          manaConsistency: nativeMasterworkContext?.manaConsistency || null,
+          practicalTiebreak: nativeMasterworkContext?.practicalTiebreak || null,
+          recoveryNote: nativeMasterworkContext?.selected?.recoveryNote || "",
+          unusedEnginePartners: nativeMasterworkContext?.unusedEnginePartners || [],
+          requestedPowerTier: nativeMasterworkContext?.requestedPowerTier || "",
+          powerAudit: nativeMasterworkContext?.powerAudit || null,
+          simulationDossier,
+          forgeSystemsReport,
+          interactionGraph,
+          forgeCausalityReport,
+          forgeFailureAnalysis,
+          coachOccupancyLabels,
+          honestCoachSummary,
+          coachingDiagnosis,
+          revisionLearning: {
+            actionable: revisionLearning.actionable,
+            matchups: revisionLearning.matchups,
+            sampleSize: revisionLearning.sampleSize,
+          },
+          interventionLearning,
+        };
+        window.localStorage.setItem(`metaforge.research.${bundleDeckId}`, JSON.stringify(bundle));
+        window.localStorage.setItem("metaforge.research.latest", bundleDeckId);
+      } catch {
+        /* The Research tab is a read-only mirror — never block the deck page on it. */
+      }
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [
+    hasValidatedDeck,
+    deckId,
+    activeCommanderName,
+    format,
+    strategy,
+    deckPriceTotal,
+    deckIntegrity,
+    nativeMasterworkContext,
+    simulationDossier,
+    forgeSystemsReport,
+    interactionGraph,
+    forgeCausalityReport,
+    forgeFailureAnalysis,
+    coachOccupancyLabels,
+    honestCoachSummary,
+    coachingDiagnosis,
+    revisionLearning,
+    interventionLearning,
+  ]);
   useEffect(() => {
     const names = [
       ...new Set(parseDeckRows(forgedDeck).map((row) => row.name)),
@@ -6419,122 +6394,6 @@ export default function Home() {
                 <header>
                   <small>YOUR COACH</small>
                   <h2>{honestCoachSummary.headline}</h2>
-                  {honestCoachSummary.commissionContract?.hasContract && (
-                    <aside
-                      className={`request-recognition commission-contract is-loud${honestCoachSummary.commissionMismatch ? " is-mismatch" : ""}`}
-                      aria-label="Commission contract"
-                    >
-                      <header>
-                        <small>1 · I HEARD YOU</small>
-                        <strong>You asked for</strong>
-                      </header>
-                      <ul className="request-recognition-checklist commission-ask-chips">
-                        {honestCoachSummary.commissionContract.youAskedFor
-                          .filter((clause: any) => clause.role !== "commander")
-                          .map((clause: any) => (
-                            <li key={clause.id} className="status-detected">
-                              <b>✓ {clause.label}</b>
-                            </li>
-                          ))}
-                      </ul>
-                      {(honestCoachSummary.commissionContract.matchHonesty
-                        || honestCoachSummary.commissionContract.matchLabel
-                        || Number.isFinite(honestCoachSummary.commissionContract.matchPercent)) && (
-                        <p className="commission-verdict">
-                          <small>VERDICT</small>
-                          {honestCoachSummary.commissionContract.matchHonesty
-                            || (Number.isFinite(honestCoachSummary.commissionContract.matchPercent)
-                              ? `${honestCoachSummary.commissionContract.matchPercent}% match · ${honestCoachSummary.commissionContract.matchLabel || "heard"}`
-                              : honestCoachSummary.commissionContract.matchLabel)}
-                        </p>
-                      )}
-                      {honestCoachSummary.commissionContract.whatIBuilt?.some((entry: any) => entry.status !== "met") && (
-                        <div className="commission-change">
-                          <small>WHAT STILL NEEDS WORK</small>
-                          <ul className="request-recognition-checklist commission-built-list">
-                            {honestCoachSummary.commissionContract.whatIBuilt
-                              .filter((entry: any) => entry.status !== "met")
-                              .map((entry: any) => (
-                                <li key={entry.id} className={`status-${entry.status}`}>
-                                  <b>{entry.status === "partial" ? "~" : "·"} {entry.label}</b>
-                                </li>
-                              ))}
-                          </ul>
-                        </div>
-                      )}
-                      {(honestCoachSummary.commissionContract.playerFantasy?.supportLine
-                        || honestCoachSummary.requestRecognition?.adjustments?.[0]?.reason) && (
-                        <p className="commission-why">
-                          <small>WHY</small>
-                          {honestCoachSummary.commissionContract.playerFantasy?.supportLine
-                            || honestCoachSummary.requestRecognition.adjustments[0].reason}
-                        </p>
-                      )}
-                      {honestCoachSummary.commissionContract.whatIBuilt?.length > 0 && (
-                        <details className="request-recognition-receipts">
-                          <summary>Full commission breakdown →</summary>
-                          <ul className="request-recognition-checklist commission-built-list">
-                            {honestCoachSummary.commissionContract.whatIBuilt.map((entry: any) => (
-                              <li key={entry.id} className={`status-${entry.status}`}>
-                                <b>{entry.status === "met" ? "✓" : entry.status === "partial" ? "~" : "·"} {entry.label}</b>
-                                <span>{entry.detail}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </details>
-                      )}
-                      <button
-                        type="button"
-                        className="conversation-evidence-link"
-                        onClick={openDeepForgeEvidence}
-                      >
-                        How do you know? → Deep Forge evidence
-                      </button>
-                    </aside>
-                  )}
-                  {!honestCoachSummary.commissionContract?.hasContract
-                    && honestCoachSummary.requestRecognition?.heard?.length > 0 && (
-                    <aside className="request-recognition" aria-label="Request recognition">
-                      <header>
-                        <small>1 · I HEARD YOU</small>
-                        <strong>Did I hear you?</strong>
-                      </header>
-                      <ul className="request-recognition-heard">
-                        {honestCoachSummary.requestRecognition.heard.map((theme: any) => (
-                          <li key={theme.id} className={`status-${theme.status}`}>
-                            <b>{theme.status === "present" || theme.status === "partial" || theme.status === "detected" ? "✓" : "·"} {theme.label}</b>
-                          </li>
-                        ))}
-                      </ul>
-                      {honestCoachSummary.requestRecognition.adjustments?.length > 0 && (
-                        <p className="commission-why">
-                          <small>WHY</small>
-                          {honestCoachSummary.requestRecognition.adjustments[0].reason
-                            || honestCoachSummary.requestRecognition.adjustments[0].headline}
-                        </p>
-                      )}
-                      <button
-                        type="button"
-                        className="conversation-evidence-link"
-                        onClick={openDeepForgeEvidence}
-                      >
-                        How do you know? → Deep Forge evidence
-                      </button>
-                    </aside>
-                  )}
-                  {honestCoachSummary.deckUnderstanding && (
-                    <aside className={`honest-coach-understanding ${honestCoachSummary.deckUnderstanding.reliability.state}`} aria-label="Deck understanding">
-                      <strong>{honestCoachSummary.deckUnderstanding.playerSummary.headline}</strong>
-                      <p>{honestCoachSummary.deckUnderstanding.playerSummary.detail}</p>
-                      {honestCoachSummary.deckUnderstanding.playerSummary.unresolvedNames?.length > 0 && (
-                        <ul>
-                          {honestCoachSummary.deckUnderstanding.playerSummary.unresolvedNames.map((name: string) => (
-                            <li key={name}>{name}</li>
-                          ))}
-                        </ul>
-                      )}
-                    </aside>
-                  )}
                   {!honestCoachSummary.coachingAllowed ? (
                     <p className="honest-coach-insufficient" role="status">
                       I don&apos;t understand enough of this list yet to coach it responsibly. Deterministic checks like deck size and verified mana math can still help while card records catch up.
@@ -6554,26 +6413,6 @@ export default function Home() {
                       How do you know? → Deep Forge evidence
                     </button>
                   )}
-                  <details
-                    className={`honest-coach-confidence ${honestCoachSummary.confidence.level}`}
-                    open={coachConfidenceOpen}
-                    onToggle={(event) => {
-                      const open = (event.currentTarget as HTMLDetailsElement).open;
-                      setCoachConfidenceOpen(open);
-                      if (open) {
-                        trackLaunchEvent("coach_confidence_opened", {
-                          format,
-                          confidence: honestCoachSummary.confidence.level,
-                        });
-                      }
-                    }}
-                  >
-                    <summary>
-                      <strong>{honestCoachSummary.confidence.label}</strong>
-                      <span>{honestCoachSummary.confidence.detail}</span>
-                    </summary>
-                    <p>{honestCoachSummary.confidence.reason}</p>
-                  </details>
                   {structuralAnalysisStatus === "loading" && !boundStructural.ok && (
                     <p className="structural-analysis-pending" role="status">
                       Analyzing this build&apos;s structure…
@@ -6665,65 +6504,6 @@ export default function Home() {
                     )}
                   </article>
                 </div>
-                )}
-                {honestCoachSummary.coachingAllowed && (
-                <details
-                  className="honest-coach-drilldown"
-                  open={coachWhyOpen}
-                  onToggle={(event) => {
-                    const open = (event.currentTarget as HTMLDetailsElement).open;
-                    setCoachWhyOpen(open);
-                    if (open) {
-                      trackLaunchEvent("coach_why_opened", {
-                        format,
-                        analysis: honestCoachSummary.analysisIds.analysisId,
-                      });
-                    }
-                  }}
-                >
-                  <summary>{honestCoachSummary.whyPrompt}</summary>
-                  <div className="honest-coach-drilldown-grid">
-                    <div>
-                      <small>OBSERVED</small>
-                      <ul>
-                        {honestCoachSummary.observedFindings.map((line) => (
-                          <li key={line}>{line}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div>
-                      <small>INTERPRETIVE</small>
-                      <ul>
-                        {honestCoachSummary.interpretiveGuidance.map((line) => (
-                          <li key={line}>{line}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                  {honestCoachSummary.intentions?.dependsOn && (
-                    <p className="honest-coach-packages">
-                      When it becomes dangerous: {honestCoachSummary.intentions.dependsOn}
-                    </p>
-                  )}
-                  {honestCoachSummary.planStory?.planLabel && (
-                    <p className="honest-coach-packages">
-                      Plan label: {honestCoachSummary.planStory.planLabel}
-                    </p>
-                  )}
-                  {honestCoachSummary.identity.packageLabels.length > 0 && (
-                    <p className="honest-coach-packages">
-                      Packages detected: {honestCoachSummary.identity.packageLabels.join(" · ")}
-                    </p>
-                  )}
-                  {coachOccupancyLabels.length > 0 && (
-                    <p className="honest-coach-packages">
-                      Occupancy engines: {coachOccupancyLabels.join(" · ")}
-                    </p>
-                  )}
-                  <p className="honest-coach-id-chip" aria-label="Analysis id">
-                    Analysis {honestCoachSummary.analysisIds.analysisId}
-                  </p>
-                </details>
                 )}
                 {reviewFocusResult && (
                   <aside className="coach-question">
@@ -7028,1106 +6808,26 @@ export default function Home() {
                 </span>
               )}
 
-              <details
-                className="forge-intelligence-vault"
-                open={
-                  intelligenceOpen ||
-                  (!deckIntegrity.checking && !deckIntegrity.passed)
-                }
-                onToggle={(event) =>
-                  setIntelligenceOpen(event.currentTarget.open)
-                }
-              >
-                <summary>
-                  <span>
-                    <small>DEEP FORGE · HOW DO YOU KNOW?</small>
-                    <b>What MetaForge noticed — and how sure it is</b>
-                  </span>
-                  <strong>
-                    {!deckIntegrity.checking && !deckIntegrity.passed
-                      ? "ATTENTION REQUIRED"
-                      : intelligenceOpen
-                        ? "HIDE DETAILS"
-                        : "EXPLORE DETAILS"}
-                  </strong>
-                </summary>
-              <div className="deep-forge-quick-stats">
-                <span><small>MARKET TOTAL</small><b>${deckPriceTotal.total.toFixed(2)}</b></span>
-                {nativeMasterworkContext?.powerSignal && <span><small>POWER</small><b>{nativeMasterworkContext.powerSignal.tier}</b></span>}
-                <span><small>COHESION</small><b>{nativeMasterworkContext?.selected?.evaluation?.cohesion ?? "—"}</b></span>
-                <span><small>RESILIENCE</small><b>{nativeMasterworkContext?.selected?.evaluation?.resilience ?? "—"}</b></span>
-                <button type="button" className={cheapestPrintings ? "active" : ""} aria-pressed={cheapestPrintings} onClick={() => setCheapestPrintings((current) => !current)}>Compare cheapest printings</button>
-              </div>
-              <DeepForgeDossier
-                occupancyEngines={coachOccupancyLabels}
-                understanding={honestCoachSummary.deepForgeUnderstanding}
-                principles={honestCoachSummary.deepForgePrinciples}
-              />
-              {deckRows.length > 0 && (
-                <section className={`integrity-dossier ${deckIntegrity.passed ? "passed" : deckIntegrity.checking ? "checking" : "held"}`}>
-                  <header>
-                    <span>
-                      <small>STRUCTURAL INTEGRITY GATE</small>
-                      <b>
-                        {deckIntegrity.checking
-                          ? `Verifying ${deckIntegrity.unresolved.length} card record${deckIntegrity.unresolved.length === 1 ? "" : "s"}…`
-                          : deckIntegrity.passed
-                            ? "This Masterwork is cleared for testing."
-                            : "Testing is held until every hard constraint passes."}
-                      </b>
-                    </span>
-                    <strong>{deckIntegrity.passed ? "VERIFIED" : deckIntegrity.checking ? "CHECKING" : "REPAIR REQUIRED"}</strong>
-                  </header>
-                  <div>
-                    <span><small>DECK SIZE</small><b>{deckIntegrity.total} / {deckIntegrity.target}</b></span>
-                    <span><small>AVG. SPELL VALUE</small><b>{deckIntegrity.averageCmc.toFixed(2)}</b></span>
-                    <span><small>MANA SOURCES</small><b>{deckIntegrity.roles["Mana source"] || 0}</b></span>
-                    <span><small>INTERACTION</small><b>{(deckIntegrity.roles.Interaction || 0) + (deckIntegrity.roles["Board reset"] || 0)}</b></span>
-                    <span><small>ADVANTAGE + ENGINES</small><b>{(deckIntegrity.roles["Card advantage"] || 0) + (deckIntegrity.roles["Engine piece"] || 0)}</b></span>
-                  </div>
-                  {nativeMasterworkContext?.manaConsistency && (
-                    <section className="stress-dossier">
-                      <span>
-                        <small>MANA CONSISTENCY</small>
-                        <b>{(nativeMasterworkContext.manaConsistency.overall * 100).toFixed(0)}% on-curve</b>
-                        <em>Real hypergeometric odds, not a heuristic guess</em>
-                      </span>
-                      {nativeMasterworkContext.manaConsistency.risky.slice(0, 3).map((entry: { name: string; turn: number; colors: string[]; probability: number }) => (
-                        <span key={entry.name}>
-                          <small>{entry.colors.join("")} by turn {entry.turn}</small>
-                          <b>
-                            <ForgeCardRef
-                              name={entry.name}
-                              surface="mana-risky"
-                              onInspect={setHoveredCard}
-                            />
-                          </b>
-                          <em>{(entry.probability * 100).toFixed(0)}% chance on time</em>
-                        </span>
-                      ))}
-                      <p>Counts lands, mana rocks, and dorks as real color sources, but treats multi-color needs as independent draws, so real odds run slightly higher than shown.</p>
-                    </section>
+              <section className="forge-intelligence-vault" aria-label="Deep Forge evidence">
+                <span>
+                  <small>DEEP FORGE · HOW DO YOU KNOW?</small>
+                  <b>Per-system evidence, structural intelligence, and the interaction graph moved to their own page so they stop costing memory here.</b>
+                  {!deckIntegrity.checking && !deckIntegrity.passed && (
+                    <strong className="deck-integrity-attention">ATTENTION REQUIRED</strong>
                   )}
-                  {nativeMasterworkContext?.powerSignal && (
-                    <section className="stress-dossier">
-                      <span>
-                        <small>COMMANDER POWER SIGNAL</small>
-                        <b>{nativeMasterworkContext.powerSignal.tier}</b>
-                        <em>{nativeMasterworkContext.powerSignal.note}</em>
-                      </span>
-                      {nativeMasterworkContext.requestedPowerTier && (
-                        <span>
-                          <small>TARGETED</small>
-                          <b>{nativeMasterworkContext.requestedPowerTier}</b>
-                          <em>
-                            {nativeMasterworkContext.powerAudit?.rebuildReachedTarget
-                              ? `Rebuilt to reach it: the first pass measured ${nativeMasterworkContext.powerAudit.originalMeasuredTier}, so the Forge excluded the flagged cards and rebuilt to the requested tier.`
-                              : !nativeMasterworkContext.powerAudit || !nativeMasterworkContext.powerAudit.mismatch
-                                ? "The finished deck reached the requested tier."
-                                : nativeMasterworkContext.powerAudit.rebuildImproved
-                                  ? `Improved but not fully resolved: rebuilding brought it from ${nativeMasterworkContext.powerAudit.originalMeasuredTier} to ${nativeMasterworkContext.powerAudit.measured}, still above the requested tier — disclosed honestly, not relabeled.`
-                                  : "A nudge, not a guarantee — the finished deck landed here instead, honestly disclosed rather than relabeled."}
-                          </em>
-                        </span>
-                      )}
-                      <span>
-                        <small>FAST MANA</small>
-                        <b>{nativeMasterworkContext.powerSignal.fastMana.length}</b>
-                        <em>{nativeMasterworkContext.powerSignal.fastMana.slice(0, 3).join(", ") || "None detected"}</em>
-                      </span>
-                      <span>
-                        <small>UNRESTRICTED TUTORS</small>
-                        <b>{nativeMasterworkContext.powerSignal.tutors.unrestricted.length}</b>
-                        <em>{nativeMasterworkContext.powerSignal.tutors.unrestricted.slice(0, 3).join(", ") || "None detected"}</em>
-                      </span>
-                      <span>
-                        <small>EXTRA TURNS + LAND DENIAL</small>
-                        <b>{nativeMasterworkContext.powerSignal.extraTurns.length + nativeMasterworkContext.powerSignal.massLandDenial.length}</b>
-                        <em>{[...nativeMasterworkContext.powerSignal.extraTurns, ...nativeMasterworkContext.powerSignal.massLandDenial].slice(0, 3).join(", ") || "None detected"}</em>
-                      </span>
-                      <span>
-                        <small>REPEATABLE ENGINES + MULTIPLIERS</small>
-                        <b>{nativeMasterworkContext.powerSignal.repeatableValueEngine.length + nativeMasterworkContext.powerSignal.resourceMultiplier.length}</b>
-                        <em>{[...nativeMasterworkContext.powerSignal.repeatableValueEngine, ...nativeMasterworkContext.powerSignal.resourceMultiplier].slice(0, 3).join(", ") || "None detected"}</em>
-                      </span>
-                      <span>
-                        <small>EFFICIENT INTERACTION</small>
-                        <b>{nativeMasterworkContext.powerSignal.efficientInteraction.length}</b>
-                        <em>{nativeMasterworkContext.powerSignal.efficientInteraction.slice(0, 3).join(", ") || "None detected"}</em>
-                      </span>
-                      {nativeMasterworkContext.powerSignal.comboProximity.count > 0 && (
-                        <span>
-                          <small>COMPACT COMBO PROXIMITY</small>
-                          <b>{nativeMasterworkContext.powerSignal.comboProximity.count} verified pair{nativeMasterworkContext.powerSignal.comboProximity.count === 1 ? "" : "s"}</b>
-                          <em>{nativeMasterworkContext.powerSignal.comboProximity.pairs.slice(0, 2).join(" · ")} · counted toward the tier above</em>
-                        </span>
-                      )}
-                      {(nativeMasterworkContext.powerSignal.commanderSynergy.ownSignal || nativeMasterworkContext.powerSignal.commanderSynergy.amplifiedCards.length > 0 || nativeMasterworkContext.powerSignal.commanderSynergy.spellSynergy) && (
-                        <span>
-                          <small>COMMANDER SYNERGY</small>
-                          <b>
-                            {[
-                              nativeMasterworkContext.powerSignal.commanderSynergy.ownSignal && "carries its own signal",
-                              nativeMasterworkContext.powerSignal.commanderSynergy.amplifiedCards.length > 0 && `combines with ${nativeMasterworkContext.powerSignal.commanderSynergy.amplifiedCards.length} card${nativeMasterworkContext.powerSignal.commanderSynergy.amplifiedCards.length === 1 ? "" : "s"}`,
-                              nativeMasterworkContext.powerSignal.commanderSynergy.spellSynergy && "amplifies this shell's spells",
-                            ].filter(Boolean).join(" · ")}
-                          </b>
-                          <em>Verified from the commander's own text and this build's actual composition — counted toward the tier above</em>
-                        </span>
-                      )}
-                      {(nativeMasterworkContext.powerSignal.interconnection.comboLoopTotal > 0 || nativeMasterworkContext.powerSignal.interconnection.amplifiers.length > 0 || (nativeMasterworkContext.powerSignal.interconnection.resetShapeTotal || 0) > 0) && (
-                        <span>
-                          <small>REAL INTERCONNECTION</small>
-                          <b>
-                            {nativeMasterworkContext.powerSignal.interconnection.comboLoopTotal} mutual loop{nativeMasterworkContext.powerSignal.interconnection.comboLoopTotal === 1 ? "" : "s"}
-                            {nativeMasterworkContext.powerSignal.interconnection.amplifiers.length ? ` · ${nativeMasterworkContext.powerSignal.interconnection.amplifiers.length} amplifier${nativeMasterworkContext.powerSignal.interconnection.amplifiers.length === 1 ? "" : "s"}` : ""}
-                            {(nativeMasterworkContext.powerSignal.interconnection.resetShapeTotal || 0) > 0 ? ` · ${nativeMasterworkContext.powerSignal.interconnection.resetShapeTotal} reset shape${nativeMasterworkContext.powerSignal.interconnection.resetShapeTotal === 1 ? "" : "s"}` : ""}
-                          </b>
-                          <em>
-                            {[
-                              ...nativeMasterworkContext.powerSignal.interconnection.amplifiers,
-                              ...nativeMasterworkContext.powerSignal.interconnection.comboLoops,
-                              ...(nativeMasterworkContext.powerSignal.interconnection.resetShapes || []),
-                            ].slice(0, 3).join(" · ") || "Detected"} · informational only, not counted toward the tier above (see Compact Combo Proximity for the subset that is). Reset shapes are not verified infinites.
-                          </em>
-                        </span>
-                      )}
-                      <p>{nativeMasterworkContext.powerSignal.evidence}</p>
-                    </section>
-                  )}
-                  {simulationDossier && (
-                    <section className="stress-dossier">
-                      <span>
-                        <small>OPENING-HAND GATE</small>
-                        <b>{(simulationDossier.goldfish.expert.keepableRate * 100).toFixed(1)}% keepable</b>
-                        <em>{simulationDossier.goldfish.gate.replaceAll("-", " ")} · avg {simulationDossier.goldfish.expert.averageMulligans.toFixed(1)} mulligans</em>
-                      </span>
-                      <span>
-                        <small>PLAN REALIZATION</small>
-                        <b>{(simulationDossier.goldfish.expert.planRealizationRate * 100).toFixed(1)}%</b>
-                        <em>Average turn {simulationDossier.goldfish.expert.averageRealizationTurn?.toFixed(1) || "—"}</em>
-                      </span>
-                      <span>
-                        <small>PILOT SENSITIVITY</small>
-                        <b>{simulationDossier.goldfish.sensitivityLabel}</b>
-                        <em>Sequencing impact, not player rating</em>
-                      </span>
-                      <span>
-                        <small>HARDEST STRESS PROFILE</small>
-                        <b>{simulationDossier.matrix.weakest?.opponent || "Unresolved"}</b>
-                        <em>{((simulationDossier.matrix.weakest?.scenarioPassRate || 0) * 100).toFixed(1)}% scenario pass · avg {(simulationDossier.matrix.weakest?.averageMulligans || 0).toFixed(1)} mulligans</em>
-                      </span>
-                      {simulationDossier.goldfish.expert.colorScrewRate !== null && (
-                        <span>
-                          <small>COLOR SCREW RISK</small>
-                          <b>{(simulationDossier.goldfish.expert.colorScrewRate * 100).toFixed(1)}%</b>
-                          <em>Games that never cast a colored spell at all</em>
-                        </span>
-                      )}
-                      <p>Modeled Forge trials test mana, role density, and sequencing under pressure. They are viability gates—not predicted match win rates.</p>
-                    </section>
-                  )}
-                  {!deckIntegrity.checking && (
-                    <section
-                      className={`forge-systems-chamber ${
-                        forgeSystemsReport.systems.length
-                          ? "systems-awakened"
-                          : "systems-dormant"
-                      } ${activeSystem ? "has-active-system" : ""}`}
-                    >
-                      <header className="systems-chamber-heading">
-                        <div>
-                          <small>SYSTEMS OF THE FORGE</small>
-                          <h2>
-                            {forgeSystemsReport.systems.length
-                              ? "The deck's internal machinery is awake."
-                              : honestCoachSummary.strategyVsSystem?.incompleteEvidence
-                                ? "Repeatable systems are not fully verified yet."
-                                : "No repeatable system can be verified on this complete card set."}
-                          </h2>
-                          <p>
-                            {forgeSystemsReport.systems.length
-                              ? `${forgeSystemsReport.systems.length} repeatable system${
-                                  forgeSystemsReport.systems.length === 1
-                                    ? ""
-                                    : "s"
-                                } detected across ${Math.round(
-                                  forgeSystemsReport.systemCoverage * 100,
-                                )}% of nonland cards.`
-                              : honestCoachSummary.deepForgeEmpty.system}
-                          </p>
-                        </div>
-
-                        <div className="systems-chamber-seal">
-                          <i>ᛞ</i>
-                          <span>
-                            <small>STRUCTURAL CONFIDENCE</small>
-                            <strong>{forgeSystemsReport.confidence}</strong>
-                          </span>
-                        </div>
-                      </header>
-
-                      {forgeSystemsReport.systems.length > 0 ? (
-                        <>
-                          <section className="systems-overview">
-                            {honestCoachSummary.strategicRecognition?.primaryPlan
-                              && !honestCoachSummary.strategicRecognition?.ambiguous && (
-                              <article className="systems-primary-plan">
-                                <small>WHAT THIS MEANS AT THE TABLE</small>
-                                <strong>
-                                  {honestCoachSummary.strategicRecognition.tableWhy
-                                    || honestCoachSummary.strategicRecognition.planLabel}
-                                </strong>
-                                <p>{honestCoachSummary.strategicRecognition.primaryPlan}</p>
-                                <span>
-                                  Supporting evidence · powered by{" "}
-                                  {[
-                                    honestCoachSummary.strategicRecognition.hierarchy?.primary?.name,
-                                    ...(honestCoachSummary.strategicRecognition.hierarchy?.supporting || [])
-                                      .slice(0, 2)
-                                      .map((entry: any) => entry.name),
-                                  ].filter(Boolean).join(" · ") || "verified systems"}
-                                </span>
-                              </article>
-                            )}
-                            <article>
-                              <small>STRONGEST AT THE TABLE</small>
-                              <strong>
-                                {honestCoachSummary.strategicRecognition?.tableMeaning
-                                  || honestCoachSummary.strategicRecognition?.playerSystemLines?.[0]
-                                  || forgeSystemsReport.strongestSystem?.name
-                                  || "Unresolved"}
-                              </strong>
-                              <span>
-                                Supporting evidence · {forgeSystemsReport.strongestSystem?.name || "system"} ·{" "}
-                                {forgeSystemsReport.strongestSystem?.health?.overall || 0}/100 health
-                              </span>
-                            </article>
-
-                            <article>
-                              <small>CLEAREST PRESSURE POINT</small>
-                              <strong>
-                                {forgeSystemsReport.weakestSystem?.name ||
-                                  "Unresolved"}
-                              </strong>
-                              <span>
-                                {forgeSystemsReport.weakestSystem?.health
-                                  ?.dependencyRisk || 0}
-                                /100 dependency risk
-                              </span>
-                            </article>
-
-                            <article>
-                              <small>BRIDGE NETWORK</small>
-                              <strong>
-                                {forgeSystemsReport.bridgeCards.length}
-                                {" "}
-                                bridge card
-                                {forgeSystemsReport.bridgeCards.length === 1
-                                  ? ""
-                                  : "s"}
-                              </strong>
-                              <span>
-                                Cards serving more than one detected system
-                              </span>
-                            </article>
-                          </section>
-
-                          {coachOccupancyLabels.length > 0 && (
-                            <span className="slot-justification">
-                              <small>OCCUPANCY ENGINES · COMMANDER ORACLE, NOT COMPOSITION OF THE 99</small>
-                              <em>{coachOccupancyLabels.join(" · ")}</em>
-                            </span>
-                          )}
-                          {interactionGraph.enginePairs.length > 0 && (
-                            <span className="slot-justification">
-                              <small>POTENTIAL TWO-CARD ENGINES · PATTERN-INFERRED, NOT A VERIFIED COMBO</small>
-                              {interactionGraph.enginePairs.slice(0, 3).map((pair: { cards: string[]; reason: string; loopKind?: string }) => {
-                                const mentor = explainPairAsMentor({ cards: pair.cards, loopKind: pair.loopKind });
-                                return (
-                                <em key={pair.cards.join("+")}>
-                                  {pair.cards.join(" + ")}
-                                  {pair.loopKind && pair.loopKind !== "engine" ? ` · ${pair.loopKind.replaceAll("_", " ")}` : ""}
-                                  {mentor.ok ? ` · ${mentor.loopSeating[0].seat.label}` : ""}
-                                  {" — "}
-                                  {pair.reason}
-                                </em>
-                                );
-                              })}
-                            </span>
-                          )}
-                          {(interactionGraph.resetPairs || []).length > 0 && (
-                            <span className="slot-justification">
-                              <small>RESET SHAPES · INVESTIGATE, NOT A VERIFIED INFINITE</small>
-                              {interactionGraph.resetPairs.slice(0, 3).map((pair: { cards: string[]; reason: string; loopKind?: string; shape?: string }) => {
-                                const mentor = explainPairAsMentor({ cards: pair.cards, loopKind: pair.loopKind, shape: pair.shape });
-                                return (
-                                <em key={pair.cards.join("+")}>
-                                  {pair.cards.join(" + ")}
-                                  {mentor.ok ? ` · ${mentor.loopSeating[0].seat.label}` : ""}
-                                  {" — "}
-                                  {pair.reason}
-                                </em>
-                                );
-                              })}
-                            </span>
-                          )}
-                          {nativeMasterworkContext?.unusedEnginePartners && nativeMasterworkContext.unusedEnginePartners.length > 0 && (
-                            <span className="slot-justification">
-                              <small>SITTING UNUSED IN YOUR POOL · SAME PATTERN-INFERRED CAVEAT</small>
-                              {nativeMasterworkContext.unusedEnginePartners.slice(0, 3).map((entry: { card: string; partner: string; reason: string; loopKind?: string }) => {
-                                const mentor = explainPairAsMentor({ cards: [entry.card, entry.partner], loopKind: entry.loopKind });
-                                return (
-                                <em key={`${entry.card}+${entry.partner}`}>
-                                  {entry.card}
-                                  {mentor.ok ? ` · ${mentor.loopSeating[0].seat.label}` : ""}
-                                  {" — "}
-                                  {entry.reason}
-                                </em>
-                                );
-                              })}
-                            </span>
-                          )}
-
-                          <div className="systems-blueprint-grid">
-                            {visibleForgeSystems.map(
-                              (system, systemIndex) => {
-                                const gauges = [
-                                  [
-                                    "Overall Health",
-                                    system.health.overall,
-                                    false,
-                                  ],
-                                  [
-                                    "Consistency",
-                                    system.health.consistency,
-                                    false,
-                                  ],
-                                  [
-                                    "Resilience",
-                                    system.health.resilience,
-                                    false,
-                                  ],
-                                  [
-                                    "Leverage",
-                                    system.health.leverage,
-                                    false,
-                                  ],
-                                  [
-                                    "Cohesion",
-                                    system.health.cohesion,
-                                    false,
-                                  ],
-                                  [
-                                    "Dependency Risk",
-                                    system.health.dependencyRisk,
-                                    true,
-                                  ],
-                                ] as const;
-
-                                return (
-                                  <details
-                                    className={`system-blueprint ${
-                                      activeSystem?.id === system.id
-                                        ? "active-system-blueprint"
-                                        : ""
-                                    }`}
-                                    key={system.id}
-                                    open={activeSystem?.id === system.id}
-                                    onToggle={(event) => {
-                                      if (event.currentTarget.open) {
-                                        setSelectedSystemId(system.id);
-                                      } else if (activeSystem?.id === system.id) {
-                                        setSelectedSystemId("");
-                                      }
-                                    }}
-                                    style={
-                                      {
-                                        "--system-order": systemIndex,
-                                      } as React.CSSProperties
-                                    }
-                                  >
-                                    <summary>
-                                      <span className="system-rune">
-                                        {["ᛟ", "ᛉ", "ᛞ", "ᚱ", "ᛇ"][
-                                          systemIndex % 5
-                                        ]}
-                                      </span>
-
-                                      <span className="system-identity">
-                                        <small>
-                                          WHAT THIS MEANS · SYSTEM {String(systemIndex + 1).padStart(2, "0")}
-                                        </small>
-                                        <strong>
-                                          {tableMeaningFor(system.signal)
-                                            || system.name}
-                                        </strong>
-                                        <em>
-                                          Supporting evidence · {system.name} ·{" "}
-                                          {system.members.length} cards ·{" "}
-                                          {system.edges.length} links · Health{" "}
-                                          {system.health?.overall ?? 0}
-                                        </em>
-                                      </span>
-
-                                      <span className="system-health-medallion">
-                                        <b>{system.health.overall}</b>
-                                        <small>HEALTH</small>
-                                      </span>
-
-                                      <span
-                                        className="blueprint-toggle"
-                                        aria-current={
-                                          activeSystem?.id === system.id
-                                            ? "true"
-                                            : undefined
-                                        }
-                                      >
-                                        {activeSystem?.id === system.id
-                                          ? "Machine selected"
-                                          : "Open blueprint"}
-                                      </span>
-                                    </summary>
-
-                                    <div className="system-blueprint-body">
-                                      <section className="system-health-board">
-                                        <header>
-                                          <small>STRUCTURAL HEALTH</small>
-                                          <span>{system.confidence}</span>
-                                        </header>
-
-                                        {gauges.map(
-                                          ([label, value, danger]) => (
-                                            <div
-                                              className={`system-gauge ${
-                                                danger ? "risk-gauge" : ""
-                                              }`}
-                                              key={label}
-                                            >
-                                              <span>
-                                                <small>{label}</small>
-                                                <b>{value}</b>
-                                              </span>
-                                              <i>
-                                                <b
-                                                  style={{
-                                                    width: `${Math.max(
-                                                      0,
-                                                      Math.min(100, value),
-                                                    )}%`,
-                                                  }}
-                                                />
-                                              </i>
-                                            </div>
-                                          ),
-                                        )}
-                                      </section>
-
-                                      <section className="system-component-board">
-                                        <article>
-                                          <small>CORE COMPONENTS</small>
-                                          <div>
-                                            {system.core.map((name) => (
-                                              <button
-                                                type="button"
-                                                key={name}
-                                                data-card-inspect-surface="system-core"
-                                                className={
-                                                  forgeSystemsReport.bridgeCards.some(
-                                                    (bridge) =>
-                                                      bridge.name === name,
-                                                  )
-                                                    ? "bridge-component"
-                                                    : ""
-                                                }
-                                                aria-label={`Inspect ${name}`}
-                                                onClick={() =>
-                                                  setHoveredCard(name)
-                                                }
-                                              >
-                                                {name}
-                                              </button>
-                                            ))}
-                                          </div>
-                                        </article>
-
-                                        <article>
-                                          <small>SUPPORT COMPONENTS</small>
-                                          <div>
-                                            {system.support.length ? (
-                                              system.support.map((name) => (
-                                                <button
-                                                  type="button"
-                                                  key={name}
-                                                  data-card-inspect-surface="system-support"
-                                                  onClick={() =>
-                                                    setHoveredCard(name)
-                                                  }
-                                                >
-                                                  {name}
-                                                </button>
-                                              ))
-                                            ) : (
-                                              <em>
-                                                No separate support layer detected.
-                                              </em>
-                                            )}
-                                          </div>
-                                        </article>
-
-                                        <article>
-                                          <small>PRODUCERS</small>
-                                          <div>
-                                            {system.producers.length ? (
-                                              system.producers.map((name) => (
-                                                <button
-                                                  type="button"
-                                                  key={name}
-                                                  data-card-inspect-surface="system-producers"
-                                                  onClick={() =>
-                                                    setHoveredCard(name)
-                                                  }
-                                                >
-                                                  {name}
-                                                </button>
-                                              ))
-                                            ) : (
-                                              <em>
-                                                Producer role remains distributed.
-                                              </em>
-                                            )}
-                                          </div>
-                                        </article>
-
-                                        <article>
-                                          <small>PAYOFFS</small>
-                                          <div>
-                                            {system.payoffs.length ? (
-                                              system.payoffs.map((name) => (
-                                                <button
-                                                  type="button"
-                                                  key={name}
-                                                  data-card-inspect-surface="system-payoffs"
-                                                  onClick={() =>
-                                                    setHoveredCard(name)
-                                                  }
-                                                >
-                                                  {name}
-                                                </button>
-                                              ))
-                                            ) : (
-                                              <em>
-                                                Payoff role remains distributed.
-                                              </em>
-                                            )}
-                                          </div>
-                                        </article>
-                                      </section>
-
-                                      <section className="system-engineering-notes">
-                                        <article>
-                                          <small>REDUNDANCY</small>
-                                          <strong>
-                                            {system.redundancy.repeatedCards
-                                              .length
-                                              ? `${system.redundancy.repeatedCards.length} repeated component${
-                                                  system.redundancy
-                                                    .repeatedCards.length === 1
-                                                    ? ""
-                                                    : "s"
-                                                }`
-                                              : "Singleton structure"}
-                                          </strong>
-                                          <p>
-                                            {system.redundancy.producerCount}{" "}
-                                            producers ·{" "}
-                                            {system.redundancy.payoffCount}{" "}
-                                            payoffs
-                                          </p>
-                                        </article>
-
-                                        <article
-                                          className={
-                                            system.criticalFailures.length
-                                              ? "engineering-warning"
-                                              : ""
-                                          }
-                                        >
-                                          <small>CRITICAL FAILURE AUDIT</small>
-                                          {system.criticalFailures.length ? (
-                                            system.criticalFailures.map(
-                                              (failure) => (
-                                                <p key={failure.name}>
-                                                  <b>{failure.name}</b>
-                                                  <span>
-                                                    Removing this component breaks{" "}
-                                                    {Math.round(
-                                                      failure.impact * 100,
-                                                    )}
-                                                    % of measured internal links.
-                                                  </span>
-                                                </p>
-                                              ),
-                                            )
-                                          ) : (
-                                            <p>
-                                              <b>NO SINGLE COLLAPSE POINT</b>
-                                              <span>
-                                                The current graph does not isolate
-                                                one component carrying a critical
-                                                share of internal connections.
-                                              </span>
-                                            </p>
-                                          )}
-                                        </article>
-                                      </section>
-
-                                      <footer>
-                                        <span>{system.evidence}</span>
-
-                                        <div className="system-blueprint-actions">
-                                          <b>
-                                            {system.health.dependencyRisk >= 55
-                                              ? "DEPENDENCY WATCH"
-                                              : "STRUCTURE TEMPERED"}
-                                          </b>
-
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              inspectSystem(
-                                                system.id,
-                                                system.core[0] ||
-                                                  system.members[0] ||
-                                                  "",
-                                              )
-                                            }
-                                          >
-                                            Inspect machine in graph
-                                            <span aria-hidden="true">→</span>
-                                          </button>
-                                        </div>
-                                      </footer>
-                                    </div>
-                                  </details>
-                                );
-                              },
-                            )}
-                          </div>
-                          {forgeSystemsReport.systems.length > 3 && (
-                            <button
-                              type="button"
-                              className="system-disclosure-toggle"
-                              onClick={() => setShowAllSystems((visible) => !visible)}
-                            >
-                              {showAllSystems
-                                ? "Return to the three strongest systems"
-                                : `Reveal all ${forgeSystemsReport.systems.length} detected systems`}
-                            </button>
-                          )}
-
-                          <section className="systems-bridge-foundry">
-                            <header>
-                              <div>
-                                <small>BRIDGE CARDS</small>
-                                <h3>
-                                  Components carrying more than one machine
-                                </h3>
-                              </div>
-                              <span>
-                                {forgeSystemsReport.bridgeCards.length} FOUND
-                              </span>
-                            </header>
-
-                            {forgeSystemsReport.bridgeCards.length ? (
-                              <div>
-                                {forgeSystemsReport.bridgeCards.map(
-                                  (bridge) => (
-                                    <button
-                                      type="button"
-                                      key={bridge.name}
-                                      data-card-inspect-surface="bridge-card"
-                                      className={
-                                        activeSystem &&
-                                        bridge.systems.includes(
-                                          activeSystem.name,
-                                        )
-                                          ? "active-bridge-card"
-                                          : ""
-                                      }
-                                      aria-label={`Inspect bridge card ${bridge.name}`}
-                                      onClick={() =>
-                                        setHoveredCard(bridge.name)
-                                      }
-                                    >
-                                      <i>◇</i>
-                                      <span>
-                                        <strong>{bridge.name}</strong>
-                                        <small>
-                                          {bridge.systems.join(" · ")}
-                                        </small>
-                                      </span>
-                                      <b>{bridge.score}</b>
-                                    </button>
-                                  ),
-                                )}
-                              </div>
-                            ) : (
-                              <p>
-                                No card currently bridges two named systems.
-                                That is not inherently a flaw, but it reduces
-                                cross-engine leverage.
-                              </p>
-                            )}
-                          </section>
-
-                          <section className="structural-intelligence-chamber">
-                            <header className="structural-intelligence-heading">
-                              <div>
-                                <small>STRUCTURAL INTELLIGENCE · BOUNDED MODEL</small>
-                                <h3>
-                                  {activeCausalitySystem
-                                    ? `${activeCausalitySystem.name} under load`
-                                    : "The Forge is mapping structural consequences."}
-                                </h3>
-                                <p>{forgeCausalityReport.headline}</p>
-                                {forgeCausalityReport.nextTest && (
-                                  <p className="causality-next-test">{forgeCausalityReport.nextTest}</p>
-                                )}
-                              </div>
-                              <span className="causality-confidence-seal">
-                                <b>{forgeCausalityReport.structuralResilience}</b>
-                                <small>DECK RESILIENCE</small>
-                              </span>
-                            </header>
-
-                            <div className="causality-vitals">
-                              {[
-                                ["Survives disruption", forgeCausalityReport.structuralResilience, false],
-                                ["Depends on key cards", forgeCausalityReport.collapseRisk, true],
-                                ["Can rebuild", forgeCausalityReport.recoveryPotential, false],
-                                ["Has backup pieces", activeCausalitySystem?.redundancy || 0, false],
-                              ].map(([label, value, risk]) => (
-                                <article className={risk ? "causality-risk" : ""} key={String(label)}>
-                                  <span><small>{label}</small><b>{Number(value)}</b></span>
-                                  <i><b style={{ width: `${Math.max(0, Math.min(100, Number(value)))}%` }} /></i>
-                                </article>
-                              ))}
-                            </div>
-
-                            {activeCausalitySystem && (
-                              <div className="causality-machine-summary">
-                                <span>
-                                  <small>ACTIVE CARD GROUP</small>
-                                  <strong>{activeCausalitySystem.name}</strong>
-                                  <em>{activeCausalitySystem.status.toUpperCase()} · {activeCausalitySystem.confidence}</em>
-                                </span>
-                                <span><small>SURVIVES DISRUPTION</small><b>{activeCausalitySystem.structuralResilience}</b></span>
-                                <span><small>KEY-CARD DEPENDENCE</small><b>{activeCausalitySystem.collapseRisk}</b></span>
-                                <span><small>CAN REBUILD</small><b>{activeCausalitySystem.recoveryPotential}</b></span>
-                              </div>
-                            )}
-
-                            <div className="causality-panels">
-                              <article className="causality-panel critical-nodes-panel">
-                                <header><span>⚒</span><div><small>CARDS THIS PLAN LEANS ON</small><strong>The hardest pieces to lose or replace</strong></div></header>
-                                <div>
-                                  {(activeCausalitySystem?.criticalNodes || []).length ? (
-                                    activeCausalitySystem?.criticalNodes.map((card) => (
-                                      <button type="button" key={card.name} data-card-inspect-surface="causality-critical" onClick={() => setHoveredCard(card.name)}>
-                                        <span><b>{card.name}</b><small>{card.primaryRole}</small></span>
-                                        <em>{card.collapseRisk}<small> RISK</small></em>
-                                      </button>
-                                    ))
-                                  ) : <p>No single card appears essential to keeping this plan working.</p>}
-                                </div>
-                              </article>
-
-                              <article className="causality-panel amplifier-panel">
-                                <header><span>✦</span><div><small>CARDS THAT HELP SEVERAL PIECES</small><strong>One card improving more than one part of the plan</strong></div></header>
-                                <div>
-                                  {(activeCausalitySystem?.amplifiers || []).length ? (
-                                    activeCausalitySystem?.amplifiers.map((card) => (
-                                      <button type="button" key={card.name} data-card-inspect-surface="causality-amplifier" onClick={() => setHoveredCard(card.name)}>
-                                        <span><b>{card.name}</b><small>{card.systems.join(" · ")}</small></span>
-                                        <em>{card.amplifierScore}<small> AMP</small></em>
-                                      </button>
-                                    ))
-                                  ) : <p>No single card is clearly boosting several parts of this plan at once.</p>}
-                                </div>
-                              </article>
-
-                              <article className="causality-panel bottleneck-panel">
-                                <header><span>⛓</span><div><small>JOBS WITH TOO FEW BACKUPS</small><strong>Important work handled by only one or two cards</strong></div></header>
-                                <div>
-                                  {(activeCausalitySystem?.bottlenecks || []).length ? (
-                                    activeCausalitySystem?.bottlenecks.map((card) => (
-                                      <button type="button" key={card.name} data-card-inspect-surface="causality-bottleneck" onClick={() => setHoveredCard(card.name)}>
-                                        <span><b>{card.name}</b><small>{card.alternatives.length} modeled alternative{card.alternatives.length === 1 ? "" : "s"}</small></span>
-                                        <em>{card.bottleneckScore}<small> LOAD</small></em>
-                                      </button>
-                                    ))
-                                  ) : <p>No important job appears to depend on too few cards.</p>}
-                                </div>
-                              </article>
-                            </div>
-
-                            {forgeCausalityReport.highestValueUpgrade && (
-                              <p className="deep-forge-redirect">
-                                The Forge's single highest-value read on this
-                                system: <b>{forgeCausalityReport.highestValueUpgrade.recommendation}</b> This is
-                                structural-only context — for an exact, gated
-                                one-card experiment, see the tournament-rival
-                                experiments below, or the Deck Stress Lab in{" "}
-                                <button type="button" className="deep-forge-redirect-link" onClick={() => setActiveForgeChapter(2)}>
-                                  Chapter II · Shape
-                                </button>.
-                              </p>
-                            )}
-
-                            <footer className="causality-methodology">
-                              <span>{forgeCausalityReport.confidence}</span>
-                              <p>{forgeCausalityReport.methodology}</p>
-                            </footer>
-                          </section>
-
-                          <section
-                            className={`systems-failure-reading ${
-                              forgeFailureAnalysis.status ===
-                              "bounded-hypothesis"
-                                ? "has-hypothesis"
-                                : ""
-                            }`}
-                          >
-                            <header>
-                              <span>⚒</span>
-                              <div>
-                                <small>BOUNDED FAILURE ANALYSIS</small>
-                                <h3>{forgeFailureAnalysis.headline}</h3>
-                              </div>
-                            </header>
-
-                            {forgeFailureAnalysis.chain.length > 0 && (
-                              <ol>
-                                {forgeFailureAnalysis.chain.map(
-                                  (step, index) => (
-                                    <li key={`${index}-${step}`}>
-                                      <span>{index + 1}</span>
-                                      <p>{step}</p>
-                                    </li>
-                                  ),
-                                )}
-                              </ol>
-                            )}
-
-                            <footer>
-                              <span>
-                                <small>NEXT HONEST TEST</small>
-                                <b>{forgeFailureAnalysis.nextTest}</b>
-                              </span>
-                              <em>{forgeFailureAnalysis.evidence}</em>
-                            </footer>
-                          </section>
-
-                          <footer className="systems-masterwork-reveal">
-                            <i />
-                            <span>
-                              <small>THE SYSTEM MAP IS COMPLETE</small>
-                              <strong>Masterwork Intelligence Awakened</strong>
-                            </span>
-                            <i />
-                          </footer>
-                        </>
-                      ) : (
-                        <div className="systems-empty-state">
-                          <i>ᛞ</i>
-                          <strong>{honestCoachSummary.deepForgeEmpty.system}</strong>
-                          <p>
-                            {honestCoachSummary.strategyVsSystem?.incompleteEvidence
-                              ? "Unknown is not absent: missing or unresolved card records prevent naming a repeatable engine. Strategy recognition can still be stronger than system verification."
-                              : "The Forge will not manufacture an engine claim from isolated cards on a complete verified set."}
-                          </p>
-                          {coachOccupancyLabels.length > 0 && (
-                            <p>
-                              Occupancy engines from commander oracle: {coachOccupancyLabels.join(" · ")}. That is not a verified system map.
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                      <footer className="systems-methodology">
-                        {forgeSystemsReport.methodology}
-                      </footer>
-                    </section>
-                  )}
-
-                  {!deckIntegrity.checking && (
-                    <section
-                      id="interaction-graph-dossier"
-                      className={`interaction-graph-dossier ${
-                        activeSystem ? "system-graph-focus" : ""
-                      }`}
-                      aria-label={
-                        activeSystem
-                          ? `Interaction graph focused on ${activeSystem.name}`
-                          : "Complete interaction graph"
-                      }
-                    >
-                      <header>
-                        <span>
-                          <small>
-                            {activeSystem
-                              ? "FOCUSED MACHINE GRAPH · ORACLE REASONING"
-                              : "INTERACTION GRAPH · ORACLE REASONING"}
-                          </small>
-                          <b>{interactionGraph.confidence}</b>
-                        </span>
-
-                        <div className="interaction-graph-focus-heading">
-                          <strong>
-                            {activeSystem
-                              ? activeSystem.name
-                              : `${Math.round(
-                                  interactionGraph.coverage * 100,
-                                )}% connected`}
-                          </strong>
-
-                          {activeSystem && (
-                            <button
-                              type="button"
-                              onClick={() => setSelectedSystemId("")}
-                            >
-                              Show complete graph
-                            </button>
-                          )}
-                        </div>
-                      </header>
-                      {coachOccupancyLabels.length > 0 && (
-                        <p className="interaction-graph-occupancy">
-                          Occupancy engines: {coachOccupancyLabels.join(" · ")}. Named from commander oracle, not from this graph.
-                        </p>
-                      )}
-
-                      {activeSystem && (
-                        <div className="active-system-graph-banner">
-                          <span className="system-rune" aria-hidden="true">
-                            ᛞ
-                          </span>
-
-                          <span>
-                            <small>INSPECTING MACHINE</small>
-                            <strong>{activeSystem.name}</strong>
-                            <em>
-                              {activeSystem.members.length} components ·{" "}
-                              {focusedInteractionGraph.edges.length} visible
-                              relationships
-                            </em>
-                          </span>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setHoveredCard(
-                                activeSystem.core[0] ||
-                                  activeSystem.members[0] ||
-                                  "",
-                              )
-                            }
-                          >
-                            Inspect core card
-                          </button>
-                        </div>
-                      )}
-                      <div>
-                        <article>
-                          <small>STRONGEST PACKAGES</small>
-                          {focusedInteractionGraph.packages.slice(0, 4).map((group) => (
-                            <p key={group.signal}>
-                              <b>{group.signal.toUpperCase()}</b>
-                              <span>
-                                <ForgeCardRefList
-                                  names={group.members}
-                                  surface="graph-package"
-                                  onInspect={setHoveredCard}
-                                  limit={4}
-                                />
-                                {group.members.length > 4 ? ` +${group.members.length - 4}` : ""}
-                              </span>
-                            </p>
-                          ))}
-                          {!focusedInteractionGraph.packages.length && <em>{honestCoachSummary.deepForgeEmpty.package}</em>}
-                        </article>
-                        <article>
-                          <small>STRONGEST RELATIONSHIPS</small>
-                          {focusedInteractionGraph.edges.slice(0, 3).map((edge) => (
-                            <p key={`${edge.from}-${edge.to}`}>
-                              <b>{edge.strength}% · {edge.signals.join(" + ")}</b>
-                              <span>
-                                <ForgeCardRef name={edge.from} surface="graph-edge" onInspect={setHoveredCard} />
-                                {" ↔ "}
-                                <ForgeCardRef name={edge.to} surface="graph-edge" onInspect={setHoveredCard} />
-                              </span>
-                            </p>
-                          ))}
-                          {!focusedInteractionGraph.edges.length && <em>{honestCoachSummary.deepForgeEmpty.relationship}</em>}
-                        </article>
-                        <article className={focusedInteractionGraph.nonbos.length ? "graph-warning" : ""}>
-                          <small>RULES AUDIT + ISOLATION</small>
-                          {focusedInteractionGraph.nonbos.slice(0, 2).map((conflict) => (
-                            <p key={`${conflict.source}-${conflict.signal}`}>
-                              <b>
-                                NONBO ·{" "}
-                                <ForgeCardRef name={conflict.source} surface="graph-nonbo" onInspect={setHoveredCard} />
-                              </b>
-                              <span>{conflict.reason}</span>
-                            </p>
-                          ))}
-                          {!focusedInteractionGraph.nonbos.length && <p><b>NO VERIFIED NONBO</b><span>No symmetrical oracle-text conflict was detected.</span></p>}
-                          {focusedInteractionGraph.amplifiers.slice(0, 2).map((amplifier: { source: string; reason: string }) => (
-                            <p key={amplifier.source}>
-                              <b>
-                                AMPLIFIER ·{" "}
-                                <ForgeCardRef name={amplifier.source} surface="graph-amplifier" onInspect={setHoveredCard} />
-                              </b>
-                              <span>{amplifier.reason}</span>
-                            </p>
-                          ))}
-                          <em>
-                            {focusedInteractionGraph.isolated.length ? (
-                              <>
-                                {`${focusedInteractionGraph.isolated.length} isolated slot${focusedInteractionGraph.isolated.length === 1 ? "" : "s"}: `}
-                                <ForgeCardRefList
-                                  names={focusedInteractionGraph.isolated}
-                                  surface="graph-isolated"
-                                  onInspect={setHoveredCard}
-                                  limit={4}
-                                />
-                              </>
-                            ) : activeSystem ? "Every card in this machine has at least one modeled relationship." : "Every nonland slot has at least one modeled relationship."}
-                          </em>
-                        </article>
-                      </div>
-                      <footer>{interactionGraph.methodology}</footer>
-                    </section>
-                  )}
-                  {!deckIntegrity.checking && deckIntegrity.issues.length > 0 && (
-                    <footer>
-                      <ul>{deckIntegrity.issues.map((issue) => <li key={issue}>{issue}</li>)}</ul>
-                      {/* Automatic repair used to route through /api/forge/chat's
-                          now-deliberately-retired "deck_generation" task (that
-                          endpoint has hardcoded a 503 for it since the native
-                          engine migration — see worker/forge-chat.ts). The old
-                          button always failed, and its failure wrote into
-                          forgeGenerationError, which made an already-valid deck
-                          disappear behind "No deck was completed." No automatic
-                          repair exists today; this is the honest state instead. */}
-                      <p className="deck-integrity-manual-note">
-                        Automatic repair isn&rsquo;t available for these — open the Editing Anvil to fix the flagged slots by hand.
-                      </p>
-                    </footer>
-                  )}
-                </section>
-              )}
+                </span>
+                {!deckIntegrity.checking && deckIntegrity.issues.length > 0 && (
+                  <>
+                    <ul>{deckIntegrity.issues.map((issue) => <li key={issue}>{issue}</li>)}</ul>
+                    <p className="deck-integrity-manual-note">
+                      Automatic repair isn&rsquo;t available for these — open the Editing Anvil to fix the flagged slots by hand.
+                    </p>
+                  </>
+                )}
+                <a href={`/research?deckId=${encodeURIComponent(deckId || "unsaved-masterwork")}`}>
+                  Open Research &amp; Evidence →
+                </a>
+              </section>
               <section className="refinement-starters-vault" aria-label="Tournament-rival controlled experiments">
                 <header className="vault-experiments-header">
                   <small>ADVANCED · TOURNAMENT-RIVAL EXPERIMENTS</small>
@@ -8359,7 +7059,6 @@ export default function Home() {
                   )}
                 </div>
               </section>
-              </details>
               {benchStatus === "forging" ? (
                 <section
                   className="masterwork-forging-progress"
@@ -9328,13 +8027,12 @@ export default function Home() {
                 <p>
                   A second, independent set of gated one-card tests compares
                   this exact build against its closest tournament rival from
-                  generation. Find it in{" "}
+                  generation. Find it in the{" "}
                   <button type="button" className="deep-forge-redirect-link" onClick={() => {
                     setActiveForgeChapter(1);
-                    setIntelligenceOpen(true);
-                    window.requestAnimationFrame(() => document.querySelector(".forge-intelligence-vault")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+                    window.requestAnimationFrame(() => document.querySelector(".refinement-starters-vault")?.scrollIntoView({ behavior: "smooth", block: "start" }));
                   }}>
-                    Deep Forge
+                    tournament-rival experiments
                   </button>.
                 </p>
               </details>
@@ -9411,40 +8109,10 @@ export default function Home() {
               </section>
               <section className="revision-learning-dossier">
                 <header><small>REVISION {Math.max(1, revisions.length)} LEARNING</small><b>{revisionLearning.sampleSize} recorded match{revisionLearning.sampleSize === 1 ? "" : "es"}</b></header>
-                <article className={`coaching-diagnosis diagnosis-${coachingDiagnosis.primary.category}`}>
-                  <header>
-                    <span><small>COACHING READ</small><b>{coachingDiagnosis.primary.label}</b></span>
-                    <em>{coachingDiagnosis.primary.confidence}</em>
-                  </header>
-                  <p><b>What supports it</b><span>{coachingDiagnosis.primary.evidence.join(" · ")}</span></p>
-                  <p><b>What to do</b><span>{coachingDiagnosis.primary.recommendation}</span></p>
-                  <p><b>How to test it</b><span>{coachingDiagnosis.primary.measurement}</span></p>
-                  {coachingDiagnosis.alternatives.length > 0 && (
-                    <details>
-                      <summary>{coachingDiagnosis.alternatives.length} other evidence-backed read{coachingDiagnosis.alternatives.length === 1 ? "" : "s"}</summary>
-                      {coachingDiagnosis.alternatives.map((alternative) => (
-                        <span key={alternative.category}><b>{alternative.label}</b>{alternative.recommendation}</span>
-                      ))}
-                    </details>
-                  )}
-                  <small>{coachingDiagnosis.evidenceBoundary}</small>
-                </article>
-                {revisionLearning.actionable.length ? revisionLearning.actionable.slice(0, 3).map((pattern) => (
-                  <p key={pattern.preference}><b>{pattern.preference}</b><span>{pattern.confidence} · {pattern.count} matching signals</span></p>
-                )) : <p><b>NO PERSISTENT PREFERENCE YET</b><span>Two matching signals are required before the Forge treats a feeling as a revision pattern.</span></p>}
-                {revisionLearning.matchups.filter((matchup) => matchup.actionable).slice(0, 2).map((matchup) => (
-                  <p key={matchup.opponent}><b>{matchup.opponent} matchup</b><span>{matchup.wins}–{matchup.losses} observed · {matchup.confidence}, not a predicted win rate</span></p>
-                ))}
-                <details className="intervention-learning-readout">
-                  <summary>
-                    CONTINUAL FORGE LEARNING · {interventionLearning.experiments.length} EXPERIMENT{interventionLearning.experiments.length === 1 ? "" : "S"}
-                  </summary>
-                  <p>
-                    <b>{interventionLearning.reusable.length ? `${interventionLearning.reusable.length} reusable player pattern${interventionLearning.reusable.length === 1 ? "" : "s"}` : "NO INTERVENTION PROMOTED YET"}</b>
-                    <span>{interventionLearning.reusableGuidance}</span>
-                  </p>
-                  <small>{interventionLearning.evidenceBoundary}</small>
-                </details>
+                <p className="revision-learning-dossier-teaser">
+                  The full coaching diagnosis, revision patterns, and continual-learning readout moved to{" "}
+                  <a href={`/research?deckId=${encodeURIComponent(deckId || "unsaved-masterwork")}`}>Research &amp; Evidence →</a>
+                </p>
               </section>
               </details>
               {swapFlourish && (

@@ -101,12 +101,16 @@ describe("Deck Understanding Reliability A4", () => {
     const root = new URL("../", import.meta.url);
     const principles = await readFile(new URL("docs/ENGINEERING_PRINCIPLES.md", root), "utf8");
     const page = await readFile(new URL("app/page.tsx", root), "utf8");
+    // strategyVsSystem/deepForgeEmpty (the systems-chamber and interaction-
+    // graph empty states) moved to /research along with the rest of the
+    // Deep Forge vault.
+    const researchPage = await readFile(new URL("app/research/page.tsx", root), "utf8");
     const understanding = await readFile(new URL("app/deck-understanding.mjs", root), "utf8");
     assert.match(principles, /Unknown is not absent/);
     assert.match(page, /deckUnderstanding/);
     // System verification stays available to Deep Forge; coach default must not
     // headline "WHAT MAKES IT RUN" / system-count jargon.
-    assert.match(page, /strategyVsSystem|deepForgeEmpty/);
+    assert.match(researchPage, /strategyVsSystem|deepForgeEmpty/);
     assert.match(page, /How do you know\? → Deep Forge evidence/);
     assert.doesNotMatch(page, /WHAT MAKES IT RUN/);
     assert.doesNotMatch(understanding, /native-masterwork-engine|prospective-slot-delta|construction-phase/);
