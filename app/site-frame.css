@@ -223,9 +223,15 @@ body:has(.great-forge.chamber-archive){
   .chamber-commission .build-step-actions button,.chamber-commission .build-final-back{min-height:38px!important;padding:8px 13px!important;font-size:9px!important}
   .chamber-commission .build-step-2{display:grid!important;grid-template-columns:minmax(0,1.08fr) minmax(340px,.92fr)!important;gap:12px 16px!important;align-items:stretch!important}
   .chamber-commission .build-step-2>.build-stepper{grid-column:1/-1!important}
-  .chamber-commission .build-step-2>.mark-grid{grid-column:1!important;grid-row:2!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
-  .chamber-commission .build-step-2>.commission-note{grid-column:2!important;grid-row:2!important;margin:0!important;padding:13px!important}
-  .chamber-commission .build-step-2>.commission-note textarea{height:100%!important;min-height:0!important;resize:none!important}
+  /* The chamber above is a fixed-height, overflow:hidden viewport (no page
+     scroll) - a row that can grow past its allotted space (a longer
+     description string, larger reading-scale text, more preference boxes)
+     has nowhere to go but invisible, off the bottom of a container that
+     never scrolls. Bound each column to the same real remaining height and
+     let it scroll internally instead. */
+  .chamber-commission .build-step-2>.mark-grid{grid-column:1!important;grid-row:2!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;max-height:calc(100svh - var(--mf-frame-top) - 300px)!important;overflow-y:auto!important}
+  .chamber-commission .build-step-2>.commission-note{grid-column:2!important;grid-row:2!important;margin:0!important;padding:13px!important;max-height:calc(100svh - var(--mf-frame-top) - 300px)!important;overflow:hidden!important}
+  .chamber-commission .build-step-2>.commission-note textarea{height:100%!important;min-height:0!important;resize:none!important;overflow-y:auto!important}
   .chamber-commission .build-step-2>.build-final-back{grid-column:1!important;grid-row:3!important;justify-self:start!important;margin:0!important}
   .chamber-commission .build-step-2>.awaken-button{grid-column:2!important;grid-row:3!important;min-height:42px!important;margin:0!important;padding:8px 13px!important}
 }
