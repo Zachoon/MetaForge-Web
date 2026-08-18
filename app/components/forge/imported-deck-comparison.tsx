@@ -16,9 +16,43 @@ type HoverBind = (name: string) => {
 type StageSlide =
   | { kind: "plan" }
   | { kind: "swap"; swap: Swap; cutWasForgeAdded: boolean }
-  | { kind: "adjustment"; adjustment: Adjustment };
+  | { kind: "adjustment"; adjustment: Adjustment }
+  | { kind: "adjustmentPair"; trim: Adjustment; add: Adjustment };
 
-const key = (value = "") => value.trim().toLocaleLowerCase("en");
+// List-completion adjustments arrive as two independent bags (every trim,
+// every addition) with no engine-asserted link between any specific pair -
+// unlike a real swap, pairing one here is a presentation choice, not a
+// causal claim ("this was cut so that could be added"). Zipped by position
+// only so the stage can show them the same side-by-side way a real swap
+// reads, each half keeping its own honest, independent reason rather than
+// inventing a shared one; whichever list is longer, the leftover cards
+// still get their own single-card slide.
+function pairAdjustments(adjustments: Adjustment[]): StageSlide[] {
+  const trims = adjustments.filter((entry) => entry.kind === "trimmed");
+  const adds = adjustments.filter((entry) => entry.kind === "added");
+  const pairCount = Math.min(trims.length, adds.length);
+  const slides: StageSlide[] = [];
+  for (let index = 0; index < pairCount; index += 1) {
+    slides.push({ kind: "adjustmentPair", trim: trims[index], add: adds[index] });
+  }
+  for (let index = pairCount; index < trims.length; index += 1) {
+    slides.push({ kind: "adjustment", adjustment: trims[index] });
+  }
+  for (let index = pairCount; index < adds.length; index += 1) {
+    slides.push({ kind: "adjustment", adjustment: adds[index] });
+  }
+  return slides;
+}
+
+// A card name can reach this component two ways: the player's raw pasted
+// text (almost always a plain ASCII apostrophe, since that's what a normal
+// keyboard types) and the Forge/Scryfall-resolved canonical name (which
+// uses the curly U+2019 apostrophe, e.g. "Panther's Claws" -> "Panther’s
+// Claws"). Without normalizing that away, the two spellings of the same
+// card never match: it shows up in a pillar as changed, but is never in
+// swapIndexByCard's keys, so clicking it does nothing and it has no stage
+// slide - not a jump failure so much as complete silent non-membership.
+const key = (value = "") => value.trim().toLocaleLowerCase("en").replace(/[‘’ʼ`]/g, "'");
 const PREVIEW_WIDTH = 220;
 const PREVIEW_MARGIN = 18;
 
@@ -205,6 +239,47 @@ function AdjustmentSlide({
   );
 }
 
+/**
+ * Two list-completion changes on stage together, read the same way a real
+ * swap is - but each side keeps its own independent reason (see
+ * pairAdjustments above) rather than a single shared line, since nothing
+ * here asserts the trim caused the addition.
+ */
+function AdjustmentPairSlide({
+  trim,
+  add,
+  bindHover,
+}: {
+  trim: Adjustment;
+  add: Adjustment;
+  bindHover: HoverBind;
+}) {
+  return (
+    <article className="stage-swap stage-adjustment-pair">
+      <figure className="stage-card is-cut">
+        <img src={cardImage(trim.name)} alt="" />
+        <figcaption>
+          <small>TRIM</small>
+          <b {...bindHover(trim.name)}>{trim.name}</b>
+          <em className="stage-card-note">{trim.reason}</em>
+        </figcaption>
+      </figure>
+      <div className="stage-reason">
+        <i>→</i>
+        <em>Same list-completion pass — not asserted as cause and effect</em>
+      </div>
+      <figure className="stage-card is-add">
+        <img src={cardImage(add.name)} alt="" />
+        <figcaption>
+          <small>ADD</small>
+          <b {...bindHover(add.name)}>{add.name}</b>
+          <em className="stage-card-note">{add.reason}</em>
+        </figcaption>
+      </figure>
+    </article>
+  );
+}
+
 /** First stage slide: what the Forge read, what it implemented, and why — the orientation before stepping through each individual change. */
 function PlanSlide({
   strategyTitle,
@@ -268,6 +343,7 @@ export function ImportedDeckComparison({
   strategySummary,
   coreSummary,
   occupancyEngines = [],
+  onContinue,
 }: {
   originalRows: DeckRow[];
   proposedRows: DeckRow[];
@@ -277,6 +353,7 @@ export function ImportedDeckComparison({
   strategySummary: string;
   coreSummary: string;
   occupancyEngines?: string[];
+  onContinue?: () => void;
 }) {
   const removed = changedNames(originalRows, proposedRows);
   const added = changedNames(proposedRows, originalRows);
@@ -293,25 +370,35 @@ export function ImportedDeckComparison({
 
   const hasSwaps = swaps.length > 0;
   // The plan comes first — orientation before detail — then every reasoned
-  // lab swap, then every mechanical list-completion adjustment, each its
-  // own step instead of a bundled dump.
+  // lab swap, then every list-completion adjustment (paired with its
+  // counterpart where one exists — see pairAdjustments), each its own step
+  // instead of a bundled dump.
+  const adjustmentSlides = useMemo(() => pairAdjustments(adjustments), [adjustments]);
   const slides: StageSlide[] = [
     { kind: "plan" },
     ...swaps.map((swap): StageSlide => ({ kind: "swap", swap, cutWasForgeAdded: !originalKeys.has(key(swap.cut)) })),
-    ...adjustments.map((adjustment): StageSlide => ({ kind: "adjustment", adjustment })),
+    ...adjustmentSlides,
   ];
 
   const swapIndexByCard = useMemo(() => {
     const map = new Map<string, number>();
-    swaps.forEach((swap, index) => {
-      map.set(key(swap.cut), index + 1);
-      map.set(key(swap.add), index + 1);
+    let index = 1; // slide 0 is always the plan
+    swaps.forEach((swap) => {
+      map.set(key(swap.cut), index);
+      map.set(key(swap.add), index);
+      index += 1;
     });
-    adjustments.forEach((adjustment, index) => {
-      map.set(key(adjustment.name), 1 + swaps.length + index);
+    adjustmentSlides.forEach((slide) => {
+      if (slide.kind === "adjustment") {
+        map.set(key(slide.adjustment.name), index);
+      } else if (slide.kind === "adjustmentPair") {
+        map.set(key(slide.trim.name), index);
+        map.set(key(slide.add.name), index);
+      }
+      index += 1;
     });
     return map;
-  }, [swaps, adjustments]);
+  }, [swaps, adjustmentSlides]);
 
   const [activeIndex, setActiveIndex] = useState(0);
   const clampedIndex = Math.min(activeIndex, slides.length - 1);
@@ -327,15 +414,15 @@ export function ImportedDeckComparison({
     if (index !== undefined) goTo(index);
   }, [swapIndexByCard, goTo]);
 
-  const labelFor = useCallback((slide: StageSlide, index: number) => {
+  const labelFor = useCallback((slide: StageSlide) => {
     if (slide.kind === "plan") return "Commander plan";
     if (slide.kind === "swap") {
       const swapNumber = swaps.findIndex((swap) => swap === slide.swap) + 1;
       return `Swap ${swapNumber} of ${swaps.length}`;
     }
-    const adjustmentNumber = adjustments.findIndex((adjustment) => adjustment === slide.adjustment) + 1;
-    return `Change ${adjustmentNumber} of ${adjustments.length}`;
-  }, [swaps, adjustments]);
+    const adjustmentNumber = adjustmentSlides.indexOf(slide) + 1;
+    return `Change ${adjustmentNumber} of ${adjustmentSlides.length}`;
+  }, [swaps, adjustmentSlides]);
 
   return (
     <section className="imported-revision-comparison" aria-labelledby="revision-comparison-title">
@@ -346,7 +433,16 @@ export function ImportedDeckComparison({
       <div className="revision-comparison-grid">
         <DeckColumn title="Your submitted list" eyebrow="BEFORE" rows={originalRows} changed={removed} tone="cut" bindHover={bindHover} jumpable={swapIndexByCard} onJump={jumpToCard} />
         <section className="swap-station" aria-label="Swap station and strategy read">
-          <header><small>RECOMMENDATION CENTER</small><h2>Swap station</h2><p>Each recommendation preserves deck size and the plan’s required structural floors.</p></header>
+          <header>
+            <small>RECOMMENDATION CENTER</small>
+            <h2>Swap station</h2>
+            <p>Each recommendation preserves deck size and the plan’s required structural floors.</p>
+            {onContinue && (
+              <button type="button" className="swap-station-continue" onClick={onContinue}>
+                Continue to Decklist <b>→</b>
+              </button>
+            )}
+          </header>
           <div className="swap-stage">
             {slides.length > 1 && (
               <button type="button" className="stage-arrow is-prev" onClick={goPrev} disabled={clampedIndex === 0} aria-label="Previous step">‹</button>
@@ -362,6 +458,8 @@ export function ImportedDeckComparison({
             >
               {activeSlide.kind === "swap" ? (
                 <SwapSlide swap={activeSlide.swap} cutWasForgeAdded={activeSlide.cutWasForgeAdded} bindHover={bindHover} />
+              ) : activeSlide.kind === "adjustmentPair" ? (
+                <AdjustmentPairSlide trim={activeSlide.trim} add={activeSlide.add} bindHover={bindHover} />
               ) : activeSlide.kind === "adjustment" ? (
                 <AdjustmentSlide adjustment={activeSlide.adjustment} bindHover={bindHover} />
               ) : (
@@ -388,14 +486,14 @@ export function ImportedDeckComparison({
                   type="button"
                   role="tab"
                   aria-selected={index === clampedIndex}
-                  aria-label={labelFor(slide, index)}
+                  aria-label={labelFor(slide)}
                   className={index === clampedIndex ? "stage-dot is-active" : "stage-dot"}
                   onClick={() => goTo(index)}
                 />
               ))}
             </div>
           )}
-          <p className="stage-step-label">{labelFor(activeSlide, clampedIndex)}</p>
+          <p className="stage-step-label">{labelFor(activeSlide)}</p>
         </section>
         <DeckColumn title="Forge proposed revision" eyebrow="AFTER" rows={proposedRows} changed={added} tone="add" bindHover={bindHover} jumpable={swapIndexByCard} onJump={jumpToCard} />
       </div>

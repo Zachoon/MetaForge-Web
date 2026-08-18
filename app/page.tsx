@@ -2161,23 +2161,43 @@ export default function Home() {
         confident: true,
       }]
     : [], [importedComparisonExperiment, nativeMasterworkContext?.laboratory?.summary]);
+  const importedOriginalQuantityByName = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const row of importedOriginalRows) {
+      const rowKey = cardFactKey(row.name);
+      map.set(rowKey, (map.get(rowKey) || 0) + Number(row.quantity || 0));
+    }
+    return map;
+  }, [importedOriginalRows]);
   const importedComparisonAdjustments = useMemo(() => {
     const additions = nativeMasterworkContext?.changes?.added || [];
     const trims = nativeMasterworkContext?.changes?.trimmed || [];
+    const singleton = isCommanderFormat(format);
     return [
       ...additions.map((name: string) => ({
         name,
         kind: "added" as const,
-        reason: "Added while completing the submitted list to the format's legal deck size.",
+        reason: "Added to fill a role or curve gap the submitted list left open.",
       })),
-      ...trims.map((entry: { name: string; cut: number }) => ({
-        name: entry.name,
-        kind: "trimmed" as const,
-        cut: entry.cut,
-        reason: `Trimmed ${entry.cut} ${entry.cut === 1 ? "copy" : "copies"} to satisfy deck-size or copy-limit rules.`,
-      })),
+      ...trims.map((entry: { name: string; cut: number }) => {
+        const originalQuantity = importedOriginalQuantityByName.get(cardFactKey(entry.name)) ?? entry.cut;
+        const remaining = originalQuantity - entry.cut;
+        // A full cut (remaining 0) means the card lost its slot on the
+        // merits, competing against every other card the Forge could have
+        // played there — never a deck-size bookkeeping matter, so it gets
+        // an honest "didn't make the cut" framing instead of implying a
+        // mechanical size rule forced the Forge's hand. A partial trim
+        // (some copies remain) really is mechanical: the format's copy
+        // limit, not deck size, is what's actually binding here.
+        const reason = remaining > 0
+          ? (singleton
+            ? `Reduced from ${originalQuantity} to ${remaining} — Commander allows only one copy of most cards.`
+            : `Reduced from ${originalQuantity} to ${remaining} copies to stay within this format's legal copy limit.`)
+          : "Cut entirely — didn't earn a slot against the cards competing for it.";
+        return { name: entry.name, kind: "trimmed" as const, cut: entry.cut, reason };
+      }),
     ];
-  }, [nativeMasterworkContext?.changes]);
+  }, [nativeMasterworkContext?.changes, importedOriginalQuantityByName, format]);
   const activeCommanderName = useMemo(() => {
     if (!isCommanderFormat(format)) return "";
     const rowNames = new Map(deckRows.map((row) => [cardFactKey(row.name), row.name]));
@@ -6786,23 +6806,17 @@ export default function Home() {
           )}
           {/* Global chrome is only .forge-bar + .forge-global-rail. Never remount masterwork-shell-top/rail (Academy header) inside this pane. */}
           {hasValidatedDeck && isImportedDeckReview && siteRail === "decklist" && !swapStationReviewed && (
-            <>
-              <ImportedDeckComparison
-                originalRows={importedOriginalRows}
-                proposedRows={importedProposedRows}
-                swaps={importedComparisonSwaps}
-                adjustments={importedComparisonAdjustments}
-                strategyTitle={honestCoachSummary.planStory?.title || honestCoachSummary.intentions.title}
-                strategySummary={honestCoachSummary.deckUnderstanding?.playerSummary?.detail || honestCoachSummary.intentions.accomplish}
-                coreSummary={honestCoachSummary.intentions.establish || honestCoachSummary.planStory?.planLabel || "Retain the cards carrying the deck's primary engine and required structural roles."}
-                occupancyEngines={coachOccupancyLabels}
-              />
-              <footer className="revision-continue">
-                <button type="button" onClick={() => { setSwapStationReviewed(true); window.scrollTo(0, 0); }}>
-                  Continue to Decklist <b>→</b>
-                </button>
-              </footer>
-            </>
+            <ImportedDeckComparison
+              originalRows={importedOriginalRows}
+              proposedRows={importedProposedRows}
+              swaps={importedComparisonSwaps}
+              adjustments={importedComparisonAdjustments}
+              strategyTitle={honestCoachSummary.planStory?.title || honestCoachSummary.intentions.title}
+              strategySummary={honestCoachSummary.deckUnderstanding?.playerSummary?.detail || honestCoachSummary.intentions.accomplish}
+              coreSummary={honestCoachSummary.intentions.establish || honestCoachSummary.planStory?.planLabel || "Retain the cards carrying the deck's primary engine and required structural roles."}
+              occupancyEngines={coachOccupancyLabels}
+              onContinue={() => { setSwapStationReviewed(true); window.scrollTo(0, 0); }}
+            />
           )}
           <div className={`testing-layout chapter-${activeForgeChapter}-active ${deckViewMode}-deck-view${isImportedDeckReview ? " imported-deck-review" : ""}`}>
             <article className="deck-manuscript">
