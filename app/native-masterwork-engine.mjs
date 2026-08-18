@@ -4,8 +4,10 @@ import { rankOneSlotCounterfactuals, runOneSlotCounterfactualLab } from "./nativ
 import { evaluateCommanderPowerSignal, POWER_TIERS, powerSignalCategoryFor, CATEGORY_WEIGHT as POWER_CATEGORY_WEIGHT } from "./commander-power-signal.mjs";
 import { activeInteractionWiring, resolveBrainPolicy, BRAIN_POLICY_V1_CONTROL } from "./brain-policy.mjs";
 import {
+  cardClearsPayoffMagnitudeGate,
   colorlessFixingCredit,
   colorlessPipsFromCost,
+  commanderPayoffMagnitudeGates,
   curveManaValue,
   hasVariableGenericCost,
   isModalToolbox,
@@ -14,13 +16,16 @@ import {
   listHasTypalDensity,
   modalAwareRoleScore,
   oracleOf,
+  payoffMagnitudeHitsFor,
   restrictedEffectCastingFactor,
   restrictedWinconFactor,
   roleFloorCredit,
 } from "./conditional-effect-credit.mjs";
 export {
+  cardClearsPayoffMagnitudeGate,
   colorlessFixingCredit,
   colorlessPipsFromCost,
+  commanderPayoffMagnitudeGates,
   curveManaValue,
   hasVariableGenericCost,
   isModalToolbox,
@@ -28,6 +33,7 @@ export {
   landRestrictedFixingPenalty,
   listHasTypalDensity,
   modalAwareRoleScore,
+  payoffMagnitudeHitsFor,
   restrictedEffectCastingFactor,
   restrictedWinconFactor,
   roleFloorCredit,
@@ -786,6 +792,7 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
   const blueprintRoleHits = roles.filter((role) => context.blueprint.desiredRoles.includes(role));
   const blueprintMechanicHits = blueprintMechanicHitsFor(card, context.blueprint.requestedMechanics);
   const commanderConnectionSignals = commanderConnectionSignalsFor(card, mechanics, context.commanderMechanics, context.commanderScopes);
+  const payoffMagnitudeHits = payoffMagnitudeHitsFor(card, context.commanderPayoffGates || []);
   const castingFactor = restrictedEffectCastingFactor({
     manaCost: card.manaCost || card.mana_cost || "",
     colorIdentity: card.colorIdentity || card.color_identity || [],
@@ -850,6 +857,7 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
     blueprintRoleHits,
     blueprintMechanicHits,
     commanderConnectionSignals,
+    payoffMagnitudeHits,
     sequenceStages,
     excludedRoleHits,
     strategicSemantics,
@@ -900,6 +908,12 @@ function prepareForgeAnalysis(input, evidenceByName) {
     }),
     commanderTribes: Object.freeze(commanderTribesFromOracle(allCommanders(input))),
     commanderOracle: allCommanders(input).map((commander) => commander.oracleText || commander.oracle_text || "").join(" "),
+    // Founder #027: "whenever you cast an artifact spell with mana value 4
+    // or greater" read directly off the commander, independent of any note —
+    // a player who picks a payoff commander with no custom fantasy text
+    // still gets graded against its real trigger condition.
+    commanderPayoffGates: Object.freeze(allCommanders(input).flatMap((commander) =>
+      commanderPayoffMagnitudeGates(commander.oracleText || commander.oracle_text || ""))),
     // Same cost_cheat detection strategic-intent.mjs's expensiveThreatSupport
     // uses to credit the 99, applied here to the commander's own text. A
     // commander whose ability puts cards into play without paying for them
@@ -1025,7 +1039,7 @@ function scoreCard(entry, input, variant, context) {
     castingFactor,
     winconFactor,
     fixingCredit,
-    score: (entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.commanderConnectionSignals.length * 14 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.blueprintMechanicHits.reduce((sum, mechanic) => sum + blueprintMechanicDefinition(mechanic).score, 0) + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + entry.budgetScore + entry.complexityScore + entry.powerTierScore + deterministicTieBreak) * castingFactor * fixingCredit * winconFactor,
+    score: (entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.commanderConnectionSignals.length * 14 * variant.synergy + entry.payoffMagnitudeHits * 14 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.blueprintMechanicHits.reduce((sum, mechanic) => sum + blueprintMechanicDefinition(mechanic).score, 0) + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + entry.budgetScore + entry.complexityScore + entry.powerTierScore + deterministicTieBreak) * castingFactor * fixingCredit * winconFactor,
     synergyHits: entry.synergyHits,
     synergyPotential: entry.synergyPotential,
     preferenceHits: entry.preferenceHits,
@@ -1036,6 +1050,7 @@ function scoreCard(entry, input, variant, context) {
     blueprintRoleHits: entry.blueprintRoleHits || [],
     blueprintMechanicHits: entry.blueprintMechanicHits || [],
     commanderConnectionSignals: entry.commanderConnectionSignals || [],
+    payoffMagnitudeHits: entry.payoffMagnitudeHits || 0,
     sequenceStages: entry.sequenceStages || [],
     strategicSemantics: entry.strategicSemantics,
     mechanics: entry.mechanics,
@@ -1071,6 +1086,7 @@ function advancesStrategyContract(entry, blueprint) {
     entry.blueprintRoleHits?.length ||
     entry.blueprintMechanicHits?.length ||
     entry.commanderConnectionSignals?.length ||
+    entry.payoffMagnitudeHits ||
     blueprint.packageSignals.some((signal) =>
       entry.mechanics?.produces?.includes(signal) || entry.mechanics?.rewards?.includes(signal)),
   );
@@ -1248,6 +1264,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       blueprintRoleHits: candidate.blueprintRoleHits || [],
       blueprintMechanicHits: candidate.blueprintMechanicHits || [],
       commanderConnectionSignals: candidate.commanderConnectionSignals || [],
+      payoffMagnitudeHits: candidate.payoffMagnitudeHits || 0,
       sequenceStages: candidate.sequenceStages || [],
       strategicSemantics: candidate.strategicSemantics,
       mechanics: candidate.mechanics,
@@ -1353,6 +1370,13 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
   for (const candidate of payable.filter((entry) => (entry.commanderConnectionSignals || []).length).slice(0, commanderAnchorLimit)) {
     addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
   }
+  // A candidate that actually clears the commander's own magnitude-qualified
+  // trigger (mana value / power / toughness N or greater/less) is a more
+  // certain connection than a same-type card that never fires it — reserve
+  // it the same way, not folded into the type-only role anchor below.
+  for (const candidate of payable.filter((entry) => entry.payoffMagnitudeHits).slice(0, commanderAnchorLimit)) {
+    addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
+  }
   const roleAnchorLimit = singleton ? 10 : 4;
   for (const role of blueprint.desiredRoles) {
     for (const candidate of payable.filter((entry) => (entry.blueprintRoleHits || []).includes(role)).slice(0, roleAnchorLimit)) {
@@ -1406,7 +1430,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
         return false;
       });
       const fillsRole = entry.roles.some((role) => (deficitState.roles[role]?.deficit || 0) > 0);
-      if (fillsPackage || fillsRole || ((entry.commanderConnectionSignals || []).length && isUnrestrictedConstructionCredit(entry))) {
+      if (fillsPackage || fillsRole || (((entry.commanderConnectionSignals || []).length || entry.payoffMagnitudeHits) && isUnrestrictedConstructionCredit(entry))) {
         shortlist.set(key, entry);
       }
     }

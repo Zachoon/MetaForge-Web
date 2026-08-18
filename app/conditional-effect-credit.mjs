@@ -1,9 +1,15 @@
 // =============================================================================
-// Conditional effect credit — Founder #026
+// Conditional effect credit — Founder #026, extended by #027
 // =============================================================================
 // Restricted / mutually exclusive effects must not receive the same construction
 // credit as unconditional ones. Shared by land ranking, role floors, and
 // prospective deficit math. Not a new planning layer.
+//
+// #027 adds a second shape of the same class: a commander that only rewards
+// a spell/permanent of a given type once it clears a numeric bar ("whenever
+// you cast an artifact spell with mana value 4 or greater") is not the same
+// promise as "artifacts matter" — a candidate that shares the type but
+// misses the bar can never trigger it.
 // =============================================================================
 
 const TYPE_RESTRICTED_MANA = /chosen type/i;
@@ -327,4 +333,68 @@ export function roleCountContribution(row, role) {
   const cached = Number(row.roleFloorCredit);
   const credit = Number.isFinite(cached) ? cached : roleFloorCredit(oracleOf(row));
   return Number(row.quantity || 1) * credit;
+}
+
+// "Whenever you cast an artifact spell with mana value 4 or greater" (or a
+// power/toughness N or greater/less permanent trigger) is a real rules-text
+// pattern, not a name-specific template — this parses any commander that
+// phrases its payoff the same way. GENERIC_PAYOFF_TYPE_WORDS excludes
+// captures that name no real card type at all ("a permanent", "another
+// creature" with no more specific noun already handled by the required
+// capture group).
+const PAYOFF_MAGNITUDE_CONDITION = /whenever you (?:cast|play) (?:an?|another|one or more) ([a-z][a-z'-]*) (?:spell|permanent)s?[^.]{0,60}?\b(mana value|power|toughness) (\d+) or (less|lower|greater|more|higher)\b/gi;
+const GENERIC_PAYOFF_TYPE_WORDS = new Set(["target", "creature", "permanent", "player", "opponent", "spell", "token", "card", "another", "other"]);
+const MAGNITUDE_METRIC = Object.freeze({ "mana value": "manaValue", power: "power", toughness: "toughness" });
+
+/**
+ * Structured {typeWord, metric, threshold, direction} gates parsed off a
+ * commander's own oracle text. "Creature" is kept out of
+ * GENERIC_PAYOFF_TYPE_WORDS on purpose — power/toughness thresholds are
+ * overwhelmingly a creature-cast condition, so treating "creature" as too
+ * generic to be a real type filter would silence the exact case the metric
+ * exists for.
+ */
+export function commanderPayoffMagnitudeGates(oracle = "") {
+  const gates = [];
+  for (const match of String(oracle || "").matchAll(PAYOFF_MAGNITUDE_CONDITION)) {
+    const typeWord = String(match[1] || "").toLowerCase();
+    if (!typeWord || (GENERIC_PAYOFF_TYPE_WORDS.has(typeWord) && typeWord !== "creature")) continue;
+    const metric = MAGNITUDE_METRIC[match[2].toLowerCase()];
+    if (!metric) continue;
+    const direction = /less|lower/i.test(match[4]) ? "atMost" : "atLeast";
+    gates.push({ typeWord, metric, threshold: Number(match[3]), direction });
+  }
+  return gates;
+}
+
+function numericStat(value) {
+  if (value === undefined || value === null || value === "") return null;
+  const num = Number(String(value).replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(num) ? num : null;
+}
+
+/**
+ * null = the candidate isn't even the gated type (the gate doesn't apply to
+ * it at all, positive or negative). true/false = it is that type, and does
+ * or doesn't clear the stated bar. Mana value goes through curveManaValue so
+ * an X spell isn't credited as a 1-drop payoff trigger it can't reliably be.
+ */
+export function cardClearsPayoffMagnitudeGate(card = {}, gate) {
+  const typeLine = String(card.typeLine || card.type_line || "");
+  if (!new RegExp(`\\b${gate.typeWord}\\b`, "i").test(typeLine)) return null;
+  const value = gate.metric === "manaValue"
+    ? curveManaValue(card.manaCost || card.mana_cost || "", Number(card.cmc) || 0)
+    : numericStat(gate.metric === "power" ? card.power : card.toughness);
+  if (value === null) return false;
+  return gate.direction === "atMost" ? value <= gate.threshold : value >= gate.threshold;
+}
+
+/**
+ * How many of the commander's own magnitude-qualified payoff conditions this
+ * candidate actually clears. Additive only — a type match that misses the
+ * bar scores the same as before, never worse; a match that clears it earns
+ * real extra credit, so it can outrank same-type filler on score alone.
+ */
+export function payoffMagnitudeHitsFor(card, gates = []) {
+  return gates.reduce((count, gate) => count + (cardClearsPayoffMagnitudeGate(card, gate) === true ? 1 : 0), 0);
 }

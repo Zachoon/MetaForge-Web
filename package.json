@@ -43,6 +43,7 @@
     "validate:founder-024": "node --test tests/founder-issue-024-commission-contract.test.mjs",
     "validate:founder-025": "node --test tests/founder-issue-025-philosophy-commission.test.mjs",
     "validate:founder-026": "node --test tests/founder-issue-026-restricted-effect-overcredit.test.mjs",
+    "validate:founder-027": "node --test tests/founder-issue-027-payoff-magnitude.test.mjs",
     "validate:token-occupancy": "node --test tests/token-package-occupancy.test.mjs",
     "validate:aristocrats-occupancy": "node --test tests/aristocrats-package-occupancy.test.mjs",
     "validate:reanimator-occupancy": "node --test tests/reanimator-package-occupancy.test.mjs",

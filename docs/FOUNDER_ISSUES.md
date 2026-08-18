@@ -866,6 +866,41 @@ Harness-gated construction change that withholds full credit unless the conditio
 
 **Live evidence (2026-08-15):** Teysa, Opulent Oligarch 99. Build was coherent (clues / drain / artifact-sac). Remaining class holes after mana/wincon follow-up: generic Angel / token bodies inheriting a Clue commander’s edge. Follow-up scopes Investigate/Clue production and withholds token-with-flying as an evasion payoff.
 
+### #027 — Payoff-magnitude overcredit
+
+| | |
+|---|---|
+| **Layer** | Strategic / Construction |
+| **Status** | 🔁 Shipped (harness-gated), pending Live Founder Trial |
+| **Brain impact** | Yes — representation fix in default construction. |
+
+**Player evidence**
+
+1. 2026-08-18 Selesnya **T'Challa, the Black Panther** 99 (note: "Artifacts matter, large artifacts, Vibranium colorless mana for artifact spells"): only 6 of 19 selected artifacts cleared T'Challa's own "cast an artifact spell with mana value 4 or greater" trigger; the rest (Hangarback Walker, Twitching Doll, Grinding Station, Universal Automaton, Bloodline Pretender, ...) can never fire it. `report.blueprintIntent` collapsed the note into a single flat `desiredRoles: ["artifacts"]` boolean, and the commander-oracle-signal path graded every artifact candidate identically regardless of whether it actually cleared the stated mana-value bar.
+
+**Class of failure** (not a T'Challa patch, not a Marvel/Vibranium deny-list):
+
+> A commander that only rewards a spell/permanent of a stated type once it clears a numeric bar (mana value / power / toughness N or greater/less) is graded as if "type matters" were the whole promise — a same-type candidate that never clears the bar gets identical credit to one that reliably fires it.
+
+One manifestation:
+
+1. **Magnitude-qualified cast/play triggers.** "Whenever you cast an artifact spell with mana value 4 or greater" is not "artifacts matter" — construction credit must be withheld from same-type filler that can never trigger it. Verified to generalize across metric (mana value, power, toughness) and direction (N or greater, N or less); not special-cased to any one commander's wording.
+
+**Do not fix as**
+
+- `if (commander === "T'Challa")` / any name or ID branch
+- a Marvel/Vibranium-specific deny/allow list
+- a coefficient nudge to make this screenshot prettier
+- a new hardcoded role (e.g. "artifacts_4plus") bolted onto the flat role vocabulary
+
+**Legal next step (done 2026-08-18)**
+
+`commanderPayoffMagnitudeGates` (`app/conditional-effect-credit.mjs`) parses a commander's own oracle text for "whenever you cast/play a [type] spell/permanent with [mana value/power/toughness] N or greater/less" into a structured `{typeWord, metric, threshold, direction}` gate — general parsing, independent of any note text and not keyed to the existing flat role vocabulary. `cardClearsPayoffMagnitudeGate` grades a candidate against that gate (`null` when the candidate isn't even the gated type, so a miss on an unrelated card is never scored as a threshold failure). `payoffMagnitudeHitsFor` sums cleared gates per candidate; wired into `native-masterwork-engine.mjs`'s score formula (`+14 * variant.synergy` per cleared gate — the same weight a verified commander produce/reward connection already carries), the commander-anchor reservation pass, and the construction shortlist gate, plus `slot-justification-ledger.mjs`'s footprint so a magnitude-cleared candidate survives `repairWeaklyJustifiedSlots` the same way a verified commander connection does. Purely additive: a type-only match that never clears the bar keeps its pre-existing credit, never worse. Tests: `npm run validate:founder-027`. Field: `npm run validate:harness:field`.
+
+**Live trial:** Not yet run. Harness-gated only. T'Challa reproduction shows selected mana-value-4-or-greater artifact representation rising from 6/19 (32%) to 10/22 (45%), with concrete replacements (Metalwork Colossus, The Aetherspark, The One Ring, Giggling Skitterspike now selected; Liberator, Urza's Battlethopter and Grinding Station no longer). Filler artifacts below the bar (Hangarback Walker, Twitching Doll, Sword of Wealth and Power, ...) still appear — an honest, partial improvement in representation, not a claim every irrelevant artifact is gone. #026's own history shows a first ship can pass harness and still fail live trial; this needs the same real-founder check before being called `Founder Confirmed`.
+
+Checked and deliberately left out of scope: `restrictedEffectCastingFactor` (`conditional-effect-credit.mjs`) already stops artifact-only colorless mana (Vibranium-class `{C}`) from being penalized when spent on an artifact spell, but it does not positively reward a deck for having real uses for that restricted mana beyond what the magnitude-gate fix above already does incidentally (an MV4+ artifact is exactly a good use for Vibranium's `{C}`). Rewarding resource-spending synergy directly is a different capability from magnitude-threshold grading and is left for a follow-up, not folded in here.
+
 ---
 
 ## How to add the next issue
@@ -877,4 +912,4 @@ Harness-gated construction change that withholds full credit unless the conditio
 
 ---
 
-*Last updated: 2026-08-15 — #026 Clue/token-scope follow-up: investigate is not generic tokens; artifact outlets stay. 104-forge field: pass 100%, avoidable weak identical, emergence 11.317 vs 11.24 frozen.*
+*Last updated: 2026-08-18 — #027 shipped: magnitude-qualified commander payoff conditions (mana value / power / toughness N or greater/less) now grade same-type candidates by whether they actually clear the bar. 104-forge field: pass 100%, hard failures 0; beneficial_emergence (11.24 → 10.923/forge) and the equipment_voltron golden-ceiling overshoot (weak=5, ceiling=4) are both pre-existing on main, confirmed unchanged by this fix via direct baseline diff — not caused by #027.*
