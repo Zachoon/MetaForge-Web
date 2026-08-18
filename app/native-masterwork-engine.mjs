@@ -42,6 +42,7 @@ import {
 } from "./forge-recommendation-ledger.mjs";
 
 import {
+  configureInteractionGraphTagLookup,
   extractMechanicalSignals,
   findUnusedEnginePartners,
 } from "./forge-interaction-graph.mjs";
@@ -50,6 +51,7 @@ import {
   buildStrategicIntent,
   cardSatisfiesPackageCore,
   cardSatisfiesPackageSupport,
+  configureCardTagLookup,
   expensiveThreatSupport,
   replacementCompatible,
   strategicSemanticsFor,
@@ -108,6 +110,12 @@ import {
 } from "./strategic-plan-competition.mjs";
 
 import CARD_MECHANICS from "./card-mechanics.mjs";
+// strategic-intent.mjs's tagsOf() takes its real per-card lookup by
+// injection rather than a static import (see configureCardTagLookup there
+// for why) — this is the one place that wires the real database in, since
+// every real server construction path reaches this module first.
+configureCardTagLookup((normalizedName) => CARD_MECHANICS[normalizedName] || []);
+configureInteractionGraphTagLookup((normalizedName) => CARD_MECHANICS[normalizedName] || []);
 // parseNativeBlueprintIntent/manaConsistencyReport/hypergeometricAtLeast and
 // the small helpers they alone need (ROLE_PATTERNS, BLUEPRINT_FILLER_WORDS,
 // blueprintMechanicDefinition) live in blueprint-note-and-mana.mjs, a leaf
@@ -124,6 +132,16 @@ import {
   ROLE_PATTERNS,
 } from "./blueprint-note-and-mana.mjs";
 export { hypergeometricAtLeast, manaConsistencyReport, parseNativeBlueprintIntent } from "./blueprint-note-and-mana.mjs";
+
+// classifyNativeCard/conceptSignals also moved out — see that file's header.
+// app/deck-motif-scan.mjs (a CLIENT module, reachable from page.tsx) calls
+// classifyNativeCard for a cosmetic motif-icon feature; leaving these here
+// meant importing classifyNativeCard from this module at all pulled this
+// module's ENTIRE server-only construction graph (CARD_MECHANICS included)
+// into the browser bundle, regardless of the two fixes above.
+import { classifyNativeCard, conceptSignals, configureCardRoleTagLookup } from "./card-role-classification.mjs";
+export { classifyNativeCard, conceptSignals } from "./card-role-classification.mjs";
+configureCardRoleTagLookup((normalizedName) => CARD_MECHANICS[normalizedName] || []);
 
 import {
   getMetaIntelligence,
@@ -163,18 +181,9 @@ const BASIC_COLOR_BY_NAME = Object.freeze({
 // database has no dedicated signal for (interaction, sweeper, artifacts,
 // combat, discard, draw — "card_advantage" is too broad to stand in for
 // draw specifically) are left to the regex alone rather than guessing.
-const ROLE_TAGS = Object.freeze({
-  ramp: ["mana_acceleration"],
-  protection: ["protection"],
-  recursion: ["graveyard_recursion"],
-  selection: ["scry", "surveil"],
-  tokens: ["token_producer"],
-  sacrifice: ["sacrifice_outlet"],
-  counters: ["counter_producer"],
-  graveyard: ["graveyard_setup", "mill"],
-  spells: ["spell_payoff"],
-  lifegain: ["lifegain", "lifegain_payoff"],
-});
+// ROLE_TAGS/roleTagsFor/classifyNativeCard/conceptSignals now live in
+// card-role-classification.mjs (imported and re-exported above) — see that
+// file's header for why.
 
 // "Destroy target creature" and "destroy target creature with mana value 3
 // or less" both earn the "interaction" role identically above, but a real
@@ -601,45 +610,8 @@ export function complexityScoreFor(textComplexity, complexity) {
   return textComplexity * pressure;
 }
 
-// Every basic land is tagged mana_acceleration in the database — "adds
-// mana" is true of literally every land, which isn't what the "ramp" role
-// means here (accelerating ahead of your land drops). Real mana rocks and
-// dorks are never lands, so the tag is only trustworthy for the "ramp"
-// role specifically when the card isn't one.
-function roleTagsFor(card, isLand) {
-  const tags = CARD_MECHANICS[normalized(card?.name)];
-  if (!tags) return [];
-  return Object.entries(ROLE_TAGS)
-    .filter(([role, tagNames]) => !(isLand && role === "ramp") && tagNames.some((tag) => tags.includes(tag)))
-    .map(([role]) => role);
-}
-
-export function classifyNativeCard(card) {
-  const typeLine = String(card.typeLine || card.type_line || "");
-  const text = cardText(card);
-  const roles = [];
-  const isLand = /\bLand\b/i.test(typeLine);
-  if (isLand) roles.push("land");
-  for (const [role, patterns] of Object.entries(ROLE_PATTERNS)) {
-    if (patterns.some((pattern) => pattern.test(text))) roles.push(role);
-  }
-  roles.push(...roleTagsFor(card, isLand));
-  if (!roles.includes("land") && (/\bCreature\b|Planeswalker/i.test(typeLine) || /you win the game/i.test(text))) roles.push("threat");
-  return unique(roles);
-}
-
-// Same database cross-reference as classifyNativeCard, applied to a
-// commander's own text so the synergy bonus below ("does this card do what
-// my commander cares about") sees the same evidence a card's own role
-// classification does — a commander whose ramp ability is phrased in a way
-// the regex above doesn't cover would otherwise silently grant no ramp
-// synergy bonus at all.
-export function conceptSignals(card) {
-  const text = normalized(card?.oracleText || card?.oracle_text || "");
-  const regexSignals = Object.keys(ROLE_PATTERNS).filter((role) => ROLE_PATTERNS[role].some((pattern) => pattern.test(text)));
-  const isLand = /\bLand\b/i.test(card?.typeLine || card?.type_line || "");
-  return unique([...regexSignals, ...roleTagsFor(card, isLand)]);
-}
+// roleTagsFor/classifyNativeCard/conceptSignals moved to
+// card-role-classification.mjs (imported and re-exported above).
 
 function preferenceTerms(input) {
   const ignored = new Set(["this", "that", "with", "from", "your", "deck", "cards", "card", "want", "play", "forge", "must", "never", "should"]);

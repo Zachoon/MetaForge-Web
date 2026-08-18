@@ -172,6 +172,13 @@ function compactClientMasterwork(deck: any) {
     colorPips: entry?.colorPips,
     colorIdentity: entry?.colorIdentity,
     typeLine: entry?.typeLine,
+    // A Set, not JSON-safe as-is. Without this, entrySemantics()
+    // (strategic-intent.mjs) falls back to recomputing it from the full
+    // card-mechanics.mjs per-card database client-side (mentor-shadow's
+    // package-health explanations are the one client caller that needs
+    // it) — pulling that ~1.9MB database into the browser bundle for data
+    // the server already computed once during construction.
+    strategicSemantics: entry?.strategicSemantics ? [...entry.strategicSemantics] : [],
   });
   return {
     id: deck.id,

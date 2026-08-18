@@ -1,7 +1,21 @@
-import CARD_MECHANICS from "./card-mechanics.mjs";
 import { normalizeCardLookupKey } from "./deck-understanding.mjs";
 
 const normalizeCardName = (name = "") => String(name).normalize("NFKC").trim().toLocaleLowerCase("en");
+
+// tagSignalsFor's real per-card lookup, injected rather than a static
+// import of the ~1.9MB card-mechanics.mjs — extractMechanicalSignals here
+// is reachable from the client both directly (page.tsx's meta-breaker-
+// experiment.mjs) and via knowledge/atlas-vocabulary.mjs (page.tsx's
+// knowledge/mentor-shadow.mjs), and per the comment on tagSignalsFor below,
+// tags only ever confirm/refine a regex-derived signal — never the sole
+// source of one — so gracefully returning no tags client-side just means
+// those signals fall back to regex-only, not a broken feature.
+// native-masterwork-engine.mjs configures the real lookup for its own
+// internal (server-only) calls.
+let cardTagLookup = () => [];
+export function configureInteractionGraphTagLookup(lookup) {
+  cardTagLookup = lookup || (() => []);
+}
 
 /** Evidence classes for relationship edges (Founder #018 grows this set). */
 export const RELATIONSHIP_EVIDENCE = Object.freeze({
@@ -755,8 +769,8 @@ export function findExplicitOracleReferences(cards = []) {
 }
 
 function tagSignalsFor(card, table) {
-  const tags = CARD_MECHANICS[normalizeCardName(card?.name)];
-  if (!tags) return [];
+  const tags = cardTagLookup(normalizeCardName(card?.name));
+  if (!tags || !tags.length) return [];
   return Object.entries(table)
     .filter(([, tagNames]) => tagNames.some((tag) => tags.includes(tag)))
     .map(([signal]) => signal);

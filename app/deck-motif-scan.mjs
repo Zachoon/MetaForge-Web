@@ -5,7 +5,7 @@
 // value) run the exact same Scryfall-batching and classification logic
 // instead of two copies drifting apart.
 
-import { classifyNativeCard } from "./native-masterwork-engine.mjs";
+import { classifyNativeCard } from "./card-role-classification.mjs";
 import { motifForRoles } from "./masterwork-visual-profile.mjs";
 
 export const parseDeckRows = (text) =>

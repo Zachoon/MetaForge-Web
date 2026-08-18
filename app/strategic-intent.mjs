@@ -1,5 +1,3 @@
-import CARD_MECHANICS from "./card-mechanics.mjs";
-
 // =============================================================================
 // Strategic Intent
 // =============================================================================
@@ -11,6 +9,21 @@ import CARD_MECHANICS from "./card-mechanics.mjs";
 const normalized = (value = "") => String(value).normalize("NFKC").trim().toLocaleLowerCase("en");
 const unique = (values) => [...new Set(values.filter(Boolean))];
 const clamp = (value, min = 0, max = 100) => Math.min(max, Math.max(min, Number(value) || 0));
+
+// The one place in this file that needs the ~1.9MB card-mechanics.mjs
+// per-card database. Injected rather than statically imported so that
+// package-plan-optimizer.mjs (imported by knowledge/mentor-shadow.mjs,
+// imported by the client's page.tsx) doesn't drag the whole database into
+// the browser bundle just because this function is reachable — the client
+// never actually needs a live lookup: every real deck row already carries
+// its strategicSemantics precomputed from the server-side construction
+// pass (see rowFromAnalyzedEntry in native-masterwork-engine.mjs, which
+// calls configureCardTagLookup at module load), and entrySemantics() below
+// prefers that precomputed value before ever calling tagsOf.
+let cardTagLookup = null;
+export function configureCardTagLookup(lookup) {
+  cardTagLookup = lookup;
+}
 
 function typeLineOf(card = {}) {
   return String(card.typeLine || card.type_line || "");
@@ -30,7 +43,14 @@ function manaValueOf(card = {}) {
 }
 
 function tagsOf(card = {}) {
-  return CARD_MECHANICS[normalized(card.name)] || [];
+  if (!cardTagLookup) {
+    throw new Error(
+      "strategic-intent.mjs: tagsOf() called before configureCardTagLookup() ran. " +
+      "Import native-masterwork-engine.mjs (directly or transitively) first, or call " +
+      "configureCardTagLookup yourself if this is a standalone test of card-mechanics-backed semantics.",
+    );
+  }
+  return cardTagLookup(normalized(card.name)) || [];
 }
 
 /**

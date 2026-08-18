@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import CARD_MECHANICS from "../app/card-mechanics.mjs";
 import {
   buildInteractionGraph,
+  configureInteractionGraphTagLookup,
   extractMechanicalSignals,
   findUnusedEnginePartners,
   findExplicitOracleReferences,
@@ -46,6 +48,14 @@ import {
   RESET_SHAPES,
   RELATIONSHIP_EVIDENCE,
 } from "../app/forge-interaction-graph.mjs";
+
+// forge-interaction-graph.mjs takes its per-card tag lookup by injection
+// (configureInteractionGraphTagLookup) rather than importing card-mechanics.mjs
+// itself, so the client bundle reaching extractMechanicalSignals doesn't drag
+// the whole per-card database in with it. native-masterwork-engine.mjs wires
+// the real lookup for production; this file tests the real tag integration
+// directly, so it wires the same real lookup itself.
+configureInteractionGraphTagLookup((normalizedName) => CARD_MECHANICS[normalizedName] || []);
 
 test("connects producers to payoffs and forms packages", () => {
   const graph = buildInteractionGraph([
