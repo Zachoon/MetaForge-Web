@@ -61,7 +61,10 @@ test("proving grounds and revision opinion keep occupancy separate from proof", 
 });
 
 test("Share and export stay decklist-only — occupancy is not a list comment", () => {
-  assert.match(page, /navigator\.clipboard\.writeText\(forgedDeck\)/);
+  // Playtest bugfix: Share/Copy now route forgedDeck through
+  // formatDeckForArenaExport (front-face-only names for MTG Arena import),
+  // still the plain decklist with no occupancy commentary added.
+  assert.match(page, /navigator\.clipboard\.writeText\(formatDeckForArenaExport\(forgedDeck\)\)/);
   assert.doesNotMatch(page, /# Occupancy/);
   assert.doesNotMatch(page, /forgedDeck.*occupancy/i);
 });

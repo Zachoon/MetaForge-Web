@@ -376,6 +376,17 @@
   opacity: 1;
 }
 
+/* Chapter-navigation chrome that stays on-screen through normal deck review
+   (not just entrance/forging-ceremony moments) — only prefers-reduced-motion
+   gated these before, so the in-app Quiet toggle had no effect on them. */
+.great-forge[data-motion="quiet"] .progressive-results .forge-chapter-rail>button.active:before,
+.great-forge[data-motion="quiet"] .progressive-results .forge-chapter-rail>button.active:after,
+.great-forge[data-motion="quiet"] .forge-journey-guide:after,
+.great-forge[data-motion="quiet"] .forge-path li:last-child.active i,
+.great-forge[data-motion="quiet"] .forge-path li:last-child.active i:after {
+  animation: none !important;
+}
+
 .masterwork-reveal,.testing-anvil{overflow:hidden}
 .masterwork-reveal::after,.testing-anvil::after{position:absolute;z-index:0;inset:0;pointer-events:none;content:""}
 .masterwork-reveal::after{opacity:.42;background:radial-gradient(ellipse at 50% 94%,rgba(220,112,48,.12),transparent 42%);animation:mf-masterwork-room 10s ease-in-out infinite alternate}

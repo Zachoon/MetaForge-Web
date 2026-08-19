@@ -50,6 +50,7 @@ import { resolveMasterworkVisualProfile } from "./masterwork-visual-profile.mjs"
 import { MOTIF_ICONS } from "./masterwork-motif-icons";
 import { buildTcgplayerDeckLink, buildTcgplayerLink, AFFILIATE_DISCLOSURE_TEXT } from "./affiliate-links.mjs";
 import { deckFingerprint } from "./deck-fingerprint.mjs";
+import { formatDeckForArenaExport } from "./deck-export-format.mjs";
 import { createPilotingDebrief } from "./piloting-debrief.mjs";
 import { buildCoachingSession } from "./coaching-session.mjs";
 import { trackLaunchEvent } from "./launch-telemetry";
@@ -2648,7 +2649,13 @@ export default function Home() {
 
   useEffect(() => {
     if (!hoveredCard) return;
-    if (activeForgeChapter === 1 && tabletopReviewActive) return;
+    // Every Tabletop lens (deck/hand/turns/matchup) drives contextInspectCard
+    // itself via onSelectCard/onReviewSelectCard — not just the "deck" lens —
+    // so this stale-hover auto-open must stay suppressed for the whole
+    // workbench, not only while tabletopReviewActive (lens === "deck").
+    // Otherwise a hoveredCard left over from before goldfishing (e.g. Deep
+    // Forge dossier) reopens the panel the instant the lens changes.
+    if (activeForgeChapter === 1 && deckViewMode === "workbench") return;
     if (contextInspectDismissedRef.current === hoveredCard) return;
     if (
       !shouldUseContextCardInspector({
@@ -2661,7 +2668,7 @@ export default function Home() {
     // Also reopen when the gallery scrolls away with a live selection —
     // Founder #021: never leave the reader staring at an off-screen pane.
     setContextInspectCard(hoveredCard);
-  }, [hoveredCard, deckPreviewInView, activeForgeChapter, tabletopReviewActive]);
+  }, [hoveredCard, deckPreviewInView, activeForgeChapter, deckViewMode]);
 
   useEffect(() => {
     if (hoveredCard && hoveredCard !== contextInspectDismissedRef.current) {
@@ -5414,7 +5421,7 @@ export default function Home() {
         <button type="button" className={chamber === "workbench" && activeForgeChapter === 2 ? "active" : ""} disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(2); setSiteRail("analysis"); }}><i>◇</i><span>Analysis</span></button>
         <button type="button" className={chamber === "archive" ? "active" : ""} onClick={openPrivateArchive}><i className="forge-rail-cardback" aria-hidden="true">MF</i><span>Decks</span></button>
         <button type="button" disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode("workbench"); setSiteRail("playtest"); window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>⚔</i><span>Playtest</span></button>
-        <button type="button" disabled={!hasValidatedDeck} onClick={() => navigator.clipboard.writeText(forgedDeck)}><i>⌁</i><span>Share</span></button>
+        <button type="button" disabled={!hasValidatedDeck} onClick={() => navigator.clipboard.writeText(formatDeckForArenaExport(forgedDeck))}><i>⌁</i><span>Share</span></button>
         <button type="button" disabled={!hasValidatedDeck} onClick={() => { setMasterworkIdentityDraft(masterworkIdentity); setMasterworkIdentityOpen(true); }}><i>⚙</i><span>Settings</span></button>
         <div className="forge-rail-embers" aria-hidden="true"><i /><i /><i /></div>
         <div className="forge-rail-version" aria-label="MetaForge version 2.1.0"><i>MF</i><span>v2.1.0</span></div>
@@ -6677,7 +6684,7 @@ export default function Home() {
                       </a>
                     )}
                     <button
-                      onClick={() => navigator.clipboard.writeText(forgedDeck)}
+                      onClick={() => navigator.clipboard.writeText(formatDeckForArenaExport(forgedDeck))}
                     >
                       Copy deck
                     </button>
@@ -7497,7 +7504,7 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={() => {
-                        const blob = new Blob([forgedDeck], { type: "text/plain;charset=utf-8" });
+                        const blob = new Blob([formatDeckForArenaExport(forgedDeck)], { type: "text/plain;charset=utf-8" });
                         const url = URL.createObjectURL(blob);
                         const link = document.createElement("a");
                         link.href = url;
@@ -7508,7 +7515,7 @@ export default function Home() {
                     >
                       Export
                     </button>
-                    <button type="button" onClick={() => navigator.clipboard.writeText(forgedDeck)}>Copy deck</button>
+                    <button type="button" onClick={() => navigator.clipboard.writeText(formatDeckForArenaExport(forgedDeck))}>Copy deck</button>
                     {deckPurchaseLink && <a href={deckPurchaseLink.url} target={deckPurchaseLink.target} rel={deckPurchaseLink.rel}>Buy deck</a>}
                     <button type="button" className="masterwork-playtest" onClick={() => { setActiveForgeChapter(1); setDeckViewMode("workbench"); window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}>Goldfish this deck →</button>
                   </div>
