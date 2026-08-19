@@ -316,6 +316,40 @@ const PACKAGE_RELEVANT_REWARDS = Object.freeze({
   toughness_matters: Object.freeze([]),
   extra_turns: Object.freeze([]),
   sagas: Object.freeze([]),
+  // Founder #033 (batch 6, first of the deferred lower-prevalence bucket).
+  // populate maps onto the real "tokens" reward category above (/token(?:s)?
+  // you control|for each token|sacrifice a token/i) — deliberately NOT a
+  // coincidence the way vehicles'/enchantress' own near-misses were: two
+  // independent real Populate commanders' own reminder text ("a copy of a
+  // creature token you control" — Ghired, Conclave Exile; Trostani,
+  // Selesnya's Voice) both trip the literal "token you control" substring
+  // directly, since Populate structurally requires you to already control a
+  // token — a genuine connection, not a structural coincidence. energy,
+  // monarch, anthems, devotion, and cascade have no corresponding reward
+  // category at all: no "{E}"/"crown"/"pump"/"devotion"/"free spell" category
+  // exists in the vocabulary above, so any match would be a structural
+  // coincidence rather than real relevance — same reasoning as
+  // group_hug/stax/typal/burn/mill/wheels/legends/discard/clones/group_slug/
+  // infect/theft/superfriends/vehicles/pillow_fort/toughness_matters/
+  // extra_turns/sagas. Checked the plausible near-misses directly, not
+  // assumed: energy's own real commanders' "you get {E}" reminder clauses
+  // ("... enters, you get {E}{E} (two energy counters)") never trip
+  // PAYOFFS.counters (that regex requires "counter" to appear before any
+  // comma/period following "whenever"/"if"/"for each", and every real energy
+  // trigger's comma falls well before the word "counter" reaches it);
+  // anthems' own real commander (Elesh Norn, Grand Cenobite: "Other creatures
+  // you control get +2/+2.") never trips PAYOFFS.combat (no "attacks"/
+  // "combat damage"/"attacking creatures" text at all); devotion's own real
+  // commander (Anax, Hardened in the Forge) never trips PAYOFFS.counters
+  // either (no "counter" word anywhere in his text); cascade's own real
+  // commander (Maelstrom Wanderer) never trips PAYOFFS.spells (its reminder
+  // text says "When you cast this spell", not "whenever you cast").
+  energy: Object.freeze([]),
+  populate: Object.freeze(["tokens"]),
+  monarch: Object.freeze([]),
+  anthems: Object.freeze([]),
+  devotion: Object.freeze([]),
+  cascade: Object.freeze([]),
 });
 
 /**
