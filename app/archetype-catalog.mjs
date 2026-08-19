@@ -1,5 +1,5 @@
 // =============================================================================
-// Archetype Catalog — Founder #028 (proof of concept) + #029 (batch 2)
+// Archetype Catalog — Founder #028 (POC) + #029 (batch 2) + #030 (batch 3)
 // =============================================================================
 // A second, DECLARATIVE package layer, sibling to strategic-intent.mjs's
 // hand-authored PACKAGE_CATALOG. Each entry supplies oracle-text pattern
@@ -7,9 +7,13 @@
 // function; strategic-intent.mjs's generic dispatch fallback (the same path
 // auras/equipment/blink already run through) evaluates these records, so
 // every downstream consumer that dispatches by package-id string needs zero
-// changes. #028 validated 3 entries; #029 adds 6 more (lifegain, lands
-// matter, burn, enchantress, mill, wheels) by real EDHREC prevalence — still
-// not the full ~20-archetype remainder. See docs/FOUNDER_ISSUES.md #028/#029.
+// changes. #028 validated 3 entries; #029 added 6 more (lifegain, lands
+// matter, burn, enchantress, mill, wheels); #030 adds a further 6 (legends,
+// discard, graveyard, clones, flying, group_slug) by real EDHREC prevalence —
+// still not the full ~20-archetype remainder. #030 introduces zero new
+// false-friend shapes: all 6 reuse `broad-type-superset`, `incidental-rider`,
+// or `wrong-target-scope`, each re-grounded in independent real-card evidence
+// (see each entry's comment). See docs/FOUNDER_ISSUES.md #028/#029/#030.
 //
 // Dual reachability contract (same as the existing 10): a real archetype
 // commander with an empty note must open the package via `commander`
@@ -85,6 +89,16 @@ function excludedByTag(entry, config, semantics) {
 // strategicSemanticsFor already computed; this shape is a self-contained
 // mention-vs-scope check within one card's own oracle text, no external tag
 // vocabulary required). Config: { mentionPattern, requiredScopePattern }.
+//
+// #030 generalizes "wrong entity" past player-scope (mill/wheels) to two more
+// structurally identical mismatches, confirming this is a genuinely generic
+// mention-vs-precise-scope check rather than a player-scope-only shape:
+// clones (mention "copy" of anything vs. required scope "copy of a
+// creature/permanent" — an object-TYPE mismatch, not a player mismatch) and
+// flying/group_slug (mention a broad keyword/punisher shape vs. required
+// scope tying it to the archetype's real payoff clause or trigger subject).
+// Each reuse is grounded in its own independent real-card false friend — see
+// each entry's comment.
 function wrongTargetScope(entry, config) {
   const oracle = oracleOf(entryCard(entry));
   if (!config.mentionPattern.test(oracle)) return false;
@@ -629,6 +643,419 @@ const wheels = Object.freeze({
   density: Object.freeze({ singletonCore: 6, constructedCore: 4, singletonSupport: 6, constructedSupport: 3 }),
 });
 
+// -----------------------------------------------------------------------------
+// Legends (legendary matters)
+// -----------------------------------------------------------------------------
+// Core is a real payoff for OTHER legendary permanents you control, not
+// merely being legendary yourself — Sisay, Weatherlight Captain ("Sisay gets
+// +1/+1 for each color among other legendary permanents you control." plus
+// her own "Search your library for a legendary permanent card..." tutor),
+// Gimli of the Glittering Caves ("Whenever another legendary creature you
+// control enters, put a +1/+1 counter on Gimli."), Yoshimaru, Ever Faithful
+// (the same shape for "legendary permanent"). False-friend shape: broad-
+// type-superset, reused with typePattern /\bLegendary\b/i — structurally
+// identical to artifacts_matter/lands_matter/enchantress: Rograkh, Son of
+// Rohgahh ("First strike, menace, trample.") is a Legendary Creature by type
+// line with zero legendary-matters text, the same mismatch as a vanilla
+// Artifact or a plain Land.
+//
+// Support is recursion/anti-legend-rule enabling, not the payoff itself —
+// Loyal Retainers ("Sacrifice this creature: Return target legendary
+// creature card from your graveyard to the battlefield.") and Mirror
+// Gallery-class "the 'legend rule' doesn't apply" effects let a legends deck
+// run and rebuy its legendary permanents without themselves rewarding
+// controlling many — the same ancillary role tutoring/recursion play for
+// artifacts_matter.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: no real Legends
+// commander with a magnitude-qualified legendary-permanent trigger was
+// found (Sisay's tutor is gated on the target's mana value being less than
+// her own power — a comparative gate, not the "N or greater/less" fixed-
+// threshold shape the parser looks for) — not forced.
+const LEGENDS_CORE_PATTERNS = Object.freeze([
+  /(?:for each|gets? \+\d+\/\+\d+ for each)[^.]* legendary (?:creatures?|permanents?) you control/i,
+  /whenever (?:another|a) legendary (?:creature|permanent) (?:you control )?enters(?: the battlefield)?/i,
+  /search your library for a legendary [^.]*card/i,
+]);
+
+const LEGENDS_SUPPORT_PATTERNS = Object.freeze([
+  /return target legendary creature card from your graveyard to the battlefield/i,
+  /the (?:"|')?legend rule(?:"|')? doesn'?t apply/i,
+]);
+
+const legends = Object.freeze({
+  id: "legends",
+  label: "Legends package",
+  corePatterns: LEGENDS_CORE_PATTERNS,
+  supportPatterns: LEGENDS_SUPPORT_PATTERNS,
+  reuseProtectionSupport: true,
+  falseFriendShape: "broad-type-superset",
+  falseFriendConfig: Object.freeze({ typePattern: /\bLegendary\b/i }),
+  commander: Object.freeze({
+    oraclePatterns: LEGENDS_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["legends matter", "legendary matters", "legendary tribal", "the historic deck", "legendary permanents"]),
+  }),
+  density: Object.freeze({ singletonCore: 10, constructedCore: 6, singletonSupport: 6, constructedSupport: 3 }),
+});
+
+// -----------------------------------------------------------------------------
+// Discard
+// -----------------------------------------------------------------------------
+// Core is a real single-target/self-discard payoff, deliberately distinct
+// from #029's wheels (symmetric hand-refill or a punisher keyed to an
+// opponent's DRAW). Four real shapes: targeted discard-as-removal (Mind Rot:
+// "Target player discards two cards."), hand-disruption (Thoughtseize:
+// "Target player reveals their hand. You choose a nonland card from it. That
+// player discards that card."), an opponent-discard value payoff that is NOT
+// a symmetric wheel or a damage/life-loss punisher (Tergrid, God of Fright:
+// "Whenever an opponent sacrifices a nontoken permanent or discards a
+// permanent card, you may put that card from a graveyard onto the
+// battlefield under your control." — reanimator-adjacent discard synergy,
+// exactly the class the task brief names), and self-discard/madness-style
+// payoffs (Bone Miser: "Whenever you discard a creature card, create a 2/2
+// black Zombie creature token. ... Whenever you discard a noncreature,
+// nonland card, draw a card.").
+//
+// Kept out of wheels' territory on purpose: wheels' own corePatterns require
+// literal "whenever an opponent discards[^.]*(?:draw|create|add)" (immediately
+// after "opponent discards") or symmetric "each player discards their hand".
+// Tergrid's actual text is "opponent sacrifices a nontoken permanent OR
+// discards a permanent card" — "opponent discards" is never a contiguous
+// substring — so she does not open wheels, and Nekusar's "whenever an
+// opponent draws a card" never contains the word "discard" at all, so he
+// does not open this package either. Two commanders, two disjoint triggers.
+//
+// False-friend shape: incidental-rider, reused with discard-specific config.
+// Big Score ("As an additional cost to cast this spell, discard a card. Draw
+// two cards and create two Treasure tokens.") mentions discard, but only as
+// a cost-gate paid to enable an unrelated dominant effect (card draw) — not
+// a discard-matters payoff, the same shape as counters_matter's gated
+// removal-spell rider and burn's gated damage rider.
+//
+// Support is discard as a tool, not the payoff — connive (draw-then-discard
+// with a conditional upside) and discard-outlet tutors (Fauna Shaman: "{G},
+// {T}, Discard a creature card: Search your library for a creature card...")
+// enable the archetype without themselves rewarding discard density.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: no real Discard
+// commander with a magnitude-qualified discard trigger was found — not
+// forced.
+const DISCARD_CORE_PATTERNS = Object.freeze([
+  /target (?:player|opponent) discards (?:a|an|one|two|three|four|five|\d+|that many) cards?/i,
+  /reveals? (?:their|his or her) hand[\s\S]{0,120}discards? that card/i,
+  /whenever an opponent[^.]*discards? a (?:permanent|nonland) card/i,
+  /whenever you discard a (?:creature|land|noncreature|nonland)[^,]*,[^.]*(?:create|add|draw)/i,
+  /\bmadness\b/i,
+]);
+
+const DISCARD_SUPPORT_PATTERNS = Object.freeze([
+  /\bconnive\b/i,
+  /discard a creature card:[^.]*search your library/i,
+]);
+
+const DISCARD_MENTION = /\bdiscards?\b/i;
+const DISCARD_RIDER_GATE = /as an additional cost to cast this (?:spell|card)[^.]*discard/i;
+const DISCARD_DOMINANT_OTHER = /draw (?:a|two|three|four|\d+|that many) cards?/i;
+
+const DISCARD_RIDER_CONFIG = Object.freeze({
+  mentionPattern: DISCARD_MENTION,
+  gatePattern: DISCARD_RIDER_GATE,
+  dominantOtherPattern: DISCARD_DOMINANT_OTHER,
+});
+
+const discard = Object.freeze({
+  id: "discard",
+  label: "Discard package",
+  corePatterns: DISCARD_CORE_PATTERNS,
+  supportPatterns: DISCARD_SUPPORT_PATTERNS,
+  falseFriendShape: "incidental-rider",
+  falseFriendConfig: DISCARD_RIDER_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: DISCARD_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["discard matters", "madness", "discard deck", "hand disruption", "targeted discard"]),
+  }),
+  density: Object.freeze({ singletonCore: 8, constructedCore: 5, singletonSupport: 8, constructedSupport: 4 }),
+});
+
+// -----------------------------------------------------------------------------
+// Graveyard
+// -----------------------------------------------------------------------------
+// Core is using the graveyard as a general resource — delirium/threshold,
+// flashback/escape, and "from your graveyard" cast/scale payoffs — explicitly
+// distinct from the existing PACKAGE_CATALOG `reanimator` entry, which is
+// about reanimation SPELLS specifically (creature-onto-battlefield). Muldrotha,
+// the Gravetide ("During each of your turns, you may play a land and cast a
+// permanent spell of each permanent type from your graveyard.") is the real
+// commander: a repeated cast-from-graveyard permission, not a reanimation
+// spell. Ishkanah, Grafwidow carries the Delirium keyword itself; Tarmogoyf
+// ("power is equal to the number of card types among cards in all
+// graveyards...") scales off graveyard contents generically; Kroxa, Titan of
+// Death's Hunger and Underworld Breach both grant/use Escape.
+//
+// A real reanimation spell never satisfies this core in the first place —
+// Reanimate's actual printed text ("Put target creature card from a
+// graveyard onto the battlefield under your control. You lose life equal to
+// that card's mana value.") has no delirium/threshold/flashback/escape
+// keyword and no "cast ... from your graveyard" phrasing, so it simply never
+// matches corePatterns — the same "doesn't even qualify, no shape needed for
+// THAT card" outcome burn's own Flame Slash demonstrates.
+//
+// False-friend shape: incidental-rider, reused with a genuinely different
+// real fixture than Reanimate. Grim Lavamancer ("{R}, {T}, Exile two cards
+// from your graveyard: This creature deals 2 damage to any target.")
+// mentions "graveyard", and its activation cost is gated on spending
+// graveyard cards, but its dominant effect is unrelated direct damage — the
+// graveyard is a mana-adjacent resource sink here, not a delirium/escape-
+// style value payoff, the same shape as counters_matter's and discard's
+// gated riders.
+//
+// Support is setup that fills the graveyard without itself being the value
+// payoff — surveil, and self-mill (Stitcher's Supplier: "When this creature
+// enters or dies, mill three cards." — the exact card #029's mill entry
+// flags as a self-mill FALSE FRIEND for opponent-depletion mill is genuine
+// SUPPORT here, since fueling your own graveyard is precisely this
+// archetype's enabler role; the same real card legitimately occupies two
+// different roles in two different archetypes, per the task's own overlap
+// allowance).
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: no real Graveyard
+// commander with a magnitude-qualified graveyard trigger was found — not
+// forced.
+const GRAVEYARD_CORE_PATTERNS = Object.freeze([
+  /\bdelirium\b/i,
+  /\bthreshold\b/i,
+  /\bflashback\b/i,
+  /\bescape[—-]/i,
+  /\bhas escape\b/i,
+  /cast [^.]* from your graveyard/i,
+  /card types among cards in [^.]*graveyards?/i,
+]);
+
+const GRAVEYARD_SUPPORT_PATTERNS = Object.freeze([
+  /\bsurveil \d/i,
+  /mills? (?:one|two|three|four|five|\d+) cards?/i,
+]);
+
+const GRAVEYARD_MENTION = /\bgraveyard\b/i;
+const GRAVEYARD_RIDER_GATE = /exile (?:two|three|four|five|\d+|a|one) cards? from your graveyard/i;
+const GRAVEYARD_DOMINANT_OTHER = /deals? \d+ damage to any target/i;
+
+const GRAVEYARD_RIDER_CONFIG = Object.freeze({
+  mentionPattern: GRAVEYARD_MENTION,
+  gatePattern: GRAVEYARD_RIDER_GATE,
+  dominantOtherPattern: GRAVEYARD_DOMINANT_OTHER,
+});
+
+const graveyard = Object.freeze({
+  id: "graveyard",
+  label: "Graveyard package",
+  corePatterns: GRAVEYARD_CORE_PATTERNS,
+  supportPatterns: GRAVEYARD_SUPPORT_PATTERNS,
+  falseFriendShape: "incidental-rider",
+  falseFriendConfig: GRAVEYARD_RIDER_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: GRAVEYARD_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["graveyard matters", "graveyard value", "delirium", "threshold", "self-mill value"]),
+  }),
+  density: Object.freeze({ singletonCore: 10, constructedCore: 6, singletonSupport: 8, constructedSupport: 4 }),
+});
+
+// -----------------------------------------------------------------------------
+// Clones
+// -----------------------------------------------------------------------------
+// Core is copying creatures/permanents — Sakashima of a Thousand Faces ("You
+// may have Sakashima enter as a copy of another creature you control..."),
+// Progenitor Mimic ("You may have this creature enter as a copy of any
+// creature on the battlefield..."), Rite of Replication ("Create a token
+// that's a copy of target creature.").
+//
+// False-friend shape: wrong-target-scope (reused — see the shared-evaluator
+// comment above for why this generalizes past player-scope). Twincast
+// ("Copy target instant or sorcery spell. You may choose new targets for the
+// copy.") mentions "copy" broadly, exactly like a real clone effect, but the
+// object being copied is a SPELL, not a creature/permanent — an object-TYPE
+// scope mismatch rather than mill/wheels' player-scope mismatch, proving the
+// shape generalizes rather than being a player-scope-only tool.
+//
+// Support is clone-shell enabling, not the copy effect itself — Mirror
+// Gallery ("The 'legend rule' doesn't apply.") lets a deck stack multiple
+// copies of the same legendary creature without losing them to the legend
+// rule, the same ancillary role tutoring/recursion play for artifacts_matter.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: no real Clones
+// commander with a magnitude-qualified copy trigger was found — not forced.
+const CLONES_CORE_PATTERNS = Object.freeze([
+  /enters? (?:the battlefield )?as a copy of (?:any|target|another)? ?creature/i,
+  /create[s]? a token that'?s a copy of (?:target|another|any) creature/i,
+  /becomes? a copy of (?:target|another|any)? ?creature/i,
+]);
+
+const CLONES_SUPPORT_PATTERNS = Object.freeze([
+  /the (?:"|')?legend rule(?:"|')? doesn'?t apply/i,
+]);
+
+const CLONES_MENTION = /\bcopy\b/i;
+const CLONES_REQUIRED_SCOPE = /copy of (?:any|target|another)? ?creature|token that'?s a copy of (?:target|another|any) creature|becomes? a copy of (?:target|another|any)? ?creature/i;
+
+const CLONES_SCOPE_CONFIG = Object.freeze({
+  mentionPattern: CLONES_MENTION,
+  requiredScopePattern: CLONES_REQUIRED_SCOPE,
+});
+
+const clones = Object.freeze({
+  id: "clones",
+  label: "Clones package",
+  corePatterns: CLONES_CORE_PATTERNS,
+  supportPatterns: CLONES_SUPPORT_PATTERNS,
+  falseFriendShape: "wrong-target-scope",
+  falseFriendConfig: CLONES_SCOPE_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: CLONES_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["clones", "clone deck", "copy creatures", "clone tribal", "copy matters"]),
+  }),
+  density: Object.freeze({ singletonCore: 6, constructedCore: 4, singletonSupport: 4, constructedSupport: 2 }),
+});
+
+// -----------------------------------------------------------------------------
+// Flying
+// -----------------------------------------------------------------------------
+// Core is evasion-matters via the Flying keyword specifically, not generic
+// evasion (menace/unblockable stay out) — Sephara, Sky's Blade ("Other
+// creatures you control with flying have indestructible."), Favorable Winds
+// ("Creatures you control with flying get +1/+1."), Aven Gagglemaster ("you
+// gain 2 life for each creature you control with flying").
+//
+// False-friend shape: wrong-target-scope (reused). Serra Angel ("Flying,
+// Vigilance.") mentions flying broadly (it has the keyword), but the effect
+// never reaches a reward clause tying flying to a payoff — a keyword-vs-
+// payoff scope mismatch, distinct from mill/wheels' player-scope mismatch
+// and clones' object-type mismatch, further confirming the shape's general
+// "broad mention passes, precise required scope fails" structure rather than
+// being tied to any one domain.
+//
+// Support is temporarily granting flying, not rewarding it — Starry-Eyed
+// Skyrider ("Whenever this creature attacks, another target creature you
+// control gains flying until end of turn.") enables evasion without itself
+// being the flying-matters payoff, the same ancillary role tutoring/
+// recursion play for artifacts_matter.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: no real Flying
+// commander with a magnitude-qualified flying trigger was found — not
+// forced.
+const FLYING_CORE_PATTERNS = Object.freeze([
+  /creatures? you control with flying (?:get|have|gain)/i,
+  /for each creature you control with flying/i,
+]);
+
+const FLYING_SUPPORT_PATTERNS = Object.freeze([
+  /(?:target|another target) creature[^.]* gains flying/i,
+]);
+
+const FLYING_MENTION = /\bflying\b/i;
+const FLYING_REQUIRED_SCOPE = /creatures? you control with flying (?:get|have|gain)|for each creature you control with flying/i;
+
+const FLYING_SCOPE_CONFIG = Object.freeze({
+  mentionPattern: FLYING_MENTION,
+  requiredScopePattern: FLYING_REQUIRED_SCOPE,
+});
+
+const flying = Object.freeze({
+  id: "flying",
+  label: "Flying package",
+  corePatterns: FLYING_CORE_PATTERNS,
+  supportPatterns: FLYING_SUPPORT_PATTERNS,
+  falseFriendShape: "wrong-target-scope",
+  falseFriendConfig: FLYING_SCOPE_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: FLYING_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["flying matters", "flying tribal", "evasion matters", "fliers deck", "skies"]),
+  }),
+  density: Object.freeze({ singletonCore: 12, constructedCore: 7, singletonSupport: 6, constructedSupport: 3 }),
+});
+
+// -----------------------------------------------------------------------------
+// Group Slug
+// -----------------------------------------------------------------------------
+// Core is a symmetric multiplayer punisher keyed to an OPPONENT's own
+// action, not your own spellcasting (that is burn's job) and not an
+// opponent's draw/discard specifically (that is wheels'/discard's job) —
+// Kaervek the Merciless ("Whenever an opponent casts a spell, Kaervek deals
+// damage equal to that spell's mana value to any target."), Manabarbs
+// ("Whenever a player taps a land for mana, this enchantment deals 1 damage
+// to that player."), Revenge of Ravens ("Whenever a creature attacks you or
+// a planeswalker you control, that creature's controller loses 1 life and
+// you gain 1 life."). Deliberately scoped away from "whenever an opponent
+// draws/discards" triggers — those already belong to wheels (#029) and
+// discard (this batch) respectively; group_slug's own real territory is
+// casting/mana-tapping/attacking triggers, not card-resource triggers.
+//
+// False-friend shape: wrong-target-scope (reused). Guttersnipe ("Whenever
+// you cast an instant or sorcery spell, this creature deals 2 damage to each
+// opponent.") is burn's own established core card — it mentions the same
+// "deals damage to each opponent" punisher shape, but the trigger's SUBJECT
+// is "you" (your own casting), not an opponent's/player's own action, a
+// trigger-subject scope mismatch. Using burn's own core fixture as
+// group_slug's false friend directly proves the two archetypes' promises
+// don't overlap: the identical card is core for one and a false friend for
+// the other, for exactly the reason each archetype's promise says it should
+// be.
+//
+// Support is pillow-fort enabling, not the punisher trigger itself — Ghostly
+// Prison ("Creatures can't attack you unless their controller pays {2} for
+// each creature they control that's attacking you.") makes the archetype's
+// plan viable without itself being a damage/life-loss trigger, the same
+// ancillary role tutoring/recursion play for artifacts_matter.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: Kaervek's damage is
+// scaled BY a spell's mana value ("deals damage equal to that spell's mana
+// value"), not GATED behind a "mana value N or greater/less" threshold — a
+// different shape the magnitude-gate parser does not match — and no other
+// real Group Slug commander with a magnitude-qualified trigger was found;
+// not forced.
+const GROUP_SLUG_CORE_PATTERNS = Object.freeze([
+  /whenever (?:an opponent|a player|each opponent|each player) casts? a spell,[^.]*deals? [^.]*damage/i,
+  /whenever a player taps a land for mana,[^.]*deals? \d+ damage/i,
+  /whenever [^.]* attacks you(?: or a planeswalker you control)?,[^.]*(?:loses? \d+ life|deals? \d+ damage)/i,
+]);
+
+const GROUP_SLUG_SUPPORT_PATTERNS = Object.freeze([
+  /can'?t attack you unless (?:their|its) controller pays/i,
+]);
+
+const GROUP_SLUG_MENTION = /deals? \d+ damage to (?:each opponent|that player|any target)|loses? \d+ life/i;
+const GROUP_SLUG_REQUIRED_SCOPE = /whenever (?:an opponent|a player|each opponent|each player)[^.]*(?:casts?|draws?|discards?|attacks?|taps?)/i;
+
+const GROUP_SLUG_SCOPE_CONFIG = Object.freeze({
+  mentionPattern: GROUP_SLUG_MENTION,
+  requiredScopePattern: GROUP_SLUG_REQUIRED_SCOPE,
+});
+
+const groupSlug = Object.freeze({
+  id: "group_slug",
+  label: "Group Slug package",
+  corePatterns: GROUP_SLUG_CORE_PATTERNS,
+  supportPatterns: GROUP_SLUG_SUPPORT_PATTERNS,
+  falseFriendShape: "wrong-target-scope",
+  falseFriendConfig: GROUP_SLUG_SCOPE_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: GROUP_SLUG_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["group slug", "symmetric damage", "punisher deck", "pillow fort damage", "table-wide punisher"]),
+  }),
+  density: Object.freeze({ singletonCore: 8, constructedCore: 5, singletonSupport: 6, constructedSupport: 3 }),
+});
+
 export const ARCHETYPE_CATALOG = Object.freeze({
   artifacts_matter: artifactsMatter,
   counters_matter: countersMatter,
@@ -639,7 +1066,14 @@ export const ARCHETYPE_CATALOG = Object.freeze({
   enchantress,
   mill,
   wheels,
+  legends,
+  discard,
+  graveyard,
+  clones,
+  flying,
+  group_slug: groupSlug,
 });
+
 
 export const ARCHETYPE_PACKAGE_IDS = Object.freeze(Object.keys(ARCHETYPE_CATALOG));
 
