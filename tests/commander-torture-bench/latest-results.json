@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-18T14:03:13.601Z",
+  "generatedAt": "2026-08-19T03:42:11.302Z",
   "aggregate": {
     "total": 13,
     "passed": 13,
@@ -23,28 +23,28 @@
       "interaction_graph_failure": 8
     },
     "runtime": {
-      "medianMs": 2478,
-      "p95Ms": 4978,
+      "medianMs": 2550,
+      "p95Ms": 5104,
       "slowest": [
         {
           "id": "aristocrats",
-          "ms": 4978
+          "ms": 5104
         },
         {
           "id": "spellslinger",
-          "ms": 4549
+          "ms": 4565
         },
         {
           "id": "equipment-voltron",
-          "ms": 3174
+          "ms": 3944
         },
         {
           "id": "pearl-ear-auras",
-          "ms": 2909
+          "ms": 3542
         },
         {
           "id": "blink-etb",
-          "ms": 2876
+          "ms": 2911
         }
       ]
     }
@@ -53,24 +53,24 @@
     "version": "self-evaluation-aggregate-v1",
     "forgeCount": 13,
     "totalTracedPicks": 850,
-    "totalMeaningfulDisagreements": 225,
+    "totalMeaningfulDisagreements": 233,
     "driftClassCounts": {
-      "early_scaffolding_matured": 363,
+      "early_scaffolding_matured": 358,
       "downstream_repair_invalidated_pick": 48,
-      "unclassified": 252,
-      "stable_good_prediction": 10,
-      "retrospective_gain_not_seen_prospectively": 142,
+      "unclassified": 250,
+      "stable_good_prediction": 9,
+      "retrospective_gain_not_seen_prospectively": 150,
       "final_weak_justification": 19,
       "later_package_oversupply": 16
     },
     "driftByPhase": {
       "foundation": {
-        "count": 615,
-        "meanAbsDrift": 46.279
+        "count": 656,
+        "meanAbsDrift": 47.435
       },
       "development": {
-        "count": 235,
-        "meanAbsDrift": 55.212
+        "count": 194,
+        "meanAbsDrift": 55.431
       }
     },
     "driftByPackage": {
@@ -110,33 +110,37 @@
         "count": 66,
         "disagreements": 63
       },
+      "artifacts_matter": {
+        "count": 66,
+        "disagreements": 61
+      },
       "stax": {
         "count": 64,
         "disagreements": 58
       }
     },
     "controlCaseCounts": {
-      "early_scaffolding_matured": 363,
+      "early_scaffolding_matured": 358,
       "invalidated_by_later_decisions": 64,
-      "ambiguous": 264,
-      "stable": 10,
-      "beneficial_emergence": 142,
+      "ambiguous": 262,
+      "stable": 9,
+      "beneficial_emergence": 150,
       "genuine_bad_belief": 7
     },
-    "meanPredictionError": 33.385,
-    "meanAbsPredictionError": 48.749,
+    "meanPredictionError": 33.897,
+    "meanAbsPredictionError": 49.259,
     "topRecurrentDisagreementClasses": [
       {
         "class": "early_scaffolding_matured",
-        "count": 363
+        "count": 358
       },
       {
         "class": "unclassified",
-        "count": 252
+        "count": 250
       },
       {
         "class": "retrospective_gain_not_seen_prospectively",
-        "count": 142
+        "count": 150
       },
       {
         "class": "downstream_repair_invalidated_pick",
@@ -466,30 +470,30 @@
       "artifacts": {
         "forges": 1,
         "picks": 66,
-        "disagreements": 13,
+        "disagreements": 21,
         "byClass": {
-          "early_scaffolding_matured": 19,
-          "unclassified": 32,
-          "retrospective_gain_not_seen_prospectively": 13,
-          "stable_good_prediction": 2
+          "early_scaffolding_matured": 14,
+          "unclassified": 30,
+          "retrospective_gain_not_seen_prospectively": 21,
+          "stable_good_prediction": 1
         },
-        "meanAbsDrift": 57.482,
+        "meanAbsDrift": 64.055,
         "topClasses": [
           {
             "class": "unclassified",
-            "count": 32
-          },
-          {
-            "class": "early_scaffolding_matured",
-            "count": 19
+            "count": 30
           },
           {
             "class": "retrospective_gain_not_seen_prospectively",
-            "count": 13
+            "count": 21
+          },
+          {
+            "class": "early_scaffolding_matured",
+            "count": 14
           },
           {
             "class": "stable_good_prediction",
-            "count": 2
+            "count": 1
           }
         ]
       },
@@ -647,7 +651,7 @@
           }
         ],
         "timing": {
-          "finalizeMs": 4,
+          "finalizeMs": 8,
           "recordMs": 3
         },
         "artifactBytes": 216294
@@ -670,7 +674,7 @@
         "gap": 19.081,
         "underperformed": false
       },
-      "runtimeMs": 2909
+      "runtimeMs": 3542
     },
     {
       "id": "equipment-voltron",
@@ -735,7 +739,7 @@
         ],
         "timing": {
           "finalizeMs": 4,
-          "recordMs": 3
+          "recordMs": 2
         },
         "artifactBytes": 201794
       },
@@ -763,7 +767,7 @@
         "gap": 21.996,
         "underperformed": false
       },
-      "runtimeMs": 3174
+      "runtimeMs": 3944
     },
     {
       "id": "ayula-typal",
@@ -820,7 +824,7 @@
         ],
         "timing": {
           "finalizeMs": 6,
-          "recordMs": 1
+          "recordMs": 0
         },
         "artifactBytes": 191303
       },
@@ -842,7 +846,7 @@
         "gap": 20.398,
         "underperformed": false
       },
-      "runtimeMs": 2358
+      "runtimeMs": 2458
     },
     {
       "id": "token-go-wide",
@@ -937,7 +941,7 @@
         "gap": 9.789,
         "underperformed": false
       },
-      "runtimeMs": 1951
+      "runtimeMs": 1858
     },
     {
       "id": "aristocrats",
@@ -1002,7 +1006,7 @@
         ],
         "timing": {
           "finalizeMs": 6,
-          "recordMs": 2
+          "recordMs": 3
         },
         "artifactBytes": 242281
       },
@@ -1031,7 +1035,7 @@
         "gap": -4.598,
         "underperformed": false
       },
-      "runtimeMs": 4978
+      "runtimeMs": 5104
     },
     {
       "id": "reanimator",
@@ -1097,7 +1101,7 @@
         ],
         "timing": {
           "finalizeMs": 2,
-          "recordMs": 1
+          "recordMs": 2
         },
         "artifactBytes": 233877
       },
@@ -1125,7 +1129,7 @@
         "gap": 17.489,
         "underperformed": false
       },
-      "runtimeMs": 2724
+      "runtimeMs": 2703
     },
     {
       "id": "spellslinger",
@@ -1178,7 +1182,7 @@
         ],
         "timing": {
           "finalizeMs": 4,
-          "recordMs": 2
+          "recordMs": 5
         },
         "artifactBytes": 236808
       },
@@ -1200,7 +1204,7 @@
         "gap": 21.332,
         "underperformed": false
       },
-      "runtimeMs": 4549
+      "runtimeMs": 4565
     },
     {
       "id": "landfall",
@@ -1260,8 +1264,8 @@
           }
         ],
         "timing": {
-          "finalizeMs": 3,
-          "recordMs": 1
+          "finalizeMs": 2,
+          "recordMs": 0
         },
         "artifactBytes": 217582
       },
@@ -1289,7 +1293,7 @@
         "gap": 2.562,
         "underperformed": false
       },
-      "runtimeMs": 2478
+      "runtimeMs": 2508
     },
     {
       "id": "blink-etb",
@@ -1347,8 +1351,8 @@
           }
         ],
         "timing": {
-          "finalizeMs": 2,
-          "recordMs": 1
+          "finalizeMs": 4,
+          "recordMs": 0
         },
         "artifactBytes": 217199
       },
@@ -1376,7 +1380,7 @@
         "gap": 20.242,
         "underperformed": false
       },
-      "runtimeMs": 2876
+      "runtimeMs": 2911
     },
     {
       "id": "artifacts",
@@ -1388,46 +1392,46 @@
       "failureClasses": [],
       "strategicCohesion": true,
       "justification": {
-        "strongRatio": 0.682,
+        "strongRatio": 0.667,
         "weaklyJustified": 0,
         "rawPowerDominant": 0
       },
       "disagreement": {
-        "count": 10,
+        "count": 21,
         "warnings": 0
       },
       "selfEvaluation": {
         "totalTracedPicks": 66,
         "liveFillPicks": 53,
-        "agreementRate": 0.318,
-        "meanAbsDrift": 57.482,
+        "agreementRate": 0.227,
+        "meanAbsDrift": 64.055,
         "disagreementsByClass": {
-          "early_scaffolding_matured": 19,
-          "unclassified": 32,
-          "retrospective_gain_not_seen_prospectively": 13,
-          "stable_good_prediction": 2
+          "early_scaffolding_matured": 14,
+          "unclassified": 30,
+          "retrospective_gain_not_seen_prospectively": 21,
+          "stable_good_prediction": 1
         },
         "controlCaseCounts": {
-          "early_scaffolding_matured": 19,
-          "ambiguous": 32,
-          "beneficial_emergence": 13,
-          "stable": 2
+          "early_scaffolding_matured": 14,
+          "ambiguous": 30,
+          "beneficial_emergence": 21,
+          "stable": 1
         },
         "strongestRecurringWarningSignals": [
           {
-            "class": "early_scaffolding_matured",
-            "count": 19
+            "class": "retrospective_gain_not_seen_prospectively",
+            "count": 21
           },
           {
-            "class": "retrospective_gain_not_seen_prospectively",
-            "count": 13
+            "class": "early_scaffolding_matured",
+            "count": 14
           }
         ],
         "timing": {
-          "finalizeMs": 1,
-          "recordMs": 1
+          "finalizeMs": 3,
+          "recordMs": 4
         },
-        "artifactBytes": 211810
+        "artifactBytes": 228034
       },
       "weakSlotForensics": {
         "weakSlotCount": 0,
@@ -1442,12 +1446,12 @@
         "appliedCount": 0
       },
       "plan": {
-        "predicted": 39.667,
-        "realized": 75.6,
-        "gap": 35.933,
+        "predicted": 66.267,
+        "realized": 79.902,
+        "gap": 13.635,
         "underperformed": false
       },
-      "runtimeMs": 2226
+      "runtimeMs": 2550
     },
     {
       "id": "stax",
@@ -1504,7 +1508,7 @@
         ],
         "timing": {
           "finalizeMs": 3,
-          "recordMs": 1
+          "recordMs": 2
         },
         "artifactBytes": 207006
       },
@@ -1526,7 +1530,7 @@
         "gap": 25.354,
         "underperformed": false
       },
-      "runtimeMs": 1775
+      "runtimeMs": 1859
     },
     {
       "id": "combo-partners",
@@ -1612,7 +1616,7 @@
         "gap": 28.532,
         "underperformed": false
       },
-      "runtimeMs": 1659
+      "runtimeMs": 1732
     },
     {
       "id": "multiplan-commander",
@@ -1670,8 +1674,8 @@
           }
         ],
         "timing": {
-          "finalizeMs": 3,
-          "recordMs": 2
+          "finalizeMs": 5,
+          "recordMs": 1
         },
         "artifactBytes": 195924
       },
@@ -1693,7 +1697,7 @@
         "gap": 15.306,
         "underperformed": false
       },
-      "runtimeMs": 2363
+      "runtimeMs": 2449
     }
   ]
 }
