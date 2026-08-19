@@ -286,6 +286,36 @@ const PACKAGE_RELEVANT_REWARDS = Object.freeze({
   superfriends: Object.freeze([]),
   goad: Object.freeze(["combat"]),
   vehicles: Object.freeze([]),
+  // Founder #032 (batch 5, final). neg_counters maps onto the real "counters"
+  // reward category already in the PAYOFFS vocabulary above (/whenever
+  // [^,.;]*counter|.../i) — deliberately generic over counter KIND, not
+  // "+1/+1" specific, so a genuine -1/-1-counter commander connection there
+  // is on-topic: confirmed against real text, not assumed — Hapatra, Vizier
+  // of Poisons' own "Whenever you put one or more -1/-1 counters on a
+  // creature, create..." trips the same generic "whenever ... counter"
+  // branch counters_matter's own commanders trip, the same real category
+  // both archetypes legitimately touch (see graveyard/reanimator's own
+  // shared-category precedent in #030's comment above) without either
+  // stealing the other's promise. pillow_fort, toughness_matters,
+  // extra_turns, and sagas have no corresponding reward category at all: no
+  // "attack tax"/"toughness"/"extra turn"/"Saga chapter" category exists in
+  // the vocabulary above, so any match would be a structural coincidence
+  // rather than real relevance — same reasoning as
+  // group_hug/stax/typal/burn/mill/wheels/legends/discard/clones/group_slug/
+  // infect/theft/superfriends/vehicles. Checked the one plausible near-miss
+  // for each: extra_turns' own real commander fixture (Medomai the Ageless)
+  // happens to phrase its extra-turn trigger as "deals combat damage to a
+  // player", which textually trips PAYOFFS.combat, but that's a coincidence
+  // of ONE commander's own unlock condition, not the archetype's real
+  // promise — most real extra-turn cards (Time Warp, Temporal Manipulation,
+  // Beacon of Tomorrows) are unconditional and never mention combat at all,
+  // so mapping extra_turns to "combat" would misfire for the archetype's own
+  // canonical shape far more often than it would connect.
+  neg_counters: Object.freeze(["counters"]),
+  pillow_fort: Object.freeze([]),
+  toughness_matters: Object.freeze([]),
+  extra_turns: Object.freeze([]),
+  sagas: Object.freeze([]),
 });
 
 /**
