@@ -259,6 +259,33 @@ const PACKAGE_RELEVANT_REWARDS = Object.freeze({
   clones: Object.freeze([]),
   flying: Object.freeze(["evasion"]),
   group_slug: Object.freeze([]),
+  // Founder #031 (batch 4). extra_combats and goad both map onto the real
+  // "combat" reward category above (/whenever [^.]* attacks|combat damage|
+  // attacking creatures/i) — confirmed against real commander text, not
+  // assumed: Aurelia, the Warleader's own trigger ("Whenever Aurelia
+  // attacks...") matches the attacks-alternative, and Marisi, Breaker of the
+  // Coil's / Alela, Cunning Conqueror's own goad triggers ("...deals combat
+  // damage to a player, goad...") both match the combat-damage-alternative —
+  // two independent real fixtures per package, not a coincidental regex
+  // overlap. infect, theft, and superfriends have no corresponding reward
+  // category at all: no "poison"/"toxic", "control-change", or
+  // "planeswalker"/"loyalty" category exists in the vocabulary above, so any
+  // match would be a structural coincidence rather than real relevance —
+  // same reasoning as group_hug/stax/typal/burn/mill/wheels/legends/discard/
+  // clones/group_slug. vehicles deliberately does NOT reuse artifacts_matter's
+  // "artifacts" category even though every Vehicle is an Artifact: PAYOFFS.
+  // artifacts above requires the literal word "artifact", and a real Vehicles
+  // commander's own payoff clause (Depala, Pilot Exemplar's "Each Vehicle you
+  // control gets +1/+1...") never says it — confirmed by testing the regex
+  // directly — so mapping to "artifacts" would never actually connect for a
+  // real Vehicles commander, the same near-miss reasoning as enchantress's
+  // own "auras" category.
+  infect: Object.freeze([]),
+  extra_combats: Object.freeze(["combat"]),
+  theft: Object.freeze([]),
+  superfriends: Object.freeze([]),
+  goad: Object.freeze(["combat"]),
+  vehicles: Object.freeze([]),
 });
 
 /**

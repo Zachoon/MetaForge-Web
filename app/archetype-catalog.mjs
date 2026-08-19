@@ -1,5 +1,5 @@
 // =============================================================================
-// Archetype Catalog — Founder #028 (POC) + #029 (batch 2) + #030 (batch 3)
+// Archetype Catalog — #028 (POC) + #029 (batch 2) + #030 (batch 3) + #031 (batch 4)
 // =============================================================================
 // A second, DECLARATIVE package layer, sibling to strategic-intent.mjs's
 // hand-authored PACKAGE_CATALOG. Each entry supplies oracle-text pattern
@@ -8,12 +8,19 @@
 // auras/equipment/blink already run through) evaluates these records, so
 // every downstream consumer that dispatches by package-id string needs zero
 // changes. #028 validated 3 entries; #029 added 6 more (lifegain, lands
-// matter, burn, enchantress, mill, wheels); #030 adds a further 6 (legends,
-// discard, graveyard, clones, flying, group_slug) by real EDHREC prevalence —
-// still not the full ~20-archetype remainder. #030 introduces zero new
-// false-friend shapes: all 6 reuse `broad-type-superset`, `incidental-rider`,
-// or `wrong-target-scope`, each re-grounded in independent real-card evidence
-// (see each entry's comment). See docs/FOUNDER_ISSUES.md #028/#029/#030.
+// matter, burn, enchantress, mill, wheels); #030 added a further 6 (legends,
+// discard, graveyard, clones, flying, group_slug); #031 adds the next 6
+// (infect, extra_combats, theft, superfriends, goad, vehicles) by real
+// EDHREC prevalence — still not the full ~14-archetype remainder. #031
+// introduces zero new top-level shapes: 5 of 6 reuse `wrong-target-scope`
+// (extending it to a "grant vs. negate/deny" polarity-mismatch sub-domain —
+// infect's own hate text, extra_combats' own skip-combat hosers — plus a
+// "battlefield permanent vs. graveyard card" source-scope mismatch for theft
+// and a "keyword-mention vs. count-reward" scope mismatch for superfriends
+// and goad); `vehicles` reuses `broad-type-superset` directly, one level
+// deeper than `artifacts_matter`'s own use of it (Vehicle is itself an
+// Artifact subtype). See each entry's comment for its grounding, and
+// docs/FOUNDER_ISSUES.md #028/#029/#030/#031.
 //
 // Dual reachability contract (same as the existing 10): a real archetype
 // commander with an empty note must open the package via `commander`
@@ -99,6 +106,19 @@ function excludedByTag(entry, config, semantics) {
 // scope tying it to the archetype's real payoff clause or trigger subject).
 // Each reuse is grounded in its own independent real-card false friend — see
 // each entry's comment.
+//
+// #031 generalizes it two further ways, still the same "broad mention
+// passes, precise required scope fails" evaluator: a grant-vs-negate
+// POLARITY mismatch (infect's own hate text mentions "infect"/"poison
+// counters" while removing them, not granting/scaling them; extra_combats'
+// own skip-combat hosers mention "combat phase" while denying one, not
+// granting an additional one) and a mention-vs-count-reward mismatch
+// (superfriends/goad: a card can mention "planeswalkers you control" or
+// "goaded" without itself rewarding having many planeswalkers or applying
+// goad). theft reuses the object-TYPE-mismatch sub-domain #030 opened for
+// clones, scoped to a battlefield-permanent-vs-graveyard-card mismatch
+// instead of creature-vs-spell. See each #031 entry's comment for its own
+// independent real-card grounding.
 function wrongTargetScope(entry, config) {
   const oracle = oracleOf(entryCard(entry));
   if (!config.mentionPattern.test(oracle)) return false;
@@ -1056,6 +1076,445 @@ const groupSlug = Object.freeze({
   density: Object.freeze({ singletonCore: 8, constructedCore: 5, singletonSupport: 6, constructedSupport: 3 }),
 });
 
+// -----------------------------------------------------------------------------
+// Infect
+// -----------------------------------------------------------------------------
+// Core is the Infect/Toxic keyword mechanic itself and real poison-counter
+// payoffs — Skithiryx, the Blight Dragon carries Infect directly ("This
+// creature deals damage to creatures in the form of -1/-1 counters and to
+// players in the form of poison counters."); Vishgraz, the Doomhive grants
+// toxic 1 and scales off poison ("Vishgraz gets +1/+1 for each poison
+// counter your opponents have."); Ixhel, Scion of Atraxa's Corrupted ability
+// is a real poison-threshold payoff ("each opponent who has three or more
+// poison counters exiles..."). Unlike flying/legends (where merely HAVING
+// the keyword is a false friend), an infect creature genuinely IS the
+// archetype's payoff, the same way a real burn spell is burn's own core —
+// having infect/toxic is not demoted to support.
+//
+// False-friend shape: wrong-target-scope, generalized to a grant-vs-negate
+// POLARITY mismatch (new sub-domain — see the shared evaluator's comment).
+// Melira, Sylvok Outcast — "You can't get poison counters. Creatures you
+// control can't have -1/-1 counters put on them. Creatures your opponents
+// control lose infect." — is real infect-HATE, not infect: it mentions
+// "infect" and "poison counters" as broadly as any real payoff card, but
+// every clause is a negation (lose/can't), the polarity opposite of the
+// archetype's promise. corePatterns exclude "lose infect" by construction
+// (a negative lookbehind on "lose(s) " immediately before "infect"), so
+// Melira never satisfies core in the first place; the false-friend check
+// then explicitly flags her via the broader mention-without-grant scope,
+// rather than letting her silently fall through as ordinary non-occupancy.
+//
+// Support is proliferate — a real infect enabler (grows poison counters
+// alongside every other counter in the deck) without itself being the
+// "many poison counters/infect creatures" payoff. Proliferate is CORE to
+// counters_matter and SUPPORT here — the same card legitimately occupying
+// different roles in different archetypes, per the task's own overlap
+// allowance (see mill/graveyard's Stitcher's Supplier precedent).
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: no real Infect
+// commander with a magnitude-qualified cast/play trigger was found —
+// Skithiryx's own text has no cast trigger at all — not forced.
+const INFECT_CORE_PATTERNS = Object.freeze([
+  /(?<!loses? )\binfect\b/i,
+  /\btoxic \d+\b/i,
+  /for each poison counter/i,
+  /poison counters?[^.]*(?:exiles?|draws?|creates?|gains?|deals?)/i,
+]);
+
+const INFECT_SUPPORT_PATTERNS = Object.freeze([
+  /\bproliferate\b/i,
+]);
+
+const INFECT_MENTION = /\binfect\b|\btoxic \d+\b|\bpoison counters?\b/i;
+const INFECT_REQUIRED_SCOPE = /(?<!loses? )\binfect\b|\btoxic \d+\b|for each poison counter|poison counters?[^.]*(?:exiles?|draws?|creates?|gains?|deals?)/i;
+
+const INFECT_SCOPE_CONFIG = Object.freeze({
+  mentionPattern: INFECT_MENTION,
+  requiredScopePattern: INFECT_REQUIRED_SCOPE,
+});
+
+const infect = Object.freeze({
+  id: "infect",
+  label: "Infect package",
+  corePatterns: INFECT_CORE_PATTERNS,
+  supportPatterns: INFECT_SUPPORT_PATTERNS,
+  falseFriendShape: "wrong-target-scope",
+  falseFriendConfig: INFECT_SCOPE_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: INFECT_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["infect", "poison", "poison counters", "toxic", "poison deck"]),
+  }),
+  density: Object.freeze({ singletonCore: 10, constructedCore: 6, singletonSupport: 6, constructedSupport: 3 }),
+});
+
+// -----------------------------------------------------------------------------
+// Extra Combats
+// -----------------------------------------------------------------------------
+// Core is a real granted additional combat phase — WotC's templating for
+// this effect is a single fixed phrase across every printing (Aurelia, the
+// Warleader: "After this phase, there is an additional combat phase.";
+// Relentless Assault; Aggravated Assault; Moraug, Fury of Akoum; Seize the
+// Day) — not merely attacking, dealing combat damage, or having haste.
+//
+// False-friend shape: wrong-target-scope, the same grant-vs-negate POLARITY
+// mismatch infect needs (see that entry's comment and the shared
+// evaluator's comment), confirming the sub-domain is genuinely shared across
+// two independent archetypes rather than a one-off. Stonehorn Dignitary —
+// "When this creature enters, target opponent skips their next combat
+// phase." — and the same-shaped Moment of Silence / Empty City Ruse / False
+// Peace all mention "combat phase" as broadly as any real extra-combat
+// card, but deny one from an opponent rather than granting one to you — the
+// exact polarity opposite of the archetype's promise, real pillow-fort/stax
+// staples, not a hypothetical.
+//
+// Support is haste — Fervor ("Creatures you control have haste.") lets
+// creatures played or untapped mid-turn actually attack in the granted
+// second combat, without itself granting the phase, the same ancillary role
+// tutoring/recursion play for artifacts_matter.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: Tifa, Martial Artist
+// is a real commander whose extra-combat trigger is power-magnitude-gated
+// ("creatures you control with power 7 or greater deal combat damage to a
+// player") — but the gate parser only matches "whenever you cast/play a
+// [type] spell/permanent with [metric] N or greater/less" (a cast/play
+// trigger), and Tifa's trigger is a combat-damage trigger, not a cast/play
+// trigger, so it structurally does not parse as a magnitude gate at all;
+// not forced. Tifa's own text already satisfies corePatterns directly
+// (it contains "there is an additional combat phase"), so she opens the
+// package through the generic pattern regardless.
+const EXTRA_COMBATS_CORE_PATTERNS = Object.freeze([
+  /\badditional combat phase\b/i,
+]);
+
+const EXTRA_COMBATS_SUPPORT_PATTERNS = Object.freeze([
+  /creatures you control have haste/i,
+]);
+
+const EXTRA_COMBATS_MENTION = /\bcombat phase\b/i;
+const EXTRA_COMBATS_REQUIRED_SCOPE = /\badditional combat phase\b/i;
+
+const EXTRA_COMBATS_SCOPE_CONFIG = Object.freeze({
+  mentionPattern: EXTRA_COMBATS_MENTION,
+  requiredScopePattern: EXTRA_COMBATS_REQUIRED_SCOPE,
+});
+
+const extraCombats = Object.freeze({
+  id: "extra_combats",
+  label: "Extra Combats package",
+  corePatterns: EXTRA_COMBATS_CORE_PATTERNS,
+  supportPatterns: EXTRA_COMBATS_SUPPORT_PATTERNS,
+  falseFriendShape: "wrong-target-scope",
+  falseFriendConfig: EXTRA_COMBATS_SCOPE_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: EXTRA_COMBATS_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["extra combats", "additional combat phase", "extra combat phase", "combat matters", "attack twice"]),
+  }),
+  density: Object.freeze({ singletonCore: 6, constructedCore: 4, singletonSupport: 6, constructedSupport: 3 }),
+});
+
+// -----------------------------------------------------------------------------
+// Theft
+// -----------------------------------------------------------------------------
+// Core is gaining control of an opponent's live battlefield permanent —
+// Dragonlord Silumgar ("gain control of target creature or planeswalker for
+// as long as you control Dragonlord Silumgar."), Zealous-Conscripts-class
+// temporary steals, Memnarch ("Gain control of target artifact."), and
+// Insurrection's real mass-theft ("Untap all creatures and gain control of
+// them until end of turn. They gain haste until end of turn.").
+//
+// False-friend shape: wrong-target-scope, reusing #030's object-TYPE-
+// mismatch sub-domain (clones' spell-vs-creature) but scoped instead to a
+// battlefield-permanent-vs-graveyard-card mismatch. Reanimate — "Put target
+// creature card from a graveyard onto the battlefield under your control."
+// — mentions "under your control" as broadly as any real theft card, but
+// the object is a graveyard CARD (could be anyone's, including your own),
+// not a live permanent currently under an opponent's control — a source-
+// scope mismatch, not the archetype's promise. corePatterns require the
+// literal "gain control of target X" construction Reanimate never uses (its
+// verb is "Put ... onto the battlefield", not "gain control of"), so she
+// never satisfies core; wrong-target-scope's broader mention (bare "under
+// your control") still catches and explicitly flags her. Notably, the exact
+// same card is graveyard's (#030) own "doesn't even qualify, no shape
+// needed" example there — here it DOES trip the broader mention and gets an
+// explicit false-friend flag instead, a legitimately different outcome for
+// the identical card in two different archetypes' worked examples.
+//
+// Support is a sacrifice outlet — Ashnod's Altar ("Sacrifice a creature:
+// Add {C}{C}.") converts a temporarily-stolen creature into permanent value
+// before a "for as long as"/"until end of turn" steal expires and the
+// creature returns to its owner, a real and common theft-deck pattern,
+// without itself being the control-change effect.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: no real Theft
+// commander with a magnitude-qualified cast/play trigger was found —
+// Dragonlord Silumgar's own trigger is an ETB, not a cast/play-with-type
+// trigger — not forced.
+const THEFT_CORE_PATTERNS = Object.freeze([
+  /gain control of target [^.]{0,30}?(?:creature|permanent|artifact|planeswalker)\b/i,
+  /untap all creatures and gain control of them/i,
+]);
+
+const THEFT_SUPPORT_PATTERNS = Object.freeze([
+  /sacrifice a creature:/i,
+]);
+
+const THEFT_MENTION = /gain control of|under your control|owner'?s control/i;
+const THEFT_REQUIRED_SCOPE = /gain control of target [^.]{0,30}?(?:creature|permanent|artifact|planeswalker)\b|gain control of all creatures/i;
+
+const THEFT_SCOPE_CONFIG = Object.freeze({
+  mentionPattern: THEFT_MENTION,
+  requiredScopePattern: THEFT_REQUIRED_SCOPE,
+});
+
+const theft = Object.freeze({
+  id: "theft",
+  label: "Theft package",
+  corePatterns: THEFT_CORE_PATTERNS,
+  supportPatterns: THEFT_SUPPORT_PATTERNS,
+  falseFriendShape: "wrong-target-scope",
+  falseFriendConfig: THEFT_SCOPE_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: THEFT_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["theft", "control magic", "steal creatures", "mind control", "threaten effects"]),
+  }),
+  density: Object.freeze({ singletonCore: 6, constructedCore: 4, singletonSupport: 4, constructedSupport: 2 }),
+});
+
+// -----------------------------------------------------------------------------
+// Planeswalkers / Superfriends
+// -----------------------------------------------------------------------------
+// Core is a real payoff for having MANY planeswalkers together, not merely
+// generic +1/+1-counter synergy proliferate also touches — Mila, Crafty
+// Companion (front face of Mila // Lukka, a real legendary-creature
+// commander): "Whenever an opponent attacks one or more planeswalkers you
+// control, put a loyalty counter on each planeswalker you control."; Chandra,
+// Legacy of Fire: "Chandra deals X damage to each opponent, where X is the
+// number of planeswalkers you control." / "Add {R} for each planeswalker you
+// control."; Oath of Teferi: "You may activate the loyalty abilities of
+// planeswalkers you control twice each turn rather than only once."
+//
+// Deliberately kept disjoint from #028's counters_matter on purpose: a
+// planeswalker's LOYALTY counter is a structurally different counter type
+// from a +1/+1 counter, and superfriends' corePatterns never use "+1/+1"
+// wording at all, while counters_matter's own corePatterns all require the
+// literal "+1/+1" substring — neither list can accidentally satisfy the
+// other by construction, not just by empirical luck. Concretely: Atraxa,
+// Praetors' Voice ("At the beginning of your end step, proliferate.") is
+// this codebase's own canonical "Superfriends commander" reference
+// (docs/FOUNDER_ISSUES.md #023/#024) — bare proliferate opens counters_matter
+// (its own corePatterns include /\bproliferate\b/i directly) but deliberately
+// does NOT open superfriends, since Atraxa's text never mentions a
+// planeswalker at all. That is why Atraxa was NOT chosen as this entry's
+// commander fixture even though she is the codebase's go-to Superfriends
+// flavor example — Mila is the honest choice because her own text is
+// planeswalker-specific, not generic-counter-shaped. Verified in the test
+// file with an explicit disjointness assertion, the same way #030 proved
+// discard/wheels and group_slug/burn disjointness with real fixtures.
+//
+// False-friend shape: wrong-target-scope, a mention-vs-count-reward
+// mismatch (new sub-domain, shared with goad below). Baird, Steward of
+// Argive — "Creatures can't attack you or planeswalkers you control unless
+// their controller pays {1} for each of those creatures." — mentions
+// "planeswalkers you control" as broadly as any real payoff card, but is a
+// flat attack-tax that helps identically whether you control one
+// planeswalker or ten — it never rewards HAVING MANY, the archetype's real
+// promise.
+//
+// Support is proliferate — grows loyalty across every planeswalker you
+// control without itself being the "many planeswalkers together" payoff,
+// the same enabler role it plays for infect above and the same
+// cross-archetype role split the task specifically asked to guard.
+// reuseProtectionSupport is also set: a Shalai-class "planeswalkers you
+// control have hexproof" grant is a genuine enabler (protects the plan)
+// rather than a false friend, consumed via the same existing "protection"
+// semantic tag artifacts_matter/lifegain/lands_matter/legends already reuse.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: no real Superfriends
+// commander with a magnitude-qualified cast/play trigger was found — not
+// forced.
+const SUPERFRIENDS_CORE_PATTERNS = Object.freeze([
+  /loyalty counters? on each planeswalker/i,
+  /for each planeswalker you control/i,
+  /loyalty abilities of planeswalkers you control/i,
+  /number of planeswalkers you control/i,
+]);
+
+const SUPERFRIENDS_SUPPORT_PATTERNS = Object.freeze([
+  /\bproliferate\b/i,
+]);
+
+const SUPERFRIENDS_MENTION = /planeswalkers? you control|loyalty (?:counters?|abilit(?:y|ies))/i;
+const SUPERFRIENDS_REQUIRED_SCOPE = /loyalty counters? on each planeswalker|for each planeswalker you control|loyalty abilities of planeswalkers you control|number of planeswalkers you control/i;
+
+const SUPERFRIENDS_SCOPE_CONFIG = Object.freeze({
+  mentionPattern: SUPERFRIENDS_MENTION,
+  requiredScopePattern: SUPERFRIENDS_REQUIRED_SCOPE,
+});
+
+const superfriends = Object.freeze({
+  id: "superfriends",
+  label: "Planeswalkers / Superfriends package",
+  corePatterns: SUPERFRIENDS_CORE_PATTERNS,
+  supportPatterns: SUPERFRIENDS_SUPPORT_PATTERNS,
+  reuseProtectionSupport: true,
+  falseFriendShape: "wrong-target-scope",
+  falseFriendConfig: SUPERFRIENDS_SCOPE_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: SUPERFRIENDS_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["superfriends", "planeswalkers matter", "planeswalker tribal", "loyalty matters", "walker deck"]),
+  }),
+  density: Object.freeze({ singletonCore: 6, constructedCore: 4, singletonSupport: 6, constructedSupport: 3 }),
+});
+
+// -----------------------------------------------------------------------------
+// Forced Combat / Goad
+// -----------------------------------------------------------------------------
+// Core is the Goad keyword/mechanic itself — Marisi, Breaker of the Coil
+// ("Whenever a creature you control deals combat damage to a player, goad
+// each creature that player controls."), Alela, Cunning Conqueror ("goad
+// target creature that player controls"), Baeloth Barrityl, Entertainer
+// ("Creatures your opponents control with power less than Baeloth
+// Barrityl's power are goaded.") — not merely attack triggers in general
+// (that stays group_slug's/burn's territory).
+//
+// False-friend shape: wrong-target-scope, the same mention-vs-count-reward
+// mismatch superfriends needs above, confirming the sub-domain is shared
+// rather than a one-off. Serene Sleuth — "At the beginning of combat on
+// your turn, investigate for each goaded creature you control. Then each
+// creature you control is no longer goaded." — mentions "goaded" as broadly
+// as any real goad card, but never itself applies goad to anything; it only
+// counts and then REMOVES existing goaded status as a rider on an unrelated
+// card-advantage engine (investigate/Clues) — the mention passes, but the
+// archetype's real action verb (goad target/each/all creature(s)) never
+// appears.
+//
+// Support is a byproduct-of-goad payoff — Kardur, Doomscourge's own second
+// ability ("Whenever an attacking creature dies, each opponent loses 1 life
+// and you gain 1 life.") rewards the combat goad forces without itself
+// applying goad (Kardur's own first ability is goad's unkeyworded effect,
+// predating the Ixalan keyword — real evidence the effect existed before
+// the reminder text, not a fixture for corePatterns), the same ancillary
+// role tutoring/recursion play for artifacts_matter.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: no real Goad commander
+// with a magnitude-qualified cast/play trigger was found — not forced.
+const GOAD_CORE_PATTERNS = Object.freeze([
+  /\bgoad (?:target|each|all|one or more)\b[^.]{0,25}?\bcreatures?\b/i,
+  /\bgoad it\b/i,
+  /\bare goaded\b/i,
+  /\bis goaded\b/i,
+]);
+
+const GOAD_SUPPORT_PATTERNS = Object.freeze([
+  /whenever an attacking creature dies,[^.]*(?:lose|gain) \d+ life/i,
+]);
+
+const GOAD_MENTION = /\bgoad(?:ed|s)?\b/i;
+const GOAD_REQUIRED_SCOPE = /\bgoad (?:target|each|all|one or more)\b[^.]{0,25}?\bcreatures?\b|\bgoad it\b|\bare goaded\b|\bis goaded\b/i;
+
+const GOAD_SCOPE_CONFIG = Object.freeze({
+  mentionPattern: GOAD_MENTION,
+  requiredScopePattern: GOAD_REQUIRED_SCOPE,
+});
+
+const goad = Object.freeze({
+  id: "goad",
+  label: "Forced Combat / Goad package",
+  corePatterns: GOAD_CORE_PATTERNS,
+  supportPatterns: GOAD_SUPPORT_PATTERNS,
+  falseFriendShape: "wrong-target-scope",
+  falseFriendConfig: GOAD_SCOPE_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: GOAD_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["goad", "goad deck", "forced combat", "make them fight", "political combat"]),
+  }),
+  density: Object.freeze({ singletonCore: 8, constructedCore: 5, singletonSupport: 6, constructedSupport: 3 }),
+});
+
+// -----------------------------------------------------------------------------
+// Vehicles
+// -----------------------------------------------------------------------------
+// Core is a real Vehicle-specific payoff — Depala, Pilot Exemplar's own
+// "Each Vehicle you control gets +1/+1 as long as it's a creature.", Kotori,
+// Pilot Prodigy's "Vehicles you control have crew 2.", Astor, Bearer of
+// Blades' "Vehicles you control have crew 1.", Cid, Freeflier Pilot's
+// "Equipment and Vehicle spells you cast cost {1} less to cast.", and a
+// combat-damage payoff keyed to the type specifically (Edward Kenway:
+// "Whenever a Vehicle you control deals combat damage to a player, ...").
+//
+// False-friend shape: broad-type-superset, reused DIRECTLY from
+// artifacts_matter (not a new sub-domain) with typePattern /\bVehicle\b/i
+// instead of /\bArtifact\b/i — deliberately one level deeper than
+// artifacts_matter's own trap, since every Vehicle is already an Artifact
+// by rules text ("Artifact — Vehicle"). Cultivator's Caravan — "{T}: Add
+// one mana of any color. Crew 3." — proves the trap recurs: its type line
+// carries BOTH "Artifact" and "Vehicle", but it is a vanilla mana rock with
+// zero payoff text for either archetype, the same false-friend shape one
+// subtype layer down.
+//
+// Kept structurally disjoint from artifacts_matter on purpose (the task's
+// own overlap warning): every corePattern here requires the literal word
+// "Vehicle", and none of artifacts_matter's ARTIFACT_PAYOFF_PATTERNS do —
+// neither list can accidentally satisfy the other by construction. Verified
+// against real evidence, not just the regex: Depala's own payoff clause
+// ("Each Vehicle you control gets +1/+1...") does not contain the word
+// "artifact" anywhere and does not open artifacts_matter; conversely
+// artifacts_matter's own commander fixture, T'Challa, the Black Panther,
+// has no "Vehicle" text and does not open this package. The reward-mapping
+// evidence tells the same story one layer further down: PAYOFFS.artifacts
+// in forge-interaction-graph.mjs requires the literal word "artifact", and
+// Depala's own text never says it either — confirmed by testing the regex
+// directly, not assumed — which is exactly why this package maps to `[]` in
+// package-plan-optimizer.mjs rather than reusing artifacts_matter's
+// "artifacts" reward category (see that file's own comment). Verified with
+// an explicit disjointness test, the same way #030 proved discard/wheels
+// and group_slug/burn disjointness with real commander fixtures.
+//
+// Support is Vehicle-specific recursion — Cid, Freeflier Pilot's own second
+// clause ("Return target Equipment or Vehicle card from your graveyard to
+// your hand.") is real recursion support, the same ancillary role
+// tutoring/recursion play for artifacts_matter.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: no real Vehicles
+// commander with a magnitude-qualified cast/play trigger was found — not
+// forced.
+const VEHICLES_CORE_PATTERNS = Object.freeze([
+  /vehicles? you control (?:get|have|gain)/i,
+  /vehicle spells? you cast cost \{[^}]+\} less/i,
+  /whenever (?:a|another) vehicle (?:you control )?(?:enters|attacks|deals combat damage to a player)/i,
+]);
+
+const VEHICLES_SUPPORT_PATTERNS = Object.freeze([
+  /return target (?:equipment or )?vehicle card from your graveyard to your hand/i,
+]);
+
+const vehicles = Object.freeze({
+  id: "vehicles",
+  label: "Vehicles package",
+  corePatterns: VEHICLES_CORE_PATTERNS,
+  supportPatterns: VEHICLES_SUPPORT_PATTERNS,
+  reuseProtectionSupport: true,
+  falseFriendShape: "broad-type-superset",
+  falseFriendConfig: Object.freeze({ typePattern: /\bVehicle\b/i }),
+  commander: Object.freeze({
+    oraclePatterns: VEHICLES_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["vehicles", "vehicle tribal", "crew matters", "pilots deck", "vehicles matter"]),
+  }),
+  density: Object.freeze({ singletonCore: 8, constructedCore: 5, singletonSupport: 6, constructedSupport: 3 }),
+});
+
 export const ARCHETYPE_CATALOG = Object.freeze({
   artifacts_matter: artifactsMatter,
   counters_matter: countersMatter,
@@ -1072,6 +1531,12 @@ export const ARCHETYPE_CATALOG = Object.freeze({
   clones,
   flying,
   group_slug: groupSlug,
+  infect,
+  extra_combats: extraCombats,
+  theft,
+  superfriends,
+  goad,
+  vehicles,
 });
 
 
