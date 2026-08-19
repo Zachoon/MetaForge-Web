@@ -6,6 +6,16 @@
 // enchantment, Equipment ≠ artifact, sacrifice outlet ≠ death payoff, etc.
 // =============================================================================
 
+import {
+  ARCHETYPE_CATALOG,
+  archetypeTriggered,
+  archetypeTriggeredByCommander,
+  archetypeTriggeredByNote,
+  cardIsArchetypeFalseFriend,
+  cardSatisfiesArchetypeCore,
+  cardSatisfiesArchetypeSupport,
+} from "./archetype-catalog.mjs";
+
 const normalized = (value = "") => String(value).normalize("NFKC").trim().toLocaleLowerCase("en");
 const unique = (values) => [...new Set(values.filter(Boolean))];
 const clamp = (value, min = 0, max = 100) => Math.min(max, Math.max(min, Number(value) || 0));
@@ -449,6 +459,13 @@ const PACKAGE_CATALOG = Object.freeze({
   }),
 });
 
+// Proof-of-concept scale-out (Founder #028): a second, declarative catalog
+// merged alongside the 10 hand-authored packages above. No id collides with
+// the hand-authored 10, so every existing lookup below is byte-identical for
+// them; ARCHETYPE_CATALOG entries only ever reach the generic dispatch
+// branches added for this widening.
+const ALL_PACKAGES = Object.freeze({ ...PACKAGE_CATALOG, ...ARCHETYPE_CATALOG });
+
 /**
  * Composition trigger for packages the commander's own text and any stated
  * blueprint mechanics never announce — an archetype built entirely by the
@@ -478,6 +495,9 @@ function detectComposition(definition, blueprint) {
 function packageTriggered(definition, commanders, blueprint) {
   if (definition.detectBlueprint?.(blueprint)) return true;
   if (commanders.some((commander) => definition.detectCommander?.(oracleOf(commander) || ""))) return true;
+  // No-op for the hand-authored 10 (they carry no .commander/.note fields);
+  // this is the archetype-catalog dual-reachability path.
+  if (archetypeTriggered(definition, commanders, blueprint)) return true;
   return detectComposition(definition, blueprint);
 }
 
@@ -660,8 +680,9 @@ function cardSatisfiesStaxSupport(entry) {
 }
 
 export function cardSatisfiesPackageCore(entry, packageId, intent) {
-  const definition = PACKAGE_CATALOG[packageId];
+  const definition = ALL_PACKAGES[packageId];
   if (!definition) return false;
+  if (ARCHETYPE_CATALOG[packageId]) return cardSatisfiesArchetypeCore(entry, definition, entrySemantics(entry));
   const scope = tokenScopeFor(packageId, intent);
   if (packageId === "tokens" && scope.length) {
     return cardIsNamedArtifactTokenMaker(entry, scope);
@@ -683,8 +704,9 @@ export function cardSatisfiesPackageCore(entry, packageId, intent) {
 }
 
 export function cardSatisfiesPackageSupport(entry, packageId, intent) {
-  const definition = PACKAGE_CATALOG[packageId];
+  const definition = ALL_PACKAGES[packageId];
   if (!definition) return false;
+  if (ARCHETYPE_CATALOG[packageId]) return cardSatisfiesArchetypeSupport(entry, definition, entrySemantics(entry));
   if (packageId === "aristocrats") return cardSatisfiesAristocratsCore(entry);
   if (packageId === "reanimator") return cardSatisfiesReanimatorCore(entry);
   if (packageId === "landfall") return cardSatisfiesLandfallSupport(entry);
@@ -697,10 +719,11 @@ export function cardSatisfiesPackageSupport(entry, packageId, intent) {
 }
 
 export function cardIsPackageFalseFriend(entry, packageId, intent) {
-  const definition = PACKAGE_CATALOG[packageId];
+  const definition = ALL_PACKAGES[packageId];
   if (!definition) return false;
   if (cardSatisfiesPackageCore(entry, packageId, intent)) return false;
   const semantics = entrySemantics(entry);
+  if (ARCHETYPE_CATALOG[packageId]) return cardIsArchetypeFalseFriend(entry, definition, semantics);
   if ((definition.falseFriendSemantics || []).some((tag) => semantics.has(tag))) return true;
   const scope = tokenScopeFor(packageId, intent);
   if (packageId === "tokens" && scope.length && cardIsCreatureTokenFactory(entry)) return true;
@@ -717,13 +740,16 @@ export function buildStrategicIntent(input = {}, analysisContext = {}) {
   const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
   const packages = [];
 
-  for (const definition of Object.values(PACKAGE_CATALOG)) {
+  for (const definition of Object.values(ALL_PACKAGES)) {
     if (!packageTriggered(definition, commanders, blueprint)) continue;
     const targets = densityFor(definition, singleton);
+    const byBlueprint = Boolean(definition.detectBlueprint?.(blueprint)) || archetypeTriggeredByNote(definition, blueprint);
+    const byCommander = commanders.some((commander) => definition.detectCommander?.(oracleOf(commander) || ""))
+      || archetypeTriggeredByCommander(definition, commanders);
     packages.push(Object.freeze({
       id: definition.id,
       label: definition.label,
-      coreSemantics: definition.coreSemantics,
+      coreSemantics: definition.coreSemantics || [],
       falseFriendSemantics: definition.falseFriendSemantics || [],
       supportSemantics: definition.supportSemantics || [],
       packageSignals: definition.packageSignals || [],
@@ -736,9 +762,7 @@ export function buildStrategicIntent(input = {}, analysisContext = {}) {
           ])
         : []),
       ...targets,
-      source: definition.detectBlueprint?.(blueprint) && definition.detectCommander?.(oracleOf(commanders[0] || {}))
-        ? "commander+blueprint"
-        : definition.detectBlueprint?.(blueprint) ? "blueprint" : "commander",
+      source: byBlueprint && byCommander ? "commander+blueprint" : byBlueprint ? "blueprint" : "commander",
     }));
   }
 
@@ -788,7 +812,7 @@ function packageOverlap(offenderEntry, candidateEntry, intent) {
   const shared = offenderPackages.filter((id) => cardSatisfiesPackageCore(candidateEntry, id, intent) || cardSatisfiesPackageSupport(candidateEntry, id, intent));
   // False-friend trap: a non-aura enchantment must not replace an Aura core.
   for (const id of offenderPackages) {
-    const definition = PACKAGE_CATALOG[id];
+    const definition = ALL_PACKAGES[id];
     if (!definition) continue;
     if (cardSatisfiesPackageCore(offenderEntry, id, intent) && cardIsPackageFalseFriend(candidateEntry, id, intent)) {
       return { required: true, ok: false, shared, reason: `${definition.label} core cannot be replaced by false-friend semantics` };
@@ -903,12 +927,17 @@ export function expensiveThreatSupport(entry, selectedRows = [], intent = {}) {
 }
 
 function packageReport(rows, packageSpec, intent) {
-  if (packageSpec.id === "typal") {
+  // Typal's own core/support/false-friend are computed off type-line
+  // membership, not a coreSemantics tag list — the archetype-catalog entries
+  // are the same shape (oracle-pattern/shape-evaluator driven, no
+  // coreSemantics tags at all), so they share this branch rather than
+  // crashing on packageSpec.coreSemantics.length below.
+  if (packageSpec.id === "typal" || ARCHETYPE_CATALOG[packageSpec.id]) {
     const qty = (row) => Number(row.quantity || 1);
     return {
-      coreCount: rows.reduce((sum, row) => sum + (cardSatisfiesPackageCore(row, "typal", intent) ? qty(row) : 0), 0),
-      falseFriendCount: rows.reduce((sum, row) => sum + (cardIsPackageFalseFriend(row, "typal", intent) ? qty(row) : 0), 0),
-      supportCount: rows.reduce((sum, row) => sum + (cardSatisfiesPackageSupport(row, "typal", intent) ? qty(row) : 0), 0),
+      coreCount: rows.reduce((sum, row) => sum + (cardSatisfiesPackageCore(row, packageSpec.id, intent) ? qty(row) : 0), 0),
+      falseFriendCount: rows.reduce((sum, row) => sum + (cardIsPackageFalseFriend(row, packageSpec.id, intent) ? qty(row) : 0), 0),
+      supportCount: rows.reduce((sum, row) => sum + (cardSatisfiesPackageSupport(row, packageSpec.id, intent) ? qty(row) : 0), 0),
       legs: {},
     };
   }
@@ -995,4 +1024,4 @@ export function validateStrategicCohesion(candidate, intent, options = {}) {
   });
 }
 
-export const STRATEGIC_PACKAGE_IDS = Object.freeze(Object.keys(PACKAGE_CATALOG));
+export const STRATEGIC_PACKAGE_IDS = Object.freeze(Object.keys(ALL_PACKAGES));

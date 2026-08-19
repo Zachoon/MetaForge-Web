@@ -901,6 +901,38 @@ One manifestation:
 
 Checked and deliberately left out of scope: `restrictedEffectCastingFactor` (`conditional-effect-credit.mjs`) already stops artifact-only colorless mana (Vibranium-class `{C}`) from being penalized when spent on an artifact spell, but it does not positively reward a deck for having real uses for that restricted mana beyond what the magnitude-gate fix above already does incidentally (an MV4+ artifact is exactly a good use for Vibranium's `{C}`). Rewarding resource-spending synergy directly is a different capability from magnitude-threshold grading and is left for a follow-up, not folded in here.
 
+### #028 — Archetype catalog: generic package layer (proof of concept)
+
+| | |
+|---|---|
+| **Layer** | Strategic / Construction |
+| **Status** | Shipped (harness-gated, proof-of-concept scope), pending Live Founder Trial |
+| **Brain impact** | Yes — 3 new packages can open in default construction. |
+
+**Scope**
+
+The 10 existing `PACKAGE_CATALOG` entries in `strategic-intent.mjs` (auras, equipment, aristocrats, reanimator, tokens, landfall, typal, spellslinger, blink, stax) are each a bespoke, hand-written detector function. A research pass identified a further ~26 archetypes worth the same false-friend-aware treatment, but hand-authoring 26 more one-off detector functions the same way does not scale. This issue validates a second, *declarative* catalog schema — oracle-text pattern lists plus a named, reusable false-friend "shape" — against exactly 3 of those ~26 archetypes before committing to the rest:
+
+1. **Artifacts matter** (`artifacts_matter`) — false-friend shape `broad-type-superset`. A card carrying the broad "Artifact" type line is not core just because it is an artifact; core is the payoff (metalcraft / affinity / artifacts-you-control / artifact-enters watchers). Also reuses `commanderPayoffMagnitudeGates` (#027) so a T'Challa-shaped commander whose only artifact tie is a magnitude-qualified cast trigger still opens the package without re-deriving that parse.
+2. **+1/+1 Counters matter** (`counters_matter`) — false-friend shape `incidental-rider`. A card whose dominant effect is something else (removal, exile, damage, draw) that mentions a +1/+1 counter only as a minor rider clause gated behind an unrelated condition is not core.
+3. **Group Hug** (`group_hug`) — false-friend shape `excluded-by-tag`. A card that superficially reads "each player" / "each opponent may" but is already tagged `stax_piece` or `asymmetric_stax` by `strategicSemanticsFor` is a tax dressed as generosity, not real hug — reuses that existing tag vocabulary rather than inventing a parallel one.
+
+**Do not fix as**
+
+- 26 more bespoke hand-written detector functions, one per archetype
+- a name/commander-specific branch anywhere in the 3 entries
+- editing any of the existing 10 `PACKAGE_CATALOG` entries "for consistency"
+
+**Legal next step (done 2026-08-18)**
+
+New file `app/archetype-catalog.mjs`: exactly 3 declarative catalog records (`ARCHETYPE_CATALOG`), each with `corePatterns`/`supportPatterns` oracle-text regex lists, a `falseFriendShape` + `falseFriendConfig`, a `commander.oraclePatterns` block (and, for `artifacts_matter` only, a `commander.magnitudeGateTypeWord` that reuses #027's gate parser), and a `note.aliases` block — the same dual-reachability contract (`packageTriggered`) the existing 10 already honor, so a real archetype commander with an empty note and a free-text fantasy note both independently open the package. Three shared, reusable false-friend shape evaluators (`broad-type-superset`, `incidental-rider`, `excluded-by-tag`) are exported and dispatched generically by shape name — built for exactly what these 3 entries need, not a speculative fourth shape.
+
+`strategic-intent.mjs` merges `ARCHETYPE_CATALOG` into a local `ALL_PACKAGES` alongside the unmodified `PACKAGE_CATALOG` (no id collision with the 10) and widens `packageTriggered`, `cardSatisfiesPackageCore`, `cardSatisfiesPackageSupport`, `cardIsPackageFalseFriend`, `packageReport`, and `STRATEGIC_PACKAGE_IDS` to also reach archetype-catalog records — the exact generic-dispatch path `auras`/`equipment`/`blink` already run through. Every branch for the existing 10 is untouched; the only line each function gained is an early `if (ARCHETYPE_CATALOG[packageId]) return ...` before falling through to the original logic. `package-plan-optimizer.mjs`'s `PACKAGE_RELEVANT_REWARDS` gets `artifacts_matter: ["artifacts"]` and `counters_matter: ["counters"]` (both real reward categories already in `forge-interaction-graph.mjs`'s PAYOFFS vocabulary) and `group_hug: []` (no "each player benefits" reward category exists in that vocabulary at all — same reasoning as `stax`/`typal`'s empty mapping, to avoid a `weak_commander_connection` false positive).
+
+Tests: `npm run validate:artifacts-matter-occupancy`, `validate:counters-matter-occupancy`, `validate:group-hug-occupancy` — each with commander-path, note-path, core/false-friend/support unit coverage, and one live `forgeNativeMasterwork` construction test against a real, Scryfall-verified commander (T'Challa, the Black Panther; Vorel of the Hull Clade; Kynaios and Tiro of Meletis). All 10 existing `*-package-occupancy` test files plus `validate:founder-026`/`validate:founder-027` (both touch the same shared scoring/conditional-effect-credit machinery) re-verified green with zero changes. Field: `npm run validate:harness:field`.
+
+**Live trial:** Not yet run. Harness-gated only. This is explicitly a 3-of-~26 proof of concept — it validates the catalog schema and the 3 false-friend shapes, not full archetype-effort completeness. The remaining ~23 archetypes are out of scope for this issue.
+
 ---
 
 ## How to add the next issue

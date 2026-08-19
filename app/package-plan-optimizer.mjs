@@ -195,6 +195,18 @@ const PACKAGE_RELEVANT_REWARDS = Object.freeze({
   spellslinger: Object.freeze(["spells"]),
   blink: Object.freeze(["etb"]),
   stax: Object.freeze([]),
+  // Founder #028 proof-of-concept archetypes. artifacts_matter and
+  // counters_matter map onto real "artifacts"/"counters" reward categories
+  // already in forge-interaction-graph.mjs's PAYOFFS vocabulary (ARTIFACT_MATTERS,
+  // PAYOFFS.counters), so a genuine commander connection there is on-topic the
+  // same way spellslinger's "spells" category is. group_hug has no
+  // corresponding reward category at all — "each player benefits" is not a
+  // "whenever X, get Y" payoff pattern the vocabulary tracks for anyone — so
+  // it maps to [] for the same reason stax/typal do: any category match would
+  // be a structural coincidence, not real commander-package relevance.
+  artifacts_matter: Object.freeze(["artifacts"]),
+  counters_matter: Object.freeze(["counters"]),
+  group_hug: Object.freeze([]),
 });
 
 /**
