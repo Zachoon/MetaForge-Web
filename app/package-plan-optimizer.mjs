@@ -236,6 +236,29 @@ const PACKAGE_RELEVANT_REWARDS = Object.freeze({
   enchantress: Object.freeze([]),
   mill: Object.freeze([]),
   wheels: Object.freeze([]),
+  // Founder #030 (batch 3). graveyard maps onto the real "graveyard" reward
+  // category already in the PAYOFFS vocabulary above (/from your graveyard|
+  // in your graveyard|delirium|threshold/i) — a genuine commander connection
+  // there (Muldrotha's "cast ... from your graveyard", Ishkanah's Delirium)
+  // is on-topic, the same real category reanimator already maps to; both
+  // archetypes legitimately touch the same graveyard-resource vocabulary
+  // without either stealing the other's promise. flying maps onto the real
+  // "evasion" category (/creatures? you control with (?:flying|menace)|.../i)
+  // — broader than pure-flying since it also covers menace, but a real
+  // Flying commander (Sephara's "creatures you control with flying have
+  // indestructible") still genuinely clears it, unlike enchantress's "auras"
+  // near-miss. legends, discard, clones, and group_slug have no
+  // corresponding reward category at all: no "legendary permanents matter",
+  // "discard matters", "copy matters", or opponent-triggered "punisher"
+  // category exists in the vocabulary above, so any match would be a
+  // structural coincidence rather than real relevance — same reasoning as
+  // group_hug/stax/typal/burn/mill/wheels.
+  legends: Object.freeze([]),
+  discard: Object.freeze([]),
+  graveyard: Object.freeze(["graveyard"]),
+  clones: Object.freeze([]),
+  flying: Object.freeze(["evasion"]),
+  group_slug: Object.freeze([]),
 });
 
 /**
