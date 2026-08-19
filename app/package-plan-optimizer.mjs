@@ -350,6 +350,39 @@ const PACKAGE_RELEVANT_REWARDS = Object.freeze({
   anthems: Object.freeze([]),
   devotion: Object.freeze([]),
   cascade: Object.freeze([]),
+  // Founder #034 (batch 7, final — closes the deferred bucket). cantrips and
+  // x_spells and spell_copy all map onto the real "spells" reward category
+  // above (/whenever you cast|magecraft|instant and sorcery/i) — a genuine,
+  // verified connection, not a structural coincidence: cantrips' own real
+  // commanders' trigger text ("Whenever you cast your second spell each
+  // turn..." — Jori En, Ruin Diver; Kraum, Violent Cacophony) literally
+  // contains "whenever you cast"; x_spells' own real commanders' trigger
+  // text ("Whenever you cast a spell with {X} in its mana cost..." — Zaxara,
+  // the Exemplary; Zimone, Infinite Analyst; Nev, the Practical Dean) does
+  // too; spell_copy's own real commander (Kalamax, the Stormsire: "Whenever
+  // you cast your first instant spell each turn...") does too. exile_matters
+  // maps onto the real "exile_play" reward category above (/whenever you
+  // (?:play|cast) [^.]* from exile|cards? you (?:play|cast) from exile/i) —
+  // its own real commander's own text (Prosper, Tome-Bound: "Whenever you
+  // play a card from exile, create a Treasure token.") trips it directly, a
+  // category that exists in the vocabulary for exactly this archetype.
+  // toolbox and hatebears have no corresponding reward category at all: no
+  // "tutor"/"search library" or "disruption"/"taxation" category exists in
+  // the vocabulary above, so any match would be a structural coincidence
+  // rather than real relevance — same reasoning as
+  // group_hug/stax/typal/burn/mill/wheels/legends/discard/clones/group_slug/
+  // infect/theft/superfriends/vehicles/pillow_fort/toughness_matters/
+  // extra_turns/sagas/energy/monarch/anthems/devotion/cascade. Checked the
+  // plausible near-miss for hatebears directly: Iona's/Gaddock Teeg's own
+  // real text never trips PAYOFFS.spells either (no literal "whenever you
+  // cast" substring in either — both are "opponents can't cast", a denial,
+  // not a cast trigger).
+  cantrips: Object.freeze(["spells"]),
+  toolbox: Object.freeze([]),
+  x_spells: Object.freeze(["spells"]),
+  exile_matters: Object.freeze(["exile_play"]),
+  hatebears: Object.freeze([]),
+  spell_copy: Object.freeze(["spells"]),
 });
 
 /**

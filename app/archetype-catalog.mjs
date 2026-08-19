@@ -1,7 +1,9 @@
 // =============================================================================
 // Archetype Catalog — #028 (POC) + #029 (batch 2) + #030 (batch 3) + #031
 // (batch 4) + #032 (batch 5, final of the original ~26-archetype scope) +
-// #033 (batch 6, first of the deferred lower-prevalence bucket)
+// #033 (batch 6, first of the deferred lower-prevalence bucket) + #034
+// (batch 7, final — closes out the deferred bucket and the full archetype-
+// catalog effort begun at #028: 32 + 6 = 38 archetypes across 7 batches)
 // =============================================================================
 // A second, DECLARATIVE package layer, sibling to strategic-intent.mjs's
 // hand-authored PACKAGE_CATALOG. Each entry supplies oracle-text pattern
@@ -25,8 +27,17 @@
 // gating-clause-vs-scaling-reward mismatch grounded in the whole Theros god
 // cycle); monarch and cascade reuse `incidental-rider`, the same gated-rider
 // shape counters_matter/lifegain/burn/discard/graveyard/toughness_matters
-// already use. See each entry's comment for its grounding, and
-// docs/FOUNDER_ISSUES.md #028/#029/#030/#031/#032/#033.
+// already use. #034 (batch 7, final) closes the deferred bucket with 6 more
+// (cantrips, toolbox, x_spells, exile_matters, hatebears, spell_copy),
+// introducing zero new top-level shapes — every one of these 6 also reuses
+// `wrong-target-scope`, including 3 named CRITICAL overlap risks (cantrips
+// vs. the original spellslinger package, exile_matters vs. #030's graveyard,
+// hatebears vs. BOTH #032's pillow_fort and the original stax package) and
+// one deliberate complementary pair (spell_copy grounded in Twincast, #030's
+// clones' own documented false friend, proving both archetypes' boundaries
+// from opposite directions with the same real card). See each entry's
+// comment for its grounding, and
+// docs/FOUNDER_ISSUES.md #028/#029/#030/#031/#032/#033/#034.
 //
 // Dual reachability contract (same as the existing 10): a real archetype
 // commander with an empty note must open the package via `commander`
@@ -2392,6 +2403,477 @@ const cascade = Object.freeze({
   density: Object.freeze({ singletonCore: 6, constructedCore: 4, singletonSupport: 4, constructedSupport: 2 }),
 });
 
+// -----------------------------------------------------------------------------
+// Cantrips
+// -----------------------------------------------------------------------------
+// Core is deliberately narrower than the original PACKAGE_CATALOG's own
+// `spellslinger` entry (coreSemantics: ["cheap_spell"] — ANY instant/sorcery
+// with mana value <= 2, regardless of what it does). Cantrips' real promise
+// is specifically CHEAP, REPLACEMENT-VALUE spells and payoffs keyed to
+// casting many of them, not casting instants/sorceries generally. Two real
+// shapes: (1) the cantrip SPELLS themselves — Opt ("Scry 1. ... Draw a
+// card."), Preordain ("Scry 2, then draw a card."), Consider ("Surveil 1. ...
+// Draw a card.") — a card-neutral scry/surveil-then-draw template; (2) the
+// payoff for casting many of them — Jori En, Ruin Diver ("Whenever you cast
+// your second spell each turn, draw a card."), Kraum, Violent Cacophony
+// ("Whenever you cast your second spell each turn, put a +1/+1 counter on
+// Kraum and draw a card.").
+//
+// Disjointness from spellslinger, verified directly rather than assumed: (a)
+// card-level — every real cantrip is inherently ALSO spellslinger fuel (Opt
+// is a cmc-1 Instant, so it always satisfies spellslinger's own cheap_spell
+// semantic too) — this is a genuine, legitimate co-occupancy, the same
+// precedent already established for graveyard/reanimator both touching the
+// graveyard-resource vocabulary "without either stealing the other's
+// promise" (see this file's own #030 comment and package-plan-optimizer.mjs's
+// PACKAGE_RELEVANT_REWARDS comment for graveyard). (b) commander-level — this
+// is where the real discrimination lives. spellslinger's own
+// detectSpellslingerCommander/spell_payoff semantics require the literal
+// words "instant"/"sorcery"/"noncreature"/magecraft/"copy target instant or
+// sorcery" immediately after "cast". Jori En's and Kraum's own real trigger
+// text says "cast your second spell" — bare "spell", no type word — so ithe
+// commander never trips spellslinger's own detection at all. Checked
+// directly: neither /whenever you cast (?:an? )?(?:instant|sorcery|
+// noncreature)/i nor magecraft nor "copy target instant or sorcery" appears
+// in either commander's text.
+//
+// False-friend shape: wrong-target-scope (reused), a new "Nth-spell-mention
+// vs draw-reward" sub-domain. Kalamax, the Stormsire — "Whenever you cast
+// your first instant spell each turn, if Kalamax is tapped, copy that spell."
+// — mentions the same "cast your [Nth] ... spell each turn" construction as
+// broadly as Jori En/Kraum (this file's own required-scope check would
+// otherwise treat it as a mention), but its reward is a COPY, not a draw —
+// spell_copy's own real territory (see that entry below), not cantrips'.
+// Required scope requires the literal word "draw" inside the same trigger
+// sentence; Kalamax's clause never has it. Verified directly: Kalamax fails
+// cantrips' own corePatterns, and cardIsArchetypeFalseFriend flags him
+// correctly — while he remains real CORE for spell_copy, the same
+// same-real-card-two-different-roles precedent #030's Stitcher's Supplier
+// and #032's Ghostly Prison already established.
+//
+// Support is a raw cost-reduction enabler, not the payoff or the cantrip
+// itself — Baral, Chief of Compliance's own "Instant and sorcery spells you
+// cast cost {1} less to cast." lowers the bar for casting many cheap spells
+// without itself drawing a card or gating on spell count, the same ancillary
+// role tutoring/recursion play for artifacts_matter.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: the gate parser
+// requires a captured type word between the determiner and "spell"
+// (PAYOFF_MAGNITUDE_CONDITION's own capture group), so a bare "cast your
+// second spell" (no type word at all) can never populate a gate — not a
+// structural fit, not forced.
+const CANTRIPS_PAYOFF_PATTERNS = Object.freeze([
+  /whenever you cast your (?:first|second|third) [^.]*spell each turn,[^.]*draw/i,
+]);
+
+const CANTRIPS_SPELL_SHAPE_PATTERNS = Object.freeze([
+  /\b(?:scry|surveil) \d+\b[\s\S]{0,120}?draw a card\b/i,
+]);
+
+const CANTRIPS_CORE_PATTERNS = Object.freeze([
+  ...CANTRIPS_PAYOFF_PATTERNS,
+  ...CANTRIPS_SPELL_SHAPE_PATTERNS,
+]);
+
+const CANTRIPS_SUPPORT_PATTERNS = Object.freeze([
+  /instant and sorcery spells you cast cost \{[^}]+\} less to cast/i,
+]);
+
+const CANTRIPS_MENTION = /whenever you cast your (?:first|second|third)[^.]*spell each turn\b/i;
+const CANTRIPS_REQUIRED_SCOPE = /whenever you cast your (?:first|second|third)[^.]*spell each turn,[^.]*draw/i;
+
+const CANTRIPS_SCOPE_CONFIG = Object.freeze({
+  mentionPattern: CANTRIPS_MENTION,
+  requiredScopePattern: CANTRIPS_REQUIRED_SCOPE,
+});
+
+const cantrips = Object.freeze({
+  id: "cantrips",
+  label: "Cantrips package",
+  corePatterns: CANTRIPS_CORE_PATTERNS,
+  supportPatterns: CANTRIPS_SUPPORT_PATTERNS,
+  falseFriendShape: "wrong-target-scope",
+  falseFriendConfig: CANTRIPS_SCOPE_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: CANTRIPS_PAYOFF_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["cantrips", "cantrip deck", "replacement spells", "cheap card draw", "spell velocity"]),
+  }),
+  density: Object.freeze({ singletonCore: 14, constructedCore: 8, singletonSupport: 4, constructedSupport: 2 }),
+});
+
+// -----------------------------------------------------------------------------
+// Toolbox
+// -----------------------------------------------------------------------------
+// Core is a versatile, TYPE-CONDITIONED search — the deck's own repeatable
+// answer-fetching plan — Prime Speaker Vannifar ("{T}, Sacrifice another
+// creature: Search your library for a creature card with mana value equal to
+// 1 plus the sacrificed creature's mana value, put that card onto the
+// battlefield..." — the modern Birthing Pod as a commander), Birthing Pod
+// itself, Yisan, the Wanderer Bard ("Search your library for a creature card
+// with mana value equal to the number of verse counters on Yisan, put it
+// onto the battlefield..."), Trinket Mage ("search your library for an
+// artifact card with mana value 1 or less..."), Fauna Shaman ("Search your
+// library for a creature card, reveal it, put it into your hand...").
+//
+// False-friend shape: wrong-target-scope, a new "generic tutor vs
+// type-conditioned search" sub-domain, grounded in the task's own named
+// distinction from "generic tutoring, which already exists as SUPPORT in
+// several archetypes". Demonic Tutor — "Search your library for a card, put
+// that card into your hand, then shuffle." — mentions "search your library
+// for" as broadly as any real toolbox card, but has no type/characteristic
+// qualifier between "for a" and "card" at all — an unconditional, any-card
+// tutor, not the narrower flexible-ANSWER-fetching promise this archetype is
+// scoped to. Verified directly: Demonic Tutor fails toolbox's own
+// corePatterns and is flagged as a false friend by the shared evaluator.
+//
+// Support is raw sacrifice fodder, not the search effect itself — Bitterblossom's
+// own "create a 1/1 black Faerie Rogue creature token with flying" each
+// upkeep feeds a Birthing-Pod-style engine's required raw material (you must
+// have a creature to sacrifice before you can search) without itself being
+// the tutor, the same required-raw-material role #033's populate established
+// for its own token-generator support.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: no real Toolbox
+// commander with a magnitude-qualified cast/play trigger was found —
+// Vannifar's/Yisan's own triggers are activated abilities with a
+// mana-value-EQUALS (not N-or-greater/less) condition on the SEARCH target,
+// not a cast/play trigger on the commander's own caster action at all — not
+// a structural fit, not forced.
+const TOOLBOX_CORE_PATTERNS = Object.freeze([
+  /search your library for (?:a|an|up to \w+) (?:creature|artifact|enchantment|land|permanent|planeswalker)s? cards?\b/i,
+]);
+
+const TOOLBOX_SUPPORT_PATTERNS = Object.freeze([
+  /create(?:s)? (?:a|an|\d+|x) [^.]{0,30} creature tokens?/i,
+]);
+
+const TOOLBOX_MENTION = /search your library for/i;
+const TOOLBOX_REQUIRED_SCOPE = /search your library for (?:a|an|up to \w+) (?:creature|artifact|enchantment|land|permanent|planeswalker)s? cards?\b/i;
+
+const TOOLBOX_SCOPE_CONFIG = Object.freeze({
+  mentionPattern: TOOLBOX_MENTION,
+  requiredScopePattern: TOOLBOX_REQUIRED_SCOPE,
+});
+
+const toolbox = Object.freeze({
+  id: "toolbox",
+  label: "Toolbox package",
+  corePatterns: TOOLBOX_CORE_PATTERNS,
+  supportPatterns: TOOLBOX_SUPPORT_PATTERNS,
+  falseFriendShape: "wrong-target-scope",
+  falseFriendConfig: TOOLBOX_SCOPE_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: TOOLBOX_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["toolbox", "birthing pod", "type tutor", "silver bullet", "answer for everything"]),
+  }),
+  density: Object.freeze({ singletonCore: 6, constructedCore: 4, singletonSupport: 6, constructedSupport: 3 }),
+});
+
+// -----------------------------------------------------------------------------
+// X Spells
+// -----------------------------------------------------------------------------
+// Core is a real payoff scaling off casting spells with {X} in their own
+// mana cost — Zaxara, the Exemplary ("Whenever you cast a spell with {X} in
+// its mana cost, create a 0/0 green Hydra creature token, then put X +1/+1
+// counters on it."), Zimone, Infinite Analyst ("The first spell you cast
+// with {X} in its mana cost each turn costs {1} less to cast for each +1/+1
+// counter on Zimone. Whenever you cast your first spell with {X} in its
+// mana cost each turn, put two +1/+1 counters on Zimone."), Nev, the
+// Practical Dean (the same "cast your first spell with {X}..." shape).
+//
+// No CRITICAL overlap risk was named for this entry (unlike cantrips/
+// exile_matters/hatebears). Checked the plausible near-miss anyway: all
+// three real commanders' own trigger text literally contains "whenever you
+// cast", which does connect to PACKAGE_RELEVANT_REWARDS' "spells" category
+// below — a genuine, verified connection (see that file's own comment), not
+// a structural coincidence.
+//
+// False-friend shape: wrong-target-scope, the same grant-vs-negate POLARITY
+// mismatch #031's infect/extra_combats and #033's extra_turns already
+// established. Frontline Medic — "Sacrifice this creature: Counter target
+// spell with {X} in its mana cost." — mentions "{X} in its mana cost" as
+// broadly as any real payoff, but COUNTERS an X spell rather than rewarding
+// one being cast — hate, not the archetype's own promise. Verified directly:
+// Frontline Medic fails corePatterns and is flagged as a false friend.
+//
+// Support is ramp scoped specifically to X spells, not the scaling payoff
+// itself — Rosheen, Roaring Prophet's own "{T}: Reveal any number of cards
+// with {X} in their mana cost in your hand. Add {C}{C} for each card
+// revealed this way. Spend this mana only on costs that contain {X}." lets a
+// deck actually afford a big X rather than rewarding having cast one, the
+// same ancillary role tutoring/recursion play for artifacts_matter.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: the gate parser's own
+// capture group requires a literal type WORD (artifact/creature/etc.)
+// between the determiner and "spell/permanent" — "a spell with {X} in its
+// mana cost" has no such type word (the magnitude condition here is the
+// literal presence of {X}, not a numeric N-or-greater/less threshold on
+// mana value/power/toughness at all) — not a structural fit, not forced.
+const X_SPELLS_CORE_PATTERNS = Object.freeze([
+  /whenever you cast (?:a|your first) spell with \{x\} in its mana cost/i,
+  /the first spell you cast with \{x\} in its mana cost each turn costs [^.]* less/i,
+]);
+
+const X_SPELLS_SUPPORT_PATTERNS = Object.freeze([
+  /reveal any number of cards? with \{x\} in (?:its|their) mana costs? in your hand\.[^.]*add \{c\}\{c\}/i,
+]);
+
+const X_SPELLS_MENTION = /\{x\} in (?:its|their) mana costs?/i;
+const X_SPELLS_REQUIRED_SCOPE = /whenever you cast (?:a|your first) spell with \{x\} in its mana cost|the first spell you cast with \{x\} in its mana cost each turn costs [^.]* less/i;
+
+const X_SPELLS_SCOPE_CONFIG = Object.freeze({
+  mentionPattern: X_SPELLS_MENTION,
+  requiredScopePattern: X_SPELLS_REQUIRED_SCOPE,
+});
+
+const xSpells = Object.freeze({
+  id: "x_spells",
+  label: "X Spells package",
+  corePatterns: X_SPELLS_CORE_PATTERNS,
+  supportPatterns: X_SPELLS_SUPPORT_PATTERNS,
+  falseFriendShape: "wrong-target-scope",
+  falseFriendConfig: X_SPELLS_SCOPE_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: X_SPELLS_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["x spells", "x spell matters", "big x", "x cost matters", "x tribal"]),
+  }),
+  density: Object.freeze({ singletonCore: 8, constructedCore: 5, singletonSupport: 6, constructedSupport: 3 }),
+});
+
+// -----------------------------------------------------------------------------
+// Exile-matters
+// -----------------------------------------------------------------------------
+// Core is impulse draw and the exile zone as a real resource — Prosper,
+// Tome-Bound ("Mystic Arcanum — At the beginning of your end step, exile the
+// top card of your library. Until the end of your next turn, you may play
+// that card. Pact Boon — Whenever you play a card from exile, create a
+// Treasure token."), Laelia, the Blade Reforged, Urabrask, Heretic Praetor —
+// all real "exile the top card ... you may play it" commanders.
+//
+// CRITICAL overlap risk named by the task: #030's graveyard already covers
+// "alternate zone as a resource". Kept disjoint by construction, not just by
+// empirical luck: exile_matters' own corePatterns require the literal "exile
+// the top card ... you may play/cast" or "whenever you play a card from
+// exile" construction, which NONE of graveyard's own corePatterns
+// (delirium/threshold/flashback/escape/"cast ... from your graveyard") ever
+// produce — and vice versa. The sharpest real proof is Kroxa, Titan of
+// Death's Hunger, graveyard's own documented Escape fixture: its cost text
+// is "Escape—{2}{B}{R}, Exile five other cards from your graveyard." — this
+// LITERALLY contains the word "exile" (satisfying exile_matters' own broad
+// mention check), but the construction is "exile ... FROM your graveyard" as
+// an activation COST, not "exile the top of your library, then you may play
+// it" as an impulse-draw EFFECT — exile_matters' required scope correctly
+// rejects it, while graveyard's own /\bhas escape\b/i correctly keeps him as
+// graveyard's own core. Verified directly, the same rigor #030's own
+// sagas/enchantress/legends disjointness proof used: Prosper's, Laelia's,
+// and Urabrask's own real text never trips graveyard's corePatterns either
+// (no delirium/threshold/flashback/escape/"from your graveyard" substring in
+// any of the three).
+//
+// Support is a reward for casting from exile without itself producing the
+// impulse draw — Nico Minoru, Runaway's own "Whenever you cast a spell from
+// anywhere other than your hand, Nico Minoru deals 2 damage to each
+// opponent." rewards the byproduct of an exile-matters deck's own plan
+// without itself exiling anything, the same byproduct-of-the-mechanic role
+// #033's cascade established for The First Doctor's own support clause.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: no real Exile-matters
+// commander with a magnitude-qualified cast/play trigger was found —
+// Prosper's/Laelia's/Urabrask's own triggers are end-step/attack/upkeep
+// triggers, not cast/play triggers — not forced.
+const EXILE_MATTERS_CORE_PATTERNS = Object.freeze([
+  /exile the top (?:card|\w+ cards?) of your library\.?\s*(?:until[^.]*)?\s*you may (?:play|cast) (?:that|it|them)/i,
+  /whenever you play a card from exile/i,
+  /exile cards? from the top of your library until you exile a nonland card[^.]*you may (?:cast|play)/i,
+]);
+
+const EXILE_MATTERS_SUPPORT_PATTERNS = Object.freeze([
+  /whenever you cast (?:a|an) spell from (?:anywhere other than your hand|exile)/i,
+]);
+
+const EXILE_MATTERS_MENTION = /\bexile[ds]?\b/i;
+const EXILE_MATTERS_REQUIRED_SCOPE = /exile the top (?:card|\w+ cards?) of your library\.?\s*(?:until[^.]*)?\s*you may (?:play|cast) (?:that|it|them)|whenever you play a card from exile|exile cards? from the top of your library until you exile a nonland card[^.]*you may (?:cast|play)/i;
+
+const EXILE_MATTERS_SCOPE_CONFIG = Object.freeze({
+  mentionPattern: EXILE_MATTERS_MENTION,
+  requiredScopePattern: EXILE_MATTERS_REQUIRED_SCOPE,
+});
+
+const exileMatters = Object.freeze({
+  id: "exile_matters",
+  label: "Exile-matters package",
+  corePatterns: EXILE_MATTERS_CORE_PATTERNS,
+  supportPatterns: EXILE_MATTERS_SUPPORT_PATTERNS,
+  falseFriendShape: "wrong-target-scope",
+  falseFriendConfig: EXILE_MATTERS_SCOPE_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: EXILE_MATTERS_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["exile matters", "impulse draw", "play from exile", "exile zone", "impulsive"]),
+  }),
+  density: Object.freeze({ singletonCore: 8, constructedCore: 5, singletonSupport: 6, constructedSupport: 3 }),
+});
+
+// -----------------------------------------------------------------------------
+// Hatebears
+// -----------------------------------------------------------------------------
+// Core is a real hard-denial restriction — Iona, Shield of Emeria ("Your
+// opponents can't cast spells of the chosen color."), Gaddock Teeg
+// ("Noncreature spells with mana value 4 or greater can't be cast.
+// Noncreature spells with {X} in their mana costs can't be cast."), Meddling
+// Mage ("Spells with the chosen name can't be cast."), Grand Abolisher
+// ("During your turn, your opponents can't cast spells or activate
+// abilities..."), Aven Mindcensor (a search-replacement denial), Containment
+// Priest (an ETB-without-being-cast denial) — broad-spectrum disruption
+// aimed at casting/activating/searching/entering, not a single narrow lever.
+//
+// CRITICAL overlap risk named by the task: BOTH #032's pillow_fort
+// (attack-taxation specifically) and the original PACKAGE_CATALOG's own
+// stax entry. Kept disjoint by construction against both, verified with real
+// fixtures, not assumed: false-friend shape wrong-target-scope, mention
+// pattern deliberately as broad as stax's OWN detectStaxCommander regex
+// (can't cast/activate/attack/search/untap, cost-more-to-cast/activate,
+// unless-controller-pays) — required scope narrows to hatebears' own hard
+// DENIAL construction only. Baird, Steward of Argive / Ghostly Prison
+// ("Creatures can't attack you ... unless their controller pays...") trips
+// the broad mention (can't attack) but fails required scope — pillow_fort's
+// own attack-tax territory, not hatebears'. Vryn Wingmare / Thalia, Guardian
+// of Thraben-style ("Noncreature spells cost {1} more to cast.") trips the
+// broad mention (cost more to cast) but fails required scope — a symmetric
+// mana TAX, stax's own real territory, not a denial. Winter Orb-style
+// ("Players can't untap more than one land during their untap steps.") trips
+// the broad mention (can't ... untap) but fails required scope — stax's own
+// resource-denial territory, not an opponent-cast/activate/search denial.
+// Verified the reverse direction too: Iona's/Gaddock Teeg's/Grand
+// Abolisher's own real text never trips detectStaxCommander's regex at all
+// (no literal "players can't", "cost {X} more to cast/activate", or "unless
+// ... pays" substring in any of the three) and never trips pillow_fort's own
+// corePatterns (no "attack" text at all in any of the three).
+//
+// Support reuses reuseProtectionSupport (the same flag artifacts_matter/
+// lifegain/burn/lands_matter/legends/enchantress already use) — a hatebears
+// piece is usually the table's first removal target, so keeping it alive
+// (hexproof/indestructible/protection grants) is a genuine archetype-adjacent
+// enabler without itself being the disruption payoff.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: Gaddock Teeg's own
+// "mana value 4 or greater" clause is a DENIAL threshold (spells at or above
+// it CAN'T be cast at all), not a payoff magnitude gate on an unrelated
+// reward the way T'Challa's artifact trigger is — structurally a different
+// shape than #027's parser targets — not forced.
+const HATEBEARS_CORE_PATTERNS = Object.freeze([
+  /(?:your )?opponents can'?t cast spells(?: of the chosen color| from anywhere other than their hands?)?\b/i,
+  /noncreature spells? (?:with mana value \d+ or greater |with \{x\} in (?:its|their) mana costs? )?can'?t be cast\b/i,
+  /spells? with the chosen name can'?t be cast\b/i,
+  /(?:during your turn, )?(?:your )?opponents can'?t cast spells or activate abilities/i,
+  /if an opponent would search a library, that player searches the top (?:four|\d+) cards? of that library instead/i,
+  /if a nontoken creature would enter and it wasn'?t cast, exile it instead/i,
+]);
+
+const HATEBEARS_SUPPORT_PATTERNS = Object.freeze([]);
+
+const HATEBEARS_MENTION = /can'?t (?:cast|activate|attack|search|untap)|cost \{[^}]+\} more to (?:cast|activate)|unless (?:its|their) controller pays/i;
+const HATEBEARS_REQUIRED_SCOPE = /(?:your )?opponents can'?t cast spells(?: of the chosen color| from anywhere other than their hands?)?\b|noncreature spells? (?:with mana value \d+ or greater |with \{x\} in (?:its|their) mana costs? )?can'?t be cast\b|spells? with the chosen name can'?t be cast\b|(?:during your turn, )?(?:your )?opponents can'?t cast spells or activate abilities|if an opponent would search a library, that player searches the top (?:four|\d+) cards? of that library instead|if a nontoken creature would enter and it wasn'?t cast, exile it instead/i;
+
+const HATEBEARS_SCOPE_CONFIG = Object.freeze({
+  mentionPattern: HATEBEARS_MENTION,
+  requiredScopePattern: HATEBEARS_REQUIRED_SCOPE,
+});
+
+const hatebears = Object.freeze({
+  id: "hatebears",
+  label: "Hatebears package",
+  corePatterns: HATEBEARS_CORE_PATTERNS,
+  supportPatterns: HATEBEARS_SUPPORT_PATTERNS,
+  reuseProtectionSupport: true,
+  falseFriendShape: "wrong-target-scope",
+  falseFriendConfig: HATEBEARS_SCOPE_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: HATEBEARS_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["hatebears", "disruptive creatures", "hate bears", "creature stax", "efficient hosers"]),
+  }),
+  density: Object.freeze({ singletonCore: 10, constructedCore: 6, singletonSupport: 4, constructedSupport: 2 }),
+});
+
+// -----------------------------------------------------------------------------
+// Spell Copy
+// -----------------------------------------------------------------------------
+// Core is copying instants/sorceries specifically — Twincast ("Copy target
+// instant or sorcery spell. You may choose new targets for the copy."),
+// Kalamax, the Stormsire ("Whenever you cast your first instant spell each
+// turn, if Kalamax is tapped, copy that spell. ... Whenever you copy an
+// instant spell, put a +1/+1 counter on Kalamax."), Stella Lee, Wild Card
+// ("{T}: Copy target instant or sorcery spell you control...").
+//
+// This is the NATURAL complementary pair the task names: #030's clones
+// already documents Twincast as ITS OWN false friend ("the object being
+// copied is a SPELL, not a creature/permanent"). This entry grounds its own
+// core in exactly that rejected card — Twincast is clones' false friend and
+// spell_copy's own real core, the same real card proving both boundaries at
+// once. False-friend shape: wrong-target-scope, reusing #030's object-TYPE-
+// mismatch sub-domain from the opposite direction (the same reuse #033's
+// populate already established for the clones/populate pair). Sakashima of a
+// Thousand Faces / Progenitor Mimic (clones' own real core fixtures) mention
+// "copy" as broadly as any real spell-copy card, but copy a CREATURE, not a
+// spell — clones' own real territory, not this entry's. Verified directly:
+// both fail spell_copy's own corePatterns and are flagged as false friends
+// by the shared evaluator, while Twincast fails clones' own corePatterns and
+// is flagged as clones' false friend (already true in the shipped code,
+// confirmed unchanged) — fully symmetric, not a one-directional carve-out.
+//
+// Support is a cost-reduction enabler, not the copy effect itself — Baral,
+// Chief of Compliance's own "Instant and sorcery spells you cast cost {1}
+// less to cast." (the same real card cantrips' own support reuses, a
+// different real card legitimately enabling two different archetypes) lowers
+// the bar for holding up mana to copy without itself copying anything.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: no real Spell Copy
+// commander with a magnitude-qualified cast/play trigger was found —
+// Kalamax's own gate is a tapped/untapped STATE condition, not a numeric
+// N-or-greater/less magnitude threshold — not a structural fit, not forced.
+const SPELL_COPY_CORE_PATTERNS = Object.freeze([
+  /copy target instant or sorcery spell\b/i,
+  /cast[^.]*instant spell[^.]*,[^.]*copy (?:that|it) spell\b/i,
+  /whenever you copy an instant (?:or sorcery )?spell\b/i,
+]);
+
+const SPELL_COPY_SUPPORT_PATTERNS = Object.freeze([
+  /instant and sorcery spells you cast cost \{[^}]+\} less to cast/i,
+]);
+
+const SPELL_COPY_MENTION = /\bcopy\b/i;
+const SPELL_COPY_REQUIRED_SCOPE = /copy target instant or sorcery spell\b|cast[^.]*instant spell[^.]*,[^.]*copy (?:that|it) spell\b|whenever you copy an instant (?:or sorcery )?spell\b/i;
+
+const SPELL_COPY_SCOPE_CONFIG = Object.freeze({
+  mentionPattern: SPELL_COPY_MENTION,
+  requiredScopePattern: SPELL_COPY_REQUIRED_SCOPE,
+});
+
+const spellCopy = Object.freeze({
+  id: "spell_copy",
+  label: "Spell Copy package",
+  corePatterns: SPELL_COPY_CORE_PATTERNS,
+  supportPatterns: SPELL_COPY_SUPPORT_PATTERNS,
+  falseFriendShape: "wrong-target-scope",
+  falseFriendConfig: SPELL_COPY_SCOPE_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: SPELL_COPY_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["spell copy", "copy spells", "storm copy", "copy instants", "twincast effects"]),
+  }),
+  density: Object.freeze({ singletonCore: 6, constructedCore: 4, singletonSupport: 4, constructedSupport: 2 }),
+});
+
 export const ARCHETYPE_CATALOG = Object.freeze({
   artifacts_matter: artifactsMatter,
   counters_matter: countersMatter,
@@ -2425,6 +2907,12 @@ export const ARCHETYPE_CATALOG = Object.freeze({
   anthems,
   devotion,
   cascade,
+  cantrips,
+  toolbox,
+  x_spells: xSpells,
+  exile_matters: exileMatters,
+  hatebears,
+  spell_copy: spellCopy,
 });
 
 
