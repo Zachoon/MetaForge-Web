@@ -21,6 +21,14 @@ function candidate(id, label, scores, cards) {
   };
 }
 
+// Mirrors the fields native-masterwork-engine.mjs actually attaches to a
+// real candidate row (roles from classifyNativeCard, blueprintMechanicHits
+// from blueprint-note-and-mana.mjs) — the fixture above only ever carries
+// typeLine, so it can never exercise the grounded-copy path this covers.
+function taggedRow(name, { roles = [], blueprintMechanicHits = [] } = {}) {
+  return { quantity: 1, name, typeLine: "Creature", roles, blueprintMechanicHits };
+}
+
 describe("Founder Issue #022 — Pre-Choice Coaching", () => {
   it("leads with identity / tradeoff voice, not scores", () => {
     const identity = identityForLabel("Resilient Temper");
@@ -84,6 +92,78 @@ describe("Founder Issue #022 — Pre-Choice Coaching", () => {
     assert.equal(report.builds[0].alone, true);
     assert.match(report.builds[0].whySurvived, /longer games|interaction/i);
     assert.doesNotMatch(report.builds[0].whySurvived, /Prioritized consistency/i);
+  });
+
+  it("grounds identity copy in this deck's real cards and tags, not a static per-temper template", () => {
+    const commonRows = [
+      { quantity: 1, name: "Sol Ring", typeLine: "Artifact", roles: ["ramp"] },
+      { quantity: 1, name: "Arcane Signet", typeLine: "Artifact", roles: ["ramp"] },
+    ];
+    const resilient = {
+      id: "resilience",
+      label: "Resilient Temper",
+      evaluation: { cohesion: 70, resilience: 88, curveHealth: 68 },
+      rows: [
+        ...commonRows,
+        taggedRow("Counterspell", { roles: ["interaction"] }),
+        taggedRow("Cyclonic Rift", { roles: ["interaction", "sweeper"] }),
+      ],
+    };
+    const synergy = {
+      id: "cohesion",
+      label: "Synergy Temper",
+      evaluation: { cohesion: 90, resilience: 64, curveHealth: 72 },
+      rows: [
+        ...commonRows,
+        taggedRow("Skullclamp", { roles: ["draw"], blueprintMechanicHits: ["aristocrats"] }),
+        taggedRow("Goblin Bombardment", { roles: ["sacrifice"], blueprintMechanicHits: ["aristocrats"] }),
+      ],
+    };
+
+    const report = buildPreChoiceCoaching({
+      candidates: [resilient, synergy],
+      recommendedId: "resilience",
+    });
+    const recommended = report.builds.find((build) => build.recommended);
+    const alternative = report.builds.find((build) => !build.recommended);
+    const genericFeel = identityForLabel("Resilient Temper").feel;
+    const genericPrioritizes = identityForLabel("Resilient Temper").prioritizes;
+
+    // Grounded, not the static per-temper template.
+    assert.notEqual(recommended.feel, genericFeel);
+    assert.notDeepEqual([...recommended.prioritizes], [...genericPrioritizes]);
+    // Names a real card actually unique to this build (from keyDifferences).
+    assert.match(recommended.feel, /Counterspell|Cyclonic Rift/);
+    // The two builds' identity copy differs from each other — this is the
+    // exact bug report: identical boilerplate regardless of what's in the
+    // deck. "Synergy Temper" carries a real blueprint mechanic tag
+    // (aristocrats) that resilient's cards don't, so its copy should
+    // reflect that specific mechanic rather than a shared generic phrase.
+    assert.notEqual(recommended.feel, alternative.feel);
+    assert.notDeepEqual([...recommended.prioritizes], [...alternative.prioritizes]);
+    assert.match(alternative.feel, /Skullclamp|Goblin Bombardment/);
+    assert.match(alternative.prioritizes.join(" "), /sacrifice and death payoffs/i);
+    // Cards shared by both builds (Sol Ring, Arcane Signet) never appear as
+    // "what sets this apart" — only the real keyDifferences pool does.
+    assert.doesNotMatch(recommended.feel, /Sol Ring|Arcane Signet/);
+  });
+
+  it("falls back honestly to the generic per-temper voice when a candidate carries no diff or tag data", () => {
+    // Identical decks: keyDifferences is empty by construction, so there is
+    // nothing real to ground copy in — must stay honestly generic rather
+    // than inventing a distinction that isn't there.
+    const rows = [taggedRow("Sol Ring", { roles: ["ramp"] })];
+    const report = buildPreChoiceCoaching({
+      candidates: [
+        { id: "a", label: "Resilient Temper", evaluation: { cohesion: 70, resilience: 88, curveHealth: 68 }, rows },
+        { id: "b", label: "Resilient Temper", evaluation: { cohesion: 70, resilience: 88, curveHealth: 68 }, rows },
+      ],
+      recommendedId: "a",
+    });
+    const identity = identityForLabel("Resilient Temper");
+    const recommended = report.builds.find((build) => build.recommended);
+    assert.equal(recommended.feel, identity.feel);
+    assert.deepEqual([...recommended.prioritizes], [...identity.prioritizes]);
   });
 
   it("wires Pre-Choice Coaching into the masterworks chamber", () => {

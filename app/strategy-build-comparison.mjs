@@ -11,6 +11,7 @@ import { buildPhilosophyStanceVoice } from "./strategic-stance-voice.mjs";
 import { buildPhilosophyConceptVoice } from "./concept-stance-voice.mjs";
 import { buildCommissionContract } from "./commission-contract.mjs";
 import { matchPlayerCompassCandidates, playerCompassFitForTemper } from "./player-compass.mjs";
+import { blueprintMechanicDefinition } from "./blueprint-note-and-mana.mjs";
 
 const freeze = (value) => Object.freeze(value);
 
@@ -108,6 +109,224 @@ function displayNamesForKeys(candidate, keys) {
   return keys.map((key) => byKey.get(key)).filter(Boolean);
 }
 
+// -----------------------------------------------------------------------
+// Grounded, deck-specific copy (Founder Issue #022/#025 follow-up).
+// TEMPER_IDENTITY above is a category-shaped fallback ("Engine density",
+// "different bet") that reads the same for every deck sharing a temper —
+// exactly what player feedback flagged as gobbledygook. Below, the same
+// six fields are re-derived per candidate from data the engine already
+// computed and already attached to candidate.rows (classifyNativeCard's
+// `roles`, and blueprint-note-and-mana.mjs's `blueprintMechanicHits`) plus
+// the real added/cut card names keyDifferences already produces. Falls
+// back to TEMPER_IDENTITY field-by-field wherever a candidate genuinely
+// carries no such data (e.g. unit-test fixtures, or two structurally
+// identical builds) — honest-generic rather than fabricated-specific.
+// -----------------------------------------------------------------------
+
+const unique = (values) => [...new Set(values.filter(Boolean))];
+
+/** Short noun bullets — "STRONG AT" list voice. */
+const ROLE_LABEL = freeze({
+  ramp: "Ramp",
+  draw: "Card draw",
+  interaction: "Interaction",
+  protection: "Protection",
+  recursion: "Graveyard recursion",
+  sweeper: "Board wipes",
+  selection: "Card selection",
+  tokens: "Token production",
+  sacrifice: "Sacrifice value",
+  counters: "+1/+1 counters",
+  graveyard: "Graveyard value",
+  artifacts: "Artifact synergy",
+  spells: "Spellslinging",
+  lifegain: "Lifegain",
+  combat: "Combat triggers",
+  discard: "Hand disruption",
+  threat: "Big threats",
+});
+
+/** Lowercase verb-phrase fragments — "leans on X to ___" / "can ___" voice. */
+const ROLE_FEEL = freeze({
+  ramp: "ramp into bigger threats early",
+  draw: "keep the cards flowing",
+  interaction: "answer whatever the table plays",
+  protection: "protect its key pieces",
+  recursion: "bring threats back from the graveyard",
+  sweeper: "wipe the board when it gets out of hand",
+  selection: "dig for exactly the right card",
+  tokens: "flood the board with tokens",
+  sacrifice: "turn permanents into value",
+  counters: "grow creatures with +1/+1 counters",
+  graveyard: "turn the graveyard into a resource",
+  artifacts: "build around artifacts",
+  spells: "reward casting instants and sorceries",
+  lifegain: "gain life and buy time",
+  combat: "punish combat and attacking",
+  discard: "strip cards from opponents' hands",
+  threat: "close games with real damage",
+});
+
+function joinNames(names) {
+  const list = (names || []).filter(Boolean);
+  if (!list.length) return "";
+  if (list.length === 1) return list[0];
+  if (list.length === 2) return `${list[0]} and ${list[1]}`;
+  return `${list.slice(0, -1).join(", ")}, and ${list[list.length - 1]}`;
+}
+
+const capitalize = (text = "") => (text ? text.charAt(0).toUpperCase() + text.slice(1) : text);
+
+function rowsForNames(candidate, names) {
+  if (!names?.length) return [];
+  const wanted = new Set(names.map(normalizeName));
+  return (candidate?.rows || []).filter((row) => wanted.has(normalizeName(row?.name || "")));
+}
+
+function rankedTags(rows, field, limit) {
+  const counts = new Map();
+  for (const row of rows) {
+    for (const tag of row?.[field] || []) {
+      if (tag === "land" || tag === "commander") continue;
+      counts.set(tag, (counts.get(tag) || 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([tag]) => tag)
+    .slice(0, limit);
+}
+
+const dominantMechanics = (rows, limit = 2) => rankedTags(rows, "blueprintMechanicHits", limit);
+const dominantRoles = (rows, limit = 2) => rankedTags(rows, "roles", limit);
+
+/**
+ * What a group of rows actually does, in real terms — prefers the more
+ * specific blueprint mechanic tags (e.g. "sacrifice and death payoffs")
+ * over the coarser role tags (e.g. "sacrifice"), and returns null (never a
+ * guess) when neither is present on these particular rows.
+ */
+function describeLean(rows) {
+  const mechanicIds = dominantMechanics(rows, 2);
+  if (mechanicIds.length) {
+    return freeze({
+      kind: "mechanic",
+      ids: mechanicIds,
+      text: joinNames(mechanicIds.map((id) => blueprintMechanicDefinition(id).label.toLowerCase())),
+    });
+  }
+  const roleIds = dominantRoles(rows, 2);
+  const feelBits = roleIds.map((id) => ROLE_FEEL[id]).filter(Boolean);
+  if (feelBits.length) {
+    return freeze({ kind: "role", ids: roleIds, text: joinNames(feelBits) });
+  }
+  return null;
+}
+
+function exampleNamesFor(rows, lean, limit = 2) {
+  if (!lean) return [];
+  const matches = rows.filter((row) => (lean.kind === "mechanic"
+    ? (row.blueprintMechanicHits || []).some((id) => lean.ids.includes(id))
+    : (row.roles || []).some((id) => lean.ids.includes(id))));
+  return matches.map((row) => row.name).filter(Boolean).slice(0, limit);
+}
+
+/** Pick the mechanic/role phrasing branch; `none()` covers "cards named, no tag data". */
+function phraseForLean(lean, { mechanic, role, none }) {
+  if (lean?.kind === "mechanic") return mechanic(lean.text);
+  if (lean?.kind === "role") return role(lean.text);
+  return none();
+}
+
+/**
+ * Single-survivor case: no baseline to diff against, so ground against the
+ * whole build instead of the (empty) keyDifferences.
+ */
+function groundedWholeDeckWhyBuilt(candidate) {
+  const rows = (candidate?.rows || []).filter((row) => {
+    const roles = row?.roles || [];
+    return !roles.includes("land") && !roles.includes("commander");
+  });
+  if (!rows.length) return null;
+  const lean = describeLean(rows);
+  if (!lean) return null;
+  const examples = exampleNamesFor(rows, lean, 2);
+  const tail = examples.length ? ` — ${joinNames(examples)} do the heavy lifting.` : ".";
+  const body = lean.kind === "mechanic" ? `This build leans on ${lean.text}` : `This build leans on cards that ${lean.text}`;
+  return `${body}${tail}`;
+}
+
+/**
+ * Re-derives the six pre-choice-coaching voice fields from real, already-
+ * computed per-candidate data (keyDifferences' card names + candidate.rows'
+ * role/mechanic tags) instead of the static per-temper template. Falls
+ * back to identityForLabel field-by-field wherever this specific candidate
+ * doesn't carry enough real data to say something specific and true.
+ */
+function groundedIdentity(candidate, baseline, diffs) {
+  const fallback = identityForLabel(candidate.label);
+  const addCards = (diffs?.adds || []).slice(0, 2);
+  const cutCards = (diffs?.cuts || []).slice(0, 2);
+
+  if (!baseline || (!addCards.length && !cutCards.length)) {
+    return freeze({
+      ...fallback,
+      whyBuilt: (!baseline && groundedWholeDeckWhyBuilt(candidate)) || fallback.whyBuilt,
+    });
+  }
+
+  const addRows = rowsForNames(candidate, diffs.adds);
+  const lean = describeLean(addRows);
+
+  const feel = addCards.length
+    ? phraseForLean(lean, {
+        mechanic: (text) => `Leans on ${joinNames(addCards)} for ${text}.`,
+        role: (text) => `Leans on ${joinNames(addCards)} to ${text}.`,
+        none: () => `Leans on ${joinNames(addCards)}, the pieces that set it apart from ${baseline.label}.`,
+      })
+    : fallback.feel;
+
+  const builtForPlayersWho = addCards.length
+    ? phraseForLean(lean, {
+        mechanic: (text) => `want a deck built around ${text}`,
+        role: (text) => `want a deck that can ${text}`,
+        none: () => fallback.builtForPlayersWho,
+      })
+    : fallback.builtForPlayersWho;
+
+  const prioritizes = (() => {
+    const mechanics = dominantMechanics(addRows, 3).map((id) => capitalize(blueprintMechanicDefinition(id).label));
+    const roles = dominantRoles(addRows, 3).map((id) => ROLE_LABEL[id]).filter(Boolean);
+    const bullets = unique([...mechanics, ...roles]).slice(0, 3);
+    return bullets.length ? freeze(bullets) : fallback.prioritizes;
+  })();
+
+  const cutRows = rowsForNames(baseline, diffs.cuts);
+  const cutLean = describeLean(cutRows);
+  const expectedTradeoff = cutCards.length
+    ? phraseForLean(cutLean, {
+        mechanic: (text) => `Skips ${joinNames(cutCards)}, so you'll get less ${text} than ${baseline.label}.`,
+        role: (text) => `Skips ${joinNames(cutCards)}, so it won't ${text} the way ${baseline.label} does.`,
+        none: () => `Skips ${joinNames(cutCards)}, which ${baseline.label} keeps.`,
+      })
+    : fallback.expectedTradeoff;
+
+  const whyBuilt = addCards.length
+    ? phraseForLean(lean, {
+        mechanic: (text) => `This direction leaned into ${text} — ${joinNames(addCards)} carries that plan.`,
+        role: (text) => `This direction leaned into cards that ${text} — ${joinNames(addCards)} carries that plan.`,
+        none: () => `This direction kept ${joinNames(addCards)}, cards the alternative cuts.`,
+      })
+    : fallback.whyBuilt;
+
+  const pitchLabel = dominantMechanics(addRows, 1).map((id) => blueprintMechanicDefinition(id).label)[0]
+    || dominantRoles(addRows, 1).map((id) => ROLE_LABEL[id]).filter(Boolean)[0]
+    || null;
+  const pitch = pitchLabel ? `Built around ${pitchLabel.toLowerCase()}.` : fallback.pitch;
+
+  return freeze({ builtForPlayersWho, prioritizes, feel, expectedTradeoff, whyBuilt, pitch });
+}
+
 function tradeoffsVersus(candidate, baseline) {
   if (!baseline || candidate.id === baseline.id) {
     return tradeoffsVersusPeers(candidate);
@@ -151,7 +370,7 @@ function tradeoffsVersus(candidate, baseline) {
  * doesn't already say — the actual comparison against the specific build
  * being passed over, not a restated copy of this build's own cost.
  */
-function describeWhyNotAlternative(candidate, baseline, tradeoffLines) {
+function describeWhyNotAlternative(candidate, baseline, tradeoffLines, diffs) {
   if (!baseline || candidate.id === baseline.id) {
     return identityForLabel(candidate.label).whyBuilt;
   }
@@ -160,6 +379,15 @@ function describeWhyNotAlternative(candidate, baseline, tradeoffLines) {
     .map((line) => line.slice(1).trim().replace(/^./, (c) => c.toLowerCase()));
   if (advantages.length) {
     return `Compared with ${baseline.label}: ${advantages.join(", ")}.`;
+  }
+  const cutCards = (diffs?.cuts || []).slice(0, 2);
+  if (cutCards.length) {
+    const cutLean = describeLean(rowsForNames(baseline, cutCards));
+    return phraseForLean(cutLean, {
+      mechanic: (text) => `${baseline.label} leans on ${text} instead — this build skips ${joinNames(cutCards)}.`,
+      role: (text) => `${baseline.label} leans on cards that ${text} instead — this build skips ${joinNames(cutCards)}.`,
+      none: () => `${baseline.label} keeps ${joinNames(cutCards)} that this build cuts.`,
+    });
   }
   return `${identityForLabel(candidate.label).whyBuilt} ${baseline.label} is built around a different bet.`;
 }
@@ -368,8 +596,8 @@ export function buildPreChoiceCoaching({
         ? recommended
         : list.find((entry) => entry.id !== candidate.id) || null;
     const evaluation = candidate.evaluation || {};
-    const identity = identityForLabel(candidate.label);
     const diffs = keyDifferences(candidate, baseline);
+    const identity = groundedIdentity(candidate, baseline, diffs);
     const full = fullCardDiff(candidate, baseline);
     const tradeoffLines = tradeoffsVersus(candidate, baseline);
     const understanding = philosophyVoice
@@ -438,7 +666,7 @@ export function buildPreChoiceCoaching({
       playerFit: playerCompassFitForTemper(playerCompass, temperKey(candidate.label))?.explanation
         || identity.builtForPlayersWho,
       whatThisFeelsLike: identity.feel,
-      whyNotTheAlternative: describeWhyNotAlternative(candidate, baseline, tradeoffLines),
+      whyNotTheAlternative: describeWhyNotAlternative(candidate, baseline, tradeoffLines, diffs),
       recommendedWhy: null,
     });
   });
