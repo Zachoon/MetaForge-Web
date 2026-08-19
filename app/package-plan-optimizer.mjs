@@ -207,6 +207,35 @@ const PACKAGE_RELEVANT_REWARDS = Object.freeze({
   artifacts_matter: Object.freeze(["artifacts"]),
   counters_matter: Object.freeze(["counters"]),
   group_hug: Object.freeze([]),
+  // Founder #029 (batch 2). lifegain and lands_matter map onto real "life"/
+  // "lands" reward categories already in the PAYOFFS vocabulary above — a
+  // genuine commander connection there (Trelasarra's "whenever you gain
+  // life", Aesi's "Landfall —") is on-topic the same way spellslinger's
+  // "spells" category is. burn has no corresponding reward category at all:
+  // PAYOFFS/PRODUCERS deliberately has no "damage" payoff entry (see this
+  // file's own PRODUCERS.damage comment — no clean, confidently-verified
+  // generic phrasing exists for "damage matters" the way tokens/counters/
+  // graveyard payoffs do), so any match would be a coincidence, not real
+  // relevance — same reasoning as group_hug/stax/typal. enchantress maps to
+  // [] for the same reason: the only textually-adjacent category is "auras",
+  // but that regex requires the literal word "aura" and Enchantress payoffs
+  // (Sythis, Argothian Enchantress) never say it — mapping to "auras" would
+  // never actually connect for a real Enchantress commander, a structural
+  // coincidence rather than real overlap. mill maps to [] because the
+  // closest category, "graveyard", is about USING your own graveyard as a
+  // resource ("from your graveyard", delirium, threshold) — Mill's promise
+  // is depleting an OPPONENT's library, an entirely different direction with
+  // no matching reward category. wheels maps to [] because the closest
+  // category, "draw", requires literal "whenever you draw" — Nekusar's own
+  // punisher clause ("whenever an opponent draws") and its symmetric
+  // extra-draw clause neither one matches that regex, so the category would
+  // never connect for a real Wheels commander either.
+  lifegain: Object.freeze(["life"]),
+  lands_matter: Object.freeze(["lands"]),
+  burn: Object.freeze([]),
+  enchantress: Object.freeze([]),
+  mill: Object.freeze([]),
+  wheels: Object.freeze([]),
 });
 
 /**
