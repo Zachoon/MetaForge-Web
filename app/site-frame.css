@@ -360,7 +360,7 @@ body:has(.great-forge.chamber-archive){
 /* SS6: manuscript is a normal column, never display:contents. That property
    promoted leftover in-panel chrome into the parent grid and covered the deck. */
 .progressive-results .deck-manuscript{display:flex!important;flex-direction:column!important}
-.progressive-results .chapter-1-active .deck-gallery{display:grid!important}
+.progressive-results .chapter-1-active .deck-gallery{display:flex!important}
 
 .workbench-coach-stack .forge-understanding-bridge{margin-top:0!important}
 .progressive-results.forge-descent{display:flex!important;flex-direction:column!important}
@@ -371,8 +371,11 @@ body:has(.great-forge.chamber-archive){
 .progressive-results:has(.chapter-2-active) .workbench-coach-stack,
 .progressive-results:has(.chapter-5-active) .workbench-coach-stack{display:block}
 
-/* Decklist tab: the card list is the first paint. Coach/Mentor never sit above it. */
-.progressive-results .chapter-1-active #deck-gallery{display:grid!important;order:1}
+/* Decklist tab: the card list is the first paint. Coach/Mentor never sit above it.
+   display must stay flex (not grid) here — this ID selector otherwise outranks
+   testing-anvil.css's .ledger-deck-view .deck-gallery flex rule and silently
+   regrids the gallery, which breaks .card-preview-stage's sticky follow-scroll. */
+.progressive-results .chapter-1-active #deck-gallery{display:flex!important;order:1}
 
 @media(max-width:760px){
   :root{--mf-frame-top:58px;--mf-frame-rail:58px}
