@@ -1,5 +1,6 @@
 // =============================================================================
-// Archetype Catalog — #028 (POC) + #029 (batch 2) + #030 (batch 3) + #031 (batch 4)
+// Archetype Catalog — #028 (POC) + #029 (batch 2) + #030 (batch 3) + #031
+// (batch 4) + #032 (batch 5, final)
 // =============================================================================
 // A second, DECLARATIVE package layer, sibling to strategic-intent.mjs's
 // hand-authored PACKAGE_CATALOG. Each entry supplies oracle-text pattern
@@ -9,18 +10,21 @@
 // every downstream consumer that dispatches by package-id string needs zero
 // changes. #028 validated 3 entries; #029 added 6 more (lifegain, lands
 // matter, burn, enchantress, mill, wheels); #030 added a further 6 (legends,
-// discard, graveyard, clones, flying, group_slug); #031 adds the next 6
-// (infect, extra_combats, theft, superfriends, goad, vehicles) by real
-// EDHREC prevalence — still not the full ~14-archetype remainder. #031
-// introduces zero new top-level shapes: 5 of 6 reuse `wrong-target-scope`
-// (extending it to a "grant vs. negate/deny" polarity-mismatch sub-domain —
-// infect's own hate text, extra_combats' own skip-combat hosers — plus a
-// "battlefield permanent vs. graveyard card" source-scope mismatch for theft
-// and a "keyword-mention vs. count-reward" scope mismatch for superfriends
-// and goad); `vehicles` reuses `broad-type-superset` directly, one level
-// deeper than `artifacts_matter`'s own use of it (Vehicle is itself an
-// Artifact subtype). See each entry's comment for its grounding, and
-// docs/FOUNDER_ISSUES.md #028/#029/#030/#031.
+// discard, graveyard, clones, flying, group_slug); #031 added 6 more (infect,
+// extra_combats, theft, superfriends, goad, vehicles); #032 adds the final 5
+// (neg_counters, pillow_fort, toughness_matters, extra_turns, sagas) by real
+// EDHREC prevalence, completing the original ~26-archetype research scope
+// (3 POC + 6 + 6 + 6 + 5 = 26). #032 introduces zero new top-level shapes:
+// neg_counters and pillow_fort reuse `wrong-target-scope` (the former a
+// self-cost-vs-payoff scope mismatch, the latter a hard-prevention-vs-
+// taxation scope mismatch, and a further grant-vs-negate polarity instance
+// for extra_turns); toughness_matters reuses `incidental-rider` (a magnitude-
+// gated combat-trick rider, the same shape counters_matter/lifegain/burn/
+// discard/graveyard already use); sagas reuses `broad-type-superset` directly
+// from enchantress/legends/vehicles, one Enchantment-subtype layer deeper,
+// exactly the way vehicles went one Artifact-subtype layer deeper than
+// artifacts_matter. See each entry's comment for its grounding, and
+// docs/FOUNDER_ISSUES.md #028/#029/#030/#031/#032.
 //
 // Dual reachability contract (same as the existing 10): a real archetype
 // commander with an empty note must open the package via `commander`
@@ -1515,6 +1519,405 @@ const vehicles = Object.freeze({
   density: Object.freeze({ singletonCore: 8, constructedCore: 5, singletonSupport: 6, constructedSupport: 3 }),
 });
 
+// -----------------------------------------------------------------------------
+// -1/-1 Counters
+// -----------------------------------------------------------------------------
+// Core is real -1/-1-counter placement and its payoffs — the archetype's own
+// application shape (Wither itself: "This deals damage to creatures in the
+// form of -1/-1 counters." — genuinely core here, not demoted, the same way
+// the Infect keyword itself is core for #031's infect) plus a real placement/
+// reward engine: Hapatra, Vizier of Poisons ("Whenever Hapatra deals combat
+// damage to a player, you may put a -1/-1 counter on target creature." /
+// "Whenever you put one or more -1/-1 counters on a creature, create a 1/1
+// green Snake creature token with deathtouch."), The Scorpion God ("Whenever
+// a creature with a -1/-1 counter on it dies, draw a card."), Auntie Ool,
+// Cursewretch ("Whenever one or more -1/-1 counters are put on a creature,
+// draw a card if you control that creature."), and for-each payoffs (Dusk
+// Urchins: "draw a card for each -1/-1 counter on it").
+//
+// Deliberately kept disjoint from #028's counters_matter and #031's infect by
+// construction, not just by empirical luck: counters_matter's own
+// corePatterns all require the literal "+1/+1" substring, which no
+// -1/-1-counter card ever contains; infect's own corePatterns require
+// "infect"/"toxic N"/"poison counter" text, which Hapatra's own oracle text
+// never contains either way. Verified with real fixtures: Hapatra (this
+// entry's commander) opens neither counters_matter nor infect; Vorel of the
+// Hull Clade (counters_matter's own commander, "Double the number of each
+// kind of counter...") never says "-1/-1" and does not open this package;
+// Skithiryx, the Blight Dragon (infect's own commander) DOES mention
+// "-1/-1 counters" inside Infect's own reminder text ("deals damage to
+// creatures in the form of -1/-1 counters"), but that phrasing never matches
+// this entry's corePatterns (the verb is "deals damage ... in the form of",
+// never "put ... on target/another/each"), so she does not open this package
+// either — checked directly, not assumed.
+//
+// False-friend shape: wrong-target-scope, a self-cost-vs-payoff scope
+// mismatch (new sub-domain — a card's own -1/-1-counter placement targets
+// ITSELF as an unrelated activation cost, not a real placement/payoff).
+// Devoted Druid — "Put a -1/-1 counter on this creature: Untap this
+// creature." — mentions "-1/-1 counter" as broadly as any real payoff card,
+// but the counter goes on "this creature" (itself, as a cost to ramp mana),
+// never on a target/another/each creature the way every real core fixture's
+// text does — corePatterns' own "on (?:target|another|each)" requirement
+// already excludes "on this creature" by construction, and the false-friend
+// check explicitly flags her via the broader bare mention.
+//
+// Support is proliferate — grows -1/-1 counters (and poison counters, and
+// +1/+1 counters) alongside everything else in the deck without itself being
+// the "-1/-1 counters matter" payoff. The same card is CORE for
+// counters_matter and SUPPORT for both infect and here — the same real card
+// legitimately occupying different roles in different archetypes, the same
+// cross-archetype allowance #031's infect entry already exercises.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: no real -1/-1 Counters
+// commander with a magnitude-qualified cast/play trigger was found — Hapatra's
+// own triggers are combat-damage/placement triggers, not cast/play triggers —
+// not forced.
+const NEG_COUNTERS_CORE_PATTERNS = Object.freeze([
+  /put (?:a|one|two|three|four|five|x|that many|\d+) -1\/-1 counters? on (?:target|another|each)\b/i,
+  /whenever you put (?:one or more )?-1\/-1 counters? on|whenever one or more -1\/-1 counters? (?:is|are) put/i,
+  /whenever a creature (?:with a -1\/-1 counter on it|that has a -1\/-1 counter)[^.]* dies/i,
+  /for each -1\/-1 counter/i,
+  /\bwither\b/i,
+]);
+
+const NEG_COUNTERS_SUPPORT_PATTERNS = Object.freeze([
+  /\bproliferate\b/i,
+]);
+
+const NEG_COUNTERS_MENTION = /-1\/-1 counters?\b|\bwither\b/i;
+const NEG_COUNTERS_REQUIRED_SCOPE = /put (?:a|one|two|three|four|five|x|that many|\d+) -1\/-1 counters? on (?:target|another|each)\b|whenever you put (?:one or more )?-1\/-1 counters? on|whenever one or more -1\/-1 counters? (?:is|are) put|whenever a creature (?:with a -1\/-1 counter on it|that has a -1\/-1 counter)[^.]* dies|for each -1\/-1 counter|\bwither\b/i;
+
+const NEG_COUNTERS_SCOPE_CONFIG = Object.freeze({
+  mentionPattern: NEG_COUNTERS_MENTION,
+  requiredScopePattern: NEG_COUNTERS_REQUIRED_SCOPE,
+});
+
+const negCounters = Object.freeze({
+  id: "neg_counters",
+  label: "-1/-1 Counters package",
+  corePatterns: NEG_COUNTERS_CORE_PATTERNS,
+  supportPatterns: NEG_COUNTERS_SUPPORT_PATTERNS,
+  falseFriendShape: "wrong-target-scope",
+  falseFriendConfig: NEG_COUNTERS_SCOPE_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: NEG_COUNTERS_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["-1/-1 counters", "negative counters", "wither", "poison counters on creatures", "-1/-1 counters matter"]),
+  }),
+  density: Object.freeze({ singletonCore: 10, constructedCore: 6, singletonSupport: 6, constructedSupport: 3 }),
+});
+
+// -----------------------------------------------------------------------------
+// Pillow Fort
+// -----------------------------------------------------------------------------
+// Core is the defensive taxation/deterrence shape itself — "creatures can't
+// attack you (or planeswalkers you control) unless their controller pays" —
+// WotC's fixed templating across the archetype's own staples: Ghostly Prison
+// and Propaganda ("Creatures can't attack you unless their controller pays
+// {2} for each creature they control that's attacking you."), Baird, Steward
+// of Argive ("Creatures can't attack you or planeswalkers you control unless
+// their controller pays {1} for each of those creatures."), Norn's Annex,
+// Sphere of Safety, Windborn Muse, Archangel of Tithes.
+//
+// This is deliberately the exact text #030's group_slug already documents as
+// its own SUPPORT (Ghostly Prison is group_slug's own supportPatterns
+// fixture) and correctly REJECTS as group_slug core (Baird has no "deals
+// damage"/"loses life" clause, so group_slug's own corePatterns never match
+// her) — this entry captures that same taxation shape as ITS real core
+// identity instead. Baird legitimately occupies two different roles in two
+// different archetypes: support (a pillow-fort enabler) for group_slug's
+// punisher plan, and core (the archetype's own defining promise) here — the
+// same cross-archetype allowance #030's own Stitcher's Supplier precedent
+// established. Verified with real fixtures: Baird opens this package; Kaervek
+// the Merciless (group_slug's own commander, "Whenever an opponent casts a
+// spell, Kaervek deals damage equal to that spell's mana value to any
+// target.") has no "attack"/"can't attack" text at all and does not open this
+// package; conversely Baird's own static tax ability has no "whenever ...
+// casts/taps/attacks ...deals damage/loses life" trigger shape and does not
+// open group_slug — checked directly against both entries' real corePatterns,
+// not assumed disjoint.
+//
+// False-friend shape: wrong-target-scope, a hard-prevention-vs-taxation scope
+// mismatch (new sub-domain). Sandwurm Convergence — "Creatures with flying
+// can't attack you or planeswalkers you control." — mentions "can't attack
+// you" as broadly as any real pillow-fort card, but is an absolute ban with
+// no "unless ... pays" taxation clause at all; its real payoff is a 5/5 Wurm
+// token each end step, a token-engine-plus-wall card, not the propaganda-tax
+// promise this archetype is scoped to.
+//
+// Support is a one-shot/repeatable Fog effect — Inkshield and Druid's
+// Deliverance's shared "Prevent all combat damage that would be dealt to you
+// this turn." buys a single turn of safety without itself being the
+// repeatable taxation payoff, an enabler role rather than the archetype's own
+// identity.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: no real Pillow Fort
+// commander with a magnitude-qualified cast/play trigger was found — Baird's
+// own tax is a static ability, not a cast/play trigger — not forced.
+const PILLOW_FORT_CORE_PATTERNS = Object.freeze([
+  /creatures? can'?t attack you(?: or (?:a|another)? ?planeswalkers? you control)? unless (?:their|its) controller pays/i,
+]);
+
+const PILLOW_FORT_SUPPORT_PATTERNS = Object.freeze([
+  /prevent all combat damage that would be dealt to you this turn/i,
+]);
+
+const PILLOW_FORT_MENTION = /can'?t attack you\b/i;
+const PILLOW_FORT_REQUIRED_SCOPE = /creatures? can'?t attack you(?: or (?:a|another)? ?planeswalkers? you control)? unless (?:their|its) controller pays/i;
+
+const PILLOW_FORT_SCOPE_CONFIG = Object.freeze({
+  mentionPattern: PILLOW_FORT_MENTION,
+  requiredScopePattern: PILLOW_FORT_REQUIRED_SCOPE,
+});
+
+const pillowFort = Object.freeze({
+  id: "pillow_fort",
+  label: "Pillow Fort package",
+  corePatterns: PILLOW_FORT_CORE_PATTERNS,
+  supportPatterns: PILLOW_FORT_SUPPORT_PATTERNS,
+  falseFriendShape: "wrong-target-scope",
+  falseFriendConfig: PILLOW_FORT_SCOPE_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: PILLOW_FORT_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["pillow fort", "propaganda deck", "taxation defense", "stay safe", "attack tax"]),
+  }),
+  density: Object.freeze({ singletonCore: 8, constructedCore: 5, singletonSupport: 6, constructedSupport: 3 }),
+});
+
+// -----------------------------------------------------------------------------
+// Toughness Matters
+// -----------------------------------------------------------------------------
+// Core is a real payoff scaling off a creature's toughness specifically —
+// Doran, the Siege Tower ("Each creature assigns combat damage equal to its
+// toughness rather than its power."), Arcades, the Strategist (the same
+// combat-damage swap scoped to defender creatures, plus "Whenever a creature
+// you control with defender enters, draw a card."), Plagon, Lord of the
+// Beach ("draw a card for each creature you control with toughness greater
+// than its power."), Fruit of the First Tree ("you gain X life and draw X
+// cards, where X is its toughness.") — distinct from #028's generic
+// counters_matter (a +1/+1-counter-shaped promise, not a stat-shaped one).
+//
+// False-friend shape: incidental-rider, reused as-is (the same shape
+// counters_matter/lifegain/burn/discard/graveyard already use — no type-line
+// concept applies to a stat like toughness, and this is not a player-scope
+// mismatch, so wrong-target-scope doesn't structurally fit the way it does
+// for neg_counters/pillow_fort above). Blood Lust — "If target creature has
+// toughness 5 or greater, it gets +4/-4 until end of turn. Otherwise, it gets
+// +4/-X until end of turn, where X is its toughness minus 1." — mentions
+// "toughness" as a magnitude-gate condition and even contains the literal
+// substring "where X is its toughness" (which would otherwise satisfy this
+// entry's own corePatterns), but the dominant effect is an unrelated combat-
+// trick/removal pump, not a toughness-matters payoff — the rider gate
+// excludes her from core before corePatterns is even checked, the same
+// protection counters_matter's own gated-removal-spell rider gets.
+//
+// Support is a defender-attack enabler, not the payoff itself — Felothar the
+// Steadfast's and Arcades' own "Creatures you control can attack as though
+// they didn't have defender." clause lets a wall-heavy board actually turn
+// sideways in the granted combat-damage-by-toughness mode without itself
+// being the toughness-scaling reward, the same ancillary role haste plays
+// for #031's extra_combats.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: no real Toughness
+// Matters commander with a magnitude-qualified cast/play trigger was found —
+// Doran's/Arcades'/Plagon's own triggers are combat-damage/ETB triggers, not
+// cast/play triggers — not forced.
+const TOUGHNESS_CORE_PATTERNS = Object.freeze([
+  /assigns? combat damage equal to its toughness rather than its power/i,
+  /toughness greater than its power/i,
+  /where x is its toughness\b/i,
+  /whenever a creature you control with defender enters,[^.]*draw/i,
+]);
+
+const TOUGHNESS_SUPPORT_PATTERNS = Object.freeze([
+  /can attack as though (?:it|they) didn'?t have defender/i,
+]);
+
+const TOUGHNESS_MENTION = /\btoughness\b/i;
+const TOUGHNESS_RIDER_GATE = /\bif\b[^.]*toughness[^.]*,/i;
+const TOUGHNESS_DOMINANT_OTHER = /gets? [+-]\d+\/[+-]\d+ until end of turn/i;
+
+const TOUGHNESS_RIDER_CONFIG = Object.freeze({
+  mentionPattern: TOUGHNESS_MENTION,
+  gatePattern: TOUGHNESS_RIDER_GATE,
+  dominantOtherPattern: TOUGHNESS_DOMINANT_OTHER,
+});
+
+const toughnessMatters = Object.freeze({
+  id: "toughness_matters",
+  label: "Toughness Matters package",
+  corePatterns: TOUGHNESS_CORE_PATTERNS,
+  supportPatterns: TOUGHNESS_SUPPORT_PATTERNS,
+  falseFriendShape: "incidental-rider",
+  falseFriendConfig: TOUGHNESS_RIDER_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: TOUGHNESS_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["toughness matters", "defender matters", "walls deck", "big butts", "toughness tribal"]),
+  }),
+  density: Object.freeze({ singletonCore: 8, constructedCore: 5, singletonSupport: 6, constructedSupport: 3 }),
+});
+
+// -----------------------------------------------------------------------------
+// Extra Turns
+// -----------------------------------------------------------------------------
+// Core is a real granted extra turn — WotC's fixed templating across the
+// archetype's own staples: Time Warp, Temporal Manipulation, Beacon of
+// Tomorrows ("Target player takes an extra turn after this one."), Time
+// Stretch ("Target player takes two extra turns after this one."), and the
+// real commander fixture Medomai the Ageless ("Whenever Medomai deals combat
+// damage to a player, take an extra turn after this one.") — distinct from
+// #031's extra_combats, which is extra COMBAT PHASES within the same turn,
+// not extra turns. Kept disjoint by construction: extra_combats' own
+// corePatterns require the literal "additional combat phase" substring,
+// which no extra-turn card's text contains, and this entry's own
+// corePatterns require "extra turn(s) after this one", which no extra-combat
+// card's text contains either. Verified with real fixtures: Medomai (this
+// entry's commander) has no "additional combat phase" text and does not open
+// extra_combats; Aurelia, the Warleader (extra_combats' own commander,
+// "After this phase, there is an additional combat phase.") has no "extra
+// turn" text at all and does not open this package — checked directly, not
+// assumed.
+//
+// False-friend shape: wrong-target-scope, the same grant-vs-negate POLARITY
+// mismatch #031's infect/extra_combats already established, confirming the
+// sub-domain is genuinely shared rather than tied to combat-phase text
+// specifically. Stranglehold — "If an opponent would begin an extra turn,
+// that player skips that turn instead." — mentions "extra turn" as broadly
+// as any real grant, but denies one rather than granting it, a real stax
+// staple, not a hypothetical (the same real-card class as extra_combats' own
+// Stonehorn Dignitary).
+//
+// Support is Seedborn Muse's own "Untap all permanents you control during
+// each other player's untap step." — keeps mana and creatures available
+// across turns that aren't your own (both your own granted bonus turns and
+// an opponent's turn when politically gifting one), a real archetype-
+// adjacent enabler without itself granting or denying an extra turn.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: no real Extra Turns
+// commander with a magnitude-qualified cast/play trigger was found —
+// Medomai's own trigger is a combat-damage trigger, not a cast/play trigger —
+// not forced.
+const EXTRA_TURNS_CORE_PATTERNS = Object.freeze([
+  /extra turns? after this one\b/i,
+]);
+
+const EXTRA_TURNS_SUPPORT_PATTERNS = Object.freeze([
+  /untap all permanents you control during each other player'?s untap step/i,
+]);
+
+const EXTRA_TURNS_MENTION = /extra turns?\b/i;
+const EXTRA_TURNS_REQUIRED_SCOPE = /extra turns? after this one\b/i;
+
+const EXTRA_TURNS_SCOPE_CONFIG = Object.freeze({
+  mentionPattern: EXTRA_TURNS_MENTION,
+  requiredScopePattern: EXTRA_TURNS_REQUIRED_SCOPE,
+});
+
+const extraTurns = Object.freeze({
+  id: "extra_turns",
+  label: "Extra Turns package",
+  corePatterns: EXTRA_TURNS_CORE_PATTERNS,
+  supportPatterns: EXTRA_TURNS_SUPPORT_PATTERNS,
+  falseFriendShape: "wrong-target-scope",
+  falseFriendConfig: EXTRA_TURNS_SCOPE_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: EXTRA_TURNS_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["extra turns", "additional turns", "time walk effects", "take another turn", "turns matter"]),
+  }),
+  density: Object.freeze({ singletonCore: 6, constructedCore: 4, singletonSupport: 6, constructedSupport: 3 }),
+});
+
+// -----------------------------------------------------------------------------
+// Sagas
+// -----------------------------------------------------------------------------
+// Core is the Saga enchantment subtype's own chapter-based mechanic
+// specifically — the real commander fixture Narci, Fable Singer ("Whenever
+// the final chapter ability of a Saga you control resolves, each opponent
+// loses X life and you gain X life, where X is that Saga's mana value."),
+// Tom Bombadil (the same "final chapter ability ... resolves" trigger shape,
+// plus "As long as there are four or more lore counters among Sagas you
+// control..."), Garnet, Princess of Alexandria ("remove a lore counter from
+// each of any number of Sagas you control. Put a +1/+1 counter on Garnet for
+// each lore counter removed this way."), Satsuki, the Living Lore ("Put a
+// lore counter on each Saga you control.").
+//
+// A deliberately narrow substitute for what EDHREC calls "Historic" (skipped
+// in #031's batch specifically because its literal definition — legendary +
+// artifact + Saga — would have overlapped both #030's legends and #029's
+// artifacts_matter): Sagas is the one clean, non-overlapping third of that
+// tag. Kept disjoint from #029's enchantress and #030's legends by
+// construction, not just by empirical luck — this entry's own corePatterns
+// require the literal chapter/lore-counter mechanic ("final chapter ability
+// ... resolves", "lore counter(s) ... Sagas you control"), never the bare
+// words "Enchantment" or "Legendary" enchantress's/legends' own corePatterns
+// look for. Verified with the real commander fixture: Narci's own oracle
+// text ALSO has "Whenever you sacrifice an enchantment, draw a card." — a
+// real enchantment-adjacent clause — but its literal wording ("sacrifice an
+// enchantment") never matches enchantress's own corePatterns (which require
+// the literal phrase "is put into a graveyard from the battlefield," not
+// "sacrifice"), so Narci does not open enchantress; she has no legendary-
+// permanents-you-control text at all, so she does not open legends either —
+// checked directly against both entries' real corePatterns, not assumed.
+//
+// False-friend shape: broad-type-superset, reused DIRECTLY from
+// enchantress/legends/vehicles, one Enchantment-subtype layer deeper — every
+// Saga is already an Enchantment by rules text ("Enchantment — Saga"), the
+// same trap vehicles already proved recurs one Artifact-subtype layer down
+// from artifacts_matter. The Eldest Reborn — "(As this Saga enters and after
+// your draw step, add a lore counter. Sacrifice after III.) I — ... II — ...
+// III — ..." — is a vanilla Saga: its type line carries "Saga", and its own
+// reminder text even says "lore counter", but that reminder text is generic
+// to every Saga ever printed and never reaches this entry's own required
+// "final chapter ability ... resolves" or "lore counter(s) ... Sagas you
+// control" construction, so she never satisfies corePatterns despite being
+// exactly the type. The same false-friend flag The Eldest Reborn trips here
+// also legitimately trips enchantress's own broad-type-superset check (her
+// type line contains "Enchantment" too), the same double-false-friend
+// outcome vehicles' own Cultivator's Caravan already established for
+// artifacts_matter/vehicles.
+//
+// Support is Saga-specific recursion — Rydia, Summoner of Mist's own "Return
+// target Saga card with mana value X from your graveyard to the battlefield
+// ..." rebuys a spent Saga without itself being the chapter-payoff, the same
+// ancillary role tutoring/recursion play for artifacts_matter.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: no real Sagas
+// commander with a magnitude-qualified cast/play trigger was found — Narci's/
+// Tom Bombadil's own triggers are chapter-resolution triggers, not cast/play
+// triggers — not forced.
+const SAGAS_CORE_PATTERNS = Object.freeze([
+  /final chapter ability of a saga[^.]* resolves/i,
+  /lore counters?[^.]{0,40}sagas? you control/i,
+]);
+
+const SAGAS_SUPPORT_PATTERNS = Object.freeze([
+  /return target saga card[^.]*from your graveyard/i,
+]);
+
+const sagas = Object.freeze({
+  id: "sagas",
+  label: "Sagas package",
+  corePatterns: SAGAS_CORE_PATTERNS,
+  supportPatterns: SAGAS_SUPPORT_PATTERNS,
+  falseFriendShape: "broad-type-superset",
+  falseFriendConfig: Object.freeze({ typePattern: /\bSaga\b/i }),
+  commander: Object.freeze({
+    oraclePatterns: SAGAS_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["sagas", "saga tribal", "chapter matters", "lore counters", "saga deck"]),
+  }),
+  density: Object.freeze({ singletonCore: 6, constructedCore: 4, singletonSupport: 4, constructedSupport: 2 }),
+});
+
 export const ARCHETYPE_CATALOG = Object.freeze({
   artifacts_matter: artifactsMatter,
   counters_matter: countersMatter,
@@ -1537,6 +1940,11 @@ export const ARCHETYPE_CATALOG = Object.freeze({
   superfriends,
   goad,
   vehicles,
+  neg_counters: negCounters,
+  pillow_fort: pillowFort,
+  toughness_matters: toughnessMatters,
+  extra_turns: extraTurns,
+  sagas,
 });
 
 
