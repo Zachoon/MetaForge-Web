@@ -1,5 +1,5 @@
 // =============================================================================
-// Archetype Catalog — proof of concept (Founder #028)
+// Archetype Catalog — Founder #028 (proof of concept) + #029 (batch 2)
 // =============================================================================
 // A second, DECLARATIVE package layer, sibling to strategic-intent.mjs's
 // hand-authored PACKAGE_CATALOG. Each entry supplies oracle-text pattern
@@ -7,8 +7,9 @@
 // function; strategic-intent.mjs's generic dispatch fallback (the same path
 // auras/equipment/blink already run through) evaluates these records, so
 // every downstream consumer that dispatches by package-id string needs zero
-// changes. Exactly 3 entries — a scale-out validation, not the full ~26-
-// archetype batch. See docs/FOUNDER_ISSUES.md #028.
+// changes. #028 validated 3 entries; #029 adds 6 more (lifegain, lands
+// matter, burn, enchantress, mill, wheels) by real EDHREC prevalence — still
+// not the full ~20-archetype remainder. See docs/FOUNDER_ISSUES.md #028/#029.
 //
 // Dual reachability contract (same as the existing 10): a real archetype
 // commander with an empty note must open the package via `commander`
@@ -71,10 +72,30 @@ function excludedByTag(entry, config, semantics) {
   return (config.excludedTags || []).some((tag) => semantics.has(tag));
 }
 
+// wrong-target-scope: the archetype's own action verb is present (a mention
+// broader than any single corePattern requires), but the effect is scoped to
+// the wrong entity for the archetype's actual promise — a self-mill creature
+// that fuels your own graveyard is not the "mill your opponents" archetype;
+// a personal loot spell that discards-then-draws for you alone is not the
+// symmetric/opponent-punishing "wheels" archetype. Distinct from
+// incidental-rider (that shape is about a minor rider gated behind an
+// unrelated condition on a card whose dominant effect is something else
+// entirely; this shape is about the SAME effect existing but pointed at the
+// wrong player) and from excluded-by-tag (that shape consumes a tag
+// strategicSemanticsFor already computed; this shape is a self-contained
+// mention-vs-scope check within one card's own oracle text, no external tag
+// vocabulary required). Config: { mentionPattern, requiredScopePattern }.
+function wrongTargetScope(entry, config) {
+  const oracle = oracleOf(entryCard(entry));
+  if (!config.mentionPattern.test(oracle)) return false;
+  return !config.requiredScopePattern.test(oracle);
+}
+
 const FALSE_FRIEND_SHAPES = Object.freeze({
   "broad-type-superset": broadTypeSuperset,
   "incidental-rider": incidentalRider,
   "excluded-by-tag": excludedByTag,
+  "wrong-target-scope": wrongTargetScope,
 });
 
 export function evaluateFalseFriendShape(shape, entry, config, semantics) {
@@ -231,10 +252,393 @@ const groupHug = Object.freeze({
   density: Object.freeze({ singletonCore: 10, constructedCore: 6, singletonSupport: 6, constructedSupport: 3 }),
 });
 
+// -----------------------------------------------------------------------------
+// Lifegain
+// -----------------------------------------------------------------------------
+// Core is a real payoff for gaining life (Trelasarra, Moon Dancer; Vito,
+// Thorn of the Dusk Rose; Karlov of the Ghost Council all trigger off
+// "whenever you gain life") or a reliable doubling engine (Rhox Faithmender /
+// The Wind Crystal: "If you would gain life, you gain twice that much life
+// instead."). False-friend shape: incidental-rider, reused as-is — a card
+// whose dominant effect is something else entirely (Horrific Assault: fight-
+// style combat damage) that gains a minor, gated amount of life as a rider
+// ("If you control an Eldrazi, you gain 3 life.") is not core, the same way
+// a removal spell's gated +1/+1-counter clause isn't core to counters_matter.
+// Support is production, not reaction: raw repeatable lifegain sources
+// (team-wide lifelink granting, extort, flat "gain life equal to X" effects)
+// enable the archetype without themselves being the payoff.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse per the task brief: a
+// real magnitude-qualified lifegain (and burn) commander exists — Y'shtola,
+// Night's Blessed ("Whenever you cast a noncreature spell with mana value 3
+// or greater, Y'shtola deals 2 damage to each opponent and you gain 2
+// life.") — but its cast-trigger clause is already caught directly by the
+// generic corePatterns below (a magnitude-qualifier in the middle of the
+// sentence doesn't stop a `[^.]*` match), so the #027 gate reuse would be
+// redundant here, not load-bearing the way it is for T'Challa's artifact
+// trigger. Not forced.
+const LIFEGAIN_TRIGGER_PATTERNS = Object.freeze([
+  /whenever you gain life,/i,
+  /if you would gain life,? you (?:instead )?gain twice that much life instead/i,
+]);
+
+const LIFEGAIN_SUPPORT_PATTERNS = Object.freeze([
+  /creatures you control (?:have|gain) lifelink/i,
+  /\bextort\b/i,
+  /gain life equal to/i,
+]);
+
+const LIFEGAIN_MENTION = /\byou gain \d+ life\b/i;
+const LIFEGAIN_RIDER_GATE = /\bif\b(?:(?!life)[^.,])*,[^.]*you gain \d+ life\b/i;
+const LIFEGAIN_DOMINANT_OTHER = /\b(?:destroy target|exile target|counter target spell|deals? damage (?:to|equal to)|return target [^.]* to (?:its owner'?s hand|the battlefield))\b/i;
+
+const LIFEGAIN_RIDER_CONFIG = Object.freeze({
+  mentionPattern: LIFEGAIN_MENTION,
+  gatePattern: LIFEGAIN_RIDER_GATE,
+  dominantOtherPattern: LIFEGAIN_DOMINANT_OTHER,
+});
+
+const lifegain = Object.freeze({
+  id: "lifegain",
+  label: "Lifegain package",
+  corePatterns: LIFEGAIN_TRIGGER_PATTERNS,
+  supportPatterns: LIFEGAIN_SUPPORT_PATTERNS,
+  reuseProtectionSupport: true,
+  falseFriendShape: "incidental-rider",
+  falseFriendConfig: LIFEGAIN_RIDER_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: LIFEGAIN_TRIGGER_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["lifegain", "life gain", "gain life", "lifegain matters", "lifelink matters"]),
+  }),
+  density: Object.freeze({ singletonCore: 8, constructedCore: 5, singletonSupport: 10, constructedSupport: 5 }),
+});
+
+// -----------------------------------------------------------------------------
+// Lands matter
+// -----------------------------------------------------------------------------
+// Core is a real landfall-shaped payoff (the Landfall keyword itself; Aesi,
+// Tyrant of Gyre Strait's "Whenever a land you control enters, you may draw
+// a card."; The Gitrog Monster's and Titania, Protector of Argoth's land-
+// leaves-battlefield payoffs), not the Land type line — false-friend shape:
+// broad-type-superset, reused as-is with typePattern /\bLand\b/i, structurally
+// identical to artifacts_matter's own use of the same shape. A plain dual
+// like Command Tower ("{T}: Add one mana of any color in your commander's
+// color identity.") is a Land by type but has no landfall-shaped trigger at
+// all — same false-friend pattern as a vanilla artifact, different type.
+// Extra land drops (Aesi's own "You may play an additional land on each of
+// your turns.") are an enabler, not the payoff itself — support, the same
+// role tutoring/recursion play for artifacts_matter.
+//
+// Checked #027's magnitude-gate reuse: no real "lands matter" commander with
+// a magnitude-qualified land trigger was found (the type word a magnitude
+// gate parses is a cast/play trigger's spell/permanent type, not a structural
+// fit for a landfall trigger at all) — not forced.
+const LANDS_MATTER_CORE_PATTERNS = Object.freeze([
+  /\blandfall\b/i,
+  /whenever a land you control enters(?: the battlefield)?[^.]*(?:draw|create|gain|search|token|counter|add)/i,
+  /whenever one or more land cards? (?:are|is) put into your graveyard from anywhere,[^.]*draw/i,
+  /whenever a land you control is put into a graveyard from the battlefield,[^.]*create/i,
+]);
+
+const LANDS_MATTER_SUPPORT_PATTERNS = Object.freeze([
+  /play (?:an? )?additional land/i,
+  /search your library for [^.]*land card/i,
+  /return target land card from your graveyard to (?:your hand|the battlefield)/i,
+]);
+
+const landsMatter = Object.freeze({
+  id: "lands_matter",
+  label: "Lands-matter package",
+  corePatterns: LANDS_MATTER_CORE_PATTERNS,
+  supportPatterns: LANDS_MATTER_SUPPORT_PATTERNS,
+  reuseProtectionSupport: true,
+  falseFriendShape: "broad-type-superset",
+  falseFriendConfig: Object.freeze({ typePattern: /\bLand\b/i }),
+  commander: Object.freeze({
+    oraclePatterns: LANDS_MATTER_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["lands matter", "landfall", "land synergy", "ramp into lands", "lands deck"]),
+  }),
+  density: Object.freeze({ singletonCore: 10, constructedCore: 6, singletonSupport: 8, constructedSupport: 4 }),
+});
+
+// -----------------------------------------------------------------------------
+// Burn
+// -----------------------------------------------------------------------------
+// Core is direct damage aimed at opponents/players, not damage in general —
+// a repeatable cast-trigger pinger (Guttersnipe / Electrostatic Field:
+// "Whenever you cast an instant or sorcery spell, ... deals damage to each
+// opponent."), a damage amplifier (Torbran, Thane of Red Fell: "If a red
+// source you control would deal damage to an opponent ..., it deals that
+// much damage plus 2 instead."; Fiery Emancipation), a land-punisher (Zo-Zu
+// the Punisher), or a direct burn spell that can actually hit a player
+// (Lightning Bolt's "any target", Fireball's "any number of targets") — all
+// four are the archetype's real identity, unlike artifacts_matter's vanilla
+// artifact, so none of them are demoted to support.
+//
+// False-friend shape: incidental-rider, reused with burn-specific config. A
+// removal spell whose dominant effect is destroying/exiling a creature and
+// which deals a minor, gated amount of damage to a player as a rider —
+// Unlicensed Disintegration: "Destroy target creature. If you control an
+// artifact, Unlicensed Disintegration deals 3 damage to that creature's
+// controller." — is not core; the "damage to a player" mention only exists
+// because of an unrelated artifact-count condition on a card whose real job
+// is creature removal, structurally identical to counters_matter's gated
+// +1/+1-counter removal-spell rider.
+//
+// Considered a target-scope false friend (a creature-only damage spell like
+// Flame Slash, "deals 4 damage to target creature", never touches a player)
+// but corePatterns already require "to any target/opponent/player" — Flame
+// Slash's "target creature" phrasing simply never matches core, no shape
+// needed for that case (same reasoning broad-type-superset gets a free pass
+// on the core-satisfaction gate).
+//
+// Checked #027's magnitude-gate reuse: see lifegain's note on Y'shtola,
+// Night's Blessed — the same real commander is magnitude-qualified for burn
+// too, and is already caught by the generic cast-trigger corePattern below
+// without needing the reuse.
+const BURN_CORE_PATTERNS = Object.freeze([
+  /whenever you cast (?:an? )?(?:instant or sorcery|noncreature|instant|sorcery) spell[^.]*,[^.]*deals? \d+ damage to each opponent/i,
+  /would deal damage to (?:an? )?(?:permanent or player|opponent)[^.]*it deals (?:double|triple|that much damage plus \d+)[^.]*instead/i,
+  /whenever (?:a|another) land enters,[^.]*deals? \d+ damage to that land'?s controller/i,
+  /deals? (?:\d+|x) damage[^.]*(?:to any target|to target opponent|to target player|to each opponent|divided[^.]*among any number of targets)/i,
+]);
+
+const BURN_SUPPORT_PATTERNS = Object.freeze([
+  /instant or sorcery spells you (?:cast|control) cost \{[^}]+\} less/i,
+  /whenever you cast an instant or sorcery spell,[^.]*create/i,
+]);
+
+const BURN_MENTION = /\bdeals? \d+ damage\b/i;
+const BURN_RIDER_GATE = /\bif\b(?:(?!damage)[^.,])*,[^.]*deals? \d+ damage\b/i;
+const BURN_DOMINANT_OTHER = /\b(?:destroy target|exile target|counter target spell)\b/i;
+
+const BURN_RIDER_CONFIG = Object.freeze({
+  mentionPattern: BURN_MENTION,
+  gatePattern: BURN_RIDER_GATE,
+  dominantOtherPattern: BURN_DOMINANT_OTHER,
+});
+
+const burn = Object.freeze({
+  id: "burn",
+  label: "Burn package",
+  corePatterns: BURN_CORE_PATTERNS,
+  supportPatterns: BURN_SUPPORT_PATTERNS,
+  reuseProtectionSupport: true,
+  falseFriendShape: "incidental-rider",
+  falseFriendConfig: BURN_RIDER_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: BURN_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["burn", "direct damage", "burn deck", "pinger", "damage doubler"]),
+  }),
+  density: Object.freeze({ singletonCore: 14, constructedCore: 8, singletonSupport: 6, constructedSupport: 3 }),
+});
+
+// -----------------------------------------------------------------------------
+// Enchantress
+// -----------------------------------------------------------------------------
+// Core is the enchantment-triggered draw ability itself — "whenever you cast
+// an enchantment spell, draw a card" (Argothian Enchantress, the archetype's
+// namesake; Verduran Enchantress; Sythis, Harvest's Hand) or the Constellation
+// enchantment-enters-the-battlefield shape (Setessan Champion; Eidolon of
+// Blossoms) — not merely drawing cards, and not merely being an Enchantment.
+// False-friend shape: broad-type-superset, reused with typePattern
+// /\bEnchantment\b/i. Rhystic Study is the clean real fixture: its type line
+// says Enchantment, but its payoff ("Whenever an opponent casts a spell, you
+// may draw a card unless that player pays {1}.") has nothing to do with
+// enchantments — a spell-tax draw engine that happens to be printed as an
+// Enchantment, structurally identical to Iron Cog being a vanilla Artifact.
+// Considered generalizing broad-type-superset past the literal type line to
+// "has the enchantment-triggered draw ability" per the task's own worked
+// example, but that framing doesn't fit: it would just restate corePatterns
+// itself (an "enchantment-triggered draw ability" IS the core pattern), not
+// describe a distinct false-friend shape. The real false friend here is
+// exactly the ordinary broad-type mismatch the existing shape already models.
+// Auras are a real EDH package already (PACKAGE_CATALOG's own `auras` entry)
+// — Enchantress is deliberately not scoped to the narrower Aura subtype, and
+// this entry does not touch that one.
+//
+// Checked #027's magnitude-gate reuse: no real Enchantress commander with a
+// magnitude-qualified enchantment trigger was found (Bello, Bard of the
+// Brambles animates enchantments with mana value 4+ into creatures — an
+// unrelated mechanic, not an enchantment-cast/enters draw payoff) — not
+// forced.
+const ENCHANTRESS_CORE_PATTERNS = Object.freeze([
+  /whenever you cast (?:an? )?enchantment spell,[^.]*draw/i,
+  /whenever [^.]* enchantment (?:you control )?enters(?: the battlefield)?[^.]*draw/i,
+  /whenever an enchantment is put into a graveyard from the battlefield,[^.]*draw/i,
+]);
+
+const ENCHANTRESS_SUPPORT_PATTERNS = Object.freeze([
+  /search your library for an enchantment card/i,
+  /return (?:target|all) enchantment(?:s| cards?)? [^.]*graveyards?[^.]* to the battlefield/i,
+  /other enchantments you control have (?:shroud|hexproof|indestructible)/i,
+]);
+
+const enchantress = Object.freeze({
+  id: "enchantress",
+  label: "Enchantress package",
+  corePatterns: ENCHANTRESS_CORE_PATTERNS,
+  supportPatterns: ENCHANTRESS_SUPPORT_PATTERNS,
+  reuseProtectionSupport: true,
+  falseFriendShape: "broad-type-superset",
+  falseFriendConfig: Object.freeze({ typePattern: /\bEnchantment\b/i }),
+  commander: Object.freeze({
+    oraclePatterns: ENCHANTRESS_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["enchantress", "enchantment matters", "enchantments matter", "constellation"]),
+  }),
+  density: Object.freeze({ singletonCore: 8, constructedCore: 5, singletonSupport: 6, constructedSupport: 3 }),
+});
+
+// -----------------------------------------------------------------------------
+// Mill
+// -----------------------------------------------------------------------------
+// Core is milling your OPPONENTS' libraries — "target player mills"/"each
+// opponent mills" (Hedron Crab, Ruin Crab, Fleet Swallower, Maddening
+// Cacophony, Traumatize), a mill doubler (Bruvac the Grandiloquent: "If an
+// opponent would mill one or more cards, they mill twice that many cards
+// instead."), a granted repeatable mill ability (Phenax, God of Deception's
+// "Creatures you control have '{T}: Target player mills X cards...'"), or a
+// library-depletion effect without the literal keyword (Consuming
+// Aberration / Mind Grind's "each opponent reveals cards from the top of
+// their library ... puts ... into their graveyard").
+//
+// False-friend shape: wrong-target-scope (new — see justification below). A
+// card that mills but only itself — Stitcher's Supplier: "When this creature
+// enters or dies, mill three cards." — is a graveyard/reanimator enabler
+// (self-mill), not the Mill archetype, which is specifically about depleting
+// an opponent's library. None of the 3 #028 shapes structurally fit: it is
+// not a broad type-line mismatch (no type-line concept applies to a mill
+// trigger), it is not an incidental-rider (the mill IS the card's entire,
+// unconditional effect — there is no gate and no separate dominant effect to
+// be a rider on), and it is not excluded-by-tag (strategicSemanticsFor has no
+// self-mill-vs-opponent-mill tag, and inventing one would violate the "does
+// not invent a new tag" rule the shape itself is built on). The genuinely
+// new, genuinely shared structural pattern is: the archetype's action verb
+// is present, but pointed at the wrong player. This exact shape recurs for
+// wheels below (personal loot vs. symmetric/opponent-facing wheel effects),
+// confirming it is reusable rather than a one-off bolted onto mill alone.
+//
+// Support is scaling off the opponent graveyards mill produces, not
+// producing mill itself — Consuming Aberration's own power/toughness clause
+// ("...equal to the number of cards in your opponents' graveyards") is a
+// real secondary payoff for the archetype's byproduct, the same ancillary
+// role tutoring/recursion play for artifacts_matter.
+//
+// Checked #027's magnitude-gate reuse: no real Mill commander with a
+// magnitude-qualified mill trigger was found — not forced.
+const MILL_CORE_PATTERNS = Object.freeze([
+  /(?:target player|target opponent|each opponent) mills? (?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|x|\d+|that many|twice that many|half (?:their|its) library)/i,
+  /if (?:an? )?opponent would mill[^.]*mill (?:twice|three times) that many/i,
+  /creatures you control have[^.]*target player mills/i,
+  /each opponent reveals cards from the top of (?:their|its) library[^.]*graveyard/i,
+]);
+
+const MILL_SUPPORT_PATTERNS = Object.freeze([
+  /power and toughness are each equal to the number of cards in your opponents(?:'|’)? graveyards?/i,
+]);
+
+const MILL_SELF_MENTION = /\bmills?\b/i;
+const MILL_REQUIRED_OPPONENT_SCOPE = /target player mills|target opponent mills|each opponent mills|an opponent would mill|creatures you control have[^.]*target player mills|each opponent reveals cards from the top/i;
+
+const MILL_SCOPE_CONFIG = Object.freeze({
+  mentionPattern: MILL_SELF_MENTION,
+  requiredScopePattern: MILL_REQUIRED_OPPONENT_SCOPE,
+});
+
+const mill = Object.freeze({
+  id: "mill",
+  label: "Mill package",
+  corePatterns: MILL_CORE_PATTERNS,
+  supportPatterns: MILL_SUPPORT_PATTERNS,
+  falseFriendShape: "wrong-target-scope",
+  falseFriendConfig: MILL_SCOPE_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: MILL_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["mill", "mill deck", "deck out", "library destruction"]),
+  }),
+  density: Object.freeze({ singletonCore: 12, constructedCore: 7, singletonSupport: 6, constructedSupport: 3 }),
+});
+
+// -----------------------------------------------------------------------------
+// Wheels
+// -----------------------------------------------------------------------------
+// Core is a symmetric hand-refill effect (Wheel of Fortune: "Each player
+// discards their hand, then draws seven cards."; Dark Deal; Winds of Change)
+// or a punisher that reacts specifically to an OPPONENT's draw/discard
+// (Nekusar, the Mindrazer: "At the beginning of each player's draw step,
+// that player draws an additional card. Whenever an opponent draws a card,
+// Nekusar deals 1 damage to that player."; Waste Not).
+//
+// False-friend shape: wrong-target-scope, the same shape mill needs (see
+// mill's comment for why none of the 3 #028 shapes fit and why this one
+// generalizes). A personal loot/rummage spell — Cathartic Reunion: "As an
+// additional cost to cast this spell, discard two cards. Draw three cards."
+// — mentions both discard and draw, exactly like a real wheel, but only ever
+// touches the caster's own hand; it is card filtering, not the archetype,
+// the same way Stitcher's Supplier's self-mill is graveyard fuel and not the
+// Mill archetype. Glint-Horn Buccaneer ("Whenever you discard a card, this
+// creature deals 1 damage to each opponent.") is real support instead of a
+// false friend: it does not itself wheel, but it is a genuine payoff for
+// discarding that a wheels deck reliably triggers off its own wheel effects.
+//
+// Checked #027's magnitude-gate reuse: no real Wheels commander with a
+// magnitude-qualified wheel/punisher trigger was found — not forced.
+const WHEELS_CORE_PATTERNS = Object.freeze([
+  /each player (?:discards their hand|discards all the cards in their hand|shuffles the cards from their hand into their library)[^.]*draws?/i,
+  /whenever an opponent draws a card,[^.]*(?:deals? \d+ damage|loses? \d+ life)/i,
+  /at the beginning of each player'?s draw step,[^.]* draws? an additional card/i,
+  /whenever an opponent discards[^.]*(?:draw|create|add)/i,
+]);
+
+const WHEELS_SUPPORT_PATTERNS = Object.freeze([
+  /whenever you discard a card,[^.]*(?:draw|deals? \d+ damage|create)/i,
+  /no maximum hand size/i,
+]);
+
+const WHEELS_MENTION = /\bdiscards?\b[\s\S]{0,60}\bdraws?\b|\bdraws?\b[\s\S]{0,60}\bdiscards?\b/i;
+const WHEELS_REQUIRED_SCOPE = /each player (?:discards|shuffles)|whenever an opponent draws|whenever an opponent discards/i;
+
+const WHEELS_SCOPE_CONFIG = Object.freeze({
+  mentionPattern: WHEELS_MENTION,
+  requiredScopePattern: WHEELS_REQUIRED_SCOPE,
+});
+
+const wheels = Object.freeze({
+  id: "wheels",
+  label: "Wheels package",
+  corePatterns: WHEELS_CORE_PATTERNS,
+  supportPatterns: WHEELS_SUPPORT_PATTERNS,
+  falseFriendShape: "wrong-target-scope",
+  falseFriendConfig: WHEELS_SCOPE_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: WHEELS_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["wheels", "wheel effects", "punisher", "discard matters"]),
+  }),
+  density: Object.freeze({ singletonCore: 6, constructedCore: 4, singletonSupport: 6, constructedSupport: 3 }),
+});
+
 export const ARCHETYPE_CATALOG = Object.freeze({
   artifacts_matter: artifactsMatter,
   counters_matter: countersMatter,
   group_hug: groupHug,
+  lifegain,
+  lands_matter: landsMatter,
+  burn,
+  enchantress,
+  mill,
+  wheels,
 });
 
 export const ARCHETYPE_PACKAGE_IDS = Object.freeze(Object.keys(ARCHETYPE_CATALOG));
