@@ -1,6 +1,7 @@
 // =============================================================================
 // Archetype Catalog — #028 (POC) + #029 (batch 2) + #030 (batch 3) + #031
-// (batch 4) + #032 (batch 5, final)
+// (batch 4) + #032 (batch 5, final of the original ~26-archetype scope) +
+// #033 (batch 6, first of the deferred lower-prevalence bucket)
 // =============================================================================
 // A second, DECLARATIVE package layer, sibling to strategic-intent.mjs's
 // hand-authored PACKAGE_CATALOG. Each entry supplies oracle-text pattern
@@ -11,20 +12,21 @@
 // changes. #028 validated 3 entries; #029 added 6 more (lifegain, lands
 // matter, burn, enchantress, mill, wheels); #030 added a further 6 (legends,
 // discard, graveyard, clones, flying, group_slug); #031 added 6 more (infect,
-// extra_combats, theft, superfriends, goad, vehicles); #032 adds the final 5
+// extra_combats, theft, superfriends, goad, vehicles); #032 added the final 5
 // (neg_counters, pillow_fort, toughness_matters, extra_turns, sagas) by real
 // EDHREC prevalence, completing the original ~26-archetype research scope
-// (3 POC + 6 + 6 + 6 + 5 = 26). #032 introduces zero new top-level shapes:
-// neg_counters and pillow_fort reuse `wrong-target-scope` (the former a
-// self-cost-vs-payoff scope mismatch, the latter a hard-prevention-vs-
-// taxation scope mismatch, and a further grant-vs-negate polarity instance
-// for extra_turns); toughness_matters reuses `incidental-rider` (a magnitude-
-// gated combat-trick rider, the same shape counters_matter/lifegain/burn/
-// discard/graveyard already use); sagas reuses `broad-type-superset` directly
-// from enchantress/legends/vehicles, one Enchantment-subtype layer deeper,
-// exactly the way vehicles went one Artifact-subtype layer deeper than
-// artifacts_matter. See each entry's comment for its grounding, and
-// docs/FOUNDER_ISSUES.md #028/#029/#030/#031/#032.
+// (3 POC + 6 + 6 + 6 + 5 = 26). #033 begins the deferred, lower-prevalence
+// bucket with 6 more (energy, populate, monarch, anthems, devotion, cascade),
+// introducing zero new top-level shapes: energy and anthems reuse
+// `wrong-target-scope` (a bare-word-vs-mana-symbol mismatch for energy, an
+// object-subtype scope mismatch for anthems); populate and devotion also
+// reuse `wrong-target-scope` (populate reusing clones' own object-type-
+// mismatch sub-domain from the opposite direction; devotion opening a
+// gating-clause-vs-scaling-reward mismatch grounded in the whole Theros god
+// cycle); monarch and cascade reuse `incidental-rider`, the same gated-rider
+// shape counters_matter/lifegain/burn/discard/graveyard/toughness_matters
+// already use. See each entry's comment for its grounding, and
+// docs/FOUNDER_ISSUES.md #028/#029/#030/#031/#032/#033.
 //
 // Dual reachability contract (same as the existing 10): a real archetype
 // commander with an empty note must open the package via `commander`
@@ -1918,6 +1920,478 @@ const sagas = Object.freeze({
   density: Object.freeze({ singletonCore: 6, constructedCore: 4, singletonSupport: 4, constructedSupport: 2 }),
 });
 
+// -----------------------------------------------------------------------------
+// Energy
+// -----------------------------------------------------------------------------
+// Core is the Energy counter resource pool itself — producing it ("you get
+// {E}") and spending it ("pay {E}: [effect]") — Nissa, Worldsoul Speaker
+// ("Landfall — Whenever a land you control enters, you get {E}{E}. You may
+// pay eight {E} rather than pay the mana cost for permanent spells you
+// cast."), Dr. Madison Li ("Whenever you cast an artifact spell, you get {E}.
+// {T}, Pay {E}{E}{E}: Draw a card."), Saheeli, Radiant Creator, Pia Nalaar,
+// Chief Mechanic. Unlike a broad type line, {E} is a precise mana-symbol
+// construction that virtually never appears for anything unrelated to the
+// archetype — the same way Infect's own keyword genuinely IS #031's core, not
+// demoted to support. Task brief flags Energy as a player-RESOURCE pool,
+// structurally distinct from a permanent-attached +1/+1 or -1/-1 counter —
+// checked directly, not assumed: counters_matter's own corePatterns all
+// require the literal "+1/+1" substring and neg_counters' all require "-1/-1",
+// neither of which any real {E} card's text ever contains (Nissa's and Dr.
+// Madison Li's own oracle text have zero "+1/+1"/"-1/-1" substrings), while
+// counters_matter's own commander (Vorel of the Hull Clade, "Double the
+// number of each kind of counter...") and neg_counters' own commander
+// (Hapatra, Vizier of Poisons) both have zero "{E}" text. A single real card
+// can still legitimately spend energy for a permanent counter (Longtusk Cub:
+// "Pay {E}{E}: Put a +1/+1 counter on this creature." — genuinely opens both
+// energy AND counters_matter) without breaking COMMANDER-level disjointness,
+// the same multi-role allowance #030's Stitcher's Supplier precedent
+// established.
+//
+// False-friend shape: wrong-target-scope, a bare-word-vs-mana-symbol
+// mismatch (new sub-domain — the word "energy" predates and outlives the
+// Kaladesh {E} mechanic in card text far more than any other archetype's
+// keyword). Death Tyrant's own named ability "Negative Energy Cone —
+// Whenever an attacking creature you control or a blocking creature an
+// opponent controls dies, create a 2/2 black Zombie creature token." mentions
+// "Energy" as broadly as any real payoff card, but never uses the {E} symbol
+// anywhere — an unrelated death-trigger token maker that merely borrowed the
+// word for its ability name. Energy Bolt ("Energy Bolt deals X damage to
+// target player or planeswalker.") is the same trap by card name alone: it
+// is a plain burn spell with zero energy-counter mechanic in its own oracle
+// text.
+//
+// Support is a cost-discount enabler, not the pool itself — Blaster Hulk's
+// own "This spell costs {1} less to cast for each {E} (energy counter)
+// you've paid or lost this turn." makes future energy-spending cheaper as a
+// byproduct without itself being a get/pay payoff, the same ancillary role
+// tutoring/recursion play for artifacts_matter.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: no real Energy
+// commander with a magnitude-qualified cast/play trigger was found — Nissa's
+// own trigger is Landfall, not a cast/play trigger, and Dr. Madison Li's/
+// Saheeli's own triggers have no numeric mana-value/power/toughness bar at
+// all — not forced.
+const ENERGY_CORE_PATTERNS = Object.freeze([
+  /you get (?:an? |two |three |four |five |six |seven |eight |nine |ten |x |an amount of |that many )?\{e\}/i,
+  /pay (?:\{e\}+|any amount of \{e\}|one or more \{e\}|x \{e\}|eight \{e\}|\d+ \{e\})/i,
+  /amount of \{e\} you have/i,
+]);
+
+const ENERGY_SUPPORT_PATTERNS = Object.freeze([
+  /costs? \{[^}]+\} less to cast for each \{e\}/i,
+]);
+
+const ENERGY_MENTION = /\benergy\b/i;
+const ENERGY_REQUIRED_SCOPE = /\{e\}/i;
+
+const ENERGY_SCOPE_CONFIG = Object.freeze({
+  mentionPattern: ENERGY_MENTION,
+  requiredScopePattern: ENERGY_REQUIRED_SCOPE,
+});
+
+const energy = Object.freeze({
+  id: "energy",
+  label: "Energy package",
+  corePatterns: ENERGY_CORE_PATTERNS,
+  supportPatterns: ENERGY_SUPPORT_PATTERNS,
+  falseFriendShape: "wrong-target-scope",
+  falseFriendConfig: ENERGY_SCOPE_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: ENERGY_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["energy", "energy counters", "get energy", "kaladesh energy", "energy matters"]),
+  }),
+  density: Object.freeze({ singletonCore: 8, constructedCore: 5, singletonSupport: 4, constructedSupport: 2 }),
+});
+
+// -----------------------------------------------------------------------------
+// Populate
+// -----------------------------------------------------------------------------
+// Core is the Populate keyword/mechanic specifically — Ghired, Conclave Exile
+// ("Whenever Ghired attacks, populate. ... (To populate, create a token
+// that's a copy of a creature token you control.)"), Trostani, Selesnya's
+// Voice ("{1}{G}{W}, {T}: Populate.").
+//
+// CRITICAL overlap risk named by the task: #030's clones already covers
+// creature-copying broadly. Kept disjoint by construction, not just by
+// empirical luck: clones' own second corePattern requires the literal
+// determiner "target"/"another"/"any" immediately before "creature"
+// (/create[s]? a token that'?s a copy of (?:target|another|any) creature/i),
+// while every real Populate card's own reminder text uses the determiner "a"
+// instead ("a copy of A creature token you control") — "a" is not "target",
+// "another", or "any", so it never satisfies clones' own pattern. Verified
+// directly against both entries' real corePatterns: Ghired's and Trostani's
+// own oracle text opens populate but not clones; conversely clones' own
+// commander fixture, Sakashima of a Thousand Faces ("You may have Sakashima
+// enter as a copy of another creature you control..."), has no "populate"
+// text and no "copy of a ... token you control" construction, so he does not
+// open populate either.
+//
+// False-friend shape: wrong-target-scope, reusing #030's object-TYPE-mismatch
+// sub-domain clones itself opened, but from the OPPOSITE direction — a card
+// that broadly reads like a token-copy effect but copies the WRONG source
+// object. Rite of Replication ("Create a token that's a copy of target
+// creature.") mentions "create a token that's a copy of" as broadly as any
+// real populate card, but the object is "target creature" (any creature on
+// the battlefield), not specifically a token you already control — clones'
+// own real core card is populate's own false friend, directly proving the
+// two promises don't overlap, the same way #030's group_slug used burn's own
+// Guttersnipe.
+//
+// Support is raw creature-token production, not the copy effect itself —
+// Ghired's own first ability ("When Ghired enters, create a 4/4 green Rhino
+// creature token with trample.") feeds populate's required raw material
+// (you must already control a token to populate from) without itself being
+// the copy effect, the same ancillary role tutoring/recursion play for
+// artifacts_matter — deliberately reusing tokens' own token-generator
+// territory here since populate structurally REQUIRES it, unlike other
+// archetypes' merely-adjacent enablers.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: no real Populate
+// commander with a magnitude-qualified cast/play trigger was found —
+// Ghired's own trigger is an attack trigger, not a cast/play trigger — not
+// forced.
+const POPULATE_CORE_PATTERNS = Object.freeze([
+  /\bpopulate\b/i,
+  /create[s]? a token that'?s a copy of (?:a|one of (?:those|your)|another) (?:creature )?tokens? you control/i,
+]);
+
+const POPULATE_SUPPORT_PATTERNS = Object.freeze([
+  /create(?:s)? (?:a|an|\d+|x) [^.]{0,30} creature tokens?/i,
+]);
+
+const POPULATE_MENTION = /create[s]? a token that'?s a copy of/i;
+const POPULATE_REQUIRED_SCOPE = /\bpopulate\b|create[s]? a token that'?s a copy of (?:a|one of (?:those|your)|another) (?:creature )?tokens? you control/i;
+
+const POPULATE_SCOPE_CONFIG = Object.freeze({
+  mentionPattern: POPULATE_MENTION,
+  requiredScopePattern: POPULATE_REQUIRED_SCOPE,
+});
+
+const populate = Object.freeze({
+  id: "populate",
+  label: "Populate package",
+  corePatterns: POPULATE_CORE_PATTERNS,
+  supportPatterns: POPULATE_SUPPORT_PATTERNS,
+  falseFriendShape: "wrong-target-scope",
+  falseFriendConfig: POPULATE_SCOPE_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: POPULATE_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["populate", "token copy", "copy a token", "populate deck", "token doubling"]),
+  }),
+  density: Object.freeze({ singletonCore: 6, constructedCore: 4, singletonSupport: 6, constructedSupport: 3 }),
+});
+
+// -----------------------------------------------------------------------------
+// Monarch
+// -----------------------------------------------------------------------------
+// Core is the Monarch mechanic itself — becoming the monarch (self-grant, the
+// archetype's own headline promise) and reward clauses conditioned on holding
+// or observing the crown — Queen Marchesa ("When Queen Marchesa enters, you
+// become the monarch. At the beginning of your upkeep, if an opponent is the
+// monarch, create a 1/1 black Assassin creature token..."), the Throne of
+// Eldraine Court cycle (Court of Ire: "When this enchantment enters, you
+// become the monarch. At the beginning of your upkeep, this enchantment
+// deals 2 damage to any target. If you're the monarch, it deals 7 damage
+// instead."), Dawnglade Regent ("As long as you're the monarch, permanents
+// you control have hexproof.").
+//
+// False-friend shape: incidental-rider, reused with a genuinely different
+// real fixture than the other incidental-rider entries. Fight for the
+// Throne — "Put a +1/+1 counter on target creature you control. Then it
+// fights target creature an opponent controls. When the creature an
+// opponent controls dies this turn, if you control your commander, you
+// become the monarch." — mentions "you become the monarch" as literally as
+// any real payoff card, but its dominant effect is an unrelated fight-style
+// removal spell, and the monarch grant is a minor bonus gated behind an
+// unrelated commander-control condition — structurally identical to
+// counters_matter's/burn's/discard's/graveyard's/toughness_matters' own
+// gated-rider precedent. No real hate/negation card for Monarch was found
+// among 61 real printed "monarch" cards checked directly (Jared Carthalion's
+// own "You can't become the monarch this turn." is a minor self-denial
+// clause on a card whose OTHER ability, "while you're the monarch, prevent
+// that damage...", is itself a genuine core-matching payoff, so the card as
+// a whole is core, not a clean false friend) — Fight for the Throne is the
+// one real card whose dominant identity is unambiguously not the archetype.
+//
+// Support is monarch-conditioned evasion/attack-restriction, not the
+// grant/payoff itself — Azure Fleet Admiral's own "This creature can't be
+// blocked by creatures the monarch controls." and Crown-Hunter Hireling's
+// own "This creature can't attack unless defending player is the monarch."
+// are real political enablers for a crown-focused board plan without
+// themselves granting or rewarding monarchy, the same ancillary role
+// tutoring/recursion play for artifacts_matter.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: no real Monarch
+// commander with a magnitude-qualified cast/play trigger was found — Queen
+// Marchesa's own trigger is an ETB, not a cast/play trigger — not forced.
+const MONARCH_CORE_PATTERNS = Object.freeze([
+  /\bbecomes? the monarch\b/i,
+  /(?:if|while|whenever|as long as) [^.]*(?:is|are|'?re) the monarch\b/i,
+]);
+
+const MONARCH_SUPPORT_PATTERNS = Object.freeze([
+  /can'?t be blocked by creatures the monarch controls/i,
+  /can'?t attack unless defending player is the monarch/i,
+]);
+
+const MONARCH_MENTION = /\bmonarch\b/i;
+const MONARCH_RIDER_GATE = /\bif\b(?:(?!monarch)[^.,])*,[^.]*you become the monarch\b/i;
+const MONARCH_DOMINANT_OTHER = /fights? target creature|\+1\/\+1 counter on target creature/i;
+
+const MONARCH_RIDER_CONFIG = Object.freeze({
+  mentionPattern: MONARCH_MENTION,
+  gatePattern: MONARCH_RIDER_GATE,
+  dominantOtherPattern: MONARCH_DOMINANT_OTHER,
+});
+
+const monarch = Object.freeze({
+  id: "monarch",
+  label: "Monarch package",
+  corePatterns: MONARCH_CORE_PATTERNS,
+  supportPatterns: MONARCH_SUPPORT_PATTERNS,
+  falseFriendShape: "incidental-rider",
+  falseFriendConfig: MONARCH_RIDER_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: MONARCH_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["monarch", "become the monarch", "crown", "monarchy", "king of the hill"]),
+  }),
+  density: Object.freeze({ singletonCore: 8, constructedCore: 5, singletonSupport: 6, constructedSupport: 3 }),
+});
+
+// -----------------------------------------------------------------------------
+// Anthems
+// -----------------------------------------------------------------------------
+// Core is a real STATIC team-wide pump — Elesh Norn, Grand Cenobite ("Other
+// creatures you control get +2/+2."), Maja, Bretagard Protector ("Other
+// creatures you control get +1/+1."), Jetmir, Nexus of Revels ("Creatures
+// you control get +1/+0 ... as long as you control three or more
+// creatures.") — deliberately excluding a temporary/activated pump
+// ("... until end of turn") from core via a bounded negative lookahead, the
+// same way the archetype's own real identity is an always-on team boost, not
+// a combat trick.
+//
+// CRITICAL overlap risk named by the task: the original 10 PACKAGE_CATALOG's
+// own `tokens` entry (strategic-intent.mjs), since anthem effects are
+// frequently paired with token strategies but are not the same promise. Kept
+// disjoint by construction: every corePattern here requires the literal word
+// "creatures" immediately before "you control get/have", and Intangible
+// Virtue — the real card proving the boundary — reads "Creature tokens you
+// control get +1/+1 and have vigilance." The substring "creatures you
+// control get" never appears (the actual adjacent words are "tokens you
+// control get"), so corePatterns never match; the false-friend check's
+// broader mention (bare "tokens you control get +1/+1") does match, correctly
+// flagging her. The same real card is genuine SUPPORT for tokens (Intangible
+// Virtue trips tokens' own token_payoff semantic, /tokens? you control/i,
+// directly) and a FALSE FRIEND here — the same real card legitimately
+// occupying two different roles in two different archetypes, the precedent
+// #030's Stitcher's Supplier and #032's Ghostly Prison already established.
+// Verified with a commander-level check too: Elesh Norn's own pure-anthem
+// text has zero "token" mentions at all and does not open tokens (confirmed
+// against detectTokensCommander's own literal "create ... token"
+// requirement); conversely Krenko, Mob Boss ("{T}: Create X 1/1 red Goblin
+// creature tokens...") — a real tokens commander — has zero "+X/+X" pump
+// text and does not open anthems.
+//
+// Support is a temporary/activated pump, not the static payoff itself —
+// Purphoros, God of the Forge's own "{2}{R}: Creatures you control get
+// +1/+0 until end of turn." and Balmor, Battlemage Captain's own "creatures
+// you control get +1/+0 ... until end of turn" are real triggered/activated
+// boosts, an enabler role distinct from the archetype's always-on promise.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: no real Anthems
+// commander with a magnitude-qualified cast/play trigger was found — Elesh
+// Norn's own pump is a static ability, not a cast/play trigger — not forced.
+const ANTHEM_CORE_PATTERNS = Object.freeze([
+  /(?:other )?(?:\w+ )?creatures you control get \+\d+\/\+\d+(?![^.]*until end of turn)/i,
+]);
+
+const ANTHEM_SUPPORT_PATTERNS = Object.freeze([
+  /creatures you control get \+\d+\/\+\d+[^.]*until end of turn/i,
+]);
+
+const ANTHEM_MENTION = /(?:tokens?|creatures?) you control (?:get|have) \+\d+\/\+\d+/i;
+// Deliberately does NOT repeat corePatterns' "until end of turn" exclusion —
+// that exclusion is a core-vs-support split (static vs. temporary pump), not
+// a core-vs-false-friend one. A temporary team pump (Purphoros's own "{2}{R}:
+// Creatures you control get +1/+0 until end of turn.") must pass this check
+// so it lands as real SUPPORT, not get double-flagged as a false friend for
+// the unrelated reason of being temporary — false friend here is reserved for
+// the token/creature object-type mismatch Intangible Virtue actually trips.
+const ANTHEM_REQUIRED_SCOPE = /(?:other )?(?:\w+ )?creatures you control (?:get|have) \+\d+\/\+\d+/i;
+
+const ANTHEM_SCOPE_CONFIG = Object.freeze({
+  mentionPattern: ANTHEM_MENTION,
+  requiredScopePattern: ANTHEM_REQUIRED_SCOPE,
+});
+
+const anthems = Object.freeze({
+  id: "anthems",
+  label: "Anthems package",
+  corePatterns: ANTHEM_CORE_PATTERNS,
+  supportPatterns: ANTHEM_SUPPORT_PATTERNS,
+  falseFriendShape: "wrong-target-scope",
+  falseFriendConfig: ANTHEM_SCOPE_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: ANTHEM_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["anthem", "anthems", "team pump", "creatures get +1/+1", "lord effects"]),
+  }),
+  density: Object.freeze({ singletonCore: 10, constructedCore: 6, singletonSupport: 6, constructedSupport: 3 }),
+});
+
+// -----------------------------------------------------------------------------
+// Devotion
+// -----------------------------------------------------------------------------
+// Core is a real devotion-COUNT payoff — a stat or scaling effect that reads
+// your devotion to a color as its own X — the Theros Beyond Death Demigod
+// cycle (Anax, Hardened in the Forge: "Anax's power is equal to your
+// devotion to red."; Daxos, Blessed by the Sun; Renata, Called to the Hunt),
+// Gray Merchant of Asphodel ("each opponent loses X life, where X is your
+// devotion to black."), and the devotion-scaled mana engines Nykthos, Shrine
+// to Nyx and Karametra's Acolyte ("Add an amount of {G} equal to your
+// devotion to green.").
+//
+// False-friend shape: wrong-target-scope, a gating-clause-vs-scaling-reward
+// mismatch (new sub-domain, grounded in the entire Theros god cycle, not a
+// one-off). Every Theros/Theros Beyond Death god shares the identical
+// templating "As long as your devotion to [color] is less than five, ~ isn't
+// a creature." — Purphoros, God of the Forge mentions "devotion to red" as
+// broadly as any real payoff card, but that clause is purely a creature/
+// noncreature status TOGGLE, not a scaling reward, and his own actual value
+// engine ("Whenever another creature you control enters, Purphoros deals 2
+// damage to each opponent.") has nothing to do with devotion count at all —
+// confirmed against six independent real gods sharing the exact same gating
+// text (Heliod, Sun-Crowned; Xenagos, God of Revels; Thassa, Deep-Dwelling;
+// Iroas, God of Victory; Mogis, God of Slaughter; Klothys, God of Destiny),
+// not a single-card coincidence.
+//
+// Support is a devotion-count amplifier, not the scaling payoff itself —
+// Altar of the Pantheon's own "Your devotion to each color and each
+// combination of colors is increased by one." artificially inflates your
+// devotion count without itself being a reward that reads it, the same
+// ancillary role tutoring/recursion play for artifacts_matter.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: no real Devotion
+// commander with a magnitude-qualified cast/play trigger was found — Anax's/
+// Daxos's/Renata's own triggers are static stat-defining abilities, not
+// cast/play triggers — not forced.
+const DEVOTION_CORE_PATTERNS = Object.freeze([
+  /equal to your devotion to \w+/i,
+  /where x is your devotion to \w+/i,
+]);
+
+const DEVOTION_SUPPORT_PATTERNS = Object.freeze([
+  /devotion to [^.]* is increased by/i,
+]);
+
+const DEVOTION_MENTION = /devotion to \w+/i;
+// Required scope also accepts the support-tier "is increased by" construction
+// (Altar of the Pantheon) so a genuine devotion-count enabler lands as real
+// SUPPORT rather than getting double-flagged as a false friend — the isCreature
+// gating clause (Purphoros and the rest of the Theros god cycle) is the only
+// real false friend this check is meant to catch, not every non-scaling
+// devotion mention.
+const DEVOTION_REQUIRED_SCOPE = /equal to your devotion to \w+|where x is your devotion to \w+|devotion to [^.]* is increased by/i;
+
+const DEVOTION_SCOPE_CONFIG = Object.freeze({
+  mentionPattern: DEVOTION_MENTION,
+  requiredScopePattern: DEVOTION_REQUIRED_SCOPE,
+});
+
+const devotion = Object.freeze({
+  id: "devotion",
+  label: "Devotion package",
+  corePatterns: DEVOTION_CORE_PATTERNS,
+  supportPatterns: DEVOTION_SUPPORT_PATTERNS,
+  falseFriendShape: "wrong-target-scope",
+  falseFriendConfig: DEVOTION_SCOPE_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: DEVOTION_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["devotion", "devotion matters", "theros gods", "devotion count", "devotion to a color"]),
+  }),
+  density: Object.freeze({ singletonCore: 8, constructedCore: 5, singletonSupport: 6, constructedSupport: 3 }),
+});
+
+// -----------------------------------------------------------------------------
+// Cascade
+// -----------------------------------------------------------------------------
+// Core is the Cascade keyword mechanic itself — having it or granting it —
+// Maelstrom Wanderer ("Cascade, cascade"), Imoti, Celebrant of Bounty
+// ("Cascade. Spells you cast with mana value 6 or greater have cascade."),
+// Zhulodok, Void Gorger, Yidris, Maelstrom Wielder ("...as you cast spells
+// from your hand this turn, they gain cascade."). A negative lookbehind
+// excludes the reactive phrase "a spell WITH cascade" (referencing someone
+// else's spell having the keyword) from corePatterns, distinct from "Cascade"
+// as a standalone keyword line or "have/has/gain cascade" as a grant
+// construction — the same real distinction infect's own corePatterns draw
+// between having/granting infect and merely referencing it.
+//
+// False-friend shape: incidental-rider. Rain of Riches — "When this
+// enchantment enters, create two Treasure tokens. The first spell you cast
+// each turn that mana from a Treasure was spent to cast has cascade." —
+// mentions "cascade" as literally as any real grant, gated behind an
+// unrelated Treasure-spending condition, on a card whose dominant identity is
+// Treasure-token production (tokens/ramp territory), not a "cascade matters"
+// payoff — structurally identical to counters_matter's/burn's/discard's own
+// gated-rider precedent.
+//
+// Support is a reward for casting cascade spells, not having/granting
+// cascade itself — The First Doctor's own "Whenever you cast a spell with
+// cascade, put a +1/+1 counter on target artifact or creature." rewards a
+// cascade-dense deck without itself carrying or granting the keyword (the
+// "with cascade" reactive phrasing is exactly what corePatterns' negative
+// lookbehind excludes), the same byproduct-of-the-mechanic role #031's
+// goad entry established for Kardur, Doomscourge's second ability.
+//
+// Checked #027's commanderPayoffMagnitudeGates reuse: no real Cascade
+// commander with a magnitude-qualified cast/play trigger was found — every
+// real granted-cascade clause checked (Imoti's "mana value 6 or greater",
+// Zhulodok's "mana value 7 or greater") gates whether a spell GAINS cascade,
+// not a payoff magnitude gate on an unrelated reward — structurally a
+// different shape than #027's parser targets — not forced.
+const CASCADE_CORE_PATTERNS = Object.freeze([
+  /(?<!with )\bcascade\b(?=\s*[,.(]|$)/i,
+]);
+
+const CASCADE_SUPPORT_PATTERNS = Object.freeze([
+  /whenever you cast a spell with cascade,[^.]*(?:counter|draw|create|deals?)/i,
+]);
+
+const CASCADE_MENTION = /\bcascade\b/i;
+const CASCADE_RIDER_GATE = /\bthat\b(?:(?!cascade)[^.,])*\bhas cascade\b/i;
+const CASCADE_DOMINANT_OTHER = /create (?:a |two |three |four |\d+ )?treasure tokens?/i;
+
+const CASCADE_RIDER_CONFIG = Object.freeze({
+  mentionPattern: CASCADE_MENTION,
+  gatePattern: CASCADE_RIDER_GATE,
+  dominantOtherPattern: CASCADE_DOMINANT_OTHER,
+});
+
+const cascade = Object.freeze({
+  id: "cascade",
+  label: "Cascade package",
+  corePatterns: CASCADE_CORE_PATTERNS,
+  supportPatterns: CASCADE_SUPPORT_PATTERNS,
+  falseFriendShape: "incidental-rider",
+  falseFriendConfig: CASCADE_RIDER_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: CASCADE_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["cascade", "cascade deck", "free spells", "cascade triggers", "cascade value"]),
+  }),
+  density: Object.freeze({ singletonCore: 6, constructedCore: 4, singletonSupport: 4, constructedSupport: 2 }),
+});
+
 export const ARCHETYPE_CATALOG = Object.freeze({
   artifacts_matter: artifactsMatter,
   counters_matter: countersMatter,
@@ -1945,6 +2419,12 @@ export const ARCHETYPE_CATALOG = Object.freeze({
   toughness_matters: toughnessMatters,
   extra_turns: extraTurns,
   sagas,
+  energy,
+  populate,
+  monarch,
+  anthems,
+  devotion,
+  cascade,
 });
 
 
