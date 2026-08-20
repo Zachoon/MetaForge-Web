@@ -1307,7 +1307,7 @@ function cardMentionsTypalTribe(card = {}, tribes = []) {
  * Not Capability admissions. Never construction inputs.
  */
 export const ATLAS_TYPAL_SEATS = freeze([
-  descriptiveKindSeat("engine", "Typal Engine", "not a false-open and not generic tokens", "typal_engine", "cap:typal_engine"),
+  descriptiveKindSeat("engine", "Typal Engine", "not a card that only mentions the creature type in passing, and not a generic token maker", "typal_engine", "cap:typal_engine"),
   descriptiveKindSeat("member", "Typal Member", "not an oracle mention without the type line", "typal_member", "cap:typal_member"),
   descriptiveKindSeat("mention", "Typal Mention", "not a type-line tribe member", "typal_mention", "cap:typal_mention"),
 ]);
@@ -1353,7 +1353,7 @@ export function seatTypalImplementation(card = {}, { tribalTypes = [], commander
  * Not Capability admissions. Never construction inputs.
  */
 export const ATLAS_ARISTOCRATS_SEATS = freeze([
-  descriptiveKindSeat("aristocrats_engine", "Aristocrats Engine", "not artifact-sac and not generic tokens", "aristocrats_engine", "cap:aristocrats_engine"),
+  descriptiveKindSeat("aristocrats_engine", "Aristocrats Engine", "not a card that only sacrifices artifacts, and not a generic token maker", "aristocrats_engine", "cap:aristocrats_engine"),
 ]);
 
 export function seatAristocratsImplementation(card = {}) {
@@ -1389,7 +1389,7 @@ export function seatAristocratsImplementation(card = {}) {
  * spell axis. Not Capability admissions. Never construction inputs.
  */
 export const ATLAS_SPELLSLINGER_SEATS = freeze([
-  descriptiveKindSeat("spellslinger_engine", "Spellslinger Engine", "not draw-damage and not generic tokens", "spellslinger_engine", "cap:spellslinger_engine"),
+  descriptiveKindSeat("spellslinger_engine", "Spellslinger Engine", "not a card that pings when you draw a card, and not a generic token maker", "spellslinger_engine", "cap:spellslinger_engine"),
 ]);
 
 export function seatSpellslingerImplementation(card = {}) {
@@ -1421,7 +1421,7 @@ export function seatSpellslingerImplementation(card = {}) {
  * Not Capability admissions. Never construction inputs.
  */
 export const ATLAS_REANIMATOR_SEATS = freeze([
-  descriptiveKindSeat("reanimator_engine", "Reanimator Engine", "not mill dump and not dredge-to-hand", "reanimator_engine", "cap:reanimator_engine"),
+  descriptiveKindSeat("reanimator_engine", "Reanimator Engine", "not a card that only mills cards away, and not one that returns cards straight to hand instead of the battlefield", "reanimator_engine", "cap:reanimator_engine"),
 ]);
 
 export function seatReanimatorImplementation(card = {}) {
@@ -1452,7 +1452,7 @@ export function seatReanimatorImplementation(card = {}) {
  * Not Capability admissions. Never construction inputs.
  */
 export const ATLAS_LANDFALL_SEATS = freeze([
-  descriptiveKindSeat("landfall_engine", "Landfall Engine", "not fetch/ramp and not a bare land mention", "landfall_engine", "cap:landfall_engine"),
+  descriptiveKindSeat("landfall_engine", "Landfall Engine", "not a card that just fetches or ramps lands, and not one that only mentions lands in passing", "landfall_engine", "cap:landfall_engine"),
 ]);
 
 export function seatLandfallImplementation(card = {}) {
@@ -1483,7 +1483,7 @@ export function seatLandfallImplementation(card = {}) {
  * Not Capability admissions. Never construction inputs.
  */
 export const ATLAS_STAX_SEATS = freeze([
-  descriptiveKindSeat("stax_engine", "Stax Engine", "not each-player draws and not generic tokens", "stax_engine", "cap:stax_engine"),
+  descriptiveKindSeat("stax_engine", "Stax Engine", "not a card where every player draws, and not a generic token maker", "stax_engine", "cap:stax_engine"),
 ]);
 
 export function seatStaxImplementation(card = {}) {
@@ -1514,7 +1514,7 @@ export function seatStaxImplementation(card = {}) {
  * Not Capability admissions. Never construction inputs.
  */
 export const ATLAS_AURAS_OCCUPANCY_SEATS = freeze([
-  descriptiveKindSeat("auras_engine", "Auras Engine", "not a generic enchantment", "auras_engine", "cap:auras_engine"),
+  descriptiveKindSeat("auras_engine", "Auras Engine", "not just any enchantment", "auras_engine", "cap:auras_engine"),
 ]);
 
 export function seatAurasOccupancyImplementation(card = {}) {
@@ -1545,7 +1545,7 @@ export function seatAurasOccupancyImplementation(card = {}) {
  * Not Capability admissions. Never construction inputs.
  */
 export const ATLAS_EQUIPMENT_OCCUPANCY_SEATS = freeze([
-  descriptiveKindSeat("equipment_engine", "Equipment Engine", "not a generic artifact", "equipment_engine", "cap:equipment_engine"),
+  descriptiveKindSeat("equipment_engine", "Equipment Engine", "not just any artifact", "equipment_engine", "cap:equipment_engine"),
 ]);
 
 export function seatEquipmentOccupancyImplementation(card = {}) {
@@ -1576,7 +1576,7 @@ export function seatEquipmentOccupancyImplementation(card = {}) {
  * Not Capability admissions. Never construction inputs.
  */
 export const ATLAS_BLINK_SEATS = freeze([
-  descriptiveKindSeat("blink_engine", "Blink Engine", "not an Enter Trigger and not exile-any-number until a live canary earns it", "blink_engine", "cap:blink_engine"),
+  descriptiveKindSeat("blink_engine", "Blink Engine", "not a plain enter-the-battlefield trigger, and not a broad exile effect unrelated to flickering creatures", "blink_engine", "cap:blink_engine"),
 ]);
 
 export function seatBlinkImplementation(card = {}) {
@@ -1611,7 +1611,7 @@ export function seatBlinkImplementation(card = {}) {
  * Not Capability admissions. Never construction inputs.
  */
 export const ATLAS_TOKENS_OCCUPANCY_SEATS = freeze([
-  descriptiveKindSeat("tokens_engine", "Tokens Engine", "not a lone named-artifact-token-sac create and not a replacement-without-create", "tokens_engine", "cap:tokens_engine"),
+  descriptiveKindSeat("tokens_engine", "Tokens Engine", "not a card that only sacrifices one specific named artifact token, and not a token-doubling effect that doesn't create tokens on its own", "tokens_engine", "cap:tokens_engine"),
 ]);
 
 export function seatTokensOccupancyImplementation(card = {}) {

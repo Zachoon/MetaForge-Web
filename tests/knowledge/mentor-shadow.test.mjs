@@ -51,7 +51,7 @@ describe("Mentor Shadow v0", () => {
     assert.equal(lord.writesToBrain, false);
     assert.ok(lord.typalSeating.some((row) => row.kind === "engine"));
     assert.match(lord.paragraph, /Typal Engine/);
-    assert.match(lord.paragraph, /not a false-open and not generic tokens/);
+    assert.match(lord.paragraph, /not a card that only mentions the creature type in passing, and not a generic token maker/);
 
     const hojo = explainCardAsMentor({
       cardName: "Professor Hojo",
@@ -76,7 +76,7 @@ describe("Mentor Shadow v0", () => {
     assert.equal(king.writesToBrain, false);
     assert.equal(king.aristocratsSeating[0].kind, "aristocrats_engine");
     assert.match(king.paragraph, /Aristocrats Engine/);
-    assert.match(king.paragraph, /not artifact-sac and not generic tokens/);
+    assert.match(king.paragraph, /not a card that only sacrifices artifacts, and not a generic token maker/);
 
     const outlaw = explainCardAsMentor({
       cardName: "Artifact Outlaw",
@@ -93,7 +93,7 @@ describe("Mentor Shadow v0", () => {
     assert.equal(parun.writesToBrain, false);
     assert.equal(parun.spellslingerSeating[0].kind, "spellslinger_engine");
     assert.match(parun.paragraph, /Spellslinger Engine/);
-    assert.match(parun.paragraph, /not draw-damage and not generic tokens/);
+    assert.match(parun.paragraph, /not a card that pings when you draw a card, and not a generic token maker/);
 
     const burn = explainCardAsMentor({
       cardName: "Draw Burn",
@@ -110,7 +110,7 @@ describe("Mentor Shadow v0", () => {
     assert.equal(meren.writesToBrain, false);
     assert.equal(meren.reanimatorSeating[0].kind, "reanimator_engine");
     assert.match(meren.paragraph, /Reanimator Engine/);
-    assert.match(meren.paragraph, /not mill dump and not dredge-to-hand/);
+    assert.match(meren.paragraph, /not a card that only mills cards away, and not one that returns cards straight to hand instead of the battlefield/);
 
     const aesi = explainCardAsMentor({
       cardName: "Land Titan",
@@ -125,7 +125,7 @@ describe("Mentor Shadow v0", () => {
     });
     assert.equal(arbiter.staxSeating[0].kind, "stax_engine");
     assert.match(arbiter.paragraph, /Stax Engine/);
-    assert.match(arbiter.paragraph, /not each-player draws and not generic tokens/);
+    assert.match(arbiter.paragraph, /not a card where every player draws, and not a generic token maker/);
 
     const hug = explainCardAsMentor({
       cardName: "Group Hug",
@@ -166,7 +166,7 @@ describe("Mentor Shadow v0", () => {
     assert.equal(foundry.writesToBrain, false);
     assert.equal(foundry.tokensOccupancySeating[0].kind, "tokens_engine");
     assert.match(foundry.paragraph, /Tokens Engine/);
-    assert.match(foundry.paragraph, /not a lone named-artifact-token-sac create/);
+    assert.match(foundry.paragraph, /not a card that only sacrifices one specific named artifact token/);
 
     const magda = explainCardAsMentor({
       cardName: "Magda Shape",

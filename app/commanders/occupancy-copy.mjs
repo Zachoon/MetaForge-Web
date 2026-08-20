@@ -1,10 +1,11 @@
 // Human copy for each named occupancy engine (mentor-shadow.mjs's
 // OCCUPANCY_PACKAGE_IDS). The engine's own `contrast` field on a seating row
-// is written for internal disambiguation ("not artifact-sac and not generic
-// tokens") — real, honest, but not player-facing prose. This module is the
-// one translation layer: one clear, plain-language sentence per engine,
-// never the raw contrast string, for any surface that shows occupancy
-// results to a real player.
+// is written for internal disambiguation, and — after the 2026-08-19 pass
+// through atlas-vocabulary.mjs's ten descriptiveKindSeat() definitions —
+// is itself now plain language, not jargon. This module still exists as
+// the one dedicated translation layer for this specific public-facing
+// surface: a longer, warmer, page-length sentence per engine, distinct
+// from the shorter disambiguation clause `contrast` is written for.
 export const OCCUPANCY_ENGINE_COPY = Object.freeze({
   typal: "This commander cares about a specific creature type and rewards you for filling the deck with it.",
   aristocrats: "This commander wants creatures to die — yours by choice — and turns each death into value.",
