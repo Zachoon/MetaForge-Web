@@ -115,12 +115,13 @@ test("turns the result into one active chapter instead of a continuous instrumen
 });
 
 test("keeps the deck list stable while card types are still loading", () => {
-  assert.match(page, /commanderRows = orderedDeckRows\.filter\(isCommanderRow\)/);
-  assert.match(page, /mainDeckRows = orderedDeckRows\.filter\(\(row\) => !isCommanderRow\(row\)\)/);
+  assert.match(page, /commanderRows = alphabetize\(orderedDeckRows\.filter\(isCommanderRow\)\)/);
+  assert.match(page, /mainDeckRows = alphabetize\(orderedDeckRows\.filter\(\(row\) => !isCommanderRow\(row\)\)\)/);
   assert.match(page, /Commander: commanderRows/);
   assert.match(page, /"Complete deck": mainDeckRows/);
   assert.match(page, /Organizing card types in the background/);
-  assert.match(page, /Showing the complete deck in its saved order/);
+  assert.match(page, /Showing the complete deck alphabetically/);
+  assert.match(page, /localeCompare\(b\.name/);
   assert.match(page, /"Commander",\s*"Complete deck",\s*"Details pending"/);
 });
 
@@ -240,7 +241,9 @@ test("turns deck stress experiments into concrete player insights", () => {
 });
 
 test("keeps visual deck browsing separate from the playtest workbench", () => {
-  assert.match(page, /useState<"workbench" \| "gallery" \| "ledger">\("ledger"\)/);
+  assert.match(page, /useState<DeckViewMode>\("ledger"\)/);
+  assert.match(page, /matchMedia\("\(max-width: 760px\)"\)/);
+  assert.match(page, /setDeckViewMode\(preferredDecklistView\(\)\)/);
   assert.match(page, />Visual deck<\/button>/);
   assert.match(page, />Text list<\/button>/);
   assert.match(page, /deckViewMode === "gallery"/);

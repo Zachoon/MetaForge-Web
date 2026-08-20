@@ -121,6 +121,13 @@ const FORGE_CEREMONY_MINIMUM_MS = 9_000;
 
 type DeckPreview = { card: string; role: string; theme: string; win: string };
 type DeckRow = { quantity: number; name: string };
+type DeckViewMode = "workbench" | "gallery" | "ledger";
+
+function preferredDecklistView(): Exclude<DeckViewMode, "workbench"> {
+  return typeof window !== "undefined" && window.matchMedia("(max-width: 760px)").matches
+    ? "gallery"
+    : "ledger";
+}
 type CardFact = {
   name: string;
   cmc?: number;
@@ -1859,7 +1866,7 @@ export default function Home() {
   // rail afterward must not force the player back through it again.
   const [swapStationReviewed, setSwapStationReviewed] = useState(false);
   const coachBriefDetailsRef = useRef<HTMLDetailsElement | null>(null);
-  const [deckViewMode, setDeckViewMode] = useState<"workbench" | "gallery" | "ledger">("ledger");
+  const [deckViewMode, setDeckViewMode] = useState<DeckViewMode>("ledger");
   const [masterworkIdentityOpen, setMasterworkIdentityOpen] = useState(false);
   const [masterworkIdentity, setMasterworkIdentity] = useState({
     title: "",
@@ -1873,6 +1880,10 @@ export default function Home() {
   const forgeDescentRef = useRef<HTMLElement | null>(null);
   const [openingExperimentPending, setOpeningExperimentPending] = useState(false);
   const [openingExperimentFocus, setOpeningExperimentFocus] = useState("");
+
+  useEffect(() => {
+    setDeckViewMode(preferredDecklistView());
+  }, []);
 
   useEffect(() => {
     try {
@@ -2352,6 +2363,9 @@ export default function Home() {
     [deckRows, cardOrder],
   );
   const groupedDeck = useMemo(() => {
+    const alphabetize = (rows: DeckRow[]) => [...rows].sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: "base", numeric: true }),
+    );
     const commanderKeys = new Set(
       [activeCommanderName, selectedSecondCommander?.name]
         .filter(Boolean)
@@ -2364,8 +2378,8 @@ export default function Home() {
     // unavailable. The commander remains separate from the other 99 cards even
     // while the rest stay in one honest, stable-order section.
     if (cardFactsLoading || cardFactsError) {
-      const commanderRows = orderedDeckRows.filter(isCommanderRow);
-      const mainDeckRows = orderedDeckRows.filter((row) => !isCommanderRow(row));
+      const commanderRows = alphabetize(orderedDeckRows.filter(isCommanderRow));
+      const mainDeckRows = alphabetize(orderedDeckRows.filter((row) => !isCommanderRow(row)));
       return {
         ...(commanderRows.length ? { Commander: commanderRows } : {}),
         "Complete deck": mainDeckRows,
@@ -2381,6 +2395,7 @@ export default function Home() {
         : "Details pending";
       (groups[group] ||= []).push(row);
     }
+    for (const group of Object.keys(groups)) groups[group] = alphabetize(groups[group]);
     return groups;
   }, [orderedDeckRows, cardFacts, cardFactsLoading, cardFactsError, format, activeCommanderName, selectedSecondCommander?.name]);
   // Real WUBRG pip totals across the list (mana symbols × row quantity, hybrid
@@ -4135,7 +4150,7 @@ export default function Home() {
     // "This list is a masterwork!"), not shown by default.
     setMilestoneMotion(null);
     setActiveForgeChapter(1);
-    setDeckViewMode("ledger");
+    setDeckViewMode(preferredDecklistView());
     setSiteRail("decklist");
     setSwapStationReviewed(false);
     if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = false;
@@ -4411,7 +4426,7 @@ export default function Home() {
     setOpeningExperimentPending(false);
     setOpeningExperimentFocus("");
     setActiveForgeChapter(1);
-    setDeckViewMode("ledger");
+    setDeckViewMode(preferredDecklistView());
     trackLaunchEvent("forge_started", { mode, format, budget, targetPowerTier });
 
     let evidence: EdhrecEvidence | null = null;
@@ -5405,7 +5420,7 @@ export default function Home() {
             document.getElementById("coach-brief")?.scrollIntoView({ behavior: "smooth", block: "start" });
           });
         }}><i>⌂</i><span>Overview</span></button>
-        <button type="button" className={chamber === "workbench" && activeForgeChapter === 1 && siteRail === "decklist" ? "active" : ""} disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode("ledger"); setSiteRail("decklist"); if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = false; window.requestAnimationFrame(() => document.getElementById("deck-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>☷</i><span>Decklist</span></button>
+        <button type="button" className={chamber === "workbench" && activeForgeChapter === 1 && siteRail === "decklist" ? "active" : ""} disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode((current) => current === "workbench" ? preferredDecklistView() : current); setSiteRail("decklist"); if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = false; window.requestAnimationFrame(() => document.getElementById("deck-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>☷</i><span>Decklist</span></button>
         <button type="button" className={chamber === "workbench" && activeForgeChapter === 2 ? "active" : ""} disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(2); setSiteRail("analysis"); }}><i>◇</i><span>Analysis</span></button>
         <button type="button" className={chamber === "archive" ? "active" : ""} onClick={openPrivateArchive}><i className="forge-rail-cardback" aria-hidden="true">MF</i><span>Decks</span></button>
         <button type="button" disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode("workbench"); setSiteRail("playtest"); window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>⚔</i><span>Playtest</span></button>
@@ -7289,7 +7304,7 @@ export default function Home() {
                 )}
                 {(cardFactsLoading || cardFactsError) && (
                   <div className="deck-gallery-notice" role="status" aria-live="polite">
-                    <span>{cardFactsLoading ? "Organizing card types in the background…" : "Showing the complete deck in its saved order while card details reconnect."}</span>
+                    <span>{cardFactsLoading ? "Organizing card types in the background…" : "Showing the complete deck alphabetically while card details reconnect."}</span>
                     {cardFactsError && <button type="button" onClick={() => setCardFactsRetry((current) => current + 1)}>Retry details</button>}
                   </div>
                 )}
