@@ -2426,6 +2426,14 @@ export default function Home() {
     activeFact?.image_uris?.normal ||
     activeFact?.card_faces?.[0]?.image_uris?.normal ||
     (activeCard ? cardImage(activeCard) : "");
+  const activePriceUsd = cardPriceUsd(activeFact, foilCards.has(cardFactKey(activeCard)));
+  const activePurchaseLink = activeCard
+    ? buildTcgplayerLink({
+        cardName: activeCard,
+        tcgplayerProductId: activePrinting?.tcgplayerId ?? null,
+        enabled: tcgplayerAffiliateEnabled,
+      })
+    : null;
   const inspectedFact = cardFacts[cardFactKey(inspectedCard)];
   const inspectedPrinting = printingOverrides[cardFactKey(inspectedCard)];
   const inspectedImage =
@@ -5398,6 +5406,21 @@ export default function Home() {
             <div className="forge-card-mold-body">
               <strong>{activeCard}</strong>
               <span>{activeFact?.type_line || "Card details awaken on inspection"}</span>
+              {(activePriceUsd !== null || activePurchaseLink) && (
+                <div className="forge-card-mold-price">
+                  {activePriceUsd !== null && <b>${activePriceUsd.toFixed(2)}</b>}
+                  {activePurchaseLink && (
+                    <a
+                      href={activePurchaseLink.url}
+                      target={activePurchaseLink.target}
+                      rel={activePurchaseLink.rel}
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      Buy on TCGplayer
+                    </a>
+                  )}
+                </div>
+              )}
               {activeOccupancyLabels.length > 0 && (
                 <p className="forge-card-mold-occupancy">Occupancy: {activeOccupancyLabels.join(" · ")}</p>
               )}
@@ -7625,6 +7648,10 @@ export default function Home() {
                           SELECTED PRINTING · {inspectedPrinting.setName} ({inspectedPrinting.setCode.toUpperCase()}) #{inspectedPrinting.collectorNumber}
                         </small>
                       )}
+                      {(() => {
+                        const price = cardPriceUsd(inspectedFact, foilCards.has(cardFactKey(inspectedCard)));
+                        return price !== null ? <strong className="card-inspector-price">${price.toFixed(2)}</strong> : null;
+                      })()}
                       {inspectorPurchaseLink && (
                         <a
                           className="card-inspector-purchase-link"
@@ -7636,11 +7663,36 @@ export default function Home() {
                           Buy on TCGplayer
                         </a>
                       )}
+                      {inspectedFact?.legalities && (
+                        <ul className="card-inspector-legality" aria-label="Format legality">
+                          {[
+                            ["standard", "Standard"],
+                            ["pioneer", "Pioneer"],
+                            ["modern", "Modern"],
+                            ["premodern", "Premodern"],
+                            ["commander", "Commander"],
+                            ["brawl", "Brawl"],
+                            ["historic", "Historic"],
+                          ].map(([key, label]) => {
+                            const legal = inspectedFact.legalities?.[key] === "legal";
+                            return (
+                              <li key={key} className={legal ? "is-legal" : "is-not-legal"}>
+                                <i aria-hidden="true">{legal ? "✓" : "✕"}</i>
+                                {label}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
                     </div>
                     <div className="card-inspector-dossier">
                       <small>CONTEXTUAL CARD DOSSIER</small>
                       <h3 id="card-inspector-title">{inspectedCard}</h3>
                       <p className="card-inspector-type">{inspectedFact?.type_line || "Card type unavailable"}</p>
+                      <small>ORACLE TEXT</small>
+                      <p className="card-inspector-oracle">
+                        {inspectedFact?.oracle_text || inspectedFact?.card_faces?.map((face) => face.oracle_text).filter(Boolean).join("\n\n") || "Oracle text is not available for this card."}
+                      </p>
                       <div className="card-inspector-signals">
                         <span><b>{inspectedRole || "Unclassified"}</b> slot duty</span>
                         <span><b>{inspectedConnections.length}</b> verified connection{inspectedConnections.length === 1 ? "" : "s"}</span>
@@ -7733,12 +7785,6 @@ export default function Home() {
                           </div>
                         );
                       })()}
-                      <div className="card-inspector-section">
-                        <small>ORACLE TEXT</small>
-                        <p className="card-inspector-oracle">
-                          {inspectedFact?.oracle_text || inspectedFact?.card_faces?.map((face) => face.oracle_text).filter(Boolean).join("\n\n") || "Oracle text is not available for this card."}
-                        </p>
-                      </div>
                       <div className="card-inspector-section">
                         <small>DECK CONNECTIONS</small>
                         {inspectedConnections.length ? (

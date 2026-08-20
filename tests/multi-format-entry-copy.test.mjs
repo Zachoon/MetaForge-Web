@@ -12,14 +12,16 @@ const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8")
 // would have left the same first-impression problem mostly intact) ---
 
 test("the entrance sub-headline no longer opens with a Commander-only imperative", () => {
-  assert.match(page, /Choose your format and game plan\. MetaForge/);
+  // Rewritten 2026-08-20 to name the specific formats MetaForge supports
+  // (SEO/search-visibility pass) — still never a Commander-only imperative.
+  assert.match(page, /Build a new MTG deck or analyze a decklist you already play\.\s*\n\s*MetaForge/);
   assert.doesNotMatch(page, /Choose a commander and how you want to play/);
 });
 
 test("the entrance sub-headline describes what MetaForge helps the player do, not a 'builds the deck for you' generator claim", () => {
   assert.match(
     page,
-    /Choose your format and game plan\. MetaForge explains how your\s*\n\s*deck works, shows what to improve, and helps you make\s*\n\s*confident changes\./,
+    /MetaForge explains how your Commander, Standard, Modern,\s*\n\s*Pioneer, Brawl, or other Magic deck works, shows what to\s*\n\s*improve, and helps you make confident changes\./,
   );
   assert.doesNotMatch(page, /MetaForge builds the\s*\n\s*full, legal deck first/);
 });

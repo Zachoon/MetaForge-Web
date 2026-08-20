@@ -540,6 +540,13 @@ step that's actually in focus. */
 
 .card-inspector-purchase-link{display:inline-block;margin-top:10px;padding:5px 11px;border:1px solid #3a534c;border-radius:4px;background:#0e1a18;color:#7f918c;font-size:calc(11px * var(--forge-reading-scale));font-weight:600;letter-spacing:.02em;text-decoration:none;transition:.15s}
 .card-inspector-purchase-link:hover,.card-inspector-purchase-link:focus-visible{outline:0;border-color:#6fb3a0;color:#c8ece2}
+.card-inspector-price{display:block;margin-top:12px;color:#eff7f3;font:700 22px/1 ui-sans-serif,system-ui,sans-serif}
+.card-inspector-legality{display:grid;grid-template-columns:1fr 1fr;gap:5px 14px;margin:16px 0 0;padding:14px 0 0;border-top:1px solid #293a35;list-style:none}
+.card-inspector-legality li{display:flex;align-items:center;gap:7px;color:#94a29d;font-size:calc(11px * var(--forge-reading-scale))}
+.card-inspector-legality li.is-legal i{color:#6fcbb7}
+.card-inspector-legality li.is-not-legal{color:#5f6c67}
+.card-inspector-legality li.is-not-legal i{color:#5f6c67}
+.card-inspector-legality li i{font-style:normal;font-weight:700;width:14px;text-align:center}
 
 .replacement-purchase-link{display:inline-block;margin-top:6px;padding:5px 11px;border:1px solid #3a534c;border-radius:4px;background:#0e1a18;color:#7f918c;font-size:calc(11px * var(--forge-reading-scale));font-weight:600;letter-spacing:.02em;text-decoration:none;transition:.15s}
 .replacement-purchase-link:hover,.replacement-purchase-link:focus-visible{outline:0;border-color:#6fb3a0;color:#c8ece2}
