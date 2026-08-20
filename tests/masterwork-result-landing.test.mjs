@@ -70,7 +70,7 @@ test("Explore/home is a no-scroll hero; saved Masterworks live on Decks", async 
   assert.match(frame, /\.chamber-archive>\.masterwork-archive\{[\s\S]*?overflow:auto!important/);
 });
 
-test("a completed Forge lands on Overview with the coach brief open", async () => {
+test("a completed Forge lands on the plain decklist, coaching and experiments reached by explicit choice", async () => {
   const page = await read("app/page.tsx");
   const frame = await read("app/site-frame.css");
   const ceremony = await read("app/components/forge/forge-ceremony.tsx");
@@ -78,8 +78,8 @@ test("a completed Forge lands on Overview with the coach brief open", async () =
   const landStart = page.indexOf("function landOnCompletedDecklist(");
   const landEnd = page.indexOf("\n  }\n", landStart);
   const landBody = page.slice(landStart, landEnd);
-  assert.match(landBody, /setSiteRail\("overview"\)/);
-  assert.match(landBody, /coachBriefDetailsRef\.current\.open = true/);
+  assert.match(landBody, /setSiteRail\("decklist"\)/);
+  assert.match(landBody, /coachBriefDetailsRef\.current\.open = false/);
   assert.match(page, /enterMasterwork[\s\S]*?landOnCompletedDecklist\(\)/);
   assert.match(page, /openSavedMasterwork[\s\S]*?landOnCompletedDecklist\(\)/);
   assert.match(page, /hasValidatedDeck && siteRail !== "decklist"/);
@@ -87,6 +87,12 @@ test("a completed Forge lands on Overview with the coach brief open", async () =
   // card grid — it must still set siteRail back to "decklist" and
   // explicitly collapse the coach brief on click, unchanged by the above.
   assert.match(page, /setSiteRail\("decklist"\); if \(coachBriefDetailsRef\.current\) coachBriefDetailsRef\.current\.open = false;/);
+  // Coaching and rival experiments are reached from the decklist header by
+  // explicit choice, not shown by default on landing.
+  assert.match(page, /className="conduct-experiment-cta"/);
+  assert.match(page, /Want to conduct an experiment\?/);
+  assert.match(page, /className="next-step-cta"/);
+  assert.match(page, /This list is a masterwork! →/);
   const galleryAt = page.indexOf('id="deck-gallery"');
   const mentorAt = page.indexOf("<RevisionOpinionPanel");
   assert.ok(galleryAt > 0 && mentorAt > galleryAt, "Mentor must mount after #deck-gallery, never above the Decklist");

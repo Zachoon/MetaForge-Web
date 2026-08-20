@@ -4093,12 +4093,16 @@ export default function Home() {
     // Opening a deck should be immediate. In particular, do not carry a
     // forge milestone overlay (rune, crosshair, smoke, flare, or sparks)
     // across the transition into either a new or a saved Masterwork.
+    // Lands on the plain decklist first — review the actual list before
+    // anything else. Coaching and rival experiments are reached by an
+    // explicit choice from there ("Want to conduct an experiment?" /
+    // "This list is a masterwork!"), not shown by default.
     setMilestoneMotion(null);
     setActiveForgeChapter(1);
     setDeckViewMode("ledger");
-    setSiteRail("overview");
+    setSiteRail("decklist");
     setSwapStationReviewed(false);
-    if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = true;
+    if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = false;
     window.scrollTo(0, 0);
     window.requestAnimationFrame(() => window.scrollTo(0, 0));
   }
@@ -6698,6 +6702,18 @@ export default function Home() {
                     </button>
                     <button
                       type="button"
+                      className="conduct-experiment-cta"
+                      onClick={() => {
+                        setChamber("workbench");
+                        setActiveForgeChapter(1);
+                        setSiteRail("overview");
+                        window.requestAnimationFrame(() => document.querySelector(".refinement-starters-vault")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+                      }}
+                    >
+                      Want to conduct an experiment?
+                    </button>
+                    <button
+                      type="button"
                       className="next-step-cta"
                       onClick={() => {
                         setChamber("workbench");
@@ -6707,7 +6723,7 @@ export default function Home() {
                         window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" }));
                       }}
                     >
-                      Next: test this deck →
+                      This list is a masterwork! →
                     </button>
                     <details className="deck-view-options">
                       <summary>View options</summary>
