@@ -6,41 +6,11 @@ import { dirname, join } from "node:path";
 import {
   ERA3_CARD_INSPECT_SURFACES,
   reasonsCardMatters,
-  shouldUseContextCardInspector,
 } from "../app/context-card-inspector.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 describe("Founder Issue #021 — context-preserving card inspection", () => {
-  it("uses contextual inspector when gallery preview is off-screen", () => {
-    assert.equal(
-      shouldUseContextCardInspector({ previewInView: false, activeForgeChapter: 1 }),
-      true,
-    );
-    assert.equal(
-      shouldUseContextCardInspector({ previewInView: true, activeForgeChapter: 1 }),
-      false,
-    );
-  });
-
-  it("uses contextual inspector on Deep Forge chapter 2 even if gallery is in view", () => {
-    assert.equal(
-      shouldUseContextCardInspector({ previewInView: true, activeForgeChapter: 2 }),
-      true,
-    );
-  });
-
-  it("uses contextual inspector on legacy Deep Forge chapters 3/4", () => {
-    assert.equal(
-      shouldUseContextCardInspector({ previewInView: true, activeForgeChapter: 3 }),
-      true,
-    );
-    assert.equal(
-      shouldUseContextCardInspector({ previewInView: true, activeForgeChapter: 4 }),
-      true,
-    );
-  });
-
   it("derives why-it-matters from bridge + system membership", () => {
     const reasons = reasonsCardMatters("Ancient Gold Dragon", {
       strongestSystem: { name: "Combat Engine" },
@@ -82,17 +52,19 @@ describe("Founder Issue #021 — context-preserving card inspection", () => {
     assert.deepEqual(reasonsCardMatters("Sol Ring", null), []);
   });
 
-  it("wires floating inspector CSS + page portal surface", () => {
-    const css = readFileSync(join(root, "app/testing-anvil.css"), "utf8");
+  it("wires the persistent card-mold slot into the site frame", () => {
+    // The floating "CARD IN CONTEXT" popup (and the scroll/chapter
+    // suppression logic that decided when to show it) is retired. The
+    // card-preview slot is now a fixed fixture of the left rail — always
+    // mounted, driven directly by activeCard — so there is no "off-screen
+    // pane" concept left to gate.
+    const css = readFileSync(join(root, "app/site-frame.css"), "utf8");
     const page = readFileSync(join(root, "app/page.tsx"), "utf8");
-    assert.match(css, /\.forge-context-card-inspector\b/);
-    assert.match(css, /\.forge-card-ref\b/);
-    assert.match(page, /forge-context-card-inspector/);
-    assert.match(page, /shouldUseContextCardInspector/);
-    assert.match(page, /IntersectionObserver/);
-    assert.match(page, /CARD IN CONTEXT/);
+    assert.match(css, /\.forge-card-mold\b/);
+    assert.match(page, /forge-global-rail/);
+    assert.match(page, /forge-card-mold/);
     assert.match(page, /ForgeCardRef/);
-    assert.match(page, /deckPreviewInView, activeForgeChapter/);
+    assert.match(page, /Open full dossier/);
   });
 
   it("inventories every Era 3 card-inspect surface across page.tsx and /research", () => {

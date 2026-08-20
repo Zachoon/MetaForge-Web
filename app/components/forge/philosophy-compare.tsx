@@ -14,6 +14,8 @@ type PhilosophyCompareProps = {
   occupancyEngines?: string[];
   onChoose: (candidateId: string) => void;
   onInspectCard?: (name: string) => void;
+  /** Stable id for era3 inventory validation */
+  surface?: string;
 };
 
 function PhilosophyCard({
@@ -21,11 +23,13 @@ function PhilosophyCard({
   featured = false,
   onChoose,
   onInspectCard,
+  surface = "philosophy-compare",
 }: {
   build: ReturnType<typeof presentPhilosophyComparison>["all"][number];
   featured?: boolean;
   onChoose: (id: string) => void;
   onInspectCard?: (name: string) => void;
+  surface?: string;
 }) {
   // Real, evidence-backed vibe cards for this direction — the cards that
   // actually make it different from the alternative, not the full ~99.
@@ -57,6 +61,7 @@ function PhilosophyCard({
               key={name}
               type="button"
               className="philosophy-signature-card"
+              data-card-inspect-surface={surface}
               onClick={() => onInspectCard?.(name)}
               aria-label={`Inspect ${name}`}
             >
@@ -135,6 +140,7 @@ export function PhilosophyCompare({
   occupancyEngines = [],
   onChoose,
   onInspectCard,
+  surface = "pre-choice-diff",
 }: PhilosophyCompareProps) {
   const comparison = useMemo(
     () => presentPhilosophyComparison(builds, { decidedBy }),
@@ -171,7 +177,7 @@ export function PhilosophyCompare({
       {orderedBuilds.length > 0 && (
         <div className="philosophy-alt-grid" aria-label="Available directions, recommended first">
           {orderedBuilds.map((build) => (
-            <PhilosophyCard key={build.id} build={build} onChoose={onChoose} onInspectCard={onInspectCard} />
+            <PhilosophyCard key={build.id} build={build} onChoose={onChoose} onInspectCard={onInspectCard} surface={surface} />
           ))}
         </div>
       )}
@@ -224,7 +230,7 @@ export function PhilosophyCompare({
                     <li key={`add-${build.id}-${name}`} className="add">
                       +{" "}
                       {onInspectCard ? (
-                        <ForgeCardRef name={name} surface="philosophy-compare" onInspect={onInspectCard} />
+                        <ForgeCardRef name={name} surface={surface} onInspect={onInspectCard} />
                       ) : name}
                     </li>
                   ))}
@@ -232,7 +238,7 @@ export function PhilosophyCompare({
                     <li key={`cut-${build.id}-${name}`} className="cut">
                       −{" "}
                       {onInspectCard ? (
-                        <ForgeCardRef name={name} surface="philosophy-compare" onInspect={onInspectCard} />
+                        <ForgeCardRef name={name} surface={surface} onInspect={onInspectCard} />
                       ) : name}
                     </li>
                   ))}

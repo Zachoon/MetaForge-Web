@@ -17,6 +17,7 @@ const [
   dossier,
   dossierCss,
   researchPage,
+  siteFrameCss,
 ] = await Promise.all([
   read("app/page.tsx"),
   read("app/forge-polish.css"),
@@ -29,18 +30,20 @@ const [
   read("app/components/forge/deep-forge-dossier.tsx"),
   read("app/components/forge/deep-forge-dossier.css"),
   read("app/research/page.tsx"),
+  read("app/site-frame.css"),
 ]);
 
-test("ceremony, footer, and context inspector name occupancy from commander oracle", () => {
+test("ceremony, footer, and card-mold rail slot name occupancy from commander oracle", () => {
   assert.match(page, /className="ceremony-occupancy"/);
   assert.match(page, /Named from commander oracle while the 99 is still being forged/);
   assert.match(page, /className="masterwork-footer-occupancy"/);
-  assert.match(page, /className="forge-context-occupancy"/);
-  assert.match(page, /className="forge-context-pair"/);
+  assert.match(page, /className="forge-card-mold-occupancy"/);
+  assert.match(page, /className="forge-card-mold-pair"/);
   assert.match(page, /explainPairsForCardAsMentor\(\{/);
   assert.match(polish, /\.ceremony-copy > \.ceremony-occupancy/);
   assert.match(anvil, /\.masterwork-footer-occupancy/);
-  assert.match(anvil, /\.forge-context-occupancy,\.forge-context-pair/);
+  assert.match(siteFrameCss, /\.forge-card-mold-occupancy/);
+  assert.match(siteFrameCss, /\.forge-card-mold-pair/);
 });
 
 test("awaken CTA names occupancy without changing the build button", () => {

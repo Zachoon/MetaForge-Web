@@ -35,21 +35,6 @@ export const ERA3_CARD_INSPECT_SURFACES = freeze([
 ]);
 
 /**
- * True when the deck-gallery preview is not the reading surface.
- * Progressive chapter 2 = Deep Forge / Tuning evidence (gallery may still be
- * sticky and "in view" while the reader is far down the page).
- * Legacy 3/4 hid the gallery entirely.
- */
-export function shouldUseContextCardInspector({
-  previewInView = true,
-  activeForgeChapter = 1,
-} = {}) {
-  const chapter = Number(activeForgeChapter) || 1;
-  if (chapter === 2 || chapter === 3 || chapter === 4) return true;
-  return previewInView === false;
-}
-
-/**
  * Short "why this card?" lines from systems / bridge evidence already on the report.
  */
 export function reasonsCardMatters(cardName = "", systemsReport = null) {

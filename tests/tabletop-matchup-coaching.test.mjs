@@ -31,11 +31,11 @@ describe("Tabletop Matchup lens — answers, not highlights", () => {
     assert.match(advice.change, /Not the focus this matchup/i);
   });
 
-  it("wires sticky coach strip + inspector matchup lead in UI", () => {
+  it("wires sticky coach strip + card-mold rail matchup lead in UI", () => {
     const page = readFileSync(join(root, "app/page.tsx"), "utf8");
     const tabletop = readFileSync(join(root, "app/tabletop.tsx"), "utf8");
     const css = readFileSync(join(root, "app/tabletop.css"), "utf8");
-    const anvil = readFileSync(join(root, "app/testing-anvil.css"), "utf8");
+    const siteFrameCss = readFileSync(join(root, "app/site-frame.css"), "utf8");
 
     assert.match(tabletop, /export function getMatchupCardAdvice/);
     assert.match(tabletop, /tabletop-matchup-card-coach/);
@@ -46,9 +46,9 @@ describe("Tabletop Matchup lens — answers, not highlights", () => {
     assert.doesNotMatch(tabletop, /highlights the packages most likely/);
 
     assert.match(page, /onMatchupContext/);
-    assert.match(page, /forge-context-matchup-coach/);
-    assert.match(page, /Structural evidence/);
+    assert.match(page, /forge-card-mold-matchup/);
+    assert.match(page, /forge-card-mold-reasons/);
     assert.match(css, /\.tabletop-matchup-card-coach\b/);
-    assert.match(anvil, /\.forge-context-matchup-coach\b/);
+    assert.match(siteFrameCss, /\.forge-card-mold-matchup\b/);
   });
 });

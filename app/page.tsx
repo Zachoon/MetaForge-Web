@@ -66,10 +66,7 @@ import {
   stampStructuralReportBinding,
 } from "./narrative-integrity.mjs";
 import { deckDisplaySection } from "./deck-display-classification.mjs";
-import {
-  reasonsCardMatters,
-  shouldUseContextCardInspector,
-} from "./context-card-inspector.mjs";
+import { reasonsCardMatters } from "./context-card-inspector.mjs";
 import { ForgeCardRef } from "./forge-card-ref";
 import { ImportedDeckComparison } from "./components/forge/imported-deck-comparison";
 import { buildCommissionContract } from "./commission-contract.mjs";
@@ -1662,6 +1659,8 @@ export default function Home() {
   const [cardFactsError, setCardFactsError] = useState("");
   const [cardFactsPending, setCardFactsPending] = useState(0);
   const [cardFactsRetry, setCardFactsRetry] = useState(0);
+  // Drives the persistent card-preview slot in the frame's left rail — the
+  // one place a card's art shows on hover/click anywhere on the site.
   const [hoveredCard, setHoveredCard] = useState("");
   const deckHoverTimerRef = useRef<number | null>(null);
   // Crossing a dense Commander list can fire dozens of mouseenter events in
@@ -1684,10 +1683,7 @@ export default function Home() {
       window.clearTimeout(deckHoverTimerRef.current);
     }
   }, []);
-  const [contextInspectCard, setContextInspectCard] = useState("");
   const [matchupCardAdvice, setMatchupCardAdvice] = useState<MatchupCardAdvice | null>(null);
-  const [deckPreviewInView, setDeckPreviewInView] = useState(true);
-  const contextInspectDismissedRef = useRef("");
   const [inspectedCard, setInspectedCard] = useState("");
   const [cardActionMenu, setCardActionMenu] = useState<{
     name: string;
@@ -2604,82 +2600,14 @@ export default function Home() {
   const forgeSystemsReport =
     activeStructuralReport.systems;
 
-  const showContextCardInspector =
-    Boolean(contextInspectCard) &&
-    !(activeForgeChapter === 1 && tabletopReviewActive) &&
-    shouldUseContextCardInspector({
-      previewInView: deckPreviewInView,
-      activeForgeChapter,
-    });
-  const contextCardReasons = useMemo(
-    () => reasonsCardMatters(contextInspectCard || hoveredCard, forgeSystemsReport),
-    [contextInspectCard, hoveredCard, forgeSystemsReport],
+  // Founder #021's original scroll/chapter suppression logic (only surface
+  // a card when the reader's primary preview scrolled off-screen) is gone:
+  // the card-preview slot is now a fixed frame fixture, always visible, so
+  // there is no "off-screen pane" to protect a scrolling reader from.
+  const activeCardReasons = useMemo(
+    () => reasonsCardMatters(activeCard, forgeSystemsReport),
+    [activeCard, forgeSystemsReport],
   );
-  const contextInspectFact = cardFacts[cardFactKey(contextInspectCard)];
-  const contextInspectPrinting = printingOverrides[cardFactKey(contextInspectCard)];
-  const contextInspectImage =
-    contextInspectPrinting?.image ||
-    contextInspectFact?.image_uris?.normal ||
-    contextInspectFact?.card_faces?.[0]?.image_uris?.normal ||
-    (contextInspectCard ? cardImage(contextInspectCard) : "");
-
-  useEffect(() => {
-    if (typeof window === "undefined" || !hasValidatedDeck) {
-      setDeckPreviewInView(true);
-      return;
-    }
-    const stage = document.querySelector(".card-preview-stage");
-    if (!stage) {
-      setDeckPreviewInView(false);
-      return;
-    }
-    const observer = new IntersectionObserver(
-      ([entry]) => setDeckPreviewInView(Boolean(entry?.isIntersecting)),
-      { threshold: 0.18, rootMargin: "-48px 0px 0px 0px" },
-    );
-    observer.observe(stage);
-    return () => observer.disconnect();
-  }, [hasValidatedDeck, deckViewMode, activeForgeChapter, forgedDeck]);
-
-  useEffect(() => {
-    if (deckPreviewInView && activeForgeChapter === 1) {
-      setContextInspectCard("");
-    }
-  }, [deckPreviewInView, activeForgeChapter]);
-
-  useEffect(() => {
-    if (!hoveredCard) return;
-    // Every Tabletop lens (deck/hand/turns/matchup) drives contextInspectCard
-    // itself via onSelectCard/onReviewSelectCard — not just the "deck" lens —
-    // so this stale-hover auto-open must stay suppressed for the whole
-    // workbench, not only while tabletopReviewActive (lens === "deck").
-    // Otherwise a hoveredCard left over from before goldfishing (e.g. Deep
-    // Forge dossier) reopens the panel the instant the lens changes.
-    if (activeForgeChapter === 1 && deckViewMode === "workbench") return;
-    if (contextInspectDismissedRef.current === hoveredCard) return;
-    if (
-      !shouldUseContextCardInspector({
-        previewInView: deckPreviewInView,
-        activeForgeChapter,
-      })
-    ) {
-      return;
-    }
-    // Also reopen when the gallery scrolls away with a live selection —
-    // Founder #021: never leave the reader staring at an off-screen pane.
-    setContextInspectCard(hoveredCard);
-  }, [hoveredCard, deckPreviewInView, activeForgeChapter, deckViewMode]);
-
-  useEffect(() => {
-    if (hoveredCard && hoveredCard !== contextInspectDismissedRef.current) {
-      contextInspectDismissedRef.current = "";
-    }
-  }, [hoveredCard]);
-
-  const closeContextCardInspector = () => {
-    contextInspectDismissedRef.current = contextInspectCard;
-    setContextInspectCard("");
-  };
 
   const foreignSuspectNames = useMemo(() => {
     const suspects = [
@@ -3019,18 +2947,18 @@ export default function Home() {
         || "",
     });
   }, [inspectedIsCommander, inspectedCard, inspectedFact]);
-  const contextInspectIsCommander = isCommanderFormat(format) && [activeCommanderName, selectedSecondCommander?.name]
+  const activeIsCommander = isCommanderFormat(format) && [activeCommanderName, selectedSecondCommander?.name]
     .filter(Boolean)
-    .some((name) => cardFactKey(name as string) === cardFactKey(contextInspectCard));
-  const contextOccupancyLabels = useMemo(() => {
-    if (!contextInspectIsCommander || !contextInspectCard) return [];
+    .some((name) => cardFactKey(name as string) === cardFactKey(activeCard));
+  const activeOccupancyLabels = useMemo(() => {
+    if (!activeIsCommander || !activeCard) return [];
     return occupancyEngineLabelsForCommander({
-      name: String(contextInspectCard || ""),
-      oracleText: contextInspectFact?.oracle_text
-        || contextInspectFact?.card_faces?.map((face: { oracle_text?: string }) => face.oracle_text).filter(Boolean).join("\n\n")
+      name: String(activeCard || ""),
+      oracleText: activeFact?.oracle_text
+        || activeFact?.card_faces?.map((face: { oracle_text?: string }) => face.oracle_text).filter(Boolean).join("\n\n")
         || "",
     });
-  }, [contextInspectIsCommander, contextInspectCard, contextInspectFact]);
+  }, [activeIsCommander, activeCard, activeFact]);
   const commissionOccupancyLabels = useMemo(
     () => occupancyLabelsForOption(selectedCommander),
     [selectedCommander],
@@ -5404,6 +5332,75 @@ export default function Home() {
         </details>
       </header>
       <aside className="forge-global-rail" aria-label="Site navigation">
+        <div className="forge-card-mold" aria-label={activeCard ? `Card preview: ${activeCard}` : "Card preview"}>
+          <button
+            type="button"
+            className="forge-card-mold-socket"
+            onClick={() => activeCard && setInspectedCard(activeCard)}
+            disabled={!activeCard}
+            aria-label={activeCard ? `Open full dossier for ${activeCard}` : "No card selected yet"}
+          >
+            {activeImage ? (
+              <img src={activeImage} alt={`${activeCard} card`} />
+            ) : (
+              <span className="forge-card-mold-empty">Hover or tap a card to preview it here</span>
+            )}
+          </button>
+          {activeCard && (
+            <div className="forge-card-mold-body">
+              <strong>{activeCard}</strong>
+              <span>{activeFact?.type_line || "Card details awaken on inspection"}</span>
+              {activeOccupancyLabels.length > 0 && (
+                <p className="forge-card-mold-occupancy">Occupancy: {activeOccupancyLabels.join(" · ")}</p>
+              )}
+              <details className="forge-card-mold-more">
+                <summary>Why it&rsquo;s here →</summary>
+                <p className="forge-card-mold-slot-duty">
+                  <small>SLOT DUTY · {activeRole.toUpperCase()}</small>
+                  {activeSlotReason}
+                </p>
+                {activeGraphEdges.map((edge) => (
+                  <em key={`${edge.from}-${edge.to}`}>
+                    {edge.signals.join(" + ")} ·{" "}
+                    <ForgeCardRef
+                      name={edge.from === activeCard ? edge.to : edge.from}
+                      surface="gallery-companion"
+                      onInspect={setHoveredCard}
+                    />
+                  </em>
+                ))}
+                {matchupCardAdvice && matchupCardAdvice.cardName === activeCard && (
+                  <div className={`forge-card-mold-matchup${matchupCardAdvice.priority ? " is-priority" : " is-secondary"}`}>
+                    <small>VS {matchupCardAdvice.matchup.toUpperCase()}</small>
+                    <p><em>Verdict</em>{matchupCardAdvice.verdict}</p>
+                    <p><em>Change</em>{matchupCardAdvice.change}</p>
+                    <p><em>Why</em>{matchupCardAdvice.why}</p>
+                  </div>
+                )}
+                {activeCardReasons.length > 0 && (
+                  <ul className="forge-card-mold-reasons">
+                    {activeCardReasons.map((reason) => (
+                      <li key={reason}>{reason}</li>
+                    ))}
+                  </ul>
+                )}
+                {explainPairsForCardAsMentor({
+                  cardName: activeCard,
+                  enginePairs: interactionGraph.enginePairs || [],
+                  resetPairs: interactionGraph.resetPairs || [],
+                  limit: 1,
+                }).map((explanation: { cards: string[]; paragraph: string }) => (
+                  <p key={explanation.cards.join("+")} className="forge-card-mold-pair">
+                    {explanation.paragraph}
+                  </p>
+                ))}
+              </details>
+              <button type="button" className="forge-card-mold-dossier" onClick={() => setInspectedCard(activeCard)}>
+                Open full dossier →
+              </button>
+            </div>
+          )}
+        </div>
         <button type="button" className={(!hasValidatedDeck && chamber === "entrance") || (hasValidatedDeck && chamber === "workbench" && siteRail === "overview") ? "active" : ""} onClick={() => {
           if (!hasValidatedDeck) {
             setChamber("entrance");
@@ -6292,6 +6289,7 @@ export default function Home() {
                   occupancyEngines={revealOccupancyLabels}
                   onChoose={(candidateId) => enterMasterwork(candidateId)}
                   onInspectCard={setHoveredCard}
+                  surface="pre-choice-diff"
                 />
               )}
               <footer>
@@ -7202,18 +7200,9 @@ export default function Home() {
                     edges={interactionGraph.edges}
                     previousCardNames={previousRevisionCardNames}
                     activeCard={activeCard}
-                    onSelectCard={(name) => {
-                      setHoveredCard(name);
-                      setContextInspectCard(name);
-                    }}
-                    onReviewSelectCard={(name) => {
-                      setHoveredCard(name);
-                      setContextInspectCard("");
-                    }}
-                    onInspectCard={(name) => {
-                      setContextInspectCard("");
-                      setInspectedCard(name);
-                    }}
+                    onSelectCard={(name) => setHoveredCard(name)}
+                    onReviewSelectCard={(name) => setHoveredCard(name)}
+                    onInspectCard={(name) => setInspectedCard(name)}
                     onLensChange={(lens) => setTabletopReviewActive(lens === "deck")}
                     onMatchupContext={setMatchupCardAdvice}
                     onMulliganDecision={(result) => trackLaunchEvent("mulligan_coach_decision", {
@@ -7239,43 +7228,6 @@ export default function Home() {
                 )}
                 {deckViewMode === "ledger" && (
                 <div className="deck-gallery" id="deck-gallery">
-                  <aside className="card-preview-stage">
-                    <button
-                      type="button"
-                      className="card-preview-open"
-                      onClick={() => activeCard && setInspectedCard(activeCard)}
-                      aria-label={`Inspect ${activeCard}`}
-                    >
-                      {activeImage && (
-                        <img
-                          src={activeImage}
-                          alt={`${activeCard} card preview`}
-                        />
-                      )}
-                    </button>
-                    <div className="card-preview-summary">
-                      <small>ACTIVE CARD · TAP FOR DOSSIER</small>
-                      <strong>{activeCard}</strong>
-                      <span>
-                        {activeFact?.type_line ||
-                          "Card details awaken on inspection"}
-                      </span>
-                    </div>
-                    <span className="slot-justification">
-                      <small>SLOT DUTY · {activeRole.toUpperCase()}</small>
-                      {activeSlotReason}
-                      {activeGraphEdges.map((edge) => (
-                        <em key={`${edge.from}-${edge.to}`}>
-                          {edge.signals.join(" + ")} ·{" "}
-                          <ForgeCardRef
-                            name={edge.from === activeCard ? edge.to : edge.from}
-                            surface="gallery-companion"
-                            onInspect={setHoveredCard}
-                          />
-                        </em>
-                      ))}
-                    </span>
-                  </aside>
                   <div className="type-columns">
                     {[
                       "Commander",
@@ -7590,129 +7542,6 @@ export default function Home() {
               ) : (
                 <pre>The Forge is waiting for a valid commission.</pre>
               )}
-              {showContextCardInspector &&
-                contextInspectCard &&
-                createPortal(
-                  <aside
-                    key={contextInspectCard}
-                    className="forge-context-card-inspector"
-                    role="complementary"
-                    aria-label={`Inspecting ${contextInspectCard}`}
-                  >
-                    <header>
-                      <small>CARD IN CONTEXT</small>
-                      <button
-                        type="button"
-                        className="forge-context-card-inspector-close"
-                        onClick={closeContextCardInspector}
-                        aria-label="Close contextual card inspector"
-                      >
-                        ×
-                      </button>
-                    </header>
-                    <button
-                      type="button"
-                      className="forge-context-card-inspector-art"
-                      onClick={() => {
-                        setInspectedCard(contextInspectCard);
-                        closeContextCardInspector();
-                      }}
-                      aria-label={`Open full dossier for ${contextInspectCard}`}
-                    >
-                      {contextInspectImage ? (
-                        <img
-                          src={contextInspectImage}
-                          alt={`${contextInspectCard} card`}
-                        />
-                      ) : (
-                        <span>Art loading…</span>
-                      )}
-                    </button>
-                    <div className="forge-context-card-inspector-body">
-                      <strong>{contextInspectCard}</strong>
-                      <span>
-                        {contextInspectFact?.type_line ||
-                          "Card details awaken on inspection"}
-                      </span>
-                      {contextOccupancyLabels.length > 0 && (
-                        <p className="forge-context-occupancy">
-                          Occupancy engines: {contextOccupancyLabels.join(" · ")}
-                        </p>
-                      )}
-                      {matchupCardAdvice
-                        && matchupCardAdvice.cardName === contextInspectCard && (
-                        <div className={`forge-context-matchup-coach${matchupCardAdvice.priority ? " is-priority" : " is-secondary"}`}>
-                          <small>VS {matchupCardAdvice.matchup.toUpperCase()}</small>
-                          <p>
-                            <em>Verdict</em>
-                            {matchupCardAdvice.verdict}
-                          </p>
-                          <p>
-                            <em>Change</em>
-                            {matchupCardAdvice.change}
-                          </p>
-                          <p>
-                            <em>Why</em>
-                            {matchupCardAdvice.why}
-                          </p>
-                        </div>
-                      )}
-                      {matchupCardAdvice
-                        && matchupCardAdvice.cardName === contextInspectCard
-                        && contextCardReasons.length > 0 ? (
-                        <details className="forge-context-structural-evidence">
-                          <summary>Structural evidence →</summary>
-                          <ul>
-                            {contextCardReasons.map((reason) => (
-                              <li key={reason}>{reason}</li>
-                            ))}
-                          </ul>
-                        </details>
-                      ) : (
-                        <>
-                          <small>WHY IT MATTERS</small>
-                          {contextCardReasons.length ? (
-                            <ul>
-                              {contextCardReasons.map((reason) => (
-                                <li key={reason}>{reason}</li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <p>Referenced in Deep Forge evidence for this build.</p>
-                          )}
-                        </>
-                      )}
-                      {matchupCardAdvice
-                        && matchupCardAdvice.cardName === contextInspectCard
-                        && contextCardReasons.length === 0 && (
-                        <p className="forge-context-structural-empty">
-                          No structural engines tagged yet — matchup seat advice above still applies.
-                        </p>
-                      )}
-                      {explainPairsForCardAsMentor({
-                        cardName: contextInspectCard,
-                        enginePairs: interactionGraph.enginePairs || [],
-                        resetPairs: interactionGraph.resetPairs || [],
-                        limit: 1,
-                      }).map((explanation: { cards: string[]; paragraph: string }) => (
-                        <p key={explanation.cards.join("+")} className="forge-context-pair">
-                          {explanation.paragraph}
-                        </p>
-                      ))}
-                      <button
-                        type="button"
-                        className="forge-context-card-inspector-dossier"
-                        onClick={() => {
-                          setInspectedCard(contextInspectCard);
-                          closeContextCardInspector();
-                        }}
-                      >
-                        Open full dossier →
-                      </button>
-                    </div>
-                  </aside>,
-                  document.body,
-                )}
               {inspectedCard && createPortal(
                 <div
                   className="card-inspector-backdrop"
