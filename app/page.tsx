@@ -6723,37 +6723,41 @@ export default function Home() {
                     >
                       ✦ Personalize Masterwork
                     </button>
-                    <button
-                      type="button"
-                      className="conduct-experiment-cta"
-                      onClick={() => {
-                        setChamber("workbench");
-                        setActiveForgeChapter(1);
-                        setSiteRail("overview");
-                        window.requestAnimationFrame(() => document.querySelector(".refinement-starters-vault")?.scrollIntoView({ behavior: "smooth", block: "start" }));
-                      }}
-                    >
-                      Want to conduct an experiment?
-                    </button>
-                    <button
-                      type="button"
-                      className="next-step-cta"
-                      onClick={() => {
-                        setMilestoneMotion({
-                          kind: "masterwork-selected",
-                          eyebrow: "ADDED TO YOUR ARSENAL",
-                          label: masterworkIdentity.title || chosenWork.name.replace(/, Forged$/, ""),
-                          glyph: "ᛟ",
-                        });
-                        setChamber("workbench");
-                        setActiveForgeChapter(1);
-                        setDeckViewMode("workbench");
-                        setSiteRail("playtest");
-                        window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" }));
-                      }}
-                    >
-                      This list is a masterwork! →
-                    </button>
+                    {siteRail !== "overview" && (
+                      <button
+                        type="button"
+                        className="conduct-experiment-cta"
+                        onClick={() => {
+                          setChamber("workbench");
+                          setActiveForgeChapter(1);
+                          setSiteRail("overview");
+                          window.requestAnimationFrame(() => document.querySelector(".refinement-starters-vault")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+                        }}
+                      >
+                        Want to conduct an experiment?
+                      </button>
+                    )}
+                    {!(siteRail === "playtest" && deckViewMode === "workbench") && (
+                      <button
+                        type="button"
+                        className="next-step-cta"
+                        onClick={() => {
+                          setMilestoneMotion({
+                            kind: "masterwork-selected",
+                            eyebrow: "ADDED TO YOUR ARSENAL",
+                            label: masterworkIdentity.title || chosenWork.name.replace(/, Forged$/, ""),
+                            glyph: "ᛟ",
+                          });
+                          setChamber("workbench");
+                          setActiveForgeChapter(1);
+                          setDeckViewMode("workbench");
+                          setSiteRail("playtest");
+                          window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+                        }}
+                      >
+                        This list is a masterwork! →
+                      </button>
+                    )}
                     <details className="deck-view-options">
                       <summary>View options</summary>
                       <button type="button" className={deckViewMode === "workbench" ? "active" : ""} onClick={() => setDeckViewMode("workbench")}>Visual deck</button>
@@ -7240,7 +7244,7 @@ export default function Home() {
                 {deckViewMode === "workbench" && (
                   <Tabletop
                     key="goldfish-tabletop"
-                    initialLens="deck"
+                    initialLens="hand"
                     cards={tabletopCards}
                     edges={interactionGraph.edges}
                     previousCardNames={previousRevisionCardNames}

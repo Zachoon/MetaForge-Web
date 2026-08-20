@@ -114,3 +114,22 @@ test("treats five lands and only one early play as close, not a confident keep",
   assert.equal(result.verdict, "close");
   assert.match(result.warnings.join(" "), /Five lands/);
 });
+
+test("never recommends an {X}{X} card as the earliest play on cmc alone", () => {
+  // Off the stack, X=0, so Scryfall reports {X}{X} cards at cmc 0 — real
+  // and correct per the rules, but it would otherwise let any X-cost card
+  // win an "earliest/cheapest" sort against real fixed-cost plays, even
+  // though X=0 is usually a nonplay (e.g. Hangarback Walker at X=0 is a
+  // 0/0 that dies to state-based actions immediately).
+  const xCostCreature = { name: "Hangarback Walker", role: "Engine piece", typeLine: "Artifact Creature", manaCost: "{X}{X}", cmc: 0 };
+  const result = evaluateMulliganHand([
+    land("A"), land("B"), land("C"),
+    xCostCreature,
+    spell("Real Two Drop", 2, "Threat", "{2}"),
+    spell("Late", 5),
+    spell("Six", 6),
+  ]);
+  assert.notEqual(result.sequence.recommendedCard, "Hangarback Walker");
+  assert.equal(result.sequence.recommendedCard, "Real Two Drop");
+  assert.ok(!result.sequence.options.includes("Hangarback Walker"));
+});

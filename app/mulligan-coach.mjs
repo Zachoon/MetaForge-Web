@@ -18,6 +18,16 @@ function isOtherManaCard(card) {
     || /\badd\b[^.\n]*\bmana\b|\badd\b[^.\n]*\{[WUBRGC]\}/i.test(oracle);
 }
 
+// {X}{X} costs report cmc 0 under the official off-the-stack convention
+// (X=0), which is real and correct — but it also means an X-cost card would
+// always win an "earliest/cheapest" sort against fixed-cost cards, even
+// though X=0 usually does nothing (Hangarback Walker at X=0 is a 0/0 that
+// immediately dies). A card whose real early-game cost is unscoped should
+// not be crowned "the cheapest play" by an artifact of that convention.
+function isUnscopedXCost(card) {
+  return /\{X\}/i.test(String(card?.manaCost || ""));
+}
+
 function pipsIn(cost = "") {
   const pips = new Set();
   for (const color of COLORS) if (String(cost).includes(`{${color}}`)) pips.add(color);
@@ -100,7 +110,7 @@ function sequencingRead({ spells, early, interaction, reachable, landColors, nee
   );
   const candidates = [...new Map(
     [...reachable.deployed, ...early]
-      .filter((card) => Number.isFinite(card?.cmc))
+      .filter((card) => Number.isFinite(card?.cmc) && !isUnscopedXCost(card))
       .sort((a, b) => a.cmc - b.cmc)
       .map((card) => [card.name, card]),
   ).values()].slice(0, 4);
