@@ -17,9 +17,11 @@ test("the Worker owns commander lookup, retries upstream failures, falls back to
   assert.match(route, /stale-while-revalidate=31536000/);
   assert.match(route, /cache\.put\(cacheKey, result\.clone\(\)\)/);
   assert.match(route, /normalizeCommanderSearchName/);
+  assert.match(route, /scryfallCommanderSearchName/);
+  assert.match(route, /replace\(\/\[A-Za-z\]\/, \(letter\) => letter\.toUpperCase\(\)\)/);
   assert.match(route, /\\u2018\\u2019/);
   assert.match(route, /canonicalCacheUrl\.searchParams\.set\("q", query\)/);
-  assert.match(route, /canonicalCacheUrl\.searchParams\.set\("search_schema", "2"\)/);
+  assert.match(route, /canonicalCacheUrl\.searchParams\.set\("search_schema", "3"\)/);
   assert.doesNotMatch(route, /name:\\"\$\{safeName\}/);
   assert.match(worker, /\/api\/cards\/commanders/);
   assert.match(worker, /handleCommanderSearch/);

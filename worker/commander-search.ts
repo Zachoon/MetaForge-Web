@@ -12,12 +12,20 @@ export function commanderFormatTerms(format: string): string {
 }
 
 export function commanderSearchQuery(format: string, name: string, exact = false): string {
-  const safeName = normalizeCommanderSearchName(name).replace(/["\\]/g, " ").trim();
+  const safeName = scryfallCommanderSearchName(name).replace(/["\\]/g, " ").trim();
   // Scryfall's quoted free-text form performs the intended punctuation-aware
   // name prefix search. `name:"…"` is not valid Scryfall syntax and returns
   // HTTP 400, which previously made every partial lookup fall through.
   const nameClause = exact ? `!"${safeName}"` : `"${safeName}"`;
   return `${commanderFormatTerms(format)} is:commander ${nameClause}`;
+}
+
+export function scryfallCommanderSearchName(name: string): string {
+  // Scryfall's quoted name-prefix search is case-sensitive around punctuation
+  // (for example, `"t'c"` misses T'Challa while `"T'c"` succeeds). Card names
+  // conventionally begin with an uppercase Latin letter, so normalize the first
+  // searchable letter without changing the user's canonical cache key/filter.
+  return normalizeCommanderSearchName(name).replace(/[A-Za-z]/, (letter) => letter.toUpperCase());
 }
 
 export function normalizeCommanderSearchName(name: string): string {
@@ -108,7 +116,7 @@ export async function handleCommanderSearch(request: Request): Promise<Response>
   const cache = caches.default;
   const canonicalCacheUrl = new URL(request.url);
   canonicalCacheUrl.searchParams.set("q", query);
-  canonicalCacheUrl.searchParams.set("search_schema", "2");
+  canonicalCacheUrl.searchParams.set("search_schema", "3");
   const cacheKey = new Request(canonicalCacheUrl.toString(), { method: "GET" });
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
