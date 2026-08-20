@@ -460,6 +460,7 @@ body:has(.great-forge.chamber-archive){
 
 @media(max-width:760px){
   :root{--mf-frame-top:58px;--mf-frame-rail:58px}
+  html,body{max-width:100%;overflow-x:hidden}
   .great-forge{padding:var(--mf-frame-top) 0 var(--mf-frame-rail)!important}
   .great-forge>.forge-bar{grid-template-columns:1fr auto!important;padding:0 12px!important}
   .forge-global-nav{display:none!important}

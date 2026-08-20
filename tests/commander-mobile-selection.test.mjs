@@ -14,3 +14,17 @@ test("touching a portaled commander result cannot blur-unmount it before click",
   assert.match(portal, /onPointerDown=\{\(event\) => event\.preventDefault\(\)\}/);
   assert.match(portal, /onClick=\{\(\) => selectCommander\(option\)\}/);
 });
+
+test("mobile commander search prevents iOS zoom, stale results, and keyboard-hidden dropdowns", async () => {
+  const [commanderCss, frameCss] = await Promise.all([
+    readFile(new URL("../app/blueprint-commander.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/site-frame.css", import.meta.url), "utf8"),
+  ]);
+  assert.match(commanderCss, /commander-choice input[^}]*font-size:16px!important/);
+  assert.match(frameCss, /html,body\{max-width:100%;overflow-x:hidden\}/);
+  assert.match(page, /window\.visualViewport\?\.addEventListener\("resize", updateRect\)/);
+  assert.match(page, /maxHeight: Math\.max\(96, viewportBottom - top - 12\)/);
+  assert.match(page, /maxHeight: commanderSearchRect\.maxHeight/);
+  assert.match(page, /const controller = new AbortController\(\)/);
+  assert.match(page, /controller\.abort\(\)/);
+});

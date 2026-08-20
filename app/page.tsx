@@ -1380,6 +1380,7 @@ export default function Home() {
     top: number;
     left: number;
     width: number;
+    maxHeight: number;
   } | null>(null);
   useLayoutEffect(() => {
     if (!commanderSearchOpen) return;
@@ -1387,18 +1388,27 @@ export default function Home() {
       const el = commanderSearchRef.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
+      const viewportBottom = window.visualViewport
+        ? window.visualViewport.offsetTop + window.visualViewport.height
+        : window.innerHeight;
+      const top = rect.bottom + 5;
       setCommanderSearchRect({
-        top: rect.bottom + 5,
+        top,
         left: rect.left,
         width: rect.width,
+        maxHeight: Math.max(96, viewportBottom - top - 12),
       });
     };
     updateRect();
     window.addEventListener("resize", updateRect);
     window.addEventListener("scroll", updateRect, true);
+    window.visualViewport?.addEventListener("resize", updateRect);
+    window.visualViewport?.addEventListener("scroll", updateRect);
     return () => {
       window.removeEventListener("resize", updateRect);
       window.removeEventListener("scroll", updateRect, true);
+      window.visualViewport?.removeEventListener("resize", updateRect);
+      window.visualViewport?.removeEventListener("scroll", updateRect);
     };
   }, [commanderSearchOpen]);
   const [selectedCommander, setSelectedCommander] =
@@ -1455,6 +1465,7 @@ export default function Home() {
     top: number;
     left: number;
     width: number;
+    maxHeight: number;
   } | null>(null);
   const secondCommanderDropdownOpen =
     secondCommanderSearching || secondCommanderResults.length > 0;
@@ -1464,18 +1475,27 @@ export default function Home() {
       const el = secondCommanderSearchRef.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
+      const viewportBottom = window.visualViewport
+        ? window.visualViewport.offsetTop + window.visualViewport.height
+        : window.innerHeight;
+      const top = rect.bottom + 5;
       setSecondCommanderSearchRect({
-        top: rect.bottom + 5,
+        top,
         left: rect.left,
         width: rect.width,
+        maxHeight: Math.max(96, viewportBottom - top - 12),
       });
     };
     updateRect();
     window.addEventListener("resize", updateRect);
     window.addEventListener("scroll", updateRect, true);
+    window.visualViewport?.addEventListener("resize", updateRect);
+    window.visualViewport?.addEventListener("scroll", updateRect);
     return () => {
       window.removeEventListener("resize", updateRect);
       window.removeEventListener("scroll", updateRect, true);
+      window.visualViewport?.removeEventListener("resize", updateRect);
+      window.visualViewport?.removeEventListener("scroll", updateRect);
     };
   }, [secondCommanderDropdownOpen]);
   const [randomizingCommander, setRandomizingCommander] = useState(false);
@@ -3663,24 +3683,31 @@ export default function Home() {
       setCommanderSearchError("");
       return;
     }
+    const controller = new AbortController();
+    const requestedQuery = commanderQuery.trim();
     const timer = window.setTimeout(async () => {
       setCommanderSearching(true);
       setCommanderSearchError("");
       try {
         const response = await fetch(
-          `/api/cards/commanders?format=${encodeURIComponent(format)}&q=${encodeURIComponent(commanderQuery.trim())}`,
+          `/api/cards/commanders?format=${encodeURIComponent(format)}&q=${encodeURIComponent(requestedQuery)}`,
+          { signal: controller.signal },
         );
         if (!response.ok) throw new Error("Commander search unavailable");
         const data = await response.json();
         setCommanderResults((data.cards || []).slice(0, 8).map(commanderOption));
       } catch {
+        if (controller.signal.aborted) return;
         setCommanderResults([]);
         setCommanderSearchError("The commander index is temporarily unavailable. Your search is preserved—try again in a moment.");
       } finally {
         setCommanderSearching(false);
       }
     }, 320);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
   }, [commanderQuery, format, selectedCommander?.name, commanderSearchRetry]);
 
   // Reviewing a pasted decklist (chamber "refine") never asks the player to
@@ -5982,6 +6009,7 @@ export default function Home() {
                             top: commanderSearchRect.top,
                             left: commanderSearchRect.left,
                             width: commanderSearchRect.width,
+                            maxHeight: commanderSearchRect.maxHeight,
                           }}
                         >
                           {commanderSearching ? (
@@ -6100,6 +6128,7 @@ export default function Home() {
                                 top: secondCommanderSearchRect.top,
                                 left: secondCommanderSearchRect.left,
                                 width: secondCommanderSearchRect.width,
+                                maxHeight: secondCommanderSearchRect.maxHeight,
                               }}
                             >
                               {secondCommanderSearching ? (
