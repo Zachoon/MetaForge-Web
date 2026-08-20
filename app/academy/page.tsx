@@ -87,6 +87,7 @@ export default function AcademyIndex() {
           </section>
         </article>
         <footer className="legal-links">
+          <a href="/commanders">Commander Deck Guides</a>
           <a href="/">Return to the Forge</a>
           <a href="/terms">Terms of Use</a>
         </footer>

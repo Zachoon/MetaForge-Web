@@ -40,21 +40,28 @@ function robotsResponse(url: URL): Response {
   return new Response(body, { headers: SEO_HEADERS });
 }
 
+const SITEMAP_URLS: { loc: string; lastmod: string; changefreq: string; priority: string }[] = [
+  { loc: "https://metaforge.gg/", lastmod: "2026-08-11", changefreq: "weekly", priority: "1.0" },
+  { loc: "https://metaforge.gg/terms", lastmod: "2026-08-02", changefreq: "monthly", priority: "0.3" },
+  { loc: "https://metaforge.gg/privacy", lastmod: "2026-08-02", changefreq: "monthly", priority: "0.3" },
+  { loc: "https://metaforge.gg/academy", lastmod: "2026-08-07", changefreq: "monthly", priority: "0.8" },
+  { loc: "https://metaforge.gg/academy/why-cant-i-cast-my-spells", lastmod: "2026-08-07", changefreq: "monthly", priority: "0.7" },
+  { loc: "https://metaforge.gg/academy/why-do-i-run-out-of-cards", lastmod: "2026-08-07", changefreq: "monthly", priority: "0.7" },
+  { loc: "https://metaforge.gg/academy/why-does-my-deck-start-so-slowly", lastmod: "2026-08-07", changefreq: "monthly", priority: "0.7" },
+  { loc: "https://metaforge.gg/academy/how-much-interaction-do-i-actually-need", lastmod: "2026-08-07", changefreq: "monthly", priority: "0.7" },
+  { loc: "https://metaforge.gg/academy/why-do-i-lose-after-getting-ahead", lastmod: "2026-08-07", changefreq: "monthly", priority: "0.7" },
+  { loc: "https://metaforge.gg/academy/what-is-my-deck-actually-trying-to-do", lastmod: "2026-08-07", changefreq: "monthly", priority: "0.7" },
+  { loc: "https://metaforge.gg/commanders", lastmod: "2026-08-19", changefreq: "monthly", priority: "0.8" },
+  { loc: "https://metaforge.gg/commanders/korvold-fae-cursed-king", lastmod: "2026-08-19", changefreq: "monthly", priority: "0.7" },
+  { loc: "https://metaforge.gg/commanders/edgar-markov", lastmod: "2026-08-19", changefreq: "monthly", priority: "0.7" },
+  { loc: "https://metaforge.gg/commanders/yuriko-the-tigers-shadow", lastmod: "2026-08-19", changefreq: "monthly", priority: "0.7" },
+  { loc: "https://metaforge.gg/commanders/atraxa-grand-unifier", lastmod: "2026-08-19", changefreq: "monthly", priority: "0.7" },
+  { loc: "https://metaforge.gg/commanders/the-ur-dragon", lastmod: "2026-08-19", changefreq: "monthly", priority: "0.7" },
+];
+
 function sitemapResponse(url: URL): Response {
   if (!PUBLIC_HOSTS.has(url.hostname)) return new Response("Not found", { status: 404 });
-  const urls = [
-    "https://metaforge.gg/",
-    "https://metaforge.gg/terms",
-    "https://metaforge.gg/privacy",
-    "https://metaforge.gg/academy",
-    "https://metaforge.gg/academy/why-cant-i-cast-my-spells",
-    "https://metaforge.gg/academy/why-do-i-run-out-of-cards",
-    "https://metaforge.gg/academy/why-does-my-deck-start-so-slowly",
-    "https://metaforge.gg/academy/how-much-interaction-do-i-actually-need",
-    "https://metaforge.gg/academy/why-do-i-lose-after-getting-ahead",
-    "https://metaforge.gg/academy/what-is-my-deck-actually-trying-to-do",
-  ];
-  const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map((pageUrl, index) => `\n  <url><loc>${pageUrl}</loc><lastmod>${index === 0 ? "2026-08-11" : index >= 4 ? "2026-08-07" : "2026-08-02"}</lastmod><changefreq>${index === 0 ? "weekly" : "monthly"}</changefreq><priority>${index === 0 ? "1.0" : index === 3 ? "0.8" : index >= 4 ? "0.7" : "0.3"}</priority></url>`).join("")}\n</urlset>\n`;
+  const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${SITEMAP_URLS.map((entry) => `\n  <url><loc>${entry.loc}</loc><lastmod>${entry.lastmod}</lastmod><changefreq>${entry.changefreq}</changefreq><priority>${entry.priority}</priority></url>`).join("")}\n</urlset>\n`;
   return new Response(body, { headers: { ...SEO_HEADERS, "Content-Type": "application/xml; charset=utf-8" } });
 }
 

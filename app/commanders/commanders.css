@@ -1,0 +1,97 @@
+/* Commander guide pages — additions on top of legal.css's shared dark
+   reading shell (same base as Academy). Only new pieces: the commander
+   hero (art + identity), the oracle text block, the engine list, and the
+   CTA — nothing here redefines colors, type, or spacing already
+   established in legal.css. */
+.commander-hero {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  margin: 20px 0 28px;
+}
+.commander-hero img {
+  width: 160px;
+  height: 118px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid #39251d;
+  flex-shrink: 0;
+}
+.commander-hero-identity { display: flex; flex-direction: column; gap: 6px; }
+.commander-mana-cost { font: 600 15px ui-monospace, monospace; color: #e79b41; letter-spacing: 0.04em; }
+.commander-type-line { font-size: 13px; color: #b9ab97; }
+.commander-colors { display: flex; gap: 6px; }
+.commander-colors i {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid #6b3d22;
+  background: rgba(87, 44, 24, 0.28);
+  color: #eee2cf;
+  font: 700 10px ui-sans-serif, system-ui, sans-serif;
+  font-style: normal;
+}
+.commander-oracle {
+  margin: 0;
+  padding: 18px 20px;
+  border-left: 3px solid #e79b41;
+  background: rgba(87, 44, 24, 0.14);
+  color: #d9cbb8;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+.commander-engines { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 12px; }
+.commander-engines li {
+  padding: 14px 16px;
+  border: 1px solid #39251d;
+  border-radius: 10px;
+  background: rgba(87, 44, 24, 0.1);
+}
+.commander-engines strong { display: block; margin-bottom: 4px; font: 600 15px Newsreader, Georgia, serif; color: #eda75a; }
+.commander-engines span { font-size: 13px; color: #b9ab97; line-height: 1.5; }
+.commander-no-engine { color: #b9ab97; font-size: 14px; line-height: 1.6; }
+.commander-cta {
+  margin-top: 32px;
+  padding: 28px;
+  border: 1px solid #6b3d22;
+  border-radius: 14px;
+  background: rgba(87, 44, 24, 0.28);
+}
+.commander-cta p { margin: 0 0 16px; }
+.commander-cta a.commander-cta-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 22px;
+  border-radius: 999px;
+  background: #e79b41;
+  color: #1a0f08;
+  font-weight: 700;
+  text-decoration: none;
+  letter-spacing: 0.01em;
+}
+.commander-guide-list { list-style: none; padding: 0; margin: 24px 0 0; display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.commander-guide-list li { display: flex; }
+.commander-guide-list a {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 22px 24px;
+  border: 1px solid #39251d;
+  border-radius: 14px;
+  background: rgba(87, 44, 24, 0.14);
+  text-decoration: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.commander-guide-list a:hover,
+.commander-guide-list a:focus-visible {
+  border-color: #e79b41;
+  background: rgba(87, 44, 24, 0.28);
+  outline: none;
+}
+.commander-guide-list strong { font: 600 21px Newsreader, Georgia, serif; color: #eee2cf; }
+.commander-guide-list p { margin: 4px 0 0; font-size: 14px; color: #b9ab97; }

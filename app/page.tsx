@@ -7,6 +7,7 @@ import { displayRoleFor } from "./adaptive-recommendation.mjs";
 import { configureCardTagLookup } from "./strategic-intent.mjs";
 import { REVIEW_FOCUS_OPTIONS, REVIEW_FOCUS_LABELS, toggleReviewFocus } from "./review-focus.mjs";
 import { resolveAcademyGuideEntry } from "./academy-guide-entry.mjs";
+import { commanderOptionForSlug } from "./commanders/data.mjs";
 import { getMetaIntelligence } from "./meta-intelligence.mjs";
 import { cardImage, cardArtCrop } from "./card-art";
 // The interaction graph, systems intelligence, causality engine, bounded
@@ -4261,6 +4262,26 @@ export default function Home() {
     if (chamber !== "entrance" || deck.trim() || reviewFocus) return;
     setChamber(entry.chamber);
     if (entry.reviewFocus) setReviewFocus(entry.reviewFocus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // A commander guide page's "Build a deck" CTA sends a stable, public slug
+  // (?commander=korvold-fae-cursed-king) — never internal engine state — so
+  // this pre-selects the commander and skips straight to the strategy step,
+  // the same shape as the ?guide= effect above. Same non-clobber guard: a
+  // stray or reloaded param must never override a session already in
+  // progress.
+  useEffect(() => {
+    const commanderSlug = new URLSearchParams(window.location.search).get("commander");
+    if (!commanderSlug) return;
+    window.history.replaceState({}, "", window.location.pathname);
+    const commander = commanderOptionForSlug(commanderSlug);
+    if (!commander) return;
+    if (chamber !== "entrance" || deck.trim() || selectedCommander) return;
+    setChamber("commission");
+    setFormat("Commander");
+    setSelectedCommander(commander);
+    setBuildStep(2);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
