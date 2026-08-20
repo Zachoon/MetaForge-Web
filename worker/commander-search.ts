@@ -13,7 +13,10 @@ export function commanderFormatTerms(format: string): string {
 
 export function commanderSearchQuery(format: string, name: string, exact = false): string {
   const safeName = normalizeCommanderSearchName(name).replace(/["\\]/g, " ").trim();
-  const nameClause = exact ? `!"${safeName}"` : `name:"${safeName}"`;
+  // Scryfall's quoted free-text form performs the intended punctuation-aware
+  // name prefix search. `name:"…"` is not valid Scryfall syntax and returns
+  // HTTP 400, which previously made every partial lookup fall through.
+  const nameClause = exact ? `!"${safeName}"` : `"${safeName}"`;
   return `${commanderFormatTerms(format)} is:commander ${nameClause}`;
 }
 
@@ -105,6 +108,7 @@ export async function handleCommanderSearch(request: Request): Promise<Response>
   const cache = caches.default;
   const canonicalCacheUrl = new URL(request.url);
   canonicalCacheUrl.searchParams.set("q", query);
+  canonicalCacheUrl.searchParams.set("search_schema", "2");
   const cacheKey = new Request(canonicalCacheUrl.toString(), { method: "GET" });
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
@@ -113,7 +117,10 @@ export async function handleCommanderSearch(request: Request): Promise<Response>
   let source = "scryfall";
   if (response?.ok) {
     const data: any = await response.json();
-    cards = (Array.isArray(data?.data) ? data.data : []).slice(0, 8);
+    const normalizedNeedle = normalizeCommanderSearchName(query).toLowerCase();
+    cards = (Array.isArray(data?.data) ? data.data : [])
+      .filter((card: any) => normalizeCommanderSearchName(card?.name).toLowerCase().includes(normalizedNeedle))
+      .slice(0, 8);
   } else if (response?.status === 404) {
     cards = [];
   } else {

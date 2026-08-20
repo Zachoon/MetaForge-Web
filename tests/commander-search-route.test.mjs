@@ -19,6 +19,8 @@ test("the Worker owns commander lookup, retries upstream failures, falls back to
   assert.match(route, /normalizeCommanderSearchName/);
   assert.match(route, /\\u2018\\u2019/);
   assert.match(route, /canonicalCacheUrl\.searchParams\.set\("q", query\)/);
+  assert.match(route, /canonicalCacheUrl\.searchParams\.set\("search_schema", "2"\)/);
+  assert.doesNotMatch(route, /name:\\"\$\{safeName\}/);
   assert.match(worker, /\/api\/cards\/commanders/);
   assert.match(worker, /handleCommanderSearch/);
 });
