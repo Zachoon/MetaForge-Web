@@ -5357,6 +5357,29 @@ export default function Home() {
         </details>
       </header>
       <aside className="forge-global-rail" aria-label="Site navigation">
+        <button type="button" className={(!hasValidatedDeck && chamber === "entrance") || (hasValidatedDeck && chamber === "workbench" && siteRail === "overview") ? "active" : ""} onClick={() => {
+          if (!hasValidatedDeck) {
+            setChamber("entrance");
+            return;
+          }
+          setChamber("workbench");
+          setActiveForgeChapter(1);
+          setSiteRail("overview");
+          window.requestAnimationFrame(() => {
+            if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = true;
+            document.getElementById("coach-brief")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          });
+        }}><i>⌂</i><span>Overview</span></button>
+        <button type="button" className={chamber === "workbench" && activeForgeChapter === 1 && siteRail === "decklist" ? "active" : ""} disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode("ledger"); setSiteRail("decklist"); if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = false; window.requestAnimationFrame(() => document.getElementById("deck-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>☷</i><span>Decklist</span></button>
+        <button type="button" className={chamber === "workbench" && activeForgeChapter === 2 ? "active" : ""} disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(2); setSiteRail("analysis"); }}><i>◇</i><span>Analysis</span></button>
+        <button type="button" className={chamber === "archive" ? "active" : ""} onClick={openPrivateArchive}><i className="forge-rail-cardback" aria-hidden="true">MF</i><span>Decks</span></button>
+        <button type="button" disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode("workbench"); setSiteRail("playtest"); window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>⚔</i><span>Playtest</span></button>
+        <button type="button" disabled={!hasValidatedDeck} onClick={() => navigator.clipboard.writeText(formatDeckForArenaExport(forgedDeck))}><i>⌁</i><span>Share</span></button>
+        <button type="button" disabled={!hasValidatedDeck} onClick={() => { setMasterworkIdentityDraft(masterworkIdentity); setMasterworkIdentityOpen(true); }}><i>⚙</i><span>Settings</span></button>
+        <div className="forge-rail-embers" aria-hidden="true"><i /><i /><i /></div>
+        <div className="forge-rail-version" aria-label="MetaForge version 2.1.0"><i>MF</i><span>v2.1.0</span></div>
+      </aside>
+      <aside className="forge-card-rail" aria-label="Card preview">
         <div className="forge-card-mold" aria-label={activeCard ? `Card preview: ${activeCard}` : "Card preview"}>
           <button
             type="button"
@@ -5426,27 +5449,6 @@ export default function Home() {
             </div>
           )}
         </div>
-        <button type="button" className={(!hasValidatedDeck && chamber === "entrance") || (hasValidatedDeck && chamber === "workbench" && siteRail === "overview") ? "active" : ""} onClick={() => {
-          if (!hasValidatedDeck) {
-            setChamber("entrance");
-            return;
-          }
-          setChamber("workbench");
-          setActiveForgeChapter(1);
-          setSiteRail("overview");
-          window.requestAnimationFrame(() => {
-            if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = true;
-            document.getElementById("coach-brief")?.scrollIntoView({ behavior: "smooth", block: "start" });
-          });
-        }}><i>⌂</i><span>Overview</span></button>
-        <button type="button" className={chamber === "workbench" && activeForgeChapter === 1 && siteRail === "decklist" ? "active" : ""} disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode("ledger"); setSiteRail("decklist"); if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = false; window.requestAnimationFrame(() => document.getElementById("deck-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>☷</i><span>Decklist</span></button>
-        <button type="button" className={chamber === "workbench" && activeForgeChapter === 2 ? "active" : ""} disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(2); setSiteRail("analysis"); }}><i>◇</i><span>Analysis</span></button>
-        <button type="button" className={chamber === "archive" ? "active" : ""} onClick={openPrivateArchive}><i className="forge-rail-cardback" aria-hidden="true">MF</i><span>Decks</span></button>
-        <button type="button" disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode("workbench"); setSiteRail("playtest"); window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>⚔</i><span>Playtest</span></button>
-        <button type="button" disabled={!hasValidatedDeck} onClick={() => navigator.clipboard.writeText(formatDeckForArenaExport(forgedDeck))}><i>⌁</i><span>Share</span></button>
-        <button type="button" disabled={!hasValidatedDeck} onClick={() => { setMasterworkIdentityDraft(masterworkIdentity); setMasterworkIdentityOpen(true); }}><i>⚙</i><span>Settings</span></button>
-        <div className="forge-rail-embers" aria-hidden="true"><i /><i /><i /></div>
-        <div className="forge-rail-version" aria-label="MetaForge version 2.1.0"><i>MF</i><span>v2.1.0</span></div>
       </aside>
 
       {chamber === "entrance" && (

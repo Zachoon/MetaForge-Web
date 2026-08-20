@@ -1,10 +1,10 @@
 /* Permanent application frame ------------------------------------------------
    This file is intentionally imported last. The frame is viewport chrome; it
    must not participate in any chamber's document flow or inherit its layout. */
-:root{--mf-frame-top:58px;--mf-frame-rail:220px}
+:root{--mf-frame-top:58px;--mf-frame-rail:104px;--mf-frame-card-rail:280px}
 .great-forge{
   min-height:100vh;
-  padding:var(--mf-frame-top) 0 0 var(--mf-frame-rail)!important;
+  padding:var(--mf-frame-top) 0 0 calc(var(--mf-frame-rail) + var(--mf-frame-card-rail))!important;
 }
 .great-forge>.forge-bar{
   position:fixed!important;
@@ -67,17 +67,32 @@
   background:linear-gradient(180deg,#0a0e0d 0%,#080c0b 64%,#0d0d0a 100%)!important;
   box-shadow:10px 0 28px #0007,inset -1px 0 #15201c!important;
 }
-/* Persistent card-preview slot — lives in the frame, not the page. One
+/* Persistent card-preview column — lives in the frame, not the page. One
    canonical place a card's art shows on hover/click anywhere on the site,
    replacing both the old floating "CARD IN CONTEXT" popup and the
-   decklist's own sticky preview panel. Carved-stone "mold" the card rests
-   in: layered gradients for mineral variation plus an SVG turbulence-noise
-   overlay for real grain, not flat color. */
+   decklist's own sticky preview panel. A dedicated column immediately to
+   the right of the nav rail (not tucked inside it) so it sits right next
+   to the content it's previewing, sized so the card itself is readable
+   without opening the full dossier. */
+.great-forge>.forge-card-rail{
+  position:fixed!important;
+  z-index:179!important;
+  inset:var(--mf-frame-top) auto 0 var(--mf-frame-rail)!important;
+  display:flex!important;
+  width:var(--mf-frame-card-rail)!important;
+  flex-direction:column!important;
+  overflow-y:auto!important;
+  padding:16px!important;
+  border-right:1px solid #35423d!important;
+  background:linear-gradient(180deg,#0a0e0d 0%,#080c0b 64%,#0d0d0a 100%)!important;
+  box-shadow:10px 0 28px #0007,inset -1px 0 #15201c!important;
+}
+/* Carved-stone "mold" the card rests in: layered gradients for mineral
+   variation plus an SVG turbulence-noise overlay for real grain, not flat
+   color. */
 .forge-card-mold{
   position:relative;
-  flex:0 0 auto;
-  margin:0 10px 12px;
-  padding:10px;
+  padding:14px;
   border:1px solid #221f1a;
   border-radius:10px;
   background:
@@ -105,9 +120,9 @@
 .forge-card-mold-socket:hover:not(:disabled),.forge-card-mold-socket:focus-visible{outline:2px solid var(--ember,#df9148);outline-offset:2px}
 .forge-card-mold-socket img{display:block;width:100%;height:100%;object-fit:contain}
 .forge-card-mold-empty{padding:10px;color:#8a8175;font-size:10px;line-height:1.4;text-align:center}
-.forge-card-mold-body{margin-top:8px;color:#d9d2c4}
-.forge-card-mold-body>strong{display:block;overflow:hidden;color:#f0e9df;font:600 13px/1.25 Newsreader,Georgia,serif;text-overflow:ellipsis;white-space:nowrap}
-.forge-card-mold-body>span{display:block;margin-top:3px;overflow:hidden;color:#9c9384;font-size:10px;text-overflow:ellipsis;white-space:nowrap}
+.forge-card-mold-body{margin-top:10px;color:#d9d2c4}
+.forge-card-mold-body>strong{display:block;overflow:hidden;color:#f0e9df;font:600 15px/1.3 Newsreader,Georgia,serif;text-overflow:ellipsis;white-space:nowrap}
+.forge-card-mold-body>span{display:block;margin-top:3px;overflow:hidden;color:#9c9384;font-size:11px;text-overflow:ellipsis;white-space:nowrap}
 .forge-card-mold-occupancy{margin:6px 0 0;color:#c9b89a;font:600 10px/1.4 ui-sans-serif,system-ui,sans-serif}
 .forge-card-mold-more{margin-top:8px}
 .forge-card-mold-more>summary{cursor:pointer;color:#df9148;font-size:10px;font-weight:800;letter-spacing:.04em}
@@ -454,9 +469,10 @@ body:has(.great-forge.chamber-archive){
   .forge-global-rail button.active{border-bottom-color:#df9148!important}
   .forge-global-rail button:last-child{margin:0!important}
   .forge-rail-embers,.forge-rail-version{display:none!important}
-  /* No room for a card-shaped preview in a 58px horizontal bottom bar — a
-     card tap still opens the full dossier modal directly on mobile. */
-  .forge-card-mold{display:none!important}
+  /* No room for a card preview column once the rail becomes a 58px
+     horizontal bottom bar — a card tap still opens the full dossier modal
+     directly on mobile. */
+  .great-forge>.forge-card-rail{display:none!important}
   /* Desktop Explore is a non-scrolling framed hero. On a phone the stacked
      copy, CTAs, compass, and visual are taller than the remaining viewport,
      so the pane itself must scroll. Keep html/body locked; do not clip the
