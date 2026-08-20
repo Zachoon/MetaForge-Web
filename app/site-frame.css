@@ -452,11 +452,11 @@ body:has(.great-forge.chamber-archive){
 .progressive-results:has(.chapter-2-active) .workbench-coach-stack,
 .progressive-results:has(.chapter-5-active) .workbench-coach-stack{display:block}
 
-/* Decklist tab: the card list is the first paint. Coach/Mentor never sit above it.
-   display must stay flex (not grid) here — this ID selector otherwise outranks
-   testing-anvil.css's .ledger-deck-view .deck-gallery flex rule and silently
-   regrids the gallery, which breaks .card-preview-stage's sticky follow-scroll. */
-.progressive-results .chapter-1-active #deck-gallery{display:flex!important;order:1}
+/* Decklist tab: the text ledger is the first paint. Its preview/list split must
+   stay flex, but this must never capture the separate visual card grid that
+   shares the scroll anchor. */
+.progressive-results .chapter-1-active.ledger-deck-view #deck-gallery{display:flex!important;order:1}
+.progressive-results .chapter-1-active.gallery-deck-view #deck-gallery{display:grid!important;order:1}
 
 @media(max-width:760px){
   :root{--mf-frame-top:58px;--mf-frame-rail:58px}

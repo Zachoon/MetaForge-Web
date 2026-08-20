@@ -5,6 +5,7 @@ import test from "node:test";
 const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
 const researchPage = await readFile(new URL("../app/research/page.tsx", import.meta.url), "utf8");
 const css = await readFile(new URL("../app/testing-anvil.css", import.meta.url), "utf8");
+const siteFrameCss = await readFile(new URL("../app/site-frame.css", import.meta.url), "utf8");
 const motifCss = await readFile(new URL("../app/masterwork-motifs.css", import.meta.url), "utf8");
 const polishCss = await readFile(new URL("../app/forge-polish.css", import.meta.url), "utf8");
 const workbenchSrc = await readFile(new URL("../app/living-workbench.tsx", import.meta.url), "utf8");
@@ -244,6 +245,8 @@ test("keeps visual deck browsing separate from the playtest workbench", () => {
   assert.match(page, />Text list<\/button>/);
   assert.match(page, /deckViewMode === "gallery"/);
   assert.match(page, /className="visual-deck-gallery"/);
+  assert.doesNotMatch(siteFrameCss, /chapter-1-active #deck-gallery\{display:flex!important/);
+  assert.match(siteFrameCss, /chapter-1-active\.gallery-deck-view #deck-gallery\{display:grid!important/);
   assert.match(css, /\.workbench-deck-view \.deck-gallery\{[^}]*max-height/);
   assert.match(css, /\.ledger-deck-view \.deck-gallery\{max-height:none/);
 });
