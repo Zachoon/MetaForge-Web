@@ -17,10 +17,13 @@ test("server-renders the MetaForge product experience", async () => {
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   const html = await response.text();
-  assert.match(html, /<title>MetaForge — Your Collaborative MTG Deck Coach<\/title>/i);
+  assert.match(html, /<title>MTG Commander Deck Builder &amp; Analyzer \| MetaForge<\/title>/i);
   assert.match(html, /MAGIC: THE GATHERING · DECK COACH/);
-  assert.match(html, /Understand your deck/);
-  assert.match(html, /MetaForge explains how your\s*\n?\s*deck works, shows what to improve, and helps you make\s*\n?\s*confident changes\./);
+  assert.match(html, /Understand your Magic deck/);
+  assert.match(html, /Build a new MTG deck or analyze a decklist/i);
+  assert.match(html, /href="\/commanders"/i);
+  assert.match(html, /Commander deck guides/i);
+  assert.match(html, /MTG deckbuilding guides/i);
   assert.match(html, /class="forge-brand-logo"[^>]+src="\/assets\/brand\/metaforge-mf-anvil\.webp"/i);
   const forgeBrandMatch = html.match(/<button class="forge-brand"[\s\S]*?<\/button>/i);
   assert.ok(forgeBrandMatch, "forge-brand button should render");
@@ -89,6 +92,16 @@ test("publishes unique Academy metadata and valid editorial schema", async () =>
   assert.match(academyHtml, /<link rel="canonical" href="https:\/\/metaforge\.gg\/academy"/i);
   assert.match(academyHtml, /"@type":"CollectionPage"/i);
   assert.match(academyHtml, /"@type":"BreadcrumbList"/i);
+
+  const commanders = await render("https://metaforge.gg/commanders");
+  const commandersHtml = await commanders.text();
+  assert.match(commandersHtml, /"@type":"CollectionPage"/i);
+  assert.match(commandersHtml, /"@type":"BreadcrumbList"/i);
+
+  const commander = await render("https://metaforge.gg/commanders/korvold-fae-cursed-king");
+  const commanderHtml = await commander.text();
+  assert.match(commanderHtml, /"@type":"Article"/i);
+  assert.match(commanderHtml, /"@type":"BreadcrumbList"/i);
 
   const guide = await render("https://metaforge.gg/academy/why-cant-i-cast-my-spells");
   const guideHtml = await guide.text();

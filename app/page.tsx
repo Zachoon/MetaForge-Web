@@ -5352,7 +5352,7 @@ export default function Home() {
             <button type="button" onClick={() => setMotionMode((current) => current === "full" ? "quiet" : "full")}>{motionMode === "full" ? "Reduce motion" : "Use full motion"}</button>
             <IdentityBadge depth={playerIdentity.depth} totalMilestones={playerIdentity.allMilestones.length} dominantMotif={playerIdentity.dominantMotif} accent={playerIdentity.accent} celebrating={Boolean(identityCelebration)} celebrationLabel={identityCelebration?.label ?? null} />
             <button type="button" onClick={() => setChamber("entrance")}>Start a new deck</button>
-            <nav aria-label="Learn, legal, and support"><a href="/academy">Academy</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="mailto:support@metaforge.gg">Support</a></nav>
+            <nav aria-label="Learn, legal, and support"><a href="/commanders">Commander Guides</a><a href="/academy">Deckbuilding Academy</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="mailto:support@metaforge.gg">Support</a></nav>
           </div>
         </details>
       </header>
@@ -5458,14 +5458,15 @@ export default function Home() {
               <i /> MAGIC: THE GATHERING · DECK COACH
             </span>
             <h1>
-              Understand your deck.
+              Understand your Magic deck.
               <br />
               <em>Build with confidence.</em>
             </h1>
             <p>
-              Choose your format and game plan. MetaForge explains how your
-              deck works, shows what to improve, and helps you make
-              confident changes.
+              Build a new MTG deck or analyze a decklist you already play.
+              MetaForge explains how your Commander, Standard, Modern,
+              Pioneer, Brawl, or other Magic deck works, shows what to
+              improve, and helps you make confident changes.
             </p>
             <div className="entrance-actions">
               <ForgeCommissionCard
@@ -5503,6 +5504,10 @@ export default function Home() {
               synced={playerCompassSynced}
               onChange={(next) => { void persistPlayerCompass(next); }}
             />
+            <nav className="entrance-discovery" aria-label="Magic deckbuilding resources">
+              <a href="/commanders"><strong>Commander deck guides</strong><span>Explore popular commanders and the strategies their rules text supports.</span></a>
+              <a href="/academy"><strong>MTG deckbuilding guides</strong><span>Learn to diagnose mana, card flow, interaction, speed, and win conditions.</span></a>
+            </nav>
           </div>
           <div className="entrance-visual" aria-label="The Great Forge, ever-burning">
             <div className="entrance-living-forge" aria-hidden="true">

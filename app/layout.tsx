@@ -4,13 +4,18 @@ import PrivacyControls from "./privacy-controls";
 
 export function generateMetadata(): Metadata {
   const metadataBase = new URL("https://metaforge.gg");
-  const title = "MetaForge — Your Collaborative MTG Deck Coach";
-  const description = "Understand your Commander or MTG deck, find pressure points, and test confident improvements with an explainable, collaborative deck coach.";
+  const title = "MTG Commander Deck Builder & Analyzer | MetaForge";
+  const description = "Build, analyze, and improve Magic: The Gathering decks with an explainable MTG deck coach for Commander, Standard, Modern, Pioneer, Brawl, and more.";
 
   return {
     metadataBase,
     title,
     description,
+    keywords: ["MTG deck builder", "Commander deck builder", "Magic deck builder", "MTG deck analyzer", "Commander deck analyzer", "Magic: The Gathering deckbuilding"],
+    applicationName: "MetaForge",
+    authors: [{ name: "MetaForge", url: "https://metaforge.gg" }],
+    creator: "MetaForge",
+    publisher: "MetaForge",
     alternates: { canonical: "/" },
     robots: { index: true, follow: true },
     category: "games",

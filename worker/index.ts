@@ -32,6 +32,13 @@ const ACADEMY_GUIDES: Record<string, { headline: string; description: string; da
   "/academy/why-do-i-lose-after-getting-ahead": { headline: "Why Do I Lose After Getting Ahead?", description: "Distinguish getting ahead, protecting a lead, and closing a Commander game.", datePublished: "2026-08-07" },
   "/academy/what-is-my-deck-actually-trying-to-do": { headline: "What Is My Deck Actually Trying to Do?", description: "Tell the difference between a theme, synergy, a repeatable plan, and its supporting cards.", datePublished: "2026-08-07" },
 };
+const COMMANDER_GUIDES: Record<string, string> = {
+  "/commanders/korvold-fae-cursed-king": "Korvold, Fae-Cursed King",
+  "/commanders/edgar-markov": "Edgar Markov",
+  "/commanders/yuriko-the-tigers-shadow": "Yuriko, the Tiger's Shadow",
+  "/commanders/atraxa-grand-unifier": "Atraxa, Grand Unifier",
+  "/commanders/the-ur-dragon": "The Ur-Dragon",
+};
 
 function robotsResponse(url: URL): Response {
   const body = PUBLIC_HOSTS.has(url.hostname)
@@ -41,7 +48,7 @@ function robotsResponse(url: URL): Response {
 }
 
 const SITEMAP_URLS: { loc: string; lastmod: string; changefreq: string; priority: string }[] = [
-  { loc: "https://metaforge.gg/", lastmod: "2026-08-11", changefreq: "weekly", priority: "1.0" },
+  { loc: "https://metaforge.gg/", lastmod: "2026-08-20", changefreq: "weekly", priority: "1.0" },
   { loc: "https://metaforge.gg/terms", lastmod: "2026-08-02", changefreq: "monthly", priority: "0.3" },
   { loc: "https://metaforge.gg/privacy", lastmod: "2026-08-02", changefreq: "monthly", priority: "0.3" },
   { loc: "https://metaforge.gg/academy", lastmod: "2026-08-07", changefreq: "monthly", priority: "0.8" },
@@ -72,12 +79,13 @@ function seoMarkup(url: URL, html: string): string {
   if (url.pathname === "/") schemas.push({
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: "MetaForge",
+    name: "MetaForge MTG Deck Builder and Analyzer",
     url: "https://metaforge.gg/",
     description: "A collaborative Magic: The Gathering and Commander deck coach that explains pressure points and helps players test confident improvements.",
     applicationCategory: "GameApplication",
     operatingSystem: "Any modern web browser",
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    featureList: ["Commander deck building", "MTG deck analysis", "Decklist recommendations", "Magic deck playtesting"],
   });
   if (url.pathname === "/academy") schemas.push({
     "@context": "https://schema.org", "@type": "CollectionPage",
@@ -85,6 +93,7 @@ function seoMarkup(url: URL, html: string): string {
     description: "Plain-language guides to real Commander deckbuilding problems.",
   });
   const guide = ACADEMY_GUIDES[url.pathname];
+  const commander = COMMANDER_GUIDES[url.pathname];
   if (guide) schemas.push({
     "@context": "https://schema.org", "@type": "Article",
     headline: guide.headline, description: guide.description,
@@ -99,6 +108,28 @@ function seoMarkup(url: URL, html: string): string {
       { "@type": "ListItem", position: 2, name: "Academy", item: "https://metaforge.gg/academy" },
     ];
     if (guide) items.push({ "@type": "ListItem", position: 3, name: guide.headline, item: canonicalUrl });
+    schemas.push({ "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: items });
+  }
+  if (url.pathname === "/commanders") schemas.push({
+    "@context": "https://schema.org", "@type": "CollectionPage",
+    name: "MetaForge Commander Deck Guides", url: canonicalUrl,
+    description: "Commander deck guides and an explainable Magic: The Gathering deck builder and analyzer.",
+  });
+  if (commander) schemas.push({
+    "@context": "https://schema.org", "@type": "Article",
+    headline: `${commander} Commander Deck Guide`,
+    description: `A Magic: The Gathering Commander deckbuilding guide for ${commander}.`,
+    datePublished: "2026-08-19", dateModified: "2026-08-20", mainEntityOfPage: canonicalUrl,
+    author: { "@type": "Organization", name: "MetaForge" },
+    publisher: { "@type": "Organization", name: "MetaForge", url: "https://metaforge.gg/" },
+    about: { "@type": "Thing", name: "Magic: The Gathering Commander" },
+  });
+  if (url.pathname === "/commanders" || commander) {
+    const items = [
+      { "@type": "ListItem", position: 1, name: "MetaForge", item: "https://metaforge.gg/" },
+      { "@type": "ListItem", position: 2, name: "Commander Deck Guides", item: "https://metaforge.gg/commanders" },
+    ];
+    if (commander) items.push({ "@type": "ListItem", position: 3, name: commander, item: canonicalUrl });
     schemas.push({ "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: items });
   }
   const structuredData = schemas.map((schema) => `<script type="application/ld+json">${JSON.stringify(schema).replace(/</g, "\\u003c")}</script>`).join("");
