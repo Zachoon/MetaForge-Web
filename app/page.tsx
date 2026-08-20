@@ -4168,9 +4168,9 @@ export default function Home() {
     setMilestoneMotion(null);
     setActiveForgeChapter(1);
     setDeckViewMode("ledger");
-    setSiteRail("decklist");
+    setSiteRail("overview");
     setSwapStationReviewed(false);
-    if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = false;
+    if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = true;
     window.scrollTo(0, 0);
     window.requestAnimationFrame(() => window.scrollTo(0, 0));
   }

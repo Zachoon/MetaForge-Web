@@ -70,15 +70,23 @@ test("Explore/home is a no-scroll hero; saved Masterworks live on Decks", async 
   assert.match(frame, /\.chamber-archive>\.masterwork-archive\{[\s\S]*?overflow:auto!important/);
 });
 
-test("a completed Forge lands on Decklist with the card gallery first in the pane", async () => {
+test("a completed Forge lands on Overview with the coach brief open", async () => {
   const page = await read("app/page.tsx");
   const frame = await read("app/site-frame.css");
   const ceremony = await read("app/components/forge/forge-ceremony.tsx");
   assert.match(page, /function landOnCompletedDecklist\(/);
-  assert.match(page, /setSiteRail\("decklist"\)/);
+  const landStart = page.indexOf("function landOnCompletedDecklist(");
+  const landEnd = page.indexOf("\n  }\n", landStart);
+  const landBody = page.slice(landStart, landEnd);
+  assert.match(landBody, /setSiteRail\("overview"\)/);
+  assert.match(landBody, /coachBriefDetailsRef\.current\.open = true/);
   assert.match(page, /enterMasterwork[\s\S]*?landOnCompletedDecklist\(\)/);
   assert.match(page, /openSavedMasterwork[\s\S]*?landOnCompletedDecklist\(\)/);
   assert.match(page, /hasValidatedDeck && siteRail !== "decklist"/);
+  // The Decklist nav tab remains the one-click escape hatch to the bare
+  // card grid — it must still set siteRail back to "decklist" and
+  // explicitly collapse the coach brief on click, unchanged by the above.
+  assert.match(page, /setSiteRail\("decklist"\); if \(coachBriefDetailsRef\.current\) coachBriefDetailsRef\.current\.open = false;/);
   const galleryAt = page.indexOf('id="deck-gallery"');
   const mentorAt = page.indexOf("<RevisionOpinionPanel");
   assert.ok(galleryAt > 0 && mentorAt > galleryAt, "Mentor must mount after #deck-gallery, never above the Decklist");
