@@ -6716,6 +6716,12 @@ export default function Home() {
                       type="button"
                       className="next-step-cta"
                       onClick={() => {
+                        setMilestoneMotion({
+                          kind: "masterwork-selected",
+                          eyebrow: "ADDED TO YOUR ARSENAL",
+                          label: masterworkIdentity.title || chosenWork.name.replace(/, Forged$/, ""),
+                          glyph: "ᛟ",
+                        });
                         setChamber("workbench");
                         setActiveForgeChapter(1);
                         setDeckViewMode("workbench");
