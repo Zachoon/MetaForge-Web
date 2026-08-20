@@ -12,9 +12,19 @@ export function commanderFormatTerms(format: string): string {
 }
 
 export function commanderSearchQuery(format: string, name: string, exact = false): string {
-  const safeName = String(name || "").replace(/["\\]/g, " ").trim();
+  const safeName = normalizeCommanderSearchName(name).replace(/["\\]/g, " ").trim();
   const nameClause = exact ? `!"${safeName}"` : `name:"${safeName}"`;
   return `${commanderFormatTerms(format)} is:commander ${nameClause}`;
+}
+
+export function normalizeCommanderSearchName(name: string): string {
+  return String(name || "")
+    .normalize("NFKC")
+    .replace(/[\u2018\u2019\u201B\u2032]/g, "'")
+    .replace(/[\u201C\u201D\u2033]/g, '"')
+    .replace(/[\u2010-\u2015]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 const json = (body: unknown, status = 200) => Response.json(body, {
@@ -86,14 +96,16 @@ export async function handleCommanderSearch(request: Request): Promise<Response>
   if (request.method !== "GET") return json({ error: "Method not allowed" }, 405);
   const url = new URL(request.url);
   const format = url.searchParams.get("format") || "Commander";
-  const query = (url.searchParams.get("q") || "").trim();
+  const query = normalizeCommanderSearchName(url.searchParams.get("q") || "");
   const exact = url.searchParams.get("exact") === "true";
   if (!FORMATS.has(format) || query.length < 2 || query.length > 120) {
     return json({ error: "Provide a supported Commander format and card name" }, 400);
   }
   const scryfallUrl = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(commanderSearchQuery(format, query, exact))}&order=name&unique=cards`;
   const cache = caches.default;
-  const cacheKey = new Request(request.url, { method: "GET" });
+  const canonicalCacheUrl = new URL(request.url);
+  canonicalCacheUrl.searchParams.set("q", query);
+  const cacheKey = new Request(canonicalCacheUrl.toString(), { method: "GET" });
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
   const response = await fetchScryfall(scryfallUrl);

@@ -98,7 +98,9 @@ function seededHand(cards: TabletopCard[], salt = 0) {
     .map((entry) => entry.card);
 }
 
-function CardTile({ card, active, related, ghost, emphasized, showQuantity = true, onSelect }: { card: TabletopCard; active: boolean; related: boolean; ghost: boolean; emphasized: boolean; showQuantity?: boolean; onSelect: () => void }) {
+function CardTile({ card, active, related, ghost, emphasized, showQuantity = true, eager = false, onSelect }: { card: TabletopCard; active: boolean; related: boolean; ghost: boolean; emphasized: boolean; showQuantity?: boolean; eager?: boolean; onSelect: () => void }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  useEffect(() => setImageFailed(false), [card.image]);
   return (
     <button
       type="button"
@@ -107,7 +109,9 @@ function CardTile({ card, active, related, ghost, emphasized, showQuantity = tru
       aria-pressed={active}
       title={`${card.name} · ${card.role}`}
     >
-      {card.image ? <img src={card.image} alt="" loading="lazy" /> : <span className="tabletop-card-fallback">{card.name.slice(0, 1)}</span>}
+      {card.image && !imageFailed
+        ? <img src={card.image} alt="" loading={eager ? "eager" : "lazy"} onError={() => setImageFailed(true)} />
+        : <span className="tabletop-card-fallback">{card.name.slice(0, 1)}</span>}
       {showQuantity && card.quantity > 1 ? <i>×{card.quantity}</i> : null}
       <strong>{card.name}</strong>
     </button>
@@ -215,7 +219,7 @@ export function Tabletop({
     { label: "CMC UNKNOWN", cards: cards.filter((card) => !knownCmc(card) && card.role !== "Mana source") },
   ].filter((turn) => turn.label !== "CMC UNKNOWN" || turn.cards.length > 0);
 
-  const tile = (card: TabletopCard, showQuantity = true) => (
+  const tile = (card: TabletopCard, showQuantity = true, eager = false) => (
     <CardTile
       key={card.name}
       card={card}
@@ -224,6 +228,7 @@ export function Tabletop({
       ghost={showRevision && previous.size > 0 && !previous.has(card.name.toLowerCase())}
       emphasized={lens !== "matchup" || MATCHUP_ROLES[matchup].includes(card.role)}
       showQuantity={showQuantity}
+      eager={eager}
       onSelect={() => lens === "deck" && onReviewSelectCard ? onReviewSelectCard(card.name) : onSelectCard(card.name)}
     />
   );
@@ -328,7 +333,7 @@ export function Tabletop({
           </header>
           <div>
             {hand.map((card, index) => (
-              <div key={`${card.name}-${index}`}>{tile(card, false)}</div>
+              <div key={`${card.name}-${index}`}>{tile(card, false, true)}</div>
             ))}
           </div>
           <footer>

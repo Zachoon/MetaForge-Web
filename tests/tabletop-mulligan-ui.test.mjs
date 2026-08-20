@@ -58,5 +58,9 @@ test("mobile decisions remain full-size tap targets", async () => {
   const css = await read("app/tabletop.css");
   assert.match(css, /\.mulligan-trainer button\{[^}]*min-height:48px/);
   assert.match(css, /grid-template-columns:repeat\(7,minmax\(112px,1fr\)\)/);
-  assert.match(css, /flex-basis:148px/);
+  assert.match(css, /\.tabletop-hand>div\{display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(css, /flex-basis:auto!important/);
+  const source = await read("app/tabletop.tsx");
+  assert.match(source, /loading=\{eager \? "eager" : "lazy"\}/);
+  assert.match(source, /onError=\{\(\) => setImageFailed\(true\)\}/);
 });

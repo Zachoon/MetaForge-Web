@@ -56,4 +56,7 @@
   .tabletop-deck-review .tabletop-zone>div{display:flex;gap:12px;overflow-x:auto;padding:4px 2px 14px;scroll-snap-type:x proximity}
   .tabletop-deck-review .tabletop-zone>div>.tabletop-card{flex:0 0 132px;scroll-snap-align:start}
   .tabletop-hand-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}
+  .tabletop-hand>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:22px 0;padding:0;overflow:visible}
+  .tabletop-hand>div>div{min-width:0;flex-basis:auto!important;transform:none!important}
+  .tabletop-hand .tabletop-card{width:100%}
 }
