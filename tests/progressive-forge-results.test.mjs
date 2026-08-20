@@ -238,10 +238,12 @@ test("turns deck stress experiments into concrete player insights", () => {
   assert.match(page, /scenarioPassRate/);
 });
 
-test("offers a contained Workbench and an unrestricted full ledger", () => {
-  assert.match(page, /useState<"workbench" \| "ledger">\("workbench"\)/);
+test("keeps visual deck browsing separate from the playtest workbench", () => {
+  assert.match(page, /useState<"workbench" \| "gallery" \| "ledger">\("ledger"\)/);
   assert.match(page, />Visual deck<\/button>/);
   assert.match(page, />Text list<\/button>/);
+  assert.match(page, /deckViewMode === "gallery"/);
+  assert.match(page, /className="visual-deck-gallery"/);
   assert.match(css, /\.workbench-deck-view \.deck-gallery\{[^}]*max-height/);
   assert.match(css, /\.ledger-deck-view \.deck-gallery\{max-height:none/);
 });

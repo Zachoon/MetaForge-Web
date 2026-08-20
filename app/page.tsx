@@ -1859,7 +1859,7 @@ export default function Home() {
   // rail afterward must not force the player back through it again.
   const [swapStationReviewed, setSwapStationReviewed] = useState(false);
   const coachBriefDetailsRef = useRef<HTMLDetailsElement | null>(null);
-  const [deckViewMode, setDeckViewMode] = useState<"workbench" | "ledger">("ledger");
+  const [deckViewMode, setDeckViewMode] = useState<"workbench" | "gallery" | "ledger">("ledger");
   const [masterworkIdentityOpen, setMasterworkIdentityOpen] = useState(false);
   const [masterworkIdentity, setMasterworkIdentity] = useState({
     title: "",
@@ -6817,7 +6817,7 @@ export default function Home() {
                     )}
                     <details className="deck-view-options">
                       <summary>View options</summary>
-                      <button type="button" className={deckViewMode === "workbench" ? "active" : ""} onClick={() => setDeckViewMode("workbench")}>Visual deck</button>
+                      <button type="button" className={deckViewMode === "gallery" ? "active" : ""} onClick={() => setDeckViewMode("gallery")}>Visual deck</button>
                       <button type="button" className={deckViewMode === "ledger" ? "active" : ""} onClick={() => setDeckViewMode("ledger")}>Text list</button>
                     </details>
                     {guestMode && guestClaimToken && <a onClick={() => trackLaunchEvent("save_continue_clicked", { format })} className="save-masterwork-link" href={`https://app.metaforge.gg/?claim=${encodeURIComponent(guestClaimToken)}`}>Save deck</a>}
@@ -7332,6 +7332,57 @@ export default function Home() {
                     occupancyEngines={coachOccupancyLabels}
                   />
                 )}
+                {deckViewMode === "gallery" && (
+                  <div className="visual-deck-gallery" id="deck-gallery" aria-label="Card gallery">
+                    {[
+                      "Commander",
+                      "Complete deck",
+                      "Details pending",
+                      "Creatures",
+                      "Planeswalkers",
+                      "Instants",
+                      "Sorceries",
+                      "Artifacts",
+                      "Enchantments",
+                      "Battles",
+                      "Lands",
+                      "Other",
+                    ]
+                      .filter((group) => groupedDeck[group]?.length)
+                      .map((group) => (
+                        <section className="visual-deck-group" key={group}>
+                          <header>
+                            <b>{group}</b>
+                            <span>{groupedDeck[group].reduce((sum, row) => sum + row.quantity, 0)}</span>
+                          </header>
+                          <div className="visual-deck-cards">
+                            {groupedDeck[group].map((row) => {
+                              const rowFact = cardFacts[cardFactKey(row.name)];
+                              const image = printingOverrides[cardFactKey(row.name)]?.image
+                                || rowFact?.image_uris?.normal
+                                || rowFact?.card_faces?.[0]?.image_uris?.normal
+                                || cardImage(row.name);
+                              return (
+                                <button
+                                  type="button"
+                                  className="visual-deck-card"
+                                  key={row.name}
+                                  onClick={() => setInspectedCard(row.name)}
+                                  aria-label={`Preview ${row.name}, ${row.quantity} ${row.quantity === 1 ? "copy" : "copies"}`}
+                                >
+                                  <span className="visual-deck-card-art">
+                                    <img src={image} alt="" loading="lazy" decoding="async" />
+                                    {row.quantity > 1 && <b>{row.quantity}×</b>}
+                                  </span>
+                                  <strong>{row.name}</strong>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </section>
+                      ))}
+                  </div>
+                )}
                 {deckViewMode === "ledger" && (
                 <div className="deck-gallery" id="deck-gallery">
                   <div className="type-columns">
@@ -7672,6 +7723,26 @@ export default function Home() {
                     </button>
                     <div className="card-inspector-art">
                       {inspectedImage && <img src={inspectedImage} alt={`${inspectedCard} card`} />}
+                      {deckRows.length > 1 && (
+                        <nav className="card-inspector-navigation" aria-label="Browse deck cards">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const index = deckRows.findIndex((row) => row.name === inspectedCard);
+                              setInspectedCard(deckRows[(index - 1 + deckRows.length) % deckRows.length].name);
+                            }}
+                            aria-label="Preview previous card"
+                          >← Previous</button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const index = deckRows.findIndex((row) => row.name === inspectedCard);
+                              setInspectedCard(deckRows[(index + 1) % deckRows.length].name);
+                            }}
+                            aria-label="Preview next card"
+                          >Next →</button>
+                        </nav>
+                      )}
                       {inspectedPrinting && (
                         <small>
                           SELECTED PRINTING · {inspectedPrinting.setName} ({inspectedPrinting.setCode.toUpperCase()}) #{inspectedPrinting.collectorNumber}
