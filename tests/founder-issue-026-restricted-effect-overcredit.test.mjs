@@ -1413,3 +1413,60 @@ test("Founder #036: a real self-damage-synergy card wins a reserved anchor slot 
   assert.ok(!controlRow || controlRow.selfDamageSynergyHit === 0, "no combo credit without the commander's own dealt-damage reward");
 });
 
+// =============================================================================
+// Founder #038: a multi-tribe payoff commander's own tribe list was never
+// extracted at all
+// =============================================================================
+// Found comparing the engine's real Blech, Loafing Pest build against a
+// real player list for the same commander: Blech's actual printed ability
+// ("Whenever you gain life, put a +1/+1 counter on each Pest, Bat, Insect,
+// Snake, and Spider you control.") lists five tribes in one comma/"and"-
+// separated clause — a shape none of commanderTribesFromOracle's four
+// existing patterns match (they only handle a single tribe: "another Bear
+// you control", "a Dragon you control", etc.). The result wasn't "misses
+// some tribes" — it was zero tribes, silently disabling every
+// tribeAnchorLimit reservation in chooseSpells for the commander's entire
+// actual payoff. Verified on a real, full-pool construction: with tribes
+// returning empty, the engine's Blech build had only 3 real on-type
+// creatures among 36 creatures total (64 nonland cards) — after the fix,
+// the exact same real card pool produced 24 on-type creatures among 46.
+// =============================================================================
+
+const blechOracle = "Whenever you gain life, put a +1/+1 counter on each Pest, Bat, Insect, Snake, and Spider you control.";
+
+test("Founder #038: commanderTribesFromOracle extracts every tribe from a multi-type list, not just single-tribe phrasings", () => {
+  assert.deepEqual(commanderTribesFromOracle([{ oracleText: blechOracle }]), ["pest", "bat", "insect", "snake", "spider"]);
+  // Single-tribe phrasings (Ayula, Queen Among Bears' real text) are unaffected.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Whenever another Bear you control enters, choose one —\n• Put two +1/+1 counters on target Bear.\n• Target Bear you control fights target creature you don't control." }]),
+    ["bear"],
+  );
+  // A generic "each creature you control" must still yield nothing —
+  // "creature" is already a stop word, and the new pattern reuses the
+  // exact same final filter every other pattern does.
+  assert.deepEqual(commanderTribesFromOracle([{ oracleText: "Whenever a creature you control dies, draw a card." }]), []);
+});
+
+test("Founder #038: a multi-tribe commander reserves real on-type anchors instead of generic goodstuff", () => {
+  const blech = { name: "Test Blech", colors: ["B", "G"], oracleText: blechOracle };
+  const filler = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Human Warrior", manaCost: "{2}{G}", colorIdentity: ["G"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Exile target nonland permanent.", typeLine: "Instant", manaCost: "{1}{B}", colorIdentity: ["B"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof and indestructible until end of turn.", typeLine: "Instant", manaCost: "{1}{G}", colorIdentity: ["G"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+  ];
+  const pests = Array.from({ length: 10 }, (_, i) => ({
+    name: `Test Pest ${i}`, oracleText: "You gain 1 life.", typeLine: "Creature — Pest", manaCost: "{1}{B}", cmc: 2, colorIdentity: ["B"], popularityRank: 200,
+  }));
+  const gates = Array.from({ length: 20 }, (_, i) => ({
+    name: `Swamp Gate ${i}`, oracleText: "This land enters the battlefield tapped. {T}: Add {B} or {G}.", typeLine: "Land",
+    manaCost: "", colorIdentity: ["B", "G"], producedMana: ["B", "G"], popularityRank: 5, priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: blech, cards: [...filler, ...pests, ...gates],
+  });
+  const pestsSelected = report.selected.rows.filter((row) => row.name.startsWith("Test Pest")).length;
+  assert.ok(pestsSelected >= 8, `expected most of the 10 real on-type Pests to be reserved as anchors, got ${pestsSelected}`);
+});
+

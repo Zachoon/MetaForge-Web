@@ -482,9 +482,25 @@ const ARTIFACT_OR_TOKEN_TYPES = new Set([
   "planeswalker", "battle", "saga", "class", "case", "room", "background", "role",
 ]);
 
+// Founder #038: none of the single-tribe patterns above ever match a
+// multi-tribe payoff commander's own list — Blech, Loafing Pest ("put a
+// +1/+1 counter on each Pest, Bat, Insect, Snake, and Spider you control")
+// returned zero tribes, silently disabling every tribeAnchorLimit
+// reservation in chooseSpells for the commander's entire actual payoff.
+// Verified on a real, full-pool construction: with tribes returning empty,
+// the engine's Blech build had only 3 real on-type creatures among its 64
+// nonland cards, out of 36 creatures total. Captures a comma/"and"-
+// separated list of Title-Case type words immediately before "each/all ...
+// you control" and splits it into individual tribe names, which then run
+// through the exact same TRIBAL_STOP_WORDS/GENERIC_SCOPE_WORDS filter
+// below as every other pattern — "each creature you control" still
+// correctly yields nothing, since "creature" is already a stop word.
+const MULTI_TRIBE_LIST = /\b(?:each|all) ((?:[A-Za-z][A-Za-z'-]+(?:,\s*)?)+(?:and\s+[A-Za-z][A-Za-z'-]+)?) you control\b/gi;
+
 /**
  * Tribes implied by commander rules text ("another Bear you control",
- * "a Dragon you control", "Dragon spells you cast").
+ * "a Dragon you control", "Dragon spells you cast", "each Pest, Bat,
+ * Insect, Snake, and Spider you control").
  * Used for scoring/semantics/package membership — NOT for Blueprint identity
  * floors, which remain note-explicit ("bear tribal").
  * Artifact/token types (Clue, Treasure) are not creature tribes.
@@ -496,6 +512,8 @@ export function commanderTribesFromOracle(commanders = []) {
     ...[...oracle.matchAll(/\b([A-Za-z][A-Za-z'-]+) creatures you control\b/g)].map((match) => normalized(match[1])),
     ...[...oracle.matchAll(/\b(?:a|an) ([A-Za-z][A-Za-z'-]+)s? you control\b/g)].map((match) => normalized(match[1])),
     ...[...oracle.matchAll(/\b([A-Za-z][A-Za-z'-]+) spells? you cast\b/g)].map((match) => normalized(match[1])),
+    ...[...oracle.matchAll(MULTI_TRIBE_LIST)].flatMap((match) =>
+      match[1].split(/,\s*(?:and\s+)?|\s+and\s+/i).filter(Boolean).map((word) => normalized(word))),
   ]).filter((term) => term && !BLUEPRINT_FILLER_WORDS.has(term) && !TRIBAL_STOP_WORDS.has(term) && !ARTIFACT_OR_TOKEN_TYPES.has(term));
 }
 
