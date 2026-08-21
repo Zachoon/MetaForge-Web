@@ -832,7 +832,10 @@ const SIGNALS = [
   ["lands", /land enters|landfall|play an additional land|land card/i],
   ["life", /gain(?:s)? [^.]* life|whenever you gain life|life total/i],
   ["etb", /enters the battlefield|when(?:ever)? [^.]* enters/i],
-  ["combat", /whenever [^.]* attacks|combat damage|attacking creature/i],
+  // \bcombat damage\b — see the identical fix and full reasoning on
+  // PAYOFFS.combat below (Smaug the Impenetrable's "noncombat damage"
+  // contains "combat damage" as a bare substring).
+  ["combat", /whenever [^.]* attacks|\bcombat damage\b|attacking creature/i],
   // Flying/menace/trample/unblockable are printed as literal words in a
   // card's own oracle text whenever it has or grants them — no separate
   // keywords field needed, textOf() already sees them.
@@ -880,7 +883,22 @@ const PRODUCERS = {
   lands: /search your library for [^.]*\b(?:lands?|plains|island|swamp|mountain|forest)\b[^.]*\bbattlefield\b|play an additional land/i,
   life: /gain(?:s)? [^.]* life|lifelink/i,
   etb: /create(?:s)? [^.]* token|return [^.]* to the battlefield/i,
-  combat: /haste|create(?:s)? [^.]* creature token/i,
+  // A creature that merely HAS haste (Smaug the Impenetrable: "Flying,
+  // indestructible, haste", with zero attack-payoff text of its own) is
+  // not an "attacks matter" enabler for the whole deck — it just isn't
+  // summoning-sick. A card that GRANTS haste (Fires of Yavimaya:
+  // "Creatures you control have haste.") genuinely is: it lets the whole
+  // team start attacking a turn early, a real team-wide combat-plan
+  // signal. Requires "have haste"/"gains haste" so the effect actually
+  // applies beyond the card itself — verified against real granted-haste
+  // cards (Fires of Yavimaya, Concordant Crossroads, Reckless Charge, all
+  // still match) and real self-only-haste cards (Smaug, Ball Lightning,
+  // now correctly excluded). Found auditing why a real Smaug build had
+  // 58 of its 63 nonland cards falsely reading as "commander-connected"
+  // via this exact signal, worth +14 raw score each — Smaug's own text
+  // has no combat payoff at all; its real ability is noncombat-damage-
+  // into-Treasures, unrelated to attacking.
+  combat: /have haste|gains? haste|create(?:s)? [^.]* creature token/i,
   // Having or granting the keyword itself is what "produces" evasion — a
   // vanilla flier and an aura that says "target creature gains flying"
   // are the same producer shape from a synergy-detection standpoint.
@@ -927,7 +945,13 @@ const PAYOFFS = {
   // Also match "Whenever NAME or another TRIBE enters" (Ayula-class), which
   // does not contain the contiguous phrase "whenever another".
   etb: /whenever another [^.]* enters|whenever (?:a|an|one or more|nontoken) [^.]* enters|whenever [^.]+ or another [^.]* enters/i,
-  combat: /whenever [^.]* attacks|combat damage|attacking creatures/i,
+  // \bcombat damage\b, not a bare substring match: "noncombat damage"
+  // (Smaug the Impenetrable's actual trigger condition, explicitly the
+  // opposite of caring about combat damage) contains "combat damage" as a
+  // literal substring with no boundary check, so the bare version read
+  // Smaug as REWARDING combat damage — the one thing its own ability is
+  // specifically NOT about.
+  combat: /whenever [^.]* attacks|\bcombat damage\b|attacking creatures/i,
   // Deliberately narrower than PRODUCERS.evasion — this is cards that
   // specifically reward flying/menace/unblocked creatures (an anthem
   // that only boosts fliers), not a token that happens to have flying.

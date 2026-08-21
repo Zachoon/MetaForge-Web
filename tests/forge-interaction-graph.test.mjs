@@ -408,6 +408,28 @@ test("Treasure production does not masquerade as sacrifice/aristocrats fodder pr
   assert.ok(treasureEdge?.signals.includes("treasure"), "the real Treasure connection must still form");
 });
 
+test("merely having haste does not masquerade as producing a combat/attack-triggers signal", () => {
+  // Same false-connection class as the sacrifice signal above, this time
+  // found auditing a real Smaug build: PRODUCERS.combat matched a bare
+  // /haste/i anywhere in a card's text, so Smaug's own "Flying,
+  // indestructible, haste" (zero attack-payoff text of its own — its real
+  // ability is noncombat-damage-into-Treasures) falsely connected to
+  // every attack-trigger card in the pool. A card that GRANTS haste to
+  // the team (Fires of Yavimaya) is a real "attacks matter" enabler and
+  // must still connect; a card that merely has the keyword itself must not.
+  const smaug = { name: "Smaug, the Impenetrable", typeLine: "Legendary Creature — Dragon", oracleText: "Flying, indestructible, haste\nWhenever Smaug is dealt noncombat damage, create that many Treasure tokens." };
+  const attackPayoff = { name: "Test Attack Payoff", typeLine: "Enchantment", oracleText: "Whenever a creature you control attacks, draw a card." };
+  const hasteGrantor = { name: "Fires of Yavimaya", typeLine: "Enchantment", oracleText: "Creatures you control have haste." };
+  const graph = buildInteractionGraph([smaug, attackPayoff, hasteGrantor]);
+  const involvesSmaug = (entry) => entry.from === "Smaug, the Impenetrable" || entry.to === "Smaug, the Impenetrable";
+  const involvesGrantorAndPayoff = (entry) =>
+    (entry.from === "Fires of Yavimaya" && entry.to === "Test Attack Payoff")
+    || (entry.from === "Test Attack Payoff" && entry.to === "Fires of Yavimaya");
+  assert.ok(!graph.edges.some(involvesSmaug), "a creature that merely has haste must not falsely connect to an unrelated attack-trigger payoff");
+  const realEdge = graph.edges.find(involvesGrantorAndPayoff);
+  assert.ok(realEdge?.signals.includes("combat"), "a real haste GRANTOR must still connect to an attack-trigger payoff");
+});
+
 test("Fear of Missing Out and Trading Post are related cards, not a reciprocal combo loop", () => {
   const graph = buildInteractionGraph([
     { name: "Fear of Missing Out", typeLine: "Enchantment Creature — Nightmare", oracleText: "When this creature enters, discard a card, then draw a card. Delirium — Whenever this creature attacks for the first time each turn, if there are four or more card types among cards in your graveyard, untap target creature. After this phase, there is an additional combat phase." },
