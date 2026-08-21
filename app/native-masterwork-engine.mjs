@@ -65,6 +65,7 @@ import {
   buildStrategicIntent,
   cardSatisfiesPackageCore,
   cardSatisfiesPackageSupport,
+  commanderPackageIdsFromOracle,
   configureCardTagLookup,
   expensiveThreatSupport,
   replacementCompatible,
@@ -547,6 +548,34 @@ export function commanderTribesFromOracle(commanders = []) {
 export function identityTribalTypesFor(noteTribalTypes = [], commander, secondCommander) {
   const commanderTribes = commanderTribesFromOracle([commander, secondCommander].filter(Boolean));
   return [...new Set([...noteTribalTypes, ...commanderTribes])];
+}
+
+// Founder #040: same shape as identityTribalTypesFor above, but for
+// non-typal package mechanics (blink, aristocrats) that carry a precise,
+// hand-authored Scryfall query in BLUEPRINT_MECHANICS under the same id
+// as their PACKAGE_CATALOG entry. A commander that structurally opens one
+// of these packages (detectBlinkCommander, detectAristocratsCommander)
+// used to get no targeted search for it unless the player also typed the
+// mechanic name in their note. Invisible for a tight color identity — the
+// popularity-ordered fetch below surfaces real blink/sac-outlet staples
+// anyway — but Hei Bai's real WUBRG pool held exactly 3 "blink_effect"
+// core candidates (one a false positive: Inkmoth Nexus's "Blinkmoth"
+// substring match, a separate pre-existing gap) against the format's real
+// blink suite (Cloudshift, Ghostly Flicker, Momentary Blink, Displace,
+// Essence Flux, Siren's Ruse, Slip Out the Back, Scrollshift, ...), so
+// opening the package (#040) alone still left almost nothing real to
+// reserve — the commander wants to be blinked, but the 99 couldn't back
+// it up. Deliberately narrow: only mechanics with a real hand-authored
+// .query (not the generic keyword-label fallback) qualify, via the exact
+// filter blueprintMechanicDefinition already applies for a missing entry,
+// so this never fires a noisy, unverified search for a package with no
+// precise query defined (tokens, landfall, typal — typal already has its
+// own precise mechanism above — spellslinger, equipment, auras, stax,
+// reanimator).
+export function identityMechanicIdsFor(noteMechanicIds = [], commander, secondCommander) {
+  const packageIds = commanderPackageIdsFromOracle([commander, secondCommander].filter(Boolean));
+  const commanderMechanicIds = packageIds.filter((id) => blueprintMechanicDefinition(id).query);
+  return [...new Set([...noteMechanicIds, ...commanderMechanicIds])];
 }
 
 // parseNativeBlueprintIntent moved to blueprint-note-and-mana.mjs (imported

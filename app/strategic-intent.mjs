@@ -36,6 +36,53 @@ export function configureCardTagLookup(lookup, { onlyIfMissing = false } = {}) {
   cardTagLookup = lookup;
 }
 
+// Shared by strategicSemanticsFor's etb_value (a candidate card is worth
+// blinking) and detectBlinkCommander (a commander is worth building a
+// blink shell around, even one that doesn't blink things itself) — a self
+// "when this enters" trigger only counts as valuable when it pairs with an
+// actual value verb, not a bare enters-the-battlefield rider ("scry 1").
+// Split into two trigger patterns rather than one combined one: a bare
+// [A-Z] class inside a case-INsensitive regex matches any letter, not just
+// a capital, so a single /i pattern let a fully generic trigger like
+// "Whenever a creature enters the battlefield, create a token" masquerade
+// as a named self-reference ("a" satisfying "[A-Z]" under /i). The named
+// branch stays case-sensitive on purpose — a real self-reference always
+// capitalizes the card's own name in Oracle text.
+const SELF_ETB_TRIGGER_GENERIC = /when(?:ever)? (?:~|this(?: creature| permanent)?) enters/i;
+const SELF_ETB_TRIGGER_NAMED = /[Ww]hen(?:ever)? [A-Z][^\n,]{0,40} enters/;
+const SELF_ETB_VALUE_VERB = /draw|create|exile target|gain|put |return |search/i;
+function hasValuableSelfEtb(oracle = "") {
+  const text = String(oracle || "");
+  return (SELF_ETB_TRIGGER_GENERIC.test(text) || SELF_ETB_TRIGGER_NAMED.test(text)) && SELF_ETB_VALUE_VERB.test(text);
+}
+
+// Founder #040: detectBlinkCommander's self-ETB branch (below) deliberately
+// does NOT reuse hasValuableSelfEtb's broad bar directly — that bar is
+// tuned for "is this ordinary candidate card worth including," not "is
+// this commander's identity worth building 8-12 deck slots of blink spells
+// around." Atraxa, Grand Unifier ("reveal the top ten cards of your
+// library... put a card of that type... into your hand") clears
+// hasValuableSelfEtb easily but is a one-time value SNAPSHOT — most of its
+// value lands on the first trigger, and it's not what players actually
+// build a blink shell around (confirmed as a deliberate "no named
+// occupancy engine" negative control, tests/commander-guide.test.mjs).
+// Hei Bai, Forest Guardian ("reveal cards... until you reveal a Shrine
+// card... put that card onto the battlefield") is structurally different:
+// a dig/tutor for one scarce resource per trigger, cheated straight onto
+// the battlefield — the shape that actually scales with repetition, since
+// each additional trigger finds a genuinely new card from an otherwise
+// untouched pool. "Search your library for a[n] TYPE card... put it onto
+// the battlefield" is the same shape under a tutor verb instead of a
+// reveal-dig verb and stays open for the same reason. Deliberately no
+// broader than these two real, verified shapes — see this file's existing
+// "stays closed until a live canary earns a widen" precedent (detectBlinkCommander's Brago note).
+const SELF_ETB_TYPE_TUTOR = /\breveal[^.]*?\breveal (?:a|an) [A-Za-z][A-Za-z'-]+ card\b|\bsearch your library for (?:a|an) [A-Za-z][A-Za-z'-]+ card\b/i;
+const CHEATS_ONTO_BATTLEFIELD = /\bonto the battlefield\b/i;
+function hasRepeatableTypeTutorEtb(oracle = "") {
+  const text = String(oracle || "");
+  return SELF_ETB_TYPE_TUTOR.test(text) && CHEATS_ONTO_BATTLEFIELD.test(text);
+}
+
 function typeLineOf(card = {}) {
   return String(card.typeLine || card.type_line || "");
 }
@@ -170,7 +217,7 @@ export function strategicSemanticsFor(card = {}) {
   if (/exile (?:target|another)[^.]*return (?:it|that|them) to the battlefield/i.test(oracle) || /flicker|blink/i.test(oracle)) {
     semantics.add("blink_effect");
   }
-  if (isCreature && /when(?:ever)? (?:~|this(?: creature| permanent)?|[A-Z][^\n,]{0,40}) enters/i.test(oracle) && /draw|create|exile target|gain|put |return |search/i.test(oracle)) {
+  if (isCreature && hasValuableSelfEtb(oracle)) {
     semantics.add("etb_value");
   }
 
@@ -352,12 +399,20 @@ export function detectEquipmentCommander(oracle = "") {
 /**
  * Commander runs a blink engine. Occupancy only.
  * Exile target/another, then return to battlefield.
- * Enter Trigger is not occupancy.
+ * A bare "when this enters" rider is not occupancy on its own — but a
+ * commander whose OWN one-shot ETB repeatedly digs/tutors for a scarce
+ * type and cheats it onto the battlefield (Founder #040: Hei Bai, Forest
+ * Guardian — see hasRepeatableTypeTutorEtb above) is exactly as good a
+ * reason to stock the deck with external blink/flicker spells; it just
+ * needs other cards to do the blinking instead of doing it itself.
+ * Deliberately narrower than etb_value's general draw/create/gain bar —
+ * see hasRepeatableTypeTutorEtb's own comment for why (Atraxa, Grand
+ * Unifier clears that broader bar but must not open this package).
  * "Exile any number" (Brago) stays closed until a live canary earns a widen.
  */
 export function detectBlinkCommander(oracle = "") {
   const text = String(oracle || "");
-  return /exile (?:target|another)[^.]*return (?:it|that|them) to the battlefield/i.test(text);
+  return /exile (?:target|another)[^.]*return (?:it|that|them) to the battlefield/i.test(text) || hasRepeatableTypeTutorEtb(text);
 }
 
 /**
@@ -538,6 +593,20 @@ function detectComposition(definition, blueprint) {
     }
   }
   return legs.every((semantic) => (counts.get(semantic) || 0) >= floor);
+}
+
+// Founder #040: which hand-authored packages (PACKAGE_CATALOG only — the
+// occupancy-only 10, not the generic-dispatch ARCHETYPE_CATALOG) the
+// commander's own oracle text opens on its own, with no blueprint/note
+// involved. Used by worker/forge-generate.ts's loadNativeForgePool to run
+// a targeted Scryfall search for package mechanics the commander
+// structurally implies but the player never typed — the same shape as
+// commanderTribesFromOracle (native-masterwork-engine.mjs, #039) for
+// typal payoffs, generalized to non-typal packages.
+export function commanderPackageIdsFromOracle(commanders = []) {
+  return Object.values(PACKAGE_CATALOG)
+    .filter((definition) => commanders.some((commander) => definition.detectCommander?.(oracleOf(commander) || "")))
+    .map((definition) => definition.id);
 }
 
 function packageTriggered(definition, commanders, blueprint) {

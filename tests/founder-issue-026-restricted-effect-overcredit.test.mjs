@@ -21,6 +21,7 @@ import {
   colorlessFixingCredit,
   commanderTribesFromOracle,
   identityTribalTypesFor,
+  identityMechanicIdsFor,
   restrictedEffectCastingFactor,
   restrictedWinconFactor,
   parseNativeBlueprintIntent,
@@ -1533,5 +1534,24 @@ test("Founder #039: identityTribalTypesFor merges commander-derived tribes with 
   // A commander with no extractable tribe contributes nothing extra.
   const genericCommander = { name: "Test Generic", colors: ["U"], oracleText: "Whenever a creature you control dies, draw a card." };
   assert.deepEqual(identityTribalTypesFor(["spells"], genericCommander, null), ["spells"]);
+});
+
+test("Founder #040: identityMechanicIdsFor folds in commander-implied package mechanics that have a real hand-authored query", () => {
+  // Hei Bai has no blink-others text, but its valuable self-ETB opens the
+  // blink package (detectBlinkCommander, strategic-intent.mjs) as of #040,
+  // and "blink" has a precise BLUEPRINT_MECHANICS query.
+  const heiBaiCommander = { name: "Test Hei Bai", colors: ["W", "U", "B", "R", "G"], oracleText: heiBaiOracle };
+  assert.deepEqual(identityMechanicIdsFor([], heiBaiCommander, null), ["blink"]);
+  // Already-typed note mechanics stay first and aren't duplicated.
+  assert.deepEqual(identityMechanicIdsFor(["blink"], heiBaiCommander, null), ["blink"]);
+  assert.deepEqual(identityMechanicIdsFor(["power_up"], heiBaiCommander, null), ["power_up", "blink"]);
+  // A commander that opens a package with no real hand-authored query
+  // (tokens has no BLUEPRINT_MECHANICS entry) contributes nothing extra —
+  // this must never fire a noisy generic-fallback search.
+  const tokenCommander = { name: "Test Token Commander", colors: ["R"], oracleText: "Whenever a creature enters the battlefield under your control, create a 1/1 red Goblin creature token." };
+  assert.deepEqual(identityMechanicIdsFor([], tokenCommander, null), []);
+  // A commander with no package-opening text at all contributes nothing.
+  const genericCommander2 = { name: "Test Generic 2", colors: ["U"], oracleText: "Whenever a creature you control dies, draw a card." };
+  assert.deepEqual(identityMechanicIdsFor(["spells"], genericCommander2, null), ["spells"]);
 });
 

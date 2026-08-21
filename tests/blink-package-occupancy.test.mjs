@@ -196,3 +196,61 @@ test("a real Blink commander forges the literal exile-then-return-it spell as pa
     assert.equal(cardSatisfiesPackageCore(restorationAngelRow, "blink", intent), false, "Restoration Angel's 'return that card' phrasing must not occupy blink core under the current regex");
   }
 });
+
+// =============================================================================
+// Founder #040 — the mirror case: a commander with a valuable one-shot ETB
+// =============================================================================
+// Real card, verified via Scryfall (2026-08-21): Hei Bai, Forest Guardian.
+// Its own ETB is worth being blinked by the deck's own spells — it does not
+// blink anything itself, so the pre-#040 detectBlinkCommander never opened
+// the package for it even though "stock up on Ephemerate-style spells" is
+// exactly the right construction response.
+const heiBai = {
+  name: "Hei Bai, Forest Guardian",
+  colors: ["W", "U", "B", "R", "G"],
+  oracleText: "When Hei Bai enters, reveal cards from the top of your library until you reveal a Shrine card. You may put that card onto the battlefield. Then shuffle.\n{W}{U}{B}{R}{G}, {T}: For each legendary enchantment you control, create a 1/1 colorless Spirit creature token with \"This token can't block or be blocked by non-Spirit creatures.\"",
+  typeLine: "Legendary Creature — Bear Spirit",
+  manaCost: "{W}{U}{B}{R}{G}",
+};
+
+// A bare enters-the-battlefield rider must NOT open the package — the
+// existing etb_value bar (draw/create/exile target/gain/put/return/
+// search) is the line, same as it already is for ordinary candidate cards.
+const trivialEtbCommander = {
+  name: "Test Trivial ETB Commander",
+  colors: ["G"],
+  oracleText: "When this creature enters, scry 1.",
+  typeLine: "Legendary Creature — Human Scout",
+  manaCost: "{2}{G}",
+};
+
+test("Founder #040: a commander with a valuable one-shot ETB (Hei Bai) opens the blink package; a trivial ETB rider does not", () => {
+  assert.equal(detectBlinkCommander(heiBai.oracleText), true);
+  assert.equal(detectBlinkCommander(trivialEtbCommander.oracleText), false);
+  assert.ok(intentFor(heiBai).packageIds.includes("blink"));
+  assert.ok(!intentFor(trivialEtbCommander).packageIds.includes("blink"));
+  // Vigilance-only inertNoble (already covered above) and a commander with
+  // no ETB text at all must both still stay closed too.
+  assert.equal(detectBlinkCommander(inertNoble.oracleText), false);
+});
+
+test("Founder #040: Hei Bai's real construction reserves real blink/flicker spells as package core, not just Shrines", () => {
+  const gwFiller = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "Vigilance.", typeLine: "Creature — Test", manaCost: "{2}{G}", colorIdentity: ["G"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Exile target nonland permanent.", typeLine: "Instant", manaCost: "{1}{B}", colorIdentity: ["B"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof and indestructible until end of turn.", typeLine: "Instant", manaCost: "{1}{W}", colorIdentity: ["W"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+  ];
+  const gates = Array.from({ length: 20 }, (_, i) => ({
+    name: `WUBRG Gate ${i}`, oracleText: "This land enters the battlefield tapped. {T}: Add one mana of any color.", typeLine: "Land",
+    manaCost: "", colorIdentity: ["W", "U", "B", "R", "G"], producedMana: ["W", "U", "B", "R", "G"], popularityRank: 5, priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: heiBai, cards: [...gwFiller, ephemerate, restorationAngel, ...gates],
+  });
+  const names = report.selected.rows.map((row) => row.name);
+  const intent = report.selected.strategicIntent;
+  assert.ok(intent.packageIds.includes("blink"), "Hei Bai's deck should carry the blink package");
+  assert.ok(names.includes("Ephemerate"), "the real exile-then-return-it spell should be reserved as package core");
+});

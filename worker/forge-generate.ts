@@ -24,6 +24,7 @@ import {
   parseNativeBlueprintIntent,
   blueprintMechanicQueryFor,
   identityTribalTypesFor,
+  identityMechanicIdsFor,
 } from "../app/native-masterwork-engine.mjs";
 import { userKey } from "./account-bench";
 import { checkRateLimit, readJsonWithLimit } from "./api-hardening";
@@ -310,10 +311,12 @@ async function loadNativeForgePool(
   }
 
   const blueprint = parseNativeBlueprintIntent({ note });
-  // Founder #039: see identityTribalTypesFor (native-masterwork-engine.mjs)
-  // — folds the commander's own oracle-derived tribes into the targeted
+  // Founder #039/#040: see identityTribalTypesFor/identityMechanicIdsFor
+  // (native-masterwork-engine.mjs) — fold the commander's own
+  // oracle-derived tribes and package mechanics into the targeted
   // identityQueries below, not just what the player typed in their note.
   const tribalTypes: string[] = identityTribalTypesFor(blueprint.tribalTypes, commander, secondCommander);
+  const requestedMechanics: string[] = identityMechanicIdsFor(blueprint.requestedMechanics, commander, secondCommander);
   const roleQueries: Record<string, string> = {
     counters: 'o:"+1/+1 counter"', tokens: "o:create o:token", sacrifice: "o:sacrifice", graveyard: "o:graveyard",
     artifacts: "(t:artifact OR o:artifact)", spells: '(o:"instant or sorcery" OR o:"noncreature spell")',
@@ -321,7 +324,7 @@ async function loadNativeForgePool(
   };
   const identityQueries = includeIdentityQueries ? [
     ...tribalTypes.map((term: string) => `(t:"${term}" OR o:"${term}" OR name:"${term}")`),
-    ...blueprint.requestedMechanics.map((mechanic: string) => mechanic === "creature_activated_ability"
+    ...requestedMechanics.map((mechanic: string) => mechanic === "creature_activated_ability"
       ? "t:creature o:\":\""
       : blueprintMechanicQueryFor(mechanic)),
     ...blueprint.desiredRoles.map((role: string) => roleQueries[role]).filter(Boolean),
