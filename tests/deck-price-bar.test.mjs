@@ -92,3 +92,10 @@ test("choosing a printing overrides only that card's prices, not the card itself
   assert.match(page, /prices:\s*\{\s*usd:\s*override\.usd,\s*usd_foil:\s*override\.usd_foil\s*\}/);
   assert.match(page, /Use default printing/);
 });
+
+test("an unpriced preview printing automatically falls back to the cheapest priced paper printing for every user", () => {
+  assert.match(page, /card\.games\?\.includes\("paper"\)/);
+  assert.match(page, /price:\s*cheapestCardPriceUsd\(card\)/);
+  assert.match(page, /entry\.price < cheapest\.price/);
+  assert.doesNotMatch(page, /if \(guestMode \|\| !deckRows\.length \|\| !Object\.keys\(cardFacts\)\.length\) return/);
+});

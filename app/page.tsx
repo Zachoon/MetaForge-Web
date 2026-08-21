@@ -3598,19 +3598,15 @@ export default function Home() {
     };
   }, [printingMenu]);
 
-  // A card's default printing sometimes has no market price at all (promo,
-  // Secret Lair, other online-only prints Scryfall hasn't priced). Rather
-  // than leave it permanently "still pricing", walk that card's real
-  // printings (same unique=prints query the manual picker uses, newest
-  // first) and adopt the most recent one that actually has a price — same
-  // mechanism as a player manually choosing an older printing, just applied
-  // automatically. Cards with no priced printing anywhere (basics, truly
-  // unreleased/unpriced cards) correctly stay unpriced.
+  // A preview/upcoming printing can be the default card record even though an
+  // older reprint is already purchasable. Walk the card's real paper printings
+  // and automatically use the least-expensive priced version. This runs for
+  // guest decks too: pricing correctness cannot depend on account state.
   // printingOverrides is intentionally read via the functional updater
   // below, not listed as a dependency — including it would re-run this
   // effect (and re-scan every card) on every single card it fixes.
   useEffect(() => {
-    if (guestMode || !deckRows.length || !Object.keys(cardFacts).length) return;
+    if (!deckRows.length || !Object.keys(cardFacts).length) return;
     const unpriced = deckRows.filter((row) => {
       const key = cardFactKey(row.name);
       if (printingOverrides[key]) return false;
@@ -3626,11 +3622,16 @@ export default function Home() {
           const query = encodeURIComponent(`!"${row.name}"`);
           const response = await fetch(
             `https://api.scryfall.com/cards/search?q=${query}&unique=prints&order=released&dir=desc`,
+            { cache: "no-store" },
           );
+          if (!response.ok) continue;
           const data = await response.json();
-          const priced = (data.data || []).find(
-            (card: any) => card.prices?.usd != null || card.prices?.usd_foil != null,
-          );
+          const priced = (data.data || [])
+            .filter((card: any) => card.games?.includes("paper"))
+            .map((card: any) => ({ card, price: cheapestCardPriceUsd(card) }))
+            .filter((entry: any) => entry.price !== null)
+            .reduce((cheapest: any, entry: any) =>
+              !cheapest || entry.price < cheapest.price ? entry : cheapest, null)?.card;
           if (!priced || cancelled) continue;
           const key = cardFactKey(row.name);
           setPrintingOverrides((current) =>
@@ -3658,7 +3659,7 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [deckRows, cardFacts, guestMode]);
+  }, [deckRows, cardFacts]);
 
   useEffect(() => {
     if (!printingMenu) return;
