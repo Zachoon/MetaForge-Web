@@ -50,7 +50,14 @@ export function displayRoleFor(card) {
   // native-masterwork-engine.mjs's interactionQualityFor and
   // forge-interaction-graph.mjs's COLOR_TYPE_RESTRICTION.
   if (/\bLand\b/i.test(card?.typeLine || card?.type_line || "")) return "Mana source";
-  if (/destroy all|exile all|all creatures|get -\d+\/-\d+/i.test(text)) return "Board reset";
+  // Damage-based sweepers (Pyroclasm: "deals 2 damage to each creature")
+  // say "each creature", not "all creatures" — didn't match here at all,
+  // so they fell through to the later, target-blind "Interaction" check
+  // below. Requires "creature" as the actual target so a damage-ping
+  // engine (Impact Tremors: "deals 1 damage to each opponent") is never
+  // swept in — same fix and reasoning as ROLE_PATTERNS.sweeper in
+  // blueprint-note-and-mana.mjs.
+  if (/destroy all|exile all|all creatures|get -\d+\/-\d+|deals? \d+ damage to each (?:other |nontoken |non-Human )?creature/i.test(text)) return "Board reset";
   // Counterspells and removal used to share one "Interaction" bucket that
   // always mapped to "removal" below — meaning "counter" was a role every
   // PLANS entry above already searched for (Control's plan wants

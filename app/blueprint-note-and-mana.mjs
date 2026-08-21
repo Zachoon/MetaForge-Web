@@ -63,7 +63,15 @@ export const ROLE_PATTERNS = Object.freeze({
   // matched here — see strategicSemanticsFor's identical reanimation-
   // semantic fix for the full reasoning and more real-card verification.
   recursion: [/\b(?:put|return)s? [^.]*\bgraveyard\b[^.]*\b(?:battlefield|hand)\b/i, /cast .{0,30}from your graveyard/i, /reanimate/i],
-  sweeper: [/destroy all/i, /exile all/i, /all creatures get -/i, /deals? \d+ damage to each/i],
+  // Impact Tremors/Kessig Flamebreather class: "deals 1 damage to each
+  // opponent" is a damage-ping engine, not a board wipe — it never
+  // touches a creature at all, and pairs with go-wide/token strategies a
+  // real sweeper (which kills your own board too) works against. Requires
+  // "creature" as the actual target, matching real sweeper phrasing
+  // (Pyroclasm/Blasphemous Act/Anger of the Gods: "each creature";
+  // Pestilence: "each creature and each player" also matches, creature
+  // still present).
+  sweeper: [/destroy all/i, /exile all/i, /all creatures get -/i, /deals? \d+ damage to each (?:other |nontoken |non-Human )?creature/i],
   selection: [/scry/i, /surveil/i, /discard .{0,20}draw/i, /draw .{0,20}discard/i],
   tokens: [/create (?:a|one|two|three|x|that many|\d+) .{0,45}token/i],
   sacrifice: [/sacrifice (?:a|another|one|target)/i, /whenever .{0,25} dies/i],
