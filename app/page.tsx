@@ -1885,6 +1885,21 @@ export default function Home() {
     setDeckViewMode(preferredDecklistView());
   }, []);
 
+  // Card inspection is page-local UI, not deck state. Changing workspace
+  // sections must not carry a hovered card, open dossier, or printing menu
+  // into the next screen (especially Explore / a fresh commission).
+  useEffect(() => {
+    if (deckHoverTimerRef.current !== null) {
+      window.clearTimeout(deckHoverTimerRef.current);
+      deckHoverTimerRef.current = null;
+    }
+    setHoveredCard("");
+    setInspectedCard("");
+    setCardActionMenu(null);
+    setPrintingMenu(null);
+    setMatchupCardAdvice(null);
+  }, [chamber, siteRail]);
+
   useEffect(() => {
     try {
       const preferredReadingSize = window.localStorage.getItem("metaforge.readingSize");
@@ -2452,8 +2467,9 @@ export default function Home() {
     }
     return { total, pricedCards, unpricedCards };
   }, [deckRows, cardFacts, foilCards, cheapestPrintings, printingOverrides]);
-  const activeCard =
-    hoveredCard || activeCommanderName || deckRows[0]?.name || "";
+  // Never silently resurrect the prior deck's commander after navigation.
+  // The preview represents an explicit hover/tap in the current section.
+  const activeCard = hoveredCard;
   const activeFact = cardFacts[cardFactKey(activeCard)];
   const activePrinting = printingOverrides[cardFactKey(activeCard)];
   const activeImage =
