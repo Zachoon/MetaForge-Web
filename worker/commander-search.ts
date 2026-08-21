@@ -40,7 +40,10 @@ export function normalizeCommanderSearchName(name: string): string {
 
 const json = (body: unknown, status = 200) => Response.json(body, {
   status,
-  headers: { "Cache-Control": status === 200 ? "public, max-age=2592000, stale-while-revalidate=31536000" : "no-store" },
+  // The Worker Cache API below owns long-lived upstream caching. Browsers must
+  // revalidate so a corrected lookup cannot leave one user with an empty result
+  // for 30 days after the server-side cache schema changes.
+  headers: { "Cache-Control": status === 200 ? "public, max-age=0, must-revalidate" : "no-store" },
 });
 
 async function fetchScryfall(url: string): Promise<Response | null> {

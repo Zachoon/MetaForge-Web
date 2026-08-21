@@ -3705,8 +3705,8 @@ export default function Home() {
       setCommanderSearchError("");
       try {
         const response = await fetch(
-          `/api/cards/commanders?format=${encodeURIComponent(format)}&q=${encodeURIComponent(requestedQuery)}`,
-          { signal: controller.signal },
+          `/api/cards/commanders?format=${encodeURIComponent(format)}&q=${encodeURIComponent(requestedQuery)}&client_schema=2`,
+          { signal: controller.signal, cache: "no-store" },
         );
         if (!response.ok) throw new Error("Commander search unavailable");
         const data = await response.json();
