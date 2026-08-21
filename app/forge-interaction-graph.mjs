@@ -854,7 +854,14 @@ const PRODUCERS = {
   // extractMechanicalSignals.
   counters: /put [^.]* counter|proliferate/i,
   graveyard: /mill [a-z\d]|surveil|discard [^.]* card/i,
-  sacrifice: /create(?:s)? [^.]* token|when [^.]* dies/i,
+  // Scoped to creature tokens specifically — the same fix already applied
+  // to the treasure/clue/food/blood/gold/map/junk/powerstone signals below,
+  // just missed here. A Treasure/Clue/other named-artifact-token producer
+  // is not sacrifice-fodder production; matching "create...token" generically
+  // let e.g. a pure Treasure-token commander (Smaug the Impenetrable: no
+  // sacrifice or death-trigger text at all) falsely "connect" to any
+  // aristocrats death-payoff card in the pool via this one shared signal.
+  sacrifice: /create(?:s)? [^.]* creature token|when [^.]* dies/i,
   draw: /draw (?:a|one|two|three|\d+)/i,
   spells: /copy [^.]* spell|cast [^.]* without paying/i,
   lands: /search your library for [^.]* land|play an additional land/i,

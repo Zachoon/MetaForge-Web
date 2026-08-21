@@ -390,6 +390,24 @@ test("Powerstone production feeds Powerstone and artifact payoffs without masque
   assert.equal(treasureEdge?.signals.includes("treasure") || false, false, "Powerstones and Treasure remain distinct resources");
 });
 
+test("Treasure production does not masquerade as sacrifice/aristocrats fodder production", () => {
+  // Smaug the Impenetrable ("Whenever Smaug is dealt noncombat damage,
+  // create that many Treasure tokens") has no sacrifice or death-trigger
+  // text at all, but used to falsely produce the "sacrifice" signal because
+  // that producer regex matched any "create ... token" text, not just
+  // creature tokens — the same false-connection class already guarded
+  // against above for Clue/Food/Blood/Gold/Map/Junk/Powerstone, just missed
+  // for this one signal.
+  const smaug = { name: "Smaug, the Impenetrable", typeLine: "Legendary Creature — Dragon", oracleText: "Flying, indestructible, haste\nWhenever Smaug is dealt noncombat damage, create that many Treasure tokens." };
+  const deathPayoff = { name: "Yahenni, Undying Partisan", typeLine: "Legendary Creature — Elemental Shaman", oracleText: "Whenever another nontoken creature you control dies, put a +1/+1 counter on Yahenni." };
+  const treasurePayoff = { name: "Treasure Tribute", typeLine: "Enchantment", oracleText: "Whenever you sacrifice a Treasure, each opponent loses 1 life." };
+  const graph = buildInteractionGraph([smaug, deathPayoff, treasurePayoff]);
+  const sacrificeEdge = graph.edges.find((entry) => entry.from === "Smaug, the Impenetrable" && entry.to === "Yahenni, Undying Partisan");
+  const treasureEdge = graph.edges.find((entry) => entry.from === "Smaug, the Impenetrable" && entry.to === "Treasure Tribute");
+  assert.equal(sacrificeEdge, undefined, "a Treasure producer must not falsely connect to an unrelated death-payoff card");
+  assert.ok(treasureEdge?.signals.includes("treasure"), "the real Treasure connection must still form");
+});
+
 test("Fear of Missing Out and Trading Post are related cards, not a reciprocal combo loop", () => {
   const graph = buildInteractionGraph([
     { name: "Fear of Missing Out", typeLine: "Enchantment Creature — Nightmare", oracleText: "When this creature enters, discard a card, then draw a card. Delirium — Whenever this creature attacks for the first time each turn, if there are four or more card types among cards in your graveyard, untap target creature. After this phase, there is an additional combat phase." },
