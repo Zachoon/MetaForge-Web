@@ -497,6 +497,20 @@ const ARTIFACT_OR_TOKEN_TYPES = new Set([
 // correctly yields nothing, since "creature" is already a stop word.
 const MULTI_TRIBE_LIST = /\b(?:each|all) ((?:[A-Za-z][A-Za-z'-]+(?:,\s*)?)+(?:and\s+[A-Za-z][A-Za-z'-]+)?) you control\b/gi;
 
+// Founder #039: none of the patterns above match a "dig until you find
+// TYPE" payoff either — Hei Bai, Forest Guardian ("reveal cards from the
+// top of your library until you reveal a Shrine card. You may put that
+// card onto the battlefield") returned zero tribes, so "Shrine" was never
+// reserved as an anchor type even though it's Hei Bai's entire identity.
+// Shrine spans both creatures (the Go-Shintai cycle) and enchantments (the
+// Honden/Sanctum cycles); directTribes already matches by typeLine
+// substring rather than requiring "Creature", so this needed only
+// extraction, not new matching logic. Generic captures ("a land card", "a
+// creature card") are already caught by the existing
+// ARTIFACT_OR_TOKEN_TYPES/TRIBAL_STOP_WORDS filter below, same as every
+// other pattern here.
+const REVEAL_UNTIL_TYPE_CARD = /\breveal[^.]*?\breveal (?:a|an) ([A-Za-z][A-Za-z'-]+) card\b/gi;
+
 /**
  * Tribes implied by commander rules text ("another Bear you control",
  * "a Dragon you control", "Dragon spells you cast", "each Pest, Bat,
@@ -514,7 +528,25 @@ export function commanderTribesFromOracle(commanders = []) {
     ...[...oracle.matchAll(/\b([A-Za-z][A-Za-z'-]+) spells? you cast\b/g)].map((match) => normalized(match[1])),
     ...[...oracle.matchAll(MULTI_TRIBE_LIST)].flatMap((match) =>
       match[1].split(/,\s*(?:and\s+)?|\s+and\s+/i).filter(Boolean).map((word) => normalized(word))),
+    ...[...oracle.matchAll(REVEAL_UNTIL_TYPE_CARD)].map((match) => normalized(match[1])),
   ]).filter((term) => term && !BLUEPRINT_FILLER_WORDS.has(term) && !TRIBAL_STOP_WORDS.has(term) && !ARTIFACT_OR_TOKEN_TYPES.has(term));
+}
+
+// Founder #039: worker/forge-generate.ts's loadNativeForgePool used to build
+// its targeted Scryfall identityQueries only from the player's typed note
+// (blueprint.tribalTypes) — a typal payoff commander's own oracle text
+// never earned a targeted search unless the player also happened to type
+// the tribe name themselves. Invisible for a tight 1-2 color pool (the
+// popularity-ordered fetch surfaces on-tribe cards anyway), but for a
+// wide-identity commander like Hei Bai (WUBRG) a niche subtype — 22 real
+// Shrine-subtype cards total — can be entirely absent from ~1050
+// popularity-ordered cards, so there is nothing left for the anchor-
+// reservation loop above to reserve even after extraction is fixed.
+// Merged (not replaced) with the note-derived list, note first, so an
+// explicit player note still takes priority in identityQueries' slot cap.
+export function identityTribalTypesFor(noteTribalTypes = [], commander, secondCommander) {
+  const commanderTribes = commanderTribesFromOracle([commander, secondCommander].filter(Boolean));
+  return [...new Set([...noteTribalTypes, ...commanderTribes])];
 }
 
 // parseNativeBlueprintIntent moved to blueprint-note-and-mana.mjs (imported

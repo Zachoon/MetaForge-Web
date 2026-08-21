@@ -20,6 +20,7 @@ import {
   curveManaValue,
   colorlessFixingCredit,
   commanderTribesFromOracle,
+  identityTribalTypesFor,
   restrictedEffectCastingFactor,
   restrictedWinconFactor,
   parseNativeBlueprintIntent,
@@ -1468,5 +1469,69 @@ test("Founder #038: a multi-tribe commander reserves real on-type anchors instea
   });
   const pestsSelected = report.selected.rows.filter((row) => row.name.startsWith("Test Pest")).length;
   assert.ok(pestsSelected >= 8, `expected most of the 10 real on-type Pests to be reserved as anchors, got ${pestsSelected}`);
+});
+
+// Hei Bai, Forest Guardian's real oracle text: "When Hei Bai enters, reveal
+// cards from the top of your library until you reveal a Shrine card. You
+// may put that card onto the battlefield. Then shuffle." — a "dig until you
+// find TYPE" payoff, structurally unlike every "X you control"/"X spells
+// you cast" phrasing the earlier patterns cover.
+const heiBaiOracle = "When Hei Bai enters, reveal cards from the top of your library until you reveal a Shrine card. You may put that card onto the battlefield. Then shuffle.";
+
+test("Founder #039: commanderTribesFromOracle extracts a \"reveal until you reveal a TYPE card\" payoff type", () => {
+  assert.deepEqual(commanderTribesFromOracle([{ oracleText: heiBaiOracle }]), ["shrine"]);
+  // Generic reveal-tutors for land/creature cards (common ramp/dig
+  // templates) must not turn "land" or "creature" into a fake tribe —
+  // both are already caught by ARTIFACT_OR_TOKEN_TYPES/TRIBAL_STOP_WORDS,
+  // same guard every other pattern in this function relies on.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Reveal cards from the top of your library until you reveal a land card. Put that card onto the battlefield and the rest into your graveyard." }]),
+    [],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Reveal cards from the top of your library until you reveal a creature card. Put that card into your hand and the rest on the bottom of your library in a random order." }]),
+    [],
+  );
+});
+
+test("Founder #039: a dig-until-Shrine commander reserves real Shrine anchors, creature or enchantment alike", () => {
+  const heiBai = { name: "Test Hei Bai", colors: ["W", "U", "B", "R", "G"], oracleText: heiBaiOracle };
+  const filler = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Human Warrior", manaCost: "{2}{G}", colorIdentity: ["G"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Exile target nonland permanent.", typeLine: "Instant", manaCost: "{1}{B}", colorIdentity: ["B"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof and indestructible until end of turn.", typeLine: "Instant", manaCost: "{1}{W}", colorIdentity: ["W"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+  ];
+  // Shrine spans both creatures (the real Go-Shintai cycle) and pure
+  // enchantments (the real Honden/Sanctum cycles) — directTribes matches
+  // by typeLine substring, not a "Creature" requirement, so both shapes
+  // need to anchor equally once "shrine" is extracted at all.
+  const shrineCreatures = Array.from({ length: 6 }, (_, i) => ({
+    name: `Test Shrine Creature ${i}`, oracleText: "Whenever you gain life, draw a card.", typeLine: "Legendary Enchantment Creature — Shrine", manaCost: "{2}{G}", cmc: 3, colorIdentity: ["G"], popularityRank: 200,
+  }));
+  const shrineEnchantments = Array.from({ length: 16 }, (_, i) => ({
+    name: `Test Shrine Enchantment ${i}`, oracleText: "At the beginning of your upkeep, if you control three or more Shrines, draw a card.", typeLine: "Legendary Enchantment — Shrine", manaCost: "{2}{U}", cmc: 3, colorIdentity: ["U"], popularityRank: 200,
+  }));
+  const gates = Array.from({ length: 20 }, (_, i) => ({
+    name: `WUBRG Gate ${i}`, oracleText: "This land enters the battlefield tapped. {T}: Add one mana of any color.", typeLine: "Land",
+    manaCost: "", colorIdentity: ["W", "U", "B", "R", "G"], producedMana: ["W", "U", "B", "R", "G"], popularityRank: 5, priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: heiBai, cards: [...filler, ...shrineCreatures, ...shrineEnchantments, ...gates],
+  });
+  const shrinesSelected = report.selected.rows.filter((row) => row.name.startsWith("Test Shrine")).length;
+  assert.ok(shrinesSelected >= 18, `expected most of the 22 real on-type Shrines (creature and enchantment alike) to be reserved as anchors, got ${shrinesSelected}`);
+});
+
+test("Founder #039: identityTribalTypesFor merges commander-derived tribes with the player's typed note, note first", () => {
+  const heiBai = { name: "Hei Bai, Forest Guardian", colors: ["W", "U", "B", "R", "G"], oracleText: heiBaiOracle };
+  assert.deepEqual(identityTribalTypesFor([], heiBai, null), ["shrine"]);
+  // An explicit note-typed tribe stays first and isn't duplicated.
+  assert.deepEqual(identityTribalTypesFor(["shrine"], heiBai, null), ["shrine"]);
+  assert.deepEqual(identityTribalTypesFor(["spirit"], heiBai, null), ["spirit", "shrine"]);
+  // A commander with no extractable tribe contributes nothing extra.
+  const genericCommander = { name: "Test Generic", colors: ["U"], oracleText: "Whenever a creature you control dies, draw a card." };
+  assert.deepEqual(identityTribalTypesFor(["spells"], genericCommander, null), ["spells"]);
 });
 
