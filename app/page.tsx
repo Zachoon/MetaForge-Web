@@ -6982,6 +6982,18 @@ export default function Home() {
                   <em>{nativeMasterworkContext.selected.recoveryNote}</em>
                 </span>
               )}
+              {nativeMasterworkContext?.selected?.budgetRepairNote && (
+                <span className="slot-justification">
+                  <small>BUDGET CONSCIOUS ADJUSTED THIS DECK</small>
+                  <em>{nativeMasterworkContext.selected.budgetRepairNote}</em>
+                </span>
+              )}
+              {nativeMasterworkContext?.selected?.powerRepairNote && (
+                <span className="slot-justification">
+                  <small>CASUAL POWER ADJUSTED THIS DECK</small>
+                  <em>{nativeMasterworkContext.selected.powerRepairNote}</em>
+                </span>
+              )}
 
               <section className="forge-intelligence-vault" aria-label="Deep Forge evidence">
                 <span>

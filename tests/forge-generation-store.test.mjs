@@ -152,6 +152,9 @@ test("buildClientNativeReport drops structuralAnalysis and keeps picker fields",
       evaluation: { cohesion: 1, resilience: 2 },
       tournament: { reason: "r" },
       weakSlotForensics: { x: 1 },
+      recoveryNote: "Budget or rarity preferences were relaxed to complete this deck. Format legality, color identity, and your commander were never affected.",
+      budgetRepair: { note: "2 cards over your budget preference were swapped for a same-role alternative that fits, saving $14.26.", appliedCount: 2 },
+      powerRepair: { note: "1 high-power card was swapped for a same-role alternative to keep this deck at Casual power.", appliedCount: 1 },
       rows: [{ name: "Sol Ring", quantity: 1, roles: ["Ramp"], oracleText: "huge".repeat(100) }],
     },
     candidates: [],
@@ -165,6 +168,42 @@ test("buildClientNativeReport drops structuralAnalysis and keeps picker fields",
   assert.equal(client.selected.rows[0].oracleText, undefined);
   assert.deepEqual(client.changes, { added: ["Snap"], trimmed: [{ name: "The Ten Rings", cut: 1 }] });
   assert.ok(JSON.stringify(client).length < JSON.stringify(report).length);
+});
+
+// Founder #034: recoveryNote was generated server-side and rendered by
+// page.tsx since Phase 1, but this whitelist never actually forwarded it —
+// the disclosure was dead in production. budgetRepairNote/powerRepairNote
+// are the Phase 2B/2C analogs, added at the same time so they don't repeat
+// the same silent-drop mistake. This is the real end-to-end check the
+// source-text-only tests/recovery-note-disclosure.test.mjs test can't be —
+// it only proves page.tsx would render the field, never that the field
+// actually survives the trip from the engine to the browser.
+test("buildClientNativeReport forwards recoveryNote, budgetRepairNote, and powerRepairNote to the browser", async () => {
+  const { buildClientNativeReport } = await import("../worker/forge-generation-store.ts");
+  const report = {
+    engine: "metaforge-native-v1",
+    selected: {
+      id: "s",
+      rows: [],
+      recoveryNote: "Budget or rarity preferences were relaxed to complete this deck. Format legality, color identity, and your commander were never affected.",
+      budgetRepair: { note: "2 cards over your budget preference were swapped for a same-role alternative that fits, saving $14.26.", appliedCount: 2 },
+      powerRepair: { note: "1 high-power card was swapped for a same-role alternative to keep this deck at Casual power.", appliedCount: 1 },
+    },
+    candidates: [],
+  };
+  const client = buildClientNativeReport(report);
+  assert.equal(client.selected.recoveryNote, report.selected.recoveryNote);
+  assert.equal(client.selected.budgetRepairNote, report.selected.budgetRepair.note);
+  assert.equal(client.selected.powerRepairNote, report.selected.powerRepair.note);
+});
+
+test("buildClientNativeReport reports null notes, not undefined, when no repair ran — a player-visible field, not just an absent key", async () => {
+  const { buildClientNativeReport } = await import("../worker/forge-generation-store.ts");
+  const report = { engine: "metaforge-native-v1", selected: { id: "s", rows: [] }, candidates: [] };
+  const client = buildClientNativeReport(report);
+  assert.equal(client.selected.recoveryNote, null);
+  assert.equal(client.selected.budgetRepairNote, null);
+  assert.equal(client.selected.powerRepairNote, null);
 });
 
 test("refuses oversized payloads instead of throwing into GENERATION_FAILED", async () => {

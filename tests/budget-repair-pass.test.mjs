@@ -263,6 +263,11 @@ test("end-to-end: forgeNativeMasterwork under Budget conscious actually removes 
   assert.equal(report.selected.budgetRepair.attempted, true);
   assert.equal(report.selected.budgetRepair.appliedCount, 1);
   assert.ok(report.selected.budgetRepair.savingsAppliedUsd > 0);
+  // The player-facing sentence — Founder #034 surfaces this to the browser
+  // as budgetRepairNote; must exist and mention the real applied count and
+  // the real dollar figure, not a stale/invented one.
+  assert.match(report.selected.budgetRepair.note, /^1 card over your budget preference was swapped/);
+  assert.ok(report.selected.budgetRepair.note.includes(`$${report.selected.budgetRepair.savingsAppliedUsd.toFixed(2)}`));
 });
 
 // Locked from the real parameter sweep against the stored Ayula

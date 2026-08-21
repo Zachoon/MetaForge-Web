@@ -39,6 +39,9 @@ test("safe substitutes are claim-aware, deterministic, singleton-safe, and prote
   assert.deepEqual(first.candidate.rows, secondIndependent.candidate.rows);
   for (const protectedCard of filler) assert.deepEqual(first.candidate.rows.find((r) => r.name === protectedCard.name), before.rows.find((r) => r.name === protectedCard.name));
   assert.ok(first.candidate.evaluation.roleCoverage >= 0.45 && first.candidate.evaluation.curveHealth >= 45);
+  // The player-facing sentence — Founder #034 surfaces this to the browser
+  // as powerRepairNote; must mention the real applied count.
+  assert.equal(first.powerRepair.note, "2 high-power cards were swapped for a same-role alternative to keep this deck at Casual power.");
 });
 
 test("one-pass idempotence preserves rows, evaluation, variant id, and original diagnostics", () => {

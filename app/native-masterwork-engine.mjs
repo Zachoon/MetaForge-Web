@@ -3809,6 +3809,11 @@ export function repairBudgetOffenders(input, candidate) {
   diagnostics.avoidableSpendAfterUsd = finalAudit.budgetDebt.totalAvoidableSpendUsd;
   diagnostics.completed = true;
   diagnostics.secondPass = secondPass;
+  // Short, player-facing prose — the same shape recoveryNote already uses
+  // for Phase 1's land-budget disclosure. Generated once here, server-side,
+  // rather than templated client-side from the raw counts, so there is one
+  // source of truth for the sentence regardless of caller.
+  diagnostics.note = `${diagnostics.appliedCount} card${diagnostics.appliedCount === 1 ? "" : "s"} over your budget preference ${diagnostics.appliedCount === 1 ? "was" : "were"} swapped for a same-role alternative that fits, saving $${diagnostics.savingsAppliedUsd.toFixed(2)}.`;
 
   const finished = refreshLedgerAfterRepair(input, { ...finalRepaired, budgetRepair: diagnostics }, analysis);
   return { candidate: finished, budgetRepair: diagnostics };
@@ -4054,6 +4059,8 @@ export function repairPowerOffenders(input, candidate) {
   diagnostics.removedNames = swaps.map((swap) => swap.offenderName);
   diagnostics.alternativesAddedNames = swaps.map((swap) => swap.pickName);
   diagnostics.completed = true;
+  // Same short player-facing prose pattern as budgetRepair.note.
+  diagnostics.note = `${diagnostics.appliedCount} high-power card${diagnostics.appliedCount === 1 ? "" : "s"} ${diagnostics.appliedCount === 1 ? "was" : "were"} swapped for a same-role alternative to keep this deck at Casual power.`;
   const finished = refreshLedgerAfterRepair(input, { ...repaired, powerRepair: diagnostics }, analysis);
   return { candidate: finished, powerRepair: diagnostics };
 }

@@ -190,6 +190,20 @@ function compactClientMasterwork(deck: any) {
     evaluation: deck.evaluation,
     tournament: deck.tournament,
     recoveryStage: deck.recoveryStage,
+    // Phase 1's land-budget disclosure — the player-facing string was
+    // always generated (native-masterwork-engine.mjs's buildCandidate),
+    // and app/page.tsx has always rendered it (the "A PREFERENCE WAS
+    // RELAXED..." slot-justification span), but this whitelist never
+    // included it, so it never actually reached the browser. Restoring it
+    // here, not adding it.
+    recoveryNote: deck.recoveryNote ?? null,
+    // Phase 2B/2D and 2C's spell-side analogs of the same disclosure —
+    // short server-generated prose (native-masterwork-engine.mjs's
+    // repairBudgetOffenders/repairPowerOffenders), not the full
+    // removedNames/alternativesAddedNames diagnostics, matching
+    // recoveryNote's own "one sentence, not raw data" shape.
+    budgetRepairNote: deck.budgetRepair?.note ?? null,
+    powerRepairNote: deck.powerRepair?.note ?? null,
     powerSignal: deck.powerSignal,
     manaConsistency: deck.manaConsistency,
     rows: Array.isArray(deck.rows) ? deck.rows.map(row) : [],
