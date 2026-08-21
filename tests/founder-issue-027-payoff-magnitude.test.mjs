@@ -142,3 +142,86 @@ test("Founder #027: a live-flavor T'Challa-shaped commander scores its own mana-
   assert.equal(payoffMagnitudeHitsFor(belowBarArtifact, gates), 0);
   assert.equal(payoffMagnitudeHitsFor(atBarArtifact, gates), 1);
 });
+
+// =============================================================================
+// Founder #037 — negated type words ("noncreature") never matched anything
+// =============================================================================
+// Found comparing the engine's real Y'shtola, Night's Blessed build against
+// a real high-power player list for the same commander: Y'shtola's actual
+// printed payoff ("Whenever you cast a noncreature spell with mana value 3
+// or greater, Y'shtola deals 2 damage to each opponent and you gain 2
+// life.") is the entire point of the commander per the deck's own primer —
+// but no real card's typeLine ever literally contains the substring
+// "noncreature", so cardClearsPayoffMagnitudeGate's plain \btypeWord\b
+// check returned null (the gate doesn't even apply) for every single card
+// in the game, forever. Verified before this fix: null for both Demonic
+// Tutor and Cyclonic Rift against Y'shtola's own real gate — the gate was
+// correctly PARSED (commanderPayoffMagnitudeGates already produced
+// {typeWord: "noncreature", ...}), it just could never be cleared by
+// anything. A negated typeWord now checks the opposite: does the typeLine
+// lack that word. Lands are explicitly excluded from ever clearing a
+// negated gate — a land is never cast as a spell at all, so it can never
+// satisfy "cast a noncreature spell" regardless of what its own type line
+// does or doesn't say.
+// =============================================================================
+
+const yshtolaOracle = "Vigilance\nAt the beginning of each end step, if a player lost 4 or more life this turn, you draw a card.\nWhenever you cast a noncreature spell with mana value 3 or greater, Y'shtola deals 2 damage to each opponent and you gain 2 life.";
+
+test("Founder #037: parses Y'shtola's real noncreature-spell payoff, and correctly excludes lands from clearing it", () => {
+  const gates = commanderPayoffMagnitudeGates(yshtolaOracle);
+  assert.deepEqual(gates, [{ typeWord: "noncreature", metric: "manaValue", threshold: 3, direction: "atLeast" }]);
+  const gate = gates[0];
+  // Real cards, real oracle text — Demonic Tutor and Cyclonic Rift were
+  // both null before this fix.
+  assert.equal(cardClearsPayoffMagnitudeGate({ typeLine: "Sorcery", manaCost: "{1}{B}", cmc: 2 }, gate), false, "Demonic Tutor: noncreature, but below the mana-value bar");
+  assert.equal(cardClearsPayoffMagnitudeGate({ typeLine: "Instant", manaCost: "{1}{U}{U}", cmc: 3 }, gate), true, "Cyclonic Rift: noncreature, clears the bar");
+  assert.equal(cardClearsPayoffMagnitudeGate({ typeLine: "Legendary Creature — Phyrexian Praetor", manaCost: "{2}{B}{B}", cmc: 4 }, gate), null, "Sheoldred, the Apocalypse is a creature spell — not even the gated type");
+  assert.equal(cardClearsPayoffMagnitudeGate({ typeLine: "Land", manaCost: "", cmc: 0 }, gate), null, "a land is never cast as a spell, so it can never clear a noncreature-spell gate");
+  assert.equal(cardClearsPayoffMagnitudeGate({ typeLine: "Artifact", manaCost: "{1}", cmc: 1 }, gate), false, "Sol Ring: noncreature, but below the mana-value bar");
+});
+
+test("Founder #037: an artifact-creature is a creature spell, so it never clears a noncreature-spell gate", () => {
+  const gates = commanderPayoffMagnitudeGates(yshtolaOracle);
+  assert.equal(cardClearsPayoffMagnitudeGate({ typeLine: "Artifact Creature — Construct", manaCost: "{4}", cmc: 4 }, gates[0]), null);
+});
+
+const noncreatureFiller = [
+  ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Test", manaCost: "{2}{U}{B}", colorIdentity: ["U", "B"] })),
+  ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Exile target nonland permanent.", typeLine: "Instant", manaCost: "{1}{B}", colorIdentity: ["B"] })),
+  ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof and indestructible until end of turn.", typeLine: "Instant", manaCost: "{1}{U}", colorIdentity: ["U"] })),
+  ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [] })),
+];
+const ubDuals = Array.from({ length: 20 }, (_, i) => ({
+  name: `Drowned Gate ${i}`,
+  oracleText: "This land enters the battlefield tapped. {T}: Add {U} or {B}.",
+  typeLine: "Land",
+  manaCost: "",
+  colorIdentity: ["U", "B"],
+  producedMana: ["U", "B"],
+  popularityRank: 5,
+  priceUsd: 0.5,
+}));
+const belowBarNoncreature = {
+  name: "Test Small Bolt", typeLine: "Instant", oracleText: "Deal 2 damage to any target.",
+  manaCost: "{U}{B}", cmc: 2, colorIdentity: ["U", "B"], popularityRank: 40, priceUsd: 1,
+};
+const atBarNoncreature = {
+  name: "Test Big Bolt", typeLine: "Instant", oracleText: "Deal 2 damage to any target.",
+  manaCost: "{1}{U}{B}", cmc: 3, colorIdentity: ["U", "B"], popularityRank: 40, priceUsd: 1,
+};
+
+test("Founder #037: construction includes the noncreature spell that actually clears a real commander's negated-type magnitude bar, scored strictly above an otherwise-identical one that misses it", () => {
+  const yshtola = { name: "Y'shtola, Night's Blessed", colors: ["U", "B"], oracleText: yshtolaOracle };
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: yshtola, cards: [...noncreatureFiller, belowBarNoncreature, atBarNoncreature, ...ubDuals],
+  });
+  const names = new Set(report.selected.rows.map((row) => row.name));
+  assert.ok(names.has("Test Big Bolt"), "the mana-value-3+ noncreature spell that actually triggers Y'shtola clears the bar and should be picked");
+  // Deck size is generous enough here that an otherwise-fine cheap spell
+  // can also make the 99 — the real claim is the score gap the gate
+  // creates, not that the cheap one gets crowded out entirely.
+  const gates = commanderPayoffMagnitudeGates(yshtolaOracle);
+  assert.equal(payoffMagnitudeHitsFor(belowBarNoncreature, gates), 0);
+  assert.equal(payoffMagnitudeHitsFor(atBarNoncreature, gates), 1);
+});

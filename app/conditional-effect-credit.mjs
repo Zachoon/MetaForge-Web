@@ -437,6 +437,23 @@ function numericStat(value) {
   return Number.isFinite(num) ? num : null;
 }
 
+// Founder #037: "noncreature"/"nonland"/"nonartifact" are real, common
+// commander trigger conditions ("Whenever you cast a noncreature spell
+// with mana value 3 or greater" — Y'shtola, Night's Blessed's actual
+// payoff, the whole point of the commander per its own primer) — but no
+// real card's typeLine ever literally contains the substring "noncreature"
+// itself, so the plain \btypeWord\b check below silently failed to match
+// EVERY card in the game for a negated typeWord: not "misses some", not
+// "false", but null (this gate doesn't even apply) for every single
+// candidate, forever. Verified: before this fix, cardClearsPayoffMagnitudeGate
+// returned null for Demonic Tutor AND Cyclonic Rift against Y'shtola's own
+// real gate. A negated typeWord instead checks the OPPOSITE: does the
+// typeLine lack that word. Lands are explicitly excluded from ever
+// clearing a negated gate — a land is never cast as a spell at all, so it
+// can never satisfy "cast a noncreature spell" regardless of what its own
+// type line does or doesn't say.
+const NEGATED_TYPE_WORD = /^non(.+)$/i;
+
 /**
  * null = the candidate isn't even the gated type (the gate doesn't apply to
  * it at all, positive or negative). true/false = it is that type, and does
@@ -445,7 +462,11 @@ function numericStat(value) {
  */
 export function cardClearsPayoffMagnitudeGate(card = {}, gate) {
   const typeLine = String(card.typeLine || card.type_line || "");
-  if (!new RegExp(`\\b${gate.typeWord}\\b`, "i").test(typeLine)) return null;
+  const negated = gate.typeWord.match(NEGATED_TYPE_WORD);
+  const matchesType = negated
+    ? !/\bLand\b/i.test(typeLine) && !new RegExp(`\\b${negated[1]}\\b`, "i").test(typeLine)
+    : new RegExp(`\\b${gate.typeWord}\\b`, "i").test(typeLine);
+  if (!matchesType) return null;
   const value = gate.metric === "manaValue"
     ? curveManaValue(card.manaCost || card.mana_cost || "", Number(card.cmc) || 0)
     : numericStat(gate.metric === "power" ? card.power : card.toughness);
