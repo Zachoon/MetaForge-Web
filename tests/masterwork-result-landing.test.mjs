@@ -91,6 +91,11 @@ test("a completed Forge lands on the plain decklist, coaching and experiments re
   // explicit choice, not shown by default on landing.
   assert.match(page, /className="conduct-experiment-cta"/);
   assert.match(page, /Want to conduct an experiment\?/);
+  assert.match(page, /setExperimentLabOpen\(true\)/);
+  assert.match(page, /experimentLabOpen && createPortal\(/);
+  assert.match(page, /className="experiment-lab-backdrop"/);
+  assert.match(page, /className="refinement-starters-vault experiment-lab-dialog" role="dialog" aria-modal="true"/);
+  assert.doesNotMatch(page, /setSiteRail\("overview"\);\s*window\.requestAnimationFrame\(\(\) => document\.querySelector\("\.refinement-starters-vault"\)/);
   assert.match(page, /className="next-step-cta"/);
   assert.match(page, /This list is a masterwork! →/);
   const galleryAt = page.indexOf('id="deck-gallery"');

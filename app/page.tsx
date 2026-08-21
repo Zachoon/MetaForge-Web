@@ -1858,6 +1858,7 @@ export default function Home() {
   const [forgeInterventions, setForgeInterventions] = useState<ForgeIntervention[]>([]);
   const [interventionLearningReady, setInterventionLearningReady] = useState(false);
   const [matchEvidenceOpen, setMatchEvidenceOpen] = useState(false);
+  const [experimentLabOpen, setExperimentLabOpen] = useState(false);
   const [activeForgeChapter, setActiveForgeChapter] = useState<1 | 2 | 5>(1);
   const [siteRail, setSiteRail] = useState<"overview" | "decklist" | "analysis" | "playtest">("decklist");
   // An imported review's own step in the flow: submit -> ceremony -> swap
@@ -6817,10 +6818,7 @@ export default function Home() {
                         type="button"
                         className="conduct-experiment-cta"
                         onClick={() => {
-                          setChamber("workbench");
-                          setActiveForgeChapter(1);
-                          setSiteRail("overview");
-                          window.requestAnimationFrame(() => document.querySelector(".refinement-starters-vault")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+                          setExperimentLabOpen(true);
                         }}
                       >
                         Want to conduct an experiment?
@@ -7005,10 +7003,20 @@ export default function Home() {
                   Open Research &amp; Evidence →
                 </a>
               </section>
-              <section className="refinement-starters-vault" aria-label="Tournament-rival controlled experiments">
+              {experimentLabOpen && createPortal(
+                <div
+                  className="experiment-lab-backdrop"
+                  role="presentation"
+                  onMouseDown={(event) => {
+                    if (event.currentTarget === event.target) setExperimentLabOpen(false);
+                  }}
+                >
+              <section className="refinement-starters-vault experiment-lab-dialog" role="dialog" aria-modal="true" aria-labelledby="experiment-lab-title">
+                <button type="button" className="experiment-lab-close" onClick={() => setExperimentLabOpen(false)} aria-label="Close experiment laboratory">×</button>
                 <header className="vault-experiments-header">
                   <small>ADVANCED · TOURNAMENT-RIVAL EXPERIMENTS</small>
-                  <b>A second, independent read: this exact build vs. its closest rival from generation.</b>
+                  <b id="experiment-lab-title">Choose one experiment for this Masterwork</b>
+                  <p>A second, independent read: this exact build vs. its closest rival from generation.</p>
                   {coachOccupancyLabels.length > 0 && (
                     <p className="experiment-occupancy">
                       Occupancy engines: {coachOccupancyLabels.join(" · ")}. Named from commander oracle. These experiments do not reopen occupancy.
@@ -7236,6 +7244,9 @@ export default function Home() {
                   )}
                 </div>
               </section>
+                </div>,
+                document.body,
+              )}
               {benchStatus === "forging" ? (
                 <section
                   className="masterwork-forging-progress"
@@ -8129,11 +8140,10 @@ export default function Home() {
                 <p>
                   A second, independent set of gated one-card tests compares
                   this exact build against its closest tournament rival from
-                  generation. Find it in the{" "}
-                  <button type="button" className="deep-forge-redirect-link" onClick={() => {
-                    setActiveForgeChapter(1);
-                    window.requestAnimationFrame(() => document.querySelector(".refinement-starters-vault")?.scrollIntoView({ behavior: "smooth", block: "start" }));
-                  }}>
+                   generation. Find it in the{" "}
+                   <button type="button" className="deep-forge-redirect-link" onClick={() => {
+                    setExperimentLabOpen(true);
+                   }}>
                     tournament-rival experiments
                   </button>.
                 </p>
