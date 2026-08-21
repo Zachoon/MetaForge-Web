@@ -1,5 +1,5 @@
 // =============================================================================
-// Conditional effect credit — Founder #026, extended by #027
+// Conditional effect credit — Founder #026, extended by #027, #028, #029
 // =============================================================================
 // Restricted / mutually exclusive effects must not receive the same construction
 // credit as unconditional ones. Shared by land ranking, role floors, and
@@ -18,6 +18,13 @@
 // death-triggered producer (Smaug the Impenetrable, Dockside Extortionist,
 // Pitiless Plunderer) that makes the token without spending a creature to
 // do it.
+//
+// #029 applies the same #028 shape to a second resource: mana production.
+// Ashnod's Altar / Phyrexian Altar ("Sacrifice a creature: Add...") need
+// the exact same fodder an unconditional rock (Sol Ring) or a
+// self-sacrificing one-shot (Lotus Petal) never do — classifyNativeCard's
+// "ramp" role is exactly as cost-blind as the old token_generator semantic
+// was, for the identical reason (a bare regex/tag with no cost check).
 // =============================================================================
 
 const TYPE_RESTRICTED_MANA = /chosen type/i;
@@ -53,6 +60,16 @@ const TYPAL_DENSITY_FLOOR = 12;
 // another (a much less restrictive pattern) is never penalized here.
 const TOKEN_PRODUCTION_GATED_BY_CREATURE_SACRIFICE = /\bsacrifice\b[^.:]{0,60}?\bcreatures?\b[^.:]{0,20}:[^.]{0,140}?\bcreate\b[^.]*\btokens?\b/i;
 const CONDITIONAL_TOKEN_PRODUCTION_FACTOR = 0.35;
+// Ashnod's Altar class: "Sacrifice a creature: Add {C}{C}." / "Sacrifice a
+// creature: Add one mana of any color." — same cost-clause/effect-clause
+// bounding as the token check above. Does not match Krark-Clan Ironworks
+// ("Sacrifice an artifact") or a Treasure's own reminder text ("Sacrifice
+// this token") — scoped to sacrificing a *creature* specifically, same
+// reasoning as the token check: a Treasure paying for its own mana is not
+// fodder-dependent, and artifact-sac ramp is a distinct, not-yet-covered
+// class this does not claim to handle.
+const RAMP_PRODUCTION_GATED_BY_CREATURE_SACRIFICE = /\bsacrifice\b[^.:]{0,60}?\bcreatures?\b[^.:]{0,20}:[^.]{0,140}?\badd\b[^.]*(?:\{[WUBRGCXYZ0-9]|\bmana\b)/i;
+const CONDITIONAL_RAMP_PRODUCTION_FACTOR = 0.35;
 
 export function isModalToolbox(oracle = "") {
   return MODAL_TOOLBOX.test(String(oracle || ""));
@@ -133,6 +150,17 @@ export function restrictedWinconFactor({
  */
 export function conditionalTokenProductionFactor(oracle = "") {
   return TOKEN_PRODUCTION_GATED_BY_CREATURE_SACRIFICE.test(String(oracle || "")) ? CONDITIONAL_TOKEN_PRODUCTION_FACTOR : 1;
+}
+
+/**
+ * How much of a card's ramp credit is real when that mana production is
+ * gated behind sacrificing a creature (Ashnod's Altar / Phyrexian Altar
+ * class) rather than unconditional (Sol Ring) or a one-shot that sacrifices
+ * itself (Lotus Petal). Same reasoning as conditionalTokenProductionFactor:
+ * discounted, not excluded — a list with real fodder support can still run it.
+ */
+export function conditionalRampProductionFactor(oracle = "") {
+  return RAMP_PRODUCTION_GATED_BY_CREATURE_SACRIFICE.test(String(oracle || "")) ? CONDITIONAL_RAMP_PRODUCTION_FACTOR : 1;
 }
 
 /**

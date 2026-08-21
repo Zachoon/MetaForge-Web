@@ -6,6 +6,7 @@ import {
   colorPipsFromCost,
   commanderConnectionSignalsFor,
   commanderMechanicalScopes,
+  conditionalRampProductionFactor,
   conditionalTokenProductionFactor,
   forgeNativeMasterwork,
   interactionQualityFor,
@@ -1255,3 +1256,42 @@ test("Founder #028: a fodder-gated Treasure producer loses the tokens package co
   );
   assert.ok(report.selected.rows.some((row) => String(row.name).startsWith("Coin Minter")));
 });
+
+// =============================================================================
+// Founder #029: fodder-gated mana production is not free ramp either
+// =============================================================================
+// Same shape as #028 (classifyNativeCard's "ramp" role is exactly as
+// cost-blind as the old token_generator semantic was), found by auditing
+// for other cards this gap affects: Ashnod's Altar / Phyrexian Altar
+// ("Sacrifice a creature: Add...") need the same fodder Warren Soultrader
+// does, but were getting full, undiscounted ramp credit.
+// =============================================================================
+
+test("Founder #029: mana production gated behind sacrificing a creature is discounted, unconditional/self-sacrificing production is not", () => {
+  assert.equal(conditionalRampProductionFactor("Sacrifice a creature: Add {C}{C}."), 0.35, "Ashnod's Altar");
+  assert.equal(conditionalRampProductionFactor("Sacrifice a creature: Add one mana of any color."), 0.35, "Phyrexian Altar");
+  assert.equal(
+    conditionalRampProductionFactor("Sacrifice an artifact: Add {C}{C}."),
+    1,
+    "Krark-Clan Ironworks sacrifices an artifact, not a creature — a distinct, not-yet-covered class",
+  );
+  assert.equal(
+    conditionalRampProductionFactor(
+      "When this creature enters, you may search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.\nWhen this creature dies, you may draw a card.",
+    ),
+    1,
+    "Solemn Simulacrum's land tutor is an ETB, not a sacrifice-gated activated ability",
+  );
+  assert.equal(
+    conditionalRampProductionFactor("{T}, Sacrifice this artifact: Add one mana of any color."),
+    1,
+    "Lotus Petal sacrifices itself, not a creature — not fodder-dependent",
+  );
+  assert.equal(conditionalRampProductionFactor("{T}: Add {C}{C}."), 1, "Sol Ring pays no cost at all");
+  assert.equal(
+    conditionalRampProductionFactor("Sacrifice a creature. Add one mana of any color."),
+    1,
+    "an unrelated sacrifice in an earlier sentence does not gate a later, separate mana ability",
+  );
+});
+

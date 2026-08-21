@@ -8,6 +8,7 @@ import {
   colorlessFixingCredit,
   colorlessPipsFromCost,
   commanderPayoffMagnitudeGates,
+  conditionalRampProductionFactor,
   conditionalTokenProductionFactor,
   curveManaValue,
   hasVariableGenericCost,
@@ -27,6 +28,7 @@ export {
   colorlessFixingCredit,
   colorlessPipsFromCost,
   commanderPayoffMagnitudeGates,
+  conditionalRampProductionFactor,
   conditionalTokenProductionFactor,
   curveManaValue,
   hasVariableGenericCost,
@@ -822,6 +824,7 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
     blueprintText: `${context.blueprint?.source || ""} ${(context.blueprint?.requestedMechanics || []).join(" ")} ${(context.blueprint?.promises || []).join(" ")}`,
   });
   const tokenProductionFactor = conditionalTokenProductionFactor(card.oracleText || card.oracle_text || "");
+  const rampProductionFactor = conditionalRampProductionFactor(card.oracleText || card.oracle_text || "");
   const printedCmc = manaValueFromCost(card.manaCost || card.mana_cost, card.cmc);
   const cmc = curveManaValue(card.manaCost || card.mana_cost, printedCmc);
   const floorCredit = roleFloorCredit(card.oracleText || card.oracle_text || "", {
@@ -864,6 +867,7 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
     castingFactor,
     winconFactor,
     tokenProductionFactor,
+    rampProductionFactor,
     roleFloorCredit: floorCredit,
     budgetScore: budgetScoreFor(card.priceUsd, context.budget),
     complexityScore: complexityScoreFor(oracleTextComplexity(card.oracleText || card.oracle_text), context.complexity),
@@ -1047,6 +1051,7 @@ function scoreCard(entry, input, variant, context) {
   const castingFactor = Number.isFinite(entry.castingFactor) ? entry.castingFactor : 1;
   const winconFactor = Number.isFinite(entry.winconFactor) ? entry.winconFactor : 1;
   const tokenProductionFactor = Number.isFinite(entry.tokenProductionFactor) ? entry.tokenProductionFactor : 1;
+  const rampProductionFactor = Number.isFinite(entry.rampProductionFactor) ? entry.rampProductionFactor : 1;
   const fixingCredit = colorlessFixingCredit({
     oracle: oracleText,
     colorIdentity: entry.card.colorIdentity || entry.card.color_identity || [],
@@ -1060,8 +1065,9 @@ function scoreCard(entry, input, variant, context) {
     castingFactor,
     winconFactor,
     tokenProductionFactor,
+    rampProductionFactor,
     fixingCredit,
-    score: (entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.commanderConnectionSignals.length * 14 * variant.synergy + entry.payoffMagnitudeHits * 14 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.blueprintMechanicHits.reduce((sum, mechanic) => sum + blueprintMechanicDefinition(mechanic).score, 0) + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + entry.budgetScore + entry.complexityScore + entry.powerTierScore + deterministicTieBreak) * castingFactor * fixingCredit * winconFactor * tokenProductionFactor,
+    score: (entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.commanderConnectionSignals.length * 14 * variant.synergy + entry.payoffMagnitudeHits * 14 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.blueprintMechanicHits.reduce((sum, mechanic) => sum + blueprintMechanicDefinition(mechanic).score, 0) + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + entry.budgetScore + entry.complexityScore + entry.powerTierScore + deterministicTieBreak) * castingFactor * fixingCredit * winconFactor * tokenProductionFactor * rampProductionFactor,
     synergyHits: entry.synergyHits,
     synergyPotential: entry.synergyPotential,
     preferenceHits: entry.preferenceHits,
@@ -1094,7 +1100,8 @@ function isUnrestrictedConstructionCredit(entry) {
   return (entry.castingFactor ?? 1) >= 1
     && (entry.fixingCredit ?? 1) >= 1
     && (entry.winconFactor ?? 1) >= 1
-    && (entry.tokenProductionFactor ?? 1) >= 1;
+    && (entry.tokenProductionFactor ?? 1) >= 1
+    && (entry.rampProductionFactor ?? 1) >= 1;
 }
 
 // An explicit Blueprint is a deck-level contract, not merely another
@@ -1503,9 +1510,10 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       const fixingCredit = Number.isFinite(entry.fixingCredit) ? entry.fixingCredit : 1;
       const winconFactor = Number.isFinite(entry.winconFactor) ? entry.winconFactor : 1;
       const tokenProductionFactor = Number.isFinite(entry.tokenProductionFactor) ? entry.tokenProductionFactor : 1;
+      const rampProductionFactor = Number.isFinite(entry.rampProductionFactor) ? entry.rampProductionFactor : 1;
       const phased = applyPhaseWeights({
         rawScore: entry.score,
-        prospectiveDelta: delta.total * castingFactor * fixingCredit * winconFactor * tokenProductionFactor,
+        prospectiveDelta: delta.total * castingFactor * fixingCredit * winconFactor * tokenProductionFactor * rampProductionFactor,
         synergy,
         orphanPenalty: orphanPayoffPenalty * 0.65,
         disconnectTax: disconnectedStrategyTax,
