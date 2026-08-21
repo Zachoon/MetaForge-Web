@@ -185,6 +185,28 @@ test("typal occupancy opens only when the commander actually runs a tribe", () =
   assert.deepEqual(maralen.packages.find((pkg) => pkg.id === "typal")?.tribalTypes, ["elf", "faerie"]);
 });
 
+test("T'Challa's nonartifact-spell restriction does not invent a nonartifact tribe or admit changeling glue", () => {
+  const tchalla = {
+    name: "T'Challa, the Black Panther",
+    colors: ["G", "W"],
+    oracleText: "Whenever T'Challa enters or attacks, create a tapped Vibranium token. (It's an artifact with indestructible and ‘{T}: Add {C}. This mana can't be spent to cast a nonartifact spell.’) Whenever you cast an artifact spell with mana value 4 or greater, put two +1/+1 counters on T'Challa.",
+    typeLine: "Legendary Creature — Human Noble Hero",
+    manaCost: "{1}{G}{W}",
+  };
+  const intent = intentFor(tchalla);
+  const bloodlinePretender = {
+    name: "Bloodline Pretender",
+    oracleText: "Changeling (This card is every creature type.) As this creature enters, choose a creature type. Whenever another creature of the chosen type enters under your control, put a +1/+1 counter on this creature.",
+    typeLine: "Artifact Creature — Shapeshifter",
+    manaCost: "{3}",
+    colorIdentity: [],
+  };
+
+  assert.deepEqual(extractTypalTribes(tchalla.oracleText), []);
+  assert.ok(!intent.packageIds.includes("typal"));
+  assert.equal(cardSatisfiesPackageCore(bloodlinePretender, "typal", intent), false);
+});
+
 test("typal core is type-line members and changelings, not oracle mentions", () => {
   const intent = intentFor(goblinBoss);
   assert.equal(cardSatisfiesPackageCore(goblinWarchief, "typal", intent), true);
