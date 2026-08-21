@@ -10,6 +10,14 @@
 // you cast an artifact spell with mana value 4 or greater") is not the same
 // promise as "artifacts matter" — a candidate that shares the type but
 // misses the bar can never trigger it.
+//
+// #028 adds a third shape: a card whose token production is gated behind
+// sacrificing a creature (Warren Soultrader: "Pay 1 life, Sacrifice another
+// creature: Create a Treasure token.") needs fodder the list may not
+// reliably have, so it is not the same promise as an unconditional or
+// death-triggered producer (Smaug the Impenetrable, Dockside Extortionist,
+// Pitiless Plunderer) that makes the token without spending a creature to
+// do it.
 // =============================================================================
 
 const TYPE_RESTRICTED_MANA = /chosen type/i;
@@ -32,6 +40,19 @@ const MODAL_FLOOR_CREDIT = 0.4;
 const NON_TYPAL_TYPE_RESTRICTED_PENALTY = -6;
 const RESTRICTED_CASTING_FACTOR = 0.12;
 const TYPAL_DENSITY_FLOOR = 12;
+// Warren Soultrader class: "Pay 1 life, Sacrifice another creature: Create
+// a Treasure token." reads the cost clause (before the colon) for both
+// "sacrifice" and "creature", then requires "create"/"token" in the effect
+// clause of the SAME sentence — [^.] bounds stop the match at the next
+// period so an unrelated later ability can never bleed in. This does not
+// match Pitiless Plunderer ("whenever ... dies, create a Treasure token" —
+// no cost, no colon), Dockside Extortionist (ETB, no sacrifice at all), or
+// Mahadi (end-step trigger off deaths, not a paid activation) — verified
+// against all three's real oracle text. Scoped to sacrificing a *creature*
+// specifically, not an artifact/token, so converting one token into
+// another (a much less restrictive pattern) is never penalized here.
+const TOKEN_PRODUCTION_GATED_BY_CREATURE_SACRIFICE = /\bsacrifice\b[^.:]{0,60}?\bcreatures?\b[^.:]{0,20}:[^.]{0,140}?\bcreate\b[^.]*\btokens?\b/i;
+const CONDITIONAL_TOKEN_PRODUCTION_FACTOR = 0.35;
 
 export function isModalToolbox(oracle = "") {
   return MODAL_TOOLBOX.test(String(oracle || ""));
@@ -97,6 +118,21 @@ export function restrictedWinconFactor({
     return /create .{0,80}token|creature tokens/i.test(support) ? 1 : RESTRICTED_CASTING_FACTOR;
   }
   return RESTRICTED_CASTING_FACTOR;
+}
+
+/**
+ * How much of a card's token-producer credit is real when that production
+ * is gated behind sacrificing a creature (Warren Soultrader class) rather
+ * than unconditional or death-triggered (Smaug / Dockside Extortionist /
+ * Pitiless Plunderer class). A sac-for-token activated ability needs
+ * creature fodder the list may not reliably have on board, so it should
+ * not anchor a "tokens" package core slot ahead of a producer that just
+ * makes the token — but it is still a real, if narrow, source (including a
+ * niche use protecting fodder from an exile-based board wipe), so it is
+ * discounted, not excluded outright.
+ */
+export function conditionalTokenProductionFactor(oracle = "") {
+  return TOKEN_PRODUCTION_GATED_BY_CREATURE_SACRIFICE.test(String(oracle || "")) ? CONDITIONAL_TOKEN_PRODUCTION_FACTOR : 1;
 }
 
 /**

@@ -6,6 +6,7 @@ import {
   colorPipsFromCost,
   commanderConnectionSignalsFor,
   commanderMechanicalScopes,
+  conditionalTokenProductionFactor,
   forgeNativeMasterwork,
   interactionQualityFor,
   landColoredManaFixingFactor,
@@ -1167,4 +1168,90 @@ test("Founder #026: a conditional wincon is not a threat unless the commander pr
     cards: [...rbSpells, revel, ...rbDuals],
   });
   assert.ok(treasureReport.selected.rows.some((row) => row.name === "Revel in Riches"), "a treasure-producing commander makes the treasure win real");
+});
+
+// =============================================================================
+// Founder #028: fodder-gated token production is not free token production
+// =============================================================================
+// Reported directly by a user building a Smaug the Impenetrable (pure,
+// zero-sacrifice-text Treasure commander) list: Warren Soultrader ("Pay 1
+// life, Sacrifice another creature: Create a Treasure token.") needs
+// creature fodder the list may not reliably have, so it should not compete
+// for the tokens package core the same way an unconditional or
+// death-triggered producer does.
+// =============================================================================
+
+test("Founder #028: token production gated behind sacrificing a creature is discounted, unconditional/death-triggered production is not", () => {
+  const warrenOracle = "Pay 1 life, Sacrifice another creature: Create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")";
+  const pitilessPlunderOracle = "Whenever another creature you control dies, create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")";
+  const docksideOracle = "When this creature enters, create X Treasure tokens, where X is the number of artifacts and enchantments your opponents control. (Treasure tokens are artifacts with \"{T}, Sacrifice this token: Add one mana of any color.\")";
+  const smaugOracle = "Flying, indestructible, haste\nWhenever Smaug is dealt noncombat damage, create that many Treasure tokens.";
+  const mahadiOracle = "At the beginning of your end step, create a Treasure token for each creature that died this turn. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")";
+  assert.equal(conditionalTokenProductionFactor(warrenOracle), 0.35);
+  assert.equal(conditionalTokenProductionFactor(pitilessPlunderOracle), 1, "a death trigger pays no activation cost");
+  assert.equal(conditionalTokenProductionFactor(docksideOracle), 1, "an ETB is not gated behind sacrificing a creature");
+  assert.equal(conditionalTokenProductionFactor(smaugOracle), 1, "a damage trigger is not gated behind sacrificing a creature");
+  assert.equal(conditionalTokenProductionFactor(mahadiOracle), 1, "an end-step trigger off deaths pays no activation cost");
+  assert.equal(
+    conditionalTokenProductionFactor("{1}, Sacrifice a Treasure: Create a Food token."),
+    1,
+    "converting one token into another is not fodder-dependent on creatures",
+  );
+  assert.equal(
+    conditionalTokenProductionFactor("Sacrifice another creature: Create a 1/1 white Spirit creature token."),
+    0.35,
+    "the gate applies to creature-token production too, not only Treasure",
+  );
+  assert.equal(
+    conditionalTokenProductionFactor("Sacrifice a creature. Create a Treasure token."),
+    1,
+    "an unrelated sacrifice in an earlier sentence does not gate a later, separate token trigger",
+  );
+});
+
+const treasureSovereign = {
+  name: "Treasure Sovereign",
+  colors: ["B"],
+  oracleText: "Whenever this creature deals damage, create that many Treasure tokens.",
+};
+
+const fodderTrader = {
+  name: "Fodder Trader",
+  oracleText: "Pay 1 life, Sacrifice another creature: Create a Treasure token.",
+  typeLine: "Creature — Human Advisor",
+  manaCost: "{2}{B}{B}",
+  colorIdentity: ["B"],
+  popularityRank: 1,
+};
+
+test("Founder #028: a fodder-gated Treasure producer loses the tokens package core to unconditional producers", () => {
+  const bSpells = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Ledger Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Horror", manaCost: "{2}{B}", colorIdentity: ["B"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Ledger Answer ${i}`, oracleText: "Destroy target creature.", typeLine: "Instant", manaCost: "{1}{B}", colorIdentity: ["B"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Ledger Shield ${i}`, oracleText: "Target creature gains hexproof until end of turn.", typeLine: "Instant", manaCost: "{B}", colorIdentity: ["B"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Coin Minter ${i}`, oracleText: "When this creature enters, create a Treasure token.", typeLine: "Creature — Human Rogue", manaCost: "{2}{B}", colorIdentity: ["B"], popularityRank: 40 })),
+  ];
+  const bGates = Array.from({ length: 20 }, (_, i) => ({
+    name: `Swamp Gate ${i}`,
+    oracleText: "This land enters the battlefield tapped. {T}: Add {B}.",
+    typeLine: "Land",
+    manaCost: "",
+    colorIdentity: ["B"],
+    producedMana: ["B"],
+    popularityRank: 5,
+    priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander",
+    target: 100,
+    strategy: "Balanced midrange",
+    seed: 11,
+    commander: treasureSovereign,
+    cards: [...bSpells, fodderTrader, ...bGates],
+  });
+  assert.ok(
+    !report.selected.rows.some((row) => row.name === "Fodder Trader"),
+    "Coin Minter's unconditional Treasure production must fill the tokens package ahead of a sac-for-Treasure activated ability",
+  );
+  assert.ok(report.selected.rows.some((row) => String(row.name).startsWith("Coin Minter")));
 });
