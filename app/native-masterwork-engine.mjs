@@ -3714,14 +3714,103 @@ export function repairBudgetOffenders(input, candidate) {
     excludedNames,
     forbidPowerSignals,
   });
-  diagnostics.appliedCount = swaps.length;
-  diagnostics.removedNames = swaps.map((swap) => swap.offenderName);
-  diagnostics.alternativesAddedNames = swaps.map((swap) => swap.pickName);
-  diagnostics.savingsAppliedUsd = Number(swaps.reduce((sum, swap) => sum + swap.savedUsd, 0).toFixed(2));
-  diagnostics.avoidableSpendAfterUsd = after.budgetDebt.totalAvoidableSpendUsd;
-  diagnostics.completed = true;
 
-  const finished = refreshLedgerAfterRepair(input, { ...repaired, budgetRepair: diagnostics }, analysis);
+  // Second-order pass — bounded, scoped ONLY to the cards pass one itself
+  // just added. Found via a real threshold-sweep verification (The
+  // Ur-Dragon, 5-color, 2026-08-21): pass one audits offenders from the
+  // ORIGINAL candidate, so a replacement it picks can itself still have
+  // its own cheaper same-role alternative that never gets checked (e.g.
+  // Waste Not, added as pass one's pick for a cut card, itself had a
+  // cheaper same-role alternative — Idol of Oblivion — with no hard-gate
+  // impact). This is deliberately NOT the iterate-to-convergence design
+  // already proven unsafe above: it runs exactly once, over exactly the
+  // small named set `pass1AddedNames`, and never a third time. A card
+  // pass one scrutinized and deliberately kept (skippedNoSafeAlternative)
+  // is never reconsidered here — only pass one's own picks are eligible.
+  const pass1AddedNames = new Set(swaps.map((swap) => swap.pickName));
+  const secondOrderOffenders = after.offenders
+    .filter((entry) => pass1AddedNames.has(entry.name))
+    .sort((a, b) => b.priceDifferenceUsd - a.priceDifferenceUsd || a.name.localeCompare(b.name));
+
+  const secondPass = {
+    attempted: secondOrderOffenders.length > 0,
+    appliedCount: 0,
+    skippedNoSafeAlternative: 0,
+    revertedByFinalValidation: false,
+    removedNames: [],
+    alternativesAddedNames: [],
+    savingsAppliedUsd: 0,
+  };
+  let finalRepaired = repaired;
+  let finalAudit = after;
+  if (secondOrderOffenders.length) {
+    // Carries pass one's claimed/cut sets forward so pass two can never
+    // reclaim a name pass one already used, nor silently re-add a name
+    // pass one deliberately removed.
+    const claimed2 = new Set(claimed);
+    const cut2 = new Set(cut);
+    const swaps2 = [];
+    for (const offender of secondOrderOffenders) {
+      const pick = (offender.compatibleAlternatives || []).find((alt) => {
+        const key = normalized(alt.name);
+        return alt.hardGateImpact === "none"
+          && !claimed2.has(alt.name)
+          && !cut2.has(alt.name)
+          && !excludedNames.has(key);
+      });
+      if (!pick) { secondPass.skippedNoSafeAlternative += 1; continue; }
+      claimed2.add(pick.name);
+      cut2.add(offender.name);
+      swaps2.push({ offenderName: offender.name, pickName: pick.name, savedUsd: offender.priceDifferenceUsd });
+    }
+    if (swaps2.length) {
+      let rowsAfterSecondPass = rows.map((row) => ({ ...row }));
+      for (const swap of swaps2) {
+        rowsAfterSecondPass = rowsAfterSecondPass
+          .map((row) => (row.name === swap.offenderName ? { ...row, quantity: row.quantity - 1 } : row))
+          .filter((row) => row.quantity > 0);
+        const entry = analyzedByName.get(normalized(swap.pickName));
+        rowsAfterSecondPass.push(rowFromAnalyzedEntry(entry));
+      }
+      const roleCounts2 = new Map();
+      for (const row of rowsAfterSecondPass) for (const role of row.roles || []) roleCounts2.set(role, (roleCounts2.get(role) || 0) + row.quantity);
+      const brokenByPass2 = Object.entries(originalTargets).find(
+        ([role, target]) => (originalRoleCounts.get(role) || 0) >= target && (roleCounts2.get(role) || 0) < target,
+      );
+      const evaluation2 = evaluateCandidate(rowsAfterSecondPass, roleCounts2, input, variant);
+      if (rowsLeakExcludedNames(rowsAfterSecondPass, excludedNames).length || evaluation2.roleCoverage < 0.45 || evaluation2.curveHealth < 45 || brokenByPass2) {
+        secondPass.revertedByFinalValidation = true;
+      } else {
+        finalRepaired = refreshCandidateStrategyMetrics({
+          ...candidate,
+          rows: rowsAfterSecondPass,
+          deckText: rowsAfterSecondPass.map((row) => `${row.quantity} ${row.name}`).join("\n"),
+          evaluation: evaluation2,
+          score: evaluation2.score,
+        }, analysis, input);
+        finalAudit = auditBudgetSubstitutions(input, {
+          candidate: finalRepaired,
+          priceThresholdUsd: BUDGET_CONSCIOUS_REPAIR_THRESHOLD_USD,
+          excludedNames,
+          forbidPowerSignals,
+        });
+        secondPass.appliedCount = swaps2.length;
+        secondPass.removedNames = swaps2.map((swap) => swap.offenderName);
+        secondPass.alternativesAddedNames = swaps2.map((swap) => swap.pickName);
+        secondPass.savingsAppliedUsd = Number(swaps2.reduce((sum, swap) => sum + swap.savedUsd, 0).toFixed(2));
+      }
+    }
+  }
+
+  diagnostics.appliedCount = swaps.length + secondPass.appliedCount;
+  diagnostics.removedNames = [...swaps.map((swap) => swap.offenderName), ...secondPass.removedNames];
+  diagnostics.alternativesAddedNames = [...swaps.map((swap) => swap.pickName), ...secondPass.alternativesAddedNames];
+  diagnostics.savingsAppliedUsd = Number((swaps.reduce((sum, swap) => sum + swap.savedUsd, 0) + secondPass.savingsAppliedUsd).toFixed(2));
+  diagnostics.avoidableSpendAfterUsd = finalAudit.budgetDebt.totalAvoidableSpendUsd;
+  diagnostics.completed = true;
+  diagnostics.secondPass = secondPass;
+
+  const finished = refreshLedgerAfterRepair(input, { ...finalRepaired, budgetRepair: diagnostics }, analysis);
   return { candidate: finished, budgetRepair: diagnostics };
 }
 

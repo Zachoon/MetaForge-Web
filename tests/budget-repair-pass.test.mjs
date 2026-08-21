@@ -328,3 +328,101 @@ test("Ayula canary: Budget conscious repair reduces total known deck price and r
   assert.ok(report.budgetDiagnostics, "Phase 1E's budgetDiagnostics must still be present, unaffected by Phase 2B");
   assert.equal(report.selected.recoveryStage, "ideal", "Phase 1C's land-scarcity recovery ladder must be completely untouched by this fixture");
 });
+
+// =============================================================================
+// Founder #033: second-order pass — pass one's own picks were never re-audited
+// =============================================================================
+// Found via a real threshold-sweep verification against a fresh production
+// generation (The Ur-Dragon, 5-color, 2026-08-21) — pass one audits
+// offenders from the ORIGINAL candidate only, so a replacement it picks can
+// itself still have its own cheaper same-role alternative that never gets
+// checked. On that real generation: Waste Not, added as pass one's pick for
+// a cut card, itself had a cheaper same-role alternative (Idol of Oblivion)
+// with no hard-gate impact — left unrepaired. This is a second, deliberately
+// bounded static pass scoped ONLY to the named set of cards pass one itself
+// just added — never the whole deck, never a third pass. See
+// repairBudgetOffenders in native-masterwork-engine.mjs for the full design
+// note next to `secondOrderOffenders`.
+// =============================================================================
+
+test("second-order pass: a replacement pass one picks that is itself still above threshold gets chain-repaired once, not left behind", () => {
+  // Test Mid Interaction Cub ($9) genuinely out-scores Test Cheap Cub 3
+  // ($1) for Test Premium Bear C's own luxury-card audit (a real tracked
+  // role plus a popularity edge beats a cheaper but less popular,
+  // otherwise-identical card) — so pass one deterministically picks the
+  // still-expensive mid card, not the cheap one directly. Once that mid
+  // card is itself a row in the deck, its OWN audit (role-matched against
+  // Test Cheap Cub 3, which shares its "interaction" role) has exactly one
+  // safe, cheaper alternative — the shape pass two exists to catch.
+  const luxuryC = gCard("Test Premium Bear C", "Nothing happens.", 3, 20);
+  const midAlt = gCard("Test Mid Interaction Cub", "Exile target nonland permanent.", 3, 9);
+  midAlt.popularityRank = 1;
+  const cheapAlt3 = gCard("Test Cheap Cub 3", "Exile target nonland permanent.", 3, 1);
+  cheapAlt3.popularityRank = 9999;
+
+  const nonlandRows = [
+    { quantity: 1, name: ayula.name, roles: ["commander"], cmc: 0 },
+    ...flow.map((c) => buildRow(c)), ...answer.map((c) => buildRow(c)), ...stone.map((c) => buildRow(c)), ...ward.map((c) => buildRow(c)),
+    buildRow(luxuryC),
+  ];
+  const nonlandCount = nonlandRows.reduce((s, r) => s + r.quantity, 0);
+  const rows = [...nonlandRows, { quantity: 100 - nonlandCount, name: "Forest", roles: ["land"], cmc: 0, colorIdentity: ["G"] }];
+  const candidate = { id: "cohesion", label: "stand-in", rows, evaluation: evaluationOf(rows), score: evaluationOf(rows).score };
+  const input = {
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 21,
+    commander: ayula, budget: "Budget conscious", cards: [...flow, ...answer, ...stone, ...ward, luxuryC, midAlt, cheapAlt3],
+  };
+
+  const result = repairBudgetOffenders(input, candidate);
+  // Pass one's own choice, confirmed deterministic before asserting the chain.
+  assert.ok(result.budgetRepair.alternativesAddedNames.includes("Test Mid Interaction Cub"), "pass one must pick the higher-scoring mid card, not jump straight to the cheap one");
+  // Pass two must then catch that mid card and chain-repair it.
+  assert.ok(result.budgetRepair.secondPass.attempted);
+  assert.equal(result.budgetRepair.secondPass.appliedCount, 1);
+  assert.deepEqual(result.budgetRepair.secondPass.removedNames, ["Test Mid Interaction Cub"]);
+  assert.deepEqual(result.budgetRepair.secondPass.alternativesAddedNames, ["Test Cheap Cub 3"]);
+  assert.equal(result.budgetRepair.avoidableSpendAfterUsd, 0, "chained repair must close the debt pass one alone would have left at $8");
+  assert.ok(!result.candidate.rows.some((r) => r.name === "Test Premium Bear C"));
+  assert.ok(!result.candidate.rows.some((r) => r.name === "Test Mid Interaction Cub"), "the second-order offender must not survive in the final candidate");
+  assert.ok(result.candidate.rows.some((r) => r.name === "Test Cheap Cub 3"));
+  assert.equal(result.candidate.rows.reduce((s, r) => s + r.quantity, 0), 100, "deck size must stay exactly 100 after both bounded passes");
+  // removedNames/alternativesAddedNames must reflect the COMBINED effect of
+  // both passes — collectRepairExcludedNames (and the power-repair pass
+  // that runs after this one) reads these to avoid re-adding anything this
+  // repair ever cut, across either pass.
+  assert.deepEqual(result.budgetRepair.removedNames, ["Test Premium Bear C", "Test Mid Interaction Cub"]);
+  assert.deepEqual(result.budgetRepair.alternativesAddedNames, ["Test Mid Interaction Cub", "Test Cheap Cub 3"]);
+});
+
+test("second-order pass never runs a third time: a card a second-order swap introduces is never itself re-audited", () => {
+  // Same chain as above, but confirms the design's own stated bound:
+  // exactly two static passes, never iteration to convergence. There is
+  // no third-order candidate in this fixture at all — Test Cheap Cub 3 is
+  // the terminal, cheapest card in the pool — so this test is really
+  // asserting the mechanism stops asking, not just that nothing was left
+  // to find.
+  const luxuryC = gCard("Test Premium Bear C", "Nothing happens.", 3, 20);
+  const midAlt = gCard("Test Mid Interaction Cub", "Exile target nonland permanent.", 3, 9);
+  midAlt.popularityRank = 1;
+  const cheapAlt3 = gCard("Test Cheap Cub 3", "Exile target nonland permanent.", 3, 1);
+  cheapAlt3.popularityRank = 9999;
+
+  const nonlandRows = [
+    { quantity: 1, name: ayula.name, roles: ["commander"], cmc: 0 },
+    ...flow.map((c) => buildRow(c)), ...answer.map((c) => buildRow(c)), ...stone.map((c) => buildRow(c)), ...ward.map((c) => buildRow(c)),
+    buildRow(luxuryC),
+  ];
+  const nonlandCount = nonlandRows.reduce((s, r) => s + r.quantity, 0);
+  const rows = [...nonlandRows, { quantity: 100 - nonlandCount, name: "Forest", roles: ["land"], cmc: 0, colorIdentity: ["G"] }];
+  const candidate = { id: "cohesion", label: "stand-in", rows, evaluation: evaluationOf(rows), score: evaluationOf(rows).score };
+  const input = {
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 21,
+    commander: ayula, budget: "Budget conscious", cards: [...flow, ...answer, ...stone, ...ward, luxuryC, midAlt, cheapAlt3],
+  };
+  const first = repairBudgetOffenders(input, candidate);
+  // Calling it again against the already-repaired candidate must be a pure
+  // idempotent short-circuit — never a third decision round.
+  const second = repairBudgetOffenders(input, first.candidate);
+  assert.deepEqual(second.budgetRepair, first.budgetRepair);
+  assert.equal(second.budgetRepair.secondPass.attempted, first.budgetRepair.secondPass.attempted);
+});
