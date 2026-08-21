@@ -48,7 +48,21 @@ export const ROLE_PATTERNS = Object.freeze({
   draw: [/draw (?:a|one|two|three|x|that many|cards?)/i, /look at the top .{0,40}(?:hand|exile)/i, /impulse/i],
   interaction: [/destroy target/i, /exile target/i, /counter target/i, /deals? \d+ damage to/i, /return target .{0,25}owner'?s hand/i, /-\d+\/-\d+/i],
   protection: [/hexproof/i, /indestructible/i, /phase out/i, /protection from/i, /counter target spell or ability/i],
-  recursion: [/return target .{0,35}(?:graveyard|battlefield|hand)/i, /cast .{0,30}from your graveyard/i, /reanimate/i],
+  // Unsummon/Vapor Snag/Boomerang class: "return target creature to its
+  // owner's hand" is bounce (already the `interaction` role above), not
+  // recursion — it never touches a graveyard at all. Requires "graveyard"
+  // to actually appear as the stated source before the destination, so a
+  // bounce spell that merely shares the word "return" with real graveyard
+  // recursion (Raise Dead: "...from your graveyard to your hand", Sun
+  // Titan: "...from your graveyard to the battlefield") stops matching
+  // here. "put", not just "return", and no "target" requirement: Reanimate/
+  // Necromancy ("Put target creature card from a graveyard onto the
+  // battlefield") and Exhume ("Each player puts a creature card from
+  // their graveyard onto the battlefield" — unconditional, no target at
+  // all) are real, commonly-played reanimation spells that otherwise never
+  // matched here — see strategicSemanticsFor's identical reanimation-
+  // semantic fix for the full reasoning and more real-card verification.
+  recursion: [/\b(?:put|return)s? [^.]*\bgraveyard\b[^.]*\b(?:battlefield|hand)\b/i, /cast .{0,30}from your graveyard/i, /reanimate/i],
   sweeper: [/destroy all/i, /exile all/i, /all creatures get -/i, /deals? \d+ damage to each/i],
   selection: [/scry/i, /surveil/i, /discard .{0,20}draw/i, /draw .{0,20}discard/i],
   tokens: [/create (?:a|one|two|three|x|that many|\d+) .{0,45}token/i],

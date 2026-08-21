@@ -99,7 +99,34 @@ export function strategicSemanticsFor(card = {}) {
   if (tags.includes("token_payoff") || /tokens? you control/i.test(oracle) || /token creatures? you control/i.test(oracle) || /for each token/i.test(oracle)) {
     semantics.add("token_payoff");
   }
-  if (tags.includes("graveyard_recursion") || /return target [^.]* from (?:your |a )?graveyard to the battlefield/i.test(oracle) || /\breanimate\b/i.test(oracle)) {
+  // Reanimate ("Put target creature card from a graveyard onto the
+  // battlefield..."), Exhume ("Each player puts a creature card from
+  // their graveyard onto the battlefield."), Necromancy (same "Put
+  // target... from a graveyard onto the battlefield" shape), and Animate
+  // Dead (an Aura: "Enchant creature card in a graveyard" as its own
+  // clause, then "Return enchanted creature card to the battlefield" in a
+  // separate sentence, so graveyard+battlefield never share one clause)
+  // are four of the most-played reanimation spells in the game, and none
+  // of them matched the old return-target-from-graveyard-to-battlefield-
+  // only pattern — three use "put" or "puts", not "return", and none of
+  // the three literally say "reanimate" either. Widened to catch both
+  // verbs and the Aura-reanimator template as a second, independent
+  // pattern; Sun Titan-style "return target ... from your graveyard to
+  // the battlefield" still matches via the first pattern, unchanged.
+  //
+  // The database's "graveyard_recursion" tag (dropped here) is the same
+  // tag classifyNativeCard's broader "recursion" role uses, which also
+  // covers hand recursion (Raise Dead: "...from your graveyard to your
+  // hand") — reusing it here credited Raise Dead as reanimation package
+  // core when it never puts a creature on the battlefield at all. Same
+  // shape as the "land_search" tag fix in forge-interaction-graph.mjs's
+  // TAG_PRODUCERS: a tag that can't tell hand from battlefield can't
+  // stand in for a semantic that requires the battlefield specifically.
+  if (
+    /\b(?:put|return)s? [^.]*\bgraveyard\b[^.]*\bbattlefield\b/i.test(oracle)
+    || /enchant creature card in a graveyard/i.test(oracle)
+    || /\breanimate\b/i.test(oracle)
+  ) {
     semantics.add("reanimation");
   }
   // Dredge reminder prints "mill N" — that is a replacement draw, not
@@ -267,10 +294,19 @@ export function detectSpellslingerCommander(oracle = "") {
  * Commander runs a reanimator engine. Occupancy only.
  * Graveyard-to-battlefield or the word reanimate. Mill dumps and
  * dredge-to-hand are not occupancy.
+ * "to the battlefield" alone missed Reanimate/Exhume/Necromancy, all of
+ * which say "onto the battlefield" and "put" rather than "return" —
+ * widened the same way as strategicSemanticsFor's reanimation semantic
+ * (see that fix for full reasoning); Animate Dead's Aura template
+ * ("Enchant creature card in a graveyard" / "Return enchanted creature
+ * card to the battlefield" in separate sentences) is caught the same way
+ * too.
  */
 export function detectReanimatorCommander(oracle = "") {
   const text = String(oracle || "");
-  return /from (?:your )?graveyard to the battlefield/i.test(text) || /\breanimat/i.test(text);
+  return /\b(?:put|return)s? [^.]*\bgraveyard\b[^.]*\bbattlefield\b/i.test(text)
+    || /enchant creature card in a graveyard/i.test(text)
+    || /\breanimat/i.test(text);
 }
 
 /**
