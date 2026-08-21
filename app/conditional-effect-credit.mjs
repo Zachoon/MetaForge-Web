@@ -462,3 +462,51 @@ export function cardClearsPayoffMagnitudeGate(card = {}, gate) {
 export function payoffMagnitudeHitsFor(card, gates = []) {
   return gates.reduce((count, gate) => count + (cardClearsPayoffMagnitudeGate(card, gate) === true ? 1 : 0), 0);
 }
+
+// Founder #036: a commander that is functionally immune to a symmetric
+// damage sweep AND explicitly rewards being dealt damage turns a normally-
+// bad effect into pure profit. Smaug the Impenetrable ("Flying,
+// indestructible, haste / Whenever Smaug is dealt noncombat damage, create
+// that many Treasure tokens.") survives real, commonly-played symmetric
+// damage effects (Pestilence, Chain Reaction, Star of Extinction,
+// Self-Destruct, Pain for All) that kill every other creature on the board,
+// and profits from every one of them — a real, non-obvious combo a real
+// player built around, invisible to the generic produce/reward signal
+// system because the commander's own trigger condition isn't a keyword any
+// card "produces" the way tokens/treasure/artifacts are; it only becomes
+// visible by reading the commander's own printed trigger the same way
+// commanderPayoffMagnitudeGates already does for magnitude-qualified ones.
+//
+// Deliberately scoped to real rules precision, not just "damage": a plain
+// -X/-X effect (Toxic Deluge) reduces toughness to 0 and kills even an
+// indestructible creature via state-based action, bypassing the protection
+// entirely — the opposite of a combo. A non-damage "destroy all" effect
+// (Wrath of God) is survived by indestructible too, but never deals damage
+// at all, so it never fires this specific trigger — safe, but not a real
+// connection to this specific ability, and not claimed as one here.
+const COMMANDER_PROFITS_FROM_DAMAGE = /\bindestructible\b/i;
+const COMMANDER_DEALT_DAMAGE_TRIGGER = /whenever [^.]* (?:is dealt|takes) (?:noncombat )?damage\b/i;
+
+export function commanderProfitsFromBeingDamaged(oracle = "") {
+  const text = String(oracle || "");
+  return COMMANDER_PROFITS_FROM_DAMAGE.test(text) && COMMANDER_DEALT_DAMAGE_TRIGGER.test(text);
+}
+
+// Real damage, not toughness reduction: reuses the exact battlefield-wide
+// mass-damage pattern ROLE_PATTERNS.sweeper/displayRoleFor already use for
+// a real damage-based board wipe (Founder #032) — the shape Pestilence/
+// Chain Reaction/Star of Extinction/Self-Destruct/Pain for All/Blasphemous
+// Act/Anger of the Gods all match, verified against their real oracle text.
+// Not just a literal digit after "deals" — Chain Reaction ("deals damage
+// equal to the number of creatures on the battlefield to each creature")
+// is a real, well-known scaling-damage sweeper with no fixed number at
+// all. Bounded to the same sentence and still requires "to each ...
+// creature" as the actual target, so this stays as safe as the fixed-
+// number version: verified it still correctly excludes Impact Tremors/
+// Kessig Flamebreather ("to each opponent") and Smaug's own "noncombat
+// damage" (no "to each creature" at all).
+const MASS_DAMAGE_TO_CREATURES = /deals? [^.]*?\bdamage\b[^.]*? to each (?:other |nontoken |non-Human )?creature/i;
+
+export function cardDealsMassDamageToCreatures(oracle = "") {
+  return MASS_DAMAGE_TO_CREATURES.test(String(oracle || ""));
+}

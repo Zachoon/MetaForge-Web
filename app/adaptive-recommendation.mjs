@@ -56,8 +56,9 @@ export function displayRoleFor(card) {
   // below. Requires "creature" as the actual target so a damage-ping
   // engine (Impact Tremors: "deals 1 damage to each opponent") is never
   // swept in — same fix and reasoning as ROLE_PATTERNS.sweeper in
-  // blueprint-note-and-mana.mjs.
-  if (/destroy all|exile all|all creatures|get -\d+\/-\d+|deals? \d+ damage to each (?:other |nontoken |non-Human )?creature/i.test(text)) return "Board reset";
+  // blueprint-note-and-mana.mjs, including catching scaling-damage
+  // sweepers with no fixed number (Chain Reaction).
+  if (/destroy all|exile all|all creatures|get -\d+\/-\d+|deals? [^.]*?\bdamage\b[^.]*? to each (?:other |nontoken |non-Human )?creature/i.test(text)) return "Board reset";
   // Counterspells and removal used to share one "Interaction" bucket that
   // always mapped to "removal" below — meaning "counter" was a role every
   // PLANS entry above already searched for (Control's plan wants

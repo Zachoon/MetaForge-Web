@@ -30,9 +30,14 @@ const pyroclasm = { name: "Pyroclasm", oracleText: "Pyroclasm deals 2 damage to 
 const blasphemousAct = { name: "Blasphemous Act", oracleText: "This spell costs {1} less to cast for each creature on the battlefield.\nBlasphemous Act deals 13 damage to each creature.", typeLine: "Sorcery", manaCost: "{8}{R}" };
 const angerOfTheGods = { name: "Anger of the Gods", oracleText: "Anger of the Gods deals 3 damage to each creature. Exile all creatures dealt damage this way.", typeLine: "Sorcery", manaCost: "{1}{R}{R}" };
 const pestilence = { name: "Pestilence", oracleText: "{B}: Pestilence deals 1 damage to each creature and each player. If there are no creatures on the battlefield, sacrifice Pestilence.", typeLine: "Enchantment", manaCost: "{2}{B}{B}" };
+// Follow-up (Founder #036): a fixed \d+ after "deals" missed this real,
+// well-known sweeper entirely — Chain Reaction's damage scales with board
+// state and has no printed number at all. Widened alongside the new
+// self-damage-synergy detector that shares this exact pattern.
+const chainReaction = { name: "Chain Reaction", oracleText: "Chain Reaction deals damage equal to the number of creatures on the battlefield to each creature.", typeLine: "Sorcery", manaCost: "{4}{R}{R}" };
 
 const DAMAGE_PING_ENGINES = [impactTremors, kessigFlamebreather];
-const REAL_DAMAGE_SWEEPERS = [pyroclasm, blasphemousAct, angerOfTheGods, pestilence];
+const REAL_DAMAGE_SWEEPERS = [pyroclasm, blasphemousAct, angerOfTheGods, pestilence, chainReaction];
 
 test("classifyNativeCard: a damage-ping engine that only hits opponents is not the sweeper role", () => {
   for (const card of DAMAGE_PING_ENGINES) {

@@ -70,8 +70,11 @@ export const ROLE_PATTERNS = Object.freeze({
   // "creature" as the actual target, matching real sweeper phrasing
   // (Pyroclasm/Blasphemous Act/Anger of the Gods: "each creature";
   // Pestilence: "each creature and each player" also matches, creature
-  // still present).
-  sweeper: [/destroy all/i, /exile all/i, /all creatures get -/i, /deals? \d+ damage to each (?:other |nontoken |non-Human )?creature/i],
+  // still present). Not just a literal digit after "deals" — Chain
+  // Reaction ("deals damage equal to the number of creatures on the
+  // battlefield to each creature") is a real scaling-damage sweeper with
+  // no fixed number at all.
+  sweeper: [/destroy all/i, /exile all/i, /all creatures get -/i, /deals? [^.]*?\bdamage\b[^.]*? to each (?:other |nontoken |non-Human )?creature/i],
   selection: [/scry/i, /surveil/i, /discard .{0,20}draw/i, /draw .{0,20}discard/i],
   tokens: [/create (?:a|one|two|three|x|that many|\d+) .{0,45}token/i],
   sacrifice: [/sacrifice (?:a|another|one|target)/i, /whenever .{0,25} dies/i],

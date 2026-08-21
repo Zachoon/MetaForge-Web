@@ -5,9 +5,11 @@ import { evaluateCommanderPowerSignal, POWER_TIERS, powerSignalCategoryFor, CATE
 import { activeInteractionWiring, resolveBrainPolicy, BRAIN_POLICY_V1_CONTROL } from "./brain-policy.mjs";
 import {
   cardClearsPayoffMagnitudeGate,
+  cardDealsMassDamageToCreatures,
   colorlessFixingCredit,
   colorlessPipsFromCost,
   commanderPayoffMagnitudeGates,
+  commanderProfitsFromBeingDamaged,
   conditionalRampProductionFactor,
   conditionalTokenProductionFactor,
   curveManaValue,
@@ -25,9 +27,11 @@ import {
 } from "./conditional-effect-credit.mjs";
 export {
   cardClearsPayoffMagnitudeGate,
+  cardDealsMassDamageToCreatures,
   colorlessFixingCredit,
   colorlessPipsFromCost,
   commanderPayoffMagnitudeGates,
+  commanderProfitsFromBeingDamaged,
   conditionalRampProductionFactor,
   conditionalTokenProductionFactor,
   curveManaValue,
@@ -811,6 +815,9 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
   const blueprintMechanicHits = blueprintMechanicHitsFor(card, context.blueprint.requestedMechanics);
   const commanderConnectionSignals = commanderConnectionSignalsFor(card, mechanics, context.commanderMechanics, context.commanderScopes);
   const payoffMagnitudeHits = payoffMagnitudeHitsFor(card, context.commanderPayoffGates || []);
+  const selfDamageSynergyHit = context.commanderProfitsFromDamage
+    && cardDealsMassDamageToCreatures(card.oracleText || card.oracle_text || "")
+    ? 1 : 0;
   const castingFactor = restrictedEffectCastingFactor({
     manaCost: card.manaCost || card.mana_cost || "",
     colorIdentity: card.colorIdentity || card.color_identity || [],
@@ -880,6 +887,7 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
     blueprintMechanicHits,
     commanderConnectionSignals,
     payoffMagnitudeHits,
+    selfDamageSynergyHit,
     sequenceStages,
     excludedRoleHits,
     strategicSemantics,
@@ -936,6 +944,14 @@ function prepareForgeAnalysis(input, evidenceByName) {
     // still gets graded against its real trigger condition.
     commanderPayoffGates: Object.freeze(allCommanders(input).flatMap((commander) =>
       commanderPayoffMagnitudeGates(commander.oracleText || commander.oracle_text || ""))),
+    // Founder #036: checked per-commander, not joined text — the
+    // indestructible and the "dealt damage" trigger must both be on the
+    // SAME commander (Smaug the Impenetrable's own body) for the survive-
+    // and-profit combo to be real; joining a partner pair's text the way
+    // commanderCostCheat does below would falsely combine an indestructible
+    // partner with an unrelated damage-triggered one.
+    commanderProfitsFromDamage: allCommanders(input).some((commander) =>
+      commanderProfitsFromBeingDamaged(commander.oracleText || commander.oracle_text || "")),
     // Same cost_cheat detection strategic-intent.mjs's expensiveThreatSupport
     // uses to credit the 99, applied here to the commander's own text. A
     // commander whose ability puts cards into play without paying for them
@@ -1067,7 +1083,7 @@ function scoreCard(entry, input, variant, context) {
     tokenProductionFactor,
     rampProductionFactor,
     fixingCredit,
-    score: (entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.commanderConnectionSignals.length * 14 * variant.synergy + entry.payoffMagnitudeHits * 14 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.blueprintMechanicHits.reduce((sum, mechanic) => sum + blueprintMechanicDefinition(mechanic).score, 0) + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + entry.budgetScore + entry.complexityScore + entry.powerTierScore + deterministicTieBreak) * castingFactor * fixingCredit * winconFactor * tokenProductionFactor * rampProductionFactor,
+    score: (entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.commanderConnectionSignals.length * 14 * variant.synergy + entry.payoffMagnitudeHits * 14 * variant.synergy + entry.selfDamageSynergyHit * 14 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.blueprintMechanicHits.reduce((sum, mechanic) => sum + blueprintMechanicDefinition(mechanic).score, 0) + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + entry.budgetScore + entry.complexityScore + entry.powerTierScore + deterministicTieBreak) * castingFactor * fixingCredit * winconFactor * tokenProductionFactor * rampProductionFactor,
     synergyHits: entry.synergyHits,
     synergyPotential: entry.synergyPotential,
     preferenceHits: entry.preferenceHits,
@@ -1079,6 +1095,7 @@ function scoreCard(entry, input, variant, context) {
     blueprintMechanicHits: entry.blueprintMechanicHits || [],
     commanderConnectionSignals: entry.commanderConnectionSignals || [],
     payoffMagnitudeHits: entry.payoffMagnitudeHits || 0,
+    selfDamageSynergyHit: entry.selfDamageSynergyHit || 0,
     sequenceStages: entry.sequenceStages || [],
     strategicSemantics: entry.strategicSemantics,
     mechanics: entry.mechanics,
@@ -1119,6 +1136,7 @@ function advancesStrategyContract(entry, blueprint) {
     entry.blueprintMechanicHits?.length ||
     entry.commanderConnectionSignals?.length ||
     entry.payoffMagnitudeHits ||
+    entry.selfDamageSynergyHit ||
     blueprint.packageSignals.some((signal) =>
       entry.mechanics?.produces?.includes(signal) || entry.mechanics?.rewards?.includes(signal)),
   );
@@ -1300,6 +1318,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       blueprintMechanicHits: candidate.blueprintMechanicHits || [],
       commanderConnectionSignals: candidate.commanderConnectionSignals || [],
       payoffMagnitudeHits: candidate.payoffMagnitudeHits || 0,
+      selfDamageSynergyHit: candidate.selfDamageSynergyHit || 0,
       sequenceStages: candidate.sequenceStages || [],
       strategicSemantics: candidate.strategicSemantics,
       mechanics: candidate.mechanics,
@@ -1412,6 +1431,18 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
   for (const candidate of payable.filter((entry) => entry.payoffMagnitudeHits).slice(0, commanderAnchorLimit)) {
     addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
   }
+  // Founder #036: a commander that is functionally immune to a symmetric
+  // damage sweep (real printed indestructible) and explicitly rewards
+  // being dealt damage turns a normally-bad effect into pure profit —
+  // Smaug the Impenetrable survives Pestilence/Chain Reaction/Star of
+  // Extinction and floods the board with Treasures while it kills every
+  // other creature. This is a structural rules interaction, not a keyword
+  // any card "produces" — invisible to the generic commanderConnectionSignals
+  // pairing above, so it gets its own anchor reservation the same way a
+  // magnitude-gate hit does.
+  for (const candidate of payable.filter((entry) => entry.selfDamageSynergyHit).slice(0, commanderAnchorLimit)) {
+    addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
+  }
   const roleAnchorLimit = singleton ? 10 : 4;
   for (const role of blueprint.desiredRoles) {
     for (const candidate of payable.filter((entry) => (entry.blueprintRoleHits || []).includes(role)).slice(0, roleAnchorLimit)) {
@@ -1465,7 +1496,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
         return false;
       });
       const fillsRole = entry.roles.some((role) => (deficitState.roles[role]?.deficit || 0) > 0);
-      if (fillsPackage || fillsRole || (((entry.commanderConnectionSignals || []).length || entry.payoffMagnitudeHits) && isUnrestrictedConstructionCredit(entry))) {
+      if (fillsPackage || fillsRole || (((entry.commanderConnectionSignals || []).length || entry.payoffMagnitudeHits || entry.selfDamageSynergyHit) && isUnrestrictedConstructionCredit(entry))) {
         shortlist.set(key, entry);
       }
     }

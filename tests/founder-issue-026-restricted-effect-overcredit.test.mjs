@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  cardDealsMassDamageToCreatures,
   classifyNativeCard,
   colorlessPipsFromCost,
   colorPipsFromCost,
   commanderConnectionSignalsFor,
   commanderMechanicalScopes,
+  commanderProfitsFromBeingDamaged,
   conditionalRampProductionFactor,
   conditionalTokenProductionFactor,
   forgeNativeMasterwork,
@@ -1293,5 +1295,121 @@ test("Founder #029: mana production gated behind sacrificing a creature is disco
     1,
     "an unrelated sacrifice in an earlier sentence does not gate a later, separate mana ability",
   );
+});
+
+// =============================================================================
+// Founder #036: a commander immune to a symmetric damage sweep and
+// rewarded for being damaged turns a normally-bad effect into pure profit
+// =============================================================================
+// Found comparing the engine's real Smaug the Impenetrable build against a
+// real high-power player list for the same commander: the player's
+// removal suite (Pestilence, Chain Reaction, Star of Extinction,
+// Self-Destruct, Pain for All) isn't generic — every one of those cards
+// hits Smaug too, but Smaug is indestructible, so it survives and floods
+// the board with Treasures while everything else dies. The generic
+// produce/reward signal system has no way to see this: it's a structural
+// rules interaction (indestructible specifically survives lethal damage,
+// not -X/-X or sacrifice), not a keyword any card "produces" the way
+// tokens/treasure/artifacts are — it only becomes visible by reading the
+// commander's own printed trigger condition, the same way
+// commanderPayoffMagnitudeGates already reads magnitude-qualified ones.
+// =============================================================================
+
+test("Founder #036: commanderProfitsFromBeingDamaged requires both indestructible AND a real dealt-damage trigger on the same commander", () => {
+  assert.equal(
+    commanderProfitsFromBeingDamaged("Flying, indestructible, haste\nWhenever Smaug is dealt noncombat damage, create that many Treasure tokens."),
+    true,
+    "Smaug the Impenetrable's real printed text",
+  );
+  assert.equal(
+    commanderProfitsFromBeingDamaged("Flying, indestructible, haste"),
+    false,
+    "indestructible alone, no dealt-damage reward at all, is not the combo",
+  );
+  assert.equal(
+    commanderProfitsFromBeingDamaged("Whenever this creature is dealt damage, create that many Treasure tokens."),
+    false,
+    "the same reward with no indestructible is not the combo — this commander just dies to the sweeper",
+  );
+  assert.equal(
+    commanderProfitsFromBeingDamaged("Flying, indestructible, haste\nWhenever Smaug attacks, create a Treasure token."),
+    false,
+    "an unrelated attack trigger on an indestructible creature is not this combo",
+  );
+});
+
+test("Founder #036: cardDealsMassDamageToCreatures matches real symmetric sweepers, including scaling-damage ones with no fixed number", () => {
+  const realSweepers = [
+    "Pestilence deals 1 damage to each creature and each player.",
+    "Chain Reaction deals damage equal to the number of creatures on the battlefield to each creature.",
+    "Self-Destruct deals 8 damage to each creature and each player.",
+    "Pain for All deals 2 damage to each creature and each player.",
+    "Cave-In deals 2 damage to each creature and each player.",
+    "Anger of the Gods deals 3 damage to each creature. Exile all creatures dealt damage this way.",
+  ];
+  for (const oracle of realSweepers) assert.ok(cardDealsMassDamageToCreatures(oracle), oracle);
+
+  // Must not match a damage-ping engine that only hits opponents (the
+  // exact Founder #032 false-sweeper case), or a -X/-X effect (which kills
+  // even an indestructible creature via 0 toughness, bypassing the
+  // protection entirely — the opposite of a combo, not a real connection).
+  assert.equal(cardDealsMassDamageToCreatures("Whenever a creature you control enters, this enchantment deals 1 damage to each opponent."), false);
+  assert.equal(cardDealsMassDamageToCreatures("All creatures get -3/-3 until end of turn."), false);
+  assert.equal(cardDealsMassDamageToCreatures("Whenever Smaug is dealt noncombat damage, create that many Treasure tokens."), false, "the commander's own trigger text is not itself a producer of the effect");
+});
+
+const selfDamageCommander = {
+  name: "Test Impenetrable Wyrm",
+  colors: ["R"],
+  oracleText: "Flying, indestructible, haste\nWhenever this creature is dealt noncombat damage, create that many Treasure tokens.",
+};
+
+const noRewardCommander = {
+  name: "Test Plain Indestructible Wyrm",
+  colors: ["R"],
+  oracleText: "Flying, indestructible, haste",
+};
+
+const massDamageCard = {
+  name: "Test Cataclysmic Blast",
+  oracleText: "Test Cataclysmic Blast deals 3 damage to each creature.",
+  typeLine: "Sorcery",
+  manaCost: "{1}{R}{R}",
+  colorIdentity: ["R"],
+  popularityRank: 40,
+};
+
+test("Founder #036: a real self-damage-synergy card wins a reserved anchor slot for a commander that profits from being damaged", () => {
+  const filler = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Dragon", manaCost: "{2}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Exile target nonland permanent.", typeLine: "Instant", manaCost: "{1}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Threat ${i}`, oracleText: "Vigilance", typeLine: "Creature — Dragon", manaCost: "{3}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+  ];
+  const gates = Array.from({ length: 20 }, (_, i) => ({
+    name: `Mountain Gate ${i}`, oracleText: "This land enters the battlefield tapped. {T}: Add {R}.", typeLine: "Land",
+    manaCost: "", colorIdentity: ["R"], producedMana: ["R"], popularityRank: 5, priceUsd: 0.5,
+  }));
+
+  const withCombo = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: selfDamageCommander, cards: [...filler, massDamageCard, ...gates],
+  });
+  assert.ok(
+    withCombo.selected.rows.some((row) => row.name === "Test Cataclysmic Blast"),
+    "a real mass-damage sweeper must be selected as an anchor for a commander that profits from being damaged",
+  );
+  const row = withCombo.selected.rows.find((row) => row.name === "Test Cataclysmic Blast");
+  assert.equal(row.selfDamageSynergyHit, 1);
+
+  // Same exact card, same exact pool, an otherwise-identical commander
+  // that lacks the dealt-damage reward — the sweeper is not owed a
+  // reserved slot here, since there is no combo to credit.
+  const withoutCombo = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: noRewardCommander, cards: [...filler, massDamageCard, ...gates],
+  });
+  const controlRow = withoutCombo.selected.rows.find((row) => row.name === "Test Cataclysmic Blast");
+  assert.ok(!controlRow || controlRow.selfDamageSynergyHit === 0, "no combo credit without the commander's own dealt-damage reward");
 });
 
