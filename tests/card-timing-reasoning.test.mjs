@@ -47,7 +47,7 @@ const manaDoubler = card("Test Mana Doubler", "Artifact", "Double the amount of 
 const vanillaBear = card("Grizzly Bears", "Creature — Bear", "", 2);
 const plains = card("Plains", "Basic Land — Plains", "({T}: Add {W}.)", 0);
 const expensiveRemoval = card("Test Expensive Removal", "Instant", "Destroy target creature.", 5);
-const cultivate = card("Cultivate", "Sorcery", "Search your library for up to two basic land cards, reveal them, and put them into your hand. Then shuffle and put a land card from your hand onto the battlefield tapped.", 3);
+const cultivate = card("Cultivate", "Sorcery", "Search your library for up to two basic land cards, reveal them, put one onto the battlefield tapped and the other into your hand, then shuffle.", 3);
 
 test("never returns null and always has all five fields, for any real card", () => {
   for (const fixture of [solRing, demonicTutor, timeWarp, armageddon, efficientBolt, dualSignalCard, manaDoubler, vanillaBear, plains, expensiveRemoval, cultivate]) {

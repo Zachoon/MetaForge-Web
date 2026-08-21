@@ -36,10 +36,12 @@ test("simulationRoleFor classifies into the exact vocabulary PLANS.add already s
   assert.equal(simulationRoleFor({ typeLine: "Instant", oracleText: "Destroy target creature." }), "removal");
   // A land-tutor spell's own text contains the word "land," but the
   // "Mana source" check above only looks at the card's own type line —
-  // a Sorcery that merely fetches a land is ramp (Acceleration), not a
-  // land itself. Cultivate and Rampant Growth are the real-card version
-  // of this exact shape.
-  assert.equal(simulationRoleFor({ typeLine: "Sorcery", oracleText: "Search your library for a land card." }), "ramp");
+  // a Sorcery that merely fetches a land onto the battlefield is ramp
+  // (Acceleration), not a land itself. Cultivate and Rampant Growth are
+  // the real-card version of this exact shape. (A land search that only
+  // reaches hand, Sylvan Scrying's real text, is correctly not ramp —
+  // see land-search-ramp-classification.test.mjs.)
+  assert.equal(simulationRoleFor({ typeLine: "Sorcery", oracleText: "Search your library for a land card, put it onto the battlefield tapped, then shuffle." }), "ramp");
   assert.equal(simulationRoleFor({ typeLine: "Artifact", oracleText: "Add one mana of any color." }), "ramp");
   assert.equal(simulationRoleFor({ typeLine: "Sorcery", oracleText: "Draw two cards." }), "draw");
   assert.equal(simulationRoleFor({ typeLine: "Instant", oracleText: "Target creature gains hexproof." }), "protection");
@@ -59,7 +61,7 @@ test("real land-fetch ramp spells classify as ramp, real basic lands still class
   // mentions "land" repeatedly — the exact shape that used to falsely
   // trip the "Mana source" check when it read the combined type+oracle
   // text instead of the card's own type line.
-  const cultivate = { typeLine: "Sorcery", oracleText: "Search your library for up to two basic land cards, reveal them, and put them into your hand. Then shuffle and put a land card from your hand onto the battlefield tapped." };
+  const cultivate = { typeLine: "Sorcery", oracleText: "Search your library for up to two basic land cards, reveal them, put one onto the battlefield tapped and the other into your hand, then shuffle." };
   const rampantGrowth = { typeLine: "Sorcery", oracleText: "Search your library for a basic land card, put it onto the battlefield tapped, then shuffle." };
   assert.equal(simulationRoleFor(cultivate), "ramp");
   assert.equal(simulationRoleFor(rampantGrowth), "ramp");

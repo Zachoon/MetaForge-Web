@@ -787,7 +787,12 @@ const TAG_PRODUCERS = {
   counters: ["counter_producer"],
   graveyard: ["graveyard_setup"],
   sacrifice: ["sacrifice_outlet"],
-  lands: ["land_search"],
+  // "land_search" does not distinguish hand (Many Partings, Sylvan
+  // Scrying) from battlefield (Rampant Growth) — the database tag alone
+  // can't tell "lands"'s landfall_payoff pairing whether this card
+  // actually fires "whenever a land enters". The regex PRODUCERS.lands
+  // below carries the battlefield-scoped signal instead; a hand-only
+  // fetch correctly gets none.
   life: ["lifegain"],
   treasure: ["treasure"],
 };
@@ -864,7 +869,15 @@ const PRODUCERS = {
   sacrifice: /create(?:s)? [^.]* creature token|when [^.]* dies/i,
   draw: /draw (?:a|one|two|three|\d+)/i,
   spells: /copy [^.]* spell|cast [^.]* without paying/i,
-  lands: /search your library for [^.]* land|play an additional land/i,
+  // Many Partings class: a land search that only reaches the player's
+  // HAND (Many Partings, Sylvan Scrying) never fires "whenever a land
+  // enters"/landfall — it's a normal land drop like any other, not an
+  // extra one. Requires "battlefield" in the same clause, and the
+  // land/type alternation so a non-land toolbox tutor is never swept
+  // in — see LAND_SEARCH_TO_BATTLEFIELD in blueprint-note-and-mana.mjs
+  // for the identical pattern and full reasoning. "play an additional
+  // land" is untouched, it's a genuinely extra land drop.
+  lands: /search your library for [^.]*\b(?:lands?|plains|island|swamp|mountain|forest)\b[^.]*\bbattlefield\b|play an additional land/i,
   life: /gain(?:s)? [^.]* life|lifelink/i,
   etb: /create(?:s)? [^.]* token|return [^.]* to the battlefield/i,
   combat: /haste|create(?:s)? [^.]* creature token/i,

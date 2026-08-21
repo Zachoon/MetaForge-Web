@@ -24,8 +24,27 @@ const unique = (values) => [...new Set(values.filter(Boolean))];
 const normalized = (value = "") => String(value).normalize("NFKC").trim().toLocaleLowerCase("en");
 const clamp = (value, min = 0, max = 100) => Math.min(max, Math.max(min, Number(value) || 0));
 
+// Many Partings class: "search your library for a basic land card, put
+// it into your HAND" is a land tutor/fixer, not ramp — it costs the same
+// turn's land drop a topdecked land would, so it never gets you ahead of
+// schedule the way Farseek/Rampant Growth/Cultivate (put onto the
+// BATTLEFIELD) do. Requires "battlefield" in the same sentence as the
+// land search, so a hand-only fetch (Many Partings, Sylvan Scrying)
+// stops matching. The land/type alternation (not just the literal word
+// "land") is required too, so a non-land tutor that also happens to put
+// its target onto the battlefield (a creature toolbox fetch) is never
+// swept in — real cards phrase the searched-for land three ways: "basic
+// land card" (Rampant Growth), a specific type's own name with no "land"
+// word at all (Nature's Lore/Three Visits: "Forest card"), or an
+// enumerated basic-type list (Farseek: "Plains, Island, Swamp, or
+// Mountain card") — verified against all three's and Cultivate's real
+// oracle text. A bare \bland\b alone previously also accidentally
+// matched "Island" as a substring (Is-LAND) with no word boundary check;
+// this pattern lists Island explicitly instead, so that's fixed too.
+const LAND_SEARCH_TO_BATTLEFIELD = /search your library for [^.]*\b(?:lands?|plains|island|swamp|mountain|forest)\b[^.]*\bbattlefield\b/i;
+
 export const ROLE_PATTERNS = Object.freeze({
-  ramp: [/add .{0,18}mana/i, /create .{0,18}(?:treasure|powerstone)/i, /search your library for .{0,30}land/i, /land card.{0,30}battlefield/i],
+  ramp: [/add .{0,18}mana/i, /create .{0,18}(?:treasure|powerstone)/i, LAND_SEARCH_TO_BATTLEFIELD, /land card.{0,30}battlefield/i],
   draw: [/draw (?:a|one|two|three|x|that many|cards?)/i, /look at the top .{0,40}(?:hand|exile)/i, /impulse/i],
   interaction: [/destroy target/i, /exile target/i, /counter target/i, /deals? \d+ damage to/i, /return target .{0,25}owner'?s hand/i, /-\d+\/-\d+/i],
   protection: [/hexproof/i, /indestructible/i, /phase out/i, /protection from/i, /counter target spell or ability/i],

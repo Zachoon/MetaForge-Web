@@ -109,7 +109,18 @@ export function strategicSemanticsFor(card = {}) {
     semantics.add("graveyard_enabler");
   }
   if (isCreature && cmc >= 6) semantics.add("reanimation_target");
-  if (tags.includes("mana_acceleration") || /add .{0,18}mana/i.test(oracle) || /treasure token/i.test(oracle) || /search your library for .{0,40}land/i.test(oracle)) {
+  // Many Partings class: a land search that only reaches the player's
+  // HAND (Many Partings, Sylvan Scrying) is fixing/selection, not ramp —
+  // it never gets ahead of schedule the way a battlefield fetch
+  // (Farseek, Rampant Growth, Cultivate) does. Requires "battlefield" in
+  // the same sentence as the land search, and the land/type alternation
+  // (not just the literal word "land") so a non-land toolbox tutor that
+  // also puts its target onto the battlefield is never swept in — see
+  // LAND_SEARCH_TO_BATTLEFIELD in blueprint-note-and-mana.mjs for the
+  // identical pattern and full reasoning (three real phrasings verified:
+  // "basic land card", "Forest card", "Plains, Island, Swamp, or
+  // Mountain card").
+  if (tags.includes("mana_acceleration") || /add .{0,18}mana/i.test(oracle) || /treasure token/i.test(oracle) || /search your library for [^.]*\b(?:lands?|plains|island|swamp|mountain|forest)\b[^.]*\bbattlefield\b/i.test(oracle)) {
     semantics.add("ramp");
   }
   if (/cast [^.]* without paying|put [^.]* onto the battlefield|mana value .{0,20} less to cast|costs? \{[^}]+\} less/i.test(oracle)) {
@@ -651,7 +662,14 @@ function cardSatisfiesLandfallCore(entry) {
 function cardSatisfiesLandfallSupport(entry) {
   if (cardSatisfiesLandfallCore(entry)) return true;
   const oracle = oracleOf(entryCard(entry));
-  return /search your library for [^.]* land/i.test(oracle)
+  // Many Partings class: fetching a land to HAND (Many Partings, Sylvan
+  // Scrying) is still just one land drop — it fires landfall exactly
+  // once, same as any normal land, not an extra trigger. Requires
+  // "battlefield" in the same clause, and the land/type alternation so a
+  // non-land toolbox tutor is never swept in — see
+  // LAND_SEARCH_TO_BATTLEFIELD in blueprint-note-and-mana.mjs for the
+  // identical pattern and full reasoning.
+  return /search your library for [^.]*\b(?:lands?|plains|island|swamp|mountain|forest)\b[^.]*\bbattlefield\b/i.test(oracle)
     || /put [^.]* land [^.]* onto the battlefield/i.test(oracle);
 }
 

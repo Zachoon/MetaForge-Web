@@ -61,7 +61,13 @@ export function displayRoleFor(card) {
   // counterspell first.
   if (/counter target spell/i.test(text)) return "Counter magic";
   if (/destroy target|exile target|deals? \d+ damage/i.test(text)) return "Interaction";
-  if (/add .+ mana|search your library for .+ land|treasure token/i.test(text)) return "Acceleration";
+  // Many Partings class: a land search that only reaches hand (Many
+  // Partings, Sylvan Scrying) isn't acceleration — it costs the same
+  // land drop a topdecked land would. Requires "battlefield" in the
+  // same clause, and the land/type alternation so a non-land toolbox
+  // tutor is never swept in — see LAND_SEARCH_TO_BATTLEFIELD in
+  // blueprint-note-and-mana.mjs for the identical pattern.
+  if (/add .+ mana|search your library for [^.]*\b(?:lands?|plains|island|swamp|mountain|forest)\b[^.]*\bbattlefield\b|treasure token/i.test(text)) return "Acceleration";
   if (/draw (?:a|one|two|three|\d+)|look at the top|exile .+ you may play/i.test(text)) return "Card advantage";
   if (/hexproof|indestructible|protection from|phase out|regenerate/i.test(text)) return "Protection";
   if (/create .+ token|whenever|for each|double|copy/i.test(text)) return "Engine piece";
