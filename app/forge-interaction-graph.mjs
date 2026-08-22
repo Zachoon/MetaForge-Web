@@ -861,7 +861,15 @@ const PRODUCERS = {
   // itself as an Aura producer. Type-line membership is applied in
   // extractMechanicalSignals.
   counters: /put [^.]* counter|proliferate/i,
-  graveyard: /mill [a-z\d]|surveil|discard [^.]* card/i,
+  // Founder #042: the old `/mill [a-z\d]/` only ever matched the rare
+  // imperative "you mill three cards" phrasing — the third-person verb
+  // form nearly every real mill card actually uses ("target player
+  // MILLS three cards", "each opponent MILLS two cards", "each player
+  // MILLS a card") never has a space right after "mill" (it's followed
+  // by "s"), so it silently missed Mindcrank, Psychic Corrosion, and Syr
+  // Konrad's own activated ability entirely — verified against all three
+  // real cards' oracle text. `\bmills?\b` catches both forms.
+  graveyard: /\bmills?\b|surveil|discard [^.]* card/i,
   // Scoped to creature tokens specifically — the same fix already applied
   // to the treasure/clue/food/blood/gold/map/junk/powerstone signals below,
   // just missed here. A Treasure/Clue/other named-artifact-token producer
@@ -932,7 +940,16 @@ const PAYOFFS = {
   // letting any unrelated counter producer masquerade as commander synergy.
   // A payoff must react to, scale from, replace, or spend existing counters.
   counters: /whenever [^,.;]*counter|if [^,.;]*counter|for each [^.]*counter|remove [^.]* counter|modified creature/i,
-  graveyard: /from your graveyard|in your graveyard|delirium|threshold/i,
+  // Founder #042: "is/are milled" (passive) is the reward shape — a card
+  // reacting to milling happening, regardless of source (The Wise
+  // Mothman: "Whenever one or more nonland cards are milled, put a +1/+1
+  // counter..."; Syr Konrad's own first ability; Undead Alchemist) —
+  // distinct from "mills" (active), the producer verb PRODUCERS.graveyard
+  // above now also matches. Verified this stays one-directional: none of
+  // the real mill PRODUCERS (Mindcrank, Psychic Corrosion, Syr Konrad's
+  // own activated ability) use "milled"/"put into ... graveyard from", so
+  // no card double-counts as both sides of its own trigger.
+  graveyard: /from your graveyard|in your graveyard|delirium|threshold|\b(?:is|are) milled\b|put into [^.]*graveyard from (?:anywhere|their library|your library)/i,
   sacrifice: /whenever [^.]* dies|whenever you sacrifice|sacrifice another/i,
   draw: /whenever you draw|second card|cards? in your hand/i,
   spells: /whenever you cast|magecraft|instant and sorcery/i,

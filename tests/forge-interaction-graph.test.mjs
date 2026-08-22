@@ -698,6 +698,61 @@ test("mill is a graveyard dump, distinct from surveil", () => {
   assert.ok(millSignals.produces.includes("graveyard"), "mill still produces graveyard");
 });
 
+// Founder #042: found by cross-checking The Wise Mothman's real primer
+// against a real construction — Mindcrank, Syr Konrad, and Psychic
+// Corrosion (all three explicitly named as primer combo pieces) scored
+// zero commander connection to Mothman, whose entire second ability is a
+// reward for cards being milled ("Whenever one or more nonland cards are
+// milled, put a +1/+1 counter..."). Two real, separate regex gaps, both
+// verified against real oracle text:
+//  - PRODUCERS.graveyard's old `/mill [a-z\d]/` only matched the rare
+//    imperative "you mill three cards" phrasing — the third-person verb
+//    form real mill cards actually use ("that player MILLS that many
+//    cards", "each opponent MILLS two cards") is never followed by a
+//    space (it's "s"), so it silently missed real producer text whenever
+//    a card wasn't already covered by a database tag.
+//  - PAYOFFS.graveyard had no shape at all for a card that REACTS to
+//    milling regardless of source — Mothman's own "is/are milled"
+//    passive phrasing, and Syr Konrad/Undead Alchemist's "put into a
+//    graveyard from anywhere/their library" — every existing PAYOFFS
+//    entry there is reanimation-flavored ("from your graveyard", "in
+//    your graveyard", delirium, threshold), a different archetype from
+//    "rewards milling as it happens."
+test("Founder #042: PRODUCERS.graveyard matches the third-person mill verb form real cards use, not just the imperative", () => {
+  const mindcrankOracle = "Whenever an opponent loses life, that player mills that many cards.";
+  const psychicCorrosionOracle = "Whenever you draw a card, each opponent mills two cards.";
+  const syrKonradActivated = "{1}{B}: Each player mills a card. (They each put the top card of their library into their graveyard.)";
+  for (const oracle of [mindcrankOracle, psychicCorrosionOracle, syrKonradActivated]) {
+    const signals = extractMechanicalSignals({ name: "Test Mill Producer", typeLine: "Artifact", oracleText: oracle });
+    assert.ok(signals.produces.includes("graveyard"), oracle);
+  }
+});
+
+test("Founder #042: PAYOFFS.graveyard matches a card that rewards milling happening, not just graveyard recursion", () => {
+  const mothmanOracle = "Flying\nWhenever The Wise Mothman enters or attacks, each player gets a rad counter.\nWhenever one or more nonland cards are milled, put a +1/+1 counter on each of up to X target creatures, where X is the number of nonland cards milled this way.";
+  const syrKonradPayoff = "Whenever another creature dies, or a creature card is put into a graveyard from anywhere other than the battlefield, or a creature card leaves your graveyard, Syr Konrad deals 1 damage to each opponent.";
+  const undeadAlchemistOracle = "If a Zombie you control would deal combat damage to a player, instead that player mills that many cards.\nWhenever a creature card is put into an opponent's graveyard from their library, exile that card and create a 2/2 black Zombie creature token.";
+  for (const oracle of [mothmanOracle, syrKonradPayoff, undeadAlchemistOracle]) {
+    const signals = extractMechanicalSignals({ name: "Test Mill Payoff", typeLine: "Legendary Creature", oracleText: oracle });
+    assert.ok(signals.rewards.includes("graveyard"), oracle);
+  }
+  // The real mill PRODUCERS above must not double up as payoffs of their
+  // own trigger — none of them use "milled" (passive) or "put into ...
+  // graveyard from anywhere/their library".
+  const mindcrankSignals = extractMechanicalSignals({ name: "Test Mindcrank", typeLine: "Artifact", oracleText: "Whenever an opponent loses life, that player mills that many cards." });
+  assert.equal(mindcrankSignals.rewards.includes("graveyard"), false);
+});
+
+test("Founder #042: Mothman's mill-reward and a real mill producer now correctly connect via commanderConnectionSignalsFor", () => {
+  const mothman = { name: "The Wise Mothman", colors: ["B", "G", "U"], oracleText: "Flying\nWhenever The Wise Mothman enters or attacks, each player gets a rad counter.\nWhenever one or more nonland cards are milled, put a +1/+1 counter on each of up to X target creatures, where X is the number of nonland cards milled this way." };
+  const mindcrank = { name: "Mindcrank", typeLine: "Artifact", oracleText: "Whenever an opponent loses life, that player mills that many cards." };
+  configureInteractionGraphTagLookup((name) => CARD_MECHANICS[name] || []);
+  const commanderMechanics = extractMechanicalSignals(mothman);
+  const cardMechanics = extractMechanicalSignals(mindcrank);
+  const connected = cardMechanics.produces.includes("graveyard") && commanderMechanics.rewards.includes("graveyard");
+  assert.ok(connected, "Mindcrank should register as a real mill producer connected to Mothman's mill-reward payoff");
+});
+
 test("dredge is a graveyard filter/engine, distinct from a mill dump", () => {
   const dredgeOracle = "Dredge 6 (If you would draw a card, you may mill six cards instead. If you do, return this card from your graveyard to your hand.)";
   assert.deepEqual(classifyGraveyardKinds(dredgeOracle), [GRAVEYARD_KINDS.DREDGE]);
