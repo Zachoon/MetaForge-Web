@@ -124,8 +124,17 @@ test("detects a symmetric draw lock as a nonbo against the deck's own draw packa
   assert.equal(graph.nonbos[0].signal, "draw");
 });
 
+// Founder #054: the fixtures below use Panharmonicon and Yarok, the
+// Desecrated's real current Oracle text, verified via Scryfall
+// (api.scryfall.com/cards/named?exact=). Both read "artifact/permanent
+// ENTERING causes ... to trigger" — no "the battlefield", and never the
+// bare verb "enter"/"enters" — which is a different shape than the
+// fabricated "enters-the-battlefield ability ... triggers" text this file
+// previously used. The old text happened to satisfy the old regex; it was
+// never what either real card says, and the real wording silently never
+// matched at all until this fix.
 test("flags a trigger doubler as a verified amplifier of every real ETB payoff in the deck", () => {
-  const doubler = { name: "Panharmonicon", typeLine: "Artifact", oracleText: "If an enters-the-battlefield ability of a permanent you control triggers, that ability triggers an additional time." };
+  const doubler = { name: "Panharmonicon", typeLine: "Artifact", oracleText: "If an artifact or creature entering causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time." };
   const payoff = { name: "Soul Warden", typeLine: "Creature", oracleText: "Whenever another creature enters the battlefield under your control, you gain 1 life." };
   const graph = buildInteractionGraph([doubler, payoff]);
   assert.equal(graph.amplifiers.length, 1);
@@ -137,8 +146,17 @@ test("flags a trigger doubler as a verified amplifier of every real ETB payoff i
   assert.equal(graph.amplifiers[0].side, "rewards");
 });
 
+test("Yarok, the Desecrated's real wording (permanent entering, not artifact/creature) is also recognized as a trigger doubler", () => {
+  const doubler = { name: "Yarok, the Desecrated", typeLine: "Legendary Creature", oracleText: "Deathtouch, lifelink\nIf a permanent entering causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time." };
+  const payoff = { name: "Soul Warden", typeLine: "Creature", oracleText: "Whenever another creature enters the battlefield under your control, you gain 1 life." };
+  const graph = buildInteractionGraph([doubler, payoff]);
+  assert.equal(graph.amplifiers.length, 1);
+  assert.equal(graph.amplifiers[0].source, "Yarok, the Desecrated");
+  assert.deepEqual(graph.amplifiers[0].amplifies, ["Soul Warden"]);
+});
+
 test("a trigger doubler with nothing to double doesn't produce an empty amplifier entry", () => {
-  const doubler = { name: "Panharmonicon", typeLine: "Artifact", oracleText: "If an enters-the-battlefield ability of a permanent you control triggers, that ability triggers an additional time." };
+  const doubler = { name: "Panharmonicon", typeLine: "Artifact", oracleText: "If an artifact or creature entering causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time." };
   const noPayoff = { name: "Vanilla Bear", typeLine: "Creature", oracleText: "Vigilance." };
   const graph = buildInteractionGraph([doubler, noPayoff]);
   assert.deepEqual(graph.amplifiers, []);
@@ -180,6 +198,42 @@ test("a token/counter doubler amplifies producers, not payoffs — the doubling 
   const payoffOnly = { name: "Anthem", typeLine: "Enchantment", oracleText: "Creatures you control get +1/+1 for each token you control." };
   const graph = buildInteractionGraph([doubler, payoffOnly]);
   assert.deepEqual(graph.amplifiers, []);
+});
+
+// Founder #054: Azusa, Lost but Seeking's real Oracle text (verified via
+// Scryfall) is "You may play two additional lands on each of your turns" —
+// plural, with the number "two" instead of the article "an". The old
+// PRODUCERS.lands pattern only accepted the singular "an additional land"
+// (Exploration/Burgeoning's wording), so the format's single most iconic
+// extra-land-drop commander produced nothing at all.
+test("PRODUCERS.lands recognizes a numbered extra-land-drop clause (Azusa: 'two additional lands'), not just the singular 'an additional land'", () => {
+  const azusa = { name: "Azusa, Lost but Seeking", typeLine: "Legendary Creature", oracleText: "You may play two additional lands on each of your turns." };
+  const signals = extractMechanicalSignals(azusa);
+  assert.ok(signals.produces.includes("lands"), "Azusa should produce the lands signal from her real extra-land-drop text");
+});
+
+test("PRODUCERS.lands still recognizes the singular 'an additional land' wording (Exploration)", () => {
+  const exploration = { name: "Exploration", typeLine: "Enchantment", oracleText: "You may play an additional land on each of your turns." };
+  const signals = extractMechanicalSignals(exploration);
+  assert.ok(signals.produces.includes("lands"));
+});
+
+// Founder #054: Ardenn, Intrepid Archaeologist's real Oracle text (verified
+// via Scryfall) is "attach any number of Auras and Equipment you control
+// to target permanent or player" — the word "Equipment" sits between
+// "Auras" and "you control", which broke the old bare "auras? you control"
+// pattern requiring the two adjacent. Ardenn is a real, popular Auras and
+// Equipment commander that previously produced and rewarded nothing.
+test("PAYOFFS.auras recognizes 'Auras and Equipment you control' (Ardenn), not just the bare adjacent 'auras you control'", () => {
+  const ardenn = { name: "Ardenn, Intrepid Archaeologist", typeLine: "Legendary Creature", oracleText: "At the beginning of combat on your turn, you may attach any number of Auras and Equipment you control to target permanent or player." };
+  const signals = extractMechanicalSignals(ardenn);
+  assert.ok(signals.rewards.includes("auras"), "Ardenn should reward the auras signal from her real Auras-and-Equipment text");
+});
+
+test("PAYOFFS.auras still recognizes the bare adjacent 'auras you control' wording", () => {
+  const bareAuras = { name: "Test Aura Anthem", typeLine: "Enchantment", oracleText: "Creatures you control get +1/+1 for each Aura you control." };
+  const signals = extractMechanicalSignals(bareAuras);
+  assert.ok(signals.rewards.includes("auras"));
 });
 
 test("an ordinary token producer's own oracle text is not mistaken for Doubling Season's exact doubling clause", () => {

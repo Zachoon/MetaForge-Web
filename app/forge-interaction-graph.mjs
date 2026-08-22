@@ -823,13 +823,13 @@ const SIGNALS = [
   // Aura is deliberately narrower than enchantment: Pearl-Ear-class
   // commanders reward Auras specifically, and generic enchantments must
   // not form a false synergy edge merely by sharing the enchantment type.
-  ["auras", /\bAura\b|affinity for auras|auras? you control|whenever [^.]*\baura\b/i],
+  ["auras", /\bAura\b|affinity for auras|auras?[^.]* you control|whenever [^.]*\baura\b/i],
   ["counters", /(?:put|remove|double)[^.]* counter|counter(?:s)? on/i],
   ["graveyard", /from your graveyard|in your graveyard|mill [a-z\d]|surveil/i],
   ["sacrifice", /sacrifice (?:a|another|one|any number)|whenever [^.]* dies/i],
   ["draw", /draw (?:a|one|two|three|\d+)|whenever you draw/i],
   ["spells", /whenever you cast|instant or sorcery|noncreature spell/i],
-  ["lands", /land enters|landfall|play an additional land|land card/i],
+  ["lands", /land enters|landfall|play (?:an?|one|two|three|four|five|\d+) additional lands?|land card/i],
   ["life", /gain(?:s)? [^.]* life|whenever you gain life|life total/i],
   ["etb", /enters the battlefield|when(?:ever)? [^.]* enters/i],
   // \bcombat damage\b — see the identical fix and full reasoning on
@@ -947,7 +947,13 @@ const PRODUCERS = {
   // in — see LAND_SEARCH_TO_BATTLEFIELD in blueprint-note-and-mana.mjs
   // for the identical pattern and full reasoning. "play an additional
   // land" is untouched, it's a genuinely extra land drop.
-  lands: /search your library for [^.]*\b(?:lands?|plains|island|swamp|mountain|forest)\b[^.]*\bbattlefield\b|play an additional land/i,
+  // Founder #054: Azusa, Lost but Seeking — the format's single most
+  // iconic extra-land-drop commander — reads "play TWO additional lands",
+  // verified via live Scryfall text. The old pattern only accepted the
+  // singular "an additional land" (Exploration/Burgeoning's wording), so
+  // Azusa herself produced and rewarded nothing. Now any of an/one/two/
+  // three/a bare digit works, singular or plural.
+  lands: /search your library for [^.]*\b(?:lands?|plains|island|swamp|mountain|forest)\b[^.]*\bbattlefield\b|play (?:an?|one|two|three|four|five|\d+) additional lands?/i,
   life: /gain(?:s)? [^.]* life|lifelink/i,
   etb: /create(?:s)? [^.]* token|return [^.]* to the battlefield/i,
   // A creature that merely HAS haste (Smaug the Impenetrable: "Flying,
@@ -994,7 +1000,15 @@ const PAYOFFS = {
   explore: /whenever [^.]* explores?|if [^.]* explored|creatures? you control that explored/i,
   exile_play: /whenever you (?:play|cast) [^.]* from exile|cards? you (?:play|cast) from exile/i,
   artifacts: /artifact(?:s)? you control|whenever (?:you cast |an? )?artifact|sacrifice an artifact/i,
-  auras: /affinity for auras|whenever [^.]*\baura\b|auras? you control|enchanted creature you control/i,
+  // Founder #054: Ardenn, Intrepid Archaeologist — a real, popular Auras
+  // and Equipment commander — reads "attach any number of Auras and
+  // Equipment you control", verified via live Scryfall text. The old bare
+  // "auras? you control" required "you control" immediately after the
+  // word, so the "and Equipment" in between broke the match and Ardenn
+  // produced and rewarded nothing. Widened to allow text between "aura(s)"
+  // and "you control" within the same clause, same style already used
+  // throughout this file (e.g. "gain(?:s)? [^.]* life").
+  auras: /affinity for auras|whenever [^.]*\baura\b|auras?[^.]* you control|enchanted creature you control/i,
   // "Put counters on target X" is a producer, not a payoff. The old broad
   // `counters on` branch classified Ayula as both sides of a counter engine,
   // letting any unrelated counter producer masquerade as commander synergy.
@@ -1110,7 +1124,16 @@ const DOUBLER_PATTERNS = [
   {
     signal: "etb",
     side: "rewards",
-    pattern: /(?:enters?(?: the battlefield)?|entering the battlefield)[^.]{0,80}triggers? an additional time/i,
+    // Founder #054: current Oracle wording for both Panharmonicon and Yarok,
+    // the Desecrated reads "artifact/permanent entering causes ... to
+    // trigger" — no "the battlefield" at all, and "entering" (the
+    // participle), never bare "enter"/"enters". Verified against live
+    // Scryfall text for both. The old alternation required either the bare
+    // verb or the exact phrase "entering the battlefield", so it silently
+    // never matched either of the format's two most iconic ETB-doubler
+    // cards. Now any of enter/enters/entering matches, with "the
+    // battlefield" optional regardless of which verb form is used.
+    pattern: /(?:enters?|entering)(?: the battlefield)?[^.]{0,80}triggers? an additional time/i,
     verb: "makes every enters-the-battlefield trigger in the deck happen an additional time",
   },
   {
