@@ -1042,7 +1042,21 @@ const PAYOFFS = {
   // own activated ability) use "milled"/"put into ... graveyard from", so
   // no card double-counts as both sides of its own trigger.
   graveyard: /from your graveyard|in your graveyard|delirium|threshold|\b(?:is|are) milled\b|put into [^.]*graveyard from (?:anywhere|their library|your library)/i,
-  sacrifice: /whenever [^.]* dies|whenever you sacrifice|sacrifice another/i,
+  // Founder #055: "sacrifice another" alone missed the two most common
+  // real sacrifice-mechanic shapes in the whole format. (1) The classic
+  // sac-outlet activated-ability cost is nearly always "Sacrifice a
+  // creature:" / "Sacrifice a Goblin:" (Ashnod's Altar, Viscera Seer,
+  // Goblin Bombardment — all verified via Scryfall) — "a", not "another",
+  // since the outlet itself is an artifact/permanent, not a creature that
+  // could be sacrificing itself. (2) Forced-sacrifice "edict" effects use
+  // third-person "sacrifices" (Diabolic Edict: "Target player sacrifices a
+  // creature.") — the old pattern's "sacrifice" (no trailing s) can't match
+  // that verb form at all. Both are extremely common, defining shapes of
+  // real aristocrats/edict decks, and both scored zero commander-connection
+  // credit before this fix. Widened to any object article, and made the
+  // "s" on the verb optional so both first-person costs and third-person
+  // edicts match.
+  sacrifice: /whenever [^.]* dies|whenever you sacrifice|sacrifices? (?:a|an|another)\b/i,
   // Founder #043: "whenever you draw" alone missed a whole real archetype
   // — Nekusar's own payoff ("Whenever an opponent draws a card, Nekusar
   // deals 1 damage to that player.") and its namesake staples Fate

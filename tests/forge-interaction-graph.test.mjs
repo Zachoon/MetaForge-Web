@@ -236,6 +236,37 @@ test("PAYOFFS.auras still recognizes the bare adjacent 'auras you control' wordi
   assert.ok(signals.rewards.includes("auras"));
 });
 
+// Founder #055: "sacrifice another" alone missed the two most common real
+// sacrifice-mechanic shapes: the classic sac-outlet cost "Sacrifice a
+// creature:" (Ashnod's Altar, Viscera Seer, Goblin Bombardment — real
+// Oracle text verified via Scryfall) and the third-person forced-sacrifice
+// "edict" shape (Diabolic Edict: "Target player sacrifices a creature.").
+// Both are defining shapes of real aristocrats/edict decks and both scored
+// zero commander-connection credit before this fix, even though this is
+// the same PAYOFFS.sacrifice pattern that already correctly recognized
+// Yawgmoth's "Sacrifice another creature:" cost.
+test("PAYOFFS.sacrifice recognizes the real 'Sacrifice a creature:' outlet-cost shape (Ashnod's Altar, Viscera Seer), not just 'sacrifice another'", () => {
+  const altar = { name: "Ashnod's Altar", typeLine: "Artifact", oracleText: "Sacrifice a creature: Add {C}{C}." };
+  const seer = { name: "Viscera Seer", typeLine: "Creature", oracleText: "Sacrifice a creature: Scry 1." };
+  const bombardment = { name: "Goblin Bombardment", typeLine: "Enchantment", oracleText: "Sacrifice a Goblin: Goblin Bombardment deals 1 damage to any target." };
+  for (const card of [altar, seer, bombardment]) {
+    assert.ok(extractMechanicalSignals(card).rewards.includes("sacrifice"), `${card.name} should reward the sacrifice signal`);
+  }
+});
+
+test("PAYOFFS.sacrifice recognizes the real third-person 'sacrifices a creature' edict shape (Diabolic Edict, Liliana of the Veil), not just first-person 'sacrifice'", () => {
+  const edict = { name: "Diabolic Edict", typeLine: "Instant", oracleText: "Target player sacrifices a creature." };
+  const liliana = { name: "Liliana of the Veil", typeLine: "Legendary Planeswalker", oracleText: "Each player sacrifices a creature." };
+  for (const card of [edict, liliana]) {
+    assert.ok(extractMechanicalSignals(card).rewards.includes("sacrifice"), `${card.name} should reward the sacrifice signal`);
+  }
+});
+
+test("PAYOFFS.sacrifice still recognizes the pre-existing 'sacrifice another' outlet-cost wording (Yawgmoth)", () => {
+  const yawgmoth = { name: "Yawgmoth, Thran Physician", typeLine: "Legendary Creature", oracleText: "Pay 1 life, Sacrifice another creature: Put a -1/-1 counter on up to one target creature and draw a card." };
+  assert.ok(extractMechanicalSignals(yawgmoth).rewards.includes("sacrifice"));
+});
+
 test("an ordinary token producer's own oracle text is not mistaken for Doubling Season's exact doubling clause", () => {
   const ordinary = { name: "Token Maker", typeLine: "Sorcery", oracleText: "Create two 1/1 creature tokens." };
   const anotherMaker = { name: "Another Maker", typeLine: "Sorcery", oracleText: "Create four 1/1 creature tokens." };
