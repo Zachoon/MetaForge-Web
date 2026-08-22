@@ -1689,6 +1689,41 @@ test("Founder #043: Nekusar's own trigger and a real wheel effect now correctly 
   assert.ok(cardMechanics.produces.includes("draw"), "Wheel of Fortune should register as a real draw producer");
 });
 
+// Founder #048: found by cross-checking Vivi Ornitier's real primer — her
+// second ability ("Whenever you cast a noncreature spell, put a +1/+1
+// counter on Vivi Ornitier and it deals 1 damage to each opponent") is
+// explicitly NONCOMBAT, yet Curiosity, Ophidian Eye, and Tandem Lookout
+// (all named in the primer's own "Plan A", verified via Scryfall) all say
+// "whenever [enchanted/this] creature deals damage to an opponent" — no
+// "combat" qualifier — so Vivi's own ping genuinely triggers the draw.
+test("Founder #048: PAYOFFS.damage matches the real \"deals damage to an opponent, draw\" template, not combat-damage draw effects", () => {
+  const curiosity = "Enchant creature\nWhenever enchanted creature deals damage to an opponent, you may draw a card.";
+  const tandemLookout = "As long as Tandem Lookout is paired with another creature, each of those creatures has \"Whenever this creature deals damage to an opponent, draw a card.\"";
+  for (const oracle of [curiosity, tandemLookout]) {
+    const signals = extractMechanicalSignals({ name: "Test Damage Payoff", typeLine: "Enchantment", oracleText: oracle });
+    assert.ok(signals.rewards.includes("damage"), oracle);
+  }
+  // A combat-damage draw effect (a large, distinct, already-common real
+  // template — Bident of Thassa-class) must not be swept in: it says
+  // "combat damage to a player," not "damage to an opponent."
+  const combatDamageDraw = extractMechanicalSignals({ name: "Test Combat Draw", typeLine: "Creature", oracleText: "Whenever this creature deals combat damage to a player, draw a card." });
+  assert.equal(combatDamageDraw.rewards.includes("damage"), false);
+  // Vivi's own trigger text is a producer of damage, not a reward for it.
+  const viviSignals = extractMechanicalSignals({ name: "Test Vivi", typeLine: "Creature", oracleText: "Whenever you cast a noncreature spell, put a +1/+1 counter on this creature and it deals 1 damage to each opponent." });
+  assert.ok(viviSignals.produces.includes("damage"));
+  assert.equal(viviSignals.rewards.includes("damage"), false);
+});
+
+test("Founder #048: Vivi's own noncombat damage trigger and a real Curiosity-style aura now correctly connect via commanderConnectionSignalsFor", () => {
+  const vivi = { name: "Vivi Ornitier", colors: ["U", "R"], oracleText: "{0}: Add X mana in any combination of {U} and/or {R}, where X is Vivi Ornitier's power. Activate only during your turn and only once each turn.\nWhenever you cast a noncreature spell, put a +1/+1 counter on Vivi Ornitier and it deals 1 damage to each opponent." };
+  const curiosity = { name: "Curiosity", typeLine: "Enchantment — Aura", oracleText: "Enchant creature\nWhenever enchanted creature deals damage to an opponent, you may draw a card." };
+  configureInteractionGraphTagLookup((name) => CARD_MECHANICS[name] || []);
+  const commanderMechanics = extractMechanicalSignals(vivi);
+  const cardMechanics = extractMechanicalSignals(curiosity);
+  assert.ok(commanderMechanics.produces.includes("damage"), "Vivi's own noncombat damage ping should register as a real damage producer");
+  assert.ok(cardMechanics.rewards.includes("damage"), "Curiosity should register as a real damage payoff");
+});
+
 test("damage kinds split deal / drain / prevent from blended damage", () => {
   const dealOracle = "Lightning Bolt deals 3 damage to any target.";
   const drainOracle = "Each opponent loses 2 life. You gain life equal to the life lost this way.";

@@ -934,12 +934,13 @@ const PRODUCERS = {
   // are the same producer shape from a synergy-detection standpoint.
   evasion: /\bflying\b|\bmenace\b|\btrample\b|can(?:'|’)t be blocked|\bskulk\b/i,
   protection: /\bhexproof\b|\bindestructible\b|protection from|\bward\b|phase out|gains? indestructible|gains? hexproof/i,
-  // Producer-only: no PAYOFFS.damage or SIGNALS entry, since "damage
-  // matters" payoffs (as opposed to sources that deal damage) don't have a
-  // clean, confidently-verified generic phrasing the way tokens/counters/
-  // graveyard payoffs do — narrow scope, just enough to support the Fiery
+  // No SIGNALS entry — narrow scope, just enough to support the Fiery
   // Emancipation/Furnace of Rath amplifier below rather than a full
-  // producer/payoff pairing built on an unverified guess.
+  // producer/payoff pairing built on an unverified guess. A real,
+  // verified PAYOFFS.damage entry exists below (Founder #048) for the one
+  // specific template found grounded in real cards; a fully generic
+  // "damage matters" payoff still doesn't have a clean, confidently-
+  // verified phrasing the way tokens/counters/graveyard payoffs do.
   damage: /deals? \d+ damage/i,
 };
 
@@ -983,6 +984,20 @@ const PAYOFFS = {
   spells: /whenever you cast|magecraft|instant and sorcery/i,
   lands: /landfall|whenever a land enters|lands you control/i,
   life: /whenever you gain life|if your life total|life you gained/i,
+  // Founder #048: found by cross-checking Vivi Ornitier's real primer —
+  // "Curiosity effects to draw with every noncreature spell" is the
+  // deck's own stated Plan A, and Vivi's second ability ("it deals 1
+  // damage to each opponent") is explicitly NONCOMBAT, yet Curiosity,
+  // Ophidian Eye, and Tandem Lookout (all real, verified via Scryfall)
+  // all say "whenever [enchanted/this] creature deals damage to an
+  // opponent" — no "combat" qualifier at all, so Vivi's own noncombat
+  // ping genuinely does trigger the draw. Deliberately narrow: this
+  // matches exactly the one verified real template found (not a bare
+  // "deals damage" scan), so it stays distinct from PRODUCERS.combat's
+  // \bcombat damage\b below and doesn't reopen the broader "damage
+  // matters" generalization PRODUCERS.damage's own comment (above)
+  // explicitly declined to guess at.
+  damage: /(?:enchanted creature|this creature) deals damage to (?:an? )?opponent[^.]*?,\s*(?:you may )?draw/i,
   // A permanent's own one-shot "When this enters" ability is not an ETB
   // payoff package. Payoffs must repeatedly watch other or categorized
   // permanents entering; otherwise every ordinary ETB creature appears to
