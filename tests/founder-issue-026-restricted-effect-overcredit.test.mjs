@@ -1817,6 +1817,57 @@ test("Founder #047: a dig-and-cheat Hero commander reserves real on-type anchors
   assert.ok(heroesSelected >= 8, `expected most of the 10 real on-type Heroes to be reserved as anchors, got ${heroesSelected}`);
 });
 
+// Founder #063: found via a real Winota, Joiner of Forces comparison — one
+// of the format's single most popular commanders. Her real, current
+// oracle text is the same #047 "dig a fixed sample, put a TYPE card onto
+// the battlefield" shape, but with one extra descriptor word between the
+// captured type and the literal "card" — "Human CREATURE card", not Nick
+// Fury's bare "Hero... card" — which the #047 pattern never accounted for.
+const winotaOracle = "Whenever a non-Human creature you control attacks, look at the top six cards of your library. You may put a Human creature card from among them onto the battlefield tapped and attacking. It gains indestructible until end of turn. Put the rest of the cards on the bottom of your library in a random order.";
+
+test("Founder #063: commanderTribesFromOracle extracts the real \"you may put a TYPE creature card onto the battlefield\" shape (Winota), not just the bare \"TYPE card\" #047 covers", () => {
+  assert.deepEqual(commanderTribesFromOracle([{ oracleText: winotaOracle }]), ["human"]);
+  // #047's own multi-type extraction (bare "TYPE1, TYPE2, or TYPE3 card",
+  // no descriptor word) must still work unchanged.
+  assert.deepEqual(commanderTribesFromOracle([{ oracleText: nickFuryOracle }]), ["hero"]);
+  // The optional descriptor word itself must never become a fake tribe.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "You may put a creature card from among them onto the battlefield." }]),
+    [],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "You may put a land card from among them onto the battlefield." }]),
+    [],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "You may put a permanent card from among them onto the battlefield." }]),
+    [],
+  );
+});
+
+test("Founder #063: a dig-and-cheat Human commander reserves real on-type anchors", () => {
+  const winota = { name: "Test Winota", colors: ["R", "W"], oracleText: winotaOracle };
+  const filler = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Elemental", manaCost: "{2}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Exile target nonland permanent.", typeLine: "Instant", manaCost: "{1}{W}", colorIdentity: ["W"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof and indestructible until end of turn.", typeLine: "Instant", manaCost: "{1}{W}", colorIdentity: ["W"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+  ];
+  const humans = Array.from({ length: 10 }, (_, i) => ({
+    name: `Test Human ${i}`, oracleText: "Vigilance.", typeLine: "Creature — Human Soldier", manaCost: "{1}{W}", cmc: 2, colorIdentity: ["W"], popularityRank: 200,
+  }));
+  const gates = Array.from({ length: 20 }, (_, i) => ({
+    name: `RW Gate ${i}`, oracleText: "This land enters the battlefield tapped. {T}: Add {R} or {W}.", typeLine: "Land",
+    manaCost: "", colorIdentity: ["R", "W"], producedMana: ["R", "W"], popularityRank: 5, priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: winota, cards: [...filler, ...humans, ...gates],
+  });
+  const humansSelected = report.selected.rows.filter((row) => row.name.startsWith("Test Human")).length;
+  assert.ok(humansSelected >= 8, `expected most of the 10 real on-type Humans to be reserved as anchors, got ${humansSelected}`);
+});
+
 test("Founder #039: identityTribalTypesFor merges commander-derived tribes with the player's typed note, note first", () => {
   const heiBai = { name: "Hei Bai, Forest Guardian", colors: ["W", "U", "B", "R", "G"], oracleText: heiBaiOracle };
   assert.deepEqual(identityTribalTypesFor([], heiBai, null), ["shrine"]);

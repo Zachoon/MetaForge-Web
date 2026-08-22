@@ -539,7 +539,25 @@ const REVEAL_UNTIL_TYPE_CARD = /\breveal[^.]*?\breveal (?:a|an) ([A-Za-z][A-Za-z
 // the real creature type, Equipment already has its own dedicated
 // package, and Vehicle has neither a typal identity nor an existing
 // package to route into.
-const PUT_TYPE_CARD_ONTO_BATTLEFIELD = /you may put (?:a|an) ((?:[A-Za-z][A-Za-z'-]+(?:,\s*)?)+(?:or\s+[A-Za-z][A-Za-z'-]+)?) card[^.]*?\bonto the battlefield\b/gi;
+// Founder #063: found via a real Winota, Joiner of Forces comparison — one
+// of the format's single most popular commanders (2,400+ likes on the one
+// real decklist checked). Her real, current oracle text ("look at the top
+// six cards of your library. You may put a Human creature card from among
+// them onto the battlefield tapped and attacking...") is the exact same
+// "dig a fixed sample, put a TYPE card onto the battlefield" shape #047
+// built this pattern for, but with one extra descriptor word between the
+// captured type and the literal "card" — "Human CREATURE card", not
+// Nick Fury's bare "Hero... card". The old pattern required the captured
+// type word(s) to be immediately followed by " card", so it silently
+// never matched Winota's real text at all — the single most-played
+// tribal-cheat-into-play commander in the identity-tribal-types pipeline
+// produced zero targeted pool-fetch queries for her own core resource.
+// Made "creature"/"permanent"/"land" optional between the type and "card"
+// — the three words real cards use in this exact position (a fourth,
+// "planeswalker", doesn't apply here since Planeswalker is excluded via
+// ARTIFACT_OR_TOKEN_TYPES the same way Equipment/Vehicle already are).
+// Verified Nick Fury's own multi-type extraction is unaffected.
+const PUT_TYPE_CARD_ONTO_BATTLEFIELD = /you may put (?:a|an) ((?:[A-Za-z][A-Za-z'-]+(?:,\s*)?)+(?:or\s+[A-Za-z][A-Za-z'-]+)?) (?:creature |permanent |land )?card[^.]*?\bonto the battlefield\b/gi;
 
 /**
  * Tribes implied by commander rules text ("another Bear you control",
