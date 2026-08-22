@@ -48,6 +48,10 @@ import {
   RESET_SHAPES,
   RELATIONSHIP_EVIDENCE,
 } from "../app/forge-interaction-graph.mjs";
+import {
+  commanderConnectionSignalsFor,
+  commanderMechanicalScopes,
+} from "../app/native-masterwork-engine.mjs";
 
 // forge-interaction-graph.mjs takes its per-card tag lookup by injection
 // (configureInteractionGraphTagLookup) rather than importing card-mechanics.mjs
@@ -1308,72 +1312,88 @@ test("Founder #045: PRODUCERS.counters matches Wither and Infect, real -1/-1-cou
   assert.equal(meathookMassacre.produces.includes("counters"), false);
 });
 
-// Founder #051: found by cross-checking Satya, Aetherflux Genius's real
-// primer against a real construction. Guide of Souls and Whirler
-// Virtuoso (both named in the primer's own "Feeling Energetic" section)
-// scored zero commander connection, because Energy counters use "get" as
-// their placement verb, never "put" — the same class of gap as #045's
-// Wither/Infect. Satya's own trigger ("You get {E}{E} (two energy
-// counters)... sacrifice that token unless you pay an amount of {E}
-// equal to its mana value") is both sides at once: a real producer via
-// "get", and a real payoff via "pay {E}" — the same "spend existing
-// counters" shape the PAYOFFS.counters comment already describes for
-// "remove a counter", just Energy's own verb for it.
-test("Founder #051: PRODUCERS.counters and PAYOFFS.counters both match Energy's real \"get\"/\"pay\" verbs, not just \"put\"/\"remove\"", () => {
-  const guideOfSouls = "Whenever another creature you control enters, you gain 1 life and get {E} (an energy counter).\nWhenever you attack, you may pay {E}{E}{E}. When you do, put two +1/+1 counters and a flying counter on target attacking creature. It becomes an Angel in addition to its other types.";
-  const whirlerVirtuoso = "When this creature enters, you get {E}{E}{E} (three energy counters).\nPay {E}{E}{E}: Create a 1/1 colorless Thopter artifact creature token with flying.";
+// Founder #051/#052/#053: #051 found that Energy counters (Satya,
+// Aetherflux Genius) and #052 that Experience counters (Kratos, Stoic
+// Father) use "get"/"pay" as their placement/spend verbs, never "put"/
+// "remove" — both real gaps. Both shipped into the SAME "counters" signal
+// +1/+1, -1/-1, and other permanent counters already use. Zach caught the
+// resulting bug directly, same day: Energy and Experience are counters a
+// PLAYER has, not counters on a permanent — structurally closer to
+// poison than to +1/+1 — and blending them meant a pure-Energy card
+// (Whirler Virtuoso, no +1/+1 or -1/-1 text at all) started reading as
+// commander-connected to Auntie Ool, Cursewretch (a -1/-1-counters-
+// specific payoff commander) purely because both sides now shared the
+// same generic "counters" bucket. #053 moved Energy/Experience to their
+// own player_counters signal instead — the same way this file already
+// keeps Treasure/Clue/Food/Blood/Gold/Map/Junk/Powerstone separate from
+// the generic artifacts/tokens signal they'd otherwise blend into.
+test("Founder #053: player_counters is scoped to Energy/Experience's real \"get\"/\"pay\" verbs and stays separate from the generic permanent-counters signal", () => {
   const satya = "Menace, haste\nWhenever Satya attacks, create a tapped and attacking token that's a copy of up to one other target nontoken creature you control. You get {E}{E} (two energy counters). At the beginning of the next end step, sacrifice that token unless you pay an amount of {E} equal to its mana value.";
-  for (const oracle of [guideOfSouls, whirlerVirtuoso, satya]) {
-    const signals = extractMechanicalSignals({ name: "Test Energy Card", typeLine: "Creature", oracleText: oracle });
-    assert.ok(signals.produces.includes("counters"), oracle);
+  const whirlerVirtuoso = "When this creature enters, you get {E}{E}{E} (three energy counters).\nPay {E}{E}{E}: Create a 1/1 colorless Thopter artifact creature token with flying.";
+  const kratos = "Whenever you attack with one or more Gods and whenever a God dies, you get an experience counter.";
+  for (const oracle of [satya, whirlerVirtuoso, kratos]) {
+    const signals = extractMechanicalSignals({ name: "Test Player Counter Card", typeLine: "Creature", oracleText: oracle });
+    assert.ok(signals.produces.includes("player_counters"), oracle);
+    assert.equal(signals.produces.includes("counters"), false, `${oracle} must not also register as a generic permanent-counters producer`);
   }
-  assert.ok(extractMechanicalSignals({ name: "Test Satya", typeLine: "Creature", oracleText: satya }).rewards.includes("counters"), "Satya's own pay-{E}-or-sacrifice clause should register as a real counters payoff");
-  // A generic "pay life"/"pay mana" cost must not be swept in — Energy's
-  // real spend verb is specific to {E}/"energy", not any resource cost.
+  assert.ok(extractMechanicalSignals({ name: "Test Satya", typeLine: "Creature", oracleText: satya }).rewards.includes("player_counters"), "Satya's own pay-{E}-or-sacrifice clause should register as a real player_counters payoff");
+  // A generic "pay life"/"pay mana" cost, and "counter" used as a
+  // spell-negation verb, must not be swept in.
   const payLife = extractMechanicalSignals({ name: "Test Pay Life", typeLine: "Instant", oracleText: "Pay 2 life: Draw a card." });
-  assert.equal(payLife.rewards.includes("counters"), false);
-  const payMana = extractMechanicalSignals({ name: "Test Pay Mana", typeLine: "Sorcery", oracleText: "As an additional cost to cast this spell, pay {2}. Draw a card." });
-  assert.equal(payMana.rewards.includes("counters"), false);
+  assert.equal(payLife.rewards.includes("player_counters"), false);
+  const counterspell = extractMechanicalSignals({ name: "Test Counterspell", typeLine: "Instant", oracleText: "Counter target spell unless its controller pays {3}." });
+  assert.equal(counterspell.produces.includes("player_counters"), false);
 });
 
-test("Founder #051: Satya's own trigger and a real Energy producer now correctly connect via commanderConnectionSignalsFor", () => {
+// Zach also flagged (2026-08-22) that counter-doubling and Proliferate
+// both explicitly reach player counters in real rules text, and must
+// still connect — Atraxa + poison-counter proliferation is one of the
+// format's most popular real archetypes. Proliferate's own reminder text
+// says "permanents and/or players" (Contagion Clasp, verified via
+// Scryfall); Innkeeper's Talent's level 3 says "on a permanent or
+// player" — both real, both must open player_counters. Doubling Season,
+// also verified, only ever says "on a permanent" — it does not affect
+// poison/energy/experience in real rules text, and must NOT match.
+test("Founder #053: Proliferate and \"permanent or player\" doubling effects open player_counters too, but Doubling Season's permanent-only text does not", () => {
+  const contagionClasp = "When this artifact enters, put a -1/-1 counter on target creature.\n{4}, {T}: Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)";
+  const innkeepersTalentLevel3 = "If you would put one or more counters on a permanent or player, put twice that many of each of those kinds of counters on that permanent or player instead.";
+  for (const oracle of [contagionClasp, innkeepersTalentLevel3]) {
+    const signals = extractMechanicalSignals({ name: "Test Doubler", typeLine: "Artifact", oracleText: oracle });
+    assert.ok(signals.produces.includes("player_counters"), oracle);
+  }
+  const doublingSeason = extractMechanicalSignals({ name: "Doubling Season", typeLine: "Enchantment", oracleText: "If an effect would create one or more tokens under your control, it creates twice that many of those tokens instead.\nIf an effect would put one or more counters on a permanent you control, it puts twice that many of those counters on that permanent instead." });
+  assert.equal(doublingSeason.produces.includes("player_counters"), false, "Doubling Season's real text is permanent-only and does not affect poison/energy/experience");
+  assert.ok(doublingSeason.produces.includes("counters"), "Doubling Season should still register as a real generic permanent-counters producer");
+});
+
+test("Founder #053: a pure-Energy card no longer falsely connects to a -1/-1-counters commander, but still correctly connects to Satya and a real proliferate card", () => {
+  const auntieOol = { name: "Auntie Ool, Cursewretch", colors: ["B", "R", "G"], oracleText: "Ward—Blight 2. (To blight 2, a player puts two -1/-1 counters on a creature they control.)\nWhenever one or more -1/-1 counters are put on a creature, draw a card if you control that creature. If you don't control it, its controller loses 1 life." };
   const satya = { name: "Satya, Aetherflux Genius", colors: ["R", "U", "W"], oracleText: "Menace, haste\nWhenever Satya attacks, create a tapped and attacking token that's a copy of up to one other target nontoken creature you control. You get {E}{E} (two energy counters). At the beginning of the next end step, sacrifice that token unless you pay an amount of {E} equal to its mana value." };
   const whirlerVirtuoso = { name: "Whirler Virtuoso", typeLine: "Creature", oracleText: "When this creature enters, you get {E}{E}{E} (three energy counters).\nPay {E}{E}{E}: Create a 1/1 colorless Thopter artifact creature token with flying." };
+  const contagionClasp = { name: "Contagion Clasp", typeLine: "Artifact", oracleText: "When this artifact enters, put a -1/-1 counter on target creature.\n{4}, {T}: Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)" };
   configureInteractionGraphTagLookup((name) => CARD_MECHANICS[name] || []);
-  const commanderMechanics = extractMechanicalSignals(satya);
-  const cardMechanics = extractMechanicalSignals(whirlerVirtuoso);
-  assert.ok(commanderMechanics.rewards.includes("counters"), "Satya's own pay-{E}-to-keep-the-token clause should register as a real counters payoff");
-  assert.ok(cardMechanics.produces.includes("counters"), "Whirler Virtuoso should register as a real Energy producer");
+
+  const auntieMechanics = extractMechanicalSignals(auntieOol);
+  const auntieScopes = commanderMechanicalScopes(auntieOol);
+  const wvMechanics = extractMechanicalSignals(whirlerVirtuoso);
+  assert.deepEqual(commanderConnectionSignalsFor(whirlerVirtuoso, wvMechanics, auntieMechanics, auntieScopes), [], "a pure-Energy card must not connect to a -1/-1-counters-specific commander");
+
+  const satyaMechanics = extractMechanicalSignals(satya);
+  const satyaScopes = commanderMechanicalScopes(satya);
+  assert.ok(commanderConnectionSignalsFor(whirlerVirtuoso, wvMechanics, satyaMechanics, satyaScopes).includes("player_counters"), "the same pure-Energy card must still connect to a real Energy commander");
+  const ccMechanics = extractMechanicalSignals(contagionClasp);
+  assert.ok(commanderConnectionSignalsFor(contagionClasp, ccMechanics, satyaMechanics, satyaScopes).includes("player_counters"), "a real proliferate card must connect to a pure-Energy commander with no permanent-counter text of its own");
 });
 
-// Founder #052: shipped minutes after #051 — Kratos, Stoic Father's real
-// trigger ("Whenever you attack with one or more Gods and whenever a God
-// dies, you get an experience counter") uses the identical "get" verb
-// Energy counters do, but #051 shipped scoped to the literal phrase
-// "energy counter" specifically, so Experience counters still didn't
-// connect. The primer's own stated game plan for this partner pair is
-// "build experience counters, win with payoffs" — Metastatic Evangel
-// (real, primer-named proliferate creature) scored zero connection until
-// this widened from "get ... energy counter" to bare "get ... counter(s)".
-test("Founder #052: PRODUCERS.counters generalizes from Energy's \"get\" verb to any \"get ... counter\" phrasing, including Experience", () => {
-  const kratos = "Whenever you attack with one or more Gods and whenever a God dies, you get an experience counter.";
-  const signals = extractMechanicalSignals({ name: "Test Kratos", typeLine: "Creature", oracleText: kratos });
-  assert.ok(signals.produces.includes("counters"), kratos);
-  // "Counter" used as a spell-negation verb must still stay excluded —
-  // that phrasing never has "get" nearby.
-  const counterspell = extractMechanicalSignals({ name: "Test Counterspell", typeLine: "Instant", oracleText: "Counter target spell unless its controller pays {3}." });
-  assert.equal(counterspell.produces.includes("counters"), false);
-});
-
-test("Founder #052: Kratos's own Experience-counter trigger and a real proliferate creature now correctly connect via commanderConnectionSignalsFor", () => {
+test("Founder #053: Kratos & Atreus's own Experience-counter payoff and a real proliferate creature still correctly connect", () => {
   const kratos = { name: "Kratos, Stoic Father", colors: ["R", "W"], oracleText: "Whenever you attack with one or more Gods and whenever a God dies, you get an experience counter.\nAt the beginning of your end step, put a number of +1/+1 counters on target creature equal to the number of experience counters you have." };
   const atreus = { name: "Atreus, Impulsive Son", colors: ["U", "R"], oracleText: "Reach\n{3}, {T}: Draw a card for each experience counter you have, then discard a card. Atreus deals 2 damage to each opponent." };
   const metastaticEvangel = { name: "Metastatic Evangel", typeLine: "Creature", oracleText: "Flying\nWhenever Metastatic Evangel or another nontoken creature enters under your control, proliferate." };
   configureInteractionGraphTagLookup((name) => CARD_MECHANICS[name] || []);
   const commanderMechanics = extractMechanicalSignals({ name: "combined", oracleText: `${kratos.oracleText}\n${atreus.oracleText}` });
   const cardMechanics = extractMechanicalSignals(metastaticEvangel);
-  assert.ok(commanderMechanics.rewards.includes("counters"), "Atreus's own for-each-experience-counter clause should register as a real counters payoff");
-  assert.ok(cardMechanics.produces.includes("counters"), "Metastatic Evangel's proliferate should register as a real counters producer");
+  assert.ok(commanderMechanics.rewards.includes("player_counters"), "Atreus's own for-each-experience-counter clause should register as a real player_counters payoff");
+  assert.ok(cardMechanics.produces.includes("player_counters"), "Metastatic Evangel's proliferate should register as a real player_counters producer too, not just generic counters");
 });
 
 test("life kinds split gain / lifelink / pay from the blended life signal", () => {

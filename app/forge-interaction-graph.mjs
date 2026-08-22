@@ -871,22 +871,44 @@ const PRODUCERS = {
   // sweep in an unrelated toughness-reduction effect: The Meathook
   // Massacre's "-X/-X until end of turn" is a temporary stat reduction,
   // not real counters, and correctly stays unmatched.
-  // Founder #051: Energy counters use "get" as their placement verb, not
-  // "put" — real cards never say "put an energy counter," always "you
-  // get {E}" (Satya, Aetherflux Genius's own trigger: "You get {E}{E}
-  // (two energy counters)"; Guide of Souls, Whirler Virtuoso — all
-  // verified via Scryfall). Same class of gap as #045's Wither/Infect:
-  // a real, common counter-placement verb the bare "put" scan never
-  // covers.
-  // Founder #052: shipping #051 scoped to "energy counter" specifically
-  // was too narrow — Experience counters (Kratos, Stoic Father: "you get
-  // an experience counter") use the exact same "get" verb, just a
-  // different counter name. Widened from "get ... energy counter" to
-  // bare "get ... counter(s)", which generalizes to any future "get a[n]
-  // X counter" type without needing a third narrow entry. Verified this
-  // still excludes "counter" used as a spell-negation verb ("Counter
-  // target spell unless..."), since that phrasing never has "get" nearby.
-  counters: /put [^.]* counter|proliferate|\bwither\b|\binfect\b|\bget\b [^.]*?\bcounters?\b/i,
+  // Founder #051/#052, corrected same day: Energy and Experience counters
+  // were briefly folded into this same "counters" signal via their "get"
+  // placement verb. Wrong call, caught by Zach directly: unlike +1/+1,
+  // -1/-1, charge, or any other counter this signal is about, Energy and
+  // Experience are counters a PLAYER has, not counters on a permanent —
+  // structurally closer to poison than to +1/+1. Blending them here meant
+  // Guide of Souls (pure Energy, no relation to +1/+1 or -1/-1 at all)
+  // started reading as "commander-connected" to Auntie Ool, Cursewretch
+  // (a -1/-1-counters-specific payoff commander) purely because both sides
+  // now shared the same generic "counters" bucket — confirmed as a real,
+  // reproducible false positive before this fix. Moved to their own
+  // player_counters signal below instead, the same way this file already
+  // keeps Treasure/Clue/Food/Blood/Gold/Map/Junk/Powerstone as their own
+  // dedicated signals rather than folding them into the generic
+  // artifacts/tokens signal they'd otherwise blend into.
+  counters: /put [^.]* counter|proliferate|\bwither\b|\binfect\b/i,
+  // Founder #053: Energy and Experience counters, moved out of the
+  // generic "counters" signal above — see that entry's comment for why.
+  // Both use "get" as their placement verb (Satya, Aetherflux Genius:
+  // "You get {E}{E} (two energy counters)"; Kratos, Stoic Father: "you
+  // get an experience counter"; Guide of Souls, Whirler Virtuoso — all
+  // verified via Scryfall), scoped here to require "energy" or
+  // "experience" appear with "counter", not a bare "get ... counter" —
+  // deliberately narrower than the reverted #052 version now that it's
+  // not sharing a bucket with the permanent-counters signal, so there's
+  // no reason to risk a bare "get" false positive when the real template
+  // always names the counter type. Also real player-counter producers:
+  // Proliferate's own reminder text is explicit ("Choose any number of
+  // permanents and/or players, then give each another counter of each
+  // kind already there" — Contagion Clasp) — it grows player counters
+  // exactly as much as permanent ones, so it belongs in both signals, not
+  // just the generic one above. Counter-doubling effects that explicitly
+  // cover players (Innkeeper's Talent's level 3: "put ... counters on a
+  // permanent or player") are the same case — Doubling Season itself,
+  // verified via Scryfall, only ever says "on a permanent," never "or
+  // player," so it correctly does NOT match this pattern; it doesn't
+  // affect poison/energy/experience in real rules text either.
+  player_counters: /\bget\b [^.]*?\b(?:energy|experience) counters?\b|\bproliferate\b|\bcounters? on [^.]*? or player\b/i,
   // Founder #042: the old `/mill [a-z\d]/` only ever matched the rare
   // imperative "you mill three cards" phrasing — the third-person verb
   // form nearly every real mill card actually uses ("target player
@@ -977,13 +999,25 @@ const PAYOFFS = {
   // `counters on` branch classified Ayula as both sides of a counter engine,
   // letting any unrelated counter producer masquerade as commander synergy.
   // A payoff must react to, scale from, replace, or spend existing counters.
-  // Founder #051: "pay {E}"/"pay ... energy" is Energy's own spend
-  // verb — never "remove a counter" — the same "spend existing counters"
-  // shape this comment already describes, just the one real counter type
-  // that doesn't use "remove." Satya, Aetherflux Genius's own real payoff
-  // ("sacrifice that token unless you pay an amount of {E} equal to its
-  // mana value") is exactly this shape.
-  counters: /whenever [^,.;]*counter|if [^,.;]*counter|for each [^.]*counter|remove [^.]* counter|modified creature|pay [^.]*?\{E\}|pay [^.]*? energy/i,
+  // Founder #051, corrected same day as #053: "pay {E}" was briefly
+  // folded in here as Energy's own spend verb. Wrong bucket — Energy is a
+  // player counter, not a permanent counter, so this created the same
+  // false-positive risk described on PRODUCERS.counters above (a pure
+  // Energy payoff card reading as connected to a +1/+1 or -1/-1 commander
+  // that has nothing to do with Energy). Moved to player_counters below.
+  counters: /whenever [^,.;]*counter|if [^,.;]*counter|for each [^.]*counter|remove [^.]* counter|modified creature/i,
+  // Founder #053: Energy and Experience payoffs, moved out of the generic
+  // "counters" signal above — see PRODUCERS.player_counters and that
+  // entry's comment for why. Energy's spend verb is "pay {E}"/"pay ...
+  // energy" (Satya, Aetherflux Genius: "sacrifice that token unless you
+  // pay an amount of {E} equal to its mana value"), never "remove a
+  // counter." Experience counters are never spent at all — Kratos, Stoic
+  // Father and Atreus, Impulsive Son both just reference the running
+  // count ("for each experience counter you have" / "equal to the number
+  // of experience counters you have"), so a bare "experience counter(s)"
+  // mention is the real payoff shape, not a "for each"/"if" qualifier —
+  // real oracle text never uses that exact phrase incidentally.
+  player_counters: /pay [^.]*?\{E\}|pay [^.]*? energy|\bexperience counters?\b/i,
   // Founder #042: "is/are milled" (passive) is the reward shape — a card
   // reacting to milling happening, regardless of source (The Wise
   // Mothman: "Whenever one or more nonland cards are milled, put a +1/+1
