@@ -423,6 +423,16 @@ export function detectBlinkCommander(oracle = "") {
  */
 export function detectTokensCommander(oracle = "") {
   const text = String(oracle || "");
+  // Founder #044: "affinity for creatures" (a real, rare keyword — cost
+  // reduction scaling with creature count, verified via Scryfall: only 4
+  // real cards total print it) has no token-specific text of its own, so
+  // it never opened this package even though it's real-world always built
+  // as a go-wide token deck — tokens are the cheapest way to inflate a
+  // creature-count mechanic, the same reason classic artifact-affinity
+  // decks run cheap artifact tokens. Witherbloom, the Balancer's own
+  // primer confirms this directly ("flood the battlefield with tokens...
+  // every creature added to the board reduces the cost of its founder").
+  if (/affinity for creatures/i.test(text)) return true;
   if (!/token/i.test(text)) return false;
   const creates = text.match(/create [^.]* token/gi) || [];
   if (!creates.length) return false;

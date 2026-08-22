@@ -120,6 +120,35 @@ const treasureDigger = {
   manaCost: "{1}{R}",
 };
 
+// Founder #044: found by cross-checking Witherbloom, the Balancer's real
+// primer ("flood the battlefield with tokens... every creature added to
+// the board reduces the cost of its founder") against her real oracle
+// text. "Affinity for creatures" (Scryfall-verified: only 4 real cards
+// total print this keyword) has no token-specific wording of its own —
+// the pre-fix detectTokensCommander returned false and packageIds was
+// completely empty, invisible to the deck's entire archetype identity —
+// but it's real-world always built as a go-wide token deck, the cheapest
+// way to inflate a creature-count mechanic. Leonardo, Worldly Warrior
+// (the format's only other legendary printing of this keyword) confirmed
+// the same reasoning applies generically, not just to Witherbloom.
+const witherbloom = {
+  name: "Witherbloom, the Balancer",
+  colors: ["B", "G"],
+  oracleText: "Affinity for creatures (This spell costs {1} less to cast for each creature you control.)\nFlying, deathtouch\nInstant and sorcery spells you cast have affinity for creatures.",
+  typeLine: "Legendary Creature — Elder Dragon",
+  manaCost: "{6}{B}{G}",
+};
+
+test("Founder #044: a commander with affinity for creatures opens the tokens package even with no literal token text", () => {
+  assert.equal(detectTokensCommander(witherbloom.oracleText), true);
+  assert.ok(intentFor(witherbloom).packageIds.includes("tokens"));
+  // A generic cost-reduction commander unrelated to creature count must
+  // still stay closed.
+  const genericCostReducer = { name: "Test Cost Reducer", colors: ["U"], oracleText: "Instant and sorcery spells you cast cost {1} less to cast." };
+  assert.equal(detectTokensCommander(genericCostReducer.oracleText), false);
+  assert.ok(!intentFor(genericCostReducer).packageIds.includes("tokens"));
+});
+
 test("tokens occupancy rejects treasure-sac dragon creates and still opens go-wide and treasure producers", () => {
   const magda = {
     name: "Test Outlaw",
