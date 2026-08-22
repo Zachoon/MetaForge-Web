@@ -417,6 +417,86 @@ const landsMatter = Object.freeze({
 });
 
 // -----------------------------------------------------------------------------
+// Land sacrifice
+// -----------------------------------------------------------------------------
+// Founder #060 — found via a real Hearthhull, the Worldseed decklist and
+// Moxfield primer comparison. Deliberately distinct from PACKAGE_CATALOG's
+// own `aristocrats` entry (creature/permanent/token sacrifice only, by that
+// package's own detectAristocratsCommander design comment: "Artifact-sac
+// commanders are not aristocrats") and from this file's own `lands_matter`
+// just above (landfall / a land entering / land-to-graveyard-then-DRAW
+// specifically) — confirmed Hearthhull's real trigger ("Whenever you
+// sacrifice a land, each opponent loses 2 life.") matches none of
+// lands_matter's four core patterns before building this. Before this fix,
+// the whole archetype had zero structural recognition anywhere in the
+// engine: the generic mechanical "sacrifice" signal never connected
+// Hearthhull to its own real payoff cards (Squandered Resources, Zuran Orb,
+// Crop Rotation, Sylvan Safekeeper) because both sides land on the REWARDS
+// half of that signal with no producer counterpart, verified directly via
+// commanderConnectionSignalsFor before writing any of this.
+//
+// Core is the archetype's own defining shape — sacrificing a land directly
+// for value (Squandered Resources: "Sacrifice a land: Add one mana...";
+// Zuran Orb: "Sacrifice a land: You gain 2 life."; Crop Rotation: sacrifice
+// a land as an additional cost, tutoring any land card; Sylvan Safekeeper's
+// protection cost), a direct payoff for the act (Hearthhull's own "whenever
+// you sacrifice a land" trigger), or the closely related, broader land-to-
+// graveyard payoff (The Gitrog Monster: "Whenever one or more land cards
+// are put into your graveyard from anywhere, draw a card." — the real
+// commander most associated with this archetype alongside Hearthhull; both
+// verified via Scryfall).
+//
+// False-friend shape: wrong-target-scope. A card that mentions "sacrifice"
+// near "land" without actually sacrificing a land itself — a creature-sac
+// edict whose effect happens to also destroy a land, say — is not core; the
+// precise required scope is the real "sacrifice a/an/another/any number of
+// land(s)" cost/effect shape, "whenever you sacrifice ... land", or the
+// land-to-graveyard payoff shape. Since corePatterns and requiredScopePattern
+// are the same precise shapes here, no card can pass core and still be
+// mislabeled a false friend — matching how broad-type-superset's own type
+// check never accidentally satisfies corePatterns either.
+//
+// Support is refilling the resource actually being sacrificed — extra land
+// drops (Exploration/Azusa, Lost but Seeking's own "play an/two additional
+// land(s)") and land recursion (Crucible of Worlds/Ramunap Excavator: "play
+// lands from your graveyard") — the Hearthhull primer's own Ramp section
+// names exactly this need verbatim: "this is a land SACRIFICE deck... lots
+// of our ramp eats up lands."
+const LAND_SAC_MENTION = /\bsacrifice\b[\s\S]{0,40}\bland/i;
+
+const LAND_SAC_CORE_PATTERNS = Object.freeze([
+  /sacrifice (?:a|an|another|any number of) lands?\b/i,
+  /whenever you sacrifice [^.]*\bland\b/i,
+  /whenever one or more land cards? (?:are|is) put into your graveyard from anywhere/i,
+]);
+
+const LAND_SAC_SUPPORT_PATTERNS = Object.freeze([
+  /play (?:an?|two|three|four|five|\d+) additional lands?\b/i,
+  /play lands? from your graveyard/i,
+]);
+
+const LAND_SAC_SCOPE_CONFIG = Object.freeze({
+  mentionPattern: LAND_SAC_MENTION,
+  requiredScopePattern: /sacrifice (?:a|an|another|any number of) lands?\b|whenever you sacrifice [^.]*\bland\b|whenever one or more land cards? (?:are|is) put into your graveyard from anywhere/i,
+});
+
+const landSacrifice = Object.freeze({
+  id: "land_sacrifice",
+  label: "Land sacrifice package",
+  corePatterns: LAND_SAC_CORE_PATTERNS,
+  supportPatterns: LAND_SAC_SUPPORT_PATTERNS,
+  falseFriendShape: "wrong-target-scope",
+  falseFriendConfig: LAND_SAC_SCOPE_CONFIG,
+  commander: Object.freeze({
+    oraclePatterns: LAND_SAC_CORE_PATTERNS,
+  }),
+  note: Object.freeze({
+    aliases: Object.freeze(["land sacrifice", "sac lands", "landsac", "sacrifice lands for value"]),
+  }),
+  density: Object.freeze({ singletonCore: 8, constructedCore: 5, singletonSupport: 8, constructedSupport: 4 }),
+});
+
+// -----------------------------------------------------------------------------
 // Burn
 // -----------------------------------------------------------------------------
 // Core is direct damage aimed at opponents/players, not damage in general —
@@ -2880,6 +2960,7 @@ export const ARCHETYPE_CATALOG = Object.freeze({
   group_hug: groupHug,
   lifegain,
   lands_matter: landsMatter,
+  land_sacrifice: landSacrifice,
   burn,
   enchantress,
   mill,

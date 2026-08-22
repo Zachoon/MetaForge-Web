@@ -359,6 +359,16 @@ test("PAYOFFS.sacrifice still recognizes the pre-existing 'sacrifice another' ou
   assert.ok(extractMechanicalSignals(yawgmoth).rewards.includes("sacrifice"));
 });
 
+// Founder #060: found via a real Hearthhull, the Worldseed (a real land-
+// sacrifice commander) comparison — Scapeshift, a real Hearthhull primer
+// staple, scored zero sacrifice credit because "sacrifice ANY NUMBER OF
+// lands" is a real, common quantifier shape #055 never covered (only
+// "a"/"an"/"another").
+test("PAYOFFS.sacrifice recognizes the real 'sacrifice any number of' quantifier shape (Scapeshift), not just 'a'/'an'/'another'", () => {
+  const scapeshift = { name: "Scapeshift", typeLine: "Sorcery", oracleText: "Sacrifice any number of lands. Search your library for that many land cards, put them onto the battlefield tapped, then shuffle." };
+  assert.ok(extractMechanicalSignals(scapeshift).rewards.includes("sacrifice"));
+});
+
 test("an ordinary token producer's own oracle text is not mistaken for Doubling Season's exact doubling clause", () => {
   const ordinary = { name: "Token Maker", typeLine: "Sorcery", oracleText: "Create two 1/1 creature tokens." };
   const anotherMaker = { name: "Another Maker", typeLine: "Sorcery", oracleText: "Create four 1/1 creature tokens." };

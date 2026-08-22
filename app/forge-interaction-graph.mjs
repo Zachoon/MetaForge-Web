@@ -1069,7 +1069,14 @@ const PAYOFFS = {
   // credit before this fix. Widened to any object article, and made the
   // "s" on the verb optional so both first-person costs and third-person
   // edicts match.
-  sacrifice: /whenever [^.]* dies|whenever you sacrifice|sacrifices? (?:a|an|another)\b/i,
+  // Founder #060: Scapeshift ("Sacrifice any number of lands. Search your
+  // library for that many land cards...") — a real, iconic staple — scored
+  // zero sacrifice credit, because "any number of" is a real, common
+  // quantifier shape #055 didn't cover (only "a"/"an"/"another"). Found
+  // during a real Hearthhull, the Worldseed comparison (a real land-
+  // sacrifice commander) whose own primer names Scapeshift as a core
+  // piece.
+  sacrifice: /whenever [^.]* dies|whenever you sacrifice|sacrifices? (?:a|an|another|any number of)\b/i,
   // Founder #043: "whenever you draw" alone missed a whole real archetype
   // — Nekusar's own payoff ("Whenever an opponent draws a card, Nekusar
   // deals 1 damage to that player.") and its namesake staples Fate
