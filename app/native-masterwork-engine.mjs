@@ -4,6 +4,7 @@ import { rankOneSlotCounterfactuals, runOneSlotCounterfactualLab } from "./nativ
 import { evaluateCommanderPowerSignal, POWER_TIERS, powerSignalCategoryFor, CATEGORY_WEIGHT as POWER_CATEGORY_WEIGHT } from "./commander-power-signal.mjs";
 import { activeInteractionWiring, resolveBrainPolicy, BRAIN_POLICY_V1_CONTROL } from "./brain-policy.mjs";
 import {
+  cardCanDealDamageToOwnCreature,
   cardClearsPayoffMagnitudeGate,
   cardDealsMassDamageToCreatures,
   colorlessFixingCredit,
@@ -26,6 +27,7 @@ import {
   roleFloorCredit,
 } from "./conditional-effect-credit.mjs";
 export {
+  cardCanDealDamageToOwnCreature,
   cardClearsPayoffMagnitudeGate,
   cardDealsMassDamageToCreatures,
   colorlessFixingCredit,
@@ -895,7 +897,8 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
   const commanderConnectionSignals = commanderConnectionSignalsFor(card, mechanics, context.commanderMechanics, context.commanderScopes);
   const payoffMagnitudeHits = payoffMagnitudeHitsFor(card, context.commanderPayoffGates || []);
   const selfDamageSynergyHit = context.commanderProfitsFromDamage
-    && cardDealsMassDamageToCreatures(card.oracleText || card.oracle_text || "")
+    && (cardDealsMassDamageToCreatures(card.oracleText || card.oracle_text || "")
+      || cardCanDealDamageToOwnCreature(card.oracleText || card.oracle_text || ""))
     ? 1 : 0;
   const castingFactor = restrictedEffectCastingFactor({
     manaCost: card.manaCost || card.mana_cost || "",

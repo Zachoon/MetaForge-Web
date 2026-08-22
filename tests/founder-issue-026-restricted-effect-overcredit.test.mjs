@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  cardCanDealDamageToOwnCreature,
   cardDealsMassDamageToCreatures,
   classifyNativeCard,
   colorlessPipsFromCost,
@@ -1344,7 +1345,6 @@ test("Founder #036: cardDealsMassDamageToCreatures matches real symmetric sweepe
   const realSweepers = [
     "Pestilence deals 1 damage to each creature and each player.",
     "Chain Reaction deals damage equal to the number of creatures on the battlefield to each creature.",
-    "Self-Destruct deals 8 damage to each creature and each player.",
     "Pain for All deals 2 damage to each creature and each player.",
     "Cave-In deals 2 damage to each creature and each player.",
     "Anger of the Gods deals 3 damage to each creature. Exile all creatures dealt damage this way.",
@@ -1412,6 +1412,67 @@ test("Founder #036: a real self-damage-synergy card wins a reserved anchor slot 
     commander: noRewardCommander, cards: [...filler, massDamageCard, ...gates],
   });
   const controlRow = withoutCombo.selected.rows.find((row) => row.name === "Test Cataclysmic Blast");
+  assert.ok(!controlRow || controlRow.selfDamageSynergyHit === 0, "no combo credit without the commander's own dealt-damage reward");
+});
+
+// Founder #041: found by cross-checking the Smaug the Impenetrable
+// primer's own named "Damage Engines"/"Big Explosions" against the
+// shipped #036 detector — Fire Covenant, Self-Destruct, and The Last Agni
+// Kai are all explicit primer MVPs that scored zero self-damage-synergy
+// hits, because none of them deal damage to EACH creature; they're
+// single/divided-target effects instead. Real oracle text, verified via
+// Scryfall (2026-08-21).
+test("Founder #041: cardCanDealDamageToOwnCreature matches real fight/self-inflicted/divided-damage shapes cardDealsMassDamageToCreatures misses", () => {
+  const fireCovenant = "As an additional cost to cast this spell, pay X life.\nFire Covenant deals X damage divided as you choose among any number of target creatures.";
+  const selfDestruct = "Target creature you control deals X damage to any other target and X damage to itself, where X is its power.";
+  const theLastAgniKai = "Target creature you control fights target creature an opponent controls. If the creature the opponent controls is dealt excess damage this way, add that much {R}.\nUntil end of turn, you don't lose unspent red mana as steps and phases end.";
+  for (const oracle of [fireCovenant, selfDestruct, theLastAgniKai]) {
+    assert.ok(cardCanDealDamageToOwnCreature(oracle), oracle);
+    assert.equal(cardDealsMassDamageToCreatures(oracle), false, "none of these three are board-wide sweepers — must not double up with the #036 shape");
+  }
+  // Negative controls: plain single-target removal with no self-damage
+  // angle, and Smaug's own dealt-damage trigger, must both stay unmatched.
+  assert.equal(cardCanDealDamageToOwnCreature("Destroy target creature."), false);
+  assert.equal(cardCanDealDamageToOwnCreature("Whenever Smaug is dealt noncombat damage, create that many Treasure tokens."), false);
+});
+
+const fireCovenantCard = {
+  name: "Test Fire Covenant",
+  oracleText: "As an additional cost to cast this spell, pay X life.\nTest Fire Covenant deals X damage divided as you choose among any number of target creatures.",
+  typeLine: "Instant",
+  manaCost: "{X}{B}",
+  colorIdentity: ["B"],
+  popularityRank: 40,
+};
+
+test("Founder #041: a real divided-damage/fight/self-inflicted card wins a reserved anchor slot for a commander that profits from being damaged", () => {
+  const filler = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Dragon", manaCost: "{2}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Exile target nonland permanent.", typeLine: "Instant", manaCost: "{1}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Threat ${i}`, oracleText: "Vigilance", typeLine: "Creature — Dragon", manaCost: "{3}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+  ];
+  const gates = Array.from({ length: 20 }, (_, i) => ({
+    name: `Mountain Gate ${i}`, oracleText: "This land enters the battlefield tapped. {T}: Add {R}.", typeLine: "Land",
+    manaCost: "", colorIdentity: ["R"], producedMana: ["R"], popularityRank: 5, priceUsd: 0.5,
+  }));
+
+  const withCombo = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: selfDamageCommander, cards: [...filler, fireCovenantCard, ...gates],
+  });
+  assert.ok(
+    withCombo.selected.rows.some((row) => row.name === "Test Fire Covenant"),
+    "a real divided-damage-among-targets card must be selected as an anchor for a commander that profits from being damaged",
+  );
+  const row = withCombo.selected.rows.find((row) => row.name === "Test Fire Covenant");
+  assert.equal(row.selfDamageSynergyHit, 1);
+
+  const withoutCombo = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: noRewardCommander, cards: [...filler, fireCovenantCard, ...gates],
+  });
+  const controlRow = withoutCombo.selected.rows.find((row) => row.name === "Test Fire Covenant");
   assert.ok(!controlRow || controlRow.selfDamageSynergyHit === 0, "no combo credit without the commander's own dealt-damage reward");
 });
 

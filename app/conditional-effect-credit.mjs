@@ -516,18 +516,50 @@ export function commanderProfitsFromBeingDamaged(oracle = "") {
 // Real damage, not toughness reduction: reuses the exact battlefield-wide
 // mass-damage pattern ROLE_PATTERNS.sweeper/displayRoleFor already use for
 // a real damage-based board wipe (Founder #032) — the shape Pestilence/
-// Chain Reaction/Star of Extinction/Self-Destruct/Pain for All/Blasphemous
-// Act/Anger of the Gods all match, verified against their real oracle text.
-// Not just a literal digit after "deals" — Chain Reaction ("deals damage
-// equal to the number of creatures on the battlefield to each creature")
-// is a real, well-known scaling-damage sweeper with no fixed number at
-// all. Bounded to the same sentence and still requires "to each ...
-// creature" as the actual target, so this stays as safe as the fixed-
-// number version: verified it still correctly excludes Impact Tremors/
-// Kessig Flamebreather ("to each opponent") and Smaug's own "noncombat
-// damage" (no "to each creature" at all).
+// Chain Reaction/Star of Extinction/Pain for All/Blasphemous Act/Anger of
+// the Gods all match, verified against their real oracle text. Not just a
+// literal digit after "deals" — Chain Reaction ("deals damage equal to
+// the number of creatures on the battlefield to each creature") is a
+// real, well-known scaling-damage sweeper with no fixed number at all.
+// Bounded to the same sentence and still requires "to each ... creature"
+// as the actual target, so this stays as safe as the fixed-number
+// version: verified it still correctly excludes Impact Tremors/Kessig
+// Flamebreather ("to each opponent") and Smaug's own "noncombat damage"
+// (no "to each creature" at all). Self-Destruct is NOT one of these — its
+// real text never says "to each creature" at all; see
+// cardCanDealDamageToOwnCreature below for that shape.
 const MASS_DAMAGE_TO_CREATURES = /deals? [^.]*?\bdamage\b[^.]*? to each (?:other |nontoken |non-Human )?creature/i;
 
 export function cardDealsMassDamageToCreatures(oracle = "") {
   return MASS_DAMAGE_TO_CREATURES.test(String(oracle || ""));
+}
+
+// Founder #041: found by cross-checking the Smaug primer's own named
+// "Damage Engines"/"Big Explosions" against the shipped #036 detector —
+// Fire Covenant, Self-Destruct, and The Last Agni Kai are all explicit
+// primer MVPs that scored zero self-damage-synergy hits, because none of
+// them deal damage to EACH creature (cardDealsMassDamageToCreatures'
+// shape) — they're single/divided-target effects instead. Three real,
+// distinct, verified shapes, none of them board wipes so none of them
+// belong in the sweeper role pattern:
+//  - FIGHT: "target creature you control fights target creature" always
+//    deals damage back to the fighter (The Last Agni Kai) — unconditional,
+//    not a choice.
+//  - Self-inflicted: an ability/spell whose own damage source also deals
+//    that much damage to itself (Self-Destruct) — unconditional.
+//  - Divided-among-targets: "damage divided as you choose among any
+//    number of target creatures" (Fire Covenant) lets a pilot include
+//    their own indestructible commander as one of the targets for a free
+//    Treasure alongside real removal — a real, common EDH burn template,
+//    not exclusive to Smaug.
+// Verified against all three real cards' oracle text, plus negative
+// controls (plain "Destroy target creature." and the already-covered
+// Blasphemous Act mass sweeper both correctly stay unmatched).
+const FIGHT_EFFECT = /creature you control fights target creature/i;
+const SELF_INFLICTED_DAMAGE = /deals? [^.]*? damage to (?:any other target|target [^.]*?) and [^.]*? damage to itself\b/i;
+const DIVIDED_DAMAGE_AMONG_TARGETS = /damage divided as you choose among any number of target creatures/i;
+
+export function cardCanDealDamageToOwnCreature(oracle = "") {
+  const text = String(oracle || "");
+  return FIGHT_EFFECT.test(text) || SELF_INFLICTED_DAMAGE.test(text) || DIVIDED_DAMAGE_AMONG_TARGETS.test(text);
 }
