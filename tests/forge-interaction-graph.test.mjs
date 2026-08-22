@@ -1284,6 +1284,30 @@ test("counter kinds split put / proliferate / remove from the blended counters s
   assert.match(graph.methodology, /proliferate/i);
 });
 
+// Founder #045: found by cross-checking Auntie Ool, Cursewretch's real
+// primer against a real construction — Massacre Girl, Known Killer,
+// Kulrath Knight, and Necroskitter (all real -1/-1-counters staples)
+// scored zero commander connection to a commander whose entire payoff is
+// "-1/-1 counters are put on a creature." None of them say "put ...
+// counter" in their own oracle text — they all use Wither, a real
+// keyword whose entire rules function is "deals damage to creatures in
+// the form of -1/-1 counters instead," never spelled out as "put." Infect
+// (poison counters to players, -1/-1 counters to creatures — the
+// identical creature-facing behavior) has the same gap and the same fix.
+test("Founder #045: PRODUCERS.counters matches Wither and Infect, real -1/-1-counter producers that never say \"put\"", () => {
+  const massacreGirl = "Menace\nCreatures you control have wither. (They deal damage to creatures in the form of -1/-1 counters.)\nWhenever a creature an opponent controls dies, if its toughness was less than 1, draw a card.";
+  const kulrathKnight = "Flying\nWither (This deals damage to creatures in the form of -1/-1 counters.)\nCreatures your opponents control with counters on them can't attack or block.";
+  const necroskitter = "Wither (This deals damage to creatures in the form of -1/-1 counters.)\nWhenever a creature an opponent controls with a -1/-1 counter on it dies, you may return that card to the battlefield under your control.";
+  for (const oracle of [massacreGirl, kulrathKnight, necroskitter]) {
+    const signals = extractMechanicalSignals({ name: "Test Wither Creature", typeLine: "Creature", oracleText: oracle });
+    assert.ok(signals.produces.includes("counters"), oracle);
+  }
+  // A pure toughness-reduction effect (The Meathook Massacre's own ETB)
+  // is not real counters and must stay unmatched.
+  const meathookMassacre = extractMechanicalSignals({ name: "Test Meathook", typeLine: "Enchantment", oracleText: "When this enters, each creature gets -X/-X until end of turn." });
+  assert.equal(meathookMassacre.produces.includes("counters"), false);
+});
+
 test("life kinds split gain / lifelink / pay from the blended life signal", () => {
   const gainOracle = "Whenever another creature enters the battlefield, you gain 1 life.";
   const lifelinkOracle = "Lifelink (Damage dealt by this creature also causes you to gain that much life.)";

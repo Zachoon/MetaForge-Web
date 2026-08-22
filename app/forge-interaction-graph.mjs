@@ -860,7 +860,18 @@ const PRODUCERS = {
   // and oracle phrases like "affinity for Auras" must not mark the commander
   // itself as an Aura producer. Type-line membership is applied in
   // extractMechanicalSignals.
-  counters: /put [^.]* counter|proliferate/i,
+  // Founder #045: Wither and Infect are both real keywords whose entire
+  // rules function is "deals damage to creatures in the form of -1/-1
+  // counters instead" — a real, common -1/-1-counter producer that never
+  // says "put ... counter" in its own reminder text, so a purely
+  // -1/-1-counters commander (Auntie Ool, Cursewretch: "Whenever one or
+  // more -1/-1 counters are put on a creature, draw a card...") never
+  // connected to real Wither creatures (Massacre Girl, Kulrath Knight,
+  // Necroskitter — all verified via Scryfall). Verified this doesn't
+  // sweep in an unrelated toughness-reduction effect: The Meathook
+  // Massacre's "-X/-X until end of turn" is a temporary stat reduction,
+  // not real counters, and correctly stays unmatched.
+  counters: /put [^.]* counter|proliferate|\bwither\b|\binfect\b/i,
   // Founder #042: the old `/mill [a-z\d]/` only ever matched the rare
   // imperative "you mill three cards" phrasing — the third-person verb
   // form nearly every real mill card actually uses ("target player
