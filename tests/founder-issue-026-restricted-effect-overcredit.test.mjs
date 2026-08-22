@@ -6,6 +6,7 @@ import {
   classifyNativeCard,
   colorlessPipsFromCost,
   colorPipsFromCost,
+  commanderCaresAboutXSpells,
   commanderConnectionSignalsFor,
   commanderMechanicalScopes,
   commanderProfitsFromBeingDamaged,
@@ -1474,6 +1475,63 @@ test("Founder #041: a real divided-damage/fight/self-inflicted card wins a reser
   });
   const controlRow = withoutCombo.selected.rows.find((row) => row.name === "Test Fire Covenant");
   assert.ok(!controlRow || controlRow.selfDamageSynergyHit === 0, "no combo credit without the commander's own dealt-damage reward");
+});
+
+// Founder #046: found by comparing a real Zimone, Infinite Analyst
+// construction against her own primer — her entire identity is "the
+// first spell you cast with {X} in its mana cost each turn costs {1}
+// less... and grows Zimone," a real trigger shape
+// commanderPayoffMagnitudeGates (#027) doesn't cover (a boolean cost-shape
+// check, not a numeric mana-value threshold). Verified on a real
+// construction: before this fix, real X-spells (Walking Ballista, Wan Shi
+// Tong Librarian, Goldvein Hydra, and others) were essentially absent —
+// only 3 X-cost cards total made the build, all by generic merit
+// unrelated to Zimone. After the fix, 9 did, 6 of them newly present.
+const zimoneOracle = "The first spell you cast with {X} in its mana cost each turn costs {1} less to cast for each +1/+1 counter on Zimone.\nWhenever you cast your first spell with {X} in its mana cost each turn, put two +1/+1 counters on Zimone.";
+
+test("Founder #046: commanderCaresAboutXSpells matches Zimone's real \"spell with {X} in its mana cost\" trigger", () => {
+  assert.equal(commanderCaresAboutXSpells(zimoneOracle), true);
+  // A commander with no X-spell-specific text must stay closed.
+  assert.equal(commanderCaresAboutXSpells("Whenever you cast a noncreature spell, draw a card."), false);
+});
+
+const xSpellCommander = { name: "Test X-Spell Commander", colors: ["U", "G"], oracleText: zimoneOracle };
+const noXSpellCommander = { name: "Test Plain Commander", colors: ["U", "G"], oracleText: "Whenever you cast a noncreature spell, draw a card." };
+
+const walkingBallistaCard = {
+  name: "Test X Threat", oracleText: "Draw X cards.", typeLine: "Sorcery",
+  manaCost: "{X}{U}", colorIdentity: ["U"], popularityRank: 40,
+};
+
+test("Founder #046: a real X-cost card wins a reserved anchor slot for a commander that cares about X spells", () => {
+  const filler = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Wizard", manaCost: "{2}{G}", colorIdentity: ["G"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Exile target nonland permanent.", typeLine: "Instant", manaCost: "{1}{U}", colorIdentity: ["U"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Threat ${i}`, oracleText: "Vigilance", typeLine: "Creature — Wizard", manaCost: "{3}{G}", colorIdentity: ["G"], popularityRank: 40 })),
+  ];
+  const gates = Array.from({ length: 20 }, (_, i) => ({
+    name: `GU Gate ${i}`, oracleText: "This land enters the battlefield tapped. {T}: Add {G} or {U}.", typeLine: "Land",
+    manaCost: "", colorIdentity: ["G", "U"], producedMana: ["G", "U"], popularityRank: 5, priceUsd: 0.5,
+  }));
+
+  const withCombo = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: xSpellCommander, cards: [...filler, walkingBallistaCard, ...gates],
+  });
+  assert.ok(
+    withCombo.selected.rows.some((row) => row.name === "Test X Threat"),
+    "a real X-cost card must be selected as an anchor for a commander that cares about X spells",
+  );
+  const row = withCombo.selected.rows.find((row) => row.name === "Test X Threat");
+  assert.equal(row.xSpellSynergyHit, 1);
+
+  const withoutCombo = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: noXSpellCommander, cards: [...filler, walkingBallistaCard, ...gates],
+  });
+  const controlRow = withoutCombo.selected.rows.find((row) => row.name === "Test X Threat");
+  assert.ok(!controlRow || controlRow.xSpellSynergyHit === 0, "no combo credit without the commander's own X-spell-caring trigger");
 });
 
 // =============================================================================

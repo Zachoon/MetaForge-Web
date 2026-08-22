@@ -563,3 +563,22 @@ export function cardCanDealDamageToOwnCreature(oracle = "") {
   const text = String(oracle || "");
   return FIGHT_EFFECT.test(text) || SELF_INFLICTED_DAMAGE.test(text) || DIVIDED_DAMAGE_AMONG_TARGETS.test(text);
 }
+
+// Founder #046: Zimone, Infinite Analyst's entire identity is "the first
+// spell you cast with {X} in its mana cost each turn costs {1} less...
+// and grows Zimone" — a real trigger shape commanderPayoffMagnitudeGates
+// (#027) doesn't cover, since it's not a numeric threshold ("mana value 3
+// or greater") but a boolean cost-shape check ("does this spell's own
+// printed cost contain an X at all"). Verified on a real construction:
+// with no way to recognize this, Torment of Hailfire, Exsanguinate,
+// Finale of Devastation, and Diabolic Revelation — real X-spell payoffs a
+// deck built around this commander needs — were ALL absent from a real
+// Zimone build (0/4 selected). hasVariableGenericCost already exists for
+// exactly this "does this cost contain {X}/{Y}/{Z}" check (used to keep
+// curve evaluation from treating an X spell as a cheap 1-drop) — reused
+// here rather than duplicated.
+const COMMANDER_CARES_ABOUT_X_SPELLS = /spells? (?:you cast )?with \{[XYZ]\} in (?:its|their) mana cost/i;
+
+export function commanderCaresAboutXSpells(oracle = "") {
+  return COMMANDER_CARES_ABOUT_X_SPELLS.test(String(oracle || ""));
+}

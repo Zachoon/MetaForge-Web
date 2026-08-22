@@ -9,6 +9,7 @@ import {
   cardDealsMassDamageToCreatures,
   colorlessFixingCredit,
   colorlessPipsFromCost,
+  commanderCaresAboutXSpells,
   commanderPayoffMagnitudeGates,
   commanderProfitsFromBeingDamaged,
   conditionalRampProductionFactor,
@@ -32,6 +33,7 @@ export {
   cardDealsMassDamageToCreatures,
   colorlessFixingCredit,
   colorlessPipsFromCost,
+  commanderCaresAboutXSpells,
   commanderPayoffMagnitudeGates,
   commanderProfitsFromBeingDamaged,
   conditionalRampProductionFactor,
@@ -900,6 +902,9 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
     && (cardDealsMassDamageToCreatures(card.oracleText || card.oracle_text || "")
       || cardCanDealDamageToOwnCreature(card.oracleText || card.oracle_text || ""))
     ? 1 : 0;
+  const xSpellSynergyHit = context.commanderCaresAboutXSpells
+    && hasVariableGenericCost(card.manaCost || card.mana_cost || "")
+    ? 1 : 0;
   const castingFactor = restrictedEffectCastingFactor({
     manaCost: card.manaCost || card.mana_cost || "",
     colorIdentity: card.colorIdentity || card.color_identity || [],
@@ -970,6 +975,7 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
     commanderConnectionSignals,
     payoffMagnitudeHits,
     selfDamageSynergyHit,
+    xSpellSynergyHit,
     sequenceStages,
     excludedRoleHits,
     strategicSemantics,
@@ -1034,6 +1040,12 @@ function prepareForgeAnalysis(input, evidenceByName) {
     // partner with an unrelated damage-triggered one.
     commanderProfitsFromDamage: allCommanders(input).some((commander) =>
       commanderProfitsFromBeingDamaged(commander.oracleText || commander.oracle_text || "")),
+    // Founder #046: same per-commander (not joined-text) scoping as
+    // commanderProfitsFromDamage above, for the same reason — a partner
+    // pair shouldn't falsely combine an X-spell-caring commander with an
+    // unrelated one.
+    commanderCaresAboutXSpells: allCommanders(input).some((commander) =>
+      commanderCaresAboutXSpells(commander.oracleText || commander.oracle_text || "")),
     // Same cost_cheat detection strategic-intent.mjs's expensiveThreatSupport
     // uses to credit the 99, applied here to the commander's own text. A
     // commander whose ability puts cards into play without paying for them
@@ -1165,7 +1177,7 @@ function scoreCard(entry, input, variant, context) {
     tokenProductionFactor,
     rampProductionFactor,
     fixingCredit,
-    score: (entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.commanderConnectionSignals.length * 14 * variant.synergy + entry.payoffMagnitudeHits * 14 * variant.synergy + entry.selfDamageSynergyHit * 14 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.blueprintMechanicHits.reduce((sum, mechanic) => sum + blueprintMechanicDefinition(mechanic).score, 0) + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + entry.budgetScore + entry.complexityScore + entry.powerTierScore + deterministicTieBreak) * castingFactor * fixingCredit * winconFactor * tokenProductionFactor * rampProductionFactor,
+    score: (entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.commanderConnectionSignals.length * 14 * variant.synergy + entry.payoffMagnitudeHits * 14 * variant.synergy + entry.selfDamageSynergyHit * 14 * variant.synergy + entry.xSpellSynergyHit * 14 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.blueprintMechanicHits.reduce((sum, mechanic) => sum + blueprintMechanicDefinition(mechanic).score, 0) + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + entry.budgetScore + entry.complexityScore + entry.powerTierScore + deterministicTieBreak) * castingFactor * fixingCredit * winconFactor * tokenProductionFactor * rampProductionFactor,
     synergyHits: entry.synergyHits,
     synergyPotential: entry.synergyPotential,
     preferenceHits: entry.preferenceHits,
@@ -1178,6 +1190,7 @@ function scoreCard(entry, input, variant, context) {
     commanderConnectionSignals: entry.commanderConnectionSignals || [],
     payoffMagnitudeHits: entry.payoffMagnitudeHits || 0,
     selfDamageSynergyHit: entry.selfDamageSynergyHit || 0,
+    xSpellSynergyHit: entry.xSpellSynergyHit || 0,
     sequenceStages: entry.sequenceStages || [],
     strategicSemantics: entry.strategicSemantics,
     mechanics: entry.mechanics,
@@ -1219,6 +1232,7 @@ function advancesStrategyContract(entry, blueprint) {
     entry.commanderConnectionSignals?.length ||
     entry.payoffMagnitudeHits ||
     entry.selfDamageSynergyHit ||
+    entry.xSpellSynergyHit ||
     blueprint.packageSignals.some((signal) =>
       entry.mechanics?.produces?.includes(signal) || entry.mechanics?.rewards?.includes(signal)),
   );
@@ -1401,6 +1415,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       commanderConnectionSignals: candidate.commanderConnectionSignals || [],
       payoffMagnitudeHits: candidate.payoffMagnitudeHits || 0,
       selfDamageSynergyHit: candidate.selfDamageSynergyHit || 0,
+      xSpellSynergyHit: candidate.xSpellSynergyHit || 0,
       sequenceStages: candidate.sequenceStages || [],
       strategicSemantics: candidate.strategicSemantics,
       mechanics: candidate.mechanics,
@@ -1525,6 +1540,14 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
   for (const candidate of payable.filter((entry) => entry.selfDamageSynergyHit).slice(0, commanderAnchorLimit)) {
     addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
   }
+  // Founder #046: same anchor-reservation shape as selfDamageSynergyHit
+  // above — a real X-spell (Torment of Hailfire, Exsanguinate, Finale of
+  // Devastation) is invisible to the generic commanderConnectionSignals
+  // pairing, since "has {X} in its own printed cost" is a property of the
+  // card's mana cost, not an oracle-text producer/payoff signal.
+  for (const candidate of payable.filter((entry) => entry.xSpellSynergyHit).slice(0, commanderAnchorLimit)) {
+    addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
+  }
   const roleAnchorLimit = singleton ? 10 : 4;
   for (const role of blueprint.desiredRoles) {
     for (const candidate of payable.filter((entry) => (entry.blueprintRoleHits || []).includes(role)).slice(0, roleAnchorLimit)) {
@@ -1578,7 +1601,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
         return false;
       });
       const fillsRole = entry.roles.some((role) => (deficitState.roles[role]?.deficit || 0) > 0);
-      if (fillsPackage || fillsRole || (((entry.commanderConnectionSignals || []).length || entry.payoffMagnitudeHits || entry.selfDamageSynergyHit) && isUnrestrictedConstructionCredit(entry))) {
+      if (fillsPackage || fillsRole || (((entry.commanderConnectionSignals || []).length || entry.payoffMagnitudeHits || entry.selfDamageSynergyHit || entry.xSpellSynergyHit) && isUnrestrictedConstructionCredit(entry))) {
         shortlist.set(key, entry);
       }
     }
