@@ -237,6 +237,29 @@ test("PAYOFFS.spells still recognizes real instant/sorcery and untyped spell-cou
   }
 });
 
+// Founder #057: the curated card-mechanics.mjs database independently
+// tags Sythis, Harvest's Hand and Ugin, Eye of the Storms with
+// "spell_payoff" (TAG_PAYOFFS maps that tag to this same "spells" signal),
+// carrying the identical #056 false positive regardless of what the
+// regex itself finds — a card's rewards are a UNION of regex matches and
+// tag matches, so #056's regex fix alone did not close this for any of
+// the 1,424 real cards that carry the tag. These two use their real
+// names (unlike #056's synthetic fixtures above) specifically so this
+// test exercises the real production tag lookup wired at the top of this
+// file, not just the regex in isolation.
+test("the curated database's 'spell_payoff' tag no longer overrides #056's exclusion — Sythis and Ugin stay excluded even through the real tag lookup", () => {
+  const sythis = { name: "Sythis, Harvest's Hand", typeLine: "Legendary Creature", oracleText: "Whenever you cast an enchantment spell, you gain 1 life and draw a card." };
+  const ugin = { name: "Ugin, Eye of the Storms", typeLine: "Legendary Planeswalker — Ugin", oracleText: "Whenever you cast a colorless spell, exile up to one target permanent that's one or more colors." };
+  for (const card of [sythis, ugin]) {
+    assert.ok(!extractMechanicalSignals(card).rewards.includes("spells"), `${card.name} should not reward spells even via the curated database tag`);
+  }
+});
+
+test("the 'spell_payoff' tag guard doesn't touch cards where the oracle text has no off-target trigger to verify — real instant/sorcery cards keep tag-derived credit", () => {
+  const mizzix = { name: "Mizzix of the Izmagnus", typeLine: "Legendary Creature", oracleText: "Whenever you cast an instant or sorcery spell with mana value greater than the number of experience counters you have, you get an experience counter." };
+  assert.ok(extractMechanicalSignals(mizzix).rewards.includes("spells"));
+});
+
 test("a token/counter doubler amplifies producers, not payoffs — the doubling applies to the effect creating the resource, whether or not it's a trigger", () => {
   const doubler = { name: "Doubling Season", typeLine: "Enchantment", oracleText: "If an effect would create one or more tokens under your control, it creates twice that many instead. If an effect would put one or more counters on a permanent or player, it puts twice that many instead." };
   // Rewards tokens (cares about tokens already on the battlefield) but

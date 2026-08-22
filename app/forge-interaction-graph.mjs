@@ -843,6 +843,19 @@ const SIGNALS = [
   ["protection", /\bhexproof\b|\bindestructible\b|protection from|\bward\b \d|phase out/i],
 ];
 
+// Founder #056/#057: a "whenever you cast a[n] TYPE spell" trigger naming
+// one of these five types is a different real archetype entirely, not the
+// instant/sorcery spellslinger signal PAYOFFS.spells otherwise represents
+// — see that entry's comment for the real cards (Smith/T'Challa, Sythis,
+// Ugin/Glaring Fleshraker, Chronicle Thief) each type is verified against.
+// Composed (not a plain literal) so PAYOFFS.spells' lookahead below and
+// OFF_TARGET_SPELL_TYPE_CAST — the guard extractMechanicalSignals applies
+// to the curated-database "spell_payoff" tag, which carries the identical
+// false positive on 1,424 cards independent of this regex — share the
+// exact same type-word list and can't drift apart from each other.
+const OFF_TARGET_SPELL_CAST_SUFFIX = /(?:an?|another) \b(?:artifact|creature|enchantment|colorless|legendary)\b spell/i;
+const OFF_TARGET_SPELL_TYPE_CAST = new RegExp(`whenever you cast ${OFF_TARGET_SPELL_CAST_SUFFIX.source}`, "i");
+
 const PRODUCERS = {
   tokens: /create(?:s)? [^.]* token/i,
   treasure: /create(?:s)? [^.]* treasure|treasure token/i,
@@ -1085,7 +1098,7 @@ const PAYOFFS = {
   // spell each turn") and Kalamax, the Stormsire ("cast your first
   // instant spell each turn") both still need to match, and a
   // require-a-qualifier design would have broken both.
-  spells: /whenever you cast(?! (?:an?|another) \b(?:artifact|creature|enchantment|colorless|legendary)\b spell)|magecraft|instant and sorcery/i,
+  spells: new RegExp(`whenever you cast(?! ${OFF_TARGET_SPELL_CAST_SUFFIX.source})|magecraft|instant and sorcery`, "i"),
   lands: /landfall|whenever a land enters|lands you control/i,
   life: /whenever you gain life|if your life total|life you gained/i,
   // Founder #048: found by cross-checking Vivi Ornitier's real primer —
@@ -1236,7 +1249,19 @@ export function extractMechanicalSignals(card) {
   // damage) because those do not need a create clause to match.
   const attackToProduceOnly = /whenever [^.]* attacks[^.]*create/i.test(text)
     && !/combat damage|attacking creatures|whenever another [^.]* attacks/i.test(text);
-  const rewards = [...new Set([...regexRewards, ...tagRewards])].filter((signal) => !(signal === "combat" && attackToProduceOnly));
+  // Founder #057: the curated database's "spell_payoff" tag (mapped to
+  // this same "spells" signal via TAG_PAYOFFS) carries the identical
+  // off-target-type false positive #056 fixed in the regex — Sythis and
+  // Ugin, Eye of the Storms both carry the tag independently of their own
+  // oracle text matching PAYOFFS.spells, and 1,424 cards total carry it.
+  // Retagging the database is a different, much larger task; this reuses
+  // the same verified real-card exclusion instead, only stripping the
+  // tag's contribution when it's the sole source (a genuine instant/
+  // sorcery/magecraft/untyped match from the regex itself still stands).
+  const offTargetSpellPayoffTag = tagRewards.includes("spells") && !regexRewards.includes("spells")
+    && OFF_TARGET_SPELL_TYPE_CAST.test(text);
+  const rewards = [...new Set([...regexRewards, ...tagRewards])].filter((signal) => !(signal === "combat" && attackToProduceOnly)
+    && !(signal === "spells" && offTargetSpellPayoffTag));
   if (auraProducer.length && !signals.includes("auras")) signals.push("auras");
   if (spellProducer.length && !signals.includes("spells")) signals.push("spells");
   const oracle = card.oracleText || card.oracle_text || text;
