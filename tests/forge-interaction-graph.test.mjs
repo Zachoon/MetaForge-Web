@@ -1609,6 +1609,62 @@ test("draw kinds split watch / wheel / hand from the blended draw signal", () =>
   assert.match(graph.methodology, /not rummage/i);
 });
 
+// Founder #043: found by cross-checking Nekusar, the Mindrazer's real
+// primer against a real construction — Fate Unraveler, Underworld Dreams,
+// and every real wheel effect it names (Wheel of Fortune, Burning
+// Inquiry, Windfall, Teferi's Puzzle Box) scored zero commander
+// connection, and Nekusar's own two abilities didn't even register as
+// producing/rewarding "draw" at all. Two real, distinct regex gaps, the
+// same class of bug as #042's mill fix:
+//  - PRODUCERS.draw's old `/draw (?:a|one|two|three|\d+)/` only matched
+//    the imperative "draw a card" phrasing — the third-person "draws"
+//    verb real cards use ("that player DRAWS an additional card", "then
+//    DRAWS seven cards") is never followed by a space, and variable-count
+//    phrasing ("draws cards equal to...", "draws that many cards") never
+//    has a number word right after "draws" at all.
+//  - PAYOFFS.draw's `/whenever you draw/` never covered "whenever AN
+//    OPPONENT draws" — Nekusar's own trigger and both of its namesake
+//    staples share that exact template, a whole real archetype distinct
+//    from "watches your own draws."
+test("Founder #043: PRODUCERS.draw matches the third-person/variable-count draw phrasing real wheel effects use", () => {
+  const nekusarProduces = "At the beginning of each player's draw step, that player draws an additional card.";
+  const wheelOfFortune = "Each player discards their hand, then draws seven cards.";
+  const burningInquiry = "Each player draws three cards, then discards three cards at random.";
+  const windfall = "Each player discards their hand, then draws cards equal to the greatest number of cards a player discarded this way.";
+  const teferisPuzzleBox = "At the beginning of each player's draw step, that player puts the cards in their hand on the bottom of their library in any order, then draws that many cards.";
+  for (const oracle of [nekusarProduces, wheelOfFortune, burningInquiry, windfall, teferisPuzzleBox]) {
+    const signals = extractMechanicalSignals({ name: "Test Wheel Effect", typeLine: "Sorcery", oracleText: oracle });
+    assert.ok(signals.produces.includes("draw"), oracle);
+  }
+  // A draw step you may skip is not a producer of anything.
+  const skipDrawStep = extractMechanicalSignals({ name: "Test Skip", typeLine: "Enchantment", oracleText: "At the beginning of your draw step, you may skip your draw step." });
+  assert.equal(skipDrawStep.produces.includes("draw"), false);
+});
+
+test("Founder #043: PAYOFFS.draw matches \"whenever an opponent draws\", not just \"whenever you draw\"", () => {
+  const nekusarRewards = "Whenever an opponent draws a card, Nekusar deals 1 damage to that player.";
+  const fateUnraveler = "Whenever an opponent draws a card, this creature deals 1 damage to that player.";
+  const underworldDreams = "Whenever an opponent draws a card, this enchantment deals 1 damage to that player.";
+  for (const oracle of [nekusarRewards, fateUnraveler, underworldDreams]) {
+    const signals = extractMechanicalSignals({ name: "Test Opponent Draw Payoff", typeLine: "Enchantment", oracleText: oracle });
+    assert.ok(signals.rewards.includes("draw"), oracle);
+  }
+  // The real wheel PRODUCERS above must not also double as payoffs of
+  // their own effect.
+  const wheelSignals = extractMechanicalSignals({ name: "Test Wheel", typeLine: "Sorcery", oracleText: "Each player discards their hand, then draws seven cards." });
+  assert.equal(wheelSignals.rewards.includes("draw"), false);
+});
+
+test("Founder #043: Nekusar's own trigger and a real wheel effect now correctly connect via commanderConnectionSignalsFor", () => {
+  const nekusar = { name: "Nekusar, the Mindrazer", colors: ["U", "B", "R"], oracleText: "At the beginning of each player's draw step, that player draws an additional card.\nWhenever an opponent draws a card, Nekusar deals 1 damage to that player." };
+  const wheelOfFortune = { name: "Wheel of Fortune", typeLine: "Sorcery", oracleText: "Each player discards their hand, then draws seven cards." };
+  configureInteractionGraphTagLookup((name) => CARD_MECHANICS[name] || []);
+  const commanderMechanics = extractMechanicalSignals(nekusar);
+  const cardMechanics = extractMechanicalSignals(wheelOfFortune);
+  assert.ok(commanderMechanics.rewards.includes("draw"), "Nekusar's own opponent-draws-a-card trigger should register as a draw payoff");
+  assert.ok(cardMechanics.produces.includes("draw"), "Wheel of Fortune should register as a real draw producer");
+});
+
 test("damage kinds split deal / drain / prevent from blended damage", () => {
   const dealOracle = "Lightning Bolt deals 3 damage to any target.";
   const drainOracle = "Each opponent loses 2 life. You gain life equal to the life lost this way.";

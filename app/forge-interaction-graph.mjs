@@ -878,7 +878,18 @@ const PRODUCERS = {
   // sacrifice or death-trigger text at all) falsely "connect" to any
   // aristocrats death-payoff card in the pool via this one shared signal.
   sacrifice: /create(?:s)? [^.]* creature token|when [^.]* dies/i,
-  draw: /draw (?:a|one|two|three|\d+)/i,
+  // Founder #043: the old `/draw (?:a|one|two|three|\d+)/` only matched
+  // the imperative "draw a card" phrasing — the third-person "draws" verb
+  // (no space right after "draw", same class of gap as PRODUCERS.graveyard
+  // /#042) silently missed Nekusar's own "that player draws an additional
+  // card", plus every real wheel effect (Wheel of Fortune: "draws seven
+  // cards", Burning Inquiry: "draws three cards") and variable-count
+  // phrasing with no number word at all (Windfall/Jace's Archivist/
+  // Whispering Madness: "draws cards equal to...", Teferi's Puzzle Box:
+  // "draws that many cards"). `draws? [^.]*?\bcards?\b` catches all of
+  // these plus the original imperative form in one pattern, bounded to
+  // the same sentence so it can't cross into an unrelated later clause.
+  draw: /draws? [^.]*?\bcards?\b/i,
   spells: /copy [^.]* spell|cast [^.]* without paying/i,
   // Many Partings class: a land search that only reaches the player's
   // HAND (Many Partings, Sylvan Scrying) never fires "whenever a land
@@ -951,7 +962,13 @@ const PAYOFFS = {
   // no card double-counts as both sides of its own trigger.
   graveyard: /from your graveyard|in your graveyard|delirium|threshold|\b(?:is|are) milled\b|put into [^.]*graveyard from (?:anywhere|their library|your library)/i,
   sacrifice: /whenever [^.]* dies|whenever you sacrifice|sacrifice another/i,
-  draw: /whenever you draw|second card|cards? in your hand/i,
+  // Founder #043: "whenever you draw" alone missed a whole real archetype
+  // — Nekusar's own payoff ("Whenever an opponent draws a card, Nekusar
+  // deals 1 damage to that player.") and its namesake staples Fate
+  // Unraveler/Underworld Dreams share the identical "whenever an opponent
+  // draws" template, never "whenever YOU draw". Verified against all
+  // three real cards' oracle text.
+  draw: /whenever you draw|second card|cards? in your hand|whenever (?:an? )?opponent(?:s)? draws?\b/i,
   spells: /whenever you cast|magecraft|instant and sorcery/i,
   lands: /landfall|whenever a land enters|lands you control/i,
   life: /whenever you gain life|if your life total|life you gained/i,
