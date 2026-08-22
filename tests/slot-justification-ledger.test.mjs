@@ -291,6 +291,27 @@ test("deterministic generation produces deterministic justification data", () =>
   );
 });
 
+// Founder #049: found while verifying a real Esika, God of the Tree //
+// The Prismatic Bridge construction — a real Planeswalker anchored via
+// planeswalkerCheatSynergyHit's dedicated reservation loop got silently
+// swapped back out by repairWeaklyJustifiedSlots on the very next repair
+// pass, because buildJustificationFootprint had no way to see why it was
+// there: payoffMagnitudeHits already had its own bucket entry (#027,
+// "payoff_magnitude") but selfDamageSynergyHit (#036) and xSpellSynergyHit
+// (#046) never got the same treatment, and neither did this new field.
+test("footprint helper folds selfDamageSynergyHit, xSpellSynergyHit, and planeswalkerCheatSynergyHit into commanderSignals, the same bucket payoffMagnitudeHits already uses", () => {
+  const intent = intentForPearl();
+  const base = { name: "Test Anchor", roles: [], cmc: 5, colorPips: {}, strategicSemantics: new Set(), mechanics: { produces: [], rewards: [] }, commanderConnectionSignals: [], sequenceStages: [] };
+  const selfDamageFoot = buildJustificationFootprint({ ...base, selfDamageSynergyHit: 1 }, intent);
+  const xSpellFoot = buildJustificationFootprint({ ...base, xSpellSynergyHit: 1 }, intent);
+  const planeswalkerFoot = buildJustificationFootprint({ ...base, planeswalkerCheatSynergyHit: 1 }, intent);
+  const plainFoot = buildJustificationFootprint({ ...base }, intent);
+  assert.ok(selfDamageFoot.commanderSignals.includes("self_damage_synergy"));
+  assert.ok(xSpellFoot.commanderSignals.includes("x_spell_synergy"));
+  assert.ok(planeswalkerFoot.commanderSignals.includes("planeswalker_cheat_synergy"));
+  assert.deepEqual(plainFoot.commanderSignals, []);
+});
+
 test("footprint helper exposes package membership for Aura vs false-friend enchantment", () => {
   const intent = intentForPearl();
   const auraFoot = buildJustificationFootprint(enriched(aura("Real Aura")), intent);

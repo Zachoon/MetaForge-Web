@@ -582,3 +582,28 @@ const COMMANDER_CARES_ABOUT_X_SPELLS = /spells? (?:you cast )?with \{[XYZ]\} in 
 export function commanderCaresAboutXSpells(oracle = "") {
   return COMMANDER_CARES_ABOUT_X_SPELLS.test(String(oracle || ""));
 }
+
+// Founder #049: Esika, God of the Tree // The Prismatic Bridge ("reveal
+// cards from the top of your library until you reveal a creature or
+// planeswalker card. Put that card onto the battlefield") cheats
+// Planeswalkers into play for free — a real "superfriends" enabler, per
+// the deck's own player note ("Ultimate your super friends"). Verified on
+// a real construction: the engine's own self-generated build ran only 6
+// planeswalkers against the real player's 20, because nothing in the
+// engine specifically values a Planeswalker card higher when the
+// commander both mentions the type AND has a real cost-cheat mechanism —
+// commanderTribesFromOracle's typal system doesn't apply here (Planeswalker
+// isn't a creature type; it's already correctly excluded via
+// ARTIFACT_OR_TOKEN_TYPES from that system, same as Equipment/Vehicle in
+// #047). Reuses the exact cost_cheat regex strategicSemanticsFor already
+// uses and trusts, ANDed with a bare "planeswalker" mention — deliberately
+// requires BOTH so an unrelated removal spell ("destroy target creature
+// or planeswalker", real and common, no cost-cheat text at all) stays
+// closed rather than falsely opening on a bare type mention.
+const MENTIONS_PLANESWALKER_TYPE = /\bplaneswalkers?\b/i;
+const COMMANDER_COST_CHEATS = /cast [^.]* without paying|put [^.]* onto the battlefield|mana value .{0,20} less to cast|costs? \{[^}]+\} less/i;
+
+export function commanderValuesPlaneswalkerCheats(oracle = "") {
+  const text = String(oracle || "");
+  return MENTIONS_PLANESWALKER_TYPE.test(text) && COMMANDER_COST_CHEATS.test(text);
+}

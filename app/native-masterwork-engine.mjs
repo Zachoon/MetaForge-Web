@@ -12,6 +12,7 @@ import {
   commanderCaresAboutXSpells,
   commanderPayoffMagnitudeGates,
   commanderProfitsFromBeingDamaged,
+  commanderValuesPlaneswalkerCheats,
   conditionalRampProductionFactor,
   conditionalTokenProductionFactor,
   curveManaValue,
@@ -36,6 +37,7 @@ export {
   commanderCaresAboutXSpells,
   commanderPayoffMagnitudeGates,
   commanderProfitsFromBeingDamaged,
+  commanderValuesPlaneswalkerCheats,
   conditionalRampProductionFactor,
   conditionalTokenProductionFactor,
   curveManaValue,
@@ -928,6 +930,9 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
   const xSpellSynergyHit = context.commanderCaresAboutXSpells
     && hasVariableGenericCost(card.manaCost || card.mana_cost || "")
     ? 1 : 0;
+  const planeswalkerCheatSynergyHit = context.commanderValuesPlaneswalkerCheats
+    && /\bPlaneswalker\b/i.test(card.typeLine || card.type_line || "")
+    ? 1 : 0;
   const castingFactor = restrictedEffectCastingFactor({
     manaCost: card.manaCost || card.mana_cost || "",
     colorIdentity: card.colorIdentity || card.color_identity || [],
@@ -999,6 +1004,7 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
     payoffMagnitudeHits,
     selfDamageSynergyHit,
     xSpellSynergyHit,
+    planeswalkerCheatSynergyHit,
     sequenceStages,
     excludedRoleHits,
     strategicSemantics,
@@ -1069,6 +1075,10 @@ function prepareForgeAnalysis(input, evidenceByName) {
     // unrelated one.
     commanderCaresAboutXSpells: allCommanders(input).some((commander) =>
       commanderCaresAboutXSpells(commander.oracleText || commander.oracle_text || "")),
+    // Founder #049: same per-commander (not joined-text) scoping as the
+    // others above, for the same reason.
+    commanderValuesPlaneswalkerCheats: allCommanders(input).some((commander) =>
+      commanderValuesPlaneswalkerCheats(commander.oracleText || commander.oracle_text || "")),
     // Same cost_cheat detection strategic-intent.mjs's expensiveThreatSupport
     // uses to credit the 99, applied here to the commander's own text. A
     // commander whose ability puts cards into play without paying for them
@@ -1200,7 +1210,7 @@ function scoreCard(entry, input, variant, context) {
     tokenProductionFactor,
     rampProductionFactor,
     fixingCredit,
-    score: (entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.commanderConnectionSignals.length * 14 * variant.synergy + entry.payoffMagnitudeHits * 14 * variant.synergy + entry.selfDamageSynergyHit * 14 * variant.synergy + entry.xSpellSynergyHit * 14 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.blueprintMechanicHits.reduce((sum, mechanic) => sum + blueprintMechanicDefinition(mechanic).score, 0) + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + entry.budgetScore + entry.complexityScore + entry.powerTierScore + deterministicTieBreak) * castingFactor * fixingCredit * winconFactor * tokenProductionFactor * rampProductionFactor,
+    score: (entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.commanderConnectionSignals.length * 14 * variant.synergy + entry.payoffMagnitudeHits * 14 * variant.synergy + entry.selfDamageSynergyHit * 14 * variant.synergy + entry.xSpellSynergyHit * 14 * variant.synergy + entry.planeswalkerCheatSynergyHit * 14 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.blueprintMechanicHits.reduce((sum, mechanic) => sum + blueprintMechanicDefinition(mechanic).score, 0) + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + entry.budgetScore + entry.complexityScore + entry.powerTierScore + deterministicTieBreak) * castingFactor * fixingCredit * winconFactor * tokenProductionFactor * rampProductionFactor,
     synergyHits: entry.synergyHits,
     synergyPotential: entry.synergyPotential,
     preferenceHits: entry.preferenceHits,
@@ -1214,6 +1224,7 @@ function scoreCard(entry, input, variant, context) {
     payoffMagnitudeHits: entry.payoffMagnitudeHits || 0,
     selfDamageSynergyHit: entry.selfDamageSynergyHit || 0,
     xSpellSynergyHit: entry.xSpellSynergyHit || 0,
+    planeswalkerCheatSynergyHit: entry.planeswalkerCheatSynergyHit || 0,
     sequenceStages: entry.sequenceStages || [],
     strategicSemantics: entry.strategicSemantics,
     mechanics: entry.mechanics,
@@ -1256,6 +1267,7 @@ function advancesStrategyContract(entry, blueprint) {
     entry.payoffMagnitudeHits ||
     entry.selfDamageSynergyHit ||
     entry.xSpellSynergyHit ||
+    entry.planeswalkerCheatSynergyHit ||
     blueprint.packageSignals.some((signal) =>
       entry.mechanics?.produces?.includes(signal) || entry.mechanics?.rewards?.includes(signal)),
   );
@@ -1439,6 +1451,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
       payoffMagnitudeHits: candidate.payoffMagnitudeHits || 0,
       selfDamageSynergyHit: candidate.selfDamageSynergyHit || 0,
       xSpellSynergyHit: candidate.xSpellSynergyHit || 0,
+      planeswalkerCheatSynergyHit: candidate.planeswalkerCheatSynergyHit || 0,
       sequenceStages: candidate.sequenceStages || [],
       strategicSemantics: candidate.strategicSemantics,
       mechanics: candidate.mechanics,
@@ -1571,6 +1584,13 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
   for (const candidate of payable.filter((entry) => entry.xSpellSynergyHit).slice(0, commanderAnchorLimit)) {
     addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
   }
+  // Founder #049: same anchor-reservation shape as xSpellSynergyHit above
+  // — "is this a Planeswalker card" is a property of the candidate's own
+  // type line, not an oracle-text producer/payoff signal, so it's
+  // invisible to the generic commanderConnectionSignals pairing.
+  for (const candidate of payable.filter((entry) => entry.planeswalkerCheatSynergyHit).slice(0, commanderAnchorLimit)) {
+    addCandidate(candidate, { source: "anchor", constructionPhase: "foundation" });
+  }
   const roleAnchorLimit = singleton ? 10 : 4;
   for (const role of blueprint.desiredRoles) {
     for (const candidate of payable.filter((entry) => (entry.blueprintRoleHits || []).includes(role)).slice(0, roleAnchorLimit)) {
@@ -1624,7 +1644,7 @@ function chooseSpells(scored, slots, singleton, targets, blueprint, preset = [],
         return false;
       });
       const fillsRole = entry.roles.some((role) => (deficitState.roles[role]?.deficit || 0) > 0);
-      if (fillsPackage || fillsRole || (((entry.commanderConnectionSignals || []).length || entry.payoffMagnitudeHits || entry.selfDamageSynergyHit || entry.xSpellSynergyHit) && isUnrestrictedConstructionCredit(entry))) {
+      if (fillsPackage || fillsRole || (((entry.commanderConnectionSignals || []).length || entry.payoffMagnitudeHits || entry.selfDamageSynergyHit || entry.xSpellSynergyHit || entry.planeswalkerCheatSynergyHit) && isUnrestrictedConstructionCredit(entry))) {
         shortlist.set(key, entry);
       }
     }

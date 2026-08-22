@@ -96,9 +96,22 @@ export function buildJustificationFootprint(entry, intent = {}, options = {}) {
   // or greater/less) is at least as real a connection as a produce/reward
   // signal pairing — folded into the same commander-connection bucket so
   // repairWeaklyJustifiedSlots doesn't sweep it as unjustified filler.
+  // Founder #049: selfDamageSynergyHit (#036), xSpellSynergyHit (#046),
+  // and planeswalkerCheatSynergyHit (#049) are the same shape as
+  // payoffMagnitudeHits above — a real commander-specific reason a card
+  // was anchored that lives on a property of the card itself (mana cost,
+  // type line) rather than an oracle-text producer/payoff signal, so it
+  // was never in commanderConnectionSignals to begin with. Without this,
+  // repairWeaklyJustifiedSlots had no way to see why these anchors were
+  // selected and could — and, verified on a real construction, did —
+  // swap them back out for "better justified" generic filler, silently
+  // undoing the anchor reservation these fixes exist to guarantee.
   const commanderSignals = uniqueSorted([
     ...(entry.commanderConnectionSignals || []),
     ...(Number(entry.payoffMagnitudeHits) > 0 ? ["payoff_magnitude"] : []),
+    ...(Number(entry.selfDamageSynergyHit) > 0 ? ["self_damage_synergy"] : []),
+    ...(Number(entry.xSpellSynergyHit) > 0 ? ["x_spell_synergy"] : []),
+    ...(Number(entry.planeswalkerCheatSynergyHit) > 0 ? ["planeswalker_cheat_synergy"] : []),
   ]);
   const produces = uniqueSorted(entry.mechanics?.produces || []);
   const rewards = uniqueSorted(entry.mechanics?.rewards || []);

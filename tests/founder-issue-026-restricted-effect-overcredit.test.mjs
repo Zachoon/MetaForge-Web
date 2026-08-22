@@ -10,6 +10,7 @@ import {
   commanderConnectionSignalsFor,
   commanderMechanicalScopes,
   commanderProfitsFromBeingDamaged,
+  commanderValuesPlaneswalkerCheats,
   conditionalRampProductionFactor,
   conditionalTokenProductionFactor,
   forgeNativeMasterwork,
@@ -1532,6 +1533,70 @@ test("Founder #046: a real X-cost card wins a reserved anchor slot for a command
   });
   const controlRow = withoutCombo.selected.rows.find((row) => row.name === "Test X Threat");
   assert.ok(!controlRow || controlRow.xSpellSynergyHit === 0, "no combo credit without the commander's own X-spell-caring trigger");
+});
+
+// Founder #049: found by comparing a real Esika, God of the Tree //
+// The Prismatic Bridge construction against her own primer ("Ultimate
+// your super friends"). Her real back-face ability ("reveal cards from
+// the top of your library until you reveal a creature or planeswalker
+// card. Put that card onto the battlefield") cheats Planeswalkers into
+// play for free — a real "superfriends" enabler. Verified on a real
+// construction: the engine's own self-generated build ran only 6
+// planeswalkers against the real player's 20, because Planeswalker isn't
+// a creature type (commanderTribesFromOracle's typal system correctly
+// doesn't apply — it's already excluded via ARTIFACT_OR_TOKEN_TYPES, same
+// as Equipment/Vehicle in #047) and nothing else specifically valued a
+// Planeswalker card higher for this commander shape.
+const esikaOracle = "At the beginning of your upkeep, reveal cards from the top of your library until you reveal a creature or planeswalker card. Put that card onto the battlefield and the rest on the bottom of your library in a random order.";
+
+test("Founder #049: commanderValuesPlaneswalkerCheats requires both a planeswalker mention and a real cost-cheat mechanism", () => {
+  assert.equal(commanderValuesPlaneswalkerCheats(esikaOracle), true);
+  // A real, common removal template ("destroy target creature or
+  // planeswalker") mentions the type with no cost-cheat text at all, and
+  // must stay closed — a bare type mention is not "superfriends" support.
+  assert.equal(commanderValuesPlaneswalkerCheats("{2}{W}{B}, {T}: Destroy target creature or planeswalker."), false);
+  // A cost-cheat commander with no planeswalker mention at all must also
+  // stay closed.
+  assert.equal(commanderValuesPlaneswalkerCheats("You may put a land card from your hand onto the battlefield."), false);
+});
+
+const planeswalkerCheatCommander = { name: "Test Esika", colors: ["W", "U", "B", "R", "G"], oracleText: esikaOracle };
+const noCheatCommander = { name: "Test Plain Commander", colors: ["W", "U", "B", "R", "G"], oracleText: "Whenever you cast a noncreature spell, draw a card." };
+
+const testPlaneswalkerCard = {
+  name: "Test Planeswalker", oracleText: "Test Planeswalker enters with three loyalty counters on it.", typeLine: "Legendary Planeswalker — Test",
+  manaCost: "{3}{U}{U}", colorIdentity: ["U"], popularityRank: 40,
+};
+
+test("Founder #049: a real Planeswalker card wins a reserved anchor slot for a commander that cheats them into play", () => {
+  const filler = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Wizard", manaCost: "{2}{G}", colorIdentity: ["G"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Exile target nonland permanent.", typeLine: "Instant", manaCost: "{1}{U}", colorIdentity: ["U"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Threat ${i}`, oracleText: "Vigilance", typeLine: "Creature — Wizard", manaCost: "{3}{G}", colorIdentity: ["G"], popularityRank: 40 })),
+  ];
+  const gates = Array.from({ length: 20 }, (_, i) => ({
+    name: `WUBRG Gate ${i}`, oracleText: "This land enters the battlefield tapped. {T}: Add one mana of any color.", typeLine: "Land",
+    manaCost: "", colorIdentity: ["W", "U", "B", "R", "G"], producedMana: ["W", "U", "B", "R", "G"], popularityRank: 5, priceUsd: 0.5,
+  }));
+
+  const withCombo = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: planeswalkerCheatCommander, cards: [...filler, testPlaneswalkerCard, ...gates],
+  });
+  assert.ok(
+    withCombo.selected.rows.some((row) => row.name === "Test Planeswalker"),
+    "a real Planeswalker card must be selected as an anchor for a commander that cheats them into play",
+  );
+  const row = withCombo.selected.rows.find((row) => row.name === "Test Planeswalker");
+  assert.equal(row.planeswalkerCheatSynergyHit, 1);
+
+  const withoutCombo = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: noCheatCommander, cards: [...filler, testPlaneswalkerCard, ...gates],
+  });
+  const controlRow = withoutCombo.selected.rows.find((row) => row.name === "Test Planeswalker");
+  assert.ok(!controlRow || controlRow.planeswalkerCheatSynergyHit === 0, "no combo credit without the commander's own planeswalker-cheat trigger");
 });
 
 // =============================================================================

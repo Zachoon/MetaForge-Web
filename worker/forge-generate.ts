@@ -25,6 +25,7 @@ import {
   blueprintMechanicQueryFor,
   identityTribalTypesFor,
   identityMechanicIdsFor,
+  commanderValuesPlaneswalkerCheats,
 } from "../app/native-masterwork-engine.mjs";
 import { userKey } from "./account-bench";
 import { checkRateLimit, readJsonWithLimit } from "./api-hardening";
@@ -322,11 +323,23 @@ async function loadNativeForgePool(
     artifacts: "(t:artifact OR o:artifact)", spells: '(o:"instant or sorcery" OR o:"noncreature spell")',
     lifegain: '(o:"gain life" OR kw:lifelink)', combat: "(o:combat OR o:attack)", discard: "o:discard",
   };
+  // Founder #049: a commander that cheats Planeswalkers into play (Esika,
+  // God of the Tree // The Prismatic Bridge) has the same wide-identity
+  // pool-thinness problem #039/#040/#047 already found for niche typal/
+  // mechanic identities — Planeswalkers are numerous in Magic overall but
+  // a small share of any one popularity-ordered page, so a 5-color pool
+  // fetch surfaced only 9 of them versus the real player's 20-card count.
+  // Not a tribe or a BLUEPRINT_MECHANICS entry, so it needs its own
+  // direct query rather than routing through identityTribalTypesFor/
+  // identityMechanicIdsFor.
+  const wantsPlaneswalkers = [commander, secondCommander].filter(Boolean)
+    .some((c) => commanderValuesPlaneswalkerCheats(c!.oracleText || ""));
   const identityQueries = includeIdentityQueries ? [
     ...tribalTypes.map((term: string) => `(t:"${term}" OR o:"${term}" OR name:"${term}")`),
     ...requestedMechanics.map((mechanic: string) => mechanic === "creature_activated_ability"
       ? "t:creature o:\":\""
       : blueprintMechanicQueryFor(mechanic)),
+    ...(wantsPlaneswalkers ? ["t:planeswalker"] : []),
     ...blueprint.desiredRoles.map((role: string) => roleQueries[role]).filter(Boolean),
   ].slice(0, 6) : [];
   for (const identityQuery of identityQueries) {
