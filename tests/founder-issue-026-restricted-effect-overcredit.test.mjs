@@ -1644,6 +1644,56 @@ test("Founder #039: a dig-until-Shrine commander reserves real Shrine anchors, c
   assert.ok(shrinesSelected >= 18, `expected most of the 22 real on-type Shrines (creature and enchantment alike) to be reserved as anchors, got ${shrinesSelected}`);
 });
 
+// Founder #047: found while investigating a real "Hero tribal" Nick Fury,
+// Agent of S.H.I.E.L.D. decklist — his real ability ("look at the top
+// seven cards of your library. You may put a Hero, Equipment, or Vehicle
+// card from among them onto the battlefield") is a THIRD "dig, then put a
+// TYPE card into play" shape, distinct from #039's "reveal ... until you
+// reveal" (fixed sample instead of digging-until-found, AND multiple
+// candidate types at once).
+const nickFuryOracle = "Power-up — {W}{U}{B}{R}{G}: Put two +1/+1 counters on Nick Fury, then look at the top seven cards of your library. You may put a Hero, Equipment, or Vehicle card from among them onto the battlefield. If it's a double-faced card, you may transform it. Put the rest on the bottom of your library in a random order.";
+
+test("Founder #047: commanderTribesFromOracle extracts a \"you may put a TYPE1, TYPE2, or TYPE3 card onto the battlefield\" payoff type", () => {
+  assert.deepEqual(commanderTribesFromOracle([{ oracleText: nickFuryOracle }]), ["hero"]);
+  // Equipment and Vehicle are both already in ARTIFACT_OR_TOKEN_TYPES —
+  // correctly filtered out by the same shared stop-list every other
+  // pattern here uses, since Equipment already has its own dedicated
+  // package and Vehicle has neither a typal identity nor an existing one.
+  // Generic land/creature dig-and-cheat templates must not turn "land" or
+  // "creature" into a fake tribe either.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "You may put a land card from among them onto the battlefield." }]),
+    [],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "You may put a creature card from among them onto the battlefield." }]),
+    [],
+  );
+});
+
+test("Founder #047: a dig-and-cheat Hero commander reserves real on-type anchors", () => {
+  const nickFury = { name: "Test Nick Fury", colors: ["W", "U", "B", "R", "G"], oracleText: nickFuryOracle };
+  const filler = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Human Warrior", manaCost: "{2}{G}", colorIdentity: ["G"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Exile target nonland permanent.", typeLine: "Instant", manaCost: "{1}{B}", colorIdentity: ["B"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof and indestructible until end of turn.", typeLine: "Instant", manaCost: "{1}{W}", colorIdentity: ["W"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+  ];
+  const heroes = Array.from({ length: 10 }, (_, i) => ({
+    name: `Test Hero ${i}`, oracleText: "Vigilance.", typeLine: "Legendary Creature — Human Hero", manaCost: "{1}{R}", cmc: 2, colorIdentity: ["R"], popularityRank: 200,
+  }));
+  const gates = Array.from({ length: 20 }, (_, i) => ({
+    name: `WUBRG Gate ${i}`, oracleText: "This land enters the battlefield tapped. {T}: Add one mana of any color.", typeLine: "Land",
+    manaCost: "", colorIdentity: ["W", "U", "B", "R", "G"], producedMana: ["W", "U", "B", "R", "G"], popularityRank: 5, priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: nickFury, cards: [...filler, ...heroes, ...gates],
+  });
+  const heroesSelected = report.selected.rows.filter((row) => row.name.startsWith("Test Hero")).length;
+  assert.ok(heroesSelected >= 8, `expected most of the 10 real on-type Heroes to be reserved as anchors, got ${heroesSelected}`);
+});
+
 test("Founder #039: identityTribalTypesFor merges commander-derived tribes with the player's typed note, note first", () => {
   const heiBai = { name: "Hei Bai, Forest Guardian", colors: ["W", "U", "B", "R", "G"], oracleText: heiBaiOracle };
   assert.deepEqual(identityTribalTypesFor([], heiBai, null), ["shrine"]);

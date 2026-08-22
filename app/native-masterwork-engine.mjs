@@ -516,6 +516,27 @@ const MULTI_TRIBE_LIST = /\b(?:each|all) ((?:[A-Za-z][A-Za-z'-]+(?:,\s*)?)+(?:an
 // other pattern here.
 const REVEAL_UNTIL_TYPE_CARD = /\breveal[^.]*?\breveal (?:a|an) ([A-Za-z][A-Za-z'-]+) card\b/gi;
 
+// Founder #047: a third "dig, then put a TYPE card into play" shape,
+// distinct from #039's "reveal ... until you reveal" (single type) — Nick
+// Fury, Agent of S.H.I.E.L.D.'s real ability ("look at the top seven
+// cards of your library. You may put a Hero, Equipment, or Vehicle card
+// from among them onto the battlefield") looks at a fixed sample instead
+// of digging until found, AND lists multiple candidate types at once, the
+// same multi-type shape #038 handled for "each/all X, Y, and Z you
+// control" but for a completely different verb structure. Deliberately
+// anchored on "you may put ... card ... onto the battlefield" alone
+// (not requiring "look at"/"reveal" earlier in the same clause) since
+// that phrase crosses a sentence boundary in Nick Fury's own real text
+// ("...your library. You may put...") that a same-sentence lookbehind
+// can't reach. Equipment and Vehicle both already exist in
+// ARTIFACT_OR_TOKEN_TYPES below, so they're correctly filtered out by the
+// exact same shared stop-list every other pattern here uses — Hero is
+// the only one of the three that survives, which is exactly right: it's
+// the real creature type, Equipment already has its own dedicated
+// package, and Vehicle has neither a typal identity nor an existing
+// package to route into.
+const PUT_TYPE_CARD_ONTO_BATTLEFIELD = /you may put (?:a|an) ((?:[A-Za-z][A-Za-z'-]+(?:,\s*)?)+(?:or\s+[A-Za-z][A-Za-z'-]+)?) card[^.]*?\bonto the battlefield\b/gi;
+
 /**
  * Tribes implied by commander rules text ("another Bear you control",
  * "a Dragon you control", "Dragon spells you cast", "each Pest, Bat,
@@ -534,6 +555,8 @@ export function commanderTribesFromOracle(commanders = []) {
     ...[...oracle.matchAll(MULTI_TRIBE_LIST)].flatMap((match) =>
       match[1].split(/,\s*(?:and\s+)?|\s+and\s+/i).filter(Boolean).map((word) => normalized(word))),
     ...[...oracle.matchAll(REVEAL_UNTIL_TYPE_CARD)].map((match) => normalized(match[1])),
+    ...[...oracle.matchAll(PUT_TYPE_CARD_ONTO_BATTLEFIELD)].flatMap((match) =>
+      match[1].split(/,\s*(?:or\s+)?|\s+or\s+/i).filter(Boolean).map((word) => normalized(word))),
   ]).filter((term) => term && !BLUEPRINT_FILLER_WORDS.has(term) && !TRIBAL_STOP_WORDS.has(term) && !ARTIFACT_OR_TOKEN_TYPES.has(term));
 }
 
