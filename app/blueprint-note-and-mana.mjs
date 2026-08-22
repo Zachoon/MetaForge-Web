@@ -43,6 +43,22 @@ const clamp = (value, min = 0, max = 100) => Math.min(max, Math.max(min, Number(
 // this pattern lists Island explicitly instead, so that's fixed too.
 const LAND_SEARCH_TO_BATTLEFIELD = /search your library for [^.]*\b(?:lands?|plains|island|swamp|mountain|forest)\b[^.]*\bbattlefield\b/i;
 
+// Founder #059: same real bug as forge-interaction-graph.mjs's Founder
+// #056, duplicated here in this file's own parallel role classifier — a
+// bare "whenever you cast" matched Sythis/Smith/Ugin/Chronicle Thief-style
+// off-target triggers (enchantment/artifact/colorless/legendary spell
+// payoffs, none of them spellslinger) as the "spells" role, exactly the
+// same false positive #056 fixed in the mechanical-signal system. Reusing
+// the identical, already-verified exclusion here rather than importing it
+// back from forge-interaction-graph.mjs — this file's own header comment
+// explains why it stays free of that import path (avoids bundling the
+// ~1.9MB card-mechanics.mjs database into the client for the mana panel).
+const OFF_TARGET_SPELL_TYPE_CAST_SUFFIX = /(?:an?|another) \b(?:artifact|creature|enchantment|colorless|legendary)\b spell/i;
+// Exported so card-role-classification.mjs (already a light importer of
+// this file) can guard its own separate "spell_payoff" tag lookup with the
+// identical check — see that file's roleTagsFor for the matching bug.
+export const OFF_TARGET_SPELL_TYPE_CAST = new RegExp(`whenever you cast ${OFF_TARGET_SPELL_TYPE_CAST_SUFFIX.source}`, "i");
+
 export const ROLE_PATTERNS = Object.freeze({
   ramp: [/add .{0,18}mana/i, /create .{0,18}(?:treasure|powerstone)/i, LAND_SEARCH_TO_BATTLEFIELD, /land card.{0,30}battlefield/i],
   draw: [/draw (?:a|one|two|three|x|that many|cards?)/i, /look at the top .{0,40}(?:hand|exile)/i, /impulse/i],
@@ -81,7 +97,7 @@ export const ROLE_PATTERNS = Object.freeze({
   counters: [/[+\-]\d+\/[+\-]\d+ counter/i, /one or more counters/i, /proliferate/i],
   graveyard: [/graveyard/i, /mill /i, /surveil/i, /flashback/i, /escape/i],
   artifacts: [/artifact/i, /equipment/i, /treasure/i],
-  spells: [/instant or sorcery/i, /noncreature spell/i, /whenever you cast/i, /prowess/i],
+  spells: [/instant or sorcery/i, /noncreature spell/i, new RegExp(`whenever you cast(?! ${OFF_TARGET_SPELL_TYPE_CAST_SUFFIX.source})`, "i"), /prowess/i],
   lifegain: [/you gain .{0,12}life/i, /whenever you gain life/i, /lifelink/i],
   combat: [/whenever .{0,25} attacks/i, /combat damage/i, /double strike/i, /extra combat/i],
   // Hand disruption is its own deckbuilding axis, not covered by

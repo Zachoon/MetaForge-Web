@@ -21,7 +21,7 @@
 // native-masterwork-engine.mjs configures the real lookup for its own
 // internal (server-only) calls.
 
-import { ROLE_PATTERNS } from "./blueprint-note-and-mana.mjs";
+import { ROLE_PATTERNS, OFF_TARGET_SPELL_TYPE_CAST } from "./blueprint-note-and-mana.mjs";
 
 const normalized = (value = "") => String(value).normalize("NFKC").trim().toLocaleLowerCase("en");
 const unique = (values) => [...new Set(values.filter(Boolean))];
@@ -56,8 +56,18 @@ const ROLE_TAGS = Object.freeze({
 function roleTagsFor(card, isLand) {
   const tags = cardTagLookup(normalized(card?.name));
   if (!tags || !tags.length) return [];
+  // Founder #059: same real bug as forge-interaction-graph.mjs's Founder
+  // #057, duplicated here — the curated database's "spell_payoff" tag
+  // (mapped to this file's own "spells" role) carries the identical
+  // off-target-type false positive on Sythis/Ugin-style cards, unguarded.
+  // This module is construction-critical (see this file's own header
+  // comment), so the false "spells" role reached real deck scoring, not
+  // just a cosmetic label. Guarded the same way #057 did.
+  const offTargetSpellTag = OFF_TARGET_SPELL_TYPE_CAST.test(cardText(card));
   return Object.entries(ROLE_TAGS)
-    .filter(([role, tagNames]) => !(isLand && role === "ramp") && tagNames.some((tag) => tags.includes(tag)))
+    .filter(([role, tagNames]) => !(isLand && role === "ramp")
+      && !(role === "spells" && offTargetSpellTag)
+      && tagNames.some((tag) => tags.includes(tag)))
     .map(([role]) => role);
 }
 

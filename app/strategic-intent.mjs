@@ -18,6 +18,20 @@ import {
 
 const normalized = (value = "") => String(value).normalize("NFKC").trim().toLocaleLowerCase("en");
 const unique = (values) => [...new Set(values.filter(Boolean))];
+
+// Founder #059: same real bug as forge-interaction-graph.mjs's Founder
+// #057, duplicated here — the curated database's "spell_payoff" tag
+// (checked directly below in strategicSemanticsFor) carries the same
+// off-target-type false positive Sythis/Ugin-style cards produce
+// elsewhere (enchantment/artifact/colorless/legendary spell payoffs, none
+// of them spellslinger). This module is the construction contract itself
+// (cardSatisfiesSpellslingerSupport reads the "spell_payoff" semantic this
+// guards directly), so the false positive reached real package-density
+// occupancy, not just a label. Duplicated rather than imported from
+// blueprint-note-and-mana.mjs, matching this file's existing style (see
+// LAND_SEARCH_TO_BATTLEFIELD's identical duplication, noted in the ramp
+// semantic's own comment below).
+const OFF_TARGET_SPELL_TYPE_CAST = /whenever you cast (?:an?|another) \b(?:artifact|creature|enchantment|colorless|legendary)\b spell/i;
 const clamp = (value, min = 0, max = 100) => Math.min(max, Math.max(min, Number(value) || 0));
 
 // The one place in this file that needs the ~1.9MB card-mechanics.mjs
@@ -209,7 +223,7 @@ export function strategicSemanticsFor(card = {}) {
 
   // Spellslinger: cheap cast density is distinct from spell payoffs.
   if (/\bInstant\b|\bSorcery\b/i.test(typeLine) && cmc <= 2) semantics.add("cheap_spell");
-  if (tags.includes("spell_payoff") || /whenever you cast (?:an? )?(?:instant|sorcery|noncreature)/i.test(oracle) || /\bmagecraft\b/i.test(oracle) || /instant and sorcery spells you cast/i.test(oracle)) {
+  if ((tags.includes("spell_payoff") && !OFF_TARGET_SPELL_TYPE_CAST.test(oracle)) || /whenever you cast (?:an? )?(?:instant|sorcery|noncreature)/i.test(oracle) || /\bmagecraft\b/i.test(oracle) || /instant and sorcery spells you cast/i.test(oracle)) {
     semantics.add("spell_payoff");
   }
 
