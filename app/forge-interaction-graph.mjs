@@ -1064,7 +1064,28 @@ const PAYOFFS = {
   // draws" template, never "whenever YOU draw". Verified against all
   // three real cards' oracle text.
   draw: /whenever you draw|second card|cards? in your hand|whenever (?:an? )?opponent(?:s)? draws?\b/i,
-  spells: /whenever you cast|magecraft|instant and sorcery/i,
+  // Founder #056: bare "whenever you cast" was a false-positive magnet —
+  // real cards use the identical "whenever you cast a[n] TYPE spell"
+  // template for archetypes that have nothing to do with the instant/
+  // sorcery spellslinger signal this bucket otherwise represents (its
+  // sibling PRODUCERS side is type-line-gated to Instant/Sorcery, plus
+  // copy/free-cast effects). Sythis, Harvest's Hand ("Whenever you cast an
+  // enchantment spell...") was the concrete case: it showed up as a
+  // spellslinger reward, meaning every random instant/sorcery in an
+  // enchantress deck's pool read as "commander-connected" via this signal.
+  // Excluded the known off-target types that name a different archetype
+  // entirely — artifact (T'Challa), creature, enchantment (Sythis),
+  // colorless (Ugin, Eye of the Storms; Glaring Fleshraker — the Eldrazi
+  // colorless-matters archetype, already a real fixture in this test
+  // suite), and legendary (Chronicle Thief) spell-cast triggers, all real
+  // cards. Did NOT require an instant/sorcery/noncreature qualifier
+  // instead, because
+  // real spellslinger-adjacent commanders often use bare untyped triggers
+  // with no type word at all — Jori En, Ruin Diver ("cast your second
+  // spell each turn") and Kalamax, the Stormsire ("cast your first
+  // instant spell each turn") both still need to match, and a
+  // require-a-qualifier design would have broken both.
+  spells: /whenever you cast(?! (?:an?|another) \b(?:artifact|creature|enchantment|colorless|legendary)\b spell)|magecraft|instant and sorcery/i,
   lands: /landfall|whenever a land enters|lands you control/i,
   life: /whenever you gain life|if your life total|life you gained/i,
   // Founder #048: found by cross-checking Vivi Ornitier's real primer —

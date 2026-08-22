@@ -191,6 +191,52 @@ test("Parallel Lives amplifies token producers only — real cards can double on
   assert.deepEqual(graph.amplifiers[0].amplifies, ["Token Maker"]);
 });
 
+// Founder #056: bare "whenever you cast" was a false-positive magnet for
+// commanders whose "whenever you cast a[n] TYPE spell" trigger names an
+// off-target type (artifact/creature/enchantment/colorless/legendary) that
+// has nothing to do with the instant/sorcery spellslinger archetype this
+// signal otherwise represents. Sythis, Harvest's Hand (real Oracle text,
+// verified via Scryfall) was the concrete false positive: an enchantress
+// commander showing up as a spellslinger reward, meaning every random
+// instant/sorcery in the pool would read as "commander-connected."
+// Note: this test's fixtures use synthetic names, not the real cards their
+// oracle text is drawn from (Sythis, Harvest's Hand; Ugin, Eye of the
+// Storms) — this file wires the real CARD_MECHANICS tag lookup at module
+// scope (see configureInteractionGraphTagLookup above), and both of those
+// two real cards independently carry a pre-existing "spell_payoff" tag in
+// the curated database (1,424 cards carry it, verified via card-mechanics.mjs
+// — a much larger, separately-scoped surface than this regex fix). Using
+// their real names here would test the tag-lookup union, not the regex
+// change this test targets. The database-tag side of this same false
+// positive is a known, flagged, out-of-scope-for-this-fix follow-up.
+test("PAYOFFS.spells excludes 'whenever you cast an enchantment/artifact/creature/colorless/legendary spell' — those are different real archetypes, not the instant/sorcery spellslinger signal", () => {
+  const cases = [
+    { name: "Test Enchantment Spell Payoff", oracleText: "Whenever you cast an enchantment spell, you gain 1 life and draw a card." },
+    { name: "Test Artifact Spell Payoff", oracleText: "Whenever you cast an artifact spell, create a 1/1 colorless Servo artifact creature token." },
+    { name: "Test Colorless Spell Payoff", oracleText: "Whenever you cast a colorless spell, exile up to one target permanent that's one or more colors." },
+    { name: "Test Legendary Spell Payoff", oracleText: "Whenever you cast a legendary spell, search your library for a card, put it onto the battlefield, then shuffle." },
+    { name: "Test Creature Spell Payoff", oracleText: "Whenever you cast a creature spell, draw a card." },
+  ];
+  for (const card of cases) {
+    assert.ok(!extractMechanicalSignals({ ...card, typeLine: "Creature" }).rewards.includes("spells"), `${card.name} should not reward the instant/sorcery spellslinger signal`);
+  }
+});
+
+test("PAYOFFS.spells still recognizes real instant/sorcery and untyped spell-count triggers — the exclusion doesn't over-narrow", () => {
+  const cases = [
+    { name: "Mizzix of the Izmagnus", oracleText: "Whenever you cast an instant or sorcery spell with mana value greater than the number of experience counters you have, you get an experience counter." },
+    { name: "Saheeli, Sublime Artificer", oracleText: "Whenever you cast a noncreature spell, create a 1/1 colorless Servo artifact creature token." },
+    // Real, untyped spell-count triggers — no type word follows "cast" at
+    // all, so the exclusion (which only fires right after an article) must
+    // not touch these.
+    { name: "Jori En, Ruin Diver", oracleText: "Whenever you cast your second spell each turn, draw a card." },
+    { name: "Kalamax, the Stormsire", oracleText: "Whenever you cast your first instant spell each turn, if Kalamax is tapped, copy that spell." },
+  ];
+  for (const card of cases) {
+    assert.ok(extractMechanicalSignals({ ...card, typeLine: "Creature" }).rewards.includes("spells"), `${card.name} should still reward the spells signal`);
+  }
+});
+
 test("a token/counter doubler amplifies producers, not payoffs — the doubling applies to the effect creating the resource, whether or not it's a trigger", () => {
   const doubler = { name: "Doubling Season", typeLine: "Enchantment", oracleText: "If an effect would create one or more tokens under your control, it creates twice that many instead. If an effect would put one or more counters on a permanent or player, it puts twice that many instead." };
   // Rewards tokens (cares about tokens already on the battlefield) but
