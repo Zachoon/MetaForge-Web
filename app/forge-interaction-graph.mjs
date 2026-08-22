@@ -878,7 +878,15 @@ const PRODUCERS = {
   // verified via Scryfall). Same class of gap as #045's Wither/Infect:
   // a real, common counter-placement verb the bare "put" scan never
   // covers.
-  counters: /put [^.]* counter|proliferate|\bwither\b|\binfect\b|\bget\b [^.]*?energy counter/i,
+  // Founder #052: shipping #051 scoped to "energy counter" specifically
+  // was too narrow — Experience counters (Kratos, Stoic Father: "you get
+  // an experience counter") use the exact same "get" verb, just a
+  // different counter name. Widened from "get ... energy counter" to
+  // bare "get ... counter(s)", which generalizes to any future "get a[n]
+  // X counter" type without needing a third narrow entry. Verified this
+  // still excludes "counter" used as a spell-negation verb ("Counter
+  // target spell unless..."), since that phrasing never has "get" nearby.
+  counters: /put [^.]* counter|proliferate|\bwither\b|\binfect\b|\bget\b [^.]*?\bcounters?\b/i,
   // Founder #042: the old `/mill [a-z\d]/` only ever matched the rare
   // imperative "you mill three cards" phrasing — the third-person verb
   // form nearly every real mill card actually uses ("target player

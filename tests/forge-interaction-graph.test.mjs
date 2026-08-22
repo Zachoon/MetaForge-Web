@@ -1346,6 +1346,36 @@ test("Founder #051: Satya's own trigger and a real Energy producer now correctly
   assert.ok(cardMechanics.produces.includes("counters"), "Whirler Virtuoso should register as a real Energy producer");
 });
 
+// Founder #052: shipped minutes after #051 — Kratos, Stoic Father's real
+// trigger ("Whenever you attack with one or more Gods and whenever a God
+// dies, you get an experience counter") uses the identical "get" verb
+// Energy counters do, but #051 shipped scoped to the literal phrase
+// "energy counter" specifically, so Experience counters still didn't
+// connect. The primer's own stated game plan for this partner pair is
+// "build experience counters, win with payoffs" — Metastatic Evangel
+// (real, primer-named proliferate creature) scored zero connection until
+// this widened from "get ... energy counter" to bare "get ... counter(s)".
+test("Founder #052: PRODUCERS.counters generalizes from Energy's \"get\" verb to any \"get ... counter\" phrasing, including Experience", () => {
+  const kratos = "Whenever you attack with one or more Gods and whenever a God dies, you get an experience counter.";
+  const signals = extractMechanicalSignals({ name: "Test Kratos", typeLine: "Creature", oracleText: kratos });
+  assert.ok(signals.produces.includes("counters"), kratos);
+  // "Counter" used as a spell-negation verb must still stay excluded —
+  // that phrasing never has "get" nearby.
+  const counterspell = extractMechanicalSignals({ name: "Test Counterspell", typeLine: "Instant", oracleText: "Counter target spell unless its controller pays {3}." });
+  assert.equal(counterspell.produces.includes("counters"), false);
+});
+
+test("Founder #052: Kratos's own Experience-counter trigger and a real proliferate creature now correctly connect via commanderConnectionSignalsFor", () => {
+  const kratos = { name: "Kratos, Stoic Father", colors: ["R", "W"], oracleText: "Whenever you attack with one or more Gods and whenever a God dies, you get an experience counter.\nAt the beginning of your end step, put a number of +1/+1 counters on target creature equal to the number of experience counters you have." };
+  const atreus = { name: "Atreus, Impulsive Son", colors: ["U", "R"], oracleText: "Reach\n{3}, {T}: Draw a card for each experience counter you have, then discard a card. Atreus deals 2 damage to each opponent." };
+  const metastaticEvangel = { name: "Metastatic Evangel", typeLine: "Creature", oracleText: "Flying\nWhenever Metastatic Evangel or another nontoken creature enters under your control, proliferate." };
+  configureInteractionGraphTagLookup((name) => CARD_MECHANICS[name] || []);
+  const commanderMechanics = extractMechanicalSignals({ name: "combined", oracleText: `${kratos.oracleText}\n${atreus.oracleText}` });
+  const cardMechanics = extractMechanicalSignals(metastaticEvangel);
+  assert.ok(commanderMechanics.rewards.includes("counters"), "Atreus's own for-each-experience-counter clause should register as a real counters payoff");
+  assert.ok(cardMechanics.produces.includes("counters"), "Metastatic Evangel's proliferate should register as a real counters producer");
+});
+
 test("life kinds split gain / lifelink / pay from the blended life signal", () => {
   const gainOracle = "Whenever another creature enters the battlefield, you gain 1 life.";
   const lifelinkOracle = "Lifelink (Damage dealt by this creature also causes you to gain that much life.)";
