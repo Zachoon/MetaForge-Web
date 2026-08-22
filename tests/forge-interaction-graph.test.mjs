@@ -1639,6 +1639,38 @@ test("Founder #053: Kratos & Atreus's own Experience-counter payoff and a real p
   assert.ok(cardMechanics.produces.includes("player_counters"), "Metastatic Evangel's proliferate should register as a real player_counters producer too, not just generic counters");
 });
 
+// Founder #065: Zach's own original #053 framing named poison counters as
+// THE reference case for player-attached counters ("the experience
+// counters... act more like poison counters"), but the shipped #053
+// regex only ever covered the literal words "energy"/"experience" — never
+// "poison" itself. Fynn, the Fangbearer, the single most iconic
+// poison-counters commander in the format, produced zero player_counters
+// credit before this fix. Also found while fixing it: the old pattern
+// required the bare word "get" (with a trailing word boundary), which
+// can never match "gets" — the third-person verb form real
+// player-targeted counter grants almost always use, since a player
+// getting a counter is nearly always someone else's trigger acting on
+// them.
+test("Founder #065: PRODUCERS.player_counters recognizes the real 'gets N poison counters' shape (Fynn, the Fangbearer), not just the bare 'get' verb energy/experience use", () => {
+  const fynn = { name: "Fynn, the Fangbearer", typeLine: "Legendary Creature", oracleText: "Deathtouch\nWhenever a creature you control with deathtouch deals combat damage to a player, that player gets two poison counters." };
+  assert.ok(extractMechanicalSignals(fynn).produces.includes("player_counters"));
+});
+
+test("Founder #065: PAYOFFS.player_counters recognizes a bare 'poison counters' mention, and this correctly, retroactively connects real Infect creatures via their own reminder text", () => {
+  const corruptedPayoff = { name: "Test Corrupted Payoff", typeLine: "Enchantment", oracleText: "Corrupted — As long as an opponent has three or more poison counters, creatures you control with toxic have lifelink." };
+  assert.ok(extractMechanicalSignals(corruptedPayoff).rewards.includes("player_counters"));
+  // Infect's own reminder text ("...and to players in the form of poison
+  // counters") already literally contains the phrase — correct that this
+  // now connects, since Infect genuinely produces both permanent -1/-1
+  // counters (already covered by PRODUCERS.counters) AND player-scoped
+  // poison counters; #053's point was to stop conflating the two, not to
+  // prevent a card from legitimately doing both.
+  const skithiryx = { name: "Skithiryx, the Blight Dragon", typeLine: "Legendary Creature — Dragon", oracleText: "Flying\nInfect (This creature deals damage to creatures in the form of -1/-1 counters and to players in the form of poison counters.)\nWhenever Skithiryx, the Blight Dragon deals combat damage to a player, put that many +1/+1 counters on it." };
+  const skithiryxSig = extractMechanicalSignals(skithiryx);
+  assert.ok(skithiryxSig.produces.includes("counters"), "Infect should still produce the generic permanent-counters signal");
+  assert.ok(skithiryxSig.rewards.includes("player_counters"), "Infect's own reminder text should also connect it to the player-counters signal");
+});
+
 test("life kinds split gain / lifelink / pay from the blended life signal", () => {
   const gainOracle = "Whenever another creature enters the battlefield, you gain 1 life.";
   const lifelinkOracle = "Lifelink (Damage dealt by this creature also causes you to gain that much life.)";

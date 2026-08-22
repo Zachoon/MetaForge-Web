@@ -921,7 +921,35 @@ const PRODUCERS = {
   // verified via Scryfall, only ever says "on a permanent," never "or
   // player," so it correctly does NOT match this pattern; it doesn't
   // affect poison/energy/experience in real rules text either.
-  player_counters: /\bget\b [^.]*?\b(?:energy|experience) counters?\b|\bproliferate\b|\bcounters? on [^.]*? or player\b/i,
+  // Founder #065: found via a real Fynn, the Fangbearer comparison — the
+  // single most iconic "poison counters matter" commander in the format
+  // (Zach's own original #053 framing named poison counters as the
+  // reference case for this whole signal — "the experience counters...
+  // act more like poison counters" — but the shipped #053 regex only ever
+  // covered energy/experience literally, never the word "poison" itself).
+  // Fynn's real trigger ("that player GETS two poison counters") produced
+  // zero player_counters credit before this fix. Also found while fixing
+  // it: the old pattern required the exact word "get" with a trailing
+  // word boundary, which can never match the "gets" third-person verb
+  // form real player-targeted counter grants almost always use (a player
+  // getting a counter is nearly always someone ELSE's trigger acting on
+  // them, not a first-person "you get") — checked a 12-card real sample
+  // (68 total, verified via Scryfall) and "gets" outnumbers "get" heavily
+  // (Etali, Vraska's Fall, Infectious Inquiry, Prologue to Phyresis,
+  // Infectious Bite, Venerated Rotpriest, Ichor Rats, Bloodroot
+  // Apothecary all use "gets"). Made the "s" optional. Also added a bare
+  // "poison counters" mention (matching experience's existing bare-mention
+  // precedent) for the PAYOFF side ("Corrupted — ...opponent has three or
+  // more poison counters" — Skrelv's Hive, Glistening Sphere) — this also
+  // retroactively connects real Infect creatures, whose own reminder text
+  // ("...and to players in the form of poison counters") already
+  // literally contains the phrase; correct, since Infect genuinely
+  // produces both permanent -1/-1 counters (already covered above) AND
+  // player-scoped poison counters, and #053's whole point was to stop
+  // conflating the two, not to prevent a card from legitimately doing
+  // both. Toxic (the modern generalization of Infect's player-damage
+  // half) is covered the same way via its own reminder text.
+  player_counters: /\bgets?\b [^.]*?\b(?:energy|experience|poison) counters?\b|\bproliferate\b|\bcounters? on [^.]*? or player\b/i,
   // Founder #042: the old `/mill [a-z\d]/` only ever matched the rare
   // imperative "you mill three cards" phrasing — the third-person verb
   // form nearly every real mill card actually uses ("target player
@@ -1044,7 +1072,13 @@ const PAYOFFS = {
   // of experience counters you have"), so a bare "experience counter(s)"
   // mention is the real payoff shape, not a "for each"/"if" qualifier —
   // real oracle text never uses that exact phrase incidentally.
-  player_counters: /pay [^.]*?\{E\}|pay [^.]*? energy|\bexperience counters?\b/i,
+  // Founder #065: added a bare "poison counters" mention, the same
+  // bare-mention precedent "experience counters" already established
+  // above — see PRODUCERS.player_counters's comment for the real cards
+  // and reasoning (Fynn, the Fangbearer; Skrelv's Hive/Glistening Sphere's
+  // "Corrupted" payoff; the retroactive Infect/Toxic reminder-text
+  // connection).
+  player_counters: /pay [^.]*?\{E\}|pay [^.]*? energy|\bexperience counters?\b|\bpoison counters?\b/i,
   // Founder #042: "is/are milled" (passive) is the reward shape — a card
   // reacting to milling happening, regardless of source (The Wise
   // Mothman: "Whenever one or more nonland cards are milled, put a +1/+1
