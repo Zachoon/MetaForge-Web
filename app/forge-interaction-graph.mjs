@@ -871,7 +871,14 @@ const PRODUCERS = {
   // sweep in an unrelated toughness-reduction effect: The Meathook
   // Massacre's "-X/-X until end of turn" is a temporary stat reduction,
   // not real counters, and correctly stays unmatched.
-  counters: /put [^.]* counter|proliferate|\bwither\b|\binfect\b/i,
+  // Founder #051: Energy counters use "get" as their placement verb, not
+  // "put" — real cards never say "put an energy counter," always "you
+  // get {E}" (Satya, Aetherflux Genius's own trigger: "You get {E}{E}
+  // (two energy counters)"; Guide of Souls, Whirler Virtuoso — all
+  // verified via Scryfall). Same class of gap as #045's Wither/Infect:
+  // a real, common counter-placement verb the bare "put" scan never
+  // covers.
+  counters: /put [^.]* counter|proliferate|\bwither\b|\binfect\b|\bget\b [^.]*?energy counter/i,
   // Founder #042: the old `/mill [a-z\d]/` only ever matched the rare
   // imperative "you mill three cards" phrasing — the third-person verb
   // form nearly every real mill card actually uses ("target player
@@ -962,7 +969,13 @@ const PAYOFFS = {
   // `counters on` branch classified Ayula as both sides of a counter engine,
   // letting any unrelated counter producer masquerade as commander synergy.
   // A payoff must react to, scale from, replace, or spend existing counters.
-  counters: /whenever [^,.;]*counter|if [^,.;]*counter|for each [^.]*counter|remove [^.]* counter|modified creature/i,
+  // Founder #051: "pay {E}"/"pay ... energy" is Energy's own spend
+  // verb — never "remove a counter" — the same "spend existing counters"
+  // shape this comment already describes, just the one real counter type
+  // that doesn't use "remove." Satya, Aetherflux Genius's own real payoff
+  // ("sacrifice that token unless you pay an amount of {E} equal to its
+  // mana value") is exactly this shape.
+  counters: /whenever [^,.;]*counter|if [^,.;]*counter|for each [^.]*counter|remove [^.]* counter|modified creature|pay [^.]*?\{E\}|pay [^.]*? energy/i,
   // Founder #042: "is/are milled" (passive) is the reward shape — a card
   // reacting to milling happening, regardless of source (The Wise
   // Mothman: "Whenever one or more nonland cards are milled, put a +1/+1

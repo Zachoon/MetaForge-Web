@@ -1308,6 +1308,44 @@ test("Founder #045: PRODUCERS.counters matches Wither and Infect, real -1/-1-cou
   assert.equal(meathookMassacre.produces.includes("counters"), false);
 });
 
+// Founder #051: found by cross-checking Satya, Aetherflux Genius's real
+// primer against a real construction. Guide of Souls and Whirler
+// Virtuoso (both named in the primer's own "Feeling Energetic" section)
+// scored zero commander connection, because Energy counters use "get" as
+// their placement verb, never "put" — the same class of gap as #045's
+// Wither/Infect. Satya's own trigger ("You get {E}{E} (two energy
+// counters)... sacrifice that token unless you pay an amount of {E}
+// equal to its mana value") is both sides at once: a real producer via
+// "get", and a real payoff via "pay {E}" — the same "spend existing
+// counters" shape the PAYOFFS.counters comment already describes for
+// "remove a counter", just Energy's own verb for it.
+test("Founder #051: PRODUCERS.counters and PAYOFFS.counters both match Energy's real \"get\"/\"pay\" verbs, not just \"put\"/\"remove\"", () => {
+  const guideOfSouls = "Whenever another creature you control enters, you gain 1 life and get {E} (an energy counter).\nWhenever you attack, you may pay {E}{E}{E}. When you do, put two +1/+1 counters and a flying counter on target attacking creature. It becomes an Angel in addition to its other types.";
+  const whirlerVirtuoso = "When this creature enters, you get {E}{E}{E} (three energy counters).\nPay {E}{E}{E}: Create a 1/1 colorless Thopter artifact creature token with flying.";
+  const satya = "Menace, haste\nWhenever Satya attacks, create a tapped and attacking token that's a copy of up to one other target nontoken creature you control. You get {E}{E} (two energy counters). At the beginning of the next end step, sacrifice that token unless you pay an amount of {E} equal to its mana value.";
+  for (const oracle of [guideOfSouls, whirlerVirtuoso, satya]) {
+    const signals = extractMechanicalSignals({ name: "Test Energy Card", typeLine: "Creature", oracleText: oracle });
+    assert.ok(signals.produces.includes("counters"), oracle);
+  }
+  assert.ok(extractMechanicalSignals({ name: "Test Satya", typeLine: "Creature", oracleText: satya }).rewards.includes("counters"), "Satya's own pay-{E}-or-sacrifice clause should register as a real counters payoff");
+  // A generic "pay life"/"pay mana" cost must not be swept in — Energy's
+  // real spend verb is specific to {E}/"energy", not any resource cost.
+  const payLife = extractMechanicalSignals({ name: "Test Pay Life", typeLine: "Instant", oracleText: "Pay 2 life: Draw a card." });
+  assert.equal(payLife.rewards.includes("counters"), false);
+  const payMana = extractMechanicalSignals({ name: "Test Pay Mana", typeLine: "Sorcery", oracleText: "As an additional cost to cast this spell, pay {2}. Draw a card." });
+  assert.equal(payMana.rewards.includes("counters"), false);
+});
+
+test("Founder #051: Satya's own trigger and a real Energy producer now correctly connect via commanderConnectionSignalsFor", () => {
+  const satya = { name: "Satya, Aetherflux Genius", colors: ["R", "U", "W"], oracleText: "Menace, haste\nWhenever Satya attacks, create a tapped and attacking token that's a copy of up to one other target nontoken creature you control. You get {E}{E} (two energy counters). At the beginning of the next end step, sacrifice that token unless you pay an amount of {E} equal to its mana value." };
+  const whirlerVirtuoso = { name: "Whirler Virtuoso", typeLine: "Creature", oracleText: "When this creature enters, you get {E}{E}{E} (three energy counters).\nPay {E}{E}{E}: Create a 1/1 colorless Thopter artifact creature token with flying." };
+  configureInteractionGraphTagLookup((name) => CARD_MECHANICS[name] || []);
+  const commanderMechanics = extractMechanicalSignals(satya);
+  const cardMechanics = extractMechanicalSignals(whirlerVirtuoso);
+  assert.ok(commanderMechanics.rewards.includes("counters"), "Satya's own pay-{E}-to-keep-the-token clause should register as a real counters payoff");
+  assert.ok(cardMechanics.produces.includes("counters"), "Whirler Virtuoso should register as a real Energy producer");
+});
+
 test("life kinds split gain / lifelink / pay from the blended life signal", () => {
   const gainOracle = "Whenever another creature enters the battlefield, you gain 1 life.";
   const lifelinkOracle = "Lifelink (Damage dealt by this creature also causes you to gain that much life.)";
