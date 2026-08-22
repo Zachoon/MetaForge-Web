@@ -1087,7 +1087,19 @@ const PAYOFFS = {
   // during a real Hearthhull, the Worldseed comparison (a real land-
   // sacrifice commander) whose own primer names Scapeshift as a core
   // piece.
-  sacrifice: /whenever [^.]* dies|whenever you sacrifice|sacrifices? (?:a|an|another|any number of)\b/i,
+  // Founder #062: found via a real Edgar Markov comparison. Two more real
+  // quantifier/verb-form gaps, same root cause as #055/#060. (1) Vraan,
+  // Executioner Thane — a real legendary commander the primer itself
+  // highlights — "Whenever one or more other creatures you control DIE"
+  // (plural verb, grammatically correct for a plural subject) never
+  // matched, since the old pattern only accepted the singular "dies" (28
+  // real cards use this plural form, verified via Scryfall — Morbid
+  // Opportunist, Vraan himself, others). (2) Bolas's Citadel — "{T},
+  // Sacrifice TEN nonland permanents: Each opponent loses 10 life." — a
+  // specific number (not "a"/"an"/"another"/"any number of") is a real,
+  // common quantifier shape (108 real cards use "sacrifice <number>",
+  // verified via Scryfall — Mondrak, Peregrin Took, Magda, Brazen Outlaw).
+  sacrifice: /whenever [^.]* (?:dies|die)\b|whenever you sacrifice|sacrifices? (?:a|an|another|any number of|\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b/i,
   // Founder #043: "whenever you draw" alone missed a whole real archetype
   // — Nekusar's own payoff ("Whenever an opponent draws a card, Nekusar
   // deals 1 damage to that player.") and its namesake staples Fate

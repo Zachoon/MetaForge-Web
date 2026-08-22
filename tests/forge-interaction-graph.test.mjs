@@ -383,6 +383,22 @@ test("PAYOFFS.graveyard recognizes the real 'cards leave your graveyard' payoff 
   assert.ok(extractMechanicalSignals(tormod).rewards.includes("graveyard"));
 });
 
+// Founder #062: found via a real Edgar Markov comparison. Two more real
+// quantifier/verb-form gaps in PAYOFFS.sacrifice. Vraan, Executioner
+// Thane (a real legendary commander) uses the grammatically-plural
+// "creatures you control die" — the old pattern only accepted the
+// singular "dies". Bolas's Citadel uses a specific number ("Sacrifice ten
+// nonland permanents") rather than "a"/"an"/"another"/"any number of".
+test("PAYOFFS.sacrifice recognizes the real plural 'creatures die' verb form (Vraan, Executioner Thane), not just singular 'dies'", () => {
+  const vraan = { name: "Vraan, Executioner Thane", typeLine: "Legendary Creature", oracleText: "Whenever one or more other creatures you control die, each opponent loses 2 life and you gain 2 life. This ability triggers only once each turn." };
+  assert.ok(extractMechanicalSignals(vraan).rewards.includes("sacrifice"));
+});
+
+test("PAYOFFS.sacrifice recognizes a real specific-number quantifier (Bolas's Citadel: 'Sacrifice ten nonland permanents'), not just 'a'/'an'/'another'/'any number of'", () => {
+  const citadel = { name: "Bolas's Citadel", typeLine: "Legendary Artifact", oracleText: "You may look at the top card of your library any time.\nYou may play lands and cast spells from the top of your library. If you cast a spell this way, pay life equal to its mana value rather than pay its mana cost.\n{T}, Sacrifice ten nonland permanents: Each opponent loses 10 life." };
+  assert.ok(extractMechanicalSignals(citadel).rewards.includes("sacrifice"));
+});
+
 test("an ordinary token producer's own oracle text is not mistaken for Doubling Season's exact doubling clause", () => {
   const ordinary = { name: "Token Maker", typeLine: "Sorcery", oracleText: "Create two 1/1 creature tokens." };
   const anotherMaker = { name: "Another Maker", typeLine: "Sorcery", oracleText: "Create four 1/1 creature tokens." };
