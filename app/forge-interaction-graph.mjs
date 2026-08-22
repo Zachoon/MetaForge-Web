@@ -1054,7 +1054,18 @@ const PAYOFFS = {
   // the real mill PRODUCERS (Mindcrank, Psychic Corrosion, Syr Konrad's
   // own activated ability) use "milled"/"put into ... graveyard from", so
   // no card double-counts as both sides of its own trigger.
-  graveyard: /from your graveyard|in your graveyard|delirium|threshold|\b(?:is|are) milled\b|put into [^.]*graveyard from (?:anywhere|their library|your library)/i,
+  // Founder #061: found via a real Teval, the Balanced Scale comparison.
+  // "Whenever one or more cards leave your graveyard, create a token" is a
+  // real, common template (41 real cards, verified via Scryfall) that
+  // never contains "from your graveyard" or any other existing
+  // alternative — Tormod, the Desecrator is a real legendary partner
+  // commander whose ENTIRE oracle text is exactly this one clause, so he
+  // scored zero graveyard-payoff credit before this fix. Teval's own text
+  // happened to also contain "from your graveyard" in an earlier clause
+  // (her land-recursion attack trigger), which coincidentally already
+  // satisfied this signal and masked the gap — verified the "leave your
+  // graveyard" clause in isolation matched nothing before this fix.
+  graveyard: /from your graveyard|in your graveyard|delirium|threshold|\b(?:is|are) milled\b|put into [^.]*graveyard from (?:anywhere|their library|your library)|leaves? your graveyard/i,
   // Founder #055: "sacrifice another" alone missed the two most common
   // real sacrifice-mechanic shapes in the whole format. (1) The classic
   // sac-outlet activated-ability cost is nearly always "Sacrifice a

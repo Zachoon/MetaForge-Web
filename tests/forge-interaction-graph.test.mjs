@@ -369,6 +369,20 @@ test("PAYOFFS.sacrifice recognizes the real 'sacrifice any number of' quantifier
   assert.ok(extractMechanicalSignals(scapeshift).rewards.includes("sacrifice"));
 });
 
+// Founder #061: found via a real Teval, the Balanced Scale comparison.
+// "Whenever one or more cards leave your graveyard, create a token" is a
+// real, common template (41 real cards, verified via Scryfall) that never
+// contains "from your graveyard" or any other existing PAYOFFS.graveyard
+// alternative. Tormod, the Desecrator is a real legendary partner
+// commander whose ENTIRE oracle text is exactly this one clause — he
+// scored zero graveyard-payoff credit before this fix. Teval's own text
+// happened to also contain "from your graveyard" in an earlier clause,
+// which coincidentally already satisfied this signal and masked the gap.
+test("PAYOFFS.graveyard recognizes the real 'cards leave your graveyard' payoff shape (Tormod, the Desecrator), not just 'from your graveyard'", () => {
+  const tormod = { name: "Tormod, the Desecrator", typeLine: "Legendary Creature", oracleText: "Whenever one or more cards leave your graveyard, create a tapped 2/2 black Zombie creature token." };
+  assert.ok(extractMechanicalSignals(tormod).rewards.includes("graveyard"));
+});
+
 test("an ordinary token producer's own oracle text is not mistaken for Doubling Season's exact doubling clause", () => {
   const ordinary = { name: "Token Maker", typeLine: "Sorcery", oracleText: "Create two 1/1 creature tokens." };
   const anotherMaker = { name: "Another Maker", typeLine: "Sorcery", oracleText: "Create four 1/1 creature tokens." };
