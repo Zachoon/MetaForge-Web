@@ -1242,10 +1242,23 @@ const DOUBLER_PATTERNS = [
   // replacement effect, not an inferred pattern. Amplifies "produces" —
   // every burn spell or damage-dealing ability in the deck hits harder,
   // whether or not it's phrased as a trigger.
+  // Founder #064: found via a real Ojer Axonil, Deepest Might comparison —
+  // a popular, modern (MH3) mono-red commander whose entire identity is
+  // this exact amplifier shape, verified via Scryfall: "If a red source
+  // you control would deal an amount of noncombat damage less than Ojer
+  // Axonil's power to an opponent, that source deals damage equal to Ojer
+  // Axonil's power instead." A FLOOR/minimum replacement, not a
+  // multiplier — the old pattern's "double|triple" never matched. While
+  // researching real prevalence, found a third real shape too: Thor,
+  // Asgard's Avenger — "it deals that much damage plus 1 instead" (an
+  // additive +N replacement, neither a multiplier nor a floor). Both
+  // added as their own alternatives alongside the original multiplier
+  // shape, verified against all three real cards plus a negative control
+  // (an unrelated damage-prevention effect).
   {
     signal: "damage",
     side: "produces",
-    pattern: /if a source (?:you control )?would deal damage to[^.]*, it deals (?:double|triple) that damage/i,
+    pattern: /if a[^.]*source (?:you control )?would deal damage to[^.]*, it deals (?:double|triple) that damage|if a[^.]*source (?:you control )?would deal[^.]*damage[^.]*, that source deals damage equal to[^.]*instead|if a[^.]*source (?:you control )?would deal damage to[^.]*, it deals that much damage plus \d+ instead/i,
     verb: "doubles (or triples) the damage every source in the deck deals",
   },
 ];

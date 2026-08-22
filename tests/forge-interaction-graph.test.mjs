@@ -438,6 +438,32 @@ test("an ordinary burn spell's own text is not mistaken for a damage-doubling re
   assert.deepEqual(graph.amplifiers, []);
 });
 
+// Founder #064: found via a real Ojer Axonil, Deepest Might comparison —
+// a popular, modern (MH3) mono-red commander whose entire identity is a
+// damage-amplifying replacement effect the old pattern never covered.
+// Ojer's real shape is a FLOOR/minimum ("less than X ... equal to X
+// instead"), distinct from Fiery Emancipation's multiplier. While
+// researching real prevalence, found a second new real shape too: Thor,
+// Asgard's Avenger's additive "+1" replacement — neither a multiplier nor
+// a floor. Both verified against real Scryfall oracle text.
+test("Ojer Axonil, Deepest Might's real floor-damage replacement ('less than X ... equal to X instead') amplifies every real damage source in the deck", () => {
+  const ojer = { name: "Ojer Axonil, Deepest Might", typeLine: "Legendary Creature — God", oracleText: "Trample\nIf a red source you control would deal an amount of noncombat damage less than Ojer Axonil's power to an opponent, that source deals damage equal to Ojer Axonil's power instead.\nWhen Ojer Axonil dies, return it to the battlefield tapped and transformed under its owner's control." };
+  const pinger = { name: "Thermo-Alchemist", typeLine: "Creature", oracleText: "{T}: Thermo-Alchemist deals 1 damage to each opponent." };
+  const graph = buildInteractionGraph([ojer, pinger]);
+  assert.equal(graph.amplifiers.length, 1);
+  assert.equal(graph.amplifiers[0].signal, "damage");
+  assert.deepEqual(graph.amplifiers[0].amplifies, ["Thermo-Alchemist"]);
+});
+
+test("Thor, Asgard's Avenger's real additive '+N damage instead' replacement also amplifies every real damage source in the deck", () => {
+  const thor = { name: "Thor, Asgard's Avenger", typeLine: "Legendary Creature — God", oracleText: "Flying\nIf another source you control would deal damage to an opponent or a permanent an opponent controls, it deals that much damage plus 1 instead." };
+  const pinger = { name: "Thermo-Alchemist", typeLine: "Creature", oracleText: "{T}: Thermo-Alchemist deals 1 damage to each opponent." };
+  const graph = buildInteractionGraph([thor, pinger]);
+  assert.equal(graph.amplifiers.length, 1);
+  assert.equal(graph.amplifiers[0].signal, "damage");
+  assert.deepEqual(graph.amplifiers[0].amplifies, ["Thermo-Alchemist"]);
+});
+
 test("keeps unsupported cards visible as isolated slots", () => {
   const graph = buildInteractionGraph([
     { name: "Token Maker", typeLine: "Sorcery", oracleText: "Create two 1/1 creature tokens." },
