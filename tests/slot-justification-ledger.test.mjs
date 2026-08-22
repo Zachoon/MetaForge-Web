@@ -291,24 +291,28 @@ test("deterministic generation produces deterministic justification data", () =>
   );
 });
 
-// Founder #049: found while verifying a real Esika, God of the Tree //
-// The Prismatic Bridge construction — a real Planeswalker anchored via
+// Founder #049/#050: found while verifying a real Esika, God of the Tree
+// // The Prismatic Bridge construction — a real Planeswalker anchored via
 // planeswalkerCheatSynergyHit's dedicated reservation loop got silently
 // swapped back out by repairWeaklyJustifiedSlots on the very next repair
 // pass, because buildJustificationFootprint had no way to see why it was
 // there: payoffMagnitudeHits already had its own bucket entry (#027,
 // "payoff_magnitude") but selfDamageSynergyHit (#036) and xSpellSynergyHit
 // (#046) never got the same treatment, and neither did this new field.
-test("footprint helper folds selfDamageSynergyHit, xSpellSynergyHit, and planeswalkerCheatSynergyHit into commanderSignals, the same bucket payoffMagnitudeHits already uses", () => {
+// roomSynergyHit (#050, Marina Vendrell) is the same shape and gets the
+// same bucket entry from the start.
+test("footprint helper folds selfDamageSynergyHit, xSpellSynergyHit, planeswalkerCheatSynergyHit, and roomSynergyHit into commanderSignals, the same bucket payoffMagnitudeHits already uses", () => {
   const intent = intentForPearl();
   const base = { name: "Test Anchor", roles: [], cmc: 5, colorPips: {}, strategicSemantics: new Set(), mechanics: { produces: [], rewards: [] }, commanderConnectionSignals: [], sequenceStages: [] };
   const selfDamageFoot = buildJustificationFootprint({ ...base, selfDamageSynergyHit: 1 }, intent);
   const xSpellFoot = buildJustificationFootprint({ ...base, xSpellSynergyHit: 1 }, intent);
   const planeswalkerFoot = buildJustificationFootprint({ ...base, planeswalkerCheatSynergyHit: 1 }, intent);
+  const roomFoot = buildJustificationFootprint({ ...base, roomSynergyHit: 1 }, intent);
   const plainFoot = buildJustificationFootprint({ ...base }, intent);
   assert.ok(selfDamageFoot.commanderSignals.includes("self_damage_synergy"));
   assert.ok(xSpellFoot.commanderSignals.includes("x_spell_synergy"));
   assert.ok(planeswalkerFoot.commanderSignals.includes("planeswalker_cheat_synergy"));
+  assert.ok(roomFoot.commanderSignals.includes("room_synergy"));
   assert.deepEqual(plainFoot.commanderSignals, []);
 });
 

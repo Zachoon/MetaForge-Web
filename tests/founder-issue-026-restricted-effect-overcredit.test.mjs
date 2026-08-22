@@ -8,6 +8,7 @@ import {
   colorPipsFromCost,
   commanderCaresAboutXSpells,
   commanderConnectionSignalsFor,
+  commanderInteractsWithRooms,
   commanderMechanicalScopes,
   commanderProfitsFromBeingDamaged,
   commanderValuesPlaneswalkerCheats,
@@ -1597,6 +1598,63 @@ test("Founder #049: a real Planeswalker card wins a reserved anchor slot for a c
   });
   const controlRow = withoutCombo.selected.rows.find((row) => row.name === "Test Planeswalker");
   assert.ok(!controlRow || controlRow.planeswalkerCheatSynergyHit === 0, "no combo credit without the commander's own planeswalker-cheat trigger");
+});
+
+// Founder #050: found by comparing a real Marina Vendrell construction
+// against her own primer (a real deck built around Duskmourn's Room
+// permanent subtype and its lock/unlock mechanic — "Marina Vendrell +
+// Intruder Alarm + Ghostly Dancers"). Her real activated ability ("{T}:
+// Lock or unlock a door of target Room you control") directly interacts
+// with Room, but Room isn't a creature type (commanderTribesFromOracle's
+// typal system correctly doesn't apply — already excluded via
+// ARTIFACT_OR_TOKEN_TYPES, same as Planeswalker in #049) and there's no
+// dedicated Rooms package. Verified on a real construction: a real
+// 5-color pool for Marina surfaced zero Room cards at all out of the 28
+// real ones that exist.
+const marinaOracle = "When Marina Vendrell enters, reveal the top seven cards of your library. Put all enchantment cards from among them into your hand and the rest on the bottom of your library in a random order.\n{T}: Lock or unlock a door of target Room you control. Activate only as a sorcery.";
+
+test("Founder #050: commanderInteractsWithRooms matches Marina's real \"target Room you control\" ability", () => {
+  assert.equal(commanderInteractsWithRooms(marinaOracle), true);
+  assert.equal(commanderInteractsWithRooms("Whenever you cast a noncreature spell, draw a card."), false);
+});
+
+const roomCommander = { name: "Test Marina", colors: ["W", "U", "B", "R", "G"], oracleText: marinaOracle };
+const noRoomCommander = { name: "Test Plain Commander", colors: ["W", "U", "B", "R", "G"], oracleText: "Whenever you cast a noncreature spell, draw a card." };
+
+const testRoomCard = {
+  name: "Test Room", oracleText: "You may cast either half of this card, but not both. As you cast this spell, choose the left or right half.", typeLine: "Enchantment — Room",
+  manaCost: "{1}{U}", colorIdentity: ["U"], popularityRank: 40,
+};
+
+test("Founder #050: a real Room card wins a reserved anchor slot for a commander that interacts with Rooms", () => {
+  const filler = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Wizard", manaCost: "{2}{G}", colorIdentity: ["G"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Exile target nonland permanent.", typeLine: "Instant", manaCost: "{1}{U}", colorIdentity: ["U"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Threat ${i}`, oracleText: "Vigilance", typeLine: "Creature — Wizard", manaCost: "{3}{G}", colorIdentity: ["G"], popularityRank: 40 })),
+  ];
+  const gates = Array.from({ length: 20 }, (_, i) => ({
+    name: `WUBRG Gate ${i}`, oracleText: "This land enters the battlefield tapped. {T}: Add one mana of any color.", typeLine: "Land",
+    manaCost: "", colorIdentity: ["W", "U", "B", "R", "G"], producedMana: ["W", "U", "B", "R", "G"], popularityRank: 5, priceUsd: 0.5,
+  }));
+
+  const withCombo = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: roomCommander, cards: [...filler, testRoomCard, ...gates],
+  });
+  assert.ok(
+    withCombo.selected.rows.some((row) => row.name === "Test Room"),
+    "a real Room card must be selected as an anchor for a commander that interacts with Rooms",
+  );
+  const row = withCombo.selected.rows.find((row) => row.name === "Test Room");
+  assert.equal(row.roomSynergyHit, 1);
+
+  const withoutCombo = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: noRoomCommander, cards: [...filler, testRoomCard, ...gates],
+  });
+  const controlRow = withoutCombo.selected.rows.find((row) => row.name === "Test Room");
+  assert.ok(!controlRow || controlRow.roomSynergyHit === 0, "no combo credit without the commander's own Room-interaction trigger");
 });
 
 // =============================================================================

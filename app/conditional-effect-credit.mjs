@@ -607,3 +607,22 @@ export function commanderValuesPlaneswalkerCheats(oracle = "") {
   const text = String(oracle || "");
   return MENTIONS_PLANESWALKER_TYPE.test(text) && COMMANDER_COST_CHEATS.test(text);
 }
+
+// Founder #050: Marina Vendrell's activated ability ("{T}: Lock or unlock
+// a door of target Room you control") directly interacts with the real
+// Room permanent subtype (Duskmourn — always "Enchantment — Room", 28
+// real cards legal in Commander per Scryfall). Room isn't a creature
+// type, so commanderTribesFromOracle's typal system correctly doesn't
+// apply — Room is already in ARTIFACT_OR_TOKEN_TYPES alongside Class/
+// Case/Background, the same recent non-creature permanent-subtype
+// category. There's also no dedicated Rooms package the way Equipment
+// and Auras get one. Verified on a real construction: a real 5-color
+// pool for Marina surfaced zero Room cards at all (same wide-identity
+// pool-thinness #039/#040/#047/#049 already found), so this needs both a
+// construction-side synergy hit and a pool-fetch targeted query, same
+// shape as #049's Planeswalker fix.
+const MENTIONS_ROOM_TYPE = /\brooms? you control\b/i;
+
+export function commanderInteractsWithRooms(oracle = "") {
+  return MENTIONS_ROOM_TYPE.test(String(oracle || ""));
+}

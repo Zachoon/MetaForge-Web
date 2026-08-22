@@ -26,6 +26,7 @@ import {
   identityTribalTypesFor,
   identityMechanicIdsFor,
   commanderValuesPlaneswalkerCheats,
+  commanderInteractsWithRooms,
 } from "../app/native-masterwork-engine.mjs";
 import { userKey } from "./account-bench";
 import { checkRateLimit, readJsonWithLimit } from "./api-hardening";
@@ -334,12 +335,20 @@ async function loadNativeForgePool(
   // identityMechanicIdsFor.
   const wantsPlaneswalkers = [commander, secondCommander].filter(Boolean)
     .some((c) => commanderValuesPlaneswalkerCheats(c!.oracleText || ""));
+  // Founder #050: same reasoning as wantsPlaneswalkers above — Marina
+  // Vendrell's "{T}: Lock or unlock a door of target Room you control"
+  // has the identical wide-identity pool-thinness problem (a real 5-color
+  // pool surfaced zero of the 28 real Room cards that exist). Room is
+  // always "Enchantment — Room" so a plain t:room query is precise.
+  const wantsRooms = [commander, secondCommander].filter(Boolean)
+    .some((c) => commanderInteractsWithRooms(c!.oracleText || ""));
   const identityQueries = includeIdentityQueries ? [
     ...tribalTypes.map((term: string) => `(t:"${term}" OR o:"${term}" OR name:"${term}")`),
     ...requestedMechanics.map((mechanic: string) => mechanic === "creature_activated_ability"
       ? "t:creature o:\":\""
       : blueprintMechanicQueryFor(mechanic)),
     ...(wantsPlaneswalkers ? ["t:planeswalker"] : []),
+    ...(wantsRooms ? ["t:room"] : []),
     ...blueprint.desiredRoles.map((role: string) => roleQueries[role]).filter(Boolean),
   ].slice(0, 6) : [];
   for (const identityQuery of identityQueries) {

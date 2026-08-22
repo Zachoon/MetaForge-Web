@@ -112,6 +112,10 @@ export function buildJustificationFootprint(entry, intent = {}, options = {}) {
     ...(Number(entry.selfDamageSynergyHit) > 0 ? ["self_damage_synergy"] : []),
     ...(Number(entry.xSpellSynergyHit) > 0 ? ["x_spell_synergy"] : []),
     ...(Number(entry.planeswalkerCheatSynergyHit) > 0 ? ["planeswalker_cheat_synergy"] : []),
+    // Founder #050: same reasoning as the others above — roomSynergyHit
+    // added without this would have hit the identical silent-eviction bug
+    // #049 found and fixed.
+    ...(Number(entry.roomSynergyHit) > 0 ? ["room_synergy"] : []),
   ]);
   const produces = uniqueSorted(entry.mechanics?.produces || []);
   const rewards = uniqueSorted(entry.mechanics?.rewards || []);
