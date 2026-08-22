@@ -260,6 +260,29 @@ test("the 'spell_payoff' tag guard doesn't touch cards where the oracle text has
   assert.ok(extractMechanicalSignals(mizzix).rewards.includes("spells"));
 });
 
+// Founder #058: the curated database's "counter_payoff" tag is mistagged
+// on a large scale — a 73-card spread sample (real cards, Scryfall-
+// verified) came back 62% with zero occurrence of the word "counter"
+// anywhere in their real oracle text. Bomat Bazaar Barge and Cargo Ship
+// both carry the tag in the real database (confirmed via card-mechanics.mjs
+// directly) purely because of their unrelated Crew N ability — the
+// auto-tagger appears to conflate "tap creatures with total power N" cost
+// shapes (Crew, Saddle, Teamwork) with the counters mechanic. These two
+// use their real names to exercise the real production tag lookup wired
+// at the top of this file, the same way #057's tag-guard tests do.
+test("the curated database's mistagged 'counter_payoff' tag (Crew N Vehicles with zero real counter text) is excluded from the counters signal", () => {
+  const bomat = { name: "Bomat Bazaar Barge", typeLine: "Artifact — Vehicle", oracleText: "When this Vehicle enters, draw a card.\nCrew 3 (Tap any number of creatures you control with total power 3 or more: This Vehicle becomes an artifact creature until end of turn.)" };
+  const cargoShip = { name: "Cargo Ship", typeLine: "Artifact — Vehicle", oracleText: "Flying, vigilance\n{T}: Add {C}. Spend this mana only to cast an artifact spell or activate an ability of an artifact source.\nCrew 1 (Tap any number of creatures you control with total power 1 or more: This Vehicle becomes an artifact creature until end of turn.)" };
+  for (const card of [bomat, cargoShip]) {
+    assert.ok(!extractMechanicalSignals(card).rewards.includes("counters"), `${card.name} should not reward counters — its text never mentions the word at all`);
+  }
+});
+
+test("the 'counter_payoff' tag guard doesn't touch cards whose own text genuinely mentions counters", () => {
+  const realCounterCard = { name: "Not In DB Test Card", typeLine: "Artifact", oracleText: "If a creature you control has a counter on it, draw a card." };
+  assert.ok(extractMechanicalSignals(realCounterCard).rewards.includes("counters"));
+});
+
 test("a token/counter doubler amplifies producers, not payoffs — the doubling applies to the effect creating the resource, whether or not it's a trigger", () => {
   const doubler = { name: "Doubling Season", typeLine: "Enchantment", oracleText: "If an effect would create one or more tokens under your control, it creates twice that many instead. If an effect would put one or more counters on a permanent or player, it puts twice that many instead." };
   // Rewards tokens (cares about tokens already on the battlefield) but

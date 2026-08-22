@@ -1260,8 +1260,27 @@ export function extractMechanicalSignals(card) {
   // sorcery/magecraft/untyped match from the regex itself still stands).
   const offTargetSpellPayoffTag = tagRewards.includes("spells") && !regexRewards.includes("spells")
     && OFF_TARGET_SPELL_TYPE_CAST.test(text);
+  // Founder #058: the curated database's "counter_payoff" tag (322 cards,
+  // mapped to this same "counters" signal via TAG_PAYOFFS) turned out to
+  // be mistagged on a large scale — verified via a 73-card spread sample
+  // from the real tagged list (Scryfall-fetched), 62% of which had no
+  // occurrence of the word "counter" anywhere in their real oracle text at
+  // all. Root cause: the auto-tagger appears to conflate any "tap
+  // creatures with total power/toughness N" cost shape with the counters
+  // mechanic — Crew N (Vehicles: Bomat Bazaar Barge, Cargo Ship), Saddle N
+  // (Mounts), and Teamwork N (conspiracies) all carry it despite having
+  // nothing to do with the counter game object. Unlike #057's off-target
+  // type check (a real distinction between two legitimate archetypes),
+  // there's no nuance to preserve here — a "counters" reward with zero
+  // mention of the literal word "counter" anywhere in the card's own text
+  // is a data error, not an edge case. counter_producer (2,016 cards) was
+  // checked the same way with a 68-card spread sample and came back 0%
+  // mistagged, so it's untouched.
+  const noCounterWordInOwnText = tagRewards.includes("counters") && !regexRewards.includes("counters")
+    && !/\bcounters?\b/i.test(text);
   const rewards = [...new Set([...regexRewards, ...tagRewards])].filter((signal) => !(signal === "combat" && attackToProduceOnly)
-    && !(signal === "spells" && offTargetSpellPayoffTag));
+    && !(signal === "spells" && offTargetSpellPayoffTag)
+    && !(signal === "counters" && noCounterWordInOwnText));
   if (auraProducer.length && !signals.includes("auras")) signals.push("auras");
   if (spellProducer.length && !signals.includes("spells")) signals.push("spells");
   const oracle = card.oracleText || card.oracle_text || text;
