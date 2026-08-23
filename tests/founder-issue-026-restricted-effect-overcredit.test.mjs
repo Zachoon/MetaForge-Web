@@ -2550,6 +2550,62 @@ test("Founder #077: a Goblin-tribal-recursion commander reserves real on-type an
   assert.ok(goblinsSelected >= 8, `expected most of the 10 real on-type Goblins to be reserved as anchors, got ${goblinsSelected}`);
 });
 
+// Founder #078: found via a real Éowyn, Shieldmaiden comparison — her
+// real text ("Then if you control six or more Humans, draw a card.") is
+// a quantity-threshold check none of the existing patterns cover; her
+// OTHER clause ("another Human entered the battlefield under your
+// control") uses "under your control", not "you control", so #068's
+// pattern doesn't match either — she returned [] entirely before this
+// fix, despite being a real, well-known Human tribal commander. Verified
+// 40 real commanders use a "you control N or more TRIBE" shape via
+// Scryfall (Beorn the Fierce: Bear, already redundantly covered by his
+// own "Other Bears you control" clause; Bast, Panther Goddess and
+// Jetmir, Nexus of Revels: generic "creatures", already filtered).
+test("Founder #078: commanderTribesFromOracle extracts the real \"you control N or more TRIBE\" quantity-threshold shape (Éowyn), correctly singularizing the genuinely-plural source text and staying filtered for generic \"creatures\" (Bast, Jetmir)", () => {
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "First strike\nAt the beginning of combat on your turn, if another Human entered the battlefield under your control this turn, create two 2/2 red Human Knight creature tokens with trample and haste. Then if you control six or more Humans, draw a card." }]),
+    ["human"],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Reach, trample, indestructible\nBast can't attack or block unless you control three or more creatures.\nWhenever you attack, target attacking creature gets +X/+X until end of turn, where X is the number of creatures you control." }]),
+    [],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Creatures you control get +1/+0 and have vigilance as long as you control three or more creatures.\nCreatures you control also get +1/+0 and have trample as long as you control six or more creatures." }]),
+    [],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Trample\nOther Bears you control get +2/+2.\nAt the beginning of combat on your turn, put a trample counter on up to one target creature you control. It becomes a Bear in addition to its other types. Then if you control three or more Bears, draw two cards." }]),
+    ["bear"],
+  );
+});
+
+test("Founder #078: a Human-tribal-quantity-threshold commander reserves real on-type anchors", () => {
+  const eowyn = {
+    name: "Test Eowyn", colors: ["W"],
+    oracleText: "First strike\nAt the beginning of combat on your turn, if another Human entered the battlefield under your control this turn, create two 2/2 red Human Knight creature tokens with trample and haste. Then if you control six or more Humans, draw a card.",
+  };
+  const filler = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Spirit", manaCost: "{2}{W}", colorIdentity: ["W"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Exile target nonland permanent.", typeLine: "Instant", manaCost: "{1}{W}", colorIdentity: ["W"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof until end of turn.", typeLine: "Instant", manaCost: "{1}{W}", colorIdentity: ["W"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+  ];
+  const humans = Array.from({ length: 10 }, (_, i) => ({
+    name: `Test Human ${i}`, oracleText: "Vigilance.", typeLine: "Creature — Human Soldier", manaCost: "{1}{W}", cmc: 2, colorIdentity: ["W"], popularityRank: 200,
+  }));
+  const gates = Array.from({ length: 20 }, (_, i) => ({
+    name: `W Gate ${i}`, oracleText: "This land enters the battlefield tapped. {T}: Add {W}.", typeLine: "Land",
+    manaCost: "", colorIdentity: ["W"], producedMana: ["W"], popularityRank: 5, priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: eowyn, cards: [...filler, ...humans, ...gates],
+  });
+  const humansSelected = report.selected.rows.filter((row) => row.name.startsWith("Test Human")).length;
+  assert.ok(humansSelected >= 8, `expected most of the 10 real on-type Humans to be reserved as anchors, got ${humansSelected}`);
+});
+
 test("Founder #039: identityTribalTypesFor merges commander-derived tribes with the player's typed note, note first", () => {
   const heiBai = { name: "Hei Bai, Forest Guardian", colors: ["W", "U", "B", "R", "G"], oracleText: heiBaiOracle };
   assert.deepEqual(identityTribalTypesFor([], heiBai, null), ["shrine"]);

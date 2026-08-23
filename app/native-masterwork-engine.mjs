@@ -859,6 +859,25 @@ export function commanderTribesFromOracle(commanders = []) {
     // Oakenshield and Geth, Thane of Contracts: generic "creature",
     // already filtered).
     ...[...oracle.matchAll(/\btarget ([A-Za-z][A-Za-z'-]+) card from your graveyard\b/gi)].map((match) => normalized(match[1])),
+    // Founder #078: found via a real Éowyn, Shieldmaiden comparison — her
+    // real text ("Then if you control six or more Humans, draw a card.")
+    // is a quantity-threshold check none of the existing patterns cover;
+    // her OTHER clause ("another Human entered the battlefield under
+    // your control") uses "under your control", not "you control", so it
+    // doesn't match #068's pattern either — she returned [] entirely
+    // before this fix, despite being a real, well-known Human tribal
+    // commander. Verified 40 real commanders use a "you control N or
+    // more TRIBE" shape via Scryfall (Beorn the Fierce: Bear, already
+    // redundantly covered by his own "Other Bears you control" clause;
+    // Bast, Panther Goddess and Jetmir, Nexus of Revels: generic
+    // "creatures", already filtered). The captured word is genuinely
+    // plural in real text ("Humans", "Bears"), so this needs
+    // singularizeTribe the same way #067's "attack with one or more"
+    // capture does — plain normalized() would leave "creatures"
+    // unfiltered (GENERIC_SCOPE_WORDS only lists the singular "creature")
+    // and "Humans"/"Bears" would never match a real singular type line,
+    // caught directly while verifying this fix.
+    ...[...oracle.matchAll(/\byou control [a-z]+ or more ([A-Za-z][A-Za-z'-]+)\b/gi)].map((match) => singularizeTribe(match[1])),
   ]).filter((term) => term && !BLUEPRINT_FILLER_WORDS.has(term) && !TRIBAL_STOP_WORDS.has(term) && !ARTIFACT_OR_TOKEN_TYPES.has(term));
 }
 
