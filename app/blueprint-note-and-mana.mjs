@@ -61,7 +61,18 @@ export const OFF_TARGET_SPELL_TYPE_CAST = new RegExp(`whenever you cast ${OFF_TA
 
 export const ROLE_PATTERNS = Object.freeze({
   ramp: [/add .{0,18}mana/i, /create .{0,18}(?:treasure|powerstone)/i, LAND_SEARCH_TO_BATTLEFIELD, /land card.{0,30}battlefield/i],
-  draw: [/draw (?:a|one|two|three|x|that many|cards?)/i, /look at the top .{0,40}(?:hand|exile)/i, /impulse/i],
+  // Founder #087 (found right after #086 shipped, same file): the
+  // same real "draws" third-person verb gap forge-interaction-graph.mjs's
+  // own PRODUCERS.draw already fixed (that file's own history: the
+  // imperative "draw a card" phrasing missed the third-person "draws"
+  // verb real wheel effects use — no space right after "draw" once an
+  // "s" is added). Confirmed via direct test: Wheel of Fortune ("draws
+  // seven cards") and Nekusar, the Mindrazer's own trigger ("that player
+  // draws an additional card") both failed to register the "draw" role
+  // here — two of the format's most iconic wheel/draw-punisher cards.
+  // Reused forge-interaction-graph.mjs's exact already-verified pattern
+  // rather than re-deriving it.
+  draw: [/draws? [^.]*?\bcards?\b/i, /look at the top .{0,40}(?:hand|exile)/i, /impulse/i],
   interaction: [/destroy target/i, /exile target/i, /counter target/i, /deals? \d+ damage to/i, /return target .{0,25}owner'?s hand/i, /-\d+\/-\d+/i],
   protection: [/hexproof/i, /indestructible/i, /phase out/i, /protection from/i, /counter target spell or ability/i],
   // Unsummon/Vapor Snag/Boomerang class: "return target creature to its
