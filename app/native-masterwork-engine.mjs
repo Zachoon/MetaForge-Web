@@ -77,6 +77,7 @@ import {
   configureCardTagLookup,
   expensiveThreatSupport,
   replacementCompatible,
+  singularizeTribe,
   strategicSemanticsFor,
   validateStrategicCohesion,
 } from "./strategic-intent.mjs";
@@ -493,7 +494,11 @@ const GENERIC_SCOPE_WORDS = new Set(["card", "creature", "permanent", "player", 
 // Scryfall), so this doesn't fix an existing bug — it's defensive
 // hardening for the same fix, shipped alongside it rather than as a
 // separate speculative change.
-const TRIBAL_STOP_WORDS = new Set(["target", "equipped", "enchanted", "attacking", "blocking", "tapped", "untapped", "nontoken", "other", "another", "each", "all", "black", "white", "blue", "red", "green", "colorless", "multicolored", ...GENERIC_SCOPE_WORDS]);
+// Founder #067: "legendary" — a real supertype, not a creature type — sits
+// in the same "attack with one or more WORD" capture position a real tribe
+// occupies (Amazing Alliance's real "Whenever you attack with one or more
+// legendary creatures, draw a card."), verified via Scryfall.
+const TRIBAL_STOP_WORDS = new Set(["target", "equipped", "enchanted", "attacking", "blocking", "tapped", "untapped", "nontoken", "other", "another", "each", "all", "black", "white", "blue", "red", "green", "colorless", "multicolored", "legendary", ...GENERIC_SCOPE_WORDS]);
 
 const ARTIFACT_OR_TOKEN_TYPES = new Set([
   "clue", "treasure", "food", "gold", "blood", "map", "junk", "powerstone",
@@ -603,6 +608,29 @@ export function commanderTribesFromOracle(commanders = []) {
     ...[...oracle.matchAll(REVEAL_UNTIL_TYPE_CARD)].map((match) => normalized(match[1])),
     ...[...oracle.matchAll(PUT_TYPE_CARD_ONTO_BATTLEFIELD)].flatMap((match) =>
       match[1].split(/,\s*(?:or\s+)?|\s+or\s+/i).filter(Boolean).map((word) => normalized(word))),
+    // Founder #067: found via a real Sidar Jabari of Zhalfir comparison —
+    // his real Eminence trigger ("Whenever you attack with one or more
+    // Knights...") never matched any existing pattern, none of which
+    // handle an "attack with" clause at all. Verified 22 real cards use
+    // this "attack with one or more TRIBE" shape via Scryfall (Arboreal
+    // Alliance/Celeborn the Wise: Elves; Hermes, Overseer of Elpis: Birds;
+    // Hired Claw: Lizards). Unlike every other pattern here, the tribe
+    // word in this specific real template is genuinely plural in the
+    // source text ("Knights", not "Knight") — every other pattern's
+    // capture happens to already be singular in real oracle text, so this
+    // is the first one that needs singularizeTribe (imported from
+    // strategic-intent.mjs, the same helper extractTypalTribes already
+    // uses, rather than reinventing pluralization rules) to correctly
+    // turn "Elves" into "elf" — a naive trailing-s strip would produce
+    // the wrong "elve". Excluded a negated "non-TRIBE" object (Anim Pakal,
+    // Thousandth Moon's real "one or more non-Gnome creatures" — the
+    // card cares about creatures WITHOUT that type, the opposite of what
+    // extraction should capture) via a negative lookahead — both real
+    // cards found and fixed in the same pass. "legendary" (Amazing
+    // Alliance's real "one or more legendary creatures") is excluded via
+    // TRIBAL_STOP_WORDS above instead, alongside this pattern's own bare
+    // "creatures"/"creature" already-covered case.
+    ...[...oracle.matchAll(/\battack with one or more (?!non-?[A-Za-z])([A-Za-z][A-Za-z'-]+)\b/gi)].map((match) => singularizeTribe(match[1])),
   ]).filter((term) => term && !BLUEPRINT_FILLER_WORDS.has(term) && !TRIBAL_STOP_WORDS.has(term) && !ARTIFACT_OR_TOKEN_TYPES.has(term));
 }
 

@@ -279,7 +279,7 @@ const TYPAL_STOP = new Set([
   "commander",
 ]);
 
-function singularizeTribe(word = "") {
+export function singularizeTribe(word = "") {
   const w = normalized(word);
   if (!w) return "";
   // "Dwarves" with a trailing-s capture becomes "dwarve"; the ves rule

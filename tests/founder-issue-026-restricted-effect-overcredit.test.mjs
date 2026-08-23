@@ -1923,6 +1923,67 @@ test("Founder #066: an Elemental-typal-cheat commander reserves real on-type anc
   assert.ok(elementalsSelected >= 8, `expected most of the 10 real on-type Elementals to be reserved as anchors, got ${elementalsSelected}`);
 });
 
+// Founder #067: found via a real Sidar Jabari of Zhalfir comparison. His
+// real Eminence trigger ("Whenever you attack with one or more
+// Knights...") never matched any existing pattern — none of them handle
+// an "attack with" clause at all.
+const sidarJabariOracle = "Eminence — Whenever you attack with one or more Knights, if Sidar Jabari is in the command zone or on the battlefield, draw a card, then discard a card.\nFlying, first strike\nWhenever Sidar Jabari deals combat damage to a player, return target Knight creature card from your graveyard to the battlefield.";
+
+test("Founder #067: commanderTribesFromOracle extracts the real \"attack with one or more TRIBE\" shape (Sidar Jabari), singularizing genuinely-plural source text correctly", () => {
+  assert.deepEqual(commanderTribesFromOracle([{ oracleText: sidarJabariOracle }]), ["knight"]);
+  // The tribe word is genuinely plural in this real template ("Elves",
+  // not "Elf") — unlike every other pattern here, which captures already-
+  // singular text — so this needs real singularization, not a naive
+  // trailing-s strip (which would wrongly turn "Elves" into "elve").
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Whenever you attack with one or more Elves, target opponent loses 2 life and you gain 2 life for each Elf you control." }]),
+    ["elf"],
+  );
+  // "legendary" is a supertype, not a creature type — Amazing Alliance's
+  // real "attack with one or more legendary creatures" must not become a
+  // fake tribe.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Whenever you attack with one or more legendary creatures, draw a card." }]),
+    [],
+  );
+  // A negated "non-TRIBE" object (Anim Pakal, Thousandth Moon's real
+  // "one or more non-Gnome creatures") cares about creatures WITHOUT that
+  // type — the opposite of what extraction should capture.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Whenever you attack with one or more non-Gnome creatures, put a +1/+1 counter on Anim Pakal." }]),
+    [],
+  );
+  // A bare "creatures" mention (Case of the Market Melee's real "attack
+  // with one or more creatures") must not become a fake tribe either.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Whenever you attack with one or more creatures, investigate." }]),
+    [],
+  );
+});
+
+test("Founder #067: a Knight-tribal-cheat commander reserves real on-type anchors", () => {
+  const sidarJabari = { name: "Test Sidar Jabari", colors: ["W", "U"], oracleText: sidarJabariOracle };
+  const filler = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Spirit", manaCost: "{2}{U}", colorIdentity: ["U"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Exile target nonland permanent.", typeLine: "Instant", manaCost: "{1}{W}", colorIdentity: ["W"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof and indestructible until end of turn.", typeLine: "Instant", manaCost: "{1}{W}", colorIdentity: ["W"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+  ];
+  const knights = Array.from({ length: 10 }, (_, i) => ({
+    name: `Test Knight ${i}`, oracleText: "Vigilance.", typeLine: "Creature — Human Knight", manaCost: "{1}{W}", cmc: 2, colorIdentity: ["W"], popularityRank: 200,
+  }));
+  const gates = Array.from({ length: 20 }, (_, i) => ({
+    name: `WU Gate ${i}`, oracleText: "This land enters the battlefield tapped. {T}: Add {W} or {U}.", typeLine: "Land",
+    manaCost: "", colorIdentity: ["W", "U"], producedMana: ["W", "U"], popularityRank: 5, priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: sidarJabari, cards: [...filler, ...knights, ...gates],
+  });
+  const knightsSelected = report.selected.rows.filter((row) => row.name.startsWith("Test Knight")).length;
+  assert.ok(knightsSelected >= 8, `expected most of the 10 real on-type Knights to be reserved as anchors, got ${knightsSelected}`);
+});
+
 test("Founder #039: identityTribalTypesFor merges commander-derived tribes with the player's typed note, note first", () => {
   const heiBai = { name: "Hei Bai, Forest Guardian", colors: ["W", "U", "B", "R", "G"], oracleText: heiBaiOracle };
   assert.deepEqual(identityTribalTypesFor([], heiBai, null), ["shrine"]);
