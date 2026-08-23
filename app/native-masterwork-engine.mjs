@@ -848,6 +848,17 @@ export function commanderTribesFromOracle(commanders = []) {
     // "a"/"an") and an optional trailing "s" on "card" for the plural
     // quantified cases.
     ...[...oracle.matchAll(/\bsearch your library for (?:up to [a-z]+ |any number of |a |an )?([A-Za-z][A-Za-z'-]+) cards?\b/gi)].map((match) => normalized(match[1])),
+    // Founder #077: found via a real Grub, Storied Matriarch comparison —
+    // her real text ("return up to one target Goblin card from your
+    // graveyard to your hand") is a graveyard-recursion tutor shape none
+    // of the existing patterns cover; #076's pattern is anchored on
+    // "search your library", a completely different location. Verified
+    // 57 real cards use a "target TYPE card from your graveyard" shape
+    // via Scryfall, including real popular commanders (Greasefang, Okiba
+    // Boss: Vehicle, already filtered via ARTIFACT_OR_TOKEN_TYPES; Adun
+    // Oakenshield and Geth, Thane of Contracts: generic "creature",
+    // already filtered).
+    ...[...oracle.matchAll(/\btarget ([A-Za-z][A-Za-z'-]+) card from your graveyard\b/gi)].map((match) => normalized(match[1])),
   ]).filter((term) => term && !BLUEPRINT_FILLER_WORDS.has(term) && !TRIBAL_STOP_WORDS.has(term) && !ARTIFACT_OR_TOKEN_TYPES.has(term));
 }
 

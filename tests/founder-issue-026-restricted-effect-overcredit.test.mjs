@@ -2496,6 +2496,60 @@ test("Founder #076: a Dragon-tribal-tutor commander reserves real on-type anchor
   assert.ok(dragonsSelected >= 8, `expected most of the 10 real on-type Dragons to be reserved as anchors, got ${dragonsSelected}`);
 });
 
+// Founder #077: found via a real Grub, Storied Matriarch comparison — her
+// real text ("return up to one target Goblin card from your graveyard to
+// your hand") is a graveyard-recursion tutor shape none of the existing
+// patterns cover; #076's "search your library" pattern is anchored on a
+// completely different location. Verified 57 real cards use a "target
+// TYPE card from your graveyard" shape via Scryfall, including real
+// popular commanders (Greasefang, Okiba Boss: Vehicle, already filtered;
+// Adun Oakenshield and Geth, Thane of Contracts: generic "creature",
+// already filtered).
+test("Founder #077: commanderTribesFromOracle extracts the real \"target TYPE card from your graveyard\" recursion shape (Grub), without leaking generic \"creature\"/\"Vehicle\" mentions (Adun Oakenshield, Greasefang, Geth)", () => {
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Menace\nWhenever this creature enters or transforms into Grub, Storied Matriarch, return up to one target Goblin card from your graveyard to your hand.\nAt the beginning of your first main phase, you may pay {R}. If you do, transform Grub." }]),
+    ["goblin"],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "{B}{R}{G}, {T}: Return target creature card from your graveyard to your hand." }]),
+    [],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "At the beginning of combat on your turn, return target Vehicle card from your graveyard to the battlefield. It gains haste. Return it to its owner's hand at the beginning of your next end step." }]),
+    [],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Other creatures you control get -1/-1.\n{1}{B}{B}, {T}: Return target creature card from your graveyard to the battlefield." }]),
+    [],
+  );
+});
+
+test("Founder #077: a Goblin-tribal-recursion commander reserves real on-type anchors", () => {
+  const grub = {
+    name: "Test Grub", colors: ["R"],
+    oracleText: "Menace\nWhenever this creature enters or transforms into Grub, Storied Matriarch, return up to one target Goblin card from your graveyard to your hand.",
+  };
+  const filler = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Spirit", manaCost: "{2}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Deal 3 damage to any target.", typeLine: "Instant", manaCost: "{1}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof until end of turn.", typeLine: "Instant", manaCost: "{1}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+  ];
+  const goblins = Array.from({ length: 10 }, (_, i) => ({
+    name: `Test Goblin ${i}`, oracleText: "Haste.", typeLine: "Creature — Goblin Warrior", manaCost: "{1}{R}", cmc: 2, colorIdentity: ["R"], popularityRank: 200,
+  }));
+  const rocks = Array.from({ length: 20 }, (_, i) => ({
+    name: `R Rock ${i}`, oracleText: "{T}: Add {R}.", typeLine: "Artifact",
+    manaCost: "{2}", colorIdentity: [], producedMana: ["R"], popularityRank: 5, priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: grub, cards: [...filler, ...goblins, ...rocks],
+  });
+  const goblinsSelected = report.selected.rows.filter((row) => row.name.startsWith("Test Goblin")).length;
+  assert.ok(goblinsSelected >= 8, `expected most of the 10 real on-type Goblins to be reserved as anchors, got ${goblinsSelected}`);
+});
+
 test("Founder #039: identityTribalTypesFor merges commander-derived tribes with the player's typed note, note first", () => {
   const heiBai = { name: "Hei Bai, Forest Guardian", colors: ["W", "U", "B", "R", "G"], oracleText: heiBaiOracle };
   assert.deepEqual(identityTribalTypesFor([], heiBai, null), ["shrine"]);
