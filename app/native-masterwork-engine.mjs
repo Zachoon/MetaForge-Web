@@ -535,7 +535,7 @@ const GENERIC_SCOPE_WORDS = new Set(["card", "creature", "permanent", "player", 
 // ARTIFACT_OR_TOKEN_TYPES already excludes the generic "land"/"nonland",
 // but not the five specific basic type names, which the new pattern's
 // capture position exposes directly for the first time.
-// Founder #081 (found the same way #070/#072 found "more"/"of"): a
+// Founder #082 (found the same way #070/#072 found "more"/"of"): a
 // synthetic negative-control test for the new "whenever a/an TRIBE
 // attacks" pattern exposed that the pre-existing "TRIBE creatures you
 // control" pattern also captures "if" as a fake tribe from the real
