@@ -2248,3 +2248,41 @@ test("Founder #079: Melek's own instant/sorcery-cast payoff and a real cost-redu
     "Baral must connect to Melek via the spells signal",
   );
 });
+
+// Founder #085: found via a real Arabella, Abandoned Doll comparison —
+// her real "Whenever Arabella attacks, it deals X damage to each
+// opponent..." never registered as a damage producer, since the old
+// pattern required a literal digit — "X" (or "that much", the same real
+// shape Kediss, Emberclaw Familiar's damage-redirect uses) never
+// matched. This meant Arabella could never connect to a real Curiosity-
+// style noncombat-damage-draw aura (#048's PAYOFFS.damage) if one were
+// attached to her. The same asymmetry class #073/#079 already found for
+// sacrifice/spells. Verified 27 real commanders use "deals X damage" and
+// 27 more use "deals that much damage" via Scryfall (also Balin,
+// Loremaster; Crystal, Inhuman Princess) — variable-amount damage is at
+// least as common as fixed-number damage among real commander pingers.
+test("PRODUCERS.damage recognizes the real variable-amount 'deals X damage'/'deals that much damage' shape (Arabella, Abandoned Doll; Kediss, Emberclaw Familiar), not just a literal number", () => {
+  const arabella = { name: "Arabella, Abandoned Doll", typeLine: "Legendary Creature", oracleText: "Whenever Arabella attacks, it deals X damage to each opponent and you gain X life, where X is the number of creatures you control with power 2 or less." };
+  const kediss = { name: "Kediss, Emberclaw Familiar", typeLine: "Legendary Creature", oracleText: "Whenever a commander you control deals combat damage to an opponent, it deals that much damage to each other opponent." };
+  for (const card of [arabella, kediss]) {
+    assert.ok(extractMechanicalSignals(card).produces.includes("damage"), `${card.name} should produce the damage signal`);
+  }
+  // The pre-existing literal-number case (Vivi Ornitier's real "it deals
+  // 1 damage to each opponent") must still work unchanged.
+  const vivi = { name: "Vivi Ornitier", typeLine: "Legendary Creature", oracleText: "Whenever you cast a noncreature spell, put a +1/+1 counter on this creature and it deals 1 damage to each opponent." };
+  assert.ok(extractMechanicalSignals(vivi).produces.includes("damage"));
+});
+
+test("Founder #085: Arabella's own variable-damage attack trigger and a real Curiosity-style aura now correctly connect via commanderConnectionSignalsFor", () => {
+  const arabella = { name: "Arabella, Abandoned Doll", colors: ["W"], oracleText: "Whenever Arabella attacks, it deals X damage to each opponent and you gain X life, where X is the number of creatures you control with power 2 or less." };
+  const curiosity = { name: "Curiosity", typeLine: "Enchantment", oracleText: "Enchant creature\nWhenever enchanted creature deals damage to an opponent, you may draw a card." };
+  const arabellaScopes = commanderMechanicalScopes(arabella);
+  const arabellaMechanics = extractMechanicalSignals(arabella);
+  const curiosityMechanics = extractMechanicalSignals(curiosity);
+  assert.ok(arabellaMechanics.produces.includes("damage"), "Arabella's own attack trigger should register as a real damage producer");
+  assert.ok(curiosityMechanics.rewards.includes("damage"), "Curiosity should register as a real damage payoff");
+  assert.ok(
+    commanderConnectionSignalsFor(curiosity, curiosityMechanics, arabellaMechanics, arabellaScopes).includes("damage"),
+    "Curiosity must connect to Arabella via the damage signal",
+  );
+});

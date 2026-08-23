@@ -1058,7 +1058,20 @@ const PRODUCERS = {
   // specific template found grounded in real cards; a fully generic
   // "damage matters" payoff still doesn't have a clean, confidently-
   // verified phrasing the way tokens/counters/graveyard payoffs do.
-  damage: /deals? \d+ damage/i,
+  // Founder #085: found via a real Arabella, Abandoned Doll comparison —
+  // her real "Whenever Arabella attacks, it deals X damage to each
+  // opponent..." never registered as a damage producer at all, since the
+  // old pattern required a literal digit — "X" (or "that much", the same
+  // real shape Kediss, Emberclaw Familiar's damage-redirect uses) never
+  // matched. This meant Arabella could never connect to a real Curiosity-
+  // style noncombat-damage-draw aura (#048's PAYOFFS.damage) if one were
+  // attached to her — confirmed via commanderConnectionSignalsFor
+  // returning [] before this fix. Verified 27 real commanders use "deals
+  // X damage" and 27 more use "deals that much damage" via Scryfall
+  // (also Balin, Loremaster; Crystal, Inhuman Princess) — variable-amount
+  // damage is at least as common as fixed-number damage among real
+  // commander pingers, not a rare edge case.
+  damage: /deals? (?:\d+|x|that much) damage/i,
 };
 
 const PAYOFFS = {
