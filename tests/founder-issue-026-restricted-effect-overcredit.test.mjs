@@ -2658,6 +2658,57 @@ test("Founder #078: a Human-tribal-quantity-threshold commander reserves real on
   assert.ok(humansSelected >= 8, `expected most of the 10 real on-type Humans to be reserved as anchors, got ${humansSelected}`);
 });
 
+// Founder #081: found via a real Najeela, the Blade-Blossom comparison —
+// one of the format's single most powerful and popular Warrior tribal
+// commanders. Her real text ("Whenever a Warrior attacks, you may have
+// its controller create a 1/1 white Warrior creature token...") has
+// neither "you control" (unlike every #067-#080 pattern) nor the "attack
+// with one or more" shape #067 covers — a bare "TRIBE attacks" trigger.
+// Verified 19 real commanders use a "whenever a/an TRIBE attacks" shape
+// via Scryfall — most of the raw hits are generic "opponent"/"creature"/
+// "player" (already filtered via GENERIC_SCOPE_WORDS), confirming
+// Najeela is the real, genuine beneficiary.
+test("Founder #081: commanderTribesFromOracle extracts the real \"whenever a/an TRIBE attacks\" shape (Najeela), without leaking generic \"opponent\"/\"creature\" mentions (Tahngarth, Thantis)", () => {
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Whenever a Warrior attacks, you may have its controller create a 1/1 white Warrior creature token that's tapped and attacking." }]),
+    ["warrior"],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Tahngarth can't be blocked by more than one creature.\nWhenever an opponent attacks with one or more creatures, if Tahngarth is tapped, you may have that opponent gain control of Tahngarth until end of combat." }]),
+    [],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Reach, vigilance\nAll creatures attack each combat if able.\nWhenever a creature attacks you or a planeswalker you control, put a +1/+1 counter on Thantis." }]),
+    [],
+  );
+});
+
+test("Founder #081: a Warrior-tribal-attack-payoff commander reserves real on-type anchors", () => {
+  const najeela = {
+    name: "Test Najeela", colors: ["W", "U", "B", "R", "G"],
+    oracleText: "Whenever a Warrior attacks, you may have its controller create a 1/1 white Warrior creature token that's tapped and attacking.",
+  };
+  const filler = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Spirit", manaCost: "{2}{U}", colorIdentity: ["U"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Exile target nonland permanent.", typeLine: "Instant", manaCost: "{1}{W}", colorIdentity: ["W"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof until end of turn.", typeLine: "Instant", manaCost: "{1}{B}", colorIdentity: ["B"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+  ];
+  const warriors = Array.from({ length: 10 }, (_, i) => ({
+    name: `Test Warrior ${i}`, oracleText: "Haste.", typeLine: "Creature — Human Warrior", manaCost: "{1}{R}", cmc: 2, colorIdentity: ["R"], popularityRank: 200,
+  }));
+  const gates = Array.from({ length: 20 }, (_, i) => ({
+    name: `WUBRG Gate ${i}`, oracleText: "This land enters the battlefield tapped. {T}: Add one mana of any color.", typeLine: "Land",
+    manaCost: "", colorIdentity: ["W", "U", "B", "R", "G"], producedMana: ["W", "U", "B", "R", "G"], popularityRank: 5, priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: najeela, cards: [...filler, ...warriors, ...gates],
+  });
+  const warriorsSelected = report.selected.rows.filter((row) => row.name.startsWith("Test Warrior")).length;
+  assert.ok(warriorsSelected >= 8, `expected most of the 10 real on-type Warriors to be reserved as anchors, got ${warriorsSelected}`);
+});
+
 test("Founder #039: identityTribalTypesFor merges commander-derived tribes with the player's typed note, note first", () => {
   const heiBai = { name: "Hei Bai, Forest Guardian", colors: ["W", "U", "B", "R", "G"], oracleText: heiBaiOracle };
   assert.deepEqual(identityTribalTypesFor([], heiBai, null), ["shrine"]);

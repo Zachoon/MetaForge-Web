@@ -892,6 +892,19 @@ export function commanderTribesFromOracle(commanders = []) {
     // and "Humans"/"Bears" would never match a real singular type line,
     // caught directly while verifying this fix.
     ...[...oracle.matchAll(/\byou control [a-z]+ or more ([A-Za-z][A-Za-z'-]+)\b/gi)].map((match) => singularizeTribe(match[1])),
+    // Founder #081: found via a real Najeela, the Blade-Blossom comparison
+    // — one of the format's single most powerful and popular Warrior
+    // tribal commanders. Her real text ("Whenever a Warrior attacks, you
+    // may have its controller create a 1/1 white Warrior creature
+    // token...") has neither "you control" (unlike every #067-#080
+    // pattern) nor the "attack with one or more" shape #067 covers — a
+    // bare "TRIBE attacks" trigger, deliberately firing off ANY player's
+    // Warrior, not just the caster's own. Verified 19 real commanders use
+    // a "whenever a/an TRIBE attacks" shape via Scryfall — most of the
+    // raw hits are generic "opponent"/"creature"/"player" (already
+    // filtered via GENERIC_SCOPE_WORDS), confirming Najeela is the real,
+    // genuine beneficiary of this specific shape.
+    ...[...oracle.matchAll(/\bwhenever an? ([A-Za-z][A-Za-z'-]+) attacks\b/gi)].map((match) => normalized(match[1])),
   ]).filter((term) => term && !BLUEPRINT_FILLER_WORDS.has(term) && !TRIBAL_STOP_WORDS.has(term) && !ARTIFACT_OR_TOKEN_TYPES.has(term));
 }
 
