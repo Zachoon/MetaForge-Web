@@ -91,7 +91,17 @@ export const ROLE_PATTERNS = Object.freeze({
   // not just missing "interaction". Widened to {0,45} and anchored with
   // [^.] instead of a bare "." so the window still can't cross into an
   // unrelated later sentence.
-  interaction: [/destroy target/i, /exile target/i, /counter target/i, /deals? \d+ damage (?:to|divided)/i, /return target [^.]{0,45}owner'?s hand/i, /-\d+\/-\d+/i],
+  // Founder #092 (found sourcing a real, top-rated Kinnan, Bonder Prodigy
+  // cEDH decklist from Moxfield to verify #086-#091's real-deck impact):
+  // the bare "exile target" alternative required "exile" immediately
+  // adjacent to "target", but the real "mass exile" template inserts a
+  // quantifier between them — "Exile any number of target spells"
+  // (Mindbreak Trap, a real free counterspell played in this exact
+  // decklist). Confirmed via direct test: Mindbreak Trap returned ZERO
+  // roles at all, the same failure class as #091's Cyclonic Rift. Widened
+  // to allow up to 20 characters of filler between "exile" and "target",
+  // matching the file's established narrow-window fix style.
+  interaction: [/destroy target/i, /exile [^.]{0,20}target/i, /counter target/i, /deals? \d+ damage (?:to|divided)/i, /return target [^.]{0,45}owner'?s hand/i, /-\d+\/-\d+/i],
   protection: [/hexproof/i, /indestructible/i, /phase out/i, /protection from/i, /counter target spell or ability/i],
   // Unsummon/Vapor Snag/Boomerang class: "return target creature to its
   // owner's hand" is bounce (already the `interaction` role above), not

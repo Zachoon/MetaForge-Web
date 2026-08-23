@@ -30,6 +30,20 @@ const lightningBolt = { name: "Lightning Bolt", typeLine: "Instant", oracleText:
 const cyclonicRift = { name: "Cyclonic Rift", typeLine: "Instant", oracleText: "Return target nonland permanent you don't control to its owner's hand.\nOverload {6}{U} (You may cast this spell for its overload cost. If you do, change \"target\" in its text to \"each.\")" };
 const boomerang = { name: "Boomerang", typeLine: "Instant", oracleText: "Return target permanent to its owner's hand." };
 
+// =============================================================================
+// Founder #092: sourced a real, top-rated Kinnan, Bonder Prodigy cEDH
+// decklist from Moxfield to verify #086-#091's real-deck impact. The bare
+// "exile target" alternative required "exile" immediately adjacent to
+// "target", missing the real "mass exile" template that inserts a
+// quantifier between them — "Exile any number of target spells" (Mindbreak
+// Trap, a real free counterspell played in this exact decklist). Confirmed
+// via direct test: Mindbreak Trap returned ZERO roles at all before this
+// fix, the same failure class as #091's Cyclonic Rift.
+// =============================================================================
+
+const mindbreakTrap = { name: "Mindbreak Trap", typeLine: "Instant — Trap", oracleText: "If an opponent cast three or more spells this turn, you may pay {0} rather than pay this spell's mana cost.\nExile any number of target spells." };
+const exileTargetCreature = { name: "Test Exile Removal", typeLine: "Instant", oracleText: "Exile target creature." };
+
 test("blueprint-note-and-mana.mjs's ROLE_PATTERNS.interaction recognizes the real 'damage divided among targets' shape (Fire Covenant, Arc Lightning), not just 'damage to'", () => {
   const textOf = (card) => `${card.name}\n${card.typeLine}\n${card.oracleText}`;
   assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(fireCovenant))), true);
@@ -54,4 +68,14 @@ test("blueprint-note-and-mana.mjs's ROLE_PATTERNS.interaction recognizes Cycloni
 
 test("card-role-classification.mjs's classifyNativeCard grants the 'interaction' role for Cyclonic Rift, which returned ZERO roles at all before this fix", () => {
   assert.ok(classifyNativeCard(cyclonicRift).includes("interaction"));
+});
+
+test("blueprint-note-and-mana.mjs's ROLE_PATTERNS.interaction recognizes Mindbreak Trap's real 'exile any number of target' shape, not just bare 'exile target'", () => {
+  const textOf = (card) => `${card.name}\n${card.typeLine}\n${card.oracleText}`;
+  assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(mindbreakTrap))), true);
+  assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(exileTargetCreature))), true);
+});
+
+test("card-role-classification.mjs's classifyNativeCard grants the 'interaction' role for Mindbreak Trap, which returned ZERO roles at all before this fix", () => {
+  assert.ok(classifyNativeCard(mindbreakTrap).includes("interaction"));
 });
