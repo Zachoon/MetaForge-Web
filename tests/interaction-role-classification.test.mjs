@@ -17,6 +17,19 @@ const fireCovenant = { name: "Fire Covenant", typeLine: "Instant", oracleText: "
 const arcLightning = { name: "Arc Lightning", typeLine: "Sorcery", oracleText: "Arc Lightning deals 3 damage divided as you choose among one, two, or three targets." };
 const lightningBolt = { name: "Lightning Bolt", typeLine: "Instant", oracleText: "Lightning Bolt deals 3 damage to any target." };
 
+// =============================================================================
+// Founder #091: the "return target...owner's hand" bounce alternative had
+// a {0,25} character window between "target" and "owner's hand" — too
+// narrow for Cyclonic Rift's real text ("target nonland permanent you
+// don't control to its owner's hand", 41 characters), arguably THE single
+// most iconic and powerful card in the entire Commander format. Confirmed
+// via direct test: Cyclonic Rift returned ZERO roles at all, not just
+// missing "interaction". Widened to {0,45}.
+// =============================================================================
+
+const cyclonicRift = { name: "Cyclonic Rift", typeLine: "Instant", oracleText: "Return target nonland permanent you don't control to its owner's hand.\nOverload {6}{U} (You may cast this spell for its overload cost. If you do, change \"target\" in its text to \"each.\")" };
+const boomerang = { name: "Boomerang", typeLine: "Instant", oracleText: "Return target permanent to its owner's hand." };
+
 test("blueprint-note-and-mana.mjs's ROLE_PATTERNS.interaction recognizes the real 'damage divided among targets' shape (Fire Covenant, Arc Lightning), not just 'damage to'", () => {
   const textOf = (card) => `${card.name}\n${card.typeLine}\n${card.oracleText}`;
   assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(fireCovenant))), true);
@@ -31,4 +44,14 @@ test("blueprint-note-and-mana.mjs's ROLE_PATTERNS.interaction still recognizes t
 test("card-role-classification.mjs's classifyNativeCard grants the 'interaction' role for real divided-damage removal (Fire Covenant, Arc Lightning), which returned no 'interaction' role at all before this fix", () => {
   assert.ok(classifyNativeCard(fireCovenant).includes("interaction"));
   assert.ok(classifyNativeCard(arcLightning).includes("interaction"));
+});
+
+test("blueprint-note-and-mana.mjs's ROLE_PATTERNS.interaction recognizes Cyclonic Rift's real, longer 'return target...owner's hand' clause (41 characters), not just Boomerang's short pre-existing wording", () => {
+  const textOf = (card) => `${card.name}\n${card.typeLine}\n${card.oracleText}`;
+  assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(cyclonicRift))), true);
+  assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(boomerang))), true);
+});
+
+test("card-role-classification.mjs's classifyNativeCard grants the 'interaction' role for Cyclonic Rift, which returned ZERO roles at all before this fix", () => {
+  assert.ok(classifyNativeCard(cyclonicRift).includes("interaction"));
 });

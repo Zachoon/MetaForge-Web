@@ -81,7 +81,17 @@ export const ROLE_PATTERNS = Object.freeze({
   // Fire Covenant (a real, popular EDH removal spell — see #041's earlier
   // fix, which used this same card for a different signal) returned no
   // "interaction" role at all.
-  interaction: [/destroy target/i, /exile target/i, /counter target/i, /deals? \d+ damage (?:to|divided)/i, /return target .{0,25}owner'?s hand/i, /-\d+\/-\d+/i],
+  // Founder #091 (found immediately after #090, same array): the
+  // "return target...owner's hand" bounce alternative had a {0,25}
+  // character window between "target" and "owner's hand" — too narrow
+  // for Cyclonic Rift's real text ("target nonland permanent you don't
+  // control to its owner's hand", 41 characters), arguably THE single
+  // most iconic and powerful card in the entire Commander format.
+  // Confirmed via direct test: Cyclonic Rift returned ZERO roles at all,
+  // not just missing "interaction". Widened to {0,45} and anchored with
+  // [^.] instead of a bare "." so the window still can't cross into an
+  // unrelated later sentence.
+  interaction: [/destroy target/i, /exile target/i, /counter target/i, /deals? \d+ damage (?:to|divided)/i, /return target [^.]{0,45}owner'?s hand/i, /-\d+\/-\d+/i],
   protection: [/hexproof/i, /indestructible/i, /phase out/i, /protection from/i, /counter target spell or ability/i],
   // Unsummon/Vapor Snag/Boomerang class: "return target creature to its
   // owner's hand" is bounce (already the `interaction` role above), not
