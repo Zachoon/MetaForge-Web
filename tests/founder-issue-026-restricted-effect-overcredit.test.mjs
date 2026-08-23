@@ -2237,6 +2237,97 @@ test("Founder #071: a Lizard-tribal-payoff commander reserves real on-type ancho
   assert.ok(lizardsSelected >= 8, `expected most of the 10 real on-type Lizards to be reserved as anchors, got ${lizardsSelected}`);
 });
 
+// Founder #072: found via a real Krenko, Mob Boss comparison — one of the
+// format's oldest and most iconic tribal commanders. His entire identity
+// ("Create X 1/1 red Goblin creature tokens, where X is the number of
+// Goblins you control.") is a scaling clause none of the patterns above
+// cover; returned [] before this fix. Verified via Scryfall: this exact
+// "the number of TRIBE you control" shape also drives The Scarab God
+// (Zombie), Voja, Jaws of the Conclave, and Abomination of Llanowar (both
+// Elf) — three more real, well-known commanders. Voja's own real text
+// has a SECOND, related tribal scaling clause in a different shape —
+// "Draw a card for each Wolf you control." — verified 43 real commanders
+// use this "for each TRIBE you control" template (Rhys the Exiled: Elf).
+// **Also caught and fixed a third, independent, pre-existing bug in the
+// same pass**, the same way #070 found "more": a negative-control test
+// for the new "number of TRIBE you control" pattern exposed that the old
+// "TRIBE creatures you control" pattern (#038-era) also captures "of" as
+// a fake tribe from the common real phrase "the number of creatures you
+// control" (13 real commanders via Scryfall, including Adeline,
+// Resplendent Cathar). Added "of" to TRIBAL_STOP_WORDS.
+test("Founder #072: commanderTribesFromOracle extracts the real \"number of TRIBE you control\" scaling shape (Krenko) and the real \"for each TRIBE you control\" shape (Voja's second clause), without leaking \"of\" as a fake tribe from the unrelated \"number of creatures you control\" phrasing (Adeline)", () => {
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "{T}: Create X 1/1 red Goblin creature tokens, where X is the number of Goblins you control." }]),
+    ["goblin"],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "At the beginning of your upkeep, each opponent loses X life and you scry X, where X is the number of Zombies you control." }]),
+    ["zombie"],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Vigilance, trample, ward {3}\nWhenever Voja attacks, put X +1/+1 counters on each creature you control, where X is the number of Elves you control. Draw a card for each Wolf you control." }]),
+    ["wolf", "elf"],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Whenever Rhys attacks, you gain 1 life for each Elf you control." }]),
+    ["elf"],
+  );
+  // "artifact" (Akiri, Line-Slinger's real "for each artifact you
+  // control") and a multi-word qualified "creature" clause (Duskana, the
+  // Rage Mother's real "for each creature you control with base power
+  // and toughness 2/2") must not become fake tribes.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "First strike, vigilance\nAkiri gets +1/+0 for each artifact you control." }]),
+    [],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "When Duskana enters, draw a card for each creature you control with base power and toughness 2/2." }]),
+    [],
+  );
+  // A real qualifier word between "number of" and the tribe (Ben-Ben,
+  // Akki Hermit's real "the number of untapped Mountains you control")
+  // must not match at all — the pattern only ever captures the word
+  // directly adjacent to "number of".
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "{T}: Ben-Ben deals damage to target attacking creature equal to the number of untapped Mountains you control." }]),
+    [],
+  );
+  // The real, common "number of creatures you control" phrasing (13 real
+  // commanders, including Adeline, Resplendent Cathar) must not leak "of"
+  // as a fake tribe via the pre-existing "TRIBE creatures you control"
+  // pattern.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Creatures you control get +1/+1 for as long as you attacked with three or more creatures this turn, and gain flying equal to the number of creatures you control until end of turn." }]),
+    [],
+  );
+});
+
+test("Founder #072: a Goblin-tribal-scaling commander reserves real on-type anchors", () => {
+  const krenko = {
+    name: "Test Krenko", colors: ["R"],
+    oracleText: "{T}: Create X 1/1 red Goblin creature tokens, where X is the number of Goblins you control.",
+  };
+  const filler = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Spirit", manaCost: "{2}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Deal 3 damage to any target.", typeLine: "Instant", manaCost: "{1}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof until end of turn.", typeLine: "Instant", manaCost: "{1}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+  ];
+  const goblins = Array.from({ length: 10 }, (_, i) => ({
+    name: `Test Goblin ${i}`, oracleText: "Haste.", typeLine: "Creature — Goblin Warrior", manaCost: "{1}{R}", cmc: 2, colorIdentity: ["R"], popularityRank: 200,
+  }));
+  const rocks = Array.from({ length: 20 }, (_, i) => ({
+    name: `R Rock ${i}`, oracleText: "{T}: Add {R}.", typeLine: "Artifact",
+    manaCost: "{2}", colorIdentity: [], producedMana: ["R"], popularityRank: 5, priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: krenko, cards: [...filler, ...goblins, ...rocks],
+  });
+  const goblinsSelected = report.selected.rows.filter((row) => row.name.startsWith("Test Goblin")).length;
+  assert.ok(goblinsSelected >= 8, `expected most of the 10 real on-type Goblins to be reserved as anchors, got ${goblinsSelected}`);
+});
+
 test("Founder #039: identityTribalTypesFor merges commander-derived tribes with the player's typed note, note first", () => {
   const heiBai = { name: "Hei Bai, Forest Guardian", colors: ["W", "U", "B", "R", "G"], oracleText: heiBaiOracle };
   assert.deepEqual(identityTribalTypesFor([], heiBai, null), ["shrine"]);

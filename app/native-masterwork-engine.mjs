@@ -521,7 +521,14 @@ const GENERIC_SCOPE_WORDS = new Set(["card", "creature", "permanent", "player", 
 // history), is excluded at the pattern itself via a negative lookahead
 // rather than enumerated here, since any negated type/quality word is
 // definitionally not a real creature type.
-const TRIBAL_STOP_WORDS = new Set(["target", "equipped", "enchanted", "attacking", "blocking", "tapped", "untapped", "nontoken", "other", "another", "each", "all", "more", "historic", "black", "white", "blue", "red", "green", "colorless", "multicolored", "legendary", ...GENERIC_SCOPE_WORDS]);
+// Founder #072: "of" — found the same way #070 found "more": a synthetic
+// negative-control test for the new "number of TRIBE you control" scaling
+// pattern (below) exposed that the pre-existing "TRIBE creatures you
+// control" pattern also captures "of" as a fake tribe from the common
+// real phrase "the number of creatures you control" (13 real commanders
+// via Scryfall, including Adeline, Resplendent Cathar). Pre-existing bug,
+// not introduced by #072's own new patterns.
+const TRIBAL_STOP_WORDS = new Set(["target", "equipped", "enchanted", "attacking", "blocking", "tapped", "untapped", "nontoken", "other", "another", "each", "all", "more", "of", "historic", "black", "white", "blue", "red", "green", "colorless", "multicolored", "legendary", ...GENERIC_SCOPE_WORDS]);
 
 const ARTIFACT_OR_TOKEN_TYPES = new Set([
   "clue", "treasure", "food", "gold", "blood", "map", "junk", "powerstone",
@@ -764,6 +771,34 @@ export function commanderTribesFromOracle(commanders = []) {
     // this lookahead was added). "historic" doesn't start with "non-" so
     // it needed its own TRIBAL_STOP_WORDS entry instead — see above.
     ...[...oracle.matchAll(/\bcast (?:a|an) (?!non-?[A-Za-z])([A-Za-z][A-Za-z'-]+) spell\b/gi)].map((match) => normalized(match[1])),
+    // Founder #072: found via a real Krenko, Mob Boss comparison — one of
+    // the format's oldest and most iconic tribal commanders. His entire
+    // identity ("Create X 1/1 red Goblin creature tokens, where X is the
+    // number of Goblins you control.") is a scaling clause none of the
+    // patterns above cover; returned [] before this fix. Verified via
+    // Scryfall: this exact "the number of TRIBE you control" shape also
+    // drives The Scarab God (Zombie) and Voja, Jaws of the Conclave and
+    // Abomination of Llanowar (both Elf) — three more real, well-known
+    // commanders, not a one-off. Plural in real text ("Goblins",
+    // "Zombies", "Elves"), so needs singularizeTribe, same as #067/#068's
+    // plural captures. A real "untapped Mountains"-style qualifier word
+    // between "number of" and the tribe (Ben-Ben, Akki Hermit's real
+    // text) or a multi-word "basic land types among lands" clause
+    // (Bortuk Bonerattle) correctly produces no match at all — the
+    // pattern only ever captures the single word directly adjacent to
+    // "number of", same discipline as every other pattern here.
+    ...[...oracle.matchAll(/\bnumber of ([A-Za-z][A-Za-z'-]+) you control\b/gi)].map((match) => singularizeTribe(match[1])),
+    // Founder #072 (second, related shape, same commit): Voja's own real
+    // text has a SECOND tribal scaling clause in a different shape —
+    // "Draw a card for each Wolf you control." Verified 43 real commanders
+    // use this "for each TRIBE you control" template via Scryfall (Rhys
+    // the Exiled: Elf; real, recurring, not narrow like #071's 4-card
+    // "cast a TRIBE spell" shape). Unlike #072's own "number of" sibling
+    // above, the real source text here is already singular ("for each
+    // Elf you control", not "Elves") — normalized alone is correct,
+    // singularizeTribe is not needed and would be a safe no-op if it
+    // were used, but matching the actual source grammar is clearer.
+    ...[...oracle.matchAll(/\bfor each ([A-Za-z][A-Za-z'-]+) you control\b/gi)].map((match) => normalized(match[1])),
   ]).filter((term) => term && !BLUEPRINT_FILLER_WORDS.has(term) && !TRIBAL_STOP_WORDS.has(term) && !ARTIFACT_OR_TOKEN_TYPES.has(term));
 }
 
