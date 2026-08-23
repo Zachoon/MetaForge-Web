@@ -101,7 +101,38 @@ export const ROLE_PATTERNS = Object.freeze({
   // roles at all, the same failure class as #091's Cyclonic Rift. Widened
   // to allow up to 20 characters of filler between "exile" and "target",
   // matching the file's established narrow-window fix style.
-  interaction: [/destroy target/i, /exile [^.]{0,20}target/i, /counter target/i, /deals? \d+ damage (?:to|divided)/i, /return target [^.]{0,45}owner'?s hand/i, /-\d+\/-\d+/i],
+  // Founder #093 (mined all ~3,568 unique cards across ~80 already-scraped
+  // real Moxfield decklists through classifyNativeCard directly, looking
+  // for zero-role results the same way #092 found Mindbreak Trap — the
+  // highest-yield single pass of the whole audit thread): two more real,
+  // distinct gaps in this exact array.
+  // (1) The bounce alternative required literal singular "target" right
+  // after "return", and singular "owner's hand" (apostrophe before the
+  // s). Real mass-bounce templates drop "target" entirely ("Return all
+  // creatures to their owners' hands" — Evacuation, Whelming Wave,
+  // Aetherize) or pluralize to "owners' hands" (apostrophe after the s —
+  // Undo, Step Through). Confirmed via direct test: Evacuation and
+  // Whelming Wave, two of the format's most reprinted mass-bounce board
+  // wipes, both returned ZERO roles. Replaced with a pattern that accepts
+  // any owner/owners possessive form before "hand(s)", without requiring
+  // "target" — validated against the full mined corpus (63 newly-matching
+  // real cards, zero false positives: every match genuinely contains a
+  // real "return ... owner('s/s') hand(s)" clause).
+  // (2) "Fight" effects (Savage Punch, Outmuscle) and their "deals damage
+  // equal to its power" cousins (Infectious Bite, Ram Through) are a
+  // whole real green/red removal sub-archetype with no coverage at all —
+  // neither the literal word "fight(s)" nor power-based (non-literal-
+  // digit) damage matched anything here. Both confirmed via direct test
+  // to return ZERO roles beforehand. The bare word "fights?" alone would
+  // false-positive on any card whose own NAME contains "Fight" (cardText
+  // scans the name too — Food Fight, a real card with an unrelated
+  // damage ability, confirmed via direct test to trip a bare word-
+  // boundary match) since it has no real fight ability at all — scoped to
+  // "fights target/another/up to/a different" instead, the real templates
+  // fight effects use, which correctly excludes Food Fight while still
+  // catching all 25 real fight/power-damage removal cards found in the
+  // mined corpus with zero false positives.
+  interaction: [/destroy target/i, /exile [^.]{0,20}target/i, /counter target/i, /deals? \d+ damage (?:to|divided)/i, /return [^.]{0,60}owners?['’]?s?\s+hands?/i, /-\d+\/-\d+/i, /\bfights? (?:target|another|up to|a different)\b/i, /deals? damage equal to its power/i],
   protection: [/hexproof/i, /indestructible/i, /phase out/i, /protection from/i, /counter target spell or ability/i],
   // Unsummon/Vapor Snag/Boomerang class: "return target creature to its
   // owner's hand" is bounce (already the `interaction` role above), not

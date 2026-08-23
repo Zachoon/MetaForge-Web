@@ -44,6 +44,39 @@ const boomerang = { name: "Boomerang", typeLine: "Instant", oracleText: "Return 
 const mindbreakTrap = { name: "Mindbreak Trap", typeLine: "Instant — Trap", oracleText: "If an opponent cast three or more spells this turn, you may pay {0} rather than pay this spell's mana cost.\nExile any number of target spells." };
 const exileTargetCreature = { name: "Test Exile Removal", typeLine: "Instant", oracleText: "Exile target creature." };
 
+// =============================================================================
+// Founder #093: mined all ~3,568 unique cards across ~80 already-scraped
+// real Moxfield decklists through classifyNativeCard directly, looking for
+// zero-role results the same way #092 found Mindbreak Trap — the
+// highest-yield single pass of the whole audit thread. Two more real,
+// distinct gaps surfaced in this exact array.
+// (1) The bounce alternative required literal singular "target" right
+// after "return" and singular "owner's hand". Real mass-bounce templates
+// drop "target" entirely (Evacuation: "Return all creatures to their
+// owners' hands") or pluralize to "owners' hands" (apostrophe after the
+// s — Undo: "Return two target creatures to their owners' hands").
+// Confirmed via direct test: Evacuation and Whelming Wave, two of the
+// format's most reprinted mass-bounce board wipes, both returned ZERO
+// roles. Validated the widened pattern against the full mined corpus: 63
+// newly-matching real cards, zero false positives.
+// (2) "Fight" effects (Savage Punch, Outmuscle) and their "deals damage
+// equal to its power" cousins (Infectious Bite, Ram Through) are a real
+// green/red removal sub-archetype with no coverage at all. A bare
+// "fights?" word-boundary match would false-positive on Food Fight (a
+// real card with an unrelated damage ability — cardText scans the card's
+// own name too, and "Fight" is a whole word inside "Food Fight"), so
+// scoped to "fights target/another/up to/a different" instead — the real
+// templates fight effects use. Validated against the full mined corpus:
+// 25 real fight/power-damage removal cards matched, Food Fight correctly
+// excluded, zero other false positives.
+// =============================================================================
+
+const evacuation = { name: "Evacuation", typeLine: "Instant", oracleText: "Return all creatures to their owners' hands." };
+const whelmingWave = { name: "Whelming Wave", typeLine: "Sorcery", oracleText: "Return all creatures to their owners' hands except for Krakens, Leviathans, Octopuses, and Serpents." };
+const savagePunch = { name: "Savage Punch", typeLine: "Sorcery", oracleText: "Target creature you control fights target creature you don't control.\nFerocious — The creature you control gets +2/+2 until end of turn before it fights if it has power 4 or greater." };
+const infectiousBite = { name: "Infectious Bite", typeLine: "Instant", oracleText: "Target creature you control deals damage equal to its power to target creature you don't control. Each opponent gets a poison counter." };
+const foodFight = { name: "Food Fight", typeLine: "Enchantment", oracleText: "Artifacts you control have \"{2}, Sacrifice this artifact: It deals damage to any target equal to 1 plus the number of permanents named Food Fight you control.\"" };
+
 test("blueprint-note-and-mana.mjs's ROLE_PATTERNS.interaction recognizes the real 'damage divided among targets' shape (Fire Covenant, Arc Lightning), not just 'damage to'", () => {
   const textOf = (card) => `${card.name}\n${card.typeLine}\n${card.oracleText}`;
   assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(fireCovenant))), true);
@@ -78,4 +111,30 @@ test("blueprint-note-and-mana.mjs's ROLE_PATTERNS.interaction recognizes Mindbre
 
 test("card-role-classification.mjs's classifyNativeCard grants the 'interaction' role for Mindbreak Trap, which returned ZERO roles at all before this fix", () => {
   assert.ok(classifyNativeCard(mindbreakTrap).includes("interaction"));
+});
+
+test("blueprint-note-and-mana.mjs's ROLE_PATTERNS.interaction recognizes real mass-bounce shapes without a literal 'target' word or with plural 'owners'' hands (Evacuation, Whelming Wave)", () => {
+  const textOf = (card) => `${card.name}\n${card.typeLine}\n${card.oracleText}`;
+  assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(evacuation))), true);
+  assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(whelmingWave))), true);
+});
+
+test("card-role-classification.mjs's classifyNativeCard grants the 'interaction' role for Evacuation and Whelming Wave, which returned ZERO roles at all before this fix", () => {
+  assert.ok(classifyNativeCard(evacuation).includes("interaction"));
+  assert.ok(classifyNativeCard(whelmingWave).includes("interaction"));
+});
+
+test("blueprint-note-and-mana.mjs's ROLE_PATTERNS.interaction recognizes real fight-based and power-based-damage removal (Savage Punch, Infectious Bite)", () => {
+  const textOf = (card) => `${card.name}\n${card.typeLine}\n${card.oracleText}`;
+  assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(savagePunch))), true);
+  assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(infectiousBite))), true);
+});
+
+test("card-role-classification.mjs's classifyNativeCard grants the 'interaction' role for Savage Punch and Infectious Bite, which returned ZERO roles at all before this fix", () => {
+  assert.ok(classifyNativeCard(savagePunch).includes("interaction"));
+  assert.ok(classifyNativeCard(infectiousBite).includes("interaction"));
+});
+
+test("the new bare 'fights?' shape does not false-positive on Food Fight, a real card whose own NAME contains the word 'Fight' but has an unrelated damage ability", () => {
+  assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(`${foodFight.name}\n${foodFight.typeLine}\n${foodFight.oracleText}`)), false);
 });
