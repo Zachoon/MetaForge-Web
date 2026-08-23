@@ -528,7 +528,14 @@ const GENERIC_SCOPE_WORDS = new Set(["card", "creature", "permanent", "player", 
 // real phrase "the number of creatures you control" (13 real commanders
 // via Scryfall, including Adeline, Resplendent Cathar). Pre-existing bug,
 // not introduced by #072's own new patterns.
-const TRIBAL_STOP_WORDS = new Set(["target", "equipped", "enchanted", "attacking", "blocking", "tapped", "untapped", "nontoken", "other", "another", "each", "all", "more", "of", "historic", "black", "white", "blue", "red", "green", "colorless", "multicolored", "legendary", ...GENERIC_SCOPE_WORDS]);
+// Founder #076: the five basic land type names — real land subtypes, not
+// creature types — sit in the same "search your library for TYPE card(s)"
+// capture position (below) a real tribe occupies (Korlash, Heir to
+// Blackblade's real "Search your library for up to two Swamp cards...").
+// ARTIFACT_OR_TOKEN_TYPES already excludes the generic "land"/"nonland",
+// but not the five specific basic type names, which the new pattern's
+// capture position exposes directly for the first time.
+const TRIBAL_STOP_WORDS = new Set(["target", "equipped", "enchanted", "attacking", "blocking", "tapped", "untapped", "nontoken", "other", "another", "each", "all", "more", "of", "historic", "plains", "island", "swamp", "mountain", "forest", "black", "white", "blue", "red", "green", "colorless", "multicolored", "legendary", ...GENERIC_SCOPE_WORDS]);
 
 const ARTIFACT_OR_TOKEN_TYPES = new Set([
   "clue", "treasure", "food", "gold", "blood", "map", "junk", "powerstone",
@@ -823,6 +830,24 @@ export function commanderTribesFromOracle(commanders = []) {
     // singularizeTribe is not needed and would be a safe no-op if it
     // were used, but matching the actual source grammar is clearer.
     ...[...oracle.matchAll(/\bfor each ([A-Za-z][A-Za-z'-]+) you control\b/gi)].map((match) => normalized(match[1])),
+    // Founder #076: found via a real Tiamat comparison — one of the
+    // single most iconic Dragon tribal commanders in all of Magic. Her
+    // real text ("search your library for up to five Dragon cards...")
+    // is a TUTOR shape, structurally distinct from every existing pattern
+    // here: PUT_TYPE_CARD_ONTO_BATTLEFIELD requires "onto the
+    // battlefield" (a cheat-into-play, not a search-to-hand), and
+    // REVEAL_UNTIL_TYPE_CARD requires "reveal ... until you reveal" (a
+    // dig, not a direct tutor). None of them match "search your library
+    // for" at all. Verified 8 real commanders use a "search your library
+    // for [quantity] TYPE cards" shape via Scryfall (Kura, the Boundless
+    // Sky: land, already filtered; Korlash, Heir to Blackblade: Swamp —
+    // see the TRIBAL_STOP_WORDS basic-land-type addition above, shipped
+    // in the same commit as required hardening, not speculative; Bilbo,
+    // Birthday Celebrant: creature, already filtered). Handles all three
+    // real quantity-phrase shapes ("up to <N>", "any number of", bare
+    // "a"/"an") and an optional trailing "s" on "card" for the plural
+    // quantified cases.
+    ...[...oracle.matchAll(/\bsearch your library for (?:up to [a-z]+ |any number of |a |an )?([A-Za-z][A-Za-z'-]+) cards?\b/gi)].map((match) => normalized(match[1])),
   ]).filter((term) => term && !BLUEPRINT_FILLER_WORDS.has(term) && !TRIBAL_STOP_WORDS.has(term) && !ARTIFACT_OR_TOKEN_TYPES.has(term));
 }
 

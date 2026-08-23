@@ -2433,6 +2433,69 @@ test("Founder #075: a Dinosaur-tribal-cheat commander reserves real on-type anch
   assert.ok(dinosaursSelected >= 8, `expected most of the 10 real on-type Dinosaurs to be reserved as anchors, got ${dinosaursSelected}`);
 });
 
+// Founder #076: found via a real Tiamat comparison — one of the single
+// most iconic Dragon tribal commanders in all of Magic. Her real text
+// ("search your library for up to five Dragon cards...") is a TUTOR
+// shape none of the existing patterns cover — PUT_TYPE_CARD_ONTO_BATTLEFIELD
+// requires "onto the battlefield" (a cheat-into-play), REVEAL_UNTIL_TYPE_CARD
+// requires "reveal ... until you reveal" (a dig). Verified 8 real
+// commanders use a "search your library for [quantity] TYPE cards" shape
+// via Scryfall (Kura, the Boundless Sky: land, already filtered; Korlash,
+// Heir to Blackblade: Swamp — a basic land type name, added to
+// TRIBAL_STOP_WORDS in the same commit; Bilbo, Birthday Celebrant:
+// creature, already filtered).
+test("Founder #076: commanderTribesFromOracle extracts the real \"search your library for [quantity] TYPE cards\" tutor shape (Tiamat), without leaking a basic land type name (Korlash's Swamp) or generic land/creature mentions (Kura, Bilbo)", () => {
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Flying\nWhen Tiamat enters, if you cast it, search your library for up to five Dragon cards not named Tiamat that each have different names, reveal them, put them into your hand, then shuffle." }]),
+    ["dragon"],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Flying, deathtouch\nWhen Kura dies, choose one —\n• Search your library for up to three land cards, reveal them, put them into your hand, then shuffle.\n• Create an X/X green Spirit creature token, where X is the number of lands you control." }]),
+    [],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Korlash's power and toughness are each equal to the number of Swamps you control.\n{1}{B}: Regenerate Korlash.\nGrandeur — Discard another card named Korlash, Heir to Blackblade: Search your library for up to two Swamp cards, put them onto the battlefield tapped, then shuffle." }]),
+    [],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "{2}{W}{B}{G}, {T}, Exile Bilbo: Search your library for any number of creature cards, put them onto the battlefield, then shuffle. Activate only if you have 111 or more life." }]),
+    [],
+  );
+  // The bare "search your library for a TYPE card" singular determiner
+  // shape must also work — verified independently of the quantity-phrase
+  // alternatives above.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "{3}: Search your library for a Merfolk card, reveal it, put it into your hand, then shuffle." }]),
+    ["merfolk"],
+  );
+});
+
+test("Founder #076: a Dragon-tribal-tutor commander reserves real on-type anchors", () => {
+  const tiamat = {
+    name: "Test Tiamat", colors: ["U", "B", "R", "G", "W"],
+    oracleText: "Flying\nWhen Tiamat enters, if you cast it, search your library for up to five Dragon cards not named Tiamat that each have different names, reveal them, put them into your hand, then shuffle.",
+  };
+  const filler = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Spirit", manaCost: "{2}{U}", colorIdentity: ["U"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Exile target nonland permanent.", typeLine: "Instant", manaCost: "{1}{W}", colorIdentity: ["W"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof until end of turn.", typeLine: "Instant", manaCost: "{1}{B}", colorIdentity: ["B"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+  ];
+  const dragons = Array.from({ length: 10 }, (_, i) => ({
+    name: `Test Dragon ${i}`, oracleText: "Flying.", typeLine: "Creature — Dragon", manaCost: "{3}{R}", cmc: 4, colorIdentity: ["R"], popularityRank: 200,
+  }));
+  const gates = Array.from({ length: 20 }, (_, i) => ({
+    name: `WUBRG Gate ${i}`, oracleText: "This land enters the battlefield tapped. {T}: Add one mana of any color.", typeLine: "Land",
+    manaCost: "", colorIdentity: ["W", "U", "B", "R", "G"], producedMana: ["W", "U", "B", "R", "G"], popularityRank: 5, priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: tiamat, cards: [...filler, ...dragons, ...gates],
+  });
+  const dragonsSelected = report.selected.rows.filter((row) => row.name.startsWith("Test Dragon")).length;
+  assert.ok(dragonsSelected >= 8, `expected most of the 10 real on-type Dragons to be reserved as anchors, got ${dragonsSelected}`);
+});
+
 test("Founder #039: identityTribalTypesFor merges commander-derived tribes with the player's typed note, note first", () => {
   const heiBai = { name: "Hei Bai, Forest Guardian", colors: ["W", "U", "B", "R", "G"], oracleText: heiBaiOracle };
   assert.deepEqual(identityTribalTypesFor([], heiBai, null), ["shrine"]);
