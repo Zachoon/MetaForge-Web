@@ -966,7 +966,26 @@ const PRODUCERS = {
   // let e.g. a pure Treasure-token commander (Smaug the Impenetrable: no
   // sacrifice or death-trigger text at all) falsely "connect" to any
   // aristocrats death-payoff card in the pool via this one shared signal.
-  sacrifice: /create(?:s)? [^.]* creature token|when [^.]* dies/i,
+  // Founder #073: found via a real Tergrid, God of Fright comparison — her
+  // real payoff ("Whenever an opponent sacrifices a nontoken permanent or
+  // discards a permanent card, you may put that card...onto the
+  // battlefield") already correctly reads as PAYOFFS.sacrifice (#055), but
+  // classic forced-sacrifice edicts (Diabolic Edict: "Target player
+  // sacrifices a creature of their choice."; Innocent Blood: "Each player
+  // sacrifices...") produced nothing at all — neither this producer
+  // pattern (they don't create tokens or have a "when X dies" trigger)
+  // nor the shared PAYOFFS.sacrifice signal alone is enough, since
+  // commanderConnectionSignalsFor requires one side's rewards to match the
+  // OTHER side's produces. Tergrid never connected to the exact classic
+  // edict effects that are her most obvious real inclusion. Verified 184
+  // real cards use a "target player/each opponent/each player sacrifices"
+  // shape via Scryfall — a large, real, previously-uncovered template.
+  // Deliberately excludes "whenever you sacrifice"/"sacrifice a creature:"
+  // (an outlet or self-sacrifice, a different real shape already covered
+  // by the curated sacrifice_outlet tag and PAYOFFS.sacrifice) by
+  // requiring an explicit third-party subject (target player/each
+  // opponent/each player/that player) immediately before "sacrifices".
+  sacrifice: /create(?:s)? [^.]* creature token|when [^.]* dies|\b(?:target player|each opponent|each player|that player) sacrifices?\b/i,
   // Founder #043: the old `/draw (?:a|one|two|three|\d+)/` only matched
   // the imperative "draw a card" phrasing — the third-person "draws" verb
   // (no space right after "draw", same class of gap as PRODUCERS.graveyard

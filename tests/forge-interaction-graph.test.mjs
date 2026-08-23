@@ -2165,3 +2165,46 @@ test("combat kinds split haste / extra / vigilance from blended combat posture",
   );
   assert.match(graph.methodology, /reach is an evasion kind/i);
 });
+
+// Founder #073: found via a real Tergrid, God of Fright comparison. Her
+// own payoff ("Whenever an opponent sacrifices a nontoken permanent or
+// discards a permanent card, you may put that card...onto the
+// battlefield") already correctly reads as PAYOFFS.sacrifice (#055), but
+// PRODUCERS.sacrifice only ever covered creature-token fodder makers and
+// "when X dies" triggers — never the classic forced-sacrifice edict shape
+// itself (Diabolic Edict, Innocent Blood). Since commanderConnectionSignalsFor
+// requires one side's rewards to match the OTHER side's produces, Tergrid
+// never connected to the exact edict effects that are her most obvious
+// real inclusion, even though both cards individually already registered
+// a "sacrifice" reward. Verified 184 real cards use a "target player/each
+// opponent/each player sacrifices" shape via Scryfall.
+test("PRODUCERS.sacrifice recognizes the real third-person forced-sacrifice edict shape (Diabolic Edict, Innocent Blood), not just creature-token fodder or 'when X dies'", () => {
+  const edict = { name: "Diabolic Edict", typeLine: "Instant", oracleText: "Target player sacrifices a creature of their choice." };
+  const innocentBlood = { name: "Innocent Blood", typeLine: "Sorcery", oracleText: "Each player sacrifices a creature of their choice." };
+  for (const card of [edict, innocentBlood]) {
+    assert.ok(extractMechanicalSignals(card).produces.includes("sacrifice"), `${card.name} should produce the sacrifice signal`);
+  }
+  // A first-person "whenever you sacrifice"/self-sacrifice cost text (not
+  // a forced third-party edict) must not match this new regex alternative
+  // specifically — verified directly against the pattern, independent of
+  // Viscera Seer's own real sacrifice_outlet database tag (this file's
+  // module-level configureInteractionGraphTagLookup at line 62 makes her
+  // legitimately produce the signal anyway, via a different mechanism
+  // than the one this test is checking).
+  const selfSacCost = { name: "Test Self-Sac Outlet", typeLine: "Creature", oracleText: "Whenever you sacrifice a permanent, draw a card." };
+  assert.equal(extractMechanicalSignals(selfSacCost).produces.includes("sacrifice"), false);
+});
+
+test("Founder #073: Tergrid's own opponent-sacrifice payoff and a real forced-sacrifice edict now correctly connect via commanderConnectionSignalsFor", () => {
+  const tergrid = { name: "Tergrid, God of Fright", colors: ["B"], oracleText: "Menace\nWhenever an opponent sacrifices a nontoken permanent or discards a permanent card, you may put that card from a graveyard onto the battlefield under your control." };
+  const edict = { name: "Diabolic Edict", typeLine: "Instant", oracleText: "Target player sacrifices a creature of their choice." };
+  const tergridScopes = commanderMechanicalScopes(tergrid);
+  const tergridMechanics = extractMechanicalSignals(tergrid);
+  const edictMechanics = extractMechanicalSignals(edict);
+  assert.ok(tergridMechanics.rewards.includes("sacrifice"), "Tergrid's own trigger should register as a sacrifice payoff");
+  assert.ok(edictMechanics.produces.includes("sacrifice"), "Diabolic Edict should register as a real sacrifice producer");
+  assert.ok(
+    commanderConnectionSignalsFor(edict, edictMechanics, tergridMechanics, tergridScopes).includes("sacrifice"),
+    "Diabolic Edict must connect to Tergrid via the sacrifice signal",
+  );
+});
