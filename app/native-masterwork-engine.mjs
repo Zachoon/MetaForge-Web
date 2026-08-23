@@ -586,9 +586,47 @@ const PUT_TYPE_CARD_ONTO_BATTLEFIELD = /you may put (?:a|an) ((?:[A-Za-z][A-Za-z
 export function commanderTribesFromOracle(commanders = []) {
   const oracle = commanders.map((commander) => String(commander?.oracleText || commander?.oracle_text || "")).join(" ");
   return unique([
-    ...[...oracle.matchAll(/\banother ([A-Za-z][A-Za-z'-]+)s? you control\b/g)].map((match) => normalized(match[1])),
-    ...[...oracle.matchAll(/\b([A-Za-z][A-Za-z'-]+) creatures you control\b/g)].map((match) => normalized(match[1])),
-    ...[...oracle.matchAll(/\b(?:a|an) ([A-Za-z][A-Za-z'-]+)s? you control\b/g)].map((match) => normalized(match[1])),
+    // Founder #068: found via a real Cosmic Spider-Man comparison — his
+    // real text ("other Spiders you control gain flying...") never
+    // matched, since the old pattern only accepted "another" (a singular
+    // determiner: "another Spider", never "another Spiders"), not the
+    // bare "other" real cards use with a plural tribe ("other Spiders",
+    // never "other Spider"). Verified 34 real cards use this "other
+    // TRIBE-PLURAL you control" shape via Scryfall, including several
+    // well-known legendary creatures/commanders (Haldir, Lórien
+    // Lieutenant: Elves; Ishkanah, Broodmother: Spiders; General Kudro of
+    // Drannith: Humans). Widened to accept "other" alongside "another",
+    // and switched from normalized to singularizeTribe (imported above
+    // for #067) since "other"'s capture is genuinely plural in real text
+    // the same way #067's "attack with" capture was — normalized alone
+    // would leave "Spiders" as "spiders", never matching a real Spider
+    // creature's singular "Spider" type line. singularizeTribe is a safe
+    // no-op on "another"'s already-singular captures too, verified
+    // directly.
+    //
+    // Also caught a second, real, independent bug while verifying the
+    // above: this pattern matched the literal keyword itself
+    // ("another"/"other") with no case-insensitive flag. General Kudro of
+    // Drannith's own real text opens a fresh sentence with it — "Other
+    // Humans you control get +1/+1." — capitalized because it's the
+    // first word of that sentence, not mid-clause after "Whenever".
+    // Verified directly against the real stored oracle text (not just a
+    // case-insensitive Scryfall search, which would give false positives
+    // here) for 6 of 7 sampled real legendary creatures: General Kudro of
+    // Drannith, Ishkanah Broodmother, Shelob Child of Ungoliant,
+    // Thranduil Sindarin Liege, Tomb Tyrant, and Jirina Kudro all
+    // genuinely open a sentence this way. The captured TRIBE word itself
+    // was never the problem (`[A-Za-z]` already covers both cases by
+    // construction) — only the literal "another"/"other" needed `/i`.
+    ...[...oracle.matchAll(/\b(?:another|other) ([A-Za-z][A-Za-z'-]+)s? you control\b/gi)].map((match) => singularizeTribe(match[1])),
+    ...[...oracle.matchAll(/\b([A-Za-z][A-Za-z'-]+) creatures you control\b/gi)].map((match) => normalized(match[1])),
+    // Added /i here too, defensively — same reasoning as the pattern
+    // above, though no real card in a real-text-verified (not just
+    // case-insensitive-search) sample of 18 candidates currently opens a
+    // sentence with capitalized "A"/"An" this way. A pure widening with
+    // no real downside, so shipped alongside the verified fix rather than
+    // held back for lack of a currently-known case.
+    ...[...oracle.matchAll(/\b(?:a|an) ([A-Za-z][A-Za-z'-]+)s? you control\b/gi)].map((match) => normalized(match[1])),
     // Founder #066: found via a real Ashling, the Limitless comparison —
     // her real text ("Elemental permanent spells you cast from your
     // hand gain evoke...") has a type-qualifier word (permanent/creature/

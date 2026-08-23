@@ -1984,6 +1984,43 @@ test("Founder #067: a Knight-tribal-cheat commander reserves real on-type anchor
   assert.ok(knightsSelected >= 8, `expected most of the 10 real on-type Knights to be reserved as anchors, got ${knightsSelected}`);
 });
 
+// Founder #068: three real, independently-verified bugs found and fixed
+// in the same pass while investigating a real Cosmic Spider-Man
+// comparison. (1) The old "another TRIBE you control" pattern never
+// accepted bare "other" — Cosmic Spider-Man's real text ("other Spiders
+// you control gain flying...") never matched. (2) "other"'s capture is
+// genuinely plural in real text ("Spiders"/"Zombies", not "Spider"/
+// "Zombie"), which exposed a real, independent bug in singularizeTribe
+// itself: Death Baron's real text ("...other Zombies you control get
+// +1/+1...", verified via Scryfall) would singularize to "zomby", not
+// "zombie", without the fix in strategic-intent.mjs. (3) The literal
+// keyword "another"/"other" was matched with no case-insensitive flag —
+// General Kudro of Drannith's real text genuinely opens a fresh sentence
+// with it ("Other Humans you control get +1/+1."), verified directly
+// against the real stored oracle text (not a case-insensitive Scryfall
+// search, which would give false positives here).
+test("Founder #068: commanderTribesFromOracle recognizes bare 'other' (not just 'another'), correctly singularizes real plural captures, and matches capitalized sentence-initial usage", () => {
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Flying, first strike, trample, lifelink, haste\nAt the beginning of combat on your turn, other Spiders you control gain flying, first strike, trample, lifelink, and haste until end of turn." }]),
+    ["spider"],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Skeletons you control and other Zombies you control get +1/+1 and have deathtouch." }]),
+    ["zombie"],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Other Humans you control get +1/+1.\nWhenever General Kudro or another Human you control enters, exile target card from an opponent's graveyard." }]),
+    ["human"],
+  );
+  // The pre-existing lowercase, mid-sentence "another TRIBE you control"
+  // shape (Champion of the Perished's real "Whenever another Zombie you
+  // control enters...") must still work unchanged.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Whenever another Zombie you control enters, put a +1/+1 counter on this creature." }]),
+    ["zombie"],
+  );
+});
+
 test("Founder #039: identityTribalTypesFor merges commander-derived tribes with the player's typed note, note first", () => {
   const heiBai = { name: "Hei Bai, Forest Guardian", colors: ["W", "U", "B", "R", "G"], oracleText: heiBaiOracle };
   assert.deepEqual(identityTribalTypesFor([], heiBai, null), ["shrine"]);

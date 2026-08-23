@@ -286,6 +286,17 @@ export function singularizeTribe(word = "") {
   // already intends dwarf. Not a commander-name branch.
   if (w === "dwarve") return "dwarf";
   if (w === "faeries" || w === "faery") return "faerie";
+  // Founder #068: found via a real Death Baron comparison ("Skeletons you
+  // control and other Zombies you control get +1/+1...", verified via
+  // Scryfall) once native-masterwork-engine.mjs's commanderTribesFromOracle
+  // started reusing this helper for its "other TRIBE-PLURAL you control"
+  // capture. "Zombies" hits the "ies" rule below and comes out "zomby" —
+  // that rule assumes the singular ends in a bare consonant + y (spy ->
+  // spies), but Zombie already ends in "ie" before the plural s. Checked
+  // Scryfall's own official creature-type catalog directly: only two real
+  // types end in "ie" at all — Faerie (already handled above) and Zombie
+  // — so this is a complete fix, not a guess at a broader rule.
+  if (w === "zombies") return "zombie";
   if (w.endsWith("ves") && w.length > 4) return `${w.slice(0, -3)}f`;
   if (w.endsWith("ies") && w.length > 4) return `${w.slice(0, -3)}y`;
   if (w.endsWith("s") && !w.endsWith("ss") && !w.endsWith("us") && !w.endsWith("is")) return w.slice(0, -1);
