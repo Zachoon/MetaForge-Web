@@ -508,7 +508,20 @@ const GENERIC_SCOPE_WORDS = new Set(["card", "creature", "permanent", "player", 
 // pattern's own negative control. Verified 67 real cards use the "one or
 // more creatures you control" phrasing via Scryfall, including at least
 // one other real legendary creature (Disa the Restless) beyond Aang.
-const TRIBAL_STOP_WORDS = new Set(["target", "equipped", "enchanted", "attacking", "blocking", "tapped", "untapped", "nontoken", "other", "another", "each", "all", "more", "black", "white", "blue", "red", "green", "colorless", "multicolored", "legendary", ...GENERIC_SCOPE_WORDS]);
+// Founder #071: "historic" — a real type qualifier, not a creature type —
+// sits in the same "cast a WORD spell" capture position (below) a real
+// tribe occupies (Gev, Scaled Scorch's real "Whenever you cast a Lizard
+// spell..."). Confirmed, real risk: 13 real commanders use "cast a
+// historic spell" (Scryfall-verified). The much more common sibling risk,
+// any "cast a non-WORD spell" (68 real commanders use "cast a
+// noncreature spell" alone, including Vibranium Sovereign's real
+// "...can't be spent to cast a nonartifact spell", caught by this
+// session's own pre-existing test suite, plus a noncreature-spell-payoff
+// commander fixed by an earlier, unrelated round in this file's own
+// history), is excluded at the pattern itself via a negative lookahead
+// rather than enumerated here, since any negated type/quality word is
+// definitionally not a real creature type.
+const TRIBAL_STOP_WORDS = new Set(["target", "equipped", "enchanted", "attacking", "blocking", "tapped", "untapped", "nontoken", "other", "another", "each", "all", "more", "historic", "black", "white", "blue", "red", "green", "colorless", "multicolored", "legendary", ...GENERIC_SCOPE_WORDS]);
 
 const ARTIFACT_OR_TOKEN_TYPES = new Set([
   "clue", "treasure", "food", "gold", "blood", "map", "junk", "powerstone",
@@ -730,6 +743,27 @@ export function commanderTribesFromOracle(commanders = []) {
     // unrelated real cards) does not match at all, since "deal" and
     // "deals" are different words — verified directly.
     ...[...oracle.matchAll(/\b([A-Za-z][A-Za-z'-]+) you control deal\b/gi)].map((match) => singularizeTribe(match[1])),
+    // Founder #071: found via a real Gev, Scaled Scorch comparison — his
+    // real text ("Whenever you cast a Lizard spell, Gev deals 1 damage to
+    // target opponent.") is the reverse word order of the existing "TRIBE
+    // spells you cast" pattern above (that one requires the tribe BEFORE
+    // "spells", this real template puts "cast a/an" first and the tribe
+    // immediately before the trailing "spell") — a structurally distinct
+    // real shape, not a superset. Verified via Scryfall: only 4 real
+    // commanders use this exact "cast a/an TRIBE spell" trigger shape
+    // (Rohgahh, Kher Keep Overlord: Kobold AND, in a second clause,
+    // Dragon; Katilda and Lier: Human; Emperor Mihail II: Merfolk) — a
+    // deliberately narrow template, unlike #066's 57-card "TRIBE TYPE-WORD
+    // spells you cast" shape, but still real and currently invisible
+    // (Gev's own trigger returned [] before this fix). A negative
+    // lookahead excludes any "non-WORD" type qualifier ("nonartifact",
+    // "noncreature", "nonland", ...) from being captured as a fake tribe
+    // — caught for real by this session's own pre-existing test suite
+    // (Vibranium Sovereign's real "...can't be spent to cast a
+    // nonartifact spell" broke a Three Tree City typal-gating test before
+    // this lookahead was added). "historic" doesn't start with "non-" so
+    // it needed its own TRIBAL_STOP_WORDS entry instead — see above.
+    ...[...oracle.matchAll(/\bcast (?:a|an) (?!non-?[A-Za-z])([A-Za-z][A-Za-z'-]+) spell\b/gi)].map((match) => normalized(match[1])),
   ]).filter((term) => term && !BLUEPRINT_FILLER_WORDS.has(term) && !TRIBAL_STOP_WORDS.has(term) && !ARTIFACT_OR_TOKEN_TYPES.has(term));
 }
 

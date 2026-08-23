@@ -2163,6 +2163,80 @@ test("Founder #070: a Pirate-tribal-payoff commander reserves real on-type ancho
   assert.ok(piratesSelected >= 8, `expected most of the 10 real on-type Pirates to be reserved as anchors, got ${piratesSelected}`);
 });
 
+// Founder #071: found via a real Gev, Scaled Scorch comparison — his real
+// "Whenever you cast a Lizard spell, Gev deals 1 damage to target
+// opponent." is the reverse word order of the existing "TRIBE spells you
+// cast" pattern (#066): "cast a/an" comes first here, with the tribe
+// immediately before the trailing "spell", a structurally distinct real
+// template. Verified via Scryfall: only 4 real commanders use this exact
+// shape (Rohgahh, Kher Keep Overlord: Kobold and, in a second clause,
+// Dragon; Katilda and Lier: Human; Emperor Mihail II: Merfolk).
+// "noncreature" and "historic" — real type qualifiers, not creature
+// types — sit in the identical capture position and are confirmed,
+// high-volume real risks (68 and 13 real commanders respectively via
+// Scryfall), including Vivi Ornitier, already a fixed commander (#048)
+// elsewhere in this file — shipped as required hardening in the same
+// commit, not speculative.
+test("Founder #071: commanderTribesFromOracle extracts the real \"cast a/an TRIBE spell\" trigger shape (Gev), including a commander with two such triggers for two different tribes (Rohgahh), without leaking \"noncreature\"/\"historic\" as fake tribes", () => {
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Ward—Pay 2 life.\nOther creatures you control enter with an additional +1/+1 counter on them for each opponent who lost life this turn.\nWhenever you cast a Lizard spell, Gev deals 1 damage to target opponent." }]),
+    ["lizard"],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Other Kobolds you control get +2/+2.\nWhenever you cast a Kobold spell, you may pay {2}. If you do, create a 4/4 red Dragon creature token with flying.\nWhenever you cast a Dragon spell, create a 0/1 red Kobold creature token named Kobolds of Kher Keep." }]),
+    ["kobold", "dragon"],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "You may look at the top card of your library any time.\nYou may cast Merfolk spells from the top of your library.\nWhenever you cast a Merfolk spell, you may pay {1}. If you do, create a 1/1 blue Merfolk creature token." }]),
+    ["merfolk"],
+  );
+  // Adeliz, the Cinder Wind's real "instant or sorcery spell" trigger
+  // must not match at all — no single word sits directly between "an"
+  // and "spell" the way a real tribe would.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Flying, haste\nWhenever you cast an instant or sorcery spell, Wizards you control get +1/+1 until end of turn." }]),
+    ["wizard"],
+  );
+  // The real, very common "cast a noncreature spell" trigger (68 real
+  // commanders, including Vivi Ornitier) must not become a fake tribe.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Whenever you cast a noncreature spell, it deals 1 damage to each opponent." }]),
+    [],
+  );
+  // The real "cast a historic spell" trigger (13 real commanders) must
+  // not become a fake tribe either.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Whenever you cast a historic spell, draw a card." }]),
+    [],
+  );
+});
+
+test("Founder #071: a Lizard-tribal-payoff commander reserves real on-type anchors", () => {
+  const gev = {
+    name: "Test Gev", colors: ["R"],
+    oracleText: "Ward—Pay 2 life.\nOther creatures you control enter with an additional +1/+1 counter on them for each opponent who lost life this turn.\nWhenever you cast a Lizard spell, Gev deals 1 damage to target opponent.",
+  };
+  const filler = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Spirit", manaCost: "{2}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Deal 3 damage to any target.", typeLine: "Instant", manaCost: "{1}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof until end of turn.", typeLine: "Instant", manaCost: "{1}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+  ];
+  const lizards = Array.from({ length: 10 }, (_, i) => ({
+    name: `Test Lizard ${i}`, oracleText: "Menace.", typeLine: "Creature — Lizard Warrior", manaCost: "{1}{R}", cmc: 2, colorIdentity: ["R"], popularityRank: 200,
+  }));
+  const rocks = Array.from({ length: 20 }, (_, i) => ({
+    name: `R Rock ${i}`, oracleText: "{T}: Add {R}.", typeLine: "Artifact",
+    manaCost: "{2}", colorIdentity: [], producedMana: ["R"], popularityRank: 5, priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: gev, cards: [...filler, ...lizards, ...rocks],
+  });
+  const lizardsSelected = report.selected.rows.filter((row) => row.name.startsWith("Test Lizard")).length;
+  assert.ok(lizardsSelected >= 8, `expected most of the 10 real on-type Lizards to be reserved as anchors, got ${lizardsSelected}`);
+});
+
 test("Founder #039: identityTribalTypesFor merges commander-derived tribes with the player's typed note, note first", () => {
   const heiBai = { name: "Hei Bai, Forest Guardian", colors: ["W", "U", "B", "R", "G"], oracleText: heiBaiOracle };
   assert.deepEqual(identityTribalTypesFor([], heiBai, null), ["shrine"]);
