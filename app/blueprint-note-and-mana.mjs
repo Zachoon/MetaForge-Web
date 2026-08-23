@@ -73,7 +73,15 @@ export const ROLE_PATTERNS = Object.freeze({
   // Reused forge-interaction-graph.mjs's exact already-verified pattern
   // rather than re-deriving it.
   draw: [/draws? [^.]*?\bcards?\b/i, /look at the top .{0,40}(?:hand|exile)/i, /impulse/i],
-  interaction: [/destroy target/i, /exile target/i, /counter target/i, /deals? \d+ damage to/i, /return target .{0,25}owner'?s hand/i, /-\d+\/-\d+/i],
+  // Founder #090 (found in the same audit pass as #086-#089): the
+  // "deals N damage to" alternative missed the real "divided damage"
+  // removal template — "deals N damage divided as you choose among...
+  // targets" (Arc Lightning, Boulderfall: 73 real cards via Scryfall) has
+  // no "to" immediately after "damage" at all. Confirmed via direct test:
+  // Fire Covenant (a real, popular EDH removal spell — see #041's earlier
+  // fix, which used this same card for a different signal) returned no
+  // "interaction" role at all.
+  interaction: [/destroy target/i, /exile target/i, /counter target/i, /deals? \d+ damage (?:to|divided)/i, /return target .{0,25}owner'?s hand/i, /-\d+\/-\d+/i],
   protection: [/hexproof/i, /indestructible/i, /phase out/i, /protection from/i, /counter target spell or ability/i],
   // Unsummon/Vapor Snag/Boomerang class: "return target creature to its
   // owner's hand" is bounce (already the `interaction` role above), not
