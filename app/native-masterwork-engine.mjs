@@ -535,7 +535,16 @@ const GENERIC_SCOPE_WORDS = new Set(["card", "creature", "permanent", "player", 
 // ARTIFACT_OR_TOKEN_TYPES already excludes the generic "land"/"nonland",
 // but not the five specific basic type names, which the new pattern's
 // capture position exposes directly for the first time.
-const TRIBAL_STOP_WORDS = new Set(["target", "equipped", "enchanted", "attacking", "blocking", "tapped", "untapped", "nontoken", "other", "another", "each", "all", "more", "of", "historic", "plains", "island", "swamp", "mountain", "forest", "black", "white", "blue", "red", "green", "colorless", "multicolored", "legendary", ...GENERIC_SCOPE_WORDS]);
+// Founder #081 (found the same way #070/#072 found "more"/"of"): a
+// synthetic negative-control test for the new "whenever a/an TRIBE
+// attacks" pattern exposed that the pre-existing "TRIBE creatures you
+// control" pattern also captures "if" as a fake tribe from the real
+// "Formidable"-style template "if creatures you control have total
+// power/toughness N or greater" (4 real commanders via Scryfall —
+// Finneas, Ace Archer; Betor, Kin to All; Orysa, Tide Choreographer;
+// Surrak, the Hunt Caller). Pre-existing bug, not introduced by #081's
+// own new pattern.
+const TRIBAL_STOP_WORDS = new Set(["target", "equipped", "enchanted", "attacking", "blocking", "tapped", "untapped", "nontoken", "other", "another", "each", "all", "more", "of", "if", "historic", "plains", "island", "swamp", "mountain", "forest", "black", "white", "blue", "red", "green", "colorless", "multicolored", "legendary", ...GENERIC_SCOPE_WORDS]);
 
 const ARTIFACT_OR_TOKEN_TYPES = new Set([
   "clue", "treasure", "food", "gold", "blood", "map", "junk", "powerstone",

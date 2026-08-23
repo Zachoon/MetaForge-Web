@@ -2709,6 +2709,25 @@ test("Founder #081: a Warrior-tribal-attack-payoff commander reserves real on-ty
   assert.ok(warriorsSelected >= 8, `expected most of the 10 real on-type Warriors to be reserved as anchors, got ${warriorsSelected}`);
 });
 
+// Founder #082: found the same way #070/#072 found "more"/"of" — a
+// synthetic negative-control test for #081's new "whenever a/an TRIBE
+// attacks" pattern exposed that the pre-existing "TRIBE creatures you
+// control" pattern also captures "if" as a fake tribe from the real
+// "Formidable"-style template "if creatures you control have total
+// power/toughness N or greater". Verified 4 real commanders use this
+// exact phrasing via Scryfall (Finneas, Ace Archer; Betor, Kin to All;
+// Orysa, Tide Choreographer; Surrak, the Hunt Caller).
+test("Founder #082: commanderTribesFromOracle no longer leaks \"if\" as a fake tribe from the real \"if creatures you control have total power/toughness N or greater\" Formidable template (Finneas, Betor)", () => {
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Reach, vigilance\nWhenever Finneas attacks, put a +1/+1 counter on each other creature you control that's a token or a Rabbit. Then if creatures you control have total power 10 or greater, draw a card." }]),
+    [],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Flying\nAt the beginning of your end step, if creatures you control have total toughness 10 or greater, draw a card. Then if creatures you control have total toughness 20 or greater, untap each creature you control." }]),
+    [],
+  );
+});
+
 test("Founder #039: identityTribalTypesFor merges commander-derived tribes with the player's typed note, note first", () => {
   const heiBai = { name: "Hei Bai, Forest Guardian", colors: ["W", "U", "B", "R", "G"], oracleText: heiBaiOracle };
   assert.deepEqual(identityTribalTypesFor([], heiBai, null), ["shrine"]);
