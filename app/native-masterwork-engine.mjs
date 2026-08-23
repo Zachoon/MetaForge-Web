@@ -858,7 +858,21 @@ export function commanderTribesFromOracle(commanders = []) {
     // Boss: Vehicle, already filtered via ARTIFACT_OR_TOKEN_TYPES; Adun
     // Oakenshield and Geth, Thane of Contracts: generic "creature",
     // already filtered).
-    ...[...oracle.matchAll(/\btarget ([A-Za-z][A-Za-z'-]+) card from your graveyard\b/gi)].map((match) => normalized(match[1])),
+    // Founder #080 (same commit as originally shipped #077 pattern,
+    // widened after a real Admiral Brass, Unsinkable comparison): her
+    // real text ("return target Pirate creature card from your graveyard
+    // to the battlefield") has a type-qualifier word ("creature") sitting
+    // directly between the tribe and "card", the exact same optional-
+    // qualifier gap #063/#066/#074 each hit for a different pattern in
+    // this file. The old pattern's single-word capture grabbed "creature"
+    // itself (already a stop word, so the whole match silently produced
+    // nothing) instead of "Pirate". Verified 42 real cards use "TRIBE
+    // creature card from your graveyard" and 20 more use "TRIBE permanent
+    // card from your graveyard" via Scryfall (Bladewing the Risen:
+    // Dragon). Made "creature"/"permanent"/"artifact"/"land" optional
+    // between the tribe and "card", the same qualifier set #063 already
+    // established for PUT_TYPE_CARD_ONTO_BATTLEFIELD.
+    ...[...oracle.matchAll(/\btarget ([A-Za-z][A-Za-z'-]+) (?:creature |permanent |artifact |land )?card from your graveyard\b/gi)].map((match) => normalized(match[1])),
     // Founder #078: found via a real Éowyn, Shieldmaiden comparison — her
     // real text ("Then if you control six or more Humans, draw a card.")
     // is a quantity-threshold check none of the existing patterns cover;

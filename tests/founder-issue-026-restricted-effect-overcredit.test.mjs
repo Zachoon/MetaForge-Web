@@ -2524,6 +2524,58 @@ test("Founder #077: commanderTribesFromOracle extracts the real \"target TYPE ca
   );
 });
 
+// Founder #080 (same commit as originally shipped #077 pattern, widened
+// after a real Admiral Brass, Unsinkable comparison): his real text
+// ("return target Pirate creature card from your graveyard to the
+// battlefield") has a type-qualifier word ("creature") sitting directly
+// between the tribe and "card", the exact same optional-qualifier gap
+// #063/#066/#074 each hit for a different pattern in this file. Verified
+// 42 real cards use "TRIBE creature card from your graveyard" and 20
+// more use "TRIBE permanent card from your graveyard" via Scryfall
+// (Bladewing the Risen: Dragon).
+test("Founder #080: commanderTribesFromOracle extracts the real \"TRIBE creature/permanent card from your graveyard\" shape (Admiral Brass, Bladewing the Risen), matching #077's existing bare-tribe cases unchanged", () => {
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "When Admiral Brass enters, mill four cards.\nAt the beginning of combat on your turn, you may return target Pirate creature card from your graveyard to the battlefield with a finality counter on it. It has base power and toughness 4/4. It gains haste until end of turn." }]),
+    ["pirate"],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Flying\nWhen Bladewing enters, you may return target Dragon permanent card from your graveyard to the battlefield.\n{B}{R}: Dragon creatures get +1/+1 until end of turn." }]),
+    ["dragon"],
+  );
+  // #077's own pre-existing bare "target TYPE card from your graveyard"
+  // case (no qualifier word at all) must still work unchanged.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Menace\nWhenever this creature enters or transforms into Grub, Storied Matriarch, return up to one target Goblin card from your graveyard to your hand." }]),
+    ["goblin"],
+  );
+});
+
+test("Founder #080: a Pirate-tribal-recursion commander reserves real on-type anchors", () => {
+  const admiralBrass = {
+    name: "Test Admiral Brass", colors: ["U", "B"],
+    oracleText: "When Admiral Brass enters, mill four cards.\nAt the beginning of combat on your turn, you may return target Pirate creature card from your graveyard to the battlefield with a finality counter on it. It has base power and toughness 4/4. It gains haste until end of turn.",
+  };
+  const filler = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Spirit", manaCost: "{2}{U}", colorIdentity: ["U"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Exile target nonland permanent.", typeLine: "Instant", manaCost: "{1}{B}", colorIdentity: ["B"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof until end of turn.", typeLine: "Instant", manaCost: "{1}{U}", colorIdentity: ["U"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+  ];
+  const pirates = Array.from({ length: 10 }, (_, i) => ({
+    name: `Test Pirate ${i}`, oracleText: "Menace.", typeLine: "Creature — Human Pirate", manaCost: "{1}{B}", cmc: 2, colorIdentity: ["B"], popularityRank: 200,
+  }));
+  const gates = Array.from({ length: 20 }, (_, i) => ({
+    name: `UB Gate ${i}`, oracleText: "This land enters the battlefield tapped. {T}: Add {U} or {B}.", typeLine: "Land",
+    manaCost: "", colorIdentity: ["U", "B"], producedMana: ["U", "B"], popularityRank: 5, priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: admiralBrass, cards: [...filler, ...pirates, ...gates],
+  });
+  const piratesSelected = report.selected.rows.filter((row) => row.name.startsWith("Test Pirate")).length;
+  assert.ok(piratesSelected >= 8, `expected most of the 10 real on-type Pirates to be reserved as anchors, got ${piratesSelected}`);
+});
+
 test("Founder #077: a Goblin-tribal-recursion commander reserves real on-type anchors", () => {
   const grub = {
     name: "Test Grub", colors: ["R"],
