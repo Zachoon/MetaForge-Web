@@ -669,6 +669,34 @@ export function commanderTribesFromOracle(commanders = []) {
     // TRIBAL_STOP_WORDS above instead, alongside this pattern's own bare
     // "creatures"/"creature" already-covered case.
     ...[...oracle.matchAll(/\battack with one or more (?!non-?[A-Za-z])([A-Za-z][A-Za-z'-]+)\b/gi)].map((match) => singularizeTribe(match[1])),
+    // Founder #069: found via a real Sigarda, Champion of Light comparison
+    // — her real text ("Humans you control get +1/+1.") has NO determiner
+    // before the tribe at all (not "a/an", not "another/other" — a bare
+    // plural noun opening the sentence), a fourth shape none of the
+    // patterns above cover. Verified via Scryfall against Gisa, the
+    // Hellraiser ("Skeletons and Zombies you control get +1/+1...") and
+    // Temmet, Naktamun's Will ("...Zombies you control get +1/+1...") —
+    // both also currently return []. Deliberately captures only the
+    // single tribe word immediately before "you control get" rather than
+    // a full comma/"and"-joined list the way MULTI_TRIBE_LIST/
+    // PUT_TYPE_CARD_ONTO_BATTLEFIELD do: an early multi-word design was
+    // tested and found to have two real bugs — it grabbed only the LAST
+    // word of a two-item "X and Y" list with no Oxford comma (Gisa's
+    // "Skeletons and Zombies" produced just "Zombies", since the other
+    // patterns' list logic assumes a comma always precedes "and"), and it
+    // bled backward across an unrelated preceding clause when the tribe
+    // followed a mid-sentence comma (Temmet's "Whenever you draw a card,
+    // Zombies you control get..." captured "card, Zombies" instead of
+    // "Zombies"). The single-word capture here sidesteps both bugs at the
+    // cost of only ever getting the LAST tribe in a multi-tribe list
+    // (Gisa's Skeleton still isn't captured) — a real, smaller, documented
+    // gap left for later rather than risking either bug shipping. Plural
+    // in real text ("Humans", "Zombies"), so needs singularizeTribe the
+    // same way #067's "attack with" capture does. Verified the generic
+    // "Creatures you control get +1/+1" shape (many real cards) still
+    // correctly yields nothing — "creature" is already a stop word via
+    // GENERIC_SCOPE_WORDS.
+    ...[...oracle.matchAll(/\b([A-Za-z][A-Za-z'-]+) you control get\b/gi)].map((match) => singularizeTribe(match[1])),
   ]).filter((term) => term && !BLUEPRINT_FILLER_WORDS.has(term) && !TRIBAL_STOP_WORDS.has(term) && !ARTIFACT_OR_TOKEN_TYPES.has(term));
 }
 

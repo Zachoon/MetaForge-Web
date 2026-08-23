@@ -2021,6 +2021,67 @@ test("Founder #068: commanderTribesFromOracle recognizes bare 'other' (not just 
   );
 });
 
+// Founder #069: found via a real Sigarda, Champion of Light comparison —
+// her real text ("Humans you control get +1/+1.") has no determiner
+// before the tribe at all, a fourth shape none of #068's "another"/
+// "other"/"a"/"an" patterns cover. Verified via Scryfall.
+test("Founder #069: commanderTribesFromOracle extracts a bare, determiner-less \"TRIBE you control get\" shape (Sigarda), without leaking an unrelated preceding clause across a comma (Temmet) or a generic \"creatures\" mention", () => {
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Flying, trample\nHumans you control get +1/+1.\nCoven — Whenever Sigarda attacks, if you control three or more creatures with different powers, look at the top five cards of your library." }]),
+    ["human"],
+  );
+  // Gisa, the Hellraiser's real "Skeletons and Zombies you control get"
+  // is a known, documented partial case: the single-word capture only
+  // gets the LAST tribe in an "and"-joined list with no Oxford comma,
+  // not the full list. Getting "zombie" (not both) is the intended,
+  // narrower-but-safe behavior here — see the code comment for why a
+  // full multi-word list capture was rejected (it either drops the first
+  // item the same way, or bleeds across an unrelated preceding clause).
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Ward—{2}, Pay 2 life.\nSkeletons and Zombies you control get +1/+1 and have menace." }]),
+    ["zombie"],
+  );
+  // Temmet, Naktamun's Will's real trigger puts the tribe right after an
+  // unrelated mid-sentence comma ("Whenever you draw a card, Zombies you
+  // control get...") — must capture only "Zombies", not "card, Zombies".
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Vigilance, menace\nWhenever you attack, draw a card, then discard a card.\nWhenever you draw a card, Zombies you control get +1/+1 until end of turn." }]),
+    ["zombie"],
+  );
+  // A generic "Creatures you control get +1/+1" (many real cards) must
+  // not become a fake tribe — "creature" is already a stop word.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Creatures you control get +1/+1." }]),
+    [],
+  );
+});
+
+test("Founder #069: a Human-tribal-anthem commander reserves real on-type anchors", () => {
+  const sigarda = {
+    name: "Test Sigarda", colors: ["G", "W"],
+    oracleText: "Flying, trample\nHumans you control get +1/+1.\nCoven — Whenever Sigarda attacks, if you control three or more creatures with different powers, look at the top five cards of your library. You may reveal a Human creature card from among them and put it into your hand.",
+  };
+  const filler = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Spirit", manaCost: "{2}{G}", colorIdentity: ["G"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Exile target nonland permanent.", typeLine: "Instant", manaCost: "{1}{W}", colorIdentity: ["W"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof and indestructible until end of turn.", typeLine: "Instant", manaCost: "{1}{W}", colorIdentity: ["W"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+  ];
+  const humans = Array.from({ length: 10 }, (_, i) => ({
+    name: `Test Human ${i}`, oracleText: "Vigilance.", typeLine: "Creature — Human Soldier", manaCost: "{1}{W}", cmc: 2, colorIdentity: ["W"], popularityRank: 200,
+  }));
+  const gates = Array.from({ length: 20 }, (_, i) => ({
+    name: `GW Gate ${i}`, oracleText: "This land enters the battlefield tapped. {T}: Add {G} or {W}.", typeLine: "Land",
+    manaCost: "", colorIdentity: ["G", "W"], producedMana: ["G", "W"], popularityRank: 5, priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: sigarda, cards: [...filler, ...humans, ...gates],
+  });
+  const humansSelected = report.selected.rows.filter((row) => row.name.startsWith("Test Human")).length;
+  assert.ok(humansSelected >= 8, `expected most of the 10 real on-type Humans to be reserved as anchors, got ${humansSelected}`);
+});
+
 test("Founder #039: identityTribalTypesFor merges commander-derived tribes with the player's typed note, note first", () => {
   const heiBai = { name: "Hei Bai, Forest Guardian", colors: ["W", "U", "B", "R", "G"], oracleText: heiBaiOracle };
   assert.deepEqual(identityTribalTypesFor([], heiBai, null), ["shrine"]);
