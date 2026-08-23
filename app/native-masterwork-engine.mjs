@@ -603,7 +603,21 @@ const REVEAL_UNTIL_TYPE_CARD = /\breveal[^.]*?\breveal (?:a|an) ([A-Za-z][A-Za-z
 // "planeswalker", doesn't apply here since Planeswalker is excluded via
 // ARTIFACT_OR_TOKEN_TYPES the same way Equipment/Vehicle already are).
 // Verified Nick Fury's own multi-type extraction is unaffected.
-const PUT_TYPE_CARD_ONTO_BATTLEFIELD = /you may put (?:a|an) ((?:[A-Za-z][A-Za-z'-]+(?:,\s*)?)+(?:or\s+[A-Za-z][A-Za-z'-]+)?) (?:creature |permanent |land )?card[^.]*?\bonto the battlefield\b/gi;
+// Founder #075: found via a real Gishath, Sun's Avatar comparison — the
+// single most iconic Dinosaur tribal commander in the format. Her real
+// text ("Put any number of Dinosaur creature cards from among them onto
+// the battlefield...") never matched, since the old pattern required the
+// literal "you may put (a|an)" opening — Gishath's real template has
+// neither "you may" nor a singular determiner at all, using "Put any
+// number of" plus a plural "cards" instead. Verified via Scryfall: this
+// exact "put any number of TYPE creature cards ... onto the battlefield"
+// shape is real but narrow (9 cards total, including Ghalta, Stampede
+// Tyrant, also Dinosaur). Widened the opening to accept either the
+// existing "you may put a/an" or this new "put any number of" as
+// alternatives, and made the trailing "card" accept an optional plural
+// "s" — Kaalia's and Nick Fury's existing singular-"card" extraction
+// verified unaffected.
+const PUT_TYPE_CARD_ONTO_BATTLEFIELD = /(?:you may put (?:a|an)|put any number of) ((?:[A-Za-z][A-Za-z'-]+(?:,\s*)?)+(?:or\s+[A-Za-z][A-Za-z'-]+)?) (?:creature |permanent |land )?cards?[^.]*?\bonto the battlefield\b/gi;
 
 /**
  * Tribes implied by commander rules text ("another Bear you control",

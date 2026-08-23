@@ -2385,6 +2385,54 @@ test("Founder #074: a Wizard-tribal-Eminence commander reserves real on-type anc
   assert.ok(wizardsSelected >= 8, `expected most of the 10 real on-type Wizards to be reserved as anchors, got ${wizardsSelected}`);
 });
 
+// Founder #075: found via a real Gishath, Sun's Avatar comparison — the
+// single most iconic Dinosaur tribal commander in the format. Her real
+// text ("Put any number of Dinosaur creature cards from among them onto
+// the battlefield...") never matched PUT_TYPE_CARD_ONTO_BATTLEFIELD,
+// since the old pattern required the literal "you may put (a|an)"
+// opening — Gishath's real template has neither "you may" nor a singular
+// determiner, using "Put any number of" plus a plural "cards" instead.
+// Verified via Scryfall: this exact shape is real but narrow (9 cards
+// total, including Ghalta, Stampede Tyrant, also Dinosaur).
+test("Founder #075: commanderTribesFromOracle extracts the real \"put any number of TYPE creature cards onto the battlefield\" shape (Gishath), and #047/#063's existing 'you may put a/an TYPE card' shapes (Kaalia, Nick Fury, Winota) still work unchanged", () => {
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Vigilance, trample, haste\nWhenever Gishath deals combat damage to a player, reveal that many cards from the top of your library. Put any number of Dinosaur creature cards from among them onto the battlefield and the rest on the bottom of your library in a random order." }]),
+    ["dinosaur"],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Flying\nWhenever Kaalia attacks an opponent, you may put an Angel, Demon, or Dragon creature card from your hand onto the battlefield tapped and attacking that opponent." }]),
+    ["angel", "demon", "dragon"],
+  );
+  assert.deepEqual(commanderTribesFromOracle([{ oracleText: nickFuryOracle }]), ["hero"]);
+  assert.deepEqual(commanderTribesFromOracle([{ oracleText: winotaOracle }]), ["human"]);
+});
+
+test("Founder #075: a Dinosaur-tribal-cheat commander reserves real on-type anchors", () => {
+  const gishath = {
+    name: "Test Gishath", colors: ["R", "G", "W"],
+    oracleText: "Vigilance, trample, haste\nWhenever Gishath deals combat damage to a player, reveal that many cards from the top of your library. Put any number of Dinosaur creature cards from among them onto the battlefield and the rest on the bottom of your library in a random order.",
+  };
+  const filler = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Spirit", manaCost: "{2}{G}", colorIdentity: ["G"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Exile target nonland permanent.", typeLine: "Instant", manaCost: "{1}{W}", colorIdentity: ["W"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof until end of turn.", typeLine: "Instant", manaCost: "{1}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+  ];
+  const dinosaurs = Array.from({ length: 10 }, (_, i) => ({
+    name: `Test Dinosaur ${i}`, oracleText: "Trample.", typeLine: "Creature — Dinosaur", manaCost: "{2}{G}", cmc: 3, colorIdentity: ["G"], popularityRank: 200,
+  }));
+  const gates = Array.from({ length: 20 }, (_, i) => ({
+    name: `RGW Gate ${i}`, oracleText: "This land enters the battlefield tapped. {T}: Add {R}, {G}, or {W}.", typeLine: "Land",
+    manaCost: "", colorIdentity: ["R", "G", "W"], producedMana: ["R", "G", "W"], popularityRank: 5, priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: gishath, cards: [...filler, ...dinosaurs, ...gates],
+  });
+  const dinosaursSelected = report.selected.rows.filter((row) => row.name.startsWith("Test Dinosaur")).length;
+  assert.ok(dinosaursSelected >= 8, `expected most of the 10 real on-type Dinosaurs to be reserved as anchors, got ${dinosaursSelected}`);
+});
+
 test("Founder #039: identityTribalTypesFor merges commander-derived tribes with the player's typed note, note first", () => {
   const heiBai = { name: "Hei Bai, Forest Guardian", colors: ["W", "U", "B", "R", "G"], oracleText: heiBaiOracle };
   assert.deepEqual(identityTribalTypesFor([], heiBai, null), ["shrine"]);
