@@ -914,6 +914,20 @@ export function commanderTribesFromOracle(commanders = []) {
     // filtered via GENERIC_SCOPE_WORDS), confirming Najeela is the real,
     // genuine beneficiary of this specific shape.
     ...[...oracle.matchAll(/\bwhenever an? ([A-Za-z][A-Za-z'-]+) attacks\b/gi)].map((match) => normalized(match[1])),
+    // Founder #083: found via a real Lathril, Blade of the Elves
+    // comparison — one of the format's single most popular Elf tribal
+    // commanders. Her real activated-ability cost ("Tap ten untapped
+    // Elves you control: Each opponent loses 10 life...") is a real
+    // "tap N untapped TRIBE you control" cost shape none of the existing
+    // patterns cover. Verified 28 real commanders use this shape via
+    // Scryfall (Azami, Lady of Scrolls: "Tap an untapped Wizard you
+    // control" — the quantity word here is "an", not a number, still
+    // matched by the same flexible `[a-z]+`; Eladamri, Korvecdal: generic
+    // "creatures", already filtered). The captured word is genuinely
+    // plural in Lathril's own real text ("Elves"), so this needs
+    // singularizeTribe the same way #078's "you control N or more TRIBE"
+    // capture does.
+    ...[...oracle.matchAll(/\btap [a-z]+ untapped ([A-Za-z][A-Za-z'-]+)s? you control\b/gi)].map((match) => singularizeTribe(match[1])),
   ]).filter((term) => term && !BLUEPRINT_FILLER_WORDS.has(term) && !TRIBAL_STOP_WORDS.has(term) && !ARTIFACT_OR_TOKEN_TYPES.has(term));
 }
 

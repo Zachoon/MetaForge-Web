@@ -2728,6 +2728,58 @@ test("Founder #082: commanderTribesFromOracle no longer leaks \"if\" as a fake t
   );
 });
 
+// Founder #083: found via a real Lathril, Blade of the Elves comparison
+// — one of the format's single most popular Elf tribal commanders. Her
+// real activated-ability cost ("Tap ten untapped Elves you control:
+// Each opponent loses 10 life...") is a real "tap N untapped TRIBE you
+// control" cost shape none of the existing patterns cover. Verified 28
+// real commanders use this shape via Scryfall (Azami, Lady of Scrolls:
+// "Tap an untapped Wizard you control" — the quantity word is "an", not
+// a number, still matched; Eladamri, Korvecdal: generic "creatures",
+// already filtered). The captured word is genuinely plural in Lathril's
+// own real text, so this needs singularizeTribe the same way #078's
+// "you control N or more TRIBE" capture does.
+test("Founder #083: commanderTribesFromOracle extracts the real \"tap N untapped TRIBE you control\" activated-ability cost shape (Lathril, Azami), correctly singularizing genuinely-plural source text and staying filtered for generic \"creatures\" (Eladamri)", () => {
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Menace (This creature can't be blocked except by two or more creatures.)\nWhenever Lathril deals combat damage to a player, create that many 1/1 green Elf Warrior creature tokens.\n{T}, Tap ten untapped Elves you control: Each opponent loses 10 life and you gain 10 life." }]),
+    ["elf"],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Tap an untapped Wizard you control: Draw a card." }]),
+    ["wizard"],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "You may look at the top card of your library any time.\nYou may cast creature spells from the top of your library.\n{G}, {T}, Tap two untapped creatures you control: Reveal a card from your hand or the top card of your library. If you reveal a creature card this way, put it onto the battlefield." }]),
+    [],
+  );
+});
+
+test("Founder #083: an Elf-tribal-drain commander reserves real on-type anchors", () => {
+  const lathril = {
+    name: "Test Lathril", colors: ["B", "G"],
+    oracleText: "Menace\nWhenever Lathril deals combat damage to a player, create that many 1/1 green Elf Warrior creature tokens.\n{T}, Tap ten untapped Elves you control: Each opponent loses 10 life and you gain 10 life.",
+  };
+  const filler = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Spirit", manaCost: "{2}{G}", colorIdentity: ["G"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Destroy target creature.", typeLine: "Instant", manaCost: "{1}{B}", colorIdentity: ["B"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof until end of turn.", typeLine: "Instant", manaCost: "{1}{G}", colorIdentity: ["G"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+  ];
+  const elves = Array.from({ length: 10 }, (_, i) => ({
+    name: `Test Elf ${i}`, oracleText: "Vigilance.", typeLine: "Creature — Elf Warrior", manaCost: "{1}{G}", cmc: 2, colorIdentity: ["G"], popularityRank: 200,
+  }));
+  const gates = Array.from({ length: 20 }, (_, i) => ({
+    name: `BG Gate ${i}`, oracleText: "This land enters the battlefield tapped. {T}: Add {B} or {G}.", typeLine: "Land",
+    manaCost: "", colorIdentity: ["B", "G"], producedMana: ["B", "G"], popularityRank: 5, priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: lathril, cards: [...filler, ...elves, ...gates],
+  });
+  const elvesSelected = report.selected.rows.filter((row) => row.name.startsWith("Test Elf")).length;
+  assert.ok(elvesSelected >= 8, `expected most of the 10 real on-type Elves to be reserved as anchors, got ${elvesSelected}`);
+});
+
 test("Founder #039: identityTribalTypesFor merges commander-derived tribes with the player's typed note, note first", () => {
   const heiBai = { name: "Hei Bai, Forest Guardian", colors: ["W", "U", "B", "R", "G"], oracleText: heiBaiOracle };
   assert.deepEqual(identityTribalTypesFor([], heiBai, null), ["shrine"]);
