@@ -2082,6 +2082,87 @@ test("Founder #069: a Human-tribal-anthem commander reserves real on-type anchor
   assert.ok(humansSelected >= 8, `expected most of the 10 real on-type Humans to be reserved as anchors, got ${humansSelected}`);
 });
 
+// Founder #070: two real, independently-verified bugs found in the same
+// pass while investigating a real Malcolm, Keen-Eyed Navigator comparison.
+// (1) None of the existing patterns recognize a "TRIBE deals damage"
+// payoff trigger at all — Malcolm's real "Whenever one or more Pirates
+// you control deal damage to your opponents..." returned []. (2) While
+// verifying the new pattern's own negative control, a real Aang,
+// Airbending Master comparison exposed a pre-existing, independent bug in
+// the old "TRIBE creatures you control" pattern: it captured "more" as a
+// fake tribe from the very common real phrase "one or more creatures you
+// control", since "more" sits directly before "creatures you control"
+// the same way a real tribe name would.
+test("Founder #070: commanderTribesFromOracle extracts the real \"one or more TRIBE you control deal damage\" payoff shape (Malcolm), and no longer leaks \"more\" as a fake tribe from the unrelated \"one or more creatures you control\" phrasing (Aang)", () => {
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Flying\nWhenever one or more Pirates you control deal damage to your opponents, you create a Treasure token for each opponent dealt damage." }]),
+    ["pirate"],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Menace\nWhenever one or more Pirates you control deal damage to your opponents, exile the top card of each of those opponents' libraries." }]),
+    ["pirate"],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Other Rogues you control get +1/+1.\nWhenever one or more Rogues you control deal combat damage to a player, that player mills a card for each 1 damage dealt to them." }]),
+    ["rogue"],
+  );
+  // A real "TRIBE1 and/or TRIBE2 you control deal" multi-tribe list
+  // (Aphelia, Viper Whisperer's real "Gorgons and/or Snakes") is a
+  // documented partial case, same trade-off as #069: the single-word
+  // capture recovers only the LAST tribe in the list, not both.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Deathtouch\n{4}{B}: Until end of turn, whenever one or more Gorgons and/or Snakes you control deal combat damage to a player, that player loses half their life, rounded up." }]),
+    ["snake"],
+  );
+  // A generic "one or more creatures you control deal combat damage"
+  // (many real cards) must not become a fake tribe via the new pattern —
+  // "creature" is already a stop word.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Whenever one or more creatures you control deal combat damage to a player, draw a card." }]),
+    [],
+  );
+  // The far more common singular "a creature you control deals combat
+  // damage to a player" template (hundreds of unrelated real cards) must
+  // not match at all — "deal" and "deals" are different words.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Whenever a creature you control deals combat damage to a player, draw a card." }]),
+    [],
+  );
+  // Aang, Airbending Master's real "one or more creatures you control
+  // leave the battlefield" must not leak "more" as a fake tribe via the
+  // pre-existing "TRIBE creatures you control" pattern.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "When Aang enters, airbend another target creature.\nWhenever one or more creatures you control leave the battlefield without dying, you get an experience counter." }]),
+    [],
+  );
+});
+
+test("Founder #070: a Pirate-tribal-payoff commander reserves real on-type anchors", () => {
+  const malcolm = {
+    name: "Test Malcolm", colors: ["U", "R"],
+    oracleText: "Flying\nWhenever one or more Pirates you control deal damage to your opponents, you create a Treasure token for each opponent dealt damage.",
+  };
+  const filler = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Spirit", manaCost: "{2}{U}", colorIdentity: ["U"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Deal 3 damage to any target.", typeLine: "Instant", manaCost: "{1}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof until end of turn.", typeLine: "Instant", manaCost: "{1}{U}", colorIdentity: ["U"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+  ];
+  const pirates = Array.from({ length: 10 }, (_, i) => ({
+    name: `Test Pirate ${i}`, oracleText: "Menace.", typeLine: "Creature — Human Pirate", manaCost: "{1}{R}", cmc: 2, colorIdentity: ["R"], popularityRank: 200,
+  }));
+  const gates = Array.from({ length: 20 }, (_, i) => ({
+    name: `UR Gate ${i}`, oracleText: "This land enters the battlefield tapped. {T}: Add {U} or {R}.", typeLine: "Land",
+    manaCost: "", colorIdentity: ["U", "R"], producedMana: ["U", "R"], popularityRank: 5, priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: malcolm, cards: [...filler, ...pirates, ...gates],
+  });
+  const piratesSelected = report.selected.rows.filter((row) => row.name.startsWith("Test Pirate")).length;
+  assert.ok(piratesSelected >= 8, `expected most of the 10 real on-type Pirates to be reserved as anchors, got ${piratesSelected}`);
+});
+
 test("Founder #039: identityTribalTypesFor merges commander-derived tribes with the player's typed note, note first", () => {
   const heiBai = { name: "Hei Bai, Forest Guardian", colors: ["W", "U", "B", "R", "G"], oracleText: heiBaiOracle };
   assert.deepEqual(identityTribalTypesFor([], heiBai, null), ["shrine"]);

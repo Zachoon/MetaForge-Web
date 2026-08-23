@@ -498,7 +498,17 @@ const GENERIC_SCOPE_WORDS = new Set(["card", "creature", "permanent", "player", 
 // in the same "attack with one or more WORD" capture position a real tribe
 // occupies (Amazing Alliance's real "Whenever you attack with one or more
 // legendary creatures, draw a card."), verified via Scryfall.
-const TRIBAL_STOP_WORDS = new Set(["target", "equipped", "enchanted", "attacking", "blocking", "tapped", "untapped", "nontoken", "other", "another", "each", "all", "black", "white", "blue", "red", "green", "colorless", "multicolored", "legendary", ...GENERIC_SCOPE_WORDS]);
+// Founder #070: found via a real Aang, Airbending Master comparison — his
+// real text ("Whenever one or more creatures you control leave the
+// battlefield without dying...") made the old "TRIBE creatures you
+// control" pattern (below) capture "more" as a fake tribe, since "more"
+// sits directly before "creatures you control" the exact same way a real
+// tribe name would ("Dragon creatures you control"). Pre-existing bug,
+// not introduced by #070's own new pattern — found while verifying that
+// pattern's own negative control. Verified 67 real cards use the "one or
+// more creatures you control" phrasing via Scryfall, including at least
+// one other real legendary creature (Disa the Restless) beyond Aang.
+const TRIBAL_STOP_WORDS = new Set(["target", "equipped", "enchanted", "attacking", "blocking", "tapped", "untapped", "nontoken", "other", "another", "each", "all", "more", "black", "white", "blue", "red", "green", "colorless", "multicolored", "legendary", ...GENERIC_SCOPE_WORDS]);
 
 const ARTIFACT_OR_TOKEN_TYPES = new Set([
   "clue", "treasure", "food", "gold", "blood", "map", "junk", "powerstone",
@@ -697,6 +707,29 @@ export function commanderTribesFromOracle(commanders = []) {
     // correctly yields nothing — "creature" is already a stop word via
     // GENERIC_SCOPE_WORDS.
     ...[...oracle.matchAll(/\b([A-Za-z][A-Za-z'-]+) you control get\b/gi)].map((match) => singularizeTribe(match[1])),
+    // Founder #070: found via a real Malcolm, Keen-Eyed Navigator
+    // comparison — his real text ("Whenever one or more Pirates you
+    // control deal damage to your opponents, you create a Treasure
+    // token...") never matched any pattern above, none of which handle a
+    // "TRIBE deals damage" payoff trigger at all (only "attacks with"/
+    // "spells you cast"/anthem shapes). Verified 80 real cards use this
+    // "one or more TRIBE you control deal damage" template via Scryfall,
+    // including several well-known partner/legendary commanders (Breeches,
+    // Brazen Plunderer: Pirates; Anowon, the Ruin Thief: Rogues; Feline
+    // Sovereign: Cats; Alela, Cunning Conqueror: Faeries). Anchored on
+    // "you control deal" (plural "deal", not singular "deals") rather than
+    // requiring the "one or more" prefix immediately before the capture,
+    // the same way #069's "you control get" anchor works — this both
+    // avoids re-deriving a second anchor style and, as a side effect,
+    // still recovers the LAST tribe in a real "TRIBE1 and/or TRIBE2 you
+    // control deal" multi-tribe list (Aphelia, Viper Whisperer's real
+    // "Gorgons and/or Snakes" yields "snake", not zero) the same
+    // documented partial-list trade-off #069 already accepts. The far
+    // more common singular "a creature you control deals combat damage to
+    // a player" combat-damage-trigger template (used by hundreds of
+    // unrelated real cards) does not match at all, since "deal" and
+    // "deals" are different words — verified directly.
+    ...[...oracle.matchAll(/\b([A-Za-z][A-Za-z'-]+) you control deal\b/gi)].map((match) => singularizeTribe(match[1])),
   ]).filter((term) => term && !BLUEPRINT_FILLER_WORDS.has(term) && !TRIBAL_STOP_WORDS.has(term) && !ARTIFACT_OR_TOKEN_TYPES.has(term));
 }
 
