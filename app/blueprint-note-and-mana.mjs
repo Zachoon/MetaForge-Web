@@ -138,7 +138,18 @@ export const ROLE_PATTERNS = Object.freeze({
   artifacts: [/artifact/i, /equipment/i, /treasure/i],
   spells: [/instant or sorcery/i, /noncreature spell/i, new RegExp(`whenever you cast(?! ${OFF_TARGET_SPELL_TYPE_CAST_SUFFIX.source})`, "i"), /prowess/i],
   lifegain: [/you gain .{0,12}life/i, /whenever you gain life/i, /lifelink/i],
-  combat: [/whenever .{0,25} attacks/i, /combat damage/i, /double strike/i, /extra combat/i],
+  // Founder #089 (found in the same audit pass as #086-#088): "extra
+  // combat" is not real Magic phrasing at all — verified via Scryfall,
+  // zero real cards use this exact phrase, making this whole alternative
+  // dead code. The actual, standard real template is "additional combat
+  // phase" (46 real cards via Scryfall) — forge-interaction-graph.mjs's
+  // own combat-doubler amplifier (a different signal, same underlying
+  // rules fact) and archetype-catalog.mjs's own note aliases both
+  // already correctly use this real phrase; this file's ROLE_PATTERNS
+  // was the one place still using the never-real "extra combat" text.
+  // Confirmed via direct test: Aggravated Assault, one of the format's
+  // most iconic extra-combat enablers, returned no "combat" role at all.
+  combat: [/whenever .{0,25} attacks/i, /combat damage/i, /double strike/i, /additional combat phase/i],
   // Hand disruption is its own deckbuilding axis, not covered by
   // "interaction" above (which only matches destroy/exile/counter/damage/
   // bounce). Scoped to the opponent discarding, not a self-loot effect
