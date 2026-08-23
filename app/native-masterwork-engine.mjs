@@ -648,7 +648,17 @@ export function commanderTribesFromOracle(commanders = []) {
     // genuinely open a sentence this way. The captured TRIBE word itself
     // was never the problem (`[A-Za-z]` already covers both cases by
     // construction) — only the literal "another"/"other" needed `/i`.
-    ...[...oracle.matchAll(/\b(?:another|other) ([A-Za-z][A-Za-z'-]+)s? you control\b/gi)].map((match) => singularizeTribe(match[1])),
+    // Founder #074: found via a real Inalla, Archmage Ritualist comparison
+    // — her real Eminence trigger ("Whenever another nontoken Wizard you
+    // control enters...") never matched, since "nontoken" sits directly
+    // between "another" and the tribe, the same position #066 already had
+    // to make an optional qualifier word for a different pattern ("TRIBE
+    // TYPE-WORD spells you cast"). Verified 44 real commanders use this
+    // "another nontoken TRIBE you control" shape via Scryfall, including
+    // Arahbo, the First Fang (Cat) and Anafenza, Kin-Tree Spirit (generic
+    // "creature", correctly still filtered downstream). Made "nontoken"
+    // optional between "another"/"other" and the tribe capture.
+    ...[...oracle.matchAll(/\b(?:another|other) (?:nontoken )?([A-Za-z][A-Za-z'-]+)s? you control\b/gi)].map((match) => singularizeTribe(match[1])),
     ...[...oracle.matchAll(/\b([A-Za-z][A-Za-z'-]+) creatures you control\b/gi)].map((match) => normalized(match[1])),
     // Added /i here too, defensively — same reasoning as the pattern
     // above, though no real card in a real-text-verified (not just

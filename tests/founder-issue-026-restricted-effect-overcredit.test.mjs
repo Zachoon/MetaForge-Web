@@ -2328,6 +2328,63 @@ test("Founder #072: a Goblin-tribal-scaling commander reserves real on-type anch
   assert.ok(goblinsSelected >= 8, `expected most of the 10 real on-type Goblins to be reserved as anchors, got ${goblinsSelected}`);
 });
 
+// Founder #074: found via a real Inalla, Archmage Ritualist comparison —
+// her real Eminence trigger ("Whenever another nontoken Wizard you
+// control enters...") never matched #068's "another/other TRIBE you
+// control" pattern, since "nontoken" sits directly between "another" and
+// the tribe. Verified 44 real commanders use this "another nontoken
+// TRIBE you control" shape via Scryfall (Arahbo, the First Fang: Cat;
+// Anafenza, Kin-Tree Spirit: generic "creature", correctly still
+// filtered).
+test("Founder #074: commanderTribesFromOracle extracts the real \"another nontoken TRIBE you control\" shape (Inalla), matching #068's existing bare-tribe cases unchanged", () => {
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Eminence — Whenever another nontoken Wizard you control enters, if Inalla is in the command zone or on the battlefield, you may pay {1}. If you do, create a token that's a copy of that Wizard. The token gains haste. Exile it at the beginning of the next end step.\nTap five untapped Wizards you control: Target player loses 7 life." }]),
+    ["wizard"],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Other Cats you control get +1/+1.\nWhenever Arahbo or another nontoken Cat you control enters, create a 1/1 white Cat creature token." }]),
+    ["cat"],
+  );
+  // A generic "another nontoken creature you control" (Anafenza, Kin-Tree
+  // Spirit's real text) must not become a fake tribe.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Whenever another nontoken creature you control enters, bolster 1." }]),
+    [],
+  );
+  // #068's own pre-existing bare "another"/"other" cases (no "nontoken"
+  // qualifier at all) must still work unchanged.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Whenever another Zombie you control enters, put a +1/+1 counter on this creature." }]),
+    ["zombie"],
+  );
+});
+
+test("Founder #074: a Wizard-tribal-Eminence commander reserves real on-type anchors", () => {
+  const inalla = {
+    name: "Test Inalla", colors: ["U", "B", "R"],
+    oracleText: "Eminence — Whenever another nontoken Wizard you control enters, if Inalla is in the command zone or on the battlefield, you may pay {1}. If you do, create a token that's a copy of that Wizard. The token gains haste. Exile it at the beginning of the next end step.\nTap five untapped Wizards you control: Target player loses 7 life.",
+  };
+  const filler = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Spirit", manaCost: "{2}{U}", colorIdentity: ["U"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Exile target nonland permanent.", typeLine: "Instant", manaCost: "{1}{B}", colorIdentity: ["B"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof until end of turn.", typeLine: "Instant", manaCost: "{1}{U}", colorIdentity: ["U"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+  ];
+  const wizards = Array.from({ length: 10 }, (_, i) => ({
+    name: `Test Wizard ${i}`, oracleText: "When this enters, scry 1.", typeLine: "Creature — Human Wizard", manaCost: "{1}{U}", cmc: 2, colorIdentity: ["U"], popularityRank: 200,
+  }));
+  const gates = Array.from({ length: 20 }, (_, i) => ({
+    name: `UBR Gate ${i}`, oracleText: "This land enters the battlefield tapped. {T}: Add {U}, {B}, or {R}.", typeLine: "Land",
+    manaCost: "", colorIdentity: ["U", "B", "R"], producedMana: ["U", "B", "R"], popularityRank: 5, priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: inalla, cards: [...filler, ...wizards, ...gates],
+  });
+  const wizardsSelected = report.selected.rows.filter((row) => row.name.startsWith("Test Wizard")).length;
+  assert.ok(wizardsSelected >= 8, `expected most of the 10 real on-type Wizards to be reserved as anchors, got ${wizardsSelected}`);
+});
+
 test("Founder #039: identityTribalTypesFor merges commander-derived tribes with the player's typed note, note first", () => {
   const heiBai = { name: "Hei Bai, Forest Guardian", colors: ["W", "U", "B", "R", "G"], oracleText: heiBaiOracle };
   assert.deepEqual(identityTribalTypesFor([], heiBai, null), ["shrine"]);
