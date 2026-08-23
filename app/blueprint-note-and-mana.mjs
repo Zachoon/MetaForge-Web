@@ -123,7 +123,18 @@ export const ROLE_PATTERNS = Object.freeze({
   // correctly classified.
   sacrifice: [/sacrifices? (?:a|an|another|one|target|any number of|\d+|two|three|four|five|six|seven|eight|nine|ten)\b/i, /\b(?:target player|each opponent|each player|that player) sacrifices?\b/i, /whenever .{0,45} (?:dies|die)\b/i],
   counters: [/[+\-]\d+\/[+\-]\d+ counter/i, /one or more counters/i, /proliferate/i],
-  graveyard: [/graveyard/i, /mill /i, /surveil/i, /flashback/i, /escape/i],
+  // Founder #088 (found right after #087, same file, same audit pass):
+  // the same real "mill"/"mills" third-person verb gap forge-
+  // interaction-graph.mjs's own PRODUCERS.graveyard already fixed
+  // (Founder #042) — "mill " (with a trailing space) never matches "mills"
+  // (no space right after "mill" once the "s" is added), duplicated in
+  // this file's own parallel role classifier. The bare "/graveyard/i"
+  // alternative doesn't rescue this the way it does for cards that also
+  // separately mention "graveyard" elsewhere: Mindcrank and Psychic
+  // Corrosion (the same two real mill-payoff cards #042 used) never say
+  // "graveyard" anywhere in their own real text, so both returned zero
+  // "graveyard" role at all — confirmed via direct test.
+  graveyard: [/graveyard/i, /\bmills?\b/i, /surveil/i, /flashback/i, /escape/i],
   artifacts: [/artifact/i, /equipment/i, /treasure/i],
   spells: [/instant or sorcery/i, /noncreature spell/i, new RegExp(`whenever you cast(?! ${OFF_TARGET_SPELL_TYPE_CAST_SUFFIX.source})`, "i"), /prowess/i],
   lifegain: [/you gain .{0,12}life/i, /whenever you gain life/i, /lifelink/i],
