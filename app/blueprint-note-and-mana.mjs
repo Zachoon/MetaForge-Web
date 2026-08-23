@@ -93,7 +93,24 @@ export const ROLE_PATTERNS = Object.freeze({
   sweeper: [/destroy all/i, /exile all/i, /all creatures get -/i, /deals? [^.]*?\bdamage\b[^.]*? to each (?:other |nontoken |non-Human )?creature/i],
   selection: [/scry/i, /surveil/i, /discard .{0,20}draw/i, /draw .{0,20}discard/i],
   tokens: [/create (?:a|one|two|three|x|that many|\d+) .{0,45}token/i],
-  sacrifice: [/sacrifice (?:a|another|one|target)/i, /whenever .{0,25} dies/i],
+  // Founder #086: the same real "sacrifice"/"sacrifices" verb-form and
+  // "dies"/"die" plural gaps #055/#062/#073 already found and fixed in
+  // native-masterwork-engine.mjs's and forge-interaction-graph.mjs's own
+  // sacrifice signals, duplicated here in this file's own parallel role
+  // classifier — and this one is construction-critical (see
+  // card-role-classification.mjs's own header comment: classifyNativeCard
+  // feeds real deck-construction scoring, not just a cosmetic label).
+  // Confirmed via direct test: Diabolic Edict and Innocent Blood (real,
+  // classic forced-sacrifice edicts) returned zero roles at all — not
+  // even "sacrifice" — because the old pattern required first-person
+  // "sacrifice" immediately followed by a determiner, never the
+  // third-person "sacrifices" real edicts use. Also added the plural
+  // "die" verb form (Vraan, Executioner Thane's real "creatures you
+  // control die") and widened the "whenever...dies" window from 25 to 45
+  // characters to fit Vraan's real, longer subject clause. Verified
+  // Viscera Seer's and Yawgmoth's existing outlet-cost cases stay
+  // correctly classified.
+  sacrifice: [/sacrifices? (?:a|an|another|one|target|any number of|\d+|two|three|four|five|six|seven|eight|nine|ten)\b/i, /\b(?:target player|each opponent|each player|that player) sacrifices?\b/i, /whenever .{0,45} (?:dies|die)\b/i],
   counters: [/[+\-]\d+\/[+\-]\d+ counter/i, /one or more counters/i, /proliferate/i],
   graveyard: [/graveyard/i, /mill /i, /surveil/i, /flashback/i, /escape/i],
   artifacts: [/artifact/i, /equipment/i, /treasure/i],
