@@ -1868,6 +1868,61 @@ test("Founder #063: a dig-and-cheat Human commander reserves real on-type anchor
   assert.ok(humansSelected >= 8, `expected most of the 10 real on-type Humans to be reserved as anchors, got ${humansSelected}`);
 });
 
+// Founder #066: found via a real Ashling, the Limitless comparison. Her
+// real text ("Elemental permanent spells you cast from your hand gain
+// evoke...") has a type-qualifier word (permanent/creature/artifact/etc.)
+// sitting directly between the real tribe and "spells you cast" — the old
+// pattern's single-word capture (positioned immediately before "spells")
+// grabbed "permanent" instead, which is already a stop word, so the whole
+// extraction silently produced nothing.
+const ashlingOracle = "Elemental permanent spells you cast from your hand gain evoke {4} as you cast them. (If you cast a spell for its evoke cost, it's sacrificed when it enters.)\nWhenever you sacrifice a nontoken Elemental, create a token that's a copy of it. The token gains haste until end of turn. At the beginning of your next end step, sacrifice it unless you pay {W}{U}{B}{R}{G}.";
+
+test("Founder #066: commanderTribesFromOracle extracts the real \"TRIBE TYPE-WORD spells you cast\" shape (Ashling, the Limitless), not just the bare \"TRIBE spells you cast\" the old pattern covers", () => {
+  assert.deepEqual(commanderTribesFromOracle([{ oracleText: ashlingOracle }]), ["elemental"]);
+  // The bare single-word case (no qualifier) must still work unchanged.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Dragon spells you cast cost {1} less to cast." }]),
+    ["dragon"],
+  );
+  // A generic type-word alone, with no real tribe before it, must not
+  // become a fake tribe — Rakdos, Lord of Riots' real text.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Creature spells you cast cost {1} less to cast for each 1 life your opponents have lost this turn." }]),
+    [],
+  );
+  // A color word sitting in the same position (Bontu's Monument's real
+  // shape) must not become a fake tribe either — no real commander uses
+  // this phrasing today, but the qualifier-skipping widening makes the
+  // position reachable, so it's guarded defensively.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Black creature spells you cast cost {1} less to cast." }]),
+    [],
+  );
+});
+
+test("Founder #066: an Elemental-typal-cheat commander reserves real on-type anchors", () => {
+  const ashling = { name: "Test Ashling", colors: ["W", "U", "B", "R", "G"], oracleText: ashlingOracle };
+  const filler = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Spirit", manaCost: "{2}{U}", colorIdentity: ["U"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Exile target nonland permanent.", typeLine: "Instant", manaCost: "{1}{B}", colorIdentity: ["B"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Bolt ${i}`, oracleText: "This deals 2 damage to any target.", typeLine: "Instant", manaCost: "{R}", colorIdentity: ["R"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+  ];
+  const elementals = Array.from({ length: 10 }, (_, i) => ({
+    name: `Test Elemental ${i}`, oracleText: "Vigilance.", typeLine: "Creature — Elemental", manaCost: "{1}{R}", cmc: 2, colorIdentity: ["R"], popularityRank: 200,
+  }));
+  const gates = Array.from({ length: 20 }, (_, i) => ({
+    name: `WUBRG Gate ${i}`, oracleText: "This land enters the battlefield tapped. {T}: Add one mana of any color.", typeLine: "Land",
+    manaCost: "", colorIdentity: ["W", "U", "B", "R", "G"], producedMana: ["W", "U", "B", "R", "G"], popularityRank: 5, priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: ashling, cards: [...filler, ...elementals, ...gates],
+  });
+  const elementalsSelected = report.selected.rows.filter((row) => row.name.startsWith("Test Elemental")).length;
+  assert.ok(elementalsSelected >= 8, `expected most of the 10 real on-type Elementals to be reserved as anchors, got ${elementalsSelected}`);
+});
+
 test("Founder #039: identityTribalTypesFor merges commander-derived tribes with the player's typed note, note first", () => {
   const heiBai = { name: "Hei Bai, Forest Guardian", colors: ["W", "U", "B", "R", "G"], oracleText: heiBaiOracle };
   assert.deepEqual(identityTribalTypesFor([], heiBai, null), ["shrine"]);

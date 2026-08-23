@@ -482,7 +482,18 @@ export function blueprintMechanicQueryFor(mechanic) {
 // parseNativeBlueprintIntent, its only caller.
 
 const GENERIC_SCOPE_WORDS = new Set(["card", "creature", "permanent", "player", "opponent", "spell", "token", "target"]);
-const TRIBAL_STOP_WORDS = new Set(["target", "equipped", "enchanted", "attacking", "blocking", "tapped", "untapped", "nontoken", "other", "another", "each", "all", ...GENERIC_SCOPE_WORDS]);
+// Founder #066: colors ("Black creature spells you cast cost {1} less" —
+// Bontu's Monument) sit in the exact same "WORD [permanent|creature|...]
+// spells you cast" position the real tribe name occupies (Ashling, the
+// Limitless: "Elemental permanent spells you cast..."), so widening that
+// pattern to skip an optional type-qualifier word (below) opens a real
+// risk of a color word getting captured as a fake tribe on some future
+// card. No real legendary creature currently uses a color-qualified
+// "COLOR creature spells you cast" phrasing (checked all five colors via
+// Scryfall), so this doesn't fix an existing bug — it's defensive
+// hardening for the same fix, shipped alongside it rather than as a
+// separate speculative change.
+const TRIBAL_STOP_WORDS = new Set(["target", "equipped", "enchanted", "attacking", "blocking", "tapped", "untapped", "nontoken", "other", "another", "each", "all", "black", "white", "blue", "red", "green", "colorless", "multicolored", ...GENERIC_SCOPE_WORDS]);
 
 const ARTIFACT_OR_TOKEN_TYPES = new Set([
   "clue", "treasure", "food", "gold", "blood", "map", "junk", "powerstone",
@@ -573,7 +584,20 @@ export function commanderTribesFromOracle(commanders = []) {
     ...[...oracle.matchAll(/\banother ([A-Za-z][A-Za-z'-]+)s? you control\b/g)].map((match) => normalized(match[1])),
     ...[...oracle.matchAll(/\b([A-Za-z][A-Za-z'-]+) creatures you control\b/g)].map((match) => normalized(match[1])),
     ...[...oracle.matchAll(/\b(?:a|an) ([A-Za-z][A-Za-z'-]+)s? you control\b/g)].map((match) => normalized(match[1])),
-    ...[...oracle.matchAll(/\b([A-Za-z][A-Za-z'-]+) spells? you cast\b/g)].map((match) => normalized(match[1])),
+    // Founder #066: found via a real Ashling, the Limitless comparison —
+    // her real text ("Elemental permanent spells you cast from your
+    // hand gain evoke...") has a type-qualifier word (permanent/creature/
+    // artifact/etc.) sitting directly between the real tribe and "spells
+    // you cast", which the old pattern's single-word capture (positioned
+    // immediately before "spells") couldn't skip — it grabbed "permanent"
+    // (already a stop word, so the whole match silently produced nothing)
+    // instead of "Elemental". Verified 57 real cards use this "TRIBE
+    // TYPE-WORD spells you cast" shape via Scryfall (Herald's Horn,
+    // Goreclaw, Bontu's Monument, others). Made the qualifier word
+    // optional between the captured tribe and "spells you cast" — see
+    // TRIBAL_STOP_WORDS above for the color-word guard shipped alongside
+    // this same fix.
+    ...[...oracle.matchAll(/\b([A-Za-z][A-Za-z'-]+) (?:permanent |creature |artifact |enchantment |instant |sorcery |noncreature |historic )?spells? you cast\b/g)].map((match) => normalized(match[1])),
     ...[...oracle.matchAll(MULTI_TRIBE_LIST)].flatMap((match) =>
       match[1].split(/,\s*(?:and\s+)?|\s+and\s+/i).filter(Boolean).map((word) => normalized(word))),
     ...[...oracle.matchAll(REVEAL_UNTIL_TYPE_CARD)].map((match) => normalized(match[1])),
