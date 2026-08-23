@@ -998,7 +998,21 @@ const PRODUCERS = {
   // these plus the original imperative form in one pattern, bounded to
   // the same sentence so it can't cross into an unrelated later clause.
   draw: /draws? [^.]*?\bcards?\b/i,
-  spells: /copy [^.]* spell|cast [^.]* without paying/i,
+  // Founder #079: found via a real Melek, Izzet Paragon comparison — his
+  // real "whenever you cast an instant or sorcery spell" payoff never
+  // connected to Baral, Chief of Compliance's real "Instant and sorcery
+  // spells you cast cost {1} less to cast" (arguably the single most
+  // iconic spellslinger cost-reduction enabler in Commander), because
+  // neither "copy a spell" nor "cast without paying" covers cost
+  // reduction at all — confirmed via commanderConnectionSignalsFor
+  // returning [] before this fix, the same asymmetry class #073 found
+  // for sacrifice/edicts. Scoped to "instant and/or sorcery"/"noncreature"
+  // spell-type qualifiers specifically (23 and 8 real cards respectively,
+  // verified via Scryfall) — deliberately excludes bare "creature spells
+  // you cast cost less" (Animar, Soul of Elements) and other off-target
+  // types (artifact/enchantment cost reduction), which enable a
+  // structurally different archetype, not spellslinger velocity.
+  spells: /copy [^.]* spell|cast [^.]* without paying|(?:instant and sorcery|instant or sorcery|noncreature) spells you cast cost [^.]* less/i,
   // Many Partings class: a land search that only reaches the player's
   // HAND (Many Partings, Sylvan Scrying) never fires "whenever a land
   // enters"/landfall — it's a normal land drop like any other, not an

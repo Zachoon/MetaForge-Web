@@ -2208,3 +2208,43 @@ test("Founder #073: Tergrid's own opponent-sacrifice payoff and a real forced-sa
     "Diabolic Edict must connect to Tergrid via the sacrifice signal",
   );
 });
+
+// Founder #079: found via a real Melek, Izzet Paragon comparison — his
+// real "whenever you cast an instant or sorcery spell" payoff never
+// connected to Baral, Chief of Compliance's real "Instant and sorcery
+// spells you cast cost {1} less to cast" (arguably the single most
+// iconic spellslinger cost-reduction enabler in Commander), because
+// neither "copy a spell" nor "cast without paying" covers cost reduction
+// at all. The same asymmetry class #073 found for sacrifice/edicts:
+// commanderConnectionSignalsFor requires one side's rewards to match the
+// OTHER side's produces, and cost reduction never registered as a
+// producer of anything. Verified 23 real cards use the "instant and/or
+// sorcery spells you cast cost...less" shape via Scryfall (also Goblin
+// Electromancer), plus 8 more use "noncreature spells you cast cost...
+// less".
+test("PRODUCERS.spells recognizes the real 'instant and/or sorcery'/'noncreature spells you cast cost...less' cost-reduction shape (Baral, Chief of Compliance; Goblin Electromancer), not just spell-copy or free-cast effects", () => {
+  const baral = { name: "Baral, Chief of Compliance", typeLine: "Legendary Creature", oracleText: "Instant and sorcery spells you cast cost {1} less to cast.\nWhenever a spell or ability you control counters a spell, you may draw a card. If you do, discard a card." };
+  const electromancer = { name: "Goblin Electromancer", typeLine: "Creature", oracleText: "Instant and sorcery spells you cast cost {1} less to cast." };
+  for (const card of [baral, electromancer]) {
+    assert.ok(extractMechanicalSignals(card).produces.includes("spells"), `${card.name} should produce the spells signal`);
+  }
+  // A creature-cost-reduction card (Animar, Soul of Elements's real
+  // "Creature spells you cast cost {1} less...") is a structurally
+  // different archetype, not spellslinger velocity, and must not match.
+  const animar = { name: "Animar, Soul of Elements", typeLine: "Legendary Creature", oracleText: "Whenever you cast a creature spell, put a +1/+1 counter on Animar.\nCreature spells you cast cost {1} less to cast for each +1/+1 counter on Animar." };
+  assert.equal(extractMechanicalSignals(animar).produces.includes("spells"), false);
+});
+
+test("Founder #079: Melek's own instant/sorcery-cast payoff and a real cost-reduction enabler now correctly connect via commanderConnectionSignalsFor", () => {
+  const melek = { name: "Melek, Izzet Paragon", colors: ["U", "R"], oracleText: "Whenever you cast an instant or sorcery spell, you may put that card from the graveyard on top of your library instead of into your graveyard.\nWhenever you cast an instant or sorcery spell from your hand, add {C} for each instant and sorcery spell you've cast this turn." };
+  const baral = { name: "Baral, Chief of Compliance", typeLine: "Legendary Creature", oracleText: "Instant and sorcery spells you cast cost {1} less to cast.\nWhenever a spell or ability you control counters a spell, you may draw a card. If you do, discard a card." };
+  const melekScopes = commanderMechanicalScopes(melek);
+  const melekMechanics = extractMechanicalSignals(melek);
+  const baralMechanics = extractMechanicalSignals(baral);
+  assert.ok(melekMechanics.rewards.includes("spells"), "Melek's own trigger should register as a spells payoff");
+  assert.ok(baralMechanics.produces.includes("spells"), "Baral should register as a real spells producer");
+  assert.ok(
+    commanderConnectionSignalsFor(baral, baralMechanics, melekMechanics, melekScopes).includes("spells"),
+    "Baral must connect to Melek via the spells signal",
+  );
+});
