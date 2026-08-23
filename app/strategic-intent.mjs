@@ -297,6 +297,15 @@ export function singularizeTribe(word = "") {
   // types end in "ie" at all — Faerie (already handled above) and Zombie
   // — so this is a complete fix, not a guess at a broader rule.
   if (w === "zombies") return "zombie";
+  // Founder #084: found via a real Mabel, Heir to Cragflame comparison
+  // ("Other Mice you control get +1/+1.", verified via Scryfall) —
+  // "Mice" is a genuinely irregular plural (doesn't end in "s" at all),
+  // so it fell through every existing rule unchanged, returning "mice"
+  // instead of the real creature type "Mouse" — a fake-looking tribe
+  // that would never match a real card's actual singular type line.
+  // Checked Scryfall's own official creature-type catalog directly:
+  // "Mouse" is real, "Mice" is not.
+  if (w === "mice") return "mouse";
   if (w.endsWith("ves") && w.length > 4) return `${w.slice(0, -3)}f`;
   if (w.endsWith("ies") && w.length > 4) return `${w.slice(0, -3)}y`;
   if (w.endsWith("s") && !w.endsWith("ss") && !w.endsWith("us") && !w.endsWith("is")) return w.slice(0, -1);

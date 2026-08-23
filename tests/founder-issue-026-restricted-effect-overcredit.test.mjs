@@ -2780,6 +2780,48 @@ test("Founder #083: an Elf-tribal-drain commander reserves real on-type anchors"
   assert.ok(elvesSelected >= 8, `expected most of the 10 real on-type Elves to be reserved as anchors, got ${elvesSelected}`);
 });
 
+// Founder #084: found via a real Mabel, Heir to Cragflame comparison —
+// her real "Other Mice you control get +1/+1." correctly matches #068's
+// "another/other TRIBE you control" pattern, but singularizeTribe
+// (strategic-intent.mjs) returned "mice" unchanged instead of the real
+// creature type "Mouse" — "Mice" is a genuinely irregular plural (doesn't
+// end in "s" at all), so it fell through every existing rule. Checked
+// Scryfall's own official creature-type catalog directly: "Mouse" is
+// real, "Mice" is not — the un-singularized capture would never have
+// matched a real Mouse creature's actual type line downstream.
+test("Founder #084: commanderTribesFromOracle correctly singularizes the real irregular plural \"Mice\" to \"Mouse\" (Mabel, Heir to Cragflame)", () => {
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Other Mice you control get +1/+1.\nWhen Mabel enters, create Cragflame, a legendary colorless Equipment artifact token with \"Equipped creature gets +1/+1 and has vigilance, trample, and haste\" and equip {2}." }]),
+    ["mouse"],
+  );
+});
+
+test("Founder #084: a Mouse-tribal-anthem commander reserves real on-type anchors", () => {
+  const mabel = {
+    name: "Test Mabel", colors: ["R"],
+    oracleText: "Other Mice you control get +1/+1.\nWhen Mabel enters, create Cragflame, a legendary colorless Equipment artifact token with \"Equipped creature gets +1/+1 and has vigilance, trample, and haste\" and equip {2}.",
+  };
+  const filler = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Spirit", manaCost: "{2}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Deal 3 damage to any target.", typeLine: "Instant", manaCost: "{1}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof until end of turn.", typeLine: "Instant", manaCost: "{1}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+  ];
+  const mice = Array.from({ length: 10 }, (_, i) => ({
+    name: `Test Mouse ${i}`, oracleText: "Haste.", typeLine: "Creature — Mouse Warrior", manaCost: "{1}{R}", cmc: 2, colorIdentity: ["R"], popularityRank: 200,
+  }));
+  const rocks = Array.from({ length: 20 }, (_, i) => ({
+    name: `R Rock ${i}`, oracleText: "{T}: Add {R}.", typeLine: "Artifact",
+    manaCost: "{2}", colorIdentity: [], producedMana: ["R"], popularityRank: 5, priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: mabel, cards: [...filler, ...mice, ...rocks],
+  });
+  const miceSelected = report.selected.rows.filter((row) => row.name.startsWith("Test Mouse")).length;
+  assert.ok(miceSelected >= 8, `expected most of the 10 real on-type Mice to be reserved as anchors, got ${miceSelected}`);
+});
+
 test("Founder #039: identityTribalTypesFor merges commander-derived tribes with the player's typed note, note first", () => {
   const heiBai = { name: "Hei Bai, Forest Guardian", colors: ["W", "U", "B", "R", "G"], oracleText: heiBaiOracle };
   assert.deepEqual(identityTribalTypesFor([], heiBai, null), ["shrine"]);
