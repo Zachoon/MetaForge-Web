@@ -1186,7 +1186,34 @@ const PAYOFFS = {
   // Unraveler/Underworld Dreams share the identical "whenever an opponent
   // draws" template, never "whenever YOU draw". Verified against all
   // three real cards' oracle text.
-  draw: /whenever you draw|second card|cards? in your hand|whenever (?:an? )?opponent(?:s)? draws?\b/i,
+  // Founder #099 (found via cross-referencing this file's produces/rewards
+  // against blueprint-note-and-mana.mjs's independently-built ROLE_PATTERNS
+  // across the full mined corpus — the same technique #098 used, this time
+  // pointing the other direction): the bare "cards? in your hand" clause
+  // was a false-positive magnet with no documented real-card justification
+  // anywhere in this file's history. Checked every real card in the
+  // 5,249-card mined corpus that depends on this clause alone for "draw"
+  // credit (16 total, zero overlap with any legitimate draw-related
+  // wording elsewhere in their own text) — every one of them is a static
+  // hand-size-scaling effect with nothing to do with drawing: Maro/
+  // Masumaro, First to Live/Sylvan Yeti (power = cards in hand), Empyrial
+  // Plate/Sword of War and Peace (equipment bonus scales with hand size),
+  // Spontaneous Generation/Baldin, Century Herdmaster (token count/pump
+  // scales with hand size), Inner Fire/Metalworker (ritual mana scales
+  // with hand size), Ensnaring Bridge (a stax effect gated on hand size),
+  // Thoughts of Ruin/Nightmare Unmaking (land destruction/board wipe
+  // scaled by hand size), Venser's Journal (lifegain scales with hand
+  // size), Master of Predicaments/Satoru Umezawa ("a card in your hand"/
+  // "creature card in your hand" as an unrelated object reference, not a
+  // hand-size count at all). None of these cards care whether you draw
+  // more or fewer cards — they just reference the current count for an
+  // unrelated effect. Removed the clause; verified zero real cards in the
+  // corpus lose legitimate draw credit as a result (every real
+  // draw-payoff card that happens to also mention "cards in your hand" —
+  // Sylvan Library, Castle Locthwain, Jin-Gitaxias, Forgotten Creation,
+  // Tolarian Winds — already matches independently via "whenever you
+  // draw" or the shared PRODUCERS.draw pattern elsewhere in its own text).
+  draw: /whenever you draw|second card|whenever (?:an? )?opponent(?:s)? draws?\b/i,
   // Founder #056: bare "whenever you cast" was a false-positive magnet —
   // real cards use the identical "whenever you cast a[n] TYPE spell"
   // template for archetypes that have nothing to do with the instant/

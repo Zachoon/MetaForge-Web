@@ -429,8 +429,15 @@ test("a synergy-dense casual deck without verified high-power characteristics is
 // loop (Bone Reaper feeds Card Reaper's draw payoff; Card Reaper feeds
 // Bone Reaper's sacrifice payoff back) — verified directly against
 // buildInteractionGraph before writing this test, not assumed.
+// Founder #099: Card Reaper's original text ("draw a card if you have
+// seven or more cards in your hand") only formed the draw side of this
+// loop by exploiting PAYOFFS.draw's over-broad "cards? in your hand"
+// clause — a false-positive magnet with zero real-card justification,
+// removed in #099. Rewritten to a genuine "whenever you draw" reward
+// shape instead, re-verified directly against buildInteractionGraph to
+// still produce the identical one-pair mutual loop.
 const boneReaper = card("Test Bone Reaper", "Creature — Test", "Sacrifice a creature: Draw a card, then this deals 1 damage to any target. Whenever another creature you control dies, you may sacrifice another creature.", 2);
-const cardReaper = card("Test Card Reaper", "Creature — Test", "When this creature dies, draw a card if you have seven or more cards in your hand. Sacrifice another creature: This deals 2 damage to any target.", 1);
+const cardReaper = card("Test Card Reaper", "Creature — Test", "When this creature dies, sacrifice another creature. Whenever you draw a card, this deals 1 damage to any target. Sacrifice another creature: This deals 2 damage to any target.", 1);
 
 test("an inexpensive, compact two-card combo can measure high on its own, via a verified mutual interaction-graph loop between two independently high-ceiling cards", () => {
   const graph = buildInteractionGraph([boneReaper, cardReaper]);

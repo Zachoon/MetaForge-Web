@@ -2286,3 +2286,33 @@ test("Founder #085: Arabella's own variable-damage attack trigger and a real Cur
     "Curiosity must connect to Arabella via the damage signal",
   );
 });
+
+// Founder #099: found via cross-referencing this file's produces/rewards
+// against blueprint-note-and-mana.mjs's independently-built ROLE_PATTERNS
+// across the full mined corpus — the same technique #098 used, this time
+// pointing the other direction. The bare "cards? in your hand" clause in
+// PAYOFFS.draw was a false-positive magnet with no documented real-card
+// justification: every real card in the corpus that depended on it alone
+// was a static hand-size-scaling effect with nothing to do with drawing
+// (Maro's power = cards in hand; Empyrial Plate's equipment bonus scales
+// with hand size; Ensnaring Bridge's stax gate; Master of Predicaments'
+// unrelated "a card in your hand" object reference).
+test("PAYOFFS.draw no longer false-positives on cards that merely reference hand size for an unrelated effect (Maro, Ensnaring Bridge, Master of Predicaments)", () => {
+  const maro = { name: "Maro", typeLine: "Creature", oracleText: "Maro's power and toughness are each equal to the number of cards in your hand." };
+  const ensnaringBridge = { name: "Ensnaring Bridge", typeLine: "Artifact", oracleText: "Creatures with power greater than the number of cards in your hand can't attack." };
+  const masterOfPredicaments = { name: "Master of Predicaments", typeLine: "Creature", oracleText: "Flying\nWhenever this creature deals combat damage to a player, choose a card in your hand. That player guesses whether the card's mana value is greater than 4. If the player guessed wrong, you may cast the card without paying its mana cost." };
+  for (const card of [maro, ensnaringBridge, masterOfPredicaments]) {
+    const signals = extractMechanicalSignals(card);
+    assert.ok(!signals.rewards.includes("draw"), `${card.name} should not reward the draw signal — it never mentions drawing`);
+  }
+});
+
+test("PAYOFFS.draw still recognizes every real draw-payoff shape that happens to also mention hand size, via its other own wording (Sylvan Library, Castle Locthwain, Jin-Gitaxias)", () => {
+  const sylvanLibrary = { name: "Sylvan Library", typeLine: "Enchantment", oracleText: "At the beginning of your draw step, you may draw two additional cards. If you do, choose two cards in your hand drawn this turn. For each of those cards, pay 4 life or put the card on top of your library." };
+  const castleLocthwain = { name: "Castle Locthwain", typeLine: "Land", oracleText: "This land enters tapped unless you control a Swamp.\n{T}: Add {B}.\n{1}{B}{B}, {T}: Draw a card, then you lose life equal to the number of cards in your hand." };
+  const jinGitaxias = { name: "Jin-Gitaxias // The Great Synthesis", typeLine: "Legendary Creature — Phyrexian Praetor", oracleText: "Ward {2}\nWhenever you cast a noncreature spell with mana value 3 or greater, draw a card." };
+  for (const card of [sylvanLibrary, castleLocthwain, jinGitaxias]) {
+    const signals = extractMechanicalSignals(card);
+    assert.ok(signals.produces.includes("draw") || signals.rewards.includes("draw"), `${card.name} should still register as draw-related via its own real wording`);
+  }
+});
