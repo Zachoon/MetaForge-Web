@@ -1653,6 +1653,10 @@ export default function Home() {
     // field is cleared by a later New Forge.
     commissionNote?: string;
   } | null>(null);
+  const [publicReportStatus, setPublicReportStatus] = useState<"idle" | "publishing" | "ready" | "error">("idle");
+  const [publicReportUrl, setPublicReportUrl] = useState("");
+  const [publicReportError, setPublicReportError] = useState("");
+  const [publicReportGenerationId, setPublicReportGenerationId] = useState("");
   // Non-fatal disclosure for the decklist-import path: names the Forge could
   // not verify or that aren't legal in this format, left out rather than
   // silently dropped or auto-corrected. Distinct from forgeGenerationError,
@@ -5311,6 +5315,41 @@ export default function Home() {
     void persistStoryBench(nextRevisions, record);
   }
 
+  async function publishPublicDeckReport() {
+    if (publicReportUrl && publicReportGenerationId === nativeMasterworkContext?.generationId) {
+      await navigator.clipboard.writeText(publicReportUrl).catch(() => undefined);
+      return;
+    }
+    const generationId = nativeMasterworkContext?.generationId;
+    if (guestMode || !generationId) {
+      setPublicReportStatus("error");
+      setPublicReportError("Finish this deck while signed in before publishing a public report.");
+      return;
+    }
+    setPublicReportStatus("publishing");
+    setPublicReportError("");
+    setPublicReportUrl("");
+    try {
+      const response = await fetch("/api/decks/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          generationId,
+          title: masterworkIdentity.title || `${activeCommanderName || chosenWork.name} ${format} Deck`,
+        }),
+      });
+      const payload = await response.json() as { url?: string; error?: string };
+      if (!response.ok || !payload.url) throw new Error(payload.error || "The public report could not be published.");
+      setPublicReportUrl(payload.url);
+      setPublicReportGenerationId(generationId);
+      setPublicReportStatus("ready");
+      await navigator.clipboard.writeText(payload.url).catch(() => undefined);
+    } catch (error) {
+      setPublicReportStatus("error");
+      setPublicReportError(error instanceof Error ? error.message : "The public report could not be published.");
+    }
+  }
+
   return (
     <main
       className={`great-forge chamber-${chamber} reading-${readingSize}`}
@@ -5453,7 +5492,7 @@ export default function Home() {
         <button type="button" className={chamber === "workbench" && activeForgeChapter === 2 ? "active" : ""} disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(2); setSiteRail("analysis"); }}><i>◇</i><span>Analysis</span></button>
         <button type="button" className={chamber === "archive" ? "active" : ""} onClick={openPrivateArchive}><i className="forge-rail-cardback" aria-hidden="true">MF</i><span>Decks</span></button>
         <button type="button" disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode("playtest"); setSiteRail("playtest"); window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>⚔</i><span>Playtest</span></button>
-        <button type="button" disabled={!hasValidatedDeck} onClick={() => navigator.clipboard.writeText(formatDeckForArenaExport(forgedDeck))}><i>⌁</i><span>Share</span></button>
+        <button type="button" disabled={!hasValidatedDeck || guestMode || !nativeMasterworkContext?.generationId || publicReportStatus === "publishing"} onClick={() => void publishPublicDeckReport()}><i>⌁</i><span>{publicReportStatus === "publishing" ? "Publishing" : publicReportStatus === "ready" && publicReportGenerationId === nativeMasterworkContext?.generationId ? "Link copied" : "Share"}</span></button>
         <button type="button" disabled={!hasValidatedDeck} onClick={() => { setMasterworkIdentityDraft(masterworkIdentity); setMasterworkIdentityOpen(true); }}><i>⚙</i><span>Settings</span></button>
         <div className="forge-rail-embers" aria-hidden="true"><i /><i /><i /></div>
         <div className="forge-rail-version" aria-label="MetaForge version 2.1.0"><i>MF</i><span>v2.1.0</span></div>
@@ -5601,6 +5640,7 @@ export default function Home() {
             <nav className="entrance-discovery" aria-label="Magic deckbuilding resources">
               <a href="/tools"><strong>Free MTG deckbuilding tools</strong><span>Build, check, and analyze Commander decks with clear explanations.</span></a>
               <a href="/commanders"><strong>Commander deck guides</strong><span>Explore commanders and the strategies their rules text supports.</span></a>
+              <a href="/decks"><strong>Community Commander decks</strong><span>Explore complete decklists explicitly published by MetaForge players.</span></a>
               <a href="/academy"><strong>MTG deckbuilding guides</strong><span>Learn to diagnose mana, card flow, interaction, speed, and win conditions.</span></a>
               <a href="/about"><strong>How MetaForge works</strong><span>Read the evidence-first method behind our MTG deck coaching.</span></a>
             </nav>
@@ -6816,6 +6856,13 @@ export default function Home() {
                     >
                       Copy deck
                     </button>
+                    {!guestMode && nativeMasterworkContext?.generationId && (
+                      <button type="button" className="publish-report-link" disabled={publicReportStatus === "publishing"} onClick={() => void publishPublicDeckReport()}>
+                        {publicReportStatus === "publishing" ? "Publishing…" : publicReportStatus === "ready" && publicReportGenerationId === nativeMasterworkContext?.generationId ? "Copy public link" : "Publish public report"}
+                      </button>
+                    )}
+                    {publicReportUrl && <a className="public-report-status" href={publicReportUrl} target="_blank" rel="noopener noreferrer">Open public report ↗</a>}
+                    {publicReportError && <span className="public-report-error" role="alert">{publicReportError}</span>}
                     <button
                       type="button"
                       className="personalize-masterwork"
@@ -7693,6 +7740,8 @@ export default function Home() {
                       Export
                     </button>
                     <button type="button" onClick={() => navigator.clipboard.writeText(formatDeckForArenaExport(forgedDeck))}>Copy deck</button>
+                    {!guestMode && nativeMasterworkContext?.generationId && <button type="button" disabled={publicReportStatus === "publishing"} onClick={() => void publishPublicDeckReport()}>{publicReportStatus === "publishing" ? "Publishing…" : publicReportStatus === "ready" && publicReportGenerationId === nativeMasterworkContext?.generationId ? "Copy public link" : "Publish public report"}</button>}
+                    {publicReportUrl && <a className="public-report-status" href={publicReportUrl} target="_blank" rel="noopener noreferrer">Open report ↗</a>}
                     {deckPurchaseLink && <a href={deckPurchaseLink.url} target={deckPurchaseLink.target} rel={deckPurchaseLink.rel}>Buy deck</a>}
                     <button type="button" className="masterwork-playtest" onClick={() => { setActiveForgeChapter(1); setDeckViewMode("playtest"); window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}>Goldfish this deck →</button>
                   </div>

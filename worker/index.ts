@@ -20,6 +20,7 @@ import { cleanupExpiredGuestForges, handleGuestClaim, handleGuestForge } from ".
 import { handleLaunchTelemetry, recordOperationalGeneration } from "./launch-telemetry";
 import { handleOpinionQuery } from "./opinion-query";
 import { handleRevisionOpinion } from "./revision-opinion";
+import { handlePublicReportPublish, publicDeckIndexResponse, publicDeckReportResponse, publicReportSitemapEntries } from "./public-deck-report";
 const BUILD_ID = "2026.07.16-workspace1";
 const IMPACT_SITE_VERIFICATION = "05208696-7452-434e-89b1-d6be551c7505";
 const PUBLIC_HOSTS = new Set(["metaforge.gg"]);
@@ -83,6 +84,7 @@ const SITEMAP_URLS: { loc: string; lastmod: string; changefreq: string; priority
   { loc: "https://metaforge.gg/privacy", lastmod: "2026-08-02", changefreq: "monthly", priority: "0.3" },
   { loc: "https://metaforge.gg/about", lastmod: "2026-08-23", changefreq: "monthly", priority: "0.7" },
   { loc: "https://metaforge.gg/methodology", lastmod: "2026-08-23", changefreq: "monthly", priority: "0.7" },
+  { loc: "https://metaforge.gg/decks", lastmod: "2026-08-23", changefreq: "daily", priority: "0.8" },
   { loc: "https://metaforge.gg/academy", lastmod: "2026-08-23", changefreq: "weekly", priority: "0.8" },
   ...Object.keys(ACADEMY_GUIDES).map((path) => ({ loc: `https://metaforge.gg${path}`, lastmod: ACADEMY_GUIDES[path].datePublished, changefreq: "monthly", priority: "0.7" })),
   { loc: "https://metaforge.gg/tools", lastmod: "2026-08-23", changefreq: "monthly", priority: "0.9" },
@@ -91,9 +93,11 @@ const SITEMAP_URLS: { loc: string; lastmod: string; changefreq: string; priority
   ...Object.keys(COMMANDER_GUIDES).map((path) => ({ loc: `https://metaforge.gg${path}`, lastmod: "2026-08-23", changefreq: "monthly", priority: "0.7" })),
 ];
 
-function sitemapResponse(url: URL): Response {
+async function sitemapResponse(url: URL, env: Env): Promise<Response> {
   if (!PUBLIC_HOSTS.has(url.hostname)) return new Response("Not found", { status: 404 });
-  const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${SITEMAP_URLS.map((entry) => `\n  <url><loc>${entry.loc}</loc><lastmod>${entry.lastmod}</lastmod><changefreq>${entry.changefreq}</changefreq><priority>${entry.priority}</priority></url>`).join("")}\n</urlset>\n`;
+  let publicReports: typeof SITEMAP_URLS = [];
+  try { publicReports = await publicReportSitemapEntries(env); } catch (error) { console.error("public report sitemap lookup failed", error); }
+  const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${[...SITEMAP_URLS, ...publicReports].map((entry) => `\n  <url><loc>${entry.loc}</loc><lastmod>${entry.lastmod}</lastmod><changefreq>${entry.changefreq}</changefreq><priority>${entry.priority}</priority></url>`).join("")}\n</urlset>\n`;
   return new Response(body, { headers: { ...SEO_HEADERS, "Cache-Control": "public, max-age=300, must-revalidate", "CDN-Cache-Control": "public, max-age=300", "Content-Type": "application/xml; charset=utf-8" } });
 }
 
@@ -280,7 +284,9 @@ const worker = {
     }
 
     if (url.pathname === "/robots.txt") return robotsResponse(url);
-    if (url.pathname === "/sitemap.xml") return sitemapResponse(url);
+    if (url.pathname === "/sitemap.xml") return sitemapResponse(url, env);
+    if (url.pathname === "/decks" && PUBLIC_HOSTS.has(url.hostname)) return publicDeckIndexResponse(env);
+    if (/^\/decks\/[a-z0-9-]+$/.test(url.pathname) && PUBLIC_HOSTS.has(url.hostname)) return publicDeckReportResponse(url, env);
 
     try {
       if (url.pathname === "/api/account/deck-bench") {
@@ -316,6 +322,7 @@ const worker = {
       if (url.pathname === "/api/forge/structural-analyze") return await handleForgeStructuralAnalyze(request, env);
       if (url.pathname === "/api/forge/one-slot-experiment") return await handleForgeOneSlot(request, env);
       if (url.pathname === "/api/forge/multi-refill") return await handleForgeMultiRefill(request, env);
+      if (url.pathname === "/api/decks/publish") return await handlePublicReportPublish(request, env);
       if (url.pathname === "/api/cards/facts") return await handleCardFacts(request);
       if (url.pathname === "/api/cards/commanders") return await handleCommanderSearch(request);
       if (url.pathname === "/api/forge/status") {ctx.waitUntil(ensureDataGoblinsStarted(env));return Response.json({ready:true,build:BUILD_ID,modelReady:false,mode:"native",fallback:"MetaForge Native Coach remains available without a model call",tcgplayerAffiliateEnabled:env.TCGPLAYER_AFFILIATE_ENABLED === "true"},{headers:{"Cache-Control":"no-store"}})}

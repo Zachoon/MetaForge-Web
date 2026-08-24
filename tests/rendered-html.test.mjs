@@ -7,7 +7,11 @@ async function render(url = "https://metaforge.gg/") {
   const { default: worker } = await import(workerUrl.href);
   return worker.fetch(
     new Request(url, { headers: { accept: "text/html" } }),
-    { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) }, METAFORGE_BOOTSTRAP_LOCK: "unlocked" },
+    {
+      ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) },
+      DB: { prepare: () => ({ bind() { return this; }, first: async () => null, all: async () => ({ results: [] }), run: async () => ({ success: true }) }) },
+      METAFORGE_BOOTSTRAP_LOCK: "unlocked",
+    },
     { waitUntil() {}, passThroughOnException() {} },
   );
 }
@@ -23,6 +27,7 @@ test("server-renders the MetaForge product experience", async () => {
   assert.match(html, /Build a new MTG deck or analyze a decklist/i);
   assert.match(html, /href="\/commanders"/i);
   assert.match(html, /href="\/tools"/i);
+  assert.match(html, /href="\/decks"/i);
   assert.match(html, /Commander deck guides/i);
   assert.match(html, /MTG deckbuilding guides/i);
   assert.match(html, /class="forge-brand-logo"[^>]+src="\/assets\/brand\/metaforge-mf-anvil\.webp"/i);
@@ -204,11 +209,23 @@ test("publishes a crawlable public robots file and sitemap", async () => {
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/commanders\/nekusar-the-mindrazer<\/loc>/);
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/about<\/loc>/);
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/methodology<\/loc>/);
+  assert.match(xml, /<loc>https:\/\/metaforge\.gg\/decks<\/loc>/);
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/academy\/how-many-lands-should-a-commander-deck-have<\/loc>/);
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/tools\/commander-land-calculator<\/loc>/);
   const locations = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
-  assert.equal(locations.length, 46);
+  assert.equal(locations.length, 47);
   assert.equal(new Set(locations).size, locations.length);
+});
+
+test("publishes an indexable community deck library without exposing private account data", async () => {
+  const response = await render("https://metaforge.gg/decks");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /Community Commander Deck Reports/);
+  assert.match(html, /<link rel="canonical" href="https:\/\/metaforge\.gg\/decks">/i);
+  assert.match(html, /<meta name="robots" content="index, follow">/i);
+  assert.match(html, /"@type":"CollectionPage"/i);
+  assert.doesNotMatch(html, /owner_key|generationId|email/i);
 });
 
 test("blocks crawler discovery on the authenticated host", async () => {
