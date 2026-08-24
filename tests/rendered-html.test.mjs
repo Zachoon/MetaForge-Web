@@ -94,6 +94,18 @@ test("permanently redirects every www duplicate to the apex canonical without lo
   assert.equal(await response.text(), "");
 });
 
+test("permanently consolidates insecure HTTP URLs into their HTTPS canonical", async () => {
+  const apex = await render("http://metaforge.gg/academy/why-does-my-deck-start-so-slowly?source=search");
+  assert.equal(apex.status, 308);
+  assert.equal(apex.headers.get("location"), "https://metaforge.gg/academy/why-does-my-deck-start-so-slowly?source=search");
+  assert.match(apex.headers.get("cache-control") || "", /max-age=86400/);
+  assert.equal(await apex.text(), "");
+
+  const app = await render("http://app.metaforge.gg/?claim=example");
+  assert.equal(app.status, 308);
+  assert.equal(app.headers.get("location"), "https://app.metaforge.gg/?claim=example");
+});
+
 test("publishes unique Academy metadata and valid editorial schema", async () => {
   const academy = await render("https://metaforge.gg/academy");
   const academyHtml = await academy.text();

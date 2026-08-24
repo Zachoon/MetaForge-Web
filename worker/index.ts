@@ -267,6 +267,19 @@ const worker = {
     }
     const url = new URL(request.url);
 
+    // Search Console showed the insecure homepage as MetaForge's largest
+    // impression-bearing URL. Canonicals alone do not consolidate a 200 OK
+    // HTTP duplicate, so permanently move every insecure request to HTTPS.
+    // Keep app.metaforge.gg on the app host; only www also collapses to apex.
+    if (url.protocol === "http:") {
+      url.protocol = "https:";
+      if (url.hostname === "www.metaforge.gg") url.hostname = "metaforge.gg";
+      return new Response(null, {
+        status: 308,
+        headers: { Location: url.href, "Cache-Control": "public, max-age=86400" },
+      });
+    }
+
     // Serve one crawlable public origin. Previously www returned a complete
     // 200 duplicate whose canonical pointed to the apex, which Search Console
     // correctly classified as "Alternate page with proper canonical tag".
