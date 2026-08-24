@@ -62,9 +62,12 @@ test("Explore/home is a no-scroll hero; saved Masterworks live on Decks", async 
   assert.doesNotMatch(entranceChamber, /Return to a deck/);
   assert.match(await readCtx(), /function openPrivateArchive\(/);
   assert.match(await readCtx(), /setChamber\("archive"\)/);
-  assert.match(page, /\{chamber === "archive" && \(/);
-  assert.match(page, /className="masterwork-archive"/);
-  assert.match(page, /className="masterwork-history"/);
+  // The archive chamber's JSX moved to its own component during the
+  // page.tsx decomposition (Phase 4 Stage 3).
+  const archiveChamber = await read("app/components/forge/archive-chamber.tsx");
+  assert.match(page, /\{chamber === "archive" && <ArchiveChamber \/>\}/);
+  assert.match(archiveChamber, /className="masterwork-archive"/);
+  assert.match(archiveChamber, /className="masterwork-history"/);
   // Decks lives once, on the left rail — the top nav no longer duplicates it.
   assert.match(page, /onClick=\{openPrivateArchive\}><i className="forge-rail-cardback" aria-hidden="true">MF<\/i><span>Decks<\/span><\/button>/);
   assert.doesNotMatch(page, /<nav className="forge-global-nav"[\s\S]*?onClick=\{openPrivateArchive\}>Decks<\/button>[\s\S]*?<\/nav>/);
