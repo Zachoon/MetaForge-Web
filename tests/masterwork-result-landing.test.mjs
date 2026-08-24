@@ -119,7 +119,7 @@ test("a completed Forge lands on the plain decklist, coaching and experiments re
   const mentorAt = page.indexOf("<RevisionOpinionPanel");
   assert.ok(galleryAt > 0 && mentorAt > galleryAt, "Mentor must mount after #deck-gallery, never above the Decklist");
   assert.doesNotMatch(page, /forge-descent-atmosphere/);
-  assert.match(page, /chamber === "forging" && \(/);
+  assert.match(page, /chamber === "forging" && <ForgingChamber \/>/);
   assert.doesNotMatch(page, /forge-heat-haze/);
   assert.doesNotMatch(page, /setMilestoneMotion\(\{[\s\S]*?kind: "masterwork-ready"/);
   assert.match(frame, /\.forge-heat-haze,/);
@@ -133,10 +133,12 @@ test("a completed Forge lands on the plain decklist, coaching and experiments re
 });
 
 test("the ceremony phase rail spans the full forge, not the copy column", async () => {
-  const page = await read("app/page.tsx");
   const journey = await read("app/forge-journey.css");
   const ceremony = await read("app/components/forge/forge-ceremony.tsx");
-  assert.match(page, /<\/div>\s*<ol className="ceremony-phase-rail"/);
+  // The forging chamber's JSX moved to its own component during the
+  // page.tsx decomposition (Phase 4 Stage 3).
+  const forgingChamber = await read("app/components/forge/forging-chamber.tsx");
+  assert.match(forgingChamber, /<\/div>\s*<ol className="ceremony-phase-rail"/);
   assert.match(journey, /\.forging-ceremony>\.ceremony-phase-rail\{grid-column:1\/-1/);
   assert.match(journey, /grid-template-rows:minmax\(0,1fr\) auto/);
   assert.match(ceremony, /\["Field"\]/);

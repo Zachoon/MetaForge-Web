@@ -18,6 +18,7 @@ const [
   dossierCss,
   researchPage,
   siteFrameCss,
+  forgingChamber,
 ] = await Promise.all([
   read("app/page.tsx"),
   read("app/forge-polish.css"),
@@ -31,11 +32,14 @@ const [
   read("app/components/forge/deep-forge-dossier.css"),
   read("app/research/page.tsx"),
   read("app/site-frame.css"),
+  // The forging chamber's JSX moved to its own component during the
+  // page.tsx decomposition (Phase 4 Stage 3).
+  read("app/components/forge/forging-chamber.tsx"),
 ]);
 
 test("ceremony, footer, and card-mold rail slot name occupancy from commander oracle", () => {
-  assert.match(page, /className="ceremony-occupancy"/);
-  assert.match(page, /Named from commander oracle while the 99 is still being forged/);
+  assert.match(forgingChamber, /className="ceremony-occupancy"/);
+  assert.match(forgingChamber, /Named from commander oracle while the 99 is still being forged/);
   assert.match(page, /className="masterwork-footer-occupancy"/);
   assert.match(page, /className="forge-card-mold-occupancy"/);
   assert.match(page, /className="forge-card-mold-pair"/);

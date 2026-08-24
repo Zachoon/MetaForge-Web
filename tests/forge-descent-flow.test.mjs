@@ -17,7 +17,7 @@ test("post-ceremony result pages do not keep a fire atmosphere that shoves the d
   const css = await read("app/forge-descent.css");
   const frame = await read("app/site-frame.css");
   assert.doesNotMatch(page, /forge-descent-atmosphere/);
-  assert.match(page, /chamber === "forging" && \(/);
+  assert.match(page, /chamber === "forging" && <ForgingChamber \/>/);
   assert.match(css, /pointer-events:none/);
   assert.doesNotMatch(css, /molten-metal-cc0\.jpg/);
   assert.match(frame, /\.forge-descent-atmosphere,/);
