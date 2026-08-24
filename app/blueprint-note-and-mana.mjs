@@ -170,7 +170,19 @@ export const ROLE_PATTERNS = Object.freeze({
   // negative lookahead; confirmed via direct test all five stay excluded
   // while the four real removal cards still match.
   interaction: [/destroy target/i, /exile [^.]{0,20}target/i, /counter target/i, /deals? (?:\d+|x) damage (?:to|divided)/i, /return [^.]{0,60}owners?['’]?s?\s+hands?/i, /-\d+\/-\d+/i, /\bfights? (?:target|another|up to|a different)\b/i, /deals? damage (?:to (?:itself|himself|herself) )?equal to its power/i, /loses all (?:other (?:card types? and )?)?abilities/i, /can'?t attack or block(?! (?:alone|unless))\b/i],
-  protection: [/hexproof/i, /indestructible/i, /phase out/i, /protection from/i, /counter target spell or ability/i],
+  // Founder #095 (per Zach's "broaden then find gaps" direction: swept
+  // every OTHER role in ROLE_PATTERNS against the full 4,060-card mined
+  // corpus, not just interaction — most categories turned out noisy
+  // semantic overlap rather than the same narrow-regex-adjacency bug
+  // class, but this one was clean and enormous). "Ward" — one of the
+  // most common protection keywords printed since 2021 — had NO coverage
+  // at all in this array. 33 real cards in the mined corpus alone use it
+  // (Sedgemoor Witch, Miirym Sentinel Wyrm, Kitesail Larcenist among
+  // them), all returning zero "protection" credit. Confirmed \bward\b
+  // correctly excludes "award" via the word boundary, and every one of
+  // the 33 matches is a genuine Ward-keyword card, not a coincidental
+  // substring hit.
+  protection: [/hexproof/i, /indestructible/i, /phase out/i, /protection from/i, /counter target spell or ability/i, /\bward\b/i],
   // Unsummon/Vapor Snag/Boomerang class: "return target creature to its
   // owner's hand" is bounce (already the `interaction` role above), not
   // recursion — it never touches a graveyard at all. Requires "graveyard"
