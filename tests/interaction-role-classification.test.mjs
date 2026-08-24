@@ -138,6 +138,26 @@ const synchronizedEviction = { name: "Synchronized Eviction", typeLine: "Instant
 const whiteSunsZenith = { name: "White Sun's Zenith", typeLine: "Sorcery", oracleText: "Create X 2/2 white Cat creature tokens. Shuffle White Sun's Zenith into its owner's library." };
 const fblthp = { name: "Fblthp, the Lost", typeLine: "Creature — Homunculus", oracleText: "When Fblthp enters, draw a card. If it entered from your library or was cast from your library, draw two cards instead.\nWhen Fblthp becomes the target of a spell, shuffle Fblthp into its owner's library." };
 
+// =============================================================================
+// Founder #097: broadened the mined corpus with 15 more fresh real
+// Moxfield decklists (group hug, stax/tax, +1/+1 counters, storm/
+// spellslinger, mill) — 4,838 unique cards / 125 decklists total, 257
+// zero-role results. "Whenever [this creature/you] becomes the target of a
+// spell..., counter that spell" (Boromir Warden of the Tower, Frost Titan,
+// Lavinia Azorius Renegade) is a real, distinct mini-counterspell ability
+// with no coverage — the existing "counter target" alternative requires
+// "target" right after "counter", but this archetype says "counter THAT
+// spell" instead. Deliberately scoped to that exact phrase, not a broader
+// "counter it", because "counter it unless...pays" is also the exact
+// reminder-text wording #095's Ward keyword uses to explain itself
+// (Sedgemoor Witch) — crediting every Ward card a second time via its own
+// reminder text would be noise, not a real gap.
+// =============================================================================
+
+const boromirWarden = { name: "Boromir, Warden of the Tower", typeLine: "Legendary Creature — Human Soldier", oracleText: "Vigilance\nWhenever an opponent casts a spell, if no mana was spent to cast it, counter that spell.\nSacrifice Boromir: Creatures you control get +1/+1 until end of turn." };
+const frostTitan = { name: "Frost Titan", typeLine: "Creature — Giant", oracleText: "Whenever this creature becomes the target of a spell or ability an opponent controls, counter that spell or ability unless its controller pays {2}." };
+const sedgemoorWitchCounterReminder = { name: "Sedgemoor Witch", typeLine: "Creature — Human Witch", oracleText: "Menace\nWard—Pay 3 life. (Whenever this creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays 3 life.)" };
+
 test("blueprint-note-and-mana.mjs's ROLE_PATTERNS.interaction recognizes the real 'damage divided among targets' shape (Fire Covenant, Arc Lightning), not just 'damage to'", () => {
   const textOf = (card) => `${card.name}\n${card.typeLine}\n${card.oracleText}`;
   assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(fireCovenant))), true);
@@ -248,4 +268,20 @@ test("the new shuffle-into-library shapes do not false-positive on the Zenith sp
   const textOf = (card) => `${card.name}\n${card.typeLine}\n${card.oracleText}`;
   assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(whiteSunsZenith))), false);
   assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(fblthp))), false);
+});
+
+test("blueprint-note-and-mana.mjs's ROLE_PATTERNS.interaction recognizes the real 'counter that spell' mini-counterspell ability (Boromir, Warden of the Tower; Frost Titan)", () => {
+  const textOf = (card) => `${card.name}\n${card.typeLine}\n${card.oracleText}`;
+  assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(boromirWarden))), true);
+  assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(frostTitan))), true);
+});
+
+test("card-role-classification.mjs's classifyNativeCard grants the 'interaction' role for Boromir, Warden of the Tower and Frost Titan, which returned ZERO roles at all before this fix", () => {
+  assert.ok(classifyNativeCard(boromirWarden).includes("interaction"));
+  assert.ok(classifyNativeCard(frostTitan).includes("interaction"));
+});
+
+test("'counter that spell' is deliberately scoped narrower than 'counter it' — Sedgemoor Witch's Ward reminder text ('counter it unless that player pays 3 life') does not get a second, redundant interaction credit", () => {
+  const textOf = (card) => `${card.name}\n${card.typeLine}\n${card.oracleText}`;
+  assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(sedgemoorWitchCounterReminder))), false);
 });

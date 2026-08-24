@@ -196,7 +196,25 @@ export const ROLE_PATTERNS = Object.freeze({
   // immediately after the put/shuffle verb (the self-referential cards
   // never have it — they name themselves or use "it"/"each", never
   // "target"), confirmed via direct test all six stay excluded.
-  interaction: [/destroy target/i, /exile [^.]{0,20}target/i, /counter target/i, /deals? (?:\d+|x) damage (?:to|divided)/i, /return [^.]{0,60}owners?['’]?s?\s+hands?/i, /-\d+\/-\d+/i, /\bfights? (?:target|another|up to|a different)\b/i, /deals? damage (?:to (?:itself|himself|herself) )?equal to its power/i, /loses all (?:other (?:card types? and )?)?abilities/i, /can'?t attack or block(?! (?:alone|unless))\b/i, /change the target of target spell|choose new targets for target spell or ability/i, /shuffles? [^.]{0,20}into their librar/i, /(?:put|shuffle) target [^.]{0,80}into (?:its|their) owner'?s? librar/i],
+  // Founder #097 (broadened the mined corpus with 15 more fresh real
+  // Moxfield decklists — group hug, stax/tax, +1/+1 counters, storm/
+  // spellslinger, mill — 4,838 unique cards / 125 decklists total, 257
+  // zero-role results): a smaller but still real vein this round.
+  // "Whenever [this creature/you] becomes the target of a spell..., counter
+  // that spell" (Boromir Warden of the Tower, Frost Titan, Lavinia Azorius
+  // Renegade, Diffusion Sliver) is a real, distinct mini-counterspell
+  // ability with no coverage — the existing "counter target" alternative
+  // requires the literal word "target" right after "counter", but this
+  // whole real archetype uses "counter THAT spell" instead, referring back
+  // to an already-named spell from an earlier clause. Deliberately scoped
+  // to "counter that spell" specifically (not a broader "counter it")
+  // because "counter it unless...pays" is also the exact reminder-text
+  // wording #095's Ward keyword uses to explain itself parenthetically
+  // (Sedgemoor Witch, Spinewoods Armadillo, Plate Armor) — crediting every
+  // Ward card with a second, redundant "interaction" role via its own
+  // reminder text isn't a real gap, just noise, so that broader shape was
+  // deliberately left unfixed.
+  interaction: [/destroy target/i, /exile [^.]{0,20}target/i, /counter target/i, /deals? (?:\d+|x) damage (?:to|divided)/i, /return [^.]{0,60}owners?['’]?s?\s+hands?/i, /-\d+\/-\d+/i, /\bfights? (?:target|another|up to|a different)\b/i, /deals? damage (?:to (?:itself|himself|herself) )?equal to its power/i, /loses all (?:other (?:card types? and )?)?abilities/i, /can'?t attack or block(?! (?:alone|unless))\b/i, /change the target of target spell|choose new targets for target spell or ability/i, /shuffles? [^.]{0,20}into their librar/i, /(?:put|shuffle) target [^.]{0,80}into (?:its|their) owner'?s? librar/i, /\bcounter that spell\b/i],
   // Founder #095 (per Zach's "broaden then find gaps" direction: swept
   // every OTHER role in ROLE_PATTERNS against the full 4,060-card mined
   // corpus, not just interaction — most categories turned out noisy
