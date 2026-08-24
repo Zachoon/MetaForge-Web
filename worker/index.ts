@@ -154,7 +154,7 @@ function seoMarkup(url: URL, html: string): string {
     "@context": "https://schema.org", "@type": "Article",
     headline: `${commander} Commander Deck Guide`,
     description: `A Magic: The Gathering Commander deckbuilding guide for ${commander}.`,
-    datePublished: "2026-08-19", dateModified: "2026-08-20", mainEntityOfPage: canonicalUrl,
+    datePublished: "2026-08-19", dateModified: "2026-08-23", mainEntityOfPage: canonicalUrl,
     author: { "@type": "Organization", name: "MetaForge" },
     publisher: { "@type": "Organization", name: "MetaForge", url: "https://metaforge.gg/" },
     about: { "@type": "Thing", name: "Magic: The Gathering Commander" },

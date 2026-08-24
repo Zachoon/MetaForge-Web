@@ -97,3 +97,8 @@
 .commander-guide-list p { margin: 4px 0 0; font-size: 14px; color: #b9ab97; }
 .commander-related-links { display: grid; gap: .55rem; padding-left: 1.2rem; }
 .commander-related-links a { color: #9edfd0; }
+.commander-priorities { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; }
+.commander-priorities > div { padding: 1rem; border-left: 2px solid #e79b41; background: rgba(87, 44, 24, .1); }
+.commander-priorities h3 { margin: 0 0 .45rem; color: #eee2cf; font-size: 1rem; }
+.commander-priorities p { margin: 0; color: #b9ab97; font-size: .88rem; }
+@media (max-width: 720px) { .commander-priorities { grid-template-columns: 1fr; } }

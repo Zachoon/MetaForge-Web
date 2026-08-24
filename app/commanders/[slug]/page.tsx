@@ -13,6 +13,7 @@ import {
 } from "../../knowledge/mentor-shadow.mjs";
 import { occupancyEngineCopyFor } from "../occupancy-copy.mjs";
 import { COMMANDER_GUIDES, commanderGuideBySlug } from "../data.mjs";
+import { commanderGuideProfile } from "../guide-profiles.mjs";
 
 export function generateStaticParams() {
   return COMMANDER_GUIDES.map((entry) => ({ slug: entry.slug }));
@@ -38,6 +39,7 @@ export default async function CommanderGuidePage({ params }: { params: Promise<{
   const entry = commanderGuideBySlug(slug);
   if (!entry) notFound();
   const { card, tagline } = entry;
+  const profile = commanderGuideProfile(slug);
 
   const engines = OCCUPANCY_PACKAGE_IDS
     .map((id) => {
@@ -108,6 +110,41 @@ export default async function CommanderGuidePage({ params }: { params: Promise<{
               decklist.
             </p>
           </section>
+
+          {profile ? <>
+            <section>
+              <h2>{card.name} game plan</h2>
+              <p>{profile.plan}</p>
+            </section>
+            <section>
+              <h2>Key card roles and deckbuilding priorities</h2>
+              <div className="commander-priorities">
+                {profile.priorities.map(([heading, body]) => <div key={heading}><h3>{heading}</h3><p>{body}</p></div>)}
+              </div>
+            </section>
+            <section>
+              <h2>Mana, ramp, and color requirements</h2>
+              <p>{profile.mana}</p>
+              <p><a href="/tools/commander-color-source-calculator">Estimate the colored sources for a demanding spell</a> or use the <a href="/tools/commander-land-calculator">Commander land calculator</a> to choose a starting range.</p>
+            </section>
+            <section>
+              <h2>Interaction and protection</h2>
+              <p>{profile.interaction}</p>
+            </section>
+            <section>
+              <h2>How {card.name} wins</h2>
+              <p>{profile.wins}</p>
+            </section>
+            <section>
+              <h2>Common {card.name} deckbuilding mistakes</h2>
+              <ul>{profile.mistakes.map((mistake) => <li key={mistake}>{mistake}</li>)}</ul>
+            </section>
+            <section>
+              <h2>Building {card.name} on a budget</h2>
+              <p>{profile.budget}</p>
+              <p><a href={profile.academy}>Read the related MetaForge Academy guide</a> for a deeper explanation of this structural problem.</p>
+            </section>
+          </> : null}
 
           <section>
             <h2>Build a deck around {card.name}</h2>

@@ -170,9 +170,17 @@ test("publishes the expanded commander library with related internal links", asy
   const guide = await render("https://metaforge.gg/commanders/muldrotha-the-gravetide");
   const guideHtml = await guide.text();
   assert.match(guideHtml, /Muldrotha, the Gravetide Commander Deck Guide/i);
+  assert.match(guideHtml, /Muldrotha, the Gravetide[\s\S]{0,40}game plan/i);
+  assert.match(guideHtml, /Key card roles and deckbuilding priorities/i);
+  assert.match(guideHtml, /Mana, ramp, and color requirements/i);
+  assert.match(guideHtml, /Common[\s\S]{0,40}Muldrotha, the Gravetide[\s\S]{0,40}deckbuilding mistakes/i);
+  assert.match(guideHtml, /Building[\s\S]{0,40}Muldrotha, the Gravetide[\s\S]{0,40}on a budget/i);
   assert.match(guideHtml, /Explore related Commander resources/i);
   assert.match(guideHtml, /\/tools\/commander-deck-builder/i);
   assert.match(guideHtml, /<meta property="og:image" content="https:\/\/cards\.scryfall\.io\/art_crop/i);
+
+  const korvold = await render("https://metaforge.gg/commanders/korvold-fae-cursed-king");
+  assert.match(await korvold.text(), /Sacrificing resources for value without a route to end the game/i);
 });
 
 test("publishes a crawlable public robots file and sitemap", async () => {

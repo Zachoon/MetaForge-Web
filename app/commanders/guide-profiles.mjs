@@ -1,0 +1,88 @@
+export const COMMANDER_GUIDE_PROFILES = Object.freeze({
+  "korvold-fae-cursed-king": Object.freeze({
+    plan: "Korvold rewards you whenever a permanent is sacrificed, so the deck wants ordinary game actions—fetching a land, cracking a Treasure, sacrificing a creature—to replace themselves with cards while growing a commander-damage threat. The strongest lists do not rely on sacrifice outlets alone; they combine disposable material, repeatable outlets, and payoffs that remain useful when Korvold is absent.",
+    priorities: [
+      ["Reliable sacrifice material", "Treasures, Food, Clues, creature tokens, and lands that sacrifice themselves keep the engine supplied without spending real cards."],
+      ["Low-cost outlets", "Free or inexpensive sacrifice outlets let you control timing, protect creatures from exile effects, and trigger Korvold without waiting for combat."],
+      ["Recovery and recursion", "Korvold attracts removal. Recursion and independent draw prevent the deck from becoming a five-colorless-mana restart after each answer."],
+    ],
+    mana: "Jund decks need all three colors early, and Korvold costs five. Favor lands and ramp that fix colors while creating sacrifice value. Fetch lands and budget equivalents are especially useful because the land itself supplies the trigger.",
+    interaction: "Removal that sacrifices as an additional cost or leaves useful material can advance the engine, but do not force every answer to be synergistic. The deck still needs efficient ways to stop graveyard hate, replacement effects, and faster combo turns.",
+    wins: "Korvold can win through commander damage after several triggers, through sacrifice-drain payoffs, or by converting a large resource advantage into an overwhelming board. Choose two compatible routes so one removal spell or graveyard effect does not shut off every finish.",
+    mistakes: ["Playing many sacrifice payoffs but too few expendable permanents", "Keeping hands that cannot cast Korvold's three colors", "Treating Korvold as the deck's only card-draw source", "Sacrificing resources for value without a route to end the game"],
+    budget: "The engine does not require premium fetch lands. Evolving Wilds-style lands, inexpensive Treasure makers, creature tokens, and repeatable commons can establish the same structural loop at a slower pace.",
+    academy: "/academy/why-do-i-lose-after-getting-ahead",
+  }),
+  "edgar-markov": Object.freeze({
+    plan: "Edgar creates a Vampire token whenever you cast another Vampire, even from the command zone. That makes cheap Vampires unusually valuable: each one develops two bodies before Edgar ever enters. The deck should exploit that early material rather than fill every slot with expensive Vampires that delay the eminence engine.",
+    priorities: [
+      ["One- and two-mana Vampires", "Cheap creatures create early pressure and double the number of bodies produced by Edgar's eminence ability."],
+      ["Team-wide conversion", "Anthems, combat payoffs, and sacrifice payoffs turn a wide board into damage instead of merely increasing the creature count."],
+      ["Post-wipe rebuilding", "Low-cost draw, recursion, and token production help the deck recover after opponents answer the first wave."],
+    ],
+    mana: "Three colors and a low curve reward untapped colored sources. Edgar himself is optional in many games, so build the mana to cast early Vampires on sequence before optimizing for his six-mana cost.",
+    interaction: "Use cheap interaction that protects tempo. A six-mana removal spell may be powerful, but leaving up one or two mana while developing another Vampire better preserves the deck's pressure.",
+    wins: "Edgar usually wins through combat enhanced by counters or anthems, or through aristocrats-style life loss when its creatures die. If both plans are included, prioritize cards that support the same disposable Vampire army.",
+    mistakes: ["Choosing Vampires for individual power instead of casting speed", "Running too many lords and too few creatures to receive the bonuses", "Committing every creature into an obvious sweeper", "Assuming every card with Vampire art advances the deck's plan"],
+    budget: "Most of the core pressure can come from inexpensive low-cost Vampires. Spend upgrades on mana consistency and the few team-wide payoffs that materially change combat rather than on isolated premium creatures.",
+    academy: "/academy/how-to-balance-tokens-enablers-and-payoffs",
+  }),
+  "yuriko-the-tigers-shadow": Object.freeze({
+    plan: "Yuriko turns Ninja combat damage into cards and life loss based on the revealed mana value. The deck needs cheap evasive attackers to enable ninjutsu, Ninjas worth putting into combat, and top-deck control that makes the trigger reliable. High mana values are useful only when those cards remain castable or have alternative costs.",
+    priorities: [
+      ["Turn-one enablers", "Cheap evasive creatures let Yuriko enter early and make the commander-tax bypass of commander ninjutsu matter."],
+      ["Top-deck control", "Scry, surveil, tutors, and library manipulation turn random reveals into deliberate damage and improve the quality of cards drawn."],
+      ["Reusable evasion", "Bounce, unblockable effects, and small evasive bodies keep Ninjas connecting after opponents develop blockers."],
+    ],
+    mana: "The curve can look artificially high because of split cards and alternative costs. Keep the actual castable curve low, support blue and black on the first two turns, and avoid taplands that prevent the opening enabler-to-ninjutsu sequence.",
+    interaction: "Free or one-mana interaction is valuable because Yuriko wants to develop and protect combat in the same turn. Removal that clears a blocker can function as both interaction and damage support.",
+    wins: "Repeated Yuriko triggers pressure every opponent simultaneously. Top-deck manipulation creates burst turns, while extra-combat-damage triggers and evasive Ninjas provide redundancy when Yuriko is answered.",
+    mistakes: ["Adding uncastable high-mana cards only for reveal damage", "Running too few turn-one evasive creatures", "Counting Ninjas without counting ways for them to connect", "Ignoring graveyard reshuffle or recovery after a failed attack"],
+    budget: "Premium tutors improve precision but are not required. Inexpensive scry effects, evasive one-drops, and Ninjas with useful combat triggers preserve the core sequence.",
+    academy: "/academy/how-to-fix-a-commander-mana-curve",
+  }),
+  "the-ur-dragon": Object.freeze({
+    plan: "The Ur-Dragon reduces the cost of other Dragons from the command zone, then rewards a Dragon attack with cards and a free permanent. The deck must survive long enough to cast expensive creatures without spending its first turns doing nothing. A focused five-color mana base and early development matter more than adding every exciting Dragon.",
+    priorities: [
+      ["Early color fixing", "Five-color access must arrive before the first Dragon. Land-ramp that finds typed lands often fixes more reliably than colorless rocks."],
+      ["Dragons that affect the board", "Prioritize creatures with immediate removal, protection, haste, or card advantage so tapping out creates value before the next turn."],
+      ["Cost-aware card flow", "The deck needs ways to refill without adding even more expensive cards to hands that already contain several Dragons."],
+    ],
+    mana: "Five colors, a high creature curve, and a nine-mana commander demand a generous land count plus early fixing. Count sources for the colors of your ramp first, because those spells unlock the rest of the mana base.",
+    interaction: "Flexible interaction is important because a high-curve deck cannot afford narrow cards stranded in hand. Dragons with removal attached preserve creature density while answering a threat.",
+    wins: "The primary finish is a Dragon attack amplified by haste, double strike, extra combat, or the commander trigger. Protecting one decisive combat is usually stronger than adding another expensive creature that does the same job as cards already in hand.",
+    mistakes: ["Playing too many seven-plus-mana Dragons", "Using ramp that produces only colorless mana", "Keeping hands with fixing but no early acceleration", "Building as though The Ur-Dragon must always be cast"],
+    budget: "A budget mana base can work when green land-ramp is prioritized and the land types it searches are chosen carefully. Slower duals require lowering the number of color-intensive early spells.",
+    academy: "/academy/how-many-lands-should-a-commander-deck-have",
+  }),
+  "muldrotha-the-gravetide": Object.freeze({
+    plan: "Muldrotha lets you play one permanent of each permanent type from the graveyard during each of your turns. The deck wants permanents that sacrifice, mill, or replace themselves so the graveyard becomes a renewable hand. Instants and sorceries can still be excellent, but every nonpermanent should justify giving up a type Muldrotha can replay.",
+    priorities: [
+      ["Self-contained permanents", "Sagas, sacrifice creatures, fetch lands, and utility artifacts produce value before returning for another use."],
+      ["Controlled graveyard filling", "Self-mill should add useful choices without risking the entire library or depending on Muldrotha to make every milled card matter."],
+      ["Protection from exile", "Graveyard hate attacks the resource engine directly. Flexible removal and recovery plans must answer those permanents before committing more cards."],
+    ],
+    mana: "Muldrotha costs six and needs three colors, so early green fixing and a stable land count are important. Fetch lands become repeatable land drops from the graveyard, but the deck still needs enough untapped sources to develop before turn six.",
+    interaction: "Permanent-based interaction—creatures, enchantments, artifacts, and planeswalkers that remove or contain threats—can be replayed. Keep some instant-speed answers so opponents cannot safely act only on your end step.",
+    wins: "Muldrotha can win through repeatable value, creature recursion, sacrifice loops, or a compact combo. Name the closing route explicitly; recurring value forever is an advantage engine, not automatically a win condition.",
+    mistakes: ["Filling the deck with self-mill but too few useful graveyard plays", "Removing every instant because it is not replayable", "Depending entirely on Muldrotha surviving", "Creating value loops that cannot close the game"],
+    budget: "Many inexpensive permanents sacrifice themselves for cards, lands, or removal. A resilient budget list can focus on repeatable commons and uncommons instead of expensive combo pieces.",
+    academy: "/academy/what-is-my-deck-actually-trying-to-do",
+  }),
+  "atraxa-praetors-voice": Object.freeze({
+    plan: "Atraxa combines a strong defensive body with free proliferation at each end step. Proliferation improves counters already present; it does not create the first counter or decide which counter themes belong together. A focused Atraxa deck chooses one or two counter systems and supplies reliable ways to start them.",
+    priorities: [
+      ["Counter enablers", "Planeswalkers, +1/+1 counters, poison, charge counters, and sagas all need cards that establish the first counter before Atraxa can multiply it."],
+      ["Protection and untapping", "Atraxa's end-step trigger needs her to survive. Efficient protection and ways to gain value before the next full turn reduce the tempo risk."],
+      ["A coherent payoff", "Choose payoffs that reward the same counter system rather than collecting unrelated cards that all contain the word counter."],
+    ],
+    mana: "Four colors on turn four is demanding. Count untapped sources for each pip, favor fixing that arrives before Atraxa, and avoid letting colorless utility lands undermine the commander's castability.",
+    interaction: "Atraxa's colors provide broad answers. Select interaction that protects the chosen engine and covers permanent types the counter package cannot naturally handle.",
+    wins: "Focused lists close through an overwhelming counter-enhanced board, planeswalker ultimates, poison, or a compact synergy. Mixing all of them usually reduces the density each route needs.",
+    mistakes: ["Treating every counter card as part of one strategy", "Building four-color mana without counting timely sources", "Adding proliferate payoffs before enough counter enablers", "Assuming Atraxa's combat keywords alone will finish the table"],
+    budget: "Four-color lands are the largest pressure point. Green fixing, budget typed duals, and a less color-intensive early curve can preserve consistency without premium lands.",
+    academy: "/academy/how-many-mana-sources-do-i-need-in-commander",
+  }),
+});
+
+export function commanderGuideProfile(slug) { return COMMANDER_GUIDE_PROFILES[slug] || null; }
