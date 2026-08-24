@@ -16,6 +16,9 @@ const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8")
 // The affiliate-disclosure paragraph moved to the workbench chamber's own
 // component during the page.tsx decomposition (Phase 4 Stage 4).
 const workbenchChamber = await readFile(new URL("../app/components/forge/workbench-chamber.tsx", import.meta.url), "utf8");
+// The replacement panel's purchase-link JSX moved to its own component
+// during the page.tsx decomposition (Phase 4 Stage 4b).
+const workbenchEditorChamber = await readFile(new URL("../app/components/forge/workbench-editor-chamber.tsx", import.meta.url), "utf8");
 // inspectorPurchaseLink's derivation moved to forge-session-context.tsx
 // during the page.tsx decomposition (Phase 4 Stage 2).
 const forgeSessionContext = await readFile(new URL("../app/forge-session-context.tsx", import.meta.url), "utf8");
@@ -107,13 +110,13 @@ test("the opening-experiment gate (curated first-experiment picker) remains unto
 
 test("the replacement panel builds a name-only search link for the candidate card — no printing exists yet for a card that isn't in the deck", () => {
   assert.match(
-    page,
+    workbenchEditorChamber,
     /const replacementPurchaseLink = buildTcgplayerLink\(\{\s*\n\s*cardName: card\.name,\s*\n\s*tcgplayerProductId: null,\s*\n\s*enabled: tcgplayerAffiliateEnabled,/,
   );
 });
 
 test("the replacement panel's purchase link sits beside \"Add to deck\", never replaces it, and its click handler never calls addCardToDeck", () => {
-  const mapBlock = page.match(/replacementRecommendations\.map\(\(card, index\) => \{[\s\S]*?\n {16}\}\)\}/)?.[0];
+  const mapBlock = workbenchEditorChamber.match(/replacementRecommendations\.map\(\(card, index\) => \{[\s\S]*?\n {16}\}\)\}/)?.[0];
   assert.ok(mapBlock, "expected to find the replacementRecommendations.map block");
   assert.match(mapBlock, />\s*Add to deck\s*<\/button>/);
   const linkBlock = mapBlock.match(/\{replacementPurchaseLink && \([\s\S]*?<\/a>\s*\)\}/)?.[0];
@@ -131,7 +134,7 @@ test("the replacement panel's purchase link sits beside \"Add to deck\", never r
 });
 
 test("lastCutCard (the outgoing card) never gets a purchase action anywhere in the replacement panel", () => {
-  const panelBlock = page.match(/className="forge-replacements"[\s\S]{0,4400}/)?.[0];
+  const panelBlock = workbenchEditorChamber.match(/className="forge-replacements"[\s\S]{0,4400}/)?.[0];
   assert.ok(panelBlock, "expected to find the forge-replacements panel");
   assert.doesNotMatch(panelBlock, /buildTcgplayerLink\(\{\s*\n\s*cardName: lastCutCard/);
 });

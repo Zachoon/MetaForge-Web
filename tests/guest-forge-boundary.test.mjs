@@ -37,11 +37,14 @@ test("guest UI uses the guest endpoint and suppresses persistence and structural
   const source = await read("app/page.tsx");
   const styles = await read("app/globals.css");
   const forgeSessionContext = await readCtx();
+  // The Editing Anvil launcher's guestMode gate moved to its own component
+  // during the page.tsx decomposition (Phase 4 Stage 4b).
+  const workbenchEditorChamber = await read("app/components/forge/workbench-editor-chamber.tsx");
   assert.match(forgeSessionContext, /guestMode \? "\/api\/forge\/guest-generate" : "\/api\/forge\/generate"/);
   assert.match(forgeSessionContext, /persist: !guestMode/);
   assert.match(forgeSessionContext, /if \(guestMode\) \{\s*setStructuralAnalysisStatus\("idle"\)/);
   assert.match(source, /https:\/\/app\.metaforge\.gg\/\?claim=/);
-  assert.match(source, /!guestMode && !editAnvilOpen/);
+  assert.match(workbenchEditorChamber, /!guestMode && !editAnvilOpen/);
   assert.match(forgeSessionContext, /size: "flexible"/);
   assert.match(forgeSessionContext, /appearance: "interaction-only"/);
   assert.match(source, /turnstile-host\$\{turnstileToken \? " verified" : ""\}/);

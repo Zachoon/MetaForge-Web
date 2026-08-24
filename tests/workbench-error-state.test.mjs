@@ -37,6 +37,9 @@ const workbenchChamber = (await readFile(new URL("../app/components/forge/workbe
 // forgeMultiRefill/applyMultiRefillPackage moved to forge-session-context.tsx
 // during the page.tsx decomposition (Phase 4 Stage 2).
 const forgeSessionContext = (await readFile(new URL("../app/forge-session-context.tsx", import.meta.url), "utf8")).replace(/\r\n/g, "\n");
+// The replacements panel and Editing Anvil JSX moved to their own
+// component during the page.tsx decomposition (Phase 4 Stage 4b).
+const workbenchEditorChamber = (await readFile(new URL("../app/components/forge/workbench-editor-chamber.tsx", import.meta.url), "utf8")).replace(/\r\n/g, "\n");
 
 // --- Hotfix A: dead repair control removed ---
 
@@ -155,7 +158,7 @@ test("Scryfall image/type-line enrichment runs only after real candidates are al
 // --- Rendered states ---
 
 test("the panel renders three visually distinct outcomes: real candidates, honest 'no legal replacement', and a separate operational error", () => {
-  const block = page.match(/<section className="forge-replacements">[\s\S]*?\n {8}\)\}/)?.[0];
+  const block = workbenchEditorChamber.match(/<section className="forge-replacements">[\s\S]*?\n\s*<\/section>/)?.[0];
   assert.ok(block, "expected the forge-replacements panel");
   assert.match(block, /replacementRecommendations\.length > 0 \? \(/);
   assert.match(block, /No legal replacement was found for this slot\./);
@@ -164,7 +167,7 @@ test("the panel renders three visually distinct outcomes: real candidates, hones
 });
 
 test("each rendered candidate shows the real engine reason and role fit when present, not just a bare name", () => {
-  const block = page.match(/replacementRecommendations\.map\(\(card, index\) => \{[\s\S]*?\n {16}\}\)\}/)?.[0];
+  const block = workbenchEditorChamber.match(/replacementRecommendations\.map\(\(card, index\) => \{[\s\S]*?\n {16}\}\)\}/)?.[0];
   assert.ok(block, "expected the replacementRecommendations.map block");
   assert.match(block, /card\.reason && <p className="replacement-reason">\{card\.reason\}<\/p>/);
   assert.match(block, /card\.roles\.length > 0/);
@@ -190,5 +193,5 @@ test("multi-select/bulk replacement (forgeMultiRefill, applyMultiRefillPackage, 
 test("drag/add/remove Editing Anvil behavior around the cut/replace flow is unchanged: stageDeckCard still stages, undo still restores", () => {
   assert.match(forgeSessionContext, /function stageDeckCard\(name: string, destination: "consider" \| "remove"\) \{/);
   assert.match(forgeSessionContext, /void recommendReplacements\(row, nextDeck\);/);
-  assert.match(page, />\s*Undo\s*<\/button>/);
+  assert.match(workbenchEditorChamber, />\s*Undo\s*<\/button>/);
 });

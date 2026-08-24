@@ -17,15 +17,18 @@ const deckRowHelpers = fs.readFileSync(new URL("../app/deck-row-helpers.ts", imp
 // decomposition (Phase 4 Stage 4). The sticky deck-price-bar/printing-menu
 // (a separate UI element) has not moved yet — it stays in page.tsx.
 const workbenchChamber = fs.readFileSync(new URL("../app/components/forge/workbench-chamber.tsx", import.meta.url), "utf8");
+// The sticky deck-price-bar/printing-menu/Editing Anvil JSX moved to its
+// own component during the page.tsx decomposition (Phase 4 Stage 4b).
+const workbenchEditorChamber = fs.readFileSync(new URL("../app/components/forge/workbench-editor-chamber.tsx", import.meta.url), "utf8");
 
 test("surfaces a persistent, real market-price total and per-card prices", () => {
   assert.match(page, /cardPriceUsd/);
   assert.match(page, /deckPriceTotal/);
   assert.match(workbenchChamber, /card-row-price/);
-  assert.match(page, /deck-price-bar/);
+  assert.match(workbenchEditorChamber, /deck-price-bar/);
   // Cards with no known price are counted separately, never silently
   // treated as free.
-  assert.match(page, /unpricedCards/);
+  assert.match(workbenchEditorChamber, /unpricedCards/);
 });
 
 test("the price bar is excluded from the generic child-layering rule so position:fixed actually applies", () => {
@@ -66,7 +69,7 @@ test("each deck row can be priced as foil or nonfoil independently", () => {
 test("a deck-wide toggle can price every card at its cheapest fetched printing", () => {
   assert.match(page, /cheapestPrintings/);
   assert.match(page, /cheapestCardPriceUsd/);
-  assert.match(page, /cheapest-printings-toggle/);
+  assert.match(workbenchEditorChamber, /cheapest-printings-toggle/);
   // Overrides the per-card foil selection for the total, rather than
   // stacking with it (the two are alternate pricing modes, not additive).
   assert.match(forgeSessionContext, /cheapestPrintings\s*\n?\s*\?\s*cheapestCardPriceUsd\(fact\)\s*\n?\s*:\s*cardPriceUsd\(fact, foilCards\.has/);
@@ -90,19 +93,19 @@ test("the imperative drag-reorder wiring targets the new row element, not a stal
 });
 
 test("right-clicking a deck row opens a printing picker fetched from Scryfall's full print history", () => {
-  assert.match(page, /onContextMenu/);
-  assert.match(page, /printingMenu/);
+  assert.match(workbenchEditorChamber, /onContextMenu/);
+  assert.match(workbenchEditorChamber, /printingMenu/);
   assert.match(forgeSessionContext, /unique=prints/);
-  assert.match(page, /printing-picker/);
+  assert.match(workbenchEditorChamber, /printing-picker/);
 });
 
 test("choosing a printing overrides only that card's prices, not the card itself", () => {
-  assert.match(page, /printingOverrides/);
+  assert.match(workbenchEditorChamber, /printingOverrides/);
   assert.match(page, /effectivePriceFact/);
   // The override supplies alternate usd/usd_foil values on top of the
   // existing card fact — it must not replace name, type, or oracle text.
   assert.match(forgeSessionContext, /prices:\s*\{\s*usd:\s*override\.usd,\s*usd_foil:\s*override\.usd_foil\s*\}/);
-  assert.match(page, /Use default printing/);
+  assert.match(workbenchEditorChamber, /Use default printing/);
 });
 
 test("an unpriced preview printing automatically falls back to the cheapest priced paper printing for every user", () => {

@@ -25,6 +25,10 @@ const commissionChamber = await readFile(new URL("../app/components/forge/commis
 // tablets, match evidence, etc.) moved to its own component during the
 // page.tsx decomposition (Phase 4 Stage 4).
 const workbenchChamber = await readFile(new URL("../app/components/forge/workbench-chamber.tsx", import.meta.url), "utf8");
+// Blocks B+C (price bar, printing menu, Editing Anvil, replacements panel)
+// moved to their own component during the page.tsx decomposition (Phase 4
+// Stage 4b).
+const workbenchEditorChamber = await readFile(new URL("../app/components/forge/workbench-editor-chamber.tsx", import.meta.url), "utf8");
 
 test("opens directly into the deck without a detail-mode decision", () => {
   assert.doesNotMatch(page, /resultViewMode/);
@@ -344,7 +348,7 @@ test("offers a confidence tablet in place of a missing third experiment slot", (
 
 test("keeps the Editing Anvil closed until the player asks for it", () => {
   assert.match(forgeSessionContext, /useState\(false\);[\s\S]*?forgeGenerationError/);
-  assert.match(page, /Raise the Editing Anvil/);
+  assert.match(workbenchEditorChamber, /Raise the Editing Anvil/);
 });
 
 test("reveals only the strongest systems before the player requests the archive", () => {
@@ -388,7 +392,12 @@ test("preserves match evidence on its exact revision", () => {
 // invitation language is suppressed during a failure — the rest of the
 // panel (saved-deck navigation, "Start a New Forge") stays available.
 test("the floating Bench launcher never invites 'Ready for your first deck' while the current attempt just failed", () => {
-  const handleBlock = page.match(/<div className="bench-handle">[\s\S]*?<\/button>\s*<\/div>/)?.[0];
+  // Bounded on the bench-dock <aside>'s own close, not a bare
+  // "</button>\s*</div>" guess — that pattern is no longer unique to this
+  // block now that Blocks B/C (which used to follow it) moved out of
+  // page.tsx during the page.tsx decomposition (Phase 4 Stage 4b), so an
+  // unanchored lazy match could run past the real bench-handle content.
+  const handleBlock = page.match(/<div className="bench-handle">[\s\S]*?<\/div>\s*<\/aside>/)?.[0];
   assert.ok(handleBlock, "expected to find the bench-handle launcher JSX");
   assert.match(
     handleBlock,

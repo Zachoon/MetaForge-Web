@@ -176,15 +176,19 @@ test("the Impact tracking base and raw TCGplayer URL construction exist only in 
 
 test("purchase surfaces in page.tsx consume buildTcgplayerLink rather than constructing a TCGplayer/Impact URL themselves", () => {
   const source = fs.readFileSync(fileURLToPath(new URL("../app/page.tsx", import.meta.url)), "utf8");
-  assert.match(source, /import \{ buildTcgplayerDeckLink, buildTcgplayerLink, AFFILIATE_DISCLOSURE_TEXT \} from "\.\/affiliate-links\.mjs";/);
   // Some call sites (derived purchase-link useMemos: deckPurchaseLink,
   // activePurchaseLink, inspectorPurchaseLink) moved to
   // forge-session-context.tsx during the page.tsx decomposition (Phase 4
-  // Stage 2); the workbench chamber's own replacement/tablet purchase-link
-  // call sites moved to their own component during Stage 4 — the total
-  // call-site count is conserved across all three files.
+  // Stage 2); the workbench chamber's own tablet purchase-link call site
+  // moved to its own component during Stage 4a, and the replacement-panel
+  // purchase-link call site moved to workbench-editor-chamber.tsx during
+  // Stage 4b — the total call-site count is conserved across all four
+  // files, and page.tsx no longer imports from affiliate-links.mjs at all
+  // now that none of these call sites remain in it.
   const contextSource = fs.readFileSync(fileURLToPath(new URL("../app/forge-session-context.tsx", import.meta.url)), "utf8");
+  assert.match(contextSource, /import \{ buildTcgplayerDeckLink, buildTcgplayerLink, AFFILIATE_DISCLOSURE_TEXT \} from "\.\/affiliate-links\.mjs";/);
   const workbenchChamber = fs.readFileSync(fileURLToPath(new URL("../app/components/forge/workbench-chamber.tsx", import.meta.url)), "utf8");
-  const buildCallCount = (source.match(/buildTcgplayerLink\(\{/g) || []).length + (contextSource.match(/buildTcgplayerLink\(\{/g) || []).length + (workbenchChamber.match(/buildTcgplayerLink\(\{/g) || []).length;
+  const workbenchEditorChamber = fs.readFileSync(fileURLToPath(new URL("../app/components/forge/workbench-editor-chamber.tsx", import.meta.url)), "utf8");
+  const buildCallCount = (source.match(/buildTcgplayerLink\(\{/g) || []).length + (contextSource.match(/buildTcgplayerLink\(\{/g) || []).length + (workbenchChamber.match(/buildTcgplayerLink\(\{/g) || []).length + (workbenchEditorChamber.match(/buildTcgplayerLink\(\{/g) || []).length;
   assert.equal(buildCallCount, 6, "expected exactly six call sites: decklist row, printing picker, card inspector (Phase 1), workbench replacement recommendations and experiment tablets (Phase 1B), plus the persistent frame card-preview slot");
 });
