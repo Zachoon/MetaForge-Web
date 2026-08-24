@@ -16,6 +16,9 @@ const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8")
 // inspectorPurchaseLink's derivation moved to forge-session-context.tsx
 // during the page.tsx decomposition (Phase 4 Stage 2).
 const forgeSessionContext = await readFile(new URL("../app/forge-session-context.tsx", import.meta.url), "utf8");
+// The masterworks chamber's JSX moved to its own component during the
+// page.tsx decomposition (Phase 4 Stage 3).
+const masterworksChamber = await readFile(new URL("../app/components/forge/masterworks-chamber.tsx", import.meta.url), "utf8");
 
 // --- Card inspector: the one new Phase 1 consumer ---
 
@@ -71,9 +74,10 @@ test("Phase 1B's two new purchase surfaces (replacement panel, experiment tablet
 // specific surfaces called out as excluded in this batch.
 
 test("the Masterwork candidate picker never gets a purchase action", () => {
-  const masterworkBlock = page.match(/\{chamber === "masterworks" && \([\s\S]*?\n {6}\)\}/)?.[0];
-  assert.ok(masterworkBlock, "expected to find the masterworks chamber block");
-  assert.doesNotMatch(masterworkBlock, /buildTcgplayerLink|TCGplayer/i);
+  // The masterworks chamber's JSX moved to its own component during the
+  // page.tsx decomposition (Phase 4 Stage 3) — it's a clean, isolated file
+  // now, so the block it must not reach into is the entire file.
+  assert.doesNotMatch(masterworksChamber, /buildTcgplayerLink|TCGplayer/i);
 });
 
 test("the mobile\\/desktop card action menu never gets a purchase action — it's Phase 1B or later, not this batch", () => {

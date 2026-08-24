@@ -14,7 +14,7 @@ test("the completed Forge resets to the beginning of the decision screen", async
   assert.match(source, /if \(chamber !== "masterworks" \|\| !pendingCandidateChoice\) return/);
   assert.match(source, /window\.scrollTo\(0, 0\)/);
   assert.match(source, /requestAnimationFrame\(\(\) => window\.scrollTo\(0, 0\)\)/);
-  assert.match(await read("app/page.tsx"), /id="masterwork-choice-start"/);
+  assert.match(await read("app/components/forge/masterworks-chamber.tsx"), /id="masterwork-choice-start"/);
 });
 
 test("the recommended experience is explicitly first in the philosophy list", async () => {

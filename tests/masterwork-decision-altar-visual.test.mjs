@@ -2,10 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [page, comparison, polish] = await Promise.all([
+const [page, comparison, polish, masterworksChamber] = await Promise.all([
   readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
   readFile(new URL("../app/components/forge/philosophy-compare.tsx", import.meta.url), "utf8"),
   readFile(new URL("../app/forge-polish.css", import.meta.url), "utf8"),
+  // The masterworks chamber's JSX moved to its own component during the
+  // page.tsx decomposition (Phase 4 Stage 3).
+  readFile(new URL("../app/components/forge/masterworks-chamber.tsx", import.meta.url), "utf8"),
 ]);
 
 // Bug 1B replaced the old sealed/revealed reveal ceremony with a real-
@@ -13,7 +16,7 @@ const [page, comparison, polish] = await Promise.all([
 // language (built for / feel / tradeoff) while still mapping the engine's
 // own already-built candidates — never a second generation call.
 test("Masterwork picker presents real already-built philosophies for explicit choice", () => {
-  assert.match(page, /id="masterwork-choice-start"/);
+  assert.match(masterworksChamber, /id="masterwork-choice-start"/);
   assert.match(comparison, /Choose how you want this deck to play/);
   assert.match(comparison, /CHOOSE YOUR EXPERIENCE/);
   assert.match(page, /strategyBuildComparison|\.builds/);

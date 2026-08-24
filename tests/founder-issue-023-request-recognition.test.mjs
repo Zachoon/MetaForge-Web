@@ -95,7 +95,10 @@ describe("Founder Issue #023 — Intent vs Recommendation Transparency", () => {
     // forge-session-context.tsx during the page.tsx decomposition (Phase 4
     // Stage 2); its JSX consumption stayed in page.tsx.
     const forgeSessionContext = readFileSync(join(root, "app/forge-session-context.tsx"), "utf8");
-    assert.match(page, /1 · I HEARD YOU/);
+    // The masterworks chamber's JSX moved to its own component during the
+    // page.tsx decomposition (Phase 4 Stage 3).
+    const masterworksChamber = readFileSync(join(root, "app/components/forge/masterworks-chamber.tsx"), "utf8");
+    assert.match(masterworksChamber, /1 · I HEARD YOU/);
     assert.match(forgeSessionContext, /requestRecognition/);
     assert.match(page, /masterworksRequestRecognition/);
     assert.match(page, /How do you know\? → Deep Forge evidence/);

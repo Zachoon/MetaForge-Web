@@ -2,9 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [page, css] = await Promise.all([
+const [page, css, masterworksChamber] = await Promise.all([
   readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
   readFile(new URL("../app/testing-anvil.css", import.meta.url), "utf8"),
+  // The masterworks chamber's own commission-contract summary ("1 · I
+  // HEARD YOU") moved to its own component during the page.tsx
+  // decomposition (Phase 4 Stage 3).
+  readFile(new URL("../app/components/forge/masterworks-chamber.tsx", import.meta.url), "utf8"),
 ]);
 
 test("the player-facing coach brief retains Honest Coach interpreted deck truths", () => {
@@ -15,7 +19,7 @@ test("the player-facing coach brief retains Honest Coach interpreted deck truths
   assert.match(page, /honest-coach-brief-stream/);
   assert.match(page, />\s*VERDICT\s*</);
   assert.match(page, /WHY · OPENING PRIORITIES|CHANGE/);
-  assert.match(page, /commissionContract|1 · I HEARD YOU/);
+  assert.match(masterworksChamber, /commissionContract|1 · I HEARD YOU/);
   assert.match(css, /Player-facing coaching is a brief/);
   assert.match(css, /coach-brief/);
   assert.match(css, /honest-coach-brief-stream|coach-deck-sequence/);

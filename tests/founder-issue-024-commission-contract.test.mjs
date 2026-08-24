@@ -189,8 +189,11 @@ describe("Founder Issue #024 — Commission Contract", () => {
     // page.tsx, untouched by that move.
     const researchPage = readFileSync(join(root, "app/research/page.tsx"), "utf8");
     const css = readFileSync(join(root, "app/testing-anvil.css"), "utf8");
-    assert.match(page, /1 · I HEARD YOU/);
-    assert.match(page, /You asked for/);
+    // The masterworks chamber's own commission-contract summary moved to
+    // its own component during the page.tsx decomposition (Phase 4 Stage 3).
+    const masterworksChamber = readFileSync(join(root, "app/components/forge/masterworks-chamber.tsx"), "utf8");
+    assert.match(masterworksChamber, /1 · I HEARD YOU/);
+    assert.match(masterworksChamber, /You asked for/);
     assert.match(researchPage, /WHAT STILL NEEDS WORK|Full commission breakdown/);
     assert.match(page, /buildCommissionContract/);
     assert.match(researchPage, /commissionContract/);

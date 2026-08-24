@@ -29,7 +29,12 @@ describe("Era 3 Complete — Speak like a strategist", () => {
     // graph-* moved to app/research/page.tsx with the rest of the Deep
     // Forge vault — check the union of both files.
     const researchPage = readFileSync(join(root, "app/research/page.tsx"), "utf8");
-    const combined = `${page}\n${researchPage}`;
+    // Some inspect surfaces moved into forge-session-context.tsx and the
+    // extracted chamber components during the page.tsx decomposition
+    // (Phase 4 Stages 2-3).
+    const forgeSessionContext = readFileSync(join(root, "app/forge-session-context.tsx"), "utf8");
+    const masterworksChamber = readFileSync(join(root, "app/components/forge/masterworks-chamber.tsx"), "utf8");
+    const combined = `${page}\n${researchPage}\n${forgeSessionContext}\n${masterworksChamber}`;
     const charter = readFileSync(join(root, "docs/ERA3_COMPLETE.md"), "utf8");
     assert.match(charter, /engineering complete/i);
     assert.match(charter, /Founder Confirmed is not claimed/i);

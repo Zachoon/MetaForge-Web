@@ -23,6 +23,9 @@ const worker = await readFile(new URL("../worker/forge-generate.ts", import.meta
 // pendingCandidateChoice's own consumption moved to forge-session-context.tsx
 // during the page.tsx decomposition (Phase 4 Stage 2).
 const forgeSessionContext = await readFile(new URL("../app/forge-session-context.tsx", import.meta.url), "utf8");
+// The masterworks chamber's own PhilosophyCompare mount moved to its own
+// component during the page.tsx decomposition (Phase 4 Stage 3).
+const masterworksChamber = await readFile(new URL("../app/components/forge/masterworks-chamber.tsx", import.meta.url), "utf8");
 
 test("Player Compass is optional, one-question, and never blocks the Forge", () => {
   assert.equal(PLAYER_COMPASS_QUESTIONS.length, 4);
@@ -90,7 +93,7 @@ test("philosophy presentation maps decidedBy and never invents play-structure ja
 
 test("philosophy UI surfaces provenance, conflicts, and side-by-side compare", () => {
   assert.match(page, /PhilosophyCompare/);
-  assert.match(page, /decidedBy=\{strategyBuildComparison\.decidedBy/);
+  assert.match(masterworksChamber, /decidedBy=\{strategyBuildComparison\.decidedBy/);
   assert.match(compare, /BEST FIT FOR YOU/);
   assert.match(compare, /CLOSER TO YOUR USUAL PLAY PREFERENCES/);
   assert.match(compare, /recommendedBecause/);
