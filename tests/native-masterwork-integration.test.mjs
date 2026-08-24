@@ -13,6 +13,10 @@ const forgeGenerateWorker = fs.readFileSync(new URL("../worker/forge-generate.ts
 // assertions below moved here with them too.
 const forgeStructuralAnalyzeWorker = fs.readFileSync(new URL("../worker/forge-structural-analyze.ts", import.meta.url), "utf8");
 const debouncedAnalysisRequest = fs.readFileSync(new URL("../app/debounced-analysis-request.mjs", import.meta.url), "utf8");
+// masterworkIdentityWord/BLUEPRINT_DEFINITIONS moved to deck-row-helpers.ts
+// during the page.tsx decomposition (Phase 4) — several assertions below
+// moved here with them.
+const deckRowHelpers = fs.readFileSync(new URL("../app/deck-row-helpers.ts", import.meta.url), "utf8");
 // Bug 1B retired the separate per-candidate "native" reveal call
 // (inspectMasterwork): commitDirectForge's commander branch now makes the
 // one call that produces all three real candidates up front (mode:
@@ -83,7 +87,7 @@ test("the simulation dossier feeds real role counts and average curve into the i
 });
 
 test("Blueprint identity shapes targeted verified-pool retrieval", () => {
-  assert.match(page, /parseNativeBlueprintIntent/);
+  assert.match(deckRowHelpers, /parseNativeBlueprintIntent/);
   // Verified-pool retrieval (loadNativeForgePool) now runs server-side,
   // same targeted-identity behavior, moved to worker/forge-generate.ts
   // along with the rest of the construction pipeline.
@@ -140,11 +144,11 @@ test("Blueprint offers a persistent player-controlled reading size", () => {
 });
 
 test("initial Blueprint choices explain game terms before submission", () => {
-  assert.match(page, /BLUEPRINT_DEFINITIONS/);
+  assert.match(deckRowHelpers, /BLUEPRINT_DEFINITIONS/);
   assert.match(page, /blueprint-glossary-tip/);
   assert.match(page, /blueprint-choice-definition/);
   assert.match(page, /aria-describedby="strategy-definition"/);
-  assert.match(page, /Trade resources, answer key threats/i);
+  assert.match(deckRowHelpers, /Trade resources, answer key threats/i);
 });
 
 test("Workbench structural intelligence runs server-side through the shared Forge pipeline", () => {

@@ -6,6 +6,10 @@ import test from "node:test";
 // verified against the literal source that produces it — the same
 // convention every other page.tsx-adjacent test file here already uses.
 const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+// commissionHeadingFor/buildStepLabelsFor moved to format-catalog.ts during
+// the page.tsx decomposition (Phase 4) — their definitions live there now,
+// while page.tsx keeps only the call sites checked below.
+const formatCatalog = await readFile(new URL("../app/format-catalog.ts", import.meta.url), "utf8");
 
 // --- 0. Entrance hero strings (added after initial review: these two are
 // more prominent than the card copy itself, so leaving them Commander-only
@@ -54,25 +58,25 @@ test("the entrance Build card's supporting copy is format-neutral", () => {
 // --- 2. Commission chamber heading ---
 
 test("the commission heading is driven by a small pure helper, not an inline ternary", () => {
-  assert.match(page, /const commissionHeadingFor = \(format: string\) =>\s*\n\s*isCommanderFormat\(format\)\s*\n\s*\? "Choose your commander and game plan\."\s*\n\s*: "Choose your format and game plan\."/);
+  assert.match(formatCatalog, /const commissionHeadingFor = \(format: string\) =>\s*\n\s*isCommanderFormat\(format\)\s*\n\s*\? "Choose your commander and game plan\."\s*\n\s*: "Choose your format and game plan\."/);
   assert.match(page, /chamber === "commission"\s*\n\s*\? commissionHeadingFor\(format\)/);
 });
 
 test("the Commander-format heading remains commander-specific", () => {
-  assert.match(page, /"Choose your commander and game plan\."/);
+  assert.match(formatCatalog, /"Choose your commander and game plan\."/);
 });
 
 test("the non-Commander heading is format-neutral, not an invented per-format archetype label", () => {
-  assert.match(page, /"Choose your format and game plan\."/);
+  assert.match(formatCatalog, /"Choose your format and game plan\."/);
   // The task explicitly said not to invent "archetype" language unless the
   // screen actually asks for one — it doesn't, so no such string should exist.
-  assert.doesNotMatch(page, /Choose your archetype/i);
+  assert.doesNotMatch(formatCatalog, /Choose your archetype/i);
 });
 
 // --- 3. Stepper label ---
 
 test("step 1 of the build stepper is 'Commander' for Commander/Brawl/Standard Brawl and 'Format' otherwise, via one small lookup", () => {
-  assert.match(page, /const buildStepLabelsFor = \(format: string\) =>\s*\n\s*isCommanderFormat\(format\)\s*\n\s*\? \["Commander", "Strategy", "Preferences"\]\s*\n\s*: \["Format", "Strategy", "Preferences"\];/);
+  assert.match(formatCatalog, /const buildStepLabelsFor = \(format: string\) =>\s*\n\s*isCommanderFormat\(format\)\s*\n\s*\? \["Commander", "Strategy", "Preferences"\]\s*\n\s*: \["Format", "Strategy", "Preferences"\];/);
   assert.match(page, /buildStepLabelsFor\(format\)\.map\(\(label, index\) =>/);
 });
 

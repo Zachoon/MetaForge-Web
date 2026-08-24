@@ -3,7 +3,6 @@
 import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { displayRoleFor } from "./adaptive-recommendation.mjs";
 import { configureCardTagLookup } from "./strategic-intent.mjs";
 import { REVIEW_FOCUS_OPTIONS, REVIEW_FOCUS_LABELS, toggleReviewFocus } from "./review-focus.mjs";
 import { resolveAcademyGuideEntry } from "./academy-guide-entry.mjs";
@@ -33,7 +32,7 @@ import { applyControlledSwap, experimentAdditionSynergy, rankExperimentAdditions
 // Anvil), not part of the construction algorithm itself. colorPipsFromCost
 // moved out entirely once the simulation dossier that was its only
 // caller became server-side too.
-import { manaConsistencyReport, parseNativeBlueprintIntent } from "./blueprint-note-and-mana.mjs";
+import { manaConsistencyReport } from "./blueprint-note-and-mana.mjs";
 import { explainCardAsMentor, explainOccupiedPackagesAsMentor, explainPairsForCardAsMentor, occupancyEngineLabelsForCommander, occupancyEngineLabelsForCommanders } from "./knowledge/mentor-shadow.mjs";
 import { commanderOptionFromCard, resolvePastedCommanderCandidate } from "./deck-import-commander.mjs";
 import { updateFamily, setFamilyMotifWeights } from "./deck-bench.mjs";
@@ -66,7 +65,6 @@ import {
   deckFingerprintFromRows,
   stampStructuralReportBinding,
 } from "./narrative-integrity.mjs";
-import { deckDisplaySection } from "./deck-display-classification.mjs";
 import { reasonsCardMatters } from "./context-card-inspector.mjs";
 import { ForgeCardRef } from "./forge-card-ref";
 import { ImportedDeckComparison } from "./components/forge/imported-deck-comparison";
@@ -81,6 +79,8 @@ import {
   FORGING_STAGES,
   type MotionMode,
 } from "./components/forge/forge-ceremony";
+import { ForgeRune } from "./components/forge/forge-motion-flourishes";
+import { ForgeCommissionCard } from "./components/forge/forge-commission-card";
 import { RevisionOpinionPanel } from "./components/forge/revision-opinion";
 import { PlayerCompassCard } from "./components/forge/player-compass-card";
 import { PhilosophyCompare } from "./components/forge/philosophy-compare";
@@ -90,1176 +90,70 @@ import {
   withPlayerCompassOnBench,
   writeLocalPlayerCompass,
 } from "./player-compass.mjs";
+import { colorsFromNote } from "./color-identity-labels.mjs";
+import {
+  commanderOracleText,
+  occupancyLabelsForOption,
+  arrangeCommanderStarters,
+  partnerEligibilityFor,
+} from "./commander-lane-scoring.mjs";
+import {
+  FORMAT_PREVIEWS,
+  isCommanderFormat,
+  commissionHeadingFor,
+  buildStepLabelsFor,
+  targetDeckSize,
+  scryfallLegality,
+  scryfallFormatTerms,
+} from "./format-catalog";
+import {
+  hashText,
+  extractPlanIdentitySnapshot,
+  relativeUpdatedLabel,
+  createMasterworks,
+  parseDeckRows,
+  cardFactKey,
+  scryfallLookupName,
+  indexCardFact,
+  cardFactFromNativeRow,
+  cardGroup,
+  cardPriceUsd,
+  cheapestCardPriceUsd,
+  cardRole,
+  BASIC_CARD_NAMES,
+  blueprintDefinition,
+} from "./deck-row-helpers";
+import { ForgeGenerationError, normalizeForgeFailure, type NormalizedForgeFailure } from "./forge-failure";
+import type {
+  Chamber,
+  ForgeAction,
+  MilestoneMotion,
+  DeckPreview,
+  DeckRow,
+  DeckViewMode,
+  CardFact,
+  CardSearchResult,
+  ReplacementCandidate,
+  PrintingOption,
+  MetaBreakerExperiment,
+  ForgeIntervention,
+  MultiRefillPackage,
+  CommanderOption,
+  Masterwork,
+  SavedFamily,
+  EdhrecSignal,
+  EdhrecEvidence,
+  ReadingSize,
+} from "./forge-types";
+import { FORGE_CEREMONY_MINIMUM_MS, preferredDecklistView } from "./forge-types";
+import type { ForgeResumeBrief } from "./forge-resume-brief";
+import { encodeForgeResumeBrief, decodeForgeResumeBrief } from "./forge-resume-brief";
 
 // Search-result coaching runs in the browser, where the construction-only
 // card-mechanics database is deliberately not bundled. The semantic engine
 // still has its rules-text classifiers; configure an empty tag lookup so a
 // three-character commander search cannot throw while labeling its results.
 configureCardTagLookup(() => [], { onlyIfMissing: true });
-
-type Chamber =
-  | "entrance"
-  | "archive"
-  | "commission"
-  | "refine"
-  | "forging"
-  | "masterworks"
-  | "workbench";
-
-type ForgeAction = "none" | "forge" | "reveal" | "select" | "refine" | "grow";
-type MilestoneMotion = {
-  kind: "ignition" | "masterwork-ready" | "masterwork-selected" | "experiment-chosen" | "revision-accepted" | "evidence-recorded";
-  eyebrow: string;
-  label: string;
-  glyph: string;
-} | null;
-
-// The real request and the ceremony run concurrently. This is not a delay
-// before construction: it is the minimum amount of time the transition gets
-// to tell the build story before a fast result is revealed.
-const FORGE_CEREMONY_MINIMUM_MS = 9_000;
-
-type DeckPreview = { card: string; role: string; theme: string; win: string };
-type DeckRow = { quantity: number; name: string };
-type DeckViewMode = "playtest" | "gallery" | "ledger";
-
-function preferredDecklistView(): Exclude<DeckViewMode, "playtest"> {
-  return typeof window !== "undefined" && window.matchMedia("(max-width: 760px)").matches
-    ? "gallery"
-    : "ledger";
-}
-type CardFact = {
-  name: string;
-  cmc?: number;
-  color_identity?: string[];
-  produced_mana?: string[];
-  mana_cost?: string;
-  oracle_text?: string;
-  type_line?: string;
-  set_name?: string;
-  games?: string[];
-  legalities?: Record<string, string>;
-  image_uris?: { normal?: string; art_crop?: string };
-  card_faces?: Array<{
-    name?: string;
-    mana_cost?: string;
-    oracle_text?: string;
-    type_line?: string;
-    image_uris?: { normal?: string; art_crop?: string };
-  }>;
-  prices?: { usd?: string | null; usd_foil?: string | null };
-};
-type CardSearchResult = { name: string; typeLine: string; image: string };
-// name/typeLine/image are display data only (a Scryfall lookup done purely
-// for the card image and type line). reason/roles come directly from
-// /api/forge/multi-refill's real package.context.summary and
-// package.additions[0].roles — the actual legality/role-fit evidence, not
-// re-derived or inferred client-side.
-type ReplacementCandidate = CardSearchResult & { reason: string; roles: string[] };
-type PrintingOption = {
-  id: string;
-  setCode: string;
-  setName: string;
-  collectorNumber: string;
-  image: string;
-  usd: string | null;
-  usd_foil: string | null;
-  // Bare Scryfall tcgplayer_id for this exact printing — never Scryfall's
-  // own purchase_uris.tcgplayer, which carries Scryfall's affiliate
-  // attribution, not MetaForge's. See app/affiliate-links.mjs.
-  tcgplayerId: number | null;
-};
-type MetaBreakerExperiment = {
-  cut: string;
-  add: CardSearchResult;
-  reason: string;
-  confidence: string;
-  expectedChange: string;
-  measurement: string;
-};
-type ForgeIntervention = {
-  id: string;
-  kind: string;
-  summary: string;
-  decision: "accepted" | "dismissed";
-  revision: number;
-  createdAt: string;
-  hypothesisId?: string;
-  targetCategory?: string;
-  targetGoal?: string | null;
-  targetMeasurement?: string;
-};
-type MultiRefillPackage = {
-  id: string;
-  label: string;
-  additions: DeckRow[];
-  rows: any[];
-  evaluation?: { score?: number; roleCoverage?: number; curveHealth?: number; cohesion?: number } | null;
-  context?: {
-    preservationScore: number;
-    rolePreservation: number;
-    systemPreservation: number;
-    removedRoles: string[];
-    restoredRoles: string[];
-    exposedRoles: string[];
-    affectedSystems: string[];
-    preservedSystems: string[];
-    repairedSystems: string[];
-    exposedSystems: string[];
-    summary: string;
-  } | null;
-  boundary?: string;
-};
-type CommanderOption = {
-  name: string;
-  colors: string[];
-  typeLine: string;
-  image: string;
-  verifiedFacts: string;
-};
-type ForgeResumeBrief = {
-  version: 1;
-  format: string;
-  strategy: string;
-  complexity: string;
-  budget: string;
-  maxCardPriceInput: string;
-  commonsOnly: boolean;
-  targetPowerTier: string;
-  commissionNote: string;
-  reviewFocus: string;
-  deck: string;
-  commander: CommanderOption | null;
-  secondCommander: CommanderOption | null;
-};
-
-function encodeForgeResumeBrief(brief: ForgeResumeBrief) {
-  const bytes = new TextEncoder().encode(JSON.stringify(brief));
-  let binary = "";
-  bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function decodeForgeResumeBrief(value: string): ForgeResumeBrief | null {
-  try {
-    const padded = value.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
-    const binary = atob(padded);
-    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
-    const parsed = JSON.parse(new TextDecoder().decode(bytes));
-    return parsed?.version === 1 ? parsed as ForgeResumeBrief : null;
-  } catch {
-    return null;
-  }
-}
-type Masterwork = {
-  rune: string;
-  name: string;
-  path: string;
-  tone: string;
-  verdict: string;
-};
-type SavedFamily = {
-  id: string;
-  name: string;
-  format: string;
-  strategy?: string;
-  commander?: CommanderOption | null;
-  selectedWork?: number;
-  path?: string;
-  record?: { wins: number; losses: number };
-  updatedAt?: string;
-  // Written by persistStoryBench on every save; toggled by setFamilyArchived.
-  // An archived family is a player-declared "finished" Masterwork — kept
-  // visible, just visually distinct, and always reversible.
-  archived?: boolean;
-  promotedFingerprint?: string;
-  // Written by refreshMasterworkMotif whenever a Masterwork is finished;
-  // cached so identity reads (here and on /profile) never have to re-run
-  // the Scryfall fetch + classification just to know the dominant motif.
-  motifWeights?: Record<string, number>;
-  playerGoal?: string | null;
-  /** Optional commission note — Conversation Contract Stage 1 persistence. */
-  commissionNote?: string | null;
-  forgeInterventions?: ForgeIntervention[];
-  // A small snapshot of Brain's own construction-time plan identity
-  // (package labels, strategy, plan label, commanders) captured whenever a
-  // live generation context is available. Reopening a saved Masterwork from
-  // the archive has no live Brain context to read (see openSavedMasterwork)
-  // — this is the only way the coach summary can still describe a real
-  // plan instead of a generic placeholder for a previously-saved deck.
-  planIdentity?: {
-    packages: string[];
-    strategy: string | null;
-    planLabel: string | null;
-    commanders: string[];
-  } | null;
-  revisions: Array<{
-    deckText: string;
-    note: string;
-    createdAt: string;
-    evidence?: { wins?: number; losses?: number };
-    matches?: Array<{
-      id: string;
-      result: "win" | "loss" | "not-recorded";
-      opponent: string;
-      signal: string;
-      playedAt: string;
-      revision?: number;
-      deckFingerprint?: string;
-      fieldTest?: { hypothesisId?: string; question: string; outcome: string; source: string; checkIn?: { issue: string; handled: string; overall: string } };
-      coachDebrief?: ReturnType<typeof createPilotingDebrief>;
-    }>;
-  }>;
-};
-type EdhrecSignal = {
-  name: string;
-  category: string;
-  decks: number;
-  eligibleDecks: number;
-  inclusion: number;
-  synergy: number;
-  confidence: string;
-  newCardPotential: boolean;
-  reliability?: number;
-  shrunkSynergy?: number;
-  adoptionFloor?: number;
-  evidenceScore?: number;
-  evidenceClass?: string;
-};
-type EdhrecEvidence = {
-  available: boolean;
-  source?: string;
-  methodology?: string;
-  reason?: string;
-  retrievedAt?: string;
-  sourceWindowKnown?: boolean;
-  cards: EdhrecSignal[];
-};
-
-const FORGE_GLOSSARY: Record<string, string> = {
-  aggro: "An aggressive plan that uses efficient early threats to end the game before slower decks stabilize.",
-  aggression: "How strongly this deck prioritizes early pressure and shortening the game.",
-  tempo: "Gaining time and initiative by advancing your board while delaying the opponent efficiently.",
-  midrange: "A flexible strategy that stabilizes early, then wins with efficient threats and sustained value.",
-  control: "A reactive strategy that answers opposing threats before winning from a secure late game.",
-  combo: "A plan built around cards whose interaction creates a decisive or game-winning result.",
-  stax: "A resource-denial strategy that restricts what players can do, often through taxing or limiting permanents.",
-  stasis: "A lock-style plan that prevents normal untapping or resource development; often associated with the card Stasis.",
-  ramp: "Accelerating mana production so expensive or numerous spells can be played ahead of schedule.",
-  synergy: "How strongly the cards improve one another beyond their individual value.",
-  interaction: "Cards that disrupt opposing spells, permanents, combat, or game plans.",
-  complexity: "The amount of sequencing, rules knowledge, and decision density expected from the pilot.",
-  pressure: "Forcing opponents to answer threats quickly instead of freely developing their own plan.",
-  inevitability: "The likelihood that a deck becomes favored as the game continues and resources accumulate.",
-  engine: "A repeatable interaction among cards that continually produces cards, mana, tokens, or another advantage.",
-  "card advantage": "Ending an exchange with access to more useful cards than the opponent.",
-  azorius: "White-blue: structure, protection, flying, and controlling interaction.",
-  dimir: "Blue-black: information, disruption, graveyards, and evasive threats.",
-  rakdos: "Black-red: sacrifice, direct damage, aggression, and risk-for-reward value.",
-  gruul: "Red-green: large creatures, combat pressure, and mana acceleration.",
-  selesnya: "Green-white: creature communities, tokens, counters, and shared growth.",
-  orzhov: "White-black: attrition, sacrifice, life exchange, and recursive value.",
-  izzet: "Blue-red: spells, tempo, card selection, and explosive turns.",
-  golgari: "Black-green: graveyard value, resilient creatures, and resource growth.",
-  boros: "Red-white: coordinated combat, equipment, and proactive pressure.",
-  simic: "Green-blue: ramp, card draw, counters, and compounding creature value.",
-  bant: "White-blue-green: protection, growth, value creatures, and board development.",
-  esper: "White-blue-black: precise interaction, artifacts, and long-game resource control.",
-  grixis: "Blue-black-red: disruption, graveyard value, spells, and ruthless card advantage.",
-  jund: "Black-red-green: efficient threats, removal, sacrifice, and attrition.",
-  naya: "Red-green-white: creatures, tokens, combat, and wide battlefield pressure.",
-  abzan: "White-black-green: resilience, counters, recursion, and incremental advantage.",
-  jeskai: "Blue-red-white: noncreature spells, tempo, prowess, and flexible interaction.",
-  sultai: "Black-green-blue: graveyards, ramp, card advantage, and inevitability.",
-  mardu: "White-black-red: aggressive combat, tokens, sacrifice, and removal.",
-  temur: "Green-blue-red: ramp, large threats, spells, and explosive tempo swings.",
-};
-const GLOSSARY_PATTERN = new RegExp(
-  `\\b(${Object.keys(FORGE_GLOSSARY)
-    .sort((a, b) => b.length - a.length)
-    .map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
-    .join("|")})\\b`,
-  "gi",
-);
-const GlossaryText = ({ text }: { text: string }) => (
-  <>
-    {text.split(GLOSSARY_PATTERN).map((part, index) => {
-      const definition = FORGE_GLOSSARY[part.toLowerCase()];
-      return definition ? (
-        <span
-          className="forge-term"
-          tabIndex={0}
-          aria-label={`${part}: ${definition}`}
-          data-definition={definition}
-          key={`${part}-${index}`}
-        >
-          {part}
-        </span>
-      ) : (
-        part
-      );
-    })}
-  </>
-);
-
-const ForgeRune = ({ motionMode }: { motionMode: MotionMode }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const hoverPropertyRef = useRef<{ value: boolean } | null>(null);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    let disposed = false;
-    let rive: {
-      cleanup: () => void;
-      resizeDrawingSurfaceToCanvas: () => void;
-      viewModelInstance: { boolean: (name: string) => { value: boolean } | null } | null;
-    } | null = null;
-    let resizeObserver: ResizeObserver | null = null;
-    let hovering = false;
-
-    const setHovering = (value: boolean) => {
-      const nextValue = motionMode === "full" && value;
-      if (hovering === nextValue) return;
-      hovering = nextValue;
-      if (hoverPropertyRef.current) hoverPropertyRef.current.value = nextValue;
-    };
-
-    const trackPointer = (event: PointerEvent) => {
-      const bounds = canvas.getBoundingClientRect();
-      const radius = Math.min(bounds.width, bounds.height) / 2;
-      const centerX = bounds.left + bounds.width / 2;
-      const centerY = bounds.top + bounds.height / 2;
-      setHovering(Math.hypot(event.clientX - centerX, event.clientY - centerY) <= radius);
-    };
-
-    const clearHover = () => setHovering(false);
-
-    window.addEventListener("pointermove", trackPointer, { passive: true });
-    window.addEventListener("blur", clearHover);
-    document.addEventListener("mouseleave", clearHover);
-
-    void import("@rive-app/canvas").then(({ Alignment, Fit, Layout, Rive }) => {
-      if (disposed) return;
-
-      rive = new Rive({
-        src: "/assets/forge/animations/metaforge-rune.riv",
-        canvas,
-        stateMachines: "State Machine 1",
-        autoBind: true,
-        autoplay: motionMode === "full",
-        layout: new Layout({ fit: Fit.Contain, alignment: Alignment.Center }),
-        onLoad: () => {
-          if (disposed) return;
-          rive?.resizeDrawingSurfaceToCanvas();
-          hoverPropertyRef.current = rive?.viewModelInstance?.boolean("isHovering") ?? null;
-          setLoaded(true);
-        },
-      });
-
-      resizeObserver = new ResizeObserver(() => rive?.resizeDrawingSurfaceToCanvas());
-      resizeObserver.observe(canvas);
-    });
-
-    return () => {
-      disposed = true;
-      clearHover();
-      hoverPropertyRef.current = null;
-      window.removeEventListener("pointermove", trackPointer);
-      window.removeEventListener("blur", clearHover);
-      document.removeEventListener("mouseleave", clearHover);
-      resizeObserver?.disconnect();
-      rive?.cleanup();
-    };
-  }, [motionMode]);
-
-  return (
-    <>
-      <canvas
-        ref={canvasRef}
-        className="forge-rive-rune"
-        aria-hidden="true"
-      />
-      <i className={loaded ? "rive-loaded" : undefined}>ᛟ</i>
-    </>
-  );
-};
-
-const ForgeConfirmationSeal = ({ motionMode }: { motionMode: MotionMode }) => {
-  return (
-    <div className={`forge-confirmation-seal${motionMode === "quiet" ? " is-quiet" : ""}`} aria-hidden="true">
-      <span className="forge-seal-halo" />
-      <span className="forge-seal-orbit" />
-      <img src="/assets/forge/animations/forge-confirmation-seal.svg" alt="" />
-      <span className="forge-seal-flare" />
-      <span className="forge-seal-sparks"><i /><i /><i /><i /><i /><i /></span>
-    </div>
-  );
-};
-
-const ForgeCommissionCard = ({
-  eyebrow,
-  title,
-  description,
-  cta,
-  tone,
-  motionMode,
-  onActivate,
-}: {
-  eyebrow: string;
-  title: string;
-  description: string;
-  cta: string;
-  tone: "teal" | "ember";
-  motionMode: MotionMode;
-  onActivate: () => void;
-}) => {
-  const cardRef = useRef<HTMLButtonElement>(null);
-  const sheenRef = useRef<HTMLSpanElement>(null);
-  const emberRef = useRef<HTMLSpanElement>(null);
-
-  useEffect(() => {
-    const card = cardRef.current;
-    const sheen = sheenRef.current;
-    const ember = emberRef.current;
-    if (!card || !sheen || !ember || motionMode !== "full") return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
-    let disposed = false;
-    let removeListeners: (() => void) | undefined;
-
-    void import("gsap").then(({ gsap }) => {
-      if (disposed) return;
-
-      gsap.set(card, { transformPerspective: 850, transformOrigin: "50% 50%" });
-      gsap.set(sheen, { xPercent: -85, opacity: 0 });
-      gsap.set(ember, { xPercent: -50, yPercent: -50, opacity: 0 });
-
-      const move = (event: PointerEvent) => {
-        const bounds = card.getBoundingClientRect();
-        const x = event.clientX - bounds.left;
-        const y = event.clientY - bounds.top;
-        const horizontal = x / bounds.width - 0.5;
-        const vertical = y / bounds.height - 0.5;
-
-        gsap.to(card, {
-          rotationY: horizontal * 8,
-          rotationX: vertical * -6,
-          x: horizontal * 3,
-          y: -5 + vertical * 2,
-          duration: 0.28,
-          ease: "power2.out",
-          overwrite: "auto",
-        });
-        gsap.to(sheen, {
-          xPercent: horizontal * 65,
-          opacity: 0.72,
-          duration: 0.25,
-          overwrite: "auto",
-        });
-        gsap.to(ember, {
-          x,
-          y,
-          opacity: 0.9,
-          scale: 1,
-          duration: 0.18,
-          overwrite: "auto",
-        });
-      };
-
-      const enter = () => {
-        gsap.to(card, {
-          y: -5,
-          borderColor: tone === "ember" ? "#f49a45" : "#6dddf0",
-          boxShadow:
-            tone === "ember"
-              ? "0 24px 65px #000c, inset 0 0 58px #d66f2038"
-              : "0 24px 65px #000c, inset 0 0 58px #2acde02b",
-          duration: 0.28,
-          ease: "power2.out",
-        });
-      };
-
-      const leave = () => {
-        gsap.to(card, {
-          rotationX: 0,
-          rotationY: 0,
-          x: 0,
-          y: 0,
-          scale: 1,
-          borderColor: "#3c4743",
-          boxShadow: "0 0 0 transparent, inset 0 0 0 transparent",
-          duration: 0.48,
-          ease: "power3.out",
-          overwrite: "auto",
-        });
-        gsap.to(sheen, { opacity: 0, xPercent: -85, duration: 0.35, overwrite: "auto" });
-        gsap.to(ember, { opacity: 0, scale: 0.35, duration: 0.3, overwrite: "auto" });
-      };
-
-      const press = () => gsap.to(card, { scale: 0.975, duration: 0.08, overwrite: "auto" });
-      const release = () => gsap.to(card, { scale: 1, duration: 0.2, ease: "back.out(2)" });
-      let active = false;
-
-      const track = (event: PointerEvent) => {
-        const bounds = card.getBoundingClientRect();
-        const inside =
-          event.clientX >= bounds.left &&
-          event.clientX <= bounds.right &&
-          event.clientY >= bounds.top &&
-          event.clientY <= bounds.bottom;
-
-        if (!inside) {
-          if (active) {
-            active = false;
-            leave();
-          }
-          return;
-        }
-
-        if (!active) {
-          active = true;
-          enter();
-        }
-        move(event);
-      };
-
-      const clear = () => {
-        if (!active) return;
-        active = false;
-        leave();
-      };
-
-      window.addEventListener("pointermove", track, { passive: true });
-      window.addEventListener("blur", clear);
-      document.addEventListener("mouseleave", clear);
-      card.addEventListener("pointerdown", press);
-      card.addEventListener("pointerup", release);
-      card.addEventListener("pointercancel", clear);
-
-      removeListeners = () => {
-        window.removeEventListener("pointermove", track);
-        window.removeEventListener("blur", clear);
-        document.removeEventListener("mouseleave", clear);
-        card.removeEventListener("pointerdown", press);
-        card.removeEventListener("pointerup", release);
-        card.removeEventListener("pointercancel", clear);
-        gsap.killTweensOf([card, sheen, ember]);
-      };
-    });
-
-    return () => {
-      disposed = true;
-      removeListeners?.();
-    };
-  }, [motionMode, tone]);
-
-  return (
-    <button ref={cardRef} className={`forge-commission-card ${tone}`} onClick={onActivate}>
-      <span ref={sheenRef} className="forge-card-sheen" aria-hidden="true" />
-      <span ref={emberRef} className="forge-card-ember" aria-hidden="true" />
-      <small>{eyebrow}</small>
-      <strong>{title}</strong>
-      <span className="forge-card-description">{description}</span>
-      <b>{cta}</b>
-    </button>
-  );
-};
-
-const colorIdentityName = (colors: string[]) => {
-  const order = "WUBRG";
-  const key = [...colors].sort((a, b) => order.indexOf(a) - order.indexOf(b)).join("");
-  const names: Record<string, string> = {
-    "": "Colorless",
-    W: "White",
-    U: "Blue",
-    B: "Black",
-    R: "Red",
-    G: "Green",
-    WU: "Azorius",
-    UB: "Dimir",
-    BR: "Rakdos",
-    RG: "Gruul",
-    WG: "Selesnya",
-    WB: "Orzhov",
-    UR: "Izzet",
-    BG: "Golgari",
-    WR: "Boros",
-    UG: "Simic",
-    WUG: "Bant",
-    WUB: "Esper",
-    UBR: "Grixis",
-    BRG: "Jund",
-    WRG: "Naya",
-    WBG: "Abzan",
-    WUR: "Jeskai",
-    UBG: "Sultai",
-    WBR: "Mardu",
-    URG: "Temur",
-  };
-  return names[key] || `${key} color identity`;
-};
-const NOTE_COLOR_NAMES: Record<string, string[]> = {
-  white: ["W"], blue: ["U"], black: ["B"], red: ["R"], green: ["G"],
-  azorius: ["W", "U"], dimir: ["U", "B"], rakdos: ["B", "R"], gruul: ["R", "G"], selesnya: ["G", "W"],
-  orzhov: ["W", "B"], izzet: ["U", "R"], golgari: ["B", "G"], boros: ["R", "W"], simic: ["G", "U"],
-  bant: ["W", "U", "G"], esper: ["W", "U", "B"], grixis: ["U", "B", "R"], jund: ["B", "R", "G"], naya: ["R", "G", "W"],
-  abzan: ["W", "B", "G"], jeskai: ["U", "R", "W"], sultai: ["B", "G", "U"], mardu: ["R", "W", "B"], temur: ["G", "U", "R"],
-};
-const colorsFromNote = (note = ""): string[] => {
-  for (const word of note.toLowerCase().match(/[a-z]+/g) || []) {
-    const colors = NOTE_COLOR_NAMES[word];
-    if (colors) return colors;
-  }
-  return [];
-};
-
-const commanderOracleText = (commander?: CommanderOption | null) =>
-  String(commander?.verifiedFacts || "")
-    .split("Oracle text:\n")
-    .slice(1)
-    .join("Oracle text:\n")
-    .trim();
-const occupancyLabelsForOption = (option?: CommanderOption | null) => {
-  if (!option?.name) return [];
-  return occupancyEngineLabelsForCommander({
-    name: option.name,
-    typeLine: option.typeLine || "",
-    oracleText: commanderOracleText(option),
-  });
-};
-type ForgeLane = "pressure" | "engine" | "inevitability";
-const FORGE_LANES: ForgeLane[] = ["pressure", "engine", "inevitability"];
-const commanderLaneScores = (commander: CommanderOption) => {
-  const text = `${commander.typeLine} ${commanderOracleText(commander)}`;
-  const count = (pattern: RegExp) => (text.match(pattern) || []).length;
-  return {
-    pressure:
-      count(/attack|attacking|combat|haste|power|double strike|first strike|deals? damage|firebend/gi) * 3 +
-      count(/creature|counter on|can(?:not|'t) block/gi),
-    engine:
-      count(/create|token|copy|cast|sacrifice|whenever|trigger|draw|counter on|proliferate|food|treasure/gi) * 2 +
-      count(/artifact|enchantment|graveyard|exile.+play/gi),
-    inevitability:
-      count(/counter target|destroy|exile target|return target|tap target|opponent|each player|life|ward|prevent/gi) * 2 +
-      count(/draw|graveyard|end step|upkeep/gi),
-  };
-};
-const arrangeCommanderStarters = (candidates: CommanderOption[]) => {
-  const available = [...candidates];
-  return FORGE_LANES.flatMap((lane) => {
-    if (!available.length) return [];
-    let bestIndex = 0;
-    for (let index = 1; index < available.length; index += 1)
-      if (commanderLaneScores(available[index])[lane] > commanderLaneScores(available[bestIndex])[lane])
-        bestIndex = index;
-    return available.splice(bestIndex, 1);
-  });
-};
-const FORMAT_PREVIEWS: Record<string, DeckPreview[]> = {
-  Standard: [
-    {
-      card: "Emberheart Challenger",
-      role: "Lynchpin · pressure engine",
-      theme: "Efficient threats turn every combat step into leverage.",
-      win: "Build an early lead, then convert prowess and reach into the final points.",
-    },
-    {
-      card: "Overlord of the Hauntwoods",
-      role: "Lynchpin · value engine",
-      theme: "Durable threats keep mana and pressure moving together.",
-      win: "Outscale fair decks with resilient bodies and compounding card quality.",
-    },
-    {
-      card: "Stock Up",
-      role: "Lynchpin · selection engine",
-      theme:
-        "Card selection finds the right answer for each stage of the game.",
-      win: "Stabilize, exhaust opposing resources, and close behind protected threats.",
-    },
-  ],
-  Modern: [
-    {
-      card: "Ragavan, Nimble Pilferer",
-      role: "Lynchpin · tempo engine",
-      theme: "Cheap threats create mana, information, and immediate pressure.",
-      win: "Force awkward answers early, then finish through efficient disruption.",
-    },
-    {
-      card: "Orcish Bowmasters",
-      role: "Lynchpin · value engine",
-      theme:
-        "Flexible threats punish excess cards while controlling small creatures.",
-      win: "Trade efficiently until incremental advantages become overwhelming.",
-    },
-    {
-      card: "Counterspell",
-      role: "Lynchpin · permission",
-      theme: "Broad answers protect a compact, inevitable endgame.",
-      win: "Deny the opponent's pivotal turn and win once their resources are thin.",
-    },
-  ],
-  Premodern: [
-    {
-      card: "Goblin Lackey",
-      role: "Lynchpin · deployment engine",
-      theme:
-        "One opening connects and turns the battlefield into an avalanche.",
-      win: "Overwhelm defenses before slower engines can establish control.",
-    },
-    {
-      card: "Survival of the Fittest",
-      role: "Lynchpin · toolbox engine",
-      theme: "Every creature can become the exact answer the position demands.",
-      win: "Assemble an adaptable creature chain that opponents cannot trade through.",
-    },
-    {
-      card: "Counterspell",
-      role: "Lynchpin · permission",
-      theme: "Efficient interaction protects a patient, resource-rich endgame.",
-      win: "Neutralize the few spells that matter and take over with superior cards.",
-    },
-  ],
-  Pioneer: [
-    {
-      card: "Monastery Swiftspear",
-      role: "Lynchpin · pressure engine",
-      theme: "Low-cost spells become both interaction and additional damage.",
-      win: "Compress the game until every draw threatens lethal.",
-    },
-    {
-      card: "Fable of the Mirror-Breaker",
-      role: "Lynchpin · value engine",
-      theme: "Filtering, mana, and copied threats make every stage productive.",
-      win: "Accumulate flexible advantages, then copy the deck's best threat.",
-    },
-    {
-      card: "Supreme Verdict",
-      role: "Lynchpin · reset",
-      theme: "Unconditional resets buy time for a powerful late game.",
-      win: "Clear committed boards and close once the opponent is out of rebuilds.",
-    },
-  ],
-  Historic: [
-    {
-      card: "Ragavan, Nimble Pilferer",
-      role: "Lynchpin · tempo engine",
-      theme: "Early pressure snowballs into mana and stolen resources.",
-      win: "Stay ahead on tempo while disruption protects the attack.",
-    },
-    {
-      card: "Jarsyl, Dark Age Scion",
-      role: "Lynchpin · recursion engine",
-      theme: "The graveyard turns past exchanges into future value.",
-      win: "Replay efficient spells until one-for-one trades stop being fair.",
-    },
-    {
-      card: "Mana Drain",
-      role: "Lynchpin · permission",
-      theme: "Premium interaction turns defense into a burst of development.",
-      win: "Counter the pivotal spell and use the mana swing to seize control.",
-    },
-  ],
-  Brawl: [
-    {
-      card: "Ragavan, Nimble Pilferer",
-      role: "Commander · treasure tempo",
-      theme:
-        "A compact red raid built around cheap interaction and stolen cards.",
-      win: "Connect early, compound Treasure advantages, and burn through the last defenses.",
-    },
-    {
-      card: "Kutzil, Malamet Exemplar",
-      role: "Commander · modified creatures",
-      theme:
-        "Counters and combat tricks turn a creature team into a draw engine.",
-      win: "Grow multiple threats, deny combat tricks, and snowball every clean hit.",
-    },
-    {
-      card: "Braids, Arisen Nightmare",
-      role: "Commander · sacrifice control",
-      theme:
-        "Disposable permanents become cards while opponents face painful choices.",
-      win: "Drain resources turn by turn until sacrifice pressure becomes inevitable.",
-    },
-  ],
-  Commander: [
-    {
-      card: "Isshin, Two Heavens as One",
-      role: "Commander · attack triggers",
-      theme:
-        "Every attack trigger fires twice, rewarding a relentless combat plan.",
-      win: "Build one explosive combat step that multiplies tokens, damage, and value.",
-    },
-    {
-      card: "Muldrotha, the Gravetide",
-      role: "Commander · graveyard value",
-      theme: "The graveyard acts as a second hand full of reusable permanents.",
-      win: "Outlast removal, rebuild repeatedly, and lock in an overwhelming resource edge.",
-    },
-    {
-      card: "Shorikai, Genesis Engine",
-      role: "Commander · artifact control",
-      theme:
-        "Vehicles, tokens, and card selection support a patient control shell.",
-      win: "Filter into answers, stabilize behind Pilots, then win through inevitability.",
-    },
-  ],
-};
-const isCommanderFormat = (format: string) =>
-  ["Commander", "Brawl", "Standard Brawl"].includes(format);
-// The commission chamber's own copy must never claim every format needs a
-// commander — only the singleton, commander-led formats isCommanderFormat
-// already recognizes actually do. Small lookups, not scattered inline
-// ternaries, so every commander-vs-format string branches off the exact
-// same real predicate.
-const commissionHeadingFor = (format: string) =>
-  isCommanderFormat(format)
-    ? "Choose your commander and game plan."
-    : "Choose your format and game plan.";
-const buildStepLabelsFor = (format: string) =>
-  isCommanderFormat(format)
-    ? ["Commander", "Strategy", "Preferences"]
-    : ["Format", "Strategy", "Preferences"];
-const targetDeckSize = (format: string) =>
-  format === "Commander" || format === "Brawl"
-    ? 100
-    : format === "Standard Brawl"
-      ? 60
-      : 60;
-const scryfallLegality = (format: string) =>
-  format === "Commander"
-    ? "commander"
-    : format === "Brawl" || format === "Standard Brawl"
-      ? "brawl"
-      : format.toLowerCase();
-const scryfallFormatTerms = (format: string) =>
-  format === "Standard Brawl"
-    ? "legal:brawl legal:standard game:arena"
-    : format === "Brawl"
-      ? "legal:brawl game:arena"
-      : `legal:${format.toLowerCase()}`;
-const MASTERWORK_LANES = [
-  {
-    path: "Fast Start · Focused Pressure",
-    tone: "ember",
-    nouns: ["Vanguard", "Breakthrough", "Charge"],
-    verdict: "Best for players who want to act early, keep attacking, and make opponents answer them.",
-  },
-  {
-    path: "Theme Engine · Compounding Growth",
-    tone: "rune",
-    nouns: ["Engine", "Confluence", "Workshop"],
-    verdict: "Best for players who enjoy combining related cards so each new piece makes the others stronger.",
-  },
-  {
-    path: "Patient Defense · Reliable Finish",
-    tone: "steel",
-    nouns: ["Bastion", "Bulwark", "Long Game"],
-    verdict: "Best for players who prefer to survive the early fight, protect key cards, and win once the table slows down.",
-  },
-] as const;
-const hashText = (value: string) =>
-  Array.from(value).reduce(
-    (hash, char) => (hash * 31 + char.charCodeAt(0)) >>> 0,
-    2166136261,
-  );
-/**
- * A small, honest snapshot of Brain's own construction-time plan identity
- * (never fabricated — only ever what Brain itself produced), captured at
- * save time so it can survive a reopen from the archive, where the live
- * generation context is gone. Returns null when there's nothing real to
- * capture, so callers can fall back to whatever was captured previously.
- */
-const extractPlanIdentitySnapshot = (selected: any, commanderName: string) => {
-  const intent = selected?.strategicIntent || {};
-  const packages = (intent.packages || []).map((p: any) => p?.label).filter(Boolean);
-  const plan = selected?.strategicPlan || intent.activePlan || null;
-  const strategy = intent.strategy || selected?.strategy || null;
-  const commanders = (intent.commanders || [])
-    .map((c: any) => (typeof c === "string" ? c : c?.name))
-    .filter(Boolean);
-  const planLabel = plan?.label || plan?.id || null;
-  if (!packages.length && !strategy && !commanders.length && !planLabel) return null;
-  return {
-    packages,
-    strategy,
-    planLabel,
-    commanders: commanders.length ? commanders : commanderName ? [commanderName] : [],
-  };
-};
-/** Coarse "updated N ago" for a saved family's real updatedAt timestamp. */
-const relativeUpdatedLabel = (isoTimestamp?: string | null): string | null => {
-  if (!isoTimestamp) return null;
-  const then = new Date(isoTimestamp).getTime();
-  if (!Number.isFinite(then)) return null;
-  const minutes = Math.max(0, Math.round((Date.now() - then) / 60000));
-  if (minutes < 1) return "Deck updated just now";
-  if (minutes < 60) return `Deck updated ${minutes} minute${minutes === 1 ? "" : "s"} ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `Deck updated ${hours} hour${hours === 1 ? "" : "s"} ago`;
-  const days = Math.round(hours / 24);
-  return `Deck updated ${days} day${days === 1 ? "" : "s"} ago`;
-};
-const masterworkIdentityWord = (commander = "", note = "") => {
-  const promise = parseNativeBlueprintIntent({ note }).tribalTypes[0];
-  if (promise) return promise.charAt(0).toUpperCase() + promise.slice(1);
-  const colors = colorsFromNote(note);
-  if (colors.length) return colorIdentityName(colors);
-  return commander.split(/[ ,/]+/)[0] || "Forge";
-};
-const createMasterworks = (seed: number, commander = "", note = ""): Masterwork[] => {
-  const base = hashText(`${seed}-${commander}-${note}`);
-  const identity = masterworkIdentityWord(commander, note);
-  return Array.from({ length: 9 }, (_, index) => {
-    const lane = MASTERWORK_LANES[index % MASTERWORK_LANES.length];
-    const noun = lane.nouns[(Math.floor(index / 3) + base) % lane.nouns.length];
-    return {
-      rune: ["ᛋ", "ᛉ", "ᛟ", "ᚷ", "ᚱ", "ᛇ", "ᚾ", "ᛞ", "ᛜ"][index],
-      name: `The ${identity} ${noun}`,
-      path: lane.path,
-      tone: lane.tone,
-      verdict: lane.verdict,
-    };
-  });
-};
-const commanderOption = (card: any): CommanderOption => commanderOptionFromCard(card);
-// Reads the same verifiedFacts oracle-text block already built for every
-// commander to detect Partner, "Partner with <name>", and Background
-// eligibility — no separate fetch needed, since the text is already on hand
-// the moment a commander is chosen.
-type PartnerEligibility =
-  | { kind: "partner" }
-  | { kind: "partner-with"; specificName: string }
-  | { kind: "background" };
-const partnerEligibilityFor = (
-  commander: CommanderOption | null,
-): PartnerEligibility | null => {
-  if (!commander) return null;
-  const text = commander.verifiedFacts || "";
-  const specificMatch = text.match(/partner with ([^.\n]+)/i);
-  if (specificMatch) return { kind: "partner-with", specificName: specificMatch[1].trim() };
-  if (/\bpartner\b/i.test(text)) return { kind: "partner" };
-  if (/choose a background/i.test(text)) return { kind: "background" };
-  return null;
-};
-const formatMetaEvidence = (format: string) => {
-  if (format !== "Standard") return "No verified format-wide tournament snapshot is connected for this format. Do not invent a field claim.";
-  const meta = getMetaIntelligence();
-  if (!meta.readyForCurrentFieldUse)
-    return `STANDARD FIELD EVIDENCE CLOSED\n${meta.warning}\n${meta.recommendation}`;
-  return `STANDARD FIELD EVIDENCE (${meta.current.freshness}; observed ${meta.current.provenance.observedAt}; ${meta.current.ageDays} days old)\nSample: ${meta.current.sampleSize} lists; ${(meta.current.classificationCoverage * 100).toFixed(1)}% classified; confidence ${meta.current.confidence}.\nLargest measured family: ${meta.leadingStrategy} at ${(meta.current.strategies[0].share * 100).toFixed(1)}%, a plurality rather than a majority.\n${meta.recommendation}\nDo not overfit all three candidates to one matchup: every candidate must retain a legal, coherent proactive plan against the mixed field.`;
-};
-const parseDeckRows = (text: string): DeckRow[] =>
-  text.split(/\r?\n/).flatMap((line) => {
-    const match = line
-      .trim()
-      .match(/^(\d+)\s+(.+?)(?:\s+\([A-Z0-9]{2,6}\)\s+\d+\w*)?$/);
-    return match ? [{ quantity: Number(match[1]), name: match[2].trim() }] : [];
-  });
-const cardFactKey = (name: string) =>
-  name
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[‘’`]/g, "'")
-    .replace(/\s*\/\/\s*/g, " // ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
-const scryfallLookupName = (name: string) => String(name || "").split(/\s*\/\/\s*/)[0].trim();
-const BASIC_LANDS: Record<string, string> = {
-  W: "Plains",
-  U: "Island",
-  B: "Swamp",
-  R: "Mountain",
-  G: "Forest",
-};
-const BASIC_LAND_KEYS = new Set(
-  [
-    ...Object.values(BASIC_LANDS), "Wastes",
-    "Snow-Covered Plains", "Snow-Covered Island", "Snow-Covered Swamp", "Snow-Covered Mountain", "Snow-Covered Forest",
-  ].map(cardFactKey),
-);
-const indexCardFact = (
-  target: Record<string, CardFact>,
-  fact: CardFact,
-  requestedName = "",
-) => {
-  const aliases = [
-    requestedName,
-    String(fact.name || ""),
-    String(fact.name || "").split(" // ")[0],
-    ...(fact.card_faces || []).map((face) => String(face.name || "")),
-  ];
-  for (const alias of aliases) if (alias) target[cardFactKey(alias)] = fact;
-};
-const cardFactFromNativeRow = (row: any): CardFact | null => {
-  const card = row?.card;
-  if (!row?.name || !card) return null;
-  return {
-    name: String(card.name || row.name),
-    cmc: Number(card.cmc ?? row.cmc ?? 0),
-    color_identity: Array.isArray(card.colorIdentity) ? card.colorIdentity : card.color_identity || [],
-    mana_cost: String(card.manaCost || card.mana_cost || ""),
-    oracle_text: String(card.oracleText || card.oracle_text || ""),
-    type_line: String(card.typeLine || card.type_line || ""),
-    ...(Number.isFinite(Number(card.priceUsd)) ? { prices: { usd: String(card.priceUsd) } } : {}),
-  };
-};
-const cardGroup = (fact?: CardFact, isCommander = false) =>
-  // Founder #017: primary (front) face drives display sections — not joined
-  // Oracle faces. Analysis still uses full type lines elsewhere.
-  deckDisplaySection(fact || {}, isCommander);
-// Reads whichever price the player actually wants — foil or nonfoil — and
-// falls back to the other printing's price only when the requested one
-// doesn't exist at all (foil-only promos have no usd price; some older or
-// bulk commons have no usd_foil price). Basics and other truly priceless
-// cards correctly return null, not 0 — a real $0.00 card and "no price
-// data yet" are different things.
-const cardPriceUsd = (fact?: CardFact, foil = false): number | null => {
-  const preferred = foil ? fact?.prices?.usd_foil : fact?.prices?.usd;
-  const fallback = foil ? fact?.prices?.usd : fact?.prices?.usd_foil;
-  const raw = preferred ?? fallback;
-  const value = Number(raw);
-  return raw != null && Number.isFinite(value) ? value : null;
-};
-// The cheaper of this same printing's nonfoil/foil prices — a lightweight
-// "budget bling" reading that reuses prices already on hand, distinct from
-// searching every printing a card has ever had (a separate, heavier feature).
-const cheapestCardPriceUsd = (fact?: CardFact): number | null => {
-  const candidates = [fact?.prices?.usd, fact?.prices?.usd_foil]
-    .map((raw) => (raw != null ? Number(raw) : null))
-    .filter((value): value is number => value !== null && Number.isFinite(value));
-  return candidates.length ? Math.min(...candidates) : null;
-};
-// displayRoleFor lives in adaptive-recommendation.mjs alongside the
-// server-side simulation role vocabulary it's the display counterpart
-// of, so the two stay derived from one place instead of drifting. It
-// already reads both typeLine/type_line and oracleText/oracle_text, so
-// a raw Scryfall-shaped CardFact passes through directly.
-const cardRole = (fact?: CardFact) => displayRoleFor(fact);
-const BASIC_CARD_NAMES = new Set(["plains", "island", "swamp", "mountain", "forest", "wastes"]);
-
-type ReadingSize = "compact" | "comfortable" | "large";
-
-const BLUEPRINT_DEFINITIONS = {
-  format: {
-    Standard: "A rotating 60-card format using recent Magic sets.",
-    Brawl: "A 100-card singleton Arena format led by a commander.",
-    "Standard Brawl": "A rotating 60-card singleton format led by a commander.",
-    Commander: "A 100-card singleton multiplayer format led by a legendary commander.",
-    Modern: "A nonrotating 60-card format using cards from Eighth Edition forward.",
-    Premodern: "A community format using Fourth Edition through Scourge-era cards.",
-    Pioneer: "A nonrotating 60-card format using Return to Ravnica forward.",
-    Historic: "A broad, nonrotating digital format played on MTG Arena.",
-  },
-  strategy: {
-    "Aggressive pressure": "Deploy threats quickly and shorten the game before slower plans stabilize.",
-    "Balanced midrange": "Blend efficient threats, interaction, and staying power so the deck can adapt.",
-    "Reactive control": "Trade resources, answer key threats, and win after taking control of the game.",
-    "Synergy and combo": "Assemble cards whose combined effect is substantially stronger than each card alone.",
-    "Tempo and disruption": "Advance an efficient threat while delaying the opponent just long enough to win.",
-  },
-  complexity: {
-    Accessible: "Favor clear play patterns, forgiving sequencing, and fewer hidden dependencies.",
-    Balanced: "Allow meaningful decisions without making every turn mechanically demanding.",
-    Technical: "Welcome precise sequencing, layered interactions, and more matchup-dependent choices.",
-    "Maximum depth": "Prioritize intricate lines and high decision density, even when they require more practice.",
-  },
-  budget: {
-    "No strict limit": "Choose the strongest fitting cards without a price ceiling.",
-    "Budget conscious": "Prefer affordable substitutes while preserving the deck's central promise.",
-    "Moderate investment": "Allow selective premium cards when they materially improve the deck.",
-    "Competitive optimization": "Prioritize performance and consistency over card cost.",
-  },
-  targetPowerTier: {
-    "": "Let structure and strategy decide, with no power-level pressure either way.",
-    Casual: "Lean away from fast mana, unrestricted tutors, extra turns, and mass land denial.",
-    Focused: "Allow a modest amount of real power signals — a build with teeth, not a stax or combo-first list.",
-    "High-Power": "Lean toward fast mana, tutors, and extra turns where they otherwise fit.",
-    Maximum: "Actively seek fast mana, unrestricted tutors, extra turns, and mass land denial wherever legal.",
-  },
-} as const;
-
-const blueprintDefinition = (
-  category: keyof typeof BLUEPRINT_DEFINITIONS,
-  value: string,
-) => (BLUEPRINT_DEFINITIONS[category] as Record<string, string>)[value] || "The Forge will explain this choice as its card pool and rules are verified.";
-
-// A production walkthrough proved that three genuinely different failure
-// classes — an expired Turnstile token, the network anti-abuse limiter,
-// and a truly incomplete generation — used to collapse into one
-// indistinguishable "Forge failed" screen, because every guest-forge
-// failure was caught in one place and rendered from a single message
-// string. That's why "the engine didn't build anything" felt impossible
-// to kill: most of those reports were never construction failures at
-// all. callForgeGenerate now throws a ForgeGenerationError carrying the
-// server's machine-readable code; normalizeForgeFailure maps every known
-// code to how the UI must treat it, once, here — never re-derive this by
-// comparing message strings at a render site.
-type GuestForgeErrorCode =
-  | "GUEST_PREVIEW_ALREADY_USED"
-  | "NETWORK_RATE_LIMITED"
-  | "HUMAN_VERIFICATION_REQUIRED"
-  | "INCOMPLETE_GENERATION"
-  | "CATALOG_UNAVAILABLE"
-  | "GENERATION_FAILED";
-
-class ForgeGenerationError extends Error {
-  code?: string;
-  claimToken?: string;
-  constructor(message: string, code?: string, claimToken?: string) {
-    super(message);
-    this.code = code;
-    this.claimToken = claimToken;
-  }
-}
-
-type NormalizedForgeFailure = {
-  code: GuestForgeErrorCode | "UNKNOWN";
-  message: string;
-  claimToken?: string;
-  // Whether "Strike the Anvil Again" may ever work against this exact
-  // failure. NETWORK_RATE_LIMITED is a network anti-abuse brake — retry
-  // cannot help. GUEST_PREVIEW_ALREADY_USED is only an in-progress lease;
-  // retry is offered after a fresh Turnstile token.
-  retryable: boolean;
-  // Whether this specific response means the guest's one free preview
-  // was actually spent. Used guests keep forging; sign-in is only to SAVE.
-  previewConsumed: boolean;
-  // Whether a fresh Turnstile challenge is the correct next step. False
-  // for NETWORK_RATE_LIMITED (retrying can't work regardless of
-  // verification) and true for every retryable one (a Turnstile token is
-  // single-use server-side the moment it's checked, spent whether or not
-  // the attempt that follows succeeds).
-  requiresVerification: boolean;
-};
-
-const GUEST_FORGE_ERROR_META: Record<GuestForgeErrorCode, Omit<NormalizedForgeFailure, "code" | "message" | "claimToken">> = {
-  GUEST_PREVIEW_ALREADY_USED: { retryable: true, previewConsumed: false, requiresVerification: true },
-  NETWORK_RATE_LIMITED: { retryable: false, previewConsumed: false, requiresVerification: false },
-  HUMAN_VERIFICATION_REQUIRED: { retryable: true, previewConsumed: false, requiresVerification: true },
-  INCOMPLETE_GENERATION: { retryable: true, previewConsumed: false, requiresVerification: true },
-  CATALOG_UNAVAILABLE: { retryable: true, previewConsumed: false, requiresVerification: true },
-  GENERATION_FAILED: { retryable: true, previewConsumed: false, requiresVerification: true },
-};
-
-function normalizeForgeFailure(error: unknown): NormalizedForgeFailure {
-  const message = error instanceof Error ? error.message : "The native Forge could not complete this candidate.";
-  const rawCode = error instanceof ForgeGenerationError ? error.code : undefined;
-  const code: GuestForgeErrorCode | "UNKNOWN" =
-    rawCode && Object.prototype.hasOwnProperty.call(GUEST_FORGE_ERROR_META, rawCode) ? (rawCode as GuestForgeErrorCode) : "UNKNOWN";
-  const claimToken = error instanceof ForgeGenerationError ? error.claimToken : undefined;
-  // An unrecognized/missing code (an older deploy, a network-level error
-  // never touched by this contract) defaults to the same treatment as
-  // GENERATION_FAILED — retryable, preview preserved — never to "already
-  // used," since that is the one claim this function must never guess at.
-  const meta = code === "UNKNOWN" ? GUEST_FORGE_ERROR_META.GENERATION_FAILED : GUEST_FORGE_ERROR_META[code];
-  return { code, message, claimToken, ...meta };
-}
-
 
 export default function Home() {
   const router = useRouter();
@@ -3734,7 +2628,7 @@ export default function Home() {
         );
         if (!response.ok) throw new Error("Commander search unavailable");
         const data = await response.json();
-        setCommanderResults((data.cards || []).slice(0, 8).map(commanderOption));
+        setCommanderResults((data.cards || []).slice(0, 8).map(commanderOptionFromCard));
       } catch {
         if (controller.signal.aborted) return;
         setCommanderResults([]);
@@ -3764,7 +2658,7 @@ export default function Home() {
         const resolved = await resolvePastedCommanderCandidate({
           deckText: deck,
           format,
-          mapCard: commanderOption,
+          mapCard: commanderOptionFromCard,
         });
         if (resolved) setSelectedCommander(resolved);
       } catch {
@@ -3802,7 +2696,7 @@ export default function Home() {
         );
         if (!response.ok || cancelled) return;
         const card = await response.json();
-        if (!cancelled) setSecondCommanderResults([commanderOption(card)]);
+        if (!cancelled) setSecondCommanderResults([commanderOptionFromCard(card)]);
       } catch {
         /* The specific partner suggestion is optional; nothing to fall back to here. */
       }
@@ -3837,7 +2731,7 @@ export default function Home() {
           `https://api.scryfall.com/cards/search?q=${query}&order=name`,
         );
         const data = await response.json();
-        setSecondCommanderResults((data.data || []).slice(0, 8).map(commanderOption));
+        setSecondCommanderResults((data.data || []).slice(0, 8).map(commanderOptionFromCard));
       } catch {
         setSecondCommanderResults([]);
       } finally {
@@ -4060,7 +2954,7 @@ export default function Home() {
           `https://api.scryfall.com/cards/random?q=${query}`,
         );
         if (!response.ok) continue;
-        const option = commanderOption(await response.json());
+        const option = commanderOptionFromCard(await response.json());
         if (!exclusions.has(option.name)) {
           exclusions.add(option.name);
           candidates.push(option);

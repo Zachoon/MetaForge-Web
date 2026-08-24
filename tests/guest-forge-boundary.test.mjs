@@ -209,7 +209,9 @@ test("a stale pending reservation can be reclaimed only via one atomic UPDATE gu
 });
 
 test("normalizeForgeFailure maps every code to its retry/preview/verification meaning exactly once, defaulting unknown codes to GENERATION_FAILED's meta (never to already-used)", async () => {
-  const source = await read("app/page.tsx");
+  // GUEST_FORGE_ERROR_META/normalizeForgeFailure moved to forge-failure.ts
+  // during the page.tsx decomposition (Phase 4).
+  const source = await read("app/forge-failure.ts");
   const table = source.match(/const GUEST_FORGE_ERROR_META[\s\S]*?\n\};/)?.[0];
   assert.ok(table, "expected the GUEST_FORGE_ERROR_META table");
   assert.match(table, /GUEST_PREVIEW_ALREADY_USED: \{ retryable: true, previewConsumed: false, requiresVerification: true \}/);

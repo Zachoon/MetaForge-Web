@@ -3,6 +3,9 @@ import fs from "node:fs";
 import test from "node:test";
 
 const page = fs.readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+// SavedFamily moved to forge-types.ts during the page.tsx decomposition
+// (Phase 4).
+const forgeTypes = fs.readFileSync(new URL("../app/forge-types.ts", import.meta.url), "utf8");
 
 test("finishing a Masterwork is a distinct, reversible action from delete", () => {
   assert.match(page, /import \{ updateFamily, [^}]*\} from "\.\/deck-bench\.mjs";/);
@@ -30,7 +33,7 @@ test("the workbench offers a keep-or-refine decision on the open deck", () => {
 });
 
 test("saved decks are typed for their archived status instead of left implicit", () => {
-  assert.match(page, /type SavedFamily = \{[\s\S]{0,700}archived\?: boolean/);
+  assert.match(forgeTypes, /type SavedFamily = \{[\s\S]{0,700}archived\?: boolean/);
 });
 
 test("wires the pending Story Bench recommendation ledger into save and restore", () => {

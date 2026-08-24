@@ -8,6 +8,11 @@ const css = await readFile(new URL("../app/testing-anvil.css", import.meta.url),
 const siteFrameCss = await readFile(new URL("../app/site-frame.css", import.meta.url), "utf8");
 const motifCss = await readFile(new URL("../app/masterwork-motifs.css", import.meta.url), "utf8");
 const polishCss = await readFile(new URL("../app/forge-polish.css", import.meta.url), "utf8");
+// cardFactFromNativeRow/buildStepLabelsFor/preferredDecklistView moved out
+// of page.tsx during the page.tsx decomposition (Phase 4).
+const deckRowHelpers = await readFile(new URL("../app/deck-row-helpers.ts", import.meta.url), "utf8");
+const formatCatalog = await readFile(new URL("../app/format-catalog.ts", import.meta.url), "utf8");
+const forgeTypes = await readFile(new URL("../app/forge-types.ts", import.meta.url), "utf8");
 const workbenchSrc = await readFile(new URL("../app/living-workbench.tsx", import.meta.url), "utf8");
 
 test("opens directly into the deck without a detail-mode decision", () => {
@@ -126,9 +131,9 @@ test("keeps the deck list stable while card types are still loading", () => {
 });
 
 test("uses the Forge's verified card types before supplemental gallery lookups", () => {
-  assert.match(page, /const cardFactFromNativeRow/);
+  assert.match(deckRowHelpers, /const cardFactFromNativeRow/);
   assert.match(page, /for \(const row of nativeMasterworkContext\?\.selected\?\.rows \|\| \[\]\)/);
-  assert.match(page, /type_line: String\(card\.typeLine \|\| card\.type_line \|\| ""\)/);
+  assert.match(deckRowHelpers, /type_line: String\(card\.typeLine \|\| card\.type_line \|\| ""\)/);
   assert.match(page, /fetch\("\/api\/cards\/facts"/);
   assert.match(page, /Retry details/);
   assert.match(page, /AbortSignal\.timeout\(25000\)/);
@@ -209,8 +214,8 @@ test("turns new-deck setup into three progressively disclosed decisions", () => 
   assert.match(page, /useState<0 \| 1 \| 2>\(0\)/);
   assert.match(page, /aria-label="Deck setup progress"/);
   assert.match(page, /buildStepLabelsFor\(format\)\.map/);
-  assert.match(page, /\["Commander", "Strategy", "Preferences"\]/);
-  assert.match(page, /\["Format", "Strategy", "Preferences"\]/);
+  assert.match(formatCatalog, /\["Commander", "Strategy", "Preferences"\]/);
+  assert.match(formatCatalog, /\["Format", "Strategy", "Preferences"\]/);
   assert.match(page, /Next · Choose strategy →/);
   assert.match(page, /Next · Optional preferences →/);
   assert.match(page, /buildStep === 0 && isCommanderFormat\(format\) && !selectedCommander/);
@@ -242,7 +247,7 @@ test("turns deck stress experiments into concrete player insights", () => {
 
 test("keeps visual deck browsing separate from the playtest workbench", () => {
   assert.match(page, /useState<DeckViewMode>\("ledger"\)/);
-  assert.match(page, /matchMedia\("\(max-width: 760px\)"\)/);
+  assert.match(forgeTypes, /matchMedia\("\(max-width: 760px\)"\)/);
   assert.match(page, /setDeckViewMode\(preferredDecklistView\(\)\)/);
   assert.match(page, />Visual deck<\/button>/);
   assert.match(page, />Text list<\/button>/);

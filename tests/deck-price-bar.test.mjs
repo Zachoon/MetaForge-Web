@@ -5,6 +5,9 @@ import test from "node:test";
 const page = fs.readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
 const css = fs.readFileSync(new URL("../app/testing-anvil.css", import.meta.url), "utf8");
 const motionCss = fs.readFileSync(new URL("../app/forge-motion.css", import.meta.url), "utf8");
+// cardPriceUsd moved to deck-row-helpers.ts during the page.tsx
+// decomposition (Phase 4).
+const deckRowHelpers = fs.readFileSync(new URL("../app/deck-row-helpers.ts", import.meta.url), "utf8");
 
 test("surfaces a persistent, real market-price total and per-card prices", () => {
   assert.match(page, /cardPriceUsd/);
@@ -44,8 +47,8 @@ test("each deck row can be priced as foil or nonfoil independently", () => {
   assert.match(page, /card-row-foil-toggle/);
   // cardPriceUsd must accept a foil flag and prefer that printing's price,
   // falling back to the other printing rather than reading as unpriced.
-  assert.match(page, /cardPriceUsd\s*=\s*\(fact\?:\s*CardFact,\s*foil\s*=\s*false\)/);
-  assert.match(page, /foil\s*\?\s*fact\?\.prices\?\.usd_foil\s*:\s*fact\?\.prices\?\.usd/);
+  assert.match(deckRowHelpers, /cardPriceUsd\s*=\s*\(fact\?:\s*CardFact,\s*foil\s*=\s*false\)/);
+  assert.match(deckRowHelpers, /foil\s*\?\s*fact\?\.prices\?\.usd_foil\s*:\s*fact\?\.prices\?\.usd/);
   // The deck-wide total must recompute when foil selections change.
   const memoDeps = page.match(/\[deckRows, cardFacts, foilCards, cheapestPrintings, printingOverrides\]/);
   assert.ok(memoDeps, "expected deckPriceTotal to depend on foilCards");

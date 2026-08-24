@@ -11,6 +11,9 @@ const journeyCss = await readFile(
   "utf8",
 );
 const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+// MASTERWORK_LANES/createMasterworks moved to deck-row-helpers.ts during
+// the page.tsx decomposition (Phase 4).
+const deckRowHelpers = await readFile(new URL("../app/deck-row-helpers.ts", import.meta.url), "utf8");
 
 test("keeps the Masterworks reveal centered on a shrink-safe shared frame", () => {
   assert.match(
@@ -29,12 +32,12 @@ test("keeps the Masterworks reveal centered on a shrink-safe shared frame", () =
 });
 
 test("derives Masterwork titles, tone, and plain-language paths from one design lane", () => {
-  assert.match(page, /const MASTERWORK_LANES/);
-  assert.match(page, /Fast Start · Focused Pressure/);
-  assert.match(page, /Theme Engine · Compounding Growth/);
-  assert.match(page, /Patient Defense · Reliable Finish/);
-  assert.match(page, /name: `The \$\{identity\} \$\{noun\}`/);
-  assert.doesNotMatch(page, /const NAME_CORES/);
+  assert.match(deckRowHelpers, /const MASTERWORK_LANES/);
+  assert.match(deckRowHelpers, /Fast Start · Focused Pressure/);
+  assert.match(deckRowHelpers, /Theme Engine · Compounding Growth/);
+  assert.match(deckRowHelpers, /Patient Defense · Reliable Finish/);
+  assert.match(deckRowHelpers, /name: `The \$\{identity\} \$\{noun\}`/);
+  assert.doesNotMatch(deckRowHelpers, /const NAME_CORES/);
 });
 
 test("keeps Masterwork cards stable instead of replaying reveal animation on updates", () => {

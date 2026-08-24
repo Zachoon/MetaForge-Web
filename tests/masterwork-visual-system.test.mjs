@@ -8,6 +8,9 @@ const icons = fs.readFileSync(new URL("../app/masterwork-motif-icons.tsx", impor
 const globals = fs.readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 const motionCss = fs.readFileSync(new URL("../app/forge-motion.css", import.meta.url), "utf8");
 const journeyCss = fs.readFileSync(new URL("../app/forge-journey.css", import.meta.url), "utf8");
+// MilestoneMotion moved to forge-types.ts during the page.tsx decomposition
+// (Phase 4).
+const forgeTypes = fs.readFileSync(new URL("../app/forge-types.ts", import.meta.url), "utf8");
 const benchCss = fs.readFileSync(new URL("../app/deck-bench-dock.css", import.meta.url), "utf8");
 
 // Bug 1B retired the templated sealed/revealed MasterworkCard component
@@ -49,7 +52,7 @@ test("the workbench sigil is driven by the deterministic resolver, not invented 
 });
 
 test("major player milestones use choreographed sequences while reduced motion stays quiet", () => {
-  assert.match(page, /type MilestoneMotion/);
+  assert.match(forgeTypes, /type MilestoneMotion/);
   assert.match(page, /className={`forge-milestone-motion milestone-\$\{milestoneMotion\.kind\}`}/);
   assert.doesNotMatch(page, /setMilestoneMotion\(\{[\s\S]*?kind: "masterwork-ready"/);
   assert.match(page, /kind: "experiment-chosen"/);
