@@ -79,7 +79,7 @@ function robotsResponse(url: URL): Response {
 }
 
 const SITEMAP_URLS: { loc: string; lastmod: string; changefreq: string; priority: string }[] = [
-  { loc: "https://metaforge.gg/", lastmod: "2026-08-23", changefreq: "weekly", priority: "1.0" },
+  { loc: "https://metaforge.gg/", lastmod: "2026-08-24", changefreq: "weekly", priority: "1.0" },
   { loc: "https://metaforge.gg/terms", lastmod: "2026-08-02", changefreq: "monthly", priority: "0.3" },
   { loc: "https://metaforge.gg/privacy", lastmod: "2026-08-02", changefreq: "monthly", priority: "0.3" },
   { loc: "https://metaforge.gg/about", lastmod: "2026-08-23", changefreq: "monthly", priority: "0.7" },
