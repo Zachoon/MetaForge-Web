@@ -2,7 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync, statSync } from "node:fs";
 
-const page = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+// The entrance chamber's JSX moved to its own component during the
+// page.tsx decomposition (Phase 4 Stage 3).
+const page = readFileSync(new URL("../app/components/forge/entrance-chamber.tsx", import.meta.url), "utf8");
 const css = readFileSync(new URL("../app/entrance-living-forge.css", import.meta.url), "utf8");
 const globals = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 const embers = new URL("../public/assets/forge/vfx/entrance-embers.mp4", import.meta.url);

@@ -53,13 +53,13 @@ test("the mockup navigation frame is site-level rather than deck-only", async ()
 test("Explore/home is a no-scroll hero; saved Masterworks live on Decks", async () => {
   const page = await read("app/page.tsx");
   const frame = await read("app/site-frame.css");
-  const entranceStart = page.indexOf('{chamber === "entrance" && (');
-  const archiveStart = page.indexOf('{chamber === "archive" && (');
-  assert.ok(entranceStart > 0 && archiveStart > entranceStart);
-  const homeChunk = page.slice(entranceStart, archiveStart);
-  assert.match(homeChunk, /className="forge-entrance"/);
-  assert.doesNotMatch(homeChunk, /masterwork-history/);
-  assert.doesNotMatch(homeChunk, /Return to a deck/);
+  // The entrance chamber's JSX moved to its own component during the
+  // page.tsx decomposition (Phase 4 Stage 3) — it's a clean, isolated file
+  // now, so the "home chunk" it must not reach into is the entire file.
+  const entranceChamber = await read("app/components/forge/entrance-chamber.tsx");
+  assert.match(entranceChamber, /className="forge-entrance"/);
+  assert.doesNotMatch(entranceChamber, /masterwork-history/);
+  assert.doesNotMatch(entranceChamber, /Return to a deck/);
   assert.match(await readCtx(), /function openPrivateArchive\(/);
   assert.match(await readCtx(), /setChamber\("archive"\)/);
   assert.match(page, /\{chamber === "archive" && \(/);

@@ -10,6 +10,9 @@ const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8")
 // the page.tsx decomposition (Phase 4) — their definitions live there now,
 // while page.tsx keeps only the call sites checked below.
 const formatCatalog = await readFile(new URL("../app/format-catalog.ts", import.meta.url), "utf8");
+// The entrance chamber's JSX moved to its own component during the
+// page.tsx decomposition (Phase 4 Stage 3).
+const entranceChamber = await readFile(new URL("../app/components/forge/entrance-chamber.tsx", import.meta.url), "utf8");
 
 // --- 0. Entrance hero strings (added after initial review: these two are
 // more prominent than the card copy itself, so leaving them Commander-only
@@ -18,41 +21,41 @@ const formatCatalog = await readFile(new URL("../app/format-catalog.ts", import.
 test("the entrance sub-headline no longer opens with a Commander-only imperative", () => {
   // Rewritten 2026-08-20 to name the specific formats MetaForge supports
   // (SEO/search-visibility pass) — still never a Commander-only imperative.
-  assert.match(page, /Build a new MTG deck or analyze a decklist you already play\.\s*\n\s*MetaForge/);
-  assert.doesNotMatch(page, /Choose a commander and how you want to play/);
+  assert.match(entranceChamber, /Build a new MTG deck or analyze a decklist you already play\.\s*\n\s*MetaForge/);
+  assert.doesNotMatch(entranceChamber, /Choose a commander and how you want to play/);
 });
 
 test("the entrance sub-headline describes what MetaForge helps the player do, not a 'builds the deck for you' generator claim", () => {
   assert.match(
-    page,
+    entranceChamber,
     /MetaForge explains how your Commander, Standard, Modern,\s*\n\s*Pioneer, Brawl, or other Magic deck works, shows what to\s*\n\s*improve, and helps you make confident changes\./,
   );
-  assert.doesNotMatch(page, /MetaForge builds the\s*\n\s*full, legal deck first/);
+  assert.doesNotMatch(entranceChamber, /MetaForge builds the\s*\n\s*full, legal deck first/);
 });
 
 test("the entrance visual badge reflects a multi-format deck coach, not a Commander-only claim", () => {
-  assert.match(page, /A DECK COACH FOR EVERY FORMAT/);
-  assert.doesNotMatch(page, /BUILT FOR COMMANDER PLAYERS/);
+  assert.match(entranceChamber, /A DECK COACH FOR EVERY FORMAT/);
+  assert.doesNotMatch(entranceChamber, /BUILT FOR COMMANDER PLAYERS/);
   // The subtext was already format-neutral and stays as-is.
-  assert.match(page, /<small>Complete deck first\. Clear reasons second\.<\/small>/);
+  assert.match(entranceChamber, /<small>Complete deck first\. Clear reasons second\.<\/small>/);
 });
 
 // --- 1. Entrance card ---
 
 test("the entrance Build card no longer claims MetaForge only builds Commander decks", () => {
-  assert.match(page, /title="Build a deck"/);
-  assert.doesNotMatch(page, /title="Build a Commander deck"/);
+  assert.match(entranceChamber, /title="Build a deck"/);
+  assert.doesNotMatch(entranceChamber, /title="Build a Commander deck"/);
 });
 
 test("the entrance Build card's supporting copy is format-neutral", () => {
-  assert.match(page, /description="Choose a format and strategy\. Shape a deck around a real game plan\."/);
-  assert.doesNotMatch(page, /description="Pick your commander and strategy\. Get a complete deck\."/);
+  assert.match(entranceChamber, /description="Choose a format and strategy\. Shape a deck around a real game plan\."/);
+  assert.doesNotMatch(entranceChamber, /description="Pick your commander and strategy\. Get a complete deck\."/);
   // "Build around" was itself a subtle generator-first implication —
   // "Shape a deck around" keeps MetaForge as the thing helping the player
   // shape it, not the thing producing it for them.
-  assert.doesNotMatch(page, /description="Choose a format and strategy\. Build around a real game plan\."/);
+  assert.doesNotMatch(entranceChamber, /description="Choose a format and strategy\. Build around a real game plan\."/);
   // The CTA itself was explicitly out of scope for this batch.
-  assert.match(page, /cta="Build my deck →"/);
+  assert.match(entranceChamber, /cta="Build my deck →"/);
 });
 
 // --- 2. Commission chamber heading ---

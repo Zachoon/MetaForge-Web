@@ -168,12 +168,14 @@ test("commissionNote's own field is untouched — still its own state, own texta
 
 // --- Reset discipline: only on explicit fresh-journey/commission-reset points ---
 
-test("reviewFocus is reset at exactly the two intended points, and nowhere else (including failure paths)", () => {
+test("reviewFocus is reset at exactly the two intended points, and nowhere else (including failure paths)", async () => {
   // startNewForge()'s reset moved to forge-session-context.tsx; the
-  // fresh-Build entrance card's reset stayed in page.tsx's JSX.
+  // fresh-Build entrance card's reset moved to entrance-chamber.tsx.
+  const entranceChamber = await readFile(new URL("../app/components/forge/entrance-chamber.tsx", import.meta.url), "utf8");
   const occurrences = [
     ...(page.match(/setReviewFocus\(""\)/g) || []),
     ...(forgeSessionContext.match(/setReviewFocus\(""\)/g) || []),
+    ...(entranceChamber.match(/setReviewFocus\(""\)/g) || []),
   ];
   assert.equal(
     occurrences.length,
