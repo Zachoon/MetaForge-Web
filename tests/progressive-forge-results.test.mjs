@@ -303,7 +303,7 @@ test("accepting an experiment tablet plays out where the player can actually see
   assert.match(page, /const \[postAcceptChoice, setPostAcceptChoice\] = useState\(false\)/);
   assert.match(page, /className="post-accept-choice"/);
   assert.match(page, /Test Another Experiment/);
-  assert.match(page, /This Is The One — Preserve as Finished Masterwork/);
+  assert.match(page, /This Is The One — Save as Finished Deck/);
   // Growth in the Forge Mastery record should be visible at the moment it
   // happens, not only on a separate /profile visit.
   assert.match(page, /Revision \{lastAcceptedRevisionCount\} recorded to your/);
@@ -322,7 +322,7 @@ test("accepts a two-sided flip and shockwave burst on the tablet being applied, 
 test("offers a confidence tablet in place of a missing third experiment slot", () => {
   assert.match(page, /tablet\.type === "confidence"/);
   assert.match(page, /className="experiment-tablet-card confidence-tablet"/);
-  assert.match(page, /Seal it as a Finished Masterwork/);
+  assert.match(page, /Save it as a Finished Deck/);
   assert.match(motifCss, /\.confidence-tablet\{/);
 });
 
@@ -365,18 +365,18 @@ test("preserves match evidence on its exact revision", () => {
 // P0 follow-up: multiple production failure videos showed the floating
 // "YOUR BENCH" launcher (aside.bench-dock, gated only on chamber !==
 // "forging" — mounted during a workbench-stage failure too) reading
-// "Ready for your first Masterwork" at the exact moment the main panel
+// "Ready for your first deck" at the exact moment the main panel
 // said "No deck was completed." Neither claim was individually false (the
 // bench is about the player's saved-deck ARCHIVE, unrelated to the current
 // attempt) but shown together they read as contradictory chrome. Only the
 // invitation language is suppressed during a failure — the rest of the
 // panel (saved-deck navigation, "Start a New Forge") stays available.
-test("the floating Bench launcher never invites 'Ready for your first Masterwork' while the current attempt just failed", () => {
+test("the floating Bench launcher never invites 'Ready for your first deck' while the current attempt just failed", () => {
   const handleBlock = page.match(/<div className="bench-handle">[\s\S]*?<\/button>\s*<\/div>/)?.[0];
   assert.ok(handleBlock, "expected to find the bench-handle launcher JSX");
   assert.match(
     handleBlock,
-    /forgeGenerationError[\s\S]*?\? "Nothing preserved yet"\s*\n\s*: "Ready for your first Masterwork"/,
+    /forgeGenerationError[\s\S]*?\? "Nothing saved yet"\s*\n\s*: "Ready for your first deck"/,
     "the empty-archive invitation must be suppressed specifically while forgeGenerationError is set",
   );
 });

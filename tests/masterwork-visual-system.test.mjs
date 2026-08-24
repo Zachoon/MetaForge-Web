@@ -74,7 +74,7 @@ test("the Private Bench reads as a living archive instead of a plain saved-deck 
   assert.match(page, /ON THE ANVIL/);
   assert.match(page, /family\.revisions\.length/);
   assert.match(page, /evidenceCount/);
-  assert.match(page, /Open Masterwork/);
+  assert.match(page, /Open deck/);
   assert.match(benchCss, /\.bench-card-vitals/);
   assert.match(benchCss, /@keyframes bench-masterwork-rise/);
   assert.match(benchCss, /prefers-reduced-motion:reduce[^}]*\.bench-dock\.open/s);

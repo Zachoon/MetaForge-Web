@@ -59,9 +59,9 @@ export function revisionOpinionReasonMessage(reason: string | null | undefined):
     case "no_registered_question":
       return "No registered Mentor question applies to this exact revision yet. MetaForge will not invent one from a card name.";
     case "stale_or_missing_revision":
-      return "This revision is stale or missing from your saved Bench. Reopen or re-save the Masterwork, then ask again.";
+      return "This revision is stale or missing from your saved Bench. Reopen or re-save the deck, then ask again.";
     case "family_not_found":
-      return "That Masterwork is not on this account’s saved Bench.";
+      return "That deck is not on this account’s saved Bench.";
     case "revision_required":
       return "MetaForge needs an exact saved revision before it can form a stance.";
     case "bench_not_found":
@@ -205,13 +205,13 @@ export function RevisionOpinionPanel({
 
       {visibleStatus === "needs_auth" && (
         <p className="revision-opinion-status" role="status">
-          Sign in and save this Masterwork to ask MetaForge about the exact revision on your Bench.
+          Sign in and save this deck to ask MetaForge about the exact revision on your Bench.
         </p>
       )}
 
       {visibleStatus === "needs_saved_revision" && (
         <p className="revision-opinion-status" role="status">
-          Save this Masterwork so MetaForge can bind a Mentor opinion to an exact revision — not a temporary list.
+          Save this deck so MetaForge can bind a Mentor opinion to an exact revision — not a temporary list.
         </p>
       )}
 

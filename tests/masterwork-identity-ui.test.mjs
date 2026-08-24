@@ -7,10 +7,10 @@ const read = (path) => readFile(new URL(path, root), "utf8");
 
 test("a completed deck receives a customizable Masterwork identity", async () => {
   const page = await read("app/page.tsx");
-  assert.match(page, /YOUR MASTERWORK/);
-  assert.match(page, /Personalize Masterwork/);
-  assert.match(page, /Masterwork Identity/);
-  assert.match(page, /Masterwork name/);
+  assert.match(page, /YOUR DECK/);
+  assert.match(page, /Personalize deck/);
+  assert.match(page, /Deck Identity/);
+  assert.match(page, /Deck name/);
   assert.match(page, /masterwork-commander-medallion/);
   assert.match(page, /masterwork-identity-marks/);
   assert.match(page, /className="forge-global-rail"/);

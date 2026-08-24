@@ -121,9 +121,9 @@ const FORGE_CEREMONY_MINIMUM_MS = 9_000;
 
 type DeckPreview = { card: string; role: string; theme: string; win: string };
 type DeckRow = { quantity: number; name: string };
-type DeckViewMode = "workbench" | "gallery" | "ledger";
+type DeckViewMode = "playtest" | "gallery" | "ledger";
 
-function preferredDecklistView(): Exclude<DeckViewMode, "workbench"> {
+function preferredDecklistView(): Exclude<DeckViewMode, "playtest"> {
   return typeof window !== "undefined" && window.matchMedia("(max-width: 760px)").matches
     ? "gallery"
     : "ledger";
@@ -2196,10 +2196,10 @@ export default function Home() {
       ? {
           ...base,
           card: commander.name,
-          role: "Commander · chosen in your Blueprint",
+          role: "Commander · chosen in your deck",
           theme:
             commissionNote.trim() ||
-            `A ${commander.colors.join("")} identity commission built around this commander.`,
+            `A ${commander.colors.join("")} identity deck built around this commander.`,
         }
       : base;
   };
@@ -2850,7 +2850,7 @@ export default function Home() {
     activeRole === "Mana source"
       ? "Supports the deck's colored-mana and land-count requirements."
       : activeRole === "Interaction" || activeRole === "Board reset"
-        ? "Protects the Masterwork's plan by answering opposing development."
+        ? "Protects the deck's plan by answering opposing development."
         : activeRole === "Acceleration"
           ? "Moves the commander and expensive payoff turns ahead of schedule."
           : activeRole === "Card advantage"
@@ -3055,7 +3055,7 @@ export default function Home() {
     inspectedRole === "Mana source"
       ? "Supports the deck's colored-mana and land-count requirements."
       : inspectedRole === "Interaction" || inspectedRole === "Board reset"
-        ? "Protects the Masterwork's plan by answering opposing development."
+        ? "Protects the deck's plan by answering opposing development."
         : inspectedRole === "Acceleration"
           ? "Moves the commander and expensive payoff turns ahead of schedule."
           : inspectedRole === "Card advantage"
@@ -4291,7 +4291,7 @@ export default function Home() {
       });
       throw new ForgeGenerationError(
         response.redirected || response.status === 401
-          ? "Your session needs to be refreshed. Reload the page and try again — your commission and decklist are still here."
+          ? "Your session needs to be refreshed. Reload the page and try again — your notes and decklist are still here."
           : "The native Forge could not complete this candidate (unexpected server response). Try again in a moment.",
         "GENERATION_FAILED",
       );
@@ -4382,10 +4382,10 @@ export default function Home() {
     setPendingClaimResult(null);
     const claimedWork: Masterwork = {
       rune: "ᛞ",
-      name: claimed.nativeReport.selected?.label || "Your First Masterwork",
-      path: "Claimed Preview Masterwork",
+      name: claimed.nativeReport.selected?.label || "Your First Deck",
+      path: "Claimed Preview Deck",
       tone: "steel",
-      verdict: "Your guest Forge, now preserved in your account.",
+      verdict: "Your guest Forge, now saved to your account.",
     };
     const localGenerationId = crypto.randomUUID();
     setDeckId(localGenerationId);
@@ -4581,7 +4581,7 @@ export default function Home() {
       setForgeGenerationFailure(failure);
       setForgeGenerationError(
         failure.retryable
-          ? `${failure.message} Your commission is safe—strike the anvil again when verified card data is available.`
+          ? `${failure.message} Your notes are safe — try again when verified card data is available.`
           : failure.message,
       );
       setChamber("workbench");
@@ -4607,10 +4607,10 @@ export default function Home() {
     setRestoredWork({
       rune: "ᛞ",
       name: family.name,
-      path: family.path || "Preserved Masterwork",
+      path: family.path || "Saved Deck",
       tone: "steel",
       verdict:
-        "A preserved commission, reopened with its complete testing history.",
+        "A saved deck, reopened with its complete testing history.",
     });
     setForgedDeck(latest?.deck || "");
     setRevisions(restoredRevisions);
@@ -5339,7 +5339,7 @@ export default function Home() {
         >
           <div>
             <small>ONE FREE FORGE · NO ACCOUNT REQUIRED</small>
-            <b>{turnstileToken ? "The Forge is ready for you." : "Confirm you’re human, then build your Blueprint."}</b>
+            <b>{turnstileToken ? "The Forge is ready for you." : "Confirm you’re human, then build your deck."}</b>
             {turnstileError ? <p className="guest-turnstile-error" role="alert">{turnstileError}</p> : null}
           </div>
           <div
@@ -5349,9 +5349,9 @@ export default function Home() {
         </aside>
       )}
       {guestMode && forgedDeck && guestClaimToken && chamber !== "workbench" && (
-        <aside className="guest-result-gate" role="region" aria-label="Save this Masterwork">
+        <aside className="guest-result-gate" role="region" aria-label="Save this deck">
           <div>
-            <small>YOUR PREVIEW MASTERWORK IS READY</small>
+            <small>YOUR PREVIEW DECK IS READY</small>
             <b>Create your free account to save it, edit cards, run experiments, and record matches.</b>
             {coachOccupancyLabels.length > 0 && (
               <p className="guest-result-occupancy">
@@ -5359,7 +5359,7 @@ export default function Home() {
               </p>
             )}
           </div>
-          <a onClick={() => trackLaunchEvent("save_continue_clicked", { format })} href={`https://app.metaforge.gg/?claim=${encodeURIComponent(guestClaimToken)}`}>Save and continue →</a>
+          <a onClick={() => trackLaunchEvent("save_continue_clicked", { format })} className="save-deck-link" href={`https://app.metaforge.gg/?claim=${encodeURIComponent(guestClaimToken)}`}>Save deck →</a>
         </aside>
       )}
       {milestoneMotion && motionMode === "full" && (
@@ -5398,7 +5398,7 @@ export default function Home() {
         <nav className="forge-global-nav" aria-label="MetaForge workspace">
           <button type="button" className={chamber === "entrance" ? "active" : ""} onClick={() => setChamber("entrance")}>Explore</button>
           <button type="button" className={chamber === "workbench" && activeForgeChapter === 2 ? "active" : ""} disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(2); setSiteRail("analysis"); }}>Analyze</button>
-          <button type="button" disabled={!hasValidatedDeck} onClick={openDeepForgeEvidence}>Database</button>
+          <button type="button" disabled={!hasValidatedDeck} onClick={openDeepForgeEvidence}>Evidence</button>
           <button type="button" className="coming-soon" disabled>Community</button>
           <button type="button" className="coming-soon" disabled>Premium</button>
         </nav>
@@ -5438,10 +5438,10 @@ export default function Home() {
             document.getElementById("coach-brief")?.scrollIntoView({ behavior: "smooth", block: "start" });
           });
         }}><i>⌂</i><span>Overview</span></button>
-        <button type="button" className={chamber === "workbench" && activeForgeChapter === 1 && siteRail === "decklist" ? "active" : ""} disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode((current) => current === "workbench" ? preferredDecklistView() : current); setSiteRail("decklist"); if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = false; window.requestAnimationFrame(() => document.getElementById("deck-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>☷</i><span>Decklist</span></button>
+        <button type="button" className={chamber === "workbench" && activeForgeChapter === 1 && siteRail === "decklist" ? "active" : ""} disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode((current) => current === "playtest" ? preferredDecklistView() : current); setSiteRail("decklist"); if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = false; window.requestAnimationFrame(() => document.getElementById("deck-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>☷</i><span>Decklist</span></button>
         <button type="button" className={chamber === "workbench" && activeForgeChapter === 2 ? "active" : ""} disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(2); setSiteRail("analysis"); }}><i>◇</i><span>Analysis</span></button>
         <button type="button" className={chamber === "archive" ? "active" : ""} onClick={openPrivateArchive}><i className="forge-rail-cardback" aria-hidden="true">MF</i><span>Decks</span></button>
-        <button type="button" disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode("workbench"); setSiteRail("playtest"); window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>⚔</i><span>Playtest</span></button>
+        <button type="button" disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode("playtest"); setSiteRail("playtest"); window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>⚔</i><span>Playtest</span></button>
         <button type="button" disabled={!hasValidatedDeck} onClick={() => navigator.clipboard.writeText(formatDeckForArenaExport(forgedDeck))}><i>⌁</i><span>Share</span></button>
         <button type="button" disabled={!hasValidatedDeck} onClick={() => { setMasterworkIdentityDraft(masterworkIdentity); setMasterworkIdentityOpen(true); }}><i>⚙</i><span>Settings</span></button>
         <div className="forge-rail-embers" aria-hidden="true"><i /><i /><i /></div>
@@ -5636,9 +5636,9 @@ export default function Home() {
             <header>
               <div>
                 <small>YOUR PRIVATE ARCHIVE</small>
-                <h2>Return to a Masterwork</h2>
+                <h2>Return to a deck</h2>
               </div>
-              <span>{savedMasterworks.length} PRESERVED</span>
+              <span>{savedMasterworks.length} SAVED</span>
             </header>
             {savedMasterworks.length > 0 ? (
               <div>
@@ -5701,7 +5701,7 @@ export default function Home() {
               </div>
             ) : (
               <p className="empty-archive">
-                No Masterworks preserved yet. Build or review a deck and it will live here.
+                No decks saved yet. Build or review a deck and it will live here.
               </p>
             )}
             <footer>
@@ -5861,7 +5861,7 @@ export default function Home() {
                   value={maxCardPriceInput}
                   onChange={(event) => setMaxCardPriceInput(event.target.value)}
                 />
-                <small className="blueprint-choice-definition">A hard cap, not a preference — dial in your own group's budget rule. Combine with Commons Only for a Pauper-style build.</small>
+                <small className="blueprint-choice-definition">A hard cap on price per card. Combine with Commons Only for a Pauper-style build.</small>
               </label>
               <label className="blueprint-checkbox-field build-choice-preference">
                 <span>
@@ -5884,7 +5884,7 @@ export default function Home() {
                     <option>High-Power</option>
                     <option>Maximum</option>
                   </select>
-                  <small id="power-tier-definition" className="blueprint-choice-definition">{blueprintDefinition("targetPowerTier", targetPowerTier)} A nudge, not a guarantee — the Forge honestly reports the tier the finished deck actually reaches.</small>
+                  <small id="power-tier-definition" className="blueprint-choice-definition">{blueprintDefinition("targetPowerTier", targetPowerTier)} A target, not a guarantee — the deck's actual power tier is always reported honestly.</small>
                 </label>
               )}
             </div>
@@ -6416,7 +6416,7 @@ export default function Home() {
                     setChamber("entrance");
                   }}
                 >
-                  Begin a new commission
+                  Start a new deck
                 </button>
               </footer>
             </>
@@ -6482,7 +6482,7 @@ export default function Home() {
               <header>
                 <span>
                   <small>YOUR FIRST OFFICIAL EXPERIMENT</small>
-                  <h2 id="opening-experiment-title">Choose the first card this Masterwork will test.</h2>
+                  <h2 id="opening-experiment-title">Choose the first card this deck will test.</h2>
                 </span>
                 <b>1 OF 3 · PLAYER DECISION</b>
               </header>
@@ -6735,7 +6735,7 @@ export default function Home() {
             benchStatus !== "forging" &&
             forgeGenerationError && (
               <p className="forge-map-intro">
-                <span>NOT READY</span> This attempt did not produce a complete deck. See the failure details below — your commission and any preview are unaffected.
+                <span>NOT READY</span> This attempt did not produce a complete deck. See the failure details below — your notes and any preview are unaffected.
               </p>
             )
           )}
@@ -6767,7 +6767,7 @@ export default function Home() {
                 <div className="masterwork-deck-title">
                   {hasValidatedDeck && <img className="masterwork-commander-medallion" src={cardArtCrop(activeCommanderName || featuredMasterworkCard)} alt="" />}
                   <div>
-                    <small>{hasValidatedDeck ? "YOUR MASTERWORK" : "YOUR DECK"}</small>
+                    <small>YOUR DECK</small>
                     <h2>{hasValidatedDeck ? masterworkIdentity.title || chosenWork.name.replace(/, Forged$/, "") : benchStatus === "forging" ? "The Forge is producing your deck…" : "Build not completed"}</h2>
                     {hasValidatedDeck && (
                       <p>{honestCoachSummary.planStory?.title || honestCoachSummary.intentions.title} · Revision {Math.max(1, revisions.length)}</p>
@@ -6811,7 +6811,7 @@ export default function Home() {
                         setMasterworkIdentityOpen(true);
                       }}
                     >
-                      ✦ Personalize Masterwork
+                      ✦ Personalize deck
                     </button>
                     {siteRail !== "overview" && (
                       <button
@@ -6824,7 +6824,7 @@ export default function Home() {
                         Want to conduct an experiment?
                       </button>
                     )}
-                    {!(siteRail === "playtest" && deckViewMode === "workbench") && (
+                    {!(siteRail === "playtest" && deckViewMode === "playtest") && (
                       <button
                         type="button"
                         className="next-step-cta"
@@ -6837,12 +6837,12 @@ export default function Home() {
                           });
                           setChamber("workbench");
                           setActiveForgeChapter(1);
-                          setDeckViewMode("workbench");
+                          setDeckViewMode("playtest");
                           setSiteRail("playtest");
                           window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" }));
                         }}
                       >
-                        This list is a masterwork! →
+                        This deck is done! →
                       </button>
                     )}
                     <details className="deck-view-options">
@@ -6850,7 +6850,7 @@ export default function Home() {
                       <button type="button" className={deckViewMode === "gallery" ? "active" : ""} onClick={() => setDeckViewMode("gallery")}>Visual deck</button>
                       <button type="button" className={deckViewMode === "ledger" ? "active" : ""} onClick={() => setDeckViewMode("ledger")}>Text list</button>
                     </details>
-                    {guestMode && guestClaimToken && <a onClick={() => trackLaunchEvent("save_continue_clicked", { format })} className="save-masterwork-link" href={`https://app.metaforge.gg/?claim=${encodeURIComponent(guestClaimToken)}`}>Save deck</a>}
+                    {guestMode && guestClaimToken && <a onClick={() => trackLaunchEvent("save_continue_clicked", { format })} className="save-deck-link" href={`https://app.metaforge.gg/?claim=${encodeURIComponent(guestClaimToken)}`}>Save deck →</a>}
                   </div>
                 )}
               </header>
@@ -6858,11 +6858,11 @@ export default function Home() {
                 <div className="masterwork-identity-backdrop" role="presentation" onMouseDown={() => setMasterworkIdentityOpen(false)}>
                   <section className="masterwork-identity-panel" role="dialog" aria-modal="true" aria-labelledby="masterwork-identity-title" onMouseDown={(event) => event.stopPropagation()}>
                     <header>
-                      <div><small>MAKE IT YOURS</small><h3 id="masterwork-identity-title">Masterwork Identity</h3></div>
+                      <div><small>MAKE IT YOURS</small><h3 id="masterwork-identity-title">Deck Identity</h3></div>
                       <button type="button" aria-label="Close personalization" onClick={() => setMasterworkIdentityOpen(false)}>×</button>
                     </header>
                     <label>
-                      <span>Masterwork name</span>
+                      <span>Deck name</span>
                       <input type="text" maxLength={60} placeholder={chosenWork.name.replace(/, Forged$/, "")} value={masterworkIdentityDraft.title} onChange={(event) => setMasterworkIdentityDraft((current) => ({ ...current, title: event.target.value }))} />
                     </label>
                     <label>
@@ -6930,7 +6930,7 @@ export default function Home() {
               {postAcceptChoice && (
                 <div className="post-accept-choice" role="status">
                   <span>
-                    <strong>Change applied.</strong> What's next for this Masterwork?
+                    <strong>Change applied.</strong> What's next for this deck?
                     {coachOccupancyLabels.length > 0 && (
                       <em className="post-accept-occupancy"> Occupancy engines stay {coachOccupancyLabels.join(" · ")} — named from commander oracle, not from this revision.</em>
                     )}
@@ -6964,7 +6964,7 @@ export default function Home() {
                           window.setTimeout(() => setSealBurst(false), 2200);
                         }}
                       >
-                        This Is The One — Preserve as Finished Masterwork
+                        This Is The One — Save as Finished Deck
                       </button>
                     )}
                   </div>
@@ -7027,7 +7027,7 @@ export default function Home() {
                 <button type="button" className="experiment-lab-close" onClick={() => setExperimentLabOpen(false)} aria-label="Close experiment laboratory">×</button>
                 <header className="vault-experiments-header">
                   <small>ADVANCED · TOURNAMENT-RIVAL EXPERIMENTS</small>
-                  <b id="experiment-lab-title">Choose one experiment for this Masterwork</b>
+                  <b id="experiment-lab-title">Choose one experiment for this deck</b>
                   <p>A second, independent read: this exact build vs. its closest rival from generation.</p>
                   {coachOccupancyLabels.length > 0 && (
                     <p className="experiment-occupancy">
@@ -7062,7 +7062,7 @@ export default function Home() {
                                   window.setTimeout(() => setSealBurst(false), 2200);
                                 }}
                               >
-                                Seal it as a Finished Masterwork →
+                                Save it as a Finished Deck →
                               </button>
                             )}
                           </article>
@@ -7237,7 +7237,7 @@ export default function Home() {
                                 </span>
                               )}
                               <strong>EXPERIMENT ACCEPTED</strong>
-                              <span>{tablet.change.add} enters the Masterwork</span>
+                              <span>{tablet.change.add} enters the deck</span>
                             </div>
                           </div>
                         </article>
@@ -7251,7 +7251,7 @@ export default function Home() {
                           ? "Running the one-slot laboratory…"
                           : experimentReportStatus === "error"
                             ? "The one-slot laboratory couldn't complete. It will retry on your next edit or match result."
-                            : "Re-forge this Masterwork to generate fresh evidence-led experiments."}
+                            : "Re-forge this deck to generate fresh evidence-led experiments."}
                     </p>
                   )}
                 </div>
@@ -7267,17 +7267,17 @@ export default function Home() {
                   aria-label="The native Forge is building your complete deck"
                 >
                   <ForgeProcessingLoader motionMode={motionMode} />
-                  <small>METAFORGE NATIVE ENGINE · MASTERWORK IN PROGRESS</small>
+                  <small>METAFORGE NATIVE ENGINE · DECK IN PROGRESS</small>
                   <strong>
                     {forgeElapsedSeconds < 5
-                      ? "Reading your Blueprint"
+                      ? "Reading your deck"
                       : forgeElapsedSeconds < 12
                         ? "Classifying roles and synergy packages"
                         : forgeElapsedSeconds < 22
                           ? "Forging three competing candidates"
                           : forgeElapsedSeconds < 35
                             ? "Testing curve, resilience, and legality"
-                            : "Selecting the strongest complete Masterwork"}
+                            : "Selecting the strongest complete deck"}
                   </strong>
                   <p>
                     MetaForge is building locally from verified card evidence.
@@ -7353,7 +7353,7 @@ export default function Home() {
                     <span>{cardFactsPending} card detail{cardFactsPending === 1 ? " is" : "s are"} still being matched. The rest of your deck is fully organized.</span>
                   </div>
                 )}
-                {deckViewMode === "workbench" && (
+                {deckViewMode === "playtest" && (
                   <Tabletop
                     key="goldfish-tabletop"
                     initialLens="hand"
@@ -7681,7 +7681,7 @@ export default function Home() {
                     </button>
                     <button type="button" onClick={() => navigator.clipboard.writeText(formatDeckForArenaExport(forgedDeck))}>Copy deck</button>
                     {deckPurchaseLink && <a href={deckPurchaseLink.url} target={deckPurchaseLink.target} rel={deckPurchaseLink.rel}>Buy deck</a>}
-                    <button type="button" className="masterwork-playtest" onClick={() => { setActiveForgeChapter(1); setDeckViewMode("workbench"); window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}>Goldfish this deck →</button>
+                    <button type="button" className="masterwork-playtest" onClick={() => { setActiveForgeChapter(1); setDeckViewMode("playtest"); window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}>Goldfish this deck →</button>
                   </div>
                 </footer>
                 </>
@@ -7691,7 +7691,7 @@ export default function Home() {
                     <>
                       <small>FORGE ALREADY IN PROGRESS</small>
                       <h3>This Forge is already running.</h3>
-                      <p>Wait a moment, then strike the anvil again. You can keep forging without an account. Sign in only if you want to save a deck.</p>
+                      <p>Wait a moment, then try again. You can keep building without an account — sign in only if you want to save a deck.</p>
                       <div className="forge-generation-failure-actions">
                         {forgeGenerationFailure.claimToken && (
                           <a href={`https://app.metaforge.gg/?claim=${encodeURIComponent(forgeGenerationFailure.claimToken)}`}>
@@ -7752,7 +7752,7 @@ export default function Home() {
                   )}
                 </div>
               ) : (
-                <pre>The Forge is waiting for a valid commission.</pre>
+                <pre>The Forge is waiting for a valid deck request.</pre>
               )}
               {inspectedCard && createPortal(
                 <div
@@ -8098,12 +8098,12 @@ export default function Home() {
               <header>
                 <small>TUNE</small>
                 <h2>Try one evidence-led change.</h2>
-                <p>Start with MetaForge&rsquo;s strongest safe experiment. Generation reasoning and match history stay optional.</p>
+                <p>Start with the recommended change. Reasoning and match history are there if you want them.</p>
               </header>
               {forgeReply && (
                 <details className="why-this-masterwork">
                   <summary>
-                    <small>WHY THIS MASTERWORK</small>
+                    <small>WHY THIS DECK</small>
                     <b>The Forge's reasoning at generation</b>
                   </summary>
                   <pre>{forgeReply}</pre>
@@ -8224,7 +8224,7 @@ export default function Home() {
                             void recordMatch(pendingMatchResult, pendingDecisionSignal, undefined, debrief);
                           }}>Save decision review →</button>
                         </footer>
-                        <small>A loss does not make the chosen line wrong. MetaForge preserves the alternative so repeated decision pressure can be coached without rewriting the deck.</small>
+                        <small>A loss doesn't mean the choice was wrong — this stays saved so recurring decisions can be coached without editing the deck.</small>
                       </section>
                     )}
                     <small>Choose the closest honest observation. The Forge preserves it as one clue—not a verdict.</small>
@@ -8280,7 +8280,7 @@ export default function Home() {
                       className="finish-masterwork"
                       onClick={finishCurrentMasterwork}
                     >
-                      Preserve as Finished Masterwork
+                      Save as Finished Deck
                     </button>
                   )
                 )}
@@ -8347,13 +8347,13 @@ export default function Home() {
       {chamber !== "forging" && savedMasterworks.length > 0 && benchOpen && (
         <aside
           className={`bench-dock ${benchOpen ? "open" : ""}`}
-          aria-label="Your Masterwork Bench"
+          aria-label="Your deck bench"
         >
           <div className="bench-tray" aria-hidden={!benchOpen}>
             <header>
               <div>
                 <small>THE PRIVATE BENCH</small>
-                <strong>Your preserved Masterworks</strong>
+                <strong>Your saved decks</strong>
                 {savedMasterworks.length > 0 && (
                   <p>
                     <b>{savedMasterworks.filter((family) => family.archived).length} sealed</b>
@@ -8415,12 +8415,12 @@ export default function Home() {
                         <em><b>{family.revisions.length || 1}</b> revision{family.revisions.length === 1 ? "" : "s"}</em>
                         <em><b>{evidenceCount}</b> match{evidenceCount === 1 ? "" : "es"}</em>
                       </span>
-                      <span className="bench-card-open">Open Masterwork <i>→</i></span>
+                      <span className="bench-card-open">Open deck <i>→</i></span>
                       <button
                         type="button"
                         className="bench-card-delete"
                         aria-label={`Delete ${family.name}`}
-                        title="Delete this Masterwork permanently"
+                        title="Delete this deck permanently"
                         onClick={(event) => {
                           event.stopPropagation();
                           void deleteSavedMasterwork(family.id);
@@ -8434,7 +8434,7 @@ export default function Home() {
               </div>
             ) : (
               <p className="empty-bench">
-                Your first completed Masterwork will appear here.
+                Your first completed deck will appear here.
               </p>
             )}
             <footer>
@@ -8455,20 +8455,20 @@ export default function Home() {
                 <small>YOUR BENCH</small>
                 <b>
                   {savedMasterworks.length
-                    ? `${savedMasterworks.length} Masterwork${savedMasterworks.length === 1 ? "" : "s"} preserved`
+                    ? `${savedMasterworks.length} deck${savedMasterworks.length === 1 ? "" : "s"} saved`
                     : forgeGenerationError
                       // This floating launcher is always mounted (gated only on
                       // chamber !== "forging"), independent of whether the
                       // current attempt succeeded — so an empty archive used to
-                      // say "Ready for your first Masterwork" even while the
+                      // say "Ready for your first deck" even while the
                       // main panel displayed "No deck was completed" right next
                       // to it. Neither claim was individually false, but shown
                       // together they read as contradictory chrome. Only the
                       // invitation language is suppressed here; the rest of the
                       // panel (saved-deck navigation, "Start a New Forge") stays
                       // fully available during a failure.
-                      ? "Nothing preserved yet"
-                      : "Ready for your first Masterwork"}
+                      ? "Nothing saved yet"
+                      : "Ready for your first deck"}
                 </b>
               </span>
               <em>{benchOpen ? "Lower the Bench" : "Raise the Bench"}</em>

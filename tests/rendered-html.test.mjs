@@ -46,7 +46,7 @@ test("server-renders the MetaForge product experience", async () => {
   assert.match(html, /Build a deck/);
   assert.match(html, /Review my decklist/);
   assert.doesNotMatch(html, /THE PRIVATE BENCH/);
-  assert.doesNotMatch(html, /Your preserved Masterworks/);
+  assert.doesNotMatch(html, /Your saved decks/);
   assert.doesNotMatch(html, /RELEASE GATE|LIVE ACCEPTANCE/);
   assert.match(html, /A DECK COACH FOR EVERY FORMAT/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);

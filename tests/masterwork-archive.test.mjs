@@ -24,7 +24,7 @@ test("a save never silently un-finishes an already-archived Masterwork", () => {
 });
 
 test("the workbench offers a keep-or-refine decision on the open deck", () => {
-  assert.match(page, /Preserve as Finished Masterwork/);
+  assert.match(page, /Save as Finished Deck/);
   assert.match(page, /Return to the Forge/);
   assert.match(page, /currentFamilyArchived = Boolean/);
 });

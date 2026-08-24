@@ -15,19 +15,19 @@ export const FORGING_STAGES = [
 ] as const;
 
 export const FORGING_PHASES = [
-  "Blueprint",
+  "Setup",
   "Card pool",
   "Candidates",
   "Mana",
   "Integrity",
   "Tournament",
-  "Masterwork",
+  "Deck",
 ] as const;
 
-/** Short / two-line rail labels. Full words like TOURNAMENT+MASTERWORK collide
+/** Short / two-line rail labels. Full words like TOURNAMENT+DECK collide
  *  when this rail is squeezed into the ceremony copy column. */
 export const FORGING_PHASE_RAIL_LABELS = [
-  ["Blueprint"],
+  ["Setup"],
   ["Card", "pool"],
   ["Builds"],
   ["Mana"],

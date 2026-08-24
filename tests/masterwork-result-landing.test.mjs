@@ -55,7 +55,7 @@ test("Explore/home is a no-scroll hero; saved Masterworks live on Decks", async 
   const homeChunk = page.slice(entranceStart, archiveStart);
   assert.match(homeChunk, /className="forge-entrance"/);
   assert.doesNotMatch(homeChunk, /masterwork-history/);
-  assert.doesNotMatch(homeChunk, /Return to a Masterwork/);
+  assert.doesNotMatch(homeChunk, /Return to a deck/);
   assert.match(page, /function openPrivateArchive\(/);
   assert.match(page, /setChamber\("archive"\)/);
   assert.match(page, /\{chamber === "archive" && \(/);
@@ -97,7 +97,7 @@ test("a completed Forge lands on the plain decklist, coaching and experiments re
   assert.match(page, /className="refinement-starters-vault experiment-lab-dialog" role="dialog" aria-modal="true"/);
   assert.doesNotMatch(page, /setSiteRail\("overview"\);\s*window\.requestAnimationFrame\(\(\) => document\.querySelector\("\.refinement-starters-vault"\)/);
   assert.match(page, /className="next-step-cta"/);
-  assert.match(page, /This list is a masterwork! →/);
+  assert.match(page, /This deck is done! →/);
   const galleryAt = page.indexOf('id="deck-gallery"');
   const mentorAt = page.indexOf("<RevisionOpinionPanel");
   assert.ok(galleryAt > 0 && mentorAt > galleryAt, "Mentor must mount after #deck-gallery, never above the Decklist");

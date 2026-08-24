@@ -248,7 +248,7 @@ function forgeFailureBranches(source) {
   const alreadyUsedStart = source.indexOf("This Forge is already running");
   const networkStart = source.indexOf("This network has reached today's Forge limit");
   const retryableStart = source.indexOf("No incomplete deck was saved");
-  const blockEnd = source.indexOf("The Forge is waiting for a valid commission");
+  const blockEnd = source.indexOf("The Forge is waiting for a valid deck request");
   assert.ok(alreadyUsedStart > 0 && networkStart > alreadyUsedStart, "expected the GUEST_PREVIEW_ALREADY_USED branch heading before the NETWORK_RATE_LIMITED heading");
   assert.ok(retryableStart > networkStart && blockEnd > retryableStart, "expected the retryable-branch heading before the end of the failure block");
   return {
