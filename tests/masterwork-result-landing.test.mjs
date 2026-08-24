@@ -70,6 +70,18 @@ test("Explore/home is a no-scroll hero; saved Masterworks live on Decks", async 
   assert.match(frame, /\.chamber-archive>\.masterwork-archive\{[\s\S]*?overflow:auto!important/);
 });
 
+// Site cleanup Phase 2: the header's "Analyze" button and the rail's
+// "Analysis" button had byte-identical onClick handlers (setChamber
+// "workbench", setActiveForgeChapter 2, setSiteRail "analysis") — the
+// same class of duplication the "Decks lives once" test above already
+// guards against for the archive chamber, just missed for Analysis.
+test("Analysis lives once, on the left rail — the top nav no longer duplicates it", async () => {
+  const page = await read("app/page.tsx");
+  assert.doesNotMatch(page, /<nav className="forge-global-nav"[\s\S]*?>Analyze<\/button>[\s\S]*?<\/nav>/);
+  assert.match(page, /<span>Analysis<\/span>/);
+  assert.equal([...page.matchAll(/setActiveForgeChapter\(2\); setSiteRail\("analysis"\); \}\}/g)].length, 1);
+});
+
 test("a completed Forge lands on the plain decklist, coaching and experiments reached by explicit choice", async () => {
   const page = await read("app/page.tsx");
   const frame = await read("app/site-frame.css");

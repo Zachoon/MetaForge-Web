@@ -22,6 +22,7 @@ test("server-renders the MetaForge product experience", async () => {
   assert.match(html, /Understand your Magic deck/);
   assert.match(html, /Build a new MTG deck or analyze a decklist/i);
   assert.match(html, /href="\/commanders"/i);
+  assert.match(html, /href="\/tools"/i);
   assert.match(html, /Commander deck guides/i);
   assert.match(html, /MTG deckbuilding guides/i);
   assert.match(html, /class="forge-brand-logo"[^>]+src="\/assets\/brand\/metaforge-mf-anvil\.webp"/i);
@@ -112,6 +113,42 @@ test("publishes unique Academy metadata and valid editorial schema", async () =>
   assert.doesNotMatch(guideHtml, /"@type":"FAQPage"|"@type":"HowTo"/i);
 });
 
+test("publishes crawlable MTG tool landing pages with unique metadata and useful schema", async () => {
+  const tools = await render("https://metaforge.gg/tools");
+  const toolsHtml = await tools.text();
+  assert.match(toolsHtml, /<title>Free MTG &amp; Commander Deckbuilding Tools \| MetaForge<\/title>/i);
+  assert.match(toolsHtml, /<link rel="canonical" href="https:\/\/metaforge\.gg\/tools"/i);
+  assert.match(toolsHtml, /"@type":"CollectionPage"/i);
+
+  const analyzer = await render("https://metaforge.gg/tools/mtg-deck-analyzer");
+  const analyzerHtml = await analyzer.text();
+  assert.match(analyzerHtml, /<title>MTG Deck Analyzer \| MetaForge<\/title>/i);
+  assert.match(analyzerHtml, /Analyze a Magic: The Gathering decklist/i);
+  assert.match(analyzerHtml, /href="\/\?intent=analyze"/i);
+  assert.match(analyzerHtml, /"@type":"WebApplication"/i);
+  assert.match(analyzerHtml, /"@type":"BreadcrumbList"/i);
+
+  const builder = await render("https://metaforge.gg/tools/commander-deck-builder");
+  const builderHtml = await builder.text();
+  assert.match(builderHtml, /<title>Commander Deck Builder \| MetaForge<\/title>/i);
+  assert.match(builderHtml, /href="\/\?intent=build"/i);
+  assert.notEqual(analyzerHtml.match(/<meta name="description" content="([^"]+)/i)?.[1], builderHtml.match(/<meta name="description" content="([^"]+)/i)?.[1]);
+});
+
+test("publishes the expanded commander library with related internal links", async () => {
+  const index = await render("https://metaforge.gg/commanders");
+  const indexHtml = await index.text();
+  assert.match(indexHtml, /Muldrotha, the Gravetide/i);
+  assert.match(indexHtml, /Nekusar, the Mindrazer/i);
+
+  const guide = await render("https://metaforge.gg/commanders/muldrotha-the-gravetide");
+  const guideHtml = await guide.text();
+  assert.match(guideHtml, /Muldrotha, the Gravetide Commander Deck Guide/i);
+  assert.match(guideHtml, /Explore related Commander resources/i);
+  assert.match(guideHtml, /\/tools\/commander-deck-builder/i);
+  assert.match(guideHtml, /<meta property="og:image" content="https:\/\/cards\.scryfall\.io\/art_crop/i);
+});
+
 test("publishes a crawlable public robots file and sitemap", async () => {
   const robots = await render("https://metaforge.gg/robots.txt");
   assert.equal(robots.status, 200);
@@ -127,6 +164,13 @@ test("publishes a crawlable public robots file and sitemap", async () => {
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/privacy<\/loc>/);
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/academy<\/loc>/);
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/academy\/what-is-my-deck-actually-trying-to-do<\/loc>/);
+  assert.match(xml, /<loc>https:\/\/metaforge\.gg\/tools\/mtg-deck-analyzer<\/loc>/);
+  assert.match(xml, /<loc>https:\/\/metaforge\.gg\/tools\/commander-deck-builder<\/loc>/);
+  assert.match(xml, /<loc>https:\/\/metaforge\.gg\/commanders\/muldrotha-the-gravetide<\/loc>/);
+  assert.match(xml, /<loc>https:\/\/metaforge\.gg\/commanders\/nekusar-the-mindrazer<\/loc>/);
+  const locations = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
+  assert.equal(locations.length, 36);
+  assert.equal(new Set(locations).size, locations.length);
 });
 
 test("blocks crawler discovery on the authenticated host", async () => {

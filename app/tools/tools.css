@@ -1,0 +1,10 @@
+.tool-grid { list-style: none; margin: 1.25rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; }
+.tool-grid a { display: grid; gap: .45rem; height: 100%; padding: 1.1rem; border: 1px solid rgba(136, 207, 190, .28); background: rgba(6, 25, 22, .56); text-decoration: none; }
+.tool-grid strong { color: #f6f0e6; font-size: 1.05rem; }
+.tool-grid span { color: #aebbb6; line-height: 1.55; }
+.tool-benefits { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; }
+.tool-benefits > div { padding: 1rem; border-left: 2px solid #ef9d4d; background: rgba(6, 25, 22, .5); }
+.tool-benefits h3 { margin-top: 0; color: #f6f0e6; }
+.tool-action { border: 1px solid rgba(239, 157, 77, .55); padding: 1.25rem; background: linear-gradient(135deg, rgba(239,157,77,.12), rgba(35,185,156,.07)); }
+.tool-action a { display: inline-block; margin-top: .4rem; padding: .8rem 1rem; border: 1px solid #ef9d4d; color: #ffd09b; font-weight: 700; text-decoration: none; }
+@media (max-width: 720px) { .tool-grid, .tool-benefits { grid-template-columns: 1fr; } }

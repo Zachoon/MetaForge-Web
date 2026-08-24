@@ -38,6 +38,28 @@ const COMMANDER_GUIDES: Record<string, string> = {
   "/commanders/yuriko-the-tigers-shadow": "Yuriko, the Tiger's Shadow",
   "/commanders/atraxa-grand-unifier": "Atraxa, Grand Unifier",
   "/commanders/the-ur-dragon": "The Ur-Dragon",
+  "/commanders/muldrotha-the-gravetide": "Muldrotha, the Gravetide",
+  "/commanders/atraxa-praetors-voice": "Atraxa, Praetors' Voice",
+  "/commanders/krenko-mob-boss": "Krenko, Mob Boss",
+  "/commanders/wilhelt-the-rotcleaver": "Wilhelt, the Rotcleaver",
+  "/commanders/lathril-blade-of-the-elves": "Lathril, Blade of the Elves",
+  "/commanders/miirym-sentinel-wyrm": "Miirym, Sentinel Wyrm",
+  "/commanders/pantlaza-sun-favored": "Pantlaza, Sun-Favored",
+  "/commanders/sauron-the-dark-lord": "Sauron, the Dark Lord",
+  "/commanders/isshin-two-heavens-as-one": "Isshin, Two Heavens as One",
+  "/commanders/kaalia-of-the-vast": "Kaalia of the Vast",
+  "/commanders/meren-of-clan-nel-toth": "Meren of Clan Nel Toth",
+  "/commanders/jodah-the-unifier": "Jodah, the Unifier",
+  "/commanders/giada-font-of-hope": "Giada, Font of Hope",
+  "/commanders/teysa-karlov": "Teysa Karlov",
+  "/commanders/nekusar-the-mindrazer": "Nekusar, the Mindrazer",
+};
+
+const DECKBUILDING_TOOLS: Record<string, { name: string; description: string }> = {
+  "/tools/mtg-deck-analyzer": { name: "MTG Deck Analyzer", description: "Analyze a Magic: The Gathering decklist for mana, card flow, interaction, speed, and game plan." },
+  "/tools/commander-deck-builder": { name: "Commander Deck Builder", description: "Build a legal 100-card Commander deck around a real game plan with clear reasons for its cards." },
+  "/tools/commander-deck-checker": { name: "Commander Deck Checker", description: "Check a Commander decklist for legality, structural gaps, conflicting plans, and weak support." },
+  "/tools/commander-mana-base-analyzer": { name: "Commander Mana Base Analyzer", description: "Diagnose Commander land count, color access, mana curve, ramp, and opening-hand problems." },
 };
 
 function robotsResponse(url: URL): Response {
@@ -48,22 +70,15 @@ function robotsResponse(url: URL): Response {
 }
 
 const SITEMAP_URLS: { loc: string; lastmod: string; changefreq: string; priority: string }[] = [
-  { loc: "https://metaforge.gg/", lastmod: "2026-08-20", changefreq: "weekly", priority: "1.0" },
+  { loc: "https://metaforge.gg/", lastmod: "2026-08-23", changefreq: "weekly", priority: "1.0" },
   { loc: "https://metaforge.gg/terms", lastmod: "2026-08-02", changefreq: "monthly", priority: "0.3" },
   { loc: "https://metaforge.gg/privacy", lastmod: "2026-08-02", changefreq: "monthly", priority: "0.3" },
   { loc: "https://metaforge.gg/academy", lastmod: "2026-08-07", changefreq: "monthly", priority: "0.8" },
-  { loc: "https://metaforge.gg/academy/why-cant-i-cast-my-spells", lastmod: "2026-08-07", changefreq: "monthly", priority: "0.7" },
-  { loc: "https://metaforge.gg/academy/why-do-i-run-out-of-cards", lastmod: "2026-08-07", changefreq: "monthly", priority: "0.7" },
-  { loc: "https://metaforge.gg/academy/why-does-my-deck-start-so-slowly", lastmod: "2026-08-07", changefreq: "monthly", priority: "0.7" },
-  { loc: "https://metaforge.gg/academy/how-much-interaction-do-i-actually-need", lastmod: "2026-08-07", changefreq: "monthly", priority: "0.7" },
-  { loc: "https://metaforge.gg/academy/why-do-i-lose-after-getting-ahead", lastmod: "2026-08-07", changefreq: "monthly", priority: "0.7" },
-  { loc: "https://metaforge.gg/academy/what-is-my-deck-actually-trying-to-do", lastmod: "2026-08-07", changefreq: "monthly", priority: "0.7" },
-  { loc: "https://metaforge.gg/commanders", lastmod: "2026-08-19", changefreq: "monthly", priority: "0.8" },
-  { loc: "https://metaforge.gg/commanders/korvold-fae-cursed-king", lastmod: "2026-08-19", changefreq: "monthly", priority: "0.7" },
-  { loc: "https://metaforge.gg/commanders/edgar-markov", lastmod: "2026-08-19", changefreq: "monthly", priority: "0.7" },
-  { loc: "https://metaforge.gg/commanders/yuriko-the-tigers-shadow", lastmod: "2026-08-19", changefreq: "monthly", priority: "0.7" },
-  { loc: "https://metaforge.gg/commanders/atraxa-grand-unifier", lastmod: "2026-08-19", changefreq: "monthly", priority: "0.7" },
-  { loc: "https://metaforge.gg/commanders/the-ur-dragon", lastmod: "2026-08-19", changefreq: "monthly", priority: "0.7" },
+  ...Object.keys(ACADEMY_GUIDES).map((path) => ({ loc: `https://metaforge.gg${path}`, lastmod: "2026-08-07", changefreq: "monthly", priority: "0.7" })),
+  { loc: "https://metaforge.gg/tools", lastmod: "2026-08-23", changefreq: "monthly", priority: "0.9" },
+  ...Object.keys(DECKBUILDING_TOOLS).map((path) => ({ loc: `https://metaforge.gg${path}`, lastmod: "2026-08-23", changefreq: "monthly", priority: "0.9" })),
+  { loc: "https://metaforge.gg/commanders", lastmod: "2026-08-23", changefreq: "monthly", priority: "0.8" },
+  ...Object.keys(COMMANDER_GUIDES).map((path) => ({ loc: `https://metaforge.gg${path}`, lastmod: "2026-08-23", changefreq: "monthly", priority: "0.7" })),
 ];
 
 function sitemapResponse(url: URL): Response {
@@ -94,6 +109,7 @@ function seoMarkup(url: URL, html: string): string {
   });
   const guide = ACADEMY_GUIDES[url.pathname];
   const commander = COMMANDER_GUIDES[url.pathname];
+  const deckbuildingTool = DECKBUILDING_TOOLS[url.pathname];
   if (guide) schemas.push({
     "@context": "https://schema.org", "@type": "Article",
     headline: guide.headline, description: guide.description,
@@ -130,6 +146,23 @@ function seoMarkup(url: URL, html: string): string {
       { "@type": "ListItem", position: 2, name: "Commander Deck Guides", item: "https://metaforge.gg/commanders" },
     ];
     if (commander) items.push({ "@type": "ListItem", position: 3, name: commander, item: canonicalUrl });
+    schemas.push({ "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: items });
+  }
+  if (url.pathname === "/tools") schemas.push({
+    "@context": "https://schema.org", "@type": "CollectionPage", name: "MetaForge MTG Deckbuilding Tools", url: canonicalUrl,
+    description: "Free tools for building, checking, and analyzing Magic: The Gathering and Commander decks.",
+  });
+  if (deckbuildingTool) schemas.push({
+    "@context": "https://schema.org", "@type": "WebApplication", name: deckbuildingTool.name, url: canonicalUrl,
+    description: deckbuildingTool.description, applicationCategory: "GameApplication", operatingSystem: "Any modern web browser",
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  });
+  if (url.pathname === "/tools" || deckbuildingTool) {
+    const items = [
+      { "@type": "ListItem", position: 1, name: "MetaForge", item: "https://metaforge.gg/" },
+      { "@type": "ListItem", position: 2, name: "MTG Deckbuilding Tools", item: "https://metaforge.gg/tools" },
+    ];
+    if (deckbuildingTool) items.push({ "@type": "ListItem", position: 3, name: deckbuildingTool.name, item: canonicalUrl });
     schemas.push({ "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: items });
   }
   const structuredData = schemas.map((schema) => `<script type="application/ld+json">${JSON.stringify(schema).replace(/</g, "\\u003c")}</script>`).join("");

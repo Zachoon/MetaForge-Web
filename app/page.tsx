@@ -4322,6 +4322,18 @@ export default function Home() {
   // clicking the entrance card and a chip already does, and the player
   // can change or clear the preselected focus normally afterward.
   useEffect(() => {
+    const intent = new URLSearchParams(window.location.search).get("intent");
+    if (intent !== "build" && intent !== "analyze") return;
+    window.history.replaceState({}, "", window.location.pathname);
+    if (chamber !== "entrance" || deck.trim()) return;
+    setChamber(intent === "build" ? "commission" : "refine");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Academy guide handoff (?guide=cast-spells): a public, stable key —
+  // never the canonical reviewFocus string itself — resolved through the
+  // one small allowlist in academy-guide-entry.mjs.
+  useEffect(() => {
     const guideKey = new URLSearchParams(window.location.search).get("guide");
     if (!guideKey) return;
     window.history.replaceState({}, "", window.location.pathname);
@@ -5397,7 +5409,6 @@ export default function Home() {
         </button>
         <nav className="forge-global-nav" aria-label="MetaForge workspace">
           <button type="button" className={chamber === "entrance" ? "active" : ""} onClick={() => setChamber("entrance")}>Explore</button>
-          <button type="button" className={chamber === "workbench" && activeForgeChapter === 2 ? "active" : ""} disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(2); setSiteRail("analysis"); }}>Analyze</button>
           <button type="button" disabled={!hasValidatedDeck} onClick={openDeepForgeEvidence}>Evidence</button>
           <button type="button" className="coming-soon" disabled>Community</button>
           <button type="button" className="coming-soon" disabled>Premium</button>
@@ -5588,7 +5599,8 @@ export default function Home() {
               onChange={(next) => { void persistPlayerCompass(next); }}
             />
             <nav className="entrance-discovery" aria-label="Magic deckbuilding resources">
-              <a href="/commanders"><strong>Commander deck guides</strong><span>Explore popular commanders and the strategies their rules text supports.</span></a>
+              <a href="/tools"><strong>Free MTG deckbuilding tools</strong><span>Build, check, and analyze Commander decks with clear explanations.</span></a>
+              <a href="/commanders"><strong>Commander deck guides</strong><span>Explore commanders and the strategies their rules text supports.</span></a>
               <a href="/academy"><strong>MTG deckbuilding guides</strong><span>Learn to diagnose mana, card flow, interaction, speed, and win conditions.</span></a>
             </nav>
           </div>

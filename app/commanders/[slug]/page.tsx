@@ -23,10 +23,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const entry = commanderGuideBySlug(slug);
   if (!entry) return {};
   const { card } = entry;
+  const url = `https://metaforge.gg/commanders/${slug}`;
   return {
     title: `${card.name} Commander Deck Guide | MetaForge`,
     description: `${card.name}: ${entry.tagline}`,
-    alternates: { canonical: `https://metaforge.gg/commanders/${slug}` },
+    alternates: { canonical: url },
+    openGraph: { title: `${card.name} Commander Deck Guide | MetaForge`, description: entry.tagline, url, type: "article", images: [{ url: card.image_uris.art_crop, alt: `${card.name} art` }] },
+    twitter: { card: "summary_large_image", title: `${card.name} Commander Deck Guide | MetaForge`, description: entry.tagline, images: [card.image_uris.art_crop] },
   };
 }
 
@@ -49,6 +52,12 @@ export default async function CommanderGuidePage({ params }: { params: Promise<{
     .filter((engine): engine is { id: string; label: string; copy: string } => Boolean(engine));
 
   const colorIdentity = card.color_identity.length ? card.color_identity : ["C"];
+  const relatedCommanders = COMMANDER_GUIDES
+    .filter((candidate) => candidate.slug !== slug)
+    .map((candidate) => ({ candidate, overlap: candidate.card.color_identity.filter((color) => card.color_identity.includes(color)).length }))
+    .sort((a, b) => b.overlap - a.overlap || a.candidate.card.name.localeCompare(b.candidate.card.name))
+    .slice(0, 3)
+    .map(({ candidate }) => candidate);
 
   return (
     <main className="legal-page">
@@ -111,6 +120,15 @@ export default async function CommanderGuidePage({ params }: { params: Promise<{
               <p>Choose a strategy and MetaForge will build a full {card.name} deck and explain how it works.</p>
               <a className="commander-cta-button" href={`/?commander=${slug}`}>Build a {card.name} deck →</a>
             </div>
+          </section>
+
+          <section>
+            <h2>Explore related Commander resources</h2>
+            <ul className="commander-related-links">
+              {relatedCommanders.map((candidate) => <li key={candidate.slug}><a href={`/commanders/${candidate.slug}`}>{candidate.card.name} Commander deck guide</a></li>)}
+              <li><a href="/tools/commander-deck-builder">Build a Commander deck from a game plan</a></li>
+              <li><a href="/academy/what-is-my-deck-actually-trying-to-do">Learn how to identify a deck&rsquo;s real game plan</a></li>
+            </ul>
           </section>
         </article>
         <footer className="legal-links">

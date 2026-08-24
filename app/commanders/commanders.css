@@ -95,3 +95,5 @@
 }
 .commander-guide-list strong { font: 600 21px Newsreader, Georgia, serif; color: #eee2cf; }
 .commander-guide-list p { margin: 4px 0 0; font-size: 14px; color: #b9ab97; }
+.commander-related-links { display: grid; gap: .55rem; padding-left: 1.2rem; }
+.commander-related-links a { color: #9edfd0; }
