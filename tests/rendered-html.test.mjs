@@ -1,14 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFile } from "node:fs/promises";
 
 const emptyDb = { prepare: () => ({ bind() { return this; }, first: async () => null, all: async () => ({ results: [] }), run: async () => ({ success: true }) }) };
 
-async function render(url = "https://metaforge.gg/", db = emptyDb) {
+async function render(url = "https://metaforge.gg/", db = emptyDb, init = {}) {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
   const { default: worker } = await import(workerUrl.href);
   return worker.fetch(
-    new Request(url, { headers: { accept: "text/html" } }),
+    new Request(url, { ...init, headers: { accept: "text/html", ...(init.headers || {}) } }),
     {
       ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) },
       DB: db,
@@ -262,7 +263,30 @@ test("adds useful structural analysis to a public deck report", async () => {
   assert.match(html, /Interaction signals/i);
   assert.match(html, /Most represented deck jobs/i);
   assert.match(html, /Token Engine/i);
+  assert.match(html, /Related Commander resources/i);
+  assert.match(html, /Share on Reddit/i);
+  assert.match(html, /Copy for Discord/i);
+  assert.match(html, /\/decks\/sample-commander-deck\/og\.svg/i);
   assert.doesNotMatch(html, /owner_key|generationId|email/i);
+
+  const socialImage = await render("https://metaforge.gg/decks/sample-commander-deck/og.svg", db);
+  assert.equal(socialImage.status, 200);
+  assert.match(socialImage.headers.get("content-type") || "", /^image\/svg\+xml/i);
+  assert.match(await socialImage.text(), /Sample Commander Deck/);
+
+  const share = await render("https://metaforge.gg/decks/sample-commander-deck/share/reddit", db);
+  assert.equal(share.status, 302);
+  assert.match(share.headers.get("location") || "", /^https:\/\/www\.reddit\.com\/submit/i);
+
+  const direct = await render("https://metaforge.gg/decks/sample-commander-deck/share/direct", db, { method: "POST" });
+  assert.equal(direct.status, 200);
+  assert.deepEqual(await direct.json(), { tracked: true });
+
+  const pageSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.match(pageSource, /PUBLIC DECK REPORT · PREVIEW/);
+  assert.match(pageSource, /Keep private/);
+  assert.match(pageSource, /Publish this report/);
+  assert.match(pageSource, /unpublishPublicDeckReport/);
 });
 
 test("blocks crawler discovery on the authenticated host", async () => {

@@ -20,7 +20,7 @@ import { cleanupExpiredGuestForges, handleGuestClaim, handleGuestForge } from ".
 import { handleLaunchTelemetry, recordOperationalGeneration } from "./launch-telemetry";
 import { handleOpinionQuery } from "./opinion-query";
 import { handleRevisionOpinion } from "./revision-opinion";
-import { handlePublicReportPublish, publicDeckIndexResponse, publicDeckReportResponse, publicReportSitemapEntries } from "./public-deck-report";
+import { handlePublicReportPublish, publicDeckIndexResponse, publicDeckReportResponse, publicDeckShareResponse, publicDeckSocialImageResponse, publicReportSitemapEntries } from "./public-deck-report";
 const BUILD_ID = "2026.07.16-workspace1";
 const IMPACT_SITE_VERIFICATION = "05208696-7452-434e-89b1-d6be551c7505";
 const PUBLIC_HOSTS = new Set(["metaforge.gg"]);
@@ -286,6 +286,8 @@ const worker = {
     if (url.pathname === "/robots.txt") return robotsResponse(url);
     if (url.pathname === "/sitemap.xml") return sitemapResponse(url, env);
     if (url.pathname === "/decks" && PUBLIC_HOSTS.has(url.hostname)) return publicDeckIndexResponse(env);
+    if (/^\/decks\/[a-z0-9-]+\/og\.svg$/.test(url.pathname) && PUBLIC_HOSTS.has(url.hostname)) return publicDeckSocialImageResponse(url, env);
+    if (/^\/decks\/[a-z0-9-]+\/share\/[a-z]+$/.test(url.pathname) && PUBLIC_HOSTS.has(url.hostname)) return publicDeckShareResponse(request, url, env);
     if (/^\/decks\/[a-z0-9-]+$/.test(url.pathname) && PUBLIC_HOSTS.has(url.hostname)) return publicDeckReportResponse(url, env);
 
     try {
