@@ -77,6 +77,42 @@ const savagePunch = { name: "Savage Punch", typeLine: "Sorcery", oracleText: "Ta
 const infectiousBite = { name: "Infectious Bite", typeLine: "Instant", oracleText: "Target creature you control deals damage equal to its power to target creature you don't control. Each opponent gets a poison counter." };
 const foodFight = { name: "Food Fight", typeLine: "Enchantment", oracleText: "Artifacts you control have \"{2}, Sacrifice this artifact: It deals damage to any target equal to 1 plus the number of permanents named Food Fight you control.\"" };
 
+// =============================================================================
+// Founder #094: broadened the mined corpus with 15 fresh real Moxfield
+// decklists across previously-uncovered archetypes (aristocrats, blink,
+// poison/infect, stax, spellslinger, graveyard) per Zach's "broaden then
+// find gaps". 4,060 unique cards total, 226 zero-role results. Four more
+// real, distinct gaps, all validated against the full corpus before
+// shipping.
+// (1) Digit-only damage missed the real X-cost burn template (Blaze:
+// "deals X damage to any target") since "X" isn't \d+.
+// (2) #093's power-based-damage pattern required "damage" immediately
+// followed by "equal to its power", but Wave of Reckoning (a real board
+// wipe) and Justice Strike insert "to itself"/"to himself"/"to herself".
+// (3) The whole Pacifism-class/vanilla-ify removal archetype (Arrest,
+// Witness Protection, Frogify) had no coverage — but an open character
+// window between "all" and "abilities" would have wrongly credited
+// Hammerheim ("loses all LANDWALK abilities", a narrow keyword-strip
+// utility) and Ultima, Origin of Oblivion ("loses all LAND TYPES and
+// abilities", a land-only effect). Scoped to the real "other (card types
+// and)? abilities" qualifier instead.
+// (4) "Can't attack or block" (Bound in Silence, Arrest) is real
+// single-target lockdown removal, but a bare match would have wrongly
+// credited Mogg Flunkies ("can't attack or block ALONE" — a totally
+// different, non-removal drawback) and Wayward Swordtooth ("can't attack
+// or block UNLESS you have the city's blessing" — a self-restriction).
+// Excluded both qualifiers with a negative lookahead.
+// =============================================================================
+
+const blaze = { name: "Blaze", typeLine: "Sorcery", oracleText: "Blaze deals X damage to any target." };
+const waveOfReckoning = { name: "Wave of Reckoning", typeLine: "Sorcery", oracleText: "Each creature deals damage to itself equal to its power." };
+const arrest = { name: "Arrest", typeLine: "Enchantment — Aura", oracleText: "Enchant creature\nEnchanted creature can't attack or block, and its activated abilities can't be activated." };
+const witnessProtection = { name: "Witness Protection", typeLine: "Enchantment — Aura", oracleText: "Enchant creature\nEnchanted creature loses all abilities and is a green and white Citizen creature with base power and toughness 1/1 named Public Enemy." };
+const imprisonedInTheMoon = { name: "Imprisoned in the Moon", typeLine: "Enchantment — Aura", oracleText: "Enchant creature, land, or planeswalker\nEnchanted permanent is a colorless land with \"{T}: Add {C}\" and loses all other card types and abilities." };
+const hammerheim = { name: "Hammerheim", typeLine: "Land", oracleText: "{T}: Add {R}.\n{T}: Target creature loses all landwalk abilities until end of turn." };
+const moggFlunkies = { name: "Mogg Flunkies", typeLine: "Creature — Goblin", oracleText: "This creature can't attack or block alone." };
+const waywardSwordtooth = { name: "Wayward Swordtooth", typeLine: "Creature — Dinosaur", oracleText: "Ascend (If you control ten or more permanents, you get the city's blessing for the rest of the game.)\nYou may play an additional land on each of your turns.\nThis creature can't attack or block unless you have the city's blessing." };
+
 test("blueprint-note-and-mana.mjs's ROLE_PATTERNS.interaction recognizes the real 'damage divided among targets' shape (Fire Covenant, Arc Lightning), not just 'damage to'", () => {
   const textOf = (card) => `${card.name}\n${card.typeLine}\n${card.oracleText}`;
   assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(fireCovenant))), true);
@@ -137,4 +173,35 @@ test("card-role-classification.mjs's classifyNativeCard grants the 'interaction'
 
 test("the new bare 'fights?' shape does not false-positive on Food Fight, a real card whose own NAME contains the word 'Fight' but has an unrelated damage ability", () => {
   assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(`${foodFight.name}\n${foodFight.typeLine}\n${foodFight.oracleText}`)), false);
+});
+
+test("blueprint-note-and-mana.mjs's ROLE_PATTERNS.interaction recognizes real X-cost burn (Blaze) and the 'deals damage to itself equal to its power' variant (Wave of Reckoning)", () => {
+  const textOf = (card) => `${card.name}\n${card.typeLine}\n${card.oracleText}`;
+  assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(blaze))), true);
+  assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(waveOfReckoning))), true);
+});
+
+test("card-role-classification.mjs's classifyNativeCard grants the 'interaction' role for Blaze and Wave of Reckoning, which returned ZERO roles at all before this fix", () => {
+  assert.ok(classifyNativeCard(blaze).includes("interaction"));
+  assert.ok(classifyNativeCard(waveOfReckoning).includes("interaction"));
+});
+
+test("blueprint-note-and-mana.mjs's ROLE_PATTERNS.interaction recognizes the real Pacifism-class and vanilla-ify removal archetype (Arrest, Witness Protection, Imprisoned in the Moon)", () => {
+  const textOf = (card) => `${card.name}\n${card.typeLine}\n${card.oracleText}`;
+  assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(arrest))), true);
+  assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(witnessProtection))), true);
+  assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(imprisonedInTheMoon))), true);
+});
+
+test("card-role-classification.mjs's classifyNativeCard grants the 'interaction' role for Arrest, Witness Protection, and Imprisoned in the Moon, which returned ZERO roles at all before this fix", () => {
+  assert.ok(classifyNativeCard(arrest).includes("interaction"));
+  assert.ok(classifyNativeCard(witnessProtection).includes("interaction"));
+  assert.ok(classifyNativeCard(imprisonedInTheMoon).includes("interaction"));
+});
+
+test("the new 'loses all abilities' and 'can't attack or block' shapes do not false-positive on Hammerheim (strips only landwalk), Mogg Flunkies ('can't attack or block ALONE'), or Wayward Swordtooth ('can't attack or block UNLESS...')", () => {
+  const textOf = (card) => `${card.name}\n${card.typeLine}\n${card.oracleText}`;
+  assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(hammerheim))), false);
+  assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(moggFlunkies))), false);
+  assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(waywardSwordtooth))), false);
 });

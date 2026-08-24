@@ -132,7 +132,44 @@ export const ROLE_PATTERNS = Object.freeze({
   // fight effects use, which correctly excludes Food Fight while still
   // catching all 25 real fight/power-damage removal cards found in the
   // mined corpus with zero false positives.
-  interaction: [/destroy target/i, /exile [^.]{0,20}target/i, /counter target/i, /deals? \d+ damage (?:to|divided)/i, /return [^.]{0,60}owners?['’]?s?\s+hands?/i, /-\d+\/-\d+/i, /\bfights? (?:target|another|up to|a different)\b/i, /deals? damage equal to its power/i],
+  // Founder #094 (broadened the mined corpus with 15 fresh real Moxfield
+  // decklists across previously-uncovered archetypes — aristocrats, blink,
+  // poison/infect, stax, spellslinger, graveyard — per Zach's "broaden
+  // then find gaps": 4,060 unique cards total, 226 zero-role results).
+  // Four more real, distinct gaps, all validated against the full corpus
+  // before shipping, not just hand-picked cards:
+  // (1) The digit-only damage requirement missed the whole real X-cost
+  // burn template ("deals X damage to any target" — Blaze, Rakdos's
+  // Return) since "X" is a letter, not \d+. Widened to accept X. 27 real
+  // cards newly matched, zero false positives.
+  // (2) #093's power-based-damage pattern required "damage" immediately
+  // followed by "equal to its power", but a real self-damage template
+  // inserts "to itself/himself/herself" — Wave of Reckoning ("Each
+  // creature deals damage to itself equal to its power"), a real board
+  // wipe, and Justice Strike, real single-target removal, both still
+  // returned ZERO roles after #093. Widened to allow the optional clause.
+  // (3) The whole "Pacifism-class" and "vanilla-ify" removal archetype
+  // (Arrest, Witness Protection, Frogify, Kasmina's Transmutation — an
+  // enchanted creature permanently neutralized) had no coverage at all.
+  // "loses all abilities" alone isn't quite the real shape either — real
+  // cards say "loses all OTHER abilities" or "loses all other card types
+  // and abilities" (Imprisoned in the Moon, Deep Freeze) — scoped to that
+  // exact optional qualifier rather than an open character window, since
+  // an open window would have wrongly credited Hammerheim ("loses all
+  // LANDWALK abilities until end of turn" — a narrow keyword-strip
+  // utility, not real removal) and Ultima, Origin of Oblivion ("loses all
+  // LAND TYPES and abilities" — a land-only effect). Both confirmed via
+  // direct test to correctly stay excluded from the final pattern.
+  // (4) "Can't attack or block" (Bound in Silence, Arrest, Linvala, Shield
+  // of Sea Gate) is real single-target lockdown removal with no coverage
+  // at all — but a bare match would have wrongly credited Mogg Flunkies
+  // and a whole real "can't attack or block ALONE" cycle (a totally
+  // different, non-removal drawback on the creature's OWN card) and
+  // Wayward Swordtooth/Topiary Stomper's "can't attack or block UNLESS
+  // ..." self-restriction clauses. Excluded both qualifiers with a
+  // negative lookahead; confirmed via direct test all five stay excluded
+  // while the four real removal cards still match.
+  interaction: [/destroy target/i, /exile [^.]{0,20}target/i, /counter target/i, /deals? (?:\d+|x) damage (?:to|divided)/i, /return [^.]{0,60}owners?['’]?s?\s+hands?/i, /-\d+\/-\d+/i, /\bfights? (?:target|another|up to|a different)\b/i, /deals? damage (?:to (?:itself|himself|herself) )?equal to its power/i, /loses all (?:other (?:card types? and )?)?abilities/i, /can'?t attack or block(?! (?:alone|unless))\b/i],
   protection: [/hexproof/i, /indestructible/i, /phase out/i, /protection from/i, /counter target spell or ability/i],
   // Unsummon/Vapor Snag/Boomerang class: "return target creature to its
   // owner's hand" is bounce (already the `interaction` role above), not
