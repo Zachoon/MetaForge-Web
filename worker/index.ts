@@ -105,17 +105,26 @@ function seoMarkup(url: URL, html: string): string {
   const canonicalUrl = new URL(url.pathname === "/" ? "/" : url.pathname, "https://metaforge.gg").href;
   const canonical = /<link\s+rel=["']canonical["']/i.test(html) ? "" : `<link rel="canonical" href="${canonicalUrl}">`;
   const schemas: Record<string, unknown>[] = [];
-  if (url.pathname === "/") schemas.push({
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    name: "MetaForge MTG Deck Builder and Analyzer",
-    url: "https://metaforge.gg/",
-    description: "A collaborative Magic: The Gathering and Commander deck coach that explains pressure points and helps players test confident improvements.",
-    applicationCategory: "GameApplication",
-    operatingSystem: "Any modern web browser",
-    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-    featureList: ["Commander deck building", "MTG deck analysis", "Decklist recommendations", "Magic deck playtesting"],
-  });
+  if (url.pathname === "/") schemas.push(
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: "MetaForge",
+      alternateName: "Meta Forge",
+      url: "https://metaforge.gg/",
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "MetaForge MTG Deck Builder and Analyzer",
+      url: "https://metaforge.gg/",
+      description: "A collaborative Magic: The Gathering and Commander deck coach that explains pressure points and helps players test confident improvements.",
+      applicationCategory: "GameApplication",
+      operatingSystem: "Any modern web browser",
+      offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+      featureList: ["Commander deck building", "MTG deck analysis", "Decklist recommendations", "Magic deck playtesting"],
+    },
+  );
   if (url.pathname === "/about") schemas.push({
     "@context": "https://schema.org", "@type": "AboutPage", name: "About MetaForge", url: canonicalUrl,
     mainEntity: { "@type": "Organization", name: "MetaForge", url: "https://metaforge.gg/", logo: "https://metaforge.gg/assets/brand/metaforge-mf-anvil.webp", description: "Independent MTG Commander deckbuilding and analysis software." },

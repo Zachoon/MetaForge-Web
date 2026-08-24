@@ -4,7 +4,7 @@ import PrivacyControls from "./privacy-controls";
 
 export function generateMetadata(): Metadata {
   const metadataBase = new URL("https://metaforge.gg");
-  const title = "MTG Commander Deck Builder & Analyzer | MetaForge";
+  const title = "MetaForge — MTG Commander Deck Builder & Analyzer";
   const description = "Build, analyze, and improve Magic: The Gathering decks with an explainable MTG deck coach for Commander, Standard, Modern, Pioneer, Brawl, and more.";
 
   return {

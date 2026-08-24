@@ -24,7 +24,7 @@ test("server-renders the MetaForge product experience", async () => {
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   const html = await response.text();
-  assert.match(html, /<title>MTG Commander Deck Builder &amp; Analyzer \| MetaForge<\/title>/i);
+  assert.match(html, /<title>MetaForge — MTG Commander Deck Builder &amp; Analyzer<\/title>/i);
   assert.match(html, /MAGIC: THE GATHERING · DECK COACH/);
   assert.match(html, /Understand your Magic deck/);
   assert.match(html, /Build a new MTG deck or analyze a decklist/i);
@@ -40,6 +40,7 @@ test("server-renders the MetaForge product experience", async () => {
   assert.match(html, /<meta name="impact-site-verification" value="05208696-7452-434e-89b1-d6be551c7505">/i);
   assert.match(html, /<link rel="canonical" href="https:\/\/metaforge\.gg\/"\s*\/?\s*>/i);
   assert.match(html, /<script type="application\/ld\+json">.*"SoftwareApplication".*<\/script>/i);
+  assert.match(html, /<script type="application\/ld\+json">.*"WebSite".*"name":"MetaForge".*"alternateName":"Meta Forge".*<\/script>/i);
   assert.match(html, /<meta name="robots" content="index, follow">/i);
   assert.doesNotMatch(html, /content="noindex/i);
   assert.match(html, /Help us improve MetaForge\?/i);
