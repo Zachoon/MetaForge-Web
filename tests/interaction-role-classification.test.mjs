@@ -113,6 +113,31 @@ const hammerheim = { name: "Hammerheim", typeLine: "Land", oracleText: "{T}: Add
 const moggFlunkies = { name: "Mogg Flunkies", typeLine: "Creature — Goblin", oracleText: "This creature can't attack or block alone." };
 const waywardSwordtooth = { name: "Wayward Swordtooth", typeLine: "Creature — Dinosaur", oracleText: "Ascend (If you control ten or more permanents, you get the city's blessing for the rest of the game.)\nYou may play an additional land on each of your turns.\nThis creature can't attack or block unless you have the city's blessing." };
 
+// =============================================================================
+// Founder #096: broadened the mined corpus with 15 more fresh real
+// Moxfield decklists (dwarf tribal, egg/token, life-payment, voltron,
+// merfolk typal, aristocrats) — 4,409 unique cards / 110 decklists total,
+// 230 zero-role results. Two more real, distinct gaps, both confirmed via
+// direct test to have returned ZERO roles beforehand.
+// (1) "Redirect" spells (Bolt Bend, Imp's Mischief: "Change the target of
+// target spell...") are a real stack-interaction sub-archetype with no
+// coverage at all.
+// (2) "Shuffle/tuck target permanent into library" removal (Chaos Warp,
+// one of the format's most popular removal spells) has two real
+// grammatical templates. A loose verb-first pattern would have wrongly
+// credited the "Zenith" spell cycle (White Sun's Zenith: "Shuffle White
+// Sun's Zenith into its owner's library" — shuffles ITSELF, not a
+// target) and Fblthp, the Lost's own graveyard-hate-immunity trigger.
+// Resolved by requiring the literal word "target" immediately after the
+// put/shuffle verb.
+// =============================================================================
+
+const boltBend = { name: "Bolt Bend", typeLine: "Instant", oracleText: "This spell costs {3} less to cast if you control a creature with power 4 or greater.\nChange the target of target spell or ability with a single target." };
+const chaosWarp = { name: "Chaos Warp", typeLine: "Instant", oracleText: "The owner of target permanent shuffles it into their library, then reveals the top card of their library. If it's a permanent card, they put it onto the battlefield." };
+const synchronizedEviction = { name: "Synchronized Eviction", typeLine: "Instant", oracleText: "This spell costs {2} less to cast if you control at least two creatures that share a creature type.\nPut target nonland permanent into its owner's library second from the top." };
+const whiteSunsZenith = { name: "White Sun's Zenith", typeLine: "Sorcery", oracleText: "Create X 2/2 white Cat creature tokens. Shuffle White Sun's Zenith into its owner's library." };
+const fblthp = { name: "Fblthp, the Lost", typeLine: "Creature — Homunculus", oracleText: "When Fblthp enters, draw a card. If it entered from your library or was cast from your library, draw two cards instead.\nWhen Fblthp becomes the target of a spell, shuffle Fblthp into its owner's library." };
+
 test("blueprint-note-and-mana.mjs's ROLE_PATTERNS.interaction recognizes the real 'damage divided among targets' shape (Fire Covenant, Arc Lightning), not just 'damage to'", () => {
   const textOf = (card) => `${card.name}\n${card.typeLine}\n${card.oracleText}`;
   assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(fireCovenant))), true);
@@ -204,4 +229,23 @@ test("the new 'loses all abilities' and 'can't attack or block' shapes do not fa
   assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(hammerheim))), false);
   assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(moggFlunkies))), false);
   assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(waywardSwordtooth))), false);
+});
+
+test("blueprint-note-and-mana.mjs's ROLE_PATTERNS.interaction recognizes real redirect spells (Bolt Bend) and shuffle-into-library removal (Chaos Warp, Synchronized Eviction)", () => {
+  const textOf = (card) => `${card.name}\n${card.typeLine}\n${card.oracleText}`;
+  assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(boltBend))), true);
+  assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(chaosWarp))), true);
+  assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(synchronizedEviction))), true);
+});
+
+test("card-role-classification.mjs's classifyNativeCard grants the 'interaction' role for Bolt Bend, Chaos Warp, and Synchronized Eviction, which returned ZERO roles at all before this fix", () => {
+  assert.ok(classifyNativeCard(boltBend).includes("interaction"));
+  assert.ok(classifyNativeCard(chaosWarp).includes("interaction"));
+  assert.ok(classifyNativeCard(synchronizedEviction).includes("interaction"));
+});
+
+test("the new shuffle-into-library shapes do not false-positive on the Zenith spell cycle (White Sun's Zenith shuffles ITSELF, not a target) or Fblthp, the Lost's own graveyard-hate-immunity trigger", () => {
+  const textOf = (card) => `${card.name}\n${card.typeLine}\n${card.oracleText}`;
+  assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(whiteSunsZenith))), false);
+  assert.equal(ROLE_PATTERNS.interaction.some((p) => p.test(textOf(fblthp))), false);
 });

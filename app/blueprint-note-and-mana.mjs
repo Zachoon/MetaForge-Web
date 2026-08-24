@@ -169,7 +169,34 @@ export const ROLE_PATTERNS = Object.freeze({
   // ..." self-restriction clauses. Excluded both qualifiers with a
   // negative lookahead; confirmed via direct test all five stay excluded
   // while the four real removal cards still match.
-  interaction: [/destroy target/i, /exile [^.]{0,20}target/i, /counter target/i, /deals? (?:\d+|x) damage (?:to|divided)/i, /return [^.]{0,60}owners?['’]?s?\s+hands?/i, /-\d+\/-\d+/i, /\bfights? (?:target|another|up to|a different)\b/i, /deals? damage (?:to (?:itself|himself|herself) )?equal to its power/i, /loses all (?:other (?:card types? and )?)?abilities/i, /can'?t attack or block(?! (?:alone|unless))\b/i],
+  // Founder #096 (broadened the mined corpus with 15 more fresh real
+  // Moxfield decklists — dwarf tribal, egg/token, life-payment, voltron,
+  // merfolk typal, aristocrats — 4,409 unique cards / 110 decklists
+  // total, 230 zero-role results): two more real, distinct gaps in the
+  // same array, both confirmed via direct test to have returned ZERO
+  // roles beforehand.
+  // (1) "Redirect" spells (Bolt Bend, Imp's Mischief, Ricochet Trap,
+  // Redirect Lightning, Misdirection: "Change the target of target
+  // spell..."; Deflecting Swat, Return the Favor: "choose new targets
+  // for target spell or ability") are a real, coherent stack-interaction
+  // sub-archetype with no coverage at all.
+  // (2) "Shuffle/tuck target permanent into library" removal (Chaos Warp,
+  // one of the format's most popular removal spells; Synchronized
+  // Eviction; Invasion of New Phyrexia's -3) has two real grammatical
+  // templates — subject-first ("target permanent['s owner] shuffles it
+  // into their library") and verb-first ("shuffle/put target permanent
+  // into [its/their] owner's library"). A loose version of the
+  // verb-first pattern would have wrongly credited the "Zenith" spell
+  // cycle (White/Blue/Green Sun's Zenith, Beacon of Unrest) and several
+  // "protect itself from the graveyard" replacement effects (Kozilek
+  // Butcher of Truth's own reprint, God-Eternal Oketra, Fblthp the Lost,
+  // Teferi Temporal Pilgrim's ultimate) — all of which shuffle the card
+  // ITSELF (or an unrelated resource) back into a library, not a target
+  // opponent's permanent. Resolved by requiring the literal word "target"
+  // immediately after the put/shuffle verb (the self-referential cards
+  // never have it — they name themselves or use "it"/"each", never
+  // "target"), confirmed via direct test all six stay excluded.
+  interaction: [/destroy target/i, /exile [^.]{0,20}target/i, /counter target/i, /deals? (?:\d+|x) damage (?:to|divided)/i, /return [^.]{0,60}owners?['’]?s?\s+hands?/i, /-\d+\/-\d+/i, /\bfights? (?:target|another|up to|a different)\b/i, /deals? damage (?:to (?:itself|himself|herself) )?equal to its power/i, /loses all (?:other (?:card types? and )?)?abilities/i, /can'?t attack or block(?! (?:alone|unless))\b/i, /change the target of target spell|choose new targets for target spell or ability/i, /shuffles? [^.]{0,20}into their librar/i, /(?:put|shuffle) target [^.]{0,80}into (?:its|their) owner'?s? librar/i],
   // Founder #095 (per Zach's "broaden then find gaps" direction: swept
   // every OTHER role in ROLE_PATTERNS against the full 4,060-card mined
   // corpus, not just interaction — most categories turned out noisy
