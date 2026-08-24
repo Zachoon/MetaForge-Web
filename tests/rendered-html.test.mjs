@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-async function render(url = "https://metaforge.gg/") {
+const emptyDb = { prepare: () => ({ bind() { return this; }, first: async () => null, all: async () => ({ results: [] }), run: async () => ({ success: true }) }) };
+
+async function render(url = "https://metaforge.gg/", db = emptyDb) {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
   const { default: worker } = await import(workerUrl.href);
@@ -9,7 +11,7 @@ async function render(url = "https://metaforge.gg/") {
     new Request(url, { headers: { accept: "text/html" } }),
     {
       ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) },
-      DB: { prepare: () => ({ bind() { return this; }, first: async () => null, all: async () => ({ results: [] }), run: async () => ({ success: true }) }) },
+      DB: db,
       METAFORGE_BOOTSTRAP_LOCK: "unlocked",
     },
     { waitUntil() {}, passThroughOnException() {} },
@@ -221,10 +223,45 @@ test("publishes an indexable community deck library without exposing private acc
   const response = await render("https://metaforge.gg/decks");
   assert.equal(response.status, 200);
   const html = await response.text();
-  assert.match(html, /Community Commander Deck Reports/);
+  assert.match(html, /Commander Deck Archive &amp; Community Reports/);
+  assert.match(html, /Commander strategy archive/i);
+  assert.match(html, /20 GUIDES/i);
+  assert.match(html, /href="\/commanders\/korvold-fae-cursed-king"/i);
+  assert.match(html, /href="\/tools\/commander-deck-checker"/i);
   assert.match(html, /<link rel="canonical" href="https:\/\/metaforge\.gg\/decks">/i);
   assert.match(html, /<meta name="robots" content="index, follow">/i);
   assert.match(html, /"@type":"CollectionPage"/i);
+  assert.doesNotMatch(html, /owner_key|generationId|email/i);
+});
+
+test("adds useful structural analysis to a public deck report", async () => {
+  const report = {
+    slug: "sample-commander-deck",
+    title: "Sample Commander Deck",
+    commander_name: "Sample Commander",
+    format_name: "Commander",
+    strategy_name: "Tokens",
+    summary: "A complete public sample deck.",
+    deck_rows_json: JSON.stringify([
+      { quantity: 1, name: "Sample Commander", typeLine: "Legendary Creature", roles: ["Commander"], cmc: 4 },
+      { quantity: 36, name: "Forest", typeLine: "Basic Land", roles: ["Land"], cmc: 0 },
+      { quantity: 10, name: "Quick Helper", typeLine: "Creature", roles: ["Ramp"], cmc: 2 },
+      { quantity: 10, name: "Patient Reader", typeLine: "Creature", roles: ["Card Draw"], cmc: 3 },
+      { quantity: 10, name: "Useful Answer", typeLine: "Instant", roles: ["Interaction", "Removal"], cmc: 2 },
+      { quantity: 33, name: "Token Maker", typeLine: "Creature", roles: ["Token Engine"], cmc: 4 },
+    ]),
+    created_at: "2026-08-23 00:00:00",
+    updated_at: "2026-08-23 00:00:00",
+  };
+  const db = { prepare: () => ({ bind() { return this; }, first: async () => report, all: async () => ({ results: [] }), run: async () => ({ success: true }) }) };
+  const response = await render("https://metaforge.gg/decks/sample-commander-deck", db);
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /Deck structure at a glance/i);
+  assert.match(html, /Average mana value/i);
+  assert.match(html, /Interaction signals/i);
+  assert.match(html, /Most represented deck jobs/i);
+  assert.match(html, /Token Engine/i);
   assert.doesNotMatch(html, /owner_key|generationId|email/i);
 });
 
