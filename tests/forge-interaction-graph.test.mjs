@@ -2316,3 +2316,29 @@ test("PAYOFFS.draw still recognizes every real draw-payoff shape that happens to
     assert.ok(signals.produces.includes("draw") || signals.rewards.includes("draw"), `${card.name} should still register as draw-related via its own real wording`);
   }
 });
+
+// Founder #100: continuing the cross-classifier disagreement mining thread
+// (#098/#099), this round on "counters". PAYOFFS.counters' "if"/"whenever"/
+// "for each" alternatives had no word boundary around "counter", so they
+// matched it as a bare substring of "countered" — the spell-negation verb.
+// Any counterspell with a real "If [it/that spell] is countered this way,
+// exile/put it..." redirect clause false-positived a "counters" reward with
+// zero real +1/+1/charge/other counter mechanic anywhere in its own text.
+test("PAYOFFS.counters no longer false-positives on counterspells whose redirect clause merely contains \"countered\" (Force of Negation, Memory Lapse, Devious Cover-Up)", () => {
+  const forceOfNegation = { name: "Force of Negation", typeLine: "Instant", oracleText: "If it's not your turn, you may exile a blue card from your hand rather than pay this spell's mana cost.\nCounter target noncreature spell. If that spell is countered this way, exile it instead of putting it into its owner's graveyard." };
+  const memoryLapse = { name: "Memory Lapse", typeLine: "Instant", oracleText: "Counter target spell. If that spell is countered this way, put it on top of its owner's library instead of into that player's graveyard." };
+  const deviousCoverUp = { name: "Devious Cover-Up", typeLine: "Instant", oracleText: "Counter target spell. If that spell is countered this way, exile it instead of putting it into its owner's graveyard. You may shuffle up to four target cards from your graveyard into your library." };
+  for (const card of [forceOfNegation, memoryLapse, deviousCoverUp]) {
+    const signals = extractMechanicalSignals(card);
+    assert.ok(!signals.rewards.includes("counters"), `${card.name} should not reward the counters signal — it never has a real counter mechanic`);
+  }
+});
+
+test("PAYOFFS.counters still recognizes every real counters-payoff shape (Umezawa's Jitte, The One Ring, a real +1/+1 modified-creature payoff)", () => {
+  const jitte = { name: "Umezawa's Jitte", typeLine: "Legendary Artifact — Equipment", oracleText: "Whenever equipped creature deals combat damage, put two charge counters on Umezawa's Jitte.\nRemove a charge counter from Umezawa's Jitte: Choose one —\n• Equipped creature gets +2/+2 until end of turn.\n• Target creature gets -1/-1 until end of turn.\n• You gain 2 life.\nEquip {2}" };
+  const theOneRing = { name: "The One Ring", typeLine: "Legendary Artifact", oracleText: "Indestructible\nWhen The One Ring enters, if you cast it, you gain protection from everything until your next turn.\nAt the beginning of your upkeep, you lose 1 life for each burden counter on The One Ring.\n{T}: Put a burden counter on The One Ring, then draw a card for each burden counter on The One Ring." };
+  for (const card of [jitte, theOneRing]) {
+    const signals = extractMechanicalSignals(card);
+    assert.ok(signals.rewards.includes("counters"), `${card.name} should still register a real counters payoff via its own wording`);
+  }
+});

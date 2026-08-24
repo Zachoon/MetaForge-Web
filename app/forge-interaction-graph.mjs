@@ -1106,7 +1106,23 @@ const PAYOFFS = {
   // false-positive risk described on PRODUCERS.counters above (a pure
   // Energy payoff card reading as connected to a +1/+1 or -1/-1 commander
   // that has nothing to do with Energy). Moved to player_counters below.
-  counters: /whenever [^,.;]*counter|if [^,.;]*counter|for each [^.]*counter|remove [^.]* counter|modified creature/i,
+  // Founder #100 (found via the same cross-classifier disagreement mining
+  // #098/#099 used, checking "counters" this round): the "if"/"whenever"/
+  // "for each" alternatives above had no word boundary around "counter",
+  // so they matched "counter" as a bare substring of "countered" — the
+  // spell-negation verb, unrelated to the counter game object. Any
+  // counterspell with a real "If [it/that spell] is countered this way,
+  // exile/put it..." redirect clause (a common, iconic template) false-
+  // positived a "counters" reward: verified 9 real cards in the mined
+  // corpus lost this false credit and gain nothing back (Force of
+  // Negation, Memory Lapse, Lapse of Certainty, Transcendent Dragon,
+  // Syncopate, Spell Shrivel, Reject, Assert Authority, Devious Cover-Up
+  // — every one is a pure counterspell with zero real +1/+1/charge/other
+  // counter mechanic anywhere else in its text). Added \b around
+  // counter(s) on the three affected alternatives; "remove [^.]* counter"
+  // and "modified creature" were already substring-safe (verified zero
+  // corpus-wide change) and left untouched.
+  counters: /whenever [^,.;]*\bcounters?\b|if [^,.;]*\bcounters?\b|for each [^.]*\bcounters?\b|remove [^.]* counter|modified creature/i,
   // Founder #053: Energy and Experience payoffs, moved out of the generic
   // "counters" signal above — see PRODUCERS.player_counters and that
   // entry's comment for why. Energy's spend verb is "pay {E}"/"pay ...
