@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "../legal.css";
 import "../academy.css";
+import { NEW_ACADEMY_GUIDES } from "./guides-data";
 
 export const metadata: Metadata = {
   title: "MetaForge Academy — Commander Deckbuilding Guides",
@@ -53,6 +54,7 @@ const GUIDES = [
     title: "What Is My Deck Actually Trying to Do?",
     description: "A theme, real synergy, a repeatable plan, and the cards holding it together are four different things — here's how to tell them apart.",
   },
+  ...NEW_ACADEMY_GUIDES.map((guide) => ({ href: `/academy/${guide.slug}`, thought: guide.thought, title: guide.title, description: guide.description })),
 ];
 
 export default function AcademyIndex() {

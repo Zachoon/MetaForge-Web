@@ -31,6 +31,12 @@ const ACADEMY_GUIDES: Record<string, { headline: string; description: string; da
   "/academy/how-much-interaction-do-i-actually-need": { headline: "How Much Interaction Do I Actually Need?", description: "Balance answers with your own game plan instead of relying on a universal removal count.", datePublished: "2026-08-07" },
   "/academy/why-do-i-lose-after-getting-ahead": { headline: "Why Do I Lose After Getting Ahead?", description: "Distinguish getting ahead, protecting a lead, and closing a Commander game.", datePublished: "2026-08-07" },
   "/academy/what-is-my-deck-actually-trying-to-do": { headline: "What Is My Deck Actually Trying to Do?", description: "Tell the difference between a theme, synergy, a repeatable plan, and its supporting cards.", datePublished: "2026-08-07" },
+  "/academy/how-many-lands-should-a-commander-deck-have": { headline: "How Many Lands Should a Commander Deck Have?", description: "Build a Commander land-count range from curve, ramp, draw, colors, and commander cost.", datePublished: "2026-08-23" },
+  "/academy/how-much-ramp-does-a-commander-deck-need": { headline: "How Much Ramp Does a Commander Deck Need?", description: "Choose a Commander ramp package based on timing, colors, and resilience.", datePublished: "2026-08-23" },
+  "/academy/how-many-board-wipes-should-i-play-in-commander": { headline: "How Many Board Wipes Should I Play in Commander?", description: "Choose sweepers from deck pace, recovery, and the problems in real games.", datePublished: "2026-08-23" },
+  "/academy/how-to-fix-a-commander-mana-curve": { headline: "How to Fix a Commander Mana Curve", description: "Find missing early plays and expensive-card congestion without flattening a deck's identity.", datePublished: "2026-08-23" },
+  "/academy/how-many-mana-sources-do-i-need-in-commander": { headline: "How Many Colored Mana Sources Do I Need in Commander?", description: "Count timely colored sources for demanding spells and multicolor commanders.", datePublished: "2026-08-23" },
+  "/academy/how-to-balance-tokens-enablers-and-payoffs": { headline: "How to Balance Token Makers, Enablers, and Payoffs", description: "Build a Commander token deck with enough production, conversion, and recovery.", datePublished: "2026-08-23" },
 };
 const COMMANDER_GUIDES: Record<string, string> = {
   "/commanders/korvold-fae-cursed-king": "Korvold, Fae-Cursed King",
@@ -60,6 +66,8 @@ const DECKBUILDING_TOOLS: Record<string, { name: string; description: string }> 
   "/tools/commander-deck-builder": { name: "Commander Deck Builder", description: "Build a legal 100-card Commander deck around a real game plan with clear reasons for its cards." },
   "/tools/commander-deck-checker": { name: "Commander Deck Checker", description: "Check a Commander decklist for legality, structural gaps, conflicting plans, and weak support." },
   "/tools/commander-mana-base-analyzer": { name: "Commander Mana Base Analyzer", description: "Diagnose Commander land count, color access, mana curve, ramp, and opening-hand problems." },
+  "/tools/commander-land-calculator": { name: "Commander Land Calculator", description: "Estimate a starting Commander land range from curve, ramp, draw, commander cost, and pace." },
+  "/tools/commander-color-source-calculator": { name: "Commander Color Source Calculator", description: "Estimate the timely colored mana sources needed to cast an important Commander spell on curve." },
 };
 
 function robotsResponse(url: URL): Response {
@@ -73,8 +81,10 @@ const SITEMAP_URLS: { loc: string; lastmod: string; changefreq: string; priority
   { loc: "https://metaforge.gg/", lastmod: "2026-08-23", changefreq: "weekly", priority: "1.0" },
   { loc: "https://metaforge.gg/terms", lastmod: "2026-08-02", changefreq: "monthly", priority: "0.3" },
   { loc: "https://metaforge.gg/privacy", lastmod: "2026-08-02", changefreq: "monthly", priority: "0.3" },
-  { loc: "https://metaforge.gg/academy", lastmod: "2026-08-07", changefreq: "monthly", priority: "0.8" },
-  ...Object.keys(ACADEMY_GUIDES).map((path) => ({ loc: `https://metaforge.gg${path}`, lastmod: "2026-08-07", changefreq: "monthly", priority: "0.7" })),
+  { loc: "https://metaforge.gg/about", lastmod: "2026-08-23", changefreq: "monthly", priority: "0.7" },
+  { loc: "https://metaforge.gg/methodology", lastmod: "2026-08-23", changefreq: "monthly", priority: "0.7" },
+  { loc: "https://metaforge.gg/academy", lastmod: "2026-08-23", changefreq: "weekly", priority: "0.8" },
+  ...Object.keys(ACADEMY_GUIDES).map((path) => ({ loc: `https://metaforge.gg${path}`, lastmod: ACADEMY_GUIDES[path].datePublished, changefreq: "monthly", priority: "0.7" })),
   { loc: "https://metaforge.gg/tools", lastmod: "2026-08-23", changefreq: "monthly", priority: "0.9" },
   ...Object.keys(DECKBUILDING_TOOLS).map((path) => ({ loc: `https://metaforge.gg${path}`, lastmod: "2026-08-23", changefreq: "monthly", priority: "0.9" })),
   { loc: "https://metaforge.gg/commanders", lastmod: "2026-08-23", changefreq: "monthly", priority: "0.8" },
@@ -84,7 +94,7 @@ const SITEMAP_URLS: { loc: string; lastmod: string; changefreq: string; priority
 function sitemapResponse(url: URL): Response {
   if (!PUBLIC_HOSTS.has(url.hostname)) return new Response("Not found", { status: 404 });
   const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${SITEMAP_URLS.map((entry) => `\n  <url><loc>${entry.loc}</loc><lastmod>${entry.lastmod}</lastmod><changefreq>${entry.changefreq}</changefreq><priority>${entry.priority}</priority></url>`).join("")}\n</urlset>\n`;
-  return new Response(body, { headers: { ...SEO_HEADERS, "Content-Type": "application/xml; charset=utf-8" } });
+  return new Response(body, { headers: { ...SEO_HEADERS, "Cache-Control": "public, max-age=300, must-revalidate", "CDN-Cache-Control": "public, max-age=300", "Content-Type": "application/xml; charset=utf-8" } });
 }
 
 function seoMarkup(url: URL, html: string): string {
@@ -101,6 +111,15 @@ function seoMarkup(url: URL, html: string): string {
     operatingSystem: "Any modern web browser",
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
     featureList: ["Commander deck building", "MTG deck analysis", "Decklist recommendations", "Magic deck playtesting"],
+  });
+  if (url.pathname === "/about") schemas.push({
+    "@context": "https://schema.org", "@type": "AboutPage", name: "About MetaForge", url: canonicalUrl,
+    mainEntity: { "@type": "Organization", name: "MetaForge", url: "https://metaforge.gg/", logo: "https://metaforge.gg/assets/brand/metaforge-mf-anvil.webp", description: "Independent MTG Commander deckbuilding and analysis software." },
+  });
+  if (url.pathname === "/methodology") schemas.push({
+    "@context": "https://schema.org", "@type": "WebPage", name: "How MetaForge Evaluates MTG Decks", url: canonicalUrl,
+    description: "The evidence, structural checks, uncertainty boundaries, and testing process behind MetaForge recommendations.",
+    about: { "@type": "SoftwareApplication", name: "MetaForge MTG Deck Builder and Analyzer" },
   });
   if (url.pathname === "/academy") schemas.push({
     "@context": "https://schema.org", "@type": "CollectionPage",

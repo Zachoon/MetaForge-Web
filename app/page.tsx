@@ -5602,6 +5602,7 @@ export default function Home() {
               <a href="/tools"><strong>Free MTG deckbuilding tools</strong><span>Build, check, and analyze Commander decks with clear explanations.</span></a>
               <a href="/commanders"><strong>Commander deck guides</strong><span>Explore commanders and the strategies their rules text supports.</span></a>
               <a href="/academy"><strong>MTG deckbuilding guides</strong><span>Learn to diagnose mana, card flow, interaction, speed, and win conditions.</span></a>
+              <a href="/about"><strong>How MetaForge works</strong><span>Read the evidence-first method behind our MTG deck coaching.</span></a>
             </nav>
           </div>
           <div className="entrance-visual" aria-label="The Great Forge, ever-burning">

@@ -1,34 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://metaforge.gg/</loc>
-    <lastmod>2026-08-20</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://metaforge.gg/terms</loc>
-    <lastmod>2026-08-02</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.3</priority>
-  </url>
-  <url>
-    <loc>https://metaforge.gg/privacy</loc>
-    <lastmod>2026-08-02</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.3</priority>
-  </url>
-  <url><loc>https://metaforge.gg/academy</loc><lastmod>2026-08-07</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://metaforge.gg/academy/why-cant-i-cast-my-spells</loc><lastmod>2026-08-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/</loc><lastmod>2026-08-23</lastmod><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://metaforge.gg/terms</loc><lastmod>2026-08-02</lastmod><changefreq>monthly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://metaforge.gg/privacy</loc><lastmod>2026-08-02</lastmod><changefreq>monthly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://metaforge.gg/about</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/methodology</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/academy</loc><lastmod>2026-08-23</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://metaforge.gg/academy/why-cant-i-cast-my-spells</loc><lastmod>2026-08-02</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://metaforge.gg/academy/why-do-i-run-out-of-cards</loc><lastmod>2026-08-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://metaforge.gg/academy/why-does-my-deck-start-so-slowly</loc><lastmod>2026-08-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://metaforge.gg/academy/how-much-interaction-do-i-actually-need</loc><lastmod>2026-08-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://metaforge.gg/academy/why-do-i-lose-after-getting-ahead</loc><lastmod>2026-08-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://metaforge.gg/academy/what-is-my-deck-actually-trying-to-do</loc><lastmod>2026-08-07</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://metaforge.gg/commanders</loc><lastmod>2026-08-19</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://metaforge.gg/commanders/korvold-fae-cursed-king</loc><lastmod>2026-08-19</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://metaforge.gg/commanders/edgar-markov</loc><lastmod>2026-08-19</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://metaforge.gg/commanders/yuriko-the-tigers-shadow</loc><lastmod>2026-08-19</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://metaforge.gg/commanders/atraxa-grand-unifier</loc><lastmod>2026-08-19</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://metaforge.gg/commanders/the-ur-dragon</loc><lastmod>2026-08-19</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/academy/how-many-lands-should-a-commander-deck-have</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/academy/how-much-ramp-does-a-commander-deck-need</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/academy/how-many-board-wipes-should-i-play-in-commander</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/academy/how-to-fix-a-commander-mana-curve</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/academy/how-many-mana-sources-do-i-need-in-commander</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/academy/how-to-balance-tokens-enablers-and-payoffs</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/tools</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://metaforge.gg/tools/mtg-deck-analyzer</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://metaforge.gg/tools/commander-deck-builder</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://metaforge.gg/tools/commander-deck-checker</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://metaforge.gg/tools/commander-mana-base-analyzer</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://metaforge.gg/tools/commander-land-calculator</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://metaforge.gg/tools/commander-color-source-calculator</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://metaforge.gg/commanders</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://metaforge.gg/commanders/korvold-fae-cursed-king</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/commanders/edgar-markov</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/commanders/yuriko-the-tigers-shadow</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/commanders/atraxa-grand-unifier</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/commanders/the-ur-dragon</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/commanders/muldrotha-the-gravetide</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/commanders/atraxa-praetors-voice</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/commanders/krenko-mob-boss</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/commanders/wilhelt-the-rotcleaver</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/commanders/lathril-blade-of-the-elves</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/commanders/miirym-sentinel-wyrm</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/commanders/pantlaza-sun-favored</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/commanders/sauron-the-dark-lord</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/commanders/isshin-two-heavens-as-one</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/commanders/kaalia-of-the-vast</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/commanders/meren-of-clan-nel-toth</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/commanders/jodah-the-unifier</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/commanders/giada-font-of-hope</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/commanders/teysa-karlov</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://metaforge.gg/commanders/nekusar-the-mindrazer</loc><lastmod>2026-08-23</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
 </urlset>

@@ -59,6 +59,38 @@ export const TOOL_PAGES = [
     cta: "Analyze my mana base",
     href: "/?intent=analyze",
   },
+  {
+    slug: "commander-land-calculator",
+    eyebrow: "COMMANDER LAND CALCULATOR",
+    title: "Commander Land Calculator",
+    description: "Estimate a starting land count for a Commander deck from its curve, ramp, draw, commander cost, and intended pace.",
+    promise: "Get a practical starting range—and see which deck choices moved it.",
+    intro: "There is no universal correct land count. This calculator turns the parts of your deck that change its mana needs into an explainable starting range you can test.",
+    sections: [
+      ["Curve-aware estimate", "Expensive decks need more natural land drops; low-curve decks can usually operate with fewer."],
+      ["Ramp and card flow", "Cheap ramp and early card selection can reduce pressure on raw land count, but neither makes zero-land hands keepable."],
+      ["A range, not a verdict", "Use the result as a starting point, then test opening hands and revise from real play evidence."],
+    ],
+    cta: "Analyze my complete mana base",
+    href: "/?intent=analyze",
+    calculator: "lands",
+  },
+  {
+    slug: "commander-color-source-calculator",
+    eyebrow: "COMMANDER COLOR SOURCE CALCULATOR",
+    title: "Commander Color Source Calculator",
+    description: "Estimate how many untapped colored mana sources a Commander deck needs to cast an important spell on curve.",
+    promise: "Translate colored pips and target turn into a practical source target.",
+    intro: "A deck can have enough lands and still miss the color it needs. This calculator estimates a source target for an important spell, then helps you compare it with your actual mana base.",
+    sections: [
+      ["Count sources, not cards", "A source is a land or reliable early effect that can produce the needed color by the target turn."],
+      ["Respect colored pips", "A spell needing two or three of the same color asks much more of a mana base than a single-pip spell."],
+      ["Check the hardest spells", "Run the calculation for the early or color-intensive cards that matter most—not every splash card."],
+    ],
+    cta: "Analyze every spell in my deck",
+    href: "/?intent=analyze",
+    calculator: "colors",
+  },
 ] as const;
 
 export type ToolPage = (typeof TOOL_PAGES)[number];

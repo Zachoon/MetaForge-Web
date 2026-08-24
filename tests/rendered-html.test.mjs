@@ -133,6 +133,32 @@ test("publishes crawlable MTG tool landing pages with unique metadata and useful
   assert.match(builderHtml, /<title>Commander Deck Builder \| MetaForge<\/title>/i);
   assert.match(builderHtml, /href="\/\?intent=build"/i);
   assert.notEqual(analyzerHtml.match(/<meta name="description" content="([^"]+)/i)?.[1], builderHtml.match(/<meta name="description" content="([^"]+)/i)?.[1]);
+
+  const landCalculator = await render("https://metaforge.gg/tools/commander-land-calculator");
+  const landHtml = await landCalculator.text();
+  assert.match(landHtml, /Commander Land Calculator \| MetaForge/i);
+  assert.match(landHtml, /START TESTING WITH/i);
+  assert.match(landHtml, /Average mana value/i);
+
+  const colorCalculator = await render("https://metaforge.gg/tools/commander-color-source-calculator");
+  assert.match(await colorCalculator.text(), /Commander Color Source Calculator \| MetaForge/i);
+});
+
+test("publishes brand trust and expanded problem-first learning pages", async () => {
+  const about = await render("https://metaforge.gg/about");
+  const aboutHtml = await about.text();
+  assert.match(aboutHtml, /About MetaForge — MTG Commander Deck Builder &amp; Analyzer/i);
+  assert.match(aboutHtml, /evidence-first/i);
+  assert.match(aboutHtml, /"@type":"AboutPage"/i);
+
+  const methodology = await render("https://metaforge.gg/methodology");
+  assert.match(await methodology.text(), /How MetaForge evaluates a Magic deck/i);
+
+  const lands = await render("https://metaforge.gg/academy/how-many-lands-should-a-commander-deck-have");
+  const landsHtml = await lands.text();
+  assert.match(landsHtml, /How Many Lands Should a Commander Deck Have\?/i);
+  assert.match(landsHtml, /Estimate my starting land range/i);
+  assert.match(landsHtml, /"@type":"Article"/i);
 });
 
 test("publishes the expanded commander library with related internal links", async () => {
@@ -168,8 +194,12 @@ test("publishes a crawlable public robots file and sitemap", async () => {
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/tools\/commander-deck-builder<\/loc>/);
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/commanders\/muldrotha-the-gravetide<\/loc>/);
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/commanders\/nekusar-the-mindrazer<\/loc>/);
+  assert.match(xml, /<loc>https:\/\/metaforge\.gg\/about<\/loc>/);
+  assert.match(xml, /<loc>https:\/\/metaforge\.gg\/methodology<\/loc>/);
+  assert.match(xml, /<loc>https:\/\/metaforge\.gg\/academy\/how-many-lands-should-a-commander-deck-have<\/loc>/);
+  assert.match(xml, /<loc>https:\/\/metaforge\.gg\/tools\/commander-land-calculator<\/loc>/);
   const locations = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
-  assert.equal(locations.length, 36);
+  assert.equal(locations.length, 46);
   assert.equal(new Set(locations).size, locations.length);
 });
 
