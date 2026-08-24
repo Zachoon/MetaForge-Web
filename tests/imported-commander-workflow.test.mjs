@@ -18,6 +18,10 @@ const read = (path) => readFile(new URL(path, root), "utf8");
 // catch block moved to forge-session-context.tsx during the page.tsx
 // decomposition (Phase 4 Stage 2).
 const readCtx = () => read("app/forge-session-context.tsx");
+// The commander search/discovery JSX moved to the commission/refine
+// chamber's own component during the page.tsx decomposition (Phase 4
+// Stage 3).
+const readCommissionChamber = () => read("app/components/forge/commission-chamber.tsx");
 
 test("refine mode auto-detects a commander from the pasted list — commission mode never does", async () => {
   const source = await readCtx();
@@ -35,11 +39,11 @@ test("commander discovery uses MetaForge's resilient endpoint and distinguishes 
   const source = await readCtx();
   assert.match(source, /\/api\/cards\/commanders\?format=/);
   assert.match(source, /The commander index is temporarily unavailable/);
-  assert.match(await read("app/page.tsx"), /Retry commander search/);
+  assert.match(await readCommissionChamber(), /Retry commander search/);
 });
 
 test("a detected or selected commander renders the selected-commander summary, not the discovery UI, in either chamber", async () => {
-  const source = await read("app/page.tsx");
+  const source = await readCommissionChamber();
   assert.match(
     source,
     /\{selectedCommander \? \(\s*<article>/,
@@ -48,7 +52,7 @@ test("a detected or selected commander renders the selected-commander summary, n
 });
 
 test("the random three-commander suggestion action is hidden in refine mode but present in commission mode", async () => {
-  const source = await read("app/page.tsx");
+  const source = await readCommissionChamber();
   assert.match(
     source,
     /\{chamber !== "refine" && \(\s*<button\s*\n\s*type="button"\s*\n\s*disabled=\{randomizingCommander\}\s*\n\s*onClick=\{chooseRandomCommander\}/,
@@ -57,7 +61,7 @@ test("the random three-commander suggestion action is hidden in refine mode but 
 });
 
 test("refine mode without a detectable commander keeps the manual search input as a fallback (not chamber-gated)", async () => {
-  const source = await read("app/page.tsx");
+  const source = await readCommissionChamber();
   // The commander-search <div> (containing the search <input>) has no
   // chamber condition of its own — only the random-suggestion button
   // nested inside it does — so a paste that extractPastedCommanderName
@@ -75,7 +79,7 @@ test("refine mode without a detectable commander keeps the manual search input a
 });
 
 test("commission mode's discovery copy is unchanged; refine mode gets its own confirmation copy", async () => {
-  const source = await read("app/page.tsx");
+  const source = await readCommissionChamber();
   assert.match(source, /"Choose a legend—or let the Forge discover one"/, "the fresh-build discovery copy is untouched by this fix");
   assert.match(source, /"Confirm the commander from your list"/);
   assert.match(

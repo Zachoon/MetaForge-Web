@@ -19,6 +19,7 @@ const [
   researchPage,
   siteFrameCss,
   forgingChamber,
+  commissionChamber,
 ] = await Promise.all([
   read("app/page.tsx"),
   read("app/forge-polish.css"),
@@ -35,6 +36,9 @@ const [
   // The forging chamber's JSX moved to its own component during the
   // page.tsx decomposition (Phase 4 Stage 3).
   read("app/components/forge/forging-chamber.tsx"),
+  // The commission/refine chamber's JSX moved to its own component during
+  // the page.tsx decomposition (Phase 4 Stage 3).
+  read("app/components/forge/commission-chamber.tsx"),
 ]);
 
 test("ceremony, footer, and card-mold rail slot name occupancy from commander oracle", () => {
@@ -51,10 +55,10 @@ test("ceremony, footer, and card-mold rail slot name occupancy from commander or
 });
 
 test("awaken CTA names occupancy without changing the build button", () => {
-  assert.match(page, /className="awaken-occupancy"/);
-  assert.match(page, /Named from commander oracle, before the 99 exists/);
+  assert.match(commissionChamber, /className="awaken-occupancy"/);
+  assert.match(commissionChamber, /Named from commander oracle, before the 99 exists/);
   assert.match(polish, /\.awaken-occupancy/);
-  assert.doesNotMatch(page, /awaken-occupancy[\s\S]{0,80}onClick=\{awaken\}/);
+  assert.doesNotMatch(commissionChamber, /awaken-occupancy[\s\S]{0,80}onClick=\{awaken\}/);
 });
 
 test("proving grounds and revision opinion keep occupancy separate from proof", () => {

@@ -25,6 +25,7 @@ const root = new URL("../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
 let page;
 let forgeSessionContext;
+let commissionChamber;
 
 test.before(async () => {
   page = await read("app/page.tsx");
@@ -32,6 +33,10 @@ test.before(async () => {
   // hasValidatedDeck moved to forge-session-context.tsx during the page.tsx
   // decomposition (Phase 4 Stage 2).
   forgeSessionContext = await read("app/forge-session-context.tsx");
+  // The commander-search and suggested-commander picker JSX moved to the
+  // commission/refine chamber's own component during the page.tsx
+  // decomposition (Phase 4 Stage 3).
+  commissionChamber = await read("app/components/forge/commission-chamber.tsx");
 });
 
 test("selectCommander is the single canonical commander-selection path", () => {
@@ -42,7 +47,7 @@ test("selectCommander is the single canonical commander-selection path", () => {
 });
 
 test("a manual search result and a suggested-commander card both call the same selectCommander path", () => {
-  const onClickCalls = [...page.matchAll(/onClick=\{\(\) => selectCommander\(option\)\}/g)];
+  const onClickCalls = [...commissionChamber.matchAll(/onClick=\{\(\) => selectCommander\(option\)\}/g)];
   assert.equal(onClickCalls.length, 2, "expected exactly two call sites: manual search results and suggested-commander cards");
 });
 
@@ -59,10 +64,10 @@ test("chooseRandomCommander only draws and displays candidates — it never sele
 });
 
 test("the suggested-commander picker renders the drawn options with a dismiss-and-search-instead escape hatch", () => {
-  assert.match(page, /randomCommanderOptions\.length > 0 &&/);
-  assert.match(page, /className="commander-suggestions"/);
-  assert.match(page, /None of these — search instead/);
-  assert.match(page, /onClick=\{\(\) => setRandomCommanderOptions\(\[\]\)\}/);
+  assert.match(commissionChamber, /randomCommanderOptions\.length > 0 &&/);
+  assert.match(commissionChamber, /className="commander-suggestions"/);
+  assert.match(commissionChamber, /None of these — search instead/);
+  assert.match(commissionChamber, /onClick=\{\(\) => setRandomCommanderOptions\(\[\]\)\}/);
 });
 
 test("a fresh commander build routes through the masterworks chamber, never straight to a chosen deck", () => {

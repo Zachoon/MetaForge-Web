@@ -8,6 +8,9 @@ const read = (path) => readFile(new URL(path, root), "utf8");
 // isPublicForgeHost/isGuest, resetGuestVerificationAfterFailure) moved to
 // forge-session-context.tsx during the page.tsx decomposition (Phase 4 Stage 2).
 const readCtx = () => read("app/forge-session-context.tsx");
+// The awaken-button JSX moved to the commission/refine chamber's own
+// component during the page.tsx decomposition (Phase 4 Stage 3).
+const readCommissionChamber = () => read("app/components/forge/commission-chamber.tsx");
 
 test("the public Forge verifies Turnstile server-side and never trusts the browser alone", async () => {
   const source = await read("worker/guest-forge.ts");
@@ -115,7 +118,8 @@ test("a failed guest generation resets the Turnstile widget so the retry gets a 
 // anything. Both triggers must refuse to fire without a live token.
 test("the Forge trigger (awaken) and its retry are both disabled in guest mode until a live Turnstile token exists", async () => {
   const source = await read("app/page.tsx");
-  const awakenBlock = source.match(/className="awaken-button"[\s\S]*?<\/button>/)?.[0];
+  const commissionChamber = await readCommissionChamber();
+  const awakenBlock = commissionChamber.match(/className="awaken-button"[\s\S]*?<\/button>/)?.[0];
   assert.ok(awakenBlock, "expected to find the awaken-button block");
   assert.match(awakenBlock, /\(guestMode && !turnstileToken\)/, "awaken must be disabled without a live guest token");
   assert.match(

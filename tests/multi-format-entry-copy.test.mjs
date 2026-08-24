@@ -5,7 +5,6 @@ import test from "node:test";
 // No component-render harness exists in this repo, so this batch is
 // verified against the literal source that produces it — the same
 // convention every other page.tsx-adjacent test file here already uses.
-const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
 // commissionHeadingFor/buildStepLabelsFor moved to format-catalog.ts during
 // the page.tsx decomposition (Phase 4) — their definitions live there now,
 // while page.tsx keeps only the call sites checked below.
@@ -13,6 +12,9 @@ const formatCatalog = await readFile(new URL("../app/format-catalog.ts", import.
 // The entrance chamber's JSX moved to its own component during the
 // page.tsx decomposition (Phase 4 Stage 3).
 const entranceChamber = await readFile(new URL("../app/components/forge/entrance-chamber.tsx", import.meta.url), "utf8");
+// The commission/refine chamber's JSX moved to its own component during
+// the page.tsx decomposition (Phase 4 Stage 3).
+const commissionChamber = await readFile(new URL("../app/components/forge/commission-chamber.tsx", import.meta.url), "utf8");
 
 // --- 0. Entrance hero strings (added after initial review: these two are
 // more prominent than the card copy itself, so leaving them Commander-only
@@ -62,7 +64,7 @@ test("the entrance Build card's supporting copy is format-neutral", () => {
 
 test("the commission heading is driven by a small pure helper, not an inline ternary", () => {
   assert.match(formatCatalog, /const commissionHeadingFor = \(format: string\) =>\s*\n\s*isCommanderFormat\(format\)\s*\n\s*\? "Choose your commander and game plan\."\s*\n\s*: "Choose your format and game plan\."/);
-  assert.match(page, /chamber === "commission"\s*\n\s*\? commissionHeadingFor\(format\)/);
+  assert.match(commissionChamber, /chamber === "commission"\s*\n\s*\? commissionHeadingFor\(format\)/);
 });
 
 test("the Commander-format heading remains commander-specific", () => {
@@ -80,20 +82,20 @@ test("the non-Commander heading is format-neutral, not an invented per-format ar
 
 test("step 1 of the build stepper is 'Commander' for Commander/Brawl/Standard Brawl and 'Format' otherwise, via one small lookup", () => {
   assert.match(formatCatalog, /const buildStepLabelsFor = \(format: string\) =>\s*\n\s*isCommanderFormat\(format\)\s*\n\s*\? \["Commander", "Strategy", "Preferences"\]\s*\n\s*: \["Format", "Strategy", "Preferences"\];/);
-  assert.match(page, /buildStepLabelsFor\(format\)\.map\(\(label, index\) =>/);
+  assert.match(commissionChamber, /buildStepLabelsFor\(format\)\.map\(\(label, index\) =>/);
 });
 
 // --- 4. Left explainer (commission-heading supporting paragraph) ---
 
 test("the commission chamber's supporting paragraph was already format-neutral and remains untouched", () => {
-  assert.match(page, /"Start with the two choices that matter\. Preferences are optional, and you can change them later\."/);
-  assert.doesNotMatch(page, /Commander, strategy, then optional preferences/i);
+  assert.match(commissionChamber, /"Start with the two choices that matter\. Preferences are optional, and you can change them later\."/);
+  assert.doesNotMatch(commissionChamber, /Commander, strategy, then optional preferences/i);
 });
 
 // --- 5. Disabled-state / validation microcopy ---
 
 test("commander-only disabled copy ('Choose a legal commander to continue') appears only behind an isCommanderFormat check, never as the only branch", () => {
-  const block = page.match(
+  const block = commissionChamber.match(
     /\{isCommanderFormat\(format\) && !selectedCommander\s*\n\s*\? "Choose a legal commander to continue"\s*\n\s*: guestMode && !turnstileToken\s*\n\s*\? "Confirm you're human above, then build your deck"\s*\n\s*: "Your choices are ready"\}/,
   );
   assert.ok(block, "expected the commander-disabled microcopy to remain conditioned on isCommanderFormat, with a format-neutral fallback");
@@ -104,26 +106,26 @@ test("the non-Commander build flow is never told to choose a commander", () => {
   // isCommanderFormat — for a non-Commander format neither one references
   // selectedCommander at all, so there is no path where a non-Commander
   // player sees commander-specific validation copy or is blocked by it.
-  assert.match(page, /disabled=\{buildStep === 0 && isCommanderFormat\(format\) && !selectedCommander\}/);
-  assert.match(page, /\(chamber === "refine" && !deck\.trim\(\)\) \|\|\s*\n\s*\(isCommanderFormat\(format\) && !selectedCommander\)/);
+  assert.match(commissionChamber, /disabled=\{buildStep === 0 && isCommanderFormat\(format\) && !selectedCommander\}/);
+  assert.match(commissionChamber, /\(chamber === "refine" && !deck\.trim\(\)\) \|\|\s*\n\s*\(isCommanderFormat\(format\) && !selectedCommander\)/);
 });
 
 // --- 6. Commander-specific controls remain Commander/Brawl-only ---
 
 test("commander search, suggestion, and selection UI remain gated behind isCommanderFormat — not relabeled for other formats", () => {
-  assert.match(page, /\{isCommanderFormat\(format\) && \(\s*\n\s*<section className="commander-blueprint build-choice-commander">/);
-  assert.match(page, /Suggest a commander for me/);
-  assert.match(page, /className="commander-search"/);
+  assert.match(commissionChamber, /\{isCommanderFormat\(format\) && \(\s*\n\s*<section className="commander-blueprint build-choice-commander">/);
+  assert.match(commissionChamber, /Suggest a commander for me/);
+  assert.match(commissionChamber, /className="commander-search"/);
 });
 
 test("the Target Power Tier preference also stays Commander-format-only — confirms the existing gate wasn't loosened while touching this region", () => {
-  assert.match(page, /\{isCommanderFormat\(format\) && \(\s*\n\s*<label className="build-choice-preference">\s*\n\s*<span>\s*\n\s*TARGET POWER TIER/);
+  assert.match(commissionChamber, /\{isCommanderFormat\(format\) && \(\s*\n\s*<label className="build-choice-preference">\s*\n\s*<span>\s*\n\s*TARGET POWER TIER/);
 });
 
 // --- No changes to the Review flow ---
 
 test("the Review chamber's own heading, supporting copy, and Academy link are untouched", () => {
-  assert.match(page, /"Paste the deck you want to improve\."/);
-  assert.match(page, /"MetaForge keeps what works, checks the list, and suggests one clear change at a time\."/);
-  assert.match(page, /browse the guides|Not sure what the problem is/i);
+  assert.match(commissionChamber, /"Paste the deck you want to improve\."/);
+  assert.match(commissionChamber, /"MetaForge keeps what works, checks the list, and suggests one clear change at a time\."/);
+  assert.match(commissionChamber, /browse the guides|Not sure what the problem is/i);
 });

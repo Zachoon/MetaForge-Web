@@ -21,6 +21,10 @@ const deckRowHelpers = fs.readFileSync(new URL("../app/deck-row-helpers.ts", imp
 // runDebouncedAnalysis call site, etc.) moved to forge-session-context.tsx
 // during the page.tsx decomposition (Phase 4 Stage 2).
 const forgeSessionContext = fs.readFileSync(new URL("../app/forge-session-context.tsx", import.meta.url), "utf8");
+// The commission/refine chamber's JSX (commander/partner search, Blueprint
+// glossary tips) moved to its own component during the page.tsx
+// decomposition (Phase 4 Stage 3).
+const commissionChamber = fs.readFileSync(new URL("../app/components/forge/commission-chamber.tsx", import.meta.url), "utf8");
 // Bug 1B retired the separate per-candidate "native" reveal call
 // (inspectMasterwork): commitDirectForge's commander branch now makes the
 // one call that produces all three real candidates up front (mode:
@@ -106,10 +110,10 @@ test("Blueprint identity shapes targeted verified-pool retrieval", () => {
 });
 
 test("supports a second commander (Partner or Background) as a distinct, optional selection", () => {
-  assert.match(page, /partnerEligibilityFor/);
-  assert.match(page, /"partner-with"/);
-  assert.match(page, /"background"/);
-  assert.match(page, /selectedSecondCommander/);
+  assert.match(forgeSessionContext, /partnerEligibilityFor/);
+  assert.match(commissionChamber, /"partner-with"/);
+  assert.match(commissionChamber, /"background"/);
+  assert.match(commissionChamber, /selectedSecondCommander/);
   // Wired into both the imported-decklist and direct-commander build paths.
   const wiredCallSites = forgeSessionContext.match(/secondCommander: secondCommanderInput/g) || [];
   assert.equal(wiredCallSites.length, 2);
@@ -149,9 +153,9 @@ test("Blueprint offers a persistent player-controlled reading size", () => {
 
 test("initial Blueprint choices explain game terms before submission", () => {
   assert.match(deckRowHelpers, /BLUEPRINT_DEFINITIONS/);
-  assert.match(page, /blueprint-glossary-tip/);
-  assert.match(page, /blueprint-choice-definition/);
-  assert.match(page, /aria-describedby="strategy-definition"/);
+  assert.match(commissionChamber, /blueprint-glossary-tip/);
+  assert.match(commissionChamber, /blueprint-choice-definition/);
+  assert.match(commissionChamber, /aria-describedby="strategy-definition"/);
   assert.match(deckRowHelpers, /Trade resources, answer key threats/i);
 });
 

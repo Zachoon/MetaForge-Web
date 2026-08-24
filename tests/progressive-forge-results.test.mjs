@@ -18,6 +18,9 @@ const workbenchSrc = await readFile(new URL("../app/living-workbench.tsx", impor
 // moved to forge-session-context.tsx during the page.tsx decomposition
 // (Phase 4 Stage 2).
 const forgeSessionContext = await readFile(new URL("../app/forge-session-context.tsx", import.meta.url), "utf8");
+// The build-stepper JSX moved to the commission/refine chamber's own
+// component during the page.tsx decomposition (Phase 4 Stage 3).
+const commissionChamber = await readFile(new URL("../app/components/forge/commission-chamber.tsx", import.meta.url), "utf8");
 
 test("opens directly into the deck without a detail-mode decision", () => {
   assert.doesNotMatch(page, /resultViewMode/);
@@ -216,13 +219,13 @@ test("a pasted decklist reveals its complete deck immediately; a fresh build nev
 
 test("turns new-deck setup into three progressively disclosed decisions", () => {
   assert.match(forgeSessionContext, /useState<0 \| 1 \| 2>\(0\)/);
-  assert.match(page, /aria-label="Deck setup progress"/);
-  assert.match(page, /buildStepLabelsFor\(format\)\.map/);
+  assert.match(commissionChamber, /aria-label="Deck setup progress"/);
+  assert.match(commissionChamber, /buildStepLabelsFor\(format\)\.map/);
   assert.match(formatCatalog, /\["Commander", "Strategy", "Preferences"\]/);
   assert.match(formatCatalog, /\["Format", "Strategy", "Preferences"\]/);
-  assert.match(page, /Next · Choose strategy →/);
-  assert.match(page, /Next · Optional preferences →/);
-  assert.match(page, /buildStep === 0 && isCommanderFormat\(format\) && !selectedCommander/);
+  assert.match(commissionChamber, /Next · Choose strategy →/);
+  assert.match(commissionChamber, /Next · Optional preferences →/);
+  assert.match(commissionChamber, /buildStep === 0 && isCommanderFormat\(format\) && !selectedCommander/);
 });
 
 test("keeps the chapter connector below the labels instead of striking through them", () => {

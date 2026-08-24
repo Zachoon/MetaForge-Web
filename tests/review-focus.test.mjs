@@ -20,6 +20,10 @@ const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8")
 // reply-splicing moved to forge-session-context.tsx during the page.tsx
 // decomposition (Phase 4 Stage 2).
 const forgeSessionContext = await readFile(new URL("../app/forge-session-context.tsx", import.meta.url), "utf8");
+// The review-focus chip picker and commission-note field are part of the
+// commission/refine chamber's JSX, which moved to its own component during
+// the page.tsx decomposition (Phase 4 Stage 3).
+const commissionChamber = await readFile(new URL("../app/components/forge/commission-chamber.tsx", import.meta.url), "utf8");
 
 // --- Pure selection/toggle logic ---
 
@@ -65,24 +69,24 @@ test("the coaching result is rendered inside the existing reply/results experien
 // --- UI presence / absence by chamber ---
 
 test("the chip picker renders only when chamber is \"refine\"", () => {
-  assert.match(page, /\{chamber === "refine" \? \(\s*<details className="review-context-disclosure">/);
-  assert.match(page, /className="review-focus-picker"/);
+  assert.match(commissionChamber, /\{chamber === "refine" \? \(\s*<details className="review-context-disclosure">/);
+  assert.match(commissionChamber, /className="review-focus-picker"/);
 });
 
 test("chips do not appear in commission/build mode — no second render site outside the refine guard", () => {
-  const occurrences = page.match(/className="review-focus-picker"/g) || [];
+  const occurrences = commissionChamber.match(/className="review-focus-picker"/g) || [];
   assert.equal(occurrences.length, 1);
 });
 
 test("exact UI copy is present", () => {
-  assert.match(page, /Tell us what feels wrong/);
-  assert.match(page, /WHAT’S HAPPENING WHEN YOU PLAY THIS DECK\?/);
+  assert.match(commissionChamber, /Tell us what feels wrong/);
+  assert.match(commissionChamber, /WHAT’S HAPPENING WHEN YOU PLAY THIS DECK\?/);
 });
 
 // --- Accessibility ---
 
 test("each chip button is explicitly type=\"button\" (never submits/gates a form)", () => {
-  const block = page.match(
+  const block = commissionChamber.match(
     /<div className="review-focus-picker">[\s\S]*?<label className="commission-note">/,
   );
   assert.ok(block, "expected to find the review-focus-picker block");
@@ -90,13 +94,13 @@ test("each chip button is explicitly type=\"button\" (never submits/gates a form
 });
 
 test("aria-pressed is driven directly off the current selection, not a static value", () => {
-  assert.match(page, /aria-pressed=\{reviewFocus === option\}/);
+  assert.match(commissionChamber, /aria-pressed=\{reviewFocus === option\}/);
 });
 
 test("the chip group has an explicit accessible label tied to the question text", () => {
-  assert.match(page, /<p id="review-focus-question">WHAT’S HAPPENING WHEN YOU PLAY THIS DECK\?<\/p>/);
+  assert.match(commissionChamber, /<p id="review-focus-question">WHAT’S HAPPENING WHEN YOU PLAY THIS DECK\?<\/p>/);
   assert.match(
-    page,
+    commissionChamber,
     /className="review-focus-chips"\s+role="group"\s+aria-labelledby="review-focus-question"/,
   );
 });
@@ -127,7 +131,7 @@ test("REVIEW_FOCUS_LABELS maps exactly the six canonical values to plain-languag
 });
 
 test("the chip renders the plain-language label, not the raw canonical value, as its visible text", () => {
-  const block = page.match(
+  const block = commissionChamber.match(
     /<div className="review-focus-picker">[\s\S]*?<label className="commission-note">/,
   );
   assert.ok(block, "expected to find the review-focus-picker block");
@@ -136,13 +140,13 @@ test("the chip renders the plain-language label, not the raw canonical value, as
 });
 
 test("selection state, aria-pressed, and the toggle call still key off the canonical value, not the label", () => {
-  assert.match(page, /reviewFocus === option \? "review-focus-chip is-selected"/);
-  assert.match(page, /aria-pressed=\{reviewFocus === option\}/);
-  assert.match(page, /toggleReviewFocus\(current, option\)/);
+  assert.match(commissionChamber, /reviewFocus === option \? "review-focus-chip is-selected"/);
+  assert.match(commissionChamber, /aria-pressed=\{reviewFocus === option\}/);
+  assert.match(commissionChamber, /toggleReviewFocus\(current, option\)/);
 });
 
 test("no separate Continue/Confirm button was added — one button per chip, nothing else", () => {
-  const block = page.match(
+  const block = commissionChamber.match(
     /<div className="review-focus-picker">[\s\S]*?<label className="commission-note">/,
   );
   assert.ok(block, "expected to find the review-focus-picker block");
@@ -155,15 +159,15 @@ test("no separate Continue/Confirm button was added — one button per chip, not
 });
 
 test("\"Review my deck\" is not gated on answering — awaken-button's disabled condition never mentions reviewFocus", () => {
-  const block = page.match(/className="awaken-button"[\s\S]*?onClick=\{awaken\}/);
+  const block = commissionChamber.match(/className="awaken-button"[\s\S]*?onClick=\{awaken\}/);
   assert.ok(block, "expected to find the awaken-button disabled condition");
   assert.doesNotMatch(block[0], /reviewFocus/);
 });
 
 test("commissionNote's own field is untouched — still its own state, own textarea", () => {
-  assert.match(page, /<label className="commission-note">/);
-  assert.match(page, /value=\{commissionNote\}/);
-  assert.match(page, /onChange=\{\(event\) => setCommissionNote\(event\.target\.value\)\}/);
+  assert.match(commissionChamber, /<label className="commission-note">/);
+  assert.match(commissionChamber, /value=\{commissionNote\}/);
+  assert.match(commissionChamber, /onChange=\{\(event\) => setCommissionNote\(event\.target\.value\)\}/);
 });
 
 // --- Reset discipline: only on explicit fresh-journey/commission-reset points ---

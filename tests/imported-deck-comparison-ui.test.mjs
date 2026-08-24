@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 
-const [page, component, css, forgeSessionContext] = await Promise.all([
+const [page, component, css, forgeSessionContext, commissionChamber] = await Promise.all([
   readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
   readFile(new URL("../app/components/forge/imported-deck-comparison.tsx", import.meta.url), "utf8"),
   readFile(new URL("../app/components/forge/imported-deck-comparison.css", import.meta.url), "utf8"),
@@ -10,11 +10,14 @@ const [page, component, css, forgeSessionContext] = await Promise.all([
   // moved to forge-session-context.tsx during the page.tsx decomposition
   // (Phase 4 Stage 2).
   readFile(new URL("../app/forge-session-context.tsx", import.meta.url), "utf8"),
+  // The commission/refine chamber's JSX moved to its own component during
+  // the page.tsx decomposition (Phase 4 Stage 3).
+  readFile(new URL("../app/components/forge/commission-chamber.tsx", import.meta.url), "utf8"),
 ]);
 
 test("submitted-deck flow asks for the list before its format and then enters the ceremony", () => {
-  const deckPrompt = page.indexOf("1 · YOUR CURRENT DECKLIST");
-  const basicsPrompt = page.indexOf("2 · CONFIRM THE BASICS");
+  const deckPrompt = commissionChamber.indexOf("1 · YOUR CURRENT DECKLIST");
+  const basicsPrompt = commissionChamber.indexOf("2 · CONFIRM THE BASICS");
   assert.ok(deckPrompt >= 0 && basicsPrompt > deckPrompt);
   assert.match(page, /commitDirectForge\("decklist"\)/);
   assert.match(forgeSessionContext, /setChamber\("forging"\)/);
