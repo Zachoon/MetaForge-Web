@@ -256,7 +256,39 @@ export const ROLE_PATTERNS = Object.freeze({
   // no fixed number at all.
   sweeper: [/destroy all/i, /exile all/i, /all creatures get -/i, /deals? [^.]*?\bdamage\b[^.]*? to each (?:other |nontoken |non-Human )?creature/i],
   selection: [/scry/i, /surveil/i, /discard .{0,20}draw/i, /draw .{0,20}discard/i],
-  tokens: [/create (?:a|one|two|three|x|that many|\d+) .{0,45}token/i],
+  // Founder #098: found by cross-referencing this whole file's role
+  // classifications against forge-interaction-graph.mjs's independently-
+  // built PRODUCERS/PAYOFFS.tokens across the full mined corpus (see the
+  // construction-quality-audit memory) — not because the two systems
+  // should always agree (most of their disagreements are intentional:
+  // "artifacts"/"spells" ask genuinely different questions in each file),
+  // but because this ONE category disagreed in exactly one direction
+  // across 92 real cards, a strong signal of a real gap rather than a
+  // semantic difference. The old pattern required literal imperative
+  // "create" (never "creates"), one of a fixed quantifier-word list (no
+  // "an"), and a {0,45} window — missing the real third-person verb form
+  // ("Its controller creates a 3/3 green Elephant creature token" —
+  // Generous Gift, Beast Within, Swan Song, Stroke of Midnight: all real,
+  // iconic removal spells that hand the opponent a token), the "an"
+  // quantifier ("Create an Incubator token" — Sunfall), long type-line
+  // descriptors exceeding 45 characters ("create three 1/1 colorless
+  // Phyrexian Mite artifact creature tokens" — Vishgraz, the Doomhive, 47
+  // characters between "three" and "token"), and named/legendary tokens
+  // where a proper noun intervenes before any quantifier at all ("create
+  // Ragavan, a legendary 2/1 red Monkey creature token" — Kari Zev,
+  // Skyship Raider, one of the format's most iconic token-producing
+  // commanders). Also missing the entire payoff side of the mechanic
+  // (cards that care about tokens you already have, never create any
+  // themselves — Neyali, Suns' Vanguard: "Attacking tokens you control
+  // have double strike"). Dropped the quantifier-word requirement
+  // entirely and widened to {0,80} for the create side (reused
+  // forge-interaction-graph.mjs's own PRODUCERS.tokens shape, which
+  // already handles this correctly), and added its exact
+  // already-validated PAYOFFS.tokens pattern for the reward side.
+  // Verified the new pattern is a strict superset of the old one and
+  // matches all 92 previously-missed real cards found this way, zero
+  // regressions.
+  tokens: [/creates? [^.]{0,80}tokens?\b/i, /tokens? you control|for each token|sacrifice a token/i],
   // Founder #086: the same real "sacrifice"/"sacrifices" verb-form and
   // "dies"/"die" plural gaps #055/#062/#073 already found and fixed in
   // native-masterwork-engine.mjs's and forge-interaction-graph.mjs's own
