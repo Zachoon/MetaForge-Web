@@ -4,6 +4,10 @@ import { readFile } from "node:fs/promises";
 
 const root = new URL("../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
+// The guest/auth block (guestMode, turnstile widget wiring,
+// isPublicForgeHost/isGuest, resetGuestVerificationAfterFailure) moved to
+// forge-session-context.tsx during the page.tsx decomposition (Phase 4 Stage 2).
+const readCtx = () => read("app/forge-session-context.tsx");
 
 test("the public Forge verifies Turnstile server-side and never trusts the browser alone", async () => {
   const source = await read("worker/guest-forge.ts");
@@ -29,13 +33,14 @@ test("the authenticated Forge retains its existing account boundary", async () =
 test("guest UI uses the guest endpoint and suppresses persistence and structural analysis", async () => {
   const source = await read("app/page.tsx");
   const styles = await read("app/globals.css");
-  assert.match(source, /guestMode \? "\/api\/forge\/guest-generate" : "\/api\/forge\/generate"/);
-  assert.match(source, /persist: !guestMode/);
-  assert.match(source, /if \(guestMode\) \{\s*setStructuralAnalysisStatus\("idle"\)/);
+  const forgeSessionContext = await readCtx();
+  assert.match(forgeSessionContext, /guestMode \? "\/api\/forge\/guest-generate" : "\/api\/forge\/generate"/);
+  assert.match(forgeSessionContext, /persist: !guestMode/);
+  assert.match(forgeSessionContext, /if \(guestMode\) \{\s*setStructuralAnalysisStatus\("idle"\)/);
   assert.match(source, /https:\/\/app\.metaforge\.gg\/\?claim=/);
   assert.match(source, /!guestMode && !editAnvilOpen/);
-  assert.match(source, /size: "flexible"/);
-  assert.match(source, /appearance: "interaction-only"/);
+  assert.match(forgeSessionContext, /size: "flexible"/);
+  assert.match(forgeSessionContext, /appearance: "interaction-only"/);
   assert.match(source, /turnstile-host\$\{turnstileToken \? " verified" : ""\}/);
   assert.match(source, /guest-forge-pass\$\{turnstileToken \? " verified" : ""\}/);
   assert.match(styles, /\.guest-forge-pass \.turnstile-host\.verified \{ display: none; \}/);
@@ -45,17 +50,17 @@ test("guest UI uses the guest endpoint and suppresses persistence and structural
 });
 
 test("the published Sites hostname stays on the public guest Forge instead of the authenticated endpoint", async () => {
-  const source = await read("app/page.tsx");
+  const forgeSessionContext = await readCtx();
   assert.match(
-    source,
+    forgeSessionContext,
     /host\.endsWith\("\.chatgpt\.site"\)/,
     "a published Sites build must remain usable before the visitor creates an account",
   );
-  assert.match(source, /const isGuest = isPublicForgeHost \|\|/);
+  assert.match(forgeSessionContext, /const isGuest = isPublicForgeHost \|\|/);
 });
 
 test("the Access-protected app hostname enters account mode after sign-in", async () => {
-  const source = await read("app/page.tsx");
+  const source = await readCtx();
   const hostBoundary = source.match(/const isPublicForgeHost = [^;]+;/)?.[0];
   assert.ok(hostBoundary, "expected an explicit public-host boundary");
   assert.doesNotMatch(
@@ -80,7 +85,7 @@ test("production gives bounded native construction enough CPU to reach its clean
 // time, surfacing "complete the human verification" on every retry and
 // permanently hiding whatever the real first failure was.
 test("a failed guest generation resets the Turnstile widget so the retry gets a real fresh token, not the one already spent verifying this attempt", async () => {
-  const source = await read("app/page.tsx");
+  const source = await readCtx();
   assert.match(
     source,
     /function resetGuestVerificationAfterFailure\(\) \{\s*if \(!guestMode\) return;\s*setTurnstileToken\(""\);/,
@@ -137,7 +142,7 @@ test("the Forge trigger (awaken) and its retry are both disabled in guest mode u
 // failure path already gets, not rely on assumptions about Turnstile's
 // own default behavior.
 test("a naturally expired or errored Turnstile token also forces an explicit widget reset, not just cleared React state", async () => {
-  const source = await read("app/page.tsx");
+  const source = await readCtx();
   const renderBlock = source.match(/turnstileWidgetRef\.current = turnstile\.render\(turnstileHostRef\.current, \{[\s\S]*?\}\);/)?.[0];
   assert.ok(renderBlock, "expected to find the turnstile.render(...) call");
   assert.match(
@@ -231,7 +236,7 @@ test("normalizeForgeFailure maps every code to its retry/preview/verification me
 });
 
 test("only requiresVerification failures reset the Turnstile widget; NETWORK_RATE_LIMITED does not", async () => {
-  const source = await read("app/page.tsx");
+  const source = await readCtx();
   const catchBlock = source.match(/\} catch \(error\) \{\s*const failure = normalizeForgeFailure\(error\);[\s\S]*?\} finally \{/)?.[0];
   assert.ok(catchBlock, "expected the commitDirectForge catch block");
   assert.match(

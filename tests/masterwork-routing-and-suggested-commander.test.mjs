@@ -24,14 +24,19 @@ import { readFile } from "node:fs/promises";
 const root = new URL("../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
 let page;
+let forgeSessionContext;
 
 test.before(async () => {
   page = await read("app/page.tsx");
+  // selectCommander/chooseRandomCommander/commitDirectForge/enterMasterwork/
+  // hasValidatedDeck moved to forge-session-context.tsx during the page.tsx
+  // decomposition (Phase 4 Stage 2).
+  forgeSessionContext = await read("app/forge-session-context.tsx");
 });
 
 test("selectCommander is the single canonical commander-selection path", () => {
   assert.match(
-    page,
+    forgeSessionContext,
     /function selectCommander\(option: CommanderOption\) \{\s*setSelectedCommander\(option\);\s*setCommanderQuery\(option\.name\);\s*setCommanderResults\(\[\]\);\s*setCommanderSearchOpen\(false\);\s*setRandomCommanderOptions\(\[\]\);\s*\}/,
   );
 });
@@ -42,9 +47,9 @@ test("a manual search result and a suggested-commander card both call the same s
 });
 
 test("chooseRandomCommander only draws and displays candidates — it never selects one or advances any state", () => {
-  const start = page.indexOf("async function chooseRandomCommander()");
-  const end = page.indexOf("// Shared tail for every", start);
-  const body = page.slice(start, end);
+  const start = forgeSessionContext.indexOf("async function chooseRandomCommander()");
+  const end = forgeSessionContext.indexOf("// Shared tail for every", start);
+  const body = forgeSessionContext.slice(start, end);
   assert.ok(body.length > 0, "expected to find chooseRandomCommander's body");
   assert.doesNotMatch(body, /setSelectedCommander/, "must never select a commander itself");
   assert.doesNotMatch(body, /setChamber\(/, "must never advance the chamber");
@@ -61,9 +66,9 @@ test("the suggested-commander picker renders the drawn options with a dismiss-an
 });
 
 test("a fresh commander build routes through the masterworks chamber, never straight to a chosen deck", () => {
-  const start = page.indexOf('async function commitDirectForge(mode: "decklist" | "commander"');
-  const end = page.indexOf("function openSavedMasterwork", start);
-  const body = page.slice(start, end);
+  const start = forgeSessionContext.indexOf('async function commitDirectForge(mode: "decklist" | "commander"');
+  const end = forgeSessionContext.indexOf("function openSavedMasterwork", start);
+  const body = forgeSessionContext.slice(start, end);
   assert.ok(body.length > 0, "expected to find commitDirectForge");
   const elseBranchStart = body.lastIndexOf("} else {");
   const elseBranch = body.slice(elseBranchStart);
@@ -78,9 +83,9 @@ test("a fresh commander build routes through the masterworks chamber, never stra
 });
 
 test("enterMasterwork is the only path that turns a pending candidate choice into the workbench's real deck, with zero further generation calls", () => {
-  const start = page.indexOf("function enterMasterwork(candidateId: string)");
-  const end = page.indexOf("function resetGuestVerificationAfterFailure", start);
-  const body = page.slice(start, end);
+  const start = forgeSessionContext.indexOf("function enterMasterwork(candidateId: string)");
+  const end = forgeSessionContext.indexOf("function resetGuestVerificationAfterFailure", start);
+  const body = forgeSessionContext.slice(start, end);
   assert.doesNotMatch(body, /callForgeGenerate/, "no second generation call — the candidate was already fully built");
   assert.match(body, /setChamber\("workbench"\)/);
   assert.match(body, /setPendingCandidateChoice\(null\)/);
@@ -142,7 +147,7 @@ test("a failed generation surfaces a dedicated failure state that confirms the p
 // a direct or ancestor-gated child of the hasValidatedDeck check.
 test("hasValidatedDeck is definitionally false whenever forgeGenerationError is set or deckRows is empty — the exact reported failure condition", () => {
   assert.match(
-    page,
+    forgeSessionContext,
     /const hasValidatedDeck =\s*benchStatus !== "forging" &&\s*!forgeGenerationError &&\s*deckRows\.length > 0 &&\s*deckRows\.reduce\(\(sum, row\) => sum \+ row\.quantity, 0\) === targetDeckSize\(format\);/,
     "forgeGenerationError truthy or deckRows.length === 0 must each independently force hasValidatedDeck to false",
   );

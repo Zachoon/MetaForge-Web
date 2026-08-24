@@ -13,12 +13,15 @@ import { readFile } from "node:fs/promises";
 // surfaces Phase 1 explicitly excludes, plus the card inspector's own
 // preference/fallback and the disclosure gating.
 const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+// inspectorPurchaseLink's derivation moved to forge-session-context.tsx
+// during the page.tsx decomposition (Phase 4 Stage 2).
+const forgeSessionContext = await readFile(new URL("../app/forge-session-context.tsx", import.meta.url), "utf8");
 
 // --- Card inspector: the one new Phase 1 consumer ---
 
 test("the card inspector prefers the selected printing's real tcgplayerId, falling back to a name-only search — never a second lookup or a guessed ID", () => {
   assert.match(
-    page,
+    forgeSessionContext,
     /const inspectorPurchaseLink = inspectedCard\s*\n\s*\? buildTcgplayerLink\(\{\s*\n\s*cardName: inspectedCard,\s*\n\s*tcgplayerProductId: inspectedPrinting\?\.tcgplayerId \?\? null,\s*\n\s*enabled: tcgplayerAffiliateEnabled,/,
   );
 });
@@ -157,7 +160,7 @@ test("\"Accept this experiment\" remains present and untouched as the tablet's p
 });
 
 test("no deck-level \"Shop Missing Cards\"\\/\"Buy on TCGplayer\" CTA exists near the deck price bar — deferred pending cart-deep-link verification", () => {
-  assert.match(page, /const deckPurchaseLink = buildTcgplayerDeckLink\(\{ rows: deckRows, enabled: tcgplayerAffiliateEnabled \}\)/);
+  assert.match(forgeSessionContext, /const deckPurchaseLink = buildTcgplayerDeckLink\(\{ rows: deckRows, enabled: tcgplayerAffiliateEnabled \}\)/);
   const headerBlock = page.match(/className="deck-header-actions"[\s\S]{0,1800}/)?.[0];
   assert.ok(headerBlock, "expected to find the deck header actions");
   assert.match(headerBlock, /ESTIMATED MARKET PRICE/);

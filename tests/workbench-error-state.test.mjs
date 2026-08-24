@@ -30,6 +30,10 @@ import { readFile } from "node:fs/promises";
 
 // Source-contract checks should not depend on the host editor's newline style.
 const page = (await readFile(new URL("../app/page.tsx", import.meta.url), "utf8")).replace(/\r\n/g, "\n");
+// recommendReplacements/hasValidatedDeck/setForgeGenerationError/stageDeckCard/
+// forgeMultiRefill/applyMultiRefillPackage moved to forge-session-context.tsx
+// during the page.tsx decomposition (Phase 4 Stage 2).
+const forgeSessionContext = (await readFile(new URL("../app/forge-session-context.tsx", import.meta.url), "utf8")).replace(/\r\n/g, "\n");
 
 // --- Hotfix A: dead repair control removed ---
 
@@ -60,33 +64,33 @@ test("removing the dead control also removed its now-fully-unused helper functio
 // --- Error-state architecture: the actual invariant ---
 
 test("exactly the two legitimate setForgeGenerationError call sites remain — the claim-restoration effect and commitDirectForge's own catch — nothing else", () => {
-  const callSites = page.match(/setForgeGenerationError\(/g) || [];
+  const callSites = forgeSessionContext.match(/setForgeGenerationError\(/g) || [];
   // 1: claim-restoration effect catch. 2: commitDirectForge's catch
   // (normalizeForgeFailure-driven). The bare `setForgeGenerationError("")`
   // resets (start of a fresh forge/restore) also match this pattern.
-  const resets = page.match(/setForgeGenerationError\(""\);/g) || [];
+  const resets = forgeSessionContext.match(/setForgeGenerationError\(""\);/g) || [];
   const realSetters = callSites.length - resets.length;
   assert.equal(realSetters, 2, `expected exactly 2 real (non-reset) setForgeGenerationError calls, found ${realSetters}`);
 });
 
 test("no secondary/optional workbench action writes forgeGenerationError: recommendReplacements never touches it", () => {
-  const start = page.indexOf("async function recommendReplacements(cut: DeckRow, nextDeck: string) {");
+  const start = forgeSessionContext.indexOf("async function recommendReplacements(cut: DeckRow, nextDeck: string) {");
   assert.ok(start > 0, "expected to find recommendReplacements");
-  const end = page.indexOf("\n  }\n", start);
-  const body = page.slice(start, end);
+  const end = forgeSessionContext.indexOf("\n  }\n", start);
+  const body = forgeSessionContext.slice(start, end);
   assert.doesNotMatch(body, /setForgeGenerationError/, "a failed replacement lookup must never write into the primary generation-failure state");
 });
 
 test("hasValidatedDeck's own definition has no dependency on replacement state — a replacement failure structurally cannot affect it", () => {
-  const block = page.match(/const hasValidatedDeck =[\s\S]*?targetDeckSize\(format\);/)?.[0];
+  const block = forgeSessionContext.match(/const hasValidatedDeck =[\s\S]*?targetDeckSize\(format\);/)?.[0];
   assert.ok(block, "expected the hasValidatedDeck definition");
   assert.doesNotMatch(block, /replacement/i, "hasValidatedDeck must not reference any replacement-lookup state");
 });
 
 test("replacement failures stay scoped to their own local state (replacementError), never forgeGenerationError, never a deck-clearing setter", () => {
-  const start = page.indexOf("async function recommendReplacements(cut: DeckRow, nextDeck: string) {");
-  const end = page.indexOf("\n  }\n", start);
-  const body = page.slice(start, end);
+  const start = forgeSessionContext.indexOf("async function recommendReplacements(cut: DeckRow, nextDeck: string) {");
+  const end = forgeSessionContext.indexOf("\n  }\n", start);
+  const body = forgeSessionContext.slice(start, end);
   assert.match(body, /setReplacementError\("no-legal-replacement"\)/);
   assert.match(body, /setReplacementError\("operational"\)/);
   assert.doesNotMatch(body, /setForgedDeck|setDeckRows|setRevisions\(/, "a replacement lookup must never mutate the deck itself — only addCardToDeck (an explicit player click) may do that");
@@ -95,51 +99,51 @@ test("replacement failures stay scoped to their own local state (replacementErro
 // --- Hotfix B: real engine, structured contract ---
 
 test("recommendReplacements calls /api/forge/multi-refill, never /api/forge/chat", () => {
-  const start = page.indexOf("async function recommendReplacements(cut: DeckRow, nextDeck: string) {");
-  const end = page.indexOf("\n  }\n", start);
-  const body = page.slice(start, end);
+  const start = forgeSessionContext.indexOf("async function recommendReplacements(cut: DeckRow, nextDeck: string) {");
+  const end = forgeSessionContext.indexOf("\n  }\n", start);
+  const body = forgeSessionContext.slice(start, end);
   assert.match(body, /fetch\("\/api\/forge\/multi-refill"/);
   assert.doesNotMatch(body, /\/api\/forge\/chat/, "the retired chat-based replacement path must be fully gone");
 });
 
 test("the request sends a single-item cuts array (this card's name/quantity) plus the real generationId", () => {
-  const start = page.indexOf("async function recommendReplacements(cut: DeckRow, nextDeck: string) {");
-  const end = page.indexOf("\n  }\n", start);
-  const body = page.slice(start, end);
+  const start = forgeSessionContext.indexOf("async function recommendReplacements(cut: DeckRow, nextDeck: string) {");
+  const end = forgeSessionContext.indexOf("\n  }\n", start);
+  const body = forgeSessionContext.slice(start, end);
   assert.match(body, /generationId: nativeMasterworkContext\?\.generationId/);
   assert.match(body, /cuts: \[\{ name: cut\.name, quantity: cut\.quantity \}\]/);
 });
 
 test("parseDeckRows is never called on the replacement engine's response — no free-text prose parsing anywhere in this flow", () => {
-  const start = page.indexOf("async function recommendReplacements(cut: DeckRow, nextDeck: string) {");
-  const end = page.indexOf("\n  }\n", start);
-  const body = page.slice(start, end);
+  const start = forgeSessionContext.indexOf("async function recommendReplacements(cut: DeckRow, nextDeck: string) {");
+  const end = forgeSessionContext.indexOf("\n  }\n", start);
+  const body = forgeSessionContext.slice(start, end);
   assert.doesNotMatch(body, /parseDeckRows\(/, "the structured multi-refill response must be read directly, never text-parsed (a comment may still name the old pattern for context)");
   assert.doesNotMatch(body, /data\.answer/, "there is no free-text 'answer' field in the multi-refill contract");
 });
 
 test("candidates are built only from structured package fields (additions[].name/roles, context.summary) — never invented client-side", () => {
-  const start = page.indexOf("async function recommendReplacements(cut: DeckRow, nextDeck: string) {");
-  const end = page.indexOf("\n  }\n", start);
-  const body = page.slice(start, end);
+  const start = forgeSessionContext.indexOf("async function recommendReplacements(cut: DeckRow, nextDeck: string) {");
+  const end = forgeSessionContext.indexOf("\n  }\n", start);
+  const body = forgeSessionContext.slice(start, end);
   assert.match(body, /pkg\?\.additions\?\.\[0\]/);
   assert.match(body, /pkg\.context\?\.summary/);
   assert.match(body, /addition\.roles/);
 });
 
 test("three distinct outcomes are handled explicitly: 422 (honest empty), non-ok/malformed (operational), and real packages", () => {
-  const start = page.indexOf("async function recommendReplacements(cut: DeckRow, nextDeck: string) {");
-  const end = page.indexOf("\n  }\n", start);
-  const body = page.slice(start, end);
+  const start = forgeSessionContext.indexOf("async function recommendReplacements(cut: DeckRow, nextDeck: string) {");
+  const end = forgeSessionContext.indexOf("\n  }\n", start);
+  const body = forgeSessionContext.slice(start, end);
   assert.match(body, /response\.status === 422/);
   assert.match(body, /!response\.ok \|\| !data \|\| !Array\.isArray\(data\.packages\)/);
   assert.match(body, /catch \{\s*setReplacementError\("operational"\);/);
 });
 
 test("Scryfall image/type-line enrichment runs only after real candidates are already decided, and a failed lookup cannot drop a legal candidate", () => {
-  const start = page.indexOf("async function recommendReplacements(cut: DeckRow, nextDeck: string) {");
-  const end = page.indexOf("\n  }\n", start);
-  const body = page.slice(start, end);
+  const start = forgeSessionContext.indexOf("async function recommendReplacements(cut: DeckRow, nextDeck: string) {");
+  const end = forgeSessionContext.indexOf("\n  }\n", start);
+  const body = forgeSessionContext.slice(start, end);
   const enrichmentStart = body.indexOf("await Promise.all(resolved.map(");
   const decisionPoint = body.indexOf("if (!resolved.length)");
   assert.ok(decisionPoint > 0 && enrichmentStart > decisionPoint, "candidates must be finalized (resolved.length check) before any display-only Scryfall enrichment runs");
@@ -166,22 +170,22 @@ test("each rendered candidate shows the real engine reason and role fit when pre
 // --- Untouched surfaces (explicit non-regression) ---
 
 test("manual legal-card search in the Editing Anvil remains fully intact and untouched", () => {
-  assert.match(page, /const \[cardSearchResults, setCardSearchResults\] = useState/);
-  assert.match(page, /setCardSearchResults\(/);
+  assert.match(forgeSessionContext, /const \[cardSearchResults, setCardSearchResults\] = useState/);
+  assert.match(forgeSessionContext, /setCardSearchResults\(/);
 });
 
 test("multi-select/bulk replacement (forgeMultiRefill, applyMultiRefillPackage, refillCuts) is untouched and structurally isolated from the single-cut flow", () => {
-  assert.match(page, /async function forgeMultiRefill\(\) \{/);
-  assert.match(page, /function applyMultiRefillPackage\(refill: MultiRefillPackage\) \{/);
-  assert.match(page, /generationId: nativeMasterworkContext\.generationId,\s*\n\s*currentRows: deckRows,\s*\n\s*cuts: Object\.entries\(refillCuts\)/);
-  const start = page.indexOf("async function recommendReplacements(cut: DeckRow, nextDeck: string) {");
-  const end = page.indexOf("\n  }\n", start);
-  const singleCutBody = page.slice(start, end);
+  assert.match(forgeSessionContext, /async function forgeMultiRefill\(\) \{/);
+  assert.match(forgeSessionContext, /function applyMultiRefillPackage\(refill: MultiRefillPackage\) \{/);
+  assert.match(forgeSessionContext, /generationId: nativeMasterworkContext\.generationId,\s*\n\s*currentRows: deckRows,\s*\n\s*cuts: Object\.entries\(refillCuts\)/);
+  const start = forgeSessionContext.indexOf("async function recommendReplacements(cut: DeckRow, nextDeck: string) {");
+  const end = forgeSessionContext.indexOf("\n  }\n", start);
+  const singleCutBody = forgeSessionContext.slice(start, end);
   assert.doesNotMatch(singleCutBody, /refillCuts|multiRefillResult|multiRefillStatus/, "the single-cut flow must never read or write the bulk-replace feature's own state");
 });
 
 test("drag/add/remove Editing Anvil behavior around the cut/replace flow is unchanged: stageDeckCard still stages, undo still restores", () => {
-  assert.match(page, /function stageDeckCard\(name: string, destination: "consider" \| "remove"\) \{/);
-  assert.match(page, /void recommendReplacements\(row, nextDeck\);/);
+  assert.match(forgeSessionContext, /function stageDeckCard\(name: string, destination: "consider" \| "remove"\) \{/);
+  assert.match(forgeSessionContext, /void recommendReplacements\(row, nextDeck\);/);
   assert.match(page, />\s*Undo\s*<\/button>/);
 });

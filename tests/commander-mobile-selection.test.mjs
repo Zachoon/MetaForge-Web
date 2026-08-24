@@ -3,6 +3,9 @@ import test from "node:test";
 import { readFile } from "node:fs/promises";
 
 const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+// The viewport-tracking effect and AbortController wiring moved to
+// forge-session-context.tsx during the page.tsx decomposition (Phase 4 Stage 2).
+const forgeSessionContext = await readFile(new URL("../app/forge-session-context.tsx", import.meta.url), "utf8");
 
 test("touching a portaled commander result cannot blur-unmount it before click", () => {
   const portalStart = page.indexOf('className="commander-search-portal"');
@@ -22,9 +25,9 @@ test("mobile commander search prevents iOS zoom, stale results, and keyboard-hid
   ]);
   assert.match(commanderCss, /commander-choice input[^}]*font-size:16px!important/);
   assert.match(frameCss, /html,body\{max-width:100%;overflow-x:hidden\}/);
-  assert.match(page, /window\.visualViewport\?\.addEventListener\("resize", updateRect\)/);
-  assert.match(page, /maxHeight: Math\.max\(96, viewportBottom - top - 12\)/);
+  assert.match(forgeSessionContext, /window\.visualViewport\?\.addEventListener\("resize", updateRect\)/);
+  assert.match(forgeSessionContext, /maxHeight: Math\.max\(96, viewportBottom - top - 12\)/);
   assert.match(page, /maxHeight: commanderSearchRect\.maxHeight/);
-  assert.match(page, /const controller = new AbortController\(\)/);
-  assert.match(page, /controller\.abort\(\)/);
+  assert.match(forgeSessionContext, /const controller = new AbortController\(\)/);
+  assert.match(forgeSessionContext, /controller\.abort\(\)/);
 });

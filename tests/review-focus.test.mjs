@@ -16,6 +16,10 @@ import {
 // that split actually holds in the built output.
 
 const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+// commitDirectForge's request composition and the reviewFocusResult
+// reply-splicing moved to forge-session-context.tsx during the page.tsx
+// decomposition (Phase 4 Stage 2).
+const forgeSessionContext = await readFile(new URL("../app/forge-session-context.tsx", import.meta.url), "utf8");
 
 // --- Pure selection/toggle logic ---
 
@@ -41,10 +45,10 @@ test("reviewFocus travels to the server as its own dedicated field, not folded i
   // unexplained label can no longer be misread by the engine's own
   // note-scanning signals (colorsFromNote, blueprint intent parsing).
   assert.match(
-    page,
+    forgeSessionContext,
     /note: `\$\{commissionNote\}\\n\$\{interventionLearning\.reusableGuidance\}`\.trim\(\)/,
   );
-  assert.match(page, /reviewFocus: reviewFocus \|\| undefined,/);
+  assert.match(forgeSessionContext, /reviewFocus: reviewFocus \|\| undefined,/);
 });
 
 test("no reference to the retired note-prefix helper remains", () => {
@@ -53,7 +57,7 @@ test("no reference to the retired note-prefix helper remains", () => {
 
 test("the coaching result is rendered inside the existing reply/results experience, not a new UI element", () => {
   assert.match(
-    page,
+    forgeSessionContext,
     /replyText: `\$\{nativeReport\.methodology\}[\s\S]*?\$\{reviewFocusResult \? `\\n\\nCoaching focus/,
   );
 });
@@ -165,7 +169,12 @@ test("commissionNote's own field is untouched — still its own state, own texta
 // --- Reset discipline: only on explicit fresh-journey/commission-reset points ---
 
 test("reviewFocus is reset at exactly the two intended points, and nowhere else (including failure paths)", () => {
-  const occurrences = page.match(/setReviewFocus\(""\)/g) || [];
+  // startNewForge()'s reset moved to forge-session-context.tsx; the
+  // fresh-Build entrance card's reset stayed in page.tsx's JSX.
+  const occurrences = [
+    ...(page.match(/setReviewFocus\(""\)/g) || []),
+    ...(forgeSessionContext.match(/setReviewFocus\(""\)/g) || []),
+  ];
   assert.equal(
     occurrences.length,
     2,
@@ -176,7 +185,7 @@ test("reviewFocus is reset at exactly the two intended points, and nowhere else 
 test("failed generation does not reset the decklist or commissionNote either", () => {
   // Both catch blocks that follow a commitDirectForge-style attempt only
   // clear generation output/error state, never the player's inputs.
-  const catchBlocks = page.match(/\} catch \(error\) \{[\s\S]*?setForgeGenerationError\([\s\S]*?\);/g) || [];
+  const catchBlocks = forgeSessionContext.match(/\} catch \(error\) \{[\s\S]*?setForgeGenerationError\([\s\S]*?\);/g) || [];
   assert.ok(catchBlocks.length > 0, "expected at least one matching catch block");
   for (const block of catchBlocks) {
     assert.doesNotMatch(block, /setDeck\(""\)/);

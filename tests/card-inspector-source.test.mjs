@@ -3,14 +3,17 @@ import test from "node:test";
 import fs from "node:fs";
 
 const page = fs.readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+// activeImage/inspectedImage/activeStructuralReport moved to
+// forge-session-context.tsx during the page.tsx decomposition (Phase 4 Stage 2).
+const forgeSessionContext = fs.readFileSync(new URL("../app/forge-session-context.tsx", import.meta.url), "utf8");
 
 test("selected printing drives both the deck preview and contextual inspector image", () => {
-  assert.match(page, /const activeImage\s*=\s*activePrinting\?\.image\s*\|\|/);
-  assert.match(page, /const inspectedImage\s*=\s*inspectedPrinting\?\.image\s*\|\|/);
+  assert.match(forgeSessionContext, /const activeImage\s*=\s*activePrinting\?\.image\s*\|\|/);
+  assert.match(forgeSessionContext, /const inspectedImage\s*=\s*inspectedPrinting\?\.image\s*\|\|/);
 });
 
 test("the dossier renders server-computed contextual card intelligence", () => {
-  assert.match(page, /activeStructuralReport\.cardEvaluations\.cards\.find/);
+  assert.match(forgeSessionContext, /activeStructuralReport\.cardEvaluations\.cards\.find/);
   assert.match(page, /Contextual deck scores/);
   assert.match(page, /\["Synergy", inspectedEvaluation\.scores\.synergy\]/);
   assert.match(page, /\["Plan fit", inspectedEvaluation\.scores\.planFit\]/);

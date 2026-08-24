@@ -14,6 +14,10 @@ const deckRowHelpers = await readFile(new URL("../app/deck-row-helpers.ts", impo
 const formatCatalog = await readFile(new URL("../app/format-catalog.ts", import.meta.url), "utf8");
 const forgeTypes = await readFile(new URL("../app/forge-types.ts", import.meta.url), "utf8");
 const workbenchSrc = await readFile(new URL("../app/living-workbench.tsx", import.meta.url), "utf8");
+// Handler logic (state declarations, applyExperimentTablet, buildExperimentTablets, etc.)
+// moved to forge-session-context.tsx during the page.tsx decomposition
+// (Phase 4 Stage 2).
+const forgeSessionContext = await readFile(new URL("../app/forge-session-context.tsx", import.meta.url), "utf8");
 
 test("opens directly into the deck without a detail-mode decision", () => {
   assert.doesNotMatch(page, /resultViewMode/);
@@ -85,7 +89,7 @@ test("the coaching panel leads with commission contract / plan story — not the
 });
 
 test("reviewFocusResult carries its full evidence shape (asked/evidence/nextStep), not just .concise, and is reset on every new commission", () => {
-  const stateDecl = page.match(/const \[reviewFocusResult, setReviewFocusResult\] = useState<\{[\s\S]*?\}\s*\| null>\(null\);/)?.[0];
+  const stateDecl = forgeSessionContext.match(/const \[reviewFocusResult, setReviewFocusResult\] = useState<\{[\s\S]*?\}\s*\| null>\(null\);/)?.[0];
   assert.ok(stateDecl, "expected the reviewFocusResult state declaration");
   assert.match(stateDecl, /asked: string;/);
   assert.match(stateDecl, /evidence: string;/);
@@ -93,12 +97,12 @@ test("reviewFocusResult carries its full evidence shape (asked/evidence/nextStep
   // Reset alongside importWarnings in both places a new/restored deck
   // replaces whatever was previously loaded — never left stale from a
   // prior generation.
-  const resetSites = page.match(/setImportWarnings\(\[\]\);\s*setReviewFocusResult\(null\);/g) || [];
+  const resetSites = forgeSessionContext.match(/setImportWarnings\(\[\]\);\s*setReviewFocusResult\(null\);/g) || [];
   assert.equal(resetSites.length, 2, "expected exactly two reset sites: commitDirectForge and openSavedMasterwork");
 });
 
 test("turns the result into one active chapter instead of a continuous instrument wall", () => {
-  assert.match(page, /activeForgeChapter.*useState<1 \| 2 \| 5>\(1\)/);
+  assert.match(forgeSessionContext, /activeForgeChapter.*useState<1 \| 2 \| 5>\(1\)/);
   assert.match(page, /LivingWorkbench/);
   assert.match(workbenchSrc, /id="forge-chapter-rail"/);
   assert.doesNotMatch(page, /WHAT TO DO NEXT/);
@@ -109,8 +113,8 @@ test("turns the result into one active chapter instead of a continuous instrumen
   assert.match(css, /\.chapter-1-active \.deck-manuscript>header\{display:flex\}/);
   assert.match(css, /\.chapter-2-active>\.testing-loop\{display:block/);
   assert.match(page, /id="proving-era-title"|getElementById\("proving-era-title"\)/);
-  assert.match(page, /metaforge\.activeFieldTest/);
-  assert.match(page, /This game did not test/);
+  assert.match(forgeSessionContext, /metaforge\.activeFieldTest/);
+  assert.match(forgeSessionContext, /This game did not test/);
   assert.match(css, /\.chapter-5-active>\.proving-grounds\{display:block/);
   assert.match(css, /\.workspace-mode-tabs\{grid-template-columns:repeat\(3/);
   assert.doesNotMatch(page, /activeButton\.offsetLeft/);
@@ -120,48 +124,48 @@ test("turns the result into one active chapter instead of a continuous instrumen
 });
 
 test("keeps the deck list stable while card types are still loading", () => {
-  assert.match(page, /commanderRows = alphabetize\(orderedDeckRows\.filter\(isCommanderRow\)\)/);
-  assert.match(page, /mainDeckRows = alphabetize\(orderedDeckRows\.filter\(\(row\) => !isCommanderRow\(row\)\)\)/);
-  assert.match(page, /Commander: commanderRows/);
-  assert.match(page, /"Complete deck": mainDeckRows/);
+  assert.match(forgeSessionContext, /commanderRows = alphabetize\(orderedDeckRows\.filter\(isCommanderRow\)\)/);
+  assert.match(forgeSessionContext, /mainDeckRows = alphabetize\(orderedDeckRows\.filter\(\(row\) => !isCommanderRow\(row\)\)\)/);
+  assert.match(forgeSessionContext, /Commander: commanderRows/);
+  assert.match(forgeSessionContext, /"Complete deck": mainDeckRows/);
   assert.match(page, /Organizing card types in the background/);
   assert.match(page, /Showing the complete deck alphabetically/);
-  assert.match(page, /localeCompare\(b\.name/);
+  assert.match(forgeSessionContext, /localeCompare\(b\.name/);
   assert.match(page, /"Commander",\s*"Complete deck",\s*"Details pending"/);
 });
 
 test("uses the Forge's verified card types before supplemental gallery lookups", () => {
   assert.match(deckRowHelpers, /const cardFactFromNativeRow/);
-  assert.match(page, /for \(const row of nativeMasterworkContext\?\.selected\?\.rows \|\| \[\]\)/);
+  assert.match(forgeSessionContext, /for \(const row of nativeMasterworkContext\?\.selected\?\.rows \|\| \[\]\)/);
   assert.match(deckRowHelpers, /type_line: String\(card\.typeLine \|\| card\.type_line \|\| ""\)/);
-  assert.match(page, /fetch\("\/api\/cards\/facts"/);
+  assert.match(forgeSessionContext, /fetch\("\/api\/cards\/facts"/);
   assert.match(page, /Retry details/);
-  assert.match(page, /AbortSignal\.timeout\(25000\)/);
-  assert.match(page, /: "Details pending"/);
+  assert.match(forgeSessionContext, /AbortSignal\.timeout\(25000\)/);
+  assert.match(forgeSessionContext, /: "Details pending"/);
   assert.match(page, /cardFactsPending > 0/);
   assert.match(page, /The rest of your deck is fully organized/);
-  assert.match(page, /scheduleDetailsRetry/);
+  assert.match(forgeSessionContext, /scheduleDetailsRetry/);
   assert.doesNotMatch(page, /throw new Error\("incomplete catalog"\)/);
 });
 
 test("keeps the commander outside the other 99 cards even when its details are pending", () => {
-  assert.match(page, /\[activeCommanderName, selectedSecondCommander\?\.name\]/);
-  assert.match(page, /const group = isCommanderRow\(row\)\s*\? "Commander"/);
-  assert.match(page, /: "Details pending"/);
+  assert.match(forgeSessionContext, /\[activeCommanderName, selectedSecondCommander\?\.name\]/);
+  assert.match(forgeSessionContext, /const group = isCommanderRow\(row\)\s*\? "Commander"/);
+  assert.match(forgeSessionContext, /: "Details pending"/);
 });
 
 test("uses the commander in the current deck instead of stale setup metadata", () => {
-  assert.match(page, /nativeMasterworkContext\?\.selected\?\.rows\?\.find/);
-  assert.match(page, /selected && rowNames\.has\(cardFactKey\(selected\)\)/);
-  assert.match(page, /chosenWork\.name\.endsWith\(", Forged"\)/);
+  assert.match(forgeSessionContext, /nativeMasterworkContext\?\.selected\?\.rows\?\.find/);
+  assert.match(forgeSessionContext, /selected && rowNames\.has\(cardFactKey\(selected\)\)/);
+  assert.match(forgeSessionContext, /chosenWork\.name\.endsWith\(", Forged"\)/);
   assert.match(page, /<b>\{activeCommanderName \|\| "Not identified"\}<\/b>/);
-  assert.match(page, /activeCommander = meta \? meta\.commander : selectedCommander/);
+  assert.match(forgeSessionContext, /activeCommander = meta \? meta\.commander : selectedCommander/);
   assert.doesNotMatch(page, /<b>\{chosenPreview\.card\}<\/b>/);
 });
 
 test("names the finished deck in player language instead of an unexplained temper label", () => {
-  assert.match(page, /const displayDeckName = activeCommanderName/);
-  assert.match(page, /\$\{activeCommanderName\} deck/);
+  assert.match(forgeSessionContext, /const displayDeckName = activeCommanderName/);
+  assert.match(forgeSessionContext, /\$\{activeCommanderName\} deck/);
   assert.match(page, /<h1>\{hasValidatedDeck \? displayDeckName/);
 });
 
@@ -201,7 +205,7 @@ test("deck understanding leads with Honest Coach and contains raw evidence in De
 // reveals a deck once the player explicitly picks one (enterMasterwork).
 test("a pasted decklist reveals its complete deck immediately; a fresh build never auto-selects one", () => {
   assert.doesNotMatch(page, /inspectMasterwork/, "the auto-entering per-candidate reveal function is retired entirely");
-  assert.match(page, /setChamber\("masterworks"\)/, "a fresh commander build lands on the masterworks choice, not a pre-selected deck");
+  assert.match(forgeSessionContext, /setChamber\("masterworks"\)/, "a fresh commander build lands on the masterworks choice, not a pre-selected deck");
   assert.match(page, /setOpeningExperimentPending\(false\)/);
   assert.doesNotMatch(page, /setOpeningExperimentPending\(mode === "commander"\)/);
   assert.match(workbenchSrc, /label: "Deck"/);
@@ -211,7 +215,7 @@ test("a pasted decklist reveals its complete deck immediately; a fresh build nev
 });
 
 test("turns new-deck setup into three progressively disclosed decisions", () => {
-  assert.match(page, /useState<0 \| 1 \| 2>\(0\)/);
+  assert.match(forgeSessionContext, /useState<0 \| 1 \| 2>\(0\)/);
   assert.match(page, /aria-label="Deck setup progress"/);
   assert.match(page, /buildStepLabelsFor\(format\)\.map/);
   assert.match(formatCatalog, /\["Commander", "Strategy", "Preferences"\]/);
@@ -242,13 +246,13 @@ test("turns deck stress experiments into concrete player insights", () => {
   assert.match(page, /WHY THIS SWAP/);
   assert.match(page, /EXPECTED CHANGE/);
   assert.match(page, /HOW TO JUDGE IT/);
-  assert.match(page, /scenarioPassRate/);
+  assert.match(forgeSessionContext, /scenarioPassRate/);
 });
 
 test("keeps visual deck browsing separate from the playtest workbench", () => {
-  assert.match(page, /useState<DeckViewMode>\("ledger"\)/);
+  assert.match(forgeSessionContext, /useState<DeckViewMode>\("ledger"\)/);
   assert.match(forgeTypes, /matchMedia\("\(max-width: 760px\)"\)/);
-  assert.match(page, /setDeckViewMode\(preferredDecklistView\(\)\)/);
+  assert.match(forgeSessionContext, /setDeckViewMode\(preferredDecklistView\(\)\)/);
   assert.match(page, />Visual deck<\/button>/);
   assert.match(page, />Text list<\/button>/);
   assert.match(page, /deckViewMode === "gallery"/);
@@ -261,7 +265,7 @@ test("keeps visual deck browsing separate from the playtest workbench", () => {
 
 test("offers three evidence-led experiment tablets before optional match evidence", () => {
   assert.match(page, /Three evidence-led controlled experiments/i);
-  assert.match(page, /buildExperimentTablets/);
+  assert.match(forgeSessionContext, /buildExperimentTablets/);
   assert.match(page, /Field observation/);
   assert.match(page, /Structural pressure point/);
   assert.match(page, /Smallest honest test/);
@@ -271,7 +275,7 @@ test("offers three evidence-led experiment tablets before optional match evidenc
   assert.match(page, /className="match-evidence-drawer"/);
   // Accepting a tablet must apply the exact swap directly — no free-text or
   // LLM round-trip composer standing between the evidence and the deck.
-  assert.match(page, /function applyExperimentTablet/);
+  assert.match(forgeSessionContext, /function applyExperimentTablet/);
   assert.match(page, /className="tablet-accept"/);
   assert.doesNotMatch(page, /className="custom-refinement-trigger"/);
   assert.doesNotMatch(page, /className="refinement-composer"/);
@@ -279,16 +283,16 @@ test("offers three evidence-led experiment tablets before optional match evidenc
 });
 
 test("makes a guided three-card experiment the doorway to a new Masterwork", () => {
-  assert.match(page, /openingExperimentPending/);
+  assert.match(forgeSessionContext, /openingExperimentPending/);
   assert.match(
-    page,
+    forgeSessionContext,
     /const openingExperimentGateActive\s*=\s*openingExperimentPending\s*&&\s*benchStatus !== "forging"\s*&&\s*openingExperimentChoices\.length > 0/,
     "The opening experiment must never hide the finished deck when there are no choices to render.",
   );
   assert.match(page, /openingExperimentGateActive \? "opening-experiment-pending" : ""/);
   assert.match(page, /YOUR FIRST OFFICIAL EXPERIMENT/);
   assert.match(page, /openingExperimentChoices\.map/);
-  assert.match(page, /CONTROL EXPERIMENT/);
+  assert.match(forgeSessionContext, /CONTROL EXPERIMENT/);
   assert.match(page, /Skip guidance · Reveal the full deck/);
   assert.doesNotMatch(page, /className="forge-journey-guide"/);
   assert.doesNotMatch(page, /className="forge-guide-navigation"/);
@@ -299,13 +303,13 @@ test("accepting an experiment tablet plays out where the player can actually see
   // The deck list that receives the cut/materialize animation classes only
   // renders while Chapter I is active — the accept handler must jump there
   // itself instead of leaving the swap to happen behind the tablets screen.
-  assert.match(page, /function applyExperimentTablet[\s\S]*?setActiveForgeChapter\(1\)/);
+  assert.match(forgeSessionContext, /function applyExperimentTablet[\s\S]*?setActiveForgeChapter\(1\)/);
   // The tablet engine's own view of the deck must advance too, or the same
   // three tablets (some now stale) just keep reappearing after every accept.
-  assert.match(page, /function applyExperimentTablet[\s\S]*?setNativeMasterworkContext\(/);
+  assert.match(forgeSessionContext, /function applyExperimentTablet[\s\S]*?setNativeMasterworkContext\(/);
   // A forced, visible decision after the swap settles — not a silent return
   // to a screen that looks identical to before the click.
-  assert.match(page, /const \[postAcceptChoice, setPostAcceptChoice\] = useState\(false\)/);
+  assert.match(forgeSessionContext, /const \[postAcceptChoice, setPostAcceptChoice\] = useState\(false\)/);
   assert.match(page, /className="post-accept-choice"/);
   assert.match(page, /Test Another Experiment/);
   assert.match(page, /This Is The One — Save as Finished Deck/);
@@ -332,7 +336,7 @@ test("offers a confidence tablet in place of a missing third experiment slot", (
 });
 
 test("keeps the Editing Anvil closed until the player asks for it", () => {
-  assert.match(page, /useState\(false\);[\s\S]*?forgeGenerationError/);
+  assert.match(forgeSessionContext, /useState\(false\);[\s\S]*?forgeGenerationError/);
   assert.match(page, /Raise the Editing Anvil/);
 });
 
@@ -359,12 +363,12 @@ test("automatically exposes intelligence when a hard deck gate fails", () => {
 });
 
 test("preserves match evidence on its exact revision", () => {
-  assert.match(page, /prepareStoryBenchRevisions\(nextRevisions\)/);
+  assert.match(forgeSessionContext, /prepareStoryBenchRevisions\(nextRevisions\)/);
   assert.match(
-    page,
+    forgeSessionContext,
     /serializeStoryBenchRevision\(revision,\s*\{[\s\S]*?index[\s\S]*?record: nextRecord[\s\S]*?matches: nextMatches[\s\S]*?revisionCount: nextRevisions\.length/,
   );
-  assert.match(page, /family\.revisions\.flatMap/);
+  assert.match(forgeSessionContext, /family\.revisions\.flatMap/);
 });
 
 // P0 follow-up: multiple production failure videos showed the floating

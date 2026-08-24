@@ -11,6 +11,9 @@ const journeyCss = fs.readFileSync(new URL("../app/forge-journey.css", import.me
 // MilestoneMotion moved to forge-types.ts during the page.tsx decomposition
 // (Phase 4).
 const forgeTypes = fs.readFileSync(new URL("../app/forge-types.ts", import.meta.url), "utf8");
+// masterworkVisualProfile/setMilestoneMotion call sites moved to
+// forge-session-context.tsx during the page.tsx decomposition (Phase 4 Stage 2).
+const forgeSessionContext = fs.readFileSync(new URL("../app/forge-session-context.tsx", import.meta.url), "utf8");
 const benchCss = fs.readFileSync(new URL("../app/deck-bench-dock.css", import.meta.url), "utf8");
 
 // Bug 1B retired the templated sealed/revealed MasterworkCard component
@@ -47,7 +50,7 @@ test("the visual system stylesheet is actually imported", () => {
 
 test("the workbench sigil is driven by the deterministic resolver, not invented per render", () => {
   assert.match(page, /import \{ resolveMasterworkVisualProfile \} from "\.\/masterwork-visual-profile\.mjs";/);
-  assert.match(page, /masterworkVisualProfile = useMemo/);
+  assert.match(forgeSessionContext, /masterworkVisualProfile = useMemo/);
   assert.match(page, /data-evolved={masterworkVisualProfile\.evolved}/);
 });
 
@@ -56,7 +59,7 @@ test("major player milestones use choreographed sequences while reduced motion s
   assert.match(page, /className={`forge-milestone-motion milestone-\$\{milestoneMotion\.kind\}`}/);
   assert.doesNotMatch(page, /setMilestoneMotion\(\{[\s\S]*?kind: "masterwork-ready"/);
   assert.match(page, /kind: "experiment-chosen"/);
-  assert.match(page, /kind: "revision-accepted"/);
+  assert.match(forgeSessionContext, /kind: "revision-accepted"/);
   assert.match(motionCss, /\.milestone-shutter/);
   assert.match(motionCss, /\.milestone-smoke/);
   assert.match(motionCss, /\.milestone-flare/);
@@ -89,6 +92,6 @@ test("recording a match is a bounded three-step evidence ritual", () => {
   assert.match(page, /STEP 2 · WHAT DID YOU FACE/);
   assert.match(page, /STEP 3 · WHAT WAS THE CLEAREST LESSON/);
   assert.match(page, /No single lesson isolated/);
-  assert.match(page, /kind: "evidence-recorded"/);
+  assert.match(forgeSessionContext, /kind: "evidence-recorded"/);
   assert.match(motionCss, /\.milestone-evidence-recorded/);
 });

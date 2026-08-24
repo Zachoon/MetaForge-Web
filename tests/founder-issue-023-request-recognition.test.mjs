@@ -91,8 +91,12 @@ describe("Founder Issue #023 — Intent vs Recommendation Transparency", () => {
   it("surfaces Request Recognition in the coach UI + CSS", () => {
     const page = readFileSync(join(root, "app/page.tsx"), "utf8");
     const css = readFileSync(join(root, "app/testing-anvil.css"), "utf8");
+    // masterworksRequestRecognition's own useMemo derivation moved to
+    // forge-session-context.tsx during the page.tsx decomposition (Phase 4
+    // Stage 2); its JSX consumption stayed in page.tsx.
+    const forgeSessionContext = readFileSync(join(root, "app/forge-session-context.tsx"), "utf8");
     assert.match(page, /1 · I HEARD YOU/);
-    assert.match(page, /requestRecognition/);
+    assert.match(forgeSessionContext, /requestRecognition/);
     assert.match(page, /masterworksRequestRecognition/);
     assert.match(page, /How do you know\? → Deep Forge evidence/);
     assert.match(css, /\.request-recognition\b/);

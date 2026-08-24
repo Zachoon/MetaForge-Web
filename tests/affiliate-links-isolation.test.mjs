@@ -177,6 +177,11 @@ test("the Impact tracking base and raw TCGplayer URL construction exist only in 
 test("purchase surfaces in page.tsx consume buildTcgplayerLink rather than constructing a TCGplayer/Impact URL themselves", () => {
   const source = fs.readFileSync(fileURLToPath(new URL("../app/page.tsx", import.meta.url)), "utf8");
   assert.match(source, /import \{ buildTcgplayerDeckLink, buildTcgplayerLink, AFFILIATE_DISCLOSURE_TEXT \} from "\.\/affiliate-links\.mjs";/);
-  const buildCallCount = (source.match(/buildTcgplayerLink\(\{/g) || []).length;
+  // Some call sites (derived purchase-link useMemos: deckPurchaseLink,
+  // activePurchaseLink, inspectorPurchaseLink) moved to
+  // forge-session-context.tsx during the page.tsx decomposition (Phase 4
+  // Stage 2) — the total call-site count is conserved across both files.
+  const contextSource = fs.readFileSync(fileURLToPath(new URL("../app/forge-session-context.tsx", import.meta.url)), "utf8");
+  const buildCallCount = (source.match(/buildTcgplayerLink\(\{/g) || []).length + (contextSource.match(/buildTcgplayerLink\(\{/g) || []).length;
   assert.equal(buildCallCount, 6, "expected exactly six call sites: decklist row, printing picker, card inspector (Phase 1), workbench replacement recommendations and experiment tablets (Phase 1B), plus the persistent frame card-preview slot");
 });

@@ -4,13 +4,17 @@ import { readFile } from "node:fs/promises";
 
 const root = new URL("../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
+// openPrivateArchive/landOnCompletedDecklist and the masterworks-scroll
+// effect moved to forge-session-context.tsx during the page.tsx
+// decomposition (Phase 4 Stage 2).
+const readCtx = () => read("app/forge-session-context.tsx");
 
 test("the completed Forge resets to the beginning of the decision screen", async () => {
-  const page = await read("app/page.tsx");
-  assert.match(page, /if \(chamber !== "masterworks" \|\| !pendingCandidateChoice\) return/);
-  assert.match(page, /window\.scrollTo\(0, 0\)/);
-  assert.match(page, /requestAnimationFrame\(\(\) => window\.scrollTo\(0, 0\)\)/);
-  assert.match(page, /id="masterwork-choice-start"/);
+  const source = await readCtx();
+  assert.match(source, /if \(chamber !== "masterworks" \|\| !pendingCandidateChoice\) return/);
+  assert.match(source, /window\.scrollTo\(0, 0\)/);
+  assert.match(source, /requestAnimationFrame\(\(\) => window\.scrollTo\(0, 0\)\)/);
+  assert.match(await read("app/page.tsx"), /id="masterwork-choice-start"/);
 });
 
 test("the recommended experience is explicitly first in the philosophy list", async () => {
@@ -56,8 +60,8 @@ test("Explore/home is a no-scroll hero; saved Masterworks live on Decks", async 
   assert.match(homeChunk, /className="forge-entrance"/);
   assert.doesNotMatch(homeChunk, /masterwork-history/);
   assert.doesNotMatch(homeChunk, /Return to a deck/);
-  assert.match(page, /function openPrivateArchive\(/);
-  assert.match(page, /setChamber\("archive"\)/);
+  assert.match(await readCtx(), /function openPrivateArchive\(/);
+  assert.match(await readCtx(), /setChamber\("archive"\)/);
   assert.match(page, /\{chamber === "archive" && \(/);
   assert.match(page, /className="masterwork-archive"/);
   assert.match(page, /className="masterwork-history"/);
@@ -86,14 +90,15 @@ test("a completed Forge lands on the plain decklist, coaching and experiments re
   const page = await read("app/page.tsx");
   const frame = await read("app/site-frame.css");
   const ceremony = await read("app/components/forge/forge-ceremony.tsx");
-  assert.match(page, /function landOnCompletedDecklist\(/);
-  const landStart = page.indexOf("function landOnCompletedDecklist(");
-  const landEnd = page.indexOf("\n  }\n", landStart);
-  const landBody = page.slice(landStart, landEnd);
+  const forgeSessionContext = await readCtx();
+  assert.match(forgeSessionContext, /function landOnCompletedDecklist\(/);
+  const landStart = forgeSessionContext.indexOf("function landOnCompletedDecklist(");
+  const landEnd = forgeSessionContext.indexOf("\n  }\n", landStart);
+  const landBody = forgeSessionContext.slice(landStart, landEnd);
   assert.match(landBody, /setSiteRail\("decklist"\)/);
   assert.match(landBody, /coachBriefDetailsRef\.current\.open = false/);
-  assert.match(page, /enterMasterwork[\s\S]*?landOnCompletedDecklist\(\)/);
-  assert.match(page, /openSavedMasterwork[\s\S]*?landOnCompletedDecklist\(\)/);
+  assert.match(forgeSessionContext, /enterMasterwork[\s\S]*?landOnCompletedDecklist\(\)/);
+  assert.match(forgeSessionContext, /openSavedMasterwork[\s\S]*?landOnCompletedDecklist\(\)/);
   assert.match(page, /hasValidatedDeck && siteRail !== "decklist"/);
   // The Decklist nav tab remains the one-click escape hatch to the bare
   // card grid — it must still set siteRail back to "decklist" and

@@ -23,7 +23,10 @@ test("launch funnel covers the complete visitor journey without deck contents", 
   // with the rest of the Deep Forge vault — they still fire, just from
   // that page now.
   const researchPage = await source("app/research/page.tsx");
-  const combined = `${page}\n${researchPage}`;
+  // Most trackLaunchEvent call sites moved to forge-session-context.tsx
+  // during the page.tsx decomposition (Phase 4 Stage 2).
+  const forgeSessionContext = await source("app/forge-session-context.tsx");
+  const combined = `${page}\n${researchPage}\n${forgeSessionContext}`;
   for (const event of [
     "forge_started",
     "forge_succeeded",

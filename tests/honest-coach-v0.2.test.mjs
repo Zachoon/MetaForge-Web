@@ -187,10 +187,14 @@ describe("Honest Coach v0.2 — unmissable + measurable", () => {
     const css = await readFile(new URL("app/testing-anvil.css", root), "utf8");
     const page = await readFile(new URL("app/page.tsx", root), "utf8");
     const worker = await readFile(new URL("worker/index.ts", root), "utf8");
+    // The coach-feedback submission call and its launch-telemetry event
+    // moved to forge-session-context.tsx during the page.tsx decomposition
+    // (Phase 4 Stage 2).
+    const forgeSessionContext = await readFile(new URL("app/forge-session-context.tsx", root), "utf8");
     assert.match(css, /chapter-1-active .*honest-coach-v0/);
     assert.match(page, /imported-deck-review/);
-    assert.match(page, /\/api\/coach\/feedback/);
-    assert.match(page, /coach_brief_viewed/);
+    assert.match(forgeSessionContext, /\/api\/coach\/feedback/);
+    assert.match(forgeSessionContext, /coach_brief_viewed/);
     assert.match(page, /HONEST_COACH_NOT_HELPFUL_REASONS/);
     assert.match(worker, /\/api\/coach\/feedback/);
     assert.match(worker, /handleCoachFeedback/);

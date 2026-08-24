@@ -17,6 +17,10 @@ const debouncedAnalysisRequest = fs.readFileSync(new URL("../app/debounced-analy
 // during the page.tsx decomposition (Phase 4) — several assertions below
 // moved here with them.
 const deckRowHelpers = fs.readFileSync(new URL("../app/deck-row-helpers.ts", import.meta.url), "utf8");
+// Handler logic (commitDirectForge, enterMasterwork, activeStructuralReport,
+// runDebouncedAnalysis call site, etc.) moved to forge-session-context.tsx
+// during the page.tsx decomposition (Phase 4 Stage 2).
+const forgeSessionContext = fs.readFileSync(new URL("../app/forge-session-context.tsx", import.meta.url), "utf8");
 // Bug 1B retired the separate per-candidate "native" reveal call
 // (inspectMasterwork): commitDirectForge's commander branch now makes the
 // one call that produces all three real candidates up front (mode:
@@ -24,12 +28,12 @@ const deckRowHelpers = fs.readFileSync(new URL("../app/deck-row-helpers.ts", imp
 // "direct" both run the identical forgeNativeMasterwork construction, they
 // only ever differed in lynchpin/path), and enterMasterwork applies
 // whichever the player explicitly picks with zero further network calls.
-const commitStart = page.indexOf('async function commitDirectForge(mode: "decklist" | "commander"');
-const commitEnd = page.indexOf("function openSavedMasterwork", commitStart);
-const commitDirectForgeSource = page.slice(commitStart, commitEnd);
-const enterStart = page.indexOf("function enterMasterwork(candidateId: string)");
-const enterEnd = page.indexOf("function resetGuestVerificationAfterFailure", enterStart);
-const enterMasterworkSource = page.slice(enterStart, enterEnd);
+const commitStart = forgeSessionContext.indexOf('async function commitDirectForge(mode: "decklist" | "commander"');
+const commitEnd = forgeSessionContext.indexOf("function openSavedMasterwork", commitStart);
+const commitDirectForgeSource = forgeSessionContext.slice(commitStart, commitEnd);
+const enterStart = forgeSessionContext.indexOf("function enterMasterwork(candidateId: string)");
+const enterEnd = forgeSessionContext.indexOf("function resetGuestVerificationAfterFailure", enterStart);
+const enterMasterworkSource = forgeSessionContext.slice(enterStart, enterEnd);
 
 test("Masterwork selection uses the native engine instead of a model endpoint", () => {
   // The construction algorithm itself moved server-side (see the engine-
@@ -76,9 +80,9 @@ test("the simulation dossier feeds real role counts and average curve into the i
   // buildBoundedFailureAnalysis (also server-side) must actually receive
   // it, or the interaction-density check in forge-systems-intelligence.mjs
   // never sees real data.
-  const analyzeCallStart = page.indexOf("return runDebouncedAnalysis({");
-  const analyzeCallEnd = page.indexOf("});", analyzeCallStart);
-  const analyzeCall = page.slice(analyzeCallStart, analyzeCallEnd);
+  const analyzeCallStart = forgeSessionContext.indexOf("return runDebouncedAnalysis({");
+  const analyzeCallEnd = forgeSessionContext.indexOf("});", analyzeCallStart);
+  const analyzeCall = forgeSessionContext.slice(analyzeCallStart, analyzeCallEnd);
   assert.match(analyzeCall, /computeSimulation/);
   assert.match(
     forgeStructuralAnalyzeWorker,
@@ -107,14 +111,14 @@ test("supports a second commander (Partner or Background) as a distinct, optiona
   assert.match(page, /"background"/);
   assert.match(page, /selectedSecondCommander/);
   // Wired into both the imported-decklist and direct-commander build paths.
-  const wiredCallSites = page.match(/secondCommander: secondCommanderInput/g) || [];
+  const wiredCallSites = forgeSessionContext.match(/secondCommander: secondCommanderInput/g) || [];
   assert.equal(wiredCallSites.length, 2);
 });
 
 test("native forging exposes visible elapsed progress and moving stages", () => {
   assert.match(page, /forgeElapsedSeconds/);
-  assert.match(page, /Date\.now\(\) - forgeStartedAt/);
-  assert.match(page, /setInterval\(updateElapsed, 250\)/);
+  assert.match(forgeSessionContext, /Date\.now\(\) - forgeStartedAt/);
+  assert.match(forgeSessionContext, /setInterval\(updateElapsed, 250\)/);
   assert.match(page, /METAFORGE NATIVE ENGINE/);
   assert.match(page, /Forging three competing candidates/);
   assert.match(page, /role="status"/);
@@ -138,7 +142,7 @@ test("native forging exposes the exact one-slot laboratory verdict", () => {
 });
 
 test("Blueprint offers a persistent player-controlled reading size", () => {
-  assert.match(page, /metaforge\.readingSize/);
+  assert.match(forgeSessionContext, /metaforge\.readingSize/);
   assert.match(page, /reading-\$\{readingSize\}/);
   assert.match(page, /Use \$\{size\} text/);
 });
@@ -185,7 +189,7 @@ test("Workbench structural intelligence runs server-side through the shared Forg
   // tests/debounced-analysis-request.test.mjs); page.tsx calls it with
   // the real endpoint URL.
   assert.match(
-    page,
+    forgeSessionContext,
     /runDebouncedAnalysis\(\{[\s\S]*?url:\s*"\/api\/forge\/structural-analyze"/,
   );
 
@@ -195,17 +199,17 @@ test("Workbench structural intelligence runs server-side through the shared Forg
   );
 
   assert.match(
-    page,
+    forgeSessionContext,
     /activeStructuralReport\.graph/,
   );
 
   assert.match(
-    page,
+    forgeSessionContext,
     /activeStructuralReport\.systems/,
   );
 
   assert.match(
-    page,
+    forgeSessionContext,
     /activeStructuralReport\.causality/,
   );
 

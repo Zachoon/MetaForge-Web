@@ -20,6 +20,9 @@ const compassUi = await readFile(new URL("../app/components/forge/player-compass
 const css = await readFile(new URL("../app/components/forge/player-compass.css", import.meta.url), "utf8");
 const presentation = await readFile(new URL("../app/philosophy-presentation.mjs", import.meta.url), "utf8");
 const worker = await readFile(new URL("../worker/forge-generate.ts", import.meta.url), "utf8");
+// pendingCandidateChoice's own consumption moved to forge-session-context.tsx
+// during the page.tsx decomposition (Phase 4 Stage 2).
+const forgeSessionContext = await readFile(new URL("../app/forge-session-context.tsx", import.meta.url), "utf8");
 
 test("Player Compass is optional, one-question, and never blocks the Forge", () => {
   assert.equal(PLAYER_COMPASS_QUESTIONS.length, 4);
@@ -131,7 +134,7 @@ test("philosophy UI surfaces provenance, conflicts, and side-by-side compare", (
 test("CLIENT-1/2: Worker selects and explains; client only presents the response", () => {
   assert.match(worker, /buildServerPreChoice/);
   assert.match(worker, /preChoiceCoaching:\s*buildServerPreChoice/);
-  assert.match(page, /pendingCandidateChoice\?\.preChoiceCoaching/);
+  assert.match(forgeSessionContext, /pendingCandidateChoice\?\.preChoiceCoaching/);
   assert.doesNotMatch(page, /buildPreChoiceCoaching|matchPlayerCompassCandidates/);
   assert.doesNotMatch(compare, /fitScore|distance|tieThreshold|scores\.cohesion/);
   assert.doesNotMatch(page, /import \{[^}]*buildPreChoiceCoaching/);

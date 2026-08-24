@@ -14,9 +14,13 @@ import { readFile } from "node:fs/promises";
 
 const root = new URL("../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
+// The commander auto-detection effect, discovery fetch, and commitDirectForge
+// catch block moved to forge-session-context.tsx during the page.tsx
+// decomposition (Phase 4 Stage 2).
+const readCtx = () => read("app/forge-session-context.tsx");
 
 test("refine mode auto-detects a commander from the pasted list — commission mode never does", async () => {
-  const source = await read("app/page.tsx");
+  const source = await readCtx();
   assert.match(
     source,
     /if \(chamber !== "refine" \|\| !isCommanderFormat\(format\) \|\| selectedCommander\) return;/,
@@ -24,14 +28,14 @@ test("refine mode auto-detects a commander from the pasted list — commission m
   );
   assert.match(source, /resolvePastedCommanderCandidate\(\{/);
   assert.match(source, /if \(resolved\) setSelectedCommander\(resolved\);/);
-  assert.match(source, /format,\s*\n\s*mapCard: commanderOption/);
+  assert.match(source, /format,\s*\n\s*mapCard: commanderOptionFromCard/);
 });
 
 test("commander discovery uses MetaForge's resilient endpoint and distinguishes an outage from zero matches", async () => {
-  const source = await read("app/page.tsx");
+  const source = await readCtx();
   assert.match(source, /\/api\/cards\/commanders\?format=/);
   assert.match(source, /The commander index is temporarily unavailable/);
-  assert.match(source, /Retry commander search/);
+  assert.match(await read("app/page.tsx"), /Retry commander search/);
 });
 
 test("a detected or selected commander renders the selected-commander summary, not the discovery UI, in either chamber", async () => {
@@ -81,12 +85,12 @@ test("commission mode's discovery copy is unchanged; refine mode gets its own co
 });
 
 test("the imported-generate call still targets the authenticated or guest generate endpoint unchanged", async () => {
-  const source = await read("app/page.tsx");
+  const source = await readCtx();
   assert.match(source, /guestMode \? "\/api\/forge\/guest-generate" : "\/api\/forge\/generate"/);
 });
 
 test("a failed forge attempt still preserves the pasted decklist and selected commander (deck/commander state is never cleared on catch)", async () => {
-  const source = await read("app/page.tsx");
+  const source = await readCtx();
   const catchBlock = source.match(/\} catch \(error\) \{\s*const failure = normalizeForgeFailure\(error\);\s*setForgedDeck\(""\);[\s\S]*?\} finally \{/);
   assert.ok(catchBlock, "the commitForge catch block exists");
   assert.doesNotMatch(catchBlock[0], /setDeck\(/, "the pasted decklist text is never cleared on a failed generation");

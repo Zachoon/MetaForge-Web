@@ -2,10 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 
-const [page, component, css] = await Promise.all([
+const [page, component, css, forgeSessionContext] = await Promise.all([
   readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
   readFile(new URL("../app/components/forge/imported-deck-comparison.tsx", import.meta.url), "utf8"),
   readFile(new URL("../app/components/forge/imported-deck-comparison.css", import.meta.url), "utf8"),
+  // applyForgeResult (the setChamber("forging")/laboratory/changes wiring)
+  // moved to forge-session-context.tsx during the page.tsx decomposition
+  // (Phase 4 Stage 2).
+  readFile(new URL("../app/forge-session-context.tsx", import.meta.url), "utf8"),
 ]);
 
 test("submitted-deck flow asks for the list before its format and then enters the ceremony", () => {
@@ -13,20 +17,20 @@ test("submitted-deck flow asks for the list before its format and then enters th
   const basicsPrompt = page.indexOf("2 · CONFIRM THE BASICS");
   assert.ok(deckPrompt >= 0 && basicsPrompt > deckPrompt);
   assert.match(page, /commitDirectForge\("decklist"\)/);
-  assert.match(page, /setChamber\("forging"\)/);
+  assert.match(forgeSessionContext, /setChamber\("forging"\)/);
 });
 
 test("imported results land on a truthful before-and-after comparison", () => {
   assert.match(page, /hasValidatedDeck && isImportedDeckReview && siteRail === "decklist"/);
-  assert.match(page, /nativeMasterworkContext\?\.laboratory\?\.verdict === "advance"/);
-  assert.match(page, /laboratory: nativeReport\.laboratory \|\| null/);
+  assert.match(forgeSessionContext, /nativeMasterworkContext\?\.laboratory\?\.verdict === "advance"/);
+  assert.match(forgeSessionContext, /laboratory: nativeReport\.laboratory \|\| null/);
   assert.match(component, /Your submitted list/);
   assert.match(component, /Forge proposed revision/);
   assert.match(component, /Swap station/);
   assert.match(component, /Core to retain/);
   assert.match(component, /List completion adjustments/);
-  assert.match(page, /changes\?\.added/);
-  assert.match(page, /changes\?\.trimmed/);
+  assert.match(forgeSessionContext, /changes\?\.added/);
+  assert.match(forgeSessionContext, /changes\?\.trimmed/);
   assert.match(component, /Your original list remains preserved/);
 });
 
@@ -66,7 +70,7 @@ test("printed and flavor-name rows jump to their canonical card's comparison sli
 });
 
 test("dense deck-list hover previews do not synchronously rerender for every crossed row", () => {
-  assert.match(page, /const scheduleDeckHover = useCallback/);
-  assert.match(page, /startTransition\(\(\) => setHoveredCard\(name\)\)/);
+  assert.match(forgeSessionContext, /const scheduleDeckHover = useCallback/);
+  assert.match(forgeSessionContext, /startTransition\(\(\) => setHoveredCard\(name\)\)/);
   assert.match(page, /onMouseEnter=\{\(\) => scheduleDeckHover\(row\.name\)\}/);
 });

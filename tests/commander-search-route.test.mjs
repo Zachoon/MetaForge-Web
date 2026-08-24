@@ -7,7 +7,9 @@ const root = new URL("../", import.meta.url);
 test("the Worker owns commander lookup, retries upstream failures, falls back to a second index, and caches successful searches", async () => {
   const route = await readFile(new URL("worker/commander-search.ts", root), "utf8");
   const worker = await readFile(new URL("worker/index.ts", root), "utf8");
-  const page = await readFile(new URL("app/page.tsx", root), "utf8");
+  // The commander-search fetch call itself moved to forge-session-context.tsx
+  // during the page.tsx decomposition (Phase 4 Stage 2).
+  const forgeSessionContext = await readFile(new URL("app/forge-session-context.tsx", root), "utf8");
   assert.match(route, /is:commander/);
   assert.match(route, /attempt < 2/);
   assert.match(route, /AbortSignal\.timeout\(6000\)/);
@@ -25,6 +27,6 @@ test("the Worker owns commander lookup, retries upstream failures, falls back to
   assert.doesNotMatch(route, /name:\\"\$\{safeName\}/);
   assert.match(worker, /\/api\/cards\/commanders/);
   assert.match(worker, /handleCommanderSearch/);
-  assert.match(page, /client_schema=2/);
-  assert.match(page, /cache: "no-store"/);
+  assert.match(forgeSessionContext, /client_schema=2/);
+  assert.match(forgeSessionContext, /cache: "no-store"/);
 });

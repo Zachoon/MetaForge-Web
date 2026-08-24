@@ -6,6 +6,10 @@ const page = fs.readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8"
 const css = fs.readFileSync(new URL("../app/testing-anvil.css", import.meta.url), "utf8");
 const motionCss = fs.readFileSync(new URL("../app/forge-motion.css", import.meta.url), "utf8");
 // cardPriceUsd moved to deck-row-helpers.ts during the page.tsx
+// deckPriceTotal/cheapestCardPriceUsd usage, printingOverrides application,
+// and the unpriced-fallback logic moved to forge-session-context.tsx during
+// the page.tsx decomposition (Phase 4 Stage 2).
+const forgeSessionContext = fs.readFileSync(new URL("../app/forge-session-context.tsx", import.meta.url), "utf8");
 // decomposition (Phase 4).
 const deckRowHelpers = fs.readFileSync(new URL("../app/deck-row-helpers.ts", import.meta.url), "utf8");
 
@@ -50,7 +54,7 @@ test("each deck row can be priced as foil or nonfoil independently", () => {
   assert.match(deckRowHelpers, /cardPriceUsd\s*=\s*\(fact\?:\s*CardFact,\s*foil\s*=\s*false\)/);
   assert.match(deckRowHelpers, /foil\s*\?\s*fact\?\.prices\?\.usd_foil\s*:\s*fact\?\.prices\?\.usd/);
   // The deck-wide total must recompute when foil selections change.
-  const memoDeps = page.match(/\[deckRows, cardFacts, foilCards, cheapestPrintings, printingOverrides\]/);
+  const memoDeps = forgeSessionContext.match(/\[deckRows, cardFacts, foilCards, cheapestPrintings, printingOverrides\]/);
   assert.ok(memoDeps, "expected deckPriceTotal to depend on foilCards");
 });
 
@@ -60,7 +64,7 @@ test("a deck-wide toggle can price every card at its cheapest fetched printing",
   assert.match(page, /cheapest-printings-toggle/);
   // Overrides the per-card foil selection for the total, rather than
   // stacking with it (the two are alternate pricing modes, not additive).
-  assert.match(page, /cheapestPrintings\s*\n?\s*\?\s*cheapestCardPriceUsd\(fact\)\s*\n?\s*:\s*cardPriceUsd\(fact, foilCards\.has/);
+  assert.match(forgeSessionContext, /cheapestPrintings\s*\n?\s*\?\s*cheapestCardPriceUsd\(fact\)\s*\n?\s*:\s*cardPriceUsd\(fact, foilCards\.has/);
   // The per-card foil toggle is disabled (not just visually inert) while
   // cheapest-printing mode is active, so its state can't silently drift
   // from what's actually being priced.
@@ -76,14 +80,14 @@ test("the foil toggle nests inside the deck row without invalid button-in-button
 });
 
 test("the imperative drag-reorder wiring targets the new row element, not a stale button selector", () => {
-  assert.match(page, /querySelectorAll<HTMLElement>\(".type-column>.type-column-row"\)/);
+  assert.match(forgeSessionContext, /querySelectorAll<HTMLElement>\(".type-column>.type-column-row"\)/);
   assert.doesNotMatch(page, /querySelectorAll<HTMLButtonElement>\(".type-column>button"\)/);
 });
 
 test("right-clicking a deck row opens a printing picker fetched from Scryfall's full print history", () => {
   assert.match(page, /onContextMenu/);
   assert.match(page, /printingMenu/);
-  assert.match(page, /unique=prints/);
+  assert.match(forgeSessionContext, /unique=prints/);
   assert.match(page, /printing-picker/);
 });
 
@@ -92,13 +96,13 @@ test("choosing a printing overrides only that card's prices, not the card itself
   assert.match(page, /effectivePriceFact/);
   // The override supplies alternate usd/usd_foil values on top of the
   // existing card fact — it must not replace name, type, or oracle text.
-  assert.match(page, /prices:\s*\{\s*usd:\s*override\.usd,\s*usd_foil:\s*override\.usd_foil\s*\}/);
+  assert.match(forgeSessionContext, /prices:\s*\{\s*usd:\s*override\.usd,\s*usd_foil:\s*override\.usd_foil\s*\}/);
   assert.match(page, /Use default printing/);
 });
 
 test("an unpriced preview printing automatically falls back to the cheapest priced paper printing for every user", () => {
-  assert.match(page, /card\.games\?\.includes\("paper"\)/);
-  assert.match(page, /price:\s*cheapestCardPriceUsd\(card\)/);
-  assert.match(page, /entry\.price < cheapest\.price/);
+  assert.match(forgeSessionContext, /card\.games\?\.includes\("paper"\)/);
+  assert.match(forgeSessionContext, /price:\s*cheapestCardPriceUsd\(card\)/);
+  assert.match(forgeSessionContext, /entry\.price < cheapest\.price/);
   assert.doesNotMatch(page, /if \(guestMode \|\| !deckRows\.length \|\| !Object\.keys\(cardFacts\)\.length\) return/);
 });

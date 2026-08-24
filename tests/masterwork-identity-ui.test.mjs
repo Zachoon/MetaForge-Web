@@ -29,7 +29,11 @@ test("a completed deck receives a customizable Masterwork identity", async () =>
 
 test("identity is deck-scoped local presentation state and never construction input", async () => {
   const page = await read("app/page.tsx");
-  assert.match(page, /metaforge\.masterworkIdentity\.\$\{deckId \|\| activeCommanderName \|\| chosenWork\.name\}/);
+  // masterworkIdentityKey's derivation moved to forge-session-context.tsx
+  // during the page.tsx decomposition (Phase 4 Stage 2); the localStorage
+  // write itself stayed in page.tsx's own effect.
+  const forgeSessionContext = await read("app/forge-session-context.tsx");
+  assert.match(forgeSessionContext, /metaforge\.masterworkIdentity\.\$\{deckId \|\| activeCommanderName \|\| chosenWork\.name\}/);
   assert.match(page, /localStorage\.setItem\(masterworkIdentityKey/);
   assert.doesNotMatch(page, /buildPreChoiceCoaching\([\s\S]{0,180}masterworkIdentity/);
 });
