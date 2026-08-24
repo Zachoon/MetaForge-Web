@@ -41,7 +41,10 @@ test("the mockup navigation frame is site-level rather than deck-only", async ()
   assert.doesNotMatch(page, /aria-label="Masterwork workspace"/);
   assert.doesNotMatch(page, /aria-label="Deck tools"/);
   assert.doesNotMatch(page, /setChamber\(deck\.trim\(\) \? "refine" : "commission"\)>Explore/);
-  assert.match(page, /id="deck-gallery"/);
+  // #deck-gallery's own JSX moved to the workbench chamber's own component
+  // during the page.tsx decomposition (Phase 4 Stage 4).
+  const workbenchChamber = await read("app/components/forge/workbench-chamber.tsx");
+  assert.match(workbenchChamber, /id="deck-gallery"/);
   assert.match(css, /\.forge-global-rail\{position:fixed/);
   assert.match(css, /\.forge-bar\{position:sticky/);
   assert.match(css, /\.deck-manuscript\{display:flex;flex-direction:column\}/);
@@ -94,6 +97,10 @@ test("a completed Forge lands on the plain decklist, coaching and experiments re
   const frame = await read("app/site-frame.css");
   const ceremony = await read("app/components/forge/forge-ceremony.tsx");
   const forgeSessionContext = await readCtx();
+  // The coach-brief/experiment-lab/next-step JSX moved to the workbench
+  // chamber's own component during the page.tsx decomposition (Phase 4
+  // Stage 4).
+  const workbenchChamber = await read("app/components/forge/workbench-chamber.tsx");
   assert.match(forgeSessionContext, /function landOnCompletedDecklist\(/);
   const landStart = forgeSessionContext.indexOf("function landOnCompletedDecklist(");
   const landEnd = forgeSessionContext.indexOf("\n  }\n", landStart);
@@ -102,33 +109,33 @@ test("a completed Forge lands on the plain decklist, coaching and experiments re
   assert.match(landBody, /coachBriefDetailsRef\.current\.open = false/);
   assert.match(forgeSessionContext, /enterMasterwork[\s\S]*?landOnCompletedDecklist\(\)/);
   assert.match(forgeSessionContext, /openSavedMasterwork[\s\S]*?landOnCompletedDecklist\(\)/);
-  assert.match(page, /hasValidatedDeck && siteRail !== "decklist"/);
+  assert.match(workbenchChamber, /hasValidatedDeck && siteRail !== "decklist"/);
   // The Decklist nav tab remains the one-click escape hatch to the bare
   // card grid — it must still set siteRail back to "decklist" and
   // explicitly collapse the coach brief on click, unchanged by the above.
   assert.match(page, /setSiteRail\("decklist"\); if \(coachBriefDetailsRef\.current\) coachBriefDetailsRef\.current\.open = false;/);
   // Coaching and rival experiments are reached from the decklist header by
   // explicit choice, not shown by default on landing.
-  assert.match(page, /className="conduct-experiment-cta"/);
-  assert.match(page, /Want to conduct an experiment\?/);
-  assert.match(page, /setExperimentLabOpen\(true\)/);
-  assert.match(page, /experimentLabOpen && createPortal\(/);
-  assert.match(page, /className="experiment-lab-backdrop"/);
-  assert.match(page, /className="refinement-starters-vault experiment-lab-dialog" role="dialog" aria-modal="true"/);
-  assert.doesNotMatch(page, /setSiteRail\("overview"\);\s*window\.requestAnimationFrame\(\(\) => document\.querySelector\("\.refinement-starters-vault"\)/);
-  assert.match(page, /className="next-step-cta"/);
-  assert.match(page, /This deck is done! →/);
-  const galleryAt = page.indexOf('id="deck-gallery"');
-  const mentorAt = page.indexOf("<RevisionOpinionPanel");
+  assert.match(workbenchChamber, /className="conduct-experiment-cta"/);
+  assert.match(workbenchChamber, /Want to conduct an experiment\?/);
+  assert.match(workbenchChamber, /setExperimentLabOpen\(true\)/);
+  assert.match(workbenchChamber, /experimentLabOpen && createPortal\(/);
+  assert.match(workbenchChamber, /className="experiment-lab-backdrop"/);
+  assert.match(workbenchChamber, /className="refinement-starters-vault experiment-lab-dialog" role="dialog" aria-modal="true"/);
+  assert.doesNotMatch(workbenchChamber, /setSiteRail\("overview"\);\s*window\.requestAnimationFrame\(\(\) => document\.querySelector\("\.refinement-starters-vault"\)/);
+  assert.match(workbenchChamber, /className="next-step-cta"/);
+  assert.match(workbenchChamber, /This deck is done! →/);
+  const galleryAt = workbenchChamber.indexOf('id="deck-gallery"');
+  const mentorAt = workbenchChamber.indexOf("<RevisionOpinionPanel");
   assert.ok(galleryAt > 0 && mentorAt > galleryAt, "Mentor must mount after #deck-gallery, never above the Decklist");
-  assert.doesNotMatch(page, /forge-descent-atmosphere/);
+  assert.doesNotMatch(workbenchChamber, /forge-descent-atmosphere/);
   assert.match(page, /chamber === "forging" && <ForgingChamber \/>/);
-  assert.doesNotMatch(page, /forge-heat-haze/);
-  assert.doesNotMatch(page, /setMilestoneMotion\(\{[\s\S]*?kind: "masterwork-ready"/);
+  assert.doesNotMatch(workbenchChamber, /forge-heat-haze/);
+  assert.doesNotMatch(workbenchChamber, /setMilestoneMotion\(\{[\s\S]*?kind: "masterwork-ready"/);
   assert.match(frame, /\.forge-heat-haze,/);
   assert.match(frame, /\.milestone-masterwork-ready,/);
-  assert.doesNotMatch(page, /YOUR FREE PREVIEW IS SPENT/);
-  assert.doesNotMatch(page, /Create an account to keep forging/);
+  assert.doesNotMatch(workbenchChamber, /YOUR FREE PREVIEW IS SPENT/);
+  assert.doesNotMatch(workbenchChamber, /Create an account to keep forging/);
   assert.match(frame, /:has\(\.chapter-1-active\) \.workbench-coach-stack\{display:none!important\}/);
   assert.doesNotMatch(ceremony, /processing-heat-ring/);
   assert.doesNotMatch(ceremony, /processing-index-ring/);

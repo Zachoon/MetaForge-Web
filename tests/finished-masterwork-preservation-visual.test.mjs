@@ -2,14 +2,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [page, css] = await Promise.all([
+const [page, css, workbenchChamber] = await Promise.all([
   readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
   readFile(new URL("../app/testing-anvil.css", import.meta.url), "utf8"),
+  // The post-accept-choice preservation JSX moved to the workbench
+  // chamber's own component during the page.tsx decomposition (Phase 4
+  // Stage 4).
+  readFile(new URL("../app/components/forge/workbench-chamber.tsx", import.meta.url), "utf8"),
 ]);
 
 test("a tested revision retains a deliberate preservation action", () => {
   assert.doesNotMatch(page, /className="forge-path"/);
-  assert.match(page, /This Is The One — Save as Finished Deck/);
+  assert.match(workbenchChamber, /This Is The One — Save as Finished Deck/);
   assert.match(css, /Finished Masterwork preservation/);
   assert.match(css, /READY TO SEAL/);
   assert.match(css, /MASTERWORK PRESERVED/);

@@ -24,9 +24,12 @@ test("launch funnel covers the complete visitor journey without deck contents", 
   // that page now.
   const researchPage = await source("app/research/page.tsx");
   // Most trackLaunchEvent call sites moved to forge-session-context.tsx
-  // during the page.tsx decomposition (Phase 4 Stage 2).
+  // during the page.tsx decomposition (Phase 4 Stage 2); the coach-brief's
+  // own "Prepare my next game" call site moved to the workbench chamber's
+  // own component during Stage 4.
   const forgeSessionContext = await source("app/forge-session-context.tsx");
-  const combined = `${page}\n${researchPage}\n${forgeSessionContext}`;
+  const workbenchChamber = await source("app/components/forge/workbench-chamber.tsx");
+  const combined = `${page}\n${researchPage}\n${forgeSessionContext}\n${workbenchChamber}`;
   for (const event of [
     "forge_started",
     "forge_succeeded",

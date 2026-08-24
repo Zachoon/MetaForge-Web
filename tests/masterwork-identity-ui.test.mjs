@@ -7,35 +7,40 @@ const read = (path) => readFile(new URL(path, root), "utf8");
 
 test("a completed deck receives a customizable Masterwork identity", async () => {
   const page = await read("app/page.tsx");
-  assert.match(page, /YOUR DECK/);
-  assert.match(page, /Personalize deck/);
-  assert.match(page, /Deck Identity/);
-  assert.match(page, /Deck name/);
-  assert.match(page, /masterwork-commander-medallion/);
-  assert.match(page, /masterwork-identity-marks/);
+  // The deck hero and identity-personalization JSX moved to the workbench
+  // chamber's own component during the page.tsx decomposition (Phase 4
+  // Stage 4).
+  const workbenchChamber = await read("app/components/forge/workbench-chamber.tsx");
+  assert.match(workbenchChamber, /YOUR DECK/);
+  assert.match(workbenchChamber, /Personalize deck/);
+  assert.match(workbenchChamber, /Deck Identity/);
+  assert.match(workbenchChamber, /Deck name/);
+  assert.match(workbenchChamber, /masterwork-commander-medallion/);
+  assert.match(workbenchChamber, /masterwork-identity-marks/);
   assert.match(page, /className="forge-global-rail"/);
   assert.doesNotMatch(page, /className="masterwork-shell-top"/);
   assert.doesNotMatch(page, /className="masterwork-shell-rail"/);
   assert.doesNotMatch(page, /aria-label="Masterwork workspace"/);
-  assert.match(page, /masterwork-shell-bottom/);
-  assert.match(page, /Goldfish this deck/);
-  assert.match(page, /Featured art/);
-  assert.match(page, /Stained Glass/);
-  assert.match(page, /Etched Metal/);
-  assert.match(page, /Clean Art/);
-  assert.match(page, /Focus position/);
-  assert.match(page, /Glow intensity/);
+  assert.match(workbenchChamber, /masterwork-shell-bottom/);
+  assert.match(workbenchChamber, /Goldfish this deck/);
+  assert.match(workbenchChamber, /Featured art/);
+  assert.match(workbenchChamber, /Stained Glass/);
+  assert.match(workbenchChamber, /Etched Metal/);
+  assert.match(workbenchChamber, /Clean Art/);
+  assert.match(workbenchChamber, /Focus position/);
+  assert.match(workbenchChamber, /Glow intensity/);
 });
 
 test("identity is deck-scoped local presentation state and never construction input", async () => {
-  const page = await read("app/page.tsx");
   // masterworkIdentityKey's derivation moved to forge-session-context.tsx
   // during the page.tsx decomposition (Phase 4 Stage 2); the localStorage
-  // write itself stayed in page.tsx's own effect.
+  // write itself moved to the workbench chamber's own component during
+  // Stage 4.
   const forgeSessionContext = await read("app/forge-session-context.tsx");
+  const workbenchChamber = await read("app/components/forge/workbench-chamber.tsx");
   assert.match(forgeSessionContext, /metaforge\.masterworkIdentity\.\$\{deckId \|\| activeCommanderName \|\| chosenWork\.name\}/);
-  assert.match(page, /localStorage\.setItem\(masterworkIdentityKey/);
-  assert.doesNotMatch(page, /buildPreChoiceCoaching\([\s\S]{0,180}masterworkIdentity/);
+  assert.match(workbenchChamber, /localStorage\.setItem\(masterworkIdentityKey/);
+  assert.doesNotMatch(workbenchChamber, /buildPreChoiceCoaching\([\s\S]{0,180}masterworkIdentity/);
 });
 
 test("the deck hero keeps art atmospheric and content readable", async () => {

@@ -12,11 +12,16 @@ const motionCss = fs.readFileSync(new URL("../app/forge-motion.css", import.meta
 const forgeSessionContext = fs.readFileSync(new URL("../app/forge-session-context.tsx", import.meta.url), "utf8");
 // decomposition (Phase 4).
 const deckRowHelpers = fs.readFileSync(new URL("../app/deck-row-helpers.ts", import.meta.url), "utf8");
+// The deck-row-level price/foil display (inside the deck-manuscript header)
+// moved to the workbench chamber's own component during the page.tsx
+// decomposition (Phase 4 Stage 4). The sticky deck-price-bar/printing-menu
+// (a separate UI element) has not moved yet — it stays in page.tsx.
+const workbenchChamber = fs.readFileSync(new URL("../app/components/forge/workbench-chamber.tsx", import.meta.url), "utf8");
 
 test("surfaces a persistent, real market-price total and per-card prices", () => {
   assert.match(page, /cardPriceUsd/);
   assert.match(page, /deckPriceTotal/);
-  assert.match(page, /card-row-price/);
+  assert.match(workbenchChamber, /card-row-price/);
   assert.match(page, /deck-price-bar/);
   // Cards with no known price are counted separately, never silently
   // treated as free.
@@ -48,7 +53,7 @@ test("the price bar sits below the bench dock in stacking order, not covering it
 
 test("each deck row can be priced as foil or nonfoil independently", () => {
   assert.match(page, /foilCards/);
-  assert.match(page, /card-row-foil-toggle/);
+  assert.match(workbenchChamber, /card-row-foil-toggle/);
   // cardPriceUsd must accept a foil flag and prefer that printing's price,
   // falling back to the other printing rather than reading as unpriced.
   assert.match(deckRowHelpers, /cardPriceUsd\s*=\s*\(fact\?:\s*CardFact,\s*foil\s*=\s*false\)/);
@@ -68,14 +73,14 @@ test("a deck-wide toggle can price every card at its cheapest fetched printing",
   // The per-card foil toggle is disabled (not just visually inert) while
   // cheapest-printing mode is active, so its state can't silently drift
   // from what's actually being priced.
-  assert.match(page, /disabled=\{cheapestPrintings\}/);
+  assert.match(workbenchChamber, /disabled=\{cheapestPrintings\}/);
 });
 
 test("the foil toggle nests inside the deck row without invalid button-in-button HTML", () => {
   // The row can no longer be a native <button> once it hosts a nested
   // foil-toggle button, since <button> cannot contain another <button>.
-  assert.match(page, /"type-column-row"/);
-  assert.match(page, /role="button"/);
+  assert.match(workbenchChamber, /"type-column-row"/);
+  assert.match(workbenchChamber, /role="button"/);
   assert.doesNotMatch(css, /\.type-column>button/);
 });
 

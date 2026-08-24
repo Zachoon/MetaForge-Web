@@ -25,6 +25,9 @@ const forgeSessionContext = fs.readFileSync(new URL("../app/forge-session-contex
 // glossary tips) moved to its own component during the page.tsx
 // decomposition (Phase 4 Stage 3).
 const commissionChamber = fs.readFileSync(new URL("../app/components/forge/commission-chamber.tsx", import.meta.url), "utf8");
+// The forging-progress-loader JSX moved to the workbench chamber's own
+// component during the page.tsx decomposition (Phase 4 Stage 4).
+const workbenchChamber = fs.readFileSync(new URL("../app/components/forge/workbench-chamber.tsx", import.meta.url), "utf8");
 // Bug 1B retired the separate per-candidate "native" reveal call
 // (inspectMasterwork): commitDirectForge's commander branch now makes the
 // one call that produces all three real candidates up front (mode:
@@ -123,8 +126,8 @@ test("native forging exposes visible elapsed progress and moving stages", () => 
   assert.match(page, /forgeElapsedSeconds/);
   assert.match(forgeSessionContext, /Date\.now\(\) - forgeStartedAt/);
   assert.match(forgeSessionContext, /setInterval\(updateElapsed, 250\)/);
-  assert.match(page, /METAFORGE NATIVE ENGINE/);
-  assert.match(page, /Forging three competing candidates/);
+  assert.match(workbenchChamber, /METAFORGE NATIVE ENGINE/);
+  assert.match(workbenchChamber, /Forging three competing candidates/);
   assert.match(page, /role="status"/);
 });
 

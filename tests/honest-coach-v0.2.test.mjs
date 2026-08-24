@@ -191,8 +191,12 @@ describe("Honest Coach v0.2 — unmissable + measurable", () => {
     // moved to forge-session-context.tsx during the page.tsx decomposition
     // (Phase 4 Stage 2).
     const forgeSessionContext = await readFile(new URL("app/forge-session-context.tsx", root), "utf8");
+    // The testing-layout wrapper (imported-deck-review class) moved to the
+    // workbench chamber's own component during the page.tsx decomposition
+    // (Phase 4 Stage 4).
+    const workbenchChamber = await readFile(new URL("app/components/forge/workbench-chamber.tsx", root), "utf8");
     assert.match(css, /chapter-1-active .*honest-coach-v0/);
-    assert.match(page, /imported-deck-review/);
+    assert.match(workbenchChamber, /imported-deck-review/);
     assert.match(forgeSessionContext, /\/api\/coach\/feedback/);
     assert.match(forgeSessionContext, /coach_brief_viewed/);
     assert.match(page, /HONEST_COACH_NOT_HELPFUL_REASONS/);

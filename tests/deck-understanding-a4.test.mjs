@@ -100,19 +100,21 @@ describe("Deck Understanding Reliability A4", () => {
   it("wires A4 principle and product surfaces without Brain construction imports", async () => {
     const root = new URL("../", import.meta.url);
     const principles = await readFile(new URL("docs/ENGINEERING_PRINCIPLES.md", root), "utf8");
-    const page = await readFile(new URL("app/page.tsx", root), "utf8");
     // strategyVsSystem/deepForgeEmpty (the systems-chamber and interaction-
     // graph empty states) moved to /research along with the rest of the
-    // Deep Forge vault.
+    // Deep Forge vault. deckUnderstanding's own JSX moved to the workbench
+    // chamber's own component during the page.tsx decomposition (Phase 4
+    // Stage 4).
     const researchPage = await readFile(new URL("app/research/page.tsx", root), "utf8");
+    const workbenchChamber = await readFile(new URL("app/components/forge/workbench-chamber.tsx", root), "utf8");
     const understanding = await readFile(new URL("app/deck-understanding.mjs", root), "utf8");
     assert.match(principles, /Unknown is not absent/);
-    assert.match(page, /deckUnderstanding/);
+    assert.match(workbenchChamber, /deckUnderstanding/);
     // System verification stays available to Deep Forge; coach default must not
     // headline "WHAT MAKES IT RUN" / system-count jargon.
     assert.match(researchPage, /strategyVsSystem|deepForgeEmpty/);
-    assert.match(page, /How do you know\? → Deep Forge evidence/);
-    assert.doesNotMatch(page, /WHAT MAKES IT RUN/);
+    assert.match(workbenchChamber, /How do you know\? → Deep Forge evidence/);
+    assert.doesNotMatch(workbenchChamber, /WHAT MAKES IT RUN/);
     assert.doesNotMatch(understanding, /native-masterwork-engine|prospective-slot-delta|construction-phase/);
   });
 });

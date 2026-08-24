@@ -20,6 +20,7 @@ const [
   siteFrameCss,
   forgingChamber,
   commissionChamber,
+  workbenchChamber,
 ] = await Promise.all([
   read("app/page.tsx"),
   read("app/forge-polish.css"),
@@ -39,12 +40,15 @@ const [
   // The commission/refine chamber's JSX moved to its own component during
   // the page.tsx decomposition (Phase 4 Stage 3).
   read("app/components/forge/commission-chamber.tsx"),
+  // The workbench chamber's JSX moved to its own component during the
+  // page.tsx decomposition (Phase 4 Stage 4).
+  read("app/components/forge/workbench-chamber.tsx"),
 ]);
 
 test("ceremony, footer, and card-mold rail slot name occupancy from commander oracle", () => {
   assert.match(forgingChamber, /className="ceremony-occupancy"/);
   assert.match(forgingChamber, /Named from commander oracle while the 99 is still being forged/);
-  assert.match(page, /className="masterwork-footer-occupancy"/);
+  assert.match(workbenchChamber, /className="masterwork-footer-occupancy"/);
   assert.match(page, /className="forge-card-mold-occupancy"/);
   assert.match(page, /className="forge-card-mold-pair"/);
   assert.match(page, /explainPairsForCardAsMentor\(\{/);
@@ -65,7 +69,7 @@ test("proving grounds and revision opinion keep occupancy separate from proof", 
   assert.match(proving, /occupancyEngines = \[\]/);
   assert.match(proving, /This trial does not verify occupancy/);
   assert.match(provingCss, /\.proving-occupancy/);
-  assert.match(page, /occupancyEngines=\{coachOccupancyLabels\}/);
+  assert.match(workbenchChamber, /occupancyEngines=\{coachOccupancyLabels\}/);
   assert.match(opinion, /That is not this revision's Mentor stance/);
   assert.match(opinion, /never invents a question from a card or commander name/);
   assert.match(opinionCss, /\.revision-opinion-occupancy/);
@@ -75,9 +79,9 @@ test("Share and export stay decklist-only — occupancy is not a list comment", 
   // Playtest bugfix: Share/Copy now route forgedDeck through
   // formatDeckForArenaExport (front-face-only names for MTG Arena import),
   // still the plain decklist with no occupancy commentary added.
-  assert.match(page, /navigator\.clipboard\.writeText\(formatDeckForArenaExport\(forgedDeck\)\)/);
-  assert.doesNotMatch(page, /# Occupancy/);
-  assert.doesNotMatch(page, /forgedDeck.*occupancy/i);
+  assert.match(workbenchChamber, /navigator\.clipboard\.writeText\(formatDeckForArenaExport\(forgedDeck\)\)/);
+  assert.doesNotMatch(workbenchChamber, /# Occupancy/);
+  assert.doesNotMatch(workbenchChamber, /forgedDeck.*occupancy/i);
 });
 
 test("Deep Forge dossier names occupancy without calling it research", () => {
@@ -90,23 +94,23 @@ test("Deep Forge dossier names occupancy without calling it research", () => {
 
 
 test("stats bar and guest save gate name occupancy without treating it as proof", () => {
-  assert.match(page, /className="masterwork-stats-occupancy"/);
+  assert.match(workbenchChamber, /className="masterwork-stats-occupancy"/);
   assert.match(page, /className="guest-result-occupancy"/);
   assert.match(anvil, /\.masterwork-stats-occupancy/);
   assert.match(globalsCss, /\.guest-result-occupancy/);
 });
 
 test("coach brief, experiments, graph, and post-accept keep occupancy off the verified-system path", () => {
-  assert.match(page, /className="honest-coach-occupancy"/);
-  assert.match(page, /Named from commander oracle, not a verified system map/);
-  assert.match(page, /className="experiment-occupancy"/);
-  assert.match(page, /These experiments do not reopen occupancy/);
+  assert.match(workbenchChamber, /className="honest-coach-occupancy"/);
+  assert.match(workbenchChamber, /Named from commander oracle, not a verified system map/);
+  assert.match(workbenchChamber, /className="experiment-occupancy"/);
+  assert.match(workbenchChamber, /These experiments do not reopen occupancy/);
   // The interaction graph moved to /research with the rest of the Deep
   // Forge vault.
   assert.match(researchPage, /className="interaction-graph-occupancy"/);
   assert.match(researchPage, /Named from commander oracle, not from this graph/);
-  assert.match(page, /className="post-accept-occupancy"/);
-  assert.match(page, /not from this revision/);
+  assert.match(workbenchChamber, /className="post-accept-occupancy"/);
+  assert.match(workbenchChamber, /not from this revision/);
   assert.match(anvil, /\.honest-coach-occupancy/);
 });
 

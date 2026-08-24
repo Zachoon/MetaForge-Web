@@ -45,7 +45,9 @@ test("classifies the live match-recording UI's own preset signal button, not jus
 
 test("the live recorder exposes explicit decision evidence without treating it as construction evidence", async () => {
   const { readFile } = await import("node:fs/promises");
-  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  // This recorder's JSX moved to the workbench chamber's own component
+  // during the page.tsx decomposition (Phase 4 Stage 4).
+  const page = await readFile(new URL("../app/components/forge/workbench-chamber.tsx", import.meta.url), "utf8");
   assert.match(page, /My mulligan decision mattered/);
   assert.match(page, /I found a sequencing mistake/);
   assert.deepEqual(classifyPlayerSignal("My mulligan decision mattered"), []);

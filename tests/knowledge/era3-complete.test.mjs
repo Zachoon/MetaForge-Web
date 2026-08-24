@@ -34,7 +34,10 @@ describe("Era 3 Complete — Speak like a strategist", () => {
     // (Phase 4 Stages 2-3).
     const forgeSessionContext = readFileSync(join(root, "app/forge-session-context.tsx"), "utf8");
     const masterworksChamber = readFileSync(join(root, "app/components/forge/masterworks-chamber.tsx"), "utf8");
-    const combined = `${page}\n${researchPage}\n${forgeSessionContext}\n${masterworksChamber}`;
+    // The workbench chamber's own inspect surfaces moved to its own
+    // component during the page.tsx decomposition (Phase 4 Stage 4).
+    const workbenchChamber = readFileSync(join(root, "app/components/forge/workbench-chamber.tsx"), "utf8");
+    const combined = `${page}\n${researchPage}\n${forgeSessionContext}\n${masterworksChamber}\n${workbenchChamber}`;
     const charter = readFileSync(join(root, "docs/ERA3_COMPLETE.md"), "utf8");
     assert.match(charter, /engineering complete/i);
     assert.match(charter, /Founder Confirmed is not claimed/i);

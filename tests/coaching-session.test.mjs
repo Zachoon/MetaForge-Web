@@ -39,16 +39,17 @@ test("repeated construction feedback is translated into plain language", () => {
 });
 
 test("the coaching return path is a three-tap check-in and accepts a server-validated generation", () => {
-  const page = fs.readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
   const era = fs.readFileSync(new URL("../app/proving-grounds-era.tsx", import.meta.url), "utf8");
   // fieldTestResult's fallback moved to forge-session-context.tsx during the
-  // page.tsx decomposition (Phase 4 Stage 2); the deckIntegrity JSX check stayed.
+  // page.tsx decomposition (Phase 4 Stage 2); the deckIntegrity JSX check
+  // moved to the workbench chamber's own component during Stage 4.
   const forgeSessionContext = fs.readFileSync(new URL("../app/forge-session-context.tsx", import.meta.url), "utf8");
-  assert.match(page, /deckIntegrity\.passed \|\| Boolean\(nativeMasterworkContext\?\.generationId\)/);
+  const workbenchChamber = fs.readFileSync(new URL("../app/components/forge/workbench-chamber.tsx", import.meta.url), "utf8");
+  assert.match(workbenchChamber, /deckIntegrity\.passed \|\| Boolean\(nativeMasterworkContext\?\.generationId\)/);
   assert.match(forgeSessionContext, /fieldTestResult \|\| "not-recorded"/);
   assert.match(era, /Three taps\. Keep the memory fresh/);
   assert.match(era, /Did the issue appear\?/);
   assert.match(era, /How did the deck handle that moment\?/);
   assert.match(era, /How did the deck feel overall\?/);
-  assert.doesNotMatch(page, /One tap\. No match report or essay required/);
+  assert.doesNotMatch(workbenchChamber, /One tap\. No match report or essay required/);
 });

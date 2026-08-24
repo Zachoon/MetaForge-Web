@@ -36,6 +36,10 @@ describe("Tabletop Matchup lens — answers, not highlights", () => {
     const tabletop = readFileSync(join(root, "app/tabletop.tsx"), "utf8");
     const css = readFileSync(join(root, "app/tabletop.css"), "utf8");
     const siteFrameCss = readFileSync(join(root, "app/site-frame.css"), "utf8");
+    // The <Tabletop onMatchupContext=...> mount moved to the workbench
+    // chamber's own component during the page.tsx decomposition (Phase 4
+    // Stage 4).
+    const workbenchChamber = readFileSync(join(root, "app/components/forge/workbench-chamber.tsx"), "utf8");
 
     assert.match(tabletop, /export function getMatchupCardAdvice/);
     assert.match(tabletop, /tabletop-matchup-card-coach/);
@@ -45,7 +49,7 @@ describe("Tabletop Matchup lens — answers, not highlights", () => {
     assert.match(tabletop, /Secondary this matchup/);
     assert.doesNotMatch(tabletop, /highlights the packages most likely/);
 
-    assert.match(page, /onMatchupContext/);
+    assert.match(workbenchChamber, /onMatchupContext/);
     assert.match(page, /forge-card-mold-matchup/);
     assert.match(page, /forge-card-mold-reasons/);
     assert.match(css, /\.tabletop-matchup-card-coach\b/);

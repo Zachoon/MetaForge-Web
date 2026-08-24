@@ -30,6 +30,9 @@ import { readFile } from "node:fs/promises";
 
 // Source-contract checks should not depend on the host editor's newline style.
 const page = (await readFile(new URL("../app/page.tsx", import.meta.url), "utf8")).replace(/\r\n/g, "\n");
+// The deckIntegrity issues footer moved to the workbench chamber's own
+// component during the page.tsx decomposition (Phase 4 Stage 4).
+const workbenchChamber = (await readFile(new URL("../app/components/forge/workbench-chamber.tsx", import.meta.url), "utf8")).replace(/\r\n/g, "\n");
 // recommendReplacements/hasValidatedDeck/setForgeGenerationError/stageDeckCard/
 // forgeMultiRefill/applyMultiRefillPackage moved to forge-session-context.tsx
 // during the page.tsx decomposition (Phase 4 Stage 2).
@@ -47,7 +50,7 @@ test("repairDeckIntegrity no longer exists in any form", () => {
 });
 
 test("the deck-integrity issue list is preserved, with an honest pointer to manual editing instead of the dead button", () => {
-  const block = page.match(/\{!deckIntegrity\.checking && deckIntegrity\.issues\.length > 0 && \([\s\S]*?deck-integrity-manual-note[\s\S]*?<\/p>/)?.[0];
+  const block = workbenchChamber.match(/\{!deckIntegrity\.checking && deckIntegrity\.issues\.length > 0 && \([\s\S]*?deck-integrity-manual-note[\s\S]*?<\/p>/)?.[0];
   assert.ok(block, "expected the deckIntegrity issues footer block");
   assert.match(block, /<ul>\{deckIntegrity\.issues\.map/, "the real, honest diagnostic list must remain");
   assert.match(block, /Automatic repair isn&rsquo;t available/, "must say plainly that no automatic repair exists");

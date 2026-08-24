@@ -10,6 +10,9 @@ const page = fs.readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8"
 const forgeSessionContext = fs.readFileSync(new URL("../app/forge-session-context.tsx", import.meta.url), "utf8");
 // (Phase 4).
 const forgeTypes = fs.readFileSync(new URL("../app/forge-types.ts", import.meta.url), "utf8");
+// The workbench's own keep-or-refine post-accept-choice JSX moved to its
+// own component during the page.tsx decomposition (Phase 4 Stage 4).
+const workbenchChamber = fs.readFileSync(new URL("../app/components/forge/workbench-chamber.tsx", import.meta.url), "utf8");
 
 test("finishing a Masterwork is a distinct, reversible action from delete", () => {
   assert.match(page, /import \{ updateFamily, [^}]*\} from "\.\/deck-bench\.mjs";/);
@@ -31,8 +34,8 @@ test("a save never silently un-finishes an already-archived Masterwork", () => {
 });
 
 test("the workbench offers a keep-or-refine decision on the open deck", () => {
-  assert.match(page, /Save as Finished Deck/);
-  assert.match(page, /Return to the Forge/);
+  assert.match(workbenchChamber, /Save as Finished Deck/);
+  assert.match(workbenchChamber, /Return to the Forge/);
   assert.match(forgeSessionContext, /currentFamilyArchived = Boolean/);
 });
 

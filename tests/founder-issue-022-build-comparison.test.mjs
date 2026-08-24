@@ -171,8 +171,10 @@ describe("Founder Issue #022 — Pre-Choice Coaching", () => {
       readFileSync(join(root, "app/page.tsx"), "utf8"),
       readFileSync(join(root, "app/components/forge/philosophy-compare.tsx"), "utf8"),
       // The masterworks chamber's JSX moved to its own component during
-      // the page.tsx decomposition (Phase 4 Stage 3).
+      // the page.tsx decomposition (Phase 4 Stage 3). The workbench
+      // chamber's own "How do you know?" link moved during Stage 4.
       readFileSync(join(root, "app/components/forge/masterworks-chamber.tsx"), "utf8"),
+      readFileSync(join(root, "app/components/forge/workbench-chamber.tsx"), "utf8"),
     ].join("\n");
     const polish = readFileSync(join(root, "app/forge-polish.css"), "utf8");
     const anvil = readFileSync(join(root, "app/testing-anvil.css"), "utf8");

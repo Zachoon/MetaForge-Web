@@ -296,9 +296,12 @@ test("adds useful structural analysis to a public deck report", async () => {
   assert.deepEqual(await direct.json(), { tracked: true });
 
   const pageSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
-  assert.match(pageSource, /PUBLIC DECK REPORT · PREVIEW/);
-  assert.match(pageSource, /Keep private/);
-  assert.match(pageSource, /Publish this report/);
+  // The publish-preview prompt JSX moved to the workbench chamber's own
+  // component during the page.tsx decomposition (Phase 4 Stage 4).
+  const workbenchChamber = await readFile(new URL("../app/components/forge/workbench-chamber.tsx", import.meta.url), "utf8");
+  assert.match(workbenchChamber, /PUBLIC DECK REPORT · PREVIEW/);
+  assert.match(workbenchChamber, /Keep private/);
+  assert.match(workbenchChamber, /Publish this report/);
   assert.match(pageSource, /unpublishPublicDeckReport/);
 });
 

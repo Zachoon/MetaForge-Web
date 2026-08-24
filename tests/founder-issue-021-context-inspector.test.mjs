@@ -81,7 +81,8 @@ describe("Founder Issue #021 — context-preserving card inspection", () => {
     // honest about where each surface actually lives post-move.
     const forgeSessionContext = readFileSync(join(root, "app/forge-session-context.tsx"), "utf8");
     const masterworksChamber = readFileSync(join(root, "app/components/forge/masterworks-chamber.tsx"), "utf8");
-    const combined = `${page}\n${researchPage}\n${forgeSessionContext}\n${masterworksChamber}`;
+    const workbenchChamber = readFileSync(join(root, "app/components/forge/workbench-chamber.tsx"), "utf8");
+    const combined = `${page}\n${researchPage}\n${forgeSessionContext}\n${masterworksChamber}\n${workbenchChamber}`;
     assert.ok(ERA3_CARD_INSPECT_SURFACES.length >= 15);
     for (const surface of ERA3_CARD_INSPECT_SURFACES) {
       assert.match(

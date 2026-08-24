@@ -2,15 +2,17 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [page, css] = await Promise.all([
-  readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+const [css, workbenchChamber] = await Promise.all([
   readFile(new URL("../app/testing-anvil.css", import.meta.url), "utf8"),
+  // This bench's JSX moved to the workbench chamber's own component during
+  // the page.tsx decomposition (Phase 4 Stage 4).
+  readFile(new URL("../app/components/forge/workbench-chamber.tsx", import.meta.url), "utf8"),
 ]);
 
 test("Chapter II presents one pressure point and three controlled revisions", () => {
-  assert.match(page, /DECK STRESS LAB · CONTROLLED TEST/);
-  assert.match(page, /Show three one-card tests/);
-  assert.match(page, /Create revision/);
+  assert.match(workbenchChamber, /DECK STRESS LAB · CONTROLLED TEST/);
+  assert.match(workbenchChamber, /Show three one-card tests/);
+  assert.match(workbenchChamber, /Create revision/);
   assert.match(css, /Chapter II experiment bench/);
   assert.match(css, /counter-reset:controlled-revision/);
   assert.match(css, /content:"CONTROLLED TEST"/);

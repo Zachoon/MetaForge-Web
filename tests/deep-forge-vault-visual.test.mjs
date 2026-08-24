@@ -2,11 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [page, researchPage, css, dossier] = await Promise.all([
-  readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+const [researchPage, css, dossier, workbenchChamber] = await Promise.all([
   readFile(new URL("../app/research/page.tsx", import.meta.url), "utf8"),
   readFile(new URL("../app/testing-anvil.css", import.meta.url), "utf8"),
   readFile(new URL("../app/components/forge/deep-forge-dossier.tsx", import.meta.url), "utf8"),
+  // The "How do you know?" teaser link moved to the workbench chamber's
+  // own component during the page.tsx decomposition (Phase 4 Stage 4).
+  readFile(new URL("../app/components/forge/workbench-chamber.tsx", import.meta.url), "utf8"),
 ]);
 
 // The Deep Forge vault itself (per-system evidence, structural
@@ -21,8 +23,8 @@ test("Deep Forge remains an optional intelligence vault, now on /research", () =
   assert.match(researchPage, /<DeepForgeDossier/);
   assert.match(dossier, /What that could mean for this deck/);
   assert.match(dossier, /See the research evidence/);
-  assert.match(page, /How do you know\? → Deep Forge evidence/);
-  assert.match(page, /\/research\?deckId=/);
+  assert.match(workbenchChamber, /How do you know\? → Deep Forge evidence/);
+  assert.match(workbenchChamber, /\/research\?deckId=/);
   assert.match(css, /Chapter IV intelligence vault/);
   assert.match(css, /SEALED INSTRUMENT CHAMBER/);
   assert.match(css, /INSTRUMENT CHAMBER OPEN/);

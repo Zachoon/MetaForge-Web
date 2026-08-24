@@ -117,8 +117,10 @@ test("a failed guest generation resets the Turnstile widget so the retry gets a 
 // deck — a worse experience than failing before the click ever did
 // anything. Both triggers must refuse to fire without a live token.
 test("the Forge trigger (awaken) and its retry are both disabled in guest mode until a live Turnstile token exists", async () => {
-  const source = await read("app/page.tsx");
   const commissionChamber = await readCommissionChamber();
+  // The failure-state retry block moved to the workbench chamber's own
+  // component during the page.tsx decomposition (Phase 4 Stage 4).
+  const workbenchChamber = await read("app/components/forge/workbench-chamber.tsx");
   const awakenBlock = commissionChamber.match(/className="awaken-button"[\s\S]*?<\/button>/)?.[0];
   assert.ok(awakenBlock, "expected to find the awaken-button block");
   assert.match(awakenBlock, /\(guestMode && !turnstileToken\)/, "awaken must be disabled without a live guest token");
@@ -128,7 +130,7 @@ test("the Forge trigger (awaken) and its retry are both disabled in guest mode u
     "the button's own status text must explain why it's blocked, not just go dark",
   );
 
-  const retryBlock = source.match(/THE METAL DID NOT SET[\s\S]*?Strike the Anvil Again/)?.[0];
+  const retryBlock = workbenchChamber.match(/THE METAL DID NOT SET[\s\S]*?Strike the Anvil Again/)?.[0];
   assert.ok(retryBlock, "expected to find the failure-state retry block");
   assert.match(retryBlock, /disabled=\{guestMode && !turnstileToken\}/, "retry must not be clickable without a live guest token");
   assert.match(
@@ -270,7 +272,9 @@ function forgeFailureBranches(source) {
 }
 
 test("the failure UI renders a distinct, non-contradictory branch per error code", async () => {
-  const source = await read("app/page.tsx");
+  // The failure-branch JSX moved to the workbench chamber's own component
+  // during the page.tsx decomposition (Phase 4 Stage 4).
+  const source = await read("app/components/forge/workbench-chamber.tsx");
   const { alreadyUsed, network, retryable } = forgeFailureBranches(source);
 
   assert.match(alreadyUsed, /already running/);
@@ -294,7 +298,7 @@ test("the failure UI renders a distinct, non-contradictory branch per error code
 // the same state — the two claims directly contradict each other and that
 // contradiction is what made the failure unreadable for weeks.
 test("regression: a NETWORK_RATE_LIMITED state can never render both the old contradictory claims at once", async () => {
-  const source = await read("app/page.tsx");
+  const source = await read("app/components/forge/workbench-chamber.tsx");
   const { network } = forgeFailureBranches(source);
   assert.doesNotMatch(network, /has used its preview Forge for now/);
   assert.doesNotMatch(network, /Complete the verification above, then try again/);

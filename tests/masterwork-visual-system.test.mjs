@@ -15,6 +15,9 @@ const forgeTypes = fs.readFileSync(new URL("../app/forge-types.ts", import.meta.
 // forge-session-context.tsx during the page.tsx decomposition (Phase 4 Stage 2).
 const forgeSessionContext = fs.readFileSync(new URL("../app/forge-session-context.tsx", import.meta.url), "utf8");
 const benchCss = fs.readFileSync(new URL("../app/deck-bench-dock.css", import.meta.url), "utf8");
+// The workbench's own sigil/milestone/match-recorder JSX moved to its own
+// component during the page.tsx decomposition (Phase 4 Stage 4).
+const workbenchChamber = fs.readFileSync(new URL("../app/components/forge/workbench-chamber.tsx", import.meta.url), "utf8");
 
 // Bug 1B retired the templated sealed/revealed MasterworkCard component
 // entirely: the masterworks chamber now maps the engine's own three real,
@@ -51,14 +54,14 @@ test("the visual system stylesheet is actually imported", () => {
 test("the workbench sigil is driven by the deterministic resolver, not invented per render", () => {
   assert.match(page, /import \{ resolveMasterworkVisualProfile \} from "\.\/masterwork-visual-profile\.mjs";/);
   assert.match(forgeSessionContext, /masterworkVisualProfile = useMemo/);
-  assert.match(page, /data-evolved={masterworkVisualProfile\.evolved}/);
+  assert.match(workbenchChamber, /data-evolved={masterworkVisualProfile\.evolved}/);
 });
 
 test("major player milestones use choreographed sequences while reduced motion stays quiet", () => {
   assert.match(forgeTypes, /type MilestoneMotion/);
   assert.match(page, /className={`forge-milestone-motion milestone-\$\{milestoneMotion\.kind\}`}/);
-  assert.doesNotMatch(page, /setMilestoneMotion\(\{[\s\S]*?kind: "masterwork-ready"/);
-  assert.match(page, /kind: "experiment-chosen"/);
+  assert.doesNotMatch(workbenchChamber, /setMilestoneMotion\(\{[\s\S]*?kind: "masterwork-ready"/);
+  assert.match(workbenchChamber, /kind: "experiment-chosen"/);
   assert.match(forgeSessionContext, /kind: "revision-accepted"/);
   assert.match(motionCss, /\.milestone-shutter/);
   assert.match(motionCss, /\.milestone-smoke/);
@@ -72,7 +75,7 @@ test("the workbench replaces the long Forge Path with three task-focused destina
   assert.doesNotMatch(page, /YOUR FORGE PATH/);
   assert.match(page, /LivingWorkbench/);
   assert.match(page, /activeForgeChapter.*1 \| 2 \| 5/);
-  assert.match(page, /id="match-evidence"/);
+  assert.match(workbenchChamber, /id="match-evidence"/);
 });
 
 test("the Private Bench reads as a living archive instead of a plain saved-deck list", () => {
@@ -88,10 +91,10 @@ test("the Private Bench reads as a living archive instead of a plain saved-deck 
 
 test("recording a match is a bounded three-step evidence ritual", () => {
   assert.match(page, /pendingMatchResult/);
-  assert.match(page, /STEP 1 · THE RESULT/);
-  assert.match(page, /STEP 2 · WHAT DID YOU FACE/);
-  assert.match(page, /STEP 3 · WHAT WAS THE CLEAREST LESSON/);
-  assert.match(page, /No single lesson isolated/);
+  assert.match(workbenchChamber, /STEP 1 · THE RESULT/);
+  assert.match(workbenchChamber, /STEP 2 · WHAT DID YOU FACE/);
+  assert.match(workbenchChamber, /STEP 3 · WHAT WAS THE CLEAREST LESSON/);
+  assert.match(workbenchChamber, /No single lesson isolated/);
   assert.match(forgeSessionContext, /kind: "evidence-recorded"/);
   assert.match(motionCss, /\.milestone-evidence-recorded/);
 });

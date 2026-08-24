@@ -48,7 +48,10 @@ test("entering Playtest goes straight to goldfishing an opening hand, not a visu
   // stop on every Playtest entry. Per direct user feedback, it's now
   // reached only by choice, via Tabletop's own lens tabs or the "← Review
   // deck" link from the hand lens — never the default landing.
-  const page = await read("app/page.tsx");
+  // The <Tabletop key="goldfish-tabletop" ...> mount moved to the workbench
+  // chamber's own component during the page.tsx decomposition (Phase 4
+  // Stage 4).
+  const page = await read("app/components/forge/workbench-chamber.tsx");
   assert.match(page, /key="goldfish-tabletop"[\s\S]*?initialLens="hand"/);
   const tabletop = await read("app/tabletop.tsx");
   assert.match(tabletop, /Review deck/);

@@ -17,7 +17,9 @@ test("the tabletop opens on a card-type deck review before goldfish hands", asyn
 
 test("mulligan decisions emit observation-only evidence", async () => {
   const source = await read("app/tabletop.tsx");
-  const page = await read("app/page.tsx");
+  // The onMulliganDecision handler moved to the workbench chamber's own
+  // component during the page.tsx decomposition (Phase 4 Stage 4).
+  const page = await read("app/components/forge/workbench-chamber.tsx");
   assert.match(source, /onMulliganDecision\?\./);
   assert.match(page, /mulligan_coach_decision/);
   assert.match(page, /writesToBrain: false/);

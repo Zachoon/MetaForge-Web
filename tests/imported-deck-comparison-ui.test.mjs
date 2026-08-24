@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 
-const [page, component, css, forgeSessionContext, commissionChamber] = await Promise.all([
+const [page, component, css, forgeSessionContext, commissionChamber, workbenchChamber] = await Promise.all([
   readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
   readFile(new URL("../app/components/forge/imported-deck-comparison.tsx", import.meta.url), "utf8"),
   readFile(new URL("../app/components/forge/imported-deck-comparison.css", import.meta.url), "utf8"),
@@ -13,13 +13,16 @@ const [page, component, css, forgeSessionContext, commissionChamber] = await Pro
   // The commission/refine chamber's JSX moved to its own component during
   // the page.tsx decomposition (Phase 4 Stage 3).
   readFile(new URL("../app/components/forge/commission-chamber.tsx", import.meta.url), "utf8"),
+  // The workbench chamber's own comparison-mount call site moved to its
+  // own component during the page.tsx decomposition (Phase 4 Stage 4).
+  readFile(new URL("../app/components/forge/workbench-chamber.tsx", import.meta.url), "utf8"),
 ]);
 
 test("submitted-deck flow asks for the list before its format and then enters the ceremony", () => {
   const deckPrompt = commissionChamber.indexOf("1 · YOUR CURRENT DECKLIST");
   const basicsPrompt = commissionChamber.indexOf("2 · CONFIRM THE BASICS");
   assert.ok(deckPrompt >= 0 && basicsPrompt > deckPrompt);
-  assert.match(page, /commitDirectForge\("decklist"\)/);
+  assert.match(workbenchChamber, /commitDirectForge\("decklist"\)/);
   assert.match(forgeSessionContext, /setChamber\("forging"\)/);
 });
 
@@ -69,11 +72,11 @@ test("printed and flavor-name rows jump to their canonical card's comparison sli
   assert.match(component, /normalizedAliases\.get\(key\(name\)\) \|\| matchKey\(name\)/);
   assert.match(component, /jumpable\.has\(identityKey\(row\.name\)\)/);
   assert.match(component, /swapIndexByCard\.get\(identityKey\(name\)\)/);
-  assert.match(page, /identityAliases=\{nativeMasterworkContext\.identityAliases\}/);
+  assert.match(workbenchChamber, /identityAliases=\{nativeMasterworkContext\.identityAliases\}/);
 });
 
 test("dense deck-list hover previews do not synchronously rerender for every crossed row", () => {
   assert.match(forgeSessionContext, /const scheduleDeckHover = useCallback/);
   assert.match(forgeSessionContext, /startTransition\(\(\) => setHoveredCard\(name\)\)/);
-  assert.match(page, /onMouseEnter=\{\(\) => scheduleDeckHover\(row\.name\)\}/);
+  assert.match(workbenchChamber, /onMouseEnter=\{\(\) => scheduleDeckHover\(row\.name\)\}/);
 });

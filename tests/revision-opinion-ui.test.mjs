@@ -7,6 +7,9 @@ const component = await readFile(new URL("../app/components/forge/revision-opini
 const css = await readFile(new URL("../app/components/forge/revision-opinion.css", import.meta.url), "utf8");
 const docs = await readFile(new URL("../docs/OPINION_ENGINE.md", import.meta.url), "utf8");
 const globals = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+// RevisionOpinionPanel's own mount props moved to the workbench chamber's
+// own component during the page.tsx decomposition (Phase 4 Stage 4).
+const workbenchChamber = await readFile(new URL("../app/components/forge/workbench-chamber.tsx", import.meta.url), "utf8");
 
 test("Opinion Engine v0.3 Founder Confirmed stamp is recorded", () => {
   assert.match(docs, /v0\.3 \*\*Founder Confirmed\*\*/);
@@ -16,11 +19,11 @@ test("Opinion Engine v0.3 Founder Confirmed stamp is recorded", () => {
 test("player Mentor surface mounts on the exact-revision coach path", () => {
   assert.match(page, /RevisionOpinionPanel/);
   assert.match(page, /from "\.\/components\/forge\/revision-opinion"/);
-  assert.match(page, /signedIn=\{!guestMode\}/);
-  assert.match(page, /familyId=\{deckId \|\| null\}/);
-  assert.match(page, /fingerprint=\{/);
-  assert.doesNotMatch(page, /opinionKey:\s*["'`]/);
-  assert.doesNotMatch(page, /opinionKey=\{/);
+  assert.match(workbenchChamber, /signedIn=\{!guestMode\}/);
+  assert.match(workbenchChamber, /familyId=\{deckId \|\| null\}/);
+  assert.match(workbenchChamber, /fingerprint=\{/);
+  assert.doesNotMatch(workbenchChamber, /opinionKey:\s*["'`]/);
+  assert.doesNotMatch(workbenchChamber, /opinionKey=\{/);
 });
 
 test("RevisionOpinionPanel consumes server eligibility and Mentor presentation fields", () => {

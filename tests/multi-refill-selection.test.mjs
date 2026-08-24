@@ -9,19 +9,23 @@ const researchSource = await readFile(new URL("../app/research/page.tsx", import
 // forgeMultiRefill's request-building moved to forge-session-context.tsx
 // during the page.tsx decomposition (Phase 4 Stage 2).
 const forgeSessionContext = await readFile(new URL("../app/forge-session-context.tsx", import.meta.url), "utf8");
+// The multi-refill selection/comparison JSX moved to the workbench
+// chamber's own component during the page.tsx decomposition (Phase 4
+// Stage 4).
+const workbenchChamber = await readFile(new URL("../app/components/forge/workbench-chamber.tsx", import.meta.url), "utf8");
 
 test("multi-slot experiments expose a real card-selection mode directly in the deck", () => {
   assert.match(source, /multiRefillSelecting/);
-  assert.match(source, /Choose cards to replace/);
-  assert.match(source, /card-row-refill-toggle/);
-  assert.match(source, /aria-pressed=\{refillSelected\}/);
-  assert.match(source, /else next\[row\.name\] = row\.quantity/);
+  assert.match(workbenchChamber, /Choose cards to replace/);
+  assert.match(workbenchChamber, /card-row-refill-toggle/);
+  assert.match(workbenchChamber, /aria-pressed=\{refillSelected\}/);
+  assert.match(workbenchChamber, /else next\[row\.name\] = row\.quantity/);
 });
 
 test("selected cards become one explicit multi-refill request and remain excluded", () => {
   assert.match(forgeSessionContext, /cuts: Object\.entries\(refillCuts\)/);
-  assert.match(source, /Compare replacement groups/);
-  assert.match(source, /Selected cards will stay out of every suggested replacement group/);
+  assert.match(workbenchChamber, /Compare replacement groups/);
+  assert.match(workbenchChamber, /Selected cards will stay out of every suggested replacement group/);
   assert.match(source, /applyMultiRefillPackage/);
 });
 

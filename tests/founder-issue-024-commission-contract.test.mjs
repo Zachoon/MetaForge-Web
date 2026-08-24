@@ -197,7 +197,7 @@ describe("Founder Issue #024 — Commission Contract", () => {
     assert.match(researchPage, /WHAT STILL NEEDS WORK|Full commission breakdown/);
     assert.match(page, /buildCommissionContract/);
     assert.match(researchPage, /commissionContract/);
-    assert.match(page, /commission-verdict/);
+    assert.match(masterworksChamber, /commission-verdict/);
     assert.match(css, /\.commission-verdict\b/);
     assert.match(css, /\.commission-built-list\b/);
   });

@@ -13,6 +13,9 @@ import { readFile } from "node:fs/promises";
 // surfaces Phase 1 explicitly excludes, plus the card inspector's own
 // preference/fallback and the disclosure gating.
 const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+// The affiliate-disclosure paragraph moved to the workbench chamber's own
+// component during the page.tsx decomposition (Phase 4 Stage 4).
+const workbenchChamber = await readFile(new URL("../app/components/forge/workbench-chamber.tsx", import.meta.url), "utf8");
 // inspectorPurchaseLink's derivation moved to forge-session-context.tsx
 // during the page.tsx decomposition (Phase 4 Stage 2).
 const forgeSessionContext = await readFile(new URL("../app/forge-session-context.tsx", import.meta.url), "utf8");
@@ -30,7 +33,7 @@ test("the card inspector prefers the selected printing's real tcgplayerId, falli
 });
 
 test("the card inspector's purchase link renders \"Buy on TCGplayer\", uses the shared link's real url/target/rel, and never selects a printing or closes the inspector on click", () => {
-  const inspectorArtBlock = page.match(/<div className="card-inspector-art">[\s\S]*?<\/div>/)?.[0];
+  const inspectorArtBlock = workbenchChamber.match(/<div className="card-inspector-art">[\s\S]*?<\/div>/)?.[0];
   assert.ok(inspectorArtBlock, "expected to find the card-inspector-art block");
   assert.match(inspectorArtBlock, /className="card-inspector-purchase-link"/);
   assert.match(inspectorArtBlock, /href=\{inspectorPurchaseLink\.url\}/);
@@ -41,7 +44,7 @@ test("the card inspector's purchase link renders \"Buy on TCGplayer\", uses the 
 });
 
 test("the card inspector purchase link is visually secondary — inside the art panel, not the coaching dossier sections (WHY IT IS HERE, INTENT & CLOCK, etc.)", () => {
-  const dossierBlock = page.match(/<div className="card-inspector-dossier">[\s\S]*?INTENT &amp; CLOCK[\s\S]{0,400}/)?.[0];
+  const dossierBlock = workbenchChamber.match(/<div className="card-inspector-dossier">[\s\S]*?INTENT &amp; CLOCK[\s\S]{0,400}/)?.[0];
   assert.ok(dossierBlock, "expected to find the coaching dossier section including Intent & Clock");
   assert.doesNotMatch(dossierBlock, /card-inspector-purchase-link/, "the purchase link must not be mixed into the coaching prose");
 });
@@ -49,9 +52,9 @@ test("the card inspector purchase link is visually secondary — inside the art 
 // --- Disclosure gating ---
 
 test("the disclosure renders exactly once, gated behind the same tcgplayerAffiliateEnabled flag every purchase link is gated behind — never per-row, per-printing, or per-link", () => {
-  const occurrences = page.match(/className="affiliate-disclosure"/g) || [];
+  const occurrences = workbenchChamber.match(/className="affiliate-disclosure"/g) || [];
   assert.equal(occurrences.length, 1);
-  assert.match(page, /\{tcgplayerAffiliateEnabled && \(\s*\n\s*<p className="affiliate-disclosure"/);
+  assert.match(workbenchChamber, /\{tcgplayerAffiliateEnabled && \(\s*\n\s*<p className="affiliate-disclosure"/);
 });
 
 test("Phase 1B's two new purchase surfaces (replacement panel, experiment tablets) reuse the single existing disclosure — neither adds its own", () => {
@@ -81,21 +84,21 @@ test("the Masterwork candidate picker never gets a purchase action", () => {
 });
 
 test("the mobile\\/desktop card action menu never gets a purchase action — it's Phase 1B or later, not this batch", () => {
-  const menuBlock = page.match(/cardActionMenu && createPortal\([\s\S]*?\n {14}\)\}/)?.[0];
+  const menuBlock = workbenchChamber.match(/cardActionMenu && createPortal\([\s\S]*?\n {14}\)\}/)?.[0];
   assert.ok(menuBlock, "expected to find the card-action-menu portal block");
   assert.doesNotMatch(menuBlock, /buildTcgplayerLink|TCGplayer/i);
 });
 
 test("recommendation\\/lab surfaces still deferred in Phase 1B (multi-refill, meta-breaker) never get a purchase action", () => {
   for (const marker of [/className="multi-refill-packages"[\s\S]{0,600}/, /className="meta-breaker-dossier"[\s\S]{0,600}/]) {
-    const block = page.match(marker)?.[0];
+    const block = workbenchChamber.match(marker)?.[0];
     assert.ok(block, `expected to find a block matching ${marker}`);
     assert.doesNotMatch(block, /buildTcgplayerLink|TCGplayer/i);
   }
 });
 
 test("the opening-experiment gate (curated first-experiment picker) remains untouched — same tablet data as the full tablet list, but this view is deferred", () => {
-  const gateBlock = page.match(/className="opening-experiment-gate"[\s\S]{0,2200}/)?.[0];
+  const gateBlock = workbenchChamber.match(/className="opening-experiment-gate"[\s\S]{0,2200}/)?.[0];
   assert.ok(gateBlock, "expected to find the opening-experiment-gate block");
   assert.doesNotMatch(gateBlock, /buildTcgplayerLink|TCGplayer/i);
 });
@@ -137,16 +140,16 @@ test("lastCutCard (the outgoing card) never gets a purchase action anywhere in t
 
 test("the experiment tablet's purchase link builds a name-only search link for tablet.change.add only", () => {
   assert.match(
-    page,
+    workbenchChamber,
     /const tabletPurchaseLink = buildTcgplayerLink\(\{\s*\n\s*cardName: tablet\.change\.add,\s*\n\s*tcgplayerProductId: null,\s*\n\s*enabled: tcgplayerAffiliateEnabled,/,
   );
 });
 
 test("the tablet purchase link renders only inside the ADD figure, never the CUT figure", () => {
-  const cutFigure = page.match(/<figure>\s*<button[\s\S]*?cardImage\(tablet\.change\.cut\)[\s\S]*?<\/figure>/)?.[0];
+  const cutFigure = workbenchChamber.match(/<figure>\s*<button[\s\S]*?cardImage\(tablet\.change\.cut\)[\s\S]*?<\/figure>/)?.[0];
   assert.ok(cutFigure, "expected to find the CUT figure");
   assert.doesNotMatch(cutFigure, /tablet-purchase-link|buildTcgplayerLink|TCGplayer/i);
-  const addFigure = page.match(/<figure>\s*<button[\s\S]*?cardImage\(tablet\.change\.add\)[\s\S]*?<\/figure>/)?.[0];
+  const addFigure = workbenchChamber.match(/<figure>\s*<button[\s\S]*?cardImage\(tablet\.change\.add\)[\s\S]*?<\/figure>/)?.[0];
   assert.ok(addFigure, "expected to find the ADD figure");
   assert.match(addFigure, /className="tablet-purchase-link"/);
   assert.match(addFigure, />\s*Buy on TCGplayer\s*<\/a>/);
@@ -157,7 +160,7 @@ test("the tablet purchase link renders only inside the ADD figure, never the CUT
 });
 
 test("\"Accept this experiment\" remains present and untouched as the tablet's primary action", () => {
-  const tabletCardBlock = page.match(/const tabletPurchaseLink[\s\S]{0,12000}Accept this experiment/)?.[0];
+  const tabletCardBlock = workbenchChamber.match(/const tabletPurchaseLink[\s\S]{0,12000}Accept this experiment/)?.[0];
   assert.ok(tabletCardBlock, "expected to find the Accept button within the same tablet card as the purchase link");
   assert.match(tabletCardBlock, /className="tablet-accept"/);
   assert.match(tabletCardBlock, /onClick=\{\(\) => \{[\s\S]*?applyExperimentTablet\(tablet\)/);
@@ -165,7 +168,7 @@ test("\"Accept this experiment\" remains present and untouched as the tablet's p
 
 test("no deck-level \"Shop Missing Cards\"\\/\"Buy on TCGplayer\" CTA exists near the deck price bar — deferred pending cart-deep-link verification", () => {
   assert.match(forgeSessionContext, /const deckPurchaseLink = buildTcgplayerDeckLink\(\{ rows: deckRows, enabled: tcgplayerAffiliateEnabled \}\)/);
-  const headerBlock = page.match(/className="deck-header-actions"[\s\S]{0,1800}/)?.[0];
+  const headerBlock = workbenchChamber.match(/className="deck-header-actions"[\s\S]{0,1800}/)?.[0];
   assert.ok(headerBlock, "expected to find the deck header actions");
   assert.match(headerBlock, /ESTIMATED MARKET PRICE/);
   assert.match(headerBlock, /deckPriceTotal\.total\.toFixed\(2\)/);

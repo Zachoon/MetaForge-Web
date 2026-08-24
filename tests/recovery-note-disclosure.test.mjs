@@ -14,7 +14,9 @@ import { readFile } from "node:fs/promises";
 // tests/forge-generation-store.test.mjs instead — source-text matching
 // alone can never catch a silent server-side field drop like that one.
 
-const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+// This disclosure's JSX moved to the workbench chamber's own component
+// during the page.tsx decomposition (Phase 4 Stage 4).
+const page = await readFile(new URL("../app/components/forge/workbench-chamber.tsx", import.meta.url), "utf8");
 
 test("the recovery disclosure renders whenever the delivered candidate carries a recoveryNote", () => {
   assert.match(page, /nativeMasterworkContext\?\.selected\?\.recoveryNote && \(/);

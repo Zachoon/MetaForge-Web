@@ -26,6 +26,7 @@ const read = (path) => readFile(new URL(path, root), "utf8");
 let page;
 let forgeSessionContext;
 let commissionChamber;
+let workbenchChamber;
 
 test.before(async () => {
   page = await read("app/page.tsx");
@@ -37,6 +38,9 @@ test.before(async () => {
   // commission/refine chamber's own component during the page.tsx
   // decomposition (Phase 4 Stage 3).
   commissionChamber = await read("app/components/forge/commission-chamber.tsx");
+  // The generation-failure JSX moved to the workbench chamber's own
+  // component during the page.tsx decomposition (Phase 4 Stage 4).
+  workbenchChamber = await read("app/components/forge/workbench-chamber.tsx");
 });
 
 test("selectCommander is the single canonical commander-selection path", () => {
@@ -132,9 +136,9 @@ test("the workbench's own UI success/failure boundary: a hasValidatedDeck predic
 });
 
 test("a failed generation surfaces a dedicated failure state that confirms the preview was not used, never a 0-card success", () => {
-  assert.match(page, /className="forge-generation-failure" role="alert"/);
-  assert.match(page, /No incomplete deck was saved\./);
-  assert.match(page, /Strike the Anvil Again/);
+  assert.match(workbenchChamber, /className="forge-generation-failure" role="alert"/);
+  assert.match(workbenchChamber, /No incomplete deck was saved\./);
+  assert.match(workbenchChamber, /Strike the Anvil Again/);
 });
 
 // P0 follow-up: a real screenshot showed "YOUR COMPLETE DECK · READY TO

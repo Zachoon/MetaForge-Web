@@ -21,13 +21,17 @@ const forgeSessionContext = await readFile(new URL("../app/forge-session-context
 // The build-stepper JSX moved to the commission/refine chamber's own
 // component during the page.tsx decomposition (Phase 4 Stage 3).
 const commissionChamber = await readFile(new URL("../app/components/forge/commission-chamber.tsx", import.meta.url), "utf8");
+// The workbench chamber's own JSX (deck hero, coach brief, experiment
+// tablets, match evidence, etc.) moved to its own component during the
+// page.tsx decomposition (Phase 4 Stage 4).
+const workbenchChamber = await readFile(new URL("../app/components/forge/workbench-chamber.tsx", import.meta.url), "utf8");
 
 test("opens directly into the deck without a detail-mode decision", () => {
   assert.doesNotMatch(page, /resultViewMode/);
   assert.doesNotMatch(page, /metaforge\.resultViewMode/);
   assert.doesNotMatch(page, />\s*Deck first\s*</);
   assert.doesNotMatch(page, />\s*All analysis\s*</);
-  assert.match(page, /<small>YOUR DECK<\/small>/);
+  assert.match(workbenchChamber, /<small>YOUR DECK<\/small>/);
 });
 
 test("places deck and refinement surfaces before the intelligence vault", () => {
@@ -35,7 +39,7 @@ test("places deck and refinement surfaces before the intelligence vault", () => 
   assert.match(css, /\.progressive-results \.testing-loop\{order:5/);
   assert.match(css, /\.progressive-results \.forge-understanding-bridge\{order:6/);
   assert.match(css, /\.progressive-results \.forge-intelligence-vault\{order:7/);
-  assert.match(page, /className="forge-intelligence-vault"/);
+  assert.match(workbenchChamber, /className="forge-intelligence-vault"/);
 });
 
 // P0 follow-up (2026-08-07): the first-run coaching panel, chapter 1,
@@ -46,7 +50,7 @@ test("places deck and refinement surfaces before the intelligence vault", () => 
 test("the first-run coaching panel sits between forge-quick-read and the deck grid, and is visible by default in chapter 1", () => {
   assert.doesNotMatch(page, /className="forge-quick-read"/);
   assert.doesNotMatch(page, /className="first-run-coaching"/);
-  assert.match(page, /className="forge-understanding-bridge coach-brief honest-coach-v0"/);
+  assert.match(workbenchChamber, /className="forge-understanding-bridge coach-brief honest-coach-v0"/);
 });
 
 // forge-quick-read (the neighboring, pre-existing panel) renders
@@ -58,15 +62,15 @@ test("the first-run coaching panel sits between forge-quick-read and the deck gr
 // validated deck exists would either show stale data from a previous
 // session or empty/loading noise dressed up as a real coaching read.
 test("the coaching panel itself (not just its content) is gated on hasValidatedDeck — it must not render during forging or after a failed generation", () => {
-  const panelSite = page.match(/\{hasValidatedDeck \? \(\s*(?:<>|<div className="workbench-coach-stack">)\s*(?:<details[\s\S]*?>)?\s*<section className="forge-understanding-bridge coach-brief honest-coach-v0"[\s\S]*?<\/section>/);
+  const panelSite = workbenchChamber.match(/\{hasValidatedDeck \? \(\s*(?:<>|<div className="workbench-coach-stack">)\s*(?:<details[\s\S]*?>)?\s*<section className="forge-understanding-bridge coach-brief honest-coach-v0"[\s\S]*?<\/section>/);
   assert.ok(
-    panelSite || page.includes('hasValidatedDeck ? (') && page.includes('honest-coach-v0'),
+    panelSite || workbenchChamber.includes('hasValidatedDeck ? (') && workbenchChamber.includes('honest-coach-v0'),
     "expected validated-deck-gated Honest Coach brief",
   );
 });
 
 test("the coaching panel always shows Honest Coach priorities, with an honest loading state for structure", () => {
-  const block = page.match(/className="forge-understanding-bridge coach-brief[\s\S]*?<\/section>/)?.[0];
+  const block = workbenchChamber.match(/className="forge-understanding-bridge coach-brief[\s\S]*?<\/section>/)?.[0];
   assert.ok(block, "expected to find the coaching brief panel's JSX");
   assert.match(block, /honest-coach-v0/);
   assert.match(block, /WHY THIS DECK WINS|honestCoachSummary/);
@@ -80,7 +84,7 @@ test("the coaching panel leads with commission contract / plan story — not the
   // the rest of the Deep Forge evidence (see the forge-intelligence-vault
   // teaser in app/page.tsx) — the deck page's coach brief still leads with
   // plan story and links to the full commission read.
-  const block = page.match(/className="forge-understanding-bridge coach-brief[\s\S]*?<\/section>/)?.[0];
+  const block = workbenchChamber.match(/className="forge-understanding-bridge coach-brief[\s\S]*?<\/section>/)?.[0];
   assert.ok(block);
   assert.match(block, /intentions\.|planStory/);
   assert.match(block, /VERDICT|CHANGE|WHY · OPENING PRIORITIES/);
@@ -131,10 +135,10 @@ test("keeps the deck list stable while card types are still loading", () => {
   assert.match(forgeSessionContext, /mainDeckRows = alphabetize\(orderedDeckRows\.filter\(\(row\) => !isCommanderRow\(row\)\)\)/);
   assert.match(forgeSessionContext, /Commander: commanderRows/);
   assert.match(forgeSessionContext, /"Complete deck": mainDeckRows/);
-  assert.match(page, /Organizing card types in the background/);
-  assert.match(page, /Showing the complete deck alphabetically/);
+  assert.match(workbenchChamber, /Organizing card types in the background/);
+  assert.match(workbenchChamber, /Showing the complete deck alphabetically/);
   assert.match(forgeSessionContext, /localeCompare\(b\.name/);
-  assert.match(page, /"Commander",\s*"Complete deck",\s*"Details pending"/);
+  assert.match(workbenchChamber, /"Commander",\s*"Complete deck",\s*"Details pending"/);
 });
 
 test("uses the Forge's verified card types before supplemental gallery lookups", () => {
@@ -142,13 +146,13 @@ test("uses the Forge's verified card types before supplemental gallery lookups",
   assert.match(forgeSessionContext, /for \(const row of nativeMasterworkContext\?\.selected\?\.rows \|\| \[\]\)/);
   assert.match(deckRowHelpers, /type_line: String\(card\.typeLine \|\| card\.type_line \|\| ""\)/);
   assert.match(forgeSessionContext, /fetch\("\/api\/cards\/facts"/);
-  assert.match(page, /Retry details/);
+  assert.match(workbenchChamber, /Retry details/);
   assert.match(forgeSessionContext, /AbortSignal\.timeout\(25000\)/);
   assert.match(forgeSessionContext, /: "Details pending"/);
-  assert.match(page, /cardFactsPending > 0/);
-  assert.match(page, /The rest of your deck is fully organized/);
+  assert.match(workbenchChamber, /cardFactsPending > 0/);
+  assert.match(workbenchChamber, /The rest of your deck is fully organized/);
   assert.match(forgeSessionContext, /scheduleDetailsRetry/);
-  assert.doesNotMatch(page, /throw new Error\("incomplete catalog"\)/);
+  assert.doesNotMatch(workbenchChamber, /throw new Error\("incomplete catalog"\)/);
 });
 
 test("keeps the commander outside the other 99 cards even when its details are pending", () => {
@@ -161,15 +165,15 @@ test("uses the commander in the current deck instead of stale setup metadata", (
   assert.match(forgeSessionContext, /nativeMasterworkContext\?\.selected\?\.rows\?\.find/);
   assert.match(forgeSessionContext, /selected && rowNames\.has\(cardFactKey\(selected\)\)/);
   assert.match(forgeSessionContext, /chosenWork\.name\.endsWith\(", Forged"\)/);
-  assert.match(page, /<b>\{activeCommanderName \|\| "Not identified"\}<\/b>/);
+  assert.match(workbenchChamber, /<b>\{activeCommanderName \|\| "Not identified"\}<\/b>/);
   assert.match(forgeSessionContext, /activeCommander = meta \? meta\.commander : selectedCommander/);
-  assert.doesNotMatch(page, /<b>\{chosenPreview\.card\}<\/b>/);
+  assert.doesNotMatch(workbenchChamber, /<b>\{chosenPreview\.card\}<\/b>/);
 });
 
 test("names the finished deck in player language instead of an unexplained temper label", () => {
   assert.match(forgeSessionContext, /const displayDeckName = activeCommanderName/);
   assert.match(forgeSessionContext, /\$\{activeCommanderName\} deck/);
-  assert.match(page, /<h1>\{hasValidatedDeck \? displayDeckName/);
+  assert.match(workbenchChamber, /<h1>\{hasValidatedDeck \? displayDeckName/);
 });
 
 test("each workspace stage exposes one clear contextual next action instead of another control cluster", () => {
@@ -184,17 +188,17 @@ test("each workspace stage exposes one clear contextual next action instead of a
 });
 
 test("deck understanding leads with Honest Coach and contains raw evidence in Deep Forge", () => {
-  assert.match(page, /className="forge-understanding-bridge coach-brief honest-coach-v0"/);
-  assert.match(page, /id="coach-brief"/);
-  assert.match(page, />\s*VERDICT\s*</);
+  assert.match(workbenchChamber, /className="forge-understanding-bridge coach-brief honest-coach-v0"/);
+  assert.match(workbenchChamber, /id="coach-brief"/);
+  assert.match(workbenchChamber, />\s*VERDICT\s*</);
   // The raw commission-contract evidence itself now lives on /research
   // (moved out of the always-mounted deck page); the deck page still links
   // to it via "How do you know?".
   assert.match(researchPage, /COMMISSION CONTRACT|commissionContract/);
-  assert.match(page, /CHANGE|WHY · OPENING PRIORITIES/);
-  assert.match(page, /How do you know\? → Deep Forge evidence/);
-  assert.doesNotMatch(page, /BUILD MOMENTUM/);
-  assert.doesNotMatch(page, /YOUR PLAN/);
+  assert.match(workbenchChamber, /CHANGE|WHY · OPENING PRIORITIES/);
+  assert.match(workbenchChamber, /How do you know\? → Deep Forge evidence/);
+  assert.doesNotMatch(workbenchChamber, /BUILD MOMENTUM/);
+  assert.doesNotMatch(workbenchChamber, /YOUR PLAN/);
   assert.match(css, /honest-coach-brief-stream|coach-deck-sequence/);
 });
 
@@ -209,11 +213,11 @@ test("deck understanding leads with Honest Coach and contains raw evidence in De
 test("a pasted decklist reveals its complete deck immediately; a fresh build never auto-selects one", () => {
   assert.doesNotMatch(page, /inspectMasterwork/, "the auto-entering per-candidate reveal function is retired entirely");
   assert.match(forgeSessionContext, /setChamber\("masterworks"\)/, "a fresh commander build lands on the masterworks choice, not a pre-selected deck");
-  assert.match(page, /setOpeningExperimentPending\(false\)/);
+  assert.match(workbenchChamber, /setOpeningExperimentPending\(false\)/);
   assert.doesNotMatch(page, /setOpeningExperimentPending\(mode === "commander"\)/);
   assert.match(workbenchSrc, /label: "Deck"/);
   assert.doesNotMatch(page, /className="forge-guide-navigation"/);
-  assert.match(page, /← Back|← Change build/);
+  assert.match(commissionChamber, /← Back|← Change build/);
   assert.doesNotMatch(page, /className="forge-guide-navigation"/);
 });
 
@@ -245,10 +249,10 @@ test("keeps the global header focused and moves secondary controls into one menu
 });
 
 test("turns deck stress experiments into concrete player insights", () => {
-  assert.match(page, /WHAT THE MODEL SAW/);
-  assert.match(page, /WHY THIS SWAP/);
-  assert.match(page, /EXPECTED CHANGE/);
-  assert.match(page, /HOW TO JUDGE IT/);
+  assert.match(workbenchChamber, /WHAT THE MODEL SAW/);
+  assert.match(workbenchChamber, /WHY THIS SWAP/);
+  assert.match(workbenchChamber, /EXPECTED CHANGE/);
+  assert.match(workbenchChamber, /HOW TO JUDGE IT/);
   assert.match(forgeSessionContext, /scenarioPassRate/);
 });
 
@@ -256,10 +260,10 @@ test("keeps visual deck browsing separate from the playtest workbench", () => {
   assert.match(forgeSessionContext, /useState<DeckViewMode>\("ledger"\)/);
   assert.match(forgeTypes, /matchMedia\("\(max-width: 760px\)"\)/);
   assert.match(forgeSessionContext, /setDeckViewMode\(preferredDecklistView\(\)\)/);
-  assert.match(page, />Visual deck<\/button>/);
-  assert.match(page, />Text list<\/button>/);
-  assert.match(page, /deckViewMode === "gallery"/);
-  assert.match(page, /className="visual-deck-gallery"/);
+  assert.match(workbenchChamber, />Visual deck<\/button>/);
+  assert.match(workbenchChamber, />Text list<\/button>/);
+  assert.match(workbenchChamber, /deckViewMode === "gallery"/);
+  assert.match(workbenchChamber, /className="visual-deck-gallery"/);
   assert.doesNotMatch(siteFrameCss, /chapter-1-active #deck-gallery\{display:flex!important/);
   assert.match(siteFrameCss, /chapter-1-active\.gallery-deck-view #deck-gallery\{display:grid!important/);
   assert.match(css, /\.workbench-deck-view \.deck-gallery\{[^}]*max-height/);
@@ -267,22 +271,22 @@ test("keeps visual deck browsing separate from the playtest workbench", () => {
 });
 
 test("offers three evidence-led experiment tablets before optional match evidence", () => {
-  assert.match(page, /Three evidence-led controlled experiments/i);
+  assert.match(workbenchChamber, /Three evidence-led controlled experiments/i);
   assert.match(forgeSessionContext, /buildExperimentTablets/);
-  assert.match(page, /Field observation/);
-  assert.match(page, /Structural pressure point/);
-  assert.match(page, /Smallest honest test/);
-  assert.match(page, /Expected benefit/);
-  assert.match(page, /<dt>Tradeoff<\/dt>/);
-  assert.match(page, /Evidence status/);
-  assert.match(page, /className="match-evidence-drawer"/);
+  assert.match(workbenchChamber, /Field observation/);
+  assert.match(workbenchChamber, /Structural pressure point/);
+  assert.match(workbenchChamber, /Smallest honest test/);
+  assert.match(workbenchChamber, /Expected benefit/);
+  assert.match(workbenchChamber, /<dt>Tradeoff<\/dt>/);
+  assert.match(workbenchChamber, /Evidence status/);
+  assert.match(workbenchChamber, /className="match-evidence-drawer"/);
   // Accepting a tablet must apply the exact swap directly — no free-text or
   // LLM round-trip composer standing between the evidence and the deck.
   assert.match(forgeSessionContext, /function applyExperimentTablet/);
-  assert.match(page, /className="tablet-accept"/);
-  assert.doesNotMatch(page, /className="custom-refinement-trigger"/);
-  assert.doesNotMatch(page, /className="refinement-composer"/);
-  assert.doesNotMatch(page, /async function consultForge/);
+  assert.match(workbenchChamber, /className="tablet-accept"/);
+  assert.doesNotMatch(workbenchChamber, /className="custom-refinement-trigger"/);
+  assert.doesNotMatch(workbenchChamber, /className="refinement-composer"/);
+  assert.doesNotMatch(workbenchChamber, /async function consultForge/);
 });
 
 test("makes a guided three-card experiment the doorway to a new Masterwork", () => {
@@ -292,11 +296,11 @@ test("makes a guided three-card experiment the doorway to a new Masterwork", () 
     /const openingExperimentGateActive\s*=\s*openingExperimentPending\s*&&\s*benchStatus !== "forging"\s*&&\s*openingExperimentChoices\.length > 0/,
     "The opening experiment must never hide the finished deck when there are no choices to render.",
   );
-  assert.match(page, /openingExperimentGateActive \? "opening-experiment-pending" : ""/);
-  assert.match(page, /YOUR FIRST OFFICIAL EXPERIMENT/);
-  assert.match(page, /openingExperimentChoices\.map/);
+  assert.match(workbenchChamber, /openingExperimentGateActive \? "opening-experiment-pending" : ""/);
+  assert.match(workbenchChamber, /YOUR FIRST OFFICIAL EXPERIMENT/);
+  assert.match(workbenchChamber, /openingExperimentChoices\.map/);
   assert.match(forgeSessionContext, /CONTROL EXPERIMENT/);
-  assert.match(page, /Skip guidance · Reveal the full deck/);
+  assert.match(workbenchChamber, /Skip guidance · Reveal the full deck/);
   assert.doesNotMatch(page, /className="forge-journey-guide"/);
   assert.doesNotMatch(page, /className="forge-guide-navigation"/);
   assert.match(css, /\.opening-experiment-options\{display:grid;grid-template-columns:repeat\(3/);
@@ -313,28 +317,28 @@ test("accepting an experiment tablet plays out where the player can actually see
   // A forced, visible decision after the swap settles — not a silent return
   // to a screen that looks identical to before the click.
   assert.match(forgeSessionContext, /const \[postAcceptChoice, setPostAcceptChoice\] = useState\(false\)/);
-  assert.match(page, /className="post-accept-choice"/);
-  assert.match(page, /Test Another Experiment/);
-  assert.match(page, /This Is The One — Save as Finished Deck/);
+  assert.match(workbenchChamber, /className="post-accept-choice"/);
+  assert.match(workbenchChamber, /Test Another Experiment/);
+  assert.match(workbenchChamber, /This Is The One — Save as Finished Deck/);
   // Growth in the Forge Mastery record should be visible at the moment it
   // happens, not only on a separate /profile visit.
-  assert.match(page, /Revision \{lastAcceptedRevisionCount\} recorded to your/);
-  assert.match(page, /href="\/profile"/);
+  assert.match(workbenchChamber, /Revision \{lastAcceptedRevisionCount\} recorded to your/);
+  assert.match(workbenchChamber, /href="\/profile"/);
 });
 
 test("accepts a two-sided flip and shockwave burst on the tablet being applied, not a brief pulse", () => {
-  assert.match(page, /className="tablet-flip-inner"/);
-  assert.match(page, /className="tablet-face tablet-face-front"/);
-  assert.match(page, /className="tablet-face tablet-face-back"/);
-  assert.match(page, /EXPERIMENT ACCEPTED/);
+  assert.match(workbenchChamber, /className="tablet-flip-inner"/);
+  assert.match(workbenchChamber, /className="tablet-face tablet-face-front"/);
+  assert.match(workbenchChamber, /className="tablet-face tablet-face-back"/);
+  assert.match(workbenchChamber, /EXPERIMENT ACCEPTED/);
   assert.match(motifCss, /\.experiment-tablet-card\.applying \.tablet-flip-inner\{transform:rotateY\(180deg\)/);
   assert.match(motifCss, /@keyframes tablet-shockwave/);
 });
 
 test("offers a confidence tablet in place of a missing third experiment slot", () => {
-  assert.match(page, /tablet\.type === "confidence"/);
-  assert.match(page, /className="experiment-tablet-card confidence-tablet"/);
-  assert.match(page, /Save it as a Finished Deck/);
+  assert.match(workbenchChamber, /tablet\.type === "confidence"/);
+  assert.match(workbenchChamber, /className="experiment-tablet-card confidence-tablet"/);
+  assert.match(workbenchChamber, /Save it as a Finished Deck/);
   assert.match(motifCss, /\.confidence-tablet\{/);
 });
 
@@ -359,10 +363,10 @@ test("automatically exposes intelligence when a hard deck gate fails", () => {
   // deckIntegrity has failed — see app/page.tsx's forge-intelligence-vault
   // section.
   assert.match(
-    page,
+    workbenchChamber,
     /!deckIntegrity\.checking && !deckIntegrity\.passed[\s\S]*?ATTENTION REQUIRED/,
   );
-  assert.match(page, /ATTENTION REQUIRED/);
+  assert.match(workbenchChamber, /ATTENTION REQUIRED/);
 });
 
 test("preserves match evidence on its exact revision", () => {
