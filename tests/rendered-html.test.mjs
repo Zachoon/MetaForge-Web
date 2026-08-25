@@ -163,6 +163,19 @@ test("publishes crawlable MTG tool landing pages with unique metadata and useful
 
   const colorCalculator = await render("https://metaforge.gg/tools/commander-color-source-calculator");
   assert.match(await colorCalculator.text(), /Commander Color Source Calculator \| MetaForge/i);
+
+  for (const [slug, title] of [
+    ["commander-power-level-checker", "Commander Power Level Checker"],
+    ["commander-bracket-checker", "Commander Bracket Checker"],
+    ["commander-deck-optimizer", "Commander Deck Optimizer"],
+    ["mtg-mana-curve-analyzer", "MTG Mana Curve Analyzer"],
+  ]) {
+    const response = await render(`https://metaforge.gg/tools/${slug}`);
+    const html = await response.text();
+    assert.match(html, new RegExp(`${title} \\| MetaForge`, "i"));
+    assert.match(html, /"@type":"WebApplication"/i);
+    assert.match(html, /"@type":"BreadcrumbList"/i);
+  }
 });
 
 test("publishes brand trust and expanded problem-first learning pages", async () => {
@@ -180,6 +193,19 @@ test("publishes brand trust and expanded problem-first learning pages", async ()
   assert.match(landsHtml, /How Many Lands Should a Commander Deck Have\?/i);
   assert.match(landsHtml, /Estimate my starting land range/i);
   assert.match(landsHtml, /"@type":"Article"/i);
+
+  for (const [slug, phrase] of [
+    ["how-much-card-draw-should-a-commander-deck-have", "How Much Card Draw Should a Commander Deck Have"],
+    ["how-many-removal-spells-should-i-play-in-commander", "How Many Removal Spells Should I Play in Commander"],
+    ["how-to-build-a-commander-deck", "How to Build a Commander Deck"],
+    ["how-to-evaluate-commander-power-level", "How to Evaluate a Commander Deck"],
+  ]) {
+    const response = await render(`https://metaforge.gg/academy/${slug}`);
+    const html = await response.text();
+    assert.match(html, new RegExp(phrase, "i"));
+    assert.match(html, /"@type":"Article"/i);
+    assert.match(html, /"@type":"BreadcrumbList"/i);
+  }
 });
 
 test("publishes the expanded commander library with related internal links", async () => {
@@ -229,7 +255,7 @@ test("publishes a crawlable public robots file and sitemap", async () => {
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/academy\/how-many-lands-should-a-commander-deck-have<\/loc>/);
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/tools\/commander-land-calculator<\/loc>/);
   const locations = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
-  assert.equal(locations.length, 47);
+  assert.equal(locations.length, 55);
   assert.equal(new Set(locations).size, locations.length);
 });
 

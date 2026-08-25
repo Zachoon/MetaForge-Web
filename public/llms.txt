@@ -1,0 +1,26 @@
+# MetaForge
+
+> MetaForge is an evidence-first Magic: The Gathering deck builder, analyzer, and deck coach. It helps players understand how a deck works, identify structural pressure points, and test explainable improvements.
+
+Canonical site: https://metaforge.gg/
+Authenticated application: https://app.metaforge.gg/ (not intended for indexing)
+
+## Primary public resources
+
+- [MTG and Commander deckbuilding tools](https://metaforge.gg/tools)
+- [Commander deckbuilding Academy](https://metaforge.gg/academy)
+- [Commander deck guides](https://metaforge.gg/commanders)
+- [Public Commander deck reports](https://metaforge.gg/decks)
+- [How MetaForge evaluates decks](https://metaforge.gg/methodology)
+- [About MetaForge](https://metaforge.gg/about)
+
+## Important capabilities
+
+- Build a Commander deck around a commander, strategy, budget, and player preferences.
+- Analyze imported MTG decklists for mana, card flow, interaction, speed, resilience, and closing plans.
+- Explain recommendations and uncertainty instead of presenting unexplained scores.
+- Support Commander, Standard, Modern, Pioneer, Brawl, and other Magic formats.
+
+## Brand identity
+
+MetaForge at metaforge.gg is an independent Magic: The Gathering deck-coaching product created by Zach Lackey. It is not affiliated with Wizards of the Coast. Magic: The Gathering and related marks belong to Wizards of the Coast.

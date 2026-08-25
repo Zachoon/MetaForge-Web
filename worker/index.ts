@@ -38,6 +38,10 @@ const ACADEMY_GUIDES: Record<string, { headline: string; description: string; da
   "/academy/how-to-fix-a-commander-mana-curve": { headline: "How to Fix a Commander Mana Curve", description: "Find missing early plays and expensive-card congestion without flattening a deck's identity.", datePublished: "2026-08-23" },
   "/academy/how-many-mana-sources-do-i-need-in-commander": { headline: "How Many Colored Mana Sources Do I Need in Commander?", description: "Count timely colored sources for demanding spells and multicolor commanders.", datePublished: "2026-08-23" },
   "/academy/how-to-balance-tokens-enablers-and-payoffs": { headline: "How to Balance Token Makers, Enablers, and Payoffs", description: "Build a Commander token deck with enough production, conversion, and recovery.", datePublished: "2026-08-23" },
+  "/academy/how-much-card-draw-should-a-commander-deck-have": { headline: "How Much Card Draw Should a Commander Deck Have?", description: "Choose Commander card draw by timing, reliability, cost, and how quickly the deck spends cards.", datePublished: "2026-08-25" },
+  "/academy/how-many-removal-spells-should-i-play-in-commander": { headline: "How Many Removal Spells Should I Play in Commander?", description: "Build a Commander interaction package around real threats, timing, and color access.", datePublished: "2026-08-25" },
+  "/academy/how-to-build-a-commander-deck": { headline: "How to Build a Commander Deck", description: "Build a legal 100-card Commander deck from a commander, game plan, functional packages, mana, and a way to win.", datePublished: "2026-08-25" },
+  "/academy/how-to-evaluate-commander-power-level": { headline: "How to Evaluate a Commander Deck's Power Level", description: "Evaluate Commander power through speed, consistency, interaction, resilience, tutors, fast mana, and closing patterns.", datePublished: "2026-08-25" },
 };
 const COMMANDER_GUIDES: Record<string, string> = {
   "/commanders/korvold-fae-cursed-king": "Korvold, Fae-Cursed King",
@@ -69,6 +73,10 @@ const DECKBUILDING_TOOLS: Record<string, { name: string; description: string }> 
   "/tools/commander-mana-base-analyzer": { name: "Commander Mana Base Analyzer", description: "Diagnose Commander land count, color access, mana curve, ramp, and opening-hand problems." },
   "/tools/commander-land-calculator": { name: "Commander Land Calculator", description: "Estimate a starting Commander land range from curve, ramp, draw, commander cost, and pace." },
   "/tools/commander-color-source-calculator": { name: "Commander Color Source Calculator", description: "Estimate the timely colored mana sources needed to cast an important Commander spell on curve." },
+  "/tools/commander-power-level-checker": { name: "Commander Power Level Checker", description: "Review Commander speed, consistency, interaction, tutors, fast mana, resilience, and closing patterns." },
+  "/tools/commander-bracket-checker": { name: "Commander Bracket Checker", description: "Inspect the cards and play patterns that shape a Commander's expected table experience." },
+  "/tools/commander-deck-optimizer": { name: "Commander Deck Optimizer", description: "Find focused Commander deck improvements that preserve the deck's commander, strategy, budget, and identity." },
+  "/tools/mtg-mana-curve-analyzer": { name: "MTG Mana Curve Analyzer", description: "Analyze meaningful plays, color requirements, setup costs, and the turns when a Magic deck needs to act." },
 };
 
 function robotsResponse(url: URL): Response {
@@ -85,10 +93,10 @@ const SITEMAP_URLS: { loc: string; lastmod: string; changefreq: string; priority
   { loc: "https://metaforge.gg/about", lastmod: "2026-08-23", changefreq: "monthly", priority: "0.7" },
   { loc: "https://metaforge.gg/methodology", lastmod: "2026-08-23", changefreq: "monthly", priority: "0.7" },
   { loc: "https://metaforge.gg/decks", lastmod: "2026-08-23", changefreq: "daily", priority: "0.8" },
-  { loc: "https://metaforge.gg/academy", lastmod: "2026-08-23", changefreq: "weekly", priority: "0.8" },
+  { loc: "https://metaforge.gg/academy", lastmod: "2026-08-25", changefreq: "weekly", priority: "0.8" },
   ...Object.keys(ACADEMY_GUIDES).map((path) => ({ loc: `https://metaforge.gg${path}`, lastmod: ACADEMY_GUIDES[path].datePublished, changefreq: "monthly", priority: "0.7" })),
-  { loc: "https://metaforge.gg/tools", lastmod: "2026-08-23", changefreq: "monthly", priority: "0.9" },
-  ...Object.keys(DECKBUILDING_TOOLS).map((path) => ({ loc: `https://metaforge.gg${path}`, lastmod: "2026-08-23", changefreq: "monthly", priority: "0.9" })),
+  { loc: "https://metaforge.gg/tools", lastmod: "2026-08-25", changefreq: "monthly", priority: "0.9" },
+  ...Object.keys(DECKBUILDING_TOOLS).map((path) => ({ loc: `https://metaforge.gg${path}`, lastmod: path.includes("power-level") || path.includes("bracket") || path.includes("optimizer") || path.includes("mana-curve") ? "2026-08-25" : "2026-08-23", changefreq: "monthly", priority: "0.9" })),
   { loc: "https://metaforge.gg/commanders", lastmod: "2026-08-23", changefreq: "monthly", priority: "0.8" },
   ...Object.keys(COMMANDER_GUIDES).map((path) => ({ loc: `https://metaforge.gg${path}`, lastmod: "2026-08-23", changefreq: "monthly", priority: "0.7" })),
 ];
