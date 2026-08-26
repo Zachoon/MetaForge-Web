@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default function Methodology() {
-  return <main className="legal-page"><div className="legal-shell">
+  return <main className="legal-page forge-atmosphere"><div className="legal-shell">
     <Link className="legal-brand" href="/"><i>MF</i> METAFORGE</Link>
     <article className="legal-card"><small>METHOD &amp; EVIDENCE</small><h1>How MetaForge evaluates a Magic deck</h1><p className="updated">The goal is a useful explanation you can test—not an unexplained grade.</p>
       <section><h2>1. Establish the deck&rsquo;s contract</h2><p>Format legality, commander color identity, deck size, player preferences, budget, and intended game plan define the boundaries. A legal staple does not automatically fit the contract.</p></section>

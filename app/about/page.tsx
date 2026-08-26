@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default function AboutMetaForge() {
-  return <main className="legal-page"><div className="legal-shell">
+  return <main className="legal-page forge-atmosphere"><div className="legal-shell">
     <Link className="legal-brand" href="/"><i>MF</i> METAFORGE</Link>
     <article className="legal-card"><small>ABOUT METAFORGE</small><h1>An MTG deck coach built to explain itself</h1><p className="updated">MetaForge helps Magic players understand a deck as a connected system—not a pile of individually popular cards.</p>
       <section><h2>Why we built it</h2><p>Deckbuilding advice is often reduced to generic counts, staples, or a single score. Those shortcuts can miss the reason a card works in one Commander deck and fails in another. MetaForge was built to connect the commander, game plan, mana, engines, interaction, card flow, and closing plan before recommending a change.</p></section>

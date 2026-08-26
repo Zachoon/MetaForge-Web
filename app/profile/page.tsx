@@ -185,7 +185,7 @@ export default function PlayerProfile() {
 
   if (status === "denied") {
     return (
-      <main className="profile-state">
+      <main className="profile-state forge-atmosphere">
         <b>ACCOUNT REQUIRED</b>
         <h1>Sign in to see your Forge Mastery record.</h1>
         <a href="/">Return to MetaForge</a>
@@ -194,7 +194,7 @@ export default function PlayerProfile() {
   }
   if (!families) {
     return (
-      <main className="profile-state">
+      <main className="profile-state forge-atmosphere">
         <b>METAFORGE PROFILE</b>
         <h1>{status === "error" ? "The archive did not answer." : "Reading your private archive…"}</h1>
       </main>
@@ -205,7 +205,7 @@ export default function PlayerProfile() {
   const analysisError = selectedFamily ? structuralError[selectedFamily.id] : null;
 
   return (
-    <main className="profile-page">
+    <main className="profile-page forge-atmosphere">
       <header>
         <a href="/" className="profile-brand"><i>MF</i><span>METAFORGE</span></a>
         <div>

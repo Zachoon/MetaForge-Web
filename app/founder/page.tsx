@@ -65,8 +65,8 @@ export default function FounderCommandCenter() {
     } catch { setStatus("error"); }
   };
   useEffect(() => { load(); const timer = window.setInterval(load, 60_000); return () => window.clearInterval(timer); }, []);
-  if (status === "denied") return <main className="founder-state"><b>FOUNDER ACCESS REQUIRED</b><h1>This command center belongs to the MetaForge founder.</h1><a href="/">Return to MetaForge</a></main>;
-  if (!data) return <main className="founder-state"><b>METAFORGE COMMAND CENTER</b><h1>{status === "error" ? "The telemetry forge did not answer." : "Heating the telemetry forge…"}</h1>{status === "error" && <button onClick={load}>Try again</button>}</main>;
+  if (status === "denied") return <main className="founder-state forge-atmosphere"><b>FOUNDER ACCESS REQUIRED</b><h1>This command center belongs to the MetaForge founder.</h1><a href="/">Return to MetaForge</a></main>;
+  if (!data) return <main className="founder-state forge-atmosphere"><b>METAFORGE COMMAND CENTER</b><h1>{status === "error" ? "The telemetry forge did not answer." : "Heating the telemetry forge…"}</h1>{status === "error" && <button onClick={load}>Try again</button>}</main>;
   const rate = data.totals.matches ? Math.round(data.totals.wins / data.totals.matches * 100) : 0;
   const funnel = data.launch?.funnel || {};
   const visitors = funnel.landing_view?.sessions || 0;
@@ -78,7 +78,7 @@ export default function FounderCommandCenter() {
       if(response.ok){const result=await response.json();setOpinionResults((current)=>({...current,[question.opinionKey]:result}))}
     } finally { setOpinionLoading(null); }
   };
-  return <main className="founder-command">
+  return <main className="founder-command forge-atmosphere">
     <header><a href="/" className="founder-brand"><i>MF</i><span>METAFORGE</span></a><div><small>PRIVATE · FOUNDER ONLY</small><h1>Command Center</h1><p>Your alpha’s pulse—without raw Arena logs or readable tester identities.</p></div><button onClick={load}>Refresh signals</button></header>
     <section className="founder-metrics">
       <article><span>TESTERS WITH DATA</span><b>{data.totals.testers}</b><em>Cloud-backed accounts</em></article>

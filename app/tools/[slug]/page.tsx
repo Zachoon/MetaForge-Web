@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function ToolPage({ params }: { params: Promise<{ slug: string }> }) {
   const tool = toolPageBySlug((await params).slug);
   if (!tool) notFound();
-  return <main className="legal-page"><div className="legal-shell">
+  return <main className="legal-page forge-atmosphere"><div className="legal-shell">
     <Link className="legal-brand" href="/"><i>MF</i> METAFORGE</Link>
     <article className="legal-card tool-page"><small>{tool.eyebrow}</small><h1>{tool.title}</h1><p className="updated">{tool.promise}</p>
       <section><p>{tool.intro}</p></section>

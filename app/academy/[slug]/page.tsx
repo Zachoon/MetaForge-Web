@@ -19,7 +19,7 @@ export default async function NewAcademyGuide({ params }: { params: Promise<{ sl
   const guide = newAcademyGuideBySlug((await params).slug);
   if (!guide) notFound();
   const evidence = guideEvidenceBySlug(guide.slug);
-  return <main className="legal-page"><div className="legal-shell">
+  return <main className="legal-page forge-atmosphere"><div className="legal-shell">
     <Link className="legal-brand" href="/"><i>MF</i> METAFORGE</Link>
     <article className="legal-card"><small>METAFORGE ACADEMY · COMMANDER DECK BUILDING</small><h1>{guide.title}</h1><p className="updated">{guide.description}</p>
       <section><p>{guide.lead}</p></section>

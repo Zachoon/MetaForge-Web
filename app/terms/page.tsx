@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 };
 
 export default function TermsPage() {
-  return <main className="legal-page"><div className="legal-shell">
+  return <main className="legal-page forge-atmosphere"><div className="legal-shell">
     <a className="legal-brand" href="/"><i>MF</i> METAFORGE</a>
     <article className="legal-card">
       <small>PUBLIC ALPHA</small><h1>Terms of Use</h1><p className="updated">Effective August 2, 2026</p>

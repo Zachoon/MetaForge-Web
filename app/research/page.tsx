@@ -24,7 +24,7 @@ function readBundle(deckId: string): ResearchBundle | null {
 
 function ResearchEmptyState() {
   return (
-    <main className="deck-manuscript research-empty-state">
+    <main className="deck-manuscript research-empty-state forge-atmosphere">
       <header>
         <small>RESEARCH &amp; EVIDENCE</small>
         <h1>No evidence saved yet.</h1>
@@ -117,7 +117,7 @@ function ResearchPageInner() {
   if (status === "empty" || !bundle) return <ResearchEmptyState />;
 
   return (
-    <main className="deck-manuscript research-page">
+    <main className="deck-manuscript research-page forge-atmosphere">
       <header className="masterwork-deck-hero">
         <div className="masterwork-deck-title">
           <div>

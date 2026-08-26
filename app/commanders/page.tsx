@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function CommandersIndex() {
   return (
-    <main className="legal-page">
+    <main className="legal-page forge-atmosphere">
       <div className="legal-shell">
         <a className="legal-brand" href="/"><i>MF</i> METAFORGE</a>
         <article className="legal-card">

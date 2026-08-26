@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default function ToolsIndex() {
-  return <main className="legal-page"><div className="legal-shell">
+  return <main className="legal-page forge-atmosphere"><div className="legal-shell">
     <a className="legal-brand" href="/"><i>MF</i> METAFORGE</a>
     <article className="legal-card"><small>FREE MTG DECKBUILDING TOOLS</small>
       <h1>Build and understand your Magic deck</h1>
