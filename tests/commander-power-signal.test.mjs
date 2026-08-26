@@ -151,6 +151,37 @@ test("one Game Changer informs the result but never proves a high-powered deck b
   assert.equal(result.tier, "Casual");
 });
 
+test("resource-denial patterns are measured without calling ordinary interaction stax", () => {
+  const ruleOfLaw = card("Test One-Spell Rule", "Enchantment", "Each player can't cast more than one spell each turn.", 3);
+  const tax = card("Test Opponent Tax", "Creature", "Spells your opponents cast cost {1} more to cast.", 2);
+  const ordinary = card("Test Removal", "Instant", "Destroy target creature.", 2);
+  const result = evaluateCommanderPowerSignal([ruleOfLaw, tax, ordinary]);
+  assert.deepEqual(result.resourceDenial, ["Test One-Spell Rule", "Test Opponent Tax"]);
+  assert.ok(!result.resourceDenial.includes("Test Removal"));
+});
+
+test("resilience only adds ceiling once it protects an already high-ceiling package", () => {
+  const protection = [
+    card("Test Team Hexproof", "Instant", "Permanents you control gain hexproof until end of turn.", 2),
+    card("Test Team Indestructible", "Instant", "Creatures you control gain indestructible until end of turn.", 2),
+    card("Test Uncounterable", "Enchantment", "Spells you control can't be countered.", 3),
+  ];
+  const ordinary = evaluateCommanderPowerSignal([...protection, ...Array.from({ length: 96 }, (_, index) => card(`Protected Filler ${index}`, "Creature", "", 3))]);
+  assert.equal(ordinary.calibration.resilienceBonus, 0);
+  assert.equal(ordinary.tier, "Casual");
+
+  const protectedEngine = evaluateCommanderPowerSignal([solRing, demonicTutor, timeWarp, ...protection]);
+  assert.equal(protectedEngine.calibration.resilienceBonus, 1.5);
+  assert.equal(protectedEngine.playPattern.resilience, "Resilient");
+});
+
+test("commander dependence is disclosed separately from raw ceiling", () => {
+  const commanderEngine = card("Test Engine Commander", "Legendary Creature", "{T}: Double the amount of mana you have.", 4, true);
+  const result = evaluateCommanderPowerSignal([commanderEngine, ...Array.from({ length: 99 }, (_, index) => card(`Commander Filler ${index}`, "Creature", "", 3))]);
+  assert.equal(result.playPattern.commanderDependence, "High");
+  assert.notEqual(result.confidence, "Low");
+});
+
 test("evaluateCommanderPowerSignal escalates tier with signal density and stays honest about being a heuristic, not a rule", () => {
   const casual = evaluateCommanderPowerSignal([vanillaBear, plains]);
   assert.equal(casual.tier, "Casual");

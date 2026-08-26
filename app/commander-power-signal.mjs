@@ -115,6 +115,22 @@ function isExplicitWinCondition(card) {
   return /\byou win the game\b|\b(?:target|that|an?) opponent loses the game\b/i.test(text);
 }
 
+function isResourceDenial(card) {
+  const text = card.oracleText || "";
+  return /\b(?:each player|players) can't cast more than one spell each turn\b/i.test(text)
+    || /\bspells your opponents cast cost \{\d+\} more\b/i.test(text)
+    || /\bplayers can't untap more than (?:one|two|\d+)\b/i.test(text)
+    || /\bnonbasic lands are mountains\b/i.test(text)
+    || /\b(?:artifacts|creatures|lands) your opponents control enter(?:s)? (?:the battlefield )?tapped\b/i.test(text);
+}
+
+function isBroadProtection(card) {
+  const text = card.oracleText || "";
+  return /\b(?:permanents|creatures) you control (?:gain|have) (?:hexproof|indestructible)\b/i.test(text)
+    || /\bspells you control can't be countered\b/i.test(text)
+    || /\bphase out each (?:creature|permanent) you control\b/i.test(text);
+}
+
 // The single highest-leverage new signal: a card that keeps generating
 // real value (a card, a permanent, damage) every time a cheap, common
 // game action happens, with no one-time ceiling — the actual mechanical
@@ -174,6 +190,7 @@ function powerCategoriesFor(card) {
   if (isEfficientInteraction(card)) categories.push("efficientInteraction");
   if (isFreeInteraction(card)) categories.push("freeInteraction");
   if (isExplicitWinCondition(card)) categories.push("explicitWinCondition");
+  if (isResourceDenial(card)) categories.push("resourceDenial");
   if (isRepeatableValueEngine(card)) categories.push("repeatableValueEngine");
   if (isResourceMultiplier(card)) categories.push("resourceMultiplier");
   return categories;
@@ -196,6 +213,7 @@ export const CATEGORY_WEIGHT = Object.freeze({
   efficientInteraction: 0.5,
   freeInteraction: 1.5,
   explicitWinCondition: 1.5,
+  resourceDenial: 1.5,
   gameChanger: 0.5,
   repeatableValueEngine: 2,
   resourceMultiplier: 1.5,
@@ -267,9 +285,10 @@ export function evaluateCommanderPowerSignal(cards, interactionGraph = null) {
 
   const buckets = {
     fastMana: [], tutor: [], extraTurn: [], massLandDenial: [],
-    efficientInteraction: [], freeInteraction: [], explicitWinCondition: [], repeatableValueEngine: [], resourceMultiplier: [],
+    efficientInteraction: [], freeInteraction: [], explicitWinCondition: [], resourceDenial: [], repeatableValueEngine: [], resourceMultiplier: [],
   };
   const tutorsRestricted = [];
+  const broadProtection = [];
   let cmcTotal = 0;
   let cmcCount = 0;
 
@@ -277,6 +296,7 @@ export function evaluateCommanderPowerSignal(cards, interactionGraph = null) {
     for (const category of powerCategoriesFor(card)) buckets[category].push(card.name);
     const kind = tutorKind(card);
     if (kind === "restricted") tutorsRestricted.push(card.name);
+    if (isBroadProtection(card)) broadProtection.push(card.name);
     if (!card.isCommander) {
       cmcTotal += manaValueOf(card) * Math.max(1, Number(card.quantity) || 1);
       cmcCount += Math.max(1, Number(card.quantity) || 1);
@@ -298,7 +318,7 @@ export function evaluateCommanderPowerSignal(cards, interactionGraph = null) {
   // the deck's ceiling" (highCeilingCards, the density floor, combo
   // proximity eligibility) is deliberately computed only over the other,
   // genuinely high-ceiling categories.
-  const HIGH_CEILING_CATEGORIES = ["fastMana", "tutor", "extraTurn", "massLandDenial", "freeInteraction", "explicitWinCondition", "repeatableValueEngine", "resourceMultiplier"];
+  const HIGH_CEILING_CATEGORIES = ["fastMana", "tutor", "extraTurn", "massLandDenial", "freeInteraction", "explicitWinCondition", "resourceDenial", "repeatableValueEngine", "resourceMultiplier"];
 
   // Redundancy: a single tutor/engine/removal spell is a fine, ordinary
   // inclusion; two or more of the same HIGH-CEILING category is a real,
@@ -384,7 +404,9 @@ export function evaluateCommanderPowerSignal(cards, interactionGraph = null) {
   // by generic text patterns, without counting a single inclusion as proof of
   // an optimized deck.
   const gameChangerBonus = Math.min(gameChangers.length, 6) * 0.5;
-  const rawScore = baseScore + redundancyBonus + comboProximityBonus + commanderBonus + streamlinedBonus + gameChangerBonus;
+  const distinctBroadProtection = [...new Set(broadProtection)];
+  const resilienceBonus = highCeilingCards.length >= 3 ? Math.min(distinctBroadProtection.length, 3) * 0.5 : 0;
+  const rawScore = baseScore + redundancyBonus + comboProximityBonus + commanderBonus + streamlinedBonus + gameChangerBonus + resilienceBonus;
   const signalScore = Number(Math.max(rawScore, densityFloor).toFixed(2));
   const { tier, note } = TIERS.find((entry) => signalScore <= entry.max);
 
@@ -442,6 +464,7 @@ export function evaluateCommanderPowerSignal(cards, interactionGraph = null) {
       commanderBonus: Number(commanderBonus.toFixed(2)),
       streamlinedBonus,
       gameChangerBonus,
+      resilienceBonus,
       densityFloor,
       explanation: "Confidence rises when the full deck is available and multiple independent evidence types agree. A streamlined curve only adds power when at least three high-ceiling cards are already present.",
     }),
@@ -452,6 +475,8 @@ export function evaluateCommanderPowerSignal(cards, interactionGraph = null) {
     efficientInteraction: Object.freeze(buckets.efficientInteraction),
     freeInteraction: Object.freeze(buckets.freeInteraction),
     explicitWinConditions: Object.freeze(buckets.explicitWinCondition),
+    resourceDenial: Object.freeze(buckets.resourceDenial),
+    broadProtection: Object.freeze(distinctBroadProtection),
     gameChangers: Object.freeze({ cards: Object.freeze(gameChangers), count: gameChangers.length, snapshot: COMMANDER_GAME_CHANGER_SNAPSHOT }),
     repeatableValueEngine: Object.freeze(buckets.repeatableValueEngine),
     resourceMultiplier: Object.freeze(buckets.resourceMultiplier),
@@ -476,6 +501,11 @@ export function evaluateCommanderPowerSignal(cards, interactionGraph = null) {
       amplifiedCards: Object.freeze(commanderAmplifiedCards),
       spellSynergy: commanderSpellSynergy,
       evidence: "Whether the commander itself carries a verified power signal, verifiably combines with another high-ceiling card in this build's own interaction graph, or generically amplifies a resource (e.g. instants/sorceries) this build actually carries in real quantity — never checked by the commander's name.",
+    }),
+    playPattern: Object.freeze({
+      resilience: distinctBroadProtection.length >= 3 ? "Resilient" : distinctBroadProtection.length ? "Protected" : highCeilingCards.length >= 3 ? "Fragile" : "Unproven",
+      commanderDependence: commanderStrongestCategory && highCeilingCards.filter((name) => normalizedCardName(name) !== normalizedCardName(commander?.name)).length < 2 ? "High" : commander ? "Moderate" : "Unknown",
+      evidence: "Resilience reflects broad protection detected in the submitted list. Commander dependence is elevated only when the commander's verified power signal is not backed by at least two other high-ceiling cards.",
     }),
     interconnection: Object.freeze({
       comboLoops: Object.freeze(comboLoops),
