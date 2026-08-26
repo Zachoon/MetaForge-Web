@@ -584,3 +584,45 @@ test("a commander that independently carries its own power signal is credited be
   assert.ok(asCommander.signalScore > asOrdinaryCard.signalScore, "the exact same card must score higher when it's the guaranteed-access commander than a random 1-of-99 inclusion");
   assert.equal(asCommander.commanderSynergy.ownSignal, true);
 });
+
+test("play-pattern intelligence separates explosive speed, consistency, and fragility", () => {
+  const commander = card("Turbo Test Commander", "Legendary Creature", "Whenever you cast a spell, draw a card.", 2, true);
+  const fast = [
+    card("Burst A", "Artifact", "{T}: Add {C}{C}.", 1),
+    card("Burst B", "Artifact", "{T}: Add {C}{C}{C}.", 2),
+    card("Burst C", "Instant", "Add {B}{B}{B}.", 1),
+    card("Access A", "Sorcery", "Search your library for a card, put it into your hand, then shuffle.", 1),
+    card("Access B", "Instant", "Search your library for a card, then shuffle and put it on top.", 1),
+    card("Finish", "Creature", "If your library is empty, you win the game.", 2),
+  ];
+  const result = evaluateCommanderPowerSignal([commander, ...fast, ...villainFiller.slice(0, 93).map((entry) => ({ ...entry, cmc: 2 }))]);
+  assert.equal(result.playPattern.speed, "Explosive");
+  assert.equal(result.playPattern.consistency, "Moderate");
+  assert.equal(result.playPattern.resilience, "Fragile");
+});
+
+test("repeatable graveyard recovery is reported separately from protection", () => {
+  const recoveryA = card("Test Reanimator", "Creature", "At the beginning of your upkeep, return target creature card from your graveyard to the battlefield.", 5);
+  const recoveryB = card("Test Historian", "Enchantment", "You may cast permanent cards from your graveyard.", 4);
+  const result = evaluateCommanderPowerSignal([neutralCommander, recoveryA, recoveryB, ...villainFiller.slice(0, 96)]);
+  assert.deepEqual(result.repeatableRecovery.slice().sort(), ["Test Historian", "Test Reanimator"]);
+  assert.equal(result.playPattern.resilience, "Recovering");
+  assert.deepEqual(result.broadProtection, []);
+});
+
+test("commander dependence is low when the other 99 carry an independent high-ceiling package", () => {
+  const independent = [
+    grandArchivist,
+    boneHarvester,
+    chronicleThief,
+    card("Independent Multiplier", "Enchantment", "Double the amount of mana you produce.", 3),
+  ];
+  const result = evaluateCommanderPowerSignal([neutralCommander, ...independent, ...villainFiller.slice(0, 95)]);
+  assert.equal(result.playPattern.commanderDependence, "Low");
+});
+
+test("commander dependence is high when the commander's verified engine is load-bearing", () => {
+  const commander = { ...yawgmoth, isCommander: true };
+  const result = evaluateCommanderPowerSignal([commander, ...villainFiller.slice(0, 98)]);
+  assert.equal(result.playPattern.commanderDependence, "High");
+});

@@ -131,6 +131,17 @@ function isBroadProtection(card) {
     || /\bphase out each (?:creature|permanent) you control\b/i.test(text);
 }
 
+// Recovery is intentionally reported separately from protection: returning
+// spent or destroyed cards from the graveyard describes a deck that can
+// rebuild, not one that prevented the disruption in the first place.
+function isRepeatableRecovery(card) {
+  const text = card.oracleText || "";
+  return /\b(?:cast|play) [^.]{0,45}\b(?:card|cards) from your graveyard\b/i.test(text)
+    || /\breturn target [^.]{0,45}\b(?:card|cards) from your graveyard to (?:the battlefield|your hand)\b/i.test(text)
+    || /\bwhenever [^.]{0,45}\bdies\b[^.]{0,65}\breturn (?:it|that card) to (?:the battlefield|its owner's hand)\b/i.test(text)
+    || /\bat the beginning of [^.]{0,35}\breturn target [^.]{0,40}\bcard from your graveyard\b/i.test(text);
+}
+
 // The single highest-leverage new signal: a card that keeps generating
 // real value (a card, a permanent, damage) every time a cheap, common
 // game action happens, with no one-time ceiling — the actual mechanical
@@ -289,6 +300,7 @@ export function evaluateCommanderPowerSignal(cards, interactionGraph = null) {
   };
   const tutorsRestricted = [];
   const broadProtection = [];
+  const repeatableRecovery = [];
   let cmcTotal = 0;
   let cmcCount = 0;
 
@@ -297,6 +309,7 @@ export function evaluateCommanderPowerSignal(cards, interactionGraph = null) {
     const kind = tutorKind(card);
     if (kind === "restricted") tutorsRestricted.push(card.name);
     if (isBroadProtection(card)) broadProtection.push(card.name);
+    if (isRepeatableRecovery(card)) repeatableRecovery.push(card.name);
     if (!card.isCommander) {
       cmcTotal += manaValueOf(card) * Math.max(1, Number(card.quantity) || 1);
       cmcCount += Math.max(1, Number(card.quantity) || 1);
@@ -405,6 +418,7 @@ export function evaluateCommanderPowerSignal(cards, interactionGraph = null) {
   // an optimized deck.
   const gameChangerBonus = Math.min(gameChangers.length, 6) * 0.5;
   const distinctBroadProtection = [...new Set(broadProtection)];
+  const distinctRepeatableRecovery = [...new Set(repeatableRecovery)];
   const resilienceBonus = highCeilingCards.length >= 3 ? Math.min(distinctBroadProtection.length, 3) * 0.5 : 0;
   const rawScore = baseScore + redundancyBonus + comboProximityBonus + commanderBonus + streamlinedBonus + gameChangerBonus + resilienceBonus;
   const signalScore = Number(Math.max(rawScore, densityFloor).toFixed(2));
@@ -446,6 +460,39 @@ export function evaluateCommanderPowerSignal(cards, interactionGraph = null) {
   const allComboLoops = [...new Set((interactionGraph?.enginePairs || []).map((pair) => pair.cards.join(" + ")))];
   const comboLoops = allComboLoops.slice(0, 5);
   const amplifiers = [...new Set((interactionGraph?.amplifiers || []).map((entry) => entry.source))];
+  const externalHighCeilingCount = highCeilingCards.filter((name) => normalizedCardName(name) !== normalizedCardName(commander?.name)).length;
+  const commanderIsLoadBearing = Boolean(commanderStrongestCategory || commanderSpellSynergy || commanderAmplifiedCards.length);
+  const commanderDependence = !commander
+    ? "Unknown"
+    : commanderIsLoadBearing && externalHighCeilingCount < 2
+      ? "High"
+      : commanderIsLoadBearing || externalHighCeilingCount < 4
+        ? "Moderate"
+        : "Low";
+  const resilience = distinctBroadProtection.length >= 3 || (distinctBroadProtection.length >= 2 && distinctRepeatableRecovery.length >= 2)
+    ? "Resilient"
+    : distinctBroadProtection.length
+      ? "Protected"
+      : distinctRepeatableRecovery.length >= 2
+        ? "Recovering"
+        : highCeilingCards.length >= 3
+          ? "Fragile"
+          : "Unproven";
+  const speed = buckets.fastMana.length >= 3 && (buckets.tutor.length >= 2 || buckets.explicitWinCondition.length >= 1) && averageCmc <= 2.5
+    ? "Explosive"
+    : buckets.fastMana.length >= 2 && averageCmc > 0 && averageCmc <= 3
+      ? "Fast"
+      : completeDeck
+        ? "Developing"
+        : "Unknown";
+  const consistencyEvidence = buckets.tutor.length + Math.min(buckets.repeatableValueEngine.length, 3);
+  const consistency = consistencyEvidence >= 6
+    ? "High"
+    : consistencyEvidence >= 3
+      ? "Moderate"
+      : completeDeck
+        ? "Low"
+        : "Unknown";
 
   return Object.freeze({
     tier,
@@ -477,6 +524,7 @@ export function evaluateCommanderPowerSignal(cards, interactionGraph = null) {
     explicitWinConditions: Object.freeze(buckets.explicitWinCondition),
     resourceDenial: Object.freeze(buckets.resourceDenial),
     broadProtection: Object.freeze(distinctBroadProtection),
+    repeatableRecovery: Object.freeze(distinctRepeatableRecovery),
     gameChangers: Object.freeze({ cards: Object.freeze(gameChangers), count: gameChangers.length, snapshot: COMMANDER_GAME_CHANGER_SNAPSHOT }),
     repeatableValueEngine: Object.freeze(buckets.repeatableValueEngine),
     resourceMultiplier: Object.freeze(buckets.resourceMultiplier),
@@ -503,9 +551,11 @@ export function evaluateCommanderPowerSignal(cards, interactionGraph = null) {
       evidence: "Whether the commander itself carries a verified power signal, verifiably combines with another high-ceiling card in this build's own interaction graph, or generically amplifies a resource (e.g. instants/sorceries) this build actually carries in real quantity — never checked by the commander's name.",
     }),
     playPattern: Object.freeze({
-      resilience: distinctBroadProtection.length >= 3 ? "Resilient" : distinctBroadProtection.length ? "Protected" : highCeilingCards.length >= 3 ? "Fragile" : "Unproven",
-      commanderDependence: commanderStrongestCategory && highCeilingCards.filter((name) => normalizedCardName(name) !== normalizedCardName(commander?.name)).length < 2 ? "High" : commander ? "Moderate" : "Unknown",
-      evidence: "Resilience reflects broad protection detected in the submitted list. Commander dependence is elevated only when the commander's verified power signal is not backed by at least two other high-ceiling cards.",
+      speed,
+      consistency,
+      resilience,
+      commanderDependence,
+      evidence: "Speed combines verified fast mana, compact access to wins, curve, and deck completeness. Consistency reflects unrestricted access and repeatable engines. Resilience distinguishes protection from graveyard recovery. Commander dependence rises only when the commander's verified contribution is load-bearing and the other 99 provide little independent high-ceiling support.",
     }),
     interconnection: Object.freeze({
       comboLoops: Object.freeze(comboLoops),
