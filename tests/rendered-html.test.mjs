@@ -208,6 +208,29 @@ test("publishes brand trust and expanded problem-first learning pages", async ()
   }
 });
 
+test("grounds detailed Academy guides in visible card examples and collapsed factual sources", async () => {
+  const cases = [
+    ["how-much-card-draw-should-a-commander-deck-have", "Rhystic Study", "Night(?:'|&#x27;)s Whisper"],
+    ["how-many-removal-spells-should-i-play-in-commander", "Swords to Plowshares", "Beast Within"],
+    ["how-to-build-a-commander-deck", "Command Tower", "Arcane Signet"],
+    ["how-to-evaluate-commander-power-level", "Demonic Tutor", "Farewell"],
+  ];
+
+  for (const [slug, firstCard, secondCard] of cases) {
+    const response = await render(`https://metaforge.gg/academy/${slug}`);
+    const html = await response.text();
+    assert.match(html, /CARDS AS EVIDENCE/i);
+    assert.match(html, new RegExp(firstCard, "i"));
+    assert.match(html, new RegExp(secondCard, "i"));
+    assert.match(html, /cards\.scryfall\.io\/normal\/front/i);
+    assert.match(html, /<details class="academy-sources">/i);
+    assert.match(html, /Sources and evidence behind this guide/i);
+    assert.match(html, /Wizards of the Coast/i);
+    assert.match(html, /Scryfall card data and image API/i);
+    assert.match(html, /Evidence boundary:/i);
+  }
+});
+
 test("publishes the expanded commander library with related internal links", async () => {
   const index = await render("https://metaforge.gg/commanders");
   const indexHtml = await index.text();
