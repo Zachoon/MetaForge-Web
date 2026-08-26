@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 import { evaluateCommanderPowerSignal, POWER_TIERS, powerSignalCategoryFor } from "../app/commander-power-signal.mjs";
+import { COMMANDER_GAME_CHANGERS, COMMANDER_GAME_CHANGER_SNAPSHOT, isCommanderGameChanger } from "../app/commander-game-changers.mjs";
 import { buildInteractionGraph } from "../app/forge-interaction-graph.mjs";
 
 // Real oracle text for well-known, unambiguous cards — each chosen because
@@ -122,6 +123,34 @@ test("a low curve only raises an already high-ceiling shell, never an ordinary c
   assert.ok(streamlined.signalScore > streamlined.calibration.baseScore);
 });
 
+test("official Game Changers are versioned, source-linked evidence and are matched by exact normalized name", () => {
+  assert.equal(COMMANDER_GAME_CHANGER_SNAPSHOT.asOf, "2026-02-09");
+  assert.equal(COMMANDER_GAME_CHANGER_SNAPSHOT.sources.length, 2);
+  assert.ok(COMMANDER_GAME_CHANGERS.includes("Farewell"));
+  assert.ok(COMMANDER_GAME_CHANGERS.includes("Biorhythm"));
+  assert.equal(isCommanderGameChanger("  thassa's oracle "), true);
+  assert.equal(isCommanderGameChanger("Sol Ring"), false);
+  assert.equal(powerSignalCategoryFor(card("Farewell", "Sorcery", "Exile all creatures.", 6)), "gameChanger", "official-only evidence must also inform construction-time targeting");
+});
+
+test("free disruption and printed win clauses are reported as separate evidence", () => {
+  const forceShape = card("Test Free Counter", "Instant", "You may pay 1 life and exile a blue card from your hand rather than pay this spell's mana cost. Counter target spell.", 5);
+  const oracleShape = card("Test Alternate Win", "Creature", "When this creature enters, if your devotion is high enough, you win the game.", 2);
+  const result = evaluateCommanderPowerSignal([forceShape, oracleShape]);
+  assert.deepEqual(result.freeInteraction, ["Test Free Counter"]);
+  assert.deepEqual(result.explicitWinConditions, ["Test Alternate Win"]);
+  assert.ok(result.highCeilingCards.includes("Test Free Counter"));
+  assert.ok(result.highCeilingCards.includes("Test Alternate Win"));
+});
+
+test("one Game Changer informs the result but never proves a high-powered deck by itself", () => {
+  const farewell = card("Farewell", "Sorcery", "Choose one or more — Exile all artifacts; exile all creatures; exile all enchantments; exile all graveyards.", 6);
+  const result = evaluateCommanderPowerSignal([farewell, ...Array.from({ length: 98 }, (_, index) => card(`Ordinary ${index}`, "Creature", "", 3))]);
+  assert.equal(result.gameChangers.count, 1);
+  assert.equal(result.calibration.gameChangerBonus, 0.5);
+  assert.equal(result.tier, "Casual");
+});
+
 test("evaluateCommanderPowerSignal escalates tier with signal density and stays honest about being a heuristic, not a rule", () => {
   const casual = evaluateCommanderPowerSignal([vanillaBear, plains]);
   assert.equal(casual.tier, "Casual");
@@ -130,7 +159,7 @@ test("evaluateCommanderPowerSignal escalates tier with signal density and stays 
   assert.equal(maximum.tier, "Maximum");
   for (const result of [casual, maximum]) {
     assert.match(result.evidence, /forge theory/i);
-    assert.match(result.evidence, /not a claim to match any official bracket system/i);
+    assert.match(result.evidence, /not a claim to reproduce the official bracket system/i);
   }
 });
 
@@ -272,11 +301,9 @@ test("POWER_TIERS is the same ordered tier list evaluateCommanderPowerSignal its
 // New card-level signals beyond the original four: efficient interaction,
 // repeatable value engines (the fix for the reported failure below), and
 // resource multiplication — plus deck-level redundancy, density, combo
-// proximity, and commander-synergy aggregation. No named-card dataset is
-// used anywhere in this module or its tests below — every fixture is
-// chosen because its *oracle text* is a clean, unambiguous example of the
-// mechanical shape being tested, the same convention the fixtures above
-// already follow.
+// proximity, and commander-synergy aggregation. Mechanical fixtures below
+// use clean Oracle-text shapes; the official named Game Changers snapshot
+// is versioned and tested separately above.
 
 const efficientBolt = card("Test Efficient Removal", "Instant", "Destroy target creature.", 2);
 const conditionalRemoval = card("Test Conditional Removal", "Instant", "Destroy target creature unless its controller pays {3}.", 2);

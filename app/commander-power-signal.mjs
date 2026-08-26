@@ -1,20 +1,16 @@
+import { COMMANDER_GAME_CHANGER_SNAPSHOT, isCommanderGameChanger } from "./commander-game-changers.mjs";
+
 // MetaForge Commander Power Signal
 // A Commander-family-specific ("Commander", "Brawl", "Standard Brawl" —
 // singleton, commander-led formats only, never Standard or any other
 // competitive 60-card format) "how strong is this build" indicator.
 //
-// Every signal here traces to real, quoted oracle text on real cards in
-// the actual build, or to a real mutual relationship in this exact
-// build's own verified interaction graph — never to a named-card
-// dataset. No blacklist/allowlist of specific cards exists anywhere in
-// this module: it deliberately generalizes across every commander,
-// theme, archetype, and card pool by classifying what a card's text
-// *does* (repeatable value, efficient interaction, acceleration,
-// tutoring, resource multiplication) rather than checking what a card
-// *is named*. This is a load-bearing design choice, not an oversight —
-// a named list would need a documented source, version, and update
-// process to stay honest, and would silently miss every new printing
-// and every off-list card that does the same thing. The tier label is
+// Mechanical signals trace to quoted Oracle text on cards in the actual
+// build or to this build's verified interaction graph. That classifier
+// remains name-independent so it generalizes to new and off-list cards.
+// The one named input is a separately maintained, dated, source-linked
+// official Game Changers snapshot; it supports rather than replaces the
+// mechanical analysis. The tier label is
 // Forge Theory (a bounded heuristic), never presented as a rule, a
 // guaranteed pod fit, or a claim to reproduce any official bracket
 // system's exact criteria.
@@ -106,6 +102,19 @@ function isEfficientInteraction(card) {
     || /\bcounter target spell\b/i.test(firstClause);
 }
 
+function isFreeInteraction(card) {
+  if (!/\b(Instant|Sorcery)\b/i.test(card.typeLine || "")) return false;
+  const text = card.oracleText || "";
+  const interaction = /\bcounter target spell\b|\b(?:exile|destroy) target\b/i.test(text);
+  const alternateCost = /\brather than pay(?:ing)? (?:this spell's|its) mana cost\b|\bwithout paying (?:this spell's|its) mana cost\b/i.test(text);
+  return interaction && alternateCost;
+}
+
+function isExplicitWinCondition(card) {
+  const text = card.oracleText || "";
+  return /\byou win the game\b|\b(?:target|that|an?) opponent loses the game\b/i.test(text);
+}
+
 // The single highest-leverage new signal: a card that keeps generating
 // real value (a card, a permanent, damage) every time a cheap, common
 // game action happens, with no one-time ceiling — the actual mechanical
@@ -163,6 +172,8 @@ function powerCategoriesFor(card) {
   if (isExtraTurn(card)) categories.push("extraTurn");
   if (isMassLandDenial(card)) categories.push("massLandDenial");
   if (isEfficientInteraction(card)) categories.push("efficientInteraction");
+  if (isFreeInteraction(card)) categories.push("freeInteraction");
+  if (isExplicitWinCondition(card)) categories.push("explicitWinCondition");
   if (isRepeatableValueEngine(card)) categories.push("repeatableValueEngine");
   if (isResourceMultiplier(card)) categories.push("resourceMultiplier");
   return categories;
@@ -183,6 +194,9 @@ export const CATEGORY_WEIGHT = Object.freeze({
   extraTurn: 1,
   massLandDenial: 2,
   efficientInteraction: 0.5,
+  freeInteraction: 1.5,
+  explicitWinCondition: 1.5,
+  gameChanger: 0.5,
   repeatableValueEngine: 2,
   resourceMultiplier: 1.5,
 });
@@ -214,7 +228,7 @@ export const POWER_TIERS = Object.freeze(TIERS.map((entry) => entry.tier));
 // the same card every time.
 export function powerSignalCategoryFor(card) {
   const categories = powerCategoriesFor(card);
-  if (!categories.length) return null;
+  if (!categories.length) return isCommanderGameChanger(card?.name) ? "gameChanger" : null;
   return categories.reduce((strongest, category) => (CATEGORY_WEIGHT[category] > CATEGORY_WEIGHT[strongest] ? category : strongest), categories[0]);
 }
 
@@ -253,7 +267,7 @@ export function evaluateCommanderPowerSignal(cards, interactionGraph = null) {
 
   const buckets = {
     fastMana: [], tutor: [], extraTurn: [], massLandDenial: [],
-    efficientInteraction: [], repeatableValueEngine: [], resourceMultiplier: [],
+    efficientInteraction: [], freeInteraction: [], explicitWinCondition: [], repeatableValueEngine: [], resourceMultiplier: [],
   };
   const tutorsRestricted = [];
   let cmcTotal = 0;
@@ -270,6 +284,7 @@ export function evaluateCommanderPowerSignal(cards, interactionGraph = null) {
   }
   for (const key of Object.keys(buckets)) buckets[key] = [...new Set(buckets[key])];
   const distinctTutorsRestricted = [...new Set(tutorsRestricted)];
+  const gameChangers = [...new Set(cards.filter((card) => isCommanderGameChanger(card.name)).map((card) => card.name))];
 
   const baseScore = Object.entries(buckets).reduce((sum, [category, names]) => sum + names.length * CATEGORY_WEIGHT[category], 0);
 
@@ -283,7 +298,7 @@ export function evaluateCommanderPowerSignal(cards, interactionGraph = null) {
   // the deck's ceiling" (highCeilingCards, the density floor, combo
   // proximity eligibility) is deliberately computed only over the other,
   // genuinely high-ceiling categories.
-  const HIGH_CEILING_CATEGORIES = ["fastMana", "tutor", "extraTurn", "massLandDenial", "repeatableValueEngine", "resourceMultiplier"];
+  const HIGH_CEILING_CATEGORIES = ["fastMana", "tutor", "extraTurn", "massLandDenial", "freeInteraction", "explicitWinCondition", "repeatableValueEngine", "resourceMultiplier"];
 
   // Redundancy: a single tutor/engine/removal spell is a fine, ordinary
   // inclusion; two or more of the same HIGH-CEILING category is a real,
@@ -363,7 +378,13 @@ export function evaluateCommanderPowerSignal(cards, interactionGraph = null) {
     ? (averageCmc <= 2 ? 2 : 1)
     : 0;
 
-  const rawScore = baseScore + redundancyBonus + comboProximityBonus + commanderBonus + streamlinedBonus;
+  // The official list is supporting evidence, not a replacement for the
+  // mechanical read. A small capped bonus recognizes listed cards whose
+  // experience impact (locks, protection, snowballing) is not fully captured
+  // by generic text patterns, without counting a single inclusion as proof of
+  // an optimized deck.
+  const gameChangerBonus = Math.min(gameChangers.length, 6) * 0.5;
+  const rawScore = baseScore + redundancyBonus + comboProximityBonus + commanderBonus + streamlinedBonus + gameChangerBonus;
   const signalScore = Number(Math.max(rawScore, densityFloor).toFixed(2));
   const { tier, note } = TIERS.find((entry) => signalScore <= entry.max);
 
@@ -420,6 +441,7 @@ export function evaluateCommanderPowerSignal(cards, interactionGraph = null) {
       comboProximityBonus,
       commanderBonus: Number(commanderBonus.toFixed(2)),
       streamlinedBonus,
+      gameChangerBonus,
       densityFloor,
       explanation: "Confidence rises when the full deck is available and multiple independent evidence types agree. A streamlined curve only adds power when at least three high-ceiling cards are already present.",
     }),
@@ -428,6 +450,9 @@ export function evaluateCommanderPowerSignal(cards, interactionGraph = null) {
     extraTurns: Object.freeze(buckets.extraTurn),
     massLandDenial: Object.freeze(buckets.massLandDenial),
     efficientInteraction: Object.freeze(buckets.efficientInteraction),
+    freeInteraction: Object.freeze(buckets.freeInteraction),
+    explicitWinConditions: Object.freeze(buckets.explicitWinCondition),
+    gameChangers: Object.freeze({ cards: Object.freeze(gameChangers), count: gameChangers.length, snapshot: COMMANDER_GAME_CHANGER_SNAPSHOT }),
     repeatableValueEngine: Object.freeze(buckets.repeatableValueEngine),
     resourceMultiplier: Object.freeze(buckets.resourceMultiplier),
     // Every card that matches ANY category, including efficientInteraction
@@ -462,6 +487,6 @@ export function evaluateCommanderPowerSignal(cards, interactionGraph = null) {
       resetShapeTotal: (interactionGraph?.resetPairs || []).length,
       evidence: "Every real mutual mechanical loop and verified rules-text trigger amplifier from this build's own interaction graph — informational, not counted toward the power tier above (see comboProximity for the subset that is), and not a claim that any loop goes infinite. Reset/pay shapes are a separate observation pass and are also not counted.",
     }),
-    evidence: "Forge Theory: a bounded heuristic over real, quoted oracle-text signals and this build's own verified interaction graph — no named-card dataset of any kind, so this generalizes across every commander, theme, and card pool rather than only cards on a fixed list. Not a claim to match any official bracket system's named-card criteria, and not a guarantee this deck fits a given pod.",
+    evidence: "Forge Theory: a bounded heuristic over quoted Oracle-text signals, this build's verified interaction graph, and a dated, source-linked official Game Changers snapshot. Mechanical detection remains name-independent so new and off-list cards can still be recognized. Not a claim to reproduce the official bracket system, and not a guarantee this deck fits a given pod.",
   });
 }
