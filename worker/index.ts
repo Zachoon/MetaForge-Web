@@ -42,6 +42,8 @@ const ACADEMY_GUIDES: Record<string, { headline: string; description: string; da
   "/academy/how-many-removal-spells-should-i-play-in-commander": { headline: "How Many Removal Spells Should I Play in Commander?", description: "Build a Commander interaction package around real threats, timing, and color access.", datePublished: "2026-08-25" },
   "/academy/how-to-build-a-commander-deck": { headline: "How to Build a Commander Deck", description: "Build a legal 100-card Commander deck from a commander, game plan, functional packages, mana, and a way to win.", datePublished: "2026-08-25" },
   "/academy/how-to-evaluate-commander-power-level": { headline: "How to Evaluate a Commander Deck's Power Level", description: "Evaluate Commander power through speed, consistency, interaction, resilience, tutors, fast mana, and closing patterns.", datePublished: "2026-08-25" },
+  "/academy/how-many-tutors-should-a-commander-deck-have": { headline: "How Many Tutors Should a Commander Deck Have?", description: "Evaluate Commander tutors by efficiency, breadth, destination, and the lines they repeatedly enable.", datePublished: "2026-08-25" },
+  "/academy/how-much-fast-mana-is-too-much-in-commander": { headline: "How Much Fast Mana Is Too Much in Commander?", description: "Distinguish ordinary ramp from explosive fast mana and evaluate its effect on table experience.", datePublished: "2026-08-25" },
 };
 const COMMANDER_GUIDES: Record<string, string> = {
   "/commanders/korvold-fae-cursed-king": "Korvold, Fae-Cursed King",

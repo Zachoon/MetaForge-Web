@@ -27,15 +27,31 @@ function manaValueOf(card) {
   return symbols.reduce((sum, symbol) => sum + (/^\d+$/.test(symbol) ? Number(symbol) : /^[XYZ]$/.test(symbol) ? 0 : 1), 0);
 }
 
+function manaProducedByAddClause(card) {
+  const text = card?.oracleText || "";
+  return [...text.matchAll(/\badd\b[^.]*?((?:\{[^}]+\}){1,}|one mana|two mana|three mana|four mana|five mana)/gi)]
+    .reduce((largest, match) => {
+      const symbols = (match[1].match(/\{[^}]+\}/g) || []).length;
+      const words = { "one mana": 1, "two mana": 2, "three mana": 3, "four mana": 4, "five mana": 5 }[match[1].toLowerCase()] || 0;
+      return Math.max(largest, symbols || words);
+    }, 0);
+}
+
 // Mana rocks/dorks costing 1 or less accelerate a whole turn ahead of a
 // normal land drop — a real, well-understood power signal distinct from
 // ordinary ramp. Restricted to Artifact/Creature so an unrelated cheap
 // card that happens to mention "add" in a rider clause isn't misread as a
 // mana source.
 function isFastManaRock(card) {
-  if (manaValueOf(card) > 1) return false;
+  const manaValue = manaValueOf(card);
+  if (manaValue > 2) return false;
   if (!/\b(Artifact|Creature)\b/i.test(card.typeLine || "")) return false;
-  return /\badd\b.{0,12}(\{[^}]+\}|one mana|mana of any)/i.test(card.oracleText || "");
+  const produced = manaProducedByAddClause(card);
+  // One-mana rocks and dorks accelerate the following turn even when
+  // they only make one mana. At mana value two, require a real positive
+  // burst (three or more) so ordinary Signets/Talismans never become
+  // "fast mana" merely because they are efficient ramp.
+  return manaValue <= 1 ? produced >= 1 : produced > manaValue;
 }
 
 // A one-shot ritual that nets more mana than it costs (Dark Ritual: pay 1,
@@ -337,9 +353,33 @@ export function evaluateCommanderPowerSignal(cards, interactionGraph = null) {
     + commanderAmplifiedCards.length * 2
     + (commanderSpellSynergy ? 3 : 0);
 
-  const rawScore = baseScore + redundancyBonus + comboProximityBonus + commanderBonus;
+  // A low curve only raises the ceiling when the list already contains a
+  // repeatable high-ceiling package. This prevents a pile of cheap casual
+  // creatures from being mislabeled while recognizing that several
+  // tutors/engines/fast-mana pieces become materially more consistent in
+  // a streamlined shell. The adjustment is deliberately small and capped.
+  const averageCmc = cmcCount ? Number((cmcTotal / cmcCount).toFixed(2)) : 0;
+  const streamlinedBonus = highCeilingCards.length >= 3 && averageCmc > 0 && averageCmc <= 2.5
+    ? (averageCmc <= 2 ? 2 : 1)
+    : 0;
+
+  const rawScore = baseScore + redundancyBonus + comboProximityBonus + commanderBonus + streamlinedBonus;
   const signalScore = Number(Math.max(rawScore, densityFloor).toFixed(2));
   const { tier, note } = TIERS.find((entry) => signalScore <= entry.max);
+
+  const weightedEvidenceCount = highCeilingCards.length + buckets.efficientInteraction.length + comboProximityPairs.length;
+  const expectedDeckSize = cards.some((card) => card.isCommander) ? 100 : null;
+  const representedCards = cards.reduce((sum, card) => sum + Math.max(1, Number(card.quantity) || 1), 0);
+  const completeDeck = expectedDeckSize ? representedCards >= expectedDeckSize - 1 : representedCards >= 60;
+  const confidence = completeDeck && weightedEvidenceCount >= 6
+    ? "High"
+    : completeDeck || weightedEvidenceCount >= 4
+      ? "Moderate"
+      : "Low";
+  const tierIndex = TIERS.findIndex((entry) => entry.tier === tier);
+  const assessedRange = confidence === "High"
+    ? [tier]
+    : [TIERS[Math.max(0, tierIndex - 1)].tier, tier].filter((value, index, values) => values.indexOf(value) === index);
 
   // Deliberately kept out of the score above unless it clears the
   // comboProximity bar: a mutual two-card loop is a *synergy* claim
@@ -368,7 +408,21 @@ export function evaluateCommanderPowerSignal(cards, interactionGraph = null) {
     tier,
     note,
     signalScore,
-    averageCmc: cmcCount ? Number((cmcTotal / cmcCount).toFixed(2)) : 0,
+    averageCmc,
+    confidence,
+    assessedRange: Object.freeze(assessedRange),
+    calibration: Object.freeze({
+      completeDeck,
+      representedCards,
+      expectedDeckSize,
+      baseScore: Number(baseScore.toFixed(2)),
+      redundancyBonus,
+      comboProximityBonus,
+      commanderBonus: Number(commanderBonus.toFixed(2)),
+      streamlinedBonus,
+      densityFloor,
+      explanation: "Confidence rises when the full deck is available and multiple independent evidence types agree. A streamlined curve only adds power when at least three high-ceiling cards are already present.",
+    }),
     fastMana: Object.freeze(buckets.fastMana),
     tutors: Object.freeze({ unrestricted: Object.freeze(buckets.tutor), restricted: Object.freeze(distinctTutorsRestricted) }),
     extraTurns: Object.freeze(buckets.extraTurn),

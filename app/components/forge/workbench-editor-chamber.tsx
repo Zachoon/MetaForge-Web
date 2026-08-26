@@ -53,7 +53,8 @@ export function WorkbenchEditorChamber() {
             {nativeMasterworkContext?.powerSignal && (
               <span title={nativeMasterworkContext.powerSignal.note}>
                 <small>{nativeMasterworkContext.requestedPowerTier ? `POWER SIGNAL · TARGETED ${nativeMasterworkContext.requestedPowerTier.toUpperCase()}` : "POWER SIGNAL"}</small>
-                <strong>{nativeMasterworkContext.powerSignal.tier}</strong>
+                <strong>{nativeMasterworkContext.powerSignal.assessedRange?.length > 1 ? nativeMasterworkContext.powerSignal.assessedRange.join("–") : nativeMasterworkContext.powerSignal.tier}</strong>
+                {nativeMasterworkContext.powerSignal.confidence && <small>{nativeMasterworkContext.powerSignal.confidence.toUpperCase()} CONFIDENCE</small>}
               </span>
             )}
             {deckPriceTotal.unpricedCards > 0 && (

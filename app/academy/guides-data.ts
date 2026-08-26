@@ -159,6 +159,38 @@ export const NEW_ACADEMY_GUIDES = [
     toolHref: "/tools/commander-power-level-checker",
     toolLabel: "Check my deck's power signals",
   },
+  {
+    slug: "how-many-tutors-should-a-commander-deck-have",
+    thought: "I don't know how many tutors belong in my deck.",
+    title: "How Many Tutors Should a Commander Deck Have?",
+    description: "Evaluate Commander tutors by efficiency, breadth, destination, and the lines they repeatedly enable—not by one arbitrary count.",
+    lead: "Tutors change consistency more than raw card count suggests. The important distinction is not merely how many you play, but how cheaply they find a card, how broad the search is, and whether they repeatedly assemble the same ending.",
+    sections: [
+      ["Separate broad tutors from narrow support", "An unrestricted tutor can become the best card in the deck every game. A creature, land, or mana-value restriction narrows both its ceiling and the situations where it is useful."],
+      ["Measure the full cost of access", "Mana cost, card disadvantage, reveal requirements, and whether the card goes to hand, top of library, graveyard, or battlefield all change how quickly the tutor affects the game."],
+      ["Ask what the tutor usually finds", "A tutor used to locate a missing land creates a different experience from one that consistently assembles a compact win. Judge the repeated play pattern, not the most innocent possible target."],
+      ["Describe consistency at Rule 0", "Current Commander guidance relies on Game Changers to identify the most efficient tutors. Tell the table about those cards and any repeated tutor-to-combo line rather than defending a universal tutor limit."],
+    ],
+    watch: ["How often the same card is searched for", "The earliest turn the tutored card matters", "Whether the tutor finds setup, protection, or the win", "Games that become repetitive because of access"],
+    toolHref: "/tools/commander-power-level-checker",
+    toolLabel: "Measure my tutor and consistency signals",
+  },
+  {
+    slug: "how-much-fast-mana-is-too-much-in-commander",
+    thought: "I don't know when ramp becomes fast mana.",
+    title: "How Much Fast Mana Is Too Much in Commander?",
+    description: "Distinguish ordinary ramp from explosive fast mana and evaluate how acceleration changes a Commander's expected table experience.",
+    lead: "Not every mana rock is fast mana. The practical concern is whether a card produces an unusually large jump before ordinary land drops and ramp can keep pace, especially when several such pieces make explosive openings repeatable.",
+    sections: [
+      ["Distinguish development from a burst", "A two-mana rock that produces one mana usually develops the next turn. A two-mana artifact that immediately produces three creates a positive burst and can jump much farther ahead."],
+      ["Evaluate density, not one famous card", "One explosive draw is memorable; several independent pieces make those openings consistent. Count how often the deck can start ahead, not only whether it owns one powerful card."],
+      ["Connect acceleration to what follows", "Fast mana matters because of the commander, engine, lock, or win it deploys early. Name that follow-up and the interaction window opponents realistically receive."],
+      ["Use current table expectations", "Official bracket guidance identifies explosive starts and specific fast-mana Game Changers with higher-powered play. Share those concrete cards and likely timing during the pregame conversation."],
+    ],
+    watch: ["Mana available on turns one through three", "How often fast mana appears across opening hands", "The first engine or threat it enables", "Whether one removal spell restores parity"],
+    toolHref: "/tools/commander-power-level-checker",
+    toolLabel: "Check my deck's acceleration signals",
+  },
 ] as const;
 
 export function newAcademyGuideBySlug(slug: string) { return NEW_ACADEMY_GUIDES.find((guide) => guide.slug === slug); }

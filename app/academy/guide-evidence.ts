@@ -71,6 +71,18 @@ const CARD = {
     cardUrl: "https://scryfall.com/card/mkc/64/farewell", artist: "Seb McKinnon", setName: "Murders at Karlov Manor Commander",
     lesson: "Farewell shows why power discussions include play experience as well as speed: its unusually broad exile reset is currently identified as a Game Changer.",
   },
+  worldlyTutor: {
+    name: "Worldly Tutor", manaCost: "{G}", typeLine: "Instant", oracleText: "Search your library for a creature card, reveal it, then shuffle and put the card on top.",
+    image: "https://cards.scryfall.io/normal/front/f/3/f39aa2e9-e294-4ce6-bf5e-e1f579101a7a.jpg?1783918434",
+    cardUrl: "https://scryfall.com/card/dmr/185/worldly-tutor", artist: "Volkan Baǵa", setName: "Dominaria Remastered",
+    lesson: "Worldly Tutor is restricted to creatures and places the result on top, yet its one-mana instant timing still makes access efficient enough for the current Game Changers list.",
+  },
+  grimMonolith: {
+    name: "Grim Monolith", manaCost: "{2}", typeLine: "Artifact", oracleText: "This artifact doesn't untap during your untap step. {T}: Add {C}{C}{C}. {4}: Untap this artifact.",
+    image: "https://cards.scryfall.io/normal/front/9/d/9ddc9fe1-17c8-4e1d-aeb8-c4214e881280.jpg?1783946223",
+    cardUrl: "https://scryfall.com/card/ulg/126/grim-monolith", artist: "Chippy", setName: "Urza's Legacy",
+    lesson: "Grim Monolith costs two but immediately produces three mana, illustrating the positive-mana burst that ordinary two-mana rocks do not provide.",
+  },
 } satisfies Record<string, GuideCardExample>;
 
 export const GUIDE_EVIDENCE: Record<string, GuideEvidence> = {
@@ -97,6 +109,24 @@ export const GUIDE_EVIDENCE: Record<string, GuideEvidence> = {
       url: "https://magic.wizards.com/en/news/announcements/commander-brackets-beta-update-february-9-2026",
       usedFor: "Current bracket status and the addition of Farewell to the Game Changers list.",
     }, SCRYFALL_DATA, cardSource(CARD.demonicTutor), cardSource(CARD.farewell)],
+  },
+  "how-many-tutors-should-a-commander-deck-have": {
+    evidenceNote: "Wizards removed universal tutor-count restrictions from the bracket framework in October 2025 and now relies on Game Changers to flag the most efficient tutors. MetaForge therefore evaluates access, efficiency, and repeated play patterns rather than inventing one official count.",
+    cards: [CARD.demonicTutor, CARD.worldlyTutor],
+    sources: [{
+      title: "Commander Brackets Beta update — October 21, 2025", publisher: "Wizards of the Coast",
+      url: "https://magic.wizards.com/en/news/announcements/commander-brackets-beta-update-october-21-2025",
+      usedFor: "The current removal of universal tutor restrictions, the consistency and homogeneity rationale, and efficient tutors on the Game Changers list.",
+    }, SCRYFALL_DATA, cardSource(CARD.demonicTutor), cardSource(CARD.worldlyTutor)],
+  },
+  "how-much-fast-mana-is-too-much-in-commander": {
+    evidenceNote: "Official bracket guidance identifies explosive starts and specific fast-mana cards as higher-powered play signals, but it does not prescribe one universal quantity. MetaForge's density and follow-up analysis is strategic interpretation grounded in those published expectations and the cards' Oracle text.",
+    cards: [CARD.grimMonolith, CARD.arcaneSignet],
+    sources: [{
+      title: "Commander Brackets Beta update — October 21, 2025", publisher: "Wizards of the Coast",
+      url: "https://magic.wizards.com/en/news/announcements/commander-brackets-beta-update-october-21-2025",
+      usedFor: "Current bracket expectations for explosive starts and the fast-mana cards identified as Game Changers.",
+    }, SCRYFALL_DATA, cardSource(CARD.grimMonolith), cardSource(CARD.arcaneSignet)],
   },
 };
 

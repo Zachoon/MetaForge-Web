@@ -370,8 +370,9 @@ function ResearchPageInner() {
               <section className="stress-dossier">
                 <span>
                   <small>COMMANDER POWER SIGNAL</small>
-                  <b>{bundle.powerSignal.tier}</b>
+                  <b>{bundle.powerSignal.assessedRange?.length > 1 ? bundle.powerSignal.assessedRange.join("–") : bundle.powerSignal.tier}</b>
                   <em>{bundle.powerSignal.note}</em>
+                  {bundle.powerSignal.confidence && <em>{bundle.powerSignal.confidence} confidence · {bundle.powerSignal.calibration?.representedCards || 0} cards assessed</em>}
                 </span>
                 {bundle.requestedPowerTier && (
                   <span>
@@ -421,6 +422,7 @@ function ResearchPageInner() {
                   </span>
                 )}
                 <p>{bundle.powerSignal.evidence}</p>
+                {bundle.powerSignal.calibration?.explanation && <p>{bundle.powerSignal.calibration.explanation}</p>}
               </section>
             )}
             {bundle.simulationDossier && (

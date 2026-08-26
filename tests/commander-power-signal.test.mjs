@@ -13,6 +13,8 @@ const solRing = card("Sol Ring", "Artifact", "{T}: Add {C}{C}.", 1);
 const manaCrypt = card("Mana Crypt", "Artifact", "Add {C}{C}. Mana Crypt deals 1 damage to you.", 0);
 const birdsOfParadise = card("Birds of Paradise", "Creature — Bird", "{T}: Add one mana of any color.", 1);
 const darkRitual = card("Dark Ritual", "Instant", "Add {B}{B}{B}.", 1);
+const grimMonolithShape = card("Test Positive-Mana Monolith", "Artifact", "{T}: Add {C}{C}{C}.", 2);
+const ordinarySignetShape = card("Test Ordinary Signet", "Artifact", "{1}, {T}: Add {U}{B}.", 2);
 const demonicTutor = card("Demonic Tutor", "Sorcery", "Search your library for a card, put that card into your hand, then shuffle.", 2);
 const rampantGrowth = card("Rampant Growth", "Sorcery", "Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.", 2);
 const timeWarp = card("Time Warp", "Sorcery", "Target player takes an extra turn after this one.", 4);
@@ -38,6 +40,11 @@ test("evaluateCommanderPowerSignal detects a one-mana-value mana dork", () => {
 test("evaluateCommanderPowerSignal detects a ritual that nets more mana than it costs", () => {
   const result = evaluateCommanderPowerSignal([darkRitual, vanillaBear, plains]);
   assert.deepEqual(result.fastMana, ["Dark Ritual"]);
+});
+
+test("fast-mana calibration catches a two-mana rock that makes three, but not ordinary two-mana ramp", () => {
+  const result = evaluateCommanderPowerSignal([grimMonolithShape, ordinarySignetShape]);
+  assert.deepEqual(result.fastMana, ["Test Positive-Mana Monolith"]);
 });
 
 test("evaluateCommanderPowerSignal never calls an ordinary vanilla creature or a basic land fast mana", () => {
@@ -86,6 +93,33 @@ test("evaluateCommanderPowerSignal reports a real quantity-weighted average CMC 
   ]);
   // (2*3 + 6*1) / 4 = 3
   assert.equal(result.averageCmc, 3);
+});
+
+test("power assessment reports an honest range and confidence for partial versus complete evidence", () => {
+  const partial = evaluateCommanderPowerSignal([solRing, demonicTutor]);
+  assert.equal(partial.confidence, "Low");
+  assert.ok(partial.assessedRange.includes(partial.tier));
+  assert.equal(partial.calibration.completeDeck, false);
+
+  const completeCards = [
+    card("Test Commander", "Legendary Creature", "", 3, true),
+    solRing, manaCrypt, birdsOfParadise, darkRitual, demonicTutor, timeWarp,
+    ...Array.from({ length: 92 }, (_, index) => card(`Filler ${index}`, "Creature", "", 3)),
+  ];
+  const complete = evaluateCommanderPowerSignal(completeCards);
+  assert.equal(complete.confidence, "High");
+  assert.deepEqual(complete.assessedRange, [complete.tier]);
+  assert.equal(complete.calibration.completeDeck, true);
+});
+
+test("a low curve only raises an already high-ceiling shell, never an ordinary casual deck", () => {
+  const cheapCasual = evaluateCommanderPowerSignal(Array.from({ length: 12 }, (_, index) => card(`Cheap Creature ${index}`, "Creature", "", 1)));
+  assert.equal(cheapCasual.calibration.streamlinedBonus, 0);
+  assert.equal(cheapCasual.tier, "Casual");
+
+  const streamlined = evaluateCommanderPowerSignal([solRing, demonicTutor, timeWarp, vanillaBear]);
+  assert.ok(streamlined.calibration.streamlinedBonus > 0);
+  assert.ok(streamlined.signalScore > streamlined.calibration.baseScore);
 });
 
 test("evaluateCommanderPowerSignal escalates tier with signal density and stays honest about being a heuristic, not a rule", () => {

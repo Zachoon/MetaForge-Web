@@ -199,6 +199,8 @@ test("publishes brand trust and expanded problem-first learning pages", async ()
     ["how-many-removal-spells-should-i-play-in-commander", "How Many Removal Spells Should I Play in Commander"],
     ["how-to-build-a-commander-deck", "How to Build a Commander Deck"],
     ["how-to-evaluate-commander-power-level", "How to Evaluate a Commander Deck"],
+    ["how-many-tutors-should-a-commander-deck-have", "How Many Tutors Should a Commander Deck Have"],
+    ["how-much-fast-mana-is-too-much-in-commander", "How Much Fast Mana Is Too Much in Commander"],
   ]) {
     const response = await render(`https://metaforge.gg/academy/${slug}`);
     const html = await response.text();
@@ -214,6 +216,8 @@ test("grounds detailed Academy guides in visible card examples and collapsed fac
     ["how-many-removal-spells-should-i-play-in-commander", "Swords to Plowshares", "Beast Within"],
     ["how-to-build-a-commander-deck", "Command Tower", "Arcane Signet"],
     ["how-to-evaluate-commander-power-level", "Demonic Tutor", "Farewell"],
+    ["how-many-tutors-should-a-commander-deck-have", "Demonic Tutor", "Worldly Tutor"],
+    ["how-much-fast-mana-is-too-much-in-commander", "Grim Monolith", "Arcane Signet"],
   ];
 
   for (const [slug, firstCard, secondCard] of cases) {
@@ -278,7 +282,7 @@ test("publishes a crawlable public robots file and sitemap", async () => {
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/academy\/how-many-lands-should-a-commander-deck-have<\/loc>/);
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/tools\/commander-land-calculator<\/loc>/);
   const locations = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
-  assert.equal(locations.length, 55);
+  assert.equal(locations.length, 57);
   assert.equal(new Set(locations).size, locations.length);
 });
 
