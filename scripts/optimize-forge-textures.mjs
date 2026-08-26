@@ -1,7 +1,7 @@
 import sharp from "sharp";
 
-const source = "C:/Projects/MetaForge/.build-tools/forge-3d-source/pack/Exports/glTF";
-const destination = "C:/Projects/MetaForge/web/public/assets/forge/models/quaternius";
+const source = "D:/Projects/MetaForge/.build-tools/forge-3d-source/pack/Exports/glTF";
+const destination = "D:/Projects/MetaForge/web/public/assets/forge/models/quaternius";
 
 for (const name of [
   "T_Trim_Metal_BaseColor.png",
