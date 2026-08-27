@@ -115,3 +115,28 @@ test("isKeepable recognizes a castable mana rock that unlocks a missing color", 
   assert.equal(isKeepable([...twoIslands, talisman, redSpell]), true, "two lands can cast the Talisman, which then unlocks red");
   assert.equal(isKeepable([...twoIslands, { ...talisman, cmc: 3 }, redSpell]), false, "an unaffordable source must not rescue the hand");
 });
+
+test("restricted mana cannot pay for an illegal spell merely because total mana is high enough", () => {
+  const base = [
+    { quantity: 24, card: "Wastes", role: "land", colorIdentity: [] },
+    { quantity: 24, card: "Nonartifact Finisher", role: "finisher", cmc: 5, typeLine: "Creature" },
+  ];
+  const restricted = simulateGoldfish([
+    ...base,
+    { quantity: 12, card: "Powerstone", role: "ramp", cmc: 2, typeLine: "Artifact", producedMana: ["C"], oracleText: "{T}: Add {C}. This mana can't be spent to cast a nonartifact spell." },
+  ], "Ramp", 400, 91);
+  const unrestricted = simulateGoldfish([
+    ...base,
+    { quantity: 12, card: "Unrestricted Rock", role: "ramp", cmc: 2, typeLine: "Artifact", producedMana: ["C"], oracleText: "{T}: Add {C}." },
+  ], "Ramp", 400, 91);
+  assert.ok(unrestricted.averageManaSpent > restricted.averageManaSpent, `${unrestricted.averageManaSpent} should exceed ${restricted.averageManaSpent}`);
+});
+
+test("Galazeth-shaped restricted mana remains legal for instants and sorceries", () => {
+  const result = simulateGoldfish([
+    { quantity: 24, card: "Island", role: "land", colorIdentity: ["U"] },
+    { quantity: 12, card: "Prismari Source", role: "ramp", cmc: 2, typeLine: "Artifact", producedMana: ["U"], oracleText: "{T}: Add one mana of any color. Spend this mana only to cast an instant or sorcery spell." },
+    { quantity: 24, card: "Big Instant", role: "draw", cmc: 5, typeLine: "Instant" },
+  ], "Midrange", 300, 92);
+  assert.ok(result.averageManaSpent > 20, `restricted spell mana should remain usable for instants, got ${result.averageManaSpent}`);
+});

@@ -30,6 +30,43 @@ function canPayPips(battlefieldColors, pips) {
   return true;
 }
 
+function sourceMayPayFor(source, card) {
+  const restrictions = source?.restrictions || [];
+  if (!restrictions.length) return true;
+  const typeLine = String(card?.typeLine || card?.type_line || "");
+  return restrictions.every((restriction) => {
+    if (/instant or sorcery/i.test(restriction)) return /\bInstant\b|\bSorcery\b/i.test(typeLine);
+    if (/artifact/i.test(restriction)) return /\bArtifact\b/i.test(typeLine);
+    if (/activate|ability/i.test(restriction)) return false;
+    return false;
+  });
+}
+
+// Returns the exact source indexes consumed by this spell, or null when the
+// displayed total mana is misleading because its colors/restrictions cannot
+// legally pay this particular cost. Colored pips are assigned first, then
+// generic mana, so one source can never pay twice in the same turn.
+function paymentPlan(sources, card, cost) {
+  const legal = sources.map((source, index) => ({ source, index })).filter(({ source }) => sourceMayPayFor(source, card));
+  const used = [];
+  for (const color of Object.keys(card?.colorPips || {})) {
+    let need = card.colorPips[color] || 0;
+    for (let i = legal.length - 1; i >= 0 && need > 0; i -= 1) {
+      if ((legal[i].source.colors || []).includes(color)) {
+        used.push(legal.splice(i, 1)[0].index);
+        need -= 1;
+      }
+    }
+    if (need > 0) return null;
+  }
+  while (used.length < cost && legal.length) used.push(legal.pop().index);
+  return used.length >= cost ? used : null;
+}
+
+function manaSourceFrom(card, colors = []) {
+  return { colors, restrictions: evaluateSituationalCard(card).restrictedMana };
+}
+
 // A hand is a London-mulligan keep candidate if it isn't land-flooded/
 // -screwed and isn't a trap — its lands plus affordable persistent mana
 // sources can eventually produce every color its nonland cards need. Only
@@ -116,25 +153,26 @@ export function simulateGoldfish(deck, strategy="Midrange", games=1000, seed=812
     if(drawn.mulligans>0){totalMulligans+=drawn.mulligans;mulliganGames+=1;}
     if(drawn.keepable)keeps++;
     const battlefieldLandColors=[];
+    const battlefieldManaSources=[];
     // Ramp spells (search-a-land, treasure-adjacent effects) don't just score
     // value like any other card — they mechanically accelerate every later
     // turn. Modeled as "enters tapped": a ramp spell cast this turn adds a
     // mana source starting next turn, not immediately, matching how the
     // common effects (Rampant Growth, Cultivate) actually resolve.
-    let battlefieldLands=0,pendingRamp=0,pendingRampColors=[],battlefieldCreatures=0,battlefieldArtifacts=0,graveyardCards=0,spent=0,score=0,turnHit=null,firstColoredCastTurn=null;
+    let battlefieldLands=0,pendingRamp=0,pendingRampSources=[],battlefieldCreatures=0,battlefieldArtifacts=0,graveyardCards=0,spent=0,score=0,turnHit=null,firstColoredCastTurn=null;
     for(let turn=1;turn<=8;turn++){
       battlefieldLands+=pendingRamp;pendingRamp=0;
-      battlefieldLandColors.push(...pendingRampColors);pendingRampColors=[];
+      for(const source of pendingRampSources){battlefieldManaSources.push(source);battlefieldLandColors.push(source.colors);}pendingRampSources=[];
       if(library.length)hand.push(library.pop());
       const landIndex=hand.findIndex(isLand);
-      if(landIndex>=0){const landCard=hand[landIndex];hand.splice(landIndex,1);battlefieldLands++;battlefieldLandColors.push(landColors(landCard));}
-      let mana=battlefieldLands;
-      while(mana>0){
+      if(landIndex>=0){const landCard=hand[landIndex];hand.splice(landIndex,1);battlefieldLands++;const source=manaSourceFrom(landCard,landColors(landCard));battlefieldManaSources.push(source);battlefieldLandColors.push(source.colors);}
+      const availableSources=[...battlefieldManaSources];
+      while(availableSources.length>0){
         const castable=hand.filter(card=>{
-          if(isLand(card)||!canPayPips(battlefieldLandColors,card.colorPips))return false;
+          if(isLand(card))return false;
           const read=evaluateSituationalCard(card);
           const cost=Math.max(card.cmc??99,read.minimumUsefulMana??0);
-          if(cost>mana)return false;
+          if(!paymentPlan(availableSources,card,cost))return false;
           if(read.additionalCosts.includes("sacrifice-permanent")&&battlefieldCreatures+battlefieldArtifacts<1)return false;
           if(read.additionalCosts.includes("exile-from-graveyard")&&graveyardCards<1)return false;
           if(read.battlefieldRequirements.some(need=>["creature-target","creature-you-control"].includes(need))&&battlefieldCreatures<1)return false;
@@ -146,7 +184,10 @@ export function simulateGoldfish(deck, strategy="Midrange", games=1000, seed=812
         const chosen=castable[0];
         const chosenRead=evaluateSituationalCard(chosen);
         const chosenCost=Math.max(chosen.cmc||0,chosenRead.minimumUsefulMana||0);
-        hand.splice(hand.indexOf(chosen),1);mana-=chosenCost;spent+=chosenCost;score+=roleValue(chosen.role,strategy)*situationalReliabilityFactor(chosen);
+        const chosenPayment=paymentPlan(availableSources,chosen,chosenCost);
+        hand.splice(hand.indexOf(chosen),1);
+        for(const index of [...chosenPayment].sort((a,b)=>b-a))availableSources.splice(index,1);
+        spent+=chosenCost;score+=roleValue(chosen.role,strategy)*situationalReliabilityFactor(chosen);
         if(chosenRead.additionalCosts.includes("sacrifice-permanent")){
           if(battlefieldArtifacts>0)battlefieldArtifacts-=1;else if(battlefieldCreatures>0)battlefieldCreatures-=1;
         }
@@ -155,7 +196,7 @@ export function simulateGoldfish(deck, strategy="Midrange", games=1000, seed=812
         graveyardCards+=1;
         if(chosen.role==="ramp"){
           pendingRamp+=1;
-          pendingRampColors.push(producedColors(chosen));
+          pendingRampSources.push(manaSourceFrom(chosen,producedColors(chosen)));
         }
         if(turnHit===null&&score>=8)turnHit=turn;
         if(firstColoredCastTurn===null&&hasPips(chosen.colorPips))firstColoredCastTurn=turn;
