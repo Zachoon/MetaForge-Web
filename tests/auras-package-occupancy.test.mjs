@@ -134,9 +134,9 @@ test("auras opens on a real Auras-you-control commander (Eriette) and stays clos
   assert.ok(!intentFor(inertNoble).packageIds.includes("auras"));
 });
 
-test("a real Aura-Voltron commander (Uril, the Miststalker) does not trip detectAurasCommander under the current oracle-text regex", () => {
-  assert.equal(detectAurasCommander(urilMiststalker.oracleText), false);
-  assert.ok(!intentFor(urilMiststalker).packageIds.includes("auras"));
+test("a real Aura-Voltron commander (Uril, the Miststalker) opens the Auras package", () => {
+  assert.equal(detectAurasCommander(urilMiststalker.oracleText), true);
+  assert.ok(intentFor(urilMiststalker).packageIds.includes("auras"));
 });
 
 test("auras core is genuine Aura type-line membership; a non-Aura enchantment is a false friend, not core", () => {

@@ -15,6 +15,7 @@ import {
   cardSatisfiesArchetypeCore,
   cardSatisfiesArchetypeSupport,
 } from "./archetype-catalog.mjs";
+import { isTreasureBurstAcceleration } from "./conditional-effect-credit.mjs";
 
 const normalized = (value = "") => String(value).normalize("NFKC").trim().toLocaleLowerCase("en");
 const unique = (values) => [...new Set(values.filter(Boolean))];
@@ -208,11 +209,23 @@ export function strategicSemanticsFor(card = {}) {
   // identical pattern and full reasoning (three real phrasings verified:
   // "basic land card", "Forest card", "Plains, Island, Swamp, or
   // Mountain card").
-  if (tags.includes("mana_acceleration") || /add .{0,18}mana/i.test(oracle) || /treasure token/i.test(oracle) || /search your library for [^.]*\b(?:lands?|plains|island|swamp|mountain|forest)\b[^.]*\bbattlefield\b/i.test(oracle)) {
+  const fixedTreasureOnly = /create[^.]*treasure/i.test(oracle)
+    && !/add .{0,18}mana|land card.{0,30}battlefield/i.test(oracle)
+    && !isTreasureBurstAcceleration(oracle);
+  if ((tags.includes("mana_acceleration") && !fixedTreasureOnly) || /add .{0,18}mana/i.test(oracle) || isTreasureBurstAcceleration(oracle) || /search your library for [^.]*\b(?:lands?|plains|island|swamp|mountain|forest)\b[^.]*\bbattlefield\b/i.test(oracle)) {
     semantics.add("ramp");
   }
   if (/cast [^.]* without paying|put [^.]* onto the battlefield|mana value .{0,20} less to cast|costs? \{[^}]+\} less/i.test(oracle)) {
     semantics.add("cost_cheat");
+  }
+  // Cheap spells that can be cast again are spell-velocity pieces, not
+  // conventional ramp. Strike It Rich is the reference case: one Treasure
+  // merely banks the mana, while flashback supplies a second spell event for
+  // storm / cast-count plans. Keep that reason distinct and explainable.
+  if (/\bInstant\b|\bSorcery\b/i.test(typeLine)
+    && cmc <= 2
+    && /\bflashback\b|\bretrace\b|\bjump-start\b|return [^.]* to (?:its owner's|your) hand/i.test(oracle)) {
+    semantics.add("spell_velocity");
   }
   if (cmc >= 8) semantics.add("high_cmc_threat");
   if (cmc >= 10) semantics.add("bomb_cmc");
@@ -418,7 +431,7 @@ export function detectStaxCommander(oracle = "") {
  */
 export function detectAurasCommander(oracle = "") {
   const text = String(oracle || "");
-  return /\bauras?\b/i.test(text) && (/\baffinity for auras\b/i.test(text) || /whenever [^.]*\baura\b/i.test(text) || /auras? you control/i.test(text) || /enchanted creature/i.test(text));
+  return /\bauras?\b/i.test(text) && (/\baffinity for auras\b/i.test(text) || /whenever [^.]*\baura\b/i.test(text) || /auras? you control/i.test(text) || /enchanted creature/i.test(text) || /for each aura attached to/i.test(text));
 }
 
 /**

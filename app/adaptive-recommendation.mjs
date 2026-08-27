@@ -1,4 +1,6 @@
 import { classifyRevealedOpponent } from "./opponent-classifier.mjs";
+import { isTreasureBurstAcceleration } from "./conditional-effect-credit.mjs";
+import { isManaFilterOnly } from "./situational-card-evaluation.mjs";
 
 const PLANS = {
   Aggro: { add: ["sideboard-stabilizer", "sideboard-sweeper", "sideboard-removal"], cut: ["counter", "finisher"], purpose: "survive the opening turns and trade at a mana advantage" },
@@ -75,7 +77,9 @@ export function displayRoleFor(card) {
   // same clause, and the land/type alternation so a non-land toolbox
   // tutor is never swept in — see LAND_SEARCH_TO_BATTLEFIELD in
   // blueprint-note-and-mana.mjs for the identical pattern.
-  if (/add .+ mana|search your library for [^.]*\b(?:lands?|plains|island|swamp|mountain|forest)\b[^.]*\bbattlefield\b|treasure token/i.test(text)) return "Acceleration";
+  if ((/add .+ mana/i.test(text) && !isManaFilterOnly(card))
+    || /search your library for [^.]*\b(?:lands?|plains|island|swamp|mountain|forest)\b[^.]*\bbattlefield\b/i.test(text)
+    || isTreasureBurstAcceleration(text)) return "Acceleration";
   if (/draw (?:a|one|two|three|\d+)|look at the top|exile .+ you may play/i.test(text)) return "Card advantage";
   if (/hexproof|indestructible|protection from|phase out|regenerate/i.test(text)) return "Protection";
   if (/create .+ token|whenever|for each|double|copy/i.test(text)) return "Engine piece";

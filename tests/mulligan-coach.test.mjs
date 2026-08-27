@@ -133,3 +133,25 @@ test("never recommends an {X}{X} card as the earliest play on cmc alone", () => 
   assert.equal(result.sequence.recommendedCard, "Real Two Drop");
   assert.ok(!result.sequence.options.includes("Hangarback Walker"));
 });
+
+test("Great Train Heist is a combat payoff, never creatureless early development", () => {
+  const greatTrainHeist = {
+    name: "Great Train Heist",
+    role: "Acceleration",
+    typeLine: "Sorcery",
+    manaCost: "{R}",
+    cmc: 1,
+    oracleText: "Spree — Pay one or more additional costs. Creatures you control get +1/+0 and gain first strike until end of turn. Untap all creatures you control. If it's your main phase, there is an additional combat phase after this phase. Choose target opponent. Until end of turn, whenever a creature you control deals combat damage to that player, create a tapped Treasure token.",
+  };
+  const result = evaluateMulliganHand([
+    land("Mountain 1", ["R"]), land("Mountain 2", ["R"]), land("Mountain 3", ["R"]),
+    greatTrainHeist,
+    spell("Late One", 4, "Threat", "{3}{R}"),
+    spell("Late Two", 5, "Threat", "{4}{R}"),
+    spell("Late Three", 6, "Threat", "{5}{R}"),
+  ]);
+  assert.equal(result.verdict, "close");
+  assert.equal(result.counts.earlyPlays, 0);
+  assert.notEqual(result.sequence.recommendedCard, "Great Train Heist");
+  assert.ok(!result.sequence.options.includes("Great Train Heist"));
+});

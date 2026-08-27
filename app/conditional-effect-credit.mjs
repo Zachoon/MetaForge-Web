@@ -164,6 +164,54 @@ export function conditionalRampProductionFactor(oracle = "") {
 }
 
 /**
+ * Treasure made only after our creatures connect in combat is a payoff for
+ * an established battlefield, not acceleration that develops one. This is
+ * intentionally phrasing-based rather than card-name-specific so modal cards
+ * such as Great Train Heist and repeatable combat-damage Treasure triggers
+ * cannot masquerade as early ramp merely because their text says "Treasure."
+ */
+export function isCombatGatedResourceProduction(oracle = "") {
+  const text = String(oracle || "");
+  return /(?:creature|creatures) you control deals? combat damage[^.]*create[^.]*treasure/i.test(text)
+    || /whenever [^.]*creatures? you control[^.]*deals? combat damage[^.]*create[^.]*treasure/i.test(text);
+}
+
+/**
+ * Treasure is acceleration only when the spell can create a variable or
+ * multiplicative burst. A fixed one-for-one Treasure (Strike It Rich) banks
+ * or filters mana and supports artifact synergies, but does not put its
+ * controller ahead on mana the way a rock, dork, land-ramp spell, or
+ * Dockside-shaped burst does.
+ */
+export function isTreasureBurstAcceleration(oracle = "") {
+  const text = String(oracle || "");
+  if (!/create[^.]*treasure/i.test(text) || isCombatGatedResourceProduction(text)) return false;
+  return /create\s+(?:x|twice x|that many|a number of)[^.]*treasure/i.test(text)
+    || /create[^.]*treasure[^.]*(?:for each|equal to|where x)/i.test(text);
+}
+
+/**
+ * One-shot combat spells need a creature (usually an attacker) before they
+ * create value. Their printed mana value alone must never make them an
+ * opening-hand development play. Permanents are excluded because casting a
+ * creature can itself develop the battlefield even when its later trigger is
+ * combat-dependent.
+ */
+export function requiresCreatureForImmediateValue(card = {}) {
+  const typeLine = String(card.typeLine || card.type_line || "");
+  if (!/\b(?:Instant|Sorcery)\b/i.test(typeLine)) return false;
+  const oracle = String(card.oracleText || card.oracle_text || "");
+  const combatDependent = isCombatGatedResourceProduction(oracle)
+    || /additional combat phase/i.test(oracle)
+    || /creatures? you control get [^.]*(?:until end of turn|first strike|double strike|trample|haste)/i.test(oracle)
+    || /target creature you control/i.test(oracle);
+  if (!combatDependent) return false;
+  // A modal spell with a genuinely independent effect can still be a real
+  // early play; these common standalone outcomes are deliberately narrow.
+  return !/draw (?:a|one|two|three|\d+) cards?|destroy target|exile target|deals? \d+ damage to any target|create [^.]*creature token/i.test(oracle);
+}
+
+/**
  * City of Brass class: any-color tap with no identity, type, or opponent gate.
  */
 export function isUnconditionalRainbowMana(oracle = "") {

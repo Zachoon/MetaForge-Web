@@ -817,6 +817,9 @@ const SIGNALS = [
   ["maps", /map token|maps? you control/i],
   ["junk", /junk token|junk tokens? you control/i],
   ["powerstones", /powerstone token|powerstones? you control/i],
+  ["persistent_token_mana", /tokens? you control have[^.]*\{T\}[^.]*\badd\b|create(?:s)? [^.]* token/i],
+  ["persistent_artifact_mana", /artifacts? you control have[^.]*\{T\}[^.]*\badd\b|create(?:s)? [^.]* (?:artifact|clue|treasure|food|blood|gold|map|junk|powerstone) token/i],
+  ["spell_velocity", /\bflashback\b|\bretrace\b|\bjump-start\b|\bstorm\b|whenever you cast/i],
   ["explore", /\bexplores?\b/i],
   ["exile_play", /(?:play|cast) [^.]* from exile|play the exiled card/i],
   ["artifacts", /artifact(?:s)? you control|artifact spell|artifact enters|sacrifice an artifact/i],
@@ -858,6 +861,7 @@ const OFF_TARGET_SPELL_TYPE_CAST = new RegExp(`whenever you cast ${OFF_TARGET_SP
 
 const PRODUCERS = {
   tokens: /create(?:s)? [^.]* token/i,
+  persistent_token_mana: /create(?:s)? [^.]* token/i,
   treasure: /create(?:s)? [^.]* treasure|treasure token/i,
   clues: /investigate|create(?:s)? [^.]* clue/i,
   food: /create(?:s)? [^.]* food|food token/i,
@@ -869,6 +873,8 @@ const PRODUCERS = {
   explore: /create(?:s)? [^.]* map token|target creature explores?|creatures? you control explore/i,
   exile_play: /create(?:s)? [^.]* junk token|exile [^.]* you may (?:play|cast)|play the exiled card/i,
   artifacts: /create(?:s)? [^.]* (?:artifact|clue|treasure|food|blood|gold|map|junk|powerstone) token|artifact spell|investigate/i,
+  persistent_artifact_mana: /create(?:s)? [^.]* (?:artifact|clue|treasure|food|blood|gold|map|junk|powerstone) token|investigate/i,
+  spell_velocity: /\bflashback\b|\bretrace\b|\bjump-start\b|\brebound\b|return [^.]* to (?:its owner's|your) hand/i,
   // Only the Aura subtype produces this signal — "Enchantment" alone does not,
   // and oracle phrases like "affinity for Auras" must not mark the commander
   // itself as an Aura producer. Type-line membership is applied in
@@ -1076,6 +1082,7 @@ const PRODUCERS = {
 
 const PAYOFFS = {
   tokens: /token(?:s)? you control|for each token|sacrifice a token/i,
+  persistent_token_mana: /tokens? you control have[^.]*\{T\}[^.]*\badd\b/i,
   treasure: /treasures? you control|sacrifice a treasure/i,
   clues: /clues? you control|sacrifice a clue|clue token|whenever you (?:sacrifice|create) a clue/i,
   food: /foods? you control|sacrifice a food|whenever you (?:sacrifice|create) (?:a|one or more) food/i,
@@ -1087,6 +1094,8 @@ const PAYOFFS = {
   explore: /whenever [^.]* explores?|if [^.]* explored|creatures? you control that explored/i,
   exile_play: /whenever you (?:play|cast) [^.]* from exile|cards? you (?:play|cast) from exile/i,
   artifacts: /artifact(?:s)? you control|whenever (?:you cast |an? )?artifact|sacrifice an artifact/i,
+  persistent_artifact_mana: /artifacts? you control have[^.]*\{T\}[^.]*\badd\b/i,
+  spell_velocity: /\bstorm\b|whenever you cast (?:or copy )?(?:an? |your )?(?:instant|sorcery|noncreature|spell)|whenever you cast your (?:second|third)|for each spell (?:cast|you've cast)/i,
   // Founder #054: Ardenn, Intrepid Archaeologist — a real, popular Auras
   // and Equipment commander — reads "attach any number of Auras and
   // Equipment you control", verified via live Scryfall text. The old bare

@@ -29,6 +29,11 @@ import {
   restrictedWinconFactor,
   roleFloorCredit,
 } from "./conditional-effect-credit.mjs";
+import {
+  evaluateSituationalCard,
+  resourceCompetitionFactor,
+  situationalReliabilityFactor,
+} from "./situational-card-evaluation.mjs";
 export {
   cardCanDealDamageToOwnCreature,
   cardClearsPayoffMagnitudeGate,
@@ -1230,14 +1235,16 @@ export function commanderConnectionSignalsFor(card, mechanics, commanderMechanic
 export function poolMechanicalSignals(cards) {
   const producerCounts = new Map();
   const payoffCounts = new Map();
+  const claimCounts = new Map();
   const mechanicsByIndex = cards.map((card) => {
     if (/\bLand\b/i.test(card.typeLine || card.type_line || "")) return { signals: [], produces: [], rewards: [] };
     const mechanics = extractMechanicalSignals(card);
     for (const signal of mechanics.produces) producerCounts.set(signal, (producerCounts.get(signal) || 0) + 1);
     for (const signal of mechanics.rewards) payoffCounts.set(signal, (payoffCounts.get(signal) || 0) + 1);
+    for (const claim of evaluateSituationalCard(card).resourceClaims) claimCounts.set(claim, (claimCounts.get(claim) || 0) + 1);
     return mechanics;
   });
-  return { mechanicsByIndex, producerCounts, payoffCounts };
+  return { mechanicsByIndex, producerCounts, payoffCounts, claimCounts };
 }
 
 export function synergyPotentialFor(mechanics, poolSignals) {
@@ -1319,6 +1326,8 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
   });
   const tokenProductionFactor = conditionalTokenProductionFactor(card.oracleText || card.oracle_text || "");
   const rampProductionFactor = conditionalRampProductionFactor(card.oracleText || card.oracle_text || "");
+  const situational = evaluateSituationalCard(card);
+  const situationalFactor = situationalReliabilityFactor(card) * resourceCompetitionFactor(card, poolSignals);
   const printedCmc = manaValueFromCost(card.manaCost || card.mana_cost, card.cmc);
   const cmc = curveManaValue(card.manaCost || card.mana_cost, printedCmc);
   const floorCredit = roleFloorCredit(card.oracleText || card.oracle_text || "", {
@@ -1362,6 +1371,8 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
     winconFactor,
     tokenProductionFactor,
     rampProductionFactor,
+    situational,
+    situationalFactor,
     roleFloorCredit: floorCredit,
     budgetScore: budgetScoreFor(card.priceUsd, context.budget),
     complexityScore: complexityScoreFor(oracleTextComplexity(card.oracleText || card.oracle_text), context.complexity),
@@ -1587,9 +1598,11 @@ function scoreCard(entry, input, variant, context) {
     tokenProductionFactor,
     rampProductionFactor,
     fixingCredit,
-    score: (entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.commanderConnectionSignals.length * 14 * variant.synergy + entry.payoffMagnitudeHits * 14 * variant.synergy + entry.selfDamageSynergyHit * 14 * variant.synergy + entry.xSpellSynergyHit * 14 * variant.synergy + entry.planeswalkerCheatSynergyHit * 14 * variant.synergy + entry.roomSynergyHit * 14 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.blueprintMechanicHits.reduce((sum, mechanic) => sum + blueprintMechanicDefinition(mechanic).score, 0) + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + entry.budgetScore + entry.complexityScore + entry.powerTierScore + deterministicTieBreak) * castingFactor * fixingCredit * winconFactor * tokenProductionFactor * rampProductionFactor,
+    score: (entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.commanderConnectionSignals.length * 14 * variant.synergy + entry.payoffMagnitudeHits * 14 * variant.synergy + entry.selfDamageSynergyHit * 14 * variant.synergy + entry.xSpellSynergyHit * 14 * variant.synergy + entry.planeswalkerCheatSynergyHit * 14 * variant.synergy + entry.roomSynergyHit * 14 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.blueprintMechanicHits.reduce((sum, mechanic) => sum + blueprintMechanicDefinition(mechanic).score, 0) + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + entry.budgetScore + entry.complexityScore + entry.powerTierScore + deterministicTieBreak) * castingFactor * fixingCredit * winconFactor * tokenProductionFactor * rampProductionFactor * entry.situationalFactor,
     synergyHits: entry.synergyHits,
     synergyPotential: entry.synergyPotential,
+    situational: entry.situational,
+    situationalFactor: entry.situationalFactor,
     preferenceHits: entry.preferenceHits,
     fieldPressureHits: entry.fieldPressureHits,
     directTribes: entry.directTribes || [],

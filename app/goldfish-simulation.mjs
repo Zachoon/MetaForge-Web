@@ -1,3 +1,5 @@
+import { evaluateSituationalCard, situationalReliabilityFactor } from "./situational-card-evaluation.mjs";
+
 const SUPPORTED_ROLES = new Set(["removal","counter","draw","sweeper","stabilizer","finisher","ramp","protection"]);
 const STRATEGY_WEIGHTS = { Aggro:{stabilizer:4,finisher:3,draw:1,ramp:1,protection:2}, Tempo:{stabilizer:3,counter:3,draw:2,finisher:1,ramp:1,protection:2}, Midrange:{stabilizer:3,draw:2,removal:2,finisher:2,ramp:2,protection:2}, Control:{draw:3,counter:3,removal:2,sweeper:2,finisher:1,ramp:1.5,protection:1}, Ramp:{draw:2,finisher:4,ramp:4,protection:1} };
 
@@ -119,7 +121,7 @@ export function simulateGoldfish(deck, strategy="Midrange", games=1000, seed=812
     // turn. Modeled as "enters tapped": a ramp spell cast this turn adds a
     // mana source starting next turn, not immediately, matching how the
     // common effects (Rampant Growth, Cultivate) actually resolve.
-    let battlefieldLands=0,pendingRamp=0,pendingRampColors=[],spent=0,score=0,turnHit=null,firstColoredCastTurn=null;
+    let battlefieldLands=0,pendingRamp=0,pendingRampColors=[],battlefieldCreatures=0,battlefieldArtifacts=0,graveyardCards=0,spent=0,score=0,turnHit=null,firstColoredCastTurn=null;
     for(let turn=1;turn<=8;turn++){
       battlefieldLands+=pendingRamp;pendingRamp=0;
       battlefieldLandColors.push(...pendingRampColors);pendingRampColors=[];
@@ -128,10 +130,29 @@ export function simulateGoldfish(deck, strategy="Midrange", games=1000, seed=812
       if(landIndex>=0){const landCard=hand[landIndex];hand.splice(landIndex,1);battlefieldLands++;battlefieldLandColors.push(landColors(landCard));}
       let mana=battlefieldLands;
       while(mana>0){
-        const castable=hand.filter(card=>!isLand(card)&&(card.cmc??99)<=mana&&canPayPips(battlefieldLandColors,card.colorPips));
+        const castable=hand.filter(card=>{
+          if(isLand(card)||!canPayPips(battlefieldLandColors,card.colorPips))return false;
+          const read=evaluateSituationalCard(card);
+          const cost=Math.max(card.cmc??99,read.minimumUsefulMana??0);
+          if(cost>mana)return false;
+          if(read.additionalCosts.includes("sacrifice-permanent")&&battlefieldCreatures+battlefieldArtifacts<1)return false;
+          if(read.additionalCosts.includes("exile-from-graveyard")&&graveyardCards<1)return false;
+          if(read.battlefieldRequirements.some(need=>["creature-target","creature-you-control"].includes(need))&&battlefieldCreatures<1)return false;
+          if(read.battlefieldRequirements.includes("artifact-or-creature-fodder")&&battlefieldCreatures+battlefieldArtifacts<1)return false;
+          return true;
+        });
         if(!castable.length)break;
         castable.sort((a,b)=>priority(b,strategy,policy,rng)-priority(a,strategy,policy,rng));
-        const chosen=castable[0];hand.splice(hand.indexOf(chosen),1);mana-=chosen.cmc||0;spent+=chosen.cmc||0;score+=roleValue(chosen.role,strategy);
+        const chosen=castable[0];
+        const chosenRead=evaluateSituationalCard(chosen);
+        const chosenCost=Math.max(chosen.cmc||0,chosenRead.minimumUsefulMana||0);
+        hand.splice(hand.indexOf(chosen),1);mana-=chosenCost;spent+=chosenCost;score+=roleValue(chosen.role,strategy)*situationalReliabilityFactor(chosen);
+        if(chosenRead.additionalCosts.includes("sacrifice-permanent")){
+          if(battlefieldArtifacts>0)battlefieldArtifacts-=1;else if(battlefieldCreatures>0)battlefieldCreatures-=1;
+        }
+        if(/\bCreature\b/i.test(chosen.typeLine||chosen.type_line||""))battlefieldCreatures+=1;
+        if(/\bArtifact\b/i.test(chosen.typeLine||chosen.type_line||""))battlefieldArtifacts+=1;
+        graveyardCards+=1;
         if(chosen.role==="ramp"){
           pendingRamp+=1;
           pendingRampColors.push(producedColors(chosen));

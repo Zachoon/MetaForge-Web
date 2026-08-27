@@ -22,6 +22,8 @@
 // internal (server-only) calls.
 
 import { ROLE_PATTERNS, OFF_TARGET_SPELL_TYPE_CAST } from "./blueprint-note-and-mana.mjs";
+import { isTreasureBurstAcceleration } from "./conditional-effect-credit.mjs";
+import { isManaFilterOnly } from "./situational-card-evaluation.mjs";
 
 const normalized = (value = "") => String(value).normalize("NFKC").trim().toLocaleLowerCase("en");
 const unique = (values) => [...new Set(values.filter(Boolean))];
@@ -64,8 +66,14 @@ function roleTagsFor(card, isLand) {
   // comment), so the false "spells" role reached real deck scoring, not
   // just a cosmetic label. Guarded the same way #057 did.
   const offTargetSpellTag = OFF_TARGET_SPELL_TYPE_CAST.test(cardText(card));
+  const text = cardText(card);
+  const fixedTreasureOnly = /create[^.]*treasure/i.test(text)
+    && !/add .{0,18}mana|land card.{0,30}battlefield/i.test(text)
+    && !isTreasureBurstAcceleration(text);
   return Object.entries(ROLE_TAGS)
     .filter(([role, tagNames]) => !(isLand && role === "ramp")
+      && !(role === "ramp" && fixedTreasureOnly)
+      && !(role === "ramp" && isManaFilterOnly(card))
       && !(role === "spells" && offTargetSpellTag)
       && tagNames.some((tag) => tags.includes(tag)))
     .map(([role]) => role);
@@ -78,6 +86,7 @@ export function classifyNativeCard(card) {
   const isLand = /\bLand\b/i.test(typeLine);
   if (isLand) roles.push("land");
   for (const [role, patterns] of Object.entries(ROLE_PATTERNS)) {
+    if (role === "ramp" && isManaFilterOnly(card)) continue;
     if (patterns.some((pattern) => pattern.test(text))) roles.push(role);
   }
   roles.push(...roleTagsFor(card, isLand));

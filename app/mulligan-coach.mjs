@@ -1,3 +1,6 @@
+import { requiresCreatureForImmediateValue } from "./conditional-effect-credit.mjs";
+import { evaluateSituationalCard, isManaFilterOnly } from "./situational-card-evaluation.mjs";
+
 const COLORS = ["W", "U", "B", "R", "G"];
 
 function isLand(card) {
@@ -11,6 +14,7 @@ function isLand(card) {
 
 function isOtherManaCard(card) {
   if (isLand(card)) return false;
+  if (isManaFilterOnly(card)) return false;
   const oracle = String(card?.oracleText || "");
   return card?.role === "Mana source"
     || card?.role === "Acceleration"
@@ -61,6 +65,14 @@ function isPersistentManaSource(card) {
     && !/\b(?:Instant|Sorcery)\b/i.test(String(card?.typeLine || ""));
 }
 
+function isAvailableFromEmptyBattlefield(card) {
+  if (requiresCreatureForImmediateValue(card)) return false;
+  const read = evaluateSituationalCard(card);
+  if (read.additionalCosts.includes("sacrifice-permanent") || read.additionalCosts.includes("exile-from-graveyard")) return false;
+  if (read.battlefieldRequirements.some((need) => ["creature-target", "creature-you-control", "artifact-or-creature-fodder"].includes(need))) return false;
+  return true;
+}
+
 function canCastFromSources(card, sourceCount, sourceColors) {
   const cmc = Number(card?.cmc);
   if (!Number.isFinite(cmc) || cmc > sourceCount) return false;
@@ -108,14 +120,17 @@ function sequencingRead({ spells, early, interaction, reachable, landColors, nee
   const bridge = reachable.deployed.find((card) =>
     manaColors(card).some((color) => colorsMissingFromLands.includes(color)),
   );
+  const immediateDevelopment = early.filter(isAvailableFromEmptyBattlefield);
   const candidates = [...new Map(
-    [...reachable.deployed, ...early]
+    [...reachable.deployed, ...immediateDevelopment]
       .filter((card) => Number.isFinite(card?.cmc) && !isUnscopedXCost(card))
       .sort((a, b) => a.cmc - b.cmc)
       .map((card) => [card.name, card]),
   ).values()].slice(0, 4);
   let recommended = bridge || candidates.find((card) => !interaction.includes(card)) || candidates[0] || null;
-  if (!recommended) recommended = spells.filter((card) => Number.isFinite(card?.cmc)).sort((a, b) => a.cmc - b.cmc)[0] || null;
+  if (!recommended) recommended = spells
+    .filter((card) => Number.isFinite(card?.cmc) && isAvailableFromEmptyBattlefield(card))
+    .sort((a, b) => a.cmc - b.cmc)[0] || null;
 
   let reason = "This hand has no verified early sequence beyond making land drops and reassessing the next draw.";
   if (bridge) {
@@ -139,7 +154,10 @@ export function evaluateMulliganHand(hand, { strategy = "Balanced midrange" } = 
   const lands = hand.filter(isLand);
   const otherMana = hand.filter(isOtherManaCard);
   const spells = hand.filter((card) => !isLand(card));
-  const early = spells.filter((card) => Number.isFinite(card?.cmc) && card.cmc <= 2);
+  const early = spells.filter((card) => {
+    const usefulMana = evaluateSituationalCard(card).minimumUsefulMana;
+    return Number.isFinite(usefulMana) && usefulMana <= 2 && isAvailableFromEmptyBattlefield(card);
+  });
   const interaction = spells.filter((card) => ["Interaction", "Protection"].includes(card?.role));
   const unknown = spells.filter((card) => !Number.isFinite(card?.cmc));
   const reachable = reachableMana(hand, lands);

@@ -60,7 +60,14 @@ const OFF_TARGET_SPELL_TYPE_CAST_SUFFIX = /(?:an?|another) \b(?:artifact|creatur
 export const OFF_TARGET_SPELL_TYPE_CAST = new RegExp(`whenever you cast ${OFF_TARGET_SPELL_TYPE_CAST_SUFFIX.source}`, "i");
 
 export const ROLE_PATTERNS = Object.freeze({
-  ramp: [/add .{0,18}mana/i, /create .{0,18}(?:treasure|powerstone)/i, LAND_SEARCH_TO_BATTLEFIELD, /land card.{0,30}battlefield/i],
+  ramp: [
+    /add .{0,18}mana/i,
+    /create .{0,18}powerstone/i,
+    /create\s+(?:x|twice x|that many|a number of)[^.]*treasure/i,
+    /create[^.]*treasure[^.]*(?:for each|equal to|where x)/i,
+    LAND_SEARCH_TO_BATTLEFIELD,
+    /land card.{0,30}battlefield/i,
+  ],
   // Founder #087 (found right after #086 shipped, same file): the
   // same real "draws" third-person verb gap forge-interaction-graph.mjs's
   // own PRODUCERS.draw already fixed (that file's own history: the
