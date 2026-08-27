@@ -32,7 +32,6 @@ export function WorkbenchChamber() {
     setChamber,
     guestMode,
     turnstileToken,
-    guestClaimToken,
     format,
     strategy,
     motionMode,
@@ -603,44 +602,45 @@ export function WorkbenchChamber() {
                 >
                   ✦ Personalize deck
                 </button>
-                {siteRail !== "overview" && (
-                  <button
-                    type="button"
-                    className="conduct-experiment-cta"
-                    onClick={() => {
-                      setExperimentLabOpen(true);
-                    }}
-                  >
-                    Want to conduct an experiment?
-                  </button>
-                )}
-                {!(siteRail === "playtest" && deckViewMode === "playtest") && (
-                  <button
-                    type="button"
-                    className="next-step-cta"
-                    onClick={() => {
-                      setMilestoneMotion({
-                        kind: "masterwork-selected",
-                        eyebrow: "ADDED TO YOUR ARSENAL",
-                        label: masterworkIdentity.title || chosenWork.name.replace(/, Forged$/, ""),
-                        glyph: "ᛟ",
-                      });
-                      setChamber("workbench");
-                      setActiveForgeChapter(1);
-                      setDeckViewMode("playtest");
-                      setSiteRail("playtest");
-                      window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" }));
-                    }}
-                  >
-                    This deck is done! →
-                  </button>
-                )}
                 <details className="deck-view-options">
                   <summary>View options</summary>
                   <button type="button" className={deckViewMode === "gallery" ? "active" : ""} onClick={() => setDeckViewMode("gallery")}>Visual deck</button>
                   <button type="button" className={deckViewMode === "ledger" ? "active" : ""} onClick={() => setDeckViewMode("ledger")}>Text list</button>
                 </details>
-                {guestMode && guestClaimToken && <a onClick={() => trackLaunchEvent("save_continue_clicked", { format })} className="save-deck-link" href={`https://app.metaforge.gg/?claim=${encodeURIComponent(guestClaimToken)}`}>Save deck →</a>}
+                <div className="deck-next-steps">
+                  {siteRail !== "overview" && (
+                    <button
+                      type="button"
+                      className="conduct-experiment-cta"
+                      onClick={() => {
+                        setExperimentLabOpen(true);
+                      }}
+                    >
+                      Want to conduct an experiment?
+                    </button>
+                  )}
+                  {!(siteRail === "playtest" && deckViewMode === "playtest") && (
+                    <button
+                      type="button"
+                      className="next-step-cta"
+                      onClick={() => {
+                        setMilestoneMotion({
+                          kind: "masterwork-selected",
+                          eyebrow: "ADDED TO YOUR ARSENAL",
+                          label: masterworkIdentity.title || chosenWork.name.replace(/, Forged$/, ""),
+                          glyph: "ᛟ",
+                        });
+                        setChamber("workbench");
+                        setActiveForgeChapter(1);
+                        setDeckViewMode("playtest");
+                        setSiteRail("playtest");
+                        window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+                      }}
+                    >
+                      This deck is done! →
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </header>
