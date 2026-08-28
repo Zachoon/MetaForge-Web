@@ -1393,6 +1393,59 @@ const DOUBLER_PATTERNS = [
     pattern: /if a[^.]*source (?:you control )?would deal damage to[^.]*, it deals (?:double|triple) that damage|if a[^.]*source (?:you control )?would deal[^.]*damage[^.]*, that source deals damage equal to[^.]*instead|if a[^.]*source (?:you control )?would deal damage to[^.]*, it deals that much damage plus \d+ instead/i,
     verb: "doubles (or triples) the damage every source in the deck deals",
   },
+  // Founder #101: the etb doubler above (Panharmonicon/Yarok's "entering
+  // ... causes a triggered ability ... to trigger, that ability triggers
+  // an additional time") is one instance of a much broader, real, shared
+  // grammatical template — verified via Scryfall: 21 real cards use this
+  // exact "[condition] causes a triggered ability of a permanent you
+  // control to trigger, that ability triggers an additional time" tail
+  // with a different leading trigger-condition clause each time. Only the
+  // etb/entering condition had an entry here; several other real,
+  // genuinely iconic commanders whose entire identity IS this amplifier
+  // shape were completely invisible to it. Each added below is grounded in
+  // a real, currently-printed card, verified directly against its exact
+  // Oracle text — this is not a speculative widening.
+  {
+    signal: "spells",
+    side: "rewards",
+    // Veyran, Voice of Duality — one of the format's most popular
+    // spellslinger/magecraft commanders. Her real second ability:
+    // "If you casting or copying an instant or sorcery spell causes a
+    // triggered ability of a permanent you control to trigger, that
+    // ability triggers an additional time."
+    pattern: /casting or copying (?:an? )?(?:instant or sorcery|instant|sorcery) spell[^.]{0,80}triggers? an additional time/i,
+    verb: "doubles every instant/sorcery-cast trigger in the deck",
+  },
+  {
+    signal: "draw",
+    side: "rewards",
+    // Krang, the All-Powerful — real text: "If a player drawing a card
+    // causes a triggered ability of a permanent you control to trigger,
+    // that ability triggers an additional time."
+    pattern: /(?:a player|you) drawing (?:a|one or more) cards?[^.]{0,80}triggers? an additional time/i,
+    verb: "doubles every card-draw trigger in the deck",
+  },
+  {
+    signal: "life",
+    side: "rewards",
+    // Dr. Beverly Crusher — real text: "If you gaining life causes a
+    // triggered ability of a permanent you control to trigger, that
+    // ability triggers an additional time."
+    pattern: /you gaining life[^.]{0,80}triggers? an additional time/i,
+    verb: "doubles every lifegain trigger in the deck",
+  },
+  {
+    signal: "sacrifice",
+    side: "rewards",
+    // Drivnod, Carnage Dominus and Teysa Karlov — both real, popular
+    // aristocrats commanders: "If a creature dying causes a triggered
+    // ability of a permanent you control to trigger, that ability
+    // triggers an additional time." "Dies" is this file's own established
+    // verb for the sacrifice signal's death-trigger side (see
+    // PRODUCERS.sacrifice's "when [^.]* dies" alternative above).
+    pattern: /a creature dying[^.]{0,80}triggers? an additional time/i,
+    verb: "doubles every creature-death trigger in the deck",
+  },
 ];
 
 function textOf(card) {

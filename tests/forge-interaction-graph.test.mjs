@@ -191,6 +191,55 @@ test("Parallel Lives amplifies token producers only — real cards can double on
   assert.deepEqual(graph.amplifiers[0].amplifies, ["Token Maker"]);
 });
 
+// Founder #101: the etb doubler above (Panharmonicon/Yarok) is one
+// instance of a much broader real, shared grammatical template — verified
+// via Scryfall: 21 real cards use the exact "[condition] causes a
+// triggered ability of a permanent you control to trigger, that ability
+// triggers an additional time" tail with a different leading
+// trigger-condition clause each time. Only "entering" had an entry;
+// several other real, genuinely iconic commanders whose entire identity
+// IS this amplifier shape (for a different resource) were completely
+// invisible to it — each fixture below is that commander's exact,
+// currently-printed Oracle text.
+test("Founder #101: Veyran, Voice of Duality's real instant/sorcery-cast doubler is recognized as a trigger amplifier for the spells signal", () => {
+  const doubler = { name: "Veyran, Voice of Duality", typeLine: "Legendary Creature", oracleText: "Magecraft — Whenever you cast or copy an instant or sorcery spell, Veyran gets +1/+1 until end of turn.\nIf you casting or copying an instant or sorcery spell causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time." };
+  const payoff = { name: "Guttersnipe", typeLine: "Creature", oracleText: "Whenever you cast an instant or sorcery spell, Guttersnipe deals 2 damage to each opponent." };
+  const graph = buildInteractionGraph([doubler, payoff]);
+  const spellsAmplifier = graph.amplifiers.find((entry) => entry.source === "Veyran, Voice of Duality" && entry.signal === "spells");
+  assert.ok(spellsAmplifier, "expected a spells-signal amplifier from Veyran");
+  assert.deepEqual(spellsAmplifier.amplifies, ["Guttersnipe"]);
+  assert.equal(spellsAmplifier.side, "rewards");
+});
+
+test("Founder #101: Krang, the All-Powerful's real card-draw doubler is recognized as a trigger amplifier for the draw signal", () => {
+  const doubler = { name: "Krang, the All-Powerful", typeLine: "Legendary Creature", oracleText: "If a player drawing a card causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.\nWhenever a player draws their second card each turn, put a +1/+1 counter on Krang." };
+  const payoff = { name: "The Locust God", typeLine: "Creature", oracleText: "Whenever you draw a card, create a 1/1 black and red Insect creature token with flying and haste." };
+  const graph = buildInteractionGraph([doubler, payoff]);
+  const drawAmplifier = graph.amplifiers.find((entry) => entry.source === "Krang, the All-Powerful" && entry.signal === "draw");
+  assert.ok(drawAmplifier, "expected a draw-signal amplifier from Krang");
+  assert.deepEqual(drawAmplifier.amplifies, ["The Locust God"]);
+});
+
+test("Founder #101: Dr. Beverly Crusher's real lifegain doubler is recognized as a trigger amplifier for the life signal", () => {
+  const doubler = { name: "Dr. Beverly Crusher", typeLine: "Legendary Creature", oracleText: "If you gaining life causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.\nWhenever you gain life, put a +1/+1 counter on Dr. Crusher." };
+  // A real "whenever you gain life, [reward]" PAYOFFS.life card — not a
+  // life-gain PRODUCER like Soul Warden, which the doubler does not amplify.
+  const payoff = { name: "Cliffhaven Vampire", typeLine: "Creature", oracleText: "Whenever you gain life, exile up to one target card from a graveyard. If it was a creature card, create a 1/1 white Spirit creature token with flying." };
+  const graph = buildInteractionGraph([doubler, payoff]);
+  const lifeAmplifier = graph.amplifiers.find((entry) => entry.source === "Dr. Beverly Crusher" && entry.signal === "life");
+  assert.ok(lifeAmplifier, "expected a life-signal amplifier from Dr. Beverly Crusher");
+  assert.deepEqual(lifeAmplifier.amplifies, ["Cliffhaven Vampire"]);
+});
+
+test("Founder #101: Teysa Karlov's real creature-death doubler is recognized as a trigger amplifier for the sacrifice signal", () => {
+  const doubler = { name: "Teysa Karlov", typeLine: "Legendary Creature", oracleText: "If a creature dying causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.\nCreature tokens you control have vigilance and lifelink." };
+  const payoff = { name: "Blood Artist", typeLine: "Creature", oracleText: "Whenever Blood Artist or another creature dies, target player loses 1 life and you gain 1 life." };
+  const graph = buildInteractionGraph([doubler, payoff]);
+  const sacrificeAmplifier = graph.amplifiers.find((entry) => entry.source === "Teysa Karlov" && entry.signal === "sacrifice");
+  assert.ok(sacrificeAmplifier, "expected a sacrifice-signal amplifier from Teysa Karlov");
+  assert.deepEqual(sacrificeAmplifier.amplifies, ["Blood Artist"]);
+});
+
 // Founder #056: bare "whenever you cast" was a false-positive magnet for
 // commanders whose "whenever you cast a[n] TYPE spell" trigger names an
 // off-target type (artifact/creature/enchantment/colorless/legendary) that
