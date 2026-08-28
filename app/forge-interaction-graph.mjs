@@ -1446,6 +1446,20 @@ const DOUBLER_PATTERNS = [
     pattern: /a creature dying[^.]{0,80}triggers? an additional time/i,
     verb: "doubles every creature-death trigger in the deck",
   },
+  {
+    signal: "combat",
+    side: "rewards",
+    // A second, distinct real combat-signal doubler alongside the
+    // "additional combat phase" entry above — this one doubles individual
+    // attack triggers rather than granting a whole extra combat step.
+    // Isshin, Two Heavens as One (real text: "If a creature attacking
+    // causes a triggered ability of a permanent you control to trigger,
+    // that ability triggers an additional time.") and Wulfgar of Icewind
+    // Dale (the same tail, "a creature you control attacking") are both
+    // real, popular commanders whose entire identity is this shape.
+    pattern: /a creature(?: you control)? attacking[^.]{0,80}triggers? an additional time/i,
+    verb: "doubles every attack trigger in the deck (without granting a whole extra combat phase)",
+  },
 ];
 
 function textOf(card) {

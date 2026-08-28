@@ -240,6 +240,18 @@ test("Founder #101: Teysa Karlov's real creature-death doubler is recognized as 
   assert.deepEqual(sacrificeAmplifier.amplifies, ["Blood Artist"]);
 });
 
+test("Founder #101: Isshin, Two Heavens as One's and Wulfgar of Icewind Dale's real attack-trigger doublers are recognized as a second, distinct combat-signal amplifier alongside the extra-combat-phase one", () => {
+  const isshin = { name: "Isshin, Two Heavens as One", typeLine: "Legendary Creature", oracleText: "If a creature attacking causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time." };
+  const wulfgar = { name: "Wulfgar of Icewind Dale", typeLine: "Legendary Creature", oracleText: "Melee (Whenever this creature attacks, it gets +1/+1 until end of turn for each opponent you attacked this combat.)\nIf a creature you control attacking causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time." };
+  const payoff = { name: "Attack Payoff", typeLine: "Creature", oracleText: "Whenever this creature attacks, target creature gets +2/+2 until end of turn." };
+  for (const doubler of [isshin, wulfgar]) {
+    const graph = buildInteractionGraph([doubler, payoff]);
+    const combatAmplifier = graph.amplifiers.find((entry) => entry.source === doubler.name && entry.signal === "combat");
+    assert.ok(combatAmplifier, `expected a combat-signal amplifier from ${doubler.name}`);
+    assert.deepEqual(combatAmplifier.amplifies, ["Attack Payoff"]);
+  }
+});
+
 // Founder #056: bare "whenever you cast" was a false-positive magnet for
 // commanders whose "whenever you cast a[n] TYPE spell" trigger names an
 // off-target type (artifact/creature/enchantment/colorless/legendary) that
