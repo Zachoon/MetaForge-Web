@@ -236,7 +236,12 @@ export function strategicSemanticsFor(card = {}) {
 
   // Spellslinger: cheap cast density is distinct from spell payoffs.
   if (/\bInstant\b|\bSorcery\b/i.test(typeLine) && cmc <= 2) semantics.add("cheap_spell");
-  if ((tags.includes("spell_payoff") && !OFF_TARGET_SPELL_TYPE_CAST.test(oracle)) || /whenever you cast (?:an? )?(?:instant|sorcery|noncreature)/i.test(oracle) || /\bmagecraft\b/i.test(oracle) || /instant and sorcery spells you cast/i.test(oracle)) {
+  // Founder #101: widened to also accept the real third-person "a player
+  // casts" subject (Niv-Mizzet, Parun and 8 more real cards via Scryfall —
+  // see blueprint-note-and-mana.mjs's ROLE_PATTERNS.spells for the full
+  // grounding). Same duplicated-classifier shape fixed in all three
+  // parallel places this round.
+  if ((tags.includes("spell_payoff") && !OFF_TARGET_SPELL_TYPE_CAST.test(oracle)) || /whenever (?:you cast|a player casts) (?:an? )?(?:instant|sorcery|noncreature)/i.test(oracle) || /\bmagecraft\b/i.test(oracle) || /instant and sorcery spells you cast/i.test(oracle)) {
     semantics.add("spell_payoff");
   }
 

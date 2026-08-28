@@ -54,3 +54,25 @@ test("the shared OFF_TARGET_SPELL_TYPE_CAST export still recognizes untyped and 
   assert.equal(OFF_TARGET_SPELL_TYPE_CAST.test(sythis.oracleText), true);
   assert.equal(OFF_TARGET_SPELL_TYPE_CAST.test(ugin.oracleText), true);
 });
+
+// Founder #101: Niv-Mizzet, Parun's real "Whenever a player casts an
+// instant or sorcery spell, you draw a card." never matched any of the
+// three parallel classifiers — all three only ever accepted first-person
+// "you cast", never the real third-person "a player casts" template a
+// political/symmetric spellslinger commander uses (verified 9 real cards
+// via Scryfall: Bonus Round, Hive Mind, Rod of Absorption, and Niv-Mizzet
+// himself among them). Same duplicated-classifier shape #059 already
+// documented for the off-target-type guard — fixed in the same three
+// places in the same round.
+const nivMizzet = { name: "Niv-Mizzet, Parun", typeLine: "Legendary Creature", oracleText: "This spell can't be countered.\nFlying\nWhenever you draw a card, Niv-Mizzet deals 1 damage to any target.\nWhenever a player casts an instant or sorcery spell, you draw a card." };
+
+test("Founder #101: all three parallel classifiers recognize the real third-person \"a player casts\" spellslinger-payoff subject (Niv-Mizzet, Parun), and the off-target exclusion still applies to it", () => {
+  const textOf = (card) => `${card.name}\n${card.typeLine}\n${card.oracleText}`;
+  assert.equal(ROLE_PATTERNS.spells.some((p) => p.test(textOf(nivMizzet))), true);
+  assert.equal(classifyNativeCard(nivMizzet).includes("spells"), true);
+  assert.equal(strategicSemanticsFor(nivMizzet).has("spell_payoff"), true);
+  // A hypothetical off-target "a player casts an artifact spell" trigger
+  // must stay excluded the same way the "you cast" form already is.
+  const offTargetThirdPerson = "Whenever a player casts an artifact spell, this creature deals 1 damage to that player.";
+  assert.equal(ROLE_PATTERNS.spells.some((p) => p.test(offTargetThirdPerson)), false);
+});

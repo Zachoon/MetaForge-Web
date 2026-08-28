@@ -328,7 +328,16 @@ export const ROLE_PATTERNS = Object.freeze({
   // "graveyard" role at all — confirmed via direct test.
   graveyard: [/graveyard/i, /\bmills?\b/i, /surveil/i, /flashback/i, /escape/i],
   artifacts: [/artifact/i, /equipment/i, /treasure/i],
-  spells: [/instant or sorcery/i, /noncreature spell/i, new RegExp(`whenever you cast(?! ${OFF_TARGET_SPELL_TYPE_CAST_SUFFIX.source})`, "i"), /prowess/i],
+  // Founder #101: Niv-Mizzet, Parun's real "Whenever a player casts an
+  // instant or sorcery spell, you draw a card." never matched — the old
+  // pattern only accepted first-person "you cast", never the real
+  // third-person "a player casts" template a political/symmetric
+  // spellslinger commander uses (verified 9 real cards via Scryfall: Bonus
+  // Round, Hive Mind, Rod of Absorption, and Niv-Mizzet himself among
+  // them). The negative lookahead applies after either subject the same
+  // way, so an off-target "a player casts an artifact spell" stays
+  // correctly excluded.
+  spells: [/instant or sorcery/i, /noncreature spell/i, new RegExp(`whenever (?:you cast|a player casts)(?! ${OFF_TARGET_SPELL_TYPE_CAST_SUFFIX.source})`, "i"), /prowess/i],
   lifegain: [/you gain .{0,12}life/i, /whenever you gain life/i, /lifelink/i],
   // Founder #089 (found in the same audit pass as #086-#088): "extra
   // combat" is not real Magic phrasing at all — verified via Scryfall,

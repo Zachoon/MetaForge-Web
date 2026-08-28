@@ -1260,7 +1260,12 @@ const PAYOFFS = {
   // spell each turn") and Kalamax, the Stormsire ("cast your first
   // instant spell each turn") both still need to match, and a
   // require-a-qualifier design would have broken both.
-  spells: new RegExp(`whenever you cast(?! ${OFF_TARGET_SPELL_CAST_SUFFIX.source})|magecraft|instant and sorcery`, "i"),
+  // Founder #101: widened to also accept the real third-person "a player
+  // casts" subject — see blueprint-note-and-mana.mjs's ROLE_PATTERNS.spells
+  // for the full real-card grounding (Niv-Mizzet, Parun and 8 more via
+  // Scryfall). Same duplicated-classifier shape as #059's off-target-type
+  // guard — fixed in all three parallel places in the same round.
+  spells: new RegExp(`whenever (?:you cast|a player casts)(?! ${OFF_TARGET_SPELL_CAST_SUFFIX.source})|magecraft|instant and sorcery`, "i"),
   lands: /landfall|whenever a land enters|lands you control/i,
   life: /whenever you gain life|if your life total|life you gained/i,
   // Founder #048: found by cross-checking Vivi Ornitier's real primer —
