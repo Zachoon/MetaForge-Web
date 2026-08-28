@@ -328,24 +328,10 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .forge-sigil:before,.forge-sigil:after { border-color: rgba(115,207,189,.3); }
 .forge-sigil i { color: #f6d5af; text-shadow: 0 0 38px rgba(229,132,62,.7); }
 
-/* Preserved work reads like an archive rail, not another card grid. */
 .masterwork-history {
-  width: min(1380px,calc(100% - 48px));
-  margin: 0 auto 72px;
-  padding: 0;
-  border-inline: 0;
-  border-color: var(--forge-hairline);
+  margin: 0 auto;
   background: transparent;
-  box-shadow: none;
 }
-.masterwork-history > header { padding: 17px 4px; border-bottom: 1px solid var(--forge-hairline); }
-.masterwork-history > header > span { color: var(--forge-proof); }
-.masterwork-history > div { gap: 1px; padding: 1px; background: rgba(117,133,125,.25); }
-.masterwork-history article { border: 0; background: linear-gradient(145deg,#101713,#0b100e); }
-.masterwork-history article.finished { border: 0; background: linear-gradient(145deg,#1d160d,#0e120e); }
-.history-open { min-height: 142px; }
-.history-open .archive-occupancy{margin:8px 0 0;color:#c9b89a;font:600 11px/1.35 ui-sans-serif,system-ui,sans-serif;letter-spacing:.03em}
-.history-open:hover,.history-open:focus-visible { outline: 0; background: linear-gradient(145deg,#18241f,#101612); box-shadow: inset 0 -2px var(--forge-proof); }
 
 /* Forging ceremony ------------------------------------------------------- */
 .forging-ceremony {
@@ -457,7 +443,6 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .forge-entrance { background: linear-gradient(180deg,#090e0c,#080b09); }
   .entrance-copy { max-width: none; padding: 64px clamp(22px,6vw,64px); }
   .entrance-visual { min-height: 460px; box-shadow: inset 0 24px 60px rgba(0,0,0,.3); }
-  .masterwork-history { width: calc(100% - 32px); }
 }
 
 @media (max-width: 620px) {
@@ -465,13 +450,12 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .entrance-copy h1 { font-size: clamp(44px,14vw,64px); }
   .entrance-actions { display: grid; grid-template-columns: 1fr; }
   .entrance-actions > button { min-height: 124px; }
-  .masterwork-history > header { align-items: flex-start; flex-direction: column; gap: 8px; }
   .forging-ceremony { padding: 30px 18px 70px; }
   .masterwork-reveal { padding-inline: 14px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .entrance-actions > button,.masterwork-card,.history-open { transition: none; }
+  .entrance-actions > button,.masterwork-card { transition: none; }
 }
 
 /* The recommendation is the reveal. Put the work in the first viewport and
