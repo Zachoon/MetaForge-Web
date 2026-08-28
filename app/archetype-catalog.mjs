@@ -173,9 +173,18 @@ const ARTIFACT_PAYOFF_PATTERNS = Object.freeze([
   /artifact spells? (?:you cast )?cost \{[^}]+\} less/i,
 ]);
 
+// Founder #101 (same round as the enchantress fix below): the singular "an
+// artifact card" phrasing missed real plural/quantified artifact tutors —
+// Disciples of Gix ("search your library for up to three artifact cards"),
+// Myr Incubator ("search your library for any number of artifact cards"),
+// and Saheeli Rai's ultimate ("search your library for up to three artifact
+// cards with different names") — verified via Scryfall, only 3 real cards
+// use this shape (narrower than the enchantress/Aura case), but real and
+// previously uncovered. Widened the same way: optional "up to N"/"any
+// number of" quantifier, plural "cards" allowed.
 const ARTIFACT_SUPPORT_PATTERNS = Object.freeze([
   /sacrifice an artifact\b/i,
-  /search your library for an? artifact card/i,
+  /search your library for (?:(?:up to (?:an?|one|two|three|four|five|\d+)|any number of) )?(?:an? )?artifact cards?/i,
   /return target artifact card from your graveyard/i,
 ]);
 
@@ -605,8 +614,20 @@ const ENCHANTRESS_CORE_PATTERNS = Object.freeze([
   /whenever an enchantment is put into a graveyard from the battlefield,[^.]*draw/i,
 ]);
 
+// Founder #101: Idyllic Tutor's own literal "an enchantment card" was the
+// only shape this ever matched — two more real, iconic enchantress-support
+// tutors used different real templates and produced zero support credit.
+// Enlightened Tutor ("Search your library for an artifact or enchantment
+// card...") never contains the literal substring "an enchantment card" (the
+// "an" belongs to "an artifact", not "enchantment"). Three Dreams ("Search
+// your library for up to three Aura cards with different names...") is both
+// plural and Aura-specific rather than the bare word "enchantment" — real
+// Auras are the enchantress archetype's single most common payoff type, and
+// this pattern never recognized a real Aura-specific tutor at all. Verified
+// against all four real cards below (both previously-working singular cases
+// still match).
 const ENCHANTRESS_SUPPORT_PATTERNS = Object.freeze([
-  /search your library for an enchantment card/i,
+  /search your library for (?:up to )?(?:an?|one|two|three|four|five|\d+)? ?(?:artifact or |enchantment or )?(?:enchantment|aura) cards?/i,
   /return (?:target|all) enchantment(?:s| cards?)? [^.]*graveyards?[^.]* to the battlefield/i,
   /other enchantments you control have (?:shroud|hexproof|indestructible)/i,
 ]);

@@ -112,6 +112,29 @@ test("enchantress support is enchantment tutoring/recursion/protection, not raw 
   assert.equal(cardSatisfiesPackageSupport(rhysticStudy, "enchantress", intent), false);
 });
 
+// Real cards, verified via Scryfall (2026-08-27): Enlightened Tutor and
+// Three Dreams. Founder #101 — the support pattern only ever matched
+// Idyllic Tutor's literal "an enchantment card"; these two real, iconic
+// enchantress-support tutors use different real templates entirely.
+const enlightenedTutor = {
+  name: "Enlightened Tutor",
+  oracleText: "Search your library for an artifact or enchantment card, reveal it, then shuffle and put that card on top.",
+  typeLine: "Instant",
+  manaCost: "{W}",
+};
+const threeDreams = {
+  name: "Three Dreams",
+  oracleText: "Search your library for up to three Aura cards with different names, reveal them, put them into your hand, then shuffle.",
+  typeLine: "Sorcery",
+  manaCost: "{2}{G}",
+};
+
+test("Founder #101: enchantress support recognizes real artifact-or-enchantment and Aura-specific tutors, not just the bare singular 'enchantment card' phrasing", () => {
+  const intent = intentFor(sythis);
+  assert.equal(cardSatisfiesPackageSupport(enlightenedTutor, "enchantress", intent), true, "Enlightened Tutor's 'an artifact or enchantment card' never contains the literal substring 'an enchantment card'");
+  assert.equal(cardSatisfiesPackageSupport(threeDreams, "enchantress", intent), true, "Three Dreams tutors for Aura cards specifically, plural and quantified — a real, common enchantress-support template the old pattern never covered");
+});
+
 test("a real Sythis-shaped commander forges the enchantment payoff over an otherwise-identical off-theme Enchantment", () => {
   const gwFiller = [
     ...Array.from({ length: 26 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Test", manaCost: "{2}{G}{W}", colorIdentity: ["G", "W"] })),

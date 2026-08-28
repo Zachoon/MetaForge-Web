@@ -142,6 +142,31 @@ test("artifacts_matter support is artifact tutoring/recursion/protection, not ra
   assert.equal(cardSatisfiesPackageSupport(vanillaArtifact, "artifacts_matter", intent), false);
 });
 
+// Real cards, verified via Scryfall (2026-08-27). Founder #101 (same round
+// as the enchantress Aura-tutor fix) — the support pattern only ever
+// matched the singular "an artifact card" phrasing (Relic Seeker/Trinket
+// Mage); these three real cards use a plural/quantified template it never
+// covered. Only 3 real cards use this shape (narrower than the enchantress
+// case), but real and previously uncovered.
+const disciplesOfGix = {
+  name: "Disciples of Gix",
+  oracleText: "When this creature enters, search your library for up to three artifact cards, put them into your graveyard, then shuffle.",
+  typeLine: "Creature — Human Cleric",
+  manaCost: "{2}{B}",
+};
+const myrIncubator = {
+  name: "Myr Incubator",
+  oracleText: "{6}, {T}, Sacrifice this artifact: Search your library for any number of artifact cards, exile them, then create that many 1/1 colorless Myr artifact creature tokens. Then shuffle.",
+  typeLine: "Artifact",
+  manaCost: "{5}",
+};
+
+test("Founder #101: artifacts_matter support recognizes real plural/quantified artifact tutors, not just the bare singular 'an artifact card' phrasing", () => {
+  const intent = intentFor(metalworkAegis);
+  assert.equal(cardSatisfiesPackageSupport(disciplesOfGix, "artifacts_matter", intent), true, "Disciples of Gix tutors for up to three artifact cards — plural and quantified, a shape the old singular-only pattern never covered");
+  assert.equal(cardSatisfiesPackageSupport(myrIncubator, "artifacts_matter", intent), true, "Myr Incubator's 'any number of artifact cards' is a real, distinct quantifier the old pattern also never covered");
+});
+
 test("a real T'Challa-shaped commander forges the payoff card over an otherwise-identical vanilla artifact", () => {
   const gwFiller = [
     ...Array.from({ length: 26 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Test", manaCost: "{2}{G}{W}", colorIdentity: ["G", "W"] })),
