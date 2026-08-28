@@ -2788,8 +2788,24 @@ const xSpells = Object.freeze({
 // commander with a magnitude-qualified cast/play trigger was found —
 // Prosper's/Laelia's/Urabrask's own triggers are end-step/attack/upkeep
 // triggers, not cast/play triggers — not forced.
+// Founder #101: Urza, Lord High Artificer — one of the single most
+// powerful and popular Commander staples ever printed — returned zero
+// packageIds beyond tokens/artifacts_matter from his own real "{5}:
+// Shuffle your library, then exile the top card. Until end of turn, you
+// may play that card without paying its mana cost." (verified directly via
+// buildStrategicIntent before this fix). The old pattern required the
+// literal phrase "of your library" immediately after "top card" — every
+// other real card checked (Mind's Desire, Caves of Chaos Adventurer,
+// Hidetsugu and Kairi, Intet, the Dreamer, Oracle's Vault) repeats it, but
+// Urza's real, current Oracle text never does, since "your library" was
+// already named earlier in the same sentence via "Shuffle your library".
+// Made the "of your library" clause optional rather than removing it
+// outright — verified this does NOT open the package for a real
+// opponent's-library variant (Fire Lord Ozai's "exile the top card of
+// EACH OPPONENT'S library" still correctly fails to match; that's a
+// separate, unreviewed design question, not something to change here).
 const EXILE_MATTERS_CORE_PATTERNS = Object.freeze([
-  /exile the top (?:card|\w+ cards?) of your library\.?\s*(?:until[^.]*)?\s*you may (?:play|cast) (?:that|it|them)/i,
+  /exile the top (?:card|\w+ cards?)(?:\s*of your library)?\.?\s*(?:until[^.]*)?\s*you may (?:play|cast) (?:that|it|them)/i,
   /whenever you play a card from exile/i,
   /exile cards? from the top of your library until you exile a nonland card[^.]*you may (?:cast|play)/i,
 ]);

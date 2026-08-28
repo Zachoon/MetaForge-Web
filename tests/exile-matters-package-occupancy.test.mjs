@@ -121,6 +121,43 @@ test("a second real commander (Laelia) independently opens exile_matters", () =>
   assert.ok(intentFor(laelia).packageIds.includes("exile_matters"));
 });
 
+// Real card, verified via Scryfall (2026-08-27): Urza, Lord High
+// Artificer — one of the single most powerful and popular Commander
+// staples ever printed. Founder #101 — his real "{5}: Shuffle your
+// library, then exile the top card. Until end of turn, you may play that
+// card without paying its mana cost." never contains the literal phrase
+// "of your library" immediately after "top card" (unlike every other real
+// card checked — Mind's Desire, Prosper, Laelia all repeat it), since
+// "your library" was already named earlier in the same sentence via
+// "Shuffle your library." Returned zero packageIds beyond
+// tokens/artifacts_matter before this fix.
+const urza = {
+  name: "Urza, Lord High Artificer",
+  oracleText: "When Urza enters, create a 0/0 colorless Construct artifact creature token with \"This token gets +1/+1 for each artifact you control.\"\nTap an untapped artifact you control: Add {U}.\n{5}: Shuffle your library, then exile the top card. Until end of turn, you may play that card without paying its mana cost.",
+  typeLine: "Legendary Creature — Human Artificer",
+  manaCost: "{2}{U}{U}",
+  colorIdentity: ["U"],
+};
+
+// Real card, verified via Scryfall (2026-08-27): Fire Lord Ozai. Its real
+// "Exile the top card of each opponent's library..." is a genuinely
+// different, unreviewed shape (an opponent's library, not the player's
+// own) — must NOT start matching as a side effect of making "of your
+// library" optional for Urza.
+const fireLordOzai = {
+  name: "Fire Lord Ozai",
+  oracleText: "Whenever Fire Lord Ozai attacks, you may sacrifice another creature. If you do, add an amount of {R} equal to the sacrificed creature's power. Until end of combat, you don't lose this mana as steps end.\n{6}: Exile the top card of each opponent's library. Until end of turn, you may play one of those cards without paying its mana cost.",
+  typeLine: "Legendary Creature — Avatar",
+  manaCost: "{4}{R}{R}",
+  colorIdentity: ["R"],
+};
+
+test("Founder #101: exile_matters opens on Urza's real \"shuffle, then exile the top card\" phrasing, which never repeats \"of your library\" the way every other real card does", () => {
+  assert.ok(intentFor(urza).packageIds.includes("exile_matters"));
+  // Must not open for a real opponent's-library variant as a side effect.
+  assert.ok(!intentFor(fireLordOzai).packageIds.includes("exile_matters"));
+});
+
 test("exile_matters core requires the literal exile-then-play construction, never satisfied by graveyard's own escape/delirium/threshold/flashback wording (wrong-target-scope)", () => {
   const intent = intentFor(prosper);
   assert.equal(cardSatisfiesPackageCore(laelia, "exile_matters", intent), true);
