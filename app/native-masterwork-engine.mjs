@@ -549,7 +549,15 @@ const GENERIC_SCOPE_WORDS = new Set(["card", "creature", "permanent", "player", 
 // Finneas, Ace Archer; Betor, Kin to All; Orysa, Tide Choreographer;
 // Surrak, the Hunt Caller). Pre-existing bug, not introduced by #081's
 // own new pattern.
-const TRIBAL_STOP_WORDS = new Set(["target", "equipped", "enchanted", "attacking", "blocking", "tapped", "untapped", "nontoken", "other", "another", "each", "all", "more", "of", "if", "historic", "plains", "island", "swamp", "mountain", "forest", "black", "white", "blue", "red", "green", "colorless", "multicolored", "legendary", ...GENERIC_SCOPE_WORDS]);
+// Founder #101: "basic" added defensively alongside the #101 widening of
+// the "search your library for TYPE card(s)" pattern below — a real
+// "up to three basic land cards" tutor phrase would otherwise capture the
+// qualifier "basic" instead of "land" (already its own stop word) as the
+// first word after the quantifier. No real commander currently uses this
+// exact phrasing for its own text, but it is free, safe hardening directly
+// motivated by researching that fix, the same precedent #066's color-word
+// additions used.
+const TRIBAL_STOP_WORDS = new Set(["target", "equipped", "enchanted", "attacking", "blocking", "tapped", "untapped", "nontoken", "other", "another", "each", "all", "more", "of", "if", "historic", "basic", "plains", "island", "swamp", "mountain", "forest", "black", "white", "blue", "red", "green", "colorless", "multicolored", "legendary", ...GENERIC_SCOPE_WORDS]);
 
 const ARTIFACT_OR_TOKEN_TYPES = new Set([
   "clue", "treasure", "food", "gold", "blood", "map", "junk", "powerstone",
@@ -861,7 +869,24 @@ export function commanderTribesFromOracle(commanders = []) {
     // real quantity-phrase shapes ("up to <N>", "any number of", bare
     // "a"/"an") and an optional trailing "s" on "card" for the plural
     // quantified cases.
-    ...[...oracle.matchAll(/\bsearch your library for (?:up to [a-z]+ |any number of |a |an )?([A-Za-z][A-Za-z'-]+) cards?\b/gi)].map((match) => normalized(match[1])),
+    // Founder #101: found via a real Magda, Brazen Outlaw comparison — her
+    // real "Search your library for an artifact or Dragon card, put that
+    // card onto the battlefield..." only ever captured a single word here,
+    // so "artifact or Dragon" silently produced nothing (returned []
+    // before this fix — verified directly via commanderTribesFromOracle).
+    // Widened the capture to the same comma/"or"-list shape
+    // PUT_TYPE_CARD_ONTO_BATTLEFIELD above already uses, and split it the
+    // same way (flatMap, not map) — "artifact" is filtered downstream via
+    // ARTIFACT_OR_TOKEN_TYPES same as always, leaving "dragon". Verified 66
+    // real cards use a "search your library for [TYPE] card(s)...put that
+    // card/them onto the battlefield" shape via Scryfall (Academy Rector:
+    // enchantment; Anchor to Reality: "an Equipment or Vehicle card" — a
+    // second real disjunctive-type case); Tiamat's own single-type #076
+    // capture ("Dragon"), Korlash's basic-land-type capture ("Swamp"), and
+    // Bilbo's generic "creature" capture all verified unaffected by the
+    // widened group.
+    ...[...oracle.matchAll(/\bsearch your library for (?:up to [a-z]+ |any number of |a |an )?((?:[A-Za-z][A-Za-z'-]+(?:,\s*)?)+(?:\s*or\s+[A-Za-z][A-Za-z'-]+)?) cards?\b/gi)].flatMap((match) =>
+      match[1].split(/,\s*(?:or\s+)?|\s+or\s+/i).filter(Boolean).map((word) => normalized(word))),
     // Founder #077: found via a real Grub, Storied Matriarch comparison —
     // her real text ("return up to one target Goblin card from your
     // graveyard to your hand") is a graveyard-recursion tutor shape none

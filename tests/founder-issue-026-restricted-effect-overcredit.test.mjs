@@ -2496,6 +2496,73 @@ test("Founder #076: a Dragon-tribal-tutor commander reserves real on-type anchor
   assert.ok(dragonsSelected >= 8, `expected most of the 10 real on-type Dragons to be reserved as anchors, got ${dragonsSelected}`);
 });
 
+// Founder #101: found via a real Magda, Brazen Outlaw comparison — her
+// real "Search your library for an artifact or Dragon card, put that card
+// onto the battlefield, then shuffle." is #076's own "search your library
+// for TYPE card(s)" shape, but with a real "TYPE1 or TYPE2" disjunction
+// #076's single-word capture never accounted for — "artifact or Dragon"
+// silently produced nothing at all (returned [] before this fix). Verified
+// 66 real cards use a "search your library for [TYPE] card(s)...put that
+// card/them onto the battlefield" shape via Scryfall — including Academy
+// Rector (a single real type, "enchantment") and Anchor to Reality (a
+// second real disjunctive case, "an Equipment or Vehicle card").
+test("Founder #101: commanderTribesFromOracle extracts a real \"TYPE1 or TYPE2\" disjunctive search-tutor (Magda, Brazen Outlaw), without regressing #076's single-type captures", () => {
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Other Dwarves you control get +1/+0.\nWhenever a Dwarf you control becomes tapped, create a Treasure token.\nSacrifice five Treasures: Search your library for an artifact or Dragon card, put that card onto the battlefield, then shuffle." }]),
+    ["dwarf", "dragon"],
+  );
+  // Equipment and Vehicle are both already in ARTIFACT_OR_TOKEN_TYPES —
+  // correctly filtered out of a real disjunctive tutor the same as any
+  // other pattern in this function.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Search your library for an Equipment or Vehicle card, put that card onto the battlefield, then shuffle." }]),
+    [],
+  );
+  // #076's own single-type real cases (Tiamat, Korlash, Bilbo, the bare
+  // Merfolk case) must all still work unchanged.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Flying\nWhen Tiamat enters, if you cast it, search your library for up to five Dragon cards not named Tiamat that each have different names, reveal them, put them into your hand, then shuffle." }]),
+    ["dragon"],
+  );
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Korlash's power and toughness are each equal to the number of Swamps you control.\n{1}{B}: Regenerate Korlash.\nGrandeur — Discard another card named Korlash, Heir to Blackblade: Search your library for up to two Swamp cards, put them onto the battlefield tapped, then shuffle." }]),
+    [],
+  );
+  // A real "up to three basic land cards" quantified tutor (Far
+  // Wanderings' Threshold clause) must not leak the qualifier "basic" as a
+  // fake tribe — "land" was already a stop word; "basic" is added
+  // defensively in the same commit.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Threshold — If there are seven or more cards in your graveyard, instead search your library for up to three basic land cards, put them onto the battlefield tapped, then shuffle." }]),
+    [],
+  );
+});
+
+test("Founder #101: a Magda-shaped commander reserves real on-type Dragon anchors from a disjunctive artifact-or-Dragon tutor", () => {
+  const magda = {
+    name: "Test Magda", colors: ["R"],
+    oracleText: "Other Dwarves you control get +1/+0.\nWhenever a Dwarf you control becomes tapped, create a Treasure token.\nSacrifice five Treasures: Search your library for an artifact or Dragon card, put that card onto the battlefield, then shuffle.",
+  };
+  const filler = [
+    ...Array.from({ length: 28 }, (_, i) => ({ name: `Flow ${i}`, oracleText: "When this enters, draw a card. Scry 1.", typeLine: "Creature — Spirit", manaCost: "{2}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+    ...Array.from({ length: 24 }, (_, i) => ({ name: `Answer ${i}`, oracleText: "Exile target nonland permanent.", typeLine: "Instant", manaCost: "{1}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Shield ${i}`, oracleText: "Target creature gains hexproof until end of turn.", typeLine: "Instant", manaCost: "{1}{R}", colorIdentity: ["R"], popularityRank: 40 })),
+    ...Array.from({ length: 18 }, (_, i) => ({ name: `Stone ${i}`, oracleText: "Add one mana. Create a Treasure token.", typeLine: "Artifact", manaCost: "{2}", colorIdentity: [], popularityRank: 40 })),
+  ];
+  const dragons = Array.from({ length: 10 }, (_, i) => ({
+    name: `Test Dragon ${i}`, oracleText: "Flying.", typeLine: "Creature — Dragon", manaCost: "{3}{R}", cmc: 4, colorIdentity: ["R"], popularityRank: 200,
+  }));
+  const mountains = Array.from({ length: 20 }, (_, i) => ({
+    name: `Mountain Utility ${i}`, oracleText: "{T}: Add {R}.", typeLine: "Land", manaCost: "", colorIdentity: ["R"], popularityRank: 5, priceUsd: 0.5,
+  }));
+  const report = forgeNativeMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", seed: 11,
+    commander: magda, cards: [...filler, ...dragons, ...mountains],
+  });
+  const dragonsSelected = report.selected.rows.filter((row) => row.name.startsWith("Test Dragon")).length;
+  assert.ok(dragonsSelected >= 8, `expected most of the 10 real on-type Dragons to be reserved as anchors, got ${dragonsSelected}`);
+});
+
 // Founder #077: found via a real Grub, Storied Matriarch comparison — her
 // real text ("return up to one target Goblin card from your graveyard to
 // your hand") is a graveyard-recursion tutor shape none of the existing
