@@ -2919,3 +2919,26 @@ test("Founder #040: identityMechanicIdsFor folds in commander-implied package me
   assert.deepEqual(identityMechanicIdsFor(["spells"], genericCommander2, null), ["spells"]);
 });
 
+// Founder #101 (found in the same round as the Magda disjunctive-tutor fix
+// above): a real Hazezon, Shaper of Sand comparison — his real "Whenever a
+// Desert you control enters, create two 1/1 ... Sand Warrior creature
+// tokens." leaked "desert" as a fake creature tribe (commanderTribesFromOracle
+// returned ["desert"] before this fix). Desert is a real land subtype, not a
+// creature type — the same class of bug the five BASIC land subtypes
+// (Plains/Island/Swamp/Mountain/Forest) were already filtered for. Verified
+// the complete real land-subtype list against Scryfall's own authoritative
+// catalog (api.scryfall.com/catalog/land-types) and added the rest
+// defensively: Cave, Cloud, Gate, Lair, Locus, Mine, Planet, Power-Plant,
+// Sphere, Tower, Town, Urza's.
+test("Founder #101: commanderTribesFromOracle no longer leaks real non-basic land subtypes (Desert, verified via Hazezon) as fake creature tribes", () => {
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Desertwalk (This creature can't be blocked as long as defending player controls a Desert.)\nYou may play Desert lands from your graveyard.\nWhenever a Desert you control enters, create two 1/1 red, green, and white Sand Warrior creature tokens." }]),
+    [],
+  );
+  // A real creature tribe must still work unaffected.
+  assert.deepEqual(
+    commanderTribesFromOracle([{ oracleText: "Other Dwarves you control get +1/+0." }]),
+    ["dwarf"],
+  );
+});
+

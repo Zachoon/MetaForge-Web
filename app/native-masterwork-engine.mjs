@@ -557,7 +557,19 @@ const GENERIC_SCOPE_WORDS = new Set(["card", "creature", "permanent", "player", 
 // exact phrasing for its own text, but it is free, safe hardening directly
 // motivated by researching that fix, the same precedent #066's color-word
 // additions used.
-const TRIBAL_STOP_WORDS = new Set(["target", "equipped", "enchanted", "attacking", "blocking", "tapped", "untapped", "nontoken", "other", "another", "each", "all", "more", "of", "if", "historic", "basic", "plains", "island", "swamp", "mountain", "forest", "black", "white", "blue", "red", "green", "colorless", "multicolored", "legendary", ...GENERIC_SCOPE_WORDS]);
+// Founder #101 (second addition, same round): confirmed via a real
+// Hazezon, Shaper of Sand comparison — his real "Whenever a Desert you
+// control enters, create..." leaked "desert" as a fake creature tribe
+// (commanderTribesFromOracle returned ["desert"] before this fix; Desert
+// is a real land subtype, never a creature type). Plains/Island/Swamp/
+// Mountain/Forest were already filtered as the five BASIC land subtypes,
+// but the complete real land-subtype list is longer — verified against
+// Scryfall's own authoritative catalog (api.scryfall.com/catalog/land-
+// types): Cave, Cloud, Desert, Gate, Lair, Locus, Mine, Planet,
+// Power-Plant, Sphere, Tower, Town, and Urza's. Added the remaining ones
+// defensively, same "free, safe hardening" precedent as "basic" above —
+// this is a small, closed, authoritative rules list, not a guess.
+const TRIBAL_STOP_WORDS = new Set(["target", "equipped", "enchanted", "attacking", "blocking", "tapped", "untapped", "nontoken", "other", "another", "each", "all", "more", "of", "if", "historic", "basic", "plains", "island", "swamp", "mountain", "forest", "cave", "cloud", "desert", "gate", "lair", "locus", "mine", "planet", "power-plant", "sphere", "tower", "town", "urza's", "black", "white", "blue", "red", "green", "colorless", "multicolored", "legendary", ...GENERIC_SCOPE_WORDS]);
 
 const ARTIFACT_OR_TOKEN_TYPES = new Set([
   "clue", "treasure", "food", "gold", "blood", "map", "junk", "powerstone",
