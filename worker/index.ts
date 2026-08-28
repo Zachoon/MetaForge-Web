@@ -317,7 +317,7 @@ const worker = {
 
     if (url.pathname === "/robots.txt") return robotsResponse(url);
     if (url.pathname === "/sitemap.xml") return sitemapResponse(url, env);
-    if (url.pathname === "/decks" && PUBLIC_HOSTS.has(url.hostname)) return publicDeckIndexResponse(env);
+    if (url.pathname === "/decks" && PUBLIC_HOSTS.has(url.hostname)) return publicDeckIndexResponse(url, env);
     if (/^\/decks\/[a-z0-9-]+\/og\.svg$/.test(url.pathname) && PUBLIC_HOSTS.has(url.hostname)) return publicDeckSocialImageResponse(url, env);
     if (/^\/decks\/[a-z0-9-]+\/share\/[a-z]+$/.test(url.pathname) && PUBLIC_HOSTS.has(url.hostname)) return publicDeckShareResponse(request, url, env);
     if (/^\/decks\/[a-z0-9-]+$/.test(url.pathname) && PUBLIC_HOSTS.has(url.hostname)) return publicDeckReportResponse(url, env);

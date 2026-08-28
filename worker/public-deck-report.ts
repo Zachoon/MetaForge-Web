@@ -165,7 +165,7 @@ function pageShell(title: string, description: string, canonical: string, body: 
   const safeTitle = escapeHtml(title); const safeDescription = escapeHtml(description);
   const schemaType = schema && typeof schema === "object" && "@type" in schema ? String((schema as Record<string, unknown>)["@type"]) : "";
   const ogType = schemaType === "Article" ? "article" : "website";
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safeTitle} | MetaForge</title><meta name="description" content="${safeDescription}"><meta name="robots" content="index, follow"><link rel="canonical" href="${canonical}"><meta property="og:type" content="${ogType}"><meta property="og:site_name" content="MetaForge"><meta property="og:title" content="${safeTitle} | MetaForge"><meta property="og:description" content="${safeDescription}"><meta property="og:url" content="${canonical}"><meta property="og:image" content="https://metaforge.gg/og.png"><script type="application/ld+json">${JSON.stringify(schema).replace(/</g, "\\u003c")}</script><style>body{margin:0;background:#030b09;color:#eee2cf;font:16px/1.6 Inter,system-ui,sans-serif}a{color:#9edfd0}.shell{width:min(1080px,calc(100% - 32px));margin:auto;padding:34px 0 70px}.brand{font-weight:900;letter-spacing:.12em;color:#eda75a;text-decoration:none}.hero,.group{margin-top:22px;padding:clamp(20px,4vw,38px);border:1px solid #345249;background:#081411}.hero small,.group header span{color:#46d8b8;font-weight:800;letter-spacing:.1em}.hero h1{margin:.2rem 0;font:600 clamp(2.2rem,6vw,4.5rem) Newsreader,Georgia,serif}.hero p{max-width:760px;color:#b9c4bf}.meta,.share-actions{display:flex;gap:10px;flex-wrap:wrap}.meta i{padding:5px 9px;border:1px solid #6b3d22;color:#ffd09b;font-style:normal}.share-actions{margin-top:20px}.share-actions a,.share-actions button{padding:9px 12px;border:1px solid #416a60;background:#0a1714;color:#9edfd0;font:700 13px Inter,system-ui,sans-serif;text-decoration:none;cursor:pointer}.group header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #345249}.cards,.guide-grid,.insights{list-style:none;margin:0;padding:0}.cards li{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;padding:10px 0;border-bottom:1px solid #1d332d}.cards li>a{grid-column:1/-1;display:grid;gap:4px;text-decoration:none}.cards b{color:#73e5cd}.cards small{color:#8fa29b;text-align:right}.guide-grid,.insights,.lesson-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:18px}.guide-grid a,.insights li,.lesson-grid article{display:block;height:100%;box-sizing:border-box;padding:16px;border:1px solid #29463e;background:#0b1a16;text-decoration:none}.guide-grid strong,.insights strong{display:block;color:#eee2cf}.guide-grid span,.insights span{display:block;margin-top:4px;color:#8fa29b;font-size:13px}.insights b{display:block;color:#73e5cd;font-size:24px}.dossier>h3{margin-top:28px;color:#ffd09b}.dossier .audience{padding:12px 16px;border-left:3px solid #46d8b8;color:#b9c4bf}.lesson-grid h3{margin:0;color:#73e5cd}.lesson-grid p{color:#b9c4bf}.lessons{padding-left:22px}.lessons li{margin:9px 0}.cta{margin-top:24px;padding:24px;border:1px solid #b36c2e;background:#2b180f}.cta a{display:inline-block;padding:11px 18px;background:#e79b41;color:#1a0f08;font-weight:800;text-decoration:none}@media(max-width:600px){.cards{font-size:14px}.cards small{display:none}}</style></head><body><main class="shell"><a class="brand" href="/">MF · METAFORGE</a>${body}</main></body></html>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safeTitle} | MetaForge</title><meta name="description" content="${safeDescription}"><meta name="robots" content="index, follow"><link rel="canonical" href="${canonical}"><meta property="og:type" content="${ogType}"><meta property="og:site_name" content="MetaForge"><meta property="og:title" content="${safeTitle} | MetaForge"><meta property="og:description" content="${safeDescription}"><meta property="og:url" content="${canonical}"><meta property="og:image" content="https://metaforge.gg/og.png"><script type="application/ld+json">${JSON.stringify(schema).replace(/</g, "\\u003c")}</script><style>body{margin:0;background:#030b09;color:#eee2cf;font:16px/1.6 Inter,system-ui,sans-serif}a{color:#9edfd0}.shell{width:min(1080px,calc(100% - 32px));margin:auto;padding:34px 0 70px}.brand{font-weight:900;letter-spacing:.12em;color:#eda75a;text-decoration:none}.hero,.group{margin-top:22px;padding:clamp(20px,4vw,38px);border:1px solid #345249;background:#081411}.hero small,.group header span{color:#46d8b8;font-weight:800;letter-spacing:.1em}.hero h1{margin:.2rem 0;font:600 clamp(2.2rem,6vw,4.5rem) Newsreader,Georgia,serif}.hero p{max-width:760px;color:#b9c4bf}.meta,.share-actions{display:flex;gap:10px;flex-wrap:wrap}.meta i{padding:5px 9px;border:1px solid #6b3d22;color:#ffd09b;font-style:normal}.share-actions{margin-top:20px}.share-actions a,.share-actions button{padding:9px 12px;border:1px solid #416a60;background:#0a1714;color:#9edfd0;font:700 13px Inter,system-ui,sans-serif;text-decoration:none;cursor:pointer}.group header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #345249}.cards,.guide-grid,.insights{list-style:none;margin:0;padding:0}.cards li{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;padding:10px 0;border-bottom:1px solid #1d332d}.cards li>a{grid-column:1/-1;display:grid;gap:4px;text-decoration:none}.cards b{color:#73e5cd}.cards small{color:#8fa29b;text-align:right}.guide-grid,.insights,.lesson-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:18px}.guide-grid a,.insights li,.lesson-grid article{display:block;height:100%;box-sizing:border-box;padding:16px;border:1px solid #29463e;background:#0b1a16;text-decoration:none}.guide-grid strong,.insights strong{display:block;color:#eee2cf}.guide-grid span,.insights span{display:block;margin-top:4px;color:#8fa29b;font-size:13px}.insights b{display:block;color:#73e5cd;font-size:24px}.dossier>h3{margin-top:28px;color:#ffd09b}.dossier .audience{padding:12px 16px;border-left:3px solid #46d8b8;color:#b9c4bf}.lesson-grid h3{margin:0;color:#73e5cd}.lesson-grid p{color:#b9c4bf}.lessons{padding-left:22px}.lessons li{margin:9px 0}.cta{margin-top:24px;padding:24px;border:1px solid #b36c2e;background:#2b180f}.cta a{display:inline-block;padding:11px 18px;background:#e79b41;color:#1a0f08;font-weight:800;text-decoration:none}.deck-search-form{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:18px 0}.deck-search-form input[type=search]{flex:1 1 220px;min-width:180px;height:40px;padding:0 12px;background:#081411;border:1px solid #345249;color:#eee2cf;font:14px Inter,system-ui,sans-serif}.deck-search-form select{height:40px;padding:0 10px;background:#081411;border:1px solid #345249;color:#9edfd0;font:14px Inter,system-ui,sans-serif}.deck-search-form button{height:40px;padding:0 18px;border:1px solid #416a60;background:#0a1714;color:#9edfd0;font:700 13px Inter,system-ui,sans-serif;cursor:pointer}.deck-search-form .clear-filters{align-self:center;color:#8fa29b;font-size:13px}.deck-results-count{margin:0 0 10px;color:#8fa29b;font-size:13px}.deck-pagination{display:flex;justify-content:space-between;align-items:center;margin-top:18px;font-size:13px}.deck-pagination a{padding:8px 14px;border:1px solid #416a60;color:#9edfd0;text-decoration:none}.deck-pagination span{color:#657a75}@media(max-width:600px){.cards{font-size:14px}.cards small{display:none}}</style></head><body><main class="shell"><a class="brand" href="/">MF · METAFORGE</a>${body}</main></body></html>`;
 }
 
 export async function publicDeckReportResponse(url: URL, env: PublicReportEnv): Promise<Response> {
@@ -221,15 +221,89 @@ export async function publicDeckShareResponse(request: Request, url: URL, env: P
   return new Response(null, { status: 302, headers: { Location: location, "Cache-Control": "no-store" } });
 }
 
-export async function publicDeckIndexResponse(env: PublicReportEnv): Promise<Response> {
-  const result = await env.DB.prepare("SELECT slug,title,commander_name,format_name,strategy_name,summary,created_at,updated_at,view_count,share_count FROM public_deck_reports ORDER BY updated_at DESC LIMIT 100").all<Omit<StoredReport,"deck_rows_json">>();
-  const reports = result.results || [];
-  const cards = reports.map((report) => `<li><a href="/decks/${escapeHtml(report.slug)}"><strong>${escapeHtml(report.title)}</strong><span>${escapeHtml(report.commander_name)} · ${escapeHtml(report.strategy_name)} · ${Number(report.view_count || 0)} views · ${Number(report.share_count || 0)} shares</span><p>${escapeHtml(report.summary)}</p></a></li>`).join("");
+const DECKS_PAGE_SIZE = 24;
+const DECK_SORTS: Record<string, string> = {
+  updated: "updated_at DESC",
+  views: "view_count DESC, updated_at DESC",
+  shares: "share_count DESC, updated_at DESC",
+  name: "title COLLATE NOCASE ASC",
+};
+
+function decksQueryString(params: Record<string, string>) {
+  const merged = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) if (value) merged.set(key, value);
+  const qs = merged.toString();
+  return qs ? `?${qs}` : "";
+}
+
+export async function publicDeckIndexResponse(url: URL, env: PublicReportEnv): Promise<Response> {
+  // A real search/filter/sort browser, not just a flat recent-first list —
+  // the publish-confirmation dialog in the app already promises "This
+  // creates a searchable page anyone can open"; this is what makes that
+  // literally true rather than aspirational.
+  const q = safeText(url.searchParams.get("q"), 80);
+  const format = safeText(url.searchParams.get("format"), 40);
+  const sortKey = DECK_SORTS[url.searchParams.get("sort") || ""] ? String(url.searchParams.get("sort")) : "updated";
+  const page = Math.max(1, Math.min(200, Number(url.searchParams.get("page")) || 1));
+  const offset = (page - 1) * DECKS_PAGE_SIZE;
+
+  const totalEverPublished = await env.DB.prepare("SELECT COUNT(*) AS n FROM public_deck_reports").first<{ n: number }>();
+  const hasAnyPublished = Number(totalEverPublished?.n || 0) > 0;
+
+  let cards = "";
+  let matchCount = 0;
+  let formats: string[] = [];
+  let filtersHtml = "";
+  let paginationHtml = "";
+
+  if (hasAnyPublished) {
+    const formatRows = await env.DB.prepare("SELECT DISTINCT format_name FROM public_deck_reports ORDER BY format_name COLLATE NOCASE ASC").all<{ format_name: string }>();
+    formats = (formatRows.results || []).map((row: { format_name: string }) => row.format_name).filter(Boolean);
+
+    const wherePieces: string[] = [];
+    const binds: unknown[] = [];
+    // ESCAPE binds to a single LIKE expression, not a parenthesized OR group
+    // — each LIKE needs its own ESCAPE clause, not one trailing the whole
+    // WHERE (that would also be invalid whenever only the format filter,
+    // with no LIKE at all, is present).
+    if (q) { wherePieces.push("(title LIKE ? ESCAPE '\\' OR commander_name LIKE ? ESCAPE '\\' OR strategy_name LIKE ? ESCAPE '\\')"); const like = `%${q.replace(/[%_\\]/g, (c) => `\\${c}`)}%`; binds.push(like, like, like); }
+    if (format) { wherePieces.push("format_name = ?"); binds.push(format); }
+    const whereSql = wherePieces.length ? `WHERE ${wherePieces.join(" AND ")}` : "";
+
+    const countRow = await env.DB.prepare(`SELECT COUNT(*) AS n FROM public_deck_reports ${whereSql}`).bind(...binds).first<{ n: number }>();
+    matchCount = Number(countRow?.n || 0);
+
+    const orderSql = DECK_SORTS[sortKey];
+    const rows = await env.DB.prepare(`SELECT slug,title,commander_name,format_name,strategy_name,summary,created_at,updated_at,view_count,share_count FROM public_deck_reports ${whereSql} ORDER BY ${orderSql} LIMIT ? OFFSET ?`).bind(...binds, DECKS_PAGE_SIZE, offset).all<Omit<StoredReport, "deck_rows_json">>();
+    const reports = rows.results || [];
+    cards = reports.map((report: Omit<StoredReport, "deck_rows_json">) =>`<li><a href="/decks/${escapeHtml(report.slug)}"><strong>${escapeHtml(report.title)}</strong><span>${escapeHtml(report.commander_name)} · ${escapeHtml(report.format_name)} · ${escapeHtml(report.strategy_name)} · ${Number(report.view_count || 0)} views · ${Number(report.share_count || 0)} shares</span><p>${escapeHtml(report.summary)}</p></a></li>`).join("");
+
+    const formatOptions = formats.map((name) => `<option value="${escapeHtml(name)}"${name === format ? " selected" : ""}>${escapeHtml(name)}</option>`).join("");
+    const sortOptions = Object.keys(DECK_SORTS).map((key) => `<option value="${key}"${key === sortKey ? " selected" : ""}>${key === "updated" ? "Recently updated" : key === "views" ? "Most viewed" : key === "shares" ? "Most shared" : "Title A–Z"}</option>`).join("");
+    filtersHtml = `<form class="deck-search-form" method="get" action="/decks" role="search" aria-label="Search public decks"><input type="search" name="q" placeholder="Search by deck name or commander…" value="${escapeHtml(q)}" maxlength="80"><select name="format" aria-label="Filter by format"><option value="">All formats</option>${formatOptions}</select><select name="sort" aria-label="Sort by">${sortOptions}</select><button type="submit">Search</button>${q || format || sortKey !== "updated" ? `<a class="clear-filters" href="/decks">Clear filters</a>` : ""}</form>`;
+
+    const totalPages = Math.max(1, Math.ceil(matchCount / DECKS_PAGE_SIZE));
+    if (totalPages > 1) {
+      const prevQs = decksQueryString({ q, format, sort: sortKey !== "updated" ? sortKey : "", page: page > 2 ? String(page - 1) : "" });
+      const nextQs = decksQueryString({ q, format, sort: sortKey !== "updated" ? sortKey : "", page: String(page + 1) });
+      paginationHtml = `<nav class="deck-pagination" aria-label="Deck results pages">${page > 1 ? `<a href="/decks${prevQs}">← Previous</a>` : "<span></span>"}<span>Page ${page} of ${totalPages}</span>${page < totalPages ? `<a href="/decks${nextQs}">Next →</a>` : "<span></span>"}</nav>`;
+    }
+  }
+
   const guides = FEATURED_COMMANDER_GUIDES.map(([slug, name]) => `<li><a href="/commanders/${slug}"><strong>${escapeHtml(name)}</strong><span>Commander strategy guide</span><p>Explore the game plans, support packages, mana requirements, and common deckbuilding mistakes for ${escapeHtml(name)}.</p></a></li>`).join("");
   const canonical = "https://metaforge.gg/decks";
-  const publishedSection = reports.length ? `<section class="group"><header><h2>Player-published deck reports</h2><span>${reports.length} PUBLIC</span></header><ul class="cards">${cards}</ul></section>` : `<section class="group"><header><h2>Player-published deck reports</h2><span>OPENING SOON</span></header><p>The first public reports are being forged. Private decks stay private unless their owner explicitly publishes them.</p></section>`;
+
+  let publishedSection: string;
+  if (!hasAnyPublished) {
+    publishedSection = `<section class="group"><header><h2>Player-published deck reports</h2><span>OPENING SOON</span></header><p>The first public reports are being forged. Private decks stay private unless their owner explicitly publishes them.</p></section>`;
+  } else if (matchCount === 0) {
+    publishedSection = `<section class="group"><header><h2>Player-published deck reports</h2><span>0 MATCHES</span></header>${filtersHtml}<p class="deck-results-count">No published decks match your search. <a href="/decks">Clear filters</a> to see all of them.</p></section>`;
+  } else {
+    publishedSection = `<section class="group"><header><h2>Player-published deck reports</h2><span>${matchCount} PUBLIC</span></header>${filtersHtml}<p class="deck-results-count">Showing ${Math.min(offset + 1, matchCount)}–${Math.min(offset + DECKS_PAGE_SIZE, matchCount)} of ${matchCount}</p><ul class="cards">${cards}</ul>${paginationHtml}</section>`;
+  }
+
   const body = `<article><header class="hero"><small>METAFORGE ARCHIVES</small><h1>Commander Deck Archive & Community Reports</h1><p>Explore Commander strategy guides and complete, player-published decklists. Every public deck is shared deliberately by its owner; private workbench decks never appear here automatically.</p></header>${publishedSection}<section class="group"><header><h2>Commander strategy archive</h2><span>${FEATURED_COMMANDER_GUIDES.length} GUIDES</span></header><p>Start with a commander-specific game plan, then use MetaForge to build, analyze, and test your own version.</p><ul class="guide-grid">${guides}</ul></section><section class="group"><header><h2>Diagnose a Commander deck</h2><span>FREE TOOLS</span></header><ul class="guide-grid"><li><a href="/tools/commander-deck-builder"><strong>Commander Deck Builder</strong><span>Build around a coherent game plan.</span></a></li><li><a href="/tools/commander-deck-checker"><strong>Commander Deck Checker</strong><span>Find structural gaps and conflicting plans.</span></a></li><li><a href="/tools/commander-mana-base-analyzer"><strong>Mana Base Analyzer</strong><span>Check lands, colored sources, curve, and ramp.</span></a></li><li><a href="/academy"><strong>MetaForge Academy</strong><span>Learn how to diagnose recurring deck problems.</span></a></li></ul></section><section class="cta"><h2>Publish your own deck</h2><p>Finish a deck in MetaForge, then choose Share and explicitly publish a public report.</p><a href="/?intent=build">Build a Commander deck →</a></section></article>`;
-  return new Response(pageShell("Commander Deck Archive & Community Reports", "Explore Commander strategy guides and complete player-published MTG decklists built and analyzed with MetaForge.", canonical, body, { "@context":"https://schema.org", "@type":"CollectionPage", name:"MetaForge Commander Deck Archive and Community Reports", url:canonical, hasPart: FEATURED_COMMANDER_GUIDES.map(([slug, name]) => ({ "@type":"Article", name:`${name} Commander Deck Guide`, url:`https://metaforge.gg/commanders/${slug}` })) }), { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=120" } });
+  return new Response(pageShell("Commander Deck Archive & Community Reports", "Explore Commander strategy guides and complete player-published MTG decklists built and analyzed with MetaForge.", canonical, body, { "@context":"https://schema.org", "@type":"CollectionPage", name:"MetaForge Commander Deck Archive and Community Reports", url:canonical, hasPart: FEATURED_COMMANDER_GUIDES.map(([slug, name]) => ({ "@type":"Article", name:`${name} Commander Deck Guide`, url:`https://metaforge.gg/commanders/${slug}` })) }), { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": hasAnyPublished ? "public, max-age=60" : "public, max-age=120" } });
 }
 
 export async function publicReportSitemapEntries(env: PublicReportEnv) {
