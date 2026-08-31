@@ -3218,7 +3218,14 @@ function buildImportedCandidateAttempt(input, analysis) {
   const variant = { id: "imported", label: "Your List", synergy: 1, resilience: 1, curve: 1 };
   const scored = analysis.spells.map((entry) => scoreCard(entry, input, variant, analysis.context));
   const spellSlots = target - landSlots - commanderSlots;
-  const { selected, roleCounts } = chooseSpells(scored, spellSlots, singleton, roleTargets(input.format, input.strategy), analysis.context.blueprint, presetSpellRows, curveTargets(input.strategy, spellSlots), analysis.strategicIntent);
+  // constructionTrace was previously left undestructured here, so the same
+  // per-pick evidence buildCandidateAttempt already carries (roles,
+  // deficitsFilled, nearest-alternative comparison — see construction-trace.mjs)
+  // was computed by this identical chooseSpells() call and then silently
+  // dropped before reaching the imported candidate. Capturing it is what lets
+  // forgeImportedMasterwork explain each filled slot with real evidence
+  // instead of one canned sentence for every addition.
+  const { selected, roleCounts, constructionTrace } = chooseSpells(scored, spellSlots, singleton, roleTargets(input.format, input.strategy), analysis.context.blueprint, presetSpellRows, curveTargets(input.strategy, spellSlots), analysis.strategicIntent, { enabled: true, variantId: variant.id });
   const mana = buildManaBase(input, landSlots, analysis.lands, variant, presetLandRows, aggregatePipTotals(selected), selected);
   const rows = [
     ...allCommanders(input).map((commander) => ({ quantity: 1, name: commander.name, roles: ["commander"], score: 100, cmc: manaValueFromCost(commander.manaCost, commander.cmc), manaCost: commander.manaCost || "" })),
@@ -3240,6 +3247,7 @@ function buildImportedCandidateAttempt(input, analysis) {
     commanderCompatibility,
     strategicCoherence,
     strategicSequence,
+    constructionTrace,
     score: evaluation.score,
     sideboard: sideboardFor(scored, selected, singleton),
     boundary: "Adapted directly from your submitted list. Legality and simulations are hard gates; real match performance remains unproven.",
@@ -3292,6 +3300,52 @@ function diffImportedChanges(importedRows, selectedRows) {
     .map((row) => ({ name: row.name, cut: Math.max(0, row.quantity - (selectedByName.get(normalized(row.name)) || 0)) }))
     .filter((entry) => entry.cut > 0);
   return { added, trimmed };
+}
+
+const IMPORTED_ADDITION_ROLE_LABELS = Object.freeze({
+  ramp: "ramp", draw: "card draw", interaction: "interaction",
+  protection: "protection", recursion: "recursion", sweeper: "board wipes",
+});
+const GENERIC_IMPORTED_ADDITION_REASON = "Added to fill a role or curve gap the submitted list left open.";
+
+// Turns one construction-trace pick (construction-trace.mjs) into the same
+// plain-language justification prospective-slot-delta.mjs's evidence already
+// supports elsewhere in the Forge - never invented prose. Falls back to the
+// old generic sentence only when a card genuinely carries no tracked role or
+// deficit evidence (e.g. a pure filler pick with no tracked role), or when no
+// trace pick exists for it at all (an older cached generation, or a preset/
+// commander row that should never reach this path in practice).
+function describeImportedAddition(pick) {
+  if (!pick) return GENERIC_IMPORTED_ADDITION_REASON;
+  const deficits = pick.prospectiveDelta?.deficitsFilled || [];
+  const roleDeficit = deficits.find((tag) => tag.startsWith("role:"));
+  const curveDeficit = deficits.find((tag) => tag.startsWith("curve:"));
+  const roles = pick.roles || [];
+  let clause;
+  if (roleDeficit) {
+    const role = roleDeficit.slice("role:".length);
+    clause = `Added for ${IMPORTED_ADDITION_ROLE_LABELS[role] || role} — the submitted list was short there.`;
+  } else if (curveDeficit) {
+    clause = `Added to fill an open slot at ${curveDeficit.slice("curve:".length)} mana on the curve.`;
+  } else if (roles.length) {
+    clause = `Added for its ${IMPORTED_ADDITION_ROLE_LABELS[roles[0]] || roles[0]} role.`;
+  } else {
+    return GENERIC_IMPORTED_ADDITION_REASON;
+  }
+  const nearest = pick.reasonOverNearest;
+  if (nearest?.nearestName && nearest.note === "higher_phased_adjusted" && nearest.adjustedMargin > 0) {
+    clause += ` Edged out ${nearest.nearestName} for the slot.`;
+  }
+  return clause;
+}
+
+// Additive alongside diffImportedChanges' plain `added` name list (never
+// replaces it - forge-generation-store.ts's client whitelist and existing
+// tests both key off `added` as a bare string[]). One real reason per added
+// card, sourced from the same chooseSpells() call that picked it.
+function describeImportedAdditions(added, constructionTrace) {
+  const pickByName = new Map((constructionTrace?.picks || []).map((pick) => [pick.name, pick]));
+  return added.map((name) => ({ name, reason: describeImportedAddition(pickByName.get(name)) }));
 }
 
 // Fills explicit player-created gaps without rebuilding or silently
@@ -5078,6 +5132,10 @@ export function forgeImportedMasterwork(input) {
   });
 
   const changes = diffImportedChanges(input.importedRows, selected.rows);
+  const changesWithReasons = {
+    ...changes,
+    addedDetail: describeImportedAdditions(changes.added, selected.constructionTrace),
+  };
 
   return Object.freeze({
     engine: "metaforge-native-import-v1",
@@ -5100,7 +5158,7 @@ export function forgeImportedMasterwork(input) {
     unusedEnginePartners: unusedEnginePartnersFor(selected, input),
     blueprintIntent: analysis.context.blueprint,
     budgetDiagnostics: budgetDiagnosticsFor(selected, input),
-    changes: Object.freeze(changes),
+    changes: Object.freeze(changesWithReasons),
     diagnostics: Object.freeze({
       analysisPasses: 1,
       cardsAnalyzed: analysis.cards.length,

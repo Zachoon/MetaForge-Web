@@ -32,6 +32,30 @@ test("adapts a short pasted list into one legal, complete deck", () => {
   assert.equal(first.tournament.selectedId, first.selected.id, "the imported build is always the selected candidate");
 });
 
+// Phase 2 of the partial-list-completion thread: buildImportedCandidateAttempt
+// previously discarded chooseSpells' constructionTrace, so every added card
+// shipped the identical generic sentence regardless of why it was actually
+// picked. This asserts the real per-pick evidence (roles, deficits filled,
+// nearest-alternative comparison) now survives to the delivered candidate and
+// produces at least one genuinely differentiated, non-generic reason - the
+// exact regression the original bug would fail.
+test("explains added cards with real per-pick evidence, not one identical sentence for every addition", () => {
+  const GENERIC_REASON = "Added to fill a role or curve gap the submitted list left open.";
+  const input = { ...baseInput, importedRows: [
+    { quantity: 4, name: "Flow 0" },
+    { quantity: 20, name: "Island" },
+  ] };
+  const report = forgeImportedMasterwork(input);
+  assert.ok(report.selected.constructionTrace?.picks?.length > 0, "the delivered imported candidate carries a real, non-empty construction trace");
+  assert.ok(Array.isArray(report.changes.addedDetail), "changes.addedDetail is a real array");
+  assert.equal(report.changes.addedDetail.length, report.changes.added.length, "one reason entry per added card");
+  for (const name of report.changes.added) {
+    assert.ok(report.changes.addedDetail.some((entry) => entry.name === name), `${name} has a matching addedDetail entry`);
+  }
+  const reasons = report.changes.addedDetail.map((entry) => entry.reason);
+  assert.ok(reasons.some((reason) => reason !== GENERIC_REASON), "at least one added card gets a real, specific reason instead of the generic fallback");
+});
+
 test("preserves every card and the exact land split of a complete submitted deck", () => {
   const submittedSpells = Array.from({ length: 9 }, (_, index) => ({ quantity: 4, name: `Flow ${index}` }));
   const importedRows = [...submittedSpells, { quantity: 24, name: "Island" }];
