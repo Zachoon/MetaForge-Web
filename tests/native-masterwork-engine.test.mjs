@@ -1,6 +1,6 @@
 ﻿import assert from "node:assert/strict";
 import test from "node:test";
-import { applyPracticalTiebreak, budgetScoreFor, classifyNativeCard, colorPipsFromCost, commanderConnectionSignalsFor, commanderMechanicalScopes, comparePracticalImpact, complexityScoreFor, conceptSignals, curveAwareLandAdjustment, curveTargets, evaluatePracticalImpact, fieldCounterRolesFor, forgeNativeMasterwork, hypergeometricAtLeast, interactionQualityFor, manaConsistencyReport, oracleTextComplexity, parseNativeBlueprintIntent, poolMechanicalSignals, popularityScoreFromRank, powerTierScoreFor, practicalOutranks, proportionalBasicCounts, rankPracticalOneSlotCounterfactuals, roleFloorCredit, roleTargets, runPracticalOneSlotCounterfactualLab, strategyProfileFor, synergyPotentialFor } from "../app/native-masterwork-engine.mjs";
+import { applyPracticalTiebreak, budgetScoreFor, classifyNativeCard, colorPipsFromCost, commanderConnectionSignalsFor, commanderMechanicalScopes, comparePracticalImpact, complexityScoreFor, conceptSignals, curveAwareLandAdjustment, curveTargets, evaluatePracticalImpact, fieldCounterRolesFor, forgeNativeMasterwork, hypergeometricAtLeast, interactionQualityFor, manaConsistencyReport, oracleTextComplexity, parseNativeBlueprintIntent, poolMechanicalSignals, popularityScoreFromRank, powerTierScoreFor, practicalOutranks, proportionalBasicCounts, rankPracticalOneSlotCounterfactuals, roleFloorCredit, roleTargets, runPracticalOneSlotCounterfactualLab, strategyProfileFor, synergyPotentialFor, tokenTypeFocusFactor, tribalTriggerGateFactor } from "../app/native-masterwork-engine.mjs";
 import { runOneSlotCounterfactualLab } from "../app/native-one-slot-lab.mjs";
 
 const card = (name, oracleText, typeLine = "Creature — Test", manaCost = "{2}{U}", colorIdentity = ["U"]) => ({ name, oracleText, typeLine, manaCost, colorIdentity });
@@ -272,6 +272,120 @@ test("commander scopes complete the named artifact-token vocabulary", () => {
     card("Clue Dealer", "Whenever you sacrifice a Clue, draw a card.", "Creature — Human"),
     { produces: [], rewards: ["clues"] }, { produces: ["tokens", "artifacts", "junk", "exile_play"], rewards: [] }, junkScopes,
   ), [], "a Junk commander does not grant a Clue-only commander edge");
+});
+
+test("Founder #101: a plain creature-token maker is discounted against a commander that names a specific token type, but a real match to that type keeps full credit", () => {
+  // Real Smaug the Impenetrable comparison: "Flying, indestructible, haste
+  // / Whenever Smaug is dealt noncombat damage, create that many Treasure
+  // tokens." names Treasure specifically — verified via Scryfall.
+  const smaug = card(
+    "Smaug the Impenetrable",
+    "Flying, indestructible, haste\nWhenever Smaug is dealt noncombat damage, create that many Treasure tokens.",
+    "Legendary Creature — Dragon",
+    "{4}{R}",
+    ["R"],
+  );
+  const treasureScopes = commanderMechanicalScopes(smaug);
+  assert.deepEqual(treasureScopes.produces.treasure, ["treasure"]);
+
+  const krenkosCommand = card("Krenko's Command", "Create two 1/1 red Goblin creature tokens.", "Sorcery", "{1}{R}", ["R"]);
+  assert.deepEqual(classifyNativeCard(krenkosCommand), ["tokens"]);
+  assert.equal(
+    tokenTypeFocusFactor(krenkosCommand, classifyNativeCard(krenkosCommand), treasureScopes),
+    0.35,
+    "a plain creature-token maker claims the same 'tokens' role credit as a real Treasure producer unless discounted",
+  );
+
+  const dockside = card(
+    "Dockside Extortionist",
+    "When this creature enters, create X Treasure tokens, where X is the number of artifacts and enchantments your opponents control.",
+    "Creature — Goblin Pirate",
+    "{R}",
+    ["R"],
+  );
+  assert.equal(
+    tokenTypeFocusFactor(dockside, classifyNativeCard(dockside), treasureScopes),
+    1,
+    "a real Treasure producer keeps full credit against a Treasure-focused commander",
+  );
+
+  // A commander that only makes generic creature tokens (no named type at
+  // all) must never discount a plain creature-token maker — the gap this
+  // closes is specific to a NAMED-type commander, not "tokens" in general.
+  const genericTokenCommander = card(
+    "Krenko, Mob Boss",
+    "{T}: Create X 1/1 red Goblin creature tokens, where X is the number of Goblins you control.",
+    "Legendary Creature — Goblin",
+    "{2}{R}{R}",
+    ["R"],
+  );
+  const genericScopes = commanderMechanicalScopes(genericTokenCommander);
+  assert.equal(
+    tokenTypeFocusFactor(krenkosCommand, classifyNativeCard(krenkosCommand), genericScopes),
+    1,
+    "a commander with no named token-type focus never discounts a plain creature-token maker",
+  );
+});
+
+test("Founder #101: a creature-type-gated token trigger is discounted unless the deck is actually built around that tribe", () => {
+  // Real Ganax, Astral Hunter — verified via Scryfall — is exactly the
+  // shape Zach flagged: a card that reads as a clean, unconditional
+  // Treasure producer but whose trigger depends on other Dragons actually
+  // entering, which a non-Dragon-tribal deck (a real Smaug the
+  // Impenetrable build — Smaug's own text never mentions Dragons at all)
+  // will rarely see fire.
+  const ganax = card(
+    "Ganax, Astral Hunter",
+    "Flying\nWhenever Ganax or another Dragon you control enters, create a Treasure token.",
+    "Legendary Creature — Dragon",
+    "{4}{R}",
+    ["R"],
+  );
+  assert.deepEqual(commanderMechanicalScopes(ganax).rewards.etb, ["dragon"]);
+
+  assert.equal(
+    tribalTriggerGateFactor(ganax, { tribalTypes: [] }, []),
+    0.35,
+    "no explicit Dragon-tribal signal (no player note, no commander oracle text) leaves the trigger mostly dead",
+  );
+  assert.equal(
+    tribalTriggerGateFactor(ganax, { tribalTypes: ["dragon"] }, []),
+    1,
+    "a player who explicitly asked for Dragon typal keeps full credit",
+  );
+  assert.equal(
+    tribalTriggerGateFactor(ganax, { tribalTypes: [] }, ["dragon"]),
+    1,
+    "a commander whose own oracle text implies Dragon typal (commanderTribesFromOracle) also keeps full credit",
+  );
+
+  const dockside = card(
+    "Dockside Extortionist",
+    "When this creature enters, create X Treasure tokens, where X is the number of artifacts and enchantments your opponents control.",
+    "Creature — Goblin Pirate",
+    "{R}",
+    ["R"],
+  );
+  assert.equal(
+    tribalTriggerGateFactor(dockside, { tribalTypes: [] }, []),
+    1,
+    "an untyped ETB trigger (no creature-type word at all) is never gated",
+  );
+
+  // Real Cathars' Crusade — verified via Scryfall — confirms the same
+  // GENERIC_SCOPE_WORDS filter every other tribe extraction in this file
+  // already relies on: "creature" is never captured as a tribe, so a
+  // Panharmonicon-shaped generic ETB payoff is never mistaken for a
+  // tribal-gated one.
+  const catharsCrusade = card(
+    "Cathars' Crusade",
+    "Whenever a creature you control enters, put a +1/+1 counter on each creature you control.",
+    "Enchantment",
+    "{3}{G}{G}",
+    ["G"],
+  );
+  assert.deepEqual(commanderMechanicalScopes(catharsCrusade).rewards.etb, []);
+  assert.equal(tribalTriggerGateFactor(catharsCrusade, { tribalTypes: [] }, []), 1);
 });
 
 test("interactionQualityFor scores unconditional removal at full quality", () => {

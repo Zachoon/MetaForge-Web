@@ -1259,6 +1259,76 @@ export function commanderConnectionSignalsFor(card, mechanics, commanderMechanic
   ]);
 }
 
+// Founder #101: real Smaug the Impenetrable comparison (the same commander
+// #035/#036/#041 already used, and the same real construction Zach flagged
+// this round) — a build whose commander's own text is exclusively "create
+// that many Treasure tokens" still selected plain creature-token makers
+// (a 3/3 Elephant token, no named type at all) with the same full
+// blueprintRoleHits credit as an actual Treasure producer. ROLE_PATTERNS.
+// tokens (blueprint-note-and-mana.mjs) is deliberately broad — ANY token
+// type satisfies the generic "tokens" role, by design, since most decks
+// that want tokens genuinely don't care which kind. But commanderScopes
+// (built above, just for the separate commanderConnectionSignals reward/
+// produce-matching pass) already knows, from the commander's own text,
+// exactly which NAMED type this deck cares about — the two systems were
+// simply never connected. Reuses cardFitsMechanicalScope directly rather
+// than re-deriving the type-match logic a second time (same reasoning the
+// rest of this file already follows — see commanderConnectionSignalsFor
+// immediately above). Only fires when the commander's own text names a
+// specific token type (treasure/clue/food/blood/gold/map/junk/powerstone);
+// a plain "make tokens" commander (Krenko-shaped) never triggers this and
+// every generic creature-token maker keeps full credit, as it should.
+// Discounted, not excluded — the same "a list with real support can still
+// run it" philosophy conditionalTokenProductionFactor already established:
+// a Treasure deck can still want a good creature-token maker for defense
+// or sacrifice fodder, just not with the SAME credit as a true Treasure
+// producer competing for the same "tokens" package slots.
+const TOKEN_TYPE_FOCUS_KEYS = Object.freeze(["treasure", "clues", "food", "blood", "gold", "maps", "junk", "powerstones"]);
+const TOKEN_TYPE_MISMATCH_FACTOR = 0.35;
+
+export function tokenTypeFocusFactor(card, roles, commanderScopes) {
+  if (!roles.includes("tokens")) return 1;
+  const namedFocus = TOKEN_TYPE_FOCUS_KEYS
+    .filter((key) => (commanderScopes.produces?.[key] || []).length > 0)
+    .map((key) => key.replace(/s$/, ""));
+  if (!namedFocus.length) return 1;
+  const fits = namedFocus.some((type) => cardFitsMechanicalScope(card, type, [type]));
+  return fits ? 1 : TOKEN_TYPE_MISMATCH_FACTOR;
+}
+
+// Founder #101 (second half, same Smaug real-deck comparison): a card
+// reading "Whenever another Dragon enters, create a Treasure" scored as a
+// clean, unconditional Treasure producer — the exact right token TYPE (so
+// tokenTypeFocusFactor above correctly leaves it alone) but a trigger that
+// is nearly dead in a deck that was never built around a Dragon creature
+// count, since Smaug's own text never mentions Dragons at all (verified:
+// "Flying, indestructible, haste / Whenever Smaug is dealt noncombat
+// damage, create that many Treasure tokens.") This is the same shape
+// #028/#029 already named for the sacrifice-gated case — production
+// promised by the card's text but gated behind a resource (fodder there,
+// a same-tribe creature actually entering here) the list may not reliably
+// have — just never extended to a creature-type-scoped trigger. Reuses
+// commanderMechanicalScopes' own rewards.etb extraction (built for the
+// commander's text, but the function takes any card — nothing commander-
+// specific about it) applied to the CANDIDATE instead, which already
+// captures exactly the tribe word a "whenever (a/another/one or more)
+// TRIBE enters" clause depends on, through the same GENERIC_SCOPE_WORDS/
+// TRIBAL_STOP_WORDS filter every other tribe extraction in this file uses
+// (so "whenever a permanent/creature/token enters" — Panharmonicon-shaped,
+// not tribal at all — never triggers this). "Deck built around that tribe"
+// reuses the exact same explicit-signal check listHasTypalDensity already
+// established (blueprint.tribalTypes or commanderTribes naming the tribe) —
+// not a new density heuristic. Discounted, not excluded: a build that
+// happens to run enough Dragons anyway still gets full credit.
+const CONDITIONAL_TRIBAL_TRIGGER_FACTOR = 0.35;
+
+export function tribalTriggerGateFactor(card, blueprint, commanderTribes) {
+  const triggerTribes = commanderMechanicalScopes(card).rewards.etb || [];
+  if (!triggerTribes.length) return 1;
+  const tribeLens = unique([...(blueprint?.tribalTypes || []), ...(commanderTribes || [])]);
+  return triggerTribes.some((tribe) => tribeLens.includes(tribe)) ? 1 : CONDITIONAL_TRIBAL_TRIGGER_FACTOR;
+}
+
 // The same producer/payoff vocabulary that powers the post-build interaction
 // graph (forge-interaction-graph.mjs), applied one pool-wide pass ahead of
 // scoring instead of after construction. A single pass is O(n): count how
@@ -1363,6 +1433,8 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
   });
   const tokenProductionFactor = conditionalTokenProductionFactor(card.oracleText || card.oracle_text || "");
   const rampProductionFactor = conditionalRampProductionFactor(card.oracleText || card.oracle_text || "");
+  const tokenFocusFactor = tokenTypeFocusFactor(card, roles, context.commanderScopes);
+  const tribalTriggerFactor = tribalTriggerGateFactor(card, context.blueprint, context.commanderTribes);
   const situational = evaluateSituationalCard(card);
   const situationalFactor = situationalReliabilityFactor(card) * resourceCompetitionFactor(card, poolSignals);
   const printedCmc = manaValueFromCost(card.manaCost || card.mana_cost, card.cmc);
@@ -1408,6 +1480,8 @@ function analyzeCard(card, context, evidenceByName, mechanics, poolSignals) {
     winconFactor,
     tokenProductionFactor,
     rampProductionFactor,
+    tokenFocusFactor,
+    tribalTriggerFactor,
     situational,
     situationalFactor,
     roleFloorCredit: floorCredit,
@@ -1620,6 +1694,8 @@ function scoreCard(entry, input, variant, context) {
   const winconFactor = Number.isFinite(entry.winconFactor) ? entry.winconFactor : 1;
   const tokenProductionFactor = Number.isFinite(entry.tokenProductionFactor) ? entry.tokenProductionFactor : 1;
   const rampProductionFactor = Number.isFinite(entry.rampProductionFactor) ? entry.rampProductionFactor : 1;
+  const tokenFocusFactor = Number.isFinite(entry.tokenFocusFactor) ? entry.tokenFocusFactor : 1;
+  const tribalTriggerFactor = Number.isFinite(entry.tribalTriggerFactor) ? entry.tribalTriggerFactor : 1;
   const fixingCredit = colorlessFixingCredit({
     oracle: oracleText,
     colorIdentity: entry.card.colorIdentity || entry.card.color_identity || [],
@@ -1634,8 +1710,10 @@ function scoreCard(entry, input, variant, context) {
     winconFactor,
     tokenProductionFactor,
     rampProductionFactor,
+    tokenFocusFactor,
+    tribalTriggerFactor,
     fixingCredit,
-    score: (entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.commanderConnectionSignals.length * 14 * variant.synergy + entry.payoffMagnitudeHits * 14 * variant.synergy + entry.selfDamageSynergyHit * 14 * variant.synergy + entry.xSpellSynergyHit * 14 * variant.synergy + entry.planeswalkerCheatSynergyHit * 14 * variant.synergy + entry.roomSynergyHit * 14 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.blueprintMechanicHits.reduce((sum, mechanic) => sum + blueprintMechanicDefinition(mechanic).score, 0) + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + entry.budgetScore + entry.complexityScore + entry.powerTierScore + deterministicTieBreak) * castingFactor * fixingCredit * winconFactor * tokenProductionFactor * rampProductionFactor * entry.situationalFactor,
+    score: (entry.roleScore + entry.synergyHits * 7 * variant.synergy + entry.synergyPotential * 1.5 * variant.synergy + entry.commanderConnectionSignals.length * 14 * variant.synergy + entry.payoffMagnitudeHits * 14 * variant.synergy + entry.selfDamageSynergyHit * 14 * variant.synergy + entry.xSpellSynergyHit * 14 * variant.synergy + entry.planeswalkerCheatSynergyHit * 14 * variant.synergy + entry.roomSynergyHit * 14 * variant.synergy + entry.preferenceHits * 3.5 + entry.directTribes.length * 34 + entry.tribalSupport.length * 13 + entry.blueprintRoleHits.length * 12 + entry.blueprintMechanicHits.reduce((sum, mechanic) => sum + blueprintMechanicDefinition(mechanic).score, 0) + entry.fieldPressureHits * 4 + curveScore + entry.resilienceRoles * 3 * variant.resilience + entry.evidenceScore + entry.discovery + entry.popularityScore + entry.budgetScore + entry.complexityScore + entry.powerTierScore + deterministicTieBreak) * castingFactor * fixingCredit * winconFactor * tokenProductionFactor * rampProductionFactor * tokenFocusFactor * tribalTriggerFactor * entry.situationalFactor,
     synergyHits: entry.synergyHits,
     synergyPotential: entry.synergyPotential,
     situational: entry.situational,
