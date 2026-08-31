@@ -27,7 +27,7 @@ test("server-renders the MetaForge product experience", async () => {
   assert.match(html, /<title>MetaForge — MTG Commander Deck Builder &amp; Analyzer<\/title>/i);
   assert.match(html, /MAGIC: THE GATHERING · DECK COACH/);
   assert.match(html, /Understand your Magic deck/);
-  assert.match(html, /Build a new MTG deck or analyze a decklist/i);
+  assert.match(html, /Choose how you want to begin/i);
   assert.match(html, /href="\/commanders"/i);
   assert.match(html, /href="\/tools"/i);
   assert.match(html, /href="\/decks"/i);
@@ -53,8 +53,9 @@ test("server-renders the MetaForge product experience", async () => {
   assert.match(html, /<summary>[\s\S]*?Forgemaster[\s\S]*?<\/summary>/);
   assert.match(html, /href="\/academy"/i);
   assert.match(html, /Reduce motion/);
-  assert.match(html, /Build a deck/);
-  assert.match(html, /Review my decklist/);
+  assert.match(html, /Start from scratch/);
+  assert.match(html, /Complete a decklist/);
+  assert.match(html, /Discover a deck/);
   assert.doesNotMatch(html, /THE PRIVATE BENCH/);
   assert.doesNotMatch(html, /Your saved decks/);
   assert.doesNotMatch(html, /RELEASE GATE|LIVE ACCEPTANCE/);

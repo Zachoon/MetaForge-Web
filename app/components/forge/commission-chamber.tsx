@@ -1,39 +1,25 @@
 "use client";
 
 import { createPortal } from "react-dom";
+import { useEffect, useState } from "react";
 import { cardArtCrop } from "../../card-art";
 import {
   isCommanderFormat,
-  commissionHeadingFor,
-  buildStepLabelsFor,
+  scryfallFormatTerms,
 } from "../../format-catalog";
 import { blueprintDefinition } from "../../deck-row-helpers";
 import { occupancyLabelsForOption } from "../../commander-lane-scoring.mjs";
-import { REVIEW_FOCUS_OPTIONS, REVIEW_FOCUS_LABELS, toggleReviewFocus } from "../../review-focus.mjs";
 import { useForgeSession } from "../../forge-session-context";
 
 export function CommissionChamber() {
   const {
     chamber,
     setChamber,
-    buildStep,
-    setBuildStep,
+    buildPath,
     format,
     setFormat,
     setSelectedCommander,
     setCommanderQuery,
-    strategy,
-    setStrategy,
-    complexity,
-    setComplexity,
-    budget,
-    setBudget,
-    maxCardPriceInput,
-    setMaxCardPriceInput,
-    commonsOnly,
-    setCommonsOnly,
-    targetPowerTier,
-    setTargetPowerTier,
     selectedCommander,
     commissionOccupancyLabels,
     commanderSearchRef,
@@ -64,15 +50,41 @@ export function CommissionChamber() {
     setSecondCommanderResults,
     deck,
     setDeck,
-    reviewFocus,
-    setReviewFocus,
-    commissionNote,
-    setCommissionNote,
     guestMode,
     turnstileToken,
     awaken,
     revealOccupancyLabels,
   } = useForgeSession();
+
+  const [scratchSearch, setScratchSearch] = useState("");
+  const [scratchResults, setScratchResults] = useState<Array<{ name: string; typeLine: string }>>([]);
+  const isScratch = chamber === "refine" && buildPath === "scratch";
+  const isComplete = chamber === "refine" && buildPath === "complete";
+  const deckCardCount = deck.split(/\r?\n/).reduce((total, line) => {
+    const match = line.trim().match(/^(\d+)\s+/);
+    return total + (match ? Number(match[1]) : line.trim() ? 1 : 0);
+  }, 0);
+
+  useEffect(() => {
+    if (!isScratch || scratchSearch.trim().length < 2) return;
+    const timer = window.setTimeout(async () => {
+      try {
+        const query = encodeURIComponent(`${scryfallFormatTerms(format)} name:${scratchSearch.trim()}`);
+        const response = await fetch(`https://api.scryfall.com/cards/search?q=${query}&order=edhrec`);
+        const data = await response.json();
+        setScratchResults((data.data || []).slice(0, 6).map((card: { name: string; type_line?: string }) => ({ name: card.name, typeLine: card.type_line || "Card" })));
+      } catch {
+        setScratchResults([]);
+      }
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [format, isScratch, scratchSearch]);
+
+  function addScratchCard(name: string) {
+    setDeck((current) => `${current.trim()}${current.trim() ? "\n" : ""}1 ${name}`);
+    setScratchSearch("");
+    setScratchResults([]);
+  }
 
   return (
     <section className="commission-chamber">
@@ -88,55 +100,31 @@ export function CommissionChamber() {
       <div className="commission-heading">
         <span className="forge-eyebrow">
           <i />{" "}
-          {chamber === "commission"
-            ? "BUILD A DECK · YOUR CHOICES"
-            : "REVIEW A DECK · PASTE YOUR LIST"}
+          {isScratch ? "BUILD A DECK · EMPTY WORKSPACE" : isComplete ? "COMPLETE A DECK · IMPORT YOUR LIST" : "DISCOVER A DECK · FORMAT + COMMANDER"}
         </span>
         <h1>
-          {chamber === "commission"
-            ? commissionHeadingFor(format)
-            : "Paste the deck you want to improve."}
+          {isScratch ? "Start with any card." : isComplete ? "Bring the deck you already started." : "What do you want to play?"}
         </h1>
         <p>
-          {chamber === "commission"
-            ? "Start with the two choices that matter. Preferences are optional, and you can change them later."
-            : "MetaForge keeps what works, checks the list, and suggests one clear change at a time."}
+          {isScratch ? "Search and add cards into a clean list. When you want help, the Forge can complete the legal slots around what you chose." : isComplete ? "Paste a full or partial list. The Forge reads its existing plan, keeps the pieces that belong, and fills the missing legal slots." : "Choose a format. For Commander formats, bring a commander or let the Forge suggest one using your Player Compass."}
         </p>
       </div>
-      <div className={`commission-scroll build-step-${buildStep}`}>
-        {chamber === "commission" && (
-          <nav className="build-stepper" aria-label="Deck setup progress">
-            {buildStepLabelsFor(format).map((label, index) => (
-              <button type="button" key={label} className={buildStep === index ? "current" : buildStep > index ? "complete" : ""} aria-current={buildStep === index ? "step" : undefined} disabled={index > buildStep} onClick={() => index < buildStep && setBuildStep(index as 0 | 1 | 2)}>
-                <i>{buildStep > index ? "✓" : index + 1}</i><span>{label}</span>
-              </button>
-            ))}
-          </nav>
-        )}
+      <div className={`commission-scroll build-path-${buildPath}`}>
         {chamber === "refine" && (
           <label className="deck-offering">
-            <span>1 · YOUR CURRENT DECKLIST</span>
+            <span>{isScratch ? `YOUR DECKLIST · ${deckCardCount} CARDS` : "YOUR CURRENT OR PARTIAL DECKLIST"}</span>
             <textarea
               value={deck}
               onChange={(event) => setDeck(event.target.value)}
-              placeholder="Paste your Arena, MTGO, or Moxfield list here…"
+              placeholder={isScratch ? "Your cards will appear here…\n1 Sol Ring\n1 Command Tower" : "Paste your Arena, MTGO, Archidekt, or Moxfield list here…"}
             />
           </label>
         )}
-        {chamber === "refine" && (
-          <div className="review-required-heading">
-            <span>2 · CONFIRM THE BASICS</span>
-            <p>We only need the format, game plan, and commander to begin. The rest is optional.</p>
+        {isScratch && (
+          <div className="scratch-card-search">
+            <label><span>SEARCH LEGAL {format.toUpperCase()} CARDS</span><input type="search" value={scratchSearch} onChange={(event) => setScratchSearch(event.target.value)} placeholder="Search by card name…" /></label>
+            {scratchSearch.trim().length >= 2 && scratchResults.length > 0 && <div role="listbox">{scratchResults.map((card) => <button type="button" role="option" key={card.name} onClick={() => addScratchCard(card.name)}><b>{card.name}</b><small>{card.typeLine}</small><i>＋</i></button>)}</div>}
           </div>
-        )}
-        {chamber === "refine" && (
-          <details className="review-preferences-disclosure">
-            <summary>
-              <span><b>Fine-tune the review</b><small>Optional · complexity, budget, price limits, rarity, and power</small></span>
-              <i aria-hidden="true">+</i>
-            </summary>
-            <p>Use these only when the deck must follow a specific table, budget, or power constraint.</p>
-          </details>
         )}
         <div className="mark-grid">
           <label className="build-choice-format">
@@ -164,90 +152,6 @@ export function CommissionChamber() {
             </select>
             <small id="format-definition" className="blueprint-choice-definition">{blueprintDefinition("format", format)}</small>
           </label>
-          <label className="build-choice-strategy">
-            <span>
-              STRATEGY
-              <button type="button" className="blueprint-glossary-tip" data-definition={blueprintDefinition("strategy", strategy)} aria-label={`Explain ${strategy}`}>?</button>
-            </span>
-            <select
-              aria-describedby="strategy-definition"
-              value={strategy}
-              onChange={(event) => setStrategy(event.target.value)}
-            >
-              <option>Aggressive pressure</option>
-              <option>Balanced midrange</option>
-              <option>Reactive control</option>
-              <option>Synergy and combo</option>
-              <option>Tempo and disruption</option>
-            </select>
-            <small id="strategy-definition" className="blueprint-choice-definition">{blueprintDefinition("strategy", strategy)}</small>
-          </label>
-          <label className="build-choice-preference">
-            <span>
-              COMPLEXITY
-              <button type="button" className="blueprint-glossary-tip" data-definition={blueprintDefinition("complexity", complexity)} aria-label={`Explain ${complexity} complexity`}>?</button>
-            </span>
-            <select aria-describedby="complexity-definition" value={complexity} onChange={(event) => setComplexity(event.target.value)}>
-              <option>Accessible</option>
-              <option>Balanced</option>
-              <option>Technical</option>
-              <option>Maximum depth</option>
-            </select>
-            <small id="complexity-definition" className="blueprint-choice-definition">{blueprintDefinition("complexity", complexity)}</small>
-          </label>
-          <label className="build-choice-preference">
-            <span>
-              BUDGET
-              <button type="button" className="blueprint-glossary-tip" data-definition={blueprintDefinition("budget", budget)} aria-label={`Explain ${budget}`}>?</button>
-            </span>
-            <select aria-describedby="budget-definition" value={budget} onChange={(event) => setBudget(event.target.value)}>
-              <option>No strict limit</option>
-              <option>Budget conscious</option>
-              <option>Moderate investment</option>
-              <option>Competitive optimization</option>
-            </select>
-            <small id="budget-definition" className="blueprint-choice-definition">{blueprintDefinition("budget", budget)}</small>
-          </label>
-          <label className="build-choice-preference">
-            <span>
-              MAX PRICE PER CARD
-              <button type="button" className="blueprint-glossary-tip" data-definition="A hard $ ceiling — no card in the build will ever cost more than this, at its cheapest known printing. Leave blank for no limit. A card with no known price is never excluded." aria-label="Explain max price per card">?</button>
-            </span>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              inputMode="decimal"
-              placeholder="No limit"
-              value={maxCardPriceInput}
-              onChange={(event) => setMaxCardPriceInput(event.target.value)}
-            />
-            <small className="blueprint-choice-definition">A hard cap on price per card. Combine with Commons Only for a Pauper-style build.</small>
-          </label>
-          <label className="blueprint-checkbox-field build-choice-preference">
-            <span>
-              COMMONS ONLY
-              <button type="button" className="blueprint-glossary-tip" data-definition="Only common-rarity cards are eligible, including nonbasic lands — a hard restriction, the same rarity rule Pauper-style formats use. A card with no known rarity is never excluded." aria-label="Explain commons only">?</button>
-            </span>
-            <input type="checkbox" checked={commonsOnly} onChange={(event) => setCommonsOnly(event.target.checked)} />
-            <small className="blueprint-choice-definition">Restricts every card, including nonbasic lands, to common rarity.</small>
-          </label>
-          {isCommanderFormat(format) && (
-            <label className="build-choice-preference">
-              <span>
-                TARGET POWER TIER
-                <button type="button" className="blueprint-glossary-tip" data-definition={blueprintDefinition("targetPowerTier", targetPowerTier)} aria-label={`Explain ${targetPowerTier || "No preference"} target power tier`}>?</button>
-              </span>
-              <select aria-describedby="power-tier-definition" value={targetPowerTier} onChange={(event) => setTargetPowerTier(event.target.value)}>
-                <option value="">No preference</option>
-                <option>Casual</option>
-                <option>Focused</option>
-                <option>High-Power</option>
-                <option>Maximum</option>
-              </select>
-              <small id="power-tier-definition" className="blueprint-choice-definition">{blueprintDefinition("targetPowerTier", targetPowerTier)} A target, not a guarantee — the deck's actual power tier is always reported honestly.</small>
-            </label>
-          )}
         </div>
         {isCommanderFormat(format) && (
           <section className="commander-blueprint build-choice-commander">
@@ -338,7 +242,6 @@ export function CommissionChamber() {
                     }
                     aria-label={`Search legal ${format} commanders`}
                   />
-                  {chamber !== "refine" && (
                   <button
                     type="button"
                     disabled={randomizingCommander}
@@ -346,9 +249,8 @@ export function CommissionChamber() {
                   >
                     {randomizingCommander
                       ? "Finding commanders…"
-                      : "Suggest a commander for me"}
+                      : selectedCommander ? "Choose another for me" : "Suggest a commander for me"}
                   </button>
-                  )}
                 </div>
                 {randomCommanderOptions.length > 0 && (
                   <div className="commander-suggestions" role="group" aria-label="Suggested commanders">
@@ -569,45 +471,6 @@ export function CommissionChamber() {
             )}
           </section>
         )}
-        {chamber === "refine" ? (
-          <details className="review-context-disclosure">
-            <summary>
-              <span><b>3 · Tell us what feels wrong</b><small>Optional · helps the coach focus its first answer</small></span>
-              <i aria-hidden="true">+</i>
-            </summary>
-            <div className="review-focus-picker">
-              <p id="review-focus-question">WHAT’S HAPPENING WHEN YOU PLAY THIS DECK?</p>
-              <div className="review-focus-chips" role="group" aria-labelledby="review-focus-question">
-                {REVIEW_FOCUS_OPTIONS.map((option) => (
-                  <button type="button" key={option} className={reviewFocus === option ? "review-focus-chip is-selected" : "review-focus-chip"} aria-pressed={reviewFocus === option} onClick={() => setReviewFocus((current) => toggleReviewFocus(current, option))}>
-                    {REVIEW_FOCUS_LABELS[option]}
-                  </button>
-                ))}
-              </div>
-              <p className="review-focus-academy-link">Not sure what the problem is? That is a valid starting point—or <a href="/academy">browse the guides →</a></p>
-            </div>
-            <label className="commission-note">
-              <span>ANYTHING THE COACH SHOULD PRESERVE OR AVOID?</span>
-              <textarea value={commissionNote} onChange={(event) => setCommissionNote(event.target.value)} placeholder="Favorite cards, play patterns you love, or anything this deck must never become…" />
-            </label>
-          </details>
-        ) : (
-          <label className="commission-note">
-            <span>OPTIONAL · CARDS OR PLAY STYLES YOU WANT</span>
-            <textarea value={commissionNote} onChange={(event) => setCommissionNote(event.target.value)} placeholder="Favorite cards, play patterns you love, or anything this deck must never become…" />
-          </label>
-        )}
-        {chamber === "commission" && buildStep < 2 && (
-          <div className="build-step-actions">
-            {buildStep > 0 && <button type="button" className="build-back" onClick={() => setBuildStep((buildStep - 1) as 0 | 1)}>← Back</button>}
-            <button type="button" className="build-next" disabled={buildStep === 0 && isCommanderFormat(format) && !selectedCommander} onClick={() => setBuildStep((buildStep + 1) as 1 | 2)}>
-              {buildStep === 0 ? "Next · Choose strategy →" : "Next · Optional preferences →"}
-            </button>
-          </div>
-        )}
-        {chamber === "commission" && buildStep === 2 && (
-          <button type="button" className="build-back build-final-back" onClick={() => setBuildStep(1)}>← Back to strategy</button>
-        )}
         <button
           className="awaken-button"
           data-block-reason={
@@ -633,10 +496,10 @@ export function CommissionChamber() {
                 ? "Confirm you're human above, then build your deck"
                 : "Your choices are ready"}
           </span>
-          <strong>{chamber === "refine" ? "REVIEW MY DECK" : "BUILD MY COMPLETE DECK"}</strong>
+          <strong>{isScratch ? "COMPLETE THIS DECK" : isComplete ? "COMPLETE MY DECKLIST" : "BUILD MY DECK"}</strong>
           <b>→</b>
         </button>
-        {(chamber !== "commission" || buildStep === 2) && revealOccupancyLabels.length > 0 && (
+        {revealOccupancyLabels.length > 0 && (
           <p className="awaken-occupancy">
             Occupancy engines: {revealOccupancyLabels.join(" · ")}. Named from commander oracle, before the 99 exists.
           </p>

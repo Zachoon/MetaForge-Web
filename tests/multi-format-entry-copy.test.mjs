@@ -1,131 +1,19 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { readFile } from "node:fs/promises";
 
-// No component-render harness exists in this repo, so this batch is
-// verified against the literal source that produces it — the same
-// convention every other page.tsx-adjacent test file here already uses.
-// commissionHeadingFor/buildStepLabelsFor moved to format-catalog.ts during
-// the page.tsx decomposition (Phase 4) — their definitions live there now,
-// while page.tsx keeps only the call sites checked below.
-const formatCatalog = await readFile(new URL("../app/format-catalog.ts", import.meta.url), "utf8");
-// The entrance chamber's JSX moved to its own component during the
-// page.tsx decomposition (Phase 4 Stage 3).
-const entranceChamber = await readFile(new URL("../app/components/forge/entrance-chamber.tsx", import.meta.url), "utf8");
-// The commission/refine chamber's JSX moved to its own component during
-// the page.tsx decomposition (Phase 4 Stage 3).
-const commissionChamber = await readFile(new URL("../app/components/forge/commission-chamber.tsx", import.meta.url), "utf8");
+const entrance = await readFile(new URL("../app/components/forge/entrance-chamber.tsx", import.meta.url), "utf8");
+const commission = await readFile(new URL("../app/components/forge/commission-chamber.tsx", import.meta.url), "utf8");
 
-// --- 0. Entrance hero strings (added after initial review: these two are
-// more prominent than the card copy itself, so leaving them Commander-only
-// would have left the same first-impression problem mostly intact) ---
-
-test("the entrance sub-headline no longer opens with a Commander-only imperative", () => {
-  // Rewritten 2026-08-20 to name the specific formats MetaForge supports
-  // (SEO/search-visibility pass) — still never a Commander-only imperative.
-  assert.match(entranceChamber, /Build a new MTG deck or analyze a decklist you already play\.\s*\n\s*MetaForge/);
-  assert.doesNotMatch(entranceChamber, /Choose a commander and how you want to play/);
+test("entry presents three format-neutral ways to begin", () => {
+  assert.match(entrance, /title="Start from scratch"/);
+  assert.match(entrance, /title="Complete a decklist"/);
+  assert.match(entrance, /title="Discover a deck"/);
+  assert.match(entrance, /Player Compass already carries your play preferences/);
 });
 
-test("the entrance sub-headline describes what MetaForge helps the player do, not a 'builds the deck for you' generator claim", () => {
-  assert.match(
-    entranceChamber,
-    /MetaForge explains how your Commander, Standard, Modern,\s*\n\s*Pioneer, Brawl, or other Magic deck works, shows what to\s*\n\s*improve, and helps you make confident changes\./,
-  );
-  assert.doesNotMatch(entranceChamber, /MetaForge builds the\s*\n\s*full, legal deck first/);
-});
-
-test("the entrance visual badge reflects a multi-format deck coach, not a Commander-only claim", () => {
-  assert.match(entranceChamber, /A DECK COACH FOR EVERY FORMAT/);
-  assert.doesNotMatch(entranceChamber, /BUILT FOR COMMANDER PLAYERS/);
-  // The subtext was already format-neutral and stays as-is.
-  assert.match(entranceChamber, /<small>Complete deck first\. Clear reasons second\.<\/small>/);
-});
-
-// --- 1. Entrance card ---
-
-test("the entrance Build card no longer claims MetaForge only builds Commander decks", () => {
-  assert.match(entranceChamber, /title="Build a deck"/);
-  assert.doesNotMatch(entranceChamber, /title="Build a Commander deck"/);
-});
-
-test("the entrance Build card's supporting copy is format-neutral", () => {
-  assert.match(entranceChamber, /description="Choose a format and strategy\. Shape a deck around a real game plan\."/);
-  assert.doesNotMatch(entranceChamber, /description="Pick your commander and strategy\. Get a complete deck\."/);
-  // "Build around" was itself a subtle generator-first implication —
-  // "Shape a deck around" keeps MetaForge as the thing helping the player
-  // shape it, not the thing producing it for them.
-  assert.doesNotMatch(entranceChamber, /description="Choose a format and strategy\. Build around a real game plan\."/);
-  // The CTA itself was explicitly out of scope for this batch.
-  assert.match(entranceChamber, /cta="Build my deck →"/);
-});
-
-// --- 2. Commission chamber heading ---
-
-test("the commission heading is driven by a small pure helper, not an inline ternary", () => {
-  assert.match(formatCatalog, /const commissionHeadingFor = \(format: string\) =>\s*\n\s*isCommanderFormat\(format\)\s*\n\s*\? "Choose your commander and game plan\."\s*\n\s*: "Choose your format and game plan\."/);
-  assert.match(commissionChamber, /chamber === "commission"\s*\n\s*\? commissionHeadingFor\(format\)/);
-});
-
-test("the Commander-format heading remains commander-specific", () => {
-  assert.match(formatCatalog, /"Choose your commander and game plan\."/);
-});
-
-test("the non-Commander heading is format-neutral, not an invented per-format archetype label", () => {
-  assert.match(formatCatalog, /"Choose your format and game plan\."/);
-  // The task explicitly said not to invent "archetype" language unless the
-  // screen actually asks for one — it doesn't, so no such string should exist.
-  assert.doesNotMatch(formatCatalog, /Choose your archetype/i);
-});
-
-// --- 3. Stepper label ---
-
-test("step 1 of the build stepper is 'Commander' for Commander/Brawl/Standard Brawl and 'Format' otherwise, via one small lookup", () => {
-  assert.match(formatCatalog, /const buildStepLabelsFor = \(format: string\) =>\s*\n\s*isCommanderFormat\(format\)\s*\n\s*\? \["Commander", "Strategy", "Preferences"\]\s*\n\s*: \["Format", "Strategy", "Preferences"\];/);
-  assert.match(commissionChamber, /buildStepLabelsFor\(format\)\.map\(\(label, index\) =>/);
-});
-
-// --- 4. Left explainer (commission-heading supporting paragraph) ---
-
-test("the commission chamber's supporting paragraph was already format-neutral and remains untouched", () => {
-  assert.match(commissionChamber, /"Start with the two choices that matter\. Preferences are optional, and you can change them later\."/);
-  assert.doesNotMatch(commissionChamber, /Commander, strategy, then optional preferences/i);
-});
-
-// --- 5. Disabled-state / validation microcopy ---
-
-test("commander-only disabled copy ('Choose a legal commander to continue') appears only behind an isCommanderFormat check, never as the only branch", () => {
-  const block = commissionChamber.match(
-    /\{isCommanderFormat\(format\) && !selectedCommander\s*\n\s*\? "Choose a legal commander to continue"\s*\n\s*: guestMode && !turnstileToken\s*\n\s*\? "Confirm you're human above, then build your deck"\s*\n\s*: "Your choices are ready"\}/,
-  );
-  assert.ok(block, "expected the commander-disabled microcopy to remain conditioned on isCommanderFormat, with a format-neutral fallback");
-});
-
-test("the non-Commander build flow is never told to choose a commander", () => {
-  // Both gates that can disable step progression are already conditioned on
-  // isCommanderFormat — for a non-Commander format neither one references
-  // selectedCommander at all, so there is no path where a non-Commander
-  // player sees commander-specific validation copy or is blocked by it.
-  assert.match(commissionChamber, /disabled=\{buildStep === 0 && isCommanderFormat\(format\) && !selectedCommander\}/);
-  assert.match(commissionChamber, /\(chamber === "refine" && !deck\.trim\(\)\) \|\|\s*\n\s*\(isCommanderFormat\(format\) && !selectedCommander\)/);
-});
-
-// --- 6. Commander-specific controls remain Commander/Brawl-only ---
-
-test("commander search, suggestion, and selection UI remain gated behind isCommanderFormat — not relabeled for other formats", () => {
-  assert.match(commissionChamber, /\{isCommanderFormat\(format\) && \(\s*\n\s*<section className="commander-blueprint build-choice-commander">/);
-  assert.match(commissionChamber, /Suggest a commander for me/);
-  assert.match(commissionChamber, /className="commander-search"/);
-});
-
-test("the Target Power Tier preference also stays Commander-format-only — confirms the existing gate wasn't loosened while touching this region", () => {
-  assert.match(commissionChamber, /\{isCommanderFormat\(format\) && \(\s*\n\s*<label className="build-choice-preference">\s*\n\s*<span>\s*\n\s*TARGET POWER TIER/);
-});
-
-// --- No changes to the Review flow ---
-
-test("the Review chamber's own heading, supporting copy, and Academy link are untouched", () => {
-  assert.match(commissionChamber, /"Paste the deck you want to improve\."/);
-  assert.match(commissionChamber, /"MetaForge keeps what works, checks the list, and suggests one clear change at a time\."/);
-  assert.match(commissionChamber, /browse the guides|Not sure what the problem is/i);
+test("the deck setup asks only for format, deck material, and commander when relevant", () => {
+  assert.match(commission, /<option>Standard<\/option>/);
+  assert.match(commission, /isCommanderFormat\(format\)/);
+  assert.doesNotMatch(commission, /TARGET POWER TIER|MAX PRICE PER CARD|COMPLEXITY|OPTIONAL · CARDS OR PLAY STYLES/);
 });

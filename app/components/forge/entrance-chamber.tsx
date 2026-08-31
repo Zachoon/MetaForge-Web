@@ -11,6 +11,10 @@ export function EntranceChamber() {
     setDeck,
     setReviewFocus,
     setBuildStep,
+    setBuildPath,
+    setSelectedCommander,
+    setSelectedSecondCommander,
+    setCommanderQuery,
     setChamber,
     playerCompass,
     guestMode,
@@ -29,40 +33,60 @@ export function EntranceChamber() {
           <br />
           <em>Build with confidence.</em>
         </h1>
-        <p>
-          Build a new MTG deck or analyze a decklist you already play.
-          MetaForge explains how your Commander, Standard, Modern,
-          Pioneer, Brawl, or other Magic deck works, shows what to
-          improve, and helps you make confident changes.
-        </p>
+        <p>Choose how you want to begin. Your Player Compass already carries your play preferences, so the Forge only asks for what this deck needs.</p>
         <div className="entrance-actions">
           <ForgeCommissionCard
-            eyebrow="START HERE"
-            title="Build a deck"
-            description="Choose a format and strategy. Shape a deck around a real game plan."
-            cta="Build my deck →"
+            eyebrow="EMPTY WORKSPACE"
+            title="Start from scratch"
+            description="Open a clean decklist, search for cards, and add them as you go."
+            cta="Open deck builder →"
             tone="ember"
             motionMode={motionMode}
             onActivate={() => {
-              // A blank commission must actually be blank — a decklist
-              // pasted in an earlier refinement session should never
-              // silently carry over and skip the three-reveal here.
-              // reviewFocus is Review-session state in the same way, so
-              // it gets cleared alongside deck for the same reason.
               setDeck("");
               setReviewFocus("");
+              setSelectedCommander(null);
+              setSelectedSecondCommander(null);
+              setCommanderQuery("");
               setBuildStep(0);
-              setChamber("commission");
+              setBuildPath("scratch");
+              setChamber("refine");
             }}
           />
           <ForgeCommissionCard
-            eyebrow="ALREADY HAVE A DECK?"
-            title="Review my decklist"
-            description="Paste a list to check it and find useful improvements."
-            cta="Review my deck →"
+            eyebrow="BRING WHAT YOU HAVE"
+            title="Complete a decklist"
+            description="Paste a full or partial list. The Forge will preserve its direction and fill the open slots."
+            cta="Import decklist →"
             tone="teal"
             motionMode={motionMode}
-            onActivate={() => setChamber("refine")}
+            onActivate={() => {
+              setDeck("");
+              setReviewFocus("");
+              setSelectedCommander(null);
+              setSelectedSecondCommander(null);
+              setCommanderQuery("");
+              setBuildPath("complete");
+              setChamber("refine");
+            }}
+          />
+          <ForgeCommissionCard
+            eyebrow="HELP ME CHOOSE"
+            title="Discover a deck"
+            description="Pick a format and commander—or ask the Forge to find one that fits you."
+            cta="Discover my deck →"
+            tone="ember"
+            motionMode={motionMode}
+            onActivate={() => {
+              setDeck("");
+              setReviewFocus("");
+              setSelectedCommander(null);
+              setSelectedSecondCommander(null);
+              setCommanderQuery("");
+              setBuildStep(0);
+              setBuildPath("discover");
+              setChamber("commission");
+            }}
           />
         </div>
         <PlayerCompassCard

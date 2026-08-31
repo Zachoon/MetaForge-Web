@@ -9,6 +9,8 @@ export type Chamber =
   | "masterworks"
   | "workbench";
 
+export type BuildPath = "scratch" | "complete" | "discover";
+
 export type ForgeAction = "none" | "forge" | "reveal" | "select" | "refine" | "grow";
 export type MilestoneMotion = {
   kind: "ignition" | "masterwork-ready" | "masterwork-selected" | "experiment-chosen" | "revision-accepted" | "evidence-recorded";

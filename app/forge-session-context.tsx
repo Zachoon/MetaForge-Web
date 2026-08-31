@@ -144,6 +144,7 @@ import type {
   EdhrecSignal,
   EdhrecEvidence,
   ReadingSize,
+  BuildPath,
 } from "./forge-types";
 import { FORGE_CEREMONY_MINIMUM_MS, preferredDecklistView } from "./forge-types";
 import type { ForgeResumeBrief } from "./forge-resume-brief";
@@ -227,6 +228,7 @@ export function useForgeSessionState() {
   }, [guestMode]);
   const [stage, setStage] = useState(0);
   const [buildStep, setBuildStep] = useState<0 | 1 | 2>(0);
+  const [buildPath, setBuildPath] = useState<BuildPath>("discover");
   const [format, setFormat] = useState("Commander");
   const [strategy, setStrategy] = useState("Balanced midrange");
   const [complexity, setComplexity] = useState("Balanced");
@@ -3238,6 +3240,7 @@ export function useForgeSessionState() {
     if (intent !== "build" && intent !== "analyze") return;
     window.history.replaceState({}, "", window.location.pathname);
     if (chamber !== "entrance" || deck.trim()) return;
+    setBuildPath(intent === "build" ? "discover" : "complete");
     setChamber(intent === "build" ? "commission" : "refine");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -3709,7 +3712,8 @@ export function useForgeSessionState() {
     setRevisions([]);
     setForgedDeck("");
     setDeckId("");
-    setChamber("commission");
+    setBuildPath("discover");
+    setChamber("entrance");
   }
   function openPrivateArchive() {
     setBenchOpen(false);
@@ -4312,6 +4316,8 @@ export function useForgeSessionState() {
     setStage,
     buildStep,
     setBuildStep,
+    buildPath,
+    setBuildPath,
     format,
     setFormat,
     strategy,
