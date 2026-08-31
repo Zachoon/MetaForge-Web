@@ -4579,6 +4579,21 @@ function refreshLedgerAfterRepair(input, candidate, analysis) {
 }
 
 function finalizeCandidateStrategy(input, candidate, analysis, options = {}) {
+  // buildImportedCandidateAttempt's own comment calls preset (player-
+  // submitted) rows "reserved unconditionally," but that was only ever true
+  // within chooseSpells' own reservation loop - this later cleanup pass had
+  // no idea a row came from the player's own list, only whether it hit a
+  // blueprint/tribal/role signal. A real end-to-end run against a live
+  // commander (Korvold, Fae-Cursed King) proved the gap: the player's own
+  // Lightning Greaves got cut here (weakSlotRepair, causalClass
+  // "weak_at_selection", the swap record itself already tagged
+  // source: "preset_import" - see findTracePick/buildWeakSlotForensicRecord
+  // in weak-slot-forensics.mjs, which already knows a row's construction-
+  // trace pick came from source "preset" and uses that fact only to LABEL
+  // the swap, never to prevent it. Named imported rows never reach
+  // buildCandidate's fresh path (input.importedRows is only ever set for
+  // the imported/completion flow), so this is a no-op there.
+  const importedRowNames = new Set((input.importedRows || []).map((row) => normalized(row.name)));
   const withCohesion = attachStrategicCohesion(candidate, analysis);
   const repaired = repairUnsupportedBombs(input, withCohesion, analysis);
   const optimized = optimizePackagePlan(repaired, analysis, input, {
@@ -4641,6 +4656,7 @@ function finalizeCandidateStrategy(input, candidate, analysis, options = {}) {
       },
       isProtectedCut: (row) => {
         if (!row) return false;
+        if (importedRowNames.has(normalized(row.name))) return true;
         if ((row.blueprintMechanicHits || []).length > 0) return true;
         if ((row.directTribes || []).length > 0 && (analysis.context?.blueprint?.tribalTypes || []).length) return true;
         if ((row.blueprintRoleHits || []).length > 0) return true;

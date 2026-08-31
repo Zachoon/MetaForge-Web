@@ -66,6 +66,45 @@ test("preserves every card and the exact land split of a complete submitted deck
   assert.deepEqual(report.changes.trimmed, []);
 });
 
+// buildImportedCandidateAttempt's own comment calls preset (player-
+// submitted) rows "reserved unconditionally" - but that was only true
+// within chooseSpells' own reservation loop. finalizeCandidateStrategy's
+// later weak-slot cleanup pass (repairWeaklyJustifiedSlots) had no idea a
+// row came from the player's own list, only whether it hit a blueprint/
+// tribal/role signal, so it could still cut a card the player explicitly
+// asked for. Found via a real run against a live commander (Korvold,
+// Fae-Cursed King) where the player's own Lightning Greaves got swapped
+// for Aftermath Analyst; reproduced offline with a deliberately roleless
+// "Vanilla Filler" card competing against many stronger, role-bearing
+// alternatives in a Commander-sized pool (Standard/60-card format didn't
+// reproduce it - this needs the singleton weak-slot dynamics).
+test("never cuts a card the player explicitly submitted, even when weak-slot cleanup would otherwise replace it", () => {
+  const commanderPool = [
+    ...Array.from({ length: 40 }, (_, i) => card(`Flow ${i}`, "When this enters, draw a card. Scry 1.")),
+    ...Array.from({ length: 30 }, (_, i) => card(`Answer ${i}`, "Exile target nonland permanent.", "Instant", "{1}{U}")),
+    ...Array.from({ length: 20 }, (_, i) => card(`Shield ${i}`, "Target creature gains hexproof and indestructible until end of turn.", "Instant", "{U}")),
+    ...Array.from({ length: 20 }, (_, i) => card(`Ramp Stone ${i}`, "Add one mana. Create a Treasure token.", "Artifact", "{2}")),
+    ...Array.from({ length: 15 }, (_, i) => card(`Sweep ${i}`, "Destroy all creatures.", "Sorcery", "{3}{U}")),
+    ...Array.from({ length: 15 }, (_, i) => card(`Recur ${i}`, "Return target creature card from your graveyard to your hand.", "Sorcery", "{2}{U}")),
+    ...Array.from({ length: 40 }, (_, i) => card(`Island Utility ${i}`, "{T}: Add {U}.", "Land", "", ["U"])),
+    card("Vanilla Filler", "", "Creature — Test", "{3}{U}"),
+  ];
+  const commander = { name: "Scholar of Tests", colors: ["U"], oracleText: "Whenever you draw your second card each turn, create a token." };
+  const input = {
+    format: "Commander", target: 100, strategy: "Balanced control", path: "", note: "", seed: 7,
+    commander, cards: commanderPool, colors: ["U"],
+    importedRows: [
+      { quantity: 1, name: "Vanilla Filler" },
+      { quantity: 1, name: "Flow 0" },
+      { quantity: 38, name: "Island Utility 0" },
+    ],
+  };
+  const report = forgeImportedMasterwork(input);
+  assert.ok(report.selected.rows.some((row) => row.name === "Vanilla Filler"), "the player's explicitly submitted card survives weak-slot cleanup");
+  assert.ok(!report.changes.trimmed.some((entry) => entry.name === "Vanilla Filler"), "it is never disclosed as trimmed/cut");
+  assert.ok(!(report.selected.weakSlotRepair?.removedNames || []).includes("Vanilla Filler"), "weak-slot repair itself records it was never removed");
+});
+
 test("trims a copy-limit violation instead of silently dropping the whole card", () => {
   const input = { ...baseInput, importedRows: [
     { quantity: 8, name: "Flow 0" }, // over Standard's 4-copy limit
