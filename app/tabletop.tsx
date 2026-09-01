@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   getMatchupCardAdvice as getMatchupCardAdviceBase,
   MATCHUP_GUIDANCE,
@@ -146,12 +146,23 @@ export function Tabletop({
     setLens(nextLens);
     onLensChange?.(nextLens);
   };
+  // onLensChange is passed inline by every caller (a fresh function every
+  // render), and this effect must still call the latest one - so it's read
+  // from a ref instead of the dependency array. Depending on onLensChange
+  // directly meant ANY parent re-render (which onLensChange itself
+  // triggers, since callers use it to drive their own state) re-ran this
+  // effect and forced lens back to initialLens, even after the player had
+  // already clicked to a different lens - the "Deck review" tab appeared
+  // completely broken because clicking it immediately, silently reverted
+  // it. This must depend only on the actual initialLens value changing.
+  const onLensChangeRef = useRef(onLensChange);
+  onLensChangeRef.current = onLensChange;
   useEffect(() => {
     if (initialLens !== "deck") {
       setLens(initialLens);
-      onLensChange?.(initialLens);
+      onLensChangeRef.current?.(initialLens);
     }
-  }, [initialLens, onLensChange]);
+  }, [initialLens]);
   const previous = useMemo(() => new Set(previousCardNames.map((name) => name.toLowerCase())), [previousCardNames]);
   const relatedNames = useMemo(() => new Set(edges.flatMap((edge) => (edge.from === activeCard ? [edge.to] : edge.to === activeCard ? [edge.from] : []))), [activeCard, edges]);
   const activeEdges = edges.filter((edge) => edge.from === activeCard || edge.to === activeCard).slice(0, 5);

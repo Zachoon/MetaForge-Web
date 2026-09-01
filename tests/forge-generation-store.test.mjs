@@ -206,6 +206,35 @@ test("buildClientNativeReport reports null notes, not undefined, when no repair 
   assert.equal(client.selected.powerRepairNote, null);
 });
 
+// forge-session-context.tsx's enterMasterwork() interpolates
+// `${chosen.boundary}` into the accepted-deck reasoning text whenever the
+// player picks a non-recommended candidate — this whitelist never included
+// boundary, so it silently rendered the literal word "undefined" in that
+// text on every such acceptance (real player report, 2026-09-01). Same
+// missing-field shape recoveryNote had before Phase 2E restored it.
+test("buildClientNativeReport forwards boundary to the browser, for both selected and each candidate", async () => {
+  const { buildClientNativeReport } = await import("../worker/forge-generation-store.ts");
+  const report = {
+    engine: "metaforge-native-v1",
+    selected: { id: "s", rows: [], boundary: "Native structural candidate. Legality and simulations are hard gates; real match performance remains unproven." },
+    candidates: [
+      { id: "s", rows: [], boundary: "Native structural candidate. Legality and simulations are hard gates; real match performance remains unproven." },
+      { id: "alt", rows: [], boundary: "Adapted directly from your submitted list. Legality and simulations are hard gates; real match performance remains unproven." },
+    ],
+  };
+  const client = buildClientNativeReport(report);
+  assert.equal(client.selected.boundary, report.selected.boundary);
+  assert.equal(client.candidates[1].boundary, report.candidates[1].boundary);
+});
+
+test("buildClientNativeReport reports a null boundary, not undefined, when a candidate has none", async () => {
+  const { buildClientNativeReport } = await import("../worker/forge-generation-store.ts");
+  const report = { engine: "metaforge-native-v1", selected: { id: "s", rows: [] }, candidates: [{ id: "s", rows: [] }] };
+  const client = buildClientNativeReport(report);
+  assert.equal(client.selected.boundary, null);
+  assert.equal(client.candidates[0].boundary, null);
+});
+
 test("refuses oversized payloads instead of throwing into GENERATION_FAILED", async () => {
   const DB = new FakeD1();
   const oversized = {

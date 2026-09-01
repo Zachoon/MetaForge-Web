@@ -3118,7 +3118,7 @@ export function useForgeSessionState() {
       index: 0,
       replyText: isRecommended
         ? `${nativeReport.methodology}\n\n${nativeReport.selected.tournament.reason}\n${nativeReport.reasoning.summary}\n${nativeReport.laboratory.summary}${nativeReport.laboratory.verdict === "advance" ? `\nTest contract: ${nativeReport.laboratory.contract}` : ""}\nStructural read: ${nativeReport.selected.evaluation.cohesion}/100 cohesion, ${nativeReport.selected.evaluation.resilience}/100 resilience. ${nativeReport.tournament.frontier.length} of 3 candidates reached the tradeoff frontier. ${nativeReport.reasoning.boundary} ${nativeReport.laboratory.boundary}`
-        : `${nativeReport.methodology}\n\nYou chose ${chosen.label} over the Forge's recommended ${nativeReport.selected.label}.\nStructural read: ${chosen.evaluation.cohesion}/100 cohesion, ${chosen.evaluation.resilience}/100 resilience.\n${chosen.boundary}`,
+        : `${nativeReport.methodology}\n\nYou chose ${chosen.label} over the Forge's recommended ${nativeReport.selected.label}.\nStructural read: ${chosen.evaluation.cohesion}/100 cohesion, ${chosen.evaluation.resilience}/100 resilience.${chosen.boundary ? `\n${chosen.boundary}` : ""}`,
       revisionNote: isRecommended
         ? `Built directly for ${commander?.name || "your commander"} · ${nativeReport.selected.label}`
         : `Built directly for ${commander?.name || "your commander"} · ${chosen.label} (chosen over the recommendation)`,

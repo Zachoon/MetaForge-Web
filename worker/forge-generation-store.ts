@@ -190,6 +190,15 @@ function compactClientMasterwork(deck: any) {
     evaluation: deck.evaluation,
     tournament: deck.tournament,
     recoveryStage: deck.recoveryStage,
+    // Server-generated one-liner every candidate carries (native-masterwork-
+    // engine.mjs's buildCandidate/buildImportedCandidateAttempt), but this
+    // whitelist never included it — forge-session-context.tsx's
+    // enterMasterwork() interpolates `${chosen.boundary}` into the accepted-
+    // deck reasoning text whenever the player picks a non-recommended
+    // candidate, so it silently rendered the literal word "undefined" on
+    // every such acceptance. Same missing-field shape as recoveryNote
+    // before Phase 2E restored it.
+    boundary: deck.boundary ?? null,
     // Phase 1's land-budget disclosure — the player-facing string was
     // always generated (native-masterwork-engine.mjs's buildCandidate),
     // and app/page.tsx has always rendered it (the "A PREFERENCE WAS
