@@ -671,6 +671,36 @@ export function commanderPackageIdsFromOracle(commanders = []) {
     .map((definition) => definition.id);
 }
 
+/**
+ * The commander-only shell options for
+ * architecture/GUIDED_CONSTRUCTION_FLOW.md's archetype/shell selection step
+ * (flow step 2) — "here are the shells this commander supports," surfaced
+ * from the same commander-triggering data buildStrategicIntent itself
+ * already computes, not new scoring. Deliberately narrower than
+ * buildStrategicIntent's full packageTriggered check: this runs before any
+ * blueprint/note or decklist exists (right after commander choice, before
+ * the player has typed or built anything), so only the commander's own
+ * oracle text can open a shell here — a note- or decklist-triggered package
+ * can still open normally once the player proceeds past this step and into
+ * real construction. Covers both catalogs (the 10 hand-authored
+ * PACKAGE_CATALOG entries and every ARCHETYPE_CATALOG entry), unlike the
+ * narrower commanderPackageIdsFromOracle above (PACKAGE_CATALOG only, ids
+ * only) — a shell picker needs every real archetype match the commander
+ * supports, not just the original 10, and needs labels/targets to render
+ * options with, not just ids.
+ */
+export function commanderShellOptions(commanders = [], { format } = {}) {
+  const list = (commanders || []).filter(Boolean);
+  const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(format);
+  return Object.values(ALL_PACKAGES)
+    .filter((definition) => {
+      if (list.some((commander) => definition.detectCommander?.(oracleOf(commander) || ""))) return true;
+      if (definition.commander) return archetypeTriggeredByCommander(definition, list);
+      return false;
+    })
+    .map((definition) => Object.freeze({ id: definition.id, label: definition.label, ...densityFor(definition, singleton) }));
+}
+
 function packageTriggered(definition, commanders, blueprint) {
   if (definition.detectBlueprint?.(blueprint)) return true;
   if (commanders.some((commander) => definition.detectCommander?.(oracleOf(commander) || ""))) return true;
