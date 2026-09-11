@@ -422,7 +422,7 @@ function packageCountsFromSlots(slots, intent) {
       support += contribution.support || 0;
       falseFriend += contribution.falseFriend || 0;
     }
-    counts[packageSpec.id] = Object.freeze({ core, support, falseFriend, coreMin: packageSpec.coreMin });
+    counts[packageSpec.id] = Object.freeze({ core, support, falseFriend, coreMin: packageSpec.coreMin, supportMin: packageSpec.supportMin });
   }
   return Object.freeze(counts);
 }
