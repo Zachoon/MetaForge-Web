@@ -17,7 +17,7 @@ export const SLOT_JUSTIFICATION_VERSION = "slot-justification-v1";
 
 const normalized = (value = "") => String(value).normalize("NFKC").trim().toLocaleLowerCase("en");
 
-const TRACKED_ROLES = Object.freeze(["ramp", "draw", "interaction", "protection", "recursion", "sweeper"]);
+export const TRACKED_ROLES = Object.freeze(["ramp", "draw", "interaction", "protection", "recursion", "sweeper"]);
 
 const FOOTPRINT_WEIGHTS = Object.freeze({
   packageCore: 4,

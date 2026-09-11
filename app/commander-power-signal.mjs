@@ -110,7 +110,7 @@ function isFreeInteraction(card) {
   return interaction && alternateCost;
 }
 
-function isExplicitWinCondition(card) {
+export function isExplicitWinCondition(card) {
   const text = card.oracleText || "";
   return /\byou win the game\b|\b(?:target|that|an?) opponent loses the game\b/i.test(text);
 }
