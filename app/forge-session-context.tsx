@@ -97,6 +97,11 @@ import {
   arrangeCommanderStarters,
   partnerEligibilityFor,
 } from "./commander-lane-scoring.mjs";
+import { commanderShellOptions } from "./strategic-intent.mjs";
+
+// Mirrors commanderShellOptions' (strategic-intent.mjs) return shape — kept
+// local since nothing outside this context needs the type yet.
+type ShellOption = { id: string; label: string; coreMin: number; supportMin: number; legFloor: number };
 import {
   FORMAT_PREVIEWS,
   isCommanderFormat,
@@ -330,6 +335,14 @@ export function useForgeSessionState() {
   >([]);
   const [selectedSecondCommander, setSelectedSecondCommander] =
     useState<CommanderOption | null>(null);
+  // The player's archetype/shell choice from the guided Build entrance
+  // (architecture/GUIDED_CONSTRUCTION_FLOW.md's flow step 2) — which
+  // shellOptions entry, if any, the player picked for this commander. Reset
+  // whenever the commander identity changes below, since a stale choice
+  // from a previous commander would silently mean nothing once sent as
+  // focusPackageId (buildStrategicIntent only honors an id that commander
+  // actually triggers).
+  const [selectedShell, setSelectedShell] = useState<ShellOption | null>(null);
 
   // Authentication used to return players to an empty app root. Carry the
   // compact commission brief through Cloudflare Access in the original URL,
@@ -1950,6 +1963,25 @@ export function useForgeSessionState() {
     }
     return labels;
   }, [commissionOccupancyLabels, secondCommissionOccupancyLabels]);
+  // Which shells (architecture/GUIDED_CONSTRUCTION_FLOW.md's archetype/shell
+  // step) this commander pairing supports — commander-only, same as the
+  // occupancy labels above, since this runs before any note/blueprint or
+  // decklist exists. Distinct from the occupancy labels: those are the 10
+  // hand-authored packages shown as passive text; these cover every real
+  // archetype (~48) and are an actual selectable choice.
+  const shellOptions = useMemo<ShellOption[]>(() => {
+    if (!isCommanderFormat(format)) return [];
+    const commanders = [selectedCommander, selectedSecondCommander]
+      .filter((commander): commander is CommanderOption => Boolean(commander))
+      .map((commander) => ({ name: commander.name, oracleText: commanderOracleText(commander) }));
+    if (!commanders.length) return [];
+    return commanderShellOptions(commanders, { format });
+  }, [format, selectedCommander, selectedSecondCommander]);
+  useEffect(() => {
+    if (!selectedShell) return;
+    if (shellOptions.some((option) => option.id === selectedShell.id)) return;
+    setSelectedShell(null);
+  }, [shellOptions, selectedShell]);
 
   // Prefers the exact printing the player already chose via the printing
   // picker (inspectedPrinting.tcgplayerId); falls back to a name-only
@@ -3469,6 +3501,7 @@ export function useForgeSessionState() {
           maxCardPrice,
           commonsOnly,
           targetPowerTier: isCommanderFormat(format) ? targetPowerTier || undefined : undefined,
+          focusPackageId: isCommanderFormat(format) ? selectedShell?.id || undefined : undefined,
           playerCompass,
         });
         trackLaunchEvent("forge_succeeded", { mode, format, durationMs: Date.now() - launchStartedAt });
@@ -4690,6 +4723,9 @@ export function useForgeSessionState() {
     coachingSession,
     persistPlayerCompass,
     partnerEligibility,
+    shellOptions,
+    selectedShell,
+    setSelectedShell,
     moveCard,
     deckWithout,
     preserveDeckEdit,

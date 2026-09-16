@@ -54,6 +54,9 @@ export function CommissionChamber() {
     turnstileToken,
     awaken,
     revealOccupancyLabels,
+    shellOptions,
+    selectedShell,
+    setSelectedShell,
   } = useForgeSession();
 
   const [scratchSearch, setScratchSearch] = useState("");
@@ -468,6 +471,48 @@ export function CommissionChamber() {
                   </>
                 )}
               </div>
+            )}
+          </section>
+        )}
+        {chamber === "commission" && selectedCommander && shellOptions.length > 0 && (
+          <section className="shell-picker">
+            <header>
+              <div>
+                <span>SHELL · WHAT THIS COMMANDER CAN BUILD TOWARD</span>
+                <strong>
+                  {selectedShell ? "Shell selected" : "Choose a shell to build around — or skip"}
+                </strong>
+              </div>
+              {selectedShell && (
+                <button type="button" onClick={() => setSelectedShell(null)}>
+                  Change
+                </button>
+              )}
+            </header>
+            {selectedShell ? (
+              <article className="shell-option-selected">
+                <b>{selectedShell.label}</b>
+                <span>{selectedShell.coreMin}+ core pieces, {selectedShell.supportMin}+ support pieces</span>
+              </article>
+            ) : (
+              <>
+                <div className="shell-options-grid" role="group" aria-label="Shell options">
+                  {shellOptions.map((option) => (
+                    <button
+                      type="button"
+                      key={option.id}
+                      className="shell-option-card"
+                      onClick={() => setSelectedShell(option)}
+                    >
+                      <b>{option.label}</b>
+                      <small>{option.coreMin}+ core pieces</small>
+                    </button>
+                  ))}
+                </div>
+                <p className="shell-options-skip-note">
+                  Skip this and the Forge builds toward every shell {selectedCommander.name} supports at once — the same as today.
+                </p>
+              </>
             )}
           </section>
         )}

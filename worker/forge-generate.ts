@@ -32,6 +32,7 @@ import { userKey } from "./account-bench";
 import { checkRateLimit, readJsonWithLimit } from "./api-hardening";
 import { buildClientNativeReport, storeGeneration } from "./forge-generation-store";
 import { isValidReviewFocus } from "../app/review-focus.mjs";
+import { STRATEGIC_PACKAGE_IDS } from "../app/strategic-intent.mjs";
 import { evaluateReviewFocus } from "../app/review-focus-reasoning.mjs";
 import { buildPreChoiceCoaching } from "../app/strategy-build-comparison.mjs";
 import {
@@ -63,6 +64,7 @@ type GenerateRequest = {
   maxCardPrice?: number;
   commonsOnly?: boolean;
   targetPowerTier?: string;
+  focusPackageId?: string;
   lynchpin?: string;
   deck?: string;
   reviewFocus?: string;
@@ -494,6 +496,13 @@ function validateRequest(body: any): { ok: true; value: GenerateRequest } | { ok
   if (body.reviewFocus !== undefined && body.reviewFocus !== "" && !isValidReviewFocus(body.reviewFocus)) {
     return { ok: false, error: "reviewFocus must be one of the supported coaching focus values" };
   }
+  // focusPackageId is the player's shell/archetype choice from the guided
+  // Build entrance (architecture/GUIDED_CONSTRUCTION_FLOW.md's archetype
+  // picker) — validated against the same fixed catalog buildStrategicIntent
+  // itself draws packages from, never passed through as free text.
+  if (body.focusPackageId !== undefined && body.focusPackageId !== "" && !STRATEGIC_PACKAGE_IDS.includes(body.focusPackageId)) {
+    return { ok: false, error: "focusPackageId must be one of the supported shell package ids" };
+  }
 
   const value: GenerateRequest = {
     mode: body.mode,
@@ -510,6 +519,7 @@ function validateRequest(body: any): { ok: true; value: GenerateRequest } | { ok
     maxCardPrice: typeof body.maxCardPrice === "number" ? body.maxCardPrice : undefined,
     commonsOnly: body.commonsOnly === true,
     targetPowerTier: typeof body.targetPowerTier === "string" ? body.targetPowerTier.slice(0, MAX_SHORT_STRING) : undefined,
+    focusPackageId: typeof body.focusPackageId === "string" && body.focusPackageId ? body.focusPackageId : undefined,
     lynchpin: typeof body.lynchpin === "string" ? body.lynchpin.slice(0, MAX_SHORT_STRING) : undefined,
     deck: typeof body.deck === "string" ? body.deck : undefined,
     reviewFocus: typeof body.reviewFocus === "string" && body.reviewFocus ? body.reviewFocus : undefined,
@@ -789,6 +799,7 @@ export async function generateForgeResult(request: Request, env: Env, key: strin
       maxCardPrice: body.maxCardPrice,
       commonsOnly: body.commonsOnly,
       targetPowerTier: isCommanderFormat(body.format) ? body.targetPowerTier || undefined : undefined,
+      focusPackageId: isCommanderFormat(body.format) ? body.focusPackageId || undefined : undefined,
     });
     const generationMs = Date.now() - generationStart;
 

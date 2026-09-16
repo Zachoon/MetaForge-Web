@@ -30,6 +30,26 @@
 .commander-suggestions-dismiss{display:block;width:100%;margin-top:10px;padding:8px;border:1px solid #52655f;background:transparent;color:#92a29d;font-size:11px}
 .commander-suggestions-dismiss:hover,.commander-suggestions-dismiss:focus-visible{outline:0;border-color:#8d9994;color:#dce5e1}
 @media(max-width:560px){.commander-suggestions-grid{grid-template-columns:1fr}}
+/* Shell picker (architecture/GUIDED_CONSTRUCTION_FLOW.md's archetype/shell
+   step) — styled as a sibling of .commander-blueprint above it, reusing the
+   same suggestion-card shape as .commander-suggestion-card so choosing a
+   shell reads as the same kind of pick, not a new visual language. */
+.shell-picker{position:relative;margin-top:16px;padding:18px;border:1px solid #4b5d58;background:#091112dc}
+.shell-picker>header{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.shell-picker>header span,.shell-picker>header strong{display:block}
+.shell-picker>header span{color:var(--ember);font-size:12px;font-weight:900;letter-spacing:.16em}
+.shell-picker>header strong{margin-top:5px;color:#e2e9e6;font:600 17px Newsreader, Georgia,serif}
+.shell-picker>header button{padding:8px 11px;border:1px solid #52655f;background:transparent;color:var(--teal);font-size:11px}
+.shell-options-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.shell-option-card{display:grid;grid-template-columns:1fr;gap:6px;padding:11px;border:1px solid #293a36;background:transparent;color:#dce5e1;text-align:left}
+.shell-option-card:hover,.shell-option-card:focus-visible{outline:0;border-color:#5fc9b6;background:#163027}
+.shell-option-card b{display:block;font-size:13px}
+.shell-option-card small{display:block;margin-top:3px;color:#81938e;font-weight:500}
+.shell-options-skip-note{margin:10px 0 0;color:#81938e;font-size:11px}
+.shell-option-selected{display:block;margin-top:14px;padding:12px;border:1px solid #466159;background:#10231f}
+.shell-option-selected b{display:block;font:600 16px Newsreader, Georgia,serif}
+.shell-option-selected span{display:block;margin-top:5px;color:#a4b4af;font-size:12px}
+@media(max-width:560px){.shell-options-grid{grid-template-columns:1fr}}
 .commander-search>.commander-choice{position:static;z-index:auto;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;max-height:none;overflow:visible;border:0;background:transparent;box-shadow:none}.commander-choice input{width:100%;padding:14px;border:1px solid #52625d;background:#071011;color:#e8efec;font-size:14px}.commander-choice button{padding:0 16px;border:1px solid #8d6331;background:linear-gradient(180deg,#382617,#21160f);color:#f4b866;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}.commander-choice button:hover,.commander-choice button:focus{outline:1px solid #f4b866;background:#4a2e18}.commander-choice button:disabled{opacity:.6}@media(max-width:560px){.commander-search>.commander-choice{grid-template-columns:1fr}.commander-choice button{min-height:42px}}
 
 /* Blueprint typography rebalance */
