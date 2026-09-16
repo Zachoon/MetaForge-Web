@@ -955,9 +955,23 @@ export function buildStrategicIntent(input = {}, analysisContext = {}) {
   const commanders = [input.commander, input.secondCommander].filter(Boolean);
   const singleton = ["Commander", "Brawl", "Standard Brawl"].includes(input.format);
   const packages = [];
+  // architecture/GUIDED_CONSTRUCTION_FLOW.md's archetype/shell picker (flow
+  // step 2, commanderShellOptions above) needs picking one shell to
+  // actually mean something: without this, every package the commander
+  // happens to also trigger keeps competing for the same slots regardless
+  // of which one the player chose, so two different picks could build an
+  // identical deck — an "explicit fork" that's silently a no-op. When set,
+  // narrows construction to just that one package instead of every
+  // auto-triggered one; every id the shell picker can ever offer already
+  // passes packageTriggered for these same commanders (commanderShellOptions
+  // uses the same detectCommander/archetypeTriggeredByCommander check), so
+  // this only ever narrows, never adds, a package construction wasn't
+  // already going to build toward.
+  const focusPackageId = input.focusPackageId || null;
 
   for (const definition of Object.values(ALL_PACKAGES)) {
     if (!packageTriggered(definition, commanders, blueprint)) continue;
+    if (focusPackageId && definition.id !== focusPackageId) continue;
     const targets = densityFor(definition, singleton);
     const byBlueprint = Boolean(definition.detectBlueprint?.(blueprint)) || archetypeTriggeredByNote(definition, blueprint);
     const byCommander = commanders.some((commander) => definition.detectCommander?.(oracleOf(commander) || ""))
@@ -996,6 +1010,7 @@ export function buildStrategicIntent(input = {}, analysisContext = {}) {
     blueprint,
     packages: Object.freeze(packages),
     packageIds: Object.freeze(packages.map((entry) => entry.id)),
+    focusPackageId,
     roleTargets: Object.freeze({ ...(analysisContext.roleTargets || {}) }),
     curveIdeal: analysisContext.ideal ?? 2.9,
     budget: input.budget || null,
