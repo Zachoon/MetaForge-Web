@@ -11,6 +11,7 @@ import { handleEdhrecEvidence } from "./edhrec-evidence";
 import { handleForgeGenerate } from "./forge-generate";
 import { handleForgeStructuralAnalyze } from "./forge-structural-analyze";
 import { handleForgeOneSlot } from "./forge-one-slot";
+import { handleForgeGuidedStart, handleForgeGuidedNext } from "./forge-guided-build";
 import { handleForgeMultiRefill } from "./forge-multi-refill";
 import { handleCardFacts } from "./card-facts";
 import { handleCommanderSearch } from "./commander-search";
@@ -355,6 +356,8 @@ const worker = {
       if (url.pathname === "/api/account/claim-guest") return await handleGuestClaim(request, env);
       if (url.pathname === "/api/forge/structural-analyze") return await handleForgeStructuralAnalyze(request, env);
       if (url.pathname === "/api/forge/one-slot-experiment") return await handleForgeOneSlot(request, env);
+      if (url.pathname === "/api/forge/guided/start") return await handleForgeGuidedStart(request, env);
+      if (url.pathname === "/api/forge/guided/next") return await handleForgeGuidedNext(request, env);
       if (url.pathname === "/api/forge/multi-refill") return await handleForgeMultiRefill(request, env);
       if (url.pathname === "/api/decks/publish") return await handlePublicReportPublish(request, env);
       if (url.pathname === "/api/cards/facts") return await handleCardFacts(request);

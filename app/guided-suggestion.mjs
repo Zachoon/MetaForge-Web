@@ -27,8 +27,24 @@ import { isWinConditionCard } from "./fundamentals-target-table.mjs";
 const normalized = (value = "") => String(value).normalize("NFKC").trim().toLocaleLowerCase("en");
 const round = (value, digits = 3) => Number(Number(value).toFixed(digits));
 
+// Same bridge slot-justification-ledger.mjs/prospective-slot-delta.mjs
+// already define locally: a "row" here can be either the flat shape test
+// fixtures use ({name, oracleText, roles, ...}) or the real engine's
+// nested shape (analyzeForgePool/analyzeCard's {card: {name, oracleText},
+// roles, ...}). roles/mechanics/etc. already sit at the top level in both,
+// but name/oracleText only exist under .card in the real shape — reading
+// them directly off a real candidate silently breaks (name undefined) or
+// crashes (.localeCompare on undefined) once real engine data reaches
+// this function instead of a test fixture.
+function entryCard(entry) {
+  return entry?.card || entry || {};
+}
+function entryName(entry) {
+  return entry?.card?.name || entry?.name || "";
+}
+
 function eligibleForCategory(candidate, category, intent) {
-  if (category === "winConditions") return isWinConditionCard(candidate, candidate.roles || []);
+  if (category === "winConditions") return isWinConditionCard(entryCard(candidate), candidate.roles || []);
   if (category === "synergyPieces") {
     return (intent.packages || []).some((packageSpec) =>
       cardSatisfiesPackageCore(candidate, packageSpec.id, intent)
@@ -58,12 +74,12 @@ export function suggestCardForCategory({
   options = {},
 } = {}) {
   const declined = new Set(declinedNames.map(normalized));
-  const alreadySelected = new Set(partialRows.map((row) => normalized(row.name)));
+  const alreadySelected = new Set(partialRows.map((row) => normalized(entryName(row))));
   const deficitState = options.deficitState || buildLiveDeficitState(partialRows, intent, options);
   const scoringOptions = { ...options, deficitState };
 
   const eligible = pool.filter((candidate) => {
-    const key = normalized(candidate.name);
+    const key = normalized(entryName(candidate));
     if (declined.has(key) || alreadySelected.has(key)) return false;
     return eligibleForCategory(candidate, category, intent);
   });
@@ -77,7 +93,9 @@ export function suggestCardForCategory({
       candidate,
       delta: prospectiveSlotDelta(partialRows, candidate, intent, scoringOptions),
     }))
-    .sort((left, right) => right.delta.total - left.delta.total || left.candidate.name.localeCompare(right.candidate.name));
+    // delta.name is prospectiveSlotDelta's own already-unwrapped entryName,
+    // reused here rather than re-deriving it a third way.
+    .sort((left, right) => right.delta.total - left.delta.total || left.delta.name.localeCompare(right.delta.name));
 
   const [best, runnerUp] = scored;
   return Object.freeze({
@@ -88,7 +106,7 @@ export function suggestCardForCategory({
       deficitsFilled: best.delta.deficitsFilled,
       topPositive: topPositiveOf(best.delta),
       nearestAlternative: runnerUp
-        ? Object.freeze({ name: runnerUp.candidate.name, margin: round(best.delta.total - runnerUp.delta.total) })
+        ? Object.freeze({ name: runnerUp.delta.name, margin: round(best.delta.total - runnerUp.delta.total) })
         : null,
     }),
     exhausted: false,

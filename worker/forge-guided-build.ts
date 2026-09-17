@@ -1,0 +1,229 @@
+// Server-side backend for the guided Build category loop
+// (architecture/GUIDED_CONSTRUCTION_FLOW.md's flow step 3 — "the Forge
+// offers one card with a stated reason"). Follows forge-one-slot.ts's exact
+// pattern for the same underlying reason: a card pool is fetched and
+// classified once (a real Scryfall cost), then every later request in the
+// same session reloads that cached context via generationId (forge-
+// generation-store.ts) and only re-runs cheap, pure scoring — never a
+// second round of Scryfall requests.
+//
+// Authenticated only (userKey requires a verified Access identity) — a
+// guest session has no generationId to store this context under, so guests
+// keep using the existing one-shot Build path (now shell-biased via
+// focusPackageId) instead of the guided loop until a guest-compatible
+// store exists. Not a stub: the guided loop simply isn't offered to guests
+// yet, and the client is expected to gate on this rather than call these
+// endpoints for a guest session.
+import { analyzeForgePool } from "../app/native-masterwork-engine.mjs";
+import { suggestCardForCategory } from "../app/guided-suggestion.mjs";
+import { CATEGORY_SEQUENCE } from "../app/category-budget-ledger.mjs";
+import { STRATEGIC_PACKAGE_IDS } from "../app/strategic-intent.mjs";
+import {
+  ALLOWED_FORMATS,
+  MAX_ORACLE_TEXT,
+  MAX_SHORT_STRING,
+  loadNativeForgePool,
+  sanitizeCommander,
+  type CommanderInput,
+  type ScryfallCounter,
+} from "./forge-generate";
+import { isCommanderFormat } from "./forge-result-validator.mjs";
+import { userKey } from "./account-bench";
+import { checkRateLimit, readJsonWithLimit } from "./api-hardening";
+import { storeGeneration, loadGeneration } from "./forge-generation-store";
+
+interface Env {
+  DB: D1Database;
+}
+
+const json = (value: unknown, status = 200, headers: Record<string, string> = {}) =>
+  Response.json(value, { status, headers: { "Cache-Control": "no-store", ...headers } });
+
+// start does one real Scryfall pool fetch (comparable cost to a one-shot
+// generation); next is pure CPU re-analysis of an already-cached pool, no
+// network I/O. Separate, tighter limits than forge-generate.ts's own 15/5min
+// reflect that a single guided session calls next many times (once per
+// accept/decline/category change) but start only once per session.
+const START_RATE_LIMIT = 15;
+const START_RATE_WINDOW_MS = 5 * 60 * 1000;
+const NEXT_RATE_LIMIT = 120;
+const NEXT_RATE_WINDOW_MS = 5 * 60 * 1000;
+
+const MAX_BODY_BYTES = 64 * 1024;
+const MAX_ROWS = 100;
+const MAX_ROW_NAME = 400;
+
+function sanitizeNameList(raw: unknown, max: number): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .slice(0, max)
+    .filter((entry): entry is string => typeof entry === "string")
+    .map((entry) => entry.slice(0, MAX_ROW_NAME))
+    .filter((entry) => entry.length > 0);
+}
+
+function validateCategory(value: unknown): value is string {
+  return typeof value === "string" && (CATEGORY_SEQUENCE as readonly string[]).includes(value);
+}
+
+function validateFocusPackageId(value: unknown): value is string {
+  return typeof value === "string" && STRATEGIC_PACKAGE_IDS.includes(value);
+}
+
+const normalizeKey = (name: string) => name.normalize("NFKC").trim().toLocaleLowerCase("en");
+
+/**
+ * Re-runs analyzeForgePool against a cached raw pool and computes one
+ * suggestion for the requested category. Shared by start (fresh pool) and
+ * next (reloaded pool) so both endpoints score identically.
+ */
+function computeOffer(
+  cards: any[],
+  input: { format: string; commander: CommanderInput; secondCommander: CommanderInput; note: string; focusPackageId?: string },
+  category: string,
+  acceptedNames: string[],
+  declinedNames: string[],
+) {
+  const analysis = analyzeForgePool({ ...input, cards });
+  const analyzedByName = new Map(analysis.cards.map((entry: any) => [normalizeKey(entry.card?.name || entry.name || ""), entry]));
+  const partialRows = acceptedNames
+    .map((name) => analyzedByName.get(normalizeKey(name)))
+    .filter((entry): entry is any => Boolean(entry));
+  const suggestion = suggestCardForCategory({
+    category,
+    partialRows,
+    pool: analysis.spells,
+    intent: analysis.strategicIntent,
+    declinedNames,
+  } as any);
+  return { suggestion, intent: analysis.strategicIntent };
+}
+
+function serializeOffer(suggestion: ReturnType<typeof suggestCardForCategory>) {
+  const card = suggestion.offer?.card || suggestion.offer;
+  return {
+    category: suggestion.category,
+    exhausted: suggestion.exhausted,
+    remainingCandidates: suggestion.remainingCandidates,
+    reason: suggestion.reason,
+    offer: card
+      ? {
+          name: card.name,
+          typeLine: card.typeLine,
+          oracleText: card.oracleText,
+          manaCost: card.manaCost,
+          cmc: card.cmc,
+          priceUsd: card.priceUsd,
+          image: card.image,
+        }
+      : null,
+  };
+}
+
+export async function handleForgeGuidedStart(request: Request, env: Env): Promise<Response> {
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
+
+  const key = await userKey(request, env);
+  if (!key) return json({ error: "Authenticated account required" }, 401);
+
+  const limitResult = await checkRateLimit(env, key, "forge-guided-start", START_RATE_LIMIT, START_RATE_WINDOW_MS);
+  if (!limitResult.allowed) {
+    return json({ error: "Rate limit exceeded", retryAfterSeconds: limitResult.retryAfterSeconds }, 429, {
+      "Retry-After": String(limitResult.retryAfterSeconds),
+    });
+  }
+
+  const bodyResult = await readJsonWithLimit(request, MAX_BODY_BYTES);
+  if (!bodyResult.ok) return json({ error: bodyResult.error }, bodyResult.status);
+  const body = bodyResult.data as any;
+
+  if (typeof body?.format !== "string" || !ALLOWED_FORMATS.has(body.format) || !isCommanderFormat(body.format)) {
+    return json({ error: "format must be a supported Commander-family format" }, 400);
+  }
+  const commander = sanitizeCommander(body?.commander);
+  if (!commander) return json({ error: "A commander is required to start the guided Build" }, 400);
+  const secondCommander = sanitizeCommander(body?.secondCommander);
+  const note = typeof body?.note === "string" ? body.note.slice(0, MAX_SHORT_STRING * 10) : "";
+  const focusPackageId = body?.focusPackageId !== undefined && body.focusPackageId !== ""
+    ? (validateFocusPackageId(body.focusPackageId) ? body.focusPackageId : undefined)
+    : undefined;
+  if (body?.focusPackageId && !focusPackageId) {
+    return json({ error: "focusPackageId must be one of the supported shell package ids" }, 400);
+  }
+  void MAX_ORACLE_TEXT; // sanitizeCommander already enforces this internally.
+
+  try {
+    const counter: ScryfallCounter = { count: 0 };
+    const pool = await loadNativeForgePool(body.format, commander, "", note, secondCommander, counter);
+    const input = { format: body.format, commander, secondCommander, note, focusPackageId };
+    const { suggestion } = computeOffer(pool.cards, input, CATEGORY_SEQUENCE[0], [], []);
+
+    const generationId = await storeGeneration(env, key, {
+      selected: null,
+      candidates: [],
+      cardPool: pool.cards,
+      options: { format: body.format, strategy: "Guided", target: 0 },
+      forgeInput: { commander, secondCommander, note, focusPackageId: focusPackageId || null },
+    });
+    if (!generationId) {
+      return json({ error: "The guided Build could not be started for this commander right now." }, 500);
+    }
+
+    return json({ generationId, colors: pool.colors, categorySequence: CATEGORY_SEQUENCE, ...serializeOffer(suggestion) });
+  } catch (error) {
+    console.error("forge-guided-start failed", error);
+    return json({ error: "The guided Build could not be started." }, 500);
+  }
+}
+
+export async function handleForgeGuidedNext(request: Request, env: Env): Promise<Response> {
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
+
+  const key = await userKey(request, env);
+  if (!key) return json({ error: "Authenticated account required" }, 401);
+
+  const limitResult = await checkRateLimit(env, key, "forge-guided-next", NEXT_RATE_LIMIT, NEXT_RATE_WINDOW_MS);
+  if (!limitResult.allowed) {
+    return json({ error: "Rate limit exceeded", retryAfterSeconds: limitResult.retryAfterSeconds }, 429, {
+      "Retry-After": String(limitResult.retryAfterSeconds),
+    });
+  }
+
+  const bodyResult = await readJsonWithLimit(request, MAX_BODY_BYTES);
+  if (!bodyResult.ok) return json({ error: bodyResult.error }, bodyResult.status);
+  const body = bodyResult.data as any;
+
+  const generationId = typeof body?.generationId === "string" ? body.generationId : "";
+  if (!generationId) return json({ error: "generationId is required" }, 400);
+  if (!validateCategory(body?.category)) return json({ error: "category must be one of the guided build's categories" }, 400);
+
+  const acceptedNames = sanitizeNameList(body?.acceptedNames, MAX_ROWS);
+  const declinedNames = sanitizeNameList(body?.declinedNames, MAX_ROWS);
+
+  const generation = await loadGeneration(env, key, generationId);
+  if (!generation.ok) {
+    return json({ error: "This guided Build session is no longer available. Start a new one." }, 404);
+  }
+
+  try {
+    const stored = generation.payload;
+    const forgeInput = (stored.forgeInput || {}) as {
+      commander: CommanderInput;
+      secondCommander: CommanderInput;
+      note: string;
+      focusPackageId: string | null;
+    };
+    const input = {
+      format: stored.options.format,
+      commander: forgeInput.commander,
+      secondCommander: forgeInput.secondCommander,
+      note: forgeInput.note || "",
+      focusPackageId: forgeInput.focusPackageId || undefined,
+    };
+    const { suggestion } = computeOffer(stored.cardPool, input, body.category, acceptedNames, declinedNames);
+    return json(serializeOffer(suggestion));
+  } catch (error) {
+    console.error("forge-guided-next failed", error);
+    return json({ error: "The guided Build could not continue for this session." }, 500);
+  }
+}

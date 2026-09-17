@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildStrategicIntent, strategicSemanticsFor } from "../app/strategic-intent.mjs";
 import { extractMechanicalSignals } from "../app/forge-interaction-graph.mjs";
-import { classifyNativeCard, colorPipsFromCost } from "../app/native-masterwork-engine.mjs";
+import { classifyNativeCard, colorPipsFromCost, analyzeForgePool } from "../app/native-masterwork-engine.mjs";
 import { suggestCardForCategory } from "../app/guided-suggestion.mjs";
 
 const pearlEar = {
@@ -127,6 +127,26 @@ test("reports exhausted when no eligible candidate remains", () => {
   const suggestion = suggestCardForCategory({ category: "sweeper", partialRows: [], pool, intent });
   assert.equal(suggestion.exhausted, true);
   assert.equal(suggestion.offer, null);
+});
+
+test("works against the real engine's nested {card, roles, ...} shape (analyzeForgePool), not just flat test fixtures", () => {
+  const analysis = analyzeForgePool({
+    format: "Commander",
+    strategy: "Balanced midrange",
+    target: 100,
+    commander: pearlEar,
+    note: "focus on auras",
+    cards: mixedPool().map((entry) => entry.card),
+  });
+  const suggestion = suggestCardForCategory({ category: "ramp", partialRows: [], pool: analysis.spells, intent: analysis.strategicIntent });
+  assert.equal(suggestion.exhausted, false);
+  assert.ok(suggestion.offer.card.name, "real engine rows nest the card under .card");
+  assert.ok(suggestion.offer.roles.includes("ramp"));
+  assert.ok(suggestion.reason.nearestAlternative?.name, "nearestAlternative must resolve a real name, not undefined, for nested rows");
+
+  const declined = [suggestion.offer.card.name];
+  const second = suggestCardForCategory({ category: "ramp", partialRows: [], pool: analysis.spells, intent: analysis.strategicIntent, declinedNames: declined });
+  assert.notEqual(second.offer?.card.name, suggestion.offer.card.name);
 });
 
 test("declining every eligible card in turn eventually exhausts the category", () => {

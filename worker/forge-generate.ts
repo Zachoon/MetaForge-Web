@@ -47,7 +47,7 @@ interface Env {
   DB: D1Database;
 }
 
-type CommanderInput = { name: string; colors: string[]; oracleText: string } | null;
+export type CommanderInput = { name: string; colors: string[]; oracleText: string } | null;
 
 type GenerateRequest = {
   mode: "native" | "imported" | "direct";
@@ -91,11 +91,11 @@ const RATE_WINDOW_MS = 5 * 60 * 1000;
 const MAX_BODY_BYTES = 256 * 1024;
 const MAX_EVIDENCE_CARDS = 500;
 const MAX_DECK_TEXT = 50_000;
-const MAX_SHORT_STRING = 200;
+export const MAX_SHORT_STRING = 200;
 const MAX_NOTE = 2000;
-const MAX_ORACLE_TEXT = 4000;
+export const MAX_ORACLE_TEXT = 4000;
 const ALLOWED_MODES = new Set(["native", "imported", "direct"]);
-const ALLOWED_FORMATS = new Set([
+export const ALLOWED_FORMATS = new Set([
   "Standard",
   "Brawl",
   "Standard Brawl",
@@ -123,7 +123,7 @@ const CATALOG_UNAVAILABLE_MESSAGE = "The verified card catalog is unavailable";
 // resolveImportedDecklist/fetchScryfallWithRetry so generateForgeResult
 // can report scryfall_request_count without every fetch call needing to
 // return its own count up the stack.
-type ScryfallCounter = { count: number };
+export type ScryfallCounter = { count: number };
 
 // A single flaky Scryfall request (a rate-limit response under real load,
 // or a transient 5xx) used to end the whole commission immediately — the
@@ -246,7 +246,7 @@ const nativeCardFact = (card: any): NativeForgeCard => {
 
 type DeckRow = { quantity: number; name: string };
 
-async function loadNativeForgePool(
+export async function loadNativeForgePool(
   format: string,
   commander: CommanderInput,
   lynchpin: string,
@@ -449,7 +449,7 @@ async function resolveImportedDecklist(text: string, poolCards: NativeForgeCard[
   return { importedRows, pool: [...poolCards, ...additionalPoolCards], unresolvedNames, illegalNames, identityAliases };
 }
 
-function sanitizeCommander(raw: unknown): CommanderInput {
+export function sanitizeCommander(raw: unknown): CommanderInput {
   if (!raw || typeof raw !== "object") return null;
   const source = raw as Record<string, unknown>;
   const name = String(source.name || "").slice(0, MAX_SHORT_STRING);
