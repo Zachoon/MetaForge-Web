@@ -4930,6 +4930,22 @@ function sweepResidualCasualPowerCards(input, candidate, analysis) {
   });
 }
 
+/**
+ * Analyze a verified card pool for a commander/format without running the
+ * spell-selection tournament — the guided Build category loop
+ * (architecture/GUIDED_CONSTRUCTION_FLOW.md) needs each candidate's real
+ * roles/mechanics/semantics classification and a real strategicIntent to
+ * score suggestions against, but never needs a finished 99-card deck.
+ * Reuses the exact same prepareForgeAnalysis step forgeNativeMasterwork
+ * itself runs first, so a card classifies identically whether it goes
+ * through one-shot construction or the guided loop.
+ */
+export function analyzeForgePool(input) {
+  if (!input || !Array.isArray(input.cards) || !input.cards.length) throw new Error("Native Forge requires a verified card pool");
+  const evidenceByName = new Map((input.evidence || []).map((entry) => [normalized(entry.name), entry]));
+  return prepareForgeAnalysis(input, evidenceByName);
+}
+
 export function forgeNativeMasterwork(input) {
   if (!input || !Array.isArray(input.cards) || !input.cards.length) throw new Error("Native Forge requires a verified card pool");
   const evidenceByName = new Map((input.evidence || []).map((entry) => [normalized(entry.name), entry]));
