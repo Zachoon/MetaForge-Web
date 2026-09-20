@@ -17,45 +17,47 @@ import { POWER_TIERS, isExplicitWinCondition } from "./commander-power-signal.mj
 // targets, which remain the source for win conditions and synergy pieces.
 //
 // Ranges are a first draft grounded in common Commander deckbuilding
-// guidance, not yet play-tested or Zach-approved — expect these numbers to
-// move once real guided-build sessions produce feedback.
+// guidance and Zach-approved as a first draft on 2026-09-10 (numbers
+// recovered from the earlier Phase 1 session's uncommitted copy) — still not
+// play-tested, so expect them to move once real guided-build sessions produce
+// feedback.
 // =============================================================================
 
 const RAW_TARGETS = Object.freeze({
   ramp: Object.freeze({
-    Casual: Object.freeze({ min: 8, max: 12 }),
-    Focused: Object.freeze({ min: 9, max: 12 }),
-    "High-Power": Object.freeze({ min: 10, max: 14 }),
-    Maximum: Object.freeze({ min: 10, max: 16 }),
+    Casual: Object.freeze({ min: 8, max: 10 }),
+    Focused: Object.freeze({ min: 10, max: 12 }),
+    "High-Power": Object.freeze({ min: 10, max: 13 }),
+    Maximum: Object.freeze({ min: 10, max: 14 }),
   }),
   draw: Object.freeze({
-    Casual: Object.freeze({ min: 8, max: 10 }),
-    Focused: Object.freeze({ min: 9, max: 11 }),
-    "High-Power": Object.freeze({ min: 10, max: 12 }),
+    Casual: Object.freeze({ min: 6, max: 8 }),
+    Focused: Object.freeze({ min: 8, max: 10 }),
+    "High-Power": Object.freeze({ min: 8, max: 11 }),
     Maximum: Object.freeze({ min: 8, max: 12 }),
   }),
   interaction: Object.freeze({
-    Casual: Object.freeze({ min: 5, max: 8 }),
-    Focused: Object.freeze({ min: 7, max: 10 }),
-    "High-Power": Object.freeze({ min: 9, max: 12 }),
-    Maximum: Object.freeze({ min: 12, max: 16 }),
+    Casual: Object.freeze({ min: 6, max: 8 }),
+    Focused: Object.freeze({ min: 8, max: 10 }),
+    "High-Power": Object.freeze({ min: 10, max: 12 }),
+    Maximum: Object.freeze({ min: 10, max: 14 }),
   }),
   protection: Object.freeze({
-    Casual: Object.freeze({ min: 2, max: 4 }),
+    Casual: Object.freeze({ min: 2, max: 3 }),
     Focused: Object.freeze({ min: 3, max: 5 }),
-    "High-Power": Object.freeze({ min: 3, max: 6 }),
-    Maximum: Object.freeze({ min: 4, max: 8 }),
+    "High-Power": Object.freeze({ min: 4, max: 6 }),
+    Maximum: Object.freeze({ min: 4, max: 6 }),
   }),
   recursion: Object.freeze({
-    Casual: Object.freeze({ min: 1, max: 3 }),
-    Focused: Object.freeze({ min: 2, max: 4 }),
-    "High-Power": Object.freeze({ min: 2, max: 5 }),
-    Maximum: Object.freeze({ min: 2, max: 5 }),
+    Casual: Object.freeze({ min: 1, max: 2 }),
+    Focused: Object.freeze({ min: 2, max: 3 }),
+    "High-Power": Object.freeze({ min: 2, max: 4 }),
+    Maximum: Object.freeze({ min: 2, max: 4 }),
   }),
   sweeper: Object.freeze({
     Casual: Object.freeze({ min: 1, max: 2 }),
     Focused: Object.freeze({ min: 1, max: 3 }),
-    "High-Power": Object.freeze({ min: 2, max: 3 }),
+    "High-Power": Object.freeze({ min: 1, max: 3 }),
     // cEDH builds often skip symmetric board wipes entirely when leaning on
     // a fast/combo plan, so the floor drops to zero rather than climbing
     // with the other rows.

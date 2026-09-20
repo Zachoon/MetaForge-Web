@@ -706,6 +706,11 @@ export async function generateForgeResult(request: Request, env: Env, key: strin
         evidence: body.evidenceCards || [],
         budget: body.budget,
         complexity: body.complexity,
+        // A guided Build finishes by handing its accepted picks to this same
+        // imported/completion path; the shell the player chose must keep
+        // steering the fill of whatever slots they left open, not silently
+        // revert to every package the commander happens to trigger.
+        focusPackageId: isCommanderFormat(body.format) ? body.focusPackageId || undefined : undefined,
       });
       const generationMs = Date.now() - generationStart;
 
@@ -746,6 +751,7 @@ export async function generateForgeResult(request: Request, env: Env, key: strin
           secondCommander: body.secondCommander, evidence: body.evidenceCards || [],
           budget: body.budget, complexity: body.complexity, maxCardPrice: body.maxCardPrice,
           commonsOnly: body.commonsOnly, targetPowerTier: isCommanderFormat(body.format) ? body.targetPowerTier || undefined : undefined,
+          focusPackageId: isCommanderFormat(body.format) ? body.focusPackageId || undefined : undefined,
         },
       });
       const persistenceMs = Date.now() - persistenceStart;
@@ -850,6 +856,7 @@ export async function generateForgeResult(request: Request, env: Env, key: strin
         secondCommander: body.secondCommander, evidence: body.evidenceCards || [],
         budget: body.budget, complexity: body.complexity, maxCardPrice: body.maxCardPrice,
         commonsOnly: body.commonsOnly, targetPowerTier: isCommanderFormat(body.format) ? body.targetPowerTier || undefined : undefined,
+        focusPackageId: isCommanderFormat(body.format) ? body.focusPackageId || undefined : undefined,
       },
     });
     const persistenceMs = Date.now() - persistenceStart;

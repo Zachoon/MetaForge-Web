@@ -49,6 +49,7 @@
 .shell-option-selected{display:block;margin-top:14px;padding:12px;border:1px solid #466159;background:#10231f}
 .shell-option-selected b{display:block;font:600 16px Newsreader, Georgia,serif}
 .shell-option-selected span{display:block;margin-top:5px;color:#a4b4af;font-size:12px}
+.shell-option-selected small{display:block;margin-top:8px;color:#c9b89a;font-size:11px}
 @media(max-width:560px){.shell-options-grid{grid-template-columns:1fr}}
 .commander-search>.commander-choice{position:static;z-index:auto;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;max-height:none;overflow:visible;border:0;background:transparent;box-shadow:none}.commander-choice input{width:100%;padding:14px;border:1px solid #52625d;background:#071011;color:#e8efec;font-size:14px}.commander-choice button{padding:0 16px;border:1px solid #8d6331;background:linear-gradient(180deg,#382617,#21160f);color:#f4b866;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}.commander-choice button:hover,.commander-choice button:focus{outline:1px solid #f4b866;background:#4a2e18}.commander-choice button:disabled{opacity:.6}@media(max-width:560px){.commander-search>.commander-choice{grid-template-columns:1fr}.commander-choice button{min-height:42px}}
 

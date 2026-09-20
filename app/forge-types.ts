@@ -5,6 +5,7 @@ export type Chamber =
   | "archive"
   | "commission"
   | "refine"
+  | "guided-build"
   | "forging"
   | "masterworks"
   | "workbench";

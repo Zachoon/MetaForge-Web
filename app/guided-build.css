@@ -1,0 +1,79 @@
+/* Guided Build category loop (architecture/GUIDED_CONSTRUCTION_FLOW.md).
+   Reuses the commission chamber's shell (.commission-chamber, .back-link,
+   .commission-heading) and the same dark-teal palette as
+   blueprint-commander.css so it reads as the next step of the same
+   conversation, not a separate app. */
+.guided-body{display:grid;gap:18px}
+.guided-loading{margin:24px 0;color:#92a29d;font-size:14px}
+.guided-error{margin:18px 0;padding:14px;border:1px solid #7a4a3a;background:#1a0f0c;color:#e8d5cc}
+.guided-error p{margin:0 0 10px;font-size:13px}
+.guided-error div{display:flex;flex-wrap:wrap;gap:8px}
+.guided-error button{padding:8px 12px;border:1px solid #52655f;background:transparent;color:var(--teal);font-size:12px}
+
+.guided-steps{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
+.guided-step button{display:flex;align-items:center;gap:7px;padding:7px 11px;border:1px solid #293a36;background:transparent;color:#92a29d;font-size:11px;letter-spacing:.04em}
+.guided-step button span{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;border:1px solid currentColor;font-size:10px}
+.guided-step.current button{border-color:#5fc9b6;color:#e2e9e6;background:#163027}
+.guided-step.done button{color:var(--teal);border-color:#466159}
+.guided-step button:disabled{opacity:.55}
+
+.guided-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(240px,1fr);gap:18px;align-items:start}
+.guided-main{display:grid;gap:14px}
+.guided-offer{display:grid;grid-template-columns:minmax(150px,220px) 1fr;gap:16px;padding:16px;border:1px solid #4b5d58;background:#091112dc}
+.guided-offer[aria-busy="true"]{opacity:.7}
+.guided-offer img{display:block;width:100%;height:auto;border-radius:10px;background:#071011}
+.guided-offer small{display:block;color:var(--ember);font-size:11px;font-weight:900;letter-spacing:.16em}
+.guided-offer h2{margin:6px 0 2px;font:600 24px Newsreader,Georgia,serif;color:#e2e9e6}
+.guided-offer em{display:block;color:var(--teal);font:700 12px Inter,sans-serif}
+.guided-oracle{margin:10px 0 0;padding:10px;border-left:2px solid #466159;background:#071011;color:#a4b4af;font-size:12px;white-space:pre-line}
+.guided-why{margin:12px 0 0;color:#dce5e1;font-size:13px;line-height:1.45}
+.guided-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.guided-actions button{padding:10px 14px;border:1px solid #52655f;background:transparent;color:#dce5e1;font-size:12px}
+.guided-actions button.guided-accept{border-color:#5fc9b6;background:#163027;color:#e8fff8;font-weight:700}
+.guided-actions button:hover:not(:disabled),.guided-actions button:focus-visible{outline:0;border-color:#5fc9b6}
+.guided-actions button:disabled{opacity:.55}
+.guided-hint{margin:10px 0 0;color:#c9b89a;font-size:12px}
+.guided-empty{grid-column:1/-1}
+.guided-empty h2{margin:0 0 6px;font:600 20px Newsreader,Georgia,serif;color:#e2e9e6}
+.guided-empty p{margin:0;color:#92a29d;font-size:13px}
+
+.guided-search{padding:12px;border:1px solid #293a36;background:#071011}
+.guided-search.emphasized{border-color:#5fc9b6}
+.guided-search label span{display:block;margin-bottom:7px;color:#81938e;font-size:10px;font-weight:800;letter-spacing:.14em}
+.guided-search input{width:100%;padding:11px;border:1px solid #52625d;background:#091112;color:#e8efec;font-size:13px}
+.guided-search [role="listbox"]{display:grid;margin-top:8px;border:1px solid #293a36}
+.guided-search [role="option"]{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;padding:9px 11px;border:0;border-bottom:1px solid #293a36;background:transparent;color:#dce5e1;text-align:left}
+.guided-search [role="option"] b{grid-column:1;font-size:13px}
+.guided-search [role="option"] small{grid-column:1;color:#81938e;font-size:11px}
+.guided-search [role="option"] i{grid-column:2;grid-row:1/3;color:var(--teal);font-style:normal;font-size:16px}
+.guided-search [role="option"]:hover:not(:disabled),.guided-search [role="option"]:focus-visible{outline:0;background:#163027}
+.guided-search [role="option"]:disabled{opacity:.45}
+
+.guided-nav{display:flex;flex-wrap:wrap;gap:8px}
+.guided-nav button{padding:11px 16px;border:1px solid #52655f;background:transparent;color:#92a29d;font-size:12px}
+.guided-nav button.guided-next{border-color:#5fc9b6;background:#163027;color:#e8fff8;font-weight:700}
+.guided-nav button:disabled{opacity:.55}
+.guided-nav button:hover:not(:disabled),.guided-nav button:focus-visible{outline:0;border-color:#8dd9cb}
+
+.guided-side{display:grid;gap:14px}
+.guided-ledger,.guided-picks{padding:14px;border:1px solid #293a36;background:#071011}
+.guided-ledger header small,.guided-picks header small{display:block;color:var(--ember);font-size:11px;font-weight:900;letter-spacing:.16em}
+.guided-ledger header p,.guided-picks header p{margin:6px 0 10px;color:#81938e;font-size:11px;line-height:1.4}
+.guided-ledger ul,.guided-picks ul{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+.guided-ledger-row{display:grid;gap:2px;padding:7px 9px;border:1px solid #1d2c29;border-left:3px solid #52655f;background:#091112}
+.guided-ledger-row.current{border-color:#466159;background:#10231f}
+.guided-ledger-row.in-range{border-left-color:#5fc9b6}
+.guided-ledger-row.under{border-left-color:#c9b89a}
+.guided-ledger-row.over{border-left-color:#c98a6a}
+.guided-ledger-row b{font-size:12px;color:#dce5e1}
+.guided-ledger-row span{color:#92a29d;font-size:11px}
+.guided-picks li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 9px;border:1px solid #1d2c29;background:#091112;font-size:12px;color:#dce5e1}
+.guided-picks li button{padding:0 8px;border:0;background:transparent;color:#92a29d;font-size:16px}
+.guided-picks li button:hover:not(:disabled){color:#e8fff8}
+.guided-picks-empty{margin:0;color:#81938e;font-size:12px}
+
+@media(max-width:820px){
+  .guided-grid{grid-template-columns:1fr}
+  .guided-offer{grid-template-columns:1fr}
+  .guided-offer img{max-width:260px}
+}

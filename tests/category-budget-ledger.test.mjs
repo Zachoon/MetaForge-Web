@@ -10,9 +10,9 @@ const row = (name, roles, quantity = 1) => ({ name, roles, quantity, oracleText:
 
 function fundamentalsFixture() {
   return [
-    ...Array.from({ length: 9 }, (_, i) => row(`Ramp ${i}`, ["ramp"])),
+    ...Array.from({ length: 10 }, (_, i) => row(`Ramp ${i}`, ["ramp"])),
     ...Array.from({ length: 9 }, (_, i) => row(`Draw ${i}`, ["draw"])),
-    ...Array.from({ length: 7 }, (_, i) => row(`Removal ${i}`, ["interaction"])),
+    ...Array.from({ length: 9 }, (_, i) => row(`Removal ${i}`, ["interaction"])),
     ...Array.from({ length: 3 }, (_, i) => row(`Ward ${i}`, ["protection"])),
     ...Array.from({ length: 2 }, (_, i) => row(`Regrowth ${i}`, ["recursion"])),
     ...Array.from({ length: 1 }, (_, i) => row(`Wrath ${i}`, ["sweeper"])),
@@ -30,9 +30,9 @@ test("CATEGORY_SEQUENCE matches the spec's fixed teaching order", () => {
 test("fundamentals rows count actual per role and compare against the Focused target", () => {
   const candidate = { rows: fundamentalsFixture() };
   const ledger = buildCategoryBudgetLedger(candidate, {}, { targetPowerTier: "Focused" });
-  assert.equal(ledger.byCategory.ramp.actual, 9);
+  assert.equal(ledger.byCategory.ramp.actual, 10);
   assert.equal(ledger.byCategory.draw.actual, 9);
-  assert.equal(ledger.byCategory.interaction.actual, 7);
+  assert.equal(ledger.byCategory.interaction.actual, 9);
   assert.equal(ledger.byCategory.protection.actual, 3);
   assert.equal(ledger.byCategory.recursion.actual, 2);
   assert.equal(ledger.byCategory.sweeper.actual, 1);

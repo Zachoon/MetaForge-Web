@@ -16,7 +16,9 @@
 // endpoints for a guest session.
 import { analyzeForgePool } from "../app/native-masterwork-engine.mjs";
 import { suggestCardForCategory } from "../app/guided-suggestion.mjs";
-import { CATEGORY_SEQUENCE } from "../app/category-budget-ledger.mjs";
+import { CATEGORY_SEQUENCE, buildCategoryBudgetLedger } from "../app/category-budget-ledger.mjs";
+import { flattenAnalyzedEntries } from "../app/guided-build-rows.mjs";
+import { POWER_TIERS } from "../app/commander-power-signal.mjs";
 import { STRATEGIC_PACKAGE_IDS } from "../app/strategic-intent.mjs";
 import {
   ALLOWED_FORMATS,
@@ -79,7 +81,14 @@ const normalizeKey = (name: string) => name.normalize("NFKC").trim().toLocaleLow
  */
 function computeOffer(
   cards: any[],
-  input: { format: string; commander: CommanderInput; secondCommander: CommanderInput; note: string; focusPackageId?: string },
+  input: {
+    format: string;
+    commander: CommanderInput;
+    secondCommander: CommanderInput;
+    note: string;
+    focusPackageId?: string;
+    targetPowerTier?: string;
+  },
   category: string,
   acceptedNames: string[],
   declinedNames: string[],
@@ -96,12 +105,30 @@ function computeOffer(
     intent: analysis.strategicIntent,
     declinedNames,
   } as any);
-  return { suggestion, intent: analysis.strategicIntent };
+  const ledger = buildCategoryBudgetLedger(
+    { rows: flattenAnalyzedEntries(partialRows) },
+    analysis.strategicIntent,
+    { targetPowerTier: input.targetPowerTier },
+  );
+  return { suggestion, ledger };
 }
 
-function serializeOffer(suggestion: ReturnType<typeof suggestCardForCategory>) {
+function serializeLedger(ledger: ReturnType<typeof buildCategoryBudgetLedger>) {
+  return ledger.categories.map((row: any) => ({
+    category: row.category,
+    actual: row.actual,
+    target: row.target,
+    status: row.status,
+  }));
+}
+
+function serializeOffer(
+  suggestion: ReturnType<typeof suggestCardForCategory>,
+  ledger: ReturnType<typeof buildCategoryBudgetLedger>,
+) {
   const card = suggestion.offer?.card || suggestion.offer;
   return {
+    ledger: serializeLedger(ledger),
     category: suggestion.category,
     exhausted: suggestion.exhausted,
     remainingCandidates: suggestion.remainingCandidates,
@@ -114,7 +141,6 @@ function serializeOffer(suggestion: ReturnType<typeof suggestCardForCategory>) {
           manaCost: card.manaCost,
           cmc: card.cmc,
           priceUsd: card.priceUsd,
-          image: card.image,
         }
       : null,
   };
@@ -150,26 +176,29 @@ export async function handleForgeGuidedStart(request: Request, env: Env): Promis
   if (body?.focusPackageId && !focusPackageId) {
     return json({ error: "focusPackageId must be one of the supported shell package ids" }, 400);
   }
+  const targetPowerTier = typeof body?.targetPowerTier === "string" && (POWER_TIERS as readonly string[]).includes(body.targetPowerTier)
+    ? body.targetPowerTier
+    : undefined;
   void MAX_ORACLE_TEXT; // sanitizeCommander already enforces this internally.
 
   try {
     const counter: ScryfallCounter = { count: 0 };
     const pool = await loadNativeForgePool(body.format, commander, "", note, secondCommander, counter);
-    const input = { format: body.format, commander, secondCommander, note, focusPackageId };
-    const { suggestion } = computeOffer(pool.cards, input, CATEGORY_SEQUENCE[0], [], []);
+    const input = { format: body.format, commander, secondCommander, note, focusPackageId, targetPowerTier };
+    const { suggestion, ledger } = computeOffer(pool.cards, input, CATEGORY_SEQUENCE[0], [], []);
 
     const generationId = await storeGeneration(env, key, {
       selected: null,
       candidates: [],
       cardPool: pool.cards,
       options: { format: body.format, strategy: "Guided", target: 0 },
-      forgeInput: { commander, secondCommander, note, focusPackageId: focusPackageId || null },
+      forgeInput: { commander, secondCommander, note, focusPackageId: focusPackageId || null, targetPowerTier: targetPowerTier || null },
     });
     if (!generationId) {
       return json({ error: "The guided Build could not be started for this commander right now." }, 500);
     }
 
-    return json({ generationId, colors: pool.colors, categorySequence: CATEGORY_SEQUENCE, ...serializeOffer(suggestion) });
+    return json({ generationId, colors: pool.colors, categorySequence: CATEGORY_SEQUENCE, ...serializeOffer(suggestion, ledger) });
   } catch (error) {
     console.error("forge-guided-start failed", error);
     return json({ error: "The guided Build could not be started." }, 500);
@@ -212,6 +241,7 @@ export async function handleForgeGuidedNext(request: Request, env: Env): Promise
       secondCommander: CommanderInput;
       note: string;
       focusPackageId: string | null;
+      targetPowerTier?: string | null;
     };
     const input = {
       format: stored.options.format,
@@ -219,9 +249,10 @@ export async function handleForgeGuidedNext(request: Request, env: Env): Promise
       secondCommander: forgeInput.secondCommander,
       note: forgeInput.note || "",
       focusPackageId: forgeInput.focusPackageId || undefined,
+      targetPowerTier: forgeInput.targetPowerTier || undefined,
     };
-    const { suggestion } = computeOffer(stored.cardPool, input, body.category, acceptedNames, declinedNames);
-    return json(serializeOffer(suggestion));
+    const { suggestion, ledger } = computeOffer(stored.cardPool, input, body.category, acceptedNames, declinedNames);
+    return json(serializeOffer(suggestion, ledger));
   } catch (error) {
     console.error("forge-guided-next failed", error);
     return json({ error: "The guided Build could not continue for this session." }, 500);

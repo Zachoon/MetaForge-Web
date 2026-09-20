@@ -102,6 +102,31 @@ import { commanderShellOptions } from "./strategic-intent.mjs";
 // Mirrors commanderShellOptions' (strategic-intent.mjs) return shape — kept
 // local since nothing outside this context needs the type yet.
 type ShellOption = { id: string; label: string; coreMin: number; supportMin: number; legFloor: number };
+
+type GuidedOffer = { name: string; typeLine: string; oracleText: string; manaCost: string; cmc: number; priceUsd?: number };
+type GuidedLedgerRow = {
+  category: string;
+  actual: number;
+  target: { min: number; max: number } | null;
+  status: "under" | "in-range" | "over" | "no-target";
+};
+type GuidedReason = {
+  deficitsFilled: string[];
+  topPositive: { kind: string; key: string } | null;
+  nearestAlternative: { name: string; margin: number } | null;
+} | null;
+type GuidedSession = {
+  generationId: string;
+  categories: string[];
+  categoryIndex: number;
+  accepted: string[];
+  declined: string[];
+  offer: GuidedOffer | null;
+  reason: GuidedReason;
+  exhausted: boolean;
+  remainingCandidates: number;
+  ledger: GuidedLedgerRow[];
+};
 import {
   FORMAT_PREVIEWS,
   isCommanderFormat,
@@ -343,6 +368,13 @@ export function useForgeSessionState() {
   // focusPackageId (buildStrategicIntent only honors an id that commander
   // actually triggers).
   const [selectedShell, setSelectedShell] = useState<ShellOption | null>(null);
+  // Live state of the guided Build category loop
+  // (architecture/GUIDED_CONSTRUCTION_FLOW.md flow step 3). The browser holds
+  // only names and small counters — the classified card pool and every
+  // score live server-side under generationId (worker/forge-guided-build.ts).
+  const [guidedSession, setGuidedSession] = useState<GuidedSession | null>(null);
+  const [guidedLoading, setGuidedLoading] = useState(false);
+  const [guidedError, setGuidedError] = useState("");
 
   // Authentication used to return players to an empty app root. Carry the
   // compact commission brief through Cloudflare Access in the original URL,
@@ -985,7 +1017,167 @@ export function useForgeSessionState() {
     };
   }, [chamber, stage, motionMode]);
 
+  async function guidedFetch(path: string, payload: Record<string, unknown>) {
+    const response = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    // Same discipline as callForgeGenerate: read the body once and only
+    // parse it when the server says it is JSON, so an expired-session HTML
+    // redirect surfaces as a real sentence instead of "Unexpected token '<'".
+    const raw = await response.text();
+    let data: any = null;
+    if ((response.headers.get("content-type") || "").toLowerCase().includes("application/json")) {
+      try { data = JSON.parse(raw); } catch { data = null; }
+    }
+    if (!response.ok || !data) {
+      throw new Error(
+        response.status === 401 || !data
+          ? "Your session expired or the connection dropped. Sign in again, then restart the guided build."
+          : String(data.error || "The guided build hit a problem. Try again."),
+      );
+    }
+    return data;
+  }
+  const guidedOfferFields = (data: any) => ({
+    offer: (data.offer || null) as GuidedOffer | null,
+    reason: (data.reason || null) as GuidedReason,
+    exhausted: Boolean(data.exhausted),
+    remainingCandidates: Number(data.remainingCandidates || 0),
+    ledger: (Array.isArray(data.ledger) ? data.ledger : []) as GuidedLedgerRow[],
+  });
+  async function startGuidedBuild() {
+    if (!selectedCommander || guestMode || !isCommanderFormat(format)) return;
+    const asCommanderInput = (option: CommanderOption) => ({
+      name: option.name,
+      colors: option.colors,
+      oracleText: commanderOracleText(option) || option.verifiedFacts,
+    });
+    setChamber("guided-build");
+    setGuidedSession(null);
+    setGuidedError("");
+    setGuidedLoading(true);
+    try {
+      const data = await guidedFetch("/api/forge/guided/start", {
+        format,
+        commander: asCommanderInput(selectedCommander),
+        secondCommander: selectedSecondCommander ? asCommanderInput(selectedSecondCommander) : null,
+        focusPackageId: selectedShell?.id,
+        targetPowerTier: targetPowerTier || undefined,
+      });
+      setGuidedSession({
+        generationId: data.generationId,
+        categories: data.categorySequence,
+        categoryIndex: 0,
+        accepted: [],
+        declined: [],
+        ...guidedOfferFields(data),
+      });
+    } catch (error) {
+      setGuidedError(error instanceof Error ? error.message : "The guided build could not be started.");
+    } finally {
+      setGuidedLoading(false);
+    }
+  }
+  async function requestGuidedOffer(
+    session: GuidedSession,
+    patch: Partial<Pick<GuidedSession, "categoryIndex" | "accepted" | "declined">>,
+  ) {
+    const next = { ...session, ...patch };
+    setGuidedLoading(true);
+    setGuidedError("");
+    try {
+      const data = await guidedFetch("/api/forge/guided/next", {
+        generationId: next.generationId,
+        category: next.categories[next.categoryIndex],
+        acceptedNames: next.accepted,
+        declinedNames: next.declined,
+      });
+      setGuidedSession({ ...next, ...guidedOfferFields(data) });
+    } catch (error) {
+      setGuidedError(error instanceof Error ? error.message : "The guided build could not continue.");
+    } finally {
+      setGuidedLoading(false);
+    }
+  }
+  function acceptGuidedOffer() {
+    if (!guidedSession?.offer || guidedLoading) return;
+    void requestGuidedOffer(guidedSession, {
+      accepted: [...guidedSession.accepted, guidedSession.offer.name],
+      declined: [],
+    });
+  }
+  // Decline IS the reroll (spec's resolved decision #4): the declined name
+  // rides along so the server offers a different card for this same slot.
+  function declineGuidedOffer() {
+    if (!guidedSession?.offer || guidedLoading) return;
+    void requestGuidedOffer(guidedSession, {
+      declined: [...guidedSession.declined, guidedSession.offer.name],
+    });
+  }
+  function addGuidedManualCard(name: string) {
+    if (!guidedSession || guidedLoading) return;
+    const clean = name.trim();
+    if (!clean) return;
+    const lower = clean.toLocaleLowerCase("en");
+    const commanderNames = [selectedCommander?.name, selectedSecondCommander?.name].filter(Boolean).map((value) => String(value).toLocaleLowerCase("en"));
+    if (commanderNames.includes(lower)) return;
+    if (guidedSession.accepted.some((entry) => entry.toLocaleLowerCase("en") === lower)) return;
+    void requestGuidedOffer(guidedSession, { accepted: [...guidedSession.accepted, clean] });
+  }
+  function removeGuidedPick(name: string) {
+    if (!guidedSession || guidedLoading) return;
+    void requestGuidedOffer(guidedSession, {
+      accepted: guidedSession.accepted.filter((entry) => entry !== name),
+    });
+  }
+  function goToGuidedCategory(index: number) {
+    if (!guidedSession || guidedLoading) return;
+    if (index < 0 || index >= guidedSession.categories.length) return;
+    void requestGuidedOffer(guidedSession, { categoryIndex: index, declined: [] });
+  }
+  function finishGuidedCategory() {
+    if (!guidedSession || guidedLoading) return;
+    if (guidedSession.categoryIndex + 1 >= guidedSession.categories.length) {
+      finishGuidedBuild();
+      return;
+    }
+    goToGuidedCategory(guidedSession.categoryIndex + 1);
+  }
+  // The finished guided picks are exactly a partial decklist, and the
+  // imported/completion path already reserves the player's own cards and
+  // fills only the slots they left open — so completion is a handoff to
+  // that existing, tested pipeline rather than new construction logic.
+  function finishGuidedBuild() {
+    if (!guidedSession) return;
+    const seed = Date.now();
+    const deckText = guidedSession.accepted.map((name) => `1 ${name}`).join("\n");
+    setMilestoneMotion(null);
+    setCommissionSeed(seed);
+    setStage(0);
+    setSelectedWork(0);
+    setChamber("forging");
+    void commitDirectForge(deckText ? "decklist" : "commander", seed, { deckOverride: deckText || undefined, guided: true });
+  }
+  function exitGuidedBuild() {
+    setChamber("commission");
+  }
+  useEffect(() => {
+    setGuidedSession(null);
+    setGuidedError("");
+  }, [selectedCommander?.name, selectedSecondCommander?.name, selectedShell?.id, format]);
+
   const awaken = () => {
+    // Picking a shell on the discover path launches the guided category loop
+    // (Zach's call, 2026-09-16). The loop needs a stored server-side session,
+    // which only signed-in accounts have, so guests and shell-less builds
+    // keep the one-shot path exactly as before.
+    if (chamber === "commission" && selectedShell && selectedCommander && !guestMode && isCommanderFormat(format) && !deck.trim()) {
+      if (guidedSession) setChamber("guided-build");
+      else void startGuidedBuild();
+      return;
+    }
     const seed = Date.now();
     // Enter the ceremony directly. The former ignition milestone painted a
     // full-screen rune, crosshair, smoke, and spark burst over the first step.
@@ -1026,7 +1218,7 @@ export function useForgeSessionState() {
   const chapter =
     chamber === "entrance" || chamber === "archive"
       ? 0
-      : chamber === "commission" || chamber === "refine"
+      : chamber === "commission" || chamber === "refine" || chamber === "guided-build"
         ? 1
         : chamber === "forging"
           ? 2
@@ -1036,7 +1228,7 @@ export function useForgeSessionState() {
       ? "forging"
       : chamber === "masterworks"
         ? "reveal"
-        : chamber === "commission" || chamber === "refine"
+        : chamber === "commission" || chamber === "refine" || chamber === "guided-build"
           ? "thinking"
           : chamber === "entrance" || chamber === "archive"
             ? "dormant"
@@ -3367,7 +3559,16 @@ export function useForgeSessionState() {
   // Skips the three-masterwork reveal entirely: a pasted decklist or a
   // commander already locked in gives the Forge one clear thing to build,
   // so there's no real ambiguity to resolve with three alternates.
-  async function commitDirectForge(mode: "decklist" | "commander", seed = commissionSeed) {
+  async function commitDirectForge(
+    mode: "decklist" | "commander",
+    seed = commissionSeed,
+    options: { deckOverride?: string; guided?: boolean } = {},
+  ) {
+    // A guided Build finishes by handing its accepted picks here as the
+    // decklist, without going through the `deck` state (which the discover
+    // path uses as its "did the player paste a list" signal — setting it
+    // would silently reroute a later plain Build click into import mode).
+    const deckText = options.deckOverride ?? deck;
     const launchStartedAt = Date.now();
     const ceremonyReady = new Promise<void>((resolve) => {
       window.setTimeout(resolve, FORGE_CEREMONY_MINIMUM_MS);
@@ -3377,13 +3578,17 @@ export function useForgeSessionState() {
     const generationId = crypto.randomUUID();
     const directWork: Masterwork = {
       rune: "ᛞ",
-      name: mode === "decklist" ? "Your List, Forged" : `${commander?.name || "Your Commander"}, Forged`,
+      name: options.guided
+        ? `${commander?.name || "Your Commander"}, Built Together`
+        : mode === "decklist" ? "Your List, Forged" : `${commander?.name || "Your Commander"}, Forged`,
       path: mode === "decklist" ? "Adapted From Your List" : "Built For Your Commander",
       tone: "steel",
       verdict:
-        mode === "decklist"
-          ? "Adapted directly from the list you submitted, gaps filled to complete a legal deck."
-          : "Built directly around the commander you chose, no alternates to sort through.",
+        options.guided
+          ? "Built step by step with you — every pick you accepted is kept, and the Forge filled only the slots you left open."
+          : mode === "decklist"
+            ? "Adapted directly from the list you submitted, gaps filled to complete a legal deck."
+            : "Built directly around the commander you chose, no alternates to sort through.",
     };
     setRestoredWork(directWork);
     setDeckId(generationId);
@@ -3451,12 +3656,17 @@ export function useForgeSessionState() {
           complexity,
           budget,
           note: `${commissionNote}\n${interventionLearning.reusableGuidance}`.trim(),
-          seed: hashText(`${seed}|import|${deck.length}`),
+          seed: hashText(`${seed}|import|${deckText.length}`),
           commander: commanderInput,
           secondCommander: secondCommanderInput,
-          deck,
+          deck: deckText,
           evidenceCards: evidence?.cards || [],
           reviewFocus: reviewFocus || undefined,
+          // Only a guided finish carries the shell the player picked, so it
+          // keeps steering how the slots they left open get filled (see
+          // worker/forge-generate.ts). A plain pasted-list completion never
+          // inherits a lingering pick from an earlier discover session.
+          focusPackageId: options.guided && isCommanderFormat(format) ? selectedShell?.id || undefined : undefined,
         });
         trackLaunchEvent("forge_succeeded", { mode, format, durationMs: Date.now() - launchStartedAt });
         setImportWarnings([
@@ -3472,7 +3682,7 @@ export function useForgeSessionState() {
           commander,
           index: 0,
           replyText: `${nativeReport.methodology}\n\n${nativeReport.reasoning.summary}\n${nativeReport.laboratory.summary}${nativeReport.laboratory.verdict === "advance" ? `\nTest contract: ${nativeReport.laboratory.contract}` : ""}\n${nativeReport.reasoning.boundary} ${nativeReport.laboratory.boundary}${reviewFocusResult ? `\n\nCoaching focus — ${reviewFocusResult.focus}:\n${reviewFocusResult.concise}` : ""}`,
-          revisionNote: "Adapted directly from your submitted list",
+          revisionNote: options.guided ? "Built step by step from your guided picks" : "Adapted directly from your submitted list",
           cardPool,
           serverGenerationId: newGenerationId,
           persist: !guestMode,
@@ -4726,6 +4936,18 @@ export function useForgeSessionState() {
     shellOptions,
     selectedShell,
     setSelectedShell,
+    guidedSession,
+    guidedLoading,
+    guidedError,
+    startGuidedBuild,
+    acceptGuidedOffer,
+    declineGuidedOffer,
+    addGuidedManualCard,
+    removeGuidedPick,
+    goToGuidedCategory,
+    finishGuidedCategory,
+    finishGuidedBuild,
+    exitGuidedBuild,
     moveCard,
     deckWithout,
     preserveDeckEdit,

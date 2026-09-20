@@ -493,6 +493,11 @@ export function CommissionChamber() {
               <article className="shell-option-selected">
                 <b>{selectedShell.label}</b>
                 <span>{selectedShell.coreMin}+ core pieces, {selectedShell.supportMin}+ support pieces</span>
+                <small>
+                  {guestMode
+                    ? "The Forge will build your deck around this shell."
+                    : "You'll build this deck together, one step at a time — the Forge suggests, you decide."}
+                </small>
               </article>
             ) : (
               <>
@@ -510,7 +515,9 @@ export function CommissionChamber() {
                   ))}
                 </div>
                 <p className="shell-options-skip-note">
-                  Skip this and the Forge builds toward every shell {selectedCommander.name} supports at once — the same as today.
+                  {guestMode
+                    ? `Skip this and the Forge builds toward every shell ${selectedCommander.name} supports at once.`
+                    : `Pick one to build step by step with the Forge — or skip, and it builds the whole deck at once toward every shell ${selectedCommander.name} supports.`}
                 </p>
               </>
             )}
@@ -541,7 +548,15 @@ export function CommissionChamber() {
                 ? "Confirm you're human above, then build your deck"
                 : "Your choices are ready"}
           </span>
-          <strong>{isScratch ? "COMPLETE THIS DECK" : isComplete ? "COMPLETE MY DECKLIST" : "BUILD MY DECK"}</strong>
+          <strong>
+            {isScratch
+              ? "COMPLETE THIS DECK"
+              : isComplete
+                ? "COMPLETE MY DECKLIST"
+                : chamber === "commission" && selectedShell && !guestMode && isCommanderFormat(format)
+                  ? "BUILD IT TOGETHER"
+                  : "BUILD MY DECK"}
+          </strong>
           <b>→</b>
         </button>
         {revealOccupancyLabels.length > 0 && (

@@ -10,6 +10,7 @@ import { ForgingChamber } from "./components/forge/forging-chamber";
 import { MasterworksChamber } from "./components/forge/masterworks-chamber";
 import { ArchiveChamber } from "./components/forge/archive-chamber";
 import { CommissionChamber } from "./components/forge/commission-chamber";
+import { GuidedBuildChamber } from "./components/forge/guided-build-chamber";
 import { WorkbenchChamber } from "./components/forge/workbench-chamber";
 import { WorkbenchEditorChamber } from "./components/forge/workbench-editor-chamber";
 import { resolveAcademyGuideEntry } from "./academy-guide-entry.mjs";
@@ -691,6 +692,8 @@ export default function Home() {
 
       {chamber === "archive" && <ArchiveChamber />}
       {(chamber === "commission" || chamber === "refine") && <CommissionChamber />}
+
+      {chamber === "guided-build" && <GuidedBuildChamber />}
 
       {chamber === "forging" && <ForgingChamber />}
 
