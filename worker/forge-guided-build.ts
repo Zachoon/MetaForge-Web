@@ -18,7 +18,7 @@ import { analyzeForgePool } from "../app/native-masterwork-engine.mjs";
 import { suggestCardForCategory } from "../app/guided-suggestion.mjs";
 import { CATEGORY_SEQUENCE, buildCategoryBudgetLedger } from "../app/category-budget-ledger.mjs";
 import { flattenAnalyzedEntries } from "../app/guided-build-rows.mjs";
-import { POWER_TIERS } from "../app/commander-power-signal.mjs";
+import { POWER_TIERS, powerSignalCategoryFor } from "../app/commander-power-signal.mjs";
 import { STRATEGIC_PACKAGE_IDS } from "../app/strategic-intent.mjs";
 import {
   ALLOWED_FORMATS,
@@ -88,11 +88,21 @@ function computeOffer(
     note: string;
     focusPackageId?: string;
     targetPowerTier?: string;
+    strategy?: string;
+    complexity?: string;
+    budget?: string;
+    maxCardPrice?: number;
+    commonsOnly?: boolean;
   },
   category: string,
   acceptedNames: string[],
   declinedNames: string[],
 ) {
+  // maxCardPrice / commonsOnly are hard promises (analyzeForgePool drops
+  // ineligible cards from `spells` entirely), and budget / Casual power are
+  // the same soft pressures one-shot construction passes to its own scoring
+  // — the guided loop must keep the preferences the player already set,
+  // not quietly offer a $40 card to someone who asked for a budget build.
   const analysis = analyzeForgePool({ ...input, cards });
   const analyzedByName = new Map(analysis.cards.map((entry: any) => [normalizeKey(entry.card?.name || entry.name || ""), entry]));
   const partialRows = acceptedNames
@@ -104,6 +114,11 @@ function computeOffer(
     pool: analysis.spells,
     intent: analysis.strategicIntent,
     declinedNames,
+    options: {
+      budgetConstraint: input.budget === "Budget conscious",
+      powerConstraint: input.targetPowerTier === "Casual",
+      powerSignalCategoryFor,
+    },
   } as any);
   const ledger = buildCategoryBudgetLedger(
     { rows: flattenAnalyzedEntries(partialRows) },
@@ -179,20 +194,34 @@ export async function handleForgeGuidedStart(request: Request, env: Env): Promis
   const targetPowerTier = typeof body?.targetPowerTier === "string" && (POWER_TIERS as readonly string[]).includes(body.targetPowerTier)
     ? body.targetPowerTier
     : undefined;
+  const shortString = (value: unknown) => (typeof value === "string" ? value.slice(0, MAX_SHORT_STRING) : undefined);
+  const strategy = shortString(body?.strategy) || "Balanced midrange";
+  const complexity = shortString(body?.complexity);
+  const budget = shortString(body?.budget);
+  const maxCardPrice = typeof body?.maxCardPrice === "number" && Number.isFinite(body.maxCardPrice) && body.maxCardPrice >= 0 && body.maxCardPrice <= 100_000
+    ? body.maxCardPrice
+    : undefined;
+  const commonsOnly = body?.commonsOnly === true;
   void MAX_ORACLE_TEXT; // sanitizeCommander already enforces this internally.
 
   try {
     const counter: ScryfallCounter = { count: 0 };
     const pool = await loadNativeForgePool(body.format, commander, "", note, secondCommander, counter);
-    const input = { format: body.format, commander, secondCommander, note, focusPackageId, targetPowerTier };
+    const input = { format: body.format, commander, secondCommander, note, focusPackageId, targetPowerTier, strategy, complexity, budget, maxCardPrice, commonsOnly };
     const { suggestion, ledger } = computeOffer(pool.cards, input, CATEGORY_SEQUENCE[0], [], []);
 
     const generationId = await storeGeneration(env, key, {
       selected: null,
       candidates: [],
       cardPool: pool.cards,
-      options: { format: body.format, strategy: "Guided", target: 0 },
-      forgeInput: { commander, secondCommander, note, focusPackageId: focusPackageId || null, targetPowerTier: targetPowerTier || null },
+      options: { format: body.format, strategy, target: 0 },
+      forgeInput: {
+        commander, secondCommander, note,
+        focusPackageId: focusPackageId || null,
+        targetPowerTier: targetPowerTier || null,
+        strategy, complexity: complexity || null, budget: budget || null,
+        maxCardPrice: maxCardPrice ?? null, commonsOnly,
+      },
     });
     if (!generationId) {
       return json({ error: "The guided Build could not be started for this commander right now." }, 500);
@@ -242,6 +271,11 @@ export async function handleForgeGuidedNext(request: Request, env: Env): Promise
       note: string;
       focusPackageId: string | null;
       targetPowerTier?: string | null;
+      strategy?: string | null;
+      complexity?: string | null;
+      budget?: string | null;
+      maxCardPrice?: number | null;
+      commonsOnly?: boolean;
     };
     const input = {
       format: stored.options.format,
@@ -250,6 +284,11 @@ export async function handleForgeGuidedNext(request: Request, env: Env): Promise
       note: forgeInput.note || "",
       focusPackageId: forgeInput.focusPackageId || undefined,
       targetPowerTier: forgeInput.targetPowerTier || undefined,
+      strategy: forgeInput.strategy || stored.options.strategy || undefined,
+      complexity: forgeInput.complexity || undefined,
+      budget: forgeInput.budget || undefined,
+      maxCardPrice: forgeInput.maxCardPrice ?? undefined,
+      commonsOnly: Boolean(forgeInput.commonsOnly),
     };
     const { suggestion, ledger } = computeOffer(stored.cardPool, input, body.category, acceptedNames, declinedNames);
     return json(serializeOffer(suggestion, ledger));

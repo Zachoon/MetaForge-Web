@@ -1065,6 +1065,14 @@ export function useForgeSessionState() {
         secondCommander: selectedSecondCommander ? asCommanderInput(selectedSecondCommander) : null,
         focusPackageId: selectedShell?.id,
         targetPowerTier: targetPowerTier || undefined,
+        // The same preferences one-shot Build honors: budget, price cap,
+        // commons-only, strategy, complexity. A guided build must not quietly
+        // ignore a constraint the player already set.
+        strategy,
+        complexity,
+        budget,
+        maxCardPrice,
+        commonsOnly,
       });
       setGuidedSession({
         generationId: data.generationId,

@@ -54,6 +54,19 @@ test("worker routes both guided endpoints and validates focusPackageId against t
   assert.match(generate, /focusPackageId: isCommanderFormat\(body\.format\) \? body\.focusPackageId \|\| undefined : undefined/);
 });
 
+test("the guided build carries the player's existing budget/price/commons/strategy preferences end to end", () => {
+  const client = read("app/forge-session-context.tsx");
+  const start = client.slice(client.indexOf("async function startGuidedBuild()"), client.indexOf("async function requestGuidedOffer"));
+  for (const field of ["strategy,", "complexity,", "budget,", "maxCardPrice,", "commonsOnly,"]) {
+    assert.ok(start.includes(field), `startGuidedBuild must send ${field}`);
+  }
+  const worker = read("worker/forge-guided-build.ts");
+  assert.match(worker, /budgetConstraint: input\.budget === "Budget conscious"/);
+  assert.match(worker, /powerConstraint: input\.targetPowerTier === "Casual"/);
+  assert.match(worker, /maxCardPrice: forgeInput\.maxCardPrice \?\? undefined/);
+  assert.match(worker, /commonsOnly: Boolean\(forgeInput\.commonsOnly\)/);
+});
+
 test("both guided endpoints require an authenticated account and a rate limit", () => {
   const source = read("worker/forge-guided-build.ts");
   assert.equal((source.match(/await userKey\(request, env\)/g) || []).length, 2);

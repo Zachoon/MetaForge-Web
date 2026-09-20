@@ -69,6 +69,32 @@ test("the existing ledger runs unchanged against live guided picks once flattene
   assert.ok(ledger.byCategory.synergyPieces.actual >= 2, "the two Auras should register as auras-package pieces");
 });
 
+test("the player's price cap and commons-only hard filters carry into guided suggestions", () => {
+  const cards = [
+    ...pool(),
+    { ...card("Pricey Rock", "Artifact", "Add one mana. Create a Treasure token.", 2, 45, "{2}"), rarity: "mythic" },
+    { ...card("Cheap Common Rock", "Artifact", "Add one mana. Create a Treasure token.", 2, 0.3, "{2}"), rarity: "common" },
+  ];
+  const capped = analyzeForgePool({ ...baseInput(), cards, maxCardPrice: 5 });
+  const cappedNames = capped.spells.map((entry) => entry.card.name);
+  assert.ok(!cappedNames.includes("Pricey Rock"), "a card over the price cap must never reach the suggestion pool");
+  assert.ok(cappedNames.includes("Cheap Common Rock"));
+
+  const commons = analyzeForgePool({ ...baseInput(), cards, commonsOnly: true });
+  assert.ok(!commons.spells.map((entry) => entry.card.name).includes("Pricey Rock"), "a non-common must never be offered under commons-only");
+
+  const offered = new Set();
+  const declined = [];
+  for (let i = 0; i < 12; i += 1) {
+    const suggestion = suggestCardForCategory({ category: "ramp", partialRows: [], pool: capped.spells, intent: capped.strategicIntent, declinedNames: declined });
+    if (suggestion.exhausted) break;
+    offered.add(suggestion.offer.card.name);
+    declined.push(suggestion.offer.card.name);
+  }
+  assert.ok(!offered.has("Pricey Rock"));
+  assert.ok(offered.size >= 2);
+});
+
 test("an empty guided session produces a full, all-zero ledger rather than throwing", () => {
   const analysis = analyzeForgePool(baseInput());
   const ledger = buildCategoryBudgetLedger({ rows: [] }, analysis.strategicIntent, { targetPowerTier: "Focused" });
