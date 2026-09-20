@@ -3567,11 +3567,7 @@ export function useForgeSessionState() {
   // Skips the three-masterwork reveal entirely: a pasted decklist or a
   // commander already locked in gives the Forge one clear thing to build,
   // so there's no real ambiguity to resolve with three alternates.
-  async function commitDirectForge(
-    mode: "decklist" | "commander",
-    seed = commissionSeed,
-    options: { deckOverride?: string; guided?: boolean } = {},
-  ) {
+  async function commitDirectForge(mode: "decklist" | "commander", seed = commissionSeed, options: { deckOverride?: string; guided?: boolean } = {}) {
     // A guided Build finishes by handing its accepted picks here as the
     // decklist, without going through the `deck` state (which the discover
     // path uses as its "did the player paste a list" signal — setting it
