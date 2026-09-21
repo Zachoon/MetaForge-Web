@@ -4943,7 +4943,14 @@ function sweepResidualCasualPowerCards(input, candidate, analysis) {
 export function analyzeForgePool(input) {
   if (!input || !Array.isArray(input.cards) || !input.cards.length) throw new Error("Native Forge requires a verified card pool");
   const evidenceByName = new Map((input.evidence || []).map((entry) => [normalized(entry.name), entry]));
-  return prepareForgeAnalysis(input, evidenceByName);
+  const analysis = prepareForgeAnalysis(input, evidenceByName);
+  // The same scored view chooseSpells ranks (raw card quality: popularity,
+  // budget, power tier, curve, commander/tribal/synergy signals), computed
+  // with the default Synergy Temper variant. A guided suggestion that ignores
+  // it ranks purely on structural fit, which surfaces multi-role oddities
+  // over the plain staple the player expects for the step.
+  const scoredSpells = analysis.spells.map((entry) => scoreCard(entry, input, VARIANTS[0], analysis.context));
+  return { ...analysis, scoredSpells };
 }
 
 export function forgeNativeMasterwork(input) {

@@ -149,6 +149,68 @@ test("works against the real engine's nested {card, roles, ...} shape (analyzeFo
   assert.notEqual(second.offer?.card.name, suggestion.offer.card.name);
 });
 
+// --- Ranking behavior measured against real Scryfall pools (2026-09-20) ---
+
+const analyzeCards = (cards, extra = {}) => analyzeForgePool({
+  format: "Commander", strategy: "Balanced midrange", target: 100, commander: pearlEar, note: "focus on auras", cards, ...extra,
+});
+
+test("a plain single-purpose ramp spell leads the ramp step over a multi-tagged card that only matches incidental wording", () => {
+  const plain = { ...card("Plain Cultivator", "Sorcery", "Search your library for two basic land cards, put them onto the battlefield tapped. Add one mana.", 3), rarity: "common" };
+  // Matches ramp, draw AND interaction regexes at once, and is an Aura-shell core piece.
+  const sprawl = { ...card("Everything Aura", "Enchantment — Aura", "Enchant creature. Add one mana. Draw a card. Destroy target creature you don't control.", 3), rarity: "common" };
+  const analysis = analyzeCards([plain, sprawl, ...mixedPool().map((entry) => entry.card)]);
+  const suggestion = suggestCardForCategory({ category: "ramp", partialRows: [], pool: analysis.scoredSpells, intent: analysis.strategicIntent });
+  assert.equal(suggestion.offer.card.name, "Plain Cultivator");
+});
+
+test("the board-wipe step only offers cards that actually wipe creatures", () => {
+  const wrath = card("Clean Slate", "Sorcery", "Destroy all creatures.", 4);
+  const artifactWipe = card("Rust Storm", "Sorcery", "Destroy all artifacts and enchantments.", 4);
+  const tokenWipe = card("Fade Away", "Sorcery", "Destroy all Saprolings.", 3);
+  const analysis = analyzeCards([wrath, artifactWipe, tokenWipe, ...mixedPool().map((entry) => entry.card)]);
+  const offered = [];
+  const declined = [];
+  for (let i = 0; i < 5; i += 1) {
+    const suggestion = suggestCardForCategory({ category: "sweeper", partialRows: [], pool: analysis.scoredSpells, intent: analysis.strategicIntent, declinedNames: declined });
+    if (suggestion.exhausted) break;
+    offered.push(suggestion.offer.card.name);
+    declined.push(suggestion.offer.card.name);
+  }
+  assert.deepEqual(offered, ["Clean Slate"]);
+});
+
+test("the explanation never cites a different step's role as the reason", () => {
+  const drawAndRamp = { ...card("Rock That Draws", "Artifact", "{T}: Add one mana. {2}, {T}: Draw a card.", 3), rarity: "common" };
+  const analysis = analyzeCards([drawAndRamp, ...mixedPool().map((entry) => entry.card)]);
+  const suggestion = suggestCardForCategory({ category: "ramp", partialRows: [], pool: analysis.scoredSpells, intent: analysis.strategicIntent });
+  for (const tag of suggestion.reason.deficitsFilled) {
+    assert.ok(!tag.startsWith("role:") || tag === "role:ramp", `ramp step explained itself with ${tag}`);
+  }
+});
+
+test("the focused score blends the engine's card quality, and its weights are pinned", async () => {
+  const { focusedScore, GUIDED_RANK_WEIGHTS, accessibilityPenalty } = await import("../app/guided-suggestion.mjs");
+  assert.deepEqual(GUIDED_RANK_WEIGHTS, { quality: 0.45, primary: 1, shell: 0.6, otherRole: 0.1, other: 0.25 });
+  const delta = {
+    positives: [
+      { kind: "tracked_role", detail: "ramp", weight: 22 },
+      { kind: "tracked_role", detail: "draw", weight: 22 },
+      { kind: "package_core", detail: "auras", weight: 50 },
+      { kind: "curve_deficit", detail: "3", weight: 10 },
+    ],
+    negatives: [{ kind: "opportunity_cost", weight: -4 }],
+  };
+  // 22*1 + 50*0.6 + 22*0.1 + 10*0.25 - 4 + 80*0.45 = 22+30+2.2+2.5-4+36 = 88.7
+  assert.equal(focusedScore("ramp", { score: 80 }, delta), 88.7);
+  // In the draw step the same card's draw credit is the primary one.
+  assert.equal(focusedScore("draw", { score: 80 }, delta), 88.7);
+  assert.equal(accessibilityPenalty({ card: { priceUsd: 5 } }), 0);
+  assert.equal(accessibilityPenalty({ card: { priceUsd: 24 } }), 8);
+  assert.equal(accessibilityPenalty({ card: { priceUsd: 500 } }), 12);
+  assert.equal(accessibilityPenalty({ card: {} }), 0);
+});
+
 test("declining every eligible card in turn eventually exhausts the category", () => {
   const intent = intentForPearl();
   const pool = Array.from({ length: 3 }, (_, i) => enriched(ramp(`Stone ${i}`)));

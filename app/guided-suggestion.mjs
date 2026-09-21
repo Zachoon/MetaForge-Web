@@ -1,6 +1,7 @@
 import { prospectiveSlotDelta, buildLiveDeficitState } from "./prospective-slot-delta.mjs";
 import { cardSatisfiesPackageCore, cardSatisfiesPackageSupport } from "./strategic-intent.mjs";
 import { isWinConditionCard } from "./fundamentals-target-table.mjs";
+import { TRACKED_ROLES } from "./slot-justification-ledger.mjs";
 
 // =============================================================================
 // Guided Suggestion
@@ -43,6 +44,13 @@ function entryName(entry) {
   return entry?.card?.name || entry?.name || "";
 }
 
+// The shared "sweeper" role is a broad regex ("destroy all ..."), so it also
+// tags artifact/enchantment wipes and "destroy all Saprolings". A player on
+// the board-wipe step means a creature wipe, so this step requires the card
+// to actually affect creatures. Guided-only: the role itself is untouched, so
+// one-shot construction behaves exactly as before.
+const CREATURE_WIPE = /\b(?:destroy|exile|sacrifice) all\b[^.]{0,60}\bcreatures?\b|\ball creatures get -|\bdeals? [^.]{0,40}damage to each (?:other )?creature\b|\beach creature\b[^.]{0,30}\b(?:is destroyed|gets -)/i;
+
 function eligibleForCategory(candidate, category, intent) {
   if (category === "winConditions") return isWinConditionCard(entryCard(candidate), candidate.roles || []);
   if (category === "synergyPieces") {
@@ -52,12 +60,88 @@ function eligibleForCategory(candidate, category, intent) {
   }
   // Fundamentals: ramp, draw, interaction, protection, recursion, sweeper —
   // category name matches the role name directly (see TRACKED_ROLES).
-  return (candidate.roles || []).includes(category);
+  if (!(candidate.roles || []).includes(category)) return false;
+  if (category === "sweeper") return CREATURE_WIPE.test(entryCard(candidate).oracleText || candidate.oracleText || "");
+  return true;
 }
 
-function topPositiveOf(delta) {
-  const sorted = [...(delta.positives || [])].sort((left, right) => right.weight - left.weight);
-  return sorted[0] ? Object.freeze({ kind: sorted[0].kind, key: sorted[0].key }) : null;
+// How cleanly a card belongs to a fundamentals step: 1 = its only tracked
+// role is this one, 2 = one other, 3 = three or more tracked tags. The role
+// tags are regexes over rules text, so a card tagged ramp AND draw AND
+// interaction is usually matching incidental wording, not doing all three;
+// the plain, single-purpose card the player expects for the step goes first.
+// Shell-fit steps have no such notion and always tier 1.
+function roleTier(candidate, category) {
+  if (category === "winConditions" || category === "synergyPieces") return 1;
+  const tracked = TRACKED_ROLES.filter((role) => (candidate.roles || []).includes(role)).length;
+  return Math.min(3, Math.max(1, tracked));
+}
+
+// Real-data measurement (Ayula/Atraxa/Meren pools, 2026-09-20) showed that
+// ranking a step by prospectiveSlotDelta.total alone fails a player who
+// asked for "ramp": that total is built to pick a whole deck, so it hands a
+// card the fill credit for EVERY open role it is loosely tagged with (a
+// tri-tagged artifact scored 123 in the ramp step against 22 for a plain
+// ramp spell), ignores the standalone card quality one-shot construction
+// adds (popularity, budget, power tier), and let a $65 nine-drop outrank
+// Cultivate. So within a step, the category's own fill credit counts in
+// full, shell fit (package / commander) counts most of the way, other roles
+// barely count, structural penalties always count, and the engine's own raw
+// card-quality score is blended in. Every input is an existing engine
+// signal; only the blend is new, and it is exposed so tests pin it.
+export const GUIDED_RANK_WEIGHTS = Object.freeze({
+  quality: 0.45,
+  primary: 1,
+  shell: 0.6,
+  otherRole: 0.1,
+  other: 0.25,
+});
+const SHELL_KINDS = new Set([
+  "package_core", "package_support", "package_leg", "commander_connection",
+  "interaction_present", "supported_threat", "footprint_novelty",
+]);
+const positiveKey = (entry) => entry.detail ?? entry.key;
+const isPrimary = (category, entry) => (category === "winConditions" || category === "synergyPieces"
+  ? SHELL_KINDS.has(entry.kind)
+  : entry.kind === "tracked_role" && positiveKey(entry) === category);
+
+export function focusedScore(category, candidate, delta, weights = GUIDED_RANK_WEIGHTS) {
+  let primary = 0;
+  let shell = 0;
+  let otherRole = 0;
+  let other = 0;
+  for (const entry of delta.positives || []) {
+    if (isPrimary(category, entry)) primary += entry.weight;
+    else if (SHELL_KINDS.has(entry.kind)) shell += entry.weight;
+    else if (entry.kind === "tracked_role") otherRole += entry.weight;
+    else other += entry.weight;
+  }
+  const penalties = (delta.negatives || []).reduce((sum, entry) => sum + entry.weight, 0);
+  const quality = Number.isFinite(candidate?.score) ? candidate.score : 0;
+  return round(primary * weights.primary + shell * weights.shell + otherRole * weights.otherRole
+    + other * weights.other + penalties + quality * weights.quality - accessibilityPenalty(candidate));
+}
+
+// A soft nudge, never a filter: with no budget set, a $24 rare still shows,
+// it just doesn't lead a step over an equally fitting $0.50 card. Capped so
+// a genuine staple is never buried, and skipped when the price is unknown.
+export function accessibilityPenalty(candidate) {
+  const price = Number(entryCard(candidate).priceUsd ?? candidate?.priceUsd);
+  if (!Number.isFinite(price) || price <= 8) return 0;
+  return Math.min(12, (price - 8) / 2);
+}
+
+function topPositiveOf(category, delta) {
+  const sorted = [...(delta.positives || [])]
+    .sort((left, right) => Number(isPrimary(category, right)) - Number(isPrimary(category, left)) || right.weight - left.weight);
+  return sorted[0] ? Object.freeze({ kind: sorted[0].kind, key: positiveKey(sorted[0]) }) : null;
+}
+
+// A fill-credit tag for some OTHER role ("role:draw" while the player is on
+// the ramp step) is true of the card but not why it's on this step, so it
+// stays out of the explanation.
+function reasonTagsFor(category, delta) {
+  return (delta.deficitsFilled || []).filter((tag) => !tag.startsWith("role:") || tag === `role:${category}`);
 }
 
 /**
@@ -89,13 +173,18 @@ export function suggestCardForCategory({
   }
 
   const scored = eligible
-    .map((candidate) => Object.freeze({
-      candidate,
-      delta: prospectiveSlotDelta(partialRows, candidate, intent, scoringOptions),
-    }))
+    .map((candidate) => {
+      const delta = prospectiveSlotDelta(partialRows, candidate, intent, scoringOptions);
+      return Object.freeze({
+        candidate,
+        delta,
+        tier: roleTier(candidate, category),
+        rank: focusedScore(category, candidate, delta),
+      });
+    })
     // delta.name is prospectiveSlotDelta's own already-unwrapped entryName,
     // reused here rather than re-deriving it a third way.
-    .sort((left, right) => right.delta.total - left.delta.total || left.delta.name.localeCompare(right.delta.name));
+    .sort((left, right) => left.tier - right.tier || right.rank - left.rank || left.delta.name.localeCompare(right.delta.name));
 
   const [best, runnerUp] = scored;
   return Object.freeze({
@@ -103,10 +192,10 @@ export function suggestCardForCategory({
     offer: best.candidate,
     delta: best.delta,
     reason: Object.freeze({
-      deficitsFilled: best.delta.deficitsFilled,
-      topPositive: topPositiveOf(best.delta),
+      deficitsFilled: reasonTagsFor(category, best.delta),
+      topPositive: topPositiveOf(category, best.delta),
       nearestAlternative: runnerUp
-        ? Object.freeze({ name: runnerUp.delta.name, margin: round(best.delta.total - runnerUp.delta.total) })
+        ? Object.freeze({ name: runnerUp.delta.name, margin: round(best.rank - runnerUp.rank) })
         : null,
     }),
     exhausted: false,

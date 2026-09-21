@@ -113,7 +113,8 @@ function computeOffer(
   const suggestion = suggestCardForCategory({
     category,
     partialRows,
-    pool: analysis.spells,
+    // The scored view (raw card quality attached), same as chooseSpells ranks.
+    pool: analysis.scoredSpells,
     intent: analysis.strategicIntent,
     declinedNames,
     options: {
