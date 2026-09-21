@@ -189,7 +189,7 @@ export function GuidedBuildChamber() {
                   {isLast ? "Finish — the Forge fills the rest" : `Done with ${guidedCategoryLabel(category).toLowerCase()} → next`}
                 </button>
                 {!isLast && (
-                  <button type="button" className="guided-skip-all" disabled={guidedLoading} onClick={finishGuidedBuild}>
+                  <button type="button" className="guided-skip-all" disabled={guidedLoading} onClick={() => finishGuidedBuild(true)}>
                     Skip ahead — let the Forge finish from here
                   </button>
                 )}

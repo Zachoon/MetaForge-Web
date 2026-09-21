@@ -42,6 +42,9 @@ test("launch funnel covers the complete visitor journey without deck contents", 
     "coach_recommendation_viewed",
     "coach_feedback_submitted",
     "coach_confidence_opened",
+    "guided_started",
+    "guided_finished",
+    "guided_failed",
   ]) {
     assert.match(combined, new RegExp(`trackLaunchEvent\\(\\"${event}\\"`));
   }

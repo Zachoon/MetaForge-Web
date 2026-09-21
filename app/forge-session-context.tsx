@@ -115,7 +115,14 @@ type GuidedReason = {
   topPositive: { kind: string; key: string } | null;
   nearestAlternative: { name: string; margin: number } | null;
 } | null;
+const GUIDED_STORAGE_KEY = "metaforge-guided-session";
+const GUIDED_STORAGE_MAX_AGE_MS = 20 * 60 * 60 * 1000; // server cache lives 24h
+
 type GuidedSession = {
+  // The commander/shell/format this session was built for. A session whose
+  // key no longer matches the current choices is discarded, and it's also
+  // what lets a reloaded tab tell a still-valid snapshot from a stale one.
+  key: string;
   generationId: string;
   categories: string[];
   categoryIndex: number;
@@ -1047,6 +1054,10 @@ export function useForgeSessionState() {
     remainingCandidates: Number(data.remainingCandidates || 0),
     ledger: (Array.isArray(data.ledger) ? data.ledger : []) as GuidedLedgerRow[],
   });
+  const guidedKey = [format, selectedCommander?.name || "", selectedSecondCommander?.name || "", selectedShell?.id || ""].join("|");
+  const clearStoredGuidedSession = () => {
+    try { window.sessionStorage.removeItem(GUIDED_STORAGE_KEY); } catch { /* storage may be blocked */ }
+  };
   async function startGuidedBuild() {
     if (!selectedCommander || guestMode || !isCommanderFormat(format)) return;
     const asCommanderInput = (option: CommanderOption) => ({
@@ -1075,6 +1086,7 @@ export function useForgeSessionState() {
         commonsOnly,
       });
       setGuidedSession({
+        key: guidedKey,
         generationId: data.generationId,
         categories: data.categorySequence,
         categoryIndex: 0,
@@ -1082,8 +1094,11 @@ export function useForgeSessionState() {
         declined: [],
         ...guidedOfferFields(data),
       });
+      // Counts and role names only, never card names or the list itself.
+      trackLaunchEvent("guided_started", { format, shell: selectedShell?.id || "none" });
     } catch (error) {
       setGuidedError(error instanceof Error ? error.message : "The guided build could not be started.");
+      trackLaunchEvent("guided_failed", { stage: "start" });
     } finally {
       setGuidedLoading(false);
     }
@@ -1105,12 +1120,20 @@ export function useForgeSessionState() {
       setGuidedSession({ ...next, ...guidedOfferFields(data) });
     } catch (error) {
       setGuidedError(error instanceof Error ? error.message : "The guided build could not continue.");
+      trackLaunchEvent("guided_failed", { stage: "next" });
     } finally {
       setGuidedLoading(false);
     }
   }
+  // Measurement is consent-gated and carries only the action and the role
+  // category — never a card name or the list (see launch-readiness.test.mjs).
+  const trackGuidedStep = (action: string) => trackLaunchEvent("guided_step", {
+    action,
+    category: guidedSession ? guidedSession.categories[guidedSession.categoryIndex] : "",
+  });
   function acceptGuidedOffer() {
     if (!guidedSession?.offer || guidedLoading) return;
+    trackGuidedStep("accept");
     void requestGuidedOffer(guidedSession, {
       accepted: [...guidedSession.accepted, guidedSession.offer.name],
       declined: [],
@@ -1120,6 +1143,7 @@ export function useForgeSessionState() {
   // rides along so the server offers a different card for this same slot.
   function declineGuidedOffer() {
     if (!guidedSession?.offer || guidedLoading) return;
+    trackGuidedStep("decline");
     void requestGuidedOffer(guidedSession, {
       declined: [...guidedSession.declined, guidedSession.offer.name],
     });
@@ -1132,10 +1156,12 @@ export function useForgeSessionState() {
     const commanderNames = [selectedCommander?.name, selectedSecondCommander?.name].filter(Boolean).map((value) => String(value).toLocaleLowerCase("en"));
     if (commanderNames.includes(lower)) return;
     if (guidedSession.accepted.some((entry) => entry.toLocaleLowerCase("en") === lower)) return;
+    trackGuidedStep("manual");
     void requestGuidedOffer(guidedSession, { accepted: [...guidedSession.accepted, clean] });
   }
   function removeGuidedPick(name: string) {
     if (!guidedSession || guidedLoading) return;
+    trackGuidedStep("remove");
     void requestGuidedOffer(guidedSession, {
       accepted: guidedSession.accepted.filter((entry) => entry !== name),
     });
@@ -1147,8 +1173,9 @@ export function useForgeSessionState() {
   }
   function finishGuidedCategory() {
     if (!guidedSession || guidedLoading) return;
+    trackGuidedStep("next");
     if (guidedSession.categoryIndex + 1 >= guidedSession.categories.length) {
-      finishGuidedBuild();
+      finishGuidedBuild(false);
       return;
     }
     goToGuidedCategory(guidedSession.categoryIndex + 1);
@@ -1157,10 +1184,17 @@ export function useForgeSessionState() {
   // imported/completion path already reserves the player's own cards and
   // fills only the slots they left open — so completion is a handoff to
   // that existing, tested pipeline rather than new construction logic.
-  function finishGuidedBuild() {
+  function finishGuidedBuild(skippedAhead = false) {
     if (!guidedSession) return;
     const seed = Date.now();
     const deckText = guidedSession.accepted.map((name) => `1 ${name}`).join("\n");
+    trackLaunchEvent("guided_finished", {
+      picks: guidedSession.accepted.length,
+      reached: guidedSession.categoryIndex + 1,
+      of: guidedSession.categories.length,
+      skippedAhead,
+    });
+    clearStoredGuidedSession();
     setMilestoneMotion(null);
     setCommissionSeed(seed);
     setStage(0);
@@ -1171,10 +1205,60 @@ export function useForgeSessionState() {
   function exitGuidedBuild() {
     setChamber("commission");
   }
+  // A session only means something for the exact commander/shell/format it
+  // was built for; if any of those change, discard it (and its stored copy).
   useEffect(() => {
-    setGuidedSession(null);
+    if (guidedSession && guidedSession.key !== guidedKey) {
+      setGuidedSession(null);
+      clearStoredGuidedSession();
+    }
     setGuidedError("");
-  }, [selectedCommander?.name, selectedSecondCommander?.name, selectedShell?.id, format]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guidedKey]);
+  // Building a deck takes minutes; an accidental reload must not throw away
+  // every pick. The picks are just names, and the classified pool they refer
+  // to lives server-side for 24h, so a tab-scoped snapshot is enough.
+  useEffect(() => {
+    if (!guidedSession) return;
+    try {
+      window.sessionStorage.setItem(GUIDED_STORAGE_KEY, JSON.stringify({
+        savedAt: Date.now(),
+        format,
+        commander: selectedCommander,
+        second: selectedSecondCommander,
+        shell: selectedShell,
+        session: guidedSession,
+      }));
+    } catch { /* storage may be blocked; the session just won't survive a reload */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guidedSession]);
+  const guidedRestoredRef = useRef(false);
+  useEffect(() => {
+    if (guestMode || guidedRestoredRef.current) return;
+    guidedRestoredRef.current = true;
+    try {
+      const saved = JSON.parse(window.sessionStorage.getItem(GUIDED_STORAGE_KEY) || "null");
+      const session: GuidedSession | undefined = saved?.session;
+      const savedKey = saved ? [saved.format, saved.commander?.name || "", saved.second?.name || "", saved.shell?.id || ""].join("|") : "";
+      if (!session?.generationId || session.key !== savedKey || !saved.commander
+        || Date.now() - Number(saved.savedAt || 0) > GUIDED_STORAGE_MAX_AGE_MS) {
+        if (saved) clearStoredGuidedSession();
+        return;
+      }
+      setFormat(saved.format);
+      setSelectedCommander(saved.commander);
+      setSelectedSecondCommander(saved.second || null);
+      setSelectedShell(saved.shell || null);
+      setGuidedSession(session);
+      setChamber("guided-build");
+      // The snapshot's offer/ledger may be stale; ask the server for the
+      // current ones (this also proves the cached pool is still alive).
+      void requestGuidedOffer(session, {});
+    } catch {
+      clearStoredGuidedSession();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guestMode]);
 
   const awaken = () => {
     // Picking a shell on the discover path launches the guided category loop

@@ -3,6 +3,7 @@ const PUBLIC_EVENTS = new Set([
   "coaching_opened", "experiment_started", "save_continue_clicked",
   "coach_brief_viewed", "coach_why_opened", "coach_recommendation_viewed",
   "coach_feedback_submitted", "coach_confidence_opened",
+  "guided_started", "guided_step", "guided_finished", "guided_failed",
 ]);
 const OPERATIONAL_EVENTS = new Set(["generation_succeeded", "generation_failed"]);
 const MAX_BODY_BYTES = 8_000;

@@ -10,7 +10,11 @@ export type LaunchEvent =
   | "coach_why_opened"
   | "coach_recommendation_viewed"
   | "coach_feedback_submitted"
-  | "coach_confidence_opened";
+  | "coach_confidence_opened"
+  | "guided_started"
+  | "guided_step"
+  | "guided_finished"
+  | "guided_failed";
 
 const CONSENT_KEY = "metaforge-measurement-consent";
 const SESSION_KEY = "metaforge-launch-session";

@@ -39,7 +39,7 @@ test("the imported branch of commitDirectForge reads the override text, never a 
 
 test("a guided finish never writes the deck state (it would reroute a later plain Build click into import mode)", () => {
   const source = read("app/forge-session-context.tsx");
-  const finish = source.slice(source.indexOf("function finishGuidedBuild()"), source.indexOf("function exitGuidedBuild()"));
+  const finish = source.slice(source.indexOf("function finishGuidedBuild("), source.indexOf("function exitGuidedBuild()"));
   assert.doesNotMatch(finish, /setDeck\(/);
   assert.match(finish, /deckOverride/);
   assert.match(finish, /guided: true/);
@@ -65,6 +65,30 @@ test("the guided build carries the player's existing budget/price/commons/strate
   assert.match(worker, /powerConstraint: input\.targetPowerTier === "Casual"/);
   assert.match(worker, /maxCardPrice: forgeInput\.maxCardPrice \?\? undefined/);
   assert.match(worker, /commonsOnly: Boolean\(forgeInput\.commonsOnly\)/);
+});
+
+test("a reload restores the guided build only for accounts, only when the snapshot still matches, and finishing clears it", () => {
+  const source = read("app/forge-session-context.tsx");
+  assert.match(source, /const GUIDED_STORAGE_KEY = "metaforge-guided-session";/);
+  const restoreStart = source.indexOf("const guidedRestoredRef");
+  const restore = source.slice(restoreStart, source.indexOf("}, [guestMode]);", restoreStart));
+  assert.match(restore, /if \(guestMode \|\| guidedRestoredRef\.current\) return;/);
+  assert.match(restore, /session\.key !== savedKey/);
+  assert.match(restore, /GUIDED_STORAGE_MAX_AGE_MS/);
+  assert.match(restore, /requestGuidedOffer\(session, \{\}\)/);
+  const finish = source.slice(source.indexOf("function finishGuidedBuild("), source.indexOf("function exitGuidedBuild()"));
+  assert.match(finish, /clearStoredGuidedSession\(\)/);
+  // A session for a different commander/shell/format must be dropped, not adopted.
+  assert.match(source, /guidedSession\.key !== guidedKey/);
+});
+
+test("guided telemetry carries actions and role categories only — never card names or the list", () => {
+  const source = read("app/forge-session-context.tsx");
+  const calls = [...source.matchAll(/trackLaunchEvent\("guided_[a-z]+",[\s\S]*?\}\);/g)].map((match) => match[0]);
+  assert.ok(calls.length >= 3);
+  for (const call of calls) assert.doesNotMatch(call, /accepted\.(join|map)|\.name\b|deckText|declined/);
+  assert.match(read("worker/launch-telemetry.ts"), /"guided_started", "guided_step", "guided_finished", "guided_failed"/);
+  assert.match(read("app/launch-telemetry.ts"), /\| "guided_failed"/);
 });
 
 test("both guided endpoints require an authenticated account and a rate limit", () => {
