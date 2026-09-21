@@ -94,11 +94,13 @@ export function GuidedBuildChamber() {
         <span className="forge-eyebrow">
           <i /> GUIDED BUILD{session ? ` · STEP ${session.categoryIndex + 1} OF ${session.categories.length}` : ""}
         </span>
-        <h1>{session ? copy?.label || guidedCategoryLabel(category) : "Reading your commander…"}</h1>
+        <h1>{session ? copy?.label || guidedCategoryLabel(category) : guidedError ? "The guided build stopped" : "Reading your commander…"}</h1>
         <p>
           {session
             ? copy?.blurb
-            : "The Forge is gathering every legal card for this commander and reading what each one does. This takes a moment, and only happens once."}
+            : guidedError
+              ? "Nothing you chose has been lost. You can start the guided build again or go back to your shell choice."
+              : "The Forge is gathering every legal card for this commander and reading what each one does. This takes a moment, and only happens once."}
         </p>
       </div>
 

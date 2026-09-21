@@ -113,6 +113,9 @@ test("a failed start shows the real message with a retry and a way back", () => 
   assert.match(html, /role="alert"/);
   assert.match(html, /Your session expired\./);
   assert.match(html, /Start the guided build again/);
+  // The heading must not keep claiming it is still loading beside a failure.
+  assert.match(html, /The guided build stopped/);
+  assert.doesNotMatch(html, /Reading your commander|Building your card pool/);
 });
 
 test("a live session renders the offer, its plain-language reason, the ledger, the steps and the picks", () => {
