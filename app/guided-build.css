@@ -17,15 +17,20 @@
 .guided-step.done button{color:var(--teal);border-color:#466159}
 .guided-step button:disabled{opacity:.55}
 
-.guided-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(240px,1fr);gap:18px;align-items:start}
+/* The commission chamber's heading card ends with a fixed blurb about the
+   blueprint marks; replace it with this build's own summary. */
+.guided-chamber .commission-heading:after{content:"YOUR BUILD\A " attr(data-summary)}
+.guided-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(230px,270px);gap:18px;align-items:start}
 .guided-main{display:grid;gap:14px}
-.guided-offer{display:grid;grid-template-columns:minmax(150px,220px) 1fr;gap:16px;padding:16px;border:1px solid #4b5d58;background:#091112dc}
+.guided-offer{display:grid;grid-template-columns:minmax(120px,170px) 1fr;gap:16px;padding:16px;border:1px solid #4b5d58;background:#091112dc}
 .guided-offer[aria-busy="true"]{opacity:.7}
 .guided-offer img{display:block;width:100%;height:auto;border-radius:10px;background:#071011}
 .guided-offer small{display:block;color:var(--ember);font-size:11px;font-weight:900;letter-spacing:.16em}
 .guided-offer h2{margin:6px 0 2px;font:600 24px Newsreader,Georgia,serif;color:#e2e9e6}
 .guided-offer em{display:block;color:var(--teal);font:700 12px Inter,sans-serif}
-.guided-oracle{margin:10px 0 0;padding:10px;border-left:2px solid #466159;background:#071011;color:#a4b4af;font-size:12px;white-space:pre-line}
+.guided-oracle{margin:10px 0 0;border-left:2px solid #466159;background:#071011;color:#a4b4af;font-size:12px}
+.guided-oracle summary{padding:7px 10px;cursor:pointer;color:#81938e;font-size:11px}
+.guided-oracle p{margin:0;padding:0 10px 10px;white-space:pre-line}
 .guided-why{margin:12px 0 0;color:#dce5e1;font-size:13px;line-height:1.45}
 .guided-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
 .guided-actions button{padding:10px 14px;border:1px solid #52655f;background:transparent;color:#dce5e1;font-size:12px}

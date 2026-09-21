@@ -128,9 +128,13 @@ test("a live session renders the offer, its plain-language reason, the ledger, t
   assert.match(html, /YOUR PICKS · 2/);
   assert.match(html, /Done with ramp/);
   assert.match(html, /Skip ahead/);
-  assert.match(html, /AURA PACKAGE|Aura package/i);
-  // Win conditions has no numeric target and must still read sensibly.
-  assert.match(html, /0 picked/);
+  // Win conditions has no numeric target and must still read sensibly, saying
+  // what is counted (threats among all picks) rather than implying a step tally.
+  assert.match(html, /0 threats among your picks/);
+  assert.match(html, /STEP 1 OF 8/);
+  // The heading card's summary replaces the commission chamber's fixed blurb.
+  assert.match(html, /data-summary="Pearl-Ear, Imperial Advisor · Auras\n?2 cards picked so far"/);
+  assert.match(html, /<details class="guided-oracle"><summary>Read the card text<\/summary>/);
 });
 
 test("after several declines the manual search is emphasized", () => {
@@ -141,7 +145,11 @@ test("after several declines the manual search is emphasized", () => {
 
 test("an exhausted category explains itself and still offers a way forward", () => {
   const html = render(baseContext({ guidedSession: session({ offer: null, exhausted: true, reason: null, declined: ["x"] }) }));
-  assert.match(html, /No more ramp cards fit right now/);
+  assert.match(html, /No more ramp suggestions right now/);
+  // Plural category labels must not produce "board wipes cards".
+  const wipes = render(baseContext({ guidedSession: session({ categoryIndex: 3, offer: null, exhausted: true, reason: null }) }));
+  assert.match(wipes, /No more board wipes suggestions right now/);
+  assert.doesNotMatch(wipes, /wipes cards/);
   assert.match(html, /You(?:'|&#x27;)ve seen everything the Forge would offer/);
   assert.match(html, /guided-search emphasized/);
   assert.match(html, /Done with ramp/);
@@ -164,4 +172,5 @@ test("a session with an empty ledger (older snapshot) still renders instead of t
   const html = render(baseContext({ guidedSession: session({ ledger: [] }) }));
   assert.match(html, /Cultivate/);
   assert.match(html, /0 picked/);
+  assert.equal(render(baseContext({ guidedSession: session({ accepted: ["One"] }) })).includes("1 card picked so far"), true);
 });

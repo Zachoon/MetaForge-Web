@@ -38,6 +38,8 @@ test("describeLedgerRow is informational for every status, never blocking langua
   assert.match(describeLedgerRow({ actual: 9, status: "in-range", target: { min: 8, max: 12 } }), /right in range/);
   assert.match(describeLedgerRow({ actual: 14, status: "over", target: { min: 8, max: 12 } }), /less room for other things/);
   assert.equal(describeLedgerRow({ actual: 4, status: "no-target", target: null }), "4 picked");
+  assert.equal(describeLedgerRow({ category: "winConditions", actual: 11, status: "no-target", target: null }), "11 threats among your picks");
+  assert.equal(describeLedgerRow({ category: "winConditions", actual: 1, status: "no-target", target: null }), "1 threat among your picks");
   for (const status of ["under", "in-range", "over", "no-target"]) {
     assert.doesNotMatch(describeLedgerRow({ actual: 1, status, target: status === "no-target" ? null : { min: 2, max: 3 } }), /must|can't|cannot|not allowed/i);
   }

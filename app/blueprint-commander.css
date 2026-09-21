@@ -40,8 +40,8 @@
 .shell-picker>header span{color:var(--ember);font-size:12px;font-weight:900;letter-spacing:.16em}
 .shell-picker>header strong{margin-top:5px;color:#e2e9e6;font:600 17px Newsreader, Georgia,serif}
 .shell-picker>header button{padding:8px 11px;border:1px solid #52655f;background:transparent;color:var(--teal);font-size:11px}
-.shell-options-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
-.shell-option-card{display:grid;grid-template-columns:1fr;gap:6px;padding:11px;border:1px solid #293a36;background:transparent;color:#dce5e1;text-align:left}
+.shell-options-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;margin-top:14px}
+.shell-option-card{display:grid;grid-template-columns:1fr;align-content:start;gap:6px;padding:11px;border:1px solid #293a36;background:transparent;color:#dce5e1;text-align:left}
 .shell-option-card:hover,.shell-option-card:focus-visible{outline:0;border-color:#5fc9b6;background:#163027}
 .shell-option-card b{display:block;font-size:13px}
 .shell-option-card small{display:block;margin-top:3px;color:#81938e;font-weight:500}

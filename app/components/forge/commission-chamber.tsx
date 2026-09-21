@@ -9,6 +9,7 @@ import {
 } from "../../format-catalog";
 import { blueprintDefinition } from "../../deck-row-helpers";
 import { occupancyLabelsForOption } from "../../commander-lane-scoring.mjs";
+import { shellDisplay } from "../../shell-copy.mjs";
 import { useForgeSession } from "../../forge-session-context";
 
 export function CommissionChamber() {
@@ -491,8 +492,8 @@ export function CommissionChamber() {
             </header>
             {selectedShell ? (
               <article className="shell-option-selected">
-                <b>{selectedShell.label}</b>
-                <span>{selectedShell.coreMin}+ core pieces, {selectedShell.supportMin}+ support pieces</span>
+                <b>{shellDisplay(selectedShell).name}</b>
+                <span>{shellDisplay(selectedShell).blurb}</span>
                 <small>
                   {guestMode
                     ? "The Forge will build your deck around this shell."
@@ -509,8 +510,8 @@ export function CommissionChamber() {
                       className="shell-option-card"
                       onClick={() => setSelectedShell(option)}
                     >
-                      <b>{option.label}</b>
-                      <small>{option.coreMin}+ core pieces</small>
+                      <b>{shellDisplay(option).name}</b>
+                      <small>{shellDisplay(option).blurb}</small>
                     </button>
                   ))}
                 </div>

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cardImage } from "../../card-art";
 import { scryfallFormatTerms } from "../../format-catalog";
 import { GUIDED_CATEGORY_COPY, describeGuidedReason, describeLedgerRow, guidedCategoryLabel } from "../../guided-reason-copy.mjs";
+import { shellDisplay } from "../../shell-copy.mjs";
 import { useForgeSession } from "../../forge-session-context";
 
 // architecture/GUIDED_CONSTRUCTION_FLOW.md flow step 3: the player and the
@@ -33,6 +34,7 @@ export function GuidedBuildChamber() {
 
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<Array<{ name: string; typeLine: string }>>([]);
+  const acceptRef = useRef<HTMLButtonElement>(null);
 
   const commanderColors = [...new Set([...(selectedCommander?.colors || []), ...(selectedSecondCommander?.colors || [])])];
   const identityClause = commanderColors.length ? `id<=${commanderColors.join("").toLowerCase()}` : "id:c";
@@ -61,6 +63,15 @@ export function GuidedBuildChamber() {
     return () => window.clearTimeout(timer);
   }, [search, format, identityClause]);
 
+  // The buttons disable while a request is in flight, which drops keyboard
+  // focus to the page body. When the next offer lands, put focus back on
+  // "Add to my deck" — but only if focus is homeless, so typing in the
+  // search box is never interrupted.
+  const offerName = session?.offer?.name;
+  useEffect(() => {
+    if (!guidedLoading && offerName && document.activeElement === document.body) acceptRef.current?.focus();
+  }, [guidedLoading, offerName]);
+
   const category = session ? session.categories[session.categoryIndex] : "";
   const copy = GUIDED_CATEGORY_COPY[category as keyof typeof GUIDED_CATEGORY_COPY];
   const offer = session?.offer || null;
@@ -73,10 +84,15 @@ export function GuidedBuildChamber() {
       <button className="back-link" onClick={exitGuidedBuild}>
         ← Back to shell choice
       </button>
-      <div className="commission-heading">
+      {/* The commission chamber's sticky heading card carries a fixed
+          "YOUR BLUEPRINT" blurb in CSS; data-summary swaps in this build's
+          own commander, shell and pick count (see .guided-chamber rule). */}
+      <div
+        className="commission-heading"
+        data-summary={`${selectedCommander?.name || "Your commander"}${selectedShell ? ` · ${shellDisplay(selectedShell).name}` : ""}\n${accepted.length} ${accepted.length === 1 ? "card" : "cards"} picked so far`}
+      >
         <span className="forge-eyebrow">
-          <i /> GUIDED BUILD · {selectedCommander?.name?.toUpperCase() || "YOUR COMMANDER"}
-          {selectedShell ? ` · ${selectedShell.label.toUpperCase()}` : ""}
+          <i /> GUIDED BUILD{session ? ` · STEP ${session.categoryIndex + 1} OF ${session.categories.length}` : ""}
         </span>
         <h1>{session ? copy?.label || guidedCategoryLabel(category) : "Reading your commander…"}</h1>
         <p>
@@ -126,10 +142,15 @@ export function GuidedBuildChamber() {
                       <small>THE FORGE SUGGESTS</small>
                       <h2>{offer.name}</h2>
                       <em>{offer.typeLine}{offer.manaCost ? ` · ${offer.manaCost}` : ""}</em>
-                      {offer.oracleText && <p className="guided-oracle">{offer.oracleText}</p>}
+                      {offer.oracleText && (
+                        <details className="guided-oracle">
+                          <summary>Read the card text</summary>
+                          <p>{offer.oracleText}</p>
+                        </details>
+                      )}
                       <p className="guided-why">{describeGuidedReason(session.reason, offer.name)}</p>
                       <div className="guided-actions">
-                        <button type="button" className="guided-accept" disabled={guidedLoading} onClick={acceptGuidedOffer}>
+                        <button type="button" ref={acceptRef} className="guided-accept" disabled={guidedLoading} onClick={acceptGuidedOffer}>
                           Add to my deck
                         </button>
                         <button type="button" disabled={guidedLoading} onClick={declineGuidedOffer}>
@@ -141,7 +162,7 @@ export function GuidedBuildChamber() {
                   </>
                 ) : (
                   <div className="guided-empty">
-                    <h2>{session.exhausted ? `No more ${guidedCategoryLabel(category).toLowerCase()} cards fit right now` : "Nothing to suggest yet"}</h2>
+                    <h2>{session.exhausted ? `No more ${guidedCategoryLabel(category).toLowerCase()} suggestions right now` : "Nothing to suggest yet"}</h2>
                     <p>
                       {session.declined.length
                         ? "You've seen everything the Forge would offer for this slot. Search for a card yourself, or move on."

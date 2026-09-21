@@ -90,6 +90,10 @@ export function describeGuidedReason(reason, offerName = "This card") {
  */
 export function describeLedgerRow(row) {
   if (!row) return "";
+  // Win conditions counts every creature or planeswalker among the picks
+  // (the "threat" role), not just cards taken on the win-conditions step, so
+  // say what is actually being counted instead of implying a step tally.
+  if (row.category === "winConditions") return `${row.actual} ${row.actual === 1 ? "threat" : "threats"} among your picks`;
   if (row.status === "no-target" || !row.target) return `${row.actual} picked`;
   const range = row.target.min === row.target.max ? `${row.target.min}` : `${row.target.min}–${row.target.max}`;
   if (row.status === "under") return `${row.actual} of ${range} — room for ${Math.max(1, row.target.min - row.actual)} more`;
