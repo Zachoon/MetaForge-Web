@@ -221,6 +221,19 @@ test("a whole guided session works end to end against a real pool, cache round t
   assert.deepEqual(report.selected.strategicIntent.packageIds, ["auras"], "the chosen shell must keep steering the fill");
 });
 
+test("the in-isolate analysis cache never changes an answer: repeated and interleaved requests are identical", async () => {
+  const started = await (await post(handlers.handleForgeGuidedStart, startBody(), "cache-user")).json();
+  const ask = async (category, acceptedNames, declinedNames = []) =>
+    (await post(handlers.handleForgeGuidedNext, { generationId: started.generationId, category, acceptedNames, declinedNames }, "cache-user")).json();
+  const firstRamp = await ask("ramp", []);
+  const withPicks = await ask("draw", [firstRamp.offer.name]);
+  const againRamp = await ask("ramp", []);
+  const againWithPicks = await ask("draw", [firstRamp.offer.name]);
+  assert.deepEqual(againRamp, firstRamp, "a later identical request must return the identical answer");
+  assert.deepEqual(againWithPicks, withPicks);
+  assert.deepEqual(started.offer, firstRamp.offer, "start's first offer equals next's for the same state");
+});
+
 test("next refuses another account's session, an unknown session, and a category that doesn't exist", async () => {
   const started = await (await post(handlers.handleForgeGuidedStart, startBody(), "owner")).json();
   const good = { generationId: started.generationId, category: "ramp", acceptedNames: [], declinedNames: [] };

@@ -100,7 +100,7 @@ export default function FounderCommandCenter() {
     </section>
     <section className="founder-panel"><header><div><small>LAUNCH READINESS · LAST 30 DAYS</small><h2>Visitor journey</h2></div><b>{visitors ? Math.round(completed / visitors * 100) : 0}% VISIT → DECK</b></header>
       <div className="founder-metrics">
-        {[['landing_view','CONSENTED VISITORS'],['forge_started','FORGES STARTED'],['forge_succeeded','DECKS RETURNED'],['coaching_opened','COACHING OPENED'],['experiment_started','TESTS STARTED'],['save_continue_clicked','SAVE INTENT']].map(([event,label])=><article key={event}><span>{label}</span><b>{funnel[event]?.sessions || 0}</b><em>{funnel[event]?.events || 0} total events</em></article>)}
+        {[['landing_view','CONSENTED VISITORS'],['forge_started','FORGES STARTED'],['forge_succeeded','DECKS RETURNED'],['coaching_opened','COACHING OPENED'],['experiment_started','TESTS STARTED'],['save_continue_clicked','SAVE INTENT'],['guided_started','GUIDED BUILDS STARTED'],['guided_finished','GUIDED BUILDS FINISHED'],['guided_failed','GUIDED BUILD ERRORS']].map(([event,label])=><article key={event}><span>{label}</span><b>{funnel[event]?.sessions || 0}</b><em>{funnel[event]?.events || 0} total events</em></article>)}
       </div>
     </section>
     <section className="founder-panel"><header><div><small>GENERATION HEALTH · LAST 7 DAYS</small><h2>Production reliability</h2></div><b>{data.launch?.reliability.successRate ?? '—'}% SUCCESS</b></header>

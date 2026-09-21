@@ -97,13 +97,15 @@ function computeOffer(
   category: string,
   acceptedNames: string[],
   declinedNames: string[],
+  cacheKey?: string,
 ) {
   // maxCardPrice / commonsOnly are hard promises (analyzeForgePool drops
   // ineligible cards from `spells` entirely), and budget / Casual power are
   // the same soft pressures one-shot construction passes to its own scoring
   // — the guided loop must keep the preferences the player already set,
   // not quietly offer a $40 card to someone who asked for a budget build.
-  const analysis = analyzeForgePool({ ...input, cards });
+  const analysis = (cacheKey && readCachedAnalysis(cacheKey)) || analyzeForgePool({ ...input, cards });
+  if (cacheKey) cacheAnalysis(cacheKey, analysis);
   const analyzedByName = new Map(analysis.cards.map((entry: any) => [normalizeKey(entry.card?.name || entry.name || ""), entry]));
   const partialRows = acceptedNames
     .map((name) => analyzedByName.get(normalizeKey(name)))
@@ -125,7 +127,35 @@ function computeOffer(
     analysis.strategicIntent,
     { targetPowerTier: input.targetPowerTier },
   );
-  return { suggestion, ledger };
+  return { suggestion, ledger, analysis };
+}
+
+// Analysis (classifying ~1000 cards) costs ~200ms and is identical for every
+// request in a session, while the suggestion itself costs ~50ms. A small
+// in-isolate cache keyed by generationId turns most clicks into the cheap
+// part. It is only ever consulted after loadGeneration has verified the
+// caller owns that generationId, and a cold isolate simply recomputes, so it
+// is purely a latency optimisation, never a source of truth.
+const ANALYSIS_CACHE_MAX = 8;
+const ANALYSIS_CACHE_TTL_MS = 10 * 60 * 1000;
+const analysisCache = new Map<string, { at: number; analysis: any }>();
+function readCachedAnalysis(key: string) {
+  const hit = analysisCache.get(key);
+  if (!hit) return null;
+  if (Date.now() - hit.at > ANALYSIS_CACHE_TTL_MS) {
+    analysisCache.delete(key);
+    return null;
+  }
+  return hit.analysis;
+}
+function cacheAnalysis(key: string, analysis: any) {
+  analysisCache.delete(key);
+  analysisCache.set(key, { at: Date.now(), analysis });
+  while (analysisCache.size > ANALYSIS_CACHE_MAX) {
+    const oldest = analysisCache.keys().next().value;
+    if (oldest === undefined) break;
+    analysisCache.delete(oldest);
+  }
 }
 
 function serializeLedger(ledger: ReturnType<typeof buildCategoryBudgetLedger>) {
@@ -208,7 +238,7 @@ export async function handleForgeGuidedStart(request: Request, env: Env): Promis
     const counter: ScryfallCounter = { count: 0 };
     const pool = await loadNativeForgePool(body.format, commander, "", note, secondCommander, counter);
     const input = { format: body.format, commander, secondCommander, note, focusPackageId, targetPowerTier, strategy, complexity, budget, maxCardPrice, commonsOnly };
-    const { suggestion, ledger } = computeOffer(pool.cards, input, CATEGORY_SEQUENCE[0], [], []);
+    const { suggestion, ledger, analysis } = computeOffer(pool.cards, input, CATEGORY_SEQUENCE[0], [], []);
 
     const generationId = await storeGeneration(env, key, {
       selected: null,
@@ -226,6 +256,7 @@ export async function handleForgeGuidedStart(request: Request, env: Env): Promis
     if (!generationId) {
       return json({ error: "The guided Build could not be started for this commander right now." }, 500);
     }
+    cacheAnalysis(generationId, analysis);
 
     return json({ generationId, colors: pool.colors, categorySequence: CATEGORY_SEQUENCE, ...serializeOffer(suggestion, ledger) });
   } catch (error) {
@@ -290,7 +321,8 @@ export async function handleForgeGuidedNext(request: Request, env: Env): Promise
       maxCardPrice: forgeInput.maxCardPrice ?? undefined,
       commonsOnly: Boolean(forgeInput.commonsOnly),
     };
-    const { suggestion, ledger } = computeOffer(stored.cardPool, input, body.category, acceptedNames, declinedNames);
+    // generation.ok above already proved this caller owns generationId.
+    const { suggestion, ledger } = computeOffer(stored.cardPool, input, body.category, acceptedNames, declinedNames, generationId);
     return json(serializeOffer(suggestion, ledger));
   } catch (error) {
     console.error("forge-guided-next failed", error);
