@@ -75,7 +75,7 @@ test("a reload restores the guided build only for accounts, only when the snapsh
   assert.match(restore, /if \(guestMode \|\| guidedRestoredRef\.current\) return;/);
   assert.match(restore, /session\.key !== savedKey/);
   assert.match(restore, /GUIDED_STORAGE_MAX_AGE_MS/);
-  assert.match(restore, /requestGuidedOffer\(session, \{\}\)/);
+  assert.match(restore, /requestGuidedOffer\(restored, \{\}\)/);
   const finish = source.slice(source.indexOf("function finishGuidedBuild("), source.indexOf("function exitGuidedBuild()"));
   assert.match(finish, /clearStoredGuidedSession\(\)/);
   // A session for a different commander/shell/format must be dropped, not adopted.
@@ -89,6 +89,26 @@ test("guided telemetry carries actions and role categories only — never card n
   for (const call of calls) assert.doesNotMatch(call, /accepted\.(join|map)|\.name\b|deckText|declined/);
   assert.match(read("worker/launch-telemetry.ts"), /"guided_started", "guided_step", "guided_finished", "guided_failed"/);
   assert.match(read("app/launch-telemetry.ts"), /\| "guided_failed"/);
+});
+
+test("manual search cards are sent to the server on every request, not just the request that adds them", () => {
+  const source = read("app/forge-session-context.tsx");
+  const addFn = source.slice(source.indexOf("function addGuidedManualCard("), source.indexOf("function removeGuidedPick("));
+  assert.match(addFn, /manualCards: \{ \.\.\.guidedSession\.manualCards, \[lower\]: rawCard \}/);
+  const requestFn = source.slice(source.indexOf("async function requestGuidedOffer("), source.indexOf("async function requestGuidedOffer(") + 1200);
+  assert.match(requestFn, /manualCards: Object\.values\(next\.manualCards\)/);
+  // A pre-manual-cards snapshot restored from storage must not crash the next request.
+  const restoreStart = source.indexOf("const guidedRestoredRef");
+  const restore = source.slice(restoreStart, source.indexOf("}, [guestMode]);", restoreStart));
+  assert.match(restore, /const restored: GuidedSession = \{ manualCards: \{\}, \.\.\.session \};/);
+});
+
+test("the worker classifies manual cards through the real card-fact transform, caps their count, and folds them into the cache key", () => {
+  const worker = read("worker/forge-guided-build.ts");
+  assert.match(worker, /import \{[\s\S]*?nativeCardFact,[\s\S]*?\} from "\.\/forge-generate"/);
+  assert.match(worker, /MAX_MANUAL_CARDS = 30/);
+  assert.match(worker, /\.slice\(0, MAX_MANUAL_CARDS\)/);
+  assert.match(worker, /manualCards\.map\(\(card\) => normalizeKey\(String\(card\?\.name \|\| ""\)\)\)\.sort\(\)\.join\(","\)/);
 });
 
 test("both guided endpoints require an authenticated account and a rate limit", () => {

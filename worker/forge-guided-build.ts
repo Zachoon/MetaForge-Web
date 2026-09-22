@@ -25,6 +25,7 @@ import {
   MAX_ORACLE_TEXT,
   MAX_SHORT_STRING,
   loadNativeForgePool,
+  nativeCardFact,
   sanitizeCommander,
   type CommanderInput,
   type ScryfallCounter,
@@ -51,9 +52,12 @@ const START_RATE_WINDOW_MS = 5 * 60 * 1000;
 const NEXT_RATE_LIMIT = 120;
 const NEXT_RATE_WINDOW_MS = 5 * 60 * 1000;
 
-const MAX_BODY_BYTES = 64 * 1024;
+// Manual search results can carry a full oracle-text card, so this endpoint
+// allows a larger body than start's plain name lists.
+const MAX_BODY_BYTES = 96 * 1024;
 const MAX_ROWS = 100;
 const MAX_ROW_NAME = 400;
+const MAX_MANUAL_CARDS = 30;
 
 function sanitizeNameList(raw: unknown, max: number): string[] {
   if (!Array.isArray(raw)) return [];
@@ -62,6 +66,23 @@ function sanitizeNameList(raw: unknown, max: number): string[] {
     .filter((entry): entry is string => typeof entry === "string")
     .map((entry) => entry.slice(0, MAX_ROW_NAME))
     .filter((entry) => entry.length > 0);
+}
+
+// A card the player found through manual search rather than a Forge
+// suggestion. The client's search already scopes to the legal format and the
+// commander's color identity, so this only shapes the data (the same
+// transform every pool card already goes through) — it does not re-verify
+// legality against Scryfall, which would reintroduce the per-click network
+// cost this whole endpoint design exists to avoid. Worst case for a
+// fabricated entry is a player misleading their own build, not a security
+// issue: the finish step's decklist import still resolves every card
+// against real Scryfall data independently.
+function sanitizeManualCards(raw: unknown): ReturnType<typeof nativeCardFact>[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .slice(0, MAX_MANUAL_CARDS)
+    .filter((entry) => entry && typeof entry === "object" && typeof (entry as any).name === "string" && (entry as any).name.trim())
+    .map((entry) => nativeCardFact(entry));
 }
 
 function validateCategory(value: unknown): value is string {
@@ -98,14 +119,31 @@ function computeOffer(
   acceptedNames: string[],
   declinedNames: string[],
   cacheKey?: string,
+  manualCards: any[] = [],
 ) {
+  // Manual search finds cards outside the pool loadNativeForgePool fetched
+  // (a Scryfall search is popularity-ordered and capped in size). Without
+  // merging them in here, a manually-added pick would still make it into the
+  // finished deck (the finish step's decklist import resolves any name
+  // independently) but would silently never appear in the live ledger while
+  // the player is still building — exactly the kind of quiet mismatch this
+  // project's own trust principle says not to ship. The client resends every
+  // manual card it has added on each later request (there is no persistent
+  // per-generation pool to append to without minting a new generationId), so
+  // the cache key folds in which manual cards are present: unchanged between
+  // clicks, the merged analysis is still reused; a newly added manual card
+  // computes fresh once and is cached under its own key from then on.
+  const effectiveKey = cacheKey && manualCards.length
+    ? `${cacheKey}::${manualCards.map((card) => normalizeKey(String(card?.name || ""))).sort().join(",")}`
+    : cacheKey;
   // maxCardPrice / commonsOnly are hard promises (analyzeForgePool drops
   // ineligible cards from `spells` entirely), and budget / Casual power are
   // the same soft pressures one-shot construction passes to its own scoring
   // — the guided loop must keep the preferences the player already set,
   // not quietly offer a $40 card to someone who asked for a budget build.
-  const analysis = (cacheKey && readCachedAnalysis(cacheKey)) || analyzeForgePool({ ...input, cards });
-  if (cacheKey) cacheAnalysis(cacheKey, analysis);
+  const analysis = (effectiveKey && readCachedAnalysis(effectiveKey))
+    || analyzeForgePool({ ...input, cards: manualCards.length ? [...cards, ...manualCards] : cards });
+  if (effectiveKey) cacheAnalysis(effectiveKey, analysis);
   const analyzedByName = new Map(analysis.cards.map((entry: any) => [normalizeKey(entry.card?.name || entry.name || ""), entry]));
   const partialRows = acceptedNames
     .map((name) => analyzedByName.get(normalizeKey(name)))
@@ -289,6 +327,7 @@ export async function handleForgeGuidedNext(request: Request, env: Env): Promise
 
   const acceptedNames = sanitizeNameList(body?.acceptedNames, MAX_ROWS);
   const declinedNames = sanitizeNameList(body?.declinedNames, MAX_ROWS);
+  const manualCards = sanitizeManualCards(body?.manualCards);
 
   const generation = await loadGeneration(env, key, generationId);
   if (!generation.ok) {
@@ -323,7 +362,7 @@ export async function handleForgeGuidedNext(request: Request, env: Env): Promise
       commonsOnly: Boolean(forgeInput.commonsOnly),
     };
     // generation.ok above already proved this caller owns generationId.
-    const { suggestion, ledger } = computeOffer(stored.cardPool, input, body.category, acceptedNames, declinedNames, generationId);
+    const { suggestion, ledger } = computeOffer(stored.cardPool, input, body.category, acceptedNames, declinedNames, generationId, manualCards);
     return json(serializeOffer(suggestion, ledger));
   } catch (error) {
     console.error("forge-guided-next failed", error);

@@ -128,6 +128,14 @@ type GuidedSession = {
   categoryIndex: number;
   accepted: string[];
   declined: string[];
+  // Full card data for anything accepted via manual search rather than a
+  // Forge suggestion, keyed by lowercased name. The server's pool comes from
+  // a capped, popularity-ordered Scryfall page, so a manual find is often
+  // outside it — without resending the full card here on every request, it
+  // would still end up in the finished deck (the finish step resolves any
+  // name independently) but would silently never appear in the live ledger
+  // while still building.
+  manualCards: Record<string, any>;
   offer: GuidedOffer | null;
   reason: GuidedReason;
   exhausted: boolean;
@@ -1092,6 +1100,7 @@ export function useForgeSessionState() {
         categoryIndex: 0,
         accepted: [],
         declined: [],
+        manualCards: {},
         ...guidedOfferFields(data),
       });
       // Counts and role names only, never card names or the list itself.
@@ -1105,7 +1114,7 @@ export function useForgeSessionState() {
   }
   async function requestGuidedOffer(
     session: GuidedSession,
-    patch: Partial<Pick<GuidedSession, "categoryIndex" | "accepted" | "declined">>,
+    patch: Partial<Pick<GuidedSession, "categoryIndex" | "accepted" | "declined" | "manualCards">>,
   ) {
     const next = { ...session, ...patch };
     setGuidedLoading(true);
@@ -1116,6 +1125,10 @@ export function useForgeSessionState() {
         category: next.categories[next.categoryIndex],
         acceptedNames: next.accepted,
         declinedNames: next.declined,
+        // Resent in full every time: there is no persistent per-generation
+        // pool to append a manual find to server-side without minting a new
+        // generationId, so the client is the source of truth for these.
+        manualCards: Object.values(next.manualCards),
       });
       setGuidedSession({ ...next, ...guidedOfferFields(data) });
     } catch (error) {
@@ -1148,16 +1161,23 @@ export function useForgeSessionState() {
       declined: [...guidedSession.declined, guidedSession.offer.name],
     });
   }
-  function addGuidedManualCard(name: string) {
+  // rawCard is the Scryfall search result as-is (name, type_line, oracle_text,
+  // mana_cost, cmc, color_identity, prices, ...) — sent to the server so a
+  // manual find gets the exact same classification as a suggested card
+  // instead of only appearing once the finished deck is resolved.
+  function addGuidedManualCard(rawCard: { name?: string } & Record<string, unknown>) {
     if (!guidedSession || guidedLoading) return;
-    const clean = name.trim();
-    if (!clean) return;
-    const lower = clean.toLocaleLowerCase("en");
+    const name = String(rawCard?.name || "").trim();
+    if (!name) return;
+    const lower = name.toLocaleLowerCase("en");
     const commanderNames = [selectedCommander?.name, selectedSecondCommander?.name].filter(Boolean).map((value) => String(value).toLocaleLowerCase("en"));
     if (commanderNames.includes(lower)) return;
     if (guidedSession.accepted.some((entry) => entry.toLocaleLowerCase("en") === lower)) return;
     trackGuidedStep("manual");
-    void requestGuidedOffer(guidedSession, { accepted: [...guidedSession.accepted, clean] });
+    void requestGuidedOffer(guidedSession, {
+      accepted: [...guidedSession.accepted, name],
+      manualCards: { ...guidedSession.manualCards, [lower]: rawCard },
+    });
   }
   function removeGuidedPick(name: string) {
     if (!guidedSession || guidedLoading) return;
@@ -1245,15 +1265,18 @@ export function useForgeSessionState() {
         if (saved) clearStoredGuidedSession();
         return;
       }
+      // Older snapshots (saved before manual-search cards were tracked) may
+      // not carry this field.
+      const restored: GuidedSession = { manualCards: {}, ...session };
       setFormat(saved.format);
       setSelectedCommander(saved.commander);
       setSelectedSecondCommander(saved.second || null);
       setSelectedShell(saved.shell || null);
-      setGuidedSession(session);
+      setGuidedSession(restored);
       setChamber("guided-build");
       // The snapshot's offer/ledger may be stale; ask the server for the
       // current ones (this also proves the cached pool is still alive).
-      void requestGuidedOffer(session, {});
+      void requestGuidedOffer(restored, {});
     } catch {
       clearStoredGuidedSession();
     }

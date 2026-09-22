@@ -234,6 +234,57 @@ test("the in-isolate analysis cache never changes an answer: repeated and interl
   assert.deepEqual(started.offer, firstRamp.offer, "start's first offer equals next's for the same state");
 });
 
+test("a card found by manual search outside the pool registers in the ledger, survives caching, and reaches the finished deck", async () => {
+  const started = await (await post(handlers.handleForgeGuidedStart, startBody(), "manual-user")).json();
+  const manualRamp = raw("Found By Search", "Artifact", "{T}: Add one mana of any color.", 1);
+
+  const withManual = await (await post(handlers.handleForgeGuidedNext, {
+    generationId: started.generationId, category: "ramp",
+    acceptedNames: [manualRamp.name], declinedNames: [], manualCards: [manualRamp],
+  }, "manual-user")).json();
+  const rampRow = withManual.ledger.find((row) => row.category === "ramp");
+  assert.equal(rampRow.actual, 1, "the manually-found card must count toward its real role in the live ledger");
+
+  // Same manual set again — must hit the cache and return byte-identical output.
+  const again = await (await post(handlers.handleForgeGuidedNext, {
+    generationId: started.generationId, category: "ramp",
+    acceptedNames: [manualRamp.name], declinedNames: [], manualCards: [manualRamp],
+  }, "manual-user")).json();
+  assert.deepEqual(again, withManual);
+
+  // A second manual card changes the cache key but must not lose the first.
+  const manualDraw = raw("Also Found", "Instant", "Draw two cards.", 2);
+  const withBoth = await (await post(handlers.handleForgeGuidedNext, {
+    generationId: started.generationId, category: "draw",
+    acceptedNames: [manualRamp.name, manualDraw.name], declinedNames: [],
+    manualCards: [manualRamp, manualDraw],
+  }, "manual-user")).json();
+  const drawRow = withBoth.ledger.find((row) => row.category === "draw");
+  assert.equal(drawRow.actual, 1);
+  assert.equal(withBoth.ledger.find((row) => row.category === "ramp").actual, 1, "the earlier manual pick must still register");
+
+  // The finish step never depends on manualCards being resent — the name
+  // alone is enough for the import pipeline to resolve it independently.
+  const report = forgeImportedMasterwork({
+    format: "Commander", target: 100, strategy: "Balanced midrange", commander: pearlEar, note: "", focusPackageId: "auras",
+    cards: [...JSON.parse(env.DB.rows.get(started.generationId).payload_json).cardPool, manualRamp, manualDraw],
+    importedRows: [manualRamp.name, manualDraw.name].map((name) => ({ name, quantity: 1 })),
+  });
+  const names = new Set(report.selected.rows.map((row) => row.name));
+  assert.ok(names.has(manualRamp.name) && names.has(manualDraw.name), "both manual picks must survive completion");
+});
+
+test("a malformed or oversized manualCards entry is dropped, never crashes the endpoint", async () => {
+  const started = await (await post(handlers.handleForgeGuidedStart, startBody(), "manual-bad-user")).json();
+  const response = await post(handlers.handleForgeGuidedNext, {
+    generationId: started.generationId, category: "ramp", acceptedNames: [], declinedNames: [],
+    manualCards: [null, "not an object", { noName: true }, ...Array.from({ length: 40 }, (_, i) => raw(`Flood ${i}`, "Instant", "Draw a card.", 1))],
+  }, "manual-bad-user");
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.ok(body.offer);
+});
+
 test("next refuses another account's session, an unknown session, and a category that doesn't exist", async () => {
   const started = await (await post(handlers.handleForgeGuidedStart, startBody(), "owner")).json();
   const good = { generationId: started.generationId, category: "ramp", acceptedNames: [], declinedNames: [] };

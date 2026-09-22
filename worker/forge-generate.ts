@@ -208,7 +208,7 @@ const BASIC_LAND_KEYS = new Set([
   "Snow-Covered Plains", "Snow-Covered Island", "Snow-Covered Swamp", "Snow-Covered Mountain", "Snow-Covered Forest",
 ].map(cardFactKey));
 
-type NativeForgeCard = {
+export type NativeForgeCard = {
   name: string;
   manaCost: string;
   cmc: number;
@@ -224,7 +224,7 @@ type NativeForgeCard = {
   toughness?: string;
 };
 
-const nativeCardFact = (card: any): NativeForgeCard => {
+export const nativeCardFact = (card: any): NativeForgeCard => {
   const priceUsd = Number(card.prices?.usd ?? card.prices?.usd_foil ?? NaN);
   return {
     name: String(card.name || ""),

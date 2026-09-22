@@ -33,7 +33,7 @@ export function GuidedBuildChamber() {
   } = useForgeSession();
 
   const [search, setSearch] = useState("");
-  const [results, setResults] = useState<Array<{ name: string; typeLine: string }>>([]);
+  const [results, setResults] = useState<Array<{ name: string; typeLine: string; raw: Record<string, unknown> }>>([]);
   const acceptRef = useRef<HTMLButtonElement>(null);
 
   const commanderColors = [...new Set([...(selectedCommander?.colors || []), ...(selectedSecondCommander?.colors || [])])];
@@ -54,7 +54,10 @@ export function GuidedBuildChamber() {
         setResults(
           (data.data || [])
             .slice(0, 6)
-            .map((card: { name: string; type_line?: string }) => ({ name: card.name, typeLine: card.type_line || "Card" })),
+            // raw carries the whole Scryfall card so it can be sent to the
+            // guided endpoint for real classification if the player adds it
+            // (see addGuidedManualCard) — never re-derived from just a name.
+            .map((card: { name: string; type_line?: string }) => ({ name: card.name, typeLine: card.type_line || "Card", raw: card })),
         );
       } catch {
         setResults([]);
@@ -193,7 +196,7 @@ export function GuidedBuildChamber() {
                         key={card.name}
                         disabled={guidedLoading || accepted.some((entry) => entry.toLocaleLowerCase("en") === card.name.toLocaleLowerCase("en"))}
                         onClick={() => {
-                          addGuidedManualCard(card.name);
+                          addGuidedManualCard(card.raw);
                           setSearch("");
                           setResults([]);
                         }}

@@ -93,6 +93,7 @@ const session = (overrides = {}) => ({
   categoryIndex: 0,
   accepted: ["Sol Ring", "Arcane Signet"],
   declined: [],
+  manualCards: {},
   offer: { name: "Cultivate", typeLine: "Sorcery", oracleText: "Search your library for two basic land cards.", manaCost: "{2}{G}", cmc: 3 },
   reason: { deficitsFilled: ["role:ramp", "curve:3"], topPositive: { kind: "tracked_role", key: "ramp" }, nearestAlternative: { name: "Rampant Growth", margin: 3.5 } },
   exhausted: false,
