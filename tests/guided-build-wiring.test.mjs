@@ -127,6 +127,18 @@ test("restarting a guided build requires a two-step confirm and never silently d
   assert.match(source, /setConfirmingRestart\(false\);\s*\}, \[session\?\.accepted\.length, session\?\.categoryIndex, guidedLoading\]\);/);
 });
 
+test("a manual card search discards a response that arrives after a newer search has started", () => {
+  const source = read("app/components/forge/guided-build-chamber.tsx");
+  const effectStart = source.indexOf("const searchSeq = useRef(0);");
+  const effect = source.slice(effectStart, source.indexOf("}, [search, format, identityClause]);"));
+  assert.match(effect, /const seq = \+\+searchSeq\.current;/);
+  // Both the success path and the catch path must check the token before
+  // touching state — a stale rejection clearing fresh results would be the
+  // same bug in a different shape.
+  assert.match(effect, /if \(seq !== searchSeq\.current\) return;/);
+  assert.match(effect, /if \(seq === searchSeq\.current\) setResults\(\[\]\);/);
+});
+
 test("both guided endpoints require an authenticated account and a rate limit", () => {
   const source = read("worker/forge-guided-build.ts");
   assert.equal((source.match(/await userKey\(request, env\)/g) || []).length, 2);

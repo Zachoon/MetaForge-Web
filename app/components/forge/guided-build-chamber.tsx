@@ -36,6 +36,7 @@ export function GuidedBuildChamber() {
   const [results, setResults] = useState<Array<{ name: string; typeLine: string; raw: Record<string, unknown> }>>([]);
   const [confirmingRestart, setConfirmingRestart] = useState(false);
   const acceptRef = useRef<HTMLButtonElement>(null);
+  const searchSeq = useRef(0);
 
   const commanderColors = [...new Set([...(selectedCommander?.colors || []), ...(selectedSecondCommander?.colors || [])])];
   const identityClause = commanderColors.length ? `id<=${commanderColors.join("").toLowerCase()}` : "id:c";
@@ -47,11 +48,18 @@ export function GuidedBuildChamber() {
       setResults([]);
       return;
     }
+    // A slower response to an earlier keystroke can land after a faster
+    // response to a later one — the debounce only stops an unstarted fetch,
+    // not one already in flight. Tag each request and drop any response
+    // that isn't for the search term still on screen, so a fast typist never
+    // sees results for something they've already typed past.
+    const seq = ++searchSeq.current;
     const timer = window.setTimeout(async () => {
       try {
         const query = encodeURIComponent(`${scryfallFormatTerms(format)} ${identityClause} ${term}`);
         const response = await fetch(`https://api.scryfall.com/cards/search?q=${query}&order=edhrec`);
         const data = await response.json();
+        if (seq !== searchSeq.current) return;
         setResults(
           (data.data || [])
             .slice(0, 6)
@@ -61,7 +69,7 @@ export function GuidedBuildChamber() {
             .map((card: { name: string; type_line?: string }) => ({ name: card.name, typeLine: card.type_line || "Card", raw: card })),
         );
       } catch {
-        setResults([]);
+        if (seq === searchSeq.current) setResults([]);
       }
     }, 250);
     return () => window.clearTimeout(timer);
