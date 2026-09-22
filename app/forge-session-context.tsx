@@ -3744,15 +3744,19 @@ export function useForgeSessionState() {
         : null;
 
       if (mode === "decklist") {
-        // Deliberately omits maxCardPrice/commonsOnly/targetPowerTier:
-        // forgeImportedMasterwork preserves whatever the player actually
-        // pasted in (that's its whole contract — "the Forge never
-        // silently substitutes its own optimization for what the player
-        // submitted"), and those hard filters would silently drop an
-        // over-budget or non-common card straight out of their own list
-        // instead. A budget/rarity/power target is a construction-time
-        // preference for cards the Forge is choosing, not a retroactive
-        // filter on cards the player already chose themselves.
+        // maxCardPrice/commonsOnly travel here now: forgeImportedMasterwork
+        // treats them as hard promises for whatever slots the player's own
+        // list leaves open, while a preset row the player actually submitted
+        // is matched against the price/rarity-unfiltered pool specifically
+        // so it can never be silently dropped for costing more than a cap
+        // set elsewhere (native-masterwork-engine.mjs's
+        // buildImportedCandidateAttempt, proven by
+        // tests/native-masterwork-import.test.mjs) — this used to be
+        // omitted entirely, so a guided build's careful, cheap, one-at-a-
+        // time picks were followed by dozens of Forge-filled slots with zero
+        // price awareness at all. targetPowerTier stays excluded: the engine
+        // has no code path for a retroactive power audit on this path, and
+        // that's deliberate (see the same test file) — not a gap.
         // reviewFocus is a one-click coaching-intent signal, not a deck
         // characteristic, so it travels as its own validated request field
         // (worker/forge-generate.ts) rather than inside the free-text note
@@ -3778,6 +3782,8 @@ export function useForgeSessionState() {
           // worker/forge-generate.ts). A plain pasted-list completion never
           // inherits a lingering pick from an earlier discover session.
           focusPackageId: options.guided && isCommanderFormat(format) ? selectedShell?.id || undefined : undefined,
+          maxCardPrice,
+          commonsOnly,
         });
         trackLaunchEvent("forge_succeeded", { mode, format, durationMs: Date.now() - launchStartedAt });
         setImportWarnings([

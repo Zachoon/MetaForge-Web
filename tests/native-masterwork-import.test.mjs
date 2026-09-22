@@ -267,3 +267,49 @@ test("a strict budget cap that would leave too few eligible cards to fill the ga
   const submitted = report.selected.rows.find((row) => row.name === "Cheap Draw 0");
   assert.equal(submitted.quantity, 1, "the player's own submitted card is never affected by recovery");
 });
+
+// worker/forge-generate.ts now forwards maxCardPrice/commonsOnly into this
+// same imported/completion path for every decklist completion, including
+// every guided-build finish (they're exactly the same call) — previously
+// omitted entirely, so the Forge filled the vast majority of a guided
+// build's deck (everything past the player's own hand-picked cards) with
+// zero price or rarity awareness. A cap that's easily satisfiable (unlike
+// the scarce-pool recovery test above) must actually be enforced on
+// whatever the Forge adds, while never touching a card the player
+// submitted themselves, even one priced over their own cap.
+test("a satisfiable maxCardPrice cap governs every card the Forge adds to complete a pasted list, but never a card the player actually submitted", () => {
+  const cheapDraw = (n) => ({ ...card(`Cheap Draw ${n}`, "When this enters, draw a card. Scry 1.", "Creature — Test", "{1}{G}", ["G"]), priceUsd: 0.5 });
+  const cheapAnswer = (n) => ({ ...card(`Cheap Answer ${n}`, "Destroy target creature.", "Sorcery", "{1}{G}", ["G"]), priceUsd: 0.5 });
+  const cheapShield = (n) => ({ ...card(`Cheap Shield ${n}`, "Target creature gains hexproof and indestructible until end of turn.", "Instant", "{G}", ["G"]), priceUsd: 0.5 });
+  const premiumDraw = (n) => ({ ...card(`Premium Draw ${n}`, "When this enters, draw a card. Scry 1.", "Creature — Test", "{2}{G}", ["G"]), priceUsd: 45 });
+  const premiumAnswer = (n) => ({ ...card(`Premium Answer ${n}`, "Destroy target creature. Draw a card.", "Sorcery", "{2}{G}", ["G"]), priceUsd: 45 });
+  const playersOwnPremiumPick = { ...card("Player's Premium Pick", "When this enters, draw a card. Scry 1.", "Creature — Test", "{2}{G}", ["G"]), priceUsd: 45 };
+  const roomyPool = [
+    playersOwnPremiumPick,
+    ...Array.from({ length: 26 }, (_, i) => cheapDraw(i)),
+    ...Array.from({ length: 26 }, (_, i) => cheapAnswer(i)),
+    ...Array.from({ length: 26 }, (_, i) => cheapShield(i)),
+    ...Array.from({ length: 14 }, (_, i) => premiumDraw(i)),
+    ...Array.from({ length: 13 }, (_, i) => premiumAnswer(i)),
+    ...Array.from({ length: 20 }, (_, i) => card(`Forest Utility ${i}`, "{T}: Add {G}.", "Land", "", ["G"])),
+  ];
+  const input = {
+    ...baseInput,
+    format: "Commander",
+    target: 100,
+    colors: ["G"],
+    commander: { name: "Test Commander", colors: ["G"], oracleText: "" },
+    cards: roomyPool,
+    maxCardPrice: 2,
+    importedRows: [
+      { quantity: 1, name: "Player's Premium Pick" },
+      { quantity: 30, name: "Forest" },
+    ],
+  };
+  const report = forgeImportedMasterwork(input);
+  assert.notEqual(report.selected.recoveryStage, "relaxed-preferences", "plenty of cheap cards exist here; this cap must be satisfiable without relaxing anything");
+  const submitted = report.selected.rows.find((row) => row.name === "Player's Premium Pick");
+  assert.equal(submitted?.quantity, 1, "the player's own submitted card survives even though it costs more than the cap they set");
+  const otherPremiumNames = report.selected.rows.filter((row) => row.name !== "Player's Premium Pick" && /^Premium/.test(row.name));
+  assert.deepEqual(otherPremiumNames, [], "every card the Forge itself chose to fill open slots must respect the cap");
+});

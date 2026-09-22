@@ -127,6 +127,38 @@ test("restarting a guided build requires a two-step confirm and never silently d
   assert.match(source, /setConfirmingRestart\(false\);\s*\}, \[session\?\.accepted\.length, session\?\.categoryIndex, guidedLoading\]\);/);
 });
 
+test("a guided finish's completion request carries maxCardPrice/commonsOnly through to the Forge fill, but never a retroactive targetPowerTier", () => {
+  // A guided finish hands its accepted picks to forge-generate.ts's
+  // "imported" branch as a decklist (finishGuidedBuild -> commitDirectForge
+  // -> callForgeGenerate({ mode: "imported", ... })) — the exact same call
+  // any plain "complete my pasted list" request makes. Most of a guided
+  // build's final deck (everything past the handful of cards actually
+  // picked one at a time) comes from whatever this call fills in, so if it
+  // silently drops the player's budget/rarity preferences, the guided
+  // loop's own carefully-priced suggestions are followed by dozens of
+  // Forge-added cards with no price awareness at all. targetPowerTier is a
+  // deliberate, tested exception (native-masterwork-import.test.mjs) — the
+  // engine has no code path for a retroactive power audit on this path.
+  const client = read("app/forge-session-context.tsx");
+  const decklistStart = client.indexOf('if (mode === "decklist") {');
+  const decklistCall = client.slice(decklistStart, client.indexOf("});", decklistStart));
+  assert.match(decklistCall, /mode: "imported"/);
+  assert.match(decklistCall, /\bmaxCardPrice,/);
+  assert.match(decklistCall, /\bcommonsOnly,/);
+  // Checks for the field actually being sent (a bare key), not just the
+  // word — the surrounding comment explaining the exclusion necessarily
+  // says "targetPowerTier" itself.
+  assert.doesNotMatch(decklistCall, /\btargetPowerTier[,:]/);
+
+  const worker = read("worker/forge-generate.ts");
+  const importedStart = worker.indexOf('if (body.mode === "imported") {');
+  const importedCall = worker.slice(importedStart, worker.indexOf("});", importedStart));
+  assert.match(importedCall, /forgeImportedMasterwork\(\{/);
+  assert.match(importedCall, /maxCardPrice: body\.maxCardPrice,/);
+  assert.match(importedCall, /commonsOnly: body\.commonsOnly,/);
+  assert.doesNotMatch(importedCall, /\btargetPowerTier[,:]/);
+});
+
 test("a manual card search discards a response that arrives after a newer search has started", () => {
   const source = read("app/components/forge/guided-build-chamber.tsx");
   const effectStart = source.indexOf("const searchSeq = useRef(0);");

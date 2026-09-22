@@ -3225,8 +3225,22 @@ function buildImportedCandidateAttempt(input, analysis) {
   const commanderSlots = allCommanders(input).length;
   const commanderNames = commanderNamesNormalized(input);
 
-  const spellByName = new Map(analysis.spells.map((entry) => [normalized(entry.card.name), entry]));
-  const landByName = new Map(analysis.lands.map((entry) => [normalized(entry.card.name), entry.card]));
+  // analysis.spells/lands are already hard-filtered by maxCardPrice/
+  // commonsOnly (see prepareForgeAnalysis) — exactly what the "fill the
+  // rest" pool below (`scored`, sourced from analysis.spells) should use.
+  // But a preset row is a card the player put in their own list, not a
+  // Forge fill choice: matching it against that same filtered set would
+  // silently drop it if it happens to cost more than a budget cap they set
+  // (elsewhere, possibly before ever pasting this list), exactly the
+  // "the player's own submitted cards are always reserved first ... can
+  // never drop or substitute a card the player actually pasted in"
+  // invariant this function documents further down. relaxAnalysisPreferences
+  // already computes the right set for this — hard-exclusion rules
+  // (excludedRoleHits) still apply, price/rarity preferences don't — reuse
+  // it here instead of analysis.spells/lands directly.
+  const presetEligible = relaxAnalysisPreferences(analysis, input);
+  const spellByName = new Map(presetEligible.spells.map((entry) => [normalized(entry.card.name), entry]));
+  const landByName = new Map(presetEligible.lands.map((entry) => [normalized(entry.card.name), entry.card]));
   const presetSpellRows = [];
   const presetLandRows = [];
   for (const row of input.importedRows) {
@@ -3245,7 +3259,7 @@ function buildImportedCandidateAttempt(input, analysis) {
       continue;
     }
     const spellEntry = spellByName.get(key);
-    if (!spellEntry) continue; // never reached in practice: the caller only ever supplies rows already verified against this same analyzed pool
+    if (!spellEntry) continue; // never reached in practice: the caller only ever supplies rows already verified against this same analyzed pool (post-relaxation, so a price/rarity preference can't be the reason)
     presetSpellRows.push({
       quantity: row.quantity,
       name: spellEntry.card.name,

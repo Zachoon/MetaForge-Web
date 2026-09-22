@@ -711,6 +711,21 @@ export async function generateForgeResult(request: Request, env: Env, key: strin
         // steering the fill of whatever slots they left open, not silently
         // revert to every package the commander happens to trigger.
         focusPackageId: isCommanderFormat(body.format) ? body.focusPackageId || undefined : undefined,
+        // maxCardPrice/commonsOnly are hard promises the same way an
+        // exclusion is (see native-masterwork-engine.mjs's
+        // buildImportedCandidateAttempt) and forgeImportedMasterwork already
+        // honors them for whatever slots the player's own list leaves open,
+        // while never dropping a submitted card that happens to cost more
+        // (proven by tests/native-masterwork-import.test.mjs) — this was
+        // simply never forwarded from the request, so every decklist
+        // completion (including every guided-build finish, which is exactly
+        // this same call) silently filled the remainder with zero price or
+        // rarity awareness. targetPowerTier deliberately stays excluded: the
+        // engine has no code path for it on this side (see that same test
+        // file), a power-tier retroactive audit isn't a coherent operation on
+        // a list the player already half-built themselves.
+        maxCardPrice: body.maxCardPrice,
+        commonsOnly: body.commonsOnly,
       });
       const generationMs = Date.now() - generationStart;
 
