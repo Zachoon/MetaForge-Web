@@ -141,6 +141,13 @@ test("a live session renders the offer, its plain-language reason, the ledger, t
   assert.match(html, /<details class="guided-oracle"><summary>Read the card text<\/summary>/);
 });
 
+test("a restart action is offered once there are picks, but never before there's anything to lose", () => {
+  const withPicks = render(baseContext({ guidedSession: session() }));
+  assert.match(withPicks, /Start this build over/);
+  const empty = render(baseContext({ guidedSession: session({ accepted: [] }) }));
+  assert.doesNotMatch(empty, /Start this build over/);
+});
+
 test("after several declines the manual search is emphasized", () => {
   const html = render(baseContext({ guidedSession: session({ declined: ["a", "b", "c"] }) }));
   assert.match(html, /guided-search emphasized/);

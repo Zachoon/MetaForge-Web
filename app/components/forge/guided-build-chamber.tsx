@@ -34,6 +34,7 @@ export function GuidedBuildChamber() {
 
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<Array<{ name: string; typeLine: string; raw: Record<string, unknown> }>>([]);
+  const [confirmingRestart, setConfirmingRestart] = useState(false);
   const acceptRef = useRef<HTMLButtonElement>(null);
 
   const commanderColors = [...new Set([...(selectedCommander?.colors || []), ...(selectedSecondCommander?.colors || [])])];
@@ -74,6 +75,14 @@ export function GuidedBuildChamber() {
   useEffect(() => {
     if (!guidedLoading && offerName && document.activeElement === document.body) acceptRef.current?.focus();
   }, [guidedLoading, offerName]);
+
+  // Restarting discards every pick, so it gets the same two-step confirm
+  // every other bulk/destructive action on a deck uses in this codebase —
+  // never a silent one-click reset. Dropped automatically if the player
+  // picks up any other action instead of confirming.
+  useEffect(() => {
+    setConfirmingRestart(false);
+  }, [session?.accepted.length, session?.categoryIndex, guidedLoading]);
 
   const category = session ? session.categories[session.categoryIndex] : "";
   const copy = GUIDED_CATEGORY_COPY[category as keyof typeof GUIDED_CATEGORY_COPY];
@@ -246,6 +255,21 @@ export function GuidedBuildChamber() {
                   <small>YOUR PICKS · {accepted.length}</small>
                   <p>Lands and any slots you leave open are filled by the Forge when you finish, and you can edit everything after.</p>
                 </header>
+                {accepted.length > 0 && (
+                  confirmingRestart ? (
+                    <div className="guided-restart-confirm" role="group" aria-label="Confirm restart">
+                      <p>Start over? Every pick you've made will be discarded.</p>
+                      <button type="button" className="guided-restart-yes" disabled={guidedLoading} onClick={() => { setConfirmingRestart(false); void startGuidedBuild(); }}>
+                        Yes, start over
+                      </button>
+                      <button type="button" onClick={() => setConfirmingRestart(false)}>Cancel</button>
+                    </div>
+                  ) : (
+                    <button type="button" className="guided-restart" disabled={guidedLoading} onClick={() => setConfirmingRestart(true)}>
+                      Start this build over
+                    </button>
+                  )
+                )}
                 {accepted.length ? (
                   <ul>
                     {accepted.map((name) => (

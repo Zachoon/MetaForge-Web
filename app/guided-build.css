@@ -76,6 +76,12 @@
 .guided-picks li button{padding:0 8px;border:0;background:transparent;color:#92a29d;font-size:16px}
 .guided-picks li button:hover:not(:disabled){color:#e8fff8}
 .guided-picks-empty{margin:0;color:#81938e;font-size:12px}
+.guided-restart{width:100%;margin-bottom:10px;padding:8px;border:1px solid #52655f;background:transparent;color:#92a29d;font-size:11px}
+.guided-restart:hover:not(:disabled),.guided-restart:focus-visible{outline:0;border-color:#c9b89a;color:#c9b89a}
+.guided-restart-confirm{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;padding:10px;border:1px solid #7a4a3a;background:#1a0f0c}
+.guided-restart-confirm p{flex-basis:100%;margin:0 0 2px;color:#e8d5cc;font-size:12px}
+.guided-restart-confirm button{padding:7px 11px;border:1px solid #52655f;background:transparent;color:#dce5e1;font-size:11px}
+.guided-restart-confirm button.guided-restart-yes{border-color:#c9705a;color:#f4c9ba}
 
 @media(max-width:820px){
   .guided-grid{grid-template-columns:1fr}

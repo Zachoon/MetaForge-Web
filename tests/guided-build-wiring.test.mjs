@@ -111,6 +111,22 @@ test("the worker classifies manual cards through the real card-fact transform, c
   assert.match(worker, /manualCards\.map\(\(card\) => normalizeKey\(String\(card\?\.name \|\| ""\)\)\)\.sort\(\)\.join\(","\)/);
 });
 
+test("restarting a guided build requires a two-step confirm and never silently discards picks", () => {
+  const source = read("app/components/forge/guided-build-chamber.tsx");
+  // The bare button only ever arms the confirm; it must never call
+  // startGuidedBuild directly (that would be exactly the silent one-click
+  // bulk mutation this project's own UX principle rules out).
+  const armStart = source.indexOf('className="guided-restart"');
+  const armButton = source.slice(armStart, armStart + 200);
+  assert.match(armButton, /onClick=\{\(\) => setConfirmingRestart\(true\)\}/);
+  assert.doesNotMatch(armButton, /startGuidedBuild/);
+  // Only the confirmed path actually restarts.
+  assert.match(source, /onClick=\{\(\) => \{ setConfirmingRestart\(false\); void startGuidedBuild\(\); \}\}/);
+  // A pending confirm is dropped if the player does anything else instead —
+  // it must not survive into an unrelated later click.
+  assert.match(source, /setConfirmingRestart\(false\);\s*\}, \[session\?\.accepted\.length, session\?\.categoryIndex, guidedLoading\]\);/);
+});
+
 test("both guided endpoints require an authenticated account and a rate limit", () => {
   const source = read("worker/forge-guided-build.ts");
   assert.equal((source.match(/await userKey\(request, env\)/g) || []).length, 2);
