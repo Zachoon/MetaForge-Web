@@ -171,6 +171,18 @@ test("a manual card search discards a response that arrives after a newer search
   assert.match(effect, /if \(seq === searchSeq\.current\) setResults\(\[\]\);/);
 });
 
+test("the guided ledger scales fundamentals targets to the request's real deck size, not a hardcoded 100", () => {
+  // Standard Brawl is 60 cards, not 100 (see worker/forge-result-validator.mjs's
+  // targetDeckSize) — without threading that through, every guided build's
+  // ledger used fundamentals-target-table.mjs's 100-card-scale numbers
+  // regardless of format, so a Standard Brawl build's fundamentals
+  // minimums alone (32 cards) left almost no room for its own ~23 lands.
+  const source = read("worker/forge-guided-build.ts");
+  assert.match(source, /import \{ isCommanderFormat, targetDeckSize \} from "\.\/forge-result-validator\.mjs";/);
+  const ledgerCall = source.slice(source.indexOf("const ledger = buildCategoryBudgetLedger("), source.indexOf("return { suggestion, ledger, analysis };"));
+  assert.match(ledgerCall, /deckTarget: targetDeckSize\(input\.format\)/);
+});
+
 test("both guided endpoints require an authenticated account and a rate limit", () => {
   const source = read("worker/forge-guided-build.ts");
   assert.equal((source.match(/await userKey\(request, env\)/g) || []).length, 2);

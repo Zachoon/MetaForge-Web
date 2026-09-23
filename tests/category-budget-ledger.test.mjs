@@ -42,6 +42,18 @@ test("fundamentals rows count actual per role and compare against the Focused ta
   }
 });
 
+test("deckTarget scales fundamentals targets for a 60-card deck instead of assuming 100", () => {
+  const candidate = { rows: fundamentalsFixture() };
+  const ledgerFull = buildCategoryBudgetLedger(candidate, {}, { targetPowerTier: "Focused" });
+  const ledgerBrawl = buildCategoryBudgetLedger(candidate, {}, { targetPowerTier: "Focused", deckTarget: 60 });
+  assert.equal(ledgerFull.byCategory.ramp.target.min, 10);
+  assert.equal(ledgerBrawl.byCategory.ramp.target.min, 6, "a 60-card deck should not be held to the 100-card ramp floor");
+  // Omitting deckTarget must be identical to today's behavior — no caller
+  // that doesn't know about deck size should see anything change.
+  const ledgerOmitted = buildCategoryBudgetLedger(candidate, {}, { targetPowerTier: "Focused" });
+  assert.deepEqual(ledgerOmitted.byCategory.ramp.target, ledgerFull.byCategory.ramp.target);
+});
+
 test("fundamentals status reads under/over correctly against tier targets", () => {
   const scarceRamp = { rows: [row("Only Ramp", ["ramp"])] };
   const ledgerScarce = buildCategoryBudgetLedger(scarceRamp, {}, { targetPowerTier: "Focused" });

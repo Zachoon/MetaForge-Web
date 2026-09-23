@@ -63,6 +63,47 @@ test("sweeper targets allow zero at Maximum but not at lower tiers", () => {
   }
 });
 
+// RAW_TARGETS is hand-authored for a 100-card deck. Standard Brawl (the only
+// guided-build format that isn't 100 cards — see format-catalog.ts's
+// targetDeckSize) used to get the exact same absolute counts anyway: a
+// 60-card deck was told to find 10-12 ramp + 8-10 draw + 8-10 interaction +
+// 3-5 protection + 2-3 recursion + 1-3 sweeper, 32 cards of fundamentals
+// alone before a single land or win condition — an unreachable, permanently
+// "under" ledger for a deck that was never actually built wrong.
+test("omitting deckTarget (every pre-existing caller) is unchanged — the 100-card numbers exactly", () => {
+  for (const role of TRACKED_ROLES) {
+    for (const tier of POWER_TIERS) {
+      assert.deepEqual(fundamentalTargetFor(role, tier, 100), fundamentalTargetFor(role, tier));
+    }
+  }
+});
+
+test("a 60-card deckTarget scales every target down proportionally, never below zero, and keeps min <= max", () => {
+  for (const role of TRACKED_ROLES) {
+    for (const tier of POWER_TIERS) {
+      const full = fundamentalTargetFor(role, tier);
+      const scaled = fundamentalTargetFor(role, tier, 60);
+      assert.ok(scaled.min <= full.min, `role=${role} tier=${tier}: scaled min ${scaled.min} should not exceed the 100-card min ${full.min}`);
+      assert.ok(scaled.max <= full.max, `role=${role} tier=${tier}: scaled max ${scaled.max} should not exceed the 100-card max ${full.max}`);
+      assert.ok(scaled.min >= 0);
+      assert.ok(scaled.min <= scaled.max);
+    }
+  }
+  // Spot-check the exact numbers for one real tier, so a future edit to the
+  // rounding rule shows up here instead of only in the general bounds check.
+  assert.deepEqual(fundamentalTargetFor("ramp", "Focused", 60), { min: 6, max: 7 });
+  assert.deepEqual(fundamentalTargetFor("protection", "Focused", 60), { min: 2, max: 3 });
+});
+
+test("the sum of scaled fundamentals minimums leaves real room for lands and win conditions in a 60-card deck", () => {
+  const floorSum = TRACKED_ROLES.reduce((sum, role) => sum + fundamentalTargetFor(role, "Focused", 60).min, 0);
+  // A 60-card Standard Brawl deck has 59 non-commander slots and typically
+  // wants ~22-24 lands; fundamentals alone must leave meaningful room for
+  // that plus win conditions/synergy pieces, not consume nearly all of it
+  // the way the unscaled 32-card floor used to.
+  assert.ok(floorSum <= 24, `fundamentals floor ${floorSum} leaves too little of a 59-card non-commander pool for lands and win conditions`);
+});
+
 test("isWinConditionCard is true for a card with the threat role, regardless of oracle text", () => {
   const beater = { name: "Big Dumb Beater", oracleText: "Trample.", typeLine: "Creature — Giant" };
   assert.equal(isWinConditionCard(beater, ["threat"]), true);

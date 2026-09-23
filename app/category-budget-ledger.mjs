@@ -43,10 +43,10 @@ function statusFor(actual, target) {
   return "in-range";
 }
 
-function fundamentalsRows(rows, targetPowerTier) {
+function fundamentalsRows(rows, targetPowerTier, deckTarget) {
   return TRACKED_ROLES.map((role) => {
     const actual = rows.reduce((sum, row) => sum + ((row.roles || []).includes(role) ? Number(row.quantity || 1) : 0), 0);
-    const target = fundamentalTargetFor(role, targetPowerTier);
+    const target = fundamentalTargetFor(role, targetPowerTier, deckTarget);
     return Object.freeze({ category: role, actual, target, status: statusFor(actual, target) });
   });
 }
@@ -104,9 +104,15 @@ export function buildCategoryBudgetLedger(candidate, intent = {}, options = {}) 
     || buildSlotJustificationLedger(candidate, intent, options);
   const rows = nonlandNonCommanderRows(candidate?.rows || []);
   const targetPowerTier = options.targetPowerTier ?? intent?.targetPowerTier ?? null;
+  // Defaults to 100 (fundamentalTargetFor's own default) so every existing
+  // caller — none of which pass this today — keeps the exact behavior it
+  // already had; only a caller that actually knows the deck's real card
+  // count (the guided-build Worker, which knows the request's format)
+  // needs to pass it.
+  const deckTarget = options.deckTarget;
 
   const categories = Object.freeze([
-    ...fundamentalsRows(rows, targetPowerTier),
+    ...fundamentalsRows(rows, targetPowerTier, deckTarget),
     winConditionRow(rows),
     synergyPiecesRow(slotJustificationLedger.packageCounts),
   ]);

@@ -90,9 +90,27 @@ export const FUNDAMENTAL_ROLE_TARGETS = RAW_TARGETS;
  * for an untracked role / unrecognized tier — callers should treat null as
  * "no fundamentals target applies here" (e.g. archetype/package roles,
  * which keep sourcing targets from PACKAGE_CATALOG instead).
+ *
+ * deckTarget is the deck's actual card count (100 for Commander/Brawl, 60
+ * for Standard Brawl — see format-catalog.ts's targetDeckSize). RAW_TARGETS
+ * above is hand-authored for the 100-card scale; every guided-build format
+ * used to get those same absolute counts regardless of deck size, so a
+ * Standard Brawl build (60 cards) was told to find 10-12 ramp + 8-10 draw +
+ * 8-10 interaction + 3-5 protection + 2-3 recursion + 1-3 sweeper — 32 cards
+ * of fundamentals alone before land count (typically ~23 in a 60-card deck)
+ * or a single win condition, an unreachable, permanently-"under" ledger
+ * that was never actually a wrong build. Scaling keeps the 100-card case
+ * byte-identical (the whole numbers already in the table) and proportions
+ * every other deck size from it.
  */
-export function fundamentalTargetFor(role, tier) {
-  return RAW_TARGETS[role]?.[tier] || null;
+export function fundamentalTargetFor(role, tier, deckTarget = 100) {
+  const base = RAW_TARGETS[role]?.[tier];
+  if (!base) return null;
+  if (deckTarget === 100) return base;
+  const scale = deckTarget / 100;
+  const min = Math.max(0, Math.round(base.min * scale));
+  const max = Math.max(min, Math.round(base.max * scale));
+  return Object.freeze({ min, max });
 }
 
 // Win conditions are their own fixed category in the build loop (see the

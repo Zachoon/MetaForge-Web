@@ -30,7 +30,7 @@ import {
   type CommanderInput,
   type ScryfallCounter,
 } from "./forge-generate";
-import { isCommanderFormat } from "./forge-result-validator.mjs";
+import { isCommanderFormat, targetDeckSize } from "./forge-result-validator.mjs";
 import { userKey } from "./account-bench";
 import { checkRateLimit, readJsonWithLimit } from "./api-hardening";
 import { storeGeneration, loadGeneration } from "./forge-generation-store";
@@ -164,7 +164,11 @@ function computeOffer(
   const ledger = buildCategoryBudgetLedger(
     { rows: flattenAnalyzedEntries(partialRows) },
     analysis.strategicIntent,
-    { targetPowerTier: input.targetPowerTier },
+    // Standard Brawl is 60 cards, not 100 — without this, its ledger
+    // demanded the exact same absolute fundamentals counts as a Commander
+    // deck (see fundamentals-target-table.mjs's fundamentalTargetFor),
+    // which alone outsized the deck's own land count.
+    { targetPowerTier: input.targetPowerTier, deckTarget: targetDeckSize(input.format) },
   );
   return { suggestion, ledger, analysis };
 }
