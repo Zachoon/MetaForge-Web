@@ -36,4 +36,8 @@ Live checks passed: homepage HTTP 200; www redirects to the canonical homepage; 
 1. Complete a signed-in desktop/mobile walkthrough: resume, search failure, pool refresh, finish, review, export, and reload. Check a second device conflict. Automated rendering is not a substitute for this human walkthrough.
 2. Run the small invited trial and record actual confusion or failures. Do not claim full trial readiness before this happens.
 
+## Source backup
+
+The implementation and release record are committed locally. A recovery bundle is saved in the laptop setup workspace outputs. Automatic approval review blocked the push to public `Zachoon/MetaForge-Web` because publication of the new source and release notes needs explicit user authorization. No push was made; that approval is pending.
+
 Migration 0018 is additive. Rolling back the worker does not require deleting saved draft data. Retain the prior worker version for rollback.
