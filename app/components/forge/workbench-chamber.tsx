@@ -25,6 +25,7 @@ import { createPilotingDebrief } from "../../piloting-debrief.mjs";
 import { formatDeckForArenaExport } from "../../deck-export-format.mjs";
 import { trackLaunchEvent } from "../../launch-telemetry";
 import { useForgeSession } from "../../forge-session-context";
+import { GuidedCompletionReview } from "./guided-completion-review";
 
 export function WorkbenchChamber() {
   const {
@@ -214,6 +215,7 @@ export function WorkbenchChamber() {
 
   return (
     <section ref={forgeDescentRef} className={`testing-anvil progressive-results forge-descent ${openingExperimentGateActive ? "opening-experiment-pending" : ""}`}>
+      <GuidedCompletionReview />
       {!hasValidatedDeck && <button
         className="back-link"
         onClick={() => setChamber(deck.trim() ? "refine" : "commission")}

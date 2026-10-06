@@ -113,7 +113,7 @@ test("a failed start shows the real message with a retry and a way back", () => 
   const html = render(baseContext({ guidedError: "Your session expired." }));
   assert.match(html, /role="alert"/);
   assert.match(html, /Your session expired\./);
-  assert.match(html, /Start the guided build again/);
+  assert.match(html, /Retry without losing picks/);
   // The heading must not keep claiming it is still loading beside a failure.
   assert.match(html, /The guided build stopped/);
   assert.doesNotMatch(html, /Reading your commander|Building your card pool/);

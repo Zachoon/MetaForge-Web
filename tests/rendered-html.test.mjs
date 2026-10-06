@@ -19,6 +19,14 @@ async function render(url = "https://metaforge.gg/", db = emptyDb, init = {}) {
   );
 }
 
+test("serves local development over HTTP without redirecting to an unavailable HTTPS listener", async () => {
+  for (const hostname of ["localhost", "127.0.0.1", "[::1]"]) {
+    const response = await render(`http://${hostname}:3000/`);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("location"), null);
+  }
+});
+
 test("server-renders the MetaForge product experience", async () => {
   const response = await render();
   assert.equal(response.status, 200);

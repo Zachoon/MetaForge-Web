@@ -54,6 +54,7 @@ export type CardFact = {
     image_uris?: { normal?: string; art_crop?: string };
   }>;
   prices?: { usd?: string | null; usd_foil?: string | null };
+  rarity?: string;
 };
 export type CardSearchResult = { name: string; typeLine: string; image: string };
 // name/typeLine/image are display data only (a Scryfall lookup done purely
@@ -152,6 +153,7 @@ export type SavedFamily = {
   playerGoal?: string | null;
   /** Optional commission note — Conversation Contract Stage 1 persistence. */
   commissionNote?: string | null;
+  guidedReview?: { kept: string[]; missing: string[]; added: { name: string; quantity: number }[]; total: number; preferences?: Record<string, any> } | null;
   forgeInterventions?: ForgeIntervention[];
   // A small snapshot of Brain's own construction-time plan identity
   // (package labels, strategy, plan label, commanders) captured whenever a

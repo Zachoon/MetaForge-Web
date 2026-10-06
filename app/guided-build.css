@@ -88,3 +88,15 @@
   .guided-offer{grid-template-columns:1fr}
   .guided-offer img{max-width:260px}
 }
+.guided-draft-card {
+  margin: 1rem;
+  padding: 1.25rem;
+  border: 1px solid #9c7646;
+  border-radius: 12px;
+  background: #192020;
+  color: #e9e3d4;
+}
+.guided-draft-card h2 { font-size: 1.1rem; margin-bottom: .5rem; }
+.guided-draft-card div { display: flex; flex-wrap: wrap; gap: .65rem; }
+.guided-draft-card button { padding: .65rem 1rem; border: 1px solid #9c7646; border-radius: 6px; }
+.guided-save-status { margin: .5rem 1rem; color: #b4cfc1; font-size: .9rem; }

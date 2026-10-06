@@ -14,15 +14,13 @@ const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 const localBindingConfig = {
   main: "./worker/index.ts",
   compatibility_flags: ["nodejs_compat"],
-  d1_databases: d1
-    ? [
-        {
-          binding: d1,
-          database_name: "site-creator-d1",
-          database_id: SITE_CREATOR_PLACEHOLDER_DATABASE_ID,
-        },
-      ]
-    : [],
+  d1_databases: [
+    {
+      binding: d1 ?? "DB",
+      database_name: "site-creator-d1",
+      database_id: SITE_CREATOR_PLACEHOLDER_DATABASE_ID,
+    },
+  ],
   r2_buckets: r2
     ? [
         {
@@ -33,7 +31,7 @@ const localBindingConfig = {
     : [],
 };
 
-export default defineConfig(async () => {
+export default defineConfig(async ({ command }) => {
   // Keep Wrangler and Miniflare state project-local. These are non-secret tool
   // settings; application environment belongs in ignored `.env*` files.
   process.env.WRANGLER_WRITE_LOGS ??= "false";
@@ -52,7 +50,12 @@ export default defineConfig(async () => {
       sites(),
       cloudflare({
         viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
-        config: localBindingConfig,
+        // The placeholder is for the isolated laptop preview only. Production
+        // must use the single real DB binding declared in wrangler.jsonc.
+        config: command === "serve" ? localBindingConfig : {
+          main: "./worker/index.ts",
+          compatibility_flags: ["nodejs_compat"],
+        },
       }),
     ],
   };
