@@ -38,6 +38,6 @@ Live checks passed: homepage HTTP 200; www redirects to the canonical homepage; 
 
 ## Source backup
 
-The implementation and release record are committed locally. A recovery bundle is saved in the laptop setup workspace outputs. Automatic approval review blocked the push to public `Zachoon/MetaForge-Web` because publication of the new source and release notes needs explicit user authorization. No push was made; that approval is pending.
+The implementation and release record are committed locally. A recovery bundle is saved in the laptop setup workspace outputs. The owner explicitly approved publication of the source and release notes to public `Zachoon/MetaForge-Web` on the separate `codex/guided-draft-recovery` branch. The laptop's GitHub credential connection is being completed before the push.
 
 Migration 0018 is additive. Rolling back the worker does not require deleting saved draft data. Retain the prior worker version for rollback.
