@@ -33,7 +33,7 @@ export function EntranceChamber() {
           <br />
           <em>Build with confidence.</em>
         </h1>
-        <p>Choose how you want to begin. Your Player Compass already carries your play preferences, so the Forge only asks for what this deck needs.</p>
+        <p>Choose how you want to begin. The Forge only asks for what this deck needs, and if you tell it how you like to play below, it tailors every build to you.</p>
         <div className="entrance-actions">
           <ForgeCommissionCard
             eyebrow="EMPTY WORKSPACE"
@@ -98,7 +98,7 @@ export function EntranceChamber() {
         <nav className="entrance-discovery" aria-label="Magic deckbuilding resources">
           <a href="/tools"><strong>Free MTG deckbuilding tools</strong><span>Build, check, and analyze Commander decks with clear explanations.</span></a>
           <a href="/commanders"><strong>Commander deck guides</strong><span>Explore commanders and the strategies their rules text supports.</span></a>
-          <a href="/decks"><strong>Community Commander decks</strong><span>Explore complete decklists explicitly published by MetaForge players.</span></a>
+          <a href="/decks"><strong>Commander deck archive</strong><span>Browse commander strategy guides. Player-published decklists are coming soon.</span></a>
           <a href="/academy"><strong>MTG deckbuilding guides</strong><span>Learn to diagnose mana, card flow, interaction, speed, and win conditions.</span></a>
           <a href="/about"><strong>How MetaForge works</strong><span>Read the evidence-first method behind our MTG deck coaching.</span></a>
         </nav>

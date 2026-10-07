@@ -9,7 +9,10 @@ test("entry presents three format-neutral ways to begin", () => {
   assert.match(entrance, /title="Start from scratch"/);
   assert.match(entrance, /title="Complete a decklist"/);
   assert.match(entrance, /title="Discover a deck"/);
-  assert.match(entrance, /Player Compass already carries your play preferences/);
+  // A first-time visitor has no Player Compass yet, so the intro must not
+  // claim one already exists.
+  assert.doesNotMatch(entrance, /Player Compass already carries/);
+  assert.match(entrance, /if you tell it how you like to play below, it tailors every build to you/);
 });
 
 test("the deck setup asks only for format, deck material, and commander when relevant", () => {

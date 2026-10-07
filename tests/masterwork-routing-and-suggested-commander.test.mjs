@@ -175,10 +175,11 @@ test("none of the reported success strings can render outside hasValidatedDeck: 
   // "READY TO PLAY" / the workbench header framing
   assert.match(workbenchChamber, /\{hasValidatedDeck\s*\n\s*\? "READY TO PLAY"/);
   // The deck-specific site-rail destinations (the Aug 14 Masterwork frame
-  // replaced Living Workbench's chapter rail) are disabled without a deck.
+  // replaced Living Workbench's chapter rail) don't render without a deck.
   for (const label of ["Decklist", "Analysis", "Playtest", "Settings"]) {
-    assert.match(page, new RegExp(`disabled=\\{!hasValidatedDeck[^}]*\\}[^\\n]*<span>${label}</span>`), `${label} must be unreachable without a validated deck`);
+    assert.match(page, new RegExp(`\\{hasValidatedDeck && <button[^\\n]*<span>${label}</span></button>\\}`), `${label} must be unreachable without a validated deck`);
   }
+  assert.match(page, /\{hasValidatedDeck && !guestMode && <button/, "Share needs a deck and an account");
   // The deck name, identity marks, and "READY TO TEST" chip in the hero
   assert.match(workbenchChamber, /<h2>\{hasValidatedDeck \? masterworkIdentity\.title[\s\S]*?: "Build not completed"/);
   assert.match(workbenchChamber, /\{hasValidatedDeck && <div className="masterwork-identity-marks"/);

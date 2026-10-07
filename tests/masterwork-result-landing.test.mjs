@@ -32,7 +32,12 @@ test("the mockup navigation frame is site-level rather than deck-only", async ()
   const frame = await read("app/site-frame.css");
   assert.match(page, /className="forge-global-nav"/);
   assert.match(page, /className="forge-global-rail"/);
-  assert.match(page, />Premium<\/button>/);
+  // Only working destinations: Community links to the public archive, and
+  // the never-enabled Premium teaser and unwired search box are gone.
+  assert.match(page, /<a href="\/decks">Community<\/a>/);
+  assert.doesNotMatch(page, />Premium<\/button>/);
+  assert.doesNotMatch(page, /className="coming-soon" disabled/);
+  assert.doesNotMatch(page, /className="forge-global-search"/);
   assert.equal([...page.matchAll(/>Explore<\/button>/g)].length, 1);
   assert.equal([...page.matchAll(/<span>Decklist<\/span>/g)].length, 1);
   assert.doesNotMatch(page, /className="masterwork-shell-top"/);

@@ -553,14 +553,11 @@ export default function Home() {
         </button>
         <nav className="forge-global-nav" aria-label="MetaForge workspace">
           <button type="button" className={chamber === "entrance" ? "active" : ""} onClick={() => setChamber("entrance")}>Explore</button>
-          <button type="button" disabled={!hasValidatedDeck} onClick={openDeepForgeEvidence}>Evidence</button>
-          <button type="button" className="coming-soon" disabled>Community</button>
-          <button type="button" className="coming-soon" disabled>Premium</button>
+          {/* Only offer destinations that work right now: a visitor's first
+              look shouldn't be a row of disabled buttons. */}
+          {hasValidatedDeck && <button type="button" onClick={openDeepForgeEvidence}>Evidence</button>}
+          <a href="/decks">Community</a>
         </nav>
-        <label className="forge-global-search">
-          <i aria-hidden="true">⌕</i>
-          <input type="search" placeholder="Search cards, decks, users…" aria-label="Search cards, decks, and users" />
-        </label>
         <details className="forge-menu">
           <summary><i>✦</i><span>Forgemaster</span><b>⌄</b></summary>
           <div>
@@ -593,12 +590,15 @@ export default function Home() {
             document.getElementById("coach-brief")?.scrollIntoView({ behavior: "smooth", block: "start" });
           });
         }}><i>⌂</i><span>Overview</span></button>
-        <button type="button" className={chamber === "workbench" && activeForgeChapter === 1 && siteRail === "decklist" ? "active" : ""} disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode((current) => current === "playtest" ? preferredDecklistView() : current); setSiteRail("decklist"); if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = false; window.requestAnimationFrame(() => document.getElementById("deck-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>☷</i><span>Decklist</span></button>
-        <button type="button" className={chamber === "workbench" && activeForgeChapter === 2 ? "active" : ""} disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(2); setSiteRail("analysis"); }}><i>◇</i><span>Analysis</span></button>
+        {/* Deck destinations appear once there is a deck to open, rather than
+            greeting every new visitor with a column of disabled controls. */}
+        {hasValidatedDeck && <button type="button" className={chamber === "workbench" && activeForgeChapter === 1 && siteRail === "decklist" ? "active" : ""} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode((current) => current === "playtest" ? preferredDecklistView() : current); setSiteRail("decklist"); if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = false; window.requestAnimationFrame(() => document.getElementById("deck-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>☷</i><span>Decklist</span></button>}
+        {hasValidatedDeck && <button type="button" className={chamber === "workbench" && activeForgeChapter === 2 ? "active" : ""} onClick={() => { setChamber("workbench"); setActiveForgeChapter(2); setSiteRail("analysis"); }}><i>◇</i><span>Analysis</span></button>}
         <button type="button" className={chamber === "archive" ? "active" : ""} onClick={openPrivateArchive}><i className="forge-rail-cardback" aria-hidden="true">MF</i><span>Decks</span></button>
-        <button type="button" disabled={!hasValidatedDeck} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode("playtest"); setSiteRail("playtest"); window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>⚔</i><span>Playtest</span></button>
-        <button type="button" disabled={!hasValidatedDeck || guestMode || !nativeMasterworkContext?.generationId || publicReportStatus === "publishing"} onClick={() => publicReportUrl && publicReportGenerationId === nativeMasterworkContext?.generationId ? void navigator.clipboard.writeText(publicReportUrl) : setPublicReportPromptOpen(true)}><i>⌁</i><span>{publicReportStatus === "publishing" ? "Publishing" : publicReportStatus === "ready" && publicReportGenerationId === nativeMasterworkContext?.generationId ? "Link copied" : "Share"}</span></button>
-        <button type="button" disabled={!hasValidatedDeck} onClick={() => { setMasterworkIdentityDraft(masterworkIdentity); setMasterworkIdentityOpen(true); }}><i>⚙</i><span>Settings</span></button>
+        {hasValidatedDeck && <button type="button" onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode("playtest"); setSiteRail("playtest"); window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>⚔</i><span>Playtest</span></button>}
+        {/* Guests can't publish a report, so Share only appears for accounts. */}
+        {hasValidatedDeck && !guestMode && <button type="button" disabled={!nativeMasterworkContext?.generationId || publicReportStatus === "publishing"} onClick={() => publicReportUrl && publicReportGenerationId === nativeMasterworkContext?.generationId ? void navigator.clipboard.writeText(publicReportUrl) : setPublicReportPromptOpen(true)}><i>⌁</i><span>{publicReportStatus === "publishing" ? "Publishing" : publicReportStatus === "ready" && publicReportGenerationId === nativeMasterworkContext?.generationId ? "Link copied" : "Share"}</span></button>}
+        {hasValidatedDeck && <button type="button" className="forge-rail-settings" onClick={() => { setMasterworkIdentityDraft(masterworkIdentity); setMasterworkIdentityOpen(true); }}><i>⚙</i><span>Settings</span></button>}
         <div className="forge-rail-embers" aria-hidden="true"><i /><i /><i /></div>
         <div className="forge-rail-version" aria-label="MetaForge version 2.1.0"><i>MF</i><span>v2.1.0</span></div>
       </aside>
