@@ -50,7 +50,7 @@ export async function handleGuidedComplete(request: Request, env: Env): Promise<
   if (!Number.isSafeInteger(body?.baseRevision) || typeof body?.completionId !== "string" || !/^[a-zA-Z0-9-]{16,80}$/.test(body.completionId)) return json({ error: "A valid completion request is required." }, 400);
   const current = await load(env, key);
   // A repeated request can retrieve the original result even after its revision advanced.
-  if (current?.completion_id === body.completionId && current.phase === "complete") return json(JSON.parse(current.result_json!));
+  if (current && current.completion_id === body.completionId && current.phase === "complete") return json(JSON.parse(current.result_json!));
   const interrupted = current?.phase === "completing" && current.completion_id === body.completionId
     && Date.now() - Date.parse(`${current.updated_at.replace(" ", "T")}Z`) >= 15 * 60_000;
   if (current?.phase === "completing" && !interrupted) return json({ pending: true, error: "This build is still finishing. Check again shortly. An interrupted finish can be retried after 15 minutes." }, 202);

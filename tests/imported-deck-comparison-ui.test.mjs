@@ -72,7 +72,7 @@ test("printed and flavor-name rows jump to their canonical card's comparison sli
   assert.match(component, /normalizedAliases\.get\(key\(name\)\) \|\| matchKey\(name\)/);
   assert.match(component, /jumpable\.has\(identityKey\(row\.name\)\)/);
   assert.match(component, /swapIndexByCard\.get\(identityKey\(name\)\)/);
-  assert.match(workbenchChamber, /identityAliases=\{nativeMasterworkContext\.identityAliases\}/);
+  assert.match(workbenchChamber, /identityAliases=\{nativeMasterworkContext\??\.identityAliases\}/);
 });
 
 test("dense deck-list hover previews do not synchronously rerender for every crossed row", () => {

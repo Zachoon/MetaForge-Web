@@ -91,7 +91,7 @@ function PhilosophyCard({
           <div>
             <small>STRONG AT</small>
             <ul>
-              {build.strengths.map((item) => (
+              {build.strengths.map((item: string) => (
                 <li key={item}>{item}</li>
               ))}
             </ul>
@@ -192,7 +192,7 @@ export function PhilosophyCompare({
 
       {compareOpen && count > 1 && (
         <div className="philosophy-side-by-side" role="region" aria-label="Side-by-side philosophy comparison">
-          {comparison.all.map((build) => (
+          {comparison.all.map((build: ReturnType<typeof presentPhilosophyComparison>["all"][number]) => (
             <article
               key={`compare-${build.id}`}
               className={`${build.recommended ? "is-best-fit" : ""}${build.alternativeBecause ? " is-preference-alt" : ""}`.trim() || undefined}

@@ -41,8 +41,8 @@ export default async function CommanderGuidePage({ params }: { params: Promise<{
   const { card, tagline } = entry;
   const profile = commanderGuideProfile(slug);
 
-  const engines = OCCUPANCY_PACKAGE_IDS
-    .map((id) => {
+  const engines: { id: string; label: string; copy: string }[] = OCCUPANCY_PACKAGE_IDS
+    .map((id: string) => {
       const seating = occupancySeatingForPackage(id, { name: card.name, oracleText: card.oracle_text });
       if (!seating.length) return null;
       return {
@@ -51,7 +51,7 @@ export default async function CommanderGuidePage({ params }: { params: Promise<{
         copy: occupancyEngineCopyFor(id),
       };
     })
-    .filter((engine): engine is { id: string; label: string; copy: string } => Boolean(engine));
+    .filter((engine: { id: string; label: string; copy: string } | null): engine is { id: string; label: string; copy: string } => Boolean(engine));
 
   const colorIdentity = card.color_identity.length ? card.color_identity : ["C"];
   const relatedCommanders = COMMANDER_GUIDES

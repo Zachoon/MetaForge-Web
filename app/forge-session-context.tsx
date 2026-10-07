@@ -2032,7 +2032,7 @@ export function useForgeSessionState() {
             .join(" // "),
           cmc: (() => {
             const raw = fact?.cmc;
-            const value = raw == null || raw === "" ? NaN : Number(raw);
+            const value = raw == null || (raw as unknown) === "" ? NaN : Number(raw);
             return Number.isFinite(value) ? value : 0;
           })(),
           isCommander:
@@ -2305,7 +2305,7 @@ export function useForgeSessionState() {
         .filter(Boolean)
         .some((name) => cardFactKey(name as string) === cardFactKey(row.name));
       const rawCmc = fact?.cmc;
-      const cmc = rawCmc == null || rawCmc === "" ? null : Number(rawCmc);
+      const cmc = rawCmc == null || (rawCmc as unknown) === "" ? null : Number(rawCmc);
       return {
         name: row.name,
         quantity: row.quantity,
@@ -2650,7 +2650,7 @@ export function useForgeSessionState() {
     const experiments: any[] = [];
     const proposedCards = new Set<string>();
     for (const tablet of experimentTablets.tablets.filter((entry: any) => entry.type === "experiment")) {
-      if (proposedCards.has(tablet.change.add) || experiments.length >= 3) continue;
+      if (!tablet.change || proposedCards.has(tablet.change.add) || experiments.length >= 3) continue;
       proposedCards.add(tablet.change.add);
       experiments.push({
         id: tablet.id,
@@ -2965,7 +2965,7 @@ export function useForgeSessionState() {
     })();
   }, [guestMode]);
 
-  async function persistPlayerCompass(nextCompass: ReturnType<typeof readLocalPlayerCompass>) {
+  async function persistPlayerCompass(nextCompass: Parameters<typeof writeLocalPlayerCompass>[0]) {
     const saved = writeLocalPlayerCompass(nextCompass);
     setPlayerCompass(saved);
     setPlayerCompassSynced(false);
@@ -3994,8 +3994,8 @@ export function useForgeSessionState() {
         }));
         trackLaunchEvent("forge_succeeded", { mode, format, durationMs: Date.now() - launchStartedAt });
         setImportWarnings([
-          ...(importWarnings?.unresolvedNames || []).map((name) => `"${name}" could not be verified and was left out.`),
-          ...(importWarnings?.illegalNames || []).map((name) => `"${name}" is not legal in ${format} and was left out.`),
+          ...(importWarnings?.unresolvedNames || []).map((name: string) => `"${name}" could not be verified and was left out.`),
+          ...(importWarnings?.illegalNames || []).map((name: string) => `"${name}" is not legal in ${format} and was left out.`),
         ]);
         setDeckUnderstanding(understanding || null);
         setReviewFocusResult(reviewFocusResult || null);
@@ -4520,7 +4520,7 @@ export function useForgeSessionState() {
     if (experiment.cut === "Unresolved flex slot") return;
     const rows = applyControlledSwap(deckRows, experiment.cut, experiment.add.name);
     if (!rows) return;
-    const nextDeck = rows.map((row) => `${row.quantity} ${row.name}`).join("\n");
+    const nextDeck = rows.map((row: { quantity: number; name: string }) => `${row.quantity} ${row.name}`).join("\n");
     recordForgeIntervention(
       "controlled one-slot experiment",
       `−1 ${experiment.cut}; +1 ${experiment.add.name}`,

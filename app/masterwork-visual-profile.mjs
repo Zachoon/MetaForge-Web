@@ -50,6 +50,7 @@ function resolveAccent(colors = []) {
 // revisionCount: how many revisions this Masterwork has been through —
 // an honest, already-recorded signal that the deck has been refined at
 // least once, without pretending to know which exact swap mattered most.
+/** @param {Record<string, any>} [options] */
 export function resolveMasterworkVisualProfile({ selectedRows = [], colors = [], revisionCount = 1 } = {}) {
   const nonlandRows = selectedRows.filter(
     (row) => !row.roles?.includes("land") && !row.roles?.includes("commander"),

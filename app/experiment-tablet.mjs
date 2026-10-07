@@ -89,6 +89,7 @@ function describeTradeoff(delta) {
 // matchup simulation before it's recommended, not just look better on
 // paper (see rankPracticalOneSlotCounterfactuals). Omitted, this falls
 // back to exactly today's theoretical-only ranking, unchanged.
+/** @param {Record<string, any>} options */
 export function buildExperimentTablets({ selected, candidates, causalityReport = null, matchLog = [], options = {}, input = null }) {
   const matchupPreference = matchupCounterPreference(matchLog);
   const rankingOptions = matchupPreference

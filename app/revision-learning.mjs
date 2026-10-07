@@ -45,6 +45,10 @@ export function classifyPlayerSignal(signal = "") {
     .map(([label]) => label);
 }
 
+/**
+ * @param {any[]} [matches]
+ * @param {number | null} [currentRevision]
+ */
 export function learnRevisionPreferences(
   matches = [],
   currentRevision = null,

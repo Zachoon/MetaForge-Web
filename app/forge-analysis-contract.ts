@@ -8,6 +8,8 @@ export interface ForgeAnalysisReport {
   engine: string;
   status: "empty-card-set" | "insufficient-structure" | "graph-only" | "structural-analysis-complete";
   commanderName: string;
+  // Stamped by bindStructuralSystemsForCoach (narrative-integrity.mjs).
+  _boundCommander?: string;
   cardCount: number;
   uniqueCardCount: number;
   // Nested per-system/per-edge/per-card records below are typed loosely

@@ -39,6 +39,7 @@ const SOURCE_AUTHORITY = freeze({
   unknown: 0.15,
 });
 
+/** @param {Record<string, any>} [options] */
 export function compileOpinionContext({
   question = "",
   format = "Commander",
@@ -168,6 +169,7 @@ function confidenceBand(score) {
   return "insufficient";
 }
 
+/** @param {Record<string, any>} [options] */
 export function synthesizeStrategicOpinion({
   context,
   claims = [],

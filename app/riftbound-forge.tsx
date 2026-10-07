@@ -4,6 +4,7 @@ import RIFTBOUND_CATALOG from "./riftbound-card-catalog.mjs";
 import { analyzeRiftboundStrategy, validateRiftboundMainDeck } from "./riftbound-analysis.mjs";
 import { riftboundMetaContext } from "./riftbound-meta-context.mjs";
 
+const CATALOG_CARDS=RIFTBOUND_CATALOG.cards as Record<string,any>;
 function parse(text:string){return text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean).map(line=>{const match=line.match(/^(\d+)\s+(.+)$/);return match?{quantity:Number(match[1]),name:match[2]}:{quantity:1,name:line};});}
 function plainText(value:unknown){return String(value||"").replace(/<br\s*\/?\s*>/gi," ").replace(/<[^>]+>/g," ").replace(/&nbsp;/g," ").replace(/&amp;/g,"&").replace(/\s+/g," ").trim();}
 
@@ -15,12 +16,12 @@ export default function RiftboundForge({coachingProfile,setCoachingProfile,coach
   useEffect(()=>{const saved=localStorage.getItem("metaforge.riftbound.deck");if(saved)setDeckText(saved)},[]);
   useEffect(()=>{localStorage.setItem("metaforge.riftbound.deck",deckText)},[deckText]);
   const rows=useMemo(()=>parse(deckText),[deckText]); const count=rows.reduce((sum,row)=>sum+row.quantity,0);
-  const recognized=rows.filter(row=>RIFTBOUND_CATALOG.cards[row.name.toLocaleLowerCase()]);
-  const unknown=rows.filter(row=>!RIFTBOUND_CATALOG.cards[row.name.toLocaleLowerCase()]);
+  const recognized=rows.filter(row=>CATALOG_CARDS[row.name.toLocaleLowerCase()]);
+  const unknown=rows.filter(row=>!CATALOG_CARDS[row.name.toLocaleLowerCase()]);
   const legality=useMemo(()=>validateRiftboundMainDeck(rows,RIFTBOUND_CATALOG),[rows]);
   const strategy=useMemo(()=>analyzeRiftboundStrategy(rows,RIFTBOUND_CATALOG),[rows]);
   const meta=useMemo(()=>riftboundMetaContext(),[]);
-  const verifiedFacts=useMemo(()=>recognized.slice(0,80).map(row=>{const card:any=RIFTBOUND_CATALOG.cards[row.name.toLocaleLowerCase()];return `${row.quantity} ${card.name} [${card.code}]: ${plainText(card.text?.richText?.body||card.text?.label||card.type)}`}).join("\n"),[recognized]);
+  const verifiedFacts=useMemo(()=>recognized.slice(0,80).map(row=>{const card:any=CATALOG_CARDS[row.name.toLocaleLowerCase()];return `${row.quantity} ${card.name} [${card.code}]: ${plainText(card.text?.richText?.body||card.text?.label||card.type)}`}).join("\n"),[recognized]);
   async function ask(contentOverride?:string){const content=(contentOverride??input).trim();if(!content||thinking||questionsRemaining===0)return;const next=[...messages,{role:"user" as const,content}];setMessages(next);setInput("");setThinking(true);try{const response=await fetch("/api/forge/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:next,depth:coachDepth,context:{game:"riftbound",deckName:"Riftbound alpha deck",format:"Riftbound constructed",deckText,coachingProfile,verifiedFacts}})});const result=await response.json();if(typeof result.remaining==="number")setQuestionsRemaining(result.remaining);if(result.resetAt)setQuestionsReset(result.resetAt);setMessages([...next,{role:"assistant",content:response.ok?result.answer:result.error}]);}catch{setMessages([...next,{role:"assistant",content:"The Riftbound coach could not answer yet."}]);}finally{setThinking(false)}}
   return <div className="riftbound-surface">
     <section className="rift-hero shell"><div><small>RIFTBOUND FORGE · ALPHA</small><h1>A new battlefield.<br/><em>The same player.</em></h1><p>Build, question, and test Riftbound ideas with the same Coach and Player DNA that learns how you think across MetaForge.</p></div><aside><b>R</b><span>RULES-SAFE ALPHA</span><small>Unverified mechanics are labeled—not invented.</small></aside></section>

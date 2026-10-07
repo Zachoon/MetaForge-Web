@@ -3,6 +3,7 @@
 // differences among already-valid philosophies, but never overrides a player's
 // commission and never writes to Brain.
 
+/** @type {<T>(value: T) => Readonly<T>} */
 const freeze = (value) => Object.freeze(value);
 
 export const PLAYER_COMPASS_VERSION = "player-compass-v1";

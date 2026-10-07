@@ -13,7 +13,7 @@ const json = (body: unknown, status = 200) => Response.json(body, {
 const scryfallLookupName = (name: string) => String(name || "").split(/\s*\/\/\s*/)[0].trim();
 
 function localFact(name: string): { name: string; type_line: string; cmc?: number } | null {
-  const local = (CARD_TYPE_INDEX as Record<string, [string, string]>)[name.toLowerCase()];
+  const local = (CARD_TYPE_INDEX as Record<string, string[]>)[name.toLowerCase()];
   if (!local) return null;
   const type_line = local[1];
   // Local catalog is type-only. Lands are cmc 0 by definition; nonlands stay
@@ -70,7 +70,7 @@ export async function handleCardFacts(request: Request): Promise<Response> {
   } catch {
     return json({ error: "Invalid JSON" }, 400);
   }
-  const names = [...new Set((Array.isArray(body?.names) ? body.names : [])
+  const names = [...new Set<string>((Array.isArray(body?.names) ? body.names : [])
     .map((name: unknown) => String(name || "").trim())
     .filter(Boolean))];
   if (!names.length || names.length > 120 || names.some((name) => name.length > 180)) {
