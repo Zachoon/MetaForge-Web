@@ -1,7 +1,5 @@
 import { userKey } from "./account-bench";
-// @ts-expect-error JavaScript knowledge modules intentionally remain runtime-neutral.
 import { buildRegisteredOpinion, registeredOpinionCatalog } from "../app/knowledge/opinion-claim-registry.mjs";
-// @ts-expect-error JavaScript knowledge modules intentionally remain runtime-neutral.
 import { compileOpinionContext, presentOpinionForMentor, synthesizeStrategicOpinion } from "../app/knowledge/opinion-engine.mjs";
 
 interface OpinionEnv { DB: D1Database; ACCESS_TEAM_DOMAIN?: string; ACCESS_AUD?: string }

@@ -9,7 +9,7 @@ import {
   resolveDeckStructuralCards,
   motifWeightsFromStructuralCards,
 } from "../deck-motif-scan.mjs";
-import { MOTIF_ICONS, type MotifId } from "../masterwork-motif-icons.tsx";
+import { MOTIF_ICONS, type MotifId } from "../masterwork-motif-icons";
 
 const MOTIF_IDENTITY_COPY: Record<string, { name: string; line: string }> = {
   blade: { name: "Blade-Bound", line: "You end games with pressure and clean removal, not attrition." },
@@ -172,7 +172,7 @@ export default function PlayerProfile() {
     try {
       const { analysis, motifWeights } = await fetchStructuralAnalysis(family);
       setStructural((current) => ({ ...current, [family.id]: analysis }));
-      setMotifWeightsByFamily((current) => ({ ...current, [family.id]: motifWeights }));
+      setMotifWeightsByFamily((current) => ({ ...current, [family.id]: motifWeights as Record<string, number> }));
     } catch (error) {
       setStructuralError((current) => ({
         ...current,

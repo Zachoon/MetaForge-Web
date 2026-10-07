@@ -12,6 +12,7 @@ import { handleForgeGenerate } from "./forge-generate";
 import { handleForgeStructuralAnalyze } from "./forge-structural-analyze";
 import { handleForgeOneSlot } from "./forge-one-slot";
 import { handleForgeGuidedStart, handleForgeGuidedNext } from "./forge-guided-build";
+import { handleGuidedDraft, handleGuidedComplete } from "./guided-draft";
 import { handleForgeMultiRefill } from "./forge-multi-refill";
 import { handleCardFacts } from "./card-facts";
 import { handleCommanderSearch } from "./commander-search";
@@ -291,7 +292,8 @@ const worker = {
     // impression-bearing URL. Canonicals alone do not consolidate a 200 OK
     // HTTP duplicate, so permanently move every insecure request to HTTPS.
     // Keep app.metaforge.gg on the app host; only www also collapses to apex.
-    if (url.protocol === "http:") {
+    const isLocalDevelopmentHost = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+    if (url.protocol === "http:" && !isLocalDevelopmentHost) {
       url.protocol = "https:";
       if (url.hostname === "www.metaforge.gg") url.hostname = "metaforge.gg";
       return new Response(null, {
@@ -358,6 +360,8 @@ const worker = {
       if (url.pathname === "/api/forge/one-slot-experiment") return await handleForgeOneSlot(request, env);
       if (url.pathname === "/api/forge/guided/start") return await handleForgeGuidedStart(request, env);
       if (url.pathname === "/api/forge/guided/next") return await handleForgeGuidedNext(request, env);
+      if (url.pathname === "/api/account/guided-draft") return await handleGuidedDraft(request, env);
+      if (url.pathname === "/api/forge/guided/complete") return await handleGuidedComplete(request, env);
       if (url.pathname === "/api/forge/multi-refill") return await handleForgeMultiRefill(request, env);
       if (url.pathname === "/api/decks/publish") return await handlePublicReportPublish(request, env);
       if (url.pathname === "/api/cards/facts") return await handleCardFacts(request);

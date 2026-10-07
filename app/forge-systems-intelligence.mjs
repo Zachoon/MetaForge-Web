@@ -1516,6 +1516,10 @@ export function buildForgeSystemsReport(
   };
 }
 
+/**
+ * @param {any} systemsReport
+ * @param {any} [simulationDossier]
+ */
 export function buildBoundedFailureAnalysis(
   systemsReport,
   simulationDossier = null,

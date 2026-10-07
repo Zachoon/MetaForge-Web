@@ -7,7 +7,7 @@ const TARGETS=[
   {game:"riftbound",url:"https://playriftbound.com/en-us/news/",host:"playriftbound.com",sourceClass:"official-news",trustTier:"official",seeds:["https://playriftbound.com/en-us/rules-hub/","https://playriftbound.com/en-us/card-gallery/","https://playriftbound.com/en-us/news/rules-and-releases/deckbuilding-primer/"]},
   {game:"riftbound",url:"https://riftbound.gg/metagame/",host:"riftbound.gg",sourceClass:"independent-tournament-analysis",trustTier:"corroborated",seeds:["https://riftbound.gg/tournaments/","https://riftbound.gg/riftbound-meta-tier-list-best-decks-for-unleashed-one-more-regional-until-vendetta/"]},
 ];
-const id=async value=>[...new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(value)))].map(x=>x.toString(16).padStart(2,"0")).join("").slice(0,24);
+const id=async (value:string)=>[...new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(value)))].map(x=>x.toString(16).padStart(2,"0")).join("").slice(0,24);
 // Strategic-claim extraction used to run through an external model here. MetaForge no
 // longer calls one; source discovery/indexing below still runs, claim extraction does not.
 export async function runDataGoblins(env:Env,fetcher:typeof fetch=fetch){
@@ -18,7 +18,7 @@ export async function runDataGoblins(env:Env,fetcher:typeof fetch=fetch){
       const response=await fetcher(target.url,{headers:{"User-Agent":"MetaForgeResearch/1.0 (+private alpha; source discovery only)"}});
       if(!response.ok)throw new Error(`source returned ${response.status}`);
       const html=(await response.text()).slice(0,2_000_000);
-      const links=[...new Set([target.url,...("seeds" in target?target.seeds:[]),...discoverOfficialLinks(html,target.url,target.host)])];
+      const links=[...new Set([target.url,...("seeds" in target&&target.seeds?target.seeds:[]),...discoverOfficialLinks(html,target.url,target.host)])];
       let discovered=0;
       for(const url of links){
         const sourceId=await id(`${target.game}|${url}`);

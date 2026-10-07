@@ -600,6 +600,7 @@ export function explainOccupiedPackagesAsMentor({
 /**
  * Pair commentary for a graph-labeled loop or reset shape.
  * Parallel only — never a construction input, never a combo claim.
+ * @param {Record<string, any>} [options]
  */
 export function explainPairAsMentor({
   left = {},
@@ -656,6 +657,7 @@ export function explainPairAsMentor({
 /**
  * Pair seats that include this card. Reset shapes before generic engine
  * pairs. Never claims a verified infinite. Parallel only.
+ * @param {Record<string, any>} [options]
  */
 export function explainPairsForCardAsMentor({
   cardName = "",

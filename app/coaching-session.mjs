@@ -5,6 +5,7 @@ const playerLanguage = (value) => clean(value)
   .replace(/the signal/gi, "the issue")
   .replace(/signal/gi, "pattern");
 
+/** @param {Record<string, any>} [options] */
 export function buildCoachingSession({ coachingDiagnosis, provingGrounds, experimentTablets, activeFieldTest = null } = {}) {
   const primary = coachingDiagnosis?.primary || {};
   const category = clean(primary.category) || "collect-more-evidence";

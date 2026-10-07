@@ -1,5 +1,4 @@
 import { userKey } from "./account-bench";
-// @ts-expect-error Runtime-neutral knowledge module.
 import { buildExactRevisionOpinion, evaluateRevisionOpinionEligibility } from "../app/knowledge/opinion-eligibility.mjs";
 
 interface Env { DB: D1Database; ACCESS_TEAM_DOMAIN?: string; ACCESS_AUD?: string }

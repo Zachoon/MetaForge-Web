@@ -67,17 +67,19 @@ test("the guided build carries the player's existing budget/price/commons/strate
   assert.match(worker, /commonsOnly: Boolean\(forgeInput\.commonsOnly\)/);
 });
 
-test("a reload restores the guided build only for accounts, only when the snapshot still matches, and finishing clears it", () => {
+test("a reload offers an owner-scoped draft and finishing keeps it until a durable result is applied", () => {
   const source = read("app/forge-session-context.tsx");
   assert.match(source, /const GUIDED_STORAGE_KEY = "metaforge-guided-session";/);
   const restoreStart = source.indexOf("const guidedRestoredRef");
   const restore = source.slice(restoreStart, source.indexOf("}, [guestMode]);", restoreStart));
   assert.match(restore, /if \(guestMode \|\| guidedRestoredRef\.current\) return;/);
-  assert.match(restore, /session\.key !== savedKey/);
-  assert.match(restore, /GUIDED_STORAGE_MAX_AGE_MS/);
-  assert.match(restore, /requestGuidedOffer\(restored, \{\}\)/);
+  assert.match(restore, /guidedAccountRequest\("GET"\)/);
+  assert.match(restore, /validGuidedDraft\(local\.draft\)/);
+  assert.match(restore, /setGuidedAvailableDraft/);
+  assert.match(restore, /setGuidedConflict/);
   const finish = source.slice(source.indexOf("function finishGuidedBuild("), source.indexOf("function exitGuidedBuild()"));
-  assert.match(finish, /clearStoredGuidedSession\(\)/);
+  assert.doesNotMatch(finish, /clearStoredGuidedSession\(\)/);
+  assert.match(finish, /await saveGuidedDraft/);
   // A session for a different commander/shell/format must be dropped, not adopted.
   assert.match(source, /guidedSession\.key !== guidedKey/);
 });
@@ -100,7 +102,7 @@ test("manual search cards are sent to the server on every request, not just the 
   // A pre-manual-cards snapshot restored from storage must not crash the next request.
   const restoreStart = source.indexOf("const guidedRestoredRef");
   const restore = source.slice(restoreStart, source.indexOf("}, [guestMode]);", restoreStart));
-  assert.match(restore, /const restored: GuidedSession = \{ manualCards: \{\}, \.\.\.session \};/);
+  assert.match(source, /setGuidedSession\(\{ manualCards: \{\}, \.\.\.saved\.session \}\)/);
 });
 
 test("the worker classifies manual cards through the real card-fact transform, caps their count, and folds them into the cache key", () => {
@@ -168,7 +170,9 @@ test("a manual card search discards a response that arrives after a newer search
   // touching state — a stale rejection clearing fresh results would be the
   // same bug in a different shape.
   assert.match(effect, /if \(seq !== searchSeq\.current\) return;/);
-  assert.match(effect, /if \(seq === searchSeq\.current\) setResults\(\[\]\);/);
+  assert.match(effect, /seq === searchSeq\.current && !controller\.signal\.aborted/);
+  assert.match(effect, /setSearchState\("error"\)/);
+  assert.match(effect, /controller\.abort\(\)/);
 });
 
 test("the guided ledger scales fundamentals targets to the request's real deck size, not a hardcoded 100", () => {

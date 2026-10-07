@@ -38,6 +38,7 @@ import {
 } from "./concept-stance-voice.mjs";
 import { evaluateCutAddRecommendation } from "./strategic-evaluation.mjs";
 
+/** @type {<T>(value: T) => Readonly<T>} */
 const freeze = (value) => Object.freeze(value);
 
 /** Phrases that sound like coaching but do not tell a new player the plan. */
@@ -1084,6 +1085,8 @@ function resolveAuthoritativeCommanders({
  * Build coach summary, then Narrative Integrity Gate.
  * On failure: discard narrative and regenerate without unbound structural systems.
  * Never return cross-analysis content.
+ * @param {Record<string, any>} [options]
+ * @returns {any}
  */
 export function buildIntegrityGuardedCoachSummary({
   nativeReport = null,

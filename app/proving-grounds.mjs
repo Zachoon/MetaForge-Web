@@ -11,6 +11,7 @@ const stableHypothesisId = (revision, category, measurement) => {
   return `coach-${(hash >>> 0).toString(36)}`;
 };
 
+/** @param {Record<string, any>} [options] */
 export function buildProvingGroundsBrief({ coachingDiagnosis, failureAnalysis, simulationDossier, matches = [] } = {}) {
   const primary = coachingDiagnosis?.primary || {};
   const activeIntervention = coachingDiagnosis?.activeIntervention || null;

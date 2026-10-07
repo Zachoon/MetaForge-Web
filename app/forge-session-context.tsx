@@ -98,6 +98,7 @@ import {
   partnerEligibilityFor,
 } from "./commander-lane-scoring.mjs";
 import { commanderShellOptions } from "./strategic-intent.mjs";
+import { guidedPickText, validGuidedDraft } from "./guided-draft.mjs";
 
 // Mirrors commanderShellOptions' (strategic-intent.mjs) return shape — kept
 // local since nothing outside this context needs the type yet.
@@ -116,7 +117,6 @@ type GuidedReason = {
   nearestAlternative: { name: string; margin: number } | null;
 } | null;
 const GUIDED_STORAGE_KEY = "metaforge-guided-session";
-const GUIDED_STORAGE_MAX_AGE_MS = 20 * 60 * 60 * 1000; // server cache lives 24h
 
 type GuidedSession = {
   // The commander/shell/format this session was built for. A session whose
@@ -390,6 +390,19 @@ export function useForgeSessionState() {
   const [guidedSession, setGuidedSession] = useState<GuidedSession | null>(null);
   const [guidedLoading, setGuidedLoading] = useState(false);
   const [guidedError, setGuidedError] = useState("");
+  const [guidedSaveStatus, setGuidedSaveStatus] = useState("Checking for a saved build…");
+  const [guidedAvailableDraft, setGuidedAvailableDraft] = useState<any>(null);
+  const [guidedConflict, setGuidedConflictState] = useState<any>(null);
+  const guidedConflictRef = useRef<any>(null);
+  function setGuidedConflict(value: any) { guidedConflictRef.current = value; setGuidedConflictState(value); }
+  const [guidedReview, setGuidedReview] = useState<any>(null);
+  const guidedOwnerRef = useRef("");
+  const guidedRevisionRef = useRef(0);
+  const guidedSnapshotRef = useRef<any>(null);
+  const guidedSaveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const guidedCompletionRef = useRef<any>(null);
+  const guidedFinishingRef = useRef(false);
+  const guidedSaveTimerRef = useRef<number | undefined>(undefined);
 
   // Authentication used to return players to an empty app root. Carry the
   // compact commission brief through Cloudflare Access in the original URL,
@@ -1032,6 +1045,150 @@ export function useForgeSessionState() {
     };
   }, [chamber, stage, motionMode]);
 
+  function guidedSnapshot(session = guidedSession) {
+    if (!session) return null;
+    return {
+      schemaVersion: 1, savedAt: Date.now(), format,
+      commander: selectedCommander, second: selectedSecondCommander, shell: selectedShell,
+      preferences: { strategy, complexity, budget, maxCardPrice, commonsOnly, targetPowerTier, note: commissionNote, playerCompass },
+      session, completion: guidedCompletionRef.current,
+    };
+  }
+  async function guidedAccountRequest(method: string, body?: any) {
+    const response = await fetch("/api/account/guided-draft", {
+      method, cache: "no-store", headers: { "Content-Type": "application/json" },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !data) {
+      if (response.status === 409 && data) setGuidedConflict(data);
+      throw new Error(data?.error || "Sign in or reconnect to save your build. Your local copy is kept.");
+    }
+    return data;
+  }
+  function writeGuidedLocal(snapshot: any) {
+    guidedSnapshotRef.current = snapshot;
+    if (!guidedOwnerRef.current) return;
+    try {
+      window.localStorage.setItem(`${GUIDED_STORAGE_KEY}:${guidedOwnerRef.current}`, JSON.stringify({ draft: snapshot, revision: guidedRevisionRef.current }));
+    } catch { setGuidedSaveStatus("Browser storage unavailable — keep this tab open until account saving succeeds."); }
+  }
+  function saveGuidedDraft(snapshot: any) {
+    writeGuidedLocal(snapshot);
+    const operation = guidedSaveQueueRef.current.catch(() => {}).then(async () => {
+      if (!guidedOwnerRef.current) throw new Error("Sign in again before saving; keep this tab open.");
+      if (guidedConflictRef.current) throw new Error("Choose which draft to keep before continuing.");
+      setGuidedSaveStatus("Saving your build…");
+      const data = await guidedAccountRequest("PUT", { draft: snapshot, baseRevision: guidedRevisionRef.current });
+      guidedRevisionRef.current = data.revision;
+      writeGuidedLocal(guidedSnapshotRef.current || snapshot);
+      setGuidedSaveStatus("Saved to your account");
+    });
+    guidedSaveQueueRef.current = operation;
+    operation.catch((error) => setGuidedSaveStatus(error.message));
+    return operation;
+  }
+  function restoreGuidedDraft(saved: any) {
+    if (!validGuidedDraft(saved)) return;
+    guidedSnapshotRef.current = saved;
+    guidedCompletionRef.current = saved.completion || null;
+    setFormat(saved.format);
+    setSelectedCommander(saved.commander);
+    setSelectedSecondCommander(saved.second || null);
+    setSelectedShell(saved.shell || null);
+    setStrategy(saved.preferences.strategy || "Balanced midrange");
+    setComplexity(saved.preferences.complexity || "Balanced");
+    setBudget(saved.preferences.budget || "No strict limit");
+    setMaxCardPriceInput(saved.preferences.maxCardPrice == null ? "" : String(saved.preferences.maxCardPrice));
+    setCommonsOnly(Boolean(saved.preferences.commonsOnly));
+    setTargetPowerTier(saved.preferences.targetPowerTier || "");
+    setCommissionNote(saved.preferences.note || "");
+    if (saved.preferences.playerCompass) setPlayerCompass(saved.preferences.playerCompass);
+    setGuidedSession({ manualCards: {}, ...saved.session });
+    setGuidedAvailableDraft(null);
+    setGuidedError("");
+    setChamber("guided-build");
+  }
+  async function resumeGuidedDraft(source = guidedAvailableDraft) {
+    if (!source?.draft) return;
+    restoreGuidedDraft(source.draft);
+    if (source.phase === "completing") setGuidedError("This build is finishing. Check its result before trying again; your picks are saved.");
+  }
+  async function resolveGuidedConflict(useAccount: boolean) {
+    await guidedSaveQueueRef.current.catch(() => {});
+    const current = await guidedAccountRequest("GET");
+    guidedRevisionRef.current = current.revision;
+    if (current.phase === "completing" && !useAccount) {
+      setGuidedConflict(current);
+      setGuidedError("The account build is finishing; check its saved result first.");
+      return;
+    }
+    setGuidedConflict(null);
+    if (useAccount) {
+      if (current.draft) restoreGuidedDraft(current.draft);
+      else { setGuidedSession(null); clearStoredGuidedSession(); }
+    } else {
+      // This is an explicit choice to replace the other copy, never an automatic merge.
+      const snapshot = guidedSnapshotRef.current;
+      if (snapshot) {
+        const data = await guidedAccountRequest("PUT", { draft: snapshot, baseRevision: current.revision });
+        guidedRevisionRef.current = data.revision;
+        writeGuidedLocal(snapshot);
+        restoreGuidedDraft(snapshot);
+      }
+    }
+  }
+  async function discardGuidedDraft() {
+    await guidedSaveQueueRef.current.catch(() => {});
+    const data = await guidedAccountRequest("DELETE", { baseRevision: guidedRevisionRef.current });
+    guidedRevisionRef.current = data.revision;
+    setGuidedSession(null);
+    setGuidedAvailableDraft(null);
+    clearStoredGuidedSession();
+    setGuidedError("");
+  }
+  function exportGuidedPicks() {
+    const draft = guidedSnapshotRef.current || guidedAvailableDraft?.draft;
+    const blob = new Blob([`${guidedPickText(draft)}\n\nCommander\n1 ${draft?.commander?.name || ""}${draft?.second?.name ? `\n1 ${draft.second.name}` : ""}`], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a"); link.href = url; link.download = "metaforge-guided-picks.txt"; link.click(); URL.revokeObjectURL(url);
+  }
+  async function refreshGuidedPool() {
+    const draft = guidedSnapshotRef.current || guidedSnapshot();
+    if (!draft || guidedLoading || guidedFinishingRef.current || guidedCompletionRef.current || guidedConflict) return;
+    setGuidedLoading(true);
+    try {
+      const asInput = (card: any) => card ? { name: card.name, colors: card.colors, oracleText: commanderOracleText(card) || card.verifiedFacts } : null;
+      const data = await guidedFetch("/api/forge/guided/start", { ...draft.preferences, format: draft.format, commander: asInput(draft.commander), secondCommander: asInput(draft.second), focusPackageId: draft.shell?.id });
+      const session = { ...draft.session, generationId: data.generationId, ...guidedOfferFields(data) };
+      setGuidedSession(session);
+      await requestGuidedOffer(session, {});
+    } catch (error) { setGuidedError(error instanceof Error ? error.message : "Card data is unavailable. Your picks are kept; export them or try again."); }
+    finally { setGuidedLoading(false); }
+  }
+  async function retryGuidedBuild() {
+    if (!guidedOwnerRef.current) {
+      try {
+        const account = await guidedAccountRequest("GET");
+        guidedOwnerRef.current = account.owner;
+        guidedRevisionRef.current = account.revision;
+        if (account.draft) setGuidedAvailableDraft(account);
+        setGuidedSaveStatus("Account connected");
+      } catch (error) { setGuidedError(error instanceof Error ? error.message : "Sign in again to reconnect."); }
+      return;
+    }
+    if (guidedCompletionRef.current) { await finishGuidedBuild(); return; }
+    if (guidedSession) await requestGuidedOffer(guidedSession, {});
+    else await startGuidedBuild();
+  }
+  async function callGuidedCompletion() {
+    const completion = guidedCompletionRef.current;
+    if (!completion) throw new Error("Save your guided picks before finishing.");
+    const data = await guidedFetch("/api/forge/guided/complete", { completionId: completion.id, baseRevision: guidedRevisionRef.current });
+    if (data.pending) throw new Error(data.error || "Your build is still finishing. Check again shortly; your picks are saved.");
+    setGuidedReview(data.guidedReview || null);
+    return data;
+  }
   async function guidedFetch(path: string, payload: Record<string, unknown>) {
     const response = await fetch(path, {
       method: "POST",
@@ -1047,11 +1204,11 @@ export function useForgeSessionState() {
       try { data = JSON.parse(raw); } catch { data = null; }
     }
     if (!response.ok || !data) {
-      throw new Error(
+      throw Object.assign(new Error(
         response.status === 401 || !data
-          ? "Your session expired or the connection dropped. Sign in again, then restart the guided build."
+          ? "Your session expired or the connection dropped. Your picks are kept. Sign in again, then resume this build."
           : String(data.error || "The guided build hit a problem. Try again."),
-      );
+      ), { status: response.status });
     }
     return data;
   }
@@ -1065,16 +1222,28 @@ export function useForgeSessionState() {
   const guidedKey = [format, selectedCommander?.name || "", selectedSecondCommander?.name || "", selectedShell?.id || ""].join("|");
   const clearStoredGuidedSession = () => {
     try { window.sessionStorage.removeItem(GUIDED_STORAGE_KEY); } catch { /* storage may be blocked */ }
+    if (guidedOwnerRef.current) {
+      try { window.localStorage.removeItem(`${GUIDED_STORAGE_KEY}:${guidedOwnerRef.current}`); } catch { /* account result remains available */ }
+    }
+    guidedSnapshotRef.current = null;
+    guidedCompletionRef.current = null;
   };
   async function startGuidedBuild() {
-    if (!selectedCommander || guestMode || !isCommanderFormat(format)) return;
+    if (!selectedCommander || guestMode || !isCommanderFormat(format) || guidedLoading || guidedFinishingRef.current || guidedConflict) return;
+    if (!guidedOwnerRef.current || guidedAvailableDraft) {
+      setGuidedError(guidedAvailableDraft ? "Resume or discard your saved build before starting another." : "Reconnect your account before starting this build.");
+      return;
+    }
+    if (guidedCompletionRef.current) {
+      setGuidedError("Check your saved completion before starting over.");
+      return;
+    }
     const asCommanderInput = (option: CommanderOption) => ({
       name: option.name,
       colors: option.colors,
       oracleText: commanderOracleText(option) || option.verifiedFacts,
     });
     setChamber("guided-build");
-    setGuidedSession(null);
     setGuidedError("");
     setGuidedLoading(true);
     try {
@@ -1103,6 +1272,7 @@ export function useForgeSessionState() {
         manualCards: {},
         ...guidedOfferFields(data),
       });
+      setGuidedReview(null);
       // Counts and role names only, never card names or the list itself.
       trackLaunchEvent("guided_started", { format, shell: selectedShell?.id || "none" });
     } catch (error) {
@@ -1117,6 +1287,10 @@ export function useForgeSessionState() {
     patch: Partial<Pick<GuidedSession, "categoryIndex" | "accepted" | "declined" | "manualCards">>,
   ) {
     const next = { ...session, ...patch };
+    // Persist the player's action before requesting the next offer. An outage
+    // must not silently undo an accepted card or a manual search choice.
+    setGuidedSession(next);
+    writeGuidedLocal(guidedSnapshot(next));
     setGuidedLoading(true);
     setGuidedError("");
     try {
@@ -1145,7 +1319,7 @@ export function useForgeSessionState() {
     category: guidedSession ? guidedSession.categories[guidedSession.categoryIndex] : "",
   });
   function acceptGuidedOffer() {
-    if (!guidedSession?.offer || guidedLoading) return;
+    if (!guidedSession?.offer || guidedLoading || guidedConflict || guidedCompletionRef.current) return;
     trackGuidedStep("accept");
     void requestGuidedOffer(guidedSession, {
       accepted: [...guidedSession.accepted, guidedSession.offer.name],
@@ -1155,7 +1329,7 @@ export function useForgeSessionState() {
   // Decline IS the reroll (spec's resolved decision #4): the declined name
   // rides along so the server offers a different card for this same slot.
   function declineGuidedOffer() {
-    if (!guidedSession?.offer || guidedLoading) return;
+    if (!guidedSession?.offer || guidedLoading || guidedConflict || guidedCompletionRef.current) return;
     trackGuidedStep("decline");
     void requestGuidedOffer(guidedSession, {
       declined: [...guidedSession.declined, guidedSession.offer.name],
@@ -1166,7 +1340,7 @@ export function useForgeSessionState() {
   // manual find gets the exact same classification as a suggested card
   // instead of only appearing once the finished deck is resolved.
   function addGuidedManualCard(rawCard: { name?: string } & Record<string, unknown>) {
-    if (!guidedSession || guidedLoading) return;
+    if (!guidedSession || guidedLoading || guidedConflict || guidedCompletionRef.current) return;
     const name = String(rawCard?.name || "").trim();
     if (!name) return;
     const lower = name.toLocaleLowerCase("en");
@@ -1180,19 +1354,20 @@ export function useForgeSessionState() {
     });
   }
   function removeGuidedPick(name: string) {
-    if (!guidedSession || guidedLoading) return;
+    if (!guidedSession || guidedLoading || guidedConflict || guidedCompletionRef.current) return;
     trackGuidedStep("remove");
     void requestGuidedOffer(guidedSession, {
       accepted: guidedSession.accepted.filter((entry) => entry !== name),
     });
   }
   function goToGuidedCategory(index: number) {
-    if (!guidedSession || guidedLoading) return;
+    if (!guidedSession || guidedLoading || guidedConflict || guidedCompletionRef.current) return;
     if (index < 0 || index >= guidedSession.categories.length) return;
     void requestGuidedOffer(guidedSession, { categoryIndex: index, declined: [] });
   }
   function finishGuidedCategory() {
-    if (!guidedSession || guidedLoading) return;
+    if (!guidedSession || guidedLoading || guidedConflict) return;
+    if (guidedCompletionRef.current) { void finishGuidedBuild(); return; }
     trackGuidedStep("next");
     if (guidedSession.categoryIndex + 1 >= guidedSession.categories.length) {
       finishGuidedBuild(false);
@@ -1204,9 +1379,14 @@ export function useForgeSessionState() {
   // imported/completion path already reserves the player's own cards and
   // fills only the slots they left open — so completion is a handoff to
   // that existing, tested pipeline rather than new construction logic.
-  function finishGuidedBuild(skippedAhead = false) {
-    if (!guidedSession) return;
-    const seed = Date.now();
+  async function finishGuidedBuild(skippedAhead = false) {
+    if (!guidedSession || guidedLoading || guidedFinishingRef.current || guidedConflict) return;
+    guidedFinishingRef.current = true;
+    window.clearTimeout(guidedSaveTimerRef.current);
+    setGuidedLoading(true);
+    const completion = guidedCompletionRef.current || { id: crypto.randomUUID(), deckId: crypto.randomUUID(), seed: Date.now() };
+    guidedCompletionRef.current = completion;
+    const seed = completion.seed;
     const deckText = guidedSession.accepted.map((name) => `1 ${name}`).join("\n");
     trackLaunchEvent("guided_finished", {
       picks: guidedSession.accepted.length,
@@ -1214,13 +1394,35 @@ export function useForgeSessionState() {
       of: guidedSession.categories.length,
       skippedAhead,
     });
-    clearStoredGuidedSession();
     setMilestoneMotion(null);
     setCommissionSeed(seed);
     setStage(0);
     setSelectedWork(0);
-    setChamber("forging");
-    void commitDirectForge(deckText ? "decklist" : "commander", seed, { deckOverride: deckText || undefined, guided: true });
+    try {
+      await guidedSaveQueueRef.current.catch(() => {});
+      const saved = await guidedAccountRequest("GET");
+      if (saved.phase === "completing" || saved.phase === "complete") {
+        if (saved.draft?.completion?.id !== completion.id) {
+          setGuidedConflict(saved);
+          throw new Error("Another saved build is finishing. Choose its account copy before continuing.");
+        }
+        guidedRevisionRef.current = saved.revision;
+      } else {
+        if (saved.revision !== guidedRevisionRef.current) {
+          setGuidedConflict(saved);
+          throw new Error("Another copy changed. Choose which build to keep before finishing.");
+        }
+        await saveGuidedDraft(guidedSnapshot());
+      }
+      setChamber("forging");
+      await commitDirectForge(deckText ? "decklist" : "commander", seed, { deckOverride: deckText || undefined, guided: true });
+    } catch (error) {
+      setGuidedError(error instanceof Error ? error.message : "Finishing was interrupted. Your picks are kept.");
+      setChamber("guided-build");
+    } finally {
+      guidedFinishingRef.current = false;
+      setGuidedLoading(false);
+    }
   }
   function exitGuidedBuild() {
     setChamber("commission");
@@ -1229,57 +1431,61 @@ export function useForgeSessionState() {
   // was built for; if any of those change, discard it (and its stored copy).
   useEffect(() => {
     if (guidedSession && guidedSession.key !== guidedKey) {
+      setGuidedAvailableDraft({ draft: guidedSnapshotRef.current, revision: guidedRevisionRef.current, phase: "active" });
       setGuidedSession(null);
-      clearStoredGuidedSession();
     }
     setGuidedError("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [guidedKey]);
-  // Building a deck takes minutes; an accidental reload must not throw away
-  // every pick. The picks are just names, and the classified pool they refer
-  // to lives server-side for 24h, so a tab-scoped snapshot is enough.
+  // Drafts outlive the temporary classified pool and are scoped to the verified account.
   useEffect(() => {
-    if (!guidedSession) return;
-    try {
-      window.sessionStorage.setItem(GUIDED_STORAGE_KEY, JSON.stringify({
-        savedAt: Date.now(),
-        format,
-        commander: selectedCommander,
-        second: selectedSecondCommander,
-        shell: selectedShell,
-        session: guidedSession,
-      }));
-    } catch { /* storage may be blocked; the session just won't survive a reload */ }
+    if (!guidedSession || guidedSession.key !== guidedKey || !guidedOwnerRef.current || guidedFinishingRef.current || guidedCompletionRef.current || guidedConflict) return;
+    const snapshot = guidedSnapshot();
+    writeGuidedLocal(snapshot);
+    const timer = window.setTimeout(() => { void saveGuidedDraft(snapshot).catch(() => {}); }, 450);
+    guidedSaveTimerRef.current = timer;
+    return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [guidedSession]);
+  }, [guidedSession, format, selectedCommander, selectedSecondCommander, selectedShell, strategy, complexity, budget, maxCardPrice, commonsOnly, targetPowerTier, commissionNote, guidedConflict]);
   const guidedRestoredRef = useRef(false);
   useEffect(() => {
     if (guestMode || guidedRestoredRef.current) return;
     guidedRestoredRef.current = true;
-    try {
-      const saved = JSON.parse(window.sessionStorage.getItem(GUIDED_STORAGE_KEY) || "null");
-      const session: GuidedSession | undefined = saved?.session;
-      const savedKey = saved ? [saved.format, saved.commander?.name || "", saved.second?.name || "", saved.shell?.id || ""].join("|") : "";
-      if (!session?.generationId || session.key !== savedKey || !saved.commander
-        || Date.now() - Number(saved.savedAt || 0) > GUIDED_STORAGE_MAX_AGE_MS) {
-        if (saved) clearStoredGuidedSession();
-        return;
-      }
-      // Older snapshots (saved before manual-search cards were tracked) may
-      // not carry this field.
-      const restored: GuidedSession = { manualCards: {}, ...session };
-      setFormat(saved.format);
-      setSelectedCommander(saved.commander);
-      setSelectedSecondCommander(saved.second || null);
-      setSelectedShell(saved.shell || null);
-      setGuidedSession(restored);
-      setChamber("guided-build");
-      // The snapshot's offer/ledger may be stale; ask the server for the
-      // current ones (this also proves the cached pool is still alive).
-      void requestGuidedOffer(restored, {});
-    } catch {
-      clearStoredGuidedSession();
-    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const account = await guidedAccountRequest("GET");
+        if (cancelled) return;
+        guidedOwnerRef.current = account.owner;
+        guidedRevisionRef.current = account.revision;
+        const readSaved = (storage: Storage, key: string) => { try { return JSON.parse(storage.getItem(key) || "null"); } catch { return null; } };
+        const local = readSaved(window.localStorage, `${GUIDED_STORAGE_KEY}:${account.owner}`);
+        // Legacy same-tab drafts have no owner or preference snapshot. Offer them
+        // only after identity verification, visibly, rather than silently applying defaults.
+        const legacy = readSaved(window.sessionStorage, GUIDED_STORAGE_KEY);
+        if (local?.draft && validGuidedDraft(local.draft)) {
+          guidedSnapshotRef.current = local.draft;
+          if (account.draft && JSON.stringify({ ...local.draft, savedAt: 0 }) !== JSON.stringify({ ...account.draft, savedAt: 0 })) {
+            setGuidedConflict(account);
+            setGuidedAvailableDraft({ ...account, draft: local.draft });
+          } else if (account.draft) setGuidedAvailableDraft(account);
+          else {
+            // A tombstone/newer account revision is an explicit discard elsewhere.
+            if (local.revision === account.revision) setGuidedAvailableDraft({ ...account, draft: local.draft });
+            else setGuidedConflict(account);
+          }
+        } else if (account.draft) setGuidedAvailableDraft(account);
+        else if (legacy?.session) {
+          const recovered = { ...legacy, schemaVersion: 1, session: { manualCards: {}, ...legacy.session }, preferences: { strategy, complexity, budget, maxCardPrice, commonsOnly, targetPowerTier, note: commissionNote } };
+          if (validGuidedDraft(recovered)) {
+            setGuidedAvailableDraft({ ...account, draft: recovered });
+            setGuidedError("An older tab draft was recovered without saved preferences. Review budget and build choices before finishing.");
+          }
+        }
+        setGuidedSaveStatus("Account connected");
+      } catch (error) { if (!cancelled) setGuidedSaveStatus(error instanceof Error ? error.message : "Reconnect to retrieve your draft."); }
+    })();
+    return () => { cancelled = true; guidedRestoredRef.current = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [guestMode]);
 
@@ -1826,7 +2032,7 @@ export function useForgeSessionState() {
             .join(" // "),
           cmc: (() => {
             const raw = fact?.cmc;
-            const value = raw == null || raw === "" ? NaN : Number(raw);
+            const value = raw == null || (raw as unknown) === "" ? NaN : Number(raw);
             return Number.isFinite(value) ? value : 0;
           })(),
           isCommander:
@@ -2099,7 +2305,7 @@ export function useForgeSessionState() {
         .filter(Boolean)
         .some((name) => cardFactKey(name as string) === cardFactKey(row.name));
       const rawCmc = fact?.cmc;
-      const cmc = rawCmc == null || rawCmc === "" ? null : Number(rawCmc);
+      const cmc = rawCmc == null || (rawCmc as unknown) === "" ? null : Number(rawCmc);
       return {
         name: row.name,
         quantity: row.quantity,
@@ -2444,7 +2650,7 @@ export function useForgeSessionState() {
     const experiments: any[] = [];
     const proposedCards = new Set<string>();
     for (const tablet of experimentTablets.tablets.filter((entry: any) => entry.type === "experiment")) {
-      if (proposedCards.has(tablet.change.add) || experiments.length >= 3) continue;
+      if (!tablet.change || proposedCards.has(tablet.change.add) || experiments.length >= 3) continue;
       proposedCards.add(tablet.change.add);
       experiments.push({
         id: tablet.id,
@@ -2759,7 +2965,7 @@ export function useForgeSessionState() {
     })();
   }, [guestMode]);
 
-  async function persistPlayerCompass(nextCompass: ReturnType<typeof readLocalPlayerCompass>) {
+  async function persistPlayerCompass(nextCompass: Parameters<typeof writeLocalPlayerCompass>[0]) {
     const saved = writeLocalPlayerCompass(nextCompass);
     setPlayerCompass(saved);
     setPlayerCompassSynced(false);
@@ -3384,11 +3590,11 @@ export function useForgeSessionState() {
       commissionNote: String(commissionNote || "").trim() || undefined,
     });
     if (opts.persist !== false) {
-      void persistStoryBench(
+      await persistStoryBench(
         firstRevision,
         { wins: 0, losses: 0 },
         opts.generationId,
-        { work: opts.work, commander: opts.commander, index: opts.index },
+        { work: opts.work, commander: opts.commander, index: opts.index, guidedReview: nativeReport.guidedReview || null },
       );
     }
   }
@@ -3516,6 +3722,7 @@ export function useForgeSessionState() {
     preChoiceCoaching?: any;
   }> {
     if (guestMode && !turnstileToken) throw new ForgeGenerationError("Complete the human verification before striking the Forge", "HUMAN_VERIFICATION_REQUIRED");
+    setGuidedReview(null);
     const response = await fetch(guestMode ? "/api/forge/guest-generate" : "/api/forge/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -3686,7 +3893,7 @@ export function useForgeSessionState() {
     });
     const commander = selectedCommander;
     const secondCommander = selectedSecondCommander;
-    const generationId = crypto.randomUUID();
+    const generationId = options.guided ? guidedCompletionRef.current.deckId : crypto.randomUUID();
     const directWork: Masterwork = {
       rune: "ᛞ",
       name: options.guided
@@ -3764,7 +3971,7 @@ export function useForgeSessionState() {
         // intent) — sending it as text there risked exactly that
         // misreading. The server evaluates it against this generation's
         // own evidence and returns reviewFocusResult, rendered below.
-        const { nativeReport, cardPool, generationId: newGenerationId, importWarnings, reviewFocusResult, deckUnderstanding: understanding } = await callForgeGenerate({
+        const { nativeReport, cardPool, generationId: newGenerationId, importWarnings, reviewFocusResult, deckUnderstanding: understanding } = await (options.guided ? callGuidedCompletion() : callForgeGenerate({
           mode: "imported",
           format,
           strategy,
@@ -3784,11 +3991,11 @@ export function useForgeSessionState() {
           focusPackageId: options.guided && isCommanderFormat(format) ? selectedShell?.id || undefined : undefined,
           maxCardPrice,
           commonsOnly,
-        });
+        }));
         trackLaunchEvent("forge_succeeded", { mode, format, durationMs: Date.now() - launchStartedAt });
         setImportWarnings([
-          ...(importWarnings?.unresolvedNames || []).map((name) => `"${name}" could not be verified and was left out.`),
-          ...(importWarnings?.illegalNames || []).map((name) => `"${name}" is not legal in ${format} and was left out.`),
+          ...(importWarnings?.unresolvedNames || []).map((name: string) => `"${name}" could not be verified and was left out.`),
+          ...(importWarnings?.illegalNames || []).map((name: string) => `"${name}" is not legal in ${format} and was left out.`),
         ]);
         setDeckUnderstanding(understanding || null);
         setReviewFocusResult(reviewFocusResult || null);
@@ -3808,7 +4015,7 @@ export function useForgeSessionState() {
         setChamber("workbench");
         landOnCompletedDecklist();
       } else {
-        const { nativeReport, cardPool, generationId: newGenerationId, preChoiceCoaching } = await callForgeGenerate({
+        const { nativeReport, cardPool, generationId: newGenerationId, preChoiceCoaching } = await (options.guided ? callGuidedCompletion() : callForgeGenerate({
           mode: "direct",
           format,
           strategy,
@@ -3830,7 +4037,7 @@ export function useForgeSessionState() {
           targetPowerTier: isCommanderFormat(format) ? targetPowerTier || undefined : undefined,
           focusPackageId: isCommanderFormat(format) ? selectedShell?.id || undefined : undefined,
           playerCompass,
-        });
+        }));
         trackLaunchEvent("forge_succeeded", { mode, format, durationMs: Date.now() - launchStartedAt });
         // A fresh build never auto-enters a Masterwork. The one generation
         // call above already produced all three real candidates
@@ -3853,7 +4060,29 @@ export function useForgeSessionState() {
         await ceremonyReady;
         setChamber("masterworks");
       }
+      if (options.guided) {
+        // The account completion result remains durable even if Bench synchronization
+        // was offline. It can be reopened using the same deck grouping ID.
+        setGuidedSession(null);
+        clearStoredGuidedSession();
+        setGuidedSaveStatus("Finished deck saved to your account");
+        try {
+          const saved = await guidedAccountRequest("GET");
+          guidedRevisionRef.current = saved.revision;
+        } catch { /* Finished result is durable; refresh the account before a new build. */ }
+      }
     } catch (error) {
+      if (options.guided) {
+        try {
+          const saved = await guidedAccountRequest("GET");
+          guidedRevisionRef.current = saved.revision;
+          if (saved.phase === "active") guidedCompletionRef.current = null;
+          writeGuidedLocal(guidedSnapshot());
+        } catch { /* Keep the same completion ID until the server can reconcile it. */ }
+        setGuidedError(error instanceof Error ? error.message : "Finishing was interrupted. Your picks are kept.");
+        setChamber("guided-build");
+        return;
+      }
       const failure = normalizeForgeFailure(error);
       setForgedDeck("");
       trackLaunchEvent("forge_failed", { mode, format, code: failure.code, retryable: failure.retryable });
@@ -3878,6 +4107,7 @@ export function useForgeSessionState() {
     }
   }
   function openSavedMasterwork(family: SavedFamily) {
+    setGuidedReview(family.guidedReview || null);
     const restoredRevisions = restoreStoryBenchRevisions(family.revisions).map((revision: any) => ({
       deck: revision.deck,
       note: revision.note,
@@ -4088,6 +4318,7 @@ export function useForgeSessionState() {
       work: Masterwork;
       commander: CommanderOption | null;
       index: number;
+      guidedReview?: any;
     },
     nextMatches = matchLog,
   ) {
@@ -4154,6 +4385,7 @@ export function useForgeSessionState() {
           "",
         playerGoal: coachingGoal || null,
         commissionNote: String(commissionNote || "").trim() || null,
+        guidedReview: meta ? meta.guidedReview || null : guidedReview || existingFamily?.guidedReview || null,
         forgeInterventions,
         planIdentity:
           extractPlanIdentitySnapshot(nativeMasterworkContext?.selected, activeCommander?.name || "")
@@ -4288,7 +4520,7 @@ export function useForgeSessionState() {
     if (experiment.cut === "Unresolved flex slot") return;
     const rows = applyControlledSwap(deckRows, experiment.cut, experiment.add.name);
     if (!rows) return;
-    const nextDeck = rows.map((row) => `${row.quantity} ${row.name}`).join("\n");
+    const nextDeck = rows.map((row: { quantity: number; name: string }) => `${row.quantity} ${row.name}`).join("\n");
     recordForgeIntervention(
       "controlled one-slot experiment",
       `−1 ${experiment.cut}; +1 ${experiment.add.name}`,
@@ -5056,6 +5288,17 @@ export function useForgeSessionState() {
     guidedSession,
     guidedLoading,
     guidedError,
+    guidedSaveStatus,
+    guidedAvailableDraft,
+    guidedConflict,
+    guidedBuildLocked: Boolean(guidedConflict || guidedCompletionRef.current),
+    guidedReview,
+    resumeGuidedDraft,
+    resolveGuidedConflict,
+    discardGuidedDraft,
+    exportGuidedPicks,
+    refreshGuidedPool,
+    retryGuidedBuild,
     startGuidedBuild,
     acceptGuidedOffer,
     declineGuidedOffer,

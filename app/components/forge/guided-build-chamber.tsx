@@ -17,6 +17,14 @@ export function GuidedBuildChamber() {
     guidedSession: session,
     guidedLoading,
     guidedError,
+    guidedSaveStatus,
+    guidedConflict,
+    guidedBuildLocked,
+    refreshGuidedPool,
+    retryGuidedBuild,
+    exportGuidedPicks,
+    maxCardPrice,
+    commonsOnly,
     selectedCommander,
     selectedSecondCommander,
     selectedShell,
@@ -37,15 +45,19 @@ export function GuidedBuildChamber() {
   const [confirmingRestart, setConfirmingRestart] = useState(false);
   const acceptRef = useRef<HTMLButtonElement>(null);
   const searchSeq = useRef(0);
+  const [searchState, setSearchState] = useState("idle");
+  const [searchRetry, setSearchRetry] = useState(0);
 
   const commanderColors = [...new Set([...(selectedCommander?.colors || []), ...(selectedSecondCommander?.colors || [])])];
   const identityClause = commanderColors.length ? `id<=${commanderColors.join("").toLowerCase()}` : "id:c";
   const accepted = session?.accepted || [];
 
   useEffect(() => {
+    const seq = ++searchSeq.current;
     const term = search.replace(/["():]/g, " ").trim();
     if (term.length < 2) {
       setResults([]);
+      setSearchState("idle");
       return;
     }
     // A slower response to an earlier keystroke can land after a faster
@@ -53,12 +65,21 @@ export function GuidedBuildChamber() {
     // not one already in flight. Tag each request and drop any response
     // that isn't for the search term still on screen, so a fast typist never
     // sees results for something they've already typed past.
-    const seq = ++searchSeq.current;
+    const controller = new AbortController();
+    setSearchState("loading");
+    setResults([]);
     const timer = window.setTimeout(async () => {
       try {
-        const query = encodeURIComponent(`${scryfallFormatTerms(format)} ${identityClause} ${term}`);
-        const response = await fetch(`https://api.scryfall.com/cards/search?q=${query}&order=edhrec`);
+        const constraints = `${commonsOnly ? "r:c" : ""} ${maxCardPrice != null ? `usd<=${maxCardPrice}` : ""}`;
+        const query = encodeURIComponent(`${scryfallFormatTerms(format)} ${identityClause} ${constraints} ${term}`);
+        const response = await fetch(`https://api.scryfall.com/cards/search?q=${query}&order=edhrec`, { signal: controller.signal });
+        if (response.status === 404) {
+          if (seq === searchSeq.current) { setResults([]); setSearchState("empty"); }
+          return;
+        }
+        if (!response.ok) throw new Error("Card search unavailable");
         const data = await response.json();
+        if (!Array.isArray(data.data)) throw new Error("Invalid card search response");
         if (seq !== searchSeq.current) return;
         setResults(
           (data.data || [])
@@ -68,12 +89,13 @@ export function GuidedBuildChamber() {
             // (see addGuidedManualCard) — never re-derived from just a name.
             .map((card: { name: string; type_line?: string }) => ({ name: card.name, typeLine: card.type_line || "Card", raw: card })),
         );
+        setSearchState(data.data.length ? "ready" : "empty");
       } catch {
-        if (seq === searchSeq.current) setResults([]);
+        if (seq === searchSeq.current && !controller.signal.aborted) { setResults([]); setSearchState("error"); }
       }
     }, 250);
-    return () => window.clearTimeout(timer);
-  }, [search, format, identityClause]);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [search, format, identityClause, maxCardPrice, commonsOnly, searchRetry]);
 
   // The buttons disable while a request is in flight, which drops keyboard
   // focus to the page body. When the next offer lands, put focus back on
@@ -119,7 +141,7 @@ export function GuidedBuildChamber() {
           {session
             ? copy?.blurb
             : guidedError
-              ? "Nothing you chose has been lost. You can start the guided build again or go back to your shell choice."
+              ? "Your current choices are kept. Reconnect or retry to continue, or export your picks."
               : "The Forge is gathering every legal card for this commander and reading what each one does. This takes a moment, and only happens once."}
         </p>
       </div>
@@ -128,11 +150,15 @@ export function GuidedBuildChamber() {
         <div className="guided-error" role="alert">
           <p>{guidedError}</p>
           <div>
-            <button type="button" onClick={() => void startGuidedBuild()}>Start the guided build again</button>
+            <button type="button" disabled={guidedLoading || Boolean(guidedConflict)} onClick={() => void retryGuidedBuild()}>Retry without losing picks</button>
+            {session && <button type="button" disabled={guidedLoading || guidedBuildLocked} onClick={() => void refreshGuidedPool()}>Refresh card pool</button>}
+            {session && <button type="button" onClick={exportGuidedPicks}>Export my picks</button>}
             <button type="button" onClick={exitGuidedBuild}>Back</button>
           </div>
         </div>
       )}
+      {session && <p className="guided-save-status" role="status">{guidedSaveStatus || "Your picks are kept while you build."}</p>}
+      {guidedBuildLocked && !guidedConflict && <p role="status">A finish request is saved. Check its result before changing your picks.</p>}
 
       {!session && !guidedError && (
         <p className="guided-loading" role="status">Building your card pool…</p>
@@ -145,7 +171,7 @@ export function GuidedBuildChamber() {
               const state = index < session.categoryIndex ? "done" : index === session.categoryIndex ? "current" : "upcoming";
               return (
                 <li key={id} className={`guided-step ${state}`}>
-                  <button type="button" disabled={guidedLoading} onClick={() => goToGuidedCategory(index)} aria-current={state === "current" ? "step" : undefined}>
+                  <button type="button" disabled={guidedLoading || guidedBuildLocked} onClick={() => goToGuidedCategory(index)} aria-current={state === "current" ? "step" : undefined}>
                     <span>{index + 1}</span>
                     {guidedCategoryLabel(id)}
                   </button>
@@ -172,10 +198,10 @@ export function GuidedBuildChamber() {
                       )}
                       <p className="guided-why">{describeGuidedReason(session.reason, offer.name)}</p>
                       <div className="guided-actions">
-                        <button type="button" ref={acceptRef} className="guided-accept" disabled={guidedLoading} onClick={acceptGuidedOffer}>
+                        <button type="button" ref={acceptRef} className="guided-accept" disabled={guidedLoading || guidedBuildLocked} onClick={acceptGuidedOffer}>
                           Add to my deck
                         </button>
-                        <button type="button" disabled={guidedLoading} onClick={declineGuidedOffer}>
+                        <button type="button" disabled={guidedLoading || guidedBuildLocked} onClick={declineGuidedOffer}>
                           Show me another
                         </button>
                       </div>
@@ -204,6 +230,9 @@ export function GuidedBuildChamber() {
                     placeholder="Search by card name…"
                   />
                 </label>
+                {searchState === "loading" && <p role="status">Searching legal cards…</p>}
+                {searchState === "empty" && <p role="status">No matching cards within this build’s colors and preferences. Try another name.</p>}
+                {searchState === "error" && <div role="alert"><p>Card search is unavailable. Your picks are safe.</p><button type="button" onClick={() => setSearchRetry((value) => value + 1)}>Retry card search</button></div>}
                 {search.trim().length >= 2 && results.length > 0 && (
                   <div role="listbox">
                     {results.map((card) => (
@@ -211,7 +240,7 @@ export function GuidedBuildChamber() {
                         type="button"
                         role="option"
                         key={card.name}
-                        disabled={guidedLoading || accepted.some((entry) => entry.toLocaleLowerCase("en") === card.name.toLocaleLowerCase("en"))}
+                        disabled={guidedLoading || guidedBuildLocked || accepted.some((entry) => entry.toLocaleLowerCase("en") === card.name.toLocaleLowerCase("en"))}
                         onClick={() => {
                           addGuidedManualCard(card.raw);
                           setSearch("");
@@ -229,7 +258,7 @@ export function GuidedBuildChamber() {
 
               <div className="guided-nav">
                 <button type="button" className="guided-next" disabled={guidedLoading} onClick={finishGuidedCategory}>
-                  {isLast ? "Finish — the Forge fills the rest" : `Done with ${guidedCategoryLabel(category).toLowerCase()} → next`}
+                  {guidedBuildLocked ? "Check saved finish" : isLast ? "Finish — the Forge fills the rest" : `Done with ${guidedCategoryLabel(category).toLowerCase()} → next`}
                 </button>
                 {!isLast && (
                   <button type="button" className="guided-skip-all" disabled={guidedLoading} onClick={() => finishGuidedBuild(true)}>
@@ -267,13 +296,13 @@ export function GuidedBuildChamber() {
                   confirmingRestart ? (
                     <div className="guided-restart-confirm" role="group" aria-label="Confirm restart">
                       <p>Start over? Every pick you've made will be discarded.</p>
-                      <button type="button" className="guided-restart-yes" disabled={guidedLoading} onClick={() => { setConfirmingRestart(false); void startGuidedBuild(); }}>
+                      <button type="button" className="guided-restart-yes" disabled={guidedLoading || guidedBuildLocked} onClick={() => { setConfirmingRestart(false); void startGuidedBuild(); }}>
                         Yes, start over
                       </button>
                       <button type="button" onClick={() => setConfirmingRestart(false)}>Cancel</button>
                     </div>
                   ) : (
-                    <button type="button" className="guided-restart" disabled={guidedLoading} onClick={() => setConfirmingRestart(true)}>
+                    <button type="button" className="guided-restart" disabled={guidedLoading || guidedBuildLocked} onClick={() => setConfirmingRestart(true)}>
                       Start this build over
                     </button>
                   )
@@ -283,7 +312,7 @@ export function GuidedBuildChamber() {
                     {accepted.map((name) => (
                       <li key={name}>
                         <span>{name}</span>
-                        <button type="button" disabled={guidedLoading} onClick={() => removeGuidedPick(name)} aria-label={`Remove ${name}`}>
+                        <button type="button" disabled={guidedLoading || guidedBuildLocked} onClick={() => removeGuidedPick(name)} aria-label={`Remove ${name}`}>
                           ×
                         </button>
                       </li>

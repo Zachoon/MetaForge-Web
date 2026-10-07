@@ -25,6 +25,7 @@ import { createPilotingDebrief } from "../../piloting-debrief.mjs";
 import { formatDeckForArenaExport } from "../../deck-export-format.mjs";
 import { trackLaunchEvent } from "../../launch-telemetry";
 import { useForgeSession } from "../../forge-session-context";
+import { GuidedCompletionReview } from "./guided-completion-review";
 
 export function WorkbenchChamber() {
   const {
@@ -214,6 +215,7 @@ export function WorkbenchChamber() {
 
   return (
     <section ref={forgeDescentRef} className={`testing-anvil progressive-results forge-descent ${openingExperimentGateActive ? "opening-experiment-pending" : ""}`}>
+      <GuidedCompletionReview />
       {!hasValidatedDeck && <button
         className="back-link"
         onClick={() => setChamber(deck.trim() ? "refine" : "commission")}
@@ -471,7 +473,6 @@ export function WorkbenchChamber() {
                       <button
                         key={reason.id}
                         type="button"
-                        disabled={coachFeedbackStatus === "saving"}
                         onClick={() =>
                           submitHonestCoachFeedback(
                             "not-helpful",
@@ -531,7 +532,7 @@ export function WorkbenchChamber() {
           strategySummary={honestCoachSummary.deckUnderstanding?.playerSummary?.detail || honestCoachSummary.intentions.accomplish}
           coreSummary={honestCoachSummary.intentions.establish || honestCoachSummary.planStory?.planLabel || "Retain the cards carrying the deck's primary engine and required structural roles."}
           occupancyEngines={coachOccupancyLabels}
-          identityAliases={nativeMasterworkContext.identityAliases}
+          identityAliases={nativeMasterworkContext?.identityAliases}
           onContinue={() => { setSwapStationReviewed(true); window.scrollTo(0, 0); }}
         />
       )}
@@ -1720,13 +1721,13 @@ export function WorkbenchChamber() {
                       <p>Occupancy engines: {inspectedOccupancyLabels.join(" · ")}. Named from commander oracle, not from composition of the 99.</p>
                     </div>
                   )}
-                  {inspectedPackageMentors.map((explanation) => (
+                  {inspectedPackageMentors.map((explanation: { packageId: string; commentary: string }) => (
                     <div key={explanation.packageId} className="card-inspector-section card-inspector-seat">
                       <small>PACKAGE LANGUAGE · EXPERIMENTAL</small>
                       <p>{explanation.commentary}</p>
                     </div>
                   ))}
-                  {inspectedPairMentors.map((explanation) => (
+                  {inspectedPairMentors.map((explanation: { cards: string[]; paragraph: string; openQuestion: string }) => (
                     <div key={explanation.cards.join("+")} className="card-inspector-section card-inspector-seat">
                       <small>PAIR LANGUAGE · EXPERIMENTAL</small>
                       <p>{explanation.paragraph}</p>

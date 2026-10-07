@@ -564,6 +564,7 @@ export function explainRecommendedBadge(builds = []) {
   return `Recommended because it offers ${consequences}.`;
 }
 
+/** @param {Record<string, any>} [options] */
 export function buildPreChoiceCoaching({
   candidates = [],
   recommendedId = "",

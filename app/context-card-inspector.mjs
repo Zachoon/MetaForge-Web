@@ -6,6 +6,7 @@
 // structural report fields — not new Brain facts.
 // =============================================================================
 
+/** @type {<T>(value: T) => Readonly<T>} */
 const freeze = (value) => Object.freeze(value);
 
 /**
@@ -36,6 +37,8 @@ export const ERA3_CARD_INSPECT_SURFACES = freeze([
 
 /**
  * Short "why this card?" lines from systems / bridge evidence already on the report.
+ * @param {string | null} [cardName]
+ * @param {any} [systemsReport]
  */
 export function reasonsCardMatters(cardName = "", systemsReport = null) {
   const name = String(cardName || "").trim();

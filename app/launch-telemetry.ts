@@ -14,7 +14,8 @@ export type LaunchEvent =
   | "guided_started"
   | "guided_step"
   | "guided_finished"
-  | "guided_failed";
+  | "guided_failed"
+  | "mulligan_coach_decision";
 
 const CONSENT_KEY = "metaforge-measurement-consent";
 const SESSION_KEY = "metaforge-launch-session";

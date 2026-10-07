@@ -66,6 +66,7 @@ export function deckNameSetWithIdentities(deckCardNames = [], resolutions = []) 
 /**
  * Structural systems may only inform coaching when bound to the active analysis.
  * Stale reports from a previous commander/deck are treated as absent.
+ * @param {Record<string, any>} [options]
  */
 export function bindStructuralSystemsForCoach({
   report = null,

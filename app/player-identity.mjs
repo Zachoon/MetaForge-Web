@@ -125,6 +125,7 @@ export function diffPlayerIdentity(previous, next) {
   };
 }
 
+/** @param {Record<string, any>} [options] */
 export function computePlayerIdentity({ families = [], motifWeightsByFamily = {} } = {}) {
   const mastery = computeMastery(families);
   const dominantColors = resolveDominantColors(families);

@@ -72,6 +72,10 @@ export function presentPhilosophyBuild(build = {}, { reportDecidedBy = null } = 
   });
 }
 
+/**
+ * @param {any[]} [builds]
+ * @param {{ decidedBy?: string | null }} [options]
+ */
 export function presentPhilosophyComparison(builds = [], { decidedBy = null } = {}) {
   const presented = (Array.isArray(builds) ? builds : [])
     .map((build) => presentPhilosophyBuild(build, { reportDecidedBy: decidedBy }));

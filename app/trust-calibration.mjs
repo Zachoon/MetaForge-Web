@@ -84,6 +84,7 @@ function pct(part, whole) {
 /**
  * Build Trust Calibration report from founder feedback rows (+ optional telemetry).
  * Rows should already have parsed `context` objects.
+ * @param {Record<string, any>} [options]
  */
 export function buildTrustCalibrationReport({
   feedback = [],

@@ -92,6 +92,7 @@ function applyFieldTestEvidence(candidate, matches) {
   });
 }
 
+/** @param {Record<string, any>} [options] */
 export function buildCoachingDiagnosis({
   matches = [],
   currentRevision = 1,

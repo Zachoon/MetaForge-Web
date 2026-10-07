@@ -85,4 +85,8 @@ export const COMMANDER_GUIDE_PROFILES = Object.freeze({
   }),
 });
 
+/**
+ * @param {string} slug
+ * @returns {(typeof COMMANDER_GUIDE_PROFILES)[keyof typeof COMMANDER_GUIDE_PROFILES] | null}
+ */
 export function commanderGuideProfile(slug) { return COMMANDER_GUIDE_PROFILES[slug] || null; }

@@ -50,7 +50,7 @@ async function validateTurnstile(request: Request, secret: string, token: unknow
   if (remoteIp) form.set("remoteip", remoteIp);
   const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body: form });
   if (!response.ok) return false;
-  const result = await response.json<{ success?: boolean }>();
+  const result = (await response.json()) as { success?: boolean };
   return result.success === true;
 }
 

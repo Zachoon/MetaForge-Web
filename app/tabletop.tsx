@@ -197,7 +197,7 @@ export function Tabletop({
     setHandDecision(decision);
     const aligned = handEvaluation.verdict === "close" || handEvaluation.verdict === decision;
     setDecisionScore((score) => ({ aligned: score.aligned + (aligned ? 1 : 0), total: score.total + 1 }));
-    onMulliganDecision?.({ decision, verdict: handEvaluation.verdict, confidence: handEvaluation.confidence, aligned, counts: handEvaluation.counts });
+    onMulliganDecision?.({ decision, verdict: handEvaluation.verdict as "keep" | "mulligan" | "close", confidence: handEvaluation.confidence, aligned, counts: handEvaluation.counts });
   };
   const matchupGuidance = MATCHUP_GUIDANCE[matchup];
   const activeTabletopCard = useMemo(
@@ -319,7 +319,7 @@ export function Tabletop({
                     <strong>{type}</strong>
                     <span>{typeCards.reduce((sum, card) => sum + card.quantity, 0)}</span>
                   </header>
-                  <div>{typeCards.map(tile)}</div>
+                  <div>{typeCards.map((card) => tile(card))}</div>
                 </section>
               ))}
             </div>
@@ -412,7 +412,7 @@ export function Tabletop({
                 <small>{turn.label}</small>
                 <strong>{turn.cards.length} options</strong>
               </header>
-              <div>{turn.cards.slice(0, 12).map(tile)}</div>
+              <div>{turn.cards.slice(0, 12).map((card) => tile(card))}</div>
             </section>
           ))}
         </div>
@@ -434,7 +434,7 @@ export function Tabletop({
               <p>{matchupGuidance.watchFor}</p>
             </header>
             <div className="tabletop-matchup-roles" aria-label={`How to use priority cards against ${matchup}`}>
-              {MATCHUP_ROLES[matchup].map((role) => (
+              {MATCHUP_ROLES[matchup].map((role: string) => (
                 <article key={role}>
                   <strong>{role}</strong>
                   <span>{matchupGuidance.roles[role]}</span>
@@ -478,7 +478,7 @@ export function Tabletop({
             </p>
           )}
 
-          <div className="tabletop-matchup-cards">{cards.slice(0, 48).map(tile)}</div>
+          <div className="tabletop-matchup-cards">{cards.slice(0, 48).map((card) => tile(card))}</div>
         </div>
       )}
 
