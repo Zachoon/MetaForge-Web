@@ -51,12 +51,16 @@ test("a detected or selected commander renders the selected-commander summary, n
   );
 });
 
-test("the random three-commander suggestion action is hidden in refine mode but present in commission mode", async () => {
+// Refine now covers two build paths: "complete" (a pasted list, where the
+// commander is detected and random suggestions would be noise) and
+// "scratch" (an empty list, where a suggestion is genuinely useful).
+test("the random three-commander suggestion action is hidden for a pasted list but present for scratch and commission", async () => {
   const source = await readCommissionChamber();
+  assert.match(source, /const isComplete = chamber === "refine" && buildPath === "complete";/);
   assert.match(
     source,
-    /\{chamber !== "refine" && \(\s*<button\s*\n\s*type="button"\s*\n\s*disabled=\{randomizingCommander\}\s*\n\s*onClick=\{chooseRandomCommander\}/,
-    "the random-suggestion button is wrapped in a chamber !== \"refine\" guard, so it renders for commission and is hidden for refine",
+    /\{!isComplete && \(\s*<button\s*\n\s*type="button"\s*\n\s*disabled=\{randomizingCommander\}\s*\n\s*onClick=\{chooseRandomCommander\}/,
+    "the random-suggestion button is wrapped in a !isComplete guard, so it renders for scratch/commission and is hidden for a pasted list",
   );
 });
 
@@ -71,9 +75,10 @@ test("refine mode without a detectable commander keeps the manual search input a
   // button inside .commander-search (e.g. the suggested-commander picker).
   const searchBlockMatch = source.match(/<div\s*\n\s*className="commander-search"[\s\S]*?disabled=\{randomizingCommander\}[\s\S]*?\)\}/);
   assert.ok(searchBlockMatch, "the commander-search block exists");
+  assert.match(searchBlockMatch[0], /\{!isComplete && \(/, "the nested random-suggestion button carries the only path gate");
   assert.doesNotMatch(
-    searchBlockMatch[0].split(`{chamber !== "refine" && (`)[0],
-    /chamber !== "refine"/,
+    searchBlockMatch[0].split(`{!isComplete && (`)[0],
+    /chamber !== "refine"|isComplete/,
     "the search input itself (before the nested random-suggestion button) carries no refine-only gate",
   );
 });
@@ -95,8 +100,11 @@ test("the imported-generate call still targets the authenticated or guest genera
 
 test("a failed forge attempt still preserves the pasted decklist and selected commander (deck/commander state is never cleared on catch)", async () => {
   const source = await readCtx();
-  const catchBlock = source.match(/\} catch \(error\) \{\s*const failure = normalizeForgeFailure\(error\);\s*setForgedDeck\(""\);[\s\S]*?\} finally \{/);
-  assert.ok(catchBlock, "the commitForge catch block exists");
-  assert.doesNotMatch(catchBlock[0], /setDeck\(/, "the pasted decklist text is never cleared on a failed generation");
-  assert.doesNotMatch(catchBlock[0], /setSelectedCommander\(/, "the selected/detected commander is never cleared on a failed generation");
+  // The catch block opens with the guided-finish branch before the shared
+  // failure handling, so take the whole block from its catch to its finally.
+  const failureStart = source.indexOf("const failure = normalizeForgeFailure(error);\n      setForgedDeck(\"\");");
+  assert.ok(failureStart >= 0, "the commitForge catch block exists");
+  const catchBlock = source.slice(source.lastIndexOf("} catch (error) {", failureStart), source.indexOf("} finally {", failureStart));
+  assert.doesNotMatch(catchBlock, /setDeck\(/, "the pasted decklist text is never cleared on a failed generation");
+  assert.doesNotMatch(catchBlock, /setSelectedCommander\(/, "the selected/detected commander is never cleared on a failed generation");
 });

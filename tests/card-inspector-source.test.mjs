@@ -40,7 +40,7 @@ test("deck rows open a keyboard-accessible action menu before the contextual ins
 test("deck rows preview naturally while click remains an intentional inspection action", () => {
   const rowBlock = workbenchChamber.match(/role="button"[\s\S]*?className=\{\[[\s\S]*?\.join\(" "\)\}/)?.[0];
   assert.ok(rowBlock, "expected to find the interactive deck-row block");
-  assert.match(rowBlock, /onMouseEnter=\{\(\) => setHoveredCard\(row\.name\)\}/);
+  assert.match(rowBlock, /onMouseEnter=\{\(\) => scheduleDeckHover\(row\.name\)\}/);
   assert.match(rowBlock, /onFocus=\{\(\) => setHoveredCard\(row\.name\)\}/);
   assert.match(rowBlock, /onClick=\{\(\) => \{\s*setHoveredCard\(row\.name\);[\s\S]*?setInspectedCard\(row\.name\)/);
   assert.match(rowBlock, /if \(canSelectForRefill\)/, "multi-select mode may deliberately select a row without opening its action menu");

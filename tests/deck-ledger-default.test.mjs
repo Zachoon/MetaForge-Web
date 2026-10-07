@@ -5,16 +5,26 @@ import { readFile } from "node:fs/promises";
 const root = new URL("../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
 
-test("finished decks default and reset to the condensed text ledger", async () => {
-  const page = await read("app/page.tsx");
-  assert.match(page, /useState<"workbench" \| "ledger">\("ledger"\)/);
-  assert.match(page, /setDeckViewMode\("ledger"\)/);
+// Deck view state moved to forge-session-context.tsx and the ledger rows to
+// the workbench chamber during the page.tsx decomposition (Phase 4).
+test("finished decks default and reset to the condensed text ledger on desktop", async () => {
+  const context = await read("app/forge-session-context.tsx");
+  const types = await read("app/forge-types.ts");
+  const workbench = await read("app/components/forge/workbench-chamber.tsx");
+  assert.match(context, /useState<DeckViewMode>\("ledger"\)/);
+  // Each new deck resets to the preferred list view: the ledger on desktop,
+  // the visual gallery on narrow screens where four text columns don't fit.
+  assert.match(context, /setDeckViewMode\(preferredDecklistView\(\)\)/);
+  assert.match(types, /\(max-width: 760px\)"\)\.matches\s*\?\s*"gallery"\s*:\s*"ledger"/);
+  assert.match(workbench, /setDeckViewMode\("ledger"\)/);
 });
 
 test("ledger rows preview on hover, open readable details on click, and retain explicit options", async () => {
-  const page = await read("app/page.tsx");
+  const page = await read("app/components/forge/workbench-chamber.tsx");
   const css = await read("app/testing-anvil.css");
-  assert.match(page, /onMouseEnter=\{\(\) => setHoveredCard\(row\.name\)\}/);
+  // Hover is scheduled (see tests/imported-deck-comparison-ui.test.mjs) so
+  // sweeping across dense rows doesn't rerender the preview for every row.
+  assert.match(page, /onMouseEnter=\{\(\) => scheduleDeckHover\(row\.name\)\}/);
   assert.match(page, /else setInspectedCard\(row\.name\)/);
   assert.match(page, /className="card-row-more"/);
   assert.match(page, /More options for \$\{row\.name\}/);

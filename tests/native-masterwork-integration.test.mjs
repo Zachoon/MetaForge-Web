@@ -158,7 +158,11 @@ test("initial Blueprint choices explain game terms before submission", () => {
   assert.match(deckRowHelpers, /BLUEPRINT_DEFINITIONS/);
   assert.match(commissionChamber, /blueprint-glossary-tip/);
   assert.match(commissionChamber, /blueprint-choice-definition/);
-  assert.match(commissionChamber, /aria-describedby="strategy-definition"/);
+  // The strategy select left this screen when the entrance split into
+  // scratch/complete/discover paths (strategy now comes from the Player
+  // Compass and shell picker); the format choice still explains itself.
+  assert.match(commissionChamber, /aria-describedby="format-definition"/);
+  assert.match(commissionChamber, /<small id="format-definition" className="blueprint-choice-definition">/);
   assert.match(deckRowHelpers, /Trade resources, answer key threats/i);
 });
 

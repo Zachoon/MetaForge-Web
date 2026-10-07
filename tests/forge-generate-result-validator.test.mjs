@@ -146,7 +146,9 @@ test("guest-forge.ts only marks a session used and persists a claimable result o
   const source = await read("worker/guest-forge.ts");
   assert.match(
     source,
-    /if \(generation\.status !== 200\) \{\s*await env\.DB\.prepare\(`DELETE FROM guest_forge_sessions WHERE session_key = \? AND status = 'pending'`\)/,
+    // An ephemeral continuation holds no reservation, so the release is
+    // guarded by !ephemeralContinue; every reservation holder still releases.
+    /if \(generation\.status !== 200\) \{\s*if \(!ephemeralContinue\) \{\s*await env\.DB\.prepare\(`DELETE FROM guest_forge_sessions WHERE session_key = \? AND status = 'pending'`\)/,
     "a non-200 generation result must release the pending reservation, not consume it",
   );
   assert.match(

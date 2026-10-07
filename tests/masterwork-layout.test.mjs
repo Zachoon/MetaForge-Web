@@ -14,6 +14,9 @@ const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8")
 // MASTERWORK_LANES/createMasterworks moved to deck-row-helpers.ts during
 // the page.tsx decomposition (Phase 4).
 const deckRowHelpers = await readFile(new URL("../app/deck-row-helpers.ts", import.meta.url), "utf8");
+// Philosophy cards moved to their own component during the page.tsx
+// decomposition.
+const philosophyCompare = await readFile(new URL("../app/components/forge/philosophy-compare.tsx", import.meta.url), "utf8");
 
 test("keeps the Masterworks reveal centered on a shrink-safe shared frame", () => {
   assert.match(
@@ -42,6 +45,6 @@ test("derives Masterwork titles, tone, and plain-language paths from one design 
 
 test("keeps Masterwork cards stable instead of replaying reveal animation on updates", () => {
   // Philosophy cards key off the comparison build id (same as candidate.id).
-  assert.match(page, /key=\{build\.id\}/);
+  assert.match(philosophyCompare, /<PhilosophyCard key=\{build\.id\}/);
   assert.match(journeyCss, /\.masterwork-card\{animation:none!important;contain:layout\}/);
 });

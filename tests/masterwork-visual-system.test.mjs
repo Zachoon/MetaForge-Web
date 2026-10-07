@@ -24,15 +24,22 @@ const workbenchChamber = fs.readFileSync(new URL("../app/components/forge/workbe
 // already-generated candidates directly (pendingCandidateChoice.nativeReport
 // .candidates), keyed by the server's own candidate.id, with no local
 // per-card reveal state to preserve across renders.
+// The picker moved to the masterworks chamber, which renders each real
+// candidate as a PhilosophyCompare card.
+const masterworksChamber = fs.readFileSync(new URL("../app/components/forge/masterworks-chamber.tsx", import.meta.url), "utf8");
+const philosophyCompare = fs.readFileSync(new URL("../app/components/forge/philosophy-compare.tsx", import.meta.url), "utf8");
+
 test("the masterworks chamber renders the engine's own real candidates, not a templated MasterworkCard", () => {
-  assert.doesNotMatch(page, /function MasterworkCard\(/, "the templated reveal-ceremony component is retired");
-  assert.match(page, /pendingCandidateChoice\.nativeReport\.candidates/);
-  assert.match(page, /key=\{build\.id\}/);
-  assert.match(page, /enterMasterwork\(candidate\.id\)/);
+  for (const source of [page, masterworksChamber, philosophyCompare]) {
+    assert.doesNotMatch(source, /function MasterworkCard\(/, "the templated reveal-ceremony component is retired");
+  }
+  assert.match(masterworksChamber, /pendingCandidateChoice\.nativeReport\.candidates/);
+  assert.match(philosophyCompare, /<PhilosophyCard key=\{build\.id\}/);
+  assert.match(masterworksChamber, /enterMasterwork\(candidateId\)/);
 });
 
 test("entering a Masterwork is a real, keyboard-focusable button, not a bare clickable div", () => {
-  assert.match(page, /<button type="button" onClick=\{\(\) => enterMasterwork\(candidate\.id\)\}>/);
+  assert.match(philosophyCompare, /<button type="button" onClick=\{\(\) => onChoose\(build\.id\)\}>/);
 });
 
 test("reduced motion is honored for every new animation, not just some", () => {
@@ -70,11 +77,13 @@ test("major player milestones use choreographed sequences while reduced motion s
   assert.match(motionCss, /prefers-reduced-motion:reduce[^}]*\.forge-milestone-motion\{display:none!important\}/s);
 });
 
-test("the workbench replaces the long Forge Path with three task-focused destinations", () => {
+test("the workbench replaces the long Forge Path with task-focused destinations", () => {
   assert.doesNotMatch(page, /className="forge-path"/);
   assert.doesNotMatch(page, /YOUR FORGE PATH/);
-  assert.match(page, /LivingWorkbench/);
-  assert.match(page, /activeForgeChapter.*1 \| 2 \| 5/);
+  // The Aug 14 Masterwork frame replaced Living Workbench's Deck/Tune/Test
+  // rail with the global site rail; the three chapters remain.
+  assert.match(page, /<aside className="forge-global-rail" aria-label="Site navigation">/);
+  assert.match(forgeSessionContext, /activeForgeChapter.*1 \| 2 \| 5/);
   assert.match(workbenchChamber, /id="match-evidence"/);
 });
 
