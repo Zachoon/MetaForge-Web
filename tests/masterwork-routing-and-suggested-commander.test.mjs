@@ -41,7 +41,13 @@ test.before(async () => {
   // The generation-failure JSX moved to the workbench chamber's own
   // component during the page.tsx decomposition (Phase 4 Stage 4).
   workbenchChamber = await read("app/components/forge/workbench-chamber.tsx");
+  // The candidate picker moved to the masterworks chamber, which renders each
+  // candidate through PhilosophyCompare's per-build cards.
+  masterworksChamber = await read("app/components/forge/masterworks-chamber.tsx");
+  philosophyCompare = await read("app/components/forge/philosophy-compare.tsx");
 });
+let masterworksChamber;
+let philosophyCompare;
 
 test("selectCommander is the single canonical commander-selection path", () => {
   assert.match(
@@ -86,9 +92,11 @@ test("a fresh commander build routes through the masterworks chamber, never stra
   assert.doesNotMatch(elseBranch, /applyForgeResult/, "the commander branch must not apply a result directly — only enterMasterwork does, on explicit choice");
   // Exactly two callForgeGenerate calls in the whole function (shared by
   // both the decklist and commander branches) — no second network call
-  // happens anywhere downstream of it.
-  const generateCalls = [...body.matchAll(/await callForgeGenerate\(\{/g)];
+  // happens anywhere downstream of it. A guided finish swaps the commander
+  // branch's call for callGuidedCompletion() in the same single await.
+  const generateCalls = [...body.matchAll(/callForgeGenerate\(\{/g)];
   assert.equal(generateCalls.length, 2, "one for the decklist branch, one for the commander branch — never more");
+  assert.match(elseBranch, /await \(options\.guided \? callGuidedCompletion\(\) : callForgeGenerate\(\{/);
 });
 
 test("enterMasterwork is the only path that turns a pending candidate choice into the workbench's real deck, with zero further generation calls", () => {
@@ -102,37 +110,38 @@ test("enterMasterwork is the only path that turns a pending candidate choice int
 });
 
 test("entering a Masterwork is only reachable through an explicit player click on a specific candidate", () => {
-  assert.match(page, /onClick=\{\(\) => enterMasterwork\(candidate\.id\)\}/);
-  // No automatic call anywhere in the file.
-  const autoCalls = [...page.matchAll(/enterMasterwork\(/g)];
-  // One definition + each philosophy card's entry button (single map site).
-  assert.equal(autoCalls.length, 2, "enterMasterwork should only be referenced by its definition and explicit player-click handlers");
+  // The masterworks chamber's only call passes the clicked card's id through.
+  assert.match(masterworksChamber, /onChoose=\{\(candidateId\) => enterMasterwork\(candidateId\)\}/);
+  assert.match(philosophyCompare, /<button type="button" onClick=\{\(\) => onChoose\(build\.id\)\}>/);
+  // No automatic call anywhere: the definition plus that one click handler.
+  const references = [forgeSessionContext, masterworksChamber, workbenchChamber, page]
+    .flatMap((source) => [...source.matchAll(/enterMasterwork\(/g)]);
+  assert.equal(references.length, 2, "enterMasterwork should only be referenced by its definition and the explicit player-click handler");
 });
 
 test("recommended candidate is visually marked but not auto-selected — every candidate gets its own explicit entry button", () => {
-  assert.match(page, /build\.recommended && !singleSurvivor && <em>RECOMMENDED<\/em>/);
+  assert.match(philosophyCompare, /\{\(build\.badge \|\| build\.recommended\) && <em>\{build\.badge \|\| "BEST FIT FOR YOU"\}<\/em>\}/);
   assert.match(
-    page,
-    /strategyBuildComparison\?\.builds|\(pendingCandidateChoice\.nativeReport\.candidates/,
+    masterworksChamber,
+    /builds=\{strategyBuildComparison\.builds\}/,
     "every candidate/build gets mapped to its own card+button, not just the recommended one",
   );
-  assert.match(page, /enterMasterwork\(candidate\.id\)/);
+  assert.match(philosophyCompare, /<PhilosophyCard key=\{build\.id\} build=\{build\} onChoose=\{onChoose\}/);
 });
 
 test("the workbench's own UI success/failure boundary: a hasValidatedDeck predicate, not chamber alone, gates success chrome", () => {
   assert.match(
-    page,
+    forgeSessionContext,
     /const hasValidatedDeck =\s*benchStatus !== "forging" &&\s*!forgeGenerationError &&\s*deckRows\.length > 0 &&\s*deckRows\.reduce\(\(sum, row\) => sum \+ row\.quantity, 0\) === targetDeckSize\(format\);/,
   );
-  // The header's "ready to play" framing, the detail-level nav, the "what
-  // to do next" intro, and the chapter rail are all gated on it.
-  assert.match(page, /\{hasValidatedDeck\s*\?\s*"READY TO PLAY"/);
-  assert.match(page, /\{hasValidatedDeck \? \(\s*<>/);
+  // The header's "ready to play" framing and the coach stack are gated on it.
+  assert.match(workbenchChamber, /\{hasValidatedDeck\s*\?\s*"READY TO PLAY"/);
+  assert.match(workbenchChamber, /\{hasValidatedDeck \? \(\s*siteRail !== "decklist" && \(/);
   // The main deck-content branch (card list, prices, copy actions, multi-
   // refill, ...) only renders for a validated deck, not merely a non-empty
   // one — deckRows.length > 0 alone used to be the gate, which a partial
   // (but non-empty) deckRows array could still satisfy.
-  assert.match(page, /\) : hasValidatedDeck \? \(\s*<>\s*\{tcgplayerAffiliateEnabled/);
+  assert.match(workbenchChamber, /\) : hasValidatedDeck \? \(\s*<>\s*\{tcgplayerAffiliateEnabled/);
 });
 
 test("a failed generation surfaces a dedicated failure state that confirms the preview was not used, never a 0-card success", () => {
@@ -163,23 +172,20 @@ test("hasValidatedDeck is definitionally false whenever forgeGenerationError is 
 });
 
 test("none of the reported success strings can render outside hasValidatedDeck: header framing, chapter rail, deck stats, Workbench/ledger/copy, raw response, begin-testing", () => {
-  // "YOUR COMPLETE DECK · READY TO PLAY" / the workbench header framing
-  assert.match(page, /\{hasValidatedDeck\s*\n\s*\? "READY TO PLAY"/);
-  // Living Workbench owns the chapter rail; it only mounts beside a validated deck path.
-  assert.match(page, /\{hasValidatedDeck \? \(\s*<>/);
-  assert.match(page, /<LivingWorkbench/);
-  // The deck-reference-strip (card art, name, "N cards · format" chip)
-  assert.match(page, /\{hasValidatedDeck && \(\s*<div className="deck-reference-strip">/);
-  // The "N cards · N sections" count and the Workbench/Full ledger/Copy
-  // deck controls inside the deck-manuscript header
-  assert.match(
-    page,
-    /: hasValidatedDeck\s*\n\s*\? `\$\{deckRows[\s\S]*?Object\.keys\(groupedDeck\)\.length === 1 \? "section" : "sections"[\s\S]*?: "Build not completed"/,
-  );
-  assert.match(page, /\{hasValidatedDeck && \(\s*<div className="deck-header-actions">/);
+  // "READY TO PLAY" / the workbench header framing
+  assert.match(workbenchChamber, /\{hasValidatedDeck\s*\n\s*\? "READY TO PLAY"/);
+  // The deck-specific site-rail destinations (the Aug 14 Masterwork frame
+  // replaced Living Workbench's chapter rail) are disabled without a deck.
+  for (const label of ["Decklist", "Analysis", "Playtest", "Settings"]) {
+    assert.match(page, new RegExp(`disabled=\\{!hasValidatedDeck[^}]*\\}[^\\n]*<span>${label}</span>`), `${label} must be unreachable without a validated deck`);
+  }
+  // The deck name, identity marks, and "READY TO TEST" chip in the hero
+  assert.match(workbenchChamber, /<h2>\{hasValidatedDeck \? masterworkIdentity\.title[\s\S]*?: "Build not completed"/);
+  assert.match(workbenchChamber, /\{hasValidatedDeck && <div className="masterwork-identity-marks"/);
+  assert.match(workbenchChamber, /\{hasValidatedDeck && \(\s*<div className="deck-header-actions">/);
   // The raw Forge-response viewer and the "begin testing" trigger
-  assert.match(page, /\{hasValidatedDeck && \(\s*<details className="raw-decklist">/);
-  assert.match(page, /\{hasValidatedDeck && \(\s*<footer>\s*<span>\s*Featured/);
+  assert.match(workbenchChamber, /\{hasValidatedDeck && \(\s*<details className="raw-decklist">/);
+  assert.match(workbenchChamber, /\{hasValidatedDeck && \(\s*<footer>\s*<span>\s*Featured/);
   // The main card-list/analysis content branch itself
-  assert.match(page, /\) : hasValidatedDeck \? \(\s*<>\s*\{tcgplayerAffiliateEnabled/);
+  assert.match(workbenchChamber, /\) : hasValidatedDeck \? \(\s*<>\s*\{tcgplayerAffiliateEnabled/);
 });

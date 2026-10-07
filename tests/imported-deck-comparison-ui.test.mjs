@@ -19,9 +19,12 @@ const [page, component, css, forgeSessionContext, commissionChamber, workbenchCh
 ]);
 
 test("submitted-deck flow asks for the list before its format and then enters the ceremony", () => {
-  const deckPrompt = commissionChamber.indexOf("1 · YOUR CURRENT DECKLIST");
-  const basicsPrompt = commissionChamber.indexOf("2 · CONFIRM THE BASICS");
-  assert.ok(deckPrompt >= 0 && basicsPrompt > deckPrompt);
+  // Anchored on the elements rather than their numbered headings, which the
+  // scratch/complete/discover split reworded.
+  const deckPrompt = commissionChamber.indexOf('<label className="deck-offering">');
+  const basicsPrompt = commissionChamber.indexOf('<label className="build-choice-format">');
+  assert.ok(deckPrompt >= 0 && basicsPrompt > deckPrompt, "the decklist is requested before the format");
+  assert.match(commissionChamber, /YOUR CURRENT OR PARTIAL DECKLIST/);
   assert.match(workbenchChamber, /commitDirectForge\("decklist"\)/);
   assert.match(forgeSessionContext, /setChamber\("forging"\)/);
 });

@@ -246,7 +246,10 @@ test("normalizeForgeFailure maps every code to its retry/preview/verification me
 
 test("only requiresVerification failures reset the Turnstile widget; NETWORK_RATE_LIMITED does not", async () => {
   const source = await readCtx();
-  const catchBlock = source.match(/\} catch \(error\) \{\s*const failure = normalizeForgeFailure\(error\);[\s\S]*?\} finally \{/)?.[0];
+  // The catch block opens with the guided-finish branch, so anchor on the
+  // non-guided failure handling itself rather than the catch keyword.
+  const failureStart = source.indexOf("const failure = normalizeForgeFailure(error);");
+  const catchBlock = failureStart >= 0 ? source.slice(failureStart, source.indexOf("} finally {", failureStart)) : null;
   assert.ok(catchBlock, "expected the commitDirectForge catch block");
   assert.match(
     catchBlock,

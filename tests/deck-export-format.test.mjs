@@ -51,21 +51,26 @@ describe("deck export formatting — MTG Arena front-face-only names", () => {
     assert.equal(formatDeckForArenaExport(deck), deck);
   });
 
-  it("page.tsx applies this export-only formatting at every clipboard/download call site, never at the forgedDeck state source", () => {
+  it("the app applies this export-only formatting at every clipboard/download call site, never at the forgedDeck state source", () => {
+    // The export buttons moved to the workbench chamber and the deck-row
+    // parsing to forge-session-context.tsx during the page.tsx decomposition.
+    const workbench = readFileSync(join(root, "app/components/forge/workbench-chamber.tsx"), "utf8");
+    const context = readFileSync(join(root, "app/forge-session-context.tsx"), "utf8");
     const page = readFileSync(join(root, "app/page.tsx"), "utf8");
-    assert.match(page, /import \{ formatDeckForArenaExport \} from "\.\/deck-export-format\.mjs";/);
+    assert.match(workbench, /import \{ formatDeckForArenaExport \} from "\.\.\/\.\.\/deck-export-format\.mjs";/);
 
-    const clipboardWrites = page.match(/navigator\.clipboard\.writeText\([^)]*\)/g) || [];
-    const deckClipboardWrites = clipboardWrites.filter((call) => call.includes("forgedDeck"));
-    assert.ok(deckClipboardWrites.length >= 3, "expected at least 3 deck clipboard-copy call sites");
+    const deckClipboardWrites = [workbench, context, page]
+      .flatMap((source) => source.match(/navigator\.clipboard\.writeText\([^)]*\)/g) || [])
+      .filter((call) => call.includes("forgedDeck"));
+    assert.ok(deckClipboardWrites.length >= 2, "expected the header and export-panel deck copy buttons");
     for (const call of deckClipboardWrites) {
       assert.match(call, /formatDeckForArenaExport\(forgedDeck\)/, `expected Arena-safe formatting in: ${call}`);
     }
 
-    assert.match(page, /new Blob\(\[formatDeckForArenaExport\(forgedDeck\)\]/);
+    assert.match(workbench, /new Blob\(\[formatDeckForArenaExport\(forgedDeck\)\]/);
 
     // The internal parse/display paths must still see full "Front // Back" names.
-    assert.match(page, /parseDeckRows\(forgedDeck\)/);
-    assert.match(page, /<pre>\{forgedDeck\}<\/pre>/);
+    assert.match(context, /parseDeckRows\(forgedDeck\)/);
+    assert.match(workbench, /<pre>\{forgedDeck\}<\/pre>/);
   });
 });

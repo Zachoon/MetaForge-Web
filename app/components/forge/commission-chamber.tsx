@@ -246,15 +246,17 @@ export function CommissionChamber() {
                     }
                     aria-label={`Search legal ${format} commanders`}
                   />
-                  <button
-                    type="button"
-                    disabled={randomizingCommander}
-                    onClick={chooseRandomCommander}
-                  >
-                    {randomizingCommander
-                      ? "Finding commanders…"
-                      : selectedCommander ? "Choose another for me" : "Suggest a commander for me"}
-                  </button>
+                  {!isComplete && (
+                    <button
+                      type="button"
+                      disabled={randomizingCommander}
+                      onClick={chooseRandomCommander}
+                    >
+                      {randomizingCommander
+                        ? "Finding commanders…"
+                        : selectedCommander ? "Choose another for me" : "Suggest a commander for me"}
+                    </button>
+                  )}
                 </div>
                 {randomCommanderOptions.length > 0 && (
                   <div className="commander-suggestions" role="group" aria-label="Suggested commanders">

@@ -61,12 +61,16 @@ test("the disclosure renders exactly once, gated behind the same tcgplayerAffili
 });
 
 test("Phase 1B's two new purchase surfaces (replacement panel, experiment tablets) reuse the single existing disclosure — neither adds its own", () => {
-  const occurrences = page.match(/className="affiliate-disclosure"/g) || [];
+  // The replacement panel lives in the workbench editor chamber and the
+  // tablets in the workbench chamber since the page.tsx decomposition, so
+  // count across every file that renders a purchase surface.
+  const occurrences = [page, workbenchChamber, workbenchEditorChamber, forgeSessionContext]
+    .flatMap((source) => source.match(/className="affiliate-disclosure"/g) || []);
   assert.equal(occurrences.length, 1, "adding the two Phase 1B surfaces must not raise the disclosure count above 1");
-  const replacementBlock = page.match(/className="forge-replacements"[\s\S]{0,4400}/)?.[0];
+  const replacementBlock = workbenchEditorChamber.match(/className="forge-replacements"[\s\S]{0,4400}/)?.[0];
   assert.ok(replacementBlock);
   assert.doesNotMatch(replacementBlock, /affiliate-disclosure/);
-  const tabletsBlock = page.match(/className="refinement-starters-vault"[\s\S]{0,3200}/)?.[0];
+  const tabletsBlock = workbenchChamber.match(/className="refinement-starters-vault[^"]*"[\s\S]{0,3200}/)?.[0];
   assert.ok(tabletsBlock);
   assert.doesNotMatch(tabletsBlock, /affiliate-disclosure/);
 });

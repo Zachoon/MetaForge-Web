@@ -13,7 +13,8 @@ const polishCss = await readFile(new URL("../app/forge-polish.css", import.meta.
 const deckRowHelpers = await readFile(new URL("../app/deck-row-helpers.ts", import.meta.url), "utf8");
 const formatCatalog = await readFile(new URL("../app/format-catalog.ts", import.meta.url), "utf8");
 const forgeTypes = await readFile(new URL("../app/forge-types.ts", import.meta.url), "utf8");
-const workbenchSrc = await readFile(new URL("../app/living-workbench.tsx", import.meta.url), "utf8");
+// The three build paths are offered by the entrance chamber.
+const entranceChamber = await readFile(new URL("../app/components/forge/entrance-chamber.tsx", import.meta.url), "utf8");
 // Handler logic (state declarations, applyExperimentTablet, buildExperimentTablets, etc.)
 // moved to forge-session-context.tsx during the page.tsx decomposition
 // (Phase 4 Stage 2).
@@ -114,16 +115,17 @@ test("reviewFocusResult carries its full evidence shape (asked/evidence/nextStep
 
 test("turns the result into one active chapter instead of a continuous instrument wall", () => {
   assert.match(forgeSessionContext, /activeForgeChapter.*useState<1 \| 2 \| 5>\(1\)/);
-  assert.match(page, /LivingWorkbench/);
-  assert.match(workbenchSrc, /id="forge-chapter-rail"/);
+  // The Aug 14 Masterwork frame replaced Living Workbench's chapter rail
+  // with the global site rail (Decklist = chapter 1, Analysis = chapter 2).
+  assert.match(page, /<aside className="forge-global-rail" aria-label="Site navigation">/);
+  assert.doesNotMatch(page, /<LivingWorkbench/);
   assert.doesNotMatch(page, /WHAT TO DO NEXT/);
-  assert.match(workbenchSrc, /label: "Deck"/);
-  assert.match(workbenchSrc, /label: "Tune"/);
-  assert.match(workbenchSrc, /label: "Test"/);
-  assert.match(page, /chapter-\$\{activeForgeChapter\}-active/);
+  assert.match(page, /setActiveForgeChapter\(1\);[^\n]*<span>Decklist<\/span>/);
+  assert.match(page, /setActiveForgeChapter\(2\);[^\n]*<span>Analysis<\/span>/);
+  assert.match(workbenchChamber, /chapter-\$\{activeForgeChapter\}-active/);
   assert.match(css, /\.chapter-1-active \.deck-manuscript>header\{display:flex\}/);
   assert.match(css, /\.chapter-2-active>\.testing-loop\{display:block/);
-  assert.match(page, /id="proving-era-title"|getElementById\("proving-era-title"\)/);
+  assert.match(workbenchChamber, /getElementById\("proving-era-title"\)/);
   assert.match(forgeSessionContext, /metaforge\.activeFieldTest/);
   assert.match(forgeSessionContext, /This game did not test/);
   assert.match(css, /\.chapter-5-active>\.proving-grounds\{display:block/);
@@ -181,14 +183,13 @@ test("names the finished deck in player language instead of an unexplained tempe
 });
 
 test("each workspace stage exposes one clear contextual next action instead of another control cluster", () => {
-  // Living Workbench owns the primary next-step CTA; coach brief still
-  // carries Prepare my next game for the CHANGE beat.
-  assert.match(page, /<LivingWorkbench/);
-  assert.match(workbenchSrc, /onPrimaryAction/);
-  assert.match(page, /Prepare my next game →/);
-  assert.match(page, /if \(!activeFieldTest\) beginProvingGroundsTest\(\)/);
-  assert.match(page, /setActiveForgeChapter\(5\)/);
-  assert.match(page, /getElementById\("proving-era-title"\)/);
+  // The coach brief's single CHANGE-beat CTA carries the next step: it
+  // starts a field test if none is active and opens the proving grounds.
+  const cta = workbenchChamber.match(/className="coach-change-cta"[\s\S]*?Prepare my next game →/)?.[0];
+  assert.ok(cta, "expected the coach brief's next-step CTA");
+  assert.match(cta, /if \(!activeFieldTest\) beginProvingGroundsTest\(\)/);
+  assert.match(cta, /setActiveForgeChapter\(5\)/);
+  assert.match(cta, /getElementById\("proving-era-title"\)/);
 });
 
 test("deck understanding leads with Honest Coach and contains raw evidence in Deep Forge", () => {
@@ -219,21 +220,25 @@ test("a pasted decklist reveals its complete deck immediately; a fresh build nev
   assert.match(forgeSessionContext, /setChamber\("masterworks"\)/, "a fresh commander build lands on the masterworks choice, not a pre-selected deck");
   assert.match(workbenchChamber, /setOpeningExperimentPending\(false\)/);
   assert.doesNotMatch(page, /setOpeningExperimentPending\(mode === "commander"\)/);
-  assert.match(workbenchSrc, /label: "Deck"/);
+  assert.match(page, /<span>Decklist<\/span>/);
   assert.doesNotMatch(page, /className="forge-guide-navigation"/);
   assert.match(commissionChamber, /← Back|← Change build/);
   assert.doesNotMatch(page, /className="forge-guide-navigation"/);
 });
 
-test("turns new-deck setup into three progressively disclosed decisions", () => {
-  assert.match(forgeSessionContext, /useState<0 \| 1 \| 2>\(0\)/);
-  assert.match(commissionChamber, /aria-label="Deck setup progress"/);
-  assert.match(commissionChamber, /buildStepLabelsFor\(format\)\.map/);
-  assert.match(formatCatalog, /\["Commander", "Strategy", "Preferences"\]/);
-  assert.match(formatCatalog, /\["Format", "Strategy", "Preferences"\]/);
-  assert.match(commissionChamber, /Next · Choose strategy →/);
-  assert.match(commissionChamber, /Next · Optional preferences →/);
-  assert.match(commissionChamber, /buildStep === 0 && isCommanderFormat\(format\) && !selectedCommander/);
+// The Aug 31 entrance split replaced the three-step setup wizard with three
+// explicit starting points, each a single focused screen.
+test("turns new-deck setup into three explicit starting paths", () => {
+  assert.match(forgeTypes, /export type BuildPath = "scratch" \| "complete" \| "discover";/);
+  assert.match(entranceChamber, /title="Start from scratch"/);
+  assert.match(entranceChamber, /title="Complete a decklist"/);
+  assert.match(entranceChamber, /title="Discover a deck"/);
+  for (const path of ["scratch", "complete", "discover"]) {
+    assert.match(entranceChamber, new RegExp(`setBuildPath\\("${path}"\\)`));
+  }
+  assert.match(commissionChamber, /const isScratch = chamber === "refine" && buildPath === "scratch";/);
+  assert.match(commissionChamber, /const isComplete = chamber === "refine" && buildPath === "complete";/);
+  assert.doesNotMatch(commissionChamber, /aria-label="Deck setup progress"/, "the old stepper is retired");
 });
 
 test("keeps the chapter connector below the labels instead of striking through them", () => {
@@ -248,8 +253,16 @@ test("keeps the global header focused and moves secondary controls into one menu
   assert.doesNotMatch(page, /className="forge-steps"/);
   assert.doesNotMatch(page, /furthestCommissionStep/);
   assert.match(page, /className="forge-menu"/);
-  assert.match(page, /<summary>Menu<\/summary>/);
-  assert.match(page, /Replay guided tour/);
+  // The menu is labelled with the player's Forgemaster identity, and holds
+  // text size, motion, identity, and new-deck controls. The guided tour it
+  // used to replay was removed as outdated (Aug 17).
+  assert.match(page, /<summary><i>✦<\/i><span>Forgemaster<\/span><b>⌄<\/b><\/summary>/);
+  const menu = page.match(/<details className="forge-menu">[\s\S]*?<\/details>/)?.[0];
+  assert.ok(menu, "expected the header menu");
+  assert.match(menu, /aria-label="Text size"/);
+  assert.match(menu, /Reduce motion/);
+  assert.match(menu, /Start a new deck/);
+  assert.doesNotMatch(page, /Replay guided tour/);
 });
 
 test("turns deck stress experiments into concrete player insights", () => {
