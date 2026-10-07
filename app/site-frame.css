@@ -13,7 +13,7 @@
   display:grid!important;
   width:100%!important;
   min-height:var(--mf-frame-top)!important;
-  grid-template-columns:minmax(150px,auto) auto minmax(280px,1fr) auto!important;
+  grid-template-columns:minmax(150px,auto) 1fr auto!important;
   column-gap:20px!important;
   align-items:center!important;
   padding:0 20px!important;
@@ -204,7 +204,10 @@
 }
 .forge-global-rail button:hover i,.forge-global-rail button:focus-visible i,.forge-global-rail button.active i{color:#eca84b!important;text-shadow:0 0 9px #e98936aa}
 .forge-global-rail button:disabled{cursor:not-allowed!important;opacity:.48!important}.forge-global-rail button:disabled i{color:#66716c!important}
-.forge-global-rail button:nth-of-type(7){margin-top:auto!important}
+/* Pin Settings (when a deck exists) or else the version badge to the rail's
+   foot; the number of rail buttons varies with what the visitor can open. */
+.forge-global-rail .forge-rail-settings,.forge-global-rail .forge-rail-version{margin-top:auto!important}
+.forge-global-rail .forge-rail-settings~.forge-rail-version{margin-top:0!important}
 .forge-rail-embers{position:absolute;right:0;bottom:50px;left:0;height:90px;overflow:hidden;pointer-events:none;background:radial-gradient(ellipse at 50% 100%,#a44e161c,transparent 65%)}.forge-rail-embers i{position:absolute;bottom:8px;width:2px;height:2px;border-radius:50%;background:#d57b2f;box-shadow:0 0 7px #e78c3b;animation:rail-ember-rise 4s ease-in infinite}.forge-rail-embers i:nth-child(1){left:21px}.forge-rail-embers i:nth-child(2){left:38px;animation-delay:1.4s}.forge-rail-embers i:nth-child(3){left:49px;animation-delay:2.7s}
 .forge-rail-version{position:relative;z-index:1;display:grid;padding-top:10px;place-items:center;border-top:1px solid #222b27;color:#77817c;font-size:calc(9px * var(--forge-reading-scale, 1));letter-spacing:.08em}.forge-rail-version i{display:grid;width:27px;height:27px;margin-bottom:6px;place-items:center;border:1px solid #72552f;border-radius:50%;background:#11120e;color:#b98a4d;font:700 8px/1 Newsreader,Georgia,serif;letter-spacing:.08em;box-shadow:0 0 9px #b66e2820}.forge-rail-version span{display:block}
 @keyframes rail-ember-rise{0%{opacity:0;transform:translateY(0) scale(.7)}18%{opacity:.8}100%{opacity:0;transform:translateY(-72px) translateX(8px) scale(1.2)}}
