@@ -9,7 +9,7 @@
   align-items: flex-start;
   margin: 20px 0 28px;
 }
-.commander-hero img {
+.commander-hero > img {
   width: 160px;
   height: 118px;
   object-fit: cover;
@@ -18,21 +18,9 @@
   flex-shrink: 0;
 }
 .commander-hero-identity { display: flex; flex-direction: column; gap: 6px; }
-.commander-mana-cost { font: 600 15px ui-monospace, monospace; color: #e79b41; letter-spacing: 0.04em; }
+.commander-mana-cost { display: flex; flex-wrap: wrap; gap: 2px; font-size: 20px; line-height: 1; }
 .commander-type-line { font-size: 13px; color: #b9ab97; }
-.commander-colors { display: flex; gap: 6px; }
-.commander-colors i {
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 1px solid #6b3d22;
-  background: rgba(87, 44, 24, 0.28);
-  color: #eee2cf;
-  font: 700 10px ui-sans-serif, system-ui, sans-serif;
-  font-style: normal;
-}
+.commander-colors { display: flex; gap: 6px; font-size: 22px; line-height: 1; }
 .commander-oracle {
   margin: 0;
   padding: 18px 20px;

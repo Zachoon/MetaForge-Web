@@ -14,6 +14,7 @@ import {
 import { occupancyEngineCopyFor } from "../occupancy-copy.mjs";
 import { COMMANDER_GUIDES, commanderGuideBySlug } from "../data.mjs";
 import { commanderGuideProfile } from "../guide-profiles.mjs";
+import { ManaSymbol, ManaText } from "../../components/mana-symbols";
 
 export function generateStaticParams() {
   return COMMANDER_GUIDES.map((entry) => ({ slug: entry.slug }));
@@ -73,17 +74,17 @@ export default async function CommanderGuidePage({ params }: { params: Promise<{
           <div className="commander-hero">
             <img src={card.image_uris.art_crop} alt={`${card.name} art`} />
             <div className="commander-hero-identity">
-              <span className="commander-mana-cost">{card.mana_cost}</span>
+              <span className="commander-mana-cost"><ManaText text={card.mana_cost} /></span>
               <span className="commander-type-line">{card.type_line}</span>
               <div className="commander-colors" aria-label="Color identity">
-                {colorIdentity.map((color) => <i key={color}>{color}</i>)}
+                {colorIdentity.map((color) => <ManaSymbol key={color} symbol={color} />)}
               </div>
             </div>
           </div>
 
           <section>
             <h2>Oracle text</h2>
-            <blockquote className="commander-oracle">{card.oracle_text}</blockquote>
+            <blockquote className="commander-oracle"><ManaText text={card.oracle_text} /></blockquote>
           </section>
 
           <section>

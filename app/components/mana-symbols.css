@@ -1,0 +1,10 @@
+/* Sized in em so a symbol matches whatever text it sits in. */
+.mana-symbol {
+  display: inline-block;
+  width: 1.05em;
+  height: 1.05em;
+  margin: 0 0.06em;
+  vertical-align: -0.16em;
+  border-radius: 50%;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
+}
