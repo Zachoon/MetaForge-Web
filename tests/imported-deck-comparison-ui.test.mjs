@@ -25,7 +25,10 @@ test("submitted-deck flow asks for the list before its format and then enters th
   const basicsPrompt = commissionChamber.indexOf('<label className="build-choice-format">');
   assert.ok(deckPrompt >= 0 && basicsPrompt > deckPrompt, "the decklist is requested before the format");
   assert.match(commissionChamber, /YOUR CURRENT OR PARTIAL DECKLIST/);
-  assert.match(workbenchChamber, /commitDirectForge\("decklist"\)/);
+  // The workbench retry runs through runWhenVerified("retry"), which re-forges
+  // a submitted list as a decklist build.
+  assert.match(workbenchChamber, /runWhenVerified\("retry"\)/);
+  assert.match(forgeSessionContext, /retry: \(\) => \{ void commitDirectForge\(deck\.trim\(\) \? "decklist" : "commander"\); \}/);
   assert.match(forgeSessionContext, /setChamber\("forging"\)/);
 });
 

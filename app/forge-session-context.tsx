@@ -217,6 +217,10 @@ export function useForgeSessionState() {
   const [resumeForgeAfterAuth, setResumeForgeAfterAuth] = useState(false);
   const turnstileHostRef = useRef<HTMLDivElement>(null);
   const turnstileWidgetRef = useRef<string | null>(null);
+  // The widget verifies quietly in the background from page load; the
+  // verification panel only appears once a guest asks to build before a
+  // token exists (see runWhenVerified).
+  const [verificationRequested, setVerificationRequested] = useState(false);
   useEffect(() => {
     const host = window.location.hostname.toLowerCase();
     // app.metaforge.gg is the Cloudflare Access-protected account surface.
@@ -1509,6 +1513,35 @@ export function useForgeSessionState() {
     setChamber("forging");
     void commitDirectForge(deck.trim() ? "decklist" : "commander", seed);
   };
+
+  // Guests verify only when they ask to build. With a live token the action
+  // runs at once; without one, the verification panel appears and the same
+  // action runs as soon as Cloudflare returns a token. The ceremony still
+  // never starts without a token, so a guest can't watch the forge animate
+  // and then fail verification. Actions are read from a ref refreshed every
+  // render so a deferred run uses the fresh token, not a stale closure.
+  type VerifiedAction = "awaken" | "retry";
+  const verifiedActionsRef = useRef<Record<VerifiedAction, () => void>>({ awaken: () => {}, retry: () => {} });
+  verifiedActionsRef.current = {
+    awaken,
+    retry: () => { void commitDirectForge(deck.trim() ? "decklist" : "commander"); },
+  };
+  const pendingVerifiedActionRef = useRef<VerifiedAction | null>(null);
+  function runWhenVerified(action: VerifiedAction) {
+    if (!guestMode || turnstileToken) {
+      verifiedActionsRef.current[action]();
+      return;
+    }
+    pendingVerifiedActionRef.current = action;
+    setVerificationRequested(true);
+  }
+  useEffect(() => {
+    const action = pendingVerifiedActionRef.current;
+    if (!turnstileToken || !action) return;
+    pendingVerifiedActionRef.current = null;
+    setVerificationRequested(false);
+    verifiedActionsRef.current[action]();
+  }, [turnstileToken]);
   useEffect(() => {
     if (!resumeForgeAfterAuth || guestMode) return;
     setResumeForgeAfterAuth(false);
@@ -4904,6 +4937,8 @@ export function useForgeSessionState() {
     setResumeForgeAfterAuth,
     turnstileHostRef,
     turnstileWidgetRef,
+    verificationRequested,
+    runWhenVerified,
     stage,
     setStage,
     buildStep,
