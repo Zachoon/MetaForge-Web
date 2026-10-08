@@ -3,7 +3,31 @@
 import { useMemo, useState } from "react";
 
 function NumberField({ label, value, min, max, step = 1, onChange }: { label: string; value: number; min: number; max: number; step?: number; onChange: (value: number) => void }) {
-  return <label className="calculator-field"><span>{label}</span><input type="number" value={value} min={min} max={max} step={step} onChange={(event) => onChange(Math.max(min, Math.min(max, Number(event.target.value) || min)))} /></label>;
+  // Keep the visitor's raw text while they type and clamp only the number fed
+  // to the result. Clamping the field itself on every keystroke snapped a
+  // cleared field to its minimum, so "clear, type 60" became "4060".
+  const [text, setText] = useState(String(value));
+  const clamp = (raw: string) => {
+    const parsed = Number(raw);
+    return raw.trim() === "" || !Number.isFinite(parsed) ? null : Math.max(min, Math.min(max, parsed));
+  };
+  return <label className="calculator-field"><span>{label}</span><input
+    type="number"
+    value={text}
+    min={min}
+    max={max}
+    step={step}
+    onChange={(event) => {
+      setText(event.target.value);
+      const next = clamp(event.target.value);
+      if (next !== null) onChange(next);
+    }}
+    onBlur={() => {
+      const next = clamp(text) ?? value;
+      setText(String(next));
+      onChange(next);
+    }}
+  /></label>;
 }
 
 function LandCalculator() {
