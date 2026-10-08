@@ -70,6 +70,17 @@ body {
   position: relative;
   isolation: isolate;
   min-height: 100vh;
+  /* globals.css still carries the retired decorative-layer rule for this
+     class name: a fixed, viewport-sized, overflow-hidden overlay with
+     pointer-events:none and opacity .48 (.25 under reduced motion). On a page
+     root that froze the page to its first screen, disabled every link, and
+     dimmed all content, so the root restores normal flow explicitly. */
+  position: relative !important;
+  inset: auto !important;
+  z-index: auto !important;
+  overflow: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
   background:
     radial-gradient(circle at 82% 12%, rgba(239,142,66,.10), transparent 29rem),
     linear-gradient(180deg, rgba(7,16,18,.58), rgba(7,16,18,.78) 70%),
@@ -78,9 +89,11 @@ body {
 }
 .forge-atmosphere::before {
   content: "";
-  position: fixed;
+  /* !important for the same retired globals.css rule, whose ::before is an
+     absolute layer at inset -25% that would overflow a normal-flow page. */
+  position: fixed !important;
   z-index: -1;
-  inset: 0;
+  inset: 0 !important;
   opacity: .55;
   pointer-events: none;
   background:

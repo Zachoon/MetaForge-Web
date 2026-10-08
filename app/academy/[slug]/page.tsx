@@ -5,6 +5,7 @@ import "../../legal.css";
 import "../../academy.css";
 import { NEW_ACADEMY_GUIDES, newAcademyGuideBySlug } from "../guides-data";
 import { guideEvidenceBySlug } from "../guide-evidence";
+import { ManaText } from "../../components/mana-symbols";
 
 export function generateStaticParams() { return NEW_ACADEMY_GUIDES.map(({ slug }) => ({ slug })); }
 
@@ -33,8 +34,8 @@ export default async function NewAcademyGuide({ params }: { params: Promise<{ sl
           {evidence.cards.map((card) => <figure key={card.name} className="academy-card-example">
             <a href={card.cardUrl} target="_blank" rel="noreferrer"><img src={card.image} alt={`${card.name} Magic card`} loading="lazy" /></a>
             <figcaption>
-              <h3>{card.name} <span>{card.manaCost}</span></h3><p>{card.lesson}</p>
-              <details><summary>Read card facts</summary><p><strong>{card.typeLine}</strong></p><p>{card.oracleText}</p><small>{card.setName} · Art by {card.artist}. Card data and image via Scryfall.</small></details>
+              <h3>{card.name} <span><ManaText text={card.manaCost} /></span></h3><p>{card.lesson}</p>
+              <details><summary>Read card facts</summary><p><strong>{card.typeLine}</strong></p><p><ManaText text={card.oracleText} /></p><small>{card.setName} · Art by {card.artist}. Card data and image via Scryfall.</small></details>
             </figcaption>
           </figure>)}
         </div>
