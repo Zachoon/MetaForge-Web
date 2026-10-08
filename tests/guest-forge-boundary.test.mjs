@@ -119,28 +119,59 @@ test("a failed guest generation resets the Turnstile widget so the retry gets a 
 // out, and only then hit "Complete the human verification" with an empty
 // deck — a worse experience than failing before the click ever did
 // anything. Both triggers must refuse to fire without a live token.
-test("the Forge trigger (awaken) and its retry are both disabled in guest mode until a live Turnstile token exists", async () => {
+// Verification is now requested at the moment a guest builds rather than
+// shown on landing: both triggers go through runWhenVerified, which runs the
+// action immediately with a live token and otherwise reveals the panel and
+// defers the action until Cloudflare returns one. The ceremony still never
+// starts without a token.
+test("the Forge trigger (awaken) and its retry only run in guest mode once a live Turnstile token exists", async () => {
+  const context = await readCtx();
   const commissionChamber = await readCommissionChamber();
   // The failure-state retry block moved to the workbench chamber's own
   // component during the page.tsx decomposition (Phase 4 Stage 4).
   const workbenchChamber = await read("app/components/forge/workbench-chamber.tsx");
+
+  const gate = context.match(/function runWhenVerified\(action: VerifiedAction\) \{[\s\S]*?\n  \}/)?.[0];
+  assert.ok(gate, "expected the runWhenVerified gate");
+  assert.match(gate, /if \(!guestMode \|\| turnstileToken\) \{\s*verifiedActionsRef\.current\[action\]\(\);\s*return;\s*\}/, "only a live token (or an account) runs the action now");
+  assert.match(gate, /pendingVerifiedActionRef\.current = action;\s*setVerificationRequested\(true\);/, "without a token the action waits and the panel appears");
+  assert.match(
+    context,
+    /if \(!turnstileToken \|\| !action\) return;[\s\S]*?verifiedActionsRef\.current\[action\]\(\);\s*\}, \[turnstileToken\]\);/,
+    "the deferred action runs only once a token arrives",
+  );
+
   const awakenBlock = commissionChamber.match(/className="awaken-button"[\s\S]*?<\/button>/)?.[0];
   assert.ok(awakenBlock, "expected to find the awaken-button block");
-  assert.match(awakenBlock, /\(guestMode && !turnstileToken\)/, "awaken must be disabled without a live guest token");
+  assert.match(awakenBlock, /onClick=\{\(\) => runWhenVerified\("awaken"\)\}/, "awaken must go through the verification gate");
+  assert.doesNotMatch(awakenBlock, /onClick=\{awaken\}/);
   assert.match(
     awakenBlock,
-    /guestMode && !turnstileToken\s*\n\s*\? "Confirm you're human above, then build your deck"/,
-    "the button's own status text must explain why it's blocked, not just go dark",
+    /guestMode && verificationRequested && !turnstileToken\s*\n\s*\? "Confirm you're human below and your build starts"/,
+    "while waiting, the button's own status text must say what's happening",
   );
 
   const retryBlock = workbenchChamber.match(/THE METAL DID NOT SET[\s\S]*?Strike the Anvil Again/)?.[0];
   assert.ok(retryBlock, "expected to find the failure-state retry block");
-  assert.match(retryBlock, /disabled=\{guestMode && !turnstileToken\}/, "retry must not be clickable without a live guest token");
+  assert.match(retryBlock, /onClick=\{\(\) => runWhenVerified\("retry"\)\}/, "retry must go through the verification gate");
   assert.match(
     retryBlock,
-    /Your preview was not used\. Complete the verification above, then try again\./,
-    "the failure state must plainly confirm the preview was not used and point back at verification",
+    /Your preview was not used\. Try again and we&rsquo;ll ask you to confirm you&rsquo;re human first\./,
+    "the failure state must plainly confirm the preview was not used and say verification comes next",
   );
+});
+
+test("the verification panel stays mounted for background checks but is hidden until a guest asks to build", async () => {
+  const source = await read("app/page.tsx");
+  const styles = await read("app/globals.css");
+  assert.match(source, /\$\{verificationRequested \? "" : " dormant"\}/);
+  assert.match(source, /inert=\{!verificationRequested\}/);
+  // Hidden with opacity, never display:none, so the Turnstile iframe keeps
+  // verifying and most visitors already hold a token when they click.
+  const dormantRule = styles.match(/> \.guest-forge-pass\.dormant \{[^}]*\}/)?.[0];
+  assert.ok(dormantRule, "expected the dormant panel rule");
+  assert.match(dormantRule, /opacity: 0/);
+  assert.doesNotMatch(dormantRule, /display:\s*none/);
 });
 
 // Cloudflare Turnstile tokens expire on their own timer even when nothing

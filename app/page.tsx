@@ -167,6 +167,7 @@ export default function Home() {
     turnstileError,
     guestClaimToken,
     turnstileHostRef,
+    verificationRequested,
     stage,
     buildStep,
     setBuildStep,
@@ -488,14 +489,18 @@ export default function Home() {
         <mark />
         <q />
       </div>
+      {/* Stays mounted so Turnstile can verify quietly in the background;
+          it only becomes visible once a guest asks to build without a token. */}
       {guestMode && !forgedDeck && !pendingCandidateChoice && (
         <aside
-          className={`guest-forge-pass${turnstileToken ? " verified" : ""}`}
+          className={`guest-forge-pass${turnstileToken ? " verified" : ""}${verificationRequested ? "" : " dormant"}`}
           aria-label="Free Forge preview verification"
+          aria-hidden={!verificationRequested}
+          inert={!verificationRequested}
         >
           <div>
             <small>ONE FREE FORGE · NO ACCOUNT REQUIRED</small>
-            <b>{turnstileToken ? "The Forge is ready for you." : "Confirm you’re human, then build your deck."}</b>
+            <b>{turnstileToken ? "The Forge is ready for you." : "Confirm you’re human and your build starts right away."}</b>
             {turnstileError ? <p className="guest-turnstile-error" role="alert">{turnstileError}</p> : null}
           </div>
           <div

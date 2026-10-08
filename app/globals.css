@@ -406,6 +406,10 @@ footer p { font-family:Newsreader, Georgia,serif; font-style:italic; }
 }
 .great-forge[data-guest-mode="true"] { padding-bottom: 104px; }
 .great-forge[data-guest-mode="true"] > .guest-forge-pass.verified { display: none; }
+/* Hidden until a guest asks to build. Not display:none: the Turnstile iframe
+   inside must keep running so most visitors are verified before they click. */
+.great-forge[data-guest-mode="true"] > .guest-forge-pass { transition: opacity .25s ease, transform .25s ease; }
+.great-forge[data-guest-mode="true"] > .guest-forge-pass.dormant { opacity: 0; transform: translateY(12px); pointer-events: none; }
 .guest-forge-pass > div:last-child { flex: 0 0 auto; max-width: 100%; }
 .guest-forge-pass .turnstile-host.verified { display: none; }
 .guest-forge-pass iframe { display: block; max-width: 100%; }

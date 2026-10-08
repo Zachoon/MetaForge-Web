@@ -196,6 +196,7 @@ export function WorkbenchChamber() {
     provingGrounds,
     coachingSession,
     commitDirectForge,
+    runWhenVerified,
     setFamilyArchived,
     beginTesting,
     forgeMetaBreakerExperiments,
@@ -1515,16 +1516,7 @@ export function WorkbenchChamber() {
                         Sign in to save your last preview →
                       </a>
                     )}
-                    <button
-                      disabled={guestMode && !turnstileToken}
-                      onClick={() => {
-                        if (deck.trim()) {
-                          void commitDirectForge("decklist");
-                          return;
-                        }
-                        void commitDirectForge("commander");
-                      }}
-                    >
+                    <button onClick={() => runWhenVerified("retry")}>
                       Strike the Anvil Again
                     </button>
                   </div>
@@ -1550,19 +1542,10 @@ export function WorkbenchChamber() {
                   <p>{forgeGenerationError}</p>
                   {guestMode && !turnstileToken && (
                     <p className="forge-generation-failure-verify-note">
-                      Your preview was not used. Complete the verification above, then try again.
+                      Your preview was not used. Try again and we&rsquo;ll ask you to confirm you&rsquo;re human first.
                     </p>
                   )}
-                  <button
-                    disabled={guestMode && !turnstileToken}
-                    onClick={() => {
-                      if (deck.trim()) {
-                        void commitDirectForge("decklist");
-                        return;
-                      }
-                      void commitDirectForge("commander");
-                    }}
-                  >
+                  <button onClick={() => runWhenVerified("retry")}>
                     Strike the Anvil Again
                   </button>
                 </>

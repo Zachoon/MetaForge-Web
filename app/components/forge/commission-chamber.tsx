@@ -53,7 +53,8 @@ export function CommissionChamber() {
     setDeck,
     guestMode,
     turnstileToken,
-    awaken,
+    verificationRequested,
+    runWhenVerified,
     revealOccupancyLabels,
     shellOptions,
     selectedShell,
@@ -531,25 +532,26 @@ export function CommissionChamber() {
           data-block-reason={
             isCommanderFormat(format) && !selectedCommander
               ? "commander"
-              : guestMode && !turnstileToken
-                ? "verification"
-                : chamber === "refine" && !deck.trim()
-                  ? "deck"
-                  : ""
+              : chamber === "refine" && !deck.trim()
+                ? "deck"
+                : ""
           }
           disabled={
             (chamber === "refine" && !deck.trim()) ||
-            (isCommanderFormat(format) && !selectedCommander) ||
-            (guestMode && !turnstileToken)
+            (isCommanderFormat(format) && !selectedCommander)
           }
-          onClick={awaken}
+          // Guests confirm they're human only now, at the moment they build;
+          // the ceremony starts once verification returns a token.
+          onClick={() => runWhenVerified("awaken")}
         >
           <span>
             {isCommanderFormat(format) && !selectedCommander
               ? "Choose a legal commander to continue"
-              : guestMode && !turnstileToken
-                ? "Confirm you're human above, then build your deck"
-                : "Your choices are ready"}
+              : guestMode && verificationRequested && !turnstileToken
+                ? "Confirm you're human below and your build starts"
+                : guestMode
+                  ? "One free build · no account needed"
+                  : "Your choices are ready"}
           </span>
           <strong>
             {isScratch
