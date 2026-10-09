@@ -70,7 +70,10 @@ test("proving grounds and revision opinion keep occupancy separate from proof", 
   assert.match(proving, /This trial does not verify occupancy/);
   assert.match(provingCss, /\.proving-occupancy/);
   assert.match(workbenchChamber, /occupancyEngines=\{coachOccupancyLabels\}/);
-  assert.match(opinion, /That is not this revision's Mentor stance/);
+  // The Mentor panel no longer renders occupancy at all, so commander
+  // occupancy can never be read as its stance.
+  assert.doesNotMatch(opinion, /occupancyEngines\.join/);
+  assert.match(opinion, /commander occupancy engines are never presented as the Mentor stance/);
   assert.match(opinion, /never invents a question from a card or commander name/);
   assert.match(opinionCss, /\.revision-opinion-occupancy/);
 });

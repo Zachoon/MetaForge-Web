@@ -215,7 +215,7 @@ export function WorkbenchChamber() {
   } = useForgeSession();
 
   return (
-    <section ref={forgeDescentRef} className={`testing-anvil progressive-results forge-descent ${openingExperimentGateActive ? "opening-experiment-pending" : ""}`}>
+    <section ref={forgeDescentRef} className={`testing-anvil progressive-results forge-descent ${openingExperimentGateActive ? "opening-experiment-pending" : ""}`} data-site-rail={siteRail}>
       <GuidedCompletionReview />
       {!hasValidatedDeck && <button
         className="back-link"
