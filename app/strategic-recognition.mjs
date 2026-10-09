@@ -296,6 +296,21 @@ function composePrimaryPlan({ hierarchy, commander, packageLabels, ambiguous }) 
     return `${commander} wins because every planeswalker and counter engine becomes more dangerous the longer it survives. Your strongest job is to protect that board, proliferate, and let the snowball finish the table.`;
   }
   if (ambiguous || !hierarchy.primary) {
+    // The table-why line already says "several overlapping systems", and the
+    // coach shows both lines together, so this one names the contenders
+    // instead of repeating it. Player labels only (Player Surface Law: no
+    // engine names), and it still declines to call one of them the plan.
+    const contenders = [...new Set([hierarchy.primary, ...(hierarchy.supporting || [])]
+      .filter(Boolean)
+      .map((entry) => languageFor(entry.signal)?.shortLabel)
+      .filter(Boolean)
+      .map((label) => label.toLowerCase()))].slice(0, 3);
+    if (contenders.length >= 2) {
+      const list = contenders.length === 2
+        ? `${contenders[0]} and ${contenders[1]}`
+        : `${contenders.slice(0, -1).join(", ")}, and ${contenders.at(-1)}`;
+      return `None is dominant enough to call the main plan yet. The closest contenders are ${list}, so let your opening hand decide which one to push.`;
+    }
     return "MetaForge can see several overlapping systems, but none is dominant enough to name as the primary plan yet.";
   }
   if (signal === "evasion" || signal === "combat") {
