@@ -4873,15 +4873,22 @@ export function useForgeSessionState() {
     void persistStoryBench(nextRevisions, record);
   }
 
+  // What a public report would be published from: the live generation when
+  // one exists (kept server-side for 24 hours), otherwise the deck saved on
+  // this account's bench. Saved decks used to have no source at all, so
+  // Share sat disabled on every deck reopened more than a day later.
+  const savedDeckOnBench = Boolean(deckId) && savedMasterworks.some((family) => family.id === deckId);
+  const publicReportSourceKey = nativeMasterworkContext?.generationId || (savedDeckOnBench ? `deck:${deckId}` : "");
+
   async function publishPublicDeckReport() {
-    if (publicReportUrl && publicReportGenerationId === nativeMasterworkContext?.generationId) {
+    if (publicReportUrl && publicReportGenerationId === publicReportSourceKey) {
       await navigator.clipboard.writeText(publicReportUrl).catch(() => undefined);
       return;
     }
     const generationId = nativeMasterworkContext?.generationId;
-    if (guestMode || !generationId) {
+    if (guestMode || !publicReportSourceKey) {
       setPublicReportStatus("error");
-      setPublicReportError("Finish this deck while signed in before publishing a public report.");
+      setPublicReportError("Save this deck to your account before publishing a public report.");
       return;
     }
     setPublicReportStatus("publishing");
@@ -4892,7 +4899,7 @@ export function useForgeSessionState() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          generationId,
+          ...(generationId ? { generationId } : { familyId: deckId }),
           title: masterworkIdentity.title || `${activeCommanderName || chosenWork.name} ${format} Deck`,
         }),
       });
@@ -4900,7 +4907,7 @@ export function useForgeSessionState() {
       if (!response.ok || !payload.url) throw new Error(payload.error || "The public report could not be published.");
       setPublicReportUrl(payload.url);
       setPublicReportSlug(payload.slug || "");
-      setPublicReportGenerationId(generationId);
+      setPublicReportGenerationId(publicReportSourceKey);
       setPublicReportStatus("ready");
       setPublicReportPromptOpen(false);
       await navigator.clipboard.writeText(payload.url).catch(() => undefined);
@@ -5076,6 +5083,7 @@ export function useForgeSessionState() {
     publicReportError,
     setPublicReportError,
     publicReportGenerationId,
+    publicReportSourceKey,
     setPublicReportGenerationId,
     publicReportSlug,
     setPublicReportSlug,

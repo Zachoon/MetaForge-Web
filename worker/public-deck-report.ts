@@ -1,5 +1,6 @@
 import { userKey } from "./account-bench";
 import { loadGeneration } from "./forge-generation-store";
+import { lookupCardTypes } from "./card-facts";
 
 interface PublicReportEnv {
   DB: D1Database;
@@ -122,10 +123,49 @@ function deckInsights(rows: PublicRow[]) {
   };
 }
 
+// Builds report rows from the latest revision of a deck on the owner's own
+// account bench. Only that owner's bench is ever read.
+async function savedDeckReportSource(env: PublicReportEnv, owner: string, familyId: string): Promise<
+  | { ok: true; source: { rows: PublicRow[]; commander: string; format: string; strategy: string } }
+  | { ok: false; status: number; error: string }
+> {
+  const stored = await env.DB.prepare("SELECT bench_json FROM account_deck_benches WHERE user_key = ?").bind(owner).first<{ bench_json: string }>();
+  let families: any[] = [];
+  try { families = stored ? JSON.parse(stored.bench_json)?.families || [] : []; } catch { families = []; }
+  const family = families.find((entry) => entry && entry.id === familyId);
+  if (!family) return { ok: false, status: 404, error: "Save this deck to your account first, then share it." };
+  const deckText = String(family.revisions?.at(-1)?.deckText || "");
+  const parsed = deckText.split(/\r?\n/)
+    .map((line) => line.trim().match(/^(\d+)\s*x?\s+(.+)$/i))
+    .filter((match): match is RegExpMatchArray => Boolean(match))
+    .map((match) => ({ quantity: Number(match[1]), name: match[2].trim() }));
+  const commanderName = safeText(family.commander?.name || family.planIdentity?.commanders?.[0] || "", 100);
+  const types = await lookupCardTypes(parsed.map((row) => row.name));
+  const rows = sanitizeRows(parsed.map((row) => {
+    const fact = types.get(row.name.toLowerCase());
+    return {
+      quantity: row.quantity,
+      name: row.name,
+      typeLine: fact?.typeLine || "",
+      roles: commanderName && row.name.toLowerCase() === commanderName.toLowerCase() ? ["commander"] : [],
+      cmc: fact?.cmc ?? 0,
+    };
+  }));
+  return {
+    ok: true,
+    source: {
+      rows,
+      commander: commanderName || "Commander Deck",
+      format: safeText(family.format || "Commander", 40),
+      strategy: safeText(family.strategy || "Custom strategy", 80),
+    },
+  };
+}
+
 export async function handlePublicReportPublish(request: Request, env: PublicReportEnv): Promise<Response> {
   const owner = await userKey(request, env);
   if (!owner) return json({ error: "Authenticated account required" }, 401);
-  let body: { generationId?: unknown; title?: unknown; slug?: unknown };
+  let body: { generationId?: unknown; familyId?: unknown; title?: unknown; slug?: unknown };
   try { body = await request.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
   if (request.method === "DELETE") {
     const slug = safeText(body.slug, 80);
@@ -136,19 +176,36 @@ export async function handlePublicReportPublish(request: Request, env: PublicRep
     return json({ unpublished: true, slug });
   }
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  // Two sources: a fresh generation (forge_generations, kept 24 hours) or a
+  // deck saved on the owner's account bench. Saved decks used to be
+  // unshareable once their generation expired: Share sat disabled with no
+  // explanation on every deck older than a day.
   const generationId = safeText(body.generationId, 80);
-  if (!generationId) return json({ error: "A completed generation is required" }, 400);
-  const loaded = await loadGeneration(env, owner, generationId);
-  if (!loaded.ok) return json({ error: "That completed deck is unavailable" }, 404);
+  const familyId = safeText(body.familyId, 120);
+  let source: { rows: PublicRow[]; commander: string; format: string; strategy: string };
+  if (generationId) {
+    const loaded = await loadGeneration(env, owner, generationId);
+    if (!loaded.ok) return json({ error: "That completed deck is unavailable" }, 404);
+    const rows = sanitizeRows(loaded.payload.selected?.rows);
+    const forgeInput = loaded.payload.forgeInput && typeof loaded.payload.forgeInput === "object" ? loaded.payload.forgeInput as Record<string, unknown> : {};
+    const commanderInput = forgeInput.commander && typeof forgeInput.commander === "object" ? forgeInput.commander as Record<string, unknown> : {};
+    source = {
+      rows,
+      commander: safeText(commanderInput.name || rows.find((row) => row.roles.some((role) => role.toLowerCase() === "commander"))?.name || "Commander Deck", 100),
+      format: safeText(loaded.payload.options?.format || "Commander", 40),
+      strategy: safeText(loaded.payload.options?.strategy || "Custom strategy", 80),
+    };
+  } else if (familyId) {
+    const saved = await savedDeckReportSource(env, owner, familyId);
+    if (!saved.ok) return json({ error: saved.error }, saved.status);
+    source = saved.source;
+  } else {
+    return json({ error: "A completed deck is required" }, 400);
+  }
 
-  const rows = sanitizeRows(loaded.payload.selected?.rows);
+  const { rows, commander, format, strategy } = source;
   const total = rows.reduce((sum, row) => sum + row.quantity, 0);
   if (rows.length < 20 || total < 40 || total > 250) return json({ error: "Only complete deck reports can be published" }, 422);
-  const forgeInput = loaded.payload.forgeInput && typeof loaded.payload.forgeInput === "object" ? loaded.payload.forgeInput as Record<string, unknown> : {};
-  const commanderInput = forgeInput.commander && typeof forgeInput.commander === "object" ? forgeInput.commander as Record<string, unknown> : {};
-  const commander = safeText(commanderInput.name || rows.find((row) => row.roles.some((role) => role.toLowerCase() === "commander"))?.name || "Commander Deck", 100);
-  const format = safeText(loaded.payload.options?.format || "Commander", 40);
-  const strategy = safeText(loaded.payload.options?.strategy || "Custom strategy", 80);
   const requestedTitle = safeText(body.title, 100);
   const title = requestedTitle || `${commander} ${format} Deck`;
   const summary = `${total}-card ${format} deck built around ${commander}${strategy ? ` with a ${strategy} game plan` : ""}. Explore the complete grouped decklist and build your own version with MetaForge.`;

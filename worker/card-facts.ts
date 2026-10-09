@@ -59,6 +59,37 @@ async function fetchCollection(names: string[]) {
   return lastFailure;
 }
 
+/**
+ * Type line and mana value per card name (keyed lowercase): Scryfall first,
+ * the bundled type index as fallback. Names neither source knows are left
+ * out, so callers decide how to present an unresolved card.
+ */
+export async function lookupCardTypes(names: string[]): Promise<Map<string, { typeLine: string; cmc?: number }>> {
+  const facts = new Map<string, { typeLine: string; cmc?: number }>();
+  const unique = [...new Set(names.map((name) => String(name || "").trim()).filter(Boolean))];
+  for (let index = 0; index < unique.length; index += 75) {
+    const chunk = unique.slice(index, index + 75);
+    const response = await fetchCollection(chunk);
+    if (response?.ok) {
+      const payload: any = await response.json();
+      for (const card of Array.isArray(payload?.data) ? payload.data : []) {
+        const fact = {
+          typeLine: String(card?.type_line || card?.card_faces?.[0]?.type_line || ""),
+          cmc: Number.isFinite(Number(card?.cmc)) ? Number(card.cmc) : undefined,
+        };
+        const aliases = [card?.name, scryfallLookupName(card?.name), ...(Array.isArray(card?.card_faces) ? card.card_faces.map((face: any) => face?.name) : [])];
+        for (const alias of aliases.filter(Boolean)) facts.set(String(alias).toLowerCase(), fact);
+      }
+    }
+    for (const name of chunk) {
+      if (facts.has(name.toLowerCase())) continue;
+      const local = localFact(name);
+      if (local) facts.set(name.toLowerCase(), { typeLine: local.type_line, cmc: local.cmc });
+    }
+  }
+  return facts;
+}
+
 export async function handleCardFacts(request: Request): Promise<Response> {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
   const contentLength = Number(request.headers.get("content-length") || 0);
