@@ -91,7 +91,6 @@ export function revisionOpinionStanceTone(headline = ""): "recommend" | "against
  * Consumes server eligibility only — never constructs opinionKey from card or commander names.
  */
 export function RevisionOpinionPanel({
-  occupancyEngines = [],
   familyId,
   revisionId = null,
   fingerprint = null,
@@ -101,7 +100,6 @@ export function RevisionOpinionPanel({
   const revisionRef = String(revisionId || fingerprint || "").trim();
   const [status, setStatus] = useState<PanelStatus>("idle");
   const [payload, setPayload] = useState<RevisionOpinionResponse | null>(null);
-  const [errorDetail, setErrorDetail] = useState("");
 
   const requestOpinion = useCallback(async (signal?: AbortSignal) => {
     if (!enabled) return;
@@ -116,7 +114,6 @@ export function RevisionOpinionPanel({
       return;
     }
     setStatus("loading");
-    setErrorDetail("");
     try {
       const response = await fetch("/api/coach/revision-opinion", {
         method: "POST",
@@ -135,7 +132,6 @@ export function RevisionOpinionPanel({
       }
       if (!response.ok) {
         setStatus("error");
-        setErrorDetail("The Mentor could not answer just now. Try again in a moment.");
         return;
       }
       const body = (await response.json()) as RevisionOpinionResponse;
@@ -148,7 +144,6 @@ export function RevisionOpinionPanel({
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
       setStatus("error");
-      setErrorDetail("The Mentor could not answer just now. Try again in a moment.");
     }
   }, [enabled, signedIn, familyId, revisionRef, revisionId, fingerprint]);
 
@@ -170,92 +165,42 @@ export function RevisionOpinionPanel({
       ? "needs_saved_revision"
       : status;
 
-  if (visibleStatus === "idle") return null;
-
+  // Players only see the Mentor when it actually has an opinion about this
+  // deck. Every other state (not signed in, unsaved, loading, failed, or no
+  // registered question for this revision) used to render a panel of
+  // eligibility and pipeline language with nothing to act on, and the
+  // registered subject card could show even when it isn't in the deck. Those
+  // states stay quiet here; the server still decides eligibility, and the
+  // reasons remain available via revisionOpinionReasonMessage. The boundary
+  // is unchanged:
+  //   - the browser never invents a question from a card or commander name;
+  //   - the Mentor WRITES TO BRAIN: FALSE (see the data attribute below);
+  //   - commander occupancy engines are never presented as the Mentor stance.
   const presentation = payload?.presentation || null;
+  if (visibleStatus !== "ready" || !presentation) return null;
+
   const question = payload?.question?.prompt || "Why is this card here—and should I keep it?";
-  const tone = revisionOpinionStanceTone(presentation?.headline || "");
-  const confidence = String(presentation?.confidence?.level || "unknown").toUpperCase();
-  const lineageRevision = payload?.lineage?.revision;
+  const tone = revisionOpinionStanceTone(presentation.headline || "");
+  const confidence = String(presentation.confidence?.level || "unknown").toUpperCase();
   const subject = payload?.revision?.subject;
 
   return (
     <section
       className="revision-opinion"
       id="revision-opinion"
-      aria-label="Exact-revision Mentor opinion"
+      aria-label="Mentor opinion about this deck"
       data-writes-to-brain="false"
     >
       <header className="revision-opinion-header">
         <div>
-          <small>EXACT-REVISION MENTOR · WRITES TO BRAIN: FALSE</small>
+          <small>MENTOR · ABOUT THIS VERSION OF YOUR DECK</small>
           <h2>{question}</h2>
-          <p>
-            MetaForge answers only for this saved revision. The server decides eligibility —
-            the browser never invents a question from a card or commander name.
-          </p>
-          {occupancyEngines.length > 0 && (
-            <p className="revision-opinion-occupancy">
-              Occupancy engines from commander oracle: {occupancyEngines.join(" · ")}. That is not this revision's Mentor stance.
-            </p>
-          )}
         </div>
-        <b>{subject ? subject.toUpperCase() : "SAVED REVISION"}</b>
+        {subject && <b>{subject.toUpperCase()}</b>}
       </header>
 
-      {visibleStatus === "needs_auth" && (
-        <p className="revision-opinion-status" role="status">
-          Sign in and save this deck to ask MetaForge about the exact revision on your Bench.
-        </p>
-      )}
-
-      {visibleStatus === "needs_saved_revision" && (
-        <p className="revision-opinion-status" role="status">
-          Save this deck so MetaForge can bind a Mentor opinion to an exact revision — not a temporary list.
-        </p>
-      )}
-
-      {visibleStatus === "loading" && (
-        <p className="revision-opinion-status" role="status">
-          Forming a stance for this exact revision…
-        </p>
-      )}
-
-      {visibleStatus === "auth_failed" && (
-        <div className="revision-opinion-status" role="status">
-          <p>Could not verify your account for this exact-revision opinion.</p>
-          <button type="button" onClick={() => void requestOpinion()}>
-            Try again
-          </button>
-        </div>
-      )}
-
-      {visibleStatus === "error" && (
-        <div className="revision-opinion-status" role="status">
-          <p>{errorDetail}</p>
-          <button type="button" onClick={() => void requestOpinion()}>
-            Try again
-          </button>
-        </div>
-      )}
-
-      {visibleStatus === "ineligible" && (
-        <div className="revision-opinion-status is-ineligible" role="status">
-          <small>NO ELIGIBLE QUESTION</small>
-          <p>{revisionOpinionReasonMessage(payload?.reason)}</p>
-          <button type="button" onClick={() => void requestOpinion()}>
-            Recheck this revision
-          </button>
-        </div>
-      )}
-
-      {visibleStatus === "ready" && presentation && (
         <article className={`revision-opinion-verdict is-${tone}`}>
-          <small>
-            {confidence} CONFIDENCE
-            {typeof lineageRevision === "number" ? ` · LINEAGE ${lineageRevision}` : ""}
-            {payload?.lineage?.archived ? " · ARCHIVED" : ""}
-          </small>
+          <small>{confidence} CONFIDENCE</small>
           <h3>{presentation.headline}</h3>
           <p className="revision-opinion-answer">{presentation.answer}</p>
           <dl className="revision-opinion-facts">
@@ -296,13 +241,11 @@ export function RevisionOpinionPanel({
             )}
           </dl>
           <footer>
-            <span>APPEND-ONLY LINEAGE · CALLERS CANNOT SUBMIT CLAIMS · WRITES TO BRAIN: FALSE</span>
             <button type="button" onClick={() => void requestOpinion()}>
-              Refresh stance
+              Ask again
             </button>
           </footer>
         </article>
-      )}
     </section>
   );
 }

@@ -441,6 +441,15 @@ body:has(.great-forge.chamber-archive){
 .progressive-results:has(.chapter-1-active) .workbench-coach-stack{display:none!important}
 .progressive-results:has(.chapter-2-active) .workbench-coach-stack,
 .progressive-results:has(.chapter-5-active) .workbench-coach-stack{display:block}
+/* Overview and Analysis exist to show the coach's read, so it leads those
+   tabs. It used to sit at order 8 behind the entire card list (~15,000px
+   down) on Analysis and was hidden outright under Overview's chapter 1, so
+   neither tab visibly changed anything. Analysis also drops the full card
+   list, which the Decklist tab already shows, and the Mentor panel goes last. */
+.progressive-results.forge-descent[data-site-rail="overview"]>.workbench-coach-stack,
+.progressive-results.forge-descent[data-site-rail="analysis"]>.workbench-coach-stack{display:block!important;order:0!important}
+.progressive-results.forge-descent[data-site-rail="analysis"] #deck-gallery{display:none!important}
+.progressive-results.forge-descent>.revision-opinion{order:9!important}
 
 /* Decklist tab: the text ledger is the first paint. Its preview/list split must
    stay flex, but this must never capture the separate visual card grid that

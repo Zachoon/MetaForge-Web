@@ -94,7 +94,7 @@ test("Analysis lives once, on the left rail — the top nav no longer duplicates
   const page = await read("app/page.tsx");
   assert.doesNotMatch(page, /<nav className="forge-global-nav"[\s\S]*?>Analyze<\/button>[\s\S]*?<\/nav>/);
   assert.match(page, /<span>Analysis<\/span>/);
-  assert.equal([...page.matchAll(/setActiveForgeChapter\(2\); setSiteRail\("analysis"\); \}\}/g)].length, 1);
+  assert.equal([...page.matchAll(/setActiveForgeChapter\(2\); setSiteRail\("analysis"\);/g)].length, 1);
 });
 
 test("a completed Forge lands on the plain decklist, coaching and experiments reached by explicit choice", async () => {

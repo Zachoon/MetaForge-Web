@@ -43,6 +43,17 @@ test("RevisionOpinionPanel consumes server eligibility and Mentor presentation f
   assert.doesNotMatch(component, /JSON\.stringify\(\{[^}]*opinionKey/);
 });
 
+// Players only see the Mentor when it has a real opinion. The eligibility
+// and pipeline states (and their internal labels) stay out of the deck page.
+test("the Mentor panel renders only a ready opinion, in player language", () => {
+  assert.match(component, /if \(visibleStatus !== "ready" \|\| !presentation\) return null;/);
+  assert.match(component, /data-writes-to-brain="false"/);
+  assert.match(component, /MENTOR · ABOUT THIS VERSION OF YOUR DECK/);
+  for (const internal of [/<small>EXACT-REVISION MENTOR/, /The server decides eligibility/, /APPEND-ONLY LINEAGE/, /NO ELIGIBLE QUESTION/]) {
+    assert.doesNotMatch(component, internal);
+  }
+});
+
 test("revision opinion UI states and responsive layout stay product-safe", () => {
   assert.match(globals, /revision-opinion\.css/);
   assert.match(css, /\.revision-opinion/);
