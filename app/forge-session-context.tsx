@@ -3886,9 +3886,25 @@ export function useForgeSessionState() {
     if (!pendingClaimResult || format !== pendingClaimResult.claimContext.format) return;
     const claimed = pendingClaimResult;
     setPendingClaimResult(null);
+    // The guest build's commander travels in the report's strategic intent
+    // (the stored generation options don't carry it). Without this the
+    // claimed deck was saved with commander: null and named after the
+    // engine's internal candidate label, so it appeared in My Decks as
+    // "Resilient Temper" with "No commander".
+    const claimedCommanderIntent = claimed.nativeReport.selected?.strategicIntent?.commanders?.[0];
+    const claimedCommander: CommanderOption | null = claimedCommanderIntent?.name
+      ? {
+          name: claimedCommanderIntent.name,
+          colors: [...(claimedCommanderIntent.colors || [])],
+          typeLine: "Commander",
+          image: cardImage(claimedCommanderIntent.name),
+          verifiedFacts: "",
+        }
+      : null;
+    if (claimedCommander) setSelectedCommander(claimedCommander);
     const claimedWork: Masterwork = {
       rune: "ᛞ",
-      name: claimed.nativeReport.selected?.label || "Your First Deck",
+      name: claimedCommander ? `${claimedCommander.name}, Forged` : "Your First Deck",
       path: "Claimed Preview Deck",
       tone: "steel",
       verdict: "Your guest Forge, now saved to your account.",
@@ -3902,7 +3918,7 @@ export function useForgeSessionState() {
     void applyForgeResult(claimed.nativeReport, {
       generationId: localGenerationId,
       work: claimedWork,
-      commander: null,
+      commander: claimedCommander,
       index: 0,
       replyText: `${claimed.nativeReport.methodology}\n\n${claimed.nativeReport.reasoning.summary}`,
       revisionNote: "Claimed from your free Forge preview",
