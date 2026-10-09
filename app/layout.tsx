@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import PrivacyControls from "./privacy-controls";
+import { STALE_CHUNK_RECOVERY_SCRIPT } from "./stale-chunk-recovery";
 
 export function generateMetadata(): Metadata {
   const metadataBase = new URL("https://metaforge.gg");
@@ -29,6 +30,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <head>
+        {/* First in <head> so it is listening before any app chunk loads. */}
+        <script dangerouslySetInnerHTML={{ __html: STALE_CHUNK_RECOVERY_SCRIPT }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
