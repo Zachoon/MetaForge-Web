@@ -254,6 +254,7 @@ export default function Home() {
     publicReportUrl,
     publicReportError,
     publicReportGenerationId,
+    publicReportSourceKey,
     publicReportPromptOpen,
     setPublicReportPromptOpen,
     importWarnings,
@@ -602,7 +603,7 @@ export default function Home() {
         <button type="button" className={chamber === "archive" ? "active" : ""} onClick={openPrivateArchive}><i className="forge-rail-cardback" aria-hidden="true">MF</i><span>Decks</span></button>
         {hasValidatedDeck && <button type="button" onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode("playtest"); setSiteRail("playtest"); window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>⚔</i><span>Playtest</span></button>}
         {/* Guests can't publish a report, so Share only appears for accounts. */}
-        {hasValidatedDeck && !guestMode && <button type="button" disabled={!nativeMasterworkContext?.generationId || publicReportStatus === "publishing"} onClick={() => publicReportUrl && publicReportGenerationId === nativeMasterworkContext?.generationId ? void navigator.clipboard.writeText(publicReportUrl) : setPublicReportPromptOpen(true)}><i>⌁</i><span>{publicReportStatus === "publishing" ? "Publishing" : publicReportStatus === "ready" && publicReportGenerationId === nativeMasterworkContext?.generationId ? "Link copied" : "Share"}</span></button>}
+        {hasValidatedDeck && !guestMode && <button type="button" disabled={!publicReportSourceKey || publicReportStatus === "publishing"} onClick={() => publicReportUrl && publicReportGenerationId === publicReportSourceKey ? void navigator.clipboard.writeText(publicReportUrl) : setPublicReportPromptOpen(true)}><i>⌁</i><span>{publicReportStatus === "publishing" ? "Publishing" : publicReportStatus === "ready" && publicReportGenerationId === publicReportSourceKey ? "Link copied" : "Share"}</span></button>}
         {hasValidatedDeck && <button type="button" className="forge-rail-settings" onClick={() => { setMasterworkIdentityDraft(masterworkIdentity); setMasterworkIdentityOpen(true); }}><i>⚙</i><span>Settings</span></button>}
         <div className="forge-rail-embers" aria-hidden="true"><i /><i /><i /></div>
         <div className="forge-rail-version" aria-label="MetaForge version 2.1.0"><i>MF</i><span>v2.1.0</span></div>

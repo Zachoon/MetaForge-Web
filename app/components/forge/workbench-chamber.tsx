@@ -70,6 +70,7 @@ export function WorkbenchChamber() {
     publicReportUrl,
     publicReportError,
     publicReportGenerationId,
+    publicReportSourceKey,
     publicReportPromptOpen,
     setPublicReportPromptOpen,
     importWarnings,
@@ -586,9 +587,9 @@ export function WorkbenchChamber() {
                 >
                   Copy deck
                 </button>
-                {!guestMode && nativeMasterworkContext?.generationId && (
-                  <button type="button" className="publish-report-link" disabled={publicReportStatus === "publishing"} onClick={() => publicReportUrl && publicReportGenerationId === nativeMasterworkContext?.generationId ? void navigator.clipboard.writeText(publicReportUrl) : setPublicReportPromptOpen(true)}>
-                    {publicReportStatus === "publishing" ? "Publishing…" : publicReportStatus === "ready" && publicReportGenerationId === nativeMasterworkContext?.generationId ? "Copy public link" : "Publish public report"}
+                {!guestMode && publicReportSourceKey && (
+                  <button type="button" className="publish-report-link" disabled={publicReportStatus === "publishing"} onClick={() => publicReportUrl && publicReportGenerationId === publicReportSourceKey ? void navigator.clipboard.writeText(publicReportUrl) : setPublicReportPromptOpen(true)}>
+                    {publicReportStatus === "publishing" ? "Publishing…" : publicReportStatus === "ready" && publicReportGenerationId === publicReportSourceKey ? "Copy public link" : "Publish public report"}
                   </button>
                 )}
                 {publicReportUrl && <a className="public-report-status" href={publicReportUrl} target="_blank" rel="noopener noreferrer">Open public report ↗</a>}
@@ -1495,7 +1496,7 @@ export function WorkbenchChamber() {
                   Export
                 </button>
                 <button type="button" onClick={() => navigator.clipboard.writeText(formatDeckForArenaExport(forgedDeck))}>Copy deck</button>
-                {!guestMode && nativeMasterworkContext?.generationId && <button type="button" disabled={publicReportStatus === "publishing"} onClick={() => publicReportUrl && publicReportGenerationId === nativeMasterworkContext?.generationId ? void navigator.clipboard.writeText(publicReportUrl) : setPublicReportPromptOpen(true)}>{publicReportStatus === "publishing" ? "Publishing…" : publicReportStatus === "ready" && publicReportGenerationId === nativeMasterworkContext?.generationId ? "Copy public link" : "Publish public report"}</button>}
+                {!guestMode && publicReportSourceKey && <button type="button" disabled={publicReportStatus === "publishing"} onClick={() => publicReportUrl && publicReportGenerationId === publicReportSourceKey ? void navigator.clipboard.writeText(publicReportUrl) : setPublicReportPromptOpen(true)}>{publicReportStatus === "publishing" ? "Publishing…" : publicReportStatus === "ready" && publicReportGenerationId === publicReportSourceKey ? "Copy public link" : "Publish public report"}</button>}
                 {publicReportUrl && <a className="public-report-status" href={publicReportUrl} target="_blank" rel="noopener noreferrer">Open report ↗</a>}
                 {publicReportUrl && <button type="button" disabled={publicReportStatus === "publishing"} onClick={() => void unpublishPublicDeckReport()}>Unpublish</button>}
                 {deckPurchaseLink && <a href={deckPurchaseLink.url} target={deckPurchaseLink.target} rel={deckPurchaseLink.rel}>Buy deck</a>}
