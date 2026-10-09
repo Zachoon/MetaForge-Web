@@ -452,7 +452,7 @@ export function WorkbenchChamber() {
               </aside>
             )}
             <aside className="honest-coach-feedback" aria-label="Was this analysis helpful?">
-              <small>ALPHA FEEDBACK</small>
+              <small>YOUR FEEDBACK</small>
               <b>Was this coaching read helpful?</b>
               <div className="honest-coach-feedback-actions">
                 {HONEST_COACH_FEEDBACK_OPTIONS.map((option) => (

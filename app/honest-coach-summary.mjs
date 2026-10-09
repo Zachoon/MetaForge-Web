@@ -341,7 +341,17 @@ export function buildCoachPlanStoryFromRecognition({
     || `The deck becomes dangerous once ${commanderName} and the primary support system are both online.`;
 
   const fantasy = recognition?.playerFantasy || null;
-  const pressurePhrase = playerFacingSystemPhrase(recognition?.hierarchy?.pressurePoint);
+  // Only warn about a soft spot that is part of the plan. The pressure point
+  // falls back to the deck's weakest system, which can be an incidental
+  // cluster: a Spellslinger deck was told to "watch your landfall pieces
+  // first — if that soft spot collapses, the primary plan loses its support".
+  const hierarchy = recognition?.hierarchy;
+  const planSystemNames = new Set([hierarchy?.primary, ...(hierarchy?.supporting || [])]
+    .filter(Boolean)
+    .map((entry) => entry.name));
+  const pressurePhrase = hierarchy?.pressurePoint && planSystemNames.has(hierarchy.pressurePoint)
+    ? playerFacingSystemPhrase(hierarchy.pressurePoint)
+    : null;
   const fantasyProtect = pilot?.protect
     || recognition?.fantasySupportLine
     || (fantasy?.label
@@ -939,7 +949,7 @@ export function buildHonestCoachSummary({
   const fantasyGuide = commissionMismatch
     ? `${commissionContract.matchLabel || "Partial match"} on your ${commissionContract.playerFantasy.label} contract — start with the grade before secondary engines.`
     : commissionContract?.playerFantasy?.label && planStory.title
-      ? `${planStory.title} — start here.`
+      ? `Start with the verdict below: it reads the deck through your ${commissionContract.playerFantasy.label} request.`
       : null;
 
   const commanderForVoice = authoritativeCommanders[0] || activeCommanderName || "";
@@ -985,9 +995,11 @@ export function buildHonestCoachSummary({
       || (isImported
         ? "Here's what I think you're building."
         : "Here's what I think this deck is trying to do."),
+    // The VERDICT beat directly below already leads with planStory.title, so
+    // the guide line points at it instead of printing the same sentence twice.
     guideLine: fantasyGuide
       || (planStory.title
-        ? `${planStory.title} — start here.`
+        ? "Start with the verdict below, then take one change into your next game."
         : "Here's the first thing I'd address."),
     whyPrompt: "Want to see why?",
     planStory,
@@ -1240,7 +1252,7 @@ function buildSafeCoachFallback({
     headline: isImported
       ? "Here's what I think you're building."
       : "Here's what I think this deck is trying to do.",
-    guideLine: `${title} — start here.`,
+    guideLine: "Start with the verdict below, then take one change into your next game.",
     whyPrompt: "Want to see why?",
     planStory: freeze({ title, plan, early, mid, stop, packageLabels: freeze(packageLabels), commander }),
     intentions: freeze({
