@@ -60,7 +60,7 @@ const STAGE_BY_SIGNAL = freeze({
     establish: (c) => `Develop mana and keep cheap spells flowing without emptying your hand.`,
     deploy: (c) => `Land ${c} once the spell pipeline can stay online.`,
     compound: () => `Let each spell draw, copy, or create a threat as a side effect.`,
-    protect: () => `Hold interaction for the piece that actually stops ${c}.`,
+    protect: (c) => `Hold interaction for the piece that actually stops ${c}.`,
     close: () => `Bury the table in incremental spell advantage.`,
   }),
   graveyard: freeze({
