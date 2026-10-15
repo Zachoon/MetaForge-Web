@@ -99,6 +99,16 @@
   .guided-offer{grid-template-columns:1fr}
   .guided-offer img{max-width:260px}
 }
+/* The commission table is a two-column surface with a 760px minimum on the
+   right. Guided build reuses .commission-chamber, so at a normal desktop
+   width the step rail and the deck sidebar ran off the right edge, past
+   the nav and card rails. Keep this loop in one column that fits the frame. */
+@media(min-width:1101px){
+  .guided-chamber.commission-chamber{display:block;width:100%;max-width:100%;min-width:0;padding:12px clamp(16px,3vw,36px) 28px}
+  .guided-chamber>.back-link{display:inline-flex;width:max-content;max-width:100%;grid-column:auto}
+  .guided-chamber .commission-heading{position:relative;top:auto;width:100%;max-width:none;margin:8px 0 12px}
+  .guided-chamber .commission-scroll,.guided-chamber .guided-body{width:100%;max-width:100%;min-width:0;margin:0}
+}
 .guided-draft-card {
   margin: 1rem;
   padding: 1.25rem;
@@ -121,6 +131,7 @@
 .guided-finish ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.45rem; }
 .guided-finish-reasons li::before { content: "· "; opacity: 0.6; }
 .guided-finish-landcount, .guided-finish-basics li { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.guided-finish-landcount button{min-height:44px;padding:8px 14px}
 .guided-finish-basics li b { min-width: 6.5rem; }
 .guided-finish-basics li span { min-width: 2ch; text-align: center; font-variant-numeric: tabular-nums; }
 .guided-finish-sources li { display: flex; justify-content: space-between; gap: 1rem; }

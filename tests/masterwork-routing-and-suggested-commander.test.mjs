@@ -71,6 +71,8 @@ test("chooseRandomCommander only draws and displays candidates — it never sele
   assert.doesNotMatch(body, /setCommissionSeed/, "must never touch the commission seed (that's awaken()'s job)");
   assert.doesNotMatch(body, /callForgeGenerate/, "must never trigger generation");
   assert.match(body, /setRandomCommanderOptions\(starters\)/, "must store the drawn candidates for the picker to render");
+  assert.match(body, /Couldn't draw three commanders just now\. Search for one, or try again\./);
+  assert.match(commissionChamber, /className="commander-suggest-error"/);
 });
 
 test("the suggested-commander picker renders the drawn options with a dismiss-and-search-instead escape hatch", () => {

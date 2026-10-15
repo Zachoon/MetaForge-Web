@@ -599,6 +599,9 @@ export function WorkbenchChamber() {
                 >
                   Copy deck
                 </button>
+                {guestMode && (
+                  <a className="guest-keep-deck" href={signInResumeHref}>Sign in to keep this deck</a>
+                )}
                 {!guestMode && publicReportSourceKey && (
                   <button type="button" className="publish-report-link" disabled={publicReportStatus === "publishing"} onClick={() => publicReportUrl && publicReportGenerationId === publicReportSourceKey ? void navigator.clipboard.writeText(publicReportUrl) : setPublicReportPromptOpen(true)}>
                     {publicReportStatus === "publishing" ? "Publishing…" : publicReportStatus === "ready" && publicReportGenerationId === publicReportSourceKey ? "Copy public link" : "Publish public report"}

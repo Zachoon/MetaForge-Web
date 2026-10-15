@@ -29,6 +29,8 @@ test("mobile commander search prevents iOS zoom, stale results, and keyboard-hid
   assert.match(frameCss, /html,body\{max-width:100%;overflow-x:hidden\}/);
   assert.match(forgeSessionContext, /window\.visualViewport\?\.addEventListener\("resize", updateRect\)/);
   assert.match(forgeSessionContext, /maxHeight: Math\.max\(96, viewportBottom - top - 12\)/);
+  assert.match(forgeSessionContext, /document\.querySelector\("\.privacy-choice"\)/);
+  assert.match(commanderCss, /\.commander-search-portal\{z-index:10040;/);
   assert.match(commissionChamber, /maxHeight: commanderSearchRect\.maxHeight/);
   assert.match(forgeSessionContext, /const controller = new AbortController\(\)/);
   assert.match(forgeSessionContext, /controller\.abort\(\)/);

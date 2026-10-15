@@ -4,7 +4,7 @@
    instead of losing to fixed-position widgets like the bench dock that
    live in a different part of that context entirely. Position/size come
    from inline style computed off the real search box's on-screen rect. */
-.commander-search-portal{z-index:120;max-height:330px;overflow:auto;border:1px solid #5b6b65;background:#071011;box-shadow:0 25px 60px #000d}
+.commander-search-portal{z-index:10040;max-height:330px;overflow:auto;border:1px solid #5b6b65;background:#071011;box-shadow:0 25px 60px #000d}
 .commander-search-portal>p{margin:0;padding:16px;color:#92a29d;font-size:13px}
 .commander-search-portal>button{display:grid;width:100%;grid-template-columns:42px 1fr auto;gap:12px;align-items:center;padding:9px 12px;border:0;border-bottom:1px solid #293a36;background:transparent;color:#dce5e1;text-align:left}
 .commander-search-portal>button:hover,.commander-search-portal>button:focus{outline:0;background:#163027}
@@ -17,6 +17,7 @@
 /* Drawn suggestions — deliberately styled like the search-results portal
    (same card shape, same fields) so a suggestion reads as "these are
    search results too," not a separate, more decisive-looking control. */
+.commander-suggest-error{margin:0;color:#e7c2b4;font-size:13px;line-height:1.4}
 .commander-suggestions{margin-top:12px;padding:12px;border:1px solid #4b5d58;background:#071011}
 .commander-suggestions>p{margin:0 0 10px;color:#92a29d;font-size:12px}
 .commander-suggestions-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
