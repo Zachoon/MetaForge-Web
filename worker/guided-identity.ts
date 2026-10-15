@@ -10,7 +10,7 @@
 // a valid cookie and never mints one.
 import { userKey } from "./account-bench";
 import { checkRateLimit } from "./api-hardening";
-import { GUEST_COOKIE, cookieValue, hmac, sessionFromRequest, validateTurnstile } from "./guest-session";
+import { GUEST_COOKIE, cookieValue, hmac, safeEqual, sessionFromRequest, validateTurnstile } from "./guest-session";
 
 export interface GuidedIdentityEnv {
   DB: D1Database;
@@ -52,7 +52,7 @@ export async function guestIdFromClaimToken(env: GuidedIdentityEnv, token: unkno
   if (!env.GUEST_SESSION_SECRET || typeof token !== "string" || token.length > 200) return null;
   const [id, signature] = token.split(".");
   if (!id || !signature || !/^[0-9a-f-]{36}$/i.test(id)) return null;
-  return signature === await hmac(env.GUEST_SESSION_SECRET, `guided-claim:${id}`) ? id : null;
+  return safeEqual(signature, await hmac(env.GUEST_SESSION_SECRET, `guided-claim:${id}`)) ? id : null;
 }
 
 async function existingGuest(request: Request, env: GuidedIdentityEnv): Promise<string | null> {
@@ -60,7 +60,7 @@ async function existingGuest(request: Request, env: GuidedIdentityEnv): Promise<
   const raw = cookieValue(request);
   if (!raw) return null;
   const [id, signature] = raw.split(".");
-  return id && signature && signature === await hmac(env.GUEST_SESSION_SECRET, id) ? id : null;
+  return id && signature && safeEqual(signature, await hmac(env.GUEST_SESSION_SECRET, id)) ? id : null;
 }
 
 async function networkKey(request: Request, env: GuidedIdentityEnv) {

@@ -15,6 +15,14 @@ export async function hmac(secret: string, value: string): Promise<string> {
   return bytesToHex(await crypto.subtle.sign("HMAC", key, enc.encode(value)));
 }
 
+/** Constant-time comparison for hex signatures. */
+export function safeEqual(a: string, b: string): boolean {
+  if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i += 1) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
 export function cookieValue(request: Request): string | null {
   const raw = request.headers.get("cookie") || "";
   const match = raw.match(new RegExp(`(?:^|;\\s*)${COOKIE}=([^;]+)`));
@@ -25,7 +33,7 @@ export async function sessionFromRequest(request: Request, secret: string): Prom
   const existing = cookieValue(request);
   if (existing) {
     const [id, signature] = existing.split(".");
-    if (id && signature && signature === await hmac(secret, id)) return { id, value: existing };
+    if (id && signature && safeEqual(signature, await hmac(secret, id))) return { id, value: existing };
   }
   const id = crypto.randomUUID();
   return { id, value: `${id}.${await hmac(secret, id)}` };
