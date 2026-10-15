@@ -88,19 +88,31 @@ export async function handleGuidedComplete(request: Request, env: Env): Promise<
       await env.DB.prepare("UPDATE guided_drafts SET phase = 'active', completion_id = NULL, revision = revision + 1 WHERE user_key = ? AND completion_id = ? AND phase = 'completing' AND revision = ?").bind(key, body.completionId, claimed.revision).run();
       return json(result, generation.status);
     }
-    const basicNames = Object.keys(draft.session.finish?.basics || {}).filter((name) => draft.session.finish.basics[name] > 0);
-    const review = guidedCompletionReview(result.nativeReport?.selected?.deckText, [...draft.session.accepted, ...basicNames], [draft.commander?.name, draft.second?.name].filter(Boolean));
+    const basics = draft.session.finish?.basics || {};
+    const basicNames = Object.keys(basics).filter((name) => basics[name] > 0);
+    const quantities: Record<string, number> = {};
+    for (const name of draft.session.accepted) quantities[name] = (quantities[name] || 0) + 1;
+    for (const name of basicNames) quantities[name] = (quantities[name] || 0) + basics[name];
+    const review = guidedCompletionReview(result.nativeReport?.selected?.deckText, [...draft.session.accepted, ...basicNames], [draft.commander?.name, draft.second?.name].filter(Boolean), quantities);
     const trimmed = Array.isArray(result.nativeReport?.changes?.trimmed) ? result.nativeReport.changes.trimmed : [];
+    const unlock = () => env.DB.prepare("UPDATE guided_drafts SET phase = 'active', completion_id = NULL, revision = revision + 1 WHERE user_key = ? AND completion_id = ? AND phase = 'completing' AND revision = ?").bind(key, body.completionId, claimed.revision).run();
     if (review.added.length || trimmed.length) {
       // Defensive: a confirmed full list is preserved exactly by the imported
       // pipeline. If it ever added or cut a card, refuse rather than hand the
       // player a deck with cards they never chose.
-      await env.DB.prepare("UPDATE guided_drafts SET phase = 'active', completion_id = NULL, revision = revision + 1 WHERE user_key = ? AND completion_id = ? AND phase = 'completing' AND revision = ?").bind(key, body.completionId, claimed.revision).run();
+      await unlock();
       return json({ error: "The Forge would have changed cards you didn't choose, so finishing stopped. Check your list size and try again.", added: review.added.map((row) => row.name), trimmed }, 422);
     }
     if (review.missing.length) {
-      await env.DB.prepare("UPDATE guided_drafts SET phase = 'active', completion_id = NULL, revision = revision + 1 WHERE user_key = ? AND completion_id = ? AND phase = 'completing' AND revision = ?").bind(key, body.completionId, claimed.revision).run();
+      await unlock();
       return json({ error: `These picks could not be kept: ${review.missing.join(", ")}. Remove or resolve them before finishing.`, missingPicks: review.missing }, 422);
+    }
+    // Presence is not enough: analysis can keep "Plains" while changing how
+    // many copies remain, or keep the names and still miss the deck size.
+    const confirmedSize = gate.status?.confirmed;
+    if (review.quantityDrift.length || review.total !== confirmedSize) {
+      await unlock();
+      return json({ error: "The Forge would have changed cards you didn't choose, so finishing stopped. Check your list size and try again.", quantityDrift: review.quantityDrift, total: review.total }, 422);
     }
     const guidedReview = { ...review, preferences: draft.preferences };
     const completed = { ...result, nativeReport: { ...result.nativeReport, guidedReview }, guidedReview, guidedDeckId: draft.completion.deckId };
@@ -124,7 +136,9 @@ export async function handleGuidedComplete(request: Request, env: Env): Promise<
  * be verified. The guest's generation context is re-keyed so the build
  * resumes without refetching the pool. An account that already has an
  * unfinished guided build keeps it: the guest copy is returned for the
- * player to choose instead of silently overwriting either one.
+ * player to choose instead of silently overwriting either one. The guest
+ * row stays until they explicitly send replaceUnfinished, so the choice
+ * can still be made after this 409.
  */
 export async function handleGuidedClaim(request: Request, env: Env): Promise<Response> {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -132,15 +146,21 @@ export async function handleGuidedClaim(request: Request, env: Env): Promise<Res
   if (!identity || identity.guest) return json({ error: "Authenticated account required" }, 401);
   const parsed = await readJsonWithLimit(request, 4096);
   if (!parsed.ok) return json({ error: parsed.error }, parsed.status);
-  const guestId = await guestIdFromClaimToken(env, (parsed.data as { guidedClaimToken?: unknown } | null)?.guidedClaimToken);
+  const body = parsed.data as { guidedClaimToken?: unknown; replaceUnfinished?: unknown } | null;
+  const guestId = await guestIdFromClaimToken(env, body?.guidedClaimToken);
   if (!guestId) return json({ error: "This guest build is no longer available" }, 404);
   const guestKey = `guest:${guestId}`;
   const guest = await load(env, guestKey);
   if (!guest?.draft_json || guest.phase === "cleared") return json({ error: "This guest build is no longer available" }, 404);
   const account = await load(env, identity.key);
   const draft = JSON.parse(guest.draft_json);
+  const replaceUnfinished = body?.replaceUnfinished === true;
   if (account?.draft_json && (account.phase === "active" || account.phase === "completing")) {
-    return json({ error: "You already have a guided build in progress. Choose which one to keep.", guestDraft: draft, ...publicRow(account, identity) }, 409);
+    // A finish already in flight can't be replaced out from under itself.
+    // Anything else waits for an explicit choice; the guest build stays put.
+    if (account.phase === "completing" || !replaceUnfinished) {
+      return json({ error: "You already have a guided build in progress. Choose which one to keep.", code: "CLAIM_CONFLICT", guestDraft: draft, ...publicRow(account, identity) }, 409);
+    }
   }
   const keepResult = guest.phase === "complete" ? guest.result_json : null;
   const saved = account

@@ -28,7 +28,18 @@ export function guidedPickText(draft) {
   return finishedDeckText(draft?.session?.accepted || [], draft?.session?.finish?.basics || {});
 }
 const nameKey = (name) => String(name).normalize("NFKC").trim().toLocaleLowerCase("en");
-export function guidedCompletionReview(deckText, picks, commanders = []) {
+/**
+ * Compares an analysed decklist to the cards the player confirmed.
+ * `quantities` (name → expected copies) catches a list that still contains
+ * the card but not the number of copies the player confirmed — basics in
+ * particular. A card with zero copies stays in `missing`; `quantityDrift`
+ * is only a present card at the wrong count.
+ * @param {string} deckText
+ * @param {string[]} picks
+ * @param {string[]} [commanders]
+ * @param {Record<string, number> | null} [quantities]
+ */
+export function guidedCompletionReview(deckText, picks, commanders = [], quantities = null) {
   const rows = String(deckText || "").split(/\r?\n/).flatMap((line) => {
     const match = line.match(/^\s*(\d+)\s+(.+?)\s*$/);
     return match ? [{ quantity: Number(match[1]), name: match[2] }] : [];
@@ -37,7 +48,15 @@ export function guidedCompletionReview(deckText, picks, commanders = []) {
   const kept = picks.filter((pick) => rows.some((row) => matches(row.name, pick)));
   const missing = picks.filter((pick) => !kept.includes(pick));
   const added = rows.filter((row) => !picks.some((pick) => matches(row.name, pick)) && !commanders.some((name) => matches(row.name, name)));
-  return { kept, missing, added, total: rows.reduce((sum, row) => sum + row.quantity, 0) };
+  const quantityDrift = [];
+  if (quantities && typeof quantities === "object") {
+    for (const [name, expected] of Object.entries(quantities)) {
+      if (!Number.isInteger(expected)) continue;
+      const actual = rows.filter((row) => matches(row.name, name)).reduce((sum, row) => sum + row.quantity, 0);
+      if (actual > 0 && actual !== expected) quantityDrift.push({ name, expected, actual });
+    }
+  }
+  return { kept, missing, added, quantityDrift, total: rows.reduce((sum, row) => sum + row.quantity, 0) };
 }
 export function guidedGenerationPayload(draft) {
   const commander = (card) => card ? { name: card.name, colors: card.colors, oracleText: card.verifiedFacts || card.oracleText || "" } : null;

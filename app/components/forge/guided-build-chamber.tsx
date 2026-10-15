@@ -134,7 +134,7 @@ export function GuidedBuildChamber() {
   const choosingReason = Boolean(offer) && reasonsOpenFor === `${session?.categoryIndex}:${offer?.name}`;
   const isLast = session ? session.categoryIndex + 1 >= session.categories.length : false;
   const struggling = (session?.declined.length || 0) >= 3;
-  const finishing = Boolean(session?.finish);
+  const finishing = Boolean(session?.finish) && !session?.finish?.suspended;
   const finishHeading = session?.finish?.stage === "mana" ? "Your mana base" : session?.finish?.stage === "slots" ? "Fill the open slots" : "Review your deck";
 
   return (

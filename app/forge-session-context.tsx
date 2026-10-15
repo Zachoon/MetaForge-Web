@@ -99,7 +99,7 @@ import {
 } from "./commander-lane-scoring.mjs";
 import { commanderShellOptions } from "./strategic-intent.mjs";
 import { guidedPickText, guidedSeedNames, validGuidedDraft } from "./guided-draft.mjs";
-import { basicsTotal, finishStatus } from "./guided-finish.mjs";
+import { finishStatus } from "./guided-finish.mjs";
 
 // Mirrors commanderShellOptions' (strategic-intent.mjs) return shape — kept
 // local since nothing outside this context needs the type yet.
@@ -142,6 +142,21 @@ type GuidedFinish = {
   proposal?: GuidedManaProposal;
   package?: GuidedPackageCard[];
   status?: { deckTarget: number; confirmed: number; open: number; over: number } | null;
+  // True once the player has changed the +/- split. A later mana request
+  // keeps that split; only an explicit land-count change replaces it.
+  basicsCustom?: boolean;
+  // Set when the player steps back into a role. The choices stay on the
+  // session, but the chamber shows the role offer instead of the finish.
+  suspended?: boolean;
+};
+type GuidedClaimDraft = {
+  commander?: { name?: string };
+  session?: { accepted?: string[] };
+};
+type GuidedClaimChoice = {
+  token: string;
+  guestDraft: GuidedClaimDraft;
+  account: { phase?: string; draft?: GuidedClaimDraft | null };
 };
 const GUIDED_STORAGE_KEY = "metaforge-guided-session";
 
@@ -428,6 +443,10 @@ export function useForgeSessionState() {
   // only names and small counters — the classified card pool and every
   // score live server-side under generationId (worker/forge-guided-build.ts).
   const [guidedSession, setGuidedSession] = useState<GuidedSession | null>(null);
+  // Read by controls that update locally, between renders. A +/- click has
+  // to see the count the previous click just wrote, not the render closure.
+  const guidedSessionRef = useRef<GuidedSession | null>(null);
+  guidedSessionRef.current = guidedSession;
   const [guidedLoading, setGuidedLoading] = useState(false);
   const [guidedError, setGuidedError] = useState("");
   const [guidedSaveStatus, setGuidedSaveStatus] = useState("Checking for a saved build…");
@@ -435,6 +454,9 @@ export function useForgeSessionState() {
   const [guidedConflict, setGuidedConflictState] = useState<any>(null);
   const guidedConflictRef = useRef<any>(null);
   function setGuidedConflict(value: any) { guidedConflictRef.current = value; setGuidedConflictState(value); }
+  // Sign-in found an unfinished account build and a guest build. Held until
+  // the player chooses; the claim token stays valid on the server until then.
+  const [guidedClaimChoice, setGuidedClaimChoice] = useState<GuidedClaimChoice | null>(null);
   const [guidedReview, setGuidedReview] = useState<any>(null);
   const guidedOwnerRef = useRef("");
   // Signed token that lets this guest's guided build follow them into an
@@ -1452,12 +1474,12 @@ export function useForgeSessionState() {
     if (commanderNames.includes(lower)) return;
     if (guidedSession.accepted.some((entry) => entry.toLocaleLowerCase("en") === lower)) return;
     trackGuidedStep("manual");
-    if (guidedSession.finish) {
+    if (guidedFinishActive(guidedSession)) {
       void requestGuidedFinish({
         ...guidedSession,
         accepted: [...guidedSession.accepted, name],
         manualCards: { ...guidedSession.manualCards, [lower]: rawCard },
-      }, guidedSession.finish.stage === "mana" ? "mana" : "slots");
+      }, guidedSession.finish!.stage === "mana" ? "mana" : "slots");
       return;
     }
     void requestGuidedOffer(guidedSession, {
@@ -1468,8 +1490,8 @@ export function useForgeSessionState() {
   function removeGuidedPick(name: string) {
     if (!guidedSession || guidedLoading || guidedConflict || guidedCompletionRef.current) return;
     trackGuidedStep("remove");
-    if (guidedSession.finish) {
-      void requestGuidedFinish({ ...guidedSession, accepted: guidedSession.accepted.filter((entry) => entry !== name) }, guidedSession.finish.stage === "mana" ? "mana" : "slots");
+    if (guidedFinishActive(guidedSession)) {
+      void requestGuidedFinish({ ...guidedSession, accepted: guidedSession.accepted.filter((entry) => entry !== name) }, guidedSession.finish!.stage === "mana" ? "mana" : "slots");
       return;
     }
     void requestGuidedOffer(guidedSession, {
@@ -1479,9 +1501,14 @@ export function useForgeSessionState() {
   function goToGuidedCategory(index: number) {
     if (!guidedSession || guidedLoading || guidedConflict || guidedCompletionRef.current) return;
     if (index < 0 || index >= guidedSession.categories.length) return;
-    // Going back to a role step leaves the finish; the mana and slot choices
-    // already made are kept and re-proposed around any new picks.
-    void requestGuidedOffer({ ...guidedSession, finish: guidedSession.finish ? { ...guidedSession.finish, stage: "mana", manaConfirmed: false } : undefined }, { categoryIndex: index, declined: [] });
+    // Going back to a role step leaves the finish panel. The mana and slot
+    // choices already made stay on the session and are re-proposed around
+    // any new picks when the player returns. suspended is what the chamber
+    // uses to show the role offer instead of the finish.
+    void requestGuidedOffer({
+      ...guidedSession,
+      finish: guidedSession.finish ? { ...guidedSession.finish, stage: "mana", manaConfirmed: false, suspended: true } : undefined,
+    }, { categoryIndex: index, declined: [] });
   }
   function finishGuidedCategory() {
     if (!guidedSession || guidedLoading || guidedConflict) return;
@@ -1510,6 +1537,12 @@ export function useForgeSessionState() {
       basics: session?.finish?.basics || {},
     });
   }
+  // A suspended finish still holds the player's mana and slot choices, but
+  // the role step is on screen. Adding or removing a pick there stays on
+  // the role path instead of pulling the finish panel back up.
+  function guidedFinishActive(session: GuidedSession | null = guidedSession) {
+    return Boolean(session?.finish && !session.finish.suspended);
+  }
   async function requestGuidedFinish(session: GuidedSession, stage: "mana" | "slots", options: { landTarget?: number | null } = {}) {
     const previous: GuidedFinish = session.finish || { stage, basics: {}, manaConfirmed: false, landTarget: null };
     const landTarget = options.landTarget !== undefined ? options.landTarget : previous.landTarget;
@@ -1530,14 +1563,20 @@ export function useForgeSessionState() {
         basics: previous.basics,
         landTarget,
       });
-      const basics = stage === "mana" && (!previous.manaConfirmed || options.landTarget !== undefined || !basicsTotal(previous.basics))
-        ? (data.basics || {}) as Record<string, number>
-        : previous.basics;
+      // Keep a split the player already adjusted. Replace it only for a
+      // fresh proposal, or when they explicitly change the land count
+      // (the number of slots changed, so the old split no longer fits).
+      // Reopening the mana step and adding or removing a pick do neither.
+      const landTargetChanged = options.landTarget !== undefined && options.landTarget !== previous.landTarget;
+      const adoptBasics = stage === "mana" && (landTargetChanged || !previous.basicsCustom);
+      const basics = adoptBasics ? (data.basics || {}) as Record<string, number> : previous.basics;
       let finish: GuidedFinish = {
         ...previous,
         stage,
+        suspended: false,
         landTarget: stage === "mana" ? Number(data.landTarget) : landTarget,
         basics,
+        basicsCustom: adoptBasics ? false : Boolean(previous.basicsCustom),
         manaConfirmed: stage === "mana" ? false : previous.manaConfirmed,
         proposal: stage === "mana" ? data : previous.proposal,
         package: stage === "slots" ? (Array.isArray(data.package) ? data.package : []) : previous.package,
@@ -1567,13 +1606,14 @@ export function useForgeSessionState() {
     void requestGuidedFinish(guidedSession, "mana", { landTarget });
   }
   function adjustGuidedBasic(name: string, delta: number) {
-    if (!guidedSession?.finish || guidedLoading || guidedBuildLockedNow()) return;
-    const current = guidedSession.finish.basics[name] || 0;
-    const nextCount = Math.max(0, Math.min(99, current + delta));
-    const basics = { ...guidedSession.finish.basics, [name]: nextCount };
+    const current = guidedSessionRef.current;
+    if (!current?.finish || guidedLoading || guidedBuildLockedNow()) return;
+    const nextCount = Math.max(0, Math.min(99, (current.finish.basics[name] || 0) + delta));
+    const basics = { ...current.finish.basics, [name]: nextCount };
     if (!nextCount) delete basics[name];
-    const finish = { ...guidedSession.finish, basics, manaConfirmed: false, stage: "mana" as const };
-    const next = { ...guidedSession, finish: { ...finish, status: guidedFinishStatus({ ...guidedSession, finish }) } };
+    const finish: GuidedFinish = { ...current.finish, basics, basicsCustom: true, manaConfirmed: false, stage: "mana", suspended: false };
+    const next = { ...current, finish: { ...finish, status: guidedFinishStatus({ ...current, finish }) } };
+    guidedSessionRef.current = next;
     setGuidedSession(next);
     writeGuidedLocal(guidedSnapshot(next));
   }
@@ -1583,7 +1623,7 @@ export function useForgeSessionState() {
     trackGuidedStep("utility-land");
     // A nonbasic land takes one of the land slots, so the server re-proposes
     // the basics around it rather than growing the land count.
-    void requestGuidedFinish({ ...guidedSession, accepted: [...guidedSession.accepted, name], finish: { ...guidedSession.finish, manaConfirmed: false, basics: {} } }, "mana");
+    void requestGuidedFinish({ ...guidedSession, accepted: [...guidedSession.accepted, name], finish: { ...guidedSession.finish, manaConfirmed: false, basicsCustom: false, basics: {} } }, "mana");
   }
   function confirmGuidedMana() {
     if (!guidedSession?.finish || guidedLoading || guidedBuildLockedNow()) return;
@@ -1707,6 +1747,57 @@ export function useForgeSessionState() {
   // True while a guest build is being claimed into this account, so the
   // post-sign-in resume opens that build instead of starting a new one.
   const guidedClaimingRef = useRef(false);
+  const guidedClaimResolvingRef = useRef(false);
+  function dropSearchParam(name: string) {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has(name)) return;
+    params.delete(name);
+    const query = params.toString();
+    window.history.replaceState({}, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
+  }
+  async function resolveGuidedClaimChoice(keepGuest: boolean) {
+    const choice = guidedClaimChoice;
+    if (!choice || guidedClaimResolvingRef.current) return;
+    if (!keepGuest) {
+      // The guest build stays under its cookie until the two-day cleanup,
+      // so signing back out still finds it. This account keeps its own.
+      dropSearchParam("claimGuided");
+      setGuidedClaimChoice(null);
+      setGuidedError("");
+      return;
+    }
+    if (choice.account?.phase === "completing") {
+      throw new Error("The account build is finishing. Check its result before replacing it with the guest build.");
+    }
+    guidedClaimResolvingRef.current = true;
+    setGuidedLoading(true);
+    setGuidedError("");
+    try {
+      const response = await fetch("/api/account/claim-guest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ guidedClaimToken: choice.token, replaceUnfinished: true }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        if (response.status === 409 && data?.guestDraft) setGuidedClaimChoice({ token: choice.token, guestDraft: data.guestDraft, account: data });
+        throw new Error(data?.error || "Your guest build could not be moved to this account.");
+      }
+      dropSearchParam("claimGuided");
+      setGuidedClaimChoice(null);
+      const account = await guidedAccountRequest("GET");
+      guidedOwnerRef.current = account.owner;
+      guidedRevisionRef.current = account.revision;
+      if (account.draft && validGuidedDraft(account.draft) && (account.phase === "active" || account.phase === "complete")) {
+        if (account.phase === "active") restoreGuidedDraft(account.draft);
+        else setGuidedAvailableDraft(account);
+      }
+      setGuidedSaveStatus("Saved to your account");
+    } finally {
+      guidedClaimResolvingRef.current = false;
+      setGuidedLoading(false);
+    }
+  }
   useEffect(() => {
     if (guidedRestoredRef.current) return;
     guidedRestoredRef.current = true;
@@ -1714,19 +1805,27 @@ export function useForgeSessionState() {
     (async () => {
       try {
         // Signed in from a guest build: move that build into this account first.
+        // The token stays in the URL until the claim succeeds, the build is
+        // gone, or the player chooses the account copy — a 409 still needs it.
         const claimGuided = guestMode ? null : new URLSearchParams(window.location.search).get("claimGuided");
         if (claimGuided) {
           guidedClaimingRef.current = true;
-          const params = new URLSearchParams(window.location.search);
-          params.delete("claimGuided");
-          window.history.replaceState({}, "", `${window.location.pathname}${params.toString() ? `?${params}` : ""}`);
           const claim = await fetch("/api/account/claim-guest", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ guidedClaimToken: claimGuided }),
           }).then(async (response) => ({ ok: response.ok, status: response.status, data: await response.json().catch(() => null) }));
-          if (!claim.ok && claim.status !== 404) setGuidedError(claim.data?.error || "Your guest build could not be moved to this account.");
-          if (!claim.ok) guidedClaimingRef.current = false;
+          if (cancelled) return;
+          if (claim.ok) {
+            dropSearchParam("claimGuided");
+          } else if (claim.status === 409 && claim.data?.guestDraft) {
+            guidedClaimingRef.current = false;
+            setGuidedClaimChoice({ token: claimGuided, guestDraft: claim.data.guestDraft, account: claim.data });
+          } else {
+            guidedClaimingRef.current = false;
+            if (claim.status === 404) dropSearchParam("claimGuided");
+            setGuidedError(claim.data?.error || "Your guest build could not be moved to this account.");
+          }
         }
         const account = await guidedAccountRequest("GET").catch((error) => {
           // A guest with no guided session yet has nothing saved; that's not an error.
@@ -5646,6 +5745,8 @@ export function useForgeSessionState() {
     guidedSaveStatus,
     guidedAvailableDraft,
     guidedConflict,
+    guidedClaimChoice,
+    resolveGuidedClaimChoice,
     guidedBuildLocked: Boolean(guidedConflict || guidedCompletionRef.current),
     guidedReview,
     resumeGuidedDraft,

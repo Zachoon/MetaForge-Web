@@ -225,6 +225,20 @@ test("finishing is only offered from the review, once every slot is confirmed", 
   assert.doesNotMatch(html, /<button[^>]*disabled[^>]*>Confirm every slot/);
 });
 
+test("stepping back to a role suspends the finish panel and shows that step's suggestion", () => {
+  const html = render(baseContext({
+    guidedSession: session({
+      categoryIndex: 2,
+      finish: { stage: "mana", basics: { Plains: 20 }, manaConfirmed: false, landTarget: 36, proposal: manaProposal, suspended: true },
+    }),
+    guidedFinishStatus: { deckTarget: 100, confirmed: 38, open: 62, over: 0 },
+  }));
+  assert.match(html, /Add to my deck/);
+  assert.match(html, /STEP 3 OF 8/);
+  assert.doesNotMatch(html, /Confirm this mana base/);
+  assert.doesNotMatch(html, /GUIDED BUILD · FINISH/);
+});
+
 test("a guest build says so and offers sign-in that keeps the picks", () => {
   const html = render(baseContext({ guidedSession: session(), guestMode: true, guestGuidedClaimToken: "x.y", signInResumeHref: "https://app.metaforge.gg/?claimGuided=x.y" }));
   assert.match(html, /Building as a guest/);

@@ -12,7 +12,9 @@
 
 - After the last role step, the mana base is walked through: a land count with its reasons (curve, ramp, land payoffs), color-source targets from your picks' mana symbols, ranked nonbasic lands to add one at a time, and a basics split you adjust.
 - Open slots are filled from small packages (up to three cards) aimed at the roles still short, each with its reason. Take them, turn them down with a one-tap reason, or search for your own.
-- The deck finishes only from a review once every slot is confirmed. The server refuses to finish an incomplete deck, and refuses if analysis would add or cut a card you didn't choose.
+- The deck finishes only from a review once every slot is confirmed. The server refuses to finish an incomplete deck, and refuses if analysis would add, cut, or change the number of copies of a card you didn't choose.
+- Going back to an earlier role leaves the finish and shows that step again. A basics split you adjusted stays when you come back to the mana base.
+- Signing in while the account already has a build in progress asks which one to keep. The guest build stays until you choose.
 
 ### Suggestions explain themselves and learn from you
 

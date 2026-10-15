@@ -37,6 +37,13 @@ test('draft validation rejects malformed completion and payload preserves picks 
   assert.equal(validGuidedDraft(draft({completion:{id:'oops'}})),false);
   const payload=guidedGenerationPayload(draft()); assert.equal(payload.deck,'1 Sol Ring\n98 Plains');assert.equal(payload.maxCardPrice,5);assert.equal(payload.commonsOnly,true);assert.equal(payload.seed,123);
   assert.equal(guidedCompletionReview('1 Front // Back\n1 Plains',['Front']).missing.length,0);
+  const drifted=guidedCompletionReview('1 Commander\n1 Sol Ring\n97 Plains',['Sol Ring','Plains'],['Commander'],{Plains:98,'Sol Ring':1});
+  assert.deepEqual(drifted.quantityDrift,[{name:'Plains',expected:98,actual:97}]);
+  assert.equal(drifted.missing.length,0);
+  assert.equal(drifted.total,99);
+  const absent=guidedCompletionReview('1 Commander\n99 Plains',['Sol Ring','Plains'],['Commander'],{Plains:98,'Sol Ring':1});
+  assert.deepEqual(absent.missing,['Sol Ring']);
+  assert.deepEqual(absent.quantityDrift,[{name:'Plains',expected:98,actual:99}]);
 });
 test('account isolation, revision conflicts and discard tombstones',async()=>{
   const env=environment(); assert.equal((await save(env)).status,200);
@@ -100,6 +107,16 @@ test('a confirmed deck is analysed exactly as chosen: an added or trimmed card s
   globalThis.__guidedGenerate=async()=>Response.json({nativeReport:{selected:{deckText:'1 Commander\n1 Sol Ring\n98 Plains'},changes:{added:[],trimmed:[{name:'Sol Ring',cut:1}]}}});
   assert.equal((await finish_(env,3)).status,422);
 });
+test('finishing refuses when analysis changes a confirmed copy count without adding or cutting a name',async()=>{
+  const env=environment();await save(env);
+  globalThis.__guidedGenerate=async()=>Response.json({nativeReport:{selected:{deckText:'1 Commander\n1 Sol Ring\n97 Plains'}}});
+  const refused=await finish_(env);assert.equal(refused.status,422);
+  assert.deepEqual((await refused.json()).quantityDrift,[{name:'Plains',expected:98,actual:97}]);
+  assert.equal((await (await api.handleGuidedDraft(request('GET'),env)).json()).phase,'active');
+  globalThis.__guidedGenerate=async()=>Response.json({nativeReport:{selected:{deckText:'1 Commander\n2 Sol Ring\n97 Plains'}}});
+  const swapped=await finish_(env,3);assert.equal(swapped.status,422);
+  assert.ok((await swapped.json()).quantityDrift.some((row)=>row.name==='Sol Ring'&&row.actual===2));
+});
 test('draft validation rejects a malformed finish block',()=>{
   assert.equal(validGuidedDraft(withFinish({stage:'mana',basics:{},manaConfirmed:false,landTarget:36})),true);
   assert.equal(validGuidedDraft(withFinish({stage:'done',basics:{}})),false);
@@ -139,8 +156,20 @@ test('signing in claims the guest build into the account, once, and never over a
   assert.deepEqual(account.draft.session.accepted,['Sol Ring']);
   assert.equal(env.sqlite.prepare('SELECT user_key FROM forge_generations WHERE generation_id=?').get('pool').user_key,'alice','the pool follows the build');
   assert.equal((await claim('alice')).status,404,'a claim token works once');
-  // An account with its own unfinished build keeps it.
-  await api.handleGuidedDraft(guestRequest('PUT',{draft:draft(),baseRevision:0}),env);
+  // An account with its own unfinished build keeps it until the player chooses.
+  const again=draft();again.session={...again.session,accepted:['Sol Ring','Arcane Signet']};
+  await api.handleGuidedDraft(guestRequest('PUT',{draft:again,baseRevision:0}),env);
   const conflict=await api.handleGuidedClaim(request('POST',{guidedClaimToken:token},'alice'),env);
-  assert.equal(conflict.status,409); assert.ok((await conflict.json()).guestDraft);
+  assert.equal(conflict.status,409); assert.equal((await conflict.json()).code,'CLAIM_CONFLICT');
+  assert.equal(env.sqlite.prepare('SELECT COUNT(*) AS n FROM guided_drafts WHERE user_key=?').get(`guest:${guestId}`).n,1,'a refused claim leaves the guest build in place');
+  assert.deepEqual((await (await api.handleGuidedDraft(request('GET'),env)).json()).draft.session.accepted,['Sol Ring']);
+  env.sqlite.exec("UPDATE guided_drafts SET phase='completing' WHERE user_key='alice'");
+  const blocked=await api.handleGuidedClaim(request('POST',{guidedClaimToken:token,replaceUnfinished:true},'alice'),env);
+  assert.equal(blocked.status,409,'a finish already in flight cannot be replaced');
+  assert.equal(env.sqlite.prepare('SELECT COUNT(*) AS n FROM guided_drafts WHERE user_key=?').get(`guest:${guestId}`).n,1);
+  env.sqlite.exec("UPDATE guided_drafts SET phase='active' WHERE user_key='alice'");
+  const replaced=await api.handleGuidedClaim(request('POST',{guidedClaimToken:token,replaceUnfinished:true},'alice'),env);
+  assert.equal(replaced.status,200);
+  assert.deepEqual((await (await api.handleGuidedDraft(request('GET'),env)).json()).draft.session.accepted,['Sol Ring','Arcane Signet']);
+  assert.equal(env.sqlite.prepare('SELECT COUNT(*) AS n FROM guided_drafts WHERE user_key=?').get(`guest:${guestId}`).n,0);
 });
