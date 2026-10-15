@@ -20,7 +20,7 @@ import {
   evaluateNarrativeIntegrityForCoach,
   normalizeNarrativeName,
 } from "./narrative-integrity.mjs";
-import { buildStrategicRecognition } from "./strategic-recognition.mjs";
+import { buildStrategicRecognition, playerLabelForSignal } from "./strategic-recognition.mjs";
 import { buildPilotStory } from "./pilot-model.mjs";
 import { buildRequestRecognition } from "./request-recognition.mjs";
 import {
@@ -796,6 +796,228 @@ export function explainRecommendationWhy({
 }
 
 /**
+ * How a finished list actually plays, keyed by the same signal the pilot uses.
+ * Roles and oracle text are evidence already stored on the deck rows.
+ */
+const FINISHED_DECK_SIGNAL = freeze({
+  evasion: freeze({ roles: ["combat"], pattern: /flying|can't be blocked|menace|skulk|shadow/i, action: "get through blockers" }),
+  combat: freeze({ roles: ["combat"], pattern: /whenever .{0,40}attacks|combat damage|double strike/i, action: "attack profitably" }),
+  artifacts: freeze({ roles: ["artifacts"], pattern: /\bartifact\b|\bequipment\b|\bequip\b/i, action: "deploy cheap artifacts" }),
+  tokens: freeze({ roles: ["tokens"], pattern: /create .{0,60}tokens?\b/i, action: "widen the board" }),
+  etb: freeze({ roles: [], pattern: /enters the battlefield|when this enters|whenever .+ enters/i, action: "repeat enter-the-battlefield value" }),
+  sacrifice: freeze({ roles: ["sacrifice"], pattern: /\bsacrifice\b/i, action: "convert deaths into value" }),
+  spells: freeze({ roles: ["spells"], pattern: /instant or sorcery|noncreature spell|prowess/i, action: "keep cheap spells flowing" }),
+  graveyard: freeze({ roles: ["graveyard", "recursion"], pattern: /graveyard|reanimate/i, action: "reuse the graveyard" }),
+  lands: freeze({ roles: [], pattern: /landfall|additional land|land card/i, action: "turn extra land drops into value" }),
+  treasure: freeze({ roles: ["artifacts"], pattern: /\btreasure\b/i, action: "spend extra mana on the main plan" }),
+  counters: freeze({ roles: ["counters"], pattern: /\+1\/\+1 counter|\bcounters\b|proliferate|planeswalker/i, action: "stack counters on surviving pieces" }),
+  draw: freeze({ roles: ["draw"], pattern: /\bdraws?\b/i, action: "keep the hand full" }),
+  life: freeze({ roles: ["lifegain"], pattern: /gain .{0,16}life|lifelink/i, action: "convert life gain into advantage" }),
+  protection: freeze({ roles: ["protection"], pattern: /hexproof|indestructible|\bward\b/i, action: "keep the main threat alive" }),
+  auras: freeze({ roles: [], pattern: /\bauras?\b|enchant creature/i, action: "stack auras on a protected threat" }),
+});
+
+const FINISHED_DECK_RESEARCH_VOICE = /structural systems?|metaforge|\bengine\b|overlapping systems|verified enough/i;
+
+function finishedDeckRows(selected = {}, commanderName = "") {
+  const commanderKey = normalizeNarrativeName(commanderName);
+  return (selected.rows || []).filter((row) => {
+    const name = String(row?.name || "").trim();
+    if (!name) return false;
+    if (commanderKey && normalizeNarrativeName(name) === commanderKey) return false;
+    const roles = row.roles || [];
+    if (roles.includes("land") || roles.includes("commander")) return false;
+    if (/\bland\b/i.test(String(row.typeLine || ""))) return false;
+    return true;
+  });
+}
+
+function finishedFactKey(name = "") {
+  return String(name)
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[‘’`]/g, "'")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function enrichFinishedRows(rows, cardFacts) {
+  return rows.map((row) => {
+    const fact = cardFacts?.[finishedFactKey(row.name)] || null;
+    const faces = Array.isArray(fact?.card_faces)
+      ? fact.card_faces.map((face) => `${face?.oracle_text || ""} ${face?.type_line || ""}`).join(" ")
+      : "";
+    const evidence = `${row.oracleText || ""} ${row.typeLine || ""} ${fact?.oracle_text || fact?.oracleText || ""} ${fact?.type_line || fact?.typeLine || ""} ${faces}`;
+    const cmc = Number.isFinite(Number(row.cmc))
+      ? Number(row.cmc)
+      : Number(fact?.cmc);
+    return { ...row, cmc: Number.isFinite(cmc) ? cmc : 99, evidence };
+  });
+}
+
+function rowMatchesFinishedSignal(row, signal) {
+  const spec = FINISHED_DECK_SIGNAL[signal];
+  if (!spec) return false;
+  const text = String(row.evidence || `${row.oracleText || ""} ${row.typeLine || ""}`).trim();
+  if (text) return spec.pattern.test(text);
+  const roles = new Set(row.roles || []);
+  return spec.roles.some((role) => roles.has(role));
+}
+
+const INFERRED_SIGNAL_SKIP = new Set(["draw", "treasure", "protection"]);
+
+function inferFinishedSignal(rows) {
+  const scored = Object.keys(FINISHED_DECK_SIGNAL)
+    .filter((signal) => !INFERRED_SIGNAL_SKIP.has(signal))
+    .map((signal) => ({
+      signal,
+      count: rows.filter((row) => rowMatchesFinishedSignal(row, signal)).length,
+    }))
+    .filter((entry) => entry.count >= 4)
+    .sort((left, right) => right.count - left.count || left.signal.localeCompare(right.signal));
+  if (!scored.length) return null;
+  if (scored[1] && scored[1].count >= scored[0].count * 0.88) return null;
+  return scored[0].signal;
+}
+
+function memberNamesForSignal(structuralSystems, signal, deckKeys) {
+  const systems = structuralSystems?.systems || [];
+  const system = systems.find((entry) => String(entry.signal || entry.id || "").toLowerCase() === signal);
+  if (!system) return [];
+  return (system.members || [])
+    .map((member) => (typeof member === "string" ? member : member?.name))
+    .filter((name) => name && deckKeys.has(normalizeNarrativeName(name)));
+}
+
+function sortByCurve(rows) {
+  return rows.slice().sort((left, right) =>
+    Number(left.cmc ?? 99) - Number(right.cmc ?? 99)
+    || String(left.name).localeCompare(String(right.name)));
+}
+
+function pickFinishedCards(rows, signal, structuralSystems, limit = 3) {
+  const deckKeys = new Set(rows.map((row) => normalizeNarrativeName(row.name)));
+  const byName = new Map(rows.map((row) => [normalizeNarrativeName(row.name), row]));
+  const fromMembers = memberNamesForSignal(structuralSystems, signal, deckKeys)
+    .map((name) => byName.get(normalizeNarrativeName(name)))
+    .filter(Boolean);
+  const pool = fromMembers.length >= 2
+    ? fromMembers
+    : rows.filter((row) => rowMatchesFinishedSignal(row, signal));
+  return sortByCurve(pool).slice(0, limit);
+}
+
+function joinCardNames(names) {
+  if (names.length <= 1) return names[0] || "";
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")}, and ${names.at(-1)}`;
+}
+
+function earlyCardSentence(rows, commander) {
+  const names = sortByCurve(rows).slice(0, 3).map((row) => row.name);
+  if (names.length >= 2) {
+    return `The early cards in this list are ${joinCardNames(names)}. Play those before ${commander}.`;
+  }
+  if (names.length === 1) {
+    return `Play ${names[0]} before committing ${commander}.`;
+  }
+  return `Play mana and setup first, then cast ${commander} once the board can use it.`;
+}
+
+function finishedDeckLabelFor(planStory, identity) {
+  const candidates = [planStory?.planLabel, identity?.planLabel].filter(Boolean);
+  for (const label of candidates) {
+    const text = String(label).trim();
+    if (!text || text.length > 48) continue;
+    if (/_|plan still forming|overlapping systems|approach$/i.test(text)) continue;
+    return text;
+  }
+  const title = String(planStory?.title || "").trim();
+  if (title && title.length <= 42 && !/wins because|^commander plan$/i.test(title)) return title;
+  return "";
+}
+
+/**
+ * One player-facing read of the finished list. Names cards that are actually
+ * in the deck, follows the pilot's resolved signal, and leaves structural
+ * research language for the research page.
+ */
+export function buildFinishedDeckRead({
+  selected = {},
+  recognition = null,
+  commanderName = "",
+  structuralSystems = null,
+  fixFirst = null,
+  fixFirstKind = null,
+  cardFacts = null,
+} = {}) {
+  const commander = String(commanderName || "").trim() || "your commander";
+  const rows = enrichFinishedRows(finishedDeckRows(selected, commander), cardFacts);
+  const fantasy = Boolean(recognition?.playerFantasy);
+  const claimedSignal = (!recognition?.ambiguous || fantasy) ? recognition?.resolvedSignal : null;
+  let signal = FINISHED_DECK_SIGNAL[claimedSignal] ? claimedSignal : null;
+
+  let sentence = null;
+  const used = new Set();
+
+  if (!signal && recognition?.ambiguous && !fantasy) {
+    const contenders = [recognition.hierarchy?.primary, ...(recognition.hierarchy?.supporting || [])]
+      .filter(Boolean)
+      .slice(0, 3);
+    const picks = [];
+    for (const entry of contenders) {
+      const label = playerLabelForSignal(entry.signal);
+      if (!label) continue;
+      const card = pickFinishedCards(rows, entry.signal, structuralSystems, 4)
+        .find((row) => !used.has(normalizeNarrativeName(row.name)));
+      if (!card) continue;
+      used.add(normalizeNarrativeName(card.name));
+      picks.push({ name: card.name, label: label.toLowerCase() });
+      if (picks.length === 2) break;
+    }
+    if (picks.length === 2) {
+      sentence = `${picks[0].name} carries the ${picks[0].label} cards in this list, and ${picks[1].name} carries the ${picks[1].label} cards. Let the opening hand choose which to push with ${commander}.`;
+    }
+  }
+
+  if (!sentence && !signal && !recognition?.hierarchy?.primary) {
+    signal = inferFinishedSignal(rows);
+  }
+
+  if (!sentence && signal) {
+    const picked = pickFinishedCards(rows, signal, structuralSystems, 3);
+    if (picked.length >= 2) {
+      const names = picked.map((row) => row.name);
+      names.forEach((name) => used.add(normalizeNarrativeName(name)));
+      const listed = joinCardNames(names);
+      const action = FINISHED_DECK_SIGNAL[signal].action;
+      const opener = Number(picked[0].cmc ?? 99) <= 4;
+      sentence = opener
+        ? `Open on ${listed} so this deck can ${action} with ${commander}.`
+        : `The cards carrying this are ${listed}. Use them with ${commander} to ${action}.`;
+    }
+  }
+
+  if (!sentence) sentence = earlyCardSentence(rows, commander);
+
+  if (fixFirstKind === "card" && fixFirst) {
+    const watch = String(fixFirst).trim();
+    const key = normalizeNarrativeName(watch);
+    const inDeck = rows.some((row) => normalizeNarrativeName(row.name) === key);
+    if (watch && inDeck && !used.has(key) && !sentence.includes(watch)) {
+      sentence = `${sentence.replace(/\.$/, "")}. The first card to watch is ${watch}.`;
+    }
+  }
+
+  if (FINISHED_DECK_RESEARCH_VOICE.test(sentence)) {
+    sentence = earlyCardSentence(rows, commander);
+    signal = null;
+  }
+  return { text: sentence, signal };
+}
+
+/**
  * Build Honest Coach v0 summary from an imported/native forge result.
  * activeCommanderName is the workbench authority — never invent a commander
  * from a stale structural report or a previous commission.
@@ -978,6 +1200,17 @@ export function buildHonestCoachSummary({
 
   const reliability = deckUnderstanding?.reliability || null;
   const coachingAllowed = !reliability || reliability.state !== "insufficient";
+  const finishedDeck = buildFinishedDeckRead({
+    selected: deck,
+    recognition,
+    commanderName: commanderForVoice || authoritativeCommanders[0] || "your commander",
+    structuralSystems,
+    fixFirst: sw.fixFirst,
+    fixFirstKind: sw.fixFirstKind,
+    cardFacts,
+  });
+  const finishedDeckRead = finishedDeck.text;
+  const finishedDeckLabel = finishedDeckLabelFor(planStory, identity) || playerLabelForSignal(finishedDeck.signal) || "";
   const namedCards = freeze([
     ...(sw.weaklyJustified || []),
     ...(deck.slotJustificationLedger?.critique?.redundant || []),
@@ -1023,6 +1256,8 @@ export function buildHonestCoachSummary({
     observedLead,
     inferredLead,
     uncertaintyLead,
+    finishedDeckRead,
+    finishedDeckLabel,
     // Stance voice — not a section title. Request Recognition never gets this.
     watchingVoice,
     principleVoice,
@@ -1244,6 +1479,7 @@ function buildSafeCoachFallback({
     brainVersion: "brain_v1",
   });
   const reliability = deckUnderstanding?.reliability || null;
+  const finishedDeckRead = `Play mana and setup first, then cast ${commander} once the board can use it.`;
   return freeze({
     version: "honest-coach-v0.5",
     isImported: Boolean(isImported),
@@ -1269,6 +1505,8 @@ function buildSafeCoachFallback({
     observedLead: packageLabels.length ? `Observed: package support for ${packageLabels.slice(0, 3).join(", ")}.` : "Observed: waiting on a bound structural read for this analysis.",
     inferredLead: stop,
     uncertaintyLead: null,
+    finishedDeckRead,
+    finishedDeckLabel: "",
     strategyVsSystem: freeze({
       strategy: freeze({ label: title, confidence: "limited", packages: freeze(packageLabels) }),
       engine: freeze({

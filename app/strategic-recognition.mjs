@@ -168,6 +168,11 @@ export function tableMeaningFor(signal = "") {
   return languageFor(signal)?.tableMeaning || null;
 }
 
+/** Short player label for a signal. Same words the pilot story is grounded in. */
+export function playerLabelForSignal(signal = "") {
+  return languageFor(String(signal || "").toLowerCase())?.shortLabel || null;
+}
+
 function systemScore(system = {}) {
   const health = Number(system.health?.overall ?? system.health?.cohesion ?? 0);
   const members = Array.isArray(system.members) ? system.members.length : Number(system.members || 0);
