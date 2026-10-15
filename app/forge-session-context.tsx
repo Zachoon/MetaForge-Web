@@ -1304,8 +1304,6 @@ export function useForgeSessionState() {
     guidedCompletionRef.current = null;
   };
   const guidedOfferSeqRef = useRef(0);
-  const guidedSessionRef = useRef<GuidedSession | null>(guidedSession);
-  guidedSessionRef.current = guidedSession;
   async function startGuidedBuild(options: { seedDeck?: string } = {}) {
     if (!selectedCommander || !isCommanderFormat(format) || guidedLoading || guidedFinishingRef.current || guidedConflict) return;
     // Guests build without an account: the server keys their session to a
