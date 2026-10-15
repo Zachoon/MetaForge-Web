@@ -123,7 +123,7 @@ test("a live session renders the offer, its plain-language reason, the ledger, t
   const html = render(baseContext({ guidedSession: session() }));
   assert.match(html, /Cultivate/);
   assert.match(html, /Add to my deck/);
-  assert.match(html, /Show me another/);
+  assert.match(html, /Not this one/);
   assert.match(html, /fills a real ramp gap/);
   assert.match(html, /edged out Rampant Growth/);
   assert.match(html, /3 of 10–12 — room for 7 more/);
@@ -168,7 +168,7 @@ test("an exhausted category explains itself and still offers a way forward", () 
 
 test("the last category finishes the build instead of advancing, and hides skip-ahead", () => {
   const html = render(baseContext({ guidedSession: session({ categoryIndex: 7, offer: null, exhausted: true }) }));
-  assert.match(html, /Finish — the Forge fills the rest/);
+  assert.match(html, /Finish — the Forge fills lands and open slots/);
   assert.doesNotMatch(html, /Skip ahead/);
 });
 
@@ -184,4 +184,22 @@ test("a session with an empty ledger (older snapshot) still renders instead of t
   assert.match(html, /Cultivate/);
   assert.match(html, /0 picked/);
   assert.equal(render(baseContext({ guidedSession: session({ accepted: ["One"] }) })).includes("1 card picked so far"), true);
+});
+
+test("each suggestion shows its role, what it works with, its trade-off, and what the coach learned", () => {
+  const html = render(baseContext({ guidedSession: session({ explanation: {
+    role: "Ramp",
+    worksWith: ["Sol Ring"],
+    tradeOff: "Slow at 5 mana.",
+    learned: ["builds on cards you've already picked"],
+  } }) }));
+  assert.match(html, /class="guided-explanation"/);
+  assert.match(html, /<dt>Role<\/dt><dd>Ramp<\/dd>/);
+  assert.match(html, /<dt>Works with<\/dt><dd>Sol Ring<\/dd>/);
+  assert.match(html, /<dt>Trade-off<\/dt><dd>Slow at 5 mana\.<\/dd>/);
+  assert.match(html, /From your choices/);
+  // Decline reasons are one tap away, behind "Not this one".
+  assert.match(html, /aria-expanded="false"[^>]*>Not this one/);
+  // The Player Compass is available inside the build so answers apply at once.
+  assert.match(html, /player-compass/);
 });

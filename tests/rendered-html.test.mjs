@@ -35,7 +35,7 @@ test("server-renders the MetaForge product experience", async () => {
   assert.match(html, /<title>MetaForge — MTG Commander Deck Builder &amp; Analyzer<\/title>/i);
   assert.match(html, /MAGIC: THE GATHERING · DECK COACH/);
   assert.match(html, /Understand your Magic deck/);
-  assert.match(html, /Choose how you want to begin/i);
+  assert.match(html, /we&rsquo;ll build the deck together|we’ll build the deck together/i);
   assert.match(html, /href="\/commanders"/i);
   assert.match(html, /href="\/tools"/i);
   assert.match(html, /href="\/decks"/i);
@@ -58,12 +58,16 @@ test("server-renders the MetaForge product experience", async () => {
   assert.match(html, /data-forge-state="dormant"/);
   assert.match(html, /data-forge-action="none"/);
   assert.match(html, /data-motion="full"/);
-  assert.match(html, /<summary>[\s\S]*?Forgemaster[\s\S]*?<\/summary>/);
+  assert.match(html, /<summary>[\s\S]*?Menu[\s\S]*?<\/summary>/);
   assert.match(html, /href="\/academy"/i);
   assert.match(html, /Reduce motion/);
-  assert.match(html, /Start from scratch/);
-  assert.match(html, /Complete a decklist/);
-  assert.match(html, /Discover a deck/);
+  assert.match(html, /Start with your commander/);
+  assert.match(html, /Have a partial list\? Review it step by step/);
+  assert.match(html, /Open an empty decklist/);
+  // Guided-only: no one-click full build or free-forge pitch on the homepage,
+  // and no human check until a guest actually starts something.
+  assert.doesNotMatch(html, /ONE FREE FORGE|fill the open slots|BUILD MY DECK/);
+  assert.doesNotMatch(html, /class="turnstile-host/);
   assert.doesNotMatch(html, /THE PRIVATE BENCH/);
   assert.doesNotMatch(html, /Your saved decks/);
   assert.doesNotMatch(html, /RELEASE GATE|LIVE ACCEPTANCE/);

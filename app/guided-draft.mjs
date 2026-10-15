@@ -49,3 +49,35 @@ export function guidedGenerationPayload(draft) {
     seed: draft.completion?.seed,
   };
 }
+const BASIC_LAND = /^(?:snow-covered\s+)?(?:plains|island|swamp|mountain|forest|wastes)$/i;
+/**
+ * A pasted full or partial decklist becomes the guided review's starting
+ * picks: one entry per distinct card, commanders and sideboard/maybeboard
+ * sections left out, and basic lands skipped because the guided finish
+ * already settles the mana base.
+ * @param {string} deckText
+ * @param {string[]} [commanderNames]
+ */
+export function guidedSeedNames(deckText, commanderNames = []) {
+  const commanders = new Set(commanderNames.filter(Boolean).map(nameKey));
+  const seen = new Set();
+  const names = [];
+  let main = true;
+  for (const raw of String(deckText || "").split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith("//") || line.startsWith("#")) continue;
+    const header = line.replace(/[:\s]+$/, "").toLocaleLowerCase("en");
+    if (/^(deck|main ?deck|mainboard)$/.test(header)) { main = true; continue; }
+    if (/^(sideboard|maybeboard|commander|commanders|companion|considering)(\s*\(\d+\))?$/.test(header)) { main = false; continue; }
+    if (!main) continue;
+    const match = line.match(/^(?:(\d+)x?\s+)?(.+?)(?:\s+\([A-Za-z0-9]{2,6}\)(?:\s+[\w-]+)?)?(?:\s+\*[A-Z]+\*)?$/);
+    const name = match?.[2]?.trim();
+    if (!name || BASIC_LAND.test(name)) continue;
+    const key = nameKey(name);
+    if (commanders.has(key) || seen.has(key)) continue;
+    seen.add(key);
+    names.push(name.slice(0, 400));
+    if (names.length >= 100) break;
+  }
+  return names;
+}

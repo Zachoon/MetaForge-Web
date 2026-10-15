@@ -5,6 +5,8 @@ import { cardImage } from "../../card-art";
 import { scryfallFormatTerms } from "../../format-catalog";
 import { GUIDED_CATEGORY_COPY, describeGuidedReason, describeLedgerRow, guidedCategoryLabel } from "../../guided-reason-copy.mjs";
 import { shellDisplay } from "../../shell-copy.mjs";
+import { DECLINE_REASONS } from "../../guided-preference-learning.mjs";
+import { PlayerCompassCard } from "./player-compass-card";
 import { useForgeSession } from "../../forge-session-context";
 
 // architecture/GUIDED_CONSTRUCTION_FLOW.md flow step 3: the player and the
@@ -38,11 +40,19 @@ export function GuidedBuildChamber() {
     finishGuidedCategory,
     finishGuidedBuild,
     exitGuidedBuild,
+    playerCompass,
+    guestMode,
+    playerCompassSynced,
+    persistPlayerCompass,
   } = useForgeSession();
 
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<Array<{ name: string; typeLine: string; raw: Record<string, unknown> }>>([]);
   const [confirmingRestart, setConfirmingRestart] = useState(false);
+  // "Not this one" opens one-tap reasons; picking one (or "Just show me
+  // another") declines with that reason so later suggestions adapt.
+  // Keyed to the offer on screen, so a new offer closes it without an effect.
+  const [reasonsOpenFor, setReasonsOpenFor] = useState<string | null>(null);
   const acceptRef = useRef<HTMLButtonElement>(null);
   const searchSeq = useRef(0);
   const [searchState, setSearchState] = useState("idle");
@@ -117,6 +127,7 @@ export function GuidedBuildChamber() {
   const category = session ? session.categories[session.categoryIndex] : "";
   const copy = GUIDED_CATEGORY_COPY[category as keyof typeof GUIDED_CATEGORY_COPY];
   const offer = session?.offer || null;
+  const choosingReason = Boolean(offer) && reasonsOpenFor === `${session?.categoryIndex}:${offer?.name}`;
   const isLast = session ? session.categoryIndex + 1 >= session.categories.length : false;
   const struggling = (session?.declined.length || 0) >= 3;
 
@@ -124,7 +135,7 @@ export function GuidedBuildChamber() {
     <section className="commission-chamber guided-chamber">
       <div className="commission-chamber-sweep" aria-hidden="true" />
       <button className="back-link" onClick={exitGuidedBuild}>
-        ← Back to shell choice
+        ← Back
       </button>
       {/* The commission chamber's sticky heading card carries a fixed
           "YOUR BLUEPRINT" blurb in CSS; data-summary swaps in this build's
@@ -187,7 +198,7 @@ export function GuidedBuildChamber() {
                   <>
                     <img src={cardImage(offer.name)} alt={offer.name} loading="lazy" />
                     <div>
-                      <small>THE FORGE SUGGESTS</small>
+                      <small>SUGGESTED CARD</small>
                       <h2>{offer.name}</h2>
                       <em>{offer.typeLine}{offer.manaCost ? ` · ${offer.manaCost}` : ""}</em>
                       {offer.oracleText && (
@@ -196,15 +207,42 @@ export function GuidedBuildChamber() {
                           <p>{offer.oracleText}</p>
                         </details>
                       )}
+                      {session.explanation && (
+                        <dl className="guided-explanation">
+                          <div><dt>Role</dt><dd>{session.explanation.role}</dd></div>
+                          {session.explanation.worksWith.length > 0 && (
+                            <div><dt>Works with</dt><dd>{session.explanation.worksWith.join(", ")}</dd></div>
+                          )}
+                          {session.explanation.tradeOff && (
+                            <div><dt>Trade-off</dt><dd>{session.explanation.tradeOff}</dd></div>
+                          )}
+                          {session.explanation.learned.length > 0 && (
+                            <div><dt>From your choices</dt><dd>{session.explanation.learned.join("; ")}</dd></div>
+                          )}
+                        </dl>
+                      )}
                       <p className="guided-why">{describeGuidedReason(session.reason, offer.name)}</p>
                       <div className="guided-actions">
                         <button type="button" ref={acceptRef} className="guided-accept" disabled={guidedLoading || guidedBuildLocked} onClick={acceptGuidedOffer}>
                           Add to my deck
                         </button>
-                        <button type="button" disabled={guidedLoading || guidedBuildLocked} onClick={declineGuidedOffer}>
-                          Show me another
+                        <button type="button" aria-expanded={choosingReason} disabled={guidedLoading || guidedBuildLocked} onClick={() => setReasonsOpenFor(choosingReason ? null : `${session.categoryIndex}:${offer.name}`)}>
+                          Not this one
                         </button>
                       </div>
+                      {choosingReason && (
+                        <div className="guided-decline-reasons" role="group" aria-label="Why not this card?">
+                          <small>WHY NOT? THE NEXT SUGGESTIONS WILL ADAPT</small>
+                          {DECLINE_REASONS.map((reason) => (
+                            <button type="button" key={reason.id} disabled={guidedLoading || guidedBuildLocked} onClick={() => declineGuidedOffer(reason.id)}>
+                              {reason.label}
+                            </button>
+                          ))}
+                          <button type="button" className="guided-decline-skip" disabled={guidedLoading || guidedBuildLocked} onClick={() => declineGuidedOffer(null)}>
+                            Just show me another
+                          </button>
+                        </div>
+                      )}
                       {struggling && <p className="guided-hint">Not seeing it? Search for the card you want below.</p>}
                     </div>
                   </>
@@ -258,17 +296,24 @@ export function GuidedBuildChamber() {
 
               <div className="guided-nav">
                 <button type="button" className="guided-next" disabled={guidedLoading} onClick={finishGuidedCategory}>
-                  {guidedBuildLocked ? "Check saved finish" : isLast ? "Finish — the Forge fills the rest" : `Done with ${guidedCategoryLabel(category).toLowerCase()} → next`}
+                  {guidedBuildLocked ? "Check saved finish" : isLast ? "Finish — the Forge fills lands and open slots" : `Done with ${guidedCategoryLabel(category).toLowerCase()} → next`}
                 </button>
                 {!isLast && (
                   <button type="button" className="guided-skip-all" disabled={guidedLoading} onClick={() => finishGuidedBuild(true)}>
-                    Skip ahead — let the Forge finish from here
+                    Skip ahead — the Forge fills the rest
                   </button>
                 )}
               </div>
             </div>
 
             <aside className="guided-side">
+              {/* Answers apply to the very next suggestion, one at a time. */}
+              <PlayerCompassCard
+                value={playerCompass}
+                signedIn={!guestMode}
+                synced={playerCompassSynced}
+                onChange={(next) => { void persistPlayerCompass(next); }}
+              />
               <section className="guided-ledger" aria-label="Budget ledger">
                 <header>
                   <small>YOUR BUDGET SO FAR</small>

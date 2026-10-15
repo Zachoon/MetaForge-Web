@@ -15,16 +15,31 @@ test("the guided-build stylesheet is actually loaded", () => {
   assert.match(read("app/globals.css"), /@import "\.\/guided-build\.css";/);
 });
 
-test("Build launches the guided loop only for a picked shell, signed-in accounts, on the discover path", () => {
+test("Build is guided-only: every Commander build goes through the guided loop, and nothing calls the one-shot generate path", () => {
   const source = read("app/forge-session-context.tsx");
-  const awaken = source.slice(source.indexOf("const awaken = () =>"), source.indexOf("const awaken = () =>") + 900);
-  assert.match(awaken, /chamber === "commission"/);
-  assert.match(awaken, /selectedShell/);
-  assert.match(awaken, /!guestMode/);
+  const start = source.indexOf("const awaken = () =>");
+  const awaken = source.slice(start, source.indexOf("\n  };", start));
   assert.match(awaken, /isCommanderFormat\(format\)/);
-  assert.match(awaken, /!deck\.trim\(\)/);
-  // Guests and shell-less builds must still reach the untouched one-shot path.
-  assert.match(awaken, /const seed = Date\.now\(\);/);
+  assert.match(awaken, /if \(guestMode\) \{\s*window\.location\.assign\(signInResumeHref\);/);
+  assert.match(awaken, /startGuidedBuild\(deck\.trim\(\) \? \{ seedDeck: deck \} : \{\}\)/);
+  assert.doesNotMatch(awaken, /commitDirectForge|setChamber\("forging"\)/);
+  // The only remaining commitDirectForge caller is the guided finish.
+  const callers = [...source.matchAll(/await commitDirectForge\(|void commitDirectForge\(/g)];
+  assert.equal(callers.length, 1);
+  assert.match(source, /await commitDirectForge\([^)]*guided: true/);
+});
+
+test("guided/next carries the learning signals and adopts the server's step order", () => {
+  const client = read("app/forge-session-context.tsx");
+  const next = client.slice(client.indexOf("async function requestGuidedOffer"), client.indexOf("const trackGuidedStep"));
+  for (const field of ["declineFeedback:", "playerCompass,", "categories: next.categories,", "categoryIndex: next.categoryIndex,"]) {
+    assert.ok(next.includes(field), `guided/next must send ${field}`);
+  }
+  assert.match(next, /data\.categoryOrder/);
+  const worker = read("worker/forge-guided-build.ts");
+  assert.match(worker, /sanitizeDeclineFeedback\(body\?\.declineFeedback/);
+  assert.match(worker, /preferenceProfile,\n    \},/);
+  assert.match(worker, /orderRemainingCategories\(clientOrder, categoryIndex/);
 });
 
 test("the imported branch of commitDirectForge reads the override text, never a stale deck state, and only guided finishes carry the shell", () => {
@@ -56,7 +71,7 @@ test("worker routes both guided endpoints and validates focusPackageId against t
 
 test("the guided build carries the player's existing budget/price/commons/strategy preferences end to end", () => {
   const client = read("app/forge-session-context.tsx");
-  const start = client.slice(client.indexOf("async function startGuidedBuild()"), client.indexOf("async function requestGuidedOffer"));
+  const start = client.slice(client.indexOf("async function startGuidedBuild("), client.indexOf("async function requestGuidedOffer"));
   for (const field of ["strategy,", "complexity,", "budget,", "maxCardPrice,", "commonsOnly,"]) {
     assert.ok(start.includes(field), `startGuidedBuild must send ${field}`);
   }

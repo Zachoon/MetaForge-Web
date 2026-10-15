@@ -52,8 +52,6 @@ export function CommissionChamber() {
     deck,
     setDeck,
     guestMode,
-    turnstileToken,
-    verificationRequested,
     runWhenVerified,
     revealOccupancyLabels,
     shellOptions,
@@ -499,7 +497,7 @@ export function CommissionChamber() {
                 <span>{shellDisplay(selectedShell).blurb}</span>
                 <small>
                   {guestMode
-                    ? "The Forge will build your deck around this shell."
+                    ? "Sign in and you'll build this deck together, one step at a time — the Forge suggests, you decide."
                     : "You'll build this deck together, one step at a time — the Forge suggests, you decide."}
                 </small>
               </article>
@@ -519,9 +517,7 @@ export function CommissionChamber() {
                   ))}
                 </div>
                 <p className="shell-options-skip-note">
-                  {guestMode
-                    ? `Skip this and the Forge builds toward every shell ${selectedCommander.name} supports at once.`
-                    : `Pick one to build step by step with the Forge — or skip, and it builds the whole deck at once toward every shell ${selectedCommander.name} supports.`}
+                  {`Pick one to focus the suggestions — or skip, and you'll still build step by step, with suggestions drawn from every shell ${selectedCommander.name} supports.`}
                 </p>
               </>
             )}
@@ -530,37 +526,41 @@ export function CommissionChamber() {
         <button
           className="awaken-button"
           data-block-reason={
-            isCommanderFormat(format) && !selectedCommander
-              ? "commander"
-              : chamber === "refine" && !deck.trim()
-                ? "deck"
-                : ""
+            !isCommanderFormat(format)
+              ? "format"
+              : !selectedCommander
+                ? "commander"
+                : chamber === "refine" && !deck.trim()
+                  ? "deck"
+                  : ""
           }
           disabled={
+            !isCommanderFormat(format) ||
             (chamber === "refine" && !deck.trim()) ||
-            (isCommanderFormat(format) && !selectedCommander)
+            !selectedCommander
           }
-          // Guests confirm they're human only now, at the moment they build;
-          // the ceremony starts once verification returns a token.
+          // Every build is guided now: the Forge walks through each choice
+          // with the player instead of building the whole deck at once.
+          // Guests sign in first, so no human check is needed here.
           onClick={() => runWhenVerified("awaken")}
         >
           <span>
-            {isCommanderFormat(format) && !selectedCommander
-              ? "Choose a legal commander to continue"
-              : guestMode && verificationRequested && !turnstileToken
-                ? "Confirm you're human below and your build starts"
+            {!isCommanderFormat(format)
+              ? "Guided building supports Commander formats for now"
+              : !selectedCommander
+                ? "Choose a legal commander to continue"
                 : guestMode
-                  ? "One free build · no account needed"
-                  : "Your choices are ready"}
+                  ? "Sign in to save your picks as you go"
+                  : isComplete || isScratch
+                    ? "Keeps your cards and walks through what's missing"
+                    : "One card at a time, with a reason for each"}
           </span>
           <strong>
-            {isScratch
-              ? "COMPLETE THIS DECK"
-              : isComplete
-                ? "COMPLETE MY DECKLIST"
-                : chamber === "commission" && selectedShell && !guestMode && isCommanderFormat(format)
-                  ? "BUILD IT TOGETHER"
-                  : "BUILD MY DECK"}
+            {guestMode
+              ? "SIGN IN AND BUILD TOGETHER"
+              : isComplete || isScratch
+                ? "REVIEW MY LIST TOGETHER"
+                : "BUILD IT TOGETHER"}
           </strong>
           <b>→</b>
         </button>

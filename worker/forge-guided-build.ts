@@ -21,6 +21,13 @@ import { flattenAnalyzedEntries } from "../app/guided-build-rows.mjs";
 import { POWER_TIERS, powerSignalCategoryFor } from "../app/commander-power-signal.mjs";
 import { STRATEGIC_PACKAGE_IDS } from "../app/strategic-intent.mjs";
 import {
+  buildPreferenceProfile,
+  explainOffer,
+  orderRemainingCategories,
+  sanitizeDeclineFeedback,
+} from "../app/guided-preference-learning.mjs";
+import { normalizePlayerCompass } from "../app/player-compass.mjs";
+import {
   ALLOWED_FORMATS,
   MAX_ORACLE_TEXT,
   MAX_SHORT_STRING,
@@ -95,6 +102,28 @@ function validateFocusPackageId(value: unknown): value is string {
 
 const normalizeKey = (name: string) => name.normalize("NFKC").trim().toLocaleLowerCase("en");
 
+// Learning signals the client resends in full on every request (the same
+// stateless contract as acceptedNames/declinedNames): why each card was
+// declined, the Player Compass answers given so far (partial answers count
+// immediately), and the player's current step order.
+type DeclineFeedback = ReturnType<typeof sanitizeDeclineFeedback>;
+interface LearningInput {
+  declineFeedback: DeclineFeedback;
+  compass: ReturnType<typeof normalizePlayerCompass> | null;
+}
+function sanitizeCompass(raw: unknown) {
+  return raw && typeof raw === "object" ? normalizePlayerCompass(raw) : null;
+}
+function sanitizeCategoryOrder(raw: unknown): string[] | null {
+  if (!Array.isArray(raw) || raw.length !== CATEGORY_SEQUENCE.length) return null;
+  const seen = new Set<string>();
+  for (const entry of raw) {
+    if (!validateCategory(entry) || seen.has(entry)) return null;
+    seen.add(entry);
+  }
+  return raw as string[];
+}
+
 /**
  * Re-runs analyzeForgePool against a cached raw pool and computes one
  * suggestion for the requested category. Shared by start (fresh pool) and
@@ -120,6 +149,7 @@ function computeOffer(
   declinedNames: string[],
   cacheKey?: string,
   manualCards: any[] = [],
+  learning: LearningInput = { declineFeedback: [], compass: null },
 ) {
   // Manual search finds cards outside the pool loadNativeForgePool fetched
   // (a Scryfall search is popularity-ordered and capped in size). Without
@@ -148,6 +178,13 @@ function computeOffer(
   const partialRows = acceptedNames
     .map((name) => analyzedByName.get(normalizeKey(name)))
     .filter((entry): entry is any => Boolean(entry));
+  // Decline reasons only shape ranking; the declined card itself is still
+  // excluded through declinedNames exactly as before.
+  const preferenceProfile = buildPreferenceProfile({
+    acceptedRows: partialRows,
+    declined: learning.declineFeedback.map((entry) => ({ row: analyzedByName.get(normalizeKey(entry.name)) || null, reason: entry.reason })),
+    compass: learning.compass,
+  });
   const suggestion = suggestCardForCategory({
     category,
     partialRows,
@@ -159,6 +196,7 @@ function computeOffer(
       budgetConstraint: input.budget === "Budget conscious",
       powerConstraint: input.targetPowerTier === "Casual",
       powerSignalCategoryFor,
+      preferenceProfile,
     },
   } as any);
   const ledger = buildCategoryBudgetLedger(
@@ -170,7 +208,14 @@ function computeOffer(
     // which alone outsized the deck's own land count.
     { targetPowerTier: input.targetPowerTier, deckTarget: targetDeckSize(input.format) },
   );
-  return { suggestion, ledger, analysis };
+  const explanation = explainOffer({
+    offer: suggestion.offer,
+    category,
+    acceptedRows: partialRows,
+    nearestAlternative: suggestion.reason?.nearestAlternative || null,
+    adjustment: suggestion.adjustment || null,
+  });
+  return { suggestion, ledger, analysis, preferenceProfile, explanation };
 }
 
 // Analysis (classifying ~1000 cards) costs ~200ms and is identical for every
@@ -213,10 +258,14 @@ function serializeLedger(ledger: ReturnType<typeof buildCategoryBudgetLedger>) {
 function serializeOffer(
   suggestion: ReturnType<typeof suggestCardForCategory>,
   ledger: ReturnType<typeof buildCategoryBudgetLedger>,
+  explanation: ReturnType<typeof explainOffer> = null,
+  categoryOrder: string[] | null = null,
 ) {
   const card = suggestion.offer?.card || suggestion.offer;
   return {
     ledger: serializeLedger(ledger),
+    explanation,
+    categoryOrder,
     category: suggestion.category,
     exhausted: suggestion.exhausted,
     remainingCandidates: suggestion.remainingCandidates,
@@ -275,13 +324,27 @@ export async function handleForgeGuidedStart(request: Request, env: Env): Promis
     ? body.maxCardPrice
     : undefined;
   const commonsOnly = body?.commonsOnly === true;
+  // A pasted partial list starts a guided review: its cards are kept as the
+  // player's picks and the walk-through covers the roles still open.
+  const seedNames = sanitizeNameList(body?.seedNames, MAX_ROWS);
+  const compass = sanitizeCompass(body?.playerCompass);
   void MAX_ORACLE_TEXT; // sanitizeCommander already enforces this internally.
 
   try {
     const counter: ScryfallCounter = { count: 0 };
     const pool = await loadNativeForgePool(body.format, commander, "", note, secondCommander, counter);
     const input = { format: body.format, commander, secondCommander, note, focusPackageId, targetPowerTier, strategy, complexity, budget, maxCardPrice, commonsOnly };
-    const { suggestion, ledger, analysis } = computeOffer(pool.cards, input, CATEGORY_SEQUENCE[0], [], []);
+    const learning = { declineFeedback: [], compass };
+    // Order the steps before choosing the first one, so a pasted list that
+    // already covers ramp opens on whatever it is actually missing.
+    const probe = computeOffer(pool.cards, input, CATEGORY_SEQUENCE[0], seedNames, [], undefined, [], learning);
+    const categoryOrder = orderRemainingCategories([...CATEGORY_SEQUENCE], -1, {
+      ledger: serializeLedger(probe.ledger),
+      profile: probe.preferenceProfile,
+    });
+    const { suggestion, ledger, analysis, explanation } = categoryOrder[0] === CATEGORY_SEQUENCE[0]
+      ? probe
+      : computeOffer(pool.cards, input, categoryOrder[0], seedNames, [], undefined, [], learning);
 
     const generationId = await storeGeneration(env, key, {
       selected: null,
@@ -301,7 +364,7 @@ export async function handleForgeGuidedStart(request: Request, env: Env): Promis
     }
     cacheAnalysis(generationId, analysis);
 
-    return json({ generationId, colors: pool.colors, categorySequence: CATEGORY_SEQUENCE, ...serializeOffer(suggestion, ledger) });
+    return json({ generationId, colors: pool.colors, categorySequence: categoryOrder, seedNames, ...serializeOffer(suggestion, ledger, explanation, categoryOrder) });
   } catch (error) {
     console.error("forge-guided-start failed", error);
     return json({ error: "The guided Build could not be started." }, 500);
@@ -332,6 +395,12 @@ export async function handleForgeGuidedNext(request: Request, env: Env): Promise
   const acceptedNames = sanitizeNameList(body?.acceptedNames, MAX_ROWS);
   const declinedNames = sanitizeNameList(body?.declinedNames, MAX_ROWS);
   const manualCards = sanitizeManualCards(body?.manualCards);
+  const declineFeedback = sanitizeDeclineFeedback(body?.declineFeedback, { max: MAX_ROWS, maxName: MAX_ROW_NAME });
+  const compass = sanitizeCompass(body?.playerCompass);
+  const clientOrder = sanitizeCategoryOrder(body?.categories);
+  const categoryIndex = Number.isInteger(body?.categoryIndex) && clientOrder && clientOrder[body.categoryIndex] === body.category
+    ? body.categoryIndex
+    : null;
 
   const generation = await loadGeneration(env, key, generationId);
   if (!generation.ok) {
@@ -366,8 +435,17 @@ export async function handleForgeGuidedNext(request: Request, env: Env): Promise
       commonsOnly: Boolean(forgeInput.commonsOnly),
     };
     // generation.ok above already proved this caller owns generationId.
-    const { suggestion, ledger } = computeOffer(stored.cardPool, input, body.category, acceptedNames, declinedNames, generationId, manualCards);
-    return json(serializeOffer(suggestion, ledger));
+    const { suggestion, ledger, explanation, preferenceProfile } = computeOffer(
+      stored.cardPool, input, body.category, acceptedNames, declinedNames, generationId, manualCards,
+      { declineFeedback, compass },
+    );
+    // Only the steps after the current one are reordered, and only when the
+    // client told us its order and position; older clients get null and
+    // keep their fixed sequence.
+    const categoryOrder = clientOrder && categoryIndex !== null
+      ? orderRemainingCategories(clientOrder, categoryIndex, { ledger: serializeLedger(ledger), profile: preferenceProfile })
+      : null;
+    return json(serializeOffer(suggestion, ledger, explanation, categoryOrder));
   } catch (error) {
     console.error("forge-guided-next failed", error);
     return json({ error: "The guided Build could not continue for this session." }, 500);

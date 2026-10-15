@@ -1518,7 +1518,7 @@ export function WorkbenchChamber() {
                       </a>
                     )}
                     <button onClick={() => runWhenVerified("retry")}>
-                      Strike the Anvil Again
+                      Try again
                     </button>
                   </div>
                 </>
@@ -1547,7 +1547,7 @@ export function WorkbenchChamber() {
                     </p>
                   )}
                   <button onClick={() => runWhenVerified("retry")}>
-                    Strike the Anvil Again
+                    Try again
                   </button>
                 </>
               )}

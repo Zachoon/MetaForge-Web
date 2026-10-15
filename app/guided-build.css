@@ -37,6 +37,17 @@
 .guided-actions button.guided-accept{border-color:#5fc9b6;background:#163027;color:#e8fff8;font-weight:700}
 .guided-actions button:hover:not(:disabled),.guided-actions button:focus-visible{outline:0;border-color:#5fc9b6}
 .guided-actions button:disabled{opacity:.55}
+.guided-explanation{display:grid;gap:4px;margin:12px 0 0;font-size:13px;line-height:1.4}
+.guided-explanation div{display:grid;grid-template-columns:120px 1fr;gap:8px}
+.guided-explanation dt{color:#8fa59e;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.guided-explanation dd{margin:0;color:#dce5e1}
+.guided-decline-reasons{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;padding:10px;border:1px solid #33433e}
+.guided-decline-reasons small{flex-basis:100%;color:#8fa59e;font-size:10px;letter-spacing:.08em}
+.guided-decline-reasons button{padding:7px 11px;border:1px solid #52655f;background:transparent;color:#dce5e1;font-size:12px}
+.guided-decline-reasons button:hover:not(:disabled),.guided-decline-reasons button:focus-visible{outline:0;border-color:#5fc9b6}
+.guided-decline-reasons button.guided-decline-skip{border-style:dashed}
+.guided-decline-reasons button:disabled{opacity:.55}
+@media (max-width:640px){.guided-explanation div{grid-template-columns:1fr;gap:0}}
 .guided-hint{margin:10px 0 0;color:#c9b89a;font-size:12px}
 .guided-empty{grid-column:1/-1}
 .guided-empty h2{margin:0 0 6px;font:600 20px Newsreader,Georgia,serif;color:#e2e9e6}

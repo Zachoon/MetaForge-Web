@@ -1,5 +1,25 @@
 # MetaForge Changelog
 
+## 2026-10-14 — Build It Together
+
+### Every build is guided; the Forge no longer builds a whole deck in one click
+
+- Picking a commander (with or without a shell) always starts the guided, card-by-card build. The one-shot "build my deck" path is no longer reachable from the UI; the generate endpoints stay in place server-side.
+- "Complete a decklist" is now a guided review: the pasted cards are kept as picks, and the walk-through opens on the roles the list leaves open.
+- Guests are asked to sign in before building (the guided loop is account-backed), so the "one free Forge" preview is no longer offered.
+
+### Suggestions explain themselves and learn from you
+
+- Each suggestion shows its role, which of your picks it works with, and its main trade-off.
+- "Not this one" offers one-tap reasons (wrong plan, too expensive, too strong for my table, not my style, I have a better card). Reasons and accepted cards re-rank later suggestions and reorder the steps you have not reached yet.
+- Player Compass answers apply as soon as each one is given, and the Compass is available inside the guided build.
+
+### A calmer homepage
+
+- One primary action: "Start with your commander". Reviewing a partial list and opening an empty list are secondary links.
+- The version tag moved into the menu (now labelled "Menu"), alongside text size and motion.
+- The human check (Turnstile) loads only when a guest starts something that needs it.
+
 ## 2026-08-10 — Strategy Reliability
 
 ### Functional decks now outrank impressive-looking piles
