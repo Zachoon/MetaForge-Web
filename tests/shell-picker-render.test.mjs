@@ -75,8 +75,10 @@ test("with a commander chosen, an account sees each shell by plain name and desc
   assert.match(html, /Build around a creature type/);
   assert.match(html, /<b>Counters<\/b>/);
   assert.doesNotMatch(html, /Typal package|Counters-matter package|core pieces/);
-  assert.match(html, /Pick one to build step by step with the Forge — or skip/);
-  assert.match(html, /BUILD MY DECK/);
+  assert.match(html, /Pick one to focus the suggestions — or skip/);
+  // Guided-only: even without a shell the button builds together, never all at once.
+  assert.match(html, /BUILD IT TOGETHER/);
+  assert.doesNotMatch(html, /BUILD MY DECK|builds the whole deck at once/);
 });
 
 test("picking a shell tells an account the build is step by step and relabels the button", () => {
@@ -87,12 +89,11 @@ test("picking a shell tells an account the build is step by step and relabels th
   assert.doesNotMatch(html, /shell-options-grid/);
 });
 
-test("a guest with a shell is told the Forge builds around it, and never promised step-by-step", () => {
+test("a guest with a shell is asked to sign in for the step-by-step build, never offered a one-click build", () => {
   const html = render(context({ guestMode: true, selectedShell: shells[0] }));
-  assert.match(html, /The Forge will build your deck around this shell/);
-  assert.doesNotMatch(html, /one step at a time/);
-  assert.doesNotMatch(html, /BUILD IT TOGETHER/);
-  assert.match(html, /BUILD MY DECK/);
+  assert.match(html, /Sign in and you(?:'|&#x27;)ll build this deck together, one step at a time/);
+  assert.match(html, /SIGN IN AND BUILD TOGETHER/);
+  assert.doesNotMatch(html, /BUILD MY DECK|One free build/);
 });
 
 test("no picker at all when the commander supports no shells, or on the paste-a-list path", () => {

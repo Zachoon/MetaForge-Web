@@ -2,6 +2,7 @@ import { prospectiveSlotDelta, buildLiveDeficitState } from "./prospective-slot-
 import { cardSatisfiesPackageCore, cardSatisfiesPackageSupport } from "./strategic-intent.mjs";
 import { isWinConditionCard } from "./fundamentals-target-table.mjs";
 import { TRACKED_ROLES } from "./slot-justification-ledger.mjs";
+import { preferenceAdjustment } from "./guided-preference-learning.mjs";
 
 // =============================================================================
 // Guided Suggestion
@@ -169,17 +170,22 @@ export function suggestCardForCategory({
   });
 
   if (!eligible.length) {
-    return Object.freeze({ category, offer: null, delta: null, reason: null, exhausted: true, remainingCandidates: 0 });
+    return Object.freeze({ category, offer: null, delta: null, adjustment: null, reason: null, exhausted: true, remainingCandidates: 0 });
   }
 
   const scored = eligible
     .map((candidate) => {
       const delta = prospectiveSlotDelta(partialRows, candidate, intent, scoringOptions);
+      // What the player has taught this session (accepts, decline reasons,
+      // Player Compass answers): a capped nudge on top of the same rank,
+      // never a filter. No profile means exactly the previous ordering.
+      const adjustment = preferenceAdjustment(candidate, options.preferenceProfile || null);
       return Object.freeze({
         candidate,
         delta,
+        adjustment,
         tier: roleTier(candidate, category),
-        rank: focusedScore(category, candidate, delta),
+        rank: round(focusedScore(category, candidate, delta) + adjustment.delta),
       });
     })
     // delta.name is prospectiveSlotDelta's own already-unwrapped entryName,
@@ -191,6 +197,7 @@ export function suggestCardForCategory({
     category,
     offer: best.candidate,
     delta: best.delta,
+    adjustment: best.adjustment,
     reason: Object.freeze({
       deficitsFilled: reasonTagsFor(category, best.delta),
       topPositive: topPositiveOf(category, best.delta),

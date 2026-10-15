@@ -490,9 +490,9 @@ export default function Home() {
         <mark />
         <q />
       </div>
-      {/* Stays mounted so Turnstile can verify quietly in the background;
-          it only becomes visible once a guest asks to build without a token. */}
-      {guestMode && !forgedDeck && !pendingCandidateChoice && (
+      {/* Mounted only when a guest starts something that needs a human
+          check, so the homepage never loads or shows Turnstile up front. */}
+      {guestMode && verificationRequested && !forgedDeck && !pendingCandidateChoice && (
         <aside
           className={`guest-forge-pass${turnstileToken ? " verified" : ""}${verificationRequested ? "" : " dormant"}`}
           aria-label="Free Forge preview verification"
@@ -500,8 +500,8 @@ export default function Home() {
           inert={!verificationRequested}
         >
           <div>
-            <small>ONE FREE FORGE · NO ACCOUNT REQUIRED</small>
-            <b>{turnstileToken ? "The Forge is ready for you." : "Confirm you’re human and your build starts right away."}</b>
+            <small>QUICK HUMAN CHECK</small>
+            <b>{turnstileToken ? "Thanks, you’re verified." : "Confirm you’re human to continue."}</b>
             {turnstileError ? <p className="guest-turnstile-error" role="alert">{turnstileError}</p> : null}
           </div>
           <div
@@ -558,14 +558,14 @@ export default function Home() {
           </span>
         </button>
         <nav className="forge-global-nav" aria-label="MetaForge workspace">
-          <button type="button" className={chamber === "entrance" ? "active" : ""} onClick={() => setChamber("entrance")}>Explore</button>
+          <button type="button" className={chamber === "entrance" ? "active" : ""} onClick={() => setChamber("entrance")}>Home</button>
           {/* Only offer destinations that work right now: a visitor's first
               look shouldn't be a row of disabled buttons. */}
           {hasValidatedDeck && <button type="button" onClick={openDeepForgeEvidence}>Evidence</button>}
           <a href="/decks">Community</a>
         </nav>
         <details className="forge-menu">
-          <summary><i>✦</i><span>Forgemaster</span><b>⌄</b></summary>
+          <summary><i>✦</i><span>Menu</span><b>⌄</b></summary>
           <div>
             <section aria-label="Text size">
               <small>TEXT SIZE</small>
@@ -578,6 +578,7 @@ export default function Home() {
             <button type="button" onClick={() => setMotionMode((current) => current === "full" ? "quiet" : "full")}>{motionMode === "full" ? "Reduce motion" : "Use full motion"}</button>
             <IdentityBadge depth={playerIdentity.depth} totalMilestones={playerIdentity.allMilestones.length} dominantMotif={playerIdentity.dominantMotif} accent={playerIdentity.accent} celebrating={Boolean(identityCelebration)} celebrationLabel={identityCelebration?.label ?? null} />
             <button type="button" onClick={() => setChamber("entrance")}>Start a new deck</button>
+            <p className="forge-menu-version" aria-label="MetaForge version 2.1.0">MetaForge v2.1.0</p>
             <nav aria-label="Learn, legal, and support"><a href="/commanders">Commander Guides</a><a href="/academy">Deckbuilding Academy</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="mailto:support@metaforge.gg">Support</a></nav>
           </div>
         </details>
@@ -606,7 +607,6 @@ export default function Home() {
         {hasValidatedDeck && !guestMode && <button type="button" disabled={!publicReportSourceKey || publicReportStatus === "publishing"} onClick={() => publicReportUrl && publicReportGenerationId === publicReportSourceKey ? void navigator.clipboard.writeText(publicReportUrl) : setPublicReportPromptOpen(true)}><i>⌁</i><span>{publicReportStatus === "publishing" ? "Publishing" : publicReportStatus === "ready" && publicReportGenerationId === publicReportSourceKey ? "Link copied" : "Share"}</span></button>}
         {hasValidatedDeck && <button type="button" className="forge-rail-settings" onClick={() => { setMasterworkIdentityDraft(masterworkIdentity); setMasterworkIdentityOpen(true); }}><i>⚙</i><span>Settings</span></button>}
         <div className="forge-rail-embers" aria-hidden="true"><i /><i /><i /></div>
-        <div className="forge-rail-version" aria-label="MetaForge version 2.1.0"><i>MF</i><span>v2.1.0</span></div>
       </aside>
       <aside className="forge-card-rail" aria-label="Card preview">
         <div className="forge-card-mold" aria-label={activeCard ? `Card preview: ${activeCard}` : "Card preview"}>

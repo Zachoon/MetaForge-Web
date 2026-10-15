@@ -147,7 +147,7 @@ test("the workbench's own UI success/failure boundary: a hasValidatedDeck predic
 test("a failed generation surfaces a dedicated failure state that confirms the preview was not used, never a 0-card success", () => {
   assert.match(workbenchChamber, /className="forge-generation-failure" role="alert"/);
   assert.match(workbenchChamber, /No incomplete deck was saved\./);
-  assert.match(workbenchChamber, /Strike the Anvil Again/);
+  assert.match(workbenchChamber, /Try again/);
 });
 
 // P0 follow-up: a real screenshot showed "YOUR COMPLETE DECK · READY TO

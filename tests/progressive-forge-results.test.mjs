@@ -228,11 +228,11 @@ test("a pasted decklist reveals its complete deck immediately; a fresh build nev
 
 // The Aug 31 entrance split replaced the three-step setup wizard with three
 // explicit starting points, each a single focused screen.
-test("turns new-deck setup into three explicit starting paths", () => {
+test("turns new-deck setup into three explicit starting paths, led by one primary action", () => {
   assert.match(forgeTypes, /export type BuildPath = "scratch" \| "complete" \| "discover";/);
-  assert.match(entranceChamber, /title="Start from scratch"/);
-  assert.match(entranceChamber, /title="Complete a decklist"/);
-  assert.match(entranceChamber, /title="Discover a deck"/);
+  assert.match(entranceChamber, /title="Start with your commander"/);
+  assert.match(entranceChamber, /Have a partial list\? Review it step by step/);
+  assert.match(entranceChamber, /Open an empty decklist/);
   for (const path of ["scratch", "complete", "discover"]) {
     assert.match(entranceChamber, new RegExp(`setBuildPath\\("${path}"\\)`));
   }
@@ -253,15 +253,17 @@ test("keeps the global header focused and moves secondary controls into one menu
   assert.doesNotMatch(page, /className="forge-steps"/);
   assert.doesNotMatch(page, /furthestCommissionStep/);
   assert.match(page, /className="forge-menu"/);
-  // The menu is labelled with the player's Forgemaster identity, and holds
-  // text size, motion, identity, and new-deck controls. The guided tour it
-  // used to replay was removed as outdated (Aug 17).
-  assert.match(page, /<summary><i>✦<\/i><span>Forgemaster<\/span><b>⌄<\/b><\/summary>/);
+  // The menu has a plain label and holds text size, motion, identity,
+  // new-deck controls, and the version tag. The guided tour it used to
+  // replay was removed as outdated (Aug 17).
+  assert.match(page, /<summary><i>✦<\/i><span>Menu<\/span><b>⌄<\/b><\/summary>/);
   const menu = page.match(/<details className="forge-menu">[\s\S]*?<\/details>/)?.[0];
   assert.ok(menu, "expected the header menu");
   assert.match(menu, /aria-label="Text size"/);
   assert.match(menu, /Reduce motion/);
   assert.match(menu, /Start a new deck/);
+  assert.match(menu, /MetaForge v2\.1\.0/);
+  assert.doesNotMatch(page, /className="forge-rail-version"/);
   assert.doesNotMatch(page, /Replay guided tour/);
 });
 

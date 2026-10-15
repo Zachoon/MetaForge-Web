@@ -38,7 +38,7 @@ test("the mockup navigation frame is site-level rather than deck-only", async ()
   assert.doesNotMatch(page, />Premium<\/button>/);
   assert.doesNotMatch(page, /className="coming-soon" disabled/);
   assert.doesNotMatch(page, /className="forge-global-search"/);
-  assert.equal([...page.matchAll(/>Explore<\/button>/g)].length, 1);
+  assert.equal([...page.matchAll(/>Home<\/button>/g)].length, 1);
   assert.equal([...page.matchAll(/<span>Decklist<\/span>/g)].length, 1);
   assert.doesNotMatch(page, /className="masterwork-shell-top"/);
   assert.doesNotMatch(page, /className="masterwork-shell-rail"/);

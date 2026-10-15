@@ -114,10 +114,18 @@ before(async () => {
   handlers = await import(pathToFileURL(outfile).href);
   env = { DB: fakeD1() };
   const pool = fakeScryfallPool();
-  globalThis.fetch = async (url) => {
+  globalThis.fetch = async (url, init) => {
     const target = String(url);
     if (target.includes("api.scryfall.com/cards/search")) {
       return new Response(JSON.stringify({ data: pool, has_more: false }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+    if (target.includes("api.scryfall.com/cards/collection")) {
+      let identifiers = [];
+      try { identifiers = JSON.parse(init?.body || "{}").identifiers || []; } catch { identifiers = []; }
+      const data = identifiers
+        .filter((entry) => String(entry?.name || "").toLowerCase() === "obscure signet")
+        .map(() => raw("Obscure Signet", "Artifact", "{T}: Add one mana of any color.", 2));
+      return new Response(JSON.stringify({ data, not_found: [] }), { status: 200, headers: { "content-type": "application/json" } });
     }
     return new Response(JSON.stringify({ data: [] }), { status: 200, headers: { "content-type": "application/json" } });
   };
@@ -232,6 +240,22 @@ test("the in-isolate analysis cache never changes an answer: repeated and interl
   assert.deepEqual(againRamp, firstRamp, "a later identical request must return the identical answer");
   assert.deepEqual(againWithPicks, withPicks);
   assert.deepEqual(started.offer, firstRamp.offer, "start's first offer equals next's for the same state");
+});
+
+test("a pasted seed the popularity pool missed still counts on start and on the next click", async () => {
+  const started = await (await post(handlers.handleForgeGuidedStart, startBody({ seedNames: ["Obscure Signet"] }), "seed-user")).json();
+  assert.equal(started.ledger.find((row) => row.category === "ramp").actual, 1, "the resolved seed must count toward its role");
+  const stored = JSON.parse(env.DB.rows.get(started.generationId).payload_json);
+  assert.ok(stored.cardPool.some((card) => card.name === "Obscure Signet"), "the seed is stored with the pool");
+  const next = await (await post(handlers.handleForgeGuidedNext, {
+    generationId: started.generationId,
+    category: "ramp",
+    acceptedNames: ["Obscure Signet"],
+    declinedNames: [],
+    categories: started.categorySequence,
+    categoryIndex: 0,
+  }, "seed-user")).json();
+  assert.equal(next.ledger.find((row) => row.category === "ramp").actual, 1, "a later click must still count the seed without another lookup");
 });
 
 test("a card found by manual search outside the pool registers in the ledger, survives caching, and reaches the finished deck", async () => {

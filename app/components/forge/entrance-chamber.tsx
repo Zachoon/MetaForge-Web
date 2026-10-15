@@ -33,48 +33,15 @@ export function EntranceChamber() {
           <br />
           <em>Build with confidence.</em>
         </h1>
-        <p>Choose how you want to begin. The Forge only asks for what this deck needs, and if you tell it how you like to play below, it tailors every build to you.</p>
-        <div className="entrance-actions">
+        <p>Pick your commander and we&rsquo;ll build the deck together, one card or package at a time, with a reason for every suggestion. Tell us how you like to play below and the suggestions adapt as you go.</p>
+        {/* One primary action. Every path is guided: the Forge never builds a
+            whole deck in one click. */}
+        <div className="entrance-actions entrance-actions-primary">
           <ForgeCommissionCard
-            eyebrow="EMPTY WORKSPACE"
-            title="Start from scratch"
-            description="Open a clean decklist, search for cards, and add them as you go."
-            cta="Open deck builder →"
-            tone="ember"
-            motionMode={motionMode}
-            onActivate={() => {
-              setDeck("");
-              setReviewFocus("");
-              setSelectedCommander(null);
-              setSelectedSecondCommander(null);
-              setCommanderQuery("");
-              setBuildStep(0);
-              setBuildPath("scratch");
-              setChamber("refine");
-            }}
-          />
-          <ForgeCommissionCard
-            eyebrow="BRING WHAT YOU HAVE"
-            title="Complete a decklist"
-            description="Paste a full or partial list. The Forge will preserve its direction and fill the open slots."
-            cta="Import decklist →"
-            tone="teal"
-            motionMode={motionMode}
-            onActivate={() => {
-              setDeck("");
-              setReviewFocus("");
-              setSelectedCommander(null);
-              setSelectedSecondCommander(null);
-              setCommanderQuery("");
-              setBuildPath("complete");
-              setChamber("refine");
-            }}
-          />
-          <ForgeCommissionCard
-            eyebrow="HELP ME CHOOSE"
-            title="Discover a deck"
-            description="Pick a format and commander—or ask the Forge to find one that fits you."
-            cta="Discover my deck →"
+            eyebrow="GUIDED DECK BUILDING"
+            title="Start with your commander"
+            description="Choose a commander, then pick each card with the coach. It explains every suggestion and learns from what you keep or skip."
+            cta="Start with your commander →"
             tone="ember"
             motionMode={motionMode}
             onActivate={() => {
@@ -88,6 +55,37 @@ export function EntranceChamber() {
               setChamber("commission");
             }}
           />
+        </div>
+        <div className="entrance-secondary">
+          <button
+            type="button"
+            onClick={() => {
+              setDeck("");
+              setReviewFocus("");
+              setSelectedCommander(null);
+              setSelectedSecondCommander(null);
+              setCommanderQuery("");
+              setBuildPath("complete");
+              setChamber("refine");
+            }}
+          >
+            Have a partial list? Review it step by step
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setDeck("");
+              setReviewFocus("");
+              setSelectedCommander(null);
+              setSelectedSecondCommander(null);
+              setCommanderQuery("");
+              setBuildStep(0);
+              setBuildPath("scratch");
+              setChamber("refine");
+            }}
+          >
+            Open an empty decklist
+          </button>
         </div>
         <PlayerCompassCard
           value={playerCompass}
@@ -135,7 +133,7 @@ export function EntranceChamber() {
         </div>
         <p>
           A DECK COACH FOR EVERY FORMAT
-          <small>Complete deck first. Clear reasons second.</small>
+          <small>One card at a time. A reason for every pick.</small>
         </p>
       </div>
     </section>

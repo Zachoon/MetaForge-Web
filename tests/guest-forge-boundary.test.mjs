@@ -133,7 +133,9 @@ test("the Forge trigger (awaken) and its retry only run in guest mode once a liv
 
   const gate = context.match(/function runWhenVerified\(action: VerifiedAction\) \{[\s\S]*?\n  \}/)?.[0];
   assert.ok(gate, "expected the runWhenVerified gate");
-  assert.match(gate, /if \(!guestMode \|\| turnstileToken\) \{\s*verifiedActionsRef\.current\[action\]\(\);\s*return;\s*\}/, "only a live token (or an account) runs the action now");
+  // awaken never spends a token now (every build is guided and guests are
+  // sent to sign in), so only retry waits for verification.
+  assert.match(gate, /if \(!guestMode \|\| turnstileToken \|\| action === "awaken"\) \{\s*verifiedActionsRef\.current\[action\]\(\);\s*return;\s*\}/, "only a live token, an account, or the token-free awaken runs the action now");
   assert.match(gate, /pendingVerifiedActionRef\.current = action;\s*setVerificationRequested\(true\);/, "without a token the action waits and the panel appears");
   assert.match(
     context,
@@ -145,13 +147,10 @@ test("the Forge trigger (awaken) and its retry only run in guest mode once a liv
   assert.ok(awakenBlock, "expected to find the awaken-button block");
   assert.match(awakenBlock, /onClick=\{\(\) => runWhenVerified\("awaken"\)\}/, "awaken must go through the verification gate");
   assert.doesNotMatch(awakenBlock, /onClick=\{awaken\}/);
-  assert.match(
-    awakenBlock,
-    /guestMode && verificationRequested && !turnstileToken\s*\n\s*\? "Confirm you're human below and your build starts"/,
-    "while waiting, the button's own status text must say what's happening",
-  );
+  assert.match(awakenBlock, /SIGN IN AND BUILD TOGETHER/, "guests are told the guided build needs an account");
+  assert.doesNotMatch(awakenBlock, /One free build/);
 
-  const retryBlock = workbenchChamber.match(/THE METAL DID NOT SET[\s\S]*?Strike the Anvil Again/)?.[0];
+  const retryBlock = workbenchChamber.match(/THE METAL DID NOT SET[\s\S]*?Try again\n/)?.[0];
   assert.ok(retryBlock, "expected to find the failure-state retry block");
   assert.match(retryBlock, /onClick=\{\(\) => runWhenVerified\("retry"\)\}/, "retry must go through the verification gate");
   assert.match(
@@ -315,17 +314,17 @@ test("the failure UI renders a distinct, non-contradictory branch per error code
   const { alreadyUsed, network, retryable } = forgeFailureBranches(source);
 
   assert.match(alreadyUsed, /already running/);
-  assert.match(alreadyUsed, /Strike the Anvil Again/, "an in-progress forge must offer a retry once it finishes — guests keep forging without signing in");
+  assert.match(alreadyUsed, /Try again\n/, "an in-progress forge must offer a retry once it finishes");
   assert.doesNotMatch(alreadyUsed, /YOUR FREE PREVIEW IS SPENT|Sign in and continue this Forge/i);
   assert.doesNotMatch(alreadyUsed, /preview was not used/i, "an already-used preview must never simultaneously claim the preview was not used");
 
   assert.match(network, /reached today's Forge limit/);
-  assert.doesNotMatch(network, /Strike the Anvil Again/, "the network limiter must never present a retry button pretending an immediate retry can work");
+  assert.doesNotMatch(network, /Try again\n/, "the network limiter must never present a retry button pretending an immediate retry can work");
   assert.doesNotMatch(network, /card-data|catalog/i, "the network limiter must never render catalog/card-data failure language");
   assert.doesNotMatch(network, /No incomplete deck was saved/i, "the network limiter must never render incomplete-generation language");
   assert.match(network, /Sign in/, "the network limiter must offer the sign-in path");
 
-  assert.match(retryable, /Strike the Anvil Again/);
+  assert.match(retryable, /Try again\n/);
   assert.doesNotMatch(retryable, /YOUR FREE PREVIEW IS SPENT|already been used|preview is spent/i, "retryable failures must never claim the preview was already used");
 });
 

@@ -25,10 +25,11 @@ test("submitted-deck flow asks for the list before its format and then enters th
   const basicsPrompt = commissionChamber.indexOf('<label className="build-choice-format">');
   assert.ok(deckPrompt >= 0 && basicsPrompt > deckPrompt, "the decklist is requested before the format");
   assert.match(commissionChamber, /YOUR CURRENT OR PARTIAL DECKLIST/);
-  // The workbench retry runs through runWhenVerified("retry"), which re-forges
-  // a submitted list as a decklist build.
+  // The workbench retry runs through runWhenVerified("retry"), which retries
+  // the guided finish (a submitted list is now a guided review, never a
+  // one-shot generate).
   assert.match(workbenchChamber, /runWhenVerified\("retry"\)/);
-  assert.match(forgeSessionContext, /retry: \(\) => \{ void commitDirectForge\(deck\.trim\(\) \? "decklist" : "commander"\); \}/);
+  assert.match(forgeSessionContext, /retry: \(\) => \{ if \(guidedSession\) void finishGuidedBuild\(\); else awaken\(\); \}/);
   assert.match(forgeSessionContext, /setChamber\("forging"\)/);
 });
 

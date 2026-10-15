@@ -98,7 +98,7 @@ import {
   partnerEligibilityFor,
 } from "./commander-lane-scoring.mjs";
 import { commanderShellOptions } from "./strategic-intent.mjs";
-import { guidedPickText, validGuidedDraft } from "./guided-draft.mjs";
+import { guidedPickText, guidedSeedNames, validGuidedDraft } from "./guided-draft.mjs";
 
 // Mirrors commanderShellOptions' (strategic-intent.mjs) return shape — kept
 // local since nothing outside this context needs the type yet.
@@ -116,6 +116,9 @@ type GuidedReason = {
   topPositive: { kind: string; key: string } | null;
   nearestAlternative: { name: string; margin: number } | null;
 } | null;
+// The short "why this card" line (worker/forge-guided-build.ts → explainOffer).
+type GuidedExplanation = { role: string; worksWith: string[]; tradeOff: string; learned: string[] } | null;
+type GuidedDeclineFeedback = { name: string; reason: string | null };
 const GUIDED_STORAGE_KEY = "metaforge-guided-session";
 
 type GuidedSession = {
@@ -138,6 +141,11 @@ type GuidedSession = {
   manualCards: Record<string, any>;
   offer: GuidedOffer | null;
   reason: GuidedReason;
+  // Why the player turned cards down (one-tap reasons). Unlike declined,
+  // which resets per step, this persists so the server keeps learning from it.
+  // Optional so drafts saved before this field existed still restore.
+  declineFeedback?: GuidedDeclineFeedback[];
+  explanation?: GuidedExplanation;
   exhausted: boolean;
   remainingCandidates: number;
   ledger: GuidedLedgerRow[];
@@ -231,7 +239,9 @@ export function useForgeSessionState() {
     queueMicrotask(() => setGuestMode(isGuest));
   }, []);
   useEffect(() => {
-    if (!guestMode || !turnstileHostRef.current || turnstileWidgetRef.current) return;
+    // The human check renders only once a guest actually starts something
+    // that needs it, never on page load.
+    if (!guestMode || !verificationRequested || !turnstileHostRef.current || turnstileWidgetRef.current) return;
     let cancelled = false;
     const render = () => {
       // Turnstile attaches its explicit-render API to window after its
@@ -274,7 +284,7 @@ export function useForgeSessionState() {
     const interval = window.setInterval(render, 250);
     render();
     return () => { cancelled = true; window.clearInterval(interval); };
-  }, [guestMode]);
+  }, [guestMode, verificationRequested]);
   const [stage, setStage] = useState(0);
   const [buildStep, setBuildStep] = useState<0 | 1 | 2>(0);
   const [buildPath, setBuildPath] = useState<BuildPath>("discover");
@@ -1163,7 +1173,16 @@ export function useForgeSessionState() {
     setGuidedLoading(true);
     try {
       const asInput = (card: any) => card ? { name: card.name, colors: card.colors, oracleText: commanderOracleText(card) || card.verifiedFacts } : null;
-      const data = await guidedFetch("/api/forge/guided/start", { ...draft.preferences, format: draft.format, commander: asInput(draft.commander), secondCommander: asInput(draft.second), focusPackageId: draft.shell?.id });
+      const data = await guidedFetch("/api/forge/guided/start", {
+        ...draft.preferences,
+        format: draft.format,
+        commander: asInput(draft.commander),
+        secondCommander: asInput(draft.second),
+        focusPackageId: draft.shell?.id,
+        // The new pool has to know the picks already made, including cards
+        // the popularity search never returned, or the ledger goes empty.
+        seedNames: draft.session.accepted,
+      });
       const session = { ...draft.session, generationId: data.generationId, ...guidedOfferFields(data) };
       setGuidedSession(session);
       await requestGuidedOffer(session, {});
@@ -1219,6 +1238,7 @@ export function useForgeSessionState() {
   const guidedOfferFields = (data: any) => ({
     offer: (data.offer || null) as GuidedOffer | null,
     reason: (data.reason || null) as GuidedReason,
+    explanation: (data.explanation || null) as GuidedExplanation,
     exhausted: Boolean(data.exhausted),
     remainingCandidates: Number(data.remainingCandidates || 0),
     ledger: (Array.isArray(data.ledger) ? data.ledger : []) as GuidedLedgerRow[],
@@ -1232,7 +1252,10 @@ export function useForgeSessionState() {
     guidedSnapshotRef.current = null;
     guidedCompletionRef.current = null;
   };
-  async function startGuidedBuild() {
+  const guidedOfferSeqRef = useRef(0);
+  const guidedSessionRef = useRef<GuidedSession | null>(guidedSession);
+  guidedSessionRef.current = guidedSession;
+  async function startGuidedBuild(options: { seedDeck?: string } = {}) {
     if (!selectedCommander || guestMode || !isCommanderFormat(format) || guidedLoading || guidedFinishingRef.current || guidedConflict) return;
     if (!guidedOwnerRef.current || guidedAvailableDraft) {
       setGuidedError(guidedAvailableDraft ? "Resume or discard your saved build before starting another." : "Reconnect your account before starting this build.");
@@ -1247,12 +1270,23 @@ export function useForgeSessionState() {
       colors: option.colors,
       oracleText: commanderOracleText(option) || option.verifiedFacts,
     });
+    // "Complete a decklist" is a guided review: the pasted cards are kept
+    // as picks and the walk-through starts on whatever they leave open.
+    // Restart and a retry that has no session yet pass no seedDeck; the
+    // textarea still holds the list, so it stays the starting picks.
+    // An explicit empty string is the only way to start from nothing.
+    const seedSource = options.seedDeck ?? deck;
+    const seedNames = seedSource.trim()
+      ? guidedSeedNames(seedSource, [selectedCommander.name, selectedSecondCommander?.name || ""])
+      : [];
     setChamber("guided-build");
     setGuidedError("");
     setGuidedLoading(true);
     try {
       const data = await guidedFetch("/api/forge/guided/start", {
         format,
+        seedNames,
+        playerCompass,
         commander: asCommanderInput(selectedCommander),
         secondCommander: selectedSecondCommander ? asCommanderInput(selectedSecondCommander) : null,
         focusPackageId: selectedShell?.id,
@@ -1271,8 +1305,9 @@ export function useForgeSessionState() {
         generationId: data.generationId,
         categories: data.categorySequence,
         categoryIndex: 0,
-        accepted: [],
+        accepted: Array.isArray(data.seedNames) ? data.seedNames : seedNames,
         declined: [],
+        declineFeedback: [],
         manualCards: {},
         ...guidedOfferFields(data),
       });
@@ -1288,9 +1323,11 @@ export function useForgeSessionState() {
   }
   async function requestGuidedOffer(
     session: GuidedSession,
-    patch: Partial<Pick<GuidedSession, "categoryIndex" | "accepted" | "declined" | "manualCards">>,
+    patch: Partial<Pick<GuidedSession, "categoryIndex" | "accepted" | "declined" | "manualCards" | "declineFeedback">>,
   ) {
+    const seq = ++guidedOfferSeqRef.current;
     const next = { ...session, ...patch };
+    guidedSessionRef.current = next;
     // Persist the player's action before requesting the next offer. An outage
     // must not silently undo an accepted card or a manual search choice.
     setGuidedSession(next);
@@ -1307,13 +1344,28 @@ export function useForgeSessionState() {
         // pool to append a manual find to server-side without minting a new
         // generationId, so the client is the source of truth for these.
         manualCards: Object.values(next.manualCards),
+        // Learning signals: why cards were declined, the Player Compass
+        // answers given so far, and the current step order so the server
+        // can reorder the steps not reached yet.
+        declineFeedback: next.declineFeedback || [],
+        playerCompass,
+        categories: next.categories,
+        categoryIndex: next.categoryIndex,
       });
-      setGuidedSession({ ...next, ...guidedOfferFields(data) });
+      if (seq !== guidedOfferSeqRef.current) return;
+      const categories = Array.isArray(data.categoryOrder) && data.categoryOrder.length === next.categories.length
+        ? data.categoryOrder as string[]
+        : next.categories;
+      const settled = { ...next, categories, ...guidedOfferFields(data) };
+      guidedSessionRef.current = settled;
+      setGuidedSession(settled);
+      if (categories !== next.categories) writeGuidedLocal(guidedSnapshot(settled));
     } catch (error) {
+      if (seq !== guidedOfferSeqRef.current) return;
       setGuidedError(error instanceof Error ? error.message : "The guided build could not continue.");
       trackLaunchEvent("guided_failed", { stage: "next" });
     } finally {
-      setGuidedLoading(false);
+      if (seq === guidedOfferSeqRef.current) setGuidedLoading(false);
     }
   }
   // Measurement is consent-gated and carries only the action and the role
@@ -1332,11 +1384,14 @@ export function useForgeSessionState() {
   }
   // Decline IS the reroll (spec's resolved decision #4): the declined name
   // rides along so the server offers a different card for this same slot.
-  function declineGuidedOffer() {
+  // An optional one-tap reason ("budget", "wrong-plan", ...) travels with
+  // every later request so the server re-ranks what it offers next.
+  function declineGuidedOffer(reason: string | null = null) {
     if (!guidedSession?.offer || guidedLoading || guidedConflict || guidedCompletionRef.current) return;
-    trackGuidedStep("decline");
+    trackGuidedStep(reason ? `decline:${reason}` : "decline");
     void requestGuidedOffer(guidedSession, {
       declined: [...guidedSession.declined, guidedSession.offer.name],
+      declineFeedback: [...(guidedSession.declineFeedback || []), { name: guidedSession.offer.name, reason }].slice(-100),
     });
   }
   // rawCard is the Scryfall search result as-is (name, type_line, oracle_text,
@@ -1494,25 +1549,39 @@ export function useForgeSessionState() {
   }, [guestMode]);
 
   const awaken = () => {
-    // Picking a shell on the discover path launches the guided category loop
-    // (Zach's call, 2026-09-16). The loop needs a stored server-side session,
-    // which only signed-in accounts have, so guests and shell-less builds
-    // keep the one-shot path exactly as before.
-    if (chamber === "commission" && selectedShell && selectedCommander && !guestMode && isCommanderFormat(format) && !deck.trim()) {
-      if (guidedSession) setChamber("guided-build");
-      else void startGuidedBuild();
+    // Guided-only (Zach's call, 2026-10-14): the Forge never builds a whole
+    // deck from a commander in one click. Every Commander-format build,
+    // with or without a shell and with or without a pasted list, goes
+    // through the guided loop; a pasted list becomes a guided review of what
+    // it leaves open. Guests are sent to sign in first (the loop needs an
+    // account-backed session), and the one-shot generate endpoints are no
+    // longer called from here.
+    if (!isCommanderFormat(format) || !selectedCommander) return;
+    if (guestMode) {
+      window.location.assign(signInResumeHref);
       return;
     }
-    const seed = Date.now();
-    // Enter the ceremony directly. The former ignition milestone painted a
-    // full-screen rune, crosshair, smoke, and spark burst over the first step.
-    setMilestoneMotion(null);
-    setCommissionSeed(seed);
-    setStage(0);
-    setSelectedWork(0);
-    setChamber("forging");
-    void commitDirectForge(deck.trim() ? "decklist" : "commander", seed);
+    if (guidedSession) { setChamber("guided-build"); return; }
+    void startGuidedBuild(deck.trim() ? { seedDeck: deck } : {});
   };
+
+  // Player Compass answers count the moment each is given: when one changes
+  // mid-build, re-ask for the current step's offer with the new answers.
+  const guidedCompassRef = useRef(playerCompass);
+  useEffect(() => {
+    if (guidedCompassRef.current === playerCompass) return;
+    const session = guidedSessionRef.current;
+    // Leave the ref stale while an offer is in flight. When that request
+    // settles, guidedLoading flips and this effect retries with the session
+    // the in-flight request already committed, instead of the one this
+    // render closed over. Overlapping /next responses are dropped by
+    // guidedOfferSeqRef, so a late response cannot replace a newer pick.
+    if (session && !guidedConflict && !guidedCompletionRef.current && guidedLoading) return;
+    guidedCompassRef.current = playerCompass;
+    if (!session || guidedConflict || guidedCompletionRef.current) return;
+    void requestGuidedOffer(session, {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playerCompass, guidedLoading]);
 
   // Guests verify only when they ask to build. With a live token the action
   // runs at once; without one, the verification panel appears and the same
@@ -1524,11 +1593,15 @@ export function useForgeSessionState() {
   const verifiedActionsRef = useRef<Record<VerifiedAction, () => void>>({ awaken: () => {}, retry: () => {} });
   verifiedActionsRef.current = {
     awaken,
-    retry: () => { void commitDirectForge(deck.trim() ? "decklist" : "commander"); },
+    // A failed finish retries the guided finish; nothing here falls back to
+    // the one-shot generate endpoints.
+    retry: () => { if (guidedSession) void finishGuidedBuild(); else awaken(); },
   };
   const pendingVerifiedActionRef = useRef<VerifiedAction | null>(null);
   function runWhenVerified(action: VerifiedAction) {
-    if (!guestMode || turnstileToken) {
+    // awaken no longer spends a Turnstile token (guests are sent to sign in
+    // and the guided loop is account-backed), so it never asks for one.
+    if (!guestMode || turnstileToken || action === "awaken") {
       verifiedActionsRef.current[action]();
       return;
     }
