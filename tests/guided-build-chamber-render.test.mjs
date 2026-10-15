@@ -260,6 +260,44 @@ test("a session with an empty ledger (older snapshot) still renders instead of t
   assert.equal(render(baseContext({ guidedSession: session({ accepted: ["One"] }) })).includes("1 card picked so far"), true);
 });
 
+test("a live session shows why this card, the running profile, and a pasted-list review", () => {
+  const html = render(baseContext({ guidedSession: session({
+    reasoning: {
+      confidence: 0.82,
+      confidenceLabel: "high",
+      reasons: [{ kind: "synergy", text: "Viscera Seer triggers Blood Artist through creatures dying." }],
+      worksWith: [{ name: "Viscera Seer", mechanism: "Viscera Seer triggers Blood Artist through creatures dying" }],
+    },
+    deckProfile: {
+      plan: { id: "aristocrats", label: "Aristocrats (sacrifice and death triggers)", confidence: 0.8, secondary: null },
+      planBalance: "needs-enablers",
+      roles: [],
+      gaps: [{ role: "draw", label: "card draw", missing: 10 }],
+      curve: { buckets: [1, 2, 0, 0, 0, 0], targets: [4, 8, 8, 6, 4, 4], averageCmc: 2.1, issues: [], labels: ["0-1", "2", "3", "4", "5", "6+"] },
+      colors: { identity: ["W", "B"], requirements: [] },
+    },
+    listAnalysis: {
+      plan: { id: "aristocrats", label: "Aristocrats (sacrifice and death triggers)", confidence: 0.8 },
+      planBalance: "forming",
+      recognized: 4,
+      submitted: 6,
+      flagged: [{ name: "Colossal Dreadmaw", severity: 1, reasons: ["6 mana for a card that neither wins nor drives your plan."] }],
+      strengths: [{ name: "Viscera Seer", text: "Viscera Seer triggers Blood Artist through creatures dying." }],
+      nextSteps: [{ category: "draw", role: "draw", why: "0 card draw of about 10-13.", urgency: 1 }],
+      notes: [],
+    },
+  }) }));
+  assert.match(html, /WHY THIS CARD/);
+  assert.match(html, /high confidence/);
+  assert.match(html, /Viscera Seer triggers Blood Artist/);
+  assert.match(html, /YOUR DECK SO FAR/);
+  assert.match(html, /Payoffs are ahead of the cards that feed them/);
+  assert.match(html, /Still short on: card draw \(10\)/);
+  assert.match(html, /YOUR LIST · 4 OF 6 CARDS READ/);
+  assert.match(html, /Colossal Dreadmaw/);
+  assert.match(html, /Walk through next: Card draw/);
+});
+
 test("each suggestion shows its role, what it works with, its trade-off, and what the coach learned", () => {
   const html = render(baseContext({ guidedSession: session({ explanation: {
     role: "Ramp",
