@@ -1,19 +1,22 @@
 ﻿"use client";
 
-import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import Link from "next/link";
+import { lazy, startTransition, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { configureCardTagLookup } from "./strategic-intent.mjs";
 import { useForgeSessionState, ForgeSessionProvider } from "./forge-session-context";
 import { EntranceChamber } from "./components/forge/entrance-chamber";
-import { ForgingChamber } from "./components/forge/forging-chamber";
-import { MasterworksChamber } from "./components/forge/masterworks-chamber";
-import { ArchiveChamber } from "./components/forge/archive-chamber";
-import { CommissionChamber } from "./components/forge/commission-chamber";
-import { GuidedBuildChamber } from "./components/forge/guided-build-chamber";
 import { GuidedDraftCard } from "./components/forge/guided-draft-card";
-import { WorkbenchChamber } from "./components/forge/workbench-chamber";
-import { WorkbenchEditorChamber } from "./components/forge/workbench-editor-chamber";
+// Every chamber except the entrance is code-split: a first visit only
+// downloads the homepage, and each later step loads on demand.
+const ForgingChamber = lazy(() => import("./components/forge/forging-chamber").then((m) => ({ default: m.ForgingChamber })));
+const MasterworksChamber = lazy(() => import("./components/forge/masterworks-chamber").then((m) => ({ default: m.MasterworksChamber })));
+const ArchiveChamber = lazy(() => import("./components/forge/archive-chamber").then((m) => ({ default: m.ArchiveChamber })));
+const CommissionChamber = lazy(() => import("./components/forge/commission-chamber").then((m) => ({ default: m.CommissionChamber })));
+const GuidedBuildChamber = lazy(() => import("./components/forge/guided-build-chamber").then((m) => ({ default: m.GuidedBuildChamber })));
+const WorkbenchChamber = lazy(() => import("./components/forge/workbench-chamber").then((m) => ({ default: m.WorkbenchChamber })));
+const WorkbenchEditorChamber = lazy(() => import("./components/forge/workbench-editor-chamber").then((m) => ({ default: m.WorkbenchEditorChamber })));
 import { resolveAcademyGuideEntry } from "./academy-guide-entry.mjs";
 import { commanderOptionForSlug } from "./commanders/data.mjs";
 import { getMetaIntelligence } from "./meta-intelligence.mjs";
@@ -77,7 +80,7 @@ import { reasonsCardMatters } from "./context-card-inspector.mjs";
 import { ForgeCardRef } from "./forge-card-ref";
 import { ImportedDeckComparison } from "./components/forge/imported-deck-comparison";
 import { buildCommissionContract } from "./commission-contract.mjs";
-import { Tabletop, type MatchupCardAdvice, type TabletopCard } from "./tabletop";
+import type { MatchupCardAdvice, TabletopCard } from "./tabletop";
 import { ProvingGroundsEra } from "./proving-grounds-era";
 import {
   ForgeCeremonyMotion,
@@ -579,7 +582,7 @@ export default function Home() {
             <IdentityBadge depth={playerIdentity.depth} totalMilestones={playerIdentity.allMilestones.length} dominantMotif={playerIdentity.dominantMotif} accent={playerIdentity.accent} celebrating={Boolean(identityCelebration)} celebrationLabel={identityCelebration?.label ?? null} />
             <button type="button" onClick={() => setChamber("entrance")}>Start a new deck</button>
             <p className="forge-menu-version" aria-label="MetaForge version 2.1.0">MetaForge v2.1.0</p>
-            <nav aria-label="Learn, legal, and support"><a href="/commanders">Commander Guides</a><a href="/academy">Deckbuilding Academy</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="mailto:support@metaforge.gg">Support</a></nav>
+            <nav aria-label="Learn, legal, and support"><Link href="/commanders">Commander Guides</Link><Link href="/academy">Deckbuilding Academy</Link><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="mailto:support@metaforge.gg">Support</a></nav>
           </div>
         </details>
       </header>
@@ -698,6 +701,7 @@ export default function Home() {
       {chamber === "entrance" && <EntranceChamber />}
       <GuidedDraftCard />
 
+      <Suspense fallback={<p className="chamber-loading" role="status">Loading…</p>}>
       {chamber === "archive" && <ArchiveChamber />}
       {(chamber === "commission" || chamber === "refine") && <CommissionChamber />}
 
@@ -708,6 +712,7 @@ export default function Home() {
       {chamber === "masterworks" && <MasterworksChamber />}
 
       {chamber === "workbench" && <WorkbenchChamber />}
+      </Suspense>
       {chamber !== "forging" && savedMasterworks.length > 0 && benchOpen && (
         <aside
           className={`bench-dock ${benchOpen ? "open" : ""}`}
@@ -843,7 +848,7 @@ export default function Home() {
         </div>
       </aside>
       )}
-      {chamber === "workbench" && <WorkbenchEditorChamber />}
+      <Suspense fallback={null}>{chamber === "workbench" && <WorkbenchEditorChamber />}</Suspense>
     </main>
     </ForgeSessionProvider>
   );

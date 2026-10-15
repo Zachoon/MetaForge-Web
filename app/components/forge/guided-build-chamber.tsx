@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cardImage } from "../../card-art";
 import { scryfallFormatTerms } from "../../format-catalog";
 import { GUIDED_CATEGORY_COPY, describeGuidedReason, describeLedgerRow, guidedCategoryLabel } from "../../guided-reason-copy.mjs";
@@ -134,7 +134,42 @@ export function GuidedBuildChamber() {
 
   const commanderColors = [...new Set([...(selectedCommander?.colors || []), ...(selectedSecondCommander?.colors || [])])];
   const identityClause = commanderColors.length ? `id<=${commanderColors.join("").toLowerCase()}` : "id:c";
-  const accepted = session?.accepted || [];
+  const accepted = useMemo(() => session?.accepted || [], [session?.accepted]);
+
+  // Presentation only: remember which step each pick was made on so the
+  // sidebar can group picks by role. The server's session has no per-pick
+  // category, so this is a best-effort, tab-local record (sessionStorage);
+  // anything unknown is listed under "Other picks".
+  const pickRolesKey = session ? `metaforge-guided-pick-roles:${session.key}` : "";
+  const readPickRoles = (key: string): Record<string, string> => {
+    if (!key || typeof window === "undefined") return {};
+    try { return JSON.parse(window.sessionStorage.getItem(key) || "{}"); } catch { return {}; }
+  };
+  const [pickRolesFor, setPickRolesFor] = useState(pickRolesKey);
+  const [pickRoles, setPickRoles] = useState<Record<string, string>>(() => readPickRoles(pickRolesKey));
+  if (pickRolesFor !== pickRolesKey) {
+    setPickRolesFor(pickRolesKey);
+    setPickRoles(readPickRoles(pickRolesKey));
+  }
+  const currentCategory = session ? session.categories[session.categoryIndex] : "";
+  const rememberPickRole = (name: string) => {
+    if (!pickRolesKey || !currentCategory) return;
+    const next = { ...pickRoles, [name]: currentCategory };
+    setPickRoles(next);
+    try { window.sessionStorage.setItem(pickRolesKey, JSON.stringify(next)); } catch { /* storage unavailable: grouping stays in memory */ }
+  };
+  const groupedPicks = useMemo(() => {
+    const order = session?.categories || [];
+    const groups = new Map<string, string[]>();
+    for (const name of accepted) {
+      const role = pickRoles[name] && order.includes(pickRoles[name]) ? pickRoles[name] : "other";
+      groups.set(role, [...(groups.get(role) || []), name]);
+    }
+    return [...order, "other"].filter((id) => groups.has(id)).map((id) => ({ id, names: groups.get(id) || [] }));
+  }, [accepted, pickRoles, session?.categories]);
+  const targetRows = (session?.ledger || []).filter((row) => row.target && row.status !== "no-target");
+  const rolesFilled = targetRows.filter((row) => row.target && row.actual >= row.target.min).length;
+  const rolesNeeded = targetRows.length;
 
   useEffect(() => {
     const seq = ++searchSeq.current;
@@ -260,6 +295,15 @@ export function GuidedBuildChamber() {
 
       {session && (
         <div className="commission-scroll guided-body">
+          {rolesNeeded > 0 && (
+            <div className="guided-progress" role="group" aria-label="Build progress">
+              <div className="guided-progress-copy">
+                <b>{rolesFilled} of {rolesNeeded} roles filled</b>
+                <span>{accepted.length} {accepted.length === 1 ? "card" : "cards"} picked</span>
+              </div>
+              <progress max={rolesNeeded} value={rolesFilled} aria-label={`${rolesFilled} of ${rolesNeeded} roles filled`} />
+            </div>
+          )}
           <ol className="guided-steps" aria-label="Build categories">
             {session.categories.map((id, index) => {
               const state = index < session.categoryIndex ? "done" : index === session.categoryIndex ? "current" : "upcoming";
@@ -277,7 +321,7 @@ export function GuidedBuildChamber() {
           <div className="guided-grid">
             <div className="guided-main">
               {finishing ? <GuidedFinishPanel /> : (
-              <article className="guided-offer" aria-live="polite" aria-busy={guidedLoading}>
+              <article key={offer ? `${session.categoryIndex}:${offer.name}` : "empty"} className="guided-offer" aria-live="polite" aria-busy={guidedLoading}>
                 {offer ? (
                   <>
                     <img src={cardImage(offer.name)} alt={offer.name} loading="lazy" />
@@ -324,7 +368,7 @@ export function GuidedBuildChamber() {
                       )}
                       <p className="guided-why">{describeGuidedReason(session.reason, offer.name)}</p>
                       <div className="guided-actions">
-                        <button type="button" ref={acceptRef} className="guided-accept" disabled={guidedLoading || guidedBuildLocked} onClick={acceptGuidedOffer}>
+                        <button type="button" ref={acceptRef} className="guided-accept" disabled={guidedLoading || guidedBuildLocked} onClick={() => { if (offer) rememberPickRole(offer.name); acceptGuidedOffer(); }}>
                           Add to my deck
                         </button>
                         <button type="button" aria-expanded={choosingReason} disabled={guidedLoading || guidedBuildLocked} onClick={() => setReasonsOpenFor(choosingReason ? null : `${session.categoryIndex}:${offer.name}`)}>
@@ -362,7 +406,7 @@ export function GuidedBuildChamber() {
 
               <section className={`guided-search${struggling || !offer ? " emphasized" : ""}`}>
                 <label>
-                  <span>SEARCH LEGAL {format.toUpperCase()} CARDS IN YOUR COMMANDER'S COLORS</span>
+                  <span>SEARCH LEGAL {format.toUpperCase()} CARDS IN YOUR COMMANDER&rsquo;S COLORS</span>
                   <input
                     type="search"
                     value={search}
@@ -382,6 +426,7 @@ export function GuidedBuildChamber() {
                         key={card.name}
                         disabled={guidedLoading || guidedBuildLocked || accepted.some((entry) => entry.toLocaleLowerCase("en") === card.name.toLocaleLowerCase("en"))}
                         onClick={() => {
+                          rememberPickRole(card.name);
                           addGuidedManualCard(card.raw);
                           setSearch("");
                           setResults([]);
@@ -446,7 +491,7 @@ export function GuidedBuildChamber() {
                 {accepted.length > 0 && (
                   confirmingRestart ? (
                     <div className="guided-restart-confirm" role="group" aria-label="Confirm restart">
-                      <p>Start over? Every pick you've made will be discarded.</p>
+                      <p>Start over? Every pick you&rsquo;ve made will be discarded.</p>
                       <button type="button" className="guided-restart-yes" disabled={guidedLoading || guidedBuildLocked} onClick={() => { setConfirmingRestart(false); void startGuidedBuild(); }}>
                         Yes, start over
                       </button>
@@ -459,16 +504,23 @@ export function GuidedBuildChamber() {
                   )
                 )}
                 {accepted.length ? (
-                  <ul>
-                    {accepted.map((name) => (
-                      <li key={name}>
-                        <span>{name}</span>
-                        <button type="button" disabled={guidedLoading || guidedBuildLocked} onClick={() => removeGuidedPick(name)} aria-label={`Remove ${name}`}>
-                          ×
-                        </button>
-                      </li>
+                  <div className="guided-pick-groups">
+                    {groupedPicks.map((group) => (
+                      <section key={group.id} className="guided-pick-group" aria-label={group.id === "other" ? "Other picks" : guidedCategoryLabel(group.id)}>
+                        <h3>{group.id === "other" ? "Other picks" : guidedCategoryLabel(group.id)} <span>{group.names.length}</span></h3>
+                        <ul>
+                          {group.names.map((name) => (
+                            <li key={name}>
+                              <span>{name}</span>
+                              <button type="button" disabled={guidedLoading || guidedBuildLocked} onClick={() => removeGuidedPick(name)} aria-label={`Remove ${name}`}>
+                                ×
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
                     ))}
-                  </ul>
+                  </div>
                 ) : (
                   <p className="guided-picks-empty">Nothing yet — accept a suggestion or search for a card.</p>
                 )}
