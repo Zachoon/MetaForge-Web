@@ -314,8 +314,9 @@ test("the fifth guide's CTA uses the public guide key, never exposes the interna
   assert.doesNotMatch(html, /focus=/i, "the URL must never expose the internal reviewFocus query param or value");
   assert.match(html, /Investigate my deck/i);
   assert.match(html, /Bring your decklist/i);
-  // Must scope the real signal to Commander/Brawl, matching evaluateClosingGames's own format gate.
-  assert.match(html, /for Commander and Brawl decks/i);
+  // The product builds Commander decks. The public guide names that format and no other.
+  assert.match(html, /for Commander decks/i);
+  assert.doesNotMatch(html, /Brawl/i);
   // Must not treat "no closer found" as automatically a flaw — matches the evaluator's own real framing.
   assert.match(html, /not automatically a flaw/i);
   assert.doesNotMatch(html, /guarantee|100%|proves?\b.{0,15}(problem|issue)/i, "must never overclaim beyond what the engine can actually support");

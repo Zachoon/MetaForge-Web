@@ -533,10 +533,10 @@ body:has(.great-forge.chamber-archive){
   .testing-anvil{padding-bottom:calc(var(--mf-frame-rail) + 88px)!important}
   .forge-edit-workbench{bottom:calc(var(--mf-frame-rail) + 8px)!important}
   .edit-anvil-launcher{bottom:calc(var(--mf-frame-rail) + 72px)!important}
-  /* The guest verification panel too: the rail (z-index 180) otherwise sits
-     over the Turnstile checkbox, blocking the one step a visitor needs. */
-  .great-forge[data-guest-mode="true"]>.guest-forge-pass,
+  /* The saved-deck gate still lives in the forge. The human check is
+     portaled to body (see globals.css) so the rail cannot cover it. */
   .great-forge[data-guest-mode="true"]>.guest-result-gate{bottom:calc(var(--mf-frame-rail) + 8px)!important}
+  body>.guest-forge-pass{bottom:calc(var(--mf-frame-rail) + 12px)!important;z-index:10050!important;transform:none!important}
   .great-forge[data-guest-mode="true"]{padding-bottom:calc(var(--mf-frame-rail) + 150px)!important}
 }
 @media(prefers-reduced-motion:reduce){.forge-rail-embers i{animation:none}}

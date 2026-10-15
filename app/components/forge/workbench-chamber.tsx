@@ -1653,15 +1653,9 @@ export function WorkbenchChamber() {
                     </a>
                   )}
                   {inspectedFact?.legalities && (
-                    <ul className="card-inspector-legality" aria-label="Format legality">
+                    <ul className="card-inspector-legality" aria-label="Commander legality">
                       {[
-                        ["standard", "Standard"],
-                        ["pioneer", "Pioneer"],
-                        ["modern", "Modern"],
-                        ["premodern", "Premodern"],
                         ["commander", "Commander"],
-                        ["brawl", "Brawl"],
-                        ["historic", "Historic"],
                       ].map(([key, label]) => {
                         const legal = inspectedFact.legalities?.[key] === "legal";
                         return (
@@ -1910,11 +1904,7 @@ export function WorkbenchChamber() {
           {hasValidatedDeck && (
             <footer>
               <span>
-                Featured{" "}
-                {format === "Commander" || format === "Brawl"
-                  ? "commander"
-                  : "lynchpin"}
-                : <b>{activeCommanderName || "Not identified"}</b>
+                Featured commander: <b>{activeCommanderName || "Not identified"}</b>
               </span>
               <button
                 disabled={!deckIntegrity.passed}

@@ -13,7 +13,7 @@ export const viewport: Viewport = {
 export function generateMetadata(): Metadata {
   const metadataBase = new URL("https://metaforge.gg");
   const title = "MetaForge — MTG Commander Deck Builder & Analyzer";
-  const description = "Build, analyze, and improve Magic: The Gathering decks with an explainable MTG deck coach for Commander, Standard, Modern, Pioneer, Brawl, and more.";
+  const description = "Build and understand Magic: The Gathering Commander decks with an explainable deck coach.";
 
   return {
     metadataBase,

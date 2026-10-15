@@ -50,6 +50,7 @@ test("coach definitions and the commander card open from a tap", () => {
   assert.match(inspector, /className=\{`commander-inspector\$\{open \? " is-open" : ""\}`\}/);
   assert.match(inspector, /commander-zoom-close/);
   assert.match(css, /\.commander-inspector\.is-open \.commander-zoom/);
-  assert.match(commission, /aria-expanded=\{formatTipOpen\}/);
+  assert.doesNotMatch(commission, /formatTipOpen/);
+  assert.doesNotMatch(commission, /<select/);
   assert.match(workbench, /CommanderInspector/);
 });

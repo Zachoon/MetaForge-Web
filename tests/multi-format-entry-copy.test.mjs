@@ -17,8 +17,11 @@ test("entry leads with one guided action and keeps the other two ways to begin a
   assert.match(entrance, /Tell us how you like to play below and the suggestions adapt as you go/);
 });
 
-test("the deck setup asks only for format, deck material, and commander when relevant", () => {
-  assert.match(commission, /<option>Standard<\/option>/);
+test("the deck setup asks for the commander and never offers another format", () => {
+  assert.doesNotMatch(commission, /<option>Standard<\/option>/);
+  assert.doesNotMatch(commission, /build-choice-format/);
+  assert.doesNotMatch(commission, /FORMAT \+ COMMANDER|Guided building supports Commander formats/);
+  assert.match(commission, /DISCOVER A DECK · COMMANDER/);
   assert.match(commission, /isCommanderFormat\(format\)/);
   assert.doesNotMatch(commission, /TARGET POWER TIER|MAX PRICE PER CARD|COMPLEXITY|OPTIONAL · CARDS OR PLAY STYLES/);
 });

@@ -125,15 +125,16 @@ test("searching by commander name filters results, and a non-matching search sho
   assert.doesNotMatch(unmatched, /OPENING SOON/, "a real archive with a non-matching filter must not look like an empty archive");
 });
 
-test("filtering by format only shows decks in that format, and the format dropdown lists real distinct formats", async () => {
+test("the public archive does not offer a format chooser", async () => {
   const rows = [
     report({ slug: "commander-deck", title: "A Commander Deck", format_name: "Commander" }),
     report({ slug: "standard-deck", title: "A Standard Deck", format_name: "Standard" }),
   ];
-  const html = await bodyOf(rows, "/decks?format=Standard");
-  assert.match(html, /A Standard Deck/);
-  assert.doesNotMatch(html, /A Commander Deck/);
-  assert.match(html, /<option value="Standard" selected>Standard<\/option>/);
+  const html = await bodyOf(rows, "/decks");
+  assert.match(html, /A Commander Deck/);
+  assert.doesNotMatch(html, /aria-label="Filter by format"/);
+  assert.doesNotMatch(html, /All formats/);
+  assert.doesNotMatch(html, /<select name="format"/);
 });
 
 test("sorting by views orders real results by view_count descending", async () => {

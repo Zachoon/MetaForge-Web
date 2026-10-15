@@ -1,5 +1,11 @@
 # MetaForge Changelog
 
+## 2026-10-15 — Commander only, and a human check you can finish
+
+- MetaForge builds Commander decks. The format menu is gone from the deck setup, the archive, and the public deck list, and the surrounding copy no longer offers other formats.
+- On a phone, the human check was trapped under the privacy banner and inside a shifted panel, so the checkbox could not be tapped and the build waited forever. The check now sits above that banner, with a visible box, a retry, and a Sign in link.
+- If the check's script never arrives — a content blocker such as Opera GX on iPhone, or a dropped connection — the page says so after a short wait (or as soon as the script fails) and keeps Try again and Sign in on screen. Retry asks for the script again.
+
 ## 2026-10-14 — Build It Together
 
 ### Every build is guided; the Forge no longer builds a whole deck in one click

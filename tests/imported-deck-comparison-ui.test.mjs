@@ -22,8 +22,8 @@ test("submitted-deck flow asks for the list before its format and then enters th
   // Anchored on the elements rather than their numbered headings, which the
   // scratch/complete/discover split reworded.
   const deckPrompt = commissionChamber.indexOf('<label className="deck-offering">');
-  const basicsPrompt = commissionChamber.indexOf('<label className="build-choice-format">');
-  assert.ok(deckPrompt >= 0 && basicsPrompt > deckPrompt, "the decklist is requested before the format");
+  const commanderPrompt = commissionChamber.indexOf('className="commander-blueprint');
+  assert.ok(deckPrompt >= 0 && commanderPrompt > deckPrompt, "the decklist is requested before the commander");
   assert.match(commissionChamber, /YOUR CURRENT OR PARTIAL DECKLIST/);
   // The workbench retry runs through runWhenVerified("retry"), which retries
   // the guided finish (a submitted list is now a guided review, never a
