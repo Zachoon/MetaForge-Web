@@ -14,13 +14,13 @@
 // }
 // =============================================================================
 
-import { reasonAboutCandidate } from "./reasoner.mjs";
+import { reasonAboutCandidate, REASONING_LIMITS } from "./reasoner.mjs";
 import { analyzePartialList } from "./partial-list-analysis.mjs";
 import { buildDeckProfile, categoryUrgency } from "./deck-profile.mjs";
 
 export { reasonAboutCandidate, confidenceLabel, REASONING_LIMITS } from "./reasoner.mjs";
 export { analyzePartialList } from "./partial-list-analysis.mjs";
-export { buildDeckProfile, categoryUrgency, CATEGORY_ROLE, ROLE_TARGETS_100, ARCHETYPES, inferPlan } from "./deck-profile.mjs";
+export { buildDeckProfile, categoryUrgency, CATEGORY_ROLE, ROLE_TARGETS_100, ARCHETYPES, inferPlan, commanderReasoningEntry, producedColorsOf } from "./deck-profile.mjs";
 export { buildInteractionGraph, candidateSynergy, linksBetween, mechanicsOf } from "./mechanic-graph.mjs";
 export { parseOracleMechanics, RESOURCES } from "./oracle-mechanics.mjs";
 
@@ -35,7 +35,9 @@ export function reasonWithProvider(candidate, context, provider = null) {
   if (!provider || typeof provider.refineCandidate !== "function") return base;
   try {
     const refined = provider.refineCandidate(base, context);
-    return validCandidateResult(refined) ? refined : base;
+    if (!validCandidateResult(refined)) return base;
+    const delta = Math.max(REASONING_LIMITS.maxPenalty, Math.min(REASONING_LIMITS.maxBoost, refined.delta));
+    return delta === refined.delta ? refined : { ...refined, delta: Number(delta.toFixed(2)) };
   } catch {
     return base;
   }
@@ -46,7 +48,13 @@ export function analyzeListWithProvider(input, provider = null) {
   if (!provider || typeof provider.refineListAnalysis !== "function") return base;
   try {
     const refined = provider.refineListAnalysis(base, input);
-    return refined && typeof refined === "object" && Array.isArray(refined.flagged) && refined.autoFilled === false ? refined : base;
+    if (!refined || typeof refined !== "object" || !Array.isArray(refined.flagged) || refined.autoFilled !== false) return base;
+    // A list review never becomes a list of cards to add.
+    if (Array.isArray(refined.additions) && refined.additions.length > 0) return base;
+    if (!("additions" in refined)) return refined;
+    const copy = { ...refined };
+    delete copy.additions;
+    return copy;
   } catch {
     return base;
   }

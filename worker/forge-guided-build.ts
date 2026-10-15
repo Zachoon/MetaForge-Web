@@ -27,6 +27,7 @@ import { normalizePlayerCompass } from "../app/player-compass.mjs";
 import {
   analyzePartialList,
   buildReasoningContext,
+  commanderReasoningEntry,
   profileStepUrgencies,
   type reasonAboutCandidate,
   type buildDeckProfile,
@@ -263,9 +264,10 @@ function computeOffer(
   });
   // The reasoning engine's running deck profile, rebuilt from the full pick
   // list on every request (stateless, like everything else here).
-  const commanderEntries = [input.commander, input.secondCommander]
-    .filter((commander): commander is NonNullable<CommanderInput> => Boolean(commander?.name))
-    .map((commander) => ({ name: commander.name, oracleText: commander.oracleText || "", typeLine: "Legendary Creature", colorIdentity: commander.colors || [] }));
+  const commanderEntries = [input.commander, input.secondCommander].flatMap((commander) => {
+    const entry = commanderReasoningEntry(commander);
+    return entry ? [entry] : [];
+  });
   const reasoningContext = buildReasoningContext({
     commanders: commanderEntries,
     picks: partialRows,

@@ -21,6 +21,11 @@ const REASON_KIND_LABEL: Record<string, string> = {
 
 // The running deck profile from the reasoning engine: plan, curve and the
 // roles still short of Commander norms. Read-only evidence.
+const PLAN_BALANCE_COPY: Record<string, string> = {
+  "needs-enablers": "Payoffs are ahead of the cards that feed them.",
+  "needs-payoffs": "Fuel is ahead of the cards that pay it off.",
+};
+
 function DeckProfileCard({ profile }: { profile: NonNullable<GuidedDeckProfile> }) {
   const peak = Math.max(1, ...profile.curve.buckets, ...profile.curve.targets);
   return (
@@ -28,6 +33,7 @@ function DeckProfileCard({ profile }: { profile: NonNullable<GuidedDeckProfile> 
       <header>
         <small>YOUR DECK SO FAR</small>
         <p><b>{profile.plan.label}</b>{profile.plan.confidence > 0 ? ` · ${Math.round(profile.plan.confidence * 100)}% sure` : ""}</p>
+        {PLAN_BALANCE_COPY[profile.planBalance] && <p className="guided-gaps">{PLAN_BALANCE_COPY[profile.planBalance]}</p>}
       </header>
       <div className="guided-curve" aria-label="Mana curve">
         {profile.curve.buckets.map((count, index) => (

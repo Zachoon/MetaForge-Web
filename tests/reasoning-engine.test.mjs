@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { parseOracleMechanics } from "../app/reasoning-engine/oracle-mechanics.mjs";
 import { buildInteractionGraph, candidateSynergy, linksBetween } from "../app/reasoning-engine/mechanic-graph.mjs";
-import { buildDeckProfile, inferPlan, scaledTargets, producedColorsOf, rolesOf } from "../app/reasoning-engine/deck-profile.mjs";
+import { buildDeckProfile, commanderReasoningEntry, inferPlan, scaledTargets, producedColorsOf, rolesOf } from "../app/reasoning-engine/deck-profile.mjs";
 import { reasonAboutCandidate, REASONING_LIMITS } from "../app/reasoning-engine/reasoner.mjs";
 import { analyzePartialList } from "../app/reasoning-engine/partial-list-analysis.mjs";
 import { analyzeListWithProvider, buildReasoningContext, profileStepUrgencies, reasonWithProvider } from "../app/reasoning-engine/index.mjs";
@@ -37,6 +37,13 @@ const CARDS = {
   fertileGround: c("Evolution Sage", "Creature — Elf Druid", "{2}{G}", "Landfall — Whenever a land you control enters, proliferate."),
   swamp: c("Swamp", "Basic Land — Swamp", "", "({T}: Add {B}.)"),
   plains: c("Plains", "Basic Land — Plains", "", "({T}: Add {W}.)"),
+  commandTower: c("Command Tower", "Land", "", "{T}: Add one mana of any color in your commander's color identity."),
+  cityOfBrass: c("City of Brass", "Land", "", "{T}: Add one mana of any color. This land deals 1 damage to you."),
+  cultivate: c("Cultivate", "Sorcery", "{2}{G}", "Search your library for up to two basic land cards, put one onto the battlefield tapped and the other into your hand, then shuffle."),
+  strikeItRich: c("Strike It Rich", "Sorcery", "{R}", "Create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")"),
+  raisedByGiants: c("Raised by Giants", "Legendary Enchantment — Background", "{3}{G}", "Commander creatures you own have \"This creature gets +10/+10 and has trample.\"", { colorIdentity: ["G"] }),
+  orzhovCharm: c("Debtors' Knell", "Enchantment", "{W}{W}{B}{B}", "At the beginning of your upkeep, put target creature card from a graveyard onto the battlefield under your control."),
+  austere: c("Austere Command", "Sorcery", "{4}{W}{W}{W}", "Choose two — Destroy all artifacts; destroy all enchantments; destroy all creatures with mana value 3 or less; destroy all creatures with mana value 4 or greater."),
   lightningBolt: c("Lightning Bolt", "Instant", "{R}", "Lightning Bolt deals 3 damage to any target."),
   reanimate: c("Reanimate", "Sorcery", "{B}", "Put target creature card from a graveyard onto the battlefield under your control. You lose life equal to its mana value."),
   restoration: c("Restoration Angel", "Creature — Angel", "{3}{W}", "Flash\nFlying\nWhen Restoration Angel enters, exile target non-Angel creature you control, then return that card to the battlefield under your control."),
@@ -87,6 +94,29 @@ test("lands produce mana colors from rules text and basic types, and are not ram
   assert.deepEqual(producedColorsOf(CARDS.swamp), ["B"]);
   assert.ok(!parseOracleMechanics(CARDS.swamp).effects.includes("ramp"));
   assert.deepEqual([...rolesOf(CARDS.swamp)], ["lands"]);
+});
+
+test("identity mana is the commander's colors, not all five", () => {
+  assert.deepEqual(producedColorsOf(CARDS.commandTower), [], "unknown identity must not invent off-color sources");
+  assert.deepEqual(producedColorsOf(CARDS.commandTower, { colorIdentity: ["W", "B"] }), ["W", "B"]);
+  assert.deepEqual(producedColorsOf(CARDS.arcaneSignet, { colorIdentity: ["U"] }), ["U"]);
+  assert.deepEqual(producedColorsOf(CARDS.cityOfBrass, { colorIdentity: ["R"] }), ["W", "U", "B", "R", "G"]);
+  assert.deepEqual(producedColorsOf(CARDS.cultivate, { colorIdentity: ["G"] }), ["G"]);
+  assert.deepEqual(producedColorsOf(CARDS.strikeItRich, { colorIdentity: ["R"] }), ["W", "U", "B", "R", "G"]);
+});
+
+test("a noncreature commander's printed type line drives the plan", () => {
+  const mechanics = parseOracleMechanics(CARDS.raisedByGiants);
+  assert.ok(mechanics.produces.includes("enchantment"));
+  assert.ok(!mechanics.produces.includes("creature-enters"));
+  assert.equal(inferPlan([CARDS.raisedByGiants], []).id, "enchantress");
+  assert.notEqual(inferPlan([{ ...CARDS.raisedByGiants, typeLine: "Legendary Creature" }], []).id, "enchantress");
+  assert.ok(parseOracleMechanics(CARDS.teysa).produces.includes("creature-enters"));
+  const entry = commanderReasoningEntry({ name: CARDS.raisedByGiants.name, colors: ["G"], oracleText: CARDS.raisedByGiants.oracleText, typeLine: CARDS.raisedByGiants.typeLine });
+  assert.equal(entry.typeLine, "Legendary Enchantment — Background");
+  assert.deepEqual(entry.colorIdentity, ["G"]);
+  assert.equal(commanderReasoningEntry({ name: "Teysa Karlov", colors: ["W", "B"], oracleText: "" }).typeLine, "");
+  assert.equal(commanderReasoningEntry(null), null);
 });
 
 test("the parser is deterministic and tolerates empty or odd input", () => {
@@ -163,6 +193,21 @@ test("profile flags a color whose pips outrun its mana sources", () => {
   assert.equal(white.underSupported, true);
 });
 
+test("Command Tower and Arcane Signet do not dilute a two-color mana base", () => {
+  const picks = [
+    CARDS.plains, { ...CARDS.plains, name: "Plains 2" },
+    CARDS.swamp, { ...CARDS.swamp, name: "Swamp 2" },
+    CARDS.commandTower, CARDS.arcaneSignet,
+    CARDS.swords, CARDS.bloodArtist,
+  ];
+  const profile = buildDeckProfile({ commanders: [CARDS.teysa], picks });
+  for (const color of ["W", "B"]) {
+    const row = profile.colors.requirements.find((entry) => entry.color === color);
+    assert.equal(row.underSupported, false, `${color} should not look short when identity rocks only make W and B`);
+  }
+  assert.ok(!profile.colors.requirements.some((row) => ["U", "R", "G"].includes(row.color)));
+});
+
 test("targets scale for 60-card Brawl", () => {
   const brawl = scaledTargets(60);
   assert.equal(brawl.lands.min, 21);
@@ -200,6 +245,26 @@ test("Talrand spellslinger: Opt links to the commander through casting instants"
   assert.match(result.worksWith[0].mechanism, /casting instants and sorceries/);
 });
 
+test("a color warning names the real pips, once", () => {
+  const profile = {
+    gaps: [],
+    roles: [],
+    picks: 12,
+    plan: { id: "midrange", label: "Midrange value (no clear plan yet)", confidence: 0, resources: [] },
+    colors: { requirements: [{ color: "W", underSupported: true }, { color: "B", underSupported: true }] },
+  };
+  const both = reasonAboutCandidate(CARDS.orzhovCharm, { profile, category: "interaction" });
+  const color = both.reasons.find((reason) => reason.kind === "color");
+  assert.match(color.text, /Needs WWBB early/);
+  assert.match(color.text, /those colors are thin/);
+  assert.doesNotMatch(color.text, /WBWB/);
+  const white = reasonAboutCandidate(CARDS.austere, { profile, category: "interaction" });
+  const whiteReason = white.reasons.find((reason) => reason.kind === "color");
+  assert.match(whiteReason.text, /Needs WWW early/);
+  assert.match(whiteReason.text, /that color is thin/);
+  assert.equal(white.delta <= 0, true);
+});
+
 test("reasoning delta is always capped", () => {
   const picks = Array.from({ length: 30 }, (_, index) => ({ ...CARDS.visceraSeer, name: `Outlet ${index}` }));
   const ctx = buildReasoningContext({ commanders: [CARDS.teysa], picks });
@@ -217,8 +282,15 @@ test("a model provider can refine but never break the result", () => {
   assert.deepEqual(reasonWithProvider(CARDS.solRing, ctx, { id: "throws", refineCandidate: () => { throw new Error("x"); } }), base);
   const refined = reasonWithProvider(CARDS.solRing, ctx, { id: "ok", refineCandidate: (result) => ({ ...result, confidence: 0.9 }) });
   assert.equal(refined.confidence, 0.9);
+  const capped = reasonWithProvider(CARDS.solRing, ctx, { id: "huge", refineCandidate: (result) => ({ ...result, delta: 100 }) });
+  assert.equal(capped.delta, REASONING_LIMITS.maxBoost);
+  const floored = reasonWithProvider(CARDS.solRing, ctx, { id: "deep", refineCandidate: (result) => ({ ...result, delta: -100 }) });
+  assert.equal(floored.delta, REASONING_LIMITS.maxPenalty);
   const list = analyzeListWithProvider({ commanders: [CARDS.teysa], entries: [] }, { id: "autofill", refineListAnalysis: (result) => ({ ...result, autoFilled: true }) });
   assert.equal(list.autoFilled, false, "a provider can never turn analysis into auto-fill");
+  const filled = analyzeListWithProvider({ commanders: [CARDS.teysa], entries: [] }, { id: "adds", refineListAnalysis: (result) => ({ ...result, additions: ["Sol Ring"] }) });
+  assert.equal(filled.autoFilled, false);
+  assert.ok(!("additions" in filled));
 });
 
 // --- 5. Partial list analysis ---------------------------------------------------

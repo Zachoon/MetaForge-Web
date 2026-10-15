@@ -1253,7 +1253,7 @@ export function useForgeSessionState() {
     if (!draft || guidedLoading || guidedFinishingRef.current || guidedCompletionRef.current || guidedConflict) return;
     setGuidedLoading(true);
     try {
-      const asInput = (card: any) => card ? { name: card.name, colors: card.colors, oracleText: commanderOracleText(card) || card.verifiedFacts } : null;
+      const asInput = (card: any) => card ? { name: card.name, colors: card.colors, oracleText: commanderOracleText(card) || card.verifiedFacts, typeLine: card.typeLine || "" } : null;
       const data = await guidedFetch("/api/forge/guided/start", {
         ...draft.preferences,
         format: draft.format,
@@ -1356,6 +1356,7 @@ export function useForgeSessionState() {
       name: option.name,
       colors: option.colors,
       oracleText: commanderOracleText(option) || option.verifiedFacts,
+      typeLine: option.typeLine || "",
     });
     // "Complete a decklist" is a guided review: the pasted cards are kept
     // as picks and the walk-through starts on whatever they leave open.

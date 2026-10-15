@@ -71,6 +71,20 @@ test("worker routes both guided endpoints and validates focusPackageId against t
   assert.match(generate, /focusPackageId: isCommanderFormat\(body\.format\) \? body\.focusPackageId \|\| undefined : undefined/);
 });
 
+test("guided start keeps the commander's printed type line for the reasoning engine", () => {
+  const client = read("app/forge-session-context.tsx");
+  const start = client.slice(client.indexOf("async function startGuidedBuild("), client.indexOf("async function requestGuidedOffer"));
+  assert.match(start, /typeLine: option\.typeLine/);
+  const refresh = client.slice(client.indexOf("async function refreshGuidedPool("), client.indexOf("async function retryGuidedBuild"));
+  assert.match(refresh, /typeLine: card\.typeLine/);
+  const worker = read("worker/forge-guided-build.ts");
+  assert.match(worker, /commanderReasoningEntry/);
+  assert.doesNotMatch(worker, /typeLine:\s*"Legendary Creature"/);
+  const generate = read("worker/forge-generate.ts");
+  assert.match(generate, /typeLine: string/);
+  assert.match(generate, /const typeLine = rawTypeLine\.slice/);
+});
+
 test("the guided build carries the player's existing budget/price/commons/strategy preferences end to end", () => {
   const client = read("app/forge-session-context.tsx");
   const start = client.slice(client.indexOf("async function startGuidedBuild("), client.indexOf("async function requestGuidedOffer"));

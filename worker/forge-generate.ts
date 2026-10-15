@@ -47,7 +47,7 @@ interface Env {
   DB: D1Database;
 }
 
-export type CommanderInput = { name: string; colors: string[]; oracleText: string } | null;
+export type CommanderInput = { name: string; colors: string[]; oracleText: string; typeLine: string } | null;
 
 type GenerateRequest = {
   mode: "native" | "imported" | "direct";
@@ -458,7 +458,9 @@ export function sanitizeCommander(raw: unknown): CommanderInput {
     ? source.colors.filter((c): c is string => typeof c === "string").slice(0, 5).map((c) => c.slice(0, 2))
     : [];
   const oracleText = String(source.oracleText || "").slice(0, MAX_ORACLE_TEXT);
-  return { name, colors, oracleText };
+  const rawTypeLine = typeof source.typeLine === "string" ? source.typeLine : typeof source.type_line === "string" ? source.type_line : "";
+  const typeLine = rawTypeLine.slice(0, MAX_SHORT_STRING);
+  return { name, colors, oracleText, typeLine };
 }
 
 function validateRequest(body: any): { ok: true; value: GenerateRequest } | { ok: false; error: string } {

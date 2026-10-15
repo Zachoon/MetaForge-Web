@@ -109,7 +109,8 @@ export function reasonAboutCandidate(candidate, { profile, deckEntries = [], com
   const strained = (profile?.colors?.requirements || []).filter((row) => row.underSupported && pips[row.color] >= 2);
   if (strained.length) {
     delta -= 2;
-    reasons.push(Object.freeze({ kind: "color", weight: -2, text: `Needs ${strained.map((row) => row.color).join("")}${strained.map((row) => row.color).join("")} early, and your mana sources for it are thin.` }));
+    const pipRun = strained.map((row) => row.color.repeat(Math.max(1, Math.round(pips[row.color])))).join("");
+    reasons.push(Object.freeze({ kind: "color", weight: -2, text: `Needs ${pipRun} early, and your mana sources for ${strained.length > 1 ? "those colors are" : "that color is"} thin.` }));
   } else if (!isLand(candidate) && Object.values(pips).filter((value) => value > 0).length === 0 && cmc > 0) {
     reasons.push(Object.freeze({ kind: "color", weight: 0, text: "Colorless, so it is easy to cast off any mana." }));
   }

@@ -88,19 +88,59 @@ export function pipsOf(entry) {
   return pips;
 }
 
-/** Colors of mana a land or mana source can produce, from its rules text and basic land types. */
-export function producedColorsOf(entry) {
+const COLOR_ORDER = Object.freeze(["W", "U", "B", "R", "G"]);
+
+function addProducedColors(colors, letters) {
+  const allowed = new Set(letters);
+  for (const color of COLOR_ORDER) if (allowed.has(color)) colors.add(color);
+}
+
+/**
+ * Colors of mana a land or mana source can produce, from its rules text and
+ * basic land types. `colorIdentity` is the commander's identity when known:
+ * "any color in your commander's color identity" and basic-land tutors only
+ * count those colors. Unrestricted "any color" (City of Brass, Treasure)
+ * still counts as all five, because those sources really make any color.
+ */
+export function producedColorsOf(entry, { colorIdentity = null } = {}) {
   const text = String(cardOf(entry).oracleText ?? cardOf(entry).oracle_text ?? entry?.oracleText ?? "");
   const typeLine = typeLineOf(entry);
   const colors = new Set();
   const basics = { Plains: "W", Island: "U", Swamp: "B", Mountain: "R", Forest: "G" };
   for (const [type, color] of Object.entries(basics)) if (new RegExp(`\\b${type}\\b`).test(typeLine)) colors.add(color);
+  const identity = Array.isArray(colorIdentity) ? colorIdentity.filter((color) => COLOR_ORDER.includes(color)) : null;
   for (const match of text.matchAll(/\badd\b([^.]*)/gi)) {
     for (const symbol of match[1].match(/\{([WUBRG])\}/g) || []) colors.add(symbol[1]);
-    if (/one mana of any color|mana of any (?:one )?color|any color/i.test(match[1])) for (const color of "WUBRG") colors.add(color);
+    if (/commander'?s color identity/i.test(match[1])) {
+      if (identity) addProducedColors(colors, identity);
+    } else if (/one mana of any color|mana of any (?:one )?color|\bany color\b/i.test(match[1])) {
+      addProducedColors(colors, COLOR_ORDER);
+    }
   }
-  if (/search your library for [^.]*\bbasic land/i.test(text) || /treasure token/i.test(text)) for (const color of "WUBRG") colors.add(color);
+  // Treasures add one mana of any color, including colors outside the
+  // commander's identity. A basic-land tutor can only find basics the deck
+  // is allowed to play.
+  if (/treasure token/i.test(text)) addProducedColors(colors, COLOR_ORDER);
+  if (/search your library for [^.]*\bbasic land/i.test(text)) addProducedColors(colors, identity || COLOR_ORDER);
   return [...colors];
+}
+
+/**
+ * Commander row the profile and parser read. Keeps the printed type line.
+ * A missing type line stays blank — inventing "Legendary Creature" makes
+ * artifact, enchantment, vehicle, planeswalker, and Background commanders
+ * look like creatures.
+ */
+export function commanderReasoningEntry(commander) {
+  if (!commander?.name) return null;
+  const typeLine = String(commander.typeLine ?? commander.type_line ?? "").slice(0, 400);
+  const colors = commander.colorIdentity || commander.colors || [];
+  return {
+    name: String(commander.name),
+    oracleText: String(commander.oracleText ?? commander.oracle_text ?? ""),
+    typeLine,
+    colorIdentity: Array.isArray(colors) ? [...colors] : [],
+  };
 }
 
 /** Profile roles a card fills, from its existing role tags plus its parsed rules text. */
@@ -205,12 +245,13 @@ export function buildDeckProfile({ commanders = [], picks = [], deckSize = 100, 
   const curve = [0, 0, 0, 0, 0, 0];
   const pips = { W: 0, U: 0, B: 0, R: 0, G: 0 };
   const sources = { W: 0, U: 0, B: 0, R: 0, G: 0 };
+  const identity = colorIdentity || [...new Set(commanders.flatMap((commander) => cardOf(commander).colorIdentity || cardOf(commander).color_identity || cardOf(commander).colors || []))];
   let cmcTotal = 0;
   let nonland = 0;
   for (const pick of picks) {
     const roles = rolesOf(pick);
     for (const role of roles) counts[role] += 1;
-    for (const color of producedColorsOf(pick)) if (isLand(pick) || roles.has("ramp")) sources[color] += isLand(pick) ? 1 : 0.5;
+    for (const color of producedColorsOf(pick, { colorIdentity: identity })) if (isLand(pick) || roles.has("ramp")) sources[color] += isLand(pick) ? 1 : 0.5;
     if (isLand(pick)) continue;
     nonland += 1;
     const cmc = cmcOf(pick);
@@ -241,7 +282,6 @@ export function buildDeckProfile({ commanders = [], picks = [], deckSize = 100, 
     });
   });
 
-  const identity = colorIdentity || [...new Set(commanders.flatMap((commander) => cardOf(commander).colorIdentity || cardOf(commander).color_identity || cardOf(commander).colors || []))];
   const pipTotal = Object.values(pips).reduce((sum, value) => sum + value, 0);
   const sourceTotal = Object.values(sources).reduce((sum, value) => sum + value, 0);
   const colorRequirements = Object.freeze(identity.filter((color) => color in pips).map((color) => {
