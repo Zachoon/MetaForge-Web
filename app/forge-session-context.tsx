@@ -1173,7 +1173,16 @@ export function useForgeSessionState() {
     setGuidedLoading(true);
     try {
       const asInput = (card: any) => card ? { name: card.name, colors: card.colors, oracleText: commanderOracleText(card) || card.verifiedFacts } : null;
-      const data = await guidedFetch("/api/forge/guided/start", { ...draft.preferences, format: draft.format, commander: asInput(draft.commander), secondCommander: asInput(draft.second), focusPackageId: draft.shell?.id });
+      const data = await guidedFetch("/api/forge/guided/start", {
+        ...draft.preferences,
+        format: draft.format,
+        commander: asInput(draft.commander),
+        secondCommander: asInput(draft.second),
+        focusPackageId: draft.shell?.id,
+        // The new pool has to know the picks already made, including cards
+        // the popularity search never returned, or the ledger goes empty.
+        seedNames: draft.session.accepted,
+      });
       const session = { ...draft.session, generationId: data.generationId, ...guidedOfferFields(data) };
       setGuidedSession(session);
       await requestGuidedOffer(session, {});
@@ -1243,6 +1252,9 @@ export function useForgeSessionState() {
     guidedSnapshotRef.current = null;
     guidedCompletionRef.current = null;
   };
+  const guidedOfferSeqRef = useRef(0);
+  const guidedSessionRef = useRef<GuidedSession | null>(guidedSession);
+  guidedSessionRef.current = guidedSession;
   async function startGuidedBuild(options: { seedDeck?: string } = {}) {
     if (!selectedCommander || guestMode || !isCommanderFormat(format) || guidedLoading || guidedFinishingRef.current || guidedConflict) return;
     if (!guidedOwnerRef.current || guidedAvailableDraft) {
@@ -1260,8 +1272,12 @@ export function useForgeSessionState() {
     });
     // "Complete a decklist" is a guided review: the pasted cards are kept
     // as picks and the walk-through starts on whatever they leave open.
-    const seedNames = options.seedDeck
-      ? guidedSeedNames(options.seedDeck, [selectedCommander.name, selectedSecondCommander?.name || ""])
+    // Restart and a retry that has no session yet pass no seedDeck; the
+    // textarea still holds the list, so it stays the starting picks.
+    // An explicit empty string is the only way to start from nothing.
+    const seedSource = options.seedDeck ?? deck;
+    const seedNames = seedSource.trim()
+      ? guidedSeedNames(seedSource, [selectedCommander.name, selectedSecondCommander?.name || ""])
       : [];
     setChamber("guided-build");
     setGuidedError("");
@@ -1309,7 +1325,9 @@ export function useForgeSessionState() {
     session: GuidedSession,
     patch: Partial<Pick<GuidedSession, "categoryIndex" | "accepted" | "declined" | "manualCards" | "declineFeedback">>,
   ) {
+    const seq = ++guidedOfferSeqRef.current;
     const next = { ...session, ...patch };
+    guidedSessionRef.current = next;
     // Persist the player's action before requesting the next offer. An outage
     // must not silently undo an accepted card or a manual search choice.
     setGuidedSession(next);
@@ -1334,17 +1352,20 @@ export function useForgeSessionState() {
         categories: next.categories,
         categoryIndex: next.categoryIndex,
       });
+      if (seq !== guidedOfferSeqRef.current) return;
       const categories = Array.isArray(data.categoryOrder) && data.categoryOrder.length === next.categories.length
         ? data.categoryOrder as string[]
         : next.categories;
       const settled = { ...next, categories, ...guidedOfferFields(data) };
+      guidedSessionRef.current = settled;
       setGuidedSession(settled);
       if (categories !== next.categories) writeGuidedLocal(guidedSnapshot(settled));
     } catch (error) {
+      if (seq !== guidedOfferSeqRef.current) return;
       setGuidedError(error instanceof Error ? error.message : "The guided build could not continue.");
       trackLaunchEvent("guided_failed", { stage: "next" });
     } finally {
-      setGuidedLoading(false);
+      if (seq === guidedOfferSeqRef.current) setGuidedLoading(false);
     }
   }
   // Measurement is consent-gated and carries only the action and the role
@@ -1549,11 +1570,18 @@ export function useForgeSessionState() {
   const guidedCompassRef = useRef(playerCompass);
   useEffect(() => {
     if (guidedCompassRef.current === playerCompass) return;
+    const session = guidedSessionRef.current;
+    // Leave the ref stale while an offer is in flight. When that request
+    // settles, guidedLoading flips and this effect retries with the session
+    // the in-flight request already committed, instead of the one this
+    // render closed over. Overlapping /next responses are dropped by
+    // guidedOfferSeqRef, so a late response cannot replace a newer pick.
+    if (session && !guidedConflict && !guidedCompletionRef.current && guidedLoading) return;
     guidedCompassRef.current = playerCompass;
-    if (!guidedSession || guidedLoading || guidedConflict || guidedCompletionRef.current) return;
-    void requestGuidedOffer(guidedSession, {});
+    if (!session || guidedConflict || guidedCompletionRef.current) return;
+    void requestGuidedOffer(session, {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playerCompass]);
+  }, [playerCompass, guidedLoading]);
 
   // Guests verify only when they ask to build. With a live token the action
   // runs at once; without one, the verification panel appears and the same

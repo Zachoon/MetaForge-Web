@@ -149,3 +149,11 @@ test("a pasted partial list becomes guided seed picks without commanders, basics
   ].join("\n"), ["Atraxa, Praetors' Voice"]);
   assert.deepEqual(names, ["Sol Ring", "Arcane Signet", "Swords to Plowshares"]);
 });
+
+test("a double-faced commander is not kept as a seed pick from either face", () => {
+  const front = "Esika, God of the Tree";
+  const full = "Esika, God of the Tree // The Prismatic Bridge";
+  const list = `1 ${full}\n1 Sol Ring\n1 ${front}`;
+  assert.deepEqual(guidedSeedNames(list, [front]), ["Sol Ring"]);
+  assert.deepEqual(guidedSeedNames(list, [full]), ["Sol Ring"]);
+});

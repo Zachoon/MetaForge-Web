@@ -58,8 +58,11 @@ const BASIC_LAND = /^(?:snow-covered\s+)?(?:plains|island|swamp|mountain|forest|
  * @param {string} deckText
  * @param {string[]} [commanderNames]
  */
+const faceKey = (name) => nameKey(name).split(" // ")[0];
 export function guidedSeedNames(deckText, commanderNames = []) {
-  const commanders = new Set(commanderNames.filter(Boolean).map(nameKey));
+  // Same face rule as guidedCompletionReview: "Esika, God of the Tree" and
+  // "Esika, God of the Tree // The Prismatic Bridge" are one commander.
+  const commanders = new Set(commanderNames.filter(Boolean).flatMap((name) => [nameKey(name), faceKey(name)]));
   const seen = new Set();
   const names = [];
   let main = true;
@@ -74,7 +77,7 @@ export function guidedSeedNames(deckText, commanderNames = []) {
     const name = match?.[2]?.trim();
     if (!name || BASIC_LAND.test(name)) continue;
     const key = nameKey(name);
-    if (commanders.has(key) || seen.has(key)) continue;
+    if (commanders.has(key) || commanders.has(faceKey(name)) || seen.has(key)) continue;
     seen.add(key);
     names.push(name.slice(0, 400));
     if (names.length >= 100) break;

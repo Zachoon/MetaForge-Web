@@ -12,7 +12,8 @@
 
 - Each suggestion shows its role, which of your picks it works with, and its main trade-off.
 - "Not this one" offers one-tap reasons (wrong plan, too expensive, too strong for my table, not my style, I have a better card). Reasons and accepted cards re-rank later suggestions and reorder the steps you have not reached yet.
-- Player Compass answers apply as soon as each one is given, and the Compass is available inside the guided build.
+- Player Compass answers apply as soon as each one is given, and the Compass is available inside the guided build. A change during an in-flight suggestion waits, then re-asks; a late response cannot replace a newer pick.
+- Cards in a pasted list count toward the walk-through even when they sit outside the popular-card pool. Restarting or refreshing the pool keeps that list, and a double-faced commander is not kept as an extra pick.
 
 ### A calmer homepage
 

@@ -101,6 +101,75 @@ function validateFocusPackageId(value: unknown): value is string {
 }
 
 const normalizeKey = (name: string) => name.normalize("NFKC").trim().toLocaleLowerCase("en");
+const faceKey = (name: string) => normalizeKey(name).split(" // ")[0];
+
+function indexAnalyzedCards(cards: any[]) {
+  const analyzedByName = new Map<string, any>();
+  for (const entry of cards) {
+    const key = normalizeKey(String(entry?.card?.name || entry?.name || ""));
+    if (!key) continue;
+    if (!analyzedByName.has(key)) analyzedByName.set(key, entry);
+    const face = key.split(" // ")[0];
+    if (face !== key && !analyzedByName.has(face)) analyzedByName.set(face, entry);
+  }
+  return analyzedByName;
+}
+
+function analyzedEntry(analyzedByName: Map<string, any>, name: string) {
+  const key = normalizeKey(name);
+  return analyzedByName.get(key) || analyzedByName.get(faceKey(name)) || null;
+}
+
+// The popularity-ordered pool is capped, so a pasted list routinely names
+// cards it does not contain. Those cards still belong in the ledger. Resolve
+// the misses once, at start, and store them on the generation so later
+// clicks stay local. A lookup failure leaves that name accepted but uncounted,
+// which is the previous behavior, not a failed start.
+async function resolveSeedCardsOutsidePool(poolCards: any[], seedNames: string[]) {
+  const known = new Set<string>();
+  for (const card of poolCards) {
+    const key = normalizeKey(String(card?.name || ""));
+    if (!key) continue;
+    known.add(key);
+    known.add(faceKey(key));
+  }
+  const missing = seedNames.filter((name) => {
+    const key = normalizeKey(name);
+    return Boolean(key) && !known.has(key) && !known.has(faceKey(name));
+  });
+  if (!missing.length) return [];
+  const found: ReturnType<typeof nativeCardFact>[] = [];
+  for (let index = 0; index < missing.length; index += 75) {
+    const chunk = missing.slice(index, index + 75);
+    try {
+      const response = await fetch("https://api.scryfall.com/cards/collection", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "User-Agent": "MetaForge/1.0 (https://metaforge.gg)",
+        },
+        body: JSON.stringify({
+          identifiers: chunk.map((name) => ({ name: name.split(/\s*\/\/\s*/)[0].trim() })),
+        }),
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!response.ok) continue;
+      const payload: any = await response.json();
+      for (const card of Array.isArray(payload?.data) ? payload.data : []) {
+        const fact = nativeCardFact(card);
+        const key = normalizeKey(fact.name);
+        if (!key || known.has(key)) continue;
+        known.add(key);
+        known.add(faceKey(key));
+        found.push(fact);
+      }
+    } catch (error) {
+      console.error("forge-guided-start seed lookup failed", error);
+    }
+  }
+  return found;
+}
 
 // Learning signals the client resends in full on every request (the same
 // stateless contract as acceptedNames/declinedNames): why each card was
@@ -174,15 +243,15 @@ function computeOffer(
   const analysis = (effectiveKey && readCachedAnalysis(effectiveKey))
     || analyzeForgePool({ ...input, cards: manualCards.length ? [...cards, ...manualCards] : cards });
   if (effectiveKey) cacheAnalysis(effectiveKey, analysis);
-  const analyzedByName = new Map(analysis.cards.map((entry: any) => [normalizeKey(entry.card?.name || entry.name || ""), entry]));
+  const analyzedByName = indexAnalyzedCards(analysis.cards);
   const partialRows = acceptedNames
-    .map((name) => analyzedByName.get(normalizeKey(name)))
+    .map((name) => analyzedEntry(analyzedByName, name))
     .filter((entry): entry is any => Boolean(entry));
   // Decline reasons only shape ranking; the declined card itself is still
   // excluded through declinedNames exactly as before.
   const preferenceProfile = buildPreferenceProfile({
     acceptedRows: partialRows,
-    declined: learning.declineFeedback.map((entry) => ({ row: analyzedByName.get(normalizeKey(entry.name)) || null, reason: entry.reason })),
+    declined: learning.declineFeedback.map((entry) => ({ row: analyzedEntry(analyzedByName, entry.name), reason: entry.reason })),
     compass: learning.compass,
   });
   const suggestion = suggestCardForCategory({
@@ -333,23 +402,25 @@ export async function handleForgeGuidedStart(request: Request, env: Env): Promis
   try {
     const counter: ScryfallCounter = { count: 0 };
     const pool = await loadNativeForgePool(body.format, commander, "", note, secondCommander, counter);
+    const seedCards = await resolveSeedCardsOutsidePool(pool.cards, seedNames);
+    const cards = seedCards.length ? [...pool.cards, ...seedCards] : pool.cards;
     const input = { format: body.format, commander, secondCommander, note, focusPackageId, targetPowerTier, strategy, complexity, budget, maxCardPrice, commonsOnly };
     const learning = { declineFeedback: [], compass };
     // Order the steps before choosing the first one, so a pasted list that
     // already covers ramp opens on whatever it is actually missing.
-    const probe = computeOffer(pool.cards, input, CATEGORY_SEQUENCE[0], seedNames, [], undefined, [], learning);
+    const probe = computeOffer(cards, input, CATEGORY_SEQUENCE[0], seedNames, [], undefined, [], learning);
     const categoryOrder = orderRemainingCategories([...CATEGORY_SEQUENCE], -1, {
       ledger: serializeLedger(probe.ledger),
       profile: probe.preferenceProfile,
     });
     const { suggestion, ledger, analysis, explanation } = categoryOrder[0] === CATEGORY_SEQUENCE[0]
       ? probe
-      : computeOffer(pool.cards, input, categoryOrder[0], seedNames, [], undefined, [], learning);
+      : computeOffer(cards, input, categoryOrder[0], seedNames, [], undefined, [], learning);
 
     const generationId = await storeGeneration(env, key, {
       selected: null,
       candidates: [],
-      cardPool: pool.cards,
+      cardPool: cards,
       options: { format: body.format, strategy, target: 0 },
       forgeInput: {
         commander, secondCommander, note,

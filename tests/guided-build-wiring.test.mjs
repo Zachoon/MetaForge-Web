@@ -128,6 +128,35 @@ test("the worker classifies manual cards through the real card-fact transform, c
   assert.match(worker, /manualCards\.map\(\(card\) => normalizeKey\(String\(card\?\.name \|\| ""\)\)\)\.sort\(\)\.join\(","\)/);
 });
 
+test("restart and a session-less retry keep the pasted list, and a pool refresh sends the picks already made", () => {
+  const client = read("app/forge-session-context.tsx");
+  const start = client.slice(client.indexOf("async function startGuidedBuild("), client.indexOf("async function requestGuidedOffer"));
+  assert.match(start, /const seedSource = options\.seedDeck \?\? deck;/);
+  const refresh = client.slice(client.indexOf("async function refreshGuidedPool("), client.indexOf("async function retryGuidedBuild("));
+  assert.match(refresh, /seedNames: draft\.session\.accepted/);
+});
+
+test("a guided offer drops a response that lost the race, and a compass change during a request is retried", () => {
+  const source = read("app/forge-session-context.tsx");
+  const offer = source.slice(source.indexOf("async function requestGuidedOffer("), source.indexOf("const trackGuidedStep"));
+  assert.match(offer, /const seq = \+\+guidedOfferSeqRef\.current/);
+  assert.match(offer, /if \(seq !== guidedOfferSeqRef\.current\) return;/);
+  assert.match(offer, /if \(seq === guidedOfferSeqRef\.current\) setGuidedLoading\(false\)/);
+  const compass = source.slice(source.indexOf("const guidedCompassRef"), source.indexOf("type VerifiedAction"));
+  const assignAt = compass.indexOf("guidedCompassRef.current = playerCompass");
+  const waitAt = compass.indexOf("if (session && !guidedConflict && !guidedCompletionRef.current && guidedLoading) return;");
+  assert.ok(waitAt !== -1 && assignAt !== -1 && waitAt < assignAt, "a compass change during loading must leave the ref stale so the effect retries");
+  assert.match(compass, /requestGuidedOffer\(session, \{\}\)/);
+  assert.match(compass, /\[playerCompass, guidedLoading\]/);
+});
+
+test("pasted seeds missing from the popularity pool are resolved into the stored generation", () => {
+  const worker = read("worker/forge-guided-build.ts");
+  assert.match(worker, /api\.scryfall\.com\/cards\/collection/);
+  assert.match(worker, /resolveSeedCardsOutsidePool\(pool\.cards, seedNames\)/);
+  assert.match(worker, /cardPool: cards/);
+});
+
 test("restarting a guided build requires a two-step confirm and never silently discards picks", () => {
   const source = read("app/components/forge/guided-build-chamber.tsx");
   // The bare button only ever arms the confirm; it must never call
