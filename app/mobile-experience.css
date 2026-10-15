@@ -1,0 +1,259 @@
+/* Phone and tablet behavior. Loaded after the chamber styles so these
+   overrides win without editing files the guided-build and /decks PRs own.
+   Breakpoints: phones through 760px (bottom rail), stacked tablets through
+   900px, and touch widths through 1100px where the hover card column
+   would otherwise eat the page. */
+
+/* The Forgemaster panel is a <details> menu, but an author `display: grid`
+   beats the user-agent rule that hides a closed details body. The panel
+   was painted on every visit, covering the entrance on a phone. */
+.forge-menu:not([open]) > div { display: none; }
+
+button,
+a,
+summary,
+label,
+input,
+select,
+textarea,
+[role="button"] { touch-action: manipulation; }
+
+@media (max-width: 1100px) {
+  /* The persistent card column is a hover preview. On a phone or tablet it
+     is an empty 310px rail, and a tap already opens the dossier. */
+  :root { --mf-frame-card-rail: 0px; }
+  .great-forge > .forge-card-rail { display: none !important; }
+
+  .forge-bar .forge-brand,
+  .forge-bar > .forge-menu > summary { min-height: 44px !important; }
+  .forge-menu > div > section { grid-template-columns: minmax(0, 1fr) repeat(3, 44px) !important; }
+  .forge-menu > div > section button,
+  .forge-menu > div > button,
+  .forge-menu > div > a { min-height: 44px; }
+  .forge-menu nav { flex-wrap: wrap; gap: 4px 12px; }
+  .forge-menu nav a { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 2px; }
+  .legal-brand,
+  .legal-links a,
+  .profile-state a { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 2px; }
+  .privacy-choice button,
+  .privacy-choice a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+  .chamber-commission .back-link,
+  .back-link {
+    display: inline-flex !important;
+    align-items: center !important;
+    min-height: 44px !important;
+    padding: 8px 10px !important;
+    font-size: 13px !important;
+  }
+  .chamber-entrance .player-compass-card:not(.is-open) .player-compass-actions > button,
+  .player-compass-actions > button { min-height: 44px !important; }
+  .player-compass-modal-close { width: 44px; height: 44px; }
+  .commander-hero { align-items: center; }
+  .commander-hero-identity { min-width: 0; }
+}
+
+@media (max-width: 1100px) {
+  /* iOS zooms a focused field whose font is under 16px and then leaves the
+     page pinched. Every typed control on a phone or tablet stays at 16px. */
+  :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="button"]):not([type="submit"]):not([type="hidden"]):not([type="color"]) {
+    font-size: 16px !important;
+  }
+
+  .legal-page {
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-bottom: max(72px, calc(28px + env(safe-area-inset-bottom, 0px)));
+  }
+  .legal-card a,
+  .profile-page a { overflow-wrap: anywhere; }
+  .legal-card table,
+  .legal-card pre { display: block; max-width: 100%; overflow-x: auto; }
+
+  .guest-forge-pass,
+  .guest-result-gate { width: min(920px, calc(100% - 16px)); }
+  .guest-result-gate a { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+
+  .guided-picks li button { min-width: 44px; min-height: 44px; }
+  .guided-restart,
+  .guided-restart-confirm button { min-height: 44px; }
+  .guided-offer img { max-width: min(260px, 100%); height: auto; }
+
+  .buy-deck-link,
+  .next-step-cta,
+  .save-deck-link,
+  .conduct-experiment-cta,
+  .cheapest-printings-toggle,
+  .type-column-row { min-height: 44px; }
+  .deck-price-bar { flex-wrap: wrap; row-gap: 8px; }
+  .interaction-graph-dossier > div { grid-template-columns: 1fr !important; }
+  .integrity-dossier > div { grid-template-columns: 1fr 1fr; }
+  .meta-breaker-workflow > div { grid-template-columns: 1fr; }
+  .replacement-grid { grid-template-columns: 1fr; }
+
+  .academy-card-example img,
+  .commander-hero > img,
+  .decks-card-art img { max-width: 100%; height: auto; }
+}
+
+/* Stacked entrance (copy, three actions, compass, links, then the visual)
+   is taller than an iPad portrait. Below 760px the frame already scrolls.
+   Between 761 and 900 the pane was overflow:hidden, so the actions were
+   clipped with no way to reach them. */
+@media (min-width: 761px) and (max-width: 1100px) {
+  body:has(.great-forge) .privacy-choice {
+    left: calc(var(--mf-frame-rail) + 12px);
+    right: 12px;
+    width: auto;
+    transform: none;
+    bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (min-width: 761px) and (max-width: 900px) {
+  .great-forge.chamber-entrance { height: 100svh !important; overflow: hidden !important; }
+  .chamber-entrance > .forge-entrance {
+    position: absolute !important;
+    inset: var(--mf-frame-top) 0 0 var(--mf-frame-rail) !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+  }
+  .chamber-entrance .entrance-actions > button { min-height: 112px !important; padding: 16px 18px !important; }
+  .chamber-entrance .entrance-visual { min-height: min(34vh, 280px) !important; }
+  .chamber-entrance .player-compass-card:not(.is-open) .player-compass-actions > button { min-height: 44px !important; }
+}
+
+@media (max-width: 760px) {
+  :root {
+    --mf-frame-top: calc(58px + env(safe-area-inset-top, 0px));
+    --mf-frame-rail: calc(58px + env(safe-area-inset-bottom, 0px));
+  }
+  .great-forge > .forge-bar {
+    padding-top: env(safe-area-inset-top, 0px) !important;
+    backdrop-filter: none !important;
+  }
+  .forge-bar .forge-brand { min-height: 44px; }
+  .forge-bar > .forge-menu > summary {
+    min-width: 44px !important;
+    min-height: 44px !important;
+    justify-content: center;
+  }
+  .forge-menu[open] > div {
+    max-height: calc(100svh - var(--mf-frame-top) - var(--mf-frame-rail) - 12px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Rail labels are 130% of the button and overflow:visible, so on the
+     horizontal bar they spill into the next item and past the viewport. */
+  .great-forge > .forge-global-rail {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+    box-sizing: border-box !important;
+    scrollbar-width: none;
+  }
+  .great-forge > .forge-global-rail::-webkit-scrollbar { display: none; }
+  .forge-global-rail button {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    padding: 6px 2px !important;
+  }
+  .forge-global-rail button span {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-top: 3px !important;
+    overflow: hidden !important;
+    font-size: 9px !important;
+    letter-spacing: 0 !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    transform: none !important;
+  }
+  .forge-global-rail button:hover,
+  .forge-global-rail button:focus-visible,
+  .forge-global-rail button.active {
+    border-left-color: transparent !important;
+    background: linear-gradient(0deg, #302013cc, transparent) !important;
+    box-shadow: inset 0 -3px 0 #e09a3e !important;
+  }
+
+  .great-forge input,
+  .great-forge textarea,
+  .great-forge select {
+    scroll-margin-top: calc(var(--mf-frame-top) + 12px);
+    scroll-margin-bottom: calc(var(--mf-frame-rail) + 24px);
+  }
+
+  .privacy-choice,
+  .deck-price-bar,
+  .card-preview-stage,
+  .living-workbench-modes { backdrop-filter: none !important; }
+
+  .card-action-menu {
+    bottom: calc(var(--mf-frame-rail) + 8px) !important;
+    max-height: calc(100svh - var(--mf-frame-top) - var(--mf-frame-rail) - 16px);
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .privacy-choice {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+    width: min(760px, calc(100% - 16px));
+    padding: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  }
+  body:has(.great-forge) .privacy-choice { bottom: calc(var(--mf-frame-rail) + 8px); }
+  .privacy-choice span { font-size: 13px; line-height: 1.4; }
+  .privacy-choice footer { display: grid !important; grid-template-columns: 1fr 1fr; gap: 8px; align-content: start; height: fit-content !important; }
+  .privacy-choice footer a { grid-column: 1 / -1; justify-content: center; }
+  .privacy-choice button,
+  .privacy-choice a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+}
+
+@media (hover: none), (max-width: 900px) {
+  .decks-card:hover,
+  .decks-cta:hover { transform: none; }
+  .decks-card .decks-delete,
+  .decks-row .decks-delete { opacity: 1; }
+}
+
+@media (max-width: 720px) {
+  .decks-search { min-width: 0; flex-basis: 100%; }
+  .decks-pip-btn,
+  .decks-view-toggle button,
+  .decks-dir { width: 44px; height: 44px; }
+  .decks-card .decks-delete,
+  .decks-row .decks-delete { width: 40px; height: 40px; }
+  .decks-card-open,
+  .decks-card-seal { display: inline-flex; align-items: center; min-height: 44px; }
+  .decks-toolbar { row-gap: 10px; }
+}
+
+@media (max-width: 520px) {
+  .commander-hero { flex-direction: column; align-items: flex-start; }
+  .commander-hero > img { width: min(200px, 56vw); aspect-ratio: 488 / 680; height: auto; object-fit: cover; }
+  .profile-page { width: min(1180px, calc(100% - 28px)); }
+  .profile-page > header { gap: 16px; }
+}

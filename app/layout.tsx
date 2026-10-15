@@ -1,7 +1,14 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import PrivacyControls from "./privacy-controls";
 import { STALE_CHUNK_RECOVERY_SCRIPT } from "./stale-chunk-recovery";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  interactiveWidget: "resizes-content",
+};
 
 export function generateMetadata(): Metadata {
   const metadataBase = new URL("https://metaforge.gg");
@@ -30,6 +37,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <head>
+        {/* vinext's ViewportHead drops viewport-fit and interactive-widget,
+            so the tag the browser actually reads is updated here. */}
+        <script dangerouslySetInnerHTML={{ __html: "(function(){var m=document.querySelector('meta[name=\"viewport\"]');if(m)m.setAttribute('content','width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content');})();" }} />
         {/* First in <head> so it is listening before any app chunk loads. */}
         <script dangerouslySetInnerHTML={{ __html: STALE_CHUNK_RECOVERY_SCRIPT }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
