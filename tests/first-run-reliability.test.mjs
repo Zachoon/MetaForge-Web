@@ -38,6 +38,31 @@ test("a saved deck with no revision list does not crash My Decks or the profile"
   assert.match(archive, /String\(a\.name \|\| ""\)\.localeCompare/);
 });
 
+test("a new visitor sees three steps, then one start, with the example tucked away", async () => {
+  const entrance = await read("app/components/forge/entrance-chamber.tsx");
+  const frame = await read("app/site-frame.css");
+  assert.match(entrance, /How a first deck starts/);
+  assert.match(entrance, /Pick a commander/);
+  assert.match(entrance, /Add the first card/);
+  assert.match(entrance, /Read why it belongs/);
+  assert.match(entrance, /<details className="entrance-more">/);
+  assert.doesNotMatch(entrance, /<details className="entrance-more" open>/);
+  assert.match(frame, /\.chamber-entrance \.entrance-copy\{justify-content:flex-start/);
+  assert.match(frame, /overflow-y:auto!important/);
+});
+
+test("the first commander step leads with a suggestion and keeps the build button reachable", async () => {
+  const commission = await read("app/components/forge/commission-chamber.tsx");
+  const frame = await read("app/site-frame.css");
+  assert.match(commission, /Start with a commander/);
+  assert.match(commission, /Suggest one, or search for a legend you like/);
+  assert.match(commission, /first-session-suggest-note/);
+  assert.match(commission, /commander-suggest-first/);
+  assert.match(commission, /<details className="shell-picker-optional">/);
+  assert.doesNotMatch(commission, /Occupancy engines/);
+  assert.match(frame, /\.chamber-commission \.commission-scroll\{[\s\S]*?overflow-y:auto!important/);
+});
+
 test("a partial coach vault does not map missing lists", async () => {
   const research = await read("app/research/page.tsx");
   assert.match(research, /observedFindings \|\| \[\]/);

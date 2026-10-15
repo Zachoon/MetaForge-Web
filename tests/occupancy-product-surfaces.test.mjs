@@ -62,7 +62,9 @@ test("ceremony, footer, and card-mold rail slot name occupancy from commander or
 
 test("awaken CTA names occupancy without changing the build button", () => {
   assert.match(commissionChamber, /className="awaken-occupancy"/);
-  assert.match(commissionChamber, /Named from commander oracle, before the 99 exists/);
+  assert.match(commissionChamber, /From this commander's card/);
+  assert.match(commissionChamber, /The rest of the deck hasn't been built yet/);
+  assert.doesNotMatch(commissionChamber, /Occupancy engines/);
   assert.match(polish, /\.awaken-occupancy/);
   assert.doesNotMatch(commissionChamber, /awaken-occupancy[\s\S]{0,80}onClick=\{awaken\}/);
 });
@@ -107,7 +109,7 @@ test("stats bar and guest save gate name occupancy without treating it as proof"
 
 test("coach brief, experiments, graph, and post-accept keep occupancy off the verified-system path", () => {
   assert.match(workbenchChamber, /className="honest-coach-occupancy"/);
-  assert.match(workbenchChamber, /Named from commander oracle, not a verified system map/);
+  assert.match(workbenchChamber, /This is not a map of the finished deck/);
   assert.match(workbenchChamber, /className="experiment-occupancy"/);
   assert.match(workbenchChamber, /These experiments do not reopen occupancy/);
   // The interaction graph moved to /research with the rest of the Deep

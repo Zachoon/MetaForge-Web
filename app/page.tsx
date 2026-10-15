@@ -537,7 +537,7 @@ export default function Home() {
             <b>Create your free account to save it, edit cards, run experiments, and record matches.</b>
             {coachOccupancyLabels.length > 0 && (
               <p className="guest-result-occupancy">
-                Occupancy engines: {coachOccupancyLabels.join(" · ")}. Named from commander oracle, not from the 99.
+                From this commander's card: {coachOccupancyLabels.join(" · ")}. This comes from the commander, not the rest of the deck.
               </p>
             )}
           </div>

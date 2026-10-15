@@ -109,10 +109,10 @@ export function CommissionChamber() {
           {isScratch ? "BUILD A DECK · EMPTY WORKSPACE" : isComplete ? "COMPLETE A DECK · IMPORT YOUR LIST" : "DISCOVER A DECK · FORMAT + COMMANDER"}
         </span>
         <h1>
-          {isScratch ? "Start with any card." : isComplete ? "Bring the deck you already started." : "What do you want to play?"}
+          {isScratch ? "Start with any card." : isComplete ? "Bring the deck you already started." : "Start with a commander."}
         </h1>
         <p>
-          {isScratch ? "Search and add cards into a clean list. When you want help, the Forge can complete the legal slots around what you chose." : isComplete ? "Paste a full or partial list. The Forge reads its existing plan, keeps the pieces that belong, and fills the missing legal slots." : "Choose a format. For Commander formats, bring a commander or let the Forge suggest one using your Player Compass."}
+          {isScratch ? "Search and add cards into a clean list. When you want help, the Forge can complete the legal slots around what you chose." : isComplete ? "Paste a full or partial list. The Forge reads its existing plan, keeps the pieces that belong, and fills the missing legal slots." : "Suggest one, or search for a legend you like. The next step is the first card, with a reason you can read."}
         </p>
       </div>
       <div className={`commission-scroll build-path-${buildPath}`}>
@@ -204,7 +204,7 @@ export function CommissionChamber() {
                   </em>
                   {commissionOccupancyLabels.length > 0 && (
                     <small className="commander-occupancy">
-                      Occupancy engines: {commissionOccupancyLabels.join(" · ")}. Named from commander oracle, before the 99 exists.
+                      From this commander's card: {commissionOccupancyLabels.join(" · ")}. The rest of the deck hasn't been built yet.
                     </small>
                   )}
                 </div>
@@ -255,11 +255,15 @@ export function CommissionChamber() {
                       type="button"
                       disabled={randomizingCommander}
                       onClick={chooseRandomCommander}
+                      className="commander-suggest-first"
                     >
                       {randomizingCommander
                         ? "Finding commanders…"
                         : selectedCommander ? "Choose another for me" : "Suggest a commander for me"}
                     </button>
+                  )}
+                  {!isComplete && (
+                    <p className="first-session-suggest-note">No commander in mind? Suggest one. You still choose every card after that.</p>
                   )}
                 </div>
                 {randomCommanderOptions.length > 0 && (
@@ -387,7 +391,7 @@ export function CommissionChamber() {
                       <span>{selectedSecondCommander.typeLine}</span>
                       {secondCommissionOccupancyLabels.length > 0 && (
                         <small className="commander-occupancy">
-                          Occupancy engines: {secondCommissionOccupancyLabels.join(" · ")}. Named from commander oracle, before the 99 exists.
+                          From this commander's card: {secondCommissionOccupancyLabels.join(" · ")}. The rest of the deck hasn't been built yet.
                         </small>
                       )}
                     </div>
@@ -483,20 +487,17 @@ export function CommissionChamber() {
         )}
         {chamber === "commission" && selectedCommander && shellOptions.length > 0 && (
           <section className="shell-picker">
+            {selectedShell ? (
+              <>
             <header>
               <div>
                 <span>SHELL · WHAT THIS COMMANDER CAN BUILD TOWARD</span>
-                <strong>
-                  {selectedShell ? "Shell selected" : "Choose a shell to build around — or skip"}
-                </strong>
+                <strong>Shell selected</strong>
               </div>
-              {selectedShell && (
-                <button type="button" onClick={() => setSelectedShell(null)}>
-                  Change
-                </button>
-              )}
+              <button type="button" onClick={() => setSelectedShell(null)}>
+                Change
+              </button>
             </header>
-            {selectedShell ? (
               <article className="shell-option-selected">
                 <b>{shellDisplay(selectedShell).name}</b>
                 <span>{shellDisplay(selectedShell).blurb}</span>
@@ -504,8 +505,13 @@ export function CommissionChamber() {
                   You&apos;ll build this deck together, one step at a time — the Forge suggests, you decide.
                 </small>
               </article>
+              </>
             ) : (
-              <>
+              <details className="shell-picker-optional">
+                <summary>
+                  <span>OPTIONAL</span>
+                  <strong>Choose a shell to build around — or skip</strong>
+                </summary>
                 <div className="shell-options-grid" role="group" aria-label="Shell options">
                   {shellOptions.map((option) => (
                     <button
@@ -522,7 +528,7 @@ export function CommissionChamber() {
                 <p className="shell-options-skip-note">
                   {`Pick one to focus the suggestions — or skip, and you'll still build step by step, with suggestions drawn from every shell ${selectedCommander.name} supports.`}
                 </p>
-              </>
+              </details>
             )}
           </section>
         )}
@@ -569,7 +575,7 @@ export function CommissionChamber() {
         </button>
         {revealOccupancyLabels.length > 0 && (
           <p className="awaken-occupancy">
-            Occupancy engines: {revealOccupancyLabels.join(" · ")}. Named from commander oracle, before the 99 exists.
+            From this commander's card: {revealOccupancyLabels.join(" · ")}. The rest of the deck hasn't been built yet.
           </p>
         )}
       </div>
