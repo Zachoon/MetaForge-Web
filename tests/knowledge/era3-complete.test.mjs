@@ -12,15 +12,27 @@ describe("Era 3 Complete — Speak like a strategist", () => {
   it("locks Conversation Contract stages in product surfaces", () => {
     const page = readFileSync(join(root, "app/page.tsx"), "utf8");
     const contract = readFileSync(join(root, "docs/CONVERSATION_CONTRACT.md"), "utf8");
+    // "1 · I HEARD YOU" left page.tsx in the chamber decomposition and now
+    // lives on the masterworks and research surfaces. "HERE ARE THE
+    // PHILOSOPHIES" was removed in Player Compass v1.1 (8524364); the
+    // philosophy stage is the "CHOOSE YOUR EXPERIENCE" compare.
+    const masterworks = readFileSync(join(root, "app/components/forge/masterworks-chamber.tsx"), "utf8");
+    const philosophy = readFileSync(join(root, "app/components/forge/philosophy-compare.tsx"), "utf8");
+    const workbench = readFileSync(join(root, "app/components/forge/workbench-chamber.tsx"), "utf8");
+    const research = readFileSync(join(root, "app/research/page.tsx"), "utf8");
+    const surfaces = [page, masterworks, philosophy, workbench, research].join("\n");
     assert.match(contract, /I heard you/i);
     assert.match(contract, /philosophies/i);
     assert.match(contract, /how to win|how to pilot/i);
     assert.match(contract, /Player Surface Law/);
-    assert.match(page, /1 · I HEARD YOU|You asked for/);
-    assert.match(page, /HERE ARE THE PHILOSOPHIES/);
-    assert.match(page, /honest-coach-v0|YOUR COACH/);
-    assert.match(page, /Deep Forge|deep-forge|openDeepForgeEvidence/i);
-    assert.doesNotMatch(page, /HONEST COACH · BRAIN v1/);
+    assert.match(masterworks, /1 · I HEARD YOU/);
+    assert.match(masterworks, /You asked for/);
+    assert.match(philosophy, /CHOOSE YOUR EXPERIENCE/);
+    assert.match(philosophy, /Choose a philosophy/);
+    assert.match(workbench, /honest-coach-v0/);
+    assert.match(workbench, /YOUR COACH/);
+    assert.match(surfaces, /Deep Forge|deep-forge|openDeepForgeEvidence/i);
+    assert.doesNotMatch(surfaces, /HONEST COACH · BRAIN v1/);
   });
 
   it("marks #021 inventory complete without claiming Founder Confirmed", () => {
