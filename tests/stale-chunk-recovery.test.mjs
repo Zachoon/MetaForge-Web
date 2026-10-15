@@ -62,6 +62,17 @@ test("asset 404s on script and link elements also recover; unrelated errors don'
   assert.equal(win.reloads, 1);
 });
 
+test("early errors are queued in memory and the queue never keeps the query string", () => {
+  const { win } = fakeWindow();
+  win.location = { pathname: "/forge", search: "?decklist=1+Sol+Ring" };
+  win.fire("error", { message: "Cannot read properties of undefined", error: { message: "Cannot read properties of undefined", stack: "at /forge?deck=1" } });
+  assert.equal(win.reloads, 0);
+  assert.equal(win.__mfErrorQueue.length, 1);
+  assert.equal(win.__mfErrorQueue[0].kind, "window.error");
+  assert.equal(win.__mfErrorQueue[0].route, "/forge");
+  assert.doesNotMatch(JSON.stringify(win.__mfErrorQueue), /decklist|Sol Ring|\?deck/);
+});
+
 test("without sessionStorage it never reloads, so it can't loop", () => {
   const { win } = fakeWindow({ storageThrows: true });
   const event = win.fire("vite:preloadError", preloadError());

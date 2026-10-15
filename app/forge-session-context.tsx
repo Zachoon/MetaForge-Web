@@ -3,6 +3,7 @@
 import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import { reportClientError } from "./client-error-reporter";
 import { configureCardTagLookup } from "./strategic-intent.mjs";
 import { REVIEW_FOCUS_OPTIONS, REVIEW_FOCUS_LABELS, toggleReviewFocus } from "./review-focus.mjs";
 import { resolveAcademyGuideEntry } from "./academy-guide-entry.mjs";
@@ -396,12 +397,13 @@ export function useForgeSessionState() {
     // Opera GX on iPhone (WebKit) can block challenges.cloudflare.com with
     // its tracker filter and never fire a callback. A dropped connection
     // looks the same. Say so, and leave retry and Sign in on screen.
-    const reportBlocked = (immediate = false) => {
+    const reportBlocked = (immediate = false, detail = immediate ? "script" : "blocked") => {
       if (cancelled || warned) return;
       if (!immediate && Date.now() - started < 8000) return;
       warned = true;
       setTurnstileStatus("The human check didn't load.");
       setTurnstileError("A content blocker or a dropped connection can stop it. Try again, or sign in to continue.");
+      reportClientError({ kind: "turnstile", message: "Turnstile did not load", detail });
     };
     if (!document.querySelector(`script[src="${TURNSTILE_SRC}"]`)) {
       const script = document.createElement("script");
@@ -424,7 +426,7 @@ export function useForgeSessionState() {
       const node = turnstileHostRef.current;
       if (cancelled || !turnstile?.render || !node || turnstileWidgetRef.current) return;
       if (node.clientWidth < 1) {
-        reportBlocked();
+        reportBlocked(false, "zero-width");
         return;
       }
       // `flexible` is 100% of the container with a 300px minimum, so a
@@ -460,18 +462,24 @@ export function useForgeSessionState() {
           setTurnstileToken("");
           setTurnstileError("The check didn't finish. Try again, or sign in to continue.");
           setTurnstileStatus("");
+          reportClientError(
+            { kind: "turnstile", message: "Turnstile verification timed out", detail: "timeout" },
+          );
         },
         "error-callback": (code: string) => {
           setTurnstileToken("");
           setTurnstileStatus("");
           setTurnstileError(turnstileFailureMessage(String(code || "")));
+          reportClientError(
+            { kind: "turnstile", message: "Turnstile verification failed", detail: String(code || "unknown") },
+          );
           // Returning true with retry "never" keeps this failure on screen
           // instead of Turnstile resetting itself into another silent loop.
           return true;
         },
       });
       } catch {
-        reportBlocked();
+        reportBlocked(false, "render");
         return;
       }
       if (turnstileWidgetRef.current) {

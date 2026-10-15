@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import ClientDiagnostics from "./client-diagnostics";
 import PrivacyControls from "./privacy-controls";
 import { STALE_CHUNK_RECOVERY_SCRIPT } from "./stale-chunk-recovery";
 
@@ -58,7 +59,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           />
         </noscript>
       </head>
-      <body>{children}<PrivacyControls /></body>
+      <body><ClientDiagnostics>{children}</ClientDiagnostics><PrivacyControls /></body>
     </html>
   );
 }

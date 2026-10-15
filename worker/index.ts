@@ -1,7 +1,7 @@
 /** Cloudflare Worker entry point for the vinext-starter template. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
-import { handleAccountBench, handleFounderFeedback, handlePlayerProfile } from "./account-bench";
+import { handleAccountBench, handleFounderFeedback, handlePlayerProfile, userKey } from "./account-bench";
 import { handleCoachFeedback } from "./coach-feedback";
 import { handleFounderOverview } from "./founder-dashboard";
 import { handleForgeChat } from "./forge-chat";
@@ -20,10 +20,12 @@ import { cleanupExpiredRateLimits } from "./api-hardening";
 import { cleanupExpiredGenerations } from "./forge-generation-store";
 import { cleanupExpiredGuestForges, handleGuestClaim, handleGuestForge } from "./guest-forge";
 import { handleLaunchTelemetry, recordOperationalGeneration } from "./launch-telemetry";
+import { cleanupErrorReports, handleClientErrorReport, handleFounderErrors, recordWorkerException } from "./error-report.mjs";
+import { metaforgeBuildId } from "../app/build-id";
+import { redactMessage } from "../app/error-report-sanitize.mjs";
 import { handleOpinionQuery } from "./opinion-query";
 import { handleRevisionOpinion } from "./revision-opinion";
 import { handlePublicReportPublish, publicDeckIndexResponse, publicDeckReportResponse, publicDeckShareResponse, publicDeckSocialImageResponse, publicReportSitemapEntries } from "./public-deck-report";
-const BUILD_ID = "2026.07.16-workspace1";
 const IMPACT_SITE_VERIFICATION = "05208696-7452-434e-89b1-d6be551c7505";
 const PUBLIC_HOSTS = new Set(["metaforge.gg"]);
 const SEO_HEADERS = { "Cache-Control": "public, max-age=3600", "Content-Type": "text/plain; charset=utf-8" };
@@ -245,6 +247,9 @@ interface Env {
   // boolean in that response. Absent or anything other than exactly
   // "true" fails closed. See app/affiliate-links.mjs.
   TCGPLAYER_AFFILIATE_ENABLED?: string;
+  ACCESS_TEAM_DOMAIN?: string;
+  ACCESS_AUD?: string;
+  ALLOW_DEV_AUTH_BYPASS?: string;
   DB: D1Database;
   IMAGES: {
     input(stream: ReadableStream): {
@@ -318,6 +323,7 @@ const worker = {
       });
     }
 
+    try {
     if (url.pathname === "/robots.txt") return robotsResponse(url);
     if (url.pathname === "/sitemap.xml") return sitemapResponse(url, env);
     if (url.pathname === "/decks" && PUBLIC_HOSTS.has(url.hostname)) return publicDeckIndexResponse(url, env);
@@ -325,7 +331,6 @@ const worker = {
     if (/^\/decks\/[a-z0-9-]+\/share\/[a-z]+$/.test(url.pathname) && PUBLIC_HOSTS.has(url.hostname)) return publicDeckShareResponse(request, url, env);
     if (/^\/decks\/[a-z0-9-]+$/.test(url.pathname) && PUBLIC_HOSTS.has(url.hostname)) return publicDeckReportResponse(url, env);
 
-    try {
       if (url.pathname === "/api/account/deck-bench") {
         return await handleAccountBench(request, env);
       }
@@ -339,10 +344,16 @@ const worker = {
       if (url.pathname === "/api/founder/overview") {
         return await handleFounderOverview(request, env);
       }
+      if (url.pathname === "/api/founder/errors") {
+        const key = await userKey(request, env);
+        const founder = Boolean(key && env.METAFORGE_FOUNDER_USER_KEY && key === env.METAFORGE_FOUNDER_USER_KEY);
+        return await handleFounderErrors(request, env, { founder, build: metaforgeBuildId() });
+      }
       if (url.pathname === "/api/forge/chat") return await handleForgeChat(request, env);
       if (url.pathname === "/api/coach/opinion") return await handleOpinionQuery(request, env);
       if (url.pathname === "/api/coach/revision-opinion") return await handleRevisionOpinion(request, env);
       if (url.pathname === "/api/telemetry") return await handleLaunchTelemetry(request, env);
+      if (url.pathname === "/api/errors") return await handleClientErrorReport(request, env);
       if (url.pathname === "/api/forge/edhrec") return await handleEdhrecEvidence(request, env);
       if (url.pathname === "/api/forge/generate" || url.pathname === "/api/forge/guest-generate") {
         const startedAt = Date.now();
@@ -373,7 +384,7 @@ const worker = {
       if (url.pathname === "/api/decks/publish") return await handlePublicReportPublish(request, env);
       if (url.pathname === "/api/cards/facts") return await handleCardFacts(request);
       if (url.pathname === "/api/cards/commanders") return await handleCommanderSearch(request);
-      if (url.pathname === "/api/forge/status") {ctx.waitUntil(ensureDataGoblinsStarted(env));return Response.json({ready:true,build:BUILD_ID,modelReady:false,mode:"native",fallback:"MetaForge Native Coach remains available without a model call",tcgplayerAffiliateEnabled:env.TCGPLAYER_AFFILIATE_ENABLED === "true"},{headers:{"Cache-Control":"no-store"}})}
+      if (url.pathname === "/api/forge/status") {ctx.waitUntil(ensureDataGoblinsStarted(env));return Response.json({ready:true,build:metaforgeBuildId(),modelReady:false,mode:"native",fallback:"MetaForge Native Coach remains available without a model call",tcgplayerAffiliateEnabled:env.TCGPLAYER_AFFILIATE_ENABLED === "true"},{headers:{"Cache-Control":"no-store"}})}
       if (url.pathname === "/api/founder/knowledge") return await handleCoachingKnowledge(request, env, true);
       if (url.pathname === "/api/coach/knowledge") return await handleCoachingKnowledge(request, env, false);
       if (url.pathname === "/api/founder/goblins") return await handleGoblinOperations(request, env);
@@ -383,6 +394,18 @@ const worker = {
       // handler below (which renders the HTML app shell/404 page for
       // unmatched routes; fine for real pages, wrong for API callers).
       if (url.pathname.startsWith("/api/")) return apiJson({ error: "Not found" }, 404);
+      if (url.pathname === "/_vinext/image") {
+        const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
+        return handleImageOptimization(request, {
+          fetchAsset: (path) => env.ASSETS.fetch(new Request(new URL(path, request.url))),
+          transformImage: async (body, { width, format, quality }) => {
+            const result = await env.IMAGES.input(body).transform(width > 0 ? { width } : {}).output({ format, quality });
+            return result.response();
+          },
+        }, allowedWidths);
+      }
+
+      return addDocumentMetadata(await handler.fetch(request, env, ctx), request.url);
     } catch (error) {
       // Last-resort net: every handler above already returns its own JSON
       // on the failure paths it anticipates (validation, auth, engine
@@ -391,24 +414,20 @@ const worker = {
       // that handler's own try/catch. Without this, Cloudflare's runtime
       // turns an uncaught exception into an HTML error page, which is
       // exactly the "Unexpected token '<'" failure this exists to close.
-      console.error("Unhandled exception for", url.pathname, error);
-      return apiJson({ error: "Internal server error" }, 500);
+      // The stored copy is redacted and rate-limited; wrangler tail still
+      // gets the sanitized message rather than a request body.
+      console.error("Unhandled exception for", url.pathname, redactMessage(error instanceof Error ? error.message : "Worker exception"));
+      ctx.waitUntil(recordWorkerException(env, {
+        error,
+        route: url.pathname,
+        userAgent: request.headers.get("user-agent"),
+        buildId: metaforgeBuildId(),
+      }));
+      if (url.pathname.startsWith("/api/")) return apiJson({ error: "Internal server error" }, 500);
+      return new Response("Internal server error", { status: 500, headers: { "Cache-Control": "no-store", "Content-Type": "text/plain; charset=utf-8" } });
     }
-
-    if (url.pathname === "/_vinext/image") {
-      const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
-      return handleImageOptimization(request, {
-        fetchAsset: (path) => env.ASSETS.fetch(new Request(new URL(path, request.url))),
-        transformImage: async (body, { width, format, quality }) => {
-          const result = await env.IMAGES.input(body).transform(width > 0 ? { width } : {}).output({ format, quality });
-          return result.response();
-        },
-      }, allowedWidths);
-    }
-
-    return addDocumentMetadata(await handler.fetch(request, env, ctx), request.url);
   },
-  async scheduled(_controller:ScheduledController,env:Env,ctx:ExecutionContext){ctx.waitUntil(runDataGoblins(env));ctx.waitUntil(cleanupExpiredRateLimits(env));ctx.waitUntil(cleanupExpiredGenerations(env));ctx.waitUntil(cleanupExpiredGuestForges(env));ctx.waitUntil(cleanupExpiredGuestGuidedDrafts(env));},
+  async scheduled(_controller:ScheduledController,env:Env,ctx:ExecutionContext){ctx.waitUntil(runDataGoblins(env));ctx.waitUntil(cleanupExpiredRateLimits(env));ctx.waitUntil(cleanupExpiredGenerations(env));ctx.waitUntil(cleanupExpiredGuestForges(env));ctx.waitUntil(cleanupExpiredGuestGuidedDrafts(env));ctx.waitUntil(cleanupErrorReports(env));},
 };
 
 export default worker;

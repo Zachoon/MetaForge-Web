@@ -42,6 +42,19 @@ type Overview = {
 type KnowledgeClaim = { id:string; game:string; sourceUrl:string; sourceTitle:string; author:string; publishedAt:string; sourceType:string; summary:string; principle:string; format:string; stance:string; tags:string[]; cards:string[]; status:string; createdAt:string };
 type OpinionQuestion = { opinionKey:string; label:string; playerQuestion:string; commanderName:string; subject:string; deckRevision:string; fantasy:string; cardIdentity:{ card:string; roles:string[]; earliestRealisticWindow:string; setupRequirements:string[]; floor:string; ceiling:string; opportunityCost:string; dependencies:string[]; replaceability:string; goodStates:string[]; badStates:string[] } };
 type OpinionResult = { constructionReadOnly:boolean; writesToBrain:boolean; opinion:{ headline:string; answer:string; why:string; strongestCounterargument:string; confidence:{level:string;score:number}; applicableWhen:string[]; whatWouldChangeMyMind:string[]; proposedTest?:{instruction?:string;minimumComparableObservations?:number} }; lineage:{opinionId:string;revision:number;archived:boolean} };
+type ErrorGroup = {
+  message: string;
+  occurrences: number;
+  variants: number;
+  firstSeen: number;
+  lastSeen: number;
+  sources: string[];
+  kinds: string[];
+  routes: string[];
+  builds: string[];
+  browsers: string[];
+  latest: { stack: string | null; viewport: string | null; session: string | null; userAgent: string | null; route: string | null; kind: string; source: string; build: string | null; browser: string | null; detail: string | null } | null;
+};
 
 export default function FounderCommandCenter() {
   const [data, setData] = useState<Overview | null>(null);
@@ -52,6 +65,8 @@ export default function FounderCommandCenter() {
   const [opinionQuestions,setOpinionQuestions]=useState<OpinionQuestion[]>([]);
   const [opinionResults,setOpinionResults]=useState<Record<string,OpinionResult>>({});
   const [opinionLoading,setOpinionLoading]=useState<string | null>(null);
+  const [errors, setErrors] = useState<ErrorGroup[] | null>(null);
+  const [errorStatus, setErrorStatus] = useState("loading");
   const load = async () => {
     setStatus("loading");
     try {
@@ -60,6 +75,9 @@ export default function FounderCommandCenter() {
       if (!response.ok) throw new Error("overview unavailable");
       setData(await response.json()); setStatus("ready");
       const knowledgeResponse=await fetch("/api/founder/knowledge",{cache:"no-store"});if(knowledgeResponse.ok){setKnowledge((await knowledgeResponse.json()).claims);setKnowledgeStatus("ready")}else setKnowledgeStatus("error");
+      const errorResponse = await fetch("/api/founder/errors", { cache: "no-store" });
+      if (errorResponse.ok) { setErrors((await errorResponse.json()).groups || []); setErrorStatus("ready"); }
+      else setErrorStatus("error");
       const goblinResponse=await fetch("/api/founder/goblins",{cache:"no-store"});if(goblinResponse.ok)setGoblins(await goblinResponse.json());
       const opinionResponse=await fetch("/api/coach/opinion",{cache:"no-store"});if(opinionResponse.ok)setOpinionQuestions((await opinionResponse.json()).questions||[]);
     } catch { setStatus("error"); }
@@ -105,6 +123,9 @@ export default function FounderCommandCenter() {
     </section>
     <section className="founder-panel"><header><div><small>GENERATION HEALTH · LAST 7 DAYS</small><h2>Production reliability</h2></div><b>{data.launch?.reliability.successRate ?? '—'}% SUCCESS</b></header>
       <div className="founder-metrics"><article><span>COMPLETED</span><b>{data.launch?.reliability.succeeded || 0}</b><em>Server-confirmed generations</em></article><article><span>FAILED</span><b>{data.launch?.reliability.failed || 0}</b><em>All HTTP failure responses</em></article><article><span>AVERAGE TIME</span><b>{data.launch?.reliability.averageMs ? `${Math.round(data.launch.reliability.averageMs / 1000)}s` : '—'}</b><em>Successful generations</em></article></div>
+    </section>
+    <section className="founder-panel" id="error-reports"><header><div><small>ERROR REPORTS · LAST 14 DAYS</small><h2>Recent errors</h2><p className="trust-lede">Grouped by message. Client reports wait for the measurement choice. Worker exceptions are operational. No decklists.</p></div><b>{errors?.reduce((sum, group) => sum + group.occurrences, 0) || 0} EVENTS</b></header>
+      <div className="error-groups">{(errors || []).map((group) => <article key={group.message}><div><span>{group.kinds.join(" · ") || "error"} · {group.sources.join(" · ")}</span><time>{new Date(group.lastSeen).toLocaleString()} · {group.occurrences}×</time></div><p>{group.message}</p><small>{group.routes.join(", ") || "/"} · {group.browsers.join(", ") || "browser unknown"} · {group.builds.map((build) => build.slice(0, 7)).join(", ") || "build unknown"}{group.latest?.detail ? ` · ${group.latest.detail}` : ""}{group.latest?.viewport ? ` · ${group.latest.viewport}` : ""}{group.latest?.session ? ` · session ${group.latest.session.slice(0, 8)}` : ""}</small>{(group.latest?.stack || group.latest?.userAgent) && <details><summary>Latest stack</summary>{group.latest?.userAgent && <p>{group.latest.userAgent}</p>}<pre>{group.latest?.stack || "No stack captured."}</pre></details>}</article>)}{errorStatus === "error" && <p className="empty">Error reports are unavailable. Apply migration 0019_error_reports.sql, then refresh.</p>}{errorStatus === "ready" && !errors?.length && <p className="empty">No errors recorded in the last 14 days.</p>}</div>
     </section>
     <section className="founder-panel"><header><div><small>CAMPAIGN ATTRIBUTION · LAST 30 DAYS</small><h2>What brings builders</h2></div><b>CONSENTED · ANONYMOUS</b></header>
       <div className="founder-table"><div className="table-head"><span>SOURCE</span><span>MEDIUM</span><span>CAMPAIGN</span><span>VISITORS</span><span>DECKS</span><span>RATE</span></div>{(data.launch?.campaigns || []).map((item,index)=><article key={`${item.source}-${item.campaign}-${index}`}><b>{item.source}</b><span>{item.medium}</span><span>{item.campaign}</span><span>{item.sessions}</span><span>{item.completed}</span><em>{item.sessions ? Math.round(item.completed/item.sessions*100) : 0}%</em></article>)}{!data.launch?.campaigns.length&&<p className="empty">Campaign results will appear after visitors allow anonymous measurement.</p>}</div>
