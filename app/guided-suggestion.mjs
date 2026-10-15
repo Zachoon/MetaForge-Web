@@ -3,6 +3,7 @@ import { cardSatisfiesPackageCore, cardSatisfiesPackageSupport } from "./strateg
 import { isWinConditionCard } from "./fundamentals-target-table.mjs";
 import { TRACKED_ROLES } from "./slot-justification-ledger.mjs";
 import { preferenceAdjustment } from "./guided-preference-learning.mjs";
+import { reasonWithProvider } from "./reasoning-engine/index.mjs";
 
 // =============================================================================
 // Guided Suggestion
@@ -170,7 +171,7 @@ export function suggestCardForCategory({
   });
 
   if (!eligible.length) {
-    return Object.freeze({ category, offer: null, delta: null, adjustment: null, reason: null, exhausted: true, remainingCandidates: 0 });
+    return Object.freeze({ category, offer: null, delta: null, adjustment: null, reasoning: null, reason: null, exhausted: true, remainingCandidates: 0 });
   }
 
   const scored = eligible
@@ -180,12 +181,20 @@ export function suggestCardForCategory({
       // Player Compass answers): a capped nudge on top of the same rank,
       // never a filter. No profile means exactly the previous ordering.
       const adjustment = preferenceAdjustment(candidate, options.preferenceProfile || null);
+      // The reasoning engine (running deck profile + rules-text interaction
+      // graph): a capped nudge for gaps, real mechanical synergy, plan, curve
+      // and color fit, plus the structured reasons shown to the player.
+      // No reasoningContext means exactly the previous ordering.
+      const reasoning = options.reasoningContext
+        ? reasonWithProvider(candidate, { ...options.reasoningContext, category }, options.reasoningProvider || null)
+        : null;
       return Object.freeze({
         candidate,
         delta,
         adjustment,
+        reasoning,
         tier: roleTier(candidate, category),
-        rank: round(focusedScore(category, candidate, delta) + adjustment.delta),
+        rank: round(focusedScore(category, candidate, delta) + adjustment.delta + (reasoning?.delta || 0)),
       });
     })
     // delta.name is prospectiveSlotDelta's own already-unwrapped entryName,
@@ -198,6 +207,7 @@ export function suggestCardForCategory({
     offer: best.candidate,
     delta: best.delta,
     adjustment: best.adjustment,
+    reasoning: best.reasoning,
     reason: Object.freeze({
       deficitsFilled: reasonTagsFor(category, best.delta),
       topPositive: topPositiveOf(category, best.delta),

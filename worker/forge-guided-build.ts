@@ -25,6 +25,17 @@ import {
 } from "../app/guided-preference-learning.mjs";
 import { normalizePlayerCompass } from "../app/player-compass.mjs";
 import {
+  analyzePartialList,
+  buildReasoningContext,
+  profileStepUrgencies,
+  type reasonAboutCandidate,
+  type buildDeckProfile,
+} from "../app/reasoning-engine/index.mjs";
+
+type ListAnalysis = ReturnType<typeof analyzePartialList>;
+type DeckProfile = ReturnType<typeof buildDeckProfile>;
+type CandidateReasoning = ReturnType<typeof reasonAboutCandidate>;
+import {
   ALLOWED_FORMATS,
   MAX_ORACLE_TEXT,
   MAX_SHORT_STRING,
@@ -250,6 +261,18 @@ function computeOffer(
     declined: learning.declineFeedback.map((entry) => ({ row: analyzedEntry(analyzedByName, entry.name), reason: entry.reason })),
     compass: learning.compass,
   });
+  // The reasoning engine's running deck profile, rebuilt from the full pick
+  // list on every request (stateless, like everything else here).
+  const commanderEntries = [input.commander, input.secondCommander]
+    .filter((commander): commander is NonNullable<CommanderInput> => Boolean(commander?.name))
+    .map((commander) => ({ name: commander.name, oracleText: commander.oracleText || "", typeLine: "Legendary Creature", colorIdentity: commander.colors || [] }));
+  const reasoningContext = buildReasoningContext({
+    commanders: commanderEntries,
+    picks: partialRows,
+    deckSize: targetDeckSize(input.format),
+    hints: `${input.strategy || ""} ${input.note || ""}`,
+    colorIdentity: [...new Set(commanderEntries.flatMap((commander) => commander.colorIdentity))],
+  });
   const suggestion = suggestCardForCategory({
     category,
     partialRows,
@@ -262,6 +285,7 @@ function computeOffer(
       powerConstraint: input.targetPowerTier === "Casual",
       powerSignalCategoryFor,
       preferenceProfile,
+      reasoningContext,
     },
   } as any);
   const ledger = buildCategoryBudgetLedger(
@@ -280,7 +304,8 @@ function computeOffer(
     nearestAlternative: suggestion.reason?.nearestAlternative || null,
     adjustment: suggestion.adjustment || null,
   });
-  return { suggestion, ledger, analysis, preferenceProfile, explanation };
+  const deckUrgency = profileStepUrgencies(reasoningContext.profile, [...CATEGORY_SEQUENCE]);
+  return { suggestion, ledger, analysis, preferenceProfile, explanation, reasoningContext, deckUrgency, partialRows, commanderEntries };
 }
 
 // Analysis (classifying ~1000 cards) costs ~200ms and is identical for every
@@ -320,14 +345,53 @@ function serializeLedger(ledger: ReturnType<typeof buildCategoryBudgetLedger>) {
   }));
 }
 
+export function serializeListAnalysis(result: ListAnalysis, submitted: number) {
+  return {
+    plan: { id: result.plan.id, label: result.plan.label, confidence: result.plan.confidence },
+    planBalance: result.planBalance,
+    recognized: result.profile.picks,
+    submitted,
+    flagged: result.flagged.slice(0, 12).map((entry) => ({ name: entry.name, severity: entry.severity, reasons: entry.reasons.map((reason) => reason.text) })),
+    strengths: result.strengths.map((entry) => ({ name: entry.name, text: entry.text })),
+    nextSteps: result.nextSteps,
+    notes: result.notes,
+  };
+}
+
+// The running deck profile, trimmed to what the guided UI shows.
+export function serializeDeckProfile(profile: DeckProfile | null) {
+  if (!profile) return null;
+  return {
+    plan: { id: profile.plan.id, label: profile.plan.label, confidence: profile.plan.confidence, secondary: profile.plan.secondary },
+    planBalance: profile.planBalance,
+    roles: profile.roles.map((row) => ({ role: row.role, label: row.label, actual: row.actual, target: row.target, status: row.status })),
+    gaps: profile.gaps.slice(0, 4).map((row) => ({ role: row.role, label: row.label, missing: row.missing })),
+    curve: profile.curve,
+    colors: profile.colors,
+  };
+}
+
+export function serializeReasoning(reasoning: CandidateReasoning | null | undefined) {
+  if (!reasoning) return null;
+  return {
+    confidence: reasoning.confidence,
+    confidenceLabel: reasoning.confidenceLabel,
+    reasons: reasoning.reasons.slice(0, 6).map((reason) => ({ kind: reason.kind, text: reason.text })),
+    worksWith: reasoning.worksWith.map((partner) => ({ name: partner.name, mechanism: partner.mechanism })),
+  };
+}
+
 function serializeOffer(
   suggestion: ReturnType<typeof suggestCardForCategory>,
   ledger: ReturnType<typeof buildCategoryBudgetLedger>,
   explanation: ReturnType<typeof explainOffer> = null,
   categoryOrder: string[] | null = null,
+  deckProfile: DeckProfile | null = null,
 ) {
   const card = suggestion.offer?.card || suggestion.offer;
   return {
+    reasoning: serializeReasoning(suggestion.reasoning as CandidateReasoning | null),
+    deckProfile: serializeDeckProfile(deckProfile),
     ledger: serializeLedger(ledger),
     explanation,
     categoryOrder,
@@ -410,8 +474,20 @@ export async function handleForgeGuidedStart(request: Request, env: Env): Promis
     const categoryOrder = orderRemainingCategories([...CATEGORY_SEQUENCE], -1, {
       ledger: serializeLedger(probe.ledger),
       profile: probe.preferenceProfile,
+      deckUrgency: probe.deckUrgency,
     });
-    const { suggestion, ledger, analysis, explanation } = categoryOrder[0] === CATEGORY_SEQUENCE[0]
+    // A pasted list gets a read-only review: plan, flagged cards, and which
+    // roles to walk through next. It never adds a card.
+    const listAnalysis = seedNames.length
+      ? serializeListAnalysis(analyzePartialList({
+        commanders: probe.commanderEntries,
+        entries: probe.partialRows,
+        deckSize: targetDeckSize(body.format),
+        hints: `${strategy} ${note}`,
+        colorIdentity: [...new Set(probe.commanderEntries.flatMap((commander) => commander.colorIdentity))],
+      }), seedNames.length)
+      : null;
+    const { suggestion, ledger, analysis, explanation, reasoningContext } = categoryOrder[0] === CATEGORY_SEQUENCE[0]
       ? probe
       : computeOffer(cards, input, categoryOrder[0], seedNames, [], undefined, [], learning);
 
@@ -435,11 +511,11 @@ export async function handleForgeGuidedStart(request: Request, env: Env): Promis
 
     return json(
       {
-        generationId, colors: pool.colors, categorySequence: categoryOrder, seedNames,
+        generationId, colors: pool.colors, categorySequence: categoryOrder, seedNames, listAnalysis,
         owner: identity.guest ? "guest" : key,
         guest: identity.guest,
         ...(identity.claimToken ? { guestClaimToken: identity.claimToken } : {}),
-        ...serializeOffer(suggestion, ledger, explanation, categoryOrder),
+        ...serializeOffer(suggestion, ledger, explanation, categoryOrder, reasoningContext.profile),
       },
       200,
       identity.setCookie ? { "Set-Cookie": identity.setCookie } : {},
@@ -522,7 +598,7 @@ export async function handleForgeGuidedNext(request: Request, env: Env): Promise
     const stored = generation.payload;
     const input = inputFromStored(stored);
     // generation.ok above already proved this caller owns generationId.
-    const { suggestion, ledger, explanation, preferenceProfile } = computeOffer(
+    const { suggestion, ledger, explanation, preferenceProfile, deckUrgency, reasoningContext } = computeOffer(
       stored.cardPool, input, body.category, acceptedNames, declinedNames, generationId, manualCards,
       { declineFeedback, compass },
     );
@@ -530,9 +606,9 @@ export async function handleForgeGuidedNext(request: Request, env: Env): Promise
     // client told us its order and position; older clients get null and
     // keep their fixed sequence.
     const categoryOrder = clientOrder && categoryIndex !== null
-      ? orderRemainingCategories(clientOrder, categoryIndex, { ledger: serializeLedger(ledger), profile: preferenceProfile })
+      ? orderRemainingCategories(clientOrder, categoryIndex, { ledger: serializeLedger(ledger), profile: preferenceProfile, deckUrgency })
       : null;
-    return json(serializeOffer(suggestion, ledger, explanation, categoryOrder));
+    return json(serializeOffer(suggestion, ledger, explanation, categoryOrder, reasoningContext.profile));
   } catch (error) {
     console.error("forge-guided-next failed", error);
     return json({ error: "The guided Build could not continue for this session." }, 500);

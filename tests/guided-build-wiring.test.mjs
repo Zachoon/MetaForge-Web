@@ -40,7 +40,7 @@ test("guided/next carries the learning signals and adopts the server's step orde
   assert.match(next, /data\.categoryOrder/);
   const worker = read("worker/forge-guided-build.ts");
   assert.match(worker, /sanitizeDeclineFeedback\(body\?\.declineFeedback/);
-  assert.match(worker, /preferenceProfile,\n    \},/);
+  assert.match(worker, /preferenceProfile,\n      reasoningContext,\n    \},/);
   assert.match(worker, /orderRemainingCategories\(clientOrder, categoryIndex/);
 });
 

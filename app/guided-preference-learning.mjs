@@ -178,9 +178,9 @@ const COMPASS_CATEGORY_PULL = Object.freeze({
 /**
  * @param {string[]} categories
  * @param {number} currentIndex
- * @param {{ ledger?: any[], profile?: any }} [context]
+ * @param {{ ledger?: any[], profile?: any, deckUrgency?: Record<string, number> | null }} [context]
  */
-export function orderRemainingCategories(categories = [], currentIndex = 0, { ledger = [], profile = null } = {}) {
+export function orderRemainingCategories(categories = [], currentIndex = 0, { ledger = [], profile = null, deckUrgency = null } = {}) {
   const fixed = categories.slice(0, currentIndex + 1);
   const rest = categories.slice(currentIndex + 1);
   const ledgerBy = new Map(ledger.map((row) => [row.category, row]));
@@ -197,6 +197,9 @@ export function orderRemainingCategories(categories = [], currentIndex = 0, { le
       const answer = compass[axis];
       if (answer && pulls[answer]?.[category]) score += pulls[answer][category];
     }
+    // The reasoning engine's running deck profile: how much of this role's
+    // Commander minimum is still missing (0..1), from rules-text roles.
+    if (deckUrgency && Number.isFinite(deckUrgency[category])) score += 2 * deckUrgency[category];
     if (category === "synergyPieces" && (profile?.reasonCounts?.["wrong-plan"] || 0) >= 2) score -= 1;
     return score;
   };

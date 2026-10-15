@@ -158,6 +158,32 @@ type GuidedClaimChoice = {
   guestDraft: GuidedClaimDraft;
   account: { phase?: string; draft?: GuidedClaimDraft | null };
 };
+// The reasoning engine's structured "why" (app/reasoning-engine): reasons by
+// kind, real mechanical links to picks, and a confidence.
+export type GuidedReasoning = {
+  confidence: number;
+  confidenceLabel: "low" | "medium" | "high";
+  reasons: Array<{ kind: string; text: string }>;
+  worksWith: Array<{ name: string; mechanism: string }>;
+} | null;
+export type GuidedDeckProfile = {
+  plan: { id: string; label: string; confidence: number; secondary: { id: string; label: string } | null };
+  planBalance: string;
+  roles: Array<{ role: string; label: string; actual: number; target: { min: number; max: number }; status: string }>;
+  gaps: Array<{ role: string; label: string; missing: number }>;
+  curve: { buckets: number[]; targets: number[]; averageCmc: number | null; issues: string[]; labels: string[] };
+  colors: { identity: string[]; requirements: Array<{ color: string; share: number; sourceShare: number | null; underSupported: boolean }> };
+} | null;
+export type GuidedListAnalysis = {
+  plan: { id: string; label: string; confidence: number };
+  planBalance: string;
+  recognized: number;
+  submitted: number;
+  flagged: Array<{ name: string; severity: number; reasons: string[] }>;
+  strengths: Array<{ name: string; text: string }>;
+  nextSteps: Array<{ category: string; role: string; why: string; urgency: number }>;
+  notes: string[];
+} | null;
 const GUIDED_STORAGE_KEY = "metaforge-guided-session";
 
 type GuidedSession = {
@@ -185,6 +211,10 @@ type GuidedSession = {
   // Optional so drafts saved before this field existed still restore.
   declineFeedback?: GuidedDeclineFeedback[];
   explanation?: GuidedExplanation;
+  reasoning?: GuidedReasoning;
+  deckProfile?: GuidedDeckProfile;
+  // Read-only review of a pasted list (start only); never adds cards.
+  listAnalysis?: GuidedListAnalysis;
   exhausted: boolean;
   remainingCandidates: number;
   ledger: GuidedLedgerRow[];
@@ -1290,6 +1320,8 @@ export function useForgeSessionState() {
     offer: (data.offer || null) as GuidedOffer | null,
     reason: (data.reason || null) as GuidedReason,
     explanation: (data.explanation || null) as GuidedExplanation,
+    reasoning: (data.reasoning || null) as GuidedReasoning,
+    deckProfile: (data.deckProfile || null) as GuidedDeckProfile,
     exhausted: Boolean(data.exhausted),
     remainingCandidates: Number(data.remainingCandidates || 0),
     ledger: (Array.isArray(data.ledger) ? data.ledger : []) as GuidedLedgerRow[],
@@ -1373,6 +1405,7 @@ export function useForgeSessionState() {
         declined: [],
         declineFeedback: [],
         manualCards: {},
+        listAnalysis: (data.listAnalysis || null) as GuidedListAnalysis,
         ...guidedOfferFields(data),
       });
       setGuidedReview(null);

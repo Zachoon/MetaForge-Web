@@ -8,7 +8,71 @@ import { shellDisplay } from "../../shell-copy.mjs";
 import { DECLINE_REASONS } from "../../guided-preference-learning.mjs";
 import { PlayerCompassCard } from "./player-compass-card";
 import { GuidedFinishPanel } from "./guided-finish-panel";
-import { useForgeSession } from "../../forge-session-context";
+import { useForgeSession, type GuidedDeckProfile, type GuidedListAnalysis } from "../../forge-session-context";
+
+const REASON_KIND_LABEL: Record<string, string> = {
+  gap: "Gap",
+  synergy: "Synergy",
+  plan: "Plan",
+  curve: "Curve",
+  color: "Color",
+  "trade-off": "Trade-off",
+};
+
+// The running deck profile from the reasoning engine: plan, curve and the
+// roles still short of Commander norms. Read-only evidence.
+function DeckProfileCard({ profile }: { profile: NonNullable<GuidedDeckProfile> }) {
+  const peak = Math.max(1, ...profile.curve.buckets, ...profile.curve.targets);
+  return (
+    <section className="guided-profile" aria-label="Your deck so far">
+      <header>
+        <small>YOUR DECK SO FAR</small>
+        <p><b>{profile.plan.label}</b>{profile.plan.confidence > 0 ? ` · ${Math.round(profile.plan.confidence * 100)}% sure` : ""}</p>
+      </header>
+      <div className="guided-curve" aria-label="Mana curve">
+        {profile.curve.buckets.map((count, index) => (
+          <div key={profile.curve.labels[index]} title={`${count} at ${profile.curve.labels[index]} (aim for about ${profile.curve.targets[index]})`}>
+            <span style={{ height: `${Math.round((count / peak) * 100)}%` }} />
+            <em>{profile.curve.labels[index]}</em>
+          </div>
+        ))}
+      </div>
+      {profile.gaps.length > 0 && (
+        <p className="guided-gaps">Still short on: {profile.gaps.map((gap) => `${gap.label} (${gap.missing})`).join(", ")}</p>
+      )}
+      {profile.curve.issues.length > 0 && <p className="guided-gaps">Curve: {profile.curve.issues.join(", ")}</p>}
+    </section>
+  );
+}
+
+// A pasted list's review: what plan it reads as, which cards look weak or
+// off-plan and why, and which steps to walk through first. Advice only.
+function ListReview({ analysis }: { analysis: NonNullable<GuidedListAnalysis> }) {
+  return (
+    <section className="guided-list-review" aria-label="Review of your list">
+      <header>
+        <small>YOUR LIST · {analysis.recognized} OF {analysis.submitted} CARDS READ</small>
+        <p>Reads as <b>{analysis.plan.label}</b>.</p>
+      </header>
+      {analysis.flagged.length > 0 && (
+        <details open>
+          <summary>Worth a second look ({analysis.flagged.length})</summary>
+          <ul>{analysis.flagged.map((entry) => <li key={entry.name}><b>{entry.name}</b> {entry.reasons.join(" ")}</li>)}</ul>
+        </details>
+      )}
+      {analysis.strengths.length > 0 && (
+        <details>
+          <summary>Already working well ({analysis.strengths.length})</summary>
+          <ul>{analysis.strengths.map((entry) => <li key={entry.name}><b>{entry.name}</b> {entry.text}</li>)}</ul>
+        </details>
+      )}
+      {analysis.nextSteps.length > 0 && (
+        <p className="guided-gaps">Walk through next: {analysis.nextSteps.map((step) => `${guidedCategoryLabel(step.category)} (${step.why})`).join("; ")}</p>
+      )}
+      {analysis.notes.map((note) => <p key={note} className="guided-gaps">{note}</p>)}
+    </section>
+  );
+}
 
 // architecture/GUIDED_CONSTRUCTION_FLOW.md flow step 3: the player and the
 // Forge build the deck together, one decision at a time. Every suggestion
@@ -235,6 +299,23 @@ export function GuidedBuildChamber() {
                           )}
                         </dl>
                       )}
+                      {session.reasoning && session.reasoning.reasons.length > 0 && (
+                        <section className="guided-reasoning" aria-label="Why the Forge suggests this">
+                          <header>
+                            <small>WHY THIS CARD</small>
+                            <span className={`guided-confidence ${session.reasoning.confidenceLabel}`}>
+                              {session.reasoning.confidenceLabel} confidence
+                            </span>
+                          </header>
+                          <ul>
+                            {session.reasoning.reasons.map((reason, index) => (
+                              <li key={`${reason.kind}-${index}`} className={`guided-reason-${reason.kind}`}>
+                                <b>{REASON_KIND_LABEL[reason.kind] || reason.kind}</b> {reason.text}
+                              </li>
+                            ))}
+                          </ul>
+                        </section>
+                      )}
                       <p className="guided-why">{describeGuidedReason(session.reason, offer.name)}</p>
                       <div className="guided-actions">
                         <button type="button" ref={acceptRef} className="guided-accept" disabled={guidedLoading || guidedBuildLocked} onClick={acceptGuidedOffer}>
@@ -331,6 +412,8 @@ export function GuidedBuildChamber() {
                 synced={playerCompassSynced}
                 onChange={(next) => { void persistPlayerCompass(next); }}
               />
+              {session.listAnalysis && <ListReview analysis={session.listAnalysis} />}
+              {session.deckProfile && <DeckProfileCard profile={session.deckProfile} />}
               <section className="guided-ledger" aria-label="Budget ledger">
                 <header>
                   <small>YOUR BUDGET SO FAR</small>
