@@ -10,6 +10,7 @@
 // =============================================================================
 
 import { mechanicsOf, entryNameOf } from "./mechanic-graph.mjs";
+import { opponentDependentAddClause, opponentDependentManaText } from "../opponent-mana.mjs";
 
 // Commander norms for a 100-card deck (community-standard "8x8"/template
 // ranges). Scaled linearly for other deck sizes (e.g. 60-card Brawl).
@@ -101,6 +102,8 @@ function addProducedColors(colors, letters) {
  * "any color in your commander's color identity" and basic-land tutors only
  * count those colors. Unrestricted "any color" (City of Brass, Treasure)
  * still counts as all five, because those sources really make any color.
+ * "Any color an opponent could produce" counts as none: it is not reliable
+ * fixing for a color this deck needs.
  */
 export function producedColorsOf(entry, { colorIdentity = null } = {}) {
   const text = String(cardOf(entry).oracleText ?? cardOf(entry).oracle_text ?? entry?.oracleText ?? "");
@@ -110,10 +113,12 @@ export function producedColorsOf(entry, { colorIdentity = null } = {}) {
   for (const [type, color] of Object.entries(basics)) if (new RegExp(`\\b${type}\\b`).test(typeLine)) colors.add(color);
   const identity = Array.isArray(colorIdentity) ? colorIdentity.filter((color) => COLOR_ORDER.includes(color)) : null;
   for (const match of text.matchAll(/\badd\b([^.]*)/gi)) {
-    for (const symbol of match[1].match(/\{([WUBRG])\}/g) || []) colors.add(symbol[1]);
-    if (/commander'?s color identity/i.test(match[1])) {
+    const clause = match[1];
+    for (const symbol of clause.match(/\{([WUBRG])\}/g) || []) colors.add(symbol[1]);
+    if (opponentDependentAddClause(clause)) continue;
+    if (/commander'?s color identity/i.test(clause)) {
       if (identity) addProducedColors(colors, identity);
-    } else if (/one mana of any color|mana of any (?:one )?color|\bany color\b/i.test(match[1])) {
+    } else if (/one mana of any color|mana of any (?:one )?color|\bany color\b/i.test(clause)) {
       addProducedColors(colors, COLOR_ORDER);
     }
   }
@@ -123,6 +128,14 @@ export function producedColorsOf(entry, { colorIdentity = null } = {}) {
   if (/treasure token/i.test(text)) addProducedColors(colors, COLOR_ORDER);
   if (/search your library for [^.]*\bbasic land/i.test(text)) addProducedColors(colors, identity || COLOR_ORDER);
   return [...colors];
+}
+
+/** Copy for sources whose color depends on an opponent. Null when there are none. */
+export function unreliableManaNote(count) {
+  const sources = Number(count) || 0;
+  if (sources <= 0) return null;
+  const verb = sources === 1 ? "source makes" : "sources make";
+  return `${sources} mana ${verb} a color an opponent's land could produce. That is not counted as color fixing.`;
 }
 
 /**
@@ -248,10 +261,13 @@ export function buildDeckProfile({ commanders = [], picks = [], deckSize = 100, 
   const identity = colorIdentity || [...new Set(commanders.flatMap((commander) => cardOf(commander).colorIdentity || cardOf(commander).color_identity || cardOf(commander).colors || []))];
   let cmcTotal = 0;
   let nonland = 0;
+  let unreliableSources = 0;
   for (const pick of picks) {
     const roles = rolesOf(pick);
     for (const role of roles) counts[role] += 1;
-    for (const color of producedColorsOf(pick, { colorIdentity: identity })) if (isLand(pick) || roles.has("ramp")) sources[color] += isLand(pick) ? 1 : 0.5;
+    const producesMana = isLand(pick) || roles.has("ramp");
+    if (producesMana && opponentDependentManaText(cardOf(pick).oracleText ?? cardOf(pick).oracle_text ?? pick?.oracleText ?? "")) unreliableSources += 1;
+    for (const color of producedColorsOf(pick, { colorIdentity: identity })) if (producesMana) sources[color] += isLand(pick) ? 1 : 0.5;
     if (isLand(pick)) continue;
     nonland += 1;
     const cmc = cmcOf(pick);
@@ -312,7 +328,12 @@ export function buildDeckProfile({ commanders = [], picks = [], deckSize = 100, 
     roles: Object.freeze(roleRows),
     gaps: Object.freeze(gaps),
     curve: Object.freeze({ buckets: Object.freeze(curve), targets: Object.freeze(curveTargets), averageCmc, issues: Object.freeze(curveIssues), labels: Object.freeze(["0-1", "2", "3", "4", "5", "6+"]) }),
-    colors: Object.freeze({ identity: Object.freeze(identity), requirements: colorRequirements }),
+    colors: Object.freeze({
+      identity: Object.freeze(identity),
+      requirements: colorRequirements,
+      unreliableSources,
+      unreliableNote: unreliableManaNote(unreliableSources),
+    }),
   });
 }
 

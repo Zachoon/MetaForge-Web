@@ -8,6 +8,7 @@
 // endpoint, worker/guided-draft.ts's completion gate) and the client.
 // Deliberately free of engine imports: the client bundles this module, and
 // pulling native-masterwork-engine.mjs in would ship the whole engine.
+import { opponentDependentAddClause } from "./opponent-mana.mjs";
 
 // Largest-remainder split of `slots` across colors by pip demand; an even
 // split when there is no pip signal at all.
@@ -109,8 +110,20 @@ function pipTotalsOf(rows) {
 
 export function producedColors(entry) {
   const card = cardOf(entry);
-  const produced = new Set(Array.isArray(card.producedMana || card.produced_mana) ? (card.producedMana || card.produced_mana) : []);
   const text = oracleOf(entry);
+  // Opponent-dependent mana is not five-color fixing, even when a card fact
+  // lists every color the ability could theoretically add.
+  if ([...text.matchAll(/\badd\b([^.]*)/gi)].some((match) => opponentDependentAddClause(match[1]))) {
+    const produced = new Set();
+    for (const match of text.matchAll(/\badd\b([^.]*)/gi)) {
+      if (opponentDependentAddClause(match[1])) continue;
+      for (const symbol of match[1].match(/\{([WUBRGC])\}/g) || []) produced.add(symbol[1]);
+    }
+    const basicTypes = typeLineOf(entry).match(/Plains|Island|Swamp|Mountain|Forest/g) || [];
+    for (const type of basicTypes) produced.add(COLOR_BY_BASIC[type]);
+    return [...produced];
+  }
+  const produced = new Set(Array.isArray(card.producedMana || card.produced_mana) ? (card.producedMana || card.produced_mana) : []);
   if (!produced.size) {
     for (const match of text.matchAll(/\{([WUBRGC])\}/g)) if (/add\b/i.test(text)) produced.add(match[1]);
     if (/any color|mana of any type/i.test(text)) for (const color of ["W", "U", "B", "R", "G"]) produced.add(color);
@@ -149,6 +162,9 @@ export function countColorSources(landRows = [], basics = {}) {
 function utilityLandReason(entry, colors, pips) {
   const produced = producedColors(entry).filter((color) => colors.includes(color));
   const text = oracleOf(entry);
+  if ([...text.matchAll(/\badd\b([^.]*)/gi)].some((match) => opponentDependentAddClause(match[1]))) {
+    return "Makes a color an opponent's land could produce, so it is not counted as color fixing.";
+  }
   const tapped = /enters (?:the battlefield )?tapped/i.test(text) && !/unless/i.test(text);
   const parts = [];
   if (produced.length >= 2) {

@@ -5,6 +5,7 @@ import { buildInteractionGraph, candidateSynergy, linksBetween } from "../app/re
 import { buildDeckProfile, commanderReasoningEntry, inferPlan, scaledTargets, producedColorsOf, rolesOf } from "../app/reasoning-engine/deck-profile.mjs";
 import { reasonAboutCandidate, REASONING_LIMITS } from "../app/reasoning-engine/reasoner.mjs";
 import { analyzePartialList } from "../app/reasoning-engine/partial-list-analysis.mjs";
+import { unreliableManaNote } from "../app/reasoning-engine/deck-profile.mjs";
 import { analyzeListWithProvider, buildReasoningContext, profileStepUrgencies, reasonWithProvider } from "../app/reasoning-engine/index.mjs";
 import { orderRemainingCategories } from "../app/guided-preference-learning.mjs";
 import "../app/native-masterwork-engine.mjs";
@@ -39,6 +40,9 @@ const CARDS = {
   plains: c("Plains", "Basic Land — Plains", "", "({T}: Add {W}.)"),
   commandTower: c("Command Tower", "Land", "", "{T}: Add one mana of any color in your commander's color identity."),
   cityOfBrass: c("City of Brass", "Land", "", "{T}: Add one mana of any color. This land deals 1 damage to you."),
+  exoticOrchard: c("Exotic Orchard", "Land", "", "{T}: Add one mana of any color that a land an opponent controls could produce."),
+  fellwarStone: c("Fellwar Stone", "Artifact", "{2}", "{T}: Add one mana of any color that a land an opponent controls could produce."),
+  forbiddenOrchard: c("Forbidden Orchard", "Land", "", "{T}: Add one mana of any color.\nWhenever you tap this land for mana, target opponent creates a 1/1 colorless Spirit creature token."),
   cultivate: c("Cultivate", "Sorcery", "{2}{G}", "Search your library for up to two basic land cards, put one onto the battlefield tapped and the other into your hand, then shuffle."),
   strikeItRich: c("Strike It Rich", "Sorcery", "{R}", "Create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")"),
   raisedByGiants: c("Raised by Giants", "Legendary Enchantment — Background", "{3}{G}", "Commander creatures you own have \"This creature gets +10/+10 and has trample.\"", { colorIdentity: ["G"] }),
@@ -103,6 +107,29 @@ test("identity mana is the commander's colors, not all five", () => {
   assert.deepEqual(producedColorsOf(CARDS.cityOfBrass, { colorIdentity: ["R"] }), ["W", "U", "B", "R", "G"]);
   assert.deepEqual(producedColorsOf(CARDS.cultivate, { colorIdentity: ["G"] }), ["G"]);
   assert.deepEqual(producedColorsOf(CARDS.strikeItRich, { colorIdentity: ["R"] }), ["W", "U", "B", "R", "G"]);
+});
+
+test("opponent-produced mana is not five-color fixing", () => {
+  assert.deepEqual(producedColorsOf(CARDS.exoticOrchard, { colorIdentity: ["W", "B"] }), []);
+  assert.deepEqual(producedColorsOf(CARDS.fellwarStone, { colorIdentity: ["G"] }), []);
+  assert.deepEqual(producedColorsOf(CARDS.forbiddenOrchard, { colorIdentity: ["G", "U"] }), ["W", "U", "B", "R", "G"], "a chosen any-color land stays five colors when the opponent clause is a different ability");
+  const picks = [
+    CARDS.plains, { ...CARDS.plains, name: "Plains 2" },
+    CARDS.swamp, { ...CARDS.swamp, name: "Swamp 2" },
+    CARDS.exoticOrchard, { ...CARDS.exoticOrchard, name: "Exotic Orchard 2" }, { ...CARDS.exoticOrchard, name: "Exotic Orchard 3" },
+    CARDS.fellwarStone,
+    CARDS.swords, CARDS.bloodArtist,
+  ];
+  const profile = buildDeckProfile({ commanders: [CARDS.teysa], picks });
+  assert.equal(profile.colors.unreliableSources, 4);
+  assert.equal(profile.colors.unreliableNote, unreliableManaNote(4));
+  for (const color of ["W", "B"]) {
+    const row = profile.colors.requirements.find((entry) => entry.color === color);
+    assert.equal(row.sources, 2, `${color} comes only from the basics`);
+    assert.equal(row.underSupported, false);
+  }
+  const review = analyzePartialList({ commanders: [CARDS.teysa], entries: picks });
+  assert.ok(review.notes.includes(profile.colors.unreliableNote));
 });
 
 test("a noncreature commander's printed type line drives the plan", () => {
