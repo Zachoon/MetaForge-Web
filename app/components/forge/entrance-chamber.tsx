@@ -118,13 +118,20 @@ export function EntranceChamber() {
           />
           <video
             className="entrance-aperture-film"
-            src="/assets/forge/vfx/entrance-aperture.mp4"
             preload="none"
             autoPlay
             loop
             muted
             playsInline
-          />
+          >
+            {/* Phones never select this source, so the second film neither
+                downloads nor autoplays. Wider screens still play it. */}
+            <source
+              src="/assets/forge/vfx/entrance-aperture.mp4"
+              type="video/mp4"
+              media="(min-width: 761px)"
+            />
+          </video>
           <span className="entrance-furnace-bloom" />
           <span className="entrance-heat-lens" />
           <span className="entrance-forge-rails" />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { GlossaryText } from "./glossary-text";
 
 // A static, clearly labelled example of one guided pick, so a first-time
 // visitor can see what building "with the coach" looks like before they
@@ -30,7 +31,7 @@ export function SampleWalkthrough() {
         <span className="sample-badge">EXAMPLE · NOT YOUR DECK</span>
         <h2 id="sample-walkthrough-title">What a guided pick looks like</h2>
         <p>
-          Building {EXAMPLE.commander}, step <b>{EXAMPLE.step}</b>. You decide every card; the coach explains each
+          Building {EXAMPLE.commander}, step <b><GlossaryText text={EXAMPLE.step} /></b>. You decide every card; the coach explains each
           suggestion and adapts to your answers. Try the buttons — this is sample data only.
         </p>
       </header>
