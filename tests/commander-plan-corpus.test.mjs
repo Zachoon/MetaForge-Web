@@ -9,14 +9,16 @@ const card = (name, typeLine, oracleText) => ({ name, typeLine, oracleText });
 const COMMANDERS = [
   {
     name: "Galazeth Prismari",
-    typeLine: "Legendary Creature — Dragon Wizard",
-    oracle: "Whenever you cast an instant or sorcery spell, create a Treasure token. Artifacts you control have \"{T}: Add one mana of any color. Spend this mana only to cast instant or sorcery spells.\"",
+    typeLine: "Legendary Creature — Elder Dragon",
+    oracle: "Flying\nWhen Galazeth Prismari enters, create a Treasure token.\nArtifacts you control have \"{T}: Add one mana of any color. Spend this mana only to cast an instant or sorcery spell.\"",
     id: "spellslinger",
     label: "Spells and artifact ramp",
     minConfidence: 0.8,
     rampMode: "both",
-    selfEtb: false,
-    note: /Treasure tokens are still general ramp/,
+    selfEtb: true,
+    refusesListen: ["spell-cast"],
+    refusesProduce: ["blink"],
+    note: /Treasure already adds mana on its own/,
     notId: "blink",
   },
   {
@@ -229,6 +231,19 @@ test("commander plans come from rules text, and one enter ability is not a blink
     for (const resource of spec.refusesScale || []) assert.ok(!mechanics.scales.includes(resource), `${spec.name} scales ${resource}`);
     for (const kind of spec.restrictions || []) assert.ok(mechanics.restrictions.some((entry) => entry.kind === kind), `${spec.name} restriction ${kind}`);
   }
+});
+
+test("a partner in the second slot still supplies the plan, the enter trigger, and the restriction", () => {
+  const partner = card("Partner Pal", "Legendary Creature — Human", "Partner");
+  const galazeth = card(COMMANDERS[0].name, COMMANDERS[0].typeLine, COMMANDERS[0].oracle);
+  const plan = readCommanderPlan([partner, galazeth]);
+  assert.equal(plan.label, "Spells and artifact ramp");
+  assert.equal(plan.coversSecondary, true);
+  assert.equal(plan.model.selfEtb, true);
+  assert.ok(plan.confidence >= 0.8);
+  assert.equal(plan.certaintyNote, null);
+  assert.match(plan.restrictionNote, /Treasure already adds mana on its own/);
+  assert.notEqual(plan.id, "blink");
 });
 
 test("a type line alone is a forming plan, and a creature type line is not enchantress", () => {

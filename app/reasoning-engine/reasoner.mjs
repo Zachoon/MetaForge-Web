@@ -85,14 +85,17 @@ export function reasonAboutCandidate(candidate, { profile, deckEntries = [], com
   const support = planSupportOf(candidate, profile?.plan);
   const planRole = support?.role || null;
   const job = describeCardJob(candidate);
+  // A hybrid label such as "Spells and artifact ramp" already includes the
+  // secondary. Supporting that secondary advances the plan the player sees.
+  const coveredSecondary = Boolean(support && profile?.plan?.coversSecondary && support.id === profile.plan.secondary?.id);
   if (support && profile.plan.confidence > 0) {
     let weight = 1.5 + profile.plan.confidence * 2.5;
     if ((profile.planBalance === "needs-enablers" && planRole !== "payoff") || (profile.planBalance === "needs-payoffs" && planRole !== "enabler")) weight += 1.5;
     weight = round(weight);
     delta += weight;
-    evidence += support.id === profile.plan.id ? 0.75 : 0.35;
-    const named = support.label.toLowerCase();
-    const offPrimary = support.id !== profile.plan.id;
+    evidence += support.id === profile.plan.id || coveredSecondary ? 0.75 : 0.35;
+    const offPrimary = support.id !== profile.plan.id && !coveredSecondary;
+    const named = (offPrimary ? support.label : profile.plan.label).toLowerCase();
     reasons.push(Object.freeze({ kind: "plan", weight, text: offPrimary
       ? `It ${PLAN_ROLE_COPY[planRole]} your ${named} plan. It does not advance the ${profile.plan.label.toLowerCase()} plan.`
       : `It ${PLAN_ROLE_COPY[planRole]} your ${named} plan.` }));
@@ -102,10 +105,11 @@ export function reasonAboutCandidate(candidate, { profile, deckEntries = [], com
     reasons.push(Object.freeze({ kind: "plan", weight: synergy.score || gapRows.length ? 0 : -3, text: `${does}It doesn't advance your ${profile.plan.label.toLowerCase()} plan.` }));
   }
 
-  const spendOnly = commanders.map(mechanicsOf).flatMap((mechanics) => mechanics.restrictions || []).find((entry) => entry.kind === "spend-only");
-  const commanderName = commanderNames[0];
-  if (spendOnly && commanderName && typeMatchesSpendOnly(candidate, spendOnly)) {
-    reasons.push(Object.freeze({ kind: "synergy", weight: 1, text: `${commanderName}'s mana can pay for this, ${spendOnlyPhrase(spendOnly)}.` }));
+  const spendCommander = commanders.find((entry) => (mechanicsOf(entry).restrictions || []).some((item) => item.kind === "spend-only"));
+  const spendOnly = (spendCommander ? mechanicsOf(spendCommander).restrictions : []).find((entry) => entry.kind === "spend-only");
+  const spendName = entryNameOf(spendCommander);
+  if (spendOnly && spendName && typeMatchesSpendOnly(candidate, spendOnly)) {
+    reasons.push(Object.freeze({ kind: "synergy", weight: 1, text: `${spendName}'s mana can pay for this, ${spendOnlyPhrase(spendOnly)}.` }));
   }
   if (mechanicsOf(candidate).rampMode === "conditional") {
     reasons.push(Object.freeze({ kind: "trade-off", weight: 0, text: `This mana ${spendOnlyPhrase(mechanicsOf(candidate).restrictions?.find((entry) => entry.kind === "spend-only") || spendOnly) || "is restricted"}, so it does not fill the general ramp gap.` }));
@@ -158,7 +162,7 @@ export function reasonAboutCandidate(candidate, { profile, deckEntries = [], com
   const printedTribe = Boolean(tribe && support?.id === "typal" && support.id === profile?.plan?.id && new RegExp(`\\b${tribe}s?\\b`, "i").test(typeLine));
   const printedHistoric = Boolean(support?.id === "historic" && support.id === profile?.plan?.id && /\bartifact\b|\bsaga\b|\blegendary\b/i.test(typeLine));
   const commanderLink = synergy.partners.some((partner) => partner.isCommander) || printedTribe || printedHistoric;
-  const onPlan = Boolean(support && support.id === profile?.plan?.id);
+  const onPlan = Boolean(support && (support.id === profile?.plan?.id || coveredSecondary));
   let confidence = 0.34;
   if (commanderLink && (onPlan || gapRows.length)) confidence = 0.82;
   else if (commanderLink || (gapRows.length && job) || (onPlan && (profile?.plan?.confidence || 0) >= 0.7)) confidence = 0.62;

@@ -54,7 +54,15 @@ function mechanismFor(kind, resource, from, to) {
   if (kind === "listens") return `${source} triggers ${sink} through ${noun}`;
   if (kind === "scales") return `${sink}'s effect scales with the ${noun} ${source} makes, without spending them`;
   if (kind === "taps") {
-    const limit = (mechanicsOf(to).restrictions || []).find((entry) => entry.kind === "spend-only");
+    const sinkMechanics = mechanicsOf(to);
+    const limit = (sinkMechanics.restrictions || []).find((entry) => entry.kind === "spend-only");
+    if (sinkMechanics.tapMode === "grant") {
+      const spent = limit?.scope === "instant-or-sorcery"
+        ? " that can only be spent on instants and sorceries"
+        : (limit ? ` (${spendOnlyPhrase(limit)})` : "");
+      const ownMana = mechanicsOf(from).produces.includes("treasure") ? " Treasure already adds mana on its own." : "";
+      return `${sink} gives ${noun} ${source} makes an extra tap ability${spent}.${ownMana}`;
+    }
     const only = limit ? ` (${spendOnlyPhrase(limit)})` : "";
     const supplied = resource === "artifact" && mechanicsOf(from).produces.includes("treasure") ? "Treasure" : noun;
     return `${source} supplies ${supplied} that ${sink} taps for mana${only}`;
@@ -132,13 +140,19 @@ export function candidateSynergy(candidate, deckEntries = [], { commanderNames =
     const links = [...linksBetween(candidate, entry), ...linksBetween(entry, candidate)];
     if (!links.length) continue;
     links.sort((left, right) => right.weight - left.weight);
+    const grant = links.find((link) => link.kind === "taps" && /extra tap ability/.test(link.mechanism));
+    const scale = links.find((link) => link.kind === "scales");
+    const tidy = (line) => String(line || "").replace(/\.$/, "");
+    const mechanism = grant && scale
+      ? `${tidy(scale.mechanism)}. ${tidy(grant.mechanism)}`
+      : tidy((grant || links[0]).mechanism);
     const raw = links.reduce((sum, link) => sum + link.weight, 0);
     const isCommander = commanderSet.has(name.toLowerCase());
     // A link to the commander is always available (it is in the command
     // zone every game), so it counts double.
     const strength = Math.min(1.5, raw) * (isCommander ? 2 : 1);
     for (const link of links) resources.set(link.resource, (resources.get(link.resource) || 0) + link.weight);
-    partners.push(Object.freeze({ name, isCommander, strength: Number(strength.toFixed(2)), mechanism: links[0].mechanism, resource: links[0].resource }));
+    partners.push(Object.freeze({ name, isCommander, strength: Number(strength.toFixed(2)), mechanism, resource: (grant || scale || links[0]).resource }));
   }
   partners.sort((left, right) => right.strength - left.strength || left.name.localeCompare(right.name));
   const total = partners.reduce((sum, partner, index) => sum + partner.strength / (1 + index * 0.15), 0);

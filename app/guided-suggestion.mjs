@@ -135,7 +135,7 @@ export function accessibilityPenalty(candidate) {
 
 function cardJobKey(candidate) {
   const tracked = TRACKED_ROLES.filter((role) => (candidate.roles || []).includes(role));
-  if (!tracked.length) return "shell";
+  if (!tracked.length) return null;
   return tracked.slice().sort().join("+");
 }
 
@@ -143,6 +143,7 @@ function nearestSameRole(scored) {
   const best = scored[0];
   if (!best) return null;
   const job = cardJobKey(best.candidate);
+  if (!job) return null;
   const match = scored.slice(1).find((entry) => cardJobKey(entry.candidate) === job);
   if (!match) return null;
   return Object.freeze({

@@ -10,8 +10,8 @@ const card = (name, typeLine, oracleText) => ({ name, typeLine, oracleText });
 
 const GALAZETH = card(
   "Galazeth Prismari",
-  "Legendary Creature — Dragon Wizard",
-  "Whenever you cast an instant or sorcery spell, create a Treasure token. Artifacts you control have \"{T}: Add one mana of any color. Spend this mana only to cast instant or sorcery spells.\"",
+  "Legendary Creature — Elder Dragon",
+  "Flying\nWhen Galazeth Prismari enters, create a Treasure token.\nArtifacts you control have \"{T}: Add one mana of any color. Spend this mana only to cast an instant or sorcery spell.\"",
 );
 const STORM = card(
   "Storm-Kiln Artist",
@@ -38,11 +38,19 @@ test("Storm-Kiln Artist makes Treasure and counts artifacts; it does not spend t
   assert.match(describeCardJob(STORM), /without spending them/);
 });
 
-test("Galazeth and Storm-Kiln link by scaling and tapping, never by Storm-Kiln spending artifacts", () => {
+test("Galazeth's one enter Treasure is not a cast trigger, and Storm-Kiln does not spend the artifacts", () => {
+  const galazeth = parsed(GALAZETH);
+  assert.equal(galazeth.selfEtb, true);
+  assert.ok(galazeth.produces.includes("treasure"));
+  assert.ok(!galazeth.listens.includes("spell-cast"));
+  assert.ok(!galazeth.produces.includes("blink"));
+  assert.equal(galazeth.tapMode, "grant");
+  assert.equal(galazeth.rampMode, "both");
   const mechanisms = [...linksBetween(GALAZETH, STORM), ...linksBetween(STORM, GALAZETH)].map((link) => link.mechanism);
   assert.ok(mechanisms.some((line) => /scales with the artifacts Galazeth Prismari makes, without spending them/.test(line)));
-  assert.ok(mechanisms.some((line) => /supplies Treasure that Galazeth Prismari taps for mana \(only for instants and sorceries\)/.test(line)));
-  assert.ok(mechanisms.every((line) => !/Storm-Kiln Artist spends/.test(line)));
+  assert.ok(mechanisms.some((line) => /Galazeth Prismari gives artifacts Storm-Kiln Artist makes an extra tap ability that can only be spent on instants and sorceries/.test(line)));
+  assert.ok(mechanisms.some((line) => /Treasure already adds mana on its own/.test(line)));
+  assert.ok(mechanisms.every((line) => !/spends|taps for mana/.test(line)));
 });
 
 test("Storm-Kiln under Galazeth is told the truth, at a confidence that matches the claim", () => {
@@ -51,8 +59,9 @@ test("Storm-Kiln under Galazeth is told the truth, at a confidence that matches 
   assert.equal(ctx.profile.plan.label, "Spells and artifact ramp");
   assert.ok(ctx.profile.plan.confidence >= 0.8);
   assert.equal(ctx.profile.plan.certaintyNote, null);
-  assert.match(ctx.profile.plan.restrictionNote, /only cast instants and sorceries/);
-  assert.match(ctx.profile.plan.restrictionNote, /Treasure tokens are still general ramp/);
+  assert.equal(ctx.profile.plan.model.selfEtb, true);
+  assert.match(ctx.profile.plan.restrictionNote, /Treasure already adds mana on its own/);
+  assert.match(ctx.profile.plan.restrictionNote, /extra tap ability|tap ability that can only be spent on instants and sorceries/);
   assert.notEqual(ctx.profile.plan.id, "blink");
 
   const reason = reasonAboutCandidate(STORM, { ...ctx, category: "synergyPieces" });
@@ -62,12 +71,60 @@ test("Storm-Kiln under Galazeth is told the truth, at a confidence that matches 
   assert.match(reason.summary, /makes Treasure whenever you cast an instant or sorcery/);
   assert.doesNotMatch(reason.summary, /shell/);
   const text = reason.reasons.map((entry) => entry.text).join(" ");
-  assert.match(text, /without spending them|taps for mana \(only for instants and sorceries\)/);
-  assert.doesNotMatch(text, /spends/);
+  assert.match(text, /without spending them/);
+  assert.match(text, /extra tap ability that can only be spent on instants and sorceries/);
+  assert.match(text, /Treasure already adds mana on its own/);
+  assert.doesNotMatch(text, /spends|taps for mana/);
   assert.match(text, /spells and artifact ramp/);
   assert.doesNotMatch(text, /blink|enter-the-battlefield/);
   assert.match(text, /ramp 0\/10/);
   assert.doesNotMatch(text, /core piece of your/);
+});
+
+test("a secondary that the plan label does not include is still named as off-plan", () => {
+  const teysa = card("Teysa Karlov", "Legendary Creature — Human Advisor", "If a creature dying causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time. Creature tokens you control have vigilance and lifelink.");
+  const anthem = card("Token Anthem", "Enchantment", "Creature tokens you control get +1/+1.");
+  const ctx = buildReasoningContext({ commanders: [teysa], picks: [] });
+  assert.equal(ctx.profile.plan.coversSecondary, false);
+  const text = reasonAboutCandidate(anthem, { ...ctx, category: "synergyPieces" }).reasons.map((entry) => entry.text).join(" ");
+  assert.match(text, /pays off your go-wide tokens plan/);
+  assert.match(text, /does not advance the aristocrats/);
+});
+
+test("a Treasure maker feeds Galazeth's hybrid plan, because one enter Treasure is ramp", () => {
+  const ctx = buildReasoningContext({ commanders: [GALAZETH], picks: [] });
+  const tithe = card("Smothering Tithe", "Enchantment", "Whenever an opponent draws a card, that player may pay {2}. If the player doesn't, you create a Treasure token.");
+  const reason = reasonAboutCandidate(tithe, { ...ctx, category: "synergyPieces" });
+  const text = reason.reasons.map((entry) => entry.text).join(" ");
+  assert.match(text, /feeds your spells and artifact ramp plan/);
+  assert.doesNotMatch(text, /does not advance/);
+  assert.match(text, /Treasure already adds mana on its own/);
+});
+
+test("a job summary reads the nested card, including the printed name on an enter trigger", () => {
+  const nested = {
+    roles: ["ramp"],
+    card: {
+      name: "Dockside Extortionist",
+      typeLine: "Creature — Goblin Pirate",
+      oracleText: "When Dockside Extortionist enters, create a Treasure token.",
+    },
+  };
+  assert.match(describeCardJob(nested), /makes Treasure when it enters/);
+  assert.equal(describeCardJob({ card: STORM }), describeCardJob(STORM));
+});
+
+test("the commander who grants the mana is named, even when it is not in the first slot", () => {
+  const partner = card("Partner Pal", "Legendary Creature — Human", "Partner");
+  const ctx = buildReasoningContext({ commanders: [partner, GALAZETH], picks: [] });
+  assert.equal(ctx.profile.plan.label, "Spells and artifact ramp");
+  assert.ok(ctx.profile.plan.confidence >= 0.8);
+  assert.equal(ctx.profile.plan.certaintyNote, null);
+  assert.equal(ctx.profile.plan.model.selfEtb, true);
+  const opt = card("Opt", "Instant", "Scry 1. Draw a card.");
+  const text = reasonAboutCandidate(opt, { ...ctx, category: "draw" }).reasons.map((entry) => entry.text).join(" ");
+  assert.match(text, /Galazeth Prismari's mana can pay for this/);
+  assert.doesNotMatch(text, /Partner Pal's mana/);
 });
 
 test("a card with no shared mechanic is a thin read, and the wording says so", () => {

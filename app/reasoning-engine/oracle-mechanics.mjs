@@ -224,10 +224,22 @@ export function parseOracleMechanics(card = {}) {
   const scales = new Set(matchAll(SCALE_RULES, text));
   const taps = new Set();
   const effects = new Set(matchAll(EFFECT_RULES, text));
-
-  if (/artifacts? you control have\b[^.]*\{t\}[^.]*\badd\b/i.test(text)) taps.add("artifact");
-  if (/tokens? you control have\b[^.]*\{t\}[^.]*\badd\b/i.test(text)) taps.add("token");
-  if (/\btap an untapped artifact\b/i.test(text) || /\bimprovise\b/i.test(text)) taps.add("artifact");
+  // "Artifacts you control have '{T}: Add'" grants those permanents a new
+  // ability. "Tap an untapped artifact you control: Add" is an outlet that
+  // taps something else. Treasure tokens already have their own mana ability.
+  let tapMode = null;
+  if (/artifacts? you control have\b[^.]*\{t\}[^.]*\badd\b/i.test(text)) {
+    taps.add("artifact");
+    tapMode = "grant";
+  }
+  if (/tokens? you control have\b[^.]*\{t\}[^.]*\badd\b/i.test(text)) {
+    taps.add("token");
+    tapMode = tapMode || "grant";
+  }
+  if (/\btap an untapped artifact\b/i.test(text) || /\bimprovise\b/i.test(text)) {
+    taps.add("artifact");
+    tapMode = tapMode || "outlet";
+  }
   if (/\btap (?:an|one|two|x) untapped creatures?\b/i.test(text)) taps.add("creature-token");
   if (/treasures? you control have\b/i.test(text) && /\bsacrifice\b/i.test(text)) {
     consumes.add("treasure");
@@ -303,6 +315,7 @@ export function parseOracleMechanics(card = {}) {
     listens: Object.freeze([...listens].sort()),
     scales: Object.freeze([...scales].sort()),
     taps: Object.freeze([...taps].sort()),
+    tapMode,
     effects: Object.freeze([...effects].sort()),
     restrictions: Object.freeze(restrictions.map((entry) => Object.freeze(entry))),
     spendVerbs: Object.freeze(spendVerbs),
@@ -379,12 +392,27 @@ function rampModeOf(text, produces) {
   return "none";
 }
 
+/** Pool rows keep the printed card under `.card`. Parsed mechanics stay flat. */
+function jobSource(card) {
+  const nested = card?.card;
+  if (nested && typeof nested === "object" && (nested.oracleText || nested.oracle_text || nested.typeLine || nested.type_line || nested.name)) {
+    return nested;
+  }
+  return card || {};
+}
+
 /** One or two clauses, drawn only from this card's rules text. */
 export function describeCardJob(card = {}) {
-  const mechanics = card?.oracleText || card?.oracle_text || card?.typeLine || card?.type_line || !card?.produces
-    ? parseOracleMechanics(card)
-    : card;
-  const text = String(card.oracleText || card.oracle_text || "");
+  const source = jobSource(card);
+  const mechanics = source?.oracleText || source?.oracle_text || source?.typeLine || source?.type_line || !source?.produces
+    ? parseOracleMechanics({
+      name: source.name || card?.name || "",
+      oracleText: source.oracleText ?? source.oracle_text ?? "",
+      typeLine: source.typeLine ?? source.type_line ?? "",
+      keywords: source.keywords || card?.keywords || [],
+    })
+    : source;
+  const text = String(source.oracleText || source.oracle_text || "");
   const parts = [];
   const produces = new Set(mechanics.produces || []);
   const listens = new Set(mechanics.listens || []);
@@ -404,6 +432,12 @@ export function describeCardJob(card = {}) {
   if (/twice that many/i.test(text)) parts.push("doubles tokens or counters");
   if (scales.has("artifact")) parts.push("scales with artifacts you control, without spending them");
   if (consumes.has("artifact") && mechanics.spendVerbs?.artifact === "sacrifices") parts.push("sacrifices artifacts");
+  else if (taps.has("artifact") && mechanics.tapMode === "grant") {
+    const spellOnly = (mechanics.restrictions || []).some((entry) => entry.kind === "spend-only" && entry.scope === "instant-or-sorcery");
+    parts.push(spellOnly
+      ? "gives artifacts an extra tap ability that can only be spent on instants and sorceries"
+      : "gives artifacts an extra tap ability");
+  }
   else if (taps.has("artifact")) parts.push("taps artifacts for mana");
   if (consumes.has("creature-body")) parts.push("sacrifices creatures");
   if (consumes.has("treasure") && mechanics.spendVerbs?.treasure === "sacrifices") parts.push("can sacrifice Treasure");

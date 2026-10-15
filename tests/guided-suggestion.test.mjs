@@ -235,6 +235,21 @@ test("a synergy comparison stays with a card that does the same job", () => {
   assert.equal(roleOf[suggestion.offer.name], roleOf[suggestion.reason.nearestAlternative.name]);
 });
 
+test("untagged synergy cards are not compared as if they shared a job", () => {
+  const storm = enriched(card("Storm-Kiln Artist", "Creature — Dwarf Shaman", "Magecraft — Whenever you cast or copy an instant or sorcery spell, create a Treasure token.", 3, 0.2, "{2}{R}"));
+  const apprentice = enriched(card("Treasure Apprentice", "Creature — Dwarf Shaman", "Magecraft — Whenever you cast or copy an instant or sorcery spell, create a Treasure token.", 3, 0.2, "{2}{R}"));
+  storm.roles = [];
+  apprentice.roles = [];
+  const suggestion = suggestCardForCategory({
+    category: "synergyPieces",
+    partialRows: [],
+    pool: [storm, apprentice],
+    intent: { packages: [{ id: "spellslinger" }] },
+  });
+  assert.equal(suggestion.exhausted, false);
+  assert.equal(suggestion.reason.nearestAlternative, null);
+});
+
 test("declining every eligible card in turn eventually exhausts the category", () => {
   const intent = intentForPearl();
   const pool = Array.from({ length: 3 }, (_, i) => enriched(ramp(`Stone ${i}`)));

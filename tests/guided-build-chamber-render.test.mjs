@@ -321,7 +321,7 @@ test("a low-confidence suggestion hedges, and a forming plan says what would mak
         confidence: 0.46,
         secondary: null,
         certaintyNote: "The plan is still forming. Another card that shares the same mechanic would make it clearer.",
-        restrictionNote: "Mana from tapping artifacts can only cast instants and sorceries. Treasure tokens are still general ramp.",
+        restrictionNote: "Treasure already adds mana on its own. Artifacts also gain a tap ability that can only be spent on instants and sorceries.",
       },
       planBalance: "forming",
       roles: [],
@@ -337,7 +337,8 @@ test("a low-confidence suggestion hedges, and a forming plan says what would mak
   assert.doesNotMatch(html, /tokens shell/);
   assert.match(html, /46% sure/);
   assert.match(html, /The plan is still forming/);
-  assert.match(html, /Treasure tokens are still general ramp/);
+  assert.match(html, /Treasure already adds mana on its own/);
+  assert.match(html, /tap ability that can only be spent on instants and sorceries/);
 });
 
 test("each suggestion shows its role, what it works with, its trade-off, and what the coach learned", () => {

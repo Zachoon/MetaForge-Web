@@ -230,7 +230,7 @@ function restrictionNote(restrictions = [], rampMode = "none") {
   const bits = [];
   if (spend?.scope === "instant-or-sorcery") {
     bits.push(rampMode === "both"
-      ? "Mana from tapping artifacts can only cast instants and sorceries. Treasure tokens are still general ramp."
+      ? "Treasure already adds mana on its own. Artifacts also gain a tap ability that can only be spent on instants and sorceries."
       : "Artifact mana can only cast instants and sorceries, so it is not general ramp.");
   } else if (spend?.scope === "commander") bits.push("This mana can only cast your commander, so it is not general ramp.");
   else if (spend?.scope === "creature-spell") bits.push("This mana can only cast creature spells, so it is not general ramp.");
@@ -252,7 +252,7 @@ function certaintyNoteFor(confidence) {
   return null;
 }
 
-function freezePlan({ id, label, confidence, secondary, resources, evidence, model, restrictionNote: note }) {
+function freezePlan({ id, label, confidence, secondary, resources, evidence, model, restrictionNote: note, coversSecondary = false }) {
   const certaintyNote = certaintyNoteFor(confidence);
   return Object.freeze({
     id,
@@ -265,6 +265,7 @@ function freezePlan({ id, label, confidence, secondary, resources, evidence, mod
     restrictionNote: note || null,
     certaintyNote,
     creatureType: model?.typal || null,
+    coversSecondary: Boolean(coversSecondary),
   });
 }
 
@@ -275,6 +276,23 @@ function textCarriesPlan(mechanics) {
   if ((mechanics.listens || []).length || (mechanics.scales || []).length || (mechanics.taps || []).length || (mechanics.consumes || []).length) return true;
   if (mechanics.doublesEtb || mechanics.typal || mechanics.powerMatters || (mechanics.produces || []).includes("blink")) return true;
   return (mechanics.produces || []).some((resource) => !TYPE_LINE_PRODUCES.has(resource));
+}
+
+function scoreAgainst(mechanics, id) {
+  const scores = emptyScores();
+  voteMechanics(mechanics, 1, scores);
+  return scores[id] || 0;
+}
+
+/** The commander whose rules text accounts for the winning plan, not the first slot. */
+function leadModel(models, planId) {
+  return models.reduce((best, model) => {
+    const score = scoreAgainst(model.mechanics, planId);
+    const bestScore = scoreAgainst(best.mechanics, planId);
+    if (score > bestScore) return model;
+    if (score === bestScore && textCarriesPlan(model.mechanics) && !textCarriesPlan(best.mechanics)) return model;
+    return best;
+  }, models[0]);
 }
 
 const MIDRANGE = () => freezePlan({
@@ -317,17 +335,24 @@ export function readCommanderPlan(commanders = []) {
   if (!top) return MIDRANGE();
   for (const model of models) if (scores[top[0]]) evidence[top[0]].add(model.name);
 
-  const mechanics = models[0].mechanics;
-  const spellAndArtifactRamp = (mechanics.listens || []).includes("spell-cast")
-    && ((mechanics.taps || []).includes("artifact") || (mechanics.produces || []).includes("treasure"))
+  // Partner and background pairs vote together, but the label, the
+  // restrictions, and the confidence come from the commander whose text
+  // actually carries the winning plan. Slot order is not that commander.
+  const mechanics = leadModel(models, top[0]).mechanics;
+  // The spell plan comes from the spend restriction on the granted artifact
+  // mana, not from a cast trigger. One enter-the-battlefield Treasure does
+  // not vote for blink; that produce is skipped in voteMechanics.
+  const spellAndArtifactRamp = (mechanics.taps || []).includes("artifact")
     && (mechanics.restrictions || []).some((entry) => entry.kind === "spend-only" && entry.scope === "instant-or-sorcery");
   let id = top[0];
   let label = ARCHETYPES[id].label;
   let secondary = second && second[1] >= top[1] * 0.6 ? { id: second[0], label: ARCHETYPES[second[0]].label } : null;
+  let coversSecondary = false;
   if (spellAndArtifactRamp) {
     id = "spellslinger";
     label = "Spells and artifact ramp";
     secondary = { id: "artifacts", label: ARCHETYPES.artifacts.label };
+    coversSecondary = true;
   } else if (id === "typal" && mechanics.typal) {
     label = `${mechanics.typal}s`;
     secondary = null;
@@ -353,6 +378,7 @@ export function readCommanderPlan(commanders = []) {
     resources,
     evidence: [...new Set(present.map((entry) => entryNameOf(entry)))].slice(0, 6),
     restrictionNote: restrictionNote(mechanics.restrictions, mechanics.rampMode),
+    coversSecondary,
     model: {
       produces: mechanics.produces,
       rewards: [...mechanics.listens, ...mechanics.scales, ...mechanics.taps],
