@@ -37,3 +37,14 @@ test("a saved deck with no revision list does not crash My Decks or the profile"
   }
   assert.match(archive, /String\(a\.name \|\| ""\)\.localeCompare/);
 });
+
+test("a partial coach vault does not map missing lists", async () => {
+  const research = await read("app/research/page.tsx");
+  assert.match(research, /observedFindings \|\| \[\]/);
+  assert.match(research, /interpretiveGuidance \|\| \[\]/);
+  assert.match(research, /const health = system\.health \|\| \{\}/);
+  assert.match(research, /coachingDiagnosis\.primary &&/);
+  assert.match(research, /Array\.isArray\(value\) \? value : \[\]/);
+  assert.match(research, /Array\.isArray\(revisionSource\.actionable\)/);
+  assert.match(research, /Array\.isArray\(activeSystem\.members\)/);
+});

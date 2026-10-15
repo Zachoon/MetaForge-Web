@@ -28,6 +28,19 @@ test("rejects an unbounded card-facts proxy request", async () => {
   assert.equal(response.status, 400);
 });
 
+test("a 200 with a non-JSON body falls back to the local catalog", async (t) => {
+  t.mock.method(globalThis, "fetch", async () => new Response("<html>not json</html>", {
+    status: 200,
+    headers: { "Content-Type": "text/html" },
+  }));
+  const response = await handleCardFacts(request({ names: ["Pacifism", "Definitely Not A Real Card"] }));
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(body.cards[0].name, "Pacifism");
+  assert.equal(body.cards[0].type_line, "Enchantment — Aura");
+  assert.deepEqual(body.unresolved, ["Definitely Not A Real Card"]);
+});
+
 test("uses the internal type catalog when the upstream archive is down", async (t) => {
   t.mock.method(globalThis, "fetch", async () => new Response("no", { status: 400 }));
   const response = await handleCardFacts(request({ names: ["Pacifism"] }));
