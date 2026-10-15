@@ -22,16 +22,36 @@ export const STALE_CHUNK_RECOVERY_SCRIPT = `(function () {
     window.location.reload();
     return true;
   }
+  // Queue only. Nothing is sent until the visitor allows measurement and
+  // the app reporter drains this list. Pathname only — no query string.
+  function note(kind, message, stack) {
+    try {
+      var q = window.__mfErrorQueue || (window.__mfErrorQueue = []);
+      if (q.length >= 20) return;
+      var route = "/";
+      try { route = String((window.location && window.location.pathname) || "/").split("?")[0].slice(0, 180); } catch (e) {}
+      var clean = function (value, max) { return String(value || "").replace(/[?#][^\s]*/g, "").slice(0, max); };
+      q.push({ kind: kind, message: clean(message, 500), stack: clean(stack, 1500), route: route });
+    } catch (e) {}
+  }
   window.addEventListener("vite:preloadError", function (event) {
+    note("chunk", "Failed to fetch dynamically imported module");
     if (reloadOnce()) event.preventDefault();
   });
   window.addEventListener("unhandledrejection", function (event) {
     var reason = event.reason;
-    if (STALE.test(String((reason && reason.message) || reason))) reloadOnce();
+    var text = String((reason && reason.message) || reason);
+    if (STALE.test(text)) reloadOnce();
+    note(STALE.test(text) ? "chunk" : "unhandledrejection", text, reason && reason.stack);
   });
   window.addEventListener("error", function (event) {
     var target = event.target;
     var url = target && (target.src || target.href);
-    if (url && String(url).indexOf("/assets/") !== -1 && (target.tagName === "SCRIPT" || target.tagName === "LINK")) reloadOnce();
+    if (url && String(url).indexOf("/assets/") !== -1 && (target.tagName === "SCRIPT" || target.tagName === "LINK")) {
+      note("chunk", "Failed to load " + target.tagName);
+      reloadOnce();
+      return;
+    }
+    if (event.message || (event.error && event.error.message)) note("window.error", event.message || event.error.message, event.error && event.error.stack);
   }, true);
 })();`;

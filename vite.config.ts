@@ -1,7 +1,29 @@
+import { execSync } from "node:child_process";
 import vinext from "vinext";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import hostingConfig from "./.openai/hosting.json";
 import { sites } from "./build/sites-vite-plugin";
+
+function gitBuildId() {
+  if (process.env.METAFORGE_BUILD_ID) return process.env.METAFORGE_BUILD_ID;
+  try {
+    return execSync("git rev-parse HEAD", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  } catch {
+    return "unknown";
+  }
+}
+
+function metaforgeBuildIdPlugin(buildId: string): Plugin {
+  return {
+    name: "metaforge-build-id",
+    enforce: "pre",
+    transform(code, id) {
+      const normalized = id.split("?")[0].replaceAll("\\", "/");
+      if (!normalized.endsWith("/app/build-id.ts")) return null;
+      return code.replaceAll("%%METAFORGE_BUILD_ID%%", buildId);
+    },
+  };
+}
 
 const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
   "00000000-0000-4000-8000-000000000000";
@@ -32,6 +54,7 @@ const localBindingConfig = {
 };
 
 export default defineConfig(async ({ command }) => {
+  const buildId = gitBuildId();
   // Keep Wrangler and Miniflare state project-local. These are non-secret tool
   // settings; application environment belongs in ignored `.env*` files.
   process.env.WRANGLER_WRITE_LOGS ??= "false";
@@ -46,6 +69,7 @@ export default defineConfig(async ({ command }) => {
       ? { watch: { useFsEvents: false, usePolling: true } }
       : undefined,
     plugins: [
+      metaforgeBuildIdPlugin(buildId),
       vinext(),
       sites(),
       cloudflare({

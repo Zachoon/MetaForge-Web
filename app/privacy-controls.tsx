@@ -35,7 +35,7 @@ export default function PrivacyControls() {
   };
   if (choice) return null;
   return <aside className="privacy-choice" aria-label="Privacy choices">
-    <div><b>Help us improve MetaForge?</b><span>Allow anonymous journey measurement and affiliate tracking. No decklists, card choices, names, emails, or advertising profiles.</span></div>
+    <div><b>Help us improve MetaForge?</b><span>Allow anonymous journey measurement, error reports, and affiliate tracking. No decklists, card choices, names, emails, or advertising profiles.</span></div>
     <footer><button type="button" onClick={() => decide("declined")}>No thanks</button><button type="button" onClick={() => decide("allowed")}>Allow anonymous measurement</button><a href="/privacy">Privacy details</a></footer>
   </aside>;
 }

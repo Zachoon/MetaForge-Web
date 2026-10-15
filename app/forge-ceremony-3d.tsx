@@ -1,6 +1,7 @@
 "use client";
 
 import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
+import { reportClientError } from "./client-error-reporter";
 import { Component, Suspense, useEffect, useMemo, useRef, useState, type JSX, type MutableRefObject, type ReactNode } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -15,6 +16,9 @@ const FORGE_CAMERA_FINAL = new THREE.Vector3(0, 1.8, 5.55);
 class ForgeWebGLErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch(error: Error) {
+    reportClientError({ kind: "react", message: error?.message || "WebGL forge scene failed", stack: error?.stack });
+  }
   render() { return this.state.failed ? null : this.props.children; }
 }
 

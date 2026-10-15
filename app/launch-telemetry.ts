@@ -22,7 +22,17 @@ const SESSION_KEY = "metaforge-launch-session";
 const CAMPAIGN_KEY = "metaforge-launch-campaign";
 
 export const measurementConsent = () => typeof window !== "undefined" ? window.localStorage.getItem(CONSENT_KEY) : null;
-export const setMeasurementConsent = (choice: "allowed" | "declined") => window.localStorage.setItem(CONSENT_KEY, choice);
+export const setMeasurementConsent = (choice: "allowed" | "declined") => {
+  window.localStorage.setItem(CONSENT_KEY, choice);
+  window.dispatchEvent(new CustomEvent("metaforge-measurement-consent", { detail: choice }));
+};
+
+export function anonymousSessionId() {
+  if (typeof window === "undefined" || measurementConsent() !== "allowed") return null;
+  let session = window.localStorage.getItem(SESSION_KEY);
+  if (!session) { session = crypto.randomUUID(); window.localStorage.setItem(SESSION_KEY, session); }
+  return session;
+}
 
 export function captureCampaign() {
   if (measurementConsent() !== "allowed") return;
@@ -39,8 +49,8 @@ export function captureCampaign() {
 
 export function trackLaunchEvent(event: LaunchEvent, properties: Record<string, unknown> = {}) {
   if (typeof window === "undefined" || measurementConsent() !== "allowed") return;
-  let session = window.localStorage.getItem(SESSION_KEY);
-  if (!session) { session = crypto.randomUUID(); window.localStorage.setItem(SESSION_KEY, session); }
+  const session = anonymousSessionId();
+  if (!session) return;
   let campaign = {};
   try { campaign = JSON.parse(window.sessionStorage.getItem(CAMPAIGN_KEY) || "{}"); } catch { /* empty campaign */ }
   void fetch("/api/telemetry", {

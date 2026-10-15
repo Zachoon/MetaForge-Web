@@ -1,6 +1,7 @@
 "use client";
 
 import { Component, type ReactNode } from "react";
+import { reportClientError } from "../../client-error-reporter";
 
 // Same phrases as STALE_CHUNK_RECOVERY_SCRIPT. React.lazy catches a failed
 // dynamic import, so it often never becomes an unhandledrejection. The head
@@ -31,6 +32,14 @@ export class ChamberLoadBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(error: unknown): State {
     return { error };
+  }
+
+  componentDidCatch(error: unknown) {
+    reportClientError({
+      kind: isChunkLoadError(error) ? "chunk" : "react",
+      message: errorText(error) || "Forge chamber failed to load",
+      stack: error instanceof Error ? error.stack : "",
+    });
   }
 
   render() {
