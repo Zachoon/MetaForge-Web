@@ -257,3 +257,197 @@ textarea,
   .profile-page { width: min(1180px, calc(100% - 28px)); }
   .profile-page > header { gap: 16px; }
 }
+
+/* Guided controls added after the first mobile pass, including the
+   homepage sample and the finish/mana steps. 44px through tablet width,
+   not only the 520px stack. */
+@media (max-width: 1100px) {
+  .guided-step button,
+  .guided-actions button,
+  .guided-nav button,
+  .guided-decline-reasons button,
+  .guided-error button,
+  .guided-oracle summary,
+  .guided-search [role="option"],
+  .guided-search button,
+  .guided-finish button,
+  .guided-draft-card button,
+  .sample-result button,
+  .sample-walkthrough .guided-actions button,
+  .chamber-loading button {
+    min-height: 44px;
+    box-sizing: border-box;
+  }
+  .guided-finish-landcount button,
+  .guided-finish-basics button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .guided-decline-reasons button { min-height: 44px; }
+}
+
+/* Coach vocabulary and the commander card open on tap. Hover still works
+   with a pointer; a finger toggle uses .is-open / aria-expanded. */
+button.forge-term {
+  position: relative;
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px dotted #81cdbc;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  cursor: help;
+}
+button.forge-term::before {
+  content: "";
+  position: absolute;
+  top: -12px;
+  right: -6px;
+  bottom: -12px;
+  left: -6px;
+}
+.forge-term.is-open:after,
+.blueprint-glossary-tip[aria-expanded="true"]:after {
+  visibility: visible;
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+@media (max-width: 760px) {
+  .forge-term:after,
+  .blueprint-glossary-tip:after {
+    position: fixed;
+    right: max(16px, env(safe-area-inset-right, 0px));
+    bottom: calc(var(--mf-frame-rail, 0px) + 12px);
+    left: max(16px, env(safe-area-inset-left, 0px));
+    width: auto;
+    transform: none;
+  }
+  .forge-term.is-open:after,
+  .forge-term:hover:after,
+  .forge-term:focus:after,
+  .blueprint-glossary-tip[aria-expanded="true"]:after,
+  .blueprint-glossary-tip:hover:after,
+  .blueprint-glossary-tip:focus-visible:after {
+    transform: none;
+  }
+}
+@media (max-width: 1100px) {
+  .blueprint-glossary-tip {
+    display: inline-grid !important;
+    width: 44px;
+    height: 44px;
+    margin-left: 8px;
+    font-size: 16px;
+  }
+}
+
+.commander-inspector {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: auto;
+  max-width: 100%;
+  vertical-align: top;
+}
+.commander-inspector-hit {
+  display: block;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+.commander-inspector.is-open .commander-zoom {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, -50%) scale(1);
+}
+.commander-zoom-close {
+  position: absolute;
+  z-index: 2;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #8b765a;
+  background: #07100f;
+  color: #f4ecdc;
+  font: 700 13px Inter, sans-serif;
+  cursor: pointer;
+}
+@media (hover: none) {
+  .commander-inspector:hover .commander-zoom,
+  .commander-inspector:focus .commander-zoom {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .commander-inspector.is-open .commander-zoom {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+@media (max-width: 760px) {
+  .commander-zoom {
+    top: auto;
+    bottom: calc(var(--mf-frame-rail) + 8px);
+    max-height: calc(100svh - var(--mf-frame-top) - var(--mf-frame-rail) - 16px);
+    overflow: auto;
+    transform: translate(-50%, 0);
+  }
+  .commander-zoom > span { display: block; }
+  .commander-inspector.is-open .commander-zoom,
+  .commander-inspector:hover .commander-zoom,
+  .commander-inspector:focus .commander-zoom {
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+@media (hover: none), (max-width: 1100px) {
+  .ledger-deck-view .card-row-actions,
+  .type-column-row .card-row-actions { opacity: 1; }
+  .card-row-printing,
+  .card-row-more,
+  .card-row-foil-toggle,
+  .printing-picker li button,
+  .printing-picker-reset {
+    min-width: 44px;
+    min-height: 44px;
+    box-sizing: border-box;
+  }
+  .ledger-deck-view .type-column > .type-column-row { padding-right: 132px; }
+}
+.card-row-printing {
+  min-width: 44px;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid #52655f;
+  border-radius: 4px;
+  background: transparent;
+  color: #9fd8cc;
+  font: 700 10px Inter, sans-serif;
+  letter-spacing: .04em;
+  cursor: pointer;
+}
+@media (max-width: 760px) {
+  .printing-picker {
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+    top: auto !important;
+    bottom: calc(var(--mf-frame-rail) + 8px) !important;
+    max-height: calc(100svh - var(--mf-frame-top) - var(--mf-frame-rail) - 16px);
+  }
+  .card-row-printing { height: 44px; }
+}

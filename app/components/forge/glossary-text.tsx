@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useId, useState } from "react";
+
 const FORGE_GLOSSARY: Record<string, string> = {
   aggro: "An aggressive plan that uses efficient early threats to end the game before slower decks stabilize.",
   aggression: "How strongly this deck prioritizes early pressure and shortening the game.",
@@ -45,20 +47,60 @@ const GLOSSARY_PATTERN = new RegExp(
     .join("|")})\\b`,
   "gi",
 );
+
+function ForgeTerm({ term, definition }: { term: string; definition: string }) {
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (event: PointerEvent) => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest(`[data-term-id="${CSS.escape(id)}"]`)) return;
+      setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    const onOther = (event: Event) => {
+      if ((event as CustomEvent<string>).detail !== id) setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("forge-term-open", onOther);
+    return () => {
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("forge-term-open", onOther);
+    };
+  }, [open, id]);
+  return (
+    <button
+      type="button"
+      className={`forge-term${open ? " is-open" : ""}`}
+      data-term-id={id}
+      aria-expanded={open}
+      aria-label={`${term}: ${definition}`}
+      data-definition={definition}
+      onClick={(event) => {
+        event.stopPropagation();
+        setOpen((current) => {
+          const next = !current;
+          if (next) document.dispatchEvent(new CustomEvent("forge-term-open", { detail: id }));
+          return next;
+        });
+      }}
+    >
+      {term}
+    </button>
+  );
+}
+
 export const GlossaryText = ({ text }: { text: string }) => (
   <>
     {text.split(GLOSSARY_PATTERN).map((part, index) => {
       const definition = FORGE_GLOSSARY[part.toLowerCase()];
       return definition ? (
-        <span
-          className="forge-term"
-          tabIndex={0}
-          aria-label={`${part}: ${definition}`}
-          data-definition={definition}
-          key={`${part}-${index}`}
-        >
-          {part}
-        </span>
+        <ForgeTerm term={part} definition={definition} key={`${part}-${index}`} />
       ) : (
         part
       );

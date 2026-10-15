@@ -3,6 +3,8 @@
 import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
 import { cardArtCrop } from "../../card-art";
+import { CommanderInspector } from "./commander-inspector";
+import { commanderOracleText } from "../../commander-lane-scoring.mjs";
 import {
   isCommanderFormat,
   scryfallFormatTerms,
@@ -13,6 +15,7 @@ import { shellDisplay } from "../../shell-copy.mjs";
 import { useForgeSession } from "../../forge-session-context";
 
 export function CommissionChamber() {
+  const [formatTipOpen, setFormatTipOpen] = useState(false);
   const {
     chamber,
     setChamber,
@@ -133,7 +136,7 @@ export function CommissionChamber() {
           <label className="build-choice-format">
             <span>
               FORMAT
-              <button type="button" className="blueprint-glossary-tip" data-definition={blueprintDefinition("format", format)} aria-label={`Explain ${format}`}>?</button>
+              <button type="button" className="blueprint-glossary-tip" data-definition={blueprintDefinition("format", format)} aria-expanded={formatTipOpen} aria-label={`Explain ${format}`} onClick={(event) => { event.preventDefault(); event.stopPropagation(); setFormatTipOpen((open) => !open); }}>?</button>
             </span>
             <select
               aria-describedby="format-definition"
@@ -183,10 +186,12 @@ export function CommissionChamber() {
             </header>
             {selectedCommander ? (
               <article>
-                <img
-                  className="commander-art-crop"
+                <CommanderInspector
+                  name={selectedCommander.name}
                   src={cardArtCrop(selectedCommander.name)}
-                  alt=""
+                  imgClassName="commander-art-crop"
+                  typeLine={selectedCommander.typeLine}
+                  oracle={commanderOracleText(selectedCommander)}
                 />
                 <div>
                   <b>{selectedCommander.name}</b>

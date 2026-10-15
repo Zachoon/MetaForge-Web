@@ -10,6 +10,9 @@ import {
   relativeUpdatedLabel,
 } from "../../deck-row-helpers";
 import { ForgeCardRef } from "../../forge-card-ref";
+import { GlossaryText } from "./glossary-text";
+import { CommanderInspector } from "./commander-inspector";
+import { commanderOracleText } from "../../commander-lane-scoring.mjs";
 import { ImportedDeckComparison } from "./imported-deck-comparison";
 import { ForgeProcessingLoader } from "./forge-ceremony";
 import { Tabletop } from "../../tabletop";
@@ -106,6 +109,7 @@ export function WorkbenchChamber() {
     setFoilCards,
     cheapestPrintings,
     printingOverrides,
+    printingMenu,
     setPrintingMenu,
     tcgplayerAffiliateEnabled,
     deckId,
@@ -339,7 +343,7 @@ export function WorkbenchChamber() {
                   I don&apos;t understand enough of this list yet to coach it responsibly. Deterministic checks like deck size and verified mana math can still help while card records catch up.
                 </p>
               ) : (
-                <p className="honest-coach-guide">{honestCoachSummary.guideLine}</p>
+                <p className="honest-coach-guide"><GlossaryText text={honestCoachSummary.guideLine} /></p>
               )}
               {/* Player Surface Law: system counts / Engine names
                   (Counter Engine, Treasure Engine, "14 systems verified")
@@ -374,7 +378,7 @@ export function WorkbenchChamber() {
               <article className="honest-coach-plan commission-verdict">
                 <small>VERDICT</small>
                 <h3>{honestCoachSummary.planStory?.title || honestCoachSummary.intentions.title}</h3>
-                <p>{honestCoachSummary.intentions.accomplish}</p>
+                <p><GlossaryText text={honestCoachSummary.intentions.accomplish} /></p>
                 {coachOccupancyLabels.length > 0 && (
                   <p className="honest-coach-occupancy">
                     Occupancy engines: {coachOccupancyLabels.join(" · ")}. Named from commander oracle, not a verified system map.
@@ -383,12 +387,12 @@ export function WorkbenchChamber() {
               </article>
               <article className="commission-why">
                 <small>WHY · OPENING PRIORITIES</small>
-                <p>{honestCoachSummary.intentions.establish}</p>
+                <p><GlossaryText text={honestCoachSummary.intentions.establish} /></p>
               </article>
               <article className="coach-brief-watch commission-change">
                 <small>CHANGE</small>
                 <strong>Take one thing into the next game.</strong>
-                <p>{honestCoachSummary.intentions.firstVulnerability}</p>
+                <p><GlossaryText text={honestCoachSummary.intentions.firstVulnerability} /></p>
                 {honestCoachSummary.fixFirst
                   && !/Engine$/i.test(String(honestCoachSummary.fixFirst))
                   && (
@@ -549,7 +553,15 @@ export function WorkbenchChamber() {
           >
             {hasValidatedDeck && <span className="masterwork-glass" aria-hidden="true" />}
             <div className="masterwork-deck-title">
-              {hasValidatedDeck && <img className="masterwork-commander-medallion" src={cardArtCrop(activeCommanderName || featuredMasterworkCard)} alt="" />}
+              {hasValidatedDeck && (
+                <CommanderInspector
+                  name={activeCommanderName || featuredMasterworkCard}
+                  src={cardArtCrop(activeCommanderName || featuredMasterworkCard)}
+                  imgClassName="masterwork-commander-medallion"
+                  typeLine={selectedCommander?.typeLine || ""}
+                  oracle={commanderOracleText(selectedCommander)}
+                />
+              )}
               <div>
                 <small>YOUR DECK</small>
                 <h2>{hasValidatedDeck ? masterworkIdentity.title || chosenWork.name.replace(/, Forged$/, "") : benchStatus === "forging" ? "The Forge is producing your deck…" : "Build not completed"}</h2>
@@ -1373,7 +1385,7 @@ export function WorkbenchChamber() {
                               {rowPrinting && (
                                 <small
                                   className="card-row-printing-tag"
-                                  title={`Priced from ${rowPrinting.setName} (${rowPrinting.setCode}) — right-click to change`}
+                                  title={`Priced from ${rowPrinting.setName} (${rowPrinting.setCode})`}
                                 >
                                   {rowPrinting.setCode}
                                 </small>
@@ -1390,6 +1402,24 @@ export function WorkbenchChamber() {
                                 .type-column-row's four-column grid in
                                 app/testing-anvil.css. */}
                             <span className="card-row-actions">
+                              <button
+                                type="button"
+                                className="card-row-printing"
+                                aria-haspopup="listbox"
+                                aria-expanded={printingMenu?.name === row.name}
+                                aria-label={`Change printing for ${row.name}`}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  const bounds = event.currentTarget.getBoundingClientRect();
+                                  setPrintingMenu({
+                                    name: row.name,
+                                    x: Math.min(bounds.left, window.innerWidth - 280),
+                                    y: Math.min(bounds.bottom + 6, window.innerHeight - 360),
+                                  });
+                                }}
+                              >
+                                {rowPrinting?.setCode || "Print"}
+                              </button>
                               {canSelectForRefill ? (
                                 <button
                                   type="button"
