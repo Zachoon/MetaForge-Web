@@ -566,7 +566,7 @@ export function WorkbenchChamber() {
                 <small>YOUR DECK</small>
                 <h2>{hasValidatedDeck ? masterworkIdentity.title || chosenWork.name.replace(/, Forged$/, "") : benchStatus === "forging" ? "The Forge is producing your deck…" : "Build not completed"}</h2>
                 {hasValidatedDeck && (
-                  <p>{honestCoachSummary.planStory?.title || honestCoachSummary.intentions.title} · Revision {Math.max(1, revisions.length)}</p>
+                  <p>{[honestCoachSummary.finishedDeckLabel, `Revision ${Math.max(1, revisions.length)}`].filter(Boolean).join(" · ")}</p>
                 )}
                 {hasValidatedDeck && <div className="masterwork-identity-marks" aria-label={`${selectedCommander?.colors?.join(", ") || "colorless"} color identity`}>
                   {(selectedCommander?.colors?.length ? selectedCommander.colors : ["C"]).map((color) => <i key={color} data-color={color}>{color}</i>)}

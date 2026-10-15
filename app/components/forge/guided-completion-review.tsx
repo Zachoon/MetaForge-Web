@@ -27,6 +27,6 @@ export function GuidedCompletionReview() {
     {!!violations.length && <ul aria-label="Filter checks needing attention">{violations.map(issue => <li key={issue}>{issue}</li>)}</ul>}
     {!!unknownFilters && <p>{unknownFilters} added cards still need price or printing verification. A card may have a cheaper or common printing.</p>}
     {!violations.length && !unknownFilters && (commonsOnly || maxCardPrice != null) && <p>Added cards meet the requested filters in the checked printings.</p>}
-    {honestCoachSummary.coachingAllowed && <><h3>Your first games</h3><p>{honestCoachSummary.intentions.accomplish}</p><p>{honestCoachSummary.intentions.establish}</p><p>{honestCoachSummary.intentions.firstVulnerability}</p>{honestCoachSummary.uncertaintyLead && <p>{honestCoachSummary.uncertaintyLead}</p>}</>}
+    {honestCoachSummary.coachingAllowed && <><h3>Your first games</h3><p>{honestCoachSummary.finishedDeckRead || honestCoachSummary.intentions.accomplish}</p></>}
   </aside>;
 }

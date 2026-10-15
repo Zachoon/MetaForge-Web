@@ -176,6 +176,7 @@ function collectNarrativeTexts(summary = {}) {
     intentions.dependsOn,
     intentions.firstVulnerability,
     intentions.title,
+    summary.finishedDeckRead,
     ...(summary.strengths || []),
     ...(summary.weaknesses || []),
     ...(summary.observedFindings || []),
