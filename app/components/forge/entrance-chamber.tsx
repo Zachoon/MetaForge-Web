@@ -119,6 +119,9 @@ export function EntranceChamber() {
             src="/assets/forge/vfx/entrance-embers.mp4"
             poster="/forge-hero.webp"
             preload="metadata"
+            // React's video typings omit this hint. The browser still honors it.
+            // @ts-expect-error fetchPriority is valid on HTML video elements.
+            fetchPriority="low"
             autoPlay
             loop
             muted
@@ -127,6 +130,8 @@ export function EntranceChamber() {
           <video
             className="entrance-aperture-film"
             preload="none"
+            // @ts-expect-error fetchPriority is valid on HTML video elements.
+            fetchPriority="low"
             autoPlay
             loop
             muted
