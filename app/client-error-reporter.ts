@@ -1,7 +1,7 @@
 "use client";
 
 import { metaforgeBuildId } from "./build-id";
-import { clientReportDecision, prepareClientError } from "./error-report-sanitize.mjs";
+import { clientReportDecision, prepareClientError, routeForReport } from "./error-report-sanitize.mjs";
 import { anonymousSessionId, measurementConsent } from "./launch-telemetry";
 
 type QueuedError = { kind?: string; message?: string; stack?: string; route?: string; detail?: string };
@@ -22,8 +22,12 @@ function remember(prepared: PreparedError) {
   buffer.push(prepared);
 }
 
+function capturedReport(input: QueuedError): QueuedError {
+  return { ...input, route: routeForReport(input.route, window.location.pathname) };
+}
+
 function sendPrepared(prepared: PreparedError) {
-  const route = typeof window !== "undefined" ? window.location.pathname : prepared.route;
+  const route = prepared.route;
   const key = `${prepared.kind}\n${prepared.message}\n${route}`;
   const now = Date.now();
   const last = recent.get(key) || 0;
@@ -50,7 +54,7 @@ function sendPrepared(prepared: PreparedError) {
 
 export function reportClientError(input: QueuedError) {
   if (typeof window === "undefined") return;
-  const prepared = prepareClientError(input);
+  const prepared = prepareClientError(capturedReport(input));
   if (!prepared) return;
   const decision = clientReportDecision(measurementConsent());
   if (decision === "drop") return;
@@ -67,7 +71,7 @@ export function flushClientErrorReports() {
     return;
   }
   for (const item of queued) {
-    const prepared = prepareClientError(item);
+    const prepared = prepareClientError(capturedReport(item));
     if (!prepared) continue;
     if (decision === "buffer") remember(prepared);
     else sendPrepared(prepared);

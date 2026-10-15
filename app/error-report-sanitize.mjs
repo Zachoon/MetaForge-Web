@@ -81,6 +81,14 @@ export function sanitizeRoute(value) {
   return path || "/";
 }
 
+// A route captured when the error happened wins over the page the visitor
+// is on when a buffered report is finally sent. The current path is only
+// the fallback for callers that did not record one.
+export function routeForReport(captured, current) {
+  if (typeof captured === "string" && captured.trim()) return sanitizeRoute(captured);
+  return sanitizeRoute(current);
+}
+
 export function sanitizeViewport(value) {
   if (typeof value !== "string") return null;
   const match = value.trim().match(/^(\d{2,5})x(\d{2,5})$/);

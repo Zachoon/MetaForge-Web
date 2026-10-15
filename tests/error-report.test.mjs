@@ -9,6 +9,7 @@ import {
   groupErrorRows,
   prepareClientError,
   redactMessage,
+  routeForReport,
 } from "../app/error-report-sanitize.mjs";
 import {
   ERROR_REPORT_CAP_SQL,
@@ -187,6 +188,33 @@ test("an email-shaped session and a non-sha build are not stored as identity", a
   assert.equal(row.context_json, "{}");
 });
 
+test("a captured route is kept when the report is sent from a later page", () => {
+  assert.equal(routeForReport("/forge?deck=1+Sol+Ring", "/"), "/forge");
+  assert.equal(routeForReport(undefined, "/research"), "/research");
+  assert.equal(routeForReport("  ", "/academy"), "/academy");
+});
+
+test("an understated content-length cannot make ingest buffer a large body", async () => {
+  const db = new ErrorD1();
+  const payload = JSON.stringify({ kind: "turnstile", message: "x".repeat(9000) });
+  assert.ok(new TextEncoder().encode(payload).byteLength > 8000);
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode(payload));
+      controller.close();
+    },
+  });
+  const request = new Request("https://app.metaforge.gg/api/errors", {
+    method: "POST",
+    headers: { "content-type": "application/json", "content-length": "8" },
+    body: stream,
+    duplex: "half",
+  });
+  const response = await handleClientErrorReport(request, { DB: db });
+  assert.equal(response.status, 413);
+  assert.equal(db.reports.size, 0);
+});
+
 test("invalid reports are rejected without being stored", async () => {
   const db = new ErrorD1();
   const env = { DB: db };
@@ -303,6 +331,8 @@ test("client capture respects consent and does not attach deck fields", async ()
   const privacy = await source("app/privacy/page.tsx");
   const recovery = await source("app/stale-chunk-recovery.ts");
   assert.match(reporter, /clientReportDecision\(measurementConsent\(\)\)/);
+  assert.match(reporter, /routeForReport\(input\.route, window\.location\.pathname\)/);
+  assert.match(reporter, /const route = prepared\.route/);
   assert.match(reporter, /keepalive: true/);
   assert.match(reporter, /\/api\/errors/);
   assert.doesNotMatch(reporter, /decklist|deckText|commander|email/);

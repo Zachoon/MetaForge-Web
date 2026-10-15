@@ -13,6 +13,7 @@ import {
   sanitizeBuild,
 } from "../app/error-report-sanitize.mjs";
 
+const MAX_BODY_BYTES = 8_000;
 const CLIENT_LIMIT = 20;
 const CLIENT_WINDOW_MS = 10 * 60 * 1000;
 const CLIENT_GLOBAL_LIMIT = 120;
@@ -105,10 +106,40 @@ async function enforceClientRateLimit(request, env) {
   return null;
 }
 
+// Same idea as worker/api-hardening.ts readJsonWithLimit: Content-Length is
+// attacker-controlled, so the cap is the number of bytes actually read.
+async function readJsonBody(request, maxBytes) {
+  const declared = Number(request.headers.get("content-length") || 0);
+  if (declared > maxBytes) return { ok: false, status: 413, error: "Payload too large" };
+  if (!request.body) return { ok: false, status: 400, error: "Invalid JSON" };
+  const reader = request.body.getReader();
+  const chunks = [];
+  let received = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    received += value.byteLength;
+    if (received > maxBytes) {
+      await reader.cancel().catch(() => {});
+      return { ok: false, status: 413, error: "Payload too large" };
+    }
+    chunks.push(value);
+  }
+  const body = new Uint8Array(received);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  try {
+    return { ok: true, data: JSON.parse(new TextDecoder().decode(body)) };
+  } catch {
+    return { ok: false, status: 400, error: "Invalid JSON" };
+  }
+}
+
 export async function handleClientErrorReport(request, env, options = {}) {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
-  const declared = Number(request.headers.get("content-length") || 0);
-  if (declared > 8000) return json({ error: "Payload too large" }, 413);
   try {
     const limited = await enforceClientRateLimit(request, env);
     if (limited) return limited;
@@ -119,14 +150,9 @@ export async function handleClientErrorReport(request, env, options = {}) {
   if (!(request.headers.get("content-type") || "").toLowerCase().includes("application/json")) {
     return json({ error: "Invalid JSON" }, 400);
   }
-  let body;
-  try {
-    const text = await request.text();
-    if (text.length > 8000) return json({ error: "Payload too large" }, 413);
-    body = JSON.parse(text);
-  } catch {
-    return json({ error: "Invalid JSON" }, 400);
-  }
+  const parsed = await readJsonBody(request, MAX_BODY_BYTES);
+  if (!parsed.ok) return json({ error: parsed.error }, parsed.status);
+  const body = parsed.data;
   const prepared = prepareClientError(body);
   if (!prepared) return json({ error: "Invalid error report" }, 400);
   try {
