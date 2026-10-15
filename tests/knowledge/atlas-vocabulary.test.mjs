@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+// Configures the card-tag lookup strategic-intent.mjs needs (decoupled from
+// card-mechanics.mjs for the client bundle in e13d292).
+import "../../app/native-masterwork-engine.mjs";
 import {
   buildAtlasVocabularyRegistry,
   seatsImplementedBy,
