@@ -48,6 +48,7 @@ function DeckProfileCard({ profile }: { profile: NonNullable<GuidedDeckProfile> 
         <p className="guided-gaps">Still short on: {profile.gaps.map((gap) => `${gap.label} (${gap.missing})`).join(", ")}</p>
       )}
       {profile.curve.issues.length > 0 && <p className="guided-gaps">Curve: {profile.curve.issues.join(", ")}</p>}
+      {profile.colors.unreliableNote && <p className="guided-gaps">{profile.colors.unreliableNote}</p>}
     </section>
   );
 }

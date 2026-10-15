@@ -48,6 +48,34 @@ test("utility lands are ranked within the commander's colors and each says why",
   assert.deepEqual(producedColors(lands[0]).sort(), ["U", "W"]);
 });
 
+test("Exotic Orchard and Fellwar Stone are not counted as five-color sources", () => {
+  const orchard = land("Exotic Orchard", "{T}: Add one mana of any color that a land an opponent controls could produce.", []);
+  const fellwar = { card: { name: "Fellwar Stone", typeLine: "Artifact", oracleText: orchard.card.oracleText, producedMana: ["W", "U", "B", "R", "G"] } };
+  const forbidden = land("Forbidden Orchard", "{T}: Add one mana of any color.\nWhenever you tap this land for mana, target opponent creates a 1/1 colorless Spirit creature token.", []);
+  assert.deepEqual(producedColors(orchard), []);
+  assert.deepEqual(producedColors({ card: { ...orchard.card, producedMana: ["W", "U", "B", "R", "G"] } }), []);
+  assert.deepEqual(producedColors(fellwar), []);
+  assert.deepEqual(producedColors(forbidden).sort(), ["B", "G", "R", "U", "W"]);
+  const ranked = rankUtilityLands({
+    lands: [orchard, land("Hallowed Fountain", "({T}: Add {W} or {U}.)", ["W", "U"], "Land — Plains Island")],
+    colors: ["W", "U"],
+    spellRows: [spell("A", 2, { pips: { W: 2, U: 2 } })],
+  });
+  const exotic = ranked.find((row) => row.name === "Exotic Orchard");
+  assert.ok(exotic);
+  assert.match(exotic.reason, /not counted as color fixing/);
+  assert.deepEqual(exotic.produces, []);
+  const proposal = proposeManaBase({
+    deckTarget: 100,
+    colors: ["W", "U"],
+    pickedRows: [spell("A", 2, { pips: { W: 1, U: 1 } }), orchard],
+    poolLands: [],
+    landTarget: 36,
+  });
+  const white = proposal.colorSources.find((row) => row.color === "W");
+  assert.equal(white.current, 18, "the orchard adds nothing; the basics split still counts");
+});
+
 test("the mana proposal fills only the land slots the player's own lands leave", () => {
   const picked = [spell("A", 3, { pips: { W: 2 } }), land("Command Tower", "{T}: Add one mana of any color in your commander's color identity.", [])];
   const proposal = proposeManaBase({ deckTarget: 100, colors: ["W"], pickedRows: picked, poolLands: [], landTarget: 36 });

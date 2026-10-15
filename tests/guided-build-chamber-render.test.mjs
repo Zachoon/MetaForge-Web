@@ -274,7 +274,7 @@ test("a live session shows why this card, the running profile, and a pasted-list
       roles: [],
       gaps: [{ role: "draw", label: "card draw", missing: 10 }],
       curve: { buckets: [1, 2, 0, 0, 0, 0], targets: [4, 8, 8, 6, 4, 4], averageCmc: 2.1, issues: [], labels: ["0-1", "2", "3", "4", "5", "6+"] },
-      colors: { identity: ["W", "B"], requirements: [] },
+      colors: { identity: ["W", "B"], requirements: [], unreliableNote: "2 mana sources make a color an opponent's land could produce. That is not counted as color fixing." },
     },
     listAnalysis: {
       plan: { id: "aristocrats", label: "Aristocrats (sacrifice and death triggers)", confidence: 0.8 },
@@ -293,6 +293,7 @@ test("a live session shows why this card, the running profile, and a pasted-list
   assert.match(html, /YOUR DECK SO FAR/);
   assert.match(html, /Payoffs are ahead of the cards that feed them/);
   assert.match(html, /Still short on: card draw \(10\)/);
+  assert.match(html, /not counted as color fixing/);
   assert.match(html, /YOUR LIST · 4 OF 6 CARDS READ/);
   assert.match(html, /Colossal Dreadmaw/);
   assert.match(html, /Walk through next: Card draw/);

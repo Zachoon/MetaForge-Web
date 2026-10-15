@@ -72,6 +72,7 @@ export function analyzePartialList({ commanders = [], entries = [], deckSize = 1
     notes: Object.freeze([
       ...profile.curve.issues.map((issue) => `Curve: ${issue}.`),
       ...profile.colors.requirements.filter((row) => row.underSupported).map((row) => `Mana: ${row.color} is ${Math.round(row.share * 100)}% of your pips but only ${Math.round((row.sourceShare || 0) * 100)}% of your sources.`),
+      ...(profile.colors.unreliableNote ? [profile.colors.unreliableNote] : []),
       ...(landRow && landRow.status === "under" && entries.length >= 40 ? [`Lands: ${landRow.actual} so far; plan for about ${landRow.target.min}.`] : []),
     ]),
     // Explicit contract: analysis never adds cards.

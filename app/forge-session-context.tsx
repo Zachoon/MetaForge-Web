@@ -172,7 +172,7 @@ export type GuidedDeckProfile = {
   roles: Array<{ role: string; label: string; actual: number; target: { min: number; max: number }; status: string }>;
   gaps: Array<{ role: string; label: string; missing: number }>;
   curve: { buckets: number[]; targets: number[]; averageCmc: number | null; issues: string[]; labels: string[] };
-  colors: { identity: string[]; requirements: Array<{ color: string; share: number; sourceShare: number | null; underSupported: boolean }> };
+  colors: { identity: string[]; requirements: Array<{ color: string; share: number; sourceShare: number | null; underSupported: boolean }>; unreliableNote?: string | null };
 } | null;
 export type GuidedListAnalysis = {
   plan: { id: string; label: string; confidence: number };
