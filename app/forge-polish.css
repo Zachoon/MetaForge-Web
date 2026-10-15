@@ -664,6 +664,25 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .pre-choice-commission-fit span{display:block;margin-top:6px;color:#a9bbb4;font-size:12px;line-height:1.4}
 .commission-fit-per-philosophy{color:#b7c4be!important}
 .forge-menu-version{margin:0;color:#788a84;font-size:10px;letter-spacing:.08em;text-align:center}
+.first-session-steps{display:flex;flex-wrap:wrap;gap:8px 18px;margin:16px 0 0;padding:0;list-style:none}
+.first-session-steps li{display:flex;align-items:center;gap:8px;color:#c5d2cc;font-size:14px}
+.first-session-steps b{display:grid;width:22px;height:22px;place-items:center;border:1px solid #8d6331;border-radius:50%;color:#f4b866;font-size:11px}
+.entrance-more{margin-top:18px;border:1px solid rgba(120,136,128,.28);background:rgba(9,14,13,.45)}
+.entrance-more>summary{padding:12px 14px;color:#d7e2dc;cursor:pointer;font-size:14px}
+.entrance-more>summary:hover,.entrance-more>summary:focus-visible{outline:0;color:#f0d2aa}
+.entrance-more[open]{padding-bottom:12px}
+.entrance-more[open]>summary{margin-bottom:8px}
+.entrance-more .sample-walkthrough,.entrance-more .player-compass-card,.entrance-more .entrance-discovery{margin-left:14px;margin-right:14px}
+.first-session-suggest-note{margin:0 0 10px;color:#c5d2cc;font-size:14px;line-height:1.45}
+.commander-choice:has(.commander-suggest-first){grid-template-columns:1fr!important}
+.commander-choice .first-session-suggest-note{order:-2}
+.commander-suggest-first{order:-1;min-height:52px;font-size:13px}
+.shell-picker-optional{border:1px solid #354943;background:#0a1211}
+.shell-picker-optional>summary{display:flex;flex-direction:column;gap:4px;padding:14px 16px;cursor:pointer;list-style:none}
+.shell-picker-optional>summary::-webkit-details-marker{display:none}
+.shell-picker-optional>summary span{color:#d69a61;font-size:10px;font-weight:800;letter-spacing:.14em}
+.shell-picker-optional>summary strong{color:#dce6e2;font:500 18px Newsreader,Georgia,serif}
+.shell-picker-optional[open] .shell-options-grid,.shell-picker-optional[open] .shell-options-skip-note{margin:0 16px 14px}
 .entrance-secondary{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:14px}
 .entrance-secondary button{padding:0;border:0;background:none;color:#aebcb6;font-size:14px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .entrance-secondary button:hover,.entrance-secondary button:focus-visible{outline:0;color:#f0d2aa}

@@ -283,7 +283,7 @@ export function GuidedBuildChamber() {
             ? copy?.blurb
             : guidedError
               ? "Your current choices are kept. Reconnect or retry to continue, or export your picks."
-              : "The Forge is gathering every legal card for this commander and reading what each one does. This takes a moment, and only happens once."}
+              : "Your first card is next. The Forge is gathering every legal card for this commander. This takes a moment, and only happens once."}
         </p>
       </div>
 

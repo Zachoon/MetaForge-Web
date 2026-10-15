@@ -240,13 +240,13 @@ body:has(.great-forge.chamber-archive){
   width:min(1180px,100%)!important;
   margin:0 auto!important;
 }
-.chamber-entrance .entrance-copy{justify-content:center!important;padding:clamp(18px,2.6vh,32px) clamp(26px,5vw,82px) 8px!important}
+.chamber-entrance .entrance-copy{justify-content:flex-start!important;min-height:0!important;overflow-y:auto!important;padding:clamp(18px,2.6vh,32px) clamp(26px,5vw,82px) 8px!important}
 .chamber-entrance .entrance-copy h1{margin:10px 0 12px!important;font-size:clamp(36px,min(4.6vw,6.2vh),62px)!important;line-height:.96!important}
 .chamber-entrance .entrance-copy>p{font-size:clamp(13px,1.1vw,16px)!important;line-height:1.45!important}
 .chamber-entrance .entrance-actions{margin-top:clamp(12px,2vh,18px)!important}
-.chamber-entrance .entrance-actions>button{min-height:clamp(92px,13vh,118px)!important;padding:14px 18px!important}
-.chamber-entrance .entrance-actions>button strong{margin-top:10px!important;font-size:17px!important}
-.chamber-entrance .entrance-actions>button b{padding-top:8px!important}
+.chamber-entrance .entrance-actions>button{height:auto!important;max-height:none!important;min-height:0!important;overflow:visible!important;padding:16px 18px 18px!important}
+.chamber-entrance .entrance-actions>button strong{display:block;margin-top:8px!important;overflow:visible;font-size:22px!important;line-height:1.2!important}
+.chamber-entrance .entrance-actions>button b{overflow:visible!important;padding-top:8px!important;text-overflow:clip!important;white-space:nowrap!important}
 .chamber-entrance .entrance-visual{min-height:min(48vh,380px)!important;align-self:stretch!important}
 .chamber-entrance .player-compass-card:not(.is-open){display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:14px!important;margin-top:12px!important;padding:10px 12px!important}
 .chamber-entrance .player-compass-card:not(.is-open)>header{min-width:0!important}
@@ -281,7 +281,7 @@ body:has(.great-forge.chamber-archive){
   .chamber-commission .commission-heading .forge-eyebrow{grid-column:1/-1!important;margin:0 0 1px 94px!important;font-size:9px!important}
   .chamber-commission .commission-heading h1{max-width:620px!important;margin:4px 0 0!important;font-size:clamp(28px,2.5vw,38px)!important;line-height:1!important}
   .chamber-commission .commission-heading p{margin:4px 0 0!important;font-size:11px!important;line-height:1.35!important}
-  .chamber-commission .commission-scroll{width:min(1180px,100%)!important;max-width:none!important;margin:0 auto!important;padding:10px 16px 12px!important}
+  .chamber-commission .commission-scroll{width:min(1180px,100%)!important;max-width:none!important;max-height:calc(100svh - var(--mf-frame-top) - 148px)!important;margin:0 auto!important;padding:10px 16px 12px!important;overflow-y:auto!important}
   .chamber-commission .build-stepper{max-width:none!important;margin:0 0 12px!important}
   .chamber-commission .build-stepper button{min-height:44px!important;padding:9px 13px!important;font-size:10px!important}
   .chamber-commission .build-stepper i{width:20px!important;height:20px!important;font-size:9px!important}

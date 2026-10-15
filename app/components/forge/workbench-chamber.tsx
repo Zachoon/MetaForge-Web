@@ -377,7 +377,7 @@ export function WorkbenchChamber() {
                 <p>{honestCoachSummary.intentions.accomplish}</p>
                 {coachOccupancyLabels.length > 0 && (
                   <p className="honest-coach-occupancy">
-                    Occupancy engines: {coachOccupancyLabels.join(" · ")}. Named from commander oracle, not a verified system map.
+                    From this commander's card: {coachOccupancyLabels.join(" · ")}. This is not a map of the finished deck.
                   </p>
                 )}
               </article>
