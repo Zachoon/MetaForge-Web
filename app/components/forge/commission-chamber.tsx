@@ -9,19 +9,16 @@ import {
   isCommanderFormat,
   scryfallFormatTerms,
 } from "../../format-catalog";
-import { blueprintDefinition } from "../../deck-row-helpers";
 import { occupancyLabelsForOption } from "../../commander-lane-scoring.mjs";
 import { shellDisplay } from "../../shell-copy.mjs";
 import { useForgeSession } from "../../forge-session-context";
 
 export function CommissionChamber() {
-  const [formatTipOpen, setFormatTipOpen] = useState(false);
   const {
     chamber,
     setChamber,
     buildPath,
     format,
-    setFormat,
     setSelectedCommander,
     setCommanderQuery,
     selectedCommander,
@@ -107,7 +104,7 @@ export function CommissionChamber() {
       <div className="commission-heading">
         <span className="forge-eyebrow">
           <i />{" "}
-          {isScratch ? "BUILD A DECK · EMPTY WORKSPACE" : isComplete ? "COMPLETE A DECK · IMPORT YOUR LIST" : "DISCOVER A DECK · FORMAT + COMMANDER"}
+          {isScratch ? "BUILD A DECK · EMPTY WORKSPACE" : isComplete ? "COMPLETE A DECK · IMPORT YOUR LIST" : "DISCOVER A DECK · COMMANDER"}
         </span>
         <h1>
           {isScratch ? "Start with any card." : isComplete ? "Bring the deck you already started." : "Start with a commander."}
@@ -129,42 +126,15 @@ export function CommissionChamber() {
         )}
         {isScratch && (
           <div className="scratch-card-search">
-            <label><span>SEARCH LEGAL {format.toUpperCase()} CARDS</span><input type="search" value={scratchSearch} onChange={(event) => setScratchSearch(event.target.value)} placeholder="Search by card name…" /></label>
+            <label><span>SEARCH COMMANDER CARDS</span><input type="search" value={scratchSearch} onChange={(event) => setScratchSearch(event.target.value)} placeholder="Search by card name…" /></label>
             {scratchSearch.trim().length >= 2 && scratchResults.length > 0 && <div role="listbox">{scratchResults.map((card) => <button type="button" role="option" key={card.name} onClick={() => addScratchCard(card.name)}><b>{card.name}</b><small>{card.typeLine}</small><i>＋</i></button>)}</div>}
           </div>
         )}
-        <div className="mark-grid">
-          <label className="build-choice-format">
-            <span>
-              FORMAT
-              <button type="button" className="blueprint-glossary-tip" data-definition={blueprintDefinition("format", format)} aria-expanded={formatTipOpen} aria-label={`Explain ${format}`} onClick={(event) => { event.preventDefault(); event.stopPropagation(); setFormatTipOpen((open) => !open); }}>?</button>
-            </span>
-            <select
-              aria-describedby="format-definition"
-              value={format}
-              onChange={(event) => {
-                setFormat(event.target.value);
-                setSelectedCommander(null);
-                setCommanderQuery("");
-              }}
-            >
-              <option>Standard</option>
-              <option>Brawl</option>
-              <option>Standard Brawl</option>
-              <option>Commander</option>
-              <option>Modern</option>
-              <option>Premodern</option>
-              <option>Pioneer</option>
-              <option>Historic</option>
-            </select>
-            <small id="format-definition" className="blueprint-choice-definition">{blueprintDefinition("format", format)}</small>
-          </label>
-        </div>
         {isCommanderFormat(format) && (
           <section className="commander-blueprint build-choice-commander">
             <header>
               <div>
-                <span>COMMANDER · LEGAL {format.toUpperCase()} INDEX</span>
+                <span>COMMANDER</span>
                 <strong>
                   {selectedCommander
                     ? "Commander selected"
@@ -246,10 +216,10 @@ export function CommissionChamber() {
                     }}
                     placeholder={
                       chamber === "refine"
-                        ? `Search for the commander from your list…`
-                        : `Search legal ${format} commanders…`
+                        ? "Search for the commander from your list…"
+                        : "Search commanders…"
                     }
-                    aria-label={`Search legal ${format} commanders`}
+                    aria-label="Search commanders"
                   />
                   {!isComplete && (
                     <button
@@ -369,7 +339,7 @@ export function CommissionChamber() {
                         })
                       ) : (
                         <p>
-                          No legal {format} commander matches that search.
+                          No commander matches that search.
                         </p>
                       )}
                     </div>,
@@ -537,16 +507,13 @@ export function CommissionChamber() {
         <button
           className="awaken-button"
           data-block-reason={
-            !isCommanderFormat(format)
-              ? "format"
-              : !selectedCommander
-                ? "commander"
-                : chamber === "refine" && !deck.trim()
-                  ? "deck"
-                  : ""
+            !selectedCommander
+              ? "commander"
+              : chamber === "refine" && !deck.trim()
+                ? "deck"
+                : ""
           }
           disabled={
-            !isCommanderFormat(format) ||
             (chamber === "refine" && !deck.trim()) ||
             !selectedCommander
           }
@@ -556,15 +523,13 @@ export function CommissionChamber() {
           onClick={() => runWhenVerified("awaken")}
         >
           <span>
-            {!isCommanderFormat(format)
-              ? "Guided building supports Commander formats for now"
-              : !selectedCommander
-                ? "Choose a legal commander to continue"
-                : guestMode
-                  ? "No account needed. Sign in any time to keep it"
-                  : isComplete || isScratch
-                    ? "Keeps your cards and walks through what's missing"
-                    : "One card at a time, with a reason for each"}
+            {!selectedCommander
+              ? "Choose a legal commander to continue"
+              : guestMode
+                ? "No account needed. Sign in any time to keep it"
+                : isComplete || isScratch
+                  ? "Keeps your cards and walks through what's missing"
+                  : "One card at a time, with a reason for each"}
           </span>
           <strong>
             {guestMode

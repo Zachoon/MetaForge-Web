@@ -309,14 +309,10 @@ export async function publicDeckIndexResponse(url: URL, env: PublicReportEnv): P
 
   let cards = "";
   let matchCount = 0;
-  let formats: string[] = [];
   let filtersHtml = "";
   let paginationHtml = "";
 
   if (hasAnyPublished) {
-    const formatRows = await env.DB.prepare("SELECT DISTINCT format_name FROM public_deck_reports ORDER BY format_name COLLATE NOCASE ASC").all<{ format_name: string }>();
-    formats = (formatRows.results || []).map((row: { format_name: string }) => row.format_name).filter(Boolean);
-
     const wherePieces: string[] = [];
     const binds: unknown[] = [];
     // ESCAPE binds to a single LIKE expression, not a parenthesized OR group
@@ -333,11 +329,10 @@ export async function publicDeckIndexResponse(url: URL, env: PublicReportEnv): P
     const orderSql = DECK_SORTS[sortKey];
     const rows = await env.DB.prepare(`SELECT slug,title,commander_name,format_name,strategy_name,summary,created_at,updated_at,view_count,share_count FROM public_deck_reports ${whereSql} ORDER BY ${orderSql} LIMIT ? OFFSET ?`).bind(...binds, DECKS_PAGE_SIZE, offset).all<Omit<StoredReport, "deck_rows_json">>();
     const reports = rows.results || [];
-    cards = reports.map((report: Omit<StoredReport, "deck_rows_json">) =>`<li><a href="/decks/${escapeHtml(report.slug)}"><strong>${escapeHtml(report.title)}</strong><span>${escapeHtml(report.commander_name)} · ${escapeHtml(report.format_name)} · ${escapeHtml(report.strategy_name)} · ${Number(report.view_count || 0)} views · ${Number(report.share_count || 0)} shares</span><p>${escapeHtml(report.summary)}</p></a></li>`).join("");
+    cards = reports.map((report: Omit<StoredReport, "deck_rows_json">) =>`<li><a href="/decks/${escapeHtml(report.slug)}"><strong>${escapeHtml(report.title)}</strong><span>${escapeHtml(report.commander_name)} · ${escapeHtml(report.strategy_name)} · ${Number(report.view_count || 0)} views · ${Number(report.share_count || 0)} shares</span><p>${escapeHtml(report.summary)}</p></a></li>`).join("");
 
-    const formatOptions = formats.map((name) => `<option value="${escapeHtml(name)}"${name === format ? " selected" : ""}>${escapeHtml(name)}</option>`).join("");
     const sortOptions = Object.keys(DECK_SORTS).map((key) => `<option value="${key}"${key === sortKey ? " selected" : ""}>${key === "updated" ? "Recently updated" : key === "views" ? "Most viewed" : key === "shares" ? "Most shared" : "Title A–Z"}</option>`).join("");
-    filtersHtml = `<form class="deck-search-form" method="get" action="/decks" role="search" aria-label="Search public decks"><input type="search" name="q" placeholder="Search by deck name or commander…" value="${escapeHtml(q)}" maxlength="80"><select name="format" aria-label="Filter by format"><option value="">All formats</option>${formatOptions}</select><select name="sort" aria-label="Sort by">${sortOptions}</select><button type="submit">Search</button>${q || format || sortKey !== "updated" ? `<a class="clear-filters" href="/decks">Clear filters</a>` : ""}</form>`;
+    filtersHtml = `<form class="deck-search-form" method="get" action="/decks" role="search" aria-label="Search public decks"><input type="search" name="q" placeholder="Search by deck name or commander…" value="${escapeHtml(q)}" maxlength="80"><select name="sort" aria-label="Sort by">${sortOptions}</select><button type="submit">Search</button>${q || format || sortKey !== "updated" ? `<a class="clear-filters" href="/decks">Clear filters</a>` : ""}</form>`;
 
     const totalPages = Math.max(1, Math.ceil(matchCount / DECKS_PAGE_SIZE));
     if (totalPages > 1) {

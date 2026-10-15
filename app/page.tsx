@@ -170,14 +170,15 @@ export default function Home() {
     playerCompassSynced,
     turnstileToken,
     turnstileError,
+    turnstileStatus,
+    retryTurnstile,
+    setTurnstileHostNode,
     guestClaimToken,
-    turnstileHostRef,
     verificationRequested,
     stage,
     buildStep,
     setBuildStep,
     format,
-    setFormat,
     strategy,
     setStrategy,
     complexity,
@@ -511,24 +512,32 @@ export default function Home() {
         <q />
       </div>
       {/* Mounted only when a guest starts something that needs a human
-          check, so the homepage never loads or shows Turnstile up front. */}
-      {guestMode && verificationRequested && !forgedDeck && !pendingCandidateChoice && (
+          check, so the homepage never loads or shows Turnstile up front.
+          Portaled to document.body: .great-forge uses isolation:isolate, so
+          a z-index inside it can never rise above the consent banner. */}
+      {guestMode && verificationRequested && !forgedDeck && !pendingCandidateChoice && typeof document !== "undefined" && createPortal(
         <aside
-          className={`guest-forge-pass${turnstileToken ? " verified" : ""}${verificationRequested ? "" : " dormant"}`}
-          aria-label="Free Forge preview verification"
-          aria-hidden={!verificationRequested}
-          inert={!verificationRequested}
+          className={`guest-forge-pass${turnstileToken ? " verified" : ""}`}
+          role="dialog"
+          aria-labelledby="guest-check-title"
+          aria-describedby="guest-check-status"
         >
           <div>
             <small>QUICK HUMAN CHECK</small>
-            <b>{turnstileToken ? "Thanks, you’re verified." : "Confirm you’re human to continue."}</b>
+            <b id="guest-check-title">{turnstileToken ? "Thanks, you’re verified." : "Confirm you’re human to continue."}</b>
+            <p id="guest-check-status" className="guest-forge-pass-status" role="status">{turnstileStatus || "Check the box below. If it doesn’t respond, try again or sign in."}</p>
             {turnstileError ? <p className="guest-turnstile-error" role="alert">{turnstileError}</p> : null}
           </div>
           <div
             className={`turnstile-host${turnstileToken ? " verified" : ""}`}
-            ref={turnstileHostRef}
+            ref={setTurnstileHostNode}
           />
-        </aside>
+          <div className="guest-forge-pass-actions">
+            <button type="button" onClick={retryTurnstile}>Try again</button>
+            <a href={signInResumeHref}>Sign in</a>
+          </div>
+        </aside>,
+        document.body,
       )}
       {guestMode && forgedDeck && guestClaimToken && chamber !== "workbench" && (
         <aside className="guest-result-gate" role="region" aria-label="Save this deck">

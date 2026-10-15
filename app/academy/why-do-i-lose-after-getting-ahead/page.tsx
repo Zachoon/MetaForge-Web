@@ -93,7 +93,7 @@ export default function WhyDoILoseAfterGettingAheadGuide() {
           <section>
             <h2>Investigate your own deck with MetaForge</h2>
             <p>
-              Bring your decklist into MetaForge through the link below, and for Commander and Brawl decks it looks
+              Bring your decklist into MetaForge through the link below, and for Commander decks it looks
               for real, verified closers &mdash; cards that take an actual extra turn, repeatable engines that
               keep compounding value from something you were already doing, and genuine two-card combinations
               already in your list &mdash; and tells you whether it found one. If it didn&rsquo;t, that&rsquo;s not

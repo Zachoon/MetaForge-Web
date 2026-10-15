@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { cardArtCrop } from "../../card-art";
 import { occupancyLabelsForOption } from "../../commander-lane-scoring.mjs";
 import { useForgeSession } from "../../forge-session-context";
@@ -99,17 +99,10 @@ export function ArchiveChamber() {
   const [sortBy, setSortBy] = useState<SortKey>("updated");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [colorFilter, setColorFilter] = useState<Record<string, boolean>>({});
-  const [formatFilter, setFormatFilter] = useState("all");
-
-  const formatOptions = useMemo(
-    () => Array.from(new Set(savedMasterworks.map((family) => family.format))).sort(),
-    [savedMasterworks],
-  );
 
   const activeColors = COLOR_ORDER.filter((color) => colorFilter[color]);
 
   const filtered = savedMasterworks.filter((family) => {
-    if (formatFilter !== "all" && family.format !== formatFilter) return false;
     const colors = family.commander?.colors || [];
     if (activeColors.length && !activeColors.every((color) => colors.includes(color))) return false;
     const query = search.trim().toLowerCase();
@@ -147,7 +140,6 @@ export function ArchiveChamber() {
 
   function clearFilters() {
     setSearch("");
-    setFormatFilter("all");
     setColorFilter({});
   }
 
@@ -198,19 +190,6 @@ export function ArchiveChamber() {
                 </button>
               ))}
             </div>
-            {formatOptions.length > 1 && (
-              <select
-                className="decks-select"
-                value={formatFilter}
-                onChange={(event) => setFormatFilter(event.target.value)}
-                aria-label="Filter by format"
-              >
-                <option value="all">All Formats</option>
-                {formatOptions.map((format) => (
-                  <option key={format} value={format}>{format}</option>
-                ))}
-              </select>
-            )}
             <select
               className="decks-select"
               value={sortBy}

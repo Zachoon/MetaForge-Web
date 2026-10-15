@@ -155,7 +155,7 @@ export function EntranceChamber() {
           <b />
         </div>
         <p>
-          A DECK COACH FOR EVERY FORMAT
+          A COMMANDER DECK COACH
           <small>One card at a time. A reason for every pick.</small>
         </p>
       </div>

@@ -156,14 +156,13 @@ test("Blueprint offers a persistent player-controlled reading size", () => {
 
 test("initial Blueprint choices explain game terms before submission", () => {
   assert.match(deckRowHelpers, /BLUEPRINT_DEFINITIONS/);
-  assert.match(commissionChamber, /blueprint-glossary-tip/);
-  assert.match(commissionChamber, /blueprint-choice-definition/);
-  // The strategy select left this screen when the entrance split into
-  // scratch/complete/discover paths (strategy now comes from the Player
-  // Compass and shell picker); the format choice still explains itself.
-  assert.match(commissionChamber, /aria-describedby="format-definition"/);
-  assert.match(commissionChamber, /<small id="format-definition" className="blueprint-choice-definition">/);
   assert.match(deckRowHelpers, /Trade resources, answer key threats/i);
+  // Commander is the only format the product builds, so this screen no
+  // longer offers a format choice or a glossary for one.
+  assert.doesNotMatch(commissionChamber, /blueprint-glossary-tip/);
+  assert.doesNotMatch(commissionChamber, /format-definition/);
+  assert.doesNotMatch(commissionChamber, /formatTipOpen/);
+  assert.match(commissionChamber, /DISCOVER A DECK · COMMANDER/);
 });
 
 test("Workbench structural intelligence runs server-side through the shared Forge pipeline", () => {

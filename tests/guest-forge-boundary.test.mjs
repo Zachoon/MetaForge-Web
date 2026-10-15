@@ -48,8 +48,18 @@ test("guest UI uses the guest endpoint and suppresses persistence and structural
   assert.match(forgeSessionContext, /if \(guestMode\) \{\s*setStructuralAnalysisStatus\("idle"\)/);
   assert.match(source, /https:\/\/app\.metaforge\.gg\/\?claim=/);
   assert.match(workbenchEditorChamber, /!guestMode && !editAnvilOpen/);
-  assert.match(forgeSessionContext, /size: "flexible"/);
-  assert.match(forgeSessionContext, /appearance: "interaction-only"/);
+  assert.match(forgeSessionContext, /appearance: "always"/);
+  assert.match(forgeSessionContext, /retry: "never"/);
+  assert.match(forgeSessionContext, /const size = node\.clientWidth < 300 \|\| turnstileModeRef\.current === "compact" \? "compact" : "normal"/);
+  assert.doesNotMatch(forgeSessionContext, /size: "flexible"/);
+  assert.doesNotMatch(forgeSessionContext, /appearance: "interaction-only"/);
+  // Cloudflare's ready helper throws when api.js was inserted with async/defer,
+  // and the checkbox never mounts. The loader polls the render function instead.
+  assert.doesNotMatch(forgeSessionContext, /turnstile\.ready\(/);
+  // A content blocker (Opera GX on iPhone) can stop the script with no callback.
+  assert.match(forgeSessionContext, /script\.onerror = \(\) => reportBlocked\(true\)/);
+  assert.match(forgeSessionContext, /A content blocker or a dropped connection can stop it\. Try again, or sign in to continue\./);
+  assert.match(forgeSessionContext, /querySelectorAll\(`script\[src="\$\{TURNSTILE_SRC\}"\]`\)/);
   assert.match(source, /turnstile-host\$\{turnstileToken \? " verified" : ""\}/);
   assert.match(source, /guest-forge-pass\$\{turnstileToken \? " verified" : ""\}/);
   assert.match(styles, /\.guest-forge-pass \.turnstile-host\.verified \{ display: none; \}/);
@@ -168,17 +178,25 @@ test("the Forge trigger (awaken) and its retry only run in guest mode once a liv
   );
 });
 
-test("the verification panel stays mounted for background checks but is hidden until a guest asks to build", async () => {
+test("the verification panel is a reachable dialog with a retry and a sign-in escape", async () => {
   const source = await read("app/page.tsx");
   const styles = await read("app/globals.css");
-  assert.match(source, /\$\{verificationRequested \? "" : " dormant"\}/);
-  assert.match(source, /inert=\{!verificationRequested\}/);
-  // Hidden with opacity, never display:none, so the Turnstile iframe keeps
-  // verifying and most visitors already hold a token when they click.
-  const dormantRule = styles.match(/> \.guest-forge-pass\.dormant \{[^}]*\}/)?.[0];
-  assert.ok(dormantRule, "expected the dormant panel rule");
-  assert.match(dormantRule, /opacity: 0/);
-  assert.doesNotMatch(dormantRule, /display:\s*none/);
+  // Not mounted until a guest asks to build, and then portaled to body so
+  // the forge's isolation stacking context cannot trap it under the banner.
+  assert.match(source, /createPortal\(/);
+  assert.match(source, /document\.body/);
+  assert.match(source, /role="dialog"/);
+  assert.match(source, /onClick=\{retryTurnstile\}/);
+  assert.match(source, /href=\{signInResumeHref\}>Sign in</);
+  assert.match(source, /ref=\{setTurnstileHostNode\}/);
+  assert.doesNotMatch(source, /inert=\{!verificationRequested\}/);
+  // The panel itself is visible. Hiding it with display:none would leave
+  // the challenge unable to draw a checkbox.
+  const panelRule = styles.match(/body>\.guest-forge-pass\{[^}]*\}/)?.[0];
+  assert.ok(panelRule, "expected the portaled verification panel rule");
+  assert.match(panelRule, /z-index:10050/);
+  assert.match(panelRule, /transform:none/);
+  assert.doesNotMatch(panelRule, /display:\s*none/);
 });
 
 // Cloudflare Turnstile tokens expire on their own timer even when nothing
@@ -190,16 +208,19 @@ test("the verification panel stays mounted for background checks but is hidden u
 // own default behavior.
 test("a naturally expired or errored Turnstile token also forces an explicit widget reset, not just cleared React state", async () => {
   const source = await readCtx();
-  const renderBlock = source.match(/turnstileWidgetRef\.current = turnstile\.render\(turnstileHostRef\.current, \{[\s\S]*?\}\);/)?.[0];
+  const renderBlock = source.match(/turnstileWidgetRef\.current = turnstile\.render\((?:node|turnstileHostRef\.current), \{[\s\S]*?\}\);/)?.[0];
   assert.ok(renderBlock, "expected to find the turnstile.render(...) call");
   assert.match(
     renderBlock,
-    /"expired-callback": \(\) => \{\s*setTurnstileToken\(""\);\s*if \(turnstileWidgetRef\.current\) turnstile\.reset\(turnstileWidgetRef\.current\);\s*\}/,
+    /"expired-callback": \(\) => \{\s*setTurnstileToken\(""\);\s*setTurnstileStatus\("That check expired\. Confirm you're human again\."\);\s*if \(turnstileWidgetRef\.current\) turnstile\.reset\(turnstileWidgetRef\.current\);\s*\}/,
   );
+  assert.match(renderBlock, /"timeout-callback": \(\) => \{/);
+  assert.match(renderBlock, /"error-callback": \(code: string\) => \{[\s\S]*?setTurnstileError\(turnstileFailureMessage\(String\(code \|\| ""\)\)\);[\s\S]*?return true;\s*\}/);
   assert.match(
-    renderBlock,
-    /"error-callback": \(\) => \{\s*setTurnstileToken\(""\);[\s\S]*?setTurnstileError\("Verification could not load on this domain\.[\s\S]*?"\);\s*if \(turnstileWidgetRef\.current\) turnstile\.reset\(turnstileWidgetRef\.current\);\s*\}/,
+    source,
+    /function turnstileFailureMessage\(code: string\) \{[\s\S]*?if \(code === "110200"\) \{[\s\S]*?Verification could not load on this domain\. Use metaforge\.gg, or ask an admin to authorize this hostname for Turnstile\./,
   );
+  assert.doesNotMatch(renderBlock, /turnstile\.reset\(turnstileWidgetRef\.current\);\s*\},?\s*"error-callback"/);
 });
 
 // P0 follow-up: a production walkthrough proved a network-rate-limit 429

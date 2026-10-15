@@ -329,6 +329,19 @@ function placeCommanderSearchDropdown(rect: DOMRect) {
   };
 }
 
+const TURNSTILE_SITEKEY = "0x4AAAAAAEEl7173Degrwsrc";
+
+// Cloudflare error 110200 means this hostname is not in the widget's
+// Hostname Management allowlist (Dashboard → Turnstile → this widget →
+// Hostname Management). Code cannot authorize domains. Every other code is
+// a challenge failure the player can retry or skip by signing in.
+function turnstileFailureMessage(code: string) {
+  if (code === "110200") {
+    return "Verification could not load on this domain. Use metaforge.gg, or ask an admin to authorize this hostname for Turnstile.";
+  }
+  return "The human check didn't complete. Try again, or sign in to continue.";
+}
+
 export function useForgeSessionState() {
   const router = useRouter();
   const [chamber, setChamber] = useState<Chamber>("entrance");
@@ -337,6 +350,7 @@ export function useForgeSessionState() {
   const [playerCompassSynced, setPlayerCompassSynced] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileError, setTurnstileError] = useState("");
+  const [turnstileStatus, setTurnstileStatus] = useState("");
   const [guestClaimToken, setGuestClaimToken] = useState("");
   // The claim response mirrors the server-owned Forge report contract.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -347,6 +361,15 @@ export function useForgeSessionState() {
   // The Turnstile script and widget load only once a guest asks to build
   // before a token exists (see runWhenVerified). A first visit does not.
   const [verificationRequested, setVerificationRequested] = useState(false);
+  const [turnstileHostReady, setTurnstileHostReady] = useState(false);
+  const [turnstileAttempt, setTurnstileAttempt] = useState(0);
+  // The first paint uses the normal managed checkbox. A retry, or a
+  // viewport narrower than that checkbox, uses the compact one.
+  const turnstileModeRef = useRef<"managed" | "compact">("managed");
+  const setTurnstileHostNode = useCallback((node: HTMLDivElement | null) => {
+    turnstileHostRef.current = node;
+    setTurnstileHostReady((current) => (current === Boolean(node) ? current : Boolean(node)));
+  }, []);
   const TURNSTILE_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
   useEffect(() => {
     const host = window.location.hostname.toLowerCase();
@@ -359,33 +382,66 @@ export function useForgeSessionState() {
   }, []);
   useEffect(() => {
     // The human check renders only once a guest actually starts something
-    // that needs it, never on page load.
-    if (!guestMode || !verificationRequested || !turnstileHostRef.current || turnstileWidgetRef.current) return;
+    // that needs it, never on page load. The host node is portaled to
+    // document.body after that click; wait until the callback ref has it,
+    // and until it has a real width, before asking Turnstile to measure it.
+    if (!guestMode || !verificationRequested || !turnstileHostReady || turnstileWidgetRef.current) return;
+    const host = turnstileHostRef.current;
+    if (!host) return;
     let cancelled = false;
+    let waitTimer = 0;
+    let renderTimer = 0;
+    const started = Date.now();
+    let warned = false;
+    // Opera GX on iPhone (WebKit) can block challenges.cloudflare.com with
+    // its tracker filter and never fire a callback. A dropped connection
+    // looks the same. Say so, and leave retry and Sign in on screen.
+    const reportBlocked = (immediate = false) => {
+      if (cancelled || warned) return;
+      if (!immediate && Date.now() - started < 8000) return;
+      warned = true;
+      setTurnstileStatus("The human check didn't load.");
+      setTurnstileError("A content blocker or a dropped connection can stop it. Try again, or sign in to continue.");
+    };
     if (!document.querySelector(`script[src="${TURNSTILE_SRC}"]`)) {
       const script = document.createElement("script");
       script.src = TURNSTILE_SRC;
       script.async = true;
       script.defer = true;
+      script.onload = () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if (!cancelled && !(window as any).turnstile?.render) reportBlocked(true);
+      };
+      script.onerror = () => reportBlocked(true);
       document.head.appendChild(script);
     }
     const render = () => {
-      // Turnstile attaches its explicit-render API to window after its
-      // asynchronously-loaded script becomes ready.
+      // The explicit script is inserted with async and defer. Cloudflare's
+      // ready helper throws on that tag, so the checkbox never mounts.
+      // Poll the render function instead, once the script can draw.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const turnstile = (window as any).turnstile;
-      if (cancelled || !turnstile || !turnstileHostRef.current || turnstileWidgetRef.current) return;
-      turnstileWidgetRef.current = turnstile.render(turnstileHostRef.current, {
-        // Public sitekey. Cloudflare error 110200 means this hostname is not
-        // in the widget's Hostname Management allowlist (Dashboard → Turnstile
-        // → this widget). Code cannot authorize domains; add metaforge.gg,
-        // www.metaforge.gg, and app.metaforge.gg there. Alternate Sites hosts
-        // need their own allowlist entries or they will keep failing.
-        sitekey: "0x4AAAAAAEEl7173Degrwsrc",
+      const node = turnstileHostRef.current;
+      if (cancelled || !turnstile?.render || !node || turnstileWidgetRef.current) return;
+      if (node.clientWidth < 1) {
+        reportBlocked();
+        return;
+      }
+      // `flexible` is 100% of the container with a 300px minimum, so a
+      // phone whose content box is under 300px never gets a checkbox.
+      // `interaction-only` stays invisible until a tap is required, which
+      // on mobile is the common case, and then the callback never fires if
+      // that checkbox can't be reached. A visible managed checkbox
+      // (`appearance: "always"`) is the check the player can finish.
+      const size = node.clientWidth < 300 || turnstileModeRef.current === "compact" ? "compact" : "normal";
+      try {
+        turnstileWidgetRef.current = turnstile.render(node, {
+        sitekey: TURNSTILE_SITEKEY,
         theme: "dark",
-        size: "flexible",
-        appearance: "interaction-only",
-        callback: (token: string) => { setTurnstileToken(token); setTurnstileError(""); },
+        size,
+        appearance: "always",
+        retry: "never",
+        callback: (token: string) => { setTurnstileToken(token); setTurnstileError(""); setTurnstileStatus(""); },
         // A token that expires while the player is still configuring their
         // build (Cloudflare's own ~5-minute window) used to only clear
         // React state here — the widget itself could be left showing a
@@ -397,20 +453,80 @@ export function useForgeSessionState() {
         // never a stale checkmark the player can't act on.
         "expired-callback": () => {
           setTurnstileToken("");
+          setTurnstileStatus("That check expired. Confirm you're human again.");
           if (turnstileWidgetRef.current) turnstile.reset(turnstileWidgetRef.current);
         },
-        "error-callback": () => {
+        "timeout-callback": () => {
           setTurnstileToken("");
-          // Cloudflare error 110200 = hostname not authorized for this sitekey.
-          setTurnstileError("Verification could not load on this domain. Use metaforge.gg, or ask an admin to authorize this hostname for Turnstile.");
-          if (turnstileWidgetRef.current) turnstile.reset(turnstileWidgetRef.current);
+          setTurnstileError("The check didn't finish. Try again, or sign in to continue.");
+          setTurnstileStatus("");
+        },
+        "error-callback": (code: string) => {
+          setTurnstileToken("");
+          setTurnstileStatus("");
+          setTurnstileError(turnstileFailureMessage(String(code || "")));
+          // Returning true with retry "never" keeps this failure on screen
+          // instead of Turnstile resetting itself into another silent loop.
+          return true;
         },
       });
+      } catch {
+        reportBlocked();
+        return;
+      }
+      if (turnstileWidgetRef.current) {
+        setTurnstileError("");
+        setTurnstileStatus(size === "compact"
+          ? "Check the box below. If it stays blank, try again or sign in."
+          : "Check the box below to continue. If it doesn't respond, try again or sign in.");
+        window.clearInterval(renderTimer);
+        window.clearInterval(waitTimer);
+      }
     };
-    const interval = window.setInterval(render, 250);
-    render();
-    return () => { cancelled = true; window.clearInterval(interval); };
-  }, [guestMode, verificationRequested]);
+    const startRender = () => {
+      if (cancelled || renderTimer) return;
+      renderTimer = window.setInterval(render, 250);
+      render();
+    };
+    const boot = () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const turnstile = (window as any).turnstile;
+      if (!turnstile?.render) return false;
+      startRender();
+      return true;
+    };
+    if (!boot()) {
+      waitTimer = window.setInterval(() => {
+        if (cancelled) return;
+        reportBlocked();
+        if (boot()) window.clearInterval(waitTimer);
+      }, 250);
+    }
+    return () => {
+      cancelled = true;
+      window.clearInterval(waitTimer);
+      window.clearInterval(renderTimer);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const turnstile = (window as any).turnstile;
+      if (turnstile && turnstileWidgetRef.current) {
+        try { turnstile.remove(turnstileWidgetRef.current); } catch { /* already gone */ }
+        turnstileWidgetRef.current = null;
+      }
+    };
+  }, [guestMode, verificationRequested, turnstileHostReady, turnstileAttempt]);
+  const retryTurnstile = () => {
+    turnstileModeRef.current = "compact";
+    setTurnstileToken("");
+    setTurnstileError("");
+    setTurnstileStatus("Trying a simpler check…");
+    // A blocked script tag stays in the document and will not load again
+    // until it is removed. If the API never arrived, fetch it once more.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (!(window as any).turnstile?.render) {
+      document.querySelectorAll(`script[src="${TURNSTILE_SRC}"]`).forEach((node) => node.remove());
+    }
+    setTurnstileAttempt((attempt) => attempt + 1);
+  };
   const [stage, setStage] = useState(0);
   // True only after ForgingChamber has committed. The living-reveal pass
   // looks for .forging-ceremony; without this it runs while the lazy chunk
@@ -418,7 +534,10 @@ export function useForgeSessionState() {
   const [forgingCeremonyMounted, setForgingCeremonyMounted] = useState(false);
   const [buildStep, setBuildStep] = useState<0 | 1 | 2>(0);
   const [buildPath, setBuildPath] = useState<BuildPath>("discover");
-  const [format, setFormat] = useState("Commander");
+  // Commander is the only format the product builds. Restored briefs and
+  // claims cannot switch the Forge into another format.
+  const [format, setFormatState] = useState("Commander");
+  const setFormat = (_next: string) => { setFormatState("Commander"); };
   const [strategy, setStrategy] = useState("Balanced midrange");
   const [complexity, setComplexity] = useState("Balanced");
   const [budget, setBudget] = useState("No strict limit");
@@ -1991,6 +2110,8 @@ export function useForgeSessionState() {
     }
     pendingVerifiedActionRef.current = action;
     setVerificationRequested(true);
+    setTurnstileError("");
+    setTurnstileStatus("Loading the human check…");
   }
   useEffect(() => {
     const action = pendingVerifiedActionRef.current;
@@ -5427,6 +5548,9 @@ export function useForgeSessionState() {
     setTurnstileToken,
     turnstileError,
     setTurnstileError,
+    turnstileStatus,
+    retryTurnstile,
+    setTurnstileHostNode,
     guestClaimToken,
     setGuestClaimToken,
     pendingClaimResult,

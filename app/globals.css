@@ -465,3 +465,29 @@ footer p { font-family:Newsreader, Georgia,serif; font-style:italic; }
 @media(max-width:700px){.privacy-choice{align-items:stretch;flex-direction:column}.privacy-choice footer{justify-content:flex-start}}
 
 .guest-turnstile-error{margin:10px 0 0;color:#f0b27a;font-size:13px;line-height:1.45;max-width:36rem}
+/* The check is portaled to body so it is not trapped in .great-forge's
+   isolation stacking context (the consent banner, z-index 10000, would
+   otherwise cover it no matter how high the inner z-index went). No
+   transform: a translated ancestor drops touch events on the Turnstile
+   iframe in mobile Safari. */
+body>.guest-forge-pass{
+  z-index:10050;
+  left:12px;
+  right:12px;
+  top:auto;
+  width:auto;
+  max-width:520px;
+  margin-inline:auto;
+  transform:none;
+  bottom:calc(var(--mf-frame-rail, 16px) + 12px);
+  flex-direction:column;
+  align-items:stretch;
+  gap:12px;
+  max-height:min(70svh, 440px);
+  overflow:auto;
+}
+.guest-forge-pass .turnstile-host{width:100%;min-height:70px}
+.guest-forge-pass-status{margin:6px 0 0;color:#c9b89a;font:600 13px/1.45 Inter,sans-serif}
+.guest-forge-pass-actions{display:flex;flex-wrap:wrap;gap:8px}
+.guest-forge-pass-actions button,.guest-forge-pass-actions a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 14px;border-radius:9px;border:1px solid rgba(231,155,65,.55);background:transparent;color:#f4e8d2;font:700 13px/1 Inter,sans-serif;text-decoration:none;cursor:pointer}
+.guest-forge-pass-actions a{background:#d8792f;border-color:#d8792f;color:#160c08}
