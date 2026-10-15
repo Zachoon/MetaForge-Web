@@ -24,6 +24,10 @@ function localFact(name: string): { name: string; type_line: string; cmc?: numbe
     : { name: local[0], type_line };
 }
 
+async function readJson(response: Response): Promise<any | null> {
+  try { return await response.json(); } catch { return null; }
+}
+
 async function fetchCollection(names: string[]) {
   let lastFailure: Response | null = null;
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -71,7 +75,7 @@ export async function lookupCardTypes(names: string[]): Promise<Map<string, { ty
     const chunk = unique.slice(index, index + 75);
     const response = await fetchCollection(chunk);
     if (response?.ok) {
-      const payload: any = await response.json();
+      const payload: any = await readJson(response);
       for (const card of Array.isArray(payload?.data) ? payload.data : []) {
         const fact = {
           typeLine: String(card?.type_line || card?.card_faces?.[0]?.type_line || ""),
@@ -120,7 +124,15 @@ export async function handleCardFacts(request: Request): Promise<Response> {
       }
       continue;
     }
-    const payload: any = await response.json();
+    const payload: any = await readJson(response);
+    if (!payload) {
+      for (const name of chunk) {
+        const local = localFact(name);
+        if (local) cards.push(local);
+        else unresolved.push(name);
+      }
+      continue;
+    }
     cards.push(...(Array.isArray(payload?.data) ? payload.data : []));
     const originalByLookup = new Map(chunk.map((name) => [scryfallLookupName(name).toLowerCase(), name]));
     unresolved.push(...(Array.isArray(payload?.not_found) ? payload.not_found

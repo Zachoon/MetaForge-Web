@@ -71,8 +71,12 @@ type SavedFamily = {
   revisions: SavedRevision[];
 };
 
+function familyRevisions(family: SavedFamily) {
+  return Array.isArray(family.revisions) ? family.revisions : [];
+}
+
 async function fetchStructuralAnalysis(family: SavedFamily) {
-  const latest = family.revisions.at(-1);
+  const latest = familyRevisions(family).at(-1);
   if (!latest) throw new Error("This Masterwork has no recorded deck text");
   const structuralCards = await resolveDeckStructuralCards({
     deckText: latest.deckText,
@@ -139,7 +143,7 @@ export default function PlayerProfile() {
   );
   const chronicle = useMemo(() =>
     (families || []).flatMap((family) =>
-      family.revisions.flatMap((revision, revisionIndex) => {
+      familyRevisions(family).flatMap((revision, revisionIndex) => {
         const revisionEntry = {
           id: `${family.id}-revision-${revisionIndex}`,
           family: family.name,
@@ -336,7 +340,7 @@ export default function PlayerProfile() {
                     <span>{family.commander?.name || "No commander"}</span>
                   </span>
                   <span className="profile-deck-proof">
-                    <em><b>{family.revisions.length}</b> revisions</em>
+                    <em><b>{familyRevisions(family).length}</b> revisions</em>
                     <em><b>{evidence.wins + evidence.losses}</b> matches</em>
                     <i>Inspect structure →</i>
                   </span>

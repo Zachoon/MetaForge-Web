@@ -60,7 +60,11 @@ export async function handleAccountBench(request: Request, env: AccountEnv): Pro
   const currentRevision = current?.revision || 0;
   const baseRevision = Number(payload.baseRevision ?? 0);
   if (baseRevision !== currentRevision) {
-    return json({ error: "Account data changed on another device", bench: current ? JSON.parse(current.bench_json) : null, revision: currentRevision, updatedAt: current?.updated_at || null }, 409);
+    let bench: unknown = null;
+    if (current?.bench_json) {
+      try { bench = JSON.parse(current.bench_json); } catch { bench = null; }
+    }
+    return json({ error: "Account data changed on another device", bench, revision: currentRevision, updatedAt: current?.updated_at || null }, 409);
   }
   const nextRevision = currentRevision + 1;
   await env.DB.prepare(`INSERT INTO account_deck_benches (user_key, bench_json, revision, updated_at)

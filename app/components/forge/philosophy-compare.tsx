@@ -167,7 +167,7 @@ export function PhilosophyCompare({
         <h2>{title}</h2>
         <p>{lede}</p>
         {occupancyEngines.length > 0 && (
-          <p className="philosophy-occupancy">Occupancy engines: {occupancyEngines.join(" · ")}. Named from commander oracle, not from the 99.</p>
+          <p className="philosophy-occupancy">From this commander's card: {occupancyEngines.join(" · ")}. This is a first read, not a judgment of the 99.</p>
         )}
         {comparison.provenanceLabel && count > 1 && (
           <p className="philosophy-report-provenance">{comparison.provenanceLabel}</p>

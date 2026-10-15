@@ -15,13 +15,17 @@ type SortKey = "updated" | "name" | "record" | "revisions";
 const COLOR_ORDER = ["W", "U", "B", "R", "G"] as const;
 const COLOR_NAMES: Record<string, string> = { W: "White", U: "Blue", B: "Black", R: "Red", G: "Green" };
 
+function familyRevisions(family: SavedFamily) {
+  return Array.isArray(family.revisions) ? family.revisions : [];
+}
+
 function familyRecord(family: SavedFamily) {
-  const evidence = family.record || family.revisions.at(-1)?.evidence || {};
+  const evidence = family.record || familyRevisions(family).at(-1)?.evidence || {};
   return { wins: Number(evidence.wins || 0), losses: Number(evidence.losses || 0) };
 }
 
 function familyUpdatedAt(family: SavedFamily) {
-  const stamp = family.updatedAt || family.revisions.at(-1)?.createdAt;
+  const stamp = family.updatedAt || familyRevisions(family).at(-1)?.createdAt;
   return stamp ? new Date(stamp).getTime() : 0;
 }
 
@@ -118,13 +122,13 @@ export function ArchiveChamber() {
 
   const dir = sortDir === "asc" ? 1 : -1;
   const sorted = [...filtered].sort((a, b) => {
-    if (sortBy === "name") return a.name.localeCompare(b.name) * dir;
+    if (sortBy === "name") return String(a.name || "").localeCompare(String(b.name || "")) * dir;
     if (sortBy === "record") {
       const ra = familyRecord(a);
       const rb = familyRecord(b);
       return (ra.wins - ra.losses - (rb.wins - rb.losses)) * dir;
     }
-    if (sortBy === "revisions") return (a.revisions.length - b.revisions.length) * dir;
+    if (sortBy === "revisions") return (familyRevisions(a).length - familyRevisions(b).length) * dir;
     return (familyUpdatedAt(a) - familyUpdatedAt(b)) * dir;
   });
 
@@ -264,7 +268,7 @@ export function ArchiveChamber() {
               const accent = resolveMasterworkVisualProfile({
                 selectedRows: [],
                 colors,
-                revisionCount: family.revisions.length || 1,
+                revisionCount: familyRevisions(family).length || 1,
               }).accent;
               return (
                 <div
@@ -319,7 +323,7 @@ export function ArchiveChamber() {
                   </div>
                   <div className="decks-card-stats">
                     <div><span>Record</span><b>{wins}W · {losses}L</b></div>
-                    <div><span>Revisions</span><b>{family.revisions.length || 1}</b></div>
+                    <div><span>Revisions</span><b>{familyRevisions(family).length || 1}</b></div>
                     <div><span>Updated</span><b>{relativeUpdated(familyUpdatedAt(family))}</b></div>
                   </div>
                   <div className="decks-card-footer">

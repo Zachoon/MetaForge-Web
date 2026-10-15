@@ -58,6 +58,22 @@ test("account API rejects anonymous access and isolates users", async () => {
   assert.equal(other.bench, null);
 });
 
+test("a stale save still returns 409 when the stored bench is not JSON", async () => {
+  const worker = await loadWorker();
+  const DB = new FakeD1();
+  const bench = { schemaVersion: 1, families: [] };
+  const saved = await worker.fetch(request("PUT", "one@example.com", { bench, baseRevision: 0 }), env(DB), ctx);
+  assert.equal(saved.status, 200);
+  const stored = [...DB.rows.values()][0];
+  stored.bench_json = "{not-json";
+  const conflict = await worker.fetch(request("PUT", "one@example.com", { bench, baseRevision: 0 }), env(DB), ctx);
+  assert.equal(conflict.status, 409);
+  const body = await conflict.json();
+  assert.equal(body.error, "Account data changed on another device");
+  assert.equal(body.bench, null);
+  assert.equal(body.revision, 1);
+});
+
 test("account API prevents stale devices from overwriting newer data", async () => {
   const worker = await loadWorker();
   const DB = new FakeD1();

@@ -58,18 +58,53 @@ function ResearchPageInner() {
     }
   }, [searchParams]);
 
-  const forgeSystemsReport = bundle?.forgeSystemsReport || { systems: [], bridgeCards: [], systemCoverage: 0, confidence: "", methodology: "" };
-  const interactionGraph = useMemo(
-    () => bundle?.interactionGraph || { packages: [], edges: [], nonbos: [], amplifiers: [], isolated: [], enginePairs: [], resetPairs: [], coverage: 0, confidence: "", methodology: "" },
-    [bundle],
-  );
+  const forgeSystemsReport = {
+    systems: [] as any[],
+    bridgeCards: [] as any[],
+    systemCoverage: 0,
+    confidence: "",
+    methodology: "",
+    ...(bundle?.forgeSystemsReport || {}),
+  };
+  forgeSystemsReport.systems = Array.isArray(forgeSystemsReport.systems) ? forgeSystemsReport.systems : [];
+  forgeSystemsReport.bridgeCards = Array.isArray(forgeSystemsReport.bridgeCards) ? forgeSystemsReport.bridgeCards : [];
+  const interactionGraph = useMemo(() => {
+    const graph = bundle?.interactionGraph || {};
+    const list = (value: unknown) => (Array.isArray(value) ? value : []);
+    return {
+      coverage: 0,
+      confidence: "",
+      methodology: "",
+      ...graph,
+      packages: list(graph.packages),
+      edges: list(graph.edges),
+      nonbos: list(graph.nonbos),
+      amplifiers: list(graph.amplifiers),
+      isolated: list(graph.isolated),
+      enginePairs: list(graph.enginePairs),
+      resetPairs: list(graph.resetPairs),
+    };
+  }, [bundle]);
   const forgeCausalityReport = bundle?.forgeCausalityReport || null;
   const forgeFailureAnalysis = bundle?.forgeFailureAnalysis || null;
   const honestCoachSummary = bundle?.honestCoachSummary || null;
   const coachingDiagnosis = bundle?.coachingDiagnosis || null;
-  const revisionLearning = bundle?.revisionLearning || { actionable: [], matchups: [], sampleSize: 0 };
-  const interventionLearning = bundle?.interventionLearning || { experiments: [], reusable: [], reusableGuidance: "", evidenceBoundary: "" };
-  const coachOccupancyLabels: string[] = bundle?.coachOccupancyLabels || [];
+  const revisionSource = bundle?.revisionLearning || {};
+  const revisionLearning = {
+    ...revisionSource,
+    actionable: Array.isArray(revisionSource.actionable) ? revisionSource.actionable : [],
+    matchups: Array.isArray(revisionSource.matchups) ? revisionSource.matchups : [],
+    sampleSize: Number(revisionSource.sampleSize) || 0,
+  };
+  const interventionSource = bundle?.interventionLearning || {};
+  const interventionLearning = {
+    ...interventionSource,
+    experiments: Array.isArray(interventionSource.experiments) ? interventionSource.experiments : [],
+    reusable: Array.isArray(interventionSource.reusable) ? interventionSource.reusable : [],
+    reusableGuidance: interventionSource.reusableGuidance || "",
+    evidenceBoundary: interventionSource.evidenceBoundary || "",
+  };
+  const coachOccupancyLabels: string[] = Array.isArray(bundle?.coachOccupancyLabels) ? bundle.coachOccupancyLabels : [];
   const deckIntegrity = bundle?.deckIntegrity || null;
 
   const activeSystem = useMemo(
@@ -94,12 +129,12 @@ function ResearchPageInner() {
         isolated: interactionGraph.isolated,
       };
     }
-    const members = new Set(activeSystem.members);
+    const members = new Set(Array.isArray(activeSystem.members) ? activeSystem.members : []);
     return {
-      packages: interactionGraph.packages.filter((group: any) => group.members.some((name: string) => members.has(name))),
+      packages: interactionGraph.packages.filter((group: any) => Array.isArray(group.members) && group.members.some((name: string) => members.has(name))),
       edges: interactionGraph.edges.filter((edge: any) => members.has(edge.from) || members.has(edge.to)),
       nonbos: interactionGraph.nonbos.filter((conflict: any) => members.has(conflict.source) || ("target" in conflict && typeof conflict.target === "string" && members.has(conflict.target))),
-      amplifiers: interactionGraph.amplifiers.filter((amplifier: any) => members.has(amplifier.source) || amplifier.amplifies.some((name: string) => members.has(name))),
+      amplifiers: interactionGraph.amplifiers.filter((amplifier: any) => members.has(amplifier.source) || (Array.isArray(amplifier.amplifies) && amplifier.amplifies.some((name: string) => members.has(name)))),
       isolated: interactionGraph.isolated.filter((name: string) => members.has(name)),
     };
   }, [activeSystem, interactionGraph]);
@@ -223,8 +258,8 @@ function ResearchPageInner() {
                 )}
               </aside>
             )}
-            {honestCoachSummary.deckUnderstanding && (
-              <aside className={`honest-coach-understanding ${honestCoachSummary.deckUnderstanding.reliability.state}`} aria-label="Deck understanding">
+            {honestCoachSummary.deckUnderstanding?.playerSummary && (
+              <aside className={`honest-coach-understanding ${honestCoachSummary.deckUnderstanding.reliability?.state || "limited"}`} aria-label="Deck understanding">
                 <strong>{honestCoachSummary.deckUnderstanding.playerSummary.headline}</strong>
                 <p>{honestCoachSummary.deckUnderstanding.playerSummary.detail}</p>
                 {honestCoachSummary.deckUnderstanding.playerSummary.unresolvedNames?.length > 0 && (
@@ -236,7 +271,7 @@ function ResearchPageInner() {
                 )}
               </aside>
             )}
-            {honestCoachSummary.coachingAllowed && (
+            {honestCoachSummary.coachingAllowed && honestCoachSummary.confidence && (
               <details
                 className={`honest-coach-confidence ${honestCoachSummary.confidence.level}`}
                 onToggle={(event) => {
@@ -273,7 +308,7 @@ function ResearchPageInner() {
                 <div>
                   <small>OBSERVED</small>
                   <ul>
-                    {honestCoachSummary.observedFindings.map((line: string) => (
+                    {(honestCoachSummary.observedFindings || []).map((line: string) => (
                       <li key={line}>{line}</li>
                     ))}
                   </ul>
@@ -281,7 +316,7 @@ function ResearchPageInner() {
                 <div>
                   <small>INTERPRETIVE</small>
                   <ul>
-                    {honestCoachSummary.interpretiveGuidance.map((line: string) => (
+                    {(honestCoachSummary.interpretiveGuidance || []).map((line: string) => (
                       <li key={line}>{line}</li>
                     ))}
                   </ul>
@@ -563,13 +598,16 @@ function ResearchPageInner() {
                     )}
                     <div className="systems-blueprint-grid">
                       {visibleForgeSystems.map((system: any, systemIndex: number) => {
+                        const health = system.health || {};
+                        const members = Array.isArray(system.members) ? system.members : [];
+                        const edges = Array.isArray(system.edges) ? system.edges : [];
                         const gauges = [
-                          ["Overall Health", system.health.overall, false],
-                          ["Consistency", system.health.consistency, false],
-                          ["Resilience", system.health.resilience, false],
-                          ["Leverage", system.health.leverage, false],
-                          ["Cohesion", system.health.cohesion, false],
-                          ["Dependency Risk", system.health.dependencyRisk, true],
+                          ["Overall Health", health.overall ?? 0, false],
+                          ["Consistency", health.consistency ?? 0, false],
+                          ["Resilience", health.resilience ?? 0, false],
+                          ["Leverage", health.leverage ?? 0, false],
+                          ["Cohesion", health.cohesion ?? 0, false],
+                          ["Dependency Risk", health.dependencyRisk ?? 0, true],
                         ] as const;
                         return (
                           <details
@@ -588,12 +626,12 @@ function ResearchPageInner() {
                                 <small>WHAT THIS MEANS · SYSTEM {String(systemIndex + 1).padStart(2, "0")}</small>
                                 <strong>{tableMeaningFor(system.signal) || system.name}</strong>
                                 <em>
-                                  Supporting evidence · {system.name} · {system.members.length} cards ·{" "}
-                                  {system.edges.length} links · Health {system.health?.overall ?? 0}
+                                  Supporting evidence · {system.name} · {members.length} cards ·{" "}
+                                  {edges.length} links · Health {health.overall ?? 0}
                                 </em>
                               </span>
                               <span className="system-health-medallion">
-                                <b>{system.health.overall}</b>
+                                <b>{health.overall ?? 0}</b>
                                 <small>HEALTH</small>
                               </span>
                               <span className="blueprint-toggle" aria-current={activeSystem?.id === system.id ? "true" : undefined}>
@@ -617,7 +655,7 @@ function ResearchPageInner() {
                                 <article>
                                   <small>CORE COMPONENTS</small>
                                   <div>
-                                    {system.core.map((name: string) => (
+                                    {(Array.isArray(system.core) ? system.core : []).map((name: string) => (
                                       <button
                                         type="button"
                                         key={name}
@@ -634,7 +672,7 @@ function ResearchPageInner() {
                                 <article>
                                   <small>SUPPORT COMPONENTS</small>
                                   <div>
-                                    {system.support.length ? (
+                                    {(Array.isArray(system.support) ? system.support : []).length ? (
                                       system.support.map((name: string) => (
                                         <button type="button" key={name} data-card-inspect-surface="system-support" onClick={() => setHoveredCard(name)}>{name}</button>
                                       ))
@@ -644,7 +682,7 @@ function ResearchPageInner() {
                                 <article>
                                   <small>PRODUCERS</small>
                                   <div>
-                                    {system.producers.length ? (
+                                    {(Array.isArray(system.producers) ? system.producers : []).length ? (
                                       system.producers.map((name: string) => (
                                         <button type="button" key={name} data-card-inspect-surface="system-producers" onClick={() => setHoveredCard(name)}>{name}</button>
                                       ))
@@ -654,7 +692,7 @@ function ResearchPageInner() {
                                 <article>
                                   <small>PAYOFFS</small>
                                   <div>
-                                    {system.payoffs.length ? (
+                                    {(Array.isArray(system.payoffs) ? system.payoffs : []).length ? (
                                       system.payoffs.map((name: string) => (
                                         <button type="button" key={name} data-card-inspect-surface="system-payoffs" onClick={() => setHoveredCard(name)}>{name}</button>
                                       ))
@@ -666,15 +704,15 @@ function ResearchPageInner() {
                                 <article>
                                   <small>REDUNDANCY</small>
                                   <strong>
-                                    {system.redundancy.repeatedCards.length
+                                    {(system.redundancy?.repeatedCards || []).length
                                       ? `${system.redundancy.repeatedCards.length} repeated component${system.redundancy.repeatedCards.length === 1 ? "" : "s"}`
                                       : "Singleton structure"}
                                   </strong>
-                                  <p>{system.redundancy.producerCount} producers · {system.redundancy.payoffCount} payoffs</p>
+                                  <p>{system.redundancy?.producerCount ?? 0} producers · {system.redundancy?.payoffCount ?? 0} payoffs</p>
                                 </article>
-                                <article className={system.criticalFailures.length ? "engineering-warning" : ""}>
+                                <article className={(system.criticalFailures || []).length ? "engineering-warning" : ""}>
                                   <small>CRITICAL FAILURE AUDIT</small>
-                                  {system.criticalFailures.length ? (
+                                  {(system.criticalFailures || []).length ? (
                                     system.criticalFailures.map((failure: any) => (
                                       <p key={failure.name}>
                                         <b>{failure.name}</b>
@@ -692,7 +730,7 @@ function ResearchPageInner() {
                               <footer>
                                 <span>{system.evidence}</span>
                                 <div className="system-blueprint-actions">
-                                  <b>{system.health.dependencyRisk >= 55 ? "DEPENDENCY WATCH" : "STRUCTURE TEMPERED"}</b>
+                                  <b>{(health.dependencyRisk ?? 0) >= 55 ? "DEPENDENCY WATCH" : "STRUCTURE TEMPERED"}</b>
                                 </div>
                               </footer>
                             </div>
@@ -987,15 +1025,15 @@ function ResearchPageInner() {
             <small>REVISION LEARNING</small>
             <b>{revisionLearning.sampleSize} recorded match{revisionLearning.sampleSize === 1 ? "" : "es"}</b>
           </header>
-          <article className={`coaching-diagnosis diagnosis-${coachingDiagnosis.primary.category}`}>
+          {coachingDiagnosis.primary && <article className={`coaching-diagnosis diagnosis-${coachingDiagnosis.primary.category || "unknown"}`}>
             <header>
               <span><small>COACHING READ</small><b>{coachingDiagnosis.primary.label}</b></span>
               <em>{coachingDiagnosis.primary.confidence}</em>
             </header>
-            <p><b>What supports it</b><span>{coachingDiagnosis.primary.evidence.join(" · ")}</span></p>
+            <p><b>What supports it</b><span>{(coachingDiagnosis.primary.evidence || []).join(" · ")}</span></p>
             <p><b>What to do</b><span>{coachingDiagnosis.primary.recommendation}</span></p>
             <p><b>How to test it</b><span>{coachingDiagnosis.primary.measurement}</span></p>
-            {coachingDiagnosis.alternatives.length > 0 && (
+            {(coachingDiagnosis.alternatives || []).length > 0 && (
               <details>
                 <summary>{coachingDiagnosis.alternatives.length} other evidence-backed read{coachingDiagnosis.alternatives.length === 1 ? "" : "s"}</summary>
                 {coachingDiagnosis.alternatives.map((alternative: any) => (
@@ -1004,7 +1042,7 @@ function ResearchPageInner() {
               </details>
             )}
             <small>{coachingDiagnosis.evidenceBoundary}</small>
-          </article>
+          </article>}
           {revisionLearning.actionable.length ? revisionLearning.actionable.slice(0, 3).map((pattern: any) => (
             <p key={pattern.preference}><b>{pattern.preference}</b><span>{pattern.confidence} · {pattern.count} matching signals</span></p>
           )) : <p><b>NO PERSISTENT PREFERENCE YET</b><span>Two matching signals are required before the Forge treats a feeling as a revision pattern.</span></p>}

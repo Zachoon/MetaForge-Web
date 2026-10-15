@@ -136,7 +136,7 @@ export function PlayerCompassCard({
           <h2>{question.prompt}</h2>
           <p>
             These answers never block the Forge. Preferences stay inactive until all four are answered.
-            Your commission remains the strongest instruction.
+            What you asked the Forge to build still comes first.
           </p>
           <div className="player-compass-progress" aria-hidden="true">
             {PLAYER_COMPASS_QUESTIONS.map((entry, index) => (
@@ -192,8 +192,8 @@ export function PlayerCompassCard({
             <small>{synced ? "PLAYER COMPASS · SAVED · SYNCED" : "PLAYER COMPASS · SAVED"}</small>
             <h2>Your play preferences are set</h2>
             <p>
-              MetaForge will use these only after all four answers are complete, and only to distinguish
-              otherwise-valid philosophies. Your commission still comes first.
+              MetaForge will use these only after all four answers are complete, and only to choose
+              between decks that already fit. What you asked for still comes first.
               {!signedIn ? " Sign in to keep them across devices." : null}
             </p>
           </header>
