@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { cardImage } from "../../card-art";
 import { scryfallFormatTerms } from "../../format-catalog";
 import { GUIDED_CATEGORY_COPY, describeGuidedReason, describeLedgerRow, guidedCategoryLabel } from "../../guided-reason-copy.mjs";
 import { shellDisplay } from "../../shell-copy.mjs";
+import { centeredRailScrollLeft } from "../../guided-step-rail.mjs";
 import { DECLINE_REASONS } from "../../guided-preference-learning.mjs";
 import { PlayerCompassCard } from "./player-compass-card";
 import { GuidedFinishPanel } from "./guided-finish-panel";
@@ -128,6 +129,7 @@ export function GuidedBuildChamber() {
   // Keyed to the offer on screen, so a new offer closes it without an effect.
   const [reasonsOpenFor, setReasonsOpenFor] = useState<string | null>(null);
   const acceptRef = useRef<HTMLButtonElement>(null);
+  const stepRailRef = useRef<HTMLOListElement>(null);
   const searchSeq = useRef(0);
   const [searchState, setSearchState] = useState("idle");
   const [searchRetry, setSearchRetry] = useState(0);
@@ -221,6 +223,21 @@ export function GuidedBuildChamber() {
   // "Add to my deck" — but only if focus is homeless, so typing in the
   // search box is never interrupted.
   const offerName = session?.offer?.name;
+  useLayoutEffect(() => {
+    const rail = stepRailRef.current;
+    const current = rail?.querySelector<HTMLElement>(".guided-step.current");
+    if (!rail || !current) return;
+    const railBox = rail.getBoundingClientRect();
+    const stepBox = current.getBoundingClientRect();
+    const left = centeredRailScrollLeft(
+      { scrollLeft: rail.scrollLeft, left: railBox.left, right: railBox.right },
+      { left: stepBox.left, right: stepBox.right },
+    );
+    if (Math.abs(left - rail.scrollLeft) < 1) return;
+    const reduce = typeof globalThis.matchMedia === "function" && globalThis.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    rail.scrollTo({ left, behavior: reduce ? "auto" : "smooth" });
+  }, [session?.categoryIndex, session?.key]);
+
   useEffect(() => {
     if (!guidedLoading && offerName && document.activeElement === document.body) acceptRef.current?.focus();
   }, [guidedLoading, offerName]);
@@ -304,7 +321,7 @@ export function GuidedBuildChamber() {
               <progress max={rolesNeeded} value={rolesFilled} aria-label={`${rolesFilled} of ${rolesNeeded} roles filled`} />
             </div>
           )}
-          <ol className="guided-steps" aria-label="Build categories">
+          <ol className="guided-steps" aria-label="Build categories" ref={stepRailRef}>
             {session.categories.map((id, index) => {
               const state = index < session.categoryIndex ? "done" : index === session.categoryIndex ? "current" : "upcoming";
               return (

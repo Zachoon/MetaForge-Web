@@ -7,7 +7,9 @@ import { useRouter } from "next/navigation";
 import { configureCardTagLookup } from "./strategic-intent.mjs";
 import { useForgeSessionState, ForgeSessionProvider } from "./forge-session-context";
 import { EntranceChamber } from "./components/forge/entrance-chamber";
+import { ChamberLoadBoundary } from "./components/forge/chamber-load-boundary";
 import { GuidedDraftCard } from "./components/forge/guided-draft-card";
+import { revealWhenReady, scrollRevealBehavior } from "./reveal-when-ready.mjs";
 // Every chamber except the entrance is code-split: a first visit only
 // downloads the homepage, and each later step loads on demand.
 const ForgingChamber = lazy(() => import("./components/forge/forging-chamber").then((m) => ({ default: m.ForgingChamber })));
@@ -459,6 +461,21 @@ export default function Home() {
     unpublishPublicDeckReport,
   } = session;
 
+  // Lazy chambers are not in the document on the frame a rail click commits.
+  // Keep the previous wait from scrolling whatever the next click asked for.
+  const cancelChamberReveal = useRef<(() => void) | null>(null);
+  function revealChamberTarget(selector: string, prepare?: () => void) {
+    cancelChamberReveal.current?.();
+    const behavior = scrollRevealBehavior();
+    cancelChamberReveal.current = revealWhenReady(
+      () => document.querySelector(selector),
+      (element: Element) => {
+        prepare?.();
+        element.scrollIntoView({ behavior, block: "start" });
+      },
+    );
+  }
+
   return (
     <ForgeSessionProvider value={session}>
     <main
@@ -595,17 +612,16 @@ export default function Home() {
           setChamber("workbench");
           setActiveForgeChapter(1);
           setSiteRail("overview");
-          window.requestAnimationFrame(() => {
+          revealChamberTarget("#coach-brief", () => {
             if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = true;
-            document.getElementById("coach-brief")?.scrollIntoView({ behavior: "smooth", block: "start" });
           });
         }}><i>⌂</i><span>Overview</span></button>
         {/* Deck destinations appear once there is a deck to open, rather than
             greeting every new visitor with a column of disabled controls. */}
-        {hasValidatedDeck && <button type="button" className={chamber === "workbench" && activeForgeChapter === 1 && siteRail === "decklist" ? "active" : ""} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode((current) => current === "playtest" ? preferredDecklistView() : current); setSiteRail("decklist"); if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = false; window.requestAnimationFrame(() => document.getElementById("deck-gallery")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>☷</i><span>Decklist</span></button>}
-        {hasValidatedDeck && <button type="button" className={chamber === "workbench" && activeForgeChapter === 2 ? "active" : ""} onClick={() => { setChamber("workbench"); setActiveForgeChapter(2); setSiteRail("analysis"); window.requestAnimationFrame(() => { if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = true; document.getElementById("coach-brief")?.scrollIntoView({ behavior: "smooth", block: "start" }); }); }}><i>◇</i><span>Analysis</span></button>}
+        {hasValidatedDeck && <button type="button" className={chamber === "workbench" && activeForgeChapter === 1 && siteRail === "decklist" ? "active" : ""} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode((current) => current === "playtest" ? preferredDecklistView() : current); setSiteRail("decklist"); if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = false; revealChamberTarget("#deck-gallery", () => { if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = false; }); }}><i>☷</i><span>Decklist</span></button>}
+        {hasValidatedDeck && <button type="button" className={chamber === "workbench" && activeForgeChapter === 2 ? "active" : ""} onClick={() => { setChamber("workbench"); setActiveForgeChapter(2); setSiteRail("analysis"); revealChamberTarget("#coach-brief", () => { if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = true; }); }}><i>◇</i><span>Analysis</span></button>}
         <button type="button" className={chamber === "archive" ? "active" : ""} onClick={openPrivateArchive}><i className="forge-rail-cardback" aria-hidden="true">MF</i><span>Decks</span></button>
-        {hasValidatedDeck && <button type="button" onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode("playtest"); setSiteRail("playtest"); window.requestAnimationFrame(() => document.querySelector(".tabletop-surface")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}><i>⚔</i><span>Playtest</span></button>}
+        {hasValidatedDeck && <button type="button" onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode("playtest"); setSiteRail("playtest"); revealChamberTarget(".tabletop-surface"); }}><i>⚔</i><span>Playtest</span></button>}
         {/* Guests can't publish a report, so Share only appears for accounts. */}
         {hasValidatedDeck && !guestMode && <button type="button" disabled={!publicReportSourceKey || publicReportStatus === "publishing"} onClick={() => publicReportUrl && publicReportGenerationId === publicReportSourceKey ? void navigator.clipboard.writeText(publicReportUrl) : setPublicReportPromptOpen(true)}><i>⌁</i><span>{publicReportStatus === "publishing" ? "Publishing" : publicReportStatus === "ready" && publicReportGenerationId === publicReportSourceKey ? "Link copied" : "Share"}</span></button>}
         {hasValidatedDeck && <button type="button" className="forge-rail-settings" onClick={() => { setMasterworkIdentityDraft(masterworkIdentity); setMasterworkIdentityOpen(true); }}><i>⚙</i><span>Settings</span></button>}
@@ -701,6 +717,7 @@ export default function Home() {
       {chamber === "entrance" && <EntranceChamber />}
       <GuidedDraftCard />
 
+      <ChamberLoadBoundary key={chamber}>
       <Suspense fallback={<p className="chamber-loading" role="status">Loading…</p>}>
       {chamber === "archive" && <ArchiveChamber />}
       {(chamber === "commission" || chamber === "refine") && <CommissionChamber />}
@@ -712,7 +729,9 @@ export default function Home() {
       {chamber === "masterworks" && <MasterworksChamber />}
 
       {chamber === "workbench" && <WorkbenchChamber />}
+      {chamber === "workbench" && <WorkbenchEditorChamber />}
       </Suspense>
+      </ChamberLoadBoundary>
       {chamber !== "forging" && savedMasterworks.length > 0 && benchOpen && (
         <aside
           className={`bench-dock ${benchOpen ? "open" : ""}`}
@@ -848,7 +867,6 @@ export default function Home() {
         </div>
       </aside>
       )}
-      <Suspense fallback={null}>{chamber === "workbench" && <WorkbenchEditorChamber />}</Suspense>
     </main>
     </ForgeSessionProvider>
   );

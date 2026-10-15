@@ -171,7 +171,7 @@
   .guided-progress progress::-webkit-progress-value{transition:none}
 }
 @media(max-width:820px){
-  .guided-steps{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;padding-bottom:4px}
+  .guided-steps{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;padding-bottom:4px;scroll-padding-inline:12px}
   .guided-step button{white-space:nowrap}
 }
 @media(max-width:520px){
@@ -195,3 +195,4 @@
 .sample-result button{padding:6px 10px;border:1px solid #52655f;background:transparent;color:#92a29d;font-size:11px}
 .sample-card[data-outcome="declined"] .sample-result{border-left-color:#c9b89a}
 .chamber-loading{margin:48px auto;max-width:1080px;padding:0 24px;color:#92a29d;font-size:14px}
+.chamber-loading button{margin-left:8px;padding:6px 10px;border:1px solid #52655f;background:transparent;color:#dce5e1;font:700 12px Inter,sans-serif;cursor:pointer}

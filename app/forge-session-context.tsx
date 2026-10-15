@@ -271,6 +271,7 @@ import type {
   BuildPath,
 } from "./forge-types";
 import { FORGE_CEREMONY_MINIMUM_MS, preferredDecklistView } from "./forge-types";
+import { revealWhenReady, scrollRevealBehavior } from "./reveal-when-ready.mjs";
 import type { ForgeResumeBrief } from "./forge-resume-brief";
 import { encodeForgeResumeBrief, decodeForgeResumeBrief } from "./forge-resume-brief";
 
@@ -357,6 +358,10 @@ export function useForgeSessionState() {
     return () => { cancelled = true; window.clearInterval(interval); };
   }, [guestMode, verificationRequested]);
   const [stage, setStage] = useState(0);
+  // True only after ForgingChamber has committed. The living-reveal pass
+  // looks for .forging-ceremony; without this it runs while the lazy chunk
+  // is still a fallback and then blinks the ceremony in a stage later.
+  const [forgingCeremonyMounted, setForgingCeremonyMounted] = useState(false);
   const [buildStep, setBuildStep] = useState<0 | 1 | 2>(0);
   const [buildPath, setBuildPath] = useState<BuildPath>("discover");
   const [format, setFormat] = useState("Commander");
@@ -1078,15 +1083,6 @@ export function useForgeSessionState() {
   }, [forgeInterventions, interventionLearningReady]);
 
   useEffect(() => {
-    if (chamber !== "forging") return;
-    // Narrative progress only: awaken() starts the real build immediately.
-    // Animation timing must never become a second loading gate.
-    if (stage >= FORGING_STAGES.length - 1) return;
-    const timer = window.setTimeout(() => setStage((value) => value + 1), 1150);
-    return () => window.clearTimeout(timer);
-  }, [chamber, stage]);
-
-  useEffect(() => {
     if (benchStatus !== "forging" || forgeStartedAt === null) return;
     const updateElapsed = () => {
       setForgeElapsedSeconds(Math.max(0, Math.floor((Date.now() - forgeStartedAt) / 1000)));
@@ -1138,7 +1134,7 @@ export function useForgeSessionState() {
         target.style.removeProperty("--mf-reveal-delay");
       });
     };
-  }, [chamber, stage, motionMode]);
+  }, [chamber, stage, motionMode, forgingCeremonyMounted]);
 
   function guidedSnapshot(session = guidedSession) {
     if (!session) return null;
@@ -2661,10 +2657,11 @@ export function useForgeSessionState() {
 
   useEffect(() => {
     if (!hasValidatedDeck || !isImportedDeckReview) return;
-    const frame = window.requestAnimationFrame(() => {
-      document.getElementById("coach-brief")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-    return () => window.cancelAnimationFrame(frame);
+    const behavior = scrollRevealBehavior();
+    return revealWhenReady(
+      () => document.getElementById("coach-brief"),
+      (element: Element) => element.scrollIntoView({ behavior, block: "start" }),
+    );
   }, [hasValidatedDeck, isImportedDeckReview, nativeMasterworkContext?.generationId]);
 
   async function submitHonestCoachFeedback(
@@ -5391,6 +5388,8 @@ export function useForgeSessionState() {
     runWhenVerified,
     stage,
     setStage,
+    forgingCeremonyMounted,
+    setForgingCeremonyMounted,
     buildStep,
     setBuildStep,
     buildPath,
