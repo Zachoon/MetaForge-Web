@@ -52,6 +52,15 @@ test("syncs a Coach Pulse debrief onto its exact match", () => {
   assert.equal(match.coachDebrief.read, "Their speed");
 });
 
+test("merge tolerates a remote family that has no revision array", () => {
+  const local = { schemaVersion: 1, families: [{ id: "a", game: "mtg", name: "One", format: "Commander", revisions: [{ fingerprint: "abc", version: 1, matches: [] }] }] };
+  const remote = { schemaVersion: 1, families: [{ id: "a", game: "mtg", name: "One", format: "Commander" }] };
+  const merged = mergeDeckBenches(local, remote);
+  assert.equal(merged.families.length, 1);
+  assert.equal(merged.families[0].revisions.length, 1);
+  assert.equal(merged.families[0].revisions[0].fingerprint, "abc");
+});
+
 test("merge preserves the coaching goal and combines intervention history", () => {
   const base = { id: "family", game: "mtg", name: "Coach", format: "Standard", revisions: [] };
   const remote = { schemaVersion: 1, families: [{ ...base, playerGoal: "Faster starts", forgeInterventions: [{ id: "a", createdAt: "2026-01-01" }] }] };

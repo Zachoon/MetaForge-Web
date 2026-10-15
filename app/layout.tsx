@@ -44,11 +44,19 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <script dangerouslySetInnerHTML={{ __html: STALE_CHUNK_RECOVERY_SCRIPT }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&family=Inter:wght@400;500;600;700;800&family=Anton&display=swap"
+        {/* Newsreader, Inter, and Anton stay. The optical-size axis is unused,
+            and media=print keeps the stylesheet from blocking first paint. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var h="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400..700;1,400..700&family=Inter:wght@400..800&family=Anton&display=swap";var l=document.createElement("link");l.rel="stylesheet";l.href=h;l.media="print";l.onload=function(){this.media="all"};document.head.appendChild(l)})();`,
+          }}
         />
-        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer />
+        <noscript>
+          <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400..700;1,400..700&family=Inter:wght@400..800&family=Anton&display=swap"
+          />
+        </noscript>
       </head>
       <body>{children}<PrivacyControls /></body>
     </html>

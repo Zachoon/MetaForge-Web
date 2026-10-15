@@ -35,6 +35,7 @@ export function mergeDeckBenches(localValue, remoteValue) {
     family.forgeInterventions = [...interventions.values()].sort((left, right) =>
       String(left.createdAt || "").localeCompare(String(right.createdAt || "")) || String(left.id).localeCompare(String(right.id)),
     );
+    if (!Array.isArray(family.revisions)) family.revisions = [];
     for (const localRevision of localFamily.revisions || []) {
       const remoteRevision = family.revisions.find((revision) => revision.fingerprint === localRevision.fingerprint);
       if (!remoteRevision) {

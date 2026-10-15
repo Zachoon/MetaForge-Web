@@ -344,10 +344,10 @@ export function useForgeSessionState() {
   const [resumeForgeAfterAuth, setResumeForgeAfterAuth] = useState(false);
   const turnstileHostRef = useRef<HTMLDivElement>(null);
   const turnstileWidgetRef = useRef<string | null>(null);
-  // The widget verifies quietly in the background from page load; the
-  // verification panel only appears once a guest asks to build before a
-  // token exists (see runWhenVerified).
+  // The Turnstile script and widget load only once a guest asks to build
+  // before a token exists (see runWhenVerified). A first visit does not.
   const [verificationRequested, setVerificationRequested] = useState(false);
+  const TURNSTILE_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
   useEffect(() => {
     const host = window.location.hostname.toLowerCase();
     // app.metaforge.gg is the Cloudflare Access-protected account surface.
@@ -362,6 +362,13 @@ export function useForgeSessionState() {
     // that needs it, never on page load.
     if (!guestMode || !verificationRequested || !turnstileHostRef.current || turnstileWidgetRef.current) return;
     let cancelled = false;
+    if (!document.querySelector(`script[src="${TURNSTILE_SRC}"]`)) {
+      const script = document.createElement("script");
+      script.src = TURNSTILE_SRC;
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
     const render = () => {
       // Turnstile attaches its explicit-render API to window after its
       // asynchronously-loaded script becomes ready.
