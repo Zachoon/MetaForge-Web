@@ -299,3 +299,20 @@ test("guests start guided builds through the human check, and the claim moves th
   const index = read("worker/index.ts");
   assert.match(index, /peek\?\.guidedClaimToken \? handleGuidedClaim\(request, env\) : handleGuestClaim\(request, env\)/);
 });
+
+test("finishing keeps every confirmed card, and a guest save does not claim an account", () => {
+  const engine = read("app/native-masterwork-engine.mjs");
+  const repair = engine.slice(engine.indexOf("function repairUnsupportedBombs"), engine.indexOf("function rowsLeakExcludedNames"));
+  assert.match(repair, /input\.importedRows/);
+  assert.match(repair, /!importedRowNames\.has\(normalized\(name\)\)/);
+  const source = read("app/forge-session-context.tsx");
+  const save = source.slice(source.indexOf("function saveGuidedDraft("), source.indexOf("function restoreGuidedDraft("));
+  assert.match(save, /guestMode \? "Saved for this browser\. Sign in any time to keep it\." : "Saved to your account"/);
+  assert.match(source, /function importedRevisionChanged\(/);
+  assert.match(source, /landOnCompletedDecklist\(\{ revealDeck: !importedRevisionChanged\(nativeReport\) \}\)/);
+  const workbench = read("app/components/forge/workbench-chamber.tsx");
+  assert.match(workbench, /className="guest-keep-deck"/);
+  assert.match(workbench, /Sign in to keep this deck/);
+  const css = read("app/guided-build.css");
+  assert.match(css, /\.guided-chamber\.commission-chamber\{display:block;/);
+});

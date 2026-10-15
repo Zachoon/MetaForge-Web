@@ -676,7 +676,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .first-session-suggest-note{margin:0 0 10px;color:#c5d2cc;font-size:14px;line-height:1.45}
 .commander-choice:has(.commander-suggest-first){grid-template-columns:1fr!important}
 .commander-choice .first-session-suggest-note{order:-2}
-.commander-suggest-first{order:-1;min-height:52px;font-size:13px}
+.commander-suggest-first{order:-1;width:100%;max-width:100%;height:auto;min-height:52px;overflow:visible;white-space:normal;font-size:13px;line-height:1.3}
+@media(max-width:700px){
+  .awaken-button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;height:auto;min-height:52px;overflow:visible;white-space:normal}
+  .awaken-button strong{display:block;letter-spacing:.02em;line-height:1.25;white-space:normal}
+}
 .shell-picker-optional{border:1px solid #354943;background:#0a1211}
 .shell-picker-optional>summary{display:flex;flex-direction:column;gap:4px;padding:14px 16px;cursor:pointer;list-style:none}
 .shell-picker-optional>summary::-webkit-details-marker{display:none}
@@ -685,4 +689,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .shell-picker-optional[open] .shell-options-grid,.shell-picker-optional[open] .shell-options-skip-note{margin:0 16px 14px}
 .entrance-secondary{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:14px}
 .entrance-secondary button{padding:0;border:0;background:none;color:#aebcb6;font-size:14px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+@media(max-width:760px){.entrance-secondary button{min-height:44px;padding:8px 0}}
+.guest-keep-deck{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 14px;border:1px solid #d8792f;background:#d8792f;color:#160c08;font:800 13px/1.2 Inter,sans-serif;text-decoration:none}
+@media(max-width:560px){.masterwork-deck-hero .guest-keep-deck{grid-column:1/-1}}
 .entrance-secondary button:hover,.entrance-secondary button:focus-visible{outline:0;color:#f0d2aa}

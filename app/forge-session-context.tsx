@@ -282,6 +282,53 @@ import { encodeForgeResumeBrief, decodeForgeResumeBrief } from "./forge-resume-b
 configureCardTagLookup(() => [], { onlyIfMissing: true });
 import { createContext, useContext, type ReactNode } from "react";
 
+// The portaled list is position:fixed, so a result that opens under the
+// search box can sit past the viewport, the bottom rail, or the privacy
+// banner. Playwright and a real tap both miss it there. Measure the room
+// and flip the list above the field when the space below is too short.
+function placeCommanderSearchDropdown(rect: DOMRect) {
+  const viewportEdge = window.visualViewport
+    ? window.visualViewport.offsetTop + window.visualViewport.height
+    : window.innerHeight;
+  const viewportTop = window.visualViewport ? window.visualViewport.offsetTop : 0;
+  const obstacles = [viewportEdge];
+  const privacy = document.querySelector(".privacy-choice");
+  if (privacy) {
+    const box = privacy.getBoundingClientRect();
+    if (box.height > 0 && box.top < viewportEdge && box.bottom > viewportTop) obstacles.push(box.top);
+  }
+  const rail = document.querySelector(".great-forge > .forge-global-rail");
+  if (rail) {
+    const box = rail.getBoundingClientRect();
+    // Bottom rail only. The desktop rail is a left column; using its top would collapse the list.
+    if (box.top > viewportEdge * 0.5 && box.width > window.innerWidth * 0.5) obstacles.push(box.top);
+  }
+  const limit = Math.min(...obstacles.filter((value) => Number.isFinite(value)));
+  const belowTop = rect.bottom + 5;
+  const belowRoom = limit - belowTop - 12;
+  let top = belowTop;
+  let room = belowRoom;
+  if (belowRoom < 140) {
+    const aboveTop = Math.max(viewportTop + 8, rect.top - Math.min(320, rect.top - viewportTop - 8));
+    const aboveRoom = rect.top - aboveTop - 12;
+    if (aboveRoom > belowRoom) {
+      top = aboveTop;
+      room = aboveRoom;
+    }
+  }
+  const height = Math.max(96, room);
+  const viewportBottom = top + height + 12;
+  const margin = 8;
+  const width = Math.min(rect.width, Math.max(160, window.innerWidth - margin * 2));
+  const left = Math.min(Math.max(rect.left, margin), Math.max(margin, window.innerWidth - width - margin));
+  return {
+    top,
+    left,
+    width,
+    maxHeight: Math.max(96, viewportBottom - top - 12),
+  };
+}
+
 export function useForgeSessionState() {
   const router = useRouter();
   const [chamber, setChamber] = useState<Chamber>("entrance");
@@ -427,16 +474,7 @@ export function useForgeSessionState() {
       const el = commanderSearchRef.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      const viewportBottom = window.visualViewport
-        ? window.visualViewport.offsetTop + window.visualViewport.height
-        : window.innerHeight;
-      const top = rect.bottom + 5;
-      setCommanderSearchRect({
-        top,
-        left: rect.left,
-        width: rect.width,
-        maxHeight: Math.max(96, viewportBottom - top - 12),
-      });
+      setCommanderSearchRect(placeCommanderSearchDropdown(rect));
     };
     updateRect();
     window.addEventListener("resize", updateRect);
@@ -552,16 +590,7 @@ export function useForgeSessionState() {
       const el = secondCommanderSearchRef.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      const viewportBottom = window.visualViewport
-        ? window.visualViewport.offsetTop + window.visualViewport.height
-        : window.innerHeight;
-      const top = rect.bottom + 5;
-      setSecondCommanderSearchRect({
-        top,
-        left: rect.left,
-        width: rect.width,
-        maxHeight: Math.max(96, viewportBottom - top - 12),
-      });
+      setSecondCommanderSearchRect(placeCommanderSearchDropdown(rect));
     };
     updateRect();
     window.addEventListener("resize", updateRect);
@@ -576,6 +605,7 @@ export function useForgeSessionState() {
     };
   }, [secondCommanderDropdownOpen]);
   const [randomizingCommander, setRandomizingCommander] = useState(false);
+  const [randomCommanderError, setRandomCommanderError] = useState("");
   const [randomCommanderOptions, setRandomCommanderOptions] = useState<
     CommanderOption[]
   >([]);
@@ -1173,7 +1203,7 @@ export function useForgeSessionState() {
       const data = await guidedAccountRequest("PUT", { draft: snapshot, baseRevision: guidedRevisionRef.current });
       guidedRevisionRef.current = data.revision;
       writeGuidedLocal(guidedSnapshotRef.current || snapshot);
-      setGuidedSaveStatus("Saved to your account");
+      setGuidedSaveStatus(guestMode ? "Saved for this browser. Sign in any time to keep it." : "Saved to your account");
     });
     guidedSaveQueueRef.current = operation;
     operation.catch((error) => setGuidedSaveStatus(error.message));
@@ -3953,6 +3983,7 @@ export function useForgeSessionState() {
   // selectCommander path a manual search result uses.
   async function chooseRandomCommander() {
     setRandomizingCommander(true);
+    setRandomCommanderError("");
     setCommanderSearchOpen(false);
     setCommanderResults([]);
     try {
@@ -3966,23 +3997,30 @@ export function useForgeSessionState() {
         candidates.length < 9 && attempts < 30;
         attempts += 1
       ) {
-        const response = await fetch(
-          `https://api.scryfall.com/cards/random?q=${query}`,
-        );
-        if (!response.ok) continue;
-        const option = commanderOptionFromCard(await response.json());
-        if (!exclusions.has(option.name)) {
-          exclusions.add(option.name);
-          candidates.push(option);
+        // A rate-limited Scryfall response often has no CORS header, so
+        // fetch throws instead of returning a status. One failure must not
+        // throw away commanders already drawn.
+        try {
+          const response = await fetch(
+            `https://api.scryfall.com/cards/random?q=${query}`,
+          );
+          if (!response.ok) continue;
+          const option = commanderOptionFromCard(await response.json());
+          if (!exclusions.has(option.name)) {
+            exclusions.add(option.name);
+            candidates.push(option);
+          }
+        } catch {
+          continue;
         }
       }
       const starters = arrangeCommanderStarters(candidates).slice(0, 3);
-      if (starters.length !== 3)
-        throw new Error("Could not draw three unique commanders");
+      if (starters.length !== 3) {
+        setRandomCommanderError("Couldn't draw three commanders just now. Search for one, or try again.");
+        return;
+      }
       setRandomCommanderOptions(starters);
       setSeenRandomCommanders([...exclusions]);
-    } catch {
-      setCommanderQuery("");
     } finally {
       setRandomizingCommander(false);
     }
@@ -4074,7 +4112,11 @@ export function useForgeSessionState() {
   // clears the rest rather than showing analysis for a deck that isn't
   // this one — the workbench's own downstream structural/consistency
   // panels already re-derive fresh from whatever deck is actually loaded.
-  function landOnCompletedDecklist() {
+  function importedRevisionChanged(nativeReport: { changes?: { added?: unknown[]; trimmed?: unknown[] } } | null | undefined) {
+    const changes = nativeReport?.changes;
+    return Boolean(changes?.added?.length || changes?.trimmed?.length);
+  }
+  function landOnCompletedDecklist(options: { revealDeck?: boolean } = {}) {
     // Opening a deck should be immediate. In particular, do not carry a
     // forge milestone overlay (rune, crosshair, smoke, flare, or sparks)
     // across the transition into either a new or a saved Masterwork.
@@ -4082,11 +4124,13 @@ export function useForgeSessionState() {
     // anything else. Coaching and rival experiments are reached by an
     // explicit choice from there ("Want to conduct an experiment?" /
     // "This list is a masterwork!"), not shown by default.
+    // An unchanged imported or guided list has nothing to compare, and the
+    // swap station hides the deck (including Copy deck) until dismissed.
     setMilestoneMotion(null);
     setActiveForgeChapter(1);
     setDeckViewMode(preferredDecklistView());
     setSiteRail("decklist");
-    setSwapStationReviewed(false);
+    setSwapStationReviewed(Boolean(options.revealDeck));
     if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = false;
     window.scrollTo(0, 0);
     window.requestAnimationFrame(() => window.scrollTo(0, 0));
@@ -4486,7 +4530,7 @@ export function useForgeSessionState() {
         });
         await ceremonyReady;
         setChamber("workbench");
-        landOnCompletedDecklist();
+        landOnCompletedDecklist({ revealDeck: !importedRevisionChanged(nativeReport) });
       } else {
         const { nativeReport, cardPool, generationId: newGenerationId, preChoiceCoaching } = await (options.guided ? callGuidedCompletion() : callForgeGenerate({
           mode: "direct",
@@ -5455,6 +5499,7 @@ export function useForgeSessionState() {
     setSecondCommanderSearchRect,
     secondCommanderDropdownOpen,
     randomizingCommander,
+    randomCommanderError,
     setRandomizingCommander,
     randomCommanderOptions,
     setRandomCommanderOptions,

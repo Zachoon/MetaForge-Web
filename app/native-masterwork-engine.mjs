@@ -3816,7 +3816,13 @@ function repairUnsupportedBombs(input, candidate, analysis) {
   const gate = candidate.strategicCohesionGate || validateStrategicCohesion(candidate, intent, cohesionOptionsFor(analysis));
   if (!gate.unsupportedBombs?.length) return attachStrategicCohesion(candidate, analysis);
 
-  const bombNames = new Set(gate.unsupportedBombs.map(normalized));
+  // A guided finish and any other imported list already confirmed these
+  // cards. Cohesion may call a pet bomb "unsupported"; that is coaching,
+  // not permission to swap it for a card the player never chose.
+  const importedRowNames = new Set((input.importedRows || []).map((row) => normalized(row.name)));
+  const cutBombs = gate.unsupportedBombs.filter((name) => !importedRowNames.has(normalized(name)));
+  const bombNames = new Set(cutBombs.map(normalized));
+  if (!bombNames.size) return attachStrategicCohesion(candidate, analysis);
   let rows = candidate.rows.map((row) => ({ ...row }));
   let freed = 0;
   rows = rows.map((row) => {
@@ -3856,7 +3862,7 @@ function repairUnsupportedBombs(input, candidate, analysis) {
     deckText: rows.map((row) => `${row.quantity} ${row.name}`).join("\n"),
     evaluation,
     score: evaluation.score,
-    cohesionBombRepair: Object.freeze({ removedNames: [...gate.unsupportedBombs] }),
+    cohesionBombRepair: Object.freeze({ removedNames: cutBombs }),
   }, analysis, input);
   return attachStrategicCohesion(repaired, analysis);
 }

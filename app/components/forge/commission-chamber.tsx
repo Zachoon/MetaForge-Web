@@ -35,6 +35,7 @@ export function CommissionChamber() {
     commanderSearchRect,
     setCommanderSearchRetry,
     randomizingCommander,
+    randomCommanderError,
     chooseRandomCommander,
     randomCommanderOptions,
     setRandomCommanderOptions,
@@ -262,6 +263,7 @@ export function CommissionChamber() {
                         : selectedCommander ? "Choose another for me" : "Suggest a commander for me"}
                     </button>
                   )}
+                  {randomCommanderError && <p className="commander-suggest-error" role="alert">{randomCommanderError}</p>}
                   {!isComplete && (
                     <p className="first-session-suggest-note">No commander in mind? Suggest one. You still choose every card after that.</p>
                   )}
