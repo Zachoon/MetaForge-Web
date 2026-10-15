@@ -27,7 +27,7 @@ function environment() {
   sqlite.exec('CREATE TABLE api_rate_limits (user_key TEXT, endpoint TEXT, window_bucket INTEGER, requests INTEGER, updated_at TEXT, PRIMARY KEY(user_key,endpoint,window_bucket))');
   return {sqlite, DB:{prepare(sql) {let values=[]; return {bind(...args){values=args;return this;}, async first(){return sqlite.prepare(sql).get(...values)||null;}, async run(){const result=sqlite.prepare(sql).run(...values);return {meta:{changes:Number(result.changes)}};}};}}};
 }
-const draft = (overrides={}) => ({schemaVersion:1,format:'Commander',commander:{name:'Commander',colors:['W']},shell:{id:'auras'},preferences:{budget:'Under $100',maxCardPrice:5,commonsOnly:true,note:'Keep these picks'},session:{key:'Commander|Commander||auras',generationId:'pool',categories:['ramp'],categoryIndex:0,accepted:['Sol Ring'],declined:[],manualCards:{}},completion:{id:'aaaaaaaa-aaaa-aaaa-aaaa',deckId:'bbbbbbbb-bbbb-bbbb-bbbb',seed:123},...overrides});
+const draft = (overrides={}) => ({schemaVersion:1,format:'Commander',commander:{name:'Commander',colors:['W']},shell:{id:'auras'},preferences:{budget:'Under $100',maxCardPrice:5,commonsOnly:true,note:'Keep these picks'},session:{key:'Commander|Commander||auras',generationId:'pool',categories:['ramp'],categoryIndex:0,accepted:['Sol Ring'],declined:[],manualCards:{},finish:{stage:'review',basics:{Plains:98},manaConfirmed:true,landTarget:98}},completion:{id:'aaaaaaaa-aaaa-aaaa-aaaa',deckId:'bbbbbbbb-bbbb-bbbb-bbbb',seed:123},...overrides});
 const request = (method,body,user='alice') => new Request('https://example.test/api',{method,headers:{'content-type':'application/json',...(user?{'x-test-user':user}:{})},...(body?{body:JSON.stringify(body)}:{})});
 async function save(env, value=draft(), baseRevision=0,user='alice') {return api.handleGuidedDraft(request('PUT',{draft:value,baseRevision},user),env);}
 const finish = (env,baseRevision=1) => api.handleGuidedComplete(request('POST',{baseRevision,completionId:draft().completion.id}),env);
@@ -35,7 +35,7 @@ const success = () => Response.json({nativeReport:{selected:{deckText:'1 Command
 test('draft validation rejects malformed completion and payload preserves picks and filters',()=>{
   assert.equal(validGuidedDraft(draft()),true);
   assert.equal(validGuidedDraft(draft({completion:{id:'oops'}})),false);
-  const payload=guidedGenerationPayload(draft()); assert.equal(payload.deck,'1 Sol Ring');assert.equal(payload.maxCardPrice,5);assert.equal(payload.commonsOnly,true);assert.equal(payload.seed,123);
+  const payload=guidedGenerationPayload(draft()); assert.equal(payload.deck,'1 Sol Ring\n98 Plains');assert.equal(payload.maxCardPrice,5);assert.equal(payload.commonsOnly,true);assert.equal(payload.seed,123);
   assert.equal(guidedCompletionReview('1 Front // Back\n1 Plains',['Front']).missing.length,0);
 });
 test('account isolation, revision conflicts and discard tombstones',async()=>{
@@ -71,10 +71,76 @@ test('an interrupted completion can recover after its lease and stores one resul
 });
 test('a late expired request cannot overwrite a recovered completion',async()=>{
   const env=environment();await save(env);let release;
-  globalThis.__guidedGenerate=async()=>{await new Promise(resolve=>release=resolve);return Response.json({nativeReport:{selected:{deckText:'1 Commander\n1 Sol Ring\n98 Island'}}});};
+  globalThis.__guidedGenerate=async()=>{await new Promise(resolve=>release=resolve);return Response.json({nativeReport:{selected:{deckText:'1 Commander\n1 Sol Ring\n98 Plains'}}});};
   const late=finish(env);while(!release) await new Promise(resolve=>setImmediate(resolve));
   env.sqlite.exec("UPDATE guided_drafts SET updated_at=datetime('now','-16 minutes')");
   globalThis.__guidedGenerate=async()=>success();const recovered=await (await finish(env,2)).json();
   release();assert.equal((await late).status,202);
   assert.deepEqual(await (await finish(env,2)).json(),recovered);
+});
+
+// Guided finish: the deck only completes from a confirmed review with every
+// slot filled by the player, and the analysis may never add or cut a card.
+const withFinish = (finish, accepted=['Sol Ring']) => { const base=draft(); return draft({session:{...base.session,accepted,finish}}); };
+test('finishing is refused until the mana base is confirmed and every slot is filled',async()=>{
+  let calls=0; globalThis.__guidedGenerate=async()=>{calls++;return success();};
+  for (const finish of [undefined,{stage:'slots',basics:{Plains:98},manaConfirmed:true},{stage:'review',basics:{Plains:98},manaConfirmed:false},{stage:'review',basics:{Plains:90},manaConfirmed:true},{stage:'review',basics:{Plains:99},manaConfirmed:true}]) {
+    const env=environment(); assert.equal((await save(env,withFinish(finish))).status,200);
+    const response=await finish_(env); assert.equal(response.status,409); assert.equal((await response.json()).code,'SLOTS_OPEN');
+  }
+  assert.equal(calls,0,'the Forge never runs on an unconfirmed or incomplete deck');
+});
+const finish_ = (env,baseRevision=1) => api.handleGuidedComplete(request('POST',{baseRevision,completionId:draft().completion.id}),env);
+test('a confirmed deck is analysed exactly as chosen: an added or trimmed card stops the finish',async()=>{
+  const env=environment();await save(env);
+  let payload; globalThis.__guidedGenerate=async(req)=>{payload=await req.json();return Response.json({nativeReport:{selected:{deckText:'1 Commander\n1 Sol Ring\n97 Plains\n1 Forge Pick'}}});};
+  const refused=await finish_(env); assert.equal(refused.status,422); assert.deepEqual((await refused.json()).added,['Forge Pick']);
+  assert.equal(payload.deck,'1 Sol Ring\n98 Plains'); assert.equal(payload.mode,'imported');
+  assert.equal((await (await api.handleGuidedDraft(request('GET'),env)).json()).phase,'active');
+  globalThis.__guidedGenerate=async()=>Response.json({nativeReport:{selected:{deckText:'1 Commander\n1 Sol Ring\n98 Plains'},changes:{added:[],trimmed:[{name:'Sol Ring',cut:1}]}}});
+  assert.equal((await finish_(env,3)).status,422);
+});
+test('draft validation rejects a malformed finish block',()=>{
+  assert.equal(validGuidedDraft(withFinish({stage:'mana',basics:{},manaConfirmed:false,landTarget:36})),true);
+  assert.equal(validGuidedDraft(withFinish({stage:'done',basics:{}})),false);
+  assert.equal(validGuidedDraft(withFinish({stage:'mana',basics:{'Sol Ring':3}})),false);
+  assert.equal(validGuidedDraft(withFinish({stage:'mana',basics:{Plains:-1}})),false);
+});
+
+// Guests: the draft lives under the signed anonymous cookie, and signing in
+// claims it into the account through /api/account/claim-guest.
+import { createHmac } from 'node:crypto';
+const SECRET='test-guest-secret';
+const guestId='11111111-2222-3333-4444-555555555555';
+const sign=(value)=>createHmac('sha256',SECRET).update(value).digest('hex');
+const guestCookie=`mf_guest=${encodeURIComponent(`${guestId}.${sign(guestId)}`)}`;
+const guestRequest=(method,body,cookie=guestCookie)=>new Request('https://example.test/api',{method,headers:{'content-type':'application/json',...(cookie?{cookie}:{})},...(body?{body:JSON.stringify(body)}:{})});
+const guestEnv=()=>{const env=environment();env.GUEST_SESSION_SECRET=SECRET;env.sqlite.exec(readFileSync(join(root,'migrations/0011_forge_generations.sql'),'utf8'));return env;};
+test('a guest saves and resumes a guided draft under their signed cookie only',async()=>{
+  const env=guestEnv();
+  assert.equal((await api.handleGuidedDraft(guestRequest('PUT',{draft:draft(),baseRevision:0}),env)).status,200);
+  const mine=await (await api.handleGuidedDraft(guestRequest('GET'),env)).json();
+  assert.equal(mine.owner,'guest'); assert.equal(mine.guest,true); assert.deepEqual(mine.draft.session.accepted,['Sol Ring']);
+  assert.match(mine.guestClaimToken,new RegExp(`^${guestId}\\.`));
+  assert.equal((await api.handleGuidedDraft(guestRequest('GET',null,`mf_guest=${guestId}.forged`),env)).status,401,'a forged cookie is not a session');
+  assert.equal((await api.handleGuidedDraft(guestRequest('GET',null,null),env)).status,401);
+  assert.equal(env.sqlite.prepare('SELECT user_key FROM guided_drafts').get().user_key,`guest:${guestId}`);
+});
+test('signing in claims the guest build into the account, once, and never over an unfinished account build',async()=>{
+  const env=guestEnv();
+  await api.handleGuidedDraft(guestRequest('PUT',{draft:draft(),baseRevision:0}),env);
+  env.sqlite.prepare('INSERT INTO forge_generations (generation_id,user_key,schema_version,payload_json,created_at,expires_at) VALUES (?,?,?,?,CURRENT_TIMESTAMP,?)').run('pool',`guest:${guestId}`,1,'{}',Date.now()+60000);
+  const token=(await (await api.handleGuidedDraft(guestRequest('GET'),env)).json()).guestClaimToken;
+  const claim=(user,guidedClaimToken=token)=>api.handleGuidedClaim(request('POST',{guidedClaimToken},user),env);
+  assert.equal((await claim(null)).status,401);
+  assert.equal((await claim('alice',`${guestId}.bad`)).status,404);
+  const claimed=await claim('alice'); assert.equal(claimed.status,200); assert.equal((await claimed.json()).phase,'active');
+  const account=await (await api.handleGuidedDraft(request('GET'),env)).json();
+  assert.deepEqual(account.draft.session.accepted,['Sol Ring']);
+  assert.equal(env.sqlite.prepare('SELECT user_key FROM forge_generations WHERE generation_id=?').get('pool').user_key,'alice','the pool follows the build');
+  assert.equal((await claim('alice')).status,404,'a claim token works once');
+  // An account with its own unfinished build keeps it.
+  await api.handleGuidedDraft(guestRequest('PUT',{draft:draft(),baseRevision:0}),env);
+  const conflict=await api.handleGuidedClaim(request('POST',{guidedClaimToken:token},'alice'),env);
+  assert.equal(conflict.status,409); assert.ok((await conflict.json()).guestDraft);
 });

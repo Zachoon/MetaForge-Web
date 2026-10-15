@@ -6,7 +6,13 @@
 
 - Picking a commander (with or without a shell) always starts the guided, card-by-card build. The one-shot "build my deck" path is no longer reachable from the UI; the generate endpoints stay in place server-side.
 - "Complete a decklist" is now a guided review: the pasted cards are kept as picks, and the walk-through opens on the roles the list leaves open.
-- Guests are asked to sign in before building (the guided loop is account-backed), so the "one free Forge" preview is no longer offered.
+- Guests build without an account: the guided build runs on an anonymous server-side session that starts after the human check, and signing in carries the build into the account.
+
+### The finish is guided too; nothing is auto-filled
+
+- After the last role step, the mana base is walked through: a land count with its reasons (curve, ramp, land payoffs), color-source targets from your picks' mana symbols, ranked nonbasic lands to add one at a time, and a basics split you adjust.
+- Open slots are filled from small packages (up to three cards) aimed at the roles still short, each with its reason. Take them, turn them down with a one-tap reason, or search for your own.
+- The deck finishes only from a review once every slot is confirmed. The server refuses to finish an incomplete deck, and refuses if analysis would add or cut a card you didn't choose.
 
 ### Suggestions explain themselves and learn from you
 

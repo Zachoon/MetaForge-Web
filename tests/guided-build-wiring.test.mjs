@@ -20,7 +20,9 @@ test("Build is guided-only: every Commander build goes through the guided loop, 
   const start = source.indexOf("const awaken = () =>");
   const awaken = source.slice(start, source.indexOf("\n  };", start));
   assert.match(awaken, /isCommanderFormat\(format\)/);
-  assert.match(awaken, /if \(guestMode\) \{\s*window\.location\.assign\(signInResumeHref\);/);
+  // Guests build too (on an anonymous server session), so awaken never
+  // bounces them to sign in.
+  assert.doesNotMatch(awaken, /window\.location\.assign/);
   assert.match(awaken, /startGuidedBuild\(deck\.trim\(\) \? \{ seedDeck: deck \} : \{\}\)/);
   assert.doesNotMatch(awaken, /commitDirectForge|setChamber\("forging"\)/);
   // The only remaining commitDirectForge caller is the guided finish.
@@ -87,7 +89,8 @@ test("a reload offers an owner-scoped draft and finishing keeps it until a durab
   assert.match(source, /const GUIDED_STORAGE_KEY = "metaforge-guided-session";/);
   const restoreStart = source.indexOf("const guidedRestoredRef");
   const restore = source.slice(restoreStart, source.indexOf("}, [guestMode]);", restoreStart));
-  assert.match(restore, /if \(guestMode \|\| guidedRestoredRef\.current\) return;/);
+  // Guests restore too: their draft lives under the anonymous guest session.
+  assert.match(restore, /if \(guidedRestoredRef\.current\) return;/);
   assert.match(restore, /guidedAccountRequest\("GET"\)/);
   assert.match(restore, /validGuidedDraft\(local\.draft\)/);
   assert.match(restore, /setGuidedAvailableDraft/);
@@ -231,9 +234,40 @@ test("the guided ledger scales fundamentals targets to the request's real deck s
   assert.match(ledgerCall, /deckTarget: targetDeckSize\(input\.format\)/);
 });
 
-test("both guided endpoints require an authenticated account and a rate limit", () => {
+test("every guided endpoint resolves an account or a signed guest session and is rate limited", () => {
   const source = read("worker/forge-guided-build.ts");
-  assert.equal((source.match(/await userKey\(request, env\)/g) || []).length, 2);
-  assert.equal((source.match(/checkRateLimit\(/g) || []).length, 2);
-  assert.match(source, /Authenticated account required/);
+  assert.equal((source.match(/await guidedStartIdentity\(request, env, body\?\.turnstileToken\)/g) || []).length, 1, "start is the only place a guest session can be minted");
+  assert.equal((source.match(/await guidedIdentity\(request, env\)/g) || []).length, 2, "next and finish need an existing account or guest session");
+  assert.equal((source.match(/await guestStepLimit\(request, env, identity\)/g) || []).length, 2);
+  assert.equal((source.match(/checkRateLimit\(/g) || []).length, 3);
+  const identity = read("worker/guided-identity.ts");
+  assert.match(identity, /validateTurnstile\(request, env\.TURNSTILE_SECRET_KEY, turnstileToken\)/);
+  assert.match(identity, /"guided-guest-start-network"/);
+  assert.match(identity, /"guided-guest-complete"/);
+});
+
+test("the last step opens the guided finish, and the deck only finishes from a confirmed review", () => {
+  const source = read("app/forge-session-context.tsx");
+  const category = source.slice(source.indexOf("function finishGuidedCategory()"), source.indexOf("// ── Guided finish"));
+  assert.match(category, /void enterGuidedFinish\(\);/);
+  assert.doesNotMatch(category, /finishGuidedBuild\(false\)/);
+  const finish = source.slice(source.indexOf("async function finishGuidedBuild("), source.indexOf("function exitGuidedBuild()"));
+  assert.match(finish, /guidedSession\.finish\.stage !== "review" \|\| !guidedSession\.finish\.manaConfirmed \|\| status\.open \|\| status\.over/);
+  assert.match(finish, /guidedPickText\(\{ session: guidedSession \}\)/);
+  const worker = read("worker/guided-draft.ts");
+  assert.match(worker, /const gate = finishGate\(/);
+  assert.match(worker, /review\.added\.length \|\| trimmed\.length/);
+  const index = read("worker/index.ts");
+  assert.match(index, /"\/api\/forge\/guided\/finish"\) return await handleForgeGuidedFinish/);
+});
+
+test("guests start guided builds through the human check, and the claim moves the build into the account", () => {
+  const source = read("app/forge-session-context.tsx");
+  const start = source.slice(source.indexOf("async function startGuidedBuild("), source.indexOf("async function requestGuidedOffer("));
+  assert.match(start, /if \(guestMode && !turnstileToken\) \{\s*runWhenVerified\("awaken"\);/);
+  assert.match(start, /\.\.\.\(guestMode \? \{ turnstileToken \} : \{\}\)/);
+  assert.match(source, /claimGuided=\$\{encodeURIComponent\(guestGuidedClaimToken\)\}/);
+  assert.match(source, /JSON\.stringify\(\{ guidedClaimToken: claimGuided \}\)/);
+  const index = read("worker/index.ts");
+  assert.match(index, /peek\?\.guidedClaimToken \? handleGuidedClaim\(request, env\) : handleGuestClaim\(request, env\)/);
 });

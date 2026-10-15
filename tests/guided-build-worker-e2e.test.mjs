@@ -152,9 +152,11 @@ const startBody = (extra = {}) => ({
   ...extra,
 });
 
-test("start and next both refuse an unauthenticated caller", async () => {
-  assert.equal((await post(handlers.handleForgeGuidedStart, startBody(), null)).status, 401);
+test("without an account, start needs guest support configured and next/finish need a guest session", async () => {
+  // No GUEST_SESSION_SECRET / TURNSTILE_SECRET_KEY in this env: guests are refused cleanly.
+  assert.equal((await post(handlers.handleForgeGuidedStart, startBody(), null)).status, 503);
   assert.equal((await post(handlers.handleForgeGuidedNext, { generationId: "x", category: "ramp" }, null)).status, 401);
+  assert.equal((await post(handlers.handleForgeGuidedFinish, { generationId: "x", stage: "mana" }, null)).status, 401);
 });
 
 test("start rejects non-Commander formats, a missing commander, and a focus id that isn't a real shell", async () => {
@@ -316,4 +318,103 @@ test("next refuses another account's session, an unknown session, and a category
   assert.equal((await post(handlers.handleForgeGuidedNext, good, "someone-else")).status, 404);
   assert.equal((await post(handlers.handleForgeGuidedNext, { ...good, generationId: "nope" }, "owner")).status, 404);
   assert.equal((await post(handlers.handleForgeGuidedNext, { ...good, category: "lands" }, "owner")).status, 400);
+});
+
+test("the guided finish proposes a reasoned mana base and fills open slots only with small packages the player confirms", async () => {
+  const started = await (await post(handlers.handleForgeGuidedStart, startBody(), "finish-user")).json();
+  const accepted = [];
+  for (const category of started.categorySequence) {
+    for (let pick = 0; pick < 4; pick += 1) {
+      const step = await (await post(handlers.handleForgeGuidedNext, { generationId: started.generationId, category, acceptedNames: accepted, declinedNames: [] }, "finish-user")).json();
+      if (!step.offer) break;
+      accepted.push(step.offer.name);
+    }
+  }
+  const finishCall = (body) => post(handlers.handleForgeGuidedFinish, { generationId: started.generationId, acceptedNames: accepted, ...body }, "finish-user");
+  assert.equal((await finishCall({ stage: "everything" })).status, 400);
+
+  const manaResponse = await finishCall({ stage: "mana" });
+  assert.equal(manaResponse.status, 200, await manaResponse.clone().text());
+  const mana = await manaResponse.json();
+  assert.ok(mana.landTarget >= 30 && mana.landTarget <= 44, `land target ${mana.landTarget}`);
+  assert.ok(mana.landCount.reasons.length >= 2, "the land count explains itself");
+  assert.equal(Object.values(mana.basics).reduce((sum, count) => sum + count, 0), mana.landTarget, "basics fill exactly the land slots no picked land covers");
+  assert.deepEqual(Object.keys(mana.basics), ["Plains"], "a mono-white deck proposes only Plains");
+  assert.ok(mana.utilityLands.length > 0 && mana.utilityLands.every((land) => land.name.startsWith("Haven") && land.reason));
+
+  // Taking a utility land shrinks the basics instead of growing the land count.
+  const withLand = await (await finishCall({ stage: "mana", acceptedNames: [...accepted, mana.utilityLands[0].name], landTarget: mana.landTarget })).json();
+  assert.equal(withLand.landsPicked.length, 1);
+  assert.equal(Object.values(withLand.basics).reduce((sum, count) => sum + count, 0), mana.landTarget - 1);
+  // The player's own land count is honoured.
+  const custom = await (await finishCall({ stage: "mana", landTarget: 34 })).json();
+  assert.equal(custom.landTarget, 34);
+  assert.equal(custom.basics.Plains, 34);
+
+  const basics = mana.basics;
+  const slots = await (await finishCall({ stage: "slots", basics })).json();
+  assert.equal(slots.status.open, 100 - 1 - accepted.length - mana.landTarget);
+  assert.ok(slots.package.length >= 1 && slots.package.length <= 3, "a small package, never the whole rest of the deck");
+  for (const card of slots.package) {
+    assert.ok(!accepted.includes(card.name), `${card.name} is new`);
+    assert.ok(card.category && card.explanation, "each package card says which role it fills and why");
+  }
+  assert.equal(new Set(slots.package.map((card) => card.name)).size, slots.package.length);
+  // Turning one down replaces it rather than returning it.
+  const declined = slots.package[0].name;
+  const again = await (await finishCall({ stage: "slots", basics, declinedNames: [declined] })).json();
+  assert.ok(!again.package.some((card) => card.name === declined));
+  // A complete deck has nothing left to offer.
+  const full = await (await finishCall({ stage: "slots", basics: { Plains: 99 - accepted.length } })).json();
+  assert.equal(full.status.open, 0);
+  assert.deepEqual(full.package, []);
+  // Another account cannot read this session.
+  assert.equal((await post(handlers.handleForgeGuidedFinish, { generationId: started.generationId, stage: "mana" }, "someone-else")).status, 404);
+});
+
+test("a guest starts a guided build after Turnstile, gets a signed session cookie, and continues on it", async () => {
+  const { createHmac } = await import("node:crypto");
+  const guestEnv = { ...env, TURNSTILE_SECRET_KEY: "turnstile-secret", GUEST_SESSION_SECRET: "guest-secret" };
+  const previousFetch = globalThis.fetch;
+  let verifications = 0;
+  globalThis.fetch = async (url, init) => {
+    if (String(url).includes("challenges.cloudflare.com")) {
+      verifications += 1;
+      const form = init.body;
+      return Response.json({ success: form.get("response") === "good-token-123" });
+    }
+    return previousFetch(url, init);
+  };
+  try {
+    const call = (handler, body, cookie) => handler(new Request("https://test.invalid/api", {
+      method: "POST",
+      headers: { "content-type": "application/json", ...(cookie ? { cookie } : {}) },
+      body: JSON.stringify(body),
+    }), guestEnv);
+    assert.equal((await call(handlers.handleForgeGuidedStart, startBody())).status, 400, "no token, no guest session");
+    assert.equal((await call(handlers.handleForgeGuidedStart, startBody({ turnstileToken: "bad-token-123" }))).status, 400);
+    const response = await call(handlers.handleForgeGuidedStart, startBody({ turnstileToken: "good-token-123" }));
+    assert.equal(response.status, 200, await response.clone().text());
+    const setCookie = response.headers.get("set-cookie");
+    assert.match(setCookie, /^mf_guest=[^;]+; Max-Age=86400; Path=\/; HttpOnly; Secure; SameSite=Lax$/);
+    const cookie = setCookie.split(";")[0];
+    const [id, signature] = decodeURIComponent(cookie.slice("mf_guest=".length)).split(".");
+    assert.equal(signature, createHmac("sha256", "guest-secret").update(id).digest("hex"));
+    const started = await response.json();
+    assert.equal(started.guest, true);
+    assert.equal(started.owner, "guest");
+    assert.match(started.guestClaimToken, new RegExp(`^${id}\\.[0-9a-f]{64}$`));
+    assert.equal(env.DB.rows.get(started.generationId).user_key, `guest:${id}`);
+
+    const next = await call(handlers.handleForgeGuidedNext, { generationId: started.generationId, category: "ramp", acceptedNames: [], declinedNames: [] }, cookie);
+    assert.equal(next.status, 200);
+    assert.ok((await next.json()).offer?.name);
+    const finish = await call(handlers.handleForgeGuidedFinish, { generationId: started.generationId, stage: "mana", acceptedNames: [] }, cookie);
+    assert.equal(finish.status, 200);
+    assert.equal((await call(handlers.handleForgeGuidedNext, { generationId: started.generationId, category: "ramp" })).status, 401, "next never mints a guest session");
+    assert.equal((await call(handlers.handleForgeGuidedNext, { generationId: started.generationId, category: "ramp" }, `mf_guest=${id}.forged`)).status, 401);
+    assert.equal(verifications, 2, "Turnstile is checked only at the start");
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
 });

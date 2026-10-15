@@ -99,6 +99,7 @@ import {
 } from "./commander-lane-scoring.mjs";
 import { commanderShellOptions } from "./strategic-intent.mjs";
 import { guidedPickText, guidedSeedNames, validGuidedDraft } from "./guided-draft.mjs";
+import { basicsTotal, finishStatus } from "./guided-finish.mjs";
 
 // Mirrors commanderShellOptions' (strategic-intent.mjs) return shape — kept
 // local since nothing outside this context needs the type yet.
@@ -119,6 +120,29 @@ type GuidedReason = {
 // The short "why this card" line (worker/forge-guided-build.ts → explainOffer).
 type GuidedExplanation = { role: string; worksWith: string[]; tradeOff: string; learned: string[] } | null;
 type GuidedDeclineFeedback = { name: string; reason: string | null };
+// The guided finish (worker/forge-guided-build.ts → handleForgeGuidedFinish):
+// mana base first, then the open slots, then a review. Every number here is
+// a proposal the player adjusts; the deck is complete only after they
+// confirm every slot (app/guided-finish.mjs → finishGate).
+type GuidedPackageCard = GuidedOffer & { category: string; explanation: GuidedExplanation; reason: GuidedReason };
+type GuidedManaProposal = {
+  landTarget: number;
+  landCount: { count: number; baseline: number; reasons: string[] };
+  landsPicked: string[];
+  basicSlots: number;
+  basics: Record<string, number>;
+  colorSources: Array<{ color: string; pips: number; share: number; target: number; current: number }>;
+  utilityLands: Array<{ name: string; typeLine: string; oracleText: string; produces: string[]; reason: string }>;
+};
+type GuidedFinish = {
+  stage: "mana" | "slots" | "review";
+  basics: Record<string, number>;
+  manaConfirmed: boolean;
+  landTarget: number | null;
+  proposal?: GuidedManaProposal;
+  package?: GuidedPackageCard[];
+  status?: { deckTarget: number; confirmed: number; open: number; over: number } | null;
+};
 const GUIDED_STORAGE_KEY = "metaforge-guided-session";
 
 type GuidedSession = {
@@ -149,6 +173,8 @@ type GuidedSession = {
   exhausted: boolean;
   remainingCandidates: number;
   ledger: GuidedLedgerRow[];
+  // Present once the player reaches the finish. Optional so older drafts restore.
+  finish?: GuidedFinish;
 };
 import {
   FORMAT_PREVIEWS,
@@ -411,6 +437,9 @@ export function useForgeSessionState() {
   function setGuidedConflict(value: any) { guidedConflictRef.current = value; setGuidedConflictState(value); }
   const [guidedReview, setGuidedReview] = useState<any>(null);
   const guidedOwnerRef = useRef("");
+  // Signed token that lets this guest's guided build follow them into an
+  // account after sign-in (worker/guided-draft.ts → handleGuidedClaim).
+  const [guestGuidedClaimToken, setGuestGuidedClaimToken] = useState("");
   const guidedRevisionRef = useRef(0);
   const guidedSnapshotRef = useRef<any>(null);
   const guidedSaveQueueRef = useRef<Promise<void>>(Promise.resolve());
@@ -1196,7 +1225,7 @@ export function useForgeSessionState() {
         guidedOwnerRef.current = account.owner;
         guidedRevisionRef.current = account.revision;
         if (account.draft) setGuidedAvailableDraft(account);
-        setGuidedSaveStatus("Account connected");
+        setGuidedSaveStatus(account.guest ? "Saved for this browser. Sign in any time to keep it." : "Account connected");
       } catch (error) { setGuidedError(error instanceof Error ? error.message : "Sign in again to reconnect."); }
       return;
     }
@@ -1256,8 +1285,14 @@ export function useForgeSessionState() {
   const guidedSessionRef = useRef<GuidedSession | null>(guidedSession);
   guidedSessionRef.current = guidedSession;
   async function startGuidedBuild(options: { seedDeck?: string } = {}) {
-    if (!selectedCommander || guestMode || !isCommanderFormat(format) || guidedLoading || guidedFinishingRef.current || guidedConflict) return;
-    if (!guidedOwnerRef.current || guidedAvailableDraft) {
+    if (!selectedCommander || !isCommanderFormat(format) || guidedLoading || guidedFinishingRef.current || guidedConflict) return;
+    // Guests build without an account: the server keys their session to a
+    // signed anonymous cookie it mints here, after the human check.
+    if (guestMode && !turnstileToken) {
+      runWhenVerified("awaken");
+      return;
+    }
+    if ((!guestMode && !guidedOwnerRef.current) || guidedAvailableDraft) {
       setGuidedError(guidedAvailableDraft ? "Resume or discard your saved build before starting another." : "Reconnect your account before starting this build.");
       return;
     }
@@ -1299,7 +1334,16 @@ export function useForgeSessionState() {
         budget,
         maxCardPrice,
         commonsOnly,
+        ...(guestMode ? { turnstileToken } : {}),
       });
+      if (guestMode) {
+        // Turnstile tokens are single-use; the guest cookie carries the session now.
+        resetGuestVerificationAfterFailure();
+        guidedOwnerRef.current = "guest";
+        guidedRevisionRef.current = 0;
+        if (typeof data.guestClaimToken === "string") setGuestGuidedClaimToken(data.guestClaimToken);
+        setGuidedSaveStatus("Saved for this browser. Sign in any time to keep it.");
+      }
       setGuidedSession({
         key: guidedKey,
         generationId: data.generationId,
@@ -1316,6 +1360,7 @@ export function useForgeSessionState() {
       trackLaunchEvent("guided_started", { format, shell: selectedShell?.id || "none" });
     } catch (error) {
       setGuidedError(error instanceof Error ? error.message : "The guided build could not be started.");
+      if (guestMode) resetGuestVerificationAfterFailure();
       trackLaunchEvent("guided_failed", { stage: "start" });
     } finally {
       setGuidedLoading(false);
@@ -1407,6 +1452,14 @@ export function useForgeSessionState() {
     if (commanderNames.includes(lower)) return;
     if (guidedSession.accepted.some((entry) => entry.toLocaleLowerCase("en") === lower)) return;
     trackGuidedStep("manual");
+    if (guidedSession.finish) {
+      void requestGuidedFinish({
+        ...guidedSession,
+        accepted: [...guidedSession.accepted, name],
+        manualCards: { ...guidedSession.manualCards, [lower]: rawCard },
+      }, guidedSession.finish.stage === "mana" ? "mana" : "slots");
+      return;
+    }
     void requestGuidedOffer(guidedSession, {
       accepted: [...guidedSession.accepted, name],
       manualCards: { ...guidedSession.manualCards, [lower]: rawCard },
@@ -1415,6 +1468,10 @@ export function useForgeSessionState() {
   function removeGuidedPick(name: string) {
     if (!guidedSession || guidedLoading || guidedConflict || guidedCompletionRef.current) return;
     trackGuidedStep("remove");
+    if (guidedSession.finish) {
+      void requestGuidedFinish({ ...guidedSession, accepted: guidedSession.accepted.filter((entry) => entry !== name) }, guidedSession.finish.stage === "mana" ? "mana" : "slots");
+      return;
+    }
     void requestGuidedOffer(guidedSession, {
       accepted: guidedSession.accepted.filter((entry) => entry !== name),
     });
@@ -1422,17 +1479,148 @@ export function useForgeSessionState() {
   function goToGuidedCategory(index: number) {
     if (!guidedSession || guidedLoading || guidedConflict || guidedCompletionRef.current) return;
     if (index < 0 || index >= guidedSession.categories.length) return;
-    void requestGuidedOffer(guidedSession, { categoryIndex: index, declined: [] });
+    // Going back to a role step leaves the finish; the mana and slot choices
+    // already made are kept and re-proposed around any new picks.
+    void requestGuidedOffer({ ...guidedSession, finish: guidedSession.finish ? { ...guidedSession.finish, stage: "mana", manaConfirmed: false } : undefined }, { categoryIndex: index, declined: [] });
   }
   function finishGuidedCategory() {
     if (!guidedSession || guidedLoading || guidedConflict) return;
     if (guidedCompletionRef.current) { void finishGuidedBuild(); return; }
     trackGuidedStep("next");
     if (guidedSession.categoryIndex + 1 >= guidedSession.categories.length) {
-      finishGuidedBuild(false);
+      void enterGuidedFinish();
       return;
     }
     goToGuidedCategory(guidedSession.categoryIndex + 1);
+  }
+
+  // ── Guided finish ─────────────────────────────────────────────────────
+  // Replaces the old "the Forge fills lands and open slots" handoff. The
+  // server proposes (land count with reasons, color sources, utility lands,
+  // a basics split, then small packages for the open slots); the player
+  // adjusts and confirms each, and finishGuidedBuild only runs once every
+  // slot is confirmed.
+  const guidedDeckTarget = targetDeckSize(format);
+  const guidedCommanderCount = selectedSecondCommander ? 2 : 1;
+  function guidedFinishStatus(session: GuidedSession | null = guidedSession) {
+    return finishStatus({
+      deckTarget: guidedDeckTarget,
+      commanderCount: guidedCommanderCount,
+      picks: session?.accepted || [],
+      basics: session?.finish?.basics || {},
+    });
+  }
+  async function requestGuidedFinish(session: GuidedSession, stage: "mana" | "slots", options: { landTarget?: number | null } = {}) {
+    const previous: GuidedFinish = session.finish || { stage, basics: {}, manaConfirmed: false, landTarget: null };
+    const landTarget = options.landTarget !== undefined ? options.landTarget : previous.landTarget;
+    const pending: GuidedSession = { ...session, finish: { ...previous, stage, landTarget } };
+    setGuidedSession(pending);
+    writeGuidedLocal(guidedSnapshot(pending));
+    setGuidedLoading(true);
+    setGuidedError("");
+    try {
+      const data = await guidedFetch("/api/forge/guided/finish", {
+        stage,
+        generationId: session.generationId,
+        acceptedNames: session.accepted,
+        declinedNames: session.declined,
+        manualCards: Object.values(session.manualCards),
+        declineFeedback: session.declineFeedback || [],
+        playerCompass,
+        basics: previous.basics,
+        landTarget,
+      });
+      const basics = stage === "mana" && (!previous.manaConfirmed || options.landTarget !== undefined || !basicsTotal(previous.basics))
+        ? (data.basics || {}) as Record<string, number>
+        : previous.basics;
+      let finish: GuidedFinish = {
+        ...previous,
+        stage,
+        landTarget: stage === "mana" ? Number(data.landTarget) : landTarget,
+        basics,
+        manaConfirmed: stage === "mana" ? false : previous.manaConfirmed,
+        proposal: stage === "mana" ? data : previous.proposal,
+        package: stage === "slots" ? (Array.isArray(data.package) ? data.package : []) : previous.package,
+      };
+      const status = finishStatus({ deckTarget: guidedDeckTarget, commanderCount: guidedCommanderCount, picks: session.accepted, basics: finish.basics });
+      finish = { ...finish, status };
+      // Every slot is filled with something the player chose: move to review.
+      if (stage === "slots" && status.open === 0 && status.over === 0) finish = { ...finish, stage: "review", package: [] };
+      const settled = { ...session, finish };
+      setGuidedSession(settled);
+      writeGuidedLocal(guidedSnapshot(settled));
+    } catch (error) {
+      setGuidedError(error instanceof Error ? error.message : "The guided finish could not continue.");
+      trackLaunchEvent("guided_failed", { stage: `finish-${stage}` });
+    } finally {
+      setGuidedLoading(false);
+    }
+  }
+  async function enterGuidedFinish() {
+    if (!guidedSession || guidedLoading || guidedConflict || guidedCompletionRef.current) return;
+    trackGuidedStep("finish");
+    await requestGuidedFinish(guidedSession, guidedSession.finish?.manaConfirmed ? "slots" : "mana");
+  }
+  function setGuidedLandTarget(value: number) {
+    if (!guidedSession?.finish || guidedLoading || guidedBuildLockedNow()) return;
+    const landTarget = Math.max(0, Math.min(guidedDeckTarget - guidedCommanderCount, Math.round(value)));
+    void requestGuidedFinish(guidedSession, "mana", { landTarget });
+  }
+  function adjustGuidedBasic(name: string, delta: number) {
+    if (!guidedSession?.finish || guidedLoading || guidedBuildLockedNow()) return;
+    const current = guidedSession.finish.basics[name] || 0;
+    const nextCount = Math.max(0, Math.min(99, current + delta));
+    const basics = { ...guidedSession.finish.basics, [name]: nextCount };
+    if (!nextCount) delete basics[name];
+    const finish = { ...guidedSession.finish, basics, manaConfirmed: false, stage: "mana" as const };
+    const next = { ...guidedSession, finish: { ...finish, status: guidedFinishStatus({ ...guidedSession, finish }) } };
+    setGuidedSession(next);
+    writeGuidedLocal(guidedSnapshot(next));
+  }
+  function acceptGuidedUtilityLand(name: string) {
+    if (!guidedSession?.finish || guidedLoading || guidedBuildLockedNow()) return;
+    if (guidedSession.accepted.some((entry) => entry.toLocaleLowerCase("en") === name.toLocaleLowerCase("en"))) return;
+    trackGuidedStep("utility-land");
+    // A nonbasic land takes one of the land slots, so the server re-proposes
+    // the basics around it rather than growing the land count.
+    void requestGuidedFinish({ ...guidedSession, accepted: [...guidedSession.accepted, name], finish: { ...guidedSession.finish, manaConfirmed: false, basics: {} } }, "mana");
+  }
+  function confirmGuidedMana() {
+    if (!guidedSession?.finish || guidedLoading || guidedBuildLockedNow()) return;
+    trackGuidedStep("confirm-mana");
+    void requestGuidedFinish({ ...guidedSession, finish: { ...guidedSession.finish, manaConfirmed: true } }, "slots");
+  }
+  function reopenGuidedMana() {
+    if (!guidedSession?.finish || guidedLoading || guidedBuildLockedNow()) return;
+    void requestGuidedFinish({ ...guidedSession, finish: { ...guidedSession.finish, manaConfirmed: false } }, "mana");
+  }
+  function acceptGuidedPackageCard(name: string) {
+    if (!guidedSession?.finish || guidedLoading || guidedBuildLockedNow()) return;
+    if (guidedSession.accepted.some((entry) => entry.toLocaleLowerCase("en") === name.toLocaleLowerCase("en"))) return;
+    trackGuidedStep("slot-accept");
+    void requestGuidedFinish({ ...guidedSession, accepted: [...guidedSession.accepted, name] }, "slots");
+  }
+  function acceptGuidedPackage() {
+    if (!guidedSession?.finish?.package?.length || guidedLoading || guidedBuildLockedNow()) return;
+    const open = guidedFinishStatus().open;
+    const names = guidedSession.finish.package.map((card) => card.name)
+      .filter((name) => !guidedSession.accepted.some((entry) => entry.toLocaleLowerCase("en") === name.toLocaleLowerCase("en")))
+      .slice(0, open);
+    if (!names.length) return;
+    trackGuidedStep("slot-accept-package");
+    void requestGuidedFinish({ ...guidedSession, accepted: [...guidedSession.accepted, ...names] }, "slots");
+  }
+  function declineGuidedPackageCard(name: string, reason: string | null = null) {
+    if (!guidedSession?.finish || guidedLoading || guidedBuildLockedNow()) return;
+    trackGuidedStep(reason ? `slot-decline:${reason}` : "slot-decline");
+    void requestGuidedFinish({
+      ...guidedSession,
+      declined: [...guidedSession.declined, name],
+      declineFeedback: [...(guidedSession.declineFeedback || []), { name, reason }].slice(-100),
+    }, "slots");
+  }
+  function guidedBuildLockedNow() {
+    return Boolean(guidedConflict || guidedCompletionRef.current);
   }
   // The finished guided picks are exactly a partial decklist, and the
   // imported/completion path already reserves the player's own cards and
@@ -1440,13 +1628,22 @@ export function useForgeSessionState() {
   // that existing, tested pipeline rather than new construction logic.
   async function finishGuidedBuild(skippedAhead = false) {
     if (!guidedSession || guidedLoading || guidedFinishingRef.current || guidedConflict) return;
+    // The deck is finished only after the player confirmed the mana base and
+    // every slot. Anything short of that goes to the next finish step instead.
+    if (!guidedCompletionRef.current) {
+      const status = guidedFinishStatus();
+      if (!guidedSession.finish || guidedSession.finish.stage !== "review" || !guidedSession.finish.manaConfirmed || status.open || status.over) {
+        void enterGuidedFinish();
+        return;
+      }
+    }
     guidedFinishingRef.current = true;
     window.clearTimeout(guidedSaveTimerRef.current);
     setGuidedLoading(true);
     const completion = guidedCompletionRef.current || { id: crypto.randomUUID(), deckId: crypto.randomUUID(), seed: Date.now() };
     guidedCompletionRef.current = completion;
     const seed = completion.seed;
-    const deckText = guidedSession.accepted.map((name) => `1 ${name}`).join("\n");
+    const deckText = guidedPickText({ session: guidedSession });
     trackLaunchEvent("guided_finished", {
       picks: guidedSession.accepted.length,
       reached: guidedSession.categoryIndex + 1,
@@ -1507,13 +1704,37 @@ export function useForgeSessionState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [guidedSession, format, selectedCommander, selectedSecondCommander, selectedShell, strategy, complexity, budget, maxCardPrice, commonsOnly, targetPowerTier, commissionNote, guidedConflict]);
   const guidedRestoredRef = useRef(false);
+  // True while a guest build is being claimed into this account, so the
+  // post-sign-in resume opens that build instead of starting a new one.
+  const guidedClaimingRef = useRef(false);
   useEffect(() => {
-    if (guestMode || guidedRestoredRef.current) return;
+    if (guidedRestoredRef.current) return;
     guidedRestoredRef.current = true;
     let cancelled = false;
     (async () => {
       try {
-        const account = await guidedAccountRequest("GET");
+        // Signed in from a guest build: move that build into this account first.
+        const claimGuided = guestMode ? null : new URLSearchParams(window.location.search).get("claimGuided");
+        if (claimGuided) {
+          guidedClaimingRef.current = true;
+          const params = new URLSearchParams(window.location.search);
+          params.delete("claimGuided");
+          window.history.replaceState({}, "", `${window.location.pathname}${params.toString() ? `?${params}` : ""}`);
+          const claim = await fetch("/api/account/claim-guest", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ guidedClaimToken: claimGuided }),
+          }).then(async (response) => ({ ok: response.ok, status: response.status, data: await response.json().catch(() => null) }));
+          if (!claim.ok && claim.status !== 404) setGuidedError(claim.data?.error || "Your guest build could not be moved to this account.");
+          if (!claim.ok) guidedClaimingRef.current = false;
+        }
+        const account = await guidedAccountRequest("GET").catch((error) => {
+          // A guest with no guided session yet has nothing saved; that's not an error.
+          if (guestMode) return null;
+          throw error;
+        });
+        if (!account) return;
+        if (account.guestClaimToken) setGuestGuidedClaimToken(account.guestClaimToken);
         if (cancelled) return;
         guidedOwnerRef.current = account.owner;
         guidedRevisionRef.current = account.revision;
@@ -1533,6 +1754,9 @@ export function useForgeSessionState() {
             if (local.revision === account.revision) setGuidedAvailableDraft({ ...account, draft: local.draft });
             else setGuidedConflict(account);
           }
+        } else if (account.draft && guidedClaimingRef.current && account.phase === "active" && validGuidedDraft(account.draft)) {
+          // The build this player started as a guest: pick up exactly where they were.
+          restoreGuidedDraft(account.draft);
         } else if (account.draft) setGuidedAvailableDraft(account);
         else if (legacy?.session) {
           const recovered = { ...legacy, schemaVersion: 1, session: { manualCards: {}, ...legacy.session }, preferences: { strategy, complexity, budget, maxCardPrice, commonsOnly, targetPowerTier, note: commissionNote } };
@@ -1553,14 +1777,10 @@ export function useForgeSessionState() {
     // deck from a commander in one click. Every Commander-format build,
     // with or without a shell and with or without a pasted list, goes
     // through the guided loop; a pasted list becomes a guided review of what
-    // it leaves open. Guests are sent to sign in first (the loop needs an
-    // account-backed session), and the one-shot generate endpoints are no
-    // longer called from here.
+    // it leaves open. Guests build too, on an anonymous server-side session
+    // that starts after the human check (startGuidedBuild), and the one-shot
+    // generate endpoints are no longer called from here.
     if (!isCommanderFormat(format) || !selectedCommander) return;
-    if (guestMode) {
-      window.location.assign(signInResumeHref);
-      return;
-    }
     if (guidedSession) { setChamber("guided-build"); return; }
     void startGuidedBuild(deck.trim() ? { seedDeck: deck } : {});
   };
@@ -1599,9 +1819,9 @@ export function useForgeSessionState() {
   };
   const pendingVerifiedActionRef = useRef<VerifiedAction | null>(null);
   function runWhenVerified(action: VerifiedAction) {
-    // awaken no longer spends a Turnstile token (guests are sent to sign in
-    // and the guided loop is account-backed), so it never asks for one.
-    if (!guestMode || turnstileToken || action === "awaken") {
+    // A guest's guided build starts with the human check; once their guided
+    // session exists, resuming it needs no new token.
+    if (!guestMode || turnstileToken || (action === "awaken" && guidedSession)) {
       verifiedActionsRef.current[action]();
       return;
     }
@@ -1618,6 +1838,7 @@ export function useForgeSessionState() {
   useEffect(() => {
     if (!resumeForgeAfterAuth || guestMode) return;
     setResumeForgeAfterAuth(false);
+    if (guidedClaimingRef.current) return;
     awaken();
     // State restored from the handoff has landed by this render; awaken now
     // uses that exact brief and the authenticated generation endpoint.
@@ -1640,7 +1861,9 @@ export function useForgeSessionState() {
       commander: selectedCommander,
       secondCommander: selectedSecondCommander,
     };
-    return `https://app.metaforge.gg/?resumeForge=${encodeURIComponent(encodeForgeResumeBrief(brief))}`;
+    // A guest's guided build travels with them: the account side claims it.
+    const claim = guestGuidedClaimToken ? `&claimGuided=${encodeURIComponent(guestGuidedClaimToken)}` : "";
+    return `https://app.metaforge.gg/?resumeForge=${encodeURIComponent(encodeForgeResumeBrief(brief))}${claim}`;
   })();
   const chapter =
     chamber === "entrance" || chamber === "archive"
@@ -4187,7 +4410,7 @@ export function useForgeSessionState() {
         // was offline. It can be reopened using the same deck grouping ID.
         setGuidedSession(null);
         clearStoredGuidedSession();
-        setGuidedSaveStatus("Finished deck saved to your account");
+        setGuidedSaveStatus(guestMode ? "Finished. Sign in to keep this deck." : "Finished deck saved to your account");
         try {
           const saved = await guidedAccountRequest("GET");
           guidedRevisionRef.current = saved.revision;
@@ -5440,6 +5663,17 @@ export function useForgeSessionState() {
     finishGuidedCategory,
     finishGuidedBuild,
     exitGuidedBuild,
+    enterGuidedFinish,
+    setGuidedLandTarget,
+    adjustGuidedBasic,
+    acceptGuidedUtilityLand,
+    confirmGuidedMana,
+    reopenGuidedMana,
+    acceptGuidedPackageCard,
+    acceptGuidedPackage,
+    declineGuidedPackageCard,
+    guidedFinishStatus: guidedFinishStatus(),
+    guestGuidedClaimToken,
     moveCard,
     deckWithout,
     preserveDeckEdit,

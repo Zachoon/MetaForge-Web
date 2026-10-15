@@ -89,10 +89,11 @@ test("picking a shell tells an account the build is step by step and relabels th
   assert.doesNotMatch(html, /shell-options-grid/);
 });
 
-test("a guest with a shell is asked to sign in for the step-by-step build, never offered a one-click build", () => {
+test("a guest with a shell builds step by step without an account, never offered a one-click build", () => {
   const html = render(context({ guestMode: true, selectedShell: shells[0] }));
-  assert.match(html, /Sign in and you(?:'|&#x27;)ll build this deck together, one step at a time/);
-  assert.match(html, /SIGN IN AND BUILD TOGETHER/);
+  assert.match(html, /You(?:'|&#x27;)ll build this deck together, one step at a time/);
+  assert.match(html, /BUILD IT TOGETHER/);
+  assert.match(html, /No account needed/);
   assert.doesNotMatch(html, /BUILD MY DECK|One free build/);
 });
 

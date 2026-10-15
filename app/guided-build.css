@@ -111,3 +111,26 @@
 .guided-draft-card div { display: flex; flex-wrap: wrap; gap: .65rem; }
 .guided-draft-card button { padding: .65rem 1rem; border: 1px solid #9c7646; border-radius: 6px; }
 .guided-save-status { margin: .5rem 1rem; color: #b4cfc1; font-size: .9rem; }
+
+/* Guided finish: mana base, open slots, review (guided-finish-panel.tsx). */
+.guided-finish { display: grid; gap: 0.9rem; padding: 1.1rem 1.2rem; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 14px; background: rgba(12, 14, 20, 0.55); }
+.guided-finish > small { letter-spacing: 0.14em; opacity: 0.7; }
+.guided-finish h2 { margin: 0; }
+.guided-finish h3 { margin: 0 0 0.25rem; font-size: 1rem; }
+.guided-finish section > p, .guided-finish > p { margin: 0 0 0.4rem; opacity: 0.85; }
+.guided-finish ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.45rem; }
+.guided-finish-reasons li::before { content: "· "; opacity: 0.6; }
+.guided-finish-landcount, .guided-finish-basics li { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.guided-finish-basics li b { min-width: 6.5rem; }
+.guided-finish-basics li span { min-width: 2ch; text-align: center; font-variant-numeric: tabular-nums; }
+.guided-finish-sources li { display: flex; justify-content: space-between; gap: 1rem; }
+.guided-finish-utility li, .guided-finish-package li { display: grid; grid-template-columns: 56px 1fr auto; gap: 0.75rem; align-items: center; }
+.guided-finish-package li { grid-template-columns: 96px 1fr; align-items: start; }
+.guided-finish-utility img { width: 56px; border-radius: 4px; }
+.guided-finish-package img { width: 96px; border-radius: 6px; }
+.guided-finish-utility li small { display: block; opacity: 0.75; }
+.guided-finish-package li em, .guided-finish-package li small { display: block; opacity: 0.75; }
+.guided-finish-package details { display: inline-block; }
+.guided-finish-package details[open] { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.guided-finish-tradeoff { opacity: 0.75; font-size: 0.9em; }
+.guided-guest-note { margin: 0 0 0.6rem; opacity: 0.85; }

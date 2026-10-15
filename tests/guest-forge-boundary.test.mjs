@@ -13,7 +13,10 @@ const readCtx = () => read("app/forge-session-context.tsx");
 const readCommissionChamber = () => read("app/components/forge/commission-chamber.tsx");
 
 test("the public Forge verifies Turnstile server-side and never trusts the browser alone", async () => {
-  const source = await read("worker/guest-forge.ts");
+  // The cookie/Turnstile helpers moved to guest-session.ts so the guided
+  // build's guest sessions (guided-identity.ts) share them unchanged.
+  const source = (await read("worker/guest-forge.ts")) + (await read("worker/guest-session.ts"));
+  assert.match(await read("worker/guest-forge.ts"), /validateTurnstile\(request, env\.TURNSTILE_SECRET_KEY, body\?\.turnstileToken\)/);
   assert.match(source, /challenges\.cloudflare\.com\/turnstile\/v0\/siteverify/);
   assert.match(source, /TURNSTILE_SECRET_KEY/);
   assert.match(source, /Please complete the human verification/);
@@ -106,8 +109,12 @@ test("a failed guest generation resets the Turnstile widget so the retry gets a 
   // branch produces all three Masterwork candidates in one call and routes
   // through the masterworks picker instead of a separate inspectMasterwork
   // generation per selection), so exactly one catch block needs the reset.
+  // Plus the guided start: its token is spent on success and on failure, so
+  // both paths reset (a guest's later guided steps ride on the session cookie).
   const occurrences = source.match(/resetGuestVerificationAfterFailure\(\);/g) || [];
-  assert.equal(occurrences.length, 1, "expected the reset to run in the one generation failure catch block");
+  assert.equal(occurrences.length, 3, "the generation failure catch block and both outcomes of a guest guided start");
+  const start = source.slice(source.indexOf("async function startGuidedBuild("), source.indexOf("async function requestGuidedOffer("));
+  assert.equal((start.match(/resetGuestVerificationAfterFailure\(\);/g) || []).length, 2);
 });
 
 // Root cause of "0 cards / 0 sections / human-verification retry
@@ -133,9 +140,9 @@ test("the Forge trigger (awaken) and its retry only run in guest mode once a liv
 
   const gate = context.match(/function runWhenVerified\(action: VerifiedAction\) \{[\s\S]*?\n  \}/)?.[0];
   assert.ok(gate, "expected the runWhenVerified gate");
-  // awaken never spends a token now (every build is guided and guests are
-  // sent to sign in), so only retry waits for verification.
-  assert.match(gate, /if \(!guestMode \|\| turnstileToken \|\| action === "awaken"\) \{\s*verifiedActionsRef\.current\[action\]\(\);\s*return;\s*\}/, "only a live token, an account, or the token-free awaken runs the action now");
+  // A guest's guided build starts with a token; resuming an existing guided
+  // session (it lives on the guest cookie) needs no new one.
+  assert.match(gate, /if \(!guestMode \|\| turnstileToken \|\| \(action === "awaken" && guidedSession\)\) \{\s*verifiedActionsRef\.current\[action\]\(\);\s*return;\s*\}/, "only a live token, an account, or resuming a guided session runs the action now");
   assert.match(gate, /pendingVerifiedActionRef\.current = action;\s*setVerificationRequested\(true\);/, "without a token the action waits and the panel appears");
   assert.match(
     context,
@@ -147,7 +154,8 @@ test("the Forge trigger (awaken) and its retry only run in guest mode once a liv
   assert.ok(awakenBlock, "expected to find the awaken-button block");
   assert.match(awakenBlock, /onClick=\{\(\) => runWhenVerified\("awaken"\)\}/, "awaken must go through the verification gate");
   assert.doesNotMatch(awakenBlock, /onClick=\{awaken\}/);
-  assert.match(awakenBlock, /SIGN IN AND BUILD TOGETHER/, "guests are told the guided build needs an account");
+  assert.doesNotMatch(awakenBlock, /SIGN IN AND BUILD/, "guests build without an account now");
+  assert.match(awakenBlock, /No account needed/);
   assert.doesNotMatch(awakenBlock, /One free build/);
 
   const retryBlock = workbenchChamber.match(/THE METAL DID NOT SET[\s\S]*?Try again\n/)?.[0];

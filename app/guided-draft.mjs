@@ -1,3 +1,5 @@
+import { finishedDeckText, validFinishState } from "./guided-finish.mjs";
+
 // Shared draft contract. Temporary pool handles are replaceable; player choices are not.
 export const GUIDED_DRAFT_VERSION = 1;
 export function guidedDraftKey(draft) {
@@ -14,13 +16,16 @@ export function validGuidedDraft(draft) {
     && Number.isInteger(draft.session.categoryIndex) && draft.session.categoryIndex >= 0 && draft.session.categoryIndex < draft.session.categories.length
     && Array.isArray(draft.session.accepted) && draft.session.accepted.length <= 100
     && draft.session.accepted.every((name) => typeof name === "string" && name.trim() && name.length <= 400)
+    && validFinishState(draft.session.finish)
     && draft.preferences && typeof draft.preferences === "object" && !Array.isArray(draft.preferences)
     && (!draft.completion || (typeof draft.completion.id === "string" && /^[a-zA-Z0-9-]{16,80}$/.test(draft.completion.id)
       && typeof draft.completion.deckId === "string" && /^[a-zA-Z0-9-]{16,80}$/.test(draft.completion.deckId)
       && Number.isSafeInteger(draft.completion.seed) && draft.completion.seed >= 0)));
 }
+// Every confirmed card: the player's picks plus the basics they settled in
+// the guided finish. Never anything the Forge chose on its own.
 export function guidedPickText(draft) {
-  return (draft?.session?.accepted || []).map((name) => `1 ${name}`).join("\n");
+  return finishedDeckText(draft?.session?.accepted || [], draft?.session?.finish?.basics || {});
 }
 const nameKey = (name) => String(name).normalize("NFKC").trim().toLocaleLowerCase("en");
 export function guidedCompletionReview(deckText, picks, commanders = []) {
