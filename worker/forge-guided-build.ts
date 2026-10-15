@@ -7,13 +7,10 @@
 // generation-store.ts) and only re-runs cheap, pure scoring — never a
 // second round of Scryfall requests.
 //
-// Authenticated only (userKey requires a verified Access identity) — a
-// guest session has no generationId to store this context under, so guests
-// keep using the existing one-shot Build path (now shell-biased via
-// focusPackageId) instead of the guided loop until a guest-compatible
-// store exists. Not a stub: the guided loop simply isn't offered to guests
-// yet, and the client is expected to gate on this rather than call these
-// endpoints for a guest session.
+// Accounts and guests both use this loop (guided-identity.ts). A guest's
+// context is stored under `guest:<signed cookie id>`, the same key shape
+// guest-generate already uses; start is the only place a guest session is
+// minted and it requires Turnstile.
 import { analyzeForgePool } from "../app/native-masterwork-engine.mjs";
 import { suggestCardForCategory } from "../app/guided-suggestion.mjs";
 import { CATEGORY_SEQUENCE, buildCategoryBudgetLedger } from "../app/category-budget-ledger.mjs";
@@ -38,13 +35,12 @@ import {
   type ScryfallCounter,
 } from "./forge-generate";
 import { isCommanderFormat, targetDeckSize } from "./forge-result-validator.mjs";
-import { userKey } from "./account-bench";
+import { guestStepLimit, guidedIdentity, guidedStartIdentity, type GuidedIdentityEnv } from "./guided-identity";
+import { proposeManaBase, isLandEntry, finishStatus } from "../app/guided-finish.mjs";
 import { checkRateLimit, readJsonWithLimit } from "./api-hardening";
 import { storeGeneration, loadGeneration } from "./forge-generation-store";
 
-interface Env {
-  DB: D1Database;
-}
+type Env = GuidedIdentityEnv;
 
 const json = (value: unknown, status = 200, headers: Record<string, string> = {}) =>
   Response.json(value, { status, headers: { "Cache-Control": "no-store", ...headers } });
@@ -355,8 +351,14 @@ function serializeOffer(
 export async function handleForgeGuidedStart(request: Request, env: Env): Promise<Response> {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
 
-  const key = await userKey(request, env);
-  if (!key) return json({ error: "Authenticated account required" }, 401);
+  const bodyResult = await readJsonWithLimit(request, MAX_BODY_BYTES);
+  if (!bodyResult.ok) return json({ error: bodyResult.error }, bodyResult.status);
+  const body = bodyResult.data as any;
+
+  const started = await guidedStartIdentity(request, env, body?.turnstileToken);
+  if (!started.ok) return started.response;
+  const identity = started.identity;
+  const key = identity.key;
 
   const limitResult = await checkRateLimit(env, key, "forge-guided-start", START_RATE_LIMIT, START_RATE_WINDOW_MS);
   if (!limitResult.allowed) {
@@ -364,10 +366,6 @@ export async function handleForgeGuidedStart(request: Request, env: Env): Promis
       "Retry-After": String(limitResult.retryAfterSeconds),
     });
   }
-
-  const bodyResult = await readJsonWithLimit(request, MAX_BODY_BYTES);
-  if (!bodyResult.ok) return json({ error: bodyResult.error }, bodyResult.status);
-  const body = bodyResult.data as any;
 
   if (typeof body?.format !== "string" || !ALLOWED_FORMATS.has(body.format) || !isCommanderFormat(body.format)) {
     return json({ error: "format must be a supported Commander-family format" }, 400);
@@ -435,18 +433,60 @@ export async function handleForgeGuidedStart(request: Request, env: Env): Promis
     }
     cacheAnalysis(generationId, analysis);
 
-    return json({ generationId, colors: pool.colors, categorySequence: categoryOrder, seedNames, ...serializeOffer(suggestion, ledger, explanation, categoryOrder) });
+    return json(
+      {
+        generationId, colors: pool.colors, categorySequence: categoryOrder, seedNames,
+        owner: identity.guest ? "guest" : key,
+        guest: identity.guest,
+        ...(identity.claimToken ? { guestClaimToken: identity.claimToken } : {}),
+        ...serializeOffer(suggestion, ledger, explanation, categoryOrder),
+      },
+      200,
+      identity.setCookie ? { "Set-Cookie": identity.setCookie } : {},
+    );
   } catch (error) {
     console.error("forge-guided-start failed", error);
     return json({ error: "The guided Build could not be started." }, 500);
   }
 }
 
+type StoredForgeInput = {
+  commander: CommanderInput;
+  secondCommander: CommanderInput;
+  note: string;
+  focusPackageId: string | null;
+  targetPowerTier?: string | null;
+  strategy?: string | null;
+  complexity?: string | null;
+  budget?: string | null;
+  maxCardPrice?: number | null;
+  commonsOnly?: boolean;
+};
+function inputFromStored(stored: { options: { format: string; strategy?: string }; forgeInput?: Record<string, unknown> }) {
+  const forgeInput = (stored.forgeInput || {}) as StoredForgeInput;
+  return {
+    format: stored.options.format as string,
+    commander: forgeInput.commander,
+    secondCommander: forgeInput.secondCommander,
+    note: forgeInput.note || "",
+    focusPackageId: forgeInput.focusPackageId || undefined,
+    targetPowerTier: forgeInput.targetPowerTier || undefined,
+    strategy: forgeInput.strategy || stored.options.strategy || undefined,
+    complexity: forgeInput.complexity || undefined,
+    budget: forgeInput.budget || undefined,
+    maxCardPrice: forgeInput.maxCardPrice ?? undefined,
+    commonsOnly: Boolean(forgeInput.commonsOnly),
+  };
+}
+
 export async function handleForgeGuidedNext(request: Request, env: Env): Promise<Response> {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
 
-  const key = await userKey(request, env);
-  if (!key) return json({ error: "Authenticated account required" }, 401);
+  const identity = await guidedIdentity(request, env);
+  if (!identity) return json({ error: "Your guided session expired. Start the build again." }, 401);
+  const key = identity.key;
+  const stepLimited = await guestStepLimit(request, env, identity);
+  if (stepLimited) return stepLimited.response;
 
   const limitResult = await checkRateLimit(env, key, "forge-guided-next", NEXT_RATE_LIMIT, NEXT_RATE_WINDOW_MS);
   if (!limitResult.allowed) {
@@ -480,31 +520,7 @@ export async function handleForgeGuidedNext(request: Request, env: Env): Promise
 
   try {
     const stored = generation.payload;
-    const forgeInput = (stored.forgeInput || {}) as {
-      commander: CommanderInput;
-      secondCommander: CommanderInput;
-      note: string;
-      focusPackageId: string | null;
-      targetPowerTier?: string | null;
-      strategy?: string | null;
-      complexity?: string | null;
-      budget?: string | null;
-      maxCardPrice?: number | null;
-      commonsOnly?: boolean;
-    };
-    const input = {
-      format: stored.options.format,
-      commander: forgeInput.commander,
-      secondCommander: forgeInput.secondCommander,
-      note: forgeInput.note || "",
-      focusPackageId: forgeInput.focusPackageId || undefined,
-      targetPowerTier: forgeInput.targetPowerTier || undefined,
-      strategy: forgeInput.strategy || stored.options.strategy || undefined,
-      complexity: forgeInput.complexity || undefined,
-      budget: forgeInput.budget || undefined,
-      maxCardPrice: forgeInput.maxCardPrice ?? undefined,
-      commonsOnly: Boolean(forgeInput.commonsOnly),
-    };
+    const input = inputFromStored(stored);
     // generation.ok above already proved this caller owns generationId.
     const { suggestion, ledger, explanation, preferenceProfile } = computeOffer(
       stored.cardPool, input, body.category, acceptedNames, declinedNames, generationId, manualCards,
@@ -520,5 +536,121 @@ export async function handleForgeGuidedNext(request: Request, env: Env): Promise
   } catch (error) {
     console.error("forge-guided-next failed", error);
     return json({ error: "The guided Build could not continue for this session." }, 500);
+  }
+}
+
+const MAX_PACKAGE_SIZE = 3;
+type LedgerRow = { category: string; actual: number; target: { min: number; max: number } | null; status: string };
+function sanitizeBasicsInput(raw: unknown): Record<string, number> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: Record<string, number> = {};
+  for (const [name, count] of Object.entries(raw as Record<string, unknown>).slice(0, 12)) {
+    if (/^(?:Snow-Covered )?(?:Plains|Island|Swamp|Mountain|Forest|Wastes)$/.test(name) && Number.isInteger(count) && (count as number) >= 0 && (count as number) <= 99) out[name] = count as number;
+  }
+  return out;
+}
+
+/**
+ * The guided finish. Replaces the old "the Forge fills lands and open
+ * slots" handoff with two walk-through steps that only ever propose:
+ *
+ *   stage "mana"  — land count with its reasoning, color-source targets,
+ *                   ranked utility lands, and a basics split the player
+ *                   adjusts before confirming.
+ *   stage "slots" — the open-slot count and a small package (up to three
+ *                   cards) aimed at the roles still under target, each with
+ *                   its own explanation. The player accepts, swaps or skips
+ *                   each one; nothing is added without them.
+ *
+ * Pure re-analysis of the cached pool, same cost profile as next.
+ */
+export async function handleForgeGuidedFinish(request: Request, env: Env): Promise<Response> {
+  if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { Allow: "POST" });
+  const identity = await guidedIdentity(request, env);
+  if (!identity) return json({ error: "Your guided session expired. Start the build again." }, 401);
+  const key = identity.key;
+  const stepLimited = await guestStepLimit(request, env, identity);
+  if (stepLimited) return stepLimited.response;
+  const limitResult = await checkRateLimit(env, key, "forge-guided-next", NEXT_RATE_LIMIT, NEXT_RATE_WINDOW_MS);
+  if (!limitResult.allowed) {
+    return json({ error: "Rate limit exceeded", retryAfterSeconds: limitResult.retryAfterSeconds }, 429, {
+      "Retry-After": String(limitResult.retryAfterSeconds),
+    });
+  }
+  const bodyResult = await readJsonWithLimit(request, MAX_BODY_BYTES);
+  if (!bodyResult.ok) return json({ error: bodyResult.error }, bodyResult.status);
+  const body = bodyResult.data as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any -- validated field by field below
+  const stage = body?.stage;
+  if (stage !== "mana" && stage !== "slots") return json({ error: "stage must be mana or slots" }, 400);
+  const generationId = typeof body?.generationId === "string" ? body.generationId : "";
+  if (!generationId) return json({ error: "generationId is required" }, 400);
+  const acceptedNames = sanitizeNameList(body?.acceptedNames, MAX_ROWS);
+  const declinedNames = sanitizeNameList(body?.declinedNames, MAX_ROWS);
+  const manualCards = sanitizeManualCards(body?.manualCards);
+  const declineFeedback = sanitizeDeclineFeedback(body?.declineFeedback, { max: MAX_ROWS, maxName: MAX_ROW_NAME });
+  const compass = sanitizeCompass(body?.playerCompass);
+  const basics = sanitizeBasicsInput(body?.basics);
+  const landTarget = Number.isInteger(body?.landTarget) && body.landTarget >= 0 && body.landTarget <= 99 ? body.landTarget : null;
+
+  const generation = await loadGeneration(env, key, generationId);
+  if (!generation.ok) return json({ error: "This guided Build session is no longer available. Start a new one." }, 404);
+
+  try {
+    const stored = generation.payload;
+    const input = inputFromStored(stored);
+    const learning = { declineFeedback, compass };
+    const deckTarget = targetDeckSize(input.format);
+    const commanderCount = input.secondCommander ? 2 : 1;
+    const colors = [...new Set([...(input.commander?.colors || []), ...(input.secondCommander?.colors || [])])];
+    const base = computeOffer(stored.cardPool, input, CATEGORY_SEQUENCE[0], acceptedNames, declinedNames, generationId, manualCards, learning);
+    type AnalyzedEntry = { card?: { name?: string }; name?: string; roles?: string[]; cmc?: number };
+    const analyzedByName = new Map<string, AnalyzedEntry>((base.analysis.cards as AnalyzedEntry[]).map((entry) => [normalizeKey(entry.card?.name || entry.name || ""), entry]));
+    const pickedRows = acceptedNames.map((name) => analyzedByName.get(normalizeKey(name)) || { card: { name }, roles: [], cmc: 0 });
+
+    if (stage === "mana") {
+      const proposal = proposeManaBase({ deckTarget, colors, pickedRows, poolLands: base.analysis.lands || [], landTarget });
+      return json({
+        stage,
+        deckTarget,
+        commanderCount,
+        ...proposal,
+        status: finishStatus({ deckTarget, commanderCount, picks: acceptedNames, basics: Object.keys(basics).length ? basics : proposal.basics }),
+      });
+    }
+
+    const status = finishStatus({ deckTarget, commanderCount, picks: acceptedNames, basics });
+    const ledger = serializeLedger(base.ledger);
+    const under = ledger
+      .filter((row: LedgerRow) => row.status === "under" && row.target)
+      .sort((a: LedgerRow, b: LedgerRow) => ((b.target?.min || 0) - b.actual) - ((a.target?.min || 0) - a.actual))
+      .map((row: LedgerRow) => row.category);
+    const categories = [...under, ...CATEGORY_SEQUENCE.filter((category) => !under.includes(category))];
+    const size = Math.min(MAX_PACKAGE_SIZE, status.open);
+    const offers: Array<Record<string, unknown>> = [];
+    const taken = [...acceptedNames];
+    const skip = [...declinedNames];
+    for (const category of categories) {
+      if (offers.length >= size) break;
+      const next = computeOffer(stored.cardPool, input, category, taken, skip, generationId, manualCards, learning);
+      const card = next.suggestion.offer?.card || next.suggestion.offer;
+      if (!card?.name || isLandEntry(card)) continue;
+      offers.push({
+        category,
+        name: card.name,
+        typeLine: card.typeLine,
+        oracleText: card.oracleText,
+        manaCost: card.manaCost,
+        cmc: card.cmc,
+        priceUsd: card.priceUsd,
+        explanation: next.explanation,
+        reason: next.suggestion.reason,
+      });
+      taken.push(card.name);
+      skip.push(card.name);
+    }
+    return json({ stage, deckTarget, commanderCount, status, ledger, package: offers });
+  } catch (error) {
+    console.error("forge-guided-finish failed", error);
+    return json({ error: "The guided finish could not continue for this session." }, 500);
   }
 }

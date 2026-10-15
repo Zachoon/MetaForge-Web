@@ -7,6 +7,7 @@ import { GUIDED_CATEGORY_COPY, describeGuidedReason, describeLedgerRow, guidedCa
 import { shellDisplay } from "../../shell-copy.mjs";
 import { DECLINE_REASONS } from "../../guided-preference-learning.mjs";
 import { PlayerCompassCard } from "./player-compass-card";
+import { GuidedFinishPanel } from "./guided-finish-panel";
 import { useForgeSession } from "../../forge-session-context";
 
 // architecture/GUIDED_CONSTRUCTION_FLOW.md flow step 3: the player and the
@@ -38,7 +39,10 @@ export function GuidedBuildChamber() {
     removeGuidedPick,
     goToGuidedCategory,
     finishGuidedCategory,
-    finishGuidedBuild,
+    enterGuidedFinish,
+    guidedFinishStatus,
+    guestGuidedClaimToken,
+    signInResumeHref,
     exitGuidedBuild,
     playerCompass,
     guestMode,
@@ -130,6 +134,8 @@ export function GuidedBuildChamber() {
   const choosingReason = Boolean(offer) && reasonsOpenFor === `${session?.categoryIndex}:${offer?.name}`;
   const isLast = session ? session.categoryIndex + 1 >= session.categories.length : false;
   const struggling = (session?.declined.length || 0) >= 3;
+  const finishing = Boolean(session?.finish) && !session?.finish?.suspended;
+  const finishHeading = session?.finish?.stage === "mana" ? "Your mana base" : session?.finish?.stage === "slots" ? "Fill the open slots" : "Review your deck";
 
   return (
     <section className="commission-chamber guided-chamber">
@@ -145,11 +151,13 @@ export function GuidedBuildChamber() {
         data-summary={`${selectedCommander?.name || "Your commander"}${selectedShell ? ` · ${shellDisplay(selectedShell).name}` : ""}\n${accepted.length} ${accepted.length === 1 ? "card" : "cards"} picked so far`}
       >
         <span className="forge-eyebrow">
-          <i /> GUIDED BUILD{session ? ` · STEP ${session.categoryIndex + 1} OF ${session.categories.length}` : ""}
+          <i /> GUIDED BUILD{session ? (finishing ? " · FINISH" : ` · STEP ${session.categoryIndex + 1} OF ${session.categories.length}`) : ""}
         </span>
-        <h1>{session ? copy?.label || guidedCategoryLabel(category) : guidedError ? "The guided build stopped" : "Reading your commander…"}</h1>
+        <h1>{finishing ? finishHeading : session ? copy?.label || guidedCategoryLabel(category) : guidedError ? "The guided build stopped" : "Reading your commander…"}</h1>
         <p>
-          {session
+          {finishing
+            ? `${guidedFinishStatus.confirmed} of ${guidedFinishStatus.deckTarget} cards confirmed. You choose every one; the Forge only suggests.`
+            : session
             ? copy?.blurb
             : guidedError
               ? "Your current choices are kept. Reconnect or retry to continue, or export your picks."
@@ -169,6 +177,11 @@ export function GuidedBuildChamber() {
         </div>
       )}
       {session && <p className="guided-save-status" role="status">{guidedSaveStatus || "Your picks are kept while you build."}</p>}
+      {session && guestMode && (
+        <p className="guided-guest-note">
+          Building as a guest. <a href={signInResumeHref}>{guestGuidedClaimToken ? "Sign in to keep this build" : "Sign in"}</a> any time; your picks come with you.
+        </p>
+      )}
       {guidedBuildLocked && !guidedConflict && <p role="status">A finish request is saved. Check its result before changing your picks.</p>}
 
       {!session && !guidedError && (
@@ -181,7 +194,7 @@ export function GuidedBuildChamber() {
             {session.categories.map((id, index) => {
               const state = index < session.categoryIndex ? "done" : index === session.categoryIndex ? "current" : "upcoming";
               return (
-                <li key={id} className={`guided-step ${state}`}>
+                <li key={id} className={`guided-step ${finishing ? "done" : state}`}>
                   <button type="button" disabled={guidedLoading || guidedBuildLocked} onClick={() => goToGuidedCategory(index)} aria-current={state === "current" ? "step" : undefined}>
                     <span>{index + 1}</span>
                     {guidedCategoryLabel(id)}
@@ -193,6 +206,7 @@ export function GuidedBuildChamber() {
 
           <div className="guided-grid">
             <div className="guided-main">
+              {finishing ? <GuidedFinishPanel /> : (
               <article className="guided-offer" aria-live="polite" aria-busy={guidedLoading}>
                 {offer ? (
                   <>
@@ -257,6 +271,7 @@ export function GuidedBuildChamber() {
                   </div>
                 )}
               </article>
+              )}
 
               <section className={`guided-search${struggling || !offer ? " emphasized" : ""}`}>
                 <label>
@@ -294,16 +309,18 @@ export function GuidedBuildChamber() {
                 )}
               </section>
 
-              <div className="guided-nav">
-                <button type="button" className="guided-next" disabled={guidedLoading} onClick={finishGuidedCategory}>
-                  {guidedBuildLocked ? "Check saved finish" : isLast ? "Finish — the Forge fills lands and open slots" : `Done with ${guidedCategoryLabel(category).toLowerCase()} → next`}
-                </button>
-                {!isLast && (
-                  <button type="button" className="guided-skip-all" disabled={guidedLoading} onClick={() => finishGuidedBuild(true)}>
-                    Skip ahead — the Forge fills the rest
+              {!finishing && (
+                <div className="guided-nav">
+                  <button type="button" className="guided-next" disabled={guidedLoading} onClick={finishGuidedCategory}>
+                    {guidedBuildLocked ? "Check saved finish" : isLast ? "Done → choose your mana base" : `Done with ${guidedCategoryLabel(category).toLowerCase()} → next`}
                   </button>
-                )}
-              </div>
+                  {!isLast && (
+                    <button type="button" className="guided-skip-all" disabled={guidedLoading || guidedBuildLocked} onClick={() => void enterGuidedFinish()}>
+                      Skip to the mana base and open slots
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             <aside className="guided-side">
@@ -335,7 +352,7 @@ export function GuidedBuildChamber() {
               <section className="guided-picks" aria-label="Your picks">
                 <header>
                   <small>YOUR PICKS · {accepted.length}</small>
-                  <p>Lands and any slots you leave open are filled by the Forge when you finish, and you can edit everything after.</p>
+                  <p>You&apos;ll choose your lands and fill any open slots together with the Forge before finishing. Nothing is added without you.</p>
                 </header>
                 {accepted.length > 0 && (
                   confirmingRestart ? (

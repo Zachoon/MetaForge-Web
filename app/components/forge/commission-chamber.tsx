@@ -496,9 +496,7 @@ export function CommissionChamber() {
                 <b>{shellDisplay(selectedShell).name}</b>
                 <span>{shellDisplay(selectedShell).blurb}</span>
                 <small>
-                  {guestMode
-                    ? "Sign in and you'll build this deck together, one step at a time — the Forge suggests, you decide."
-                    : "You'll build this deck together, one step at a time — the Forge suggests, you decide."}
+                  You&apos;ll build this deck together, one step at a time — the Forge suggests, you decide.
                 </small>
               </article>
             ) : (
@@ -541,7 +539,7 @@ export function CommissionChamber() {
           }
           // Every build is guided now: the Forge walks through each choice
           // with the player instead of building the whole deck at once.
-          // Guests sign in first, so no human check is needed here.
+          // Guests build without an account; a quick human check runs first.
           onClick={() => runWhenVerified("awaken")}
         >
           <span>
@@ -550,14 +548,14 @@ export function CommissionChamber() {
               : !selectedCommander
                 ? "Choose a legal commander to continue"
                 : guestMode
-                  ? "Sign in to save your picks as you go"
+                  ? "No account needed. Sign in any time to keep it"
                   : isComplete || isScratch
                     ? "Keeps your cards and walks through what's missing"
                     : "One card at a time, with a reason for each"}
           </span>
           <strong>
             {guestMode
-              ? "SIGN IN AND BUILD TOGETHER"
+              ? (isComplete || isScratch ? "REVIEW MY LIST TOGETHER" : "BUILD IT TOGETHER")
               : isComplete || isScratch
                 ? "REVIEW MY LIST TOGETHER"
                 : "BUILD IT TOGETHER"}

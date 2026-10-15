@@ -131,7 +131,8 @@ test("a live session renders the offer, its plain-language reason, the ledger, t
   assert.match(html, /Sol Ring/);
   assert.match(html, /YOUR PICKS · 2/);
   assert.match(html, /Done with ramp/);
-  assert.match(html, /Skip ahead/);
+  assert.match(html, /Skip to the mana base and open slots/);
+  assert.doesNotMatch(html, /the Forge fills/);
   // Win conditions has no numeric target and must still read sensibly, saying
   // what is counted (threats among all picks) rather than implying a step tally.
   assert.match(html, /0 threats among your picks/);
@@ -166,10 +167,83 @@ test("an exhausted category explains itself and still offers a way forward", () 
   assert.match(html, /Done with ramp/);
 });
 
-test("the last category finishes the build instead of advancing, and hides skip-ahead", () => {
+test("the last category leads into the guided finish, never an auto-fill, and hides skip-ahead", () => {
   const html = render(baseContext({ guidedSession: session({ categoryIndex: 7, offer: null, exhausted: true }) }));
-  assert.match(html, /Finish — the Forge fills lands and open slots/);
-  assert.doesNotMatch(html, /Skip ahead/);
+  assert.match(html, /Done → choose your mana base/);
+  assert.doesNotMatch(html, /the Forge fills/);
+  assert.doesNotMatch(html, /Skip to the mana base/);
+});
+
+const finishContext = (finish, status, extra = {}) => baseContext({
+  guidedSession: session({ categoryIndex: 7, offer: null, finish }),
+  guidedFinishStatus: status,
+  ...extra,
+});
+const manaProposal = {
+  landTarget: 36,
+  landCount: { count: 36, baseline: 37, reasons: ["A 100-card deck usually starts around 37 lands.", "9 ramp pieces cover for a missing land drop, so -1."] },
+  landsPicked: ["Command Tower"],
+  basicSlots: 35,
+  basics: { Plains: 20, Island: 15 },
+  colorSources: [{ color: "W", pips: 30, share: 60, target: 27, current: 21 }, { color: "U", pips: 20, share: 40, target: 18, current: 16 }],
+  utilityLands: [{ name: "Hallowed Fountain", typeLine: "Land — Plains Island", oracleText: "", produces: ["W", "U"], reason: "Fixes white and blue." }],
+};
+
+test("the finish's mana step shows the land-count reasoning, color sources, utility lands and an adjustable basics split", () => {
+  const html = render(finishContext({ stage: "mana", basics: { Plains: 20, Island: 15 }, manaConfirmed: false, landTarget: 36, proposal: manaProposal }, { deckTarget: 100, confirmed: 38, open: 62, over: 0 }));
+  assert.match(html, /FINISH · STEP 1 OF 3 · MANA BASE/);
+  assert.match(html, /About 36 lands for this deck/);
+  assert.match(html, /9 ramp pieces cover for a missing land drop/);
+  assert.match(html, /60% of your colored symbols · aim for 27 sources/);
+  assert.match(html, /Hallowed Fountain/);
+  assert.match(html, /Fixes white and blue/);
+  assert.match(html, /aria-label="One more Plains"/);
+  assert.match(html, /36 lands so far/);
+  assert.match(html, /Confirm this mana base/);
+  assert.match(html, /GUIDED BUILD · FINISH/);
+  assert.doesNotMatch(html, /Done with/);
+});
+
+test("the open-slots step offers a small package the player accepts or turns down card by card", () => {
+  const pkg = [
+    { name: "Swords to Plowshares", category: "interaction", typeLine: "Instant", manaCost: "{W}", explanation: { role: "Cheap removal", worksWith: [], tradeOff: "Gives life", learned: [] } },
+    { name: "Rhystic Study", category: "draw", typeLine: "Enchantment", manaCost: "{2}{U}", explanation: null },
+  ];
+  const html = render(finishContext({ stage: "slots", basics: { Plains: 20 }, manaConfirmed: true, landTarget: 36, package: pkg }, { deckTarget: 100, confirmed: 98, open: 2, over: 0 }));
+  assert.match(html, /2 slots left to fill/);
+  assert.match(html, /Swords to Plowshares/);
+  assert.match(html, /Cheap removal/);
+  assert.match(html, /Add all 2/);
+  assert.match(html, /Not this one/);
+  assert.doesNotMatch(html, /Confirm every slot and finish/);
+});
+
+test("finishing is only offered from the review, once every slot is confirmed", () => {
+  const html = render(finishContext({ stage: "review", basics: { Plains: 20 }, manaConfirmed: true, landTarget: 36 }, { deckTarget: 100, confirmed: 100, open: 0, over: 0 }));
+  assert.match(html, /100 of 100 cards, every one your choice/);
+  assert.match(html, /Confirm every slot and finish/);
+  assert.doesNotMatch(html, /<button[^>]*disabled[^>]*>Confirm every slot/);
+});
+
+test("stepping back to a role suspends the finish panel and shows that step's suggestion", () => {
+  const html = render(baseContext({
+    guidedSession: session({
+      categoryIndex: 2,
+      finish: { stage: "mana", basics: { Plains: 20 }, manaConfirmed: false, landTarget: 36, proposal: manaProposal, suspended: true },
+    }),
+    guidedFinishStatus: { deckTarget: 100, confirmed: 38, open: 62, over: 0 },
+  }));
+  assert.match(html, /Add to my deck/);
+  assert.match(html, /STEP 3 OF 8/);
+  assert.doesNotMatch(html, /Confirm this mana base/);
+  assert.doesNotMatch(html, /GUIDED BUILD · FINISH/);
+});
+
+test("a guest build says so and offers sign-in that keeps the picks", () => {
+  const html = render(baseContext({ guidedSession: session(), guestMode: true, guestGuidedClaimToken: "x.y", signInResumeHref: "https://app.metaforge.gg/?claimGuided=x.y" }));
+  assert.match(html, /Building as a guest/);
+  assert.match(html, /Sign in to keep this build/);
+  assert.match(html, /claimGuided=x\.y/);
 });
 
 test("controls are disabled while a request is in flight, and an empty pick list reads honestly", () => {

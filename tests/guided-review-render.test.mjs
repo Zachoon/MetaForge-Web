@@ -26,4 +26,12 @@ test('saved draft offers explicit resume, discard and export; conflict exposes b
   const context={chamber:'entrance',guidedAvailableDraft:{draft:{commander:{name:'Commander'},session:{accepted:['Pick']}}},guidedSaveStatus:'Saved to your account'};
   const saved=render(context,true);assert.match(saved,/Resume build/);assert.match(saved,/Start over/);assert.match(saved,/Export picks/);
   const conflict=render({...context,guidedConflict:{phase:'completing'}},true);assert.match(conflict,/Use account copy/);assert.match(conflict,/<button disabled="">Keep this device/);
+  const claim=render({...context,guidedClaimChoice:{token:'guest.token',guestDraft:{commander:{name:'Guest Commander'},session:{accepted:['Sol Ring']}},account:{phase:'active',draft:{commander:{name:'Account Commander'},session:{accepted:['Arcane Signet','Counterspell']}}}},resolveGuidedClaimChoice:()=>Promise.resolve()},true);
+  assert.match(claim,/Two guided builds need a decision/);
+  assert.match(claim,/Guest Commander · 1 card picked/);
+  assert.match(claim,/Account Commander · 2 cards picked/);
+  assert.match(claim,/Keep the guest build/);
+  assert.match(claim,/Keep the account build/);
+  const finishing=render({...context,guidedClaimChoice:{token:'guest.token',guestDraft:{commander:{name:'Guest Commander'},session:{accepted:[]}},account:{phase:'completing',draft:{commander:{name:'Account Commander'},session:{accepted:['One']}}}},resolveGuidedClaimChoice:()=>Promise.resolve()},true);
+  assert.match(finishing,/<button disabled="">Keep the guest build/);
 });

@@ -11,8 +11,8 @@ import { handleEdhrecEvidence } from "./edhrec-evidence";
 import { handleForgeGenerate } from "./forge-generate";
 import { handleForgeStructuralAnalyze } from "./forge-structural-analyze";
 import { handleForgeOneSlot } from "./forge-one-slot";
-import { handleForgeGuidedStart, handleForgeGuidedNext } from "./forge-guided-build";
-import { handleGuidedDraft, handleGuidedComplete } from "./guided-draft";
+import { handleForgeGuidedStart, handleForgeGuidedNext, handleForgeGuidedFinish } from "./forge-guided-build";
+import { handleGuidedDraft, handleGuidedComplete, handleGuidedClaim, cleanupExpiredGuestGuidedDrafts } from "./guided-draft";
 import { handleForgeMultiRefill } from "./forge-multi-refill";
 import { handleCardFacts } from "./card-facts";
 import { handleCommanderSearch } from "./commander-search";
@@ -355,11 +355,18 @@ const worker = {
         }).catch((error) => console.error("launch telemetry write failed", error)));
         return response;
       }
-      if (url.pathname === "/api/account/claim-guest") return await handleGuestClaim(request, env);
+      if (url.pathname === "/api/account/claim-guest") {
+        // A guided build claims with guidedClaimToken; a one-shot preview with claimToken.
+        const peekText = await request.clone().text().catch(() => "");
+        let peek: { guidedClaimToken?: unknown } | null = null;
+        if (peekText.length <= 4096) { try { peek = JSON.parse(peekText); } catch { peek = null; } }
+        return await (peek?.guidedClaimToken ? handleGuidedClaim(request, env) : handleGuestClaim(request, env));
+      }
       if (url.pathname === "/api/forge/structural-analyze") return await handleForgeStructuralAnalyze(request, env);
       if (url.pathname === "/api/forge/one-slot-experiment") return await handleForgeOneSlot(request, env);
       if (url.pathname === "/api/forge/guided/start") return await handleForgeGuidedStart(request, env);
       if (url.pathname === "/api/forge/guided/next") return await handleForgeGuidedNext(request, env);
+      if (url.pathname === "/api/forge/guided/finish") return await handleForgeGuidedFinish(request, env);
       if (url.pathname === "/api/account/guided-draft") return await handleGuidedDraft(request, env);
       if (url.pathname === "/api/forge/guided/complete") return await handleGuidedComplete(request, env);
       if (url.pathname === "/api/forge/multi-refill") return await handleForgeMultiRefill(request, env);
@@ -401,7 +408,7 @@ const worker = {
 
     return addDocumentMetadata(await handler.fetch(request, env, ctx), request.url);
   },
-  async scheduled(_controller:ScheduledController,env:Env,ctx:ExecutionContext){ctx.waitUntil(runDataGoblins(env));ctx.waitUntil(cleanupExpiredRateLimits(env));ctx.waitUntil(cleanupExpiredGenerations(env));ctx.waitUntil(cleanupExpiredGuestForges(env));},
+  async scheduled(_controller:ScheduledController,env:Env,ctx:ExecutionContext){ctx.waitUntil(runDataGoblins(env));ctx.waitUntil(cleanupExpiredRateLimits(env));ctx.waitUntil(cleanupExpiredGenerations(env));ctx.waitUntil(cleanupExpiredGuestForges(env));ctx.waitUntil(cleanupExpiredGuestGuidedDrafts(env));},
 };
 
 export default worker;

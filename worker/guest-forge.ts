@@ -2,6 +2,7 @@ import { userKey } from "./account-bench";
 import { checkRateLimit, readJsonWithLimit } from "./api-hardening";
 import { generateForgeResult, type ForgeGenerationResult } from "./forge-generate";
 import { buildClientNativeReport, loadGeneration, storeGeneration } from "./forge-generation-store";
+import { GUEST_COOKIE as COOKIE, cookieValue, hmac, sessionFromRequest, validateTurnstile } from "./guest-session";
 
 interface Env {
   DB: D1Database;
@@ -9,50 +10,10 @@ interface Env {
   GUEST_SESSION_SECRET?: string;
 }
 
-const COOKIE = "mf_guest";
 const TTL_MS = 24 * 60 * 60 * 1000;
 const MAX_BODY_BYTES = 260 * 1024;
-const enc = new TextEncoder();
 const json = (value: unknown, status = 200, headers: Record<string, string> = {}) =>
   Response.json(value, { status, headers: { "Cache-Control": "no-store", ...headers } });
-
-function bytesToHex(bytes: ArrayBuffer): string {
-  return [...new Uint8Array(bytes)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
-async function hmac(secret: string, value: string): Promise<string> {
-  const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  return bytesToHex(await crypto.subtle.sign("HMAC", key, enc.encode(value)));
-}
-
-function cookieValue(request: Request): string | null {
-  const raw = request.headers.get("cookie") || "";
-  const match = raw.match(new RegExp(`(?:^|;\\s*)${COOKIE}=([^;]+)`));
-  return match ? decodeURIComponent(match[1]) : null;
-}
-
-async function sessionFromRequest(request: Request, secret: string): Promise<{ id: string; value: string }> {
-  const existing = cookieValue(request);
-  if (existing) {
-    const [id, signature] = existing.split(".");
-    if (id && signature && signature === await hmac(secret, id)) return { id, value: existing };
-  }
-  const id = crypto.randomUUID();
-  return { id, value: `${id}.${await hmac(secret, id)}` };
-}
-
-async function validateTurnstile(request: Request, secret: string, token: unknown): Promise<boolean> {
-  if (typeof token !== "string" || token.length < 10 || token.length > 2048) return false;
-  const form = new FormData();
-  form.set("secret", secret);
-  form.set("response", token);
-  const remoteIp = request.headers.get("CF-Connecting-IP");
-  if (remoteIp) form.set("remoteip", remoteIp);
-  const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body: form });
-  if (!response.ok) return false;
-  const result = (await response.json()) as { success?: boolean };
-  return result.success === true;
-}
 
 // Guest requests pass through two independent gates, and conflating them
 // is exactly the bug this file used to have:
