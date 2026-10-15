@@ -133,6 +133,26 @@ export function accessibilityPenalty(candidate) {
   return Math.min(12, (price - 8) / 2);
 }
 
+function cardJobKey(candidate) {
+  const tracked = TRACKED_ROLES.filter((role) => (candidate.roles || []).includes(role));
+  if (!tracked.length) return "shell";
+  return tracked.slice().sort().join("+");
+}
+
+function nearestSameRole(scored) {
+  const best = scored[0];
+  if (!best) return null;
+  const job = cardJobKey(best.candidate);
+  const match = scored.slice(1).find((entry) => cardJobKey(entry.candidate) === job);
+  if (!match) return null;
+  return Object.freeze({
+    name: match.delta.name,
+    margin: round(best.rank - match.rank),
+    sameRole: true,
+    role: job,
+  });
+}
+
 function topPositiveOf(category, delta) {
   const sorted = [...(delta.positives || [])]
     .sort((left, right) => Number(isPrimary(category, right)) - Number(isPrimary(category, left)) || right.weight - left.weight);
@@ -201,7 +221,7 @@ export function suggestCardForCategory({
     // reused here rather than re-deriving it a third way.
     .sort((left, right) => left.tier - right.tier || right.rank - left.rank || left.delta.name.localeCompare(right.delta.name));
 
-  const [best, runnerUp] = scored;
+  const best = scored[0];
   return Object.freeze({
     category,
     offer: best.candidate,
@@ -211,9 +231,8 @@ export function suggestCardForCategory({
     reason: Object.freeze({
       deficitsFilled: reasonTagsFor(category, best.delta),
       topPositive: topPositiveOf(category, best.delta),
-      nearestAlternative: runnerUp
-        ? Object.freeze({ name: runnerUp.delta.name, margin: round(best.rank - runnerUp.rank) })
-        : null,
+      summary: best.reasoning?.summary || null,
+      nearestAlternative: nearestSameRole(scored),
     }),
     exhausted: false,
     remainingCandidates: scored.length,

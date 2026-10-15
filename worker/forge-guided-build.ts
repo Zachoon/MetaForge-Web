@@ -349,7 +349,13 @@ function serializeLedger(ledger: ReturnType<typeof buildCategoryBudgetLedger>) {
 
 export function serializeListAnalysis(result: ListAnalysis, submitted: number) {
   return {
-    plan: { id: result.plan.id, label: result.plan.label, confidence: result.plan.confidence },
+    plan: {
+      id: result.plan.id,
+      label: result.plan.label,
+      confidence: result.plan.confidence,
+      certaintyNote: result.plan.certaintyNote || null,
+      restrictionNote: result.plan.restrictionNote || null,
+    },
     planBalance: result.planBalance,
     recognized: result.profile.picks,
     submitted,
@@ -364,7 +370,14 @@ export function serializeListAnalysis(result: ListAnalysis, submitted: number) {
 export function serializeDeckProfile(profile: DeckProfile | null) {
   if (!profile) return null;
   return {
-    plan: { id: profile.plan.id, label: profile.plan.label, confidence: profile.plan.confidence, secondary: profile.plan.secondary },
+    plan: {
+      id: profile.plan.id,
+      label: profile.plan.label,
+      confidence: profile.plan.confidence,
+      secondary: profile.plan.secondary,
+      certaintyNote: profile.plan.certaintyNote || null,
+      restrictionNote: profile.plan.restrictionNote || null,
+    },
     planBalance: profile.planBalance,
     roles: profile.roles.map((row) => ({ role: row.role, label: row.label, actual: row.actual, target: row.target, status: row.status })),
     gaps: profile.gaps.slice(0, 4).map((row) => ({ role: row.role, label: row.label, missing: row.missing })),
@@ -378,6 +391,8 @@ export function serializeReasoning(reasoning: CandidateReasoning | null | undefi
   return {
     confidence: reasoning.confidence,
     confidenceLabel: reasoning.confidenceLabel,
+    confidenceNote: reasoning.confidenceNote || null,
+    summary: reasoning.summary || null,
     reasons: reasoning.reasons.slice(0, 6).map((reason) => ({ kind: reason.kind, text: reason.text })),
     worksWith: reasoning.worksWith.map((partner) => ({ name: partner.name, mechanism: partner.mechanism })),
   };

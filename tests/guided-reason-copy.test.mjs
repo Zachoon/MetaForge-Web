@@ -12,14 +12,26 @@ test("every category in the fixed sequence has player-facing copy", () => {
   assert.equal(guidedCategoryLabel("unknown"), "unknown");
 });
 
-test("describeGuidedReason turns real deficit tags into plain sentences", () => {
-  const text = describeGuidedReason({
-    deficitsFilled: ["role:ramp", "curve:2", "package_core:auras"],
+test("describeGuidedReason names one or two reasons and compares only a same-role card", () => {
+  const fromText = describeGuidedReason({
+    summary: "makes Treasure whenever you cast an instant or sorcery, and scales with artifacts you control, without spending them",
+    deficitsFilled: ["package_core:artifacts", "package_core:tokens", "commander_connection:artifacts"],
+    topPositive: { kind: "package_core", key: "artifacts" },
+    nearestAlternative: { name: "An Offer You Can't Refuse", margin: 4.2, sameRole: false, role: "interaction" },
+  }, "Storm-Kiln Artist");
+  assert.match(fromText, /makes Treasure whenever you cast an instant or sorcery/);
+  assert.match(fromText, /scales with artifacts you control, without spending them/);
+  assert.doesNotMatch(fromText, /shell/);
+  assert.doesNotMatch(fromText, /An Offer You Can't Refuse/);
+
+  const sameRole = describeGuidedReason({
+    deficitsFilled: ["role:ramp", "curve:2", "package_core:auras", "package_core:tokens"],
     topPositive: { kind: "package_core", key: "auras" },
-    nearestAlternative: { name: "Arcane Signet", margin: 4.2 },
+    nearestAlternative: { name: "Arcane Signet", margin: 4.2, sameRole: true, role: "ramp" },
   }, "Sol Ring");
-  assert.match(text, /^Sol Ring fills a real ramp gap, fills an open spot at 2 mana, and is a core piece of your auras shell\./);
-  assert.match(text, /edged out Arcane Signet/);
+  assert.match(sameRole, /^Sol Ring fills a real ramp gap and fills an open spot at 2 mana\./);
+  assert.doesNotMatch(sameRole, /shell/);
+  assert.match(sameRole, /edged out Arcane Signet/);
 });
 
 test("describeGuidedReason falls back honestly when no deficit was filled", () => {
@@ -28,9 +40,12 @@ test("describeGuidedReason falls back honestly when no deficit was filled", () =
   assert.equal(describeGuidedReason(null), "");
 });
 
-test("a tie or zero margin never claims the card beat its alternative", () => {
-  const text = describeGuidedReason({ deficitsFilled: ["role:draw"], topPositive: null, nearestAlternative: { name: "Other", margin: 0 } }, "Card");
-  assert.doesNotMatch(text, /edged out/);
+test("a tie, a zero margin, or a different role never claims the card beat its alternative", () => {
+  const tied = describeGuidedReason({ deficitsFilled: ["role:draw"], topPositive: null, nearestAlternative: { name: "Other", margin: 0, sameRole: true } }, "Card");
+  assert.doesNotMatch(tied, /edged out/);
+  const otherRole = describeGuidedReason({ deficitsFilled: ["role:ramp"], topPositive: null, nearestAlternative: { name: "Swords to Plowshares", margin: 3, sameRole: false } }, "Sol Ring");
+  assert.doesNotMatch(otherRole, /edged out/);
+  assert.doesNotMatch(otherRole, /Swords to Plowshares/);
 });
 
 test("describeLedgerRow is informational for every status, never blocking language", () => {

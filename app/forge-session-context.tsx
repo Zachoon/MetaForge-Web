@@ -115,7 +115,8 @@ type GuidedLedgerRow = {
 type GuidedReason = {
   deficitsFilled: string[];
   topPositive: { kind: string; key: string } | null;
-  nearestAlternative: { name: string; margin: number } | null;
+  summary?: string | null;
+  nearestAlternative: { name: string; margin: number; sameRole?: boolean; role?: string } | null;
 } | null;
 // The short "why this card" line (worker/forge-guided-build.ts → explainOffer).
 type GuidedExplanation = { role: string; worksWith: string[]; tradeOff: string; learned: string[] } | null;
@@ -163,11 +164,20 @@ type GuidedClaimChoice = {
 export type GuidedReasoning = {
   confidence: number;
   confidenceLabel: "low" | "medium" | "high";
+  confidenceNote?: string | null;
+  summary?: string | null;
   reasons: Array<{ kind: string; text: string }>;
   worksWith: Array<{ name: string; mechanism: string }>;
 } | null;
 export type GuidedDeckProfile = {
-  plan: { id: string; label: string; confidence: number; secondary: { id: string; label: string } | null };
+  plan: {
+    id: string;
+    label: string;
+    confidence: number;
+    secondary: { id: string; label: string } | null;
+    certaintyNote?: string | null;
+    restrictionNote?: string | null;
+  };
   planBalance: string;
   roles: Array<{ role: string; label: string; actual: number; target: { min: number; max: number }; status: string }>;
   gaps: Array<{ role: string; label: string; missing: number }>;
@@ -175,7 +185,7 @@ export type GuidedDeckProfile = {
   colors: { identity: string[]; requirements: Array<{ color: string; share: number; sourceShare: number | null; underSupported: boolean }>; unreliableNote?: string | null };
 } | null;
 export type GuidedListAnalysis = {
-  plan: { id: string; label: string; confidence: number };
+  plan: { id: string; label: string; confidence: number; certaintyNote?: string | null; restrictionNote?: string | null };
   planBalance: string;
   recognized: number;
   submitted: number;

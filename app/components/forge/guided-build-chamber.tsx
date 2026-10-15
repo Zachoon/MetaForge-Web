@@ -34,6 +34,8 @@ function DeckProfileCard({ profile }: { profile: NonNullable<GuidedDeckProfile> 
       <header>
         <small>YOUR DECK SO FAR</small>
         <p><b>{profile.plan.label}</b>{profile.plan.confidence > 0 ? ` · ${Math.round(profile.plan.confidence * 100)}% sure` : ""}</p>
+        {profile.plan.certaintyNote && <p className="guided-gaps">{profile.plan.certaintyNote}</p>}
+        {profile.plan.restrictionNote && <p className="guided-gaps">{profile.plan.restrictionNote}</p>}
         {PLAN_BALANCE_COPY[profile.planBalance] && <p className="guided-gaps">{PLAN_BALANCE_COPY[profile.planBalance]}</p>}
       </header>
       <div className="guided-curve" aria-label="Mana curve">
@@ -60,7 +62,9 @@ function ListReview({ analysis }: { analysis: NonNullable<GuidedListAnalysis> })
     <section className="guided-list-review" aria-label="Review of your list">
       <header>
         <small>YOUR LIST · {analysis.recognized} OF {analysis.submitted} CARDS READ</small>
-        <p>Reads as <b>{analysis.plan.label}</b>.</p>
+        <p>Reads as <b>{analysis.plan.label}</b>{analysis.plan.confidence > 0 ? ` · ${Math.round(analysis.plan.confidence * 100)}% sure` : ""}.</p>
+        {analysis.plan.certaintyNote && <p className="guided-gaps">{analysis.plan.certaintyNote}</p>}
+        {analysis.plan.restrictionNote && <p className="guided-gaps">{analysis.plan.restrictionNote}</p>}
       </header>
       {analysis.flagged.length > 0 && (
         <details open>
@@ -372,9 +376,10 @@ export function GuidedBuildChamber() {
                           <header>
                             <small>WHY THIS CARD</small>
                             <span className={`guided-confidence ${session.reasoning.confidenceLabel}`}>
-                              {session.reasoning.confidenceLabel} confidence
+                              {session.reasoning.confidenceLabel} confidence · {Math.round(session.reasoning.confidence * 100)}%
                             </span>
                           </header>
+                          {session.reasoning.confidenceNote && <p className="guided-gaps">{session.reasoning.confidenceNote}</p>}
                           <ul>
                             {session.reasoning.reasons.map((reason, index) => (
                               <li key={`${reason.kind}-${index}`} className={`guided-reason-${reason.kind}`}>
