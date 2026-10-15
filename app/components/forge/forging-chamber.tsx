@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useLayoutEffect } from "react";
 import { cardArtCrop } from "../../card-art";
 import {
   ForgeCeremonyMotion,
@@ -12,12 +13,29 @@ import { useForgeSession } from "../../forge-session-context";
 export function ForgingChamber() {
   const {
     stage,
+    setStage,
+    setForgingCeremonyMounted,
     selectedCommander,
     motionMode,
     revealOccupancyLabels,
     forgeElapsedSeconds,
     progress,
   } = useForgeSession();
+
+  // The stage timer used to live in session state, which keeps running while
+  // this chunk is still the Suspense fallback. Starting it here means the
+  // ceremony opens on its first step. Narrative progress only: the real build
+  // already started, and this timing must never become a second loading gate.
+  useEffect(() => {
+    if (stage >= FORGING_STAGES.length - 1) return;
+    const timer = window.setTimeout(() => setStage((value) => value + 1), 1150);
+    return () => window.clearTimeout(timer);
+  }, [stage, setStage]);
+
+  useLayoutEffect(() => {
+    setForgingCeremonyMounted(true);
+    return () => setForgingCeremonyMounted(false);
+  }, [setForgingCeremonyMounted]);
 
   return (
     <section className="forging-ceremony" data-phase={stage + 1} aria-live="polite">

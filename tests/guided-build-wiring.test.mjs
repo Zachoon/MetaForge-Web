@@ -7,7 +7,8 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf
 test("the guided-build chamber is a real Chamber value and is rendered by the page", () => {
   assert.match(read("app/forge-types.ts"), /\|\s*"guided-build"/);
   const page = read("app/page.tsx");
-  assert.match(page, /import \{ GuidedBuildChamber \}/);
+  // Imported directly or code-split with React.lazy.
+  assert.match(page, /import \{ GuidedBuildChamber \}|const GuidedBuildChamber = lazy\(\(\) => import\("\.\/components\/forge\/guided-build-chamber"\)/);
   assert.match(page, /chamber === "guided-build" && <GuidedBuildChamber \/>/);
 });
 

@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { ForgeCommissionCard } from "./forge-commission-card";
 import { ForgeRune } from "./forge-motion-flourishes";
 import { PlayerCompassCard } from "./player-compass-card";
+import { SampleWalkthrough } from "./sample-walkthrough";
 import { useForgeSession } from "../../forge-session-context";
 
 export function EntranceChamber() {
@@ -87,6 +89,7 @@ export function EntranceChamber() {
             Open an empty decklist
           </button>
         </div>
+        <SampleWalkthrough />
         <PlayerCompassCard
           value={playerCompass}
           signedIn={!guestMode}
@@ -94,10 +97,10 @@ export function EntranceChamber() {
           onChange={(next) => { void persistPlayerCompass(next); }}
         />
         <nav className="entrance-discovery" aria-label="Magic deckbuilding resources">
-          <a href="/tools"><strong>Free MTG deckbuilding tools</strong><span>Build, check, and analyze Commander decks with clear explanations.</span></a>
-          <a href="/commanders"><strong>Commander deck guides</strong><span>Explore commanders and the strategies their rules text supports.</span></a>
+          <Link href="/tools"><strong>Free MTG deckbuilding tools</strong><span>Build, check, and analyze Commander decks with clear explanations.</span></Link>
+          <Link href="/commanders"><strong>Commander deck guides</strong><span>Explore commanders and the strategies their rules text supports.</span></Link>
           <a href="/decks"><strong>Commander deck archive</strong><span>Browse commander strategy guides. Player-published decklists are coming soon.</span></a>
-          <a href="/academy"><strong>MTG deckbuilding guides</strong><span>Learn to diagnose mana, card flow, interaction, speed, and win conditions.</span></a>
+          <Link href="/academy"><strong>MTG deckbuilding guides</strong><span>Learn to diagnose mana, card flow, interaction, speed, and win conditions.</span></Link>
           <a href="/about"><strong>How MetaForge works</strong><span>Read the evidence-first method behind our MTG deck coaching.</span></a>
         </nav>
       </div>
