@@ -47,7 +47,9 @@ const [
 
 test("ceremony, footer, and card-mold rail slot name occupancy from commander oracle", () => {
   assert.match(forgingChamber, /className="ceremony-occupancy"/);
-  assert.match(forgingChamber, /Named from commander oracle while the 99 is still being forged/);
+  assert.match(forgingChamber, /From this commander's card/);
+  assert.match(forgingChamber, /The rest of the deck is still being built/);
+  assert.doesNotMatch(forgingChamber, /Occupancy engines/);
   assert.match(workbenchChamber, /className="masterwork-footer-occupancy"/);
   assert.match(page, /className="forge-card-mold-occupancy"/);
   assert.match(page, /className="forge-card-mold-pair"/);

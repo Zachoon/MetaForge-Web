@@ -57,7 +57,7 @@ export function ForgingChamber() {
         </div>
         {revealOccupancyLabels.length > 0 && (
           <p className="ceremony-occupancy">
-            Occupancy engines: {revealOccupancyLabels.join(" · ")}. Named from commander oracle while the 99 is still being forged.
+            From this commander's card: {revealOccupancyLabels.join(" · ")}. The rest of the deck is still being built.
           </p>
         )}
         <div className="ceremony-phase">
