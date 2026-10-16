@@ -13,7 +13,7 @@ import { describeResource, parseOracleMechanics } from "./oracle-mechanics.mjs";
 // How strongly each kind of link matters. A trigger that fires off another
 // card's output (payoff) is the core of most synergy; feeding a cost is
 // slightly weaker; resources that nearly every deck makes count for little.
-const LINK_WEIGHTS = Object.freeze({ listens: 1, consumes: 0.8 });
+const LINK_WEIGHTS = Object.freeze({ listens: 1, consumes: 0.85, scales: 0.8, taps: 0.75 });
 const COMMON_RESOURCE_DISCOUNT = Object.freeze({
   "creature-enters": 0.35, // every creature produces this
   "mana": 0.4,
@@ -47,21 +47,53 @@ export function mechanicsOf(entry) {
  * weight, mechanism }] where kind is "listens" (to's trigger fires off
  * from's output) or "consumes" (from feeds to's cost).
  */
+function mechanismFor(kind, resource, from, to) {
+  const source = entryNameOf(from);
+  const sink = entryNameOf(to);
+  const noun = describeResource(resource);
+  if (kind === "listens") return `${source} triggers ${sink} through ${noun}`;
+  if (kind === "scales") return `${sink}'s effect scales with the ${noun} ${source} makes, without spending them`;
+  if (kind === "taps") {
+    const sinkMechanics = mechanicsOf(to);
+    const limit = (sinkMechanics.restrictions || []).find((entry) => entry.kind === "spend-only");
+    if (sinkMechanics.tapMode === "grant") {
+      const spent = limit?.scope === "instant-or-sorcery"
+        ? " that can only be spent on instants and sorceries"
+        : (limit ? ` (${spendOnlyPhrase(limit)})` : "");
+      const ownMana = mechanicsOf(from).produces.includes("treasure") ? " Treasure already adds mana on its own." : "";
+      return `${sink} gives ${noun} ${source} makes an extra tap ability${spent}.${ownMana}`;
+    }
+    const only = limit ? ` (${spendOnlyPhrase(limit)})` : "";
+    const supplied = resource === "artifact" && mechanicsOf(from).produces.includes("treasure") ? "Treasure" : noun;
+    return `${source} supplies ${supplied} that ${sink} taps for mana${only}`;
+  }
+  const verb = mechanicsOf(to).spendVerbs?.[resource] || "spends";
+  return `${source} supplies ${noun} that ${sink} ${verb}`;
+}
+
+export function spendOnlyPhrase(restriction) {
+  if (!restriction) return "";
+  if (restriction.scope === "instant-or-sorcery") return "only for instants and sorceries";
+  if (restriction.scope === "creature-spell") return "only for creature spells";
+  if (restriction.scope === "artifact-spell") return "only for artifact spells";
+  if (restriction.scope === "commander") return "only to cast your commander";
+  if (restriction.type) return `only for ${restriction.type} spells`;
+  return "only for a restricted kind of spell";
+}
+
 export function linksBetween(from, to) {
   const source = mechanicsOf(from);
   const target = mechanicsOf(to);
   const links = [];
   for (const resource of source.produces) {
-    for (const kind of /** @type {const} */ (["listens", "consumes"])) {
-      if (!target[kind].includes(resource)) continue;
+    for (const kind of /** @type {const} */ (["listens", "consumes", "taps", "scales"])) {
+      if (!target[kind]?.includes(resource)) continue;
       const weight = LINK_WEIGHTS[kind] * (COMMON_RESOURCE_DISCOUNT[resource] ?? 1);
       links.push(Object.freeze({
         resource,
         kind,
         weight: Number(weight.toFixed(2)),
-        mechanism: kind === "listens"
-          ? `${entryNameOf(from)} triggers ${entryNameOf(to)} through ${describeResource(resource)}`
-          : `${entryNameOf(from)} supplies ${describeResource(resource)} that ${entryNameOf(to)} spends`,
+        mechanism: mechanismFor(kind, resource, from, to),
       }));
     }
   }
@@ -108,13 +140,19 @@ export function candidateSynergy(candidate, deckEntries = [], { commanderNames =
     const links = [...linksBetween(candidate, entry), ...linksBetween(entry, candidate)];
     if (!links.length) continue;
     links.sort((left, right) => right.weight - left.weight);
+    const grant = links.find((link) => link.kind === "taps" && /extra tap ability/.test(link.mechanism));
+    const scale = links.find((link) => link.kind === "scales");
+    const tidy = (line) => String(line || "").replace(/\.$/, "");
+    const mechanism = grant && scale
+      ? `${tidy(scale.mechanism)}. ${tidy(grant.mechanism)}`
+      : tidy((grant || links[0]).mechanism);
     const raw = links.reduce((sum, link) => sum + link.weight, 0);
     const isCommander = commanderSet.has(name.toLowerCase());
     // A link to the commander is always available (it is in the command
     // zone every game), so it counts double.
     const strength = Math.min(1.5, raw) * (isCommander ? 2 : 1);
     for (const link of links) resources.set(link.resource, (resources.get(link.resource) || 0) + link.weight);
-    partners.push(Object.freeze({ name, isCommander, strength: Number(strength.toFixed(2)), mechanism: links[0].mechanism, resource: links[0].resource }));
+    partners.push(Object.freeze({ name, isCommander, strength: Number(strength.toFixed(2)), mechanism, resource: (grant || scale || links[0]).resource }));
   }
   partners.sort((left, right) => right.strength - left.strength || left.name.localeCompare(right.name));
   const total = partners.reduce((sum, partner, index) => sum + partner.strength / (1 + index * 0.15), 0);

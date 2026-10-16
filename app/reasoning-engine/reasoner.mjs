@@ -12,8 +12,9 @@
 //                its existing score (never a filter)
 // =============================================================================
 
-import { candidateSynergy, entryNameOf, mechanicsOf } from "./mechanic-graph.mjs";
-import { CATEGORY_ROLE, ROLE_LABELS, cmcOf, curveBucket, isLand, pipsOf, planRoleOf, rolesOf } from "./deck-profile.mjs";
+import { candidateSynergy, entryNameOf, mechanicsOf, spendOnlyPhrase } from "./mechanic-graph.mjs";
+import { CATEGORY_ROLE, ROLE_LABELS, cmcOf, curveBucket, isLand, pipsOf, planSupportOf, rolesOf } from "./deck-profile.mjs";
+import { describeCardJob } from "./oracle-mechanics.mjs";
 
 export const REASONING_LIMITS = Object.freeze({ maxBoost: 16, maxPenalty: -14 });
 
@@ -24,6 +25,17 @@ const priceOf = (entry) => {
   return Number.isFinite(value) ? value : null;
 };
 const PLAN_ROLE_COPY = Object.freeze({ payoff: "pays off", enabler: "feeds", engine: "both feeds and pays off" });
+
+function typeMatchesSpendOnly(candidate, restriction) {
+  const line = String((candidate?.card || candidate)?.typeLine || candidate?.typeLine || "");
+  if (!restriction) return false;
+  if (restriction.scope === "instant-or-sorcery") return /\binstant\b|\bsorcery\b/i.test(line);
+  if (restriction.scope === "creature-spell") return /\bcreature\b/i.test(line);
+  if (restriction.scope === "artifact-spell") return /\bartifact\b/i.test(line);
+  if (restriction.scope === "commander") return false;
+  if (restriction.type) return new RegExp(`\\b${restriction.type}\\b`, "i").test(line);
+  return false;
+}
 
 export function confidenceLabel(value) {
   return value >= 0.7 ? "high" : value >= 0.45 ? "medium" : "low";
@@ -69,18 +81,38 @@ export function reasonAboutCandidate(candidate, { profile, deckEntries = [], com
       text: `${lead.mechanism}${synergy.partners.length > 1 ? ` (+${synergy.partners.length - 1} more link${synergy.partners.length > 2 ? "s" : ""})` : ""}.` }));
   }
 
-  // 3. Plan fit.
-  const planRole = planRoleOf(candidate, profile?.plan);
-  if (planRole && profile.plan.confidence > 0) {
+  // 3. Plan fit. Only a plan this card's own text supports may be named.
+  const support = planSupportOf(candidate, profile?.plan);
+  const planRole = support?.role || null;
+  const job = describeCardJob(candidate);
+  // A hybrid label such as "Spells and artifact ramp" already includes the
+  // secondary. Supporting that secondary advances the plan the player sees.
+  const coveredSecondary = Boolean(support && profile?.plan?.coversSecondary && support.id === profile.plan.secondary?.id);
+  if (support && profile.plan.confidence > 0) {
     let weight = 1.5 + profile.plan.confidence * 2.5;
     if ((profile.planBalance === "needs-enablers" && planRole !== "payoff") || (profile.planBalance === "needs-payoffs" && planRole !== "enabler")) weight += 1.5;
     weight = round(weight);
     delta += weight;
-    evidence += 0.75;
-    reasons.push(Object.freeze({ kind: "plan", weight, text: `It ${PLAN_ROLE_COPY[planRole]} your ${profile.plan.label.toLowerCase()} plan.` }));
-  } else if (!planRole && !synergy.score && profile?.plan?.confidence >= 0.5 && !gapRows.length && !isLand(candidate)) {
-    delta -= 3;
-    reasons.push(Object.freeze({ kind: "trade-off", weight: -3, text: `Doesn't advance your ${profile.plan.label.toLowerCase()} plan.` }));
+    evidence += support.id === profile.plan.id || coveredSecondary ? 0.75 : 0.35;
+    const offPrimary = support.id !== profile.plan.id && !coveredSecondary;
+    const named = (offPrimary ? support.label : profile.plan.label).toLowerCase();
+    reasons.push(Object.freeze({ kind: "plan", weight, text: offPrimary
+      ? `It ${PLAN_ROLE_COPY[planRole]} your ${named} plan. It does not advance the ${profile.plan.label.toLowerCase()} plan.`
+      : `It ${PLAN_ROLE_COPY[planRole]} your ${named} plan.` }));
+  } else if (!support && profile?.plan?.confidence >= 0.5 && !isLand(candidate)) {
+    if (!synergy.score && !gapRows.length) delta -= 3;
+    const does = job ? `${job.charAt(0).toUpperCase()}${job.slice(1)}. ` : "";
+    reasons.push(Object.freeze({ kind: "plan", weight: synergy.score || gapRows.length ? 0 : -3, text: `${does}It doesn't advance your ${profile.plan.label.toLowerCase()} plan.` }));
+  }
+
+  const spendCommander = commanders.find((entry) => (mechanicsOf(entry).restrictions || []).some((item) => item.kind === "spend-only"));
+  const spendOnly = (spendCommander ? mechanicsOf(spendCommander).restrictions : []).find((entry) => entry.kind === "spend-only");
+  const spendName = entryNameOf(spendCommander);
+  if (spendOnly && spendName && typeMatchesSpendOnly(candidate, spendOnly)) {
+    reasons.push(Object.freeze({ kind: "synergy", weight: 1, text: `${spendName}'s mana can pay for this, ${spendOnlyPhrase(spendOnly)}.` }));
+  }
+  if (mechanicsOf(candidate).rampMode === "conditional") {
+    reasons.push(Object.freeze({ kind: "trade-off", weight: 0, text: `This mana ${spendOnlyPhrase(mechanicsOf(candidate).restrictions?.find((entry) => entry.kind === "spend-only") || spendOnly) || "is restricted"}, so it does not fill the general ramp gap.` }));
   }
 
   // 4. Curve fit.
@@ -122,12 +154,38 @@ export function reasonAboutCandidate(candidate, { profile, deckEntries = [], com
   if (roles.size <= 1 && !synergy.score && !planRole && stepRole !== "plan") reasons.push(Object.freeze({ kind: "trade-off", weight: 0, text: "Does one job and nothing else for this deck." }));
 
   const capped = Math.max(REASONING_LIMITS.maxPenalty, Math.min(REASONING_LIMITS.maxBoost, delta));
-  // Confidence: independent evidence saturates toward ~0.9; a forming plan
-  // or a thin pick list lowers it because the profile itself is uncertain.
-  const profileCertainty = 0.6 + 0.4 * Math.min(1, (profile?.picks || 0) / 15);
-  const confidence = round(Math.max(0.15, Math.min(0.95, (0.3 + 0.6 * (1 - Math.exp(-evidence / 1.6))) * profileCertainty)));
+  // Confidence follows the claims we are willing to make. A direct rules-text
+  // link does not become "low" just because the deck is young, and a thin
+  // fit does not get an unqualified sentence.
+  const typeLine = String((candidate?.card || candidate)?.typeLine || candidate?.typeLine || "");
+  const tribe = profile?.plan?.creatureType;
+  const printedTribe = Boolean(tribe && support?.id === "typal" && support.id === profile?.plan?.id && new RegExp(`\\b${tribe}s?\\b`, "i").test(typeLine));
+  const printedHistoric = Boolean(support?.id === "historic" && support.id === profile?.plan?.id && /\bartifact\b|\bsaga\b|\blegendary\b/i.test(typeLine));
+  const commanderLink = synergy.partners.some((partner) => partner.isCommander) || printedTribe || printedHistoric;
+  const onPlan = Boolean(support && (support.id === profile?.plan?.id || coveredSecondary));
+  let confidence = 0.34;
+  if (commanderLink && (onPlan || gapRows.length)) confidence = 0.82;
+  else if (commanderLink || (gapRows.length && job) || (onPlan && (profile?.plan?.confidence || 0) >= 0.7)) confidence = 0.62;
+  else if (support) confidence = 0.5;
+  const label = confidenceLabel(confidence);
+  const confidenceNote = label === "high"
+    ? null
+    : label === "medium"
+      ? "The card's text supports this. The rest of the deck is still settling."
+      : "Low confidence: this fit is thin. A card whose text shares the commander's mechanic would raise it.";
+  if (label === "low") {
+    for (let index = 0; index < reasons.length; index += 1) {
+      const reason = reasons[index];
+      if (reason.kind === "plan" && !/doesn't advance|does not advance|thin read/i.test(reason.text)) {
+        reasons[index] = Object.freeze({ ...reason, text: `This may relate to the plan, but that read is still thin. ${job ? `The card ${job}.` : ""} More cards that share one mechanic would raise confidence.`.replace(/\s+/g, " ").trim() });
+      }
+    }
+  }
 
   reasons.sort((left, right) => Math.abs(right.weight) - Math.abs(left.weight));
+  const summary = label === "low"
+    ? (job ? `might fit because it ${job}, but that is still a thin read` : "is only a thin fit so far")
+    : (job || null);
   return Object.freeze({
     name,
     delta: round(capped),
@@ -135,8 +193,10 @@ export function reasonAboutCandidate(candidate, { profile, deckEntries = [], com
     resources: synergy.resources,
     reasons: Object.freeze(reasons),
     worksWith: Object.freeze(worksWith),
+    summary,
     confidence,
-    confidenceLabel: confidenceLabel(confidence),
+    confidenceLabel: label,
+    confidenceNote,
     mechanics: mechanicsOf(candidate),
   });
 }

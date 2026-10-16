@@ -211,6 +211,45 @@ test("the focused score blends the engine's card quality, and its weights are pi
   assert.equal(accessibilityPenalty({ card: {} }), 0);
 });
 
+test("a synergy comparison stays with a card that does the same job", () => {
+  const storm = enriched(card("Storm-Kiln Artist", "Creature — Dwarf Shaman", "Magecraft — Whenever you cast or copy an instant or sorcery spell, create a Treasure token.", 3, 0.2, "{2}{R}"));
+  const apprentice = enriched(card("Treasure Apprentice", "Creature — Dwarf Shaman", "Magecraft — Whenever you cast or copy an instant or sorcery spell, create a Treasure token.", 3, 0.2, "{2}{R}"));
+  const offer = enriched(card("An Offer You Can't Refuse", "Instant", "Counter target spell. Its controller creates two Treasure tokens.", 2, 0.2, "{1}{U}"));
+  const secondOffer = enriched(card("A Second Offer", "Instant", "Counter target spell.", 1, 0.2, "{U}"));
+  for (const entry of [storm, apprentice]) entry.roles = ["ramp"];
+  for (const entry of [offer, secondOffer]) entry.roles = ["interaction"];
+  const suggestion = suggestCardForCategory({
+    category: "synergyPieces",
+    partialRows: [],
+    pool: [storm, apprentice, offer, secondOffer],
+    intent: { packages: [{ id: "spellslinger" }] },
+  });
+  assert.equal(suggestion.exhausted, false);
+  assert.equal(suggestion.reason.nearestAlternative?.sameRole, true);
+  const roleOf = {
+    "Storm-Kiln Artist": "ramp",
+    "Treasure Apprentice": "ramp",
+    "An Offer You Can't Refuse": "interaction",
+    "A Second Offer": "interaction",
+  };
+  assert.equal(roleOf[suggestion.offer.name], roleOf[suggestion.reason.nearestAlternative.name]);
+});
+
+test("untagged synergy cards are not compared as if they shared a job", () => {
+  const storm = enriched(card("Storm-Kiln Artist", "Creature — Dwarf Shaman", "Magecraft — Whenever you cast or copy an instant or sorcery spell, create a Treasure token.", 3, 0.2, "{2}{R}"));
+  const apprentice = enriched(card("Treasure Apprentice", "Creature — Dwarf Shaman", "Magecraft — Whenever you cast or copy an instant or sorcery spell, create a Treasure token.", 3, 0.2, "{2}{R}"));
+  storm.roles = [];
+  apprentice.roles = [];
+  const suggestion = suggestCardForCategory({
+    category: "synergyPieces",
+    partialRows: [],
+    pool: [storm, apprentice],
+    intent: { packages: [{ id: "spellslinger" }] },
+  });
+  assert.equal(suggestion.exhausted, false);
+  assert.equal(suggestion.reason.nearestAlternative, null);
+});
+
 test("declining every eligible card in turn eventually exhausts the category", () => {
   const intent = intentForPearl();
   const pool = Array.from({ length: 3 }, (_, i) => enriched(ramp(`Stone ${i}`)));

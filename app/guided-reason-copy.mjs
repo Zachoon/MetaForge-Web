@@ -58,27 +58,60 @@ function humanizeTag(tag) {
   }
 }
 
+const SHELL_KINDS = new Set(["package_core", "package_support", "package_leg"]);
+
+/** At most two reasons, and never a pile of shell labels stacked on a role. */
+function selectClauses(tags) {
+  const clauses = [];
+  let usedShell = false;
+  let usedRole = false;
+  for (const tag of tags || []) {
+    const text = humanizeTag(tag);
+    if (!text || clauses.includes(text)) continue;
+    const kind = String(tag).split(":")[0];
+    const isShell = SHELL_KINDS.has(kind);
+    const isRole = kind === "role";
+    if (isShell && (usedShell || usedRole)) continue;
+    if (isRole && usedShell) continue;
+    if (isShell) usedShell = true;
+    if (isRole) usedRole = true;
+    clauses.push(text);
+    if (clauses.length >= 2) break;
+  }
+  return clauses;
+}
+
+function joinClauses(clauses) {
+  if (clauses.length === 1) return clauses[0];
+  if (clauses.length === 2) return `${clauses[0]} and ${clauses[1]}`;
+  return "";
+}
+
 /**
- * One or two plain sentences explaining why the Forge is offering this card,
- * built only from guided-suggestion's reason object.
+ * One or two plain sentences explaining why the Forge is offering this card.
+ * Prefer the card's own rules-text summary. A comparison is included only
+ * when the runner-up competes for the same role.
  */
 export function describeGuidedReason(reason, offerName = "This card") {
   if (!reason) return "";
-  const clauses = [...new Set((reason.deficitsFilled || []).map(humanizeTag).filter(Boolean))].slice(0, 3);
   let sentence = "";
-  if (clauses.length === 1) sentence = `${offerName} ${clauses[0]}.`;
-  else if (clauses.length === 2) sentence = `${offerName} ${clauses[0]} and ${clauses[1]}.`;
-  else if (clauses.length >= 3) sentence = `${offerName} ${clauses[0]}, ${clauses[1]}, and ${clauses[2]}.`;
-  else if (reason.topPositive) {
-    const fallback = humanizeTag(reason.topPositive.kind === "tracked_role" ? `role:${reason.topPositive.key}` : "");
-    sentence = fallback
-      ? `${offerName} ${fallback}.`
-      : `${offerName} is the best fit for this slot given what you've picked so far.`;
-  } else {
-    sentence = `${offerName} is the best fit for this slot given what you've picked so far.`;
+  const summary = String(reason.summary || "").replace(/\.$/, "").trim();
+  if (summary) sentence = `${offerName} ${summary}.`;
+  else {
+    const clauses = selectClauses(reason.deficitsFilled || []);
+    const joined = joinClauses(clauses);
+    if (joined) sentence = `${offerName} ${joined}.`;
+    else if (reason.topPositive) {
+      const fallback = humanizeTag(reason.topPositive.kind === "tracked_role" ? `role:${reason.topPositive.key}` : "");
+      sentence = fallback
+        ? `${offerName} ${fallback}.`
+        : `${offerName} is the best fit for this slot given what you've picked so far.`;
+    } else {
+      sentence = `${offerName} is the best fit for this slot given what you've picked so far.`;
+    }
   }
   const alt = reason.nearestAlternative;
-  if (alt?.name && Number(alt.margin) > 0) {
+  if (alt?.sameRole && alt.name && Number(alt.margin) > 0) {
     sentence += ` It edged out ${alt.name} for the spot.`;
   }
   return sentence;

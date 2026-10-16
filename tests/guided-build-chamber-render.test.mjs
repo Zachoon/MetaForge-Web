@@ -95,7 +95,7 @@ const session = (overrides = {}) => ({
   declined: [],
   manualCards: {},
   offer: { name: "Cultivate", typeLine: "Sorcery", oracleText: "Search your library for two basic land cards.", manaCost: "{2}{G}", cmc: 3 },
-  reason: { deficitsFilled: ["role:ramp", "curve:3"], topPositive: { kind: "tracked_role", key: "ramp" }, nearestAlternative: { name: "Rampant Growth", margin: 3.5 } },
+  reason: { deficitsFilled: ["role:ramp", "curve:3"], topPositive: { kind: "tracked_role", key: "ramp" }, nearestAlternative: { name: "Rampant Growth", margin: 3.5, sameRole: true, role: "ramp" } },
   exhausted: false,
   remainingCandidates: 40,
   ledger,
@@ -288,7 +288,7 @@ test("a live session shows why this card, the running profile, and a pasted-list
     },
   }) }));
   assert.match(html, /WHY THIS CARD/);
-  assert.match(html, /high confidence/);
+  assert.match(html, /high confidence · 82%/);
   assert.match(html, /Viscera Seer triggers Blood Artist/);
   assert.match(html, /YOUR DECK SO FAR/);
   assert.match(html, /Payoffs are ahead of the cards that feed them/);
@@ -297,6 +297,48 @@ test("a live session shows why this card, the running profile, and a pasted-list
   assert.match(html, /YOUR LIST · 4 OF 6 CARDS READ/);
   assert.match(html, /Colossal Dreadmaw/);
   assert.match(html, /Walk through next: Card draw/);
+});
+
+test("a low-confidence suggestion hedges, and a forming plan says what would make it clearer", () => {
+  const html = render(baseContext({ guidedSession: session({
+    reasoning: {
+      confidence: 0.34,
+      confidenceLabel: "low",
+      confidenceNote: "Low confidence: this fit is thin. A card whose text shares the commander's mechanic would raise it.",
+      reasons: [{ kind: "plan", text: "This may relate to the plan, but that read is still thin." }],
+      worksWith: [],
+    },
+    reason: {
+      summary: "is only a thin fit so far",
+      deficitsFilled: ["package_core:artifacts", "package_core:tokens"],
+      topPositive: null,
+      nearestAlternative: { name: "An Offer You Can't Refuse", margin: 2, sameRole: false },
+    },
+    deckProfile: {
+      plan: {
+        id: "spellslinger",
+        label: "Spells and artifact ramp",
+        confidence: 0.46,
+        secondary: null,
+        certaintyNote: "The plan is still forming. Another card that shares the same mechanic would make it clearer.",
+        restrictionNote: "Treasure already adds mana on its own. Artifacts also gain a tap ability that can only be spent on instants and sorceries.",
+      },
+      planBalance: "forming",
+      roles: [],
+      gaps: [],
+      curve: { buckets: [0, 0, 0, 0, 0, 0], targets: [1, 1, 1, 1, 1, 1], averageCmc: null, issues: [], labels: ["0-1", "2", "3", "4", "5", "6+"] },
+      colors: { identity: ["U", "R"], requirements: [] },
+    },
+  }) }));
+  assert.match(html, /low confidence · 34%/);
+  assert.match(html, /this fit is thin/);
+  assert.match(html, /is only a thin fit so far/);
+  assert.doesNotMatch(html, /An Offer You Can't Refuse/);
+  assert.doesNotMatch(html, /tokens shell/);
+  assert.match(html, /46% sure/);
+  assert.match(html, /The plan is still forming/);
+  assert.match(html, /Treasure already adds mana on its own/);
+  assert.match(html, /tap ability that can only be spent on instants and sorceries/);
 });
 
 test("each suggestion shows its role, what it works with, its trade-off, and what the coach learned", () => {

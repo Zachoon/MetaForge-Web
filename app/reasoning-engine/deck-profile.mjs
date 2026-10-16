@@ -44,13 +44,17 @@ export const ARCHETYPES = Object.freeze({
   tokens: Object.freeze({ label: "Go-wide tokens", resources: ["creature-token", "token", "creature-enters"] }),
   counters: Object.freeze({ label: "+1/+1 counters", resources: ["counter"] }),
   spellslinger: Object.freeze({ label: "Spellslinger", resources: ["spell-cast", "noncreature-cast", "copy"] }),
-  artifacts: Object.freeze({ label: "Artifacts", resources: ["artifact", "treasure"] }),
-  enchantress: Object.freeze({ label: "Enchantments", resources: ["enchantment"] }),
+  artifacts: Object.freeze({ label: "Artifacts", resources: ["artifact", "treasure", "clue", "food", "artifact-enters", "artifact-cast", "artifact-leaves"] }),
+  enchantress: Object.freeze({ label: "Enchantments", resources: ["enchantment", "enchantment-cast"] }),
   graveyard: Object.freeze({ label: "Graveyard value", resources: ["graveyard", "recursion", "discard"] }),
   lifegain: Object.freeze({ label: "Life gain", resources: ["lifegain"] }),
   landfall: Object.freeze({ label: "Landfall and big mana", resources: ["land-enters"] }),
   combat: Object.freeze({ label: "Combat and voltron", resources: ["attack", "combat-damage"] }),
   blink: Object.freeze({ label: "Blink and enter-the-battlefield value", resources: ["blink", "etb-value"] }),
+  typal: Object.freeze({ label: "Typal", resources: [] }),
+  "big-creatures": Object.freeze({ label: "Big creatures (power 4 or greater)", resources: ["power-matters"] }),
+  historic: Object.freeze({ label: "Historic spells", resources: ["historic"] }),
+  creatures: Object.freeze({ label: "Creature spells", resources: ["creature-cast"] }),
 });
 
 const RESOURCE_ARCHETYPES = (() => {
@@ -170,6 +174,9 @@ export function rolesOf(entry) {
   if (tags.has("protection") || effects.has("protection")) roles.add("protection");
   if (tags.has("recursion") || effects.has("recursion")) roles.add("recursion");
   if (tags.has("finisher") || tags.has("wincon") || effects.has("finisher")) roles.add("winConditions");
+  // Spend-restricted mana is not general ramp. Treasure tokens still are:
+  // their own ability adds mana of any color with no spend restriction.
+  if (mechanics.rampMode === "conditional") roles.delete("ramp");
   return roles;
 }
 
@@ -182,65 +189,324 @@ export function scaledTargets(deckSize = 100) {
   })));
 }
 
+const SKIP_PRODUCE = new Set(["creature-enters", "noncreature-cast", "mana", "combat-damage", "etb-value", "token"]);
+
+function emptyScores() {
+  return Object.fromEntries(Object.keys(ARCHETYPES).map((id) => [id, 0]));
+}
+
+/** Votes from one card. A self-ETB does not vote for blink. Paying life is not a lifegain plan. */
+function voteMechanics(mechanics, weight, scores) {
+  const add = (resource, factor) => {
+    for (const id of RESOURCE_ARCHETYPES.get(resource) || []) scores[id] += weight * factor;
+  };
+  for (const resource of mechanics.listens || []) {
+    if (resource === "etb-value" && !mechanics.doublesEtb) continue;
+    add(resource, 5);
+  }
+  for (const resource of mechanics.scales || []) add(resource, 4);
+  for (const resource of mechanics.taps || []) add(resource, 5);
+  for (const resource of mechanics.consumes || []) {
+    if (resource === "lifegain" && mechanics.spendVerbs?.lifegain === "pays") continue;
+    if (resource === "etb-value") add(resource, 5);
+    else add(resource, 4);
+  }
+  const produced = (mechanics.produces || []).filter((resource) => !SKIP_PRODUCE.has(resource));
+  const rewardCount = (mechanics.listens || []).length + (mechanics.scales || []).length + (mechanics.taps || []).length;
+  const produceWeight = rewardCount === 0 && produced.length ? 5 : 2;
+  for (const resource of produced) {
+    if (resource === "blink") add(resource, 8);
+    else add(resource, produceWeight);
+  }
+  if (mechanics.doublesEtb) scores.blink += weight * 8;
+  if (mechanics.produces?.includes("blink")) scores.blink += weight * 4;
+  if (mechanics.typal) scores.typal += weight * 8;
+  if (mechanics.powerMatters) scores["big-creatures"] += weight * 8;
+  if ((mechanics.listens || []).includes("historic")) scores.historic += weight * 8;
+}
+
+function restrictionNote(restrictions = [], rampMode = "none") {
+  const spend = restrictions.find((entry) => entry.kind === "spend-only");
+  const bits = [];
+  if (spend?.scope === "instant-or-sorcery") {
+    bits.push(rampMode === "both"
+      ? "Treasure already adds mana on its own. Artifacts also gain a tap ability that can only be spent on instants and sorceries."
+      : "Artifact mana can only cast instants and sorceries, so it is not general ramp.");
+  } else if (spend?.scope === "commander") bits.push("This mana can only cast your commander, so it is not general ramp.");
+  else if (spend?.scope === "creature-spell") bits.push("This mana can only cast creature spells, so it is not general ramp.");
+  else if (spend?.scope === "artifact-spell") bits.push("This mana can only cast artifact spells, so it is not general ramp.");
+  else if (spend?.type) bits.push(`This mana can only cast ${spend.type} spells, so it is not general ramp.`);
+  else if (rampMode === "conditional") bits.push("This mana is restricted, so it is not general ramp.");
+  if (restrictions.some((entry) => entry.kind === "once-each-turn")) bits.push("A triggered payoff here happens only once each turn.");
+  if (restrictions.some((entry) => entry.kind === "only-during-your-turn")) bits.push("The spell trigger works during your turn.");
+  if (restrictions.some((entry) => entry.kind === "while-tapped")) bits.push("The trigger works only while it is tapped.");
+  if (restrictions.some((entry) => entry.kind === "nontoken")) bits.push("Token copies of the rewarded permanent do not count.");
+  if (restrictions.some((entry) => entry.kind === "color-identity") && !spend) bits.push("Mana is limited to your commander's colors and can pay for any spell in those colors.");
+  return bits.join(" ") || null;
+}
+
+function certaintyNoteFor(confidence) {
+  if (confidence >= 0.7) return null;
+  if (confidence >= 0.45) return "The plan is still forming. Another card that shares the same mechanic would make it clearer.";
+  if (confidence > 0) return "Only a thin read so far. More cards that share one mechanic would make this clearer.";
+  return null;
+}
+
+function freezePlan({ id, label, confidence, secondary, resources, evidence, model, restrictionNote: note, coversSecondary = false }) {
+  const certaintyNote = certaintyNoteFor(confidence);
+  return Object.freeze({
+    id,
+    label,
+    confidence: round(confidence),
+    resources: Object.freeze(resources || ARCHETYPES[id]?.resources || []),
+    secondary: secondary ? Object.freeze(secondary) : null,
+    evidence: Object.freeze(evidence || []),
+    model: model ? Object.freeze(model) : null,
+    restrictionNote: note || null,
+    certaintyNote,
+    creatureType: model?.typal || null,
+    coversSecondary: Boolean(coversSecondary),
+  });
+}
+
+const TYPE_LINE_PRODUCES = new Set(["enchantment", "artifact", "artifact-cast", "artifact-enters", "noncreature-cast", "creature-enters", "etb-value"]);
+
+/** True when the rules text, not only the printed type line, names a plan. */
+function textCarriesPlan(mechanics) {
+  if ((mechanics.listens || []).length || (mechanics.scales || []).length || (mechanics.taps || []).length || (mechanics.consumes || []).length) return true;
+  if (mechanics.doublesEtb || mechanics.typal || mechanics.powerMatters || (mechanics.produces || []).includes("blink")) return true;
+  return (mechanics.produces || []).some((resource) => !TYPE_LINE_PRODUCES.has(resource));
+}
+
+function scoreAgainst(mechanics, id) {
+  const scores = emptyScores();
+  voteMechanics(mechanics, 1, scores);
+  return scores[id] || 0;
+}
+
+/** The commander whose rules text accounts for the winning plan, not the first slot. */
+function leadModel(models, planId) {
+  return models.reduce((best, model) => {
+    const score = scoreAgainst(model.mechanics, planId);
+    const bestScore = scoreAgainst(best.mechanics, planId);
+    if (score > bestScore) return model;
+    if (score === bestScore && textCarriesPlan(model.mechanics) && !textCarriesPlan(best.mechanics)) return model;
+    return best;
+  }, models[0]);
+}
+
+const MIDRANGE = () => freezePlan({
+  id: "midrange",
+  label: "Midrange value (no clear plan yet)",
+  confidence: 0,
+  resources: [],
+  secondary: null,
+  evidence: [],
+  model: null,
+});
+
 /**
- * Scores each archetype from the commander(s) and picks. Payoff evidence
- * (listens/consumes) counts 3x producing; the commander counts 3x a pick.
- * Optional free-text hints (strategy, note) nudge toward a named plan.
+ * Structured read of a commander: what it produces, what it rewards, what it
+ * needs, and which restrictions the text actually states. A single
+ * enter-the-battlefield clause does not make the plan blink.
+ */
+export function readCommanderPlan(commanders = []) {
+  const present = commanders.filter((entry) => entryNameOf(entry));
+  if (!present.length) return MIDRANGE();
+  const scores = emptyScores();
+  const evidence = Object.fromEntries(Object.keys(ARCHETYPES).map((id) => [id, new Set()]));
+  const models = present.map((entry) => {
+    const mechanics = mechanicsOf(entry);
+    voteMechanics(mechanics, 1, scores);
+    return { name: entryNameOf(entry), mechanics };
+  });
+  // A noncreature commander's printed type is a plan only when the text
+  // itself never names one. A creature type line is not.
+  const leadSoFar = Math.max(...Object.values(scores));
+  if (leadSoFar < 3) {
+    for (const entry of present) {
+      const line = typeLineOf(entry);
+      if (/\benchantment\b/i.test(line) && !/\bcreature\b/i.test(line)) scores.enchantress += 3;
+      else if (/\bartifact\b/i.test(line) && !/\bcreature\b/i.test(line)) scores.artifacts += 3;
+    }
+  }
+  const ranked = Object.entries(scores).filter(([, score]) => score > 0).sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]));
+  const [top, second] = ranked;
+  if (!top) return MIDRANGE();
+  for (const model of models) if (scores[top[0]]) evidence[top[0]].add(model.name);
+
+  // Partner and background pairs vote together, but the label, the
+  // restrictions, and the confidence come from the commander whose text
+  // actually carries the winning plan. Slot order is not that commander.
+  const mechanics = leadModel(models, top[0]).mechanics;
+  // The spell plan comes from the spend restriction on the granted artifact
+  // mana, not from a cast trigger. One enter-the-battlefield Treasure does
+  // not vote for blink; that produce is skipped in voteMechanics.
+  const spellAndArtifactRamp = (mechanics.taps || []).includes("artifact")
+    && (mechanics.restrictions || []).some((entry) => entry.kind === "spend-only" && entry.scope === "instant-or-sorcery");
+  let id = top[0];
+  let label = ARCHETYPES[id].label;
+  let secondary = second && second[1] >= top[1] * 0.6 ? { id: second[0], label: ARCHETYPES[second[0]].label } : null;
+  let coversSecondary = false;
+  if (spellAndArtifactRamp) {
+    id = "spellslinger";
+    label = "Spells and artifact ramp";
+    secondary = { id: "artifacts", label: ARCHETYPES.artifacts.label };
+    coversSecondary = true;
+  } else if (id === "typal" && mechanics.typal) {
+    label = `${mechanics.typal}s`;
+    secondary = null;
+  } else if (id === "creatures" && (mechanics.produces || []).includes("land-enters")) {
+    label = "Creature spells and land drops";
+  } else if (id === "artifacts" && (mechanics.produces || []).includes("treasure") && !(mechanics.listens || []).includes("spell-cast")) {
+    label = "Treasure and artifacts";
+  }
+
+  const typeLineOnly = !textCarriesPlan(mechanics);
+  let confidence = 0.5;
+  if (typeLineOnly) confidence = 0.46;
+  else if (spellAndArtifactRamp || mechanics.doublesEtb || (mechanics.produces || []).includes("blink") || mechanics.typal || mechanics.powerMatters || (mechanics.listens || []).includes("historic")) confidence = 0.86;
+  else if (top[1] >= 8) confidence = 0.84;
+  else if (top[1] >= 5) confidence = 0.74;
+
+  const resources = [...new Set([...(ARCHETYPES[id]?.resources || []), ...(secondary ? ARCHETYPES[secondary.id]?.resources || [] : [])])];
+  return freezePlan({
+    id,
+    label,
+    confidence,
+    secondary,
+    resources,
+    evidence: [...new Set(present.map((entry) => entryNameOf(entry)))].slice(0, 6),
+    restrictionNote: restrictionNote(mechanics.restrictions, mechanics.rampMode),
+    coversSecondary,
+    model: {
+      produces: mechanics.produces,
+      rewards: [...mechanics.listens, ...mechanics.scales, ...mechanics.taps],
+      needs: mechanics.consumes,
+      restrictions: mechanics.restrictions,
+      selfEtb: mechanics.selfEtb,
+      doublesEtb: mechanics.doublesEtb,
+      typal: mechanics.typal,
+      rampMode: mechanics.rampMode,
+    },
+  });
+}
+
+/**
+ * Scores each archetype from the commander(s) and picks. The commander's
+ * rules text anchors the plan. A handful of unrelated picks cannot rename it.
+ * Payoff evidence counts more than merely producing a resource. A one-time
+ * enter ability is not a blink plan.
  */
 export function inferPlan(commanders = [], picks = [], { hints = "" } = {}) {
-  const scores = Object.fromEntries(Object.keys(ARCHETYPES).map((id) => [id, 0]));
+  const anchored = commanders.filter((entry) => entryNameOf(entry)).length ? readCommanderPlan(commanders) : null;
+  const scores = emptyScores();
   const evidence = Object.fromEntries(Object.keys(ARCHETYPES).map((id) => [id, new Set()]));
   const credit = (entry, multiplier) => {
     const mechanics = mechanicsOf(entry);
-    const seen = new Set();
-    const add = (resource, weight) => {
-      for (const id of RESOURCE_ARCHETYPES.get(resource) || []) {
-        const key = `${id}:${resource}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        scores[id] += weight * multiplier;
-        evidence[id].add(entryNameOf(entry));
-      }
-    };
-    for (const resource of [...mechanics.listens, ...mechanics.consumes]) add(resource, 3);
-    for (const resource of mechanics.produces) {
-      // Every creature "produces" creature-enters; only count it as plan
-      // evidence when the card actually makes tokens.
-      if (resource === "creature-enters" || resource === "noncreature-cast" || resource === "mana") continue;
-      add(resource, 1);
-    }
+    const before = { ...scores };
+    voteMechanics(mechanics, multiplier, scores);
+    for (const id of Object.keys(scores)) if (scores[id] > before[id]) evidence[id].add(entryNameOf(entry));
   };
-  for (const commander of commanders) credit(commander, 3);
   for (const pick of picks) credit(pick, 1);
   const hintText = String(hints || "").toLowerCase();
   for (const [id, archetype] of Object.entries(ARCHETYPES)) {
     if (hintText && (hintText.includes(id) || hintText.includes(archetype.label.split(" ")[0].toLowerCase()))) scores[id] += 4;
   }
+  if (anchored && anchored.id !== "midrange" && anchored.confidence >= 0.7) {
+    const supporters = picks.filter((pick) => !isLand(pick) && planRoleOf(pick, anchored)).length;
+    return freezePlan({
+      ...anchored,
+      confidence: Math.min(0.93, anchored.confidence + supporters * 0.01),
+      evidence: [...new Set([...(anchored.evidence || []), ...[...evidence[anchored.id] || []].slice(0, 4)])],
+    });
+  }
   const ranked = Object.entries(scores).filter(([, score]) => score > 0).sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]));
   const total = ranked.reduce((sum, [, score]) => sum + score, 0);
   const [top, second] = ranked;
-  if (!top) return Object.freeze({ id: "midrange", label: "Midrange value (no clear plan yet)", confidence: 0, resources: Object.freeze([]), secondary: null, evidence: Object.freeze([]) });
-  return Object.freeze({
+  if (anchored && anchored.id !== "midrange" && (!top || top[0] === anchored.id || picks.length < 8)) {
+    return anchored;
+  }
+  if (!top) return anchored || MIDRANGE();
+  const confidence = round(Math.min(1, (top[1] / total) * Math.min(1, top[1] / 12) * 1.4));
+  return freezePlan({
     id: top[0],
-    label: ARCHETYPES[top[0]].label,
-    confidence: round(Math.min(1, (top[1] / total) * Math.min(1, top[1] / 12) * 1.4)),
-    resources: Object.freeze([...ARCHETYPES[top[0]].resources, ...(second && second[1] >= top[1] * 0.6 ? ARCHETYPES[second[0]].resources : [])]),
-    secondary: second && second[1] >= top[1] * 0.6 ? Object.freeze({ id: second[0], label: ARCHETYPES[second[0]].label }) : null,
-    evidence: Object.freeze([...evidence[top[0]]].slice(0, 6)),
+    label: top[0] === "typal" ? anchored?.label || ARCHETYPES.typal.label : ARCHETYPES[top[0]].label,
+    confidence,
+    resources: [...ARCHETYPES[top[0]].resources],
+    secondary: second && second[1] >= top[1] * 0.6 ? { id: second[0], label: ARCHETYPES[second[0]].label } : null,
+    evidence: [...evidence[top[0]]].slice(0, 6),
+    model: anchored?.model || null,
+    restrictionNote: anchored?.restrictionNote || null,
   });
 }
 
-/** Whether a card advances the given plan (produces, consumes or listens for one of its resources). */
-export function planRoleOf(entry, plan) {
-  if (!plan?.resources?.length) return null;
+function supportsTypal(entry, plan) {
+  const type = plan?.creatureType || plan?.model?.typal;
+  if (!type) return null;
+  const line = typeLineOf(entry);
+  const text = String(cardOf(entry).oracleText ?? cardOf(entry).oracle_text ?? entry?.oracleText ?? "");
+  const mentioned = new RegExp(`\\b${type}s?\\b`, "i").test(`${line} ${text}`);
+  if (!mentioned) return null;
   const mechanics = mechanicsOf(entry);
-  const planSet = new Set(plan.resources);
-  const payoff = [...mechanics.listens, ...mechanics.consumes].some((resource) => planSet.has(resource));
-  const enabler = mechanics.produces.some((resource) => planSet.has(resource) && resource !== "creature-enters");
+  const rewards = (mechanics.listens || []).some((resource) => resource === "creature-enters") || mechanics.typal === type;
+  return rewards && !new RegExp(`^Legendary Creature[^.]*${type}`, "i").test(line) ? "payoff" : "enabler";
+}
+
+function supportsHistoric(entry) {
+  const line = typeLineOf(entry);
+  if (/\bartifact\b|\bsaga\b|\blegendary\b/i.test(line)) return "enabler";
+  const mechanics = mechanicsOf(entry);
+  if ((mechanics.listens || []).includes("historic")) return "payoff";
+  return null;
+}
+
+function resourceRole(entry, resources, planId) {
+  if (!resources?.length && planId !== "typal" && planId !== "historic") return null;
+  const mechanics = mechanicsOf(entry);
+  const planSet = new Set(resources || []);
+  const payoffResources = [...(mechanics.listens || []), ...(mechanics.scales || []), ...(mechanics.taps || []), ...(mechanics.consumes || [])];
+  const payoff = payoffResources.some((resource) => {
+    if (!planSet.has(resource)) return false;
+    if (resource === "etb-value" && !mechanics.doublesEtb && !(mechanics.produces || []).includes("blink")) return false;
+    return true;
+  }) || (planId === "blink" && (mechanics.produces || []).includes("blink"));
+  const enabler = (mechanics.produces || []).some((resource) => {
+    if (!planSet.has(resource) || resource === "creature-enters" || resource === "mana" || resource === "noncreature-cast") return false;
+    if (resource === "etb-value") return planId === "blink" && mechanics.selfEtb;
+    return true;
+  });
   if (payoff && enabler) return "engine";
   if (payoff) return "payoff";
   if (enabler) return "enabler";
   return null;
+}
+
+/**
+ * Which named plan this card's own text supports. Secondary resources do not
+ * get to wear the primary plan's name. Returns null when the text supports
+ * neither the primary nor the secondary plan.
+ */
+export function planSupportOf(entry, plan) {
+  if (!plan || plan.id === "midrange" || !(plan.confidence > 0)) return null;
+  const checks = [{ id: plan.id, label: plan.label, resources: plan.id === "typal" || plan.id === "historic" ? [] : (ARCHETYPES[plan.id]?.resources || plan.resources || []) }];
+  if (plan.secondary?.id && plan.secondary.id !== plan.id) {
+    checks.push({ id: plan.secondary.id, label: plan.secondary.label, resources: ARCHETYPES[plan.secondary.id]?.resources || [] });
+  }
+  const matches = [];
+  for (const check of checks) {
+    let role = null;
+    if (check.id === "typal") role = supportsTypal(entry, plan);
+    else if (check.id === "historic") role = supportsHistoric(entry);
+    else role = resourceRole(entry, check.resources, check.id);
+    if (role) matches.push(Object.freeze({ ...check, role }));
+  }
+  return matches[0] || null;
+}
+
+/** Whether a card advances the given plan, from its own rules text only. */
+export function planRoleOf(entry, plan) {
+  return planSupportOf(entry, plan)?.role || null;
 }
 
 // Ideal nonland curve share for a 100-card deck, by mana value bucket

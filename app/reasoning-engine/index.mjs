@@ -20,9 +20,9 @@ import { buildDeckProfile, categoryUrgency } from "./deck-profile.mjs";
 
 export { reasonAboutCandidate, confidenceLabel, REASONING_LIMITS } from "./reasoner.mjs";
 export { analyzePartialList } from "./partial-list-analysis.mjs";
-export { buildDeckProfile, categoryUrgency, CATEGORY_ROLE, ROLE_TARGETS_100, ARCHETYPES, inferPlan, commanderReasoningEntry, producedColorsOf, unreliableManaNote } from "./deck-profile.mjs";
-export { buildInteractionGraph, candidateSynergy, linksBetween, mechanicsOf } from "./mechanic-graph.mjs";
-export { parseOracleMechanics, RESOURCES } from "./oracle-mechanics.mjs";
+export { buildDeckProfile, categoryUrgency, CATEGORY_ROLE, ROLE_TARGETS_100, ARCHETYPES, inferPlan, readCommanderPlan, planSupportOf, planRoleOf, commanderReasoningEntry, producedColorsOf, unreliableManaNote } from "./deck-profile.mjs";
+export { buildInteractionGraph, candidateSynergy, linksBetween, mechanicsOf, spendOnlyPhrase } from "./mechanic-graph.mjs";
+export { parseOracleMechanics, describeCardJob, RESOURCES } from "./oracle-mechanics.mjs";
 
 export const RULES_PROVIDER = Object.freeze({ id: "rules-v1" });
 
