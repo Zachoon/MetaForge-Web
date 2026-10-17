@@ -27,6 +27,15 @@ const COMMON_RESOURCE_DISCOUNT = Object.freeze({
 const cardOf = (entry) => entry?.card || entry || {};
 export const entryNameOf = (entry) => cardOf(entry).name || entry?.name || "";
 
+// Blink fuel is not all equal. The link still exists for a scry or a
+// cast-gated enter, but a steal or a two-card draw pulls harder.
+function etbLinkFactor(etb) {
+  if (!etb?.tier || !etb.repeatsOnBlink) return 0.3;
+  if (etb.tier === "premium") return 1.4;
+  if (etb.tier === "solid") return 1;
+  return 0.5;
+}
+
 const mechanicsCache = new WeakMap();
 /** Parsed mechanics for an analyzed row, flat row, or raw card (memoized per object). */
 export function mechanicsOf(entry) {
@@ -37,6 +46,8 @@ export function mechanicsOf(entry) {
     oracleText: card.oracleText ?? card.oracle_text ?? entry?.oracleText ?? "",
     typeLine: card.typeLine ?? card.type_line ?? entry?.typeLine ?? "",
     keywords: card.keywords || [],
+    manaCost: card.manaCost ?? card.mana_cost ?? entry?.manaCost ?? entry?.mana_cost ?? "",
+    cmc: card.cmc ?? entry?.cmc,
   });
   if (entry && typeof entry === "object") mechanicsCache.set(entry, parsed);
   return parsed;
@@ -67,6 +78,10 @@ function mechanismFor(kind, resource, from, to) {
     const supplied = resource === "artifact" && mechanicsOf(from).produces.includes("treasure") ? "Treasure" : noun;
     return `${source} supplies ${supplied} that ${sink} taps for mana${only}`;
   }
+  if (resource === "etb-value" && kind === "consumes") {
+    const etb = mechanicsOf(from).etb;
+    if (etb?.phrase && etb.repeatsOnBlink) return `${source} ${etb.phrase} each time ${sink} blinks it`;
+  }
   const verb = mechanicsOf(to).spendVerbs?.[resource] || "spends";
   return `${source} supplies ${noun} that ${sink} ${verb}`;
 }
@@ -88,7 +103,8 @@ export function linksBetween(from, to) {
   for (const resource of source.produces) {
     for (const kind of /** @type {const} */ (["listens", "consumes", "taps", "scales"])) {
       if (!target[kind]?.includes(resource)) continue;
-      const weight = LINK_WEIGHTS[kind] * (COMMON_RESOURCE_DISCOUNT[resource] ?? 1);
+      let weight = LINK_WEIGHTS[kind] * (COMMON_RESOURCE_DISCOUNT[resource] ?? 1);
+      if (resource === "etb-value") weight *= etbLinkFactor(source.etb);
       links.push(Object.freeze({
         resource,
         kind,

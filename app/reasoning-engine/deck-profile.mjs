@@ -468,9 +468,11 @@ function resourceRole(entry, resources, planId) {
   const payoffResources = [...(mechanics.listens || []), ...(mechanics.scales || []), ...(mechanics.taps || []), ...(mechanics.consumes || [])];
   const payoff = payoffResources.some((resource) => {
     if (!planSet.has(resource)) return false;
-    if (resource === "etb-value" && !mechanics.doublesEtb && !(mechanics.produces || []).includes("blink")) return false;
+    // Blink spells spend etb-value, but they are the enablers. Only a
+    // doubler is paid off by other cards entering.
+    if (resource === "etb-value" && !mechanics.doublesEtb) return false;
     return true;
-  }) || (planId === "blink" && (mechanics.produces || []).includes("blink"));
+  });
   const enabler = (mechanics.produces || []).some((resource) => {
     if (!planSet.has(resource) || resource === "creature-enters" || resource === "mana" || resource === "noncreature-cast") return false;
     if (resource === "etb-value") return planId === "blink" && mechanics.selfEtb;

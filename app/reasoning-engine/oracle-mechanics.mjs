@@ -15,6 +15,8 @@
 //   effects   - what the card does to the game (removal, wipe, ramp, draw...)
 //   restrictions - spend-only mana, once each turn, nontoken, your turn only, ...
 //   keywords  - keyword abilities printed on the card
+//   etb       - how strong a self enter trigger is (tier, score, phrase), read
+//               from that ability only. Producing etb-value does not vote blink.
 //
 // The vocabulary is a fixed list of general game resources (RESOURCES), never
 // card names, so any card - including ones printed after this was written -
@@ -201,6 +203,435 @@ function selfNormalized(text, name) {
   return out.replace(/\(([^)]*)\)/g, " ").replace(/\s+/g, " ");
 }
 
+// A self-enter trigger names the card ("when this card enters" after the
+// printed name is folded in) or the printed subject ("when this creature
+// enters", "when this Vehicle enters"). "When this creature or another
+// creature enters" is someone else's trigger and does not match.
+const ENTER_SUBJECT = "card|creature|permanent|artifact|enchantment|aura|vehicle|spacecraft|equipment|land|class";
+const SELF_ENTER = new RegExp(`\\b(?:when|whenever) this (?:${ENTER_SUBJECT}) enters\\b`, "i");
+const ENTER_ABILITY = new RegExp(
+  `\\b(?:when|whenever) this (?:${ENTER_SUBJECT}) enters\\b(?:\\s+or\\s+(?:attacks?|dies))?(?:\\s+and\\s+when you sacrifice (?:it|this (?:card|artifact|creature|permanent)))?`,
+  "gi",
+);
+
+const NUMBER_WORD = Object.freeze({
+  a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+});
+
+function amountOf(word) {
+  if (!word) return null;
+  const lower = String(word).toLowerCase();
+  if (lower === "x") return Infinity;
+  if (NUMBER_WORD[lower]) return NUMBER_WORD[lower];
+  const numeric = Number(lower);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function printedManaValue(card = {}) {
+  const cost = String(card.manaCost ?? card.mana_cost ?? "");
+  if (cost) {
+    let total = 0;
+    for (const symbol of cost.match(/\{[^}]+\}/g) || []) {
+      const inner = symbol.slice(1, -1);
+      if (/^\d+$/.test(inner)) total += Number(inner);
+      else if (!/^[XYZ]$/i.test(inner)) total += 1;
+    }
+    return total;
+  }
+  const direct = Number(card.cmc);
+  return Number.isFinite(direct) ? direct : null;
+}
+
+const TIER_SCORE = Object.freeze({ premium: 6, solid: 3, minor: 1 });
+const TIER_RANK = Object.freeze({ premium: 3, solid: 2, minor: 1 });
+
+function clauseScales(clause) {
+  return /\bwhere X is\b|\bequal to (?:its|that|the|your|this)\b|\bequal to the number\b|\bfor each\b|\bthat many\b/i.test(clause)
+    || /\b(?:draw|create|add|untap|destroy|exile|deal|deals|lose|loses|gain|search) X\b/i.test(clause)
+    || /\bcreate X\b|\b-X\/-X\b|\bX \/ X\b/i.test(clause);
+}
+
+function applyScale(grade) {
+  if (!grade?.tier) return grade;
+  const scales = Boolean(grade.scales || grade._scales);
+  if (!scales || grade.tier === "premium") return { ...grade, scales };
+  return { ...grade, scales: true, tier: grade.tier === "minor" ? "solid" : "premium" };
+}
+
+function betterGrade(left, right) {
+  if (!left?.tier) return right;
+  if (!right?.tier) return left;
+  const delta = (TIER_RANK[right.tier] || 0) - (TIER_RANK[left.tier] || 0);
+  if (delta !== 0) return delta > 0 ? right : left;
+  if (right.scales && !left.scales) return right;
+  return left;
+}
+
+function readEnterAbility(text, start) {
+  let rest = text.slice(start).replace(/^[\s,—–-]+/, "");
+  if (/\bchoose (?:one|two|three|up to \w+)\b/i.test(rest.slice(0, 80)) && rest.includes("•")) {
+    const stop = rest.search(/\.\s+(?:When |Whenever |At the beginning |\{)/);
+    return stop === -1 ? rest.trim() : rest.slice(0, stop + 1).trim();
+  }
+  const ender = /\.\s+/g;
+  let match;
+  while ((match = ender.exec(rest))) {
+    const next = rest.slice(match.index + match[0].length);
+    const reflexive = /^When you (?:do|don't)\b/.test(next);
+    const boundary = !reflexive && /^(?:When |Whenever |At the beginning |\{)/.test(next);
+    const continuation = /^(?:If |Then |You |That |Those |It |Its |Put |Shuffle|Return |The |Create |Draw |When you (?:do|don't)\b)/.test(next);
+    if (boundary || !continuation) return rest.slice(0, match.index + 1).trim();
+  }
+  return rest.trim();
+}
+
+function enterAbilities(text) {
+  const abilities = [];
+  const pattern = new RegExp(ENTER_ABILITY.source, "gi");
+  let match;
+  while ((match = pattern.exec(text))) {
+    abilities.push(readEnterAbility(text, match.index + match[0].length));
+    if (pattern.lastIndex === match.index) pattern.lastIndex += 1;
+  }
+  return abilities;
+}
+
+function repeatsWhenBlinked(clause) {
+  if (/\bif you cast (?:it|this card)\b/i.test(clause)) return false;
+  if (/\bif (?:it|this card) was cast\b/i.test(clause)) return false;
+  if (/\bif \{[^}]+\}\s+was spent to cast (?:it|this card)\b/i.test(clause)) return false;
+  return true;
+}
+
+function gradeBlink(clause) {
+  // A period may sit between "exile" and "return" (modal modes do this).
+  // Exile-until-leaves has no return, so it stays removal.
+  const returns = /\breturn (?:it|that card|them|those cards) to the battlefield\b/i.test(clause);
+  if (!returns || !/\bexile\b/i.test(clause)) return null;
+  return { tier: "premium", phrase: "blinks another permanent", scales: false };
+}
+
+function gradeSteal(clause) {
+  if (!/\bgain control of\b/i.test(clause)) return null;
+  if (/\buntil end of turn\b/i.test(clause)) return { tier: "solid", phrase: "steals a permanent until end of turn", scales: false };
+  return { tier: "premium", phrase: "steals a permanent", scales: false };
+}
+
+function gradeRemoval(clause) {
+  if (/\breturn (?:it|that card|them|those cards) to the battlefield\b/i.test(clause)) return null;
+  const removes = /\b(?:destroy|exile) (?:up to (?:one|two|three|four|\d+) )?(?:another )?(?:target )?(?:nonland |nonbasic |tapped |attacking )?(?:artifact or enchantment|artifact or land|creature or planeswalker|creature|permanent|artifact|enchantment|land|planeswalker)\b/i.test(clause);
+  if (!removes) return null;
+  const restricted = /\bwith mana value \d+ or less\b|\bwith power \d+ or less\b|\bwith toughness \d+ or less\b/i.test(clause);
+  if (restricted) return { tier: "solid", phrase: "removes a smaller permanent", scales: false };
+  let phrase = "removes a permanent";
+  if (/\bdestroy target (?:nonbasic )?land\b/i.test(clause)) phrase = "destroys a land";
+  else if (/\bartifact or land\b/i.test(clause)) phrase = "exiles an artifact or land";
+  else if (/\b(?:destroy|exile) target (?:artifact or enchantment|artifact|enchantment)\b/i.test(clause)) phrase = "destroys an artifact or enchantment";
+  else if (/\bdestroy target creature\b/i.test(clause)) phrase = "destroys a creature";
+  else if (/\bexile target creature\b/i.test(clause)) phrase = "exiles a creature";
+  else if (/\bdestroy target nonland\b/i.test(clause)) phrase = "destroys a permanent";
+  else if (/\bexile target nonland\b/i.test(clause)) phrase = "exiles a permanent";
+  return { tier: "premium", phrase, scales: false };
+}
+
+function gradeGraveyardExile(clause) {
+  if (/\bexile (?:all graveyards|each opponent's graveyard|target player's graveyard)\b/i.test(clause)) {
+    return { tier: "premium", phrase: "exiles a graveyard", scales: false };
+  }
+  if (/\bexile (?:up to \w+ )?target cards? from (?:a |your |their |an opponent's )?graveyards?\b/i.test(clause)) {
+    return { tier: "minor", phrase: "exiles a graveyard card", scales: false };
+  }
+  return null;
+}
+
+function gradeDraw(clause) {
+  const opponentOnly = /\b(?:an opponent|each opponent|target opponent|that player|they) draws?\b/i.test(clause)
+    && !/\byou draw\b/i.test(clause);
+  if (opponentOnly) return null;
+  if (/\bdraw cards equal to\b/i.test(clause)) {
+    const detail = clause.match(/\bdraw cards equal to ([^.,]+)/i);
+    const phrase = detail ? `draws cards equal to ${detail[1].trim()}` : "draws cards";
+    return { tier: "premium", phrase, scales: true };
+  }
+  if (/\bdraw (?:X|that many) cards\b/i.test(clause)) return { tier: "premium", phrase: "draws X cards", scales: true };
+  const match = clause.match(/\bdraw (a|an|one|two|three|four|five|six|seven|eight|nine|ten|\d+) cards?\b/i);
+  if (!match) return null;
+  const amount = amountOf(match[1]);
+  const word = match[1].toLowerCase();
+  if (amount >= 2) {
+    const discards = /\bthen discard\b/i.test(clause);
+    return {
+      tier: discards ? "solid" : "premium",
+      phrase: discards ? `draws ${word} cards, then discards` : `draws ${word} cards`,
+      scales: false,
+    };
+  }
+  return { tier: "solid", phrase: "draws a card", scales: false };
+}
+
+function gradeTutor(clause) {
+  if (!/\bsearch your library\b/i.test(clause)) return null;
+  const nonland = /\b(?:creature|instant|sorcery|artifact|enchantment|planeswalker) cards?\b/i.test(clause)
+    || /\bfor (?:a|an) cards?\b/i.test(clause);
+  const land = /\bland cards?\b/i.test(clause);
+  if (nonland && !(land && !/\b(?:creature|instant|sorcery|artifact|enchantment|planeswalker) cards?\b/i.test(clause))) {
+    if (/\bcreature card\b/i.test(clause) && !/\binstant or sorcery\b/i.test(clause)) return { tier: "premium", phrase: "tutors a creature", scales: false };
+    if (/\binstant or sorcery\b/i.test(clause)) return { tier: "premium", phrase: "tutors an instant or sorcery", scales: false };
+    if (/\bartifact card\b/i.test(clause)) return { tier: "premium", phrase: "tutors an artifact", scales: false };
+    return { tier: "premium", phrase: "tutors a card", scales: false };
+  }
+  if (!land) return { tier: "premium", phrase: "tutors a card", scales: false };
+  const countWord = clause.match(/\bup to (one|two|three|four|five|six|seven|eight|nine|ten|\d+|X)\b/i);
+  const count = countWord ? amountOf(countWord[1]) : 1;
+  const battlefield = /\bonto the battlefield\b/i.test(clause);
+  const scales = count === Infinity || /\bwhere X is\b/i.test(clause);
+  const many = scales || (count !== null && count >= 3);
+  const phrase = battlefield
+    ? (many ? "puts lands onto the battlefield" : "puts a land onto the battlefield")
+    : (many ? "tutors lands" : "tutors a land");
+  return { tier: many ? "premium" : "solid", phrase, scales };
+}
+
+function gradeRecursion(clause) {
+  if (/\b(?:you may )?cast target (?:instant or sorcery|instant|sorcery) card\b[^.]{0,80}\bgraveyard\b/i.test(clause)) {
+    return { tier: "premium", phrase: "casts a spell from the graveyard", scales: clauseScales(clause) };
+  }
+  if (/\breturn target instant or sorcery card\b[^.]{0,60}\bgraveyard\b/i.test(clause)) {
+    return { tier: "premium", phrase: "returns an instant or sorcery from the graveyard", scales: false };
+  }
+  if (/\breturn all [^.]{0,60}\bfrom (?:your |a )?graveyard\b[^.]{0,40}\bbattlefield\b/i.test(clause)) {
+    return { tier: "premium", phrase: "returns permanents from the graveyard", scales: false };
+  }
+  if (/\b(?:return|put) (?:target |a |up to \w+ )?(?:[^.]+?\s)?from (?:your |a )?graveyard\b[^.]{0,40}\b(?:hand|battlefield)\b/i.test(clause)
+    || /\b(?:return|put) target [^.]{0,80}\bgraveyard\b[^.]{0,40}\b(?:hand|battlefield)\b/i.test(clause)) {
+    if (/\bland card\b/i.test(clause) && !/\bcreature card\b|\bpermanent card\b/i.test(clause) && !/\bbattlefield\b/i.test(clause)) {
+      return { tier: "solid", phrase: "returns a land from the graveyard", scales: false };
+    }
+    const battlefield = /\bbattlefield\b/i.test(clause);
+    return {
+      tier: "premium",
+      phrase: battlefield ? "reanimates a permanent" : "returns a card from the graveyard",
+      scales: clauseScales(clause),
+    };
+  }
+  return null;
+}
+
+function gradeUntap(clause) {
+  if (!/\buntap\b/i.test(clause)) return null;
+  if (/\buntap (?:up to )?(?:two|three|four|five|six|seven|eight|nine|ten|\d+|all|each|x|that many)\b[^.]{0,40}\blands?\b/i.test(clause)
+    || /\buntap all lands\b/i.test(clause)) {
+    return { tier: "premium", phrase: "untaps lands", scales: /\b(?:X|all|each)\b/i.test(clause) };
+  }
+  return { tier: "solid", phrase: /\bland\b/i.test(clause) ? "untaps a land" : "untaps a permanent", scales: false };
+}
+
+function gradeTap(clause) {
+  if (!/\btap\b/i.test(clause)) return null;
+  return { tier: "solid", phrase: "taps a permanent", scales: false };
+}
+
+function gradeBounce(clause) {
+  if (/\bgraveyard\b/i.test(clause)) return null;
+  if (!/\breturn (?:up to \w+ )?(?:another )?(?:target )[^.]{0,80}\bto (?:its |their )?owner'?s hand\b/i.test(clause)) return null;
+  return { tier: "solid", phrase: "bounces a permanent", scales: false };
+}
+
+function gradeTokens(clause) {
+  if (/\bcreate\b/i.test(clause) && /\btreasure\b/i.test(clause)) {
+    const many = /\bcreate (?:X|two|three|four|five|six|seven|eight|nine|ten|\d+)\s+Treasures?\b/i.test(clause);
+    const scales = /\bcreate X\s+Treasures?\b/i.test(clause) || (/\bwhere X is\b/i.test(clause) && /\bTreasures?\b/i.test(clause));
+    return { tier: "premium", phrase: scales ? "creates X Treasure tokens" : many ? "creates Treasure" : "creates a Treasure", scales };
+  }
+  if (/\bcreate (?:X|a number of)\b[^.]{0,80}\btokens?\b/i.test(clause) || /\btokens? equal to\b/i.test(clause)) {
+    return { tier: "premium", phrase: "creates X creature tokens", scales: true };
+  }
+  const counted = clause.match(/\bcreate (two|three|four|five|six|seven|eight|nine|ten|\d+)\b[^.]{0,80}\btokens?\b/i);
+  if (counted) {
+    const amount = amountOf(counted[1]);
+    if (amount >= 3) return { tier: "premium", phrase: `creates ${counted[1].toLowerCase()} creature tokens`, scales: false };
+    return { tier: "solid", phrase: amount === 2 ? "creates two creature tokens" : "creates creature tokens", scales: false };
+  }
+  if (/\bcreate (?:a|an|one)\b[^.]{0,80}\btoken\b/i.test(clause) || /\binvestigate\b/i.test(clause)) {
+    if (/\bfood\b/i.test(clause)) return { tier: "solid", phrase: "creates a Food token", scales: false };
+    if (/\bclue\b/i.test(clause) || /\binvestigate\b/i.test(clause)) return { tier: "solid", phrase: "investigates", scales: false };
+    return { tier: "solid", phrase: "creates a creature token", scales: false };
+  }
+  return null;
+}
+
+function gradeMana(clause) {
+  const symbols = clause.match(/\{[^}]+\}/g) || [];
+  const adds = /\badd\b/i.test(clause) && symbols.length;
+  if (!adds) return null;
+  return { tier: symbols.length >= 2 || /\badd X\b/i.test(clause) ? "premium" : "solid", phrase: "adds mana", scales: /\badd X\b|\bwhere X is\b/i.test(clause) };
+}
+
+function gradeDiscover(clause) {
+  const match = clause.match(/\bdiscover (X|\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b/i);
+  if (!match) return null;
+  const amount = amountOf(match[1]);
+  const scales = match[1].toLowerCase() === "x";
+  return { tier: scales || amount >= 4 ? "premium" : "solid", phrase: scales ? "discovers X" : `discovers ${match[1].toLowerCase()}`, scales };
+}
+
+function gradeCheat(clause) {
+  if (/\bput (?:any number of|all|X) [^.]{0,60}\bfrom your hand onto the battlefield\b/i.test(clause)) {
+    return { tier: "premium", phrase: "puts creatures from your hand onto the battlefield", scales: /\bX\b/.test(clause) };
+  }
+  return null;
+}
+
+function gradeLife(clause) {
+  const drain = clause.match(/\b(?:each opponent|target opponent|each player|target player) loses (X|\d+) life\b/i);
+  if (drain) {
+    const amount = amountOf(drain[1]);
+    const scales = drain[1].toLowerCase() === "x";
+    if (scales || amount >= 5) return { tier: "solid", phrase: scales ? "drains X life" : `drains ${amount} life`, scales };
+    return { tier: "minor", phrase: `drains ${amount} life`, scales: false };
+  }
+  const gain = clause.match(/\byou gain (X|\d+) life\b/i);
+  if (!gain) return null;
+  const amount = amountOf(gain[1]);
+  const scales = gain[1].toLowerCase() === "x" || /\bequal to\b/i.test(clause);
+  if (scales) return { tier: "solid", phrase: "gains X life", scales: true };
+  if (amount <= 2) return { tier: "minor", phrase: amount === 1 ? "gains 1 life" : "gains 2 life", scales: false };
+  return { tier: "solid", phrase: `gains ${amount} life`, scales: false };
+}
+
+function gradeDamage(clause) {
+  const match = clause.match(/\bdeals? (X|\d+) damage to (?:any target|target creature|target planeswalker|target player|each opponent|target opponent|each player)\b/i);
+  if (!match) return null;
+  const amount = amountOf(match[1]);
+  const scales = match[1].toLowerCase() === "x" || /\bequal to\b/i.test(clause);
+  const face = /\b(?:each opponent|target opponent|target player|each player|planeswalker)\b/i.test(match[0]);
+  if (scales) return { tier: "solid", phrase: "deals X damage", scales: true };
+  if (face && amount <= 2) return { tier: "minor", phrase: `deals ${amount} damage`, scales: false };
+  return { tier: "solid", phrase: `deals ${amount} damage`, scales: false };
+}
+
+function gradeShrink(clause) {
+  if (!/gets? -X\/-X\b/i.test(clause) && !/gets? -\d+\/-\d+/i.test(clause)) return null;
+  if (/gets? -X\/-X\b/i.test(clause)) return { tier: "solid", phrase: "gives a creature -X/-X", scales: true };
+  return { tier: "solid", phrase: "shrinks a creature", scales: false };
+}
+
+function gradeFight(clause) {
+  if (!/\bfights?\b/i.test(clause)) return null;
+  return { tier: "solid", phrase: "fights a creature", scales: false };
+}
+
+function gradeScry(clause) {
+  if (/\bscry\b/i.test(clause)) return { tier: "minor", phrase: "scries", scales: false };
+  if (/\bsurveil\b/i.test(clause)) return { tier: "minor", phrase: "surveils", scales: false };
+  return null;
+}
+
+function gradeMill(clause) {
+  const match = clause.match(/\bmill (X|one|two|three|four|five|six|seven|eight|nine|ten|\d+) cards?\b/i);
+  if (!match) return null;
+  const amount = amountOf(match[1]);
+  const scales = match[1].toLowerCase() === "x";
+  return { tier: scales || amount >= 4 ? "solid" : "minor", phrase: scales ? "mills X cards" : `mills ${match[1].toLowerCase()} cards`, scales };
+}
+
+function gradeCounters(clause) {
+  const match = clause.match(/\bput (a|an|one|two|three|four|five|X|\d+) \+1\/\+1 counters?\b/i);
+  if (!match) return null;
+  const amount = amountOf(match[1]);
+  const scales = match[1].toLowerCase() === "x";
+  if (scales || amount >= 3) return { tier: "solid", phrase: scales ? "puts X +1/+1 counters on a creature" : "puts +1/+1 counters on a creature", scales };
+  if (amount >= 2) return { tier: "solid", phrase: "puts +1/+1 counters on a creature", scales: false };
+  return { tier: "minor", phrase: "puts a +1/+1 counter on a creature", scales: false };
+}
+
+const EFFECT_GRADERS = [
+  gradeBlink, gradeSteal, gradeRemoval, gradeGraveyardExile, gradeDraw, gradeTutor, gradeRecursion,
+  gradeUntap, gradeTap, gradeBounce, gradeTokens, gradeMana, gradeDiscover, gradeCheat, gradeLife,
+  gradeDamage, gradeShrink, gradeFight, gradeScry, gradeMill, gradeCounters,
+];
+
+function gradePiece(clause) {
+  let best = null;
+  for (const grade of EFFECT_GRADERS) {
+    best = betterGrade(best, applyScale(grade(clause)));
+  }
+  return best;
+}
+
+function splitModes(clause) {
+  const choice = clause.match(/\bchoose (one|two|three)\b/i);
+  if (!choice || !clause.includes("•")) return null;
+  const modes = clause.split("•").slice(1).map((mode) => mode.trim()).filter(Boolean);
+  if (modes.length < 2) return null;
+  const count = { one: 1, two: 2, three: 3 }[choice[1].toLowerCase()] || 1;
+  return { count, modes };
+}
+
+function gradeEnterClause(clause) {
+  const modal = splitModes(clause);
+  const pieces = modal ? modal.modes : [clause];
+  let best = null;
+  const graded = [];
+  for (const piece of pieces) {
+    const grade = gradePiece(piece);
+    if (grade?.tier) graded.push(grade);
+    best = betterGrade(best, grade);
+  }
+  if (modal && modal.count >= 2 && graded.length >= 2) {
+    const ordered = [...graded].sort((left, right) => (TIER_RANK[right.tier] || 0) - (TIER_RANK[left.tier] || 0));
+    if (best?.tier && best.tier !== "premium" && (TIER_RANK[ordered[1].tier] || 0) >= TIER_RANK.solid) {
+      best = { ...best, tier: best.tier === "minor" ? "solid" : "premium" };
+    }
+  }
+  return {
+    tier: best?.tier || null,
+    phrase: best?.phrase || null,
+    scales: Boolean(best?.scales),
+    modal: Boolean(modal),
+    repeatsOnBlink: repeatsWhenBlinked(clause),
+  };
+}
+
+/**
+ * Blink fuel from the enter ability only. Attack, dies, and activated
+ * text stay out. Modal enters take the strongest mode, because the blink
+ * player chooses it. A scaling effect steps up one tier. "If you cast it"
+ * is printed strength that does not happen again when the card is blinked.
+ */
+function gradeSelfEnter(text, { typeLine = "", manaValue = null } = {}) {
+  if (!SELF_ENTER.test(text)) return null;
+  const grades = enterAbilities(text).map(gradeEnterClause);
+  const repeatable = grades.filter((grade) => grade.repeatsOnBlink && grade.tier);
+  const pool = repeatable.length ? repeatable : grades.filter((grade) => grade.tier);
+  let best = null;
+  for (const grade of pool) best = betterGrade(best, grade);
+  const repeatsOnBlink = repeatable.length > 0 || !grades.some((grade) => grade.tier && !grade.repeatsOnBlink);
+  const tier = best?.tier || null;
+  const creature = /\bcreature\b/i.test(typeLine);
+  const land = /\bland\b/i.test(typeLine);
+  let score = 0;
+  // Tier gaps (premium 6 / solid 3 / minor 1) stay larger than cheapness,
+  // the creature bump, and the scaling bump added together. Cheapness runs
+  // through mana value 6 so a 5-mana draw still outranks a 7-mana one.
+  if (tier && repeatsOnBlink) {
+    const cheap = !land && Number.isFinite(manaValue) ? Math.max(0, 6 - manaValue) * 0.22 : 0;
+    score = Number((TIER_SCORE[tier] + cheap + (creature ? 0.2 : 0) + (best.scales ? 0.4 : 0)).toFixed(2));
+  }
+  return Object.freeze({
+    tier,
+    score,
+    phrase: best?.phrase || null,
+    scales: Boolean(best?.scales),
+    modal: grades.some((grade) => grade.modal),
+    repeatsOnBlink: tier ? Boolean(repeatsOnBlink) : true,
+  });
+}
+
+const EMPTY_ETB = Object.freeze({
+  tier: null, score: 0, phrase: null, scales: false, modal: false, repeatsOnBlink: true,
+});
+
 const matchAll = (rules, text) => [...new Set(rules.filter(([pattern]) => pattern.test(text)).map(([, tag]) => tag))];
 
 /**
@@ -247,10 +678,12 @@ export function parseOracleMechanics(card = {}) {
   }
   if (/\bsacrifice another permanent\b/i.test(text)) produces.add("sacrifice");
 
-  // A one-shot "when this card enters" is fuel a blink deck can reuse. It is
-  // not itself a blink or ETB-doubling payoff. Doublers (Yarok, Panharmonicon)
-  // keep the etb-value listen.
-  const selfEtb = /\bwhen this card enters\b|\bwhenever this card enters\b/i.test(text);
+  // A one-shot "when this card/creature/artifact enters" is fuel a blink deck
+  // can reuse. It is not itself a blink or ETB-doubling payoff. Doublers
+  // (Yarok, Panharmonicon) keep the etb-value listen. Printed strength lives
+  // on `etb`; producing etb-value still does not vote the plan to blink.
+  const etb = gradeSelfEnter(text, { typeLine, manaValue: printedManaValue(card) }) || EMPTY_ETB;
+  const selfEtb = etb !== EMPTY_ETB;
   const doublesEtb = listens.has("etb-value") && !selfEtb;
   if (selfEtb) {
     listens.delete("creature-enters");
@@ -322,6 +755,7 @@ export function parseOracleMechanics(card = {}) {
     rampMode,
     selfEtb,
     doublesEtb,
+    etb,
     typal: typalOf(text),
     powerMatters: scales.has("power-matters"),
     triggered: /\b(?:when|whenever|at the beginning of)\b/i.test(text),
@@ -410,6 +844,8 @@ export function describeCardJob(card = {}) {
       oracleText: source.oracleText ?? source.oracle_text ?? "",
       typeLine: source.typeLine ?? source.type_line ?? "",
       keywords: source.keywords || card?.keywords || [],
+      manaCost: source.manaCost ?? source.mana_cost ?? card?.manaCost ?? card?.mana_cost ?? "",
+      cmc: source.cmc ?? card?.cmc,
     })
     : source;
   const text = String(source.oracleText || source.oracle_text || "");
@@ -448,6 +884,11 @@ export function describeCardJob(card = {}) {
   if (listens.has("artifact-enters") && !parts.length) parts.push("pays off an artifact entering");
   if (mechanics.doublesEtb) parts.push("doubles enter-the-battlefield triggers");
   if (produces.has("blink")) parts.push("exiles your permanents and returns them");
+  if (!parts.length && mechanics.selfEtb && mechanics.etb?.phrase) {
+    parts.push(mechanics.etb.repeatsOnBlink
+      ? `${mechanics.etb.phrase} when it enters`
+      : `${mechanics.etb.phrase} only if you cast it`);
+  }
   if (listens.has("enchantment") || listens.has("enchantment-cast")) parts.push("pays off enchantments");
   if (listens.has("historic")) parts.push("pays off historic spells");
   if (mechanics.typal && !parts.length) parts.push(`cares about ${mechanics.typal}s`);
