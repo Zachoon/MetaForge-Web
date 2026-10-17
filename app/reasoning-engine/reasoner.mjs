@@ -85,20 +85,32 @@ export function reasonAboutCandidate(candidate, { profile, deckEntries = [], com
   const support = planSupportOf(candidate, profile?.plan);
   const planRole = support?.role || null;
   const job = describeCardJob(candidate);
+  const etb = mechanicsOf(candidate).etb || {};
+  const selfEtb = Boolean(mechanicsOf(candidate).selfEtb);
+  let blinkFuel = false;
+  let castOnly = false;
   // A hybrid label such as "Spells and artifact ramp" already includes the
   // secondary. Supporting that secondary advances the plan the player sees.
   const coveredSecondary = Boolean(support && profile?.plan?.coversSecondary && support.id === profile.plan.secondary?.id);
   if (support && profile.plan.confidence > 0) {
     let weight = 1.5 + profile.plan.confidence * 2.5;
     if ((profile.planBalance === "needs-enablers" && planRole !== "payoff") || (profile.planBalance === "needs-payoffs" && planRole !== "enabler")) weight += 1.5;
+    const onBlink = profile.plan.id === "blink" && support.id === "blink";
+    blinkFuel = Boolean(onBlink && selfEtb && etb.phrase && etb.repeatsOnBlink && etb.tier);
+    castOnly = Boolean(onBlink && selfEtb && etb.phrase && !etb.repeatsOnBlink);
+    if (blinkFuel) weight += etb.score;
     weight = round(weight);
     delta += weight;
     evidence += support.id === profile.plan.id || coveredSecondary ? 0.75 : 0.35;
     const offPrimary = support.id !== profile.plan.id && !coveredSecondary;
     const named = (offPrimary ? support.label : profile.plan.label).toLowerCase();
-    reasons.push(Object.freeze({ kind: "plan", weight, text: offPrimary
+    const lead = etb.phrase ? `${etb.phrase.charAt(0).toUpperCase()}${etb.phrase.slice(1)}` : "";
+    let text = offPrimary
       ? `It ${PLAN_ROLE_COPY[planRole]} your ${named} plan. It does not advance the ${profile.plan.label.toLowerCase()} plan.`
-      : `It ${PLAN_ROLE_COPY[planRole]} your ${named} plan.` }));
+      : `It ${PLAN_ROLE_COPY[planRole]} your ${named} plan.`;
+    if (!offPrimary && blinkFuel) text = `${lead} each time it re-enters.`;
+    else if (!offPrimary && castOnly) text = `${lead} only if you cast it.`;
+    reasons.push(Object.freeze({ kind: "plan", weight, text }));
   } else if (!support && profile?.plan?.confidence >= 0.5 && !isLand(candidate)) {
     if (!synergy.score && !gapRows.length) delta -= 3;
     const does = job ? `${job.charAt(0).toUpperCase()}${job.slice(1)}. ` : "";
@@ -167,6 +179,9 @@ export function reasonAboutCandidate(candidate, { profile, deckEntries = [], com
   if (commanderLink && (onPlan || gapRows.length)) confidence = 0.82;
   else if (commanderLink || (gapRows.length && job) || (onPlan && (profile?.plan?.confidence || 0) >= 0.7)) confidence = 0.62;
   else if (support) confidence = 0.5;
+  // A blink target's confidence follows how strong the enter ability is.
+  // Minor stays medium so the effect sentence is not rewritten away.
+  if (blinkFuel) confidence = etb.tier === "premium" ? 0.84 : etb.tier === "solid" ? 0.6 : 0.48;
   const label = confidenceLabel(confidence);
   const confidenceNote = label === "high"
     ? null
@@ -183,9 +198,11 @@ export function reasonAboutCandidate(candidate, { profile, deckEntries = [], com
   }
 
   reasons.sort((left, right) => Math.abs(right.weight) - Math.abs(left.weight));
-  const summary = label === "low"
+  let summary = label === "low"
     ? (job ? `might fit because it ${job}, but that is still a thin read` : "is only a thin fit so far")
     : (job || null);
+  if (blinkFuel && label !== "low") summary = `${etb.phrase} each time it re-enters`;
+  else if (castOnly && label !== "low") summary = `${etb.phrase} only if you cast it`;
   return Object.freeze({
     name,
     delta: round(capped),
