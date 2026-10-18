@@ -24,7 +24,30 @@ const priceOf = (entry) => {
   const value = Number(cardOf(entry).priceUsd ?? entry?.priceUsd);
   return Number.isFinite(value) ? value : null;
 };
-const PLAN_ROLE_COPY = Object.freeze({ payoff: "pays off", enabler: "feeds", engine: "both feeds and pays off" });
+const PLAN_ROLE_COPY = Object.freeze({
+  payoff: "pays off",
+  enabler: "feeds",
+  outlet: "is an outlet for",
+  engine: "both feeds and pays off",
+});
+
+function gravePlanOf(profile) {
+  const plan = profile?.plan;
+  if (!plan || !(plan.confidence > 0)) return false;
+  if (plan.id === "graveyard") return true;
+  return (plan.resources || []).includes("graveyard") || (plan.resources || []).includes("recursion");
+}
+
+function oppositionTo(candidate, profile) {
+  const mechanics = mechanicsOf(candidate);
+  const hate = mechanics.graveyardHate;
+  if (hate && gravePlanOf(profile)) {
+    if (hate === "replacement" || hate === "all" || hate === "yours") return "exiles graveyards, which cuts off a graveyard plan";
+    if (hate === "shuffle") return "shuffles your graveyard into your library, which takes those cards out of a graveyard plan";
+    return "can exile your graveyard as well as an opponent's";
+  }
+  return null;
+}
 
 function typeMatchesSpendOnly(candidate, restriction) {
   const line = String((candidate?.card || candidate)?.typeLine || candidate?.typeLine || "");
@@ -85,6 +108,7 @@ export function reasonAboutCandidate(candidate, { profile, deckEntries = [], com
   const support = planSupportOf(candidate, profile?.plan);
   const planRole = support?.role || null;
   const job = describeCardJob(candidate);
+  const opposed = oppositionTo(candidate, profile);
   const etb = mechanicsOf(candidate).etb || {};
   const selfEtb = Boolean(mechanicsOf(candidate).selfEtb);
   let blinkFuel = false;
@@ -111,7 +135,7 @@ export function reasonAboutCandidate(candidate, { profile, deckEntries = [], com
     if (!offPrimary && blinkFuel) text = `${lead} each time it re-enters.`;
     else if (!offPrimary && castOnly) text = `${lead} only if you cast it.`;
     reasons.push(Object.freeze({ kind: "plan", weight, text }));
-  } else if (!support && profile?.plan?.confidence >= 0.5 && !isLand(candidate)) {
+  } else if (!opposed && !support && profile?.plan?.confidence >= 0.5 && !isLand(candidate)) {
     if (!synergy.score && !gapRows.length) delta -= 3;
     const does = job ? `${job.charAt(0).toUpperCase()}${job.slice(1)}. ` : "";
     reasons.push(Object.freeze({ kind: "plan", weight: synergy.score || gapRows.length ? 0 : -3, text: `${does}It doesn't advance your ${profile.plan.label.toLowerCase()} plan.` }));
@@ -125,6 +149,15 @@ export function reasonAboutCandidate(candidate, { profile, deckEntries = [], com
   }
   if (mechanicsOf(candidate).rampMode === "conditional") {
     reasons.push(Object.freeze({ kind: "trade-off", weight: 0, text: `This mana ${spendOnlyPhrase(mechanicsOf(candidate).restrictions?.find((entry) => entry.kind === "spend-only") || spendOnly) || "is restricted"}, so it does not fill the general ramp gap.` }));
+  }
+  if (opposed) {
+    const hard = /cuts off|takes those cards/.test(opposed);
+    const weight = hard ? -8 : -3;
+    delta += weight;
+    reasons.push(Object.freeze({ kind: "trade-off", weight, text: `It ${opposed}.` }));
+  } else if (mechanicsOf(candidate).symmetricDraw) {
+    reasons.push(Object.freeze({ kind: "trade-off", weight: -1, text: "Each player draws, so your opponents get the cards too." }));
+    delta -= 1;
   }
 
   // 4. Curve fit.
@@ -182,8 +215,11 @@ export function reasonAboutCandidate(candidate, { profile, deckEntries = [], com
   // A blink target's confidence follows how strong the enter ability is.
   // Minor stays medium so the effect sentence is not rewritten away.
   if (blinkFuel) confidence = etb.tier === "premium" ? 0.84 : etb.tier === "solid" ? 0.6 : 0.48;
+  if (opposed) confidence = /cuts off|takes those cards/.test(opposed) ? 0.84 : 0.62;
   const label = confidenceLabel(confidence);
-  const confidenceNote = label === "high"
+  const confidenceNote = opposed
+    ? (label === "high" ? null : "This can hit your graveyard, not only an opponent's.")
+    : label === "high"
     ? null
     : label === "medium"
       ? "The card's text supports this. The rest of the deck is still settling."
@@ -201,7 +237,8 @@ export function reasonAboutCandidate(candidate, { profile, deckEntries = [], com
   let summary = label === "low"
     ? (job ? `might fit because it ${job}, but that is still a thin read` : "is only a thin fit so far")
     : (job || null);
-  if (blinkFuel && label !== "low") summary = `${etb.phrase} each time it re-enters`;
+  if (opposed) summary = opposed;
+  else if (blinkFuel && label !== "low") summary = `${etb.phrase} each time it re-enters`;
   else if (castOnly && label !== "low") summary = `${etb.phrase} only if you cast it`;
   return Object.freeze({
     name,

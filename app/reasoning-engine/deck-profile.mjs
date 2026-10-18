@@ -10,6 +10,7 @@
 // =============================================================================
 
 import { mechanicsOf, entryNameOf } from "./mechanic-graph.mjs";
+import { pluralCreatureType } from "./oracle-mechanics.mjs";
 import { opponentDependentAddClause, opponentDependentManaText } from "../opponent-mana.mjs";
 
 // Commander norms for a 100-card deck (community-standard "8x8"/template
@@ -55,6 +56,8 @@ export const ARCHETYPES = Object.freeze({
   "big-creatures": Object.freeze({ label: "Big creatures (power 4 or greater)", resources: ["power-matters"] }),
   historic: Object.freeze({ label: "Historic spells", resources: ["historic"] }),
   creatures: Object.freeze({ label: "Creature spells", resources: ["creature-cast"] }),
+  equipment: Object.freeze({ label: "Equipment", resources: ["equipment"] }),
+  auras: Object.freeze({ label: "Auras", resources: ["aura"] }),
 });
 
 const RESOURCE_ARCHETYPES = (() => {
@@ -211,16 +214,30 @@ function voteMechanics(mechanics, weight, scores) {
     if (resource === "etb-value") add(resource, 5);
     else add(resource, 4);
   }
-  const produced = (mechanics.produces || []).filter((resource) => !SKIP_PRODUCE.has(resource));
+  const catchUp = new Set(mechanics.catchUp || []);
+  const produced = (mechanics.produces || []).filter((resource) => !SKIP_PRODUCE.has(resource) && !catchUp.has(resource));
   const rewardCount = (mechanics.listens || []).length + (mechanics.scales || []).length + (mechanics.taps || []).length;
   const produceWeight = rewardCount === 0 && produced.length ? 5 : 2;
   for (const resource of produced) {
     if (resource === "blink") add(resource, 8);
+    else if (resource === "counter" && mechanics.counterScope === "self") continue;
+    else if (resource === "counter" && mechanics.counterScope === "rider") add(resource, 1);
+    // The creature token already is the body. Counting it again makes a
+    // token spell look like a sacrifice deck.
+    else if (resource === "creature-body" && produced.includes("creature-token")) continue;
+    // Sacrificing an artifact already voted. The leave event is that cost.
+    else if (resource === "artifact-leaves" && (mechanics.consumes || []).includes("artifact")) continue;
+    // A sorcery that creates creature tokens is a token card. The spell
+    // type line is not a spellslinger plan unless the text listens for spells.
+    else if ((resource === "spell-cast" || resource === "noncreature-cast") && produced.includes("creature-token") && !(mechanics.listens || []).includes("spell-cast")) continue;
     else add(resource, produceWeight);
   }
   if (mechanics.doublesEtb) scores.blink += weight * 8;
   if (mechanics.produces?.includes("blink")) scores.blink += weight * 4;
-  if (mechanics.typal) scores.typal += weight * 8;
+  // A death, spell, or land trigger is the plan. The creature type is then
+  // the secondary. An attack trigger on a tribal lord is not a voltron deck.
+  const rivalListen = (mechanics.listens || []).some((resource) => !["creature-enters", "token", "attack", "combat-damage"].includes(resource));
+  if (mechanics.typal) scores.typal += weight * (rivalListen ? 4 : 8);
   if (mechanics.powerMatters) scores["big-creatures"] += weight * 8;
   if ((mechanics.listens || []).includes("historic")) scores.historic += weight * 8;
 }
@@ -354,7 +371,7 @@ export function readCommanderPlan(commanders = []) {
     secondary = { id: "artifacts", label: ARCHETYPES.artifacts.label };
     coversSecondary = true;
   } else if (id === "typal" && mechanics.typal) {
-    label = `${mechanics.typal}s`;
+    label = pluralCreatureType(mechanics.typal);
     secondary = null;
   } else if (id === "creatures" && (mechanics.produces || []).includes("land-enters")) {
     label = "Creature spells and land drops";
@@ -367,7 +384,7 @@ export function readCommanderPlan(commanders = []) {
   if (typeLineOnly) confidence = 0.46;
   else if (spellAndArtifactRamp || mechanics.doublesEtb || (mechanics.produces || []).includes("blink") || mechanics.typal || mechanics.powerMatters || (mechanics.listens || []).includes("historic")) confidence = 0.86;
   else if (top[1] >= 8) confidence = 0.84;
-  else if (top[1] >= 5) confidence = 0.74;
+  else if (top[1] >= 4) confidence = 0.74;
 
   const resources = [...new Set([...(ARCHETYPES[id]?.resources || []), ...(secondary ? ARCHETYPES[secondary.id]?.resources || [] : [])])];
   return freezePlan({
@@ -446,11 +463,20 @@ function supportsTypal(entry, plan) {
   if (!type) return null;
   const line = typeLineOf(entry);
   const text = String(cardOf(entry).oracleText ?? cardOf(entry).oracle_text ?? entry?.oracleText ?? "");
-  const mentioned = new RegExp(`\\b${type}s?\\b`, "i").test(`${line} ${text}`);
-  if (!mentioned) return null;
+  const plural = pluralCreatureType(type);
+  const mentioned = new RegExp(`\\b(?:${type}|${plural})\\b`, "i").test(`${line} ${text}`);
+  if (mentioned) {
+    const mechanics = mechanicsOf(entry);
+    const rewards = (mechanics.listens || []).some((resource) => resource === "creature-enters") || mechanics.typal === type;
+    return rewards && !new RegExp(`^Legendary Creature[^.]*${type}`, "i").test(line) ? "payoff" : "enabler";
+  }
+  // A Goblin token commander is still a token deck. Doublers and enter
+  // payoffs feed that plan even when they never say the creature type.
+  if (!(plan.model?.produces || []).includes("creature-token")) return null;
   const mechanics = mechanicsOf(entry);
-  const rewards = (mechanics.listens || []).some((resource) => resource === "creature-enters") || mechanics.typal === type;
-  return rewards && !new RegExp(`^Legendary Creature[^.]*${type}`, "i").test(line) ? "payoff" : "enabler";
+  if ((mechanics.produces || []).includes("creature-token") || /twice that many of those tokens|creates? twice that many/i.test(text)) return "enabler";
+  if ((mechanics.listens || []).includes("creature-enters") || (mechanics.scales || []).includes("creature-token")) return "payoff";
+  return null;
 }
 
 function supportsHistoric(entry) {
@@ -461,11 +487,14 @@ function supportsHistoric(entry) {
   return null;
 }
 
+const OUTPUT_NOT_FUEL = new Set(["life-drain", "lifegain", "card-draw", "combat-damage", "attack"]);
+const OUTLET_ECHO = new Set(["creature-dies", "sacrifice", "artifact-leaves"]);
+
 function resourceRole(entry, resources, planId) {
   if (!resources?.length && planId !== "typal" && planId !== "historic") return null;
   const mechanics = mechanicsOf(entry);
   const planSet = new Set(resources || []);
-  const payoffResources = [...(mechanics.listens || []), ...(mechanics.scales || []), ...(mechanics.taps || []), ...(mechanics.consumes || [])];
+  const payoffResources = [...(mechanics.listens || []), ...(mechanics.scales || []), ...(mechanics.taps || [])];
   const payoff = payoffResources.some((resource) => {
     if (!planSet.has(resource)) return false;
     // Blink spells spend etb-value, but they are the enablers. Only a
@@ -473,13 +502,23 @@ function resourceRole(entry, resources, planId) {
     if (resource === "etb-value" && !mechanics.doublesEtb) return false;
     return true;
   });
+  const outlet = (mechanics.consumes || []).some((resource) => {
+    if (!planSet.has(resource) || resource === "lifegain" || resource === "etb-value") return false;
+    const verb = mechanics.spendVerbs?.[resource];
+    return verb === "sacrifices" || verb === "removes";
+  });
   const enabler = (mechanics.produces || []).some((resource) => {
-    if (!planSet.has(resource) || resource === "creature-enters" || resource === "mana" || resource === "noncreature-cast") return false;
+    if (!planSet.has(resource) || resource === "creature-enters" || resource === "mana" || resource === "noncreature-cast" || OUTPUT_NOT_FUEL.has(resource)) return false;
     if (resource === "etb-value") return planId === "blink" && mechanics.selfEtb;
+    if (outlet && OUTLET_ECHO.has(resource)) return false;
+    // "Whenever a creature dies" already is the payoff. The derived
+    // death-trigger tag is that same sentence, not a second feed.
+    if (resource === "death-trigger" && (mechanics.listens || []).includes("creature-dies")) return false;
     return true;
   });
-  if (payoff && enabler) return "engine";
+  if (payoff && (enabler || outlet)) return "engine";
   if (payoff) return "payoff";
+  if (outlet) return "outlet";
   if (enabler) return "enabler";
   return null;
 }
@@ -547,8 +586,9 @@ export function buildDeckProfile({ commanders = [], picks = [], deckSize = 100, 
 
   const plan = inferPlan(commanders, picks, { hints });
   const planPieces = picks.filter((pick) => !isLand(pick) && planRoleOf(pick, plan));
-  const payoffs = planPieces.filter((pick) => planRoleOf(pick, plan) !== "enabler").length;
-  const enablers = planPieces.filter((pick) => planRoleOf(pick, plan) !== "payoff").length;
+  const planKind = (pick) => planRoleOf(pick, plan);
+  const payoffs = planPieces.filter((pick) => planKind(pick) === "payoff" || planKind(pick) === "engine").length;
+  const enablers = planPieces.filter((pick) => ["enabler", "outlet", "engine"].includes(planKind(pick))).length;
   const planTarget = Object.freeze({ min: Math.round(nonlandSlots * 0.3), max: Math.round(nonlandSlots * 0.5) });
 
   const roleRows = [...Object.entries(targets), ["plan", planTarget]].map(([role, target]) => {
