@@ -62,6 +62,8 @@ export const RESOURCES = Object.freeze({
   "tap-creatures": "tapping creatures",
   "death-trigger": "death-triggered abilities",
   "creature-token-buff": "anthem effects on tokens",
+  "equipment": "Equipment",
+  "aura": "Auras",
 });
 
 const KEYWORDS = [
@@ -84,7 +86,10 @@ const PRODUCE_RULES = [
   [/\bsacrifice (?:a|another|an|two|x)\b[^:.]*creature[^:]*:/i, "creature-dies"],
   [/\bsacrifice (?:a|another|an)\b[^:.]*(?:creature|artifact|permanent)[^:]*:/i, "sacrifice"],
   [/\beach (?:player|opponent) sacrifices\b/i, "creature-dies"],
-  [/\b(?:put|puts|with) (?:a|an|one|two|three|x|that many|\w+) \+1\/\+1 counters?\b/i, "counter"],
+  [/\b(?:put|puts) (?:a|an|one|two|three|x|that many|\d+|\w+) \+1\/\+1 counters?\b/i, "counter"],
+  [/\bdistribute (?:a|an|one|two|three|x|that many|\d+|\w+) \+1\/\+1 counters?\b/i, "counter"],
+  [/\benters with (?:an additional )?(?:[A-Za-z]+ )?\+1\/\+1 counters?\b/i, "counter"],
+  [/\bdouble the number of \+1\/\+1 counters\b/i, "counter"],
   [/\bproliferate\b/i, "counter"],
   [/\byou gain (?:\d+|x|that much|life)|\bgain \d+ life\b/i, "lifegain"],
   [/\blifelink\b/i, "lifegain"],
@@ -94,6 +99,7 @@ const PRODUCE_RULES = [
   [/\bdiscard (?:a|one|two|x|\d+|your hand)/i, "graveyard"],
   [/\breturn[^.]*\bfrom (?:your|a|their) graveyard\b/i, "recursion"],
   [/\bput target [^.]*card from (?:a|your) graveyard onto the battlefield/i, "recursion"],
+  [/\b(?:cast|play)[^.]*\bfrom (?:your |a )?graveyard\b/i, "recursion"],
   [/\badd (?:\{[^}]+\}|one mana|two mana|three mana|x mana|mana)/i, "mana"],
   [/\bsearch your library for [^.]*\bland card[^.]*onto the battlefield/i, "land-enters"],
   [/\byou may (?:put|play) (?:an )?(?:additional )?land/i, "land-enters"],
@@ -114,6 +120,8 @@ const CONSUME_RULES = [
   [/\bsacrifice (?:a|another|an|one|two|x)\b[^:.]*creature[^:.]*[:,]/i, "creature-body"],
   [/\bas an additional cost[^.]*sacrifice (?:a|an|another) creature/i, "creature-body"],
   [/\bsacrifice (?:a|an|another|one|two|x)\b[^:.]*\bartifact[^:.]*[:,]/i, "artifact"],
+  [/\byou may sacrifice (?:a|an|another|one|two|x) (?:nonland )?artifact\b/i, "artifact"],
+  [/\byou may sacrifice (?:a|an|another|one|two|x) (?:another |other )?creature\b/i, "creature-body"],
   [/\bsacrifice (?:a|an|another) treasure\b/i, "treasure"],
   [/\bsacrifice (?:a|an|another) food\b/i, "food"],
   [/\bsacrifice (?:a|an|another) clue\b/i, "clue"],
@@ -129,16 +137,19 @@ const CONSUME_RULES = [
 // "Your opponents control" is not a payoff for your own permanents.
 const SCALE_RULES = [
   [/\bfor each artifact (?:and\/or enchantment )?you control\b|\bnumber of artifacts you control\b|\baffinity for artifacts\b|\bgets? \+\d+\/\+\d+ for each artifact you control\b/i, "artifact"],
-  [/\bfor each (?:creature|token) you control\b|\bnumber of creatures you control\b|\bfor each token\b/i, "creature-token"],
+  [/\bfor each (?:creature|token) you control\b(?![^.]*\+1\/\+1 counter)|\bnumber of creatures you control\b(?![^.]*\+1\/\+1 counter)|\bfor each token\b/i, "creature-token"],
   [/\bfor each card in your graveyard\b|\bnumber of cards in your graveyard\b/i, "graveyard"],
   [/\bfor each \+1\/\+1 counter\b/i, "counter"],
+  [/\bdouble the number of \+1\/\+1 counters\b/i, "counter"],
+  [/\bfor each equipment you control\b/i, "equipment"],
+  [/\bfor each aura you control\b|\bfor each aura attached\b/i, "aura"],
   [/\bpower 4 or greater\b/i, "power-matters"],
 ];
 
 // Triggered/static listeners: "Whenever <event>", "At <step>", "for each".
 const LISTEN_RULES = [
-  [/\bwhenever (?:a|another|one or more) (?:nontoken )?(?:creatures? |artifact creatures? )?(?:you control )?(?:dies|die|is put into a graveyard)/i, "creature-dies"],
-  [/\bwhenever [^.]*\b(?:another|a|one or more) (?:nontoken )?creatures?\b[^.]*\b(?:dies|die)\b/i, "creature-dies"],
+  // "die" must not match "deal". "would die" replaces the death instead of paying off it.
+  [/\bwhenever\b(?![^.]*\bwould die\b)[^.]*\bdie(?:s|d)?\b/i, "creature-dies"],
   [/\bwhenever (?:a|another|one or more) [^.]*\b(?:you control )?(?:is sacrificed|sacrifices?)\b/i, "sacrifice"],
   [/\bwhenever you sacrifice\b/i, "sacrifice"],
   // Trigger doublers/amplifiers care about other cards' triggered abilities.
@@ -158,10 +169,13 @@ const LISTEN_RULES = [
   [/\bwhenever you cast (?:or copy )?(?:an? |your first )?(?:instant or sorcery|instant|sorcery)\b|\bmagecraft\b|\bprowess\b/i, "spell-cast"],
   [/\bwhenever you cast a noncreature spell\b/i, "noncreature-cast"],
   [/\bwhenever (?:a|one or more) (?:creatures? you control|[a-z]+s? you control)? ?attacks?\b|\bwhenever [^.]* attacks\b/i, "attack"],
-  [/\bdeals combat damage to a player\b/i, "combat-damage"],
+  [/\bdeal(?:s)? combat damage to (?:a |one of your )?players?\b/i, "combat-damage"],
+  [/\bwhenever an aura you control\b/i, "aura"],
+  [/\bequipment attached\b[^.]{0,80}\btriggers\b/i, "equipment"],
   [/\bwhenever an artifact (?:you control )?enters\b/i, "artifact-enters"],
   [/\bwhenever equipped creature dies\b/i, "creature-dies"],
   [/\bartifact you control is put into a graveyard\b/i, "artifact-leaves"],
+  [/\bwhenever\b[^.]*\b(?:food|clue|treasure|artifact)s?\b[^.]*\bput into a graveyard from the battlefield\b/i, "artifact-leaves"],
   [/\bwhenever you cast an artifact spell\b/i, "artifact-cast"],
   [/\bwhenever you cast an enchantment spell\b|\bconstellation\b|\bwhenever an enchantment (?:you control )?enters\b/i, "enchantment"],
   [/\bwhenever you cast an enchantment spell\b/i, "enchantment-cast"],
@@ -173,8 +187,8 @@ const LISTEN_RULES = [
 
 // Game-level effects, used for role inference when no role tags exist.
 const EFFECT_RULES = [
-  [/\b(?:destroy|exile) all\b|\beach (?:creature|nonland permanent)[^.]* (?:gets -\d+\/-\d+|is destroyed)|\ball creatures get -/i, "wipe"],
-  [/\b(?:destroy|exile) (?:target|up to one target|another target)\b|\bdeals? \w+ damage to (?:target|any target)|\breturn target (?:nonland )?(?:creature|permanent)[^.]* to its owner's hand|\bfights?\b/i, "removal"],
+  [/\bdestroy all\b|\bexile all (?!graveyards?\b)|\beach (?:creature|nonland permanent)[^.]* (?:gets -\d+\/-\d+|is destroyed)|\ball creatures get -/i, "wipe"],
+  [/\b(?:destroy|exile) (?:target|up to one target|another target) (?!player's graveyard\b|graveyard\b|cards? from (?:a |your |their )?graveyard\b)|\bdeals? \w+ damage to (?:target|any target)|\breturn target (?:nonland )?(?:creature|permanent)[^.]* to its owner's hand|\bfights?\b/i, "removal"],
   [/\bcounter target (?:spell|activated|noncreature)/i, "removal"],
   [/\bsearch your library for [^.]*\b(?:land|forest|plains|island|swamp|mountain)\b/i, "ramp"],
   [/\badd (?:\{[^}]+\}|one mana|two mana|mana)/i, "ramp"],
@@ -183,7 +197,7 @@ const EFFECT_RULES = [
   [/\b(?:gains?|have|has) (?:[a-z ,]*\band )?(?:hexproof|indestructible|shroud|protection)\b|\bcounter target spell that targets\b|\bphase out\b/i, "protection"],
   [/\breturn[^.]*\bfrom (?:your|a) graveyard to (?:the battlefield|your hand)/i, "recursion"],
   [/\bput target [^.]*card from (?:a|your) graveyard onto the battlefield/i, "recursion"],
-  [/\byou win the game\b|\bloses the game\b|\bextra turn\b|\binfect\b|\bdouble (?:the )?damage\b|\bcreatures you control get \+\d+\/\+\d+\b/i, "finisher"],
+  [/\byou win the game\b|\bloses the game\b|\bextra turn\b|\badditional combat phase\b|\binfect\b|\bdouble (?:the )?damage\b/i, "finisher"],
   [/\bsearch your library for (?:a|an|up to one) (?:card|creature card|instant|sorcery|artifact|enchantment)\b(?![^.]*\bland)/i, "tutor"],
 ];
 
@@ -449,7 +463,11 @@ function gradeTokens(clause) {
   const counted = clause.match(/\bcreate (two|three|four|five|six|seven|eight|nine|ten|\d+)\b[^.]{0,80}\btokens?\b/i);
   if (counted) {
     const amount = amountOf(counted[1]);
-    if (amount >= 3) return { tier: "premium", phrase: `creates ${counted[1].toLowerCase()} creature tokens`, scales: false };
+    const word = counted[1].toLowerCase();
+    if (/\bfood\b/i.test(clause)) return { tier: amount >= 3 ? "premium" : "solid", phrase: `creates ${word} Food tokens`, scales: false };
+    if (/\bclue\b/i.test(clause)) return { tier: "solid", phrase: `creates ${word} Clue tokens`, scales: false };
+    if (/\btreasure\b/i.test(clause)) return { tier: "premium", phrase: "creates Treasure", scales: false };
+    if (amount >= 3) return { tier: "premium", phrase: `creates ${word} creature tokens`, scales: false };
     return { tier: "solid", phrase: amount === 2 ? "creates two creature tokens" : "creates creature tokens", scales: false };
   }
   if (/\bcreate (?:a|an|one)\b[^.]{0,80}\btoken\b/i.test(clause) || /\binvestigate\b/i.test(clause)) {
@@ -632,6 +650,158 @@ const EMPTY_ETB = Object.freeze({
   tier: null, score: 0, phrase: null, scales: false, modal: false, repeatsOnBlink: true,
 });
 
+const NOT_CREATURE_SACRIFICE = new Set([
+  "food", "clue", "treasure", "blood", "map", "junk", "gold", "artifact", "enchantment",
+  "land", "permanent", "equipment", "aura", "token", "vehicle", "spell", "card",
+]);
+
+const NOT_A_TRIBE = new Set([
+  "Treasure", "Food", "Clue", "Blood", "Map", "Junk", "Gold", "Powerstone", "Vehicle", "Aura",
+  "Equipment", "Artifact", "Enchantment", "Creature", "Land", "Forest", "Island", "Plains",
+  "Swamp", "Mountain", "Token", "Permanent", "Spell", "Card", "Target", "Whenever", "Other",
+  "Each", "All", "This", "That", "You", "Your", "Opponent", "Player", "Control", "Graveyard",
+  "Library", "Battlefield", "Turn", "Commander", "Legendary", "Power", "Toughness", "Flying",
+  "Haste", "Trample", "Menace", "Vigilance", "Deathtouch", "Lifelink", "Ward", "Flash",
+  "Defender", "Reach", "First", "Double", "Hexproof", "Indestructible", "Equip", "Enchant",
+  "Until", "During", "After", "Choose", "Then", "Draw", "Add", "Put", "Create", "Sacrifice",
+  "Return", "Exile", "Destroy", "Search", "Cast", "Play", "Gain", "Lose", "Deal", "Deals",
+  "Damage", "Life", "Mana", "Color", "White", "Blue", "Black", "Red", "Green", "Colorless",
+  "Counter", "Counters", "Instant", "Sorcery", "Planeswalker", "Humanoid",
+  "Those", "These", "Attacking", "Blocking", "Tapped", "Untapped", "Equipped",
+  "Enchanted", "Chosen", "Sacrificed", "Nonland", "Modified", "Suspected",
+]);
+
+const IRREGULAR_PLURAL = Object.freeze({
+  Elf: "Elves", Dwarf: "Dwarves", Wolf: "Wolves", Mouse: "Mice", Fish: "Fish",
+});
+const IRREGULAR_SINGULAR = Object.freeze({
+  Elves: "Elf", Dwarves: "Dwarf", Wolves: "Wolf", Mice: "Mouse", Fish: "Fish",
+});
+
+/** Printed creature-type plural. Elf becomes Elves, and Mice stays Mice. */
+export function pluralCreatureType(type) {
+  if (IRREGULAR_PLURAL[type]) return IRREGULAR_PLURAL[type];
+  if (IRREGULAR_SINGULAR[type]) return type;
+  if (/(?:s|x|ch|sh)$/i.test(type)) return `${type}es`;
+  if (/[^aeiou]y$/i.test(type)) return `${type.slice(0, -1)}ies`;
+  return `${type}s`;
+}
+
+function singularCreatureType(word) {
+  if (IRREGULAR_SINGULAR[word]) return IRREGULAR_SINGULAR[word];
+  if (IRREGULAR_PLURAL[word]) return word;
+  if (/(?:s|x|ch|sh)es$/i.test(word) && word.length > 4) return word.slice(0, -2);
+  if (/[^aeiou]ies$/i.test(word)) return `${word.slice(0, -3)}y`;
+  if (word.endsWith("s") && !word.endsWith("ss") && word.length > 3) return word.slice(0, -1);
+  return word;
+}
+
+/**
+ * The creature type the rules text actually talks about. Read from patterns
+ * like "other Elves you control", not from a fixed list of tribes.
+ */
+function typalOf(text) {
+  const counts = new Map();
+  const strong = new Set();
+  const note = (word, kind) => {
+    const type = singularCreatureType(word);
+    if (!type || type.length < 3 || NOT_A_TRIBE.has(type) || NOT_A_TRIBE.has(word)) return;
+    counts.set(type, (counts.get(type) || 0) + 1);
+    if (kind === "strong") strong.add(type);
+  };
+  // A single "create a Soldier creature token" is not a tribe. "Other Elves
+  // you control" and "Elf spell" are.
+  const patterns = [
+    [/\b([A-Z][a-z]+) creature tokens?\b/g, "weak"],
+    [/\b([A-Z][a-z]+) tokens?\b/g, "weak"],
+    [/\b(?:other|another|each|every|all|target) ([A-Z][a-z]+)\b/g, "strong"],
+    [/\b([A-Z][a-z]+) you control\b/g, "strong"],
+    [/\b([A-Z][a-z]+) spells?\b/g, "strong"],
+    [/\b([A-Z][a-z]+) creatures\b/g, "strong"],
+  ];
+  for (const [pattern, kind] of patterns) {
+    for (const match of text.matchAll(pattern)) note(match[1], kind);
+  }
+  const pick = (wantStrong) => {
+    let best = null;
+    let bestCount = 0;
+    for (const [type, count] of counts) {
+      if (strong.has(type) !== wantStrong) continue;
+      if (count > bestCount) {
+        best = type;
+        bestCount = count;
+      }
+    }
+    return { type: best, count: bestCount };
+  };
+  const strongPick = pick(true);
+  if (strongPick.type) return strongPick;
+  const weakPick = pick(false);
+  if (weakPick.type && weakPick.count >= 2) return weakPick;
+  return { type: null, count: 0 };
+}
+
+function sentencesOf(text) {
+  return String(text || "").split(/(?<=\.)\s+/).map((sentence) => sentence.trim()).filter(Boolean);
+}
+
+/** A token an opponent creates is not this card's resource. */
+function sentenceIsYours(sentence) {
+  if (/\b(?:that player|each opponent|target opponent|an opponent) creates?\b/i.test(sentence) && !/\byou create\b/i.test(sentence)) return false;
+  return true;
+}
+
+/** "If an opponent has more" is catch-up, not a strategy to build around. */
+function sentenceIsCatchUp(sentence) {
+  return /\bif an opponent (?:controls|has) more\b/i.test(sentence);
+}
+
+/**
+ * Counters placed only on this card, or only as "an additional counter for
+ * each [type]", are not a counters deck. Proliferate and counters on other
+ * creatures are.
+ */
+function counterScopeOf(text) {
+  const sentences = sentencesOf(text);
+  const places = (sentence) => /\b(?:put|distribute)\b[^.]*\+1\/\+1 counter/i.test(sentence);
+  const onOthers = (sentence) => /\b(?:target|another|each other|each of|each creature|creatures? you control|each [A-Z][a-z]+)\b/i.test(sentence);
+  const onSelf = (sentence) => /\bon (?:it|this card|this creature|this permanent)\b/i.test(sentence);
+  const rider = sentences.some((sentence) => /enters with an additional \+1\/\+1 counter[^.]*\bfor each\b/i.test(sentence));
+  const placesOnOthers = sentences.some((sentence) => places(sentence) && onOthers(sentence));
+  const placesOnSelf = sentences.some((sentence) => (
+    /(?:this card|this creature) enters with [^.]*\+1\/\+1 counters? on (?:it|this)/i.test(sentence)
+    || (places(sentence) && onSelf(sentence) && !onOthers(sentence))
+  ));
+  if (/\bproliferate\b/i.test(text) && !placesOnOthers && !rider) return "proliferate";
+  if (rider && !placesOnOthers) return "rider";
+  if (placesOnSelf && !placesOnOthers && !rider) return "self";
+  if (/\+1\/\+1 counter/i.test(text) || /\bproliferate\b/i.test(text)) return "place";
+  return "none";
+}
+
+/** A mass pump is a finisher when it is large or scales. A +1/+1 lord is not. */
+function marksFinisher(text) {
+  if (/\byou win the game\b|\bloses the game\b|\bextra turn\b|\badditional combat phase\b|\binfect\b|\bdouble (?:the )?damage\b/i.test(text)) return true;
+  if (/\bget \+X\/\+X\b/i.test(text)) return true;
+  for (const match of text.matchAll(/\bcreatures you control get \+(\d+)\/\+(\d+)/gi)) {
+    if (Number(match[1]) >= 3 || Number(match[2]) >= 3) return true;
+  }
+  return false;
+}
+
+/**
+ * Exile-all-graveyards and "exile instead of the graveyard" fight a graveyard
+ * deck. Opponent-only exile does not. "any-player" can hit you or them.
+ */
+function graveyardHateOf(text) {
+  if (/\bwould be put into a graveyard from anywhere, exile it instead\b/i.test(text)) return "replacement";
+  if (/\bexile all graveyards\b|\bexile each graveyard\b/i.test(text)) return "all";
+  if (/\bexile (?:all cards from )?your graveyard\b/i.test(text)) return "yours";
+  if (/\bshuffle your graveyard into (?:your|their) library\b/i.test(text)) return "shuffle";
+  if (/\bexile target player's graveyard\b/i.test(text)) return "any-player";
+  return null;
+}
+
 const matchAll = (rules, text) => [...new Set(rules.filter(([pattern]) => pattern.test(text)).map(([, tag]) => tag))];
 
 /**
@@ -649,12 +819,18 @@ export function parseOracleMechanics(card = {}) {
     if (new RegExp(`(?:^|[\\n.,;] ?)${keyword}\\b`, "i").test(rawText) || new RegExp(`^${keyword}\\b`, "im").test(rawText)) keywordSet.add(keyword);
   }
 
-  const produces = new Set(matchAll(PRODUCE_RULES, text));
+  const yours = sentencesOf(text).filter(sentenceIsYours).join(" ");
+  const steady = sentencesOf(text).filter((sentence) => sentenceIsYours(sentence) && !sentenceIsCatchUp(sentence)).join(" ");
+  const produces = new Set(matchAll(PRODUCE_RULES, yours));
+  const catchUp = matchAll(PRODUCE_RULES, yours).filter((resource) => !matchAll(PRODUCE_RULES, steady).includes(resource));
   const consumes = new Set(matchAll(CONSUME_RULES, text));
   const listens = new Set(matchAll(LISTEN_RULES, text));
   const scales = new Set(matchAll(SCALE_RULES, text));
+  const withoutEnterRider = text.replace(/\benters?\s+or\s+attacks?\b/gi, "enters");
+  if (!/\battacks?\b/i.test(withoutEnterRider)) listens.delete("attack");
   const taps = new Set();
-  const effects = new Set(matchAll(EFFECT_RULES, text));
+  const effects = new Set(matchAll(EFFECT_RULES, steady));
+  if (marksFinisher(text)) effects.add("finisher");
   // "Artifacts you control have '{T}: Add'" grants those permanents a new
   // ability. "Tap an untapped artifact you control: Add" is an outlet that
   // taps something else. Treasure tokens already have their own mana ability.
@@ -677,6 +853,18 @@ export function parseOracleMechanics(card = {}) {
     consumes.add("artifact");
   }
   if (/\bsacrifice another permanent\b/i.test(text)) produces.add("sacrifice");
+  for (const match of text.matchAll(/\bsacrifice (?:another |a |an |one |two |three |\d+ )([A-Za-z]+)\b[^:.]{0,40}[:,]/gi)) {
+    const word = match[1];
+    if (word.toLowerCase() === "creature" || (!NOT_CREATURE_SACRIFICE.has(word.toLowerCase()) && /^[A-Z]/.test(word))) {
+      consumes.add("creature-body");
+      produces.add("creature-dies");
+      produces.add("sacrifice");
+    }
+  }
+  if (/\bsearch your library for\b[^.]{0,80}\bequipment\b/i.test(text) || /\bcreate\b[^.]{0,80}\bequipment\b/i.test(text)) produces.add("equipment");
+  if (/\bsearch your library for\b[^.]{0,80}\baura\b/i.test(text)) produces.add("aura");
+  if (/\bequipment\b/i.test(typeLine)) produces.add("equipment");
+  if (/\baura\b/i.test(typeLine)) produces.add("aura");
 
   // A one-shot "when this card/creature/artifact enters" is fuel a blink deck
   // can reuse. It is not itself a blink or ETB-doubling payoff. Doublers
@@ -695,13 +883,39 @@ export function parseOracleMechanics(card = {}) {
     produces.add("artifact");
     produces.add("artifact-cast");
     produces.add("artifact-enters");
+    // The printed type is not the catch-up sentence that made a Treasure.
+    for (const resource of ["artifact", "artifact-cast", "artifact-enters"]) {
+      for (let index = catchUp.indexOf(resource); index !== -1; index = catchUp.indexOf(resource)) catchUp.splice(index, 1);
+    }
   }
   if (/\benchantment\b/i.test(typeLine)) produces.add("enchantment");
   if (/\bcreature\b/i.test(typeLine)) produces.add("creature-enters");
-  if (produces.has("creature-token")) { produces.add("creature-enters"); produces.add("creature-body"); produces.add("token"); }
-  if (produces.has("clue")) { produces.add("artifact"); produces.add("artifact-enters"); produces.add("token"); }
-  if (produces.has("food")) { produces.add("artifact"); produces.add("artifact-enters"); produces.add("token"); }
-  if (produces.has("treasure")) { produces.add("artifact"); produces.add("artifact-enters"); produces.add("mana"); produces.add("token"); }
+  if (produces.has("creature-token")) {
+    produces.add("creature-enters");
+    produces.add("creature-body");
+    produces.add("token");
+    // A catch-up token is not a sacrifice plan. The body tag is derived.
+    if (catchUp.includes("creature-token")) catchUp.push("creature-body", "creature-enters", "token");
+  }
+  if (produces.has("clue")) {
+    produces.add("artifact");
+    produces.add("artifact-enters");
+    produces.add("token");
+    if (catchUp.includes("clue")) catchUp.push("artifact", "artifact-enters", "token");
+  }
+  if (produces.has("food")) {
+    produces.add("artifact");
+    produces.add("artifact-enters");
+    produces.add("token");
+    if (catchUp.includes("food")) catchUp.push("artifact", "artifact-enters", "token");
+  }
+  if (produces.has("treasure")) {
+    produces.add("artifact");
+    produces.add("artifact-enters");
+    produces.add("mana");
+    produces.add("token");
+    if (catchUp.includes("treasure")) catchUp.push("artifact", "artifact-enters", "mana", "token");
+  }
   if (produces.has("creature-dies") || produces.has("sacrifice")) produces.add("sacrifice");
   if (consumes.has("artifact") || consumes.has("treasure")) produces.add("artifact-leaves");
   if (listens.has("creature-dies")) produces.add("death-trigger");
@@ -714,8 +928,12 @@ export function parseOracleMechanics(card = {}) {
     effects.delete("ramp");
   }
   if (keywordSet.has("lifelink")) produces.add("lifegain");
+  if (/enchanted (?:permanent|creature)[^.]*loses all other/i.test(text)) {
+    effects.delete("ramp");
+    produces.delete("mana");
+  }
   if (effects.has("wipe")) effects.delete("removal");
-  if (lower.includes("draw") && produces.has("card-draw")) effects.add("draw");
+  if (produces.has("card-draw") && !catchUp.includes("card-draw") && /\bdraw\b/i.test(steady)) effects.add("draw");
   // "An opponent draws a card" is their draw, not this card drawing.
   const youDraw = /\byou (?:may )?draw\b|\bdraw (?:a|an|one|two|three|four|x|that many|\d+) cards?\b|\bdraw cards\b/i.test(text);
   if (!youDraw && /\b(?:opponent|player|they|that player) draws?\b/i.test(text)) {
@@ -729,6 +947,11 @@ export function parseOracleMechanics(card = {}) {
   if (rampMode === "conditional" || rampMode === "both") effects.add("conditional-ramp");
   if (/\bland\b/i.test(typeLine)) effects.delete("ramp");
 
+  if (/\b(?:card|permanent|artifact|creature) in your graveyard\b/i.test(text)
+    && /\breturn (?:the chosen|that|it|them)\b[^.]*\b(?:to the battlefield|to your hand)\b/i.test(text)) {
+    produces.add("recursion");
+  }
+  const tribe = typalOf(steady);
   const spendVerbs = {};
   if (/\bsacrifice\b/i.test(text)) {
     for (const resource of ["artifact", "treasure", "food", "clue", "creature-body"]) {
@@ -756,26 +979,15 @@ export function parseOracleMechanics(card = {}) {
     selfEtb,
     doublesEtb,
     etb,
-    typal: typalOf(text),
+    typal: tribe.type,
+    typalCount: tribe.count,
+    counterScope: counterScopeOf(text),
+    catchUp: Object.freeze([...new Set(catchUp)]),
+    graveyardHate: graveyardHateOf(text),
+    symmetricDraw: /\beach player draws?\b/i.test(text),
     powerMatters: scales.has("power-matters"),
     triggered: /\b(?:when|whenever|at the beginning of)\b/i.test(text),
   });
-}
-
-const TYPAL_TYPES = ["Angel", "Dragon", "Dinosaur", "Vampire", "Goblin", "Elf", "Zombie", "Wizard", "Sliver", "Merfolk", "Pirate", "Ninja", "Hydra", "Cat"];
-
-function typalOf(text) {
-  let best = null;
-  let bestCount = 0;
-  for (const type of TYPAL_TYPES) {
-    const count = (text.match(new RegExp(`\\b${type}s?\\b`, "gi")) || []).length;
-    const grouped = new RegExp(`(?:other|another|every|each) ${type}|${type}s? you control|${type} spell`, "i").test(text);
-    if (grouped && count > bestCount) {
-      best = type;
-      bestCount = count;
-    }
-  }
-  return best;
 }
 
 function parseRestrictions(text) {
@@ -855,6 +1067,7 @@ export function describeCardJob(card = {}) {
   const scales = new Set(mechanics.scales || []);
   const consumes = new Set(mechanics.consumes || []);
   const taps = new Set(mechanics.taps || []);
+  if (/\b(?:cast|play)[^.]*\bfrom (?:your |a )?graveyard\b/i.test(text)) parts.push("casts or plays cards from the graveyard");
   if (produces.has("clue") && produces.has("food") && produces.has("treasure")) parts.push("replaces a Clue, Food, or Treasure with one of each");
   if (produces.has("treasure") && listens.has("creature-dies")) parts.push("makes Treasure whenever a creature dies");
   else if (produces.has("treasure") && listens.has("spell-cast")) parts.push("makes Treasure whenever you cast an instant or sorcery");
@@ -875,7 +1088,8 @@ export function describeCardJob(card = {}) {
       : "gives artifacts an extra tap ability");
   }
   else if (taps.has("artifact")) parts.push("taps artifacts for mana");
-  if (consumes.has("creature-body")) parts.push("sacrifices creatures");
+  if (consumes.has("creature-body") && !listens.has("creature-dies")) parts.push("is a sacrifice outlet");
+  else if (consumes.has("creature-body")) parts.push("sacrifices creatures");
   if (consumes.has("treasure") && mechanics.spendVerbs?.treasure === "sacrifices") parts.push("can sacrifice Treasure");
   if (listens.has("artifact-leaves")) parts.push("pays off an artifact you control leaving the battlefield");
   if (listens.has("creature-dies") && produces.has("lifegain")) parts.push("pays off creatures dying");
@@ -891,7 +1105,7 @@ export function describeCardJob(card = {}) {
   }
   if (listens.has("enchantment") || listens.has("enchantment-cast")) parts.push("pays off enchantments");
   if (listens.has("historic")) parts.push("pays off historic spells");
-  if (mechanics.typal && !parts.length) parts.push(`cares about ${mechanics.typal}s`);
+  if (mechanics.typal && !parts.length) parts.push(`cares about ${pluralCreatureType(mechanics.typal)}`);
   if (!parts.length && (mechanics.effects || []).includes("ramp")) parts.push("ramps");
   if (!parts.length && (mechanics.effects || []).includes("draw")) parts.push("draws cards");
   if (!parts.length && (mechanics.effects || []).includes("removal")) parts.push("answers a permanent or spell");
