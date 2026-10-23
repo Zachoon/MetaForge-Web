@@ -1,0 +1,65 @@
+# Deploys the existing Cloudflare Worker `metaforge-private-alpha`.
+# That one Worker serves metaforge.gg, www.metaforge.gg, and app.metaforge.gg.
+# app.metaforge.gg stays behind Cloudflare Access; this job only replaces the Worker version.
+#
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN  — Workers Editor on this Worker. Add Zone → Workers Routes → Write
+#                           on metaforge.gg if a deploy also reconciles custom domains.
+#   CLOUDFLARE_ACCOUNT_ID — the account that owns the metaforge-labs workers.dev subdomain.
+#
+# `npm run build` is required. Wrangler publishes dist/server and dist/client; it does not
+# run the vinext build itself. Uses package-lock.json via npm ci.
+
+name: Deploy Worker
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-metaforge-private-alpha
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22.13.0"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the vinext Worker
+        run: npm run build
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.92.0"
+          command: deploy
+
+      - name: Confirm the public homepage shipped
+        run: |
+          set -eu
+          for _ in 1 2 3 4 5 6; do
+            html=$(curl -fsSL --retry 3 --retry-delay 2 https://metaforge.gg/)
+            if printf '%s' "$html" | grep -q "Start with your commander"; then
+              echo "metaforge.gg is serving the new welcome"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "metaforge.gg did not serve Start with your commander"
+          exit 1
