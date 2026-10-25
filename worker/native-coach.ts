@@ -1,4 +1,5 @@
 import { createRecommendation, parseDeck } from "../app/deck-analysis.mjs";
+import { buildCurveRoleCoaching, coachCardsFromContext, formatCurveRoleCoaching, questionWantsCurveRoleCoaching } from "../app/curve-role-coach.mjs";
 import { analyzeRiftboundStrategy } from "../app/riftbound-analysis.mjs";
 import RIFTBOUND_CATALOG from "../app/riftbound-card-catalog.mjs";
 import { riftboundMetaContext } from "../app/riftbound-meta-context.mjs";
@@ -35,7 +36,7 @@ export function nativeCoachAnswer(messages:Array<{role:string;content:string}>,c
       const meta=riftboundMetaContext();
       return `Current Riftbound field: ${meta.fieldRead} The snapshot is dated ${meta.asOf} and is ${meta.freshness.replaceAll("-"," ")}; its Tier 1 preparation targets are ${meta.tier1.map(item=>item.legend).join(", ")}.\n\nDecision: choose the counter-field goal before choosing cards.\nTest: paste a 40-card Main Deck or name the Champion/Legend package you want to build around.\nReturn signal: tell Forge which Tier 1 matchup you most want to improve, and it will state the tradeoff instead of pretending one list beats everything.`;
     }
-    return `Paste the decklist and name the format. Native Coach can explain the current Forge recommendation, its expected gain, downside, and measurable test. For an entirely new deck request, give me the intended strategy, format, and constraints; open-ended card-by-card construction becomes richer when the conversational model is connected.`;
+    return `Paste the decklist. Native Coach reads a Commander list from the commander's printed Oracle text and the strategy, then teaches the mana curve and the jobs those cards actually do: ramp, card advantage, interaction, wipes, and win conditions. A loot is not card advantage, and mana that can only cast one kind of spell is not generic ramp.`;
   }
   if(game==="riftbound"){
     const read=analyzeRiftboundStrategy(riftRows(deckText),RIFTBOUND_CATALOG);
@@ -46,6 +47,15 @@ export function nativeCoachAnswer(messages:Array<{role:string;content:string}>,c
   }
   const rows=parseDeck(deckText),count=rows.reduce((sum:number,row:any)=>sum+row.quantity,0);
   if(!count)return `I could not read a decklist from the current workspace. Use one quantity and card name per line, then ask again.`;
+  if(questionWantsCurveRoleCoaching(question)){
+    return formatCurveRoleCoaching(buildCurveRoleCoaching({
+      commander:context?.commander,
+      commanders:context?.commanders,
+      cards:coachCardsFromContext(context,rows),
+      strategy:context?.strategy,
+      deckText,
+    }));
+  }
   const recommendation=createRecommendation(rows,String(context?.format||"Standard"));
   const changes=(recommendation.changes||[]).map((change:any)=>`${change.quantity>0?"+":""}${change.quantity} ${change.card}`).join(", ")||"No automatic card swap passed the current evidence gate";
   return `${recommendation.title}\n\nDecision: run this as a controlled change.\n\nChange: ${changes}.\n\nWhy: ${recommendation.reasoning}\n\nExpected gain: ${recommendation.expectedGain}\n\nTradeoff: ${recommendation.risk}\n\nTest: compare ${recommendation.testPlan?.openingHands||2500} opening hands, review after ${recommendation.testPlan?.earlyMatches||5} matched games, and make the first evidence decision at ${recommendation.testPlan?.reviewMatches||12}.\n\nReturn signal: report whether the stated gain appeared and what punished the change. One match can change the coaching question, not silently rewrite the deck.`;

@@ -956,3 +956,33 @@ step that's actually in focus. */
   .card-inspector-navigation{width:min(70vw,290px);margin:10px auto 0}
   .card-inspector-dossier{padding:22px 18px calc(36px + env(safe-area-inset-bottom))}
 }
+
+.curve-role-coach{display:grid;gap:14px;min-width:0;max-width:100%;margin-top:18px;padding:16px;border:1px solid #35463f;background:#0b1210;overflow-wrap:anywhere;overflow-x:clip;box-sizing:border-box}
+.curve-role-coach *{box-sizing:border-box;min-width:0}
+.curve-role-coach small,.curve-role-head>small{display:block;color:#72c7b5;font:900 9px/1.3 Inter,system-ui,sans-serif;letter-spacing:.12em}
+.curve-role-coach h3,.curve-role-coach h4{margin:8px 0 0;color:#e7ece8;font:600 20px/1.25 Newsreader,Georgia,serif}
+.curve-role-coach h4{font-size:16px}
+.curve-role-coach p{margin:8px 0 0;color:#c5d0cb;font:500 14px/1.55 Inter,system-ui,sans-serif}
+.curve-role-excerpt{color:#d7c7a4}
+.curve-role-confidence{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:baseline}
+.curve-role-confidence>span:first-child,.curve-role-lessons article p>span{color:#e0a066;font:800 11px/1.4 Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase}
+.curve-role-confidence strong{color:#f4f7f5;font:800 13px/1.4 Inter,system-ui,sans-serif;text-transform:capitalize}
+.curve-role-curve,.curve-role-roles,.curve-role-lessons{display:grid;gap:8px;margin:10px 0 0;padding:0;list-style:none}
+.curve-role-curve li{display:grid;grid-template-columns:2.75rem minmax(0,1fr) auto;gap:4px 8px;align-items:center}
+.curve-role-curve small{grid-column:1 / -1;color:#9aaba4;font:500 12px/1.4 Inter,system-ui,sans-serif;letter-spacing:0}
+.curve-role-bucket,.curve-role-curve b,.curve-role-roles b{color:#f4f7f5;font:700 13px/1 Inter,system-ui,sans-serif}
+.curve-role-meter{display:block;height:8px;background:#1a2a26;border-radius:99px;overflow:hidden}
+.curve-role-meter>i{display:block;height:100%;background:#6d9e8f}
+.curve-role-curve li[data-status="short"] .curve-role-meter>i{background:#c4843a}
+.curve-role-curve li[data-status="over"] .curve-role-meter>i{background:#c45b4a}
+.curve-role-roles{grid-template-columns:repeat(5,minmax(0,1fr))}
+.curve-role-roles li,.curve-role-lessons article{padding:10px;border:1px solid #35463f;background:#101a18}
+.curve-role-roles li{display:grid;gap:4px}
+.curve-role-roles span{color:#9aaba4;font:700 11px/1.3 Inter,system-ui,sans-serif}
+.curve-role-roles b{font-size:22px}
+.curve-role-roles small{color:#c5d0cb;font:500 12px/1.35 Inter,system-ui,sans-serif;letter-spacing:0}
+.curve-role-roles li[data-status="short"]{border-color:#8a6233}
+.curve-role-roles li[data-status="over"]{border-color:#8a4036}
+.curve-role-lessons{gap:12px}
+@media (max-width: 720px) {.curve-role-coach{padding:12px}.curve-role-roles{grid-template-columns:repeat(2,minmax(0,1fr))}.curve-role-coach h3{font-size:18px}}
+@media (max-width: 420px) {.curve-role-roles{grid-template-columns:minmax(0,1fr)}.curve-role-curve li{grid-template-columns:2.4rem minmax(0,1fr) auto}}
