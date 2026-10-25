@@ -29,6 +29,7 @@ import { formatDeckForArenaExport } from "../../deck-export-format.mjs";
 import { trackLaunchEvent } from "../../launch-telemetry";
 import { useForgeSession } from "../../forge-session-context";
 import { GuidedCompletionReview } from "./guided-completion-review";
+import { CurveRoleCoach } from "./curve-role-coach";
 
 export function WorkbenchChamber() {
   const {
@@ -373,6 +374,15 @@ export function WorkbenchChamber() {
                 </p>
               )}
             </header>
+            <CurveRoleCoach
+              format={format}
+              strategy={strategy}
+              commander={selectedCommander}
+              secondCommander={selectedSecondCommander}
+              rows={deckRows}
+              cardFacts={cardFacts}
+              factsLoading={cardFactsLoading}
+            />
             {honestCoachSummary.coachingAllowed && (
             <div className="honest-coach-brief-stream" aria-label="Coach priorities">
               <article className="honest-coach-plan commission-verdict">
