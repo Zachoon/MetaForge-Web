@@ -8,6 +8,7 @@
 
 import { curveManaValue } from "./conditional-effect-credit.mjs";
 import { readCommanderPlan } from "./reasoning-engine/deck-profile.mjs";
+import { rankPlanWeaknesses } from "./plan-weakness-coach.mjs";
 
 const NUMBER = Object.freeze({
   a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, x: 3,
@@ -252,7 +253,7 @@ function modeIsInteraction(text) {
 }
 
 function modeIsWincon(text) {
-  return /\byou win the game\b|\b(?:an opponent|each opponent|target player|that player) loses the game\b|\bloses the game\b|\bextra turns?\b|\badditional combat phases?\b|\binfect\b|\bcreatures you control (?:get \+[^.]{0,40}and )?gain (?:flying, vigilance, and )?double strike\b|\bcreatures you control get \+(?:x|[1-9]\d*)\/\+(?:x|[1-9]\d*) and gain trample\b|\bcreatures you control get \+(?:x|[1-9]\d*)\/\+(?:x|[1-9]\d*)\b|\beach opponent loses x life\b|\bgain control of (?:all creatures|them) until end of turn\b|\bdeals? (?:[1-9]\d|50) damage to (?:any target|target player|each opponent)\b/i.test(text);
+  return /\byou win the game\b|\b(?:an opponent|each opponent|target player|that player) loses the game\b|\bloses the game\b|\bextra turns?\b|\badditional combat phases?\b|\binfect\b|\bcreatures you control (?:get \+[^.]{0,40}and )?gain (?:flying, vigilance, and )?double strike\b|\bcreatures you control get \+(?:x|[1-9]\d*)\/\+(?:x|[1-9]\d*) and gain trample\b|\bcreatures you control gain trample and get \+(?:x|[1-9]\d*)\/\+(?:x|[1-9]\d*)\b|\bcreatures you control get \+(?:x|[1-9]\d*)\/\+(?:x|[1-9]\d*)\b|\beach opponent loses x life\b|\bgain control of (?:all creatures|them) until end of turn\b|\bdeals? (?:[1-9]\d|50) damage to (?:any target|target player|each opponent)\b/i.test(text);
 }
 
 /**
@@ -443,6 +444,10 @@ function rankAdds(role, identity, planId, usedNames) {
     .map(({ entry }) => {
       let score = 0;
       if (entry.plans.includes("*") || entry.plans.includes(planId)) score += 3;
+      if (role === "draw" && (entry.plans.includes("*") || entry.plans.includes(planId)) && /\bdraw\b/i.test(entry.oracleText) && !/\{T\}\s*:\s*Add\b/i.test(entry.oracleText)) {
+        score += 2;
+        if (/\bwhenever\b/i.test(entry.oracleText)) score += 1;
+      }
       if (planId === "landfall" && LAND_RAMP.test(entry.oracleText)) score += 3;
       if (planId === "spellslinger" && /\bInstant\b/i.test(entry.typeLine)) score += 2;
       if ((planId === "tokens" || planId === "aristocrats") && entry.name === "Skullclamp") score += 3;
@@ -564,6 +569,7 @@ function buildSwaps({ role, cuts, identity, planId, usedNames }) {
       cut: cut?.name || null,
       add: add.name,
       reason: `${add.because} Cut ${cutName}: ${why}.`,
+      addQuote: excerpt(add.oracleText, 180),
     };
   });
 }
@@ -611,7 +617,15 @@ export function buildCurveRoleCoaching(input = {}) {
     const classified = classifyPrintedCard(card);
     const isCommander = commanderNames.has(name.toLowerCase()) || card.isCommander === true;
     const cmc = printedCmc(card);
-    return { ...classified, quantity, cmc, isCommander, oracleText: String(card.oracleText || card.oracle_text || ""), typeLine: String(card.typeLine || card.type_line || "") };
+    return {
+      ...classified,
+      quantity,
+      cmc,
+      isCommander,
+      oracleText: String(card.oracleText || card.oracle_text || ""),
+      typeLine: String(card.typeLine || card.type_line || ""),
+      manaCost: String(card.manaCost || card.mana_cost || ""),
+    };
   });
 
   const readableCards = cards.filter((card) => !card.isCommander && (card.oracleText.trim() || card.land));
@@ -860,6 +874,17 @@ export function buildCurveRoleCoaching(input = {}) {
     ? "There is not enough printed mana cost to judge the curve."
     : `Most spells cost about ${average} mana. ${plan.label} wants them nearer ${ideal}. ${buckets.filter((bucket) => bucket.status !== "ok").map((bucket) => `${bucket.label} is ${bucket.status === "short" ? "light" : "heavy"} (${bucket.actual}, about ${bucket.target} for this plan)`).join(". ") || "Every mana-value band is inside the band this plan wants."}`;
 
+  const weaknessReport = rankPlanWeaknesses({
+    plan,
+    commander: primary,
+    identity,
+    cards: cards.filter((card) => !card.isCommander),
+    roles,
+    lessons,
+    deckSize: totalQuantity,
+    confidence,
+  });
+
   return {
     readable: true,
     commanderName: primary?.name || "",
@@ -868,6 +893,9 @@ export function buildCurveRoleCoaching(input = {}) {
     fixingNote,
     partial,
     confidence,
+    weaknessHeading: weaknessReport.heading,
+    weaknessIntro: weaknessReport.intro,
+    weaknesses: weaknessReport.weaknesses,
     curve: {
       average,
       ideal,
@@ -918,6 +946,30 @@ export function formatCurveRoleCoaching(report) {
   if (report.strategyNote) lines.push(report.strategyNote);
   if (report.plan.restrictionNote) lines.push(report.plan.restrictionNote);
   if (report.fixingNote) lines.push(report.fixingNote);
+  if (report.weaknesses?.length) {
+    lines.push("");
+    lines.push(report.weaknessHeading || "What to fix first");
+    if (report.weaknessIntro) lines.push(report.weaknessIntro);
+    report.weaknesses.forEach((weakness, index) => {
+      lines.push("");
+      lines.push(`${index + 1}. ${weakness.title}`);
+      lines.push(weakness.plain);
+      for (const cite of weakness.citations || []) {
+        const label = cite.quantity > 1 ? `${cite.quantity} ${cite.name}` : cite.name;
+        lines.push(`From the deck: ${label} — “${cite.quote}” ${cite.says}`);
+      }
+      for (const swap of weakness.swaps || []) {
+        const move = swap.cut && swap.add
+          ? `Swap: cut ${swap.cut} for ${swap.add}.`
+          : swap.add
+            ? `Swap: add ${swap.add}.`
+            : `Swap: cut ${swap.cut}.`;
+        lines.push(move);
+        if (swap.reason) lines.push(`Why: ${swap.reason}`);
+      }
+      if (weakness.confidence) lines.push(`Confidence: ${weakness.confidence}. ${weakness.confidenceReason || ""}`.trim());
+    });
+  }
   lines.push("");
   lines.push(`Mana curve: ${report.curve.summary}`);
   lines.push(report.curve.buckets.map((bucket) => `${bucket.label} mana: ${bucket.actual}`).join(" · "));

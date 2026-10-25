@@ -127,6 +127,42 @@ export function CurveRoleCoach({
         {factsLoading ? <p role="status">Still reading printed Oracle text for the remaining cards.</p> : null}
       </header>
 
+      {report.weaknesses?.length ? (
+        <div className="curve-role-block">
+          <h4>{report.weaknessHeading || "What to fix first"}</h4>
+          {report.weaknessIntro ? <p>{report.weaknessIntro}</p> : null}
+          <ol className="curve-role-weaknesses">
+            {report.weaknesses.map((weakness) => (
+              <li key={weakness.id}>
+                <article>
+                  <h4>{weakness.title}</h4>
+                  <p>{weakness.plain}</p>
+                  {weakness.citations?.map((cite) => (
+                    <blockquote className="curve-role-quote" key={`${weakness.id}-${cite.name}`}>
+                      <b>{cite.quantity > 1 ? `${cite.quantity} ${cite.name}` : cite.name}</b>
+                      <span>“{cite.quote}”</span>
+                      <p>{cite.says}</p>
+                    </blockquote>
+                  ))}
+                  {weakness.swaps?.map((swap) => (
+                    <p key={`${weakness.id}-${swap.cut || "add"}-${swap.add || "cut"}`}>
+                      <span>Swap. </span>
+                      {swap.cut && swap.add ? `Cut ${swap.cut} for ${swap.add}. ` : swap.add ? `Add ${swap.add}. ` : `Cut ${swap.cut}. `}
+                      {swap.reason}
+                    </p>
+                  ))}
+                  <p className="curve-role-confidence">
+                    <span>Confidence</span>
+                    <strong>{weakness.confidence}</strong>
+                    <span>{weakness.confidenceReason}</span>
+                  </p>
+                </article>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : null}
+
       <div className="curve-role-block">
         <h4>Mana curve</h4>
         <p>{report.curve.summary}</p>

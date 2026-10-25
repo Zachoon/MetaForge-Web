@@ -160,8 +160,13 @@ test("the coach panel is in the workbench and wraps on a phone", () => {
   assert.match(workbench, /honest-coach-brief-stream/);
   assert.match(panel, /curve-role-coach/);
   assert.match(panel, /Reading printed Oracle text/);
+  assert.match(panel, /curve-role-weaknesses/);
+  assert.match(panel, /What to fix first/);
+  assert.match(panel, /curve-role-quote/);
   assert.doesNotMatch(panel, /<select|name the format|format selector/i);
   assert.match(css, /\.curve-role-coach\{[^}]*overflow-wrap:anywhere/);
+  assert.match(css, /\.curve-role-quote\{[^}]*overflow-wrap:anywhere/);
+  assert.match(css, /\.curve-role-weaknesses\{[^}]*grid/);
   assert.match(css, /@media \(max-width: 720px\)[\s\S]*\.curve-role-roles\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)\}/);
   assert.match(css, /@media \(max-width: 420px\)[\s\S]*\.curve-role-roles\{grid-template-columns:minmax\(0,1fr\)\}/);
 });
