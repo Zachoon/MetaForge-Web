@@ -984,5 +984,13 @@ step that's actually in focus. */
 .curve-role-roles li[data-status="short"]{border-color:#8a6233}
 .curve-role-roles li[data-status="over"]{border-color:#8a4036}
 .curve-role-lessons{gap:12px}
-@media (max-width: 720px) {.curve-role-coach{padding:12px}.curve-role-roles{grid-template-columns:repeat(2,minmax(0,1fr))}.curve-role-coach h3{font-size:18px}}
+.curve-role-weaknesses{display:grid;gap:12px;margin:10px 0 0;padding:0;list-style:none}
+.curve-role-weaknesses>li,.curve-role-weaknesses article{min-width:0;max-width:100%}
+.curve-role-weaknesses article{padding:12px;border:1px solid #8a6233;background:#14110e}
+.curve-role-weaknesses article h4{font-size:16px}
+.curve-role-quote{display:block;margin:8px 0 0;padding:8px 10px;border:0;border-left:3px solid #e0a066;background:#0c1210;color:#d7c7a4;font:500 13px/1.45 Inter,system-ui,sans-serif;overflow-wrap:anywhere;word-break:break-word}
+.curve-role-quote b{display:block;margin:0 0 4px;color:#f4f7f5;font:700 13px/1.3 Inter,system-ui,sans-serif}
+.curve-role-quote span,.curve-role-quote p{display:block;margin:0;color:#d7c7a4;font:500 13px/1.45 Inter,system-ui,sans-serif;overflow-wrap:anywhere;word-break:break-word}
+.curve-role-quote p{margin-top:6px;color:#c5d0cb}
+@media (max-width: 720px) {.curve-role-coach{padding:12px}.curve-role-roles{grid-template-columns:repeat(2,minmax(0,1fr))}.curve-role-coach h3{font-size:18px}.curve-role-weaknesses article{padding:10px}}
 @media (max-width: 420px) {.curve-role-roles{grid-template-columns:minmax(0,1fr)}.curve-role-curve li{grid-template-columns:2.4rem minmax(0,1fr) auto}}
