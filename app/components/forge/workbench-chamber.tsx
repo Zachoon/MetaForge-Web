@@ -30,6 +30,7 @@ import { trackLaunchEvent } from "../../launch-telemetry";
 import { useForgeSession } from "../../forge-session-context";
 import { GuidedCompletionReview } from "./guided-completion-review";
 import { CurveRoleCoach } from "./curve-role-coach";
+import { ManaBaseCoach } from "./mana-base-coach";
 
 export function WorkbenchChamber() {
   const {
@@ -377,6 +378,14 @@ export function WorkbenchChamber() {
             <CurveRoleCoach
               format={format}
               strategy={strategy}
+              commander={selectedCommander}
+              secondCommander={selectedSecondCommander}
+              rows={deckRows}
+              cardFacts={cardFacts}
+              factsLoading={cardFactsLoading}
+            />
+            <ManaBaseCoach
+              format={format}
               commander={selectedCommander}
               secondCommander={selectedSecondCommander}
               rows={deckRows}
