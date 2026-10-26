@@ -994,3 +994,34 @@ step that's actually in focus. */
 .curve-role-quote p{margin-top:6px;color:#c5d0cb}
 @media (max-width: 720px) {.curve-role-coach{padding:12px}.curve-role-roles{grid-template-columns:repeat(2,minmax(0,1fr))}.curve-role-coach h3{font-size:18px}.curve-role-weaknesses article{padding:10px}}
 @media (max-width: 420px) {.curve-role-roles{grid-template-columns:minmax(0,1fr)}.curve-role-curve li{grid-template-columns:2.4rem minmax(0,1fr) auto}}
+
+.mana-base-coach{display:grid;gap:14px;min-width:0;max-width:100%;margin-top:18px;padding:12px;border:1px solid #35463f;background:#0b1210;overflow-wrap:anywhere;overflow-x:clip;box-sizing:border-box}
+.mana-base-coach *{box-sizing:border-box;min-width:0}
+.mana-base-coach small,.mana-base-head>small{display:block;color:#72c7b5;font:900 9px/1.3 Inter,system-ui,sans-serif;letter-spacing:.12em}
+.mana-base-coach h3,.mana-base-coach h4{margin:8px 0 0;color:#e7ece8;font:600 18px/1.25 Newsreader,Georgia,serif}
+.mana-base-coach h4{font-size:16px}
+.mana-base-coach p{margin:8px 0 0;color:#c5d0cb;font:500 14px/1.55 Inter,system-ui,sans-serif}
+.mana-base-confidence{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:baseline}
+.mana-base-confidence>span:first-child,.mana-base-lessons article p>span{color:#e0a066;font:800 11px/1.4 Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase}
+.mana-base-confidence strong{color:#f4f7f5;font:800 13px/1.4 Inter,system-ui,sans-serif;text-transform:capitalize}
+.mana-base-stats{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin:10px 0 0}
+.mana-base-stats div{min-width:0;padding:10px;border:1px solid #35463f;background:#101a18}
+.mana-base-stats b{display:block;color:#f4f7f5;font:700 22px/1 Inter,system-ui,sans-serif}
+.mana-base-stats span{display:block;margin-top:4px;color:#9aaba4;font:700 11px/1.3 Inter,system-ui,sans-serif}
+.mana-base-stats small{display:block;margin-top:4px;color:#c5d0cb;font:500 12px/1.35 Inter,system-ui,sans-serif;letter-spacing:0}
+.mana-base-stats div[data-status="short"]{border-color:#8a6233}
+.mana-base-stats div[data-status="over"]{border-color:#8a4036}
+.mana-base-colors,.mana-base-lessons{display:grid;gap:8px;margin:10px 0 0;padding:0;list-style:none}
+.mana-base-lessons{gap:12px}
+.mana-base-colors li,.mana-base-lessons article{min-width:0;max-width:100%;padding:10px;border:1px solid #35463f;background:#101a18}
+.mana-base-colors li[data-status="short"]{border-color:#8a6233}
+.mana-base-colors li[data-status="tight"]{border-color:#8a6233}
+.mana-base-colors li[data-status="over"]{border-color:#8a4036}
+.mana-base-swatch{display:inline-block;color:#f4f7f5;font:800 12px/1.2 Inter,system-ui,sans-serif;letter-spacing:.04em;text-transform:capitalize}
+.mana-base-colors small{display:block;margin-top:6px;color:#9aaba4;font:500 12px/1.4 Inter,system-ui,sans-serif;letter-spacing:0}
+.mana-base-quote{display:block;margin:8px 0 0;padding:8px 10px;border:0;border-left:3px solid #e0a066;background:#0c1210;color:#d7c7a4;font:500 13px/1.45 Inter,system-ui,sans-serif;overflow-wrap:anywhere;word-break:break-word}
+.mana-base-quote b{display:block;margin:0 0 4px;color:#f4f7f5;font:700 13px/1.3 Inter,system-ui,sans-serif}
+.mana-base-quote span,.mana-base-quote p{display:block;margin:0;color:#d7c7a4;font:500 13px/1.45 Inter,system-ui,sans-serif;overflow-wrap:anywhere;word-break:break-word}
+.mana-base-quote p{margin-top:6px;color:#c5d0cb}
+@media (min-width: 420px) {.mana-base-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (min-width: 720px) {.mana-base-coach{padding:16px}.mana-base-coach h3{font-size:20px}.mana-base-stats{grid-template-columns:repeat(4,minmax(0,1fr))}}

@@ -1,5 +1,6 @@
 import { createRecommendation, parseDeck } from "../app/deck-analysis.mjs";
 import { buildCurveRoleCoaching, coachCardsFromContext, formatCurveRoleCoaching, questionWantsCurveRoleCoaching } from "../app/curve-role-coach.mjs";
+import { buildManaBaseCoaching, formatManaBaseCoaching, questionWantsManaBaseCoaching } from "../app/mana-base-coach.mjs";
 import { analyzeRiftboundStrategy } from "../app/riftbound-analysis.mjs";
 import RIFTBOUND_CATALOG from "../app/riftbound-card-catalog.mjs";
 import { riftboundMetaContext } from "../app/riftbound-meta-context.mjs";
@@ -36,7 +37,7 @@ export function nativeCoachAnswer(messages:Array<{role:string;content:string}>,c
       const meta=riftboundMetaContext();
       return `Current Riftbound field: ${meta.fieldRead} The snapshot is dated ${meta.asOf} and is ${meta.freshness.replaceAll("-"," ")}; its Tier 1 preparation targets are ${meta.tier1.map(item=>item.legend).join(", ")}.\n\nDecision: choose the counter-field goal before choosing cards.\nTest: paste a 40-card Main Deck or name the Champion/Legend package you want to build around.\nReturn signal: tell Forge which Tier 1 matchup you most want to improve, and it will state the tradeoff instead of pretending one list beats everything.`;
     }
-    return `Paste the decklist. Native Coach reads a Commander list from the commander's printed Oracle text and the strategy, then teaches the mana curve and the jobs those cards actually do: ramp, card advantage, interaction, wipes, and win conditions. It also names the holes that matter for that plan — too few answers, too little card draw, a mana base that cannot cast the colors, or a win condition that belongs in a different deck — and quotes the printed text. A loot is not card advantage, mana that can only cast one kind of spell is not generic ramp, and mana that depends on an opponent is not fixing.`;
+    return `Paste the decklist. Native Coach reads a Commander list from the commander's printed Oracle text and the strategy, then teaches the mana curve and the jobs those cards actually do: ramp, card advantage, interaction, wipes, and win conditions. It also names the holes that matter for that plan — too few answers, too little card draw, a mana base that cannot cast the colors, or a win condition that belongs in a different deck — and quotes the printed text. A loot is not card advantage, mana that can only cast one kind of spell is not generic ramp, and mana that depends on an opponent is not fixing. Ask about the mana base when you want the land count and the color sources judged against the curve: pips, the turn those pips come due, and which mana does not actually cast the deck.`;
   }
   if(game==="riftbound"){
     const read=analyzeRiftboundStrategy(riftRows(deckText),RIFTBOUND_CATALOG);
@@ -47,6 +48,13 @@ export function nativeCoachAnswer(messages:Array<{role:string;content:string}>,c
   }
   const rows=parseDeck(deckText),count=rows.reduce((sum:number,row:any)=>sum+row.quantity,0);
   if(!count)return `I could not read a decklist from the current workspace. Use one quantity and card name per line, then ask again.`;
+  if(questionWantsManaBaseCoaching(question)){
+    return formatManaBaseCoaching(buildManaBaseCoaching({
+      commander:context?.commander,
+      commanders:context?.commanders,
+      cards:coachCardsFromContext(context,rows),
+    }));
+  }
   if(questionWantsCurveRoleCoaching(question)){
     return formatCurveRoleCoaching(buildCurveRoleCoaching({
       commander:context?.commander,
