@@ -7,7 +7,7 @@ import { isCommanderFormat } from "../../format-catalog";
 import { buildManaBaseCoaching } from "../../mana-base-coach.mjs";
 import type { CardFact, CommanderOption, DeckRow } from "../../forge-types";
 
-type Face = { oracle_text?: string; type_line?: string; mana_cost?: string };
+type Face = { name?: string; oracle_text?: string; type_line?: string; mana_cost?: string };
 
 function printedFact(fact?: CardFact | null) {
   const faces = (fact?.card_faces || []) as Face[];
@@ -20,6 +20,12 @@ function printedFact(fact?: CardFact | null) {
     manaCost,
     cmc: fact?.cmc,
     colors: fact?.color_identity || [],
+    cardFaces: faces.map((face) => ({
+      name: face.name || "",
+      oracleText: face.oracle_text || "",
+      typeLine: face.type_line || "",
+      manaCost: face.mana_cost || "",
+    })),
     seen: Boolean(oracle || typeLine || manaCost || faces.length),
   };
 }
@@ -70,6 +76,7 @@ export function ManaBaseCoach({
       manaCost: fact.manaCost,
       cmc: fact.cmc,
       colorIdentity: fact.colors,
+      cardFaces: fact.cardFaces,
     };
   }), [rows, facts]);
   const commanders = useMemo(() => [
@@ -158,8 +165,7 @@ export function ManaBaseCoach({
                 <span className="mana-base-swatch" data-color={color.color}>{color.word}</span>
                 <p>{color.summary}</p>
                 <small>
-                  {color.pips} pips.
-                  {color.spell ? ` ${color.untapped} untapped by turn ${color.turn}. About ${color.needed} wanted. ${statusWord(color.status)}.` : " No pips."}
+                  {color.detail || `${color.pips} pips.${color.spell ? ` ${color.untapped} untapped by turn ${color.turn}. About ${color.needed} wanted. ${statusWord(color.status)}.` : " No pips."}`}
                 </small>
               </li>
             ))}

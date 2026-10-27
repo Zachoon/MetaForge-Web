@@ -1022,6 +1022,7 @@ export function coachCardsFromContext(context = {}, rows = []) {
       manaCost: extra.manaCost || extra.mana_cost || "",
       cmc: extra.cmc,
       colorIdentity: extra.colorIdentity || extra.color_identity || extra.colors || [],
+      cardFaces: extra.cardFaces || extra.card_faces || [],
       isCommander: extra.isCommander === true,
     };
   });
