@@ -5,6 +5,9 @@
 // only when that text can pay the spell on the turn the spell asks for it.
 // Mana locked to one spell type, mana that adds one color, a fetch that
 // cannot find the land, and a land that enters tapped are not generic mana.
+// A short color flag uses the pips the deck actually commits to. One early
+// two-pip spell does not fail a color the rest of the list can cast. A
+// land-ramp spell lowers the land target and is still not an extra land.
 // =============================================================================
 
 import { hypergeometricAtLeast } from "./blueprint-note-and-mana.mjs";
@@ -76,6 +79,43 @@ function textOf(card) {
 
 function costOf(card) {
   return String(card?.manaCost || card?.mana_cost || "");
+}
+
+function faceRecord(face, fallbackName) {
+  return {
+    name: String(face?.name || fallbackName || ""),
+    typeLine: String(face?.typeLine || face?.type_line || ""),
+    oracleText: String(face?.oracleText || face?.oracle_text || ""),
+    manaCost: String(face?.manaCost || face?.mana_cost || ""),
+  };
+}
+
+// A modal card with a land face can be played as that land. Read the land
+// face only, so the spell face is not a second card, a fetch, or a pip the
+// mana base must satisfy. Pathways keep every land face.
+function presentManaCard(card) {
+  const raw = Array.isArray(card?.cardFaces) ? card.cardFaces : Array.isArray(card?.card_faces) ? card.card_faces : [];
+  const faces = raw.map((face) => faceRecord(face, card?.name)).filter((face) => face.typeLine || face.oracleText || face.manaCost);
+  const landFaces = faces.filter((face) => /\bland\b/i.test(face.typeLine));
+  const otherFaces = faces.filter((face) => face.typeLine && !/\bland\b/i.test(face.typeLine));
+  if (!landFaces.length) return { card, text: textOf(card), modalLand: false, pathway: false };
+  const modalLand = otherFaces.length > 0;
+  const pathway = landFaces.length >= 2 && otherFaces.length === 0;
+  const text = landFaces.map((face) => face.oracleText).filter(Boolean).join("\n");
+  const typeLine = landFaces.map((face) => face.typeLine).filter(Boolean).join(" // ");
+  return {
+    card: {
+      ...card,
+      oracleText: text,
+      typeLine: typeLine || typeLineOf(card),
+      manaCost: "",
+      modalLand,
+      pathway,
+    },
+    text,
+    modalLand,
+    pathway,
+  };
 }
 
 function isLandCard(card) {
@@ -255,7 +295,9 @@ function colorsInWindow(window, identity) {
 }
 
 function draftCard(card, identity) {
-  const text = textOf(card);
+  const prepared = presentManaCard(card);
+  card = prepared.card;
+  const text = prepared.text;
   const { windows, grantedOnly } = abilityWindows(text);
   const parsed = windows.map((window) => {
     const cost = activationCost(window);
@@ -292,6 +334,8 @@ function draftCard(card, identity) {
     basicColors: types.map((entry) => entry.color),
     extraLands: extraLandDrops(text),
     grantsAnyColor: /lands you control have [^.]*add one mana of any color/i.test(clean(text)),
+    modalLand: prepared.modalLand,
+    pathway: prepared.pathway,
   };
 }
 
@@ -453,6 +497,18 @@ function isLandRamp(draft) {
   return true;
 }
 
+// A cheap land-ramp spell stands in for part of a land slot because it
+// turns a land that is already in the deck into an earlier drop. It is not
+// counted as that land. A 3-mana spell such as Cultivate is slower.
+function landRampRelief(draft, producers) {
+  if (!isLandRamp(draft)) return 0;
+  const finds = producers.some((other) => other !== draft && other.land && landMatchesFetch(other, draft.fetch || { basic: false, types: [] }));
+  if (!finds) return 0;
+  const cmc = draft.cmc || 2;
+  const each = cmc <= 2 ? 0.6 : cmc <= 3 ? 0.5 : 0.25;
+  return each * draft.quantity;
+}
+
 function weightFor(draft, spell, color, turn, identity) {
   if (!paysColor(draft, spell, color, identity)) return 0;
   if (!draft.land) {
@@ -521,19 +577,143 @@ function normalizeIdentity(commanders) {
   return COLOR_ORDER.filter((color) => found.includes(color));
 }
 
-function landRange({ averageCmc, commanderCmc, rockCredit, extraDrops, landfall, deckSize }) {
-  const pace = averageCmc <= 2.5 ? -1.5 : averageCmc >= 3.8 ? 1 : 0;
-  let center = 36
-    + (averageCmc - 3.2) * 2
-    + (commanderCmc - 4) * 0.4
-    - Math.min(4, Math.max(0, rockCredit - 8) * 0.35)
-    + pace
-    + Math.min(4, extraDrops * 2)
-    + (landfall && extraDrops === 0 ? 1 : 0);
-  if (deckSize < 90) center *= Math.max(0.45, deckSize / 99);
-  center = Math.max(deckSize < 90 ? 8 : 30, Math.min(deckSize < 90 ? 40 : 45, center));
-  const rounded = Math.round(center);
+function clampLandCenter(center, deckSize) {
+  let next = center;
+  if (deckSize < 90) next *= Math.max(0.45, deckSize / 99);
+  next = Math.max(deckSize < 90 ? 8 : 30, Math.min(deckSize < 90 ? 40 : 45, next));
+  const rounded = Math.round(next);
   return { low: rounded - 1, high: rounded + 1, center: rounded };
+}
+
+function landRange({ averageCmc, commanderCmc, rockCredit, landRampCredit = 0, reductionCut = 0, extraDrops, landfall, deckSize }) {
+  const pace = averageCmc <= 2.5 ? -1.5 : averageCmc >= 3.8 ? 1 : 0;
+  const curve = (averageCmc - 3.2) * 2 + (commanderCmc - 4) * 0.4 + pace;
+  // 36 lands at a 3.2 curve already includes a Sol Ring and a signet.
+  // Rocks past that, and land ramp that finds a land in the deck, cover
+  // some of the extra lands a higher curve wants. A flat cost reduction
+  // is a smaller credit on top. It does not rewrite the printed curve,
+  // because the commander is not on the battlefield on turn one. Caps
+  // keep the formula from recommending a very low land count.
+  const rockRelief = Math.min(2, Math.max(0, rockCredit - 3) * 0.45);
+  const rampRelief = Math.min(3, Math.max(0, landRampCredit));
+  const reductionRelief = Math.min(2, Math.max(0, reductionCut) * 1.4);
+  const base = 36 + curve + Math.min(4, extraDrops * 2) + (landfall && extraDrops === 0 ? 1 : 0);
+  const credited = clampLandCenter(base - rockRelief - rampRelief - reductionRelief, deckSize);
+  const plain = clampLandCenter(base - reductionRelief, deckSize);
+  const printed = clampLandCenter(base, deckSize);
+  return {
+    ...credited,
+    rockRelief,
+    rampRelief,
+    baselineLow: plain.low,
+    baselineHigh: plain.high,
+    printedLow: printed.low,
+    printedHigh: printed.high,
+  };
+}
+
+const BROAD_REDUCTION = new Set(["any", "instant and sorcery", "instant", "sorcery", "creature", "artifact", "enchantment", "permanent", "noncreature", "historic"]);
+
+function broadCostReduction(text) {
+  const rules = clean(text);
+  const match = rules.match(/\b([a-z]+(?: and [a-z]+)? )?spells you cast cost \{(\d+)\} less\b/i);
+  if (!match) return null;
+  const tail = rules.slice(match.index, match.index + match[0].length + 70);
+  if (/for each|where x\b|equal to|number of|\bpower\b/i.test(tail)) return null;
+  const kind = (match[1] || "any").trim().toLowerCase();
+  if (!BROAD_REDUCTION.has(kind)) return null;
+  return { kind, amount: Math.min(2, Number(match[2]) || 0) };
+}
+
+function reductionShare(kind, spells) {
+  const list = spells.filter((card) => costOf(card));
+  const total = list.reduce((sum, card) => sum + card.quantity, 0);
+  if (!total || kind === "any" || kind === "permanent") return total ? 1 : 0;
+  const matches = (card) => {
+    const line = typeLineOf(card);
+    if (kind === "creature") return /\bcreature\b/i.test(line);
+    if (kind === "noncreature") return !/\bcreature\b/i.test(line);
+    if (kind === "instant and sorcery" || kind === "instant" || kind === "sorcery") return /\b(?:instant|sorcery)\b/i.test(line);
+    if (kind === "historic") return /\b(?:artifact|legendary|saga)\b/i.test(line);
+    return new RegExp(`\\b${kind}\\b`, "i").test(line);
+  };
+  return list.reduce((sum, card) => sum + (matches(card) ? card.quantity : 0), 0) / total;
+}
+
+function pickDemand(rows) {
+  return rows.reduce((worst, row) => {
+    if (!worst || row.gap > worst.gap + 0.2) return row;
+    if (Math.abs(row.gap - worst.gap) <= 0.2 && row.spell.isCommander && !worst.spell.isCommander) return row;
+    return worst;
+  }, null);
+}
+
+function classifyColorDemand(rows) {
+  const floorRows = rows.filter((row) => row.pips < 1.5);
+  const steepRows = rows.filter((row) => row.pips >= 1.5);
+  const floor = pickDemand(floorRows);
+  const stretch = pickDemand(steepRows);
+  const steepCards = steepRows.reduce((sum, row) => sum + (row.spell.quantity || 1), 0);
+  const colorCards = rows.reduce((sum, row) => sum + (row.spell.quantity || 1), 0);
+  const commanderPips = rows.reduce((max, row) => (row.spell.isCommander ? Math.max(max, row.pips) : max), 0);
+  const committed = commanderPips >= 2 || steepCards >= 3;
+  const governing = committed ? (stretch || floor) : (floor || stretch);
+  const governingGap = governing ? governing.gap : 0;
+  let status = "ok";
+  let stretchOnly = false;
+  if (governingGap >= 4) status = "short";
+  else if (!committed && stretch && stretch.gap >= 4 && steepCards < 3 && commanderPips < 2 && stretch.gap >= governingGap + 4) {
+    status = "tight";
+    stretchOnly = true;
+  } else if (governingGap > 0) status = "tight";
+  const shown = (status === "short" || stretchOnly) && stretch && stretch.gap > (governing?.gap || 0) + 0.2
+    ? stretch
+    : (governing || stretch);
+  return { status, stretchOnly, committed, steepCards, colorCards, commanderPips, floor, stretch, shown };
+}
+
+function measureDemand(color, spell, pips, producers, identity, deckSize) {
+  const turn = spellTurn(spell);
+  const needed = sourcesNeeded(turn, pips, deckSize || 99);
+  let effective = 0;
+  let untapped = 0;
+  let late = 0;
+  for (const draft of producers) {
+    const weight = weightFor(draft, spell, color, turn, identity);
+    effective += weight;
+    const full = draft.quantity ? weight / draft.quantity : 0;
+    if (full >= 0.99) untapped += draft.quantity;
+    else if (weight <= 0 && weightFor(draft, spell, color, 6, identity) > 0) late += draft.quantity;
+  }
+  const have = round1(effective);
+  return { color, spell, pips, turn, needed, have, untapped, late, gap: needed - have };
+}
+
+function colorReadSummary(row, identityCount) {
+  const word = row.word;
+  if (!row.spell) return `No ${word} pips in the printed costs.`;
+  if (row.stretchOnly) {
+    const count = row.steepCards || 1;
+    const who = count === 1 ? "One card asks" : `${count} cards ask`;
+    const practical = identityCount >= 3
+      ? `A three-color mana base that casts its one-${word} spells is on the practical side of the color table. About ${row.needed} sources is the strict count for a deck built on two-${word} spells. For ${count === 1 ? "one card" : "a few cards"}, that is a closer call.`
+      : `The other ${word} spells ask for one ${word} mana. That is the practical count, and this spell is a closer call.`;
+    return `${row.spell.name} wants ${pipPhrase(row.pipsOnSpell, row.color)} on turn ${row.turn}. About ${row.needed} ${word} sources would cast that spell on time. ${row.untapped} are untapped by then. ${who} for that many ${word} pips. ${practical} Confidence on this read: low.`;
+  }
+  if (row.downgraded) {
+    return `${row.spell.name} wants ${pipPhrase(row.pipsOnSpell, row.color)} on turn ${row.turn}. About ${row.needed} ${word} sources cast that, and ${row.untapped} are untapped by then. The gap is about ${Math.max(1, Math.round(row.gap))} sources, smaller than the main hole, so ${word} is close. Confidence on this read: medium.`;
+  }
+  return `${row.spell.name} wants ${pipPhrase(row.pipsOnSpell, row.color)} on turn ${row.turn}. About ${row.needed} ${word} sources cast that. ${row.untapped} are untapped by then${row.late ? `, and ${row.late} arrive tapped or too late to count in full` : ""}.`;
+}
+
+function finishColorReport(row, identityCount) {
+  const summary = colorReadSummary(row, identityCount);
+  const detail = row.stretchOnly
+    ? `${row.pips} pips. ${row.untapped} untapped by turn ${row.turn}. ${row.steepCards === 1 ? "One spell wants" : `${row.steepCards} spells want`} about ${row.needed}. Close. Confidence: low.`
+    : row.downgraded
+      ? `${row.pips} pips. ${row.untapped} untapped by turn ${row.turn}. About ${row.needed} wanted. Close. Confidence: medium.`
+      : "";
+  return { ...row, summary, detail };
 }
 
 function whyNot(draft, spell, color, identity) {
@@ -622,7 +802,7 @@ function untappedWord(timing) {
 
 function recommendLand(identity, shortColors, used) {
   const unused = (name) => !used.has(String(name).toLowerCase());
-  if (shortColors.length >= 2 && unused(COMMAND_TOWER.name)) return COMMAND_TOWER;
+  if ((identity.length >= 3 || shortColors.length >= 2) && unused(COMMAND_TOWER.name)) return COMMAND_TOWER;
   const primary = shortColors[0];
   const partner = shortColors[1] || identity.find((color) => color !== primary);
   if (primary && partner) {
@@ -666,6 +846,8 @@ export function readPrintedMana(card, { identity = [], cards = [] } = {}) {
     recolorsAll: self.recolor?.type || null,
     earlyRock: earlyRockCredit(self) > 0,
     landRamp: isLandRamp(self),
+    modalLand: Boolean(self.modalLand),
+    pathway: Boolean(self.pathway),
     granted: self.grantedOnly,
     colorTiming: { ...self.colorTiming },
     pays(spell, color) {
@@ -721,13 +903,6 @@ function confidenceFor({ opaqueShare, partial, conditionalShare, gap }) {
   return { level, reason: reasons.join(" ") };
 }
 
-function statusFromGap(have, needed) {
-  const gap = needed - have;
-  if (gap <= 0) return "ok";
-  if (gap < 4) return "tight";
-  return "short";
-}
-
 function landStatus(count, range) {
   if (count < range.low) return range.low - count >= 2 ? "short" : "tight";
   if (count > range.high) return count - range.high >= 2 ? "over" : "tight";
@@ -761,7 +936,7 @@ export function buildManaBaseCoaching(input = {}) {
   const primary = commanders[0] || null;
   const identity = normalizeIdentity(commanders);
   const commanderNames = new Set(commanders.map((commander) => commander.name.toLowerCase()).filter(Boolean));
-  const library = (Array.isArray(input.cards) ? input.cards : []).map((card) => ({
+  const library = (Array.isArray(input.cards) ? input.cards : []).map((card) => presentManaCard({
     ...card,
     name: String(card?.name || "").trim(),
     quantity: Math.max(1, Number(card?.quantity) || 1),
@@ -769,7 +944,7 @@ export function buildManaBaseCoaching(input = {}) {
     typeLine: typeLineOf(card),
     manaCost: costOf(card),
     isCommander: commanderNames.has(String(card?.name || "").trim().toLowerCase()) || card?.isCommander === true,
-  })).filter((card) => card.name && !card.isCommander);
+  }).card).filter((card) => card.name && !card.isCommander);
 
   const deckSize = library.reduce((sum, card) => sum + card.quantity, 0);
   const spelled = library.filter((card) => card.oracleText.trim() || card.manaCost || basicTypes(card).length || isLandCard(card));
@@ -791,18 +966,38 @@ export function buildManaBaseCoaching(input = {}) {
   const rockCredit = producers.reduce((sum, draft) => sum + earlyRockCredit(draft) * draft.quantity, 0);
   const landRamp = producers.filter(isLandRamp);
   const landRampCount = landRamp.reduce((sum, draft) => sum + draft.quantity, 0);
+  const landRampCredit = producers.reduce((sum, draft) => sum + landRampRelief(draft, producers), 0);
   const extraDrops = [...commanders, ...library].reduce((sum, card) => sum + extraLandDrops(textOf(card)) * (card.quantity || 1), 0);
   const landfall = commanders.some((commander) => landfallPlan(commander.oracleText));
+  const reduction = commanders
+    .map((commander) => ({ commander, found: broadCostReduction(commander.oracleText) }))
+    .find((entry) => entry.found);
+  let reductionCut = 0;
+  let reductionQuote = "";
+  let reductionName = "";
+  if (reduction && averageCmc != null) {
+    const cut = Math.min(1.5, reduction.found.amount * reductionShare(reduction.found.kind, spells));
+    if (cut >= 0.35) {
+      reductionCut = cut;
+      reductionName = reduction.commander.name;
+      reductionQuote = printedQuote(reduction.commander.oracleText, /spells you cast cost/i) || clean(reduction.commander.oracleText).slice(0, 180);
+    }
+  }
   const range = averageCmc == null
-    ? { low: 0, high: 0, center: 0 }
+    ? { low: 0, high: 0, center: 0, baselineLow: 0, baselineHigh: 0, rockRelief: 0, rampRelief: 0 }
     : landRange({
       averageCmc,
       commanderCmc: primary ? printedCmc(primary) : 4,
       rockCredit,
+      landRampCredit,
+      reductionCut,
       extraDrops,
       landfall,
       deckSize,
     });
+  const reductionNote = reductionCut
+    ? `${reductionName} says “${reductionQuote}” That discount covers part of a land drop once the commander is out${range.printedLow > range.low ? `, which moves the land target from about ${range.printedLow}–${range.printedHigh} to ${range.low}–${range.high}` : ""}. The printed curve still sets the pace. Each color check still uses the printed mana cost, because the reduction is not on the battlefield on turn one.`
+    : "";
 
   const lands = producers.filter((draft) => draft.land);
   const landCount = lands.reduce((sum, draft) => sum + draft.quantity, 0);
@@ -821,31 +1016,12 @@ export function buildManaBaseCoaching(input = {}) {
   const rampFindsLand = (draft) => producers.some((other) => other !== draft && other.land && landMatchesFetch(other, draft.fetch || { basic: false, types: [] }));
   const colorReports = [];
 
-  const probe = { name: "a spell", typeLine: "Instant", manaCost: "" };
   for (const color of identity) {
-    let worst = null;
-    const candidates = demandSpells
+    const demands = demandSpells
       .map((spell) => ({ spell, pips: hardPips(spell.manaCost).pips[color] }))
-      .filter((entry) => entry.pips >= 0.75);
-    for (const entry of candidates) {
-      const turn = spellTurn(entry.spell);
-      const needed = sourcesNeeded(turn, entry.pips, deckSize || 99);
-      let effective = 0;
-      let untapped = 0;
-      let late = 0;
-      for (const draft of producers) {
-        const weight = weightFor(draft, entry.spell, color, turn, identity);
-        effective += weight;
-        const full = draft.quantity ? weight / draft.quantity : 0;
-        if (full >= 0.99) untapped += draft.quantity;
-        else if (weight <= 0 && weightFor(draft, entry.spell, color, 6, identity) > 0) late += draft.quantity;
-      }
-      const have = round1(effective);
-      const gap = needed - have;
-      const row = { color, spell: entry.spell, pips: entry.pips, turn, needed, have, untapped, late, gap };
-      if (!worst || gap > worst.gap + 0.2 || (Math.abs(gap - worst.gap) <= 0.2 && (entry.spell.isCommander && !worst.spell.isCommander))) worst = row;
-    }
-    if (!worst) {
+      .filter((entry) => entry.pips >= 0.75)
+      .map((entry) => measureDemand(color, entry.spell, entry.pips, producers, identity, deckSize || 99));
+    if (!demands.length) {
       colorReports.push({
         color,
         word: COLOR_WORD[color],
@@ -857,29 +1033,48 @@ export function buildManaBaseCoaching(input = {}) {
         turn: null,
         spell: null,
         status: "ok",
+        gap: 0,
         summary: `No ${COLOR_WORD[color]} pips in the printed costs.`,
+        detail: "",
       });
       continue;
     }
+    const read = classifyColorDemand(demands);
+    const shown = read.shown;
     const pipTotal = demandSpells.reduce((sum, spell) => sum + hardPips(spell.manaCost).pips[color] * (spell.quantity || 1), 0);
-    const status = statusFromGap(worst.have, worst.needed);
     colorReports.push({
       color,
       word: COLOR_WORD[color],
       pips: round1(pipTotal),
-      untapped: worst.untapped,
-      late: worst.late,
-      have: worst.have,
-      needed: worst.needed,
-      turn: worst.turn,
-      pipsOnSpell: Math.round(worst.pips),
-      spell: worst.spell,
-      status,
-      gap: round1(worst.gap),
-      summary: worst.spell
-        ? `${worst.spell.name} wants ${pipPhrase(worst.pips, color)} on turn ${worst.turn}. About ${worst.needed} ${COLOR_WORD[color]} sources cast that. ${worst.untapped} are untapped by then${worst.late ? `, and ${worst.late} arrive tapped or too late to count in full` : ""}.`
-        : "",
+      untapped: shown.untapped,
+      late: shown.late,
+      have: shown.have,
+      needed: shown.needed,
+      turn: shown.turn,
+      pipsOnSpell: Math.round(shown.pips),
+      spell: shown.spell,
+      status: read.status,
+      gap: round1(shown.gap),
+      stretchOnly: read.stretchOnly,
+      downgraded: false,
+      steepCards: read.steepCards,
+      summary: "",
+      detail: "",
     });
+  }
+
+  const rankedShort = colorReports.filter((row) => row.status === "short").sort((left, right) => right.gap - left.gap);
+  if (rankedShort.length >= 2) {
+    const leadGap = rankedShort[0].gap;
+    for (const row of rankedShort.slice(1)) {
+      if (row.gap <= 5 || row.gap < leadGap * 0.6) {
+        row.status = "tight";
+        row.downgraded = true;
+      }
+    }
+  }
+  for (let index = 0; index < colorReports.length; index += 1) {
+    colorReports[index] = finishColorReport(colorReports[index], identity.length);
   }
 
   const farGap = landsState === "short" || landsState === "over" || colorReports.some((row) => row.status === "short");
@@ -894,7 +1089,10 @@ export function buildManaBaseCoaching(input = {}) {
   const used = new Set(library.map((card) => card.name.toLowerCase()));
   const lessons = [];
   const shortColors = colorReports.filter((row) => row.status === "short").sort((left, right) => right.gap - left.gap);
+  const closeColors = colorReports.filter((row) => row.status === "tight" && (row.stretchOnly || row.downgraded)).sort((left, right) => right.gap - left.gap);
   const lead = shortColors[0] || null;
+  const focus = lead || closeColors[0] || null;
+  const focusTone = lead ? "short" : "close";
 
   if (landsState === "short" || landsState === "over") {
     const direction = landsState === "short";
@@ -905,11 +1103,20 @@ export function buildManaBaseCoaching(input = {}) {
     const add = direction ? recommendLand(identity, shortColors.map((row) => row.color), used) : null;
     const because = [];
     because.push(`The spells you draw average ${averageCmc} mana.`);
-    if (rockCredit >= 8) because.push(`${rockCredit} mana from cheap rocks and dorks can stand in for a few land drops, and it cannot stand in for the opening land. A rock still has to be cast.`);
+    if (reductionNote) because.push(reductionNote);
+    if (range.rockRelief >= 0.5) because.push(`Cheap rocks and dorks add about ${rockCredit} mana. That is more than a Sol Ring and a signet, so it covers part of a land drop. A rock still has to be cast, and it is not the opening land.`);
     else if (rockCredit > 0) because.push(`Cheap rocks and dorks add about ${rockCredit} mana. That is not enough to replace land drops.`);
-    if (landRampCount) because.push(`${landRampCount} ${landRampCount === 1 ? "spell searches" : "spells search"} for a land and put it onto the battlefield. That is ramp, and it is not an extra land. The land it finds still has to be in the deck.`);
+    if (landRampCount) {
+      const packageNote = range.rampRelief >= 0.5 ? " The package covers some of the extra lands this curve would want." : "";
+      because.push(`${landRampCount} ${landRampCount === 1 ? "spell searches" : "spells search"} for a land and put it onto the battlefield.${packageNote} That is ramp, and it is not an extra land or a color source. The land it finds still has to be in the deck.`);
+    }
+    if ((range.rockRelief || 0) + (range.rampRelief || 0) >= 0.5 && range.baselineLow > range.low) because.push(`Without that ramp, this curve would want about ${range.baselineLow}–${range.baselineHigh} lands. With it, the target is ${range.low}–${range.high}.`);
     if (extraDrops) because.push(`Printed text lets you play ${extraDrops === 1 ? "an additional land" : `${extraDrops} additional lands`} each turn. Those drops need lands in hand.`);
-    if (landfall) because.push(`${primary?.name || "The commander"} pays you when a land enters, so missing land drops also miss the plan.`);
+    if (landfall) {
+      because.push(range.rampRelief >= 0.5 || range.rockRelief >= 0.5
+        ? `${primary?.name || "The commander"} pays you when a land enters, so the target stays higher than a ramp deck with no land payoff.`
+        : `${primary?.name || "The commander"} pays you when a land enters, so missing land drops also miss the plan.`);
+    }
     if (tappedCount && averageCmc != null && averageCmc <= 2.6) because.push(`${tappedCount} lands enter tapped. A low curve cannot spend that mana on the turn the land arrives.`);
     const theory = direction
       ? `Lands are the cards you play for free, one a turn. ${because.join(" ")} This curve wants about ${range.low}–${range.high} lands. The list has ${landCount}.`
@@ -946,18 +1153,18 @@ export function buildManaBaseCoaching(input = {}) {
     });
   }
 
-  if (lead) {
-    const spell = lead.spell;
+  if (focus) {
+    const spell = focus.spell;
     const refused = [];
     const seenCards = new Set();
     for (const draft of producers) {
       if (seenCards.has(draft.name)) continue;
       if (!draft.land && draft.fetch) continue;
-      if (paysColor(draft, spell, lead.color, identity) && timingWeight(sourceTiming(draft, lead.color), lead.turn) >= 1) continue;
-      const reason = whyNot(draft, spell, lead.color, identity);
+      if (paysColor(draft, spell, focus.color, identity) && timingWeight(sourceTiming(draft, focus.color), focus.turn) >= 1) continue;
+      const reason = whyNot(draft, spell, focus.color, identity);
       if (!reason) {
-        const timing = sourceTiming(draft, lead.color);
-        if (paysColor(draft, spell, lead.color, identity) && timingWeight(timing, lead.turn) < 1) {
+        const timing = sourceTiming(draft, focus.color);
+        if (paysColor(draft, spell, focus.color, identity) && timingWeight(timing, focus.turn) < 1) {
           refused.push({
             draft,
             reason: {
@@ -976,16 +1183,29 @@ export function buildManaBaseCoaching(input = {}) {
     const rank = { opponent: 0, restricted: 1, fetch: 2, pool: 3, single: 4, colorless: 5, granted: 6, recolor: 7, tapped: 8 };
     refused.sort((left, right) => (rank[left.reason.kind] ?? 9) - (rank[right.reason.kind] ?? 9) || Number(left.draft.basic) - Number(right.draft.basic) || right.draft.quantity - left.draft.quantity);
     const shown = refused.slice(0, 3);
-    const add = recommendLand(identity, shortColors.map((row) => row.color), used);
+    const add = recommendLand(identity, (shortColors.length ? shortColors : [focus]).map((row) => row.color), used);
     const cut = shown[0]?.draft || null;
-    const spellPips = Math.max(1, Math.round(lead.pipsOnSpell || 1));
+    const spellPips = Math.max(1, Math.round(focus.pipsOnSpell || 1));
     const also = shortColors.slice(1);
-    const odds = hypergeometricAtLeast(Math.max(deckSize, lead.needed), Math.max(0, Math.round(lead.have)), cardsSeen(lead.turn), spellPips);
+    const odds = hypergeometricAtLeast(Math.max(deckSize, focus.needed), Math.max(0, Math.round(focus.have)), cardsSeen(focus.turn), spellPips);
     const percent = Math.round(odds * 100);
-    const theory = `${spell.name} costs ${pipPhrase(spellPips, lead.color)}${spell.manaCost ? ` (${spell.manaCost})` : ""}. On turn ${lead.turn} you have seen ${cardsSeen(lead.turn)} cards. About ${lead.needed} ${lead.word} sources cast that on time. This list has ${lead.untapped} that are actually untapped by then${lead.late ? ` and ${lead.late} that arrive tapped or after that turn` : ""}. ${Math.round(lead.have)} sources put ${pipPhrase(spellPips, lead.color)} in those cards about ${percent}% of the time before mulligans. A land that enters tapped is not mana that turn. A rock counts on the turn after you cast it. Mana locked to one spell type, and ramp that adds only one other color, is not a ${lead.word} source.`;
+    const closeNote = focusTone === "short" && closeColors.length
+      ? ` ${closeColors.map((row) => `${row.word[0].toUpperCase()}${row.word.slice(1)} is a closer call${row.spell ? ` (${row.spell.name})` : ""}`).join(". ")}. ${closeColors.length > 1 ? "Those reads sit" : "That read sits"} at lower confidence than the short color.`
+      : "";
+    const theory = focusTone === "close"
+      ? `${spell.name} costs ${pipPhrase(spellPips, focus.color)}${spell.manaCost ? ` (${spell.manaCost})` : ""}. The strict count for that spell on turn ${focus.turn} is about ${focus.needed} ${focus.word} sources, and ${focus.untapped} are untapped by then. ${focus.stretchOnly ? `${focus.steepCards === 1 ? "One card asks" : `${focus.steepCards} cards ask`} for that many pips. The practical count is the one-pip line for the rest of the ${focus.word} spells.` : `The gap is about ${Math.max(1, Math.round(focus.gap))} sources.`} Confidence on this read: ${focus.stretchOnly ? "low" : "medium"}. A land that enters tapped is not mana that turn. A rock counts on the turn after you cast it. Mana locked to one spell type, and ramp that adds only one other color, is not a ${focus.word} source.`
+      : `${spell.name} costs ${pipPhrase(spellPips, focus.color)}${spell.manaCost ? ` (${spell.manaCost})` : ""}. On turn ${focus.turn} you have seen ${cardsSeen(focus.turn)} cards. About ${focus.needed} ${focus.word} sources cast that on time. This list has ${focus.untapped} that are actually untapped by then${focus.late ? ` and ${focus.late} that arrive tapped or after that turn` : ""}. ${Math.round(focus.have)} sources put ${pipPhrase(spellPips, focus.color)} in those cards about ${percent}% of the time before mulligans. A land that enters tapped is not mana that turn. A rock counts on the turn after you cast it. Mana locked to one spell type, and ramp that adds only one other color, is not a ${focus.word} source.${closeNote}`;
+    const word = focus.word;
+    const titled = `${word[0].toUpperCase()}${word.slice(1)}`;
+    const alsoWords = colorList(also.map((row) => row.color));
+    const alsoTitle = also.length
+      ? (also.every((row) => focus.gap - row.gap >= 3)
+        ? `${titled} is the short color. ${alsoWords[0].toUpperCase()}${alsoWords.slice(1)} ${also.length > 1 ? "are" : "is"} also short, by less`
+        : `${titled} is short. ${alsoWords[0].toUpperCase()}${alsoWords.slice(1)} ${also.length > 1 ? "are" : "is"} short as well`)
+      : `Not enough untapped ${word} for this curve`;
     lessons.push({
-      id: `color-${lead.color}`,
-      title: also.length ? `${lead.word[0].toUpperCase()}${lead.word.slice(1)} is short, and ${colorList(shortColors.slice(1).map((row) => row.color))} ${shortColors.length > 2 ? "are" : "is"} short too` : `Not enough untapped ${lead.word} for this curve`,
+      id: `color-${focus.color}`,
+      title: focusTone === "close" ? `${titled} is a closer call` : alsoTitle,
       theory,
       cards: [{ name: spell.name, quantity: spell.quantity || 1, note: spell.manaCost || "" }],
       excluded: [
@@ -1005,7 +1225,7 @@ export function buildManaBaseCoaching(input = {}) {
           name: spell.name,
           quantity: spell.quantity || 1,
           quote: spell.manaCost || printedQuote(spell.oracleText, /./) || "No mana cost was printed.",
-          says: `${spell.name} needs ${pipPhrase(spellPips, lead.color)} on turn ${lead.turn}.`,
+          says: `${spell.name} needs ${pipPhrase(spellPips, focus.color)} on turn ${focus.turn}.`,
         },
         ...shown.map(({ draft, reason }) => ({
           name: draft.name,
@@ -1017,12 +1237,16 @@ export function buildManaBaseCoaching(input = {}) {
       swaps: [{
         cut: cut?.name || null,
         add: add.name,
-        reason: `${add.name} says “${printedQuote(add.oracleText, /add/i) || add.oracleText}” That mana can pay ${spell.name}, with no spend restriction. ${cut ? `${cut.name} does not: “${shown[0].reason.quote || cut.name}”` : `The list only has ${lead.untapped} untapped ${lead.word} ${lead.untapped === 1 ? "source" : "sources"}.`}`,
+        reason: `${add.name} says “${printedQuote(add.oracleText, /add/i) || add.oracleText}” That mana can pay ${spell.name}, with no spend restriction. ${cut ? `${cut.name} does not: “${shown[0].reason.quote || cut.name}”` : `The list only has ${focus.untapped} untapped ${focus.word} ${focus.untapped === 1 ? "source" : "sources"}.`}`,
       }],
-      confidence: lead.gap >= 8 && confidence.level === "high" ? "high" : confidence.level === "low" ? "low" : "medium",
-      confidenceReason: lead.gap >= 8 && confidence.level === "high"
-        ? "The pip, the turn, and the printed mana abilities are all in the list, and the gap is large."
-        : confidence.reason,
+      confidence: focusTone === "close"
+        ? (focus.stretchOnly ? "low" : "medium")
+        : (focus.gap >= 8 && confidence.level === "high" ? "high" : confidence.level === "low" ? "low" : "medium"),
+      confidenceReason: focusTone === "close"
+        ? "The strict pip count is real for that spell. Fewer cards ask for it than the color's ordinary spells, so this is a closer call."
+        : (focus.gap >= 8 && confidence.level === "high"
+          ? "The pip, the turn, and the printed mana abilities are all in the list, and the gap is large."
+          : confidence.reason),
     });
   }
 
@@ -1069,7 +1293,7 @@ export function buildManaBaseCoaching(input = {}) {
     lessons.push({
       id: "balanced",
       title: "The mana can cast this curve",
-      theory: `${primary?.name || "This deck"} averages ${averageCmc} mana and runs ${landCount} lands, inside ${range.low}–${range.high}. ${untappedLandCount} of those lands can tap the turn they arrive. ${rockCredit ? `Cheap rocks and dorks add about ${rockCredit} mana, which is acceleration` : "There is little cheap ramp"}, and ${landRampCount ? `${landRampCount} land-ramp ${landRampCount === 1 ? "spell searches" : "spells search"} for a land that is already in the deck` : "no spell is being counted as an extra land"}. Color sources are counted only when the printed text can pay that color on the turn the pip comes due.`,
+      theory: `${primary?.name || "This deck"} averages ${averageCmc} mana and runs ${landCount} lands, inside ${range.low}–${range.high}. ${(range.rockRelief || 0) + (range.rampRelief || 0) >= 0.5 && range.baselineLow > range.low ? `Without the ramp package the target would be ${range.baselineLow}–${range.baselineHigh}. ` : ""}${reductionNote ? `${reductionNote} ` : ""}${untappedLandCount} of those lands can tap the turn they arrive. ${rockCredit ? `Cheap rocks and dorks add about ${rockCredit} mana, which is acceleration` : "There is little cheap ramp"}, and ${landRampCount ? `${landRampCount} land-ramp ${landRampCount === 1 ? "spell searches" : "spells search"} for a land that is already in the deck` : "no spell is being counted as an extra land"}. Color sources are counted only when the printed text can pay that color on the turn the pip comes due.`,
       cards: untappedLands.slice(0, 4).map((draft) => ({ name: draft.name, quantity: draft.quantity, note: "untapped source" })),
       excluded: notable.slice(0, 4).map(({ draft, note }) => ({ name: draft.name, quantity: draft.quantity, note })),
       quotes: notable.slice(0, 2).map(({ draft }) => ({
@@ -1086,18 +1310,24 @@ export function buildManaBaseCoaching(input = {}) {
     lessons[0].excluded = notable.slice(0, 3).map(({ draft, note }) => ({ name: draft.name, quantity: draft.quantity, note }));
   }
 
+  const modalLandCount = lands.filter((draft) => draft.modalLand).reduce((sum, draft) => sum + draft.quantity, 0);
   const landSummary = averageCmc == null
     ? "There is not enough printed mana cost to judge the land count."
-    : `${landCount} lands. This curve wants about ${range.low}–${range.high}. ${untappedLandCount} can tap the turn they arrive, ${tappedCount} ${tappedCount === 1 ? "enters" : "enter"} tapped, and ${conditionalCount} ${conditionalCount === 1 ? "enters" : "enter"} tapped unless a condition is already true. Cheap rocks and dorks add about ${rockCredit} mana. ${landRampCount} ${landRampCount === 1 ? "spell puts" : "spells put"} a land from the deck onto the battlefield.`;
+    : `${landCount} lands. This curve wants about ${range.low}–${range.high}.${(range.rockRelief || 0) + (range.rampRelief || 0) >= 0.5 && range.baselineLow > range.low ? ` Without the ramp package it would want about ${range.baselineLow}–${range.baselineHigh}.` : ""} ${untappedLandCount} can tap the turn they arrive, ${tappedCount} ${tappedCount === 1 ? "enters" : "enter"} tapped, and ${conditionalCount} ${conditionalCount === 1 ? "enters" : "enter"} tapped unless a condition is already true. Cheap rocks and dorks add about ${rockCredit} mana. ${landRampCount} ${landRampCount === 1 ? "spell puts" : "spells put"} a land from the deck onto the battlefield.${modalLandCount ? ` ${modalLandCount} of the lands can also be cast as a spell. The land face is the one counted.` : ""}${reductionNote ? ` ${reductionNote}` : ""}`;
 
   const problem = shortColors[0];
+  const watch = closeColors[0];
+  const watchSentence = closeColors.length
+    ? `${closeColors.map((row) => `${row.word[0].toUpperCase()}${row.word.slice(1)} is a closer call${row.spell ? `, on ${row.spell.name}` : ""}`).join(". ")}. Confidence on ${closeColors.length > 1 ? "those reads" : "that read"} is ${closeColors.some((row) => row.downgraded && !row.stretchOnly) ? "medium" : "low"}.`
+    : "";
   const summary = !problem && landsState === "ok"
-    ? `${primary?.name || "This list"} can cast its curve from the mana that is actually printed. ${landCount} lands sit inside ${range.low}–${range.high}, and the color pips have untapped sources on the turn they come due.`
+    ? `${primary?.name || "This list"} can cast ${watch ? "the ordinary curve" : "its curve"} from the mana that is actually printed. ${landCount} lands sit inside ${range.low}–${range.high}, and the color pips have untapped sources on the turn they come due.${watchSentence ? ` ${watchSentence}` : ""}`
     : [
       landsState === "short" ? `${landCount} lands is short of the ${range.low}–${range.high} this ${averageCmc}-mana curve wants.` : "",
       landsState === "over" ? `${landCount} lands is more than the ${range.low}–${range.high} this curve wants.` : "",
       problem ? `${problem.spell.name} needs ${pipPhrase(problem.pipsOnSpell, problem.color)} on turn ${problem.turn}, and ${problem.untapped} untapped ${problem.word} ${problem.untapped === 1 ? "source" : "sources"} will not do it.` : "",
-      shortColors.length > 1 ? `${colorList(shortColors.map((row) => row.color)).replace(/^./, (letter) => letter.toUpperCase())} are the colors that come up short.` : "",
+      shortColors.length > 1 ? `${shortColors[0].word[0].toUpperCase()}${shortColors[0].word.slice(1)} is the short color. ${colorList(shortColors.slice(1).map((row) => row.color))} ${shortColors.length > 2 ? "are" : "is"} also short${shortColors.slice(1).every((row) => shortColors[0].gap - row.gap >= 3) ? ", by less" : ""}.` : "",
+      watchSentence,
     ].filter(Boolean).join(" ");
 
   return {
@@ -1117,8 +1347,11 @@ export function buildManaBaseCoaching(input = {}) {
       extraLandDrops: extraDrops,
       landfall,
       averageCmc,
+      modalLands: modalLandCount,
       targetLow: range.low,
       targetHigh: range.high,
+      baselineLow: range.baselineLow,
+      baselineHigh: range.baselineHigh,
       status: landsState,
       summary: landSummary,
     },
@@ -1145,7 +1378,8 @@ export function formatManaBaseCoaching(report) {
         lines.push(`${color.word}: no pips.`);
         continue;
       }
-      lines.push(`${color.word}: ${color.pips} pips. ${color.untapped} untapped sources by turn ${color.turn}, about ${color.needed} wanted (${color.status}). ${color.summary}`);
+      const statusLabel = { ok: "in range", short: "short", tight: "close", over: "heavy" };
+      lines.push(`${color.word}: ${color.pips} pips. ${color.untapped} untapped sources by turn ${color.turn}, about ${color.needed} wanted (${statusLabel[color.status] || color.status}). ${color.summary}`);
     }
   }
   for (const lesson of report.lessons) {

@@ -211,6 +211,16 @@ test("a three-color deck with a black drought does not count opponent mana, the 
   assert.match(text, /Swap:/);
   assert.match(text, /Swamp|Command Tower/);
   assert.doesNotMatch(text, /Exotic Orchard[\s\S]{0,80}is a black source/i);
+  const blue = report.colors.find((color) => color.color === "U");
+  assert.equal(black.status, "short");
+  assert.equal(blue.status, "tight");
+  assert.equal(blue.stretchOnly, true);
+  assert.match(text, /Counterspell/);
+  assert.match(text, /closer call/i);
+  assert.match(text, /Confidence on this read: low/i);
+  assert.doesNotMatch(text, /blue is short too/i);
+  assert.doesNotMatch(text, /Black and blue are the colors that come up short/i);
+  assert.equal(report.lessons.filter((lesson) => String(lesson.id).startsWith("color-")).map((lesson) => lesson.id).join(","), "color-B");
 });
 
 test("a low-curve deck cannot spend lands that enter tapped on turn two, and restricted mana is not generic", () => {
@@ -254,6 +264,29 @@ test("a four-color ramp deck treats land ramp as a search, not an extra land, an
   assert.match(text, /Command Tower|Plains/);
   assert.match(text, /Theory:/);
   assert.match(text, /Swap:/);
+  assert.equal(report.lands.count, 28);
+  assert.equal(report.lands.targetLow, 36);
+  assert.equal(report.lands.targetHigh, 38);
+  assert.equal(report.lands.baselineLow, 40);
+  assert.equal(report.lands.baselineHigh, 42);
+  assert.match(text, /Without the ramp package it would want about 40–42/);
+  assert.match(text, /not an extra land or a color source/i);
+  const blue = report.colors.find((color) => color.color === "U");
+  const red = report.colors.find((color) => color.color === "R");
+  assert.equal(blue.downgraded, true);
+  assert.equal(red.downgraded, true);
+  assert.notEqual(blue.status, "short");
+  assert.notEqual(red.status, "short");
+  assert.doesNotMatch(text, /blue and red are short too/i);
+  const cultivate = readPrintedMana({
+    name: "Cultivate",
+    typeLine: "Sorcery",
+    manaCost: "{2}{G}",
+    oracleText: "Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.",
+  }, { identity: ["G", "W", "U", "R"], cards: [{ name: "Forest", typeLine: "Basic Land — Forest", oracleText: "({T}: Add {G}.)" }] });
+  assert.equal(cultivate.landRamp, true);
+  assert.equal(cultivate.land, false);
+  assert.equal(cultivate.pays({ name: "Bear", typeLine: "Creature — Bear", manaCost: "{G}" }, "G"), false);
 });
 
 test("extra land drops raise the land target above the same curve without them", () => {
@@ -488,12 +521,141 @@ test("mana-base questions are not the curve question and do not offer a format",
   assert.doesNotMatch(curve, /Mana base —/);
 });
 
+test("a commander that costs two blue, or several two-pip spells, can still flag that color short", () => {
+  const island = { name: "Island", quantity: 12, typeLine: "Basic Land — Island", oracleText: "({T}: Add {U}.)" };
+  const swamp = { name: "Swamp", quantity: 12, typeLine: "Basic Land — Swamp", oracleText: "({T}: Add {B}.)" };
+  const mountain = { name: "Mountain", quantity: 12, typeLine: "Basic Land — Mountain", oracleText: "({T}: Add {R}.)" };
+  const filler = (index) => ({
+    name: `Court ${index}`,
+    typeLine: "Instant",
+    manaCost: "{1}{U}",
+    cmc: 2,
+    oracleText: "Draw a card.",
+  });
+  const oneCounter = buildManaBaseCoaching({
+    commander: MARCHEA,
+    cards: library([island, swamp, mountain, { name: "Counterspell", typeLine: "Instant", manaCost: "{U}{U}", cmc: 2, oracleText: "Counter target spell." }], filler),
+  });
+  assert.notEqual(oneCounter.colors.find((color) => color.color === "U").status, "short");
+
+  const committed = buildManaBaseCoaching({
+    commander: MARCHEA,
+    cards: library([
+      island,
+      swamp,
+      mountain,
+      ...[0, 1, 2, 3].map((index) => ({ name: `Counter ${index}`, typeLine: "Instant", manaCost: "{U}{U}", cmc: 2, oracleText: "Counter target spell." })),
+    ], filler),
+  });
+  const blue = committed.colors.find((color) => color.color === "U");
+  assert.equal(blue.status, "short");
+  assert.ok(blue.needed >= 20);
+
+  const talrand = buildManaBaseCoaching({
+    commander: { name: "Talrand, Sky Summoner", manaCost: "{2}{U}{U}", cmc: 4, colorIdentity: ["U"], typeLine: "Legendary Creature — Merfolk Wizard", oracleText: "Whenever you cast an instant or sorcery spell, create a 2/2 blue Drake creature token with flying." },
+    cards: library([
+      { name: "Island", quantity: 14, typeLine: "Basic Land — Island", oracleText: "({T}: Add {U}.)" },
+    ], (index) => ({ name: `Cantrip ${index}`, typeLine: "Instant", manaCost: "{U}", cmc: 1, oracleText: "Draw a card." })),
+  });
+  assert.equal(talrand.colors.find((color) => color.color === "U").status, "short");
+  assert.match(formatManaBaseCoaching(talrand), /Talrand, Sky Summoner/);
+  assert.match(formatManaBaseCoaching(talrand), /two blue mana/i);
+});
+
+test("a modal land face counts as that land, and a flat cost reduction trims the land target", () => {
+  const mdfc = {
+    name: "Bala Ged Recovery // Bala Ged Sanctum",
+    typeLine: "Sorcery // Land",
+    manaCost: "{2}{U}{U}",
+    cmc: 4,
+    cardFaces: [
+      { name: "Bala Ged Recovery", typeLine: "Sorcery", manaCost: "{2}{U}{U}", oracleText: "Search your library for a basic land card, put it onto the battlefield, then shuffle." },
+      { name: "Bala Ged Sanctum", typeLine: "Land", oracleText: "This land enters tapped.\n{T}: Add {G}." },
+    ],
+  };
+  const read = readPrintedMana(mdfc, { identity: ["G", "U"] });
+  assert.equal(read.land, true);
+  assert.equal(read.modalLand, true);
+  assert.equal(read.timing, "tapped");
+  assert.equal(read.landRamp, false);
+  assert.equal(read.fetch, null);
+  assert.deepEqual(read.colors, ["G"]);
+  assert.equal(read.untappedOn(2, "G"), false);
+  assert.equal(read.pays({ name: "Bear", typeLine: "Creature — Bear" }, "G"), true);
+
+  const withoutFaces = readPrintedMana({
+    name: "Bala Ged Recovery",
+    typeLine: "Sorcery",
+    manaCost: "{2}{G}",
+    oracleText: "Return target card from your graveyard to your hand.",
+  }, { identity: ["G"] });
+  assert.equal(withoutFaces.land, false);
+  assert.equal(withoutFaces.modalLand, false);
+
+  const pathway = readPrintedMana({
+    name: "Riverglide Pathway // Lavaglide Pathway",
+    cardFaces: [
+      { name: "Riverglide Pathway", typeLine: "Land", oracleText: "{T}: Add {U}." },
+      { name: "Lavaglide Pathway", typeLine: "Land", oracleText: "{T}: Add {R}." },
+    ],
+  }, { identity: ["U", "R"] });
+  assert.equal(pathway.land, true);
+  assert.equal(pathway.pathway, true);
+  assert.equal(pathway.modalLand, false);
+  assert.equal(pathway.untappedOn(2, "U"), true);
+  assert.equal(pathway.untappedOn(2, "R"), true);
+
+  const cards = library([
+    { name: "Forest", quantity: 33, typeLine: "Basic Land — Forest", oracleText: "({T}: Add {G}.)" },
+    mdfc,
+    { name: "Sol Ring", typeLine: "Artifact", manaCost: "{1}", oracleText: "{T}: Add {C}{C}." },
+  ], (index) => ({ name: `Bear ${index}`, typeLine: "Creature — Bear", manaCost: "{2}{G}", cmc: 3, oracleText: "Trample" }));
+  const withMdfc = buildManaBaseCoaching({ commander: GORECLAW, cards });
+  assert.equal(withMdfc.lands.modalLands, 1);
+  assert.equal(withMdfc.lands.count, 34);
+  assert.match(formatManaBaseCoaching(withMdfc), /land face is the one counted/i);
+  assert.equal(withMdfc.colors.find((color) => color.color === "G").spell.name === "Bala Ged Recovery // Bala Ged Sanctum", false);
+
+  const bears = library([
+    { name: "Forest", quantity: 34, typeLine: "Basic Land — Forest", oracleText: "({T}: Add {G}.)" },
+    { name: "Sol Ring", typeLine: "Artifact", manaCost: "{1}", oracleText: "{T}: Add {C}{C}." },
+  ], (index) => ({ name: `Bear ${index}`, typeLine: "Creature — Bear", manaCost: "{2}{G}", cmc: 3, oracleText: "Trample" }));
+  const goreclaw = buildManaBaseCoaching({ commander: GORECLAW, cards: bears });
+  const vanilla = buildManaBaseCoaching({
+    commander: { name: "Bear Boss", manaCost: "{3}{G}", cmc: 4, colorIdentity: ["G"], oracleText: "Trample.", typeLine: "Legendary Creature — Bear" },
+    cards: bears,
+  });
+  const flat = buildManaBaseCoaching({
+    commander: { name: "Flat Reducer", manaCost: "{3}{G}", cmc: 4, colorIdentity: ["G"], typeLine: "Legendary Creature — Bear", oracleText: "Creature spells you cast cost {1} less to cast." },
+    cards: bears,
+  });
+  const scaled = buildManaBaseCoaching({
+    commander: { name: "Scaled Reducer", manaCost: "{3}{G}", cmc: 4, colorIdentity: ["G"], typeLine: "Legendary Creature — Bear", oracleText: "Creature spells you cast cost {1} less to cast for each +1/+1 counter on Scaled Reducer." },
+    cards: bears,
+  });
+  const dragons = buildManaBaseCoaching({
+    commander: { name: "Dragon Reducer", manaCost: "{3}{G}", cmc: 4, colorIdentity: ["G"], typeLine: "Legendary Creature — Bear", oracleText: "Dragon spells you cast cost {1} less to cast." },
+    cards: bears,
+  });
+  assert.equal(goreclaw.lands.targetLow, vanilla.lands.targetLow);
+  assert.equal(scaled.lands.targetLow, goreclaw.lands.targetLow);
+  assert.equal(dragons.lands.targetLow, goreclaw.lands.targetLow);
+  assert.ok(flat.lands.targetLow < goreclaw.lands.targetLow);
+  assert.ok(flat.lands.targetLow >= 32);
+  const flatText = formatManaBaseCoaching(flat);
+  assert.match(flatText, /Creature spells you cast cost \{1\} less to cast/);
+  assert.match(flatText, /printed mana cost/i);
+  assert.match(flatText, /33–35/);
+  assert.doesNotMatch(flatText, /Without the ramp package/);
+});
+
 test("the mana coach is in the workbench and stacks on a narrow screen", () => {
   const workbench = readFileSync(new URL("../app/components/forge/workbench-chamber.tsx", import.meta.url), "utf8");
   const panel = readFileSync(new URL("../app/components/forge/mana-base-coach.tsx", import.meta.url), "utf8");
   const css = readFileSync(new URL("../app/testing-anvil.css", import.meta.url), "utf8");
   assert.match(workbench, /<ManaBaseCoach/);
   assert.match(panel, /mana-base-coach/);
+  assert.match(panel, /cardFaces/);
   assert.match(panel, /Reading printed mana text/);
   assert.match(panel, /Colors by turn/);
   assert.match(panel, /mana-base-quote/);
