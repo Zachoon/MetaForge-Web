@@ -182,6 +182,28 @@ export function CurveRoleCoach({
         </ol>
       </div>
 
+      {report.answerRead ? (
+        <div className="curve-role-block">
+          <h4>Interaction and card advantage</h4>
+          <p>{report.answerRead.summary}</p>
+          <ul className="curve-role-answers">
+            {report.answerRead.rows.map((row) => (
+              <li key={row.id} data-status={row.status}>
+                <span>{row.label}</span>
+                <b>{row.actual}</b>
+                <small>{row.detail}</small>
+              </li>
+            ))}
+          </ul>
+          {report.answerRead.excluded?.length ? (
+            <p>
+              <span>Not card advantage. </span>
+              {report.answerRead.excluded.map((card) => `${card.name} (${card.note})`).join("; ")}.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="curve-role-block">
         <h4>Roles from printed text</h4>
         <ul className="curve-role-roles">

@@ -975,6 +975,12 @@ step that's actually in focus. */
 .curve-role-meter>i{display:block;height:100%;background:#6d9e8f}
 .curve-role-curve li[data-status="short"] .curve-role-meter>i{background:#c4843a}
 .curve-role-curve li[data-status="over"] .curve-role-meter>i{background:#c45b4a}
+.curve-role-answers{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin:10px 0 0;padding:0;list-style:none}
+.curve-role-answers li{min-width:0;max-width:100%;padding:10px;border:1px solid #35463f;background:#101a18;overflow-wrap:anywhere}
+.curve-role-answers li[data-status="short"]{border-color:#8a6233}
+.curve-role-answers span{display:block;color:#9aaba4;font:700 11px/1.3 Inter,system-ui,sans-serif}
+.curve-role-answers b{color:#f4f7f5;font:700 22px/1 Inter,system-ui,sans-serif}
+.curve-role-answers small{display:block;margin-top:4px;color:#c5d0cb;font:500 12px/1.45 Inter,system-ui,sans-serif;letter-spacing:0;overflow-wrap:anywhere;word-break:break-word}
 .curve-role-roles{grid-template-columns:repeat(5,minmax(0,1fr))}
 .curve-role-roles li,.curve-role-lessons article{padding:10px;border:1px solid #35463f;background:#101a18}
 .curve-role-roles li{display:grid;gap:4px}

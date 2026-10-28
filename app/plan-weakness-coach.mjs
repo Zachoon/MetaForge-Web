@@ -593,12 +593,47 @@ function citeCard(card, says, pattern) {
 
 function roleCitations(role, cards, commander) {
   if (role.id === "draw") {
-    const loots = cards.filter((card) => card.loot);
-    if (loots.length) {
-      return loots.slice(0, 2).map((card) => citeCard(
+    const missed = [
+      ...cards.filter((card) => card.loot).map((card) => citeCard(
         card,
         "It draws cards and then discards that many. The hand ends the same size, so this is not card advantage.",
         /draw|discard|connive/i,
+      )),
+      ...cards.filter((card) => card.impulse && !card.draw).map((card) => citeCard(
+        card,
+        "It exiles cards and lets you play them before they disappear. They are not drawn, so this is not card advantage.",
+        /exile|play/i,
+      )),
+      ...cards.filter((card) => card.tutor && !card.draw).map((card) => citeCard(
+        card,
+        "It finds a card from the library. The hand ends the same size, so this is not card advantage.",
+        /search your library|name a card/i,
+      )),
+      ...cards.filter((card) => card.selection && !card.draw).map((card) => citeCard(
+        card,
+        "It looks and keeps one card. The hand does not get an extra card, so this is not card advantage.",
+        /look at|reveal the top|put/i,
+      )),
+    ];
+    if (missed.length) return missed.slice(0, 2);
+  }
+  if (role.id === "interaction") {
+    const narrow = cards.filter((card) => card.removal && !card.removalFlexible);
+    if (narrow.length) {
+      return narrow.slice(0, 2).map((card) => citeCard(
+        card,
+        `${card.removalNote ? `${card.removalNote.charAt(0).toUpperCase()}${card.removalNote.slice(1)}. ` : ""}That is a real answer, and it misses anything outside that sentence.`.trim(),
+        /destroy|exile|damage|fight|counter|shuffle/i,
+      ));
+    }
+  }
+  if (role.id === "wipes") {
+    const fighting = cards.filter((card) => card.wipes && card.wipeScope === "symmetric");
+    if (fighting.length) {
+      return fighting.slice(0, 2).map((card) => citeCard(
+        card,
+        card.wipeNote || "This hits every permanent of that kind, including yours.",
+        /destroy all|exile all|each creature|all creatures|you don't control/i,
       ));
     }
   }
