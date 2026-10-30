@@ -101,7 +101,7 @@ export function CurveRoleCoach({
     );
   }
 
-  if (!report?.readable) {
+  if (!report?.readable || !report.plan || !report.confidence || !report.curve || !report.roles || !report.lessons) {
     return (
       <section className="curve-role-coach" aria-label="Curve and role coaching">
         <small>NATIVE COACH · CURVE AND ROLES</small>
@@ -132,12 +132,12 @@ export function CurveRoleCoach({
           <h4>{report.weaknessHeading || "What to fix first"}</h4>
           {report.weaknessIntro ? <p>{report.weaknessIntro}</p> : null}
           <ol className="curve-role-weaknesses">
-            {report.weaknesses.map((weakness) => (
+            {report.weaknesses.map((weakness) => weakness ? (
               <li key={weakness.id}>
                 <article>
                   <h4>{weakness.title}</h4>
                   <p>{weakness.plain}</p>
-                  {weakness.citations?.map((cite) => (
+                  {weakness.citations?.map((cite: { name: string; quantity: number; quote?: string; says?: string }) => (
                     <blockquote className="curve-role-quote" key={`${weakness.id}-${cite.name}`}>
                       <b>{cite.quantity > 1 ? `${cite.quantity} ${cite.name}` : cite.name}</b>
                       <span>“{cite.quote}”</span>
@@ -158,7 +158,7 @@ export function CurveRoleCoach({
                   </p>
                 </article>
               </li>
-            ))}
+            ) : null)}
           </ol>
         </div>
       ) : null}
@@ -223,7 +223,7 @@ export function CurveRoleCoach({
             <h4>{lesson.title}</h4>
             <p><span>Theory. </span>{lesson.theory}</p>
             {lesson.cards?.length ? (
-              <p><span>Cards. </span>{lesson.cards.map((card) => card.name).join(", ")}.</p>
+              <p><span>Cards. </span>{lesson.cards.map((card: { name: string }) => card.name).join(", ")}.</p>
             ) : null}
             {lesson.excluded?.length ? (
               <p>

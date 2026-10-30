@@ -1064,7 +1064,7 @@ function hiddenAnswerWeaknesses({ answer, plan, roles, confidence, identity, use
     holes.push(hiddenHole({
       id: "wipes-own-board",
       title: "The wipes also destroy this deck's own board",
-      plain: `${sample.name} ${answer.samples.fightingReason} A one-sided wipe leaves your permanents and takes theirs. This list has ${answer.counts.oneSided}. ${rangePhrase(answer.aims.oneSidedWipes)} is the band for a plan that wins with its own creatures. A symmetric wipe is the one you cast when you are already behind.`,
+      plain: `${sample.name}. ${answer.samples.fightingReason} A one-sided wipe leaves your permanents and takes theirs. This list has ${answer.counts.oneSided}. ${rangePhrase(answer.aims.oneSidedWipes)} is the band for a plan that wins with its own creatures. A symmetric wipe is the one you cast when you are already behind.`,
       cite: sample,
       says: answer.samples.fightingReason,
       pattern: /destroy all|exile all|each creature|all creatures/i,
@@ -1154,7 +1154,7 @@ function mixSentence(role, cards, plan, answer) {
   if (role === "wipes") {
     const sample = answer.samples.fighting;
     if (!sample) return answer.counts.oneSided ? `${answer.counts.oneSided} of the wipes leave your permanents alone.` : "";
-    return `${sample.name} ${answer.samples.fightingReason} One-sided wipes: ${answer.counts.oneSided} (${rangePhrase(answer.aims.oneSidedWipes)}).`;
+    return `${sample.name}. ${answer.samples.fightingReason} One-sided wipes: ${answer.counts.oneSided} (${rangePhrase(answer.aims.oneSidedWipes)}).`;
   }
   return "";
 }
