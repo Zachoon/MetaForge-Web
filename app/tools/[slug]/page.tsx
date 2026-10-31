@@ -5,6 +5,7 @@ import "../../legal.css";
 import "../tools.css";
 import { TOOL_PAGES, toolPageBySlug } from "../data";
 import { ToolCalculator } from "../calculator";
+import { PageTrail, SiteHeader } from "../../components/site-chrome";
 
 export function generateStaticParams() { return TOOL_PAGES.map(({ slug }) => ({ slug })); }
 
@@ -18,8 +19,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function ToolPage({ params }: { params: Promise<{ slug: string }> }) {
   const tool = toolPageBySlug((await params).slug);
   if (!tool) notFound();
-  return <main className="legal-page forge-atmosphere"><div className="legal-shell">
-    <Link className="legal-brand" href="/"><i>MF</i> METAFORGE</Link>
+  return <main className="legal-page forge-atmosphere"><SiteHeader current="tools" /><div className="legal-shell">
+    <PageTrail crumbs={[{ href: "/", label: "Explore" }, { href: "/tools", label: "Tools" }, { label: tool.title }]} />
     <article className="legal-card tool-page"><small>{tool.eyebrow}</small><h1>{tool.title}</h1><p className="updated">{tool.promise}</p>
       <section><p>{tool.intro}</p></section>
       {'calculator' in tool ? <section><h2>Calculate a starting point</h2><ToolCalculator kind={tool.calculator} /></section> : null}

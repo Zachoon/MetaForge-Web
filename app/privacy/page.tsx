@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "../legal.css";
+import { PageTrail, SiteHeader } from "../components/site-chrome";
 
 export const metadata: Metadata = {
   title: "Privacy Policy | MetaForge",
@@ -8,8 +9,8 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPage() {
-  return <main className="legal-page forge-atmosphere"><div className="legal-shell">
-    <a className="legal-brand" href="/"><i>MF</i> METAFORGE</a>
+  return <main className="legal-page forge-atmosphere"><SiteHeader /><div className="legal-shell">
+    <PageTrail crumbs={[{ href: "/", label: "Explore" }, { label: "Privacy" }]} />
     <article className="legal-card">
       <small>PUBLIC ALPHA</small><h1>Privacy Policy</h1><p className="updated">Effective October 15, 2026</p>
       <section><h2>Who operates MetaForge</h2><p>MetaForge is currently operated by Zach Lackey. Privacy questions and deletion requests may be sent to <a href="mailto:support@metaforge.gg">support@metaforge.gg</a>.</p></section>

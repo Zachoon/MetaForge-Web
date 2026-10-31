@@ -1,0 +1,285 @@
+/* Shared MetaForge frame.
+   Surfaces, borders, ornament, and spacing live here so the Forge and the
+   reading pages use one material. The page texture is the registered stone
+   and hammered-iron SVGs. Tripo stills stay on the hero, the color chips,
+   and the hammer, crystal, and tome; the reading card also carries one
+   hammer in the frame on a wide page. */
+
+:root {
+  --mf-void: #070908;
+  --mf-surface-0: #0c0e0c;
+  --mf-surface-1: #14110e;
+  --mf-surface-2: #1c1814;
+  --mf-surface-3: #241e18;
+  --mf-border: #6d4e32;
+  --mf-border-strong: #a67c49;
+  --mf-ornament: #e0b56a;
+  --mf-ornament-dim: rgba(166, 116, 62, 0.16);
+  --mf-ivory: #f3efe6;
+  --mf-mist: #cbbba6;
+  --mf-ink: #1a120c;
+  --mf-space-1: 4px;
+  --mf-space-2: 8px;
+  --mf-space-3: 12px;
+  --mf-space-4: 16px;
+  --mf-space-5: 24px;
+  --mf-space-6: 32px;
+  --mf-space-7: 48px;
+  --mf-frame-shadow: inset 0 0 0 1px rgba(8, 6, 4, 0.9), inset 0 0 0 4px var(--mf-ornament-dim);
+  --mf-page-bg:
+    radial-gradient(ellipse at 50% -12%, rgba(176, 112, 48, 0.16), transparent 34rem),
+    radial-gradient(ellipse at 100% 110%, rgba(62, 34, 16, 0.28), transparent 40rem),
+    radial-gradient(ellipse at 0% 80%, rgba(18, 42, 38, 0.22), transparent 36rem),
+    linear-gradient(180deg, rgba(8, 9, 8, 0.78), rgba(7, 8, 7, 0.9)),
+    url("/assets/forge/hammered_iron.svg") center / 520px,
+    url("/assets/forge/dark_stone.svg") center / 680px,
+    var(--mf-void);
+}
+
+body {
+  background: var(--mf-page-bg);
+  color: var(--mf-ivory);
+}
+
+/* The stone layer used to sit on a z-index:-1 pseudo inside an isolated
+   frame, so it painted behind the frame and never showed. The texture is
+   part of the element background instead. */
+.great-forge {
+  background: var(--mf-page-bg);
+}
+.great-forge::before {
+  content: none;
+}
+/* Chamber fills used to paint an opaque slab over the shared texture. */
+.forge-entrance,
+.commission-chamber,
+.masterwork-archive {
+  background: transparent;
+}
+@media (max-width: 760px) {
+  .forge-global-nav,
+  .mf-site-nav {
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent);
+    mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent);
+  }
+  .chamber-commission .commission-heading::after {
+    display: none;
+  }
+}
+
+.mf-panel,
+.legal-card,
+.curve-role-coach,
+.mana-base-coach,
+.revision-opinion,
+.deep-forge-dossier,
+.deep-forge-player-panel,
+.player-compass-card,
+.forge-understanding-bridge,
+.commission-scroll,
+.commission-heading,
+.decks-header,
+.forge-card-mold,
+.entrance-visual,
+.masterwork-card {
+  border: 1px solid var(--mf-border);
+  box-shadow: var(--mf-frame-shadow);
+}
+
+.forge-card-mold-socket {
+  border-color: var(--mf-border-strong);
+  background:
+    radial-gradient(circle at 28% 18%, rgba(196, 122, 52, 0.2), transparent 46%),
+    radial-gradient(circle at 72% 84%, rgba(36, 92, 82, 0.16), transparent 48%),
+    linear-gradient(165deg, #1c1610, #0c0d0c 72%);
+}
+
+/* One primary action, full width of the copy column. A 3-column grid with
+   a single card left the call to action as a small island. */
+.chamber-entrance .entrance-actions.entrance-actions-primary {
+  display: grid !important;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.chamber-entrance .mf-journey {
+  margin-top: var(--mf-space-3);
+}
+
+/* Content-page chrome. Sticky, in flow, fixed height so it does not shift. */
+.mf-site-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: var(--mf-space-4);
+  width: 100%;
+  max-width: 100%;
+  min-height: 58px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--mf-border);
+  background: rgba(12, 10, 8, 0.94);
+}
+.mf-brand,
+.legal-page .legal-brand.mf-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  color: var(--mf-ivory);
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.mf-brand img {
+  display: block;
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+.mf-site-nav {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: stretch;
+  gap: 2px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.mf-site-nav::-webkit-scrollbar { display: none; }
+  .mf-site-nav a {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 8px;
+  border-bottom: 2px solid transparent;
+  color: #d9cbb8;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.mf-site-nav a:hover,
+.mf-site-nav a:focus-visible,
+.mf-site-nav a[aria-current="page"] {
+  border-bottom-color: var(--mf-ornament);
+  color: var(--mf-ivory);
+  outline: none;
+}
+
+.mf-trail {
+  display: grid;
+  gap: var(--mf-space-3);
+  margin: 0 0 var(--mf-space-4);
+}
+@media (min-width: 720px) {
+  .mf-trail {
+    padding-right: 48px;
+    background: url("/assets/forge/tripo/prop_hammer-512.webp") right center / 36px no-repeat;
+  }
+}
+.mf-crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--mf-mist);
+  font-size: 13px;
+}
+.mf-crumbs li {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+.mf-crumbs li + li::before {
+  content: "/";
+  margin: 0 8px;
+  color: #8c7360;
+}
+.mf-crumbs a {
+  color: var(--mf-ornament);
+  text-decoration: none;
+}
+.mf-crumbs a:hover,
+.mf-crumbs a:focus-visible { text-decoration: underline; }
+.mf-crumbs [aria-current="page"] { color: var(--mf-ivory); }
+
+.mf-journey {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mf-space-2);
+  margin: 0;
+  padding: 0;
+}
+.mf-journey a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  max-width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--mf-border);
+  background: var(--mf-surface-1);
+  box-shadow: inset 0 0 0 1px rgba(8, 6, 4, 0.65);
+  color: var(--mf-ivory);
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+}
+.mf-journey b {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border: 1px solid var(--mf-border-strong);
+  border-radius: 50%;
+  color: var(--mf-ornament);
+  font-size: 11px;
+}
+.mf-journey a:hover,
+.mf-journey a:focus-visible {
+  border-color: var(--mf-border-strong);
+  outline: none;
+}
+
+.legal-card > small,
+.decks-header .eyebrow,
+.commission-heading .forge-eyebrow {
+  color: var(--mf-ornament);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+.legal-card > h1,
+.decks-header h1 {
+  color: var(--mf-ivory);
+  font-family: Newsreader, Georgia, serif;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.02;
+}
+.legal-card > .updated,
+.decks-header p {
+  color: var(--mf-mist);
+}
+
+@media (max-width: 720px) {
+  .mf-site-header {
+    align-items: stretch;
+    flex-wrap: wrap;
+    height: 98px;
+    min-height: 98px;
+    padding: 0 12px;
+  }
+  .mf-brand { height: 54px; }
+  .mf-site-nav {
+    flex: 1 0 100%;
+    height: 44px;
+  }
+}

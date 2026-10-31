@@ -18,7 +18,7 @@ test("the closed Forgemaster menu does not stay painted", () => {
 
 test("phone rail labels stay inside their buttons and clear the home indicator", () => {
   const phone = css.slice(css.indexOf("@media (max-width: 760px)"));
-  assert.match(phone, /--mf-frame-top: calc\(58px \+ env\(safe-area-inset-top, 0px\)\)/);
+  assert.match(phone, /--mf-frame-top: calc\(98px \+ env\(safe-area-inset-top, 0px\)\)/);
   assert.match(phone, /--mf-frame-rail: calc\(58px \+ env\(safe-area-inset-bottom, 0px\)\)/);
   assert.match(phone, /\.forge-global-rail button span \{[^}]*width: 100% !important/s);
   assert.match(phone, /\.forge-global-rail button span \{[^}]*overflow: hidden !important/s);

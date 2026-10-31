@@ -70,8 +70,9 @@
 .entrance-stage .entrance-copy > p { grid-column: 1 / -1; grid-row: 3; margin: 0; }
 .entrance-stage .first-session-steps { grid-column: 1 / -1; grid-row: 4; margin: 0; }
 .entrance-stage .entrance-actions { grid-column: 1 / -1; grid-row: 5; margin: 0 !important; }
-.entrance-stage .entrance-more { grid-column: 1 / -1; grid-row: 6; margin: 0; }
-.entrance-stage .entrance-visual { grid-column: 1 / -1; grid-row: 7; }
+.entrance-stage .mf-journey { grid-column: 1 / -1; grid-row: 6; margin: 0; }
+.entrance-stage .entrance-more { grid-column: 1 / -1; grid-row: 7; margin: 0; }
+.entrance-stage .entrance-visual { grid-column: 1 / -1; grid-row: 8; }
 .entrance-more .entrance-secondary { margin: 12px 0 4px; }
 
 .hero-anvil {
@@ -123,6 +124,7 @@
   .entrance-stage .entrance-copy > p,
   .entrance-stage .first-session-steps,
   .entrance-stage .entrance-actions,
+  .entrance-stage .mf-journey,
   .entrance-stage .entrance-more {
     grid-column: auto;
     grid-row: auto;

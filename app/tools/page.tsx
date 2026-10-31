@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "../legal.css";
 import "./tools.css";
 import { TOOL_PAGES } from "./data";
+import { PageTrail, SiteHeader } from "../components/site-chrome";
 
 export const metadata: Metadata = {
   title: "Free MTG & Commander Deckbuilding Tools | MetaForge",
@@ -10,8 +11,8 @@ export const metadata: Metadata = {
 };
 
 export default function ToolsIndex() {
-  return <main className="legal-page forge-atmosphere"><div className="legal-shell">
-    <a className="legal-brand" href="/"><i>MF</i> METAFORGE</a>
+  return <main className="legal-page forge-atmosphere"><SiteHeader current="tools" /><div className="legal-shell">
+    <PageTrail crumbs={[{ href: "/", label: "Explore" }, { label: "Tools" }]} />
     <article className="legal-card"><small>FREE MTG DECKBUILDING TOOLS</small>
       <h1>Build and understand your Magic deck</h1>
       <p className="updated">Commander and MTG tools that explain what they find.</p>
