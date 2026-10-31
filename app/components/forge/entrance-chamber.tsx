@@ -27,26 +27,25 @@ export function EntranceChamber() {
 
   return (
     <section className="forge-entrance">
+      <div className="entrance-stage">
+      <HeroAnvil motionMode={motionMode} />
       <div className="entrance-copy">
         <span className="forge-eyebrow">
           <i /> MAGIC: THE GATHERING · DECK COACH
         </span>
-        <div className="entrance-headline">
-          <h1>
-            Understand your Magic deck.
-            <br />
-            <em>Build with confidence.</em>
-          </h1>
-          <HeroAnvil motionMode={motionMode} />
-        </div>
-        <p>Pick your commander and we&rsquo;ll build the deck together, one card or package at a time, with a reason for every suggestion. Tell us how you like to play below and the suggestions adapt as you go.</p>
+        <h1>
+          Understand your Magic deck.
+          <br />
+          <em>Build with confidence.</em>
+        </h1>
+        <p>Pick your commander and we&rsquo;ll build the deck together, one card or package at a time, with a reason for every suggestion.</p>
         <ol className="first-session-steps" aria-label="How a first deck starts">
           <li><b>1</b><span>Pick a commander</span></li>
           <li><b>2</b><span>Add the first card</span></li>
           <li><b>3</b><span>Read why it belongs</span></li>
         </ol>
         {/* One primary action. Every path is guided: the Forge never builds a
-            whole deck in one click. */}
+            whole deck in one click. Other ways in are grouped below. */}
         <div className="entrance-actions entrance-actions-primary">
           <ForgeCommissionCard
             eyebrow="GUIDED DECK BUILDING"
@@ -67,39 +66,39 @@ export function EntranceChamber() {
             }}
           />
         </div>
-        <div className="entrance-secondary">
-          <button
-            type="button"
-            onClick={() => {
-              setDeck("");
-              setReviewFocus("");
-              setSelectedCommander(null);
-              setSelectedSecondCommander(null);
-              setCommanderQuery("");
-              setBuildPath("complete");
-              setChamber("refine");
-            }}
-          >
-            Have a partial list? Review it step by step
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setDeck("");
-              setReviewFocus("");
-              setSelectedCommander(null);
-              setSelectedSecondCommander(null);
-              setCommanderQuery("");
-              setBuildStep(0);
-              setBuildPath("scratch");
-              setChamber("refine");
-            }}
-          >
-            Open an empty decklist
-          </button>
-        </div>
         <details className="entrance-more">
-          <summary>See an example pick, set how you like to play, or browse guides</summary>
+          <summary>Already have a list, or want an example?</summary>
+          <div className="entrance-secondary">
+            <button
+              type="button"
+              onClick={() => {
+                setDeck("");
+                setReviewFocus("");
+                setSelectedCommander(null);
+                setSelectedSecondCommander(null);
+                setCommanderQuery("");
+                setBuildPath("complete");
+                setChamber("refine");
+              }}
+            >
+              Have a partial list? Review it step by step
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDeck("");
+                setReviewFocus("");
+                setSelectedCommander(null);
+                setSelectedSecondCommander(null);
+                setCommanderQuery("");
+                setBuildStep(0);
+                setBuildPath("scratch");
+                setChamber("refine");
+              }}
+            >
+              Open an empty decklist
+            </button>
+          </div>
           <SampleWalkthrough />
           <PlayerCompassCard
             value={playerCompass}
@@ -162,6 +161,7 @@ export function EntranceChamber() {
           A COMMANDER DECK COACH
           <small>One card at a time. A reason for every pick.</small>
         </p>
+      </div>
       </div>
     </section>
   );

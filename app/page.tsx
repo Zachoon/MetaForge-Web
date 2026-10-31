@@ -487,6 +487,7 @@ export default function Home() {
       data-guest-mode={guestMode ? "true" : "false"}
       data-forge-action={forgeAction}
       data-swap-station-active={hasValidatedDeck && isImportedDeckReview && siteRail === "decklist" && !swapStationReviewed ? "true" : "false"}
+      data-card-preview={activeCard ? "live" : "idle"}
       onClickCapture={captureForgeAction}
       style={{ "--mf-action-x": `${actionPoint.x}%`, "--mf-action-y": `${actionPoint.y}%` } as CSSProperties}
     >

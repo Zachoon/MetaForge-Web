@@ -27,7 +27,7 @@ export function HeroAnvil({ motionMode }: { motionMode: MotionMode }) {
         className="hero-anvil-still"
         src="/assets/forge/tripo/hero-512.webp"
         srcSet="/assets/forge/tripo/hero-512.webp 512w, /assets/forge/tripo/hero-1024.webp 1024w"
-        sizes="(max-width: 760px) 96px, 1024px"
+        sizes="(max-width: 900px) 96px, 720px"
         width={96}
         height={96}
         alt="An ornate anvil with a glowing blade"

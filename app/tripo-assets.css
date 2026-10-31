@@ -1,62 +1,162 @@
-/* Tripo stills. Mobile first. Every box is sized before the file arrives. */
+/* Shared measure. The forge used to reserve a 310px card column even when
+   it was empty, then let every chamber run to the viewport edge. Reading
+   pages used an 820px card whose paragraphs still measured about 110
+   characters. These tokens are the one column and the one gutter. */
+:root {
+  --mf-content-max: 1080px;
+  --mf-reading-shell: 42rem;
+  --mf-reading-max: 65ch;
+  --mf-gutter: clamp(16px, 2.4vw, 32px);
+  --mf-section-gap: 24px;
+}
 
-.entrance-headline {
+/* Idle card preview does not take a column. Hovering a card opens it again. */
+@media (min-width: 761px) {
+  .great-forge[data-card-preview="idle"] { --mf-frame-card-rail: 0px; }
+  .great-forge[data-card-preview="idle"] > .forge-card-rail { display: none !important; }
+
+  .chamber-archive .masterwork-history,
+  .chamber-commission .commission-heading,
+  .chamber-commission .commission-scroll,
+  .progressive-results,
+  .profile-page,
+  .shell {
+    width: min(var(--mf-content-max), calc(100% - (var(--mf-gutter) * 2))) !important;
+    margin-inline: auto !important;
+  }
+  .workbench-coach-stack,
+  .mana-base-coach,
+  .curve-role-coach {
+    width: min(var(--mf-content-max), 100%);
+    margin-inline: auto;
+  }
+}
+
+.legal-page { padding: var(--mf-section-gap) var(--mf-gutter) 72px; }
+.legal-page .legal-shell { width: min(var(--mf-reading-shell), 100%); }
+.legal-page .legal-card { padding: clamp(22px, 4vw, 36px); }
+.legal-page .legal-card section { padding-block: var(--mf-section-gap); }
+.legal-page .legal-card p,
+.legal-page .legal-card li,
+.mana-base-coach p,
+.curve-role-coach p { max-width: var(--mf-reading-max); }
+.academy-thought-list,
+.commander-guide-list { gap: 16px; }
+
+/* Homepage. Mobile keeps the anvil beside the headline. Desktop parks a
+   large anvil on the forge panel and gives the words one column. */
+.chamber-entrance > .forge-entrance {
+  display: block !important;
+}
+.entrance-stage {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 96px;
-  gap: 10px;
+  column-gap: 10px;
+  row-gap: 14px;
   align-items: center;
   min-width: 0;
-  max-width: 100%;
-  margin: 10px 0 12px;
+  padding: 8px 16px 28px;
 }
-.forge-entrance > .entrance-copy { min-width: 0; }
-.chamber-entrance .entrance-headline h1,
-.entrance-headline h1 {
+.chamber-entrance .entrance-stage .entrance-copy { display: contents; }
+.entrance-stage .forge-eyebrow { grid-column: 1 / -1; grid-row: 1; }
+.chamber-entrance .entrance-stage h1,
+.entrance-stage h1 {
+  grid-column: 1;
+  grid-row: 2;
   min-width: 0;
-  max-width: none;
   margin: 0 !important;
 }
+.entrance-stage .hero-anvil { grid-column: 2; grid-row: 2; }
+.entrance-stage .entrance-copy > p { grid-column: 1 / -1; grid-row: 3; margin: 0; }
+.entrance-stage .first-session-steps { grid-column: 1 / -1; grid-row: 4; margin: 0; }
+.entrance-stage .entrance-actions { grid-column: 1 / -1; grid-row: 5; margin: 0 !important; }
+.entrance-stage .entrance-more { grid-column: 1 / -1; grid-row: 6; margin: 0; }
+.entrance-stage .entrance-visual { grid-column: 1 / -1; grid-row: 7; }
+.entrance-more .entrance-secondary { margin: 12px 0 4px; }
+
 .hero-anvil {
   position: relative;
   width: 96px;
   height: 96px;
-  flex: 0 0 96px;
 }
 .hero-anvil img {
   display: block;
-  width: 96px;
-  height: 96px;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
 }
-.hero-anvil-turn {
-  position: absolute;
-  inset: 0;
-}
+.hero-anvil-turn { position: absolute; inset: 0; }
 @media (max-width: 760px) {
   .hero-anvil-turn { display: none; }
-}
-@media (min-width: 761px) {
-  .entrance-headline { grid-template-columns: minmax(0, 1fr) 140px; gap: 16px; }
-  .hero-anvil,
-  .hero-anvil img { width: 140px; height: 140px; }
-  .hero-anvil { flex-basis: 140px; }
-}
-/* Half-width copy column. Keep the still small enough that "Understand"
-   and "confidence." stay whole at the lockup's type size. */
-@media (min-width: 901px) {
-  .entrance-headline { grid-template-columns: minmax(0, 1fr) 88px; gap: 12px; }
-  .hero-anvil,
-  .hero-anvil img { width: 88px; height: 88px; }
-  .hero-anvil { flex-basis: 88px; }
-  .chamber-entrance .entrance-headline h1 {
-    font-size: clamp(34px, 3.2vw, 44px) !important;
-    line-height: 1.02 !important;
-  }
 }
 @media (prefers-reduced-motion: reduce) {
   .hero-anvil-turn { display: none; }
 }
 .great-forge[data-motion="quiet"] .hero-anvil-turn { display: none; }
+
+@media (min-width: 901px) {
+  .chamber-entrance .entrance-stage {
+    grid-template-columns: minmax(0, 38rem) minmax(280px, 1fr);
+    column-gap: 28px;
+    row-gap: 0;
+    align-items: center;
+    width: min(1120px, calc(100% - 48px));
+    height: 100%;
+    margin-inline: auto;
+    padding: 20px 8px;
+  }
+  .chamber-entrance .entrance-stage .entrance-copy {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    grid-column: 1;
+    grid-row: 1;
+    gap: 16px;
+    min-width: 0;
+    min-height: 0;
+    max-width: none;
+    padding: 8px 0 !important;
+    overflow-y: auto;
+  }
+  .entrance-stage .forge-eyebrow,
+  .entrance-stage h1,
+  .entrance-stage .entrance-copy > p,
+  .entrance-stage .first-session-steps,
+  .entrance-stage .entrance-actions,
+  .entrance-stage .entrance-more {
+    grid-column: auto;
+    grid-row: auto;
+  }
+  .chamber-entrance .entrance-stage h1 {
+    font-size: clamp(40px, 3.4vw, 58px) !important;
+    line-height: 1.02 !important;
+  }
+  .entrance-stage .entrance-copy > p { max-width: 62ch; }
+  .entrance-stage .entrance-actions > button {
+    width: min(100%, 26rem);
+    text-align: left;
+  }
+  .entrance-stage .hero-anvil {
+    grid-column: 2;
+    grid-row: 1;
+    z-index: 6;
+    width: min(100%, 400px);
+    height: auto;
+    aspect-ratio: 1;
+    justify-self: center;
+  }
+  .entrance-stage .entrance-visual {
+    grid-column: 2;
+    grid-row: 1;
+    z-index: 1;
+    min-height: 0;
+    height: 100%;
+  }
+  .entrance-stage .entrance-visual > .forge-sigil {
+    width: min(18vh, 180px) !important;
+    opacity: .4;
+  }
+}
 
 .color-identity-chips {
   display: inline-flex;
