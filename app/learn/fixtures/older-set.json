@@ -1,0 +1,83 @@
+{
+  "set": {
+    "code": "c16",
+    "name": "Commander 2016",
+    "setType": "commander",
+    "releasedAt": "2016-11-11",
+    "cardCount": 341,
+    "printingCount": 351,
+    "standardLegalCards": 28
+  },
+  "cards": [
+    {
+      "name": "Mentor of the Meek",
+      "manaCost": "{2}{W}",
+      "typeLine": "Creature \u2014 Human Soldier",
+      "oracleText": "Whenever another creature you control with power 2 or less enters, you may pay {1}. If you do, draw a card.",
+      "rarity": "rare",
+      "released_at": "2016-11-11",
+      "set": "c16",
+      "set_name": "Commander 2016"
+    },
+    {
+      "name": "Disdainful Stroke",
+      "manaCost": "{1}{U}",
+      "typeLine": "Instant",
+      "oracleText": "Counter target spell with mana value 4 or greater.",
+      "rarity": "common",
+      "released_at": "2016-11-11",
+      "set": "c16",
+      "set_name": "Commander 2016"
+    },
+    {
+      "name": "Inspiring Call",
+      "manaCost": "{2}{G}",
+      "typeLine": "Instant",
+      "oracleText": "Draw a card for each creature you control with a +1/+1 counter on it. Those creatures gain indestructible until end of turn. (Damage and effects that say \"destroy\" don't destroy them.)",
+      "rarity": "uncommon",
+      "released_at": "2016-11-11",
+      "set": "c16",
+      "set_name": "Commander 2016"
+    },
+    {
+      "name": "Mortify",
+      "manaCost": "{1}{W}{B}",
+      "typeLine": "Instant",
+      "oracleText": "Destroy target creature or enchantment.",
+      "rarity": "uncommon",
+      "released_at": "2016-11-11",
+      "set": "c16",
+      "set_name": "Commander 2016"
+    },
+    {
+      "name": "Solemn Simulacrum",
+      "manaCost": "{4}",
+      "typeLine": "Artifact Creature \u2014 Golem",
+      "oracleText": "When this creature enters, you may search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.\nWhen this creature dies, you may draw a card.",
+      "rarity": "rare",
+      "released_at": "2016-11-11",
+      "set": "c16",
+      "set_name": "Commander 2016"
+    },
+    {
+      "name": "Evolving Wilds",
+      "manaCost": "",
+      "typeLine": "Land",
+      "oracleText": "{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
+      "rarity": "common",
+      "released_at": "2016-11-11",
+      "set": "c16",
+      "set_name": "Commander 2016"
+    },
+    {
+      "name": "Terramorphic Expanse",
+      "manaCost": "",
+      "typeLine": "Land",
+      "oracleText": "{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
+      "rarity": "common",
+      "released_at": "2016-11-11",
+      "set": "c16",
+      "set_name": "Commander 2016"
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+User-agent: *
+Sitemap: https://magic.wizards.com/en/sitemap.xml

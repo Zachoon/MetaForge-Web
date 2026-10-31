@@ -36,7 +36,8 @@
     // purchase link is wrapped through the verified deep-link mechanism —
     // not a secret. See app/affiliate-links.mjs and worker/index.ts's
     // /api/forge/status.
-    "TCGPLAYER_AFFILIATE_ENABLED": "true"
+    "TCGPLAYER_AFFILIATE_ENABLED": "true",
+    "LEARN_NEWS_INTERVAL_HOURS": "3"
   },
   "d1_databases": [
     {

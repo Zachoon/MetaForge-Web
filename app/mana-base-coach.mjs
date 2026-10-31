@@ -1405,3 +1405,23 @@ export function formatManaBaseCoaching(report) {
   }
   return lines.join("\n");
 }
+
+// The colored-source table and the 3.2-curve land baseline, exposed for
+// Learn articles so a page can cite the coach's own numbers.
+export function commanderSourceTarget(turn, pips, deckSize = 99) {
+  return sourcesNeeded(turn, pips, deckSize);
+}
+
+export function publishedManaBaseline() {
+  const inputs = {
+    averageCmc: 3.2,
+    commanderCmc: 4,
+    rockCredit: 3,
+    landRampCredit: 0,
+    reductionCut: 0,
+    extraDrops: 0,
+    landfall: false,
+    deckSize: 99,
+  };
+  return { inputs, landRange: landRange(inputs), sourceTargetsByTurn: SOURCE_TARGETS };
+}
