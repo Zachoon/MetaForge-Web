@@ -498,3 +498,66 @@ body>.guest-forge-pass{
 .guest-forge-pass-actions{display:flex;flex-wrap:wrap;gap:8px}
 .guest-forge-pass-actions button,.guest-forge-pass-actions a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 14px;border-radius:9px;border:1px solid rgba(231,155,65,.55);background:transparent;color:#f4e8d2;font:700 13px/1 Inter,sans-serif;text-decoration:none;cursor:pointer}
 .guest-forge-pass-actions a{background:#d8792f;border-color:#d8792f;color:#160c08}
+
+/* Text panels sit on near-solid stone so the page texture's gold rules
+   never read as a line through labels, steps, or headings. */
+.chamber-entrance .entrance-stage,
+.chamber-entrance .entrance-copy,
+.entrance-actions > button,
+.forge-commission-card,
+.commission-scroll,
+.commission-heading,
+.masterwork-card,
+.sample-walkthrough,
+.sample-card,
+.player-compass-card,
+.entrance-more,
+.first-session-steps,
+.entrance-discovery a,
+.mf-journey a,
+.guided-offer,
+.guided-ledger,
+.guided-picks,
+.mark-grid > label,
+.masterwork-deck-title,
+.masterwork-identity-panel,
+.tool-grid a,
+.entrance-footer {
+  background-color: rgba(16, 15, 13, 0.95) !important;
+  background-image: none !important;
+  backdrop-filter: blur(8px);
+}
+.entrance-discovery a:hover,
+.entrance-discovery a:focus-visible,
+.mf-journey a:hover,
+.mf-journey a:focus-visible {
+  background-color: rgba(36, 28, 20, 0.96) !important;
+  background-image: none !important;
+}
+.entrance-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-top: 8px;
+  padding: 22px clamp(20px, 4vw, 48px) 36px;
+  border-top: 1px solid rgba(166, 116, 62, 0.45);
+}
+.entrance-footer a {
+  color: #e0b56a;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.masterwork-deck-title {
+  width: min(100% - 32px, 760px);
+  margin: 24px;
+  padding: 18px 20px;
+}
+@media (max-width: 760px) {
+  .chamber-entrance .forge-eyebrow,
+  .chamber-entrance .entrance-stage h1,
+  .chamber-entrance .entrance-copy > p {
+    background-color: rgba(16, 15, 13, 0.95);
+    background-image: none;
+  }
+}

@@ -478,6 +478,69 @@ export default function Home() {
     );
   }
 
+  /* Top bar is the five sections. The rail only lists the open section's
+     own destinations, so Explore/Decks/Analyze/Database/Community never
+     repeat down the side. */
+  const siteSection: "explore" | "decks" | "analyze" =
+    chamber === "refine" || (chamber === "workbench" && siteRail !== "overview")
+      ? "analyze"
+      : chamber === "archive" || chamber === "commission" || chamber === "guided-build" || chamber === "forging" || chamber === "masterworks" || (chamber === "workbench" && siteRail === "overview")
+        ? "decks"
+        : "explore";
+
+  function openBuild() {
+    if (chamber === "commission" || chamber === "guided-build") return;
+    setDeck("");
+    setReviewFocus("");
+    setSelectedCommander(null);
+    setSelectedSecondCommander(null);
+    setCommanderQuery("");
+    setBuildStep(0);
+    setBuildPath("discover");
+    setChamber("commission");
+  }
+
+  function openOverview() {
+    if (!hasValidatedDeck) {
+      setChamber("entrance");
+      return;
+    }
+    setChamber("workbench");
+    setActiveForgeChapter(1);
+    setSiteRail("overview");
+    revealChamberTarget("#coach-brief", () => {
+      if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = true;
+    });
+  }
+
+  function openAnalyze() {
+    if (!hasValidatedDeck) {
+      setDeck("");
+      setReviewFocus("");
+      setSelectedCommander(null);
+      setSelectedSecondCommander(null);
+      setCommanderQuery("");
+      setBuildPath("complete");
+      setChamber("refine");
+      return;
+    }
+    setChamber("workbench");
+    setActiveForgeChapter(2); setSiteRail("analysis");
+    revealChamberTarget("#coach-brief", () => {
+      if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = true;
+    });
+  }
+
+  function openDecklist() {
+    setChamber("workbench");
+    setActiveForgeChapter(1);
+    setDeckViewMode((current) => current === "playtest" ? preferredDecklistView() : current);
+    setSiteRail("decklist"); if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = false;
+    revealChamberTarget("#deck-gallery", () => {
+      if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = false;
+    });
+  }
+
   return (
     <ForgeSessionProvider value={session}>
     <main
@@ -589,32 +652,10 @@ export default function Home() {
           </span>
         </button>
         <nav className="forge-global-nav" aria-label="MetaForge">
-          <button type="button" className={chamber === "entrance" ? "active" : ""} onClick={() => setChamber("entrance")}>Explore</button>
-          <a href="/commanders">Commanders</a>
-          <button
-            type="button"
-            className={chamber === "commission" || chamber === "refine" || chamber === "guided-build" || chamber === "forging" || chamber === "workbench" ? "active" : ""}
-            onClick={() => {
-              if (hasValidatedDeck) {
-                setChamber("workbench");
-                setSiteRail("decklist");
-                return;
-              }
-              if (chamber === "commission" || chamber === "refine" || chamber === "guided-build") return;
-              setDeck("");
-              setReviewFocus("");
-              setSelectedCommander(null);
-              setSelectedSecondCommander(null);
-              setCommanderQuery("");
-              setBuildStep(0);
-              setBuildPath("discover");
-              setChamber("commission");
-            }}
-          >Build</button>
-          {/* Reserved for the articles section. Do not build that page here. */}
-          <a href="/learn">Learn</a>
-          <a href="/academy">Academy</a>
-          {hasValidatedDeck && <button type="button" onClick={openDeepForgeEvidence}>Evidence</button>}
+          <button type="button" className={siteSection === "explore" ? "active" : ""} onClick={() => setChamber("entrance")}>Explore</button>
+          <button type="button" className={siteSection === "decks" ? "active" : ""} onClick={openPrivateArchive}>Decks</button>
+          <button type="button" className={siteSection === "analyze" ? "active" : ""} onClick={openAnalyze}>Analyze</button>
+          <a href="/tools">Database</a>
           <a href="/decks">Community</a>
         </nav>
         <details className="forge-menu">
@@ -632,32 +673,34 @@ export default function Home() {
             <IdentityBadge depth={playerIdentity.depth} totalMilestones={playerIdentity.allMilestones.length} dominantMotif={playerIdentity.dominantMotif} accent={playerIdentity.accent} celebrating={Boolean(identityCelebration)} celebrationLabel={identityCelebration?.label ?? null} />
             <button type="button" onClick={() => setChamber("entrance")}>Start a new deck</button>
             <p className="forge-menu-version" aria-label="MetaForge version 2.1.0">MetaForge v2.1.0</p>
-            <nav aria-label="Learn, legal, and support"><Link href="/commanders">Commander Guides</Link><Link href="/academy">Deckbuilding Academy</Link><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="mailto:support@metaforge.gg">Support</a></nav>
+            <nav aria-label="Legal and support"><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="mailto:support@metaforge.gg">Support</a></nav>
           </div>
         </details>
       </header>
-      <aside className="forge-global-rail" aria-label="Site navigation">
-        <button type="button" className={(!hasValidatedDeck && chamber === "entrance") || (hasValidatedDeck && chamber === "workbench" && siteRail === "overview") ? "active" : ""} onClick={() => {
-          if (!hasValidatedDeck) {
-            setChamber("entrance");
-            return;
-          }
-          setChamber("workbench");
-          setActiveForgeChapter(1);
-          setSiteRail("overview");
-          revealChamberTarget("#coach-brief", () => {
-            if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = true;
-          });
-        }}><i>⌂</i><span>Overview</span></button>
-        {/* Deck destinations appear once there is a deck to open, rather than
-            greeting every new visitor with a column of disabled controls. */}
-        {hasValidatedDeck && <button type="button" className={chamber === "workbench" && activeForgeChapter === 1 && siteRail === "decklist" ? "active" : ""} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode((current) => current === "playtest" ? preferredDecklistView() : current); setSiteRail("decklist"); if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = false; revealChamberTarget("#deck-gallery", () => { if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = false; }); }}><i>☷</i><span>Decklist</span></button>}
-        {hasValidatedDeck && <button type="button" className={chamber === "workbench" && activeForgeChapter === 2 ? "active" : ""} onClick={() => { setChamber("workbench"); setActiveForgeChapter(2); setSiteRail("analysis"); revealChamberTarget("#coach-brief", () => { if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = true; }); }}><i>◇</i><span>Analysis</span></button>}
-        <button type="button" className={chamber === "archive" ? "active" : ""} onClick={openPrivateArchive}><i className="forge-rail-cardback" aria-hidden="true">MF</i><span>Decks</span></button>
-        {hasValidatedDeck && <button type="button" onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode("playtest"); setSiteRail("playtest"); revealChamberTarget(".tabletop-surface"); }}><i>⚔</i><span>Playtest</span></button>}
-        {/* Guests can't publish a report, so Share only appears for accounts. */}
-        {hasValidatedDeck && !guestMode && <button type="button" disabled={!publicReportSourceKey || publicReportStatus === "publishing"} onClick={() => publicReportUrl && publicReportGenerationId === publicReportSourceKey ? void navigator.clipboard.writeText(publicReportUrl) : setPublicReportPromptOpen(true)}><i>⌁</i><span>{publicReportStatus === "publishing" ? "Publishing" : publicReportStatus === "ready" && publicReportGenerationId === publicReportSourceKey ? "Link copied" : "Share"}</span></button>}
-        {hasValidatedDeck && <button type="button" className="forge-rail-settings" onClick={() => { setMasterworkIdentityDraft(masterworkIdentity); setMasterworkIdentityOpen(true); }}><i>⚙</i><span>Settings</span></button>}
+      <aside className="forge-global-rail" aria-label="Section">
+        {siteSection === "explore" && (
+          <>
+            <a href="/learn"><i aria-hidden="true">☰</i><span>Learn</span></a>
+            <a href="/academy"><i aria-hidden="true">✎</i><span>Academy</span></a>
+            <a href="/commanders"><i aria-hidden="true">♛</i><span>Commanders</span></a>
+          </>
+        )}
+        {siteSection === "decks" && (
+          <>
+            <button type="button" className={chamber === "archive" ? "active" : ""} onClick={openPrivateArchive}><i className="forge-rail-cardback" aria-hidden="true">MF</i><span>My Decks</span></button>
+            <button type="button" className={chamber === "commission" || chamber === "guided-build" || chamber === "forging" || chamber === "masterworks" ? "active" : ""} onClick={openBuild}><i aria-hidden="true">⚒</i><span>Build</span></button>
+            <button type="button" className={chamber === "workbench" && siteRail === "overview" ? "active" : ""} onClick={openOverview}><i>⌂</i><span>Overview</span></button>
+            {hasValidatedDeck && !guestMode && <button type="button" disabled={!publicReportSourceKey || publicReportStatus === "publishing"} onClick={() => publicReportUrl && publicReportGenerationId === publicReportSourceKey ? void navigator.clipboard.writeText(publicReportUrl) : setPublicReportPromptOpen(true)}><i>⌁</i><span>{publicReportStatus === "publishing" ? "Publishing" : publicReportStatus === "ready" && publicReportGenerationId === publicReportSourceKey ? "Link copied" : "Share"}</span></button>}
+            {hasValidatedDeck && <button type="button" className="forge-rail-settings" onClick={() => { setMasterworkIdentityDraft(masterworkIdentity); setMasterworkIdentityOpen(true); }}><i>⚙</i><span>Settings</span></button>}
+          </>
+        )}
+        {siteSection === "analyze" && hasValidatedDeck && (
+          <>
+            <button type="button" className={chamber === "workbench" && activeForgeChapter === 1 && siteRail === "decklist" ? "active" : ""} onClick={openDecklist}><i>☷</i><span>Decklist</span></button>
+            <button type="button" className={siteRail === "playtest" ? "active" : ""} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode("playtest"); setSiteRail("playtest"); revealChamberTarget(".tabletop-surface"); }}><i>⚔</i><span>Playtest</span></button>
+            <button type="button" onClick={openDeepForgeEvidence}><i>◇</i><span>Evidence</span></button>
+          </>
+        )}
         <div className="forge-rail-embers" aria-hidden="true"><i /><i /><i /></div>
       </aside>
       <aside className="forge-card-rail" aria-label="Card preview">

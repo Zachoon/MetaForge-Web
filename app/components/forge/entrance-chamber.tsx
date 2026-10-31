@@ -111,14 +111,14 @@ export function EntranceChamber() {
             synced={playerCompassSynced}
             onChange={(next) => { void persistPlayerCompass(next); }}
           />
-          <nav className="entrance-discovery" aria-label="Magic deckbuilding resources">
-            <Link href="/tools"><strong>Free MTG deckbuilding tools</strong><span>Build, check, and analyze Commander decks with clear explanations.</span></Link>
-            <Link href="/commanders"><strong>Commander deck guides</strong><span>Explore commanders and the strategies their rules text supports.</span></Link>
-            <a href="/decks"><strong>Commander deck archive</strong><span>Browse commander strategy guides. Player-published decklists are coming soon.</span></a>
-            <Link href="/academy"><strong>MTG deckbuilding guides</strong><span>Learn to diagnose mana, card flow, interaction, speed, and win conditions.</span></Link>
-            <a href="/about"><strong>How MetaForge works</strong><span>Read the evidence-first method behind our MTG deck coaching.</span></a>
-          </nav>
         </details>
+        <nav className="entrance-discovery" aria-label="Magic deckbuilding resources">
+          <Link href="/tools"><strong>Free MTG deckbuilding tools</strong><span>Build, check, and analyze Commander decks with clear explanations.</span></Link>
+          <Link href="/commanders"><strong>Commander deck guides</strong><span>Explore commanders and the strategies their rules text supports.</span></Link>
+          <a href="/decks"><strong>Commander deck archive</strong><span>Browse commander strategy guides. Player-published decklists are coming soon.</span></a>
+          <Link href="/academy"><strong>MTG deckbuilding guides</strong><span>Learn to diagnose mana, card flow, interaction, speed, and win conditions.</span></Link>
+          <a href="/about"><strong>How MetaForge works</strong><span>Read the evidence-first method behind our MTG deck coaching.</span></a>
+        </nav>
       </div>
       <div className="entrance-visual" aria-label="The Great Forge, ever-burning">
         <div className="entrance-living-forge" aria-hidden="true">
@@ -168,6 +168,11 @@ export function EntranceChamber() {
         </p>
       </div>
       </div>
+      <footer className="entrance-footer">
+        <a href="/terms">Terms</a>
+        <a href="/privacy">Privacy</a>
+        <a href="mailto:support@metaforge.gg">Support</a>
+      </footer>
     </section>
   );
 }

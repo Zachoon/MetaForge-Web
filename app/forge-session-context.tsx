@@ -4430,8 +4430,12 @@ export function useForgeSessionState() {
   // can change or clear the preselected focus normally afterward.
   useEffect(() => {
     const intent = new URLSearchParams(window.location.search).get("intent");
-    if (intent !== "build" && intent !== "analyze") return;
+    if (intent !== "build" && intent !== "analyze" && intent !== "decks") return;
     window.history.replaceState({}, "", window.location.pathname);
+    if (intent === "decks") {
+      setChamber("archive");
+      return;
+    }
     if (chamber !== "entrance" || deck.trim()) return;
     setBuildPath(intent === "build" ? "discover" : "complete");
     setChamber(intent === "build" ? "commission" : "refine");
