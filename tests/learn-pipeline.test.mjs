@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 import { seedArticles } from "../app/learn/catalog.mjs";
+import { articleDocument } from "../app/learn/render-html.mjs";
 import { parseFeed, parseScryfallCards } from "../app/learn/feeds.mjs";
 import { presentCard } from "../app/learn/grounding.mjs";
 import { buildNewsArticle } from "../app/learn/news.mjs";
@@ -223,6 +224,19 @@ test("topic cooldown and duplicate keys skip a repeat", async () => {
   assert.equal(newsIntervalHours("nope"), 3);
   assert.equal(scheduleDue(now, now + 2 * 60 * 60 * 1000, 3), false);
   assert.equal(scheduleDue(now, now + 3 * 60 * 60 * 1000, 3), true);
+});
+
+test("a worker article uses the shared frame, not a separate shell", () => {
+  const html = articleDocument(seedArticles()[0], []);
+  assert.match(html, /class="mf-site-header"/);
+  assert.match(html, /aria-current="page">Learn</);
+  assert.match(html, /class="legal-shell"/);
+  assert.match(html, /class="legal-card"/);
+  assert.match(html, /aria-label="Breadcrumb"/);
+  assert.match(html, /max-width:65ch/);
+  assert.match(html, /width:min\(42rem,100%\)/);
+  assert.match(html, /Build this/);
+  assert.doesNotMatch(html, /learn-brand|learn-shell/);
 });
 
 test("a price or a thin page cannot publish", () => {

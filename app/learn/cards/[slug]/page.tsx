@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { allCards, cardBySlug } from "../../catalog.mjs";
-import { LearnFrame } from "../../article-view";
+import { BuildCta, LearnFrame, LearnLinks } from "../../article-view";
 
 export function generateStaticParams() {
   return allCards().filter((card) => card.indexable).map((card) => ({ slug: card.slug }));
@@ -30,18 +30,11 @@ export default async function LearnCardPage({ params }: { params: Promise<{ slug
   const card = cardBySlug(slug);
   if (!card) notFound();
   return (
-    <LearnFrame noindex={!card.indexable}>
-      <nav className="learn-crumb" aria-label="Breadcrumb">
-        <a href="/">MetaForge</a>
-        <span aria-hidden="true">/</span>
-        <a href="/learn">Learn</a>
-        <span aria-hidden="true">/</span>
-        <span>{card.name}</span>
-      </nav>
-      <p className="learn-kicker">CARD</p>
-      <h1>{card.name}</h1>
-      <p className="learn-dek">{[card.manaCost, card.typeLine].filter(Boolean).join(" · ")}</p>
-      <div className="learn-measure">
+    <LearnFrame crumbs={[{ href: "/", label: "Explore" }, { href: "/learn", label: "Learn" }, { label: card.name }]} noindex={!card.indexable}>
+      <article className="legal-card">
+        <small>CARD</small>
+        <h1>{card.name}</h1>
+        <p className="updated">{[card.manaCost, card.typeLine].filter(Boolean).join(" · ")}</p>
         {card.paragraphs.map((paragraph: string) => <p key={paragraph.slice(0, 40)}>{paragraph}</p>)}
         {card.oracleText ? <pre className="learn-oracle">{card.oracleText}</pre> : null}
         {card.referring?.length ? (
@@ -50,11 +43,9 @@ export default async function LearnCardPage({ params }: { params: Promise<{ slug
             <ul>{card.referring.map((article: { slug: string; title: string }) => <li key={article.slug}><a href={`/learn/${article.slug}`}>{article.title}</a></li>)}</ul>
           </section>
         ) : null}
-        <div className="learn-cta">
-          <p>Build a Commander deck in the forge.</p>
-          <a href="/?intent=build">Build this</a>
-        </div>
-      </div>
+        <BuildCta href="/?intent=build" label="Build this" text="Build a Commander deck in the forge." />
+      </article>
+      <LearnLinks />
     </LearnFrame>
   );
 }

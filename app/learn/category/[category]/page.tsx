@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { articlesInCategory, collectionSchema } from "../../catalog.mjs";
 import { CATEGORIES, categoryById } from "../../policy.mjs";
-import { ArticleList, CategoryNav, LearnFrame } from "../../article-view";
+import { ArticleList, BuildCta, CategoryNav, LearnFrame, LearnLinks } from "../../article-view";
 
 export function generateStaticParams() {
   return CATEGORIES.filter((category) => category.id !== "news").map((category) => ({ category: category.id }));
@@ -31,13 +31,16 @@ export default async function LearnCategoryPage({ params }: { params: Promise<{ 
   const articles = articlesInCategory(record.id);
   const schema = collectionSchema(record.label, `https://metaforge.gg/learn/category/${record.id}`, record.blurb);
   return (
-    <LearnFrame noindex={articles.length === 0}>
-      <CategoryNav current={record.id} />
-      <p className="learn-kicker">LEARN</p>
-      <h1>{record.label}</h1>
-      <div className="learn-measure"><p>{record.blurb}</p></div>
-      <ArticleList articles={articles} />
-      <footer className="learn-links"><a href="/learn">All notes</a></footer>
+    <LearnFrame crumbs={[{ href: "/", label: "Explore" }, { href: "/learn", label: "Learn" }, { label: record.label }]} noindex={articles.length === 0}>
+      <article className="legal-card">
+        <CategoryNav current={record.id} />
+        <small>LEARN</small>
+        <h1>{record.label}</h1>
+        <p className="updated">{record.blurb}</p>
+        <ArticleList articles={articles} />
+        <BuildCta href="/?intent=build" label="Build this" text="Take the note into a deck. The forge starts from a commander." />
+      </article>
+      <LearnLinks />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, "\\u003c") }} />
     </LearnFrame>
   );

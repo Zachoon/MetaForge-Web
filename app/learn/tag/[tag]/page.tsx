@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { articlesWithTag, indexableArticles } from "../../catalog.mjs";
-import { ArticleList, CategoryNav, LearnFrame } from "../../article-view";
+import { ArticleList, BuildCta, CategoryNav, LearnFrame, LearnLinks } from "../../article-view";
 
 export function generateStaticParams() {
   const tags = new Set<string>();
@@ -34,12 +34,16 @@ export default async function LearnTagPage({ params }: { params: Promise<{ tag: 
   if (!articles.length) notFound();
   const thin = articles.length < 2;
   return (
-    <LearnFrame noindex={thin}>
-      <CategoryNav />
-      <p className="learn-kicker">TAG</p>
-      <h1>{tag}</h1>
-      <div className="learn-measure"><p>{articles.length === 1 ? "One note uses this tag. A single-note tag page is not indexed." : `${articles.length} notes use this tag.`}</p></div>
-      <ArticleList articles={articles} />
+    <LearnFrame crumbs={[{ href: "/", label: "Explore" }, { href: "/learn", label: "Learn" }, { label: tag }]} noindex={thin}>
+      <article className="legal-card">
+        <CategoryNav />
+        <small>TAG</small>
+        <h1>{tag}</h1>
+        <p className="updated">{articles.length === 1 ? "One note uses this tag. A single-note tag page is not indexed." : `${articles.length} notes use this tag.`}</p>
+        <ArticleList articles={articles} />
+        <BuildCta href="/?intent=build" label="Build this" text="Pick a commander from a note, then build the deck." />
+      </article>
+      <LearnLinks />
     </LearnFrame>
   );
 }

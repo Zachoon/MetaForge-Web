@@ -1,3 +1,4 @@
+import { PageTrail, SiteHeader } from "../components/site-chrome";
 import { categoryById } from "./policy.mjs";
 import { learnArticleSchema } from "./catalog.mjs";
 
@@ -34,11 +35,12 @@ type Article = {
   externalQuote?: { text: string; url?: string; sourceTitle?: string } | null;
 };
 
-export function LearnFrame({ children, noindex = false }: { children: React.ReactNode; noindex?: boolean }) {
+export function LearnFrame({ children, crumbs, noindex = false }: { children: React.ReactNode; crumbs: { href?: string; label: string }[]; noindex?: boolean }) {
   return (
-    <main className="learn-page" data-learn-schema="1" data-robots={noindex ? "noindex" : undefined}>
-      <div className="learn-shell">
-        <a className="learn-brand" href="/"><i>MF</i> METAFORGE</a>
+    <main className="legal-page forge-atmosphere learn-page" data-learn-schema="1" data-robots={noindex ? "noindex" : undefined}>
+      <SiteHeader current="learn" />
+      <div className="legal-shell">
+        <PageTrail crumbs={crumbs} />
         {children}
       </div>
     </main>
@@ -80,6 +82,26 @@ export function ArticleList({ articles }: { articles: Article[] }) {
   );
 }
 
+export function BuildCta({ href, label, text }: { href: string; label: string; text: string }) {
+  return (
+    <div className="learn-cta">
+      <p>{text}</p>
+      <a href={href}>{label}</a>
+    </div>
+  );
+}
+
+export function LearnLinks() {
+  return (
+    <footer className="legal-links">
+      <a href="/?intent=build">Build a deck</a>
+      <a href="/commanders">Commander guides</a>
+      <a href="/academy">Academy</a>
+      <a href="/">Forge</a>
+    </footer>
+  );
+}
+
 function CardBlock({ card }: { card: Card }) {
   return (
     <aside>
@@ -96,91 +118,83 @@ export function ArticleBody({ article, related }: { article: Article; related: A
   const category = categoryById(article.category);
   const schemas = article.indexable ? learnArticleSchema(article) : [];
   return (
-    <article>
-      <nav className="learn-crumb" aria-label="Breadcrumb">
-        <a href="/">MetaForge</a>
-        <span aria-hidden="true">/</span>
-        <a href="/learn">Learn</a>
-        <span aria-hidden="true">/</span>
-        {category ? <a href={article.category === "news" ? "/learn/news" : `/learn/category/${article.category}`}>{category.label}</a> : <span>{article.category}</span>}
-      </nav>
-      <p className="learn-kicker">{category?.label || article.category}</p>
+    <article className="legal-card">
+      <small>{category?.label || article.category}</small>
       <h1>{article.title}</h1>
-      <p className="learn-byline">{article.byline || "MetaForge Coach"}{article.updatedAt ? ` · ${article.updatedAt}` : ""}{article.indexable ? "" : " · Draft"}</p>
+      <p className="updated">{article.byline || "MetaForge Coach"}{article.updatedAt ? ` · ${article.updatedAt}` : ""}{article.indexable ? "" : " · Draft"}</p>
       <ul className="learn-tags">
         {(article.tags || []).map((tag) => <li key={tag}><a className="learn-tag" href={`/learn/tag/${tag}`}>{tag}</a></li>)}
       </ul>
-      <div className="learn-measure">
-        {article.hook ? <p>{article.hook}</p> : null}
-        {article.thesis ? <p>{article.thesis}</p> : null}
-        {article.externalQuote?.text ? (
-          <blockquote className="learn-quote">
-            {article.externalQuote.text}
-            {article.externalQuote.url ? <> <a href={article.externalQuote.url}>Source</a></> : null}
-          </blockquote>
-        ) : null}
-        {(article.sections || []).map((section) => (
-          <section key={section.id} id={section.id}>
-            <h2>{section.heading}</h2>
-            {(section.paragraphs || []).map((paragraph) => <p key={paragraph.slice(0, 48)}>{paragraph}</p>)}
-            {(section.cards || []).map((card) => <CardBlock key={card.slug || card.name} card={card} />)}
-          </section>
-        ))}
-        {article.engineTake ? <section><h2>The coach&apos;s score</h2><p>{article.engineTake}</p></section> : null}
-        {(article.takeaways || []).length ? (
-          <section>
-            <h2>Takeaways</h2>
-            <ul>{article.takeaways!.map((item) => <li key={item}>{item}</li>)}</ul>
-          </section>
-        ) : null}
-        {article.decklist?.lines?.length ? (
-          <section>
-            <h2>{article.decklist.title}</h2>
-            {article.decklist.note ? <p>{article.decklist.note}</p> : null}
-            <ul className="learn-package">
-              {article.decklist.lines.map((line) => (
-                <li key={`${line.slug}-${line.name}`}>
-                  {line.quantity || 1}{" "}
-                  {line.slug && line.role !== "commander" ? <a href={`/learn/cards/${line.slug}`}>{line.name}</a> : line.name}
-                  {line.role ? ` · ${line.role}` : ""}
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-        {(article.commanderLinks || []).length ? (
-          <section>
-            <h2>Commander guides</h2>
-            <ul>
-              {article.commanderLinks!.map((link) => (
-                <li key={link.slug}><a href={`/commanders/${link.slug}`}>{link.name}</a>{link.reason ? ` — ${link.reason}` : ""}</li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-        {related.length ? (
-          <section>
-            <h2>Related notes</h2>
-            <ul>
-              {related.map((item) => <li key={item.slug}><a href={`/learn/${item.slug}`}>{item.title}</a></li>)}
-            </ul>
-          </section>
-        ) : null}
-        {(article.sources || []).length ? (
-          <section>
-            <h2>Sources</h2>
-            <ul>
-              {article.sources!.map((source) => <li key={source.url}><a href={source.url}>{source.label}</a></li>)}
-            </ul>
-          </section>
-        ) : null}
-        {article.forgeCta ? (
-          <div className="learn-cta">
-            <p>{article.forgeCta.commanderName ? `Build a deck with ${article.forgeCta.commanderName}.` : "Start a Commander deck in the forge."}</p>
-            <a href={article.forgeCta.href}>{article.forgeCta.label}</a>
-          </div>
-        ) : null}
-      </div>
+      {article.hook ? <p>{article.hook}</p> : null}
+      {article.thesis ? <p>{article.thesis}</p> : null}
+      {article.externalQuote?.text ? (
+        <blockquote className="learn-quote">
+          {article.externalQuote.text}
+          {article.externalQuote.url ? <> <a href={article.externalQuote.url}>Source</a></> : null}
+        </blockquote>
+      ) : null}
+      {(article.sections || []).map((section) => (
+        <section key={section.id} id={section.id}>
+          <h2>{section.heading}</h2>
+          {(section.paragraphs || []).map((paragraph) => <p key={paragraph.slice(0, 48)}>{paragraph}</p>)}
+          {(section.cards || []).map((card) => <CardBlock key={card.slug || card.name} card={card} />)}
+        </section>
+      ))}
+      {article.engineTake ? <section><h2>The coach&apos;s score</h2><p>{article.engineTake}</p></section> : null}
+      {(article.takeaways || []).length ? (
+        <section>
+          <h2>Takeaways</h2>
+          <ul>{article.takeaways!.map((item) => <li key={item}>{item}</li>)}</ul>
+        </section>
+      ) : null}
+      {article.decklist?.lines?.length ? (
+        <section>
+          <h2>{article.decklist.title}</h2>
+          {article.decklist.note ? <p>{article.decklist.note}</p> : null}
+          <ul className="learn-package">
+            {article.decklist.lines.map((line) => (
+              <li key={`${line.slug}-${line.name}`}>
+                {line.quantity || 1}{" "}
+                {line.slug && line.role !== "commander" ? <a href={`/learn/cards/${line.slug}`}>{line.name}</a> : line.name}
+                {line.role ? ` · ${line.role}` : ""}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      {(article.commanderLinks || []).length ? (
+        <section>
+          <h2>Commander guides</h2>
+          <ul>
+            {article.commanderLinks!.map((link) => (
+              <li key={link.slug}><a href={`/commanders/${link.slug}`}>{link.name}</a>{link.reason ? ` — ${link.reason}` : ""}</li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      {related.length ? (
+        <section>
+          <h2>Related notes</h2>
+          <ul>
+            {related.map((item) => <li key={item.slug}><a href={`/learn/${item.slug}`}>{item.title}</a></li>)}
+          </ul>
+        </section>
+      ) : null}
+      {(article.sources || []).length ? (
+        <section>
+          <h2>Sources</h2>
+          <ul>
+            {article.sources!.map((source) => <li key={source.url}><a href={source.url}>{source.label}</a></li>)}
+          </ul>
+        </section>
+      ) : null}
+      {article.forgeCta ? (
+        <BuildCta
+          href={article.forgeCta.href}
+          label={article.forgeCta.label}
+          text={article.forgeCta.commanderName ? `Build a deck with ${article.forgeCta.commanderName}.` : "Start a Commander deck in the forge."}
+        />
+      ) : null}
       {schemas.map((schema) => (
         <script key={schema["@type"]} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, "\\u003c") }} />
       ))}

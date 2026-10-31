@@ -382,7 +382,16 @@ test("publishes the Learn library with article metadata and a sitemap entry", as
   assert.match(html, /<link rel="canonical" href="https:\/\/metaforge\.gg\/learn"/i);
   assert.match(html, /How the coach reads a Commander curve/);
   assert.match(html, /href="\/learn\/how-the-coach-reads-a-commander-curve"/);
-  assert.match(html, /max-width:65ch/);
+  assert.match(html, /class="mf-site-header"/);
+  assert.match(html, /aria-current="page">Learn</);
+  assert.match(html, /class="legal-shell"/);
+  assert.match(html, /class="legal-card"/);
+  assert.match(html, /aria-label="Breadcrumb"/);
+  assert.match(html, /Build this/);
+  assert.doesNotMatch(html, /learn-brand|class="learn-shell"/);
+  const frame = await readFile(new URL("../app/tripo-assets.css", import.meta.url), "utf8");
+  assert.match(frame, /--mf-reading-shell:\s*42rem/);
+  assert.match(frame, /--mf-reading-max:\s*65ch/);
   assert.match(html, /"@type":"CollectionPage"/);
   assert.match(html, /href="\/learn\/news\/rss\.xml"/);
 
@@ -396,7 +405,10 @@ test("publishes the Learn library with article metadata and a sitemap entry", as
   assert.match(articleHtml, /"@type":"BreadcrumbList"/);
   assert.match(articleHtml, /2026-10-02/);
   assert.match(articleHtml, /Build this/);
+  assert.match(articleHtml, /class="mf-site-header"/);
+  assert.match(articleHtml, /class="legal-card"/);
   assert.match(articleHtml, /href="\/commanders\//);
+  assert.doesNotMatch(articleHtml, /learn-brand|class="learn-shell"/);
 
   const sitemap = await render("https://metaforge.gg/sitemap.xml");
   const xml = await sitemap.text();
