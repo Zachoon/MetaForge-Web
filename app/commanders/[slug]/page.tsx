@@ -14,7 +14,9 @@ import {
 import { occupancyEngineCopyFor } from "../occupancy-copy.mjs";
 import { COMMANDER_GUIDES, commanderGuideBySlug } from "../data.mjs";
 import { commanderGuideProfile } from "../guide-profiles.mjs";
-import { ManaSymbol, ManaText } from "../../components/mana-symbols";
+import { ManaText } from "../../components/mana-symbols";
+import { PageTrail, SiteHeader } from "../../components/site-chrome";
+import { ColorIdentityChips } from "../../components/tripo-assets";
 
 export function generateStaticParams() {
   return COMMANDER_GUIDES.map((entry) => ({ slug: entry.slug }));
@@ -64,8 +66,9 @@ export default async function CommanderGuidePage({ params }: { params: Promise<{
 
   return (
     <main className="legal-page forge-atmosphere">
+      <SiteHeader current="commanders" />
       <div className="legal-shell">
-        <a className="legal-brand" href="/"><i>MF</i> METAFORGE</a>
+        <PageTrail crumbs={[{ href: "/", label: "Explore" }, { href: "/commanders", label: "Commander guides" }, { label: card.name }]} />
         <article className="legal-card">
           <small>COMMANDER DECK GUIDE</small>
           <h1>{card.name}</h1>
@@ -76,8 +79,8 @@ export default async function CommanderGuidePage({ params }: { params: Promise<{
             <div className="commander-hero-identity">
               <span className="commander-mana-cost"><ManaText text={card.mana_cost} /></span>
               <span className="commander-type-line">{card.type_line}</span>
-              <div className="commander-colors" aria-label="Color identity">
-                {colorIdentity.map((color) => <ManaSymbol key={color} symbol={color} />)}
+              <div className="commander-colors">
+                <ColorIdentityChips colors={colorIdentity} />
               </div>
             </div>
           </div>

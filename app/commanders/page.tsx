@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import "../legal.css";
 import "./commanders.css";
 import { COMMANDER_GUIDES } from "./data.mjs";
+import { PageTrail, SiteHeader } from "../components/site-chrome";
+import { ForgeProp } from "../components/tripo-assets";
 
 export const metadata: Metadata = {
   title: "Commander Deck Guides | MetaForge",
@@ -12,8 +14,9 @@ export const metadata: Metadata = {
 export default function CommandersIndex() {
   return (
     <main className="legal-page forge-atmosphere">
+      <SiteHeader current="commanders" />
       <div className="legal-shell">
-        <a className="legal-brand" href="/"><i>MF</i> METAFORGE</a>
+        <PageTrail crumbs={[{ href: "/", label: "Explore" }, { label: "Commander guides" }]} />
         <article className="legal-card">
           <small>METAFORGE COMMANDER GUIDES</small>
           <h1>Commander Deck Guides</h1>
@@ -31,6 +34,7 @@ export default function CommandersIndex() {
               {COMMANDER_GUIDES.map((entry) => (
                 <li key={entry.slug}>
                   <a href={`/commanders/${entry.slug}`}>
+                    <ForgeProp kind="tome" size={44} />
                     <strong>{entry.card.name}</strong>
                     <p>{entry.tagline}</p>
                   </a>

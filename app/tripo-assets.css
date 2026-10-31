@@ -1,0 +1,255 @@
+/* Shared measure. The forge used to reserve a 310px card column even when
+   it was empty, then let every chamber run to the viewport edge. Reading
+   pages used an 820px card whose paragraphs still measured about 110
+   characters. These tokens are the one column and the one gutter. */
+:root {
+  --mf-content-max: 1080px;
+  --mf-reading-shell: 42rem;
+  --mf-reading-max: 65ch;
+  --mf-gutter: clamp(16px, 2.4vw, 32px);
+  --mf-section-gap: 24px;
+}
+
+/* Idle card preview does not take a column. Hovering a card opens it again. */
+@media (min-width: 761px) {
+  .great-forge[data-card-preview="idle"] { --mf-frame-card-rail: 0px; }
+  .great-forge[data-card-preview="idle"] > .forge-card-rail { display: none !important; }
+
+  .chamber-archive .masterwork-history,
+  .chamber-commission .commission-heading,
+  .chamber-commission .commission-scroll,
+  .progressive-results,
+  .profile-page,
+  .shell {
+    width: min(var(--mf-content-max), calc(100% - (var(--mf-gutter) * 2))) !important;
+    margin-inline: auto !important;
+  }
+  .workbench-coach-stack,
+  .mana-base-coach,
+  .curve-role-coach {
+    width: min(var(--mf-content-max), 100%);
+    margin-inline: auto;
+  }
+}
+
+.legal-page { padding: var(--mf-section-gap) var(--mf-gutter) 72px; }
+.legal-page .legal-shell { width: min(var(--mf-reading-shell), 100%); }
+.legal-page .legal-card { padding: clamp(22px, 4vw, 36px); }
+.legal-page .legal-card section { padding-block: var(--mf-section-gap); }
+.legal-page .legal-card p,
+.legal-page .legal-card li,
+.mana-base-coach p,
+.curve-role-coach p { max-width: var(--mf-reading-max); }
+.academy-thought-list,
+.commander-guide-list { gap: 16px; }
+
+/* Homepage. Mobile keeps the anvil beside the headline. Desktop parks a
+   large anvil on the forge panel and gives the words one column. */
+.chamber-entrance > .forge-entrance {
+  display: block !important;
+}
+.entrance-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px;
+  column-gap: 10px;
+  row-gap: 14px;
+  align-items: center;
+  min-width: 0;
+  padding: 8px 16px 28px;
+}
+.chamber-entrance .entrance-stage .entrance-copy { display: contents; }
+.entrance-stage .forge-eyebrow { grid-column: 1 / -1; grid-row: 1; }
+.chamber-entrance .entrance-stage h1,
+.entrance-stage h1 {
+  grid-column: 1;
+  grid-row: 2;
+  min-width: 0;
+  margin: 0 !important;
+}
+.entrance-stage .hero-anvil { grid-column: 2; grid-row: 2; }
+.entrance-stage .entrance-copy > p { grid-column: 1 / -1; grid-row: 3; margin: 0; }
+.entrance-stage .first-session-steps { grid-column: 1 / -1; grid-row: 4; margin: 0; }
+.entrance-stage .entrance-actions { grid-column: 1 / -1; grid-row: 5; margin: 0 !important; }
+.entrance-stage .mf-journey { grid-column: 1 / -1; grid-row: 6; margin: 0; }
+.entrance-stage .entrance-more { grid-column: 1 / -1; grid-row: 7; margin: 0; }
+.entrance-stage .entrance-visual { grid-column: 1 / -1; grid-row: 8; }
+.entrance-more .entrance-secondary { margin: 12px 0 4px; }
+
+.hero-anvil {
+  position: relative;
+  width: 96px;
+  height: 96px;
+}
+.hero-anvil img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.hero-anvil-turn { position: absolute; inset: 0; }
+@media (max-width: 760px) {
+  .hero-anvil-turn { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-anvil-turn { display: none; }
+}
+.great-forge[data-motion="quiet"] .hero-anvil-turn { display: none; }
+
+@media (min-width: 901px) {
+  .chamber-entrance .entrance-stage {
+    grid-template-columns: minmax(0, 38rem) minmax(280px, 1fr);
+    column-gap: 28px;
+    row-gap: 0;
+    align-items: center;
+    width: min(1120px, calc(100% - 48px));
+    height: 100%;
+    margin-inline: auto;
+    padding: 20px 8px;
+  }
+  .chamber-entrance .entrance-stage .entrance-copy {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    grid-column: 1;
+    grid-row: 1;
+    gap: 16px;
+    min-width: 0;
+    min-height: 0;
+    max-width: none;
+    padding: 8px 0 !important;
+    overflow-y: auto;
+  }
+  .entrance-stage .forge-eyebrow,
+  .entrance-stage h1,
+  .entrance-stage .entrance-copy > p,
+  .entrance-stage .first-session-steps,
+  .entrance-stage .entrance-actions,
+  .entrance-stage .mf-journey,
+  .entrance-stage .entrance-more {
+    grid-column: auto;
+    grid-row: auto;
+  }
+  .chamber-entrance .entrance-stage h1 {
+    font-size: clamp(40px, 3.4vw, 58px) !important;
+    line-height: 1.02 !important;
+  }
+  .entrance-stage .entrance-copy > p { max-width: 62ch; }
+  .entrance-stage .entrance-actions > button {
+    width: min(100%, 26rem);
+    text-align: left;
+  }
+  .entrance-stage .hero-anvil {
+    grid-column: 2;
+    grid-row: 1;
+    z-index: 6;
+    width: min(100%, 400px);
+    height: auto;
+    aspect-ratio: 1;
+    justify-self: center;
+  }
+  .entrance-stage .entrance-visual {
+    grid-column: 2;
+    grid-row: 1;
+    z-index: 1;
+    min-height: 0;
+    height: 100%;
+  }
+  .entrance-stage .entrance-visual > .forge-sigil {
+    width: min(18vh, 180px) !important;
+    opacity: .4;
+  }
+}
+
+.color-identity-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+.color-emblem-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 32px;
+  flex: 0 0 32px;
+}
+.color-emblem {
+  display: block;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  object-fit: contain;
+}
+.color-emblem-letter {
+  color: #c9b89a;
+  font: 700 9px/1 Inter, system-ui, sans-serif;
+  letter-spacing: 0.04em;
+}
+.color-identity-colorless {
+  color: #c9b89a;
+  font: 700 12px/1.2 Inter, system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.masterwork-identity-marks .color-identity-chips { margin-right: 2px; }
+.commander-identity-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+.commander-hero-identity { min-width: 0; flex: 1 1 140px; }
+.commander-colors { flex-wrap: wrap; min-width: 0; max-width: 100%; }
+
+.mana-base-swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.prop-mark-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  max-width: 100%;
+}
+.prop-mark-title > span { min-width: 0; overflow-wrap: anywhere; }
+.mana-base-head {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  column-gap: 10px;
+  align-items: center;
+}
+.mana-base-head > .forge-prop { grid-column: 1; grid-row: 1 / span 2; }
+.mana-base-head > small,
+.mana-base-head > h3 { grid-column: 2; }
+.mana-base-head > p,
+.mana-base-head > .mana-base-confidence { grid-column: 1 / -1; }
+
+.forge-prop {
+  display: block;
+  flex: 0 0 auto;
+  object-fit: contain;
+  max-width: 100%;
+}
+.forge-prop-hammer,
+.forge-prop-crystal { width: 56px; height: 56px; }
+.forge-prop-tome { width: 40px; height: 40px; }
+.academy-thought-list .forge-prop-tome,
+.commander-guide-list .forge-prop-tome { width: 44px; height: 44px; margin-bottom: 2px; }
+.commander-identity-line > span {
+  color: var(--teal, #6dddf0);
+  font: 800 12px/1.2 Inter, system-ui, sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.commander-hero { min-width: 0; }

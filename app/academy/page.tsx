@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import "../legal.css";
 import "../academy.css";
 import { NEW_ACADEMY_GUIDES } from "./guides-data";
+import { PageTrail, SiteHeader } from "../components/site-chrome";
+import { ForgeProp } from "../components/tripo-assets";
 
 export const metadata: Metadata = {
   title: "MetaForge Academy — Commander Deckbuilding Guides",
@@ -60,8 +62,9 @@ const GUIDES = [
 export default function AcademyIndex() {
   return (
     <main className="legal-page forge-atmosphere">
+      <SiteHeader current="academy" />
       <div className="legal-shell">
-        <a className="legal-brand" href="/"><i>MF</i> METAFORGE</a>
+        <PageTrail crumbs={[{ href: "/", label: "Explore" }, { label: "Academy" }]} />
         <article className="legal-card">
           <small>METAFORGE ACADEMY</small>
           <h1>Commander Deckbuilding Academy</h1>
@@ -79,6 +82,7 @@ export default function AcademyIndex() {
               {GUIDES.map((guide) => (
                 <li key={guide.href}>
                   <a href={guide.href}>
+                    <ForgeProp kind="tome" size={44} />
                     <strong>&ldquo;{guide.thought}&rdquo;</strong>
                     <span>{guide.title}</span>
                     <p>{guide.description}</p>

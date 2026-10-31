@@ -6,6 +6,7 @@ import "../../academy.css";
 import { NEW_ACADEMY_GUIDES, newAcademyGuideBySlug } from "../guides-data";
 import { guideEvidenceBySlug } from "../guide-evidence";
 import { ManaText } from "../../components/mana-symbols";
+import { PageTrail, SiteHeader } from "../../components/site-chrome";
 
 export function generateStaticParams() { return NEW_ACADEMY_GUIDES.map(({ slug }) => ({ slug })); }
 
@@ -20,8 +21,8 @@ export default async function NewAcademyGuide({ params }: { params: Promise<{ sl
   const guide = newAcademyGuideBySlug((await params).slug);
   if (!guide) notFound();
   const evidence = guideEvidenceBySlug(guide.slug);
-  return <main className="legal-page forge-atmosphere"><div className="legal-shell">
-    <Link className="legal-brand" href="/"><i>MF</i> METAFORGE</Link>
+  return <main className="legal-page forge-atmosphere"><SiteHeader current="academy" /><div className="legal-shell">
+    <PageTrail crumbs={[{ href: "/", label: "Explore" }, { href: "/academy", label: "Academy" }, { label: guide.title }]} />
     <article className="legal-card"><small>METAFORGE ACADEMY · COMMANDER DECK BUILDING</small><h1>{guide.title}</h1><p className="updated">{guide.description}</p>
       <section><p>{guide.lead}</p></section>
       <section><h2>Build the answer from your deck</h2>{guide.sections.map(([heading, body], index) => <div key={heading}><h3>{index + 1}. {heading}</h3><p>{body}</p></div>)}</section>

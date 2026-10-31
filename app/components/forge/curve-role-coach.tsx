@@ -6,6 +6,7 @@ import { buildCurveRoleCoaching } from "../../curve-role-coach.mjs";
 import { cardFactKey } from "../../deck-row-helpers";
 import { isCommanderFormat } from "../../format-catalog";
 import type { CardFact, CommanderOption, DeckRow } from "../../forge-types";
+import { ForgeProp } from "../tripo-assets";
 
 type Face = { oracle_text?: string; type_line?: string; mana_cost?: string };
 
@@ -129,7 +130,10 @@ export function CurveRoleCoach({
 
       {report.weaknesses?.length ? (
         <div className="curve-role-block">
-          <h4>{report.weaknessHeading || "What to fix first"}</h4>
+          <h4 className="prop-mark-title">
+            {(report.weaknessHeading || "What to fix first") === "What to fix first" ? <ForgeProp kind="hammer" size={56} /> : null}
+            <span>{report.weaknessHeading || "What to fix first"}</span>
+          </h4>
           {report.weaknessIntro ? <p>{report.weaknessIntro}</p> : null}
           <ol className="curve-role-weaknesses">
             {report.weaknesses.map((weakness) => weakness ? (
@@ -220,7 +224,10 @@ export function CurveRoleCoach({
       <div className="curve-role-lessons">
         {report.lessons.map((lesson) => (
           <article key={lesson.id}>
-            <h4>{lesson.title}</h4>
+            <h4 className="prop-mark-title">
+              <ForgeProp kind="tome" size={40} />
+              <span>{lesson.title}</span>
+            </h4>
             <p><span>Theory. </span>{lesson.theory}</p>
             {lesson.cards?.length ? (
               <p><span>Cards. </span>{lesson.cards.map((card: { name: string }) => card.name).join(", ")}.</p>
