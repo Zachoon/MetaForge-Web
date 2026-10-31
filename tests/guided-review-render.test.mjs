@@ -9,7 +9,7 @@ let directory,render;
 before(async()=>{
   directory=mkdtempSync(join(root,'node_modules','.guided-review-'));
   const outfile=join(directory,'render.mjs');
-  await build({stdin:{contents:`import {createElement} from 'react'; import {renderToStaticMarkup} from 'react-dom/server'; import {GuidedCompletionReview} from ${JSON.stringify(join(root,'app/components/forge/guided-completion-review.tsx'))}; import {GuidedDraftCard} from ${JSON.stringify(join(root,'app/components/forge/guided-draft-card.tsx'))}; export function render(value,draft=false){globalThis.__reviewContext=value;return renderToStaticMarkup(createElement(draft?GuidedDraftCard:GuidedCompletionReview));}`,resolveDir:directory,loader:'js'},outfile,bundle:true,platform:'node',format:'esm',jsx:'automatic',external:['react','react/jsx-runtime','react-dom/server'],plugins:[{name:'session-fixture',setup(b){b.onResolve({filter:/forge-session-context$/},()=>({path:'context',namespace:'fixture'}));b.onLoad({filter:/.*/,namespace:'fixture'},()=>({contents:'export const useForgeSession=()=>globalThis.__reviewContext;',loader:'js'}));}}]});
+  await build({stdin:{contents:`import {createElement} from 'react'; import {renderToStaticMarkup} from 'react-dom/server'; import {GuidedCompletionReview} from ${JSON.stringify(join(root,'app/components/forge/guided-completion-review.tsx'))}; import {GuidedDraftCard} from ${JSON.stringify(join(root,'app/components/forge/guided-draft-card.tsx'))}; import {GuidedFinishPanel} from ${JSON.stringify(join(root,'app/components/forge/guided-finish-panel.tsx'))}; export function render(value,draft=false,finish=false){globalThis.__reviewContext=value;return renderToStaticMarkup(createElement(finish?GuidedFinishPanel:draft?GuidedDraftCard:GuidedCompletionReview));}`,resolveDir:directory,loader:'js'},outfile,bundle:true,platform:'node',format:'esm',jsx:'automatic',external:['react','react/jsx-runtime','react-dom/server'],plugins:[{name:'session-fixture',setup(b){b.onResolve({filter:/forge-session-context$/},()=>({path:'context',namespace:'fixture'}));b.onLoad({filter:/.*/,namespace:'fixture'},()=>({contents:'export const useForgeSession=()=>globalThis.__reviewContext;',loader:'js'}));}}]});
   ({render}=await import(pathToFileURL(outfile).href));
 });
 after(()=>rmSync(directory,{recursive:true,force:true}));
@@ -34,4 +34,15 @@ test('saved draft offers explicit resume, discard and export; conflict exposes b
   assert.match(claim,/Keep the account build/);
   const finishing=render({...context,guidedClaimChoice:{token:'guest.token',guestDraft:{commander:{name:'Guest Commander'},session:{accepted:[]}},account:{phase:'completing',draft:{commander:{name:'Account Commander'},session:{accepted:['One']}}}},resolveGuidedClaimChoice:()=>Promise.resolve()},true);
   assert.match(finishing,/<button disabled="">Keep the guest build/);
+});
+
+
+test('a restored finish can retrieve its saved result while edits stay locked',()=>{
+  const context={guidedSession:{accepted:['Sol Ring'],finish:{stage:'review',basics:{Plains:98}}},guidedFinishStatus:{confirmed:100,deckTarget:100,open:0,over:0},guidedLoading:false,guidedBuildLocked:true};
+  const html=render(context,false,true);
+  assert.match(html,/<button type="button" class="guided-accept">Check saved finish<\/button>/);
+  assert.match(html,/<button type="button" disabled="">.*Change the mana base/);
+  assert.match(render({...context,guidedLoading:true},false,true),/<button[^>]*disabled="">Check saved finish/);
+  assert.match(render({...context,guidedConflict:{}},false,true),/<button[^>]*disabled="">Check saved finish/);
+  assert.match(render({...context,guidedBuildLocked:false,guidedFinishStatus:{...context.guidedFinishStatus,open:1}},false,true),/<button[^>]*disabled="">Confirm every slot and finish/);
 });
