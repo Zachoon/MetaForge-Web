@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "../../legal.css";
 import "../../academy.css";
+import { PageTrail, SiteHeader } from "../../components/site-chrome";
 
 export const metadata: Metadata = {
   title: "What Is My Deck Actually Trying to Do? | MetaForge",
@@ -11,8 +12,9 @@ export const metadata: Metadata = {
 export default function WhatIsMyDeckActuallyTryingToDoGuide() {
   return (
     <main className="legal-page forge-atmosphere">
+      <SiteHeader current="academy" />
       <div className="legal-shell">
-        <a className="legal-brand" href="/"><i>MF</i> METAFORGE</a>
+        <PageTrail crumbs={[{ href: "/", label: "Explore" }, { href: "/academy", label: "Academy" }, { label: "What Is My Deck Actually Trying to Do?" }]} />
         <article className="legal-card">
           <small>METAFORGE ACADEMY · COMMANDER DECK BUILDING</small>
           <h1>What Is My Deck Actually Trying to Do?</h1>

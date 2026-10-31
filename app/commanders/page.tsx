@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "../legal.css";
 import "./commanders.css";
 import { COMMANDER_GUIDES } from "./data.mjs";
+import { PageTrail, SiteHeader } from "../components/site-chrome";
 import { ForgeProp } from "../components/tripo-assets";
 
 export const metadata: Metadata = {
@@ -13,8 +14,9 @@ export const metadata: Metadata = {
 export default function CommandersIndex() {
   return (
     <main className="legal-page forge-atmosphere">
+      <SiteHeader current="commanders" />
       <div className="legal-shell">
-        <a className="legal-brand" href="/"><i>MF</i> METAFORGE</a>
+        <PageTrail crumbs={[{ href: "/", label: "Explore" }, { label: "Commander guides" }]} />
         <article className="legal-card">
           <small>METAFORGE COMMANDER GUIDES</small>
           <h1>Commander Deck Guides</h1>

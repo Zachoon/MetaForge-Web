@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "../../legal.css";
 import "../../academy.css";
+import { PageTrail, SiteHeader } from "../../components/site-chrome";
 
 export const metadata: Metadata = {
   title: "Why Does My Deck Start So Slowly? | MetaForge",
@@ -11,8 +12,9 @@ export const metadata: Metadata = {
 export default function WhyDoesMyDeckStartSoSlowlyGuide() {
   return (
     <main className="legal-page forge-atmosphere">
+      <SiteHeader current="academy" />
       <div className="legal-shell">
-        <a className="legal-brand" href="/"><i>MF</i> METAFORGE</a>
+        <PageTrail crumbs={[{ href: "/", label: "Explore" }, { href: "/academy", label: "Academy" }, { label: "Why Does My Deck Start So Slowly?" }]} />
         <article className="legal-card">
           <small>METAFORGE ACADEMY · COMMANDER DECK BUILDING</small>
           <h1>Why Does My Deck Start So Slowly?</h1>

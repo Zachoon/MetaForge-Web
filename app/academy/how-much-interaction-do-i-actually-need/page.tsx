@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "../../legal.css";
 import "../../academy.css";
+import { PageTrail, SiteHeader } from "../../components/site-chrome";
 
 export const metadata: Metadata = {
   title: "How Much Interaction Do I Actually Need? | MetaForge",
@@ -11,8 +12,9 @@ export const metadata: Metadata = {
 export default function HowMuchInteractionDoINeedGuide() {
   return (
     <main className="legal-page forge-atmosphere">
+      <SiteHeader current="academy" />
       <div className="legal-shell">
-        <a className="legal-brand" href="/"><i>MF</i> METAFORGE</a>
+        <PageTrail crumbs={[{ href: "/", label: "Explore" }, { href: "/academy", label: "Academy" }, { label: "How Much Interaction Do I Actually Need?" }]} />
         <article className="legal-card">
           <small>METAFORGE ACADEMY · COMMANDER DECK BUILDING</small>
           <h1>How Much Interaction Do I Actually Need?</h1>

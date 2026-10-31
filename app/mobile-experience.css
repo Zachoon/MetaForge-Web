@@ -136,10 +136,14 @@ textarea,
 
 @media (max-width: 760px) {
   :root {
-    --mf-frame-top: calc(58px + env(safe-area-inset-top, 0px));
+    --mf-frame-top: calc(98px + env(safe-area-inset-top, 0px));
     --mf-frame-rail: calc(58px + env(safe-area-inset-bottom, 0px));
   }
   .great-forge > .forge-bar {
+    box-sizing: border-box !important;
+    height: var(--mf-frame-top) !important;
+    min-height: var(--mf-frame-top) !important;
+    max-height: var(--mf-frame-top) !important;
     padding-top: env(safe-area-inset-top, 0px) !important;
     backdrop-filter: none !important;
   }
