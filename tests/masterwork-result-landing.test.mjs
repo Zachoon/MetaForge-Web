@@ -35,11 +35,16 @@ test("the mockup navigation frame is site-level rather than deck-only", async ()
   // Working destinations only. Learn is a nav slot for the articles section.
   // Premium stays absent, and the search box stays unwired.
   assert.match(page, /<a href="\/decks">Community<\/a>/);
-  assert.match(page, /<a href="\/commanders">Commanders<\/a>/);
-  assert.match(page, /<a href="\/academy">Academy<\/a>/);
-  assert.match(page, /<a href="\/learn">Learn<\/a>/);
-  assert.match(page, />Build<\/button>/);
+  assert.match(page, /href="\/commanders"/);
+  assert.match(page, /<span>Commanders<\/span>/);
+  assert.match(page, /href="\/academy"/);
+  assert.match(page, /<span>Academy<\/span>/);
+  assert.match(page, /href="\/learn"/);
+  assert.match(page, /<span>Learn<\/span>/);
+  assert.match(page, /<span>Build<\/span>/);
+  assert.match(page, /<a href="\/tools">Database<\/a>/);
   assert.doesNotMatch(page, />Premium<\/button>/);
+  assert.doesNotMatch(page, /Premium/);
   assert.doesNotMatch(page, /className="coming-soon" disabled/);
   assert.doesNotMatch(page, /className="forge-global-search"/);
   assert.equal([...page.matchAll(/>Explore<\/button>/g)].length, 1);
@@ -62,7 +67,7 @@ test("the mockup navigation frame is site-level rather than deck-only", async ()
   assert.match(frame, /masterwork-shell-top,\s*\r?\n\.masterwork-shell-rail\{display:none!important\}/);
 });
 
-test("Explore/home is a no-scroll hero; saved Masterworks live on Decks", async () => {
+test("Explore/home scrolls the document; saved Masterworks live on Decks", async () => {
   const page = await read("app/page.tsx");
   const frame = await read("app/site-frame.css");
   // The entrance chamber's JSX moved to its own component during the
@@ -80,11 +85,11 @@ test("Explore/home is a no-scroll hero; saved Masterworks live on Decks", async 
   assert.match(page, /\{chamber === "archive" && <ArchiveChamber \/>\}/);
   assert.match(archiveChamber, /className="masterwork-archive"/);
   assert.match(archiveChamber, /className="masterwork-history"/);
-  // Decks lives once, on the left rail — the top nav no longer duplicates it.
-  assert.match(page, /onClick=\{openPrivateArchive\}><i className="forge-rail-cardback" aria-hidden="true">MF<\/i><span>Decks<\/span><\/button>/);
-  assert.doesNotMatch(page, /<nav className="forge-global-nav"[\s\S]*?onClick=\{openPrivateArchive\}>Decks<\/button>[\s\S]*?<\/nav>/);
-  assert.doesNotMatch(page, /disabled=\{!hasValidatedDeck\} onClick=\{\(\) => \{ setChamber\("workbench"\);[\s\S]*?\}>Decks<\/button>/);
-  assert.match(frame, /\.great-forge\.chamber-entrance\{height:100svh!important;overflow:hidden!important\}/);
+  // Decks is a top section. My Decks is the rail item for that section.
+  assert.match(page, /<nav className="forge-global-nav"[\s\S]*?onClick=\{openPrivateArchive\}>Decks<\/button>[\s\S]*?<\/nav>/);
+  assert.match(page, /onClick=\{openPrivateArchive\}><i className="forge-rail-cardback" aria-hidden="true">MF<\/i><span>My Decks<\/span><\/button>/);
+  assert.doesNotMatch(page, /<span>Decks<\/span>/);
+  assert.match(frame, /\.great-forge\.chamber-entrance\{height:auto!important;min-height:100svh!important;overflow:visible!important\}/);
   assert.match(frame, /\.great-forge\.chamber-archive\{height:100svh!important;overflow:hidden!important\}/);
   assert.match(frame, /\.chamber-archive>\.masterwork-archive\{[\s\S]*?overflow:auto!important/);
 });
@@ -94,10 +99,11 @@ test("Explore/home is a no-scroll hero; saved Masterworks live on Decks", async 
 // "workbench", setActiveForgeChapter 2, setSiteRail "analysis") — the
 // same class of duplication the "Decks lives once" test above already
 // guards against for the archive chamber, just missed for Analysis.
-test("Analysis lives once, on the left rail — the top nav no longer duplicates it", async () => {
+test("Analyze lives once, in the top nav — the rail does not repeat it", async () => {
   const page = await read("app/page.tsx");
-  assert.doesNotMatch(page, /<nav className="forge-global-nav"[\s\S]*?>Analyze<\/button>[\s\S]*?<\/nav>/);
-  assert.match(page, /<span>Analysis<\/span>/);
+  assert.match(page, /<nav className="forge-global-nav"[\s\S]*?>Analyze<\/button>[\s\S]*?<\/nav>/);
+  assert.doesNotMatch(page, /<span>Analysis<\/span>/);
+  assert.doesNotMatch(page, /<span>Analyze<\/span>/);
   assert.equal([...page.matchAll(/setActiveForgeChapter\(2\); setSiteRail\("analysis"\);/g)].length, 1);
 });
 

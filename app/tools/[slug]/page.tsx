@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function ToolPage({ params }: { params: Promise<{ slug: string }> }) {
   const tool = toolPageBySlug((await params).slug);
   if (!tool) notFound();
-  return <main className="legal-page forge-atmosphere"><SiteHeader current="tools" /><div className="legal-shell">
+  return <main className="legal-page forge-atmosphere"><SiteHeader current={tool.slug} /><div className="legal-shell">
     <PageTrail crumbs={[{ href: "/", label: "Explore" }, { href: "/tools", label: "Tools" }, { label: tool.title }]} />
     <article className="legal-card tool-page"><small>{tool.eyebrow}</small><h1>{tool.title}</h1><p className="updated">{tool.promise}</p>
       <section><p>{tool.intro}</p></section>

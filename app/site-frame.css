@@ -149,7 +149,7 @@
 .forge-card-mold-pair{margin:8px 0 0;color:#9fb0a9;font-size:10.5px;line-height:1.5}
 .forge-card-mold-dossier{display:block;width:100%;margin-top:8px;padding:7px;border:1px solid #a86d31;background:transparent;color:#e3a153;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}
 .forge-card-mold-dossier:hover,.forge-card-mold-dossier:focus-visible{outline:0;background:#472d17}
-.forge-global-rail button{
+.forge-global-rail :is(button,a){
   display:grid!important;
   width:100%!important;
   min-height:72px!important;
@@ -163,10 +163,10 @@
   font-weight:650!important;
   line-height:1.15!important;
   letter-spacing:.01em!important;
-  white-space:nowrap!important;
+  white-space:normal!important;
 }
-.forge-global-rail button i{color:#aeb9b3;font:normal 21px/1 system-ui!important}
-.forge-global-rail button i.forge-rail-cardback{
+.forge-global-rail :is(button,a) i{color:#aeb9b3;font:normal 21px/1 system-ui!important}
+.forge-global-rail :is(button,a) i.forge-rail-cardback{
   position:relative;
   display:grid;
   width:17px;
@@ -181,8 +181,8 @@
   letter-spacing:.08em;
   text-shadow:0 0 6px #e08a3640;
 }
-.forge-global-rail button i.forge-rail-cardback::before,
-.forge-global-rail button i.forge-rail-cardback::after{
+.forge-global-rail :is(button,a) i.forge-rail-cardback::before,
+.forge-global-rail :is(button,a) i.forge-rail-cardback::after{
   content:"";
   position:absolute;
   border:1px solid #6d4d2c;
@@ -190,21 +190,22 @@
   background:#120e0a;
   z-index:-1;
 }
-.forge-global-rail button i.forge-rail-cardback::before{inset:2px -3px -3px 3px}
-.forge-global-rail button i.forge-rail-cardback::after{inset:1px -2px -2px 2px;border-color:#7d582f;background:#18120c}
-.forge-global-rail button:hover i.forge-rail-cardback,
-.forge-global-rail button:focus-visible i.forge-rail-cardback,
-.forge-global-rail button.active i.forge-rail-cardback{
+.forge-global-rail :is(button,a) i.forge-rail-cardback::before{inset:2px -3px -3px 3px}
+.forge-global-rail :is(button,a) i.forge-rail-cardback::after{inset:1px -2px -2px 2px;border-color:#7d582f;background:#18120c}
+.forge-global-rail :is(button,a):hover i.forge-rail-cardback,
+.forge-global-rail :is(button,a):focus-visible i.forge-rail-cardback,
+.forge-global-rail :is(button,a).active i.forge-rail-cardback{
   color:#f0c48a!important;
   border-color:#c9843c;
   box-shadow:inset 0 0 0 1px #e2b56a40,0 0 10px #e0893640;
 }
-.forge-global-rail button span{display:block!important;width:130%!important;max-width:none!important;margin-top:7px!important;overflow:visible!important;font-size:calc(10.5px * var(--forge-reading-scale, 1))!important;letter-spacing:-.01em!important;transform:scale(.92)!important;transform-origin:center!important}
-.forge-global-rail button:hover,.forge-global-rail button:focus-visible,.forge-global-rail button.active{
+.forge-global-rail :is(button,a) span{display:block!important;width:100%!important;max-width:100%!important;margin-top:7px!important;overflow:hidden!important;font-size:calc(10.5px * var(--forge-reading-scale, 1))!important;letter-spacing:-.01em!important;text-overflow:ellipsis!important;white-space:normal!important}
+.forge-global-rail :is(button,a):hover,.forge-global-rail :is(button,a):focus-visible,.forge-global-rail :is(button,a).active{
   outline:0!important;border-left-color:#e09a3e!important;background:linear-gradient(90deg,#302013cc,transparent)!important;color:#f1c48e!important;box-shadow:inset 4px 0 14px #d47a2820!important
 }
-.forge-global-rail button:hover i,.forge-global-rail button:focus-visible i,.forge-global-rail button.active i{color:#eca84b!important;text-shadow:0 0 9px #e98936aa}
-.forge-global-rail button:disabled{cursor:not-allowed!important;opacity:.48!important}.forge-global-rail button:disabled i{color:#66716c!important}
+.forge-global-rail :is(button,a):hover i,.forge-global-rail :is(button,a):focus-visible i,.forge-global-rail :is(button,a).active i{color:#eca84b!important;text-shadow:0 0 9px #e98936aa}
+.forge-global-rail :is(button,a):disabled{cursor:not-allowed!important;opacity:.48!important}.forge-global-rail :is(button,a):disabled i{color:#66716c!important}
+.forge-global-rail a{text-decoration:none!important;cursor:pointer}
 /* Pin Settings (when a deck exists) or else the version badge to the rail's
    foot; the number of rail buttons varies with what the visitor can open. */
 .forge-global-rail .forge-rail-settings,.forge-global-rail .forge-rail-version{margin-top:auto!important}
@@ -213,12 +214,17 @@
 .forge-rail-version{position:relative;z-index:1;display:grid;padding-top:10px;place-items:center;border-top:1px solid #222b27;color:#77817c;font-size:calc(9px * var(--forge-reading-scale, 1));letter-spacing:.08em}.forge-rail-version i{display:grid;width:27px;height:27px;margin-bottom:6px;place-items:center;border:1px solid #72552f;border-radius:50%;background:#11120e;color:#b98a4d;font:700 8px/1 Newsreader,Georgia,serif;letter-spacing:.08em;box-shadow:0 0 9px #b66e2820}.forge-rail-version span{display:block}
 @keyframes rail-ember-rise{0%{opacity:0;transform:translateY(0) scale(.7)}18%{opacity:.8}100%{opacity:0;transform:translateY(-72px) translateX(8px) scale(1.2)}}
 
-/* Explore/home is a framed hero: no page scroll. Saved Masterworks live on
-   the Decks/archive chamber, which scrolls inside the frame instead. */
-.great-forge.chamber-entrance{height:100svh!important;overflow:hidden!important}
+/* Explore/home grows with its content and scrolls the document. The top bar
+   and side rail stay fixed. Saved Masterworks still scroll inside the archive. */
+.great-forge.chamber-entrance{height:auto!important;min-height:100svh!important;overflow:visible!important}
 .great-forge.chamber-archive{height:100svh!important;overflow:hidden!important}
 html:has(.great-forge.chamber-entrance),
-body:has(.great-forge.chamber-entrance),
+body:has(.great-forge.chamber-entrance){
+  height:auto!important;
+  max-height:none!important;
+  overflow-x:auto!important;
+  overflow-y:auto!important;
+}
 html:has(.great-forge.chamber-archive),
 body:has(.great-forge.chamber-archive){
   height:100%!important;
@@ -226,11 +232,13 @@ body:has(.great-forge.chamber-archive){
   overflow:hidden!important;
 }
 .chamber-entrance>.forge-entrance{
-  height:calc(100svh - var(--mf-frame-top))!important;
-  min-height:0!important;
-  overflow:hidden!important;
-  align-content:stretch!important;
+  height:auto!important;
+  min-height:calc(100svh - var(--mf-frame-top))!important;
+  overflow:visible!important;
+  align-content:start!important;
 }
+.chamber-entrance .entrance-stage{height:auto!important}
+.chamber-entrance .entrance-copy{overflow:visible!important}
 .chamber-archive>.masterwork-archive{
   height:calc(100svh - var(--mf-frame-top))!important;
   min-height:0!important;
@@ -241,7 +249,7 @@ body:has(.great-forge.chamber-archive){
   width:min(1180px,100%)!important;
   margin:0 auto!important;
 }
-.chamber-entrance .entrance-copy{justify-content:flex-start!important;min-height:0!important;overflow-y:auto!important;padding:clamp(18px,2.6vh,32px) clamp(26px,5vw,82px) 8px!important}
+.chamber-entrance .entrance-copy{justify-content:flex-start!important;min-height:0!important;overflow:visible!important;padding:clamp(18px,2.6vh,32px) clamp(26px,5vw,82px) 8px!important}
 .chamber-entrance .entrance-copy h1{margin:10px 0 12px!important;font-size:clamp(36px,min(4.6vw,6.2vh),62px)!important;line-height:.96!important}
 .chamber-entrance .entrance-copy>p{font-size:clamp(13px,1.1vw,16px)!important;line-height:1.45!important}
 .chamber-entrance .entrance-actions{margin-top:clamp(12px,2vh,18px)!important}
@@ -494,7 +502,7 @@ body:has(.great-forge.chamber-archive){
     overflow-x:auto!important;
     overflow-y:hidden!important;
   }
-  .forge-global-nav button,.forge-global-nav a{flex:0 0 auto!important;min-height:44px!important;padding:0 8px!important;white-space:nowrap!important}
+  .forge-global-nav button,.forge-global-nav a{flex:0 0 auto!important;min-height:44px!important;padding:0 6px!important;font-size:12px!important;white-space:nowrap!important}
   .forge-global-search{display:none!important}
   .forge-bar>.forge-menu>summary{min-width:48px}.forge-bar>.forge-menu>summary span,.forge-bar>.forge-menu>summary b{display:none}
   .great-forge>.forge-global-rail{
@@ -506,31 +514,25 @@ body:has(.great-forge.chamber-archive){
     border-top:1px solid #3c4943!important;
     border-right:0!important;
   }
-  .forge-global-rail button{min-width:48px!important;min-height:var(--mf-frame-rail)!important;flex:1!important;border-left:0!important;border-bottom:2px solid transparent!important}
-  .forge-global-rail button.active{border-bottom-color:#df9148!important}
-  .forge-global-rail button:last-child{margin:0!important}
+  .forge-global-rail :is(button,a){min-width:48px!important;min-height:var(--mf-frame-rail)!important;flex:1!important;border-left:0!important;border-bottom:2px solid transparent!important}
+  .forge-global-rail :is(button,a).active{border-bottom-color:#df9148!important}
+  .forge-global-rail :is(button,a):last-child{margin:0!important}
   .forge-rail-embers,.forge-rail-version{display:none!important}
   /* No room for a card preview column once the rail becomes a 58px
      horizontal bottom bar — a card tap still opens the full dossier modal
      directly on mobile. */
   .great-forge>.forge-card-rail{display:none!important}
-  /* Desktop Explore is a non-scrolling framed hero. On a phone the stacked
-     copy, CTAs, compass, and visual are taller than the remaining viewport,
-     so the pane itself must scroll. Keep html/body locked; do not clip the
-     entrance contents. Absolute inset beats iOS nested-overflow:hidden
-     traps where a height:calc child never becomes a scrollport. */
-  .great-forge.chamber-entrance,.great-forge.chamber-archive{height:100svh!important;overflow:hidden!important}
-  .great-forge:not(.chamber-entrance):not(.chamber-archive){height:auto!important;overflow:visible!important}
+  /* Home scrolls the document, including on a phone. The archive keeps an
+     inner pane so the fixed top bar and bottom rail stay put. */
+  .great-forge.chamber-archive{height:100svh!important;overflow:hidden!important}
+  .great-forge.chamber-entrance{height:auto!important;min-height:100svh!important;overflow:visible!important}
+  .great-forge:not(.chamber-archive){height:auto!important;overflow:visible!important}
   .chamber-entrance>.forge-entrance{
-    position:absolute!important;
-    inset:var(--mf-frame-top) 0 var(--mf-frame-rail)!important;
+    position:relative!important;
+    inset:auto!important;
     height:auto!important;
     min-height:0!important;
-    overflow-x:hidden!important;
-    overflow-y:auto!important;
-    -webkit-overflow-scrolling:touch;
-    overscroll-behavior:contain;
-    touch-action:pan-y;
+    overflow:visible!important;
   }
   .chamber-archive>.masterwork-archive{
     position:absolute!important;
