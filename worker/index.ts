@@ -26,6 +26,9 @@ import { redactMessage } from "../app/error-report-sanitize.mjs";
 import { handleOpinionQuery } from "./opinion-query";
 import { handleRevisionOpinion } from "./revision-opinion";
 import { handlePublicReportPublish, publicDeckIndexResponse, publicDeckReportResponse, publicDeckShareResponse, publicDeckSocialImageResponse, publicReportSitemapEntries } from "./public-deck-report";
+import { staticLearnSitemapEntries } from "../app/learn/catalog.mjs";
+import { injectLiveSlot } from "../app/learn/render-html.mjs";
+import { dynamicLearnSitemapEntries, handleLearnReview, learnRssResponse, loadDynamicArticles, maybeDynamicLearnArticle, runLearnSchedule } from "./learn-schedule";
 const IMPACT_SITE_VERIFICATION = "05208696-7452-434e-89b1-d6be551c7505";
 const PUBLIC_HOSTS = new Set(["metaforge.gg"]);
 const SEO_HEADERS = { "Cache-Control": "public, max-age=3600", "Content-Type": "text/plain; charset=utf-8" };
@@ -110,8 +113,11 @@ const SITEMAP_URLS: { loc: string; lastmod: string; changefreq: string; priority
 async function sitemapResponse(url: URL, env: Env): Promise<Response> {
   if (!PUBLIC_HOSTS.has(url.hostname)) return new Response("Not found", { status: 404 });
   let publicReports: typeof SITEMAP_URLS = [];
+  let learnDynamic: typeof SITEMAP_URLS = [];
   try { publicReports = await publicReportSitemapEntries(env); } catch (error) { console.error("public report sitemap lookup failed", error); }
-  const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${[...SITEMAP_URLS, ...publicReports].map((entry) => `\n  <url><loc>${entry.loc}</loc><lastmod>${entry.lastmod}</lastmod><changefreq>${entry.changefreq}</changefreq><priority>${entry.priority}</priority></url>`).join("")}\n</urlset>\n`;
+  try { learnDynamic = await dynamicLearnSitemapEntries(env); } catch (error) { console.error("learn sitemap lookup failed", error); }
+  const learnStatic = staticLearnSitemapEntries();
+  const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${[...SITEMAP_URLS, ...learnStatic, ...learnDynamic, ...publicReports].map((entry) => `\n  <url><loc>${entry.loc}</loc><lastmod>${entry.lastmod}</lastmod><changefreq>${entry.changefreq}</changefreq><priority>${entry.priority}</priority></url>`).join("")}\n</urlset>\n`;
   return new Response(body, { headers: { ...SEO_HEADERS, "Cache-Control": "public, max-age=300, must-revalidate", "CDN-Cache-Control": "public, max-age=300", "Content-Type": "application/xml; charset=utf-8" } });
 }
 
@@ -215,20 +221,28 @@ function seoMarkup(url: URL, html: string): string {
   return `${canonical}${structuredData}`;
 }
 
-async function addDocumentMetadata(response: Response, requestUrl: string): Promise<Response> {
+async function addDocumentMetadata(response: Response, requestUrl: string, env?: Env): Promise<Response> {
   if (!response.headers.get("content-type")?.toLowerCase().includes("text/html")) return response;
 
   const url = new URL(requestUrl);
   const isPublicSite = PUBLIC_HOSTS.has(url.hostname);
-  const html = (await response.text()).replace(/<meta\s+name=["']robots["'][^>]*>/gi, "");
-  const metadata = isPublicSite
+  const rawHtml = (await response.text()).replace(/<meta\s+name=["']robots["'][^>]*>/gi, "");
+  const learnNoindex = rawHtml.includes('data-robots="noindex"');
+  let html = rawHtml;
+  if (html.includes('data-learn-slot="live"') && env) {
+    try {
+      const live = (await loadDynamicArticles(env)).filter((article) => article.status === "published" && article.indexable);
+      html = injectLiveSlot(html, live);
+    } catch { /* the seeded library still renders */ }
+  }
+  const metadata = isPublicSite && !learnNoindex
     ? `<meta name="robots" content="index, follow"><meta name="impact-site-verification" value="${IMPACT_SITE_VERIFICATION}">${seoMarkup(url, html)}`
-    : '<meta name="robots" content="noindex, nofollow, noarchive, noimageindex">';
+    : `<meta name="robots" content="${isPublicSite ? "noindex, nofollow" : "noindex, nofollow, noarchive, noimageindex"}">`;
   if (!html.includes("</head>")) return new Response(html, response);
 
   const headers = new Headers(response.headers);
   headers.delete("content-length");
-  if (!isPublicSite) headers.set("X-Robots-Tag", "noindex, nofollow, noarchive, noimageindex");
+  if (!isPublicSite || learnNoindex) headers.set("X-Robots-Tag", isPublicSite ? "noindex, nofollow" : "noindex, nofollow, noarchive, noimageindex");
   return new Response(html.replace("</head>", `${metadata}</head>`), {
     status: response.status,
     statusText: response.statusText,
@@ -247,6 +261,7 @@ interface Env {
   // boolean in that response. Absent or anything other than exactly
   // "true" fails closed. See app/affiliate-links.mjs.
   TCGPLAYER_AFFILIATE_ENABLED?: string;
+  LEARN_NEWS_INTERVAL_HOURS?: string;
   ACCESS_TEAM_DOMAIN?: string;
   ACCESS_AUD?: string;
   ALLOW_DEV_AUTH_BYPASS?: string;
@@ -326,6 +341,7 @@ const worker = {
     try {
     if (url.pathname === "/robots.txt") return robotsResponse(url);
     if (url.pathname === "/sitemap.xml") return sitemapResponse(url, env);
+    if (url.pathname === "/learn/news/rss.xml" || url.pathname === "/learn/rss.xml") return learnRssResponse(env);
     if (url.pathname === "/decks" && PUBLIC_HOSTS.has(url.hostname)) return publicDeckIndexResponse(url, env);
     if (/^\/decks\/[a-z0-9-]+\/og\.svg$/.test(url.pathname) && PUBLIC_HOSTS.has(url.hostname)) return publicDeckSocialImageResponse(url, env);
     if (/^\/decks\/[a-z0-9-]+\/share\/[a-z]+$/.test(url.pathname) && PUBLIC_HOSTS.has(url.hostname)) return publicDeckShareResponse(request, url, env);
@@ -388,6 +404,9 @@ const worker = {
       if (url.pathname === "/api/founder/knowledge") return await handleCoachingKnowledge(request, env, true);
       if (url.pathname === "/api/coach/knowledge") return await handleCoachingKnowledge(request, env, false);
       if (url.pathname === "/api/founder/goblins") return await handleGoblinOperations(request, env);
+      if (url.pathname === "/api/founder/learn-review") return await handleLearnReview(request, env);
+      const dynamicLearn = await maybeDynamicLearnArticle(url, env);
+      if (dynamicLearn) return dynamicLearn;
 
       // No handler above claimed this /api/ path — a mistyped or removed
       // route must still come back as JSON, not fall through to the SSR
@@ -405,7 +424,7 @@ const worker = {
         }, allowedWidths);
       }
 
-      return addDocumentMetadata(await handler.fetch(request, env, ctx), request.url);
+      return addDocumentMetadata(await handler.fetch(request, env, ctx), request.url, env);
     } catch (error) {
       // Last-resort net: every handler above already returns its own JSON
       // on the failure paths it anticipates (validation, auth, engine
@@ -427,7 +446,7 @@ const worker = {
       return new Response("Internal server error", { status: 500, headers: { "Cache-Control": "no-store", "Content-Type": "text/plain; charset=utf-8" } });
     }
   },
-  async scheduled(_controller:ScheduledController,env:Env,ctx:ExecutionContext){ctx.waitUntil(runDataGoblins(env));ctx.waitUntil(cleanupExpiredRateLimits(env));ctx.waitUntil(cleanupExpiredGenerations(env));ctx.waitUntil(cleanupExpiredGuestForges(env));ctx.waitUntil(cleanupExpiredGuestGuidedDrafts(env));ctx.waitUntil(cleanupErrorReports(env));},
+  async scheduled(_controller:ScheduledController,env:Env,ctx:ExecutionContext){ctx.waitUntil(runDataGoblins(env));ctx.waitUntil(cleanupExpiredRateLimits(env));ctx.waitUntil(cleanupExpiredGenerations(env));ctx.waitUntil(cleanupExpiredGuestForges(env));ctx.waitUntil(cleanupExpiredGuestGuidedDrafts(env));ctx.waitUntil(cleanupErrorReports(env));ctx.waitUntil(runLearnSchedule(env));},
 };
 
 export default worker;

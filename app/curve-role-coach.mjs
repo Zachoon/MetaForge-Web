@@ -1770,3 +1770,16 @@ export function coachCardsFromContext(context = {}, rows = []) {
     };
   });
 }
+
+// Public coaching table for Learn articles. The numbers are the same
+// constants buildCurveRoleCoaching already judges decks against.
+export function curveCoachingRules() {
+  return {
+    labels: CURVE_LABELS,
+    shareByPlan: CURVE_BY_PLAN,
+    idealAverage: IDEAL_AVERAGE,
+    baseRoles: BASE_ROLES,
+    roleShift: ROLE_SHIFT,
+    roleLabels: ROLE_LABELS,
+  };
+}
