@@ -8,7 +8,7 @@
 
 import { curveManaValue } from "./conditional-effect-credit.mjs";
 import { readCommanderPlan } from "./reasoning-engine/deck-profile.mjs";
-import { rankPlanWeaknesses } from "./plan-weakness-coach.mjs";
+import { printedQuote, rankPlanWeaknesses } from "./plan-weakness-coach.mjs";
 
 const NUMBER = Object.freeze({
   a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, x: 3,
@@ -101,7 +101,7 @@ const ROLE_LABELS = Object.freeze({
   wincon: "Win conditions",
 });
 
-const INTERACTION = /\b(?:destroy|exile) (?:target|up to (?:one|two|three|\d+) targets?|another target)\b|\bcounter target (?:spell|activated|triggered|noncreature|ability)\b|\bdeals? (?:\d+|x) damage to (?:any target|target)\b|\bdeals? (?:\d+|x) damage divided\b|\bdeals? damage equal to [^.]*\bto target\b|\breturn target [^.]*\bowner(?:'s|s'|s)? hands?\b|\bfights? target\b|\bdeals damage equal to its power to target\b/i;
+const INTERACTION = /\b(?:destroy|exile) (?:target|up to (?:one|two|three|\d+) targets?|another target)\b|\bcounter target (?:spell|activated|triggered|noncreature|ability)\b|\bdeals? (?:\d+|x) damage to (?:any target|target)\b|\bdeals? (?:\d+|x) damage divided\b|\bdeals? damage equal to [^.]*\bto target\b|\breturn target [^.]*\bowner(?:'s|s'|s)? hands?\b|\bfights? target\b|\bdeals damage equal to its power to target\b|\btarget permanent\b[^.]{0,80}\bshuffles? (?:it|that permanent) into\b|\b(?:each opponent|target opponent|each other player) sacrifices (?:a|an|one|two|three) (?:creature|nonland permanent|permanent|artifact|enchantment)\b/i;
 
 const WIPE = /\bdestroy all\b|\bexile all (?!graveyards?\b)|\ball creatures get -(?:\d+|x)\/-(?:\d+|x)\b|\beach creature (?:gets? -(?:\d+|x)|is destroyed)\b|\bdeals? [^.]*\bdamage\b[^.]* to each (?:other |nontoken |attacking |blocking )?creatures?\b|\breturn all (?:nonland permanents|creatures) to their owners' hands\b/i;
 
@@ -117,7 +117,7 @@ const FILTER = /\{\d+\}[^:\n]{0,40}\{T\}\s*:\s*Add (?:one mana|\{[WUBRGC0-9]\})(
 const REPEATABLE_ADD = /\{T\}\s*:\s*Add\b/i;
 
 export function questionWantsCurveRoleCoaching(question = "") {
-  return /\b(?:mana curve|curve|ramp|card advantage|loots?|draw|interaction|removal|board wipes?|wipes?|win ?cons?|roles?)\b|what(?:'s| is) (?:wrong|missing)|coach (?:this|the) (?:deck|list)|how (?:does|is) (?:this|the|my) (?:deck|list|curve)/i.test(String(question || ""));
+  return /\b(?:mana curve|curve|ramp|card advantage|loots?|draw|interaction|removal|board wipes?|wipes?|win ?cons?|roles?|counterspells?|protection|tutors?|impulse)\b|what(?:'s| is) (?:wrong|missing)|coach (?:this|the) (?:deck|list)|how (?:does|is) (?:this|the|my) (?:deck|list|curve)/i.test(String(question || ""));
 }
 
 function cleanText(value) {
@@ -244,12 +244,259 @@ function isFilterOnly(text) {
 }
 
 function modeIsWipe(text) {
-  return WIPE.test(text) || (/\boverload\b/i.test(text) && /\breturn target\b/i.test(text));
+  return WIPE.test(text)
+    || (/\boverload\b/i.test(text) && /\b(?:return|destroy|exile) target\b/i.test(text))
+    || /\b(?:each opponent|your opponents) sacrifices? all\b/i.test(text);
 }
 
 function modeIsInteraction(text) {
-  if (modeIsWipe(text) && !/\breturn target\b|\bdestroy target\b|\bexile target\b/i.test(text)) return false;
+  if (modeIsWipe(text) && !/\breturn target\b|\bdestroy target\b|\bexile target\b|\btarget permanent\b[^.]{0,80}\bshuffles?/i.test(text)) return false;
   return INTERACTION.test(text);
+}
+
+function phraseAfterTarget(text) {
+  const match = String(text || "").match(/\b(?:destroy|exile|return) target ([^.]{0,80})/i);
+  return match ? match[1].replace(/\s+/g, " ").trim() : "";
+}
+
+function removalProfile(text) {
+  if (!modeIsInteraction(text)) return null;
+  const raw = cleanText(text);
+  const countersOnly = /\bcounter target\b/i.test(raw)
+    && !/\b(?:destroy|exile|return) target\b/i.test(raw)
+    && !/\bdeals?\b/i.test(raw)
+    && !/\bfights?\b/i.test(raw)
+    && !/\bshuffles? (?:it|that permanent) into\b/i.test(raw);
+  if (countersOnly) return null;
+  const limits = [];
+  let flexible = true;
+  const power = raw.match(/\b(?:with )?(power|toughness) (\d+) or (less|greater)\b/i);
+  if (power) {
+    flexible = false;
+    limits.push(`only a creature with ${power[1].toLowerCase()} ${power[2]} or ${power[3].toLowerCase()}`);
+  }
+  const manaValues = [...raw.matchAll(/\bmana value (\d+) or less\b/gi)].map((match) => match[1]);
+  if (manaValues.length) {
+    flexible = false;
+    const unique = [...new Set(manaValues)];
+    if (/\brevolt\b/i.test(raw) && unique.length > 1) {
+      limits.push(`only a creature with mana value ${unique[0]} or less, or ${unique[unique.length - 1]} or less if a permanent you controlled left the battlefield`);
+    } else {
+      limits.push(`only a permanent with mana value ${unique[unique.length - 1]} or less`);
+    }
+  }
+  const damage = raw.match(/\bdeals? (\d+) damage to (?:target creature|any target|target permanent|target planeswalker)\b/i);
+  if (damage && Number(damage[1]) <= 3 && !/\bdamage equal to\b/i.test(raw)) {
+    flexible = false;
+    limits.push(`only ${damage[1]} damage, so a creature with toughness ${Number(damage[1]) + 1} or more survives`);
+  }
+  if (/\bfights? target\b/i.test(raw)) {
+    flexible = false;
+    limits.push("only if a creature you control is big enough to fight");
+  }
+  const positional = raw.match(/\btarget (tapped|untapped|attacking|blocking) (?:creature|permanent)\b/i);
+  if (positional) {
+    flexible = false;
+    limits.push(`only ${positional[1].toLowerCase()} permanents`);
+  }
+  if (/\b(?:each opponent|target opponent|each other player) sacrifices\b/i.test(raw)) {
+    flexible = false;
+    limits.push("an opponent chooses which permanent to sacrifice");
+  }
+  const exceptType = raw.match(/\btarget non-([A-Za-z][A-Za-z'-]+) creature\b/);
+  if (exceptType) {
+    flexible = false;
+    limits.push(`only a creature that is not a ${exceptType[1]}`);
+  }
+  const phrase = phraseAfterTarget(raw);
+  if (phrase && !power && !manaValues.length) {
+    const hitsBroad = /\b(?:creature|permanent|any target)\b/i.test(phrase);
+    const typed = /\b(?:artifact|enchantment|planeswalker|land)\b/i.test(phrase);
+    if (typed && !hitsBroad) {
+      flexible = false;
+      const cleaned = phrase.replace(/\s+its controller.*$/i, "").trim();
+      const article = /^(?:a|an)\b/i.test(cleaned) ? "" : "an ";
+      limits.push(`only ${article}${cleaned}`);
+    }
+  }
+  if (/\b(?:flying|defender|islandwalk|trample)\b/i.test(phrase) && /\bcreature with\b/i.test(phrase)) {
+    flexible = false;
+    const word = phrase.match(/\bcreature with (\w+)/i);
+    if (word && !limits.some((limit) => limit.includes(word[1].toLowerCase()))) limits.push(`only a creature with ${word[1].toLowerCase()}`);
+  }
+  let mild = null;
+  if (flexible && /\bnonartifact creature\b/i.test(raw)) mild = "misses artifact creatures";
+  return {
+    flexible,
+    note: flexible ? mild : (limits.join("; ") || "only some permanents"),
+  };
+}
+
+function counterProfile(text) {
+  if (!/\bcounter target\b/i.test(text)) return null;
+  const raw = cleanText(text);
+  const open = /\bcounter target spell\b/i.test(raw)
+    && !/\bcounter target spell (?:that|unless|with)\b/i.test(raw)
+    && !/\bcounter target (?:noncreature|creature|instant|sorcery|enchantment|artifact|activated|triggered|blue|black|red|green|white)\b/i.test(raw);
+  let note = null;
+  if (!open) {
+    if (/\bthat targets?\b/i.test(raw)) note = "only a spell that targets you or a permanent you control";
+    else if (/\bnoncreature spell\b/i.test(raw)) note = "only a noncreature spell";
+    else if (/\bcreature spell\b/i.test(raw)) note = "only a creature spell";
+    else if (/\bactivated ability\b/i.test(raw)) note = "only an activated ability";
+    else if (/\btriggered ability\b/i.test(raw)) note = "only a triggered ability";
+    else {
+      const match = raw.match(/\bcounter target ([^.]+)/i);
+      note = match ? `only ${match[1].trim()}` : "only some spells";
+    }
+  }
+  return { flexible: open, note };
+}
+
+function protectionProfile(text, typeLine) {
+  const raw = cleanText(text);
+  const grants = /\b(?:gains?|have|has)\b[^.]{0,60}\b(?:hexproof|shroud|indestructible|protection from)\b/i.test(raw)
+    || /\bprotection from everything\b/i.test(raw)
+    || (/\bphase out\b/i.test(raw) && /\bpermanents you control\b/i.test(raw))
+    || /\bchange the target of target spell\b/i.test(raw)
+    || /\bcounter target [^.]*\bthat targets\b/i.test(raw);
+  if (!grants) return null;
+  const line = String(typeLine || "");
+  const selfOnly = /\bcreature\b/i.test(line)
+    && /\b(?:hexproof|shroud|indestructible)\b/i.test(raw)
+    && !/\b(?:target|equipped|enchanted|you control|permanents you control|equip\b)\b/i.test(raw);
+  if (selfOnly) return null;
+  if (/^(?:hexproof|shroud|indestructible)\.?$/i.test(raw)) return null;
+  let note = "blank a removal spell aimed at your permanents";
+  if (/\bequip\b/i.test(raw)) note = "stays on the creature you equip";
+  else if (/\bphase out\b/i.test(raw)) note = "phases your permanents out until your next turn";
+  else if (/\bchange the target\b/i.test(raw)) note = "changes the target of a spell or ability";
+  else if (/\bcounter target\b/i.test(raw)) note = "counters a spell that is aimed at you";
+  return { note };
+}
+
+function collectHits(text) {
+  const hits = new Set();
+  if (/\bcreatures?\b/i.test(text)) hits.add("creatures");
+  if (/\bartifacts?\b/i.test(text)) hits.add("artifacts");
+  if (/\benchantments?\b/i.test(text)) hits.add("enchantments");
+  if (/\bplaneswalkers?\b/i.test(text)) hits.add("planeswalkers");
+  if (/\bnonland permanents?\b/i.test(text)) hits.add("nonland permanents");
+  if (/\ball permanents\b/i.test(text)) hits.add("permanents");
+  if (hits.has("nonland permanents") || hits.has("permanents")) {
+    hits.add("creatures");
+    hits.add("artifacts");
+    hits.add("enchantments");
+  }
+  return hits;
+}
+
+function pieceIsOneSided(text) {
+  return /\byou don't control\b|\byour opponents control\b|\bopponents control\b|\beach opponent sacrifices\b|\btarget opponent sacrifices\b/i.test(text);
+}
+
+function wipeGateOf(text) {
+  const less = String(text || "").match(/\b(power|toughness|mana value) (\d+) or less\b/i);
+  if (less) return { dir: "less", stat: `${less[1].toLowerCase()} ${less[2]} or less` };
+  const greater = String(text || "").match(/\b(power|toughness|mana value) (\d+) or greater\b/i);
+  if (greater) return { dir: "greater", stat: `${greater[1].toLowerCase()} ${greater[2]} or greater` };
+  return null;
+}
+
+function wipeProfile(text) {
+  const modes = modesOf(text);
+  const wipePieces = (modes || [text]).filter((piece) => modeIsWipe(piece));
+  if (!wipePieces.length && !modeIsWipe(text)) return null;
+  const source = wipePieces.length ? wipePieces : [text];
+  const hits = new Set();
+  let oneSided = source.length > 0;
+  let scalable = false;
+  for (const piece of source) {
+    for (const hit of collectHits(piece)) hits.add(hit);
+    if (!pieceIsOneSided(piece)) oneSided = false;
+    if (/\b-x\/-x\b/i.test(piece) || /\bpay x life\b/i.test(piece)) scalable = true;
+  }
+  if (/\boverload\b/i.test(text) && /\byou don't control\b/i.test(text)) oneSided = true;
+  const gate = wipeGateOf(cleanText(text));
+  const choice = Boolean(modes) && hits.size > 1 && !oneSided;
+  let note = null;
+  if (choice) note = "You choose the modes, so it can miss the permanents this plan needs.";
+  else if (oneSided) note = "It removes their permanents and leaves yours.";
+  else if (scalable) note = "You choose how much toughness to erase.";
+  else if (gate) note = `It only hits ${gate.stat}.`;
+  else note = "It hits every permanent of that kind, including yours.";
+  return {
+    scope: choice ? "choice" : oneSided ? "one-sided" : "symmetric",
+    hits: [...hits],
+    scalable,
+    gate,
+    note,
+  };
+}
+
+function isImpulseText(text) {
+  const raw = cleanText(text);
+  return /\bexile the top\b/i.test(raw) && /\byou may (?:play|cast)\b/i.test(raw);
+}
+
+function impulseNote(text) {
+  const raw = cleanText(text);
+  if (/\buntil the end of your next turn\b/i.test(raw)) return "exiles cards and lets you play them until the end of your next turn, then they are gone";
+  if (/\bthis turn\b|\buntil end of turn\b/i.test(raw)) return "exiles cards and lets you play them this turn, then they are gone";
+  return "exiles cards for you to play, and they are not drawn";
+}
+
+function libraryCardsToHand(text) {
+  const raw = cleanText(text);
+  if (/\bsearch your library\b/i.test(raw)) return 0;
+  if (isImpulseText(raw)) return 0;
+  if (/\bput one pile into your hand\b/i.test(raw)) return 2;
+  if (!/\b(?:look at|reveal) the top\b/i.test(raw)) return 0;
+  const match = raw.match(/\bput (?:up to )?(a|an|one|two|three|four|five|\d+) (?:of them |of those cards |cards )?into your hand\b/i);
+  if (match) {
+    const word = match[1].toLowerCase();
+    const count = NUMBER[word] || Number(word) || 0;
+    if (/up to/i.test(match[0]) && count <= 1) return 1;
+    return count;
+  }
+  if (/\bput (?:it|that card) into your hand\b/i.test(raw)) return 1;
+  return 0;
+}
+
+function tutorProfile(text) {
+  const raw = cleanText(text);
+  const searched = /\bsearch your library for\b/i.test(raw);
+  const named = /\bname a card\b/i.test(raw) && /\bput (?:it|that card) into your hand\b/i.test(raw);
+  if (!searched && !named) return null;
+  if (searched && LAND_RAMP.test(raw)) return null;
+  const found = raw.match(/\bsearch your library for ([^.]{0,80})/i);
+  const target = (found ? found[1] : "a card").split(/,| then | and put /i)[0].replace(/\s+/g, " ").trim();
+  const open = named || (/^(?:up to )?(?:a|an|one|two|three) cards?$/i.test(target) && !(/\bwith\b|\bnamed\b/i.test(target)));
+  let destination = "into your hand";
+  if (/\bonto the battlefield\b/i.test(raw)) destination = "onto the battlefield";
+  else if (/\bon top\b/i.test(raw)) destination = "on top of your library";
+  const where = destination === "into your hand"
+    ? "The tutor takes the place of the card it finds, so the hand does not get larger."
+    : destination === "on top of your library"
+      ? "It puts the card on top of the library. That is not a draw."
+      : "It puts the card onto the battlefield. That is not a draw.";
+  const what = open ? "any card" : target;
+  return { open, note: `finds ${what}. ${where}` };
+}
+
+function isEngineDraw(text) {
+  const raw = cleanText(text);
+  if (/\bwhenever\b[^.]{0,220}\bdraw\b/i.test(raw) && !/\bwhenever an opponent draws\b/i.test(raw)) return true;
+  if (/\bat the beginning of\b[^.]{0,180}\bdraw\b/i.test(raw)) return true;
+  if (/\{T\}[^:\n]{0,80}:\s*draw\b/i.test(raw) && !/\bsacrifice\b/i.test(raw)) return true;
+  return false;
+}
+
+function selectionProfile(text, draw, loot, impulse, tutor) {
+  if (draw || loot || impulse || tutor) return null;
+  const kept = libraryCardsToHand(text);
+  if (kept === 1) return { note: "looks at the top of the library and keeps one card, so the hand does not get an extra card" };
+  return null;
 }
 
 function modeIsWincon(text) {
@@ -273,11 +520,29 @@ export function classifyPrintedCard(card = {}) {
     const filters = /\bconnives?\b/i.test(piece) || (economy.draw > 0 && economy.discard >= economy.draw);
     return { draw: economy.draw > economy.discard, loot: filters && economy.draw <= economy.discard && (economy.draw > 0 || /\bconnives?\b/i.test(piece)) };
   });
-  const draw = economies.some((economy) => economy.draw);
+  const libraryPut = Math.max(0, ...pieces.map((piece) => libraryCardsToHand(piece)));
+  const impulse = pieces.some((piece) => isImpulseText(piece));
+  const draw = economies.some((economy) => economy.draw) || libraryPut >= 2;
   const loot = economies.some((economy) => economy.loot) && !draw;
   const interaction = pieces.some((piece) => modeIsInteraction(piece));
   const wipes = pieces.some((piece) => modeIsWipe(piece));
   const wincon = pieces.some((piece) => modeIsWincon(piece));
+  const removalProfiles = pieces.map((piece) => removalProfile(piece)).filter(Boolean);
+  const finisherDamage = wincon && /\bdeals? (?:[5-9]\d|\d{3,}) damage to any target\b/i.test(cleanText(text)) && !/\b(?:destroy|exile|return) target\b/i.test(text);
+  const removal = removalProfiles.length > 0 && !finisherDamage;
+  const removalFlexible = removal && removalProfiles.some((profile) => profile.flexible);
+  const removalNote = removalFlexible
+    ? null
+    : removalProfiles.map((profile) => profile.note).filter(Boolean).join("; ") || null;
+  const counterProfiles = pieces.map((piece) => counterProfile(piece)).filter(Boolean);
+  const counter = counterProfiles.length > 0;
+  const counterFlexible = counterProfiles.some((profile) => profile.flexible);
+  const counterNote = counterFlexible ? null : counterProfiles.map((profile) => profile.note).filter(Boolean)[0] || null;
+  const protection = protectionProfile(text, typeLine);
+  const wipe = wipes ? wipeProfile(text) : null;
+  const tutor = tutorProfile(text);
+  const drawKind = !draw ? null : isEngineDraw(text) ? "engine" : (handEconomy(text).draw <= 1 && handEconomy(text).discard === 0 && libraryPut < 2) ? "cantrip" : "burst";
+  const selection = selectionProfile(text, draw, loot, impulse, tutor);
 
   const rules = cleanText(text);
   let ramp = false;
@@ -308,6 +573,11 @@ export function classifyPrintedCard(card = {}) {
   const notes = [];
   if (conditionalRampReason) notes.push(conditionalRampReason);
   if (loot && !draw) notes.push("draws and then discards, so the hand size does not go up");
+  if (impulse && !draw) notes.push(impulseNote(text));
+  if (tutor && !draw && !ramp) notes.push(tutor.note);
+  if (selection) notes.push(selection.note);
+  if (removal && !removalFlexible && removalNote) notes.push(removalNote);
+  if (counter && !counterFlexible && counterNote) notes.push(counterNote);
   if (opponentMana(rules)) notes.push("the color is whatever mana an opponent's land could produce");
   if (modes && interaction) notes.push("one mode is interaction, and choosing it gives up the other modes");
 
@@ -318,9 +588,30 @@ export function classifyPrintedCard(card = {}) {
     conditionalRamp,
     conditionalRampReason,
     draw,
+    drawKind,
     loot: loot && !draw,
+    impulse: impulse && !draw,
+    impulseNote: impulse && !draw ? impulseNote(text) : null,
+    selection: Boolean(selection),
+    selectionNote: selection?.note || null,
+    tutor: Boolean(tutor) && !ramp,
+    tutorOpen: Boolean(tutor?.open) && !ramp,
+    tutorNote: tutor && !ramp ? tutor.note : null,
     interaction,
+    removal,
+    removalFlexible: removal && removalFlexible,
+    removalNote: removal && !removalFlexible ? removalNote : null,
+    counter,
+    counterFlexible: counter && counterFlexible,
+    counterNote: counter && !counterFlexible ? counterNote : null,
+    protection: Boolean(protection),
+    protectionNote: protection?.note || null,
     wipes,
+    wipeScope: wipe?.scope || null,
+    wipeHits: Object.freeze(wipe?.hits || []),
+    wipeScalable: Boolean(wipe?.scalable),
+    wipeGate: wipe?.gate || null,
+    wipeNote: wipe?.note || null,
     wincon,
     fixesColors: producesMana || (land && /add\b/i.test(text)) ? Boolean(fixesColors) : null,
     opponentMana: opponentMana(rules),
@@ -431,6 +722,9 @@ const SWAP_CATALOG = Object.freeze([
   { name: "Insurrection", typeLine: "Sorcery", manaCost: "{5}{R}{R}{R}", colors: ["R"], plans: ["combat", "tokens", "big-creatures"], because: "You take every creature until end of turn and they gain haste. That is a way to end the game, not another threat that waits a turn.", oracleText: "Untap all creatures and gain control of them until end of turn. They gain haste until end of turn." },
   { name: "Exsanguinate", typeLine: "Sorcery", manaCost: "{X}{B}{B}", colors: ["B"], plans: ["control", "aristocrats", "big-creatures"], because: "Each opponent loses X life. With the ramp this kind of deck is supposed to have, X is large enough to end the table.", oracleText: "Each opponent loses X life. You gain life equal to the life lost this way." },
   { name: "Akroma's Will", typeLine: "Instant", manaCost: "{3}{W}", colors: ["W"], plans: ["tokens", "combat", "typal", "creatures"], because: "Your creatures gain double strike, or they gain indestructible. With a commander on the battlefield you can take both, which is how a white creature deck actually kills.", oracleText: "Choose one. If you control a commander as you cast this spell, you may choose both instead.\n• Creatures you control gain flying, vigilance, and double strike until end of turn.\n• Creatures you control gain lifelink, indestructible, and protection from all colors until end of turn." },
+  { name: "Heroic Intervention", typeLine: "Instant", manaCost: "{1}{W}", colors: ["W"], plans: ["tokens", "typal", "creatures", "combat", "equipment", "auras", "big-creatures", "blink"], because: "Your permanents gain hexproof and indestructible until end of turn. That keeps the board a removal spell was about to take.", oracleText: "Permanents you control gain hexproof and indestructible until end of turn. Untap them." },
+  { name: "Lightning Greaves", typeLine: "Artifact — Equipment", manaCost: "{2}", colors: [], plans: ["*"], because: "The equipped creature has shroud, so it cannot be the target of the removal aimed at it. The equipment stays in play.", oracleText: "Equipped creature has haste and shroud.\nEquip {0}." },
+  { name: "Swiftfoot Boots", typeLine: "Artifact — Equipment", manaCost: "{2}", colors: [], plans: ["*"], because: "The equipped creature has hexproof and haste. Hexproof stops an opponent from targeting it, and you can still target it yourself.", oracleText: "Equipped creature has hexproof and haste.\nEquip {1}." },
 ]);
 
 function catalogRole(entry) {
@@ -468,6 +762,401 @@ function nameList(cards, limit = 6) {
   }
   const extra = cards.length - names.length;
   return extra > 0 ? `${names.join(", ")}, and ${extra} more` : names.join(", ");
+}
+
+const BOARD_PLANS = new Set(["tokens", "typal", "creatures", "combat", "equipment", "auras", "big-creatures", "blink", "aristocrats"]);
+const ENGINE_PLANS = new Set(["tokens", "typal", "creatures", "aristocrats", "enchantress", "spellslinger", "control", "artifacts", "blink"]);
+
+function shareBand(range, minFactor, maxFactor) {
+  const min = Math.max(0, Math.round((range?.[0] || 0) * minFactor));
+  const max = Math.max(min, Math.round((range?.[1] || 0) * maxFactor));
+  return [min, max];
+}
+
+function rangePhrase(band) {
+  if (!band) return "the usual band";
+  if (band[0] === band[1]) return `about ${band[0]}`;
+  return `about ${band[0]}–${band[1]}`;
+}
+
+/**
+ * Sub-bands inside the plan's existing interaction, draw, and wipe ranges.
+ * Protection follows the same 100-card norm the rest of the coach scales,
+ * narrowed for plans that do not live on one board. These are not a
+ * power-level table: the printed text does not say how fast the table is.
+ */
+export function answerAims(planId, ranges = {}) {
+  const countersMatter = planId === "spellslinger" || planId === "control";
+  return {
+    removal: countersMatter ? shareBand(ranges.interaction, 0.3, 0.43) : shareBand(ranges.interaction, 0.625, 0.73),
+    counters: countersMatter ? shareBand(ranges.interaction, 0.4, 0.57) : shareBand(ranges.interaction, 0, 0.27),
+    protection: BOARD_PLANS.has(planId) ? (ranges.protection || [2, 4]) : (ranges.protectionSoft || [1, 2]),
+    engines: shareBand(ranges.draw, ENGINE_PLANS.has(planId) ? 0.27 : 0.15, ENGINE_PLANS.has(planId) ? 0.43 : 0.3),
+    oneSidedWipes: BOARD_PLANS.has(planId) || planId === "spellslinger"
+      ? [Math.min(1, Math.max(ranges.wipes?.[0] || 0, 1)), Math.max(1, Math.min(2, ranges.wipes?.[1] || 2))]
+      : [0, ranges.wipes?.[1] || 2],
+  };
+}
+
+function commanderBoards(planId, commanderText) {
+  if (BOARD_PLANS.has(planId)) return planId === "big-creatures" ? "big-creatures" : "creatures";
+  if ((planId === "spellslinger" || planId === "control") && /\bcreate[^.]*\bcreature token\b/i.test(commanderText || "")) return "tokens";
+  if (planId === "artifacts" || planId === "historic") return "artifacts";
+  if (planId === "enchantress") return "enchantments";
+  if (planId === "aristocrats" || planId === "graveyard") return "sacrifice";
+  return "other";
+}
+
+function wipeVerdict(planId, commanderText, card) {
+  if (!card?.wipes) return { fights: false, uses: false, reason: "" };
+  if (card.wipeScope === "one-sided") return { fights: false, uses: false, reason: card.wipeNote || "It removes their permanents and leaves yours." };
+  if (card.wipeScope === "choice") return { fights: false, uses: false, reason: card.wipeNote || "You choose the modes, so it can miss the permanents this plan needs." };
+  const kind = commanderBoards(planId, commanderText);
+  const hits = new Set(card.wipeHits || []);
+  const hitsCreatures = hits.has("creatures") || hits.has("permanents") || hits.has("nonland permanents");
+  const gate = card.wipeGate;
+  if (kind === "sacrifice" && hitsCreatures) {
+    return { fights: false, uses: true, reason: "It also kills your creatures, and a sacrifice or graveyard plan can use that." };
+  }
+  if (kind === "big-creatures" && card.wipeScalable) {
+    return { fights: false, uses: false, reason: "You choose how much toughness to erase, so a big creature can be left standing." };
+  }
+  if (kind === "big-creatures" && gate?.dir === "less") {
+    return { fights: false, uses: false, reason: `It only hits ${gate.stat}, so a big creature can survive it.` };
+  }
+  if ((kind === "creatures" || kind === "tokens") && gate?.dir === "greater" && planId !== "big-creatures") {
+    return { fights: false, uses: false, reason: `It only hits ${gate.stat}, so a small board mostly survives.` };
+  }
+  if ((kind === "creatures" || kind === "tokens" || kind === "big-creatures") && hitsCreatures) {
+    const why = gate ? `It destroys creatures with ${gate.stat}, including the ones this plan is making.` : "It destroys your creatures too, including the board this commander is building.";
+    return { fights: true, uses: false, reason: why };
+  }
+  if (kind === "artifacts" && (hits.has("artifacts") || hits.has("permanents") || hits.has("nonland permanents"))) {
+    return { fights: true, uses: false, reason: "It destroys artifacts, which is what this plan is made of." };
+  }
+  if (kind === "enchantments" && (hits.has("enchantments") || hits.has("permanents")) && !hitsCreatures) {
+    return { fights: true, uses: false, reason: "It destroys enchantments, which is what this plan is made of." };
+  }
+  return { fights: false, uses: false, reason: card.wipeNote || "It clears a permanent type this plan is not built on." };
+}
+
+function countCopies(list) {
+  return list.reduce((sum, card) => sum + (card.quantity || 1), 0);
+}
+
+function namesOnly(cards, limit = 4) {
+  const names = [];
+  for (const card of cards) {
+    if (names.length >= limit) break;
+    names.push(card.name);
+  }
+  const extra = cards.length - names.length;
+  return extra > 0 ? `${names.join(", ")}, and ${extra} more` : names.join(", ");
+}
+
+function quoteCard(card, pattern) {
+  return printedQuote(card.oracleText || "", pattern, 180);
+}
+
+function aimStatus(actual, band) {
+  if (!band || band[0] <= 0 && actual === 0) return "ok";
+  if (actual < band[0]) return "short";
+  if (band[1] > 0 && actual > band[1] + 2) return "over";
+  return "ok";
+}
+
+function buildAnswerRead({ cards, plan, ranges, confidence, commanderText, identity }) {
+  const nonlands = cards.filter((card) => !card.land && !card.isCommander && card.oracleText?.trim());
+  const hasBlue = (identity || []).map((color) => String(color).toUpperCase()).includes("U");
+  const aims = answerAims(plan?.id, ranges);
+    const counterBand = hasBlue ? aims.counters : [0, 0];
+  const removal = nonlands.filter((card) => card.removalFlexible);
+  const narrow = nonlands.filter((card) => card.removal && !card.removalFlexible);
+  const counters = nonlands.filter((card) => card.counter);
+  const narrowCounters = counters.filter((card) => !card.counterFlexible);
+  const protection = nonlands.filter((card) => card.protection);
+  const wipes = nonlands.filter((card) => card.wipes);
+  const verdicts = wipes.map((card) => ({ card, ...wipeVerdict(plan?.id, commanderText, card) }));
+  const oneSided = wipes.filter((card) => card.wipeScope === "one-sided");
+  const fighting = verdicts.filter((entry) => entry.fights);
+  const engines = nonlands.filter((card) => card.drawKind === "engine");
+  const bursts = nonlands.filter((card) => card.drawKind === "burst");
+  const cantrips = nonlands.filter((card) => card.drawKind === "cantrip");
+  const impulse = nonlands.filter((card) => card.impulse);
+  const tutors = nonlands.filter((card) => card.tutor);
+  const selection = nonlands.filter((card) => card.selection);
+  const loots = nonlands.filter((card) => card.loot);
+  const boardPlan = BOARD_PLANS.has(plan?.id);
+  const protectionStatus = boardPlan ? aimStatus(countCopies(protection), aims.protection) : "ok";
+  const rows = [
+    {
+      id: "removal",
+      label: "Targeted removal",
+      actual: countCopies(removal),
+      min: aims.removal[0],
+      max: aims.removal[1],
+      status: aimStatus(countCopies(removal), aims.removal),
+      detail: `${namesOnly(removal) || "None"}. ${rangePhrase(aims.removal)} should remove a creature or permanent without a size or type gate. A counterspell is a different job.`,
+      cards: removal.slice(0, 3).map((card) => ({ name: card.name, note: "removes a creature or permanent, with no size or type gate" })),
+    },
+    {
+      id: "conditional",
+      label: "Conditional removal",
+      actual: countCopies(narrow),
+      min: null,
+      max: null,
+      status: "ok",
+      detail: narrow.length
+        ? `${namesOnly(narrow)} ${narrow.length === 1 ? "is" : "are"} conditional: ${narrow[0].removalNote || "the printed text only hits some permanents"}. Counted as interaction, and not as the flexible removal above.`
+        : "None. A size gate or a single permanent type would be listed here instead of as flexible removal.",
+      cards: narrow.slice(0, 3).map((card) => ({ name: card.name, note: card.removalNote || "conditional" })),
+    },
+    {
+      id: "counters",
+      label: "Counters",
+      actual: countCopies(counters),
+      min: counterBand[0],
+      max: counterBand[1],
+      status: aimStatus(countCopies(counters), counterBand),
+      detail: !hasBlue
+        ? "This color identity has no blue, so a counterspell is not the missing piece. Removal has to do the job."
+        : `${namesOnly(counters) || "None"}. ${plan?.id === "spellslinger" || plan?.id === "control" ? `This plan wants ${rangePhrase(counterBand)} counterspells, because the commander is trying to live on instants and sorceries.` : `A counterspell is optional here, ${rangePhrase(counterBand)}.`} ${narrowCounters.length ? `${narrowCounters[0].name} ${narrowCounters[0].counterNote || "does not counter every spell"}.` : ""}`.trim(),
+      cards: counters.slice(0, 3).map((card) => ({ name: card.name, note: card.counterNote || "counters a spell" })),
+    },
+    {
+      id: "protection",
+      label: "Protection",
+      actual: countCopies(protection),
+      min: aims.protection[0],
+      max: aims.protection[1],
+      status: protectionStatus,
+      detail: boardPlan
+        ? `${namesOnly(protection) || "None"}. ${rangePhrase(aims.protection)} should keep this plan's own permanents alive. Protection does not remove an opponent's permanent.`
+        : `${namesOnly(protection) || "None"}. ${rangePhrase(aims.protection)} is a comfort for this plan, not the hole that changes it. Protection keeps your permanents; it does not answer theirs.`,
+      cards: protection.slice(0, 3).map((card) => ({ name: card.name, note: card.protectionNote || "protects your permanents" })),
+    },
+    {
+      id: "wipes",
+      label: "Board wipes",
+      actual: countCopies(wipes),
+      min: ranges.wipes?.[0] ?? null,
+      max: ranges.wipes?.[1] ?? null,
+      status: fighting.length && !oneSided.length && ["creatures", "tokens", "big-creatures", "artifacts", "enchantments"].includes(commanderBoards(plan?.id, commanderText)) ? "short" : "ok",
+      detail: wipes.length
+        ? `${wipes.map((card) => `${card.name}: ${wipeVerdict(plan?.id, commanderText, card).reason}`).slice(0, 3).join(" ")} One-sided wipes: ${countCopies(oneSided)} (${rangePhrase(aims.oneSidedWipes)} for a plan that keeps its own board).`
+        : `None. One answer deals with one permanent. ${rangePhrase(ranges.wipes || [0, 0])} board wipes is the band already used above, and a creature plan wants ${rangePhrase(aims.oneSidedWipes)} of those to leave its own creatures alone.`,
+      cards: wipes.slice(0, 3).map((card) => ({ name: card.name, note: wipeVerdict(plan?.id, commanderText, card).reason })),
+    },
+    {
+      id: "engines",
+      label: "Repeatable card draw",
+      actual: countCopies(engines),
+      min: aims.engines[0],
+      max: aims.engines[1],
+      status: aimStatus(countCopies(engines), aims.engines),
+      detail: `${namesOnly(engines) || "None"}. ${rangePhrase(aims.engines)} should keep drawing because the permanent stays. One-shot draws: ${countCopies(bursts)}. Cantrips that draw a single card: ${countCopies(cantrips)}. A cantrip replaces itself. It does not keep the hand full.`,
+      cards: engines.slice(0, 3).map((card) => ({ name: card.name, note: "draws again later" })),
+    },
+  ];
+  const excluded = [
+    ...loots.map((card) => ({ name: card.name, quantity: card.quantity || 1, note: "draws and then discards the same number, so the hand does not get larger" })),
+    ...impulse.map((card) => ({ name: card.name, quantity: card.quantity || 1, note: card.impulseNote || "exiles cards to play now, which is not a draw" })),
+    ...tutors.map((card) => ({ name: card.name, quantity: card.quantity || 1, note: card.tutorNote || "finds a card, and the hand does not get larger" })),
+    ...selection.map((card) => ({ name: card.name, quantity: card.quantity || 1, note: card.selectionNote || "selects a card, which is not card advantage" })),
+  ];
+  const summary = `${plan?.label || "This plan"} needs answers and cards that are not the same job. Targeted removal deals with one permanent. A counterspell stops a spell. Protection keeps yours. A board wipe resets a whole type, and a symmetric one hits this deck too. Card advantage means the hand gets larger and, for this plan, keeps doing it. A loot, an impulse, and a tutor do not.`;
+  return {
+    summary,
+    rows,
+    excluded: excluded.slice(0, 6),
+    aims,
+    counts: {
+      removal: countCopies(removal),
+      narrow: countCopies(narrow),
+      counters: countCopies(counters),
+      protection: countCopies(protection),
+      oneSided: countCopies(oneSided),
+      fighting: fighting.length,
+      engines: countCopies(engines),
+      bursts: countCopies(bursts),
+      cantrips: countCopies(cantrips),
+    },
+    samples: {
+      narrow: narrow[0] || null,
+      fighting: fighting[0]?.card || null,
+      fightingReason: fighting[0]?.reason || "",
+      impulse: impulse[0] || null,
+      tutor: tutors[0] || null,
+      engine: engines[0] || null,
+      burst: bursts[0] || null,
+    },
+    confidence,
+  };
+}
+
+function hiddenAnswerWeaknesses({ answer, plan, roles, confidence, identity, usedNames }) {
+  const roleStatus = Object.fromEntries((roles || []).map((role) => [role.id, role.status]));
+  if (roleStatus.interaction !== "ok" && roleStatus.draw !== "ok" && roleStatus.wipes !== "ok") return [];
+  const holes = [];
+  const removalRow = answer.rows.find((row) => row.id === "removal");
+  const counterRow = answer.rows.find((row) => row.id === "counters");
+  const protectionRow = answer.rows.find((row) => row.id === "protection");
+  const wipeRow = answer.rows.find((row) => row.id === "wipes");
+  const engineRow = answer.rows.find((row) => row.id === "engines");
+  const hasBlue = (identity || []).includes("U");
+  if (roleStatus.interaction !== "short" && removalRow?.status === "short" && plan.id !== "spellslinger" && plan.id !== "control" && (answer.counts.narrow > 0 || answer.counts.counters > answer.counts.removal)) {
+    const sample = answer.samples.narrow;
+    const counterShaped = !sample && answer.counts.counters > 0;
+    holes.push(hiddenHole({
+      id: "answers-conditional",
+      title: counterShaped ? "The answers are counterspells, not removal" : "The answers only hit what their text names",
+      plain: counterShaped
+        ? `${plan.label} has ${answer.counts.counters} counterspells and ${answer.counts.removal} answers that remove a creature or permanent. A counterspell stops a spell on the stack. It does not remove the permanent that is already on the battlefield. ${rangePhrase([removalRow.min, removalRow.max])} is the band for that removal.`
+        : `${plan.label} can look like it has enough interaction while the printed text is a gate. ${sample?.name || "A conditional answer"} is conditional: ${sample?.removalNote || "it only hits some permanents"}. That card is still an answer, and it misses the permanent outside that sentence. Flexible removal is ${answer.counts.removal}. ${rangePhrase([removalRow.min, removalRow.max])} is the band for answers that hit a creature or permanent of any size.`,
+      cite: sample,
+      says: sample?.removalNote ? `${sample.removalNote.charAt(0).toUpperCase()}${sample.removalNote.slice(1)}. That is not an answer to the permanent outside that text.` : "The printed text only hits some permanents.",
+      pattern: /destroy|exile|damage|fight|counter/i,
+      swapRole: "interaction",
+      prefer: (card) => card.removalFlexible,
+      cutWhy: counterShaped ? "it does not remove a permanent that is already there" : "the printed text only hits some permanents",
+      confidence,
+      identity,
+      planId: plan.id,
+      usedNames,
+    }));
+  }
+  if (roleStatus.interaction !== "short" && (plan.id === "spellslinger" || plan.id === "control") && hasBlue && counterRow?.status === "short") {
+    holes.push(hiddenHole({
+      id: "answers-counters",
+      title: "Not enough counterspells for this spell plan",
+      plain: `${plan.label} lives on instants and sorceries. A counterspell is one of those spells, and it stops the spell that would take the commander away. Targeted removal answers a permanent that is already there. This list has ${answer.counts.counters} counterspells. ${rangePhrase([counterRow.min, counterRow.max])} is the band.`,
+      cite: null,
+      says: "",
+      pattern: /counter/i,
+      swapRole: "interaction",
+      prefer: (card) => card.counterFlexible,
+      cutWhy: "it does not counter a spell",
+      confidence,
+      identity,
+      planId: plan.id,
+      usedNames,
+    }));
+  }
+  if (roleStatus.interaction === "ok" && roleStatus.draw === "ok" && BOARD_PLANS.has(plan.id) && protectionRow?.status === "short" && answer.counts.protection === 0) {
+    holes.push(hiddenHole({
+      id: "answers-protection",
+      title: "Nothing keeps this plan's permanents alive",
+      plain: `Removal takes one permanent off the table. Protection stops that removal from hitting yours. ${plan.label} presents a board, and one removal spell aimed at it undoes the plan. This list has ${answer.counts.protection} protection. ${rangePhrase([protectionRow.min, protectionRow.max])} is the usual band, and the printed text does not say how fast the table is, so the number stays a band rather than a quota.`,
+      cite: null,
+      says: "",
+      pattern: /hexproof|indestructible|shroud|protection/i,
+      swapRole: "protection",
+      prefer: (card) => card.protection,
+      cutWhy: "it does not keep your permanents alive",
+      confidence: { ...confidence, level: confidence.level === "high" ? "medium" : confidence.level, reason: `${confidence.reason} The protection band is the usual one for a board plan, not a power-level measurement.` },
+      identity,
+      planId: plan.id,
+      usedNames,
+    }));
+  }
+  if (roleStatus.wipes === "ok" && wipeRow?.status === "short" && answer.samples.fighting) {
+    const sample = answer.samples.fighting;
+    holes.push(hiddenHole({
+      id: "wipes-own-board",
+      title: "The wipes also destroy this deck's own board",
+      plain: `${sample.name}. ${answer.samples.fightingReason} A one-sided wipe leaves your permanents and takes theirs. This list has ${answer.counts.oneSided}. ${rangePhrase(answer.aims.oneSidedWipes)} is the band for a plan that wins with its own creatures. A symmetric wipe is the one you cast when you are already behind.`,
+      cite: sample,
+      says: answer.samples.fightingReason,
+      pattern: /destroy all|exile all|each creature|all creatures/i,
+      swapRole: "wipes",
+      prefer: (card) => card.wipes && card.wipeScope === "one-sided",
+      cutWhy: "it destroys this deck's own creatures too",
+      confidence,
+      identity,
+      planId: plan.id,
+      usedNames,
+    }));
+  }
+  if (roleStatus.draw === "ok" && engineRow?.status === "short" && ENGINE_PLANS.has(plan.id)) {
+    const burst = answer.samples.burst;
+    holes.push(hiddenHole({
+      id: "draw-engines",
+      title: "The card draw happens once",
+      plain: `${burst ? `${burst.name} draws cards once. The hand gets larger, and then that spell is gone.` : "The draw in this list resolves once."} ${plan.label} keeps doing the thing the commander is printed to do, and the draw that matches that stays on the battlefield and draws again. Repeatable draws: ${answer.counts.engines}. ${rangePhrase([engineRow.min, engineRow.max])} is the band. A loot, an impulse, and a tutor are not that band.`,
+      cite: burst,
+      says: "This draws its cards once. It does not keep drawing.",
+      pattern: /draw/i,
+      swapRole: "draw",
+      prefer: (card) => card.drawKind === "engine",
+      cutWhy: "it draws once and then it is gone",
+      confidence,
+      identity,
+      planId: plan.id,
+      usedNames,
+    }));
+  }
+  return holes.filter((hole) => hole.plain).slice(0, 3);
+}
+
+function hiddenHole({ id, title, plain, cite, says, pattern, swapRole, prefer, cutWhy, confidence, identity, planId, usedNames }) {
+  const swaps = rankKindAdds({ role: swapRole, prefer, identity, planId, usedNames }).slice(0, 1).map((add) => ({
+    cut: cite?.name || null,
+    add: add.name,
+    reason: `${add.because} ${cite ? `Cut ${cite.name}: ${cutWhy}.` : ""}`.trim(),
+  }));
+  return {
+    id,
+    score: 1,
+    title,
+    plain,
+    citations: cite?.oracleText ? [{
+      name: cite.name,
+      quantity: cite.quantity || 1,
+      quote: quoteCard(cite, pattern),
+      says,
+    }] : [],
+    swaps,
+    confidence: confidence?.level || "medium",
+    confidenceReason: confidence?.reason || "Read from the printed text of the cards in the list.",
+  };
+}
+
+function rankKindAdds({ role, prefer, identity, planId, usedNames }) {
+  return SWAP_CATALOG
+    .map((entry) => ({ entry, roles: classifyPrintedCard(entry) }))
+    .filter(({ entry, roles }) => !usedNames.has(entry.name.toLowerCase()) && fitsIdentity(entry.colors, identity) && (prefer ? prefer(roles) : roles[role]))
+    .map(({ entry, roles }) => {
+      let score = 0;
+      if (entry.plans.includes("*") || entry.plans.includes(planId)) score += 3;
+      if (prefer?.(roles)) score += 2;
+      if (printedCmc(entry) <= 3) score += 1;
+      return { entry, score };
+    })
+    .sort((left, right) => right.score - left.score || left.entry.name.localeCompare(right.entry.name))
+    .map(({ entry }) => entry);
+}
+
+function mixSentence(role, cards, plan, answer) {
+  if (!answer) return "";
+  if (role === "interaction") {
+    const narrow = cards.filter((card) => card.removal && !card.removalFlexible);
+    const lead = narrow[0];
+    const removal = answer.rows.find((row) => row.id === "removal");
+    const counters = answer.rows.find((row) => row.id === "counters");
+    const narrowSentence = lead ? `${lead.name} ${lead.removalNote}. That is still an answer, and it is not an answer to everything else.` : "";
+    return `${narrowSentence} Flexible removal is ${answer.counts.removal} (${rangePhrase([removal.min, removal.max])}). Counters are ${answer.counts.counters} (${rangePhrase([counters.min, counters.max])}).`.replace(/^\s+/, "");
+  }
+  if (role === "draw") {
+    const engines = answer.rows.find((row) => row.id === "engines");
+    const extra = answer.excluded?.[0];
+    return `Repeatable draws, the ones that keep going, are ${answer.counts.engines} (${rangePhrase([engines.min, engines.max])}). One-shot draws are ${answer.counts.bursts}. ${extra ? `${extra.name} is not in that count: ${extra.note}.` : ""}`.trim();
+  }
+  if (role === "wipes") {
+    const sample = answer.samples.fighting;
+    if (!sample) return answer.counts.oneSided ? `${answer.counts.oneSided} of the wipes leave your permanents alone.` : "";
+    return `${sample.name}. ${answer.samples.fightingReason} One-sided wipes: ${answer.counts.oneSided} (${rangePhrase(answer.aims.oneSidedWipes)}).`;
+  }
+  return "";
 }
 
 function planTheory(plan, commanderName, kind, subject) {
@@ -636,7 +1325,7 @@ export function buildCurveRoleCoaching(input = {}) {
   if (!oracleSeen && readableCards.length === 0) {
     return {
       readable: false,
-      message: "Paste the decklist with the commander's printed Oracle text. Ramp, draw, interaction, wipes, and win conditions are read from that text. A loot is not card advantage, and mana that can only cast one kind of spell is not generic ramp — names alone cannot show the difference.",
+      message: "Paste the decklist with the commander's printed Oracle text. Ramp, draw, interaction, wipes, and win conditions are read from that text. A loot is not card advantage, an impulse is not a draw, a tutor finds one card, and mana that can only cast one kind of spell is not generic ramp — names alone cannot show the difference.",
     };
   }
 
@@ -726,6 +1415,18 @@ export function buildCurveRoleCoaching(input = {}) {
     ? countOf(modalInteraction) / countOf(roleCards.interaction)
     : 0;
   const confidence = confidenceFor({ plan, unreadShare, partial, modalShare, strategyConflict });
+  const answerRead = buildAnswerRead({
+    cards,
+    plan,
+    ranges: {
+      ...ranges,
+      protection: scaleRange(BOARD_PLANS.has(plan.id) ? [2, 4] : [1, 2], scale),
+      protectionSoft: scaleRange([1, 2], scale),
+    },
+    confidence,
+    commanderText: primary?.oracleText || "",
+    identity,
+  });
 
   const usedNames = new Set(cards.map((card) => card.name.toLowerCase()));
   const lessons = [];
@@ -735,7 +1436,8 @@ export function buildCurveRoleCoaching(input = {}) {
     if (!row || row.status === "ok") return;
     const kind = row.status === "short" ? "short" : "over";
     const pool = kind === "short" ? row.cards : [...row.cards].sort((left, right) => right.cmc - left.cmc);
-    const excluded = role === "ramp" && kind === "short" ? excludedRamp : role === "draw" && kind === "short" ? lootCards : [];
+    const notDraw = cardsWith((card) => card.loot || card.impulse || (card.tutor && !card.draw) || card.selection);
+    const excluded = role === "ramp" && kind === "short" ? excludedRamp : role === "draw" && kind === "short" ? notDraw : [];
     const occupying = highCurveCuts(nonlands, roleCards.wincon);
     const causing = kind === "short"
       ? [...pool, ...excluded, ...(pool.length || excluded.length ? [] : occupying)]
@@ -748,7 +1450,13 @@ export function buildCurveRoleCoaching(input = {}) {
           ? `${card.conditionalRampReason}, so it is not generic ramp`
           : card.loot
             ? "it draws and then discards, which does not add a card"
-            : `it costs ${card.cmc} and is not the missing ${ROLE_LABELS[role].toLowerCase()}`,
+            : card.impulse
+              ? "it exiles cards to play now, which does not draw them"
+              : card.tutor
+                ? "it finds one card, so the hand does not get larger"
+                : card.selection
+                  ? "it selects a card, which is not card advantage"
+                  : `it costs ${card.cmc} and is not the missing ${ROLE_LABELS[role].toLowerCase()}`,
       }));
     const needed = kind === "short" ? role : shortestRole(roles);
     const swaps = buildSwaps({
@@ -772,12 +1480,18 @@ export function buildCurveRoleCoaching(input = {}) {
       title: kind === "short"
         ? `${row.label} is short for ${plan.label}`
         : `${row.label} is past what ${plan.label} wants`,
-      theory: planTheory(plan, primary?.name, kind, role),
+      theory: [planTheory(plan, primary?.name, kind, role), mixSentence(role, nonlands, plan, answerRead)].filter(Boolean).join(" "),
       cards: causingCards(causing),
       excluded: excluded.map((card) => ({
         name: card.name,
         quantity: card.quantity,
-        note: card.conditionalRampReason || (card.loot ? "draw then discard, which is a loot, not card advantage" : card.notes[0] || "not counted"),
+        note: card.conditionalRampReason
+          || (card.loot ? "draw then discard, which is a loot, not card advantage" : "")
+          || card.impulseNote
+          || card.tutorNote
+          || card.selectionNote
+          || card.notes[0]
+          || "not counted",
       })),
       swaps,
       swapNote: swaps.length ? "" : "No color-legal swap from the cards I can vouch for. The gap is still the gap.",
@@ -884,6 +1598,20 @@ export function buildCurveRoleCoaching(input = {}) {
     deckSize: totalQuantity,
     confidence,
   });
+  const hidden = hiddenAnswerWeaknesses({
+    answer: answerRead,
+    plan,
+    roles,
+    confidence,
+    identity,
+    usedNames,
+  });
+  const soundOnly = weaknessReport.weaknesses.length === 1 && weaknessReport.weaknesses[0].id === "sound";
+  const weaknesses = soundOnly && hidden.length ? hidden : weaknessReport.weaknesses;
+  const weaknessHeading = soundOnly && hidden.length ? "What to fix first" : weaknessReport.heading;
+  const weaknessIntro = soundOnly && hidden.length
+    ? "The usual counts can look fine while the printed text is the wrong kind of answer, the wrong kind of wipe, or a draw that only happens once."
+    : weaknessReport.intro;
 
   return {
     readable: true,
@@ -893,9 +1621,10 @@ export function buildCurveRoleCoaching(input = {}) {
     fixingNote,
     partial,
     confidence,
-    weaknessHeading: weaknessReport.heading,
-    weaknessIntro: weaknessReport.intro,
-    weaknesses: weaknessReport.weaknesses,
+    weaknessHeading,
+    weaknessIntro,
+    weaknesses,
+    answerRead,
     curve: {
       average,
       ideal,
@@ -973,6 +1702,20 @@ export function formatCurveRoleCoaching(report) {
   lines.push("");
   lines.push(`Mana curve: ${report.curve.summary}`);
   lines.push(report.curve.buckets.map((bucket) => `${bucket.label} mana: ${bucket.actual}`).join(" · "));
+  lines.push("");
+  if (report.answerRead) {
+    lines.push("");
+    lines.push("Interaction and card advantage:");
+    lines.push(report.answerRead.summary);
+    for (const row of report.answerRead.rows) {
+      const band = row.min == null ? "" : ` (${rangePhrase([row.min, row.max])}, ${row.status}).`;
+      lines.push(`${row.label}: ${row.actual}${band} ${row.detail}`);
+    }
+    if (report.answerRead.excluded?.length) {
+      lines.push(`Not card advantage: ${report.answerRead.excluded.map((card) => `${card.quantity > 1 ? `${card.quantity} ` : ""}${card.name} (${card.note})`).join("; ")}.`);
+    }
+    lines.push(`Confidence: ${report.answerRead.confidence.level}. ${report.answerRead.confidence.reason}`);
+  }
   lines.push("");
   lines.push("Roles, from printed Oracle text:");
   for (const role of report.roles) {

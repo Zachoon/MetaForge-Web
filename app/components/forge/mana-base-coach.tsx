@@ -106,7 +106,7 @@ export function ManaBaseCoach({
     );
   }
 
-  if (!report?.readable) {
+  if (!report?.readable || !report.confidence || !report.lands || !report.colors || !report.lessons) {
     return (
       <section className="mana-base-coach" aria-label="Mana base coaching">
         <small>NATIVE COACH · MANA BASE</small>
@@ -179,7 +179,7 @@ export function ManaBaseCoach({
             <h4>{lesson.title}</h4>
             <p><span>Theory. </span>{lesson.theory}</p>
             {lesson.cards?.length ? (
-              <p><span>Cards. </span>{lesson.cards.map((card) => (card.quantity > 1 ? `${card.quantity} ${card.name}` : card.name)).join(", ")}.</p>
+              <p><span>Cards. </span>{lesson.cards.map((card: { name: string; quantity?: number }) => (card.quantity && card.quantity > 1 ? `${card.quantity} ${card.name}` : card.name)).join(", ")}.</p>
             ) : null}
             {lesson.quotes?.map((quote) => (
               <blockquote className="mana-base-quote" key={`${lesson.id}-${quote.name}`}>
@@ -191,7 +191,7 @@ export function ManaBaseCoach({
             {lesson.excluded?.length ? (
               <p>
                 <span>Not counted. </span>
-                {lesson.excluded.map((card) => `${card.quantity > 1 ? `${card.quantity} ${card.name}` : card.name} (${card.note})`).join("; ")}.
+                {lesson.excluded.map((card: { name: string; quantity?: number; note?: string }) => `${card.quantity && card.quantity > 1 ? `${card.quantity} ${card.name}` : card.name} (${card.note})`).join("; ")}.
               </p>
             ) : null}
             {lesson.swaps?.length ? lesson.swaps.map((swap) => (
