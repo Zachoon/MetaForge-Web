@@ -609,7 +609,7 @@ export default function Home() {
             <IdentityBadge depth={playerIdentity.depth} totalMilestones={playerIdentity.allMilestones.length} dominantMotif={playerIdentity.dominantMotif} accent={playerIdentity.accent} celebrating={Boolean(identityCelebration)} celebrationLabel={identityCelebration?.label ?? null} />
             <button type="button" onClick={() => setChamber("entrance")}>Start a new deck</button>
             <p className="forge-menu-version" aria-label="MetaForge version 2.1.0">MetaForge v2.1.0</p>
-            <nav aria-label="Learn, legal, and support"><Link href="/commanders">Commander Guides</Link><Link href="/academy">Deckbuilding Academy</Link><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="mailto:support@metaforge.gg">Support</a></nav>
+            <nav aria-label="Learn, legal, and support"><Link href="/learn">Learn</Link><Link href="/commanders">Commander Guides</Link><Link href="/academy">Deckbuilding Academy</Link><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="mailto:support@metaforge.gg">Support</a></nav>
           </div>
         </details>
       </header>

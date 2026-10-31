@@ -67,6 +67,7 @@ export default function FounderCommandCenter() {
   const [opinionLoading,setOpinionLoading]=useState<string | null>(null);
   const [errors, setErrors] = useState<ErrorGroup[] | null>(null);
   const [errorStatus, setErrorStatus] = useState("loading");
+  const [learnReview, setLearnReview] = useState<{ items: Array<{ slug: string; title: string; status: string; reviewState: string; reasons?: string[] }>; runs?: unknown[] }>({ items: [] });
   const load = async () => {
     setStatus("loading");
     try {
@@ -79,6 +80,8 @@ export default function FounderCommandCenter() {
       if (errorResponse.ok) { setErrors((await errorResponse.json()).groups || []); setErrorStatus("ready"); }
       else setErrorStatus("error");
       const goblinResponse=await fetch("/api/founder/goblins",{cache:"no-store"});if(goblinResponse.ok)setGoblins(await goblinResponse.json());
+      const learnResponse = await fetch("/api/founder/learn-review", { cache: "no-store" });
+      if (learnResponse.ok) setLearnReview(await learnResponse.json());
       const opinionResponse=await fetch("/api/coach/opinion",{cache:"no-store"});if(opinionResponse.ok)setOpinionQuestions((await opinionResponse.json()).questions||[]);
     } catch { setStatus("error"); }
   };
@@ -126,6 +129,9 @@ export default function FounderCommandCenter() {
     </section>
     <section className="founder-panel" id="error-reports"><header><div><small>ERROR REPORTS · LAST 14 DAYS</small><h2>Recent errors</h2><p className="trust-lede">Grouped by message. Client reports wait for the measurement choice. Worker exceptions are operational. No decklists.</p></div><b>{errors?.reduce((sum, group) => sum + group.occurrences, 0) || 0} EVENTS</b></header>
       <div className="error-groups">{(errors || []).map((group) => <article key={group.message}><div><span>{group.kinds.join(" · ") || "error"} · {group.sources.join(" · ")}</span><time>{new Date(group.lastSeen).toLocaleString()} · {group.occurrences}×</time></div><p>{group.message}</p><small>{group.routes.join(", ") || "/"} · {group.browsers.join(", ") || "browser unknown"} · {group.builds.map((build) => build.slice(0, 7)).join(", ") || "build unknown"}{group.latest?.detail ? ` · ${group.latest.detail}` : ""}{group.latest?.viewport ? ` · ${group.latest.viewport}` : ""}{group.latest?.session ? ` · session ${group.latest.session.slice(0, 8)}` : ""}</small>{(group.latest?.stack || group.latest?.userAgent) && <details><summary>Latest stack</summary>{group.latest?.userAgent && <p>{group.latest.userAgent}</p>}<pre>{group.latest?.stack || "No stack captured."}</pre></details>}</article>)}{errorStatus === "error" && <p className="empty">Error reports are unavailable. Apply migration 0019_error_reports.sql, then refresh.</p>}{errorStatus === "ready" && !errors?.length && <p className="empty">No errors recorded in the last 14 days.</p>}</div>
+    </section>
+    <section className="founder-panel" id="learn-review"><header><div><small>LEARN · DRAFTS AND AUTO-PUBLISHED NOTES</small><h2>Article review</h2><p>Prose stays unpublished until the source, quotation, and card-name checks pass. Data-only notes can publish and still appear here until you approve them.</p></div><b>{learnReview.items.length} OPEN</b></header>
+      <div className="error-groups">{learnReview.items.map((item) => <article key={item.slug}><div><span>{item.status} · {item.reviewState}</span></div><p>{item.title}</p><small>{item.slug}{item.reasons?.length ? ` · ${item.reasons.join(", ")}` : ""}</small><p><a href={`/learn/${item.slug}`}>Open</a></p></article>)}{!learnReview.items.length && <p className="empty">No Learn drafts are waiting.</p>}</div>
     </section>
     <section className="founder-panel"><header><div><small>CAMPAIGN ATTRIBUTION · LAST 30 DAYS</small><h2>What brings builders</h2></div><b>CONSENTED · ANONYMOUS</b></header>
       <div className="founder-table"><div className="table-head"><span>SOURCE</span><span>MEDIUM</span><span>CAMPAIGN</span><span>VISITORS</span><span>DECKS</span><span>RATE</span></div>{(data.launch?.campaigns || []).map((item,index)=><article key={`${item.source}-${item.campaign}-${index}`}><b>{item.source}</b><span>{item.medium}</span><span>{item.campaign}</span><span>{item.sessions}</span><span>{item.completed}</span><em>{item.sessions ? Math.round(item.completed/item.sessions*100) : 0}%</em></article>)}{!data.launch?.campaigns.length&&<p className="empty">Campaign results will appear after visitors allow anonymous measurement.</p>}</div>

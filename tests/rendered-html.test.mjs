@@ -297,8 +297,9 @@ test("publishes a crawlable public robots file and sitemap", async () => {
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/academy\/how-many-lands-should-a-commander-deck-have<\/loc>/);
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/tools\/commander-land-calculator<\/loc>/);
   const locations = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
-  assert.equal(locations.length, 57);
+  assert.equal(locations.length, 102);
   assert.equal(new Set(locations).size, locations.length);
+  assert.ok(locations.includes("https://metaforge.gg/learn"));
 });
 
 test("publishes an indexable community deck library without exposing private account data", async () => {
@@ -371,6 +372,37 @@ test("adds useful structural analysis to a public deck report", async () => {
   assert.match(workbenchChamber, /Keep private/);
   assert.match(workbenchChamber, /Publish this report/);
   assert.match(pageSource, /unpublishPublicDeckReport/);
+});
+
+test("publishes the Learn library with article metadata and a sitemap entry", async () => {
+  const index = await render("https://metaforge.gg/learn");
+  assert.equal(index.status, 200);
+  const html = await index.text();
+  assert.match(html, /<title>Learn Commander \| MetaForge<\/title>/i);
+  assert.match(html, /<link rel="canonical" href="https:\/\/metaforge\.gg\/learn"/i);
+  assert.match(html, /How the coach reads a Commander curve/);
+  assert.match(html, /href="\/learn\/how-the-coach-reads-a-commander-curve"/);
+  assert.match(html, /max-width:65ch/);
+  assert.match(html, /"@type":"CollectionPage"/);
+  assert.match(html, /href="\/learn\/news\/rss\.xml"/);
+
+  const article = await render("https://metaforge.gg/learn/reality-fracture-commander-set-review");
+  assert.equal(article.status, 200);
+  const articleHtml = await article.text();
+  assert.match(articleHtml, /<link rel="canonical" href="https:\/\/metaforge\.gg\/learn\/reality-fracture-commander-set-review"/i);
+  assert.match(articleHtml, /property="og:title"/i);
+  assert.match(articleHtml, /name="twitter:card"/i);
+  assert.match(articleHtml, /"@type":"Article"/);
+  assert.match(articleHtml, /"@type":"BreadcrumbList"/);
+  assert.match(articleHtml, /2026-10-02/);
+  assert.match(articleHtml, /Build this/);
+  assert.match(articleHtml, /href="\/commanders\//);
+
+  const sitemap = await render("https://metaforge.gg/sitemap.xml");
+  const xml = await sitemap.text();
+  assert.match(xml, /<loc>https:\/\/metaforge\.gg\/learn<\/loc>/);
+  assert.match(xml, /<loc>https:\/\/metaforge\.gg\/learn\/reality-fracture-commander-set-review<\/loc>/);
+  assert.doesNotMatch(xml, /<loc>https:\/\/metaforge\.gg\/learn\/category\/spoilers<\/loc>/);
 });
 
 test("blocks crawler discovery on the authenticated host", async () => {

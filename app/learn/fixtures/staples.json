@@ -1,0 +1,210 @@
+{
+  "source": "https://api.scryfall.com/cards/named",
+  "fetched_at": "2026-10-31",
+  "cards": [
+    {
+      "id": "4645eebf-c9fc-4ee7-b646-61dc1205b4b0",
+      "oracle_id": "b1544f21-7e98-461b-aed5-e748b0168c52",
+      "name": "Swords to Plowshares",
+      "mana_cost": "{W}",
+      "cmc": 1.0,
+      "type_line": "Instant",
+      "oracle_text": "Exile target creature. Its controller gains life equal to its power.",
+      "color_identity": [
+        "W"
+      ],
+      "keywords": [],
+      "set": "trc",
+      "set_name": "Star Trek Commander"
+    },
+    {
+      "id": "4f616706-ec97-4923-bb1e-11a69fbaa1f8",
+      "oracle_id": "cc187110-1148-4090-bbb8-e205694a39f5",
+      "name": "Counterspell",
+      "mana_cost": "{U}{U}",
+      "cmc": 2.0,
+      "type_line": "Instant",
+      "oracle_text": "Counter target spell.",
+      "color_identity": [
+        "U"
+      ],
+      "keywords": [],
+      "set": "dsc",
+      "set_name": "Duskmourn: House of Horror Commander"
+    },
+    {
+      "id": "1929cf4b-0d18-4f7d-a631-621a378ff015",
+      "oracle_id": "7735eeba-693b-47e2-bd51-414379cf1016",
+      "name": "Beast Within",
+      "mana_cost": "{2}{G}",
+      "cmc": 3.0,
+      "type_line": "Instant",
+      "oracle_text": "Destroy target permanent. Its controller creates a 3/3 green Beast creature token.",
+      "color_identity": [
+        "G"
+      ],
+      "keywords": [],
+      "set": "trc",
+      "set_name": "Star Trek Commander"
+    },
+    {
+      "id": "7d4b1d44-126e-4987-9a9f-f0f9627a09cb",
+      "oracle_id": "7a2484a9-04fd-41a0-8224-610c1c07ed10",
+      "name": "Blasphemous Act",
+      "mana_cost": "{8}{R}",
+      "cmc": 9.0,
+      "type_line": "Sorcery",
+      "oracle_text": "This spell costs {1} less to cast for each creature on the battlefield.\nBlasphemous Act deals 13 damage to each creature.",
+      "color_identity": [
+        "R"
+      ],
+      "keywords": [],
+      "set": "msc",
+      "set_name": "Marvel Super Heroes Commander"
+    },
+    {
+      "id": "9f37c5b6-a59c-45cd-9a99-e9357fe9ea1b",
+      "oracle_id": "53236dd7-845a-444c-96d5-f41ed7325d8f",
+      "name": "Rhystic Study",
+      "mana_cost": "{2}{U}",
+      "cmc": 3.0,
+      "type_line": "Enchantment",
+      "oracle_text": "Whenever an opponent casts a spell, you may draw a card unless that player pays {1}.",
+      "color_identity": [
+        "U"
+      ],
+      "keywords": [],
+      "set": "j22",
+      "set_name": "Jumpstart 2022"
+    },
+    {
+      "id": "0784b6f0-9ebf-43d2-ba0f-a6bc93ba0c48",
+      "oracle_id": "ee579a32-a048-4335-b966-231ba731cdea",
+      "name": "Phyrexian Arena",
+      "mana_cost": "{1}{B}{B}",
+      "cmc": 3.0,
+      "type_line": "Enchantment",
+      "oracle_text": "At the beginning of your upkeep, you draw a card and lose 1 life.",
+      "color_identity": [
+        "B"
+      ],
+      "keywords": [],
+      "set": "fdn",
+      "set_name": "Foundations"
+    },
+    {
+      "id": "fc817e07-c1f3-469f-9cf7-0945dea7400f",
+      "oracle_id": "6ad8011d-3471-4369-9d68-b264cc027487",
+      "name": "Sol Ring",
+      "mana_cost": "{1}",
+      "cmc": 1.0,
+      "type_line": "Artifact",
+      "oracle_text": "{T}: Add {C}{C}.",
+      "color_identity": [],
+      "keywords": [],
+      "set": "trc",
+      "set_name": "Star Trek Commander"
+    },
+    {
+      "id": "795df2ee-fbfc-4961-852c-e3ec50cc52da",
+      "oracle_id": "0bc7f093-bef0-4f1a-852c-4b75ebf54838",
+      "name": "Arcane Signet",
+      "mana_cost": "{2}",
+      "cmc": 2.0,
+      "type_line": "Artifact",
+      "oracle_text": "{T}: Add one mana of any color in your commander's color identity.",
+      "color_identity": [],
+      "keywords": [],
+      "set": "trc",
+      "set_name": "Star Trek Commander"
+    },
+    {
+      "id": "a73297d2-580c-4174-a427-265f6916d09f",
+      "oracle_id": "0895c9b7-ae7d-4bb3-af17-3b75deb50a25",
+      "name": "Command Tower",
+      "mana_cost": "",
+      "cmc": 0.0,
+      "type_line": "Land",
+      "oracle_text": "{T}: Add one mana of any color in your commander's color identity.",
+      "color_identity": [],
+      "keywords": [],
+      "set": "trc",
+      "set_name": "Star Trek Commander"
+    },
+    {
+      "id": "a78f5d3f-74d6-4ec1-89c4-e24639d3f4ba",
+      "oracle_id": "8b755881-a72d-4e21-a369-d2924eb4585a",
+      "name": "Cultivate",
+      "mana_cost": "{2}{G}",
+      "cmc": 3.0,
+      "type_line": "Sorcery",
+      "oracle_text": "Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.",
+      "color_identity": [
+        "G"
+      ],
+      "keywords": [],
+      "set": "trc",
+      "set_name": "Star Trek Commander"
+    },
+    {
+      "id": "6a55cafa-cb5c-482c-b3c9-1b1f4f0c698d",
+      "oracle_id": "78826359-fe63-44ad-adc4-a17ffcd710e4",
+      "name": "Nature's Lore",
+      "mana_cost": "{1}{G}",
+      "cmc": 2.0,
+      "type_line": "Sorcery",
+      "oracle_text": "Search your library for a Forest card, put that card onto the battlefield, then shuffle.",
+      "color_identity": [
+        "G"
+      ],
+      "keywords": [],
+      "set": "trc",
+      "set_name": "Star Trek Commander"
+    },
+    {
+      "id": "fb8d8106-b9bd-405c-886e-72fc301c65e1",
+      "oracle_id": "07a0cba9-8768-4fd9-a3d5-b0f83b4bf8e8",
+      "name": "Chaos Warp",
+      "mana_cost": "{2}{R}",
+      "cmc": 3.0,
+      "type_line": "Instant",
+      "oracle_text": "The owner of target permanent shuffles it into their library, then reveals the top card of their library. If it's a permanent card, they put it onto the battlefield.",
+      "color_identity": [
+        "R"
+      ],
+      "keywords": [],
+      "set": "mbc",
+      "set_name": "Mystery Booster Commander Edition"
+    },
+    {
+      "id": "8c8f954b-0da2-412c-ad7a-86225bb330ea",
+      "oracle_id": "7ffae8f8-3006-4969-a339-6d30678f87ea",
+      "name": "Night's Whisper",
+      "mana_cost": "{1}{B}",
+      "cmc": 2.0,
+      "type_line": "Sorcery",
+      "oracle_text": "You draw two cards and lose 2 life.",
+      "color_identity": [
+        "B"
+      ],
+      "keywords": [],
+      "set": "trc",
+      "set_name": "Star Trek Commander"
+    },
+    {
+      "id": "f67b323d-0dda-45f8-84b7-d883ce5045a8",
+      "oracle_id": "94f0a572-e91c-4b56-a5d1-6cbbeabd210d",
+      "name": "Infernal Grasp",
+      "mana_cost": "{1}{B}",
+      "cmc": 2.0,
+      "type_line": "Instant",
+      "oracle_text": "Destroy target creature. You lose 2 life.",
+      "color_identity": [
+        "B"
+      ],
+      "keywords": [],
+      "set": "soc",
+      "set_name": "Secrets of Strixhaven Commander"
+    }
+  ]
+}
