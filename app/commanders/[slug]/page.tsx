@@ -15,6 +15,7 @@ import { occupancyEngineCopyFor } from "../occupancy-copy.mjs";
 import { COMMANDER_GUIDES, commanderGuideBySlug } from "../data.mjs";
 import { commanderGuideProfile } from "../guide-profiles.mjs";
 import { ManaSymbol, ManaText } from "../../components/mana-symbols";
+import { PageTrail, SiteHeader } from "../../components/site-chrome";
 
 export function generateStaticParams() {
   return COMMANDER_GUIDES.map((entry) => ({ slug: entry.slug }));
@@ -64,8 +65,9 @@ export default async function CommanderGuidePage({ params }: { params: Promise<{
 
   return (
     <main className="legal-page forge-atmosphere">
+      <SiteHeader current="commanders" />
       <div className="legal-shell">
-        <a className="legal-brand" href="/"><i>MF</i> METAFORGE</a>
+        <PageTrail crumbs={[{ href: "/", label: "Explore" }, { href: "/commanders", label: "Commander guides" }, { label: card.name }]} />
         <article className="legal-card">
           <small>COMMANDER DECK GUIDE</small>
           <h1>{card.name}</h1>

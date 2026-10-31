@@ -178,6 +178,7 @@ export default function Home() {
     stage,
     buildStep,
     setBuildStep,
+    setBuildPath,
     format,
     strategy,
     setStrategy,
@@ -586,10 +587,32 @@ export default function Home() {
             METAFORGE<small>THE GREAT FORGE</small>
           </span>
         </button>
-        <nav className="forge-global-nav" aria-label="MetaForge workspace">
-          <button type="button" className={chamber === "entrance" ? "active" : ""} onClick={() => setChamber("entrance")}>Home</button>
-          {/* Only offer destinations that work right now: a visitor's first
-              look shouldn't be a row of disabled buttons. */}
+        <nav className="forge-global-nav" aria-label="MetaForge">
+          <button type="button" className={chamber === "entrance" ? "active" : ""} onClick={() => setChamber("entrance")}>Explore</button>
+          <a href="/commanders">Commanders</a>
+          <button
+            type="button"
+            className={chamber === "commission" || chamber === "refine" || chamber === "guided-build" || chamber === "forging" || chamber === "workbench" ? "active" : ""}
+            onClick={() => {
+              if (hasValidatedDeck) {
+                setChamber("workbench");
+                setSiteRail("decklist");
+                return;
+              }
+              if (chamber === "commission" || chamber === "refine" || chamber === "guided-build") return;
+              setDeck("");
+              setReviewFocus("");
+              setSelectedCommander(null);
+              setSelectedSecondCommander(null);
+              setCommanderQuery("");
+              setBuildStep(0);
+              setBuildPath("discover");
+              setChamber("commission");
+            }}
+          >Build</button>
+          {/* Reserved for the articles section. Do not build that page here. */}
+          <a href="/learn">Learn</a>
+          <a href="/academy">Academy</a>
           {hasValidatedDeck && <button type="button" onClick={openDeepForgeEvidence}>Evidence</button>}
           <a href="/decks">Community</a>
         </nav>

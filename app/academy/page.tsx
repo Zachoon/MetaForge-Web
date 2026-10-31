@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "../legal.css";
 import "../academy.css";
 import { NEW_ACADEMY_GUIDES } from "./guides-data";
+import { PageTrail, SiteHeader } from "../components/site-chrome";
 
 export const metadata: Metadata = {
   title: "MetaForge Academy — Commander Deckbuilding Guides",
@@ -60,8 +61,9 @@ const GUIDES = [
 export default function AcademyIndex() {
   return (
     <main className="legal-page forge-atmosphere">
+      <SiteHeader current="academy" />
       <div className="legal-shell">
-        <a className="legal-brand" href="/"><i>MF</i> METAFORGE</a>
+        <PageTrail crumbs={[{ href: "/", label: "Explore" }, { label: "Academy" }]} />
         <article className="legal-card">
           <small>METAFORGE ACADEMY</small>
           <h1>Commander Deckbuilding Academy</h1>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "../legal.css";
+import { PageTrail, SiteHeader } from "../components/site-chrome";
 
 export const metadata: Metadata = {
   title: "How MetaForge Evaluates MTG Decks",
@@ -9,8 +10,8 @@ export const metadata: Metadata = {
 };
 
 export default function Methodology() {
-  return <main className="legal-page forge-atmosphere"><div className="legal-shell">
-    <Link className="legal-brand" href="/"><i>MF</i> METAFORGE</Link>
+  return <main className="legal-page forge-atmosphere"><SiteHeader /><div className="legal-shell">
+    <PageTrail crumbs={[{ href: "/", label: "Explore" }, { label: "Methodology" }]} />
     <article className="legal-card"><small>METHOD &amp; EVIDENCE</small><h1>How MetaForge evaluates a Magic deck</h1><p className="updated">The goal is a useful explanation you can test—not an unexplained grade.</p>
       <section><h2>1. Establish the deck&rsquo;s contract</h2><p>Format legality, commander color identity, deck size, player preferences, budget, and intended game plan define the boundaries. A legal staple does not automatically fit the contract.</p></section>
       <section><h2>2. Read the structure</h2><p>MetaForge identifies the jobs cards perform: mana development, card flow, interaction, protection, setup, engine support, payoff, recovery, and closing pressure. Counts are interpreted in context rather than compared with one universal template.</p></section>

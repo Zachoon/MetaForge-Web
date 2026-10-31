@@ -63,6 +63,11 @@ export function EntranceChamber() {
             }}
           />
         </div>
+        <nav className="mf-journey" aria-label="First visit">
+          <Link href="/commanders"><b>1</b><span>Start with your commander</span></Link>
+          <Link href="/?intent=build"><b>2</b><span>Build</span></Link>
+          <Link href="/academy"><b>3</b><span>Learn</span></Link>
+        </nav>
         <div className="entrance-secondary">
           <button
             type="button"

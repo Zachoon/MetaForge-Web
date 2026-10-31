@@ -1,1 +1,82 @@
-.legal-page{min-height:100vh;padding:42px 20px 80px;background:radial-gradient(circle at 50% -10%,#542b1a 0,transparent 34%),#0d0908;color:#eee2cf;font-family:Inter,sans-serif}.legal-shell{width:min(820px,100%);margin:auto}.legal-brand{display:inline-flex;align-items:center;gap:12px;color:#f4e8d2;text-decoration:none;font-weight:800;letter-spacing:.12em}.legal-brand i{display:grid;width:38px;height:38px;place-items:center;border:1px solid #d8792f;border-radius:50%;color:#e79b41;font-style:normal}.legal-card{margin-top:28px;padding:clamp(24px,5vw,54px);border:1px solid #513326;border-radius:18px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") repeat,rgba(21,14,12,.94);background-blend-mode:overlay,normal;box-shadow:0 30px 90px #0008}.legal-card>small{color:#e79b41;font-size:11px;font-weight:800;letter-spacing:.16em}.legal-card h1{margin:10px 0 8px;font:600 clamp(36px,7vw,62px)/1 Newsreader,Georgia,serif}.legal-card .updated{margin:0 0 32px;color:#a58f7c;font-size:13px}.legal-card section{padding:23px 0;border-top:1px solid #39251d}.legal-card h2{margin:0 0 10px;color:#f3dfc1;font:600 23px Newsreader,Georgia,serif}.legal-card p,.legal-card li{color:#c9baa7;font-size:15px;line-height:1.72}.legal-card ul{padding-left:22px}.legal-card a{color:#eda75a}.legal-links{display:flex;flex-wrap:wrap;gap:18px;margin-top:24px;color:#8e7967;font-size:13px}.legal-links a{color:#cba77e;text-decoration:none}
+.legal-page {
+  min-height: 100vh;
+  padding: 0 0 80px;
+  background: var(--mf-page-bg, #070908);
+  color: var(--mf-ivory, #f3efe6);
+  font-family: Inter, sans-serif;
+  overflow-x: clip;
+}
+.legal-shell {
+  width: min(1080px, calc(100% - 32px));
+  margin: 0 auto;
+  padding-top: 22px;
+}
+.legal-card {
+  margin-top: 0;
+  padding: clamp(20px, 4vw, 40px);
+  border: 1px solid var(--mf-border, #6d4e32);
+  border-radius: 2px;
+  background:
+    linear-gradient(180deg, rgba(224, 181, 106, 0.05), transparent 72px),
+    var(--mf-surface-1, #14110e);
+  box-shadow: var(--mf-frame-shadow, inset 0 0 0 4px rgba(166, 116, 62, 0.16));
+}
+.legal-card > small {
+  color: var(--mf-ornament, #e0b56a);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+.legal-card h1 {
+  margin: 8px 0 8px;
+  color: var(--mf-ivory, #f3efe6);
+  font: 500 clamp(32px, 5vw, 52px) / 1.02 Newsreader, Georgia, serif;
+  letter-spacing: -0.02em;
+}
+.legal-card .updated {
+  margin: 0 0 24px;
+  color: var(--mf-mist, #cbbba6);
+  font-size: 15px;
+  line-height: 1.5;
+}
+.legal-card section {
+  padding: 18px 0;
+  border-top: 1px solid #4a3828;
+}
+.legal-card h2 {
+  margin: 0 0 10px;
+  color: #f3dfc1;
+  font: 600 23px Newsreader, Georgia, serif;
+}
+.legal-card p,
+.legal-card li {
+  color: #d9cbb8;
+  font-size: 15px;
+  line-height: 1.65;
+}
+.legal-card ul { padding-left: 22px; }
+.legal-card a { color: var(--mf-ornament, #e0b56a); }
+.legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-top: 20px;
+  color: #8e7967;
+  font-size: 13px;
+}
+.legal-links a {
+  color: #e0b56a;
+  text-decoration: none;
+}
+@media (max-width: 1100px) {
+  .legal-shell {
+    width: min(1080px, calc(100% - 32px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+  }
+  .mf-site-header {
+    padding-left: max(12px, env(safe-area-inset-left, 0px));
+    padding-right: max(12px, env(safe-area-inset-right, 0px));
+  }
+  .legal-page {
+    padding-bottom: max(72px, calc(28px + env(safe-area-inset-bottom, 0px)));
+  }
+}
