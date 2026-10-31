@@ -653,10 +653,11 @@ function rankedLegCandidates(pool, packageSpec, leg, deckNames, limit, intent) {
     .slice(0, limit);
 }
 
-function removableMembers(packageState, packageSpec, limit) {
+function removableMembers(packageState, packageSpec, limit, protectedNames) {
   // Prefer weakly justified / redundant / surplus-leg members; never cut
   // below floors when that would collapse the package.
   return [...packageState.members]
+    .filter((member) => !protectedNames.has(normalized(member.name)))
     .filter((member) => member.kind === "core" || member.kind === "support")
     .sort((left, right) =>
       Number(right.weaklyJustified) - Number(left.weaklyJustified)
@@ -730,6 +731,10 @@ export function optimizePackagePlan(candidate, analysis, input = {}, options = {
   };
 
   const proposals = [];
+  // Imported rows are player choices, including every confirmed guided pick.
+  // Rebalance only the Forge's fill cards, just as weak-slot repair does.
+  // Filter before the top-K limit so protected rows don't crowd out fill cards.
+  const protectedNames = new Set((input.importedRows || []).map((row) => normalized(row.name)));
   const deckNames = new Set(candidate.rows.map((row) => normalized(row.name)));
 
   for (const packageSpec of intent.packages) {
@@ -737,7 +742,7 @@ export function optimizePackagePlan(candidate, analysis, input = {}, options = {
     const health = evaluatePackageHealth(state, intent);
     if (health.status === "healthy" && state.density.surplus < 4) continue;
 
-    const removals = removableMembers(state, packageSpec, limits.topKRemovals);
+    const removals = removableMembers(state, packageSpec, limits.topKRemovals, protectedNames);
     const additionPools = [];
     for (const [leg, legState] of Object.entries(state.legs)) {
       if (legState.deficit <= 0 && health.issues.every((issue) => issue.kind !== "poor_enabler_payoff_ratio")) continue;

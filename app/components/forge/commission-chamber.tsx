@@ -12,6 +12,7 @@ import {
 import { occupancyLabelsForOption } from "../../commander-lane-scoring.mjs";
 import { shellDisplay } from "../../shell-copy.mjs";
 import { useForgeSession } from "../../forge-session-context";
+import { ColorIdentityChips } from "../tripo-assets";
 
 export function CommissionChamber() {
   const {
@@ -167,12 +168,10 @@ export function CommissionChamber() {
                 <div>
                   <b>{selectedCommander.name}</b>
                   <span>{selectedCommander.typeLine}</span>
-                  <em>
-                    {selectedCommander.colors.length
-                      ? selectedCommander.colors.join(" · ")
-                      : "COLORLESS"}{" "}
-                    IDENTITY
-                  </em>
+                  <div className="commander-identity-line">
+                    <ColorIdentityChips colors={selectedCommander.colors} />
+                    <span>Identity</span>
+                  </div>
                   {commissionOccupancyLabels.length > 0 && (
                     <small className="commander-occupancy">
                       From this commander's card: {commissionOccupancyLabels.join(" · ")}. The rest of the deck hasn't been built yet.

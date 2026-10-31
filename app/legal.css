@@ -1,15 +1,15 @@
 .legal-page {
   min-height: 100vh;
-  padding: 0 0 80px;
+  padding: 0 var(--mf-gutter, 16px) 80px;
   background: var(--mf-page-bg, #070908);
   color: var(--mf-ivory, #f3efe6);
   font-family: Inter, sans-serif;
   overflow-x: clip;
 }
 .legal-shell {
-  width: min(1080px, calc(100% - 32px));
+  width: min(var(--mf-reading-shell, 42rem), 100%);
   margin: 0 auto;
-  padding-top: 22px;
+  padding-top: var(--mf-section-gap, 24px);
 }
 .legal-card {
   margin-top: 0;
@@ -69,9 +69,6 @@
   text-decoration: none;
 }
 @media (max-width: 1100px) {
-  .legal-shell {
-    width: min(1080px, calc(100% - 32px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
-  }
   .mf-site-header {
     padding-left: max(12px, env(safe-area-inset-left, 0px));
     padding-right: max(12px, env(safe-area-inset-right, 0px));

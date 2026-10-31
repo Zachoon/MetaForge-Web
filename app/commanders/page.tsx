@@ -3,6 +3,7 @@ import "../legal.css";
 import "./commanders.css";
 import { COMMANDER_GUIDES } from "./data.mjs";
 import { PageTrail, SiteHeader } from "../components/site-chrome";
+import { ForgeProp } from "../components/tripo-assets";
 
 export const metadata: Metadata = {
   title: "Commander Deck Guides | MetaForge",
@@ -33,6 +34,7 @@ export default function CommandersIndex() {
               {COMMANDER_GUIDES.map((entry) => (
                 <li key={entry.slug}>
                   <a href={`/commanders/${entry.slug}`}>
+                    <ForgeProp kind="tome" size={44} />
                     <strong>{entry.card.name}</strong>
                     <p>{entry.tagline}</p>
                   </a>

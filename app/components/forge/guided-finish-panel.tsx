@@ -16,6 +16,7 @@ export function GuidedFinishPanel() {
     guidedSession: session,
     guidedLoading,
     guidedBuildLocked,
+    guidedConflict,
     guidedFinishStatus: status,
     setGuidedLandTarget,
     adjustGuidedBasic,
@@ -178,8 +179,8 @@ export function GuidedFinishPanel() {
       <h2>{status.confirmed} of {status.deckTarget} cards, every one your choice</h2>
       <p>Commander{session.accepted.length ? `, ${session.accepted.length} picks` : ""}, and {basicsCount} basic {basicsCount === 1 ? "land" : "lands"}. Finishing checks the deck and opens it in the workbench, where you can keep editing.</p>
       <div className="guided-actions">
-        <button type="button" className="guided-accept" disabled={busy || Boolean(status.open) || Boolean(status.over)} onClick={() => void finishGuidedBuild()}>
-          Confirm every slot and finish
+        <button type="button" className="guided-accept" disabled={guidedLoading || Boolean(guidedConflict) || (!guidedBuildLocked && (Boolean(status.open) || Boolean(status.over)))} onClick={() => void finishGuidedBuild()}>
+          {guidedBuildLocked ? "Check saved finish" : "Confirm every slot and finish"}
         </button>
         <button type="button" disabled={busy} onClick={reopenGuidedMana}>← Change the mana base</button>
       </div>

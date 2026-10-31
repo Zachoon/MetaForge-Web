@@ -1,9 +1,9 @@
 /* Shared MetaForge frame.
    Surfaces, borders, ornament, and spacing live here so the Forge and the
-   reading pages use one material. public/assets/forge/tripo is not in this
-   tree; the registered stone and hammered-iron SVGs are the texture.
-   No extra bloom, no extra font, no extra image request beyond those SVGs
-   and the brand mark the Forge already uses. */
+   reading pages use one material. The page texture is the registered stone
+   and hammered-iron SVGs. Tripo stills stay on the hero, the color chips,
+   and the hammer, crystal, and tome; the reading card also carries one
+   hammer in the frame on a wide page. */
 
 :root {
   --mf-void: #070908;
@@ -55,17 +55,6 @@ body {
 .commission-chamber,
 .masterwork-archive {
   background: transparent;
-}
-@media (min-width: 761px) {
-  .chamber-entrance > .forge-entrance {
-    grid-template-rows: minmax(0, 1fr) !important;
-    min-height: 0 !important;
-  }
-  .chamber-entrance .entrance-copy {
-    min-height: 0 !important;
-    overflow-y: auto !important;
-    padding-bottom: 28px !important;
-  }
 }
 @media (max-width: 760px) {
   .forge-global-nav,
@@ -186,6 +175,12 @@ body {
   display: grid;
   gap: var(--mf-space-3);
   margin: 0 0 var(--mf-space-4);
+}
+@media (min-width: 720px) {
+  .mf-trail {
+    padding-right: 48px;
+    background: url("/assets/forge/tripo/prop_hammer-512.webp") right center / 36px no-repeat;
+  }
 }
 .mf-crumbs ol {
   display: flex;

@@ -1,0 +1,1080 @@
+{
+  "commander": {
+    "name": "Baru, Wurmspeaker",
+    "oracleText": "Wurms you control get +2/+2 and have trample.\n{7}{G}, {T}: Create a 4/4 green Wurm creature token. This ability costs {X} less to activate, where X is the greatest power among Wurms you control.",
+    "typeLine": "Legendary Creature \u00e2\u20ac\u201d Human Druid",
+    "manaCost": "{2}{G}{G}",
+    "cmc": 4,
+    "colorIdentity": [
+      "G"
+    ],
+    "keywords": [],
+    "colors": [
+      "G"
+    ]
+  },
+  "cards": [
+    {
+      "name": "Baru, Wurmspeaker",
+      "oracleText": "Wurms you control get +2/+2 and have trample.\n{7}{G}, {T}: Create a 4/4 green Wurm creature token. This ability costs {X} less to activate, where X is the greatest power among Wurms you control.",
+      "typeLine": "Legendary Creature \u00e2\u20ac\u201d Human Druid",
+      "manaCost": "{2}{G}{G}",
+      "cmc": 4,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Maskwood Nexus",
+      "oracleText": "Creatures you control are every creature type. The same is true for creature spells you control and creature cards you own that aren't on the battlefield.\n{3}, {T}: Create a 2/2 blue Shapeshifter creature token with changeling. (It is every creature type.)",
+      "typeLine": "Artifact",
+      "manaCost": "{4}",
+      "cmc": 4,
+      "colorIdentity": [],
+      "keywords": []
+    },
+    {
+      "name": "Wurmcoil Engine",
+      "oracleText": "Deathtouch, lifelink\nWhen this creature dies, create a 3/3 colorless Phyrexian Wurm artifact creature token with deathtouch and a 3/3 colorless Phyrexian Wurm artifact creature token with lifelink.",
+      "typeLine": "Artifact Creature \u00e2\u20ac\u201d Phyrexian Wurm",
+      "manaCost": "{6}",
+      "cmc": 6,
+      "colorIdentity": [],
+      "keywords": [
+        "Lifelink",
+        "Deathtouch"
+      ]
+    },
+    {
+      "name": "Bellowing Tanglewurm",
+      "oracleText": "Intimidate (This creature can't be blocked except by artifact creatures and/or creatures that share a color with it.)\nOther green creatures you control have intimidate.",
+      "typeLine": "Creature \u00e2\u20ac\u201d Wurm",
+      "manaCost": "{3}{G}{G}",
+      "cmc": 5,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": [
+        "Intimidate"
+      ]
+    },
+    {
+      "name": "Quilled Greatwurm",
+      "oracleText": "Trample\nWhenever a creature you control deals combat damage during your turn, put that many +1/+1 counters on it. (It must survive to get the counters.)\nYou may cast this card from your graveyard by removing six counters from among creatures you control in addition to paying its other costs.",
+      "typeLine": "Creature \u00e2\u20ac\u201d Wurm",
+      "manaCost": "{4}{G}{G}",
+      "cmc": 6,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": [
+        "Trample"
+      ]
+    },
+    {
+      "name": "Worldspine Wurm",
+      "oracleText": "Trample\nWhen this creature dies, create three 5/5 green Wurm creature tokens with trample.\nWhen Worldspine Wurm is put into a graveyard from anywhere, shuffle it into its owner's library.",
+      "typeLine": "Creature \u00e2\u20ac\u201d Wurm",
+      "manaCost": "{8}{G}{G}{G}",
+      "cmc": 11,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": [
+        "Trample"
+      ]
+    },
+    {
+      "name": "Sandwurm Convergence",
+      "oracleText": "Creatures with flying can't attack you or planeswalkers you control.\nAt the beginning of your end step, create a 5/5 green Wurm creature token.",
+      "typeLine": "Enchantment",
+      "manaCost": "{6}{G}{G}",
+      "cmc": 8,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Impervious Greatwurm",
+      "oracleText": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nIndestructible",
+      "typeLine": "Creature \u00e2\u20ac\u201d Wurm",
+      "manaCost": "{7}{G}{G}{G}",
+      "cmc": 10,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": [
+        "Indestructible",
+        "Convoke"
+      ]
+    },
+    {
+      "name": "Sifter Wurm",
+      "oracleText": "Trample\nWhen this creature enters, scry 3, then reveal the top card of your library. You gain life equal to that card's mana value.",
+      "typeLine": "Creature \u00e2\u20ac\u201d Wurm",
+      "manaCost": "{5}{G}{G}",
+      "cmc": 7,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": [
+        "Trample",
+        "Scry"
+      ]
+    },
+    {
+      "name": "Pelakka Wurm",
+      "oracleText": "Trample (This creature can deal excess combat damage to the player or planeswalker it's attacking.)\nWhen this creature enters, you gain 7 life.\nWhen this creature dies, draw a card.",
+      "typeLine": "Creature \u00e2\u20ac\u201d Wurm",
+      "manaCost": "{4}{G}{G}{G}",
+      "cmc": 7,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": [
+        "Trample"
+      ]
+    },
+    {
+      "name": "Bookwurm",
+      "oracleText": "Trample\nWhen this creature enters, you gain 3 life and draw a card.\n{2}{G}: Put this card from your graveyard into your library third from the top.",
+      "typeLine": "Creature \u00e2\u20ac\u201d Wurm",
+      "manaCost": "{7}{G}",
+      "cmc": 8,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": [
+        "Trample"
+      ]
+    },
+    {
+      "name": "Soul Swallower",
+      "oracleText": "Trample\nDelirium \u00e2\u20ac\u201d At the beginning of your upkeep, if there are four or more card types among cards in your graveyard, put three +1/+1 counters on this creature.",
+      "typeLine": "Creature \u00e2\u20ac\u201d Wurm",
+      "manaCost": "{2}{G}{G}",
+      "cmc": 4,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": [
+        "Delirium",
+        "Trample"
+      ]
+    },
+    {
+      "name": "Defiler of Vigor",
+      "oracleText": "Trample\nAs an additional cost to cast green permanent spells, you may pay 2 life. Those spells cost {G} less to cast if you paid life this way. This effect reduces only the amount of green mana you pay.\nWhenever you cast a green permanent spell, put a +1/+1 counter on each creature you control.",
+      "typeLine": "Creature \u00e2\u20ac\u201d Phyrexian Wurm",
+      "manaCost": "{3}{G}{G}",
+      "cmc": 5,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": [
+        "Trample"
+      ]
+    },
+    {
+      "name": "Garruk's Uprising",
+      "oracleText": "When this enchantment enters, if you control a creature with power 4 or greater, draw a card.\nCreatures you control have trample. (Each of those creatures can deal excess combat damage to the player or planeswalker it's attacking.)\nWhenever a creature you control with power 4 or greater enters, draw a card.",
+      "typeLine": "Enchantment",
+      "manaCost": "{2}{G}",
+      "cmc": 3,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Elemental Bond",
+      "oracleText": "Whenever a creature you control with power 3 or greater enters, draw a card.",
+      "typeLine": "Enchantment",
+      "manaCost": "{2}{G}",
+      "cmc": 3,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Tribute to the World Tree",
+      "oracleText": "Whenever a creature you control enters, draw a card if its power is 3 or greater. Otherwise, put two +1/+1 counters on it.",
+      "typeLine": "Enchantment",
+      "manaCost": "{G}{G}{G}",
+      "cmc": 3,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Greater Good",
+      "oracleText": "Sacrifice a creature: Draw cards equal to the sacrificed creature's power, then discard three cards.",
+      "typeLine": "Enchantment",
+      "manaCost": "{2}{G}{G}",
+      "cmc": 4,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Goreclaw, Terror of Qal Sisma",
+      "oracleText": "Creature spells you cast with power 4 or greater cost {2} less to cast.\nWhenever Goreclaw attacks, each creature you control with power 4 or greater gets +1/+1 and gains trample until end of turn.",
+      "typeLine": "Legendary Creature \u00e2\u20ac\u201d Bear",
+      "manaCost": "{3}{G}",
+      "cmc": 4,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Krosan Drover",
+      "oracleText": "Creature spells you cast with mana value 6 or greater cost {2} less to cast.",
+      "typeLine": "Creature \u00e2\u20ac\u201d Elf",
+      "manaCost": "{3}{G}",
+      "cmc": 4,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Whisperer of the Wilds",
+      "oracleText": "{T}: Add {G}.\nFerocious \u00e2\u20ac\u201d {T}: Add {G}{G}. Activate only if you control a creature with power 4 or greater.",
+      "typeLine": "Creature \u00e2\u20ac\u201d Human Shaman",
+      "manaCost": "{1}{G}",
+      "cmc": 2,
+      "colorIdentity": [
+        "G"
+      ],
+      "producedMana": [
+        "G"
+      ],
+      "keywords": [
+        "Ferocious"
+      ]
+    },
+    {
+      "name": "Elderscale Wurm",
+      "oracleText": "Trample\nWhen this creature enters, if your life total is less than 7, your life total becomes 7.\nAs long as you have 7 or more life, damage that would reduce your life total to less than 7 reduces it to 7 instead.",
+      "typeLine": "Creature \u00e2\u20ac\u201d Wurm",
+      "manaCost": "{4}{G}{G}{G}",
+      "cmc": 7,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": [
+        "Trample"
+      ]
+    },
+    {
+      "name": "Engulfing Slagwurm",
+      "oracleText": "Whenever this creature blocks or becomes blocked by a creature, destroy that creature. You gain life equal to that creature's toughness.",
+      "typeLine": "Creature \u00e2\u20ac\u201d Wurm",
+      "manaCost": "{5}{G}{G}",
+      "cmc": 7,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Penumbra Wurm",
+      "oracleText": "Trample\nWhen this creature dies, create a 6/6 black Wurm creature token with trample.",
+      "typeLine": "Creature \u00e2\u20ac\u201d Wurm",
+      "manaCost": "{5}{G}{G}",
+      "cmc": 7,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": [
+        "Trample"
+      ]
+    },
+    {
+      "name": "Grothama, All-Devouring",
+      "oracleText": "Other creatures have \"Whenever this creature attacks, you may have it fight Grothama, All-Devouring.\"\nWhen Grothama leaves the battlefield, each player draws cards equal to the amount of damage dealt to Grothama this turn by sources they controlled.",
+      "typeLine": "Legendary Creature \u00e2\u20ac\u201d Wurm",
+      "manaCost": "{3}{G}{G}",
+      "cmc": 5,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": [
+        "Fight"
+      ]
+    },
+    {
+      "name": "Bramble Wurm",
+      "oracleText": "Reach, trample\nWhen this creature enters, you gain 5 life.\n{2}{G}, Exile this card from your graveyard: You gain 5 life.",
+      "typeLine": "Creature \u00e2\u20ac\u201d Wurm",
+      "manaCost": "{6}{G}",
+      "cmc": 7,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": [
+        "Reach",
+        "Trample"
+      ]
+    },
+    {
+      "name": "Greater Sandwurm",
+      "oracleText": "This creature can't be blocked by creatures with power 2 or less.\nCycling {2} ({2}, Discard this card: Draw a card.)",
+      "typeLine": "Creature \u00e2\u20ac\u201d Wurm",
+      "manaCost": "{5}{G}{G}",
+      "cmc": 7,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": [
+        "Cycling"
+      ]
+    },
+    {
+      "name": "Wurmcalling",
+      "oracleText": "Buyback {2}{G} (You may pay an additional {2}{G} as you cast this spell. If you do, put this card into your hand as it resolves.)\nCreate an X/X green Wurm creature token.",
+      "typeLine": "Sorcery",
+      "manaCost": "{X}{G}",
+      "cmc": 1,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": [
+        "Buyback"
+      ]
+    },
+    {
+      "name": "Beast Within",
+      "oracleText": "Destroy target permanent. Its controller creates a 3/3 green Beast creature token.",
+      "typeLine": "Instant",
+      "manaCost": "{2}{G}",
+      "cmc": 3,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Krosan Grip",
+      "oracleText": "Split second (As long as this spell is on the stack, players can't cast spells or activate abilities that aren't mana abilities.)\nDestroy target artifact or enchantment.",
+      "typeLine": "Instant",
+      "manaCost": "{2}{G}",
+      "cmc": 3,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": [
+        "Split second"
+      ]
+    },
+    {
+      "name": "Nature's Claim",
+      "oracleText": "Destroy target artifact or enchantment. Its controller gains 4 life.",
+      "typeLine": "Instant",
+      "manaCost": "{G}",
+      "cmc": 1,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Return to Nature",
+      "oracleText": "Choose one \u00e2\u20ac\u201d\n\u00e2\u20ac\u00a2 Destroy target artifact.\n\u00e2\u20ac\u00a2 Destroy target enchantment.\n\u00e2\u20ac\u00a2 Exile target card from a graveyard.",
+      "typeLine": "Instant",
+      "manaCost": "{1}{G}",
+      "cmc": 2,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Ram Through",
+      "oracleText": "Target creature you control deals damage equal to its power to target creature you don't control. If the creature you control has trample, excess damage is dealt to that creature's controller instead.",
+      "typeLine": "Instant",
+      "manaCost": "{1}{G}",
+      "cmc": 2,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Tail Swipe",
+      "oracleText": "Choose target creature you control and target creature you don't control. If you cast this spell during your main phase, the creature you control gets +1/+1 until end of turn. Then those creatures fight each other. (Each deals damage equal to its power to the other.)",
+      "typeLine": "Instant",
+      "manaCost": "{G}",
+      "cmc": 1,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": [
+        "Fight"
+      ]
+    },
+    {
+      "name": "Kenrith's Transformation",
+      "oracleText": "Enchant creature\nWhen this Aura enters, draw a card.\nEnchanted creature loses all abilities and is a green Elk creature with base power and toughness 3/3. (It loses all other card types and creature types.)",
+      "typeLine": "Enchantment \u00e2\u20ac\u201d Aura",
+      "manaCost": "{1}{G}",
+      "cmc": 2,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": [
+        "Enchant"
+      ]
+    },
+    {
+      "name": "Reclamation Sage",
+      "oracleText": "When this creature enters, you may destroy target artifact or enchantment.",
+      "typeLine": "Creature \u00e2\u20ac\u201d Elf Shaman",
+      "manaCost": "{2}{G}",
+      "cmc": 3,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Ezuri's Predation",
+      "oracleText": "For each creature your opponents control, create a 4/4 green Phyrexian Beast creature token. Each of those tokens fights a different one of those creatures.",
+      "typeLine": "Sorcery",
+      "manaCost": "{5}{G}{G}{G}",
+      "cmc": 8,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": [
+        "Fight"
+      ]
+    },
+    {
+      "name": "Bane of Progress",
+      "oracleText": "When this creature enters, destroy all artifacts and enchantments. Put a +1/+1 counter on this creature for each permanent destroyed this way.",
+      "typeLine": "Creature \u00e2\u20ac\u201d Elemental",
+      "manaCost": "{4}{G}{G}",
+      "cmc": 6,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Overwhelming Stampede",
+      "oracleText": "Until end of turn, creatures you control gain trample and get +X/+X, where X is the greatest power among creatures you control.",
+      "typeLine": "Sorcery",
+      "manaCost": "{3}{G}{G}",
+      "cmc": 5,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Return of the Wildspeaker",
+      "oracleText": "Choose one \u00e2\u20ac\u201d\n\u00e2\u20ac\u00a2 Draw cards equal to the greatest power among non-Human creatures you control.\n\u00e2\u20ac\u00a2 Non-Human creatures you control get +3/+3 until end of turn.",
+      "typeLine": "Instant",
+      "manaCost": "{4}{G}",
+      "cmc": 5,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Rishkar's Expertise",
+      "oracleText": "Draw cards equal to the greatest power among creatures you control.\nYou may cast a spell with mana value 5 or less from your hand without paying its mana cost.",
+      "typeLine": "Sorcery",
+      "manaCost": "{4}{G}{G}",
+      "cmc": 6,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Sol Ring",
+      "oracleText": "{T}: Add {C}{C}.",
+      "typeLine": "Artifact",
+      "manaCost": "{1}",
+      "cmc": 1,
+      "colorIdentity": [],
+      "producedMana": [
+        "C"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Llanowar Elves",
+      "oracleText": "{T}: Add {G}.",
+      "typeLine": "Creature \u00e2\u20ac\u201d Elf Druid",
+      "manaCost": "{G}",
+      "cmc": 1,
+      "colorIdentity": [
+        "G"
+      ],
+      "producedMana": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Elvish Mystic",
+      "oracleText": "{T}: Add {G}.",
+      "typeLine": "Creature \u00e2\u20ac\u201d Elf Druid",
+      "manaCost": "{G}",
+      "cmc": 1,
+      "colorIdentity": [
+        "G"
+      ],
+      "producedMana": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Fyndhorn Elves",
+      "oracleText": "{T}: Add {G}.",
+      "typeLine": "Creature \u00e2\u20ac\u201d Elf Druid",
+      "manaCost": "{G}",
+      "cmc": 1,
+      "colorIdentity": [
+        "G"
+      ],
+      "producedMana": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Sakura-Tribe Elder",
+      "oracleText": "Sacrifice this creature: Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.",
+      "typeLine": "Creature \u00e2\u20ac\u201d Snake Shaman",
+      "manaCost": "{1}{G}",
+      "cmc": 2,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Nature's Lore",
+      "oracleText": "Search your library for a Forest card, put that card onto the battlefield, then shuffle.",
+      "typeLine": "Sorcery",
+      "manaCost": "{1}{G}",
+      "cmc": 2,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Rampant Growth",
+      "oracleText": "Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.",
+      "typeLine": "Sorcery",
+      "manaCost": "{1}{G}",
+      "cmc": 2,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Cultivate",
+      "oracleText": "Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.",
+      "typeLine": "Sorcery",
+      "manaCost": "{2}{G}",
+      "cmc": 3,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Kodama's Reach",
+      "oracleText": "Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.",
+      "typeLine": "Sorcery \u00e2\u20ac\u201d Arcane",
+      "manaCost": "{2}{G}",
+      "cmc": 3,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Skyshroud Claim",
+      "oracleText": "Search your library for up to two Forest cards, put them onto the battlefield, then shuffle.",
+      "typeLine": "Sorcery",
+      "manaCost": "{3}{G}",
+      "cmc": 4,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Traverse the Outlands",
+      "oracleText": "Search your library for up to X basic land cards, where X is the greatest power among creatures you control. Put those cards onto the battlefield tapped, then shuffle.",
+      "typeLine": "Sorcery",
+      "manaCost": "{4}{G}",
+      "cmc": 5,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Heroic Intervention",
+      "oracleText": "Permanents you control gain hexproof and indestructible until end of turn.",
+      "typeLine": "Instant",
+      "manaCost": "{1}{G}",
+      "cmc": 2,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Tamiyo's Safekeeping",
+      "oracleText": "Target permanent you control gains hexproof and indestructible until end of turn. You gain 2 life. (A permanent with hexproof and indestructible can't be the target of spells or abilities your opponents control. Damage and effects that say \"destroy\" don't destroy it.)",
+      "typeLine": "Instant",
+      "manaCost": "{G}",
+      "cmc": 1,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Swiftfoot Boots",
+      "oracleText": "Equipped creature has hexproof and haste. (It can't be the target of spells or abilities your opponents control. It can attack and {T} no matter when it came under your control.)\nEquip {1} ({1}: Attach to target creature you control. Equip only as a sorcery.)",
+      "typeLine": "Artifact \u00e2\u20ac\u201d Equipment",
+      "manaCost": "{2}",
+      "cmc": 2,
+      "colorIdentity": [],
+      "keywords": [
+        "Equip"
+      ]
+    },
+    {
+      "name": "Wrap in Vigor",
+      "oracleText": "Regenerate each creature you control.",
+      "typeLine": "Instant",
+      "manaCost": "{1}{G}",
+      "cmc": 2,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": [
+        "Regenerate"
+      ]
+    },
+    {
+      "name": "Beast Whisperer",
+      "oracleText": "Whenever you cast a creature spell, draw a card.",
+      "typeLine": "Creature \u00e2\u20ac\u201d Elf Druid",
+      "manaCost": "{2}{G}{G}",
+      "cmc": 4,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Harmonize",
+      "oracleText": "Draw three cards.",
+      "typeLine": "Sorcery",
+      "manaCost": "{2}{G}{G}",
+      "cmc": 4,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Hunter's Insight",
+      "oracleText": "Choose target creature you control. Whenever that creature deals combat damage to a player or planeswalker this turn, draw that many cards.",
+      "typeLine": "Instant",
+      "manaCost": "{2}{G}",
+      "cmc": 3,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Eternal Witness",
+      "oracleText": "When this creature enters, you may return target card from your graveyard to your hand.",
+      "typeLine": "Creature \u00e2\u20ac\u201d Human Shaman",
+      "manaCost": "{1}{G}{G}",
+      "cmc": 3,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Regrowth",
+      "oracleText": "Return target card from your graveyard to your hand.",
+      "typeLine": "Sorcery",
+      "manaCost": "{1}{G}",
+      "cmc": 2,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Timeless Witness",
+      "oracleText": "When this creature enters, return target card from your graveyard to your hand.\nEternalize {5}{G}{G} ({5}{G}{G}, Exile this card from your graveyard: Create a token that's a copy of it, except it's a 4/4 black Zombie Human Shaman with no mana cost. Eternalize only as a sorcery.)",
+      "typeLine": "Creature \u00e2\u20ac\u201d Human Shaman",
+      "manaCost": "{2}{G}{G}",
+      "cmc": 4,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": [
+        "Eternalize"
+      ]
+    },
+    {
+      "name": "Duskdale Wurm",
+      "oracleText": "Trample (This creature can deal excess combat damage to the player or planeswalker it's attacking.)",
+      "typeLine": "Creature \u00e2\u20ac\u201d Wurm",
+      "manaCost": "{5}{G}{G}",
+      "cmc": 7,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": [
+        "Trample"
+      ]
+    },
+    {
+      "name": "Castle Garenbrig",
+      "oracleText": "This land enters tapped unless you control a Forest.\n{T}: Add {G}.\n{2}{G}{G}, {T}: Add six {G}. Spend this mana only to cast creature spells or activate abilities of creatures.",
+      "typeLine": "Land",
+      "manaCost": "",
+      "cmc": 0,
+      "colorIdentity": [
+        "G"
+      ],
+      "producedMana": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Forest",
+      "oracleText": "({T}: Add {G}.)",
+      "typeLine": "Basic Land \u00e2\u20ac\u201d Forest",
+      "manaCost": "",
+      "cmc": 0,
+      "colorIdentity": [
+        "G"
+      ],
+      "producedMana": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Doubling Season",
+      "oracleText": "If an effect would create one or more tokens under your control, it creates twice that many of those tokens instead.\nIf an effect would put one or more counters on a permanent you control, it puts twice that many of those counters on that permanent instead.",
+      "typeLine": "Enchantment",
+      "manaCost": "{4}{G}",
+      "cmc": 5,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": []
+    },
+    {
+      "name": "Academy Manufactor",
+      "oracleText": "If you would create a Clue, Food, or Treasure token, instead create one of each.",
+      "typeLine": "Artifact Creature \u00e2\u20ac\u201d Assembly-Worker",
+      "manaCost": "{3}",
+      "cmc": 3,
+      "colorIdentity": [],
+      "keywords": [
+        "Treasure",
+        "Food"
+      ]
+    },
+    {
+      "name": "Avenger of Zendikar",
+      "oracleText": "When this creature enters, create a 0/1 green Plant creature token for each land you control.\nLandfall \u00e2\u20ac\u201d Whenever a land you control enters, you may put a +1/+1 counter on each Plant creature you control.",
+      "typeLine": "Creature \u00e2\u20ac\u201d Elemental",
+      "manaCost": "{5}{G}{G}",
+      "cmc": 7,
+      "colorIdentity": [
+        "G"
+      ],
+      "keywords": [
+        "Landfall"
+      ]
+    }
+  ],
+  "importedRows": [
+    {
+      "quantity": 1,
+      "name": "Maskwood Nexus"
+    },
+    {
+      "quantity": 1,
+      "name": "Wurmcoil Engine"
+    },
+    {
+      "quantity": 1,
+      "name": "Bellowing Tanglewurm"
+    },
+    {
+      "quantity": 1,
+      "name": "Quilled Greatwurm"
+    },
+    {
+      "quantity": 1,
+      "name": "Worldspine Wurm"
+    },
+    {
+      "quantity": 1,
+      "name": "Sandwurm Convergence"
+    },
+    {
+      "quantity": 1,
+      "name": "Impervious Greatwurm"
+    },
+    {
+      "quantity": 1,
+      "name": "Sifter Wurm"
+    },
+    {
+      "quantity": 1,
+      "name": "Pelakka Wurm"
+    },
+    {
+      "quantity": 1,
+      "name": "Bookwurm"
+    },
+    {
+      "quantity": 1,
+      "name": "Soul Swallower"
+    },
+    {
+      "quantity": 1,
+      "name": "Defiler of Vigor"
+    },
+    {
+      "quantity": 1,
+      "name": "Garruk's Uprising"
+    },
+    {
+      "quantity": 1,
+      "name": "Elemental Bond"
+    },
+    {
+      "quantity": 1,
+      "name": "Tribute to the World Tree"
+    },
+    {
+      "quantity": 1,
+      "name": "Greater Good"
+    },
+    {
+      "quantity": 1,
+      "name": "Goreclaw, Terror of Qal Sisma"
+    },
+    {
+      "quantity": 1,
+      "name": "Krosan Drover"
+    },
+    {
+      "quantity": 1,
+      "name": "Whisperer of the Wilds"
+    },
+    {
+      "quantity": 1,
+      "name": "Elderscale Wurm"
+    },
+    {
+      "quantity": 1,
+      "name": "Engulfing Slagwurm"
+    },
+    {
+      "quantity": 1,
+      "name": "Penumbra Wurm"
+    },
+    {
+      "quantity": 1,
+      "name": "Grothama, All-Devouring"
+    },
+    {
+      "quantity": 1,
+      "name": "Bramble Wurm"
+    },
+    {
+      "quantity": 1,
+      "name": "Greater Sandwurm"
+    },
+    {
+      "quantity": 1,
+      "name": "Wurmcalling"
+    },
+    {
+      "quantity": 1,
+      "name": "Beast Within"
+    },
+    {
+      "quantity": 1,
+      "name": "Krosan Grip"
+    },
+    {
+      "quantity": 1,
+      "name": "Nature's Claim"
+    },
+    {
+      "quantity": 1,
+      "name": "Return to Nature"
+    },
+    {
+      "quantity": 1,
+      "name": "Ram Through"
+    },
+    {
+      "quantity": 1,
+      "name": "Tail Swipe"
+    },
+    {
+      "quantity": 1,
+      "name": "Kenrith's Transformation"
+    },
+    {
+      "quantity": 1,
+      "name": "Reclamation Sage"
+    },
+    {
+      "quantity": 1,
+      "name": "Ezuri's Predation"
+    },
+    {
+      "quantity": 1,
+      "name": "Bane of Progress"
+    },
+    {
+      "quantity": 1,
+      "name": "Overwhelming Stampede"
+    },
+    {
+      "quantity": 1,
+      "name": "Return of the Wildspeaker"
+    },
+    {
+      "quantity": 1,
+      "name": "Rishkar's Expertise"
+    },
+    {
+      "quantity": 1,
+      "name": "Sol Ring"
+    },
+    {
+      "quantity": 1,
+      "name": "Llanowar Elves"
+    },
+    {
+      "quantity": 1,
+      "name": "Elvish Mystic"
+    },
+    {
+      "quantity": 1,
+      "name": "Fyndhorn Elves"
+    },
+    {
+      "quantity": 1,
+      "name": "Sakura-Tribe Elder"
+    },
+    {
+      "quantity": 1,
+      "name": "Nature's Lore"
+    },
+    {
+      "quantity": 1,
+      "name": "Rampant Growth"
+    },
+    {
+      "quantity": 1,
+      "name": "Cultivate"
+    },
+    {
+      "quantity": 1,
+      "name": "Kodama's Reach"
+    },
+    {
+      "quantity": 1,
+      "name": "Skyshroud Claim"
+    },
+    {
+      "quantity": 1,
+      "name": "Traverse the Outlands"
+    },
+    {
+      "quantity": 1,
+      "name": "Heroic Intervention"
+    },
+    {
+      "quantity": 1,
+      "name": "Tamiyo's Safekeeping"
+    },
+    {
+      "quantity": 1,
+      "name": "Swiftfoot Boots"
+    },
+    {
+      "quantity": 1,
+      "name": "Wrap in Vigor"
+    },
+    {
+      "quantity": 1,
+      "name": "Beast Whisperer"
+    },
+    {
+      "quantity": 1,
+      "name": "Harmonize"
+    },
+    {
+      "quantity": 1,
+      "name": "Hunter's Insight"
+    },
+    {
+      "quantity": 1,
+      "name": "Eternal Witness"
+    },
+    {
+      "quantity": 1,
+      "name": "Regrowth"
+    },
+    {
+      "quantity": 1,
+      "name": "Timeless Witness"
+    },
+    {
+      "quantity": 1,
+      "name": "Duskdale Wurm"
+    },
+    {
+      "quantity": 1,
+      "name": "Castle Garenbrig"
+    },
+    {
+      "quantity": 37,
+      "name": "Forest"
+    }
+  ]
+}
