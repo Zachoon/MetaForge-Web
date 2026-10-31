@@ -31,6 +31,7 @@ import { useForgeSession } from "../../forge-session-context";
 import { GuidedCompletionReview } from "./guided-completion-review";
 import { CurveRoleCoach } from "./curve-role-coach";
 import { ManaBaseCoach } from "./mana-base-coach";
+import { ColorIdentityChips } from "../tripo-assets";
 
 export function WorkbenchChamber() {
   const {
@@ -588,7 +589,7 @@ export function WorkbenchChamber() {
                   <p>{[honestCoachSummary.finishedDeckLabel, `Revision ${Math.max(1, revisions.length)}`].filter(Boolean).join(" · ")}</p>
                 )}
                 {hasValidatedDeck && <div className="masterwork-identity-marks" aria-label={`${selectedCommander?.colors?.join(", ") || "colorless"} color identity`}>
-                  {(selectedCommander?.colors?.length ? selectedCommander.colors : ["C"]).map((color) => <i key={color} data-color={color}>{color}</i>)}
+                  <ColorIdentityChips colors={selectedCommander?.colors?.length ? selectedCommander.colors : ["C"]} />
                   <span className="masterwork-ready">✓ READY TO TEST</span>
                   {coachOccupancyLabels.length > 0 && (
                     <span className="masterwork-occupancy">Occupancy: {coachOccupancyLabels.join(" · ")}</span>

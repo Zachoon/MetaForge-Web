@@ -6,6 +6,7 @@ import { cardFactKey } from "../../deck-row-helpers";
 import { isCommanderFormat } from "../../format-catalog";
 import { buildManaBaseCoaching } from "../../mana-base-coach.mjs";
 import type { CardFact, CommanderOption, DeckRow } from "../../forge-types";
+import { ColorEmblem, ForgeProp } from "../tripo-assets";
 
 type Face = { name?: string; oracle_text?: string; type_line?: string; mana_cost?: string };
 
@@ -118,6 +119,7 @@ export function ManaBaseCoach({
   return (
     <section className="mana-base-coach" aria-label="Mana base coaching">
       <header className="mana-base-head">
+        <ForgeProp kind="crystal" size={56} />
         <small>NATIVE COACH · MANA BASE</small>
         <h3>{report.commanderName ? `${report.commanderName} · lands and colors` : "Lands and colors"}</h3>
         <p>{report.summary}</p>
@@ -162,7 +164,10 @@ export function ManaBaseCoach({
           <ol className="mana-base-colors">
             {report.colors.map((color) => (
               <li key={color.color} data-status={color.status}>
-                <span className="mana-base-swatch" data-color={color.color}>{color.word}</span>
+                <span className="mana-base-swatch" data-color={color.color}>
+                  <ColorEmblem color={color.color} labelled />
+                  {color.word}
+                </span>
                 <p>{color.summary}</p>
                 <small>
                   {color.detail || `${color.pips} pips.${color.spell ? ` ${color.untapped} untapped by turn ${color.turn}. About ${color.needed} wanted. ${statusWord(color.status)}.` : " No pips."}`}
@@ -176,7 +181,10 @@ export function ManaBaseCoach({
       <div className="mana-base-lessons">
         {report.lessons.map((lesson) => (
           <article key={lesson.id}>
-            <h4>{lesson.title}</h4>
+            <h4 className="prop-mark-title">
+              <ForgeProp kind="tome" size={40} />
+              <span>{lesson.title}</span>
+            </h4>
             <p><span>Theory. </span>{lesson.theory}</p>
             {lesson.cards?.length ? (
               <p><span>Cards. </span>{lesson.cards.map((card) => (card.quantity > 1 ? `${card.quantity} ${card.name}` : card.name)).join(", ")}.</p>

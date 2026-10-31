@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "../legal.css";
 import "../academy.css";
 import { NEW_ACADEMY_GUIDES } from "./guides-data";
+import { ForgeProp } from "../components/tripo-assets";
 
 export const metadata: Metadata = {
   title: "MetaForge Academy — Commander Deckbuilding Guides",
@@ -79,6 +80,7 @@ export default function AcademyIndex() {
               {GUIDES.map((guide) => (
                 <li key={guide.href}>
                   <a href={guide.href}>
+                    <ForgeProp kind="tome" size={44} />
                     <strong>&ldquo;{guide.thought}&rdquo;</strong>
                     <span>{guide.title}</span>
                     <p>{guide.description}</p>

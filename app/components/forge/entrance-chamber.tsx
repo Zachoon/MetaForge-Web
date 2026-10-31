@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { HeroAnvil } from "../hero-anvil";
 import { ForgeCommissionCard } from "./forge-commission-card";
 import { ForgeRune } from "./forge-motion-flourishes";
 import { PlayerCompassCard } from "./player-compass-card";
@@ -30,11 +31,14 @@ export function EntranceChamber() {
         <span className="forge-eyebrow">
           <i /> MAGIC: THE GATHERING · DECK COACH
         </span>
-        <h1>
-          Understand your Magic deck.
-          <br />
-          <em>Build with confidence.</em>
-        </h1>
+        <div className="entrance-headline">
+          <h1>
+            Understand your Magic deck.
+            <br />
+            <em>Build with confidence.</em>
+          </h1>
+          <HeroAnvil motionMode={motionMode} />
+        </div>
         <p>Pick your commander and we&rsquo;ll build the deck together, one card or package at a time, with a reason for every suggestion. Tell us how you like to play below and the suggestions adapt as you go.</p>
         <ol className="first-session-steps" aria-label="How a first deck starts">
           <li><b>1</b><span>Pick a commander</span></li>
