@@ -655,7 +655,7 @@ export default function Home() {
           <button type="button" className={siteSection === "explore" ? "active" : ""} onClick={() => setChamber("entrance")}>Explore</button>
           <button type="button" className={siteSection === "decks" ? "active" : ""} onClick={openPrivateArchive}>Decks</button>
           <button type="button" className={siteSection === "analyze" ? "active" : ""} onClick={openAnalyze}>Analyze</button>
-          <a href="/tools">Database</a>
+          <Link href="/tools">Database</Link>
           <a href="/decks">Community</a>
         </nav>
         <details className="forge-menu">
@@ -680,9 +680,9 @@ export default function Home() {
       <aside className="forge-global-rail" aria-label="Section">
         {siteSection === "explore" && (
           <>
-            <a href="/learn"><i aria-hidden="true">☰</i><span>Learn</span></a>
-            <a href="/academy"><i aria-hidden="true">✎</i><span>Academy</span></a>
-            <a href="/commanders"><i aria-hidden="true">♛</i><span>Commanders</span></a>
+            <Link href="/learn"><i aria-hidden="true">☰</i><span>Learn</span></Link>
+            <Link href="/academy"><i aria-hidden="true">✎</i><span>Academy</span></Link>
+            <Link href="/commanders"><i aria-hidden="true">♛</i><span>Commanders</span></Link>
           </>
         )}
         {siteSection === "decks" && (

@@ -42,7 +42,7 @@ test("the mockup navigation frame is site-level rather than deck-only", async ()
   assert.match(page, /href="\/learn"/);
   assert.match(page, /<span>Learn<\/span>/);
   assert.match(page, /<span>Build<\/span>/);
-  assert.match(page, /<a href="\/tools">Database<\/a>/);
+  assert.match(page, /href="\/tools">Database</);
   assert.doesNotMatch(page, />Premium<\/button>/);
   assert.doesNotMatch(page, /Premium/);
   assert.doesNotMatch(page, /className="coming-soon" disabled/);
