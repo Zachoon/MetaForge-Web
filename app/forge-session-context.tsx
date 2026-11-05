@@ -552,6 +552,8 @@ export function useForgeSessionState() {
   const [forgingCeremonyMounted, setForgingCeremonyMounted] = useState(false);
   const [buildStep, setBuildStep] = useState<0 | 1 | 2>(0);
   const [buildPath, setBuildPath] = useState<BuildPath>("discover");
+  const [freeBuildActive, setFreeBuildActive] = useState(false);
+  const [deckCoaching, setDeckCoaching] = useState(false);
   // Commander is the only format the product builds. Restored briefs and
   // claims cannot switch the Forge into another format.
   const [format, setFormatState] = useState("Commander");
@@ -3939,6 +3941,7 @@ export function useForgeSessionState() {
       document
         .querySelectorAll<HTMLElement>(".type-column>.type-column-row")
         .forEach((button) => {
+          if (button.classList.contains("ghost-pick")) return;
           button.draggable = true;
           button.title = "Drag to reorder this card within the deck gallery";
           button.ondragstart = (event) => {
@@ -4273,6 +4276,8 @@ export function useForgeSessionState() {
     // An unchanged imported or guided list has nothing to compare, and the
     // swap station hides the deck (including Copy deck) until dismissed.
     setMilestoneMotion(null);
+    setFreeBuildActive(false);
+    setDeckCoaching(false);
     setActiveForgeChapter(1);
     setDeckViewMode(preferredDecklistView());
     setSiteRail("decklist");
@@ -4280,6 +4285,22 @@ export function useForgeSessionState() {
     if (coachBriefDetailsRef.current) coachBriefDetailsRef.current.open = false;
     window.scrollTo(0, 0);
     window.requestAnimationFrame(() => window.scrollTo(0, 0));
+  }
+
+  function beginFreeDecklist(path: "scratch" | "complete") {
+    setDeck("");
+    setReviewFocus("");
+    setSelectedCommander(null);
+    setSelectedSecondCommander(null);
+    setCommanderQuery("");
+    setBuildStep(0);
+    setBuildPath(path);
+    setFreeBuildActive(true);
+    setDeckCoaching(false);
+    setChamber("workbench");
+    setActiveForgeChapter(1);
+    setSiteRail("decklist");
+    setDeckViewMode((current) => current === "playtest" ? preferredDecklistView() : current);
   }
 
   function enterMasterwork(candidateId: string) {
@@ -4437,8 +4458,12 @@ export function useForgeSessionState() {
       return;
     }
     if (chamber !== "entrance" || deck.trim()) return;
-    setBuildPath(intent === "build" ? "discover" : "complete");
-    setChamber(intent === "build" ? "commission" : "refine");
+    if (intent === "analyze") {
+      beginFreeDecklist("complete");
+      return;
+    }
+    setBuildPath("discover");
+    setChamber("commission");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -5591,6 +5616,11 @@ export function useForgeSessionState() {
     setBuildStep,
     buildPath,
     setBuildPath,
+    freeBuildActive,
+    setFreeBuildActive,
+    deckCoaching,
+    setDeckCoaching,
+    beginFreeDecklist,
     format,
     setFormat,
     strategy,

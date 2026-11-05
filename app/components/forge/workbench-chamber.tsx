@@ -30,6 +30,7 @@ import { trackLaunchEvent } from "../../launch-telemetry";
 import { useForgeSession } from "../../forge-session-context";
 import { GuidedCompletionReview } from "./guided-completion-review";
 import { CurveRoleCoach } from "./curve-role-coach";
+import { FreeDecklist } from "./free-decklist";
 import { ManaBaseCoach } from "./mana-base-coach";
 import { ColorIdentityChips } from "../tripo-assets";
 
@@ -37,6 +38,9 @@ export function WorkbenchChamber() {
   const {
     chamber,
     setChamber,
+    freeBuildActive,
+    setFreeBuildActive,
+    setDeckCoaching,
     guestMode,
     turnstileToken,
     format,
@@ -221,6 +225,15 @@ export function WorkbenchChamber() {
     publishPublicDeckReport,
     unpublishPublicDeckReport,
   } = useForgeSession();
+
+  if (freeBuildActive && siteRail === "decklist") {
+    return (
+      <section className="testing-anvil progressive-results" data-site-rail="decklist">
+        <button type="button" className="back-link" onClick={() => { setFreeBuildActive(false); setDeckCoaching(false); setChamber("entrance"); }}>← Back to start</button>
+        <FreeDecklist />
+      </section>
+    );
+  }
 
   return (
     <section ref={forgeDescentRef} className={`testing-anvil progressive-results forge-descent ${openingExperimentGateActive ? "opening-experiment-pending" : ""}`} data-site-rail={siteRail}>

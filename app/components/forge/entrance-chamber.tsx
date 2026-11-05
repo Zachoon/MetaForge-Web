@@ -14,6 +14,7 @@ export function EntranceChamber() {
     setDeck,
     setReviewFocus,
     setBuildStep,
+    beginFreeDecklist,
     setBuildPath,
     setSelectedCommander,
     setSelectedSecondCommander,
@@ -44,8 +45,8 @@ export function EntranceChamber() {
           <li><b>2</b><span>Add the first card</span></li>
           <li><b>3</b><span>Read why it belongs</span></li>
         </ol>
-        {/* One primary action. Every path is guided: the Forge never builds a
-            whole deck in one click. Other ways in are grouped below. */}
+        {/* The primary path is guided. An empty or partial list opens the
+            decklist with coaching off until the player asks for it. */}
         <div className="entrance-actions entrance-actions-primary">
           <ForgeCommissionCard
             eyebrow="GUIDED DECK BUILDING"
@@ -74,33 +75,10 @@ export function EntranceChamber() {
         <details className="entrance-more">
           <summary>Already have a list, or want an example?</summary>
           <div className="entrance-secondary">
-            <button
-              type="button"
-              onClick={() => {
-                setDeck("");
-                setReviewFocus("");
-                setSelectedCommander(null);
-                setSelectedSecondCommander(null);
-                setCommanderQuery("");
-                setBuildPath("complete");
-                setChamber("refine");
-              }}
-            >
+            <button type="button" onClick={() => beginFreeDecklist("complete")}>
               Have a partial list? Review it step by step
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setDeck("");
-                setReviewFocus("");
-                setSelectedCommander(null);
-                setSelectedSecondCommander(null);
-                setCommanderQuery("");
-                setBuildStep(0);
-                setBuildPath("scratch");
-                setChamber("refine");
-              }}
-            >
+            <button type="button" onClick={() => beginFreeDecklist("scratch")}>
               Open an empty decklist
             </button>
           </div>

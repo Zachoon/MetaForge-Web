@@ -179,6 +179,8 @@ export default function Home() {
     buildStep,
     setBuildStep,
     setBuildPath,
+    freeBuildActive,
+    beginFreeDecklist,
     format,
     strategy,
     setStrategy,
@@ -515,13 +517,7 @@ export default function Home() {
 
   function openAnalyze() {
     if (!hasValidatedDeck) {
-      setDeck("");
-      setReviewFocus("");
-      setSelectedCommander(null);
-      setSelectedSecondCommander(null);
-      setCommanderQuery("");
-      setBuildPath("complete");
-      setChamber("refine");
+      beginFreeDecklist("complete");
       return;
     }
     setChamber("workbench");
@@ -532,6 +528,16 @@ export default function Home() {
   }
 
   function openDecklist() {
+    if (freeBuildActive) {
+      setChamber("workbench");
+      setActiveForgeChapter(1);
+      setSiteRail("decklist");
+      return;
+    }
+    if (!hasValidatedDeck) {
+      beginFreeDecklist("complete");
+      return;
+    }
     setChamber("workbench");
     setActiveForgeChapter(1);
     setDeckViewMode((current) => current === "playtest" ? preferredDecklistView() : current);
@@ -694,11 +700,11 @@ export default function Home() {
             {hasValidatedDeck && <button type="button" className="forge-rail-settings" onClick={() => { setMasterworkIdentityDraft(masterworkIdentity); setMasterworkIdentityOpen(true); }}><i>⚙</i><span>Settings</span></button>}
           </>
         )}
-        {siteSection === "analyze" && hasValidatedDeck && (
+        {siteSection === "analyze" && (hasValidatedDeck || freeBuildActive) && (
           <>
             <button type="button" className={chamber === "workbench" && activeForgeChapter === 1 && siteRail === "decklist" ? "active" : ""} onClick={openDecklist}><i>☷</i><span>Decklist</span></button>
-            <button type="button" className={siteRail === "playtest" ? "active" : ""} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode("playtest"); setSiteRail("playtest"); revealChamberTarget(".tabletop-surface"); }}><i>⚔</i><span>Playtest</span></button>
-            <button type="button" onClick={openDeepForgeEvidence}><i>◇</i><span>Evidence</span></button>
+            {hasValidatedDeck && <button type="button" className={siteRail === "playtest" ? "active" : ""} onClick={() => { setChamber("workbench"); setActiveForgeChapter(1); setDeckViewMode("playtest"); setSiteRail("playtest"); revealChamberTarget(".tabletop-surface"); }}><i>⚔</i><span>Playtest</span></button>}
+            {hasValidatedDeck && <button type="button" onClick={openDeepForgeEvidence}><i>◇</i><span>Evidence</span></button>}
           </>
         )}
         <div className="forge-rail-embers" aria-hidden="true"><i /><i /><i /></div>
