@@ -80,6 +80,13 @@ test("suggests the highest-scoring eligible card for a fundamentals category", (
   assert.equal(suggestion.exhausted, false);
   assert.ok(suggestion.offer.roles.includes("ramp"), "offer should actually be a ramp card");
   assert.ok(suggestion.reason.nearestAlternative, "should report a nearest alternative when more than one ramp card exists");
+  assert.ok(suggestion.comparison?.runnerUp?.name);
+  assert.notEqual(suggestion.comparison.runnerUp.name, suggestion.offer.name);
+  assert.match(suggestion.comparison.sharedSlot, /ramp slot/);
+  if (suggestion.comparison.winner.rank > suggestion.comparison.runnerUp.rank) {
+    assert.ok(suggestion.comparison.winnerReasons.length >= 1);
+    assert.ok(suggestion.comparison.winnerReasons.length <= 3);
+  }
 });
 
 test("declining excludes that name and the next call offers a different card", () => {
@@ -233,6 +240,8 @@ test("a synergy comparison stays with a card that does the same job", () => {
     "A Second Offer": "interaction",
   };
   assert.equal(roleOf[suggestion.offer.name], roleOf[suggestion.reason.nearestAlternative.name]);
+  assert.ok(suggestion.comparison?.runnerUp?.name);
+  assert.notEqual(suggestion.comparison.runnerUp.name, suggestion.offer.name);
 });
 
 test("untagged synergy cards are not compared as if they shared a job", () => {
@@ -248,6 +257,8 @@ test("untagged synergy cards are not compared as if they shared a job", () => {
   });
   assert.equal(suggestion.exhausted, false);
   assert.equal(suggestion.reason.nearestAlternative, null);
+  assert.ok(suggestion.comparison?.runnerUp?.name);
+  assert.notEqual(suggestion.comparison.runnerUp.name, suggestion.offer.name);
 });
 
 test("declining every eligible card in turn eventually exhausts the category", () => {

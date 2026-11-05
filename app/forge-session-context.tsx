@@ -119,6 +119,42 @@ type GuidedReason = {
   summary?: string | null;
   nearestAlternative: { name: string; margin: number; sameRole?: boolean; role?: string } | null;
 } | null;
+export type SlotFactorScores = {
+  roleFit: number;
+  synergy: number;
+  manaEfficiency: number;
+  gapFilled: number;
+  bracketImpact: number;
+  powerSignal: string | null;
+};
+export type ComparedCard = {
+  name: string;
+  typeLine: string;
+  manaCost: string;
+  cmc: number | null;
+  priceUsd: number | null;
+  colorIdentity: string[];
+  role: string;
+  sameSlot: boolean;
+  rank: number;
+  quality: number | null;
+  factors: SlotFactorScores;
+  pros: string[];
+  cons: string[];
+  place: number;
+  picked?: boolean;
+};
+export type SlotComparison = {
+  sharedSlot: string;
+  winnerReasons: string[];
+  winner: ComparedCard;
+  runnerUp: ComparedCard;
+} | null;
+export type OwnPickComparison = {
+  addedName: string;
+  ranked: ComparedCard[];
+  differentRole: string | null;
+} | null;
 // The short "why this card" line (worker/forge-guided-build.ts → explainOffer).
 type GuidedExplanation = { role: string; worksWith: string[]; tradeOff: string; learned: string[] } | null;
 type GuidedDeclineFeedback = { name: string; reason: string | null };
@@ -217,6 +253,8 @@ type GuidedSession = {
   manualCards: Record<string, any>;
   offer: GuidedOffer | null;
   reason: GuidedReason;
+  comparison?: SlotComparison;
+  ownPickComparison?: OwnPickComparison;
   // Why the player turned cards down (one-tap reasons). Unlike declined,
   // which resets per step, this persists so the server keeps learning from it.
   // Optional so drafts saved before this field existed still restore.
@@ -1489,6 +1527,8 @@ export function useForgeSessionState() {
   const guidedOfferFields = (data: any) => ({
     offer: (data.offer || null) as GuidedOffer | null,
     reason: (data.reason || null) as GuidedReason,
+    comparison: (data.comparison || null) as SlotComparison,
+    ownPickComparison: (data.ownPickComparison || null) as OwnPickComparison,
     explanation: (data.explanation || null) as GuidedExplanation,
     reasoning: (data.reasoning || null) as GuidedReasoning,
     deckProfile: (data.deckProfile || null) as GuidedDeckProfile,
@@ -1593,6 +1633,7 @@ export function useForgeSessionState() {
   async function requestGuidedOffer(
     session: GuidedSession,
     patch: Partial<Pick<GuidedSession, "categoryIndex" | "accepted" | "declined" | "manualCards" | "declineFeedback">>,
+    extra: { ownPickName?: string } = {},
   ) {
     const seq = ++guidedOfferSeqRef.current;
     const next = { ...session, ...patch };
@@ -1620,6 +1661,9 @@ export function useForgeSessionState() {
         playerCompass,
         categories: next.categories,
         categoryIndex: next.categoryIndex,
+        // A deck-intent bracket replaces the tier captured when the build started.
+        targetPowerTier: targetPowerTier || undefined,
+        ownPickName: extra.ownPickName || undefined,
       });
       if (seq !== guidedOfferSeqRef.current) return;
       const categories = Array.isArray(data.categoryOrder) && data.categoryOrder.length === next.categories.length
@@ -1687,6 +1731,20 @@ export function useForgeSessionState() {
     void requestGuidedOffer(guidedSession, {
       accepted: [...guidedSession.accepted, name],
       manualCards: { ...guidedSession.manualCards, [lower]: rawCard },
+    }, { ownPickName: name });
+  }
+  // The runner-up takes the slot. The offered card is set aside with no
+  // decline reason, so preference learning does not treat it as a rejection.
+  function takeGuidedAlternative(name: string) {
+    if (!guidedSession?.offer || guidedLoading || guidedConflict || guidedCompletionRef.current) return;
+    const pick = String(name || "").trim();
+    if (!pick || pick.toLocaleLowerCase("en") === guidedSession.offer.name.toLocaleLowerCase("en")) return;
+    if (guidedSession.accepted.some((entry) => entry.toLocaleLowerCase("en") === pick.toLocaleLowerCase("en"))) return;
+    trackGuidedStep("alternative");
+    void requestGuidedOffer(guidedSession, {
+      accepted: [...guidedSession.accepted, pick],
+      declined: [...guidedSession.declined, guidedSession.offer.name],
+      declineFeedback: [...(guidedSession.declineFeedback || []), { name: guidedSession.offer.name, reason: null }].slice(-100),
     });
   }
   function removeGuidedPick(name: string) {
@@ -5988,6 +6046,7 @@ export function useForgeSessionState() {
     acceptGuidedOffer,
     declineGuidedOffer,
     addGuidedManualCard,
+    takeGuidedAlternative,
     removeGuidedPick,
     goToGuidedCategory,
     finishGuidedCategory,

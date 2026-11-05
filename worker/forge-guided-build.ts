@@ -12,7 +12,8 @@
 // guest-generate already uses; start is the only place a guest session is
 // minted and it requires Turnstile.
 import { analyzeForgePool } from "../app/native-masterwork-engine.mjs";
-import { suggestCardForCategory } from "../app/guided-suggestion.mjs";
+import { suggestCardForCategory, scoreGuidedCandidate, cardCompetesForCategory } from "../app/guided-suggestion.mjs";
+import { threeWayComparison } from "../app/slot-comparison.mjs";
 import { CATEGORY_SEQUENCE, buildCategoryBudgetLedger } from "../app/category-budget-ledger.mjs";
 import { flattenAnalyzedEntries } from "../app/guided-build-rows.mjs";
 import { POWER_TIERS, powerSignalCategoryFor } from "../app/commander-power-signal.mjs";
@@ -227,6 +228,7 @@ function computeOffer(
   cacheKey?: string,
   manualCards: any[] = [],
   learning: LearningInput = { declineFeedback: [], compass: null },
+  ownPickName = "",
 ) {
   // Manual search finds cards outside the pool loadNativeForgePool fetched
   // (a Scryfall search is popularity-ordered and capped in size). Without
@@ -307,7 +309,50 @@ function computeOffer(
     adjustment: suggestion.adjustment || null,
   });
   const deckUrgency = profileStepUrgencies(reasoningContext.profile, [...CATEGORY_SEQUENCE]);
-  return { suggestion, ledger, analysis, preferenceProfile, explanation, reasoningContext, deckUrgency, partialRows, commanderEntries };
+  // The player's own card is already in partialRows. Score it against the
+  // top two the slot would have offered before that card was added.
+  let ownPickComparison = null;
+  const ownKey = normalizeKey(ownPickName);
+  if (ownKey && acceptedNames.some((name) => normalizeKey(name) === ownKey)) {
+    const rowName = (row: any) => normalizeKey(String(row?.card?.name || row?.name || ""));
+    const rowsWithout = partialRows.filter((row) => rowName(row) !== ownKey);
+    const declinedWithout = declinedNames.filter((name) => normalizeKey(name) !== ownKey);
+    const preferenceWithout = buildPreferenceProfile({
+      acceptedRows: rowsWithout,
+      declined: learning.declineFeedback.map((entry) => ({ row: analyzedEntry(analyzedByName, entry.name), reason: entry.reason })),
+      compass: learning.compass,
+    });
+    const reasoningWithout = buildReasoningContext({
+      commanders: commanderEntries,
+      picks: rowsWithout,
+      deckSize: targetDeckSize(input.format),
+      hints: `${input.strategy || ""} ${input.note || ""}`,
+      colorIdentity: [...new Set(commanderEntries.flatMap((commander) => commander.colorIdentity))],
+    });
+    const scoringWithout = {
+      budgetConstraint: input.budget === "Budget conscious",
+      powerConstraint: input.targetPowerTier === "Casual",
+      powerSignalCategoryFor,
+      preferenceProfile: preferenceWithout,
+      reasoningContext: reasoningWithout,
+    };
+    const baseline = suggestCardForCategory({
+      category,
+      partialRows: rowsWithout,
+      pool: analysis.scoredSpells,
+      intent: analysis.strategicIntent,
+      declinedNames: declinedWithout,
+      options: scoringWithout,
+    } as any);
+    const userEntry = analyzedEntry(analyzedByName, ownPickName);
+    if (userEntry) {
+      const userScored = scoreGuidedCandidate(category, userEntry, scoringWithout, rowsWithout, analysis.strategicIntent);
+      ownPickComparison = threeWayComparison(category, userScored, baseline.contenders, {
+        competes: (candidate: any) => cardCompetesForCategory(candidate, category, analysis.strategicIntent),
+      });
+    }
+  }
+  return { suggestion, ledger, analysis, preferenceProfile, explanation, reasoningContext, deckUrgency, partialRows, commanderEntries, ownPickComparison };
 }
 
 // Analysis (classifying ~1000 cards) costs ~200ms and is identical for every
@@ -416,6 +461,7 @@ function serializeOffer(
     exhausted: suggestion.exhausted,
     remainingCandidates: suggestion.remainingCandidates,
     reason: suggestion.reason,
+    comparison: suggestion.comparison || null,
     offer: card
       ? {
           name: card.name,
@@ -611,13 +657,20 @@ export async function handleForgeGuidedNext(request: Request, env: Env): Promise
     return json({ error: "This guided Build session is no longer available. Start a new one." }, 404);
   }
 
+  const requestedTier = typeof body?.targetPowerTier === "string" && (POWER_TIERS as readonly string[]).includes(body.targetPowerTier)
+    ? body.targetPowerTier
+    : "";
+  const ownPickName = typeof body?.ownPickName === "string" ? body.ownPickName.slice(0, MAX_ROW_NAME).trim() : "";
+
   try {
     const stored = generation.payload;
-    const input = inputFromStored(stored);
+    const storedInput = inputFromStored(stored);
+    const input = requestedTier ? { ...storedInput, targetPowerTier: requestedTier } : storedInput;
     // generation.ok above already proved this caller owns generationId.
-    const { suggestion, ledger, explanation, preferenceProfile, deckUrgency, reasoningContext } = computeOffer(
+    const { suggestion, ledger, explanation, preferenceProfile, deckUrgency, reasoningContext, ownPickComparison } = computeOffer(
       stored.cardPool, input, body.category, acceptedNames, declinedNames, generationId, manualCards,
       { declineFeedback, compass },
+      ownPickName,
     );
     // Only the steps after the current one are reordered, and only when the
     // client told us its order and position; older clients get null and
@@ -625,7 +678,9 @@ export async function handleForgeGuidedNext(request: Request, env: Env): Promise
     const categoryOrder = clientOrder && categoryIndex !== null
       ? orderRemainingCategories(clientOrder, categoryIndex, { ledger: serializeLedger(ledger), profile: preferenceProfile, deckUrgency })
       : null;
-    return json(serializeOffer(suggestion, ledger, explanation, categoryOrder, reasoningContext.profile));
+    const payload = serializeOffer(suggestion, ledger, explanation, categoryOrder, reasoningContext.profile) as Record<string, unknown>;
+    payload.ownPickComparison = ownPickComparison;
+    return json(payload);
   } catch (error) {
     console.error("forge-guided-next failed", error);
     return json({ error: "The guided Build could not continue for this session." }, 500);

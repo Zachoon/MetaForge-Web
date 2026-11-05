@@ -4,6 +4,7 @@ import { isWinConditionCard } from "./fundamentals-target-table.mjs";
 import { TRACKED_ROLES } from "./slot-justification-ledger.mjs";
 import { preferenceAdjustment } from "./guided-preference-learning.mjs";
 import { reasonWithProvider } from "./reasoning-engine/index.mjs";
+import { comparisonFromScored, guidedJobKey } from "./slot-comparison.mjs";
 
 // =============================================================================
 // Guided Suggestion
@@ -134,9 +135,30 @@ export function accessibilityPenalty(candidate) {
 }
 
 function cardJobKey(candidate) {
-  const tracked = TRACKED_ROLES.filter((role) => (candidate.roles || []).includes(role));
-  if (!tracked.length) return null;
-  return tracked.slice().sort().join("+");
+  return guidedJobKey(candidate);
+}
+
+export function cardCompetesForCategory(candidate, category, intent) {
+  return eligibleForCategory(candidate, category, intent);
+}
+
+/** One candidate, scored the same way suggestCardForCategory scores the pool. */
+export function scoreGuidedCandidate(category, candidate, scoringOptions, partialRows, intent) {
+  const deficitState = scoringOptions.deficitState || buildLiveDeficitState(partialRows, intent, scoringOptions);
+  const options = { ...scoringOptions, deficitState };
+  const delta = prospectiveSlotDelta(partialRows, candidate, intent, options);
+  const adjustment = preferenceAdjustment(candidate, options.preferenceProfile || null);
+  const reasoning = options.reasoningContext
+    ? reasonWithProvider(candidate, { ...options.reasoningContext, category }, options.reasoningProvider || null)
+    : null;
+  return Object.freeze({
+    candidate,
+    delta,
+    adjustment,
+    reasoning,
+    tier: roleTier(candidate, category),
+    rank: round(focusedScore(category, candidate, delta) + adjustment.delta + (reasoning?.delta || 0)),
+  });
 }
 
 function nearestSameRole(scored) {
@@ -192,37 +214,17 @@ export function suggestCardForCategory({
   });
 
   if (!eligible.length) {
-    return Object.freeze({ category, offer: null, delta: null, adjustment: null, reasoning: null, reason: null, exhausted: true, remainingCandidates: 0 });
+    return Object.freeze({ category, offer: null, delta: null, adjustment: null, reasoning: null, reason: null, contenders: Object.freeze([]), comparison: null, exhausted: true, remainingCandidates: 0 });
   }
 
   const scored = eligible
-    .map((candidate) => {
-      const delta = prospectiveSlotDelta(partialRows, candidate, intent, scoringOptions);
-      // What the player has taught this session (accepts, decline reasons,
-      // Player Compass answers): a capped nudge on top of the same rank,
-      // never a filter. No profile means exactly the previous ordering.
-      const adjustment = preferenceAdjustment(candidate, options.preferenceProfile || null);
-      // The reasoning engine (running deck profile + rules-text interaction
-      // graph): a capped nudge for gaps, real mechanical synergy, plan, curve
-      // and color fit, plus the structured reasons shown to the player.
-      // No reasoningContext means exactly the previous ordering.
-      const reasoning = options.reasoningContext
-        ? reasonWithProvider(candidate, { ...options.reasoningContext, category }, options.reasoningProvider || null)
-        : null;
-      return Object.freeze({
-        candidate,
-        delta,
-        adjustment,
-        reasoning,
-        tier: roleTier(candidate, category),
-        rank: round(focusedScore(category, candidate, delta) + adjustment.delta + (reasoning?.delta || 0)),
-      });
-    })
+    .map((candidate) => scoreGuidedCandidate(category, candidate, scoringOptions, partialRows, intent))
     // delta.name is prospectiveSlotDelta's own already-unwrapped entryName,
     // reused here rather than re-deriving it a third way.
     .sort((left, right) => left.tier - right.tier || right.rank - left.rank || left.delta.name.localeCompare(right.delta.name));
 
   const best = scored[0];
+  const competes = (candidate) => eligibleForCategory(candidate, category, intent);
   return Object.freeze({
     category,
     offer: best.candidate,
@@ -235,6 +237,10 @@ export function suggestCardForCategory({
       summary: best.reasoning?.summary || null,
       nearestAlternative: nearestSameRole(scored),
     }),
+    // Top two by the guided rank, for a player's own pick to be rescored against.
+    // Kept off the wire by serializeOffer, which only forwards `comparison`.
+    contenders: Object.freeze(scored.slice(0, 2)),
+    comparison: comparisonFromScored(category, scored, { competes }),
     exhausted: false,
     remainingCandidates: scored.length,
   });

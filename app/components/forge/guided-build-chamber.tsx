@@ -9,7 +9,9 @@ import { centeredRailScrollLeft } from "../../guided-step-rail.mjs";
 import { DECLINE_REASONS } from "../../guided-preference-learning.mjs";
 import { PlayerCompassCard } from "./player-compass-card";
 import { GuidedFinishPanel } from "./guided-finish-panel";
-import { useForgeSession, type GuidedDeckProfile, type GuidedListAnalysis } from "../../forge-session-context";
+import { useForgeSession, type GuidedDeckProfile, type GuidedListAnalysis, type SlotComparison } from "../../forge-session-context";
+import { OwnPickPanel, RunnerUpPanel } from "./slot-compare";
+import { DeckIntentControls } from "./deck-intent-panel";
 
 const REASON_KIND_LABEL: Record<string, string> = {
   gap: "Gap",
@@ -112,6 +114,7 @@ export function GuidedBuildChamber() {
     acceptGuidedOffer,
     declineGuidedOffer,
     addGuidedManualCard,
+    takeGuidedAlternative,
     removeGuidedPick,
     goToGuidedCategory,
     finishGuidedCategory,
@@ -124,6 +127,7 @@ export function GuidedBuildChamber() {
     guestMode,
     playerCompassSynced,
     persistPlayerCompass,
+    setTargetPowerTier,
   } = useForgeSession();
 
   const [search, setSearch] = useState("");
@@ -138,6 +142,7 @@ export function GuidedBuildChamber() {
   const searchSeq = useRef(0);
   const [searchState, setSearchState] = useState("idle");
   const [searchRetry, setSearchRetry] = useState(0);
+  const [insteadAsk, setInsteadAsk] = useState<SlotComparison>(null);
 
   const commanderColors = [...new Set([...(selectedCommander?.colors || []), ...(selectedSecondCommander?.colors || [])])];
   const identityClause = commanderColors.length ? `id<=${commanderColors.join("").toLowerCase()}` : "id:c";
@@ -346,10 +351,16 @@ export function GuidedBuildChamber() {
               <article key={offer ? `${session.categoryIndex}:${offer.name}` : "empty"} className="guided-offer" aria-live="polite" aria-busy={guidedLoading}>
                 {offer ? (
                   <>
-                    <img src={cardImage(offer.name)} alt={offer.name} loading="lazy" />
+                    <img
+                      src={cardImage(offer.name)}
+                      alt={offer.name}
+                      data-card-name={offer.name}
+                      {...(offer.priceUsd != null ? { "data-card-price": String(offer.priceUsd) } : {})}
+                      loading="lazy"
+                    />
                     <div>
-                      <small>SUGGESTED CARD</small>
-                      <h2>{offer.name}</h2>
+                      <small className="guided-offer-kicker"><img src="/assets/forge/tripo/prop_hammer-512.webp" alt="" width={28} height={28} /> SUGGESTED CARD</small>
+                      <h2 data-card-name={offer.name}>{offer.name}</h2>
                       <em>{offer.typeLine}{offer.manaCost ? ` · ${offer.manaCost}` : ""}</em>
                       {offer.oracleText && (
                         <details className="guided-oracle">
@@ -390,6 +401,15 @@ export function GuidedBuildChamber() {
                         </section>
                       )}
                       <p className="guided-why">{describeGuidedReason(session.reason, offer.name)}</p>
+                      <RunnerUpPanel
+                        comparison={session.comparison || null}
+                        disabled={guidedLoading || guidedBuildLocked}
+                        onTake={(name) => {
+                          setInsteadAsk(session.comparison || null);
+                          rememberPickRole(name);
+                          takeGuidedAlternative(name);
+                        }}
+                      />
                       <div className="guided-actions">
                         <button type="button" ref={acceptRef} className="guided-accept" disabled={guidedLoading || guidedBuildLocked} onClick={() => { if (offer) rememberPickRole(offer.name); acceptGuidedOffer(); }}>
                           Add to my deck
@@ -427,6 +447,8 @@ export function GuidedBuildChamber() {
               </article>
               )}
 
+              {session.ownPickComparison && <OwnPickPanel comparison={session.ownPickComparison} />}
+
               <section className={`guided-search${struggling || !offer ? " emphasized" : ""}`}>
                 <label>
                   <span>SEARCH LEGAL {format.toUpperCase()} CARDS IN YOUR COMMANDER&rsquo;S COLORS</span>
@@ -455,7 +477,7 @@ export function GuidedBuildChamber() {
                           setResults([]);
                         }}
                       >
-                        <b>{card.name}</b>
+                        <b data-card-name={card.name}>{card.name}</b>
                         <small>{card.typeLine}</small>
                         <i>＋</i>
                       </button>
@@ -480,6 +502,13 @@ export function GuidedBuildChamber() {
 
             <aside className="guided-side">
               {/* Answers apply to the very next suggestion, one at a time. */}
+              <DeckIntentControls
+                deckKey={session.key}
+                categoryLabel={copy?.label || guidedCategoryLabel(category)}
+                insteadRequest={insteadAsk}
+                ownPick={session.ownPickComparison || null}
+                onTier={setTargetPowerTier}
+              />
               <PlayerCompassCard
                 value={playerCompass}
                 signedIn={!guestMode}
@@ -534,7 +563,7 @@ export function GuidedBuildChamber() {
                         <ul>
                           {group.names.map((name) => (
                             <li key={name}>
-                              <span>{name}</span>
+                              <span data-card-name={name}>{name}</span>
                               <button type="button" disabled={guidedLoading || guidedBuildLocked} onClick={() => removeGuidedPick(name)} aria-label={`Remove ${name}`}>
                                 ×
                               </button>

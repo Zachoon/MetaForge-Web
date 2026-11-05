@@ -12,7 +12,7 @@ test("every category in the fixed sequence has player-facing copy", () => {
   assert.equal(guidedCategoryLabel("unknown"), "unknown");
 });
 
-test("describeGuidedReason names one or two reasons and compares only a same-role card", () => {
+test("describeGuidedReason names one or two reasons and leaves the runner-up to the comparison panel", () => {
   const fromText = describeGuidedReason({
     summary: "makes Treasure whenever you cast an instant or sorcery, and scales with artifacts you control, without spending them",
     deficitsFilled: ["package_core:artifacts", "package_core:tokens", "commander_connection:artifacts"],
@@ -29,9 +29,9 @@ test("describeGuidedReason names one or two reasons and compares only a same-rol
     topPositive: { kind: "package_core", key: "auras" },
     nearestAlternative: { name: "Arcane Signet", margin: 4.2, sameRole: true, role: "ramp" },
   }, "Sol Ring");
-  assert.match(sameRole, /^Sol Ring fills a real ramp gap and fills an open spot at 2 mana\./);
+  assert.match(sameRole, /^Sol Ring fills a real ramp gap and fills an open spot at 2 mana\.$/);
   assert.doesNotMatch(sameRole, /shell/);
-  assert.match(sameRole, /edged out Arcane Signet/);
+  assert.doesNotMatch(sameRole, /Arcane Signet/);
 });
 
 test("describeGuidedReason falls back honestly when no deficit was filled", () => {
