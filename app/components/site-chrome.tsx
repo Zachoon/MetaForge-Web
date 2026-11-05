@@ -75,7 +75,7 @@ export function PageTrail({ crumbs }: { crumbs: { href?: string; label: string }
       <nav className="mf-journey" aria-label="Where to go next">
         <Link href="/commanders"><b>1</b><span>Start with your commander</span></Link>
         <Link href="/?intent=build"><b>2</b><span>Build</span></Link>
-        <Link href="/academy"><b>3</b><span>Learn</span></Link>
+        <Link href="/academy"><b>3</b><span>Academy</span></Link>
       </nav>
     </div>
   );

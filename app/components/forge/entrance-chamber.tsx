@@ -69,7 +69,7 @@ export function EntranceChamber() {
         <nav className="mf-journey" aria-label="First visit">
           <Link href="/commanders"><b>1</b><span>Start with your commander</span></Link>
           <Link href="/?intent=build"><b>2</b><span>Build</span></Link>
-          <Link href="/academy"><b>3</b><span>Learn</span></Link>
+          <Link href="/academy"><b>3</b><span>Academy</span></Link>
         </nav>
         <details className="entrance-more">
           <summary>Already have a list, or want an example?</summary>
