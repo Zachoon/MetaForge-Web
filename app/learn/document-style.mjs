@@ -19,7 +19,7 @@ export const LEARN_DOCUMENT_CSS = `
     var(--mf-void);
 }
 body{margin:0;background:var(--mf-page-bg);color:var(--mf-ivory);font-family:Inter,ui-sans-serif,system-ui,sans-serif}
-.legal-page{min-height:100vh;padding:0 var(--mf-gutter) 80px;background:var(--mf-page-bg);color:var(--mf-ivory);overflow-x:clip}
+.legal-page{min-height:100vh;padding:74px var(--mf-gutter) 80px;background:var(--mf-page-bg);color:var(--mf-ivory);overflow-x:clip}
 .legal-shell{width:min(42rem,100%);margin:0 auto;padding-top:var(--mf-section-gap)}
 .legal-card{padding:clamp(20px,4vw,40px);border:1px solid var(--mf-border);border-radius:2px;background:linear-gradient(180deg,rgba(224,181,106,.05),transparent 72px),var(--mf-surface-1);box-shadow:var(--mf-frame-shadow)}
 .legal-card>small{color:var(--mf-ornament);font-size:11px;font-weight:800;letter-spacing:.16em}
@@ -31,7 +31,11 @@ body{margin:0;background:var(--mf-page-bg);color:var(--mf-ivory);font-family:Int
 .legal-card section{padding:18px 0;border-top:1px solid #4a3828}
 .legal-card p,.legal-card li{max-width:65ch;color:#d9cbb8;font-size:15px;line-height:1.65}
 .legal-card a{color:var(--mf-ornament);overflow-wrap:anywhere}
-.mf-site-header{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:16px;width:100%;min-height:58px;padding:0 16px;border-bottom:1px solid var(--mf-border);background:rgba(12,10,8,.94)}
+.mf-site-header{position:fixed;top:0;right:0;left:0;z-index:40;display:flex;align-items:center;gap:16px;width:auto;min-height:58px;padding:0 16px;border-bottom:1px solid var(--mf-border);background:rgba(12,10,8,.94)}
+.mf-section-rail{position:fixed;z-index:30;top:58px;bottom:0;left:0;display:flex;flex-direction:column;width:104px;overflow:auto;border-right:1px solid var(--mf-border);background:rgba(12,11,10,.96)}
+.mf-section-rail a{display:grid;min-height:68px;padding:10px 8px;place-items:center;border-left:2px solid transparent;color:#cbbba6;font-size:11px;font-weight:700;line-height:1.15;text-align:center;text-decoration:none}
+.mf-section-rail i{color:#e0b56a;font:normal 18px/1 system-ui;font-style:normal}
+.mf-section-rail a[aria-current="page"]{border-left-color:var(--mf-ornament);color:var(--mf-ivory)}
 .mf-brand{display:inline-flex;align-items:center;gap:10px;min-height:44px;color:var(--mf-ivory);font-weight:800;letter-spacing:.14em;text-decoration:none;white-space:nowrap}
 .mf-brand img{display:block;width:34px;height:34px;object-fit:contain}
 .mf-site-nav{display:flex;min-width:0;flex:1 1 auto;align-items:stretch;gap:2px;overflow-x:auto;scrollbar-width:none}
@@ -50,8 +54,17 @@ body{margin:0;background:var(--mf-page-bg);color:var(--mf-ivory);font-family:Int
 .learn-oracle{display:block;max-width:100%;margin:12px 0;padding:12px 14px;border:1px solid var(--mf-border);background:var(--mf-surface-0);box-shadow:var(--mf-frame-shadow);color:var(--mf-ivory);font-size:14px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;overflow-x:hidden}
 .learn-cta{margin-top:8px;padding:18px;border:1px solid var(--mf-border-strong);background:linear-gradient(180deg,rgba(224,181,106,.12),transparent 72%),var(--mf-surface-2);box-shadow:var(--mf-frame-shadow)}
 .learn-cta a{display:flex;align-items:center;justify-content:center;width:100%;min-height:48px;padding:10px 16px;background:var(--mf-ornament);color:var(--mf-ink);font-weight:800;text-decoration:none}
+@media(min-width:761px){
+  .legal-page{padding-left:calc(104px + var(--mf-gutter))}
+}
 @media(min-width:720px){
   .mf-trail{padding-right:48px;background:url("/assets/forge/tripo/prop_hammer-512.webp") right center / 36px no-repeat}
+}
+@media(max-width:760px){
+  .mf-section-rail{top:auto;right:0;bottom:0;left:0;width:auto;height:58px;flex-direction:row;border-top:1px solid var(--mf-border);border-right:0}
+  .mf-section-rail a{flex:1 1 0;min-width:64px;min-height:58px;border-left:0;border-bottom:2px solid transparent}
+  .mf-section-rail a[aria-current="page"]{border-bottom-color:var(--mf-ornament)}
+  .legal-page{padding:112px 12px 86px}
 }
 @media(max-width:720px){
   .mf-site-header{align-items:stretch;flex-wrap:wrap;height:98px;min-height:98px;padding:0 12px}

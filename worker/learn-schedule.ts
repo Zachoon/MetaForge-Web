@@ -19,8 +19,10 @@ function log(event: Record<string, unknown>) {
   console.log(JSON.stringify({ component: "learn", ...event }));
 }
 
-async function rows(env: LearnEnv, sql: string, ...binds: unknown[]): Promise<Record<string, any>[]> {
-  const result = await env.DB.prepare(sql).bind(...binds).all<Record<string, any>>();
+type SqlRow = Record<string, string | number | null | undefined>;
+
+async function rows(env: LearnEnv, sql: string, ...binds: unknown[]): Promise<SqlRow[]> {
+  const result = await env.DB.prepare(sql).bind(...binds).all<SqlRow>();
   return result.results || [];
 }
 

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { PageTrail, SiteHeader } from "../components/site-chrome";
 import { categoryById } from "./policy.mjs";
 import { learnArticleSchema } from "./catalog.mjs";
@@ -53,7 +54,7 @@ export function CategoryNav({ current }: { current?: string }) {
     { href: "/learn/category/theory", id: "theory", label: "Theory" },
     { href: "/learn/category/spoilers", id: "spoilers", label: "New Cards" },
     { href: "/learn/category/set-reviews", id: "set-reviews", label: "Set Reviews" },
-    { href: "/learn/category/commander-spotlights", id: "commander-spotlights", label: "Commanders" },
+    { href: "/learn/category/commander-spotlights", id: "commander-spotlights", label: "Spotlights" },
     { href: "/learn/news", id: "news", label: "News" },
   ];
   return (
@@ -94,10 +95,8 @@ export function BuildCta({ href, label, text }: { href: string; label: string; t
 export function LearnLinks() {
   return (
     <footer className="legal-links">
-      <a href="/?intent=build">Build a deck</a>
-      <a href="/commanders">Commander guides</a>
-      <a href="/academy">Academy</a>
-      <a href="/">Forge</a>
+      <Link href="/?intent=build">Build a deck</Link>
+      <Link href="/">Forge</Link>
     </footer>
   );
 }

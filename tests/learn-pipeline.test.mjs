@@ -229,7 +229,15 @@ test("topic cooldown and duplicate keys skip a repeat", async () => {
 test("a worker article uses the shared frame, not a separate shell", () => {
   const html = articleDocument(seedArticles()[0], []);
   assert.match(html, /class="mf-site-header"/);
-  assert.match(html, /aria-current="page">Learn</);
+  const topNav = html.match(/<nav class="mf-site-nav"[\s\S]*?<\/nav>/)?.[0] ?? "";
+  assert.match(topNav, /<a href="\/" aria-current="page">Explore<\/a>/);
+  assert.match(topNav, /href="\/tools">Database</);
+  assert.match(topNav, /Decks/);
+  assert.match(topNav, /Analyze/);
+  assert.match(topNav, /Community/);
+  assert.doesNotMatch(topNav, />Learn</);
+  assert.doesNotMatch(topNav, /Premium/);
+  assert.match(html, /<a href="\/learn" aria-current="page"><i aria-hidden="true">☰<\/i><span>Learn<\/span><\/a>/);
   assert.match(html, /class="legal-shell"/);
   assert.match(html, /class="legal-card"/);
   assert.match(html, /aria-label="Breadcrumb"/);

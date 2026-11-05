@@ -383,7 +383,7 @@ test("publishes the Learn library with article metadata and a sitemap entry", as
   assert.match(html, /How the coach reads a Commander curve/);
   assert.match(html, /href="\/learn\/how-the-coach-reads-a-commander-curve"/);
   assert.match(html, /class="mf-site-header"/);
-  assert.match(html, /aria-current="page">Learn</);
+  assert.match(html, /aria-current="page"(?:>Learn|[\s\S]{0,120}<span>Learn<\/span>)/);
   assert.match(html, /class="legal-shell"/);
   assert.match(html, /class="legal-card"/);
   assert.match(html, /aria-label="Breadcrumb"/);

@@ -44,14 +44,18 @@ export function articleDocument(article, related = []) {
     <header class="mf-site-header">
       <a class="mf-brand" href="/"><img src="/assets/brand/metaforge-mf-anvil.webp" alt="" width="34" height="34"><span>METAFORGE</span></a>
       <nav class="mf-site-nav" aria-label="MetaForge">
-        <a href="/">Explore</a>
-        <a href="/commanders">Commanders</a>
-        <a href="/?intent=build">Build</a>
-        <a href="/learn" aria-current="page">Learn</a>
-        <a href="/academy">Academy</a>
+        <a href="/" aria-current="page">Explore</a>
+        <a href="/?intent=decks">Decks</a>
+        <a href="/?intent=analyze">Analyze</a>
+        <a href="/tools">Database</a>
         <a href="/decks">Community</a>
       </nav>
     </header>
+    <nav class="mf-section-rail" aria-label="Explore">
+      <a href="/learn" aria-current="page"><i aria-hidden="true">☰</i><span>Learn</span></a>
+      <a href="/academy"><i aria-hidden="true">✎</i><span>Academy</span></a>
+      <a href="/commanders"><i aria-hidden="true">♛</i><span>Commanders</span></a>
+    </nav>
     <div class="legal-shell">
       <div class="mf-trail">
         <nav class="mf-crumbs" aria-label="Breadcrumb"><ol>
@@ -63,7 +67,7 @@ export function articleDocument(article, related = []) {
         <nav class="mf-journey" aria-label="Where to go next">
           <a href="/commanders"><b>1</b><span>Start with your commander</span></a>
           <a href="/?intent=build"><b>2</b><span>Build</span></a>
-          <a href="/academy"><b>3</b><span>Learn</span></a>
+          <a href="/academy"><b>3</b><span>Academy</span></a>
         </nav>
       </div>
       <article class="legal-card">

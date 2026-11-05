@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { indexableArticles, SEED_CLOCK, collectionSchema } from "./catalog.mjs";
 import { CATEGORIES } from "./policy.mjs";
 import { ArticleList, BuildCta, CategoryNav, LearnFrame, LearnLinks } from "./article-view";
@@ -31,7 +32,7 @@ export default function LearnIndex() {
         <section>
           <h2>News</h2>
           <p>The scheduled notes land on the news feed. A run with nothing new still writes one essay from the topic queue, then a person can pull it from the review list.</p>
-          <p><a href="/learn/news">Open the news feed</a> · <a href="/learn/news/rss.xml">RSS</a></p>
+          <p><Link href="/learn/news">Open the news feed</Link> · <a href="/learn/news/rss.xml">RSS</a></p>
           <div data-learn-slot="live" />
         </section>
         <BuildCta href="/?intent=build" label="Build this" text="When a note names the commander, the next step is the forge." />
