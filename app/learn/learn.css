@@ -1,0 +1,188 @@
+/* Learn-only pieces on the shared legal card. The header, trail, bronze
+   frame, 42rem shell, and 65ch measure come from the site frame. */
+
+.learn-page .legal-card p,
+.learn-page .legal-card li {
+  max-width: 65ch;
+}
+
+.learn-page .legal-card h1,
+.learn-page .legal-card h3,
+.learn-page .mf-crumbs [aria-current="page"],
+.learn-page .legal-card a {
+  overflow-wrap: anywhere;
+}
+
+.learn-page .legal-card h3 {
+  margin: 16px 0 6px;
+  color: var(--mf-ivory);
+  font: 500 22px Newsreader, Georgia, serif;
+}
+
+.learn-page .legal-card h3 a {
+  color: var(--mf-ivory);
+  text-decoration: none;
+}
+
+.learn-page .learn-nav,
+.learn-page .learn-tags,
+.learn-page .learn-index,
+.learn-page .learn-package {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.learn-page .legal-card .learn-nav,
+.learn-page .legal-card .learn-tags,
+.learn-page .legal-card .learn-index,
+.learn-page .legal-card .learn-package {
+  padding-left: 0;
+}
+
+.learn-page .learn-nav,
+.learn-page .learn-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.learn-page .learn-nav a,
+.learn-page .learn-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  max-width: 100%;
+  padding: 4px 10px;
+  border: 1px solid var(--mf-border);
+  background: var(--mf-surface-2);
+  box-shadow: inset 0 0 0 1px rgba(8, 6, 4, 0.65);
+  color: var(--mf-ivory);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.learn-page .learn-nav a[aria-current="page"],
+.learn-page .learn-tag {
+  border-color: var(--mf-border-strong);
+  color: var(--mf-ornament);
+}
+
+.learn-page .learn-index {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.learn-page .learn-index a {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--mf-border);
+  background: var(--mf-surface-2);
+  box-shadow: var(--mf-frame-shadow);
+  color: var(--mf-ivory);
+  text-decoration: none;
+}
+
+.learn-page .learn-index a:hover,
+.learn-page .learn-index a:focus-visible {
+  border-color: var(--mf-border-strong);
+  outline: none;
+}
+
+.learn-page .learn-index span {
+  color: var(--mf-ornament);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.learn-page .learn-index strong {
+  color: var(--mf-ivory);
+  font-family: Newsreader, Georgia, serif;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.learn-page .learn-index p {
+  margin: 0;
+  color: var(--mf-mist);
+}
+
+.learn-page .learn-quote {
+  margin: 16px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--mf-border);
+  border-left: 3px solid var(--mf-ornament);
+  background: var(--mf-surface-2);
+  box-shadow: var(--mf-frame-shadow);
+  color: var(--mf-ivory);
+}
+
+.learn-page .legal-card pre.learn-oracle {
+  display: block;
+  max-width: 100%;
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--mf-border);
+  background: var(--mf-surface-0);
+  box-shadow: var(--mf-frame-shadow);
+  color: var(--mf-ivory);
+  font-size: 14px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overflow-x: hidden;
+}
+
+.learn-page .learn-package li {
+  padding: 8px 0;
+  border-top: 1px solid var(--mf-border);
+}
+
+.learn-page .learn-cta {
+  margin-top: 8px;
+  padding: 18px;
+  border: 1px solid var(--mf-border-strong);
+  background:
+    linear-gradient(180deg, rgba(224, 181, 106, 0.12), transparent 72%),
+    var(--mf-surface-2);
+  box-shadow: var(--mf-frame-shadow);
+}
+
+.learn-page .learn-cta p {
+  margin: 0 0 12px;
+  max-width: 65ch;
+}
+
+.learn-page .learn-cta a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 16px;
+  background: var(--mf-ornament);
+  color: var(--mf-ink);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.learn-page .learn-cta a:hover,
+.learn-page .learn-cta a:focus-visible {
+  outline: 2px solid var(--mf-ivory);
+  outline-offset: 2px;
+}
+
+.learn-page .learn-empty {
+  margin: 12px 0 0;
+  color: var(--mf-mist);
+}

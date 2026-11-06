@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"
+	xmlns:content="http://purl.org/rss/1.0/modules/content/"
+	xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+	xmlns:dc="http://purl.org/dc/elements/1.1/"
+	xmlns:atom="http://www.w3.org/2005/Atom"
+	xmlns:sy="http://purl.org/rss/1.0/modules/syndication/"
+	xmlns:slash="http://purl.org/rss/1.0/modules/slash/"
+	xmlns:webfeeds="http://webfeeds.org/rss/1.0">
+
+<channel>
+	<title>EDHREC</title>
+	<atom:link href="https://edhrec.com/articles/feed/" rel="self" type="application/rss+xml" />
+	<link>https://edhrec.com/articles/</link>
+	<description>Articles</description>
+	<lastBuildDate>Thu, 29 Oct 2026 16:48:02 +0000</lastBuildDate>
+	<language>en-US</language>
+	<sy:updatePeriod>
+	hourly	</sy:updatePeriod>
+	<sy:updateFrequency>
+	1	</sy:updateFrequency>
+	<generator>https://wordpress.org/?v=6.8.12</generator>
+
+    <webfeeds:related layout="card" target="browser"/>
+
+	<item>
+		<title>EDHREC Halloween Anthology, Part 2: Six More Tales of Horror</title>
+		<link>https://edhrec.com/articles/edhrec-halloween-anthology-part-2-six-more-tales-of-horror/</link>
+					<comments>https://edhrec.com/articles/edhrec-halloween-anthology-part-2-six-more-tales-of-horror/#respond</comments>
+		
+		
+		<pubDate>Fri, 30 Oct 2026 16:00:28 +0000</pubDate>
+				<category><![CDATA[Articles]]></category>
+		<category><![CDATA[Content]]></category>
+		<category><![CDATA[Anthology]]></category>
+		<category><![CDATA[Chris Guest]]></category>
+		<category><![CDATA[Coach JRo]]></category>
+		<category><![CDATA[commander]]></category>
+		<category><![CDATA[edh]]></category>
+		<category><![CDATA[halloween]]></category>
+		<category><![CDATA[horror]]></category>
+		<category><![CDATA[Jeremy Rowe]]></category>
+		<category><![CDATA[Josh Nelson]]></category>
+		<category><![CDATA[Kyle Massa]]></category>
+		<category><![CDATA[Levi Perry]]></category>
+		<category><![CDATA[scary]]></category>
+		<category><![CDATA[spooky]]></category>
+		<category><![CDATA[Story]]></category>
+		<category><![CDATA[The Minotaur Reviewer]]></category>
+		<category><![CDATA[UnsummonedSkull]]></category>
+		<guid isPermaLink="false">https://edhrec.com/articles/?p=195750</guid>
+
+					<description><![CDATA[<a href="https://edhrec.com/articles/edhrec-halloween-anthology-part-2-six-more-tales-of-horror/" title="EDHREC Halloween Anthology, Part 2: Six More Tales of Horror" rel="nofollow"><img width="150" height="150" src="https://cloudflare.edhrec.com/articles/wp-content/uploads/2026/10/SIX-MORE-TALES-OF-150x150.png" class="webfeedsFeaturedVisual wp-post-image" alt="" style="display: block; margin-bottom: 5px; clear:both;max-width: 100%;" link_thumbnail="1" decoding="async" /></a><p>For the second part of EDHREC's Halloween Anthology, we've returned with even more spooky tales of horror, dread, and woe!</p>
+<p>The post <a href="https://edhrec.com/articles/edhrec-halloween-anthology-part-2-six-more-tales-of-horror/">EDHREC Halloween Anthology, Part 2: Six More Tales of Horror</a> appeared first on <a href="https://edhrec.com/articles">EDHREC</a>.</p>
+]]></description>
+										
+					
+					<wfw:commentRss>https://edhrec.com/articles/edhrec-halloween-anthology-part-2-six-more-tales-of-horror/feed/</wfw:commentRss>
+			<slash:comments>0</slash:comments>
+		
+		
+			</item>
+		</item><item>
+		<title>Isshin, Two Heavens As One &#124; Commander Makeover</title>
+		<link>https://edhrec.com/articles/isshin-two-heavens-as-one-commander-makeover/</link>
+					<comments>https://edhrec.com/articles/isshin-two-heavens-as-one-commander-makeover/#respond</comments>
+		
+		
+		<pubDate>Fri, 30 Oct 2026 10:30:55 +0000</pubDate>
+				<category><![CDATA[Articles]]></category>
+		<category><![CDATA[Deck Techs]]></category>
+		<guid isPermaLink="false">https://edhrec.com/articles/?p=195243</guid>
+
+					<description><![CDATA[<a href="https://edhrec.com/articles/isshin-two-heavens-as-one-commander-makeover/" title="Isshin, Two Heavens As One | Commander Makeover" rel="nofollow"><img width="150" height="150" src="https://cloudflare.edhrec.com/articles/wp-content/uploads/2026/10/neo-224-isshin-two-heavens-as-one-150x150.jpg" class="webfeedsFeaturedVisual wp-post-image" alt="" style="display: block; margin-bottom: 5px; clear:both;max-width: 100%;" link_thumbnail="1" decoding="async" /></a><p>A Commander Makeover for Isshin, Two Heavens as One, which brings in the best new attack triggers and doublers for a powerful deck list.</p>
+<p>The post <a href="https://edhrec.com/articles/isshin-two-heavens-as-one-commander-makeover/">Isshin, Two Heavens As One | Commander Makeover</a> appeared first on <a href="https://edhrec.com/articles">EDHREC</a>.</p>
+]]></description>
+										
+					
+					<wfw:commentRss>https://edhrec.com/articles/isshin-two-heavens-as-one-commander-makeover/feed/</wfw:commentRss>
+			<slash:comments>0</slash:comments>
+		
+		
+			</item>
+		</item></channel></rss>

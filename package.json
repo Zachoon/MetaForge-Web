@@ -9,7 +9,7 @@
     "dev": "vinext dev",
     "build": "vinext build",
     "start": "vinext start",
-    "test": "npm run build && node --test tests/rendered-html.test.mjs",
+    "test": "node --test tests/learn-pipeline.test.mjs && npm run build && node --test tests/rendered-html.test.mjs",
     "validate:harness": "node tests/validation-harness/run.mjs --mode smoke",
     "validate:harness:field": "node tests/validation-harness/run.mjs --mode field --limit 104 --baseline tests/validation-harness/brain-v1-frozen-benchmark.json",
     "validate:harness:real-corpus": "node tests/validation-harness/run-real-corpus.mjs --limit 8",
