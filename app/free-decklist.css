@@ -1,0 +1,150 @@
+/* Free-build decklist. Ghosts sit in the real list and stay visually quiet. */
+.free-decklist {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px 18px 28px;
+  color: #e6e0d6;
+}
+.free-decklist-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 18px;
+}
+.free-decklist-head h1 {
+  margin: 4px 0 0;
+  font-size: 32px;
+  line-height: 1.05;
+  font-weight: 650;
+}
+.free-decklist-head h1 em { color: #e7c27a; font-style: normal; }
+.free-decklist-actions, .free-view-toggle, .ghost-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.free-decklist button, .free-paste summary {
+  border: 1px solid #6d5a3e;
+  background: rgba(16, 15, 13, 0.95);
+  color: #f0e6d4;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font: 600 13px/1.2 inherit;
+  cursor: pointer;
+}
+.free-decklist button[aria-pressed="true"], .free-view-toggle button.active {
+  border-color: #e7c27a;
+  color: #f6e7c4;
+}
+.free-coach-toggle { letter-spacing: 0.01em; }
+.free-decklist-stage {
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.free-deck-tools, .free-list-pane {
+  background: rgba(16, 15, 13, 0.95);
+  border: 1px solid rgba(109, 90, 62, 0.55);
+  border-radius: 8px;
+  padding: 14px;
+}
+.free-deck-tools h2, .free-missing h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+.free-field { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; }
+.free-field span, .free-eyebrow {
+  color: #c7b48a;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.free-field input, .free-paste textarea {
+  width: 100%;
+  border: 1px solid #4a4034;
+  background: #100e0c;
+  color: #f3ecdf;
+  border-radius: 4px;
+  padding: 8px 10px;
+  font: inherit;
+}
+.free-results { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.free-results button, .free-commander-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+}
+.free-results small, .free-commander-card small { color: #b7ab96; }
+.free-identity { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.free-notice { color: #e7b4a0; margin: 6px 0; }
+.free-counts { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.free-counts span, .free-curve span {
+  border: 1px solid #3c3428;
+  border-radius: 99px;
+  padding: 3px 8px;
+  font-size: 12px;
+  color: #e6dcc8;
+}
+.free-curve { display: flex; flex-wrap: wrap; gap: 6px; }
+.free-missing ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.free-missing li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  padding: 6px 8px;
+  border-left: 2px solid transparent;
+}
+.free-missing li.is-current { border-left-color: #e7c27a; background: rgba(231, 194, 122, 0.06); }
+.free-missing li.is-done { opacity: 0.62; }
+.free-missing b { font-weight: 650; }
+.free-missing em { color: #f0d7a4; font-style: normal; }
+.free-intent { color: #cbbfa8; font-size: 13px; margin: 0 0 8px; }
+.free-list-pane { min-width: 0; }
+.ghost-controls { margin-bottom: 10px; }
+.ghost-pick {
+  opacity: 0.72;
+  border-color: rgba(231, 194, 122, 0.45) !important;
+  box-shadow: 0 0 0 1px rgba(231, 194, 122, 0.18), 0 0 16px rgba(231, 194, 122, 0.12);
+  background: rgba(28, 22, 14, 0.55) !important;
+}
+.free-decklist[data-motion="full"] .ghost-pick {
+  animation: free-ghost-in 0.7s ease both;
+}
+@keyframes free-ghost-in {
+  from { opacity: 0; }
+  to { opacity: 0.72; }
+}
+.ghost-caption {
+  display: block;
+  margin-top: 3px;
+  color: #e7d3a8;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  white-space: normal;
+}
+.visual-deck-card.ghost-pick { cursor: default; }
+.visual-deck-card.ghost-pick .visual-deck-card-art img { opacity: 0.78; }
+.free-remove { padding: 4px 8px !important; font-size: 12px !important; }
+.free-row-warn { color: #e7b4a0; font-size: 11px; }
+.free-paste { margin-top: 8px; }
+.free-paste textarea { min-height: 88px; margin-top: 8px; }
+@media (prefers-reduced-motion: reduce) {
+  .free-decklist .ghost-pick { animation: none; }
+}
+@media (max-width: 800px) {
+  .free-decklist { padding: 12px 10px 20px; }
+  .free-decklist-stage { grid-template-columns: 1fr; }
+  .free-decklist-head h1 { font-size: 26px; }
+  .free-decklist-actions, .ghost-controls { width: 100%; }
+  .free-decklist-actions button, .ghost-controls button { flex: 1 1 auto; }
+}
