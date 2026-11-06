@@ -96,6 +96,22 @@ const session = (overrides = {}) => ({
   manualCards: {},
   offer: { name: "Cultivate", typeLine: "Sorcery", oracleText: "Search your library for two basic land cards.", manaCost: "{2}{G}", cmc: 3 },
   reason: { deficitsFilled: ["role:ramp", "curve:3"], topPositive: { kind: "tracked_role", key: "ramp" }, nearestAlternative: { name: "Rampant Growth", margin: 3.5, sameRole: true, role: "ramp" } },
+  comparison: {
+    sharedSlot: "Both fill the ramp slot.",
+    winnerReasons: ["Role fit 22 against 14.", "Mana efficiency 8 against 3."],
+    winner: {
+      name: "Cultivate", typeLine: "Sorcery", manaCost: "{2}{G}", cmc: 3, priceUsd: null,
+      colorIdentity: ["G"], role: "Ramp", sameSlot: true, rank: 22, quality: 50, place: 1,
+      factors: { roleFit: 22, synergy: 4, manaEfficiency: 8, gapFilled: 6, bracketImpact: 0, powerSignal: null },
+      pros: ["Fills ramp (22)"], cons: [],
+    },
+    runnerUp: {
+      name: "Rampant Growth", typeLine: "Sorcery", manaCost: "{1}{G}", cmc: 2, priceUsd: 0.4,
+      colorIdentity: ["G"], role: "Ramp", sameSlot: true, rank: 14, quality: 40, place: 2,
+      factors: { roleFit: 14, synergy: 1, manaEfficiency: 3, gapFilled: 6, bracketImpact: 0, powerSignal: null },
+      pros: ["Fills ramp (14)"], cons: [],
+    },
+  },
   exhausted: false,
   remainingCandidates: 40,
   ledger,
@@ -125,7 +141,11 @@ test("a live session renders the offer, its plain-language reason, the ledger, t
   assert.match(html, /Add to my deck/);
   assert.match(html, /Not this one/);
   assert.match(html, /fills a real ramp gap/);
-  assert.match(html, /edged out Rampant Growth/);
+  assert.doesNotMatch(html, /edged out/);
+  assert.match(html, /Both fill the ramp slot/);
+  assert.match(html, /Take this one instead/);
+  assert.match(html, /Role fit 22 against 14/);
+  assert.match(html, /Rampant Growth/);
   assert.match(html, /3 of 10–12 — room for 7 more/);
   assert.match(html, /aria-current="step"/);
   assert.match(html, /Sol Ring/);

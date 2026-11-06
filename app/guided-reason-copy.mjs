@@ -89,32 +89,21 @@ function joinClauses(clauses) {
 
 /**
  * One or two plain sentences explaining why the Forge is offering this card.
- * Prefer the card's own rules-text summary. A comparison is included only
- * when the runner-up competes for the same role.
+ * Prefer the card's own rules-text summary. The runner-up is not named here;
+ * the slot comparison panel carries that, and only when one exists.
  */
 export function describeGuidedReason(reason, offerName = "This card") {
   if (!reason) return "";
-  let sentence = "";
   const summary = String(reason.summary || "").replace(/\.$/, "").trim();
-  if (summary) sentence = `${offerName} ${summary}.`;
-  else {
-    const clauses = selectClauses(reason.deficitsFilled || []);
-    const joined = joinClauses(clauses);
-    if (joined) sentence = `${offerName} ${joined}.`;
-    else if (reason.topPositive) {
-      const fallback = humanizeTag(reason.topPositive.kind === "tracked_role" ? `role:${reason.topPositive.key}` : "");
-      sentence = fallback
-        ? `${offerName} ${fallback}.`
-        : `${offerName} is the best fit for this slot given what you've picked so far.`;
-    } else {
-      sentence = `${offerName} is the best fit for this slot given what you've picked so far.`;
-    }
+  if (summary) return `${offerName} ${summary}.`;
+  const clauses = selectClauses(reason.deficitsFilled || []);
+  const joined = joinClauses(clauses);
+  if (joined) return `${offerName} ${joined}.`;
+  if (reason.topPositive) {
+    const fallback = humanizeTag(reason.topPositive.kind === "tracked_role" ? `role:${reason.topPositive.key}` : "");
+    if (fallback) return `${offerName} ${fallback}.`;
   }
-  const alt = reason.nearestAlternative;
-  if (alt?.sameRole && alt.name && Number(alt.margin) > 0) {
-    sentence += ` It edged out ${alt.name} for the spot.`;
-  }
-  return sentence;
+  return `${offerName} is the best fit for this slot given what you've picked so far.`;
 }
 
 /**

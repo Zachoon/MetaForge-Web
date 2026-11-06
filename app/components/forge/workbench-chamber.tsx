@@ -1286,6 +1286,8 @@ export function WorkbenchChamber() {
                               type="button"
                               className="visual-deck-card"
                               key={row.name}
+                              data-card-name={row.name}
+                              data-card-inspect="defer"
                               onClick={() => setInspectedCard(row.name)}
                               aria-label={`Preview ${row.name}, ${row.quantity} ${row.quantity === 1 ? "copy" : "copies"}`}
                             >
@@ -1361,6 +1363,9 @@ export function WorkbenchChamber() {
                           <div
                             role="button"
                             tabIndex={0}
+                            data-card-name={row.name}
+                            data-card-inspect="defer"
+                            {...(rowPrice != null ? { "data-card-price": String(rowPrice) } : {})}
                             key={row.name}
                             draggable
                             onDragStart={(event) => {

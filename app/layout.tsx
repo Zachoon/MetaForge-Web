@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import ClientDiagnostics from "./client-diagnostics";
+import { CardInspectorBoot } from "./components/card-inspector/boot";
 import PrivacyControls from "./privacy-controls";
 import { STALE_CHUNK_RECOVERY_SCRIPT } from "./stale-chunk-recovery";
 
@@ -59,7 +60,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           />
         </noscript>
       </head>
-      <body><ClientDiagnostics>{children}</ClientDiagnostics><PrivacyControls /></body>
+      <body><ClientDiagnostics>{children}<CardInspectorBoot /></ClientDiagnostics><PrivacyControls /></body>
     </html>
   );
 }

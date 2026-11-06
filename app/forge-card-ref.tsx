@@ -26,6 +26,7 @@ export function ForgeCardRef({
       <button
         type="button"
         className={`forge-card-ref ${className}`.trim()}
+        data-card-name={label}
         data-card-inspect-surface={surface}
         aria-label={`Inspect ${label}`}
         onClick={() => onInspect(label)}

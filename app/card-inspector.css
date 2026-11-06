@@ -1,0 +1,40 @@
+.card-hover-preview{
+  position:fixed;z-index:80;pointer-events:none;display:flex;gap:8px;
+  filter:drop-shadow(0 18px 40px rgba(0,0,0,.55));
+}
+.card-hover-preview img{display:block;width:var(--face-w,320px);height:auto;border-radius:12px;background:#071011}
+.card-hover-preview.column{flex-direction:column}
+.card-inspect-backdrop{
+  position:fixed;inset:0;z-index:90;display:grid;place-items:center;padding:24px;
+  background:#020707d0;
+}
+.card-inspect-dialog{
+  position:relative;display:grid;grid-template-columns:minmax(220px,360px) minmax(240px,1fr);
+  width:min(920px,100%);max-height:min(860px,calc(100vh - 48px));overflow:auto;
+  border:1px solid #765538;background:#10110f;color:#e7ece9;
+  box-shadow:0 28px 80px #000;
+}
+.card-inspect-dialog h2{margin:0 0 6px;font:600 28px Newsreader,Georgia,serif}
+.card-inspect-dialog .card-inspect-art{display:flex;flex-wrap:wrap;gap:12px;padding:20px;background:radial-gradient(circle at 50% 30%,#173a35,#050909 72%)}
+.card-inspect-dialog .card-inspect-art img{width:min(100%,320px);height:auto;border-radius:12px}
+.card-inspect-copy{padding:22px 22px 28px}
+.card-inspect-copy p{margin:8px 0 0;white-space:pre-line;color:#d5deda;line-height:1.45}
+.card-inspect-kicker{display:flex;align-items:center;gap:8px;color:#d5964e;font-size:11px;font-weight:800;letter-spacing:.14em}
+.card-inspect-kicker img{width:28px;height:28px}
+.card-inspect-close{
+  position:absolute;top:10px;right:10px;width:36px;height:36px;border:1px solid #6d5a47;border-radius:50%;
+  background:#090d0c;color:#f3e5d2;font-size:22px;cursor:pointer;
+}
+.card-inspect-meta{margin:0;color:#8ecdc5;font-size:13px}
+.card-inspect-price{margin-top:10px;font-weight:700}
+.card-inspect-legal{margin-top:12px;color:#c9b89a;font-size:13px}
+.card-inspect-legal.is-legal{color:#8ecdc5}
+@media (prefers-reduced-motion: reduce){
+  .card-hover-preview,.card-inspect-backdrop,.card-inspect-dialog{animation:none;transition:none}
+}
+@media (max-width:720px){
+  .card-inspect-backdrop{padding:0;place-items:end}
+  .card-inspect-dialog{display:block;width:100%;max-height:94svh;border-radius:16px 16px 0 0}
+  .card-inspect-dialog .card-inspect-art{justify-content:center}
+  .card-inspect-dialog .card-inspect-art img{width:min(70vw,280px)}
+}
