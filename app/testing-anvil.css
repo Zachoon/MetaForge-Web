@@ -860,12 +860,9 @@ step that's actually in focus. */
 .masterwork-stats-bar>span>b{color:#f2ede2;font-weight:800}
 .masterwork-stats-occupancy{color:#c9b89a;font-weight:600;letter-spacing:.03em}
 .masterwork-pip-counts{display:flex;align-items:center;gap:6px;margin-left:auto}
-.masterwork-pip-counts>i{display:grid;min-width:22px;height:22px;padding:0 6px;place-items:center;border-radius:50%;font:800 10px ui-monospace,monospace;font-style:normal}
-.masterwork-pip-counts>i[data-color=W]{background:#ded7b9;color:#3a3429}
-.masterwork-pip-counts>i[data-color=U]{background:#173f62;color:#a9d9ff}
-.masterwork-pip-counts>i[data-color=B]{background:#211c25;color:#d4c5db}
-.masterwork-pip-counts>i[data-color=R]{background:#61291c;color:#ffc1a3}
-.masterwork-pip-counts>i[data-color=G]{background:#1e4e31;color:#bce7c8}
+.masterwork-pip-counts>i{display:inline-flex;align-items:center;gap:4px;min-height:26px;padding:2px 8px 2px 3px;border:1px solid #4a3b2c;border-radius:999px;background:rgba(16,15,13,0.95);color:#f3efe6;font:700 12px/1 Inter,system-ui,sans-serif;font-style:normal}
+.masterwork-pip-counts>i .mana-symbol{width:18px;height:18px;margin:0}
+.masterwork-pip-counts>i b{font-weight:750}
 @media(max-width:560px){.masterwork-stats-bar{flex-wrap:wrap;gap:8px 14px;padding:10px 18px}}
 
 /* In-panel Masterwork chrome is retired. Never re-display shell-top/rail —
@@ -932,9 +929,9 @@ step that's actually in focus. */
 .visual-deck-group>header{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;padding-bottom:9px;border-bottom:1px solid #344641;color:#d3ddd9;font-size:12px;letter-spacing:.08em}
 .visual-deck-group>header span{color:var(--teal);font-weight:800}
 .visual-deck-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:16px}
-.visual-deck-card{min-width:0;padding:0 0 10px;overflow:hidden;border:1px solid #344641;border-radius:8px;background:#0b1516;color:#d9e4df;text-align:left;cursor:zoom-in;transition:border-color .16s ease,transform .16s ease,box-shadow .16s ease}
+.visual-deck-card{min-width:0;padding:0 0 10px;overflow:hidden;border:1px solid #6d4e32;border-radius:8px;background:rgba(16,15,13,0.95);color:#f3efe6;text-align:left;cursor:zoom-in;transition:border-color .16s ease,transform .16s ease,box-shadow .16s ease}
 .visual-deck-card:hover,.visual-deck-card:focus-visible{outline:0;border-color:#d6873f;transform:translateY(-3px);box-shadow:0 16px 34px #000a}
-.visual-deck-card-art{position:relative;display:block;aspect-ratio:488/680;overflow:hidden;background:radial-gradient(circle,#17302c,#090e0f 68%)}
+.visual-deck-card-art{position:relative;display:block;aspect-ratio:488/680;margin:8px 8px 0;overflow:hidden;border-radius:4.75% 4.75% 3px 3px;background:#120e0a url("/assets/mtg/card-back.webp") center/cover;box-shadow:0 0 0 1px #120e0a,0 0 0 4px #6b4e32}
 .visual-deck-card-art img{display:block;width:100%;height:100%;object-fit:cover}
 .visual-deck-card-art>b{position:absolute;right:7px;bottom:7px;display:grid;min-width:31px;height:31px;padding:0 7px;place-items:center;border:1px solid #e2a05e;border-radius:999px;background:#120c08e8;color:#ffd19d;font-size:12px;box-shadow:0 4px 14px #000c}
 .visual-deck-card>strong{display:block;overflow:hidden;padding:9px 10px 0;font-size:12px;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}

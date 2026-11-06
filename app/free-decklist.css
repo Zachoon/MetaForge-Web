@@ -248,7 +248,7 @@
   text-transform: uppercase;
   vertical-align: 1px;
 }
-.free-decklist[data-motion="full"] .ghost-pick {
+.free-decklist[data-motion="full"] .ghost-pick .visual-deck-card-art img {
   animation: free-ghost-in 0.7s ease both;
 }
 @keyframes free-ghost-in {
@@ -265,6 +265,7 @@
   line-height: 1.35;
   white-space: normal;
 }
+.free-decklist [data-card-name] { cursor: zoom-in; }
 .free-remove { padding: 4px 8px !important; font-size: 12px !important; }
 .free-row-warn { color: #e7b4a0; font-size: 11px; }
 .free-paste { margin-top: 8px; }

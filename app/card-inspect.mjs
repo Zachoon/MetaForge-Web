@@ -19,7 +19,8 @@ export function inspectTargetFromElement(node) {
   if (named) {
     const name = named.getAttribute("data-card-name") || "";
     if (!name) return null;
-    const price = Number(named.getAttribute("data-card-price"));
+    const rawPrice = named.getAttribute("data-card-price");
+    const price = rawPrice == null || rawPrice === "" ? Number.NaN : Number(rawPrice);
     return {
       name,
       priceUsd: Number.isFinite(price) ? price : null,

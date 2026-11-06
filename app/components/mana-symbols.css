@@ -8,3 +8,24 @@
   border-radius: 50%;
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
 }
+
+.mf-mana-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.mf-mana-row .mana-symbol {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.mtg-set-mark {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin: 0 6px 0 0;
+  vertical-align: -2px;
+  flex: 0 0 auto;
+}

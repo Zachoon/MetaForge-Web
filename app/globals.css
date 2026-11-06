@@ -29,11 +29,12 @@
 @import "./mobile-experience.css";
 @import "./tripo-assets.css";
 @import "./stained-glass-banner.css";
+@import "./mtg-chrome.css";
 
 :root { --ink:#071012; --panel:#0d1a1c; --panel2:#102326; --line:#294246; --mint:#75dbc4; --mint2:#b9f5e6; --amber:#e39a48; --paper:#edf5f1; --muted:#91a7a5; }
 * { box-sizing:border-box; }
 html { scroll-behavior:smooth; }
-body { margin:0; background:var(--ink) url('/forge-steel.webp') center top/700px auto repeat; color:var(--paper); font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+body { margin:0; background:linear-gradient(180deg, rgba(8, 9, 8, 0.82), rgba(7, 8, 7, 0.9)), url('/assets/workshop/dark-rock.webp') center / 640px, var(--ink); color:var(--paper); font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
 main { background:linear-gradient(180deg,#071012db 0,#071012ed 720px,#071012f5 100%); }
 button,input,select,textarea { font:inherit; }
 button,a { -webkit-tap-highlight-color:transparent; }

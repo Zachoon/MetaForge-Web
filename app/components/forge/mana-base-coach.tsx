@@ -6,7 +6,8 @@ import { cardFactKey } from "../../deck-row-helpers";
 import { isCommanderFormat } from "../../format-catalog";
 import { buildManaBaseCoaching } from "../../mana-base-coach.mjs";
 import type { CardFact, CommanderOption, DeckRow } from "../../forge-types";
-import { ColorEmblem, ForgeProp } from "../tripo-assets";
+import { ManaSymbol } from "../mana-symbols";
+import { ForgeProp } from "../tripo-assets";
 
 type Face = { name?: string; oracle_text?: string; type_line?: string; mana_cost?: string };
 
@@ -165,7 +166,7 @@ export function ManaBaseCoach({
             {report.colors.map((color) => (
               <li key={color.color} data-status={color.status}>
                 <span className="mana-base-swatch" data-color={color.color}>
-                  <ColorEmblem color={color.color} labelled />
+                  <ManaSymbol symbol={color.color} decorative />
                   {color.word}
                 </span>
                 <p>{color.summary}</p>

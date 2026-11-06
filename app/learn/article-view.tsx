@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ManaText } from "../components/mana-symbols";
 import { PageTrail, SiteHeader } from "../components/site-chrome";
 import { categoryById } from "./policy.mjs";
 import { learnArticleSchema } from "./catalog.mjs";
@@ -40,6 +41,9 @@ export function LearnFrame({ children, crumbs, noindex = false }: { children: Re
   return (
     <main className="legal-page forge-atmosphere learn-page" data-learn-schema="1" data-robots={noindex ? "noindex" : undefined}>
       <SiteHeader current="learn" />
+      <div className="learn-cardback-stack" aria-hidden="true">
+        <img src="/assets/mtg/card-back.webp" alt="" width={267} height={373} />
+      </div>
       <div className="legal-shell">
         <PageTrail crumbs={crumbs} />
         {children}
@@ -105,9 +109,9 @@ function CardBlock({ card }: { card: Card }) {
   return (
     <aside>
       <h3><a href={`/learn/cards/${card.slug}`}>{card.name}</a></h3>
-      <p>{[card.manaCost, card.typeLine].filter(Boolean).join(" · ")}</p>
+      <p>{card.manaCost ? <ManaText text={card.manaCost} /> : null}{card.manaCost && card.typeLine ? " · " : null}{card.typeLine}</p>
       {card.quote ? <blockquote className="learn-quote">{card.quote}</blockquote> : null}
-      {card.oracleText ? <pre className="learn-oracle">{card.oracleText}</pre> : null}
+      {card.oracleText ? <pre className="learn-oracle"><ManaText text={card.oracleText} /></pre> : null}
       <p>{card.roles?.length ? `Classifier roles: ${card.roles.join(", ")}.` : "The classifiers assigned no role."}</p>
     </aside>
   );
@@ -124,8 +128,8 @@ export function ArticleBody({ article, related }: { article: Article; related: A
       <ul className="learn-tags">
         {(article.tags || []).map((tag) => <li key={tag}><a className="learn-tag" href={`/learn/tag/${tag}`}>{tag}</a></li>)}
       </ul>
-      {article.hook ? <p>{article.hook}</p> : null}
-      {article.thesis ? <p>{article.thesis}</p> : null}
+      {article.hook ? <p><ManaText text={article.hook} /></p> : null}
+      {article.thesis ? <p><ManaText text={article.thesis} /></p> : null}
       {article.externalQuote?.text ? (
         <blockquote className="learn-quote">
           {article.externalQuote.text}
@@ -135,11 +139,11 @@ export function ArticleBody({ article, related }: { article: Article; related: A
       {(article.sections || []).map((section) => (
         <section key={section.id} id={section.id}>
           <h2>{section.heading}</h2>
-          {(section.paragraphs || []).map((paragraph) => <p key={paragraph.slice(0, 48)}>{paragraph}</p>)}
+          {(section.paragraphs || []).map((paragraph) => <p key={paragraph.slice(0, 48)}><ManaText text={paragraph} /></p>)}
           {(section.cards || []).map((card) => <CardBlock key={card.slug || card.name} card={card} />)}
         </section>
       ))}
-      {article.engineTake ? <section><h2>The coach&apos;s score</h2><p>{article.engineTake}</p></section> : null}
+      {article.engineTake ? <section><h2>The coach&apos;s score</h2><p><ManaText text={article.engineTake} /></p></section> : null}
       {(article.takeaways || []).length ? (
         <section>
           <h2>Takeaways</h2>

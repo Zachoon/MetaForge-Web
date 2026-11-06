@@ -1,0 +1,233 @@
+/* Magic chrome and workshop textures.
+   Text sits on rgba(16, 15, 13, 0.95). Stone, slate, and metal show in
+   bezels, page margins, and strips that sit under a heading, never through it.
+   See public/assets/ATTRIBUTION.md. */
+
+.learn-page {
+  background:
+    linear-gradient(180deg, rgba(8, 9, 8, 0.82), rgba(7, 8, 7, 0.9)),
+    url("/assets/workshop/castle-wall-slates.webp") center / 520px,
+    #070908;
+}
+
+.commander-page {
+  background:
+    linear-gradient(180deg, rgba(8, 9, 8, 0.8), rgba(7, 8, 7, 0.88)),
+    url("/assets/workshop/monastery-stone-floor.webp") center / 480px,
+    #070908;
+}
+
+.learn-mana-row,
+.free-mana-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+}
+
+.learn-cardback-stack {
+  position: fixed;
+  z-index: 1;
+  top: 128px;
+  right: max(18px, calc((100vw - 42rem) / 2 - 220px));
+  width: 148px;
+  pointer-events: none;
+}
+
+.learn-cardback-stack img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  box-shadow:
+    10px 12px 0 rgba(16, 15, 13, 0.72),
+    0 18px 36px rgba(0, 0, 0, 0.55);
+}
+
+@media (max-width: 1180px) {
+  .learn-cardback-stack { display: none; }
+}
+
+.commander-card-stack {
+  position: relative;
+  flex: 0 0 auto;
+  width: 168px;
+  aspect-ratio: 488 / 680;
+}
+
+.commander-card-back,
+.commander-card-face {
+  position: absolute;
+  display: block;
+  width: 86%;
+  height: auto;
+  border-radius: 6px;
+}
+
+.commander-card-back {
+  top: 18px;
+  left: 18px;
+  z-index: 0;
+}
+
+.commander-card-face {
+  top: 0;
+  left: 0;
+  z-index: 1;
+  box-shadow:
+    0 0 0 1px #1a120c,
+    0 0 0 4px #6b4e32,
+    0 14px 28px rgba(0, 0, 0, 0.45);
+}
+
+.commander-oracle {
+  background: rgba(16, 15, 13, 0.95);
+  border: 1px solid #6d4e32;
+  border-left: 3px solid #e0b56a;
+}
+
+.mana-base-swatch .mana-symbol {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.free-empty-back {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.free-empty-back img {
+  width: min(180px, 46%);
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px #1a120c, 0 0 0 4px #6b4e32;
+}
+
+.free-empty-back figcaption {
+  max-width: 36ch;
+  color: #d9cbb8;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.card-inspect-dialog {
+  background: rgba(16, 15, 13, 0.95);
+}
+
+.card-inspect-dialog .card-inspect-art {
+  background:
+    linear-gradient(180deg, rgba(12, 10, 8, 0.28), rgba(12, 10, 8, 0.5)),
+    url("/assets/workshop/monastery-stone-floor.webp") center / 240px;
+}
+
+.card-inspect-copy {
+  background: rgba(16, 15, 13, 0.95);
+}
+
+.forge-card-mold {
+  background:
+    linear-gradient(165deg, rgba(12, 10, 8, 0.28), rgba(12, 10, 8, 0.5)),
+    url("/assets/workshop/stone-block-wall.webp") center / 220px;
+}
+
+.forge-card-mold-socket {
+  position: relative;
+}
+
+.forge-card-mold-socket .mf-card-back {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.forge-card-mold-socket .forge-card-mold-empty {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  left: 8px;
+  padding: 8px;
+  border-radius: 4px;
+  background: rgba(16, 15, 13, 0.95);
+  color: #e6dcc8;
+}
+
+.forge-card-mold-body {
+  padding: 10px;
+  border-radius: 4px;
+  background: rgba(16, 15, 13, 0.95);
+}
+
+.forge-bar::after,
+.mf-site-header::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 5px;
+  content: "";
+  background: url("/assets/workshop/metal-plate.webp") center / 180px repeat;
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+.mf-site-header,
+.great-forge > .forge-bar {
+  background: rgba(16, 15, 13, 0.95) !important;
+}
+
+.great-forge > .forge-global-rail,
+.mf-section-rail {
+  background-color: rgba(16, 15, 13, 0.95) !important;
+  background-image: none !important;
+}
+
+.great-forge > .forge-global-rail::after,
+.mf-section-rail::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 6px;
+  background: url("/assets/workshop/green-metal-rust.webp") center / 140px;
+  pointer-events: none;
+}
+
+.great-forge > .forge-card-rail {
+  background:
+    linear-gradient(180deg, rgba(16, 15, 13, 0.55), rgba(16, 15, 13, 0.72)),
+    url("/assets/workshop/stone-block-wall.webp") center / 280px !important;
+}
+
+.forge-global-rail :is(button, a) i.forge-rail-cardback {
+  width: 22px !important;
+  height: 30px !important;
+  border: 0 !important;
+  border-radius: 2px !important;
+  background: url("/assets/mtg/card-back.webp") center / cover !important;
+  color: transparent !important;
+  font-size: 0 !important;
+  text-shadow: none !important;
+  box-shadow: 2px 3px 0 #1a120c, 4px 6px 0 #3a2a1c !important;
+}
+
+.forge-global-rail :is(button, a) i.forge-rail-cardback::before,
+.forge-global-rail :is(button, a) i.forge-rail-cardback::after {
+  content: none !important;
+}
+
+@media (max-width: 760px) {
+  .mf-section-rail::after {
+    top: 0;
+    right: 0;
+    bottom: auto;
+    left: 0;
+    width: auto;
+    height: 5px;
+    background: url("/assets/workshop/metal-plate.webp") center / 180px repeat;
+  }
+}

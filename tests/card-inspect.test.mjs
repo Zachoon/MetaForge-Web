@@ -3,10 +3,27 @@ import test from "node:test";
 import {
   cardNameFromScryfallSrc,
   hoverPreviewAllowed,
+  inspectTargetFromElement,
   inspectViewFromScryfall,
   placePreview,
   previewBox,
 } from "../app/card-inspect.mjs";
+
+function namedNode(attrs) {
+  return {
+    closest(selector) {
+      return selector === "[data-card-name]" ? this : null;
+    },
+    getAttribute(name) {
+      return Object.prototype.hasOwnProperty.call(attrs, name) ? attrs[name] : null;
+    },
+  };
+}
+
+test("a named card with no price attribute does not become a $0 price", () => {
+  assert.equal(inspectTargetFromElement(namedNode({ "data-card-name": "Sol Ring" })).priceUsd, null);
+  assert.equal(inspectTargetFromElement(namedNode({ "data-card-name": "Sol Ring", "data-card-price": "1.25" })).priceUsd, 1.25);
+});
 
 test("a named Scryfall image URL yields the card, and prices on the payload are ignored", () => {
   assert.equal(cardNameFromScryfallSrc("https://api.scryfall.com/cards/named?exact=Awaken%20the%20Woods&format=image&version=normal"), "Awaken the Woods");

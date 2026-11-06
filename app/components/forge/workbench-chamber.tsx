@@ -32,6 +32,7 @@ import { GuidedCompletionReview } from "./guided-completion-review";
 import { CurveRoleCoach } from "./curve-role-coach";
 import { FreeDecklist } from "./free-decklist";
 import { ManaBaseCoach } from "./mana-base-coach";
+import { ManaSymbol } from "../mana-symbols";
 import { ColorIdentityChips } from "../tripo-assets";
 import { FocusMark, StainedGlassLeads } from "./stained-glass";
 
@@ -776,7 +777,10 @@ export function WorkbenchChamber() {
                 {(["W", "U", "B", "R", "G"] as const)
                   .filter((color) => colorPipCounts[color] > 0)
                   .map((color) => (
-                    <i key={color} data-color={color}>{colorPipCounts[color]}</i>
+                    <i key={color} data-color={color}>
+                      <ManaSymbol symbol={color} decorative />
+                      <b>{colorPipCounts[color]}</b>
+                    </i>
                   ))}
               </div>
                 {coachOccupancyLabels.length > 0 && (

@@ -37,6 +37,18 @@ test("deck rows open a keyboard-accessible action menu before the contextual ins
   assert.match(workbenchChamber, /cardEvaluations\.methodology/);
 });
 
+test("the free-build decklist names each card so hover and tap open the shared inspector", () => {
+  const freeDecklist = fs.readFileSync(new URL("../app/components/forge/free-decklist.tsx", import.meta.url), "utf8");
+  assert.match(freeDecklist, /<img data-card-name=\{entry\.name\} src=\{entry\.image \|\| cardImage\(entry\.name\)\}/);
+  assert.match(freeDecklist, /<strong data-card-name=\{entry\.name\}>/);
+  assert.match(freeDecklist, /<img data-card-name=\{selectedCommander\.name\}/);
+  assert.match(freeDecklist, /<strong data-card-name=\{selectedCommander\.name\}>/);
+  assert.match(freeDecklist, /<img data-card-name=\{ghost\.face\.name\}/);
+  assert.match(freeDecklist, /<strong data-card-name=\{ghost\.face\.name\}>/);
+  assert.doesNotMatch(freeDecklist, /data-card-inspect="defer"/);
+  assert.doesNotMatch(freeDecklist, /className="free-remove"[^>]*data-card-name/);
+});
+
 test("deck rows preview naturally while click remains an intentional inspection action", () => {
   const rowBlock = workbenchChamber.match(/role="button"[\s\S]*?className=\{\[[\s\S]*?\.join\(" "\)\}/)?.[0];
   assert.ok(rowBlock, "expected to find the interactive deck-row block");

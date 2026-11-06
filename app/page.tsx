@@ -721,7 +721,10 @@ export default function Home() {
             {activeImage ? (
               <img src={activeImage} alt={`${activeCard} card`} />
             ) : (
-              <span className="forge-card-mold-empty">Hover or tap a card to preview it here</span>
+              <>
+                <img className="mf-card-back" src="/assets/mtg/card-back.webp" alt="" />
+                <span className="forge-card-mold-empty">Hover or tap a card to preview it here</span>
+              </>
             )}
           </button>
           {activeCard && (
