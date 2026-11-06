@@ -92,7 +92,7 @@ test("a same-job runner-up is shown with real factor gaps, and a different job i
   assert.equal(onlyDifferent.comparison, null);
 });
 
-test("a player's own card is ranked against the top two and still included when it fills another role", () => {
+test("Awaken the Woods on a Titania ramp step ranks after the cards that fill ramp", () => {
   const built = intent();
   const pool = [parade(), cabbage()];
   const suggestion = suggestCardForCategory({ category: "ramp", partialRows: [], pool, intent: built });
@@ -102,20 +102,27 @@ test("a player's own card is ranked against the top two and still included when 
     competes: (candidate) => (candidate.roles || []).includes("ramp"),
   });
   assert.equal(comparison.ranked.length, 3);
+  assert.deepEqual(comparison.ranked.map((card) => card.name), [
+    "Springleaf Parade",
+    "The Cabbage Merchant",
+    "Awaken the Woods",
+  ]);
   assert.deepEqual(comparison.ranked.map((card) => card.place), [1, 2, 3]);
-  const names = comparison.ranked.map((card) => card.name);
-  assert.ok(names.includes("Springleaf Parade"));
-  assert.ok(names.includes("The Cabbage Merchant"));
-  assert.ok(names.includes("Awaken the Woods"));
-  const picked = comparison.ranked.find((card) => card.picked);
-  assert.equal(picked.name, "Awaken the Woods");
+  const [first, second, picked] = comparison.ranked;
+  assert.equal(first.sameSlot, true);
+  assert.equal(second.sameSlot, true);
+  assert.equal(picked.picked, true);
+  assert.equal(picked.sameSlot, false);
+  // The raw engine score can still be higher. That must not move it ahead of the slot.
+  assert.ok(picked.rank > first.rank, `expected Awaken ${picked.rank} to outscore Springleaf ${first.rank} and still rank after it`);
+  assert.ok(first.rank >= second.rank);
+  assert.match(comparison.differentRole, /Awaken the Woods does not fill the ramp role, so it ranks after the cards that do/);
+  assert.match(comparison.differentRole, /tokens shell/);
+  assert.match(comparison.differentRole, new RegExp(String(picked.rank)));
+  assert.match(comparison.differentRole, /in the deck anyway/);
   for (const card of comparison.ranked) {
     for (const key of ["roleFit", "synergy", "manaEfficiency", "gapFilled", "bracketImpact"]) {
       assert.equal(typeof card.factors[key], "number");
     }
   }
-  const ranks = comparison.ranked.map((card) => card.rank);
-  assert.deepEqual(ranks, [...ranks].sort((left, right) => right - left));
-  if (!picked.sameSlot) assert.match(comparison.differentRole, /Awaken the Woods/);
-  else assert.equal(comparison.differentRole, null);
 });

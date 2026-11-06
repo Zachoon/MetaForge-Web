@@ -223,16 +223,27 @@ export function comparisonFromScored(category, scored, options = {}) {
   });
 }
 
+function fillsSlot(entry, category, options) {
+  const candidate = entry?.candidate || entry;
+  if (options.competes) return Boolean(options.competes(candidate));
+  return (candidate?.roles || []).includes(category);
+}
+
 function differentRoleNote(card, category) {
   if (!card || card.sameSlot) return null;
   const label = guidedCategoryLabel(category).toLowerCase();
-  const doing = card.role && card.role !== "Other" ? ` It reads as ${card.role.toLowerCase()}.` : "";
-  return `${card.name} does not fill the ${label} role.${doing} It is in the deck anyway.`;
+  const credit = (card.pros || [])[0];
+  const because = credit
+    ? ` Its engine score of ${formatScore(card.rank)} still comes from other credit: ${credit}.`
+    : ` Its engine score of ${formatScore(card.rank)} comes from credits other than this slot.`;
+  return `${card.name} does not fill the ${label} role, so it ranks after the cards that do.${because} It is in the deck anyway.`;
 }
 
 /**
  * The player's card ranked against the slot's top two scored entries.
- * The card is included even when it loses, and even when it fills another role.
+ * Cards that fill the slot rank first, by engine score. A card that does
+ * not fill the slot stays in the list, after those, even when its raw
+ * score is higher. The card is added either way.
  */
 export function threeWayComparison(category, userScored, contenders, options = {}) {
   const rows = [];
@@ -244,7 +255,10 @@ export function threeWayComparison(category, userScored, contenders, options = {
     seen.add(key);
     rows.push(entry);
   }
-  rows.sort((left, right) => right.rank - left.rank || entryName(left).localeCompare(entryName(right)));
+  rows.sort((left, right) => {
+    const roleOrder = Number(fillsSlot(right, category, options)) - Number(fillsSlot(left, category, options));
+    return roleOrder || right.rank - left.rank || entryName(left).localeCompare(entryName(right));
+  });
   const userKey = entryName(userScored).toLocaleLowerCase("en");
   const ranked = rows.map((entry, index) => Object.freeze({
     ...presentScoredCard(category, entry, options),

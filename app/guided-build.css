@@ -221,6 +221,8 @@
 .slot-card{display:grid;gap:6px;align-content:start;padding:8px;border:1px solid #293a36;background:#0c1614}
 .slot-card.leading{border-color:#5fc9b6}
 .slot-card.picked{box-shadow:inset 0 0 0 1px #d5964e}
+.slot-card.out-of-role{border-color:#d5964e}
+.slot-card.out-of-role small{color:#e7d7c2}
 .slot-card-art{width:100%;max-width:220px;border-radius:8px}
 .slot-card h3{margin:2px 0;font:600 16px Newsreader,Georgia,serif;color:#e2e9e6}
 .slot-card small{color:#d5964e;font-size:10px;font-weight:800;letter-spacing:.08em}

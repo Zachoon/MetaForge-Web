@@ -21,7 +21,7 @@ function formatScore(value: number) {
 function CardFace({ card, picked = false }: { card: ComparedCard; picked?: boolean }) {
   const price = card.priceUsd;
   return (
-    <article className={`slot-card${card.place === 1 ? " leading" : ""}${picked ? " picked" : ""}`}>
+    <article className={`slot-card${card.sameSlot && card.place === 1 ? " leading" : ""}${card.sameSlot ? "" : " out-of-role"}${picked ? " picked" : ""}`}>
       <img
         className="slot-card-art"
         src={cardImage(card.name)}
@@ -31,7 +31,7 @@ function CardFace({ card, picked = false }: { card: ComparedCard; picked?: boole
         loading="lazy"
       />
       <header>
-        <small>{card.place === 1 ? "Ranks first" : `Ranks ${card.place}`}</small>
+        <small>{card.sameSlot ? (card.place === 1 ? "Ranks first" : `Ranks ${card.place}`) : "Does not fill this slot"}</small>
         <h3 data-card-name={card.name}>{card.name}</h3>
         <ColorIdentityChips colors={card.colorIdentity || []} />
         <em>
@@ -103,7 +103,7 @@ export function OwnPickPanel({ comparison }: { comparison: OwnPickComparison }) 
         <ForgeProp kind="hammer" size={32} />
         <div>
           <small>YOUR PICK IS IN THE DECK</small>
-          <p>{comparison.addedName} was added. Here is how the engine ranks it against the top two for this slot.</p>
+          <p>{comparison.addedName} was added. {comparison.differentRole ? "Cards that fill this slot rank first, by engine score." : "Here is how the engine ranks it against the top two for this slot."}</p>
         </div>
       </header>
       {comparison.differentRole && <p className="slot-different-role">{comparison.differentRole}</p>}
