@@ -518,11 +518,23 @@ export function FreeDecklist() {
         <section className="free-list-pane" aria-label="Decklist">
           {deckCoaching && (
             <div className="ghost-controls" role="group" aria-label="Ghost picks">
-              <button type="button" disabled={!shownGhosts.length} onClick={() => shownGhosts[0] && addFace(shownGhosts[0].face)}>Accept</button>
+              <button type="button" disabled={!shownGhosts.length} onClick={() => shownGhosts[0] && addFace(shownGhosts[0].face)}>
+                <ForgeProp kind="hammer" size={28} />
+                Accept
+              </button>
               <button type="button" disabled={!shownGhosts.length} onClick={skipLead}>Skip</button>
-              <button type="button" disabled={!ghosts.length} onClick={() => addFaces(ghosts.map((ghost) => swapped[ghost.id] && ghost.runnerUp ? ghost.runnerUp : ghost.primary))}>Accept all</button>
-              <button type="button" aria-pressed={paused} onClick={() => setPaused((current) => !current)}>{paused ? "Paused" : "Pause"}</button>
-              <button type="button" disabled={showAll || shown >= ghosts.length} onClick={() => { setPaused(true); setShown((current) => Math.min(ghosts.length, current + 1)); }}>Step</button>
+              <button type="button" disabled={!ghosts.length} onClick={() => addFaces(ghosts.map((ghost) => swapped[ghost.id] && ghost.runnerUp ? ghost.runnerUp : ghost.primary))}>
+                <ForgeProp kind="hammer" size={28} />
+                Accept all
+              </button>
+              <button type="button" aria-pressed={paused} onClick={() => setPaused((current) => !current)}>
+                <ForgeProp kind="anvil" size={36} />
+                {paused ? "Paused" : "Pause"}
+              </button>
+              <button type="button" disabled={showAll || shown >= ghosts.length} onClick={() => { setPaused(true); setShown((current) => Math.min(ghosts.length, current + 1)); }}>
+                <ForgeProp kind="anvil" size={36} />
+                Step
+              </button>
               <button type="button" aria-pressed={showAll} onClick={() => setShowAll(true)}>Show all</button>
               <button type="button" onClick={() => setClearedKey(listKey)}>Clear</button>
             </div>
@@ -551,8 +563,18 @@ export function FreeDecklist() {
                       ))}
                       {shownGhosts.filter((ghost) => (ghost.face.section || "Other") === group).map((ghost) => (
                         <article className="visual-deck-card ghost-pick" key={ghost.id} aria-label={`${ghost.face.name}, proposed, not counted yet. ${ghost.face.caption || ""}`}>
-                          <span className="visual-deck-card-art"><img src={ghost.face.image || cardImage(ghost.face.name)} alt="" /></span>
-                          <strong>{ghost.face.name}<small className="ghost-caption">{ghost.face.caption}</small></strong>
+                          <span className="ghost-wax-frame">
+                            <span className="visual-deck-card-art">
+                              <img src={ghost.face.image || cardImage(ghost.face.name)} alt="" />
+                              <span className="ghost-glass" aria-hidden="true" />
+                            </span>
+                            <i className="ghost-wax-seal" aria-hidden="true" />
+                          </span>
+                          <strong>
+                            {ghost.face.name}
+                            <em className="ghost-unfinished">Unfinished</em>
+                            <small className="ghost-caption">{ghost.face.caption}</small>
+                          </strong>
                         </article>
                       ))}
                     </div>
@@ -577,8 +599,12 @@ export function FreeDecklist() {
                       ))}
                       {shownGhosts.filter((ghost) => (ghost.face.section || "Other") === group).map((ghost) => (
                         <div className="type-column-row ghost-pick" key={ghost.id} aria-label={`${ghost.face.name}, proposed, not counted yet. ${ghost.face.caption || ""}`}>
-                          <span>+</span>
-                          <strong>{ghost.face.name}<small className="ghost-caption">{ghost.face.caption}</small></strong>
+                          <span className="ghost-row-mark" aria-hidden="true"><i className="ghost-wax-seal" /></span>
+                          <strong>
+                            {ghost.face.name}
+                            <em className="ghost-unfinished">Unfinished</em>
+                            <small className="ghost-caption">{ghost.face.caption}</small>
+                          </strong>
                         </div>
                       ))}
                     </section>
