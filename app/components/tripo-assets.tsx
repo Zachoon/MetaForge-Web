@@ -16,6 +16,7 @@ const PROPS = {
   hammer: { file: "prop_hammer-512.webp", label: "Forging hammer" },
   crystal: { file: "prop_crystal-512.webp", label: "Mana crystals" },
   tome: { file: "prop_tome-512.webp", label: "Spellbook" },
+  anvil: { file: "hero-512.webp", label: "Anvil" },
 } as const;
 
 export function ColorEmblem({

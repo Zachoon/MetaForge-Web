@@ -20,7 +20,7 @@ Section 3.2 allows lawful commercial or non-commercial use of outputs. Outputs a
 
 | Id | Files | Task id | Placement |
 | --- | --- | --- | --- |
-| hero | `hero-512.webp`, `hero-1024.webp`, `hero-turntable-512.webp` | `f1b79b41-29bc-4540-a25c-8d0248660b19` (rejected v1 `70e14ae5-8cce-4209-89ea-2cfe71999851`) | Homepage hero beside the headline. 512 on phones, 1024 on desktop. Turntable only when motion is allowed and the viewport is not a small phone. |
+| hero | `hero-512.webp`, `hero-1024.webp`, `hero-turntable-512.webp` | `f1b79b41-29bc-4540-a25c-8d0248660b19` (rejected v1 `70e14ae5-8cce-4209-89ea-2cfe71999851`) | Homepage hero beside the headline. 512 on phones, 1024 on desktop. Turntable only when motion is allowed and the viewport is not a small phone. The same 512 still is the pause/step mark on free-build coach controls. |
 | emblem_w | `emblem_w-512.webp`, `emblem_w-1024.webp` | `8ba15c4f-f03d-48de-86e0-7843007ae71e` | White color-identity chip. |
 | emblem_u | `emblem_u-512.webp`, `emblem_u-1024.webp` | `b761ea47-3e9c-4e02-bdda-eb7a6ded6258` | Blue color-identity chip. |
 | emblem_b | `emblem_b-512.webp`, `emblem_b-1024.webp` | `a476264a-a168-48e7-9ef9-62ac64a46dae` | Black color-identity chip. Do not draw this emblem below 32px; the moon and skull turn muddy. |

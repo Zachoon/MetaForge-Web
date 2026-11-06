@@ -1,9 +1,12 @@
-/* Free-build decklist. Ghosts sit in the real list and stay visually quiet. */
+/* Free-build decklist. Ghosts sit in the real list as unfinished work. */
 .free-decklist {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
+  max-width: 100%;
   padding: 18px 18px 28px;
+  overflow-x: clip;
   color: #e6e0d6;
 }
 .free-decklist-head {
@@ -108,43 +111,173 @@
 .free-missing b { font-weight: 650; }
 .free-missing em { color: #f0d7a4; font-style: normal; }
 .free-intent { color: #cbbfa8; font-size: 13px; margin: 0 0 8px; }
-.free-list-pane { min-width: 0; }
-.ghost-controls { margin-bottom: 10px; }
-.ghost-pick {
-  opacity: 0.72;
-  border-color: rgba(231, 194, 122, 0.45) !important;
-  box-shadow: 0 0 0 1px rgba(231, 194, 122, 0.18), 0 0 16px rgba(231, 194, 122, 0.12);
-  background: rgba(28, 22, 14, 0.55) !important;
+.free-list-pane { min-width: 0; max-width: 100%; }
+.free-decklist .deck-gallery,
+.free-decklist .visual-deck-gallery,
+.free-decklist .type-columns,
+.free-decklist .visual-deck-cards,
+.free-decklist .type-column { min-width: 0; max-width: 100%; }
+.ghost-controls { margin-bottom: 10px; min-width: 0; max-width: 100%; }
+.ghost-controls button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  max-width: 100%;
+}
+.ghost-controls .forge-prop { flex: 0 0 auto; }
+.ghost-controls .forge-prop-anvil { width: 36px; height: 36px; }
+.ghost-controls .forge-prop-hammer { width: 28px; height: 28px; }
+.ghost-controls button:disabled { cursor: not-allowed; opacity: 0.55; }
+
+/* Visual ghosts: a poured wax rim and smoked glass, not a faded copy of a finished card. */
+.free-decklist .visual-deck-card.ghost-pick {
+  border-color: transparent;
+  background: rgba(16, 15, 13, 0.95);
+  box-shadow: none;
+  cursor: default;
+  opacity: 1;
+}
+.free-decklist .visual-deck-card.ghost-pick:hover,
+.free-decklist .visual-deck-card.ghost-pick:focus-visible {
+  border-color: transparent;
+  box-shadow: none;
+  transform: none;
+}
+.ghost-wax-frame {
+  position: relative;
+  display: block;
+  padding: 8px 8px 11px;
+  background:
+    radial-gradient(circle at 7% 8%, #f6e4bc 0 6px, transparent 7px),
+    radial-gradient(circle at 94% 7%, #e2b56a 0 5px, transparent 6px),
+    radial-gradient(circle at 97% 70%, #d7a15c 0 7px, transparent 8px),
+    radial-gradient(circle at 5% 78%, #b8833e 0 5px, transparent 6px),
+    radial-gradient(circle at 48% 100%, #c9924a 0 9px, transparent 10px),
+    linear-gradient(168deg, #f3ddb0 0%, #d7a15a 30%, #8d5a28 68%, #c4893f 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 236, 200, 0.5), inset 0 -4px 6px rgba(70, 36, 10, 0.4);
+}
+.ghost-wax-frame::after {
+  content: "";
+  position: absolute;
+  left: 46%;
+  bottom: 2px;
+  width: 12px;
+  height: 7px;
+  border-radius: 0 0 8px 8px;
+  background: linear-gradient(#e2b56a, #8d5a28);
+  pointer-events: none;
+}
+.ghost-wax-frame .visual-deck-card-art { border-radius: 3px; }
+.ghost-wax-frame .visual-deck-card-art img {
+  opacity: 1;
+  filter: saturate(0.78) contrast(0.96);
+}
+.ghost-glass {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(118deg, rgba(255, 248, 236, 0.42) 0%, rgba(255, 248, 236, 0.08) 18%, transparent 36%),
+    linear-gradient(180deg, rgba(206, 198, 184, 0.28), rgba(12, 14, 16, 0.5));
+  box-shadow: inset 0 0 0 1px rgba(255, 244, 224, 0.38), inset 0 0 28px rgba(8, 10, 12, 0.55);
+}
+.ghost-wax-frame > .ghost-wax-seal {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  z-index: 2;
+  width: 18px;
+  height: 18px;
+}
+.free-decklist .visual-deck-card.ghost-pick > strong {
+  overflow: visible;
+  padding: 8px 10px 10px;
+  background: rgba(16, 15, 13, 0.95);
+  color: #f3ecdf;
+  white-space: normal;
+  text-overflow: unset;
+}
+
+/* Text ghosts stay on a nearly opaque panel. The wax seal marks them; the words stay full strength. */
+.free-decklist .type-column-row.ghost-pick,
+.free-decklist .type-column-row.ghost-pick:hover,
+.free-decklist .type-column-row.ghost-pick:focus {
+  align-items: start;
+  opacity: 1;
+  border: 0;
+  border-bottom: 1px solid #3a3328;
+  background:
+    linear-gradient(90deg, rgba(196, 137, 63, 0.28), transparent 22px),
+    rgba(16, 15, 13, 0.95);
+  color: #f3ecdf;
+  box-shadow: none;
+  cursor: default;
+}
+.free-decklist .type-column-row.ghost-pick > strong {
+  min-width: 0;
+  color: #f3ecdf;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.ghost-row-mark {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+}
+.ghost-wax-seal {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 46% 54% 42% 58%;
+  background:
+    radial-gradient(circle at 32% 28%, #f8e7c4, #e2b56a 42%, #8d5a28 78%);
+  box-shadow: inset 0 -2px 0 rgba(70, 36, 10, 0.45), 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+.ghost-unfinished {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: linear-gradient(180deg, #f0d7a4, #b8833e);
+  color: #1a120c;
+  font: 700 10px/1.5 inherit;
+  font-style: normal;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  vertical-align: 1px;
 }
 .free-decklist[data-motion="full"] .ghost-pick {
   animation: free-ghost-in 0.7s ease both;
 }
 @keyframes free-ghost-in {
-  from { opacity: 0; }
-  to { opacity: 0.72; }
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
 }
+.free-decklist[data-motion="static"] .ghost-pick { animation: none; }
 .ghost-caption {
   display: block;
   margin-top: 3px;
-  color: #e7d3a8;
+  color: #f0d7a4;
   font-size: 12px;
   font-weight: 500;
   line-height: 1.35;
   white-space: normal;
 }
-.visual-deck-card.ghost-pick { cursor: default; }
-.visual-deck-card.ghost-pick .visual-deck-card-art img { opacity: 0.78; }
 .free-remove { padding: 4px 8px !important; font-size: 12px !important; }
 .free-row-warn { color: #e7b4a0; font-size: 11px; }
 .free-paste { margin-top: 8px; }
 .free-paste textarea { min-height: 88px; margin-top: 8px; }
 @media (prefers-reduced-motion: reduce) {
-  .free-decklist .ghost-pick { animation: none; }
+  .free-decklist .ghost-pick { animation: none; transform: none; }
 }
 @media (max-width: 800px) {
   .free-decklist { padding: 12px 10px 20px; }
   .free-decklist-stage { grid-template-columns: 1fr; }
   .free-decklist-head h1 { font-size: 26px; }
   .free-decklist-actions, .ghost-controls { width: 100%; }
-  .free-decklist-actions button, .ghost-controls button { flex: 1 1 auto; }
+  .free-decklist-actions button, .ghost-controls button { flex: 1 1 calc(50% - 8px); }
+  .ghost-controls .forge-prop-anvil { width: 32px; height: 32px; }
+  .ghost-controls .forge-prop-hammer { width: 24px; height: 24px; }
 }
