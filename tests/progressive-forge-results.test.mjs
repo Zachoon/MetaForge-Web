@@ -36,7 +36,7 @@ test("opens directly into the deck without a detail-mode decision", () => {
   assert.doesNotMatch(page, /metaforge\.resultViewMode/);
   assert.doesNotMatch(page, />\s*Deck first\s*</);
   assert.doesNotMatch(page, />\s*All analysis\s*</);
-  assert.match(workbenchChamber, /<small>YOUR DECK<\/small>/);
+  assert.match(workbenchChamber, /<small>YOUR MASTERWORK<\/small>/);
 });
 
 test("places deck and refinement surfaces before the intelligence vault", () => {

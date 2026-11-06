@@ -11,9 +11,9 @@ test("a completed deck receives a customizable Masterwork identity", async () =>
   // chamber's own component during the page.tsx decomposition (Phase 4
   // Stage 4).
   const workbenchChamber = await read("app/components/forge/workbench-chamber.tsx");
-  assert.match(workbenchChamber, /YOUR DECK/);
-  assert.match(workbenchChamber, /Personalize deck/);
-  assert.match(workbenchChamber, /Deck Identity/);
+  assert.match(workbenchChamber, /YOUR MASTERWORK/);
+  assert.match(workbenchChamber, /Personalize Masterwork/);
+  assert.match(workbenchChamber, /Masterwork Identity/);
   assert.match(workbenchChamber, /Deck name/);
   assert.match(workbenchChamber, /masterwork-commander-medallion/);
   assert.match(workbenchChamber, /masterwork-identity-marks/);

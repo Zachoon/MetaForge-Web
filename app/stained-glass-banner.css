@@ -1,0 +1,317 @@
+/* Stained-glass commander banner and the Masterwork identity panel.
+   The illustration is the commander's Scryfall art crop. Lead cames sit on
+   top of it. Copy sits on the shared near-solid stone plate. */
+
+.progressive-results .deck-manuscript > header.masterwork-deck-hero {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(248px, 312px);
+  grid-template-rows: auto auto;
+  align-items: stretch;
+  min-height: 360px;
+  padding: 0 !important;
+  overflow: hidden;
+  border: 1px solid var(--mf-border, #6d4e32) !important;
+  box-shadow: var(--mf-frame-shadow, inset 0 0 0 1px rgba(8, 6, 4, 0.9));
+  background: #100e0c !important;
+}
+
+.masterwork-deck-hero:before {
+  inset: 0 !important;
+  background-color: #100e0c !important;
+  background-repeat: no-repeat !important;
+  background-position: center 32% !important;
+  background-size: cover !important;
+  filter: saturate(calc(1.05 + var(--masterwork-glow, 0.36) * 0.45)) contrast(1.08) brightness(calc(0.78 + var(--masterwork-glow, 0.36) * 0.28)) !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+.masterwork-deck-hero.focus-left:before { background-position: 18% 36% !important; }
+.masterwork-deck-hero.focus-center:before { background-position: center 30% !important; }
+.masterwork-deck-hero.focus-right:before { background-position: 82% 36% !important; }
+
+.masterwork-deck-hero:after {
+  background:
+    linear-gradient(180deg, rgba(8, 7, 6, 0.28), transparent 16% 76%, rgba(8, 7, 6, 0.55)) !important;
+  box-shadow:
+    inset 0 0 0 10px rgba(14, 10, 8, 0.72),
+    inset 0 0 0 12px rgba(166, 116, 62, 0.55),
+    inset 0 0 calc(40px + 70px * var(--masterwork-glow, 0.36)) rgba(226, 154, 64, calc(0.08 + var(--masterwork-glow, 0.36) * 0.28)) !important;
+}
+
+.masterwork-glass {
+  opacity: 1 !important;
+  mix-blend-mode: normal !important;
+  background: none !important;
+  filter: none !important;
+  pointer-events: none;
+}
+.stained-glass-leads {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.glass-wash {
+  mix-blend-mode: multiply;
+  opacity: calc(0.82 + var(--masterwork-glow, 0.36) * 0.18);
+}
+.glass-cames {
+  stroke: #120e0b;
+  stroke-width: 8;
+}
+.glass-cames circle,
+.glass-cames path,
+.glass-cames rect {
+  stroke: #1a140f;
+  stroke-width: 7;
+}
+.masterwork-glass .glass-cames polygon {
+  stroke: #120e0b;
+}
+.masterwork-deck-hero.treatment-etched:before {
+  filter: grayscale(0.72) sepia(0.38) contrast(1.28) brightness(0.72) !important;
+}
+.masterwork-deck-hero.treatment-etched .glass-wash { opacity: 0.12 !important; }
+.masterwork-deck-hero.treatment-etched .glass-cames,
+.masterwork-deck-hero.treatment-etched .glass-cames circle,
+.masterwork-deck-hero.treatment-etched .glass-cames path,
+.masterwork-deck-hero.treatment-etched .glass-cames rect {
+  stroke: #8d7960;
+  stroke-width: 5;
+}
+.masterwork-deck-hero.treatment-clean:before {
+  filter: saturate(0.92) contrast(1.04) brightness(0.9) !important;
+}
+.masterwork-deck-hero.treatment-clean .masterwork-glass { display: none !important; }
+
+.masterwork-deck-hero .masterwork-deck-title {
+  position: relative;
+  z-index: 2;
+  grid-column: 1;
+  grid-row: 1;
+  display: flex !important;
+  align-items: center;
+  gap: 16px;
+  width: min(100% - 28px, 620px) !important;
+  max-width: 620px;
+  min-width: 0;
+  margin: auto 14px 16px !important;
+  padding: 14px 16px !important;
+  border: 1px solid rgba(166, 124, 73, 0.72);
+  box-shadow: var(--mf-frame-shadow, inset 0 0 0 1px rgba(8, 6, 4, 0.9));
+  align-self: end;
+  justify-self: start;
+}
+.masterwork-deck-hero .masterwork-deck-title > div { min-width: 0; }
+.masterwork-deck-hero .masterwork-deck-title h2 {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: clamp(28px, 3vw, 44px) !important;
+  line-height: 0.98 !important;
+}
+.masterwork-deck-hero .masterwork-deck-title p {
+  max-width: 100%;
+  margin: 6px 0 0;
+  color: #d7cbb8;
+  overflow-wrap: anywhere;
+}
+.masterwork-deck-hero .masterwork-commander-medallion {
+  width: 84px;
+  height: 84px;
+  border: 2px solid #e0b56a;
+  box-shadow: 0 0 0 4px rgba(16, 15, 13, 0.95), 0 0 0 6px #7a5637, 0 12px 28px #000c;
+}
+.masterwork-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.masterwork-banner-actions .masterwork-ready { margin: 0; }
+.masterwork-deck-hero .personalize-masterwork {
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px solid #ce863d !important;
+  background: rgba(59, 36, 21, 0.92) !important;
+  color: #ffd7ae !important;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.masterwork-deck-hero .masterwork-identity-panel {
+  position: relative !important;
+  z-index: 2;
+  grid-column: 2;
+  grid-row: 1;
+  width: auto !important;
+  height: auto !important;
+  max-height: none;
+  min-width: 0;
+  margin: 14px 14px 14px 0;
+  padding: 12px 12px 14px !important;
+  overflow: visible;
+  border: 1px solid rgba(166, 124, 73, 0.8);
+  border-left: 1px solid rgba(166, 124, 73, 0.8);
+  box-shadow: var(--mf-frame-shadow, inset 0 0 0 1px rgba(8, 6, 4, 0.9)), 0 16px 40px #0008;
+  align-self: start;
+  color: #f3efe6;
+}
+.masterwork-deck-hero .masterwork-identity-panel > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 0 8px;
+  border-bottom: 1px solid rgba(166, 124, 73, 0.4);
+}
+.masterwork-deck-hero .masterwork-identity-panel h3 {
+  margin: 0;
+  color: #f6efe4;
+  font: 700 13px/1.2 Inter, ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.masterwork-deck-hero .masterwork-identity-panel > header button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #6d4e32;
+  background: rgba(16, 15, 13, 0.95);
+  color: #f3efe6;
+  font-size: 18px;
+  line-height: 1;
+}
+.masterwork-deck-hero .masterwork-identity-panel label,
+.masterwork-deck-hero .masterwork-identity-panel fieldset {
+  margin: 10px 0 0;
+}
+.masterwork-deck-hero .masterwork-identity-panel label > span,
+.masterwork-deck-hero .masterwork-identity-panel legend {
+  color: #e7d7c2;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.masterwork-deck-hero .identity-featured-art {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.masterwork-deck-hero .identity-featured-art button { height: 58px; }
+.masterwork-deck-hero .identity-treatment-options,
+.masterwork-deck-hero .identity-focus-options {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.masterwork-deck-hero .identity-treatment-options button,
+.masterwork-deck-hero .identity-focus-options button {
+  min-height: 40px;
+  min-width: 0;
+  padding: 6px 4px;
+  color: #d9cbb8;
+  font-size: 11px;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+.masterwork-deck-hero .identity-focus-options button {
+  display: grid;
+  place-items: center;
+}
+.masterwork-deck-hero .identity-focus-options svg {
+  width: 22px;
+  height: 22px;
+}
+.masterwork-deck-hero .identity-glow-scale {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 4px;
+  color: #8c7360;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.masterwork-deck-hero .identity-glow-scale i { font-style: normal; }
+.identity-glow-scale .active { color: #e0b56a; }
+.masterwork-deck-hero .masterwork-identity-panel input[type="range"] { accent-color: #e0b56a; }
+.masterwork-deck-hero .masterwork-identity-panel select,
+.masterwork-deck-hero .masterwork-identity-panel input[type="text"] {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.identity-apply-note {
+  margin: 10px 0 0;
+  color: #b7a38c;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.masterwork-deck-hero .masterwork-identity-panel > footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+}
+.masterwork-deck-hero .masterwork-identity-panel > footer button {
+  min-height: 36px;
+  padding: 8px 12px;
+}
+
+.masterwork-deck-hero .deck-header-actions {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  flex-wrap: wrap !important;
+  max-width: 100% !important;
+  min-width: 0;
+  background: rgba(16, 15, 13, 0.95) !important;
+}
+.masterwork-deck-hero .deck-header-actions > * { min-width: 0; max-width: 100%; }
+.masterwork-deck-hero .deck-header-actions button,
+.masterwork-deck-hero .deck-header-actions a,
+.masterwork-deck-hero .deck-header-actions summary {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1240px) {
+  .progressive-results .deck-manuscript > header.masterwork-deck-hero {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .masterwork-deck-hero .masterwork-deck-title,
+  .masterwork-deck-hero .masterwork-identity-panel {
+    grid-column: 1;
+    width: auto !important;
+    max-width: none;
+    margin: 12px !important;
+  }
+  .masterwork-deck-hero .masterwork-deck-title { margin-top: 168px !important; }
+  .masterwork-deck-hero .masterwork-identity-panel { grid-row: 2; margin-top: 0 !important; }
+  .masterwork-deck-hero .deck-header-actions { grid-row: 3; }
+}
+
+@media (max-width: 560px) {
+  .progressive-results .deck-manuscript > header.masterwork-deck-hero {
+    min-height: 280px;
+  }
+  .masterwork-deck-hero .masterwork-deck-title {
+    align-items: flex-start;
+    gap: 12px;
+    margin: 148px 12px 12px !important;
+    padding: 12px !important;
+  }
+  .masterwork-deck-hero .masterwork-commander-medallion { width: 64px; height: 64px; }
+  .masterwork-deck-hero .masterwork-deck-title h2 { font-size: 30px !important; }
+  .masterwork-deck-hero .deck-header-actions {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    padding: 10px !important;
+  }
+  .masterwork-deck-hero .deck-header-price { grid-column: 1 / -1; }
+  .masterwork-deck-hero .identity-treatment-options { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .masterwork-deck-hero:before { transform: none !important; }
+}
