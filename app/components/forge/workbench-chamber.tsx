@@ -33,6 +33,7 @@ import { CurveRoleCoach } from "./curve-role-coach";
 import { FreeDecklist } from "./free-decklist";
 import { ManaBaseCoach } from "./mana-base-coach";
 import { ColorIdentityChips } from "../tripo-assets";
+import { FocusMark, StainedGlassLeads } from "./stained-glass";
 
 export function WorkbenchChamber() {
   const {
@@ -584,32 +585,114 @@ export function WorkbenchChamber() {
               "--masterwork-glow": masterworkIdentity.glow / 100,
             } as React.CSSProperties) : undefined}
           >
-            {hasValidatedDeck && <span className="masterwork-glass" aria-hidden="true" />}
+            {hasValidatedDeck && (
+              <span className="masterwork-glass" aria-hidden="true">
+                <StainedGlassLeads />
+              </span>
+            )}
             <div className="masterwork-deck-title">
               {hasValidatedDeck && (
                 <CommanderInspector
-                  name={activeCommanderName || featuredMasterworkCard}
-                  src={cardArtCrop(activeCommanderName || featuredMasterworkCard)}
+                  name={featuredMasterworkCard || activeCommanderName}
+                  src={cardArtCrop(featuredMasterworkCard || activeCommanderName)}
                   imgClassName="masterwork-commander-medallion"
-                  typeLine={selectedCommander?.typeLine || ""}
-                  oracle={commanderOracleText(selectedCommander)}
+                  typeLine={(featuredMasterworkCard || activeCommanderName) === activeCommanderName ? selectedCommander?.typeLine || "" : ""}
+                  oracle={(featuredMasterworkCard || activeCommanderName) === activeCommanderName ? commanderOracleText(selectedCommander) : ""}
                 />
               )}
               <div>
-                <small>YOUR DECK</small>
+                <small>YOUR MASTERWORK</small>
                 <h2>{hasValidatedDeck ? masterworkIdentity.title || chosenWork.name.replace(/, Forged$/, "") : benchStatus === "forging" ? "The Forge is producing your deck…" : "Build not completed"}</h2>
                 {hasValidatedDeck && (
-                  <p>{[honestCoachSummary.finishedDeckLabel, `Revision ${Math.max(1, revisions.length)}`].filter(Boolean).join(" · ")}</p>
+                  <p>{[activeCommanderName, honestCoachSummary.finishedDeckLabel || (honestCoachSummary.planStory?.title && !/^commander plan$/i.test(honestCoachSummary.planStory.title) ? honestCoachSummary.planStory.title : strategy)].filter(Boolean).join(" · ")}</p>
                 )}
                 {hasValidatedDeck && <div className="masterwork-identity-marks" aria-label={`${selectedCommander?.colors?.join(", ") || "colorless"} color identity`}>
                   <ColorIdentityChips colors={selectedCommander?.colors?.length ? selectedCommander.colors : ["C"]} />
-                  <span className="masterwork-ready">✓ READY TO TEST</span>
+                  <div className="masterwork-banner-actions">
+                    <span className="masterwork-ready">✓ READY TO TEST</span>
+                    <button
+                      type="button"
+                      className="personalize-masterwork"
+                      aria-expanded={masterworkIdentityOpen}
+                      aria-controls="masterwork-identity-title"
+                      onClick={() => {
+                        if (masterworkIdentityOpen) {
+                          setMasterworkIdentityDraft(masterworkIdentity);
+                          setMasterworkIdentityOpen(false);
+                          return;
+                        }
+                        setMasterworkIdentityDraft(masterworkIdentity);
+                        setMasterworkIdentityOpen(true);
+                      }}
+                    >
+                      ✦ Personalize Masterwork
+                    </button>
+                  </div>
                   {coachOccupancyLabels.length > 0 && (
                     <span className="masterwork-occupancy">Occupancy: {coachOccupancyLabels.join(" · ")}</span>
                   )}
                 </div>}
               </div>
             </div>
+            {hasValidatedDeck && masterworkIdentityOpen && (
+              <section className="masterwork-identity-panel" aria-labelledby="masterwork-identity-title">
+                <header>
+                  <h3 id="masterwork-identity-title">Masterwork Identity</h3>
+                  <button type="button" aria-label="Close personalization" onClick={() => { setMasterworkIdentityDraft(masterworkIdentity); setMasterworkIdentityOpen(false); }}>×</button>
+                </header>
+                <label>
+                  <span>Deck name</span>
+                  <input type="text" maxLength={60} placeholder={chosenWork.name.replace(/, Forged$/, "")} value={masterworkIdentityDraft.title} onChange={(event) => setMasterworkIdentityDraft((current) => ({ ...current, title: event.target.value }))} />
+                </label>
+                <label>
+                  <span>Featured art</span>
+                  <div className="identity-featured-art" role="group" aria-label="Featured art">
+                    {masterworkFeaturedChoices.map((name) => (
+                      <button type="button" key={name} className={(masterworkIdentityDraft.featuredCard || activeCommanderName) === name ? "active" : ""} aria-pressed={(masterworkIdentityDraft.featuredCard || activeCommanderName) === name} aria-label={`Use ${name} artwork`} onClick={() => setMasterworkIdentityDraft((current) => ({ ...current, featuredCard: name }))}>
+                        <img src={cardArtCrop(name)} alt="" />
+                        <i aria-hidden="true">✓</i>
+                      </button>
+                    ))}
+                  </div>
+                  <select aria-label="Featured art card" value={masterworkIdentityDraft.featuredCard || activeCommanderName} onChange={(event) => setMasterworkIdentityDraft((current) => ({ ...current, featuredCard: event.target.value }))}>
+                    {deckRows.map((row) => <option key={row.name} value={row.name}>{row.name}</option>)}
+                  </select>
+                </label>
+                <fieldset>
+                  <legend>Treatment</legend>
+                  <div className="identity-treatment-options">
+                    {(["stained", "etched", "clean"] as const).map((treatment) => (
+                      <button type="button" key={treatment} className={masterworkIdentityDraft.treatment === treatment ? "active" : ""} aria-pressed={masterworkIdentityDraft.treatment === treatment} onClick={() => setMasterworkIdentityDraft((current) => ({ ...current, treatment }))}>
+                        {treatment === "stained" ? "Stained Glass" : treatment === "etched" ? "Etched Metal" : "Clean Art"}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+                <fieldset>
+                  <legend>Focus position</legend>
+                  <div className="identity-focus-options" role="group" aria-label="Focus position">
+                    {(["left", "center", "right"] as const).map((focus) => (
+                      <button type="button" key={focus} className={masterworkIdentityDraft.focus === focus ? "active" : ""} aria-pressed={masterworkIdentityDraft.focus === focus} aria-label={`Focus ${focus}`} onClick={() => setMasterworkIdentityDraft((current) => ({ ...current, focus }))}>
+                        <FocusMark kind={focus} />
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+                <label>
+                  <span>Glow intensity <b>{masterworkIdentityDraft.glow < 34 ? "Subtle" : masterworkIdentityDraft.glow < 67 ? "Medium" : "Intense"}</b></span>
+                  <input type="range" min="0" max="100" aria-valuetext={masterworkIdentityDraft.glow < 34 ? "Subtle" : masterworkIdentityDraft.glow < 67 ? "Medium" : "Intense"} value={masterworkIdentityDraft.glow} onChange={(event) => setMasterworkIdentityDraft((current) => ({ ...current, glow: Number(event.target.value) }))} />
+                  <span className="identity-glow-scale" aria-hidden="true"><i className={masterworkIdentityDraft.glow < 34 ? "active" : ""}>Subtle</i><i className={masterworkIdentityDraft.glow >= 34 && masterworkIdentityDraft.glow < 67 ? "active" : ""}>Medium</i><i className={masterworkIdentityDraft.glow >= 67 ? "active" : ""}>Intense</i></span>
+                </label>
+                <p className="identity-apply-note">Changes apply to your deck banner and avatar.</p>
+                <footer>
+                  <button type="button" onClick={() => setMasterworkIdentity(masterworkIdentityDraft)}>Preview</button>
+                  <button type="button" className="save-masterwork-identity" onClick={() => {
+                    setMasterworkIdentity(masterworkIdentityDraft);
+                    try { window.localStorage.setItem(masterworkIdentityKey, JSON.stringify(masterworkIdentityDraft)); } catch { /* local preference only */ }
+                  }}>Save Identity</button>
+                </footer>
+              </section>
+            )}
             {hasValidatedDeck && (
               <div className="deck-header-actions">
                 <span className="deck-header-price" aria-label="Estimated deck market price">
@@ -643,16 +726,6 @@ export function WorkbenchChamber() {
                 {publicReportUrl && <a className="public-report-status" href={publicReportUrl} target="_blank" rel="noopener noreferrer">Open public report ↗</a>}
                 {publicReportUrl && <button type="button" className="unpublish-report-link" disabled={publicReportStatus === "publishing"} onClick={() => void unpublishPublicDeckReport()}>Unpublish</button>}
                 {publicReportError && <span className="public-report-error" role="alert">{publicReportError}</span>}
-                <button
-                  type="button"
-                  className="personalize-masterwork"
-                  onClick={() => {
-                    setMasterworkIdentityDraft(masterworkIdentity);
-                    setMasterworkIdentityOpen(true);
-                  }}
-                >
-                  ✦ Personalize deck
-                </button>
                 <details className="deck-view-options">
                   <summary>View options</summary>
                   <button type="button" className={deckViewMode === "gallery" ? "active" : ""} onClick={() => setDeckViewMode("gallery")}>Visual deck</button>
@@ -695,63 +768,6 @@ export function WorkbenchChamber() {
               </div>
             )}
           </header>
-          {hasValidatedDeck && masterworkIdentityOpen && (
-            <div className="masterwork-identity-backdrop" role="presentation" onMouseDown={() => setMasterworkIdentityOpen(false)}>
-              <section className="masterwork-identity-panel" role="dialog" aria-modal="true" aria-labelledby="masterwork-identity-title" onMouseDown={(event) => event.stopPropagation()}>
-                <header>
-                  <div><small>MAKE IT YOURS</small><h3 id="masterwork-identity-title">Deck Identity</h3></div>
-                  <button type="button" aria-label="Close personalization" onClick={() => setMasterworkIdentityOpen(false)}>×</button>
-                </header>
-                <label>
-                  <span>Deck name</span>
-                  <input type="text" maxLength={60} placeholder={chosenWork.name.replace(/, Forged$/, "")} value={masterworkIdentityDraft.title} onChange={(event) => setMasterworkIdentityDraft((current) => ({ ...current, title: event.target.value }))} />
-                </label>
-                <label>
-                  <span>Featured art</span>
-                  <div className="identity-featured-art" role="group" aria-label="Featured artwork shortcuts">
-                    {masterworkFeaturedChoices.map((name) => (
-                      <button type="button" key={name} className={(masterworkIdentityDraft.featuredCard || activeCommanderName) === name ? "active" : ""} aria-label={`Use ${name} artwork`} onClick={() => setMasterworkIdentityDraft((current) => ({ ...current, featuredCard: name }))}>
-                        <img src={cardArtCrop(name)} alt="" />
-                        <i aria-hidden="true">✓</i>
-                      </button>
-                    ))}
-                  </div>
-                  <select value={masterworkIdentityDraft.featuredCard || activeCommanderName} onChange={(event) => setMasterworkIdentityDraft((current) => ({ ...current, featuredCard: event.target.value }))}>
-                    {deckRows.map((row) => <option key={row.name} value={row.name}>{row.name}</option>)}
-                  </select>
-                </label>
-                <fieldset>
-                  <legend>Treatment</legend>
-                  <div className="identity-treatment-options">
-                    {(["stained", "etched", "clean"] as const).map((treatment) => (
-                      <button type="button" key={treatment} className={masterworkIdentityDraft.treatment === treatment ? "active" : ""} onClick={() => setMasterworkIdentityDraft((current) => ({ ...current, treatment }))}>
-                        {treatment === "stained" ? "Stained Glass" : treatment === "etched" ? "Etched Metal" : "Clean Art"}
-                      </button>
-                    ))}
-                  </div>
-                </fieldset>
-                <fieldset>
-                  <legend>Focus position</legend>
-                  <div className="identity-focus-options">
-                    {(["left", "center", "right"] as const).map((focus) => <button type="button" key={focus} className={masterworkIdentityDraft.focus === focus ? "active" : ""} onClick={() => setMasterworkIdentityDraft((current) => ({ ...current, focus }))}>{focus}</button>)}
-                  </div>
-                </fieldset>
-                <label>
-                  <span>Glow intensity <b>{masterworkIdentityDraft.glow}%</b></span>
-                  <input type="range" min="0" max="100" value={masterworkIdentityDraft.glow} onChange={(event) => setMasterworkIdentityDraft((current) => ({ ...current, glow: Number(event.target.value) }))} />
-                </label>
-                <footer>
-                  <button type="button" onClick={() => setMasterworkIdentityOpen(false)}>Cancel</button>
-                  <button type="button" onClick={() => setMasterworkIdentity(masterworkIdentityDraft)}>Preview</button>
-                  <button type="button" className="save-masterwork-identity" onClick={() => {
-                    setMasterworkIdentity(masterworkIdentityDraft);
-                    try { window.localStorage.setItem(masterworkIdentityKey, JSON.stringify(masterworkIdentityDraft)); } catch { /* local preference only */ }
-                    setMasterworkIdentityOpen(false);
-                  }}>Save Identity</button>
-                </footer>
-              </section>
-            </div>
-          )}
           {hasValidatedDeck && (
             <div className="masterwork-stats-bar" aria-label="Deck summary">
               <span><b>{deckRows.reduce((sum, row) => sum + row.quantity, 0)}</b> Cards</span>

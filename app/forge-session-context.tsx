@@ -1158,7 +1158,7 @@ export function useForgeSessionState() {
   const [swapStationReviewed, setSwapStationReviewed] = useState(false);
   const coachBriefDetailsRef = useRef<HTMLDetailsElement | null>(null);
   const [deckViewMode, setDeckViewMode] = useState<DeckViewMode>("ledger");
-  const [masterworkIdentityOpen, setMasterworkIdentityOpen] = useState(false);
+  const [masterworkIdentityOpen, setMasterworkIdentityOpen] = useState(true);
   const [masterworkIdentity, setMasterworkIdentity] = useState({
     title: "",
     featuredCard: "",
