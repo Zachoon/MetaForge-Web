@@ -1,10 +1,13 @@
 .legal-page {
   min-height: 100vh;
-  padding: 0 var(--mf-gutter, 16px) 80px;
+  padding: 74px var(--mf-gutter, 16px) 80px;
   background: var(--mf-page-bg, #070908);
   color: var(--mf-ivory, #f3efe6);
   font-family: Inter, sans-serif;
   overflow-x: clip;
+}
+@media (min-width: 761px) {
+  .legal-page { padding-left: calc(104px + var(--mf-gutter, 16px)); }
 }
 .legal-shell {
   width: min(var(--mf-reading-shell, 42rem), 100%);
@@ -75,5 +78,13 @@
   }
   .legal-page {
     padding-bottom: max(72px, calc(28px + env(safe-area-inset-bottom, 0px)));
+  }
+}
+@media (max-width: 760px) {
+  .legal-page {
+    padding-top: 112px;
+    padding-left: max(12px, env(safe-area-inset-left, 0px));
+    padding-right: max(12px, env(safe-area-inset-right, 0px));
+    padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px));
   }
 }

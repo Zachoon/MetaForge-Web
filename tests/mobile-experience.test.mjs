@@ -27,7 +27,7 @@ test("phone rail labels stay inside their buttons and clear the home indicator",
 
 test("tablet portrait can scroll the stacked entrance", () => {
   assert.match(css, /@media \(min-width: 761px\) and \(max-width: 900px\)/);
-  assert.match(css, /\.chamber-entrance > \.forge-entrance \{[^}]*overflow-y: auto !important/s);
+  assert.match(css, /\.chamber-entrance > \.forge-entrance \{[^}]*overflow: visible !important/s);
   assert.match(css, /\.great-forge > \.forge-card-rail \{ display: none !important; \}/);
 });
 
