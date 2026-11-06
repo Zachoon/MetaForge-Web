@@ -211,19 +211,19 @@
 .chamber-loading{margin:48px auto;max-width:1080px;padding:0 24px;color:#92a29d;font-size:14px}
 .chamber-loading button{margin-left:8px;padding:6px 10px;border:1px solid #52655f;background:transparent;color:#dce5e1;font:700 12px Inter,sans-serif;cursor:pointer}
 
-.slot-compare{display:grid;gap:12px;margin-top:14px;padding:12px;border:1px solid #3d4f49;background:#071011}
+.slot-compare{display:grid;gap:12px;margin-top:14px;padding:12px;border:1px solid #6d4e32;background:rgba(16,15,13,0.95)}
 .slot-compare-head{display:flex;align-items:center;gap:10px}
 .slot-compare-head .forge-prop{width:32px;height:32px}
 .slot-compare-head small{display:block;color:var(--ember);font-size:10px;font-weight:800;letter-spacing:.14em}
 .slot-compare-head p{margin:4px 0 0;color:#dce5e1;font-size:13px;line-height:1.4}
 .slot-compare-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .slot-compare-cards.three{grid-template-columns:repeat(3,minmax(0,1fr))}
-.slot-card{display:grid;gap:6px;align-content:start;padding:8px;border:1px solid #293a36;background:#0c1614}
+.slot-card{display:grid;gap:6px;align-content:start;padding:8px;border:1px solid #6d4e32;background:rgba(16,15,13,0.95)}
 .slot-card.leading{border-color:#5fc9b6}
 .slot-card.picked{box-shadow:inset 0 0 0 1px #d5964e}
 .slot-card.out-of-role{border-color:#d5964e}
 .slot-card.out-of-role small{color:#e7d7c2}
-.slot-card-art{width:100%;max-width:220px;border-radius:8px}
+.slot-card-art{width:100%;max-width:220px;padding:6px;border-radius:10px;background:url("/assets/workshop/rusty-metal.webp") center/180px;box-shadow:0 0 0 1px #3a2a1c}
 .slot-card h3{margin:2px 0;font:600 16px Newsreader,Georgia,serif;color:#e2e9e6}
 .slot-card small{color:#d5964e;font-size:10px;font-weight:800;letter-spacing:.08em}
 .slot-card em,.slot-card b{display:block;color:#8ecdc5;font-size:12px;font-style:normal}

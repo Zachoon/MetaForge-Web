@@ -48,6 +48,10 @@
   margin-bottom: 8px;
 }
 
+.learn-page .learn-mana-row {
+  margin: 10px 0 4px;
+}
+
 .learn-page .learn-nav a,
 .learn-page .learn-tag {
   display: inline-flex;

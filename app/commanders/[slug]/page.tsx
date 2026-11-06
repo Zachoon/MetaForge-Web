@@ -14,7 +14,7 @@ import {
 import { occupancyEngineCopyFor } from "../occupancy-copy.mjs";
 import { COMMANDER_GUIDES, commanderGuideBySlug } from "../data.mjs";
 import { commanderGuideProfile } from "../guide-profiles.mjs";
-import { ManaText } from "../../components/mana-symbols";
+import { ManaText, SetMark } from "../../components/mana-symbols";
 import { PageTrail, SiteHeader } from "../../components/site-chrome";
 import { ColorIdentityChips } from "../../components/tripo-assets";
 
@@ -65,7 +65,7 @@ export default async function CommanderGuidePage({ params }: { params: Promise<{
     .map(({ candidate }) => candidate);
 
   return (
-    <main className="legal-page forge-atmosphere">
+    <main className="legal-page forge-atmosphere commander-page">
       <SiteHeader current="commanders" />
       <div className="legal-shell">
         <PageTrail crumbs={[{ href: "/", label: "Explore" }, { href: "/commanders", label: "Commander guides" }, { label: card.name }]} />
@@ -75,10 +75,13 @@ export default async function CommanderGuidePage({ params }: { params: Promise<{
           <p className="updated">{tagline}</p>
 
           <div className="commander-hero">
-            <img src={card.image_uris.art_crop} alt={`${card.name} art`} />
+            <div className="commander-card-stack">
+              <img className="commander-card-back" src="/assets/mtg/card-back.webp" alt="" />
+              <img className="commander-card-face" src={card.image_uris.normal} alt={`${card.name} card`} />
+            </div>
             <div className="commander-hero-identity">
               <span className="commander-mana-cost"><ManaText text={card.mana_cost} /></span>
-              <span className="commander-type-line">{card.type_line}</span>
+              <span className="commander-type-line"><SetMark code={card.set} label={card.set_name} />{card.type_line}</span>
               <div className="commander-colors">
                 <ColorIdentityChips colors={colorIdentity} />
               </div>

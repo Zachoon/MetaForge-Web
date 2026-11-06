@@ -1,6 +1,8 @@
 // Original Tripo stills. See public/assets/forge/tripo/PROVENANCE.md.
-// Emblems stay at least 32px: the black moon-and-skull reads as mud below that.
-// Chips keep a visible letter so the color is still legible beside the medallion.
+// Color identity in the UI uses Scryfall's mana symbols (see mana-symbols.tsx).
+// The medallions remain for the larger forge props; the black moon-and-skull
+// still reads as mud below 32px if a medallion is shown.
+import { ManaSymbol } from "./mana-symbols";
 
 const EMBLEM_ORDER = ["W", "U", "B", "R", "G"] as const;
 
@@ -46,15 +48,16 @@ export function ColorEmblem({
 export function ColorIdentityChips({ colors }: { colors: readonly string[] }) {
   const known = EMBLEM_ORDER.filter((color) => colors.includes(color));
   if (!known.length) {
-    return <span className="color-identity-colorless">Colorless</span>;
+    return (
+      <span className="color-identity-chips">
+        <ManaSymbol symbol="C" />
+      </span>
+    );
   }
   return (
     <span className="color-identity-chips">
       {known.map((color) => (
-        <span key={color} className="color-emblem-chip" role="img" aria-label={EMBLEMS[color].name}>
-          <ColorEmblem color={color} labelled />
-          <span className="color-emblem-letter" aria-hidden="true">{color}</span>
-        </span>
+        <ManaSymbol key={color} symbol={color} />
       ))}
     </span>
   );

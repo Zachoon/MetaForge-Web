@@ -238,7 +238,7 @@ export default function CardInspector() {
                 {modal.view.typeLine || "Type unavailable"}
                 {modal.view.manaCost ? <> · <ManaText text={modal.view.manaCost} /></> : null}
               </p>
-              <p>{modal.view.oracle || "Rules text is on the card image."}</p>
+              <p>{modal.view.oracle ? <ManaText text={modal.view.oracle} /> : "Rules text is on the card image."}</p>
               <p className={`card-inspect-legal${modal.view.legal ? " is-legal" : ""}`}>{modal.view.commander || "Commander legality unavailable"}</p>
               {modal.anchor.priceUsd != null && <p className="card-inspect-price">${modal.anchor.priceUsd.toFixed(2)}</p>}
             </div>

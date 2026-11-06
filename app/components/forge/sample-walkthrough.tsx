@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ManaText } from "../mana-symbols";
 import { GlossaryText } from "./glossary-text";
 
 // A static, clearly labelled example of one guided pick, so a first-time
@@ -38,8 +39,8 @@ export function SampleWalkthrough() {
       <article className="sample-card" data-outcome={outcome?.kind || "open"}>
         <div className="sample-card-head">
           <small>SUGGESTED CARD</small>
-          <h3>{EXAMPLE.card}</h3>
-          <em>{EXAMPLE.typeLine}</em>
+          <h3 data-card-name={EXAMPLE.card}>{EXAMPLE.card}</h3>
+          <em><ManaText text={EXAMPLE.typeLine} /></em>
         </div>
         <dl className="guided-explanation">
           <div><dt>Role</dt><dd>{EXAMPLE.role}</dd></div>

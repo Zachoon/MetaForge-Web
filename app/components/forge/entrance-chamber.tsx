@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ManaRow, SetMark } from "../mana-symbols";
 import { HeroAnvil } from "../hero-anvil";
 import { ForgeCommissionCard } from "./forge-commission-card";
 import { ForgeRune } from "./forge-motion-flourishes";
@@ -32,7 +33,10 @@ export function EntranceChamber() {
       <HeroAnvil motionMode={motionMode} />
       <div className="entrance-copy">
         <span className="forge-eyebrow">
-          <i /> MAGIC: THE GATHERING · DECK COACH
+          <i />
+          <ManaRow />
+          <SetMark code="cmd" label="Commander" />
+          MAGIC: THE GATHERING · DECK COACH
         </span>
         <h1>
           Understand your Magic deck.

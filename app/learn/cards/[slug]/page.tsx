@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { ManaText } from "../../../components/mana-symbols";
 import { allCards, cardBySlug } from "../../catalog.mjs";
 import { BuildCta, LearnFrame, LearnLinks } from "../../article-view";
 
@@ -34,9 +35,9 @@ export default async function LearnCardPage({ params }: { params: Promise<{ slug
       <article className="legal-card">
         <small>CARD</small>
         <h1>{card.name}</h1>
-        <p className="updated">{[card.manaCost, card.typeLine].filter(Boolean).join(" · ")}</p>
-        {card.paragraphs.map((paragraph: string) => <p key={paragraph.slice(0, 40)}>{paragraph}</p>)}
-        {card.oracleText ? <pre className="learn-oracle">{card.oracleText}</pre> : null}
+        <p className="updated">{card.manaCost ? <ManaText text={card.manaCost} /> : null}{card.manaCost && card.typeLine ? " · " : null}{card.typeLine}</p>
+        {card.paragraphs.map((paragraph: string) => <p key={paragraph.slice(0, 40)}><ManaText text={paragraph} /></p>)}
+        {card.oracleText ? <pre className="learn-oracle"><ManaText text={card.oracleText} /></pre> : null}
         {card.referring?.length ? (
           <section>
             <h2>Discussed in</h2>

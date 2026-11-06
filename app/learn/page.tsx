@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ManaRow, SetMark } from "../components/mana-symbols";
 import { indexableArticles, SEED_CLOCK, collectionSchema } from "./catalog.mjs";
 import { CATEGORIES } from "./policy.mjs";
 import { ArticleList, BuildCta, CategoryNav, LearnFrame, LearnLinks } from "./article-view";
@@ -19,6 +20,7 @@ export default function LearnIndex() {
     <LearnFrame crumbs={[{ href: "/", label: "Explore" }, { label: "Learn" }]}>
       <article className="legal-card">
         <small>LEARN</small>
+        <p className="learn-mana-row"><ManaRow /><SetMark code="cmd" label="Commander" /></p>
         <h1>Commander, explained by the coach</h1>
         <p className="updated">Essays on how the deck coach counts a curve, a mana base, interaction, and card advantage, plus set reviews and commander notes grounded in printed text. Drafts are not listed.</p>
         <CategoryNav current="all" />

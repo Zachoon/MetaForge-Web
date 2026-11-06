@@ -11,7 +11,7 @@
 .card-inspect-dialog{
   position:relative;display:grid;grid-template-columns:minmax(220px,360px) minmax(240px,1fr);
   width:min(920px,100%);max-height:min(860px,calc(100vh - 48px));overflow:auto;
-  border:1px solid #765538;background:#10110f;color:#e7ece9;
+  border:1px solid #765538;background:rgba(16,15,13,0.95);color:#e7ece9;
   box-shadow:0 28px 80px #000;
 }
 .card-inspect-dialog h2{margin:0 0 6px;font:600 28px Newsreader,Georgia,serif}

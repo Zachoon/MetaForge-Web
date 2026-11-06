@@ -5,17 +5,10 @@
    established in legal.css. */
 .commander-hero {
   display: flex;
+  flex-wrap: wrap;
   gap: 24px;
   align-items: flex-start;
   margin: 20px 0 28px;
-}
-.commander-hero > img {
-  width: 160px;
-  height: 118px;
-  object-fit: cover;
-  border-radius: 12px;
-  border: 1px solid #39251d;
-  flex-shrink: 0;
 }
 .commander-hero-identity { display: flex; flex-direction: column; gap: 6px; }
 .commander-mana-cost { display: flex; flex-wrap: wrap; gap: 2px; font-size: 20px; line-height: 1; }

@@ -164,10 +164,17 @@
 .color-identity-chips {
   display: inline-flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 6px;
+  align-items: center;
+  gap: 4px;
   min-width: 0;
   max-width: 100%;
+  font-size: 22px;
+  line-height: 1;
+}
+.color-identity-chips .mana-symbol {
+  width: 22px;
+  height: 22px;
+  margin: 0;
 }
 .color-emblem-chip {
   display: inline-flex;

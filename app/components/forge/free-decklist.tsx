@@ -15,6 +15,7 @@ import {
   typeCounts,
 } from "../../free-build-coach.mjs";
 import { useForgeSession } from "../../forge-session-context";
+import { ManaRow, SetMark } from "../mana-symbols";
 import { ColorIdentityChips, ForgeProp } from "../tripo-assets";
 import "../../free-decklist.css";
 
@@ -392,8 +393,9 @@ export function FreeDecklist() {
     <div className="free-decklist" data-motion={staticMotion ? "static" : "full"} data-free-decklist="true">
       <header className="free-decklist-head">
         <div>
-          <span className="free-eyebrow">Commander decklist · coaching {deckCoaching ? "on" : "off"}</span>
+          <span className="free-eyebrow"><SetMark code="cmd" label="Commander" />Commander decklist · coaching {deckCoaching ? "on" : "off"}</span>
           <h1>{selectedCommander ? <><em>{selectedCommander.name}</em> deck</> : "Empty decklist"}</h1>
+          {!selectedCommander && <p className="free-mana-row"><ManaRow /></p>}
           <p>{diagnosis.cardCount} cards in the list. Proposed cards stay out of that count.</p>
         </div>
         <div className="free-decklist-actions">
@@ -542,6 +544,12 @@ export function FreeDecklist() {
           {deckCoaching && poolStatus === "loading" && <p role="status">Reading printed cards for the open gaps…</p>}
           {deckCoaching && poolStatus === "error" && <p role="alert">The card pool could not be read. The counts above are from your list. No cards were invented.</p>}
           <div id="deck-gallery">
+            {!selectedCommander && entries.length === 0 && shownGhosts.length === 0 && (
+              <figure className="free-empty-back">
+                <img src="/assets/mtg/card-back.webp" alt="" />
+                <figcaption>No cards named yet. The back stays until a card is in the list.</figcaption>
+              </figure>
+            )}
             {layout === "gallery" ? (
               <div className="visual-deck-gallery" aria-label="Card gallery">
                 {GROUPS.filter((group) => group === "Commander" ? selectedCommander : entries.some((entry) => deckDisplaySection({ type_line: entry.typeLine || "" }) === group) || shownGhosts.some((ghost) => (ghost.face.section || deckDisplaySection({ type_line: ghost.face.typeLine || "" })) === group)).map((group) => (
@@ -550,14 +558,14 @@ export function FreeDecklist() {
                     <div className="visual-deck-cards">
                       {group === "Commander" && selectedCommander && (
                         <article className="visual-deck-card">
-                          <span className="visual-deck-card-art"><img src={selectedCommander.image || cardImage(selectedCommander.name)} alt="" /></span>
-                          <strong>{selectedCommander.name}</strong>
+                          <span className="visual-deck-card-art"><img data-card-name={selectedCommander.name} src={selectedCommander.image || cardImage(selectedCommander.name)} alt="" /></span>
+                          <strong data-card-name={selectedCommander.name}>{selectedCommander.name}</strong>
                         </article>
                       )}
                       {group !== "Commander" && entries.filter((entry) => deckDisplaySection({ type_line: entry.typeLine || "" }) === group).map((entry) => (
                         <article className="visual-deck-card" key={entry.name}>
-                          <span className="visual-deck-card-art"><img src={entry.image || cardImage(entry.name)} alt="" /></span>
-                          <strong>{entry.name}{(entry.quantity || 1) > 1 ? ` ×${entry.quantity}` : ""}</strong>
+                          <span className="visual-deck-card-art"><img data-card-name={entry.name} src={entry.image || cardImage(entry.name)} alt="" /></span>
+                          <strong data-card-name={entry.name}>{entry.name}{(entry.quantity || 1) > 1 ? ` ×${entry.quantity}` : ""}</strong>
                           <button type="button" className="free-remove" onClick={() => setDeck((current) => withQuantity(current, entry.name, -1))}>Remove</button>
                         </article>
                       ))}
@@ -565,12 +573,12 @@ export function FreeDecklist() {
                         <article className="visual-deck-card ghost-pick" key={ghost.id} aria-label={`${ghost.face.name}, proposed, not counted yet. ${ghost.face.caption || ""}`}>
                           <span className="ghost-wax-frame">
                             <span className="visual-deck-card-art">
-                              <img src={ghost.face.image || cardImage(ghost.face.name)} alt="" />
+                              <img data-card-name={ghost.face.name} src={ghost.face.image || cardImage(ghost.face.name)} alt="" />
                               <span className="ghost-glass" aria-hidden="true" />
                             </span>
                             <i className="ghost-wax-seal" aria-hidden="true" />
                           </span>
-                          <strong>
+                          <strong data-card-name={ghost.face.name}>
                             {ghost.face.name}
                             <em className="ghost-unfinished">Unfinished</em>
                             <small className="ghost-caption">{ghost.face.caption}</small>
@@ -588,19 +596,19 @@ export function FreeDecklist() {
                     <section className="type-column" key={group}>
                       <header><b>{group}</b><span>{group === "Commander" ? 1 : entries.filter((entry) => deckDisplaySection({ type_line: entry.typeLine || "" }) === group).reduce((sum, entry) => sum + (entry.quantity || 1), 0)}</span></header>
                       {group === "Commander" && selectedCommander && (
-                        <div className="type-column-row"><span>1</span><strong>{selectedCommander.name}</strong></div>
+                        <div className="type-column-row"><span>1</span><strong data-card-name={selectedCommander.name}>{selectedCommander.name}</strong></div>
                       )}
                       {group !== "Commander" && entries.filter((entry) => deckDisplaySection({ type_line: entry.typeLine || "" }) === group).map((entry) => (
                         <div className="type-column-row" key={entry.name}>
                           <span>{entry.quantity || 1}</span>
-                          <strong>{entry.name}{entry.unresolved ? <small className="free-row-warn"> Unread</small> : null}</strong>
+                          <strong data-card-name={entry.name}>{entry.name}{entry.unresolved ? <small className="free-row-warn"> Unread</small> : null}</strong>
                           <button type="button" className="free-remove" aria-label={`Remove ${entry.name}`} onClick={() => setDeck((current) => withQuantity(current, entry.name, -1))}>Remove</button>
                         </div>
                       ))}
                       {shownGhosts.filter((ghost) => (ghost.face.section || "Other") === group).map((ghost) => (
                         <div className="type-column-row ghost-pick" key={ghost.id} aria-label={`${ghost.face.name}, proposed, not counted yet. ${ghost.face.caption || ""}`}>
                           <span className="ghost-row-mark" aria-hidden="true"><i className="ghost-wax-seal" /></span>
-                          <strong>
+                          <strong data-card-name={ghost.face.name}>
                             {ghost.face.name}
                             <em className="ghost-unfinished">Unfinished</em>
                             <small className="ghost-caption">{ghost.face.caption}</small>
