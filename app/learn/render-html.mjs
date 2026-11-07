@@ -10,19 +10,6 @@ export function escapeHtml(value) {
     .replace(/"/g, "&quot;");
 }
 
-export function liveSlotHtml(articles = []) {
-  const fresh = articles.filter((article) => article.status === "published" && article.indexable).slice(0, 6);
-  if (!fresh.length) return `<div data-learn-slot="live"></div>`;
-  const items = fresh.map((article) => `<li><a href="/learn/${escapeHtml(article.slug)}"><span>${escapeHtml(article.category)}</span><strong>${escapeHtml(article.title)}</strong><p>${escapeHtml(article.description)}</p></a></li>`).join("");
-  return `<div data-learn-slot="live"><h2>From the latest runs</h2><ul class="learn-index">${items}</ul></div>`;
-}
-
-export function injectLiveSlot(html, articles) {
-  const slot = liveSlotHtml(articles);
-  if (html.includes('<div data-learn-slot="live"></div>')) return html.replaceAll('<div data-learn-slot="live"></div>', slot);
-  return html;
-}
-
 function paragraphs(items = []) {
   return items.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("");
 }

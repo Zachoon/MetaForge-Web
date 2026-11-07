@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { articlesInCategory } from "../catalog.mjs";
 import { ArticleList, BuildCta, CategoryNav, LearnFrame, LearnLinks } from "../article-view";
+import { LiveArticleSlot } from "../live-slot";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Commander news | MetaForge Learn",
@@ -22,7 +25,7 @@ export default function LearnNewsPage() {
         <p>Prose stays in draft until the source was reachable, the quotation checks out, and every card name is one the source or the card data supplied. Data-only spoiler notes can publish on their own. Either way, a person can unpublish them from the review list.</p>
         <p><a href="/learn/news/rss.xml">Subscribe by RSS</a></p>
         <ArticleList articles={articles} />
-        <div data-learn-slot="live" />
+        <LiveArticleSlot />
         <BuildCta href="/?intent=build" label="Build this" text="A news note is not a deck. Start one in the forge when you know the commander." />
       </article>
       <LearnLinks />

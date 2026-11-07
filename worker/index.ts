@@ -27,7 +27,7 @@ import { handleOpinionQuery } from "./opinion-query";
 import { handleRevisionOpinion } from "./revision-opinion";
 import { handlePublicReportPublish, publicDeckIndexResponse, publicDeckReportResponse, publicDeckShareResponse, publicDeckSocialImageResponse, publicReportSitemapEntries } from "./public-deck-report";
 import { staticLearnSitemapEntries } from "../app/learn/catalog.mjs";
-import { injectLiveSlot } from "../app/learn/render-html.mjs";
+import { LEARN_LIVE_HEADER, encodeLiveSlot } from "../app/learn/live-slot-payload.mjs";
 import { dynamicLearnSitemapEntries, handleLearnReview, learnRssResponse, loadDynamicArticles, maybeDynamicLearnArticle, runLearnSchedule } from "./learn-schedule";
 const IMPACT_SITE_VERIFICATION = "05208696-7452-434e-89b1-d6be551c7505";
 const PUBLIC_HOSTS = new Set(["metaforge.gg"]);
@@ -221,20 +221,26 @@ function seoMarkup(url: URL, html: string): string {
   return `${canonical}${structuredData}`;
 }
 
-async function addDocumentMetadata(response: Response, requestUrl: string, env?: Env): Promise<Response> {
+// Live notes are rendered by React from this request header. Splicing them
+// into the HTML after SSR leaves the RSC payload empty, which is hydration
+// error #418 on /learn. Always overwrite the header so a caller cannot inject a list.
+async function requestWithLiveLearn(request: Request, env: Env): Promise<Request> {
+  const path = new URL(request.url).pathname.replace(/\/$/, "") || "/";
+  if (path !== "/learn" && path !== "/learn/news") return request;
+  let encoded = encodeLiveSlot([]);
+  try { encoded = encodeLiveSlot(await loadDynamicArticles(env)); } catch { encoded = encodeLiveSlot([]); }
+  const headers = new Headers(request.headers);
+  headers.set(LEARN_LIVE_HEADER, encoded);
+  return new Request(request, { headers });
+}
+
+async function addDocumentMetadata(response: Response, requestUrl: string): Promise<Response> {
   if (!response.headers.get("content-type")?.toLowerCase().includes("text/html")) return response;
 
   const url = new URL(requestUrl);
   const isPublicSite = PUBLIC_HOSTS.has(url.hostname);
-  const rawHtml = (await response.text()).replace(/<meta\s+name=["']robots["'][^>]*>/gi, "");
-  const learnNoindex = rawHtml.includes('data-robots="noindex"');
-  let html = rawHtml;
-  if (html.includes('data-learn-slot="live"') && env) {
-    try {
-      const live = (await loadDynamicArticles(env)).filter((article) => article.status === "published" && article.indexable);
-      html = injectLiveSlot(html, live);
-    } catch { /* the seeded library still renders */ }
-  }
+  const html = (await response.text()).replace(/<meta\s+name=["']robots["'][^>]*>/gi, "");
+  const learnNoindex = html.includes('data-robots="noindex"');
   const metadata = isPublicSite && !learnNoindex
     ? `<meta name="robots" content="index, follow"><meta name="impact-site-verification" value="${IMPACT_SITE_VERIFICATION}">${seoMarkup(url, html)}`
     : `<meta name="robots" content="${isPublicSite ? "noindex, nofollow" : "noindex, nofollow, noarchive, noimageindex"}">`;
@@ -424,7 +430,7 @@ const worker = {
         }, allowedWidths);
       }
 
-      return addDocumentMetadata(await handler.fetch(request, env, ctx), request.url, env);
+      return addDocumentMetadata(await handler.fetch(await requestWithLiveLearn(request, env), env, ctx), request.url);
     } catch (error) {
       // Last-resort net: every handler above already returns its own JSON
       // on the failure paths it anticipates (validation, auth, engine
