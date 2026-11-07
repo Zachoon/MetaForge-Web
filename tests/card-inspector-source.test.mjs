@@ -37,6 +37,14 @@ test("deck rows open a keyboard-accessible action menu before the contextual ins
   assert.match(workbenchChamber, /cardEvaluations\.methodology/);
 });
 
+test("a searched guided card still adds when the name is the click target", () => {
+  const guided = fs.readFileSync(new URL("../app/components/forge/guided-build-chamber.tsx", import.meta.url), "utf8");
+  const option = guided.slice(guided.indexOf('role="option"'), guided.indexOf("</button>", guided.indexOf('role="option"')));
+  assert.match(option, /data-card-inspect="defer"/);
+  assert.match(option, /data-card-name=\{card\.name\}/);
+  assert.match(option, /addGuidedManualCard\(card\.raw\)/);
+});
+
 test("the free-build decklist names each card so hover and tap open the shared inspector", () => {
   const freeDecklist = fs.readFileSync(new URL("../app/components/forge/free-decklist.tsx", import.meta.url), "utf8");
   assert.match(freeDecklist, /<img data-card-name=\{entry\.name\} src=\{entry\.image \|\| cardImage\(entry\.name\)\}/);

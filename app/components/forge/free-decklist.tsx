@@ -404,6 +404,7 @@ export function FreeDecklist() {
             className="free-coach-toggle"
             aria-pressed={deckCoaching}
             disabled={!selectedCommander}
+            title={selectedCommander ? undefined : "Pick a commander before coaching"}
             onClick={() => setDeckCoaching((current: boolean) => !current)}
           >
             {deckCoaching ? "Turn coaching off" : "Coach this deck"}
@@ -412,6 +413,7 @@ export function FreeDecklist() {
             <button type="button" className={layout === "gallery" ? "active" : ""} onClick={() => setDeckViewMode("gallery")}>Visual deck</button>
             <button type="button" className={layout === "ledger" ? "active" : ""} onClick={() => setDeckViewMode("ledger")}>Text list</button>
           </div>
+          {!selectedCommander && <p className="free-coach-need">Pick a commander before coaching.</p>}
         </div>
       </header>
       <div className="free-decklist-stage">

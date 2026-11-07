@@ -279,6 +279,14 @@ test("a worker article uses the shared frame, not a separate shell", () => {
   assert.doesNotMatch(html, /learn-brand|learn-shell/);
 });
 
+test("the reading-page nav does not fade the last label off a phone", async () => {
+  const css = await read("../app/design-system.css");
+  const phone = css.slice(css.indexOf("@media (max-width: 760px)"));
+  assert.doesNotMatch(phone, /mask-image/);
+  assert.match(phone, /\.mf-site-nav a\s*\{[^}]*padding:\s*0 4px/);
+  assert.match(phone, /font-size:\s*13px/);
+});
+
 test("a failed robots fetch is recorded and does not request the feed", async () => {
   const requested = [];
   const source = { ...NEWS_SOURCES.find((item) => item.id === "scryfall-spoiled"), gapMs: 0 };

@@ -1,3 +1,5 @@
+import { enqueueInspectorEvent } from "../../card-inspect.mjs";
+
 type Kind = "over" | "move" | "out" | "focus" | "blur" | "click";
 type Handler = (kind: Kind, event: Event) => void;
 
@@ -12,5 +14,5 @@ export function setInspectorHandler(next: Handler | null) {
 
 export function emitInspector(kind: Kind, event: Event) {
   if (handler) handler(kind, event);
-  else if (queue.length < 12) queue.push([kind, event]);
+  else enqueueInspectorEvent(queue, kind, event);
 }

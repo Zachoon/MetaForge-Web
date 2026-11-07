@@ -43,6 +43,12 @@ test("reduced motion and the in-app quiet setting keep ghosts static", () => {
   assert.match(css, /\.free-decklist \.ghost-pick\s*\{\s*animation:\s*none/);
 });
 
+test("coaching stays visibly unavailable until a commander is chosen", () => {
+  assert.match(ui, /disabled=\{!selectedCommander\}/);
+  assert.match(ui, /Pick a commander before coaching\./);
+  assert.match(css, /\.free-coach-toggle:disabled\s*\{[^}]*opacity:\s*0\.45/);
+});
+
 test("section counts still ignore proposed ghosts", () => {
   assert.match(ui, /Proposed cards stay out of that count/);
   const counts = ui.match(/group === "Commander" \? 1 : entries\.filter[\s\S]*?reduce\([\s\S]*?\)/g) || [];
