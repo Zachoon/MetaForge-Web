@@ -21,7 +21,7 @@ export default function LearnNewsPage() {
         <CategoryNav current="news" />
         <small>NEWS</small>
         <h1>What changed, and what the coach will say about it</h1>
-        <p className="updated">Each item is an original note. The source keeps its article. We quote at most one sentence, and only when that sentence was in the fetch. Card scores use oracle text. A run that finds nothing new writes one essay from the topic queue instead of an empty page.</p>
+        <p className="updated">Each item is an original note. The source keeps its article. We quote at most one sentence, and only when that sentence was in the fetch. Card scores use oracle text. A headline older than two days is not rewritten. That run writes one essay from the topic queue. If the feeds cannot be read, the essay comes from cards and rules already on file, and it does not invent a news item.</p>
         <p>Prose stays in draft until the source was reachable, the quotation checks out, and every card name is one the source or the card data supplied. Data-only spoiler notes can publish on their own. Either way, a person can unpublish them from the review list.</p>
         <p><a href="/learn/news/rss.xml">Subscribe by RSS</a></p>
         <ArticleList articles={articles} />

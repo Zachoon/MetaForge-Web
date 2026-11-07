@@ -42,8 +42,17 @@ export function buildNewsArticle(item, { now, knownCards = [], modelReady = fals
       : "The feed text did not include a single sentence short enough to quote. Nothing from the source is being paraphrased into a fact.",
     cardParagraph,
     "The coach's opinion: read the source before you change a deck. If the item names a commander and that commander's printed text does not do the thing the headline suggests, the headline is not a build plan. If the item names no card, there is nothing here to sleeve.",
-  ].join(" ");
-  const body = summary && quoteOk ? `${native} ${summary}` : native;
+  ];
+  const thesis = [
+    quoted
+      ? `${item.sourceTitle} wrote “${item.title}.” The feed sentence is “${quoted}”`
+      : `${item.sourceTitle} published “${item.title}.” The feed did not include one short sentence, so this note does not invent a quotation.`,
+    allowedCards.length
+      ? `The only cards scored are ${allowedCards.map((card) => card.name).join(", ")}.`
+      : "No card in the known pool is named, so this note scores none.",
+    item.publishedAt ? `The feed date is ${item.publishedAt}.` : "The feed did not include a date.",
+    summary && quoteOk ? summary : "",
+  ].filter(Boolean).join(" ");
   const commanderLinks = allowedCards.flatMap((card) => {
     const guide = COMMANDER_GUIDES.find((entry) => entry.card.name.toLowerCase() === card.name.toLowerCase());
     return guide ? [{ slug: guide.slug, name: guide.card.name, reason: "The source names this commander, and the guide quotes the same oracle text." }] : [];
@@ -67,7 +76,7 @@ export function buildNewsArticle(item, { now, knownCards = [], modelReady = fals
     updatedAt: now,
     byline: "MetaForge Coach",
     hook: `${item.sourceTitle} has a new item, “${item.title}.” The useful Commander question is narrower than the headline: what did the source actually say, and does any named card's text support a change?`,
-    thesis: body,
+    thesis,
     engineTake: allowedCards.length
       ? `The coach can score ${allowedCards.map((card) => card.name).join(", ")} because those cards were in the payload or named in the source text.`
       : "No oracle text was attached, so there is no engine score for a card in this note.",
@@ -76,6 +85,7 @@ export function buildNewsArticle(item, { now, knownCards = [], modelReady = fals
         id: "source",
         heading: "What the source item supports",
         paragraphs: [
+          ...native,
           `${item.sourceTitle} is the source. The link is the article. This page is a note about that item, written so the quotation can be checked against the fetched text.`,
           quoted
             ? `Quoted from the fetched text: “${quoted}” That is the only sentence taken from ${item.sourceTitle}.`
@@ -169,6 +179,9 @@ export function buildSpoilerRoundup(cards, { now, sourceUrl, setName = null, exi
         heading: "The cards in this batch",
         paragraphs: [
           `${scored.length} cards had rules text. The first of them, by the order they were given: ${sample.map((card) => card.name).join(", ")}. ${sample.map(cardFactSentence).join(" ")}`,
+          sample.some((card) => card.reprint === true)
+            ? `Scryfall marks ${sample.filter((card) => card.reprint === true).map((card) => card.name).join(", ")} as reprints. The flag says the name existed before. The oracle text above is still this printing's text.`
+            : "None of these records were marked as reprints.",
           "The coach's opinion: sort a spoiler by the job you are missing. A card with no role is not a hidden staple. It is a card the patterns did not recognize, and it should stay in the binder until you can explain the text without the classifier.",
           "No price is attached. A future printing date is included only when Scryfall put that date on the card, and only when every card in the batch shares it.",
         ],
