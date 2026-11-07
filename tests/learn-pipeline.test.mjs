@@ -6,8 +6,9 @@ import { articleDocument } from "../app/learn/render-html.mjs";
 import { parseFeed, parseScryfallCards } from "../app/learn/feeds.mjs";
 import { presentCard } from "../app/learn/grounding.mjs";
 import { buildNewsArticle } from "../app/learn/news.mjs";
+import { EVERGREEN_TOPICS, selectEvergreenTopic } from "../app/learn/evergreen.mjs";
 import { collectSources, planSchedule } from "../app/learn/pipeline.mjs";
-import { decidePublication, newsIntervalHours, quoteIsVerified, scheduleDue } from "../app/learn/policy.mjs";
+import { cardIsCurrent, decidePublication, isRecentNews, newsIntervalHours, quoteIsVerified, scheduleDue } from "../app/learn/policy.mjs";
 import { buildSetReview } from "../app/learn/set-review.mjs";
 import { NEWS_SOURCES, robotsAllows } from "../app/learn/sources.mjs";
 import { buildTheoryArticles } from "../app/learn/theory.mjs";
@@ -18,10 +19,14 @@ const json = async (path) => JSON.parse(await read(path));
 test("robots.txt blocks reddit and allows the EDHREC article feed", async () => {
   const reddit = await read("../app/learn/fixtures/robots-reddit.txt");
   const edhrec = await read("../app/learn/fixtures/robots-edhrec.txt");
+  const scryfall = await read("../app/learn/fixtures/robots-scryfall.txt");
   assert.equal(robotsAllows(reddit, "/r/EDH/new.json"), false);
   assert.equal(robotsAllows(edhrec, "/articles/feed/"), true);
   assert.equal(robotsAllows(edhrec, "/articles/embed/story"), false);
   assert.equal(robotsAllows("<html>challenge</html>", "/feed"), false);
+  const scryfallPath = "/cards/search?order=spoiled&dir=desc&q=legal%3Acommander";
+  assert.equal(robotsAllows(scryfall, scryfallPath), true);
+  assert.equal(NEWS_SOURCES.find((source) => source.id === "scryfall-spoiled").feedUrl.includes("legal%3Acommander"), true);
 });
 
 test("recorded feeds parse without keeping a full article body", async () => {
@@ -201,9 +206,36 @@ test("no new items writes one evergreen essay and news suppresses it", async () 
   assert.equal(noisy.articles.length, 1);
   assert.notEqual(noisy.articles[0].provenance, "evergreen-prose");
 
-  const down = planSchedule({ sourcesSucceeded: 0, sourceFailures: 3, now, existing: seedArticles(), cardPool: staples });
-  assert.equal(down.reason, "sources-unreachable");
-  assert.equal(down.articles.length, 0);
+  const stale = planSchedule({
+    newsItems: [{
+      sourceId: "edhrec",
+      sourceTitle: "EDHREC",
+      title: "An old announcement that should not become another note",
+      url: "https://edhrec.com/articles/old-announcement",
+      text: "This item is months old. The feed still lists it. That is not new news.",
+      publishedAt: "2026-08-01",
+      reachable: true,
+      dedupeKey: "edhrec:https://edhrec.com/articles/old-announcement",
+    }],
+    existing: seedArticles(),
+    now,
+    cardPool: staples,
+    olderSet: older,
+    sourcesSucceeded: 1,
+  });
+  assert.equal(stale.reason, "evergreen");
+  assert.equal(stale.articles.length, 1);
+  assert.notEqual(stale.articles[0].category, "news");
+
+  const down = planSchedule({ sourcesSucceeded: 0, sourceFailures: 3, now, existing: seedArticles(), cardPool: staples, olderSet: older });
+  assert.equal(down.reason, "feature-after-source-failure");
+  assert.equal(down.articles.length, 1);
+  assert.doesNotMatch(JSON.stringify(down.articles[0].sources || []), /edhrec|mtggoldfish|wizards/i);
+  assert.equal(down.articles[0].category === "news", false);
+
+  const silenced = planSchedule({ sourcesSucceeded: 0, sourceFailures: 2, now, existing: seedArticles(), cardPool: staples, topics: [] });
+  assert.equal(silenced.reason, "sources-unreachable");
+  assert.equal(silenced.articles.length, 0);
 });
 
 test("topic cooldown and duplicate keys skip a repeat", async () => {
@@ -253,6 +285,111 @@ test("the reading-page nav does not fade the last label off a phone", async () =
   assert.doesNotMatch(phone, /mask-image/);
   assert.match(phone, /\.mf-site-nav a\s*\{[^}]*padding:\s*0 4px/);
   assert.match(phone, /font-size:\s*13px/);
+});
+
+test("a failed robots fetch is recorded and does not request the feed", async () => {
+  const requested = [];
+  const source = { ...NEWS_SOURCES.find((item) => item.id === "scryfall-spoiled"), gapMs: 0 };
+  const result = await collectSources({
+    sources: [source],
+    fetchImpl: async (url) => {
+      requested.push(String(url));
+      return new Response("", { status: 503 });
+    },
+    parseFeed,
+    parseCards: parseScryfallCards,
+  });
+  assert.deepEqual(requested, ["https://api.scryfall.com/robots.txt"]);
+  assert.equal(result.cardBatches.length, 0);
+  assert.equal(result.failures[0].error, "robots-http-503");
+});
+
+test("news needs a citation, and two different stories are not the same note", async () => {
+  const staples = (await json("../app/learn/fixtures/staples.json")).cards;
+  const sword = presentCard(staples.find((card) => card.name === "Swords to Plowshares"));
+  const first = buildNewsArticle({
+    sourceId: "edhrec",
+    sourceTitle: "EDHREC",
+    title: "Swords to Plowshares in a removal column",
+    url: "https://edhrec.com/articles/swords-column",
+    text: "Swords to Plowshares still exiles a creature. The rest of the column stays at the source.",
+    publishedAt: "2026-10-30",
+    reachable: true,
+  }, { now: "2026-10-31", knownCards: [sword] });
+  assert.equal(first.sources[0].url, "https://edhrec.com/articles/swords-column");
+  const uncited = { ...first, slug: "uncited", topicKey: "news:uncited", sources: [] };
+  const decision = decidePublication(uncited, []);
+  assert.equal(decision.status, "draft");
+  assert.ok(decision.reasons.includes("missing-citation"));
+
+  const second = buildNewsArticle({
+    sourceId: "mtggoldfish",
+    sourceTitle: "MTGGoldfish",
+    title: "A different column about a different deck",
+    url: "https://www.mtggoldfish.com/articles/different-column",
+    text: "Joe Dyer takes a look at the Metalcraft aggro deck floating around.",
+    publishedAt: "2026-10-30",
+    reachable: true,
+  }, { now: "2026-10-31", knownCards: [sword] });
+  assert.equal(decidePublication(second, [first]).reasons.includes("near-duplicate"), false);
+});
+
+test("a current spoiler batch is news and an old printing is not", async () => {
+  const staples = (await json("../app/learn/fixtures/staples.json")).cards;
+  const older = await json("../app/learn/fixtures/older-set.json");
+  const now = Date.parse("2026-10-31T12:00:00Z");
+  const sword = staples.find((card) => card.name === "Swords to Plowshares");
+  const current = planSchedule({
+    cardBatches: [{
+      sourceId: "scryfall-spoiled",
+      sourceUrl: "https://api.scryfall.com/cards/search?q=legal%3Acommander",
+      cards: [{ ...sword, id: "sword-current", releasedAt: "2026-10-20" }],
+    }],
+    existing: seedArticles(),
+    now,
+    cardPool: staples,
+    olderSet: older,
+    sourcesSucceeded: 1,
+  });
+  assert.equal(current.reason, "news");
+  assert.equal(current.articles[0].category, "spoilers");
+  assert.match(current.articles[0].sources[0].url, /^https:\/\/api\.scryfall\.com/);
+
+  const aged = planSchedule({
+    cardBatches: [{
+      sourceId: "scryfall-spoiled",
+      sourceUrl: "https://api.scryfall.com/cards/search?q=legal%3Acommander",
+      cards: [{ ...sword, id: "sword-old", releasedAt: "2020-01-01" }],
+    }],
+    existing: seedArticles(),
+    now,
+    cardPool: staples,
+    olderSet: older,
+    sourcesSucceeded: 1,
+  });
+  assert.equal(aged.reason, "evergreen");
+  assert.equal(isRecentNews("2026-10-30", now), true);
+  assert.equal(isRecentNews("2026-08-01", now), false);
+  assert.equal(cardIsCurrent({ releasedAt: "2026-11-13" }, now), true);
+  assert.equal(cardIsCurrent({ releasedAt: "2020-01-01" }, now), false);
+});
+
+test("commander spotlights rotate one legend at a time", async () => {
+  const staples = (await json("../app/learn/fixtures/staples.json")).cards;
+  const now = Date.parse("2026-10-31T12:00:00Z");
+  const covered = EVERGREEN_TOPICS
+    .filter((topic) => topic.kind !== "spotlight" && topic.kind !== "upgrade")
+    .map((topic) => ({ topicId: topic.id, coveredAt: now }));
+  const first = selectEvergreenTopic({ coverage: covered, now, priorItems: [], cardPool: staples });
+  const second = selectEvergreenTopic({
+    coverage: [...covered, { topicId: first.id, coveredAt: now }],
+    now,
+    priorItems: [],
+    cardPool: staples,
+  });
+  assert.match(first.id, /^upgrade:/);
+  assert.match(second.id, /^upgrade:/);
+  assert.notEqual(first.id, second.id);
 });
 
 test("a price or a thin page cannot publish", () => {

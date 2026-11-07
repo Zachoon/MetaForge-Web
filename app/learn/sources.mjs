@@ -49,7 +49,7 @@ export const NEWS_SOURCES = Object.freeze([
     id: "scryfall-spoiled",
     title: "Scryfall",
     kind: "scryfall",
-    feedUrl: "https://api.scryfall.com/cards/search?order=spoiled&dir=desc&q=game%3Apaper",
+    feedUrl: "https://api.scryfall.com/cards/search?order=spoiled&dir=desc&q=legal%3Acommander",
     robotsUrl: "https://api.scryfall.com/robots.txt",
     dataOnly: true,
     gapMs: 150,
@@ -98,6 +98,12 @@ function applicableGroup(text, userAgent) {
   const specific = groups.filter((group) => group.agents.includes(agent));
   if (specific.length) return specific.flatMap((group) => group.rules);
   return groups.filter((group) => group.agents.includes("*")).flatMap((group) => group.rules);
+}
+
+export function looksLikeRobots(text) {
+  const body = String(text || "");
+  if (!body.trim() || /^\s*</.test(body)) return false;
+  return /user-agent\s*:/i.test(body);
 }
 
 export function robotsAllows(robotsText, path, userAgent = "*") {

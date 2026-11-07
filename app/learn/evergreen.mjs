@@ -29,8 +29,28 @@ function coveredAt(coverage, id) {
   return row ? Number(row.coveredAt) || 0 : 0;
 }
 
-export function selectEvergreenTopic({ coverage = [], now, priorItems = [], cardPool = [], topics = EVERGREEN_TOPICS }) {
-  const ready = topics.filter((topic) => {
+function expandTopics(topics, guides) {
+  const expanded = [];
+  for (const topic of topics) {
+    if ((topic.kind === "spotlight" || topic.kind === "upgrade") && guides.length) {
+      const prefix = topic.kind === "spotlight" ? "spotlight" : "upgrade";
+      guides.forEach((guide, index) => {
+        expanded.push({
+          ...topic,
+          id: `${prefix}:${guide.slug}`,
+          guideSlug: guide.slug,
+          order: topic.order * 100 + index,
+        });
+      });
+    } else {
+      expanded.push(topic);
+    }
+  }
+  return expanded;
+}
+
+export function selectEvergreenTopic({ coverage = [], now, priorItems = [], cardPool = [], topics = EVERGREEN_TOPICS, guides = COMMANDER_GUIDES }) {
+  const ready = expandTopics(topics, guides || []).filter((topic) => {
     const last = coveredAt(coverage, topic.id);
     if (last && Number(now) - last < topic.cooldownDays * DAY) return false;
     if (topic.requiresPrior && !priorItems.length) return false;
@@ -465,10 +485,12 @@ function budgetArticle(now, pool, existing) {
   }), existing);
 }
 
-function upgradeArticle(now, pool, coverage, existing) {
+function upgradeArticle(now, pool, coverage, existing, guideSlug = null) {
   const used = new Set((coverage || []).filter((row) => String(row.topicId || "").startsWith("upgrade:")).map((row) => row.topicId));
   const guides = guidesMatching(COMMANDER_GUIDES, () => true);
-  const guide = guides.find((row) => !used.has(`upgrade:${row.guide.slug}`)) || guides[0];
+  const guide = guideSlug
+    ? guides.find((row) => row.guide.slug === guideSlug)
+    : guides.find((row) => !used.has(`upgrade:${row.guide.slug}`)) || guides[0];
   if (!guide) return null;
   const support = pool.map(presentCard).filter((card) => card.roles.some((role) => guide.card.roles.includes(role))).slice(0, 4);
   if (!support.length) return null;
@@ -605,10 +627,12 @@ function eventArticle(now, prior, pool, existing) {
   }), existing);
 }
 
-function spotlightTopic(now, pool, coverage, existing) {
+function spotlightTopic(now, pool, coverage, existing, guideSlug = null) {
   const used = new Set((coverage || []).map((row) => row.topicId));
-  const guides = COMMANDER_GUIDES.filter((guide) => !used.has(`spotlight:${guide.slug}`));
-  const guide = guides[0] || COMMANDER_GUIDES[0];
+  const guides = guideSlug
+    ? COMMANDER_GUIDES.filter((guide) => guide.slug === guideSlug)
+    : COMMANDER_GUIDES.filter((guide) => !used.has(`spotlight:${guide.slug}`));
+  const guide = guides[0] || (guideSlug ? null : COMMANDER_GUIDES[0]);
   if (!guide) return null;
   const article = buildSpotlight({
     commander: {
@@ -643,9 +667,9 @@ export function writeEvergreen({ topic, now, cardPool = [], olderSet = null, pri
   else if (topic.kind === "older-set") article = olderSetArticle(iso, olderSet, existing);
   else if (topic.kind === "retrospective") article = olderSetArticle(iso, olderSet, existing) || performanceArticles("underperform", iso, cardPool, existing);
   else if (topic.kind === "budget") article = budgetArticle(iso, cardPool, existing);
-  else if (topic.kind === "upgrade") article = upgradeArticle(iso, cardPool, coverage, existing);
+  else if (topic.kind === "upgrade") article = upgradeArticle(iso, cardPool, coverage, existing, topic.guideSlug || null);
   else if (topic.kind === "event") article = eventArticle(iso, priorItems, cardPool, existing);
-  else if (topic.kind === "spotlight") article = spotlightTopic(iso, cardPool, coverage, existing);
+  else if (topic.kind === "spotlight") article = spotlightTopic(iso, cardPool, coverage, existing, topic.guideSlug || null);
   if (!article) return null;
   article.topicId = article.topicId || topic.id;
   return article;
