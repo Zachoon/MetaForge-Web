@@ -9,7 +9,7 @@
     "dev": "vinext dev",
     "build": "vinext build",
     "start": "vinext start",
-    "test": "node --test tests/learn-pipeline.test.mjs && npm run build && node --test tests/rendered-html.test.mjs tests/learn-live-slot.test.mjs",
+    "test": "node --test tests/learn-pipeline.test.mjs tests/card-inspect.test.mjs tests/card-inspector-source.test.mjs tests/free-decklist-ghost-frame.test.mjs && npm run build && node --test tests/rendered-html.test.mjs tests/learn-live-slot.test.mjs",
     "validate:harness": "node tests/validation-harness/run.mjs --mode smoke",
     "validate:harness:field": "node tests/validation-harness/run.mjs --mode field --limit 104 --baseline tests/validation-harness/brain-v1-frozen-benchmark.json",
     "validate:harness:real-corpus": "node tests/validation-harness/run-real-corpus.mjs --limit 8",

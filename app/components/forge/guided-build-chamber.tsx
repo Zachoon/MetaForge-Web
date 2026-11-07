@@ -469,6 +469,7 @@ export function GuidedBuildChamber() {
                         type="button"
                         role="option"
                         key={card.name}
+                        data-card-inspect="defer"
                         disabled={guidedLoading || guidedBuildLocked || accepted.some((entry) => entry.toLocaleLowerCase("en") === card.name.toLocaleLowerCase("en"))}
                         onClick={() => {
                           rememberPickRole(card.name);

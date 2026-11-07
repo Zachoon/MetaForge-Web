@@ -43,6 +43,14 @@
   color: #f6e7c4;
 }
 .free-coach-toggle { letter-spacing: 0.01em; }
+.free-coach-toggle:disabled { cursor: not-allowed; opacity: 0.45; }
+.free-coach-need {
+  flex: 1 0 100%;
+  margin: 0;
+  color: #cbbfa8;
+  font-size: 12px;
+  line-height: 1.35;
+}
 .free-decklist-stage {
   display: grid;
   grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);

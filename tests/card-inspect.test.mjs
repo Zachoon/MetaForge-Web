@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   cardNameFromScryfallSrc,
+  enqueueInspectorEvent,
   hoverPreviewAllowed,
   inspectTargetFromElement,
   inspectViewFromScryfall,
@@ -71,4 +72,15 @@ test("touch and coarse pointers do not get a hover preview", () => {
   assert.equal(hoverPreviewAllowed(true, "mouse"), true);
   assert.equal(hoverPreviewAllowed(true, "touch"), false);
   assert.equal(hoverPreviewAllowed(false, "mouse"), false);
+});
+
+test("pointer-outs cannot crowd out the hover or tap that opens a card", () => {
+  const queue = [];
+  for (let i = 0; i < 20; i += 1) enqueueInspectorEvent(queue, "out", { id: i });
+  enqueueInspectorEvent(queue, "blur", { id: "blur" });
+  enqueueInspectorEvent(queue, "over", { id: "sol-ring" });
+  assert.deepEqual(queue, [["over", { id: "sol-ring" }]]);
+  enqueueInspectorEvent(queue, "move", { id: "move" });
+  enqueueInspectorEvent(queue, "click", { id: "tap" });
+  assert.deepEqual(queue, [["click", { id: "tap" }]]);
 });

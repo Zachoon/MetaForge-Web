@@ -145,7 +145,7 @@ export default function CardInspector() {
           setPreview((current) => current ? { ...current, ...placed } : current);
           return;
         }
-        if (kind === "over") show({ name: target.name, priceUsd: target.priceUsd, element: target.element }, point);
+        if (kind === "over" || kind === "move") show({ name: target.name, priceUsd: target.priceUsd, element: target.element }, point);
         return;
       }
       if (kind === "out") {

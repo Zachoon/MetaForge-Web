@@ -45,6 +45,21 @@ export function hoverPreviewAllowed(mediaMatches, pointerType) {
   return Boolean(mediaMatches);
 }
 
+const OPENING_INSPECTOR_EVENTS = new Set(["over", "focus", "click"]);
+
+/**
+ * The inspector chunk loads on the first card gesture. Until then, pointer-outs
+ * from the rest of the page must not fill the queue: a capped queue was
+ * dropping the hover or tap that asked for the card. Only the latest opening
+ * gesture is kept.
+ */
+export function enqueueInspectorEvent(queue, kind, event) {
+  if (!OPENING_INSPECTOR_EVENTS.has(kind)) return queue;
+  queue.length = 0;
+  queue.push([kind, event]);
+  return queue;
+}
+
 export function placePreview(cursor, size, viewport, gap = 16) {
   const margin = 8;
   const width = Math.min(size.width, Math.max(0, viewport.width - margin * 2));
