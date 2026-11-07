@@ -4,6 +4,9 @@ import { ManaRow, SetMark } from "../components/mana-symbols";
 import { indexableArticles, SEED_CLOCK, collectionSchema } from "./catalog.mjs";
 import { CATEGORIES } from "./policy.mjs";
 import { ArticleList, BuildCta, CategoryNav, LearnFrame, LearnLinks } from "./article-view";
+import { LiveArticleSlot } from "./live-slot";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Learn Commander | MetaForge",
@@ -35,7 +38,7 @@ export default function LearnIndex() {
           <h2>News</h2>
           <p>The scheduled notes land on the news feed. A run with nothing new still writes one essay from the topic queue, then a person can pull it from the review list.</p>
           <p><Link href="/learn/news">Open the news feed</Link> · <a href="/learn/news/rss.xml">RSS</a></p>
-          <div data-learn-slot="live" />
+          <LiveArticleSlot />
         </section>
         <BuildCta href="/?intent=build" label="Build this" text="When a note names the commander, the next step is the forge." />
         <p className="updated">Library dated {SEED_CLOCK}</p>
