@@ -4,14 +4,34 @@
 import { writeEvergreen, selectEvergreenTopic } from "./evergreen.mjs";
 import { parseRedditListing } from "./feeds.mjs";
 import { buildNewsArticle, buildSpoilerRoundup } from "./news.mjs";
-import { uniqueSlug } from "./policy.mjs";
-import { robotsAllows } from "./sources.mjs";
+import { cardIsCurrent, isRecentNews, uniqueSlug } from "./policy.mjs";
+import { looksLikeRobots, robotsAllows } from "./sources.mjs";
 
 function allocate(article, existing) {
   if (!article) return null;
   const slugs = existing.map((item) => item.slug);
   const slug = slugs.includes(article.slug) ? uniqueSlug(article.slug, slugs) : article.slug;
   return { ...article, slug };
+}
+
+function currentSpoilBatch(batch, now) {
+  const cards = (batch?.cards || []).filter((card) => cardIsCurrent(card, now)).slice(0, 12);
+  if (!cards.length) return null;
+  const dedupeKey = `${batch.sourceId || "scryfall"}:current:${cards.map((card) => card.id || card.name).sort().join(",")}`.slice(0, 500);
+  return { ...batch, cards, dedupeKey };
+}
+
+function writeFeature(input) {
+  const skipped = [];
+  for (let attempt = 0; attempt < 24; attempt += 1) {
+    const coverage = [...(input.coverage || []), ...skipped.map((topicId) => ({ topicId, coveredAt: input.now }))];
+    const topic = selectEvergreenTopic({ ...input, coverage });
+    if (!topic) return { article: null, topic: null };
+    const article = allocate(writeEvergreen({ ...input, topic, coverage }), input.existing || []);
+    if (article) return { article, topic };
+    skipped.push(topic.id);
+  }
+  return { article: null, topic: null };
 }
 
 /** @param {any} [input] */
@@ -29,13 +49,18 @@ export function planSchedule(input = {}) {
     sourceFailures = 0,
     modelReady = false,
     summarize = null,
+    newsLookbackHours,
+    topics,
+    guides,
   } = input;
-  if (sourcesSucceeded === 0 && sourceFailures > 0) {
-    return { articles: [], reason: "sources-unreachable", topic: null };
-  }
+  const outage = sourcesSucceeded === 0 && sourceFailures > 0;
   const knownKeys = new Set(existing.map((article) => article.dedupeKey).filter(Boolean));
-  const freshNews = newsItems.filter((item) => item && !knownKeys.has(item.dedupeKey));
-  const freshCards = cardBatches.filter((batch) => batch && !knownKeys.has(batch.dedupeKey));
+  const freshNews = outage
+    ? []
+    : newsItems.filter((item) => item && !knownKeys.has(item.dedupeKey) && isRecentNews(item.publishedAt, now, newsLookbackHours));
+  const freshCards = outage
+    ? []
+    : cardBatches.map((batch) => currentSpoilBatch(batch, now)).filter((batch) => batch && !knownKeys.has(batch.dedupeKey));
   const created = [];
   if (freshCards.length || freshNews.length) {
     for (const batch of freshCards.slice(0, 1)) {
@@ -57,16 +82,25 @@ export function planSchedule(input = {}) {
       }), [...existing, ...created]);
       if (article) created.push(article);
     }
-    return { articles: created, reason: "news", topic: null };
+    if (created.length) return { articles: created, reason: "news", topic: null };
   }
-  const topic = selectEvergreenTopic({ coverage, now, priorItems, cardPool });
-  const article = topic
-    ? allocate(writeEvergreen({ topic, now, cardPool, olderSet, priorItems, coverage, existing }), existing)
-    : null;
+  const feature = writeFeature({
+    coverage,
+    now,
+    priorItems,
+    cardPool,
+    olderSet,
+    existing,
+    topics,
+    guides,
+  });
+  if (!feature.article) {
+    return { articles: [], reason: outage ? "sources-unreachable" : "no-topic", topic: null };
+  }
   return {
-    articles: article ? [article] : [],
-    reason: article ? "evergreen" : "no-topic",
-    topic: topic ? topic.id : null,
+    articles: [feature.article],
+    reason: outage ? "feature-after-source-failure" : "evergreen",
+    topic: feature.topic.id,
   };
 }
 
@@ -87,8 +121,15 @@ export async function collectSources({ sources, fetchImpl, cache = {}, now = Dat
     if (robotsUrl && robotsText == null) {
       requests.push(robotsUrl);
       try {
-        const response = await fetchImpl(robotsUrl, { headers: { "user-agent": "MetaForgeLearn/1.0" } });
-        robotsText = response.ok ? await response.text() : "";
+        const response = await fetchImpl(robotsUrl, { headers: { "user-agent": "MetaForgeLearn/1.0", accept: "text/plain" } });
+        const status = Number(response.status) || 0;
+        const body = response.ok ? await response.text() : "";
+        if (!response.ok || !looksLikeRobots(body)) {
+          failures.push({ sourceId: source.id, error: response.ok ? "robots-unreadable" : `robots-http-${status}` });
+          lastAt = Date.now();
+          continue;
+        }
+        robotsText = body;
         nextCache[source.id] = { ...(nextCache[source.id] || {}), robots: robotsText, robotsCheckedAt: now };
       } catch (error) {
         failures.push({ sourceId: source.id, error: String(error).slice(0, 200) });

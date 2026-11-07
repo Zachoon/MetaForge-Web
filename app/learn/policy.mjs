@@ -6,6 +6,8 @@ export const MIN_SECTIONS = 3;
 export const MIN_TAKEAWAYS = 2;
 export const DUPLICATE_JACCARD = 0.72;
 export const DEFAULT_NEWS_INTERVAL_HOURS = 3;
+export const NEWS_LOOKBACK_HOURS = 48;
+export const SPOILER_HORIZON_DAYS = 45;
 export const MAX_EXTERNAL_QUOTE = 180;
 
 export const CATEGORIES = Object.freeze([
@@ -111,6 +113,7 @@ export function assessSubstance(article) {
   if ((article.takeaways || []).length < MIN_TAKEAWAYS) failures.push("too-few-takeaways");
   if (!article.topicKey) failures.push("missing-topic");
   if (mentionsPrice(article)) failures.push("price-claim");
+  if (article.category === "news" && !hasCitation(article)) failures.push("missing-citation");
   const known = new Set(article.grounding?.knownNames || []);
   for (const name of article.mentionedNames || []) {
     if (!known.has(name)) failures.push(`unknown-card:${name}`);
@@ -163,6 +166,29 @@ export function decidePublication(article, existing = []) {
     return { status: "draft", indexable: false, reviewState: "needs_review", reasons: confidence.failures, confidence };
   }
   return { status: "published", indexable: true, reviewState: "needs_review", reasons: [], confidence };
+}
+
+const HOUR = 60 * 60 * 1000;
+
+export function isRecentNews(publishedAt, now, lookbackHours = NEWS_LOOKBACK_HOURS) {
+  const day = String(publishedAt || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return false;
+  const published = Date.parse(`${day}T00:00:00Z`);
+  if (!Number.isFinite(published) || !Number.isFinite(Number(now))) return false;
+  const age = Number(now) - published;
+  return age >= -24 * HOUR && age <= lookbackHours * HOUR;
+}
+
+export function cardIsCurrent(card, now, horizonDays = SPOILER_HORIZON_DAYS) {
+  const day = String(card?.releasedAt || card?.released_at || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return false;
+  const released = Date.parse(`${day}T00:00:00Z`);
+  if (!Number.isFinite(released) || !Number.isFinite(Number(now))) return false;
+  return released >= Number(now) - horizonDays * 24 * HOUR;
+}
+
+function hasCitation(article) {
+  return (article.sources || []).some((source) => /^https?:\/\//i.test(String(source?.url || "")));
 }
 
 export function newsIntervalHours(value) {

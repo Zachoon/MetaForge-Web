@@ -36,7 +36,7 @@ export default function LearnIndex() {
         ))}
         <section>
           <h2>News</h2>
-          <p>The scheduled notes land on the news feed. A run with nothing new still writes one essay from the topic queue, then a person can pull it from the review list.</p>
+          <p>The scheduled notes land on the news feed. A headline older than two days is not rewritten. That run writes one essay from the topic queue, and a person can pull it from the review list.</p>
           <p><Link href="/learn/news">Open the news feed</Link> · <a href="/learn/news/rss.xml">RSS</a></p>
           <LiveArticleSlot />
         </section>
