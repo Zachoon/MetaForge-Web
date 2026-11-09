@@ -4509,14 +4509,16 @@ export function useForgeSessionState() {
   // can change or clear the preselected focus normally afterward.
   useEffect(() => {
     const intent = new URLSearchParams(window.location.search).get("intent");
-    if (intent !== "build" && intent !== "analyze" && intent !== "decks") return;
+    if (intent !== "build" && intent !== "analyze" && intent !== "decks" && intent !== "list") return;
     window.history.replaceState({}, "", window.location.pathname);
     if (intent === "decks") {
       setChamber("archive");
       return;
     }
     if (chamber !== "entrance" || deck.trim()) return;
-    if (intent === "analyze") {
+    // "list" is the secondary "Build from a list" link. It opens the paste
+    // flow, not the guided commander picker (that stays the one primary start).
+    if (intent === "analyze" || intent === "list") {
       beginFreeDecklist("complete");
       return;
     }

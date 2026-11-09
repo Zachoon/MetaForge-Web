@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ManaRow, SetMark } from "../mana-symbols";
 import { HeroAnvil } from "../hero-anvil";
+import { SecondaryJourney } from "../site-chrome";
 import { ForgeCommissionCard } from "./forge-commission-card";
 import { ForgeRune } from "./forge-motion-flourishes";
 import { PlayerCompassCard } from "./player-compass-card";
@@ -71,11 +72,7 @@ export function EntranceChamber() {
             }}
           />
         </div>
-        <nav className="mf-journey" aria-label="First visit">
-          <Link href="/commanders"><b>1</b><span>Start with your commander</span></Link>
-          <Link href="/?intent=build"><b>2</b><span>Build</span></Link>
-          <Link href="/academy"><b>3</b><span>Academy</span></Link>
-        </nav>
+        <SecondaryJourney onBuildFromList={() => beginFreeDecklist("complete")} />
         <details className="entrance-more">
           <summary>Already have a list, or want an example?</summary>
           <div className="entrance-secondary">

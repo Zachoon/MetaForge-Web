@@ -518,7 +518,7 @@ body>.guest-forge-pass{
 .entrance-more,
 .first-session-steps,
 .entrance-discovery a,
-.mf-journey a,
+.mf-journey,
 .guided-offer,
 .guided-ledger,
 .guided-picks,
@@ -532,9 +532,7 @@ body>.guest-forge-pass{
   backdrop-filter: blur(8px);
 }
 .entrance-discovery a:hover,
-.entrance-discovery a:focus-visible,
-.mf-journey a:hover,
-.mf-journey a:focus-visible {
+.entrance-discovery a:focus-visible {
   background-color: rgba(36, 28, 20, 0.96) !important;
   background-image: none !important;
 }
