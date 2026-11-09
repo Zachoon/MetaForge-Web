@@ -87,14 +87,19 @@
   height: 100%;
   object-fit: contain;
 }
-.hero-anvil-turn { position: absolute; inset: 0; }
-@media (max-width: 760px) {
-  .hero-anvil-turn { display: none; }
+.hero-anvil-turn {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
 }
-@media (prefers-reduced-motion: reduce) {
-  .hero-anvil-turn { display: none; }
+.hero-anvil[data-turntable="ready"] .hero-anvil-turn { opacity: 1; }
+.hero-anvil[data-turntable="ready"] .hero-anvil-still { visibility: hidden; }
+@media (max-width: 760px), (prefers-reduced-motion: reduce) {
+  .hero-anvil-turn { display: none !important; }
+  .hero-anvil .hero-anvil-still { visibility: visible !important; }
 }
-.great-forge[data-motion="quiet"] .hero-anvil-turn { display: none; }
+.great-forge[data-motion="quiet"] .hero-anvil-turn { display: none !important; }
+.great-forge[data-motion="quiet"] .hero-anvil-still { visibility: visible !important; }
 
 @media (min-width: 901px) {
   .chamber-entrance .entrance-stage {
@@ -154,10 +159,20 @@
     z-index: 1;
     min-height: 0;
     height: 100%;
+    /* The anvil is the only subject in this column. The living-forge film,
+       rune seal, and oval vignette used to sit behind it as a second frame. */
+    border: 0;
+    box-shadow: none;
+    background: radial-gradient(ellipse at 50% 42%, rgba(88, 46, 22, 0.18) 0%, rgba(8, 7, 6, 0) 68%);
   }
+  .entrance-stage .entrance-visual::before,
+  .entrance-stage .entrance-visual::after {
+    content: none;
+    display: none;
+  }
+  .entrance-stage .entrance-living-forge,
   .entrance-stage .entrance-visual > .forge-sigil {
-    width: min(18vh, 180px) !important;
-    opacity: .4;
+    display: none;
   }
 }
 

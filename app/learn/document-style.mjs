@@ -47,9 +47,11 @@ body{margin:0;background:var(--mf-page-bg);color:var(--mf-ivory);font-family:Int
 .mf-crumbs li+li::before{content:"/";margin:0 8px;color:#8c7360}
 .mf-crumbs a{color:var(--mf-ornament);text-decoration:none}
 .mf-crumbs [aria-current="page"]{color:var(--mf-ivory);overflow-wrap:anywhere}
-.mf-journey{display:flex;flex-wrap:wrap;gap:8px}
-.mf-journey a{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:6px 10px;border:1px solid var(--mf-border);background:var(--mf-surface-1);box-shadow:inset 0 0 0 1px rgba(8,6,4,.65);color:var(--mf-ivory);font-size:13px;font-weight:650;text-decoration:none}
-.mf-journey b{display:grid;width:20px;height:20px;place-items:center;border:1px solid var(--mf-border-strong);border-radius:50%;color:var(--mf-ornament);font-size:11px}
+.mf-journey{display:flex;flex-wrap:wrap;align-items:baseline;width:fit-content;max-width:100%;margin:0;padding:4px 2px;background-color:rgba(16,15,13,.95);background-image:none}
+.mf-journey-item{display:inline-flex;align-items:baseline}
+.mf-journey-sep{margin:0 .55em;color:#8c7360;font-weight:400}
+.mf-journey a{display:inline-block;min-height:44px;padding:10px 0;border:0;background:none;box-shadow:none;color:#e0b56a;font-size:14px;font-weight:650;line-height:24px;text-decoration:none}
+.mf-journey a:hover,.mf-journey a:focus-visible{background:none;text-decoration:underline;text-underline-offset:3px;outline:2px solid #e0b56a;outline-offset:2px}
 .learn-quote{margin:16px 0;padding:12px 14px;border:1px solid var(--mf-border);border-left:3px solid var(--mf-ornament);background:var(--mf-surface-2);box-shadow:var(--mf-frame-shadow);color:var(--mf-ivory)}
 .learn-oracle{display:block;max-width:100%;margin:12px 0;padding:12px 14px;border:1px solid var(--mf-border);background:var(--mf-surface-0);box-shadow:var(--mf-frame-shadow);color:var(--mf-ivory);font-size:14px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;overflow-x:hidden}
 .learn-cta{margin-top:8px;padding:18px;border:1px solid var(--mf-border-strong);background:linear-gradient(180deg,rgba(224,181,106,.12),transparent 72%),var(--mf-surface-2);box-shadow:var(--mf-frame-shadow)}

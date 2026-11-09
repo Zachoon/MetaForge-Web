@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { EXPLORE_LINKS, TOP_NAV, type TopNavId } from "../site-nav";
+import { SECONDARY_JOURNEY } from "../secondary-journey.mjs";
 import { TOOL_PAGES } from "../tools/data";
 
 const DATABASE_LINKS = [
@@ -57,6 +58,34 @@ export function SiteHeader({ current }: { current?: string }) {
   );
 }
 
+export function SecondaryJourney({
+  label = "Where to go next",
+  onBuildFromList,
+}: {
+  label?: string;
+  onBuildFromList?: () => void;
+}) {
+  return (
+    <nav className="mf-journey" aria-label={label}>
+      {SECONDARY_JOURNEY.map((item, index) => (
+        <span key={item.href} className="mf-journey-item">
+          {index > 0 && <span className="mf-journey-sep" aria-hidden="true">·</span>}
+          <Link
+            href={item.href}
+            onClick={item.href === "/?intent=list" && onBuildFromList ? (event) => {
+              if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+              event.preventDefault();
+              onBuildFromList();
+            } : undefined}
+          >
+            {item.label}
+          </Link>
+        </span>
+      ))}
+    </nav>
+  );
+}
+
 export function PageTrail({ crumbs }: { crumbs: { href?: string; label: string }[] }) {
   return (
     <div className="mf-trail">
@@ -72,11 +101,7 @@ export function PageTrail({ crumbs }: { crumbs: { href?: string; label: string }
           })}
         </ol>
       </nav>
-      <nav className="mf-journey" aria-label="Where to go next">
-        <Link href="/commanders"><b>1</b><span>Start with your commander</span></Link>
-        <Link href="/?intent=build"><b>2</b><span>Build</span></Link>
-        <Link href="/academy"><b>3</b><span>Academy</span></Link>
-      </nav>
+      <SecondaryJourney />
     </div>
   );
 }

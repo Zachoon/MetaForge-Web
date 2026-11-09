@@ -1,4 +1,5 @@
 import { LEARN_DOCUMENT_CSS } from "./document-style.mjs";
+import { secondaryJourneyMarkup } from "../secondary-journey.mjs";
 import { learnArticleSchema } from "./catalog.mjs";
 import { categoryById } from "./policy.mjs";
 
@@ -51,11 +52,7 @@ export function articleDocument(article, related = []) {
           <li><a href="${categoryHref}">${categoryLabel}</a></li>
           <li><span aria-current="page">${escapeHtml(article.title)}</span></li>
         </ol></nav>
-        <nav class="mf-journey" aria-label="Where to go next">
-          <a href="/commanders"><b>1</b><span>Start with your commander</span></a>
-          <a href="/?intent=build"><b>2</b><span>Build</span></a>
-          <a href="/academy"><b>3</b><span>Academy</span></a>
-        </nav>
+        ${secondaryJourneyMarkup()}
       </div>
       <article class="legal-card">
         <small>${categoryLabel}</small>
