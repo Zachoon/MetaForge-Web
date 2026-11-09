@@ -63,8 +63,9 @@ test("the preview pane is a flex sidebar with its own scroll fallback, not a shr
   assert.match(css, /\.deck-gallery\{align-items:flex-start\}\.card-preview-stage\{position:sticky!important;z-index:5;top:82px;max-height:calc\(100vh - 104px\);overflow-y:auto;overflow-x:hidden\}/);
 });
 
-test("ledger column padding is generous and wins the cascade over every older narrow variant", async () => {
+test("ledger columns grow with the page and the tight rule wins the cascade", async () => {
   const css = await read("app/testing-anvil.css");
-  assert.match(css, /\.ledger-deck-view \.deck-gallery\{display:flex!important;align-items:flex-start!important;gap:32px!important;padding:32px!important\}/);
-  assert.match(css, /\.ledger-deck-view \.type-columns\{display:block!important;columns:3 240px!important;column-gap:32px!important;gap:32px!important\}/);
+  assert.match(css, /\.ledger-deck-view \.deck-gallery\{display:block!important;min-height:0!important;padding:8px 10px 14px!important\}/);
+  assert.match(css, /\.ledger-deck-view \.type-columns\{display:block!important;columns:210px auto!important;column-gap:10px!important;gap:10px!important\}/);
+  assert.match(css, /@media\(max-width:420px\)\{\.ledger-deck-view \.type-columns\{columns:1!important\}/);
 });
