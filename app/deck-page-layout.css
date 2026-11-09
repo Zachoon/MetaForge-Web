@@ -28,6 +28,23 @@
   background: rgba(16, 15, 13, 0.96);
   color: #f3efe6;
 }
+@media (min-width: 761px) {
+  .great-forge[data-card-preview="idle"] .deck-page-hero,
+  .great-forge[data-card-preview="idle"] .progressive-results .deck-manuscript > header.masterwork-deck-hero.deck-page-hero {
+    width: calc(100% + var(--mf-frame-rail)) !important;
+    margin-left: calc(var(--mf-frame-rail) * -1) !important;
+    /* Art covers the rail; the plate and buttons stay in the readable column. */
+    padding-left: var(--mf-frame-rail) !important;
+  }
+}
+@media (max-width: 760px) {
+  .testing-anvil:has(.deck-page-hero) > .back-link {
+    position: static;
+    display: inline-flex;
+    width: fit-content;
+    margin: 8px 10px 0;
+  }
+}
 
 .progressive-results .deck-manuscript:has(.deck-page-hero) {
   border: 0 !important;
@@ -47,7 +64,7 @@
   align-items: stretch !important;
   width: 100% !important;
   max-width: none !important;
-  min-height: clamp(220px, 34vh, 420px) !important;
+  min-height: clamp(320px, 46vh, 520px) !important;
   margin: 0 !important;
   padding: 0 !important;
   overflow: hidden;
@@ -64,13 +81,13 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 32%;
+  object-position: center 25%;
   filter: saturate(1.05) contrast(1.06) brightness(0.82);
   pointer-events: none;
 }
-.deck-page-hero.focus-left .deck-hero-art { object-position: 18% 36%; }
-.deck-page-hero.focus-center .deck-hero-art { object-position: center 30%; }
-.deck-page-hero.focus-right .deck-hero-art { object-position: 82% 36%; }
+.deck-page-hero.focus-left .deck-hero-art { object-position: 18% 25%; }
+.deck-page-hero.focus-center .deck-hero-art { object-position: center 25%; }
+.deck-page-hero.focus-right .deck-hero-art { object-position: 82% 25%; }
 .deck-page-hero.treatment-etched .deck-hero-art {
   filter: grayscale(0.7) sepia(0.35) contrast(1.2) brightness(0.7);
 }
@@ -89,7 +106,7 @@
   position: absolute;
   z-index: 1;
   inset: 0;
-  background: linear-gradient(180deg, rgba(8, 7, 6, 0.12) 0%, rgba(8, 7, 6, 0.04) 38%, rgba(13, 13, 14, 0.55) 72%, #0d0d0e 100%) !important;
+  background: linear-gradient(180deg, rgba(8, 7, 6, 0.08) 0%, rgba(8, 7, 6, 0.02) 42%, rgba(8, 7, 6, 0.28) 68%, rgba(13, 13, 14, 0.55) 100%) !important;
   box-shadow: none !important;
   pointer-events: none;
 }
@@ -107,9 +124,9 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: 10px 16px;
-  width: min(920px, calc(100% - 20px)) !important;
+  width: calc(100% - 28px) !important;
   max-width: none !important;
-  margin: 0 10px 12px !important;
+  margin: 0 14px 16px !important;
   padding: 12px 14px !important;
   border: 0 !important;
   border-radius: 2px;
@@ -278,7 +295,7 @@
 @media (max-width: 760px) {
   .deck-page-hero,
   .progressive-results .deck-manuscript > header.masterwork-deck-hero.deck-page-hero {
-    min-height: 220px !important;
+    min-height: 340px !important;
   }
   .deck-page-hero .deck-hero-plate,
   .deck-page-hero .masterwork-deck-title {
@@ -308,13 +325,13 @@
 @media (min-width: 1280px) {
   .deck-page-hero,
   .progressive-results .deck-manuscript > header.masterwork-deck-hero.deck-page-hero {
-    min-height: clamp(280px, 32vh, 400px) !important;
+    min-height: 460px !important;
   }
 }
 @media (min-width: 1700px) {
   .deck-page-hero,
   .progressive-results .deck-manuscript > header.masterwork-deck-hero.deck-page-hero {
-    min-height: 400px !important;
+    min-height: 520px !important;
   }
 }
 
@@ -323,39 +340,66 @@
   .deck-page-hero .deck-hero-art { transform: none; }
 }
 
-/* Type groups wrap into as many columns as the page can hold. align-items
-   start keeps a one-card group from stretching to the height of its neighbor. */
+/* Commander card on the left; type groups pack down CSS columns so a short
+   group does not open a hole under the row beside it. */
+.deck-list-pack {
+  display: grid !important;
+  grid-template-columns: 188px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px !important;
+  width: 100% !important;
+  padding: 8px 12px 12px !important;
+}
+.deck-commander-column {
+  min-width: 0;
+}
+.deck-commander-column > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  color: #d3ddd9;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+.deck-commander-column > header span { color: var(--teal, #75dbc4); font-weight: 800; }
+.deck-commander-column .visual-deck-card { width: 100%; cursor: zoom-in; }
+.deck-commander-column .visual-deck-card-art { margin: 8px; }
 .testing-anvil .type-columns,
 .free-decklist .type-columns,
 .ledger-deck-view .type-columns,
-.deck-manuscript .type-columns {
-  display: grid !important;
+.deck-manuscript .type-columns,
+.deck-list-pack .type-columns {
+  display: block !important;
   width: 100% !important;
+  min-width: 0;
   max-width: none !important;
   flex: none !important;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important;
-  gap: 10px !important;
-  align-items: start;
-  columns: auto !important;
+  column-width: auto !important;
+  column-count: 2 !important;
+  column-gap: 12px !important;
+  columns: auto 2 !important;
+  column-fill: balance !important;
 }
 .ledger-deck-view .deck-gallery,
 .free-decklist .deck-gallery,
 .testing-anvil .deck-gallery,
 .testing-anvil .visual-deck-gallery,
 .free-decklist .visual-deck-gallery {
-  display: block !important;
-  width: 100% !important;
   min-height: 0 !important;
-  gap: 10px !important;
-  padding: 8px 10px 16px !important;
+  gap: 8px !important;
+  padding: 8px 12px 12px !important;
 }
+.deck-list-pack.deck-gallery { padding: 8px 12px 12px !important; }
 .ledger-deck-view .type-column,
 .free-decklist .type-column,
-.testing-anvil .type-column {
+.testing-anvil .type-column,
+.deck-list-pack .type-column {
   display: block !important;
   width: auto !important;
-  margin: 0 !important;
-  break-inside: auto !important;
+  margin: 0 0 12px !important;
+  break-inside: avoid-column !important;
+  page-break-inside: avoid !important;
 }
 .ledger-deck-view .type-column > .type-column-row,
 .free-decklist .type-column > .type-column-row {
@@ -369,29 +413,44 @@
 }
 .visual-deck-group > header { margin-bottom: 8px; }
 
-@media (min-width: 1280px) {
+@media (min-width: 1100px) {
   .testing-anvil .type-columns,
   .free-decklist .type-columns,
   .ledger-deck-view .type-columns,
-  .deck-manuscript .type-columns {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) !important;
+  .deck-manuscript .type-columns,
+  .deck-list-pack .type-columns {
+    column-count: 3 !important;
+    columns: auto 3 !important;
   }
+}
+@media (min-width: 1280px) {
   .visual-deck-cards { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)) !important; }
 }
-@media (min-width: 1700px) {
+@media (min-width: 1400px) {
   .testing-anvil .type-columns,
   .free-decklist .type-columns,
   .ledger-deck-view .type-columns,
-  .deck-manuscript .type-columns {
-    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)) !important;
+  .deck-manuscript .type-columns,
+  .deck-list-pack .type-columns {
+    column-count: 4 !important;
+    columns: auto 4 !important;
   }
+}
+@media (max-width: 760px) {
+  .deck-list-pack {
+    grid-template-columns: 1fr !important;
+  }
+  .deck-commander-column { width: min(200px, 56vw); }
 }
 @media (max-width: 420px) {
   .testing-anvil .type-columns,
   .free-decklist .type-columns,
   .ledger-deck-view .type-columns,
-  .deck-manuscript .type-columns {
-    grid-template-columns: 1fr !important;
+  .deck-manuscript .type-columns,
+  .deck-list-pack .type-columns {
+    column-width: auto !important;
+    column-count: 1 !important;
+    columns: 1 !important;
   }
   .visual-deck-cards {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -401,12 +460,23 @@
 
 /* Free-build list sits directly under the hero. Tools live in the drawer. */
 .free-decklist {
-  gap: 8px;
-  padding: 0 0 16px !important;
+  gap: 0 !important;
+  padding: 0 0 8px !important;
 }
 .free-decklist .free-list-pane {
-  margin: 0 8px;
-  padding: 8px;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+}
+.testing-anvil:has(.deck-page-hero) {
+  padding-bottom: 20px !important;
+}
+@media (max-width: 760px) {
+  .testing-anvil:has(.deck-page-hero) {
+    padding-bottom: calc(var(--mf-frame-rail, 58px) + 8px) !important;
+  }
 }
 .free-decklist .free-deck-tools { padding: 0; border: 0; background: transparent; }
 .free-decklist .ghost-controls { margin-bottom: 8px; }

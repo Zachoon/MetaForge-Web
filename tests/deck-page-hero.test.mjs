@@ -10,6 +10,8 @@ test("the deck hero is a full-bleed cover with a readable plate and a fade", asy
   const globals = await read("app/globals.css");
   assert.match(globals, /deck-page-layout\.css/);
   assert.match(css, /\.deck-page-hero \.deck-hero-art[\s\S]*object-fit:\s*cover/);
+  assert.match(css, /object-position:\s*center 25%/);
+  assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.back-link[\s\S]*position:\s*static/);
   assert.match(css, /\.deck-page-hero \.deck-hero-art[\s\S]*width:\s*100%/);
   assert.match(css, /\.deck-page-hero \.deck-hero-art[\s\S]*height:\s*100%/);
   assert.match(css, /linear-gradient\(180deg/);
@@ -61,13 +63,16 @@ test("the free decklist leads with the banner, then the list, with coaching stil
   assert.match(ui, /disabled=\{!selectedCommander\}/);
   assert.match(ui, /Pick a commander before coaching\./);
   assert.match(ui, /object-fit|deck-hero-art/);
+  assert.match(ui, /deck-commander-column/);
+  assert.match(ui, /deck-list-pack/);
 });
 
-test("decklist columns add as the page gets wider and collapse to one on a phone", async () => {
+test("decklist columns pack tightly and add as the page gets wider", async () => {
   const css = await read("app/deck-page-layout.css");
-  assert.match(css, /grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(220px,\s*1fr\)\)\s*!important/);
-  assert.match(css, /@media \(min-width: 1280px\)[\s\S]*minmax\(200px,\s*1fr\)/);
-  assert.match(css, /@media \(min-width: 1700px\)[\s\S]*minmax\(190px,\s*1fr\)/);
-  assert.match(css, /@media \(max-width: 420px\)[\s\S]*grid-template-columns:\s*1fr\s*!important/);
+  assert.match(css, /columns:\s*auto 2\s*!important/);
+  assert.match(css, /break-inside:\s*avoid-column\s*!important/);
+  assert.match(css, /@media \(min-width: 1400px\)[\s\S]*columns:\s*auto 4\s*!important/);
+  assert.match(css, /@media \(max-width: 420px\)[\s\S]*columns:\s*1\s*!important/);
   assert.match(css, /repeat\(auto-fill,\s*minmax\(132px,\s*1fr\)\)/);
+  assert.match(css, /\.deck-commander-column/);
 });

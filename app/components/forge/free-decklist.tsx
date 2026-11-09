@@ -612,15 +612,23 @@ export function FreeDecklist() {
                 ))}
               </div>
             ) : (
-              <div className="deck-gallery">
+              <div className="deck-gallery deck-list-pack">
+                {selectedCommander && (
+                  <aside className="deck-commander-column" aria-label="Commander">
+                    <header><b>Commander</b><span>1</span></header>
+                    <article className="visual-deck-card">
+                      <span className="visual-deck-card-art">
+                        <img data-card-name={selectedCommander.name} src={selectedCommander.image || cardImage(selectedCommander.name)} alt="" />
+                      </span>
+                      <strong data-card-name={selectedCommander.name}>{selectedCommander.name}</strong>
+                    </article>
+                  </aside>
+                )}
                 <div className="type-columns">
-                  {GROUPS.filter((group) => group === "Commander" ? selectedCommander : entries.some((entry) => deckDisplaySection({ type_line: entry.typeLine || "" }) === group) || shownGhosts.some((ghost) => (ghost.face.section || "Other") === group)).map((group) => (
+                  {GROUPS.filter((group) => group !== "Commander" && (entries.some((entry) => deckDisplaySection({ type_line: entry.typeLine || "" }) === group) || shownGhosts.some((ghost) => (ghost.face.section || "Other") === group))).map((group) => (
                     <section className="type-column" key={group}>
                       <header><b>{group}</b><span>{group === "Commander" ? 1 : entries.filter((entry) => deckDisplaySection({ type_line: entry.typeLine || "" }) === group).reduce((sum, entry) => sum + (entry.quantity || 1), 0)}</span></header>
-                      {group === "Commander" && selectedCommander && (
-                        <div className="type-column-row"><span>1</span><strong data-card-name={selectedCommander.name}>{selectedCommander.name}</strong></div>
-                      )}
-                      {group !== "Commander" && entries.filter((entry) => deckDisplaySection({ type_line: entry.typeLine || "" }) === group).map((entry) => (
+                      {entries.filter((entry) => deckDisplaySection({ type_line: entry.typeLine || "" }) === group).map((entry) => (
                         <div className="type-column-row" key={entry.name}>
                           <span>{entry.quantity || 1}</span>
                           <strong data-card-name={entry.name}>{entry.name}{entry.unresolved ? <small className="free-row-warn"> Unread</small> : null}</strong>

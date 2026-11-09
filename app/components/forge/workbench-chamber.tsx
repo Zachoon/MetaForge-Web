@@ -1338,10 +1338,35 @@ export function WorkbenchChamber() {
               </div>
             )}
             {deckViewMode === "ledger" && (
-            <div className="deck-gallery" id="deck-gallery">
+            <div className="deck-gallery deck-list-pack" id="deck-gallery">
+              {(groupedDeck.Commander || []).length > 0 && (
+                <aside className="deck-commander-column" aria-label="Commander">
+                  <header>
+                    <b>Commander</b>
+                    <span>{groupedDeck.Commander.reduce((sum, row) => sum + row.quantity, 0)}</span>
+                  </header>
+                  {groupedDeck.Commander.map((row) => (
+                    <button
+                      type="button"
+                      className="visual-deck-card"
+                      key={row.name}
+                      data-card-name={row.name}
+                      data-card-inspect="defer"
+                      onClick={() => setInspectedCard(row.name)}
+                    >
+                      <span className="visual-deck-card-art">
+                        <img src={cardImage(row.name)} alt="" loading="lazy" decoding="async" />
+                      </span>
+                      <strong>{row.name}</strong>
+                    </button>
+                  ))}
+                  {coachOccupancyLabels.length > 0 && (
+                    <p className="type-column-occupancy">{coachOccupancyLabels.join(" · ")}</p>
+                  )}
+                </aside>
+              )}
               <div className="type-columns">
                 {[
-                  "Commander",
                   "Complete deck",
                   "Details pending",
                   "Creatures",
