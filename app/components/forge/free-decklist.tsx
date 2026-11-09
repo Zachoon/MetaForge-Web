@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { cardImage } from "../../card-art";
+import { cardArtCrop, cardImage } from "../../card-art";
 import { commanderOracleText } from "../../commander-lane-scoring.mjs";
 import { configureCardTagLookup } from "../../strategic-intent.mjs";
 import { commanderOptionFromCard, extractPastedCommanderName } from "../../deck-import-commander.mjs";
@@ -17,6 +17,7 @@ import {
 import { useForgeSession } from "../../forge-session-context";
 import { ManaRow, SetMark } from "../mana-symbols";
 import { ColorIdentityChips, ForgeProp } from "../tripo-assets";
+import { DeckOptionsDrawer } from "./deck-options-drawer";
 import "../../free-decklist.css";
 
 configureCardTagLookup(() => [], { onlyIfMissing: true });
@@ -118,6 +119,7 @@ export function FreeDecklist() {
   const [paused, setPaused] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [clearedKey, setClearedKey] = useState("");
+  const [optionsOpen, setOptionsOpen] = useState(false);
   const [prefersReduced, setPrefersReduced] = useState(false);
 
   const staticMotion = motionMode === "quiet" || prefersReduced;
@@ -389,34 +391,51 @@ export function FreeDecklist() {
   });
   const copies = entries.filter((entry) => (entry.quantity || 1) > 1 && additionIssue({ ...entry, quantity: 1 }, { commanders, existing: [{ ...entry, quantity: (entry.quantity || 1) - 1 }] }));
 
+  const heroArt = selectedCommander ? cardArtCrop(selectedCommander.name) : "/forge-hero.webp";
+
   return (
     <div className="free-decklist" data-motion={staticMotion ? "static" : "full"} data-free-decklist="true">
-      <header className="free-decklist-head">
-        <div>
-          <span className="free-eyebrow"><SetMark code="cmd" label="Commander" />Commander decklist · coaching {deckCoaching ? "on" : "off"}</span>
-          <h1>{selectedCommander ? <><em>{selectedCommander.name}</em> deck</> : "Empty decklist"}</h1>
-          {!selectedCommander && <p className="free-mana-row"><ManaRow /></p>}
-          <p>{diagnosis.cardCount} cards in the list. Proposed cards stay out of that count.</p>
-        </div>
-        <div className="free-decklist-actions">
-          <button
-            type="button"
-            className="free-coach-toggle"
-            aria-pressed={deckCoaching}
-            disabled={!selectedCommander}
-            title={selectedCommander ? undefined : "Pick a commander before coaching"}
-            onClick={() => setDeckCoaching((current: boolean) => !current)}
-          >
-            {deckCoaching ? "Turn coaching off" : "Coach this deck"}
-          </button>
-          <div className="free-view-toggle" role="group" aria-label="Decklist layout">
-            <button type="button" className={layout === "gallery" ? "active" : ""} onClick={() => setDeckViewMode("gallery")}>Visual deck</button>
-            <button type="button" className={layout === "ledger" ? "active" : ""} onClick={() => setDeckViewMode("ledger")}>Text list</button>
+      <header className="deck-page-hero free-deck-hero">
+        <img className="deck-hero-art" src={heroArt} alt="" />
+        <span className="deck-hero-fade" aria-hidden="true" />
+        <div className="deck-hero-plate">
+          <div>
+            <span className="free-eyebrow"><SetMark code="cmd" label="Commander" />Commander decklist · coaching {deckCoaching ? "on" : "off"}</span>
+            <h1>{selectedCommander ? <><em>{selectedCommander.name}</em> deck</> : "Empty decklist"}</h1>
+            {!selectedCommander && <p className="free-mana-row"><ManaRow /></p>}
+            <p>{diagnosis.cardCount} cards in the list. Proposed cards stay out of that count.</p>
+            {!selectedCommander && <p className="free-coach-need">Pick a commander before coaching.</p>}
           </div>
-          {!selectedCommander && <p className="free-coach-need">Pick a commander before coaching.</p>}
+          <div className="deck-hero-toolbar free-decklist-actions">
+            <button
+              type="button"
+              className="free-coach-toggle"
+              aria-pressed={deckCoaching}
+              disabled={!selectedCommander}
+              title={selectedCommander ? undefined : "Pick a commander before coaching"}
+              onClick={() => setDeckCoaching((current: boolean) => !current)}
+            >
+              {deckCoaching ? "Turn coaching off" : "Coach this deck"}
+            </button>
+            <button
+              type="button"
+              className="deck-options-launch"
+              aria-expanded={optionsOpen}
+              aria-controls="deck-options-drawer"
+              aria-haspopup="dialog"
+              onClick={() => setOptionsOpen(true)}
+            >
+              <span aria-hidden="true">⚙</span>
+              Deck options
+            </button>
+          </div>
         </div>
       </header>
-      <div className="free-decklist-stage">
+      <DeckOptionsDrawer open={optionsOpen} onClose={() => setOptionsOpen(false)} title="Deck options">
+        <div className="deck-options-view free-view-toggle" role="group" aria-label="Decklist layout">
+          <button type="button" className={layout === "gallery" ? "active" : ""} aria-pressed={layout === "gallery"} onClick={() => setDeckViewMode("gallery")}>Visual deck</button>
+          <button type="button" className={layout === "ledger" ? "active" : ""} aria-pressed={layout === "ledger"} onClick={() => setDeckViewMode("ledger")}>Text list</button>
+        </div>
         <aside className="free-deck-tools" aria-label="Build the list">
           <h2><ForgeProp kind="tome" size={36} /><span>Commander</span></h2>
           {selectedCommander ? (
@@ -519,6 +538,7 @@ export function FreeDecklist() {
             </section>
           )}
         </aside>
+      </DeckOptionsDrawer>
         <section className="free-list-pane" aria-label="Decklist">
           {deckCoaching && (
             <div className="ghost-controls" role="group" aria-label="Ghost picks">
@@ -624,7 +644,6 @@ export function FreeDecklist() {
             )}
           </div>
         </section>
-      </div>
     </div>
   );
 }

@@ -35,6 +35,7 @@ import { ManaBaseCoach } from "./mana-base-coach";
 import { ManaSymbol } from "../mana-symbols";
 import { ColorIdentityChips } from "../tripo-assets";
 import { FocusMark, StainedGlassLeads } from "./stained-glass";
+import { DeckOptionsDrawer } from "./deck-options-drawer";
 
 export function WorkbenchChamber() {
   const {
@@ -580,18 +581,22 @@ export function WorkbenchChamber() {
       <div className={`testing-layout chapter-${activeForgeChapter}-active ${deckViewMode}-deck-view${isImportedDeckReview ? " imported-deck-review" : ""}`}>
         <article className="deck-manuscript">
           <header
-            className={hasValidatedDeck ? `masterwork-deck-hero treatment-${masterworkIdentity.treatment} focus-${masterworkIdentity.focus}` : undefined}
+            className={hasValidatedDeck ? `masterwork-deck-hero deck-page-hero treatment-${masterworkIdentity.treatment} focus-${masterworkIdentity.focus}` : undefined}
             style={hasValidatedDeck ? ({
               "--masterwork-art": `url("${featuredMasterworkArt}")`,
               "--masterwork-glow": masterworkIdentity.glow / 100,
             } as React.CSSProperties) : undefined}
           >
+            {hasValidatedDeck && featuredMasterworkArt && (
+              <img className="deck-hero-art" src={featuredMasterworkArt} alt="" />
+            )}
+            {hasValidatedDeck && <span className="deck-hero-fade" aria-hidden="true" />}
             {hasValidatedDeck && (
               <span className="masterwork-glass" aria-hidden="true">
                 <StainedGlassLeads />
               </span>
             )}
-            <div className="masterwork-deck-title">
+            <div className="masterwork-deck-title deck-hero-plate">
               {hasValidatedDeck && (
                 <CommanderInspector
                   name={featuredMasterworkCard || activeCommanderName}
@@ -613,9 +618,10 @@ export function WorkbenchChamber() {
                     <span className="masterwork-ready">✓ READY TO TEST</span>
                     <button
                       type="button"
-                      className="personalize-masterwork"
+                      className="personalize-masterwork deck-options-launch"
                       aria-expanded={masterworkIdentityOpen}
-                      aria-controls="masterwork-identity-title"
+                      aria-controls="deck-options-drawer"
+                      aria-haspopup="dialog"
                       onClick={() => {
                         if (masterworkIdentityOpen) {
                           setMasterworkIdentityDraft(masterworkIdentity);
@@ -626,7 +632,8 @@ export function WorkbenchChamber() {
                         setMasterworkIdentityOpen(true);
                       }}
                     >
-                      ✦ Personalize Masterwork
+                      <span aria-hidden="true">⚙</span>
+                      Deck options
                     </button>
                   </div>
                   {coachOccupancyLabels.length > 0 && (
@@ -635,7 +642,17 @@ export function WorkbenchChamber() {
                 </div>}
               </div>
             </div>
-            {hasValidatedDeck && masterworkIdentityOpen && (
+            {hasValidatedDeck && (
+              <DeckOptionsDrawer
+                open={masterworkIdentityOpen}
+                onClose={() => { setMasterworkIdentityDraft(masterworkIdentity); setMasterworkIdentityOpen(false); }}
+                title="Deck options"
+              >
+              <p className="deck-options-kicker">Personalize Masterwork</p>
+              <div className="deck-options-view" role="group" aria-label="Decklist layout">
+                <button type="button" className={deckViewMode === "gallery" ? "active" : ""} aria-pressed={deckViewMode === "gallery"} onClick={() => setDeckViewMode("gallery")}>Visual deck</button>
+                <button type="button" className={deckViewMode === "ledger" ? "active" : ""} aria-pressed={deckViewMode === "ledger"} onClick={() => setDeckViewMode("ledger")}>Text list</button>
+              </div>
               <section className="masterwork-identity-panel" aria-labelledby="masterwork-identity-title">
                 <header>
                   <h3 id="masterwork-identity-title">Masterwork Identity</h3>
@@ -693,6 +710,7 @@ export function WorkbenchChamber() {
                   }}>Save Identity</button>
                 </footer>
               </section>
+              </DeckOptionsDrawer>
             )}
             {hasValidatedDeck && (
               <div className="deck-header-actions">
@@ -727,11 +745,6 @@ export function WorkbenchChamber() {
                 {publicReportUrl && <a className="public-report-status" href={publicReportUrl} target="_blank" rel="noopener noreferrer">Open public report ↗</a>}
                 {publicReportUrl && <button type="button" className="unpublish-report-link" disabled={publicReportStatus === "publishing"} onClick={() => void unpublishPublicDeckReport()}>Unpublish</button>}
                 {publicReportError && <span className="public-report-error" role="alert">{publicReportError}</span>}
-                <details className="deck-view-options">
-                  <summary>View options</summary>
-                  <button type="button" className={deckViewMode === "gallery" ? "active" : ""} onClick={() => setDeckViewMode("gallery")}>Visual deck</button>
-                  <button type="button" className={deckViewMode === "ledger" ? "active" : ""} onClick={() => setDeckViewMode("ledger")}>Text list</button>
-                </details>
                 <div className="deck-next-steps">
                   {siteRail !== "overview" && (
                     <button
