@@ -3,8 +3,14 @@
 import { useEffect, useId, useRef, useState, type RefObject } from "react";
 import { useForgeSession } from "../forge-session-context";
 
-const CRYSTAL_LOOP = "/assets/forge/hologram/crystal.webm";
-const CRYSTAL_STILL = "/assets/forge/hologram/crystal-still.webp";
+export type ForgeShell = {
+  id: string;
+  label: string;
+  short: string;
+  actual: number;
+  target: number;
+  ratio: number;
+};
 
 export function useHoloLive(ref: RefObject<HTMLElement | null>) {
   const [onScreen, setOnScreen] = useState(false);
@@ -62,65 +68,113 @@ export function HoloRule({ className = "" }: { className?: string }) {
   );
 }
 
-/* One pre-rendered crystal. three.js is already a dependency, but the live
-   app never mounts it, and the Tripo GLBs are about 3MB of textures this
-   fresnel pass does not use. A 280px VP9 loop stays well under 500KB. */
-export function HoloProp({ className = "" }: { className?: string }) {
+/* Shells of a deck, drawn as a wireframe that fills from the profile the
+   forge already keeps. No three.js: the shape is one SVG. */
+export function HoloForge({
+  shells,
+  frame,
+  complete,
+  className = "",
+}: {
+  shells: ForgeShell[];
+  frame: ForgeShell;
+  complete: boolean;
+  className?: string;
+}) {
   const ref = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
   const onScreen = useHoloLive(ref);
   const reduced = usePrefersReducedMotion();
   const { motionMode } = useForgeSession();
-  const filterId = `holo-emissive-${useId().replace(/:/g, "")}`;
   const live = onScreen && motionMode === "full" && !reduced;
+  const filterId = `holo-emissive-${useId().replace(/:/g, "")}`;
+  const wasComplete = useRef(false);
+  const [flourish, setFlourish] = useState(false);
+  if (!complete && flourish) setFlourish(false);
 
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    if (live) void video.play().catch(() => {});
-    else video.pause();
-  }, [live]);
+    if (!complete) {
+      wasComplete.current = false;
+      return;
+    }
+    if (wasComplete.current || !live) {
+      wasComplete.current = true;
+      return;
+    }
+    wasComplete.current = true;
+    setFlourish(true);
+    const timer = window.setTimeout(() => setFlourish(false), 1400);
+    return () => window.clearTimeout(timer);
+  }, [complete, live]);
+
+  const bands = shells.length ? shells : [];
+  const top = 18;
+  const height = 176;
+  const gap = bands.length > 1 ? 3 : 0;
+  const bandH = bands.length ? (height - gap * (bands.length - 1)) / bands.length : height;
+  const filled = bands.filter((shell) => shell.ratio >= 1).length + (frame.ratio >= 1 ? 1 : 0);
+  const total = bands.length + 1;
+  const summary = complete
+    ? "Deck forge complete"
+    : `Deck forge, ${filled} of ${total} parts filled. ${bands.map((shell) => `${shell.label} ${shell.actual} of ${shell.target}`).join(", ")}. Deck size ${frame.actual} of ${frame.target}.`;
 
   return (
-    <div ref={ref} className={`holo-prop ${className}`} data-holo-live={live ? "on" : "off"} aria-hidden="true">
-      <svg className="holo-svg-defs" aria-hidden="true">
-        <filter id={filterId} x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur in="SourceAlpha" stdDeviation="1.8" result="blur" />
-          <feColorMatrix in="blur" type="matrix" result="glow" values="0 0 0 0 0  0 0 0 0 0.94  0 0 0 0 1  0 0 0 0.8 0" />
-          <feMerge>
-            <feMergeNode in="glow" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
+    <div
+      ref={ref}
+      className={`holo-forge${complete ? " is-forged" : ""}${flourish ? " is-flourish" : ""} ${className}`.trim()}
+      data-holo-live={live ? "on" : "off"}
+      data-forge-complete={complete ? "true" : "false"}
+      role="img"
+      aria-label={summary}
+    >
+      <svg viewBox="0 0 200 200" aria-hidden="true">
+        <defs>
+          <filter id={filterId} x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="1.6" result="blur" />
+            <feColorMatrix in="blur" type="matrix" result="glow" values="0 0 0 0 0  0 0 0 0 0.94  0 0 0 0 1  0 0 0 0.85 0" />
+            <feMerge>
+              <feMergeNode in="glow" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+        <rect
+          className="holo-forge-frame"
+          x="62"
+          y={top - 4}
+          width="124"
+          height={height + 8}
+          rx="8"
+          pathLength="100"
+          strokeDasharray="100"
+          strokeDashoffset={100 - frame.ratio * 100}
+        >
+          <title>{`${frame.label} ${frame.actual} of ${frame.target}`}</title>
+        </rect>
+        {bands.map((shell, index) => {
+          const y = top + (bands.length - 1 - index) * (bandH + gap);
+          return (
+            <g key={shell.id} className={shell.ratio >= 1 ? "is-full" : ""}>
+              <title>{`${shell.label}: ${shell.actual} of ${shell.target}`}</title>
+              <rect className="holo-forge-wire" x="68" y={y} width="112" height={bandH} rx="3" />
+              <rect
+                className="holo-forge-fill"
+                x="68"
+                y={y}
+                width="112"
+                height={bandH}
+                rx="3"
+                style={{ transform: `scaleY(${shell.ratio})` }}
+              />
+              <text className="holo-forge-label" x="58" y={y + bandH / 2} textAnchor="end" dominantBaseline="middle">{shell.short}</text>
+            </g>
+          );
+        })}
+        <text className="holo-forge-count" x="186" y="12" textAnchor="end">{complete ? "Forged" : `${filled}/${total}`}</text>
+        <g className="holo-forge-seal" filter={`url(#${filterId})`}>
+          <circle cx="124" cy="104" r="22" />
+          <text x="124" y="108" textAnchor="middle">Forged</text>
+        </g>
       </svg>
-      <div className="holo-floor" />
-      {motionMode === "full" && !reduced ? (
-        <video
-          ref={videoRef}
-          className="holo-prop-model"
-          src={CRYSTAL_LOOP}
-          width={280}
-          height={326}
-          muted
-          loop
-          playsInline
-          preload="none"
-          style={{ filter: `url(#${filterId})` }}
-        />
-      ) : (
-        <img
-          className="holo-prop-model"
-          src={CRYSTAL_STILL}
-          alt=""
-          width={280}
-          height={326}
-          decoding="async"
-          loading="lazy"
-          style={{ filter: `url(#${filterId})` }}
-        />
-      )}
-      <div className="holo-scan" />
-      <div className="holo-noise" />
     </div>
   );
 }

@@ -18,7 +18,8 @@ import { useForgeSession } from "../../forge-session-context";
 import { ManaRow, SetMark } from "../mana-symbols";
 import { ColorIdentityChips, ForgeProp } from "../tripo-assets";
 import { DeckOptionsDrawer } from "./deck-options-drawer";
-import { HoloProp, HoloRule } from "../hologram-forge";
+import { segmentsFromDiagnosis } from "../../hologram-forge-segments.mjs";
+import { HoloForge, HoloRule } from "../hologram-forge";
 import "../../free-decklist.css";
 
 configureCardTagLookup(() => [], { onlyIfMissing: true });
@@ -413,7 +414,11 @@ export function FreeDecklist() {
       <header className="deck-page-hero free-deck-hero">
         <img className="deck-hero-art" src={heroArt} alt="" />
         <span className="deck-hero-fade" aria-hidden="true" />
-        <HoloProp />
+        <HoloForge {...segmentsFromDiagnosis(diagnosis, {
+          commander: Boolean(selectedCommander),
+          deckSize: targetDeckSize(format),
+          cardCount: diagnosis.cardCount + (selectedCommander ? 1 : 0),
+        })} />
         <div className="deck-hero-plate">
           <div>
             <span className="free-eyebrow"><SetMark code="cmd" label="Commander" />Commander decklist · coaching {deckCoaching ? "on" : "off"}</span>

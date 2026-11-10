@@ -1,8 +1,9 @@
 "use client";
 
+import { useMemo } from "react";
 import { createPortal } from "react-dom";
 import { cardImage, cardArtCrop } from "../../card-art";
-import { isCommanderFormat } from "../../format-catalog";
+import { isCommanderFormat, targetDeckSize } from "../../format-catalog";
 import {
   cardFactKey,
   cardPriceUsd,
@@ -36,7 +37,9 @@ import { ManaSymbol } from "../mana-symbols";
 import { ColorIdentityChips } from "../tripo-assets";
 import { FocusMark, StainedGlassLeads } from "./stained-glass";
 import { DeckOptionsDrawer } from "./deck-options-drawer";
-import { HoloProp, HoloRule } from "../hologram-forge";
+import { diagnoseFreeDeck } from "../../free-build-coach.mjs";
+import { segmentsFromDiagnosis } from "../../hologram-forge-segments.mjs";
+import { HoloForge, HoloRule } from "../hologram-forge";
 
 export function WorkbenchChamber() {
   const {
@@ -229,6 +232,36 @@ export function WorkbenchChamber() {
     publishPublicDeckReport,
     unpublishPublicDeckReport,
   } = useForgeSession();
+
+  const forgeHologram = useMemo(() => {
+    const listed = deckRows.reduce((sum, row) => sum + (row.quantity || 1), 0);
+    const commanderInList = Boolean(selectedCommander && deckRows.some((row) => cardFactKey(row.name) === cardFactKey(selectedCommander.name)));
+    return segmentsFromDiagnosis(diagnoseFreeDeck({
+      entries: deckRows.map((row) => {
+        const fact = cardFacts[cardFactKey(row.name)];
+        return {
+          name: row.name,
+          quantity: row.quantity,
+          typeLine: fact?.type_line || "",
+          oracleText: fact?.oracle_text || "",
+          cmc: Number(fact?.cmc) || 0,
+        };
+      }),
+      commanders: selectedCommander ? [{
+        name: selectedCommander.name,
+        typeLine: selectedCommander.typeLine || "",
+        oracleText: commanderOracleText(selectedCommander),
+        colors: selectedCommander.colors || [],
+        colorIdentity: selectedCommander.colors || [],
+      }] : [],
+      strategy,
+      deckSize: targetDeckSize(format),
+    }), {
+      commander: Boolean(selectedCommander),
+      deckSize: targetDeckSize(format),
+      cardCount: listed + (selectedCommander && !commanderInList ? 1 : 0),
+    });
+  }, [deckRows, cardFacts, selectedCommander, strategy, format]);
 
   if (freeBuildActive && siteRail === "decklist") {
     return (
@@ -593,7 +626,7 @@ export function WorkbenchChamber() {
               <img className="deck-hero-art" src={featuredMasterworkArt} alt="" />
             )}
             {hasValidatedDeck && <span className="deck-hero-fade" aria-hidden="true" />}
-            {hasValidatedDeck && <HoloProp />}
+            {hasValidatedDeck && <HoloForge {...forgeHologram} />}
             {hasValidatedDeck && (
               <span className="masterwork-glass" aria-hidden="true">
                 <StainedGlassLeads />

@@ -133,17 +133,81 @@
     linear-gradient(to right, rgba(0, 240, 255, 0.78) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(0, 240, 255, 0.7) 1px, transparent 1px);
 }
-.holo-field-hero .holo-scan { opacity: 0.5; }
+.holo-field-hero .holo-scan { display: none; }
 .holo-field-hero .holo-edge { display: none; }
 
+/* Larger anvil, still one column away from the copy. The phone column
+   grows with it so the headline keeps its own track. */
 @media (max-width: 900px) {
+  .entrance-stage { grid-template-columns: minmax(0, 1fr) 148px; }
+  .entrance-stage .hero-anvil,
+  .entrance-stage > .holo-hero-field {
+    width: 136px;
+    height: 136px;
+  }
   .entrance-stage .hero-anvil { position: relative; z-index: 3; }
   .holo-field-hero .holo-floor {
     bottom: 0;
     height: 72%;
-    background-size: 16px 16px;
+    background-size: 18px 18px;
   }
-  .holo-field-hero .holo-scan { height: 24%; opacity: 0.75; }
+}
+
+@media (min-width: 901px) {
+  .chamber-entrance .entrance-stage {
+    grid-template-columns: minmax(0, 34rem) minmax(360px, 1fr);
+  }
+  .entrance-stage .hero-anvil { width: min(100%, 540px); }
+}
+
+/* Soft scan clipped to the anvil silhouette. The band is a feathered
+   gradient, so neither edge is a hard line, and the mask keeps it off
+   the empty box around the metal. */
+.holo-anvil-scan {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  pointer-events: none;
+  -webkit-mask-image: url("/assets/forge/tripo/hero-512.webp");
+  mask-image: url("/assets/forge/tripo/hero-512.webp");
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+}
+.holo-anvil-scan-band,
+.holo-anvil-scan-trail {
+  position: absolute;
+  left: -12%;
+  right: -12%;
+  height: 42%;
+  top: 28%;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(0, 240, 255, 0) 16%,
+    rgba(0, 240, 255, 0.16) 38%,
+    rgba(214, 255, 255, 0.62) 50%,
+    rgba(0, 240, 255, 0.14) 64%,
+    transparent 100%
+  );
+  filter: blur(7px);
+  mix-blend-mode: screen;
+  animation: holo-anvil-scan 4.6s ease-in-out infinite alternate;
+}
+.holo-anvil-scan-trail {
+  height: 68%;
+  opacity: 0.45;
+  filter: blur(16px);
+  animation-delay: -0.45s;
+}
+@keyframes holo-anvil-scan {
+  from { top: -46%; }
+  to { top: 104%; }
+}
+.hero-anvil[data-holo-live="off"] .holo-anvil-scan-band,
+.hero-anvil[data-holo-live="off"] .holo-anvil-scan-trail {
+  animation-play-state: paused;
 }
 
 @media (min-width: 901px) {
@@ -162,52 +226,56 @@
   }
 }
 
-/* Deck hero crystal. Above the art, under the opaque title plate. */
-.deck-page-hero .holo-prop {
+/* Deck forging hologram. Same corner the crystal used, under the plate. */
+.deck-page-hero .holo-forge {
   position: absolute;
   z-index: 1;
-  top: 8px;
+  top: 10px;
   right: 12px;
-  width: 168px;
-  height: 196px;
-  overflow: hidden;
-  pointer-events: none;
+  width: 210px;
+  height: 200px;
+  pointer-events: auto;
 }
-
-.deck-page-hero .holo-prop::before {
-  content: "";
-  position: absolute;
-  inset: 6% 4% 0;
-  background: radial-gradient(ellipse at 50% 58%, rgba(4, 10, 14, 0.55), transparent 70%);
-  pointer-events: none;
+.holo-forge svg { display: block; width: 100%; height: 100%; }
+.holo-forge-frame {
+  fill: none;
+  stroke: rgba(0, 255, 255, 0.85);
+  stroke-width: 1.4;
+  filter: drop-shadow(0 0 4px rgba(0, 240, 255, 0.45));
 }
-
-.holo-prop-model {
-  position: relative;
-  z-index: 1;
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  mix-blend-mode: screen;
-  pointer-events: none;
+.holo-forge-wire {
+  fill: rgba(0, 240, 255, 0.04);
+  stroke: rgba(0, 240, 255, 0.45);
+  stroke-width: 1;
 }
-
-.holo-svg-defs {
-  position: absolute;
-  width: 0;
-  height: 0;
-  overflow: hidden;
+.holo-forge-fill {
+  fill: rgba(0, 240, 255, 0.55);
+  stroke: none;
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  transition: transform 0.35s ease;
 }
-
-.holo-prop .holo-floor {
-  z-index: 0;
-  height: 46%;
-  opacity: 0.85;
+.holo-forge-label {
+  fill: rgba(186, 248, 255, 0.82);
+  font: 7px/1 Inter, ui-sans-serif, system-ui, sans-serif;
 }
-
-.holo-prop .holo-scan,
-.holo-prop .holo-noise { z-index: 2; }
+.holo-forge g.is-full .holo-forge-wire { stroke: rgba(210, 255, 255, 0.95); }
+.holo-forge g.is-full .holo-forge-fill { fill: rgba(0, 255, 255, 0.72); }
+.holo-forge-seal { opacity: 0; }
+.holo-forge-seal circle { fill: rgba(0, 240, 255, 0.18); stroke: #bfffff; stroke-width: 1.2; }
+.holo-forge-seal text { fill: #e8ffff; font: 700 9px/1 Inter, ui-sans-serif, sans-serif; letter-spacing: 0.04em; }
+.holo-forge.is-forged .holo-forge-seal { opacity: 1; }
+.holo-forge.is-flourish { animation: holo-flourish 1.2s ease; }
+.holo-forge-count {
+  fill: #e7fdff;
+  font: 700 9px/1 Inter, ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.06em;
+}
+@keyframes holo-flourish {
+  0% { filter: drop-shadow(0 0 0 rgba(0, 240, 255, 0)); transform: scale(1); }
+  40% { filter: drop-shadow(0 0 16px rgba(0, 255, 255, 0.85)); transform: scale(1.045); }
+  100% { filter: drop-shadow(0 0 6px rgba(0, 240, 255, 0.35)); transform: scale(1); }
+}
 
 /* Section rule. A hairline and a short traveling glint, never a band
    across a paragraph. */
@@ -294,28 +362,44 @@
 }
 
 @media (max-width: 760px) {
-  .deck-page-hero .holo-prop {
-    top: 6px;
+  .deck-page-hero .holo-forge {
+    top: 8px;
     right: 8px;
-    width: 108px;
-    height: 128px;
+    width: 132px;
+    height: 126px;
   }
+  .holo-forge-label { font-size: 8px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .holo-scan,
   .holo-noise,
   .ghost-glass::after,
-  .holo-prop-model {
+  .holo-anvil-scan-band,
+  .holo-anvil-scan-trail,
+  .holo-forge,
+  .holo-forge-fill {
     animation: none !important;
+    transition: none !important;
   }
+  .holo-anvil-scan-band,
+  .holo-anvil-scan-trail { top: 30%; }
 }
 
 .great-forge[data-motion="quiet"] .holo-scan,
 .great-forge[data-motion="quiet"] .holo-noise,
 .great-forge[data-motion="quiet"] .ghost-glass::after,
+.great-forge[data-motion="quiet"] .holo-anvil-scan-band,
+.great-forge[data-motion="quiet"] .holo-anvil-scan-trail,
+.great-forge[data-motion="quiet"] .holo-forge,
+.great-forge[data-motion="quiet"] .holo-forge-fill,
 .free-decklist[data-motion="static"] .holo-scan,
 .free-decklist[data-motion="static"] .holo-noise,
-.free-decklist[data-motion="static"] .ghost-glass::after {
+.free-decklist[data-motion="static"] .ghost-glass::after,
+.free-decklist[data-motion="static"] .holo-forge,
+.free-decklist[data-motion="static"] .holo-forge-fill {
   animation: none !important;
+  transition: none !important;
 }
+.great-forge[data-motion="quiet"] .holo-anvil-scan-band,
+.great-forge[data-motion="quiet"] .holo-anvil-scan-trail { top: 30%; }
