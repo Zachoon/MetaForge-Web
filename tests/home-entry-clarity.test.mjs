@@ -43,13 +43,15 @@ test("secondary links are an unnumbered row to different destinations", () => {
   assert.match(session, /intent === "analyze" \|\| intent === "list"/);
 });
 
-test("the animated anvil replaces the still, and the oval frame does not sit behind it", () => {
-  assert.match(anvil, /data-turntable=\{ready \? "ready" : "still"\}/);
-  assert.match(anvil, /setTurntableReady\(false\)/);
-  assert.match(anvil, /onLoad=\{\(\) => setTurntableReady\(true\)\}/);
-  assert.match(tripo, /\.hero-anvil\[data-turntable="ready"\] \.hero-anvil-still \{ visibility: hidden; \}/);
+test("the forge sequence replaces the sword still, and the oval frame does not sit behind it", () => {
+  assert.match(anvil, /data-forge=\{phase\}/);
+  assert.match(anvil, /hero-deck-512\.webp/);
+  assert.doesNotMatch(anvil, /hero-turntable/);
+  assert.match(anvil, /prefers-reduced-motion: reduce/);
   assert.match(tripo, /prefers-reduced-motion: reduce/);
-  assert.match(tripo, /\.hero-anvil \.hero-anvil-still \{ visibility: visible !important; \}/);
+  assert.match(tripo, /\.hero-anvil\[data-forge="deck"\]\[data-deck="ready"\] \.hero-anvil-sword \{ visibility: hidden; \}/);
+  assert.match(tripo, /@keyframes hero-forge-flash/);
+  assert.doesNotMatch(tripo, /infinite/);
   assert.match(tripo, /\.entrance-stage \.entrance-living-forge,\s*\.entrance-stage \.entrance-visual > \.forge-sigil \{\s*display: none;/);
   assert.match(tripo, /\.entrance-stage \.entrance-visual::before/);
 });

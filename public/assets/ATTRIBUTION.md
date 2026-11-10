@@ -19,6 +19,8 @@ https://upload.wikimedia.org/wikipedia/en/a/aa/Magic_the_gathering-card_back.jpg
 
 It is a 267×373 WebP. `backs.scryfall.io` returned 404 when this copy was made, so the file was taken from that public image instead of the dead CDN path.
 
+The homepage forged-deck stills (`public/assets/forge/tripo/hero-deck-512.webp` and `hero-deck-1024.webp`) composite this card back, in a short stack with a slight fan, onto the Tripo hero anvil after the sword is removed. The anvil pixels remain the Tripo paid-user output described in `public/assets/forge/tripo/PROVENANCE.md`. The hammer swing uses the existing Tripo hammer prop (`prop_hammer-512.webp`). Sparks and the strike flash are CSS, not a separate asset.
+
 ## Poly Haven workshop textures (CC0 1.0)
 
 Diffuse maps only, resized to 512×512 WebP. Normal and ARM maps were not shipped.
