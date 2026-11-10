@@ -36,6 +36,7 @@ import { ManaSymbol } from "../mana-symbols";
 import { ColorIdentityChips } from "../tripo-assets";
 import { FocusMark, StainedGlassLeads } from "./stained-glass";
 import { DeckOptionsDrawer } from "./deck-options-drawer";
+import { HoloProp, HoloRule } from "../hologram-forge";
 
 export function WorkbenchChamber() {
   const {
@@ -354,6 +355,7 @@ export function WorkbenchChamber() {
           <details className="coach-below-deck" ref={coachBriefDetailsRef}>
           <summary>Here&rsquo;s the read →</summary>
           <section className="forge-understanding-bridge coach-brief honest-coach-v0" id="coach-brief" aria-label="Coach's brief">
+            <HoloRule />
             <header>
               <small>YOUR COACH</small>
               <h2>{honestCoachSummary.headline}</h2>
@@ -591,6 +593,7 @@ export function WorkbenchChamber() {
               <img className="deck-hero-art" src={featuredMasterworkArt} alt="" />
             )}
             {hasValidatedDeck && <span className="deck-hero-fade" aria-hidden="true" />}
+            {hasValidatedDeck && <HoloProp />}
             {hasValidatedDeck && (
               <span className="masterwork-glass" aria-hidden="true">
                 <StainedGlassLeads />

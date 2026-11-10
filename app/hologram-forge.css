@@ -1,0 +1,321 @@
+/* Hologram forge. Cyan transmission accents (#00F0FF) that stay in the
+   margins: a scan band, grain, an emissive edge, and a perspective floor.
+   Text panels stay opaque. Motion freezes for quiet mode and
+   prefers-reduced-motion, and pauses while the root is offscreen. */
+
+.holo-field,
+.holo-prop,
+.holo-rule,
+.ghost-glass {
+  --holo-cyan: #00f0ff;
+  --holo-cyan-hot: #00ffff;
+  --holo-flicker-lo: 0.1;
+  --holo-flicker-hi: 0.16;
+}
+
+.holo-field,
+.holo-prop,
+.holo-rule {
+  position: relative;
+}
+
+.holo-floor {
+  position: absolute;
+  left: -12%;
+  right: -12%;
+  bottom: -6%;
+  height: 58%;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(214, 248, 255, 0.55) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(214, 248, 255, 0.5) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.72;
+  transform: perspective(170px) rotateX(64deg);
+  transform-origin: center bottom;
+  -webkit-mask-image: radial-gradient(ellipse at 50% 78%, #000 0 28%, transparent 72%);
+  mask-image: radial-gradient(ellipse at 50% 78%, #000 0 28%, transparent 72%);
+}
+
+.holo-scan {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 42%;
+  height: 16%;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(0, 240, 255, 0.05) 30%,
+    rgba(190, 255, 255, 0.72) 50%,
+    rgba(0, 240, 255, 0.05) 70%,
+    transparent 100%
+  );
+  filter: blur(0.6px);
+  mix-blend-mode: screen;
+  animation: holo-scan-y 3.6s ease-in-out infinite alternate;
+}
+
+.holo-noise {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.12;
+  mix-blend-mode: screen;
+  background-image: url("data:image/png;base64,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");
+  background-size: 64px 64px;
+  animation: holo-grain 0.5s steps(2, end) infinite, holo-flicker 1.8s ease-in-out infinite alternate;
+}
+
+.holo-edge {
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 240, 255, 0.55),
+    0 0 12px rgba(0, 240, 255, 0.35);
+}
+
+@keyframes holo-scan-y {
+  from { top: -8%; }
+  to { top: 78%; }
+}
+
+@keyframes holo-scan-x {
+  from { left: -8%; }
+  to { left: 82%; }
+}
+
+@keyframes holo-grain {
+  from { background-position: 0 0; }
+  to { background-position: 32px 48px; }
+}
+
+@keyframes holo-flicker {
+  from { opacity: var(--holo-flicker-lo); }
+  to { opacity: var(--holo-flicker-hi); }
+}
+
+@keyframes holo-shimmer {
+  0%, 20% { transform: translateX(-36%); opacity: 0; }
+  48% { opacity: 0.85; }
+  72%, 100% { transform: translateX(36%); opacity: 0; }
+}
+
+/* Home hero. Same grid cell as the anvil, painted underneath it.
+   Phones keep a 96px field in the anvil's cell. Desktop fills the
+   column absolutely. The mask keeps the caption free of the scan. */
+.entrance-stage { position: relative; }
+.entrance-stage > .holo-hero-field {
+  position: relative;
+  grid-column: 2;
+  grid-row: 2;
+  z-index: 1;
+  width: 96px;
+  height: 96px;
+  justify-self: center;
+  align-self: center;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.holo-field-hero {
+  --holo-flicker-lo: 0.06;
+  --holo-flicker-hi: 0.1;
+}
+
+.holo-field-hero .holo-floor {
+  bottom: 16%;
+  height: 48%;
+  opacity: 0.95;
+  transform: perspective(240px) rotateX(58deg);
+  transform-origin: center center;
+  background-image:
+    linear-gradient(to right, rgba(0, 240, 255, 0.78) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 240, 255, 0.7) 1px, transparent 1px);
+}
+.holo-field-hero .holo-scan { opacity: 0.5; }
+.holo-field-hero .holo-edge { display: none; }
+
+@media (max-width: 900px) {
+  .entrance-stage .hero-anvil { position: relative; z-index: 3; }
+  .holo-field-hero .holo-floor {
+    bottom: 0;
+    height: 72%;
+    background-size: 16px 16px;
+  }
+  .holo-field-hero .holo-scan { height: 24%; opacity: 0.75; }
+}
+
+@media (min-width: 901px) {
+  .entrance-stage > .holo-hero-field {
+    position: absolute;
+    inset: 0;
+    grid-column: 2;
+    grid-row: 1;
+    z-index: 2;
+    width: auto;
+    height: auto;
+    justify-self: stretch;
+    align-self: stretch;
+    -webkit-mask-image: linear-gradient(#000 0 82%, transparent 96%);
+    mask-image: linear-gradient(#000 0 82%, transparent 96%);
+  }
+}
+
+/* Deck hero crystal. Above the art, under the opaque title plate. */
+.deck-page-hero .holo-prop {
+  position: absolute;
+  z-index: 1;
+  top: 8px;
+  right: 12px;
+  width: 168px;
+  height: 196px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.deck-page-hero .holo-prop::before {
+  content: "";
+  position: absolute;
+  inset: 6% 4% 0;
+  background: radial-gradient(ellipse at 50% 58%, rgba(4, 10, 14, 0.55), transparent 70%);
+  pointer-events: none;
+}
+
+.holo-prop-model {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+.holo-svg-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.holo-prop .holo-floor {
+  z-index: 0;
+  height: 46%;
+  opacity: 0.85;
+}
+
+.holo-prop .holo-scan,
+.holo-prop .holo-noise { z-index: 2; }
+
+/* Section rule. A hairline and a short traveling glint, never a band
+   across a paragraph. */
+.holo-rule {
+  position: relative;
+  height: 16px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.holo-rule .holo-edge {
+  position: absolute;
+  top: 7px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.2) 10%, rgba(0, 255, 255, 0.8), rgba(0, 240, 255, 0.2) 90%, transparent);
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.45);
+}
+
+.holo-rule .holo-scan {
+  top: 5px;
+  height: 5px;
+  width: 18%;
+  left: 41%;
+  right: auto;
+  filter: none;
+  animation-name: holo-scan-x;
+}
+
+.holo-rule .holo-noise { opacity: 0.08; }
+
+.free-list-pane > .holo-rule {
+  margin: 2px 12px 6px;
+}
+
+.coach-brief {
+  position: relative;
+}
+
+.coach-brief > .holo-rule {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 14px;
+}
+
+/* Ghost cards. The sheen sits on the art glass. The name stays on the
+   opaque plate underneath the frame. */
+.ghost-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 240, 255, 0.34),
+    inset 0 0 16px rgba(0, 240, 255, 0.1);
+}
+
+.ghost-glass::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 38%, rgba(0, 255, 255, 0.28) 50%, transparent 62%);
+  opacity: 0;
+  mix-blend-mode: screen;
+  animation: holo-shimmer 4.4s ease-in-out infinite;
+}
+
+.free-decklist .type-column-row.ghost-pick .ghost-wax-seal {
+  box-shadow:
+    inset 0 -2px 0 rgba(70, 36, 10, 0.45),
+    0 1px 2px rgba(0, 0, 0, 0.45),
+    0 0 8px rgba(0, 240, 255, 0.4);
+}
+
+[data-holo-live="off"] .holo-scan,
+[data-holo-live="off"] .holo-noise,
+.ghost-glass[data-holo-live="off"]::after {
+  animation-play-state: paused;
+}
+
+@media (max-width: 760px) {
+  .deck-page-hero .holo-prop {
+    top: 6px;
+    right: 8px;
+    width: 108px;
+    height: 128px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .holo-scan,
+  .holo-noise,
+  .ghost-glass::after,
+  .holo-prop-model {
+    animation: none !important;
+  }
+}
+
+.great-forge[data-motion="quiet"] .holo-scan,
+.great-forge[data-motion="quiet"] .holo-noise,
+.great-forge[data-motion="quiet"] .ghost-glass::after,
+.free-decklist[data-motion="static"] .holo-scan,
+.free-decklist[data-motion="static"] .holo-noise,
+.free-decklist[data-motion="static"] .ghost-glass::after {
+  animation: none !important;
+}
