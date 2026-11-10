@@ -1,69 +1,173 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { AnimationEvent, CSSProperties } from "react";
 import type { MotionMode } from "./forge/forge-ceremony";
 
-// The still sits beside the headline. The headline and the living-forge
-// panel are the larger paints, so this image is not the LCP and stays lazy.
-// The turntable is a separate ~1MB animation: only after we know the
-// viewport is not a small phone, the OS is not asking for reduced motion,
-// and the in-app motion setting is full. The still is the fallback until
-// that animation has decoded, and the two are never shown together.
-const TURNTABLE_QUERY = "(min-width: 761px) and (prefers-reduced-motion: no-preference)";
-const ANVIL_LABEL = "An ornate anvil with a glowing blade";
+// The homepage anvil is one image frame. The sword still is what paints
+// before the sequence is ready. The deck still replaces it. Hammer, sparks,
+// and the single flash are CSS on that same frame — not a second anvil,
+// and not the retired 1MB turntable.
+const SIZES = "(max-width: 900px) 96px, 720px";
+const SWORD_SRC = "/assets/forge/tripo/hero-512.webp";
+const SWORD_SET = "/assets/forge/tripo/hero-512.webp 512w, /assets/forge/tripo/hero-1024.webp 1024w";
+const DECK_SRC = "/assets/forge/tripo/hero-deck-512.webp";
+const DECK_SET = "/assets/forge/tripo/hero-deck-512.webp 512w, /assets/forge/tripo/hero-deck-1024.webp 1024w";
+const HAMMER_SRC = "/assets/forge/tripo/prop_hammer-512.webp";
+const REDUCE_QUERY = "(prefers-reduced-motion: reduce)";
+// A little longer than the CSS timeline (--forge-time: 2.6s) so a missed
+// animationend still settles on the deck.
+const FORGE_FALLBACK_MS = 2900;
+
+const SWORD_LABEL = "An ornate anvil with a glowing blade";
+const PLAY_LABEL = "An ornate anvil. A hammer strikes the sword and forges it into a deck of cards.";
+const DECK_LABEL = "An ornate anvil with a deck of cards, fresh from the forge";
+
+// One burst, aimed out from the strike. Not a loop.
+const HERO_SPARKS: ReadonlyArray<readonly [number, number]> = [
+  [88, -108],
+  [-78, -96],
+  [124, -18],
+  [-112, -8],
+  [46, 72],
+  [-52, 80],
+  [12, -132],
+  [-16, 40],
+  [136, 28],
+  [-128, 36],
+  [64, -48],
+  [-70, -52],
+];
+
+type ForgePhase = "sword" | "playing" | "deck";
 
 export function HeroAnvil({ motionMode }: { motionMode: MotionMode }) {
-  const [turntable, setTurntable] = useState(false);
-  const [turntableReady, setTurntableReady] = useState(false);
-  const turnRef = useRef<HTMLImageElement>(null);
+  const [phase, setPhase] = useState<ForgePhase>("sword");
+  const [motion, setMotion] = useState(false);
+  const [deckReady, setDeckReady] = useState(false);
+  const [hammerReady, setHammerReady] = useState(false);
+  const deckRef = useRef<HTMLImageElement>(null);
+  const phaseRef = useRef<ForgePhase>("sword");
 
   useEffect(() => {
-    const query = window.matchMedia(TURNTABLE_QUERY);
+    const node = deckRef.current;
+    if (node?.complete && node.naturalWidth > 0) setDeckReady(true);
+  }, []);
+
+  useEffect(() => {
+    const query = window.matchMedia(REDUCE_QUERY);
     const sync = () => {
-      const show = motionMode === "full" && query.matches;
-      setTurntable(show);
-      if (!show) setTurntableReady(false);
-    };
-    sync();
-    query.addEventListener("change", sync);
-    return () => query.removeEventListener("change", sync);
-  }, [motionMode]);
+      const allow = motionMode === "full" && !query.matches;
+      setMotion(allow);
+      if (!allow) {
+        phaseRef.current = "deck";
+        setPhase("deck");
+        return;
+      }
+    if (!deckReady || !hammerReady) return;
+    setPhase((current) => {
+      const next = current === "deck" ? "deck" : "playing";
+      phaseRef.current = next;
+      return next;
+    });
+  };
+  sync();
+  query.addEventListener("change", sync);
+  return () => query.removeEventListener("change", sync);
+}, [motionMode, deckReady, hammerReady]);
+
+useEffect(() => {
+  if (!motion) return;
+  const img = new Image();
+  img.onload = () => setHammerReady(true);
+  img.onerror = () => setHammerReady(true);
+  img.src = HAMMER_SRC;
+}, [motion]);
 
   useEffect(() => {
-    const node = turnRef.current;
-    if (turntable && node?.complete && node.naturalWidth > 0) setTurntableReady(true);
-  }, [turntable]);
+    if (phase !== "playing") return;
+    const timer = window.setTimeout(() => {
+      phaseRef.current = "deck";
+      setPhase("deck");
+    }, FORGE_FALLBACK_MS);
+    return () => window.clearTimeout(timer);
+  }, [phase]);
 
-  const ready = turntable && turntableReady;
+  function replay() {
+    if (!motion || phaseRef.current !== "deck") return;
+    phaseRef.current = "playing";
+    setPhase("sword");
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setPhase("playing"));
+    });
+  }
+
+  function finish(event: AnimationEvent<HTMLImageElement>) {
+    if (event.animationName !== "hero-forge-deck") return;
+    phaseRef.current = "deck";
+    setPhase("deck");
+  }
+
+  const settled = !motion || phase === "deck";
+  const label = !motion ? (deckReady ? DECK_LABEL : SWORD_LABEL) : phase === "playing" ? PLAY_LABEL : phase === "deck" ? DECK_LABEL : SWORD_LABEL;
 
   return (
-    <div className="hero-anvil" data-turntable={ready ? "ready" : "still"} role="img" aria-label={ANVIL_LABEL}>
-      <img
-        className="hero-anvil-still"
-        src="/assets/forge/tripo/hero-512.webp"
-        srcSet="/assets/forge/tripo/hero-512.webp 512w, /assets/forge/tripo/hero-1024.webp 1024w"
-        sizes="(max-width: 900px) 96px, 720px"
-        width={96}
-        height={96}
-        alt=""
-        decoding="async"
-        loading="lazy"
-        fetchPriority="low"
-      />
-      {turntable ? (
+    <div
+      className="hero-anvil"
+      data-forge={phase}
+      data-deck={deckReady ? "ready" : "loading"}
+      data-motion={motion ? "play" : "still"}
+      role={motion ? undefined : "img"}
+      aria-label={motion ? undefined : label}
+    >
+      <div className="hero-anvil-stage">
         <img
-          ref={turnRef}
-          className="hero-anvil-turn"
-          src="/assets/forge/tripo/hero-turntable-512.webp"
+          className="hero-anvil-sword"
+          src={SWORD_SRC}
+          srcSet={SWORD_SET}
+          sizes={SIZES}
           width={96}
           height={96}
           alt=""
-          aria-hidden="true"
           decoding="async"
           loading="lazy"
           fetchPriority="low"
-          onLoad={() => setTurntableReady(true)}
-          onError={() => setTurntableReady(false)}
+        />
+        <img
+          ref={deckRef}
+          className="hero-anvil-deck"
+          src={DECK_SRC}
+          srcSet={DECK_SET}
+          sizes={SIZES}
+          width={96}
+          height={96}
+          alt=""
+          decoding="async"
+          loading="lazy"
+          fetchPriority="low"
+          onLoad={() => setDeckReady(true)}
+          onAnimationEnd={finish}
+        />
+        {motion ? (
+          <div className="hero-anvil-forge" aria-hidden="true">
+            <img className="hero-anvil-hammer" src={HAMMER_SRC} alt="" width={96} height={96} decoding="async" />
+            <span className="hero-anvil-flash" />
+            <span className="hero-anvil-sparks">
+              {HERO_SPARKS.map(([dx, dy]) => (
+                <i key={`${dx},${dy}`} style={{ "--dx": `${dx}px`, "--dy": `${dy}px` } as CSSProperties} />
+              ))}
+            </span>
+          </div>
+        ) : null}
+      </div>
+      {motion ? (
+        <button
+          type="button"
+          className="hero-anvil-replay"
+          aria-label={settled ? `${DECK_LABEL} Play the forging again.` : PLAY_LABEL}
+          aria-disabled={settled ? undefined : true}
+          onClick={replay}
+          onMouseEnter={replay}
         />
       ) : null}
     </div>

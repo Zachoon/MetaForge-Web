@@ -190,18 +190,18 @@
       "notes": "Not the LCP image. srcset selects the 512 file on phones and the 1024 file on desktop. Task f1b79b41-29bc-4540-a25c-8d0248660b19."
     },
     {
-      "id": "mf-tripo-hero-turntable-01",
-      "role": "entrance-hero-motion",
-      "path": "/assets/forge/tripo/hero-turntable-512.webp",
-      "sourceRelativePath": "tripo/hero-turntable-512.webp",
-      "license": "Tripo-paid-user",
+      "id": "mf-tripo-hero-deck-01",
+      "role": "entrance-hero-forged-deck",
+      "path": "/assets/forge/tripo/hero-deck-512.webp",
+      "sourceRelativePath": "tripo/hero-deck-512.webp + hero-deck-1024.webp",
+      "license": "Tripo-paid-user + public card back",
       "licenseEvidence": "/assets/forge/tripo/PROVENANCE.md",
       "status": "approved",
       "width": 512,
       "height": 512,
       "load": "lazy",
-      "fallback": "mf-tripo-hero-anvil-01 static still",
-      "notes": "Animated WebP, about 1MB. Mounted only at min-width 761px when prefers-reduced-motion is unset and the in-app motion mode is full."
+      "fallback": "mf-tripo-hero-anvil-01 sword still until this file decodes",
+      "notes": "Same Tripo hero with the sword removed and a deck composited on the face. Derivative of hero-1024.webp and mtg/card-back.webp. Replaces the retired 1MB turntable. Shown after the forge sequence, and immediately for reduced motion, quiet mode, and as the settled frame."
     },
     {
       "id": "mf-tripo-emblem-w-01",

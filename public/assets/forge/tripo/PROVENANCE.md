@@ -1,6 +1,6 @@
 # Tripo forge assets — provenance and license
 
-Shipped files in this folder are transparent WebP stills (512 and 1024) plus one animated turntable. GLB meshes were not added. These are original MetaForge motifs (anvil, sun, wave, moon and skull, flame, oak leaf, hammer, tome, mana crystal), not Wizards of the Coast mana symbols.
+Shipped files in this folder are transparent WebP stills (512 and 1024). The animated turntable was removed when the homepage anvil became a CSS forge sequence. GLB meshes were not added. These are original MetaForge motifs (anvil, sun, wave, moon and skull, flame, oak leaf, hammer, tome, mana crystal), not Wizards of the Coast mana symbols. The forged-deck stills are a derivative of the hero render plus the vendored Magic card back (`public/assets/mtg/card-back.webp`, see `public/assets/ATTRIBUTION.md`).
 
 ## Account
 
@@ -20,7 +20,8 @@ Section 3.2 allows lawful commercial or non-commercial use of outputs. Outputs a
 
 | Id | Files | Task id | Placement |
 | --- | --- | --- | --- |
-| hero | `hero-512.webp`, `hero-1024.webp`, `hero-turntable-512.webp` | `f1b79b41-29bc-4540-a25c-8d0248660b19` (rejected v1 `70e14ae5-8cce-4209-89ea-2cfe71999851`) | Homepage hero beside the headline. 512 on phones, 1024 on desktop. Turntable only when motion is allowed and the viewport is not a small phone. The same 512 still is the pause/step mark on free-build coach controls. |
+| hero | `hero-512.webp`, `hero-1024.webp` | `f1b79b41-29bc-4540-a25c-8d0248660b19` (rejected v1 `70e14ae5-8cce-4209-89ea-2cfe71999851`) | Homepage hero beside the headline, the sword resting on the anvil. 512 on phones, 1024 on desktop. This is the frame before the forge sequence and the pause/step mark on free-build coach controls. |
+| hero deck | `hero-deck-512.webp`, `hero-deck-1024.webp` | derivative of `f1b79b41-29bc-4540-a25c-8d0248660b19` | Same anvil after the sword is removed, with a short fan of the vendored Magic card back on the face and a faint warm glow. End state of the homepage forge sequence, and the still for reduced motion and quiet mode. |
 | emblem_w | `emblem_w-512.webp`, `emblem_w-1024.webp` | `8ba15c4f-f03d-48de-86e0-7843007ae71e` | White color-identity chip. |
 | emblem_u | `emblem_u-512.webp`, `emblem_u-1024.webp` | `b761ea47-3e9c-4e02-bdda-eb7a6ded6258` | Blue color-identity chip. |
 | emblem_b | `emblem_b-512.webp`, `emblem_b-1024.webp` | `a476264a-a168-48e7-9ef9-62ac64a46dae` | Black color-identity chip. Do not draw this emblem below 32px; the moon and skull turn muddy. |
@@ -44,7 +45,8 @@ Section 3.2 allows lawful commercial or non-commercial use of outputs. Outputs a
 
 ## Load rules
 
-- Chips, props, and the hero still are lazy. The hero still is not the largest paint (the headline and the living-forge panel are), so it is not eager-loaded.
-- `sizes` selects `hero-512.webp` on phones and `hero-1024.webp` on desktop.
-- `hero-turntable-512.webp` (~1 MB, 48 frames) loads only when the viewport is at least 761px wide, `prefers-reduced-motion` is not set, and the in-app motion setting is full. Otherwise the static hero is shown.
+- Chips, props, and the hero stills are lazy. The sword still is not the largest paint (the headline is), so it is not eager-loaded.
+- `sizes` selects the 512 files on phones and the 1024 files on desktop.
+- The homepage sequence is CSS on this frame: the sword still, the existing hammer prop, one flash, and sparks, then the deck still. It plays once when motion is full and `prefers-reduced-motion` is unset. Hover or click replays it from the deck. Reduced motion and quiet mode show the deck still with no strike and no flash. Until the deck file has decoded, the sword still stays up.
+- The animated turntable (`hero-turntable-512.webp`, ~1 MB, 48 frames) is no longer shipped.
 - Emblems are drawn from the 512 files at 32px or larger. The 1024 files are kept as the master stills.
