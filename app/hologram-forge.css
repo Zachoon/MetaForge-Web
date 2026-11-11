@@ -226,55 +226,99 @@
   }
 }
 
-/* Deck forging hologram. Same corner the crystal used, under the plate. */
+/* Deck forging hologram. A card stack plus a compact slot readout.
+   Complete decks drop the hologram and become a metal deck. */
 .deck-page-hero .holo-forge {
   position: absolute;
   z-index: 1;
-  top: 10px;
-  right: 12px;
-  width: 210px;
-  height: 200px;
+  top: 8px;
+  right: 10px;
+  width: 248px;
+  height: 186px;
   pointer-events: auto;
 }
 .holo-forge svg { display: block; width: 100%; height: 100%; }
-.holo-forge-frame {
-  fill: none;
-  stroke: rgba(0, 255, 255, 0.85);
-  stroke-width: 1.4;
-  filter: drop-shadow(0 0 4px rgba(0, 240, 255, 0.45));
-}
-.holo-forge-wire {
-  fill: rgba(0, 240, 255, 0.04);
-  stroke: rgba(0, 240, 255, 0.45);
+.holo-card-wire {
+  fill: rgba(0, 240, 255, 0.03);
+  stroke: rgba(0, 240, 255, 0.55);
   stroke-width: 1;
 }
-.holo-forge-fill {
-  fill: rgba(0, 240, 255, 0.55);
+.holo-card-fill {
+  fill: rgba(0, 255, 255, 0.42);
   stroke: none;
   transform-box: fill-box;
   transform-origin: center bottom;
-  transition: transform 0.35s ease;
+  transition: opacity 0.35s ease, transform 0.35s ease;
 }
-.holo-forge-label {
-  fill: rgba(186, 248, 255, 0.82);
+.holo-card-rim {
+  fill: none;
+  stroke: rgba(214, 255, 255, 0.85);
+  stroke-width: 1.1;
+  filter: drop-shadow(0 0 3px rgba(0, 240, 255, 0.8));
+}
+.holo-deck-holo g.is-full .holo-card-wire { stroke: rgba(230, 255, 255, 0.95); }
+.holo-deck-metal { opacity: 0; }
+.holo-forge.is-forged .holo-deck-holo { opacity: 0; }
+.holo-forge.is-forged .holo-deck-metal { opacity: 1; }
+.holo-readout-label {
+  fill: rgba(186, 248, 255, 0.9);
   font: 7px/1 Inter, ui-sans-serif, system-ui, sans-serif;
 }
-.holo-forge g.is-full .holo-forge-wire { stroke: rgba(210, 255, 255, 0.95); }
-.holo-forge g.is-full .holo-forge-fill { fill: rgba(0, 255, 255, 0.72); }
-.holo-forge-seal { opacity: 0; }
-.holo-forge-seal circle { fill: rgba(0, 240, 255, 0.18); stroke: #bfffff; stroke-width: 1.2; }
-.holo-forge-seal text { fill: #e8ffff; font: 700 9px/1 Inter, ui-sans-serif, sans-serif; letter-spacing: 0.04em; }
-.holo-forge.is-forged .holo-forge-seal { opacity: 1; }
-.holo-forge.is-flourish { animation: holo-flourish 1.2s ease; }
-.holo-forge-count {
-  fill: #e7fdff;
-  font: 700 9px/1 Inter, ui-sans-serif, system-ui, sans-serif;
-  letter-spacing: 0.06em;
+.holo-readout-track { fill: rgba(0, 240, 255, 0.12); }
+.holo-readout-fill { fill: rgba(0, 255, 255, 0.85); }
+.holo-forge.is-forged .holo-readout-label { fill: #ead9b8; }
+.holo-forge.is-forged .holo-readout-track { fill: rgba(184, 140, 74, 0.25); }
+.holo-forge.is-forged .holo-readout-fill { fill: #c9964e; }
+.holo-deck-sweep,
+.holo-deck-glint,
+.holo-forge-flash {
+  position: absolute;
+  left: 6%;
+  width: 46%;
+  pointer-events: none;
 }
-@keyframes holo-flourish {
-  0% { filter: drop-shadow(0 0 0 rgba(0, 240, 255, 0)); transform: scale(1); }
-  40% { filter: drop-shadow(0 0 16px rgba(0, 255, 255, 0.85)); transform: scale(1.045); }
-  100% { filter: drop-shadow(0 0 6px rgba(0, 240, 255, 0.35)); transform: scale(1); }
+.holo-deck-sweep {
+  top: 18%;
+  height: 16%;
+  background: linear-gradient(180deg, transparent, rgba(190, 255, 255, 0.55), transparent);
+  filter: blur(2px);
+  mix-blend-mode: screen;
+  animation: holo-deck-sweep 3.4s ease-in-out infinite alternate;
+}
+.holo-deck-glint {
+  top: 12%;
+  height: 62%;
+  opacity: 0.4;
+  background: repeating-linear-gradient(180deg, transparent 0 2px, rgba(0, 255, 255, 0.22) 2px 3px);
+  mix-blend-mode: screen;
+  animation: holo-deck-flicker 1.7s ease-in-out infinite alternate;
+}
+.holo-forge-flash {
+  top: 8%;
+  height: 70%;
+  opacity: 0;
+  background: radial-gradient(circle, rgba(255, 244, 220, 0.95), rgba(232, 164, 74, 0.45) 42%, transparent 70%);
+}
+.holo-forge.is-forged .holo-deck-sweep,
+.holo-forge.is-forged .holo-deck-glint { display: none; }
+.holo-forge.is-flourish .holo-forge-flash { animation: holo-forge-flash 0.9s ease-out; }
+.holo-forge.is-flourish .holo-deck-metal { animation: holo-forge-settle 0.9s ease; }
+@keyframes holo-deck-sweep {
+  from { top: 10%; }
+  to { top: 58%; }
+}
+@keyframes holo-deck-flicker {
+  from { opacity: 0.28; }
+  to { opacity: 0.48; }
+}
+@keyframes holo-forge-flash {
+  0% { opacity: 0; }
+  18% { opacity: 0.95; }
+  100% { opacity: 0; }
+}
+@keyframes holo-forge-settle {
+  0% { transform: scale(0.96); filter: brightness(1.8); }
+  100% { transform: none; filter: none; }
 }
 
 /* Section rule. A hairline and a short traveling glint, never a band
@@ -357,18 +401,19 @@
 
 [data-holo-live="off"] .holo-scan,
 [data-holo-live="off"] .holo-noise,
+[data-holo-live="off"] .holo-deck-sweep,
+[data-holo-live="off"] .holo-deck-glint,
 .ghost-glass[data-holo-live="off"]::after {
   animation-play-state: paused;
 }
 
 @media (max-width: 760px) {
   .deck-page-hero .holo-forge {
-    top: 8px;
-    right: 8px;
-    width: 132px;
-    height: 126px;
+    top: 6px;
+    right: 6px;
+    width: 156px;
+    height: 118px;
   }
-  .holo-forge-label { font-size: 8px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -378,7 +423,11 @@
   .holo-anvil-scan-band,
   .holo-anvil-scan-trail,
   .holo-forge,
-  .holo-forge-fill {
+  .holo-card-fill,
+  .holo-deck-sweep,
+  .holo-deck-glint,
+  .holo-forge-flash,
+  .holo-deck-metal {
     animation: none !important;
     transition: none !important;
   }
@@ -392,12 +441,20 @@
 .great-forge[data-motion="quiet"] .holo-anvil-scan-band,
 .great-forge[data-motion="quiet"] .holo-anvil-scan-trail,
 .great-forge[data-motion="quiet"] .holo-forge,
-.great-forge[data-motion="quiet"] .holo-forge-fill,
+.great-forge[data-motion="quiet"] .holo-card-fill,
+.great-forge[data-motion="quiet"] .holo-deck-sweep,
+.great-forge[data-motion="quiet"] .holo-deck-glint,
+.great-forge[data-motion="quiet"] .holo-forge-flash,
+.great-forge[data-motion="quiet"] .holo-deck-metal,
 .free-decklist[data-motion="static"] .holo-scan,
 .free-decklist[data-motion="static"] .holo-noise,
 .free-decklist[data-motion="static"] .ghost-glass::after,
 .free-decklist[data-motion="static"] .holo-forge,
-.free-decklist[data-motion="static"] .holo-forge-fill {
+.free-decklist[data-motion="static"] .holo-card-fill,
+.free-decklist[data-motion="static"] .holo-deck-sweep,
+.free-decklist[data-motion="static"] .holo-deck-glint,
+.free-decklist[data-motion="static"] .holo-forge-flash,
+.free-decklist[data-motion="static"] .holo-deck-metal {
   animation: none !important;
   transition: none !important;
 }

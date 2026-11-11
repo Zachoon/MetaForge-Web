@@ -107,15 +107,17 @@ export function HoloForge({
   }, [complete, live]);
 
   const bands = shells.length ? shells : [];
-  const top = 18;
-  const height = 176;
-  const gap = bands.length > 1 ? 3 : 0;
-  const bandH = bands.length ? (height - gap * (bands.length - 1)) / bands.length : height;
+  const face = bands[bands.length - 1];
+  const edges = bands.slice(0, -1);
+  const faceH = 62;
+  const edgeH = edges.length ? Math.min(8, 78 / edges.length) : 0;
+  const faceY = 22;
   const filled = bands.filter((shell) => shell.ratio >= 1).length + (frame.ratio >= 1 ? 1 : 0);
   const total = bands.length + 1;
+  const readout = [...bands, frame];
   const summary = complete
-    ? "Deck forge complete"
-    : `Deck forge, ${filled} of ${total} parts filled. ${bands.map((shell) => `${shell.label} ${shell.actual} of ${shell.target}`).join(", ")}. Deck size ${frame.actual} of ${frame.target}.`;
+    ? "Forged metal deck. Every section is full."
+    : `Hologram deck, ${filled} of ${total} parts filled. ${bands.map((shell) => `${shell.label} ${shell.actual} of ${shell.target}`).join(", ")}. Deck size ${frame.actual} of ${frame.target}.`;
 
   return (
     <div
@@ -126,55 +128,85 @@ export function HoloForge({
       role="img"
       aria-label={summary}
     >
-      <svg viewBox="0 0 200 200" aria-hidden="true">
+      <svg viewBox="0 0 236 168" aria-hidden="true">
         <defs>
-          <filter id={filterId} x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="1.6" result="blur" />
-            <feColorMatrix in="blur" type="matrix" result="glow" values="0 0 0 0 0  0 0 0 0 0.94  0 0 0 0 1  0 0 0 0.85 0" />
+          <linearGradient id={`${filterId}-steel`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#f6f1e8" />
+            <stop offset="0.16" stopColor="#d9c4a4" />
+            <stop offset="0.42" stopColor="#8f877c" />
+            <stop offset="0.7" stopColor="#5a5148" />
+            <stop offset="1" stopColor="#2e2924" />
+          </linearGradient>
+          <linearGradient id={`${filterId}-bronze`} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#f3ddb0" />
+            <stop offset="0.45" stopColor="#b8833e" />
+            <stop offset="1" stopColor="#5c3d22" />
+          </linearGradient>
+          <pattern id={`${filterId}-brush`} width="3" height="2" patternUnits="userSpaceOnUse">
+            <rect width="3" height="1" fill="#1a1612" opacity="0.16" />
+          </pattern>
+          <filter id={filterId} x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="2.2" result="blur" />
+            <feColorMatrix in="blur" type="matrix" result="glow" values="0 0 0 0 1  0 0 0 0 0.78  0 0 0 0 0.35  0 0 0 0.9 0" />
             <feMerge>
               <feMergeNode in="glow" />
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
         </defs>
-        <rect
-          className="holo-forge-frame"
-          x="62"
-          y={top - 4}
-          width="124"
-          height={height + 8}
-          rx="8"
-          pathLength="100"
-          strokeDasharray="100"
-          strokeDashoffset={100 - frame.ratio * 100}
-        >
-          <title>{`${frame.label} ${frame.actual} of ${frame.target}`}</title>
-        </rect>
-        {bands.map((shell, index) => {
-          const y = top + (bands.length - 1 - index) * (bandH + gap);
-          return (
-            <g key={shell.id} className={shell.ratio >= 1 ? "is-full" : ""}>
-              <title>{`${shell.label}: ${shell.actual} of ${shell.target}`}</title>
-              <rect className="holo-forge-wire" x="68" y={y} width="112" height={bandH} rx="3" />
-              <rect
-                className="holo-forge-fill"
-                x="68"
-                y={y}
-                width="112"
-                height={bandH}
-                rx="3"
-                style={{ transform: `scaleY(${shell.ratio})` }}
-              />
-              <text className="holo-forge-label" x="58" y={y + bandH / 2} textAnchor="end" dominantBaseline="middle">{shell.short}</text>
+
+        <g className="holo-deck-holo">
+          {edges.map((shell, index) => {
+            const y = faceY + faceH + (edges.length - 1 - index) * edgeH;
+            return (
+              <g key={shell.id} className={shell.ratio >= 1 ? "is-full" : ""}>
+                <title>{`${shell.label}: ${shell.actual} of ${shell.target}`}</title>
+                <rect className="holo-card-wire" x={20 + index * 0.4} y={y} width={100 - index * 0.3} height={edgeH - 1.2} rx="1.5" />
+                <rect className="holo-card-fill" x={20 + index * 0.4} y={y} width={100 - index * 0.3} height={edgeH - 1.2} rx="1.5" opacity={shell.ratio} />
+              </g>
+            );
+          })}
+          {face ? (
+            <g className={face.ratio >= 1 ? "is-full" : ""}>
+              <title>{`${face.label}: ${face.actual} of ${face.target}`}</title>
+              <rect className="holo-card-wire holo-card-face" x="16" y={faceY} width="108" height={faceH} rx="5" />
+              <rect className="holo-card-fill holo-card-face" x="16" y={faceY} width="108" height={faceH} rx="5" style={{ transform: `scaleY(${face.ratio})` }} />
+              <rect className="holo-card-rim" x="20" y={faceY + 3} width="100" height={faceH - 8} rx="4" opacity={0.25 + face.ratio * 0.75} />
             </g>
-          );
-        })}
-        <text className="holo-forge-count" x="186" y="12" textAnchor="end">{complete ? "Forged" : `${filled}/${total}`}</text>
-        <g className="holo-forge-seal" filter={`url(#${filterId})`}>
-          <circle cx="124" cy="104" r="22" />
-          <text x="124" y="108" textAnchor="middle">Forged</text>
+          ) : null}
+        </g>
+
+        <g className="holo-deck-metal" filter={`url(#${filterId})`}>
+          {Array.from({ length: 7 }, (_, index) => (
+            <rect key={index} x={22 + index * 0.35} y={faceY + faceH + (6 - index) * 5.2} width={96 - index * 0.2} height="4.2" rx="1.2" fill={`url(#${filterId}-bronze)`} />
+          ))}
+          <rect x="14" y={faceY} width="112" height={faceH} rx="5" fill={`url(#${filterId}-steel)`} />
+          <rect x="14" y={faceY} width="112" height={faceH} rx="5" fill={`url(#${filterId}-brush)`} />
+          <rect x="14" y={faceY} width="112" height="7" rx="5" fill="#f8f1e4" opacity="0.55" />
+          <rect x="14" y={faceY + faceH - 6} width="112" height="6" rx="3" fill="#2a241c" opacity="0.45" />
+          <ellipse cx="70" cy={faceY + 32} rx="22" ry="26" fill="none" stroke="#4a3b2a" strokeWidth="1.6" />
+          <ellipse cx="70" cy={faceY + 31.4} rx="22" ry="26" fill="none" stroke="#f4e7cf" strokeWidth="0.6" opacity="0.7" />
+          <circle cx="70" cy={faceY + 32} r="10" fill="none" stroke="#6d5334" strokeWidth="1.1" />
+          <path d="M70 26.5 L74.5 34 H65.5 Z" fill="#6a4e30" transform={`translate(0 ${faceY})`} />
+        </g>
+
+        <g className="holo-readout">
+          {readout.map((shell, index) => {
+            const y = 14 + index * (146 / Math.max(readout.length, 1));
+            return (
+              <g key={shell.id}>
+                <title>{`${shell.label}: ${shell.actual} of ${shell.target}`}</title>
+                <text className="holo-readout-label" x="132" y={y + 7}>{shell.short}</text>
+                <rect className="holo-readout-track" x="162" y={y + 2} width="66" height="5" rx="1" />
+                <rect className="holo-readout-fill" x="162" y={y + 2} width={66 * shell.ratio} height="5" rx="1" />
+              </g>
+            );
+          })}
         </g>
       </svg>
+      <span className="holo-deck-sweep" />
+      <span className="holo-deck-glint" />
+      <span className="holo-forge-flash" />
     </div>
   );
 }

@@ -101,7 +101,12 @@ test("the deck hologram fills from existing targets and forges when they are met
   assert.match(workbench, /<HoloForge/);
   assert.match(prop, /is-flourish/);
   assert.match(prop, /<title>/);
-  assert.match(css, /\.holo-forge\.is-forged \.holo-forge-seal/);
+  assert.match(prop, /holo-deck-metal/);
+  assert.match(prop, /holo-card-wire/);
+  assert.match(prop, /holo-readout/);
+  assert.match(css, /\.holo-forge\.is-forged \.holo-deck-metal \{ opacity: 1/);
+  assert.match(css, /\.holo-forge\.is-forged \.holo-deck-holo \{ opacity: 0/);
+  assert.match(css, /holo-forge-flash/);
 });
 
 test("coach and ghost accents stay off the text", () => {
