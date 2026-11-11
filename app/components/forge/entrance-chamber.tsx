@@ -9,6 +9,7 @@ import { ForgeRune } from "./forge-motion-flourishes";
 import { PlayerCompassCard } from "./player-compass-card";
 import { SampleWalkthrough } from "./sample-walkthrough";
 import { useForgeSession } from "../../forge-session-context";
+import { HoloField } from "../hologram-forge";
 
 export function EntranceChamber() {
   const {
@@ -31,6 +32,7 @@ export function EntranceChamber() {
   return (
     <section className="forge-entrance">
       <div className="entrance-stage">
+      <HoloField className="holo-hero-field holo-field-hero" />
       <HeroAnvil motionMode={motionMode} />
       <div className="entrance-copy">
         <span className="forge-eyebrow">

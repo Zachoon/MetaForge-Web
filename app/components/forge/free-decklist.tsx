@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cardArtCrop, cardImage } from "../../card-art";
 import { commanderOracleText } from "../../commander-lane-scoring.mjs";
 import { configureCardTagLookup } from "../../strategic-intent.mjs";
@@ -18,6 +18,8 @@ import { useForgeSession } from "../../forge-session-context";
 import { ManaRow, SetMark } from "../mana-symbols";
 import { ColorIdentityChips, ForgeProp } from "../tripo-assets";
 import { DeckOptionsDrawer } from "./deck-options-drawer";
+import { segmentsFromDiagnosis } from "../../hologram-forge-segments.mjs";
+import { HoloForge, HoloRule } from "../hologram-forge";
 import "../../free-decklist.css";
 
 configureCardTagLookup(() => [], { onlyIfMissing: true });
@@ -121,6 +123,7 @@ export function FreeDecklist() {
   const [clearedKey, setClearedKey] = useState("");
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [prefersReduced, setPrefersReduced] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const staticMotion = motionMode === "quiet" || prefersReduced;
   const layout = deckViewMode === "gallery" ? "gallery" : "ledger";
@@ -132,6 +135,19 @@ export function FreeDecklist() {
     media.addEventListener("change", apply);
     return () => media.removeEventListener("change", apply);
   }, []);
+
+  useEffect(() => {
+    const root = listRef.current;
+    if (!root || typeof IntersectionObserver === "undefined") return;
+    const nodes = root.querySelectorAll<HTMLElement>(".ghost-glass");
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        entry.target.setAttribute("data-holo-live", entry.isIntersecting ? "on" : "off");
+      }
+    }, { rootMargin: "80px" });
+    nodes.forEach((node) => observer.observe(node));
+    return () => observer.disconnect();
+  }, [shown, layout, deckCoaching]);
 
   useEffect(() => {
     if (!deckCoaching) {
@@ -394,10 +410,15 @@ export function FreeDecklist() {
   const heroArt = selectedCommander ? cardArtCrop(selectedCommander.name) : "/forge-hero.webp";
 
   return (
-    <div className="free-decklist" data-motion={staticMotion ? "static" : "full"} data-free-decklist="true">
+    <div ref={listRef} className="free-decklist" data-motion={staticMotion ? "static" : "full"} data-free-decklist="true">
       <header className="deck-page-hero free-deck-hero">
         <img className="deck-hero-art" src={heroArt} alt="" />
         <span className="deck-hero-fade" aria-hidden="true" />
+        <HoloForge {...segmentsFromDiagnosis(diagnosis, {
+          commander: Boolean(selectedCommander),
+          deckSize: targetDeckSize(format),
+          cardCount: diagnosis.cardCount + (selectedCommander ? 1 : 0),
+        })} />
         <div className="deck-hero-plate">
           <div>
             <span className="free-eyebrow"><SetMark code="cmd" label="Commander" />Commander decklist · coaching {deckCoaching ? "on" : "off"}</span>
@@ -540,6 +561,7 @@ export function FreeDecklist() {
         </aside>
       </DeckOptionsDrawer>
         <section className="free-list-pane" aria-label="Decklist">
+          <HoloRule />
           {deckCoaching && (
             <div className="ghost-controls" role="group" aria-label="Ghost picks">
               <button type="button" disabled={!shownGhosts.length} onClick={() => shownGhosts[0] && addFace(shownGhosts[0].face)}>
@@ -596,7 +618,7 @@ export function FreeDecklist() {
                           <span className="ghost-wax-frame">
                             <span className="visual-deck-card-art">
                               <img data-card-name={ghost.face.name} src={ghost.face.image || cardImage(ghost.face.name)} alt="" />
-                              <span className="ghost-glass" aria-hidden="true" />
+                              <span className="ghost-glass" data-holo="shimmer" data-holo-live="on" aria-hidden="true" />
                             </span>
                             <i className="ghost-wax-seal" aria-hidden="true" />
                           </span>
