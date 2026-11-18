@@ -1,5 +1,8 @@
 # MF-SECURITY-002 — Final report
 
+> **Correction (2026-11-18):** merging to GitHub `main` does **not** deploy production. See
+> [MF-SECURITY-002-CORRECTION-DEPLOY-MODEL](MF-SECURITY-002-CORRECTION-DEPLOY-MODEL.md).
+
 2026-11-17. **Nothing was pushed, merged into a shared branch, deployed or written to any
 production system.**
 
@@ -13,7 +16,7 @@ The patch:
 - provably removes the vulnerable code from the built Worker
 
 The remaining open items are owner decisions:
-- push / merge (= deploy)
+- push / merge, then deploy (separate approvals; merging does not deploy)
 - the separate reconciliation of local `main`
 
 None of them is a defect in the hotfix.
@@ -94,7 +97,7 @@ Details in MF-SECURITY-002-TEST-RESULTS.
 - [ ] Accept the assessment (ADVISORY-MATRIX §2) and the 19.2.9-only scope.
 - [ ] Confirm the hosted build setup in the Cloudflare dashboard (DEPLOYMENT-PLAN, prerequisite 2).
 - [ ] **Approve the push** of `security/mf-security-002-rsc-prod` and the PR into GitHub `main`.
-- [ ] **Approve the merge = production deploy** (Option A), with no other merges until it is
+- [ ] **Approve the merge, then the production deploy** (Option A; merging alone does not deploy), with no other merges until it is
       verified.
 - [ ] Run the POST-DEPLOY-CHECKLIST: live `framework-*.js` shows 19.2.9, stamp shows the merge
       commit, smoke test, 15 min of `wrangler tail`.
