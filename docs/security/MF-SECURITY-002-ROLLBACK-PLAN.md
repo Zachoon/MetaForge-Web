@@ -1,5 +1,8 @@
 # MF-SECURITY-002 — Rollback plan
 
+> **Correction (2026-11-18):** merging to GitHub `main` does **not** deploy production. See
+> [MF-SECURITY-002-CORRECTION-DEPLOY-MODEL](MF-SECURITY-002-CORRECTION-DEPLOY-MODEL.md).
+
 Rolling back **restores the vulnerable React 19.2.6 runtime**. Do it only if the hotfix itself
 causes a production failure that outweighs that risk, and prefer fixing forward where possible.
 
@@ -26,8 +29,9 @@ causes a production failure that outweighs that risk, and prefer fixing forward 
    npx wrangler rollback 8ad379ff-4449-46d6-b6ef-fd92a0e953c1 --message "Roll back MF-SECURITY-002"
    ```
    Use the version ID you recorded before deploying if it differs.
-2. **Also revert the hotfix on GitHub `main`** with a revert PR of `580ae49`. Production
-   redeploys on every merge to `main`, so otherwise the next merge puts the hotfix straight back.
+2. **Also revert the hotfix on GitHub `main`** with a revert PR of `580ae49`. This keeps
+   `main` matching production; without it, the next deploy from `main` puts the hotfix straight
+   back. (Merging the revert does not itself deploy.)
    This is preferable to leaving `main` and production out of step.
 3. Nothing else needs rolling back:
    - no D1 migration

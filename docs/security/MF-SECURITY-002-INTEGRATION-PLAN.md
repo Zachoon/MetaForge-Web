@@ -1,5 +1,8 @@
 # MF-SECURITY-002 — Integration plan
 
+> **Correction (2026-11-18):** merging to GitHub `main` does **not** deploy production. See
+> [MF-SECURITY-002-CORRECTION-DEPLOY-MODEL](MF-SECURITY-002-CORRECTION-DEPLOY-MODEL.md).
+
 How the React hotfix, local `main` and the MF-ENGINEERING-001 stabilization sprint fit
 together. **Nothing was merged, rebased or pushed.** All conflict findings come from
 `git merge-tree --write-tree`, which writes no refs and touches no worktree.
@@ -8,7 +11,7 @@ together. **Nothing was merged, rebased or pushed.** All conflict findings come 
 
 ```
 e03fcdd (10/31, last common commit)
-├── GitHub main  ── 34 commits (PRs #43–#56) ── 01f03a3  ← PRODUCTION (auto-deployed on merge)
+├── GitHub main  ── 34 commits (PRs #43–#56) ── 01f03a3  ← PRODUCTION (deployed manually)
 │                                                  └── security/mf-security-002-rsc-prod (+3: hotfix, guard test, docs)
 └── local main   ── 11 commits (11/3–11/5) ── a8b8305   ← not on GitHub, not in production
                                                   ├── security/mf-security-002-rsc (+2: hotfix, guard test)
@@ -76,7 +79,8 @@ The sprint's two extra conflicts:
 2. **Reconcile local `main` with GitHub `main`** (owner decision).
    - Rebase or merge the 11 local commits onto GitHub `main`, resolving the 18 conflicts.
    - Run the full suite.
-   - Merging the result into GitHub `main` **deploys it**, so it is a release in its own right.
+   - Merging the result into GitHub `main` does not deploy it, but the next `wrangler deploy` from
+     `main` will, so treat it as a release in its own right.
    - The hotfix commit `580ae49` is already on GitHub `main` by then. The equivalent local commit
      `52c4cb5` has the same lockfile content, so git treats the dependency change as identical.
      Drop `52c4cb5`/`bbcd4a5` during the rebase, or let them resolve as no-ops.

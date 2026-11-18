@@ -1,5 +1,8 @@
 # MF-SECURITY-002 — Baseline
 
+> **Correction (2026-11-18):** merging to GitHub `main` does **not** deploy production. See
+> [MF-SECURITY-002-CORRECTION-DEPLOY-MODEL](MF-SECURITY-002-CORRECTION-DEPLOY-MODEL.md).
+
 Recorded 2026-11-17. All commands were run locally, apart from read-only checks of the public
 site and the Cloudflare deployment list, as noted.
 
@@ -22,7 +25,8 @@ Conclusions:
 - Merges to GitHub `main` are deployed automatically. Every deploy is tagged `source: wrangler`,
   `triggered_by: deployment`, and the repo has no workflow file. That matches Cloudflare Workers
   Builds connected to the repository; the dashboard setting was not inspected.
-- **Pushing or merging to GitHub `main` should be treated as a production deploy.**
+- ~~Pushing or merging to GitHub `main` should be treated as a production deploy.~~
+  **Corrected 2026-11-18: merging does not deploy; production changes only on `wrangler deploy`.**
 - The memory note saying "git push alone does not deploy" dates from August–September and is out
   of date.
 

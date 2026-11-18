@@ -1,5 +1,8 @@
 # MF-SECURITY-002 — Post-deploy checklist
 
+> **Correction (2026-11-18):** merging to GitHub `main` does **not** deploy production. See
+> [MF-SECURITY-002-CORRECTION-DEPLOY-MODEL](MF-SECURITY-002-CORRECTION-DEPLOY-MODEL.md).
+
 All checks are ordinary reads of the public site or of the owner's own Cloudflare account.
 **No crafted server-action, exploit or load-test requests against production.**
 

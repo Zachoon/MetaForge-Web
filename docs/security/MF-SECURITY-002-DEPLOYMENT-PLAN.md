@@ -1,5 +1,8 @@
 # MF-SECURITY-002 — Deployment plan
 
+> **Correction (2026-11-18):** merging to GitHub `main` does **not** deploy production. See
+> [MF-SECURITY-002-CORRECTION-DEPLOY-MODEL](MF-SECURITY-002-CORRECTION-DEPLOY-MODEL.md).
+
 **Nothing here has been executed.** Each step marked (approval) needs the owner.
 
 ## What ships
@@ -19,7 +22,9 @@
 1. The owner accepts the advisory assessment in MF-SECURITY-002-ADVISORY-MATRIX.
 2. Confirm in the Cloudflare dashboard how production is built: Workers & Pages →
    `metaforge-private-alpha` → Settings → Builds.
-   - Evidence says merges to GitHub `main` deploy automatically within 1–2 minutes.
+   - ~~Evidence says merges to GitHub `main` deploy automatically within 1–2 minutes.~~
+     Corrected 2026-11-18: they do not. After merging, deploy with `npx wrangler deploy` from a
+     clean checkout of the merge commit.
    - Note the build command and package manager (expected: npm with `package-lock.json`).
 3. No other PR should be merged into GitHub `main` between the hotfix merge and its verification.
 4. Record the current production version for rollback:
@@ -53,7 +58,8 @@ Use only if the hosted build is broken or unavailable.
    ```
 2. (approval: deploy) `npx wrangler deploy`
 3. **Immediately** merge the same commits into GitHub `main` (Option A, steps 1–3).
-   - Otherwise the next merge to `main` redeploys React 19.2.6 and silently removes the fix.
+   - Otherwise `main` and production diverge, and the next deploy from `main` would ship React
+     19.2.6 again and silently remove the fix.
 
 ## Do not
 
