@@ -1,0 +1,73 @@
+Commander
+1 Ezuri, Renegade Leader
+
+Deck
+1 Llanowar Elves
+1 Elvish Mystic
+1 Fyndhorn Elves
+1 Elvish Archdruid
+1 Priest of Titania
+1 Elvish Visionary
+1 Wirewood Symbiote
+1 Heedless One
+1 Imperious Perfect
+1 Elvish Champion
+1 Elvish Warmaster
+1 Dwynen's Elite
+1 Elvish Clancaller
+1 Lys Alana Huntmaster
+1 Joraga Warcaller
+1 Elvish Harbinger
+1 Timberwatch Elf
+1 Steel Leaf Champion
+1 Leatherback Baloth
+1 Craterhoof Behemoth
+1 End-Raze Forerunners
+1 Thragtusk
+1 Wood Elves
+1 Elvish Piper
+1 Elvish Pioneer
+1 Talara's Battalion
+1 Elvish Vanguard
+1 Drove of Elves
+1 Jagged-Scar Archers
+1 Marwyn, the Nurturer
+1 Allosaurus Shepherd
+1 Rhys the Exiled
+1 Llanowar Tribe
+1 Ambush Viper
+1 Elvish Eulogist
+1 Immaculate Magistrate
+1 Copperhorn Scout
+1 Elvish Rejuvenator
+1 Nettle Sentinel
+1 Quirion Ranger
+1 Scryb Ranger
+1 Elderleaf Mentor
+1 Wildheart Invoker
+1 Krosan Tusker
+1 Pathbreaker Ibex
+1 Pelakka Wurm
+1 Woodland Champion
+1 Garruk Wildspeaker
+1 Overrun
+1 Overwhelming Stampede
+1 Triumph of the Hordes
+1 Beastmaster Ascension
+1 Door of Destinies
+1 Coat of Arms
+1 Gilt-Leaf Ambush
+1 Elvish Promenade
+1 Tyvar's Stand
+1 Collected Company
+1 Chord of Calling
+1 Natural Order
+1 Green Sun's Zenith
+1 Sol Ring
+1 Skyshroud Claim
+1 Vitalize
+1 Ezuri's Predation
+1 Heroic Intervention
+1 Pendelhaven
+1 Tranquil Thicket
+31 Forest

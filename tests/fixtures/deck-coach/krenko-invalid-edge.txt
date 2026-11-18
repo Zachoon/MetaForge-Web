@@ -1,0 +1,30 @@
+// Commander
+1 Krenko, Mob Boss
+
+// Mainboard
+1x Goblin Bombardment
+1 Goblin Chieftain *F*
+1 Skirk Prospector [Ramp]
+2 Lightning Bolt
+1 Lightening Bolt
+1 Swords to Plowshares
+1 Dockside Extortionist
+1 Sol Ring (C21) 263
+Goblin Matron
+this is not a card!!!
+1 Goblin Warchief
+1 Goblin Ringleader
+1 Siege-Gang Commander
+1 Purphoros, God of the Forge
+1 Impact Tremors
+1 Shared Animosity
+1 Goblin Recruiter
+1 Mogg War Marshal
+1 Beetleback Chief
+1 Legion Warboss
+1 Chaos Warp
+20 Mountain
+
+Sideboard
+1 Pyroblast
+1 Red Elemental Blast

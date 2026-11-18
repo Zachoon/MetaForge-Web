@@ -727,6 +727,24 @@ const SWAP_CATALOG = Object.freeze([
   { name: "Swiftfoot Boots", typeLine: "Artifact — Equipment", manaCost: "{2}", colors: [], plans: ["*"], because: "The equipped creature has hexproof and haste. Hexproof stops an opponent from targeting it, and you can still target it yourself.", oracleText: "Equipped creature has hexproof and haste.\nEquip {1}." },
 ]);
 
+/**
+ * The printed facts behind a suggested add, so a caller can replay a swap
+ * through this coach (before/after) without a second lookup. Read-only copy.
+ */
+export function swapCatalogCard(name = "") {
+  const key = String(name).trim().toLowerCase();
+  const entry = SWAP_CATALOG.find((card) => card.name.toLowerCase() === key);
+  if (!entry) return null;
+  return {
+    name: entry.name,
+    typeLine: entry.typeLine,
+    manaCost: entry.manaCost,
+    oracleText: entry.oracleText,
+    colorIdentity: [...entry.colors],
+    cmc: printedCmc(entry),
+  };
+}
+
 function catalogRole(entry) {
   return classifyPrintedCard(entry);
 }
