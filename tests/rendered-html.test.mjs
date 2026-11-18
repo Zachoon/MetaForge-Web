@@ -160,7 +160,7 @@ test("publishes crawlable MTG tool landing pages with unique metadata and useful
   const analyzerHtml = await analyzer.text();
   assert.match(analyzerHtml, /<title>MTG Deck Analyzer \| MetaForge<\/title>/i);
   assert.match(analyzerHtml, /Analyze a Magic: The Gathering decklist/i);
-  assert.match(analyzerHtml, /href="\/\?intent=analyze"/i);
+  assert.match(analyzerHtml, /href="\/deck-check"/i);
   assert.match(analyzerHtml, /"@type":"WebApplication"/i);
   assert.match(analyzerHtml, /"@type":"BreadcrumbList"/i);
 
@@ -191,6 +191,29 @@ test("publishes crawlable MTG tool landing pages with unique metadata and useful
     assert.match(html, /"@type":"WebApplication"/i);
     assert.match(html, /"@type":"BreadcrumbList"/i);
   }
+});
+
+test("serves Deck Check to anonymous visitors and links every analyze entry point to it", async () => {
+  const response = await render("https://metaforge.gg/deck-check");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /<title>Free MTG Deck Checker &amp; Coach \| MetaForge<\/title>/i);
+  assert.match(html, /<link rel="canonical" href="https:\/\/metaforge\.gg\/deck-check"/i);
+  assert.match(html, /"@type":"WebApplication","name":"MetaForge Deck Check"/i);
+  assert.match(html, /Check your deck/);
+  assert.match(html, /DECK CHECK · FREE · NO ACCOUNT/);
+  assert.match(html, /aria-label="Sample decks"/);
+  assert.match(html, /Ezuri elves/);
+  assert.match(html, /Only card names are sent to Scryfall/);
+  assert.match(html, /<a[^>]+href="\/deck-check"[^>]*>Analyze<\/a>/i);
+
+  const home = await (await render()).text();
+  assert.match(home, /For Commander players\./);
+  assert.match(home, /class="entrance-check-link" href="\/deck-check"/);
+  assert.match(home, /Already play a deck\?/);
+
+  const sitemap = await (await render("https://metaforge.gg/sitemap.xml")).text();
+  assert.match(sitemap, /<loc>https:\/\/metaforge\.gg\/deck-check<\/loc>/);
 });
 
 test("publishes brand trust and expanded problem-first learning pages", async () => {
@@ -297,7 +320,7 @@ test("publishes a crawlable public robots file and sitemap", async () => {
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/academy\/how-many-lands-should-a-commander-deck-have<\/loc>/);
   assert.match(xml, /<loc>https:\/\/metaforge\.gg\/tools\/commander-land-calculator<\/loc>/);
   const locations = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
-  assert.equal(locations.length, 102);
+  assert.equal(locations.length, 103); // 102 + /deck-check
   assert.equal(new Set(locations).size, locations.length);
   assert.ok(locations.includes("https://metaforge.gg/learn"));
 });

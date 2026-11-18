@@ -693,3 +693,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .guest-keep-deck{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 14px;border:1px solid #d8792f;background:#d8792f;color:#160c08;font:800 13px/1.2 Inter,sans-serif;text-decoration:none}
 @media(max-width:560px){.masterwork-deck-hero .guest-keep-deck{grid-column:1/-1}}
 .entrance-secondary button:hover,.entrance-secondary button:focus-visible{outline:0;color:#f0d2aa}
+/* Deck Check entry: a real secondary path for a finished deck, visible without opening the details drawer. */
+.entrance-check-link{display:grid;gap:4px;margin-top:14px;padding:12px 14px;border:1px solid rgba(127,184,168,.45);border-left:3px solid #7fb8a8;background:rgba(9,14,13,.55);color:#d7e2dc;text-decoration:none;font-size:14px;line-height:1.5;min-height:44px}
+.entrance-check-link strong{color:#f3efe6;font-size:15px}
+.entrance-check-link:hover strong,.entrance-check-link:focus-visible strong{color:#f0d2aa}
+.entrance-check-link:focus-visible{outline:2px solid #ffd09b;outline-offset:2px}
