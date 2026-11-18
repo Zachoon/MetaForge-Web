@@ -34,7 +34,7 @@ export function articleDocument(article, related = []) {
       <nav class="mf-site-nav" aria-label="MetaForge">
         <a href="/" aria-current="page">Explore</a>
         <a href="/?intent=decks">Decks</a>
-        <a href="/?intent=analyze">Analyze</a>
+        <a href="/deck-check">Analyze</a>
         <a href="/tools">Database</a>
         <a href="/decks">Community</a>
       </nav>

@@ -517,7 +517,19 @@ export default function Home() {
 
   function openAnalyze() {
     if (!hasValidatedDeck) {
-      beginFreeDecklist("complete");
+      // No forged deck in this session: Analyze opens Deck Check, the free
+      // coaching report, carrying over any list already typed here.
+      try {
+        if (deck.trim()) {
+          const commanders = [selectedCommander?.name, selectedSecondCommander?.name].filter(Boolean);
+          const listed = commanders.every((name) => deck.toLowerCase().includes(String(name).toLowerCase()));
+          const text = commanders.length && !listed ? `Commander\n${commanders.map((name) => `1 ${name}`).join("\n")}\n\nDeck\n${deck}` : deck;
+          window.sessionStorage.setItem("metaforge.deckCheck.draft.v1", JSON.stringify({ text, format: "commander", strategy: "" }));
+        }
+      } catch {
+        /* Storage can be blocked; Deck Check still opens empty. */
+      }
+      window.location.assign("/deck-check");
       return;
     }
     setChamber("workbench");

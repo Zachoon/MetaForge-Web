@@ -12,7 +12,7 @@ export const TOOL_PAGES = [
       ["Test one useful improvement", "Explore a focused card swap and compare what the change adds, removes, and leaves unresolved before editing your list."],
     ],
     cta: "Analyze my MTG deck",
-    href: "/?intent=analyze",
+    href: "/deck-check",
   },
   {
     slug: "commander-deck-builder",
@@ -42,7 +42,7 @@ export const TOOL_PAGES = [
       ["Context-sensitive card review", "A card is evaluated against this commander and this plan, reducing generic recommendations that fit the format but not the deck."],
     ],
     cta: "Check my Commander deck",
-    href: "/?intent=analyze",
+    href: "/deck-check",
   },
   {
     slug: "commander-mana-base-analyzer",
@@ -54,10 +54,10 @@ export const TOOL_PAGES = [
     sections: [
       ["Land count in context", "Evaluate lands alongside ramp, card selection, average cost, commander cost, and the deck’s intended pace."],
       ["Color access", "Separate total mana from usable colored sources so early double-pip spells and multicolor commanders receive the support they need."],
-      ["Opening-hand evidence", "Goldfish sample hands and connect weak starts to land count, color access, curve, or sequencing rather than guessing."],
+      ["Color timing", "For each color, find the spell that needs it soonest and check whether enough untapped sources arrive by that turn, quoting the cards that do and do not count."],
     ],
     cta: "Analyze my mana base",
-    href: "/?intent=analyze",
+    href: "/deck-check",
   },
   {
     slug: "commander-land-calculator",
@@ -72,7 +72,7 @@ export const TOOL_PAGES = [
       ["A range, not a verdict", "Use the result as a starting point, then test opening hands and revise from real play evidence."],
     ],
     cta: "Analyze my complete mana base",
-    href: "/?intent=analyze",
+    href: "/deck-check",
     calculator: "lands",
   },
   {
@@ -88,7 +88,7 @@ export const TOOL_PAGES = [
       ["Check the hardest spells", "Run the calculation for the early or color-intensive cards that matter most—not every splash card."],
     ],
     cta: "Analyze every spell in my deck",
-    href: "/?intent=analyze",
+    href: "/deck-check",
     calculator: "colors",
   },
   {
@@ -134,7 +134,7 @@ export const TOOL_PAGES = [
       ["Compare the tradeoff", "Each swap removes something as well as adding it. Review what becomes stronger, what becomes weaker, and what remains unresolved."],
     ],
     cta: "Optimize my Commander deck",
-    href: "/?intent=analyze",
+    href: "/deck-check",
   },
   {
     slug: "mtg-mana-curve-analyzer",
@@ -149,7 +149,7 @@ export const TOOL_PAGES = [
       ["Test the opening sequence", "Sample hands reveal whether the deck can turn its theoretical curve into real plays with the colors it actually draws."],
     ],
     cta: "Analyze my MTG mana curve",
-    href: "/?intent=analyze",
+    href: "/deck-check",
   },
 ] as const;
 
