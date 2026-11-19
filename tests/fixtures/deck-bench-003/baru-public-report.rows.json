@@ -1,0 +1,642 @@
+{
+ "source": "https://metaforge.gg/decks/baru-wurmspeaker-b35d119648 as rendered 2026-11-19: names, quantities and role tags from the page; type lines empty as stored; mana values from the Scryfall snapshot (the page average 2.54 = 251.5/99 matches them)",
+ "rows": [
+  {
+   "quantity": 1,
+   "name": "Baru, Wurmspeaker",
+   "typeLine": "",
+   "roles": [
+    "commander"
+   ],
+   "cmc": 4
+  },
+  {
+   "quantity": 1,
+   "name": "Bane of Progress",
+   "typeLine": "",
+   "roles": [
+    "sweeper",
+    "counters",
+    "artifacts",
+    "threat"
+   ],
+   "cmc": 6
+  },
+  {
+   "quantity": 1,
+   "name": "Beast Whisperer",
+   "typeLine": "",
+   "roles": [
+    "draw",
+    "threat"
+   ],
+   "cmc": 4
+  },
+  {
+   "quantity": 1,
+   "name": "Beast Within",
+   "typeLine": "",
+   "roles": [
+    "interaction",
+    "tokens"
+   ],
+   "cmc": 3
+  },
+  {
+   "quantity": 1,
+   "name": "Bellowing Tanglewurm",
+   "typeLine": "",
+   "roles": [
+    "artifacts",
+    "threat"
+   ],
+   "cmc": 5
+  },
+  {
+   "quantity": 1,
+   "name": "Bookwurm",
+   "typeLine": "",
+   "roles": [
+    "draw",
+    "graveyard",
+    "lifegain",
+    "recursion",
+    "threat"
+   ],
+   "cmc": 8
+  },
+  {
+   "quantity": 1,
+   "name": "Bramble Wurm",
+   "typeLine": "",
+   "roles": [
+    "graveyard",
+    "lifegain",
+    "recursion",
+    "threat"
+   ],
+   "cmc": 7
+  },
+  {
+   "quantity": 1,
+   "name": "Castle Garenbrig",
+   "typeLine": "",
+   "roles": [
+    "land"
+   ],
+   "cmc": 0
+  },
+  {
+   "quantity": 1,
+   "name": "Cultivate",
+   "typeLine": "",
+   "roles": [
+    "ramp"
+   ],
+   "cmc": 3
+  },
+  {
+   "quantity": 1,
+   "name": "Defiler of Vigor",
+   "typeLine": "",
+   "roles": [
+    "counters",
+    "spells",
+    "threat"
+   ],
+   "cmc": 5
+  },
+  {
+   "quantity": 1,
+   "name": "Duskdale Wurm",
+   "typeLine": "",
+   "roles": [
+    "combat",
+    "threat"
+   ],
+   "cmc": 7
+  },
+  {
+   "quantity": 1,
+   "name": "Elderscale Wurm",
+   "typeLine": "",
+   "roles": [
+    "threat"
+   ],
+   "cmc": 7
+  },
+  {
+   "quantity": 1,
+   "name": "Elemental Bond",
+   "typeLine": "",
+   "roles": [
+    "draw"
+   ],
+   "cmc": 3
+  },
+  {
+   "quantity": 1,
+   "name": "Elvish Mystic",
+   "typeLine": "",
+   "roles": [
+    "ramp",
+    "threat"
+   ],
+   "cmc": 1
+  },
+  {
+   "quantity": 1,
+   "name": "Engulfing Slagwurm",
+   "typeLine": "",
+   "roles": [
+    "lifegain",
+    "threat"
+   ],
+   "cmc": 7
+  },
+  {
+   "quantity": 1,
+   "name": "Eternal Witness",
+   "typeLine": "",
+   "roles": [
+    "recursion",
+    "graveyard",
+    "threat"
+   ],
+   "cmc": 3
+  },
+  {
+   "quantity": 1,
+   "name": "Ezuri's Predation",
+   "typeLine": "",
+   "roles": [
+    "interaction",
+    "tokens"
+   ],
+   "cmc": 8
+  },
+  {
+   "quantity": 37,
+   "name": "Forest",
+   "typeLine": "",
+   "roles": [
+    "land"
+   ],
+   "cmc": 0
+  },
+  {
+   "quantity": 1,
+   "name": "Fyndhorn Elves",
+   "typeLine": "",
+   "roles": [
+    "ramp",
+    "threat"
+   ],
+   "cmc": 1
+  },
+  {
+   "quantity": 1,
+   "name": "Garruk's Uprising",
+   "typeLine": "",
+   "roles": [
+    "draw",
+    "combat"
+   ],
+   "cmc": 3
+  },
+  {
+   "quantity": 1,
+   "name": "Goreclaw, Terror of Qal Sisma",
+   "typeLine": "",
+   "roles": [
+    "combat",
+    "threat"
+   ],
+   "cmc": 4
+  },
+  {
+   "quantity": 1,
+   "name": "Greater Good",
+   "typeLine": "",
+   "roles": [
+    "draw",
+    "sacrifice"
+   ],
+   "cmc": 4
+  },
+  {
+   "quantity": 1,
+   "name": "Greater Sandwurm",
+   "typeLine": "",
+   "roles": [
+    "draw",
+    "selection",
+    "threat"
+   ],
+   "cmc": 7
+  },
+  {
+   "quantity": 1,
+   "name": "Grothama, All-Devouring",
+   "typeLine": "",
+   "roles": [
+    "draw",
+    "combat",
+    "threat"
+   ],
+   "cmc": 5
+  },
+  {
+   "quantity": 1,
+   "name": "Harmonize",
+   "typeLine": "",
+   "roles": [
+    "draw"
+   ],
+   "cmc": 4
+  },
+  {
+   "quantity": 1,
+   "name": "Heroic Intervention",
+   "typeLine": "",
+   "roles": [
+    "protection"
+   ],
+   "cmc": 2
+  },
+  {
+   "quantity": 1,
+   "name": "Hunter's Insight",
+   "typeLine": "",
+   "roles": [
+    "draw",
+    "combat"
+   ],
+   "cmc": 3
+  },
+  {
+   "quantity": 1,
+   "name": "Impervious Greatwurm",
+   "typeLine": "",
+   "roles": [
+    "protection",
+    "threat"
+   ],
+   "cmc": 10
+  },
+  {
+   "quantity": 1,
+   "name": "Kenrith's Transformation",
+   "typeLine": "",
+   "roles": [
+    "draw",
+    "interaction"
+   ],
+   "cmc": 2
+  },
+  {
+   "quantity": 1,
+   "name": "Kodama's Reach",
+   "typeLine": "",
+   "roles": [
+    "ramp"
+   ],
+   "cmc": 3
+  },
+  {
+   "quantity": 1,
+   "name": "Krosan Drover",
+   "typeLine": "",
+   "roles": [
+    "threat"
+   ],
+   "cmc": 4
+  },
+  {
+   "quantity": 1,
+   "name": "Krosan Grip",
+   "typeLine": "",
+   "roles": [
+    "interaction",
+    "artifacts"
+   ],
+   "cmc": 3
+  },
+  {
+   "quantity": 1,
+   "name": "Llanowar Elves",
+   "typeLine": "",
+   "roles": [
+    "ramp",
+    "threat"
+   ],
+   "cmc": 1
+  },
+  {
+   "quantity": 1,
+   "name": "Maskwood Nexus",
+   "typeLine": "",
+   "roles": [
+    "tokens",
+    "artifacts"
+   ],
+   "cmc": 4
+  },
+  {
+   "quantity": 1,
+   "name": "Nature's Claim",
+   "typeLine": "",
+   "roles": [
+    "interaction",
+    "artifacts"
+   ],
+   "cmc": 1
+  },
+  {
+   "quantity": 1,
+   "name": "Nature's Lore",
+   "typeLine": "",
+   "roles": [
+    "ramp"
+   ],
+   "cmc": 2
+  },
+  {
+   "quantity": 1,
+   "name": "Overwhelming Stampede",
+   "typeLine": "",
+   "roles": [],
+   "cmc": 5
+  },
+  {
+   "quantity": 1,
+   "name": "Pelakka Wurm",
+   "typeLine": "",
+   "roles": [
+    "draw",
+    "lifegain",
+    "combat",
+    "threat"
+   ],
+   "cmc": 7
+  },
+  {
+   "quantity": 1,
+   "name": "Penumbra Wurm",
+   "typeLine": "",
+   "roles": [
+    "tokens",
+    "threat"
+   ],
+   "cmc": 7
+  },
+  {
+   "quantity": 1,
+   "name": "Quilled Greatwurm",
+   "typeLine": "",
+   "roles": [
+    "recursion",
+    "counters",
+    "graveyard",
+    "combat",
+    "threat"
+   ],
+   "cmc": 6
+  },
+  {
+   "quantity": 1,
+   "name": "Ram Through",
+   "typeLine": "",
+   "roles": [
+    "interaction"
+   ],
+   "cmc": 2
+  },
+  {
+   "quantity": 1,
+   "name": "Rampant Growth",
+   "typeLine": "",
+   "roles": [
+    "ramp"
+   ],
+   "cmc": 2
+  },
+  {
+   "quantity": 1,
+   "name": "Reclamation Sage",
+   "typeLine": "",
+   "roles": [
+    "interaction",
+    "artifacts",
+    "threat"
+   ],
+   "cmc": 3
+  },
+  {
+   "quantity": 1,
+   "name": "Regrowth",
+   "typeLine": "",
+   "roles": [
+    "recursion",
+    "graveyard"
+   ],
+   "cmc": 2
+  },
+  {
+   "quantity": 1,
+   "name": "Return of the Wildspeaker",
+   "typeLine": "",
+   "roles": [
+    "draw"
+   ],
+   "cmc": 5
+  },
+  {
+   "quantity": 1,
+   "name": "Return to Nature",
+   "typeLine": "",
+   "roles": [
+    "interaction",
+    "graveyard",
+    "artifacts"
+   ],
+   "cmc": 2
+  },
+  {
+   "quantity": 1,
+   "name": "Rishkar's Expertise",
+   "typeLine": "",
+   "roles": [
+    "draw"
+   ],
+   "cmc": 6
+  },
+  {
+   "quantity": 1,
+   "name": "Sakura-Tribe Elder",
+   "typeLine": "",
+   "roles": [
+    "ramp",
+    "threat"
+   ],
+   "cmc": 2
+  },
+  {
+   "quantity": 1,
+   "name": "Sandwurm Convergence",
+   "typeLine": "",
+   "roles": [
+    "tokens"
+   ],
+   "cmc": 8
+  },
+  {
+   "quantity": 1,
+   "name": "Sifter Wurm",
+   "typeLine": "",
+   "roles": [
+    "selection",
+    "lifegain",
+    "threat"
+   ],
+   "cmc": 7
+  },
+  {
+   "quantity": 1,
+   "name": "Skyshroud Claim",
+   "typeLine": "",
+   "roles": [
+    "ramp"
+   ],
+   "cmc": 4
+  },
+  {
+   "quantity": 1,
+   "name": "Sol Ring",
+   "typeLine": "",
+   "roles": [
+    "artifacts",
+    "ramp"
+   ],
+   "cmc": 1
+  },
+  {
+   "quantity": 1,
+   "name": "Soul Swallower",
+   "typeLine": "",
+   "roles": [
+    "counters",
+    "graveyard",
+    "threat"
+   ],
+   "cmc": 4
+  },
+  {
+   "quantity": 1,
+   "name": "Swiftfoot Boots",
+   "typeLine": "",
+   "roles": [
+    "protection",
+    "artifacts"
+   ],
+   "cmc": 2
+  },
+  {
+   "quantity": 1,
+   "name": "Tail Swipe",
+   "typeLine": "",
+   "roles": [
+    "interaction"
+   ],
+   "cmc": 1
+  },
+  {
+   "quantity": 1,
+   "name": "Tamiyo's Safekeeping",
+   "typeLine": "",
+   "roles": [
+    "protection",
+    "lifegain"
+   ],
+   "cmc": 1
+  },
+  {
+   "quantity": 1,
+   "name": "Timeless Witness",
+   "typeLine": "",
+   "roles": [
+    "recursion",
+    "tokens",
+    "graveyard",
+    "threat"
+   ],
+   "cmc": 4
+  },
+  {
+   "quantity": 1,
+   "name": "Traverse the Outlands",
+   "typeLine": "",
+   "roles": [],
+   "cmc": 5
+  },
+  {
+   "quantity": 1,
+   "name": "Tribute to the World Tree",
+   "typeLine": "",
+   "roles": [
+    "draw",
+    "counters"
+   ],
+   "cmc": 3
+  },
+  {
+   "quantity": 1,
+   "name": "Whisperer of the Wilds",
+   "typeLine": "",
+   "roles": [
+    "ramp",
+    "threat"
+   ],
+   "cmc": 2
+  },
+  {
+   "quantity": 1,
+   "name": "Worldspine Wurm",
+   "typeLine": "",
+   "roles": [
+    "tokens",
+    "graveyard",
+    "threat"
+   ],
+   "cmc": 11
+  },
+  {
+   "quantity": 1,
+   "name": "Wrap in Vigor",
+   "typeLine": "",
+   "roles": [],
+   "cmc": 2
+  },
+  {
+   "quantity": 1,
+   "name": "Wurmcalling",
+   "typeLine": "",
+   "roles": [
+    "tokens"
+   ],
+   "cmc": 1
+  },
+  {
+   "quantity": 1,
+   "name": "Wurmcoil Engine",
+   "typeLine": "",
+   "roles": [
+    "tokens",
+    "artifacts",
+    "lifegain",
+    "threat"
+   ],
+   "cmc": 6
+  }
+ ]
+}

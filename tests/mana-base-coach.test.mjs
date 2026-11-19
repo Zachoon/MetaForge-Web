@@ -266,7 +266,10 @@ test("a four-color ramp deck treats land ramp as a search, not an extra land, an
   assert.match(text, /Swap:/);
   assert.equal(report.lands.count, 28);
   assert.equal(report.lands.targetLow, 36);
-  assert.equal(report.lands.targetHigh, 38);
+  // MF-DECK-COACH-003: the band runs from full ramp credit (36) to none (42);
+  // the credited top end is still reported. 28 lands is short either way.
+  assert.equal(report.lands.creditedHigh, 38);
+  assert.equal(report.lands.targetHigh, 42);
   assert.equal(report.lands.baselineLow, 40);
   assert.equal(report.lands.baselineHigh, 42);
   assert.match(text, /Without the ramp package it would want about 40–42/);

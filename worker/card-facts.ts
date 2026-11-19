@@ -24,6 +24,14 @@ function localFact(name: string): { name: string; type_line: string; cmc?: numbe
     : { name: local[0], type_line };
 }
 
+/**
+ * Printed type line from the bundled index, with no network call. Used to
+ * repair stored report rows that were saved without a type line.
+ */
+export function localCardType(name: string): string {
+  return localFact(String(name || "").trim())?.type_line || "";
+}
+
 async function readJson(response: Response): Promise<any | null> {
   try { return await response.json(); } catch { return null; }
 }

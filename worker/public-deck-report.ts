@@ -1,7 +1,7 @@
 import { secondaryJourneyMarkup } from "../app/secondary-journey.mjs";
 import { userKey } from "./account-bench";
 import { loadGeneration } from "./forge-generation-store";
-import { lookupCardTypes } from "./card-facts";
+import { localCardType, lookupCardTypes } from "./card-facts";
 
 interface PublicReportEnv {
   DB: D1Database;
@@ -62,17 +62,51 @@ const rowType = (typeLine: string) => {
   return "Other";
 };
 
-function sanitizeRows(rows: unknown): PublicRow[] {
+/**
+ * Forge rows were stored without a type line (the Baru report on production:
+ * every card grouped as "Other", "0 Lands" beside 38 lands, and an average
+ * mana value that divided by the lands). Repair the type line from the
+ * bundled card-type index, then from the row's own "land" role tag, so the
+ * grouping and the land count come from what the card is.
+ */
+export function repairRowType(row: PublicRow): PublicRow {
+  if (row.typeLine) return row;
+  const typeLine = localCardType(row.name) || (row.roles.some((role) => role.toLowerCase() === "land") ? "Land" : "");
+  return typeLine ? { ...row, typeLine: safeText(typeLine, 140) } : row;
+}
+
+/**
+ * Fill type lines the bundled index could not, from Scryfall (lookupCardTypes,
+ * the same source the saved-deck path uses). Returns the rows and whether any
+ * changed, so a caller can store the repair once instead of on every view.
+ */
+export async function ensureRowTypes(rows: PublicRow[], lookup = lookupCardTypes): Promise<{ rows: PublicRow[]; changed: boolean }> {
+  const missing = rows.filter((row) => !row.typeLine).map((row) => row.name);
+  if (!missing.length) return { rows, changed: false };
+  let types: Map<string, { typeLine: string; cmc?: number }>;
+  try { types = await lookup(missing); } catch { return { rows, changed: false }; }
+  let changed = false;
+  const next = rows.map((row) => {
+    if (row.typeLine) return row;
+    const fact = types.get(row.name.toLowerCase());
+    if (!fact?.typeLine) return row;
+    changed = true;
+    return { ...row, typeLine: safeText(fact.typeLine, 140), cmc: row.cmc || Math.max(0, Math.min(30, Number(fact.cmc) || 0)) };
+  });
+  return { rows: next, changed };
+}
+
+export function sanitizeRows(rows: unknown): PublicRow[] {
   if (!Array.isArray(rows)) return [];
   return rows.slice(0, 250).map((value) => {
     const row = value && typeof value === "object" ? value as Record<string, unknown> : {};
-    return {
+    return repairRowType({
       quantity: Math.max(1, Math.min(99, Number(row.quantity) || 1)),
       name: safeText(row.name, 100),
-      typeLine: safeText(row.typeLine, 140),
+      typeLine: safeText(row.typeLine ?? row.type_line, 140),
       roles: Array.isArray(row.roles) ? row.roles.slice(0, 6).map((role: unknown) => safeText(role, 50)).filter(Boolean) : [],
       cmc: Math.max(0, Math.min(30, Number(row.cmc) || 0)),
-    };
+    });
   }).filter((row) => row.name);
 }
 
@@ -100,7 +134,7 @@ function dossierHtml(dossier: PublicDossier) {
   return `<section class="group dossier"><header><h2>How to pilot this deck</h2><span>COMPLETE DOSSIER</span></header><p class="audience">${escapeHtml(dossier.audience)}</p><h3>The mission</h3><p>${escapeHtml(dossier.mission)}</p><h3>Game plan by phase</h3><div class="lesson-grid">${phases.map(([title, text]) => `<article><h3>${title}</h3><p>${escapeHtml(text)}</p></article>`).join("")}</div>${dossier.mulligan?.length ? `<h3>Mulligan priorities</h3>${bullets(dossier.mulligan)}` : ""}${dossier.decisions?.length ? `<h3>Decisions that matter</h3>${cards(dossier.decisions)}` : ""}${dossier.strengths?.length ? `<h3>What this deck does well</h3>${bullets(dossier.strengths)}` : ""}${dossier.weaknesses?.length ? `<h3>Where it can struggle</h3>${bullets(dossier.weaknesses)}` : ""}${dossier.upgrades?.length ? `<h3>Upgrade paths</h3>${cards(dossier.upgrades)}` : ""}</section>`;
 }
 
-function deckInsights(rows: PublicRow[]) {
+export function deckInsights(rows: PublicRow[]) {
   const expanded = rows.flatMap((row) => Array.from({ length: row.quantity }, () => row));
   const nonlands = expanded.filter((row) => rowType(row.typeLine) !== "Lands");
   const landCount = expanded.length - nonlands.length;
@@ -204,7 +238,10 @@ export async function handlePublicReportPublish(request: Request, env: PublicRep
     return json({ error: "A completed deck is required" }, 400);
   }
 
-  const { rows, commander, format, strategy } = source;
+  const { commander, format, strategy } = source;
+  // Store every row with its printed type line, so the public page can group
+  // and count lands without guessing (see ensureRowTypes).
+  const { rows } = await ensureRowTypes(source.rows);
   const total = rows.reduce((sum, row) => sum + row.quantity, 0);
   if (rows.length < 20 || total < 40 || total > 250) return json({ error: "Only complete deck reports can be published" }, 422);
   const requestedTitle = safeText(body.title, 100);
@@ -231,6 +268,14 @@ export async function publicDeckReportResponse(url: URL, env: PublicReportEnv): 
   const report = await env.DB.prepare("SELECT slug,title,commander_name,format_name,strategy_name,summary,deck_rows_json,dossier_json,created_at,updated_at FROM public_deck_reports WHERE slug=?").bind(slug).first<StoredReport>();
   if (!report) return new Response("Not found", { status: 404, headers: { "Content-Type": "text/plain; charset=utf-8", "X-Robots-Tag": "noindex" } });
   let rows: PublicRow[] = []; try { rows = sanitizeRows(JSON.parse(report.deck_rows_json)); } catch { return new Response("Report unavailable", { status: 500 }); }
+  // Reports published before MF-DECK-COACH-003 were stored without type
+  // lines. Repair once, then store the repaired rows (only empty fields are
+  // filled; nothing else in the report changes).
+  const repaired = await ensureRowTypes(rows);
+  rows = repaired.rows;
+  if (repaired.changed) {
+    try { await env.DB.prepare("UPDATE public_deck_reports SET deck_rows_json=? WHERE slug=?").bind(JSON.stringify(rows), report.slug).run(); } catch { /* the page still renders from the repaired rows */ }
+  }
   let dossier: PublicDossier = {}; try { dossier = sanitizeDossier(JSON.parse(report.dossier_json || "{}")); } catch { dossier = {}; }
   const order = ["Commander", "Creatures", "Planeswalkers", "Artifacts", "Enchantments", "Instants", "Sorceries", "Lands", "Other"];
   const groups = new Map<string, PublicRow[]>();

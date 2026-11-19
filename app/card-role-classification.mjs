@@ -29,8 +29,10 @@ const normalized = (value = "") => String(value).normalize("NFKC").trim().toLoca
 const unique = (values) => [...new Set(values.filter(Boolean))];
 
 let cardTagLookup = () => [];
+let tagLookupConfigured = false;
 export function configureCardRoleTagLookup(lookup) {
   cardTagLookup = lookup || (() => []);
+  tagLookupConfigured = Boolean(lookup);
 }
 
 function cardText(card) {
@@ -79,6 +81,16 @@ function roleTagsFor(card, isLand) {
     .map(([role]) => role);
 }
 
+// A nonland that taps for mana by symbol: "{T}: Add {C}{C}" (Sol Ring),
+// "{T}: Add {G}" (Llanowar Elves), "{T}: Add {U} or {B}" (Talismans). The
+// shared ROLE_PATTERNS ramp regex needs the word "mana", so in the browser,
+// where no tag lookup is configured, none of these were ramp before
+// MF-DECK-COACH-003 (Sol Ring read only as "artifacts"). Applied only where
+// no tag lookup is configured (the browser and Learn paths): on the server
+// the card database already tags real rocks as ramp, and Forge construction
+// is left exactly as it was.
+const SYMBOL_MANA = /\{T\}[^:\n]{0,40}:\s*Add \{[WUBRGC]\}/i;
+
 export function classifyNativeCard(card) {
   const typeLine = String(card.typeLine || card.type_line || "");
   const text = cardText(card);
@@ -89,6 +101,7 @@ export function classifyNativeCard(card) {
     if (role === "ramp" && isManaFilterOnly(card)) continue;
     if (patterns.some((pattern) => pattern.test(text))) roles.push(role);
   }
+  if (!tagLookupConfigured && !isLand && !roles.includes("ramp") && SYMBOL_MANA.test(text) && !isManaFilterOnly(card)) roles.push("ramp");
   roles.push(...roleTagsFor(card, isLand));
   if (!roles.includes("land") && (/\bCreature\b|Planeswalker/i.test(typeLine) || /you win the game/i.test(text))) roles.push("threat");
   return unique(roles);

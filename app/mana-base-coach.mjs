@@ -908,9 +908,16 @@ function confidenceFor({ opaqueShare, partial, conditionalShare, gap }) {
   return { level, reason: reasons.join(" ") };
 }
 
+// The ramp credit (rocks past the first few, land ramp, cost reduction) is an
+// allowance, not a requirement: a rock can be destroyed, a dork wiped, and
+// the commonly cited Commander formula credits ramp far less (about 0.28
+// land per piece). So a list is "over" only above the band it would get with
+// no ramp credit at all. Before MF-DECK-COACH-003 a 4.1-curve Baru list with
+// 38 lands was told every land past 36 "is a spell you do not draw".
 function landStatus(count, range) {
+  const ceiling = Math.max(range.high, range.baselineHigh ?? range.high);
   if (count < range.low) return range.low - count >= 2 ? "short" : "tight";
-  if (count > range.high) return count - range.high >= 2 ? "over" : "tight";
+  if (count > ceiling) return count - ceiling >= 2 ? "over" : "tight";
   return "ok";
 }
 
@@ -988,7 +995,7 @@ export function buildManaBaseCoaching(input = {}) {
       reductionQuote = printedQuote(reduction.commander.oracleText, /spells you cast cost/i) || clean(reduction.commander.oracleText).slice(0, 180);
     }
   }
-  const range = averageCmc == null
+  const credited = averageCmc == null
     ? { low: 0, high: 0, center: 0, baselineLow: 0, baselineHigh: 0, rockRelief: 0, rampRelief: 0 }
     : landRange({
       averageCmc,
@@ -1000,6 +1007,10 @@ export function buildManaBaseCoaching(input = {}) {
       landfall,
       deckSize,
     });
+  // The band runs from full ramp credit (low) to no ramp credit (high): how
+  // much a rock or land-ramp spell replaces a land is a judgement, so the
+  // coach shows the whole range instead of the most generous end of it.
+  const range = { ...credited, creditedHigh: credited.high, high: Math.max(credited.high, credited.baselineHigh || credited.high) };
   const reductionNote = reductionCut
     ? `${reductionName} says “${reductionQuote}” That discount covers part of a land drop once the commander is out${range.printedLow > range.low ? `, which moves the land target from about ${range.printedLow}–${range.printedHigh} to ${range.low}–${range.high}` : ""}. The printed curve still sets the pace. Each color check still uses the printed mana cost, because the reduction is not on the battlefield on turn one.`
     : "";
@@ -1355,8 +1366,12 @@ export function buildManaBaseCoaching(input = {}) {
       modalLands: modalLandCount,
       targetLow: range.low,
       targetHigh: range.high,
+      creditedHigh: range.creditedHigh ?? range.high,
       baselineLow: range.baselineLow,
       baselineHigh: range.baselineHigh,
+      rockRelief: range.rockRelief || 0,
+      rampRelief: range.rampRelief || 0,
+      commanderCmc: primary ? printedCmc(primary) : null,
       status: landsState,
       summary: landSummary,
     },
