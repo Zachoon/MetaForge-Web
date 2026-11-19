@@ -1,5 +1,7 @@
 # MF-DECK-COACH-003 · 6. Test and security evidence
 
+> **Superseded in part by MF-DECK-COACH-004 (`928aa31`):** public report pages no longer repair stored rows on view (no Scryfall lookup, no D1 write). Stored reports are repaired only by the owner-run script; see `docs/deck-coach-004/DATABASE-REPAIR-RUNBOOK.md`.
+
 All runs are from `D:\Projects\MetaForge-Deck-Coach-003`, using PowerShell for builds and tests, on 2026-11-19. Logs are in `C:\Projects\MF-DECK-COACH-003\`.
 
 ## Automated tests

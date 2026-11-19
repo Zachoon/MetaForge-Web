@@ -1,5 +1,7 @@
 # MF-DECK-COACH-003 · 8. Release readiness
 
+> **Superseded in part by MF-DECK-COACH-004 (`928aa31`):** public report pages no longer repair stored rows on view (no Scryfall lookup, no D1 write). Stored reports are repaired only by the owner-run script; see `docs/deck-coach-004/DATABASE-REPAIR-RUNBOOK.md`.
+
 **Branch:** `rc/mf-deck-coach-003` in `D:\Projects\MetaForge-Deck-Coach-003`.
 * Built on `rc/mf-deck-coach-002`, then MF-PRODUCT-RECOVERY-001, then production `e7e38e6`.
 * Local commits only, no upstream; nothing is pushed, merged or deployed.

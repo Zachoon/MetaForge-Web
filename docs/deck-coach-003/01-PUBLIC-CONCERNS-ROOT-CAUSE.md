@@ -1,5 +1,7 @@
 # MF-DECK-COACH-003 · 1. Root causes of the three public-site concerns
 
+> **Superseded in part by MF-DECK-COACH-004 (`928aa31`):** public report pages no longer repair stored rows on view (no Scryfall lookup, no D1 write). Stored reports are repaired only by the owner-run script; see `docs/deck-coach-004/DATABASE-REPAIR-RUNBOOK.md`.
+
 All three were reproduced against production (`e7e38e6`, read-only) and real card data, then fixed with regression tests.
 
 ## 1. "The public Baru deck shows zero lands despite containing 38"

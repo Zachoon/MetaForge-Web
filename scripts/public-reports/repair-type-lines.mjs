@@ -57,7 +57,12 @@ if (invokedDirectly) {
     process.exit(2);
   }
   try {
-    const result = await planFromExport(JSON.parse(readFileSync(exportFile, "utf8")));
+    // PowerShell's Out-File adds a byte-order mark, and a CLI may print a
+    // status line before the JSON: read from the first "[" or "{".
+    const raw = readFileSync(exportFile, "utf8").replace(/^﻿/, "");
+    const start = raw.search(/[[{]/);
+    if (start < 0) throw new Error(`${exportFile} does not contain JSON.`);
+    const result = await planFromExport(JSON.parse(raw.slice(start)));
     mkdirSync(outDir, { recursive: true });
     writeFileSync(join(outDir, "backup.json"), `${JSON.stringify(result.backup, null, 1)}\n`);
     writeFileSync(join(outDir, "audit.json"), `${JSON.stringify(result.audit, null, 1)}\n`);
