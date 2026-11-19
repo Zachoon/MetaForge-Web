@@ -8,7 +8,7 @@ Branch `rc/mf-deck-coach-003` (local only). Commits on top of the 002 release ca
 | `c09538b` | Plan read with evidence and player confirmation; protected cards |
 | `ed1e506` | Plan evidence, protected cards, land assumptions and table pressure on the page |
 | `42fd7b7` | Benchmark grows to 32 cases; no repeat Scryfall lookups on public pages |
-| *(docs commit)* | Combo evidence wording, typal threshold, these documents |
+| `151098d` | Combo evidence wording, typal threshold, these documents |
 
 | Doc | Answers |
 |---|---|
