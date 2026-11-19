@@ -85,12 +85,17 @@ export async function ensureRowTypes(rows: PublicRow[], lookup = lookupCardTypes
   if (!missing.length) return { rows, changed: false };
   let types: Map<string, { typeLine: string; cmc?: number }>;
   try { types = await lookup(missing); } catch { return { rows, changed: false }; }
+  // Nothing came back: Scryfall is unreachable. Store nothing and try again
+  // on a later view. Otherwise Scryfall answered, so a name it did not know
+  // is recorded as "Unknown type" and never looked up again: a public page
+  // must not call Scryfall on every view for a misspelled card.
+  if (!types.size) return { rows, changed: false };
   let changed = false;
   const next = rows.map((row) => {
     if (row.typeLine) return row;
     const fact = types.get(row.name.toLowerCase());
-    if (!fact?.typeLine) return row;
     changed = true;
+    if (!fact?.typeLine) return { ...row, typeLine: "Unknown type" };
     return { ...row, typeLine: safeText(fact.typeLine, 140), cmc: row.cmc || Math.max(0, Math.min(30, Number(fact.cmc) || 0)) };
   });
   return { rows: next, changed };

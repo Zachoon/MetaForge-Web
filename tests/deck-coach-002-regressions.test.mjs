@@ -222,9 +222,13 @@ test("a quantity written after the name is read, and names with digits or commas
 
 // ------------------------------------------------------------ benchmark floor
 
-test("the 24-case benchmark holds its floor", async () => {
+test("the benchmark (24 cases from 002, 8 from 003) holds its floor", async () => {
   const result = await runBench();
-  assert.equal(result.cases.length, 24);
+  assert.equal(result.cases.length, 32);
+  // MF-DECK-COACH-003 dimensions: every mana and player-intent check holds.
+  assert.equal(result.dimensions.mana.passed, result.dimensions.mana.total, "land band, count and assumptions");
+  assert.equal(result.dimensions["player-intent"].passed, result.dimensions["player-intent"].total, "protected cards and confirmed plans");
+  assert.equal(result.falsePositives.length, 0, result.falsePositives.join("\n"));
   assert.equal(result.dimensions.runs.passed, result.dimensions.runs.total, "every case builds a report");
   assert.equal(result.dimensions.legality.passed, result.dimensions.legality.total, "every legality expectation holds");
   assert.equal(result.dimensions.roles.passed, result.dimensions.roles.total, "every golden card role holds");

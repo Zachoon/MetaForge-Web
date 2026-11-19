@@ -101,6 +101,34 @@ test("a confirmed go-wide plan is never offered a symmetric wipe", () => {
   for (const add of ["Blasphemous Act", "Wrath of God", "Damnation", "Toxic Deluge"]) assert.ok(!adds.includes(add), add);
 });
 
+test("a confirmed plan reaches every coaching path: bands, curve, findings, swaps, adds, and the player's own test", () => {
+  const { parsed, facts } = load("deck-bench", "edgar-no-interaction");
+  const catalog = JSON.parse(readFileSync(new URL("./fixtures/deck-bench/swap-catalog.facts.json", import.meta.url), "utf8")).facts;
+  const read = buildDeckCheckReport({ parsed, facts });
+  const confirmed = buildDeckCheckReport({ parsed, facts, confirmedPlan: "control" });
+  assert.equal(read.plan.bandId, "typal");
+  assert.equal(confirmed.plan.bandId, "control");
+  // Role bands and the curve's ideal follow the confirmed plan.
+  const band = (shown, id) => shown.roles.find((role) => role.id === id);
+  assert.notDeepEqual([band(confirmed, "interaction").min, band(confirmed, "interaction").max], [band(read, "interaction").min, band(read, "interaction").max]);
+  assert.notEqual(confirmed.curve.ideal, read.curve.ideal);
+  // Findings name the confirmed plan's band.
+  const interaction = confirmed.weaknesses.find((finding) => finding.id === "role-interaction");
+  assert.match(interaction.detected, new RegExp(`band for Control is ${band(confirmed, "interaction").min}–${band(confirmed, "interaction").max}`));
+  // A control plan is not a go-wide plan: its wipe band no longer starts at 0.
+  assert.ok(band(confirmed, "wipes").min > 0);
+  assert.equal(band(read, "wipes").min, 0);
+  // Swaps and adds come from the confirmed plan's vetted list.
+  for (const add of [...confirmed.comparisons.map((entry) => entry.add), ...confirmed.suggestedAdds.map((entry) => entry.add)]) {
+    assert.ok(!["Akroma's Will", "Craterhoof Behemoth", "Overrun"].includes(add), `${add} is a board finisher, not a control card`);
+  }
+  // The player's own test is judged against the same confirmed bands.
+  const own = comparePlayerSwap({ parsed, facts, cut: "Bloodlord of Vaasgoth", addFact: catalog["Chaos Warp"], confirmedPlan: "control" });
+  assert.equal(own.ok, true);
+  const ownInteraction = own.comparison.roles.find((role) => role.id === "interaction");
+  assert.deepEqual([ownInteraction.min, ownInteraction.max], [band(confirmed, "interaction").min, band(confirmed, "interaction").max]);
+});
+
 // ---------------------------------------------------------------- Phase 3
 
 test("a protected card is never suggested as a cut; the next safe cut is used instead", () => {

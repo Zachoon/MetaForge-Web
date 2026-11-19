@@ -112,6 +112,17 @@ test("a repaired report renders without another Scryfall lookup", async () => {
   assert.match(html, /<b>38<\/b><strong>Lands<\/strong>/);
 });
 
+test("a name Scryfall does not know is stored as unknown once, so later views make no lookup", async () => {
+  const rows = [...stored, { quantity: 1, name: "Not A Real Card Name", typeLine: "", roles: [], cmc: 3 }];
+  const env = storeWith(rows);
+  await render(env);
+  assert.equal(env.updates.length, 1);
+  assert.match(env.report.deck_rows_json, /"name":"Not A Real Card Name","typeLine":"Unknown type"/);
+  const before = collectionCalls;
+  await render(env);
+  assert.equal(collectionCalls, before, "no repeat lookup for the unknown name");
+});
+
 test("with Scryfall down, lands still count from their role tag and the page still renders", async () => {
   const saved = globalThis.fetch;
   globalThis.fetch = async () => new Response("down", { status: 503 });

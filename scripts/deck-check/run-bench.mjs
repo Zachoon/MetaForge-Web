@@ -23,13 +23,16 @@ const FORBIDDEN_TEXT = /\bAI-powered\b|\bwin rate\b|\bguarantee|\bmatchup\b|\$\d
 
 async function loadEngine(root) {
   const mod = (path) => import(pathToFileURL(resolve(root, path)).href);
-  const [parse, facts, report, coach] = await Promise.all([
+  const [parse, facts, report, coach, native] = await Promise.all([
     mod("app/deck-check-parse.mjs"),
     mod("app/deck-check-facts.mjs"),
     mod("app/deck-check-report.mjs"),
     mod("app/curve-role-coach.mjs"),
+    // The browser-side classifier (free-build coach, Learn), checked by the
+    // MF-DECK-COACH-003 ramp cases. Present in every engine version.
+    mod("app/card-role-classification.mjs"),
   ]);
-  return { ...parse, ...facts, ...report, ...coach };
+  return { ...parse, ...facts, ...report, ...coach, classifyNativeCard: native.classifyNativeCard };
 }
 
 function loadFixture(engine, testCase) {
@@ -61,7 +64,10 @@ function scoreCase(engine, testCase, catalog) {
   const fixture = loadFixture(engine, testCase);
   let report;
   try {
-    report = engine.buildDeckCheckReport({ parsed: fixture.parsed, facts: fixture.facts, notFound: fixture.notFound, format: testCase.format });
+    // input: what a player can add to a check (MF-DECK-COACH-003: a
+    // confirmed plan, protected cards). An older engine ignores both, so its
+    // checks fail rather than pass by accident.
+    report = engine.buildDeckCheckReport({ parsed: fixture.parsed, facts: fixture.facts, notFound: fixture.notFound, format: testCase.format, ...(testCase.input || {}) });
   } catch (error) {
     check(results, "runs", "report builds", false, `threw: ${String(error.message).slice(0, 120)}`);
     return { results, report: null, weaknessTexts: [] };
@@ -153,6 +159,42 @@ function scoreCase(engine, testCase, catalog) {
   if (u.drawNote) check(results, "uncertainty", "draw finding credits the commander", weaknesses.some((weakness) => weakness.id === "role-draw" && (weakness.notes || []).some((note) => u.drawNote.test(note))) || !ids.includes("role-draw"), "no commander note");
   check(results, "uncertainty", "every finding says strong or heuristic", weaknesses.every((weakness) => ["strong", "heuristic"].includes(weakness.strength)), "finding has no strength label");
   if (testCase.mana?.landsStatus) check(results, "strategy", `lands ${testCase.mana.landsStatus}`, report.mana?.lands?.status === testCase.mana.landsStatus, `lands status ${report.mana?.lands?.status}`);
+
+  // ---- MF-DECK-COACH-003 checks
+  if (testCase.mana?.landCount != null) check(results, "mana", `counts ${testCase.mana.landCount} lands`, report.mana?.lands?.count === testCase.mana.landCount, `counted ${report.mana?.lands?.count}`);
+  if (testCase.mana?.bandIncludes != null) {
+    const lands = report.mana?.lands || {};
+    check(results, "mana", `band ${lands.targetLow}–${lands.targetHigh} includes ${testCase.mana.bandIncludes}`, lands.targetLow <= testCase.mana.bandIncludes && testCase.mana.bandIncludes <= lands.targetHigh, `band ${lands.targetLow}–${lands.targetHigh}`);
+  }
+  if (testCase.mana?.assumptions) {
+    const assumptions = report.mana?.assumptions;
+    check(results, "mana", "land band shows its inputs and rules", Boolean(assumptions?.inputs?.length >= 4 && assumptions?.rules?.length >= 2), "no assumptions");
+    check(results, "mana", "outside formula is labelled a reference", /outside reference rather than its rule/.test(assumptions?.reference?.text || ""), "no labelled reference");
+  }
+  for (const [name, expected] of Object.entries(testCase.nativeRoles || {})) {
+    const fact = fixture.raw[name];
+    const roles = fact && engine.classifyNativeCard ? engine.classifyNativeCard(fact) : [];
+    const wrong = Object.entries(expected).filter(([role, value]) => roles.includes(role) !== value);
+    check(results, "roles", `browser classifier: ${name}`, fact && wrong.length === 0, wrong.map(([role, value]) => `${role} should be ${value}`).join(", ") || "fact missing");
+  }
+  const protectedNames = testCase.input?.protectedNames || [];
+  if (protectedNames.length) {
+    const lower = new Set(protectedNames.map((name) => name.toLowerCase()));
+    check(results, "player-intent", "no protected card is suggested as a cut", (report.comparisons || []).every((comparison) => !lower.has(String(comparison.cut).toLowerCase())), `cut ${(report.comparisons || []).map((comparison) => comparison.cut).join(", ")}`);
+    check(results, "player-intent", "report lists the protected cards", protectedNames.every((name) => (report.protectedNames || []).map((entry) => entry.toLowerCase()).includes(name.toLowerCase())), `listed ${report.protectedNames}`);
+    if (testCase.expectAddsWhenNoCut) check(results, "player-intent", "still offers something to test", (report.comparisons || []).length + (report.suggestedAdds || []).length > 0, "nothing offered");
+  }
+  if (testCase.input?.confirmedPlan) {
+    check(results, "player-intent", "confirmed plan drives the bands", report.plan?.bandId === testCase.input.confirmedPlan && report.plan?.source === "player", `band ${report.plan?.bandId}, source ${report.plan?.source}`);
+    check(results, "player-intent", "plan is labelled the player's", /^You confirmed the plan/.test(report.plan?.sentence || ""), report.plan?.sentence);
+  }
+  if (testCase.secondary) check(results, "strategy", `second plan ${testCase.secondary}`, report.plan?.secondary?.id === testCase.secondary, `second ${report.plan?.secondary?.id}`);
+  if (testCase.planSource) check(results, "uncertainty", `plan source ${testCase.planSource}`, report.plan?.source === testCase.planSource, `source ${report.plan?.source}`);
+  for (const [id, minimum] of Object.entries(testCase.pressure || {})) {
+    const signal = (report.pressure?.signals || []).find((entry) => entry.id === id);
+    check(results, "trust", `table pressure ${id} ≥ ${minimum}`, Boolean(signal && signal.count >= minimum && signal.cards.length === signal.count), `got ${signal?.count}`);
+  }
+  if (testCase.pressure) check(results, "trust", "no power score or bracket number", !/\bbracket [1-5]\b|\bpower (?:level|score)[: ]+\d/i.test(JSON.stringify(report.pressure || {})), "score found");
 
   return { results, report, weaknessTexts: weaknesses.map((weakness) => weakness.plain || "") };
 }

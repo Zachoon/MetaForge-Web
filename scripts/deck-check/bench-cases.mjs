@@ -174,4 +174,60 @@ export const BENCH_CASES = Object.freeze([
     id: "tempo-as-vintage", dir: "deck-bench", file: "legacy-tempo-60", format: "vintage", kind: "legality",
     note: "The same 60 as Vintage: four copies of restricted cards.", errors: ["copy-limit"], status: "structure-only",
   },
+
+  // ------------------------------------------------ MF-DECK-COACH-003 cases
+  {
+    id: "baru-land-count", dir: "deck-bench-003", file: "baru-public-report", format: "commander", kind: "regression",
+    note: "The public Baru list from production (37 Forest + Castle Garenbrig). Was told 38 lands was too many; Traverse the Outlands read as a tutor.",
+    errors: [], plan: ["typal"],
+    mana: { landCount: 38, landsStatus: "ok", bandIncludes: 38, assumptions: true },
+    roles: { "Traverse the Outlands": { ramp: true, tutor: false } },
+    nativeRoles: { "Sol Ring": { ramp: true, artifacts: true }, "Llanowar Elves": { ramp: true }, "Forest": { ramp: false, land: true } },
+    core: [],
+  },
+  {
+    id: "urza-browser-ramp", dir: "deck-bench", file: "urza-artifacts", format: "commander", kind: "regression",
+    note: "The browser-side classifier missed every rock that adds mana by symbol (Sol Ring read only as 'artifacts').",
+    errors: [], plan: ["artifacts"],
+    nativeRoles: { "Sol Ring": { ramp: true }, "Mind Stone": { ramp: true }, "Thran Dynamo": { ramp: true }, "Coldsteel Heart": { ramp: true }, "Prismatic Lens": { ramp: true }, "Sky Diamond": { ramp: true } },
+    core: ["Thassa's Oracle", "Mystic Forge", "Karn, the Great Creator", "Isochron Scepter", "Dramatic Reversal", "Unwinding Clock", "Retrofitter Foundry", "Sai, Master Thopterist", "Whirler Rogue"],
+  },
+  {
+    id: "ezuri-protected", dir: "deck-coach", file: "ezuri-elves-needs-work", format: "commander", kind: "player-intent",
+    note: "Thragtusk is the only safe cut; protected, Deck Check must name no cut and still offer adds to test.",
+    errors: ["color-identity"], plan: ["typal"], input: { protectedNames: ["Thragtusk"] }, expectAddsWhenNoCut: true,
+    core: ["Ezuri's Predation", "Craterhoof Behemoth", "Elvish Archdruid", "Coat of Arms", "Overrun", "Beastmaster Ascension", "Door of Destinies", "Elvish Clancaller"],
+  },
+  {
+    id: "meren-protected", dir: "deck-bench", file: "meren-aristocrats", format: "commander", kind: "player-intent",
+    note: "The two cards the coach cuts (Acidic Slime, Shriekmaw) marked never-cut.",
+    errors: [], plan: ["aristocrats", "graveyard"], input: { protectedNames: ["Acidic Slime", "Shriekmaw"] }, expectAddsWhenNoCut: true,
+    core: ["Butcher of Malakir", "Kokusho, the Evening Star", "Grave Pact", "Dictate of Erebos", "Pitiless Plunderer", "Blood Artist", "Zulaport Cutthroat", "Demonic Tutor", "Vampiric Tutor"],
+  },
+  {
+    id: "sram-confirmed-auras", dir: "deck-bench", file: "sram-voltron", format: "commander", kind: "player-intent",
+    note: "Detected Equipment; the player confirms Auras and the coaching must follow.",
+    errors: [], plan: ["auras"], input: { confirmedPlan: "auras" },
+    core: ["Puresteel Paladin", "Stoneforge Mystic", "Kor Spiritdancer", "Sword of Fire and Ice", "Sword of Feast and Famine", "Colossus Hammer", "Ethereal Armor", "All That Glitters", "Sram's Expertise", "Akroma's Will", "Sigarda's Aid"],
+  },
+  {
+    id: "sram-mixed-strategy", dir: "deck-bench", file: "sram-voltron", format: "commander", kind: "mixed",
+    note: "Equipment and Auras together: both named, each with its evidence.",
+    errors: [], plan: ["equipment"], secondary: "auras", planSource: "commander-and-deck",
+    core: [],
+  },
+  {
+    id: "wilson-confirmed-equipment", dir: "deck-bench", file: "wilson-background", format: "commander", kind: "player-intent",
+    note: "A Background pair with no single plan; the player confirms Equipment.",
+    errors: [], plan: ["equipment"], input: { confirmedPlan: "equipment" },
+    core: ["Swiftfoot Boots", "Lightning Greaves", "Whispersilk Cloak", "Blackblade Reforged", "Sword of Fire and Ice", "Sword of Feast and Famine", "Shadowspear", "Loxodon Warhammer", "Rancor", "Greater Good"],
+  },
+  {
+    id: "thrasios-cedh-pressure", dir: "deck-bench-003", file: "thrasios-tymna-cedh", format: "commander", kind: "mixed",
+    note: "Partner combo shell with Scryfall's Game Changer flags: no single plan, a named combo finish, table pressure listed by card with no score.",
+    errors: [], plan: ["midrange"], secondary: "combo", planSource: "none",
+    pressure: { "game-changers": 15, "fast-mana": 5, tutors: 6, "printed-wins": 1 },
+    uncertainty: { winconNote: /Thassa's Oracle/ },
+    core: ["Thassa's Oracle", "Demonic Consultation", "Tainted Pact", "Force of Will", "Fierce Guardianship", "Mana Drain", "Necropotence", "Rhystic Study", "Mystic Remora", "Demonic Tutor", "Vampiric Tutor"],
+  },
 ]);
