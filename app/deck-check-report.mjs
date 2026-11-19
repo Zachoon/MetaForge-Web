@@ -16,6 +16,7 @@ import { buildCurveRoleCoaching, classifyPrintedCard, swapCatalogCard } from "./
 import { buildManaBaseCoaching } from "./mana-base-coach.mjs";
 import { deckCheckKey, decklistText, playedEntries } from "./deck-check-parse.mjs";
 import { factFor } from "./deck-check-facts.mjs";
+import { confirmedPlan, PLAN_CHOICES, readDeckPlan } from "./deck-plan-read.mjs";
 
 export const DECK_CHECK_FORMATS = Object.freeze([
   { id: "commander", label: "Commander", legalityKey: "commander", commander: true, size: 100, copies: 1 },
@@ -297,9 +298,27 @@ function coachCards(parsed, facts, commanderNames) {
     });
 }
 
-function runCoaches(commanders, cards, strategy) {
+/**
+ * The plan the coaches judge against: the player's confirmed plan when there
+ * is one, otherwise Deck Check's deck-level read (which also covers what the
+ * commander's text alone missed: Ghalta, Sram, Thrasios + Tymna).
+ */
+function planContext(commanders, cards, confirmedPlanId) {
+  const analysis = readDeckPlan({ commanders, cards });
+  const confirmed = confirmedPlanId ? confirmedPlan(confirmedPlanId) : null;
+  const typalType = analysis.signals.find((signal) => signal.id === "typal")?.creatureType;
+  // The coach's numeric confidence follows the plan read, not the raw
+  // commander read (Thrasios + Tymna was "high" because of Tymna's lifelink).
+  const READ_CONFIDENCE = { high: 0.86, medium: 0.6, low: 0.3 };
+  const override = confirmed
+    ? { ...confirmed, confidence: 0.9, creatureType: confirmed.id === "typal" ? typalType : undefined }
+    : { id: analysis.bandId, label: analysis.primary.label, source: analysis.primary.source, confidence: READ_CONFIDENCE[analysis.primary.confidence] ?? 0.3, creatureType: analysis.primary.id === "typal" ? typalType : undefined };
+  return { analysis, confirmed, override };
+}
+
+function runCoaches(commanders, cards, strategy, context = {}) {
   return {
-    curveRole: buildCurveRoleCoaching({ commanders, commander: commanders[0], cards, strategy }),
+    curveRole: buildCurveRoleCoaching({ commanders, commander: commanders[0], cards, strategy, planOverride: context.override || null, protectedNames: context.protectedNames || [] }),
     mana: buildManaBaseCoaching({ commanders, commander: commanders[0], cards }),
   };
 }
@@ -332,7 +351,7 @@ function roleSnapshot(curveRole) {
  * Replay one cut/add through the same coaches and report what moved.
  * @returns {null | { cut: string, add: string, reason: string, addQuote: string, roles: any[], curve: any, lands: any, resolved: string[], introduced: string[], remaining: string[], verdict: string, tradeOffs: string[], afterText: string }}
  */
-export function compareSwap({ swap, addFact = null, commanders, cards, strategy, before, parsed }) {
+export function compareSwap({ swap, addFact = null, commanders, cards, strategy, before, parsed, context = {} }) {
   const addCard = addFact
     ? { name: addFact.name, typeLine: addFact.typeLine, manaCost: addFact.manaCost, oracleText: addFact.oracleText, colorIdentity: addFact.colorIdentity || [], cmc: addFact.cmc, cardFaces: addFact.cardFaces || [] }
     : swapCatalogCard(swap.add);
@@ -342,7 +361,7 @@ export function compareSwap({ swap, addFact = null, commanders, cards, strategy,
     .map((card) => deckCheckKey(card.name) === cutKey ? { ...card, quantity: card.quantity - 1 } : card)
     .filter((card) => card.quantity > 0)
     .concat([{ ...addCard, quantity: 1, legalities: {} }]);
-  const after = runCoaches(commanders, afterCards, strategy);
+  const after = runCoaches(commanders, afterCards, strategy, context);
   const beforeRoles = roleSnapshot(before.curveRole);
   const afterRoles = roleSnapshot(after.curveRole);
   const roles = Object.keys(beforeRoles).map((id) => ({
@@ -468,10 +487,10 @@ export function proposedAddIssue(addFact, { identity = [], cards = [], format: f
 
 /**
  * Replay a cut/add the player chose through the same coaches.
- * @param {{ parsed?: any, facts?: Record<string, any>, commanderNames?: string[], strategy?: string, cut?: string, addFact?: any, format?: string }} [input]
+ * @param {{ parsed?: any, facts?: Record<string, any>, commanderNames?: string[], strategy?: string, cut?: string, addFact?: any, format?: string, confirmedPlan?: string, protectedNames?: string[] }} [input]
  * @returns {{ ok: true, comparison: any } | { ok: false, message: string }}
  */
-export function comparePlayerSwap({ parsed, facts = {}, commanderNames, strategy = "", cut, addFact, format = "commander" } = {}) {
+export function comparePlayerSwap({ parsed, facts = {}, commanderNames, strategy = "", cut, addFact, format = "commander", confirmedPlan: confirmedPlanId = "", protectedNames = [] } = {}) {
   const names = commanderNames || parsed?.commanderNames || [];
   const commanders = names.map((name) => factFor(facts, name)).filter(Boolean);
   if (!commanders.length) return { ok: false, message: "Pick a commander first." };
@@ -482,7 +501,8 @@ export function comparePlayerSwap({ parsed, facts = {}, commanderNames, strategy
   const issue = proposedAddIssue(addFact, { identity, cards, format });
   if (issue) return { ok: false, message: issue };
   if (deckCheckKey(cutCard.name) === deckCheckKey(addFact.name)) return { ok: false, message: "The cut and the add are the same card." };
-  const before = runCoaches(commanders, cards, strategy);
+  const context = { ...planContext(commanders, cards, confirmedPlanId), protectedNames };
+  const before = runCoaches(commanders, cards, strategy, context);
   const comparison = compareSwap({
     swap: { cut: cutCard.name, add: addFact.name, reason: "", source: "player" },
     addFact,
@@ -491,7 +511,11 @@ export function comparePlayerSwap({ parsed, facts = {}, commanderNames, strategy
     strategy,
     before,
     parsed,
+    context,
   });
+  if (comparison && protectedNames.some((name) => deckCheckKey(name) === deckCheckKey(cutCard.name))) {
+    comparison.cutFlag = `You marked ${cutCard.name} as protected. MetaForge never suggests cutting it; this is your own test, and your list is unchanged.`;
+  }
   return comparison ? { ok: true, comparison } : { ok: false, message: "That change could not be replayed." };
 }
 
@@ -592,9 +616,25 @@ function addOnlySuggestions(curveRole, cards, comparisons) {
   return out.slice(0, 2);
 }
 
-function planSentence({ plan, commanderLabel, strategy }) {
+function planSentence({ plan, commanderLabel, strategy, analysis, confirmed }) {
+  if (confirmed) {
+    return confirmed.id === "midrange"
+      ? "You chose no single plan, so the deck is judged by MetaForge's general bands."
+      : `You confirmed the plan: ${confirmed.label}. The counts and suggestions below use it.`;
+  }
+  if (analysis && analysis.primary.id !== "midrange" && analysis.bandId === "midrange" && analysis.primary.source !== "deck-cards") {
+    return `${commanderLabel} reads as ${analysis.primary.label}. MetaForge has no separate role bands for that plan yet, so the counts below use its general midrange bands.`;
+  }
+  if (analysis?.primary?.source === "deck-cards") {
+    return `the printed text of ${commanderLabel} does not name one plan MetaForge reads, so the plan is read from the cards: ${analysis.primary.label}. Confirm or correct it below.`;
+  }
+  if (analysis && analysis.commanderRead.corrections.length && analysis.primary.id !== analysis.commanderRead.raw.id) {
+    return analysis.primary.id === "midrange"
+      ? `MetaForge did not match the printed text of ${commanderLabel} to one of its plans, so the deck is judged by general midrange bands. Treat the plan-specific advice below as rough, or pick the plan below.`
+      : `${commanderLabel} reads as ${analysis.primary.label}.`;
+  }
   if (plan.readId === "midrange" && !strategy) {
-    return `MetaForge did not match ${commanderLabel}'s printed text to one of its plans, so the deck is judged by general midrange bands. Treat the plan-specific advice below as rough.`;
+    return `MetaForge did not match the printed text of ${commanderLabel} to one of its plans, so the deck is judged by general midrange bands. Treat the plan-specific advice below as rough.`;
   }
   if (plan.id === "midrange" && plan.readId && plan.readId !== "midrange") {
     return `${commanderLabel} reads as ${plan.label}. MetaForge has no separate role bands for that plan yet, so the counts below use its general midrange bands.`;
@@ -645,12 +685,20 @@ export function buildDeckCheckReport(input = {}) {
   }
 
   const cards = coachCards(parsed, facts, commanders.map((commander) => commander.name));
-  const before = runCoaches(commanders, cards, strategy);
+  // Protected cards: the player's own "never cut" list. Only names that are
+  // in this list count.
+  const inList = new Map(cards.map((card) => [deckCheckKey(card.name), card.name]));
+  const protectedNames = [...new Set((input.protectedNames || []).map((name) => inList.get(deckCheckKey(name))).filter(Boolean))];
+  const context = { ...planContext(commanders, cards, input.confirmedPlan), protectedNames };
+  const before = runCoaches(commanders, cards, strategy, context);
   if (!before.curveRole?.readable) {
     return { status: "unreadable", format, structure, message: before.curveRole?.message || "The printed text could not be read.", limits };
   }
-  const swaps = replayableSwaps(before.curveRole, cards);
-  const comparisons = swaps.slice(0, 3).map((swap) => compareSwap({ swap, commanders, cards, strategy, before, parsed })).filter(Boolean);
+  const isProtected = (name) => protectedNames.some((entry) => deckCheckKey(entry) === deckCheckKey(name));
+  // The coach already skips protected cards; this is the last guard before a
+  // swap reaches the page.
+  const swaps = replayableSwaps(before.curveRole, cards).filter((swap) => !isProtected(swap.cut));
+  const comparisons = swaps.slice(0, 3).map((swap) => compareSwap({ swap, commanders, cards, strategy, before, parsed, context })).filter(Boolean);
   // The coach lists every nonland with no rules text as unread. A vanilla
   // creature (Leatherback Baloth) was read fine; it just has no text. Only
   // names Scryfall did not return are truly unread.
@@ -684,8 +732,18 @@ export function buildDeckCheckReport(input = {}) {
     plan: {
       id: plan.id,
       label: plan.label,
-      sentence: planSentence({ plan, commanderLabel, strategy }),
-      readId: plan.readId || plan.id,
+      sentence: planSentence({ plan, commanderLabel, strategy, analysis: context.analysis, confirmed: context.confirmed }),
+      readId: context.confirmed?.id || context.analysis.primary.id || plan.readId || plan.id,
+      // MF-DECK-COACH-003: what the read rests on, and the player's say.
+      source: context.confirmed ? "player" : context.analysis.primary.source,
+      readConfidence: context.confirmed ? "player-confirmed" : context.analysis.primary.confidence,
+      evidence: context.analysis.primary.evidence,
+      secondary: context.analysis.secondary,
+      signals: context.analysis.signals.slice(0, 6).map((signal) => ({ id: signal.id, what: signal.what, count: signal.count, examples: signal.names.slice(0, 4) })),
+      bandId: plan.id,
+      confirmed: Boolean(context.confirmed),
+      choices: PLAN_CHOICES,
+      detectedId: context.analysis.bandId,
       quote: plan.excerpt,
       confidence: before.curveRole.confidence,
       strategyNote: before.curveRole.strategyNote || "",
@@ -710,6 +768,7 @@ export function buildDeckCheckReport(input = {}) {
       : (before.curveRole.lessons || []).map((lesson) => lesson.swapNote).find(Boolean)
         || "No swap from the cards MetaForge can vouch for fits this list. You can still test your own change below.",
     deckCards: [...new Set(cards.filter((card) => card.typeLine).map((card) => card.name))].sort((a, b) => a.localeCompare(b)),
+    protectedNames,
     limits: reportLimits,
   };
 }

@@ -155,7 +155,10 @@ test("a commander that draws cards is credited in the draw finding (Sram)", () =
 });
 
 test("the plan sentence says when MetaForge could not read a plan, or used general bands", () => {
-  assert.match(benchReport("sram-voltron").plan.sentence, /^MetaForge did not match Sram, Senior Edificer's printed text to one of its plans/);
+  // MF-DECK-COACH-003 reads Sram's plan (its text names Equipment), so the
+  // honest "did not match" case is now a deck with no single plan.
+  assert.match(benchReport("wilson-background").plan.sentence, /^MetaForge did not match the printed text of Wilson, Refined Grizzly \+ Raised by Giants to one of its plans/);
+  assert.equal(benchReport("sram-voltron").plan.sentence, "Sram, Senior Edificer reads as Equipment.");
   assert.equal(benchReport("atraxa-counters").plan.sentence, "Atraxa, Praetors' Voice reads as +1/+1 counters. MetaForge has no separate role bands for that plan yet, so the counts below use its general midrange bands.");
 });
 

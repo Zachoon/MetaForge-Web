@@ -1178,10 +1178,11 @@ function hiddenAnswerWeaknesses({ answer, plan, roles, confidence, identity, use
 }
 
 function hiddenHole({ id, title, plain, cite, says, pattern, swapRole, prefer, cutWhy, confidence, identity, planId, usedNames }) {
+  const cutCard = cite && !isProtectedCard(cite) ? cite : null;
   const swaps = rankKindAdds({ role: swapRole, prefer, identity, planId, usedNames }).slice(0, 1).map((add) => ({
-    cut: cite?.name || null,
+    cut: cutCard?.name || null,
     add: add.name,
-    reason: `${add.because} ${cite ? `Cut ${cite.name}: ${cutWhy}.` : ""}`.trim(),
+    reason: `${add.because} ${cutCard ? `Cut ${cutCard.name}: ${cutWhy}.` : ""}`.trim(),
   }));
   return {
     id,
@@ -1360,7 +1361,11 @@ export function buildCurveRoleCoaching(input = {}) {
     .filter((card) => /\bCreature\b/.test(String(card?.typeLine || card?.type_line || "").split(" // ")[0]))
     .reduce((sum, card) => sum + (Number(card.quantity) || 1), 0);
   const previous = ADD_CONTEXT;
-  ADD_CONTEXT = { creatures: Array.isArray(input.cards) && input.cards.length ? creatures : Infinity };
+  ADD_CONTEXT = {
+    creatures: Array.isArray(input.cards) && input.cards.length ? creatures : Infinity,
+    // MF-DECK-COACH-003: cards the player marked "never cut".
+    protectedNames: new Set((Array.isArray(input.protectedNames) ? input.protectedNames : []).map((name) => String(name).trim().toLowerCase()).filter(Boolean)),
+  };
   try {
     return buildCurveRoleCoachingFor(input);
   } finally {
@@ -1433,22 +1438,27 @@ function buildCurveRoleCoachingFor(input = {}) {
     colorIdentity: commander.colorIdentity,
   })));
   const hint = strategyHint(input.strategy);
-  let planId = planRead.id === "midrange" && hint ? hint : planRead.id;
+  // MF-DECK-COACH-003: a caller can name the plan (Deck Check's deck-level
+  // read, or the plan a player confirmed). It must be one this coach has
+  // bands for; anything else falls back to the commander read as before.
+  const override = input.planOverride && CURVE_BY_PLAN[input.planOverride.id] ? input.planOverride : null;
+  let planId = override ? override.id : planRead.id === "midrange" && hint ? hint : planRead.id;
   if (!CURVE_BY_PLAN[planId]) planId = "midrange";
-  const strategyConflict = Boolean(hint && planRead.id !== "midrange" && hint !== planRead.id && planRead.confidence >= 0.7);
+  const strategyConflict = !override && Boolean(hint && planRead.id !== "midrange" && hint !== planRead.id && planRead.confidence >= 0.7);
   const plan = {
     id: planId,
-    label: planRead.id === "midrange" && hint ? String(input.strategy).trim() : planRead.label,
-    confidence: planRead.confidence || 0,
+    label: override?.label || (planRead.id === "midrange" && hint ? String(input.strategy).trim() : planRead.label),
+    confidence: override ? (Number.isFinite(override.confidence) ? override.confidence : override.source === "player" ? 0.9 : 0.7) : planRead.confidence || 0,
     excerpt: excerpt(primary?.oracleText || ""),
     restrictionNote: planRead.restrictionNote || null,
-    creatureType: planRead.creatureType || planRead.model?.typal || null,
+    creatureType: override?.creatureType || planRead.creatureType || planRead.model?.typal || null,
     oracleSeen,
     // The plan the commander's text named, before it was folded into the
     // bands this coach has (a counters or life-gain read uses midrange bands).
-    readId: planRead.id,
+    readId: override ? override.id : planRead.id,
+    source: override?.source || "commander-text",
   };
-  if (planRead.id === "midrange" && hint) {
+  if (!override && planRead.id === "midrange" && hint) {
     plan.confidence = Math.max(plan.confidence, 0.5);
   }
 
@@ -1545,7 +1555,7 @@ function buildCurveRoleCoachingFor(input = {}) {
     // A cut must not open a new hole. A tutor is not card advantage, and it
     // is still not the card to cut (Demonic Tutor was offered as a cut).
     // An over-range card that is also the deck's only wipe stays.
-    const cuttableExcluded = excluded.filter((card) => !card.tutor);
+    const cuttableExcluded = excluded.filter((card) => !card.tutor && !isProtectedCard(card));
     const cuttableOver = pool.filter((card) => !fillsNeededRole(card, roles, role) && !isPlanPayoff(card, plan));
     // Too many finishers is a mild problem; which closer to drop is the
     // player's call (Craterhoof Behemoth was the first cut offered).
@@ -1774,8 +1784,13 @@ const COUNTED_ROLES = ["ramp", "draw", "interaction", "wipes", "wincon"];
  * counted role that is not over its range, a tutor, or protection. The role
  * being fixed by the swap itself is ignored.
  */
+/** A card the player marked "never cut" (MF-DECK-COACH-003). */
+function isProtectedCard(card) {
+  return Boolean(card?.name && ADD_CONTEXT?.protectedNames?.has(String(card.name).trim().toLowerCase()));
+}
+
 function fillsNeededRole(card, roles = [], except = null) {
-  if (card.tutor || card.protection) return true;
+  if (card.tutor || card.protection || isProtectedCard(card)) return true;
   return COUNTED_ROLES.some((id) => id !== except && card[id] && (roles.find((row) => row.id === id)?.status || "ok") !== "over");
 }
 
