@@ -696,7 +696,8 @@ export function buildDeckCheckReport(input = {}) {
     weaknessHeading: before.curveRole.weaknessHeading,
     weaknessIntro: before.curveRole.weaknessIntro,
     weaknesses: findings.length ? findings : before.curveRole.weaknesses,
-    suggestedAdds: addOnly,
+    // In the same order as the findings they answer (strongest first).
+    suggestedAdds: [...addOnly].sort((left, right) => findings.findIndex((finding) => finding.id === left.source) - findings.findIndex((finding) => finding.id === right.source)),
     mana: before.mana?.readable ? {
       summary: before.mana.summary || before.mana.lands?.summary || "",
       lands: before.mana.lands,

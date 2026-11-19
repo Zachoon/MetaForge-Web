@@ -144,3 +144,51 @@
   .dc-table th, .dc-table td { padding: 6px; }
   .deck-check .dc-samples button { flex: 1 1 100%; }
 }
+
+/* MF-DECK-COACH-002: what each part rests on, the summary, structured findings. */
+.dc-basis {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font: 700 11px/1.6 Inter, sans-serif;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.dc-basis.is-verified { color: #9fd8c6; }
+.dc-basis.is-counted { color: #c9bba8; }
+.dc-basis.is-strong { color: #ffb48a; }
+.dc-basis.is-heuristic { color: #e0c98f; }
+.dc-basis.is-measured { color: #9fc8ff; }
+.dc-glance { border-color: rgba(224, 181, 106, 0.7); }
+.dc-glance-list { list-style: none; padding-left: 0 !important; display: grid; gap: 6px; }
+.dc-glance-list a, .dc-report a { color: #ffd09b; }
+.dc-finding { display: grid; grid-template-columns: minmax(7.5rem, max-content) minmax(0, 1fr); gap: 6px 14px; margin: 8px 0 0; }
+.dc-finding dt { color: #a8988a; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding-top: 3px; }
+.dc-finding dd { margin: 0; color: #d9cbb8; font-size: 15px; line-height: 1.6; overflow-wrap: anywhere; }
+.dc-finding dt:nth-of-type(n) + dd ~ dd { grid-column: 2; }
+.deck-check .dc-link { min-height: 44px; padding: 6px 10px; margin-top: 4px; font-size: 14px; }
+.dc-weaknesses > li:focus { outline: 2px solid #ffd09b; outline-offset: 4px; }
+.dc-change h3:focus { outline: none; }
+.dc-change h3:focus-visible { outline: 2px solid #ffd09b; outline-offset: 2px; }
+.deck-check .dc-tabs button[aria-selected="true"] { color: #1a120c; background: #e0b56a; border-color: #e0b56a; }
+.dc-suggested { margin-top: 14px; padding-top: 12px; border-top: 1px solid #3a2d22; }
+.dc-suggested ul { list-style: none; padding-left: 0 !important; display: grid; gap: 10px; }
+.dc-suggested li { display: grid; gap: 6px; padding: 10px 12px; border: 1px solid #3a2d22; background: #15120f; }
+.dc-suggested q { color: #f0e4cf; font-style: italic; }
+.deck-check .dc-suggested button { justify-self: start; }
+.dc-loading { display: grid; gap: 8px; }
+.dc-loading p { display: flex; gap: 10px; align-items: center; margin: 0; }
+.dc-loading progress { width: 100%; height: 10px; accent-color: #ef9d4d; }
+.deck-check .dc-loading button { justify-self: start; }
+.dc-warn p { margin: 0 0 8px; }
+.dc-legend { color: #b3a493 !important; font-size: 13px !important; line-height: 2 !important; }
+.dc-legend .dc-basis { margin-left: 0; }
+@media (max-width: 560px) {
+  .dc-finding { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .dc-finding dt { padding-top: 8px; }
+  .dc-finding dt:nth-of-type(n) + dd ~ dd { grid-column: 1; }
+  .dc-basis { margin-left: 0; margin-top: 4px; }
+}

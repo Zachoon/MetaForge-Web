@@ -26,7 +26,24 @@ export type CurveBucket = { label: string; actual: number; target?: number; stat
 
 export type Citation = { name: string; quote?: string; says: string };
 
-export type Weakness = { id: string; title: string; plain: string; citations: Citation[]; confidence?: string; confidenceReason?: string };
+export type Weakness = {
+  id: string;
+  title: string;
+  plain: string;
+  citations: Citation[];
+  confidence?: string;
+  confidenceReason?: string;
+  // MF-DECK-COACH-002: every finding answers the same six questions.
+  detected?: string;
+  why?: string;
+  notes?: string[];
+  change?: string;
+  tradeOff?: string;
+  strength?: "strong" | "heuristic";
+  strengthReason?: string;
+};
+
+export type SuggestedAdd = { source: string; add: string; reason: string; addQuote: string; addTypeLine?: string; addManaCost?: string };
 
 export type ComparisonRole = { id: string; label: string; min: number; max: number; before: number; after: number; beforeStatus: string; afterStatus: string };
 
@@ -47,6 +64,7 @@ export type Comparison = {
   verdict: string;
   tradeOffs: string[];
   afterText: string;
+  cutFlag?: string;
 };
 
 export type PlayerSwapResult = { ok: true; comparison: Comparison } | { ok: false; message: string };
@@ -60,7 +78,7 @@ export type DeckCheckReport = {
   candidates?: string[];
   summary?: { landCount: number; spellCount: number; averageManaValue: number | null; curve: CurveBucket[]; pips: Array<{ color: string; word: string; pips: number }> };
   commanders?: Array<{ name: string }>;
-  plan?: { sentence: string; quote?: string; confidence?: { level?: string; reason?: string }; strategyNote?: string };
+  plan?: { sentence: string; readId?: string; quote?: string; confidence?: { level?: string; reason?: string }; strategyNote?: string };
   strengths?: Array<{ id: string; label: string; actual: number; min: number; max: number; cards: string[] }>;
   curve?: { summary: string; buckets: CurveBucket[] };
   weaknessHeading?: string;
@@ -68,6 +86,7 @@ export type DeckCheckReport = {
   weaknesses?: Weakness[];
   mana?: { summary: string; lands: { summary: string }; colors: Array<{ color: string; status: string; summary: string }> } | null;
   comparisons?: Comparison[];
+  suggestedAdds?: SuggestedAdd[];
   noSwapNote?: string;
   deckCards?: string[];
 };

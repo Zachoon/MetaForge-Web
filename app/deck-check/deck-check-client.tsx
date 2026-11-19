@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { parseDecklist, playedCount } from "../deck-check-parse.mjs";
 import { factFor, fetchCardFacts } from "../deck-check-facts.mjs";
 import { buildDeckCheckReport, comparePlayerSwap, DECK_CHECK_FORMATS } from "../deck-check-report.mjs";
@@ -55,6 +55,21 @@ function confidenceLabel(level?: string) {
   return "Medium confidence";
 }
 
+// What each part of the report rests on, so a reader can tell a verified
+// rule from a counted read, a heuristic, or a measured replay.
+const BASIS: Record<string, { label: string; title: string }> = {
+  verified: { label: "Verified", title: "Checked against the Commander rules and Scryfall's legality data." },
+  counted: { label: "Rules-based count", title: "Counted from each card's printed text with MetaForge's own rules." },
+  heuristic: { label: "Heuristic", title: "MetaForge's starting bands for this kind of plan, not rules of the game." },
+  strong: { label: "Strong finding", title: "Far outside MetaForge's band, on a plan read with high confidence." },
+  measured: { label: "Measured", title: "Replayed through the same checks on your list." },
+};
+
+function Basis({ kind }: { kind: keyof typeof BASIS }) {
+  const basis = BASIS[kind];
+  return <span className={`dc-basis is-${kind}`} title={basis.title}>{basis.label}</span>;
+}
+
 function CurveBars({ buckets }: { buckets: Array<{ label: string; actual: number; target?: number; status?: string }> }) {
   const max = Math.max(1, ...buckets.map((bucket) => Math.max(bucket.actual, bucket.target || 0)));
   return (
@@ -96,7 +111,9 @@ function Comparison({ comparison }: { comparison: ComparisonData }) {
         <span className="dc-cut">Cut <b>{comparison.cut}</b></span>
         <span aria-hidden="true"> → </span>
         <span className="dc-add">Add <b>{comparison.add}</b></span>
+        {" "}<Basis kind="measured" />
       </p>
+      {comparison.cutFlag && <p className="dc-warn">{comparison.cutFlag}</p>}
       <blockquote className="dc-quote">
         <small>{comparison.add}{comparison.addManaCost ? ` · ${comparison.addManaCost}` : ""}{comparison.addTypeLine ? ` · ${comparison.addTypeLine}` : ""}</small>
         {comparison.addQuote}
@@ -164,6 +181,7 @@ export function DeckCheck() {
   const [strategy, setStrategy] = useState("");
   const [phase, setPhase] = useState<Phase>("idle");
   const [progress, setProgress] = useState("");
+  const [progressCount, setProgressCount] = useState<{ done: number; total: number } | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [errorRetryable, setErrorRetryable] = useState(false);
   const [facts, setFacts] = useState<FactIndex>({});
@@ -180,6 +198,9 @@ export function DeckCheck() {
   const [customResult, setCustomResult] = useState<PlayerSwapResult | null>(null);
   const [customBusy, setCustomBusy] = useState(false);
   const reportHeading = useRef<HTMLHeadingElement>(null);
+  const changeHeading = useRef<HTMLHeadingElement>(null);
+  const cutSelect = useRef<HTMLSelectElement>(null);
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const abortRef = useRef<AbortController | null>(null);
 
   // Restore the tab's draft after hydration. Reading sessionStorage during
@@ -244,12 +265,17 @@ export function DeckCheck() {
     const names = nextParsed.entries.map((entry) => entry.name);
     const unique = new Set(names.map((name: string) => name.toLowerCase())).size;
     setProgress(`Reading the printed text of ${unique} card${unique === 1 ? "" : "s"} from Scryfall…`);
+    setProgressCount({ done: 0, total: unique });
     try {
       const result = await fetchCardFacts(names, {
         signal: controller.signal,
-        onProgress: (done: number, total: number) => setProgress(`Read ${done} of ${total} cards…`),
+        onProgress: (done: number, total: number) => {
+          setProgress(`Read ${done} of ${total} cards…`);
+          setProgressCount({ done, total });
+        },
       });
       if (controller.signal.aborted) return;
+      setProgressCount(null);
       const resolved = Object.keys(result.facts).length;
       if (result.failed && !resolved) {
         setPhase("error");
@@ -267,10 +293,45 @@ export function DeckCheck() {
       setProgress("");
     } catch {
       if (controller.signal.aborted) return;
+      setProgressCount(null);
       setPhase("error");
       setErrorRetryable(true);
       setErrorMessage("Something went wrong reading the card text. Your list is still here. Try again.");
     }
+  }
+
+  function cancelCheck() {
+    abortRef.current?.abort();
+    setProgressCount(null);
+    setProgress("");
+    setPhase(checkedText ? "done" : "idle");
+  }
+
+  /** Jump to a measured change from the finding it fixes. */
+  function showChange(index: number) {
+    setActiveSwap(index);
+    changeHeading.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    changeHeading.current?.focus({ preventScroll: true });
+  }
+
+  /** Put a suggested add into the player's own test, and ask for the cut. */
+  function testAdd(name: string) {
+    setCustomAdd(name);
+    setCustomResult(null);
+    cutSelect.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    cutSelect.current?.focus({ preventScroll: true });
+  }
+
+  function onTabKey(event: KeyboardEvent<HTMLButtonElement>, count: number) {
+    const keys: Record<string, number> = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
+    let next = -1;
+    if (event.key in keys) next = (activeSwap + keys[event.key] + count) % count;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = count - 1;
+    if (next < 0) return;
+    event.preventDefault();
+    setActiveSwap(next);
+    tabRefs.current[next]?.focus();
   }
 
   function loadSample(id: string) {
@@ -386,7 +447,15 @@ export function DeckCheck() {
       </form>
 
       <div className="dc-status" role="status" aria-live="polite" aria-busy={phase === "reading"}>
-        {phase === "reading" && <p className="dc-loading"><span className="dc-spinner" aria-hidden="true" />{progress}</p>}
+        {phase === "reading" && (
+          <div className="dc-loading">
+            <p><span className="dc-spinner" aria-hidden="true" />{progress}</p>
+            {progressCount && progressCount.total > 0 && (
+              <progress max={progressCount.total} value={progressCount.done} aria-label="Cards read from Scryfall">{progressCount.done} of {progressCount.total}</progress>
+            )}
+            <button type="button" className="dc-quiet" onClick={cancelCheck}>Cancel</button>
+          </div>
+        )}
       </div>
       {phase === "error" && (
         <div className="dc-error" role="alert">
@@ -400,7 +469,36 @@ export function DeckCheck() {
           <h2 id="dc-report-title" ref={reportHeading} tabIndex={-1}>
             {report.status === "ready" ? `Coaching report: ${report.commanders.map((commander) => commander.name).join(" + ")}` : `${report.format.label} check`}
           </h2>
-          {lookupFailed && <p className="dc-warn">Some cards could not be read because Scryfall did not answer every request. Counts may be low; run the check again.</p>}
+          {lookupFailed && (
+            <div className="dc-warn" role="alert">
+              <p>Some cards could not be read because Scryfall did not answer every request. The counts below may be low.</p>
+              <button type="button" onClick={() => void runCheck(checkedText, checkedFormat)}>Read the cards again</button>
+            </div>
+          )}
+
+          {report.status === "ready" && (
+            <article className="dc-card dc-glance" aria-labelledby="dc-glance-title">
+              <h3 id="dc-glance-title">At a glance</h3>
+              <ul className="dc-glance-list">
+                <li>
+                  <b>{errors.length ? `Not yet legal in ${report.format.label}:` : `Legal in ${report.format.label}.`}</b>
+                  {errors.length ? <> {errors.length} problem{errors.length === 1 ? "" : "s"} to fix. <a href="#dc-format-title">See the format check</a></> : null}
+                  {" "}<Basis kind="verified" />
+                </li>
+                <li><b>Plan:</b> {report.plan.sentence}</li>
+                {report.weaknesses.filter((weakness) => weakness.id !== "sound").slice(0, 3).map((weakness) => (
+                  <li key={`glance-${weakness.id}`}>
+                    <b>Fix:</b> <a href={`#dc-finding-${weakness.id}`}>{weakness.title}</a>
+                    {" "}<Basis kind={weakness.strength === "strong" ? "strong" : "heuristic"} />
+                  </li>
+                ))}
+                {report.weaknesses.every((weakness) => weakness.id === "sound") && <li><b>No major hole found</b> in the counts MetaForge reads.</li>}
+                {report.comparisons.length > 0 && (
+                  <li><b>Measured change to try:</b> <a href="#dc-change-title">{report.comparisons[0].cut} → {report.comparisons[0].add}</a></li>
+                )}
+              </ul>
+            </article>
+          )}
 
           {parsed.ignored.length + parsed.problems.length + parsed.notes.length > 0 && (
             <details className="dc-lines">
@@ -415,7 +513,7 @@ export function DeckCheck() {
 
           {report.status === "ready" && (
             <article className="dc-card dc-plan">
-              <h3>What this deck is trying to do</h3>
+              <h3>What this deck is trying to do <Basis kind="counted" /></h3>
               <p className="dc-big">{report.plan.sentence}</p>
               {report.plan.quote && (
                 <blockquote className="dc-quote">
@@ -444,7 +542,7 @@ export function DeckCheck() {
           )}
 
           <article className={`dc-card dc-format-check ${errors.length ? "has-errors" : "is-legal"}`}>
-            <h3>Format check · {report.format.label}</h3>
+            <h3 id="dc-format-title">Format check · {report.format.label} <Basis kind="verified" /></h3>
             {errors.length === 0 ? (
               <p className="dc-pass"><span aria-hidden="true">✓ </span>No construction problems found: {report.structure.playedTotal} cards{report.structure.commanders.length ? `, ${report.structure.commanders.join(" + ")} as commander` : ""}, copy limits{report.format.commander ? ", color identity" : ""} and Scryfall legality all check out.</p>
             ) : (
@@ -498,33 +596,86 @@ export function DeckCheck() {
           {report.status === "ready" && (
             <>
               <article className="dc-card dc-weak">
-                <h3>{report.weaknessHeading}</h3>
-                <p className="dc-muted">{report.weaknessIntro}</p>
+                <h3>{report.weaknesses.some((weakness) => weakness.id !== "sound") ? "What to fix first" : report.weaknessHeading}</h3>
+                <p className="dc-muted">
+                  {report.weaknesses.some((weakness) => weakness.id !== "sound")
+                    ? "Strongest finding first. Each one shows what was counted, the cards behind it, why it matters, what to change, and what that costs."
+                    : report.weaknessIntro}
+                </p>
                 <ol className="dc-weaknesses">
-                  {report.weaknesses.map((weakness) => (
-                    <li key={weakness.id}>
-                      <h4>{weakness.title}</h4>
-                      <p>{weakness.plain}</p>
-                      {weakness.citations?.length > 0 && (
-                        <ul className="dc-citations">
-                          {weakness.citations.map((citation) => (
-                            <li key={`${weakness.id}-${citation.name}`}>
-                              <b>{citation.name}</b>
-                              {citation.quote && <q>{citation.quote}</q>}
-                              <span>{citation.says}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      <p className="dc-muted">{confidenceLabel(weakness.confidence)}{weakness.confidenceReason ? `: ${weakness.confidenceReason}` : "."}</p>
-                    </li>
-                  ))}
+                  {report.weaknesses.map((weakness) => {
+                    const swapIndex = report.comparisons.findIndex((comparison) => comparison.source === weakness.id);
+                    const suggestion = report.suggestedAdds.find((entry) => entry.source === weakness.id);
+                    return (
+                      <li key={weakness.id} id={`dc-finding-${weakness.id}`} tabIndex={-1}>
+                        <h4>
+                          {weakness.title}
+                          {weakness.strength && <> <Basis kind={weakness.strength === "strong" ? "strong" : "heuristic"} /></>}
+                        </h4>
+                        {weakness.detected ? (
+                          <dl className="dc-finding">
+                            <dt>Detected</dt>
+                            <dd>{weakness.detected}</dd>
+                            <dt>Why it matters</dt>
+                            <dd>{weakness.why || weakness.plain}</dd>
+                            {(weakness.notes?.length || 0) > 0 && (
+                              <>
+                                <dt>Keep in mind</dt>
+                                {weakness.notes?.map((note) => <dd key={note}>{note}</dd>)}
+                              </>
+                            )}
+                            <dt>Cards behind it</dt>
+                            <dd>
+                              <ul className="dc-citations">
+                                {weakness.citations.map((citation) => (
+                                  <li key={`${weakness.id}-${citation.name}`}>
+                                    <b>{citation.name}</b>
+                                    {citation.quote && <q>{citation.quote}</q>}
+                                    <span>{citation.says}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </dd>
+                            <dt>What to change</dt>
+                            <dd>
+                              {weakness.change}
+                              {swapIndex >= 0 && <> <button type="button" className="dc-link" onClick={() => showChange(swapIndex)}>See the measured change</button></>}
+                              {swapIndex < 0 && suggestion && <> <button type="button" className="dc-link" onClick={() => testAdd(suggestion.add)}>Test {suggestion.add} with your own cut</button></>}
+                            </dd>
+                            {weakness.tradeOff && (
+                              <>
+                                <dt>What it costs</dt>
+                                <dd>{weakness.tradeOff}</dd>
+                              </>
+                            )}
+                            <dt>How sure</dt>
+                            <dd className="dc-muted">{weakness.strengthReason} {confidenceLabel(weakness.confidence)} plan read.</dd>
+                          </dl>
+                        ) : (
+                          <>
+                            <p>{weakness.plain}</p>
+                            {weakness.citations?.length > 0 && (
+                              <ul className="dc-citations">
+                                {weakness.citations.map((citation) => (
+                                  <li key={`${weakness.id}-${citation.name}`}>
+                                    <b>{citation.name}</b>
+                                    {citation.quote && <q>{citation.quote}</q>}
+                                    <span>{citation.says}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ol>
               </article>
 
               {report.mana && (
                 <article className="dc-card">
-                  <h3>Mana</h3>
+                  <h3>Mana <Basis kind="counted" /></h3>
                   <p>{report.mana.summary}</p>
                   <p className="dc-muted">{report.mana.lands.summary}</p>
                   <ul className="dc-colors">
@@ -536,41 +687,64 @@ export function DeckCheck() {
               )}
 
               <article className="dc-card">
-                <h3>Curve</h3>
+                <h3>Curve <Basis kind="counted" /></h3>
                 <p>{report.curve.summary}.</p>
                 <CurveBars buckets={report.curve.buckets} />
               </article>
 
               <article className="dc-card dc-change" aria-labelledby="dc-change-title">
-                <h3 id="dc-change-title">Try one change</h3>
+                <h3 id="dc-change-title" ref={changeHeading} tabIndex={-1}>Try one change</h3>
                 {report.comparisons.length > 0 ? (
                   <>
                     <p className="dc-muted">Each change is replayed through the same checks, so the numbers below are measured on your list, not promised.</p>
                     {report.comparisons.length > 1 && (
-                      <div className="dc-tabs" role="group" aria-label="Suggested changes">
+                      <div className="dc-tabs" role="tablist" aria-label="Suggested changes">
                         {report.comparisons.map((comparison, index) => (
                           <button
                             type="button"
+                            role="tab"
+                            id={`dc-tab-${index}`}
+                            aria-controls="dc-tabpanel"
+                            aria-selected={index === activeSwap}
+                            tabIndex={index === activeSwap ? 0 : -1}
+                            ref={(element) => { tabRefs.current[index] = element; }}
                             key={`${comparison.cut}-${comparison.add}`}
-                            aria-pressed={index === activeSwap}
                             onClick={() => setActiveSwap(index)}
+                            onKeyDown={(event) => onTabKey(event, report.comparisons.length)}
                           >
                             {comparison.cut} → {comparison.add}
                           </button>
                         ))}
                       </div>
                     )}
-                    {activeComparison && <Comparison comparison={activeComparison} />}
+                    <div id="dc-tabpanel" role={report.comparisons.length > 1 ? "tabpanel" : undefined} aria-labelledby={report.comparisons.length > 1 ? `dc-tab-${activeSwap}` : undefined}>
+                      {activeComparison && <Comparison comparison={activeComparison} />}
+                    </div>
                   </>
-                ) : (
+                ) : report.suggestedAdds.length === 0 ? (
                   <p>{report.noSwapNote}</p>
+                ) : null}
+                {report.suggestedAdds.length > 0 && (
+                  <div className="dc-suggested">
+                    <h4>Worth testing, with a cut you choose</h4>
+                    <p className="dc-muted">Every expensive card in this list already does another job or belongs to the plan, so MetaForge will not pick the cut for you.</p>
+                    <ul>
+                      {report.suggestedAdds.map((entry) => (
+                        <li key={entry.add}>
+                          <b>{entry.add}</b>{entry.addManaCost ? ` · ${entry.addManaCost}` : ""}{entry.addTypeLine ? ` · ${entry.addTypeLine}` : ""}
+                          <q>{entry.addQuote}</q>
+                          <button type="button" onClick={() => testAdd(entry.add)}>Test {entry.add}</button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
                 <form className="dc-custom" onSubmit={testCustomSwap}>
                   <h4>Test your own change</h4>
                   <div className="dc-row">
                     <label className="dc-field">
                       <span>Cut</span>
-                      <select value={customCut} onChange={(event) => setCustomCut(event.target.value)}>
+                      <select ref={cutSelect} value={customCut} onChange={(event) => setCustomCut(event.target.value)}>
                         <option value="">Choose a card…</option>
                         {report.deckCards.map((name: string) => <option key={name} value={name}>{name}</option>)}
                       </select>
@@ -593,6 +767,12 @@ export function DeckCheck() {
           <article className="dc-card dc-limits">
             <h3>What this check can and can&rsquo;t tell you</h3>
             <ul>{report.limits.map((line: string) => <li key={line}>{line}</li>)}</ul>
+            <p className="dc-legend">
+              <Basis kind="verified" /> rules and Scryfall legality ·{" "}
+              <Basis kind="counted" /> read from printed text ·{" "}
+              <Basis kind="strong" /> / <Basis kind="heuristic" /> MetaForge&rsquo;s judgement ·{" "}
+              <Basis kind="measured" /> replayed on your list. Not checked: prices, win rates, matchups, your playgroup.
+            </p>
           </article>
 
           <nav className="dc-next" aria-label="Keep going">

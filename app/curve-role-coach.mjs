@@ -1368,6 +1368,9 @@ export function buildCurveRoleCoaching(input = {}) {
   }
 }
 
+/**
+ * @param {{ commander?: any, commanders?: any[], cards?: any[], strategy?: string, deckText?: string }} input
+ */
 function buildCurveRoleCoachingFor(input = {}) {
   const commanderSources = [
     ...(Array.isArray(input.commanders) ? input.commanders : []),
