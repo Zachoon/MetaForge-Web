@@ -12,7 +12,7 @@
 // plan-weakness-coach, mana-base-coach); this module adds format checks,
 // the before/after replay, and the honest-limits list.
 
-import { buildCurveRoleCoaching, swapCatalogCard } from "./curve-role-coach.mjs";
+import { buildCurveRoleCoaching, classifyPrintedCard, swapCatalogCard } from "./curve-role-coach.mjs";
 import { buildManaBaseCoaching } from "./mana-base-coach.mjs";
 import { deckCheckKey, decklistText, playedEntries } from "./deck-check-parse.mjs";
 import { factFor } from "./deck-check-facts.mjs";
@@ -236,8 +236,30 @@ export function checkDeckStructure({ parsed, facts = {}, notFound = [], format: 
     }
   }
 
+  // Companion: outside the 100 (or in the 15-card sideboard), so it is not
+  // in the counts above. Its printed deck-building condition is quoted, not
+  // checked: those conditions are free text and Deck Check does not parse them.
+  const companions = entries.filter((entry) => entry.section === "companion");
+  for (const entry of companions) {
+    const fact = factFor(facts, entry.name);
+    if (!fact) continue;
+    if (!/\bCompanion\s+—/.test(fact.oracleText || "")) {
+      issues.push({ severity: "error", code: "companion-not-companion", message: `${fact.name} is listed as a companion, but its printed text has no Companion ability.`, lines: entry.lines, cards: [fact.name] });
+      continue;
+    }
+    if (format.commander && chosenCommanders.some((commander) => !commander.unresolved)) {
+      const allowed = new Set(identity);
+      const outside = (fact.colorIdentity || []).filter((color) => !allowed.has(color));
+      if (outside.length) {
+        issues.push({ severity: "error", code: "companion-identity", message: `${fact.name} is ${identityWords(fact.colorIdentity)}, outside the commander's ${identityWords(identity)} color identity, so it cannot be this deck's companion.`, lines: entry.lines, cards: [fact.name] });
+      }
+    }
+    const condition = (String(fact.oracleText || "").match(/Companion\s+—\s*([^\n]*)/) || [])[1] || "";
+    issues.push({ severity: "info", code: "companion-condition", message: `${fact.name} is listed as the companion. Deck Check does not check its deck-building condition: “${condition.replace(/\s*\([^)]*\)\s*/g, " ").trim()}”`, lines: entry.lines, cards: [fact.name] });
+  }
+
   // Legality per Scryfall.
-  for (const entry of format.commander ? played : [...main, ...side]) {
+  for (const entry of format.commander ? [...played, ...companions] : [...main, ...side, ...companions]) {
     const fact = factFor(facts, entry.name);
     const status = fact?.legalities?.[format.legalityKey];
     if (!fact || !status || status === "legal" || (status === "restricted" && format.id === "vintage")) continue;
@@ -473,6 +495,113 @@ export function comparePlayerSwap({ parsed, facts = {}, commanderNames, strategy
   return comparison ? { ok: true, comparison } : { ok: false, message: "That change could not be replayed." };
 }
 
+// ---------------------------------------------------------------- findings
+// Every weakness is turned into the same six answers, so the page never has
+// to guess: what was detected, the cards behind it, why it matters, the
+// change, what that change costs, and whether this is a strong finding or a
+// heuristic. "Strong" is reserved for a count far below MetaForge's band on a
+// plan read with high confidence; everything else is labelled heuristic,
+// because the bands are starting points, not rules of the game.
+
+const HEURISTIC_REASON = "Heuristic: MetaForge's role bands are starting points for this kind of plan, not rules of the game. A deck can be built to need fewer.";
+
+function findingStrength({ weakness, row, confidence, partial }) {
+  if (weakness.id === "role-wincon") {
+    return { level: "heuristic", reason: "Heuristic: only printed finishers are counted. Combat from a wide board, commander damage and combos are not." };
+  }
+  if (row && confidence === "high" && !partial && row.actual <= Math.floor(row.min * 0.5)) {
+    return { level: "strong", reason: `Strong finding: ${row.actual} is less than half of the ${row.min}–${row.max} band, and the commander's plan reads with high confidence.` };
+  }
+  return { level: "heuristic", reason: HEURISTIC_REASON };
+}
+
+/** A printed "you win the game" card plus several tutors is a combo finish the counts do not see. */
+function comboFinish(cards) {
+  const winners = cards.filter((card) => /\byou win the game\b|\bloses the game\b/i.test(card.oracleText || ""));
+  const tutors = cards.filter((card) => card.oracleText && classifyPrintedCard(card).tutor);
+  return winners.length && tutors.length >= 3 ? { winners: winners.map((card) => card.name), tutors: tutors.length } : null;
+}
+
+function commanderDraws(commanders) {
+  return commanders.filter((commander) => commander.oracleText && classifyPrintedCard(commander).draw);
+}
+
+function explainFindings({ curveRole, comparisons, addOnly, commanders, cards, partial }) {
+  const plan = curveRole.plan;
+  const combo = comboFinish(cards);
+  const drawingCommanders = commanderDraws(commanders);
+  const findings = (curveRole.weaknesses || []).filter((weakness) => weakness.id !== "sound").map((weakness) => {
+    const roleId = weakness.id.startsWith("role-") ? weakness.id.slice(5) : null;
+    const row = roleId ? (curveRole.roles || []).find((role) => role.id === roleId) : null;
+    const comparison = comparisons.find((entry) => entry.source === weakness.id) || null;
+    const suggestion = addOnly.find((entry) => entry.source === weakness.id) || null;
+    const notes = [];
+    if (weakness.id === "role-wincon" && combo) {
+      notes.push(`This list runs ${combo.winners.join(" and ")} and ${combo.tutors} tutors. If finding that card is how the deck wins, the finisher count matters much less.`);
+    }
+    if (weakness.id === "role-draw" && drawingCommanders.length) {
+      const commander = drawingCommanders[0];
+      const line = String(commander.oracleText).split("\n").find((entry) => /\bdraw/i.test(entry)) || "";
+      notes.push(`${commander.name} draws cards itself (“${line.trim()}”). The count is of the other cards only, so with the commander out the shortfall is smaller.`);
+    }
+    const strength = findingStrength({ weakness, row, confidence: weakness.confidence, partial });
+    if (notes.length && strength.level === "strong") {
+      strength.level = "heuristic";
+      strength.reason = HEURISTIC_REASON;
+    }
+    return {
+      ...weakness,
+      detected: row
+        ? `${row.label}: ${row.actual} counted. MetaForge's band for ${plan.id === "midrange" ? "a general midrange deck" : plan.label} is ${row.min}–${row.max}.`
+        : weakness.title,
+      why: weakness.plain,
+      notes,
+      change: comparison
+        ? `Swap ${comparison.cut} for ${comparison.add}. The before and after is measured below.`
+        : suggestion
+          ? `Add ${suggestion.add}. Every expensive card in the list already does another job or belongs to the plan, so the cut is your call: test it below.`
+          : "No card on MetaForge's vetted swap list fits this deck's colors and plan. You can test your own change below.",
+      tradeOff: comparison
+        ? (comparison.tradeOffs.length ? comparison.tradeOffs.join(" ") : "No other counted role drops.")
+        : suggestion ? "Whatever you cut loses its job. Test the change to see what drops." : "",
+      strength: strength.level,
+      strengthReason: strength.reason,
+    };
+  });
+  // A strong finding outranks a heuristic one; otherwise keep the coach's order.
+  return findings
+    .map((finding, index) => ({ finding, index }))
+    .sort((left, right) => (left.finding.strength === "strong" ? 0 : 1) - (right.finding.strength === "strong" ? 0 : 1) || left.index - right.index)
+    .map(({ finding }) => finding);
+}
+
+/** Suggested adds that came with no safe cut, so the player picks one. */
+function addOnlySuggestions(curveRole, cards, comparisons) {
+  const inDeck = new Set(cards.map((card) => deckCheckKey(card.name)));
+  const replayed = new Set(comparisons.map((entry) => deckCheckKey(entry.add)));
+  const out = [];
+  for (const weakness of curveRole?.weaknesses || []) {
+    for (const swap of weakness.swaps || []) {
+      if (swap.cut || !swap.add) continue;
+      const add = swapCatalogCard(swap.add);
+      if (!add || inDeck.has(deckCheckKey(add.name)) || replayed.has(deckCheckKey(add.name))) continue;
+      if (out.some((entry) => entry.add === add.name)) continue;
+      out.push({ source: weakness.id, add: add.name, reason: swap.reason, addQuote: add.oracleText, addTypeLine: add.typeLine, addManaCost: add.manaCost });
+    }
+  }
+  return out.slice(0, 2);
+}
+
+function planSentence({ plan, commanderLabel, strategy }) {
+  if (plan.readId === "midrange" && !strategy) {
+    return `MetaForge did not match ${commanderLabel}'s printed text to one of its plans, so the deck is judged by general midrange bands. Treat the plan-specific advice below as rough.`;
+  }
+  if (plan.id === "midrange" && plan.readId && plan.readId !== "midrange") {
+    return `${commanderLabel} reads as ${plan.label}. MetaForge has no separate role bands for that plan yet, so the counts below use its general midrange bands.`;
+  }
+  return `${commanderLabel} reads as ${plan.label}.`;
+}
+
 /**
  * Build the whole Deck Check report.
  * @param {{ parsed: any, facts: Record<string, any>, notFound?: string[], format?: string, strategy?: string, commanderNames?: string[] }} input
@@ -533,9 +662,18 @@ export function buildDeckCheckReport(input = {}) {
 
   const plan = before.curveRole.plan;
   const commanderLabel = commanders.map((commander) => commander.name).join(" + ");
-  const planSentence = plan.id === "midrange" && !strategy
-    ? `${commanderLabel}'s printed text does not name a sharp plan, so the deck is judged as a general midrange deck.`
-    : `${commanderLabel} reads as ${plan.label}.`;
+  // A suggested cut that the format check already flagged has to go anyway.
+  const flagged = new Map();
+  for (const issue of structure.issues) {
+    if (!["banned", "not-legal", "color-identity"].includes(issue.code)) continue;
+    for (const name of issue.cards) flagged.set(deckCheckKey(name), issue.message);
+  }
+  for (const comparison of comparisons) {
+    const why = flagged.get(deckCheckKey(comparison.cut));
+    if (why) comparison.cutFlag = `${why} It has to leave the deck regardless.`;
+  }
+  const addOnly = addOnlySuggestions(before.curveRole, cards, comparisons);
+  const findings = explainFindings({ curveRole: before.curveRole, comparisons, addOnly, commanders, cards, partial: Boolean(before.curveRole.partial) });
 
   return {
     status: "ready",
@@ -546,7 +684,8 @@ export function buildDeckCheckReport(input = {}) {
     plan: {
       id: plan.id,
       label: plan.label,
-      sentence: planSentence,
+      sentence: planSentence({ plan, commanderLabel, strategy }),
+      readId: plan.readId || plan.id,
       quote: plan.excerpt,
       confidence: before.curveRole.confidence,
       strategyNote: before.curveRole.strategyNote || "",
@@ -556,7 +695,8 @@ export function buildDeckCheckReport(input = {}) {
     roles: before.curveRole.roles,
     weaknessHeading: before.curveRole.weaknessHeading,
     weaknessIntro: before.curveRole.weaknessIntro,
-    weaknesses: before.curveRole.weaknesses,
+    weaknesses: findings.length ? findings : before.curveRole.weaknesses,
+    suggestedAdds: addOnly,
     mana: before.mana?.readable ? {
       summary: before.mana.summary || before.mana.lands?.summary || "",
       lands: before.mana.lands,
@@ -564,7 +704,7 @@ export function buildDeckCheckReport(input = {}) {
       confidence: before.mana.confidence,
     } : null,
     comparisons,
-    noSwapNote: comparisons.length
+    noSwapNote: comparisons.length || addOnly.length
       ? ""
       : (before.curveRole.lessons || []).map((lesson) => lesson.swapNote).find(Boolean)
         || "No swap from the cards MetaForge can vouch for fits this list. You can still test your own change below.",

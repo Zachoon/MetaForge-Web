@@ -389,9 +389,14 @@ function ownColors(draft) {
 }
 
 function resolveFetches(drafts) {
+  // Every land's own colors first: a fetch land listed before the lands it
+  // finds (any alphabetical export: "Bloodstained Mire" before "Mountain")
+  // used to read a target whose colors were not set yet, and threw.
   for (const draft of drafts) {
     draft.colorTiming = {};
     draft.reliableColors = new Set(ownColors(draft));
+  }
+  for (const draft of drafts) {
     if (!draft.fetch || draft.fetch.paid || !draft.land) continue;
     const targets = drafts.filter((other) => other !== draft && landMatchesFetch(other, draft.fetch));
     const forced = draft.timing === "fetch-tapped" || draft.timing === "fetch-late" ? draft.timing : null;

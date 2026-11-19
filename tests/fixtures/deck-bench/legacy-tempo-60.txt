@@ -1,0 +1,23 @@
+Deck
+4 Brainstorm
+4 Ponder
+4 Force of Will
+4 Daze
+4 Lightning Bolt
+4 Dragon's Rage Channeler
+4 Murktide Regent
+4 Mental Misstep
+3 Counterspell
+3 Expressive Iteration
+4 Scalding Tarn
+4 Volcanic Island
+4 Wasteland
+3 Polluted Delta
+3 Island
+4 Delver of Secrets
+
+Sideboard
+2 Pyroblast
+2 Red Elemental Blast
+3 Submerge
+3 Fury

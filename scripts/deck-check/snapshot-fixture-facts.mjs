@@ -1,13 +1,16 @@
 // Snapshot Scryfall card facts for the Deck Check fixtures so the tests run
 // offline and deterministically. Re-run only when a fixture list changes:
-//   node scripts/deck-check/snapshot-fixture-facts.mjs
+//   node scripts/deck-check/snapshot-fixture-facts.mjs [fixture-dir] [name ...]
+// The default directory is tests/fixtures/deck-coach. Names limit the run to
+// those fixtures, so existing snapshots are not refreshed by accident.
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseDecklist } from "../../app/deck-check-parse.mjs";
 import { fetchCardFacts } from "../../app/deck-check-facts.mjs";
 
-const dir = new URL("../../tests/fixtures/deck-coach/", import.meta.url);
-const files = readdirSync(dir).filter((file) => file.endsWith(".txt"));
+const [dirArg, ...only] = process.argv.slice(2);
+const dir = new URL(`../../tests/fixtures/${dirArg || "deck-coach"}/`, import.meta.url);
+const files = readdirSync(dir).filter((file) => file.endsWith(".txt") && (!only.length || only.includes(file.replace(/.txt$/, ""))));
 
 for (const file of files) {
   const text = readFileSync(new URL(file, dir), "utf8");

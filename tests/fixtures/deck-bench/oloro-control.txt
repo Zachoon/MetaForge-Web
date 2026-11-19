@@ -1,0 +1,87 @@
+Commander
+1 Oloro, Ageless Ascetic
+
+Deck
+1 Wrath of God
+1 Damnation
+1 Supreme Verdict
+1 Toxic Deluge
+1 Austere Command
+1 Merciless Eviction
+1 Hour of Revelation
+1 Swords to Plowshares
+1 Path to Exile
+1 Anguished Unmaking
+1 Vindicate
+1 Mortify
+1 Utter End
+1 Despark
+1 Counterspell
+1 Mana Drain
+1 Arcane Denial
+1 Dovin's Veto
+1 Cyclonic Rift
+1 Sanguine Bond
+1 Exquisite Blood
+1 Well of Lost Dreams
+1 Bolas's Citadel
+1 Sheoldred, the Apocalypse
+1 Archangel of Thune
+1 Ajani's Pridemate
+1 Soul Warden
+1 Vito, Thorn of the Dusk Rose
+1 Defiant Bloodlord
+1 Felidar Sovereign
+1 Test of Endurance
+1 Aetherflux Reservoir
+1 Rhystic Study
+1 Phyrexian Arena
+1 Esper Sentinel
+1 Mystic Remora
+1 Underworld Connections
+1 Necropotence
+1 Fact or Fiction
+1 Painful Truths
+1 Read the Bones
+1 Sol Ring
+1 Arcane Signet
+1 Talisman of Hierarchy
+1 Talisman of Dominance
+1 Talisman of Progress
+1 Orzhov Signet
+1 Dimir Signet
+1 Azorius Signet
+1 Fellwar Stone
+1 Mind Stone
+1 Smothering Tithe
+1 Teferi's Protection
+1 Lightning Greaves
+1 Demonic Tutor
+1 Vampiric Tutor
+1 Enlightened Tutor
+1 Mystical Tutor
+1 Dark Ritual
+1 Night's Whisper
+1 Ghostly Prison
+1 Propaganda
+1 Command Tower
+1 Exotic Orchard
+1 Hallowed Fountain
+1 Watery Grave
+1 Godless Shrine
+1 Raffine's Tower
+1 Flooded Strand
+1 Polluted Delta
+1 Marsh Flats
+1 Glacial Fortress
+1 Drowned Catacomb
+1 Isolated Chapel
+1 Arcane Sanctum
+1 Caves of Koilos
+1 Underground River
+1 Adarkar Wastes
+1 Reliquary Tower
+1 Bojuka Bog
+7 Plains
+6 Island
+6 Swamp

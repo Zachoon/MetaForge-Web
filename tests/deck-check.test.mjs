@@ -32,6 +32,14 @@ function report(name, format = "commander", extra = {}) {
   return buildDeckCheckReport({ parsed, facts, notFound, format, ...extra });
 }
 
+function benchReport(name, format = "commander") {
+  const dir = new URL("./fixtures/deck-bench/", import.meta.url);
+  const snapshot = JSON.parse(readFileSync(new URL(`${name}.facts.json`, dir), "utf8"));
+  const facts = {};
+  for (const fact of Object.values(snapshot.facts)) indexFact(facts, fact);
+  return buildDeckCheckReport({ parsed: parseDecklist(readFileSync(new URL(`${name}.txt`, dir), "utf8")), facts, notFound: snapshot.notFound, format });
+}
+
 // ---------------------------------------------------------------- parsing
 
 test("parses the common export shapes and keeps a reason for every line it sets aside", () => {
@@ -225,7 +233,10 @@ test("the Ezuri report reads the commander's text and names evidence-backed weak
   assert.equal(r.plan.sentence, "Ezuri, Renegade Leader reads as Elves.");
   assert.match(r.plan.quote, /Elf creatures you control get \+3\/\+3/);
   assert.equal(r.plan.confidence.level, "high");
-  assert.deepEqual(r.weaknesses.map((weakness) => weakness.id), ["role-draw", "role-interaction", "role-wipes"]);
+  // MF-DECK-COACH-002: an Elves deck is no longer told it is short on board
+  // wipes (a symmetric wipe destroys its own board; Ezuri's Predation is now
+  // read as the one-sided wipe it is).
+  assert.deepEqual(r.weaknesses.map((weakness) => weakness.id), ["role-draw", "role-interaction"]);
   const draw = r.weaknesses[0];
   assert.match(draw.plain, /This list has 2 real draw spells, and Elves wants about 11–14/);
   // Every weakness quotes a card that is actually in the list.
@@ -234,9 +245,19 @@ test("the Ezuri report reads the commander's text and names evidence-backed weak
     assert.ok(weakness.citations.length > 0, `${weakness.id} cites a card`);
     for (const citation of weakness.citations) assert.ok(names.has(citation.name), `${citation.name} is in the deck`);
   }
-  assert.match(draw.citations[0].quote, /Search your library for a card named Elvish Clancaller/);
+  // Elvish Clancaller's self-search finds nothing in a singleton deck, so it
+  // is no longer cited as a "tutor"; a real one is.
+  assert.equal(draw.citations[0].name, "Krosan Tusker");
+  assert.ok(!draw.citations.some((citation) => citation.name === "Elvish Clancaller"));
+  // Each finding answers the same six questions.
+  assert.equal(draw.detected, "Card advantage: 2 counted. MetaForge's band for Elves is 11–14.");
+  assert.equal(draw.change, "Swap Thragtusk for Beast Whisperer. The before and after is measured below.");
+  assert.equal(draw.tradeOff, "No other counted role drops.");
+  assert.equal(draw.strength, "strong");
+  assert.match(draw.strengthReason, /less than half of the 11–14 band/);
   assert.equal(r.mana.lands.count, 33);
   assert.equal(r.strengths.find((job) => job.id === "ramp").actual, 11);
+  assert.equal(r.strengths.find((job) => job.id === "wipes").actual, 1, "Ezuri's Predation counts as a wipe");
 });
 
 test("coaching is specific to each deck, not a shared template", () => {
@@ -274,26 +295,42 @@ test("limits are stated, including that no model is called and prices are not ch
 test("the top Ezuri change is replayed and the measured movement is reported honestly", () => {
   const r = report("ezuri-elves-needs-work");
   const top = r.comparisons[0];
-  assert.equal(top.cut, "Elvish Clancaller");
+  // MF-DECK-COACH-002: the cut is no longer Elvish Clancaller (an Elf lord,
+  // part of the plan). Thragtusk does none of the counted jobs and is not an Elf.
+  assert.equal(top.cut, "Thragtusk");
   assert.equal(top.add, "Beast Whisperer");
   assert.equal(top.addQuote, "Whenever you cast a creature spell, draw a card.");
   const draw = top.roles.find((role) => role.id === "draw");
   assert.deepEqual([draw.before, draw.after, draw.beforeStatus, draw.afterStatus], [2, 3, "short", "short"]);
   assert.equal(top.verdict, "Card advantage goes from 2 to 3. The plan wants 11–14, so this is 8 short of the range: one swap starts the fix, it does not finish it.");
+  assert.deepEqual(top.tradeOffs, []);
   const afterParsed = parseDecklist(top.afterText);
   assert.equal(playedCount(afterParsed), 100);
   assert.ok(afterParsed.entries.some((entry) => entry.name === "Beast Whisperer"));
-  assert.equal(afterParsed.entries.some((entry) => entry.name === "Elvish Clancaller"), false);
+  assert.equal(afterParsed.entries.some((entry) => entry.name === "Thragtusk"), false);
   assert.deepEqual(afterParsed.commanderNames, ["Ezuri, Renegade Leader"]);
+  // No suggested cut is an Elf, a tutor, or Ezuri's Predation.
+  for (const comparison of r.comparisons) {
+    assert.ok(!["Elvish Clancaller", "Ezuri's Predation", "Krosan Tusker", "Coat of Arms"].includes(comparison.cut), comparison.cut);
+  }
 });
 
 test("a change that closes a gap says so, and its cost is listed", () => {
+  const r = benchReport("atraxa-edgar-bad-pair");
+  const close = r.comparisons.find((comparison) => comparison.cut === "Chromatic Lantern");
+  assert.ok(close, "a ramp surplus is traded for the short card-advantage role");
+  assert.equal(close.verdict, "Card advantage goes from 10 to 11, inside the 11–14 range for this plan.");
+  assert.deepEqual(close.tradeOffs, ["Ramp drops from 14 to 13 (still within 10–13)."]);
+});
+
+test("a go-wide deck is never offered a wipe that kills its own board, and a banned cut is called out", () => {
   const r = report("krenko-invalid-edge");
-  const wipe = r.comparisons.find((comparison) => comparison.add === "Blasphemous Act");
-  assert.ok(wipe, "Krenko is offered a board wipe");
-  assert.match(wipe.verdict, /Board wipes goes from 0 to 1, inside the 1–2 range/);
-  assert.deepEqual(wipe.tradeOffs, ["Interaction drops from 6 to 5 (still within 3–5)."]);
-  assert.ok(r.comparisons.some((comparison) => comparison.cut === "Dockside Extortionist"), "the banned card is the first cut for the ramp gap");
+  assert.ok(!r.weaknesses.some((weakness) => weakness.id === "role-wipes"));
+  assert.ok(!r.comparisons.some((comparison) => ["Blasphemous Act", "Wrath of God", "Damnation", "Toxic Deluge"].includes(comparison.add)));
+  assert.ok(!r.comparisons.some((comparison) => comparison.cut === "Siege-Gang Commander"), "a Goblin is not cut from a Goblins deck");
+  const dockside = r.comparisons.find((comparison) => comparison.cut === "Dockside Extortionist");
+  assert.ok(dockside, "the banned card is the cut for the ramp gap");
+  assert.match(dockside.cutFlag, /banned in Commander .* It has to leave the deck regardless\./);
 });
 
 test("every suggested add is in the vetted catalog with real printed text", () => {

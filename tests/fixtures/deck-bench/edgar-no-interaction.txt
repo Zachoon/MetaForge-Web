@@ -1,0 +1,87 @@
+// Flaw: all ten removal spells and the wipe replaced by creatures.
+Commander
+1 Edgar Markov
+
+Deck
+1 Sol Ring
+1 Arcane Signet
+1 Talisman of Hierarchy
+1 Talisman of Indulgence
+1 Boros Signet
+1 Rakdos Signet
+1 Orzhov Signet
+1 Mind Stone
+1 Fellwar Stone
+1 Bloodline Keeper
+1 Sorin, Imperious Bloodlord
+1 Legion Lieutenant
+1 Stromkirk Captain
+1 Vampire Nocturnus
+1 Captivating Vampire
+1 Falkenrath Noble
+1 Cordial Vampire
+1 Indulgent Aristocrat
+1 Viscera Seer
+1 Kalitas, Traitor of Ghet
+1 Drana, Liberator of Malakir
+1 Elenda, the Dusk Rose
+1 Bloodghast
+1 Cruel Celebrant
+1 Bloodthirsty Aerialist
+1 Champion of Dusk
+1 Vampire of the Dire Moon
+1 Knight of the Ebon Legion
+1 Sanctum Seeker
+1 Dusk Legion Zealot
+1 Mavren Fein, Dusk Apostle
+1 Twilight Prophet
+1 Patron of the Vein
+1 Vito, Thorn of the Dusk Rose
+1 Stromkirk Noble
+1 Olivia Voldaren
+1 Bloodlord of Vaasgoth
+1 New Blood
+1 Shared Animosity
+1 Cathars' Crusade
+1 Door of Destinies
+1 Vanquisher's Banner
+1 Coat of Arms
+1 Boros Charm
+1 Teferi's Protection
+1 Flawless Maneuver
+1 Phyrexian Arena
+1 Skullclamp
+1 Night's Whisper
+1 Painful Truths
+1 Command Tower
+1 Savai Triome
+1 Sacred Foundry
+1 Godless Shrine
+1 Blood Crypt
+1 Bloodstained Mire
+1 Marsh Flats
+1 Arid Mesa
+1 Nomad Outpost
+1 Clifftop Retreat
+1 Isolated Chapel
+1 Dragonskull Summit
+1 Exotic Orchard
+1 Path of Ancestry
+1 Unclaimed Territory
+1 Cavern of Souls
+1 Sulfurous Springs
+1 Caves of Koilos
+1 Battlefield Forge
+7 Plains
+7 Swamp
+6 Mountain
+1 Blood Artist
+1 Gifted Aetherborn
+1 Malakir Bloodwitch
+1 Nirkana Revenant
+1 Asylum Visitor
+1 Bloodcrazed Paladin
+1 Voldaren Bloodcaster
+1 Markov Baron
+1 Vampire Socialite
+1 Welcoming Vampire

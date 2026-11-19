@@ -568,7 +568,10 @@ function rolePlain(plan, commanderName, role, row) {
   if (role.id === "wipes") {
     return `One answer deals with one permanent. A wipe resets a board that has already gone wider than ${plan.label}. This list has ${row.actual}, and the usual band is ${range}.`;
   }
-  return `${name} can build a board all game and still not win. A win condition's printed text has to end the game. This list has ${row.actual}, and ${plan.label} wants about ${range}.`;
+  // A heuristic, and worded as one: MetaForge reads printed finishers only.
+  // Before MF-DECK-COACH-002 this said no card "actually ends the game" to
+  // combo decks running Thassa's Oracle and to landfall decks.
+  return `MetaForge counts cards whose printed text ends a game: a one-turn team pump such as Overrun, poison, an extra turn, a drain, or \"you win the game\". This list has ${row.actual}, and ${plan.label} usually wants about ${range}. Combat from a large board, commander damage and two-card combos are not counted, so if one of those is how this deck wins, this is a smaller problem than the count suggests.`;
 }
 
 function roleTitle(role) {
@@ -576,7 +579,7 @@ function roleTitle(role) {
   if (role.id === "draw") return "Too few ways to draw extra cards";
   if (role.id === "ramp") return "Not enough mana the plan can actually spend";
   if (role.id === "wipes") return "Not enough ways to reset the board";
-  return "No card here actually ends the game";
+  return "Few cards whose printed text ends the game";
 }
 
 function citeCard(card, says, pattern) {

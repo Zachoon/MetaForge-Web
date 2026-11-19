@@ -68,6 +68,56 @@ function cleanName(raw) {
   return { name, commanderTag };
 }
 
+function splitCsvRow(row) {
+  const cells = [];
+  let cell = "";
+  let quoted = false;
+  for (let index = 0; index < row.length; index += 1) {
+    const char = row[index];
+    if (quoted) {
+      if (char === "\"" && row[index + 1] === "\"") {
+        cell += "\"";
+        index += 1;
+      } else if (char === "\"") quoted = false;
+      else cell += char;
+    } else if (char === "\"") quoted = true;
+    else if (char === ",") {
+      cells.push(cell.trim());
+      cell = "";
+    } else cell += char;
+  }
+  cells.push(cell.trim());
+  return cells;
+}
+
+/**
+ * A spreadsheet export (Moxfield / Archidekt CSV: "Count,Name,Edition,…")
+ * becomes ordinary lines, one per row, so line numbers still match the paste.
+ * Before MF-DECK-COACH-002 the header and every row were read as card names.
+ * @param {string[]} lines
+ * @returns {string[] | null}
+ */
+function csvToLines(lines) {
+  const headerIndex = lines.findIndex((line) => line.trim());
+  if (headerIndex < 0 || !lines[headerIndex].includes(",")) return null;
+  const header = splitCsvRow(lines[headerIndex]).map((cell) => cell.toLowerCase());
+  const nameIndex = header.findIndex((cell) => cell === "name" || cell === "card name" || cell === "card");
+  const countIndex = header.findIndex((cell) => /^(?:count|quantity|qty|amount)$/.test(cell));
+  if (header.length < 2 || nameIndex < 0 || countIndex < 0) return null;
+  const boardIndex = header.findIndex((cell) => /^(?:board|section|category)$/.test(cell));
+  return lines.map((line, index) => {
+    if (index === headerIndex) return "// spreadsheet header row";
+    if (!line.trim()) return line;
+    const cells = splitCsvRow(line);
+    const name = cells[nameIndex] || "";
+    const count = cells[countIndex] || "";
+    const board = boardIndex >= 0 ? String(cells[boardIndex] || "").toLowerCase() : "";
+    if (/maybe|considering|wish/.test(board)) return `// maybeboard row: ${name}`;
+    if (/side/.test(board)) return `SB: ${count} ${name}`;
+    return `${count} ${name}${/commander/.test(board) ? " *CMDR*" : ""}`;
+  });
+}
+
 /**
  * Parse pasted decklist text.
  * @param {string} text
@@ -81,7 +131,8 @@ function cleanName(raw) {
  * }}
  */
 export function parseDecklist(text = "") {
-  const lines = String(text || "").replace(/\r\n?/g, "\n").split("\n");
+  const rawLines = String(text || "").replace(/\r\n?/g, "\n").split("\n");
+  const lines = csvToLines(rawLines) || rawLines;
   const byKey = new Map();
   const ignored = [];
   const problems = [];
@@ -120,7 +171,10 @@ export function parseDecklist(text = "") {
       working = sb[1].trim();
       lineSection = "sideboard";
     }
-    const match = working.match(/^(\d+)\s*[xX]?\s+(.+)$/) || working.match(/^[xX](\d+)\s+(.+)$/);
+    // "Command Tower x1" / "Command Tower 1x": the quantity at the end.
+    const trailing = working.match(/^(.*[A-Za-z].*?)\s+[xX]\s?(\d+)$/) || working.match(/^(.*[A-Za-z].*?)\s+(\d+)\s?[xX]$/);
+    const match = working.match(/^(\d+)\s*[xX]?\s+(.+)$/) || working.match(/^[xX](\d+)\s+(.+)$/)
+      || (trailing ? [trailing[0], trailing[2], trailing[1]] : null);
     let quantity;
     let nameText;
     let impliedQuantity = false;
