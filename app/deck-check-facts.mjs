@@ -29,6 +29,9 @@ export function factFromScryfall(card = {}) {
     cmc: Number(card.cmc) || 0,
     colorIdentity: Array.isArray(card.color_identity) ? card.color_identity : [],
     legalities: card.legalities && typeof card.legalities === "object" ? { ...card.legalities } : {},
+    // Scryfall's own flag for the Commander Brackets "Game Changers" list.
+    // Absent (undefined) means the data did not say, not "no".
+    ...(typeof card.game_changer === "boolean" ? { gameChanger: card.game_changer } : {}),
     cardFaces: faces.map((face) => ({
       name: face.name || "",
       typeLine: face.type_line || "",

@@ -192,3 +192,23 @@
   .dc-finding dt:nth-of-type(n) + dd ~ dd { grid-column: 1; }
   .dc-basis { margin-left: 0; margin-top: 4px; }
 }
+
+/* MF-DECK-COACH-003: plan evidence and choice, protected cards, pressure, file import. */
+.dc-basis.is-player { color: #c7b8ff; }
+.dc-evidence { margin-top: 10px; }
+.dc-evidence summary, .dc-protect summary { cursor: pointer; color: #e0b56a; min-height: 44px; display: flex; align-items: center; font-weight: 700; }
+.dc-evidence ul { padding-left: 20px; }
+.dc-evidence .dc-table td, .dc-evidence .dc-table th { vertical-align: middle; }
+.dc-plan-choice { display: grid; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #3a2d22; }
+.dc-protect { margin: 6px 0 14px; padding: 4px 12px 10px; border: 1px solid #3a2d22; background: #15120f; }
+.dc-chips { list-style: none; padding-left: 0 !important; display: flex; flex-wrap: wrap; gap: 8px; }
+.deck-check .dc-chips button { min-height: 44px; padding: 6px 12px; font-size: 14px; border-color: #c7b8ff; color: #e6deff; background: rgba(199, 184, 255, 0.08); }
+.dc-protect-list { list-style: none; padding-left: 0 !important; display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: 4px 12px; }
+.dc-protect-list label { display: flex; gap: 10px; align-items: center; min-height: 44px; color: #d9cbb8; cursor: pointer; overflow-wrap: anywhere; }
+.dc-protect-list input { width: 20px; height: 20px; accent-color: #e0b56a; flex: 0 0 auto; }
+.dc-pressure { list-style: none; padding-left: 0 !important; display: grid; gap: 8px; }
+.dc-pressure li { padding: 8px 12px; border: 1px solid #3a2d22; background: #15120f; }
+.dc-pressure small { display: block; color: #a8988a; font-size: 13px; }
+.dc-file { position: relative; display: inline-flex; align-items: center; min-height: 44px; padding: 10px 16px; border: 1px solid #5b4a3a; color: #d9cbb8; font: 700 15px Inter, sans-serif; cursor: pointer; }
+.dc-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.dc-file:focus-within { outline: 2px solid #ffd09b; outline-offset: 2px; }

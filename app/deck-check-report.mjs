@@ -616,6 +616,78 @@ function addOnlySuggestions(curveRole, cards, comparisons) {
   return out.slice(0, 2);
 }
 
+/**
+ * The inputs and rules behind the land band, so a player can see why it says
+ * what it says (MF-DECK-COACH-003, Phase 5). The commonly cited Commander
+ * formula is shown as a labelled reference, not adopted: secondary sources
+ * attribute "31.42 + 3.13 × average mana value − 0.28 × cheap ramp and draw"
+ * to Frank Karsten, but the exact inputs (what counts as cheap, whether draw
+ * counts) differ between them, so it is an outside comparison, not a rule.
+ */
+function landAssumptions(lands, cards) {
+  if (!lands || lands.averageCmc == null) return null;
+  const cheap = cards.filter((card) => card.oracleText !== undefined && !/\bLand\b/.test(String(card.typeLine || "").split(" // ")[0]) && Number(card.cmc) <= 2);
+  const cheapCount = cheap.reduce((sum, card) => {
+    const roles = classifyPrintedCard(card);
+    return sum + ((roles.ramp || roles.draw) ? (card.quantity || 1) : 0);
+  }, 0);
+  const reference = Math.round((31.42 + 3.13 * lands.averageCmc - 0.28 * cheapCount) * 10) / 10;
+  const credited = lands.creditedHigh != null && lands.creditedHigh < lands.targetHigh;
+  return {
+    inputs: [
+      { label: "Average mana value of the nonland cards", value: String(lands.averageCmc), basis: "counted" },
+      { label: "Commander mana value", value: lands.commanderCmc == null ? "unknown" : String(lands.commanderCmc), basis: "verified" },
+      { label: "Mana from cheap rocks and dorks", value: String(lands.earlyRocks ?? 0), basis: "counted" },
+      { label: "Spells that put a land onto the battlefield", value: String(lands.landRamp ?? 0), basis: "counted" },
+      { label: "Lands that can be played as a spell instead (counted as lands)", value: String(lands.modalLands ?? 0), basis: "counted" },
+    ],
+    rules: [
+      "MetaForge starts from 36 lands at a 3.2 average mana value and adds 2 lands per point of average mana value above that (1 more at 3.8 or higher, 1.5 fewer at 2.5 or lower), plus 0.4 per point of commander mana value above 4, and up to 4 for extra land drops.",
+      credited
+        ? `With no credit for ramp the band would be ${lands.baselineLow}–${lands.baselineHigh}. Counting rocks past the first few and land-ramp spells as partial lands takes the low end down to ${lands.targetLow}. How much ramp replaces a land is a judgement, so the whole ${lands.targetLow}–${lands.targetHigh} range is shown.`
+        : `The band is ${lands.targetLow}–${lands.targetHigh}; this list's ramp does not move it.`,
+      "A list is called over only past the top of the band, and short only below the bottom.",
+    ],
+    reference: {
+      value: reference,
+      cheapCount,
+      text: `For comparison: a formula commonly attributed to Frank Karsten (31.42 + 3.13 × average mana value − 0.28 × cheap ramp and draw) gives about ${Math.round(reference)} for this list, counting the ${cheapCount} ramp or draw cards that cost 2 or less. Sources quote it with different inputs, so MetaForge shows it as an outside reference rather than its rule.`,
+    },
+  };
+}
+
+/**
+ * Table pressure: the cards that usually come up when a pod talks about
+ * power or brackets, listed with their names. Not a score and not a bracket
+ * number: a bracket also depends on two-card combos and on what the pod
+ * wants, which Deck Check does not detect (MF-DECK-COACH-003, Phase 5).
+ */
+function tablePressure(cards, commanders) {
+  const all = [...commanders.map((fact) => ({ ...fact, quantity: 1 })), ...cards].filter((card) => card.oracleText !== undefined);
+  const nonland = all.filter((card) => !/\bLand\b/.test(String(card.typeLine || "").split(" // ")[0]));
+  const names = (list) => [...new Set(list.map((card) => card.name))];
+  const flagged = all.filter((card) => typeof card.gameChanger === "boolean");
+  const known = flagged.length > 0;
+  const gameChangers = names(all.filter((card) => card.gameChanger === true));
+  const fastMana = names(nonland.filter((card) => Number(card.cmc) <= 1 && classifyPrintedCard(card).ramp));
+  const tutors = names(nonland.filter((card) => { const roles = classifyPrintedCard(card); return roles.tutor && !/\bland\b/i.test(roles.tutorNote || ""); }));
+  const extraTurns = names(nonland.filter((card) => /\btake an extra turn\b|\btakes an extra turn\b/i.test(card.oracleText)));
+  const landDenial = names(nonland.filter((card) => /\bdestroy all lands\b|\beach player sacrifices [^.]*\blands?\b|\blands don't untap\b|\blands? (?:your opponents control )?don't untap\b/i.test(card.oracleText)));
+  const printedWins = names(nonland.filter((card) => /\byou win the game\b/i.test(card.oracleText)));
+  return {
+    signals: [
+      { id: "game-changers", label: "Game Changers", basis: "verified", count: gameChangers.length, cards: gameChangers, note: known ? "Scryfall's own Game Changer flag on each card." : "This card data did not include Scryfall's Game Changer flag, so they are not counted." },
+      { id: "fast-mana", label: "Mana sources costing 0 or 1", basis: "counted", count: fastMana.length, cards: fastMana, note: "Rocks, dorks and similar that cost 0 or 1 and add mana." },
+      { id: "tutors", label: "Tutors", basis: "counted", count: tutors.length, cards: tutors, note: "Cards that search the library for a nonland card." },
+      { id: "extra-turns", label: "Extra turns", basis: "counted", count: extraTurns.length, cards: extraTurns, note: "Printed text that takes an extra turn." },
+      { id: "land-denial", label: "Mass land denial", basis: "counted", count: landDenial.length, cards: landDenial, note: "Printed text that destroys all lands, makes each player sacrifice lands, or stops lands untapping." },
+      { id: "printed-wins", label: "Cards that say “you win the game”", basis: "counted", count: printedWins.length, cards: printedWins, note: "Alternate wins and combo finishers." },
+    ],
+    gameChangerDataKnown: known,
+    note: "These are the cards a pod usually asks about when it talks about power or brackets. MetaForge lists them; it does not give a power score or a bracket number, because a bracket also depends on two-card combos and on what your table wants, and Deck Check detects neither.",
+  };
+}
+
 function planSentence({ plan, commanderLabel, strategy, analysis, confirmed }) {
   if (confirmed) {
     return confirmed.id === "midrange"
@@ -644,7 +716,7 @@ function planSentence({ plan, commanderLabel, strategy, analysis, confirmed }) {
 
 /**
  * Build the whole Deck Check report.
- * @param {{ parsed: any, facts: Record<string, any>, notFound?: string[], format?: string, strategy?: string, commanderNames?: string[] }} input
+ * @param {{ parsed: any, facts: Record<string, any>, notFound?: string[], format?: string, strategy?: string, commanderNames?: string[], confirmedPlan?: string, protectedNames?: string[] }} input
  */
 export function buildDeckCheckReport(input = {}) {
   const { parsed, facts = {}, notFound = [], strategy = "" } = input;
@@ -761,6 +833,7 @@ export function buildDeckCheckReport(input = {}) {
       lands: before.mana.lands,
       colors: (before.mana.colors || []).map((color) => ({ color: color.color, word: color.word, status: color.status, summary: color.summary, have: color.have, needed: color.needed })),
       confidence: before.mana.confidence,
+      assumptions: landAssumptions(before.mana.lands, cards),
     } : null,
     comparisons,
     noSwapNote: comparisons.length || addOnly.length
@@ -769,6 +842,7 @@ export function buildDeckCheckReport(input = {}) {
         || "No swap from the cards MetaForge can vouch for fits this list. You can still test your own change below.",
     deckCards: [...new Set(cards.filter((card) => card.typeLine).map((card) => card.name))].sort((a, b) => a.localeCompare(b)),
     protectedNames,
+    pressure: tablePressure(cards, commanders),
     limits: reportLimits,
   };
 }

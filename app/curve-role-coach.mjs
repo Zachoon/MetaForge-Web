@@ -127,7 +127,10 @@ const LAND_AURA_RAMP = /\bwhenever enchanted (?:land|forest|plains|island|swamp|
 // mana rock even if a second ability filters (Prismatic Lens).
 const FREE_TAP_ADD = /(?:^|[.)"]\s+)\{T\}\s*:\s*Add\b/i;
 
-const LAND_RAMP = /search your library for [^.]*\b(?:basic land|land card|forest card|plains|island|swamp|mountain|forest)\b[^.]*\bbattlefield\b/i;
+// The land can arrive in the next sentence: "Search your library for up to
+// X basic land cards, where X is …. Put those cards onto the battlefield"
+// (Traverse the Outlands read as a tutor before MF-DECK-COACH-003).
+const LAND_RAMP = /search your library for [^.]*\b(?:basic land|land card|forest card|plains|island|swamp|mountain|forest)\b[^.]*(?:\.\s*put (?:it|them|those cards|that card|one of them)\b[^.]*)?\bbattlefield\b/i;
 const EXTRA_LAND = /\b(?:you may )?play an additional land\b/i;
 const TAXED_TREASURE = /may pay \{[^}]+\}[^.]{0,120}create (?:a|that many|x )? ?treasure|if (?:the player|they) (?:doesn't|does not|don't), you create a treasure/i;
 const COMBAT_TREASURE = /deals? combat damage[^.]*\btreasure\b|(?:creature|creatures) you control deals? combat damage[^.]*create[^.]*treasure/i;

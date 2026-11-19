@@ -37,6 +37,7 @@
     "predh": "not_legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Bane of Progress": {
@@ -73,6 +74,7 @@
     "predh": "not_legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Beast Whisperer": {
@@ -109,6 +111,7 @@
     "predh": "not_legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Beast Within": {
@@ -145,6 +148,7 @@
     "predh": "legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Bellowing Tanglewurm": {
@@ -181,6 +185,7 @@
     "predh": "legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Bookwurm": {
@@ -217,6 +222,7 @@
     "predh": "not_legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Bramble Wurm": {
@@ -253,6 +259,7 @@
     "predh": "not_legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Castle Garenbrig": {
@@ -289,6 +296,7 @@
     "predh": "not_legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Cultivate": {
@@ -325,6 +333,7 @@
     "predh": "legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Defiler of Vigor": {
@@ -361,6 +370,7 @@
     "predh": "not_legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Duskdale Wurm": {
@@ -397,6 +407,7 @@
     "predh": "legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Elderscale Wurm": {
@@ -433,6 +444,7 @@
     "predh": "not_legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Elemental Bond": {
@@ -469,6 +481,7 @@
     "predh": "not_legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Elvish Mystic": {
@@ -505,6 +518,7 @@
     "predh": "not_legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Engulfing Slagwurm": {
@@ -541,6 +555,7 @@
     "predh": "legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Eternal Witness": {
@@ -577,6 +592,7 @@
     "predh": "legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Ezuri's Predation": {
@@ -613,6 +629,7 @@
     "predh": "not_legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Forest": {
@@ -649,6 +666,7 @@
     "predh": "legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Fyndhorn Elves": {
@@ -685,6 +703,7 @@
     "predh": "legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Garruk's Uprising": {
@@ -721,6 +740,7 @@
     "predh": "not_legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Goreclaw, Terror of Qal Sisma": {
@@ -757,6 +777,7 @@
     "predh": "not_legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Greater Good": {
@@ -793,6 +814,7 @@
     "predh": "legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Greater Sandwurm": {
@@ -829,6 +851,7 @@
     "predh": "not_legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Grothama, All-Devouring": {
@@ -865,6 +888,7 @@
     "predh": "not_legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Harmonize": {
@@ -901,6 +925,7 @@
     "predh": "legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Heroic Intervention": {
@@ -937,6 +962,7 @@
     "predh": "not_legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Hunter's Insight": {
@@ -973,6 +999,7 @@
     "predh": "not_legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Impervious Greatwurm": {
@@ -1009,6 +1036,7 @@
     "predh": "not_legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Kenrith's Transformation": {
@@ -1045,6 +1073,7 @@
     "predh": "not_legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Kodama's Reach": {
@@ -1081,6 +1110,7 @@
     "predh": "legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Krosan Drover": {
@@ -1117,6 +1147,7 @@
     "predh": "legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Krosan Grip": {
@@ -1153,6 +1184,7 @@
     "predh": "legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Llanowar Elves": {
@@ -1189,6 +1221,7 @@
     "predh": "legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Maskwood Nexus": {
@@ -1223,6 +1256,7 @@
     "predh": "not_legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Nature's Claim": {
@@ -1259,6 +1293,7 @@
     "predh": "legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Nature's Lore": {
@@ -1295,6 +1330,7 @@
     "predh": "legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Overwhelming Stampede": {
@@ -1331,6 +1367,7 @@
     "predh": "legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Pelakka Wurm": {
@@ -1367,6 +1404,7 @@
     "predh": "legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Penumbra Wurm": {
@@ -1403,6 +1441,7 @@
     "predh": "legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Quilled Greatwurm": {
@@ -1439,6 +1478,7 @@
     "predh": "not_legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Ram Through": {
@@ -1475,6 +1515,7 @@
     "predh": "not_legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Rampant Growth": {
@@ -1511,6 +1552,7 @@
     "predh": "legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Reclamation Sage": {
@@ -1547,6 +1589,7 @@
     "predh": "not_legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Regrowth": {
@@ -1583,6 +1626,7 @@
     "predh": "legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Return of the Wildspeaker": {
@@ -1619,6 +1663,7 @@
     "predh": "not_legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Return to Nature": {
@@ -1655,6 +1700,7 @@
     "predh": "not_legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Rishkar's Expertise": {
@@ -1691,6 +1737,7 @@
     "predh": "not_legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Sakura-Tribe Elder": {
@@ -1727,6 +1774,7 @@
     "predh": "legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Sandwurm Convergence": {
@@ -1763,6 +1811,7 @@
     "predh": "not_legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Sifter Wurm": {
@@ -1799,6 +1848,7 @@
     "predh": "not_legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Skyshroud Claim": {
@@ -1835,6 +1885,7 @@
     "predh": "legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Sol Ring": {
@@ -1869,6 +1920,7 @@
     "predh": "legal",
     "tlr": "banned"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Soul Swallower": {
@@ -1905,6 +1957,7 @@
     "predh": "not_legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Swiftfoot Boots": {
@@ -1939,6 +1992,7 @@
     "predh": "not_legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Tail Swipe": {
@@ -1975,6 +2029,7 @@
     "predh": "not_legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Tamiyo's Safekeeping": {
@@ -2011,6 +2066,7 @@
     "predh": "not_legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Timeless Witness": {
@@ -2047,6 +2103,7 @@
     "predh": "not_legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Traverse the Outlands": {
@@ -2083,6 +2140,7 @@
     "predh": "not_legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Tribute to the World Tree": {
@@ -2119,6 +2177,7 @@
     "predh": "not_legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Whisperer of the Wilds": {
@@ -2155,6 +2214,7 @@
     "predh": "not_legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Worldspine Wurm": {
@@ -2191,6 +2251,7 @@
     "predh": "not_legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Wrap in Vigor": {
@@ -2227,6 +2288,7 @@
     "predh": "legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Wurmcalling": {
@@ -2263,6 +2325,7 @@
     "predh": "legal",
     "tlr": "legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   },
   "Wurmcoil Engine": {
@@ -2297,6 +2360,7 @@
     "predh": "legal",
     "tlr": "not_legal"
    },
+   "gameChanger": false,
    "cardFaces": []
   }
  }

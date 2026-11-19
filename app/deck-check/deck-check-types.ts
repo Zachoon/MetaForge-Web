@@ -78,13 +78,44 @@ export type DeckCheckReport = {
   candidates?: string[];
   summary?: { landCount: number; spellCount: number; averageManaValue: number | null; curve: CurveBucket[]; pips: Array<{ color: string; word: string; pips: number }> };
   commanders?: Array<{ name: string }>;
-  plan?: { sentence: string; readId?: string; quote?: string; confidence?: { level?: string; reason?: string }; strategyNote?: string };
+  plan?: {
+    sentence: string;
+    readId?: string;
+    quote?: string;
+    confidence?: { level?: string; reason?: string };
+    strategyNote?: string;
+    // MF-DECK-COACH-003: where the plan read comes from, and the player's say.
+    source?: "commander-text" | "commander-and-deck" | "deck-cards" | "none" | "player";
+    readConfidence?: string;
+    evidence?: string[];
+    secondary?: { id: string; label: string; banded?: boolean; evidence: string[] } | null;
+    signals?: Array<{ id: string; what: string; count: number; examples: string[] }>;
+    bandId?: string;
+    confirmed?: boolean;
+    choices?: Array<{ id: string; label: string }>;
+    detectedId?: string;
+  };
   strengths?: Array<{ id: string; label: string; actual: number; min: number; max: number; cards: string[] }>;
   curve?: { summary: string; buckets: CurveBucket[] };
   weaknessHeading?: string;
   weaknessIntro?: string;
   weaknesses?: Weakness[];
-  mana?: { summary: string; lands: { summary: string }; colors: Array<{ color: string; status: string; summary: string }> } | null;
+  mana?: {
+    summary: string;
+    lands: { summary: string };
+    colors: Array<{ color: string; status: string; summary: string }>;
+    assumptions?: {
+      inputs: Array<{ label: string; value: string; basis: string }>;
+      rules: string[];
+      reference: { value: number; cheapCount: number; text: string };
+    } | null;
+  } | null;
+  pressure?: {
+    signals: Array<{ id: string; label: string; basis: string; count: number; cards: string[]; note: string }>;
+    gameChangerDataKnown: boolean;
+    note: string;
+  };
+  protectedNames?: string[];
   comparisons?: Comparison[];
   suggestedAdds?: SuggestedAdd[];
   noSwapNote?: string;

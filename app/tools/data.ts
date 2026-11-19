@@ -104,7 +104,10 @@ export const TOOL_PAGES = [
       ["Explain the table experience", "The useful result is not merely a rating—it is a clear account of which choices create pressure and what kind of pod can answer them."],
     ],
     cta: "Check my deck's power signals",
-    href: "/?intent=analyze",
+    // MF-DECK-COACH-003: Deck Check lists these signals by card (Game
+    // Changers from Scryfall, fast mana, tutors, extra turns, land denial,
+    // printed wins) without a score. The old analyzer entry showed none.
+    href: "/deck-check",
   },
   {
     slug: "commander-bracket-checker",
@@ -119,7 +122,7 @@ export const TOOL_PAGES = [
       ["Prepare for Rule 0", "Use the findings to describe what the deck does, when it becomes dangerous, and what kinds of interaction meaningfully slow it down."],
     ],
     cta: "Review my Commander deck",
-    href: "/?intent=analyze",
+    href: "/deck-check",
   },
   {
     slug: "commander-deck-optimizer",

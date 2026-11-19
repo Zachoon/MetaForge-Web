@@ -63,7 +63,27 @@ const BASIS: Record<string, { label: string; title: string }> = {
   heuristic: { label: "Heuristic", title: "MetaForge's starting bands for this kind of plan, not rules of the game." },
   strong: { label: "Strong finding", title: "Far outside MetaForge's band, on a plan read with high confidence." },
   measured: { label: "Measured", title: "Replayed through the same checks on your list." },
+  player: { label: "Player-confirmed", title: "You chose this; MetaForge coaches against it." },
 };
+
+// Where a plan read comes from, in words a player can check.
+const PLAN_SOURCE: Record<string, string> = {
+  "commander-and-deck": "Read from the commander's text and confirmed by the cards in the list",
+  "commander-text": "Read from the commander's text; the list has few cards that pursue it",
+  "deck-cards": "Read from the cards in the list; the commander's text does not name one plan",
+  none: "No single plan found in the commander's text or the list",
+  player: "Chosen by you",
+};
+
+// A pasted deck link cannot be read: Deck Check does not fetch other sites
+// (and stores nothing), so it explains how to export instead.
+function deckLinkHelp(text: string) {
+  const trimmed = text.trim();
+  if (!/^https?:\/\/\S+$/i.test(trimmed) && !/^(?:www\.)?(?:moxfield|archidekt)\.com\//i.test(trimmed)) return "";
+  if (/moxfield\.com/i.test(trimmed)) return "That is a Moxfield link. Deck Check reads the list itself, not links. On the Moxfield deck page, use More → Export, copy the text list, and paste it here (or download the CSV and open it with “Open a file”).";
+  if (/archidekt\.com/i.test(trimmed)) return "That is an Archidekt link. Deck Check reads the list itself, not links. On the Archidekt deck page, use Export, copy the text list, and paste it here (or export a CSV and open it with “Open a file”).";
+  return "That looks like a link. Deck Check reads the list itself, not links: export the deck as text from the site it is on and paste it here.";
+}
 
 function Basis({ kind }: { kind: keyof typeof BASIS }) {
   const basis = BASIS[kind];
@@ -197,6 +217,12 @@ export function DeckCheck() {
   const [customAdd, setCustomAdd] = useState("");
   const [customResult, setCustomResult] = useState<PlayerSwapResult | null>(null);
   const [customBusy, setCustomBusy] = useState(false);
+  // MF-DECK-COACH-003: the player's say over the plan and the cuts.
+  const [confirmedPlan, setConfirmedPlan] = useState("");
+  const [planChoice, setPlanChoice] = useState("");
+  const [protectedNames, setProtectedNames] = useState<string[]>([]);
+  const [protectFilter, setProtectFilter] = useState("");
+  const [fileNote, setFileNote] = useState("");
   const reportHeading = useRef<HTMLHeadingElement>(null);
   const changeHeading = useRef<HTMLHeadingElement>(null);
   const cutSelect = useRef<HTMLSelectElement>(null);
@@ -234,8 +260,10 @@ export function DeckCheck() {
       format: checkedFormat,
       strategy: checkedStrategy,
       commanderNames: commanderOverride || undefined,
+      confirmedPlan: confirmedPlan || undefined,
+      protectedNames,
     });
-  }, [phase, parsed, facts, notFound, checkedFormat, checkedStrategy, commanderOverride]);
+  }, [phase, parsed, facts, notFound, checkedFormat, checkedStrategy, commanderOverride, confirmedPlan, protectedNames]);
   const report = builtReport as ReportView | null;
 
   const reportStatus = report?.status;
@@ -262,6 +290,10 @@ export function DeckCheck() {
     setActiveSwap(0);
     setCommanderOverride(null);
     setPickedCommander("");
+    setConfirmedPlan("");
+    setPlanChoice("");
+    setProtectedNames([]);
+    setProtectFilter("");
     const names = nextParsed.entries.map((entry) => entry.name);
     const unique = new Set(names.map((name: string) => name.toLowerCase())).size;
     setProgress(`Reading the printed text of ${unique} card${unique === 1 ? "" : "s"} from Scryfall…`);
@@ -334,6 +366,27 @@ export function DeckCheck() {
     tabRefs.current[next]?.focus();
   }
 
+  function toggleProtected(name: string) {
+    setProtectedNames((current) => current.includes(name) ? current.filter((entry) => entry !== name) : [...current, name]);
+    setCustomResult(null);
+  }
+
+  /** Read a .txt or .csv export in the browser. Nothing is uploaded. */
+  async function openFile(file: File | undefined) {
+    if (!file) return;
+    if (file.size > 512 * 1024) {
+      setFileNote(`${file.name} is larger than a decklist export (over 512 KB), so it was not opened.`);
+      return;
+    }
+    try {
+      const contents = await file.text();
+      setText(contents);
+      setFileNote(`Opened ${file.name}. Check the count below, then press Check my deck.`);
+    } catch {
+      setFileNote(`${file.name} could not be read as text.`);
+    }
+  }
+
   function loadSample(id: string) {
     const sample = DECK_CHECK_SAMPLES.find((entry) => entry.id === id);
     if (!sample) return;
@@ -371,6 +424,8 @@ export function DeckCheck() {
         cut: customCut,
         addFact,
         format: checkedFormat,
+        confirmedPlan: confirmedPlan || undefined,
+        protectedNames,
       }));
     } finally {
       setCustomBusy(false);
@@ -379,7 +434,7 @@ export function DeckCheck() {
 
   const sizeHint = draftCount > 0
     ? `${draftCount} card${draftCount === 1 ? "" : "s"} read${draftParsed.problems.length ? `, ${draftParsed.problems.length} line${draftParsed.problems.length === 1 ? "" : "s"} not read` : ""}${draftParsed.commanderNames.length ? ` · commander: ${draftParsed.commanderNames.join(" + ")}` : ""}`
-    : "One card per line. Moxfield, Archidekt, MTG Arena and plain “1 Sol Ring” lists all work.";
+    : "One card per line. Moxfield and Archidekt text or CSV exports, MTG Arena, and plain “1 Sol Ring” lists all work.";
 
   const topWeakness = report?.status === "ready" ? report.weaknesses?.find((weakness) => weakness.id !== "sound") : null;
   const academy = topWeakness ? ACADEMY_FOR[topWeakness.id] : null;
@@ -427,10 +482,15 @@ export function DeckCheck() {
           />
         </label>
         <p className="dc-hint" id="dc-size-hint" aria-live="polite">{sizeHint}</p>
+        {deckLinkHelp(text) && <p className="dc-warn" role="status">{deckLinkHelp(text)}</p>}
         <div className="dc-actions">
-          <button type="submit" className="dc-primary" disabled={phase === "reading" || !text.trim()}>
+          <button type="submit" className="dc-primary" disabled={phase === "reading" || !text.trim() || Boolean(deckLinkHelp(text))}>
             {phase === "reading" ? "Checking…" : "Check my deck"}
           </button>
+          <label className="dc-file">
+            <span>Open a file</span>
+            <input type="file" accept=".txt,.csv,.dck,.dec,text/plain,text/csv" onChange={(event) => { void openFile(event.target.files?.[0]); event.target.value = ""; }} />
+          </label>
           {text && phase !== "reading" && (
             <button type="button" className="dc-quiet" onClick={() => { setText(""); setPhase("idle"); setCheckedText(""); }}>Clear</button>
           )}
@@ -443,7 +503,8 @@ export function DeckCheck() {
             </button>
           ))}
         </div>
-        <p className="dc-muted" id="dc-privacy">Your list stays in this browser. Only card names are sent to Scryfall to read their printed text.</p>
+        {fileNote && <p className="dc-hint" role="status">{fileNote}</p>}
+        <p className="dc-muted" id="dc-privacy">Your list stays in this browser (an opened file is read here, not uploaded). Only card names are sent to Scryfall to read their printed text.</p>
       </form>
 
       <div className="dc-status" role="status" aria-live="polite" aria-busy={phase === "reading"}>
@@ -485,7 +546,7 @@ export function DeckCheck() {
                   {errors.length ? <> {errors.length} problem{errors.length === 1 ? "" : "s"} to fix. <a href="#dc-format-title">See the format check</a></> : null}
                   {" "}<Basis kind="verified" />
                 </li>
-                <li><b>Plan:</b> {report.plan.sentence}</li>
+                <li><b>Plan:</b> {report.plan.sentence} {report.plan.confirmed ? <Basis kind="player" /> : <Basis kind="heuristic" />}</li>
                 {report.weaknesses.filter((weakness) => weakness.id !== "sound").slice(0, 3).map((weakness) => (
                   <li key={`glance-${weakness.id}`}>
                     <b>Fix:</b> <a href={`#dc-finding-${weakness.id}`}>{weakness.title}</a>
@@ -513,8 +574,40 @@ export function DeckCheck() {
 
           {report.status === "ready" && (
             <article className="dc-card dc-plan">
-              <h3>What this deck is trying to do <Basis kind="counted" /></h3>
+              <h3>What this deck is trying to do {report.plan.confirmed ? <Basis kind="player" /> : <Basis kind="heuristic" />}</h3>
               <p className="dc-big">{report.plan.sentence}</p>
+              <p className="dc-muted">
+                <b>{PLAN_SOURCE[report.plan.source || "none"]}.</b>
+                {!report.plan.confirmed && report.plan.readConfidence ? ` ${confidenceLabel(report.plan.readConfidence)} read.` : ""}
+              </p>
+              {!report.plan.confirmed && (report.plan.evidence?.length || 0) > 0 && (
+                <details className="dc-evidence" open={report.plan.readConfidence !== "high"}>
+                  <summary>Why MetaForge reads it this way</summary>
+                  <ul>{report.plan.evidence?.map((line) => <li key={line}>{line}</li>)}</ul>
+                  {report.plan.secondary && (
+                    <p><b>Also in the list: {report.plan.secondary.label}.</b> {report.plan.secondary.evidence.join(" ")}{report.plan.secondary.banded === false ? " MetaForge has no separate bands for this, so it is named, not scored." : ""}</p>
+                  )}
+                </details>
+              )}
+              <form
+                className="dc-plan-choice"
+                onSubmit={(event) => { event.preventDefault(); setConfirmedPlan(planChoice || report.plan.detectedId || "midrange"); setCustomResult(null); }}
+              >
+                <label className="dc-field">
+                  <span>{report.plan.confirmed ? "Coaching against your plan" : "Is this the plan? Confirm it or pick the right one"}</span>
+                  <select value={planChoice || (report.plan.confirmed ? confirmedPlan : report.plan.detectedId) || "midrange"} onChange={(event) => setPlanChoice(event.target.value)}>
+                    {(report.plan.choices || []).map((choice) => (
+                      <option key={choice.id} value={choice.id}>{choice.label}{choice.id === report.plan.detectedId ? " (detected)" : ""}</option>
+                    ))}
+                  </select>
+                </label>
+                <div className="dc-actions">
+                  <button type="submit" className="dc-primary">{report.plan.confirmed ? "Use this plan" : "Confirm plan"}</button>
+                  {report.plan.confirmed && (
+                    <button type="button" className="dc-quiet" onClick={() => { setConfirmedPlan(""); setPlanChoice(""); setCustomResult(null); }}>Back to the detected plan</button>
+                  )}
+                </div>
+              </form>
               {report.plan.quote && (
                 <blockquote className="dc-quote">
                   <small>{report.commanders[0].name} · printed text</small>
@@ -683,6 +776,37 @@ export function DeckCheck() {
                       <li key={color.color}><b>{statusWord(color.status)}</b> · {color.summary}</li>
                     ))}
                   </ul>
+                  {report.mana.assumptions && (
+                    <details className="dc-evidence">
+                      <summary>How the land band is worked out</summary>
+                      <table className="dc-table">
+                        <caption>Inputs read from this list</caption>
+                        <tbody>
+                          {report.mana.assumptions.inputs.map((input) => (
+                            <tr key={input.label}><th scope="row">{input.label}</th><td>{input.value}</td><td><Basis kind={input.basis === "verified" ? "verified" : "counted"} /></td></tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <ul>{report.mana.assumptions.rules.map((rule) => <li key={rule}>{rule} <Basis kind="heuristic" /></li>)}</ul>
+                      <p className="dc-muted">{report.mana.assumptions.reference.text}</p>
+                    </details>
+                  )}
+                </article>
+              )}
+
+              {report.pressure && (
+                <article className="dc-card" aria-labelledby="dc-pressure-title">
+                  <h3 id="dc-pressure-title">Table pressure</h3>
+                  <p className="dc-muted">{report.pressure.note}</p>
+                  <ul className="dc-pressure">
+                    {report.pressure.signals.map((signal) => (
+                      <li key={signal.id}>
+                        <b>{signal.label}: {signal.id === "game-changers" && !report.pressure.gameChangerDataKnown ? "not checked" : signal.count}</b> <Basis kind={signal.basis === "verified" ? "verified" : "counted"} />
+                        {signal.cards.length > 0 && <span> — {signal.cards.slice(0, 8).join(", ")}{signal.cards.length > 8 ? `, and ${signal.cards.length - 8} more` : ""}</span>}
+                        <small>{signal.note}</small>
+                      </li>
+                    ))}
+                  </ul>
                 </article>
               )}
 
@@ -694,6 +818,32 @@ export function DeckCheck() {
 
               <article className="dc-card dc-change" aria-labelledby="dc-change-title">
                 <h3 id="dc-change-title" ref={changeHeading} tabIndex={-1}>Try one change</h3>
+                <p className="dc-muted">Nothing here edits your list. Each change is tested on a copy; copy the updated list only if you want it.</p>
+                <details className="dc-protect" open={protectedNames.length > 0}>
+                  <summary>Cards MetaForge must never suggest cutting{protectedNames.length ? ` (${protectedNames.length})` : ""}</summary>
+                  <p className="dc-muted">Mark your engine pieces and pet cards. MetaForge will not name them as a cut; if no other card can safely go, it says so and lets you choose.</p>
+                  {protectedNames.length > 0 && (
+                    <ul className="dc-chips" aria-label="Protected cards">
+                      {protectedNames.map((name) => (
+                        <li key={name}><button type="button" onClick={() => toggleProtected(name)} aria-label={`Stop protecting ${name}`}>{name} ×</button></li>
+                      ))}
+                    </ul>
+                  )}
+                  <label className="dc-field">
+                    <span>Find a card</span>
+                    <input value={protectFilter} onChange={(event) => setProtectFilter(event.target.value)} placeholder="Type part of a card name" />
+                  </label>
+                  <ul className="dc-protect-list">
+                    {report.deckCards
+                      .filter((name: string) => !protectFilter.trim() || name.toLowerCase().includes(protectFilter.trim().toLowerCase()))
+                      .slice(0, protectFilter.trim() ? 40 : 12)
+                      .map((name: string) => (
+                        <li key={name}>
+                          <label><input type="checkbox" checked={protectedNames.includes(name)} onChange={() => toggleProtected(name)} /> {name}</label>
+                        </li>
+                      ))}
+                  </ul>
+                </details>
                 {report.comparisons.length > 0 ? (
                   <>
                     <p className="dc-muted">Each change is replayed through the same checks, so the numbers below are measured on your list, not promised.</p>
@@ -771,7 +921,8 @@ export function DeckCheck() {
               <Basis kind="verified" /> rules and Scryfall legality ·{" "}
               <Basis kind="counted" /> read from printed text ·{" "}
               <Basis kind="strong" /> / <Basis kind="heuristic" /> MetaForge&rsquo;s judgement ·{" "}
-              <Basis kind="measured" /> replayed on your list. Not checked: prices, win rates, matchups, your playgroup.
+              <Basis kind="measured" /> replayed on your list ·{" "}
+              <Basis kind="player" /> your own choice. Not checked: prices, win rates, matchups, power scores or bracket numbers, your playgroup.
             </p>
           </article>
 
