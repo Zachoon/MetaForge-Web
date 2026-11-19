@@ -5,13 +5,14 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import test, { after, before } from "node:test";
 import { build } from "esbuild";
+import { repairReportRows } from "../app/public-report-repair.mjs";
 
-// MF-DECK-COACH-003, public concern 1: production's Baru, Wurmspeaker report
-// showed "0 Lands" beside 37 Forest + Castle Garenbrig, grouped all 99 cards
-// as "Other", and averaged mana value over the lands. The stored rows had no
-// type line. The rows below are that report exactly as it renders (type
-// lines empty, role tags as stored); card types come from the Scryfall
-// snapshot of the same list. Bundles the real handler, stubbing identity.
+// MF-DECK-COACH-003/004, public concern 1: production's Baru, Wurmspeaker
+// report showed "0 Lands" beside 37 Forest + Castle Garenbrig, grouped all 99
+// cards as "Other", and averaged mana value over the lands, because the
+// stored rows had no type line. The rows below are that report exactly as it
+// renders. A page view repairs in memory only (no lookup, no write); the
+// stored rows are repaired by the owner-run script. Bundles the real handler.
 
 const fixtures = new URL("./fixtures/deck-bench-003/", import.meta.url);
 const stored = JSON.parse(readFileSync(new URL("baru-public-report.rows.json", fixtures), "utf8")).rows;
@@ -85,54 +86,54 @@ function storeWith(rows) {
 
 const render = (env) => handlers.publicDeckReportResponse(new URL("https://metaforge.gg/decks/baru-wurmspeaker-b35d119648"), env);
 
-test("the stored Baru report counts its 38 lands and groups cards by their printed type", async () => {
+// What the controlled repair (scripts/public-reports/repair-type-lines.mjs)
+// would store for these rows, using the same Scryfall snapshot.
+const repairedRows = repairReportRows(stored, (name) => facts[name]?.typeLine || "").rows;
+
+test("a view of the stored (unrepaired) Baru report counts 38 lands, with no lookup and no write", async () => {
   const env = storeWith(stored);
+  const before = collectionCalls;
   const html = await (await render(env)).text();
-  assert.match(html, /<b>38<\/b><strong>Lands<\/strong>/, "the at-a-glance land count");
+  assert.match(html, /<b>38<\/b><strong>Lands<\/strong>/, "the at-a-glance land count, from the land role tag");
   assert.match(html, /<h2>Lands<\/h2><span>38<\/span>/, "the Lands group");
-  assert.doesNotMatch(html, /<h2>Other<\/h2>/, "no card is left untyped");
-  const artifacts = html.match(/<h2>Artifacts<\/h2>[\s\S]*?<\/section>/)?.[0] || "";
-  assert.match(artifacts, /<strong>Sol Ring<\/strong><small>artifacts · ramp<\/small>/, "Sol Ring is an artifact and keeps its ramp tag");
   // Average mana value is over the 62 nonland cards (commander included, as
   // the page says), not over all 100. Production showed 2.54; it is 4.11.
   const nonland = stored.filter((row) => !/\bLand\b/.test(facts[row.name]?.typeLine || ""));
   const expected = nonland.reduce((sum, row) => sum + facts[row.name].cmc * row.quantity, 0) / nonland.reduce((sum, row) => sum + row.quantity, 0);
   const shown = Number(html.match(/<b>([\d.]+)<\/b><strong>Average mana value<\/strong>/)?.[1]);
   assert.ok(Math.abs(shown - expected) < 0.1, `average ${shown} vs ${expected.toFixed(2)}`);
-  assert.equal(env.updates.length, 1, "the repair is stored once");
+  assert.equal(collectionCalls, before, "a page view never calls Scryfall");
+  assert.equal(env.updates.length, 0, "a page view never writes");
 });
 
-test("a repaired report renders without another Scryfall lookup", async () => {
-  const env = storeWith(stored);
-  await render(env);
-  const before = collectionCalls;
+test("after the controlled repair, every card is grouped by its printed type", async () => {
+  const env = storeWith(repairedRows);
   const html = await (await render(env)).text();
-  assert.equal(collectionCalls, before, "second view uses the stored type lines");
-  assert.equal(env.updates.length, 1);
   assert.match(html, /<b>38<\/b><strong>Lands<\/strong>/);
+  assert.doesNotMatch(html, /<h2>Other<\/h2>/, "no card is left untyped");
+  const artifacts = html.match(/<h2>Artifacts<\/h2>[\s\S]*?<\/section>/)?.[0] || "";
+  assert.match(artifacts, /<strong>Sol Ring<\/strong><small>artifacts · ramp<\/small>/, "Sol Ring is an artifact and keeps its ramp tag");
+  assert.equal(env.updates.length, 0);
 });
 
-test("a name Scryfall does not know is stored as unknown once, so later views make no lookup", async () => {
-  const rows = [...stored, { quantity: 1, name: "Not A Real Card Name", typeLine: "", roles: [], cmc: 3 }];
-  const env = storeWith(rows);
-  await render(env);
-  assert.equal(env.updates.length, 1);
-  assert.match(env.report.deck_rows_json, /"name":"Not A Real Card Name","typeLine":"Unknown type"/);
+test("repeated views write nothing and look nothing up", async () => {
+  const env = storeWith(stored);
   const before = collectionCalls;
-  await render(env);
-  assert.equal(collectionCalls, before, "no repeat lookup for the unknown name");
+  for (let index = 0; index < 5; index += 1) await render(env);
+  assert.equal(collectionCalls, before);
+  assert.equal(env.updates.length, 0);
+  assert.equal(env.report.deck_rows_json, JSON.stringify(stored), "the stored report is byte-identical");
 });
 
-test("with Scryfall down, lands still count from their role tag and the page still renders", async () => {
+test("with Scryfall down, the page still renders and lands still count", async () => {
   const saved = globalThis.fetch;
   globalThis.fetch = async () => new Response("down", { status: 503 });
   try {
     const env = storeWith(stored);
     const response = await render(env);
     assert.equal(response.status, 200);
-    const html = await response.text();
-    assert.match(html, /<b>38<\/b><strong>Lands<\/strong>/);
-    assert.equal(env.updates.length, 0, "nothing is stored when nothing was repaired from Scryfall");
+    assert.match(await response.text(), /<b>38<\/b><strong>Lands<\/strong>/);
+    assert.equal(env.updates.length, 0);
   } finally {
     globalThis.fetch = saved;
   }

@@ -77,25 +77,23 @@ export function repairRowType(row: PublicRow): PublicRow {
 
 /**
  * Fill type lines the bundled index could not, from Scryfall (lookupCardTypes,
- * the same source the saved-deck path uses). Returns the rows and whether any
- * changed, so a caller can store the repair once instead of on every view.
+ * the same source the saved-deck path uses). Used only when a report is
+ * published, so new reports are stored complete. A name Scryfall does not
+ * resolve is left empty, never given a placeholder. Existing reports are not
+ * touched here: they are repaired by the owner-run, audited script
+ * scripts/public-reports/repair-type-lines.mjs (MF-DECK-COACH-004).
  */
 export async function ensureRowTypes(rows: PublicRow[], lookup = lookupCardTypes): Promise<{ rows: PublicRow[]; changed: boolean }> {
   const missing = rows.filter((row) => !row.typeLine).map((row) => row.name);
   if (!missing.length) return { rows, changed: false };
   let types: Map<string, { typeLine: string; cmc?: number }>;
   try { types = await lookup(missing); } catch { return { rows, changed: false }; }
-  // Nothing came back: Scryfall is unreachable. Store nothing and try again
-  // on a later view. Otherwise Scryfall answered, so a name it did not know
-  // is recorded as "Unknown type" and never looked up again: a public page
-  // must not call Scryfall on every view for a misspelled card.
-  if (!types.size) return { rows, changed: false };
   let changed = false;
   const next = rows.map((row) => {
     if (row.typeLine) return row;
     const fact = types.get(row.name.toLowerCase());
+    if (!fact?.typeLine) return row;
     changed = true;
-    if (!fact?.typeLine) return { ...row, typeLine: "Unknown type" };
     return { ...row, typeLine: safeText(fact.typeLine, 140), cmc: row.cmc || Math.max(0, Math.min(30, Number(fact.cmc) || 0)) };
   });
   return { rows: next, changed };
@@ -273,14 +271,12 @@ export async function publicDeckReportResponse(url: URL, env: PublicReportEnv): 
   const report = await env.DB.prepare("SELECT slug,title,commander_name,format_name,strategy_name,summary,deck_rows_json,dossier_json,created_at,updated_at FROM public_deck_reports WHERE slug=?").bind(slug).first<StoredReport>();
   if (!report) return new Response("Not found", { status: 404, headers: { "Content-Type": "text/plain; charset=utf-8", "X-Robots-Tag": "noindex" } });
   let rows: PublicRow[] = []; try { rows = sanitizeRows(JSON.parse(report.deck_rows_json)); } catch { return new Response("Report unavailable", { status: 500 }); }
-  // Reports published before MF-DECK-COACH-003 were stored without type
-  // lines. Repair once, then store the repaired rows (only empty fields are
-  // filled; nothing else in the report changes).
-  const repaired = await ensureRowTypes(rows);
-  rows = repaired.rows;
-  if (repaired.changed) {
-    try { await env.DB.prepare("UPDATE public_deck_reports SET deck_rows_json=? WHERE slug=?").bind(JSON.stringify(rows), report.slug).run(); } catch { /* the page still renders from the repaired rows */ }
-  }
+  // Reports published before the fix were stored without type lines.
+  // sanitizeRows already repairs them in memory from the bundled index and
+  // the "land" role tag, so the land count is right on every view. A view
+  // never calls Scryfall and never writes: stored reports are repaired only
+  // by the owner-run script scripts/public-reports/repair-type-lines.mjs
+  // (MF-DECK-COACH-004).
   let dossier: PublicDossier = {}; try { dossier = sanitizeDossier(JSON.parse(report.dossier_json || "{}")); } catch { dossier = {}; }
   const order = ["Commander", "Creatures", "Planeswalkers", "Artifacts", "Enchantments", "Instants", "Sorceries", "Lands", "Other"];
   const groups = new Map<string, PublicRow[]>();
