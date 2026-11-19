@@ -71,7 +71,9 @@ const SIGNALS = Object.freeze([
 // Minimum count before a deck signal can lead or be named as a second plan.
 // Most decks run a dozen instants and sorceries or a few artifacts without
 // being "about" them, so those bars sit higher.
-const LEAD_AT = Object.freeze({ spellslinger: 24, artifacts: 22, enchantress: 18, control: 12, "big-creatures": 12, graveyard: 12, combo: 5, default: 10 });
+// Typal needs 15 of one type: ten mana Elves in a Ghalta list are not an
+// Elf deck.
+const LEAD_AT = Object.freeze({ spellslinger: 24, artifacts: 22, enchantress: 18, typal: 15, control: 12, "big-creatures": 12, graveyard: 12, combo: 5, default: 10 });
 const lead = (id) => LEAD_AT[id] ?? LEAD_AT.default;
 
 function typalSignal(cards) {
@@ -137,7 +139,14 @@ export function readDeckPlan({ commanders = [], cards = [] } = {}) {
   const winners = pool.filter((card) => /\byou win the game\b/i.test(textOf(card.fact))).map((card) => card.fact.name);
   const tutors = pool.filter((card) => classifyPrintedCard(card.fact).tutor).map((card) => card.fact.name);
   if (winners.length && tutors.length >= 4) {
-    signals.push({ id: "combo", what: `win-the-game cards found by ${tutors.length} tutors`, count: winners.length + tutors.length, names: [...winners, ...tutors.slice(0, 3)], unbanded: true });
+    signals.push({
+      id: "combo",
+      what: "win-the-game cards and tutors",
+      count: winners.length + tutors.length,
+      names: [...winners, ...tutors.slice(0, 3)],
+      unbanded: true,
+      sentence: `${winners.length} card${winners.length === 1 ? "" : "s"} that say${winners.length === 1 ? "s" : ""} “you win the game” (${winners.slice(0, 3).join(", ")}) and ${tutors.length} tutors to find ${winners.length === 1 ? "it" : "them"} (e.g. ${tutors.slice(0, 3).join(", ")}).`,
+    });
   }
   const ranked = signals
     .filter((signal) => !signal.leadBlocked && (signal.id === "combo" || signal.count >= lead(signal.id)))
@@ -192,7 +201,7 @@ export function readDeckPlan({ commanders = [], cards = [] } = {}) {
     id: second.id,
     label: second.id === "typal" ? `${second.creatureType} typal` : second.id === "combo" ? "Combo finish" : labelOf(second.id),
     banded: !second.unbanded,
-    evidence: [`${second.count} ${second.what} in the list, e.g. ${second.names.slice(0, 4).join(", ")}.`],
+    evidence: [second.sentence || `${second.count} ${second.what} in the list, e.g. ${second.names.slice(0, 4).join(", ")}.`],
   } : null;
 
   return {
