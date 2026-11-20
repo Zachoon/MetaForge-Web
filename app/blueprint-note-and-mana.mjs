@@ -221,7 +221,9 @@ export const ROLE_PATTERNS = Object.freeze({
   // Ward card with a second, redundant "interaction" role via its own
   // reminder text isn't a real gap, just noise, so that broader shape was
   // deliberately left unfixed.
-  interaction: [/destroy target/i, /exile [^.]{0,20}target/i, /counter target/i, /deals? (?:\d+|x) damage (?:to|divided)/i, /return [^.]{0,60}owners?['’]?s?\s+hands?/i, /-\d+\/-\d+/i, /\bfights? (?:target|another|up to|a different)\b/i, /deals? damage (?:to (?:itself|himself|herself) )?equal to its power/i, /loses all (?:other (?:card types? and )?)?abilities/i, /can'?t attack or block(?! (?:alone|unless))\b/i, /change the target of target spell|choose new targets for target spell or ability/i, /shuffles? [^.]{0,20}into their librar/i, /(?:put|shuffle) target [^.]{0,80}into (?:its|their) owner'?s? librar/i, /\bcounter that spell\b/i],
+  // "deals 1 damage to you" is a cost (Talismans, pain lands), not an answer
+  // (MF-DECK-COACH-003: Talisman of Dominance read as interaction).
+  interaction: [/destroy target/i, /exile [^.]{0,20}target/i, /counter target/i, /deals? (?:\d+|x) damage (?:to (?!you\b)|divided)/i, /return [^.]{0,60}owners?['’]?s?\s+hands?/i, /-\d+\/-\d+/i, /\bfights? (?:target|another|up to|a different)\b/i, /deals? damage (?:to (?:itself|himself|herself) )?equal to its power/i, /loses all (?:other (?:card types? and )?)?abilities/i, /can'?t attack or block(?! (?:alone|unless))\b/i, /change the target of target spell|choose new targets for target spell or ability/i, /shuffles? [^.]{0,20}into their librar/i, /(?:put|shuffle) target [^.]{0,80}into (?:its|their) owner'?s? librar/i, /\bcounter that spell\b/i],
   // Founder #095 (per Zach's "broaden then find gaps" direction: swept
   // every OTHER role in ROLE_PATTERNS against the full 4,060-card mined
   // corpus, not just interaction — most categories turned out noisy

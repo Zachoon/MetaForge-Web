@@ -334,7 +334,10 @@ export function readCommanderPlan(commanders = []) {
   const evidence = Object.fromEntries(Object.keys(ARCHETYPES).map((id) => [id, new Set()]));
   const models = present.map((entry) => {
     const mechanics = mechanicsOf(entry);
-    voteMechanics(mechanics, 1, scores);
+    // A Background beside a creature commander votes only when its rules
+    // text names a plan; its enchantment type line is not one.
+    const background = present.length > 1 && /\bBackground\b/i.test(typeLineOf(entry)) && !textCarriesPlan(mechanics);
+    if (!background) voteMechanics(mechanics, 1, scores);
     return { name: entryNameOf(entry), mechanics };
   });
   // A noncreature commander's printed type is a plan only when the text
@@ -343,6 +346,10 @@ export function readCommanderPlan(commanders = []) {
   if (leadSoFar < 3) {
     for (const entry of present) {
       const line = typeLineOf(entry);
+      // A Background is an enchantment only so it can sit beside a creature
+      // commander. It modifies that commander; it is not an enchantment plan
+      // (Wilson + Raised by Giants read as "Enchantments" before MF-DECK-COACH-002).
+      if (/\bBackground\b/i.test(line)) continue;
       if (/\benchantment\b/i.test(line) && !/\bcreature\b/i.test(line)) scores.enchantress += 3;
       else if (/\bartifact\b/i.test(line) && !/\bcreature\b/i.test(line)) scores.artifacts += 3;
     }

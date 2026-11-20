@@ -76,9 +76,13 @@ const BASE_ROLES = Object.freeze({
 
 const ROLE_SHIFT = Object.freeze({
   spellslinger: { ramp: [-1, 0], draw: [2, 2], interaction: [2, 3], wipes: [0, 1], wincon: [-1, 0] },
-  tokens: { ramp: [0, 0], draw: [1, 1], interaction: [0, 0], wipes: [-1, -1], wincon: [0, 1] },
-  typal: { ramp: [0, 0], draw: [1, 1], interaction: [0, 0], wipes: [0, 0], wincon: [0, 1] },
-  creatures: { ramp: [0, 1], draw: [0, 1], interaction: [0, 0], wipes: [0, 0], wincon: [0, 1] },
+  // Go-wide plans: a symmetric wipe destroys the board the commander is
+  // building, so none is required (0–2). MF-DECK-COACH-002 lowered these
+  // from 1–3 / 2–4 after Elves and Goblins lists were told to add
+  // Blasphemous Act. A one-sided wipe is still credited in the answer read.
+  tokens: { ramp: [0, 0], draw: [1, 1], interaction: [0, 0], wipes: [-2, -2], wincon: [0, 1] },
+  typal: { ramp: [0, 0], draw: [1, 1], interaction: [0, 0], wipes: [-2, -2], wincon: [0, 1] },
+  creatures: { ramp: [0, 1], draw: [0, 1], interaction: [0, 0], wipes: [-2, -2], wincon: [0, 1] },
   aristocrats: { ramp: [-1, 0], draw: [1, 1], interaction: [0, 1], wipes: [0, 0], wincon: [0, 1] },
   combat: { ramp: [0, 1], draw: [0, 0], interaction: [1, 1], wipes: [-1, -1], wincon: [0, 1] },
   equipment: { ramp: [0, 1], draw: [0, 0], interaction: [1, 1], wipes: [-1, -1], wincon: [0, 1] },
@@ -101,11 +105,32 @@ const ROLE_LABELS = Object.freeze({
   wincon: "Win conditions",
 });
 
-const INTERACTION = /\b(?:destroy|exile) (?:target|up to (?:one|two|three|\d+) targets?|another target)\b|\bcounter target (?:spell|activated|triggered|noncreature|ability)\b|\bdeals? (?:\d+|x) damage to (?:any target|target)\b|\bdeals? (?:\d+|x) damage divided\b|\bdeals? damage equal to [^.]*\bto target\b|\breturn target [^.]*\bowner(?:'s|s'|s)? hands?\b|\bfights? target\b|\bdeals damage equal to its power to target\b|\btarget permanent\b[^.]{0,80}\bshuffles? (?:it|that permanent) into\b|\b(?:each opponent|target opponent|each other player) sacrifices (?:a|an|one|two|three) (?:creature|nonland permanent|permanent|artifact|enchantment)\b/i;
+const INTERACTION = /\b(?:destroy|exile) (?:target|up to (?:one|two|three|\d+) targets?|another target)\b|\bcounter target (?:spell|activated|triggered|noncreature|ability)\b|\bcounter target (?:[a-z]+,? (?:or )?){1,4}spell\b|\bdeals? (?:\d+|x) damage to (?:any target|target)\b|\bdeals? (?:\d+|x) damage divided\b|\bdeals? damage equal to [^.]*\bto target\b|\breturn target [^.]*\bowner(?:'s|s'|s)? hands?\b|\bfights? target\b|\bdeals damage equal to its power to target\b|\btarget permanent\b[^.]{0,80}\bshuffles? (?:it|that permanent) into\b|\b(?:each opponent|target opponent|each other player) sacrifices (?:a|an|one|two|three) (?:creature|nonland permanent|permanent|artifact|enchantment)\b/i;
 
-const WIPE = /\bdestroy all\b|\bexile all (?!graveyards?\b)|\ball creatures get -(?:\d+|x)\/-(?:\d+|x)\b|\beach creature (?:gets? -(?:\d+|x)|is destroyed)\b|\bdeals? [^.]*\bdamage\b[^.]* to each (?:other |nontoken |attacking |blocking )?creatures?\b|\breturn all (?:nonland permanents|creatures) to their owners' hands\b/i;
+// MF-DECK-COACH-002 added three printed shapes the first version missed:
+// "destroy each artifact, creature, and enchantment" (Pernicious Deed),
+// "creatures your opponents control get -2/-2" (Massacre Wurm), and one
+// token fighting each opposing creature (Ezuri's Predation).
+const WIPE = /\bdestroy all\b|\bexile all (?!graveyards?\b)|\ball creatures get -(?:\d+|x)\/-(?:\d+|x)\b|\beach creature (?:gets? -(?:\d+|x)|is destroyed)\b|\bdeals? [^.]*\bdamage\b[^.]* to each (?:other |nontoken |attacking |blocking )?creatures?\b|\breturn all (?:nonland permanents|creatures) to their owners' hands\b|\bdestroy each (?:artifact|creature|enchantment|nonland permanent|permanent)\b|\bcreatures (?:your opponents control|you don't control) get -(?:\d+|x)\/-(?:\d+|x)\b|\bfights? a different one of those creatures\b/i;
 
-const LAND_RAMP = /search your library for [^.]*\b(?:basic land|land card|forest card|plains|island|swamp|mountain|forest)\b[^.]*\bbattlefield\b/i;
+// Exiling a creature and returning it is a blink: it resets your own
+// creature, and against an opponent's creature it is back at once. It is
+// not removal (Cloudshift, Restoration Angel, Felidar Guardian, Eldrazi
+// Displacer were all counted as interaction before MF-DECK-COACH-002).
+const FLICKER = /\bexile (?:up to one )?(?:another |other )?target [^.]*?,? (?:then )?return (?:that card|it|them|those cards) to the battlefield\b[^.]*/gi;
+
+// A land aura that adds mana each time the land taps (Wild Growth, Utopia
+// Sprawl, Fertile Ground, Overgrowth) is ramp, with no "{T}: Add" of its own.
+const LAND_AURA_RAMP = /\bwhenever enchanted (?:land|forest|plains|island|swamp|mountain) is tapped for mana, its controller adds an additional\b/i;
+
+// An ability with no cost but {T} that adds mana. A card that has one is a
+// mana rock even if a second ability filters (Prismatic Lens).
+const FREE_TAP_ADD = /(?:^|[.)"]\s+)\{T\}\s*:\s*Add\b/i;
+
+// The land can arrive in the next sentence: "Search your library for up to
+// X basic land cards, where X is …. Put those cards onto the battlefield"
+// (Traverse the Outlands read as a tutor before MF-DECK-COACH-003).
+const LAND_RAMP = /search your library for [^.]*\b(?:basic land|land card|forest card|plains|island|swamp|mountain|forest)\b[^.]*(?:\.\s*put (?:it|them|those cards|that card|one of them)\b[^.]*)?\bbattlefield\b/i;
 const EXTRA_LAND = /\b(?:you may )?play an additional land\b/i;
 const TAXED_TREASURE = /may pay \{[^}]+\}[^.]{0,120}create (?:a|that many|x )? ?treasure|if (?:the player|they) (?:doesn't|does not|don't), you create a treasure/i;
 const COMBAT_TREASURE = /deals? combat damage[^.]*\btreasure\b|(?:creature|creatures) you control deals? combat damage[^.]*create[^.]*treasure/i;
@@ -140,7 +165,7 @@ function stripOtherPlayers(text) {
     .replace(/\bwhenever an opponent draws a card\b/gi, "")
     .replace(/\beach player (?:discards their hand, then )?draws?\b[^.]*/gi, "")
     .replace(/\beach player discards\b[^.]*/gi, "")
-    .replace(/\b(?:an opponent|target opponent|each opponent|target player|that player) (?:discards?|draws?)\b[^.]*/gi, "");
+    .replace(/\b(?:an opponent|target opponent|each opponent|target player|that player|its controller|their controller) (?:discards?|draws?)\b[^.]*/gi, "");
 }
 
 function countVerb(text, verb) {
@@ -150,7 +175,10 @@ function countVerb(text, verb) {
     const word = match[1].toLowerCase();
     total += NUMBER[word] || Number(word) || 0;
   }
-  if (verb === "draw" && /\bdraw cards equal to\b|\bdraws cards equal to\b/i.test(text)) total += 2;
+  // Draw equal to a creature's power is several cards in a deck built on big
+  // creatures (Greater Good read as a loot before MF-DECK-COACH-002).
+  if (verb === "draw" && /\bdraws? cards equal to (?:its|that creature's|the sacrificed creature's|the greatest) power\b/i.test(text)) total += 4;
+  else if (verb === "draw" && /\bdraw cards equal to\b|\bdraws cards equal to\b/i.test(text)) total += 2;
   if (verb === "discard" && /\bdiscard your hand\b/i.test(text)) total += 7;
   return total;
 }
@@ -238,6 +266,7 @@ function treasureKind(text) {
 function isFilterOnly(text) {
   if (!FILTER.test(text)) return false;
   if (LAND_RAMP.test(text) || EXTRA_LAND.test(text)) return false;
+  if (FREE_TAP_ADD.test(text)) return false;
   if (/\{T\}\s*:\s*Add \{C\}\{C\}/i.test(text)) return false;
   if (/\{T\}\s*:\s*Add \{[WUBRG]\}/i.test(text) && !/\{\d+\}[^:\n]{0,40}\{T\}/.test(text)) return false;
   return true;
@@ -419,6 +448,12 @@ function wipeProfile(text) {
   if (/\boverload\b/i.test(text) && /\byou don't control\b/i.test(text)) oneSided = true;
   const gate = wipeGateOf(cleanText(text));
   const choice = Boolean(modes) && hits.size > 1 && !oneSided;
+  // "Destroy all creatures that aren't of the chosen type" (Kindred
+  // Dominance) leaves a typal deck's own creatures standing.
+  const sparesType = !oneSided && /\bcreatures? that (?:aren't|are not) (?:of )?the (?:chosen )?(?:creature )?type\b|\bnon-?[A-Z][a-z]+ creatures\b[^.]*\bchosen type\b/i.test(cleanText(text));
+  if (sparesType) {
+    return { scope: "spares-type", hits: [...hits], scalable, gate, note: "It spares the creature type you name, so a deck built on one type keeps its own creatures." };
+  }
   let note = null;
   if (choice) note = "You choose the modes, so it can miss the permanents this plan needs.";
   else if (oneSided) note = "It removes their permanents and leaves yours.";
@@ -463,7 +498,7 @@ function libraryCardsToHand(text) {
   return 0;
 }
 
-function tutorProfile(text) {
+function tutorProfile(text, selfName = "") {
   const raw = cleanText(text);
   const searched = /\bsearch your library for\b/i.test(raw);
   const named = /\bname a card\b/i.test(raw) && /\bput (?:it|that card) into your hand\b/i.test(raw);
@@ -471,6 +506,10 @@ function tutorProfile(text) {
   if (searched && LAND_RAMP.test(raw)) return null;
   const found = raw.match(/\bsearch your library for ([^.]{0,80})/i);
   const target = (found ? found[1] : "a card").split(/,| then | and put /i)[0].replace(/\s+/g, " ").trim();
+  // "Search your library for a card named Elvish Clancaller" finds another
+  // copy of itself. A singleton Commander deck has none, so it is not a tutor.
+  const self = String(selfName || "").trim();
+  if (self && new RegExp(`^an? cards? named ${self.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i").test(target)) return null;
   const open = named || (/^(?:up to )?(?:a|an|one|two|three) cards?$/i.test(target) && !(/\bwith\b|\bnamed\b/i.test(target)));
   let destination = "into your hand";
   if (/\bonto the battlefield\b/i.test(raw)) destination = "onto the battlefield";
@@ -500,7 +539,14 @@ function selectionProfile(text, draw, loot, impulse, tutor) {
 }
 
 function modeIsWincon(text) {
-  return /\byou win the game\b|\b(?:an opponent|each opponent|target player|that player) loses the game\b|\bloses the game\b|\bextra turns?\b|\badditional combat phases?\b|\binfect\b|\bcreatures you control (?:get \+[^.]{0,40}and )?gain (?:flying, vigilance, and )?double strike\b|\bcreatures you control get \+(?:x|[1-9]\d*)\/\+(?:x|[1-9]\d*) and gain trample\b|\bcreatures you control gain trample and get \+(?:x|[1-9]\d*)\/\+(?:x|[1-9]\d*)\b|\bcreatures you control get \+(?:x|[1-9]\d*)\/\+(?:x|[1-9]\d*)\b|\beach opponent loses x life\b|\bgain control of (?:all creatures|them) until end of turn\b|\bdeals? (?:[1-9]\d|50) damage to (?:any target|target player|each opponent)\b/i.test(text);
+  if (/\byou win the game\b|\b(?:an opponent|each opponent|target player|that player) loses the game\b|\bloses the game\b|\bextra turns?\b|\badditional combat phases?\b|\binfect\b|\bcreatures you control (?:get \+[^.]{0,40}and )?gain (?:flying, vigilance, and )?double strike\b|\bcreatures you control get \+(?:x|[1-9]\d*)\/\+(?:x|[1-9]\d*) and gain trample\b|\bcreatures you control gain trample and get \+(?:x|[1-9]\d*)\/\+(?:x|[1-9]\d*)\b|\beach opponent loses x life\b|\bgain control of (?:all creatures|them) until end of turn\b|\bdeals? (?:[1-9]\d|50) damage to (?:any target|target player|each opponent)\b/i.test(text)) return true;
+  // A team pump ends games only as a one-turn burst (Overrun). A static
+  // lord ("Other Elf creatures you control get +1/+1") grows the board and
+  // was counted as a win condition before MF-DECK-COACH-002.
+  if (sentencesOf(text).some((sentence) => /\bcreatures you control get \+(?:x|[1-9]\d*)\/\+(?:x|[1-9]\d*)\b/i.test(sentence) && /\buntil end of turn\b/i.test(sentence))) return true;
+  // A token for each land you control is the landfall finisher (Avenger of
+  // Zendikar): the board it makes grows with every land drop after.
+  return /\bcreate (?:a|an) [^.]*\bcreature tokens? for each land you control\b/i.test(cleanText(text));
 }
 
 /**
@@ -524,10 +570,11 @@ export function classifyPrintedCard(card = {}) {
   const impulse = pieces.some((piece) => isImpulseText(piece));
   const draw = economies.some((economy) => economy.draw) || libraryPut >= 2;
   const loot = economies.some((economy) => economy.loot) && !draw;
-  const interaction = pieces.some((piece) => modeIsInteraction(piece));
+  const answerPieces = pieces.map((piece) => String(piece).replace(FLICKER, " "));
+  const interaction = answerPieces.some((piece) => modeIsInteraction(piece));
   const wipes = pieces.some((piece) => modeIsWipe(piece));
   const wincon = pieces.some((piece) => modeIsWincon(piece));
-  const removalProfiles = pieces.map((piece) => removalProfile(piece)).filter(Boolean);
+  const removalProfiles = answerPieces.map((piece) => removalProfile(piece)).filter(Boolean);
   const finisherDamage = wincon && /\bdeals? (?:[5-9]\d|\d{3,}) damage to any target\b/i.test(cleanText(text)) && !/\b(?:destroy|exile|return) target\b/i.test(text);
   const removal = removalProfiles.length > 0 && !finisherDamage;
   const removalFlexible = removal && removalProfiles.some((profile) => profile.flexible);
@@ -540,7 +587,7 @@ export function classifyPrintedCard(card = {}) {
   const counterNote = counterFlexible ? null : counterProfiles.map((profile) => profile.note).filter(Boolean)[0] || null;
   const protection = protectionProfile(text, typeLine);
   const wipe = wipes ? wipeProfile(text) : null;
-  const tutor = tutorProfile(text);
+  const tutor = tutorProfile(text, name);
   const drawKind = !draw ? null : isEngineDraw(text) ? "engine" : (handEconomy(text).draw <= 1 && handEconomy(text).discard === 0 && libraryPut < 2) ? "cantrip" : "burst";
   const selection = selectionProfile(text, draw, loot, impulse, tutor);
 
@@ -563,7 +610,7 @@ export function classifyPrintedCard(card = {}) {
       conditionalRampReason = treasure.charAt(0).toLowerCase() + treasure.slice(1);
     } else if (isFilterOnly(rules)) {
       conditionalRamp = false;
-    } else if (REPEATABLE_ADD.test(rules) || LAND_RAMP.test(rules) || EXTRA_LAND.test(rules) || (/treasure/i.test(rules) && repeatableTreasure(rules))) {
+    } else if (REPEATABLE_ADD.test(rules) || LAND_RAMP.test(rules) || EXTRA_LAND.test(rules) || LAND_AURA_RAMP.test(rules) || (/treasure/i.test(rules) && repeatableTreasure(rules))) {
       ramp = true;
     }
   }
@@ -727,14 +774,47 @@ const SWAP_CATALOG = Object.freeze([
   { name: "Swiftfoot Boots", typeLine: "Artifact — Equipment", manaCost: "{2}", colors: [], plans: ["*"], because: "The equipped creature has hexproof and haste. Hexproof stops an opponent from targeting it, and you can still target it yourself.", oracleText: "Equipped creature has hexproof and haste.\nEquip {1}." },
 ]);
 
+/**
+ * The printed facts behind a suggested add, so a caller can replay a swap
+ * through this coach (before/after) without a second lookup. Read-only copy.
+ */
+export function swapCatalogCard(name = "") {
+  const key = String(name).trim().toLowerCase();
+  const entry = SWAP_CATALOG.find((card) => card.name.toLowerCase() === key);
+  if (!entry) return null;
+  return {
+    name: entry.name,
+    typeLine: entry.typeLine,
+    manaCost: entry.manaCost,
+    oracleText: entry.oracleText,
+    colorIdentity: [...entry.colors],
+    cmc: printedCmc(entry),
+  };
+}
+
 function catalogRole(entry) {
   return classifyPrintedCard(entry);
 }
+
+// Adds that need a creature board to do anything. Offered only when the list
+// has one (Akroma's Will was offered to a 17-creature counters list).
+const BOARD_ONLY_ADDS = new Set(["Craterhoof Behemoth", "Overrun", "Triumph of the Hordes", "Akroma's Will", "Insurrection", "Skullclamp", "Beast Whisperer"]);
+let ADD_CONTEXT = null;
 
 function rankAdds(role, identity, planId, usedNames) {
   return SWAP_CATALOG
     .map((entry) => ({ entry, roles: catalogRole(entry) }))
     .filter(({ entry, roles }) => !usedNames.has(entry.name.toLowerCase()) && fitsIdentity(entry.colors, identity) && roles[role])
+    // Only cards vetted for this plan. Before MF-DECK-COACH-002 an off-plan
+    // card still ranked (Akroma's Will into a combo deck, Skullclamp into a
+    // creature-light control deck), because plan fit was only a bonus.
+    .filter(({ entry }) => entry.plans.includes("*") || entry.plans.includes(planId))
+    // A go-wide plan is not told to add a wipe that also kills its own board.
+    .filter(({ roles }) => !(role === "wipes" && GO_WIDE_PLANS.has(planId) && roles.wipeScope !== "one-sided"))
+    // A rock that later cycles (Mind Stone) replaces itself once. It is not
+    // the answer to "too few ways to draw extra cards".
+    .filter(({ roles }) => !(role === "draw" && roles.drawKind === "cantrip"))
+    .filter(({ entry }) => !(BOARD_ONLY_ADDS.has(entry.name) && (ADD_CONTEXT?.creatures ?? Infinity) < 20))
     .map(({ entry }) => {
       let score = 0;
       if (entry.plans.includes("*") || entry.plans.includes(planId)) score += 3;
@@ -765,6 +845,7 @@ function nameList(cards, limit = 6) {
 }
 
 const BOARD_PLANS = new Set(["tokens", "typal", "creatures", "combat", "equipment", "auras", "big-creatures", "blink", "aristocrats"]);
+const GO_WIDE_PLANS = new Set(["tokens", "typal", "creatures"]);
 const ENGINE_PLANS = new Set(["tokens", "typal", "creatures", "aristocrats", "enchantress", "spellslinger", "control", "artifacts", "blink"]);
 
 function shareBand(range, minFactor, maxFactor) {
@@ -811,6 +892,7 @@ function wipeVerdict(planId, commanderText, card) {
   if (!card?.wipes) return { fights: false, uses: false, reason: "" };
   if (card.wipeScope === "one-sided") return { fights: false, uses: false, reason: card.wipeNote || "It removes their permanents and leaves yours." };
   if (card.wipeScope === "choice") return { fights: false, uses: false, reason: card.wipeNote || "You choose the modes, so it can miss the permanents this plan needs." };
+  if (card.wipeScope === "spares-type" && planId === "typal") return { fights: false, uses: false, reason: card.wipeNote };
   const kind = commanderBoards(planId, commanderText);
   const hits = new Set(card.wipeHits || []);
   const hitsCreatures = hits.has("creatures") || hits.has("permanents") || hits.has("nonland permanents");
@@ -877,7 +959,7 @@ function buildAnswerRead({ cards, plan, ranges, confidence, commanderText, ident
   const protection = nonlands.filter((card) => card.protection);
   const wipes = nonlands.filter((card) => card.wipes);
   const verdicts = wipes.map((card) => ({ card, ...wipeVerdict(plan?.id, commanderText, card) }));
-  const oneSided = wipes.filter((card) => card.wipeScope === "one-sided");
+  const oneSided = wipes.filter((card) => card.wipeScope === "one-sided" || (card.wipeScope === "spares-type" && plan?.id === "typal"));
   const fighting = verdicts.filter((entry) => entry.fights);
   const engines = nonlands.filter((card) => card.drawKind === "engine");
   const bursts = nonlands.filter((card) => card.drawKind === "burst");
@@ -1099,10 +1181,11 @@ function hiddenAnswerWeaknesses({ answer, plan, roles, confidence, identity, use
 }
 
 function hiddenHole({ id, title, plain, cite, says, pattern, swapRole, prefer, cutWhy, confidence, identity, planId, usedNames }) {
+  const cutCard = cite && !isProtectedCard(cite) ? cite : null;
   const swaps = rankKindAdds({ role: swapRole, prefer, identity, planId, usedNames }).slice(0, 1).map((add) => ({
-    cut: cite?.name || null,
+    cut: cutCard?.name || null,
     add: add.name,
-    reason: `${add.because} ${cite ? `Cut ${cite.name}: ${cutWhy}.` : ""}`.trim(),
+    reason: `${add.because} ${cutCard ? `Cut ${cutCard.name}: ${cutWhy}.` : ""}`.trim(),
   }));
   return {
     id,
@@ -1125,6 +1208,8 @@ function rankKindAdds({ role, prefer, identity, planId, usedNames }) {
   return SWAP_CATALOG
     .map((entry) => ({ entry, roles: classifyPrintedCard(entry) }))
     .filter(({ entry, roles }) => !usedNames.has(entry.name.toLowerCase()) && fitsIdentity(entry.colors, identity) && (prefer ? prefer(roles) : roles[role]))
+    .filter(({ entry }) => entry.plans.includes("*") || entry.plans.includes(planId))
+    .filter(({ entry }) => !(BOARD_ONLY_ADDS.has(entry.name) && (ADD_CONTEXT?.creatures ?? Infinity) < 20))
     .map(({ entry, roles }) => {
       let score = 0;
       if (entry.plans.includes("*") || entry.plans.includes(planId)) score += 3;
@@ -1257,7 +1342,7 @@ function buildSwaps({ role, cuts, identity, planId, usedNames }) {
     return {
       cut: cut?.name || null,
       add: add.name,
-      reason: `${add.because} Cut ${cutName}: ${why}.`,
+      reason: cut ? `${add.because} Cut ${cutName}: ${why}.` : `${add.because} Every expensive card in this list already does another job or belongs to the plan, so which card to cut is your call.`,
       addQuote: excerpt(add.oracleText, 180),
     };
   });
@@ -1275,6 +1360,26 @@ function causingCards(pool, limit = 6) {
  * @param {{ commander?: any, commanders?: any[], cards?: any[], strategy?: string, deckText?: string }} input
  */
 export function buildCurveRoleCoaching(input = {}) {
+  const creatures = (Array.isArray(input.cards) ? input.cards : [])
+    .filter((card) => /\bCreature\b/.test(String(card?.typeLine || card?.type_line || "").split(" // ")[0]))
+    .reduce((sum, card) => sum + (Number(card.quantity) || 1), 0);
+  const previous = ADD_CONTEXT;
+  ADD_CONTEXT = {
+    creatures: Array.isArray(input.cards) && input.cards.length ? creatures : Infinity,
+    // MF-DECK-COACH-003: cards the player marked "never cut".
+    protectedNames: new Set((Array.isArray(input.protectedNames) ? input.protectedNames : []).map((name) => String(name).trim().toLowerCase()).filter(Boolean)),
+  };
+  try {
+    return buildCurveRoleCoachingFor(input);
+  } finally {
+    ADD_CONTEXT = previous;
+  }
+}
+
+/**
+ * @param {{ commander?: any, commanders?: any[], cards?: any[], strategy?: string, deckText?: string }} input
+ */
+function buildCurveRoleCoachingFor(input = {}) {
   const commanderSources = [
     ...(Array.isArray(input.commanders) ? input.commanders : []),
     input.commander,
@@ -1336,19 +1441,27 @@ export function buildCurveRoleCoaching(input = {}) {
     colorIdentity: commander.colorIdentity,
   })));
   const hint = strategyHint(input.strategy);
-  let planId = planRead.id === "midrange" && hint ? hint : planRead.id;
+  // MF-DECK-COACH-003: a caller can name the plan (Deck Check's deck-level
+  // read, or the plan a player confirmed). It must be one this coach has
+  // bands for; anything else falls back to the commander read as before.
+  const override = input.planOverride && CURVE_BY_PLAN[input.planOverride.id] ? input.planOverride : null;
+  let planId = override ? override.id : planRead.id === "midrange" && hint ? hint : planRead.id;
   if (!CURVE_BY_PLAN[planId]) planId = "midrange";
-  const strategyConflict = Boolean(hint && planRead.id !== "midrange" && hint !== planRead.id && planRead.confidence >= 0.7);
+  const strategyConflict = !override && Boolean(hint && planRead.id !== "midrange" && hint !== planRead.id && planRead.confidence >= 0.7);
   const plan = {
     id: planId,
-    label: planRead.id === "midrange" && hint ? String(input.strategy).trim() : planRead.label,
-    confidence: planRead.confidence || 0,
+    label: override?.label || (planRead.id === "midrange" && hint ? String(input.strategy).trim() : planRead.label),
+    confidence: override ? (Number.isFinite(override.confidence) ? override.confidence : override.source === "player" ? 0.9 : 0.7) : planRead.confidence || 0,
     excerpt: excerpt(primary?.oracleText || ""),
     restrictionNote: planRead.restrictionNote || null,
-    creatureType: planRead.creatureType || planRead.model?.typal || null,
+    creatureType: override?.creatureType || planRead.creatureType || planRead.model?.typal || null,
     oracleSeen,
+    // The plan the commander's text named, before it was folded into the
+    // bands this coach has (a counters or life-gain read uses midrange bands).
+    readId: override ? override.id : planRead.id,
+    source: override?.source || "commander-text",
   };
-  if (planRead.id === "midrange" && hint) {
+  if (!override && planRead.id === "midrange" && hint) {
     plan.confidence = Math.max(plan.confidence, 0.5);
   }
 
@@ -1438,11 +1551,18 @@ export function buildCurveRoleCoaching(input = {}) {
     const pool = kind === "short" ? row.cards : [...row.cards].sort((left, right) => right.cmc - left.cmc);
     const notDraw = cardsWith((card) => card.loot || card.impulse || (card.tutor && !card.draw) || card.selection);
     const excluded = role === "ramp" && kind === "short" ? excludedRamp : role === "draw" && kind === "short" ? notDraw : [];
-    const occupying = highCurveCuts(nonlands, roleCards.wincon);
+    const occupying = highCurveCuts(nonlands, roleCards.wincon, { roles, plan });
     const causing = kind === "short"
       ? [...pool, ...excluded, ...(pool.length || excluded.length ? [] : occupying)]
       : pool;
-    const cuts = (kind === "over" ? pool : excluded.length ? excluded : highCurveCuts(nonlands, roleCards.wincon))
+    // A cut must not open a new hole. A tutor is not card advantage, and it
+    // is still not the card to cut (Demonic Tutor was offered as a cut).
+    // An over-range card that is also the deck's only wipe stays.
+    const cuttableExcluded = excluded.filter((card) => !card.tutor && !isProtectedCard(card));
+    const cuttableOver = pool.filter((card) => !fillsNeededRole(card, roles, role) && !isPlanPayoff(card, plan));
+    // Too many finishers is a mild problem; which closer to drop is the
+    // player's call (Craterhoof Behemoth was the first cut offered).
+    const cuts = (kind === "over" ? (role === "wincon" ? [] : cuttableOver) : cuttableExcluded.length ? cuttableExcluded : occupying)
       .slice(0, 2)
       .map((card) => ({
         name: card.name,
@@ -1459,7 +1579,10 @@ export function buildCurveRoleCoaching(input = {}) {
                   : `it costs ${card.cmc} and is not the missing ${ROLE_LABELS[role].toLowerCase()}`,
       }));
     const needed = kind === "short" ? role : shortestRole(roles);
-    const swaps = buildSwaps({
+    // A surplus with nothing short is trimmed, not traded: adding draw to a
+    // deck already at the top of its draw band was the old fallback.
+    const nothingShort = kind === "over" && !roles.some((entry) => entry.status === "short");
+    const swaps = nothingShort ? [] : buildSwaps({
       role: needed,
       cuts,
       identity,
@@ -1509,7 +1632,9 @@ export function buildCurveRoleCoaching(input = {}) {
   const earlyBucket = buckets[0].status === "short" || buckets[1].status === "short";
   if (top.status === "over") {
     const pile = nonlands.filter((card) => card.cmc >= 6 && !card.wincon).sort((left, right) => right.cmc - left.cmc);
-    const cuts = pile.slice(0, 2).map((card) => ({
+    // Name the whole pile, but only offer to cut cards that do no other job.
+    const cuttable = pile.filter((card) => !fillsNeededRole(card, roles) && !isPlanPayoff(card, plan));
+    const cuts = cuttable.slice(0, 2).map((card) => ({
       name: card.name,
       why: plan.id === "big-creatures" || plan.id === "graveyard" || plan.id === "landfall"
         ? `it is one of too many ${card.cmc}-mana spells, and the early turns still have to cast this plan`
@@ -1526,7 +1651,7 @@ export function buildCurveRoleCoaching(input = {}) {
       theory: planTheory(plan, primary?.name, "over", "curve-top"),
       cards: causingCards(pile.length ? pile : nonlands.filter((card) => card.cmc >= 6)),
       excluded: [],
-      swaps: buildSwaps({ role: needed, cuts, identity, planId: plan.id, usedNames }),
+      swaps: roles.some((entry) => entry.status === "short") ? buildSwaps({ role: needed, cuts, identity, planId: plan.id, usedNames }) : [],
       swapNote: "",
       confidence: confidence.level,
       confidenceReason: confidence.reason,
@@ -1534,7 +1659,9 @@ export function buildCurveRoleCoaching(input = {}) {
   }
   if (earlyBucket) {
     const earlyCards = nonlands.filter((card) => card.cmc <= 2);
-    const expensive = nonlands.filter((card) => card.cmc >= 5 && !card.wincon).sort((left, right) => right.cmc - left.cmc);
+    const expensive = nonlands
+      .filter((card) => card.cmc >= 5 && !card.wincon && !fillsNeededRole(card, roles) && !isPlanPayoff(card, plan))
+      .sort((left, right) => right.cmc - left.cmc);
     const cuts = expensive.slice(0, 2).map((card) => ({
       name: card.name,
       why: `${primary?.name || "The commander"} costs ${commanderCmc || "more than a two-drop"}, and this ${card.cmc}-mana card does not help cast it`,
@@ -1653,11 +1780,67 @@ function shortestRole(roles) {
   return short[0]?.id || "draw";
 }
 
-function highCurveCuts(nonlands, wincons) {
+const COUNTED_ROLES = ["ramp", "draw", "interaction", "wipes", "wincon"];
+
+/**
+ * True when cutting this card would cost a job the deck still needs: a
+ * counted role that is not over its range, a tutor, or protection. The role
+ * being fixed by the swap itself is ignored.
+ */
+/** A card the player marked "never cut" (MF-DECK-COACH-003). */
+function isProtectedCard(card) {
+  return Boolean(card?.name && ADD_CONTEXT?.protectedNames?.has(String(card.name).trim().toLowerCase()));
+}
+
+function fillsNeededRole(card, roles = [], except = null) {
+  if (card.tutor || card.protection || isProtectedCard(card)) return true;
+  return COUNTED_ROLES.some((id) => id !== except && card[id] && (roles.find((row) => row.id === id)?.status || "ok") !== "over");
+}
+
+/**
+ * Expensive cards that do none of the counted jobs, so a swap can take the
+ * slot without opening another hole. Before MF-DECK-COACH-002 this was any
+ * 5+ mana non-win-condition (Farewell, Avenger of Zendikar, Siege-Gang
+ * Commander, Agent of Treachery were offered as cuts).
+ */
+function highCurveCuts(nonlands, wincons, { roles = [], plan = null } = {}) {
   const winconNames = new Set(wincons.map((card) => card.name));
   return nonlands
     .filter((card) => card.cmc >= 5 && !winconNames.has(card.name))
+    .filter((card) => !fillsNeededRole(card, roles))
+    .filter((card) => !isPlanPayoff(card, plan))
     .sort((left, right) => right.cmc - left.cmc || left.name.localeCompare(right.name));
+}
+
+// Printed words that mark a card as part of the plan itself. A cut that
+// removes one is the coach arguing with the commander (Ancient Greenwarden
+// in landfall, Butcher of Malakir in aristocrats, Calix in enchantress).
+const PLAN_PAYOFF = Object.freeze({
+  landfall: /\blandfall\b|\bplay lands\b|\bland entering\b|\bwhenever a land (?:you control )?enters\b|\bplay (?:an )?additional lands?\b|\blands? you control\b/i,
+  aristocrats: /\bdies\b|\bsacrifice (?:a|another) creature\b/i,
+  graveyard: /\bgraveyard\b/i,
+  tokens: /\bcreature tokens?\b|\btokens? you control\b/i,
+  artifacts: /\bartifacts? you control\b|\bwhenever (?:an|another) artifact\b|\bartifact spells?\b/i,
+  historic: /\bhistoric\b|\blegendary\b/i,
+  enchantress: /\benchantments? you control\b|\bwhenever you cast an enchantment\b|\baura\b/i,
+  spellslinger: /\binstant or sorcery\b|\binstants? and sorcer/i,
+  blink: /\bwhen [^.]* enters\b|\bexile [^.]*\breturn\b/i,
+  "big-creatures": /\bpower (?:\d+ or greater|is \d+)\b|\btotal power\b/i,
+});
+const BOARD_PAYOFF = /\bcreatures you control get\b|\beach creature you control\b|\bshares? (?:at least one )?creature type\b|\bother [A-Z][a-z]+ (?:creatures )?you control\b/;
+
+function isPlanPayoff(card, plan) {
+  if (!plan) return false;
+  const text = String(card.oracleText || "");
+  const typeLine = String(card.typeLine || "");
+  if (plan.id === "enchantress" && /\bEnchantment\b/.test(typeLine)) return true;
+  if (plan.id === "artifacts" && /\bArtifact\b/.test(typeLine)) return true;
+  if (plan.id === "typal" && plan.creatureType) {
+    const word = String(plan.creatureType).replace(/[^A-Za-z'-]/g, "").replace(/(?:es|s)$/i, "");
+    if (word && new RegExp(`\\b${word}`, "i").test(`${typeLine} ${text}`)) return true;
+  }
+  if (GO_WIDE_PLANS.has(plan.id) && BOARD_PAYOFF.test(text)) return true;
+  return Boolean(PLAN_PAYOFF[plan.id]?.test(text));
 }
 
 export function formatCurveRoleCoaching(report) {

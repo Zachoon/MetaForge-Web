@@ -79,7 +79,7 @@ const DECKBUILDING_TOOLS: Record<string, { name: string; description: string }> 
   "/tools/mtg-deck-analyzer": { name: "MTG Deck Analyzer", description: "Analyze a Magic: The Gathering decklist for mana, card flow, interaction, speed, and game plan." },
   "/tools/commander-deck-builder": { name: "Commander Deck Builder", description: "Build a legal 100-card Commander deck around a real game plan with clear reasons for its cards." },
   "/tools/commander-deck-checker": { name: "Commander Deck Checker", description: "Check a Commander decklist for legality, structural gaps, conflicting plans, and weak support." },
-  "/tools/commander-mana-base-analyzer": { name: "Commander Mana Base Analyzer", description: "Diagnose Commander land count, color access, mana curve, ramp, and opening-hand problems." },
+  "/tools/commander-mana-base-analyzer": { name: "Commander Mana Base Analyzer", description: "Diagnose Commander land count, color access, mana curve, ramp, and when each color arrives." },
   "/tools/commander-land-calculator": { name: "Commander Land Calculator", description: "Estimate a starting Commander land range from curve, ramp, draw, commander cost, and pace." },
   "/tools/commander-color-source-calculator": { name: "Commander Color Source Calculator", description: "Estimate the timely colored mana sources needed to cast an important Commander spell on curve." },
   "/tools/commander-power-level-checker": { name: "Commander Power Level Checker", description: "Review Commander speed, consistency, interaction, tutors, fast mana, resilience, and closing patterns." },
@@ -105,6 +105,7 @@ const SITEMAP_URLS: { loc: string; lastmod: string; changefreq: string; priority
   { loc: "https://metaforge.gg/academy", lastmod: "2026-08-25", changefreq: "weekly", priority: "0.8" },
   ...Object.keys(ACADEMY_GUIDES).map((path) => ({ loc: `https://metaforge.gg${path}`, lastmod: ACADEMY_GUIDES[path].datePublished, changefreq: "monthly", priority: "0.7" })),
   { loc: "https://metaforge.gg/tools", lastmod: "2026-08-25", changefreq: "monthly", priority: "0.9" },
+  { loc: "https://metaforge.gg/deck-check", lastmod: "2026-11-18", changefreq: "monthly", priority: "0.9" },
   ...Object.keys(DECKBUILDING_TOOLS).map((path) => ({ loc: `https://metaforge.gg${path}`, lastmod: path.includes("power-level") || path.includes("bracket") || path.includes("optimizer") || path.includes("mana-curve") ? "2026-08-25" : "2026-08-23", changefreq: "monthly", priority: "0.9" })),
   { loc: "https://metaforge.gg/commanders", lastmod: "2026-08-23", changefreq: "monthly", priority: "0.8" },
   ...Object.keys(COMMANDER_GUIDES).map((path) => ({ loc: `https://metaforge.gg${path}`, lastmod: "2026-08-23", changefreq: "monthly", priority: "0.7" })),
@@ -207,6 +208,12 @@ function seoMarkup(url: URL, html: string): string {
   if (deckbuildingTool) schemas.push({
     "@context": "https://schema.org", "@type": "WebApplication", name: deckbuildingTool.name, url: canonicalUrl,
     description: deckbuildingTool.description, applicationCategory: "GameApplication", operatingSystem: "Any modern web browser",
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  });
+  if (url.pathname === "/deck-check") schemas.push({
+    "@context": "https://schema.org", "@type": "WebApplication", name: "MetaForge Deck Check", url: canonicalUrl,
+    description: "Paste a Magic: The Gathering decklist to check format legality, read its plan, see weaknesses quoted from the card text, and compare one change before and after.",
+    applicationCategory: "GameApplication", operatingSystem: "Any modern web browser",
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
   });
   if (url.pathname === "/tools" || deckbuildingTool) {

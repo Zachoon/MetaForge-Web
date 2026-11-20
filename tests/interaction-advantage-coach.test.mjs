@@ -424,7 +424,10 @@ test("repeatable draw is the engine, and a burst that fills the draw count is st
   assert.match(hole.plain, /Harmonize/);
   assert.match(hole.plain, /once/i);
   assert.match(hole.plain, /about \d+–\d+/);
-  assert.match(hole.swaps[0].add, /Beast Whisperer|Skullclamp|Phyrexian Arena/);
+  // MF-DECK-COACH-002: this list has three creature cards, so a draw engine
+  // that needs creatures (Beast Whisperer, Skullclamp) is not offered, and
+  // nothing else in the vetted list is a G/W repeatable draw engine.
+  for (const swap of hole.swaps) assert.doesNotMatch(swap.add, /Beast Whisperer|Skullclamp/);
   assert.equal(row(report, "engines").actual, 0);
   assert.equal(row(report, "engines").status, "short");
   const text = formatCurveRoleCoaching(report);

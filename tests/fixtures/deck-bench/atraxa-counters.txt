@@ -1,0 +1,90 @@
+Commander
+1 Atraxa, Praetors' Voice
+
+Deck
+1 Sol Ring
+1 Arcane Signet
+1 Fellwar Stone
+1 Chromatic Lantern
+1 Talisman of Dominance
+1 Birds of Paradise
+1 Noble Hierarch
+1 Cultivate
+1 Kodama's Reach
+1 Farseek
+1 Nature's Lore
+1 Three Visits
+1 Smothering Tithe
+1 Hardened Scales
+1 Winding Constrictor
+1 Corpsejack Menace
+1 Rishkar, Peema Renegade
+1 Inexorable Tide
+1 Flux Channeler
+1 Evolution Sage
+1 Grateful Apparition
+1 Ezuri, Claw of Progress
+1 Vorinclex, Monstrous Raider
+1 Doubling Season
+1 Deepglow Skate
+1 The Ozolith
+1 Fathom Mage
+1 Bloom Hulk
+1 Kalonian Hydra
+1 Walking Ballista
+1 Vraska, Golgari Queen
+1 Ajani, Mentor of Heroes
+1 Nissa, Who Shakes the World
+1 Tamiyo, Field Researcher
+1 Swords to Plowshares
+1 Path to Exile
+1 Anguished Unmaking
+1 Assassin's Trophy
+1 Beast Within
+1 Counterspell
+1 Swan Song
+1 Cyclonic Rift
+1 Generous Gift
+1 Vraska's Contempt
+1 Despark
+1 Toxic Deluge
+1 Supreme Verdict
+1 Farewell
+1 Rhystic Study
+1 Mystic Remora
+1 Sylvan Library
+1 Guardian Project
+1 Inspiring Call
+1 Tezzeret's Gambit
+1 Fact or Fiction
+1 Phyrexian Arena
+1 Heroic Intervention
+1 Teferi's Protection
+1 Swiftfoot Boots
+1 Lightning Greaves
+1 Triumph of the Hordes
+1 Command Tower
+1 Exotic Orchard
+1 Breeding Pool
+1 Hallowed Fountain
+1 Overgrown Tomb
+1 Temple Garden
+1 Watery Grave
+1 Godless Shrine
+1 Flooded Strand
+1 Polluted Delta
+1 Windswept Heath
+1 Verdant Catacombs
+1 Misty Rainforest
+1 Marsh Flats
+1 Reliquary Tower
+1 Karn's Bastion
+1 Indatha Triome
+1 Spara's Headquarters
+1 Raffine's Tower
+1 Fabled Passage
+1 Evolving Wilds
+5 Forest
+4 Island
+4 Plains
+4 Swamp

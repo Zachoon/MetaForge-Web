@@ -3,7 +3,7 @@
 export const TOP_NAV = [
   { id: "explore", label: "Explore", href: "/" },
   { id: "decks", label: "Decks", href: "/?intent=decks" },
-  { id: "analyze", label: "Analyze", href: "/?intent=analyze" },
+  { id: "analyze", label: "Analyze", href: "/deck-check" },
   { id: "database", label: "Database", href: "/tools" },
   { id: "community", label: "Community", href: "/decks" },
 ] as const;

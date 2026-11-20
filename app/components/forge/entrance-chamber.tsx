@@ -44,7 +44,7 @@ export function EntranceChamber() {
           <br />
           <em>Build with confidence.</em>
         </h1>
-        <p>Pick your commander and we&rsquo;ll build the deck together, one card or package at a time, with a reason for every suggestion.</p>
+        <p>For Commander players. Pick your commander and we&rsquo;ll build the deck together, one card or package at a time, with a reason for every suggestion.</p>
         <ol className="first-session-steps" aria-label="How a first deck starts">
           <li><b>1</b><span>Pick a commander</span></li>
           <li><b>2</b><span>Add the first card</span></li>
@@ -72,9 +72,15 @@ export function EntranceChamber() {
             }}
           />
         </div>
+        {/* A finished deck goes to Deck Check: a read-only coaching report
+            that runs in the browser for any visitor, no account needed. */}
+        <a className="entrance-check-link" href="/deck-check">
+          <strong>Already play a deck?</strong>
+          <span>Paste it for a free coaching report: what it is trying to do, what is holding it back, and one change to test. No account needed.</span>
+        </a>
         <SecondaryJourney onBuildFromList={() => beginFreeDecklist("complete")} />
         <details className="entrance-more">
-          <summary>Already have a list, or want an example?</summary>
+          <summary>Finishing a partial list, or want an example?</summary>
           <div className="entrance-secondary">
             <button type="button" onClick={() => beginFreeDecklist("complete")}>
               Have a partial list? Review it step by step
