@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { MotionMode } from "./forge/forge-ceremony";
+import { useHoloLive } from "./hologram-forge";
 
 // The still sits beside the headline. The headline and the living-forge
 // panel are the larger paints, so this image is not the LCP and stays lazy.
@@ -35,14 +36,16 @@ export function HeroAnvil({ motionMode }: { motionMode: MotionMode }) {
   }, [turntable]);
 
   const ready = turntable && turntableReady;
+  const frameRef = useRef<HTMLDivElement>(null);
+  const onScreen = useHoloLive(frameRef);
 
   return (
-    <div className="hero-anvil" data-turntable={ready ? "ready" : "still"} role="img" aria-label={ANVIL_LABEL}>
+    <div ref={frameRef} className="hero-anvil" data-turntable={ready ? "ready" : "still"} data-holo-live={onScreen ? "on" : "off"} role="img" aria-label={ANVIL_LABEL}>
       <img
         className="hero-anvil-still"
         src="/assets/forge/tripo/hero-512.webp"
         srcSet="/assets/forge/tripo/hero-512.webp 512w, /assets/forge/tripo/hero-1024.webp 1024w"
-        sizes="(max-width: 900px) 96px, 720px"
+        sizes="(max-width: 900px) 140px, 560px"
         width={96}
         height={96}
         alt=""
@@ -66,6 +69,10 @@ export function HeroAnvil({ motionMode }: { motionMode: MotionMode }) {
           onError={() => setTurntableReady(false)}
         />
       ) : null}
+      <span className="holo-anvil-scan" aria-hidden="true">
+        <i className="holo-anvil-scan-trail" />
+        <i className="holo-anvil-scan-band" />
+      </span>
     </div>
   );
 }
